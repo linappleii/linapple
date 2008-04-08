@@ -84,6 +84,7 @@ enum AppMode_e {
 #define REGVALUE_HDD_IMAGE2         "Harddisk Image 2"
 #define REGVALUE_DISK_IMAGE1         "Disk Image 1"
 #define REGVALUE_DISK_IMAGE2         "Disk Image 2"
+#define REGVALUE_CLOCK_SLOT         "Clock Enable"
 
 #define  REGVALUE_PPRINTER_FILENAME  "Parallel Printer Filename"
 #define  REGVALUE_PRINTER_APPEND     "Append to printer file"
