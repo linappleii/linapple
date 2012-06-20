@@ -252,12 +252,13 @@ unsigned getBuffer2Free()
 
 void audioCallback(short* stream, unsigned len)
 {
-	// clear Audio buffer
-	memset(stream,0,len * sizeof(short));
-
+	int i;
+    static short lastvalue = 0;
+    
 	assert((len & 1) == 0); // stereo
 	unsigned len1, len2;
 	unsigned available = getBufferFilled();
+	
 	//std::cerr << "DEBUG callback: " << available << std::endl;
 	unsigned num = std::min(len, available);
 	if ((readIdx + num) < bufferSize) {
@@ -270,6 +271,17 @@ void audioCallback(short* stream, unsigned len)
 		memcpy(&stream[len1], mixBuffer, len2 * sizeof(short));
 		readIdx = len2;
 	}
+
+    if (available != 0) {
+        if (readIdx != 0)
+            lastvalue = mixBuffer[readIdx-1];
+        else
+            lastvalue = mixBuffer[bufferSize - 1];
+	}
+
+    for (i = num; i < len; i++) {
+        stream[i] = lastvalue; 
+    }
 
 /* Note: cleared at the begininng of the func
 
@@ -289,7 +301,6 @@ void audioCallback(short* stream, unsigned len)
 	available = getBuffer2Filled();
 	//std::cerr << "DEBUG callback: " << available << std::endl;
 	num = std::min(len, available);
-	unsigned i;
 	if ((readIdx2 + num) < bufferSize) {
 //		memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
 		for(i = 0; i < num; i++)

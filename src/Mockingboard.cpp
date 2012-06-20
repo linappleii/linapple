@@ -968,6 +968,7 @@ static DWORD SSI263Thread(LPVOID lpParameter)
 
 	return 0;
 #endif
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -1540,6 +1541,7 @@ bool MB_IsActive()
 DWORD MB_GetVolume()
 {
 //	return MockingboardVoice.dwUserVolume;
+    return 0;
 }
 
 void MB_SetVolume(DWORD dwVolume, DWORD dwVolumeMax)

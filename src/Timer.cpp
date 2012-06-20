@@ -46,91 +46,70 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //		Timer Functions - POSIX specific 				//
 //=============================================================================//
 // Vars
-static bool g_bRefClockTimerActive = false;
-static DWORD g_dwLastUsecPeriod = 0;
 
-static bool g_bTimerToggle = false;
-struct sigaction sa_SysClk;
-struct itimerval mytimeset;
+static DWORD g_dwUsecPeriod = 0;
 
-void SysClk_TickTimer(int signum)
-{	// should occur every specified times per second
-	g_bTimerToggle = true;	// just set the toggle flag, and leave peacefully? --bb
-}
 
 bool SysClk_InitTimer()
-{// first initialization of the timer
-/*	memset(&sa_SysClk, 0, sizeof(sa_SysClk));	// clear sigaction struct
-	sa_SysClk.sa_handler = &SysClk_TickTimer;
-	sigaction(SIGALRM, &sa_SysClk, NULL);	// set SIGALRM handler*/
-	if(signal(SIGALRM, SysClk_TickTimer) == SIG_ERR)
-		return false;
-
-	printf("Timer has been initted!\n");
+{
  	return true;
 }
 
 void SysClk_UninitTimer()
 {
-	SysClk_StopTimer();
-//	signal(SIGALRM, NULL);
 }
+
+
+inline Uint32 uSecSinceStart() {
+  struct timeval latest;
+  static struct timeval start;
+  static bool first = true;
+  
+  if (first) {
+    gettimeofday(&start, NULL);
+    first = false;
+    return 0;
+  }
+
+  gettimeofday(&latest, NULL);
+  if (latest.tv_sec == start.tv_sec) {
+    return latest.tv_usec - start.tv_usec;
+  } else {
+      return (1000000000 - start.tv_usec) + 
+             latest.tv_usec +
+             (latest.tv_sec - (start.tv_sec +1))*1000000000;
+  }
+}
+
 
 void SysClk_WaitTimer()
 {
-//	printf("Waiting timer...\n");
-	
-	if(!g_bRefClockTimerActive)
-		return;
-// pause() - better than that?
-
-	while(!g_bTimerToggle)
-		usleep(1);	// do nothing is something doing also? 0_0 --bb
-	g_bTimerToggle = false;
-	
-//	printf("Timer has been ticked!\n");
+    static Uint32 old = 0;
+    Uint32 current;
+    Uint32 elapsed;
+    
+    // Loop until next period
+    // if more than 500usec sleep to give up CPU
+    while (1) {
+        current = uSecSinceStart();
+        elapsed = current - old;    
+        if (elapsed >= g_dwUsecPeriod) {
+            old = current;            
+            return;
+        }
+        if ((g_dwUsecPeriod - elapsed) > 500) {
+            usleep(1);
+        }
+    }
 }
 
 void SysClk_StartTimerUsec(DWORD dwUsecPeriod)
 {
-	// starting timer during dwUsecPeriod in microseconds???
-//	printf("Timer started %d usec\n", dwUsecPeriod);
-	if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod))
-		return;
-
-	SysClk_StopTimer();
-
-	// to comply with Windows DirectShow REFERENCE_TIME, which is in units of 100 nanoseconds
-	mytimeset.it_interval.tv_sec = 0;
-	mytimeset.it_interval.tv_usec =  dwUsecPeriod;// * 10  100;
-	mytimeset.it_value.tv_sec = 0;
-	mytimeset.it_value.tv_usec = dwUsecPeriod;// * 10 / 100; 
-
-	if(setitimer(ITIMER_REAL, &mytimeset, NULL) != 0) {
-		fprintf(stderr, "Error creating timer (setitimer failed)\n");
-		_ASSERT(0);
-		return;
-	}
-
-	g_dwLastUsecPeriod = dwUsecPeriod;
-	g_bRefClockTimerActive = true;
+    g_dwUsecPeriod = dwUsecPeriod;
 }
 
 void SysClk_StopTimer()
 {
-	if(!g_bRefClockTimerActive)
-		return;
-
-	// Zero values just disables timers
-	mytimeset.it_interval.tv_sec = 0;
-	mytimeset.it_interval.tv_usec = 0;
-	mytimeset.it_value.tv_sec = 0;
-	mytimeset.it_value.tv_usec = 0;
-
-	setitimer(ITIMER_REAL, &mytimeset, NULL);
-
-	g_bTimerToggle = true;
-	g_bRefClockTimerActive = false;
 }
 
 #else
