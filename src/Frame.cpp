@@ -38,6 +38,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for stat in FrameSaveBMP function
 #include <sys/stat.h>
 
+// for usleep()
+#include <unistd.h>
+
 
 #define ENABLE_MENU 0
 
