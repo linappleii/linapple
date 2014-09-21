@@ -813,6 +813,11 @@ int main(int argc, char * lpCmdLine[])
 			else if (g_uMaxExPages < 1)
 				g_uMaxExPages = 1;
 		}
+                
+                else if(strcmp(lpNextArg, "-autoboot") == 0)
+                {
+                    bBoot = true;
+                }
 #endif
 
 		//*lpCmdLine = lpNextArg;
@@ -927,8 +932,6 @@ int main(int argc, char * lpCmdLine[])
                 if(szImageName_drive1)
                 {
                     nError = DoDiskInsert(0, szImageName_drive1);
-                    
-                    bBoot = true;
                 }
                 if(szImageName_drive2)
                 {
@@ -969,6 +972,7 @@ int main(int argc, char * lpCmdLine[])
 // 			bSetFullScreen = false;
 // 		}
 //
+                //Automatically boot from disk if specified on the command line
  		if(bBoot)
  		{
                     // autostart
