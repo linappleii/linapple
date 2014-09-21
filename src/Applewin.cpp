@@ -698,11 +698,11 @@ void RegisterExtensions ()
 
 //===========================================================================
 
-//LPSTR GetNextArg(LPSTR lpCmdLine)
-//{
+LPSTR GetNextArg(LPSTR lpCmdLine)
+{
 	// Sane idea: use getoptlong as command-line parameter preprocessor. Use it at your health. Ha. --bb
 
-/*
+
 	int bInQuotes = 0;
 
 	while(*lpCmdLine)
@@ -727,57 +727,57 @@ void RegisterExtensions ()
 	}
 
 	return lpCmdLine;
-*/
-//}
 
-//FILE *spMono, *spStereo;
+}
+
+FILE *spMono, *spStereo;
 
 //---------------------------------------------------------------------------
 
 int main(int argc, char * lpCmdLine[])
 {
 //		reading FullScreen and Boot from conf file?
-//	bool bSetFullScreen = false;
-//	bool bBoot = false;
+	bool bSetFullScreen = false;
+	bool bBoot = false;
 
 	registry = fopen(REGISTRY, "a+t");	// open conf file (linapple.conf by default)
-//	spMono = fopen("speakersmono.pcm","wb");
-//	spStereo = fopen("speakersstereo.pcm","wb");
+	spMono = fopen("speakersmono.pcm","wb");
+	spStereo = fopen("speakersstereo.pcm","wb");
 	
-//	LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
-//	LPSTR szImageName_drive2 = NULL;
+	LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
+	LPSTR szImageName_drive2 = NULL;
 
 
 	bool bBenchMark = (argc > 1 &&
 		!strcmp(lpCmdLine[1],"-b"));	// if we should start benchmark (-b in command line string)
 
 // I will remake this using getopt and getoptlong!
-/*
-	while(*lpCmdLine)
-	{
-		LPSTR lpNextArg = GetNextArg(lpCmdLine);
 
-		if(strcmp(lpCmdLine, "-d1") == 0)
+	for(int x = 0; x < argc; x++)
+	{
+		LPSTR lpNextArg = lpCmdLine[x]; //GetNextArg(*lpCmdLine);
+
+		if(strcmp(lpNextArg, "-d1") == 0)
 		{
-			lpCmdLine = lpNextArg;
-			lpNextArg = GetNextArg(lpCmdLine);
-			szImageName_drive1 = lpCmdLine;
+			//*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			szImageName_drive1 = lpCmdLine[x + 1];
 			if(*szImageName_drive1 == '\"')
 				szImageName_drive1++;
 		}
-		else if(strcmp(lpCmdLine, "-d2") == 0)
+		else if(strcmp(lpNextArg, "-d2") == 0)
 		{
-			lpCmdLine = lpNextArg;
-			lpNextArg = GetNextArg(lpCmdLine);
-			szImageName_drive2 = lpCmdLine;
+			//*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			szImageName_drive2 = lpCmdLine[x + 1];
 			if(*szImageName_drive2 == '\"')
 				szImageName_drive2++;
 		}
-		else if(strcmp(lpCmdLine, "-f") == 0)
+		else if(strcmp(lpNextArg, "-f") == 0)
 		{
 			bSetFullScreen = true;
 		}
-		else if((strcmp(lpCmdLine, "-l") == 0) && (g_fh == NULL))
+		else if((strcmp(lpNextArg, "-l") == 0) && (g_fh == NULL))
 		{
 			g_fh = fopen("AppleWin.log", "a+t");	// Open log file (append & text g_nAppMode)
 // Start of Unix(tm) specific code
@@ -785,21 +785,21 @@ int main(int argc, char * lpCmdLine[])
 			struct tm * ptm;
 			char time_str[40];
 			gettimeofday(&tv, NULL);
-			ptm = localtime(&tv.tvsec);
+//			ptm = localtime(&tv.tvsec);
 			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
 // end of Unix(tm) specific code
 			fprintf(g_fh,"*** Logging started: %s\n",time_str);
 		}
-		else if(strcmp(lpCmdLine, "-m") == 0)
+		else if(strcmp(lpNextArg, "-m") == 0)
 		{
 			g_bDisableDirectSound = true; // without direct sound? U-u-u-u-uuuuuuuhhhhhhhhh --bb
 		}
 #ifdef RAMWORKS
-		else if(strcmp(lpCmdLine, "-r") == 0)		// RamWorks size [1..127]
+		else if(strcmp(lpNextArg, "-r") == 0)		// RamWorks size [1..127]
 		{
-			lpCmdLine = lpNextArg;
-			lpNextArg = GetNextArg(lpCmdLine);
-			g_uMaxExPages = atoi(lpCmdLine);
+//			*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			g_uMaxExPages = atoi(lpCmdLine[x + 1]);
 			if (g_uMaxExPages > 127)
 				g_uMaxExPages = 128;
 			else if (g_uMaxExPages < 1)
@@ -807,9 +807,9 @@ int main(int argc, char * lpCmdLine[])
 		}
 #endif
 
-		lpCmdLine = lpNextArg;
+		//*lpCmdLine = lpNextArg;
 	}
-*/
+
 
 
 // What is it???? RIFF support for sound saving during emulation in RIFF format.
@@ -897,16 +897,16 @@ int main(int argc, char * lpCmdLine[])
 	DiskInitialize();
 	CreateColorMixMap();	// For tv emulation g_nAppMode
 
-// 	int nError = 0;
-// 	if(szImageName_drive1)
-// 	{
-// 		nError = DoDiskInsert(0, szImageName_drive1);
-// 		bBoot = true;
-// 	}
-// 	if(szImageName_drive2)
-// 	{
-// 		nError |= DoDiskInsert(1, szImageName_drive2);
-// 	}
+ 	int nError = 0;
+ 	if(szImageName_drive1)
+ 	{
+ 		nError = DoDiskInsert(0, szImageName_drive1);
+ 		bBoot = true;
+ 	}
+ 	if(szImageName_drive2)
+ 	{
+ 		nError |= DoDiskInsert(1, szImageName_drive2);
+ 	}
 
 	//
 
@@ -915,9 +915,11 @@ int main(int argc, char * lpCmdLine[])
 		// DO INITIALIZATION THAT MUST BE REPEATED FOR A RESTART
 		restart = 0;
 		g_nAppMode = MODE_LOGO;
-		fullscreen = false;
+		fullscreen = bSetFullScreen;
 
-		LoadConfiguration();
+		if(!bBoot) {		
+			LoadConfiguration();
+		}
 		FrameCreateWindow();
 
 		if (!DSInit()) soundtype = SOUND_NONE;		// Direct Sound and Stuff
@@ -951,12 +953,15 @@ int main(int argc, char * lpCmdLine[])
 // 			bSetFullScreen = false;
 // 		}
 //
-// 		if(bBoot)
-// 		{
-// 			PostMessage(g_hFrameWindow, WM_KEYDOWN, VK_F1+BTN_RUN, 0);
-// 			PostMessage(g_hFrameWindow, WM_KEYUP,   VK_F1+BTN_RUN, 0);
-// 			bBoot = false;
-// 		}
+ 		if(bBoot)
+ 		{
+			// autostart
+			SDL_Event user_ev;
+			user_ev.type = SDL_USEREVENT;
+			user_ev.user.code = 1;	//restart?
+			SDL_PushEvent(&user_ev);
+ 			bBoot = false;
+ 		}
 
 		JoyReset();
 		SetUsingCursor(0);
@@ -1019,8 +1024,8 @@ int main(int argc, char * lpCmdLine[])
 
 	RiffFinishWriteFile();
 	fclose(registry);		//close conf file (linapple.conf by default)
-//	fclose(spMono);
-//	fclose(spStereo);
+	fclose(spMono);
+	fclose(spStereo);
 	
 	SDL_Quit();
 // CURL routines
