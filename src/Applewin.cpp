@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007, krez beotiger March 2012 AD */
 
+#include <iostream>
 #include "stdafx.h"
 //#pragma  hdrstop
 #include "MouseInterface.h"
@@ -905,29 +906,34 @@ int main(int argc, char * lpCmdLine[])
 	DiskInitialize();
 	CreateColorMixMap();	// For tv emulation g_nAppMode
 
+        //This part of the code inserts disks if any were specified on the command line.
  	int nError = 0;
  	if(szImageName_drive1)
  	{
- 		nError = DoDiskInsert(0, szImageName_drive1);
- 		bBoot = true;
+            nError = DoDiskInsert(0, szImageName_drive1);
+            bBoot = true;
  	}
  	if(szImageName_drive2)
  	{
  		nError |= DoDiskInsert(1, szImageName_drive2);
  	}
 
-	//
 
+
+        
 	do
 	{
 		// DO INITIALIZATION THAT MUST BE REPEATED FOR A RESTART
 		restart = 0;
 		g_nAppMode = MODE_LOGO;
+
+                //Start with default configuration, which we will override if command line options were specified
+                if(!bBoot) {
+                    LoadConfiguration();
+                }
+
 		fullscreen = bSetFullScreen;
 
-		if(!bBoot) {		
-			LoadConfiguration();
-		}
 		FrameCreateWindow();
 
 		if (!DSInit()) soundtype = SOUND_NONE;		// Direct Sound and Stuff
@@ -963,9 +969,8 @@ int main(int argc, char * lpCmdLine[])
 //
  		if(bBoot)
  		{
-			// autostart
+                    // autostart
                     setAutoBoot();
-                    bBoot = false;
  		}
 
 		JoyReset();
