@@ -380,6 +380,16 @@ int DoDiskInsert(int nDrive, LPSTR szFileName)
 	return DiskInsert(nDrive, szFileName, 0, 0);
 }
 
+//Sets the emulator to automatically boot, rather than load the flash screen on startup
+void setAutoBoot ()
+{
+    // autostart
+    SDL_Event user_ev;
+    user_ev.type = SDL_USEREVENT;
+    user_ev.user.code = 1;	//restart?
+    SDL_PushEvent(&user_ev);
+}
+
 //===========================================================================
 // Let us load main configuration from config file.  Y_Y  --bb
 void LoadConfiguration ()
@@ -474,11 +484,8 @@ void LoadConfiguration ()
   dwTmp = 0;
   LOAD(TEXT("Boot at Startup") ,&dwTmp);	//
   if(dwTmp) {
-	  // autostart
-	  SDL_Event user_ev;
-	  user_ev.type = SDL_USEREVENT;
-	  user_ev.user.code = 1;	//restart?
-	  SDL_PushEvent(&user_ev);
+        // autostart
+        setAutoBoot();
   }
 
   dwTmp = 0;
@@ -730,6 +737,7 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 
 }
 
+
 FILE *spMono, *spStereo;
 
 //---------------------------------------------------------------------------
@@ -956,11 +964,8 @@ int main(int argc, char * lpCmdLine[])
  		if(bBoot)
  		{
 			// autostart
-			SDL_Event user_ev;
-			user_ev.type = SDL_USEREVENT;
-			user_ev.user.code = 1;	//restart?
-			SDL_PushEvent(&user_ev);
- 			bBoot = false;
+                    setAutoBoot();
+                    bBoot = false;
  		}
 
 		JoyReset();
