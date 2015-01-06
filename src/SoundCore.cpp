@@ -131,7 +131,7 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
 	//std::cerr << "DEBUG wanted: " << wantedSamples
 	//          <<     "  actual: " << audioSpec.size / 4 << std::endl;
 	frequency = audioSpec.freq;
-	bufferSize = 4 * (audioSpec.size / sizeof(short));
+	bufferSize = 8 * (audioSpec.size / sizeof(short));
 //	bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);	// 1 second of stereo short data
 
 /*
@@ -250,21 +250,37 @@ unsigned getBuffer2Free()
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+
+// GPH this is called on IRQ to refresh the audio at regular intervals.
+// We'll mix the buffers here keeping in mind the need for speed.
+//
 void audioCallback(short* stream, unsigned len)
 {
 	int i;
     static short lastvalue = 0;
-    
 	assert((len & 1) == 0); // stereo
+
 	unsigned len1, len2;
 	unsigned available = getBufferFilled();
-	
-	//std::cerr << "DEBUG callback: " << available << std::endl;
 	unsigned num = std::min(len, available);
 	if ((readIdx + num) < bufferSize) {
+        // No split in source (mixBuffer); perform straight-up copy.
+        //
+        //     |--------------------|
+        //       ^ (mixBuffer)   $
+        //
+        //     |--------------------|
+        //     ^     (stream)
 		memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
 		readIdx += num;
 	} else {
+        // Handle split in source
+        //
+        //     |--------------------|
+        //         (mixBuffer) ^
+        //
+        //     |--------------------|
+        //     ^     (stream)
 		len1 = bufferSize - readIdx;
 		memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
 		len2 = num - len1;
@@ -272,6 +288,8 @@ void audioCallback(short* stream, unsigned len)
 		readIdx = len2;
 	}
 
+    // Fill the remainer of the buffer with last value to prevent potential
+    // clicks and pops.
     if (available != 0) {
         if (readIdx != 0)
             lastvalue = mixBuffer[readIdx-1];
@@ -280,45 +298,72 @@ void audioCallback(short* stream, unsigned len)
 	}
 
     for (i = num; i < len; i++) {
-        stream[i] = lastvalue; 
+        stream[i] = lastvalue;
     }
-
-/* Note: cleared at the begininng of the func
-
-	int missing = len - available;
-	if (missing > 0) {
-		// buffer underrun
-		//std::cerr << "DEBUG underrun: " << missing << std::endl;
-		memset(&stream[available], 0, missing * sizeof(short));
-	}
-*/
+/* GPH please don't do this in an IRQ handler!
 	unsigned target = (5 * bufferSize) / 8;
 	double factor = double(available) / target;
 	filledStat = (63 * filledStat + factor) / 64;
-	//std::cerr << "DEBUG filledStat: " << filledStat << std::endl;
+*/
+
 #ifdef MOCKINGBOARD
-// And add Mockingboard sound data to the stream
+    // And add Mockingboard sound data to the stream
+    // GPH: We are going to add the Mockingboard and speaker samples.
+    // Their independent maximum amplitudes have been selected to eliminate
+    // any possibility of wave peak clipping.  This speeds up the timing-sensitive
+    // operation here (since we're in an IRQ handler) and eliminates the
+    // need for a potentially expensive divide.
 	available = getBuffer2Filled();
 	//std::cerr << "DEBUG callback: " << available << std::endl;
 	num = std::min(len, available);
+    const short *pSrc;
+    short *pDest = stream;
 	if ((readIdx2 + num) < bufferSize) {
-//		memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
-		for(i = 0; i < num; i++)
-			stream[i] |= mockBuffer[readIdx2 + i];
-		readIdx2 += num;
+        if( num ) {
+            pSrc = &mockBuffer[readIdx2];
+            readIdx2 += num;
+            while(num--) {
+                *pDest += *pSrc;
+                pDest++; pSrc++;
+            }
+        }
 	} else {
-		len1 = bufferSize - readIdx2;
-//		memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
-		for(i = 0; i < len1; i++)
-			stream[i] |= mockBuffer[readIdx2 + i];
+        // We crossed the "seam" on the circular mockBuffer.
+        // We will therefore perform two copies, the segmentation being determined
+        // by the split in the source buffer (mockBuffer).
+        //
+        //     |--------------------|
+        //         (mockBuffer) ^
+        //
+        //
+        //     |--------------------|
+        //     ^     (stream)
+        len1 = bufferSize - readIdx2;
 		len2 = num - len1;
-//		memcpy(&stream[len1], mixBuffer, len2 * sizeof(short));
-		for(i = 0; i < len2; i++)
-			stream[len1 + i] |= mockBuffer[i];
+        if(len1) {
+            pSrc = &mockBuffer[readIdx2];
+            while(len1--) {
+                *pDest += *pSrc;
+                pDest++; pSrc++;
+            }
+        }
 		readIdx2 = len2;
+        if(len2) {
+            pSrc = mockBuffer;
+            while(len2--) {
+                *pDest += *pSrc;
+                pDest++; pSrc++;
+            }
+        }
+
 	}
-#endif
+#endif      // #ifdef MOCKINGBOARD
 // normalization
+// GPH TODO: Rather than do this in this handler, we should
+// perform it efficiently by changing the values of
+// MAX_OUTPUT (AY8910.cpp) and SPKR_DATA_INIT (Speaker.cpp),
+// making them variables and making the appropriate access functions
+// to call from Frame.cpp
 /*	const short MY_MAX_VOLUME = (short)SDL_MIX_MAXVOLUME / 2;
 	for(unsigned k=0;k<len;k+=2)
 		if((short)stream[k] > MY_MAX_VOLUME)
