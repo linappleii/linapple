@@ -392,7 +392,7 @@ void DrawStatusArea (/*HDC passdc,*/ int drawflags)
 							 0, 256);
 //	Uint32 myblack  = SDL_MapRGB(screen->format, 0, 0, 0);	// black color
 //	SDL_SetColorKey(g_hStatusSurface,SDL_SRCCOLORKEY/* | SDL_RLEACCEL*/, myblack);
-							 
+
 	if (drawflags & DRAW_BACKGROUND)
 	{
 /* Code moved to Video.cpp in CreateDIBSections()
@@ -494,7 +494,8 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     	   "Conf file is linapple.conf in current directory by default",
     	   "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
     	   " F1 - This help",
-    	   " F2 - Cold reset, Shift+F2 - Reload conf file and restart",
+    	   " Ctrl+Shift+F2 - Cold reset",
+           " Shift+F2 - Reload conf file and restart",
     	   " F3, F4 - Choose an image file name for floppy disk",
 	   "             in Slot 6 drive 1 or 2 respectively",
 	   " Shift+F3, Shift+F4 - The same thing for Apple hard disks",
@@ -943,35 +944,38 @@ void ProcessButtonClick (int button, int mod) {
       break;
 
     case BTN_RUN:	// F2 - Run that thing! Or Shift+2 ReloadConfig and run it anyway!
-	if(mod & KMOD_SHIFT) {
+        if((mod & (KMOD_LCTRL|KMOD_LSHIFT)) == (KMOD_LCTRL|KMOD_LSHIFT) ||
+           (mod & (KMOD_RCTRL|KMOD_RSHIFT)) == (KMOD_RCTRL|KMOD_RSHIFT))  {
+            if (g_nAppMode == MODE_LOGO)
+                DiskBoot();
+            else if (g_nAppMode == MODE_RUNNING)
+                ResetMachineState();
+            if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING))
+            DebugEnd();
+            g_nAppMode = MODE_RUNNING;
+            DrawStatusArea(/*(HDC)0,*/DRAW_TITLE);
+            VideoRedrawScreen();
+            g_bResetTiming = true;
+        }
+    	else if(mod & KMOD_SHIFT) {
 		  restart = 1;	// keep up flag of restarting
 		  qe.type = SDL_QUIT;
 		  SDL_PushEvent(&qe);// push quit event
-	}
-	else {
-      if (g_nAppMode == MODE_LOGO)
-        DiskBoot();
-      else if (g_nAppMode == MODE_RUNNING)
-        ResetMachineState();
-      if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING))
-        DebugEnd();
-      g_nAppMode = MODE_RUNNING;
-      DrawStatusArea(/*(HDC)0,*/DRAW_TITLE);
-      VideoRedrawScreen();
-      g_bResetTiming = true;
-	}
+	    }
       break;
 
     case BTN_DRIVE1:
     case BTN_DRIVE2:
 	    if (mod & KMOD_SHIFT) {
+    		if(mod & KMOD_ALT)
+		    	HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP
+    		else
+                HD_Select(button - BTN_DRIVE1);	// select HDV image from local disk
+	    } else {
 		if(mod & KMOD_ALT)
-			HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP
-		else HD_Select(button - BTN_DRIVE1);	// select HDV image from local disk
-	    }
-      	    else {
-		if(mod & KMOD_ALT) Disk_FTP_SelectImage(button - BTN_DRIVE1);//select through FTP
-		else DiskSelect(button - BTN_DRIVE1); // select image file for appropriate disk drive(#1 or #2)
+            Disk_FTP_SelectImage(button - BTN_DRIVE1);//select through FTP
+		else
+            DiskSelect(button - BTN_DRIVE1); // select image file for appropriate disk drive(#1 or #2)
 	    }
 /*      if (!fullscreen)
         DrawButton((HDC)0,button);*/
