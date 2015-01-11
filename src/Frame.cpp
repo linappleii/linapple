@@ -967,13 +967,15 @@ void ProcessButtonClick (int button, int mod) {
     case BTN_DRIVE1:
     case BTN_DRIVE2:
 	    if (mod & KMOD_SHIFT) {
+    		if(mod & KMOD_ALT)
+		    	HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP
+    		else
+                HD_Select(button - BTN_DRIVE1);	// select HDV image from local disk
+	    } else {
 		if(mod & KMOD_ALT)
-			HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP
-		else HD_Select(button - BTN_DRIVE1);	// select HDV image from local disk
-	    }
-      	    else {
-		if(mod & KMOD_ALT) Disk_FTP_SelectImage(button - BTN_DRIVE1);//select through FTP
-		else DiskSelect(button - BTN_DRIVE1); // select image file for appropriate disk drive(#1 or #2)
+            Disk_FTP_SelectImage(button - BTN_DRIVE1);//select through FTP
+		else
+            DiskSelect(button - BTN_DRIVE1); // select image file for appropriate disk drive(#1 or #2)
 	    }
 /*      if (!fullscreen)
         DrawButton((HDC)0,button);*/
