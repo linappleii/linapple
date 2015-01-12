@@ -494,7 +494,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     	   "Conf file is linapple.conf in current directory by default",
     	   "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
     	   " F1 - This help",
-    	   " Ctrl+Shift+F2 - Cold reset",
+    	   " Ctrl+F2 - Cold reset",
            " Shift+F2 - Reload conf file and restart",
     	   " F3, F4 - Choose an image file name for floppy disk",
 	   "             in Slot 6 drive 1 or 2 respectively",
@@ -944,8 +944,8 @@ void ProcessButtonClick (int button, int mod) {
       break;
 
     case BTN_RUN:	// F2 - Run that thing! Or Shift+2 ReloadConfig and run it anyway!
-        if((mod & (KMOD_LCTRL|KMOD_LSHIFT)) == (KMOD_LCTRL|KMOD_LSHIFT) ||
-           (mod & (KMOD_RCTRL|KMOD_RSHIFT)) == (KMOD_RCTRL|KMOD_RSHIFT))  {
+        if((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) ||
+           (mod & (KMOD_RCTRL)) == (KMOD_RCTRL))  {
             if (g_nAppMode == MODE_LOGO)
                 DiskBoot();
             else if (g_nAppMode == MODE_RUNNING)
