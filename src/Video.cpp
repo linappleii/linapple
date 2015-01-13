@@ -276,7 +276,7 @@ void /*__stdcall */CopySource (int destx, int desty,
       --bytesleft;
       // GPH Provide scanlines for all but first couple of modes
       // TODO: Optimize
-      if( ysize & 1 || VT_COLOR_STANDARD >= g_videotype )
+      if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
           *(currdestptr+bytesleft) = *(currsourceptr+bytesleft);
       else
           *(currdestptr+bytesleft) = 0;
@@ -286,7 +286,7 @@ void /*__stdcall */CopySource (int destx, int desty,
       bytesleft -= 4;
       // GPH Provide scanlines for all but first couple of modes
       // TODO: Optimize
-      if( ysize & 1 || VT_COLOR_STANDARD >= g_videotype )
+      if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
           *(LPDWORD)(currdestptr+bytesleft) = *(LPDWORD)(currsourceptr+bytesleft);
       else
           *(currdestptr+bytesleft) = 0;
@@ -807,7 +807,7 @@ void DrawHiResSource ()
 
                     // GPH Provide scanlines for all but first couple of modes
                     // TODO: Optimize this
-                    if( VT_COLOR_STANDARD >= g_videotype ) {
+                    if( VT_COLOR_TVEMU > g_videotype ) {
     					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[color]); // BL
 	    				SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[color]); // BR
                     } else {
@@ -1301,7 +1301,11 @@ void /*__stdcall */ CopyMixedSource (int x, int y, int sourcex, int sourcey) {	/
     for (i = istart;
 	     i <= iend;
 	     currptr += framebufferpitch, i++) {	// and vice versa
-         *currptr = *(currptr+1) = colormixbuffer[i];
+         if( ~i & 1 )
+             *currptr = *(currptr+1) = colormixbuffer[i];
+         else
+             *currptr = 0;
+
 	}
   }
 }
