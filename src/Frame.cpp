@@ -1020,7 +1020,7 @@ void ProcessButtonClick (int button, int mod) {
 	// F8 - save current screen as a .bmp file
 	    // Currently these setting are just next:
 	if(mod & KMOD_SHIFT) {
-		RegSaveValue(TEXT("Configuration"),TEXT("Video Emulation"),1,videotype);
+		RegSaveValue(TEXT("Configuration"),TEXT("Video Emulation"),1,g_videotype);
 		RegSaveValue(TEXT("Configuration"),TEXT("Emulation Speed"),1,g_dwSpeed);
 		RegSaveValue(TEXT("Configuration"),TEXT("Fullscreen"),1,fullscreen);
 	}
@@ -1037,9 +1037,9 @@ void ProcessButtonClick (int button, int mod) {
 ////////////////////////// my buttons handlers F9..F12 ////////////////////////////
     case BTN_CYCLE: // F9 - CYCLE through allowed video modes
 //	  printf("F9 has been pressed!\n");
-	  videotype++;	// Cycle through available video modes
-	  if (videotype >= VT_NUM_MODES)
-		  videotype = 0;
+	  g_videotype++;	// Cycle through available video modes
+	  if (g_videotype >= VT_NUM_MODES)
+		  g_videotype = 0;
 	  VideoReinitialize();
 	  if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
 	  {

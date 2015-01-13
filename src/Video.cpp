@@ -190,7 +190,7 @@ static COLORREF      customcolors[NUM_COLOR_PALETTE];	// MONOCHROME is last cust
 static LPBYTE        framebufferbits;
        SDL_Color  framebufferinfo[256];
 
-const int MAX_FRAME_Y = 384; // 192 scan lines * 2x zoom = 384
+const int MAX_FRAME_Y = 384; // 192 Apple scan lines * 2x host scanline = 384
 static LPBYTE        frameoffsettable[384];
 static LPBYTE        g_pHiresBank1;
 static LPBYTE        g_pHiresBank0;
@@ -233,7 +233,7 @@ static BOOL      redrawfull       = 1;
 static DWORD     dwVBlCounter     = 0;
 static LPBYTE    vidlastmem       = NULL;
 static DWORD     vidmode          = VF_TEXT;
-DWORD     videotype        = VT_COLOR_STANDARD;
+DWORD            g_videotype        = VT_COLOR_STANDARD;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
@@ -274,12 +274,22 @@ void /*__stdcall */CopySource (int destx, int desty,
     while (bytesleft & 3)
 	{
       --bytesleft;
-      *(currdestptr+bytesleft) = *(currsourceptr+bytesleft);
+      // GPH Provide scanlines for all but first couple of modes
+      // TODO: Optimize
+      if( ysize & 1 || VT_COLOR_STANDARD >= g_videotype )
+          *(currdestptr+bytesleft) = *(currsourceptr+bytesleft);
+      else
+          *(currdestptr+bytesleft) = 0;
     }
     while (bytesleft)
 	{
       bytesleft -= 4;
-      *(LPDWORD)(currdestptr+bytesleft) = *(LPDWORD)(currsourceptr+bytesleft);
+      // GPH Provide scanlines for all but first couple of modes
+      // TODO: Optimize
+      if( ysize & 1 || VT_COLOR_STANDARD >= g_videotype )
+          *(LPDWORD)(currdestptr+bytesleft) = *(LPDWORD)(currsourceptr+bytesleft);
+      else
+          *(currdestptr+bytesleft) = 0;
     }
     currdestptr   += framebufferpitch; // we are going top to bottom, as all normal people do! ^_^ (bb)
     currsourceptr += SRCOFFS_TOTAL;
@@ -378,7 +388,7 @@ void CreateDIBSections () {
   g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
 
   g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
- 
+
   if(g_hDeviceBitmap == NULL) fprintf(stderr,"g_hDeviceBitmap was not created!\n");
 //CreateDIBSection(dc,framebufferinfo,DIB_RGB_COLORS,
 //                (LPVOID *)&framebufferbits,0,0);
@@ -387,7 +397,7 @@ void CreateDIBSections () {
 //    printf("SetColors(g_hDeviceBitmap)=%d\n",hcl);
   hcl = SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
 //    printf("SetColors(g_origscreen)=%d\n",hcl);
- 
+
    g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
    SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 
@@ -395,7 +405,7 @@ void CreateDIBSections () {
 	SDL_Rect srect;
 	Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);	// bluez color, know that?
 	Uint32 myyell  = SDL_MapRGB(screen->format, 255, 255, 0);	// yellow color?
-	
+
 	srect.x = srect.y = 0;
 	srect.w = STATUS_PANEL_W;
 	srect.h = STATUS_PANEL_H;
@@ -434,10 +444,10 @@ void CreateDIBSections () {
 	// DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
 	ZeroMemory(g_pSourcePixels,SRCOFFS_TOTAL * /*512*/ MAX_SOURCE_Y);// be consistent, please,Thom! (bb) ^_^ ku
 
-	if ((videotype != VT_MONO_CUSTOM) &&
-		(videotype != VT_MONO_AMBER ) &&
-		(videotype != VT_MONO_GREEN ) &&
-		(videotype != VT_MONO_WHITE ))
+	if ((g_videotype != VT_MONO_CUSTOM) &&
+		(g_videotype != VT_MONO_AMBER ) &&
+		(g_videotype != VT_MONO_GREEN ) &&
+		(g_videotype != VT_MONO_WHITE ))
 	{
 		DrawTextSource(g_hSourceBitmap);
 
@@ -447,7 +457,7 @@ void CreateDIBSections () {
 		}
 
 		DrawLoResSource();
-		if (videotype == VT_COLOR_HALF_SHIFT_DIM)
+		if (g_videotype == VT_COLOR_HALF_SHIFT_DIM)
 			DrawHiResSourceHalfShiftDim();
 		else
 			DrawHiResSource();
@@ -501,12 +511,12 @@ void DrawDHiResSource () {
         }
       }
 
-	  if (videotype == VT_COLOR_TEXT_OPTIMIZED)
+	  if (g_videotype == VT_COLOR_TEXT_OPTIMIZED)
 	  {
 	    /***
 	    activate for fringe reduction on white hgr text
 	    drawback: loss of color mix patterns in hgr g_nAppMode.
-	    select videotype by index
+	    select g_videotype by index
 	    ***/
 
 		for (pixel = 0; pixel < 13; pixel++)
@@ -613,7 +623,7 @@ void DrawHiResSourceHalfShiftDim ()
 						/***
 						activate for fringe reduction on white hgr text -
 						drawback: loss of color mix patterns in hgr g_nAppMode.
-						select videotype by index exclusion
+						select g_videotype by index exclusion
 						***/
 
 						if (!(aPixels[iPixel-2] && aPixels[iPixel+2]))
@@ -782,10 +792,10 @@ void DrawHiResSource ()
 						/***
 						activate for fringe reduction on white hgr text -
 						drawback: loss of color mix patterns in hgr g_nAppMode.
-						select videotype by index exclusion
+						select g_videotype by index exclusion
 						***/
 
-						if ((videotype == VT_COLOR_STANDARD) || (videotype == VT_COLOR_TVEMU) || !(aPixels[iPixel-2] && aPixels[iPixel+2]))
+						if ((g_videotype == VT_COLOR_STANDARD) || (g_videotype == VT_COLOR_TVEMU) || !(aPixels[iPixel-2] && aPixels[iPixel+2]))
 							color = ((odd ^ !(iPixel&1)) << 1) | hibit;	// // No white HGR text optimization
 					}
 
@@ -794,8 +804,17 @@ void DrawHiResSource ()
 					// cBL cBR
 					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y  ,aColorIndex[color]); // TL
 					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  ,aColorIndex[color]); // TR
-					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[color]); // BL
-					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[color]); // BR
+
+                    // GPH Provide scanlines for all but first couple of modes
+                    // TODO: Optimize this
+                    if( VT_COLOR_STANDARD >= g_videotype ) {
+    					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[color]); // BL
+	    				SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[color]); // BR
+                    } else {
+    					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[0]); // BL
+	    				SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[0]); // BR
+                    }
+
 					x += 2;
 				}
 			}
@@ -822,7 +841,7 @@ int GetMonochromeIndex()
 {
 	int iMonochrome;
 
-	switch (videotype)
+	switch (g_videotype)
 	{
 		case VT_MONO_AMBER: iMonochrome = MONOCHROME_AMBER ; break;
 		case VT_MONO_GREEN: iMonochrome = MONOCHROME_GREEN ; break;
@@ -900,7 +919,7 @@ void DrawMonoTextSource (SDL_Surface * hDstDC)
 	if(charset40 == NULL) return;
 
 	Uint8 hBrush;
- 	switch (videotype)
+ 	switch (g_videotype)
  	{
  		case VT_MONO_AMBER: hBrush = MONOCHROME_AMBER/*CreateSolidBrush(RGB(0xFF,0x80,0x00))*/; break;
  		case VT_MONO_GREEN: hBrush = MONOCHROME_GREEN/*CreateSolidBrush(RGB(0x00,0xC0,0x00))*/; break;
@@ -1303,7 +1322,7 @@ bool UpdateHiResCell (int x, int y, int xpixel, int ypixel, int offset)
         redrawfull) {
 #define COLOFFS  (((byteval1 & 0x60) << 2) | \
                   ((byteval3 & 0x03) << 5))
-		if (videotype == VT_COLOR_TVEMU)
+		if (g_videotype == VT_COLOR_TVEMU)
 		{
   			CopyMixedSource(xpixel >> 1, (ypixel+(yoffset >> 9)) >> 1,
 							SRCOFFS_HIRES+COLOFFS+((x & 1) << 4),(((int)byteval2) << 1));
@@ -1726,7 +1745,7 @@ void VideoDestroy () {
 //  DeleteDC(g_hDeviceDC);
   if(g_hDeviceBitmap) SDL_FreeSurface(g_hDeviceBitmap);
   g_hDeviceBitmap = NULL;
-  
+
   if(g_origscreen) SDL_FreeSurface(g_origscreen);
   g_origscreen = NULL;
 
@@ -1780,12 +1799,12 @@ void VideoDestroy () {
 //===========================================================================
 void VideoDisplayLogo () {
 	SDL_Rect drect,srect;
-	
+
 	if(!g_hLogoBitmap) return; // nothing to display?
 	if(screen->format->palette && g_hLogoBitmap->format->palette)
 		SDL_SetColors(screen, g_hLogoBitmap->format->palette->colors,
 			      0, g_hLogoBitmap->format->palette->ncolors);
-		      
+
 	drect.x = drect.y = srect.x = srect.y = 0;
 	drect.w = screen->w;
 	drect.h = screen->h;
@@ -2003,13 +2022,13 @@ void VideoRefreshScreen () {
 	  		HD_ResetStatus();	// just do not know other way to switch off HD leds
 
 	  }
-  }	
+  }
   // New simplified code:
   // . Oliver Schmidt gets a flickering mouse cursor with this code
 	  if (/*framedc &&*/ anydirty)
 	  {
 // Draw up entire Apple 2 screen
-	    if(!g_WindowResized)	
+	    if(!g_WindowResized)
 		  SDL_BlitSurface(g_hDeviceBitmap, NULL, screen, NULL);
 		else {
 			SDL_SoftStretch(g_hDeviceBitmap,&origRect,g_origscreen,&newRect);
@@ -2217,6 +2236,8 @@ WORD VideoGetScannerAddress(bool* pbVblBar_OUT, const DWORD uExecutedCycles)
     // calculate scanning memory address
     //
     if (SW_HIRES && SW_MIXED && (v_4 & v_2))	// NICK: Should this be (SW_HIRES && !SW_TEXT) instead of just 'SW_HIRES' ?
+                                                // GPH: No, because there's a distinctive hires/text mixed mode, with text on the bottom four text rows.
+                                                // The softswitch for this is $c053 for mixed, $c052 for fill (no text on bottom).
     {
         nHires = 0; // (address is in text memory)
     }
