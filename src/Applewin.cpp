@@ -425,11 +425,11 @@ void LoadConfiguration ()
   LOAD(TEXT("Emulation Speed")   ,&g_dwSpeed);
 
   LOAD(TEXT("Enhance Disk Speed"),(DWORD *)&enhancedisk);//
-  LOAD(TEXT("Video Emulation")   ,&videotype);
+  LOAD(TEXT("Video Emulation")   ,&g_videotype);
 //  printf("Video Emulation = %d\n", videotype);
 
   DWORD dwTmp = 0;	// temp var
-	
+
   LOAD(TEXT("Fullscreen") ,&dwTmp);	// load fullscreen flag
   fullscreen = (BOOL) dwTmp;
   dwTmp = 1;
@@ -743,7 +743,7 @@ int main(int argc, char * lpCmdLine[])
 	registry = fopen(REGISTRY, "a+t");	// open conf file (linapple.conf by default)
 //	spMono = fopen("speakersmono.pcm","wb");
 //	spStereo = fopen("speakersstereo.pcm","wb");
-	
+
 //	LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
 //	LPSTR szImageName_drive2 = NULL;
 
@@ -880,7 +880,7 @@ int main(int argc, char * lpCmdLine[])
 		printf("Could not initialize CURL easy interface");
 		return 1;
 	  }
-    	/* Set user name and password to access FTP server */ 
+    	/* Set user name and password to access FTP server */
 	  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
 //
 // just do not see why we need this timer???
@@ -1021,7 +1021,7 @@ int main(int argc, char * lpCmdLine[])
 	fclose(registry);		//close conf file (linapple.conf by default)
 //	fclose(spMono);
 //	fclose(spStereo);
-	
+
 	SDL_Quit();
 // CURL routines
 	curl_easy_cleanup(g_curl);
