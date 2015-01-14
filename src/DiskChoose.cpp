@@ -388,10 +388,19 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 	SDL_Event event;	// event
 	Uint8 *keyboard;	// key state
 
-	event.type = SDL_QUIT;
+	event.type = 0;
 	while(event.type != SDL_KEYDOWN) {	// wait for key pressed
-				SDL_Delay(10);
-				SDL_PollEvent(&event);
+        // GPH Honor quit even if we're in the diskchoose state.
+        if (SDL_QUIT == event.type) {
+			files.Delete();
+			sizes.Delete();
+			SDL_FreeSurface(my_screen);
+
+		    SDL_PushEvent(&event);// push quit event
+            return false;
+        }
+		SDL_Delay(10);
+		SDL_PollEvent(&event);
 	}
 
 // control cursor
