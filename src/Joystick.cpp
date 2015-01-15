@@ -233,7 +233,7 @@ void JoyInitialize ()
     }
     else
     {
-    	joytype[0] = DEVICE_MOUSE;
+    	joytype[0] = DEVICE_JOYSTICK;
     }
   }
 
@@ -569,7 +569,7 @@ BOOL JoySetEmulationType (/*HWND window,*/ DWORD newtype, int nJoystickNumber)
 // Called when mouse is being used as a joystick && mouse position changes
 void JoySetPosition (int xvalue, int xrange, int yvalue, int yrange)
 {
-  int nJoyNum = (joyinfo[joytype[0]].device == DEVICE_MOUSE) ? 0 : 1;
+  int nJoyNum = 0; (joyinfo[joytype[0]].device == DEVICE_MOUSE) ? 0 : 1;
   xpos[nJoyNum] = (xvalue * 255) / xrange;
   ypos[nJoyNum] = (yvalue * 255) / yrange;
 }
