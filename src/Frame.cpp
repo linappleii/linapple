@@ -754,7 +754,6 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 
     case SDL_MOUSEBUTTONDOWN:
 	if(e->button.button == SDL_BUTTON_LEFT) {// left mouse button was pressed
-
 	    if (buttondown == -1)
 	  {
         x = e->button.x; // mouse cursor coordinates
@@ -774,7 +773,7 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 		        JoySetButton(BUTTON0, BUTTON_DOWN);
 	  }
 	}// we do not use mouse
-        else if ( (/*(x < buttonx) &&*/ JoyUsingMouse() && ((g_nAppMode == MODE_RUNNING) ||
+        else if ( (/*(x < buttonx) && JoyUsingMouse() && */((g_nAppMode == MODE_RUNNING) ||
 		   (g_nAppMode == MODE_STEPPING))) || (sg_Mouse.Active()) )
 		{
           		SetUsingCursor(1); // capture cursor
