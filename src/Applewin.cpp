@@ -35,10 +35,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for time logging
 #include <time.h>
 #include <sys/time.h>
-
+#include <sys/param.h>
+#include <unistd.h>
 #include <curl/curl.h>
 
 #include <stdlib.h>
+
+#include "AlertHooks.h"
 
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
@@ -61,12 +64,12 @@ AppMode_e	g_nAppMode = MODE_LOGO;
 
 // Default screen sizes
 // SCREEN_WIDTH & SCREEN_HEIGHT defined in Frame.h
-UINT g_ScreenWidth = SCREEN_WIDTH;
-UINT g_ScreenHeight = SCREEN_HEIGHT;
+UINT    g_ScreenWidth = SCREEN_WIDTH;
+UINT    g_ScreenHeight = SCREEN_HEIGHT;
 
 //static int lastmode         = MODE_LOGO;		-- not used???
 DWORD     needsprecision    = 0;			// Redundant
-//TCHAR     g_sProgramDir[MAX_PATH] = TEXT("");
+TCHAR     g_sProgramDir[MAX_PATH] = TEXT("");
 TCHAR     g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
 TCHAR     g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
 TCHAR     g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
@@ -89,7 +92,7 @@ DWORD		g_dwSpeed		= SPEED_NORMAL;	// Affected by Config dialog's speed slider ba
 double		g_fCurrentCLK6502 = CLK_6502;	// Affected by Config dialog's speed slider bar
 static double g_fMHz		= 1.0;			// Affected by Config dialog's speed slider bar
 
-int	g_nCpuCyclesFeedback = 0;
+int     g_nCpuCyclesFeedback = 0;
 DWORD   g_dwCyclesThisFrame = 0;
 
 FILE*		g_fh			= NULL; // file for logging, let's use stderr instead?
@@ -100,7 +103,7 @@ CMouseInterface		sg_Mouse;
 
 UINT	g_Slot4 = CT_Mockingboard;	// CT_Mockingboard or CT_MouseInterface
 
-CURL *g_curl = NULL;	// global easy curl resourse
+CURL    *g_curl = NULL;	// global easy curl resourse
 //===========================================================================
 
 // ???? what is DBG_CALC_FREQ???  O_O   --bb
@@ -113,7 +116,17 @@ double g_fMeanPeriod,g_fMeanFreq;
 ULONG g_nPerfFreq = 0;
 #endif
 
-
+//For MacOsX
+/*int DlgAlert_Notice(char *text)
+{
+#ifdef ALERT_HOOKS
+    //if (!Main_UnPauseEmulation())
+    //    Main_PauseEmulation(true);
+    //if(!bInFullScreen)
+        return HookedAlertNotice(text);
+#endif
+}
+*/
 
 //---------------------------------------------------------------------------
 
@@ -386,14 +399,11 @@ void LoadConfiguration ()
 {
   DWORD dwComputerType;
 
-/*  if (LOAD(TEXT(REGVALUE_APPLE2_TYPE),&dwComputerType))
-  {
-	  if (dwComputerType >= A2TYPE_MAX)
-		dwComputerType = A2TYPE_APPLE2EEHANCED;
-	  g_Apple2Type = (eApple2Type) dwComputerType;
-  }
-  else
-  {*/
+if(registry==NULL)
+{
+   // int i=DlgAlert_Notice("NO CONFIGURATION FILE OPENED");
+    return;
+}
   LOAD(TEXT("Computer Emulation"),&dwComputerType);
   switch (dwComputerType)
   {
@@ -739,7 +749,17 @@ int main(int argc, char * lpCmdLine[])
 //		reading FullScreen and Boot from conf file?
 //	bool bSetFullScreen = false;
 //	bool bBoot = false;
-
+    char confpath[MAXPATHLEN];
+    
+//    strcpy(confpath,lpCmdLine[0]);
+//    strcat(confpath,"/");
+//    strcat(confpath,REGISTRY);
+    chdir("~/linapple/");
+    getwd(confpath);
+    fprintf(stderr, "ARGV0 %s\n",lpCmdLine[0]);
+    fprintf(stderr,"Directory :%s",confpath);
+ //   int i=DlgAlert_Notice(confpath);
+    
 	registry = fopen(REGISTRY, "a+t");	// open conf file (linapple.conf by default)
 //	spMono = fopen("speakersmono.pcm","wb");
 //	spStereo = fopen("speakersstereo.pcm","wb");
