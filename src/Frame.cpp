@@ -494,7 +494,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     	   "Conf file is linapple.conf in current directory by default",
     	   "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
     	   " F1 - This help",
-    	   " Ctrl+Shift+F2 - Cold reset",
+    	   " Ctrl+F2 - Cold reset",
            " Shift+F2 - Reload conf file and restart",
     	   " F3, F4 - Choose an image file name for floppy disk",
 	   "             in Slot 6 drive 1 or 2 respectively",
@@ -754,7 +754,6 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 
     case SDL_MOUSEBUTTONDOWN:
 	if(e->button.button == SDL_BUTTON_LEFT) {// left mouse button was pressed
-
 	    if (buttondown == -1)
 	  {
         x = e->button.x; // mouse cursor coordinates
@@ -774,7 +773,7 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 		        JoySetButton(BUTTON0, BUTTON_DOWN);
 	  }
 	}// we do not use mouse
-        else if ( (/*(x < buttonx) &&*/ JoyUsingMouse() && ((g_nAppMode == MODE_RUNNING) ||
+        else if ( (/*(x < buttonx) && JoyUsingMouse() && */((g_nAppMode == MODE_RUNNING) ||
 		   (g_nAppMode == MODE_STEPPING))) || (sg_Mouse.Active()) )
 		{
           		SetUsingCursor(1); // capture cursor
@@ -944,8 +943,8 @@ void ProcessButtonClick (int button, int mod) {
       break;
 
     case BTN_RUN:	// F2 - Run that thing! Or Shift+2 ReloadConfig and run it anyway!
-        if((mod & (KMOD_LCTRL|KMOD_LSHIFT)) == (KMOD_LCTRL|KMOD_LSHIFT) ||
-           (mod & (KMOD_RCTRL|KMOD_RSHIFT)) == (KMOD_RCTRL|KMOD_RSHIFT))  {
+        if((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) ||
+           (mod & (KMOD_RCTRL)) == (KMOD_RCTRL))  {
             if (g_nAppMode == MODE_LOGO)
                 DiskBoot();
             else if (g_nAppMode == MODE_RUNNING)
@@ -1020,7 +1019,7 @@ void ProcessButtonClick (int button, int mod) {
 	// F8 - save current screen as a .bmp file
 	    // Currently these setting are just next:
 	if(mod & KMOD_SHIFT) {
-		RegSaveValue(TEXT("Configuration"),TEXT("Video Emulation"),1,videotype);
+		RegSaveValue(TEXT("Configuration"),TEXT("Video Emulation"),1,g_videotype);
 		RegSaveValue(TEXT("Configuration"),TEXT("Emulation Speed"),1,g_dwSpeed);
 		RegSaveValue(TEXT("Configuration"),TEXT("Fullscreen"),1,fullscreen);
 	}
@@ -1037,9 +1036,9 @@ void ProcessButtonClick (int button, int mod) {
 ////////////////////////// my buttons handlers F9..F12 ////////////////////////////
     case BTN_CYCLE: // F9 - CYCLE through allowed video modes
 //	  printf("F9 has been pressed!\n");
-	  videotype++;	// Cycle through available video modes
-	  if (videotype >= VT_NUM_MODES)
-		  videotype = 0;
+	  g_videotype++;	// Cycle through available video modes
+	  if (g_videotype >= VT_NUM_MODES)
+		  g_videotype = 0;
 	  VideoReinitialize();
 	  if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
 	  {
