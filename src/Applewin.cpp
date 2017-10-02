@@ -401,7 +401,7 @@ void setAutoBoot ()
     // autostart
     SDL_Event user_ev;
     user_ev.type = SDL_USEREVENT;
-    user_ev.user.code = 1;	//restart?
+    user_ev.user.code = 1;	//restart
     SDL_PushEvent(&user_ev);
 }
 
