@@ -92,6 +92,7 @@ short* mockBuffer;
 
 unsigned fragmentSize;
 unsigned bufferSize;
+unsigned bufferIdxMask;
 unsigned readIdx, writeIdx, readIdx2, writeIdx2;
 double filledStat; /**< average filled status, 1.0 means filled exactly
 		the right amount, less than 1.0 mean under
@@ -132,6 +133,12 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
 	//          <<     "  actual: " << audioSpec.size / 4 << std::endl;
 	frequency = audioSpec.freq;
 	bufferSize = 8 * (audioSpec.size / sizeof(short));
+    // GPH NOTE: bufferSize needs to be power of 2 for quick
+    // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
+    // and because of the high volume of work against mixBuffer and mockBuffer, that is
+    // undesireable.
+    bufferIdxMask = bufferSize - 1;
+    printf( "bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
 //	bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);	// 1 second of stereo short data
 
 /*
@@ -151,7 +158,7 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
 	printf("Freq=%d,format=%d,channels=%d,silence=%d\n",
 				audioSpec.freq,audioSpec.format,audioSpec.channels,audioSpec.silence);
 	printf("samples=%d,size=%d,bufferSize=%d\n",audioSpec.samples,audioSpec.size,bufferSize);
-	
+
 //	SDL_PauseAudio(0);
 	return true;
 }
@@ -229,6 +236,9 @@ unsigned getBufferFree()
 //////////////////////////////////////////////////////////////////
 //////// for Mockingboard support using another buffer //////////
 //////////////////////////////////////////////////////////////////
+
+// GPH NOTE: This is sample data that has has been written but yet to be
+// streamed out as audio.
 unsigned getBuffer2Filled()
 {
 	int tmp = writeIdx2 - readIdx2;
@@ -402,6 +412,7 @@ double DSUploadBuffer(short* buffer, unsigned len)
 }
 
 ///// Uploading sound data for Mockingboard buffer
+// GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
 void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
 {
 	SDL_LockAudio();
@@ -411,6 +422,7 @@ void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
 	//	std::cerr << "DEBUG overrun: " << len - free << std::endl;
 	//}
 	unsigned num = std::min(len, free); // ignore overrun (drop samples)
+    // GPH Check for seam crossing on circular mockBuffer[].
 	if ((writeIdx2 + num) < bufferSize) {
 		memcpy(&mockBuffer[writeIdx2], buffer, num * sizeof(short));
 		writeIdx2 += num;

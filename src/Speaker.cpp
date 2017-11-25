@@ -297,13 +297,16 @@ static void UpdateSpkr()
 
 	  ULONG nCyclesRemaining = (ULONG) ((double)nCycleDiff - (double)nNumSamples * g_fClksPerSpkrSample);
 
-	  while((nNumSamples--) && (g_nBufferIdx < SPKR_SAMPLE_RATE-1))
+	  while((nNumSamples--) && (g_nBufferIdx < SPKR_SAMPLE_RATE-1)) {
 		  g_pSpeakerBuffer[g_nBufferIdx++] = g_nSpeakerData;
-
+          }
 	  ReinitRemainderBuffer(nCyclesRemaining);	// Partially fill 1Mhz sample buffer
   }
 
   g_nSpkrLastCycle = g_nCumulativeCycles;
+
+  // GPH Added - simulate decoupling capacitor - use approximate value
+  g_nSpeakerData = (short)((double) g_nSpeakerData * 0.995);
 }
 
 //=============================================================================
@@ -330,7 +333,8 @@ BYTE SpkrToggle (WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft)
 
 	  UpdateSpkr();
 
-	  g_nSpeakerData = g_nSpeakerData ^ SPKR_DATA_INIT;
+	  g_nSpeakerData = g_nSpeakerData ^ SPKR_DATA_INIT; //~g_nSpeakerData;
+//        printf("SpkrToggle: %04x\n",g_nSpeakerData);
   }
 
   return MemReadFloatingBus(nCyclesLeft); // reading from $C030..$C03F retrurns unpredictable value?
@@ -386,23 +390,26 @@ static ULONG Spkr_SubmitWaveBuffer(short* pSpeakerBuffer, ULONG nNumSamples)
 	// submit nNumSamples (== 2bytes long each (sizeof short))??
 	// from pSpeakerBuffer to pDSSpkrBuf for callback DSPlaySnd
 
-	if(!g_bSpkrRecentlyActive) return nNumSamples;//if not active, just return?
-
+//	if(!g_bSpkrRecentlyActive) return nNumSamples;//if not active, just return?
 	if(pSpeakerBuffer == NULL)
 	{
 	// just init sound buffer and cursors??
 		return 0;
 	}
 
-// conver mono Speakers sounds to stereo (mainly for Mockingboard support)
+    // Convert mono Speakers sounds to stereo (mainly for Mockingboard support)
 	UINT len = nNumSamples * 2;	// stereo = 2 * mono
 	UINT i;
 
 	for(i = 0; i < len; i += 2)
+    {
 		g_pStereoBuffer[i] = g_pStereoBuffer[i + 1] = pSpeakerBuffer[i >> 1];
-
+    }
 // use code from OpenMSX
 //	DSUploadBuffer(pSpeakerBuffer, nNumSamples);
+
+
+
 	DSUploadBuffer(g_pStereoBuffer, len);	// submit stereo wave data
 	return nNumSamples;	// always return as if we've filled everything!? --bb
 }

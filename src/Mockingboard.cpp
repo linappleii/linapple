@@ -732,7 +732,7 @@ static void Votrax_Write(BYTE nDevice, BYTE nValue)
 
 //===========================================================================
 
-static void MB_Update()
+void MB_Update()
 {
 // 	if(!MockingboardVoice.bActive)
 // 		return;

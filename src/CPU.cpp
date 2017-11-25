@@ -21,6 +21,8 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+// #define UPDATE_ALL_PER_CYCLE
+
 /* Description: 6502/65C02 emulation
  *
  * Author: Various
@@ -121,7 +123,7 @@ unsigned __int64 g_nCumulativeCycles = 0;
 static ULONG g_nCyclesSubmitted;	// Number of cycles submitted to CpuExecute()
 static ULONG g_nCyclesExecuted;
 
-//static signed long g_uInternalExecutedCycles;
+static signed long g_uInternalExecutedCycles;
 // TODO: Use IRQ_CHECK_TIMEOUT=128 when running at full-speed else with IRQ_CHECK_TIMEOUT=1
 // - What about when running benchmark?
 // GPH Dropped to IRQ_CHECK_TIMOUT=16 - Mockingboard-intensive applications sound
@@ -837,7 +839,7 @@ static inline void DoIrqProfiling(DWORD uCycles)
 
 static inline int Fetch(BYTE& iOpcode, ULONG uExecutedCycles)
 {
-		//g_uInternalExecutedCycles = uExecutedCycles;
+		g_uInternalExecutedCycles = uExecutedCycles;
 
 //		iOpcode = *(mem+regs.pc);
 		iOpcode = ((regs.pc & 0xF000) == 0xC000)
@@ -891,7 +893,9 @@ static inline void CheckInterruptSources(ULONG uExecutedCycles)
 {
 	if (g_nIrqCheckTimeout < 0)
 	{
+#ifndef UPDATE_ALL_PER_CYCLE
 		MB_UpdateCycles(uExecutedCycles);
+#endif
 		sg_Mouse.SetVBlank(VideoGetVbl(uExecutedCycles));
 		g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
 	}
@@ -1503,6 +1507,10 @@ static DWORD Cpu6502 (DWORD uTotalCycles)
 
 static DWORD InternalCpuExecute (DWORD uTotalCycles)
 {
+
+#ifdef UPDATE_ALL_PER_CYCLE
+    MB_Update();
+#endif
 	if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E))
 		return Cpu6502(uTotalCycles);	// Apple ][, ][+, //e
 	else
@@ -1535,8 +1543,9 @@ void CpuCalcCycles(ULONG nExecutedCycles)
 {
 	// Calc # of cycles executed since this func was last called
 	ULONG nCycles = nExecutedCycles - g_nCyclesExecuted;
+#ifdef UPDATE_ALL_PER_CYCLE
 	_ASSERT( (LONG)nCycles >= 0 );
-
+#endif
 	g_nCyclesExecuted += nCycles;
 	g_nCumulativeCycles += nCycles;
 }
@@ -1550,7 +1559,7 @@ void CpuCalcCycles(ULONG nExecutedCycles)
 // -                  75.9, 78.5MHz  (with check for VBL IRQ every 128 cycles)
 // -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every 128 cycles)
 
-#if 0	// TODO: Measure perf increase by using this new method
+#ifdef UPDATE_ALL_PER_CYCLE 	// TODO: Measure perf increase by using this new method
 ULONG CpuGetCyclesThisFrame(ULONG)	// Old func using g_uInternalExecutedCycles
 {
 	CpuCalcCycles(g_uInternalExecutedCycles);
@@ -1582,8 +1591,9 @@ DWORD CpuExecute (DWORD uCycles)
 	else				// Do multi-opcode emulation
 		uExecutedCycles	= InternalCpuExecute(uCycles);
 
+#ifndef UPDATE_ALL_PER_CYCLE
 	MB_UpdateCycles(uExecutedCycles);	// Update 6522s (NB. Do this before updating g_nCumulativeCycles below)
-
+#endif
 	//
 
 	UINT nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;

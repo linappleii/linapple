@@ -13,6 +13,7 @@ void    MB_StartOfCpuExecute();
 void    MB_EndOfVideoFrame();
 void    MB_CheckIRQ();
 void    MB_UpdateCycles(ULONG uExecutedCycles);
+void    MB_Update();
 eSOUNDCARDTYPE MB_GetSoundcardType();
 void    MB_SetSoundcardType(eSOUNDCARDTYPE NewSoundcardType);
 double  MB_GetFramePeriod();
