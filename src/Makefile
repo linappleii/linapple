@@ -1,6 +1,8 @@
 CXX ?= c++
+#CXXFLAGS ?= -O0 -ggdb
 CXXFLAGS ?= -O3
 CXXFLAGS += -Wall
+# CXXFLAGS += -g
 
 OBJS := $(filter-out Applewin.cpp Util_MemoryTextFile.cpp,$(wildcard *.cpp))
 OBJS := $(OBJS:.cpp=.o)
@@ -15,6 +17,7 @@ CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
 CXXFLAGS += $(SDL_CFLAGS)
 CXXFLAGS += $(CURL_CFLAGS)
+# LDLIBS += $(SDL_LIBS) $(CURL_LIBS) -lz 
 LDLIBS += $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
 
 # Define executable and installing directory
@@ -31,7 +34,7 @@ Applewin: $(OBJS)
 $(EXE): Applewin
 #	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 	mv $^ $@
-	strip $@
+#	strip $@
 	@echo " o If there are no errors, $(EXE) compiled succesfully"
 	cp $@ ../
 
@@ -71,11 +74,11 @@ install: all
 	@echo " o Creating startup script $(STARTUP)"
 	echo "cd \"$(INSTDIR)\"; ./$(EXE); cd -" >"$(STARTUP)"
 	chmod 755 "$(STARTUP)"
-	
+
 	@echo ""
 	@echo "Type '$(EXE)' (no quotes) to start the beast!"
 	@echo "To change some settings edit \"$(INSTDIR)/linapple.conf\""
-  
+
 uninstall:
 	@echo " o Removing ALL data from $(INSTDIR)"
 	rm -rf "$(INSTDIR)"
