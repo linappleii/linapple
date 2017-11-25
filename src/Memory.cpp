@@ -565,6 +565,10 @@ void RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, io
 	}
 
 	// What about [$C80x..$CFEx]? - Do any cards use this as I/O memory?
+    // GPH: No.  That is language ROM for use by peripherals.  Writing to
+    // $CFFF switches out the peripheral whose ROM is mapped to this space,
+    // according to http://mirrors.apple2.org.za/apple.cabi.net/Languages.Programming/MemoryMap.IIe.64K.128K.txt
+    // By default I believe it's the 80-column + 64k RAM card usually in Slot 3.
 	ExpansionRom[uSlot] = pExpansionRom;
 //	printf("RegisterIoHandler for slot %d finished!\n", uSlot);
 }

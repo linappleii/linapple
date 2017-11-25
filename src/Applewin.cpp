@@ -40,6 +40,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <stdlib.h>
 
+#include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
 TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED;
@@ -380,6 +385,34 @@ int DoDiskInsert(int nDrive, LPSTR szFileName)
 	return DiskInsert(nDrive, szFileName, 0, 0);
 }
 
+bool ValidateDirectory(char *dir)
+{
+  bool ret = false;
+  if (dir && *dir) {
+    struct stat st;
+    if(stat("/tmp",&st) == 0)
+        if(st.st_mode & S_IFDIR != 0)
+          ret = true;
+    }
+    printf("%s is dir? %d\n", dir, ret);
+    return ret;
+}
+
+void SetDiskImageDirectory( char *regKey, int driveNumber)
+{
+  char *szHDFilename = NULL;
+  if(RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH))
+  {
+    if(!ValidateDirectory(szHDFilename)) {
+      RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
+      RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
+    }
+
+    DoDiskInsert(driveNumber, szHDFilename);
+    free(szHDFilename);
+  }
+}
+
 //===========================================================================
 // Let us load main configuration from config file.  Y_Y  --bb
 void LoadConfiguration ()
@@ -485,18 +518,8 @@ void LoadConfiguration ()
   LOAD(TEXT("Slot 6 Autoload") ,&dwTmp);	// load autoinsert for Slot 6 flag
   if(dwTmp) {
   // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
-	  if(RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_DISK_IMAGE1), 1, &szHDFilename, MAX_PATH))
-	  {
-		  DoDiskInsert(0, szHDFilename);
-		  free(szHDFilename);
-		  szHDFilename = NULL;
-	  }
-	  if(RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_DISK_IMAGE2), 1, &szHDFilename, MAX_PATH))
-	  {
-		  DoDiskInsert(1, szHDFilename);
-		  free(szHDFilename);
-		  szHDFilename = NULL;
-	  }
+    SetDiskImageDirectory(REGVALUE_DISK_IMAGE1, 0);
+    SetDiskImageDirectory(REGVALUE_DISK_IMAGE1, 1);
   }
   else {
 #define MASTER_DISK	"Master.dsk"

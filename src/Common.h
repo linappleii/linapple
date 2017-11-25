@@ -57,9 +57,9 @@ enum AppMode_e
 #define  BTN_DEBUG         6
 #define  BTN_SETUP         7
 #define  BTN_CYCLE         8
-#define  BTN_QUIT          9
+#define  BTN_QUIT          11
 #define  BTN_SAVEST        10
-#define  BTN_LOADST        11
+#define  BTN_LOADST        9
 
 //#define	MAXIMAGES          16
 

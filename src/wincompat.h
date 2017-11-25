@@ -9,7 +9,7 @@
 /*
 	Please note all long types (save for pointers) were replaced by int types
 	for x64 systems support!
-	
+
 		On x32 long type takes 4 bytes, on x64 long type tekes 8 bytes)
 	-- Krez beotiger
 */

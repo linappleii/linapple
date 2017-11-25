@@ -651,7 +651,7 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 //		KeybUpdateCtrlShiftStatus(); // if ctrl or shift or alt was pressed?------?
 		if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1))
 		{
-//			SetUsingCursor(0);	-- for what purpose???
+			SetUsingCursor(0);	//-- for what purpose???
 			buttondown = mysym - SDLK_F1;	// special function keys processing
 
 /*			if (fullscreen && (buttonover != -1)) {

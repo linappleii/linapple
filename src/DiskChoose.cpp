@@ -115,6 +115,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 
 	int act_file;		// current file
 	int first_file;		// from which we output files
+
 	printf("Disckchoose! We are here: %s\n",incoming_dir);
 //	files.Delete();
 //	sizes.Delete();
@@ -130,12 +131,17 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 
 // build prev dir
 	if(strcmp(incoming_dir, "/")) {
+#if 0  
+		files.Add("..");
+		sizes.Add("<UP>");	// add sign of directory
+#else
 		tmp = new char[3];
 		strcpy(tmp, "..");
 		files.Add(tmp);
 		tmp = new char[5];
 		strcpy(tmp, "<UP>");
 		sizes.Add(tmp);	// add sign of directory
+#endif    
 	}
 		if (dp != NULL)
 		{
@@ -215,40 +221,42 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 #ifndef _WIN32
 /* POSIX specific routines of reading directory structure */
 
-			(void) rewinddir (dp);	// to the start
-            {
-                struct dirent **namelist;
-                int n, fsize = 0;
+      if( dp ) {
+        rewinddir (dp);	// to the start
+              {
+                  struct dirent **namelist;
+                  int n, fsize = 0;
 
-                n = scandir(incoming_dir, &namelist, NULL, alphasort);
-                if (n < 0)
-                    perror("scandir");
-                else {
-                    int i = 0;
-                    while (i < n) {
-                        if (strlen(namelist[i]->d_name) > 4 && namelist[i]->d_name[0] != '.'
-                            && (getstat(incoming_dir, namelist[i]->d_name, &fsize) == 2)) // is normal file!
-                        {
-                            tmp = new char[strlen(namelist[i]->d_name)+1];	// add this entity to list
-                            strcpy(tmp, namelist[i]->d_name);
-                            files.Add(tmp);
-                            tmp = new char[10];	// 1400000KB
-                            if (1000 > fsize) {
-                                snprintf(tmp, 9, "%4dK", fsize);
-                            } else if (1000000 > fsize) {
-                                snprintf(tmp, 9, "%4dM", (int) (fsize / 1000));
-                            } else {
-                                snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
-                            }
-                            sizes.Add(tmp);	// add this size to list
-                        }
-                        i++;
-                    }
-                    free(namelist);
-               }
-            }
+                  n = scandir(incoming_dir, &namelist, NULL, alphasort);
+                  if (n < 0)
+                      perror("scandir");
+                  else {
+                      int i = 0;
+                      while (i < n) {
+                          if (strlen(namelist[i]->d_name) > 4 && namelist[i]->d_name[0] != '.'
+                              && (getstat(incoming_dir, namelist[i]->d_name, &fsize) == 2)) // is normal file!
+                          {
+                              tmp = new char[strlen(namelist[i]->d_name)+1];	// add this entity to list
+                              strcpy(tmp, namelist[i]->d_name);
+                              files.Add(tmp);
+                              tmp = new char[10];	// 1400000KB
+                              if (1000 > fsize) {
+                                  snprintf(tmp, 9, "%4dK", fsize);
+                              } else if (1000000 > fsize) {
+                                  snprintf(tmp, 9, "%4dM", (int) (fsize / 1000));
+                              } else {
+                                  snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
+                              }
+                              sizes.Add(tmp);	// add this size to list
+                          }
+                          i++;
+                      }
+                      free(namelist);
+                 }
+              }
 
-			(void) closedir (dp);
+        closedir (dp);
+      }
 #else
 /* Windows specific functions of reading directory structure */
 		/* Find files: */

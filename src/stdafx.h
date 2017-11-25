@@ -31,7 +31,6 @@
 //#include <htmlhelp.h> - no need
 #include <SDL.h>
 
-
 #include "Common.h"
 #include "Structs.h"
 
