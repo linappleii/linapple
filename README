@@ -22,41 +22,20 @@ Later some sort of Windows support had been added, so you may try to compile it 
 
 [INSTALL]
 
+  make
+  cd bin
+  ./linapple
+
+
 I will show brief instructions for compiling and installing linapple here.
 
 Please, see INSTALL file for comprehensive installing tips.
 
 After SDL1.2, zlib, libcurl and libzip are installed in your system, you can build sources.
 
-Unpack downloaded linapple archive and go to src directory:
-
-$ cd src
-
-Then run:
-
-$ make
-
-or
-
-$ sudo make install
-
-If there is no errors, run:
-
-$ linapple
-
-or without being installed:
-
-$ cd ..
-$ ./linapple
-
-If all files are on their places, you should see an X-Window with splash screen. 
+If all files are on their places, you should see an X-Window with splash screen.
 
 Press F2 (or F3 or Alt+F3) before to choose some disk image in drive 1), and go to work.
-
-It works as well as AppleWin, although it needs testing and supporting.
-Where to install? Anywhere you feel fit,  just let linapple be with some files it needs for comprehenceive working.
-
-These files are:
 
 splash.bmp 			- splash screen
 charset40.bmp		- charset for Apple][ (Apple 2e, etc.) text modes.
