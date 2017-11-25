@@ -4,7 +4,7 @@
 
 #define MAKE_VERSION(a,b,c,d) ((a<<24) | (b<<16) | (c<<8) | (d))
 
-#define AW_SS_TAG 'SSWA'	// 'AWSS' = AppleWin SnapShot
+#define AW_SS_TAG (('S'<<24)|('S'<<16)|('W'<<8)|'A')	// 'AWSS' = AppleWin SnapShot
 
 typedef struct
 {

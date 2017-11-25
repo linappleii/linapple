@@ -47,7 +47,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
-TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED;
+// Satisfy modern compiler standards
+static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
+static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
+static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;
+static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
+
+TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
 eApple2Type	g_Apple2Type	= A2TYPE_APPLE2EEHANCED;
 
@@ -208,14 +214,14 @@ void ContinueExecution()
 			VideoUpdateFlash();
 
 			static BOOL  anyupdates     = 0;
-			static DWORD lastcycles     = 0;
+			//static DWORD lastcycles     = 0;
 			static BOOL  lastupdates[2] = {0,0};
 
 			anyupdates |= screenupdated;
 
 			//
 
-			lastcycles = cumulativecycles;
+			//lastcycles = cumulativecycles;
 			if ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && VideoApparentlyDirty())
 			{
 				VideoCheckPage(1);
@@ -391,7 +397,7 @@ bool ValidateDirectory(char *dir)
   if (dir && *dir) {
     struct stat st;
     if(stat("/tmp",&st) == 0)
-        if(st.st_mode & S_IFDIR != 0)
+        if((st.st_mode & S_IFDIR) != 0)
           ret = true;
     }
     printf("%s is dir? %d\n", dir, ret);
@@ -441,10 +447,12 @@ void LoadConfiguration ()
 // determine Apple type and set appropriate caption -- should be in (F9)switching modes?
   switch (g_Apple2Type)
   {
-	  case A2TYPE_APPLE2:		g_pAppTitle = TITLE_APPLE_2; break;
-	  case A2TYPE_APPLE2PLUS:	g_pAppTitle = TITLE_APPLE_2_PLUS; break;
-	  case A2TYPE_APPLE2E:		g_pAppTitle = TITLE_APPLE_2E; break;
-	  case A2TYPE_APPLE2EEHANCED:	g_pAppTitle = TITLE_APPLE_2E_ENHANCED; break;
+	  case A2TYPE_APPLE2:		g_pAppTitle = TITLE_APPLE_2_; break;
+	  case A2TYPE_APPLE2PLUS:	g_pAppTitle = TITLE_APPLE_2_PLUS_; break;
+	  case A2TYPE_APPLE2E:		g_pAppTitle = TITLE_APPLE_2E_; break;
+	  case A2TYPE_APPLE2EEHANCED:	g_pAppTitle = TITLE_APPLE_2E_ENHANCED_; break;
+    default:
+      break;
   }
 
   LOAD(TEXT("Joystick 0"),&joytype[0]);
@@ -518,12 +526,14 @@ void LoadConfiguration ()
   LOAD(TEXT("Slot 6 Autoload") ,&dwTmp);	// load autoinsert for Slot 6 flag
   if(dwTmp) {
   // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
-    SetDiskImageDirectory(REGVALUE_DISK_IMAGE1, 0);
-    SetDiskImageDirectory(REGVALUE_DISK_IMAGE1, 1);
+    static char szDiskImage1[] = REGVALUE_DISK_IMAGE1;
+    SetDiskImageDirectory(szDiskImage1, 0);
+    SetDiskImageDirectory(szDiskImage1, 1);
   }
   else {
 #define MASTER_DISK	"Master.dsk"
-	 DoDiskInsert(0, MASTER_DISK);
+   static char szMasterDisk[] = MASTER_DISK;
+	 DoDiskInsert(0, szMasterDisk);
   }
 
   // Load hard disk images and insert it automatically in slot 7

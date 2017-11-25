@@ -820,8 +820,10 @@ int ImageOpen (LPCTSTR  imagefilename,
 
 		view     = (LPBYTE)MapViewOfFile(mapping,FILE_MAP_READ,0,0,0);*/
 		view = (LPBYTE)malloc(size);
-		fread(view, 1, size, (FILE*)file);
-		fseek((FILE*)file, 0, FILE_BEGIN); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
+		size_t bytesRead = fread(view, 1, size, (FILE*)file);
+		if( bytesRead > 0 ) {
+			fseek((FILE*)file, 0, FILE_BEGIN); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
+		}
 		pImage = view;
 
 		if (pImage)

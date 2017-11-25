@@ -247,10 +247,12 @@ static BOOL HD_Load_Image(int nDrive, LPCSTR filename)
 	return g_HardDrive[nDrive].hd_imageloaded;
 }
 
+#if 0
 static LPCTSTR HD_DiskGetName (int nDrive)
 {
 	return g_HardDrive[nDrive].hd_imagename;
 }
+#endif
 
 //===========================================================================
 
@@ -686,22 +688,22 @@ static BYTE /*__stdcall*/ HD_IO_EMUL (WORD pc, WORD addr, BYTE bWrite, BYTE d, U
 			break;
 		case 0xF4:
 			{
-				pHDD->hd_memblock = pHDD->hd_memblock & 0xFF00 | d;
+				pHDD->hd_memblock = (pHDD->hd_memblock & 0xFF00) | d;
 			}
 			break;
 		case 0xF5:
 			{
-				pHDD->hd_memblock = pHDD->hd_memblock & 0x00FF | (d << 8);
+				pHDD->hd_memblock = (pHDD->hd_memblock & 0x00FF) | (d << 8);
 			}
 			break;
 		case 0xF6:
 			{
-				pHDD->hd_diskblock = pHDD->hd_diskblock & 0xFF00 | d;
+				pHDD->hd_diskblock = (pHDD->hd_diskblock & 0xFF00) | d;
 			}
 			break;
 		case 0xF7:
 			{
-				pHDD->hd_diskblock = pHDD->hd_diskblock & 0x00FF | (d << 8);
+				pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | (d << 8);
 			}
 			break;
 		default:

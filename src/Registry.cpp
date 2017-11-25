@@ -43,7 +43,7 @@ void php_charmask(char *input, int len, char *mask)
 	memset(mask, 0, 256);
 	for (end = input+len; input < end; input++) {
                 c=*input;
-                mask[c]=1;
+                mask[(unsigned int)c]=1;
 	}
 
 }
@@ -66,8 +66,10 @@ char *php_trim(char *c, int len)
 	register int i;
 	int trimmed = 0;
 	char mask[256];
+	static char maskVal[] = " \n\r\t\v\0";
 
-	php_charmask(" \n\r\t\v\0", 6, mask);
+	
+	php_charmask(maskVal, 6, mask);
 
 // trim chars from beginning of the line
 	for (i = 0; i < len; i++) {

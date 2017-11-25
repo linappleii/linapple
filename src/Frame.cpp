@@ -386,7 +386,6 @@ void DrawStatusArea (/*HDC passdc,*/ int drawflags)
 	SDL_Rect srect;
 
 	Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);	// bluez color, know that?
-	Uint32 myyell  = SDL_MapRGB(screen->format, 255, 255, 0);	// yellow color?
 
 	SDL_SetColors(g_hStatusSurface, screen->format->palette->colors,
 							 0, 256);
@@ -702,6 +701,10 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 				break;
 			case MODE_STEPPING:
 				DebuggerInputConsoleChar( DEBUG_EXIT_KEY );
+				break;
+			case MODE_LOGO:
+			case MODE_DEBUG:
+			default:
 				break;
 			}
 			DrawStatusArea(/*(HDC)0,*/DRAW_TITLE);
@@ -1166,7 +1169,8 @@ int FrameCreateWindow ()
 // 	if (!RegLoadValue(TEXT("Preferences"),TEXT("Window Y-Position"),1,(DWORD *)&ypos))
 // 		ypos = (GetSystemMetrics(SM_CYSCREEN)-height) >> 1;
 
-	SDL_putenv("SDL_VIDEO_CENTERED=center"); //center our window
+  static char sdlCmd[] = "SDL_VIDEO_CENTERED=center";
+	SDL_putenv(sdlCmd); //center our window
 
 	bIamFullScreened = false; // at startup not in fullscreen mode
 	screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);

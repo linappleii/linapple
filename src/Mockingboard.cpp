@@ -89,7 +89,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "AY8910.h"
 #include "SSI263Phonemes.h"
 
-
 #define SY6522_DEVICE_A 0
 #define SY6522_DEVICE_B 1
 
@@ -152,11 +151,14 @@ static ULONG g_n6522TimerPeriod = 0;
 static USHORT g_nMBTimerDevice = 0;	// SY6522 device# which is generating timer IRQ
 static unsigned __int64 g_uLastCumulativeCycles = 0;
 
+#ifdef MB_SPEECH
 // SSI263 vars:
 static USHORT g_nSSI263Device = 0;	// SSI263 device# which is generating phoneme-complete IRQ
 static int g_nCurrentActivePhoneme = -1;
 static bool g_bStopPhoneme = false;
 static bool g_bVotraxPhoneme = false;
+static HANDLE g_hThread = NULL;
+#endif
 
 // sample rate defined in Common.h
 //static const DWORD SAMPLE_RATE = 44100;	// Use a base freq so that DirectX (or sound h/w) doesn't have to up/down-sample
@@ -166,8 +168,6 @@ static short* ppAYVoiceBuffer[NUM_VOICES] = {0};
 static unsigned __int64	g_nMB_InActiveCycleCount = 0;
 static bool g_bMB_RegAccessedFlag = false;
 static bool g_bMB_Active = true;
-
-static HANDLE g_hThread = NULL;
 
 static bool g_bMBAvailable = false;
 
@@ -189,13 +189,17 @@ static const SHORT nWaveDataMax = (SHORT)0x0FFF;
 static short g_nMixBuffer[g_dwDSBufferSize / sizeof(short)];
 
 
+#ifdef MB_SPEECH
 // do not have voices anymore??? --bb   ^_^  0_0
-//static VOICE MockingboardVoice = {0};
-//static VOICE SSI263Voice[64] = {0};
+static VOICE MockingboardVoice = {0};
+static VOICE SSI263Voice[64] = {0};
+#endif
 
 static const int g_nNumEvents = 2;
+#ifdef MB_SPEECH
 static HANDLE g_hSSI263Event[g_nNumEvents] = {NULL};	// 1: Phoneme finished playing, 2: Exit thread
 static DWORD g_dwMaxPhonemeLen = 0;
+#endif
 
 // When 6522 IRQ is *not* active use 60Hz update freq for MB voices
 static const double g_f6522TimerPeriod_NoIRQ = CLK_6502 / 60.0;		// Constant whatever the CLK is set to
@@ -209,8 +213,10 @@ UINT32 g_uTimer1IrqCount = 0;	// DEBUG
 //---------------------------------------------------------------------------
 
 // Forward refs:
+#ifdef MB_SPEECH
 static DWORD SSI263Thread(LPVOID);
 static void Votrax_Write(BYTE nDevice, BYTE nValue);
+#endif
 
 //---------------------------------------------------------------------------
 
@@ -342,12 +348,14 @@ static void SY6522_Write(BYTE nDevice, BYTE nReg, BYTE nValue)
 				nValue &= pMB->sy6522.DDRB;
 				pMB->sy6522.ORB = nValue;
 
+#ifdef MB_SPEECH
 				if( (pMB->sy6522.DDRB == 0xFF) && (pMB->sy6522.PCR == 0xB0) )
 				{
 					// Votrax speech data
 					Votrax_Write(nDevice, nValue);
 					break;
 				}
+#endif
 
 				if(g_bPhasorEnable)
 				{
@@ -528,6 +536,7 @@ static BYTE SY6522_Read(BYTE nDevice, BYTE nReg)
 
 //---------------------------------------------------------------------------
 
+#ifdef MB_SPEECH
 static void SSI263_Play(unsigned int nPhoneme);
 
 #if 0
@@ -545,9 +554,12 @@ typedef struct
 
 //static SSI263A nSpeechChip;
 
+#endif		// MB_SPEECH
+
 // Duration/Phonome
 const BYTE DURATION_MODE_MASK = 0xC0;
 const BYTE PHONEME_MASK = 0x3F;
+
 
 const BYTE MODE_PHONEME_TRANSITIONED_INFLECTION = 0xC0;	// IRQ active
 const BYTE MODE_PHONEME_IMMEDIATE_INFLECTION = 0x80;	// IRQ active
@@ -581,6 +593,7 @@ static void SSI263_Write(BYTE nDevice, BYTE nReg, BYTE nValue)
 	switch(nReg)
 	{
 	case SSI_DURPHON:
+#ifdef MB_SPEECH
 #if LOG_SSI263
 		if(g_fh) fprintf(g_fh, "DUR   = 0x%02X, PHON = 0x%02X\n\n", nValue>>6, nValue&PHONEME_MASK);
 #endif
@@ -611,6 +624,7 @@ static void SSI263_Write(BYTE nDevice, BYTE nReg, BYTE nValue)
 		{
 			SSI263_Play(nValue & PHONEME_MASK);
 		}
+#endif
 		break;
 	case SSI_INFLECT:
 #if LOG_SSI263
@@ -645,6 +659,7 @@ static void SSI263_Write(BYTE nDevice, BYTE nReg, BYTE nValue)
 
 //-------------------------------------
 
+#ifdef MB_SPEECH
 static BYTE Votrax2SSI263[64] =
 {
 	0x02,	// 00: EH3 jackEt -> E1 bEnt
@@ -729,6 +744,7 @@ static void Votrax_Write(BYTE nDevice, BYTE nValue)
 
 	SSI263_Play(Votrax2SSI263[nValue & PHONEME_MASK]);
 }
+#endif
 
 //===========================================================================
 
@@ -761,7 +777,6 @@ void MB_Update()
 	//
 
 #ifdef MOCKINGBOARD
-	static DWORD dwByteOffset = (DWORD)-1;
 	static int nNumSamplesError = 0;
 
 
@@ -896,9 +911,9 @@ void MB_Update()
 
 //-----------------------------------------------------------------------------
 
+#ifdef MB_SPEECH
 static DWORD SSI263Thread(LPVOID lpParameter)
 {
-#if 0
 	while(1)
 	{
 		DWORD dwWaitResult = WaitForMultipleObjects(
@@ -927,8 +942,10 @@ static DWORD SSI263Thread(LPVOID lpParameter)
 		//if(g_fh) fprintf(g_fh, "IRQ: Phoneme complete (0x%02X)\n\n", g_nCurrentActivePhoneme);
 #endif
 
+#ifdef MB_SPEECH
 		SSI263Voice[g_nCurrentActivePhoneme].bActive = false;
 		g_nCurrentActivePhoneme = -1;
+#endif
 
 		// Phoneme complete, so generate IRQ if necessary
 		SY6522_AY8910* pMB = &g_MB[g_nSSI263Device];
@@ -967,12 +984,13 @@ static DWORD SSI263Thread(LPVOID lpParameter)
 	}
 
 	return 0;
-#endif
     return 0;
 }
+#endif
 
 //-----------------------------------------------------------------------------
 
+#ifdef MB_SPEECH
 static void SSI263_Play(unsigned int nPhoneme)
 {
 #if 0
@@ -999,6 +1017,7 @@ static void SSI263_Play(unsigned int nPhoneme)
 
 #endif
 }
+#endif
 
 //-----------------------------------------------------------------------------
 
@@ -1015,7 +1034,7 @@ static bool MB_DSInit()
 	// Create SSI263 voice
 	//
 
-#if 0
+#if MB_SPEECH 
 
 	g_hSSI263Event[0] = CreateEvent(NULL,	// lpEventAttributes
 									FALSE,	// bManualReset (FALSE = auto-reset)
@@ -1285,7 +1304,7 @@ static BYTE /*__stdcall*/ MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue,
 	if(g_SoundcardType == SC_NONE)
 		return 0;
 
-	BYTE nMB = (nAddr>>8)&0xf - SLOT4;
+	BYTE nMB = ((nAddr>>8)&0xf) - SLOT4;
 	BYTE nOffset = nAddr&0xff;
 
 	if(g_bPhasorEnable)
@@ -1335,7 +1354,7 @@ static BYTE /*__stdcall*/ MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue
 	if(g_SoundcardType == SC_NONE)
 		return 0;
 
-	BYTE nMB = (nAddr>>8)&0xf - SLOT4;
+	BYTE nMB = ((nAddr>>8)&0xf) - SLOT4;
 	BYTE nOffset = nAddr&0xff;
 
 	if(g_bPhasorEnable)
@@ -1464,14 +1483,14 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 		SY6522_AY8910* pMB = &g_MB[i];
 
 		USHORT OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
-		USHORT OldTimer2 = pMB->sy6522.TIMER2_COUNTER.w;
+		//USHORT OldTimer2 = pMB->sy6522.TIMER2_COUNTER.w;
 
 		pMB->sy6522.TIMER1_COUNTER.w -= nClocks;
 		pMB->sy6522.TIMER2_COUNTER.w -= nClocks;
 
 		// Check for counter underflow
 		bool bTimer1Underflow = (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
-		bool bTimer2Underflow = (!(OldTimer2 & 0x8000) && (pMB->sy6522.TIMER2_COUNTER.w & 0x8000));
+		//bool bTimer2Underflow = (!(OldTimer2 & 0x8000) && (pMB->sy6522.TIMER2_COUNTER.w & 0x8000));
 
 		if( bTimer1Underflow && (g_nMBTimerDevice == i) && g_bMBTimerIrqActive )
 		{
@@ -1591,20 +1610,24 @@ DWORD MB_SetSnapshot(SS_CARD_MOCKINGBOARD* pSS, DWORD /*dwSlot*/)
 	UINT nDeviceNum = nMbCardNum*2;
 	SY6522_AY8910* pMB = &g_MB[nDeviceNum];
 
+#ifdef MB_SPEECH
 	g_nSSI263Device = 0;
 	g_nCurrentActivePhoneme = -1;
-
+#endif
 	for(UINT i=0; i<MB_UNITS_PER_CARD; i++)
 	{
 		memcpy(&pMB->sy6522, &pSS->Unit[i].RegsSY6522, sizeof(SY6522));
 		memcpy(AY8910_GetRegsPtr(nDeviceNum), &pSS->Unit[i].RegsAY8910, 16);
+#ifdef MB_SPEECH		
 		memcpy(&pMB->SpeechChip, &pSS->Unit[i].RegsSSI263, sizeof(SSI263A));
+#endif
 		pMB->nAYCurrentRegister = pSS->Unit[i].nAYCurrentRegister;
 
 		StartTimer(pMB);	// Attempt to start timer
 
 		//
 
+#ifdef MB_SPEECH
 		// Crude - currently only support a single speech chip
 		// FIX THIS:
 		// . Speech chip could be Votrax instead
@@ -1620,7 +1643,7 @@ DWORD MB_SetSnapshot(SS_CARD_MOCKINGBOARD* pSS, DWORD /*dwSlot*/)
 				pMB->SpeechChip.CurrentMode |= 1;	// Set SSI263's D7 pin
 			}
 		}
-
+#endif
 		nDeviceNum++;
 		pMB++;
 	}

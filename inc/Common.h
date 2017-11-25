@@ -23,6 +23,7 @@ const DWORD dwClksPerFrame			= uCyclesPerLine * uLinesPerFrame;	// 17030
 #define  RAMWORKS			// 8MB RamWorks III support
 
 #define  MOCKINGBOARD			// Mockingboard support
+//#define  MB_SPEECH
 
 // Use a base freq so that DirectX (or sound h/w) doesn't have to up/down-sample
 // Assume base freqs are 44.1KHz & 48KHz
@@ -64,7 +65,7 @@ enum AppMode_e
 //#define	MAXIMAGES          16
 
 // TODO: Move to StringTable.h
-#define	TITLE_APPLE_2			TEXT("Apple ][ Emulator")
+#define	TITLE_APPLE_2			("Apple ][ Emulator")
 #define	TITLE_APPLE_2_PLUS		TEXT("Apple ][+ Emulator")
 #define	TITLE_APPLE_2E			TEXT("Apple //e Emulator")
 #define	TITLE_APPLE_2E_ENHANCED	TEXT("Enhanced Apple //e Emulator")

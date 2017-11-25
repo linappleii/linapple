@@ -130,7 +130,7 @@ int RiffPutSamples(short* buf, unsigned int uSamples)
 
 	DWORD dwNumberOfBytesWritten;
 
-	BOOL bRes = WriteFile(
+	WriteFile(
 		g_hRiffFile,
 		buf,
 		uSamples * sizeof(short) * g_NumChannels,

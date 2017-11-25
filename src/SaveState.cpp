@@ -30,7 +30,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 #include "wwrapper.h"
-#pragma  hdrstop
 
 #define DEFAULT_SNAPSHOT_NAME "SaveState.aws"
 
@@ -102,7 +101,7 @@ void Snapshot_LoadState()
 			throw(0);
 		}
 
-		if(pSS->Hdr.dwTag != AW_SS_TAG)
+		if(pSS->Hdr.dwTag != (DWORD) AW_SS_TAG)
 		{
 			strcpy(szMessage, "File corrupt");
 			throw(0);

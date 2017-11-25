@@ -971,6 +971,8 @@ int MemInitialize() // returns -1 if any eror during initialization
 		case A2TYPE_APPLE2E:RomFileName = Apple2e_rom; ROM_SIZE = Apple2eRomSize; break;
 		case A2TYPE_APPLE2EEHANCED:RomFileName = Apple2eEnhanced_rom; ROM_SIZE = Apple2eRomSize; break;
 		/*case A2TYPE_PRAVEC8C:RomFileName = IDR_PRAVEC_8C; ROM_SIZE = Apple2Pravec8CSize;break;*/
+		default:
+			break;
 	}
 
 	if(RomFileName == NULL)

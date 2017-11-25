@@ -266,7 +266,7 @@ unsigned getBuffer2Free()
 //
 void audioCallback(short* stream, unsigned len)
 {
-	int i;
+	unsigned int i;
     static short lastvalue = 0;
 	assert((len & 1) == 0); // stereo
 
