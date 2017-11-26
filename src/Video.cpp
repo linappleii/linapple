@@ -36,27 +36,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* reference: technote tn-iigs-063 "Master Color Values"
 
-          Color  Color Register LR HR  DHR Master Color R,G,B
-          Name       Value      #  #   #      Value
-          ----------------------------------------------------
-          Black       0         0  0,4 0      $0000    (0,0,0) -> (00,00,00) Windows
-(Magenta) Deep Red    1         1      1      $0D03    (D,0,3) -> (D0,00,30) Custom
-          Dark Blue   2         2      8      $0009    (0,0,9) -> (00,00,80) Windows
- (Violet) Purple      3         3  2   9      $0D2D    (D,2,D) -> (FF,00,FF) Windows
-          Dark Green  4         4      4      $0072    (0,7,2) -> (00,80,00) Windows
- (Gray 1) Dark Gray   5         5      5      $0555    (5,5,5) -> (80,80,80) Windows
-   (Blue) Medium Blue 6         6  6   C      $022F    (2,2,F) -> (00,00,FF) Windows
-   (Cyan) Light Blue  7         7      D      $06AF    (6,A,F) -> (60,A0,FF) Custom
-          Brown       8         8      2      $0850    (8,5,0) -> (80,50,00) Custom
-          Orange      9         9  5   3      $0F60    (F,6,0) -> (FF,80,00) Custom (modified to match better with the other Hi-Res Colors)
- (Gray 2) Light Gray  A         A      A      $0AAA    (A,A,A) -> (C0,C0,C0) Windows
-          Pink        B         B      B      $0F98    (F,9,8) -> (FF,90,80) Custom
-  (Green) Light Green C         C  1   6      $01D0    (1,D,0) -> (00,FF,00) Windows
-          Yellow      D         D      7      $0FF0    (F,F,0) -> (FF,FF,00) Windows
-   (Aqua) Aquamarine  E         E      E      $04F9    (4,F,9) -> (40,FF,90) Custom
-          White       F         F  3,7 F      $0FFF    (F,F,F) -> (FF,FF,FF) Windows
+	 Color  Color Register LR HR  DHR Master Color R,G,B
+	 Name       Value      #  #   #      Value
+	 ----------------------------------------------------
+	 Black       0         0  0,4 0      $0000    (0,0,0) -> (00,00,00) Windows
+	 (Magenta) Deep Red    1         1      1      $0D03    (D,0,3) -> (D0,00,30) Custom
+	 Dark Blue   2         2      8      $0009    (0,0,9) -> (00,00,80) Windows
+	 (Violet) Purple      3         3  2   9      $0D2D    (D,2,D) -> (FF,00,FF) Windows
+	 Dark Green  4         4      4      $0072    (0,7,2) -> (00,80,00) Windows
+	 (Gray 1) Dark Gray   5         5      5      $0555    (5,5,5) -> (80,80,80) Windows
+	 (Blue) Medium Blue 6         6  6   C      $022F    (2,2,F) -> (00,00,FF) Windows
+	 (Cyan) Light Blue  7         7      D      $06AF    (6,A,F) -> (60,A0,FF) Custom
+	 Brown       8         8      2      $0850    (8,5,0) -> (80,50,00) Custom
+	 Orange      9         9  5   3      $0F60    (F,6,0) -> (FF,80,00) Custom (modified to match better with the other Hi-Res Colors)
+	 (Gray 2) Light Gray  A         A      A      $0AAA    (A,A,A) -> (C0,C0,C0) Windows
+	 Pink        B         B      B      $0F98    (F,9,8) -> (FF,90,80) Custom
+	 (Green) Light Green C         C  1   6      $01D0    (1,D,0) -> (00,FF,00) Windows
+	 Yellow      D         D      7      $0FF0    (F,F,0) -> (FF,FF,00) Windows
+	 (Aqua) Aquamarine  E         E      E      $04F9    (4,F,9) -> (40,FF,90) Custom
+	 White       F         F  3,7 F      $0FFF    (F,F,F) -> (FF,FF,FF) Windows
 
-   LR: Lo-Res   HR: Hi-Res   DHR: Double Hi-Res */
+LR: Lo-Res   HR: Hi-Res   DHR: Double Hi-Res */
 
 #define RGB(r,g,b)          ((COLORREF)(((BYTE)(r)|((WORD)((BYTE)(g))<<8))|(((DWORD)(BYTE)(b))<<16)))
 //#define RGB(r,g,b) SDL_MapRGB(g_hSourceBitmap->format, r, g, b)
@@ -83,48 +83,48 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 enum Color_Palette_Index_e
 {
 	// Really need to have Quater Green and Quarter Blue for Hi-Res
-	  BLACK
-	, DARK_RED
-	, DARK_GREEN       // Half Green
-	, DARK_YELLOW
-	, DARK_BLUE        // Half Blue
-	, DARK_MAGENTA
-	, DARK_CYAN
-	, LIGHT_GRAY
-	, MONEY_GREEN
-	, SKY_BLUE
+	BLACK
+		, DARK_RED
+		, DARK_GREEN       // Half Green
+		, DARK_YELLOW
+		, DARK_BLUE        // Half Blue
+		, DARK_MAGENTA
+		, DARK_CYAN
+		, LIGHT_GRAY
+		, MONEY_GREEN
+		, SKY_BLUE
 
-// OUR CUSTOM COLORS
-	, DEEP_RED
-	, LIGHT_BLUE
-	, BROWN
-	, ORANGE
-	, PINK
-	, AQUA
+		// OUR CUSTOM COLORS
+		, DEEP_RED
+		, LIGHT_BLUE
+		, BROWN
+		, ORANGE
+		, PINK
+		, AQUA
 
-// CUSTOM HGR COLORS (don't change order) - For tv emulation g_nAppMode
-	, HGR_BLACK
-	, HGR_WHITE
-	, HGR_BLUE
-	, HGR_RED
-	, HGR_GREEN
-	, HGR_MAGENTA
-	, HGR_GREY1
-	, HGR_GREY2
-	, HGR_YELLOW
-	, HGR_AQUA
-	, HGR_PURPLE
-	, HGR_PINK
+		// CUSTOM HGR COLORS (don't change order) - For tv emulation g_nAppMode
+		, HGR_BLACK
+		, HGR_WHITE
+		, HGR_BLUE
+		, HGR_RED
+		, HGR_GREEN
+		, HGR_MAGENTA
+		, HGR_GREY1
+		, HGR_GREY2
+		, HGR_YELLOW
+		, HGR_AQUA
+		, HGR_PURPLE
+		, HGR_PINK
 
-// USER CUSTOMIZABLE COLOR
-	, MONOCHROME_CUSTOM
+		// USER CUSTOMIZABLE COLOR
+		, MONOCHROME_CUSTOM
 
-// Pre-set "Monochromes"
-	, MONOCHROME_AMBER
-	, MONOCHROME_GREEN
-	, MONOCHROME_WHITE
+		// Pre-set "Monochromes"
+		, MONOCHROME_AMBER
+		, MONOCHROME_GREEN
+		, MONOCHROME_WHITE
 
-	, NUM_COLOR_PALETTE
+		, NUM_COLOR_PALETTE
 };
 
 const int SRCOFFS_40COL   = 0;
@@ -157,8 +157,8 @@ enum VideoFlag_e
 #define  SETSOURCEPIXEL(x,y,c)  g_aSourceStartofLine[(y)][(x)] = (c)
 
 #define  SETFRAMECOLOR(i,r1,g1,b1)  framebufferinfo[i].r = r1; \
-                                 framebufferinfo[i].g = g1; \
-                                 framebufferinfo[i].b  = b1;
+																													 framebufferinfo[i].g = g1; \
+framebufferinfo[i].b  = b1;
 
 #define  HGR_MATRIX_YOFFSET 2	// For tv emulation g_nAppMode
 
@@ -184,11 +184,11 @@ typedef bool (*UpdateFunc_t)(int,int,int,int,int);
 static BYTE          celldirty[40][32];
 static COLORREF      customcolors[NUM_COLOR_PALETTE];	// MONOCHROME is last custom color
 
-	SDL_Surface  *g_hDeviceBitmap;
+SDL_Surface  *g_hDeviceBitmap;
 //static HBITMAP       g_hDeviceBitmap;
 //static HDC           g_hDeviceDC;
 static LPBYTE        framebufferbits;
-       SDL_Color  framebufferinfo[256];
+SDL_Color  framebufferinfo[256];
 
 const int MAX_FRAME_Y = 384; // 192 Apple scan lines * 2x host scanline = 384
 static LPBYTE        frameoffsettable[384];
@@ -207,7 +207,7 @@ SDL_Surface  *g_hSourceBitmap = NULL;
 //static HBITMAP       g_hSourceBitmap;
 
 static LPBYTE        g_pSourcePixels;
-       SDL_Color     g_pSourceHeader[256];
+SDL_Color     g_pSourceHeader[256];
 const int MAX_SOURCE_Y = 512;
 static LPBYTE        g_aSourceStartofLine[ MAX_SOURCE_Y ];
 static LPBYTE        g_pTextBank1; // Aux
@@ -262,59 +262,59 @@ void DrawTextSource (SDL_Surface * dc);
 
 //===========================================================================
 void /*__stdcall */CopySource (int destx, int desty,
-                           int xsize, int ysize,
-                           int sourcex, int sourcey)
+		int xsize, int ysize,
+		int sourcex, int sourcey)
 {
-  LPBYTE currdestptr   = frameoffsettable [desty]  + destx;
-  LPBYTE currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
-  int bytesleft;
-  while (ysize--)
-  {
-    bytesleft = xsize;
-    while (bytesleft & 3)
+	LPBYTE currdestptr   = frameoffsettable [desty]  + destx;
+	LPBYTE currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
+	int bytesleft;
+	while (ysize--)
 	{
-      --bytesleft;
-      // GPH Provide scanlines for all but first couple of modes
-      // TODO: Optimize
-      if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
-          *(currdestptr+bytesleft) = *(currsourceptr+bytesleft);
-      else
-          *(currdestptr+bytesleft) = 0;
-    }
-    while (bytesleft)
-	{
-      bytesleft -= 4;
-      // GPH Provide scanlines for all but first couple of modes
-      // TODO: Optimize
-      if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
-          *(LPDWORD)(currdestptr+bytesleft) = *(LPDWORD)(currsourceptr+bytesleft);
-      else
-          *(currdestptr+bytesleft) = 0;
-    }
-    currdestptr   += framebufferpitch; // we are going top to bottom, as all normal people do! ^_^ (bb)
-    currsourceptr += SRCOFFS_TOTAL;
-  }
+		bytesleft = xsize;
+		while (bytesleft & 3)
+		{
+			--bytesleft;
+			// GPH Provide scanlines for all but first couple of modes
+			// TODO: Optimize
+			if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
+				*(currdestptr+bytesleft) = *(currsourceptr+bytesleft);
+			else
+				*(currdestptr+bytesleft) = 0;
+		}
+		while (bytesleft)
+		{
+			bytesleft -= 4;
+			// GPH Provide scanlines for all but first couple of modes
+			// TODO: Optimize
+			if( ysize & 1 || VT_COLOR_TVEMU > g_videotype )
+				*(LPDWORD)(currdestptr+bytesleft) = *(LPDWORD)(currsourceptr+bytesleft);
+			else
+				*(currdestptr+bytesleft) = 0;
+		}
+		currdestptr   += framebufferpitch; // we are going top to bottom, as all normal people do! ^_^ (bb)
+		currsourceptr += SRCOFFS_TOTAL;
+	}
 }
 
 //===========================================================================
 void CreateFrameOffsetTable (LPBYTE addr, LONG/*int*/ pitch) {
-// as I could take it's just needed for windzooeee DD while in FullScreen mode.
-// Left for compatiblity purposes. -- bb.
-if (framebufferaddr  == addr &&
-      framebufferpitch == pitch)
-      return;
-  framebufferaddr  = addr;
-  framebufferpitch = pitch;
+	// as I could take it's just needed for windzooeee DD while in FullScreen mode.
+	// Left for compatiblity purposes. -- bb.
+	if (framebufferaddr  == addr &&
+			framebufferpitch == pitch)
+		return;
+	framebufferaddr  = addr;
+	framebufferpitch = pitch;
 
-  // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE FRAME BUFFER
-  for (int loop = 0; loop < 384; loop++)
-    frameoffsettable[loop] = framebufferaddr + framebufferpitch * loop; //(383-loop);
+	// CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE FRAME BUFFER
+	for (int loop = 0; loop < 384; loop++)
+		frameoffsettable[loop] = framebufferaddr + framebufferpitch * loop; //(383-loop);
 }
 
 //===========================================================================
 void CreateIdentityPalette () {
-//  if (g_hPalette)
-//  DeleteObject(g_hPalette);
+	//  if (g_hPalette)
+	//  DeleteObject(g_hPalette);
 
 	ZeroMemory(framebufferinfo, 256 * sizeof(SDL_Color));// must be cleared???
 	// SET FRAME BUFFER TABLE ENTRIES TO CUSTOM COLORS
@@ -339,9 +339,9 @@ void CreateIdentityPalette () {
 	SETFRAMECOLOR(HGR_PINK,   0xD0,0x40,0xA0);
 
 	SETFRAMECOLOR( MONOCHROME_CUSTOM
-		, GetBValue(monochrome)
-		, GetGValue(monochrome)
-		, GetRValue(monochrome) );	// chngrd B<->R, why? By me. --bb ^_^
+			, GetBValue(monochrome)
+			, GetGValue(monochrome)
+			, GetRValue(monochrome) );	// chngrd B<->R, why? By me. --bb ^_^
 
 	SETFRAMECOLOR( MONOCHROME_AMBER, 0xFF,0x80,0x00);
 	SETFRAMECOLOR( MONOCHROME_GREEN, 0x00,0xC0,0x00);
@@ -367,41 +367,41 @@ void CreateIdentityPalette () {
 	SETFRAMECOLOR(CYAN,        0x00,0xFF,0xFF);
 	SETFRAMECOLOR(WHITE,       0xFF,0xFF,0xFF);
 
-//	g_hPalette = (HPALETTE)0;
-//	ReleaseDC(window,dc);
+	//	g_hPalette = (HPALETTE)0;
+	//	ReleaseDC(window,dc);
 }
 
 //===========================================================================
 void CreateDIBSections () {
-  CopyMemory(g_pSourceHeader,framebufferinfo, 256 * sizeof(SDL_Color));
+	CopyMemory(g_pSourceHeader,framebufferinfo, 256 * sizeof(SDL_Color));
 
-  // CREATE THE DEVICE CONTEXT
-//  HWND window  = GetDesktopWindow();
-//  HDC dc       = GetDC(window);
-//  if (g_hDeviceDC)
-//    DeleteDC(g_hDeviceDC);
-//  g_hDeviceDC = CreateCompatibleDC(dc);
+	// CREATE THE DEVICE CONTEXT
+	//  HWND window  = GetDesktopWindow();
+	//  HDC dc       = GetDC(window);
+	//  if (g_hDeviceDC)
+	//    DeleteDC(g_hDeviceDC);
+	//  g_hDeviceDC = CreateCompatibleDC(dc);
 
-  // CREATE THE FRAME BUFFER DIB SECTION
-  if (g_hDeviceBitmap)
-    SDL_FreeSurface(g_hDeviceBitmap);
-  g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
+	// CREATE THE FRAME BUFFER DIB SECTION
+	if (g_hDeviceBitmap)
+		SDL_FreeSurface(g_hDeviceBitmap);
+	g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
 
-  g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
+	g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
 
-  if(g_hDeviceBitmap == NULL) fprintf(stderr,"g_hDeviceBitmap was not created!\n");
-//CreateDIBSection(dc,framebufferinfo,DIB_RGB_COLORS,
-//                (LPVOID *)&framebufferbits,0,0);
-  framebufferbits = (LPBYTE)g_hDeviceBitmap->pixels;
-  SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
-//    printf("SetColors(g_hDeviceBitmap)=%d\n",hcl);
-  SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
-//    printf("SetColors(g_origscreen)=%d\n",hcl);
+	if(g_hDeviceBitmap == NULL) fprintf(stderr,"g_hDeviceBitmap was not created!\n");
+	//CreateDIBSection(dc,framebufferinfo,DIB_RGB_COLORS,
+	//                (LPVOID *)&framebufferbits,0,0);
+	framebufferbits = (LPBYTE)g_hDeviceBitmap->pixels;
+	SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
+	//    printf("SetColors(g_hDeviceBitmap)=%d\n",hcl);
+	SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
+	//    printf("SetColors(g_origscreen)=%d\n",hcl);
 
-   g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
-   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
+	g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
+	SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 
-/* Create status panel background */
+	/* Create status panel background */
 	SDL_Rect srect;
 	Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);	// bluez color, know that?
 	Uint32 myyell  = SDL_MapRGB(screen->format, 255, 255, 0);	// yellow color?
@@ -418,36 +418,36 @@ void CreateDIBSections () {
 		font_print(40, 6, "FDD2", g_hStatusSurface, 1.3, 1.5);
 		font_print(74, 6, "HDD", g_hStatusSurface, 1.3, 1.5);
 	}
-// CREATE THE SOURCE IMAGE DIB SECTION
-//  HDC sourcedc = CreateCompatibleDC(dc);
-//  ReleaseDC(window,dc);
-  if (g_hSourceBitmap)
-    SDL_FreeSurface(g_hSourceBitmap);
-  g_hSourceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, SRCOFFS_TOTAL, MAX_SOURCE_Y, 8, 0, 0, 0, 0);
-  if(g_hSourceBitmap == NULL) fprintf(stderr,"g_hSourceBitmap was not created!\n");
+	// CREATE THE SOURCE IMAGE DIB SECTION
+	//  HDC sourcedc = CreateCompatibleDC(dc);
+	//  ReleaseDC(window,dc);
+	if (g_hSourceBitmap)
+		SDL_FreeSurface(g_hSourceBitmap);
+	g_hSourceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, SRCOFFS_TOTAL, MAX_SOURCE_Y, 8, 0, 0, 0, 0);
+	if(g_hSourceBitmap == NULL) fprintf(stderr,"g_hSourceBitmap was not created!\n");
 
-  g_pSourcePixels = (LPBYTE)g_hSourceBitmap->pixels;
-  SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
-//  printf("SetColors(g_hSourceBitmap)=%d\n",hcl);
-  //CreateDIBSection(
+	g_pSourcePixels = (LPBYTE)g_hSourceBitmap->pixels;
+	SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
+	//  printf("SetColors(g_hSourceBitmap)=%d\n",hcl);
+	//CreateDIBSection(
 	//sourcedc,g_pSourceHeader,DIB_RGB_COLORS,
-    //(LPVOID *)&g_pSourcePixels,0,0);
-  //SelectObject(sourcedc,g_hSourceBitmap);
+	//(LPVOID *)&g_pSourcePixels,0,0);
+	//SelectObject(sourcedc,g_hSourceBitmap);
 
 	// CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
 	for (int y = 0; y < MAX_SOURCE_Y; y++)
 		g_aSourceStartofLine[ y ] = g_pSourcePixels + SRCOFFS_TOTAL * y; //((MAX_SOURCE_Y-1) - y);
 
-// before direct access to surface pixels we MUST? lock it (surface)
+	// before direct access to surface pixels we MUST? lock it (surface)
 	int locked = 0;
 
 	// DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
 	ZeroMemory(g_pSourcePixels,SRCOFFS_TOTAL * /*512*/ MAX_SOURCE_Y);// be consistent, please,Thom! (bb) ^_^ ku
 
 	if ((g_videotype != VT_MONO_CUSTOM) &&
-		(g_videotype != VT_MONO_AMBER ) &&
-		(g_videotype != VT_MONO_GREEN ) &&
-		(g_videotype != VT_MONO_WHITE ))
+			(g_videotype != VT_MONO_AMBER ) &&
+			(g_videotype != VT_MONO_GREEN ) &&
+			(g_videotype != VT_MONO_WHITE ))
 	{
 		DrawTextSource(g_hSourceBitmap);
 
@@ -481,95 +481,95 @@ void CreateDIBSections () {
 
 //===========================================================================
 void DrawDHiResSource () {
-  BYTE colorval[16] = {BLACK,   DARK_BLUE, DARK_GREEN,BLUE,
-                       BROWN,   LIGHT_GRAY,GREEN,     AQUA,
-                       DEEP_RED,MAGENTA,   DARK_GRAY, LIGHT_BLUE,
-                       ORANGE,  PINK,      YELLOW,    WHITE};
+	BYTE colorval[16] = {BLACK,   DARK_BLUE, DARK_GREEN,BLUE,
+		BROWN,   LIGHT_GRAY,GREEN,     AQUA,
+		DEEP_RED,MAGENTA,   DARK_GRAY, LIGHT_BLUE,
+		ORANGE,  PINK,      YELLOW,    WHITE};
 
 #define OFFSET  3
 #define SIZE    10
-  for (int column = 0; column < 256; column++) {
-    int coloffs = SIZE * column;
-    for (unsigned byteval = 0; byteval < 256; byteval++) {
-      int color[SIZE];
-      ZeroMemory(color,sizeof(color));
-      unsigned pattern = MAKEWORD(byteval,column);
-      int pixel;
-      for (pixel = 1; pixel < 15; pixel++) {
-        if (pattern & (1 << pixel)) {
-          int pixelcolor = 1 << ((pixel-OFFSET) & 3);
-          if ((pixel >=  OFFSET+2) && (pixel < SIZE+OFFSET+2) && (pattern & (0x7 << (pixel-4))))
-            color[pixel-(OFFSET+2)] |= pixelcolor;
-          if ((pixel >=  OFFSET+1) && (pixel < SIZE+OFFSET+1) && (pattern & (0xF << (pixel-4))))
-            color[pixel-(OFFSET+1)] |= pixelcolor;
-          if ((pixel >=  OFFSET+0) && (pixel < SIZE+OFFSET+0))
-            color[pixel-(OFFSET+0)] |= pixelcolor;
-          if ((pixel >=  OFFSET-1) && (pixel < SIZE+OFFSET-1) && (pattern & (0xF << (pixel+1))))
-            color[pixel-(OFFSET-1)] |= pixelcolor;
-          if ((pixel >=  OFFSET-2) && (pixel < SIZE+OFFSET-2) && (pattern & (0x7 << (pixel+2))))
-            color[pixel-(OFFSET-2)] |= pixelcolor;
-        }
-      }
+	for (int column = 0; column < 256; column++) {
+		int coloffs = SIZE * column;
+		for (unsigned byteval = 0; byteval < 256; byteval++) {
+			int color[SIZE];
+			ZeroMemory(color,sizeof(color));
+			unsigned pattern = MAKEWORD(byteval,column);
+			int pixel;
+			for (pixel = 1; pixel < 15; pixel++) {
+				if (pattern & (1 << pixel)) {
+					int pixelcolor = 1 << ((pixel-OFFSET) & 3);
+					if ((pixel >=  OFFSET+2) && (pixel < SIZE+OFFSET+2) && (pattern & (0x7 << (pixel-4))))
+						color[pixel-(OFFSET+2)] |= pixelcolor;
+					if ((pixel >=  OFFSET+1) && (pixel < SIZE+OFFSET+1) && (pattern & (0xF << (pixel-4))))
+						color[pixel-(OFFSET+1)] |= pixelcolor;
+					if ((pixel >=  OFFSET+0) && (pixel < SIZE+OFFSET+0))
+						color[pixel-(OFFSET+0)] |= pixelcolor;
+					if ((pixel >=  OFFSET-1) && (pixel < SIZE+OFFSET-1) && (pattern & (0xF << (pixel+1))))
+						color[pixel-(OFFSET-1)] |= pixelcolor;
+					if ((pixel >=  OFFSET-2) && (pixel < SIZE+OFFSET-2) && (pattern & (0x7 << (pixel+2))))
+						color[pixel-(OFFSET-2)] |= pixelcolor;
+				}
+			}
 
-	  if (g_videotype == VT_COLOR_TEXT_OPTIMIZED)
-	  {
-	    /***
-	    activate for fringe reduction on white hgr text
-	    drawback: loss of color mix patterns in hgr g_nAppMode.
-	    select g_videotype by index
-	    ***/
+			if (g_videotype == VT_COLOR_TEXT_OPTIMIZED)
+			{
+				/***
+					activate for fringe reduction on white hgr text
+drawback: loss of color mix patterns in hgr g_nAppMode.
+select g_videotype by index
+				 ***/
 
-		for (pixel = 0; pixel < 13; pixel++)
-		{
-		  if ((pattern & (0xF << pixel)) == (unsigned)(0xF << pixel))
-			for (int pos = pixel; pos < pixel + 4; pos++)
-			  if (pos >= OFFSET && pos < SIZE+OFFSET)
-				color[pos-OFFSET] = 15;
+				for (pixel = 0; pixel < 13; pixel++)
+				{
+					if ((pattern & (0xF << pixel)) == (unsigned)(0xF << pixel))
+						for (int pos = pixel; pos < pixel + 4; pos++)
+							if (pos >= OFFSET && pos < SIZE+OFFSET)
+								color[pos-OFFSET] = 15;
+				}
+			}
+
+			int y = byteval << 1;
+			for (int x = 0; x < SIZE; x++) {
+				SETSOURCEPIXEL(SRCOFFS_DHIRES+coloffs+x,y  ,colorval[color[x]]);
+				SETSOURCEPIXEL(SRCOFFS_DHIRES+coloffs+x,y+1,colorval[color[x]]);
+			}
 		}
-	  }
-
-      int y = byteval << 1;
-      for (int x = 0; x < SIZE; x++) {
-        SETSOURCEPIXEL(SRCOFFS_DHIRES+coloffs+x,y  ,colorval[color[x]]);
-        SETSOURCEPIXEL(SRCOFFS_DHIRES+coloffs+x,y+1,colorval[color[x]]);
-      }
-    }
-  }
+	}
 #undef SIZE
 #undef OFFSET
 }
 
 
-	enum ColorMapping
-	{
-		  CM_Magenta
+enum ColorMapping
+{
+	CM_Magenta
 		, CM_Blue
 		, CM_Green
 		, CM_Orange
 		, CM_Black
 		, CM_White
 		, NUM_COLOR_MAPPING
-	};
+};
 
-	const BYTE aColorIndex[ NUM_COLOR_MAPPING ] =
-	{
-		  HGR_MAGENTA
+const BYTE aColorIndex[ NUM_COLOR_MAPPING ] =
+{
+	HGR_MAGENTA
 		, HGR_BLUE
 		, HGR_GREEN
 		, HGR_RED
 		, HGR_BLACK
 		, HGR_WHITE
-	};
+};
 
-	const BYTE aColorDimmedIndex[ NUM_COLOR_MAPPING ] =
-	{
-		DARK_MAGENTA, // <- HGR_MAGENTA
-		DARK_BLUE   , // <- HGR_BLUE
-		DARK_GREEN  , // <- HGR_GREEN
-		DEEP_RED    , // <- HGR_RED
-		HGR_BLACK   , // no change
-		LIGHT_GRAY    // HGR_WHITE
-	};
+const BYTE aColorDimmedIndex[ NUM_COLOR_MAPPING ] =
+{
+	DARK_MAGENTA, // <- HGR_MAGENTA
+	DARK_BLUE   , // <- HGR_BLUE
+	DARK_GREEN  , // <- HGR_GREEN
+	DEEP_RED    , // <- HGR_RED
+	HGR_BLACK   , // no change
+	LIGHT_GRAY    // HGR_WHITE
+};
 
 
 //===========================================================================
@@ -621,32 +621,32 @@ void DrawHiResSourceHalfShiftDim ()
 					else if (aPixels[iPixel-1] && aPixels[iPixel+1])
 					{
 						/***
-						activate for fringe reduction on white hgr text -
-						drawback: loss of color mix patterns in hgr g_nAppMode.
-						select g_videotype by index exclusion
-						***/
+							activate for fringe reduction on white hgr text -
+drawback: loss of color mix patterns in hgr g_nAppMode.
+select g_videotype by index exclusion
+						 ***/
 
 						if (!(aPixels[iPixel-2] && aPixels[iPixel+2]))
 							color = ((odd ^ !(iPixel&1)) << 1) | hibit;
 					}
 
 					/*
-						Address Binary   -> Displayed
-						2000:01 0---0001 -> 1 0 0 0  column 1
-						2400:81 1---0001 ->  1 0 0 0 half-pixel shift right
-						2800:02 1---0010 -> 0 1 0 0  column 2
+						 Address Binary   -> Displayed
+2000:01 0---0001 -> 1 0 0 0  column 1
+2400:81 1---0001 ->  1 0 0 0 half-pixel shift right
+2800:02 1---0010 -> 0 1 0 0  column 2
 
-						2000:02 column 2
-						2400:82 half-pixel shift right
-						2800:04 column 3
+2000:02 column 2
+2400:82 half-pixel shift right
+2800:04 column 3
 
-						2000:03 0---0011 -> 1 1 0 0  column 1 & 2
-						2400:83 1---0011 ->  1 1 0 0 half-pixel shift right
-						2800:06 1---0110 -> 0 1 1 0  column 2 & 3
+2000:03 0---0011 -> 1 1 0 0  column 1 & 2
+2400:83 1---0011 ->  1 1 0 0 half-pixel shift right
+2800:06 1---0110 -> 0 1 1 0  column 2 & 3
 
-						@reference: see Beagle Bro's Disk: "Silicon Salid", File: DOUBLE HI-RES
-						Fortunately double-hires is supported via pixel doubling, so we can do half-pixel shifts ;-)
-					*/
+@reference: see Beagle Bro's Disk: "Silicon Salid", File: DOUBLE HI-RES
+Fortunately double-hires is supported via pixel doubling, so we can do half-pixel shifts ;-)
+*/
 					switch (color)
 					{
 						case CM_Magenta:
@@ -701,13 +701,13 @@ void DrawHiResSourceHalfShiftDim ()
 
 #if HALF_SHIFT_DIM
 							// 50% dither -- would look OK, except Gumball, on the "Gumball" font has splotches
-//							SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  , HGR_WHITE );
-//							SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1, HGR_WHITE );
-//							if (! hibit)
-//							{
-//								SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y  , HGR_WHITE );
-//								SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y+1, HGR_WHITE );
-//							}
+							//							SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  , HGR_WHITE );
+							//							SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1, HGR_WHITE );
+							//							if (! hibit)
+							//							{
+							//								SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y  , HGR_WHITE );
+							//								SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y+1, HGR_WHITE );
+							//							}
 
 							// 75% dither -- looks kind of nice actually.  Passes the Gumball cutscene quality test!
 							SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  , HGR_WHITE );
@@ -790,10 +790,10 @@ void DrawHiResSource ()
 					else if (aPixels[iPixel-1] && aPixels[iPixel+1])
 					{
 						/***
-						activate for fringe reduction on white hgr text -
-						drawback: loss of color mix patterns in hgr g_nAppMode.
-						select g_videotype by index exclusion
-						***/
+							activate for fringe reduction on white hgr text -
+drawback: loss of color mix patterns in hgr g_nAppMode.
+select g_videotype by index exclusion
+						 ***/
 
 						if ((g_videotype == VT_COLOR_STANDARD) || (g_videotype == VT_COLOR_TVEMU) || !(aPixels[iPixel-2] && aPixels[iPixel+2]))
 							color = ((odd ^ !(iPixel&1)) << 1) | hibit;	// // No white HGR text optimization
@@ -805,15 +805,15 @@ void DrawHiResSource ()
 					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y  ,aColorIndex[color]); // TL
 					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  ,aColorIndex[color]); // TR
 
-                    // GPH Provide scanlines for all but first couple of modes
-                    // TODO: Optimize this
-                    if( VT_COLOR_TVEMU > g_videotype ) {
-    					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[color]); // BL
-	    				SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[color]); // BR
-                    } else {
-    					SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[0]); // BL
-	    				SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[0]); // BR
-                    }
+					// GPH Provide scanlines for all but first couple of modes
+					// TODO: Optimize this
+					if( VT_COLOR_TVEMU > g_videotype ) {
+						SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[color]); // BL
+						SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[color]); // BR
+					} else {
+						SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj  ,y+1,aColorIndex[0]); // BL
+						SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1,aColorIndex[0]); // BR
+					}
 
 					x += 2;
 				}
@@ -825,14 +825,14 @@ void DrawHiResSource ()
 
 //===========================================================================
 void DrawLoResSource () {
-  BYTE colorval[16] = {BLACK,     DEEP_RED, DARK_BLUE, MAGENTA,
-                       DARK_GREEN,DARK_GRAY,BLUE,      LIGHT_BLUE,
-                       BROWN,     ORANGE,   LIGHT_GRAY,PINK,
-                       GREEN,     YELLOW,   AQUA,      WHITE};
-  for (int color = 0; color < 16; color++)
-    for (int x = 0; x < 16; x++)
-      for (int y = 0; y < 16; y++)
-        SETSOURCEPIXEL(SRCOFFS_LORES+x,(color << 4)+y,colorval[color]);
+	BYTE colorval[16] = {BLACK,     DEEP_RED, DARK_BLUE, MAGENTA,
+		DARK_GREEN,DARK_GRAY,BLUE,      LIGHT_BLUE,
+		BROWN,     ORANGE,   LIGHT_GRAY,PINK,
+		GREEN,     YELLOW,   AQUA,      WHITE};
+	for (int color = 0; color < 16; color++)
+		for (int x = 0; x < 16; x++)
+			for (int y = 0; y < 16; y++)
+				SETSOURCEPIXEL(SRCOFFS_LORES+x,(color << 4)+y,colorval[color]);
 }
 
 
@@ -903,31 +903,31 @@ void DrawMonoHiResSource ()
 void DrawMonoLoResSource () {
 	int iMonochrome = GetMonochromeIndex();
 
-  for (int color = 0; color < 16; color++)
-    for (int x = 0; x < 16; x++)
-      for (int y = 0; y < 16; y++) {
-        BYTE colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
-        SETSOURCEPIXEL(SRCOFFS_LORES+x,(color << 4)+y,colorval);
-      }
+	for (int color = 0; color < 16; color++)
+		for (int x = 0; x < 16; x++)
+			for (int y = 0; y < 16; y++) {
+				BYTE colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
+				SETSOURCEPIXEL(SRCOFFS_LORES+x,(color << 4)+y,colorval);
+			}
 }
 
 //===========================================================================
 void DrawMonoTextSource (SDL_Surface * hDstDC)
 {
-//	HDC     hSrcDC  = CreateCompatibleDC(hDstDC);
-//	HBITMAP hBitmap = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
+	//	HDC     hSrcDC  = CreateCompatibleDC(hDstDC);
+	//	HBITMAP hBitmap = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
 	if(charset40 == NULL) return;
 
 	Uint8 hBrush;
- 	switch (g_videotype)
- 	{
- 		case VT_MONO_AMBER: hBrush = MONOCHROME_AMBER/*CreateSolidBrush(RGB(0xFF,0x80,0x00))*/; break;
- 		case VT_MONO_GREEN: hBrush = MONOCHROME_GREEN/*CreateSolidBrush(RGB(0x00,0xC0,0x00))*/; break;
- 		case VT_MONO_WHITE: hBrush = MONOCHROME_WHITE/*CreateSolidBrush(RGB(0xFF,0xFF,0xFF))*/; break;
- 		default           : hBrush = MONOCHROME_CUSTOM/*CreateSolidBrush(monochrome)*/; break;
- 	}
-// 	SelectObject(hSrcDC,hBitmap);
-// 	SelectObject(hDstDC,hBrush);
+	switch (g_videotype)
+	{
+		case VT_MONO_AMBER: hBrush = MONOCHROME_AMBER/*CreateSolidBrush(RGB(0xFF,0x80,0x00))*/; break;
+		case VT_MONO_GREEN: hBrush = MONOCHROME_GREEN/*CreateSolidBrush(RGB(0x00,0xC0,0x00))*/; break;
+		case VT_MONO_WHITE: hBrush = MONOCHROME_WHITE/*CreateSolidBrush(RGB(0xFF,0xFF,0xFF))*/; break;
+		default           : hBrush = MONOCHROME_CUSTOM/*CreateSolidBrush(monochrome)*/; break;
+	}
+	// 	SelectObject(hSrcDC,hBitmap);
+	// 	SelectObject(hDstDC,hBrush);
 	SDL_Rect srcrect, dstrect;
 	dstrect.x = SRCOFFS_40COL;
 	dstrect.y = 0;
@@ -940,7 +940,7 @@ void DrawMonoTextSource (SDL_Surface * hDstDC)
 	srcrect.h = 512;
 
 	// TODO: Update with APPLE_FONT_Y_ values
-//	BitBlt(hDstDC,SRCOFFS_40COL,0,256,512,hSrcDC,0,0,MERGECOPY);
+	//	BitBlt(hDstDC,SRCOFFS_40COL,0,256,512,hSrcDC,0,0,MERGECOPY);
 	SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
 
 	dstrect.x = SRCOFFS_IIPLUS;
@@ -952,7 +952,7 @@ void DrawMonoTextSource (SDL_Surface * hDstDC)
 	srcrect.w = 256;
 	srcrect.h = 256;
 	SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
-//	BitBlt(hDstDC,SRCOFFS_IIPLUS,0,256,256,hSrcDC,0,512,MERGECOPY);
+	//	BitBlt(hDstDC,SRCOFFS_IIPLUS,0,256,256,hSrcDC,0,512,MERGECOPY);
 
 	dstrect.x = SRCOFFS_80COL;
 	dstrect.y = 0;
@@ -963,20 +963,20 @@ void DrawMonoTextSource (SDL_Surface * hDstDC)
 	srcrect.w = 256;
 	srcrect.h = 512;
 	SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
-//	StretchBlt(hDstDC,SRCOFFS_80COL,0,128,512,hSrcDC,0,0,256,512,MERGECOPY);
+	//	StretchBlt(hDstDC,SRCOFFS_80COL,0,128,512,hSrcDC,0,0,256,512,MERGECOPY);
 
-//	SelectObject(hDstDC,GetStockObject(NULL_BRUSH));
-//	DeleteObject(hBrush);
-//	DeleteDC(hSrcDC);
-//	DeleteObject(hBitmap);
+	//	SelectObject(hDstDC,GetStockObject(NULL_BRUSH));
+	//	DeleteObject(hBrush);
+	//	DeleteDC(hSrcDC);
+	//	DeleteObject(hBitmap);
 }
 
 //===========================================================================
 void DrawTextSource (SDL_Surface * dc)
 {
-//	HDC     memdc  = CreateCompatibleDC(dc);
-//	HBITMAP bitmap = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
-//	SelectObject(memdc,bitmap);
+	//	HDC     memdc  = CreateCompatibleDC(dc);
+	//	HBITMAP bitmap = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
+	//	SelectObject(memdc,bitmap);
 	if(charset40 == NULL) return;
 	SDL_Rect srcrect, dstrect;
 
@@ -988,13 +988,13 @@ void DrawTextSource (SDL_Surface * dc)
 	srcrect.x = 0;
 	srcrect.y = 0;
 	SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
-// 	BitBlt(
-// 		dc                // hdcDest
-// 		,SRCOFFS_40COL ,0 // nXDest, nYDest
-// 		,256 ,512         // nWidth, nHeight
-// 		,memdc            // hdcSrc
-// 		,0 ,0             // nXSrc, nYSrc
-// 		,SRCCOPY );       // dwRop
+	// 	BitBlt(
+	// 		dc                // hdcDest
+	// 		,SRCOFFS_40COL ,0 // nXDest, nYDest
+	// 		,256 ,512         // nWidth, nHeight
+	// 		,memdc            // hdcSrc
+	// 		,0 ,0             // nXSrc, nYSrc
+	// 		,SRCCOPY );       // dwRop
 
 	// Chars for Apple ][
 	dstrect.x = SRCOFFS_IIPLUS;
@@ -1006,7 +1006,7 @@ void DrawTextSource (SDL_Surface * dc)
 	srcrect.y = 512;
 	SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
 
-//	BitBlt(dc,SRCOFFS_IIPLUS,0,256,256,memdc,0,512,SRCCOPY);
+	//	BitBlt(dc,SRCOFFS_IIPLUS,0,256,256,memdc,0,512,SRCCOPY);
 
 	// Chars for 80 col mode
 	dstrect.x = SRCOFFS_80COL;
@@ -1019,24 +1019,24 @@ void DrawTextSource (SDL_Surface * dc)
 	srcrect.h = 512;
 	SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
 
-//	StretchBlt(dc,SRCOFFS_80COL,0,128,512,memdc,0,0,256,512,SRCCOPY);
+	//	StretchBlt(dc,SRCOFFS_80COL,0,128,512,memdc,0,0,256,512,SRCCOPY);
 
-//	DeleteDC(memdc);
-//	DeleteObject(bitmap);
+	//	DeleteDC(memdc);
+	//	DeleteObject(bitmap);
 }
 
 //===========================================================================
 void SetLastDrawnImage () {
-  memcpy(vidlastmem+0x400,g_pTextBank0,0x400);
-  if (SW_HIRES)
-    memcpy(vidlastmem+0x2000,g_pHiresBank0,0x2000);
-  if (SW_DHIRES && SW_HIRES)
-    memcpy(vidlastmem,g_pHiresBank1,0x2000);
-  else if (SW_80COL)	// Don't test for !SW_HIRES, as some 80-col text routines have SW_HIRES set (Bug #8300)
-    memcpy(vidlastmem,g_pTextBank1,0x400);
-  int loop;
-  for (loop = 0; loop < 256; loop++)
-    *(memdirty+loop) &= ~2;
+	memcpy(vidlastmem+0x400,g_pTextBank0,0x400);
+	if (SW_HIRES)
+		memcpy(vidlastmem+0x2000,g_pHiresBank0,0x2000);
+	if (SW_DHIRES && SW_HIRES)
+		memcpy(vidlastmem,g_pHiresBank1,0x2000);
+	else if (SW_80COL)	// Don't test for !SW_HIRES, as some 80-col text routines have SW_HIRES set (Bug #8300)
+		memcpy(vidlastmem,g_pTextBank1,0x400);
+	int loop;
+	for (loop = 0; loop < 256; loop++)
+		*(memdirty+loop) &= ~2;
 }
 
 //===========================================================================
@@ -1056,9 +1056,9 @@ bool Update40ColCell (int x, int y, int xpixel, int ypixel, int offset)
 		bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
 		CopySource(xpixel,ypixel,
-			APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
-			(IS_APPLE2 ? SRCOFFS_IIPLUS : SRCOFFS_40COL) + ((ch & 0x0F) << 4),
-			(ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
+				APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
+				(IS_APPLE2 ? SRCOFFS_IIPLUS : SRCOFFS_40COL) + ((ch & 0x0F) << 4),
+				(ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
 
 		return true;
 	}
@@ -1071,10 +1071,10 @@ inline bool _Update80ColumnCell( BYTE c, const int xPixel, const int yPixel, boo
 	bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
 	CopySource(
-		xPixel, yPixel,
-		(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
-		SRCOFFS_80COL + ((c & 15)<<3),
-		((c >>4) <<4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
+			xPixel, yPixel,
+			(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
+			SRCOFFS_80COL + ((c & 15)<<3),
+			((c >>4) <<4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
 
 	return true;
 }
@@ -1105,18 +1105,18 @@ bool Update80ColCell (int x, int y, int xpixel, int ypixel, int offset)
 	BYTE mainval = *(g_pTextBank0 + offset); // main
 
 	if ((auxval  != *(vidlastmem+offset)) ||
-		(mainval != *(vidlastmem+offset+0x400)) ||
-		redrawfull)
+			(mainval != *(vidlastmem+offset+0x400)) ||
+			redrawfull)
 	{
 		CopySource(xpixel,ypixel,
-			(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
-			SRCOFFS_80COL + ((auxval & 15)<<3),
-			((auxval>>4)<<4) + g_nAltCharSetOffset);
+				(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
+				SRCOFFS_80COL + ((auxval & 15)<<3),
+				((auxval>>4)<<4) + g_nAltCharSetOffset);
 
 		CopySource(xpixel+7,ypixel,
-			(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
-			SRCOFFS_80COL + ((mainval & 15)<<3),
-			((mainval>>4)<<4) + g_nAltCharSetOffset );
+				(APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
+				SRCOFFS_80COL + ((mainval & 15)<<3),
+				((mainval>>4)<<4) + g_nAltCharSetOffset );
 
 		bDirty = true;
 	}
@@ -1130,34 +1130,34 @@ bool UpdateDHiResCell (int x, int y, int xpixel, int ypixel, int offset)
 {
 	bool bDirty = false;
 	int  yoffset = 0;
-  while (yoffset < 0x2000) {
-    BYTE byteval1 = (x >  0) ? *(g_pHiresBank0+offset+yoffset-1) : 0;
-    BYTE byteval2 = *(g_pHiresBank1 +offset+yoffset);
-    BYTE byteval3 = *(g_pHiresBank0+offset+yoffset);
-    BYTE byteval4 = (x < 39) ? *(g_pHiresBank1 +offset+yoffset+1) : 0;
-    if ((byteval2 != *(vidlastmem+offset+yoffset)) ||
-        (byteval3 != *(vidlastmem+offset+yoffset+0x2000)) ||
-        ((x >  0) && ((byteval1 & 0x70) != (*(vidlastmem+offset+yoffset+0x1FFF) & 0x70))) ||
-        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem+offset+yoffset+     1) & 0x07))) ||
-        redrawfull) {
-      DWORD dwordval = (byteval1 & 0x70)        | ((byteval2 & 0x7F) << 7) |
-                      ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
+	while (yoffset < 0x2000) {
+		BYTE byteval1 = (x >  0) ? *(g_pHiresBank0+offset+yoffset-1) : 0;
+		BYTE byteval2 = *(g_pHiresBank1 +offset+yoffset);
+		BYTE byteval3 = *(g_pHiresBank0+offset+yoffset);
+		BYTE byteval4 = (x < 39) ? *(g_pHiresBank1 +offset+yoffset+1) : 0;
+		if ((byteval2 != *(vidlastmem+offset+yoffset)) ||
+				(byteval3 != *(vidlastmem+offset+yoffset+0x2000)) ||
+				((x >  0) && ((byteval1 & 0x70) != (*(vidlastmem+offset+yoffset+0x1FFF) & 0x70))) ||
+				((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem+offset+yoffset+     1) & 0x07))) ||
+				redrawfull) {
+			DWORD dwordval = (byteval1 & 0x70)        | ((byteval2 & 0x7F) << 7) |
+				((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
 #define PIXEL  0
 #define COLOR  ((xpixel + PIXEL) & 3)
 #define VALUE  (dwordval >> (4 + PIXEL - COLOR))
-      CopySource(xpixel+PIXEL,ypixel+(yoffset >> 9),7,2,
-                 SRCOFFS_DHIRES+10*HIBYTE(VALUE)+COLOR,LOBYTE(VALUE)<<1);
+			CopySource(xpixel+PIXEL,ypixel+(yoffset >> 9),7,2,
+					SRCOFFS_DHIRES+10*HIBYTE(VALUE)+COLOR,LOBYTE(VALUE)<<1);
 #undef PIXEL
 #define PIXEL  7
-      CopySource(xpixel+PIXEL,ypixel+(yoffset >> 9),7,2,
-                 SRCOFFS_DHIRES+10*HIBYTE(VALUE)+COLOR,LOBYTE(VALUE)<<1);
+			CopySource(xpixel+PIXEL,ypixel+(yoffset >> 9),7,2,
+					SRCOFFS_DHIRES+10*HIBYTE(VALUE)+COLOR,LOBYTE(VALUE)<<1);
 #undef PIXEL
 #undef COLOR
 #undef VALUE
-      bDirty = true;
-    }
-    yoffset += 0x400;
-  }
+			bDirty = true;
+		}
+		yoffset += 0x400;
+	}
 
 	return bDirty;
 }
@@ -1167,22 +1167,22 @@ bool UpdateDHiResCell (int x, int y, int xpixel, int ypixel, int offset)
 BYTE MixColors(BYTE c1, BYTE c2) {	// For tv emulation g_nAppMode
 #define COMBINATION(c1,c2,ref1,ref2) (((c1)==(ref1)&&(c2)==(ref2)) || ((c1)==(ref2)&&(c2)==(ref1)))
 
-  if (c1 == c2)
-	  return c1;
-  if (COMBINATION(c1,c2,HGR_BLUE,HGR_RED))
-	  return HGR_GREY1;
-  else if (COMBINATION(c1,c2,HGR_GREEN,HGR_MAGENTA))
-	  return HGR_GREY2;
-  else if (COMBINATION(c1,c2,HGR_RED,HGR_GREEN))
-	  return HGR_YELLOW;
-  else if (COMBINATION(c1,c2,HGR_BLUE,HGR_GREEN))
-	  return HGR_AQUA;
-  else if (COMBINATION(c1,c2,HGR_BLUE,HGR_MAGENTA))
-	  return HGR_PURPLE;
-  else if (COMBINATION(c1,c2,HGR_RED,HGR_MAGENTA))
-	  return HGR_PINK;
-  else
-	  return MONOCHROME_CUSTOM; // visible failure indicator
+	if (c1 == c2)
+		return c1;
+	if (COMBINATION(c1,c2,HGR_BLUE,HGR_RED))
+		return HGR_GREY1;
+	else if (COMBINATION(c1,c2,HGR_GREEN,HGR_MAGENTA))
+		return HGR_GREY2;
+	else if (COMBINATION(c1,c2,HGR_RED,HGR_GREEN))
+		return HGR_YELLOW;
+	else if (COMBINATION(c1,c2,HGR_BLUE,HGR_GREEN))
+		return HGR_AQUA;
+	else if (COMBINATION(c1,c2,HGR_BLUE,HGR_MAGENTA))
+		return HGR_PURPLE;
+	else if (COMBINATION(c1,c2,HGR_RED,HGR_MAGENTA))
+		return HGR_PINK;
+	else
+		return MONOCHROME_CUSTOM; // visible failure indicator
 
 #undef COMBINATION
 }
@@ -1192,77 +1192,77 @@ BYTE MixColors(BYTE c1, BYTE c2) {	// For tv emulation g_nAppMode
 void CreateColorMixMap() {	// For tv emulation g_nAppMode
 #define FROM_NEIGHBOUR 0x00
 
-  int t,m,b;
-  BYTE cTop, cMid, cBot;
-  WORD mixTop, mixBot;
+	int t,m,b;
+	BYTE cTop, cMid, cBot;
+	WORD mixTop, mixBot;
 
-  for (t=0; t<6; t++)
-    for (m=0; m<6; m++)
-	  for (b=0; b<6; b++) {
-        cTop = t | 0x10;
-		cMid = m | 0x10;
-		cBot = b | 0x10;
-        if (cMid < HGR_BLUE) {
-		  mixTop = mixBot = cMid;
-		} else {
-			if (cTop < HGR_BLUE) {
-		      mixTop = FROM_NEIGHBOUR;
-			} else {
-			  mixTop = MixColors(cMid,cTop);
+	for (t=0; t<6; t++)
+		for (m=0; m<6; m++)
+			for (b=0; b<6; b++) {
+				cTop = t | 0x10;
+				cMid = m | 0x10;
+				cBot = b | 0x10;
+				if (cMid < HGR_BLUE) {
+					mixTop = mixBot = cMid;
+				} else {
+					if (cTop < HGR_BLUE) {
+						mixTop = FROM_NEIGHBOUR;
+					} else {
+						mixTop = MixColors(cMid,cTop);
+					}
+					if (cBot < HGR_BLUE)  {
+						mixBot = FROM_NEIGHBOUR;
+					} else {
+						mixBot = MixColors(cMid,cBot);
+					}
+					if (mixTop == FROM_NEIGHBOUR && mixBot != FROM_NEIGHBOUR) {
+						mixTop = mixBot;
+					} else if (mixBot == FROM_NEIGHBOUR && mixTop != FROM_NEIGHBOUR) {
+						mixBot = mixTop;
+					} else if (mixBot == FROM_NEIGHBOUR && mixTop == FROM_NEIGHBOUR) {
+						mixBot = mixTop = cMid;
+					}
+				}
+				colormixmap[t][m][b] = (mixTop << 8) | mixBot;
 			}
-			if (cBot < HGR_BLUE)  {
-			  mixBot = FROM_NEIGHBOUR;
-			} else {
-			  mixBot = MixColors(cMid,cBot);
-			}
-			if (mixTop == FROM_NEIGHBOUR && mixBot != FROM_NEIGHBOUR) {
-			  mixTop = mixBot;
-			} else if (mixBot == FROM_NEIGHBOUR && mixTop != FROM_NEIGHBOUR) {
-			  mixBot = mixTop;
-			} else if (mixBot == FROM_NEIGHBOUR && mixTop == FROM_NEIGHBOUR) {
-			  mixBot = mixTop = cMid;
-			}
-		}
-		colormixmap[t][m][b] = (mixTop << 8) | mixBot;
-	  }
 #undef FROM_NEIGHBOUR
 }
 
 //===========================================================================
 void /*__stdcall */ MixColorsVertical(int matx, int maty) {	// For tv emulation g_nAppMode
 
-  WORD twoHalfPixel;
-  int bot1idx, bot2idx;
+	WORD twoHalfPixel;
+	int bot1idx, bot2idx;
 
-  if (SW_MIXED && maty > 159) {
-	  if (maty < 161) {
-        bot1idx = hgrpixelmatrix[matx][maty+1] & 0x0F;
-        bot2idx = 0;
-	  } else {
-        bot1idx = bot2idx = 0;
-	  }
-  } else {
-    bot1idx = hgrpixelmatrix[matx][maty+1] & 0x0F;
-    bot2idx = hgrpixelmatrix[matx][maty+2] & 0x0F;
-  }
+	if (SW_MIXED && maty > 159) {
+		if (maty < 161) {
+			bot1idx = hgrpixelmatrix[matx][maty+1] & 0x0F;
+			bot2idx = 0;
+		} else {
+			bot1idx = bot2idx = 0;
+		}
+	} else {
+		bot1idx = hgrpixelmatrix[matx][maty+1] & 0x0F;
+		bot2idx = hgrpixelmatrix[matx][maty+2] & 0x0F;
+	}
 
-  twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty-2] & 0x0F]
-	                        [hgrpixelmatrix[matx][maty-1] & 0x0F]
-                            [hgrpixelmatrix[matx][maty  ] & 0x0F];
-  colormixbuffer[0] = (twoHalfPixel & 0xFF00) >> 8;
-  colormixbuffer[1] = twoHalfPixel & 0x00FF;
+	twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty-2] & 0x0F]
+		[hgrpixelmatrix[matx][maty-1] & 0x0F]
+		[hgrpixelmatrix[matx][maty  ] & 0x0F];
+	colormixbuffer[0] = (twoHalfPixel & 0xFF00) >> 8;
+	colormixbuffer[1] = twoHalfPixel & 0x00FF;
 
-  twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty-1] & 0x0F]
-	                        [hgrpixelmatrix[matx][maty  ] & 0x0F]
-                            [bot1idx];
-  colormixbuffer[2] = (twoHalfPixel & 0xFF00) >> 8;
-  colormixbuffer[3] = twoHalfPixel & 0x00FF;
+	twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty-1] & 0x0F]
+		[hgrpixelmatrix[matx][maty  ] & 0x0F]
+		[bot1idx];
+	colormixbuffer[2] = (twoHalfPixel & 0xFF00) >> 8;
+	colormixbuffer[3] = twoHalfPixel & 0x00FF;
 
-  twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty  ] & 0x0F]
-	                        [bot1idx]
-                            [bot2idx];
-  colormixbuffer[4] = (twoHalfPixel & 0xFF00) >> 8;
-  colormixbuffer[5] = twoHalfPixel & 0x00FF;
+	twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty  ] & 0x0F]
+		[bot1idx]
+		[bot2idx];
+	colormixbuffer[4] = (twoHalfPixel & 0xFF00) >> 8;
+	colormixbuffer[5] = twoHalfPixel & 0x00FF;
 
 }
 
@@ -1270,44 +1270,44 @@ void /*__stdcall */ MixColorsVertical(int matx, int maty) {	// For tv emulation 
 //===========================================================================
 void /*__stdcall */ CopyMixedSource (int x, int y, int sourcex, int sourcey) {	// For tv emulation g_nAppMode
 
-  LPBYTE currsourceptr = g_aSourceStartofLine[sourcey]+sourcex;
-  LPBYTE currdestptr   = frameoffsettable[y<<1] + (x<<1);
-  LPBYTE currptr;
+	LPBYTE currsourceptr = g_aSourceStartofLine[sourcey]+sourcex;
+	LPBYTE currdestptr   = frameoffsettable[y<<1] + (x<<1);
+	LPBYTE currptr;
 
-  int matx = x;
-  int maty = HGR_MATRIX_YOFFSET + y;
-  int count;
-  int bufxoffset;
-  int hgrlinesabove = (y > 0)?   1 : 0;
-  int hgrlinesbelow = SW_MIXED ? ((y < 159)? 1:0) : ((y < 191)? 1:0);
-  int i;
-  int istart        = 2 - (hgrlinesabove << 1);
-  int iend          = 3 + (hgrlinesbelow << 1);
+	int matx = x;
+	int maty = HGR_MATRIX_YOFFSET + y;
+	int count;
+	int bufxoffset;
+	int hgrlinesabove = (y > 0)?   1 : 0;
+	int hgrlinesbelow = SW_MIXED ? ((y < 159)? 1:0) : ((y < 191)? 1:0);
+	int i;
+	int istart        = 2 - (hgrlinesabove << 1);
+	int iend          = 3 + (hgrlinesbelow << 1);
 
-  // transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
-  for (count = 0, bufxoffset = 0;
-       count < 7;
-	   count++, bufxoffset += 2) {
-    hgrpixelmatrix[matx+count][maty] = *(currsourceptr+bufxoffset);
+	// transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
+	for (count = 0, bufxoffset = 0;
+			count < 7;
+			count++, bufxoffset += 2) {
+		hgrpixelmatrix[matx+count][maty] = *(currsourceptr+bufxoffset);
 
-	// color mixing between adjacent scanlines at current x position
-    MixColorsVertical(matx+count, maty);
+		// color mixing between adjacent scanlines at current x position
+		MixColorsVertical(matx+count, maty);
 
-	// transfer up to 6 mixed (half-)pixels of current column to framebuffer
-    currptr = currdestptr+bufxoffset;
-	if (hgrlinesabove)
-		currptr -= framebufferpitch << 1;	// we just should change sign of op: '-' instead of '+'
+		// transfer up to 6 mixed (half-)pixels of current column to framebuffer
+		currptr = currdestptr+bufxoffset;
+		if (hgrlinesabove)
+			currptr -= framebufferpitch << 1;	// we just should change sign of op: '-' instead of '+'
 
-    for (i = istart;
-	     i <= iend;
-	     currptr += framebufferpitch, i++) {	// and vice versa
-         if( ~i & 1 )
-             *currptr = *(currptr+1) = colormixbuffer[i];
-         else
-             *currptr = 0;
+		for (i = istart;
+				i <= iend;
+				currptr += framebufferpitch, i++) {	// and vice versa
+			if( ~i & 1 )
+				*currptr = *(currptr+1) = colormixbuffer[i];
+			else
+				*currptr = 0;
 
+		}
 	}
-  }
 }
 
 
@@ -1316,32 +1316,32 @@ bool UpdateHiResCell (int x, int y, int xpixel, int ypixel, int offset)
 {
 	bool bDirty  = false;
 	int  yoffset = 0;
-  while (yoffset < 0x2000) {
-    BYTE byteval1 = (x >  0) ? *(g_pHiresBank0+offset+yoffset-1) : 0;
-    BYTE byteval2 = *(g_pHiresBank0+offset+yoffset);
-    BYTE byteval3 = (x < 39) ? *(g_pHiresBank0+offset+yoffset+1) : 0;
-    if ((byteval2 != *(vidlastmem+offset+yoffset+0x2000)) ||
-        ((x >  0) && ((byteval1 & 0x60) != (*(vidlastmem+offset+yoffset+0x1FFF) & 0x60))) ||
-        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem+offset+yoffset+0x2001) & 0x03))) ||
-        redrawfull) {
+	while (yoffset < 0x2000) {
+		BYTE byteval1 = (x >  0) ? *(g_pHiresBank0+offset+yoffset-1) : 0;
+		BYTE byteval2 = *(g_pHiresBank0+offset+yoffset);
+		BYTE byteval3 = (x < 39) ? *(g_pHiresBank0+offset+yoffset+1) : 0;
+		if ((byteval2 != *(vidlastmem+offset+yoffset+0x2000)) ||
+				((x >  0) && ((byteval1 & 0x60) != (*(vidlastmem+offset+yoffset+0x1FFF) & 0x60))) ||
+				((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem+offset+yoffset+0x2001) & 0x03))) ||
+				redrawfull) {
 #define COLOFFS  (((byteval1 & 0x60) << 2) | \
-                  ((byteval3 & 0x03) << 5))
-		if (g_videotype == VT_COLOR_TVEMU)
-		{
-  			CopyMixedSource(xpixel >> 1, (ypixel+(yoffset >> 9)) >> 1,
-							SRCOFFS_HIRES+COLOFFS+((x & 1) << 4),(((int)byteval2) << 1));
-		}
-		else
-		{
-			CopySource(xpixel,ypixel+(yoffset >> 9),
-					   14,2,
-					   SRCOFFS_HIRES+COLOFFS+((x & 1) << 4),(((int)byteval2) << 1));
-		}
+		((byteval3 & 0x03) << 5))
+			if (g_videotype == VT_COLOR_TVEMU)
+			{
+				CopyMixedSource(xpixel >> 1, (ypixel+(yoffset >> 9)) >> 1,
+						SRCOFFS_HIRES+COLOFFS+((x & 1) << 4),(((int)byteval2) << 1));
+			}
+			else
+			{
+				CopySource(xpixel,ypixel+(yoffset >> 9),
+						14,2,
+						SRCOFFS_HIRES+COLOFFS+((x & 1) << 4),(((int)byteval2) << 1));
+			}
 #undef COLOFFS
-      bDirty = true;
-    }
-    yoffset += 0x400;
-  }
+			bDirty = true;
+		}
+		yoffset += 0x400;
+	}
 
 	return bDirty;
 }
@@ -1353,11 +1353,11 @@ bool UpdateLoResCell (int x, int y, int xpixel, int ypixel, int offset)
 	if ((val != *(vidlastmem+offset+0x400)) || redrawfull)
 	{
 		CopySource(xpixel,ypixel,
-			14,8,
-			SRCOFFS_LORES+((x & 1) << 1),((val & 0xF) << 4));
+				14,8,
+				SRCOFFS_LORES+((x & 1) << 1),((val & 0xF) << 4));
 		CopySource(xpixel,ypixel+8,
-			14,8,
-			SRCOFFS_LORES+((x & 1) << 1),(val & 0xF0));
+				14,8,
+				SRCOFFS_LORES+((x & 1) << 1),(val & 0xF0));
 		return true;
 	}
 
@@ -1374,25 +1374,25 @@ bool UpdateDLoResCell (int x, int y, int xpixel, int ypixel, int offset)
 	if	(	(auxval != *(vidlastmem+offset)) ||
 			(mainval != *(vidlastmem+offset+0x400)) ||
 			redrawfull
-		)
+			)
 	{
 		CopySource(	xpixel,ypixel,
-			7,8,
-			SRCOFFS_LORES+((x & 1) << 1),((auxval & 0xF) << 4));
+				7,8,
+				SRCOFFS_LORES+((x & 1) << 1),((auxval & 0xF) << 4));
 
 		CopySource(	xpixel,ypixel+8,
-			7,8,
-			SRCOFFS_LORES+((x & 1) << 1),(auxval & 0xF0));
+				7,8,
+				SRCOFFS_LORES+((x & 1) << 1),(auxval & 0xF0));
 
 		//
 
 		CopySource(	xpixel+7,ypixel,
-			7,8,
-			SRCOFFS_LORES+((x & 1) << 1),((mainval & 0xF) << 4));
+				7,8,
+				SRCOFFS_LORES+((x & 1) << 1),((mainval & 0xF) << 4));
 
 		CopySource(	xpixel+7,ypixel+8,
-			7,8,
-			SRCOFFS_LORES+((x & 1) << 1),(mainval & 0xF0));
+				7,8,
+				SRCOFFS_LORES+((x & 1) << 1),(mainval & 0xF0));
 
 		return true;
 	}
@@ -1450,189 +1450,189 @@ BOOL VideoApparentlyDirty ()
 
 //===========================================================================
 void VideoBenchmark () {
-   /*Sleep*/SDL_Delay(1500);	// wait for 1.5 sec before running benchmark
+	/*Sleep*/SDL_Delay(1500);	// wait for 1.5 sec before running benchmark
 
-   // PREPARE TWO DIFFERENT FRAME BUFFERS, EACH OF WHICH HAVE HALF OF THE
-   // BYTES SET TO 0x14 AND THE OTHER HALF SET TO 0xAA
-   int     loop;
-  LPDWORD mem32 = (LPDWORD)mem;
-  for (loop = 4096; loop < 6144; loop++)
-    *(mem32+loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0x14141414
-                                                        : 0xAAAAAAAA;
-  for (loop = 6144; loop < 8192; loop++)
-    *(mem32+loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0xAAAAAAAA
-                                                        : 0x14141414;
+	// PREPARE TWO DIFFERENT FRAME BUFFERS, EACH OF WHICH HAVE HALF OF THE
+	// BYTES SET TO 0x14 AND THE OTHER HALF SET TO 0xAA
+	int     loop;
+	LPDWORD mem32 = (LPDWORD)mem;
+	for (loop = 4096; loop < 6144; loop++)
+		*(mem32+loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0x14141414
+			: 0xAAAAAAAA;
+	for (loop = 6144; loop < 8192; loop++)
+		*(mem32+loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0xAAAAAAAA
+			: 0x14141414;
 
-  // SEE HOW MANY TEXT FRAMES PER SECOND WE CAN PRODUCE WITH NOTHING ELSE
-  // GOING ON, CHANGING HALF OF THE BYTES IN THE VIDEO BUFFER EACH FRAME TO
-  // SIMULATE THE ACTIVITY OF AN AVERAGE GAME
-  DWORD totaltextfps = 0;
-  vidmode            = VF_TEXT;
-  FillMemory(mem+0x400,0x400,0x14);
-  VideoRedrawScreen();
-  DWORD milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds) ;
-  milliseconds = GetTickCount();
-  DWORD cycle = 0;
-  do {
-    if (cycle & 1)
-      FillMemory(mem+0x400,0x400,0x14);
-    else
-      CopyMemory(mem+0x400,mem+((cycle & 2) ? 0x4000 : 0x6000),0x400);
-    VideoRefreshScreen();
-    if (cycle++ >= 3)
-      cycle = 0;
-    totaltextfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+	// SEE HOW MANY TEXT FRAMES PER SECOND WE CAN PRODUCE WITH NOTHING ELSE
+	// GOING ON, CHANGING HALF OF THE BYTES IN THE VIDEO BUFFER EACH FRAME TO
+	// SIMULATE THE ACTIVITY OF AN AVERAGE GAME
+	DWORD totaltextfps = 0;
+	vidmode            = VF_TEXT;
+	FillMemory(mem+0x400,0x400,0x14);
+	VideoRedrawScreen();
+	DWORD milliseconds = GetTickCount();
+	while (GetTickCount() == milliseconds) ;
+	milliseconds = GetTickCount();
+	DWORD cycle = 0;
+	do {
+		if (cycle & 1)
+			FillMemory(mem+0x400,0x400,0x14);
+		else
+			CopyMemory(mem+0x400,mem+((cycle & 2) ? 0x4000 : 0x6000),0x400);
+		VideoRefreshScreen();
+		if (cycle++ >= 3)
+			cycle = 0;
+		totaltextfps++;
+	} while (GetTickCount() - milliseconds < 1000);
 
-  // SEE HOW MANY HIRES FRAMES PER SECOND WE CAN PRODUCE WITH NOTHING ELSE
-  // GOING ON, CHANGING HALF OF THE BYTES IN THE VIDEO BUFFER EACH FRAME TO
-  // SIMULATE THE ACTIVITY OF AN AVERAGE GAME
-  DWORD totalhiresfps = 0;
-  vidmode             = VF_HIRES;
-  FillMemory(mem+0x2000,0x2000,0x14);
-  VideoRedrawScreen();
-  milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds) ;
-  milliseconds = GetTickCount();
-  cycle = 0;
-  do {
-    if (cycle & 1)
-      FillMemory(mem+0x2000,0x2000,0x14);
-    else
-      CopyMemory(mem+0x2000,mem+((cycle & 2) ? 0x4000 : 0x6000),0x2000);
-    VideoRefreshScreen();
-    if (cycle++ >= 3)
-      cycle = 0;
-    totalhiresfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+	// SEE HOW MANY HIRES FRAMES PER SECOND WE CAN PRODUCE WITH NOTHING ELSE
+	// GOING ON, CHANGING HALF OF THE BYTES IN THE VIDEO BUFFER EACH FRAME TO
+	// SIMULATE THE ACTIVITY OF AN AVERAGE GAME
+	DWORD totalhiresfps = 0;
+	vidmode             = VF_HIRES;
+	FillMemory(mem+0x2000,0x2000,0x14);
+	VideoRedrawScreen();
+	milliseconds = GetTickCount();
+	while (GetTickCount() == milliseconds) ;
+	milliseconds = GetTickCount();
+	cycle = 0;
+	do {
+		if (cycle & 1)
+			FillMemory(mem+0x2000,0x2000,0x14);
+		else
+			CopyMemory(mem+0x2000,mem+((cycle & 2) ? 0x4000 : 0x6000),0x2000);
+		VideoRefreshScreen();
+		if (cycle++ >= 3)
+			cycle = 0;
+		totalhiresfps++;
+	} while (GetTickCount() - milliseconds < 1000);
 
-  // DETERMINE HOW MANY 65C02 CLOCK CYCLES WE CAN EMULATE PER SECOND WITH
-  // NOTHING ELSE GOING ON
-  CpuSetupBenchmark();
-  DWORD totalmhz10 = 0;
-  milliseconds     = GetTickCount();
-  while (GetTickCount() == milliseconds) ;
-  milliseconds = GetTickCount();
-  cycle = 0;
-  do {
-    CpuExecute(100000);
-    totalmhz10++;
-  } while (GetTickCount() - milliseconds < 1000);
+	// DETERMINE HOW MANY 65C02 CLOCK CYCLES WE CAN EMULATE PER SECOND WITH
+	// NOTHING ELSE GOING ON
+	CpuSetupBenchmark();
+	DWORD totalmhz10 = 0;
+	milliseconds     = GetTickCount();
+	while (GetTickCount() == milliseconds) ;
+	milliseconds = GetTickCount();
+	cycle = 0;
+	do {
+		CpuExecute(100000);
+		totalmhz10++;
+	} while (GetTickCount() - milliseconds < 1000);
 
-  // IF THE PROGRAM COUNTER IS NOT IN THE EXPECTED RANGE AT THE END OF THE
-  // CPU BENCHMARK, REPORT AN ERROR AND OPTIONALLY TRACK IT DOWN
-  if ((regs.pc < 0x300) || (regs.pc > 0x400))
- /*   if (MessageBox(g_hFrameWindow,
-                   TEXT("The emulator has detected a problem while running ")
-                   TEXT("the CPU benchmark.  Would you like to gather more ")
-                   TEXT("information?"),
-                   TEXT("Benchmarks"),
-                   MB_ICONQUESTION | MB_YESNO | MB_SETFOREGROUND) == IDYES) */
-  {
-	  printf("The emulator has detected a problem while running the CPU benchmark.\n");
+	// IF THE PROGRAM COUNTER IS NOT IN THE EXPECTED RANGE AT THE END OF THE
+	// CPU BENCHMARK, REPORT AN ERROR AND OPTIONALLY TRACK IT DOWN
+	if ((regs.pc < 0x300) || (regs.pc > 0x400))
+		/*   if (MessageBox(g_hFrameWindow,
+				 TEXT("The emulator has detected a problem while running ")
+				 TEXT("the CPU benchmark.  Would you like to gather more ")
+				 TEXT("information?"),
+				 TEXT("Benchmarks"),
+				 MB_ICONQUESTION | MB_YESNO | MB_SETFOREGROUND) == IDYES) */
+	{
+		printf("The emulator has detected a problem while running the CPU benchmark.\n");
 
-      BOOL error  = 0;
-      WORD lastpc = 0x300;
-      int  loop   = 0;
-      while ((loop < 10000) && !error) {
-        CpuSetupBenchmark();
-        CpuExecute(loop);
-        if ((regs.pc < 0x300) || (regs.pc > 0x400))
-          error = 1;
-        else {
-          lastpc = regs.pc;
-          ++loop;
-        }
-      }
-      if (error) {
-      /*  TCHAR outstr[256];
-      wsprintf(outstr,
-                 TEXT("The emulator experienced an error %u clock cycles ")
-                 TEXT("into the CPU benchmark.  Prior to the error, the ")
-                 TEXT("program counter was at $%04X.  After the error, it ")
-                 TEXT("had jumped to $%04X."),
-                 (unsigned)loop,
-                 (unsigned)lastpc,
-                 (unsigned)regs.pc);
-        MessageBox(g_hFrameWindow,
-                   outstr,
-                   TEXT("Benchmarks"),
-                   MB_ICONINFORMATION | MB_SETFOREGROUND);*/
-	printf("The emulator experienced an error %u clock cycles into the CPU benchmark.\n",(unsigned)loop);
-	printf("Prior to the error, the program counter was at $%04X.\n", (unsigned)lastpc);
-	printf(" After the error, it had jumped to $%04X.\n", (unsigned)regs.pc);
-      }
-      else {
-        /*MessageBox(g_hFrameWindow,
-                   TEXT("The emulator was unable to locate the exact ")
-                   TEXT("point of the error.  This probably means that ")
-                   TEXT("the problem is external to the emulator, ")
-                   TEXT("happening asynchronously, such as a problem in ")
-                   TEXT("a timer interrupt handler."),
-                   TEXT("Benchmarks"),
-                   MB_ICONINFORMATION | MB_SETFOREGROUND);*/
-	  printf("The emulator was unable to locate the exact point of the error.\n");
-          printf("This probably means that the problem is external to the emulator, happening asynchronously,\n");
-          printf("such as a problem in a timer interrupt handler.\n");
-      }
-    }
+		BOOL error  = 0;
+		WORD lastpc = 0x300;
+		int  loop   = 0;
+		while ((loop < 10000) && !error) {
+			CpuSetupBenchmark();
+			CpuExecute(loop);
+			if ((regs.pc < 0x300) || (regs.pc > 0x400))
+				error = 1;
+			else {
+				lastpc = regs.pc;
+				++loop;
+			}
+		}
+		if (error) {
+			/*  TCHAR outstr[256];
+					wsprintf(outstr,
+					TEXT("The emulator experienced an error %u clock cycles ")
+					TEXT("into the CPU benchmark.  Prior to the error, the ")
+					TEXT("program counter was at $%04X.  After the error, it ")
+					TEXT("had jumped to $%04X."),
+					(unsigned)loop,
+					(unsigned)lastpc,
+					(unsigned)regs.pc);
+					MessageBox(g_hFrameWindow,
+					outstr,
+					TEXT("Benchmarks"),
+					MB_ICONINFORMATION | MB_SETFOREGROUND);*/
+			printf("The emulator experienced an error %u clock cycles into the CPU benchmark.\n",(unsigned)loop);
+			printf("Prior to the error, the program counter was at $%04X.\n", (unsigned)lastpc);
+			printf(" After the error, it had jumped to $%04X.\n", (unsigned)regs.pc);
+		}
+		else {
+			/*MessageBox(g_hFrameWindow,
+				TEXT("The emulator was unable to locate the exact ")
+				TEXT("point of the error.  This probably means that ")
+				TEXT("the problem is external to the emulator, ")
+				TEXT("happening asynchronously, such as a problem in ")
+				TEXT("a timer interrupt handler."),
+				TEXT("Benchmarks"),
+				MB_ICONINFORMATION | MB_SETFOREGROUND);*/
+			printf("The emulator was unable to locate the exact point of the error.\n");
+			printf("This probably means that the problem is external to the emulator, happening asynchronously,\n");
+			printf("such as a problem in a timer interrupt handler.\n");
+		}
+	}
 
-  // DO A REALISTIC TEST OF HOW MANY FRAMES PER SECOND WE CAN PRODUCE
-  // WITH FULL EMULATION OF THE CPU, JOYSTICK, AND DISK HAPPENING AT
-  // THE SAME TIME
-  DWORD realisticfps = 0;
-  FillMemory(mem+0x2000,0x2000,0xAA);
-  VideoRedrawScreen();
-  milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds) ;
-  milliseconds = GetTickCount();
-  cycle = 0;
-  do {
-    if (realisticfps < 10) {
-      int cycles = 100000;
-      while (cycles > 0) {
-        DWORD executedcycles = CpuExecute(103);
-        cycles -= executedcycles;
-        DiskUpdatePosition(executedcycles);
-        JoyUpdatePosition();
-        VideoUpdateVbl(0);
-	  }
-    }
-    if (cycle & 1)
-      FillMemory(mem+0x2000,0x2000,0xAA);
-    else
-      CopyMemory(mem+0x2000,mem+((cycle & 2) ? 0x4000 : 0x6000),0x2000);
-    VideoRefreshScreen();
-    if (cycle++ >= 3)
-      cycle = 0;
-    realisticfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+	// DO A REALISTIC TEST OF HOW MANY FRAMES PER SECOND WE CAN PRODUCE
+	// WITH FULL EMULATION OF THE CPU, JOYSTICK, AND DISK HAPPENING AT
+	// THE SAME TIME
+	DWORD realisticfps = 0;
+	FillMemory(mem+0x2000,0x2000,0xAA);
+	VideoRedrawScreen();
+	milliseconds = GetTickCount();
+	while (GetTickCount() == milliseconds) ;
+	milliseconds = GetTickCount();
+	cycle = 0;
+	do {
+		if (realisticfps < 10) {
+			int cycles = 100000;
+			while (cycles > 0) {
+				DWORD executedcycles = CpuExecute(103);
+				cycles -= executedcycles;
+				DiskUpdatePosition(executedcycles);
+				JoyUpdatePosition();
+				VideoUpdateVbl(0);
+			}
+		}
+		if (cycle & 1)
+			FillMemory(mem+0x2000,0x2000,0xAA);
+		else
+			CopyMemory(mem+0x2000,mem+((cycle & 2) ? 0x4000 : 0x6000),0x2000);
+		VideoRefreshScreen();
+		if (cycle++ >= 3)
+			cycle = 0;
+		realisticfps++;
+	} while (GetTickCount() - milliseconds < 1000);
 
-  // DISPLAY THE RESULTS
+	// DISPLAY THE RESULTS
 
-/*  VideoDisplayLogo();
-  TCHAR outstr[256];
-  wsprintf(outstr,
-           TEXT("Pure Video FPS:\t%u hires, %u text\n")
-           TEXT("Pure CPU MHz:\t%u.%u%s\n\n")
-           TEXT("EXPECTED AVERAGE VIDEO GAME\n")
-           TEXT("PERFORMANCE: %u FPS"),
-           (unsigned)totalhiresfps,
-           (unsigned)totaltextfps,
-           (unsigned)(totalmhz10/10),
-           (unsigned)(totalmhz10 % 10),
-           (LPCTSTR)(IS_APPLE2 ? TEXT(" (6502)") : TEXT("")),
-           (unsigned)realisticfps);
-  MessageBox(g_hFrameWindow,
-             outstr,
-             TEXT("Benchmarks"),
-             MB_ICONINFORMATION | MB_SETFOREGROUND);*/
-  printf("Pure Video FPS:\t%u hires, %u text\n", (unsigned)totalhiresfps, (unsigned)totaltextfps);
-  printf("Pure CPU MHz:\t%u.%u%s\n\n", (unsigned)(totalmhz10 / 10), (unsigned)(totalmhz10 % 10),
-	 (LPCTSTR)(IS_APPLE2 ? TEXT(" (6502)") : TEXT("")));
-  printf("EXPECTED AVERAGE VIDEO GAME PERFORMANCE:\t%u FPS\n\n", (unsigned)realisticfps);
-  /*Sleep*/SDL_Delay(1500);
+	/*  VideoDisplayLogo();
+			TCHAR outstr[256];
+			wsprintf(outstr,
+			TEXT("Pure Video FPS:\t%u hires, %u text\n")
+			TEXT("Pure CPU MHz:\t%u.%u%s\n\n")
+			TEXT("EXPECTED AVERAGE VIDEO GAME\n")
+			TEXT("PERFORMANCE: %u FPS"),
+			(unsigned)totalhiresfps,
+			(unsigned)totaltextfps,
+			(unsigned)(totalmhz10/10),
+			(unsigned)(totalmhz10 % 10),
+			(LPCTSTR)(IS_APPLE2 ? TEXT(" (6502)") : TEXT("")),
+			(unsigned)realisticfps);
+			MessageBox(g_hFrameWindow,
+			outstr,
+			TEXT("Benchmarks"),
+			MB_ICONINFORMATION | MB_SETFOREGROUND);*/
+	printf("Pure Video FPS:\t%u hires, %u text\n", (unsigned)totalhiresfps, (unsigned)totaltextfps);
+	printf("Pure CPU MHz:\t%u.%u%s\n\n", (unsigned)(totalmhz10 / 10), (unsigned)(totalmhz10 % 10),
+			(LPCTSTR)(IS_APPLE2 ? TEXT(" (6502)") : TEXT("")));
+	printf("EXPECTED AVERAGE VIDEO GAME PERFORMANCE:\t%u FPS\n\n", (unsigned)realisticfps);
+	/*Sleep*/SDL_Delay(1500);
 
 }// VideoBenchmark()
 
@@ -1640,142 +1640,142 @@ void VideoBenchmark () {
 //===========================================================================
 BYTE /*__stdcall*/ VideoCheckMode (WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft)
 {
-  address &= 0xFF;
-  if (address == 0x7F)
-    return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
-  else {
-    BOOL result = 0;
-    switch (address) {
-      case 0x1A: result = SW_TEXT;    break;
-      case 0x1B: result = SW_MIXED;   break;
-      case 0x1D: result = SW_HIRES;   break;
-      case 0x1E: result = g_nAltCharSetOffset;   break;
-      case 0x1F: result = SW_80COL;   break;
-      case 0x7F: result = SW_DHIRES;  break;
-    }
-    return KeybGetKeycode() | (result ? 0x80 : 0);
-  }
+	address &= 0xFF;
+	if (address == 0x7F)
+		return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
+	else {
+		BOOL result = 0;
+		switch (address) {
+			case 0x1A: result = SW_TEXT;    break;
+			case 0x1B: result = SW_MIXED;   break;
+			case 0x1D: result = SW_HIRES;   break;
+			case 0x1E: result = g_nAltCharSetOffset;   break;
+			case 0x1F: result = SW_80COL;   break;
+			case 0x7F: result = SW_DHIRES;  break;
+		}
+		return KeybGetKeycode() | (result ? 0x80 : 0);
+	}
 }
 
 //===========================================================================
 void VideoCheckPage (BOOL force) {
-  if ((displaypage2 != (SW_PAGE2 != 0)) &&
-      (force || (emulmsec-lastpageflip > 500))) {
-    displaypage2 = (SW_PAGE2 != 0);
-    VideoRefreshScreen();
-    hasrefreshed = 1;
-    lastpageflip = emulmsec;
-  }
+	if ((displaypage2 != (SW_PAGE2 != 0)) &&
+			(force || (emulmsec-lastpageflip > 500))) {
+		displaypage2 = (SW_PAGE2 != 0);
+		VideoRefreshScreen();
+		hasrefreshed = 1;
+		lastpageflip = emulmsec;
+	}
 }
 
 //===========================================================================
 BYTE /*__stdcall*/ VideoCheckVbl (WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft)
 {
 	/*
-		// Drol expects = 80
-		68DE A5 02    LDX #02
-		68E0 AD 50 C0 LDA TXTCLR
-		68E3 C9 80    CMP #80
-		68E5 D0 F7    BNE $68DE
+	// Drol expects = 80
+	68DE A5 02    LDX #02
+	68E0 AD 50 C0 LDA TXTCLR
+	68E3 C9 80    CMP #80
+	68E5 D0 F7    BNE $68DE
 
-		6957 A5 02    LDX #02
-		6959 AD 50 C0 LDA TXTCLR
-		695C C9 80    CMP #80
-		695E D0 F7    BNE $68DE
+	6957 A5 02    LDX #02
+	6959 AD 50 C0 LDA TXTCLR
+	695C C9 80    CMP #80
+	695E D0 F7    BNE $68DE
 
-		69D3 A5 02    LDX #02
-		69D5 AD 50 C0 LDA TXTCLR
-		69D8 C9 80    CMP #80
-		69DA D0 F7    BNE $68DE
+	69D3 A5 02    LDX #02
+	69D5 AD 50 C0 LDA TXTCLR
+	69D8 C9 80    CMP #80
+	69DA D0 F7    BNE $68DE
 
-		// Karateka expects < 80
-		07DE AD 19 C0 LDA RDVBLBAR
-		07E1 30 FB    BMI $7DE
+	// Karateka expects < 80
+	07DE AD 19 C0 LDA RDVBLBAR
+	07E1 30 FB    BMI $7DE
 
-		77A1 AD 19 C0 LDA RDVBLBAR
-		77A4 30 FB    BMI $7DE
+	77A1 AD 19 C0 LDA RDVBLBAR
+	77A4 30 FB    BMI $7DE
 
-		// Gumball expects non-zero low-nibble on VBL
-		BBB5 A5 60    LDA $60
-		BBB7 4D 50 C0 EOR TXTCLR
-		BBBA 85 60    STA $60
-		BBBC 29 0F    AND #$0F
-		BBBE F0 F5    BEQ $BBB5
-		BBC0 C9 0F    CMP #$0F
-		BBC2 F0 F1    BEQ $BBB5
+	// Gumball expects non-zero low-nibble on VBL
+	BBB5 A5 60    LDA $60
+	BBB7 4D 50 C0 EOR TXTCLR
+	BBBA 85 60    STA $60
+	BBBC 29 0F    AND #$0F
+	BBBE F0 F5    BEQ $BBB5
+	BBC0 C9 0F    CMP #$0F
+	BBC2 F0 F1    BEQ $BBB5
 
-//		return MemReturnRandomData(dwVBlCounter <= nVBlStop_NTSC);
+	//		return MemReturnRandomData(dwVBlCounter <= nVBlStop_NTSC);
 	if (dwVBlCounter <= nVBlStop_NTSC)
-		return (BYTE)(dwVBlCounter & 0x7F); // 0x00;
+	return (BYTE)(dwVBlCounter & 0x7F); // 0x00;
 	else
-		return 0x80 | ((BYTE)(dwVBlCounter & 1));
+	return 0x80 | ((BYTE)(dwVBlCounter & 1));
 	*/
 
 	bool bVblBar;
 	VideoGetScannerAddress(&bVblBar, nCyclesLeft);
-    BYTE r = KeybGetKeycode();
-    return (r & ~0x80) | ((bVblBar) ? 0x80 : 0);
- }
+	BYTE r = KeybGetKeycode();
+	return (r & ~0x80) | ((bVblBar) ? 0x80 : 0);
+}
 
 //===========================================================================
 void VideoChooseColor () { // will implement later. May be...???? ^_^
-//   CHOOSECOLOR cc;
-//   ZeroMemory(&cc,sizeof(CHOOSECOLOR));
-//   cc.lStructSize     = sizeof(CHOOSECOLOR);
-//   cc.hwndOwner       = g_hFrameWindow;
-//   cc.rgbResult       = monochrome;
-//   cc.lpCustColors    = customcolors;
-//   cc.Flags           = CC_RGBINIT | CC_SOLIDCOLOR;
-//   if (ChooseColor(&cc)) {
-//     monochrome = cc.rgbResult;
-//     VideoReinitialize();
-//     if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG))
-//       VideoRedrawScreen();
-//     RegSaveValue(TEXT("Configuration"),TEXT("Monochrome Color"),1,monochrome);
-//   }
+	//   CHOOSECOLOR cc;
+	//   ZeroMemory(&cc,sizeof(CHOOSECOLOR));
+	//   cc.lStructSize     = sizeof(CHOOSECOLOR);
+	//   cc.hwndOwner       = g_hFrameWindow;
+	//   cc.rgbResult       = monochrome;
+	//   cc.lpCustColors    = customcolors;
+	//   cc.Flags           = CC_RGBINIT | CC_SOLIDCOLOR;
+	//   if (ChooseColor(&cc)) {
+	//     monochrome = cc.rgbResult;
+	//     VideoReinitialize();
+	//     if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG))
+	//       VideoRedrawScreen();
+	//     RegSaveValue(TEXT("Configuration"),TEXT("Monochrome Color"),1,monochrome);
+	//   }
 }
 
 //===========================================================================
 void VideoDestroy () {
-// Just free our SDL surfaces and free vidlastmem
-  // DESTROY BUFFERS
-  //VirtualFree(framebufferinfo,0,MEM_RELEASE);
-//  VirtualFree(g_pSourceHeader     ,0,MEM_RELEASE);
-  VirtualFree(vidlastmem, 0, MEM_RELEASE);
-/*  framebufferinfo = NULL;
-  g_pSourceHeader      = NULL;*/
-  vidlastmem      = NULL;
-  // DESTROY FRAME BUFFER
-//  DeleteDC(g_hDeviceDC);
-  if(g_hDeviceBitmap) SDL_FreeSurface(g_hDeviceBitmap);
-  g_hDeviceBitmap = NULL;
+	// Just free our SDL surfaces and free vidlastmem
+	// DESTROY BUFFERS
+	//VirtualFree(framebufferinfo,0,MEM_RELEASE);
+	//  VirtualFree(g_pSourceHeader     ,0,MEM_RELEASE);
+	VirtualFree(vidlastmem, 0, MEM_RELEASE);
+	/*  framebufferinfo = NULL;
+			g_pSourceHeader      = NULL;*/
+	vidlastmem      = NULL;
+	// DESTROY FRAME BUFFER
+	//  DeleteDC(g_hDeviceDC);
+	if(g_hDeviceBitmap) SDL_FreeSurface(g_hDeviceBitmap);
+	g_hDeviceBitmap = NULL;
 
-  if(g_origscreen) SDL_FreeSurface(g_origscreen);
-  g_origscreen = NULL;
+	if(g_origscreen) SDL_FreeSurface(g_origscreen);
+	g_origscreen = NULL;
 
-  if(g_hStatusSurface) SDL_FreeSurface(g_hStatusSurface);
-  g_hStatusSurface = NULL;
+	if(g_hStatusSurface) SDL_FreeSurface(g_hStatusSurface);
+	g_hStatusSurface = NULL;
 
-//   g_hDeviceDC     = (HDC)0;
-//   g_hDeviceBitmap = (HBITMAP)0;
+	//   g_hDeviceDC     = (HDC)0;
+	//   g_hDeviceBitmap = (HBITMAP)0;
 
-  // DESTROY SOURCE IMAGE
-  if(g_hSourceBitmap) SDL_FreeSurface(g_hSourceBitmap);
-  g_hSourceBitmap = NULL;
-//  g_hSourceBitmap = (HBITMAP)0;
+	// DESTROY SOURCE IMAGE
+	if(g_hSourceBitmap) SDL_FreeSurface(g_hSourceBitmap);
+	g_hSourceBitmap = NULL;
+	//  g_hSourceBitmap = (HBITMAP)0;
 
-  // DESTROY LOGO
-  if (g_hLogoBitmap)  SDL_FreeSurface(g_hLogoBitmap);
-  g_hLogoBitmap = NULL;
-//    g_hLogoBitmap = (HBITMAP)0;
+	// DESTROY LOGO
+	if (g_hLogoBitmap)  SDL_FreeSurface(g_hLogoBitmap);
+	g_hLogoBitmap = NULL;
+	//    g_hLogoBitmap = (HBITMAP)0;
 
-  if(charset40) SDL_FreeSurface(charset40);
-  charset40 = NULL;
-  // DESTROY PALETTE
-/*  if (g_hPalette) {
-    DeleteObject(g_hPalette);
-    g_hPalette = (HPALETTE)0;
-  }*/
+	if(charset40) SDL_FreeSurface(charset40);
+	charset40 = NULL;
+	// DESTROY PALETTE
+	/*  if (g_hPalette) {
+			DeleteObject(g_hPalette);
+			g_hPalette = (HPALETTE)0;
+			}*/
 }
 
 //===========================================================================
@@ -1786,18 +1786,18 @@ void VideoDestroy () {
 //	BitBlt(framedc,0,0,560,384,memdc,0,0,SRCCOPY);
 //	DeleteDC(memdc);
 /*	HDC hSrcDC = CreateCompatibleDC( hDstDC );
-	SelectObject( hSrcDC, g_hLogoBitmap );
-	BitBlt(
+		SelectObject( hSrcDC, g_hLogoBitmap );
+		BitBlt(
 		hDstDC,   // hdcDest
 		0, 0,     // nXDest, nYDest
 		560, 384, // nWidth, nHeight // HACK: HARD-CODED
 		hSrcDC,   // hdcSrc
 		0, 0,     // nXSrc, nYSrc
 		SRCCOPY   // dwRop
-	);
+		);
 
-	DeleteObject( hSrcDC );
-	hSrcDC = NULL;*/
+		DeleteObject( hSrcDC );
+		hSrcDC = NULL;*/
 //}
 
 //===========================================================================
@@ -1807,7 +1807,7 @@ void VideoDisplayLogo () {
 	if(!g_hLogoBitmap) return; // nothing to display?
 	if(screen->format->palette && g_hLogoBitmap->format->palette)
 		SDL_SetColors(screen, g_hLogoBitmap->format->palette->colors,
-			      0, g_hLogoBitmap->format->palette->ncolors);
+				0, g_hLogoBitmap->format->palette->ncolors);
 
 	drect.x = drect.y = srect.x = srect.y = 0;
 	drect.w = screen->w;
@@ -1815,315 +1815,315 @@ void VideoDisplayLogo () {
 	srect.w = g_hLogoBitmap->w;
 	srect.h = g_hLogoBitmap->h;
 
-//	SDL_BlitSurface(g_hLogoBitmap, NULL, screen, NULL);
+	//	SDL_BlitSurface(g_hLogoBitmap, NULL, screen, NULL);
 	SDL_SoftStretch(g_hLogoBitmap,&srect,screen,&drect);
 	SDL_SoftStretch(g_hLogoBitmap,&srect,g_origscreen,&drect);
 	SDL_Flip(screen);
-// 	HDC hFrameDC = FrameGetDC();
-//
-// 	// DRAW THE LOGO
-// 	HBRUSH brush = CreateSolidBrush(PALETTERGB(0x70,0x30,0xE0));
-// 	if (g_hLogoBitmap)
-// 	{
-// 		VideoDrawLogoBitmap( hFrameDC );
-// 	}
-// 	else
-// 	{
-// 		SelectObject(hFrameDC,brush);
-// 		SelectObject(hFrameDC,GetStockObject(NULL_PEN));
-// 		Rectangle(hFrameDC,0,0,560+1,384+1);
-// 	}
-//
-// 	// DRAW THE VERSION NUMBER
-// 	HFONT font = CreateFont(-20,0,0,0,FW_NORMAL,0,0,0,ANSI_CHARSET,
-// 							OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,
-// 							VARIABLE_PITCH | 4 | FF_SWISS,
-// 							TEXT("Arial"));
-// 	SelectObject(hFrameDC,font);
-// 	SetTextAlign(hFrameDC,TA_RIGHT | TA_TOP);
-// 	SetBkMode(hFrameDC,TRANSPARENT);
-//
-// 	#define VERSION_TXT "Version "
-// 	char* szVersion = new char[strlen(VERSION_TXT) + strlen(VERSIONSTRING) + 1];
-// 	strcpy(&szVersion[0], VERSION_TXT);
-// 	strcpy(&szVersion[strlen(VERSION_TXT)], VERSIONSTRING);
-// 	szVersion[strlen(szVersion)] = 0x00;
-//
-// 	#define  DRAWVERSION(x,y,c)  SetTextColor(hFrameDC,c);
-// 								TextOut(hFrameDC,
-// 										540+x,358+y,
-// 										szVersion,
-// 										strlen(szVersion));
-//
-// 	if (GetDeviceCaps(hFrameDC,PLANES) * GetDeviceCaps(hFrameDC,BITSPIXEL) <= 4) {
-// 	DRAWVERSION( 2, 2,RGB(0x00,0x00,0x00));
-// 	DRAWVERSION( 1, 1,RGB(0x00,0x00,0x00));
-// 	DRAWVERSION( 0, 0,RGB(0xFF,0x00,0xFF));
-// 	}
-// 	else {
-// 	DRAWVERSION( 1, 1,PALETTERGB(0x30,0x30,0x70));
-// 	DRAWVERSION(-1,-1,PALETTERGB(0xC0,0x70,0xE0));
-// 	DRAWVERSION( 0, 0,PALETTERGB(0x70,0x30,0xE0));
-// 	}
-//
-// 	delete [] szVersion;
-// #undef  DRAWVERSION
-//
-// 	FrameReleaseDC();
-// 	DeleteObject(brush);
-// 	DeleteObject(font);
+	// 	HDC hFrameDC = FrameGetDC();
+	//
+	// 	// DRAW THE LOGO
+	// 	HBRUSH brush = CreateSolidBrush(PALETTERGB(0x70,0x30,0xE0));
+	// 	if (g_hLogoBitmap)
+	// 	{
+	// 		VideoDrawLogoBitmap( hFrameDC );
+	// 	}
+	// 	else
+	// 	{
+	// 		SelectObject(hFrameDC,brush);
+	// 		SelectObject(hFrameDC,GetStockObject(NULL_PEN));
+	// 		Rectangle(hFrameDC,0,0,560+1,384+1);
+	// 	}
+	//
+	// 	// DRAW THE VERSION NUMBER
+	// 	HFONT font = CreateFont(-20,0,0,0,FW_NORMAL,0,0,0,ANSI_CHARSET,
+	// 							OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,
+	// 							VARIABLE_PITCH | 4 | FF_SWISS,
+	// 							TEXT("Arial"));
+	// 	SelectObject(hFrameDC,font);
+	// 	SetTextAlign(hFrameDC,TA_RIGHT | TA_TOP);
+	// 	SetBkMode(hFrameDC,TRANSPARENT);
+	//
+	// 	#define VERSION_TXT "Version "
+	// 	char* szVersion = new char[strlen(VERSION_TXT) + strlen(VERSIONSTRING) + 1];
+	// 	strcpy(&szVersion[0], VERSION_TXT);
+	// 	strcpy(&szVersion[strlen(VERSION_TXT)], VERSIONSTRING);
+	// 	szVersion[strlen(szVersion)] = 0x00;
+	//
+	// 	#define  DRAWVERSION(x,y,c)  SetTextColor(hFrameDC,c);
+	// 								TextOut(hFrameDC,
+	// 										540+x,358+y,
+	// 										szVersion,
+	// 										strlen(szVersion));
+	//
+	// 	if (GetDeviceCaps(hFrameDC,PLANES) * GetDeviceCaps(hFrameDC,BITSPIXEL) <= 4) {
+	// 	DRAWVERSION( 2, 2,RGB(0x00,0x00,0x00));
+	// 	DRAWVERSION( 1, 1,RGB(0x00,0x00,0x00));
+	// 	DRAWVERSION( 0, 0,RGB(0xFF,0x00,0xFF));
+	// 	}
+	// 	else {
+	// 	DRAWVERSION( 1, 1,PALETTERGB(0x30,0x30,0x70));
+	// 	DRAWVERSION(-1,-1,PALETTERGB(0xC0,0x70,0xE0));
+	// 	DRAWVERSION( 0, 0,PALETTERGB(0x70,0x30,0xE0));
+	// 	}
+	//
+	// 	delete [] szVersion;
+	// #undef  DRAWVERSION
+	//
+	// 	FrameReleaseDC();
+	// 	DeleteObject(brush);
+	// 	DeleteObject(font);
 }
 
 //===========================================================================
 BOOL VideoHasRefreshed () {
-  BOOL result = hasrefreshed;
-  hasrefreshed = 0;
-  return result;
+	BOOL result = hasrefreshed;
+	hasrefreshed = 0;
+	return result;
 }
 
 //===========================================================================
 void VideoInitialize () {
 	SDL_Surface * tmp_surface;
-  // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
-  vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
-  ZeroMemory(vidlastmem,0x10000);
+	// CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
+	vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
+	ZeroMemory(vidlastmem,0x10000);
 
-  // LOAD THE splash screen
-  tmp_surface = SDL_LoadBMP("splash.bmp");
-  if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
-  	else fprintf(stderr, "Video: splash.bmp was not loaded\n");
-  SDL_FreeSurface(tmp_surface);
+	// LOAD THE splash screen
+	tmp_surface = SDL_LoadBMP("splash.bmp");
+	if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
+	else fprintf(stderr, "Video: splash.bmp was not loaded\n");
+	SDL_FreeSurface(tmp_surface);
 
-  // LOAD APPLE CHARSET40
-  tmp_surface = SDL_LoadBMP("charset40.bmp");
-  if(tmp_surface != NULL)  charset40 = SDL_DisplayFormat(tmp_surface);
-  	else fprintf(stderr, "Video: Apple text is not unavailable: charset40.bmp was not loaded\n");
-  SDL_FreeSurface(tmp_surface);
+	// LOAD APPLE CHARSET40
+	tmp_surface = SDL_LoadBMP("charset40.bmp");
+	if(tmp_surface != NULL)  charset40 = SDL_DisplayFormat(tmp_surface);
+	else fprintf(stderr, "Video: Apple text is not unavailable: charset40.bmp was not loaded\n");
+	SDL_FreeSurface(tmp_surface);
 
-  // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
-  // THE BITMAPINFO STRUCTURE
-  CreateIdentityPalette();
+	// CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
+	// THE BITMAPINFO STRUCTURE
+	CreateIdentityPalette();
 
-  // PREFILL THE 16 CUSTOM COLORS AND MAKE SURE TO INCLUDE THE CURRENT MONOCHROME COLOR
-  for (int index = DARK_RED; index <= NUM_COLOR_PALETTE; index++)
-    customcolors[index-DARK_RED] = RGB(framebufferinfo[index].r,
-                                       framebufferinfo[index].g,
-                                       framebufferinfo[index].b);
-// bmiColors
-  // CREATE THE FRAME BUFFER DIB SECTION AND DEVICE CONTEXT,
-  // CREATE THE SOURCE IMAGE DIB SECTION AND DRAW INTO THE SOURCE BIT BUFFER
-  CreateDIBSections();
+	// PREFILL THE 16 CUSTOM COLORS AND MAKE SURE TO INCLUDE THE CURRENT MONOCHROME COLOR
+	for (int index = DARK_RED; index <= NUM_COLOR_PALETTE; index++)
+		customcolors[index-DARK_RED] = RGB(framebufferinfo[index].r,
+				framebufferinfo[index].g,
+				framebufferinfo[index].b);
+	// bmiColors
+	// CREATE THE FRAME BUFFER DIB SECTION AND DEVICE CONTEXT,
+	// CREATE THE SOURCE IMAGE DIB SECTION AND DRAW INTO THE SOURCE BIT BUFFER
+	CreateDIBSections();
 
-  // RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
-  VideoResetState();
+	// RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
+	VideoResetState();
 }
 
 //===========================================================================
 void VideoRealizePalette (/*HDC dc*/) {
-//   if (g_hPalette) {
-//     SelectPalette(dc,g_hPalette,0);
-//     RealizePalette(dc);
-//   }
+	//   if (g_hPalette) {
+	//     SelectPalette(dc,g_hPalette,0);
+	//     RealizePalette(dc);
+	//   }
 }
 
 //===========================================================================
 void VideoRedrawScreen () {
-  redrawfull = 1;
-  VideoRefreshScreen();
+	redrawfull = 1;
+	VideoRefreshScreen();
 }
 
 //===========================================================================
 void VideoRefreshScreen () {
-  LPBYTE addr    = framebufferbits;
-  LONG/*int*/   pitch   = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
-// I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
-  //  HDC    framedc = FrameGetVideoDC(&addr,&pitch);
-  CreateFrameOffsetTable(addr,pitch);
+	LPBYTE addr    = framebufferbits;
+	LONG/*int*/   pitch   = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
+	// I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
+	//  HDC    framedc = FrameGetVideoDC(&addr,&pitch);
+	CreateFrameOffsetTable(addr,pitch);
 
-  int src_locked = 0;
-  if ( SDL_MUSTLOCK(g_hSourceBitmap) ) {
-	  SDL_LockSurface(g_hSourceBitmap);
-	  src_locked = 1; // the source bitmap is locked
-  }
-  int frm_locked = 0;
-  if ( SDL_MUSTLOCK(g_hDeviceBitmap) ) {
-	  SDL_LockSurface(g_hDeviceBitmap);
-	  frm_locked = 1; // the frame bitmap is locked
-  }
+	int src_locked = 0;
+	if ( SDL_MUSTLOCK(g_hSourceBitmap) ) {
+		SDL_LockSurface(g_hSourceBitmap);
+		src_locked = 1; // the source bitmap is locked
+	}
+	int frm_locked = 0;
+	if ( SDL_MUSTLOCK(g_hDeviceBitmap) ) {
+		SDL_LockSurface(g_hDeviceBitmap);
+		frm_locked = 1; // the frame bitmap is locked
+	}
 
 
-  // CHECK EACH CELL FOR CHANGED BYTES.  REDRAW PIXELS FOR THE CHANGED BYTES
-  // IN THE FRAME BUFFER.  MARK CELLS IN WHICH REDRAWING HAS TAKEN PLACE AS
-  // DIRTY.
-  g_pHiresBank1  = MemGetAuxPtr (0x2000 << displaypage2);
-  g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2);
-  g_pTextBank1   = MemGetAuxPtr (0x400  << displaypage2);
-  g_pTextBank0  = MemGetMainPtr(0x400  << displaypage2);
-  ZeroMemory(celldirty,40*32);
-  UpdateFunc_t update = SW_TEXT
-	? SW_80COL
+	// CHECK EACH CELL FOR CHANGED BYTES.  REDRAW PIXELS FOR THE CHANGED BYTES
+	// IN THE FRAME BUFFER.  MARK CELLS IN WHICH REDRAWING HAS TAKEN PLACE AS
+	// DIRTY.
+	g_pHiresBank1  = MemGetAuxPtr (0x2000 << displaypage2);
+	g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2);
+	g_pTextBank1   = MemGetAuxPtr (0x400  << displaypage2);
+	g_pTextBank0  = MemGetMainPtr(0x400  << displaypage2);
+	ZeroMemory(celldirty,40*32);
+	UpdateFunc_t update = SW_TEXT
+		? SW_80COL
 		? Update80ColCell
 		: Update40ColCell
-	: SW_HIRES
+		: SW_HIRES
 		? (SW_DHIRES && SW_80COL)
-			? UpdateDHiResCell
-			: UpdateHiResCell
+		? UpdateDHiResCell
+		: UpdateHiResCell
 		: (SW_DHIRES && SW_80COL)
-			? UpdateDLoResCell
-			: UpdateLoResCell;
+		? UpdateDLoResCell
+		: UpdateLoResCell;
 
-  BOOL anydirty = 0;
-  int  y        = 0;
-  int  ypixel   = 0;
-  while (y < 20) {
-    int offset = ((y & 7) << 7) + ((y >> 3) * 40);
-    int x      = 0;
-    int xpixel = 0;
-    while (x < 40) {
-      anydirty |= celldirty[x][y] = update(x,y,xpixel,ypixel,offset+x);
-      ++x;
-      xpixel += 14;
-    }
-    ++y;
-    ypixel += 16;
-  }
+	BOOL anydirty = 0;
+	int  y        = 0;
+	int  ypixel   = 0;
+	while (y < 20) {
+		int offset = ((y & 7) << 7) + ((y >> 3) * 40);
+		int x      = 0;
+		int xpixel = 0;
+		while (x < 40) {
+			anydirty |= celldirty[x][y] = update(x,y,xpixel,ypixel,offset+x);
+			++x;
+			xpixel += 14;
+		}
+		++y;
+		ypixel += 16;
+	}
 
-  if (SW_MIXED)
-    update = SW_80COL ? Update80ColCell
-                      : Update40ColCell;
+	if (SW_MIXED)
+		update = SW_80COL ? Update80ColCell
+			: Update40ColCell;
 
-  while (y < 24) {
-    int offset = ((y & 7) << 7) + ((y >> 3) * 40);
-    int x      = 0;
-    int xpixel = 0;
-    while (x < 40) {
-      anydirty |= celldirty[x][y] = update(x,y,xpixel,ypixel,offset+x);
-      ++x;
-      xpixel += 14;
-    }
-    ++y;
-    ypixel += 16;
-  }
+	while (y < 24) {
+		int offset = ((y & 7) << 7) + ((y >> 3) * 40);
+		int x      = 0;
+		int xpixel = 0;
+		while (x < 40) {
+			anydirty |= celldirty[x][y] = update(x,y,xpixel,ypixel,offset+x);
+			++x;
+			xpixel += 14;
+		}
+		++y;
+		ypixel += 16;
+	}
 
-  if(frm_locked) SDL_UnlockSurface(g_hDeviceBitmap);
-  if(src_locked) SDL_UnlockSurface(g_hSourceBitmap);
-  // Clear this flag after TEXT screen has been updated
-  g_bTextFlashFlag = false;
+	if(frm_locked) SDL_UnlockSurface(g_hDeviceBitmap);
+	if(src_locked) SDL_UnlockSurface(g_hSourceBitmap);
+	// Clear this flag after TEXT screen has been updated
+	g_bTextFlashFlag = false;
 
-  SDL_Rect srect;
-  srect.x = screen->w - STATUS_PANEL_W - 5;
-  srect.y = screen->h - STATUS_PANEL_H - 5;
+	SDL_Rect srect;
+	srect.x = screen->w - STATUS_PANEL_W - 5;
+	srect.y = screen->h - STATUS_PANEL_H - 5;
 
-  int bStatusShow = g_iStatusCycle;
-  if(g_iStatusCycle > 0) {
-//		double led_fades[SHOW_CYCLES + 1] = {0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.85,0.88,0.92,0.95,0.94,0.96,0.97,0.98,0.99};
-//		double nowleds = led_fades[g_iStatusCycle];
-//		printf("g_iStatusCycle=%d\tLeds: %f\n",g_iStatusCycle,nowleds);
-//		surface_fader(g_hStatusSurface, nowleds, nowleds, nowleds, -1, 0);
+	int bStatusShow = g_iStatusCycle;
+	if(g_iStatusCycle > 0) {
+		//		double led_fades[SHOW_CYCLES + 1] = {0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.85,0.88,0.92,0.95,0.94,0.96,0.97,0.98,0.99};
+		//		double nowleds = led_fades[g_iStatusCycle];
+		//		printf("g_iStatusCycle=%d\tLeds: %f\n",g_iStatusCycle,nowleds);
+		//		surface_fader(g_hStatusSurface, nowleds, nowleds, nowleds, -1, 0);
 
-	  g_iStatusCycle--;
-	  if(!g_iStatusCycle) {
-	  		HD_ResetStatus();	// just do not know other way to switch off HD leds
+		g_iStatusCycle--;
+		if(!g_iStatusCycle) {
+			HD_ResetStatus();	// just do not know other way to switch off HD leds
 
-	  }
-  }
-  // New simplified code:
-  // . Oliver Schmidt gets a flickering mouse cursor with this code
-	  if (/*framedc &&*/ anydirty)
-	  {
-// Draw up entire Apple 2 screen
-	    if(!g_WindowResized)
-		  SDL_BlitSurface(g_hDeviceBitmap, NULL, screen, NULL);
+		}
+	}
+	// New simplified code:
+	// . Oliver Schmidt gets a flickering mouse cursor with this code
+	if (/*framedc &&*/ anydirty)
+	{
+		// Draw up entire Apple 2 screen
+		if(!g_WindowResized)
+			SDL_BlitSurface(g_hDeviceBitmap, NULL, screen, NULL);
 		else {
 			SDL_SoftStretch(g_hDeviceBitmap,&origRect,g_origscreen,&newRect);
 			SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
 		}
-		  if(bStatusShow && g_ShowLeds) SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
-		  SDL_Flip(screen);	// flip SDL buffers
-	//	BitBlt(framedc,0,0,560,384,g_hDeviceDC,0,0,SRCCOPY);
-	//	GdiFlush();
-	  }
-	  else if(bStatusShow) {
-		  if(/*bStatusShow*/ g_ShowLeds) SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
-		  SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
-	  }
+		if(bStatusShow && g_ShowLeds) SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
+		SDL_Flip(screen);	// flip SDL buffers
+		//	BitBlt(framedc,0,0,560,384,g_hDeviceDC,0,0,SRCCOPY);
+		//	GdiFlush();
+	}
+	else if(bStatusShow) {
+		if(/*bStatusShow*/ g_ShowLeds) SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
+		SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
+	}
 
-//  FrameReleaseVideoDC();
-  SetLastDrawnImage();
-  redrawfull = 0;
+	//  FrameReleaseVideoDC();
+	SetLastDrawnImage();
+	redrawfull = 0;
 }
 
 //===========================================================================
 void VideoReinitialize () {
-  CreateIdentityPalette();
-  CreateDIBSections();
+	CreateIdentityPalette();
+	CreateDIBSections();
 }
 
 //===========================================================================
 void VideoResetState () {
-  g_nAltCharSetOffset     = 0;
-  displaypage2 = 0;
-  vidmode      = VF_TEXT;
-  redrawfull   = 1;
+	g_nAltCharSetOffset     = 0;
+	displaypage2 = 0;
+	vidmode      = VF_TEXT;
+	redrawfull   = 1;
 }
 
 //===========================================================================
 BYTE /*__stdcall*/ VideoSetMode (WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft)
 {
-  address &= 0xFF;
-  DWORD oldpage2 = SW_PAGE2;
-  int   oldvalue = g_nAltCharSetOffset+(int)(vidmode & ~(VF_MASK2 | VF_PAGE2));
-  switch (address) {
-    case 0x00: vidmode &= ~VF_MASK2;   break;
-    case 0x01: vidmode |=  VF_MASK2;   break;
-    case 0x0C: if (!IS_APPLE2) vidmode &= ~VF_80COL;   break;
-    case 0x0D: if (!IS_APPLE2) vidmode |=  VF_80COL;   break;
-    case 0x0E: if (!IS_APPLE2) g_nAltCharSetOffset = 0;           break;	// Alternate char set off
-    case 0x0F: if (!IS_APPLE2) g_nAltCharSetOffset = 256;         break;	// Alternate char set on
-    case 0x50: vidmode &= ~VF_TEXT;    break;
-    case 0x51: vidmode |=  VF_TEXT;    break;
-    case 0x52: vidmode &= ~VF_MIXED;   break;
-    case 0x53: vidmode |=  VF_MIXED;   break;
-    case 0x54: vidmode &= ~VF_PAGE2;   break;
-    case 0x55: vidmode |=  VF_PAGE2;   break;
-    case 0x56: vidmode &= ~VF_HIRES;   break;
-    case 0x57: vidmode |=  VF_HIRES;   break;
-    case 0x5E: if (!IS_APPLE2) vidmode |=  VF_DHIRES;  break;
-    case 0x5F: if (!IS_APPLE2) vidmode &= ~VF_DHIRES;  break;
-  }
-  if (SW_MASK2)
-    vidmode &= ~VF_PAGE2;
-  if (oldvalue != g_nAltCharSetOffset+(int)(vidmode & ~(VF_MASK2 | VF_PAGE2))) {
-    graphicsmode = !SW_TEXT;
-    redrawfull   = 1;
-  }
-  if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
-    static DWORD lasttime = 0;
-    DWORD currtime = GetTickCount();
-    if (currtime-lasttime >= 20)
-      lasttime = currtime;
-    else
-      oldpage2 = SW_PAGE2;
-  }
-  if (oldpage2 != SW_PAGE2) {
-    static DWORD lastrefresh = 0;
-    if ((displaypage2 && !SW_PAGE2) || (!behind)) {
-      displaypage2 = (SW_PAGE2 != 0);
-      if (!redrawfull) {
-        VideoRefreshScreen();
-        hasrefreshed = 1;
-        lastrefresh  = emulmsec;
-      }
-    }
-    else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec-lastrefresh >= 20)) {
-      displaypage2 = 0;
-      VideoRefreshScreen();
-      hasrefreshed = 1;
-      lastrefresh  = emulmsec;
-    }
-    lastpageflip = emulmsec;
-  }
-  return MemReadFloatingBus(nCyclesLeft);
+	address &= 0xFF;
+	DWORD oldpage2 = SW_PAGE2;
+	int   oldvalue = g_nAltCharSetOffset+(int)(vidmode & ~(VF_MASK2 | VF_PAGE2));
+	switch (address) {
+		case 0x00: vidmode &= ~VF_MASK2;   break;
+		case 0x01: vidmode |=  VF_MASK2;   break;
+		case 0x0C: if (!IS_APPLE2) vidmode &= ~VF_80COL;   break;
+		case 0x0D: if (!IS_APPLE2) vidmode |=  VF_80COL;   break;
+		case 0x0E: if (!IS_APPLE2) g_nAltCharSetOffset = 0;           break;	// Alternate char set off
+		case 0x0F: if (!IS_APPLE2) g_nAltCharSetOffset = 256;         break;	// Alternate char set on
+		case 0x50: vidmode &= ~VF_TEXT;    break;
+		case 0x51: vidmode |=  VF_TEXT;    break;
+		case 0x52: vidmode &= ~VF_MIXED;   break;
+		case 0x53: vidmode |=  VF_MIXED;   break;
+		case 0x54: vidmode &= ~VF_PAGE2;   break;
+		case 0x55: vidmode |=  VF_PAGE2;   break;
+		case 0x56: vidmode &= ~VF_HIRES;   break;
+		case 0x57: vidmode |=  VF_HIRES;   break;
+		case 0x5E: if (!IS_APPLE2) vidmode |=  VF_DHIRES;  break;
+		case 0x5F: if (!IS_APPLE2) vidmode &= ~VF_DHIRES;  break;
+	}
+	if (SW_MASK2)
+		vidmode &= ~VF_PAGE2;
+	if (oldvalue != g_nAltCharSetOffset+(int)(vidmode & ~(VF_MASK2 | VF_PAGE2))) {
+		graphicsmode = !SW_TEXT;
+		redrawfull   = 1;
+	}
+	if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
+		static DWORD lasttime = 0;
+		DWORD currtime = GetTickCount();
+		if (currtime-lasttime >= 20)
+			lasttime = currtime;
+		else
+			oldpage2 = SW_PAGE2;
+	}
+	if (oldpage2 != SW_PAGE2) {
+		static DWORD lastrefresh = 0;
+		if ((displaypage2 && !SW_PAGE2) || (!behind)) {
+			displaypage2 = (SW_PAGE2 != 0);
+			if (!redrawfull) {
+				VideoRefreshScreen();
+				hasrefreshed = 1;
+				lastrefresh  = emulmsec;
+			}
+		}
+		else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec-lastrefresh >= 20)) {
+			displaypage2 = 0;
+			VideoRefreshScreen();
+			hasrefreshed = 1;
+			lastrefresh  = emulmsec;
+		}
+		lastpageflip = emulmsec;
+	}
+	return MemReadFloatingBus(nCyclesLeft);
 }
 
 //===========================================================================
@@ -2179,7 +2179,7 @@ DWORD VideoSetSnapshot(SS_IO_Video* pSS)
 	//
 
 	graphicsmode = !SW_TEXT;
-    displaypage2 = (SW_PAGE2 != 0);
+	displaypage2 = (SW_PAGE2 != 0);
 
 	return 0;
 }
@@ -2188,101 +2188,101 @@ DWORD VideoSetSnapshot(SS_IO_Video* pSS)
 
 WORD VideoGetScannerAddress(bool* pbVblBar_OUT, const DWORD uExecutedCycles)
 {
-    // get video scanner position
-    //
-    int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
+	// get video scanner position
+	//
+	int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
 
-    // machine state switches
-    //
+	// machine state switches
+	//
 	int nHires    = (SW_HIRES & !SW_TEXT) ? 1 : 0;
-    int nPage2    = (SW_PAGE2) ? 1 : 0;
-    int n80Store = (MemGet80Store()) ? 1 : 0;
+	int nPage2    = (SW_PAGE2) ? 1 : 0;
+	int n80Store = (MemGet80Store()) ? 1 : 0;
 
-    // calculate video parameters according to display standard
-    //
-    int nScanLines  = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
-//    int nVSyncLine  = bVideoScannerNTSC ? kNTSCVSyncLine : kPALVSyncLine; -- not used??
-//    int nScanCycles = nScanLines * kHClocks;					-- not used???
+	// calculate video parameters according to display standard
+	//
+	int nScanLines  = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
+	//    int nVSyncLine  = bVideoScannerNTSC ? kNTSCVSyncLine : kPALVSyncLine; -- not used??
+	//    int nScanCycles = nScanLines * kHClocks;					-- not used???
 
-    // calculate horizontal scanning state
-    //
-    int nHClock = (nCycles + kHPEClock) % kHClocks; // which horizontal scanning clock
-    int nHState = kHClock0State + nHClock; // H state bits
-    if (nHClock >= kHPresetClock) // check for horizontal preset
-    {
-        nHState -= 1; // correct for state preset (two 0 states)
-    }
-    int h_0 = (nHState >> 0) & 1; // get horizontal state bits
-    int h_1 = (nHState >> 1) & 1;
-    int h_2 = (nHState >> 2) & 1;
-    int h_3 = (nHState >> 3) & 1;
-    int h_4 = (nHState >> 4) & 1;
-    int h_5 = (nHState >> 5) & 1;
+	// calculate horizontal scanning state
+	//
+	int nHClock = (nCycles + kHPEClock) % kHClocks; // which horizontal scanning clock
+	int nHState = kHClock0State + nHClock; // H state bits
+	if (nHClock >= kHPresetClock) // check for horizontal preset
+	{
+		nHState -= 1; // correct for state preset (two 0 states)
+	}
+	int h_0 = (nHState >> 0) & 1; // get horizontal state bits
+	int h_1 = (nHState >> 1) & 1;
+	int h_2 = (nHState >> 2) & 1;
+	int h_3 = (nHState >> 3) & 1;
+	int h_4 = (nHState >> 4) & 1;
+	int h_5 = (nHState >> 5) & 1;
 
-    // calculate vertical scanning state
-    //
-    int nVLine  = nCycles / kHClocks; // which vertical scanning line
-    int nVState = kVLine0State + nVLine; // V state bits
-    if ((nVLine >= kVPresetLine)) // check for previous vertical state preset
-    {
-        nVState -= nScanLines; // compensate for preset
-    }
-    int v_A = (nVState >> 0) & 1; // get vertical state bits
-    int v_B = (nVState >> 1) & 1;
-    int v_C = (nVState >> 2) & 1;
-    int v_0 = (nVState >> 3) & 1;
-    int v_1 = (nVState >> 4) & 1;
-    int v_2 = (nVState >> 5) & 1;
-    int v_3 = (nVState >> 6) & 1;
-    int v_4 = (nVState >> 7) & 1;
-//    int v_5 = (nVState >> 8) & 1;	--- not used?
+	// calculate vertical scanning state
+	//
+	int nVLine  = nCycles / kHClocks; // which vertical scanning line
+	int nVState = kVLine0State + nVLine; // V state bits
+	if ((nVLine >= kVPresetLine)) // check for previous vertical state preset
+	{
+		nVState -= nScanLines; // compensate for preset
+	}
+	int v_A = (nVState >> 0) & 1; // get vertical state bits
+	int v_B = (nVState >> 1) & 1;
+	int v_C = (nVState >> 2) & 1;
+	int v_0 = (nVState >> 3) & 1;
+	int v_1 = (nVState >> 4) & 1;
+	int v_2 = (nVState >> 5) & 1;
+	int v_3 = (nVState >> 6) & 1;
+	int v_4 = (nVState >> 7) & 1;
+	//    int v_5 = (nVState >> 8) & 1;	--- not used?
 
-    // calculate scanning memory address
-    //
-    if (SW_HIRES && SW_MIXED && (v_4 & v_2))	// NICK: Should this be (SW_HIRES && !SW_TEXT) instead of just 'SW_HIRES' ?
-                                                // GPH: No, because there's a distinctive hires/text mixed mode, with text on the bottom four text rows.
-                                                // The softswitch for this is $c053 for mixed, $c052 for fill (no text on bottom).
-    {
-        nHires = 0; // (address is in text memory)
-    }
+	// calculate scanning memory address
+	//
+	if (SW_HIRES && SW_MIXED && (v_4 & v_2))	// NICK: Should this be (SW_HIRES && !SW_TEXT) instead of just 'SW_HIRES' ?
+		// GPH: No, because there's a distinctive hires/text mixed mode, with text on the bottom four text rows.
+		// The softswitch for this is $c053 for mixed, $c052 for fill (no text on bottom).
+	{
+		nHires = 0; // (address is in text memory)
+	}
 
-    int nAddend0 = 0x68; // 1            1            0            1
-    int nAddend1 =              (h_5 << 5) | (h_4 << 4) | (h_3 << 3);
-    int nAddend2 = (v_4 << 6) | (v_3 << 5) | (v_4 << 4) | (v_3 << 3);
-    int nSum     = (nAddend0 + nAddend1 + nAddend2) & (0x0F << 3);
+	int nAddend0 = 0x68; // 1            1            0            1
+	int nAddend1 =              (h_5 << 5) | (h_4 << 4) | (h_3 << 3);
+	int nAddend2 = (v_4 << 6) | (v_3 << 5) | (v_4 << 4) | (v_3 << 3);
+	int nSum     = (nAddend0 + nAddend1 + nAddend2) & (0x0F << 3);
 
-    int nAddress = 0;
-    nAddress |= h_0 << 0; // a0
-    nAddress |= h_1 << 1; // a1
-    nAddress |= h_2 << 2; // a2
-    nAddress |= nSum;     // a3 - aa6
-    nAddress |= v_0 << 7; // a7
-    nAddress |= v_1 << 8; // a8
-    nAddress |= v_2 << 9; // a9
-    nAddress |= ((nHires) ? v_A : (1 ^ (nPage2 & (1 ^ n80Store)))) << 10; // a10
-    nAddress |= ((nHires) ? v_B : (nPage2 & (1 ^ n80Store))) << 11; // a11
-    if (nHires) // hires?
-    {
-        // Y: insert hires only address bits
-        //
-        nAddress |= v_C << 12; // a12
-        nAddress |= (1 ^ (nPage2 & (1 ^ n80Store))) << 13; // a13
-        nAddress |= (nPage2 & (1 ^ n80Store)) << 14; // a14
-    }
-    else
-    {
-        // N: text, so no higher address bits unless Apple ][, not Apple //e
-        //
-        if ((IS_APPLE2) && // Apple ][?
-            (kHPEClock <= nHClock) && // Y: HBL?
-            (nHClock <= (kHClocks - 1)))
-        {
-            nAddress |= 1 << 12; // Y: a12 (add $1000 to address!)
-        }
-    }
+	int nAddress = 0;
+	nAddress |= h_0 << 0; // a0
+	nAddress |= h_1 << 1; // a1
+	nAddress |= h_2 << 2; // a2
+	nAddress |= nSum;     // a3 - aa6
+	nAddress |= v_0 << 7; // a7
+	nAddress |= v_1 << 8; // a8
+	nAddress |= v_2 << 9; // a9
+	nAddress |= ((nHires) ? v_A : (1 ^ (nPage2 & (1 ^ n80Store)))) << 10; // a10
+	nAddress |= ((nHires) ? v_B : (nPage2 & (1 ^ n80Store))) << 11; // a11
+	if (nHires) // hires?
+	{
+		// Y: insert hires only address bits
+		//
+		nAddress |= v_C << 12; // a12
+		nAddress |= (1 ^ (nPage2 & (1 ^ n80Store))) << 13; // a13
+		nAddress |= (nPage2 & (1 ^ n80Store)) << 14; // a14
+	}
+	else
+	{
+		// N: text, so no higher address bits unless Apple ][, not Apple //e
+		//
+		if ((IS_APPLE2) && // Apple ][?
+				(kHPEClock <= nHClock) && // Y: HBL?
+				(nHClock <= (kHClocks - 1)))
+		{
+			nAddress |= 1 << 12; // Y: a12 (add $1000 to address!)
+		}
+	}
 
-    // update VBL' state
-    //
+	// update VBL' state
+	//
 	if (pbVblBar_OUT != NULL)
 	{
 		if (v_4 & v_3) // VBL?
@@ -2294,7 +2294,7 @@ WORD VideoGetScannerAddress(bool* pbVblBar_OUT, const DWORD uExecutedCycles)
 			*pbVblBar_OUT = true; // N: VBL' is true
 		}
 	}
-    return static_cast<WORD>(nAddress);
+	return static_cast<WORD>(nAddress);
 }
 
 //===========================================================================
@@ -2302,27 +2302,27 @@ WORD VideoGetScannerAddress(bool* pbVblBar_OUT, const DWORD uExecutedCycles)
 // Derived from VideoGetScannerAddress()
 bool VideoGetVbl(const DWORD uExecutedCycles)
 {
-    // get video scanner position
-    //
-    int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
+	// get video scanner position
+	//
+	int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
 
-    // calculate video parameters according to display standard
-    //
-    int nScanLines  = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
+	// calculate video parameters according to display standard
+	//
+	int nScanLines  = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
 
-    // calculate vertical scanning state
-    //
-    int nVLine  = nCycles / kHClocks; // which vertical scanning line
-    int nVState = kVLine0State + nVLine; // V state bits
-    if ((nVLine >= kVPresetLine)) // check for previous vertical state preset
-    {
-        nVState -= nScanLines; // compensate for preset
-    }
-    int v_3 = (nVState >> 6) & 1;
-    int v_4 = (nVState >> 7) & 1;
+	// calculate vertical scanning state
+	//
+	int nVLine  = nCycles / kHClocks; // which vertical scanning line
+	int nVState = kVLine0State + nVLine; // V state bits
+	if ((nVLine >= kVPresetLine)) // check for previous vertical state preset
+	{
+		nVState -= nScanLines; // compensate for preset
+	}
+	int v_3 = (nVState >> 6) & 1;
+	int v_4 = (nVState >> 7) & 1;
 
-    // update VBL' state
-    //
+	// update VBL' state
+	//
 	if (v_4 & v_3) // VBL?
 	{
 		return false; // Y: VBL' is false
