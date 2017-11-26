@@ -679,6 +679,7 @@ BYTE /*__stdcall*/ CSuperSerialCard::CommTransmit(WORD, WORD, BYTE, BYTE value, 
 //	WriteFile(m_hCommHandle, &value, 1, &uBytesWritten, &m_o);
 
 	m_bWrittenTx = true;	// Transmit done
+	m_uLastBytesWritten = uBytesWritten;
 
 	// TO DO:
 	// 1) Use CommThread determine when transmit is complete

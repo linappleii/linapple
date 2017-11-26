@@ -393,9 +393,9 @@ void CreateDIBSections () {
 //CreateDIBSection(dc,framebufferinfo,DIB_RGB_COLORS,
 //                (LPVOID *)&framebufferbits,0,0);
   framebufferbits = (LPBYTE)g_hDeviceBitmap->pixels;
-  int hcl = SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
+  SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
 //    printf("SetColors(g_hDeviceBitmap)=%d\n",hcl);
-  hcl = SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
+  SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
 //    printf("SetColors(g_origscreen)=%d\n",hcl);
 
    g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
@@ -427,7 +427,7 @@ void CreateDIBSections () {
   if(g_hSourceBitmap == NULL) fprintf(stderr,"g_hSourceBitmap was not created!\n");
 
   g_pSourcePixels = (LPBYTE)g_hSourceBitmap->pixels;
-  hcl = SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
+  SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
 //  printf("SetColors(g_hSourceBitmap)=%d\n",hcl);
   //CreateDIBSection(
 	//sourcedc,g_pSourceHeader,DIB_RGB_COLORS,

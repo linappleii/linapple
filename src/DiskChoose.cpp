@@ -122,7 +122,6 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 #ifndef _WIN32
 /* POSIX specific routines of reading directory structure */
 		DIR *dp;
-		struct dirent *ep;
 
 		dp = opendir (incoming_dir);	// open and read incoming directory
 		char *tmp;
@@ -300,7 +299,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 
 // Show all directories (first) and files then
 //	char *tmp;
-	char *siz;
+	char *siz = NULL;
 //	int i;
 
 // prepare screen

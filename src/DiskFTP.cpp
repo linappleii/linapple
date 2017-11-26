@@ -140,7 +140,6 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 		// Wait for keypress
 		//////////////////////////////////
 		SDL_Event event;	// event
-		Uint8 *keyboard;	// key state
 
 		event.type = SDL_QUIT;
 		while(event.type != SDL_KEYDOWN) {	// wait for key pressed
@@ -168,7 +167,7 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 	}
 	else	B = 0;	// for sorting dirs 
 
-			while (tmp = fgets(tmpstr,512,fdir)) // first looking for directories
+			while ((tmp = fgets(tmpstr,512,fdir))) // first looking for directories
 			{
 				// clear and then try to fill in FTP_PARSE struct
 				memset(&FTP_PARSE,0,sizeof(FTP_PARSE));
@@ -205,13 +204,13 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 
 			(void) rewind (fdir);	// to the start
 				// now get all regular files
-			while (tmp = fgets(tmpstr,512,fdir))
+			while ((tmp = fgets(tmpstr,512,fdir)))
 			{
 				int fsize;
 				// clear and then try to fill in FTP_PARSE struct
 				memset(&FTP_PARSE,0,sizeof(FTP_PARSE));
 				ftpparse(&FTP_PARSE, tmp, strlen(tmp));
-				
+
 				if ((getstatFTP(&FTP_PARSE, &fsize) == 2)) // is normal file!
 				{
 					tmp = new char[strlen(FTP_PARSE.name)+1];	// add this entity to list
@@ -223,11 +222,11 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 				} /* if */
 			}
 			(void) fclose (fdir);
-// do sorting for files
+			// do sorting for files
 			if(files.Length() > 2 && B < files.Length())
 			{
 				N = files.Length() - 1;
-//				B = 1;
+				//B = 1;
 				for(i = N; i > B; i--)
 					for(j = B; j < i; j++)
 						if(strcasecmp(files[j], files[j + 1]) > 0)
@@ -244,7 +243,7 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 
 // Show all directories (first) and files then
 //	char *tmp;
-	char *siz;
+	char *siz = NULL;
 //	int i;
 
 	while(true)
@@ -528,7 +527,7 @@ md5_final()
       memset (buffer, 0, 64);
       buflen = 0;
     }
-  
+
   *(UINT4 *) (buffer + 56) = cpu_to_le32 (8 * length);
   *(UINT4 *) (buffer + 60) = 0;
   md5_transform (buffer);
@@ -539,7 +538,7 @@ md5_final()
 }
 
 static char *
-md5 (const char *input) 
+md5 (const char *input)
 {
   md5_init();
 //  memcpy ((char *) state, (char *) md5_initstate, sizeof (md5_initstate));
@@ -548,10 +547,11 @@ md5 (const char *input)
   return (char *)md5_final ();
 }
 
+// GPH Warning: Not re-entrant!
 char *
-md5str (const char *input) 
+md5str (const char *input)
 {
-	char result[16 * 3 +1];
+	static char result[16 * 3 + 1];
 	unsigned char* digest = (unsigned char*)md5 (input);
 	int i;
 

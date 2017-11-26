@@ -71,7 +71,7 @@ DWORD CharLowerBuff(LPTSTR lpsz, DWORD cchLength)
 {
 //		char *s;
 	if (lpsz)
-		for (lpsz; *lpsz; lpsz++)
+		for (; *lpsz; lpsz++)
 			*lpsz = tolower(*lpsz);
 	return 1;
 

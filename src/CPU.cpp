@@ -90,7 +90,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
-#pragma	 hdrstop
 #include "MouseInterface.h"
 #include "Debug.h"
 #include <assert.h>
@@ -200,7 +199,8 @@ static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
 		     }
 
 //
-
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wsequence-point"
 #define CHECK_PAGE_CHANGE  if (bSlowerOnPagecross) {		      \
 			       if ((base ^ addr) & 0xFF00)    \
 				   uExtraCycles=1;	      \
@@ -883,7 +883,7 @@ static inline void IRQ(ULONG& uExecutedCycles, UINT& uExtraCycles, BOOL& flagc, 
 		PUSH(regs.pc & 0xFF)
 		EF_TO_AF
 		PUSH(regs.ps & ~AF_BREAK)
-		regs.ps = regs.ps | AF_INTERRUPT & ~AF_DECIMAL;
+		regs.ps = (regs.ps | AF_INTERRUPT) & (~AF_DECIMAL);
 		regs.pc = * (WORD*) (mem+0xFFFE);
 		CYC(7)
 	}

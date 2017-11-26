@@ -618,16 +618,18 @@ static BYTE DiskReadWrite (WORD programcounter, WORD, BYTE, BYTE, ULONG) {
   if (!fptr->trackimagedata)
     return 0xFF;
   BYTE result = 0;
-  if ((!floppywritemode) || (!fptr->writeprotected))
-    if (floppywritemode)
+  if ((!floppywritemode) || (!fptr->writeprotected)) {
+    if (floppywritemode) {
       if (floppylatch & 0x80) {
         *(fptr->trackimage+fptr->byte) = floppylatch;
         fptr->trackimagedirty = 1;
-      }
-      else
+      } else {
         return 0;
-    else
+			}
+    } else {
       result = *(fptr->trackimage+fptr->byte);
+		}
+	}
   if (0)
   {
     LOG_DISK("nib %4X = %2X\r", fptr->byte, result);
@@ -732,7 +734,8 @@ void DiskSelectImage (int drive, LPSTR pszFilename)
 //===========================================================================
 void DiskSelect (int drive)
 {
-	DiskSelectImage(drive, TEXT(""));	// drive is 0 for D1, 1 - for D2
+	char szSelect[] = "";
+	DiskSelectImage(drive, szSelect);	// drive is 0 for D1, 1 - for D2
 }
 
 

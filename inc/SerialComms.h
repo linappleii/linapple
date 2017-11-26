@@ -116,7 +116,7 @@ private:
 	bool m_bRxIrqEnabled;
 
 	bool m_bWrittenTx;
-
+	DWORD m_uLastBytesWritten;
 	//
 
 	volatile bool m_vbCommIRQ;

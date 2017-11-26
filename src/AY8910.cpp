@@ -51,7 +51,7 @@
 typedef UINT8 (*mem_read_handler)(UINT32);
 typedef void (*mem_write_handler)(UINT32, UINT8);
 
-static void logerror(char* psz, ...)
+static void logerror(const char* psz, ...)
 {
 }
 
@@ -72,9 +72,6 @@ static unsigned short activecpu_get_pc()
 
 // See AY8910_set_clock() for definition of STEP
 #define STEP 0x8000
-
-
-static int num = 0, ym_num = 0;
 
 struct AY8910
 {
