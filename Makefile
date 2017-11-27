@@ -24,7 +24,12 @@ CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
-CFLAGS      := -Wall -O3 -c
+#PROFILING
+#CFLAGS      := -Wall -O0 -pg -ggdb -ansi -c
+#DEBUGGING
+#CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
+#OPTIMIZED
+CFLAGS      := -Wall -O3 -ansi -c
 CFLAGS 		+= $(SDL_CFLAGS)
 CFLAGS 		+= $(CURL_CFLAGS)
 
