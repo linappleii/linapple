@@ -45,7 +45,7 @@ bool DSInit()
 {
 	if(g_bDSAvailable) return true;	// do not need to repeat all process?? --bb
 //	const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
-	g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 4096);// I just do not know what number of samples use.
+	g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 1024);// I just do not know what number of samples use.
 	return g_bDSAvailable;	//
 }
 
