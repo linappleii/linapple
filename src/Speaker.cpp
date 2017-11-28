@@ -306,7 +306,7 @@ static void UpdateSpkr()
   g_nSpkrLastCycle = g_nCumulativeCycles;
 
   // GPH Added - simulate decoupling capacitor - use approximate value
-  g_nSpeakerData = (short)((double) g_nSpeakerData * 0.995);
+  //g_nSpeakerData = (short)((double) g_nSpeakerData * 0.995);
 }
 
 //=============================================================================
