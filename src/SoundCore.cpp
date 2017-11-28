@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for Assertion
 #include <assert.h>
 
-
+#include <iostream>
 
 bool g_bDSAvailable = false;
 
@@ -45,7 +45,7 @@ bool DSInit()
 {
 	if(g_bDSAvailable) return true;	// do not need to repeat all process?? --bb
 //	const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
-	g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 1024);// I just do not know what number of samples use.
+	g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 2048);// I just do not know what number of samples use.
 	return g_bDSAvailable;	//
 }
 
@@ -267,7 +267,7 @@ unsigned getBuffer2Free()
 void audioCallback(short* stream, unsigned len)
 {
 	unsigned int i;
-    static short lastvalue = 0;
+  static short lastvalue = 0;
 	assert((len & 1) == 0); // stereo
 
 	unsigned len1, len2;
@@ -338,17 +338,17 @@ void audioCallback(short* stream, unsigned len)
             }
         }
 	} else {
-        // We crossed the "seam" on the circular mockBuffer.
-        // We will therefore perform two copies, the segmentation being determined
-        // by the split in the source buffer (mockBuffer).
-        //
-        //     |--------------------|
-        //         (mockBuffer) ^
-        //
-        //
-        //     |--------------------|
-        //     ^     (stream)
-        len1 = bufferSize - readIdx2;
+    // We crossed the "seam" on the circular mockBuffer.
+    // We will therefore perform two copies, the segmentation being determined
+    // by the split in the source buffer (mockBuffer).
+    //
+    //     |--------------------|
+    //         (mockBuffer) ^
+    //
+    //
+    //     |--------------------|
+    //     ^     (stream)
+    len1 = bufferSize - readIdx2;
 		len2 = num - len1;
         if(len1) {
             pSrc = &mockBuffer[readIdx2];
@@ -387,8 +387,7 @@ double DSUploadBuffer(short* buffer, unsigned len)
 //	len *= 2; // stereo
 	unsigned free = getBufferFree();
 	if (len > free) {
-//		std::cerr << "DEBUG overrun: " << len - free << std::endl;
-		printf("DEBUG overrun: len=%d,free=%d\n\n", len, free);
+		std::cerr << "DEBUG overrun(1): " << len - free << std::endl;
 	}
 	unsigned num = std::min(len, free); // ignore overrun (drop samples)
 	if ((writeIdx + num) < bufferSize) {
@@ -418,18 +417,20 @@ void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
 	SDL_LockAudio();
 //	len *= 2; // stereo
 	unsigned free = getBuffer2Free();
-	//if (len > free) {
-	//	std::cerr << "DEBUG overrun: " << len - free << std::endl;
-	//}
-	unsigned num = std::min(len, free); // ignore overrun (drop samples)
+	if (len > free) {
+		std::cerr << "DEBUG overrun(2): " << len - free << std::endl;
+	}
+	unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
     // GPH Check for seam crossing on circular mockBuffer[].
-	if ((writeIdx2 + num) < bufferSize) {
-		memcpy(&mockBuffer[writeIdx2], buffer, num * sizeof(short));
-		writeIdx2 += num;
+	if ((writeIdx2 + samplesToWrite) < bufferSize) {
+		memcpy(&mockBuffer[writeIdx2], buffer, samplesToWrite * sizeof(short));
+		writeIdx2 += samplesToWrite;
 	} else {
+    // GPH The player pointer at the mockBuffer will cross a seam;
+    // copy to the end of the buffer, and then to the beginning
 		unsigned len1 = bufferSize - writeIdx2;
 		memcpy(&mockBuffer[writeIdx2], buffer, len1 * sizeof(short));
-		unsigned len2 = num - len1;
+		unsigned len2 = samplesToWrite - len1;
 		memcpy(mockBuffer, &buffer[len1], len2 * sizeof(short));
 		writeIdx2 = len2;
 	}
