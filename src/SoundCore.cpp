@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth
  */
 
-/*	Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
+/*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
 
 #include "stdafx.h"
 
@@ -38,32 +38,32 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 bool g_bDSAvailable = false;
 
 // forward decls    ------------------------
-void SDLSoundDriverUninit();		// for DSInit()
-bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples);	// for DSUninit?
+void SDLSoundDriverUninit();    // for DSInit()
+bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples);  // for DSUninit?
 
 bool DSInit()
 {
-	if(g_bDSAvailable) return true;	// do not need to repeat all process?? --bb
-//	const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
-	g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 2048);// I just do not know what number of samples use.
-	return g_bDSAvailable;	//
+  if(g_bDSAvailable) return true;  // do not need to repeat all process?? --bb
+//  const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
+  g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 2048);// I just do not know what number of samples use.
+  return g_bDSAvailable;  //
 }
 
 //-----------------------------------------------------------------------------
 
 void DSUninit()
 {
-	if(!g_bDSAvailable)
-		return;
-	SDLSoundDriverUninit();	// using code from OpenMSX
-//	SDL_CloseAudio();
+  if(!g_bDSAvailable)
+    return;
+  SDLSoundDriverUninit();  // using code from OpenMSX
+//  SDL_CloseAudio();
 }
 
 
-void SoundCore_SetFade(int how)	//
+void SoundCore_SetFade(int how)  //
 {
-	if(how == FADE_OUT) SDL_PauseAudio(1);	//stop playing sound
-	else SDL_PauseAudio(0);	//start playing
+  if(how == FADE_OUT) SDL_PauseAudio(1);  //stop playing sound
+  else SDL_PauseAudio(0);  //start playing
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -95,143 +95,143 @@ unsigned bufferSize;
 unsigned bufferIdxMask;
 unsigned readIdx, writeIdx, readIdx2, writeIdx2;
 double filledStat; /**< average filled status, 1.0 means filled exactly
-		the right amount, less than 1.0 mean under
-		filled, more than 1.0 means overfilled. */
+    the right amount, less than 1.0 mean under
+    filled, more than 1.0 means overfilled. */
 bool muted;
 
 
 ///////////////////  Main part //////////////////////
 bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
 {
-	SDL_AudioSpec desired;
-	desired.freq     = wantedFreq;
-	desired.samples  = wantedSamples;
+  SDL_AudioSpec desired;
+  desired.freq     = wantedFreq;
+  desired.samples  = wantedSamples;
 
-	desired.channels = 2; // stereo(2)	or mono(1)
+  desired.channels = 2; // stereo(2)  or mono(1)
 // be courteous with BIG_Endian systems, please! --bb
 #if ( SDL_BYTEORDER == SDL_BIG_ENDIAN )
-	desired.format = AUDIO_S16MSB;
+  desired.format = AUDIO_S16MSB;
 #else
-	desired.format = AUDIO_S16LSB;
+  desired.format = AUDIO_S16LSB;
 #endif
 
-	desired.callback = audioCallbackHelper; // must be a static method
-	desired.userdata = NULL;
+  desired.callback = audioCallbackHelper; // must be a static method
+  desired.userdata = NULL;
 /*
-	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-		printf("Unable to initialize SDL audio subsystem: %s", SDL_GetError());
-		return false;
-	}
+  if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+    printf("Unable to initialize SDL audio subsystem: %s", SDL_GetError());
+    return false;
+  }
 */
-	SDL_AudioSpec audioSpec;
-	if (SDL_OpenAudio(&desired, &audioSpec) != 0) {
-//		SDL_QuitSubSystem(SDL_INIT_AUDIO);
-		printf("Unable to open SDL audio: %s", SDL_GetError());
-		return false;
-	}
-	//std::cerr << "DEBUG wanted: " << wantedSamples
-	//          <<     "  actual: " << audioSpec.size / 4 << std::endl;
-	frequency = audioSpec.freq;
-	bufferSize = 8 * (audioSpec.size / sizeof(short));
+  SDL_AudioSpec audioSpec;
+  if (SDL_OpenAudio(&desired, &audioSpec) != 0) {
+//    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    printf("Unable to open SDL audio: %s", SDL_GetError());
+    return false;
+  }
+  //std::cerr << "DEBUG wanted: " << wantedSamples
+  //          <<     "  actual: " << audioSpec.size / 4 << std::endl;
+  frequency = audioSpec.freq;
+  bufferSize = 8 * (audioSpec.size / sizeof(short));
     // GPH NOTE: bufferSize needs to be power of 2 for quick
     // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
     // and because of the high volume of work against mixBuffer and mockBuffer, that is
     // undesireable.
     bufferIdxMask = bufferSize - 1;
     printf( "bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
-//	bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);	// 1 second of stereo short data
+//  bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);  // 1 second of stereo short data
 
 /*
-	fragmentSize = 256;
-	while ((bufferSize / fragmentSize) >= 32) {
-		fragmentSize *= 2;
-	}
-	while ((bufferSize / fragmentSize) < 8) {
-		fragmentSize /= 2;
-	}
+  fragmentSize = 256;
+  while ((bufferSize / fragmentSize) >= 32) {
+    fragmentSize *= 2;
+  }
+  while ((bufferSize / fragmentSize) < 8) {
+    fragmentSize /= 2;
+  }
 */
-	mixBuffer  = new short[bufferSize];	// buffer for Apple2 speakers
-	mockBuffer = new short[bufferSize];	// buffer for Mockingboard
+  mixBuffer  = new short[bufferSize];  // buffer for Apple2 speakers
+  mockBuffer = new short[bufferSize];  // buffer for Mockingboard
 
-	reInit();
-	printf("SDL_MIX_MAXVOLUME=%d\n",SDL_MIX_MAXVOLUME);
-	printf("Freq=%d,format=%d,channels=%d,silence=%d\n",
-				audioSpec.freq,audioSpec.format,audioSpec.channels,audioSpec.silence);
-	printf("samples=%d,size=%d,bufferSize=%d\n",audioSpec.samples,audioSpec.size,bufferSize);
+  reInit();
+  printf("SDL_MIX_MAXVOLUME=%d\n",SDL_MIX_MAXVOLUME);
+  printf("Freq=%d,format=%d,channels=%d,silence=%d\n",
+        audioSpec.freq,audioSpec.format,audioSpec.channels,audioSpec.silence);
+  printf("samples=%d,size=%d,bufferSize=%d\n",audioSpec.samples,audioSpec.size,bufferSize);
 
-//	SDL_PauseAudio(0);
-	return true;
+//  SDL_PauseAudio(0);
+  return true;
 }
 
 void SDLSoundDriverUninit()
 {
-	delete[] mixBuffer;
-	delete[] mockBuffer;
+  delete[] mixBuffer;
+  delete[] mockBuffer;
 
-	SDL_CloseAudio();
-//	SDL_QuitSubSystem(SDL_INIT_AUDIO);
+  SDL_CloseAudio();
+//  SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 
 void reInit()
 {
-	memset(mixBuffer, 0, bufferSize * sizeof(short));
-	memset(mockBuffer, 0, bufferSize * sizeof(short));
-	readIdx  = readIdx2 = 0;
-	writeIdx = writeIdx2 = 0;//(5 * bufferSize) / 8;
-	filledStat = 1.0;
+  memset(mixBuffer, 0, bufferSize * sizeof(short));
+  memset(mockBuffer, 0, bufferSize * sizeof(short));
+  readIdx  = readIdx2 = 0;
+  writeIdx = writeIdx2 = 0;//(5 * bufferSize) / 8;
+  filledStat = 1.0;
 }
 
 void mute()
 {
-	if (!muted) {
-		muted = true;
-		SDL_PauseAudio(1);
-	}
+  if (!muted) {
+    muted = true;
+    SDL_PauseAudio(1);
+  }
 }
 
 void unmute()
 {
-	if (muted) {
-		muted = false;
-		reInit();
-		SDL_PauseAudio(0);
-	}
+  if (muted) {
+    muted = false;
+    reInit();
+    SDL_PauseAudio(0);
+  }
 }
 
 unsigned getFrequency()
 {
-	return frequency;
+  return frequency;
 }
 
 unsigned getSamples()
 {
-	return fragmentSize;
+  return fragmentSize;
 }
 
 void audioCallbackHelper(void* userdata, BYTE* strm, int len)
 {
-	assert((len & 3) == 0); // stereo, 16-bit
-	audioCallback((short*)strm, len / sizeof(short));
+  assert((len & 3) == 0); // stereo, 16-bit
+  audioCallback((short*)strm, len / sizeof(short));
 }
 
 unsigned getBufferFilled()
 {
-	int tmp = writeIdx - readIdx;
-	int result = (0 <= tmp) ? tmp : tmp + bufferSize;
-	assert((0 <= result) && (unsigned(result) < bufferSize));
-	return result;
+  int tmp = writeIdx - readIdx;
+  int result = (0 <= tmp) ? tmp : tmp + bufferSize;
+  assert((0 <= result) && (unsigned(result) < bufferSize));
+  return result;
 }
 
 unsigned getBufferFree()
 {
-	// we can't distinguish completely filled from completely empty
-	// (in both cases readIx would be equal to writeIdx), so instead
-	// we define full as '(writeIdx + 2) == readIdx' (note that index
-	// increases in steps of 2 (stereo)).
-	int result = bufferSize - 2 - getBufferFilled();
-	assert((0 <= result) && (unsigned(result) < bufferSize));
-	return result;
+  // we can't distinguish completely filled from completely empty
+  // (in both cases readIx would be equal to writeIdx), so instead
+  // we define full as '(writeIdx + 2) == readIdx' (note that index
+  // increases in steps of 2 (stereo)).
+  int result = bufferSize - 2 - getBufferFilled();
+  assert((0 <= result) && (unsigned(result) < bufferSize));
+  return result;
 }
 //////////////////////////////////////////////////////////////////
 //////// for Mockingboard support using another buffer //////////
@@ -241,21 +241,21 @@ unsigned getBufferFree()
 // streamed out as audio.
 unsigned getBuffer2Filled()
 {
-	int tmp = writeIdx2 - readIdx2;
-	int result = (0 <= tmp) ? tmp : tmp + bufferSize;
-	assert((0 <= result) && (unsigned(result) < bufferSize));
-	return result;
+  int tmp = writeIdx2 - readIdx2;
+  int result = (0 <= tmp) ? tmp : tmp + bufferSize;
+  assert((0 <= result) && (unsigned(result) < bufferSize));
+  return result;
 }
 
 unsigned getBuffer2Free()
 {
-	// we can't distinguish completely filled from completely empty
-	// (in both cases readIx would be equal to writeIdx), so instead
-	// we define full as '(writeIdx + 2) == readIdx' (note that index
-	// increases in steps of 2 (stereo)).
-	int result = bufferSize - 2 - getBuffer2Filled();
-	assert((0 <= result) && (unsigned(result) < bufferSize));
-	return result;
+  // we can't distinguish completely filled from completely empty
+  // (in both cases readIx would be equal to writeIdx), so instead
+  // we define full as '(writeIdx + 2) == readIdx' (note that index
+  // increases in steps of 2 (stereo)).
+  int result = bufferSize - 2 - getBuffer2Filled();
+  assert((0 <= result) && (unsigned(result) < bufferSize));
+  return result;
 }
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -266,14 +266,14 @@ unsigned getBuffer2Free()
 //
 void audioCallback(short* stream, unsigned len)
 {
-	unsigned int i;
+  unsigned int i;
   static short lastvalue = 0;
-	assert((len & 1) == 0); // stereo
+  assert((len & 1) == 0); // stereo
 
-	unsigned len1, len2;
-	unsigned available = getBufferFilled();
-	unsigned num = std::min(len, available);
-	if ((readIdx + num) < bufferSize) {
+  unsigned len1, len2;
+  unsigned available = getBufferFilled();
+  unsigned num = std::min(len, available);
+  if ((readIdx + num) < bufferSize) {
         // No split in source (mixBuffer); perform straight-up copy.
         //
         //     |--------------------|
@@ -281,9 +281,9 @@ void audioCallback(short* stream, unsigned len)
         //
         //     |--------------------|
         //     ^     (stream)
-		memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
-		readIdx += num;
-	} else {
+    memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
+    readIdx += num;
+  } else {
         // Handle split in source
         //
         //     |--------------------|
@@ -291,12 +291,12 @@ void audioCallback(short* stream, unsigned len)
         //
         //     |--------------------|
         //     ^     (stream)
-		len1 = bufferSize - readIdx;
-		memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
-		len2 = num - len1;
-		memcpy(&stream[len1], mixBuffer, len2 * sizeof(short));
-		readIdx = len2;
-	}
+    len1 = bufferSize - readIdx;
+    memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
+    len2 = num - len1;
+    memcpy(&stream[len1], mixBuffer, len2 * sizeof(short));
+    readIdx = len2;
+  }
 
     // Fill the remainer of the buffer with last value to prevent potential
     // clicks and pops.
@@ -305,15 +305,15 @@ void audioCallback(short* stream, unsigned len)
             lastvalue = mixBuffer[readIdx-1];
         else
             lastvalue = mixBuffer[bufferSize - 1];
-	}
+  }
 
     for (i = num; i < len; i++) {
         stream[i] = lastvalue;
     }
 /* GPH please don't do this in an IRQ handler!
-	unsigned target = (5 * bufferSize) / 8;
-	double factor = double(available) / target;
-	filledStat = (63 * filledStat + factor) / 64;
+  unsigned target = (5 * bufferSize) / 8;
+  double factor = double(available) / target;
+  filledStat = (63 * filledStat + factor) / 64;
 */
 
 #ifdef MOCKINGBOARD
@@ -323,12 +323,12 @@ void audioCallback(short* stream, unsigned len)
     // any possibility of wave peak clipping.  This speeds up the timing-sensitive
     // operation here (since we're in an IRQ handler) and eliminates the
     // need for a potentially expensive divide.
-	available = getBuffer2Filled();
-	//std::cerr << "DEBUG callback: " << available << std::endl;
-	num = std::min(len, available);
+  available = getBuffer2Filled();
+  //std::cerr << "DEBUG callback: " << available << std::endl;
+  num = std::min(len, available);
     const short *pSrc;
     short *pDest = stream;
-	if ((readIdx2 + num) < bufferSize) {
+  if ((readIdx2 + num) < bufferSize) {
         if( num ) {
             pSrc = &mockBuffer[readIdx2];
             readIdx2 += num;
@@ -337,7 +337,7 @@ void audioCallback(short* stream, unsigned len)
                 pDest++; pSrc++;
             }
         }
-	} else {
+  } else {
     // We crossed the "seam" on the circular mockBuffer.
     // We will therefore perform two copies, the segmentation being determined
     // by the split in the source buffer (mockBuffer).
@@ -349,7 +349,7 @@ void audioCallback(short* stream, unsigned len)
     //     |--------------------|
     //     ^     (stream)
     len1 = bufferSize - readIdx2;
-		len2 = num - len1;
+    len2 = num - len1;
         if(len1) {
             pSrc = &mockBuffer[readIdx2];
             while(len1--) {
@@ -357,7 +357,7 @@ void audioCallback(short* stream, unsigned len)
                 pDest++; pSrc++;
             }
         }
-		readIdx2 = len2;
+    readIdx2 = len2;
         if(len2) {
             pSrc = mockBuffer;
             while(len2--) {
@@ -366,7 +366,7 @@ void audioCallback(short* stream, unsigned len)
             }
         }
 
-	}
+  }
 #endif      // #ifdef MOCKINGBOARD
 // normalization
 // GPH TODO: Rather than do this in this handler, we should
@@ -374,68 +374,68 @@ void audioCallback(short* stream, unsigned len)
 // MAX_OUTPUT (AY8910.cpp) and SPKR_DATA_INIT (Speaker.cpp),
 // making them variables and making the appropriate access functions
 // to call from Frame.cpp
-/*	const short MY_MAX_VOLUME = (short)SDL_MIX_MAXVOLUME / 2;
-	for(unsigned k=0;k<len;k+=2)
-		if((short)stream[k] > MY_MAX_VOLUME)
-			stream[k] = MY_MAX_VOLUME;
+/*  const short MY_MAX_VOLUME = (short)SDL_MIX_MAXVOLUME / 2;
+  for(unsigned k=0;k<len;k+=2)
+    if((short)stream[k] > MY_MAX_VOLUME)
+      stream[k] = MY_MAX_VOLUME;
 */
 }  // audioCallback
 
 double DSUploadBuffer(short* buffer, unsigned len)
 {
-	SDL_LockAudio();
-//	len *= 2; // stereo
-	unsigned free = getBufferFree();
-	if (len > free) {
-		std::cerr << "DEBUG overrun(1): " << len - free << std::endl;
-	}
-	unsigned num = std::min(len, free); // ignore overrun (drop samples)
-	if ((writeIdx + num) < bufferSize) {
-		memcpy(&mixBuffer[writeIdx], buffer, num * sizeof(short));
-		writeIdx += num;
-	} else {
-//		printf("DEBUG split: writeIdx=%d,num=%d\n\n", writeIdx, num);
-		unsigned len1 = bufferSize - writeIdx;
-		memcpy(&mixBuffer[writeIdx], buffer, len1 * sizeof(short));
-		unsigned len2 = num - len1;
-		memcpy(mixBuffer, &buffer[len1], len2 * sizeof(short));
-		writeIdx = len2;
-	}
+  SDL_LockAudio();
+//  len *= 2; // stereo
+  unsigned free = getBufferFree();
+  if (len > free) {
+    std::cerr << "DEBUG overrun(1): " << len - free << std::endl;
+  }
+  unsigned num = std::min(len, free); // ignore overrun (drop samples)
+  if ((writeIdx + num) < bufferSize) {
+    memcpy(&mixBuffer[writeIdx], buffer, num * sizeof(short));
+    writeIdx += num;
+  } else {
+//    printf("DEBUG split: writeIdx=%d,num=%d\n\n", writeIdx, num);
+    unsigned len1 = bufferSize - writeIdx;
+    memcpy(&mixBuffer[writeIdx], buffer, len1 * sizeof(short));
+    unsigned len2 = num - len1;
+    memcpy(mixBuffer, &buffer[len1], len2 * sizeof(short));
+    writeIdx = len2;
+  }
 
-	//unsigned available = getBufferFilled();
-	//std::cerr << "DEBUG upload: " << available << " (" << len << ")" << std::endl;
-	double result = filledStat;
-	filledStat = 1.0; // only report difference once
-	SDL_UnlockAudio();
-	return result;
+  //unsigned available = getBufferFilled();
+  //std::cerr << "DEBUG upload: " << available << " (" << len << ")" << std::endl;
+  double result = filledStat;
+  filledStat = 1.0; // only report difference once
+  SDL_UnlockAudio();
+  return result;
 }
 
 ///// Uploading sound data for Mockingboard buffer
 // GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
 void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
 {
-	SDL_LockAudio();
-//	len *= 2; // stereo
-	unsigned free = getBuffer2Free();
-	if (len > free) {
-		std::cerr << "DEBUG overrun(2): " << len - free << std::endl;
-	}
-	unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
+  SDL_LockAudio();
+//  len *= 2; // stereo
+  unsigned free = getBuffer2Free();
+  if (len > free) {
+    std::cerr << "DEBUG overrun(2): " << len - free << std::endl;
+  }
+  unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
     // GPH Check for seam crossing on circular mockBuffer[].
-	if ((writeIdx2 + samplesToWrite) < bufferSize) {
-		memcpy(&mockBuffer[writeIdx2], buffer, samplesToWrite * sizeof(short));
-		writeIdx2 += samplesToWrite;
-	} else {
+  if ((writeIdx2 + samplesToWrite) < bufferSize) {
+    memcpy(&mockBuffer[writeIdx2], buffer, samplesToWrite * sizeof(short));
+    writeIdx2 += samplesToWrite;
+  } else {
     // GPH The player pointer at the mockBuffer will cross a seam;
     // copy to the end of the buffer, and then to the beginning
-		unsigned len1 = bufferSize - writeIdx2;
-		memcpy(&mockBuffer[writeIdx2], buffer, len1 * sizeof(short));
-		unsigned len2 = samplesToWrite - len1;
-		memcpy(mockBuffer, &buffer[len1], len2 * sizeof(short));
-		writeIdx2 = len2;
-	}
+    unsigned len1 = bufferSize - writeIdx2;
+    memcpy(&mockBuffer[writeIdx2], buffer, len1 * sizeof(short));
+    unsigned len2 = samplesToWrite - len1;
+    memcpy(mockBuffer, &buffer[len1], len2 * sizeof(short));
+    writeIdx2 = len2;
+  }
 
-	SDL_UnlockAudio();
-//	return 1.0;	// do not use result?
+  SDL_UnlockAudio();
+//  return 1.0;  // do not use result?
 }
 

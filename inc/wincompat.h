@@ -7,11 +7,11 @@
 ****************************************************************************/
 
 /*
-	Please note all long types (save for pointers) were replaced by int types
-	for x64 systems support!
+  Please note all long types (save for pointers) were replaced by int types
+  for x64 systems support!
 
-		On x32 long type takes 4 bytes, on x64 long type tekes 8 bytes)
-	-- Krez beotiger
+    On x32 long type takes 4 bytes, on x64 long type tekes 8 bytes)
+  -- Krez beotiger
 */
 
 #ifndef _WINDEF_
@@ -34,8 +34,8 @@ typedef char *PSZ;
 
 
 typedef void *HANDLE;
-typedef signed short INT16;		// why there was char instead of short? --bb ??????????????????
-typedef unsigned short UINT16;		// why there was char instead of short? --bb ??????????????????? 0_0
+typedef signed short INT16;    // why there was char instead of short? --bb ??????????????????
+typedef unsigned short UINT16;    // why there was char instead of short? --bb ??????????????????? 0_0
 #define __int64 long long
 
 typedef unsigned int UINT32;
@@ -118,7 +118,7 @@ typedef int                 INT;
 typedef unsigned int        UINT;
 typedef unsigned int        *PUINT;
 
-//#define LPSTR				(char*)
+//#define LPSTR        (char*)
 
 
 #define MAKEWORD(a, b)      ((WORD)(((BYTE)(a)) | ((WORD)((BYTE)(b))) << 8))
@@ -179,17 +179,17 @@ typedef unsigned char TBYTE , *PTBYTE ;
 
 ////////////////////////////////////////////////////
 typedef struct _OVERLAPPED {
-	DWORD   Internal;
-	DWORD   InternalHigh;
-	DWORD   Offset;
-	DWORD   OffsetHigh;
-	HANDLE  hEvent;
+  DWORD   Internal;
+  DWORD   InternalHigh;
+  DWORD   Offset;
+  DWORD   OffsetHigh;
+  HANDLE  hEvent;
 } OVERLAPPED, *LPOVERLAPPED;
 
 typedef struct tagPOINT
 {
-	LONG  x;
-	LONG  y;
+  LONG  x;
+  LONG  y;
 } POINT, *PPOINT, NEAR *NPPOINT, FAR *LPPOINT;
 
 // TCHAR support
@@ -226,7 +226,7 @@ typedef struct tagPOINT
 // #define _tcsnicoll(const char *, const char *, size_t);
 
 /* Note that _mbscat, _mbscpy and _mbsdup are functionally equivalent to
-		strcat, strcpy and strdup, respectively. */
+    strcat, strcpy and strdup, respectively. */
 
 #define _tcscat     strcat
 #define _tcscpy     strcpy
@@ -242,7 +242,7 @@ typedef struct tagPOINT
 #define ZeroMemory(Destination,Length) memset((Destination),0,(Length))
 
 #define GetTickCount SDL_GetTicks
-#define _ASSERT	assert
+#define _ASSERT  assert
 
 
 #ifdef __cplusplus

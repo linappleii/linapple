@@ -11,7 +11,7 @@ BOOL    HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
 BOOL    HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
 
 void    HD_Select(int nDrive);
-void 	HD_FTP_Select(int nDrive);
+void   HD_FTP_Select(int nDrive);
 
-int	HD_GetStatus(void);
-void	HD_ResetStatus(void);
+int  HD_GetStatus(void);
+void  HD_ResetStatus(void);

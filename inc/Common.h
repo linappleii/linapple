@@ -4,39 +4,39 @@
 
 const double _M14 = (157500000.0 / 11.0); // 14.3181818... * 10^6
 const double CLK_6502 = ((_M14 * 65.0) / 912.0); // 65 cycles per 912 14M clocks
-//const double CLK_6502 = 23 * 44100;			// 1014300
+//const double CLK_6502 = 23 * 44100;      // 1014300
 
 // The effective Z-80 clock rate is 2.041MHz
 // See: http://www.apple2info.net/hardware/softcard/SC-SWHW_a2in.pdf
 const double CLK_Z80 = (CLK_6502 * 2);
 
-const UINT uCyclesPerLine			= 65;	// 25 cycles of HBL & 40 cycles of HBL'
-const UINT uVisibleLinesPerFrame	= 64*3;	// 192
-const UINT uLinesPerFrame			= 262;	// 64 in each third of the screen & 70 in VBL
-const DWORD dwClksPerFrame			= uCyclesPerLine * uLinesPerFrame;	// 17030
+const UINT uCyclesPerLine      = 65;  // 25 cycles of HBL & 40 cycles of HBL'
+const UINT uVisibleLinesPerFrame  = 64*3;  // 192
+const UINT uLinesPerFrame      = 262;  // 64 in each third of the screen & 70 in VBL
+const DWORD dwClksPerFrame      = uCyclesPerLine * uLinesPerFrame;  // 17030
 
 #define NUM_SLOTS 8
 
 #define  MAX(a,b)          (((a) > (b)) ? (a) : (b))
 #define  MIN(a,b)          (((a) < (b)) ? (a) : (b))
 
-#define  RAMWORKS			// 8MB RamWorks III support
+#define  RAMWORKS      // 8MB RamWorks III support
 
-#define  MOCKINGBOARD			// Mockingboard support
+#define  MOCKINGBOARD      // Mockingboard support
 //#define  MB_SPEECH
 
 // Use a base freq so that DirectX (or sound h/w) doesn't have to up/down-sample
 // Assume base freqs are 44.1KHz & 48KHz
-const DWORD SPKR_SAMPLE_RATE = 44100;	// that is for Apple][ speakers
-const DWORD SAMPLE_RATE	     = 44100;	// that is for Phasor/Mockingboard?
+const DWORD SPKR_SAMPLE_RATE = 44100;  // that is for Apple][ speakers
+const DWORD SAMPLE_RATE       = 44100;  // that is for Phasor/Mockingboard?
 
 enum AppMode_e
 {
-	MODE_LOGO = 0
-	, MODE_PAUSED
-	, MODE_RUNNING  // 6502 is running at normal speed (Debugger breakpoints may or may not be active)
-	, MODE_DEBUG    // 6502 is paused
-	, MODE_STEPPING // 6502 is running at full speed (Debugger breakpoints always active)
+  MODE_LOGO = 0
+  , MODE_PAUSED
+  , MODE_RUNNING  // 6502 is running at normal speed (Debugger breakpoints may or may not be active)
+  , MODE_DEBUG    // 6502 is paused
+  , MODE_STEPPING // 6502 is running at full speed (Debugger breakpoints always active)
 };
 
 #define  SPEED_MIN         0
@@ -62,13 +62,13 @@ enum AppMode_e
 #define  BTN_SAVEST        10
 #define  BTN_LOADST        9
 
-//#define	MAXIMAGES          16
+//#define  MAXIMAGES          16
 
 // TODO: Move to StringTable.h
-#define	TITLE_APPLE_2			("Apple ][ Emulator")
-#define	TITLE_APPLE_2_PLUS		TEXT("Apple ][+ Emulator")
-#define	TITLE_APPLE_2E			TEXT("Apple //e Emulator")
-#define	TITLE_APPLE_2E_ENHANCED	TEXT("Enhanced Apple //e Emulator")
+#define  TITLE_APPLE_2      ("Apple ][ Emulator")
+#define  TITLE_APPLE_2_PLUS    TEXT("Apple ][+ Emulator")
+#define  TITLE_APPLE_2E      TEXT("Apple //e Emulator")
+#define  TITLE_APPLE_2E_ENHANCED  TEXT("Enhanced Apple //e Emulator")
 
 #define TITLE_PAUSED       TEXT(" Paused ")
 #define TITLE_STEPPING     TEXT("Stepping")
@@ -113,12 +113,12 @@ enum AppMode_e
 //#define REGVALUE_FTP_USER TEXT("FTP User")
 //#define REGVALUE_FTP_PASS TEXT("FTP Pass")
 
-#define WM_USER_BENCHMARK	WM_USER+1
-#define WM_USER_RESTART		WM_USER+2
-#define WM_USER_SAVESTATE	WM_USER+3
-#define WM_USER_LOADSTATE	WM_USER+4
+#define WM_USER_BENCHMARK  WM_USER+1
+#define WM_USER_RESTART    WM_USER+2
+#define WM_USER_SAVESTATE  WM_USER+3
+#define WM_USER_LOADSTATE  WM_USER+4
 
-enum eSOUNDCARDTYPE {SC_UNINIT=0, SC_NONE, SC_MOCKINGBOARD, SC_PHASOR};	// Apple soundcard type
+enum eSOUNDCARDTYPE {SC_UNINIT=0, SC_NONE, SC_MOCKINGBOARD, SC_PHASOR};  // Apple soundcard type
 
 typedef BYTE (*iofunction)(WORD nPC, WORD nAddr, BYTE nWriteFlag, BYTE nWriteValue, ULONG nCyclesLeft);
 
@@ -128,26 +128,26 @@ enum eIRQSRC {IS_6522=0, IS_SPEECH, IS_SSC, IS_MOUSE};
 
 //
 
-#define APPLE2E_MASK	0x10
-#define APPLE2C_MASK	0x20
+#define APPLE2E_MASK  0x10
+#define APPLE2C_MASK  0x20
 
-#define IS_APPLE2		((g_Apple2Type & (APPLE2E_MASK|APPLE2C_MASK)) == 0)
-#define IS_APPLE2E		(g_Apple2Type & APPLE2E_MASK)
-#define IS_APPLE2C		(g_Apple2Type & APPLE2C_MASK)
+#define IS_APPLE2    ((g_Apple2Type & (APPLE2E_MASK|APPLE2C_MASK)) == 0)
+#define IS_APPLE2E    (g_Apple2Type & APPLE2E_MASK)
+#define IS_APPLE2C    (g_Apple2Type & APPLE2C_MASK)
 
 // NB. These get persisted to the Registry, so don't change the values for these enums!
 enum eApple2Type {
-					A2TYPE_APPLE2=0,
-					A2TYPE_APPLE2PLUS,
-					A2TYPE_APPLE2E=APPLE2E_MASK,
-					A2TYPE_APPLE2EEHANCED,
-//					A2TYPE_APPLE2C=APPLE2C_MASK,	// Placeholder
-					A2TYPE_MAX
-				};
+          A2TYPE_APPLE2=0,
+          A2TYPE_APPLE2PLUS,
+          A2TYPE_APPLE2E=APPLE2E_MASK,
+          A2TYPE_APPLE2EEHANCED,
+//          A2TYPE_APPLE2C=APPLE2C_MASK,  // Placeholder
+          A2TYPE_MAX
+        };
 
 enum eBUTTON {BUTTON0=0, BUTTON1};
 enum eBUTTONSTATE {BUTTON_UP=0, BUTTON_DOWN};
 
 // sizes of status panel
-#define	STATUS_PANEL_W		100
-#define STATUS_PANEL_H		48
+#define  STATUS_PANEL_W    100
+#define STATUS_PANEL_H    48

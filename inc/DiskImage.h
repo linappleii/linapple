@@ -11,10 +11,10 @@ void    ImageInitialize ();
 
 enum ImageError_e
 {
-	IMAGE_ERROR_BAD_POINTER    =-1,
-	IMAGE_ERROR_NONE           = 0,
-	IMAGE_ERROR_UNABLE_TO_OPEN = 1,
-	IMAGE_ERROR_BAD_SIZE       = 2
+  IMAGE_ERROR_BAD_POINTER    =-1,
+  IMAGE_ERROR_NONE           = 0,
+  IMAGE_ERROR_UNABLE_TO_OPEN = 1,
+  IMAGE_ERROR_BAD_SIZE       = 2
 };
 
 //int     ImageOpen (LPCTSTR,HIMAGE *,BOOL *,BOOL);

@@ -5,7 +5,7 @@ enum JOYNUM {JN_JOYSTICK0=0, JN_JOYSTICK1};
 extern DWORD      joytype[2];
 
 void    JoyInitialize ();
-void	JoyShutDown();
+void  JoyShutDown();
 
 BOOL    JoyProcessKey (int,BOOL,BOOL,BOOL);
 void    JoyReset ();

@@ -2,10 +2,10 @@
 
 enum MemoryInitPattern_e
 {
-	  MIP_ZERO
-	, MIP_FF_FF_00_00
+    MIP_ZERO
+  , MIP_FF_FF_00_00
 
-	, NUM_MIP
+  , NUM_MIP
 };
 extern MemoryInitPattern_e g_eMemoryInitPattern;
 
@@ -16,18 +16,18 @@ extern LPBYTE     mem;
 extern LPBYTE     memdirty;
 
 #ifdef RAMWORKS
-extern UINT       g_uMaxExPages;	// user requested ram pages (from cmd line)
+extern UINT       g_uMaxExPages;  // user requested ram pages (from cmd line)
 #endif
 
-void	RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, iofunction IOReadCx, iofunction IOWriteCx, LPVOID lpSlotParameter, BYTE* pExpansionRom);
+void  RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, iofunction IOReadCx, iofunction IOWriteCx, LPVOID lpSlotParameter, BYTE* pExpansionRom);
 
 void    MemDestroy ();
 bool    MemGet80Store();
-bool	MemCheckSLOTCXROM();
+bool  MemCheckSLOTCXROM();
 LPBYTE  MemGetAuxPtr (WORD);
 LPBYTE  MemGetMainPtr (WORD);
 LPBYTE  MemGetCxRomPeripheral();
-void	MemPreInitialize ();
+void  MemPreInitialize ();
 int    MemInitialize ();
 BYTE    MemReadFloatingBus(const ULONG uExecutedCycles);
 BYTE    MemReadFloatingBus(const BYTE highbit, const ULONG uExecutedCycles);
@@ -36,7 +36,7 @@ void    MemResetPaging ();
 BYTE    MemReturnRandomData (BYTE highbit);
 void    MemSetFastPaging (BOOL);
 void    MemTrimImages ();
-LPVOID	MemGetSlotParameters (UINT uSlot);
+LPVOID  MemGetSlotParameters (UINT uSlot);
 DWORD   MemGetSnapshot(SS_BaseMemory* pSS);
 DWORD   MemSetSnapshot(SS_BaseMemory* pSS);
 
