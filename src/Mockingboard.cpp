@@ -783,7 +783,7 @@ void MB_Update()
   int nNumSamples;
   double n6522TimerPeriod = MB_GetFramePeriod();
 
-  double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod + 0.5;      // Round-up
+  double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod - 0.5;      // GPH: Round DOWN instead of up
   int nNumSamplesPerPeriod = (int) ((double)SAMPLE_RATE / nIrqFreq);    // Eg. For 60Hz this is 735
   nNumSamples = nNumSamplesPerPeriod + nNumSamplesError;          // Apply correction
   if(nNumSamples <= 0)
@@ -794,51 +794,6 @@ void MB_Update()
   if(nNumSamples)
     for(int nChip=0; nChip<NUM_AY8910; nChip++)
       AY8910Update(nChip, &ppAYVoiceBuffer[nChip*NUM_VOICES_PER_AY8910], nNumSamples);
-
-  //
-
-//  DWORD dwDSLockedBufferSize0, dwDSLockedBufferSize1;
-//  SHORT *pDSLockedBuffer0, *pDSLockedBuffer1;
-
-//  HRESULT hr = MockingboardVoice.lpDSBvoice->GetCurrentPosition(&dwCurrentPlayCursor, &dwCurrentWriteCursor);
-//  if(FAILED(hr))
-//    return;
-/*
-  if(dwByteOffset == (DWORD)-1)
-  {
-    // First time in this func
-
-    dwByteOffset = dwCurrentWriteCursor;
-  }
-  else
-  {
-    // Check that our offset isn't between Play & Write positions
-
-    if(dwCurrentWriteCursor > dwCurrentPlayCursor)
-    {
-      // |-----PxxxxxW-----|
-      if((dwByteOffset > dwCurrentPlayCursor) && (dwByteOffset < dwCurrentWriteCursor))
-        dwByteOffset = dwCurrentWriteCursor;
-    }
-    else
-    {
-      // |xxW----------Pxxx|
-      if((dwByteOffset > dwCurrentPlayCursor) || (dwByteOffset < dwCurrentWriteCursor))
-        dwByteOffset = dwCurrentWriteCursor;
-    }
-  }
-
-  int nBytesRemaining = dwByteOffset - dwCurrentPlayCursor;
-  if(nBytesRemaining < 0)
-    nBytesRemaining += g_dwDSMockBufferSize;
-
-  // Calc correction factor so that play-buffer doesn't under/overflow
-  if(nBytesRemaining < g_dwDSMockBufferSize / 4)
-    nNumSamplesError++;              // < 0.25 of buffer remaining
-  else if(nBytesRemaining > g_dwDSMockBufferSize / 2)
-    nNumSamplesError--;              // > 0.50 of buffer remaining
-  else
-    nNumSamplesError = 0;            // Acceptable amount of data in buffer*/
 
   if(nNumSamples == 0)
     return;    // have nothing to produce??
@@ -879,30 +834,11 @@ void MB_Update()
   }
 
 
-// now we have sample data in g_nMixBuffer of size nNumSamples?? Ok, upload it for playing
-// NOTE: when you delete the comment of the line below, speakers will work badly, but Mockingboard should work?
+  // now we have sample data in g_nMixBuffer of size nNumSamples?? Ok, upload it for playing
+  // NOTE: when you delete the comment of the line below, speakers will work badly, but Mockingboard should work?
 
   DSUploadMockBuffer(g_nMixBuffer, nNumSamples * 2);  // submit stereo wave data
 
-
-
-/*  if(!DSGetLock(MockingboardVoice.lpDSBvoice,
-            dwByteOffset, (DWORD)nNumSamples*sizeof(short)*g_nMB_NumChannels,
-            &pDSLockedBuffer0, &dwDSLockedBufferSize0,
-            &pDSLockedBuffer1, &dwDSLockedBufferSize1))
-    return;
-
-
-  memcpy(pDSLockedBuffer0, &g_nMixBuffer[0], dwDSLockedBufferSize0);
-  if(pDSLockedBuffer1)
-    memcpy(pDSLockedBuffer1, &g_nMixBuffer[dwDSLockedBufferSize0/sizeof(short)], dwDSLockedBufferSize1);
-
-  // Commit sound buffer
-  hr = MockingboardVoice.lpDSBvoice->Unlock((void*)pDSLockedBuffer0, dwDSLockedBufferSize0,
-                    (void*)pDSLockedBuffer1, dwDSLockedBufferSize1);*/
-
-//  dwByteOffset = (dwByteOffset + (DWORD)nNumSamples*sizeof(short)*g_nMB_NumChannels) % g_dwDSMockBufferSize;
-// write some data to disk (in RIFF format - thanx to M$) --bb
 #ifdef RIFF_MB
   RiffPutSamples(&g_nMixBuffer[0], nNumSamples);
 #endif
