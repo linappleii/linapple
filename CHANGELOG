@@ -1,3 +1,14 @@
+LinApple version 2.1
+28 November 2017
+
+!! Keyboard: Fixed caps lock bug.
+
+!! Display: Set higher default host screen resolution in windowed mode.
+
+!! Audio: Eliminated decoupling capacitor simulation.
+
+!! Audio: Fixed choppy Mockingboard sound due to incorrect cycle caculation between IRQs.
+
 For LinApple version 2.0 has been made:
 
 !! Fixed screen corruption bug for x64 systems
