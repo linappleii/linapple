@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 #include "stdafx.h"
+#include <iostream>
 //#pragma  hdrstop
 
 //static bool g_bKeybBufferEnable = false;
@@ -177,7 +178,12 @@ void KeybQueueKeypress (int key, BOOL bASCII)
 // Conver SHIFTed keys to their secondary values
 // may be this is straitfoward method, but it seems to be working. What else we need?? --bb
     KeybUpdateCtrlShiftStatus();
-    if(g_bShiftKey)     // SHIFT is pressed
+   if(g_bShiftKey)     // SHIFT is pressed
+   {
+      // GPH fixed shift bug
+      if(isalpha(key)) {
+        key &= (char) (~0x20);
+      }
       switch(key) {
         case '1': key = '!'; break;
         case '2': key = '@'; break;
@@ -202,7 +208,7 @@ void KeybQueueKeypress (int key, BOOL bASCII)
         case '/': key = '?'; break;
         default:        break;
       }
-    else if (g_bCtrlKey) {
+    } else if (g_bCtrlKey) {
       if(key >= SDLK_a && key <= SDLK_z) key = key - SDLK_a + 1;
       else switch(key) {
         case '\\': key = 28; break;
@@ -465,7 +471,7 @@ void KeybToggleCapsLock ()
   {
     g_bCapsLock = !g_bCapsLock;// never mind real CapsLock status, heh???(GetKeyState(VK_CAPITAL) & 1);
 //    printf("g_bCapsLock=%d\n", g_bCapsLock);
-//    FrameRefreshStatus(DRAW_LEDS);
+    FrameRefreshStatus(DRAW_LEDS);
   }
 }
 

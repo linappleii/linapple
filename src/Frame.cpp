@@ -40,7 +40,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // for usleep()
 #include <unistd.h>
-
+#include <iostream>
 
 #define ENABLE_MENU 0
 
@@ -777,9 +777,11 @@ void  FrameDispatchMessage(SDL_Event * e) // process given SDL event
         //       else
         //         DrawButton((HDC)0,wparam-VK_F1);
         ProcessButtonClick(mysym-SDLK_F1, mymod); // process function keys - special events
-      }
-      else
-      {  // mysym >= 300 (or 273????)- check for extended key, what is it EXACTLY???
+      } else if (mysym == SDLK_CAPSLOCK) {
+        // GPH Fix caps lock toggle behavior.
+        // (http://sdl.beuc.net/sdl.wiki/SDL_KeyboardEvent)
+        KeybToggleCapsLock();
+      } else {  // mysym >= 300 (or 273????)- check for extended key, what is it EXACTLY???
         JoyProcessKey(mysym,(mysym >= 273), 0, 0);
       }
       break;
