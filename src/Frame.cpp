@@ -1204,7 +1204,7 @@ int FrameCreateWindow ()
   SDL_putenv(sdlCmd); //center our window
 
   bIamFullScreened = false; // at startup not in fullscreen mode
-  screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE | SDL_RESIZABLE);
+  screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);
   if (screen == NULL) {
     fprintf(stderr, "Could not set SDL video mode: %s\n", SDL_GetError());
     SDL_Quit();
