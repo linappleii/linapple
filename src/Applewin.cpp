@@ -45,6 +45,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "config.h"
+
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
 // Satisfy modern compiler standards
@@ -769,6 +771,12 @@ void RegisterExtensions ()
 
 int main(int argc, char * lpCmdLine[])
 {
+  // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
+  Config config;
+  config.ValidateUserDirectory();
+  config.ChangeToUserDirectory();
+
+
 //    reading FullScreen and Boot from conf file?
 //  bool bSetFullScreen = false;
 //  bool bBoot = false;

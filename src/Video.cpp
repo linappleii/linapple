@@ -30,6 +30,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 #include "wwrapper.h"
+#include "config.h"
+#include <iostream>
 //#include "stretch.c"  // for SDL_SoftStretch thanx to Sam Lantinga and Tomasz Cejner
 
 //#include "..\resource\resource.h"
@@ -1883,13 +1885,19 @@ BOOL VideoHasRefreshed () {
 
 //===========================================================================
 void VideoInitialize () {
+  Config config;
+  config.ChangeToUserDirectory();
+
+
   SDL_Surface * tmp_surface;
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
 
+  printf( "%s\n", (config.GetUserFilePath() + "splash.bmp").c_str());
+
   // LOAD THE splash screen
-  tmp_surface = SDL_LoadBMP("splash.bmp");
+  tmp_surface = SDL_LoadBMP((config.GetUserFilePath() + "splash.bmp").c_str());
   if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
   else fprintf(stderr, "Video: splash.bmp was not loaded\n");
   SDL_FreeSurface(tmp_surface);
