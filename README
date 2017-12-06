@@ -1,3 +1,15 @@
+*** LINAPPLE 2.1 ***
+
+[INSTALL]
+
+make
+sudo make package
+sudo dpkg -i linapple-2.1.deb
+
+[PREREQUISITES]
+
+sudo apt-get libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl-ocaml-dev
+
 
 
 *** LINAPPLE 2.0***

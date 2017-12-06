@@ -14,6 +14,12 @@ SRCEXT      := cpp
 DEPEXT      := d
 OBJEXT      := o
 
+VERSION			:= 2.1
+PKG         := linapple
+
+INSTDIR = /usr/local/bin/$(EXE)
+CONFDIR = ~/$(TARGET)
+
 #Flags, Libraries and Includes
 
 SDL_CONFIG ?= sdl-config
@@ -58,6 +64,24 @@ resources: directories
 directories:
 		@mkdir -p $(TARGETDIR)
 		@mkdir -p $(BUILDDIR)
+
+package: all
+	@echo " Building a package"
+	mkdir -p "pkg/$(PKG)/$(PKG)-$(VERSION)/etc/$(PKG)"
+	mkdir -p "pkg/$(PKG)/$(PKG)-$(VERSION)/usr/bin/"
+	@cp -rf $(RESDIR)/* "pkg/$(PKG)/$(PKG)-$(VERSION)/etc/$(PKG)"
+	@cp $(TARGETDIR)/$(TARGET) "pkg/$(PKG)/$(PKG)-$(VERSION)/usr/bin/$(TARGET)"
+	chown -R root:root "pkg/$(PKG)"
+	dpkg --build "pkg/$(PKG)/$(PKG)-$(VERSION)"
+	mv "pkg/$(PKG)/$(PKG)-$(VERSION).deb" .
+
+install: all
+	@echo " o Creating install directory '$(INSTDIR)'"
+	mkdir -p "$(INSTDIR)"
+	chmod 777 "$(INSTDIR)"
+	@echo " o Creating additional directories 'conf' and 'ftp' in '$(INSTDIR)'"
+	mkdir "$(CONFDIR)/conf"
+	mkdir -p "$(CONFDIR)/sound"
 
 #Clean only Objecst
 clean:
