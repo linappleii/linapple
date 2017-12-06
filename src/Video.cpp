@@ -1894,10 +1894,8 @@ void VideoInitialize () {
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
 
-  printf( "%s\n", (config.GetUserFilePath() + "splash.bmp").c_str());
-
   // LOAD THE splash screen
-  tmp_surface = SDL_LoadBMP((config.GetUserFilePath() + "splash.bmp").c_str());
+  tmp_surface = SDL_LoadBMP("splash.bmp");
   if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
   else fprintf(stderr, "Video: splash.bmp was not loaded\n");
   SDL_FreeSurface(tmp_surface);
