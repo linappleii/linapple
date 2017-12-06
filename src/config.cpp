@@ -125,7 +125,8 @@ static const char *files[] =
 		mkdir((userDir + SAVED_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		mkdir((userDir + FTP_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
-    cout << "Copying Files\n";
+    cout << "Copying Files\n" << std::endl;
+
 		// Copy config options file
     for( unsigned int i = 0; *files[ i ]; i++ ) {
       string dest = GetUserFilePath();
