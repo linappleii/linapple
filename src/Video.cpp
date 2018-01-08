@@ -1898,7 +1898,7 @@ void VideoInitialize () {
   // LOAD APPLE CHARSET40
   tmp_surface = SDL_LoadBMP(RESOURCE_CHARSET40_BMP);
   if(tmp_surface != NULL)  charset40 = SDL_DisplayFormat(tmp_surface);
-  	else fprintf(stderr, "Video: Apple text is not unavailable: " RESOURCE_CHARSET40_BMP " was not loaded\n");
+  	else fprintf(stderr, "Video: Apple text is not available: " RESOURCE_CHARSET40_BMP " was not loaded\n");
   SDL_FreeSurface(tmp_surface);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
