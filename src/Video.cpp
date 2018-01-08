@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+#include "Resources.h"
 #include "stdafx.h"
 #include "wwrapper.h"
 //#include "stretch.c"	// for SDL_SoftStretch thanx to Sam Lantinga and Tomasz Cejner
@@ -1889,15 +1890,15 @@ void VideoInitialize () {
   ZeroMemory(vidlastmem,0x10000);
 
   // LOAD THE splash screen
-  tmp_surface = SDL_LoadBMP("splash.bmp");
+  tmp_surface = SDL_LoadBMP(RESOURCE_SPLASH_BMP);
   if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
-  	else fprintf(stderr, "Video: splash.bmp was not loaded\n");
+  	else fprintf(stderr, "Video: " RESOURCE_SPLASH_BMP " was not loaded\n");
   SDL_FreeSurface(tmp_surface);
 
   // LOAD APPLE CHARSET40
-  tmp_surface = SDL_LoadBMP("charset40.bmp");
+  tmp_surface = SDL_LoadBMP(RESOURCE_CHARSET40_BMP);
   if(tmp_surface != NULL)  charset40 = SDL_DisplayFormat(tmp_surface);
-  	else fprintf(stderr, "Video: Apple text is not unavailable: charset40.bmp was not loaded\n");
+  	else fprintf(stderr, "Video: Apple text is not unavailable: " RESOURCE_CHARSET40_BMP " was not loaded\n");
   SDL_FreeSurface(tmp_surface);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
