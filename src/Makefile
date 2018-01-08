@@ -13,8 +13,12 @@ CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
+# build with `RESOURCE_DIR=. make` to get the legacy behaviour of loading resource files from the current directory
+RESOURCE_DIR ?= $(shell (cd .. && pwd))
+
 CXXFLAGS += $(SDL_CFLAGS)
 CXXFLAGS += $(CURL_CFLAGS)
+CXXFLAGS += -DRESOURCE_DIR=\"$(RESOURCE_DIR)/\"
 LDLIBS += $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
 
 # Define executable and installing directory
