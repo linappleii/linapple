@@ -832,7 +832,7 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 
     case SDL_USEREVENT:
 	if (e->user.code == 1) // should do restart?
-		ProcessButtonClick(BTN_RUN, 0);
+		ProcessButtonClick(BTN_RUN, KMOD_LCTRL);
 	break;
 
    }//switch
