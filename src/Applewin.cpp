@@ -1051,8 +1051,9 @@ int main(int argc, char * lpCmdLine[])
 	}
 
 	RiffFinishWriteFile();
-	if(registry!=NULL) {
-	        fclose(registry);		//close conf file (linapple.conf by default)
+	if(registry!=NULL)
+	{
+		fclose(registry);		//close conf file (linapple.conf by default)
 	}
 	fclose(spMono);
 	fclose(spStereo);
