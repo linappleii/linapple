@@ -1,3 +1,33 @@
+This is Cat's Eye Technologies' fork of linapple, an Apple II emulator
+for Linux.  It is based on AppleWin by Tom Charlesworth and others,
+ported to Linux by Krez beom beotiger.  The original README can be found
+below, following the line of equals signs in this file.
+
+The objective of this fork is to make a version of linapple which is
+"properly unixy" instead of being a perfunctory translation of a
+Windows app.  This includes:
+
+- autobooting from a disk image name on the command line.  This
+  work comes from a branch by @arloduff and is documented in another
+  file in this directory:  Command-line.md
+- recording location of resource files at build time instead of
+  assuming they always reside in the current directory.  This permits
+  the executable to be started from any directory (under development)
+- treating the configuration file as read-only (planned)
+
+It also contains changes for building and running under OSX, taken from
+other forks of linapple on Github, however, keeping these changes tested
+and working is not a priority for this fork.
+
+This code was forked from the version that @timob branched from Sourceforge,
+which is ostensibly version 2.0.  It has incorporated several changes
+from around Github since them.  It does not yet have a specific version
+number, but when it does, it will likely be something like 2.0ce1.
+
+-Chris
+
+ =====================================================================
+
 *** LINAPPLE 2.0***
 
 [INTRO]
