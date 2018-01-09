@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* And KREZ */
 
+#include "Resources.h"
 #include "stdafx.h"
 //#pragma  hdrstop
 #include "MouseInterface.h"
@@ -1210,7 +1211,7 @@ int InitSDL()
 	SDL_WM_SetIcon(apple_icon, NULL);
 	printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
 
-	apple_icon = SDL_LoadBMP("icon.bmp");
+	apple_icon = SDL_LoadBMP(RESOURCE_ICON_BMP);
 	if(apple_icon != NULL) {
 		Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
 		SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
