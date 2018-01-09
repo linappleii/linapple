@@ -411,11 +411,11 @@ void LoadConfiguration ()
 {
   DWORD dwComputerType;
 
-if(registry==NULL)
-{
-   // int i=DlgAlert_Notice("NO CONFIGURATION FILE OPENED");
+  if(registry==NULL)
+  {
+    printf("File " REGISTRY " could not be opened. Using default configuration.\n");
     return;
-}
+  }
   LOAD(TEXT("Computer Emulation"),&dwComputerType);
   switch (dwComputerType)
   {
@@ -760,7 +760,7 @@ int main(int argc, char * lpCmdLine[])
 	bool bSetFullScreen = false;
 	bool bBoot = false;
 
-	registry = fopen(REGISTRY, "a+t");	// open conf file (linapple.conf by default)
+	registry = fopen(REGISTRY, "rt");	// open conf file (linapple.conf by default)
 	spMono = fopen("speakersmono.pcm","wb");
 	spStereo = fopen("speakersstereo.pcm","wb");
 	
@@ -1051,7 +1051,9 @@ int main(int argc, char * lpCmdLine[])
 	}
 
 	RiffFinishWriteFile();
-	fclose(registry);		//close conf file (linapple.conf by default)
+	if(registry!=NULL) {
+	        fclose(registry);		//close conf file (linapple.conf by default)
+	}
 	fclose(spMono);
 	fclose(spStereo);
 	
