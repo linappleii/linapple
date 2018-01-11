@@ -13,7 +13,7 @@ Windows app.  This includes:
 - recording location of resource files at build time instead of
   assuming they always reside in the current directory.  This permits
   the executable to be started from any directory.
-- treating the configuration file as read-only (planned)
+- treating the configuration file as read-only.
 
 It also contains changes for building and running under OSX, taken from
 other forks of linapple on Github, however, keeping these changes tested

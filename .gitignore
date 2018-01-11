@@ -1,3 +1,4 @@
 /linapple
 /src/linapple
 *.o
+*.pcm
