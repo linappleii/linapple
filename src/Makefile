@@ -1,6 +1,6 @@
 CXX ?= c++
 CXXFLAGS ?= -O3
-CXXFLAGS += -Wall
+CXXFLAGS += -w
 
 OBJS := $(filter-out Applewin.cpp Util_MemoryTextFile.cpp,$(wildcard *.cpp))
 OBJS := $(OBJS:.cpp=.o)
@@ -23,7 +23,8 @@ INSTDIR = /usr/local/$(EXE)
 STARTUP = /usr/local/bin/$(EXE)
 DATA = ../charset40.bmp ../font.bmp ../icon.bmp ../splash.bmp ../Master.dsk ../linapple.installed.conf
 
-#all: ../linapple
+.PHONY: all clean install uninstall
+
 all: $(EXE)
 
 Applewin: $(OBJS)
@@ -32,26 +33,19 @@ $(EXE): Applewin
 #	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 	mv $^ $@
 	strip $@
-	@echo " o If there are no errors, $(EXE) compiled succesfully"
+	@echo " o $(EXE) compiled succesfully"
 	cp $@ ../
-
-# static binary: (DOES NOT WORK)
-#static: $(OBJS)
-#	$(CC) -static $^ -o $@ `sdl-config --static-libs` -ldl -lz
-#	strip static
-#	mv static ../$(EXE)-static
 
 clean:
 	rm -f $(EXE) *.o
 
-.PHONY: all clean
-
+#
 # Installation routines
+#
 
 install: all
 	@echo " o Creating install directory '$(INSTDIR)'"
 	mkdir "$(INSTDIR)"
-	chmod 777 "$(INSTDIR)"
 	@echo " o Creating additional directories 'images' and 'ftp' in '$(INSTDIR)'"
 	mkdir "$(INSTDIR)/images"
 	mkdir -p "$(INSTDIR)/ftp/cache"
@@ -61,19 +55,14 @@ install: all
 
 	@echo " o Preparing configuration file 'linapple.conf'"
 	mv "$(INSTDIR)/linapple.installed.conf" "$(INSTDIR)/linapple.conf"
-	chmod 777 -R "$(INSTDIR)/"
-
-	@echo " o Configuring access permissions for 'ftp' and 'images' directories"
-	chmod 777 "$(INSTDIR)/images"
-	chmod 777 "$(INSTDIR)/ftp"
-	chmod 777 "$(INSTDIR)/ftp/cache"
+	chmod -R 777 "$(INSTDIR)/"
 
 	@echo " o Creating startup script $(STARTUP)"
 	echo "cd \"$(INSTDIR)\"; ./$(EXE); cd -" >"$(STARTUP)"
 	chmod 755 "$(STARTUP)"
 	
 	@echo ""
-	@echo "Type '$(EXE)' (no quotes) to start the beast!"
+	@echo "Type $(EXE) to start the beast!"
 	@echo "To change some settings edit \"$(INSTDIR)/linapple.conf\""
   
 uninstall:
@@ -81,5 +70,4 @@ uninstall:
 	rm -rf "$(INSTDIR)"
 	@echo " o Removing startup script $(STARTUP)"
 	rm -f "$(STARTUP)"
-	@echo " o All done!"
-
+	@echo " o All done! Linapple has been successfully removed from your system"
