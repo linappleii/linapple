@@ -50,22 +50,25 @@ static const unsigned short g_nSPKR_NumChannels = 1;
 //-------------------------------------
 
 // Globals (SOUND_WAVE)
-const short		SPKR_DATA_INIT = (short)0x8000;	// data written to speakers buffer
+// GPH This "INIT" value is the actual sample data written to the speaker when
+// it gets whapped with a BIT $C030.  Note the output is always digital.
+// The Apple II had no notion of volume or of looping waves, only the single
+// "click" of the speaker. We set this to a value well under the maximum to
+// provide headroom for mixing Mockingboard sound without causing peak clipping.
+const short		SPKR_DATA_INIT = (short)0x2000;	// data written to speakers buffer
 
-static short	g_nSpeakerData	= SPKR_DATA_INIT;
+static short	g_nSpeakerData	= 0x0000;   //SPKR_DATA_INIT;
 static short	*g_pSpeakerBuffer = NULL;
-static UINT	g_nBufferIdx	= 0;
+static UINT	    g_nBufferIdx	= 0;
 
 static short	*g_pStereoBuffer = NULL;	// buffer for stereo samples
 
-
 static short	*g_pRemainderBuffer = NULL;	// Remainder buffer
-static UINT	g_nRemainderBufferSize;		// Setup in SpkrInitialize()
-static UINT	g_nRemainderBufferIdx;		// Setup in SpkrInitialize()
-
+static UINT	    g_nRemainderBufferSize;		// Setup in SpkrInitialize()
+static UINT	    g_nRemainderBufferIdx;		// Setup in SpkrInitialize()
 
 // Application-wide globals:
-DWORD		soundtype		= SOUND_WAVE; //default
+DWORD		    soundtype		= SOUND_WAVE; //default
 double		    g_fClksPerSpkrSample;		// Setup in SetClksPerSpkrSample()
 
 // Globals
@@ -301,11 +304,14 @@ static void UpdateSpkr()
   }
 
   g_nSpkrLastCycle = g_nCumulativeCycles;
+
+  // GPH Added - simulate decoupling capacitor - use approximate value
+  g_nSpeakerData = (short)((double) g_nSpeakerData * 0.995);
 }
 
 //=============================================================================
 
-// Called by emulation code when Speaker I/O reg is accessed
+// Called by emulation code when Speaker I/O reg (0xC030) is accessed
 BYTE SpkrToggle (WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft)
 {
   g_bSpkrToggleFlag = true;
@@ -327,7 +333,7 @@ BYTE SpkrToggle (WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft)
 
 	  UpdateSpkr();
 
-	  g_nSpeakerData = ~g_nSpeakerData;
+	  g_nSpeakerData = g_nSpeakerData ^ SPKR_DATA_INIT;
   }
 
   return MemReadFloatingBus(nCyclesLeft); // reading from $C030..$C03F retrurns unpredictable value?

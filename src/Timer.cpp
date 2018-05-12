@@ -45,6 +45,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for Assertion
 #include <assert.h>
 
+// for usleep()
+#include <unistd.h>
+
 #ifndef _WIN32
 //===============================================================================//
 //		Timer Functions - POSIX specific 				//

@@ -550,7 +550,7 @@ md5 (const char *input)
 char *
 md5str (const char *input) 
 {
-	static char result[16 * 3 +1];
+	char result[16 * 3 +1];
 	unsigned char* digest = (unsigned char*)md5 (input);
 	int i;
 
