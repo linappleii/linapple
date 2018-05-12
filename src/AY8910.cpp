@@ -63,7 +63,12 @@ static unsigned short activecpu_get_pc()
 //
 ///////////////////////////////////////////////////////////
 
-#define MAX_OUTPUT 0x7fff
+// GPH Changed from 0x7fff: we want some headroom to add in the Apple speaker
+// in the mixing phase and can avoid an unnecessary divide with the
+// associated problems by simply picking smaller values.
+// Note also this number can theoretically go as high as 0x3fff without
+// causing post-mix clipping, but even that sounds too loud...
+#define MAX_OUTPUT 0x0fff
 
 // See AY8910_set_clock() for definition of STEP
 #define STEP 0x8000
