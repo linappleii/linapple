@@ -36,7 +36,8 @@
 // define time when cache ftp dir.listing must be refreshed
 #define RENEW_TIME  24*3600
 
-char * md5str (const char *input); // forward declaration of md5str func
+char *
+md5str (const char *input); // forward declaration of md5str func
 
 TCHAR    g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
 ////////////////////////////////////////////////////////////////////////////////////////
