@@ -39,7 +39,7 @@
 char *
 md5str (const char *input); // forward declaration of md5str func
 
-TCHAR    g_sFTPDirListing[512] = TEXT("/cache/ftp."); // name for FTP-directory listing
+TCHAR    g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
 ////////////////////////////////////////////////////////////////////////////////////////
 int getstatFTP(struct ftpparse *fp, int * size)
 {
