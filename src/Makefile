@@ -58,7 +58,7 @@ install: all
 	chmod -R 777 "$(INSTDIR)/"
 
 	@echo " o Creating startup script $(STARTUP)"
-	echo "cd \"$(INSTDIR)\"; ./$(EXE); cd -" >"$(STARTUP)"
+	echo "cd \"$(INSTDIR)\"; ./$(EXE) \$$1 \$$2 \$$3 \$$4 \$$5 \$$6; cd -" >"$(STARTUP)"
 	chmod 755 "$(STARTUP)"
 	
 	@echo ""

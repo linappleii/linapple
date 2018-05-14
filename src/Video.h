@@ -44,7 +44,7 @@ extern BOOL       g_ShowLeds;	// if we should show drive leds
 
 extern BOOL       graphicsmode;
 extern COLORREF   monochrome;
-extern DWORD      videotype;
+extern DWORD      g_videotype;
 
 // Surfaces for drawing
 //extern HBITMAP g_hLogoBitmap;
