@@ -29,6 +29,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
 
 // Timers like functions for Windows and Posix
+
+// for usleep()
+#include <unistd.h>
+
 #include "stdafx.h"
 #include "Timer.h"
 
