@@ -25,7 +25,7 @@
 #include "list.h"
 
 #include "DiskChoose.h"
-
+#include <errno.h>
 //#include "ctype.h"
 
 //#include <stdio.h>
@@ -55,6 +55,8 @@
 // delay after key pressed (in milliseconds??)
 #define KEY_DELAY		25
 
+#define MAX_FILENAME    36
+
 /////////////////////////////////////////////////////////////////////
 /* FONT prev decls */
 //bool fonts_initialization(void);
@@ -80,7 +82,8 @@ int getstat(char *catalog, char *fname, int * size)
 	if(stat(tempname, &info) == -1) return 0;
 	if(S_ISDIR(info.st_mode)) return 1;	// seems to be directory
 	if(S_ISREG(info.st_mode)) {
-		if(size != NULL) *size = (int)(info.st_size / 1024);	// get file size in Kbytes?!
+		if(size != NULL)
+            *size = (int)(info.st_size / 1024);	// get file size in Kbytes?!
 		return 2;	// regular file
 	}
 
@@ -123,7 +126,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		dp = opendir (incoming_dir);	// open and read incoming directory
 		char *tmp;
 
-		int i,j, B, N;	// for cycles, beginning and end of list
+		int i;	// for cycles, beginning and end of list
 
 // build prev dir
 	if(strcmp(incoming_dir, "/")) {
@@ -133,26 +136,35 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		tmp = new char[5];
 		strcpy(tmp, "<UP>");
 		sizes.Add(tmp);	// add sign of directory
-		B = 1;
 	}
-	else	B = 0;	// for sorting dirs
 		if (dp != NULL)
 		{
-			while (ep = readdir (dp)) // first looking for directories
-			{
-				int what = getstat(incoming_dir, ep->d_name, NULL);
-				if (strlen(ep->d_name) > 0 && /*strcmp(ep->d_name,".")*/// omit "." (cur dir)
-					 ep->d_name[0] != '.'/*strcmp(ep->d_name,"..")*/ && what == 1) // is directory!
-				{
-					tmp = new char[strlen(ep->d_name)+1];	// add entity to list
-					strcpy(tmp, ep->d_name);
-					files.Add(tmp);
-					tmp = new char[6];
-					strcpy(tmp, "<DIR>");
-					sizes.Add(tmp);	// add sign of directory
-				} /* if */
+            {
+                struct dirent **namelist;
+                int n;
 
-			}
+                n = scandir(incoming_dir, &namelist, NULL, alphasort);
+                if (n < 0)
+                    perror("scandir");
+                else {
+                    i = 0;
+                    while (i < n) {
+                        int what = getstat(incoming_dir, namelist[i]->d_name, NULL);
+                        if (namelist[i]->d_name && strlen(namelist[i]->d_name) > 0 &&
+                            namelist[i]->d_name[0] != '.' && what == 1) // is directory!
+                        {
+                            tmp = new char[strlen(namelist[i]->d_name)+1];	// add this entity to list
+                            strcpy(tmp, namelist[i]->d_name);
+                            files.Add(tmp);
+                            tmp = new char[6];
+                            strcpy(tmp, "<DIR>");
+                            sizes.Add(tmp);	// add sign of directory
+                        }
+                        i++;
+                    }
+                    free(namelist);
+               }
+            }
 		}
 #else
 /* Windows specific functions of reading directory structure */
@@ -165,9 +177,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		tmp = new char[5];
 		strcpy(tmp, "<UP>");
 		sizes.Add(tmp);	// add sign of directory
-		B = 1;
 	}
-	else	B = 0;	// for sorting dirs
 
 
 		WIN32_FIND_DATA finfo;
@@ -202,42 +212,42 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		} /* if */
 
 #endif
-// sort directories. Please, don't laugh at my bubble sorting - it the simplest thing I've ever seen --bb
-			if(files.Length() > 2)
-			{
-				N = files.Length() - 1;
-//				B = 1;`- defined above
-				for(i = N; i > B; i--)
-					for(j = B; j < i; j++)
-						if(strcasecmp(files[j], files[j + 1]) > 0)
-						{
-							files.Swap(j,j + 1);
-							sizes.Swap(j,j + 1);
-						}
-
-			}
-			B = files.Length();	// start for files
 #ifndef _WIN32
 /* POSIX specific routines of reading directory structure */
 
 			(void) rewinddir (dp);	// to the start
-				// now get all regular files
-			while (ep = readdir (dp))
-			{
-				int fsize;
+            {
+                struct dirent **namelist;
+                int n, fsize = 0;
 
-				if (strlen(ep->d_name) > 4 && ep->d_name[0] != '.'
-					&& (getstat(incoming_dir, ep->d_name, &fsize) == 2)) // is normal file!
-				{
-					tmp = new char[strlen(ep->d_name)+1];	// add this entity to list
-					strcpy(tmp, ep->d_name);
-					files.Add(tmp);
-					tmp = new char[10];	// 1400000KB
-					snprintf(tmp, 9, "%dKB", fsize);
-					sizes.Add(tmp);	// add this size to list
-				} /* if */
+                n = scandir(incoming_dir, &namelist, NULL, alphasort);
+                if (n < 0)
+                    perror("scandir");
+                else {
+                    int i = 0;
+                    while (i < n) {
+                        if (strlen(namelist[i]->d_name) > 4 && namelist[i]->d_name[0] != '.'
+                            && (getstat(incoming_dir, namelist[i]->d_name, &fsize) == 2)) // is normal file!
+                        {
+                            tmp = new char[strlen(namelist[i]->d_name)+1];	// add this entity to list
+                            strcpy(tmp, namelist[i]->d_name);
+                            files.Add(tmp);
+                            tmp = new char[10];	// 1400000KB
+                            if (1000 > fsize) {
+                                snprintf(tmp, 9, "%4dK", fsize);
+                            } else if (1000000 > fsize) {
+                                snprintf(tmp, 9, "%4dM", (int) (fsize / 1000));
+                            } else {
+                                snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
+                            }
+                            sizes.Add(tmp);	// add this size to list
+                        }
+                        i++;
+                    }
+                    free(namelist);
+               }
+            }
 
-			}
 			(void) closedir (dp);
 #else
 /* Windows specific functions of reading directory structure */
@@ -273,19 +283,6 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 
 #endif
 // do sorting for files
-			if(files.Length() > 2 && B < files.Length())
-			{
-				N = files.Length() - 1;
-//				B = 1;
-				for(i = N; i > B; i--)
-					for(j = B; j < i; j++)
-						if(strcasecmp(files[j], files[j + 1]) > 0)
-						{
-							files.Swap(j,j + 1);
-							sizes.Swap(j,j + 1);
-						}
-			}
-
 
 //	Count out cursor position and file number output
 	act_file = *index_file;
@@ -368,10 +365,10 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 				// print file name with enlarged font
 				char ch;
 				ch = 0;
-				if(strlen(tmp) > 46) { ch = tmp[46]; tmp[46] = 0;} //cut-off too long string
+				if(strlen(tmp) > MAX_FILENAME) { ch = tmp[MAX_FILENAME]; tmp[MAX_FILENAME] = 0;} //cut-off too long string
 				font_print(4, TOPX + (i - first_file) * 15 * facy, tmp, screen, 1.7*facx, 1.5*facy); // show name
 				font_print(sx - 70 * facx, TOPX + (i - first_file) * 15 * facy, siz, screen, 1.7*facx, 1.5*facy);// show info (dir or size)
-				if(ch) tmp[46] = ch; //restore cut-off char
+				if(ch) tmp[MAX_FILENAME] = ch; //restore cut-off char
 
 			} /* if */
 			i++;		// next item
@@ -391,10 +388,19 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 	SDL_Event event;	// event
 	Uint8 *keyboard;	// key state
 
-	event.type = SDL_QUIT;
+	event.type = 0;
 	while(event.type != SDL_KEYDOWN) {	// wait for key pressed
-				SDL_Delay(10);
-				SDL_PollEvent(&event);
+        // GPH Honor quit even if we're in the diskchoose state.
+        if (SDL_QUIT == event.type) {
+			files.Delete();
+			sizes.Delete();
+			SDL_FreeSurface(my_screen);
+
+		    SDL_PushEvent(&event);// push quit event
+            return false;
+        }
+		SDL_Delay(10);
+		SDL_PollEvent(&event);
 	}
 
 // control cursor
