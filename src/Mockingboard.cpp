@@ -183,8 +183,8 @@ static const unsigned short g_nMB_NumChannels = 2;
 
 static const DWORD g_dwDSBufferSize = 16 * 1024 * sizeof(short) * g_nMB_NumChannels;
 
-static const SHORT nWaveDataMin = (SHORT)0x8000;
-static const SHORT nWaveDataMax = (SHORT)0x7FFF;
+static const SHORT nWaveDataMin = (SHORT)0xF000;
+static const SHORT nWaveDataMax = (SHORT)0x0FFF;
 
 static short g_nMixBuffer[g_dwDSBufferSize / sizeof(short)];
 

@@ -156,7 +156,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		}
 #else
 /* Windows specific functions of reading directory structure */
-		/* Find subdirs: */ 
+		/* Find subdirs: */
 	if(strcmp(incoming_dir, "/")) {
 	// we are not in upper direcory
 		tmp = new char[3];
@@ -168,13 +168,13 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 		B = 1;
 	}
 	else	B = 0;	// for sorting dirs
-	
+
 
 		WIN32_FIND_DATA finfo;
 		HANDLE h;
 
-		
-		
+
+
 		h=FindFirstFile(incoming_dir,&finfo);
 
 		if (h!=INVALID_HANDLE_VALUE) {
@@ -198,8 +198,8 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 					strcpy(tmp, "<DIR>");
 					sizes.Add(tmp);	// add sign of directory
 				}
-			} /* while */ 
-		} /* if */ 
+			} /* while */
+		} /* if */
 
 #endif
 // sort directories. Please, don't laugh at my bubble sorting - it the simplest thing I've ever seen --bb
@@ -241,7 +241,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 			(void) closedir (dp);
 #else
 /* Windows specific functions of reading directory structure */
-		/* Find files: */ 
+		/* Find files: */
 
 		h=FindFirstFile(incoming_dir,&finfo);
 
@@ -253,7 +253,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 				strcpy(tmp,finfo.cFileName);
 				files.Add(tmp);
 				tmp = new char[10];	// 1400000KB
-				snprintf(tmp, 9, "%dKB", 
+				snprintf(tmp, 9, "%dKB",
 					((finfo.nFileSizeHigh * (MAXDWORD+1)) + finfo.nFileSizeLow));
 				sizes.Add(tmp);	// add this size to list
 			}
@@ -264,12 +264,12 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 					strcpy(tmp,finfo.cFileName);
 					files.Add(tmp);
 					tmp = new char[10];	// 1400000KB
-					snprintf(tmp, 9, "%dKB", 
+					snprintf(tmp, 9, "%dKB",
 						((finfo.nFileSizeHigh * (MAXDWORD+1)) + finfo.nFileSizeLow));
 					sizes.Add(tmp);	// add this size to list
 				}
-			} /* while */ 
-		} /* if */ 
+			} /* while */
+		} /* if */
 
 #endif
 // do sorting for files
@@ -309,9 +309,9 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 	}
 	else tempSurface = g_origscreen;
 
-	if(tempSurface == NULL) 
+	if(tempSurface == NULL)
 		tempSurface = screen;	// use screen, if none available
-		
+
 	my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0, 0, 0, 0);
 	if(tempSurface->format->palette && my_screen->format->palette)
 		SDL_SetColors(my_screen, tempSurface->format->palette->colors,
@@ -359,8 +359,8 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 					SDL_Rect r;
 					r.x= 2;
 					r.y= TOPX + (i-first_file) * 15 * facy - 1;
-					if(strlen(tmp) > 46) r.w = 46 * 6 * 1.7 * facx + 2;
-					   else r.w= strlen(tmp) * 6 * 1.7 * facx + 2;	// 6- FONT_SIZE_X
+					if(strlen(tmp) > 46) r.w = 46 * FONT_SIZE_X /* 6 */ * 1.7 * facx + 2;
+					   else r.w= strlen(tmp) * FONT_SIZE_X /* 6 */ * 1.7 * facx + 2;	// 6- FONT_SIZE_X
 					r.h= 9 * 1.5 * facy;
 					SDL_FillRect(screen, &r, SDL_MapRGB(screen->format,255,0,0));// in RED
 				} /* if */
@@ -399,6 +399,7 @@ bool ChooseAnImage(int sx,int sy, char *incoming_dir, int slot, char **filename,
 
 // control cursor
 		keyboard = SDL_GetKeyState(NULL);	// get current state of pressed (and not pressed) keys
+
 		if (keyboard[SDLK_UP] || keyboard[SDLK_LEFT]) {
 			if (act_file>0) act_file--;	// up one position
 			if (act_file<first_file) first_file=act_file;
