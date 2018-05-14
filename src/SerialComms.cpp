@@ -54,6 +54,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <termios.h>
 #include <fcntl.h>
 
+// for read() and write()
+#include <unistd.h>
+
 char SSC_rom[] =
 		"\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x38"
 		"\x04\x9D\xB8\x05\x9D\x38\x06\x9D\xB8\x06\xB9\x82\xC0\x85\x2B\x4A"
