@@ -28,54 +28,40 @@ number, but when it does, it will likely be something like 2.0ce1.
 
  =====================================================================
 
-*** LINAPPLE 2.0***
+*** LINAPPLE 2b***
 
 [INTRO]
 What is linapple?
 It is an emulator of Apple2 (Apple][, Apple 2, Apple 2e etc.) computer series for Linux or other OSes with SDL support.
+(SDL means Simple Direct Media Layer written by Sam Lantinga and others).
 
-(SDL means Simple DirectMedia Layer written by Sam Lantinga and others).
-
-linapple works out of the box, just make it once and run whenever you wish.
+Linapple works out of the box, just make it once and run whenever you wish.
 
 Why not AppleLin? Yes, at first I think to call it such, but later linapple seemed better to me. And one point!
-
 This is my work for making it possible to have comprehensive emulator of Apple][ computer series in Linux.
-
 The original source is from AppleWin (http://applewin.berlios.de) by Tom Charlesworth and others.
-
 I just adapted it for: video+audio for SDL, other functions for POSIX compliant OS, which Linux is in particularly.
-
 Later some sort of Windows support had been added, so you may try to compile it under Windows.
-
-
 
 [INSTALL]
 
 I will show brief instructions for compiling and installing linapple here.
-
 Please, see INSTALL file for comprehensive installing tips.
-
-After SDL1.2, zlib, libcurl and libzip are installed in your system, you can build sources.
+After SDL1.2, zlib, libcurl and libzip (development versions with -dev or -devel suffixes) are installed in your system, you can build sources.
 
 Unpack downloaded linapple archive and go to src directory:
-
 $ cd src
 
 Then run:
-
 $ make
 
 or
-
 $ sudo make install
 
 If there is no errors, run:
-
 $ linapple
 
 or without being installed:
-
 $ cd ..
 $ ./linapple
 
@@ -87,7 +73,6 @@ It works as well as AppleWin, although it needs testing and supporting.
 Where to install? Anywhere you feel fit,  just let linapple be with some files it needs for comprehenceive working.
 
 These files are:
-
 splash.bmp 			- splash screen
 charset40.bmp		- charset for Apple][ (Apple 2e, etc.) text modes.
 font.bmp			- font for Help screen and Disk Select screens.
@@ -95,12 +80,13 @@ icon.bmp			- nice icon, logo of Apple][ computer.
 linapple.conf		- configuration file.
 Master.dsk			- disk image with Applesoft(tm) DOS 3.3 inside. See Apple license (on apple.com) for details.
 
-
 [USING LINAPPLE]
 
-At first start you should see some nice splashscreen. Press F2 to start emualtion. Master.dsk should load, and you will see an DOS3.3(tm) prompt. By pressing F3 you may select an image file name (usually having extensions .dsk, .do, .po) into Slot 6 Drive 1. After selecting it, you either may reboot anew (by pressing F2 key) and try to boot from the inserted disk, or type any DOS3.3(tm) commands to view disk contents and to run any program located in it. Common DOS commands are `CATALOG' (like `ls' in Linux), `BRUN FILENAME' - running any binary (B) program, or `RUN FILENAME' - running any Basic program (A or I). Usually, most game images have alternative way to run programs in them. You may find a lot of disk images on largest and oldest ftp for Apple][ stuff ftp.apple.asimov.net.
+At first start you should see some nice splashscreen. Press F2 to start emualtion. Master.dsk should load, and you will see an DOS3.3(tm) prompt. By pressing F3 you may select an image file name (usually having extensions .dsk, .do, .po) into Slot 6 Drive 1. After selecting it, you either can reboot anew (by pressing F2 key) and try to boot from the inserted disk, or type any DOS3.3(tm) commands to view disk contents and to run any program located in it. Common DOS commands are `CATALOG' (like `ls' in Linux), `BRUN FILENAME' - running any binary (B) program, or `RUN FILENAME' - running any Basic program (A or I). Usually, most game images have alternative way to run programs in them.
 
-From version 2 of linapple you are able to download such images directly from FTP! Use Alt+F3 or Alt+F4 for charging drive 1 and drive 2 for slot 6 (if you know what I am about :) ) - they are just common disk sources of Apple 2 computer for reading/writing its files, such as system, games, utilities and so on.
+You may find a lot of disk images on may be the largest and the oldest ftp archive for various Apple ][ stuff - ftp.apple.asimov.net
+
+From version 2 of linapple you are able to download such images directly from FTP! Use Alt+F3 or Alt+F4 for charging drive 1 and drive 2 for slot 6 (if you know what I am about :) ) - they are just common disk sources of Apple 2 computer for reading/writing its files, such as system, games, utilities and so on. Change `FTP Local Dir` parameter in linnaple. conf file to point to some writable directory and make directory named `cache` inside it (install routine does it for you).
 
 To quit emualtor peacefully, press F10. F6 toggles fullscreen mode, Scroll Lock toggles fullspeed mode.
 
@@ -147,23 +133,18 @@ In version 1.1 appeared VideoBenchmark: start linapple with -b command-line key 
 $ ./linapple -b		- run VideoBenchmark and exit emulator. Note: if fullscreen mode is on in linapple.conf, then
 			  VideoBenchmark will be runned in fullscreen mode.
 
-
-
 In version 2 besides FTP support there is also support for changable Window sizes (see at the end of linapple.conf file for details).
 Just be aware when you are not running emulator on its native mode (560x384) you can suffer slowdown if you are using old box.
-
-
 
 [SUPPORT]
 Wanted:
 
--- we need to get rid of some SOUND glitches. HELP!
+-- We need to get rid of some SOUND glitches. HELP!
 
 --DEBUGGER
 		I just owe at 9300 lines of code of AppleWin debugger. Michael Pohoreski, you are he-man, I tell you.
 		Besides Debugger.cpp alone, there are some helper files such as Debugger_Assembler.cpp,
 		Debugger_Console.cpp, Debugger_Display.cpp and so on. Who is able to port it to linapple?
-
 
 --PHASOR
 		Who knows how does that great thing work? Please, help adopting it to lianpple.
@@ -171,16 +152,14 @@ Wanted:
 		SDL Audio used. Speakers are working out in Speaker.cpp. Who may think, heh?
 		From version 1.1 Mockingboard support are done.
 
-
-
 More testing and debugging needed, of course. I would be grateful for any comment or suggestion regarding linapple, and using it on OSes other than Linux.
 
-
 [CONTACTS]
-I am Krez beom beotiger (Kbb), you may contact me at your will by my email beotiger@gmail.com or beotiger@mail.ru
+I am beotiger, you may contact me at your will by my email beotiger@gmail.com
 
-Web-site: http://linapple.sourceforge.net
-
+Web-sites:
+http://beotiger.com
+http://linapple.sourceforge.net
 
 Thank you very much.
 Long Live Linux!
@@ -190,4 +169,4 @@ And Apple][!
 24 March 2012 AD
 beotiger@mail.ru
 
-JV added a line here
+26 June 2015 AD
