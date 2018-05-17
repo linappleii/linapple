@@ -34,6 +34,7 @@
 
 //static unsigned char copy_row[4096];
 
+#include "Resources.h"
 #include "stdafx.h"
 
 
@@ -454,7 +455,7 @@ SDL_Surface *font_sfc = NULL;	// used for font
 bool fonts_initialization(void)
 {
 	SDL_Surface *temp_surface;
-	temp_surface = SDL_LoadBMP("font.bmp");
+	temp_surface = SDL_LoadBMP(RESOURCE_FONT_BMP);
 	if(!temp_surface) return false;
 	font_sfc = SDL_DisplayFormat(temp_surface);
 

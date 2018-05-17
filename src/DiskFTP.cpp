@@ -36,7 +36,8 @@
 // define time when cache ftp dir.listing must be refreshed
 #define RENEW_TIME	24*3600
 
-char * md5str (const char *input); // forward declaration of md5str func
+char *
+md5str (const char *input); // forward declaration of md5str func
 
 TCHAR	  g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +114,7 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 	font_print_centered(sx/2 ,5 * facy , ftp_dir, screen, 1.5 * facx, 1.3 * facy);
 	if(ch) ftp_dir[NORMAL_LENGTH] = ch; //restore cut-off char	
 
-	font_print_centered(sx/2,20 * facy, "Connecting to FTP server... Please wait.", screen, 1 * facx, 1 * facy);
+	font_print_centered(sx/2,20 * facy,"Connecting to FTP server... Please wait.", screen, 1 * facx, 1 * facy);
 	SDL_Flip(screen);	// show the screen
 
 	bool OKI;
@@ -122,7 +123,7 @@ bool ChooseAnImageFTP(int sx,int sy, char *ftp_dir, int slot, char **filename, b
 		OKI = false; // use this file
 	}
 	else {
-		OKI = ftp_get(ftp_dir, ftpdirpath); // get ftp dir listing
+		OKI = ftp_get(ftp_dir,ftpdirpath); // get ftp dir listing
 	}
 #else
 // in WIN32 let's use constant caching? -- need to be redone using file.mtime

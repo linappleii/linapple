@@ -28,8 +28,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+/* And KREZ */
+
 // for usleep
 #include <unistd.h>
+#include "Resources.h"
 #include "stdafx.h"
 //#pragma  hdrstop
 #include "MouseInterface.h"
@@ -37,9 +40,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // for stat in FrameSaveBMP function
 #include <sys/stat.h>
-
-// for usleep()
-#include <unistd.h>
 
 
 #define ENABLE_MENU 0
@@ -832,7 +832,7 @@ void	FrameDispatchMessage(SDL_Event * e) // process given SDL event
 
     case SDL_USEREVENT:
 	if (e->user.code == 1) // should do restart?
-		ProcessButtonClick(BTN_RUN, 0);
+		ProcessButtonClick(BTN_RUN, KMOD_LCTRL);
 	break;
 
    }//switch
@@ -1210,7 +1210,7 @@ int InitSDL()
 	SDL_WM_SetIcon(apple_icon, NULL);
 	printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
 
-	apple_icon = SDL_LoadBMP("icon.bmp");
+	apple_icon = SDL_LoadBMP(RESOURCE_ICON_BMP);
 	if(apple_icon != NULL) {
 		Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
 		SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
