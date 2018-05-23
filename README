@@ -11,7 +11,7 @@ sudo dpkg -i linapple-2.1.deb
 
 On Debianish systems at least, you ought to be able to do this:
 
-sudo apt-get libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl4-gnutls-dev
+sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl4-gnutls-dev
 
 Thanks Greg!
 
