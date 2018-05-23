@@ -3,15 +3,20 @@ changes and fixes:
 
 [INSTALL]
 
+To build a package on Debian-style systems, do this:
+
 make
-sudo make package
+fakeroot make package
 sudo dpkg -i linapple-2.1.deb
 
 [PREREQUISITES]
 
-On Debianish systems at least, you ought to be able to do this:
+Again on Debian-style systems, you can install all prerequisites using
+this command:
 
-sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl4-gnutls-dev
+sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl4-gnutls-dev fakeroot
+
+You only need fakeroot for building the Debian package.
 
 Thanks Greg!
 
