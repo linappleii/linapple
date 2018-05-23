@@ -845,7 +845,7 @@ int main(int argc, char * lpCmdLine[])
 			struct tm * ptm;
 			char time_str[40];
 			gettimeofday(&tv, NULL);
-//			ptm = localtime(&tv.tvsec);
+			ptm = localtime(&tv.tv_sec);
 			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
 // end of Unix(tm) specific code
 			fprintf(g_fh,"*** Logging started: %s\n",time_str);

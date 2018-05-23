@@ -159,7 +159,7 @@ static void initnow(void)
 static long guesstai(long month,long mday)
 {
   long year;
-  long t;
+  long t = 0;
 
   initnow();
 
