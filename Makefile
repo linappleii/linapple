@@ -14,7 +14,7 @@ SRCEXT      := cpp
 DEPEXT      := d
 OBJEXT      := o
 
-VERSION			:= 2.1
+VERSION			:= 2.1.1
 PKG         := linapple
 
 INSTDIR = /usr/local/bin/$(EXE)
