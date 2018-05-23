@@ -50,8 +50,8 @@ INCDEP      := -I$(INCDIR)
 SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
-#Defauilt Make
-all: resources $(TARGET)
+#Default Make
+all: resources $(TARGETDIR)/$(TARGET)
 
 #Remake
 remake: cleaner all
@@ -83,7 +83,7 @@ install: all
 	mkdir "$(CONFDIR)/conf"
 	mkdir -p "$(CONFDIR)/sound"
 
-#Clean only Objecst
+#Clean only Objects
 clean:
 		@$(RM) -rf $(BUILDDIR)
 		@$(RM) -rf $(TARGETDIR)
@@ -98,7 +98,7 @@ cleaner: clean
 
 #Link
 
-$(TARGET): $(OBJECTS)
+$(TARGETDIR)/$(TARGET): $(OBJECTS)
 		$(CC) $(LFLAGS) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
 
 #Compile
