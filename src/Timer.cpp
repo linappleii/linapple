@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth
  */
 
-/*	Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
+/*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
 
 // Timers like functions for Windows and Posix
 
@@ -50,7 +50,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #ifndef _WIN32
 //===============================================================================//
-//		Timer Functions - POSIX specific 				//
+//    Timer Functions - POSIX specific         //
 //=============================================================================//
 // Vars
 
@@ -59,7 +59,7 @@ static DWORD g_dwUsecPeriod = 0;
 
 bool SysClk_InitTimer()
 {
- 	return true;
+   return true;
 }
 
 void SysClk_UninitTimer()
@@ -88,25 +88,37 @@ inline Uint32 uSecSinceStart() {
   }
 }
 
+inline void nsleep(unsigned long us)
+{
+    struct timespec req={0};
+    time_t sec=(int)(us/1000000);
+    us=us-(sec*1000000);
+    req.tv_sec=sec;
+    req.tv_nsec=us;
+    while(nanosleep(&req,&req)==-1)
+         continue;
+}
 
 void SysClk_WaitTimer()
 {
     static Uint32 old = 0;
     Uint32 current;
     Uint32 elapsed;
-    
+
     // Loop until next period
     // if more than 500usec sleep to give up CPU
     while (1) {
         current = uSecSinceStart();
-        elapsed = current - old;    
+        elapsed = current - old;
         if (elapsed >= g_dwUsecPeriod) {
-            old = current;            
+            old = current;
             return;
         }
+#if 1
         if ((g_dwUsecPeriod - elapsed) > 500) {
-            usleep(1);
+            nsleep(1);
         }
+#endif
     }
 }
 
@@ -121,7 +133,7 @@ void SysClk_StopTimer()
 
 #else
   //===============================================================================//
- //		Timer Functions - WINDOWS specific 										  //
+ //    Timer Functions - WINDOWS specific                       //
 //===============================================================================//
 
 // Vars
@@ -134,86 +146,86 @@ static DWORD g_dwLastUsecPeriod = 0;
 
 bool SysClk_InitTimer()
 {
-	g_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);		// Max count = 1
-	if (g_hSemaphore == NULL)
-	{
-		fprintf(stderr, "Error creating semaphore\n");
-		return false;
-	}
+  g_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);    // Max count = 1
+  if (g_hSemaphore == NULL)
+  {
+    fprintf(stderr, "Error creating semaphore\n");
+    return false;
+  }
 
-	if (CoCreateInstance(CLSID_SystemClock, NULL, CLSCTX_INPROC,
+  if (CoCreateInstance(CLSID_SystemClock, NULL, CLSCTX_INPROC,
                          IID_IReferenceClock, (LPVOID*)&g_pRefClock) != S_OK)
-	{
-		fprintf(stderr, "Error initialising COM\n");
-		return false;	// Fails for Win95!
-	}
+  {
+    fprintf(stderr, "Error initialising COM\n");
+    return false;  // Fails for Win95!
+  }
 
-	return true;
+  return true;
 }
 
 void SysClk_UninitTimer()
 {
-	SysClk_StopTimer();
+  SysClk_StopTimer();
 
-	SAFE_RELEASE(g_pRefClock);
+  SAFE_RELEASE(g_pRefClock);
 
-	if (CloseHandle(g_hSemaphore) == 0)
-		fprintf(stderr, "Error closing semaphore handle\n");
+  if (CloseHandle(g_hSemaphore) == 0)
+    fprintf(stderr, "Error closing semaphore handle\n");
 }
 
 //
 
 void SysClk_WaitTimer()
 {
-	if(!g_bRefClockTimerActive)
-		return;
+  if(!g_bRefClockTimerActive)
+    return;
 
-	WaitForSingleObject(g_hSemaphore, INFINITE);
+  WaitForSingleObject(g_hSemaphore, INFINITE);
 }
 
 void SysClk_StartTimerUsec(DWORD dwUsecPeriod)
 {
-	if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod))
-		return;
+  if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod))
+    return;
 
-	SysClk_StopTimer();
+  SysClk_StopTimer();
 
-	REFERENCE_TIME rtPeriod = (REFERENCE_TIME) (dwUsecPeriod * 10);	// In units of 100ns
-	REFERENCE_TIME rtNow;
+  REFERENCE_TIME rtPeriod = (REFERENCE_TIME) (dwUsecPeriod * 10);  // In units of 100ns
+  REFERENCE_TIME rtNow;
 
-	HRESULT hr = g_pRefClock->GetTime(&rtNow);
-	// S_FALSE : Returned time is the same as the previous value
+  HRESULT hr = g_pRefClock->GetTime(&rtNow);
+  // S_FALSE : Returned time is the same as the previous value
 
-	if ((hr != S_OK) && (hr != S_FALSE))
-	{
-		fprintf(stderr, "Error creating timer (GetTime failed)\n");
-		_ASSERT(0);
-		return;
-	}
+  if ((hr != S_OK) && (hr != S_FALSE))
+  {
+    fprintf(stderr, "Error creating timer (GetTime failed)\n");
+    _ASSERT(0);
+    return;
+  }
 
-	if (g_pRefClock->AdvisePeriodic(rtNow, rtPeriod, g_hSemaphore, &g_dwAdviseToken) != S_OK)
-	{
-		fprintf(stderr, "Error creating timer (AdvisePeriodic failed)\n");
-		_ASSERT(0);
-		return;
-	}
+  if (g_pRefClock->AdvisePeriodic(rtNow, rtPeriod, g_hSemaphore, &g_dwAdviseToken) != S_OK)
+  {
+    fprintf(stderr, "Error creating timer (AdvisePeriodic failed)\n");
+    _ASSERT(0);
+    return;
+  }
 
-	g_dwLastUsecPeriod = dwUsecPeriod;
-	g_bRefClockTimerActive = true;
+  g_dwLastUsecPeriod = dwUsecPeriod;
+  g_bRefClockTimerActive = true;
 }
 
 void SysClk_StopTimer()
 {
-	if(!g_bRefClockTimerActive)
-		return;
+  if(!g_bRefClockTimerActive)
+    return;
 
-	if (g_pRefClock->Unadvise(g_dwAdviseToken) != S_OK)
-	{
-		fprintf(stderr, "Error deleting timer\n");
-		_ASSERT(0);
-		return;
-	}
+  if (g_pRefClock->Unadvise(g_dwAdviseToken) != S_OK)
+  {
+    fprintf(stderr, "Error deleting timer\n");
+    _ASSERT(0);
+    return;
+  }
 
-	g_bRefClockTimerActive = false;
+  g_bRefClockTimerActive = false;
 }
 #endif
