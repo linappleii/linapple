@@ -1,0 +1,6 @@
+Package: linapple 
+Version: 2.1
+Maintainer: Greg Hedger
+Architecture: all
+Depends: libsdl1.2-dev, libsdl-mixer1.2-dev, libzip4, libcurl3, libcurl-ocaml-dev
+Description: A Linux emulator for Apple ][+ IIe, and enhanced //e w/Mockingboard support

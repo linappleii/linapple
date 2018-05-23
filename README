@@ -1,4 +1,21 @@
+A modified build system was contributed by Greg Hedger along with other
+changes and fixes:
 
+[INSTALL]
+
+make
+sudo make package
+sudo dpkg -i linapple-2.1.deb
+
+[PREREQUISITES]
+
+On Debianish systems at least, you ought to be able to do this:
+
+sudo apt-get libsdl1.2-dev libsdl-mixer1.2-dev libzip4 libcurl3 libcurl4-gnutls-dev
+
+Thanks Greg!
+
+=====================================================================
 
 The following changes were made by Cat's Eye Technologies' version of
 linapple to make it more "properly unixy":
@@ -20,6 +37,12 @@ Thanks Chris!
 
 *** LINAPPLE 2b***
 
+Copyright (C) 1994-1996, Michael O'Brien
+Copyright (C) 1999-2001, Oliver Schmidt
+Copyright (C) 2002-2005, Tom Charlesworth
+Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2015,2017, Greg Hedger 
+
 [INTRO]
 What is linapple?
 It is an emulator of Apple2 (Apple][, Apple 2, Apple 2e etc.) computer series for Linux or other OSes with SDL support.
@@ -35,34 +58,19 @@ Later some sort of Windows support had been added, so you may try to compile it 
 
 [INSTALL]
 
+  make
+  cd bin
+  ./linapple
+
+
 I will show brief instructions for compiling and installing linapple here.
 Please, see INSTALL file for comprehensive installing tips.
 After SDL1.2, zlib, libcurl and libzip (development versions with -dev or -devel suffixes) are installed in your system, you can build sources.
 
-Unpack downloaded linapple archive and go to src directory:
-$ cd src
-
-Then run:
-$ make
-
-or
-$ sudo make install
-
-If there is no errors, run:
-$ linapple
-
-or without being installed:
-$ cd ..
-$ ./linapple
-
-If all files are on their places, you should see an X-Window with splash screen. 
+If all files are on their places, you should see an X-Window with splash screen.
 
 Press F2 (or F3 or Alt+F3) before to choose some disk image in drive 1), and go to work.
 
-It works as well as AppleWin, although it needs testing and supporting.
-Where to install? Anywhere you feel fit,  just let linapple be with some files it needs for comprehenceive working.
-
-These files are:
 splash.bmp 			- splash screen
 charset40.bmp		- charset for Apple][ (Apple 2e, etc.) text modes.
 font.bmp			- font for Help screen and Disk Select screens.

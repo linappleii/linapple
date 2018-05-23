@@ -54,15 +54,15 @@ CURLcode ftp_get(const char *ftp_path, const char *local_path) {
 //    char *fname, /* name to store the file as if succesful */ 
 //    NULL
 //  };
-	ftpfile.stream = NULL;
-    ftpfile.filename = local_path;	// where to download a file
+  ftpfile.stream = NULL;
+    ftpfile.filename = local_path;  // where to download a file
   
     curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
     /* Define our callback to get called when there's data to be written */ 
     curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, my_fwrite);
     curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &ftpfile);
-	curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
-	
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
+  
     /* Switch on full protocol/debug output */ 
 //    curl_easy_setopt(g_curl, CURLOPT_VERBOSE, 1L);
  

@@ -66,38 +66,38 @@ static BYTE /*__stdcall*/ PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG);
 
 VOID PrintLoadRom(LPBYTE pCxRomPeripheral, const UINT uSlot)
 {
-// 	HRSRC hResInfo = FindResource(NULL, MAKEINTRESOURCE(IDR_PRINTDRVR_FW), "FIRMWARE");
-// 	if(hResInfo == NULL)
-// 		return;
+//   HRSRC hResInfo = FindResource(NULL, MAKEINTRESOURCE(IDR_PRINTDRVR_FW), "FIRMWARE");
+//   if(hResInfo == NULL)
+//     return;
 //
-// 	DWORD dwResSize = SizeofResource(NULL, hResInfo);
-// 	if(dwResSize != PRINTDRVR_SIZE)
-// 		return;
+//   DWORD dwResSize = SizeofResource(NULL, hResInfo);
+//   if(dwResSize != PRINTDRVR_SIZE)
+//     return;
 //
-// 	HGLOBAL hResData = LoadResource(NULL, hResInfo);
-// 	if(hResData == NULL)
-// 		return;
+//   HGLOBAL hResData = LoadResource(NULL, hResInfo);
+//   if(hResData == NULL)
+//     return;
 
 
 // #define IDR_PRINTDRVR_FW "Parallel.rom"
-// 	char BUFFER[PRINTDRVR_SIZE];
-// 	FILE * hdfile = NULL;
-// 	hdfile = fopen(IDR_PRINTDRVR_FW, "rb");
-// 	if(hdfile == NULL) return; // no file?
-// 	UINT nbytes = fread(BUFFER, 1, PRINTDRVR_SIZE, hdfile);
-// 	fclose(hdfile);
-// 	if(nbytes != PRINTDRVR_SIZE) return; // have not read enough?
+//   char BUFFER[PRINTDRVR_SIZE];
+//   FILE * hdfile = NULL;
+//   hdfile = fopen(IDR_PRINTDRVR_FW, "rb");
+//   if(hdfile == NULL) return; // no file?
+//   UINT nbytes = fread(BUFFER, 1, PRINTDRVR_SIZE, hdfile);
+//   fclose(hdfile);
+//   if(nbytes != PRINTDRVR_SIZE) return; // have not read enough?
 //
-	BYTE* pData = (BYTE*) Parallel_bin;	// NB. Don't need to unlock resource
+  BYTE* pData = (BYTE*) Parallel_bin;  // NB. Don't need to unlock resource
 
-//	if(pData == NULL)
-//		return;
+//  if(pData == NULL)
+//    return;
 
-	memcpy(pCxRomPeripheral + uSlot*256, pData, PRINTDRVR_SIZE);
+  memcpy(pCxRomPeripheral + uSlot*256, pData, PRINTDRVR_SIZE);
 
-	//
+  //
 
-	RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
+  RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
 }
 
 //===========================================================================
@@ -109,7 +109,7 @@ static BOOL CheckPrint()
 /*        TCHAR filepath[MAX_PATH * 2];
         _tcsncpy(filepath, g_sProgramDir, MAX_PATH);
         _tcsncat(filepath, _T("Printer.txt"), MAX_PATH);*/
-	    file = fopen(g_sParallelPrinterFile, "ab");	// always for appending?
+      file = fopen(g_sParallelPrinterFile, "ab");  // always for appending?
     }
     return (file != NULL);
 }
@@ -166,7 +166,7 @@ static BYTE /*__stdcall*/ PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG)
         return 0;
     }
     char c = value & 0x7F;
-	fwrite(&c, 1, 1, file);
+  fwrite(&c, 1, 1, file);
     return 0;
 }
 
