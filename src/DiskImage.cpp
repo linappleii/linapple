@@ -516,7 +516,7 @@ void IieRead (imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimagebu
 
   // IF WE HAVEN'T ALREADY DONE SO, READ THE IMAGE FILE HEADER
   if (!ptr->header) {
-	  ptr->header = (LPBYTE)VirtualAlloc(NULL, 88, 0x1000, 0);
+    ptr->header = (LPBYTE)VirtualAlloc(NULL, 88, 0x1000, 0);
     if (!ptr->header) {
       *nibbles = 0;
       return;
@@ -743,170 +743,172 @@ int ImageOpen (LPCTSTR  imagefilename,
                BOOL    *pWriteProtected_,
                BOOL     bCreateIfNecessary)
 {
-	if (! (imagefilename && hDiskImage_ && pWriteProtected_ && workbuffer))
-		return IMAGE_ERROR_BAD_POINTER; // HACK: MAGIC # -1
+  if (! (imagefilename && hDiskImage_ && pWriteProtected_ && workbuffer))
+    return IMAGE_ERROR_BAD_POINTER; // HACK: MAGIC # -1
 
-	// TRY TO OPEN THE IMAGE FILE
-	HANDLE file = INVALID_HANDLE_VALUE;
+  // TRY TO OPEN THE IMAGE FILE
+  HANDLE file = INVALID_HANDLE_VALUE;
 
-	if (! *pWriteProtected_)
-// 		file = CreateFile(imagefilename,
+  if (! *pWriteProtected_)
+//     file = CreateFile(imagefilename,
 //                       GENERIC_READ | GENERIC_WRITE,
 //                       FILE_SHARE_READ | FILE_SHARE_WRITE,
 //                       (LPSECURITY_ATTRIBUTES)NULL,
 //                       OPEN_EXISTING,
 //                       FILE_ATTRIBUTE_NORMAL,
 //                       NULL);
-		file = fopen(imagefilename, "r+b"); // open file in r/w mode
-	// File may have read-only attribute set, so try to open as read-only.
-	if (file == INVALID_HANDLE_VALUE)
-	{
-// 		file = CreateFile(
-// 			imagefilename,
-// 			GENERIC_READ,
-// 			FILE_SHARE_READ,
-// 			(LPSECURITY_ATTRIBUTES)NULL,
-// 			OPEN_EXISTING,
-// 			FILE_ATTRIBUTE_NORMAL,
-// 			NULL );
-		file = fopen(imagefilename, "rb"); // open file just for reading
+    file = fopen(imagefilename, "r+b"); // open file in r/w mode
+  // File may have read-only attribute set, so try to open as read-only.
+  if (file == INVALID_HANDLE_VALUE)
+  {
+//     file = CreateFile(
+//       imagefilename,
+//       GENERIC_READ,
+//       FILE_SHARE_READ,
+//       (LPSECURITY_ATTRIBUTES)NULL,
+//       OPEN_EXISTING,
+//       FILE_ATTRIBUTE_NORMAL,
+//       NULL );
+    file = fopen(imagefilename, "rb"); // open file just for reading
 
-		if (file != INVALID_HANDLE_VALUE)
-			*pWriteProtected_ = 1;
-	}
+    if (file != INVALID_HANDLE_VALUE)
+      *pWriteProtected_ = 1;
+  }
 
-	if ((file == INVALID_HANDLE_VALUE) && bCreateIfNecessary)
-// 		file = CreateFile(
-// 			imagefilename,
-// 			GENERIC_READ | GENERIC_WRITE,
-// 			FILE_SHARE_READ | FILE_SHARE_WRITE,
-// 			(LPSECURITY_ATTRIBUTES)NULL,
-// 			CREATE_NEW,
-// 			FILE_ATTRIBUTE_NORMAL,
-// 			NULL );
-		file = fopen(imagefilename, "a+b"); // create file
+  if ((file == INVALID_HANDLE_VALUE) && bCreateIfNecessary)
+//     file = CreateFile(
+//       imagefilename,
+//       GENERIC_READ | GENERIC_WRITE,
+//       FILE_SHARE_READ | FILE_SHARE_WRITE,
+//       (LPSECURITY_ATTRIBUTES)NULL,
+//       CREATE_NEW,
+//       FILE_ATTRIBUTE_NORMAL,
+//       NULL );
+    file = fopen(imagefilename, "a+b"); // create file
 
-	// IF WE AREN'T ABLE TO OPEN THE FILE, RETURN
-	if (file == INVALID_HANDLE_VALUE)
-		return IMAGE_ERROR_UNABLE_TO_OPEN; // HACK: MAGIC # 1
+  // IF WE AREN'T ABLE TO OPEN THE FILE, RETURN
+  if (file == INVALID_HANDLE_VALUE)
+    return IMAGE_ERROR_UNABLE_TO_OPEN; // HACK: MAGIC # 1
 
-	// DETERMINE THE FILE'S EXTENSION AND CONVERT IT TO LOWERCASE
-	LPCTSTR imagefileext = imagefilename;
-	if (_tcsrchr(imagefileext,FILE_SEPARATOR))
-	imagefileext = _tcsrchr(imagefileext,FILE_SEPARATOR)+1;
-	if (_tcsrchr(imagefileext,TEXT('.')))
-	imagefileext = _tcsrchr(imagefileext,TEXT('.'));
+  // DETERMINE THE FILE'S EXTENSION AND CONVERT IT TO LOWERCASE
+  LPCTSTR imagefileext = imagefilename;
+  if (_tcsrchr(imagefileext,FILE_SEPARATOR))
+  imagefileext = _tcsrchr(imagefileext,FILE_SEPARATOR)+1;
+  if (_tcsrchr(imagefileext,TEXT('.')))
+  imagefileext = _tcsrchr(imagefileext,TEXT('.'));
 
-#define _MAX_EXT	5
-	TCHAR ext[_MAX_EXT];
-	_tcsncpy(ext,imagefileext,_MAX_EXT);
-	CharLowerBuff(ext,_tcslen(ext));
+#define _MAX_EXT  5
+  TCHAR ext[_MAX_EXT];
+  _tcsncpy(ext,imagefileext,_MAX_EXT);
+  CharLowerBuff(ext,_tcslen(ext));
 
-	DWORD  size     = GetFileSize(file,NULL);
-	LPBYTE view     = NULL;
-	LPBYTE pImage = NULL;
+  DWORD  size     = GetFileSize(file,NULL);
+  LPBYTE view     = NULL;
+  LPBYTE pImage = NULL;
 
-	const DWORD UNKNOWN_FORMAT = 0xFFFFFFFF;
-	DWORD  format   = UNKNOWN_FORMAT;
+  const DWORD UNKNOWN_FORMAT = 0xFFFFFFFF;
+  DWORD  format   = UNKNOWN_FORMAT;
 
-	if (size > 0)
-	{
-		// MAP THE FILE INTO MEMORY FOR USE BY THE DETECTION FUNCTIONS
-/*		HANDLE mapping = CreateFileMapping(
-			file,
-			(LPSECURITY_ATTRIBUTES)NULL,
-			PAGE_READONLY,
-			0,0,NULL );
+  if (size > 0)
+  {
+    // MAP THE FILE INTO MEMORY FOR USE BY THE DETECTION FUNCTIONS
+/*    HANDLE mapping = CreateFileMapping(
+      file,
+      (LPSECURITY_ATTRIBUTES)NULL,
+      PAGE_READONLY,
+      0,0,NULL );
 
-		view     = (LPBYTE)MapViewOfFile(mapping,FILE_MAP_READ,0,0,0);*/
-		view = (LPBYTE)malloc(size);
-		fread(view, 1, size, (FILE*)file);
-		fseek((FILE*)file, 0, FILE_BEGIN); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
-		pImage = view;
+    view     = (LPBYTE)MapViewOfFile(mapping,FILE_MAP_READ,0,0,0);*/
+    view = (LPBYTE)malloc(size);
+    size_t bytesRead = fread(view, 1, size, (FILE*)file);
+    if( bytesRead > 0 ) {
+      fseek((FILE*)file, 0, FILE_BEGIN); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
+    }
+    pImage = view;
 
-		if (pImage)
-		{
-			// DETERMINE WHETHER THE FILE HAS A 128-BYTE MACBINARY HEADER
-			if ((size > 128) &&
-				(!*pImage) &&
-				(*(pImage+1) < 120) &&
-				(!*(pImage+*(pImage+1)+2)) &&
-				(*(pImage+0x7A) == 0x81) &&
-				(*(pImage+0x7B) == 0x81))
-			{
-				pImage += 128;
-				size     -= 128;
-			}
+    if (pImage)
+    {
+      // DETERMINE WHETHER THE FILE HAS A 128-BYTE MACBINARY HEADER
+      if ((size > 128) &&
+        (!*pImage) &&
+        (*(pImage+1) < 120) &&
+        (!*(pImage+*(pImage+1)+2)) &&
+        (*(pImage+0x7A) == 0x81) &&
+        (*(pImage+0x7B) == 0x81))
+      {
+        pImage += 128;
+        size     -= 128;
+      }
 
-			// CALL THE DETECTION FUNCTIONS IN ORDER, LOOKING FOR A MATCH
-			DWORD possibleformat = UNKNOWN_FORMAT; // 0xFFFFFFFF;
-			int   loop           = 0;
-			while ((loop < IMAGETYPES) && (format == UNKNOWN_FORMAT)) // 0xFFFFFFFF)) {
-			{
-				if (*ext && _tcsstr(imagetype[loop].rejectexts,ext))
-					++loop;
-				else
-				{
-					DWORD result = imagetype[loop].detect(pImage,size);
-					if (result == 2)
-						format = loop;
-					else if ((result == 1) && (possibleformat == UNKNOWN_FORMAT)) // 0xFFFFFFFF))
-						possibleformat = loop++;
-					else
-						++loop;
-				}
-			}
+      // CALL THE DETECTION FUNCTIONS IN ORDER, LOOKING FOR A MATCH
+      DWORD possibleformat = UNKNOWN_FORMAT; // 0xFFFFFFFF;
+      int   loop           = 0;
+      while ((loop < IMAGETYPES) && (format == UNKNOWN_FORMAT)) // 0xFFFFFFFF)) {
+      {
+        if (*ext && _tcsstr(imagetype[loop].rejectexts,ext))
+          ++loop;
+        else
+        {
+          DWORD result = imagetype[loop].detect(pImage,size);
+          if (result == 2)
+            format = loop;
+          else if ((result == 1) && (possibleformat == UNKNOWN_FORMAT)) // 0xFFFFFFFF))
+            possibleformat = loop++;
+          else
+            ++loop;
+        }
+      }
 
-			if (format == UNKNOWN_FORMAT) // 0xFFFFFFFF)
-			format = possibleformat;
+      if (format == UNKNOWN_FORMAT) // 0xFFFFFFFF)
+      format = possibleformat;
 
-			// CLOSE THE MEMORY MAPPING
-		//	UnmapViewOfFile(view);
-			free(view); // free memory block, allocated before
-		}
-	    //CloseHandle(mapping);
-	}
-	else
-	{
-		// WE CREATE ONLY DOS ORDER (DO) OR 6656-NIBBLE (NIB) FORMAT FILES
-		for (int loop = 1; loop <= 4; loop += 3)
-		{
-			if (*ext && _tcsstr(imagetype[loop].createexts,ext))
-			{
-				format = loop;
-				break;
-			}
+      // CLOSE THE MEMORY MAPPING
+    //  UnmapViewOfFile(view);
+      free(view); // free memory block, allocated before
+    }
+      //CloseHandle(mapping);
+  }
+  else
+  {
+    // WE CREATE ONLY DOS ORDER (DO) OR 6656-NIBBLE (NIB) FORMAT FILES
+    for (int loop = 1; loop <= 4; loop += 3)
+    {
+      if (*ext && _tcsstr(imagetype[loop].createexts,ext))
+      {
+        format = loop;
+        break;
+      }
 
-		}
-	}
+    }
+  }
 
-	// IF THE FILE DOES MATCH A KNOWN FORMAT...
-	if (format != UNKNOWN_FORMAT)
-	{
-		// CREATE A RECORD FOR THE FILE, AND RETURN AN IMAGE HANDLE
-		*hDiskImage_ = (HIMAGE)VirtualAlloc(NULL,sizeof(imageinforec),0x1000,0);
-		if (*hDiskImage_)
-		{
-			ZeroMemory(*hDiskImage_,sizeof(imageinforec));
-			//   do this in DiskInsert vv
-			_tcsncpy(((imageinfoptr)*hDiskImage_)->filename,imagefilename,MAX_PATH);
-			((imageinfoptr)*hDiskImage_)->format         = format;
-			((imageinfoptr)*hDiskImage_)->file           = file;
-			((imageinfoptr)*hDiskImage_)->offset         = pImage-view;
-			((imageinfoptr)*hDiskImage_)->writeprotected = *pWriteProtected_;
+  // IF THE FILE DOES MATCH A KNOWN FORMAT...
+  if (format != UNKNOWN_FORMAT)
+  {
+    // CREATE A RECORD FOR THE FILE, AND RETURN AN IMAGE HANDLE
+    *hDiskImage_ = (HIMAGE)VirtualAlloc(NULL,sizeof(imageinforec),0x1000,0);
+    if (*hDiskImage_)
+    {
+      ZeroMemory(*hDiskImage_,sizeof(imageinforec));
+      //   do this in DiskInsert vv
+      _tcsncpy(((imageinfoptr)*hDiskImage_)->filename,imagefilename,MAX_PATH);
+      ((imageinfoptr)*hDiskImage_)->format         = format;
+      ((imageinfoptr)*hDiskImage_)->file           = file;
+      ((imageinfoptr)*hDiskImage_)->offset         = pImage-view;
+      ((imageinfoptr)*hDiskImage_)->writeprotected = *pWriteProtected_;
 
-			for (int track = 0; track < TRACKS; track++)
-		        ((imageinfoptr)*hDiskImage_)->validtrack[track] = (size > 0);
+      for (int track = 0; track < TRACKS; track++)
+            ((imageinfoptr)*hDiskImage_)->validtrack[track] = (size > 0);
 
-			return IMAGE_ERROR_NONE; // HACK: MAGIC # 0
-		}
-	}
+      return IMAGE_ERROR_NONE; // HACK: MAGIC # 0
+    }
+  }
 
-	CloseHandle(file);
-	if (!(size > 0))
-		DeleteFile(imagefilename);
+  CloseHandle(file);
+  if (!(size > 0))
+    DeleteFile(imagefilename);
 
-	return IMAGE_ERROR_BAD_SIZE; // HACK: MAGIC # 2
+  return IMAGE_ERROR_BAD_SIZE; // HACK: MAGIC # 2
 }
 
 //===========================================================================
