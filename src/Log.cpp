@@ -41,7 +41,7 @@ void LogOutput(LPCTSTR format, ...)
 
     vsnprintf(output, sizeof(output) - 1, format, args);
 //    OutputDebugString(output);
-    fprintf(stderr, output);
+    fprintf(stderr, "%s", output);
 }
 
 //---------------------------------------------------------------------------

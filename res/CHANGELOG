@@ -1,0 +1,40 @@
+LinApple version 2.1
+28 November 2017
+
+!! Keyboard: Fixed caps lock bug.
+
+!! Display: Set higher default host screen resolution in windowed mode.
+
+!! Audio: Eliminated decoupling capacitor simulation.
+
+!! Audio: Fixed choppy Mockingboard sound due to incorrect cycle caculation between IRQs.
+
+For LinApple version 2.0 has been made:
+
+!! Fixed screen corruption bug for x64 systems
+
+!! Fixed gcc 4.4 compilation error lacking <strings>
+
+++ FTP support. You can load disk images on Slots 6 (1 & 2) and Hard disks images, using FTP server such as apple.asimov.net
+	Press Alt+F3, Alt+Shift+F3 for load disk image through FTP
+
+++ Screen sizes are now flexible. You can set any screen size you wish, just be catious - not all screen sizes can work in full screen mode
+
+++ .zip images support for FDD 140K (in read-only mode). Just first file in .zip archive will be read and inserted as an image.
+	You can load .zip images directly from your file system (by F3/F4 keypress), or from FTP server (by pressing ALT+F3(F4)).
+
+-- Sound is still glitched. Needs repairing.  Please help!
+
+
+For LinApple version 1.1 has been added:
+
+++ 1. Opening of compressed .gz files - in read-only mode. Works only for FDD 140Kb drives.
+
+++ 2. Super quick load-save states (CTRL+0..9 - quick load state, CTRL+SHIFT+0..9 - quick save it) in current states directory.
+
+++ 3. Add Mockingboard (but not Phasor??) support, without speech, as I could take it.
+	But Mockingboard works! You may test it in such games as Berzap! (you need to switch Mockingboard on after pressing Ctrl+C in the game), in Willy Byte in  the Digital Dimensions, in Pitfall II(tm), in UltimaIV and few others.
+
+++ 4. VideoBenchmark added! Run `linapple -b' to see benchmark running and its result in console.
+
+++ 5. Parallel Printer file name can be set in linapple.conf (default was Printer.txt in working directory)
