@@ -28,7 +28,6 @@
 //    freely available as well.
 //
 
-
 #include "wincompat.h"
 #include <stdio.h>
 #include <string.h>

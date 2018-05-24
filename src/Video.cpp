@@ -2164,14 +2164,14 @@ void VideoUpdateFlash()
 
 bool VideoGetSW80COL()
 {
-  return SW_80COL ? true : false;
+  return SW_80COL != NULL || false;
 }
 
 //===========================================================================
 
 DWORD VideoGetSnapshot(SS_IO_Video* pSS)
 {
-  pSS->bAltCharSet = !(g_nAltCharSetOffset == 0);
+  pSS->bAltCharSet = g_nAltCharSetOffset != 0;
   pSS->dwVidMode = vidmode;
   return 0;
 }
