@@ -64,12 +64,12 @@ TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
 eApple2Type  g_Apple2Type  = A2TYPE_APPLE2EEHANCED;
 
-BOOL      behind            = 0;      // Redundant
-DWORD     cumulativecycles  = 0;      // Wraps after ~1hr 9mins
-DWORD     cyclenum          = 0;      // Used by SpkrToggle() for non-wave sound
-DWORD     emulmsec          = 0;
-static DWORD emulmsec_frac  = 0;
-bool      g_bFullSpeed      = false;
+BOOL behind = 0;      // Redundant
+DWORD cumulativecycles = 0;      // Wraps after ~1hr 9mins
+DWORD cyclenum = 0;      // Used by SpkrToggle() for non-wave sound
+DWORD emulmsec = 0;
+static DWORD emulmsec_frac = 0;
+bool g_bFullSpeed = false;
 bool hddenabled = false;
 static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 // Win32
@@ -521,7 +521,7 @@ void LoadConfiguration ()
     MB_SetSoundcardType((eSOUNDCARDTYPE)dwTmp);
 
    if(LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp))
-     g_bSaveStateOnExit = dwTmp ? true : false;
+     g_bSaveStateOnExit = dwTmp != NULL || false;
 
   if(LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) hddenabled = (bool) dwTmp;// after MemInitialize
 //    HD_SetEnabled(dwTmp ? true : false);
@@ -865,11 +865,10 @@ int main(int argc, char * lpCmdLine[])
 			else if (g_uMaxExPages < 1)
 				g_uMaxExPages = 1;
 		}
-                
-                else if(strcmp(lpNextArg, "-autoboot") == 0)
-                {
-                    bBoot = true;
-                }
+    else if(strcmp(lpNextArg, "-autoboot") == 0)
+    {
+      bBoot = true;
+    }
 #endif
 
 		//*lpCmdLine = lpNextArg;
@@ -1001,7 +1000,7 @@ int main(int argc, char * lpCmdLine[])
     DebugInitialize();
     JoyInitialize();
     MemInitialize();
-    HD_SetEnabled(hddenabled ? true : false);
+    HD_SetEnabled(hddenabled);
 //printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
 
     VideoInitialize();
@@ -1025,11 +1024,11 @@ int main(int argc, char * lpCmdLine[])
 //       bSetFullScreen = false;
 //     }
 //
-                //Automatically boot from disk if specified on the command line
+    //Automatically boot from disk if specified on the command line
  		if(bBoot)
  		{
-                    // autostart
-                    setAutoBoot();
+      // autostart
+      setAutoBoot();
  		}
 
     JoyReset();

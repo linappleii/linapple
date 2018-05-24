@@ -630,10 +630,6 @@ static BYTE DiskReadWrite (WORD programcounter, WORD, BYTE, BYTE, ULONG) {
       result = *(fptr->trackimage+fptr->byte);
     }
   }
-  if (0)
-  {
-    LOG_DISK("nib %4X = %2X\r", fptr->byte, result);
-  }
   if (++fptr->byte >= fptr->nibbles)
     fptr->byte = 0;
   return result;
