@@ -72,3 +72,5 @@
 
 //#include "Util_MemoryTextFile.h"
 
+// iK: This is to faciliate porting to SDL2
+#include "shim.h"
