@@ -1,123 +1,51 @@
 # Installation
-# Build modernization by Greg Hedger, November 2017
-# Ubuntu 16.04
+
+
+## Ubuntu 16.04
 
 make
 cd bin
 ./linapple
 
-# Prerequisites
-sudo apt-get install libzip-dev libzip4 libcurl3 libcurl-ocaml-dev
+### Prerequisites
 
+```bash
+sudo apt-get git libzip-dev libsdl1.2-dev libcurl4-openssl-dev zlib1g-dev
+```
 
-# Historical INSTALL
+### Clone
+
+```bash
+git clone git@github.com:linappleii/linapple.git 
+```
 Linapple - crossplatfom emulator of Apple][ (Apple2, Apple 2) series computer for Linux or other OSes with SDL support.
 
 
-[INSTALL]
+### Compile
 
-You need SDL, cURL, zlib and libzip:
+```bash
+cd linapple
+make
+```
 
-For Debian/Ubuntu their names are:
+### Global Install
+```shell
+make install
+```
 
-libsdl1.2-dev 	- Simple Direct Media crossplatform library for video,audio, events etc.
-libcurl4		- openssl-dev -  cURL net functions
-zlib1g-dev 		- access .gz files
-libzip-dev 		- access .zip files
+### Run
 
-All these libraries are available for free around the world.
+```bash
+bin/linapple
+```
 
-For example for Debian/Ubuntu to install:
+Or if you did a global install.
 
-$sudo apt-get install libsdl1.2-dev libcurl4-openssl-dev zlib1g-dev libzip-dev
+```bash
+linapple
+```
 
+### Configure
 
-After being SDL, zlib, cURL and libzip installed you will be able to compile linapple from sources:
-
-Untar the package (in .bz2 format):
-
-$ tar xjf linapple-src_2a.tar.bz2
-
-
-Then go to src directory and compile.
-
-$ make
-
-If there was no errors, you may install it if you wish:
-
-$ cd bin
-$ ./linapple
-
-It will be install in /usr/local/linapple folder, whre you can find linapple.conf file for changing some linapple settings,
-and empty `images` and `ftp` folders, where Apple 2 images files and downloaded through FTP images are meant to be in. 
-
-But of course you are free to choose any directories of your choice. 
-Note: you should read/write permissions of these folders, or linapple could not work properly.
-
-For linaaple ability to unpack .zip and .gz files on the fly (either from local disks or from FTP) you also need read/write access for linapple working
-folder (which by default is /usr/local/linapple), for linapple unpacks these files as drive0.dsk and drive1.dsk for drive 1 and 2 respectively.
-
-
-OK.
-If you installed it, you are able to run emulator from any place, just run it like this:
-
-$ linapple
-
-
-If you have chosen not to install it, go to the upper directory then and run the beast:
-
-$ cd ..
-
-$ ./linapple
-
-
-If all files are on their places, you should see an X-Window with splash screen. 
-Press F2 (or F3 before to choose some disk image in drive 1), and go to work.
-
-Note: linapple needs some files in its current working directory for proper working.
-
-These files are:
-
-splash.bmp 			- splash screen
-charset40.bmp		- charset for Apple][ (Apple 2e, etc.) text modes.
-font.bmp			- font for Help screen and Disk Select screens.
-icon.bmp			- nice icon, logo of Apple][ computer.
-linapple.conf		- configuration file.
-Master.dsk			- disk image with Applesoft(tm) DOS 3.3 inside. See Apple license (on apple.com) for details.
-
-Essentials are font.bmp and charset40.bmp, others can be omitted peacefully.
-
-P.S. You may play with some options in Makefile in src directory, if you know what you are to do. :)
-
-Note: See README file for more detailed instructions on using linapple.
-
-
-[UNINSTALL]
-
-To uninstall previously installed linapple (by `sudo make install` command) you may write this:
-
-$ sudo make uninstall
-
-This will remove by default entire `/usr/local/linapple` folder and `/usr/local/bin/linapple` script.
-
-
-Also there is possible command for cleaning compiled binaries in src directory:
-
-$ make clean
-
-Note: `linapple` executable in upper directory will remain intact.
-
-
-
-[CONTACT]
-
-I will be glad to see your comments, suggestions and so on on my email: beotiger@gmail.com
-
-Sincerely Yours,
-Krez beom beotiger, December 2007 AD - March 2012 AD
-
-beotiger@mail.ru
-beotiger@gmail.com
-
-Let Apple 2 live forever!
+A directory name `linapple` can be found in your home directory. Edit the `linapple.conf` file.
 

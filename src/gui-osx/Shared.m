@@ -225,12 +225,12 @@ NSOpenPanel *openPanel ;
 	ret = [lalerte runModal] ;
 	[lalerte release] ;
 	switch (ret) {
-	case NSAlertFirstButtonReturn : return NSAlertDefaultReturn ;
-									break ;
-	case NSAlertSecondButtonReturn: return NSAlertAlternateReturn ;
-									break ;
-	default :						return NSAlertOtherReturn ;
-	} ;
+    case NSAlertFirstButtonReturn:
+    	return NSAlertDefaultReturn;
+    case NSAlertSecondButtonReturn:
+    	return NSAlertAlternateReturn;
+	};
+	return NSAlertOtherReturn;
 }
 
 @end
