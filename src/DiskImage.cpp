@@ -905,7 +905,7 @@ int ImageOpen (LPCTSTR  imagefilename,
   }
 
   CloseHandle(file);
-  if (!(size > 0))
+  if (size <= 0)
     DeleteFile(imagefilename);
 
   return IMAGE_ERROR_BAD_SIZE; // HACK: MAGIC # 2

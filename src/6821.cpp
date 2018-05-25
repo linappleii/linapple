@@ -38,7 +38,7 @@
   bit5  C2_INPUT    C2_OUTPUT
 */
 #define PIA_IRQ1  0x80
-#define  PIA_IRQ2  0x40
+#define PIA_IRQ2  0x40
 #define SET_IRQ1(c)      c |= PIA_IRQ1;
 #define SET_IRQ2(c)      c |= PIA_IRQ2;
 #define CLEAR_IRQ1(c)    c &= ~PIA_IRQ1;
@@ -120,79 +120,72 @@ BYTE C6821::Read(BYTE byRS)
 {
   BYTE retval = 0;
   byRS &= 3;
-  switch ( byRS )
-  {
+  switch (byRS) {
     /******************* port A output/DDR read *******************/
-  case PIA_DDRA:
-    // read output register
-    if ( OUTPUT_SELECTED(m_byCTLA) )
-    {
-      // combine input and output values
-      retval = ( m_byOA & m_byDDRA ) | ( m_byIA & ~m_byDDRA );
-      // IRQ flags implicitly cleared by a read
-      CLEAR_IRQ1( m_byCTLA );
-      CLEAR_IRQ1( m_byCTLB );
-      UpdateInterrupts();
-      // CA2 is configured as output and in read strobe mode
-      if ( C2_OUTPUT(m_byCTLA) && C2_STROBE_MODE(m_byCTLA) )
-      {
-        // this will cause a transition low; call the output function if we're currently high
-        if ( m_byOCA2 )
-          PIA_W_CALLBACK( m_stOutCA2, 0 );
-        m_byOCA2 = 0;
+    case PIA_DDRA:
+      // read output register
+      if (OUTPUT_SELECTED(m_byCTLA)) {
+        // combine input and output values
+        retval = (m_byOA & m_byDDRA) | (m_byIA & ~m_byDDRA);
+        // IRQ flags implicitly cleared by a read
+        CLEAR_IRQ1(m_byCTLA);
+        CLEAR_IRQ1(m_byCTLB);
+        UpdateInterrupts();
+        // CA2 is configured as output and in read strobe mode
+        if (C2_OUTPUT(m_byCTLA) && C2_STROBE_MODE(m_byCTLA)) {
+          // this will cause a transition low; call the output function if we're currently high
+          if (m_byOCA2)
+            PIA_W_CALLBACK(m_stOutCA2, 0);
+          m_byOCA2 = 0;
 
-        // if the CA2 strobe is cleared by the E, reset it right away
-        if ( STROBE_E_RESET( m_byCTLA ) )
-        {
-          PIA_W_CALLBACK( m_stOutCA2, 1 );
-          m_byOCA2 = 1;
+          // if the CA2 strobe is cleared by the E, reset it right away
+          if (STROBE_E_RESET(m_byCTLA)) {
+            PIA_W_CALLBACK(m_stOutCA2, 1);
+            m_byOCA2 = 1;
+          }
         }
       }
-    }
-    // read DDR register
-    else
-    {
-      retval = m_byDDRA;
-    }
-    break;
+        // read DDR register
+      else {
+        retval = m_byDDRA;
+      }
+      break;
 
-    /******************* port B output/DDR read *******************/
-  case PIA_DDRB:
+      /******************* port B output/DDR read *******************/
+    case PIA_DDRB:
 
-    // read output register
-    if ( OUTPUT_SELECTED( m_byCTLB ) )
-    {
-      // combine input and output values
-      retval = ( m_byOB & m_byDDRB ) + ( m_byIB & ~m_byDDRB );
+      // read output register
+      if (OUTPUT_SELECTED(m_byCTLB)) {
+        // combine input and output values
+        retval = (m_byOB & m_byDDRB) + (m_byIB & ~m_byDDRB);
 
-      // IRQ flags implicitly cleared by a read
-      CLEAR_IRQ2( m_byCTLA );
-      CLEAR_IRQ2( m_byCTLB );
-      UpdateInterrupts();
-    }
-    /* read DDR register */
-    else
-    {
-      retval = m_byDDRB;
-    }
-    break;
+        // IRQ flags implicitly cleared by a read
+        CLEAR_IRQ2(m_byCTLA);
+        CLEAR_IRQ2(m_byCTLB);
+        UpdateInterrupts();
+      }
+        /* read DDR register */
+      else {
+        retval = m_byDDRB;
+      }
+      break;
 
-    /******************* port A control read *******************/
-  case PIA_CTLA:
-    // read control register
-    retval = m_byCTLA;
-    // when CA2 is an output, IRQA2 = 0, and is not affected by CA2 transitions.
-    if ( C2_OUTPUT( m_byCTLA ) )
-      retval &= ~PIA_IRQ2;
-    break;
+      /******************* port A control read *******************/
+    case PIA_CTLA:
+      // read control register
+      retval = m_byCTLA;
+      // when CA2 is an output, IRQA2 = 0, and is not affected by CA2 transitions.
+      if (C2_OUTPUT(m_byCTLA))
+        retval &= ~PIA_IRQ2;
+      break;
 
-    /******************* port B control read *******************/
-  case PIA_CTLB:
-    retval = m_byCTLB;
-    // when CB2 is an output, IRQB2 = 0, and is not affected by CB2 transitions.
-    if ( C2_OUTPUT( m_byCTLB ) )
-      retval &= ~PIA_IRQ2;
-    break;
+      /******************* port B control read *******************/
+    case PIA_CTLB:
+      retval = m_byCTLB;
+      // when CB2 is an output, IRQB2 = 0, and is not affected by CB2 transitions.
+      if (C2_OUTPUT(m_byCTLB))
+        retval &= ~PIA_IRQ2;
+      break;
 
   }
 
@@ -203,132 +196,121 @@ void C6821::Write(BYTE byRS, BYTE byData)
 {
   byRS &= 3;
 
-  switch( byRS )
-  {
+  switch( byRS ) {
     /******************* port A output/DDR write *******************/
-  case PIA_DDRA:
+    case PIA_DDRA:
 
-    // write output register
-    if ( OUTPUT_SELECTED( m_byCTLA ) )
-    {
-      // update the output value
-      m_byOA = byData;
-
-      // send it to the output function
-      if ( m_byDDRA )
-        PIA_W_CALLBACK( m_stOutA, m_byOA & m_byDDRA );
-    }
-
-    // write DDR register
-    else
-    {
-      if ( m_byDDRA != byData )
-      {
-        m_byDDRA = byData;
+      // write output register
+      if (OUTPUT_SELECTED(m_byCTLA)) {
+        // update the output value
+        m_byOA = byData;
 
         // send it to the output function
-        if ( m_byDDRA )
-          PIA_W_CALLBACK( m_stOutA, m_byOA & m_byDDRA );
+        if (m_byDDRA)
+          PIA_W_CALLBACK(m_stOutA, m_byOA & m_byDDRA);
       }
-    }
-    break;
 
-    /******************* port B output/DDR write *******************/
-  case PIA_DDRB:
+        // write DDR register
+      else {
+        if (m_byDDRA != byData) {
+          m_byDDRA = byData;
 
-    // write output register
-    if ( OUTPUT_SELECTED( m_byCTLB ) )
-    {
-      // update the output value
-      m_byOB = byData;
-
-      // send it to the output function
-      if ( m_byDDRB )
-        PIA_W_CALLBACK( m_stOutB, m_byOB & m_byDDRB );
-
-      // CB2 is configured as output and in write strobe mode
-      if ( C2_OUTPUT( m_byCTLB ) && C2_STROBE_MODE( m_byCTLB ) )
-      {
-        // this will cause a transition low; call the output function if we're currently high
-        if ( m_byOCB2 )
-          PIA_W_CALLBACK( m_stOutCB2, 0 );
-        m_byOCB2 = 0;
-
-        // if the CB2 strobe is cleared by the E, reset it right away
-        if ( STROBE_E_RESET( m_byCTLB ) )
-        {
-          PIA_W_CALLBACK( m_stOutCB2, 1 );
-          m_byOCB2 = 1;
+          // send it to the output function
+          if (m_byDDRA)
+            PIA_W_CALLBACK(m_stOutA, m_byOA & m_byDDRA);
         }
       }
-    }
-    // write DDR register
-    else
-    {
-      if ( m_byDDRB != byData )
-      {
-        m_byDDRB = byData;
+      break;
+
+      /******************* port B output/DDR write *******************/
+    case PIA_DDRB:
+
+      // write output register
+      if (OUTPUT_SELECTED(m_byCTLB)) {
+        // update the output value
+        m_byOB = byData;
 
         // send it to the output function
-        if ( m_byDDRB )
-          PIA_W_CALLBACK( m_stOutB, m_byOB & m_byDDRB );
+        if (m_byDDRB)
+          PIA_W_CALLBACK(m_stOutB, m_byOB & m_byDDRB);
+
+        // CB2 is configured as output and in write strobe mode
+        if (C2_OUTPUT(m_byCTLB) && C2_STROBE_MODE(m_byCTLB)) {
+          // this will cause a transition low; call the output function if we're currently high
+          if (m_byOCB2)
+            PIA_W_CALLBACK(m_stOutCB2, 0);
+          m_byOCB2 = 0;
+
+          // if the CB2 strobe is cleared by the E, reset it right away
+          if (STROBE_E_RESET(m_byCTLB)) {
+            PIA_W_CALLBACK(m_stOutCB2, 1);
+            m_byOCB2 = 1;
+          }
+        }
       }
-    }
-    break;
+        // write DDR register
+      else {
+        if (m_byDDRB != byData) {
+          m_byDDRB = byData;
 
-    /******************* port A control write *******************/
-  case PIA_CTLA:
-    // Bit 7 and 6 read only
-    byData &= 0x3f;
+          // send it to the output function
+          if (m_byDDRB)
+            PIA_W_CALLBACK(m_stOutB, m_byOB & m_byDDRB);
+        }
+      }
+      break;
 
-    // CA2 is configured as output and in set/reset mode
-    if ( C2_OUTPUT( byData ) )
-    {
-      // determine the new value
-      int temp = SET_C2( byData ) ? 1 : 0;
+      /******************* port A control write *******************/
+    case PIA_CTLA:
+      // Bit 7 and 6 read only
+      byData &= 0x3f;
 
-      // if this creates a transition, call the CA2 output function
-      if ( m_byOCA2 ^ temp)
-        PIA_W_CALLBACK( m_stOutCA2, temp );
+      // CA2 is configured as output and in set/reset mode
+      if (C2_OUTPUT(byData)) {
+        // determine the new value
+        int temp = SET_C2(byData) ? 1 : 0;
 
-      // set the new value
-      m_byOCA2 = temp;
-    }
+        // if this creates a transition, call the CA2 output function
+        if (m_byOCA2 ^ temp)
+          PIA_W_CALLBACK(m_stOutCA2, temp);
 
-    // update the control register
-    m_byCTLA = ( m_byCTLA & ~0x3F ) | byData;
+        // set the new value
+        m_byOCA2 = temp;
+      }
 
-    // update externals
-    UpdateInterrupts();
-    break;
+      // update the control register
+      m_byCTLA = (m_byCTLA & ~0x3F) | byData;
 
-    /******************* port B control write *******************/
-  case PIA_CTLB:
+      // update externals
+      UpdateInterrupts();
+      break;
 
-    /* Bit 7 and 6 read only - PD 16/01/00 */
+      /******************* port B control write *******************/
+    case PIA_CTLB:
 
-    byData &= 0x3f;
+      /* Bit 7 and 6 read only - PD 16/01/00 */
 
-    // CB2 is configured as output and in set/reset mode
-    if ( C2_OUTPUT( byData ) )
-    {
-      // determine the new value
-      int temp = SET_C2( byData ) ? 1 : 0;
+      byData &= 0x3f;
 
-      // if this creates a transition, call the CA2 output function
-      if ( m_byOCB2 ^ temp)
-        PIA_W_CALLBACK( m_stOutCB2, temp );
+      // CB2 is configured as output and in set/reset mode
+      if (C2_OUTPUT(byData)) {
+        // determine the new value
+        int temp = SET_C2(byData) ? 1 : 0;
 
-      // set the new value
-      m_byOCB2 = temp;
-    }
+        // if this creates a transition, call the CA2 output function
+        if (m_byOCB2 ^ temp)
+          PIA_W_CALLBACK(m_stOutCB2, temp);
 
-    // update the control register
-    m_byCTLB = ( m_byCTLB & ~0x3F ) | byData;
+        // set the new value
+        m_byOCB2 = temp;
+      }
 
-    // update externals
-    UpdateInterrupts();
-    break;
+      // update the control register
+      m_byCTLB = (m_byCTLB & ~0x3F) | byData;
+
+      // update externals
+      UpdateInterrupts();
+      break;
   }
 
 }
@@ -428,11 +410,10 @@ void C6821::SetCA2(BYTE byData)
     if ( m_byICA2 ^ byData )
     {
       // handle the active transition
-      if ( ( byData && C2_LOW_TO_HIGH( m_byCTLA ) ) ||
-        ( !byData && C2_HIGH_TO_LOW( m_byCTLA ) ) )
-      {
+      if ((byData && C2_LOW_TO_HIGH(m_byCTLA)) ||
+          (!byData && C2_HIGH_TO_LOW(m_byCTLA))) {
         // mark the IRQ
-        SET_IRQ2( m_byCTLA );
+        SET_IRQ2(m_byCTLA);
 
         // update externals
         UpdateInterrupts();
