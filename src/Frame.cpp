@@ -1233,6 +1233,7 @@ int FrameCreateWindow ()
 
 int InitSDL()
 {
+  char *path;
   // initialize SDL subsystems, return 0 if all OK, else return 1
   if(SDL_Init(SDL_INIT_EVERYTHING) != 0){
     fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
@@ -1248,7 +1249,9 @@ int InitSDL()
       SDL_WM_SetIcon(apple_icon, NULL);
       printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
 
-  apple_icon = SDL_LoadBMP(RESOURCE_ICON_BMP);
+  asprintf(&path, "%s%s", asset_basepath, ASSET_ICON_BMP);
+  apple_icon = SDL_LoadBMP(path);
+  free(path);
   if(apple_icon != NULL) {
     Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
     SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
