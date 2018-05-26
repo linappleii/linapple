@@ -786,10 +786,18 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 
 FILE *spMono, *spStereo;
 
+char *asset_basepath;
+
 //---------------------------------------------------------------------------
 
 int main(int argc, char * lpCmdLine[])
 {
+  asset_basepath = SDL_GetBasePath();
+  if (asset_basepath == NULL) {
+    fprintf(stderr, "SDL_GetBasePath() returned NULL for some reason\n");
+    return 1;
+  }
+
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
   config.ValidateUserDirectory();
@@ -1103,6 +1111,7 @@ int main(int argc, char * lpCmdLine[])
   curl_easy_cleanup(g_curl);
   curl_global_cleanup();
 //
+  SDL_free(asset_basepath);
   printf("Linapple: successfully exited!\n");
   return 0;
 }

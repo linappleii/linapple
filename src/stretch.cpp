@@ -448,8 +448,12 @@ SDL_Surface *font_sfc = NULL;  // used for font
 
 bool fonts_initialization(void)
 {
+  char *path;
   SDL_Surface *temp_surface;
-  temp_surface = SDL_LoadBMP(RESOURCE_FONT_BMP);
+
+  asprintf(&path, asset_basepath, ASSET_FONT_BMP);
+  temp_surface = SDL_LoadBMP(path);
+  free(path);
   if(!temp_surface) return false;
   font_sfc = SDL_DisplayFormat(temp_surface);
 
