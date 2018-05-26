@@ -521,7 +521,7 @@ void LoadConfiguration ()
     MB_SetSoundcardType((eSOUNDCARDTYPE)dwTmp);
 
    if(LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp))
-     g_bSaveStateOnExit = dwTmp != NULL || false;
+     g_bSaveStateOnExit = (dwTmp != 0);
 
   if(LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) hddenabled = (bool) dwTmp;// after MemInitialize
 //    HD_SetEnabled(dwTmp ? true : false);
