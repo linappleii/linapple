@@ -845,7 +845,7 @@ bool MemGet80Store()
 
 bool MemCheckSLOTCXROM()
 {
-  return SW_SLOTCXROM != NULL || false;
+  return SW_SLOTCXROM != 0;
 }
 
 //===========================================================================

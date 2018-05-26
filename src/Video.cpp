@@ -2175,7 +2175,7 @@ void VideoUpdateFlash()
 
 bool VideoGetSW80COL()
 {
-  return SW_80COL != NULL || false;
+  return SW_80COL != 0;
 }
 
 //===========================================================================
