@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // for usleep
 #include <unistd.h>
-#include "Resources.h"
+#include "assets.h"
 #include "stdafx.h"
 //#pragma  hdrstop
 #include "MouseInterface.h"

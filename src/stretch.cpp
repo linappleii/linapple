@@ -34,7 +34,7 @@
 
 //static unsigned char copy_row[4096];
 
-#include "Resources.h"
+#include "assets.h"
 #include "stdafx.h"
 
 
