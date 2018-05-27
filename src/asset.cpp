@@ -29,47 +29,53 @@
 #define ASSET_CHARSET40_BMP  "charset40.bmp"
 #define ASSET_FONT_BMP       "font.bmp"
 
-assets_t assets;
+assets_t *assets = NULL;
 
 bool Asset_Init(void)
 {
+  assets = (assets_t *)SDL_calloc(1, sizeof(assets_t));
+  if (NULL == assets) {
+    fprintf(stderr, "Asset_Init: Allocating assets: %s\n", SDL_GetError());
+    return false;
+  }
+
   char *path = (char *)SDL_malloc(sizeof(char[PATH_MAX]));
-
-  assets.basepath = SDL_GetBasePath();
-  if (NULL != assets.basepath) {
-    fprintf(stderr, "SDL_GetBasePath() returned NULL, using current directory.\n");
-    assets.basepath = SDL_strdup("./");
-  }
-  assets.icon = NULL;
-  assets.font = NULL;
-  assets.charset40 = NULL;
-  assets.splash = NULL;
-
-  snprintf(path, PATH_MAX, "%s%s", assets.basepath, ASSET_ICON_BMP);
-  assets.icon = SDL_LoadBMP(path);
-  if (NULL == assets.icon) {
-    fprintf(stderr, "Unable to locate required asset " ASSET_ICON_BMP "\n");
+  if (NULL == path) {
+    fprintf(stderr, "Asset_Init: Allocating path: %s\n", SDL_GetError());
     return false;
   }
 
-  snprintf(path, PATH_MAX, "%s%s", assets.basepath, ASSET_FONT_BMP);
-  assets.font = SDL_LoadBMP(path);
-  if (NULL == assets.font) {
-    fprintf(stderr, "Unable to locate required asset " ASSET_FONT_BMP "\n");
+  assets->basepath = SDL_GetBasePath();
+  if (NULL == assets->basepath) {
+    fprintf(stderr, "Asset_Init: Warning: SDL_GetBasePath() returned NULL, using \"./\"\n");
+    assets->basepath = SDL_strdup("./");
+  }
+
+  snprintf(path, PATH_MAX, "%s%s", assets->basepath, ASSET_ICON_BMP);
+  assets->icon = SDL_LoadBMP(path);
+  if (NULL == assets->icon) {
+    fprintf(stderr, "Error loading required asset: %s\n", SDL_GetError());
     return false;
   }
 
-  snprintf(path, PATH_MAX, "%s%s", assets.basepath, ASSET_CHARSET40_BMP);
-  assets.charset40 = SDL_LoadBMP(path);
-  if (NULL == assets.charset40) {
-    fprintf(stderr, "Unable to locate required asset " ASSET_CHARSET40_BMP "\n");
+  snprintf(path, PATH_MAX, "%s%s", assets->basepath, ASSET_FONT_BMP);
+  assets->font = SDL_LoadBMP(path);
+  if (NULL == assets->font) {
+    fprintf(stderr, "Error loading required asset: %s\n", SDL_GetError());
     return false;
   }
 
-  snprintf(path, PATH_MAX, "%s%s", assets.basepath, ASSET_SPLASH_BMP);
-  assets.splash = SDL_LoadBMP(path);
-  if (NULL == assets.splash) {
-    fprintf(stderr, "Unable to locate required asset " ASSET_SPLASH_BMP "\n");
+  snprintf(path, PATH_MAX, "%s%s", assets->basepath, ASSET_CHARSET40_BMP);
+  assets->charset40 = SDL_LoadBMP(path);
+  if (NULL == assets->charset40) {
+    fprintf(stderr, "Error loading required asset: %s\n", SDL_GetError());
+    return false;
+  }
+
+  snprintf(path, PATH_MAX, "%s%s", assets->basepath, ASSET_SPLASH_BMP);
+  assets->splash = SDL_LoadBMP(path);
+  if (NULL == assets->splash) {
+    fprintf(stderr, "Error loading required asset: %s\n", SDL_GetError());
     return false;
   }
 
@@ -79,25 +85,32 @@ bool Asset_Init(void)
 
 void Asset_Quit(void)
 {
-  if (NULL != assets.icon) {
-    SDL_FreeSurface(assets.icon);
-    assets.icon = NULL;
-  }
+  if (NULL != assets) {
+    if (NULL != assets->icon) {
+      SDL_FreeSurface(assets->icon);
+      assets->icon = NULL;
+    }
 
-  if (NULL != assets.font) {
-    SDL_FreeSurface(assets.font);
-    assets.font = NULL;
-  }
+    if (NULL != assets->font) {
+      SDL_FreeSurface(assets->font);
+      assets->font = NULL;
+    }
 
-  if (NULL != assets.charset40) {
-    SDL_FreeSurface(assets.charset40);
-    assets.charset40 = NULL;
-  }
+    if (NULL != assets->charset40) {
+      SDL_FreeSurface(assets->charset40);
+      assets->charset40 = NULL;
+    }
 
-  if (NULL != assets.splash) {
-    SDL_FreeSurface(assets.splash);
-    assets.splash = NULL;
-  }
+    if (NULL != assets->splash) {
+      SDL_FreeSurface(assets->splash);
+      assets->splash = NULL;
+    }
 
-  SDL_free(assets.basepath);
+    if (NULL != assets->basepath) {
+      SDL_free(assets->basepath);
+      assets->basepath = NULL;
+    }
+
+    SDL_free(assets);
+  }
 }

@@ -28,7 +28,7 @@ typedef struct {
   SDL_Surface *splash;
 } assets_t;
 
-extern assets_t assets;
+extern assets_t *assets;
 
 bool Asset_Init(void);
 void Asset_Quit(void);
