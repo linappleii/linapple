@@ -1895,10 +1895,10 @@ void VideoInitialize () {
   ZeroMemory(vidlastmem,0x10000);
 
   // LOAD THE splash screen
-  g_hLogoBitmap = SDL_DisplayFormat(assets.splash);
+  g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
 
   // LOAD APPLE CHARSET40
-  charset40 = SDL_DisplayFormat(assets.charset40);
+  charset40 = SDL_DisplayFormat(assets->charset40);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
   // THE BITMAPINFO STRUCTURE

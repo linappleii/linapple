@@ -564,8 +564,8 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
   rectangle(screen, 1, 1, /*SCREEN_WIDTH*/g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
-  if(assets.icon != NULL) {  // display Apple logo
-    tempSurface = SDL_DisplayFormat(assets.icon);
+  if(assets->icon != NULL) {  // display Apple logo
+    tempSurface = SDL_DisplayFormat(assets->icon);
     SDL_Rect logo, scrr;
     logo.x = logo.y = 0;
     logo.w = tempSurface->w;
@@ -1242,17 +1242,17 @@ int InitSDL()
   // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
   //  Uint32          colorkey;
 
-  /*  assets.icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
-      Uint32 colorkey = SDL_MapRGB(assets.icon->format, 0, 0, 0);
-      SDL_SetColorKey(assets.icon, SDL_SRCCOLORKEY, colorkey);
-      SDL_WM_SetIcon(assets.icon, NULL);
-      printf("Icon was set! Width=%d, height=%d\n", assets.icon->w, assets.icon->h);*/
+  /*  assets->icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
+      Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
+      SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
+      SDL_WM_SetIcon(assets->icon, NULL);
+      printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);*/
 
-  if(assets.icon != NULL) {
-    Uint32 colorkey = SDL_MapRGB(assets.icon->format, 0, 0, 0);
-    SDL_SetColorKey(assets.icon, SDL_SRCCOLORKEY, colorkey);
-    SDL_WM_SetIcon(assets.icon, NULL);
-    //    printf("Icon was set! Width=%d, height=%d\n", assets.icon->w, assets.icon->h);
+  if(assets->icon != NULL) {
+    Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
+    SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
+    SDL_WM_SetIcon(assets->icon, NULL);
+    //    printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);
   }
   //////////////////////////////////////////////////////////////////////
   return 0;
