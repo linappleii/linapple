@@ -451,7 +451,7 @@ bool fonts_initialization(void)
   char *path;
   SDL_Surface *temp_surface;
 
-  asprintf(&path, asset_basepath, ASSET_FONT_BMP);
+  asprintf(&path, "%s%s", asset_basepath, ASSET_FONT_BMP);
   temp_surface = SDL_LoadBMP(path);
   free(path);
   if(!temp_surface) return false;
