@@ -28,8 +28,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "assets.h"
 #include "stdafx.h"
+
+#include "asset.h"
 #include "wwrapper.h"
 #include "config.h"
 #include <iostream>
@@ -1886,37 +1887,18 @@ BOOL VideoHasRefreshed () {
 
 //===========================================================================
 void VideoInitialize () {
-  char *path;
   Config config;
   config.ChangeToUserDirectory();
 
-
-  SDL_Surface * tmp_surface;
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
 
   // LOAD THE splash screen
-  asprintf(&path, "%s%s", asset_basepath, ASSET_SPLASH_BMP);
-  tmp_surface = SDL_LoadBMP(path);
-  free(path);
-  if (tmp_surface != NULL) {
-    g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
-  } else {
-    fprintf(stderr, "Video: " ASSET_SPLASH_BMP " was not loaded\n");
-  }
-  SDL_FreeSurface(tmp_surface);
+  g_hLogoBitmap = SDL_DisplayFormat(assets.splash);
 
   // LOAD APPLE CHARSET40
-  asprintf(&path, "%s%s", asset_basepath, ASSET_CHARSET40_BMP);
-  tmp_surface = SDL_LoadBMP(path);
-  free(path);
-  if (tmp_surface != NULL) {
-    charset40 = SDL_DisplayFormat(tmp_surface);
-  } else {
-    fprintf(stderr, "Video: Apple text is not available: " ASSET_CHARSET40_BMP " was not loaded\n");
-  }
-  SDL_FreeSurface(tmp_surface);
+  charset40 = SDL_DisplayFormat(assets.charset40);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
   // THE BITMAPINFO STRUCTURE

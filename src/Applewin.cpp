@@ -46,6 +46,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "asset.h"
 #include "config.h"
 
 #ifdef __APPLE__
@@ -786,17 +787,11 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 
 FILE *spMono, *spStereo;
 
-char *asset_basepath;
-
 //---------------------------------------------------------------------------
 
 int main(int argc, char * lpCmdLine[])
 {
-  asset_basepath = SDL_GetBasePath();
-  if (asset_basepath == NULL) {
-    fprintf(stderr, "SDL_GetBasePath() returned NULL for some reason\n");
-    return 1;
-  }
+  Asset_Init();
 
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
@@ -1111,7 +1106,7 @@ int main(int argc, char * lpCmdLine[])
   curl_easy_cleanup(g_curl);
   curl_global_cleanup();
 //
-  SDL_free(asset_basepath);
+  Asset_Quit();
   printf("Linapple: successfully exited!\n");
   return 0;
 }
