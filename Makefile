@@ -5,6 +5,7 @@ VERSION     := 2.1.1
 
 # Where does this get installed
 PREFIX      := /usr/local
+ASSET_DIR   := $(PREFIX)/share/$(PACKAGE)
 
 #Compiler and Linker
 CC          := g++
@@ -22,6 +23,7 @@ SRCEXT      := cpp
 DEPEXT      := d
 OBJEXT      := o
 
+# FIXME: Make this go away!
 INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
 
 #Flags, Libraries and Includes
@@ -40,7 +42,7 @@ CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 #DEBUGGING
 #CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
 #OPTIMIZED
-CFLAGS      := -Wall -O3 -ansi -c
+CFLAGS      := -Wall -O3 -ansi -c -DASSET_DIR=\"$(ASSET_DIR)\"
 CFLAGS 		+= $(SDL_CFLAGS)
 CFLAGS 		+= $(CURL_CFLAGS)
 
@@ -95,7 +97,7 @@ install: all
 	@echo
 	@echo "`tput bold`o Copying binary to install directory '$(INSTDIR)'`tput sgr0`"
 	# This should be able to live in $(PREFIX)/bin directly, symlink for now
-	install -m 755 -o root -g root "$(TARGETDIR)/$(TARGET)" "$(INSTDIR)"
+	install -m 755 -o root -g root "$(TARGETDIR)/$(TARGET)" "$(INSTDIR)/$(TARGET)"
 	# We'll use a symlink until then
 	if [ -L "$(PREFIX)/bin/$(TARGET)" ]; then \
 		rm -f "$(PREFIX)/bin/$(TARGET)" ;\
@@ -103,17 +105,17 @@ install: all
 	ln -s $(INSTDIR)/$(TARGET) $(PREFIX)/bin/$(TARGET)
 
 	@echo
-	@echo "`tput bold`o Copying assets to install directory '$(INSTDIR)'`tput sgr0`"
-	# These properly belong in $(PREFIX)/share…
+	@echo "`tput bold`o Copying assets to '$(ASSET_DIR)'`tput sgr0`"
+	install -d -m 755 -o root -g root "$(ASSET_DIR)"
 	for file in $(INSTASSETS); do \
-		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(INSTDIR)" ;\
+		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(ASSET_DIR)/$$file" ;\
 	done
 
 	@echo
 	@echo "`tput bold`o Copying docs to install directory '$(INSTDIR)'`tput sgr0`"
 	# This belongs in $(PREFIX)/etc or /etc
 	for file in $(CONFFILES); do \
-		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(INSTDIR)" ;\
+		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(INSTDIR)/$$file" ;\
 	done
 
 uninstall:
@@ -122,8 +124,12 @@ uninstall:
 	for file in $(TARGET) $(INSTASSETS) $(CONFFILES); do \
 		rm -f "$(INSTDIR)/$$file" ;\
 	done
-	# It's okay if this fails (examine $(INSTDIR) yourself)
+	for file in $(INSTASSETS); do \
+		rm -f "$(ASSET_DIR)/$$file" ;\
+	done
+	# It's okay if these fail (examine the directories yourself)
 	rmdir $(INSTDIR) 2>/dev/null || true
+	rmdir $(ASSET_DIR) 2>/dev/null || true
 	# Don't forget the linapple symlink in $(PREFIX)/bin
 	rm -f "$(PREFIX)/bin/$(TARGET)"
 

@@ -21,7 +21,6 @@
 #define __asset_h
 
 typedef struct {
-  char *basepath;
   SDL_Surface *icon;
   SDL_Surface *font;
   SDL_Surface *charset40;
@@ -32,5 +31,6 @@ extern assets_t *assets;
 
 bool Asset_Init(void);
 void Asset_Quit(void);
+int Asset_InsertMasterDisk(void);
 
 #endif // __asset_h
