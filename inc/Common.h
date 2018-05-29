@@ -17,8 +17,10 @@ const DWORD dwClksPerFrame      = uCyclesPerLine * uLinesPerFrame;  // 17030
 
 #define NUM_SLOTS 8
 
+#ifndef MIN
 #define  MAX(a,b)          (((a) > (b)) ? (a) : (b))
 #define  MIN(a,b)          (((a) < (b)) ? (a) : (b))
+#endif
 
 #define  RAMWORKS      // 8MB RamWorks III support
 
