@@ -553,9 +553,7 @@ void LoadConfiguration ()
     SetDiskImageDirectory(szDiskImage1, 1);
   }
   else {
-#define MASTER_DISK  "Master.dsk"
-   static char szMasterDisk[] = MASTER_DISK;
-   DoDiskInsert(0, szMasterDisk);
+    Asset_InsertMasterDisk();
   }
 
   // Load hard disk images and insert it automatically in slot 7
