@@ -27,31 +27,33 @@ Currently, only the options to specify disks start in fullscreen, and auto boot 
 
 ## Using LinApple
 
-| Key            | Function                                                                       |
-| -------------- | ------------------------------------------------------------------------------ |
-| F1             | Show help screen.                                                              |
-| Ctrl+F2        | Cold reboot. i.e. Power off and back on.                                       |
-| Shift+F2       | Reload configuration file and cold reboot.                                     |
-| F3             | Load disk image for drive 1.                                                   |
-| F4             | Load disk image for drive 2.                                                   |
-| Shift+F3       | Attach hard disk image to slot 7.                                              |
-| Shift+F4       | Attach hard disk image to slot 7.                                              |
-| F5             | Swap drives for slot 6.                                                        |
-| F6             | Toggle fullscreen mode. Warning: Does not safely exit in multi-monitor setups. |
-| F7             | Reserved for debugger.                                                         |
-| F8             | Save screenshot as a bitmap.                                                   |
-| Shift+F8       | Save runtime changes to configuration to the configuration file.               |
-| F9             | Cycle through video modes.                                                     |
-| F10            | Load snapshot file.                                                            |
-| F11            | Save snapshot file.                                                            |
-| F12            | Quit.                                                                          |
-| Ctrl+0-9       | Load snapshot `n`.                                                             |
-| Ctrl+Shift+0-9 | Save snapshot `n`.                                                             |
-| Pause          | Pause/resume emulation.                                                        |
-| Scroll Lock    | Toggle fulls peed emulation.                                                   |
-| Numpad +       | Increase emulation speed.                                                      |
-| Numpad -       | Decrease emulation speed.                                                      |
-| Numpad *       | Reset emulation speed.                                                         |
+| Key            | Function                                                         |
+| -------------- | -----------------------------------------------------------------|
+| F1             | Show help screen.                                                |
+| Ctrl+F2        | Cold reboot. i.e. Power off and back on.                         |
+| Shift+F2       | Reload configuration file and cold reboot.                       |
+| F3             | Load disk image for drive 1.                                     |
+| F4             | Load disk image for drive 2.                                     |
+| Shift+F3       | Attach hard disk image to slot 7.                                |
+| Shift+F4       | Attach hard disk image to slot 7.                                |
+| F5             | Swap drives for slot 6.                                          |
+| F6             | Toggle fullscreen mode.  See Warning below.                      |
+| F7             | Reserved for debugger.                                           |
+| F8             | Save screenshot as a bitmap.                                     |
+| Shift+F8       | Save runtime changes to configuration to the configuration file. |
+| F9             | Cycle through video modes.                                       |
+| F10            | Load snapshot file.                                              |
+| F11            | Save snapshot file.                                              |
+| F12            | Quit.                                                            |
+| Ctrl+0-9       | Load snapshot `n`.                                               |
+| Ctrl+Shift+0-9 | Save snapshot `n`.                                               |
+| Pause          | Pause/resume emulation.                                          |
+| Scroll Lock    | Toggle fulls peed emulation.                                     |
+| Numpad +       | Increase emulation speed.                                        |
+| Numpad -       | Decrease emulation speed.                                        |
+| Numpad *       | Reset emulation speed.                                           |
+
+**Warning**: Fullscreen mode does not properly exit in multi-monitor setups.  (This is a bug in SDL 1.2.)
 
 When you first start the emulator, press the F3 key and select a disk image file. Press Ctrl+F2 to restart the emulator
 with the disk "inserted" if the application doesn't automatically load.
