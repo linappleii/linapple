@@ -1,6 +1,6 @@
 # LinApple
 
-LinApple is an Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.
+LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.
 
 ## History
 
