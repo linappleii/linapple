@@ -13,17 +13,13 @@ currently resides.
 
 ## Command Line Switches
 
-* -d1: Specifies a disk image to load into FDD1 (drive 0)
-* -d2: Specifies a disk image to load into FDD1 (drive 1)
-* -f: Specifies that the emulator should run in fullscreen mode
-* -b : Specifies that benchmark should be loaded
-* -l: Logs output to a file called AppleWin.log
-* -m: Disables direct sound
-* -autoboot: Boots the system automatically, rather than displaying the splash screen
- 
-When specifying disk images, the full path should be used. e.g. `linapple -d1 /home/myname/disks/MYSTHOUS.DSK`
-
-Currently, only the options to specify disks start in fullscreen, and auto boot have been tested.
+* `-d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
+* `-d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
+* `-f`: Specifies that the emulator should run in fullscreen mode
+* `-b`: Specifies that benchmark should be loaded (untested)
+* `-l`: Logs output to a file called AppleWin.log (untested)
+* `-m`: Disables direct sound (untested)
+* `-autoboot`: Boots the system automatically, rather than displaying the splash screen
 
 ## Using LinApple
 
