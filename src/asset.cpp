@@ -45,7 +45,7 @@ SDL_Surface *Asset_LoadBMP(const char *filename)
   SDL_Surface *surf;
   char *path = (char *)SDL_malloc(sizeof(char[PATH_MAX]));
   if (NULL == path) {
-    fprintf(stderr, "Asset_Init: Allocating path: %s\n", SDL_GetError());
+    fprintf(stderr, "Asset_LoadBMP: Allocating path: %s\n", SDL_GetError());
     return NULL;
   }
 
