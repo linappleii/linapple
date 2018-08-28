@@ -88,22 +88,24 @@ Load a file, usually a text file, into memory.
 
 List the current program in memory.
 
-## Other
-This fork is far from perfect, and has not been tested extensively. The main purpose is to allow users to set up custom
-shell scripts which they may use to automatically load certain Apple ][ games or programs with the click of a button.
-While this need is met by this fork, extensive testing has not been performed to ensure new bugs were not introduced by
-these changes.
+### Command-line options
 
-A simple script can be set up to run an Apple ][ game or program by combining the -d1, -f, and -autoboot options, for example:
+Support for command-line options was originally added to linapple to allow users to set up
+custom shell scripts to automatically load certain Apple ][ programs with the click of a
+button, but it is evolving towards conventional command-line usage.
+
+For example, to have linapple start in fullscreen and automatically boot the disk
+`example.dsk`, you can open a shell and run
 
 ```bash
-linapple -d1 /path/to/disk/image -f -autoboot
+linapple -d1 $HOME/apple-disks/example.dsk -f -autoboot
 ```
 
-## Todo
+This command could also be placed in a shell script, which could be started from an
+icon or menu on the desktop, etc.
 
-* Testing is needed to make sure the other command line options are working correctly. Currently, only the -d1, -d2, and
-  -f options have been tested.
-* Extensive testing is needed to ensure that these changes have not inadvertently broken other features of the program.
-  Unfortunately, a test suite did not come with the original code, so we have not been able to test this.
+Note that extensive testing has not been performed on all command-line options.
+
+#### TODO
+
 * Add a command line switch which allows the user to specify different configuration files.
