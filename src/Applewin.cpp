@@ -783,8 +783,6 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 }
 
 
-FILE *spMono, *spStereo;
-
 //---------------------------------------------------------------------------
 
 int main(int argc, char * lpCmdLine[])
@@ -804,8 +802,6 @@ int main(int argc, char * lpCmdLine[])
   bool bBoot = false;
 
   registry = fopen(REGISTRY, "rt");  // open conf file (linapple.conf by default)
-  spMono = fopen("speakersmono.pcm","wb");
-  spStereo = fopen("speakersstereo.pcm","wb");
 
   LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
   LPSTR szImageName_drive2 = NULL;
@@ -1098,8 +1094,6 @@ int main(int argc, char * lpCmdLine[])
   {
     fclose(registry);    //close conf file (linapple.conf by default)
   }
-  fclose(spMono);
-  fclose(spStereo);
 
   SDL_Quit();
 // CURL routines
