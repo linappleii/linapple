@@ -25,13 +25,10 @@ std::string Config::GetUserFilePath()
 	return m_optsFilePath.c_str();
 }
 
-void Config::ChangeToUserDirectory()
+std::string Config::GetRegistryPath()
 {
-	if(chdir((GetHomePath() + USER_DIRECTORY_NAME).c_str()))
-	{
-
-    cout << "Cannot switch to home directory ('" << GetHomePath().c_str() << "')" << std::endl;
-	}
+	m_regFilePath = GetUserFilePath() + REGISTRY_NAME;
+	return m_regFilePath.c_str();
 }
 
 // Simple POSIX file copy
