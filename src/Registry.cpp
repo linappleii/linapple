@@ -190,6 +190,7 @@ void RegSaveKeyValue(char * NKey, char * NValue)
   snprintf(MyStr, BUFSIZE, "\t%s =\t%s\n", NKey, NValue);  // prepare string
   fseek(registry, 0, SEEK_SET);  //
   bool found = false;
+
   while(fgets(line, BUFSIZE, registry))
   {
 //    printf("---1:%s", line);
@@ -203,14 +204,16 @@ void RegSaveKeyValue(char * NKey, char * NValue)
     else fputs(line, tempf);
 //    printf("---2:%s", line);
   }
+
   if(!found) fputs(MyStr, tempf);
   // now swap tempf and registry
   fclose(registry);
+
   fflush(tempf);
   fseek(tempf, 0, SEEK_SET);
 //  fclose(tempf);
 //  return;
-  // FIXME if you enable this code, you will need to call config.GetRegistryPath() here instead!
+  // FIXME if you re-enable this code, you will need to call config.GetRegistryPath() here instead!
   registry = fopen(REGISTRY, "w+t");  // erase if been
   while(fgets(line, BUFSIZE, tempf)) {
     fputs(line, registry);
