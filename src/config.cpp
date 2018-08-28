@@ -25,15 +25,6 @@ std::string Config::GetUserFilePath()
 	return m_optsFilePath.c_str();
 }
 
-void Config::ChangeToHomeDirectory()
-{
-	if(chdir(GetHomePath().c_str()))
-	{
-		// TODO: LOG ERROR
-    cout << "Cannot switch to home directory ('" << GetHomePath().c_str() << "')" << std::endl;
-	}
-}
-
 void Config::ChangeToUserDirectory()
 {
 	if(chdir((GetHomePath() + USER_DIRECTORY_NAME).c_str()))
