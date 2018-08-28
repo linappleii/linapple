@@ -98,7 +98,7 @@ For example, to have linapple start in fullscreen and automatically boot the dis
 `example.dsk`, you can open a shell and run
 
 ```bash
-linapple -d1 $HOME/apple-disks/example.dsk -f -autoboot
+linapple -d1 example.dsk -f -autoboot
 ```
 
 This command could also be placed in a shell script, which could be started from an
