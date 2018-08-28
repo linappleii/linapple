@@ -226,7 +226,6 @@ void RegSaveKeyValue(char * NKey, char * NValue)
 #else
         printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
 #endif /* REGISTRY_WRITEABLE */
-  printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
 }
 
 //===========================================================================
