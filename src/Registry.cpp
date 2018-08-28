@@ -179,6 +179,50 @@ BOOL RegLoadValue (LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
 
 void RegSaveKeyValue(char * NKey, char * NValue)
 {
+#ifdef REGISTRY_WRITEABLE
+  char MyStr[BUFSIZE];
+  char line[BUFSIZE];
+  char templine[BUFSIZE];
+  char *sztmp;
+  FILE * tempf = tmpfile();  // open temp file
+//  FILE * tempf = fopen("linapple-temp.conf", "w+");
+  if(!tempf) return;
+  snprintf(MyStr, BUFSIZE, "\t%s =\t%s\n", NKey, NValue);  // prepare string
+  fseek(registry, 0, SEEK_SET);  //
+  bool found = false;
+  while(fgets(line, BUFSIZE, registry))
+  {
+//    printf("---1:%s", line);
+    strcpy(templine, line);
+    if(ReturnKeyValue(templine, &sztmp, &NValue) && !(strcmp(sztmp, NKey)))
+    {
+      fputs(MyStr, tempf);
+      found = true;
+//      printf("------ !!!!!!!!!!!!!!!! I FOUND IT!!!!!\n\n");
+    }
+    else fputs(line, tempf);
+//    printf("---2:%s", line);
+  }
+  if(!found) fputs(MyStr, tempf);
+  // now swap tempf and registry
+  fclose(registry);
+  fflush(tempf);
+  fseek(tempf, 0, SEEK_SET);
+//  fclose(tempf);
+//  return;
+  // FIXME if you enable this code, you will need to call config.GetRegistryPath() here instead!
+  registry = fopen(REGISTRY, "w+t");  // erase if been
+  while(fgets(line, BUFSIZE, tempf)) {
+    fputs(line, registry);
+//    printf("---Saving Line:%s", line);
+  }
+  fflush(registry);
+  fclose(tempf);
+//  fflush(registry);  // for chance... --bb
+  // do not close registry, it should be open while emu working...
+#else
+        printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
+#endif /* REGISTRY_WRITEABLE */
   printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
 }
 
