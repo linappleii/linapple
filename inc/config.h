@@ -20,7 +20,6 @@ class Config
 		Config();
 		~Config() {};
 
-		void ChangeToHomeDirectory();
 		void ChangeToUserDirectory();
 		bool ValidateUserDirectory();
 		bool CopyFile(std::string source, std::string dest);
