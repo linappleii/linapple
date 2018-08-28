@@ -455,7 +455,7 @@ void LoadConfiguration ()
 
   if(registry==NULL)
   {
-    printf("File " REGISTRY " could not be opened. Using default configuration.\n");
+    printf("Registry file (linapple.conf) could not be opened. Using default configuration.\n");
     return;
   }
   LOAD(TEXT("Computer Emulation"),&dwComputerType);
@@ -796,14 +796,12 @@ int main(int argc, char * lpCmdLine[])
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
   config.ValidateUserDirectory();
-  config.ChangeToUserDirectory();
-
 
 //    reading FullScreen and Boot from conf file?
   bool bSetFullScreen = false;
   bool bBoot = false;
 
-  registry = fopen(REGISTRY, "rt");  // open conf file (linapple.conf by default)
+  registry = fopen(config.GetRegistryPath().c_str(), "rt");  // open conf file (linapple.conf by default)
   spMono = fopen("speakersmono.pcm","wb");
   spStereo = fopen("speakersstereo.pcm","wb");
 

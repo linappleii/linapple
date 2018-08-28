@@ -1,7 +1,5 @@
 #pragma once
 
-// configuration file
-#define REGISTRY  "linapple.conf"
 extern FILE * registry;  // our opened file
 
 BOOL    RegLoadString (LPCTSTR,LPCTSTR,BOOL,char**,DWORD);
