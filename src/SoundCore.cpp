@@ -45,7 +45,7 @@ bool DSInit()
 {
   if(g_bDSAvailable) return true;  // do not need to repeat all process?? --bb
 //  const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
-  g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 2048);// I just do not know what number of samples use.
+  g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 8192);// I just do not know what number of samples use.
   return g_bDSAvailable;  //
 }
 
@@ -386,9 +386,6 @@ double DSUploadBuffer(short* buffer, unsigned len)
   SDL_LockAudio();
 //  len *= 2; // stereo
   unsigned free = getBufferFree();
-  if (len > free) {
-    std::cerr << "DEBUG overrun(1): " << len - free << std::endl;
-  }
   unsigned num = std::min(len, free); // ignore overrun (drop samples)
   if ((writeIdx + num) < bufferSize) {
     memcpy(&mixBuffer[writeIdx], buffer, num * sizeof(short));
@@ -417,9 +414,6 @@ void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
   SDL_LockAudio();
 //  len *= 2; // stereo
   unsigned free = getBuffer2Free();
-  if (len > free) {
-    std::cerr << "DEBUG overrun(2): " << len - free << std::endl;
-  }
   unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
     // GPH Check for seam crossing on circular mockBuffer[].
   if ((writeIdx2 + samplesToWrite) < bufferSize) {
