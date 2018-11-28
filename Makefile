@@ -16,7 +16,7 @@ TARGET      := linapple
 #The Directories, Source, Includes, Objects, Binary and Resources
 SRCDIR      := src
 INCDIR      := inc
-BUILDDIR    := obj
+BUILDDIR    := build
 TARGETDIR   := bin
 RESDIR      := res
 SRCEXT      := cpp
