@@ -20,7 +20,7 @@ currently resides.
 * -l: Logs output to a file called AppleWin.log
 * -m: Disables direct sound
 * -autoboot: Boots the system automatically, rather than displaying the splash screen
- 
+
 When specifying disk images, the full path should be used. e.g. `linapple -d1 /home/myname/disks/MYSTHOUS.DSK`
 
 Currently, only the options to specify disks start in fullscreen, and auto boot have been tested.
@@ -78,7 +78,7 @@ Execute the Applesoft BASIC or Integer BASIC file.
 
 #### BRUN file
 
-Execute the binary file.
+Execute a binary program file.
 
 #### EXEC file
 
@@ -86,11 +86,11 @@ Execute a text file as though it was typed from the keyboard.
 
 #### LOAD file
 
-Load a file, usually a text file, into memory.
+Load an Applesoft or Integer BASIC file into memory.
 
 #### LIST
 
-List the current program in memory.
+List the current BASIC program in memory.
 
 ## Other
 This fork is far from perfect, and has not been tested extensively. The main purpose is to allow users to set up custom
@@ -111,3 +111,4 @@ linapple -d1 /path/to/disk/image -f -autoboot
 * Extensive testing is needed to ensure that these changes have not inadvertently broken other features of the program.
   Unfortunately, a test suite did not come with the original code, so we have not been able to test this.
 * Add a command line switch which allows the user to specify different configuration files.
+* Disk writing has serious issues which can be manifest through COPY II+'s Sector Editor.
