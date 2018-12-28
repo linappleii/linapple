@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
+
+#include "asset.h"
 #include "wwrapper.h"
 #include "config.h"
 #include <iostream>
@@ -1888,23 +1890,15 @@ void VideoInitialize () {
   Config config;
   config.ChangeToUserDirectory();
 
-
-  SDL_Surface * tmp_surface;
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
 
   // LOAD THE splash screen
-  tmp_surface = SDL_LoadBMP("splash.bmp");
-  if (tmp_surface != NULL)  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
-  else fprintf(stderr, "Video: splash.bmp was not loaded\n");
-  SDL_FreeSurface(tmp_surface);
+  g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
 
   // LOAD APPLE CHARSET40
-  tmp_surface = SDL_LoadBMP("charset40.bmp");
-  if(tmp_surface != NULL)  charset40 = SDL_DisplayFormat(tmp_surface);
-  else fprintf(stderr, "Video: Apple text is not unavailable: charset40.bmp was not loaded\n");
-  SDL_FreeSurface(tmp_surface);
+  charset40 = SDL_DisplayFormat(assets->charset40);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
   // THE BITMAPINFO STRUCTURE
@@ -2163,14 +2157,14 @@ void VideoUpdateFlash()
 
 bool VideoGetSW80COL()
 {
-  return SW_80COL ? true : false;
+  return SW_80COL != 0;
 }
 
 //===========================================================================
 
 DWORD VideoGetSnapshot(SS_IO_Video* pSS)
 {
-  pSS->bAltCharSet = !(g_nAltCharSetOffset == 0);
+  pSS->bAltCharSet = g_nAltCharSetOffset != 0;
   pSS->dwVidMode = vidmode;
   return 0;
 }

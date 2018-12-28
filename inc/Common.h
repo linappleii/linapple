@@ -17,8 +17,10 @@ const DWORD dwClksPerFrame      = uCyclesPerLine * uLinesPerFrame;  // 17030
 
 #define NUM_SLOTS 8
 
+#ifndef MIN
 #define  MAX(a,b)          (((a) > (b)) ? (a) : (b))
 #define  MIN(a,b)          (((a) < (b)) ? (a) : (b))
+#endif
 
 #define  RAMWORKS      // 8MB RamWorks III support
 
@@ -65,7 +67,7 @@ enum AppMode_e
 //#define  MAXIMAGES          16
 
 // TODO: Move to StringTable.h
-#define  TITLE_APPLE_2      ("Apple ][ Emulator")
+#define  TITLE_APPLE_2      TEXT("Apple ][ Emulator")
 #define  TITLE_APPLE_2_PLUS    TEXT("Apple ][+ Emulator")
 #define  TITLE_APPLE_2E      TEXT("Apple //e Emulator")
 #define  TITLE_APPLE_2E_ENHANCED  TEXT("Enhanced Apple //e Emulator")

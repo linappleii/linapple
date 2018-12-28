@@ -36,6 +36,7 @@
 
 #include "stdafx.h"
 
+#include "asset.h"
 
 #define DEFINE_COPY_ROW(name, type)      \
 void name(type *src, int src_w, type *dst, int dst_w)  \
@@ -447,12 +448,11 @@ SDL_Surface *font_sfc = NULL;  // used for font
 
 bool fonts_initialization(void)
 {
-  SDL_Surface *temp_surface;
-  temp_surface = SDL_LoadBMP("font.bmp");
-  if(!temp_surface) return false;
-  font_sfc = SDL_DisplayFormat(temp_surface);
+  if(!assets->font) {
+	  return false;
+  }
+  font_sfc = SDL_DisplayFormat(assets->font);
 
-  SDL_FreeSurface(temp_surface);
   /* Transparant color is BLACK: */
   SDL_SetColorKey(font_sfc,SDL_SRCCOLORKEY,SDL_MapRGB(font_sfc->format,0,0,0));
 

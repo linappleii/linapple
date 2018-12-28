@@ -1,0 +1,6 @@
+Package: linapple 
+Version: 2.1.1
+Maintainer: T. Joseph Carter <tjcarter@blocksfree.com>
+Architecture: all
+Depends: libsdl1.2debian, libsdl-mixer1.2, libzip4, libcurl3-gnutls
+Description: A Linux emulator for Apple ][+ IIe, and enhanced //e w/Mockingboard support

@@ -159,7 +159,7 @@ static void initnow(void)
 static long guesstai(long month,long mday)
 {
   long year;
-  long t;
+  long t = 0;
 
   initnow();
 
@@ -168,7 +168,7 @@ static long guesstai(long month,long mday)
     if (now - t < 350 * 86400)
       return t;
   }
-    return 0;
+    return t;
 }
 
 static int check(char *buf,const char *monthname)
