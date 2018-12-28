@@ -35,7 +35,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for time logging
 #include <time.h>
 #include <sys/time.h>
-
+#include <sys/param.h>
+#include <unistd.h>
 #include <curl/curl.h>
 
 #include <stdlib.h>
@@ -45,7 +46,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "asset.h"
 #include "config.h"
+
+#ifdef __APPLE__
+#include "AlertHooks.h"
+#endif
 
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
@@ -59,12 +65,12 @@ TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
 eApple2Type  g_Apple2Type  = A2TYPE_APPLE2EEHANCED;
 
-BOOL      behind            = 0;      // Redundant
-DWORD     cumulativecycles  = 0;      // Wraps after ~1hr 9mins
-DWORD     cyclenum          = 0;      // Used by SpkrToggle() for non-wave sound
-DWORD     emulmsec          = 0;
-static DWORD emulmsec_frac  = 0;
-bool      g_bFullSpeed      = false;
+BOOL behind = 0;      // Redundant
+DWORD cumulativecycles = 0;      // Wraps after ~1hr 9mins
+DWORD cyclenum = 0;      // Used by SpkrToggle() for non-wave sound
+DWORD emulmsec = 0;
+static DWORD emulmsec_frac = 0;
+bool g_bFullSpeed = false;
 bool hddenabled = false;
 static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 // Win32
@@ -74,12 +80,12 @@ AppMode_e  g_nAppMode = MODE_LOGO;
 
 // Default screen sizes
 // SCREEN_WIDTH & SCREEN_HEIGHT defined in Frame.h
-UINT g_ScreenWidth = SCREEN_WIDTH;
-UINT g_ScreenHeight = SCREEN_HEIGHT;
+UINT    g_ScreenWidth = SCREEN_WIDTH;
+UINT    g_ScreenHeight = SCREEN_HEIGHT;
 
 //static int lastmode         = MODE_LOGO;    -- not used???
 DWORD     needsprecision    = 0;      // Redundant
-//TCHAR     g_sProgramDir[MAX_PATH] = TEXT("");
+TCHAR     g_sProgramDir[MAX_PATH] = TEXT("");
 TCHAR     g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
 TCHAR     g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
 TCHAR     g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
@@ -126,7 +132,17 @@ double g_fMeanPeriod,g_fMeanFreq;
 ULONG g_nPerfFreq = 0;
 #endif
 
-
+//For MacOsX
+/*int DlgAlert_Notice(char *text)
+{
+#ifdef ALERT_HOOKS
+    //if (!Main_UnPauseEmulation())
+    //    Main_PauseEmulation(true);
+    //if(!bInFullScreen)
+        return HookedAlertNotice(text);
+#endif
+}
+*/
 
 //---------------------------------------------------------------------------
 
@@ -421,20 +437,27 @@ void SetDiskImageDirectory( char *regKey, int driveNumber)
   }
 }
 
+//Sets the emulator to automatically boot, rather than load the flash screen on startup
+void setAutoBoot ()
+{
+    // autostart
+    SDL_Event user_ev;
+    user_ev.type = SDL_USEREVENT;
+    user_ev.user.code = 1;	//restart
+    SDL_PushEvent(&user_ev);
+}
+
 //===========================================================================
 // Let us load main configuration from config file.  Y_Y  --bb
 void LoadConfiguration ()
 {
   DWORD dwComputerType;
 
-/*  if (LOAD(TEXT(REGVALUE_APPLE2_TYPE),&dwComputerType))
+  if(registry==NULL)
   {
-    if (dwComputerType >= A2TYPE_MAX)
-    dwComputerType = A2TYPE_APPLE2EEHANCED;
-    g_Apple2Type = (eApple2Type) dwComputerType;
+    printf("File " REGISTRY " could not be opened. Using default configuration.\n");
+    return;
   }
-  else
-  {*/
   LOAD(TEXT("Computer Emulation"),&dwComputerType);
   switch (dwComputerType)
   {
@@ -499,7 +522,7 @@ void LoadConfiguration ()
     MB_SetSoundcardType((eSOUNDCARDTYPE)dwTmp);
 
    if(LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp))
-     g_bSaveStateOnExit = dwTmp ? true : false;
+     g_bSaveStateOnExit = (dwTmp != 0);
 
   if(LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) hddenabled = (bool) dwTmp;// after MemInitialize
 //    HD_SetEnabled(dwTmp ? true : false);
@@ -517,11 +540,8 @@ void LoadConfiguration ()
   dwTmp = 0;
   LOAD(TEXT("Boot at Startup") ,&dwTmp);  //
   if(dwTmp) {
-    // autostart
-    SDL_Event user_ev;
-    user_ev.type = SDL_USEREVENT;
-    user_ev.user.code = 1;  //restart?
-    SDL_PushEvent(&user_ev);
+        // autostart
+        setAutoBoot();
   }
 
   dwTmp = 0;
@@ -533,9 +553,7 @@ void LoadConfiguration ()
     SetDiskImageDirectory(szDiskImage1, 1);
   }
   else {
-#define MASTER_DISK  "Master.dsk"
-   static char szMasterDisk[] = MASTER_DISK;
-   DoDiskInsert(0, szMasterDisk);
+    Asset_InsertMasterDisk();
   }
 
   // Load hard disk images and insert it automatically in slot 7
@@ -733,44 +751,48 @@ void RegisterExtensions ()
 
 //===========================================================================
 
-//LPSTR GetNextArg(LPSTR lpCmdLine)
-//{
-  // Sane idea: use getoptlong as command-line parameter preprocessor. Use it at your health. Ha. --bb
+LPSTR GetNextArg(LPSTR lpCmdLine)
+{
+	// Sane idea: use getoptlong as command-line parameter preprocessor. Use it at your health. Ha. --bb
 
-/*
-  int bInQuotes = 0;
 
-  while(*lpCmdLine)
-  {
-    if(*lpCmdLine == '\"')
-    {
-      bInQuotes ^= 1;
-      if(!bInQuotes)
-      {
-        *lpCmdLine++ = 0x00;  // Assume end-quote is end of this arg
-        continue;
-      }
-    }
+	int bInQuotes = 0;
 
-    if((*lpCmdLine == ' ') && !bInQuotes)
-    {
-      *lpCmdLine++ = 0x00;
-      break;
-    }
+	while(*lpCmdLine)
+	{
+		if(*lpCmdLine == '\"')
+		{
+			bInQuotes ^= 1;
+			if(!bInQuotes)
+			{
+				*lpCmdLine++ = 0x00;	// Assume end-quote is end of this arg
+				continue;
+			}
+		}
 
-    lpCmdLine++;
-  }
+		if((*lpCmdLine == ' ') && !bInQuotes)
+		{
+			*lpCmdLine++ = 0x00;
+			break;
+		}
 
-  return lpCmdLine;
-*/
-//}
+		lpCmdLine++;
+	}
 
-//FILE *spMono, *spStereo;
+	return lpCmdLine;
+}
+
+
+FILE *spMono, *spStereo;
 
 //---------------------------------------------------------------------------
 
 int main(int argc, char * lpCmdLine[])
 {
+  if (!Asset_Init()) {
+    return 1;
+  }
+
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
   config.ValidateUserDirectory();
@@ -778,79 +800,83 @@ int main(int argc, char * lpCmdLine[])
 
 
 //    reading FullScreen and Boot from conf file?
-//  bool bSetFullScreen = false;
-//  bool bBoot = false;
+  bool bSetFullScreen = false;
+  bool bBoot = false;
 
-  registry = fopen(REGISTRY, "a+t");  // open conf file (linapple.conf by default)
-//  spMono = fopen("speakersmono.pcm","wb");
-//  spStereo = fopen("speakersstereo.pcm","wb");
+  registry = fopen(REGISTRY, "rt");  // open conf file (linapple.conf by default)
+  spMono = fopen("speakersmono.pcm","wb");
+  spStereo = fopen("speakersstereo.pcm","wb");
 
-//  LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
-//  LPSTR szImageName_drive2 = NULL;
+  LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
+  LPSTR szImageName_drive2 = NULL;
 
 
   bool bBenchMark = (argc > 1 &&
     !strcmp(lpCmdLine[1],"-b"));  // if we should start benchmark (-b in command line string)
 
 // I will remake this using getopt and getoptlong!
-/*
-  while(*lpCmdLine)
-  {
-    LPSTR lpNextArg = GetNextArg(lpCmdLine);
 
-    if(strcmp(lpCmdLine, "-d1") == 0)
-    {
-      lpCmdLine = lpNextArg;
-      lpNextArg = GetNextArg(lpCmdLine);
-      szImageName_drive1 = lpCmdLine;
-      if(*szImageName_drive1 == '\"')
-        szImageName_drive1++;
-    }
-    else if(strcmp(lpCmdLine, "-d2") == 0)
-    {
-      lpCmdLine = lpNextArg;
-      lpNextArg = GetNextArg(lpCmdLine);
-      szImageName_drive2 = lpCmdLine;
-      if(*szImageName_drive2 == '\"')
-        szImageName_drive2++;
-    }
-    else if(strcmp(lpCmdLine, "-f") == 0)
-    {
-      bSetFullScreen = true;
-    }
-    else if((strcmp(lpCmdLine, "-l") == 0) && (g_fh == NULL))
-    {
-      g_fh = fopen("AppleWin.log", "a+t");  // Open log file (append & text g_nAppMode)
+	for(int x = 0; x < argc; x++)
+	{
+		LPSTR lpNextArg = lpCmdLine[x]; //GetNextArg(*lpCmdLine);
+
+		if(strcmp(lpNextArg, "-d1") == 0)
+		{
+			//*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			szImageName_drive1 = lpCmdLine[x + 1];
+			if(*szImageName_drive1 == '\"')
+				szImageName_drive1++;
+		}
+		else if(strcmp(lpNextArg, "-d2") == 0)
+		{
+			//*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			szImageName_drive2 = lpCmdLine[x + 1];
+			if(*szImageName_drive2 == '\"')
+				szImageName_drive2++;
+		}
+		else if(strcmp(lpNextArg, "-f") == 0)
+		{
+			bSetFullScreen = true;
+		}
+		else if((strcmp(lpNextArg, "-l") == 0) && (g_fh == NULL))
+		{
+			g_fh = fopen("AppleWin.log", "a+t");	// Open log file (append & text g_nAppMode)
 // Start of Unix(tm) specific code
-      struct timeval tv;
-      struct tm * ptm;
-      char time_str[40];
-      gettimeofday(&tv, NULL);
-      ptm = localtime(&tv.tvsec);
-      strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
+			struct timeval tv;
+			struct tm * ptm;
+			char time_str[40];
+			gettimeofday(&tv, NULL);
+			ptm = localtime(&tv.tv_sec);
+			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
 // end of Unix(tm) specific code
-      fprintf(g_fh,"*** Logging started: %s\n",time_str);
-    }
-    else if(strcmp(lpCmdLine, "-m") == 0)
-    {
-      g_bDisableDirectSound = true; // without direct sound? U-u-u-u-uuuuuuuhhhhhhhhh --bb
-    }
+			fprintf(g_fh,"*** Logging started: %s\n",time_str);
+		}
+		else if(strcmp(lpNextArg, "-m") == 0)
+		{
+			g_bDisableDirectSound = true; // without direct sound? U-u-u-u-uuuuuuuhhhhhhhhh --bb
+		}
 #ifdef RAMWORKS
-    else if(strcmp(lpCmdLine, "-r") == 0)    // RamWorks size [1..127]
+		else if(strcmp(lpNextArg, "-r") == 0)		// RamWorks size [1..127]
+		{
+//			*lpCmdLine = lpNextArg;
+//			lpNextArg = GetNextArg(*lpCmdLine);
+			g_uMaxExPages = atoi(lpCmdLine[x + 1]);
+			if (g_uMaxExPages > 127)
+				g_uMaxExPages = 128;
+			else if (g_uMaxExPages < 1)
+				g_uMaxExPages = 1;
+		}
+    else if(strcmp(lpNextArg, "-autoboot") == 0)
     {
-      lpCmdLine = lpNextArg;
-      lpNextArg = GetNextArg(lpCmdLine);
-      g_uMaxExPages = atoi(lpCmdLine);
-      if (g_uMaxExPages > 127)
-        g_uMaxExPages = 128;
-      else if (g_uMaxExPages < 1)
-        g_uMaxExPages = 1;
+      bBoot = true;
     }
 #endif
 
-    lpCmdLine = lpNextArg;
-  }
-*/
+		//*lpCmdLine = lpNextArg;
+	}
+
 
 
 // What is it???? RIFF support for sound saving during emulation in RIFF format.
@@ -938,18 +964,7 @@ int main(int argc, char * lpCmdLine[])
   DiskInitialize();
   CreateColorMixMap();  // For tv emulation g_nAppMode
 
-//   int nError = 0;
-//   if(szImageName_drive1)
-//   {
-//     nError = DoDiskInsert(0, szImageName_drive1);
-//     bBoot = true;
-//   }
-//   if(szImageName_drive2)
-//   {
-//     nError |= DoDiskInsert(1, szImageName_drive2);
-//   }
 
-  //
 
   do
   {
@@ -958,7 +973,27 @@ int main(int argc, char * lpCmdLine[])
     g_nAppMode = MODE_LOGO;
     fullscreen = false;
 
+    //Start with default configuration, which we will override if command line options were specified
     LoadConfiguration();
+
+    //Overwrite configuration file's set fullscreen option, if one was specified on the command line
+    if(bSetFullScreen) {
+      fullscreen = bSetFullScreen;
+    }
+
+    //This part of the code inserts disks if any were specified on the command line, overwriting the
+    //configuration settings.
+    int nError = 0;
+    if(szImageName_drive1)
+    {
+      nError = DoDiskInsert(0, szImageName_drive1);
+    }
+    if(szImageName_drive2)
+    {
+      nError |= DoDiskInsert(1, szImageName_drive2);
+    }
+
+
     FrameCreateWindow();
 
     if (!DSInit()) soundtype = SOUND_NONE;    // Direct Sound and Stuff
@@ -968,7 +1003,7 @@ int main(int argc, char * lpCmdLine[])
     DebugInitialize();
     JoyInitialize();
     MemInitialize();
-    HD_SetEnabled(hddenabled ? true : false);
+    HD_SetEnabled(hddenabled);
 //printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
 
     VideoInitialize();
@@ -992,12 +1027,12 @@ int main(int argc, char * lpCmdLine[])
 //       bSetFullScreen = false;
 //     }
 //
-//     if(bBoot)
-//     {
-//       PostMessage(g_hFrameWindow, WM_KEYDOWN, VK_F1+BTN_RUN, 0);
-//       PostMessage(g_hFrameWindow, WM_KEYUP,   VK_F1+BTN_RUN, 0);
-//       bBoot = false;
-//     }
+    //Automatically boot from disk if specified on the command line
+ 		if(bBoot)
+ 		{
+      // autostart
+      setAutoBoot();
+ 		}
 
     JoyReset();
     SetUsingCursor(0);
@@ -1059,15 +1094,19 @@ int main(int argc, char * lpCmdLine[])
   }
 
   RiffFinishWriteFile();
-  fclose(registry);    //close conf file (linapple.conf by default)
-//  fclose(spMono);
-//  fclose(spStereo);
+  if(registry!=NULL)
+  {
+    fclose(registry);    //close conf file (linapple.conf by default)
+  }
+  fclose(spMono);
+  fclose(spStereo);
 
   SDL_Quit();
 // CURL routines
   curl_easy_cleanup(g_curl);
   curl_global_cleanup();
 //
+  Asset_Quit();
   printf("Linapple: successfully exited!\n");
   return 0;
 }

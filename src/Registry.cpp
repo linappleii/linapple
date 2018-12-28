@@ -179,6 +179,7 @@ BOOL RegLoadValue (LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
 
 void RegSaveKeyValue(char * NKey, char * NValue)
 {
+#ifdef REGISTRY_WRITEABLE
   char MyStr[BUFSIZE];
   char line[BUFSIZE];
   char templine[BUFSIZE];
@@ -221,6 +222,9 @@ void RegSaveKeyValue(char * NKey, char * NValue)
   fclose(tempf);
 //  fflush(registry);  // for chance... --bb
   // do not close registry, it should be open while emu working...
+#else
+        printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
+#endif /* REGISTRY_WRITEABLE */
 }
 
 //===========================================================================
