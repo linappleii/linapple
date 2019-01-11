@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fcntl.h>
 #include <cstdio>
+#include <stdexcept>
 
 #include "config.h"
 
@@ -97,9 +98,7 @@ static const char *files[] =
   "charset40.bmp",
   "font.bmp",
   "splash.bmp",
-  "Printer.txt",
   "Master.dsk",
-  "LICENSE",
   "linapple.conf",
   "icon.bmp",
   ""
@@ -124,18 +123,24 @@ static const char *files[] =
 		mkdir((userDir + CONF_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		mkdir((userDir + SAVED_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		mkdir((userDir + FTP_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        }
 
-    cout << "Copying Files\n" << std::endl;
+        cout << "Copying Files" << std::endl;
+        for( unsigned int i = 0; *files[ i ]; i++ ) {
+            string src = (GetInstallPath() + files[ i ]);
+            string dest = (GetUserFilePath() + files[ i ]);
+            if (stat (dest.c_str(), &buffer) == 0) {
+                // It's already there.
+                continue;
+            }
+            if (!(stat (src.c_str(), &buffer) == 0)) {
+                cout << "Could not stat " << src << "." << std::endl;
+                cout << "Please ensure " << GetInstallPath() << " exists and contains the linapple resource files." << std::endl;
+                throw std::runtime_error("could not copy resource files");
+            }
+            CopyFile(src, dest);
+        }
 
-		// Copy config options file
-    for( unsigned int i = 0; *files[ i ]; i++ ) {
-      string dest = GetUserFilePath();
-		  CopyFile(
-			  (GetInstallPath() + files[ i ]),
-        dest + files[ i ]
-      );
-    }
-	}
 	return bResult;
 }
 
