@@ -13,8 +13,6 @@
 
 #include <curl/curl.h>
 
-extern FILE * spMono,*spStereo;
-
 extern char VERSIONSTRING[];  // Contructed in WinMain()
 
 extern TCHAR     *g_pAppTitle;
