@@ -6,7 +6,7 @@
 
 #include <string>
 
-#define USER_DIRECTORY_NAME "/linapple/"
+#define USER_DIRECTORY_NAME "/.linapple/"
 #define CONF_DIRECTORY_NAME "/conf/"
 #define SAVED_DIRECTORY_NAME "/saved/"
 #define FTP_DIRECTORY_NAME "/ftp/"
