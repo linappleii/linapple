@@ -45,7 +45,7 @@ SDL_Surface *Asset_LoadBMP(const char *filename)
   SDL_Surface *surf;
   char *path = (char *)SDL_malloc(sizeof(char[PATH_MAX]));
   if (NULL == path) {
-    fprintf(stderr, "Asset_Init: Allocating path: %s\n", SDL_GetError());
+    fprintf(stderr, "Asset_LoadBMP: Allocating path: %s\n", SDL_GetError());
     return NULL;
   }
 
@@ -54,10 +54,13 @@ SDL_Surface *Asset_LoadBMP(const char *filename)
   if (NULL == surf) {
     snprintf(path, PATH_MAX, "%s%s", system_exedir, filename);
     surf = SDL_LoadBMP(path);
-    if (NULL == surf) {
-      fprintf(stderr, "Asset_LoadBMP: Couldn't load %s in either %s or %s!\n",
-          filename, system_assets, system_exedir);
-    }
+  }
+
+  if (NULL != surf) {
+    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename, path);
+  } else {
+    fprintf(stderr, "Asset_LoadBMP: Couldn't load %s in either %s or %s!\n",
+        filename, system_assets, system_exedir);
   }
 
   SDL_free(path);
