@@ -6,12 +6,16 @@
 
 #include <string>
 
-#define USER_DIRECTORY_NAME "/linapple/"
+#define USER_DIRECTORY_NAME "/.linapple/"
 #define REGISTRY_NAME "linapple.conf"
 #define CONF_DIRECTORY_NAME "/conf/"
 #define SAVED_DIRECTORY_NAME "/saved/"
 #define FTP_DIRECTORY_NAME "/ftp/"
-#define INSTALL_DIRECTORY_NAME "/etc/linapple/"
+#ifdef RESOURCE_INIT_DIR
+  #define INSTALL_DIRECTORY_NAME RESOURCE_INIT_DIR "/"
+#else
+  #define INSTALL_DIRECTORY_NAME "/etc/linapple/"
+#endif
 #define MAX_FILENAME_LENGTH 255
 
 class Config

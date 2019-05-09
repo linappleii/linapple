@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fcntl.h>
 #include <cstdio>
+#include <stdexcept>
 
 #include "config.h"
 
@@ -34,10 +35,12 @@ std::string Config::GetRegistryPath()
 // Simple POSIX file copy
 bool Config::CopyFile(std::string srcFile, std::string destFile)
 {
-  const int bufSize = 1024;
+	const int bufSize = 1024;
 	bool bRet = true;
 	char buf[bufSize];
 	size_t size;
+
+	std::cout << "Copying '" << srcFile.c_str() << "' to '" << destFile.c_str() << "'" << std::endl;
 
 	// Attempt to open files
 	int source = open(srcFile.c_str(), O_RDONLY, 0);
@@ -49,9 +52,8 @@ bool Config::CopyFile(std::string srcFile, std::string destFile)
 		while ((size = read(source, buf, bufSize)) > 0) {
 			if(0 >= write(dest, buf, size)) {
 				// Handle error;
-        std::cout << "Error writing '" << destFile.c_str() << "' (" << size << ")" << std::endl;
-        std::cout << "Source file: " << srcFile.c_str() << std::endl;
-
+				std::cout << "Error writing '" << destFile.c_str() << "' (" << size << ")" << std::endl;
+				std::cout << "Source file: " << srcFile.c_str() << std::endl;
 				bRet = false;
 				break;
 			}
@@ -65,7 +67,7 @@ bool Config::CopyFile(std::string srcFile, std::string destFile)
 			close(dest);
 		}
 	} else {
-    std::cout << "Error copying '" << srcFile.c_str() << "' to '" << destFile.c_str() << "'" << std::endl;
+		std::cout << "Error copying '" << srcFile.c_str() << "' to '" << destFile.c_str() << "'" << std::endl;
 		bRet = false;
 	}
 	return bRet;
@@ -85,9 +87,7 @@ static const char *files[] =
   "charset40.bmp",
   "font.bmp",
   "splash.bmp",
-  "Printer.txt",
   "Master.dsk",
-  "LICENSE",
   "linapple.conf",
   "icon.bmp",
   ""
@@ -112,18 +112,24 @@ static const char *files[] =
 		mkdir((userDir + CONF_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		mkdir((userDir + SAVED_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		mkdir((userDir + FTP_DIRECTORY_NAME).c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        }
 
-    cout << "Copying Files\n" << std::endl;
+        cout << "Copying Files" << std::endl;
+        for( unsigned int i = 0; *files[ i ]; i++ ) {
+            string src = (GetInstallPath() + files[ i ]);
+            string dest = (GetUserFilePath() + files[ i ]);
+            if (stat (dest.c_str(), &buffer) == 0) {
+                // It's already there.
+                continue;
+            }
+            if (!(stat (src.c_str(), &buffer) == 0)) {
+                cout << "Could not stat " << src << "." << std::endl;
+                cout << "Please ensure " << GetInstallPath() << " exists and contains the linapple resource files." << std::endl;
+                throw std::runtime_error("could not copy resource files");
+            }
+            CopyFile(src, dest);
+        }
 
-		// Copy config options file
-    for( unsigned int i = 0; *files[ i ]; i++ ) {
-      string dest = GetUserFilePath();
-		  CopyFile(
-			  (GetInstallPath() + files[ i ]),
-        dest + files[ i ]
-      );
-    }
-	}
 	return bResult;
 }
 
