@@ -10,7 +10,7 @@ cd bin
 ### Prerequisites
 
 ```bash
-sudo apt-get git libzip-dev libsdl1.2-dev libcurl4-openssl-dev zlib1g-dev
+sudo apt-get install git libzip-dev libsdl1.2-dev libcurl4-openssl-dev zlib1g-dev
 ```
 
 ### Clone
