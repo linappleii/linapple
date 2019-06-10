@@ -1887,9 +1887,6 @@ BOOL VideoHasRefreshed () {
 
 //===========================================================================
 void VideoInitialize () {
-  Config config;
-  config.ChangeToUserDirectory();
-
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
