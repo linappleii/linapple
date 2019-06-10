@@ -213,6 +213,7 @@ void RegSaveKeyValue(char * NKey, char * NValue)
   fseek(tempf, 0, SEEK_SET);
 //  fclose(tempf);
 //  return;
+  // FIXME if you re-enable this code, you will need to call config.GetRegistryPath() here instead!
   registry = fopen(REGISTRY, "w+t");  // erase if been
   while(fgets(line, BUFSIZE, tempf)) {
     fputs(line, registry);

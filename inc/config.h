@@ -7,6 +7,7 @@
 #include <string>
 
 #define USER_DIRECTORY_NAME "/.linapple/"
+#define REGISTRY_NAME "linapple.conf"
 #define CONF_DIRECTORY_NAME "/conf/"
 #define SAVED_DIRECTORY_NAME "/saved/"
 #define FTP_DIRECTORY_NAME "/ftp/"
@@ -24,15 +25,15 @@ class Config
 		Config();
 		~Config() {};
 
-		void ChangeToHomeDirectory();
-		void ChangeToUserDirectory();
 		bool ValidateUserDirectory();
 		bool CopyFile(std::string source, std::string dest);
 		std::string GetUserFilePath();
+		std::string GetRegistryPath();
 	protected:
 		std::string GetHomePath();
 		std::string GetInstallPath();
 	private:
 		std::string m_optsFilePath;
+		std::string m_regFilePath;
 };
 
