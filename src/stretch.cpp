@@ -35,6 +35,8 @@
 //static unsigned char copy_row[4096];
 
 #include "stdafx.h"
+#include <SDL_image.h>
+#include "../res/font.xpm"
 
 #include "asset.h"
 
@@ -448,11 +450,12 @@ SDL_Surface *font_sfc = NULL;  // used for font
 
 bool fonts_initialization(void)
 {
-  if(!assets->font) {
-	  return false;
-  }
-  font_sfc = SDL_DisplayFormat(assets->font);
 
+                  SDL_Surface *temp_surface;
+                  temp_surface = IMG_ReadXPMFromArray (font_xpm);
+	font_sfc = SDL_DisplayFormat(temp_surface);
+
+	SDL_FreeSurface(temp_surface);
   /* Transparant color is BLACK: */
   SDL_SetColorKey(font_sfc,SDL_SRCCOLORKEY,SDL_MapRGB(font_sfc->format,0,0,0));
 

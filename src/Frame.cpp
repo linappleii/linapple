@@ -33,6 +33,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for usleep
 #include <unistd.h>
 
+#include <SDL_image.h>
+
 #include "stdafx.h"
 
 #include "asset.h"
@@ -45,7 +47,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <iostream>
 
+#include "../res/icon.xpm"
+
 #define ENABLE_MENU 0
+
+SDL_Surface     *apple_icon;	// icon
 
 SDL_Surface * screen;  // our main screen
 // rects for screen stretch if needed
@@ -564,17 +570,15 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
   rectangle(screen, 1, 1, /*SCREEN_WIDTH*/g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
-  if(assets->icon != NULL) {  // display Apple logo
-    tempSurface = SDL_DisplayFormat(assets->icon);
-    SDL_Rect logo, scrr;
-    logo.x = logo.y = 0;
-    logo.w = tempSurface->w;
-    logo.h = tempSurface->h;
-    scrr.x = int(460*facx);
-    scrr.y = int(270*facy);
-    scrr.w = scrr.h = int(100*facy);
-    SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
-  }
+  tempSurface = SDL_DisplayFormat(IMG_ReadXPMFromArray(icon_xpm));
+  SDL_Rect logo, scrr;
+  logo.x = logo.y = 0;
+  logo.w = tempSurface->w;
+  logo.h = tempSurface->h;
+  scrr.x = int(460*facx);
+  scrr.y = int(270*facy);
+  scrr.w = scrr.h = int(100*facy);
+  SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
 
   SDL_Flip(screen);  // show the screen
   SDL_Delay(1000);  // wait 1 second to be not too fast
@@ -1242,18 +1246,22 @@ int InitSDL()
   // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
   //  Uint32          colorkey;
 
-  /*  assets->icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
-      Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
-      SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
-      SDL_WM_SetIcon(assets->icon, NULL);
-      printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);*/
+/*	apple_icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
+	Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
+	SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
+	SDL_WM_SetIcon(apple_icon, NULL);
+	printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
 
-  if(assets->icon != NULL) {
-    Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
-    SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
-    SDL_WM_SetIcon(assets->icon, NULL);
-    //    printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);
-  }
+#if 0
+  /* disabled while determing how to use the XPM surface for this. */
+	apple_icon = SDL_LoadBMP("icon.bmp");
+	if(apple_icon != NULL) {
+		Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
+		SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
+		SDL_WM_SetIcon(apple_icon, NULL);
+		printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);
+	}
+#endif
   //////////////////////////////////////////////////////////////////////
   return 0;
 }
