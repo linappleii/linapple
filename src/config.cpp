@@ -84,12 +84,8 @@ bool Config::ValidateUserDirectory()
 // going to work.
 static const char *files[] =
 {
-  "charset40.bmp",
-  "font.bmp",
-  "splash.bmp",
   "Master.dsk",
   "linapple.conf",
-  "icon.bmp",
   ""
 };
 

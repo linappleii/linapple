@@ -30,24 +30,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* And KREZ */
 
+#include <iostream>
+// for stat in FrameSaveBMP function
+#include <sys/stat.h>
 // for usleep
 #include <unistd.h>
-
+// for embedded XPMs
 #include <SDL_image.h>
 
 #include "stdafx.h"
-
 #include "asset.h"
-//#pragma  hdrstop
 #include "MouseInterface.h"
-//#include "..\resource\resource.h"
-
-// for stat in FrameSaveBMP function
-#include <sys/stat.h>
-
-#include <iostream>
-
-#include "../res/icon.xpm"
 
 #define ENABLE_MENU 0
 
@@ -570,7 +563,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
   rectangle(screen, 1, 1, /*SCREEN_WIDTH*/g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
-  tempSurface = SDL_DisplayFormat(IMG_ReadXPMFromArray(icon_xpm));
+  tempSurface = SDL_DisplayFormat(assets->icon);
   SDL_Rect logo, scrr;
   logo.x = logo.y = 0;
   logo.w = tempSurface->w;
@@ -1237,14 +1230,13 @@ int FrameCreateWindow ()
 
 void SetIcon()
 {
-  SDL_Surface *icon = IMG_ReadXPMFromArray(icon_xpm);
-
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
-  Uint32 colorkey = SDL_MapRGB(icon->format, 0, 0, 0);
-  SDL_SetColorKey(icon, SDL_SRCCOLORKEY, colorkey);
+  Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
+  SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
 
-  SDL_WM_SetIcon(icon, NULL);
+  /* No need to pass a mask given the above. */
+  SDL_WM_SetIcon(assets->icon, NULL);
 }
 
 int InitSDL()

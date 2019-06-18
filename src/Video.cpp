@@ -28,15 +28,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+#include <iostream>
+#include <SDL_image.h>
+
 #include "stdafx.h"
 
 #include "asset.h"
 #include "wwrapper.h"
 #include "config.h"
-#include <iostream>
-#include <SDL_image.h>
-#include "../res/splash.xpm"
-#include "../res/charset40.xpm"
 //#include "stretch.c"  // for SDL_SoftStretch thanx to Sam Lantinga and Tomasz Cejner
 
 //#include "..\resource\resource.h"
@@ -1890,20 +1889,15 @@ BOOL VideoHasRefreshed () {
 
 //===========================================================================
 void VideoInitialize () {
-	SDL_Surface * tmp_surface;
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
 
   // LOAD THE splash screen
-  tmp_surface = IMG_ReadXPMFromArray (splash_xpm);
-  g_hLogoBitmap = SDL_DisplayFormat(tmp_surface);
-  SDL_FreeSurface(tmp_surface);
+  g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
 
   // LOAD APPLE CHARSET40
-   tmp_surface = IMG_ReadXPMFromArray (charset40_xpm);
-  charset40 = SDL_DisplayFormat(tmp_surface);
-  SDL_FreeSurface(tmp_surface);
+  charset40 = SDL_DisplayFormat(assets->charset40);
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN
   // THE BITMAPINFO STRUCTURE
