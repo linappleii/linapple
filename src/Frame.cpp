@@ -1252,17 +1252,12 @@ int InitSDL()
 	SDL_WM_SetIcon(apple_icon, NULL);
 	printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
 
-#if 0
-  /* disabled while determing how to use the XPM surface for this. */
-	apple_icon = SDL_LoadBMP("icon.bmp");
-	if(apple_icon != NULL) {
-		Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
-		SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
-		SDL_WM_SetIcon(apple_icon, NULL);
-		printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);
-	}
-#endif
-  //////////////////////////////////////////////////////////////////////
+  SDL_Surface *apple_icon = IMG_ReadXPMFromArray(icon_xpm);
+  Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
+  SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
+  printf("%s\n", SDL_GetError());
+  SDL_WM_SetIcon(apple_icon, NULL);
+
   return 0;
 }
 //===========================================================================
