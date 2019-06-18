@@ -27,6 +27,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007, krez beotiger March 2012 AD */
+/*
+
+Linappple-pie was adapted in OCT 2015 for use with Retropie.
+By Mark Ormond. 
+*/
+
 
 #include "stdafx.h"
 //#pragma  hdrstop
@@ -362,6 +368,11 @@ void EnterMessageLoop ()
         ContinueExecution();
         if (g_nAppMode != MODE_DEBUG)
         {
+					if (joyexitenable)
+					{
+						CheckJoyExit();
+						if (joyquitevent) return;
+					}
           if (g_bFullSpeed)
             ContinueExecution();
         }
@@ -482,6 +493,25 @@ void LoadConfiguration ()
 
   LOAD(TEXT("Joystick 0"),&joytype[0]);
   LOAD(TEXT("Joystick 1"),&joytype[1]);
+  LOAD(TEXT("Joy0Index"),&joy1index);
+  LOAD(TEXT("Joy1Index"),&joy2index);
+    
+  LOAD(TEXT("Joy0Button1"),&joy1button1);
+  LOAD(TEXT("Joy0Button2"),&joy1button2);
+  LOAD(TEXT("Joy1Button1"),&joy2button1);
+  
+  LOAD(TEXT("Joy0Axis0"),&joy1axis0);
+  LOAD(TEXT("Joy0Axis1"),&joy1axis1);
+  LOAD(TEXT("Joy1Axis0"),&joy2axis0);
+  LOAD(TEXT("Joy1Axis1"),&joy2axis1);
+  LOAD(TEXT("JoyExitEnable"),&joyexitenable);
+  LOAD(TEXT("JoyExitButton0"),&joyexitbutton0);
+  LOAD(TEXT("JoyExitButton1"),&joyexitbutton1);
+  
+  
+  if (joytype[0]==1 ) printf ("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n",joy1index,SDL_JoystickName(joy1index),joy1button1, joy1button2,joy1axis0,joy1axis1);   
+  if (joytype[1]==1 )printf ("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n",joy2index,SDL_JoystickName(joy2index),joy2button1,joy2axis0,joy2axis1);
+  
   LOAD(TEXT("Sound Emulation")   ,&soundtype);
 
   DWORD dwSerialPort;
