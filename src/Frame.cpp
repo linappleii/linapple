@@ -1235,6 +1235,18 @@ int FrameCreateWindow ()
   return 0;
 }
 
+void SetIcon()
+{
+  SDL_Surface *icon = IMG_ReadXPMFromArray(icon_xpm);
+
+  /* Black is the transparency colour.
+     Part of the logo seems to use it !? */
+  Uint32 colorkey = SDL_MapRGB(icon->format, 0, 0, 0);
+  SDL_SetColorKey(icon, SDL_SRCCOLORKEY, colorkey);
+
+  SDL_WM_SetIcon(icon, NULL);
+}
+
 int InitSDL()
 {
   // initialize SDL subsystems, return 0 if all OK, else return 1
@@ -1242,24 +1254,13 @@ int InitSDL()
     fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
     return 1;
   }//if
-  //////////////////////////////////////////////////////////////////////
+
   // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
-  //  Uint32          colorkey;
-
-/*	apple_icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
-	Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
-	SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
-	SDL_WM_SetIcon(apple_icon, NULL);
-	printf("Icon was set! Width=%d, height=%d\n", apple_icon->w, apple_icon->h);*/
-
-  SDL_Surface *apple_icon = IMG_ReadXPMFromArray(icon_xpm);
-  Uint32 colorkey = SDL_MapRGB(apple_icon->format, 0, 0, 0);
-  SDL_SetColorKey(apple_icon, SDL_SRCCOLORKEY, colorkey);
-  printf("%s\n", SDL_GetError());
-  SDL_WM_SetIcon(apple_icon, NULL);
+  SetIcon();
 
   return 0;
 }
+
 //===========================================================================
 
 /*HDC FrameGetDC () {
