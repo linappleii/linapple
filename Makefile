@@ -38,6 +38,7 @@ INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
 SDL_CONFIG ?= sdl-config
 SDL_CFLAGS = $(shell $(SDL_CONFIG) --cflags)
 SDL_LIBS = $(shell $(SDL_CONFIG) --libs)
+SDL_LIBS +=  $(shell pkg-config SDL_image --libs)
 
 CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
@@ -52,6 +53,8 @@ CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 CFLAGS      := -Wall -O3 -ansi -c -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
 CFLAGS 		+= $(SDL_CFLAGS)
 CFLAGS 		+= $(CURL_CFLAGS)
+# Do not complain about XPMs
+CFLAGS		+= -Wno-write-strings
 
 LIB 				:= $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
 INC         := -I$(INCDIR) -I/usr/local/include
@@ -63,16 +66,12 @@ INCDEP      := -I$(INCDIR)
 SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 INSTASSETS  := \
-	charset40.bmp \
-	font.bmp \
-	icon.bmp \
-	splash.bmp \
 	Master.dsk
 CONFFILES   := \
 	linapple.conf
 
 #Default Make
-all: resources $(TARGETDIR)/$(TARGET)
+all: directories $(TARGETDIR)/$(TARGET)
 
 #Remake
 remake: cleaner all

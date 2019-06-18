@@ -787,13 +787,9 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 
 int main(int argc, char * lpCmdLine[])
 {
-  if (!Asset_Init()) {
-    return 1;
-  }
-
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
-  config.ValidateUserDirectory();
+  //config.ValidateUserDirectory();
 
 //    reading FullScreen and Boot from conf file?
   bool bSetFullScreen = false;
