@@ -787,6 +787,8 @@ LPSTR GetNextArg(LPSTR lpCmdLine)
 
 int main(int argc, char * lpCmdLine[])
 {
+  Asset_Init();
+
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
   //config.ValidateUserDirectory();
