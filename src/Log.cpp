@@ -32,16 +32,41 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 //---------------------------------------------------------------------------
 
+void LogInitialize()
+{
+	g_fh = fopen("AppleWin.log", "a+t");	// Open log file (append & text g_nAppMode)
+	// Start of Unix(tm) specific code
+	struct timeval tv;
+	struct tm * ptm;
+	char time_str[40];
+	gettimeofday(&tv, NULL);
+	ptm = localtime(&tv.tv_sec);
+	strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
+	// end of Unix(tm) specific code
+	fprintf(g_fh,"*** Logging started: %s\n",time_str);
+}
+
 void LogOutput(LPCTSTR format, ...)
 {
-    TCHAR output[256];
+	if (!g_fh) return;
 
-    va_list args;
-    va_start(args, format);
+	va_list args;
+	va_start(args, format);
 
-    vsnprintf(output, sizeof(output) - 1, format, args);
-//    OutputDebugString(output);
-    fprintf(stderr, "%s", output);
+	TCHAR output[512];
+
+	vsnprintf(output, sizeof(output) - 1, format, args);
+	//    OutputDebugString(output);
+	fprintf(g_fh, "%s", output);
+}
+
+void LogDestroy()
+{
+	if (g_fh)
+	{
+		fprintf(g_fh,"*** Logging ended\n\n");
+		fclose(g_fh);
+	}
 }
 
 //---------------------------------------------------------------------------

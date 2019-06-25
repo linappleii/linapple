@@ -36,6 +36,7 @@ By Mark Ormond.
 
 #include "stdafx.h"
 //#pragma  hdrstop
+#include "Log.h"
 #include "MouseInterface.h"
 
 // for time logging
@@ -44,13 +45,13 @@ By Mark Ormond.
 #include <sys/param.h>
 #include <unistd.h>
 #include <curl/curl.h>
-
 #include <stdlib.h>
 
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <getopt.h>
 
 #include "asset.h"
 #include "config.h"
@@ -466,7 +467,7 @@ void LoadConfiguration ()
 
   if(registry==NULL)
   {
-    printf("Registry file (linapple.conf) could not be opened. Using default configuration.\n");
+    printf("Registry file could not be opened. Using default configuration.\n");
     return;
   }
   LOAD(TEXT("Computer Emulation"),&dwComputerType);
@@ -570,8 +571,8 @@ void LoadConfiguration ()
   dwTmp = 0;
   LOAD(TEXT("Boot at Startup") ,&dwTmp);  //
   if(dwTmp) {
-        // autostart
-        setAutoBoot();
+    // autostart
+    setAutoBoot();
   }
 
   dwTmp = 0;
@@ -779,174 +780,129 @@ void RegisterExtensions ()
 //         REG_SZ,"system",7);
 }
 
-//===========================================================================
-
-LPSTR GetNextArg(LPSTR lpCmdLine)
+void PrintHelp()
 {
-	// Sane idea: use getoptlong as command-line parameter preprocessor. Use it at your health. Ha. --bb
-
-
-	int bInQuotes = 0;
-
-	while(*lpCmdLine)
-	{
-		if(*lpCmdLine == '\"')
-		{
-			bInQuotes ^= 1;
-			if(!bInQuotes)
-			{
-				*lpCmdLine++ = 0x00;	// Assume end-quote is end of this arg
-				continue;
-			}
-		}
-
-		if((*lpCmdLine == ' ') && !bInQuotes)
-		{
-			*lpCmdLine++ = 0x00;
-			break;
-		}
-
-		lpCmdLine++;
-	}
-
-	return lpCmdLine;
+    printf( "usage: linapple [options]\n"
+            "\n"
+            "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
+            "\n"
+            "  -h|--help      show this help message\n"
+            "  --d1 <file>    insert disk image into first drive\n"
+            "  --d2 <file>    insert disk image into second drive\n"
+            "  -b|--autoboot  boot/reset at startup\n"
+            "  -f             run fullscreen\n"
+            "  -l             write log to 'AppleWin.log'\n"
+#ifdef RAMWORKS
+            "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
+#endif
+            "  --benchmark    benchmark and quit\n"
+            "\n");
 }
-
 
 //---------------------------------------------------------------------------
 
-int main(int argc, char * lpCmdLine[])
-{
-  Asset_Init();
+int main(int argc, char *argv[]) {
+  bool bLog = false;
+  bool bSetFullScreen = false;
+  bool bBoot = false;
+  bool bBenchMark = false;
+  LPSTR szConfigurationFile = NULL;
+  LPSTR szImageName_drive1 = NULL;
+  LPSTR szImageName_drive2 = NULL;
+  LPSTR szSnapshotFile = NULL;
+
+  int opt;
+  int optind = 0;
+  const char *optname;
+  static struct option longopts[] = { { "autoboot", 0, 0, 0 },
+                                      { "conf", required_argument, 0, 0 },
+                                      { "d1", required_argument, 0, 0 },
+                                      { "d2", required_argument, 0, 0 },
+                                      { "help", 0, 0, 0 },
+                                      { "state", required_argument, 0, 0 },
+                                      { 0, 0, 0, 0 } };
+
+  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) !=
+         -1) {
+    switch (opt) {
+    case '1':
+      szImageName_drive1 = optarg;
+      break;
+
+    case '2':
+      szImageName_drive2 = optarg;
+      break;
+
+    case 'b':
+      bBoot = true;
+      break;
+
+    case 'f':
+      bSetFullScreen = true;
+      break;
+
+    case 'h':
+      PrintHelp();
+      return 0;
+      break;
+
+    case 'l':
+      bLog = true;
+      break;
+
+#ifdef RAMWORKS
+    case 'r': // RamWorks size [1..127]
+      g_uMaxExPages = atoi(optarg);
+      if (g_uMaxExPages > 127)
+        g_uMaxExPages = 128;
+      else if (g_uMaxExPages < 1)
+        g_uMaxExPages = 1;
+      break;
+#endif
+
+    case 0:
+      optname = longopts[optind].name;
+      if (!strcmp(optname, "autoboot")) {
+        bBoot = true;
+      } else if (!strcmp(optname, "benchmark")) {
+        bBenchMark = true;
+      } else if (!strcmp(optname, "conf")) {
+        szConfigurationFile = optarg;
+      } else if (!strcmp(optname, "d1")) {
+        szImageName_drive1 = optarg;
+      } else if (!strcmp(optname, "d2")) {
+        szImageName_drive2 = optarg;
+      } else if (!strcmp(optname, "help")) {
+        PrintHelp();
+        return 0;
+      } else if (!strcmp(optname, "state")) {
+        szSnapshotFile = optarg;
+      } else {
+        printf("Unknown option '%s'.\n\n", optname);
+        PrintHelp();
+        return 255;
+      }
+      break;
+
+    default:
+      printf("Unknown option '%s'.\n\n", optarg);
+      PrintHelp();
+      return 255;
+    }
+  }
+
+  if (bLog) LogInitialize();
+  if (!Asset_Init()) return 1;
 
   // GPH: The very first thing we do is attempt to grab the needed configuration files and put them in the user's folder.
   Config config;
-  //config.ValidateUserDirectory();
+  config.ValidateUserDirectory();
 
-//    reading FullScreen and Boot from conf file?
-  bool bSetFullScreen = false;
-  bool bBoot = false;
-
-  registry = fopen(config.GetRegistryPath().c_str(), "rt");  // open conf file (linapple.conf by default)
-
-  LPSTR szImageName_drive1 = NULL; // file names for images of drive1 and drive2
-  LPSTR szImageName_drive2 = NULL;
-
-
-  bool bBenchMark = (argc > 1 &&
-    !strcmp(lpCmdLine[1],"-b"));  // if we should start benchmark (-b in command line string)
-
-// I will remake this using getopt and getoptlong!
-
-	for(int x = 0; x < argc; x++)
-	{
-		LPSTR lpNextArg = lpCmdLine[x]; //GetNextArg(*lpCmdLine);
-
-		if(strcmp(lpNextArg, "-d1") == 0)
-		{
-			//*lpCmdLine = lpNextArg;
-//			lpNextArg = GetNextArg(*lpCmdLine);
-			szImageName_drive1 = lpCmdLine[x + 1];
-			if(*szImageName_drive1 == '\"')
-				szImageName_drive1++;
-		}
-		else if(strcmp(lpNextArg, "-d2") == 0)
-		{
-			//*lpCmdLine = lpNextArg;
-//			lpNextArg = GetNextArg(*lpCmdLine);
-			szImageName_drive2 = lpCmdLine[x + 1];
-			if(*szImageName_drive2 == '\"')
-				szImageName_drive2++;
-		}
-		else if(strcmp(lpNextArg, "-f") == 0)
-		{
-			bSetFullScreen = true;
-		}
-		else if((strcmp(lpNextArg, "-l") == 0) && (g_fh == NULL))
-		{
-			g_fh = fopen("AppleWin.log", "a+t");	// Open log file (append & text g_nAppMode)
-// Start of Unix(tm) specific code
-			struct timeval tv;
-			struct tm * ptm;
-			char time_str[40];
-			gettimeofday(&tv, NULL);
-			ptm = localtime(&tv.tv_sec);
-			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
-// end of Unix(tm) specific code
-			fprintf(g_fh,"*** Logging started: %s\n",time_str);
-		}
-		else if(strcmp(lpNextArg, "-m") == 0)
-		{
-			g_bDisableDirectSound = true; // without direct sound? U-u-u-u-uuuuuuuhhhhhhhhh --bb
-		}
-#ifdef RAMWORKS
-		else if(strcmp(lpNextArg, "-r") == 0)		// RamWorks size [1..127]
-		{
-//			*lpCmdLine = lpNextArg;
-//			lpNextArg = GetNextArg(*lpCmdLine);
-			g_uMaxExPages = atoi(lpCmdLine[x + 1]);
-			if (g_uMaxExPages > 127)
-				g_uMaxExPages = 128;
-			else if (g_uMaxExPages < 1)
-				g_uMaxExPages = 1;
-		}
-    else if(strcmp(lpNextArg, "-autoboot") == 0)
-    {
-      bBoot = true;
-    }
-#endif
-
-		//*lpCmdLine = lpNextArg;
-	}
-
-
-
-// What is it???? RIFF support for sound saving during emulation in RIFF format.
-  // Currently not used?
-#if 0
-#ifdef RIFF_SPKR
-  RiffInitWriteFile("Spkr.wav", SPKR_SAMPLE_RATE, 1);
-#endif
-#ifdef RIFF_MB
-  RiffInitWriteFile("Mockingboard.wav", 44100, 2);
-#endif
-#endif
-
-  //-----
-
-//     char szPath[_MAX_PATH];
-//
-//     if(0 == GetModuleFileName(NULL, szPath, sizeof(szPath)))
-//     {
-//         strcpy(szPath, __argv[0]);
-//     }
-
-    // Extract application version and store in a global variable
-//     DWORD dwHandle, dwVerInfoSize;
-//
-//     dwVerInfoSize = GetFileVersionInfoSize(szPath, &dwHandle);
-//
-//     if(dwVerInfoSize > 0)
-//     {
-//         char* pVerInfoBlock = new char[dwVerInfoSize];
-//
-//         if(GetFileVersionInfo(szPath, NULL, dwVerInfoSize, pVerInfoBlock))
-//         {
-//             VS_FIXEDFILEINFO* pFixedFileInfo;
-//             UINT pFixedFileInfoLen;
-//
-//             VerQueryValue(pVerInfoBlock, TEXT("\\"), (LPVOID*) &pFixedFileInfo, (PUINT) &pFixedFileInfoLen);
-//
-//             // Construct version string from fixed file info block
-//
-//             unsigned long major     = pFixedFileInfo->dwFileVersionMS >> 16;
-//             unsigned long minor     = pFixedFileInfo->dwFileVersionMS & 0xffff;
-//             unsigned long fix       = pFixedFileInfo->dwFileVersionLS >> 16;
-//       unsigned long fix_minor = pFixedFileInfo->dwFileVersionLS & 0xffff;
-//
-//             sprintf(VERSIONSTRING, "%d.%d.%d.%d", major, minor, fix, fix_minor);
-//         }
-//     }
+  if (szConfigurationFile)
+  {
+    config.SetRegistryPath(szConfigurationFile);
+  }
+  registry = fopen(config.GetRegistryPath().c_str(), "rt");
 
 #if DBG_CALC_FREQ
   //QueryPerformanceFrequency((LARGE_INTEGER*)&g_nPerfFreq);
@@ -986,8 +942,6 @@ int main(int argc, char * lpCmdLine[])
   DiskInitialize();
   CreateColorMixMap();  // For tv emulation g_nAppMode
 
-
-
   do
   {
     // DO INITIALIZATION THAT MUST BE REPEATED FOR A RESTART
@@ -1009,12 +963,21 @@ int main(int argc, char * lpCmdLine[])
     if(szImageName_drive1)
     {
       nError = DoDiskInsert(0, szImageName_drive1);
+        if (nError)
+      {
+        LOG("Cannot insert image %s into drive 1.", szImageName_drive1);
+        break;
+      }
     }
     if(szImageName_drive2)
     {
       nError |= DoDiskInsert(1, szImageName_drive2);
+      if (nError)
+      {
+        LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
+        break;
+      }
     }
-
 
     FrameCreateWindow();
 
@@ -1038,7 +1001,13 @@ int main(int argc, char * lpCmdLine[])
 //     }
 
 //    tfe_init();
-          Snapshot_Startup();    // Do this after everything has been init'ed
+    Snapshot_Startup();    // Do this after everything has been init'ed
+    if (szSnapshotFile)
+    {
+      Snapshot_SetFilename(szSnapshotFile);
+      LOG("[main ] using state file '%s'\n", Snapshot_GetFilename());
+      Snapshot_LoadState();
+    }
 
 
 /*  ------Will be fullscreened and booted later. I promise. --bb          */
@@ -1050,11 +1019,10 @@ int main(int argc, char * lpCmdLine[])
 //     }
 //
     //Automatically boot from disk if specified on the command line
- 		if(bBoot)
- 		{
-      // autostart
+    if(bBoot)
+    {
       setAutoBoot();
- 		}
+    }
 
     JoyReset();
     SetUsingCursor(0);
@@ -1109,12 +1077,6 @@ int main(int argc, char * lpCmdLine[])
 
 //  tfe_shutdown();
 
-  if(g_fh)
-  {
-    fprintf(g_fh,"*** Logging ended\n\n");
-    fclose(g_fh);
-  }
-
   RiffFinishWriteFile();
   if(registry!=NULL)
   {
@@ -1122,11 +1084,12 @@ int main(int argc, char * lpCmdLine[])
   }
 
   SDL_Quit();
-// CURL routines
   curl_easy_cleanup(g_curl);
   curl_global_cleanup();
-//
   Asset_Quit();
+  LogDestroy();
+
   printf("Linapple: successfully exited!\n");
   return 0;
 }
+

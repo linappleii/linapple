@@ -29,6 +29,7 @@ class Config
 		bool CopyFile(std::string source, std::string dest);
 		std::string GetUserFilePath();
 		std::string GetRegistryPath();
+		void SetRegistryPath(std::string path);
 	protected:
 		std::string GetHomePath();
 		std::string GetInstallPath();
