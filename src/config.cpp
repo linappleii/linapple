@@ -32,6 +32,11 @@ std::string Config::GetRegistryPath()
 	return m_regFilePath.c_str();
 }
 
+void Config::SetRegistryPath(std::string path)
+{
+	m_regFilePath = path;
+}
+
 // Simple POSIX file copy
 bool Config::CopyFile(std::string srcFile, std::string destFile)
 {
