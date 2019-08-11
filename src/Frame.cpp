@@ -488,33 +488,34 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 {
   // on pressing F1 button shows help screen
 
-  const char * HelpStrings[] = {
+  const int MAX_LINES = 25;
+
+  const char * HelpStrings[MAX_LINES] = {
     "Welcome to LinApple - Apple][ emulator for Linux!",
     "Conf file is linapple.conf in current directory by default",
     "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
-    " F1 - This help",
-    " Ctrl+F2 - Cold reset",
-    " Shift+F2 - Reload conf file and restart",
-    " F3, F4 - Choose an image file name for floppy disk",
-    "             in Slot 6 drive 1 or 2 respectively",
-    " Shift+F3, Shift+F4 - The same thing for Apple hard disks",
-    "                         (in Slot 7)",
-    " F5 - Swap drives for Slot 6",
-    " F6 - Toggle fullscreen mode",
-    " F7 - Reserved for Debugger!",
-    " F8 - Save current screen as a .bmp file",
-    " Shift+F8 - Save settings changable at runtime in conf file",
-    " F9 - Cycle through various video modes",
-    " F10 - Quit emulator",
-    " F11 - Save current state to file, Alt+F11 - quick save",
-    " F12 - Reload it from file, Alt+F12 - quick load",
-    " Ctrl+F12 - Hot reset",
-    "  Pause - Pause emulator",
-    "  Scroll Lock - Toggle full speed",
-    "Num pad keys:",
-    "  Grey + - Speed up emulator",
-    "  Grey - - Speed it down",
-    "  Grey * - Normal speed"
+    "       F1 - Show help screen",
+    "  Ctrl+F2 - Cold reboot (Power off and back on.)",
+    " Shift+F2 - Reload configuration file and cold reboot",
+    " Ctrl+F10 - Hot Reset (Control+Reset)",
+    "      F12 - Quit",
+    "",
+    "       F3 - Load floppy disk 1 (Slot 6, Drive 1)",
+    "       F4 - Load floppy disk 2 (Slot 6, Drive 2)",
+    "       F5 - Swap floppy disks",
+    " Shift+F3 - Attach hard drive 1 (Slot 7, Drive 1)",
+    " Shift+F4 - Attach hard drive 2 (Slot 7, Drive 2)",
+    "",
+    "       F6 - Toggle fullscreen mode",
+    "       F8 - Take screenshot",
+    " Shift+F8 - Save runtime changes to configuration file",
+    "       F9 - Cycle through various video modes",
+    "  F10/F11 - Load/save snapshot file",
+    "",
+    "       Pause - Pause/resume emulator",
+    " Scroll Lock - Toggle full speed",
+    "    Numpad * - Normal speed",
+    "  Numpad +/- - Increase/Decrease speed",
   };
 
   //   const int PositionsY[] = { 7, 15, 26 };
@@ -553,8 +554,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   font_print_centered(sx/2, int(30*facy), (char*)HelpStrings[2], screen, 1.2*facx, 1.0*facy);
 
   int Help_TopX = int(45*facy);
-  int i;
-  for(i =  3; i < 25; i++)
+  for(int i = 3; i < MAX_LINES; i++)
     font_print(4, Help_TopX + (i - 3) * 15 * facy, (char*)HelpStrings[i], screen, 1.5*facx, 1.5*facy); // show keys
 
   // show frames
