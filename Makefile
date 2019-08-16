@@ -45,26 +45,26 @@ CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
 # By default, optimize the executable.
-CFLAGS      := -Wall -O3 -ansi -c
+CFLAGS := -Wall -O3 -ansi -c
 
 ifdef PROFILING
-CFLAGS      := -Wall -O0 -pg -ggdb -ansi -c
-LFLAGS      := -pg
+CFLAGS := -Wall -O0 -pg -ggdb -ansi -c
+LFLAGS := -pg
 endif
 
 ifdef DEBUG
-CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
+CFLAGS := -Wall -O0 -ggdb -ansi -c -finstrument-functions
 endif
 
-CFLAGS      += -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
-CFLAGS 		+= $(SDL_CFLAGS)
-CFLAGS 		+= $(CURL_CFLAGS)
+CFLAGS += -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
+CFLAGS += $(SDL_CFLAGS)
+CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
-CFLAGS		+= -Wno-write-strings
+CFLAGS += -Wno-write-strings
 
-LIB 				:= $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
-INC         := -I$(INCDIR) -I/usr/local/include
-INCDEP      := -I$(INCDIR)
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
+INC    := -I$(INCDIR) -I/usr/local/include
+INCDEP := -I$(INCDIR)
 
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
