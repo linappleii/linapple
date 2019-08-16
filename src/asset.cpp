@@ -38,7 +38,7 @@ assets_t *assets = NULL;
 #ifdef ASSET_DIR
 static char system_assets[] = ASSET_DIR "/";
 #else
-static char system_assets[] = "./"
+static char system_assets[] = "./";
 #endif
 static char *system_exedir = NULL;
 
