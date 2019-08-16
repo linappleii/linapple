@@ -44,13 +44,19 @@ CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
-#PROFILING
-#CFLAGS      := -Wall -O0 -pg -ggdb -ansi -c
-#LFLAGS      := -pg
-#DEBUGGING
-#CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
-#OPTIMIZED
-CFLAGS      := -Wall -O3 -ansi -c -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
+# By default, optimize the executable.
+CFLAGS      := -Wall -O3 -ansi -c
+
+ifdef PROFILING
+CFLAGS      := -Wall -O0 -pg -ggdb -ansi -c
+LFLAGS      := -pg
+endif
+
+ifdef DEBUG
+CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
+endif
+
+CFLAGS      += -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
 CFLAGS 		+= $(SDL_CFLAGS)
 CFLAGS 		+= $(CURL_CFLAGS)
 # Do not complain about XPMs
