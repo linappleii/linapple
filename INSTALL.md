@@ -49,3 +49,18 @@ linapple
 
 A directory name `linapple` can be found in your home directory. Edit the `linapple.conf` file.
 
+
+### Debugging and Profiling
+
+By default, the `make` command will compile an optimized version of `linapple`.
+
+It is possible to compile a version with debugging symbols. To do so, you must
+set the `DEBUG` environment variable:
+
+    DEBUG=1 make
+
+If you would like to also include extra code that writes profile information
+suitable for the analysis program `gprof`:
+
+    PROFILING=1 make
+
