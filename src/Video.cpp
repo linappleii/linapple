@@ -35,7 +35,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "asset.h"
 #include "wwrapper.h"
-#include "config.h"
 //#include "stretch.c"  // for SDL_SoftStretch thanx to Sam Lantinga and Tomasz Cejner
 
 //#include "..\resource\resource.h"
