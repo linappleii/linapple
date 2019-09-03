@@ -87,24 +87,56 @@ Load a file, usually a text file, into memory.
 
 List the current program in memory.
 
-### Command-line options
 
-Support for command-line options was originally added to linapple to allow users to set up
-custom shell scripts to automatically load certain Apple ][ programs with the click of a
-button, but it is evolving towards conventional command-line usage.
+## Configuration
 
-For example, to have linapple start in fullscreen and automatically boot the disk
-`example.dsk`, you can open a shell and run
+LinApple has several configuration options. Most values are loaded from
+[INI files](https://en.wikipedia.org/wiki/INI_file) and `linapple.conf.sample`
+has all possible configuration options along with documentation on each. There
+are also command-line switches and environment variables that change the
+behavior of LinApple.
+
+### Load Order of Configuration Files
+
+1. Default values are initially set by the program.
+2. If the command-line switch `--conf` is used, values are read from the
+   specified file.
+3. Otherwise, values are:
+   1. read from the system-wide configuration files.
+      * These are found in the `$XDG_CONFIG_DIRS` path. On Linux, the file is
+        typically found at `/etc/xdg/linapple/linapple.conf`.
+   2. read from user-specific configuration files.
+      * These are found in the `$XDG_CONFIG_HOME` path. On Linux, the file is
+        typically found at `~/.config/linapple/linapple.conf`.
+
+
+### Environment Variables
+
+LinApple partially conforms to the [XDG Base Directory Specification]().
+
+`XDG_CONFIG_HOME` specifies the location of _"a single base directory relative
+to which user-specific configuration files should be written"_.
+Defaults to `$HOME/.config`.
+
+`XDG_CONFIG_DIRS` specifies the location of _"a set of preference ordered base
+directories relative to which configuration files should be searched"_. Each
+directory is separated by a colon (`:`). Defaults to `/etc/xdg`.
+
+
+[XDG Base Directory Specification]:
+  https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+
+## Examples
+
+To have LinApple start in fullscreen mode and automatically boot the disk
+`example.dsk`, you can open a shell and run:
 
 ```bash
-linapple -d1 example.dsk -f -autoboot
+$ linapple -d1 example.dsk -f -autoboot
 ```
 
-This command could also be placed in a shell script, which could be started from an
-icon or menu on the desktop, etc.
+This command could also be placed in a shell script, which could be started
+from an icon or menu on the desktop.
 
-Note that extensive testing has not been performed on all command-line options.
-
-#### TODO
-
-* Add a command line switch which allows the user to specify different configuration files.
+_Note: extensive testing has not been performed on all command-line options._
