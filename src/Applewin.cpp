@@ -905,7 +905,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   std::string userDir(home);
   mkdir((userDir + "/.config").c_str(), 0700);
   mkdir((userDir + "/.config/linapple").c_str(), 0700);
-  registry = fopen((userDir + "./config/linapple/linapple.conf").c_str(), "w+");
+  registry = fopen((userDir + "/.config/linapple/linapple.conf").c_str(), "w+");
 }
 
 //===========================================================================
