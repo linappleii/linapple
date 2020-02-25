@@ -753,7 +753,7 @@ void  FrameDispatchMessage(SDL_Event * e) // process given SDL event
           // . WM_KEYDOWN[Right-Alt]
           BOOL autorep  = 0; //previous key was pressed? 30bit of lparam
           BOOL extended = (mysym >= 273); // 24bit of lparam - is an extended key, what is it???
-          if ((!JoyProcessKey(mysym ,extended, 1, autorep)) && (g_nAppMode != MODE_LOGO))
+          if ((!JoyProcessKey(mysym ,extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO))
             KeybQueueKeypress(mysym, NOT_ASCII);
         }
         else if (g_nAppMode == MODE_DEBUG)
@@ -782,8 +782,8 @@ void  FrameDispatchMessage(SDL_Event * e) // process given SDL event
         // GPH Fix caps lock toggle behavior.
         // (http://sdl.beuc.net/sdl.wiki/SDL_KeyboardEvent)
         KeybToggleCapsLock();
-      } else {  // mysym >= 300 (or 273????)- check for extended key, what is it EXACTLY???
-        JoyProcessKey(mysym,(mysym >= 273), 0, 0);
+      } else {  // Need to know what "extended" means, and what's so special about SDLK_UP?
+        JoyProcessKey(mysym,(mysym >= SDLK_UP && mysym <= SDLK_LEFT), FALSE, 0);
       }
       break;
 
