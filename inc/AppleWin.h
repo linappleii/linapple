@@ -66,4 +66,7 @@ extern bool g_bDisableDirectSound;  // Cmd line switch: don't init DS (so no MB 
 
 extern UINT g_Slot4;  // Mockingboard or Mouse in slot4
 
-void SetCurrentCLK6502();
+void SetBudgetVideo(bool);
+bool GetBudgetVideo();
+
+void    SetCurrentCLK6502();
