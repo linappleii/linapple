@@ -550,8 +550,8 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
   int Help_TopX = int(45 * facy);
   for (int i = 3; i < MAX_LINES; i++)
-    font_print(4, Help_TopX + (i - 3) * 15 * facy, (char *) HelpStrings[i], screen, 1.2 * facx,
-               1.2 * facy); // show keys
+    font_print(4, Help_TopX + (i - 3) * 15 * facy, (char *) HelpStrings[i], screen, 1.5 * facx,
+               1.5 * facy); // show keys
 
   // show frames
   rectangle(screen, 0, Help_TopX - 5, /*SCREEN_WIDTH*/g_ScreenWidth - 1, int(335 * facy),
