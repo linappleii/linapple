@@ -47,8 +47,7 @@
 /* QNX's /proc/self/exefile is a text file and not a symlink. */
 #if !defined(__QNXNTO__)
 
-static char *readSymLink(const char *path)
-{
+static char *readSymLink(const char *path) {
   char *retval = NULL;
   ssize_t len = 64;
   ssize_t rc = -1;
@@ -208,8 +207,9 @@ char *SDL_GetPrefPath(const char *org, const char *app)
   }
 
   len = SDL_strlen(envr);
-  if (envr[len - 1] == '/')
+  if (envr[len - 1] == '/') {
     append += 1;
+  }
 
   len += SDL_strlen(append) + SDL_strlen(org) + SDL_strlen(app) + 3;
   retval = (char *) SDL_malloc(len);
@@ -241,5 +241,3 @@ char *SDL_GetPrefPath(const char *org, const char *app)
 
   return retval;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

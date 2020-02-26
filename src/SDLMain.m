@@ -10,7 +10,7 @@
 #include <sys/param.h> /* for MAXPATHLEN */
 #include <unistd.h>
 
-/* For some reaon, Apple removed setAppleMenu from the headers in 10.4,
+/* For some reason, Apple removed setAppleMenu from the headers in 10.4,
  but the method still is there and works. To avoid warnings, we declare
  it ourselves here. */
 @interface NSApplication (SDL_Missing_Methods)
@@ -36,25 +36,25 @@ CPSEnableForegroundOperation(CPSProcessSerNum *psn, UInt32 _arg2, UInt32 _arg3, 
 
 extern OSErr CPSSetFrontProcess(CPSProcessSerNum *psn);
 
-#endif /* SDL_USE_CPS */
+#endif
 
 static int gArgc;
 static char **gArgv;
 static BOOL gFinderLaunch;
 static BOOL gCalledAppMainline = FALSE;
 
-static NSString *getApplicationName(void)
-{
+static NSString *getApplicationName(void) {
   const NSDictionary *dict;
   NSString *appName = 0;
 
   /* Determine the application name */
   dict = (const NSDictionary *) CFBundleGetInfoDictionary(CFBundleGetMainBundle());
-  if (dict)
+  if (dict) {
     appName = [dict objectForKey:@"CFBundleName"];
-
-  if (![appName length])
+  }
+  if (![appName length]) {
     appName = [[NSProcessInfo processInfo] processName];
+  }
 
   return appName;
 }
@@ -85,7 +85,6 @@ static NSString *getApplicationName(void)
 
 /* Set the working directory to the .app's parent directory */
 - (void)setupWorkingDirectory:(BOOL)shouldChdir {
-  // if (shouldChdir)
   {
     char parentdir[MAXPATHLEN];
     CFURLRef url = CFBundleCopyBundleURL(CFBundleGetMainBundle());
@@ -108,17 +107,19 @@ static NSString *getApplicationName(void)
     NSMenuItem *menuItem;
 
     aRange = [[aMenu title] rangeOfString:@"SDL App"];
-    if (aRange.length != 0)
-        [aMenu setTitle: [[aMenu title] stringByReplacingRange:aRange with:appName]];
+    if (aRange.length != 0) {
+      [aMenu setTitle: [[aMenu title] stringByReplacingRange:aRange with:appName]];
+    }
 
     enumerator = [[aMenu itemArray] objectEnumerator];
-    while ((menuItem = [enumerator nextObject]))
-    {
+    while ((menuItem = [enumerator nextObject])) {
         aRange = [[menuItem title] rangeOfString:@"SDL App"];
-        if (aRange.length != 0)
-            [menuItem setTitle: [[menuItem title] stringByReplacingRange:aRange with:appName]];
-        if ([menuItem hasSubmenu])
-            [self fixMenu:[menuItem submenu] withAppName:appName];
+        if (aRange.length != 0) {
+          [menuItem setTitle: [[menuItem title] stringByReplacingRange:aRange with:appName]];
+        }
+        if ([menuItem hasSubmenu]) {
+          [self fixMenu:[menuItem submenu] withAppName:appName];
+        }
     }
 }
 
@@ -155,7 +156,6 @@ static void setApplicationMenu(void)
   title = [@"Quit " stringByAppendingString:appName];
   [appleMenu addItemWithTitle:title action:@selector(terminate:) keyEquivalent:@"q"];
 
-
   /* Put menu into the menubar */
   menuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
   [menuItem setSubmenu:appleMenu];
@@ -170,8 +170,7 @@ static void setApplicationMenu(void)
 }
 
 /* Create a window menu */
-static void setupWindowMenu(void)
-{
+static void setupWindowMenu(void) {
   NSMenu *windowMenu;
   NSMenuItem *windowMenuItem;
   NSMenuItem *menuItem;
@@ -197,8 +196,7 @@ static void setupWindowMenu(void)
 }
 
 /* Replacement for NSApplicationMain */
-static void CustomApplicationMain(int argc, char **argv)
-{
+static void CustomApplicationMain(int argc, char **argv) {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   SDLMain *sdlMain;
 
@@ -209,12 +207,15 @@ static void CustomApplicationMain(int argc, char **argv)
   {
     CPSProcessSerNum PSN;
     /* Tell the dock about us */
-    if (!CPSGetCurrentProcess(&PSN))
-      if (!CPSEnableForegroundOperation(&PSN, 0x03, 0x3C, 0x2C, 0x1103))
-        if (!CPSSetFrontProcess(&PSN))
+    if (!CPSGetCurrentProcess(&PSN)) {
+      if (!CPSEnableForegroundOperation(&PSN, 0x03, 0x3C, 0x2C, 0x1103)) {
+        if (!CPSSetFrontProcess(&PSN)) {
           [NSApplication sharedApplication];
+        }
+      }
+    }
   }
-  #endif /* SDL_USE_CPS */
+  #endif
 
   /* Set up the menubar */
   [NSApp setMainMenu:[[NSMenu alloc] init]];
@@ -233,7 +234,6 @@ static void CustomApplicationMain(int argc, char **argv)
 }
 
 #endif
-
 
 /*
  * Catch document open requests...this lets us notice files when the app
@@ -256,17 +256,20 @@ static void CustomApplicationMain(int argc, char **argv)
   char *arg;
   char **newargv;
 
-  if (!gFinderLaunch)  /* MacOS is passing command line args. */
+  if (!gFinderLaunch) { /* MacOS is passing command line args. */
     return FALSE;
+  }
 
-  if (gCalledAppMainline)  /* app has started, ignore this document. */
+  if (gCalledAppMainline) { /* app has started, ignore this document. */
     return FALSE;
+  }
 
   temparg = [filename UTF8String];
   arglen = SDL_strlen(temparg) + 1;
   arg = (char *) SDL_malloc(arglen);
-  if (arg == NULL)
+  if (arg == NULL) {
     return FALSE;
+  }
 
   newargv = (char **) realloc(gArgv, sizeof(char *) * (gArgc + 2));
   if (newargv == NULL) {
@@ -302,7 +305,6 @@ static void CustomApplicationMain(int argc, char **argv)
   exit(status);
 }
 @end
-
 
 @implementation NSString (ReplaceSubString)
 
@@ -349,8 +351,7 @@ static void CustomApplicationMain(int argc, char **argv)
 
 
 /* Main entry point to executable - should *not* be SDL_main! */
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   /* Copy the arguments into a global variable */
   /* This is passed if we are launched by double-clicking */
   if (argc >= 2 && strncmp(argv[1], "-psn", 4) == 0) {

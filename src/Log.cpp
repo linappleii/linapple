@@ -27,13 +27,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "stdafx.h"
-//#pragma  hdrstop
 #include <string.h>
 
-//---------------------------------------------------------------------------
-
-void LogInitialize()
-{
+void LogInitialize() {
   g_fh = fopen("AppleWin.log", "a+t");  // Open log file (append & text g_nAppMode)
   // Start of Unix(tm) specific code
   struct timeval tv;
@@ -46,10 +42,10 @@ void LogInitialize()
   fprintf(g_fh, "*** Logging started: %s\n", time_str);
 }
 
-void LogOutput(LPCTSTR format, ...)
-{
-  if (!g_fh)
+void LogOutput(LPCTSTR format, ...) {
+  if (!g_fh) {
     return;
+  }
 
   va_list args;
   va_start(args, format);
@@ -57,16 +53,13 @@ void LogOutput(LPCTSTR format, ...)
   TCHAR output[512];
 
   vsnprintf(output, sizeof(output) - 1, format, args);
-  //    OutputDebugString(output);
   fprintf(g_fh, "%s", output);
 }
 
-void LogDestroy()
-{
+void LogDestroy() {
   if (g_fh) {
     fprintf(g_fh, "*** Logging ended\n\n");
     fclose(g_fh);
   }
 }
 
-//---------------------------------------------------------------------------

@@ -32,11 +32,6 @@
 #include <stdio.h>
 #include <string.h>
 
-//#include <SDL/SDL.h>
-//#include <unistd.h>
-//#include <stdlib.h>
-
-//#include <crtdbg.h>
 #include "AY8910.h"
 
 #include "Common.h"
@@ -44,7 +39,6 @@
 #include "AppleWin.h"    // For g_fh
 #include "Mockingboard.h"  // For g_uTimer1IrqCount
 
-///////////////////////////////////////////////////////////
 // typedefs & dummy funcs to allow MAME code to compile:
 
 typedef UINT8 (*mem_read_handler)(UINT32);
@@ -58,9 +52,6 @@ static unsigned short activecpu_get_pc()
 {
   return 0;
 }
-
-//
-///////////////////////////////////////////////////////////
 
 // GPH Changed from 0x7fff: we want some headroom to add in the Apple speaker
 // in the mixing phase and can avoid an unnecessary divide with the
@@ -118,9 +109,6 @@ static struct AY8910 AYPSG[MAX_8910];    /* array of PSG's */
 
 static bool g_bAYReset = false;    // Doing AY8910_reset()
 
-//-----------------------------------------------------------------------------
-
-//#define LOG_AY8910
 #ifdef LOG_AY8910
 static void LogAY8910(int n, int r, UINT uFreq)
 {
@@ -164,8 +152,6 @@ static void LogAY8910(int n, int r, UINT uFreq)
   }
 }
 #endif
-
-//-----------------------------------------------------------------------------
 
 void _AYWriteReg(int n, int r, int v)
 {
@@ -277,27 +263,17 @@ void _AYWriteReg(int n, int r, int v)
         PSG->CountE = 1;
       break;
     case AY_ESHAPE:
-      //    _ASSERT(PSG->Regs[AY_ESHAPE] == 0);
       /* envelope shapes:
       C AtAlH
       0 0 x x  \___
-
       0 1 x x  /___
-
       1 0 0 0  \\\\
-
       1 0 0 1  \___
-
       1 0 1 0  \/\/
-                ___
       1 0 1 1  \
-
       1 1 0 0  ////
-                ___
       1 1 0 1  /
-
       1 1 1 0  /\/\
-
       1 1 1 1  /___
 
       The envelope counter on the AY-3-8910 has 16 steps. On the YM2149 it
@@ -348,7 +324,6 @@ void _AYWriteReg(int n, int r, int v)
   }
 }
 
-
 // /length/ is the number of samples we require
 // NB. This should be called at twice the 6522 IRQ rate or (eg) 60Hz if no IRQ.
 void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
@@ -382,7 +357,7 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
   } else if (PSG->Regs[AY_AVOL] == 0) {
     /* note that I do count += length, NOT count = length + 1. You might think */
     /* it's the same since the volume is 0, but doing the latter could cause */
-    /* interferencies when the program is rapidly modulating the volume. */
+    /* interferences when the program is rapidly modulating the volume. */
     if (PSG->CountA <= length * STEP)
       PSG->CountA += length * STEP;
   }
@@ -406,8 +381,9 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
   /* for the noise channel we must not touch OutputN - it's also not necessary */
   /* since we use outn. */
   if ((PSG->Regs[AY_ENABLE] & 0x38) == 0x38)  /* all off */
-    if (PSG->CountN <= length * STEP)
+    if (PSG->CountN <= length * STEP) {
       PSG->CountN += length * STEP;
+    }
 
   outn = (PSG->OutputN | PSG->Regs[AY_ENABLE]);
 
@@ -417,7 +393,6 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
     int vola, volb, volc;
     int left;
 
-
     /* vola, volb and volc keep track of how long each square wave stays */
     /* in the 1 position during the sample period. */
     vola = volb = volc = 0;
@@ -425,7 +400,6 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
     left = STEP;
     do {
       int nextevent;
-
 
       if (PSG->CountN < left)
         nextevent = PSG->CountN;
@@ -448,15 +422,17 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
           PSG->CountA += PSG->PeriodA;
           if (PSG->CountA > 0) {
             PSG->OutputA ^= 1;
-            if (PSG->OutputA)
+            if (PSG->OutputA) {
               vola += PSG->PeriodA;
+            }
             break;
           }
           PSG->CountA += PSG->PeriodA;
           vola += PSG->PeriodA;
         }
-        if (PSG->OutputA)
+        if (PSG->OutputA) {
           vola -= PSG->CountA;
+        }
       } else {
         PSG->CountA -= nextevent;
         while (PSG->CountA <= 0) {
@@ -470,22 +446,25 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
       }
 
       if (outn & 0x10) {
-        if (PSG->OutputB)
+        if (PSG->OutputB) {
           volb += PSG->CountB;
+        }
         PSG->CountB -= nextevent;
         while (PSG->CountB <= 0) {
           PSG->CountB += PSG->PeriodB;
           if (PSG->CountB > 0) {
             PSG->OutputB ^= 1;
-            if (PSG->OutputB)
+            if (PSG->OutputB) {
               volb += PSG->PeriodB;
+            }
             break;
           }
           PSG->CountB += PSG->PeriodB;
           volb += PSG->PeriodB;
         }
-        if (PSG->OutputB)
+        if (PSG->OutputB) {
           volb -= PSG->CountB;
+        }
       } else {
         PSG->CountB -= nextevent;
         while (PSG->CountB <= 0) {
@@ -499,22 +478,25 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
       }
 
       if (outn & 0x20) {
-        if (PSG->OutputC)
+        if (PSG->OutputC) {
           volc += PSG->CountC;
+        }
         PSG->CountC -= nextevent;
         while (PSG->CountC <= 0) {
           PSG->CountC += PSG->PeriodC;
           if (PSG->CountC > 0) {
             PSG->OutputC ^= 1;
-            if (PSG->OutputC)
+            if (PSG->OutputC) {
               volc += PSG->PeriodC;
+            }
             break;
           }
           PSG->CountC += PSG->PeriodC;
           volc += PSG->PeriodC;
         }
-        if (PSG->OutputC)
+        if (PSG->OutputC) {
           volc -= PSG->CountC;
+        }
       } else {
         PSG->CountC -= nextevent;
         while (PSG->CountC <= 0) {
@@ -545,8 +527,9 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
         /* bit0, relying on the fact that after three shifts of the */
         /* register, what now is bit3 will become bit0, and will */
         /* invert, if necessary, bit14, which previously was bit17. */
-        if (PSG->RNG & 1)
+        if (PSG->RNG & 1) {
           PSG->RNG ^= 0x24000; /* This version is called the "Galois configuration". */
+        }
         PSG->RNG >>= 1;
         PSG->CountN += PSG->PeriodN;
       }
@@ -566,28 +549,32 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
         /* check envelope current position */
         if (PSG->CountEnv < 0) {
           if (PSG->Hold) {
-            if (PSG->Alternate)
+            if (PSG->Alternate) {
               PSG->Attack ^= 0x1f;
+            }
             PSG->Holding = 1;
             PSG->CountEnv = 0;
           } else {
             /* if CountEnv has looped an odd number of times (usually 1), */
             /* invert the output. */
-            if (PSG->Alternate && (PSG->CountEnv & 0x20))
+            if (PSG->Alternate && (PSG->CountEnv & 0x20)) {
               PSG->Attack ^= 0x1f;
-
+            }
             PSG->CountEnv &= 0x1f;
           }
         }
 
         PSG->VolE = PSG->VolTable[PSG->CountEnv ^ PSG->Attack];
         /* reload volume */
-        if (PSG->EnvelopeA)
+        if (PSG->EnvelopeA) {
           PSG->VolA = PSG->VolE;
-        if (PSG->EnvelopeB)
+        }
+        if (PSG->EnvelopeB) {
           PSG->VolB = PSG->VolE;
-        if (PSG->EnvelopeC)
+        }
+        if (PSG->EnvelopeC) {
           PSG->VolC = PSG->VolE;
+        }
       }
     }
 
@@ -600,10 +587,12 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
     // - This allows for better s/w mixing
 
     if (PSG->VolA) {
-      if (vola)
+      if (vola) {
         *(buf1++) = (vola * PSG->VolA) / STEP;
-      else
+      }
+      else {
         *(buf1++) = -(int) PSG->VolA;
+      }
     } else {
       *(buf1++) = 0;
     }
@@ -611,21 +600,23 @@ void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
     //
 
     if (PSG->VolB) {
-      if (volb)
+      if (volb) {
         *(buf2++) = (volb * PSG->VolB) / STEP;
-      else
+      }
+      else {
         *(buf2++) = -(int) PSG->VolB;
+      }
     } else {
       *(buf2++) = 0;
     }
 
-    //
-
     if (PSG->VolC) {
-      if (volc)
+      if (volc) {
         *(buf3++) = (volc * PSG->VolC) / STEP;
-      else
+      }
+      else {
         *(buf3++) = -(int) PSG->VolC;
+      }
     } else {
       *(buf3++) = 0;
     }
@@ -652,13 +643,11 @@ static void AY8910_set_clock(int chip, int clock)
                                     clock);  // [TC: unsigned int cast]
 }
 
-
 static void build_mixer_table(int chip)
 {
   struct AY8910 *PSG = &AYPSG[chip];
   int i;
   double out;
-
 
   /* calculate the volume->voltage conversion table */
   /* The AY-3-8910 has 16 levels, in a logarithmic scale (3dB per step) */
@@ -667,43 +656,32 @@ static void build_mixer_table(int chip)
   out = MAX_OUTPUT;
   for (i = 31; i > 0; i--) {
     PSG->VolTable[i] = (unsigned int) (out + 0.5);  /* round to nearest */  // [TC: unsigned int cast]
-
     out /= 1.188502227;  /* = 10 ^ (1.5/20) = 1.5dB */
   }
   PSG->VolTable[0] = 0;
 }
-
 
 #if 0
 void ay8910_write_ym(int chip, int addr, int data)
 {
   struct AY8910 *PSG = &AYPSG[chip];
 
-//  if (addr & 1)
-//  {  /* Data port */
-//    int r = PSG->register_latch;
     int r = addr;
 
-    if (r > 15) return;
-    if (r < 14)
-    {
-      if (r == AY_ESHAPE || PSG->Regs[r] != data)
-      {
+    if (r > 15) {
+      return
+    };
+    if (r < 14) {
+      if (r == AY_ESHAPE || PSG->Regs[r] != data) {
         /* update the output buffer before changing the register */
-//        stream_update(PSG->Channel,0);
         AY8910Update(chip, INT16 **buffer, int length)
       }
     }
 
     _AYWriteReg(PSG,r,data);
   }
-//  else
-//  {  /* Register port */
-//    PSG->register_latch = data & 0x0f;
-//  }
 }
 #endif
-
 
 void AY8910_reset(int chip)
 {
@@ -719,15 +697,13 @@ void AY8910_reset(int chip)
   PSG->OutputC = 0;
   PSG->OutputN = 0xff;
   PSG->lastEnable = -1;  /* force a write */
-  for (i = 0; i < AY_PORTA; i++)
+  for (i = 0; i < AY_PORTA; i++) {
     _AYWriteReg(chip, i, 0);  /* AYWriteReg() uses the timer system; we cannot */
+  }
   /* call it at this time because the timer system */
   /* has not been initialized. */
-
   g_bAYReset = false;
 }
-
-//-------------------------------------
 
 void AY8910_InitAll(int nClock, int nSampleRate)
 {
@@ -748,8 +724,6 @@ void AY8910_InitAll(int nClock, int nSampleRate)
   }
 }
 
-//-------------------------------------
-
 void AY8910_InitClock(int nClock)
 {
   for (int nChip = 0; nChip < MAX_8910; nChip++) {
@@ -757,12 +731,11 @@ void AY8910_InitClock(int nClock)
   }
 }
 
-//-------------------------------------
-
 BYTE *AY8910_GetRegsPtr(UINT nAyNum)
 {
-  if (nAyNum >= MAX_8910)
+  if (nAyNum >= MAX_8910) {
     return NULL;
+  }
 
   return &AYPSG[nAyNum].Regs[0];
 }
