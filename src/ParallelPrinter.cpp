@@ -29,8 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
-//#pragma  hdrstop
-//#include "resource.h"
 
 char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\x68\x68"
                       "\x68\x68\xA8\xCA\x9A\x68\x28\xAA\x90\x38\xBD\xB8\x05\x10\x19\x98"
@@ -54,67 +52,25 @@ static DWORD inactivity = 0;
 static FILE *file = NULL;
 DWORD const PRINTDRVR_SIZE = 0x100;
 
-//===========================================================================
+static BYTE PrintStatus(WORD, WORD, BYTE, BYTE, ULONG);
 
+static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG);
 
-
-
-static BYTE /*__stdcall*/ PrintStatus(WORD, WORD, BYTE, BYTE, ULONG);
-
-static BYTE /*__stdcall*/ PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG);
-
-VOID PrintLoadRom(LPBYTE pCxRomPeripheral, const UINT uSlot)
-{
-  //   HRSRC hResInfo = FindResource(NULL, MAKEINTRESOURCE(IDR_PRINTDRVR_FW), "FIRMWARE");
-  //   if(hResInfo == NULL)
-  //     return;
-  //
-  //   DWORD dwResSize = SizeofResource(NULL, hResInfo);
-  //   if(dwResSize != PRINTDRVR_SIZE)
-  //     return;
-  //
-  //   HGLOBAL hResData = LoadResource(NULL, hResInfo);
-  //   if(hResData == NULL)
-  //     return;
-
-
-  // #define IDR_PRINTDRVR_FW "Parallel.rom"
-  //   char BUFFER[PRINTDRVR_SIZE];
-  //   FILE * hdfile = NULL;
-  //   hdfile = fopen(IDR_PRINTDRVR_FW, "rb");
-  //   if(hdfile == NULL) return; // no file?
-  //   UINT nbytes = fread(BUFFER, 1, PRINTDRVR_SIZE, hdfile);
-  //   fclose(hdfile);
-  //   if(nbytes != PRINTDRVR_SIZE) return; // have not read enough?
-  //
+void PrintLoadRom(LPBYTE pCxRomPeripheral, const UINT uSlot) {
   BYTE *pData = (BYTE *) Parallel_bin;  // NB. Don't need to unlock resource
-
-  //  if(pData == NULL)
-  //    return;
-
   memcpy(pCxRomPeripheral + uSlot * 256, pData, PRINTDRVR_SIZE);
-
-  //
-
   RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
 }
 
-//===========================================================================
-static BOOL CheckPrint()
-{
+static BOOL CheckPrint() {
   inactivity = 0;
   if (file == NULL) {
-    /*        TCHAR filepath[MAX_PATH * 2];
-            _tcsncpy(filepath, g_sProgramDir, MAX_PATH);
-            _tcsncat(filepath, _T("Printer.txt"), MAX_PATH);*/
-    file = fopen(g_sParallelPrinterFile, "ab");  // always for appending?
+    file = fopen(g_sParallelPrinterFile, "ab");
   }
   return (file != NULL);
 }
 
-//===========================================================================
-static void ClosePrint()
-{
+static void ClosePrint() {
   if (file != NULL) {
     fclose(file);
     file = NULL;
@@ -122,41 +78,30 @@ static void ClosePrint()
   inactivity = 0;
 }
 
-//===========================================================================
-void PrintDestroy()
-{
+void PrintDestroy() {
   ClosePrint();
 }
 
-//===========================================================================
-void PrintUpdate(DWORD totalcycles)
-{
+void PrintUpdate(DWORD totalcycles) {
   if (file == NULL) {
     return;
   }
-  if ((inactivity += totalcycles) > (10 * 1000 * 1000)) // around 10 seconds
-  {
+  if ((inactivity += totalcycles) > (10 * 1000 * 1000)) { // around 10 seconds
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
 }
 
-//===========================================================================
-void PrintReset()
-{
+void PrintReset() {
   ClosePrint();
 }
 
-//===========================================================================
-static BYTE /*__stdcall*/ PrintStatus(WORD, WORD, BYTE, BYTE, ULONG)
-{
+static BYTE PrintStatus(WORD, WORD, BYTE, BYTE, ULONG) {
   CheckPrint();
   return 0xFF; // status - TODO?
 }
 
-//===========================================================================
-static BYTE /*__stdcall*/ PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG)
-{
+static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG) {
   if (!CheckPrint()) {
     return 0;
   }
@@ -165,4 +110,3 @@ static BYTE /*__stdcall*/ PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG)
   return 0;
 }
 
-//===========================================================================

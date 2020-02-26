@@ -39,7 +39,6 @@
 char *md5str(const char *input); // forward declaration of md5str func
 
 TCHAR g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
-////////////////////////////////////////////////////////////////////////////////////////
 int getstatFTP(struct ftpparse *fp, int *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
@@ -57,7 +56,6 @@ int getstatFTP(struct ftpparse *fp, int *size)
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
 bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, bool *isdir, int *index_file)
 {
   /*  Parameters:
@@ -81,14 +79,14 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   struct stat info;
   #endif
 
-  if (font_sfc == NULL)
-    if (!fonts_initialization())
-      return false;  //if we don't have a fonts, we just can do none
+  if (font_sfc == NULL) {
+    if (!fonts_initialization()) {
+      return false;  // if we don't have a font, we just can do none
+    }
+  }
   char tmpstr[512];
   char ftpdirpath[MAX_PATH];
-  snprintf(ftpdirpath, MAX_PATH, "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing,
-           md5str(ftp_dir));  // get path for FTP dir listing
-  //  printf("Dir: %s, MD5(dir)=%s\n",ftp_dir,ftpdirpath);
+  snprintf(ftpdirpath, MAX_PATH, "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(ftp_dir)); // get path for FTP dir listing
 
   List<char> files;    // our files
   List<char> sizes;    // and their sizes (or 'dir' for directories)
@@ -100,30 +98,33 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   SDL_Surface *tempSurface;
 
   if (!g_WindowResized) {
-    if (g_nAppMode == MODE_LOGO)
+    if (g_nAppMode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;  // use logobitmap
-    else
+    } else {
       tempSurface = g_hDeviceBitmap;
-  } else
+    }
+  } else {
     tempSurface = g_origscreen;
+  }
 
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                    0, 0, 0);
-  if (tempSurface->format->palette && my_screen->format->palette)
+  if (tempSurface->format->palette && my_screen->format->palette) {
     SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+  }
 
   surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
   SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
   SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
-  //  ch = 0;
   #define  NORMAL_LENGTH 60
   if (strlen(ftp_dir) > NORMAL_LENGTH) {
     ch = ftp_dir[NORMAL_LENGTH];
     ftp_dir[NORMAL_LENGTH] = 0;
   } //cut-off too long string
   font_print_centered(sx / 2, 5 * facy, ftp_dir, screen, 1.5 * facx, 1.3 * facy);
-  if (ch)
+  if (ch) {
     ftp_dir[NORMAL_LENGTH] = ch; //restore cut-off char
+  }
 
   font_print_centered(sx / 2, 20 * facy, "Connecting to FTP server... Please wait.", screen, 1 * facx, 1 * facy);
   SDL_Flip(screen);  // show the screen
@@ -137,8 +138,11 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   }
   #else
   // in WIN32 let's use constant caching? -- need to be redone using file.mtime
-    if(GetFileAttributes(ftpdirpath) != DWORD(-1)) OKI = false;
-      else OKI = ftp_get(ftp_dir,ftpdirpath); // get ftp dir listing
+    if(GetFileAttributes(ftpdirpath) != DWORD(-1)) {
+      OKI = false;
+    } else {
+      OKI = ftp_get(ftp_dir,ftpdirpath); // get ftp dir listing
+    }
   #endif
 
   if (OKI) {  // error
@@ -146,9 +150,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
     SDL_Flip(screen);  // show the screen
     SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
-    //////////////////////////////////
     // Wait for keypress
-    //////////////////////////////////
     SDL_Event event;  // event
 
     event.type = SDL_QUIT;
@@ -174,8 +176,9 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     strcpy(tmp, "<UP>");
     sizes.Add(tmp);  // add sign of directory
     B = 1;
-  } else
+  } else {
     B = 0;  // for sorting dirs
+  }
 
   while ((tmp = fgets(tmpstr, 512, fdir))) // first looking for directories
   {
@@ -185,15 +188,14 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
 
     int what = getstatFTP(&FTP_PARSE, NULL);
 
-    if (strlen(FTP_PARSE.name) > 0 && what == 1) // is directory!
-    {
+    if (strlen(FTP_PARSE.name) > 0 && what == 1) { // is directory!
       tmp = new char[strlen(FTP_PARSE.name) + 1];  // add entity to list
       strcpy(tmp, FTP_PARSE.name);
       files.Add(tmp);
       tmp = new char[6];
       strcpy(tmp, "<DIR>");
       sizes.Add(tmp);  // add sign of directory
-    } /* if */
+    }
 
   }
   // sort directories. Please, don't laugh at my bubble sorting - it the simplest thing I've ever seen --bb
@@ -206,7 +208,6 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
           files.Swap(j, j + 1);
           sizes.Swap(j, j + 1);
         }
-
   }
   B = files.Length();  // start for files
 
@@ -218,72 +219,69 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     memset(&FTP_PARSE, 0, sizeof(FTP_PARSE));
     ftpparse(&FTP_PARSE, tmp, strlen(tmp));
 
-    if ((getstatFTP(&FTP_PARSE, &fsize) == 2)) // is normal file!
-    {
+    if ((getstatFTP(&FTP_PARSE, &fsize) == 2)) {// is normal file!
       tmp = new char[strlen(FTP_PARSE.name) + 1];  // add this entity to list
       strcpy(tmp, FTP_PARSE.name);
       files.Add(tmp);
       tmp = new char[10];  // 1400000KB
       snprintf(tmp, 9, "%dKB", fsize);
       sizes.Add(tmp);  // add this size to list
-    } /* if */
+    }
   }
   (void) fclose(fdir);
   // do sorting for files
   if (files.Length() > 2 && B < files.Length()) {
     N = files.Length() - 1;
     //B = 1;
-    for (i = N; i > B; i--)
-      for (j = B; j < i; j++)
+    for (i = N; i > B; i--) {
+      for (j = B; j < i; j++) {
         if (strcasecmp(files[j], files[j + 1]) > 0) {
           files.Swap(j, j + 1);
           sizes.Swap(j, j + 1);
         }
+      }
+    }
   }
   //  Count out cursor position and file number output
   act_file = *index_file;
-  if (act_file >= files.Length())
+  if (act_file >= files.Length()) {
     act_file = 0;    // cannot be more than files in list
+  }
   first_file = act_file - (FILES_IN_SCREEN / 2);
-  if (first_file < 0)
-    first_file = 0;  // cannot be negativ...
+  if (first_file < 0) {
+    first_file = 0;  // cannot be negative
+  }
 
   // Show all directories (first) and files then
-  //  char *tmp;
   char *siz = NULL;
-  //  int i;
 
   while (true) {
     SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
     font_print_centered(sx / 2, 5 * facy, ftp_dir, screen, 1.5 * facx, 1.3 * facy);
-    if (slot == 6)
+    if (slot == 6) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
-    else if (slot == 7)
+    } else if (slot == 7) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", screen, 1 * facx, 1 * facy);
-    else if (slot == 5)
+    } else if (slot == 5) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", screen, 1 * facx, 1 * facy);
-    else if (slot == 1)
+    } else if (slot == 1) {
       font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", screen, 1 * facx, 1 * facy);
-    else if (slot == 0)
+    } else if (slot == 0) {
       font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", screen, 1 * facx, 1 * facy);
-
+    }
     font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.4 * facx, 1.1 * facy);
 
     files.Rewind();  // from start
     sizes.Rewind();
     i = 0;
 
-    //    printf("We've printed some messages, go to file list!\n");
     // show all fetched dirs and files
     // topX of first fiel visible
     int TOPX = 45 * facy;
 
     while (files.Iterate(tmp)) {
       sizes.Iterate(siz);  // also fetch size string
-
       if (i >= first_file && i < first_file + FILES_IN_SCREEN) { // FILES_IN_SCREEN items on screen
-        //        char tmp2[80],tmp3[256];
-
         if (i == act_file) { // show item under cursor (in inverse mode)
           SDL_Rect r;
           r.x = 2;
@@ -294,7 +292,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
             r.w = strlen(tmp) * 6 * 1.7 * facx + 2;  // 6- FONT_SIZE_X
           r.h = 9 * 1.5 * facy;
           SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 255, 0, 0));// in RED
-        } /* if */
+        }
 
         // print file name with enlarged font
         ch = 0;
@@ -319,9 +317,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     SDL_Flip(screen);  // show the screen
     SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
 
-    //////////////////////////////////
     // Wait for keypress
-    //////////////////////////////////
     SDL_Event event;  // event
     Uint8 *keyboard;  // key state
 
@@ -334,18 +330,22 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     // control cursor
     keyboard = SDL_GetKeyState(NULL);  // get current state of pressed (and not pressed) keys
     if (keyboard[SDLK_UP] || keyboard[SDLK_LEFT]) {
-      if (act_file > 0)
+      if (act_file > 0) {
         act_file--;  // up one position
-      if (act_file < first_file)
+      }
+      if (act_file < first_file) {
         first_file = act_file;
-    } /* if */
+      }
+    }
 
     if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
-      if (act_file < (files.Length() - 1))
+      if (act_file < (files.Length() - 1)) {
         act_file++;
-      if (act_file >= (first_file + FILES_IN_SCREEN))
+      }
+      if (act_file >= (first_file + FILES_IN_SCREEN)) {
         first_file = act_file - FILES_IN_SCREEN + 1;
-    } /* if */
+      }
+    }
 
     if (keyboard[SDLK_PAGEUP]) {
       act_file -= FILES_IN_SCREEN;
@@ -353,7 +353,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
         act_file = 0;
       if (act_file < first_file)
         first_file = act_file;
-    } /* if */
+    }
 
     if (keyboard[SDLK_PAGEDOWN]) {
       act_file += FILES_IN_SCREEN;
@@ -361,7 +361,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
         act_file = (files.Length() - 1);
       if (act_file >= (first_file + FILES_IN_SCREEN))
         first_file = act_file - FILES_IN_SCREEN + 1;
-    } /* if */
+    }
 
     // choose an item?
     if (keyboard[SDLK_RETURN]) {
@@ -378,28 +378,29 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
       SDL_FreeSurface(my_screen);
 
       return true;
-    } /* if */
+    }
 
     if (keyboard[SDLK_ESCAPE]) {
       files.Delete();
       sizes.Delete();
       SDL_FreeSurface(my_screen);
       return false;    // ESC has been pressed
-    } /* if */
+    }
 
-    if (keyboard[SDLK_HOME]) {  // HOME?
+    if (keyboard[SDLK_HOME]) {
       act_file = 0;
       first_file = 0;
-    } /* if */
-    if (keyboard[SDLK_END]) {  // END?
+    }
+    if (keyboard[SDLK_END]) {
       act_file = files.Length() - 1;  // go to the last possible file in list
       first_file = act_file - FILES_IN_SCREEN + 1;
-      if (first_file < 0)
+      if (first_file < 0) {
         first_file = 0;
-    } /* if */
+      }
+    }
 
   }
-} /* ChooseAnImageFTP */
+}
 
 /* md5.c - an implementation of the MD5 algorithm and MD5 crypt */
 /* See RFC 1321 for a description of the MD5 algorithm.
@@ -550,8 +551,6 @@ static unsigned char *md5_final()
 static char *md5(const char *input)
 {
   md5_init();
-  //  memcpy ((char *) state, (char *) md5_initstate, sizeof (md5_initstate));
-  //  length = 0;
   md5_update(input, strlen(input));
   return (char *) md5_final();
 }
@@ -563,8 +562,9 @@ char *md5str(const char *input)
   unsigned char *digest = (unsigned char *) md5(input);
   int i;
 
-  for (i = 0; i < 16; i++)
+  for (i = 0; i < 16; i++) {
     sprintf(result + 2 * i, "%02X", digest[i]);
+  }
   return result;
 }
 
