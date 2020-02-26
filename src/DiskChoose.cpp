@@ -28,28 +28,6 @@
 
 #include "DiskChoose.h"
 #include <errno.h>
-//#include "ctype.h"
-
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-//#include "SDL/SDL.h"
-//#include "SDL_mixer.h"
-//#include "SDL_image.h"
-
-/*
-
-
-#include "auxiliar.h"
-
-#include "tiles.h"
-#include "maps.h"
-#include "transball.h"
-
-#include "encoder.h"
-*/
-
-
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21
@@ -59,19 +37,6 @@
 
 #define MAX_FILENAME    36
 
-/////////////////////////////////////////////////////////////////////
-/* FONT prev decls */
-//bool fonts_initialization(void);
-//void font_print(int x,int y,char *text,SDL_Surface *surface);
-//void font_print_centered(int x,int y, char *text, SDL_Surface *surface);
-
-/////////////////////////////////////////////////////////////////////
-/* AUX funcs prev decls */
-//void rectangle(SDL_Surface *surface, int x, int y, int w, int h, Uint32 pixel);
-//void surface_fader(SDL_Surface *surface,float r_factor,float g_factor,float b_factor,float a_factor,SDL_Rect *r);
-
-
-////////////////////////////////////////////////////////////////////////////////////////
 #ifndef _WIN32
 
 int getstat(char *catalog, char *fname, int *size)
@@ -82,13 +47,16 @@ int getstat(char *catalog, char *fname, int *size)
   char tempname[MAX_PATH];
 
   snprintf(tempname, MAX_PATH, "%s/%s", catalog, fname);  // get full path for the file
-  if (stat(tempname, &info) == -1)
+  if (stat(tempname, &info) == -1) {
     return 0;
-  if (S_ISDIR(info.st_mode))
+  }
+  if (S_ISDIR(info.st_mode)) {
     return 1;  // seems to be directory
+  }
   if (S_ISREG(info.st_mode)) {
-    if (size != NULL)
+    if (size != NULL) {
       *size = (int) (info.st_size / 1024);  // get file size in Kbytes?!
+    }
     return 2;  // regular file
   }
 
@@ -97,7 +65,6 @@ int getstat(char *catalog, char *fname, int *size)
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////
 bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename, bool *isdir, int *index_file)
 {
   /*  Parameters:
@@ -114,9 +81,11 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
   /* Surface: */
   SDL_Surface *my_screen;  // for background
 
-  if (font_sfc == NULL)
-    if (!fonts_initialization())
-      return false;  //if we don't have a fonts, we just can do none
+  if (font_sfc == NULL) {
+    if (!fonts_initialization()) {
+      return false;  //if we don't have a font, we just can do none
+    }
+  }
 
   List<char> files;    // our files
   List<char> sizes;    // and their sizes (or 'dir' for directories)
@@ -125,8 +94,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
   int first_file;    // from which we output files
 
   printf("Disckchoose! We are here: %s\n", incoming_dir);
-  //  files.Delete();
-  //  sizes.Delete();
   #ifndef _WIN32
   /* POSIX specific routines of reading directory structure */
   DIR *dp;
@@ -156,15 +123,14 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       int n;
 
       n = scandir(incoming_dir, &namelist, NULL, alphasort);
-      if (n < 0)
+      if (n < 0) {
         perror("scandir");
-      else {
+      } else {
         i = 0;
         while (i < n) {
           int what = getstat(incoming_dir, namelist[i]->d_name, NULL);
           if (namelist[i]->d_name && strlen(namelist[i]->d_name) > 0 && namelist[i]->d_name[0] != '.' &&
-              what == 1) // is directory!
-          {
+              what == 1) { // is directory!
             tmp = new char[strlen(namelist[i]->d_name) + 1];  // add this entity to list
             strcpy(tmp, namelist[i]->d_name);
             files.Add(tmp);
@@ -191,18 +157,15 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       sizes.Add(tmp);  // add sign of directory
     }
 
-
       WIN32_FIND_DATA finfo;
       HANDLE h;
 
-
-
-      h=FindFirstFile(incoming_dir,&finfo);
+      h = FindFirstFile(incoming_dir, &finfo);
 
       if (h!=INVALID_HANDLE_VALUE) {
         char *tmp;
         if(finfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0) {
-        // add this entry if it is directory
+          // add this entry if it is directory
           tmp=new char[strlen(finfo.cFileName)+1];
           strcpy(tmp,finfo.cFileName);
           files.Add(tmp);
@@ -212,7 +175,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         }
         while(FindNextFile(h,&finfo)==TRUE) {
           if(finfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0) {
-          // add this entry if it is directory
+            // add this entry if it is directory
             tmp=new char[strlen(finfo.cFileName)+1];
             strcpy(tmp,finfo.cFileName);
             files.Add(tmp);
@@ -220,8 +183,8 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
             strcpy(tmp, "<DIR>");
             sizes.Add(tmp);  // add sign of directory
           }
-        } /* while */
-      } /* if */
+        }
+      }
 
   #endif
   #ifndef _WIN32
@@ -234,14 +197,13 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       int n, fsize = 0;
 
       n = scandir(incoming_dir, &namelist, NULL, alphasort);
-      if (n < 0)
+      if (n < 0) {
         perror("scandir");
-      else {
+      } else {
         int i = 0;
         while (i < n) {
           if (strlen(namelist[i]->d_name) > 4 && namelist[i]->d_name[0] != '.' &&
-              (getstat(incoming_dir, namelist[i]->d_name, &fsize) == 2)) // is normal file!
-          {
+              (getstat(incoming_dir, namelist[i]->d_name, &fsize) == 2)) { // is normal file!
             tmp = new char[strlen(namelist[i]->d_name) + 1];  // add this entity to list
             strcpy(tmp, namelist[i]->d_name);
             files.Add(tmp);
@@ -267,13 +229,12 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
   /* Windows specific functions of reading directory structure */
       /* Find files: */
 
-      h=FindFirstFile(incoming_dir,&finfo);
+      h = FindFirstFile(incoming_dir,&finfo);
 
       if (h!=INVALID_HANDLE_VALUE) {
-  //      char *tmp; - must be defined in previous section, when searching subdirs
         if(finfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0) {
         // add this entry if it is NOT directory!
-          tmp=new char[strlen(finfo.cFileName)+1];
+          tmp = new char[strlen(finfo.cFileName)+1];
           strcpy(tmp,finfo.cFileName);
           files.Add(tmp);
           tmp = new char[10];  // 1400000KB
@@ -283,33 +244,33 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         }
         while(FindNextFile(h,&finfo)==TRUE) {
           if(finfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0) {
-          // add this entry if it is NOT directory!
-            tmp=new char[strlen(finfo.cFileName)+1];
-            strcpy(tmp,finfo.cFileName);
+            // add this entry if it is NOT directory!
+            tmp = new char[strlen(finfo.cFileName)+1];
+            strcpy(tmp, finfo.cFileName);
             files.Add(tmp);
             tmp = new char[10];  // 1400000KB
             snprintf(tmp, 9, "%dKB",
               ((finfo.nFileSizeHigh * (MAXDWORD+1)) + finfo.nFileSizeLow));
             sizes.Add(tmp);  // add this size to list
           }
-        } /* while */
-      } /* if */
+        }
+      }
 
   #endif
   // do sorting for files
 
   //  Count out cursor position and file number output
   act_file = *index_file;
-  if (act_file >= files.Length())
-    act_file = 0;    // cannot be more than files in list
+  if (act_file >= files.Length()) {
+    act_file = 0;
+  }    // cannot be more than files in list
   first_file = act_file - (FILES_IN_SCREEN / 2);
-  if (first_file < 0)
-    first_file = 0;  // cannot be negativ...
+  if (first_file < 0) {
+    first_file = 0;  // cannot be negative
+  }
 
   // Show all directories (first) and files then
-  //  char *tmp;
   char *siz = NULL;
-  //  int i;
 
   // prepare screen
   double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
@@ -317,20 +278,23 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
   SDL_Surface *tempSurface = NULL;
   if (!g_WindowResized) {
-    if (g_nAppMode == MODE_LOGO)
+    if (g_nAppMode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;  // use logobitmap
-    else
+    } else {
       tempSurface = g_hDeviceBitmap;
+    }
   } else
     tempSurface = g_origscreen;
 
-  if (tempSurface == NULL)
+  if (tempSurface == NULL) {
     tempSurface = screen;  // use screen, if none available
+  }
 
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                    0, 0, 0);
-  if (tempSurface->format->palette && my_screen->format->palette)
+  if (tempSurface->format->palette && my_screen->format->palette) {
     SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+  }
 
   surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
   SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
@@ -338,50 +302,45 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
   while (true) {
 
     SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
-
     font_print_centered(sx / 2, 5 * facy, incoming_dir, screen, 1.5 * facx, 1.3 * facy);
-    if (slot == 6)
+    if (slot == 6) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
-    else if (slot == 7)
+    } else if (slot == 7) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", screen, 1 * facx, 1 * facy);
-    else if (slot == 5)
+    } else if (slot == 5) {
       font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", screen, 1 * facx, 1 * facy);
-    else if (slot == 1)
+    } else if (slot == 1) {
       font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", screen, 1 * facx, 1 * facy);
-    else if (slot == 0)
+    } else if (slot == 0) {
       font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", screen, 1 * facx, 1 * facy);
-
+    }
     font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.4 * facx, 1.1 * facy);
 
     files.Rewind();  // from start
     sizes.Rewind();
     i = 0;
 
-    //    printf("We've printed some messages, go to file list!\n");
     // show all fetched dirs and files
     // topX of first fiel visible
     int TOPX = int(45 * facy);
 
     while (files.Iterate(tmp)) {
-
       sizes.Iterate(siz);  // also fetch size string
-
       if (i >= first_file && i < first_file + FILES_IN_SCREEN) { // FILES_IN_SCREEN items on screen
-        //        char tmp2[80],tmp3[256];
-
         if (i == act_file) { // show item under cursor (in inverse mode)
           SDL_Rect r;
           r.x = 2;
           r.y = TOPX + (i - first_file) * 15 * facy - 1;
-          if (strlen(tmp) > 46)
+          if (strlen(tmp) > 46) {
             r.w = 46 * FONT_SIZE_X /* 6 */ * 1.7 * facx + 2;
-          else
+          } else {
             r.w = strlen(tmp) * FONT_SIZE_X /* 6 */ * 1.7 * facx + 2;  // 6- FONT_SIZE_X
+          }
           r.h = 9 * 1.5 * facy;
           SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 255, 0, 0));// in RED
-        } /* if */
+        }
 
-        // print file name with enlarged font
+        // Print file name with enlarged font
         char ch;
         ch = 0;
         if (strlen(tmp) > MAX_FILENAME) {
@@ -391,14 +350,13 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         font_print(4, TOPX + (i - first_file) * 15 * facy, tmp, screen, 1.7 * facx, 1.5 * facy); // show name
         font_print(sx - 70 * facx, TOPX + (i - first_file) * 15 * facy, siz, screen, 1.7 * facx,
                    1.5 * facy);// show info (dir or size)
-        if (ch)
+        if (ch) {
           tmp[MAX_FILENAME] = ch; //restore cut-off char
+        }
+      }
+      i++;
+    }
 
-      } /* if */
-      i++;    // next item
-    } /* while */
-
-    /////////////////////////////////////////////////////////////////////////////////////////////
     // draw rectangles
     rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
     rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
@@ -406,9 +364,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
     SDL_Flip(screen);  // show the screen
     SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
 
-    //////////////////////////////////
     // Wait for keypress
-    //////////////////////////////////
     SDL_Event event;  // event
     Uint8 *keyboard;  // key state
 
@@ -419,8 +375,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         files.Delete();
         sizes.Delete();
         SDL_FreeSurface(my_screen);
-
-        SDL_PushEvent(&event);// push quit event
+        SDL_PushEvent(&event); // push quit event
         return false;
       }
       SDL_Delay(10);
@@ -435,14 +390,14 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         act_file--;  // up one position
       if (act_file < first_file)
         first_file = act_file;
-    } /* if */
+    }
 
     if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
       if (act_file < (files.Length() - 1))
         act_file++;
       if (act_file >= (first_file + FILES_IN_SCREEN))
         first_file = act_file - FILES_IN_SCREEN + 1;
-    } /* if */
+    }
 
     if (keyboard[SDLK_PAGEUP]) {
       act_file -= FILES_IN_SCREEN;
@@ -450,7 +405,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         act_file = 0;
       if (act_file < first_file)
         first_file = act_file;
-    } /* if */
+    }
 
     if (keyboard[SDLK_PAGEDOWN]) {
       act_file += FILES_IN_SCREEN;
@@ -458,43 +413,41 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
         act_file = (files.Length() - 1);
       if (act_file >= (first_file + FILES_IN_SCREEN))
         first_file = act_file - FILES_IN_SCREEN + 1;
-    } /* if */
+    }
 
     // choose an item?
     if (keyboard[SDLK_RETURN]) {
       // dup string from selected file name
       *filename = strdup(files[act_file]);
-      //      printf("files[act_file]=%s, *filename=%s\n\n", files[act_file], *filename);
-      if (!strcmp(sizes[act_file], "<DIR>") || !strcmp(sizes[act_file], "<UP>"))
+      if (!strcmp(sizes[act_file], "<DIR>") || !strcmp(sizes[act_file], "<UP>")) {
         *isdir = true;
-      else
+      } else {
         *isdir = false;  // this is directory (catalog in Apple][ terminology)
+      }
       *index_file = act_file;  // remember current index
       files.Delete();
       sizes.Delete();
       SDL_FreeSurface(my_screen);
-
       return true;
-    } /* if */
+    }
 
     if (keyboard[SDLK_ESCAPE]) {
       files.Delete();
       sizes.Delete();
       SDL_FreeSurface(my_screen);
-
       return false;    // ESC has been pressed
-    } /* if */
+    }
 
-    if (keyboard[SDLK_HOME]) {  // HOME?
+    if (keyboard[SDLK_HOME]) {
       act_file = 0;
       first_file = 0;
-    } /* if */
-    if (keyboard[SDLK_END]) {  // END?
+    }
+    if (keyboard[SDLK_END]) {
       act_file = files.Length() - 1;  // go to the last possible file in list
       first_file = act_file - FILES_IN_SCREEN + 1;
       if (first_file < 0)
         first_file = 0;
-    } /* if */
+    }
 
   }
-} /* ChooseAnImage */
+}

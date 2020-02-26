@@ -47,7 +47,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // number of channels and buffer size for Apple][ Speakers
 static const unsigned short g_nSPKR_NumChannels = 1;
-//-------------------------------------
 
 // Globals (SOUND_WAVE)
 // GPH This "INIT" value is the actual sample data written to the speaker when
@@ -81,19 +80,14 @@ static bool g_bSpkrToggleFlag = false;
 static bool g_bSpkrAvailable = false;
 static bool g_bSpkrRecentlyActive = false;
 
-//-----------------------------------------------------------------------------
-
 // Forward refs:
-//ULONG   Spkr_SubmitWaveBuffer_FullSpeed(short* pSpeakerBuffer, ULONG nNumSamples);
 static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples);
 
 static void Spkr_SetActive(bool bActive);
 
-//=============================================================================
 // Let us leave benchmark for the near future --bb ^_^
 #if 0
-static void DisplayBenchmarkResults ()
-{
+static void DisplayBenchmarkResults () {
 
   DWORD totaltime = GetTickCount() - extbench;
   VideoRedrawScreen();
@@ -112,11 +106,8 @@ static void DisplayBenchmarkResults ()
 }
 #endif
 
-//=============================================================================
-
-static void SetClksPerSpkrSample()
-{
-  //  // 23.191 clks for 44.1Khz (when 6502 CLK=1.0Mhz)
+static void SetClksPerSpkrSample() {
+  // 23.191 clks for 44.1Khz (when 6502 CLK=1.0Mhz)
   //  g_fClksPerSpkrSample = g_fCurrentCLK6502 / (double)SPKR_SAMPLE_RATE;
 
   // Use integer value: Better for MJ Mahon's RT.SYNTH.DSK (integer multiples of 1.023MHz Clk)
@@ -126,45 +117,31 @@ static void SetClksPerSpkrSample()
 
 //=============================================================================
 
-static void InitRemainderBuffer()
-{
+static void InitRemainderBuffer() {
   delete[] g_pRemainderBuffer;
-
   SetClksPerSpkrSample();
-
   g_nRemainderBufferSize = (UINT) g_fClksPerSpkrSample;
-  if ((double) g_nRemainderBufferSize != g_fClksPerSpkrSample)
+  if ((double) g_nRemainderBufferSize != g_fClksPerSpkrSample) {
     g_nRemainderBufferSize++;
-
+  }
   g_pRemainderBuffer = new short[g_nRemainderBufferSize];
   memset(g_pRemainderBuffer, 0, g_nRemainderBufferSize);
-
   g_nRemainderBufferIdx = 0;
 }
 
-//
-// ----- ALL GLOBALLY ACCESSIBLE FUNCTIONS ARE BELOW THIS LINE -----
-//
-//=============================================================================
-
-void SpkrDestroy()
-{
+void SpkrDestroy() {
   Spkr_DSUninit();
   if (soundtype == SOUND_WAVE) {
     delete[] g_pSpeakerBuffer;
     delete[] g_pStereoBuffer;
     delete[] g_pRemainderBuffer;
-
     g_pSpeakerBuffer = NULL;
     g_pStereoBuffer = NULL;
     g_pRemainderBuffer = NULL;
   }
 }
 
-//=============================================================================
-
-void SpkrInitialize()
-{
+void SpkrInitialize() {
   if (g_fh) {
     fprintf(g_fh, "Spkr Config: soundtype = %d ", (int) soundtype);
     switch (soundtype) {
@@ -183,7 +160,6 @@ void SpkrInitialize()
   if (g_bDisableDirectSound) {
     //    SpeakerVoice.bMute = true;
   } else {
-    //DSInit();
     g_bSpkrAvailable = Spkr_DSInit();
   }
 
@@ -195,33 +171,25 @@ void SpkrInitialize()
   }
 }
 
-//=============================================================================
 // NB. Called when /g_fCurrentCLK6502/ changes
-void SpkrReinitialize()
-{
+void SpkrReinitialize() {
   if (soundtype == SOUND_WAVE) {
     InitRemainderBuffer();
   }
 }
 
-//=============================================================================
-
-void SpkrReset()
-{
+void SpkrReset() {
   g_nBufferIdx = 0;
   g_nSpkrQuietCycleCount = 0;
   g_bSpkrToggleFlag = false;
-
   InitRemainderBuffer();
   Spkr_SubmitWaveBuffer(NULL, 0);
   Spkr_SetActive(false);
   Spkr_Demute();
 }
 
-//=================2012 AD =========================================================
 #if 0
-BOOL SpkrSetEmulationType (DWORD newtype)
-{
+BOOL SpkrSetEmulationType (DWORD newtype) {
   if (soundtype != SOUND_NONE)
     SpkrDestroy();
   soundtype = newtype;
@@ -230,38 +198,24 @@ BOOL SpkrSetEmulationType (DWORD newtype)
   if (soundtype != newtype)
     switch (newtype) {  // some fault occured
       case SOUND_WAVE:
-/*        MessageBox(window,
-                   TEXT("The emulator is unable to initialize a waveform ")
-                   TEXT("output device.  Make sure you have a sound card ")
-                   TEXT("and a driver installed and that windows is ")
-                   TEXT("correctly configured to use the driver.  Also ")
-                   TEXT("ensure that no other program is currently using ")
-                   TEXT("the device."),
-                   TEXT("Configuration"),
-                   MB_ICONEXCLAMATION | MB_SETFOREGROUND);*/
-        // Need to tuck SDL_GetError() hhere? ------------------------------------------
         fprintf(stderr, "Unable to initialize a waveform output device.\n");
         return 0;
-
     }
   return 1;
 }
 #endif
-//=============================================================================
 
-static void ReinitRemainderBuffer(UINT nCyclesRemaining)
-{
-  if (nCyclesRemaining == 0)
+static void ReinitRemainderBuffer(UINT nCyclesRemaining) {
+  if (nCyclesRemaining == 0) {
     return;
-
-  for (g_nRemainderBufferIdx = 0; g_nRemainderBufferIdx < nCyclesRemaining; g_nRemainderBufferIdx++)
+  }
+  for (g_nRemainderBufferIdx = 0; g_nRemainderBufferIdx < nCyclesRemaining; g_nRemainderBufferIdx++) {
     g_pRemainderBuffer[g_nRemainderBufferIdx] = g_nSpeakerData;
-
+  }
   _ASSERT(g_nRemainderBufferIdx < g_nRemainderBufferSize);
 }
 
-static void UpdateRemainderBuffer(ULONG *pnCycleDiff)
-{
+static void UpdateRemainderBuffer(ULONG *pnCycleDiff) {
   if (g_nRemainderBufferIdx) {
     while ((g_nRemainderBufferIdx < g_nRemainderBufferSize) && *pnCycleDiff) {
       g_pRemainderBuffer[g_nRemainderBufferIdx] = g_nSpeakerData;
@@ -283,64 +237,40 @@ static void UpdateRemainderBuffer(ULONG *pnCycleDiff)
 }
 
 
-static void UpdateSpkr()
-{
-  if (!g_bFullSpeed /*|| SoundCore_GetTimerState()*/) {
+static void UpdateSpkr() {
+  if (!g_bFullSpeed) {
     ULONG nCycleDiff = (ULONG)(g_nCumulativeCycles - g_nSpkrLastCycle);
-
     UpdateRemainderBuffer(&nCycleDiff);
-
     ULONG nNumSamples = (ULONG)((double) nCycleDiff / g_fClksPerSpkrSample);
-
     ULONG nCyclesRemaining = (ULONG)((double) nCycleDiff - (double) nNumSamples * g_fClksPerSpkrSample);
-
     while ((nNumSamples--) && (g_nBufferIdx < SPKR_SAMPLE_RATE - 1)) {
       g_pSpeakerBuffer[g_nBufferIdx++] = g_nSpeakerData;
     }
     ReinitRemainderBuffer(nCyclesRemaining);  // Partially fill 1Mhz sample buffer
   }
-
   g_nSpkrLastCycle = g_nCumulativeCycles;
-
-  // GPH Added - simulate decoupling capacitor - use approximate value
-  //g_nSpeakerData = (short)((double) g_nSpeakerData * 0.995);
 }
 
-//=============================================================================
-
 // Called by emulation code when Speaker I/O reg (0xC030) is accessed
-BYTE SpkrToggle(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft)
-{
+BYTE SpkrToggle(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
   g_bSpkrToggleFlag = true;
 
-  if (!g_bFullSpeed)
+  if (!g_bFullSpeed) {
     Spkr_SetActive(true);
+  }
 
   needsprecision = cumulativecycles;  // ?
 
-  //   if (extbench)
-  //   {
-  //     DisplayBenchmarkResults();
-  //     extbench = 0;
-  //   }
-
   if (soundtype == SOUND_WAVE) {
     CpuCalcCycles(nCyclesLeft);
-
     UpdateSpkr();
-
     g_nSpeakerData = g_nSpeakerData ^ SPKR_DATA_INIT; //~g_nSpeakerData;
-    //        printf("SpkrToggle: %04x\n",g_nSpeakerData);
   }
 
   return MemReadFloatingBus(nCyclesLeft); // reading from $C030..$C03F retrurns unpredictable value?
 }
 
-//=============================================================================
-
-// Called by ContinueExecution()
-void SpkrUpdate(DWORD totalcycles)
-{
+void SpkrUpdate(DWORD totalcycles) {
   if (!g_bSpkrToggleFlag) {
     if (!g_nSpkrQuietCycleCount) {
       g_nSpkrQuietCycleCount = g_nCumulativeCycles;
@@ -360,32 +290,27 @@ void SpkrUpdate(DWORD totalcycles)
     UpdateSpkr();
     ULONG nSamplesUsed;
 
-    if (g_bFullSpeed)
-      g_nBufferIdx = 0;  // try this --bb
-      //      nSamplesUsed = Spkr_SubmitWaveBuffer/*_FullSpeed*/(g_pSpeakerBuffer, g_nBufferIdx);
+    if (g_bFullSpeed) {
+      g_nBufferIdx = 0;
+    }
     else {
       nSamplesUsed = Spkr_SubmitWaveBuffer(g_pSpeakerBuffer, g_nBufferIdx);
-
       _ASSERT(nSamplesUsed <= g_nBufferIdx);
-      if (nSamplesUsed == 0)
+      if (nSamplesUsed == 0) {
         return;
+      }
       memmove(g_pSpeakerBuffer, &g_pSpeakerBuffer[nSamplesUsed], g_nBufferIdx - nSamplesUsed);
       g_nBufferIdx -= nSamplesUsed;
     }
   }
 }
 
-//=============================================================================
-
-//-----------------------------------------------------------------------------
 static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples)
 {
   // submit nNumSamples (== 2bytes long each (sizeof short))??
   // from pSpeakerBuffer to pDSSpkrBuf for callback DSPlaySnd
 
-  //  if(!g_bSpkrRecentlyActive) return nNumSamples;//if not active, just return?
   if (pSpeakerBuffer == NULL) {
-    // just init sound buffer and cursors??
     return 0;
   }
 
@@ -396,94 +321,62 @@ static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples)
   for (i = 0; i < len; i += 2) {
     g_pStereoBuffer[i] = g_pStereoBuffer[i + 1] = pSpeakerBuffer[i >> 1];
   }
-  // use code from OpenMSX
-  //  DSUploadBuffer(pSpeakerBuffer, nNumSamples);
-
-
 
   DSUploadBuffer(g_pStereoBuffer, len);  // submit stereo wave data
   return nNumSamples;  // always return as if we've filled everything!? --bb
 }
 
-
-///////////// Mute - set volume to MINIMUM,  Demute - set volume to NORMAL STATE? -bb
-void Spkr_Mute()
-{
-  SDL_PauseAudio(1);  // dangerous functiouse - will mute Mockingboard, too. Need to be changed
+// Mute - set volume to MINIMUM,  Demute - set volume to NORMAL STATE? -bb
+void Spkr_Mute() {
+  SDL_PauseAudio(1);  // dangerous functions - will mute Mockingboard, too. Need to be changed
 }
 
-void Spkr_Demute()
-{
+void Spkr_Demute() {
   SDL_PauseAudio(0);
 }
 
-//-----------------------------------------------------------------------------
-
-
-static void Spkr_SetActive(bool bActive)
-{    // yes, I know the right way is:   g_bSpkrRecentlyActive = bActive;, but... ^_^ --bb
+static void Spkr_SetActive(bool bActive) {
+  // yes, I know the right way is:   g_bSpkrRecentlyActive = bActive;, but... ^_^ --bb
   if (bActive) {
     // Called by SpkrToggle() or SpkrReset()
     g_bSpkrRecentlyActive = true;
-
   } else {
     // Called by SpkrUpdate() after 0.2s of speaker inactivity
     g_bSpkrRecentlyActive = false;
   }
 }
 
-bool Spkr_IsActive()
-{
+bool Spkr_IsActive() {
   return g_bSpkrRecentlyActive;
 }
 
-//-----------------------------------------------------------------------------
-// How to deal with volume in SDL Audio
-// may be need to go to SDL Mixer?
-DWORD SpkrGetVolume()
-{
-  //  return SpeakerVoice.dwUserVolume;
+// How to deal with volume in SDL Audio may be need to go to SDL Mixer?
+DWORD SpkrGetVolume() {
   return 0;
 }
 
-void SpkrSetVolume(DWORD dwVolume, DWORD dwVolumeMax)
-{
-  /*  SpeakerVoice.dwUserVolume = dwVolume;
-
-    SpeakerVoice.nVolume = NewVolume(dwVolume, dwVolumeMax);
-
-    if(SpeakerVoice.bActive)
-      SpeakerVoice.lpDSBvoice->SetVolume(SpeakerVoice.nVolume);*/
+void SpkrSetVolume(DWORD dwVolume, DWORD dwVolumeMax) {
 }
-
-//=============================================================================
 
 bool Spkr_DSInit()
 {
-  //
   // Create single Apple speaker voice
-  //
-  if (!g_bDSAvailable)
+  if (!g_bDSAvailable) {
     return false;  // do not have DirectSound? Sorry, SDL Audio! ^_^   --bb
+  }
   return true;
-
 }
 
 void Spkr_DSUninit()
 {
-
 }
 
-//=============================================================================
-
-DWORD SpkrGetSnapshot(SS_IO_Speaker *pSS)
-{
+DWORD SpkrGetSnapshot(SS_IO_Speaker *pSS) {
   pSS->g_nSpkrLastCycle = g_nSpkrLastCycle;
   return 0;
 }
 
-DWORD SpkrSetSnapshot(SS_IO_Speaker *pSS)
-{
+DWORD SpkrSetSnapshot(SS_IO_Speaker *pSS) {
   g_nSpkrLastCycle = pSS->g_nSpkrLastCycle;
   return 0;
 }

@@ -141,12 +141,7 @@ static volatile UINT32 g_bmIRQ = 0;
 static volatile UINT32 g_bmNMI = 0;
 static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
 
-/****************************************************************************
-*
-*  GENERAL PURPOSE MACROS
-*
-***/
-
+// General Purpose Macros
 #define AF_TO_EF  flagc = (regs.ps & AF_CARRY);            \
       flagn = (regs.ps & AF_SIGN);            \
       flagv = (regs.ps & AF_OVERFLOW);          \
@@ -183,8 +178,6 @@ static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
          IOWrite[(addr>>4) & 0xFF](regs.pc,addr,1,(BYTE)(a),uExecutedCycles); \
      }
 
-//
-
 // ExtraCycles:
 // +1 if branch taken
 // +1 if page boundary crossed
@@ -197,7 +190,6 @@ static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
            uExtraCycles=1;    \
          }
 
-//
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wsequence-point"
 #define CHECK_PAGE_CHANGE  if (bSlowerOnPagecross) {          \
@@ -205,11 +197,7 @@ static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
            uExtraCycles=1;        \
          }
 
-/****************************************************************************
-*
-*  ADDRESSING MODE MACROS
-*
-***/
+// Addressing Mode Macros
 
 #define ABS   addr = *(LPWORD)(mem+regs.pc);   regs.pc += 2;
 #define IABSX    addr = *(LPWORD)(mem+(*(LPWORD)(mem+regs.pc))+(WORD)regs.x); regs.pc += 2;
@@ -252,11 +240,7 @@ static volatile BOOL g_bNmiFlank = FALSE; // Positive going flank on NMI line
 #define ZPGX   addr = ((*(mem+regs.pc++))+regs.x) & 0xFF;
 #define ZPGY   addr = ((*(mem+regs.pc++))+regs.y) & 0xFF;
 
-/****************************************************************************
-*
-*  INSTRUCTION MACROS
-*
-***/
+// Instruction Macros
 
 #define ADC_NMOS bSlowerOnPagecross = 1;                \
      temp = READ;                \
@@ -786,11 +770,7 @@ bool CheckDebugBreak(int iOpcode)
 // Break into debugger on invalid opcodes
 #define INV if (IsDebugBreakOnInvalid(1)) { RequestDebugger(); bBreakOnInvalid = true; }
 
-/****************************************************************************
-*
-*  OPCODE TABLE
-*
-***/
+// Opcode Table
 
 unsigned __int64
 g_nCycleIrqStart;
@@ -840,13 +820,13 @@ static inline int Fetch(BYTE &iOpcode, ULONG uExecutedCycles)
 {
   g_uInternalExecutedCycles = uExecutedCycles;
 
-  //    iOpcode = *(mem+regs.pc);
   iOpcode = ((regs.pc & 0xF000) == 0xC000) ? IORead[(regs.pc >> 4) & 0xFF](regs.pc, regs.pc, 0, 0,
                                                                            uExecutedCycles)  // Fetch opcode from I/O memory, but params are still from mem[]
                                            : *(mem + regs.pc);
 
-  if (CheckDebugBreak(iOpcode))
+  if (CheckDebugBreak(iOpcode)) {
     return 0;
+  }
 
   regs.pc++;
   return 1;
@@ -898,8 +878,6 @@ static inline void CheckInterruptSources(ULONG uExecutedCycles)
   }
 }
 
-//===========================================================================
-
 static DWORD Cpu65C02(DWORD uTotalCycles)
 {
   // Optimisation:
@@ -923,8 +901,9 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
     UINT uExtraCycles = 0;
     BYTE iOpcode;
 
-    if (!Fetch(iOpcode, uExecutedCycles))
+    if (!Fetch(iOpcode, uExecutedCycles)) {
       break;
+    }
 
     switch (iOpcode) {
       case 0x00:
@@ -2189,13 +2168,13 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
         break;
     }
 
-
     CheckInterruptSources(uExecutedCycles);
     NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
     IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
 
-    if (bBreakOnInvalid) // break to debugger window?
+    if (bBreakOnInvalid) { // break to debugger window?
       break;
+    }
 
   } while (uExecutedCycles < uTotalCycles);
 
@@ -2225,8 +2204,9 @@ static DWORD Cpu6502(DWORD uTotalCycles)
     UINT uExtraCycles = 0;
     BYTE iOpcode;
 
-    if (!Fetch(iOpcode, uExecutedCycles))
+    if (!Fetch(iOpcode, uExecutedCycles)) {
       break;
+    }
 
     switch (iOpcode) {
       case 0x00:
@@ -3574,8 +3554,9 @@ static DWORD Cpu6502(DWORD uTotalCycles)
     NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
     IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
 
-    if (bBreakOnInvalid)
+    if (bBreakOnInvalid) {
       break;
+    }
 
   } while (uExecutedCycles < uTotalCycles);
 
@@ -3583,35 +3564,28 @@ static DWORD Cpu6502(DWORD uTotalCycles)
   return uExecutedCycles;
 }
 
-//===========================================================================
-
 static DWORD InternalCpuExecute(DWORD uTotalCycles)
 {
 
   #ifdef UPDATE_ALL_PER_CYCLE
   MB_Update();
   #endif
-  if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E))
+  if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E)) {
     return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e
-  else
-    return Cpu65C02(uTotalCycles);  // Enhanced Apple //e
+  } else {
+    return Cpu65C02(uTotalCycles);
+  }  // Enhanced Apple //e
 }
 
-//
-// ----- ALL GLOBALLY ACCESSIBLE FUNCTIONS ARE BELOW THIS LINE -----
-//
-
-//===========================================================================
+// All Globally Accessible FUnctions Are Below This Line
 
 void CpuDestroy()
 {
   if (g_bCritSectionValid) {
-    //      DeleteCriticalSection(&g_CriticalSection);
     g_bCritSectionValid = false;
   }
 }
 
-//===========================================================================
 // Pre:
 //  Call this when an IO-reg is access & accurate cycle info is needed
 // Post:
@@ -3628,8 +3602,6 @@ void CpuCalcCycles(ULONG nExecutedCycles)
   g_nCyclesExecuted += nCycles;
   g_nCumulativeCycles += nCycles;
 }
-
-//===========================================================================
 
 // Old method with g_uInternalExecutedCycles runs faster!
 //        Old     vs    New
@@ -3654,8 +3626,6 @@ ULONG CpuGetCyclesThisFrame(ULONG nExecutedCycles)
 
 #endif
 
-//===========================================================================
-
 DWORD CpuExecute(DWORD uCycles)
 {
   DWORD uExecutedCycles = 0;
@@ -3663,27 +3633,23 @@ DWORD CpuExecute(DWORD uCycles)
   g_nCyclesSubmitted = uCycles;
   g_nCyclesExecuted = 0;
 
-  //
-
   MB_StartOfCpuExecute();
 
-  if (uCycles == 0)  // Do single step
+  if (uCycles == 0) {  // Do single step
     uExecutedCycles = InternalCpuExecute(0);
-  else        // Do multi-opcode emulation
+  } else {        // Do multi-opcode emulation
     uExecutedCycles = InternalCpuExecute(uCycles);
+  }
 
   #ifndef UPDATE_ALL_PER_CYCLE
   MB_UpdateCycles(uExecutedCycles);  // Update 6522s (NB. Do this before updating g_nCumulativeCycles below)
   #endif
-  //
 
   UINT nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
   g_nCumulativeCycles += nRemainingCycles;
 
   return uExecutedCycles;
 }
-
-//===========================================================================
 
 void CpuInitialize()
 {
@@ -3692,14 +3658,10 @@ void CpuInitialize()
   regs.sp = 0x01FF;
   CpuReset();  // Init's ps & pc. Updates sp
 
-  //  InitializeCriticalSection(&g_CriticalSection);
-  //  g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
   g_bCritSectionValid = true;
   CpuIrqReset();
   CpuNmiReset();
 }
-
-//===========================================================================
 
 void CpuSetupBenchmark()
 {
@@ -3717,88 +3679,97 @@ void CpuSetupBenchmark()
       *(mem + addr++) = benchopcode[opcode];
       *(mem + addr++) = benchopcode[opcode];
 
-      if (opcode >= SHORTOPCODES)
+      if (opcode >= SHORTOPCODES) {
         *(mem + addr++) = 0;
+      }
 
       if ((++opcode >= BENCHOPCODES) || ((addr & 0x0F) >= 0x0B)) {
         *(mem + addr++) = 0x4C;
         *(mem + addr++) = (opcode >= BENCHOPCODES) ? 0x00 : ((addr >> 4) + 1) << 4;
         *(mem + addr++) = 0x03;
-        while (addr & 0x0F)
+        while (addr & 0x0F) {
           ++addr;
+        }
       }
     } while (opcode < BENCHOPCODES);
   }
 }
 
-//===========================================================================
-
 void CpuIrqReset()
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
+  }
   g_bmIRQ = 0;
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
 
 void CpuIrqAssert(eIRQSRC Device)
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
+  }
   g_bmIRQ |= 1 << Device;
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
 
 void CpuIrqDeassert(eIRQSRC Device)
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
+  }
   g_bmIRQ &= ~(1 << Device);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
-
-//===========================================================================
 
 void CpuNmiReset()
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
+  }
   g_bmNMI = 0;
   g_bNmiFlank = FALSE;
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
 
 void CpuNmiAssert(eIRQSRC Device)
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
-  if (g_bmNMI == 0) // NMI line is just becoming active
+  }
+  if (g_bmNMI == 0) { // NMI line is just becoming active
     g_bNmiFlank = TRUE;
+  }
   g_bmNMI |= 1 << Device;
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
 
 void CpuNmiDeassert(eIRQSRC Device)
 {
   _ASSERT(g_bCritSectionValid);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
+  }
   g_bmNMI &= ~(1 << Device);
-  if (g_bCritSectionValid)
+  if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
+  }
 }
-
-//===========================================================================
 
 void CpuReset()
 {
@@ -3809,8 +3780,6 @@ void CpuReset()
 
   regs.bJammed = 0;
 }
-
-//===========================================================================
 
 DWORD CpuGetSnapshot(SS_CPU6502 *pSS)
 {

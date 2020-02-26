@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // for usleep()
 #include <unistd.h>
-
 #include "stdafx.h"
 #include "Timer.h"
 
@@ -40,36 +39,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //for Timers try to use POSIX compliant timers
 #include <signal.h>
 #include <sys/time.h>
-
 #endif
 
 // for Assertion
 #include <assert.h>
-
 // for usleep()
 #include <unistd.h>
 
 #ifndef _WIN32
-//===============================================================================//
-//    Timer Functions - POSIX specific         //
-//=============================================================================//
-// Vars
-
 static DWORD g_dwUsecPeriod = 0;
 
-
-bool SysClk_InitTimer()
-{
+bool SysClk_InitTimer() {
   return true;
 }
 
-void SysClk_UninitTimer()
-{
+void SysClk_UninitTimer() {
 }
 
 
-inline Uint32 uSecSinceStart()
-{
+inline Uint32 uSecSinceStart() {
   struct timeval latest;
   static struct timeval start;
   static bool first = true;
@@ -83,24 +71,22 @@ inline Uint32 uSecSinceStart()
   gettimeofday(&latest, NULL);
   if (latest.tv_sec == start.tv_sec) {
     return latest.tv_usec - start.tv_usec;
-  } else {
-    return (1000000000 - start.tv_usec) + latest.tv_usec + (latest.tv_sec - (start.tv_sec + 1)) * 1000000000;
   }
+  return (1000000000 - start.tv_usec) + latest.tv_usec + (latest.tv_sec - (start.tv_sec + 1)) * 1000000000;
 }
 
-inline void nsleep(unsigned long us)
-{
+inline void nsleep(unsigned long us) {
   struct timespec req = {0};
   time_t sec = (int) (us / 1000000);
   us = us - (sec * 1000000);
   req.tv_sec = sec;
   req.tv_nsec = us;
-  while (nanosleep(&req, &req) == -1)
+  while (nanosleep(&req, &req) == -1) {
     continue;
+  }
 }
 
-void SysClk_WaitTimer()
-{
+void SysClk_WaitTimer() {
   static Uint32 old = 0;
   Uint32 current;
   Uint32 elapsed;
@@ -122,110 +108,91 @@ void SysClk_WaitTimer()
   }
 }
 
-void SysClk_StartTimerUsec(DWORD dwUsecPeriod)
-{
+void SysClk_StartTimerUsec(DWORD dwUsecPeriod) {
   g_dwUsecPeriod = dwUsecPeriod;
 }
 
-void SysClk_StopTimer()
-{
+void SysClk_StopTimer() {
 }
 
 #else
-//===============================================================================//
-//    Timer Functions - WINDOWS specific                       //
-//===============================================================================//
+// Timer Functions - WINDOWS specific                       //
 
-// Vars
 static DWORD g_dwAdviseToken;
 static IReferenceClock *g_pRefClock = NULL;
 static HANDLE g_hSemaphore = NULL;
 static bool g_bRefClockTimerActive = false;
 static DWORD g_dwLastUsecPeriod = 0;
 
+bool SysClk_InitTimer() {
+  g_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);    // Max count = 1
+  if (g_hSemaphore == NULL) {
+    fprintf(stderr, "Error creating semaphore\n");
+    return false;
+  }
 
-bool SysClk_InitTimer()
-{
-g_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);    // Max count = 1
-if (g_hSemaphore == NULL)
-{
-  fprintf(stderr, "Error creating semaphore\n");
-  return false;
+  if (CoCreateInstance(CLSID_SystemClock, NULL, CLSCTX_INPROC,
+                       IID_IReferenceClock, (LPVOID*)&g_pRefClock) != S_OK) {
+    fprintf(stderr, "Error initialising COM\n");
+    return false;  // Fails for Win95!
+  }
+
+  return true;
 }
 
-if (CoCreateInstance(CLSID_SystemClock, NULL, CLSCTX_INPROC,
-                       IID_IReferenceClock, (LPVOID*)&g_pRefClock) != S_OK)
-{
-  fprintf(stderr, "Error initialising COM\n");
-  return false;  // Fails for Win95!
+void SysClk_UninitTimer() {
+  SysClk_StopTimer();
+  SAFE_RELEASE(g_pRefClock);
+  if (CloseHandle(g_hSemaphore) == 0) {
+    fprintf(stderr, "Error closing semaphore handle\n");
+  }
 }
 
-return true;
+void SysClk_WaitTimer() {
+  if(!g_bRefClockTimerActive) {
+    return;
+  }
+  WaitForSingleObject(g_hSemaphore, INFINITE);
 }
 
-void SysClk_UninitTimer()
-{
-SysClk_StopTimer();
+void SysClk_StartTimerUsec(DWORD dwUsecPeriod) {
+  if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod)) {
+    return;
+  }
 
-SAFE_RELEASE(g_pRefClock);
+  SysClk_StopTimer();
 
-if (CloseHandle(g_hSemaphore) == 0)
-  fprintf(stderr, "Error closing semaphore handle\n");
+  REFERENCE_TIME rtPeriod = (REFERENCE_TIME) (dwUsecPeriod * 10);  // In units of 100ns
+  REFERENCE_TIME rtNow;
+  HRESULT hr = g_pRefClock->GetTime(&rtNow);
+
+  if ((hr != S_OK) && (hr != S_FALSE)) {
+    fprintf(stderr, "Error creating timer (GetTime failed)\n");
+    _ASSERT(0);
+    return;
+  }
+
+  if (g_pRefClock->AdvisePeriodic(rtNow, rtPeriod, g_hSemaphore, &g_dwAdviseToken) != S_OK) {
+    fprintf(stderr, "Error creating timer (AdvisePeriodic failed)\n");
+    _ASSERT(0);
+    return;
+  }
+
+  g_dwLastUsecPeriod = dwUsecPeriod;
+  g_bRefClockTimerActive = true;
 }
 
-//
+void SysClk_StopTimer() {
+  if(!g_bRefClockTimerActive) {
+    return;
+  }
 
-void SysClk_WaitTimer()
-{
-if(!g_bRefClockTimerActive)
-  return;
+  if (g_pRefClock->Unadvise(g_dwAdviseToken) != S_OK) {
+    fprintf(stderr, "Error deleting timer\n");
+    _ASSERT(0);
+    return;
+  }
 
-WaitForSingleObject(g_hSemaphore, INFINITE);
-}
-
-void SysClk_StartTimerUsec(DWORD dwUsecPeriod)
-{
-if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod))
-  return;
-
-SysClk_StopTimer();
-
-REFERENCE_TIME rtPeriod = (REFERENCE_TIME) (dwUsecPeriod * 10);  // In units of 100ns
-REFERENCE_TIME rtNow;
-
-HRESULT hr = g_pRefClock->GetTime(&rtNow);
-// S_FALSE : Returned time is the same as the previous value
-
-if ((hr != S_OK) && (hr != S_FALSE))
-{
-  fprintf(stderr, "Error creating timer (GetTime failed)\n");
-  _ASSERT(0);
-  return;
-}
-
-if (g_pRefClock->AdvisePeriodic(rtNow, rtPeriod, g_hSemaphore, &g_dwAdviseToken) != S_OK)
-{
-  fprintf(stderr, "Error creating timer (AdvisePeriodic failed)\n");
-  _ASSERT(0);
-  return;
-}
-
-g_dwLastUsecPeriod = dwUsecPeriod;
-g_bRefClockTimerActive = true;
-}
-
-void SysClk_StopTimer()
-{
-if(!g_bRefClockTimerActive)
-  return;
-
-if (g_pRefClock->Unadvise(g_dwAdviseToken) != S_OK)
-{
-  fprintf(stderr, "Error deleting timer\n");
-  _ASSERT(0);
-  return;
-}
-
-g_bRefClockTimerActive = false;
+  g_bRefClockTimerActive = false;
 }
 #endif
