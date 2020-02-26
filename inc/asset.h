@@ -30,7 +30,9 @@ typedef struct {
 extern assets_t *assets;
 
 bool Asset_Init(void);
+
 void Asset_Quit(void);
+
 int Asset_InsertMasterDisk(void);
 
 #endif // __asset_h
