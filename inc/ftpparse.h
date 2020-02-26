@@ -47,7 +47,7 @@ time is correct in the local time zone, and gmtime() for REMOTE* times.
 #define FTPPARSE_ID_UNKNOWN 0
 #define FTPPARSE_ID_FULL 1 /* unique identifier for files on this FTP server */
 
-extern int ftpparse(struct ftpparse *,char *,int); // parse ftp dir listing
+extern int ftpparse(struct ftpparse *, char *, int); // parse ftp dir listing
 extern CURLcode ftp_get(const char *, const char *); // get remote file from ftp server
 
 #endif

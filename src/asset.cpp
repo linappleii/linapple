@@ -20,15 +20,17 @@
 
 #include <sys/param.h>
 #include <SDL.h>
+#include <SDL_image.h>
 
 #include "asset.h"
 #include "stdafx.h"  // for Disk.h DiskInsert()
 #include "shim.h"  // SDL_GetBasePath()
 
-#define ASSET_ICON_BMP       "icon.bmp"
-#define ASSET_SPLASH_BMP     "splash.bmp"
-#define ASSET_CHARSET40_BMP  "charset40.bmp"
-#define ASSET_FONT_BMP       "font.bmp"
+#include "../res/charset40.xpm"
+#include "../res/font.xpm"
+#include "../res/icon.xpm"
+#include "../res/splash.xpm"
+
 #define ASSET_MASTER_DSK     "Master.dsk"
 
 assets_t *assets = NULL;
@@ -36,16 +38,16 @@ assets_t *assets = NULL;
 #ifdef ASSET_DIR
 static char system_assets[] = ASSET_DIR "/";
 #else
-static char system_assets[] = "./"
+static char system_assets[] = "./";
 #endif
 static char *system_exedir = NULL;
 
 SDL_Surface *Asset_LoadBMP(const char *filename)
 {
   SDL_Surface *surf;
-  char *path = (char *)SDL_malloc(sizeof(char[PATH_MAX]));
+  char *path = (char *) SDL_malloc(sizeof(char[PATH_MAX]));
   if (NULL == path) {
-    fprintf(stderr, "Asset_Init: Allocating path: %s\n", SDL_GetError());
+    fprintf(stderr, "Asset_LoadBMP: Allocating path: %s\n", SDL_GetError());
     return NULL;
   }
 
@@ -54,10 +56,12 @@ SDL_Surface *Asset_LoadBMP(const char *filename)
   if (NULL == surf) {
     snprintf(path, PATH_MAX, "%s%s", system_exedir, filename);
     surf = SDL_LoadBMP(path);
-    if (NULL == surf) {
-      fprintf(stderr, "Asset_LoadBMP: Couldn't load %s in either %s or %s!\n",
-          filename, system_assets, system_exedir);
-    }
+  }
+
+  if (NULL != surf) {
+    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename, path);
+  } else {
+    fprintf(stderr, "Asset_LoadBMP: Couldn't load %s in either %s or %s!\n", filename, system_assets, system_exedir);
   }
 
   SDL_free(path);
@@ -72,28 +76,28 @@ bool Asset_Init(void)
     system_exedir = SDL_strdup("./");
   }
 
-  assets = (assets_t *)SDL_calloc(1, sizeof(assets_t));
+  assets = (assets_t *) SDL_calloc(1, sizeof(assets_t));
   if (NULL == assets) {
     fprintf(stderr, "Asset_Init: Allocating assets: %s\n", SDL_GetError());
     return false;
   }
 
-  assets->icon = Asset_LoadBMP(ASSET_ICON_BMP);
+  assets->icon = IMG_ReadXPMFromArray(icon_xpm);
   if (NULL == assets->icon) {
     return false;
   }
 
-  assets->font = Asset_LoadBMP(ASSET_FONT_BMP);
+  assets->font = IMG_ReadXPMFromArray(font_xpm);
   if (NULL == assets->font) {
     return false;
   }
 
-  assets->charset40 = Asset_LoadBMP(ASSET_CHARSET40_BMP);
+  assets->charset40 = IMG_ReadXPMFromArray(charset40_xpm);
   if (NULL == assets->charset40) {
     return false;
   }
 
-  assets->splash = Asset_LoadBMP(ASSET_SPLASH_BMP);
+  assets->splash = IMG_ReadXPMFromArray(splash_xpm);
   if (NULL == assets->splash) {
     return false;
   }
@@ -137,7 +141,7 @@ void Asset_Quit(void)
 int Asset_InsertMasterDisk(void)
 {
   int rc;
-  char *path = (char *)SDL_malloc(sizeof(char[PATH_MAX]));
+  char *path = (char *) SDL_malloc(sizeof(char[PATH_MAX]));
   snprintf(path, PATH_MAX, "%s%s", system_assets, ASSET_MASTER_DSK);
   rc = DiskInsert(0, path, 0, 0);
   if (IMAGE_ERROR_UNABLE_TO_OPEN == rc) {
