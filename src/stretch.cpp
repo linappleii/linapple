@@ -451,7 +451,6 @@ SDL_Surface *font_sfc = NULL;  // used for font
 bool fonts_initialization(void)
 {
   font_sfc = SDL_DisplayFormat(assets->font);
-  
   /* Transparant color is BLACK: */
   SDL_SetColorKey(font_sfc,SDL_SRCCOLORKEY,SDL_MapRGB(font_sfc->format,0,0,0));
 

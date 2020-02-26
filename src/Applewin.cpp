@@ -62,6 +62,10 @@ By Mark Ormond.
 #include "AlertHooks.h"
 #endif
 
+#ifdef __APPLE__
+#include "AlertHooks.h"
+#endif
+
 //char VERSIONSTRING[] = "xx.yy.zz.ww";
 
 // Satisfy modern compiler standards
@@ -1255,7 +1259,6 @@ int main(int argc, char *argv[]) {
   curl_global_cleanup();
   Asset_Quit();
   LogDestroy();
-
   printf("Linapple: successfully exited!\n");
   return 0;
 }
