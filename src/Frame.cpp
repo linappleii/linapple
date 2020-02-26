@@ -506,6 +506,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     " F8 - Save current screen as a .bmp file",
     " Shift+F8 - Save settings changable at runtime in conf file",
     " F9 - Cycle through various video modes",
+    " Shift+F9 - Toggle budget video (better timing)",
     " F10 - Quit emulator",
     " F11 - Save current state to file, Alt+F11 - quick save",
     " F12 - Reload it from file, Alt+F12 - quick load",
@@ -1073,17 +1074,23 @@ void ProcessButtonClick (int button, int mod) {
 
       ////////////////////////// my buttons handlers F9..F12 ////////////////////////////
     case BTN_CYCLE: // F9 - CYCLE through allowed video modes
-      //    printf("F9 has been pressed!\n");
-      g_videotype++;  // Cycle through available video modes
-      if (g_videotype >= VT_NUM_MODES)
-        g_videotype = 0;
-      VideoReinitialize();
-      if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
-      {
-        VideoRedrawScreen();
-        g_bDebuggerViewingAppleOutput = true;  // +PATCH
+      if (mod & KMOD_SHIFT) {
+        // GPH Added budget video for updating only every 12 60Hz frames.
+        // This is because, on computers without a fast GPU, the drawing of the screen
+        // can actually affect the audio.
+        SetBudgetVideo(!GetBudgetVideo());
+      } else {
+        //    printf("F9 has been pressed!\n");
+        g_videotype++;  // Cycle through available video modes
+        if (g_videotype >= VT_NUM_MODES)
+          g_videotype = 0;
+        VideoReinitialize();
+        if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
+        {
+          VideoRedrawScreen();
+          g_bDebuggerViewingAppleOutput = true;  // +PATCH
+        }
       }
-
       break;
     case BTN_QUIT:  // F10 - exit from emulator?
 
