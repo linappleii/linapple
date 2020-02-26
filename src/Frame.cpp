@@ -506,7 +506,8 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         "       F6 - Toggle fullscreen mode", "       F8 - Take screenshot",
                                         " Shift+F8 - Save runtime changes to configuration file",
                                         "       F9 - Cycle through various video modes",
-                                        "  F10/F11 - Load/save snapshot file", "",
+                                        " Shift+F9 - Budget video, for smoother music/audio",
+                                        "  F10/F11 - Load/save snapshot file",
                                         "       Pause - Pause/resume emulator", " Scroll Lock - Toggle full speed",
                                         "    Numpad * - Normal speed", "  Numpad +/- - Increase/Decrease speed"};
 
