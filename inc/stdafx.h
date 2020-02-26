@@ -20,7 +20,9 @@
 #include <time.h>
 
 #ifndef _WIN32
+
 #include "wincompat.h"
+
 #else
 #include <windows.h>
 #endif
