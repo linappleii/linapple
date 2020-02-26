@@ -44,6 +44,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //#pragma  hdrstop  -- g++ complains on this pragma
 #include "MouseInterface.h"
 
+#include <iostream>
+
 #define  BUTTONTIME       5000
 
 #define  DEVICE_NONE      0
@@ -89,9 +91,21 @@ const UINT PDL_CENTRAL = 127;
 const UINT PDL_MAX = 255;
 
 static BOOL  keydown[JK_MAX] = {FALSE};
+/*
 static POINT keyvalue[9] = {{PDL_MIN,PDL_MAX},    {PDL_CENTRAL,PDL_MAX},    {PDL_MAX,PDL_MAX},
                             {PDL_MIN,PDL_CENTRAL},{PDL_CENTRAL,PDL_CENTRAL},{PDL_MAX,PDL_CENTRAL},
                             {PDL_MIN,PDL_MIN},    {PDL_CENTRAL,PDL_MIN},    {PDL_MAX,PDL_MIN}};
+*/
+const INT PDL_SMAX = 127;
+const INT PDL_SCENTRAL = 0;
+const INT PDL_SMIN = -127;
+
+static POINT keyvalue[9] = {
+  {PDL_SMIN,PDL_SMAX},    {PDL_SCENTRAL,PDL_SMAX},    {PDL_SMAX,PDL_SMAX},
+  {PDL_SMIN,PDL_SCENTRAL},{PDL_SCENTRAL,PDL_SCENTRAL},{PDL_SMAX,PDL_SCENTRAL},
+  {PDL_SMIN,PDL_SMIN},    {PDL_SCENTRAL,PDL_SMIN},    {PDL_SMAX,PDL_SMIN}
+};
+
 
 static DWORD buttonlatch[3] = {0,0,0};
 static BOOL  joybutton[3]   = {0,0,0};
@@ -326,19 +340,28 @@ BOOL JoyProcessKey (int virtkey, BOOL extended, BOOL down, BOOL autorep)
     else
     {
       switch (virtkey)
-      {//Here VK_PRIOR means “Page Up”, VK_NEXT is “Page Down”
+      {
+        case SDLK_KP1:
         case SDLK_END:       keydown[ 0] = down;  break;
+        case SDLK_KP2:
         case SDLK_DOWN:      keydown[ 1] = down;  break;
+        case SDLK_KP3:
         case SDLK_PAGEDOWN:  keydown[ 2] = down;  break;
+        case SDLK_KP4:
         case SDLK_LEFT:      keydown[ 3] = down;  break;
-        case SDLK_CLEAR:     keydown[ 4] = down;  break; // where is that clear key???? I don't have one! --bb
+        case SDLK_KP5:
+        case SDLK_CLEAR:     keydown[ 4] = down;  break;
+        case SDLK_KP6:
         case SDLK_RIGHT:     keydown[ 5] = down;  break;
+        case SDLK_KP7:
         case SDLK_HOME:      keydown[ 6] = down;  break;
+        case SDLK_KP8:
         case SDLK_UP:        keydown[ 7] = down;  break;
+        case SDLK_KP9:
         case SDLK_PAGEUP:    keydown[ 8] = down;  break;
-        case SDLK_KP0:       keydown[ 9] = down;  break;  // Button #0
+        case SDLK_KP0:
         case SDLK_INSERT:    keydown[ 9] = down;  break;  // Button #0
-        case SDLK_KP_PERIOD: keydown[10] = down;  break;  // Button #1
+        case SDLK_KP_PERIOD:
         case SDLK_DELETE:    keydown[10] = down;  break;  // Button #1
         default:             keychange = 0;       break;
       }
@@ -349,62 +372,62 @@ BOOL JoyProcessKey (int virtkey, BOOL extended, BOOL down, BOOL autorep)
 
   if (keychange)
   {
+    // Is it a joystick button 0 or 1 (open-apple or solid apple)?
     if ((virtkey == SDLK_KP0) || (virtkey == SDLK_INSERT))
     {
-    if(down)
-    {
-      if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
+      // It's a joystick button...
+      if(down)
       {
-              buttonlatch[0] = BUTTONTIME;
+        if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
+        {
+          buttonlatch[0] = BUTTONTIME;
+        }
+        else if(joyinfo[joytype[1]].device != DEVICE_NONE)
+        {
+          buttonlatch[2] = BUTTONTIME;
+          buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
+        }
       }
-      else if(joyinfo[joytype[1]].device != DEVICE_NONE)
-      {
-            buttonlatch[2] = BUTTONTIME;
-            buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
-      }
-    }
     }
     else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE))
     {
+      // It is joystick button pressed from keypad "." or "delete"...
       if(down)
       {
-          if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
-    buttonlatch[1] = BUTTONTIME;
+        if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
+          buttonlatch[1] = BUTTONTIME;
       }
     }
     else if ((down && !autorep) || (nCenteringType == MODE_CENTERING))
     {
-      int xkeys  = 0;
-      int ykeys  = 0;
-      int xtotal = 0;
-      int ytotal = 0;
-      int keynum = 0;
-      while (keynum < 9)
+      // It is the keypad direction keys 0-9; calculate quantitized
+      // PDL(0) and PDL(1) values by taking the mean.
+      int xsum = 0;
+      int ysum = 0;
+      int key_idx = 0;
+      int keydown_count = 0;
+      // Get the sum
+      while (key_idx < 9)
       {
-        if (keydown[keynum])
-  {
-          if ((keynum % 3) != 1)
-    {
-            xkeys++;
-            xtotal += keyvalue[keynum].x;
-          }
-          if ((keynum / 3) != 1)
-    {
-            ykeys++;
-            ytotal += keyvalue[keynum].y;
-          }
+        if (keydown[key_idx])
+        {
+          keydown_count++;
+          xsum += keyvalue[key_idx].x;
+          ysum += keyvalue[key_idx].y;
         }
-        keynum++;
+        key_idx++;
       }
 
-      if (xkeys)
-        xpos[nJoyNum] = xtotal / xkeys;
-      else
-        xpos[nJoyNum] = PDL_CENTRAL+g_nPdlTrimX;
-      if (ykeys)
-        ypos[nJoyNum] = ytotal / ykeys;
-      else
-        ypos[nJoyNum] = PDL_CENTRAL+g_nPdlTrimY;
+      if (keydown_count) {
+        // Get the x mean from the sum
+        xpos[nJoyNum] = (xsum / keydown_count) + PDL_CENTRAL;
+        ypos[nJoyNum] = (ysum / keydown_count) + PDL_CENTRAL;
+      } else {
+        // Can this ever happen?  Yes, in a key-up.
+        // Example: was pressing and holding "4" to go left, let up "4" key.
+        xpos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimX;
+        ypos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimY;
+      }
     }
   }
 
@@ -477,8 +500,9 @@ BYTE /*__stdcall*/ JoyReadPosition (WORD programcounter, WORD address, BYTE, BYT
   ULONG nPdlPos = (address & 1) ? ypos[nJoyNum] : xpos[nJoyNum];
 
   // This is from KEGS. It helps games like Championship Lode Runner & Boulderdash
-  if(nPdlPos >= 255)
-    nPdlPos = 280;
+  // GPH: Taking this out.   It's illogical and this is an 8-bit emulator, not a IIGS
+  //if(nPdlPos >= 255)
+  //  nPdlPos = 280;
 
   BOOL nPdlCntrActive = g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (unsigned __int64) ((double)nPdlPos * PDL_CNTR_INTERVAL));
 
