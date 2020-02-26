@@ -353,8 +353,8 @@ enum DebugColors_e {
   BG_SYMBOLS_2, FG_SYMBOLS_ADDRESS, // default same as FG_DISASM_ADDRESS
   FG_SYMBOLS_NAME,    // default same as FG_DISASM_SYMBOL
 
-  BG_SOURCE_TITLE, FG_SOURCE_TITLE, BG_SOURCE_1        // odd
-  BG_SOURCE_2        // even
+  BG_SOURCE_TITLE, FG_SOURCE_TITLE, BG_SOURCE_1,        // odd
+  BG_SOURCE_2,        // even
   FG_SOURCE, NUM_COLORS
 };
 
@@ -515,7 +515,7 @@ enum Commands_e {
   CMD_MEMORY_LOAD,
   CMD_MEMORY_MOVE,
   CMD_MEMORY_SAVE,
-  CMD_MEMORY_SEARCH
+  CMD_MEMORY_SEARCH,
   CMD_MEMORY_SEARCH_HEX,
   CMD_MEMORY_FILL,
   // Output
@@ -1195,7 +1195,7 @@ enum ArgToken_e // Arg Token Type
   TOKEN_PIPE,         // |
   TOKEN_PLUS,         // + Delta  Argument1 += Argument2
   TOKEN_QUOTE_SINGLE, // '
-  TOKEN_QUOTE_DOUBLE // "
+  TOKEN_QUOTE_DOUBLE, // "
   TOKEN_SEMI,         // ; Command Seperator
   TOKEN_SPACE,        //   Token Delimiter
   TOKEN_STAR,         // *
