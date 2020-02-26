@@ -39,14 +39,14 @@ static char g_szSaveStateFilename[MAX_PATH] = {0};
 
 //-----------------------------------------------------------------------------
 
-char* Snapshot_GetFilename()
+char *Snapshot_GetFilename()
 {
   return g_szSaveStateFilename;
 }
 
-void Snapshot_SetFilename(char* pszFilename)
+void Snapshot_SetFilename(char *pszFilename)
 {
-  if(*pszFilename)
+  if (*pszFilename)
     strcpy(g_szSaveStateFilename, (const char *) pszFilename);
   else
     strcpy(g_szSaveStateFilename, DEFAULT_SNAPSHOT_NAME);
@@ -58,61 +58,53 @@ void Snapshot_LoadState()
 {
   char szMessage[32 + MAX_PATH];
 
-  APPLEWIN_SNAPSHOT* pSS = (APPLEWIN_SNAPSHOT*) new char[sizeof(APPLEWIN_SNAPSHOT)];
+  APPLEWIN_SNAPSHOT *pSS = (APPLEWIN_SNAPSHOT * )
+  new char[sizeof(APPLEWIN_SNAPSHOT)];
 
-  try
-  {
-    if(pSS == NULL)
-      throw(0);
+  try {
+    if (pSS == NULL)
+      throw (0);
 
     memset(pSS, 0, sizeof(APPLEWIN_SNAPSHOT));
 
     //
 
-/*    HANDLE hFile = CreateFile(  g_szSaveStateFilename,
-                  GENERIC_READ,
-                  0,
-                  NULL,
-                  OPEN_EXISTING,
-                  FILE_ATTRIBUTE_NORMAL,
-                  NULL);*/
-    HANDLE hFile = (FILE*)fopen(g_szSaveStateFilename, "rb");
+    /*    HANDLE hFile = CreateFile(  g_szSaveStateFilename,
+                      GENERIC_READ,
+                      0,
+                      NULL,
+                      OPEN_EXISTING,
+                      FILE_ATTRIBUTE_NORMAL,
+                      NULL);*/
+    HANDLE hFile = (FILE *) fopen(g_szSaveStateFilename, "rb");
 
-    if(hFile == INVALID_HANDLE_VALUE)
-    {
+    if (hFile == INVALID_HANDLE_VALUE) {
       strcpy(szMessage, "File not found: ");
       strcpy(szMessage + strlen(szMessage), g_szSaveStateFilename);
-      throw(0);
+      throw (0);
     }
 
     DWORD dwBytesRead;
-    BOOL bRes = ReadFile(  hFile,
-                pSS,
-                sizeof(APPLEWIN_SNAPSHOT),
-                &dwBytesRead,
-                NULL);
+    BOOL bRes = ReadFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesRead, NULL);
 
     CloseHandle(hFile);
 
-    if(!bRes || (dwBytesRead != sizeof(APPLEWIN_SNAPSHOT)))
-    {
+    if (!bRes || (dwBytesRead != sizeof(APPLEWIN_SNAPSHOT))) {
       // File size wrong: probably because of version mismatch or corrupt file
       strcpy(szMessage, "File size mismatch");
-      throw(0);
+      throw (0);
     }
 
-    if(pSS->Hdr.dwTag != (DWORD) AW_SS_TAG)
-    {
+    if (pSS->Hdr.dwTag != (DWORD) AW_SS_TAG) {
       strcpy(szMessage, "File corrupt");
-      throw(0);
+      throw (0);
     }
 
-/* Let it be any version, never mind it! ^_^ */
-     if(pSS->Hdr.dwVersion != MAKE_VERSION(1,0,0,1))
-     {
-       strcpy(szMessage, "Version mismatch");
-       throw(0);
-     }
+    /* Let it be any version, never mind it! ^_^ */
+    if (pSS->Hdr.dwVersion != MAKE_VERSION(1, 0, 0, 1)) {
+      strcpy(szMessage, "Version mismatch");
+      throw (0);
+    }
 
     // TO DO: Verify checksum
 
@@ -155,26 +147,24 @@ void Snapshot_LoadState()
     DiskSetSnapshot(&pSS->Disk2, 6);
 
     // Hmmm. And SLOT 7 (HDD1 and HDD2)? Where are they??? -- beom beotiger ^_^
-  }
-  catch(int)
-  {
-/*    MessageBox(  g_hFrameWindow,
-          szMessage,
-          TEXT("Load State"),
-          MB_ICONEXCLAMATION | MB_SETFOREGROUND);*/
+  } catch (int) {
+    /*    MessageBox(  g_hFrameWindow,
+              szMessage,
+              TEXT("Load State"),
+              MB_ICONEXCLAMATION | MB_SETFOREGROUND);*/
     fprintf(stderr, "%s\n", szMessage); // instead of wndzoooe messagebox let's use powerful stderr
   }
 
-  delete [] pSS;
+  delete[] pSS;
 }
 
 //-----------------------------------------------------------------------------
 
 void Snapshot_SaveState()
 {
-  APPLEWIN_SNAPSHOT* pSS = (APPLEWIN_SNAPSHOT*) new char[sizeof(APPLEWIN_SNAPSHOT)];
-  if(pSS == NULL)
-  {
+  APPLEWIN_SNAPSHOT *pSS = (APPLEWIN_SNAPSHOT * )
+  new char[sizeof(APPLEWIN_SNAPSHOT)];
+  if (pSS == NULL) {
     // To do
     return;
   }
@@ -182,8 +172,8 @@ void Snapshot_SaveState()
   memset(pSS, 0, sizeof(APPLEWIN_SNAPSHOT));
 
   pSS->Hdr.dwTag = AW_SS_TAG;
-  pSS->Hdr.dwVersion = MAKE_VERSION(1,0,0,1);
-//  pSS->Hdr.dwVersion = LINAPPLE_VERSION; //defined in AppleWin.h
+  pSS->Hdr.dwVersion = MAKE_VERSION(1, 0, 0, 1);
+  //  pSS->Hdr.dwVersion = LINAPPLE_VERSION; //defined in AppleWin.h
   pSS->Hdr.dwChecksum = 0;  // TO DO
 
   //
@@ -191,8 +181,8 @@ void Snapshot_SaveState()
   //
 
   pSS->Apple2Unit.UnitHdr.dwLength = sizeof(SS_APPLE2_Unit);
-  pSS->Apple2Unit.UnitHdr.dwVersion = MAKE_VERSION(1,0,0,0);
-//  pSS->Apple2Unit.UnitHdr.dwVersion = LINAPPLE_VERSION;
+  pSS->Apple2Unit.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
+  //  pSS->Apple2Unit.UnitHdr.dwVersion = LINAPPLE_VERSION;
 
   CpuGetSnapshot(&pSS->Apple2Unit.CPU6502);
   sg_SSC.CommGetSnapshot(&pSS->Apple2Unit.Comms);
@@ -205,21 +195,21 @@ void Snapshot_SaveState()
   //
   // Slot1: Empty
   pSS->Empty1.Hdr.UnitHdr.dwLength = sizeof(SS_CARD_EMPTY);
-  pSS->Empty1.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1,0,0,0);
+  pSS->Empty1.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
   pSS->Empty1.Hdr.dwSlot = 1;
   pSS->Empty1.Hdr.dwType = CT_Empty;
 
   //
   // Slot2: Empty
   pSS->Empty2.Hdr.UnitHdr.dwLength = sizeof(SS_CARD_EMPTY);
-  pSS->Empty2.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1,0,0,0);
+  pSS->Empty2.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
   pSS->Empty2.Hdr.dwSlot = 2;
   pSS->Empty2.Hdr.dwType = CT_Empty;
 
   //
   // Slot3: Empty
   pSS->Empty3.Hdr.UnitHdr.dwLength = sizeof(SS_CARD_EMPTY);
-  pSS->Empty3.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1,0,0,0);
+  pSS->Empty3.Hdr.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
   pSS->Empty3.Hdr.dwSlot = 3;
   pSS->Empty3.Hdr.dwType = CT_Empty;
 
@@ -237,41 +227,34 @@ void Snapshot_SaveState()
 
   //
 
-//   HANDLE hFile = CreateFile(  g_szSaveStateFilename,
-//                 GENERIC_WRITE,
-//                 0,
-//                 NULL,
-//                 CREATE_ALWAYS,
-//                 FILE_ATTRIBUTE_NORMAL,
-//                 NULL);
+  //   HANDLE hFile = CreateFile(  g_szSaveStateFilename,
+  //                 GENERIC_WRITE,
+  //                 0,
+  //                 NULL,
+  //                 CREATE_ALWAYS,
+  //                 FILE_ATTRIBUTE_NORMAL,
+  //                 NULL);
   HANDLE hFile = fopen(g_szSaveStateFilename, "wb");
 
-//  DWORD dwError = GetLastError();
-//  _ASSERT((dwError == 0) || (dwError == ERROR_ALREADY_EXISTS));
+  //  DWORD dwError = GetLastError();
+  //  _ASSERT((dwError == 0) || (dwError == ERROR_ALREADY_EXISTS));
 
-  if(hFile != INVALID_HANDLE_VALUE)
-  {
+  if (hFile != INVALID_HANDLE_VALUE) {
     DWORD dwBytesWritten;
-    /*BOOL bRes =*/ WriteFile(  hFile,
-                pSS,
-                sizeof(APPLEWIN_SNAPSHOT),
-                &dwBytesWritten,
-                NULL);
+    /*BOOL bRes =*/ WriteFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesWritten, NULL);
 
-//    if(!bRes || (dwBytesWritten != sizeof(APPLEWIN_SNAPSHOT)))
-//      dwError = GetLastError();
+    //    if(!bRes || (dwBytesWritten != sizeof(APPLEWIN_SNAPSHOT)))
+    //      dwError = GetLastError();
 
     CloseHandle(hFile);
-  }
-  else
-  {
-//    dwError = GetLastError();
+  } else {
+    //    dwError = GetLastError();
     ; //just do nothing
   }
 
-//  _ASSERT((dwError == 0) || (dwError == ERROR_ALREADY_EXISTS));
+  //  _ASSERT((dwError == 0) || (dwError == ERROR_ALREADY_EXISTS));
 
-  delete [] pSS;
+  delete[] pSS;
 }
 
 //-----------------------------------------------------------------------------
@@ -280,7 +263,7 @@ void Snapshot_Startup()
 {
   static bool bDone = false;
 
-  if(!g_bSaveStateOnExit || bDone)
+  if (!g_bSaveStateOnExit || bDone)
     return;
 
   Snapshot_LoadState();
@@ -292,7 +275,7 @@ void Snapshot_Shutdown()
 {
   static bool bDone = false;
 
-  if(!g_bSaveStateOnExit || bDone)
+  if (!g_bSaveStateOnExit || bDone)
     return;
 
   Snapshot_SaveState();

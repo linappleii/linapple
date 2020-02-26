@@ -7,15 +7,15 @@
   Hooked alerts, to be used instead of SDL alert windows
 */
 
-#ifdef ALERT_HOOKS 
-	// Replacement for a regular alert (with just an OK button)
-	// Returns TRUE if OK clicked, FALSE otherwise
-	int HookedAlertNotice(const char* szMessage);
+#ifdef ALERT_HOOKS
+// Replacement for a regular alert (with just an OK button)
+// Returns TRUE if OK clicked, FALSE otherwise
+int HookedAlertNotice(const char* szMessage);
 
-	// Replacement for a query alert (OK and Cancel buttons)
-	// Returns TRUE if OK clicked, FALSE otherwise
-	int HookedAlertQuery(const char* szMessage);
+// Replacement for a query alert (OK and Cancel buttons)
+// Returns TRUE if OK clicked, FALSE otherwise
+int HookedAlertQuery(const char* szMessage);
 
-	// Runtime switch to activate/deactivate alert hooks
-	extern bool useAlertHooks;
+// Runtime switch to activate/deactivate alert hooks
+extern bool useAlertHooks;
 #endif

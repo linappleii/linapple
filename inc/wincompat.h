@@ -94,29 +94,29 @@ typedef int INT32;
 #define CONST               const
 #endif
 
-typedef unsigned /*long*/int       DWORD;
-typedef int                 BOOL;
-typedef unsigned char       BYTE;
-typedef unsigned short      WORD;
-typedef float               FLOAT;
-typedef FLOAT               *PFLOAT;
-typedef BOOL near           *PBOOL;
-typedef BOOL far            *LPBOOL;
-typedef BYTE near           *PBYTE;
-typedef BYTE far            *LPBYTE;
-typedef int near            *PINT;
-typedef int far             *LPINT;
-typedef WORD near           *PWORD;
-typedef WORD far            *LPWORD;
-typedef long far            *LPLONG;
-typedef DWORD near          *PDWORD;
-typedef DWORD far           *LPDWORD;
-typedef void far            *LPVOID;
-typedef CONST void far      *LPCVOID;
+typedef unsigned /*long*/int DWORD;
+typedef int BOOL;
+typedef unsigned char BYTE;
+typedef unsigned short WORD;
+typedef float FLOAT;
+typedef FLOAT *PFLOAT;
+typedef BOOL near *PBOOL;
+typedef BOOL far *LPBOOL;
+typedef BYTE near *PBYTE;
+typedef BYTE far *LPBYTE;
+typedef int near *PINT;
+typedef int far *LPINT;
+typedef WORD near *PWORD;
+typedef WORD far *LPWORD;
+typedef long far *LPLONG;
+typedef DWORD near *PDWORD;
+typedef DWORD far *LPDWORD;
+typedef void far *LPVOID;
+typedef CONST void far *LPCVOID;
 
-typedef int                 INT;
-typedef unsigned int        UINT;
-typedef unsigned int        *PUINT;
+typedef int INT;
+typedef unsigned int UINT;
+typedef unsigned int *PUINT;
 
 //#define LPSTR        (char*)
 
@@ -128,8 +128,8 @@ typedef unsigned int        *PUINT;
 #define LOBYTE(w)           ((BYTE)(w))
 #define HIBYTE(w)           ((BYTE)(((WORD)(w) >> 8) & 0xFF))
 
-typedef DWORD   COLORREF;
-typedef DWORD   *LPCOLORREF;
+typedef DWORD COLORREF;
+typedef DWORD *LPCOLORREF;
 
 
 ////////////////////////// WINNT ///////////////////////////////
@@ -153,7 +153,6 @@ typedef WCHAR *LPWSTR, *PWSTR;
 typedef CONST WCHAR *LPCWSTR, *PCWSTR;
 
 
-
 //
 // ANSI (Multi-byte Character) types
 //
@@ -173,23 +172,22 @@ typedef LPWSTR LP;
 
 #ifndef _TCHAR_DEFINED
 typedef char TCHAR, *PTCHAR;
-typedef unsigned char TBYTE , *PTBYTE ;
+typedef unsigned char TBYTE, *PTBYTE;
 #define _TCHAR_DEFINED
 #endif /* !_TCHAR_DEFINED */
 
 ////////////////////////////////////////////////////
 typedef struct _OVERLAPPED {
-  DWORD   Internal;
-  DWORD   InternalHigh;
-  DWORD   Offset;
-  DWORD   OffsetHigh;
-  HANDLE  hEvent;
+  DWORD Internal;
+  DWORD InternalHigh;
+  DWORD Offset;
+  DWORD OffsetHigh;
+  HANDLE hEvent;
 } OVERLAPPED, *LPOVERLAPPED;
 
-typedef struct tagPOINT
-{
-  LONG  x;
-  LONG  y;
+typedef struct tagPOINT {
+  LONG x;
+  LONG y;
 } POINT, *PPOINT, NEAR *NPPOINT, FAR *LPPOINT;
 
 // TCHAR support
@@ -235,11 +233,11 @@ typedef struct tagPOINT
 #define _tcslen     strlen
 #define _tcsxfrm    strxfrm
 
-#define MoveMemory(Destination,Source,Length) memmove((Destination),(Source),(Length))
-#define FillMemory(Destination,Length,Fill) memset((Destination),(Fill),(Length))
-#define EqualMemory(Destination,Source,Length) (!memcmp((Destination),(Source),(Length)))
-#define CopyMemory(Destination,Source,Length) memcpy((Destination),(Source),(Length))
-#define ZeroMemory(Destination,Length) memset((Destination),0,(Length))
+#define MoveMemory(Destination, Source, Length) memmove((Destination),(Source),(Length))
+#define FillMemory(Destination, Length, Fill) memset((Destination),(Fill),(Length))
+#define EqualMemory(Destination, Source, Length) (!memcmp((Destination),(Source),(Length)))
+#define CopyMemory(Destination, Source, Length) memcpy((Destination),(Source),(Length))
+#define ZeroMemory(Destination, Length) memset((Destination),0,(Length))
 
 #define GetTickCount SDL_GetTicks
 #define _ASSERT  assert
