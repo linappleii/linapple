@@ -5,7 +5,14 @@ VERSION     := 2.1.1
 
 # Where does this get installed
 PREFIX      := /usr/local
-ASSET_DIR   := $(PREFIX)/share/$(PACKAGE)
+
+# Where assets (font file, etc) are read from
+# (You can build a version that loads assets from the source tree with: ASSET_DIR=`pwd`/res make )
+ASSET_DIR   ?= $(PREFIX)/share/$(PACKAGE)
+
+# Where default versions of resource files (linapple.conf, etc) are obtained from initially
+# (You can build a version that copies resources from the source tree with: RESOURCE_INIT_DIR=`pwd`/res make )
+RESOURCE_INIT_DIR ?= /etc/linapple
 
 #Compiler and Linker
 CC          := g++
@@ -31,24 +38,33 @@ INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
 SDL_CONFIG ?= sdl-config
 SDL_CFLAGS = $(shell $(SDL_CONFIG) --cflags)
 SDL_LIBS = $(shell $(SDL_CONFIG) --libs)
+SDL_LIBS +=  $(shell pkg-config SDL_image --libs)
 
 CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
-#PROFILING
-#CFLAGS      := -Wall -O0 -pg -ggdb -ansi -c
-#LFLAGS      := -pg
-#DEBUGGING
-#CFLAGS      := -Wall -O0 -ggdb -ansi -c -finstrument-functions
-#OPTIMIZED
-CFLAGS      := -Wall -O3 -ansi -c -DASSET_DIR=\"$(ASSET_DIR)\"
-CFLAGS 		+= $(SDL_CFLAGS)
-CFLAGS 		+= $(CURL_CFLAGS)
+# By default, optimize the executable.
+CFLAGS := -Wall -O3 -ansi -c
 
-LIB 				:= $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
-INC         := -I$(INCDIR) -I/usr/local/include
-INCDEP      := -I$(INCDIR)
+ifdef PROFILING
+CFLAGS := -Wall -O0 -pg -ggdb -ansi -c
+LFLAGS := -pg
+endif
+
+ifdef DEBUG
+CFLAGS := -Wall -O0 -ggdb -ansi -c -finstrument-functions
+endif
+
+CFLAGS += -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\"
+CFLAGS += $(SDL_CFLAGS)
+CFLAGS += $(CURL_CFLAGS)
+# Do not complain about XPMs
+CFLAGS += -Wno-write-strings
+
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
+INC    := -I$(INCDIR) -I/usr/local/include
+INCDEP := -I$(INCDIR)
 
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
@@ -56,16 +72,12 @@ INCDEP      := -I$(INCDIR)
 SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 INSTASSETS  := \
-	charset40.bmp \
-	font.bmp \
-	icon.bmp \
-	splash.bmp \
 	Master.dsk
 CONFFILES   := \
 	linapple.conf
 
 #Default Make
-all: resources $(TARGETDIR)/$(TARGET)
+all: directories $(TARGETDIR)/$(TARGET)
 
 #Remake
 remake: cleaner all
