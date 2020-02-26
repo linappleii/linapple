@@ -8,4 +8,7 @@
   #endif
 #endif
 
+extern void LogInitialize();
 extern void LogOutput(LPCTSTR format, ...);
+extern void LogDestroy();
+
