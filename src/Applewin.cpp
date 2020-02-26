@@ -85,6 +85,7 @@ DWORD emulmsec = 0;
 static DWORD emulmsec_frac = 0;
 bool g_bFullSpeed = false;
 bool hddenabled = false;
+static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 // Win32
 //HINSTANCE g_hInstance          = (HINSTANCE)0;
@@ -261,8 +262,10 @@ void ContinueExecution()
         if ((!g_bFullSpeed) ||
           (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25)))
         {
-          VideoRefreshScreen();
-          lasttime = currtime;
+          if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
+            VideoRefreshScreen();
+            lasttime = currtime;
+          }
         }
         screenupdated = 1;
       }
@@ -302,6 +305,23 @@ void ContinueExecution()
     }
 #endif
   }
+}
+
+// SetBudgetVideo
+// This sets the video to only update every 12 60Hz frames for
+// computers with limited graphics hardware.
+// Entry: BudgetVideo on/off
+void SetBudgetVideo(bool budgetVideo)
+{
+  g_bBudgetVideo = budgetVideo;
+}
+
+// GetBudgetVideo
+// This returns the current BudgetVideo status
+// Exit: BudgetVideo
+bool GetBudgetVideo()
+{
+  return g_bBudgetVideo;
 }
 
 //===========================================================================
