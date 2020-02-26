@@ -30,23 +30,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* And KREZ */
 
-// for usleep
-#include <unistd.h>
-
-#include "stdafx.h"
-
-#include "asset.h"
-//#pragma  hdrstop
-#include "MouseInterface.h"
-//#include "..\resource\resource.h"
-
+#include <iostream>
 // for stat in FrameSaveBMP function
 #include <sys/stat.h>
+// for usleep
+#include <unistd.h>
+// for embedded XPMs
+#include <SDL_image.h>
 
-#include <iostream>
+#include "stdafx.h"
+#include "asset.h"
+#include "MouseInterface.h"
 
 #define ENABLE_MENU 0
 
+SDL_Surface     *apple_icon;	// icon
 SDL_Surface * screen;  // our main screen
 // rects for screen stretch if needed
 SDL_Rect origRect;
@@ -489,33 +487,34 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 {
   // on pressing F1 button shows help screen
 
-  const char * HelpStrings[] = {
+  const int MAX_LINES = 25;
+
+  const char * HelpStrings[MAX_LINES] = {
     "Welcome to LinApple - Apple][ emulator for Linux!",
     "Conf file is linapple.conf in current directory by default",
     "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
-    " F1 - This help",
-    " Ctrl+F2 - Cold reset",
-    " Shift+F2 - Reload conf file and restart",
-    " F3, F4 - Choose an image file name for floppy disk",
-    "             in Slot 6 drive 1 or 2 respectively",
-    " Shift+F3, Shift+F4 - The same thing for Apple hard disks",
-    "                         (in Slot 7)",
-    " F5 - Swap drives for Slot 6",
-    " F6 - Toggle fullscreen mode",
-    " F7 - Reserved for Debugger!",
-    " F8 - Save current screen as a .bmp file",
-    " Shift+F8 - Save settings changable at runtime in conf file",
-    " F9 - Cycle through various video modes",
-    " F10 - Quit emulator",
-    " F11 - Save current state to file, Alt+F11 - quick save",
-    " F12 - Reload it from file, Alt+F12 - quick load",
-    " Ctrl+F12 - Hot reset",
-    "  Pause - Pause emulator",
-    "  Scroll Lock - Toggle full speed",
-    "Num pad keys:",
-    "  Grey + - Speed up emulator",
-    "  Grey - - Speed it down",
-    "  Grey * - Normal speed"
+    "       F1 - Show help screen",
+    "  Ctrl+F2 - Cold reboot (Power off and back on.)",
+    " Shift+F2 - Reload configuration file and cold reboot",
+    " Ctrl+F10 - Hot Reset (Control+Reset)",
+    "      F12 - Quit",
+    "",
+    "       F3 - Load floppy disk 1 (Slot 6, Drive 1)",
+    "       F4 - Load floppy disk 2 (Slot 6, Drive 2)",
+    "       F5 - Swap floppy disks",
+    " Shift+F3 - Attach hard drive 1 (Slot 7, Drive 1)",
+    " Shift+F4 - Attach hard drive 2 (Slot 7, Drive 2)",
+    "",
+    "       F6 - Toggle fullscreen mode",
+    "       F8 - Take screenshot",
+    " Shift+F8 - Save runtime changes to configuration file",
+    "       F9 - Cycle through various video modes",
+    "  F10/F11 - Load/save snapshot file",
+    "",
+    "       Pause - Pause/resume emulator",
+    " Scroll Lock - Toggle full speed",
+    "    Numpad * - Normal speed",
+    "  Numpad +/- - Increase/Decrease speed",
   };
 
   //   const int PositionsY[] = { 7, 15, 26 };
@@ -554,8 +553,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   font_print_centered(sx/2, int(30*facy), (char*)HelpStrings[2], screen, 1.2*facx, 1.0*facy);
 
   int Help_TopX = int(45*facy);
-  int i;
-  for(i =  3; i < 25; i++)
+  for(int i = 3; i < MAX_LINES; i++)
     font_print(4, Help_TopX + (i - 3) * 15 * facy, (char*)HelpStrings[i], screen, 1.5*facx, 1.5*facy); // show keys
 
   // show frames
@@ -564,17 +562,15 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
   rectangle(screen, 1, 1, /*SCREEN_WIDTH*/g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
-  if(assets->icon != NULL) {  // display Apple logo
-    tempSurface = SDL_DisplayFormat(assets->icon);
-    SDL_Rect logo, scrr;
-    logo.x = logo.y = 0;
-    logo.w = tempSurface->w;
-    logo.h = tempSurface->h;
-    scrr.x = int(460*facx);
-    scrr.y = int(270*facy);
-    scrr.w = scrr.h = int(100*facy);
-    SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
-  }
+  tempSurface = SDL_DisplayFormat(assets->icon);
+  SDL_Rect logo, scrr;
+  logo.x = logo.y = 0;
+  logo.w = tempSurface->w;
+  logo.h = tempSurface->h;
+  scrr.x = int(460*facx);
+  scrr.y = int(270*facy);
+  scrr.w = scrr.h = int(100*facy);
+  SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
 
   SDL_Flip(screen);  // show the screen
   SDL_Delay(1000);  // wait 1 second to be not too fast
@@ -1231,6 +1227,17 @@ int FrameCreateWindow ()
   return 0;
 }
 
+void SetIcon()
+{
+  /* Black is the transparency colour.
+     Part of the logo seems to use it !? */
+  Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
+  SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
+
+  /* No need to pass a mask given the above. */
+  SDL_WM_SetIcon(assets->icon, NULL);
+}
+
 int InitSDL()
 {
   // initialize SDL subsystems, return 0 if all OK, else return 1
@@ -1238,25 +1245,12 @@ int InitSDL()
     fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
     return 1;
   }//if
-  //////////////////////////////////////////////////////////////////////
+
   // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
-  //  Uint32          colorkey;
-
-  /*  assets->icon = SDL_CreateRGBSurfaceFrom((void*)Apple_icon, 32, 32, 8, 32, 0, 0, 0, 0);
-      Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
-      SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
-      SDL_WM_SetIcon(assets->icon, NULL);
-      printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);*/
-
-  if(assets->icon != NULL) {
-    Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
-    SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
-    SDL_WM_SetIcon(assets->icon, NULL);
-    //    printf("Icon was set! Width=%d, height=%d\n", assets->icon->w, assets->icon->h);
-  }
-  //////////////////////////////////////////////////////////////////////
+  SetIcon();
   return 0;
 }
+
 //===========================================================================
 
 /*HDC FrameGetDC () {

@@ -32,11 +32,13 @@
    into the general blitting mechanism.
 */
 
-//static unsigned char copy_row[4096];
+// For embedded XPMs.
+#include <SDL_image.h>
 
 #include "stdafx.h"
-
 #include "asset.h"
+
+//static unsigned char copy_row[4096];
 
 #define DEFINE_COPY_ROW(name, type)      \
 void name(type *src, int src_w, type *dst, int dst_w)  \
@@ -448,11 +450,7 @@ SDL_Surface *font_sfc = NULL;  // used for font
 
 bool fonts_initialization(void)
 {
-  if(!assets->font) {
-	  return false;
-  }
   font_sfc = SDL_DisplayFormat(assets->font);
-
   /* Transparant color is BLACK: */
   SDL_SetColorKey(font_sfc,SDL_SRCCOLORKEY,SDL_MapRGB(font_sfc->format,0,0,0));
 

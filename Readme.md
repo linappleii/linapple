@@ -13,17 +13,12 @@ currently resides.
 
 ## Command Line Switches
 
-* -d1: Specifies a disk image to load into FDD1 (drive 0)
-* -d2: Specifies a disk image to load into FDD1 (drive 1)
-* -f: Specifies that the emulator should run in fullscreen mode
-* -b : Specifies that benchmark should be loaded
-* -l: Logs output to a file called AppleWin.log
-* -m: Disables direct sound
-* -autoboot: Boots the system automatically, rather than displaying the splash screen
-
-When specifying disk images, the full path should be used. e.g. `linapple -d1 /home/myname/disks/MYSTHOUS.DSK`
-
-Currently, only the options to specify disks start in fullscreen, and auto boot have been tested.
+* `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
+* `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
+* `-b|--autoboot`: Boots the system automatically, rather than displaying the splash screen
+* `-f`: Specifies that the emulator should run in fullscreen mode
+* `-l`: Logs output to a file called AppleWin.log (untested)
+* `--benchmark`: Specifies that benchmark should be loaded (untested)
 
 ## Using LinApple
 
@@ -78,7 +73,7 @@ Execute the Applesoft BASIC or Integer BASIC file.
 
 #### BRUN file
 
-Execute a binary program file.
+Execute the binary file.
 
 #### EXEC file
 
@@ -86,29 +81,62 @@ Execute a text file as though it was typed from the keyboard.
 
 #### LOAD file
 
-Load an Applesoft or Integer BASIC file into memory.
+Load a file, usually a text file, into memory.
 
 #### LIST
 
-List the current BASIC program in memory.
+List the current program in memory.
 
-## Other
-This fork is far from perfect, and has not been tested extensively. The main purpose is to allow users to set up custom
-shell scripts which they may use to automatically load certain Apple ][ games or programs with the click of a button.
-While this need is met by this fork, extensive testing has not been performed to ensure new bugs were not introduced by
-these changes.
 
-A simple script can be set up to run an Apple ][ game or program by combining the -d1, -f, and -autoboot options, for example:
+## Configuration
+
+LinApple has several configuration options. Most values are loaded from
+[INI files](https://en.wikipedia.org/wiki/INI_file) and `linapple.conf.sample`
+has all possible configuration options along with documentation on each. There
+are also command-line switches and environment variables that change the
+behavior of LinApple.
+
+### Load Order of Configuration Files
+
+1. Default values are initially set by the program.
+2. If the command-line switch `--conf` is used, values are read from the
+   specified file.
+3. Otherwise, values are:
+   1. read from the system-wide configuration files.
+      * These are found in the `$XDG_CONFIG_DIRS` path. On Linux, the file is
+        typically found at `/etc/xdg/linapple/linapple.conf`.
+   2. read from user-specific configuration files.
+      * These are found in the `$XDG_CONFIG_HOME` path. On Linux, the file is
+        typically found at `~/.config/linapple/linapple.conf`.
+
+
+### Environment Variables
+
+LinApple partially conforms to the [XDG Base Directory Specification]().
+
+`XDG_CONFIG_HOME` specifies the location of _"a single base directory relative
+to which user-specific configuration files should be written"_.
+Defaults to `$HOME/.config`.
+
+`XDG_CONFIG_DIRS` specifies the location of _"a set of preference ordered base
+directories relative to which configuration files should be searched"_. Each
+directory is separated by a colon (`:`). Defaults to `/etc/xdg`.
+
+
+[XDG Base Directory Specification]:
+  https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+
+## Examples
+
+To have LinApple start in fullscreen mode and automatically boot the disk
+`example.dsk`, you can open a shell and run:
 
 ```bash
-linapple -d1 /path/to/disk/image -f -autoboot
+$ linapple -d1 example.dsk -f -autoboot
 ```
 
-## Todo
+This command could also be placed in a shell script, which could be started
+from an icon or menu on the desktop.
 
-* Testing is needed to make sure the other command line options are working correctly. Currently, only the -d1, -d2, and
-  -f options have been tested.
-* Extensive testing is needed to ensure that these changes have not inadvertently broken other features of the program.
-  Unfortunately, a test suite did not come with the original code, so we have not been able to test this.
-* Add a command line switch which allows the user to specify different configuration files.
-* Disk writing has serious issues which can be manifest through COPY II+'s Sector Editor.
+_Note: extensive testing has not been performed on all command-line options._

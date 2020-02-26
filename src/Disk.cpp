@@ -507,23 +507,23 @@ int DiskInsert (int drive, LPCTSTR imagefilename, BOOL writeprotected, BOOL crea
   int lf = strlen(imagefilename);
   if(lf > 3 && imagefilename[lf-1] == 'z' && imagefilename[lf-2] == 'g' && imagefilename[lf-3] == '.')
   {// .gz?
-  snprintf(tempdsk, 12, "drive%d.dsk", drive);
-        if (DiskUnGzip((char*)imagefilename, tempdsk)) {
-    writeprotected = 1;
-    createifnecessary = 0;
-    tmp = tempdsk;
-  }
+    snprintf(tempdsk, 12, "drive%d.dsk", drive);
+    if (DiskUnGzip((char*)imagefilename, tempdsk)) {
+      writeprotected = 1;
+      createifnecessary = 0;
+      tmp = tempdsk;
+    }
   }
   else
   if(lf > 4 && imagefilename[lf-1] == 'p' && imagefilename[lf-2] == 'i' && imagefilename[lf-3] == 'z'
               && imagefilename[lf-4] == '.') // .zip?
   {
-  snprintf(tempdsk, 12, "drive%d.dsk", drive);
-        if (DiskUnZip((char*)imagefilename, tempdsk)) {
-    writeprotected = 1;
-    createifnecessary = 0;
-    tmp = tempdsk;
-  }
+    snprintf(tempdsk, 12, "drive%d.dsk", drive);
+    if (DiskUnZip((char*)imagefilename, tempdsk)) {
+      writeprotected = 1;
+      createifnecessary = 0;
+      tmp = tempdsk;
+    }
   }
 
   fptr->writeprotected = writeprotected;
@@ -538,6 +538,10 @@ int DiskInsert (int drive, LPCTSTR imagefilename, BOOL writeprotected, BOOL crea
     snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%s - %s", g_pAppTitle, tmp); //
     if(drive == 0) SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
     printf("Disk is inserted. Full name = %s\n", /*g_aFloppyDisk[drive].fullname*/imagefilename);
+  }
+  else
+  {
+    printf("Error %d when inserting disk %s\n", error, imagefilename);
   }
   return error;
 }

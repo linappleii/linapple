@@ -28,12 +28,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+#include <iostream>
+#include <SDL_image.h>
+
 #include "stdafx.h"
 
 #include "asset.h"
 #include "wwrapper.h"
-#include "config.h"
-#include <iostream>
 //#include "stretch.c"  // for SDL_SoftStretch thanx to Sam Lantinga and Tomasz Cejner
 
 //#include "..\resource\resource.h"
@@ -1887,9 +1888,6 @@ BOOL VideoHasRefreshed () {
 
 //===========================================================================
 void VideoInitialize () {
-  Config config;
-  config.ChangeToUserDirectory();
-
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE)VirtualAlloc(NULL,0x10000,MEM_COMMIT,PAGE_READWRITE);
   ZeroMemory(vidlastmem,0x10000);
