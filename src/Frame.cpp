@@ -506,10 +506,9 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         "       F6 - Toggle fullscreen mode", "       F8 - Take screenshot",
                                         " Shift+F8 - Save runtime changes to configuration file",
                                         "       F9 - Cycle through various video modes",
-                                        " Shift+F9 - Budget Video for smoother sound/music",
                                         "  F10/F11 - Load/save snapshot file", "",
                                         "       Pause - Pause/resume emulator", " Scroll Lock - Toggle full speed",
-                                        "    Numpad * - Normal speed", "  Numpad +/- - Increase/Decrease speed",};
+                                        "    Numpad * - Normal speed", "  Numpad +/- - Increase/Decrease speed"};
 
   //   const int PositionsY[] = { 7, 15, 26 };
 

@@ -58,7 +58,7 @@ CURLcode ftp_get(const char *ftp_path, const char *local_path)
 
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
   /* Define our callback to get called when there's data to be written */
-  curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, my_fwrite);
+  //curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, my_fwrite);
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &ftpfile);
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
 
