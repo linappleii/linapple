@@ -13,4 +13,4 @@
 @interface SDLMain : NSObject
 @end
 
-#endif /* _SDLMain_h_ */
+#endif

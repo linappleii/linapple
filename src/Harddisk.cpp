@@ -30,12 +30,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 #include "wwrapper.h"
-
 #include "ftpparse.h"
 #include "DiskFTP.h"
-
-//#pragma  hdrstop
-//#include "resource.h"
 
 /*
 Memory map:
@@ -154,11 +150,10 @@ static HDD g_HardDrive[2] = {0};
 static UINT g_uSlot = 7;
 
 static int HDDStatus = DISK_STATUS_OFF;  // status: 0 - none, 1 - read, 2 - write
-//===========================================================================
+
 int HD_GetStatus(void)
 {
   int result = HDDStatus;
-  //  HDDStatus = DISK_STATUS_OFF;
   return result;
 }
 
@@ -168,58 +163,54 @@ void HD_ResetStatus(void)
 }
 
 
-static void GetImageTitle(LPCTSTR imagefilename, PHDD pHardDrive)
+static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
 {
   TCHAR imagetitle[128];
-  LPCTSTR startpos = imagefilename;
+  LPCTSTR startpos = imageFileName;
 
-  // imagetitle = <FILENAME.EXT>
-  if (_tcsrchr(startpos, FILE_SEPARATOR))
+  if (_tcsrchr(startpos, FILE_SEPARATOR)) {
     startpos = _tcsrchr(startpos, FILE_SEPARATOR) + 1;
+  }
   _tcsncpy(imagetitle, startpos, 127);
   imagetitle[127] = 0;
 
-  // if imagetitle contains a lowercase char, then found=1 (why?)
   BOOL found = 0;
   int loop = 0;
   while (imagetitle[loop] && !found) {
-    if (IsCharLower(imagetitle[loop]))
+    if (IsCharLower(imagetitle[loop])) {
       found = 1;
-    else
+    } else {
       loop++;
+    }
   }
 
-  // commented by me, bb! ^_^
-  //  if ((!found) && (loop > 2))
-  //    CharLowerBuff(imagetitle+1,_tcslen(imagetitle+1));
-
-  // fptr->fullname = <FILENAME.EXT>
   _tcsncpy(pHardDrive->hd_fullname, imagetitle, 127);
   pHardDrive->hd_fullname[127] = 0;
 
   if (imagetitle[0]) {
     LPTSTR dot = imagetitle;
-    if (_tcsrchr(dot, TEXT('.')))
+    if (_tcsrchr(dot, TEXT('.'))) {
       dot = _tcsrchr(dot, TEXT('.'));
-    if (dot > imagetitle)
+    }
+    if (dot > imagetitle) {
       *dot = 0;
+    }
   }
 
-  // fptr->imagename = <FILENAME> (ie. no extension)
   _tcsncpy(pHardDrive->hd_imagename, imagetitle, 15);
   pHardDrive->hd_imagename[15] = 0;
 }
 
 static void NotifyInvalidImage(TCHAR *filename)
 {
-  // TC: TO DO
   printf("HDD: Could not load %s\n", filename);
 }
 
 static void HD_CleanupDrive(int nDrive)
 {
-  if (g_HardDrive[nDrive].hd_file)
+  if (g_HardDrive[nDrive].hd_file) {
     CloseHandle(g_HardDrive[nDrive].hd_file);
+  }
   g_HardDrive[nDrive].hd_imageloaded = false;
   g_HardDrive[nDrive].hd_imagename[0] = 0;
   g_HardDrive[nDrive].hd_fullname[0] = 0;
@@ -227,21 +218,13 @@ static void HD_CleanupDrive(int nDrive)
 
 static BOOL HD_Load_Image(int nDrive, LPCSTR filename)
 {
-  /*  g_HardDrive[nDrive].hd_file = CreateFile(filename,
-      GENERIC_READ | GENERIC_WRITE,
-      FILE_SHARE_READ,
-      (LPSECURITY_ATTRIBUTES)NULL,
-      OPEN_EXISTING,
-      FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS,
-      NULL);*/
-  // TO-DO UnZip and UnGzip hard disks images? Is it needed?
-
   g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
 
-  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE)
+  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE) {
     g_HardDrive[nDrive].hd_imageloaded = false;
-  else
+  } else {
     g_HardDrive[nDrive].hd_imageloaded = true;
+  }
 
   return g_HardDrive[nDrive].hd_imageloaded;
 }
@@ -253,276 +236,240 @@ static LPCTSTR HD_DiskGetName (int nDrive)
 }
 #endif
 
-//===========================================================================
+// Everything below is global
 
-// everything below is global
-
-static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static BYTE HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
 
 static const DWORD HDDRVR_SIZE = 0x100;
 
-bool HD_CardIsEnabled()
-{
+bool HD_CardIsEnabled() {
   return g_bHD_RomLoaded && g_bHD_Enabled;
 }
 
-void HD_SetEnabled(bool bEnabled)
-{
+void HD_SetEnabled(bool bEnabled) {
   if (g_bHD_Enabled == bEnabled)
     return;
 
   g_bHD_Enabled = bEnabled;
 
   LPBYTE pCxRomPeripheral = MemGetCxRomPeripheral();
-  if (pCxRomPeripheral == NULL)  // This will be NULL when called after loading value from Registry
+  if (pCxRomPeripheral == NULL) { // This will be NULL when called after loading value from Registry
     return;
+  }
 
-  if (g_bHD_Enabled)
+  if (g_bHD_Enabled) {
     HD_Load_Rom(pCxRomPeripheral, g_uSlot);
-  else
+  } else {
     memset(pCxRomPeripheral + g_uSlot * 256, 0, HDDRVR_SIZE);
+  }
 
   RegisterIoHandler(g_uSlot, HD_IO_EMUL, HD_IO_EMUL, NULL, NULL, NULL, NULL);
-  //  printf("Hddrvr.bin loaded and registered!\n");
 }
 
-LPCTSTR HD_GetFullName(int nDrive)
-{
+LPCTSTR HD_GetFullName(int nDrive) {
   return g_HardDrive[nDrive].hd_fullname;
 }
 
-VOID HD_Load_Rom(LPBYTE pCxRomPeripheral, UINT uSlot)
-{
+VOID HD_Load_Rom(LPBYTE pCxRomPeripheral, UINT uSlot) {
   if (!g_bHD_Enabled)
     return;
-  //
-  // read resource (HDD firmware)
-  // firmware for HDD
-  // #define IDR_HDDRVR_FW    "Hddrvr.bin"
-  //   char BUFFER[HDDRVR_SIZE];
-  //   FILE * hdfile = NULL;
-  //   hdfile = fopen(IDR_HDDRVR_FW, "rb");
-  //   if(hdfile == NULL) return; // no file?
-  //   int nbytes = fread(BUFFER, 1, HDDRVR_SIZE, hdfile);
-  //   fclose(hdfile);
-  //   if(nbytes != HDDRVR_SIZE) return; // have not read enough?
 
   BYTE *pData = (BYTE *) Hddrvr_dat;  // NB. Don't need to unlock resource - hmmmmmm....... i love linux
-  //   if(pData == NULL)
-  //     return;
 
   g_uSlot = uSlot;
   memcpy(pCxRomPeripheral + uSlot * 256, pData, HDDRVR_SIZE);
   g_bHD_RomLoaded = true;
 }
 
-VOID HD_Cleanup()
-{
+VOID HD_Cleanup() {
   for (int i = DRIVE_1; i < DRIVE_2; i++) {
     HD_CleanupDrive(i);
   }
 }
 
 // pszFilename is not qualified with path
-BOOL HD_InsertDisk2(int nDrive, LPCTSTR pszFilename)
-{
-  if (*pszFilename == 0x00)
+BOOL HD_InsertDisk2(int nDrive, LPCTSTR pszFilename) {
+  if (*pszFilename == 0x00) {
     return false;
-
-  //  char szFullFilename[MAX_PATH];
-
-  //  RegLoadString(TEXT("Preferences"),TEXT("HDV Starting Directory"), 1, szFullFilename, MAX_PATH);
-  //  strcat(szFullFilename, pszFilename);
-
+  }
   return HD_InsertDisk(nDrive, pszFilename);
 }
 
-// imagefilename is qualified with path
-BOOL HD_InsertDisk(int nDrive, LPCTSTR imagefilename)
-{
-  if (*imagefilename == 0x00)
+// imageFileName is qualified with path
+BOOL HD_InsertDisk(int nDrive, LPCTSTR imageFileName) {
+  if (*imageFileName == 0x00) {
     return false;
+  }
 
-  if (g_HardDrive[nDrive].hd_imageloaded)
+  if (g_HardDrive[nDrive].hd_imageloaded) {
     HD_CleanupDrive(nDrive);
+  }
 
-  BOOL result = HD_Load_Image(nDrive, imagefilename);
+  BOOL result = HD_Load_Image(nDrive, imageFileName);
 
-  if (result)
-    GetImageTitle(imagefilename, &g_HardDrive[nDrive]);
-  else
-    NotifyInvalidImage((char *) imagefilename);  // could not load hd image
+  if (result) {
+    GetImageTitle(imageFileName, &g_HardDrive[nDrive]);
+  } else {
+    NotifyInvalidImage((char *) imageFileName);  // could not load hd image
+  }
 
   return result;
 }
 
 void HD_FTP_Select(int nDrive)
 {
-  // Selects HDrive from FTP directoriy
-  static int findex = 0;  // file index will be remembered for current dir
+  // Selects HDrive from FTP directory
+  static int fileIndex = 0;  // file index will be remembered for current dir
   static int backdx = 0;  //reserve
   static int dirdx = 0;  // reserve for dirs
 
   char *filename = NULL;      // given filename
-  char fullpath[MAX_PATH];  // full path for it
-  char tmppath[MAX_PATH];
-  bool isdir;      // if given filename is a directory?
+  char fullPath[MAX_PATH];  // full path for it
+  char tempPath[MAX_PATH];
+  bool isDirectory = true;      // if given filename is a directory?
 
-  findex = backdx;
-  isdir = true;
-  strcpy(fullpath, g_sFTPServerHDD);  // global var for FTP path for HDD
+  fileIndex = backdx;
+  strcpy(fullPath, g_sFTPServerHDD);  // global var for FTP path for HDD
 
-  while (isdir) {
-    printf("HD_FTP_Select: fullpath=%s\n", fullpath);
-
-    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullpath, 7, &filename, &isdir, &findex)) {
+  while (isDirectory) {
+    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 7, &filename, &isDirectory, &fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
-    // Debug output
-    printf("HD_FTP_Select: we got next:\n");
-    printf("isdir=%d, findex=%d, filename=%s\n", isdir, findex, filename);
     // --
-    if (isdir) {
-      if (!strcmp(filename, ".."))
+    if (isDirectory) {
+      if (!strcmp(filename, "..")) {
         // go to the upper directory
-      {
-        filename = strrchr(fullpath, FTP_SEPARATOR); // look for last '/'
+        filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
         if (filename) {
           *filename = '\0';  // cut it off
-          filename = strrchr(fullpath, FTP_SEPARATOR); // look for last '/'
-          if (filename)
+          filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
+          if (filename) {
             *(++filename) = '\0';  // leave it on the place
+          }
         }
-        if (strlen(fullpath) == 0)
-          strcpy(fullpath, "/");  //we don't want fullpath to be empty
-        findex = dirdx;  // restore
+        if (strlen(fullPath) == 0) {
+          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        }
+        fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullpath, "/"))
-          snprintf(tmppath, MAX_PATH, "%s%s/", fullpath, filename); // next dir
-        else
-          snprintf(tmppath, MAX_PATH, "/%s/", filename);
-        strcpy(fullpath, tmppath);  // got ot anew
-        printf("HD_FTP_Select: we build %s\n", tmppath);
-        dirdx = findex; // store it
-        findex = 0;  // start with beginning of dir
+        if (strcmp(fullPath, "/")) {
+          snprintf(tempPath, MAX_PATH, "%s%s/", fullPath, filename); // next dir
+        } else {
+          snprintf(tempPath, MAX_PATH, "/%s/", filename);
+        }
+        strcpy(fullPath, tempPath);  // got ot anew
+        printf("HD_FTP_Select: we build %s\n", tempPath);
+        dirdx = fileIndex; // store it
+        fileIndex = 0;  // start with beginning of dir
       }
-    }/* if isdir */
-  } /* while isdir */
-  // we chose some file
-  strcpy(g_sFTPServerHDD, fullpath);
-  RegSaveString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
-
-  snprintf(tmppath, MAX_PATH, "%s/%s", fullpath, filename);
-  strcpy(fullpath, tmppath); // fullpath - full path to file on FTP server
-
-  snprintf(tmppath, MAX_PATH, "%s/%s", g_sFTPLocalDir, filename); // local path for file
-
-  int error = ftp_get(fullpath, tmppath);
-  if (!error) {
-    if (HD_InsertDisk2(nDrive, tmppath)) {
-      // save file names for HDD disk 1 or 2
-      if (nDrive)
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, tmppath);
-      else
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, tmppath);
     }
   }
-  backdx = findex;  //store cursor position
+  // we chose some file
+  strcpy(g_sFTPServerHDD, fullPath);
+  RegSaveString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
+
+  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename);
+  strcpy(fullPath, tempPath); // fullPath - full path to file on FTP server
+
+  snprintf(tempPath, MAX_PATH, "%s/%s", g_sFTPLocalDir, filename); // local path for file
+
+  int error = ftp_get(fullPath, tempPath);
+  if (!error) {
+    if (HD_InsertDisk2(nDrive, tempPath)) {
+      // save file names for HDD disk 1 or 2
+      if (nDrive) {
+        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, tempPath);
+      } else {
+        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, tempPath);
+      }
+    }
+  }
+  backdx = fileIndex;  //store cursor position
   DrawFrameWindow();
 }
 
 void HD_Select(int nDrive)
 {
   // Selects HDrive from file list
-  static int findex = 0;    // file index will be remembered for current dir
+  static int fileIndex = 0;    // file index will be remembered for current dir
   static int backdx = 0;  //reserve
   static int dirdx = 0;  // reserve for dirs
 
   char *filename = NULL;      // given filename
-  char fullpath[MAX_PATH];  // full path for it
-  char tmppath[MAX_PATH];
-  bool isdir;      // if given filename is a directory?
+  char fullPath[MAX_PATH];  // full path for it
+  char tempPath[MAX_PATH];
+  bool isDirectory;      // if given filename is a directory?
 
-  findex = backdx;
-  isdir = true;
-  strcpy(fullpath, g_sHDDDir);  // global var for disk selecting directory
+  fileIndex = backdx;
+  isDirectory = true;
+  strcpy(fullPath, g_sHDDDir);  // global var for disk selecting directory
 
-  while (isdir) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullpath, 7, &filename, &isdir, &findex)) {
+  while (isDirectory) {
+    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 7, &filename, &isDirectory, &fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
-    if (isdir) {
-      if (!strcmp(filename, ".."))  // go to the upper directory
-      {
-        filename = strrchr(fullpath, FILE_SEPARATOR); // look for last '/'
-        if (filename)
+    if (isDirectory) {
+      if (!strcmp(filename, "..")) { // go to the upper directory
+        filename = strrchr(fullPath, FILE_SEPARATOR); // look for last '/'
+        if (filename) {
           *filename = '\0';  // cut it off
-        if (strlen(fullpath) == 0)
-          strcpy(fullpath, "/");  //we don't want fullpath to be empty
-        findex = dirdx;  // restore
-
+        }
+        if (strlen(fullPath) == 0) {
+          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        }
+        fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullpath, "/"))
-          snprintf(tmppath, MAX_PATH, "%s/%s", fullpath, filename); // next dir
-        else
-          snprintf(tmppath, MAX_PATH, "/%s", filename);
-        strcpy(fullpath, tmppath);  // got ot anew
-        dirdx = findex; // store it
-        findex = 0;  // start with beginning of dir
+        if (strcmp(fullPath, "/")) {
+          snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
+        }
+        else {
+          snprintf(tempPath, MAX_PATH, "/%s", filename);
+        }
+        strcpy(fullPath, tempPath);  // got ot anew
+        dirdx = fileIndex; // store it
+        fileIndex = 0;  // start with beginning of dir
       }
-    }/* if isdir */
-  } /* while isdir */
+    }
+  }
   // we chose some file
-  strcpy(g_sHDDDir, fullpath);
-  RegSaveString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir);// save it
+  strcpy(g_sHDDDir, fullPath);
+  RegSaveString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir); // Save it
 
-  snprintf(tmppath, MAX_PATH, "%s/%s", fullpath, filename); // next dir
-  strcpy(fullpath, tmppath);  // got ot anew
+  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
+  strcpy(fullPath, tempPath);  // Got ot anew
 
   // in future: save file name in registry for future fetching
   // for one drive will be one reg parameter
-  //  RegSaveString(TEXT("Preferences"),REGVALUE_<SOMETHING>, 1,filename);
-  if (HD_InsertDisk2(nDrive, fullpath)) {
+  if (HD_InsertDisk2(nDrive, fullPath)) {
     // save file names for HDD disk 1 or 2
-    if (nDrive)
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, fullpath);
-    else
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, fullpath);
-    printf("HDD disk image %s inserted\n", fullpath);
+    if (nDrive) {
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, fullPath);
+    } else {
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, fullPath);
+    }
+    printf("HDD disk image %s inserted\n", fullPath);
   }
-  //   else
-  //   {
-  //     NotifyInvalidImage(filename);
-  //   }
-
-  backdx = findex;  //store cursor position
+  backdx = fileIndex; // Store cursor position
   DrawFrameWindow();
 }
-
-//-----------------------------------------------------------------------------
 
 #define DEVICE_OK        0x00
 #define DEVICE_UNKNOWN_ERROR  0x03
 #define DEVICE_IO_ERROR      0x08
 
-static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft)
-{
+static BYTE HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft) {
   BYTE r = DEVICE_OK;
   addr &= 0xFF;
 
-  /*  if(addr == 0xF8 && bWrite == 0) printf("-");  // data read
-      else
-      printf("HD_IO_EMUL: pc=%04x, addr=%04x, bWrite=%02x, d=%02x\n", pc, addr, bWrite, d);*/
-
-  if (!HD_CardIsEnabled())
+  if (!HD_CardIsEnabled()) {
     return r;
+  }
 
   PHDD pHDD = &g_HardDrive[g_nHD_UnitNum >> 7];  // bit7 = drive select
 
-  if (bWrite == 0) // read
-  {
+  if (bWrite == 0) { // read
     switch (addr) {
       case 0xF0: {
         if (pHDD->hd_imageloaded) {
@@ -540,11 +487,9 @@ static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, UL
             {
               HDDStatus = DISK_STATUS_READ;
               DWORD br = GetFileSize(pHDD->hd_file, NULL);
-              if ((DWORD)(pHDD->hd_diskblock * 512) <= br)  // seek to block
-              {
+              if ((DWORD)(pHDD->hd_diskblock * 512) <= br) { // seek to block
                 SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL))  // read block into buffer
-                {
+                if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) { // read block into buffer
                   pHDD->hd_error = 0;
                   r = 0;
                   pHDD->hd_buf_ptr = 0;
@@ -565,8 +510,7 @@ static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, UL
               if ((DWORD)(pHDD->hd_diskblock * 512) <= bw) {
                 MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
                 SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL))  // write buffer to file
-                {
+                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
                   pHDD->hd_error = 0;
                   r = 0;
                 } else {
@@ -581,11 +525,10 @@ static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, UL
                   DWORD bw;
                   WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
                 }
-                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) !=
-                    0xFFFFFFFF) {  // seek to block
+                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
+                  // seek to block
                   MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                  if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) // write buffer to file
-                  {
+                  if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
                     pHDD->hd_error = 0;
                     r = 0;
                   } else {
@@ -645,8 +588,7 @@ static BYTE /*__stdcall*/ HD_IO_EMUL(WORD pc, WORD addr, BYTE bWrite, BYTE d, UL
         printf("Unknow coomand: bWrite=0\n");
         return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     }
-  } else // write
-  {
+  } else { // write
     switch (addr) {
       case 0xF2: {
         g_nHD_Command = d;

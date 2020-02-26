@@ -56,62 +56,44 @@ int g_nDebugSteps = 0;
 // Still called from external file
 void DebugDisplay(BOOL bDrawBackground)
 {
-  //  Update_t bUpdateFlags = UPDATE_ALL;
 
-  //  if (! bDrawBackground)
-  //    bUpdateFlags &= ~UPDATE_BACKGROUND;
-
-  //  UpdateDisplay( bUpdateFlags );
 }
 
-//===========================================================================
 void DebuggerMouseClick(int x, int y)
 {
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_nAppMode != MODE_DEBUG) {
     return;
+  }
 }
 
 void DebugEnd()
 {
-
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
 void DebuggerProcessKey(int keycode)
-//void DebugProcessCommand (int keycode)
 {
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_nAppMode != MODE_DEBUG) {
     return;
-
+  }
 }
 
-//===========================================================================
 void DebuggerUpdate()
 {
-  //  DebuggerCursorUpdate();
 }
 
 
 void DebugContinueStepping()
 {
-
 }
 
-//===========================================================================
 void DebugDestroy()
 {
-  //  DebugEnd();
 }
 
 
-//===========================================================================
 void DebugInitialize()
 {
-  //  AssemblerOff(); // update prompt
 }
 
 void DebuggerInputConsoleChar(TCHAR ch)
@@ -120,7 +102,8 @@ void DebuggerInputConsoleChar(TCHAR ch)
     g_nDebugSteps = 0; // Exit Debugger
   }
 
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_nAppMode != MODE_DEBUG) {
     return;
+  }
 }
 

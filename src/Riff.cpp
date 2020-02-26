@@ -40,15 +40,13 @@ static unsigned int g_NumChannels = 2;
 
 int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumChannels)
 {
-  //  g_hRiffFile = CreateFile(pszFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
   g_hRiffFile = fopen(pszFile, "w");
 
-  if (g_hRiffFile == INVALID_HANDLE_VALUE)
+  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
     return 1;
+  }
 
   g_NumChannels = NumChannels;
-
-  //
 
   UINT32 temp32;
   UINT16 temp16;
@@ -62,8 +60,6 @@ int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumC
   WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
 
   WriteFile(g_hRiffFile, "WAVE", 4, &dwNumberOfBytesWritten, NULL);
-
-  //
 
   WriteFile(g_hRiffFile, "fmt ", 4, &dwNumberOfBytesWritten, NULL);
 
@@ -88,8 +84,6 @@ int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumC
   temp16 = 16;      // bits/sample
   WriteFile(g_hRiffFile, &temp16, 2, &dwNumberOfBytesWritten, NULL);
 
-  //
-
   WriteFile(g_hRiffFile, "data", 4, &dwNumberOfBytesWritten, NULL);
 
   temp32 = 0;        // data length
@@ -99,12 +93,10 @@ int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumC
   return 0;
 }
 
-int RiffFinishWriteFile()
-{
-  if (g_hRiffFile == INVALID_HANDLE_VALUE)
+int RiffFinishWriteFile() {
+  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
     return 1;
-
-  //
+  }
 
   UINT32 temp32;
 
@@ -121,17 +113,13 @@ int RiffFinishWriteFile()
   return CloseHandle(g_hRiffFile);
 }
 
-int RiffPutSamples(short *buf, unsigned int uSamples)
-{
-  if (g_hRiffFile == INVALID_HANDLE_VALUE)
+int RiffPutSamples(short *buf, unsigned int uSamples) {
+  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
     return 1;
-
-  //
+  }
 
   DWORD dwNumberOfBytesWritten;
-
   WriteFile(g_hRiffFile, buf, uSamples * sizeof(short) * g_NumChannels, &dwNumberOfBytesWritten, NULL);
-
   g_dwTotalNumberOfBytesWritten += dwNumberOfBytesWritten;
 
   return 0;
