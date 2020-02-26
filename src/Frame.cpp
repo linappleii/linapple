@@ -506,6 +506,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         "       F6 - Toggle fullscreen mode", "       F8 - Take screenshot",
                                         " Shift+F8 - Save runtime changes to configuration file",
                                         "       F9 - Cycle through various video modes",
+                                        " Shift+F9 - Budget Video for smoother sound/music",
                                         "  F10/F11 - Load/save snapshot file", "",
                                         "       Pause - Pause/resume emulator", " Scroll Lock - Toggle full speed",
                                         "    Numpad * - Normal speed", "  Numpad +/- - Increase/Decrease speed",};
@@ -616,9 +617,7 @@ void FrameDispatchMessage(SDL_Event *e) // process given SDL event
   int mysym = e->key.keysym.sym; // keycode
   int mymod = e->key.keysym.mod; // some special keys flags
   int myscancode = e->key.keysym.scancode; // some special keys flags
-  int mytype = e->key.type;
-  int mystate = e->key.state;
-  int x, y;  // used for mouse cursor position
+  int x,y; // used for mouse cursor position
 
   switch (e->type) //type of SDL event
   {
@@ -1047,17 +1046,23 @@ void ProcessButtonClick(int button, int mod)
 
       ////////////////////////// my buttons handlers F9..F12 ////////////////////////////
     case BTN_CYCLE: // F9 - CYCLE through allowed video modes
-      //    printf("F9 has been pressed!\n");
-      g_videotype++;  // Cycle through available video modes
-      if (g_videotype >= VT_NUM_MODES)
-        g_videotype = 0;
-      VideoReinitialize();
-      if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
-      {
-        VideoRedrawScreen();
-        g_bDebuggerViewingAppleOutput = true;  // +PATCH
+      if (mod & KMOD_SHIFT) {
+        // GPH Added budget video for updating only every 12 60Hz frames.
+        // This is because, on computers without a fast GPU, the drawing of the screen
+        // can actually affect the audio.
+        SetBudgetVideo(!GetBudgetVideo());
+      } else {
+        //    printf("F9 has been pressed!\n");
+        g_videotype++;  // Cycle through available video modes
+        if (g_videotype >= VT_NUM_MODES)
+          g_videotype = 0;
+        VideoReinitialize();
+        if ((g_nAppMode != MODE_LOGO) || ((g_nAppMode == MODE_DEBUG) && (g_bDebuggerViewingAppleOutput))) // +PATCH
+        {
+          VideoRedrawScreen();
+          g_bDebuggerViewingAppleOutput = true;  // +PATCH
+        }
       }
-
       break;
     case BTN_QUIT:  // F10 - exit from emulator?
 
