@@ -43,8 +43,9 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples);  // for DS
 
 bool DSInit()
 {
-  if(g_bDSAvailable) return true;  // do not need to repeat all process?? --bb
-//  const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
+  if (g_bDSAvailable)
+    return true;  // do not need to repeat all process?? --bb
+  //  const DWORD SPKR_SAMPLE_RATE = 44100; - defined in Common.h
   g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 1024);// I just do not know what number of samples use.
   return g_bDSAvailable;  //
 }
@@ -53,17 +54,19 @@ bool DSInit()
 
 void DSUninit()
 {
-  if(!g_bDSAvailable)
+  if (!g_bDSAvailable)
     return;
   SDLSoundDriverUninit();  // using code from OpenMSX
-//  SDL_CloseAudio();
+  //  SDL_CloseAudio();
 }
 
 
 void SoundCore_SetFade(int how)  //
 {
-  if(how == FADE_OUT) SDL_PauseAudio(1);  //stop playing sound
-  else SDL_PauseAudio(0);  //start playing
+  if (how == FADE_OUT)
+    SDL_PauseAudio(1);  //stop playing sound
+  else
+    SDL_PauseAudio(0);  //start playing
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -72,23 +75,29 @@ void SoundCore_SetFade(int how)  //
 // Definitions
 
 void mute();
+
 void unmute();
 
 unsigned getFrequency();
+
 unsigned getSamples();
 
-double uploadBuffer(short* buffer, unsigned len);
+double uploadBuffer(short *buffer, unsigned len);
 
 void reInit();
+
 unsigned getBufferFilled();
+
 unsigned getBufferFree();
-static void audioCallbackHelper(void* userdata, BYTE* strm, int len);
-void audioCallback(short* stream, unsigned len);
+
+static void audioCallbackHelper(void *userdata, BYTE *strm, int len);
+
+void audioCallback(short *stream, unsigned len);
 
 unsigned frequency;
 
-short* mixBuffer;
-short* mockBuffer;
+short *mixBuffer;
+short *mockBuffer;
 
 unsigned fragmentSize;
 unsigned bufferSize;
@@ -104,28 +113,28 @@ bool muted;
 bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
 {
   SDL_AudioSpec desired;
-  desired.freq     = wantedFreq;
-  desired.samples  = wantedSamples;
+  desired.freq = wantedFreq;
+  desired.samples = wantedSamples;
 
   desired.channels = 2; // stereo(2)  or mono(1)
-// be courteous with BIG_Endian systems, please! --bb
-#if ( SDL_BYTEORDER == SDL_BIG_ENDIAN )
+  // be courteous with BIG_Endian systems, please! --bb
+  #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
   desired.format = AUDIO_S16MSB;
-#else
+  #else
   desired.format = AUDIO_S16LSB;
-#endif
+  #endif
 
   desired.callback = audioCallbackHelper; // must be a static method
   desired.userdata = NULL;
-/*
-  if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-    printf("Unable to initialize SDL audio subsystem: %s", SDL_GetError());
-    return false;
-  }
-*/
+  /*
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+      printf("Unable to initialize SDL audio subsystem: %s", SDL_GetError());
+      return false;
+    }
+  */
   SDL_AudioSpec audioSpec;
   if (SDL_OpenAudio(&desired, &audioSpec) != 0) {
-//    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    //    SDL_QuitSubSystem(SDL_INIT_AUDIO);
     printf("Unable to open SDL audio: %s", SDL_GetError());
     return false;
   }
@@ -133,33 +142,33 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples)
   //          <<     "  actual: " << audioSpec.size / 4 << std::endl;
   frequency = audioSpec.freq;
   bufferSize = 8 * (audioSpec.size / sizeof(short));
-    // GPH NOTE: bufferSize needs to be power of 2 for quick
-    // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
-    // and because of the high volume of work against mixBuffer and mockBuffer, that is
-    // undesireable.
-    bufferIdxMask = bufferSize - 1;
-    printf( "bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
-//  bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);  // 1 second of stereo short data
+  // GPH NOTE: bufferSize needs to be power of 2 for quick
+  // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
+  // and because of the high volume of work against mixBuffer and mockBuffer, that is
+  // undesireable.
+  bufferIdxMask = bufferSize - 1;
+  printf("bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
+  //  bufferSize = SPKR_SAMPLE_RATE * 2 * sizeof(short);  // 1 second of stereo short data
 
-/*
-  fragmentSize = 256;
-  while ((bufferSize / fragmentSize) >= 32) {
-    fragmentSize *= 2;
-  }
-  while ((bufferSize / fragmentSize) < 8) {
-    fragmentSize /= 2;
-  }
-*/
-  mixBuffer  = new short[bufferSize];  // buffer for Apple2 speakers
+  /*
+    fragmentSize = 256;
+    while ((bufferSize / fragmentSize) >= 32) {
+      fragmentSize *= 2;
+    }
+    while ((bufferSize / fragmentSize) < 8) {
+      fragmentSize /= 2;
+    }
+  */
+  mixBuffer = new short[bufferSize];  // buffer for Apple2 speakers
   mockBuffer = new short[bufferSize];  // buffer for Mockingboard
 
   reInit();
-  printf("SDL_MIX_MAXVOLUME=%d\n",SDL_MIX_MAXVOLUME);
-  printf("Freq=%d,format=%d,channels=%d,silence=%d\n",
-        audioSpec.freq,audioSpec.format,audioSpec.channels,audioSpec.silence);
-  printf("samples=%d,size=%d,bufferSize=%d\n",audioSpec.samples,audioSpec.size,bufferSize);
+  printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
+  printf("Freq=%d,format=%d,channels=%d,silence=%d\n", audioSpec.freq, audioSpec.format, audioSpec.channels,
+         audioSpec.silence);
+  printf("samples=%d,size=%d,bufferSize=%d\n", audioSpec.samples, audioSpec.size, bufferSize);
 
-//  SDL_PauseAudio(0);
+  //  SDL_PauseAudio(0);
   return true;
 }
 
@@ -169,7 +178,7 @@ void SDLSoundDriverUninit()
   delete[] mockBuffer;
 
   SDL_CloseAudio();
-//  SDL_QuitSubSystem(SDL_INIT_AUDIO);
+  //  SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 
@@ -177,7 +186,7 @@ void reInit()
 {
   memset(mixBuffer, 0, bufferSize * sizeof(short));
   memset(mockBuffer, 0, bufferSize * sizeof(short));
-  readIdx  = readIdx2 = 0;
+  readIdx = readIdx2 = 0;
   writeIdx = writeIdx2 = 0;//(5 * bufferSize) / 8;
   filledStat = 1.0;
 }
@@ -209,10 +218,10 @@ unsigned getSamples()
   return fragmentSize;
 }
 
-void audioCallbackHelper(void* userdata, BYTE* strm, int len)
+void audioCallbackHelper(void *userdata, BYTE *strm, int len)
 {
   assert((len & 3) == 0); // stereo, 16-bit
-  audioCallback((short*)strm, len / sizeof(short));
+  audioCallback((short *) strm, len / sizeof(short));
 }
 
 unsigned getBufferFilled()
@@ -264,7 +273,7 @@ unsigned getBuffer2Free()
 // GPH this is called on IRQ to refresh the audio at regular intervals.
 // We'll mix the buffers here keeping in mind the need for speed.
 //
-void audioCallback(short* stream, unsigned len)
+void audioCallback(short *stream, unsigned len)
 {
   unsigned int i;
   static short lastvalue = 0;
@@ -274,23 +283,23 @@ void audioCallback(short* stream, unsigned len)
   unsigned available = getBufferFilled();
   unsigned num = std::min(len, available);
   if ((readIdx + num) < bufferSize) {
-        // No split in source (mixBuffer); perform straight-up copy.
-        //
-        //     |--------------------|
-        //       ^ (mixBuffer)   $
-        //
-        //     |--------------------|
-        //     ^     (stream)
+    // No split in source (mixBuffer); perform straight-up copy.
+    //
+    //     |--------------------|
+    //       ^ (mixBuffer)   $
+    //
+    //     |--------------------|
+    //     ^     (stream)
     memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
     readIdx += num;
   } else {
-        // Handle split in source
-        //
-        //     |--------------------|
-        //         (mixBuffer) ^
-        //
-        //     |--------------------|
-        //     ^     (stream)
+    // Handle split in source
+    //
+    //     |--------------------|
+    //         (mixBuffer) ^
+    //
+    //     |--------------------|
+    //     ^     (stream)
     len1 = bufferSize - readIdx;
     memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
     len2 = num - len1;
@@ -298,93 +307,93 @@ void audioCallback(short* stream, unsigned len)
     readIdx = len2;
   }
 
-    // Fill the remainer of the buffer with last value to prevent potential
-    // clicks and pops.
-    if (available != 0) {
-        if (readIdx != 0)
-            lastvalue = mixBuffer[readIdx-1];
-        else
-            lastvalue = mixBuffer[bufferSize - 1];
+  // Fill the remainer of the buffer with last value to prevent potential
+  // clicks and pops.
+  if (available != 0) {
+    if (readIdx != 0)
+      lastvalue = mixBuffer[readIdx - 1];
+    else
+      lastvalue = mixBuffer[bufferSize - 1];
   }
 
-    for (i = num; i < len; i++) {
-        stream[i] = lastvalue;
-    }
-/* GPH please don't do this in an IRQ handler!
-  unsigned target = (5 * bufferSize) / 8;
-  double factor = double(available) / target;
-  filledStat = (63 * filledStat + factor) / 64;
-*/
-
-#ifdef MOCKINGBOARD
-    // And add Mockingboard sound data to the stream
-    // GPH: We are going to add the Mockingboard and speaker samples.
-    // Their independent maximum amplitudes have been selected to eliminate
-    // any possibility of wave peak clipping.  This speeds up the timing-sensitive
-    // operation here (since we're in an IRQ handler) and eliminates the
-    // need for a potentially expensive divide.
-  available = getBuffer2Filled();
-  //std::cerr << "DEBUG callback: " << available << std::endl;
-  num = std::min(len, available);
-    const short *pSrc;
-    short *pDest = stream;
-  if ((readIdx2 + num) < bufferSize) {
-        if( num ) {
-            pSrc = &mockBuffer[readIdx2];
-            readIdx2 += num;
-            while(num--) {
-                *pDest += *pSrc;
-                pDest++; pSrc++;
-            }
-        }
-  } else {
-    // We crossed the "seam" on the circular mockBuffer.
-    // We will therefore perform two copies, the segmentation being determined
-    // by the split in the source buffer (mockBuffer).
-    //
-    //     |--------------------|
-    //         (mockBuffer) ^
-    //
-    //
-    //     |--------------------|
-    //     ^     (stream)
-    len1 = bufferSize - readIdx2;
-    len2 = num - len1;
-        if(len1) {
-            pSrc = &mockBuffer[readIdx2];
-            while(len1--) {
-                *pDest += *pSrc;
-                pDest++; pSrc++;
-            }
-        }
-    readIdx2 = len2;
-        if(len2) {
-            pSrc = mockBuffer;
-            while(len2--) {
-                *pDest += *pSrc;
-                pDest++; pSrc++;
-            }
-        }
-
+  for (i = num; i < len; i++) {
+    stream[i] = lastvalue;
   }
-#endif      // #ifdef MOCKINGBOARD
-// normalization
-// GPH TODO: Rather than do this in this handler, we should
-// perform it efficiently by changing the values of
-// MAX_OUTPUT (AY8910.cpp) and SPKR_DATA_INIT (Speaker.cpp),
-// making them variables and making the appropriate access functions
-// to call from Frame.cpp
-/*  const short MY_MAX_VOLUME = (short)SDL_MIX_MAXVOLUME / 2;
-  for(unsigned k=0;k<len;k+=2)
-    if((short)stream[k] > MY_MAX_VOLUME)
-      stream[k] = MY_MAX_VOLUME;
-*/
+  /* GPH please don't do this in an IRQ handler!
+    unsigned target = (5 * bufferSize) / 8;
+    double factor = double(available) / target;
+    filledStat = (63 * filledStat + factor) / 64;
+  */
+
+  #ifdef MOCKINGBOARD
+  // And add Mockingboard sound data to the stream
+  // GPH: We are going to add the Mockingboard and speaker samples.
+  // Their independent maximum amplitudes have been selected to eliminate
+  // any possibility of wave peak clipping.  This speeds up the timing-sensitive
+  // operation here (since we're in an IRQ handler) and eliminates the
+  // need for a potentially expensive divide.
+available = getBuffer2Filled();
+//std::cerr << "DEBUG callback: " << available << std::endl;
+num = std::min(len, available);
+  const short *pSrc;
+  short *pDest = stream;
+if ((readIdx2 + num) < bufferSize) {
+      if( num ) {
+          pSrc = &mockBuffer[readIdx2];
+          readIdx2 += num;
+          while(num--) {
+              *pDest += *pSrc;
+              pDest++; pSrc++;
+          }
+      }
+} else {
+  // We crossed the "seam" on the circular mockBuffer.
+  // We will therefore perform two copies, the segmentation being determined
+  // by the split in the source buffer (mockBuffer).
+  //
+  //     |--------------------|
+  //         (mockBuffer) ^
+  //
+  //
+  //     |--------------------|
+  //     ^     (stream)
+  len1 = bufferSize - readIdx2;
+  len2 = num - len1;
+      if(len1) {
+          pSrc = &mockBuffer[readIdx2];
+          while(len1--) {
+              *pDest += *pSrc;
+              pDest++; pSrc++;
+          }
+      }
+  readIdx2 = len2;
+      if(len2) {
+          pSrc = mockBuffer;
+          while(len2--) {
+              *pDest += *pSrc;
+              pDest++; pSrc++;
+          }
+      }
+
+}
+  #endif      // #ifdef MOCKINGBOARD
+  // normalization
+  // GPH TODO: Rather than do this in this handler, we should
+  // perform it efficiently by changing the values of
+  // MAX_OUTPUT (AY8910.cpp) and SPKR_DATA_INIT (Speaker.cpp),
+  // making them variables and making the appropriate access functions
+  // to call from Frame.cpp
+  /*  const short MY_MAX_VOLUME = (short)SDL_MIX_MAXVOLUME / 2;
+    for(unsigned k=0;k<len;k+=2)
+      if((short)stream[k] > MY_MAX_VOLUME)
+        stream[k] = MY_MAX_VOLUME;
+  */
 }  // audioCallback
 
-double DSUploadBuffer(short* buffer, unsigned len)
+double DSUploadBuffer(short *buffer, unsigned len)
 {
   SDL_LockAudio();
-//  len *= 2; // stereo
+  //  len *= 2; // stereo
   unsigned free = getBufferFree();
   if (len > free) {
     // std::cerr << "DEBUG overrun(1): " << len - free << std::endl;
@@ -394,7 +403,7 @@ double DSUploadBuffer(short* buffer, unsigned len)
     memcpy(&mixBuffer[writeIdx], buffer, num * sizeof(short));
     writeIdx += num;
   } else {
-//    printf("DEBUG split: writeIdx=%d,num=%d\n\n", writeIdx, num);
+    //    printf("DEBUG split: writeIdx=%d,num=%d\n\n", writeIdx, num);
     unsigned len1 = bufferSize - writeIdx;
     memcpy(&mixBuffer[writeIdx], buffer, len1 * sizeof(short));
     unsigned len2 = num - len1;
@@ -412,16 +421,16 @@ double DSUploadBuffer(short* buffer, unsigned len)
 
 ///// Uploading sound data for Mockingboard buffer
 // GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
-void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
+void /*double*/ DSUploadMockBuffer(short *buffer, unsigned len)
 {
   SDL_LockAudio();
-//  len *= 2; // stereo
+  //  len *= 2; // stereo
   unsigned free = getBuffer2Free();
   if (len > free) {
     // std::cerr << "DEBUG overrun(2): " << len - free << std::endl;
   }
   unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
-    // GPH Check for seam crossing on circular mockBuffer[].
+  // GPH Check for seam crossing on circular mockBuffer[].
   if ((writeIdx2 + samplesToWrite) < bufferSize) {
     memcpy(&mockBuffer[writeIdx2], buffer, samplesToWrite * sizeof(short));
     writeIdx2 += samplesToWrite;
@@ -436,6 +445,6 @@ void /*double*/ DSUploadMockBuffer(short* buffer, unsigned len)
   }
 
   SDL_UnlockAudio();
-//  return 1.0;  // do not use result?
+  //  return 1.0;  // do not use result?
 }
 
