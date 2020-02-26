@@ -620,8 +620,6 @@ void  FrameDispatchMessage(SDL_Event * e) // process given SDL event
   int mysym = e->key.keysym.sym; // keycode
   int mymod = e->key.keysym.mod; // some special keys flags
   int myscancode = e->key.keysym.scancode; // some special keys flags
-  int mytype = e->key.type;
-  int mystate = e->key.state;
   int x,y;  // used for mouse cursor position
 
   switch (e->type) //type of SDL event
