@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /*
 
 Linappple-pie was adapted in OCT 2015 for use with Retropie.
-By Mark Ormond. 
+By Mark Ormond.
 */
 
 
@@ -76,7 +76,7 @@ static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
 
 TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
-eApple2Type  g_Apple2Type  = A2TYPE_APPLE2EEHANCED;
+eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
 
 BOOL behind = 0;      // Redundant
 DWORD cumulativecycles = 0;      // Wraps after ~1hr 9mins
@@ -90,48 +90,48 @@ static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 // Win32
 //HINSTANCE g_hInstance          = (HINSTANCE)0;
 
-AppMode_e  g_nAppMode = MODE_LOGO;
+AppMode_e g_nAppMode = MODE_LOGO;
 
 // Default screen sizes
 // SCREEN_WIDTH & SCREEN_HEIGHT defined in Frame.h
-UINT    g_ScreenWidth = SCREEN_WIDTH;
-UINT    g_ScreenHeight = SCREEN_HEIGHT;
+UINT g_ScreenWidth = SCREEN_WIDTH;
+UINT g_ScreenHeight = SCREEN_HEIGHT;
 
 //static int lastmode         = MODE_LOGO;    -- not used???
-DWORD     needsprecision    = 0;      // Redundant
-TCHAR     g_sProgramDir[MAX_PATH] = TEXT("");
-TCHAR     g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
-TCHAR     g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
-TCHAR     g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
-TCHAR     g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
+DWORD needsprecision = 0;      // Redundant
+TCHAR g_sProgramDir[MAX_PATH] = TEXT("");
+TCHAR g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
+TCHAR g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
+TCHAR g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
+TCHAR g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
 
 // FTP Variables
-TCHAR     g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
-TCHAR     g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
-TCHAR     g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
+TCHAR g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
+TCHAR g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
+TCHAR g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
 
 //TCHAR     g_sFTPUser[256] = TEXT("anonymous"); // user name
 //TCHAR     g_sFTPPass[256] = TEXT("mymail@hotmail.com"); // password
-TCHAR     g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
+TCHAR g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
 
-bool      g_bResetTiming    = false;      // Redundant
-BOOL      restart           = 0;
+bool g_bResetTiming = false;      // Redundant
+BOOL restart = 0;
 
 // several parameters affecting the speed of emulated CPU
-DWORD    g_dwSpeed    = SPEED_NORMAL;  // Affected by Config dialog's speed slider bar
-double    g_fCurrentCLK6502 = CLK_6502;  // Affected by Config dialog's speed slider bar
-static double g_fMHz    = 1.0;      // Affected by Config dialog's speed slider bar
+DWORD g_dwSpeed = SPEED_NORMAL;  // Affected by Config dialog's speed slider bar
+double g_fCurrentCLK6502 = CLK_6502;  // Affected by Config dialog's speed slider bar
+static double g_fMHz = 1.0;      // Affected by Config dialog's speed slider bar
 
-int  g_nCpuCyclesFeedback = 0;
-DWORD   g_dwCyclesThisFrame = 0;
+int g_nCpuCyclesFeedback = 0;
+DWORD g_dwCyclesThisFrame = 0;
 
-FILE*    g_fh      = NULL; // file for logging, let's use stderr instead?
-bool    g_bDisableDirectSound = false;  // direct sound, use SDL Sound, or SDL_mixer???
+FILE *g_fh = NULL; // file for logging, let's use stderr instead?
+bool g_bDisableDirectSound = false;  // direct sound, use SDL Sound, or SDL_mixer???
 
-CSuperSerialCard  sg_SSC;
-CMouseInterface    sg_Mouse;
+CSuperSerialCard sg_SSC;
+CMouseInterface sg_Mouse;
 
-UINT  g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
+UINT g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
 
 CURL *g_curl = NULL;  // global easy curl resourse
 //===========================================================================
@@ -162,40 +162,36 @@ ULONG g_nPerfFreq = 0;
 
 void ContinueExecution()
 {
-  static BOOL pageflipping    = 0; //?
+  static BOOL pageflipping = 0; //?
 
-  const double fUsecPerSec        = 1.e6;
+  const double fUsecPerSec = 1.e6;
 
   const UINT nExecutionPeriodUsec = 1000;    // 1.0ms
-  const double fExecutionPeriodClks = g_fCurrentCLK6502 * ((double)nExecutionPeriodUsec / fUsecPerSec);
+  const double fExecutionPeriodClks = g_fCurrentCLK6502 * ((double) nExecutionPeriodUsec / fUsecPerSec);
 
   bool bScrollLock_FullSpeed = g_bScrollLock_FullSpeed; //g_uScrollLockToggle;
 
-  g_bFullSpeed = ( (g_dwSpeed == SPEED_MAX) ||
-           bScrollLock_FullSpeed ||
-           (DiskIsSpinning() && enhancedisk && !Spkr_IsActive() && !MB_IsActive()) );
+  g_bFullSpeed = ((g_dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed ||
+                  (DiskIsSpinning() && enhancedisk && !Spkr_IsActive() && !MB_IsActive()));
 
-  if(g_bFullSpeed)
-  {
+  if (g_bFullSpeed) {
     // Don't call Spkr_Mute() - will get speaker clicks
     MB_Mute();
     SysClk_StopTimer();
     g_nCpuCyclesFeedback = 0;  // For the case when this is a big -ve number
-//    SetPriorityNormal();
-  }
-  else
-  {
+    //    SetPriorityNormal();
+  } else {
     // Don't call Spkr_Demute()
     MB_Demute();
     SysClk_StartTimerUsec(nExecutionPeriodUsec);
     // Switch to higher priority, eg. for audio (BUG #015394)
-//    SetPriorityAboveNormal();
+    //    SetPriorityAboveNormal();
   }
 
   //
 
   int nCyclesToExecute = (int) fExecutionPeriodClks + g_nCpuCyclesFeedback;
-  if(nCyclesToExecute < 0)
+  if (nCyclesToExecute < 0)
     nCyclesToExecute = 0;
 
   DWORD dwExecutedCycles = CpuExecute(nCyclesToExecute);
@@ -207,7 +203,7 @@ void ContinueExecution()
 
   DiskUpdatePosition(dwExecutedCycles);
   JoyUpdatePosition();
-// the next call does not present  in current Applewin as on March 2012??
+  // the next call does not present  in current Applewin as on March 2012??
   VideoUpdateVbl(g_dwCyclesThisFrame);
 
   SpkrUpdate(cyclenum);
@@ -216,11 +212,10 @@ void ContinueExecution()
 
   //
 
-  const DWORD CLKS_PER_MS = (DWORD)g_fCurrentCLK6502 / 1000;
+  const DWORD CLKS_PER_MS = (DWORD) g_fCurrentCLK6502 / 1000;
 
   emulmsec_frac += dwExecutedCycles;
-  if(emulmsec_frac > CLKS_PER_MS)
-  {
+  if (emulmsec_frac > CLKS_PER_MS) {
     emulmsec += emulmsec_frac / CLKS_PER_MS;
     emulmsec_frac %= CLKS_PER_MS;
   }
@@ -230,49 +225,44 @@ void ContinueExecution()
   // OR THE KEYBOARD I/O PORTS WERE BEING EXCESSIVELY QUERIED THIS CLOCKTICK
   VideoCheckPage(0);
   BOOL screenupdated = VideoHasRefreshed();
-  BOOL systemidle    = 0;  //(KeybGetNumQueries() > (clockgran << 2));  //  && (!ranfinegrain);  // TO DO
+  BOOL systemidle = 0;  //(KeybGetNumQueries() > (clockgran << 2));  //  && (!ranfinegrain);  // TO DO
 
-  if(screenupdated)
+  if (screenupdated)
     pageflipping = 3;
 
   //
 
-  if(g_dwCyclesThisFrame >= dwClksPerFrame)
-  {
+  if (g_dwCyclesThisFrame >= dwClksPerFrame) {
     g_dwCyclesThisFrame -= dwClksPerFrame;
 
-    if(g_nAppMode != MODE_LOGO)
-    {
+    if (g_nAppMode != MODE_LOGO) {
       VideoUpdateFlash();
 
-      static BOOL  anyupdates     = 0;
+      static BOOL anyupdates = 0;
       //static DWORD lastcycles     = 0;
-      static BOOL  lastupdates[2] = {0,0};
+      static BOOL lastupdates[2] = {0, 0};
 
       anyupdates |= screenupdated;
 
       //
 
       //lastcycles = cumulativecycles;
-      if ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && VideoApparentlyDirty())
-      {
+      if ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static DWORD lasttime = 0;
         DWORD currtime = GetTickCount();
-        if ((!g_bFullSpeed) ||
-          (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25)))
-        {
+        if ((!g_bFullSpeed) || (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25))) {
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
             lasttime = currtime;
-          }
+        }
         }
         screenupdated = 1;
       }
 
       lastupdates[1] = lastupdates[0];
       lastupdates[0] = anyupdates;
-      anyupdates     = 0;
+      anyupdates = 0;
 
       if (pageflipping)
         pageflipping--;
@@ -283,11 +273,10 @@ void ContinueExecution()
 
   //
 
-  if(!g_bFullSpeed)
-  {
+  if (!g_bFullSpeed) {
     SysClk_WaitTimer();
 
-#if DBG_CALC_FREQ
+    #if DBG_CALC_FREQ
     if(g_nPerfFreq)
     {
       //QueryPerformanceCounter((LARGE_INTEGER*)&nTime1); QueryPerformanceFrequency
@@ -303,7 +292,7 @@ void ContinueExecution()
       g_fMeanPeriod /= (double)MAX_CNT;
       g_fMeanFreq = 1.0 / g_fMeanPeriod;
     }
-#endif
+    #endif
   }
 }
 
@@ -328,9 +317,9 @@ bool GetBudgetVideo()
 
 void SetCurrentCLK6502()
 {
-  static DWORD dwPrevSpeed = (DWORD) -1;
+  static DWORD dwPrevSpeed = (DWORD) - 1;
 
-  if(dwPrevSpeed == g_dwSpeed)
+  if (dwPrevSpeed == g_dwSpeed)
     return;
 
   dwPrevSpeed = g_dwSpeed;
@@ -342,10 +331,10 @@ void SetCurrentCLK6502()
   // SPEED_MAX    = 40 = ???? MHz (run full-speed, /g_fCurrentCLK6502/ is ignored)
 
 
-  if(g_dwSpeed < SPEED_NORMAL)
-    g_fMHz = 0.5 + (double)g_dwSpeed * 0.05;
+  if (g_dwSpeed < SPEED_NORMAL)
+    g_fMHz = 0.5 + (double) g_dwSpeed * 0.05;
   else
-    g_fMHz = (double)g_dwSpeed / 10.0;
+    g_fMHz = (double) g_dwSpeed / 10.0;
 
   g_fCurrentCLK6502 = CLK_6502 * g_fMHz;
 
@@ -358,61 +347,54 @@ void SetCurrentCLK6502()
 }
 
 //===========================================================================
-void EnterMessageLoop ()
+void EnterMessageLoop()
 {
-//  MSG message;
+  //  MSG message;
   SDL_Event event;
 
-//  PeekMessage(&message, NULL, 0, 0, PM_NOREMOVE);
-  while(true)
+  //  PeekMessage(&message, NULL, 0, 0, PM_NOREMOVE);
+  while (true)
 
-//  while (message.message!=WM_QUIT)
+    //  while (message.message!=WM_QUIT)
   {
-  if(SDL_PollEvent(&event))
-  {
-    if(event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4) return;
-    FrameDispatchMessage(&event);
+    if (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4)
+        return;
+      FrameDispatchMessage(&event);
 
 
 
-//     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
-//     {
-//       TranslateMessage(&message);
-//       DispatchMessage(&message);
+      //     if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+      //     {
+      //       TranslateMessage(&message);
+      //       DispatchMessage(&message);
 
-    while ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_STEPPING))
-    {
-      if(SDL_PollEvent(&event)) {
-        if(event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4) return;
-        FrameDispatchMessage(&event);
-      }
-      else if (g_nAppMode == MODE_STEPPING)
-      {
-        DebugContinueStepping();
-      }
-      else
-      {
-        ContinueExecution();
-        if (g_nAppMode != MODE_DEBUG)
-        {
-					if (joyexitenable)
-					{
-						CheckJoyExit();
-						if (joyquitevent) return;
-					}
-          if (g_bFullSpeed)
-            ContinueExecution();
+      while ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_STEPPING)) {
+        if (SDL_PollEvent(&event)) {
+          if (event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4)
+            return;
+          FrameDispatchMessage(&event);
+        } else if (g_nAppMode == MODE_STEPPING) {
+          DebugContinueStepping();
+        } else {
+          ContinueExecution();
+          if (g_nAppMode != MODE_DEBUG) {
+            if (joyexitenable) {
+              CheckJoyExit();
+              if (joyquitevent)
+                return;
+            }
+            if (g_bFullSpeed)
+              ContinueExecution();
+          }
         }
       }
+    } else {
+      if (g_nAppMode == MODE_DEBUG)
+        DebuggerUpdate();
+      else if (g_nAppMode == MODE_LOGO || g_nAppMode == MODE_PAUSED)
+        SDL_Delay(100);    // Stop process hogging CPU
     }
-  }
-  else
-  {
-    if (g_nAppMode == MODE_DEBUG)
-      DebuggerUpdate();
-    else if (g_nAppMode == MODE_LOGO || g_nAppMode == MODE_PAUSED)
-      SDL_Delay(100);    // Stop process hogging CPU
-  }
   }
 }
 
@@ -434,15 +416,15 @@ void EnterMessageLoop ()
 
 int DoDiskInsert(int nDrive, LPSTR szFileName)
 {
-//   DWORD dwAttributes = GetFileAttributes(szFileName);
+  //   DWORD dwAttributes = GetFileAttributes(szFileName);
   //
   //
-//   if(dwAttributes == INVALID_FILE_ATTRIBUTES)
-//   {
-//     return -1;
-//   }
+  //   if(dwAttributes == INVALID_FILE_ATTRIBUTES)
+  //   {
+  //     return -1;
+  //   }
   //
-//   BOOL bWriteProtected = (dwAttributes & FILE_ATTRIBUTE_READONLY) ? TRUE : FALSE;
+  //   BOOL bWriteProtected = (dwAttributes & FILE_ATTRIBUTE_READONLY) ? TRUE : FALSE;
 
   return DiskInsert(nDrive, szFileName, 0, 0);
 }
@@ -452,20 +434,19 @@ bool ValidateDirectory(char *dir)
   bool ret = false;
   if (dir && *dir) {
     struct stat st;
-    if(stat("/tmp",&st) == 0)
-        if((st.st_mode & S_IFDIR) != 0)
-          ret = true;
-    }
-    printf("%s is dir? %d\n", dir, ret);
-    return ret;
+    if (stat("/tmp", &st) == 0)
+      if ((st.st_mode & S_IFDIR) != 0)
+        ret = true;
+  }
+  printf("%s is dir? %d\n", dir, ret);
+  return ret;
 }
 
-void SetDiskImageDirectory( char *regKey, int driveNumber)
+void SetDiskImageDirectory(char *regKey, int driveNumber)
 {
   char *szHDFilename = NULL;
-  if(RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH))
-  {
-    if(!ValidateDirectory(szHDFilename)) {
+  if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
+    if (!ValidateDirectory(szHDFilename)) {
       RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
       RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
     }
@@ -476,13 +457,13 @@ void SetDiskImageDirectory( char *regKey, int driveNumber)
 }
 
 //Sets the emulator to automatically boot, rather than load the flash screen on startup
-void setAutoBoot ()
+void setAutoBoot()
 {
-    // autostart
-    SDL_Event user_ev;
-    user_ev.type = SDL_USEREVENT;
-    user_ev.user.code = 1;	//restart
-    SDL_PushEvent(&user_ev);
+  // autostart
+  SDL_Event user_ev;
+  user_ev.type = SDL_USEREVENT;
+  user_ev.user.code = 1;  //restart
+  SDL_PushEvent(&user_ev);
 }
 
 //===========================================================================
@@ -491,178 +472,193 @@ void LoadConfiguration()
 {
   if (registry) {
     DWORD dwComputerType;
-    LOAD(TEXT("Computer Emulation"),&dwComputerType);
+    LOAD(TEXT("Computer Emulation"), &dwComputerType);
 
-    switch (dwComputerType)
-    {
+    switch (dwComputerType) {
       // NB. No A2TYPE_APPLE2E
 
-      case 0:  g_Apple2Type = A2TYPE_APPLE2;break;
-      case 1:  g_Apple2Type = A2TYPE_APPLE2PLUS;break;
-      case 2:  g_Apple2Type = A2TYPE_APPLE2EEHANCED;break;
-      default:  g_Apple2Type = A2TYPE_APPLE2EEHANCED;break;
+      case 0:
+        g_Apple2Type = A2TYPE_APPLE2;
+        break;
+      case 1:
+        g_Apple2Type = A2TYPE_APPLE2PLUS;
+        break;
+      case 2:
+        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        break;
+      default:
+        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        break;
     }
   }
 
   // determine Apple type and set appropriate caption -- should be in (F9)switching modes?
-  switch (g_Apple2Type)
-  {
-    case A2TYPE_APPLE2:    g_pAppTitle = TITLE_APPLE_2_; break;
-    case A2TYPE_APPLE2PLUS:  g_pAppTitle = TITLE_APPLE_2_PLUS_; break;
-    case A2TYPE_APPLE2E:    g_pAppTitle = TITLE_APPLE_2E_; break;
-    case A2TYPE_APPLE2EEHANCED:  g_pAppTitle = TITLE_APPLE_2E_ENHANCED_; break;
+  switch (g_Apple2Type) {
+    case A2TYPE_APPLE2:
+      g_pAppTitle = TITLE_APPLE_2_;
+      break;
+    case A2TYPE_APPLE2PLUS:
+      g_pAppTitle = TITLE_APPLE_2_PLUS_;
+      break;
+    case A2TYPE_APPLE2E:
+      g_pAppTitle = TITLE_APPLE_2E_;
+      break;
+    case A2TYPE_APPLE2EEHANCED:
+      g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+      break;
     default:
       break;
   }
 
-  if (registry)
-  {
-    LOAD(TEXT("Joystick 0"),&joytype[0]);
-    LOAD(TEXT("Joystick 1"),&joytype[1]);
-    LOAD(TEXT("Joy0Index"),&joy1index);
-    LOAD(TEXT("Joy1Index"),&joy2index);
+  if (registry) {
+    LOAD(TEXT("Joystick 0"), &joytype[0]);
+    LOAD(TEXT("Joystick 1"), &joytype[1]);
+    LOAD(TEXT("Joy0Index"), &joy1index);
+    LOAD(TEXT("Joy1Index"), &joy2index);
 
-    LOAD(TEXT("Joy0Button1"),&joy1button1);
-    LOAD(TEXT("Joy0Button2"),&joy1button2);
-    LOAD(TEXT("Joy1Button1"),&joy2button1);
+    LOAD(TEXT("Joy0Button1"), &joy1button1);
+    LOAD(TEXT("Joy0Button2"), &joy1button2);
+    LOAD(TEXT("Joy1Button1"), &joy2button1);
 
-    LOAD(TEXT("Joy0Axis0"),&joy1axis0);
-    LOAD(TEXT("Joy0Axis1"),&joy1axis1);
-    LOAD(TEXT("Joy1Axis0"),&joy2axis0);
-    LOAD(TEXT("Joy1Axis1"),&joy2axis1);
-    LOAD(TEXT("JoyExitEnable"),&joyexitenable);
-    LOAD(TEXT("JoyExitButton0"),&joyexitbutton0);
-    LOAD(TEXT("JoyExitButton1"),&joyexitbutton1);
+    LOAD(TEXT("Joy0Axis0"), &joy1axis0);
+    LOAD(TEXT("Joy0Axis1"), &joy1axis1);
+    LOAD(TEXT("Joy1Axis0"), &joy2axis0);
+    LOAD(TEXT("Joy1Axis1"), &joy2axis1);
+    LOAD(TEXT("JoyExitEnable"), &joyexitenable);
+    LOAD(TEXT("JoyExitButton0"), &joyexitbutton0);
+    LOAD(TEXT("JoyExitButton1"), &joyexitbutton1);
   }
 
-  if (joytype[0]==1 ) printf ("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n",joy1index,SDL_JoystickName(joy1index),joy1button1, joy1button2,joy1axis0,joy1axis1);
-  if (joytype[1]==1 )printf ("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n",joy2index,SDL_JoystickName(joy2index),joy2button1,joy2axis0,joy2axis1);
+  if (joytype[0] == 1)
+    printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
+           SDL_JoystickName(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
+  if (joytype[1] == 1)
+    printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
+           SDL_JoystickName(joy2index), joy2button1, joy2axis0, joy2axis1);
 
   if (registry)
-    LOAD(TEXT("Sound Emulation")   ,&soundtype);
+    LOAD(TEXT("Sound Emulation"), &soundtype);
 
   DWORD dwSerialPort;
   if (registry)
-    LOAD(TEXT("Serial Port")       ,&dwSerialPort);
+    LOAD(TEXT("Serial Port"), &dwSerialPort);
   sg_SSC.SetSerialPort(dwSerialPort); // ----------- why it is here????
 
   if (registry) {
-    LOAD(TEXT("Emulation Speed")   ,&g_dwSpeed);
+    LOAD(TEXT("Emulation Speed"), &g_dwSpeed);
 
-    LOAD(TEXT("Enhance Disk Speed"),(DWORD *)&enhancedisk);//
-    LOAD(TEXT("Video Emulation")   ,&g_videotype);
+    LOAD(TEXT("Enhance Disk Speed"), (DWORD * ) & enhancedisk);//
+    LOAD(TEXT("Video Emulation"), &g_videotype);
   }
-//  printf("Video Emulation = %d\n", videotype);
+  //  printf("Video Emulation = %d\n", videotype);
 
   DWORD dwTmp = 0;  // temp var
 
   if (registry)
-    LOAD(TEXT("Fullscreen") ,&dwTmp);  // load fullscreen flag
+    LOAD(TEXT("Fullscreen"), &dwTmp);  // load fullscreen flag
   fullscreen = (BOOL) dwTmp;
   dwTmp = 1;
   if (registry)
-    LOAD(TEXT(REGVALUE_SHOW_LEDS) ,&dwTmp);  // load Show Leds flag
+    LOAD(TEXT(REGVALUE_SHOW_LEDS), &dwTmp);  // load Show Leds flag
   g_ShowLeds = (BOOL) dwTmp;
 
   //printf("Fullscreen = %d\n", fullscreen);
-//  LOAD(TEXT("Uthernet Active")  ,(DWORD *)&tfe_enabled);
+  //  LOAD(TEXT("Uthernet Active")  ,(DWORD *)&tfe_enabled);
 
   SetCurrentCLK6502();  // set up real speed
 
   //
   if (registry)
-    if(LOAD(TEXT(REGVALUE_MOUSE_IN_SLOT4), &dwTmp))
+    if (LOAD(TEXT(REGVALUE_MOUSE_IN_SLOT4), &dwTmp))
       g_uMouseInSlot4 = dwTmp;
   g_Slot4 = g_uMouseInSlot4 ? CT_MouseInterface : CT_Mockingboard;
 
-//   if(LOAD(TEXT(REGVALUE_SPKR_VOLUME), &dwTmp))
-//       SpkrSetVolume(dwTmp, 100);    // volume by default?
-//
-//   if(LOAD(TEXT(REGVALUE_MB_VOLUME), &dwTmp))
-//       MB_SetVolume(dwTmp, 100);      // volume by default?? --bb
+  //   if(LOAD(TEXT(REGVALUE_SPKR_VOLUME), &dwTmp))
+  //       SpkrSetVolume(dwTmp, 100);    // volume by default?
+  //
+  //   if(LOAD(TEXT(REGVALUE_MB_VOLUME), &dwTmp))
+  //       MB_SetVolume(dwTmp, 100);      // volume by default?? --bb
 
   if (registry)
-    if(LOAD(TEXT(REGVALUE_SOUNDCARD_TYPE), &dwTmp))
-      MB_SetSoundcardType((eSOUNDCARDTYPE)dwTmp);
+    if (LOAD(TEXT(REGVALUE_SOUNDCARD_TYPE), &dwTmp))
+      MB_SetSoundcardType((eSOUNDCARDTYPE) dwTmp);
 
   if (registry)
-    if(LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp))
+    if (LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp))
       g_bSaveStateOnExit = (dwTmp != 0);
 
   if (registry)
-    if(LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) hddenabled = (bool) dwTmp;// after MemInitialize
-//    HD_SetEnabled(dwTmp ? true : false);
-//  printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
+    if (LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp))
+      hddenabled = (bool) dwTmp;// after MemInitialize
+  //    HD_SetEnabled(dwTmp ? true : false);
+  //  printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
 
   char *szHDFilename = NULL;
 
   if (registry)
-    if(RegLoadString(TEXT("Configuration"), TEXT("Monochrome Color"), 1, &szHDFilename, 10))
-    {
-      if (!sscanf(szHDFilename, "#%X", &monochrome)) monochrome = 0xC0C0C0;
+    if (RegLoadString(TEXT("Configuration"), TEXT("Monochrome Color"), 1, &szHDFilename, 10)) {
+      if (!sscanf(szHDFilename, "#%X", &monochrome))
+        monochrome = 0xC0C0C0;
       free(szHDFilename);
       szHDFilename = NULL;
     }
 
   dwTmp = 0;
   if (registry)
-    LOAD(TEXT("Boot at Startup") ,&dwTmp);  //
+    LOAD(TEXT("Boot at Startup"), &dwTmp);  //
 
-  if(dwTmp) {
+  if (dwTmp) {
     // autostart
     setAutoBoot();
   }
 
   dwTmp = 0;
   if (registry)
-    LOAD(TEXT("Slot 6 Autoload") ,&dwTmp);  // load autoinsert for Slot 6 flag
-  if(dwTmp) {
-  // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
+    LOAD(TEXT("Slot 6 Autoload"), &dwTmp);  // load autoinsert for Slot 6 flag
+  if (dwTmp) {
+    // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
     static char szDiskImage1[] = REGVALUE_DISK_IMAGE1;
     SetDiskImageDirectory(szDiskImage1, 0);
     SetDiskImageDirectory(szDiskImage1, 1);
-  }
-  else {
+  } else {
     Asset_InsertMasterDisk();
   }
 
   // Load hard disk images and insert it automatically in slot 7
   if (registry)
-    if(RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE1), 1, &szHDFilename, MAX_PATH))
-    {
-  //    printf("LoadConfiguration: returned string is: %s\n", szHDFilename);
+    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE1), 1, &szHDFilename, MAX_PATH)) {
+      //    printf("LoadConfiguration: returned string is: %s\n", szHDFilename);
       HD_InsertDisk2(0, szHDFilename);
       free(szHDFilename);
       szHDFilename = NULL;
     }
 
   if (registry)
-    if(RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE2), 1, &szHDFilename, MAX_PATH))
-    {
-  //    printf("LoadConfiguration: returned string is: %s\n", szHDFilename);
+    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE2), 1, &szHDFilename, MAX_PATH)) {
+      //    printf("LoadConfiguration: returned string is: %s\n", szHDFilename);
       HD_InsertDisk2(1, szHDFilename);
       free(szHDFilename);
       szHDFilename = NULL;
     }
 
-// file name for Parallel Printer
+  // file name for Parallel Printer
   if (registry)
-    if(RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_PPRINTER_FILENAME), 1, &szHDFilename, MAX_PATH))
-    {
-      if(strlen(szHDFilename) > 1) strncpy(g_sParallelPrinterFile, szHDFilename, MAX_PATH);
+    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_PPRINTER_FILENAME), 1, &szHDFilename, MAX_PATH)) {
+      if (strlen(szHDFilename) > 1)
+        strncpy(g_sParallelPrinterFile, szHDFilename, MAX_PATH);
       free(szHDFilename);
       szHDFilename = NULL;
     }
 
 
   // for joysticks use default Y-,X-trims
-//   if(LOAD(TEXT(REGVALUE_PDL_XTRIM), &dwTmp))
-//       JoySetTrim((short)dwTmp, true);
-//   if(LOAD(TEXT(REGVALUE_PDL_YTRIM), &dwTmp))
-//       JoySetTrim((short)dwTmp, false);
-// we do not use this, scroll lock ever toggling full-speed???
-//   if(LOAD(TEXT(REGVALUE_SCROLLLOCK_TOGGLE), &dwTmp))
-//     g_uScrollLockToggle = dwTmp;
+  //   if(LOAD(TEXT(REGVALUE_PDL_XTRIM), &dwTmp))
+  //       JoySetTrim((short)dwTmp, true);
+  //   if(LOAD(TEXT(REGVALUE_PDL_YTRIM), &dwTmp))
+  //       JoySetTrim((short)dwTmp, false);
+  // we do not use this, scroll lock ever toggling full-speed???
+  //   if(LOAD(TEXT(REGVALUE_SCROLLLOCK_TOGGLE), &dwTmp))
+  //     g_uScrollLockToggle = dwTmp;
 
   //
 
@@ -670,29 +666,31 @@ void LoadConfiguration()
   double scrFactor = 0.0;
   // Define screen sizes
   if (registry)
-    if (RegLoadString(TEXT("Configuration"),TEXT("Screen factor"),1, &szFilename,16)) {
-      scrFactor =  atof(szFilename);
-      if(scrFactor > 0.1) {
+    if (RegLoadString(TEXT("Configuration"), TEXT("Screen factor"), 1, &szFilename, 16)) {
+      scrFactor = atof(szFilename);
+      if (scrFactor > 0.1) {
         g_ScreenWidth = UINT(g_ScreenWidth * scrFactor);
-      g_ScreenHeight = UINT(g_ScreenHeight * scrFactor);
+        g_ScreenHeight = UINT(g_ScreenHeight * scrFactor);
       }
-    free(szFilename);
-    szFilename = NULL;
+      free(szFilename);
+      szFilename = NULL;
     }
 
   if (registry)
     if (scrFactor <= 0.1) {
       // Try to set Screen Width & Height directly
       dwTmp = 0;
-      LOAD(TEXT("Screen Width") ,&dwTmp);
-        if(dwTmp > 0) g_ScreenWidth = dwTmp;
+      LOAD(TEXT("Screen Width"), &dwTmp);
+      if (dwTmp > 0)
+        g_ScreenWidth = dwTmp;
       dwTmp = 0;
-      LOAD(TEXT("Screen Height") ,&dwTmp);
-        if(dwTmp > 0) g_ScreenHeight = dwTmp;
+      LOAD(TEXT("Screen Height"), &dwTmp);
+      if (dwTmp > 0)
+        g_ScreenHeight = dwTmp;
     }
 
   if (registry)
-    if (RegLoadString(TEXT("Configuration"),TEXT(REGVALUE_SAVESTATE_FILENAME),1, &szFilename,MAX_PATH)) {
+    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_SAVESTATE_FILENAME), 1, &szFilename, MAX_PATH)) {
       Snapshot_SetFilename(szFilename);  // If not in Registry than default will be used
       free(szFilename);
       szFilename = NULL;
@@ -707,15 +705,17 @@ void LoadConfiguration()
     free(szFilename);
     szFilename = NULL;
   }
-//  SetCurrentDirectory(g_sCurrentDir);
-  if(strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') //something is wrong in dir name?
+  //  SetCurrentDirectory(g_sCurrentDir);
+  if (strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') //something is wrong in dir name?
   {//
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
-    if(tmp == NULL) strcpy(g_sCurrentDir, "/");  //begin from the root, then
-      else strcpy(g_sCurrentDir, tmp);
+    if (tmp == NULL)
+      strcpy(g_sCurrentDir, "/");  //begin from the root, then
+    else
+      strcpy(g_sCurrentDir, tmp);
   }
 
-// Load starting directory for HDV (Apple][ HDD) images
+  // Load starting directory for HDV (Apple][ HDD) images
   if (registry)
     RegLoadString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, &szFilename, MAX_PATH);
 
@@ -724,16 +724,18 @@ void LoadConfiguration()
     free(szFilename);
     szFilename = NULL;
   }
-//  SetCurrentDirectory(g_sCurrentDir);
-  if(strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') //something is wrong in dir name?
+  //  SetCurrentDirectory(g_sCurrentDir);
+  if (strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') //something is wrong in dir name?
   {
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
-    if(tmp == NULL) strcpy(g_sHDDDir, "/");  //begin from the root, then
-    else strcpy(g_sHDDDir, tmp);
+    if (tmp == NULL)
+      strcpy(g_sHDDDir, "/");  //begin from the root, then
+    else
+      strcpy(g_sHDDDir, tmp);
   }
 
 
-// Load starting directory for saving current states
+  // Load starting directory for saving current states
   if (registry)
     RegLoadString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, &szFilename, MAX_PATH);
   if (szFilename) {
@@ -741,12 +743,14 @@ void LoadConfiguration()
     free(szFilename);
     szFilename = NULL;
   }
-    if(strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') //something is wrong in dir name?
-      {
-      char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
-      if(tmp == NULL) strcpy(g_sSaveStateDir, "/");  //begin from the root, then
-      else strcpy(g_sSaveStateDir, tmp);
-      }
+  if (strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') //something is wrong in dir name?
+  {
+    char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
+    if (tmp == NULL)
+      strcpy(g_sSaveStateDir, "/");  //begin from the root, then
+    else
+      strcpy(g_sSaveStateDir, tmp);
+  }
 
   // Read and fill FTP variables - server, local dir, user name and password
   if (registry)
@@ -784,25 +788,23 @@ void LoadConfiguration()
     free(szFilename);
     szFilename = NULL;
   }
-// Print some debug strings
-  printf("Ready login = %s\n",g_sFTPUserPass);
+  // Print some debug strings
+  printf("Ready login = %s\n", g_sFTPUserPass);
 
-//
-// ****By now we deal without Uthernet interface! --bb****
- //   char szUthernetInt[MAX_PATH] = {0};
-//   RegLoadString(TEXT("Configuration"),TEXT("Uthernet Interface"),1,szUthernetInt,MAX_PATH);
-//   update_tfe_interface(szUthernetInt,NULL);
+  //
+  // ****By now we deal without Uthernet interface! --bb****
+  //   char szUthernetInt[MAX_PATH] = {0};
+  //   RegLoadString(TEXT("Configuration"),TEXT("Uthernet Interface"),1,szUthernetInt,MAX_PATH);
+  //   update_tfe_interface(szUthernetInt,NULL);
 
 }
 
 // Splits a string into a sequence of substrings each delimited by delimiter.
-std::vector<std::string> split(const std::string &string,
-                               const std::string &delimiter = " ")
+std::vector <std::string> split(const std::string &string, const std::string &delimiter = " ")
 {
-  std::vector<std::string> parts;
+  std::vector <std::string> parts;
 
-  size_t last = 0,
-         pos = 0;
+  size_t last = 0, pos = 0;
 
   do {
     pos = string.find(delimiter, last);
@@ -836,8 +838,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     if (!registry) {
       registry = fopen(userSpecifiedFilename, "w+");
       if (!registry) {
-        std::cerr << "WARNING! Failed to open config file: "
-                  << userSpecifiedFilename << std::endl;
+        std::cerr << "WARNING! Failed to open config file: " << userSpecifiedFilename << std::endl;
         exit(EXIT_SUCCESS);
       }
     }
@@ -854,15 +855,12 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   if (xdgConfigDirs.length() == 0)
     xdgConfigDirs = "/etc/xdg";
 
-  std::vector<std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
+  std::vector <std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
 
   // Suppport the old /etc/linapple/linapple.conf location.
   sysConfigDirs.push_back("/etc");
 
-  for (std::vector<std::string>::reverse_iterator it = sysConfigDirs.rbegin();
-       it != sysConfigDirs.rend();
-       it++)
-  {
+  for (std::vector<std::string>::reverse_iterator it = sysConfigDirs.rbegin(); it != sysConfigDirs.rend(); it++) {
     std::string config = *it + "/linapple/linapple.conf";
     registry = fopen(config.c_str(), "r");
     if (!registry)
@@ -879,10 +877,10 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   envvar = getenv("XDG_CONFIG_HOME");
   std::string xdgConfigHome = envvar ? envvar : "";
   if (xdgConfigHome.length() == 0 && home) {
-      xdgConfigHome = std::string(home) + "/.config";
+    xdgConfigHome = std::string(home) + "/.config";
   }
 
-  std::vector<std::string> configDir;
+  std::vector <std::string> configDir;
   configDir.push_back(xdgConfigDirs + "/linapple/linapple.conf");
   if (home) {
     // Suppport old locations under HOME.
@@ -891,10 +889,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   }
 
   std::string lastSuccessfulUserConfig;
-  for (std::vector<std::string>::reverse_iterator it = configDir.rbegin();
-       it != configDir.rend();
-       it++)
-  {
+  for (std::vector<std::string>::reverse_iterator it = configDir.rbegin(); it != configDir.rend(); it++) {
     registry = fopen((*it).c_str(), "r");
     if (!registry)
       continue;
@@ -919,10 +914,8 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   }
 
   if (!home) {
-    std::cerr << "WARNING!"
-              << " No HOME set and no known location for user config files."
-              << " This can lead to unexpected behavior, even program crashes."
-              << std::endl;
+    std::cerr << "WARNING!" << " No HOME set and no known location for user config files."
+              << " This can lead to unexpected behavior, even program crashes." << std::endl;
     return;
   }
 
@@ -933,76 +926,77 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
 }
 
 //===========================================================================
-void RegisterExtensions ()
+void RegisterExtensions()
 { // TO DO: register extensions for KDE or GNOME desktops?? Do not know, if it is sane idea. He-he. --bb
 
 
-//   TCHAR szCommandTmp[MAX_PATH];
-//   GetModuleFileName((HMODULE)0,szCommandTmp,MAX_PATH);
-//
-//   TCHAR command[MAX_PATH];
-//   wsprintf(command, "\"%s\"",  szCommandTmp);  // Wrap  path & filename  in quotes &  null terminate
-//
-//   TCHAR icon[MAX_PATH];
-//   wsprintf(icon,TEXT("%s,1"),(LPCTSTR)command);
-//
-//   _tcscat(command,TEXT(" \"%1\""));      // Append "%1"
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,".bin",REG_SZ,"DiskImage",10);
-//   RegSetValue(HKEY_CLASSES_ROOT,".do"  ,REG_SZ,"DiskImage",10);
-//   RegSetValue(HKEY_CLASSES_ROOT,".dsk",REG_SZ,"DiskImage",10);
-//   RegSetValue(HKEY_CLASSES_ROOT,".nib",REG_SZ,"DiskImage",10);
-//   RegSetValue(HKEY_CLASSES_ROOT,".po"  ,REG_SZ,"DiskImage",10);
-// //  RegSetValue(HKEY_CLASSES_ROOT,".aws",REG_SZ,"DiskImage",10);  // TO DO
-// //  RegSetValue(HKEY_CLASSES_ROOT,".hdv",REG_SZ,"DiskImage",10);  // TO DO
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage",
-//         REG_SZ,"Disk Image",21);
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage\\DefaultIcon",
-//         REG_SZ,icon,_tcslen(icon)+1);
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage\\shell\\open\\command",
-//         REG_SZ,command,_tcslen(command)+1);
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage\\shell\\open\\ddeexec",
-//         REG_SZ,"%1",3);
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage\\shell\\open\\ddeexec\\application",
-//         REG_SZ,"applewin",9);
-//
-//   RegSetValue(HKEY_CLASSES_ROOT,
-//         "DiskImage\\shell\\open\\ddeexec\\topic",
-//         REG_SZ,"system",7);
+  //   TCHAR szCommandTmp[MAX_PATH];
+  //   GetModuleFileName((HMODULE)0,szCommandTmp,MAX_PATH);
+  //
+  //   TCHAR command[MAX_PATH];
+  //   wsprintf(command, "\"%s\"",  szCommandTmp);  // Wrap  path & filename  in quotes &  null terminate
+  //
+  //   TCHAR icon[MAX_PATH];
+  //   wsprintf(icon,TEXT("%s,1"),(LPCTSTR)command);
+  //
+  //   _tcscat(command,TEXT(" \"%1\""));      // Append "%1"
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,".bin",REG_SZ,"DiskImage",10);
+  //   RegSetValue(HKEY_CLASSES_ROOT,".do"  ,REG_SZ,"DiskImage",10);
+  //   RegSetValue(HKEY_CLASSES_ROOT,".dsk",REG_SZ,"DiskImage",10);
+  //   RegSetValue(HKEY_CLASSES_ROOT,".nib",REG_SZ,"DiskImage",10);
+  //   RegSetValue(HKEY_CLASSES_ROOT,".po"  ,REG_SZ,"DiskImage",10);
+  // //  RegSetValue(HKEY_CLASSES_ROOT,".aws",REG_SZ,"DiskImage",10);  // TO DO
+  // //  RegSetValue(HKEY_CLASSES_ROOT,".hdv",REG_SZ,"DiskImage",10);  // TO DO
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage",
+  //         REG_SZ,"Disk Image",21);
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage\\DefaultIcon",
+  //         REG_SZ,icon,_tcslen(icon)+1);
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage\\shell\\open\\command",
+  //         REG_SZ,command,_tcslen(command)+1);
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage\\shell\\open\\ddeexec",
+  //         REG_SZ,"%1",3);
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage\\shell\\open\\ddeexec\\application",
+  //         REG_SZ,"applewin",9);
+  //
+  //   RegSetValue(HKEY_CLASSES_ROOT,
+  //         "DiskImage\\shell\\open\\ddeexec\\topic",
+  //         REG_SZ,"system",7);
 }
 
 void PrintHelp()
 {
-    printf( "usage: linapple [options]\n"
-            "\n"
-            "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
-            "\n"
-            "  -h|--help      show this help message\n"
-            "  --d1 <file>    insert disk image into first drive\n"
-            "  --d2 <file>    insert disk image into second drive\n"
-            "  -b|--autoboot  boot/reset at startup\n"
-            "  -f             run fullscreen\n"
-            "  -l             write log to 'AppleWin.log'\n"
-#ifdef RAMWORKS
-            "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
-#endif
-            "  --benchmark    benchmark and quit\n"
-            "\n");
+  printf("usage: linapple [options]\n"
+         "\n"
+         "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
+         "\n"
+         "  -h|--help      show this help message\n"
+         "  --d1 <file>    insert disk image into first drive\n"
+         "  --d2 <file>    insert disk image into second drive\n"
+         "  -b|--autoboot  boot/reset at startup\n"
+         "  -f             run fullscreen\n"
+         "  -l             write log to 'AppleWin.log'\n"
+         #ifdef RAMWORKS
+         "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
+         #endif
+         "  --benchmark    benchmark and quit\n"
+         "\n");
 }
 
 //---------------------------------------------------------------------------
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   bool bLog = false;
   bool bSetFullScreen = false;
   bool bBoot = false;
@@ -1015,126 +1009,127 @@ int main(int argc, char *argv[]) {
   int opt;
   int optind = 0;
   const char *optname;
-  static struct option longopts[] = { { "autoboot", 0, 0, 0 },
-                                      { "conf", required_argument, 0, 0 },
-                                      { "d1", required_argument, 0, 0 },
-                                      { "d2", required_argument, 0, 0 },
-                                      { "help", 0, 0, 0 },
-                                      { "state", required_argument, 0, 0 },
-                                      { 0, 0, 0, 0 } };
+  static struct option longopts[] = {{"autoboot", 0,                 0, 0},
+                                     {"conf",     required_argument, 0, 0},
+                                     {"d1",       required_argument, 0, 0},
+                                     {"d2",       required_argument, 0, 0},
+                                     {"help",     0,                 0, 0},
+                                     {"state",    required_argument, 0, 0},
+                                     {0,          0,                 0, 0}};
 
-  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) !=
-         -1) {
+  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
     switch (opt) {
-    case '1':
-      szImageName_drive1 = optarg;
-      break;
-
-    case '2':
-      szImageName_drive2 = optarg;
-      break;
-
-    case 'b':
-      bBoot = true;
-      break;
-
-    case 'f':
-      bSetFullScreen = true;
-      break;
-
-    case 'h':
-      PrintHelp();
-      return 0;
-      break;
-
-    case 'l':
-      bLog = true;
-      break;
-
-#ifdef RAMWORKS
-    case 'r': // RamWorks size [1..127]
-      g_uMaxExPages = atoi(optarg);
-      if (g_uMaxExPages > 127)
-        g_uMaxExPages = 128;
-      else if (g_uMaxExPages < 1)
-        g_uMaxExPages = 1;
-      break;
-#endif
-
-    case 0:
-      optname = longopts[optind].name;
-      if (!strcmp(optname, "autoboot")) {
-        bBoot = true;
-      } else if (!strcmp(optname, "benchmark")) {
-        bBenchMark = true;
-      } else if (!strcmp(optname, "conf")) {
-        szConfigurationFile = optarg;
-      } else if (!strcmp(optname, "d1")) {
+      case '1':
         szImageName_drive1 = optarg;
-      } else if (!strcmp(optname, "d2")) {
+        break;
+
+      case '2':
         szImageName_drive2 = optarg;
-      } else if (!strcmp(optname, "help")) {
+        break;
+
+      case 'b':
+        bBoot = true;
+        break;
+
+      case 'f':
+        bSetFullScreen = true;
+        break;
+
+      case 'h':
         PrintHelp();
         return 0;
-      } else if (!strcmp(optname, "state")) {
-        szSnapshotFile = optarg;
-      } else {
-        printf("Unknown option '%s'.\n\n", optname);
+        break;
+
+      case 'l':
+        bLog = true;
+        break;
+
+      #ifdef RAMWORKS
+      case 'r': // RamWorks size [1..127]
+        g_uMaxExPages = atoi(optarg);
+        if (g_uMaxExPages > 127)
+          g_uMaxExPages = 128;
+        else if (g_uMaxExPages < 1)
+          g_uMaxExPages = 1;
+        break;
+      #endif
+
+      case 0:
+        optname = longopts[optind].name;
+        if (!strcmp(optname, "autoboot")) {
+          bBoot = true;
+        } else if (!strcmp(optname, "benchmark")) {
+          bBenchMark = true;
+        } else if (!strcmp(optname, "conf")) {
+          szConfigurationFile = optarg;
+        } else if (!strcmp(optname, "d1")) {
+          szImageName_drive1 = optarg;
+        } else if (!strcmp(optname, "d2")) {
+          szImageName_drive2 = optarg;
+        } else if (!strcmp(optname, "help")) {
+          PrintHelp();
+          return 0;
+        } else if (!strcmp(optname, "state")) {
+          szSnapshotFile = optarg;
+        } else {
+          printf("Unknown option '%s'.\n\n", optname);
+          PrintHelp();
+          return 255;
+        }
+        break;
+
+      default:
+        printf("Unknown option '%s'.\n\n", optarg);
         PrintHelp();
         return 255;
-      }
-      break;
-
-    default:
-      printf("Unknown option '%s'.\n\n", optarg);
-      PrintHelp();
-      return 255;
     }
   }
 
-  if (bLog) LogInitialize();
-  if (!Asset_Init()) return 1;
+  if (bLog)
+    LogInitialize();
+  if (!Asset_Init())
+    return 1;
 
-#if DBG_CALC_FREQ
+  #if DBG_CALC_FREQ
   //QueryPerformanceFrequency((LARGE_INTEGER*)&g_nPerfFreq);
   g_nPerfFreq = 1000;//milliseconds?
   if(g_fh) fprintf(g_fh, "Performance frequency = %d\n",g_nPerfFreq);
-#endif
+  #endif
 
   //-----
 
   // Initialize COM
   // . NB. DSInit() is done when g_hFrameWindow is created (WM_CREATE)
 
-  if(InitSDL()) return 1; // init SDL subsystems, set icon
-//  CoInitialize( NULL );   ------- what is it initializing?----------------------------------------
+  if (InitSDL())
+    return 1; // init SDL subsystems, set icon
+  //  CoInitialize( NULL );   ------- what is it initializing?----------------------------------------
 
-// CURL routines
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    g_curl = curl_easy_init();
-    if(!g_curl) {
+  // CURL routines
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+  g_curl = curl_easy_init();
+  if (!g_curl) {
     printf("Could not initialize CURL easy interface");
     return 1;
-    }
-      /* Set user name and password to access FTP server */
-    curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
-//
-// just do not see why we need this timer???
+  }
+  /* Set user name and password to access FTP server */
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
+  //
+  // just do not see why we need this timer???
   /*bool bSysClkOK =*/ SysClk_InitTimer();
 
   // DO ONE-TIME INITIALIZATION
-//  g_hInstance = passinstance;
+  //  g_hInstance = passinstance;
   MemPreInitialize();    // Call before any of the slot devices are initialized
-//  GdiSetBatchLimit(512);
-//  GetProgramDirectory();
-//  RegisterExtensions();
-//  FrameRegisterClass();
+  //  GdiSetBatchLimit(512);
+  //  GetProgramDirectory();
+  //  RegisterExtensions();
+  //  FrameRegisterClass();
   ImageInitialize();
   DiskInitialize();
   CreateColorMixMap();  // For tv emulation g_nAppMode
 
-  do
-  {
+  do {
     // DO INITIALIZATION THAT MUST BE REPEATED FOR A RESTART
     restart = 0;
     g_nAppMode = MODE_LOGO;
@@ -1144,27 +1139,23 @@ int main(int argc, char *argv[]) {
     LoadAllConfigurations(szConfigurationFile);
 
     //Overwrite configuration file's set fullscreen option, if one was specified on the command line
-    if(bSetFullScreen) {
+    if (bSetFullScreen) {
       fullscreen = bSetFullScreen;
     }
 
     //This part of the code inserts disks if any were specified on the command line, overwriting the
     //configuration settings.
     int nError = 0;
-    if(szImageName_drive1)
-    {
+    if (szImageName_drive1) {
       nError = DoDiskInsert(0, szImageName_drive1);
-        if (nError)
-      {
+      if (nError) {
         LOG("Cannot insert image %s into drive 1.", szImageName_drive1);
         break;
       }
     }
-    if(szImageName_drive2)
-    {
+    if (szImageName_drive2) {
       nError |= DoDiskInsert(1, szImageName_drive2);
-      if (nError)
-      {
+      if (nError) {
         LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
         break;
       }
@@ -1172,7 +1163,8 @@ int main(int argc, char *argv[]) {
 
     FrameCreateWindow();
 
-    if (!DSInit()) soundtype = SOUND_NONE;    // Direct Sound and Stuff
+    if (!DSInit())
+      soundtype = SOUND_NONE;    // Direct Sound and Stuff
 
     MB_Initialize();  // Mocking board
     SpkrInitialize();  // Speakers - of Apple][ ...grrrrrrrrrrr, I love them!--bb
@@ -1180,38 +1172,36 @@ int main(int argc, char *argv[]) {
     JoyInitialize();
     MemInitialize();
     HD_SetEnabled(hddenabled);
-//printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
+    //printf("g_bHD_Enabled = %d\n", g_bHD_Enabled);
 
     VideoInitialize();
 
 
-//     if (!bSysClkOK)
-//     {
-//       MessageBox(g_hFrameWindow, "DirectX failed to create SystemClock instance", TEXT("AppleWin Error"), MB_OK);
-//       PostMessage(g_hFrameWindow, WM_DESTROY, 0, 0);  // Close everything down
-//     }
+    //     if (!bSysClkOK)
+    //     {
+    //       MessageBox(g_hFrameWindow, "DirectX failed to create SystemClock instance", TEXT("AppleWin Error"), MB_OK);
+    //       PostMessage(g_hFrameWindow, WM_DESTROY, 0, 0);  // Close everything down
+    //     }
 
-//    tfe_init();
+    //    tfe_init();
     Snapshot_Startup();    // Do this after everything has been init'ed
-    if (szSnapshotFile)
-    {
+    if (szSnapshotFile) {
       Snapshot_SetFilename(szSnapshotFile);
       LOG("[main ] using state file '%s'\n", Snapshot_GetFilename());
       Snapshot_LoadState();
     }
 
 
-/*  ------Will be fullscreened and booted later. I promise. --bb          */
-//     if(bSetFullScreen)
-//     {
-//       PostMessage(g_hFrameWindow, WM_KEYDOWN, VK_F1+BTN_FULLSCR, 0);
-//       PostMessage(g_hFrameWindow, WM_KEYUP,   VK_F1+BTN_FULLSCR, 0);
-//       bSetFullScreen = false;
-//     }
-//
+    /*  ------Will be fullscreened and booted later. I promise. --bb          */
+    //     if(bSetFullScreen)
+    //     {
+    //       PostMessage(g_hFrameWindow, WM_KEYDOWN, VK_F1+BTN_FULLSCR, 0);
+    //       PostMessage(g_hFrameWindow, WM_KEYUP,   VK_F1+BTN_FULLSCR, 0);
+    //       bSetFullScreen = false;
+    //     }
+    //
     //Automatically boot from disk if specified on the command line
-    if(bBoot)
-    {
+    if (bBoot) {
       setAutoBoot();
     }
 
@@ -1219,58 +1209,60 @@ int main(int argc, char *argv[]) {
     SetUsingCursor(0);
 
     // trying fullscreen
-    if (!fullscreen) SetNormalMode();
-      else SetFullScreenMode();
+    if (!fullscreen)
+      SetNormalMode();
+    else
+      SetFullScreenMode();
 
     DrawFrameWindow();  // we do not have WM_PAINT?
 
 
     // ENTER THE MAIN MESSAGE LOOP
-    if(bBenchMark) VideoBenchmark(); // start VideoBenchmark and exit
-      else EnterMessageLoop();  // else we just start game
-// on WM_DESTROY event:
+    if (bBenchMark)
+      VideoBenchmark(); // start VideoBenchmark and exit
+    else
+      EnterMessageLoop();  // else we just start game
+    // on WM_DESTROY event:
 
 
     Snapshot_Shutdown();
     DebugDestroy();
-//    printf("Quitting. Snapshot_Shutdown-ed!\n");
+    //    printf("Quitting. Snapshot_Shutdown-ed!\n");
     if (!restart) {
       DiskDestroy();
       ImageDestroy();
       HD_Cleanup();
     }
-//    printf("Quitting. DiskDestroy, ImageDestroy and HD_Cleanup!\n");
+    //    printf("Quitting. DiskDestroy, ImageDestroy and HD_Cleanup!\n");
     PrintDestroy();
     sg_SSC.CommDestroy();
     CpuDestroy();
     MemDestroy();
-//    printf("Quitting. PrintDestroy, sg_SSC.CommDestroy, CPU-MEMDestroy!\n");
+    //    printf("Quitting. PrintDestroy, sg_SSC.CommDestroy, CPU-MEMDestroy!\n");
     SpkrDestroy();
-//    printf("Quitting. SpkrDestroy!!\n");
+    //    printf("Quitting. SpkrDestroy!!\n");
 
     VideoDestroy();
-//    printf("Quitting. VideoDestroy!!\n");
+    //    printf("Quitting. VideoDestroy!!\n");
     MB_Destroy();
-//    printf("Quitting. MB_Destroy!\n");
-// end of WM_DESTROY event
+    //    printf("Quitting. MB_Destroy!\n");
+    // end of WM_DESTROY event
     MB_Reset();
-//    printf("Quitting. MB_Reset!\n");
+    //    printf("Quitting. MB_Reset!\n");
     sg_Mouse.Uninitialize(); // Maybe restarting due to switching slot-4 card from mouse to MB
-//    printf("Quitting. Mouse.Uninitialize!!!\n");
+    //    printf("Quitting. Mouse.Uninitialize!!!\n");
     JoyShutDown();  // close opened (if any) joysticks
-  }
-  while (restart);
+  } while (restart);
 
   // Release COM
   DSUninit();
   SysClk_UninitTimer();
-//  CoUninitialize();------------------------------- what is it uninitializing?--------------------------
+  //  CoUninitialize();------------------------------- what is it uninitializing?--------------------------
 
-//  tfe_shutdown();
+  //  tfe_shutdown();
 
   RiffFinishWriteFile();
-  if(registry!=NULL)
-  {
+  if (registry != NULL) {
     fclose(registry);    //close conf file (linapple.conf by default)
   }
 

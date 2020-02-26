@@ -27,7 +27,9 @@
  *
  * \sa SDL_GetPrefPath
  */
-extern DECLSPEC char *SDLCALL SDL_GetBasePath(void);
+extern DECLSPEC char *SDLCALL
+
+SDL_GetBasePath(void);
 
 /**
  * \brief Get the user-and-app-specific path where files can be written.
@@ -90,6 +92,8 @@ extern DECLSPEC char *SDLCALL SDL_GetBasePath(void);
  *
  * \sa SDL_GetBasePath
  */
-extern DECLSPEC char *SDLCALL SDL_GetPrefPath(const char *org, const char *app);
+extern DECLSPEC char *SDLCALL
+
+SDL_GetPrefPath(const char *org, const char *app);
 
 #endif // __shim_h

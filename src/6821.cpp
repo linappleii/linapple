@@ -196,7 +196,7 @@ void C6821::Write(BYTE byRS, BYTE byData)
 {
   byRS &= 3;
 
-  switch( byRS ) {
+  switch (byRS) {
     /******************* port A output/DDR write *******************/
     case PIA_DDRA:
 
@@ -317,23 +317,23 @@ void C6821::Write(BYTE byRS, BYTE byData)
 
 void C6821::Reset()
 {
-  m_byIA    = 0;
-  m_byCA1    = 0;
-  m_byICA2  = 0;
-  m_byOA    = 0;
-  m_byOCA2  = 0;
-  m_byDDRA  = 0;
-  m_byCTLA  = 0;
-  m_byIRQAState  = 0;
+  m_byIA = 0;
+  m_byCA1 = 0;
+  m_byICA2 = 0;
+  m_byOA = 0;
+  m_byOCA2 = 0;
+  m_byDDRA = 0;
+  m_byCTLA = 0;
+  m_byIRQAState = 0;
 
-  m_byIB    = 0;
-  m_byCB1    = 0;
-  m_byICB2  = 0;
-  m_byOB    = 0;
-  m_byOCB2  = 0;
-  m_byDDRB  = 0;
-  m_byCTLB  = 0;
-  m_byIRQBState  = 0;
+  m_byIB = 0;
+  m_byCB1 = 0;
+  m_byICB2 = 0;
+  m_byOB = 0;
+  m_byOCB2 = 0;
+  m_byDDRB = 0;
+  m_byCTLB = 0;
+  m_byIRQBState = 0;
 }
 
 void C6821::UpdateInterrupts()
@@ -342,26 +342,22 @@ void C6821::UpdateInterrupts()
 
   // start with IRQ A
   byNewState = 0;
-  if ( ( IRQ1( m_byCTLA ) && IRQ1_ENABLED( m_byCTLA ) ) ||
-     ( IRQ2( m_byCTLA ) && IRQ2_ENABLED( m_byCTLA ) ) )
-     byNewState = 1;
+  if ((IRQ1(m_byCTLA) && IRQ1_ENABLED(m_byCTLA)) || (IRQ2(m_byCTLA) && IRQ2_ENABLED(m_byCTLA)))
+    byNewState = 1;
 
-  if ( byNewState != m_byIRQAState )
-  {
+  if (byNewState != m_byIRQAState) {
     m_byIRQAState = byNewState;
-    PIA_W_CALLBACK( m_stOutIRQA, m_byIRQAState );
+    PIA_W_CALLBACK(m_stOutIRQA, m_byIRQAState);
   }
 
   /* then do IRQ B */
   byNewState = 0;
-  if ( ( IRQ1( m_byCTLB ) && IRQ1_ENABLED( m_byCTLB ) ) ||
-     ( IRQ2( m_byCTLB ) && IRQ2_ENABLED( m_byCTLB ) ) )
-     byNewState = 1;
+  if ((IRQ1(m_byCTLB) && IRQ1_ENABLED(m_byCTLB)) || (IRQ2(m_byCTLB) && IRQ2_ENABLED(m_byCTLB)))
+    byNewState = 1;
 
-  if ( byNewState != m_byIRQBState )
-  {
+  if (byNewState != m_byIRQBState) {
     m_byIRQBState = byNewState;
-    PIA_W_CALLBACK( m_stOutIRQB, m_byIRQBState );
+    PIA_W_CALLBACK(m_stOutIRQB, m_byIRQBState);
   }
 }
 
@@ -370,12 +366,9 @@ void C6821::SetCA1(BYTE byData)
   byData = byData ? 1 : 0;
 
   // the new state has caused a transition
-  if ( m_byCA1 ^ byData )
-  {
+  if (m_byCA1 ^ byData) {
     // handle the active transition
-    if ( ( byData && C1_LOW_TO_HIGH( m_byCTLA ) ) ||
-      ( !byData && C1_HIGH_TO_LOW( m_byCTLA ) ) )
-    {
+    if ((byData && C1_LOW_TO_HIGH(m_byCTLA)) || (!byData && C1_HIGH_TO_LOW(m_byCTLA))) {
       // mark the IRQ
       SET_IRQ1(m_byCTLA);
 
@@ -383,11 +376,10 @@ void C6821::SetCA1(BYTE byData)
       UpdateInterrupts();
 
       // CA2 is configured as output and in read strobe mode and cleared by a CA1 transition
-      if ( C2_OUTPUT( m_byCTLA ) && C2_STROBE_MODE( m_byCTLA ) && STROBE_C1_RESET( m_byCTLA ) )
-      {
+      if (C2_OUTPUT(m_byCTLA) && C2_STROBE_MODE(m_byCTLA) && STROBE_C1_RESET(m_byCTLA)) {
         // call the CA2 output function
-        if ( !m_byOCA2 )
-          PIA_W_CALLBACK( m_stOutCA2, 1 );
+        if (!m_byOCA2)
+          PIA_W_CALLBACK(m_stOutCA2, 1);
 
         // clear CA2
         m_byOCA2 = 1;
@@ -404,14 +396,11 @@ void C6821::SetCA2(BYTE byData)
   byData = byData ? 1 : 0;
 
   // CA2 is in input mode
-  if ( C2_INPUT( m_byCTLA ) )
-  {
+  if (C2_INPUT(m_byCTLA)) {
     // the new state has caused a transition
-    if ( m_byICA2 ^ byData )
-    {
+    if (m_byICA2 ^ byData) {
       // handle the active transition
-      if ((byData && C2_LOW_TO_HIGH(m_byCTLA)) ||
-          (!byData && C2_HIGH_TO_LOW(m_byCTLA))) {
+      if ((byData && C2_LOW_TO_HIGH(m_byCTLA)) || (!byData && C2_HIGH_TO_LOW(m_byCTLA))) {
         // mark the IRQ
         SET_IRQ2(m_byCTLA);
 
@@ -430,27 +419,22 @@ void C6821::SetCB1(BYTE byData)
   byData = byData ? 1 : 0;
 
   // the new state has caused a transition
-  if ( m_byCB1 ^ byData )
-  {
+  if (m_byCB1 ^ byData) {
     // handle the active transition
-    if ( ( byData && C1_LOW_TO_HIGH( m_byCTLB ) ) ||
-      ( !byData && C1_HIGH_TO_LOW( m_byCTLB ) ) )
-    {
+    if ((byData && C1_LOW_TO_HIGH(m_byCTLB)) || (!byData && C1_HIGH_TO_LOW(m_byCTLB))) {
       // mark the IRQ
-      SET_IRQ1( m_byCTLB );
+      SET_IRQ1(m_byCTLB);
 
       // update externals
       UpdateInterrupts();
 
       // CB2 is configured as output and in read strobe mode and cleared by a CA1 transition
-      if ( C2_OUTPUT( m_byCTLB ) && C2_STROBE_MODE( m_byCTLB ) && STROBE_C1_RESET( m_byCTLB ) )
-      {
+      if (C2_OUTPUT(m_byCTLB) && C2_STROBE_MODE(m_byCTLB) && STROBE_C1_RESET(m_byCTLB)) {
         // the IRQ1 flag must have also been cleared
-        if ( !IRQ1( m_byCTLB ) )
-        {
+        if (!IRQ1(m_byCTLB)) {
           // call the CB2 output function
-          if ( !m_byOCB2 )
-            PIA_W_CALLBACK( m_stOutCB2, 1 );
+          if (!m_byOCB2)
+            PIA_W_CALLBACK(m_stOutCB2, 1);
 
           // clear CB2
           m_byOCB2 = 1;
@@ -469,17 +453,13 @@ void C6821::SetCB2(BYTE byData)
   byData = byData ? 1 : 0;
 
   // CA2 is in input mode
-  if ( C2_INPUT( m_byCTLB ) )
-  {
+  if (C2_INPUT(m_byCTLB)) {
     // the new state has caused a transition
-    if ( m_byICB2 ^ byData )
-    {
+    if (m_byICB2 ^ byData) {
       // handle the active transition
-      if ( ( byData && C2_LOW_TO_HIGH( m_byCTLB ) ) ||
-        ( !byData && C2_HIGH_TO_LOW( m_byCTLB ) ) )
-      {
+      if ((byData && C2_LOW_TO_HIGH(m_byCTLB)) || (!byData && C2_HIGH_TO_LOW(m_byCTLB))) {
         // mark the IRQ
-        SET_IRQ2( m_byCTLB );
+        SET_IRQ2(m_byCTLB);
 
         // update externals
         UpdateInterrupts();

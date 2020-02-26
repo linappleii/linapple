@@ -2,16 +2,24 @@
 
 extern bool g_bHD_Enabled;
 
-bool    HD_CardIsEnabled();
-void    HD_SetEnabled(bool bEnabled);
-LPCTSTR HD_GetFullName (int drive);
-VOID    HD_Load_Rom(LPBYTE pCxRomPeripheral, UINT uSlot);
-VOID    HD_Cleanup();
-BOOL    HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
-BOOL    HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
+bool HD_CardIsEnabled();
 
-void    HD_Select(int nDrive);
-void   HD_FTP_Select(int nDrive);
+void HD_SetEnabled(bool bEnabled);
 
-int  HD_GetStatus(void);
-void  HD_ResetStatus(void);
+LPCTSTR HD_GetFullName(int drive);
+
+VOID HD_Load_Rom(LPBYTE pCxRomPeripheral, UINT uSlot);
+
+VOID HD_Cleanup();
+
+BOOL HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
+
+BOOL HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
+
+void HD_Select(int nDrive);
+
+void HD_FTP_Select(int nDrive);
+
+int HD_GetStatus(void);
+
+void HD_ResetStatus(void);
