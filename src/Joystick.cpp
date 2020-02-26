@@ -44,6 +44,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //#pragma  hdrstop  -- g++ complains on this pragma
 #include "MouseInterface.h"
 
+#include <iostream>
+
 #define  BUTTONTIME       5000
 
 #define  DEVICE_NONE      0
@@ -324,7 +326,7 @@ BOOL JoyProcessKey (int virtkey, BOOL extended, BOOL down, BOOL autorep)
         case SDLK_KP4:
         case SDLK_LEFT:      keydown[ 3] = down;  break;
         case SDLK_KP5:
-        case SDLK_CLEAR:     keydown[ 4] = down;  break; // where is that clear key???? I don't have one! --bb
+        case SDLK_CLEAR:     keydown[ 4] = down;  break;
         case SDLK_KP6:
         case SDLK_RIGHT:     keydown[ 5] = down;  break;
         case SDLK_KP7:
@@ -346,35 +348,41 @@ BOOL JoyProcessKey (int virtkey, BOOL extended, BOOL down, BOOL autorep)
 
   if (keychange)
   {
+    // Is it a joystick button 0 or 1 (open-apple or solid apple)?
     if ((virtkey == SDLK_KP0) || (virtkey == SDLK_INSERT))
     {
+      // It's a joystick button...
       if(down)
       {
         if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
         {
-                buttonlatch[0] = BUTTONTIME;
+          buttonlatch[0] = BUTTONTIME;
         }
         else if(joyinfo[joytype[1]].device != DEVICE_NONE)
         {
-              buttonlatch[2] = BUTTONTIME;
-              buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
+          buttonlatch[2] = BUTTONTIME;
+          buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
         }
       }
     }
     else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE))
     {
+      // It is joystick button pressed from keypad "." or "delete"...
       if(down)
       {
-          if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
-    buttonlatch[1] = BUTTONTIME;
+        if(joyinfo[joytype[1]].device != DEVICE_KEYBOARD)
+          buttonlatch[1] = BUTTONTIME;
       }
     }
     else if ((down && !autorep) || (nCenteringType == MODE_CENTERING))
     {
+      // It is the keypad direction keys 0-9; calculate quantitized
+      // PDL(0) and PDL(1) values by taking the mean.
       int xsum = 0;
       int ysum = 0;
       int key_idx = 0;
       int keydown_count = 0;
+      // Get the sum
       while (key_idx < 9)
       {
         if (keydown[key_idx])
@@ -387,9 +395,12 @@ BOOL JoyProcessKey (int virtkey, BOOL extended, BOOL down, BOOL autorep)
       }
 
       if (keydown_count) {
+        // Get the x mean from the sum
         xpos[nJoyNum] = (xsum / keydown_count) + PDL_CENTRAL;
         ypos[nJoyNum] = (ysum / keydown_count) + PDL_CENTRAL;
       } else {
+        // Can this ever happen?  Yes, in a key-up.
+        // Example: was pressing and holding "4" to go left, let up "4" key.
         xpos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimX;
         ypos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimY;
       }
@@ -465,8 +476,9 @@ BYTE /*__stdcall*/ JoyReadPosition (WORD programcounter, WORD address, BYTE, BYT
   ULONG nPdlPos = (address & 1) ? ypos[nJoyNum] : xpos[nJoyNum];
 
   // This is from KEGS. It helps games like Championship Lode Runner & Boulderdash
-  if(nPdlPos >= 255)
-    nPdlPos = 280;
+  // GPH: Taking this out.   It's illogical and this is an 8-bit emulator, not a IIGS
+  //if(nPdlPos >= 255)
+  //  nPdlPos = 280;
 
   BOOL nPdlCntrActive = g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (unsigned __int64) ((double)nPdlPos * PDL_CNTR_INTERVAL));
 
