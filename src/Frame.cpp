@@ -45,7 +45,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #define ENABLE_MENU 0
 
 SDL_Surface     *apple_icon;	// icon
-
 SDL_Surface * screen;  // our main screen
 // rects for screen stretch if needed
 SDL_Rect origRect;
@@ -1249,7 +1248,6 @@ int InitSDL()
 
   // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
   SetIcon();
-
   return 0;
 }
 

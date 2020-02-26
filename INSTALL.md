@@ -57,6 +57,10 @@ linapple
 
 A directory name `linapple` can be found in your home directory. Edit the `linapple.conf` file.
 
+### Global Install
+```shell
+make install
+```
 
 ### Debugging and Profiling
 
@@ -71,4 +75,3 @@ If you would like to also include extra code that writes profile information
 suitable for the analysis program `gprof`:
 
     PROFILING=1 make
-

@@ -30,7 +30,6 @@
 #include "../res/font.xpm"
 #include "../res/icon.xpm"
 #include "../res/splash.xpm"
-
 #define ASSET_MASTER_DSK     "Master.dsk"
 
 assets_t *assets = NULL;
