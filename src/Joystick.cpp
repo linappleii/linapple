@@ -394,24 +394,51 @@ BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
     } else if ((down && !autorep) || (nCenteringType == MODE_CENTERING)) {
       // It is the keypad direction keys 0-9; calculate quantitized
       // PDL(0) and PDL(1) values by taking the mean.
+
+
       int xsum = 0;
       int ysum = 0;
       int key_idx = 0;
       int keydown_count = 0;
-      // Get the sum
-      while (key_idx < 9) {
-        if (keydown[key_idx]) {
-          keydown_count++;
-          xsum += keyvalue[key_idx].x;
-          ysum += keyvalue[key_idx].y;
-        }
-        key_idx++;
-      }
 
+      // Special-case for corners by side, e.g. left and up, right and down.
+      // Convert (for example) left ("4" key) and down ("2") key to the "1" i
+      // key (index 0).
+      // We are not going to overwrite the keydown status here,
+      // but convert and override the calculated value.
+      static int corner_convert_lookup[16] =      // 2 ^ 4 key combinations:
+      {                                           // "2", "4", "6", and "8"
+        -1, -1, -1, 8,
+        -1, 6, -1, -1,
+        -1, -1, 2, -1,
+        0, -1, -1, -1
+      };
+
+      int corner_override_idx = -1;
+      int corner_idx =
+          ((int)(0==keydown[1] /*"2"*/))
+        | ((int)(0==keydown[3] /*"4"*/)<<1)
+        | ((int)(0==keydown[5] /*"6"*/)<<2)
+        | ((int)(0==keydown[7])/*"8"*/<<3);
+      if ((corner_override_idx = corner_convert_lookup[corner_idx]) >= 0) {
+        xsum = keyvalue[corner_override_idx].x;
+        ysum = keyvalue[corner_override_idx].y;
+        keydown_count = 1;
+      } else {
+        // Get the quantitized sum
+        while (key_idx < 9) {
+          if (keydown[key_idx]) {
+            keydown_count++;
+            xsum += keyvalue[key_idx].x;
+            ysum += keyvalue[key_idx].y;
+          }
+          key_idx++;
+        }
+      }
       if (keydown_count) {
         // Get the x mean from the sum
-        xpos[nJoyNum] = (xsum / keydown_count) + PDL_CENTRAL;
-        ypos[nJoyNum] = (ysum / keydown_count) + PDL_CENTRAL;
+        xpos[nJoyNum] = (xsum / keydown_count) + PDL_CENTRAL + g_nPdlTrimX;
+        ypos[nJoyNum] = (ysum / keydown_count) + PDL_CENTRAL + g_nPdlTrimY;
       } else {
         // Can this ever happen?  Yes, in a key-up.
         // Example: was pressing and holding "4" to go left, let up "4" key.
