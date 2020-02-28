@@ -62,7 +62,7 @@ CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
 CFLAGS += -Wno-write-strings
 
-LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lpthread
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lpthread -lX11
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 
