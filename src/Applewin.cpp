@@ -58,6 +58,8 @@ By Mark Ormond.
 
 #include "asset.h"
 
+#include <X11/Xlib.h>
+
 #ifdef __APPLE__
 #include "AlertHooks.h"
 #endif
@@ -1095,6 +1097,9 @@ int main(int argc, char *argv[])
   g_nPerfFreq = 1000;//milliseconds?
   if(g_fh) fprintf(g_fh, "Performance frequency = %d\n",g_nPerfFreq);
   #endif
+
+  XInitThreads();
+
 
   //-----
 

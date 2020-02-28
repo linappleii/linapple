@@ -45,7 +45,7 @@ CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
 # By default, optimize the executable.
-CFLAGS := -Wall -O3 -ansi -c
+CFLAGS := -Wall -O3 -ansi -c -std=c++11
 
 ifdef PROFILING
 CFLAGS := -Wall -O0 -pg -ggdb -ansi -c
@@ -62,7 +62,7 @@ CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
 CFLAGS += -Wno-write-strings
 
-LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lpthread
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 

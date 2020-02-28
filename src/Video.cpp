@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+#include <future>
 #include <iostream>
 #include <SDL_image.h>
 #include "stdafx.h"
@@ -1573,6 +1574,12 @@ void VideoRedrawScreen() {
 }
 
 void VideoRefreshScreen() {
+  // GPH Reference
+  // std::future<void> result( std::async(called_from_async));
+  std::future<void> result(std::async(VideoPerformRefresh));
+}
+
+void VideoPerformRefresh() {
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
