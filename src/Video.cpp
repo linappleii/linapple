@@ -214,7 +214,7 @@ static BOOL displaypage2 = 0;
 static LPBYTE framebufferaddr = (LPBYTE) 0;
 static LONG/*int*/      framebufferpitch = 0;
 BOOL graphicsmode = 0;
-static volatile BOOL hasrefreshed = 0;
+static volatile bool hasrefreshed = false;
 static DWORD lastpageflip = 0;
 COLORREF monochrome = RGB(0xC0, 0xC0, 0xC0);
 static BOOL redrawfull = 1;
@@ -926,6 +926,9 @@ void SetLastDrawnImage() {
   }
 }
 
+// Update40Col
+// This copies the literal Apple ROM font pixels
+// to the graphical display buffer.
 bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE ch = *(g_pTextBank0 + offset);
   bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull);
@@ -935,7 +938,7 @@ bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   // - The inverse of this char is located at: char+0x40
   bool bCharFlashing = (g_nAltCharSetOffset == 0) && (ch >= 0x40) && (ch <= 0x7F);
 
-  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag)) {
+  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag) || video_worker_active_ ) {
     bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
@@ -966,11 +969,11 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   bool bC1Flashing = (g_nAltCharSetOffset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
   bool bC0Flashing = (g_nAltCharSetOffset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
-  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag)) {
+  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag) || video_worker_active_) {
     bDirty = _Update80ColumnCell(c1, xpixel, ypixel, bC1Flashing);
   }
 
-  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag)) {
+  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag) || video_worker_active_) {
     bDirty |= _Update80ColumnCell(c0, xpixel + 7, ypixel, bC0Flashing);
   }
 
@@ -1008,7 +1011,7 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     BYTE byteval4 = (x < 39) ? *(g_pHiresBank1 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset)) || (byteval3 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x70) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x70))) ||
-        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull) {
+        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull || video_worker_active_) {
       DWORD dwordval =
         (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) | ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
       #define PIXEL  0
@@ -1175,7 +1178,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     BYTE byteval3 = (x < 39) ? *(g_pHiresBank0 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x60) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x60))) ||
-        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull) {
+        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull || video_worker_active_) {
       #define COLOFFS  (((byteval1 & 0x60) << 2) | \
     ((byteval3 & 0x03) << 5))
       if (g_videotype == VT_COLOR_TVEMU) {
@@ -1196,7 +1199,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
 
 bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE val = *(g_pTextBank0 + offset);
-  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull) {
+  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), ((val & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), (val & 0xF0));
     return true;
@@ -1208,7 +1211,7 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE auxval = *(g_pTextBank1 + offset);
   BYTE mainval = *(g_pTextBank0 + offset);
 
-  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull) {
+  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((auxval & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), (auxval & 0xF0));
     CopySource(xpixel + 7, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((mainval & 0xF) << 4));
@@ -1432,7 +1435,6 @@ void VideoCheckPage(BOOL force) {
   if ((displaypage2 != (SW_PAGE2 != 0)) && (force || (emulmsec - lastpageflip > 500))) {
     displaypage2 = (SW_PAGE2 != 0);
     VideoRefreshScreen();
-    hasrefreshed = 1;
     lastpageflip = emulmsec;
   }
 }
@@ -1551,7 +1553,7 @@ void VideoDisplayLogo() {
 
 BOOL VideoHasRefreshed() {
   BOOL result = hasrefreshed;
-  hasrefreshed = 0;
+  // GPH MARK hasrefreshed = 0;
   return result;
 }
 
@@ -1591,7 +1593,7 @@ void VideoInitialize() {
 void *VideoWorkerThread(void *params)
 {
   while (!video_worker_terminate_) {
-    usleep(16666); // microseconds: check every ms //1/60 of a second
+    usleep(100); // microseconds: check every ms //1/60 of a second
     if (video_worker_refresh_) {
       video_worker_refresh_ = false;
       VideoPerformRefresh();
@@ -1731,6 +1733,7 @@ void VideoPerformRefresh() {
   }
   SetLastDrawnImage();
   redrawfull = 0;
+  hasrefreshed = 1;
 }
 
 void VideoReinitialize() {
@@ -1834,13 +1837,11 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
       displaypage2 = (SW_PAGE2 != 0);
       if (!redrawfull) {
         VideoRefreshScreen();
-        hasrefreshed = 1;
         lastrefresh = emulmsec;
       }
     } else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec - lastrefresh >= 20)) {
       displaypage2 = 0;
       VideoRefreshScreen();
-      hasrefreshed = 1;
       lastrefresh = emulmsec;
     }
     lastpageflip = emulmsec;

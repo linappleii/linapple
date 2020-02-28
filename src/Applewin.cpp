@@ -38,6 +38,7 @@ By Mark Ormond.
 #include <cassert>
 #include <string>
 #include <vector>
+#include <X11/Xlib.h>
 //#pragma  hdrstop
 #include "Log.h"
 #include "MouseInterface.h"
@@ -247,7 +248,7 @@ void ContinueExecution()
       //
 
       //lastcycles = cumulativecycles;
-      if ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && VideoApparentlyDirty()) {
+      if (/*(!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && */VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static DWORD lasttime = 0;
         DWORD currtime = GetTickCount();
@@ -1016,6 +1017,8 @@ int main(int argc, char *argv[])
                                      {"help",     0,                 0, 0},
                                      {"state",    required_argument, 0, 0},
                                      {0,          0,                 0, 0}};
+
+  XInitThreads();
 
   while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
     switch (opt) {
