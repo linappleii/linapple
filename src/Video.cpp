@@ -149,6 +149,16 @@ enum VideoFlag_e {
 #define  SW_MIXED         (vidmode & VF_MIXED)
 #define  SW_PAGE2         (vidmode & VF_PAGE2)
 #define  SW_TEXT          (vidmode & VF_TEXT)
+
+#define  SWL_80COL         (vidmode_latched & VF_80COL)
+#define  SWL_DHIRES        (vidmode_latched & VF_DHIRES)
+#define  SWL_HIRES         (vidmode_latched & VF_HIRES)
+#define  SWL_MASK2         (vidmode_latched & VF_MASK2)
+#define  SWL_MIXED         (vidmode_latched & VF_MIXED)
+#define  SWL_PAGE2         (vidmode_latched & VF_PAGE2)
+#define  SWL_TEXT          (vidmode_latched & VF_TEXT)
+
+
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
 #define  SETFRAMECOLOR(i, r1, g1, b1)  framebufferinfo[i].r = r1; \
                                                            framebufferinfo[i].g = g1; \
@@ -221,7 +231,9 @@ static BOOL redrawfull = 1;
 static DWORD dwVBlCounter = 0;
 static LPBYTE vidlastmem = NULL;
 static DWORD vidmode = VF_TEXT;
+static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
 DWORD g_videotype = VT_COLOR_STANDARD;
+DWORD g_multithreading = VT_COLOR_STANDARD;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
@@ -912,12 +924,12 @@ void DrawTextSource(SDL_Surface *dc) {
 
 void SetLastDrawnImage() {
   memcpy(vidlastmem + 0x400, g_pTextBank0, 0x400);
-  if (SW_HIRES) {
+  if (SWL_HIRES) {
     memcpy(vidlastmem + 0x2000, g_pHiresBank0, 0x2000);
   }
-  if (SW_DHIRES && SW_HIRES) {
+  if (SWL_DHIRES && SWL_HIRES) {
     memcpy(vidlastmem, g_pHiresBank1, 0x2000);
-  } else if (SW_80COL) { // Don't test for !SW_HIRES, as some 80-col text routines have SW_HIRES set (Bug #8300)
+  } else if (SWL_80COL) { // Don't test for !SWL_HIRES, as some 80-col text routines have SWL_HIRES set (Bug #8300)
     memcpy(vidlastmem, g_pTextBank1, 0x400);
   }
   int loop;
@@ -926,19 +938,23 @@ void SetLastDrawnImage() {
   }
 }
 
+// GPH: These "Update" functions update the SDL graphics buffer to be
+// displayed on the host with what the "Draw" functions have
+// drawn into the guest Apple graphics buffers.
+
 // Update40Col
 // This copies the literal Apple ROM font pixels
 // to the graphical display buffer.
 bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE ch = *(g_pTextBank0 + offset);
-  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull);
+  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
   // FLASHing chars:
   // - FLASHing if:Alt Char Set is OFF && 0x40<=char<=0x7F
   // - The inverse of this char is located at: char+0x40
   bool bCharFlashing = (g_nAltCharSetOffset == 0) && (ch >= 0x40) && (ch <= 0x7F);
 
-  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag) || video_worker_active_ ) {
+  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag) ) {
     bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
@@ -963,17 +979,17 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE c1 = *(g_pTextBank1 + offset); // aux
   BYTE c0 = *(g_pTextBank0 + offset); // main
 
-  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull);
-  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull);
+  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_);
+  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
   bool bC1Flashing = (g_nAltCharSetOffset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
   bool bC0Flashing = (g_nAltCharSetOffset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
-  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag) || video_worker_active_) {
+  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag) ) {
     bDirty = _Update80ColumnCell(c1, xpixel, ypixel, bC1Flashing);
   }
 
-  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag) || video_worker_active_) {
+  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag) ) {
     bDirty |= _Update80ColumnCell(c0, xpixel + 7, ypixel, bC0Flashing);
   }
 
@@ -983,7 +999,7 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
 
   if ((auxval  != *(vidlastmem+offset)) ||
       (mainval != *(vidlastmem+offset+0x400)) ||
-      redrawfull) {
+      redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel,
         (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
         SRCOFFS_80COL + ((auxval & 15)<<3),
@@ -1224,7 +1240,7 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
 // All globally accessible functions are below this line
 
 BOOL VideoApparentlyDirty() {
-  if (SW_MIXED || redrawfull) {
+  if (SW_MIXED || redrawfull || video_worker_active_) {
     return 1;
   }
   DWORD address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
@@ -1586,17 +1602,22 @@ void VideoInitialize() {
   VideoResetState();
 
   // GPH Experiment with multicore video
-  VideoInitWorker();
+  if (g_multithreading) {
+    VideoInitWorker();
+  }
   // END GPH
 }
 
+// VideoWorkerThread
+// Simple polling thread that calls the refresh function
+// when necessary.
 void *VideoWorkerThread(void *params)
 {
   while (!video_worker_terminate_) {
-    usleep(100); // microseconds: check every ms //1/60 of a second
+    usleep(16000); // microseconds: poll at regular intervals
     if (video_worker_refresh_) {
-      video_worker_refresh_ = false;
       VideoPerformRefresh();
+      video_worker_refresh_ = false;
     }
   }
   return NULL;
@@ -1628,6 +1649,10 @@ void VideoRedrawScreen() {
 }
 
 void VideoPerformRefresh() {
+
+  // latch video mode permutation and read the latch
+  vidmode_latched = vidmode;
+
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
@@ -1651,10 +1676,10 @@ void VideoPerformRefresh() {
   g_pTextBank1 = MemGetAuxPtr(0x400 << displaypage2);
   g_pTextBank0 = MemGetMainPtr(0x400 << displaypage2);
   ZeroMemory(celldirty, 40 * 32);
-  UpdateFunc_t update = SW_TEXT ? SW_80COL ? Update80ColCell : Update40ColCell : SW_HIRES ? (SW_DHIRES && SW_80COL)
+  UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
                                                                                             : UpdateHiResCell
-                                                                                          : (SW_DHIRES && SW_80COL)
+                                                                                          : (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
@@ -1674,8 +1699,8 @@ void VideoPerformRefresh() {
     ypixel += 16;
   }
 
-  if (SW_MIXED) {
-    update = SW_80COL ? Update80ColCell : Update40ColCell;
+  if (SWL_MIXED) {
+    update = SWL_80COL ? Update80ColCell : Update40ColCell;
   }
 
   while (y < 24) {
@@ -1744,6 +1769,9 @@ void VideoReinitialize() {
 void VideoRefreshScreen() {
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (video_worker_active_) {
+    // LATCH here: save softswitch settings AT THE TIME OF
+    // the REQUEST to refresh the screen (prevent glitching).
+    // Worker thread may take a while to service the request.
     video_worker_refresh_ = true;
   } else {
     VideoPerformRefresh();
