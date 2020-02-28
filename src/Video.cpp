@@ -221,6 +221,7 @@ static WORD colormixmap[6][6][6];
 
 static int g_nAltCharSetOffset = 0; // alternate character set
 static BOOL displaypage2 = 0;
+static BOOL displaypage2_latched = 0;
 static LPBYTE framebufferaddr = (LPBYTE) 0;
 static LONG/*int*/      framebufferpitch = 0;
 BOOL graphicsmode = 0;
@@ -233,7 +234,7 @@ static LPBYTE vidlastmem = NULL;
 static DWORD vidmode = VF_TEXT;
 static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
 DWORD g_videotype = VT_COLOR_STANDARD;
-DWORD g_multithreading = VT_COLOR_STANDARD;
+DWORD g_multithreading = 0;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
@@ -257,7 +258,10 @@ void DrawMonoLoResSource();
 void DrawMonoTextSource(SDL_Surface *dc); // yes, we have just SDL_Surface either for DeviceContext, or bitmap
 void DrawTextSource(SDL_Surface *dc);
 
-// GPH Multithreaded
+// Multithreaded
+
+bool VideoInitWorker();
+
 pthread_t video_worker_thread_;
 static volatile bool video_worker_active_ = false;
 static volatile bool video_worker_terminate_ = false;
@@ -1569,12 +1573,10 @@ void VideoDisplayLogo() {
 
 BOOL VideoHasRefreshed() {
   BOOL result = hasrefreshed;
-  // GPH MARK hasrefreshed = 0;
+  hasrefreshed = 0;
   return result;
 }
 
-// GPH TODO: MOVE
-bool VideoInitWorker();
 
 void VideoInitialize() {
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
@@ -1614,7 +1616,7 @@ void VideoInitialize() {
 void *VideoWorkerThread(void *params)
 {
   while (!video_worker_terminate_) {
-    usleep(16000); // microseconds: poll at regular intervals
+    usleep(100 /*16000, but some glitchiness still*/); // microseconds
     if (video_worker_refresh_) {
       VideoPerformRefresh();
       video_worker_refresh_ = false;
@@ -1650,9 +1652,6 @@ void VideoRedrawScreen() {
 
 void VideoPerformRefresh() {
 
-  // latch video mode permutation and read the latch
-  vidmode_latched = vidmode;
-
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
@@ -1671,10 +1670,10 @@ void VideoPerformRefresh() {
 
   // Check each cell for changed bytes.  redraw pixels for the changed bytes
   // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
-  g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2);
-  g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2);
-  g_pTextBank1 = MemGetAuxPtr(0x400 << displaypage2);
-  g_pTextBank0 = MemGetMainPtr(0x400 << displaypage2);
+  g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
+  g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
+  g_pTextBank1 = MemGetAuxPtr(0x400 << displaypage2_latched);
+  g_pTextBank0 = MemGetMainPtr(0x400 << displaypage2_latched);
   ZeroMemory(celldirty, 40 * 32);
   UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
@@ -1767,6 +1766,10 @@ void VideoReinitialize() {
 }
 
 void VideoRefreshScreen() {
+  // latch video mode permutation and read the latch
+  displaypage2_latched = displaypage2;
+  vidmode_latched = vidmode;
+
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (video_worker_active_) {
     // LATCH here: save softswitch settings AT THE TIME OF

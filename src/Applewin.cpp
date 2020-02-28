@@ -224,8 +224,10 @@ void ContinueExecution()
   //
   // DETERMINE WHETHER THE SCREEN WAS UPDATED, THE DISK WAS SPINNING,
   // OR THE KEYBOARD I/O PORTS WERE BEING EXCESSIVELY QUERIED THIS CLOCKTICK
-  VideoCheckPage(0);
+  if (!g_multithreading)
+    VideoCheckPage(0);
   BOOL screenupdated = VideoHasRefreshed();
+  screenupdated |= g_multithreading;
   BOOL systemidle = 0;  //(KeybGetNumQueries() > (clockgran << 2));  //  && (!ranfinegrain);  // TO DO
 
   if (screenupdated)
@@ -248,17 +250,21 @@ void ContinueExecution()
       //
 
       //lastcycles = cumulativecycles;
-      if ( ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) && VideoApparentlyDirty()) {
-        VideoCheckPage(1);
-        static DWORD lasttime = 0;
-        DWORD currtime = GetTickCount();
-        if ((!g_bFullSpeed) || (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25))) {
-          if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
-            VideoRefreshScreen();
-            lasttime = currtime;
+      if (g_multithreading) {
+        VideoRefreshScreen();
+      } else {
+        if ( update_clause && VideoApparentlyDirty()) {
+          VideoCheckPage(1);
+          static DWORD lasttime = 0;
+          DWORD currtime = GetTickCount();
+          if ((!g_bFullSpeed) || (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25))) {
+            if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
+              VideoRefreshScreen();
+              lasttime = currtime;
+            }
           }
+          screenupdated = 1;
         }
-        screenupdated = 1;
       }
 
       lastupdates[1] = lastupdates[0];
