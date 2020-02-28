@@ -255,7 +255,7 @@ void ContinueExecution()
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
             lasttime = currtime;
-        }
+          }
         }
         screenupdated = 1;
       }

@@ -79,6 +79,8 @@ void VideoRedrawScreen();
 
 void VideoRefreshScreen();
 
+void VideoPerformRefresh();
+
 void VideoReinitialize();
 
 void VideoResetState();
