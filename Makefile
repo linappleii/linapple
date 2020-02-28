@@ -2,6 +2,7 @@
 
 PACKAGE     := linapple
 VERSION     := 2.1.1
+# DEBUG       := 1
 
 # Where does this get installed
 PREFIX      := /usr/local
@@ -62,7 +63,7 @@ CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
 CFLAGS += -Wno-write-strings
 
-LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 

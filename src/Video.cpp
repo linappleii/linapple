@@ -33,6 +33,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include "asset.h"
 #include "wwrapper.h"
+#include <pthread.h>
+#include <unistd.h>
 
 /* reference: technote tn-iigs-063 "Master Color Values"
 
@@ -212,7 +214,7 @@ static BOOL displaypage2 = 0;
 static LPBYTE framebufferaddr = (LPBYTE) 0;
 static LONG/*int*/      framebufferpitch = 0;
 BOOL graphicsmode = 0;
-static BOOL hasrefreshed = 0;
+static volatile BOOL hasrefreshed = 0;
 static DWORD lastpageflip = 0;
 COLORREF monochrome = RGB(0xC0, 0xC0, 0xC0);
 static BOOL redrawfull = 1;
@@ -242,6 +244,12 @@ void DrawMonoHiResSource();
 void DrawMonoLoResSource();
 void DrawMonoTextSource(SDL_Surface *dc); // yes, we have just SDL_Surface either for DeviceContext, or bitmap
 void DrawTextSource(SDL_Surface *dc);
+
+// GPH Multithreaded
+pthread_t video_worker_thread_;
+static volatile bool video_worker_active_ = false;
+static volatile bool video_worker_terminate_ = false;
+static volatile bool video_worker_refresh_ = false;
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
   LPBYTE currdestptr = frameoffsettable[desty] + destx;
@@ -1472,6 +1480,7 @@ BYTE VideoCheckVbl(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
 void VideoChooseColor() {
 }
 
+
 void VideoDestroy() {
   // Just free our SDL surfaces and free vidlastmem
   // DESTROY BUFFERS
@@ -1509,6 +1518,14 @@ void VideoDestroy() {
     SDL_FreeSurface(charset40);
   }
   charset40 = NULL;
+
+  // GPH Multithreaded
+  {
+    void *result;
+    video_worker_terminate_ = true;
+    pthread_join(video_worker_thread_,&result);
+  }
+  // END GPH
 }
 
 void VideoDisplayLogo() {
@@ -1538,6 +1555,9 @@ BOOL VideoHasRefreshed() {
   return result;
 }
 
+// GPH TODO: MOVE
+bool VideoInitWorker();
+
 void VideoInitialize() {
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE) VirtualAlloc(NULL, 0x10000, MEM_COMMIT, PAGE_READWRITE);
@@ -1562,6 +1582,39 @@ void VideoInitialize() {
 
   // RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
   VideoResetState();
+
+  // GPH Experiment with multicore video
+  VideoInitWorker();
+  // END GPH
+}
+
+void *VideoWorkerThread(void *params)
+{
+  while (!video_worker_terminate_) {
+    usleep(16666); // microseconds: check every ms //1/60 of a second
+    if (video_worker_refresh_) {
+      video_worker_refresh_ = false;
+      VideoPerformRefresh();
+    }
+  }
+  return NULL;
+}
+
+// VideoIniteWorker
+// Initializes worker thread for video updates
+bool VideoInitWorker()
+{
+  video_worker_active_ = true;
+  int error = pthread_create(
+        &video_worker_thread_,
+        NULL,
+        &VideoWorkerThread,
+        NULL);
+  if (error) {
+    video_worker_active_ = false;
+    return false;
+  }
+  return true;
 }
 
 void VideoRealizePalette() {
@@ -1572,7 +1625,7 @@ void VideoRedrawScreen() {
   VideoRefreshScreen();
 }
 
-void VideoRefreshScreen() {
+void VideoPerformRefresh() {
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
@@ -1683,6 +1736,15 @@ void VideoRefreshScreen() {
 void VideoReinitialize() {
   CreateIdentityPalette();
   CreateDIBSections();
+}
+
+void VideoRefreshScreen() {
+  // If multithreaded, tell thread to do it; otherwise, do it in this thread
+  if (video_worker_active_) {
+    video_worker_refresh_ = true;
+  } else {
+    VideoPerformRefresh();
+  }
 }
 
 void VideoResetState() {
