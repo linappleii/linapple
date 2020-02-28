@@ -43,6 +43,7 @@ extern BOOL graphicsmode;
 extern COLORREF monochrome;
 extern DWORD g_videotype;
 extern DWORD g_multithreading;
+extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL surface
 
 // Surfaces for drawing
 //extern HBITMAP g_hLogoBitmap;

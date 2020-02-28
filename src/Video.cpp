@@ -35,6 +35,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "wwrapper.h"
 #include <pthread.h>
 #include <unistd.h>
+#include <atomic>
+#include <condition_variable>
 
 /* reference: technote tn-iigs-063 "Master Color Values"
 
@@ -266,6 +268,8 @@ pthread_t video_worker_thread_;
 static volatile bool video_worker_active_ = false;
 static volatile bool video_worker_terminate_ = false;
 static volatile bool video_worker_refresh_ = false;
+pthread_mutex_t video_draw_mutex;
+std::condition_variable video_cv;
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
   LPBYTE currdestptr = frameoffsettable[desty] + destx;
@@ -1577,7 +1581,6 @@ BOOL VideoHasRefreshed() {
   return result;
 }
 
-
 void VideoInitialize() {
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (LPBYTE) VirtualAlloc(NULL, 0x10000, MEM_COMMIT, PAGE_READWRITE);
@@ -1615,11 +1618,25 @@ void VideoInitialize() {
 // when necessary.
 void *VideoWorkerThread(void *params)
 {
+  std::mutex mtx;
+  std::unique_lock<std::mutex> lck(mtx);
+  auto next = std::chrono::system_clock::now();
   while (!video_worker_terminate_) {
-    usleep(100 /*16000, but some glitchiness still*/); // microseconds
-    if (video_worker_refresh_) {
-      VideoPerformRefresh();
-      video_worker_refresh_ = false;
+    next += std::chrono::microseconds(16666);
+    // GPH Reference; remove
+    // if(cv.wait_until(lk, now + idx*100ms, [](){return i == 1;}))
+    video_cv.wait_until(lck, next);
+    {
+      //usleep(16000 /*16000, but some glitchiness still*/); // microseconds
+      if (video_worker_refresh_) {
+        // latch video mode permutation and read the latch
+        displaypage2_latched = displaypage2;
+        vidmode_latched = vidmode;
+
+
+        VideoPerformRefresh();
+        video_worker_refresh_ = false;
+      }
     }
   }
   return NULL;
@@ -1651,6 +1668,9 @@ void VideoRedrawScreen() {
 }
 
 void VideoPerformRefresh() {
+
+  // Claim until video refresh is complete
+  pthread_mutex_lock(&video_draw_mutex);
 
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
@@ -1758,6 +1778,9 @@ void VideoPerformRefresh() {
   SetLastDrawnImage();
   redrawfull = 0;
   hasrefreshed = 1;
+
+  // Allow changes to video modes, etc.
+  pthread_mutex_unlock(&video_draw_mutex);
 }
 
 void VideoReinitialize() {
@@ -1766,15 +1789,8 @@ void VideoReinitialize() {
 }
 
 void VideoRefreshScreen() {
-  // latch video mode permutation and read the latch
-  displaypage2_latched = displaypage2;
-  vidmode_latched = vidmode;
-
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (video_worker_active_) {
-    // LATCH here: save softswitch settings AT THE TIME OF
-    // the REQUEST to refresh the screen (prevent glitching).
-    // Worker thread may take a while to service the request.
     video_worker_refresh_ = true;
   } else {
     VideoPerformRefresh();
@@ -1789,6 +1805,11 @@ void VideoResetState() {
 }
 
 BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
+
+  // Claim video mutex giving deference to any drawing operation
+  // in progress in another thread
+  pthread_mutex_lock(&video_draw_mutex);
+
   address &= 0xFF;
   DWORD oldpage2 = SW_PAGE2;
   int oldvalue = g_nAltCharSetOffset + (int) (vidmode & ~(VF_MASK2 | VF_PAGE2));
@@ -1864,7 +1885,7 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
   }
   if (oldpage2 != SW_PAGE2) {
     static DWORD lastrefresh = 0;
-    if ((displaypage2 && !SW_PAGE2) || (!behind)) {
+    if ((displaypage2 && !SW_PAGE2)) {
       displaypage2 = (SW_PAGE2 != 0);
       if (!redrawfull) {
         VideoRefreshScreen();
@@ -1877,6 +1898,10 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
     }
     lastpageflip = emulmsec;
   }
+
+  // Relinquish video mutext, allowing drawing to continue
+  pthread_mutex_unlock(&video_draw_mutex);
+
   return MemReadFloatingBus(nCyclesLeft);
 }
 
