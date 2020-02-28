@@ -22,12 +22,15 @@
 
 #endif
 
+
 #include "stdafx.h"
 
 #include "list.h"
 
+#include "Video.h" // for contention avoidance w/video thread
 #include "DiskChoose.h"
 #include <errno.h>
+#include <pthread.h>
 
 #include <iostream>
 
@@ -165,7 +168,9 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
 }
 
 
-
+// GPH TODO: This entire thing needs to be refactored from a massive spinloop
+// to an event-driven state model incorporated into Frame.
+// Currently, everyhing here is handled inside an event handler.
 bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename, bool *isdir, int *index_file)
 {
   /*  Parameters:
@@ -180,13 +185,8 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
     isdir    - if chosen name is a directory
   */
   /* Surface: */
-  SDL_Surface *my_screen;  // for background
 
-  if (font_sfc == NULL) {
-    if (!fonts_initialization()) {
-      return false;  //if we don't have a font, we just can do none
-    }
-  }
+  // DIRECTORY-GETTING STUFF
 
   List<char> files;    // our files
   List<char> sizes;    // and their sizes (or 'dir' for directories)
@@ -228,6 +228,19 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
     // Show all directories (first) and files then
     char *siz = NULL;
 
+
+    // DISPLAY STUFF
+
+    if (font_sfc == NULL) {
+      if (!fonts_initialization()) {
+        return false;  //if we don't have a font, we just can do none
+      }
+    }
+
+    // Wait for video refresh and claim ownership
+    pthread_mutex_lock(&video_draw_mutex);
+
+
     // prepare screen
     double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
     double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
@@ -246,6 +259,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       tempSurface = screen;  // use screen, if none available
     }
 
+    SDL_Surface *my_screen;  // for background
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
     if (tempSurface->format->palette && my_screen->format->palette) {
@@ -320,6 +334,12 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
 
       SDL_Flip(screen);  // show the screen
+
+
+      // Relinquish video ownership
+      pthread_mutex_unlock(&video_draw_mutex);
+
+
       SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
 
       // Wait for keypress
