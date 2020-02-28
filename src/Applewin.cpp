@@ -244,11 +244,11 @@ void ContinueExecution()
       static BOOL lastupdates[2] = {0, 0};
 
       anyupdates |= screenupdated;
-
+      bool update_clause = ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) || g_multithreading;
       //
 
       //lastcycles = cumulativecycles;
-      if (/*(!anyupdates) && (!lastupdates[0]) && (!lastupdates[1]) && */VideoApparentlyDirty()) {
+      if ( ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) && VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static DWORD lasttime = 0;
         DWORD currtime = GetTickCount();
@@ -550,6 +550,7 @@ void LoadConfiguration()
 
     LOAD(TEXT("Enhance Disk Speed"), (DWORD * ) & enhancedisk);//
     LOAD(TEXT("Video Emulation"), &g_videotype);
+    LOAD(TEXT("Multithreading"), &g_multithreading);
   }
   //  printf("Video Emulation = %d\n", videotype);
 
