@@ -77,6 +77,8 @@ void VideoInitialize();
 
 void VideoRealizePalette(/*HDC*/);
 
+void VideoSetNextScheduledUpdate();
+
 void VideoRedrawScreen();
 
 void VideoRefreshScreen();

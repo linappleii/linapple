@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "wwrapper.h"
 #include <pthread.h>
+#include <thread>
+#include <chrono>
 #include <unistd.h>
 #include <atomic>
 #include <condition_variable>
@@ -1616,6 +1618,18 @@ void VideoInitialize() {
   // END GPH
 }
 
+// VideoSetNextScheduledUpdate
+// Sets
+auto video_next_scheduled_update_ = std::chrono::system_clock::now();
+void VideoSetNextScheduledUpdate()
+{
+  if (!g_singlethreaded) {
+    //video_next_scheduled_update_ += std::chrono::microseconds(1000); //6666);
+    video_next_scheduled_update_ = std::chrono::system_clock::now();
+    std::this_thread::yield();
+  }
+}
+
 // VideoWorkerThread
 // Simple polling thread that calls the refresh function
 // when necessary.
@@ -1623,14 +1637,13 @@ void *VideoWorkerThread(void *params)
 {
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
-  auto next_scheduled_update = std::chrono::system_clock::now();
   while (!video_worker_terminate_) {
-    next_scheduled_update += std::chrono::microseconds(16666);
-    video_cv.wait_until(lck, next_scheduled_update);
+    video_cv.wait_until(lck, video_next_scheduled_update_);
     {
       if (video_worker_refresh_) {
         VideoPerformRefresh();
         video_worker_refresh_ = false;
+        std::this_thread::yield();
       }
     }
   }
@@ -1699,8 +1712,6 @@ void VideoPerformRefresh() {
     // This is a one-level pipelining
     // That way, the 6502 CPU emulation can go on its merry way without
     // causing display glitches as emulation runs concurrently with screen drawing
-
-
     memcpy(display_pipeline_       ,MemGetAuxPtr ( 0x2000 << displaypage2_latched), 0x2000);
     memcpy(display_pipeline_+0x2000,MemGetMainPtr( 0x2000 << displaypage2_latched), 0x2000);
     memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << displaypage2_latched), 0x0400);
