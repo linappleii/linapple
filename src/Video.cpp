@@ -33,6 +33,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include "asset.h"
 #include "wwrapper.h"
+#include <pthread.h>
+#include <unistd.h>
+#include <atomic>
+#include <condition_variable>
 
 /* reference: technote tn-iigs-063 "Master Color Values"
 
@@ -147,6 +151,16 @@ enum VideoFlag_e {
 #define  SW_MIXED         (vidmode & VF_MIXED)
 #define  SW_PAGE2         (vidmode & VF_PAGE2)
 #define  SW_TEXT          (vidmode & VF_TEXT)
+
+#define  SWL_80COL         (vidmode_latched & VF_80COL)
+#define  SWL_DHIRES        (vidmode_latched & VF_DHIRES)
+#define  SWL_HIRES         (vidmode_latched & VF_HIRES)
+#define  SWL_MASK2         (vidmode_latched & VF_MASK2)
+#define  SWL_MIXED         (vidmode_latched & VF_MIXED)
+#define  SWL_PAGE2         (vidmode_latched & VF_PAGE2)
+#define  SWL_TEXT          (vidmode_latched & VF_TEXT)
+
+
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
 #define  SETFRAMECOLOR(i, r1, g1, b1)  framebufferinfo[i].r = r1; \
                                                            framebufferinfo[i].g = g1; \
@@ -209,17 +223,20 @@ static WORD colormixmap[6][6][6];
 
 static int g_nAltCharSetOffset = 0; // alternate character set
 static BOOL displaypage2 = 0;
+static BOOL displaypage2_latched = 0;
 static LPBYTE framebufferaddr = (LPBYTE) 0;
 static LONG/*int*/      framebufferpitch = 0;
 BOOL graphicsmode = 0;
-static BOOL hasrefreshed = 0;
+static volatile bool hasrefreshed = false;
 static DWORD lastpageflip = 0;
 COLORREF monochrome = RGB(0xC0, 0xC0, 0xC0);
 static BOOL redrawfull = 1;
 static DWORD dwVBlCounter = 0;
 static LPBYTE vidlastmem = NULL;
 static DWORD vidmode = VF_TEXT;
+static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
 DWORD g_videotype = VT_COLOR_STANDARD;
+DWORD g_singlethreaded = 0;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
@@ -242,6 +259,20 @@ void DrawMonoHiResSource();
 void DrawMonoLoResSource();
 void DrawMonoTextSource(SDL_Surface *dc); // yes, we have just SDL_Surface either for DeviceContext, or bitmap
 void DrawTextSource(SDL_Surface *dc);
+
+// Multithreaded
+
+bool VideoInitWorker();
+
+pthread_t video_worker_thread_;
+static volatile bool video_worker_active_ = false;
+static volatile bool video_worker_terminate_ = false;
+static volatile bool video_worker_refresh_ = false;
+pthread_mutex_t video_draw_mutex;
+std::condition_variable video_cv;
+
+static char display_pipeline_[0x2000*4 + 0x400*4];
+
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
   LPBYTE currdestptr = frameoffsettable[desty] + destx;
@@ -904,12 +935,12 @@ void DrawTextSource(SDL_Surface *dc) {
 
 void SetLastDrawnImage() {
   memcpy(vidlastmem + 0x400, g_pTextBank0, 0x400);
-  if (SW_HIRES) {
+  if (SWL_HIRES) {
     memcpy(vidlastmem + 0x2000, g_pHiresBank0, 0x2000);
   }
-  if (SW_DHIRES && SW_HIRES) {
+  if (SWL_DHIRES && SWL_HIRES) {
     memcpy(vidlastmem, g_pHiresBank1, 0x2000);
-  } else if (SW_80COL) { // Don't test for !SW_HIRES, as some 80-col text routines have SW_HIRES set (Bug #8300)
+  } else if (SWL_80COL) { // Don't test for !SWL_HIRES, as some 80-col text routines have SWL_HIRES set (Bug #8300)
     memcpy(vidlastmem, g_pTextBank1, 0x400);
   }
   int loop;
@@ -918,16 +949,23 @@ void SetLastDrawnImage() {
   }
 }
 
+// GPH: These "Update" functions update the SDL graphics buffer to be
+// displayed on the host with what the "Draw" functions have
+// drawn into the guest Apple graphics buffers.
+
+// Update40Col
+// This copies the literal Apple ROM font pixels
+// to the graphical display buffer.
 bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE ch = *(g_pTextBank0 + offset);
-  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull);
+  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
   // FLASHing chars:
   // - FLASHing if:Alt Char Set is OFF && 0x40<=char<=0x7F
   // - The inverse of this char is located at: char+0x40
   bool bCharFlashing = (g_nAltCharSetOffset == 0) && (ch >= 0x40) && (ch <= 0x7F);
 
-  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag)) {
+  if (bCharChanged || (bCharFlashing && g_bTextFlashFlag) ) {
     bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
@@ -952,17 +990,17 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE c1 = *(g_pTextBank1 + offset); // aux
   BYTE c0 = *(g_pTextBank0 + offset); // main
 
-  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull);
-  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull);
+  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_);
+  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
   bool bC1Flashing = (g_nAltCharSetOffset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
   bool bC0Flashing = (g_nAltCharSetOffset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
-  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag)) {
+  if (bC1Changed || (bC1Flashing && g_bTextFlashFlag) ) {
     bDirty = _Update80ColumnCell(c1, xpixel, ypixel, bC1Flashing);
   }
 
-  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag)) {
+  if (bC0Changed || (bC0Flashing && g_bTextFlashFlag) ) {
     bDirty |= _Update80ColumnCell(c0, xpixel + 7, ypixel, bC0Flashing);
   }
 
@@ -972,7 +1010,7 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
 
   if ((auxval  != *(vidlastmem+offset)) ||
       (mainval != *(vidlastmem+offset+0x400)) ||
-      redrawfull) {
+      redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel,
         (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
         SRCOFFS_80COL + ((auxval & 15)<<3),
@@ -1000,7 +1038,7 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     BYTE byteval4 = (x < 39) ? *(g_pHiresBank1 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset)) || (byteval3 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x70) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x70))) ||
-        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull) {
+        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull || video_worker_active_) {
       DWORD dwordval =
         (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) | ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
       #define PIXEL  0
@@ -1167,7 +1205,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     BYTE byteval3 = (x < 39) ? *(g_pHiresBank0 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x60) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x60))) ||
-        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull) {
+        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull || video_worker_active_) {
       #define COLOFFS  (((byteval1 & 0x60) << 2) | \
     ((byteval3 & 0x03) << 5))
       if (g_videotype == VT_COLOR_TVEMU) {
@@ -1188,7 +1226,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
 
 bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE val = *(g_pTextBank0 + offset);
-  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull) {
+  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), ((val & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), (val & 0xF0));
     return true;
@@ -1200,7 +1238,7 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   BYTE auxval = *(g_pTextBank1 + offset);
   BYTE mainval = *(g_pTextBank0 + offset);
 
-  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull) {
+  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((auxval & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), (auxval & 0xF0));
     CopySource(xpixel + 7, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((mainval & 0xF) << 4));
@@ -1213,7 +1251,7 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
 // All globally accessible functions are below this line
 
 BOOL VideoApparentlyDirty() {
-  if (SW_MIXED || redrawfull) {
+  if (SW_MIXED || redrawfull || video_worker_active_) {
     return 1;
   }
   DWORD address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
@@ -1424,7 +1462,6 @@ void VideoCheckPage(BOOL force) {
   if ((displaypage2 != (SW_PAGE2 != 0)) && (force || (emulmsec - lastpageflip > 500))) {
     displaypage2 = (SW_PAGE2 != 0);
     VideoRefreshScreen();
-    hasrefreshed = 1;
     lastpageflip = emulmsec;
   }
 }
@@ -1472,6 +1509,7 @@ BYTE VideoCheckVbl(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
 void VideoChooseColor() {
 }
 
+
 void VideoDestroy() {
   // Just free our SDL surfaces and free vidlastmem
   // DESTROY BUFFERS
@@ -1509,6 +1547,14 @@ void VideoDestroy() {
     SDL_FreeSurface(charset40);
   }
   charset40 = NULL;
+
+  // GPH Multithreaded
+  {
+    void *result;
+    video_worker_terminate_ = true;
+    pthread_join(video_worker_thread_,&result);
+  }
+  // END GPH
 }
 
 void VideoDisplayLogo() {
@@ -1562,6 +1608,50 @@ void VideoInitialize() {
 
   // RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
   VideoResetState();
+
+  // GPH Experiment with multicore video
+  if (!g_singlethreaded) {
+    VideoInitWorker();
+  }
+  // END GPH
+}
+
+// VideoWorkerThread
+// Simple polling thread that calls the refresh function
+// when necessary.
+void *VideoWorkerThread(void *params)
+{
+  std::mutex mtx;
+  std::unique_lock<std::mutex> lck(mtx);
+  auto next_scheduled_update = std::chrono::system_clock::now();
+  while (!video_worker_terminate_) {
+    next_scheduled_update += std::chrono::microseconds(16666);
+    video_cv.wait_until(lck, next_scheduled_update);
+    {
+      if (video_worker_refresh_) {
+        VideoPerformRefresh();
+        video_worker_refresh_ = false;
+      }
+    }
+  }
+  return NULL;
+}
+
+// VideoIniteWorker
+// Initializes worker thread for video updates
+bool VideoInitWorker()
+{
+  video_worker_active_ = true;
+  int error = pthread_create(
+        &video_worker_thread_,
+        NULL,
+        &VideoWorkerThread,
+        NULL);
+  if (error) {
+    video_worker_active_ = false;
+    return false;
+  }
+  return true;
 }
 
 void VideoRealizePalette() {
@@ -1572,7 +1662,15 @@ void VideoRedrawScreen() {
   VideoRefreshScreen();
 }
 
-void VideoRefreshScreen() {
+void VideoPerformRefresh() {
+
+  // Claim until video refresh is complete
+  pthread_mutex_lock(&video_draw_mutex);
+
+  // latch video mode permutation and read the latch
+  displaypage2_latched = displaypage2;
+  vidmode_latched = vidmode;
+
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
@@ -1589,17 +1687,37 @@ void VideoRefreshScreen() {
     frm_locked = 1; // the frame bitmap is locked
   }
 
+  if (g_singlethreaded) {
+    // This is the old, standard behavior -- just read the Apple II display data
+    // directly
+    g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
+    g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
+    g_pTextBank1 = MemGetAuxPtr(0x0400 << displaypage2_latched);
+    g_pTextBank0 = MemGetMainPtr(0x0400 << displaypage2_latched);
+  } else {
+    // What if we copy all the bytes that are there now, as we start this redraw?
+    // This is a one-level pipelining
+    // That way, the 6502 CPU emulation can go on its merry way without
+    // causing display glitches as emulation runs concurrently with screen drawing
+
+
+    memcpy(display_pipeline_       ,MemGetAuxPtr ( 0x2000 << displaypage2_latched), 0x2000);
+    memcpy(display_pipeline_+0x2000,MemGetMainPtr( 0x2000 << displaypage2_latched), 0x2000);
+    memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << displaypage2_latched), 0x0400);
+    memcpy(display_pipeline_+0x4400,MemGetMainPtr( 0x0400 << displaypage2_latched), 0x0400);
+
+    g_pHiresBank1 = (LPBYTE) display_pipeline_;
+    g_pHiresBank0 = (LPBYTE) display_pipeline_ + 0x2000;
+    g_pTextBank1 =  (LPBYTE) display_pipeline_ + 0x4000;
+    g_pTextBank0 =  (LPBYTE) display_pipeline_ + 0x4400;
+  }
   // Check each cell for changed bytes.  redraw pixels for the changed bytes
   // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
-  g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2);
-  g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2);
-  g_pTextBank1 = MemGetAuxPtr(0x400 << displaypage2);
-  g_pTextBank0 = MemGetMainPtr(0x400 << displaypage2);
   ZeroMemory(celldirty, 40 * 32);
-  UpdateFunc_t update = SW_TEXT ? SW_80COL ? Update80ColCell : Update40ColCell : SW_HIRES ? (SW_DHIRES && SW_80COL)
+  UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
                                                                                             : UpdateHiResCell
-                                                                                          : (SW_DHIRES && SW_80COL)
+                                                                                          : (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
@@ -1619,8 +1737,8 @@ void VideoRefreshScreen() {
     ypixel += 16;
   }
 
-  if (SW_MIXED) {
-    update = SW_80COL ? Update80ColCell : Update40ColCell;
+  if (SWL_MIXED) {
+    update = SWL_80COL ? Update80ColCell : Update40ColCell;
   }
 
   while (y < 24) {
@@ -1678,11 +1796,25 @@ void VideoRefreshScreen() {
   }
   SetLastDrawnImage();
   redrawfull = 0;
+  hasrefreshed = 1;
+
+  // Allow Disk Choose screen, help, etc
+  pthread_mutex_unlock(&video_draw_mutex);
 }
 
 void VideoReinitialize() {
   CreateIdentityPalette();
   CreateDIBSections();
+}
+
+void VideoRefreshScreen() {
+  // If multithreaded, tell thread to do it; otherwise, do it in this thread
+  if (video_worker_active_) {
+    video_worker_refresh_ = true;
+  } else {
+    // If singlethreaded just call the refresh here.
+    VideoPerformRefresh();
+  }
 }
 
 void VideoResetState() {
@@ -1693,6 +1825,10 @@ void VideoResetState() {
 }
 
 BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
+
+  // Claim video mutex giving deference to any drawing operation
+  // in progress in another thread
+
   address &= 0xFF;
   DWORD oldpage2 = SW_PAGE2;
   int oldvalue = g_nAltCharSetOffset + (int) (vidmode & ~(VF_MASK2 | VF_PAGE2));
@@ -1768,21 +1904,20 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
   }
   if (oldpage2 != SW_PAGE2) {
     static DWORD lastrefresh = 0;
-    if ((displaypage2 && !SW_PAGE2) || (!behind)) {
+    if ((displaypage2 && !SW_PAGE2)) {
       displaypage2 = (SW_PAGE2 != 0);
       if (!redrawfull) {
         VideoRefreshScreen();
-        hasrefreshed = 1;
         lastrefresh = emulmsec;
       }
     } else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec - lastrefresh >= 20)) {
       displaypage2 = 0;
       VideoRefreshScreen();
-      hasrefreshed = 1;
       lastrefresh = emulmsec;
     }
     lastpageflip = emulmsec;
   }
+
   return MemReadFloatingBus(nCyclesLeft);
 }
 
