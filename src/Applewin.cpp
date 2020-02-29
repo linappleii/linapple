@@ -248,6 +248,12 @@ void ContinueExecution()
         if ((!g_bFullSpeed) || (currtime-lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25))) {
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
+            if (!g_singlethreaded) {
+              // This tells the video to schedule a frame update now.
+              // It will run in another thread, another core.
+              VideoSetNextScheduledUpdate();
+            }
+
             lasttime = currtime;
           }
         }
