@@ -42,6 +42,8 @@ extern BOOL g_ShowLeds;  // if we should show drive leds
 extern BOOL graphicsmode;
 extern COLORREF monochrome;
 extern DWORD g_videotype;
+extern DWORD g_singlethreaded;
+extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL surface
 
 // Surfaces for drawing
 //extern HBITMAP g_hLogoBitmap;
@@ -78,6 +80,8 @@ void VideoRealizePalette(/*HDC*/);
 void VideoRedrawScreen();
 
 void VideoRefreshScreen();
+
+void VideoPerformRefresh();
 
 void VideoReinitialize();
 
