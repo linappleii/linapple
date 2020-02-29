@@ -236,7 +236,7 @@ static LPBYTE vidlastmem = NULL;
 static DWORD vidmode = VF_TEXT;
 static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
 DWORD g_videotype = VT_COLOR_STANDARD;
-DWORD g_multithreading = 0;
+DWORD g_singlethreaded = 0;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
@@ -270,6 +270,9 @@ static volatile bool video_worker_terminate_ = false;
 static volatile bool video_worker_refresh_ = false;
 pthread_mutex_t video_draw_mutex;
 std::condition_variable video_cv;
+
+static char display_pipeline_[0x2000*4 + 0x400*4];
+
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
   LPBYTE currdestptr = frameoffsettable[desty] + destx;
@@ -1607,7 +1610,7 @@ void VideoInitialize() {
   VideoResetState();
 
   // GPH Experiment with multicore video
-  if (g_multithreading) {
+  if (!g_singlethreaded) {
     VideoInitWorker();
   }
   // END GPH
@@ -1620,20 +1623,12 @@ void *VideoWorkerThread(void *params)
 {
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
-  auto next = std::chrono::system_clock::now();
+  auto next_scheduled_update = std::chrono::system_clock::now();
   while (!video_worker_terminate_) {
-    next += std::chrono::microseconds(16666);
-    // GPH Reference; remove
-    // if(cv.wait_until(lk, now + idx*100ms, [](){return i == 1;}))
-    video_cv.wait_until(lck, next);
+    next_scheduled_update += std::chrono::microseconds(16666);
+    video_cv.wait_until(lck, next_scheduled_update);
     {
-      //usleep(16000 /*16000, but some glitchiness still*/); // microseconds
       if (video_worker_refresh_) {
-        // latch video mode permutation and read the latch
-        displaypage2_latched = displaypage2;
-        vidmode_latched = vidmode;
-
-
         VideoPerformRefresh();
         video_worker_refresh_ = false;
       }
@@ -1672,6 +1667,10 @@ void VideoPerformRefresh() {
   // Claim until video refresh is complete
   pthread_mutex_lock(&video_draw_mutex);
 
+  // latch video mode permutation and read the latch
+  displaypage2_latched = displaypage2;
+  vidmode_latched = vidmode;
+
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
@@ -1688,12 +1687,32 @@ void VideoPerformRefresh() {
     frm_locked = 1; // the frame bitmap is locked
   }
 
+  if (g_singlethreaded) {
+    // This is the old, standard behavior -- just read the Apple II display data
+    // directly
+    g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
+    g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
+    g_pTextBank1 = MemGetAuxPtr(0x0400 << displaypage2_latched);
+    g_pTextBank0 = MemGetMainPtr(0x0400 << displaypage2_latched);
+  } else {
+    // What if we copy all the bytes that are there now, as we start this redraw?
+    // This is a one-level pipelining
+    // That way, the 6502 CPU emulation can go on its merry way without
+    // causing display glitches as emulation runs concurrently with screen drawing
+
+
+    memcpy(display_pipeline_       ,MemGetAuxPtr ( 0x2000 << displaypage2_latched), 0x2000);
+    memcpy(display_pipeline_+0x2000,MemGetMainPtr( 0x2000 << displaypage2_latched), 0x2000);
+    memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << displaypage2_latched), 0x0400);
+    memcpy(display_pipeline_+0x4400,MemGetMainPtr( 0x0400 << displaypage2_latched), 0x0400);
+
+    g_pHiresBank1 = (LPBYTE) display_pipeline_;
+    g_pHiresBank0 = (LPBYTE) display_pipeline_ + 0x2000;
+    g_pTextBank1 =  (LPBYTE) display_pipeline_ + 0x4000;
+    g_pTextBank0 =  (LPBYTE) display_pipeline_ + 0x4400;
+  }
   // Check each cell for changed bytes.  redraw pixels for the changed bytes
   // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
-  g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
-  g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
-  g_pTextBank1 = MemGetAuxPtr(0x400 << displaypage2_latched);
-  g_pTextBank0 = MemGetMainPtr(0x400 << displaypage2_latched);
   ZeroMemory(celldirty, 40 * 32);
   UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
@@ -1779,7 +1798,7 @@ void VideoPerformRefresh() {
   redrawfull = 0;
   hasrefreshed = 1;
 
-  // Allow changes to video modes, etc.
+  // Allow Disk Choose screen, help, etc
   pthread_mutex_unlock(&video_draw_mutex);
 }
 
@@ -1793,6 +1812,7 @@ void VideoRefreshScreen() {
   if (video_worker_active_) {
     video_worker_refresh_ = true;
   } else {
+    // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
   }
 }
@@ -1808,7 +1828,6 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
 
   // Claim video mutex giving deference to any drawing operation
   // in progress in another thread
-  pthread_mutex_lock(&video_draw_mutex);
 
   address &= 0xFF;
   DWORD oldpage2 = SW_PAGE2;
@@ -1898,9 +1917,6 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
     }
     lastpageflip = emulmsec;
   }
-
-  // Relinquish video mutext, allowing drawing to continue
-  pthread_mutex_unlock(&video_draw_mutex);
 
   return MemReadFloatingBus(nCyclesLeft);
 }
