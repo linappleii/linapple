@@ -163,8 +163,6 @@ ULONG g_nPerfFreq = 0;
 
 void ContinueExecution()
 {
-  static BOOL pageflipping = 0; //?
-
   const double fUsecPerSec = 1.e6;
 
   const UINT nExecutionPeriodUsec = 1000;    // 1.0ms
@@ -174,6 +172,8 @@ void ContinueExecution()
 
   g_bFullSpeed = ((g_dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed ||
                   (DiskIsSpinning() && enhancedisk && !Spkr_IsActive() && !MB_IsActive()));
+
+
 
   if (g_bFullSpeed) {
     // Don't call Spkr_Mute() - will get speaker clicks
@@ -197,9 +197,6 @@ void ContinueExecution()
 
   DWORD dwExecutedCycles = CpuExecute(nCyclesToExecute);
   g_dwCyclesThisFrame += dwExecutedCycles;
-
-  //
-
   cyclenum = dwExecutedCycles;
 
   DiskUpdatePosition(dwExecutedCycles);
@@ -221,20 +218,17 @@ void ContinueExecution()
     emulmsec_frac %= CLKS_PER_MS;
   }
 
+
   //
   // DETERMINE WHETHER THE SCREEN WAS UPDATED, THE DISK WAS SPINNING,
   // OR THE KEYBOARD I/O PORTS WERE BEING EXCESSIVELY QUERIED THIS CLOCKTICK
-  if (!g_multithreading)
+  if (g_singlethreaded)
     VideoCheckPage(0);
   BOOL screenupdated = VideoHasRefreshed();
-  screenupdated |= g_multithreading;
+  screenupdated |= (!g_singlethreaded);
   BOOL systemidle = 0;  //(KeybGetNumQueries() > (clockgran << 2));  //  && (!ranfinegrain);  // TO DO
 
-  if (screenupdated)
-    pageflipping = 3;
-
   //
-
   if (g_dwCyclesThisFrame >= dwClksPerFrame) {
     g_dwCyclesThisFrame -= dwClksPerFrame;
 
@@ -246,10 +240,7 @@ void ContinueExecution()
       static BOOL lastupdates[2] = {0, 0};
 
       anyupdates |= screenupdated;
-      bool update_clause = ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) || g_multithreading;
-      //
-
-      //lastcycles = cumulativecycles;
+      bool update_clause = ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) || (!g_singlethreaded);
       if ( update_clause && VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static DWORD lasttime = 0;
@@ -266,9 +257,6 @@ void ContinueExecution()
       lastupdates[1] = lastupdates[0];
       lastupdates[0] = anyupdates;
       anyupdates = 0;
-
-      if (pageflipping)
-        pageflipping--;
     }
 
     MB_EndOfVideoFrame();
@@ -552,7 +540,7 @@ void LoadConfiguration()
 
     LOAD(TEXT("Enhance Disk Speed"), (DWORD * ) & enhancedisk);//
     LOAD(TEXT("Video Emulation"), &g_videotype);
-    LOAD(TEXT("Multithreading"), &g_multithreading);
+    LOAD(TEXT("Singlethreaded"), &g_singlethreaded);
   }
   //  printf("Video Emulation = %d\n", videotype);
 
