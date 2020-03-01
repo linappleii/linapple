@@ -614,6 +614,7 @@ void ProcessButtonClick(int button, int mod)
         fullscreen = 1;
         SetFullScreenMode();
       }
+      JoyReset();   // GPH: Sometimes lose ability to use buttons after switch
       break;
 
     case BTN_DEBUG:  // F7 - debug mode - not implemented yet? Please, see README about it. --bb
