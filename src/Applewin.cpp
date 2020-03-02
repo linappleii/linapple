@@ -586,6 +586,10 @@ void LoadConfiguration()
       g_bSaveStateOnExit = (dwTmp != 0);
 
   if (registry)
+	if(LOAD(TEXT(REGVALUE_PRINTER_APPEND), &dwTmp))
+		g_bPrinterAppend = dwTmp ? true : false;
+
+  if (registry)
     if (LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp))
       hddenabled = (bool) dwTmp;// after MemInitialize
   //    HD_SetEnabled(dwTmp ? true : false);
@@ -648,6 +652,11 @@ void LoadConfiguration()
       szHDFilename = NULL;
     }
 
+  if (registry)
+  {
+	  if (RegLoadValue(TEXT("Configuration"), TEXT(REGVALUE_PRINTER_IDLE_LIMIT), 1, &dwTmp))
+		  Printer_SetIdleLimit(dwTmp);
+  }
 
   // for joysticks use default Y-,X-trims
   //   if(LOAD(TEXT(REGVALUE_PDL_XTRIM), &dwTmp))
