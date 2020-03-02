@@ -14,9 +14,9 @@
 #
 # Possible values are:
 #   0 - old Apple][, right out of the hands of Steve Wozniak and Steve Jobs in far 1977? year.
-#   1 - Apple][+	- same as Apple][ with somewhat enbettered functionality
-#   2 - Apple//e	- Enhanced Apple][ with 80-column mode and other useful additions
-#   3 - Apple//e enhanced	- currently same as Apple//e? Please, ask Tom Charlesworth about it.
+#   1 - Apple][+	- same as Apple][ with somewhat improved functionality.
+#   2 - Apple//e	- The improved Apple//e with original 6502 CPU and 80-column mode.
+#   3 - Apple//e enhanced	- The enhanced Apple//e, providing a newer 65C02 CPU and improved ROMs.
 #
 # Default is 3.
 

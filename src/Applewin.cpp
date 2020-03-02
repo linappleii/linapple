@@ -481,7 +481,7 @@ void LoadConfiguration()
         g_Apple2Type = A2TYPE_APPLE2PLUS;
         break;
       case 2:
-        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        g_Apple2Type = A2TYPE_APPLE2E;
         break;
       default:
         g_Apple2Type = A2TYPE_APPLE2EEHANCED;
