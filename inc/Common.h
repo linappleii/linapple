@@ -90,6 +90,8 @@ enum AppMode_e {
 #define  REGVALUE_DISK_IMAGE2         "Disk Image 2"
 
 #define  REGVALUE_PPRINTER_FILENAME  "Parallel Printer Filename"
+#define  REGVALUE_PRINTER_APPEND     "Append to printer file"
+#define  REGVALUE_PRINTER_IDLE_LIMIT "Printer idle limit"
 
 #define  REGVALUE_PDL_XTRIM          "PDL X-Trim"
 #define  REGVALUE_PDL_YTRIM          "PDL Y-Trim"
