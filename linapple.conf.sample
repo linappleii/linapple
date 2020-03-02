@@ -202,6 +202,23 @@
 
 	Parallel Printer Filename = Printer.txt
 
+##########################################################################
+#
+#	Printer timeout allows you to set the timeout in seconds after which
+#	the printer file is closed when no more printing activity is detected.
+#
+# Default is 10 seconds.
+
+	Printer idle limit = 10
+
+##########################################################################
+#
+#	Append to printer file: set to 1 to always append to an existing
+#   printer file. Set to 0 to overwrite an existing printer file.
+#
+# Default is 1 (append).
+
+	Append to printer file = 1
 
 ##########################################################################
 #

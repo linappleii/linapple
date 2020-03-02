@@ -49,8 +49,10 @@ char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\
 
 
 static DWORD inactivity = 0;
+static unsigned int g_PrinterIdleLimit = 10;
 static FILE *file = NULL;
 DWORD const PRINTDRVR_SIZE = 0x100;
+bool g_bPrinterAppend = true;
 
 static BYTE PrintStatus(WORD, WORD, BYTE, BYTE, ULONG);
 
@@ -62,10 +64,11 @@ void PrintLoadRom(LPBYTE pCxRomPeripheral, const UINT uSlot) {
   RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
 }
 
-static BOOL CheckPrint() {
+static BOOL CheckPrint()
+{
   inactivity = 0;
   if (file == NULL) {
-    file = fopen(g_sParallelPrinterFile, "ab");
+    file = fopen(g_sParallelPrinterFile, (g_bPrinterAppend) ? "ab" : "wb");
   }
   return (file != NULL);
 }
@@ -86,7 +89,8 @@ void PrintUpdate(DWORD totalcycles) {
   if (file == NULL) {
     return;
   }
-  if ((inactivity += totalcycles) > (10 * 1000 * 1000)) { // around 10 seconds
+  if ((inactivity += totalcycles) > (Printer_GetIdleLimit() * 1000 * 1000))
+  {
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
@@ -110,3 +114,16 @@ static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG) {
   return 0;
 }
 
+//===========================================================================
+
+unsigned int Printer_GetIdleLimit()
+{
+  return g_PrinterIdleLimit;
+}
+
+void Printer_SetIdleLimit(unsigned int Duration)
+{
+  g_PrinterIdleLimit = Duration;
+}
+
+//===========================================================================
