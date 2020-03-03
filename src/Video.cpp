@@ -374,6 +374,8 @@ void CreateIdentityPalette() {
 }
 
 void CreateDIBSections() {
+  pthread_mutex_lock(&video_draw_mutex);
+
   CopyMemory(g_pSourceHeader, framebufferinfo, 256 * sizeof(SDL_Color));
 
   // CREATE THE FRAME BUFFER DIB SECTION
@@ -465,6 +467,8 @@ void CreateDIBSections() {
   if (locked) {
     SDL_UnlockSurface(g_hSourceBitmap);
   }
+
+  pthread_mutex_unlock(&video_draw_mutex);
 }
 
 void DrawDHiResSource() {
