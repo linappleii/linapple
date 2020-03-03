@@ -14,8 +14,7 @@ public:
 
   void Initialize(LPBYTE pCxRomPeripheral, UINT uSlot);
 
-  void Uninitialize()
-  {
+  void Uninitialize() {
     m_bActive = false;
   }
 
@@ -29,8 +28,7 @@ public:
 
   void SetButton(eBUTTON Button, eBUTTONSTATE State);
 
-  bool Active()
-  {
+  bool Active() {
     return m_bActive;
   }
 
@@ -52,14 +50,12 @@ protected:
   friend WRITE_HANDLER(M6821_Listener_A);
 
   friend WRITE_HANDLER(M6821_Listener_B);
-  //friend CALLBACK_HANDLER( MouseHandler );
 
   void SetPosition(int xvalue, int yvalue);
 
   void ClampX(int iMinX, int iMaxX);
 
   void ClampY(int iMinY, int iMaxY);
-
 
   C6821 m_6821;
 
@@ -68,7 +64,7 @@ protected:
 
   BYTE m_by6821B;
   BYTE m_by6821A;
-  BYTE m_byBuff[8];      // m_byBuff[0] is mode byte
+  BYTE m_byBuff[8]; // m_byBuff[0] is mode byte
   int m_nBuffPos;
 
   BYTE m_byState;
@@ -78,8 +74,6 @@ protected:
   BOOL m_bBtn1;
 
   bool m_bVBL;
-
-  //
 
   UINT m_iX;
   UINT m_iRangeX;
@@ -91,8 +85,6 @@ protected:
   UINT m_iMaxY;
 
   BOOL m_bButtons[2];
-
-  //
 
   bool m_bActive;
   LPBYTE m_pSlotRom;

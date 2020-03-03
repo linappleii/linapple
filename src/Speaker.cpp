@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // Notes:
 //
-// [OLD: 23.191 Apple CLKs == 44100Hz (CLK_6502/44100)]
+// [OLD: 23.191 Apple CLKs == 44100Hz (CLOCK_6502/44100)]
 // 23 Apple CLKS per PC sample (played back at 44.1KHz)
 //
 //

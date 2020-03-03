@@ -35,4 +35,4 @@ void Asset_Quit(void);
 
 int Asset_InsertMasterDisk(void);
 
-#endif // __asset_h
+#endif

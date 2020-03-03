@@ -34,14 +34,11 @@ LPVOID VirtualAlloc(LPVOID lpAddress, size_t dwSize, DWORD flAllocationType, DWO
 
 BOOL VirtualFree(LPVOID lpAddress, size_t dwSize, DWORD dwFreeType);
 
-
-static inline bool IsCharLower(char ch)
-{
+static inline bool IsCharLower(char ch) {
   return isascii(ch) && islower(ch);
 }
 
-static inline bool IsCharUpper(char ch)
-{
+static inline bool IsCharUpper(char ch) {
   return isascii(ch) && isupper(ch);
 }
 
