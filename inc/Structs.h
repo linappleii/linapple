@@ -17,8 +17,6 @@ typedef struct {
   DWORD dwVersion;
 } SS_UNIT_HDR;
 
-/////////////////////////////////////////////////////////////////////////////////
-
 const UINT nMemMainSize = 64 * 1024;
 const UINT nMemAuxSize = 64 * 1024;
 
@@ -58,10 +56,6 @@ typedef struct {
   BYTE nLastKey;
 } SS_IO_Keyboard;
 
-//typedef struct
-//{
-//} SS_IO_Memory;
-
 typedef struct {
   unsigned __int64
   g_nSpkrLastCycle;
@@ -91,8 +85,6 @@ typedef struct {
   SS_BaseMemory Memory;
 } SS_APPLE2_Unit;
 
-/////////////////////////////////////////////////////////////////////////////////
-
 typedef struct {
   DWORD dwComputerEmulation;
   bool bCustomSpeed;
@@ -119,8 +111,6 @@ typedef struct {
   SS_AW_CFG Cfg;
 } SS_APPLEWIN_CONFIG;
 
-/////////////////////////////////////////////////////////////////////////////////
-
 typedef struct {
   SS_UNIT_HDR UnitHdr;
   DWORD dwType;    // SS_CARDTYPE
@@ -134,13 +124,9 @@ enum SS_CARDTYPE {
   CT_GenericClock, CT_MouseInterface,
 };
 
-/////////////////////////////////////////////////////////////////////////////////
-
 typedef struct {
   SS_CARD_HDR Hdr;
 } SS_CARD_EMPTY;
-
-/////////////////////////////////////////////////////////////////////////////////
 
 const UINT NIBBLES_PER_TRACK = 0x1A00;
 
@@ -169,8 +155,6 @@ typedef struct {
   BOOL floppymotoron;
   BOOL floppywritemode;
 } SS_CARD_DISK2;
-
-/////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
   union {
@@ -234,8 +218,6 @@ typedef struct {
   MB_Unit Unit[MB_UNITS_PER_CARD];
 } SS_CARD_MOCKINGBOARD;
 
-/////////////////////////////////////////////////////////////////////////////////
-
 typedef struct {
   SS_FILE_HDR Hdr;
   SS_APPLE2_Unit Apple2Unit;
@@ -248,5 +230,3 @@ typedef struct {
   SS_CARD_DISK2 Disk2;        // Slot6
   SS_CARD_EMPTY Empty7;        // Slot7
 } APPLEWIN_SNAPSHOT;
-
-/////////////////////////////////////////////////////////////////////////////////

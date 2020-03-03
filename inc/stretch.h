@@ -77,10 +77,7 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
 
 #endif
 
-
-/* ----------------------------------------------------------------*/
-/* ---------------------- FONT routines ---------------------------*/
-/* ----------------------------------------------------------------*/
+// Font Routines
 
 #define FONT_SIZE_X  6
 #define FONT_SIZE_Y  8
@@ -98,9 +95,7 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
 
 void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
 
-///////////////////////////////////////////////////////////////////////////
-////// Some auxiliary functions //////////////
-///////////////////////////////////////////////////////////////////////////
+// Some auxiliary functions
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r);
 
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel);

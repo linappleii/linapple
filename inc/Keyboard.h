@@ -3,7 +3,6 @@
 extern bool g_bShiftKey;
 extern bool g_bCtrlKey;
 extern bool g_bAltKey;
-//extern bool   g_bCapsLock;
 
 void ClipboardInitiatePaste();
 

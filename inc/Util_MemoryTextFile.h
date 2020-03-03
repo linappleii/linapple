@@ -1,7 +1,6 @@
 #pragma once
 
-
-// Memory Text File _________________________________________________________
+// Memory Text File
 
 class MemoryTextFile_t {
   vector<char> m_vBuffer;
@@ -12,33 +11,26 @@ class MemoryTextFile_t {
 
 public:
   MemoryTextFile_t()
-  //    : m_nSize( 0 )
-  //    , m_pBuffer( 0 )
-  //    , m_nLines( 0 )
-    : m_bDirty(false)
-  {
+    : m_bDirty(false) {
     m_vBuffer.reserve(2048);
     m_vLines.reserve(128);
   }
 
   bool Read(TCHAR *pFileName);
 
-  void Reset()
-  {
+  void Reset() {
     m_vBuffer.erase(m_vBuffer.begin(), m_vBuffer.end());
     m_vLines.erase(m_vLines.begin(), m_vLines.end());
   }
 
-  inline int GetNumLines()
-  {
-    if (m_bDirty)
+  inline int GetNumLines() {
+    if (m_bDirty) {
       GetLinePointers();
-
+    }
     return m_vLines.size();
   }
 
-  inline char *GetLine(const int iLine) const
-  {
+  inline char *GetLine(const int iLine) const {
     return m_vLines.at(iLine);
   }
 

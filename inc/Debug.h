@@ -8,14 +8,8 @@
 using namespace std;
 
 #include "Debugger_Types.h"
-// #include "Debugger_Parser.h"
-// #include "Debugger_Console.h"
-// #include "Debugger_Assembler.h"
-// #include "Debugger_Help.h"
-// #include "Debugger_Display.h"
-// #include "Util_MemoryTextFile.h"
 
-// Globals __________________________________________________________________
+// Globals
 
 // Benchmarking
 extern DWORD extbench;
@@ -23,7 +17,6 @@ extern DWORD extbench;
 // Bookmarks
 extern int g_nBookmarks;
 extern Bookmark_t g_aBookmarks[MAX_BOOKMARKS];
-//  extern vector<int> g_aBookmarks;
 
 // Breakpoints
 extern int g_nBreakpoints;
@@ -67,11 +60,9 @@ extern bool g_bConfigDisasmOpcodeSpaces;
 extern int g_iConfigDisasmTargets;
 extern int g_iConfigDisasmBranchType;
 extern int g_bConfigDisasmImmediateChar;
+
 // Config - Info
 extern bool g_bConfigInfoTargetPointer;
-
-// Disassembly
-//  extern int g_aDisasmTargets[ MAX_DISPLAY_LINES ];
 
 // Display
 extern bool g_bDebuggerViewingAppleOutput;
@@ -83,12 +74,10 @@ extern int g_iFontSpacing;
 // Memory
 extern MemoryDump_t g_aMemDump[NUM_MEM_DUMPS];
 
-//  extern MemorySearchArray_t g_vMemSearchMatches;
 extern vector<int> g_vMemorySearchResults;
 
 // Source Level Debugging
 extern TCHAR g_aSourceFileName[MAX_PATH];
-//  extern MemoryTextFile_t g_AssemblerSourceBuffer;
 
 extern int g_iSourceDisplayStart;
 extern int g_nSourceAssembleBytes;
@@ -110,7 +99,7 @@ extern WindowSplit_t g_aWindowConfig[NUM_WINDOWS];
 extern int g_nZeroPagePointers;
 extern ZeroPagePointers_t g_aZeroPagePointers[MAX_ZEROPAGE_POINTERS]; // TODO: use vector<> ?
 
-// Prototypes _______________________________________________________________
+// Prototypes
 
 // Bookmarks
 bool Bookmark_Find(const WORD nAddress);
@@ -119,14 +108,12 @@ bool Bookmark_Find(const WORD nAddress);
 bool GetBreakpointInfo(WORD nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
 
 // 0 = Brk, 1 = Invalid1, .. 3 = Invalid 3
-inline bool IsDebugBreakOnInvalid(int iOpcodeType)
-{
+inline bool IsDebugBreakOnInvalid(int iOpcodeType) {
   bool bActive = (g_nDebugOnBreakInvalid >> iOpcodeType) & 1;
   return bActive;
 }
 
-inline void SetDebugBreakOnInvalid(int iOpcodeType, int nValue)
-{
+inline void SetDebugBreakOnInvalid(int iOpcodeType, int nValue) {
   if (iOpcodeType <= AM_3) {
     g_nDebugOnBreakInvalid &= ~(1 << iOpcodeType);
     g_nDebugOnBreakInvalid |= ((nValue & 1) << iOpcodeType);
@@ -153,7 +140,7 @@ LPCTSTR GetSymbol(WORD nAddress, int nBytes);
 
 Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
 
-// Prototypes _______________________________________________________________
+// Prototypes
 
 enum {
   DEBUG_EXIT_KEY = 0x1B, // Escape
@@ -172,10 +159,8 @@ void DebugEnd();
 
 void DebugInitialize();
 
-//  void  DebugProcessChar (TCHAR);
 void DebuggerInputConsoleChar(TCHAR ch);
 
-//  void  DebugProcessCommand (int);
 void DebuggerProcessKey(int keycode);
 
 void DebuggerUpdate();

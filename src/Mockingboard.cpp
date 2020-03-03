@@ -189,7 +189,7 @@ static DWORD g_dwMaxPhonemeLen = 0;
 #endif
 
 // When 6522 IRQ is *not* active use 60Hz update freq for MB voices
-static const double g_f6522TimerPeriod_NoIRQ = CLK_6502 / 60.0;    // Constant whatever the CLK is set to
+static const double g_f6522TimerPeriod_NoIRQ = CLOCK_6502 / 60.0;    // Constant whatever the CLK is set to
 
 // External global vars:
 bool g_bMBTimerIrqActive = false;
@@ -1184,7 +1184,7 @@ static BYTE PhasorIO(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCycle
   if (g_nPhasorMode < 2) {
     g_nPhasorMode = nAddr & 1;
   }
-  double fCLK = (nAddr & 4) ? CLK_6502 * 2 : CLK_6502;
+  double fCLK = (nAddr & 4) ? CLOCK_6502 * 2 : CLOCK_6502;
 
   AY8910_InitClock((int) fCLK);
 
