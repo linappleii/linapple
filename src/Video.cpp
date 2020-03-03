@@ -1661,8 +1661,11 @@ bool VideoInitWorker()
         &VideoWorkerThread,
         NULL);
   if (error) {
+
+    // If failed to
+    std::cerr << "FAILED to start video worker; reverting to single-threaded video updating..." << std::endl;
     video_worker_active_ = false;
-    return false;
+    video_worker_active_ = false;
   }
   return true;
 }
