@@ -76,12 +76,20 @@ INSTASSETS  := \
 	Master.dsk
 CONFFILES   := \
 	linapple.conf
+SRCIMGFILES :=  \
+		$(foreach dir,$(RESDIR),$(subst .png,,$(wildcard $(dir)/*.png)))
 
 #Default Make
-all: directories $(TARGETDIR)/$(TARGET)
+all: images directories $(TARGETDIR)/$(TARGET)
 
 #Remake
 remake: cleaner all
+
+images:
+	for file in $(SRCIMGFILES); do \
+    convert -flatten "$$file".png "$$file".xpm ;\
+		sed -i 's/${file}\[\]/${file}_xpm[]/g' "$$file".xpm ;\
+	done
 
 #Copy Resources from Resources Directory to Target Directory
 resources: directories
@@ -157,11 +165,12 @@ cleaner: clean
 	@$(RM) -rf $(TARGETDIR)
 	@$(RM) $(TARGET)-$(VERSION).deb
 
+
+
 #Pull in dependency info for *existing* .o files
 -include $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
 
 #Link
-
 $(TARGETDIR)/$(TARGET): $(OBJECTS)
 	$(CC) $(LFLAGS) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
 
