@@ -1,7 +1,6 @@
 #pragma once
 
-
-// Addressing _____________________________________________________________________________________
+// Addressing
 
 enum {
   MAX_OPMODE_FORMAT = 12, MAX_OPMODE_NAME = 32, NO_6502_TARGET = -1, _6502_NUM_FLAGS = 8
@@ -76,8 +75,7 @@ od = 10
     Y = Offset Y Register
     Z = Zeropage
 */
-enum AddressingMode_e // ADDRESSING_MODES_e
-{
+enum AddressingMode_e { // ADDRESSING_MODES_e
   AM_IMPLIED // Note: SetDebugBreakOnInvalid() assumes this order of first 4 entries
   , AM_1    //    Invalid 1 Byte
   , AM_2    //    Invalid 2 Bytes
@@ -95,22 +93,20 @@ enum AddressingMode_e // ADDRESSING_MODES_e
   , AM_NZY  // 14 Indirect (Zeropage) Indexed, Y
   , AM_NZ   // 15 Indirect (Zeropage)
   , AM_NA   // 16 Indirect (Absolute) i.e. JMP
-  , NUM_ADDRESSING_MODES, NUM_OPMODES = NUM_ADDRESSING_MODES, AM_I = NUM_ADDRESSING_MODES, // for assemler
+  , NUM_ADDRESSING_MODES, NUM_OPMODES = NUM_ADDRESSING_MODES, AM_I = NUM_ADDRESSING_MODES, // for assembler
 };
 
-
-// Assembler ______________________________________________________________________________________
+// Assembler
 enum Prompt_e {
   PROMPT_COMMAND, PROMPT_ASSEMBLER, NUM_PROMPTS
 };
 
-
-// Bookmarks ______________________________________________________________________________________
+// Bookmarks
 enum {
   MAX_BOOKMARKS = 10
 };
 
-// Breakpoints ____________________________________________________________________________________
+// Breakpoints
 enum {
   MAX_BREAKPOINTS = 16
 };
@@ -181,7 +177,7 @@ typedef Breakpoint_t Watches_t;
 typedef Breakpoint_t ZeroPagePointers_t;
 
 
-// Colors ___________________________________________________________________
+// Colors
 
 enum Color_Schemes_e {
   SCHEME_COLOR, // NOTE: MUST match order in CMD_WINDOW_COLOR
@@ -358,13 +354,13 @@ enum DebugColors_e {
   FG_SOURCE, NUM_COLORS
 };
 
-// Config _________________________________________________________________________________________
+// Config
 
 enum ConfigSave_t {
   CONFIG_SAVE_FILE_CREATE, CONFIG_SAVE_FILE_APPEND
 };
 
-// Commands _______________________________________________________________________________________
+// Commands
 
 enum Update_e {
   UPDATE_NOTHING,
@@ -399,7 +395,6 @@ struct Command_t {
   CmdFuncPtr_t pFunction;
   int iCommand;     // offset (enum) for direct command name lookup
   char *pHelpSummary; // 1 line help summary
-  //    Hash_t       m_nHash; // TODO
 };
 
 // Commands sorted by Category
@@ -423,7 +418,7 @@ enum Commands_e {
   // CPU - Stack
   CMD_STACK_POP,
   CMD_STACK_POP_PSEUDO,
-  CMD_STACK_PUS ,
+  CMD_STACK_PUS,
   CMD_STEP_OVER,
   CMD_STEP_OUT,
   CMD_TRACE,
@@ -576,7 +571,6 @@ enum Commands_e {
   NUM_COMMANDS
 };
 
-
 // CPU
 Update_t CmdCursorJumpPC(int nArgs);
 
@@ -619,7 +613,6 @@ Update_t CmdBookmarkList(int nArgs);
 
 Update_t CmdBookmarkGoto(int nArgs);
 
-//  Update_t CmdBookmarkLoad   (int nArgs);
 Update_t CmdBookmarkSave(int nArgs);
 
 // Breakpoints
@@ -645,7 +638,6 @@ Update_t CmdBreakpointEnable(int nArgs);
 
 Update_t CmdBreakpointList(int nArgs);
 
-//  Update_t CmdBreakpointLoad    (int nArgs);
 Update_t CmdBreakpointSave(int nArgs);
 
 // Benchmark
@@ -874,10 +866,9 @@ Update_t CmdZeroPageSave(int nArgs);
 
 Update_t CmdZeroPagePointer(int nArgs);
 
-// Cursor _________________________________________________________________________________________
+// Cursor
 enum Cursor_Align_e {
-  CURSOR_ALIGN_TOP,
-  CURSOR_ALIGN_CENTER
+  CURSOR_ALIGN_TOP, CURSOR_ALIGN_CENTER
 };
 
 enum CursorHiLightState_e {
@@ -887,13 +878,9 @@ enum CursorHiLightState_e {
 };
 
 
-// Disassembly ____________________________________________________________________________________
-
+// Disassembly
 enum DisasmBranch_e {
-  DISASM_BRANCH_OFF = 0,
-  DISASM_BRANCH_PLAIN,
-  DISASM_BRANCH_FANCY,
-  NUM_DISASM_BRANCH_TYPES
+  DISASM_BRANCH_OFF = 0, DISASM_BRANCH_PLAIN, DISASM_BRANCH_FANCY, NUM_DISASM_BRANCH_TYPES
 };
 
 enum DisasmFormat_e {
@@ -906,25 +893,18 @@ enum DisasmFormat_e {
 };
 
 enum DisasmImmediate_e {
-  DISASM_IMMED_OFF = 0,
-  DISASM_IMMED_TARGET,
-  DISASM_IMMED_MODE,
-  DISASM_IMMED_BOTH,
-  NUM_DISASM_IMMED_TYPES
+  DISASM_IMMED_OFF = 0, DISASM_IMMED_TARGET, DISASM_IMMED_MODE, DISASM_IMMED_BOTH, NUM_DISASM_IMMED_TYPES
 };
 
 enum DisasmTargets_e {
-  DISASM_TARGET_OFF = 0,
-  DISASM_TARGET_VAL,  // Note: Also treated as bit flag !!
+  DISASM_TARGET_OFF = 0, DISASM_TARGET_VAL,  // Note: Also treated as bit flag !!
   DISASM_TARGET_ADDR, // Note: Also treated as bit flag !!
-  DISASM_TARGET_BOTH ,// Note: Also treated as bit flag !!
+  DISASM_TARGET_BOTH,// Note: Also treated as bit flag !!
   NUM_DISASM_TARGET_TYPES
 };
 
 enum DisasmText_e {
-  nMaxAddressLen = 40,
-  nMaxOpcodes = 3,
-  CHARS_FOR_ADDRESS = 8, // 4 digits plus null
+  nMaxAddressLen = 40, nMaxOpcodes = 3, CHARS_FOR_ADDRESS = 8, // 4 digits plus null
 };
 
 struct DisasmLine_t {
@@ -956,8 +936,7 @@ struct DisasmLine_t {
   bool bTargetY;
   bool bTargetValue;
 
-  void Clear()
-  {
+  void Clear() {
     sAddress[0] = 0;
     sOpCodes[0] = 0;
 
@@ -978,8 +957,6 @@ struct DisasmLine_t {
     bTargetImmediate = false;
     bTargetIndexed = false;
     bTargetIndirect = false;
-    //      bTargetInside    = false;
-    //      bTargetOutside   = false;
     bTargetRelative = false;
     bTargetX = false;
     bTargetY = false; // need to dislay ",Y"
@@ -989,11 +966,7 @@ struct DisasmLine_t {
 
 // Font
 enum FontType_e {
-  FONT_INFO,
-  FONT_CONSOLE,
-  FONT_DISASM_DEFAULT,
-  FONT_DISASM_BRANCH,
-  NUM_FONTS
+  FONT_INFO, FONT_CONSOLE, FONT_DISASM_DEFAULT, FONT_DISASM_BRANCH, NUM_FONTS
 };
 
 enum {
@@ -1059,7 +1032,6 @@ struct Instruction2_t {
 
 enum Opcode_e {
   OPCODE_BRA = 0x80,
-
   OPCODE_JSR = 0x20, OPCODE_JMP_A = 0x4C, // Absolute
   OPCODE_JMP_NA = 0x6C, // Indirect Absolute
   OPCODE_JMP_IAX = 0x7C, // Indexed (Absolute Indirect, X)
@@ -1076,8 +1048,7 @@ struct ProfileOpcode_t {
   Profile_t m_nCount; // Histogram
 
   // functor
-  bool operator()(const ProfileOpcode_t &rLHS, const ProfileOpcode_t &rRHS) const
-  {
+  bool operator()(const ProfileOpcode_t &rLHS, const ProfileOpcode_t &rRHS) const {
     return (rLHS.m_nCount > rRHS.m_nCount);
   }
 };
@@ -1087,8 +1058,7 @@ struct ProfileOpmode_t {
   Profile_t m_nCount; // Histogram
 
   // functor
-  bool operator()(const ProfileOpmode_t &rLHS, const ProfileOpmode_t &rRHS) const
-  {
+  bool operator()(const ProfileOpmode_t &rLHS, const ProfileOpmode_t &rRHS) const {
     return rLHS.m_nCount > rRHS.m_nCount;
   }
 };
@@ -1097,7 +1067,7 @@ enum ProfileFormat_e {
   PROFILE_FORMAT_SPACE, PROFILE_FORMAT_TAB, PROFILE_FORMAT_COMMA,
 };
 
-// Memory _________________________________________________________________________________________
+// Memory
 
 extern const int _6502_BRANCH_POS;//= +127
 extern const int _6502_BRANCH_NEG;//= -128
@@ -1121,8 +1091,6 @@ enum MemoryView_e {
   // 0x80 .. 0x9F Hi-Bit Ctrl       (Yellow)
   // 0xA0 .. 0xFF Hi-Bit Normal     (White)
   MEM_VIEW_ASCII, MEM_VIEW_APPLE, // Low-Bit ASCII (Colorized Background)
-  //    MEM_VIEW_TXT_LO, // Ctrl Chars mapped to visible range, and inverse
-  //    MEM_VIEW_TXT_HI, // High Bit Ascii
   NUM_MEM_VIEWS
 };
 
@@ -1160,15 +1128,14 @@ struct MemorySearch_t {
 typedef vector <MemorySearch_t> MemorySearchValues_t;
 typedef vector<int> MemorySearchResults_t;
 
-// Parameters _____________________________________________________________________________________
+// Parameters
 
 /* i.e.
     SYM LOAD = $C600   (1) type: string, nVal1 = symlookup; (2) type: operator, token: EQUAL; (3) type: address, token:DOLLAR
     BP LOAD            type:
     BP $LOAD           type: (1) = symbol, val=1adress
 */
-enum ArgToken_e // Arg Token Type
-{
+enum ArgToken_e { // Arg Token Type
   // Single Char Tokens must come first
   TOKEN_ALPHANUMERIC, //
   TOKEN_AMPERSAND,    // &
@@ -1207,7 +1174,6 @@ enum ArgToken_e // Arg Token Type
   TOKEN_GREATER_EQUAL, // >=
   TOKEN_LESS_EQUAL,   // <=
   TOKEN_NOT_EQUAL,    // !=
-
   NUM_TOKENS, // signal none, or bad
   NO_TOKEN = NUM_TOKENS
 };
@@ -1356,7 +1322,6 @@ enum Parameters_e {
   _PARAM_WINDOW_BEGIN = _PARAM_SOURCE_END,  // Daisy Chain
   // These are the "full screen" "windows" / Panels / Tab sheets
   PARAM_CODE = _PARAM_WINDOW_BEGIN, // disasm
-  //    , PARAM_CODE_1  // disasm top // removed, since can't set top window for code/data
   PARAM_CODE_2,  // disasm bot
   PARAM_CONSOLE,
   PARAM_DATA,    // data all
@@ -1373,7 +1338,6 @@ enum Parameters_e {
   PARAM_WINDOW_NUM = _PARAM_WINDOW_END - _PARAM_WINDOW_BEGIN,
   NUM_PARAMS = _PARAM_WINDOW_END // Daisy Chain
 };
-
 
 // Source Level Debugging
 enum {
@@ -1392,10 +1356,7 @@ enum {
 // See: g_aSymbols[]
 // ****************************************
 enum Symbols_e {
-  SYMBOLS_MAIN,
-  SYMBOLS_USER,
-  SYMBOLS_SRC,
-  NUM_SYMBOL_TABLES = 3
+  SYMBOLS_MAIN, SYMBOLS_USER, SYMBOLS_SRC, NUM_SYMBOL_TABLES = 3
 };
 
 // ****************************************
@@ -1415,14 +1376,9 @@ enum {
 
 // Window
 enum Window_e {
-  WINDOW_CODE,
-  WINDOW_DATA,
-  WINDOW_CONSOLE,
-  NUM_WINDOWS, // Not implemented yet
+  WINDOW_CODE, WINDOW_DATA, WINDOW_CONSOLE, NUM_WINDOWS, // Not implemented yet
   WINDOW_IO, // soft switches   $addr  name   state
-  WINDOW_SYMBOLS,
-  WINDOW_ZEROPAGE,
-  WINDOW_SOURCE,
+  WINDOW_SYMBOLS, WINDOW_ZEROPAGE, WINDOW_SOURCE,
 };
 
 struct WindowSplit_t {

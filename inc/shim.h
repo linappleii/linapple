@@ -96,4 +96,4 @@ extern DECLSPEC char *SDLCALL
 
 SDL_GetPrefPath(const char *org, const char *app);
 
-#endif // __shim_h
+#endif

@@ -1,6 +1,6 @@
 #pragma once
 
-// Types ____________________________________________________________
+// Types
 enum VIDEOTYPE {
   VT_MONO_CUSTOM,
   VT_COLOR_STANDARD,
@@ -34,10 +34,10 @@ enum AppleFont_e {
   APPLE_FONT_Y_APPLE_40COL = 512, // ][
 };
 
-// Globals __________________________________________________________
-extern INT32 g_iStatusCycle;    // cycler for status panel showing
+// Globals
+extern INT32 g_iStatusCycle; // cycler for status panel showing
 
-extern BOOL g_ShowLeds;  // if we should show drive leds
+extern BOOL g_ShowLeds; // if we should show drive leds
 
 extern BOOL graphicsmode;
 extern COLORREF monochrome;
@@ -46,14 +46,13 @@ extern DWORD g_singlethreaded;
 extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL surface
 
 // Surfaces for drawing
-//extern HBITMAP g_hLogoBitmap;
 extern SDL_Surface *g_hLogoBitmap; // our Linux logo!
 extern SDL_Surface *g_hStatusSurface;  // status panel
 
 extern SDL_Surface *g_hSourceBitmap;
 extern SDL_Surface *g_hDeviceBitmap;
 extern SDL_Surface *g_origscreen; // reserved for stretching
-// Prototypes _______________________________________________________
+// Prototypes
 
 void CreateColorMixMap();
 
