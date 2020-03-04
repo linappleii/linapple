@@ -17,7 +17,6 @@ void DiskEject(const int iDrive);
 
 LPCTSTR DiskGetFullName(int);
 
-
 enum Disk_Status_e {
   DISK_STATUS_OFF, DISK_STATUS_READ, DISK_STATUS_WRITE, DISK_STATUS_PROT, NUM_DISK_STATUS
 };

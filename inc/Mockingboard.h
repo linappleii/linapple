@@ -44,5 +44,4 @@ DWORD MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, DWORD dwSlot);
 extern short *pDSMockBuf;  // Mockingboard data buffer (in size of g_dwDSMockBufferSize samples?)
 extern UINT nDSMockWCur;  // write cursor
 extern UINT nDSMockRCur;  // read cursor
-//extern DWORD  g_dwDSMockBufferSize;  // size of low-level buffer
 

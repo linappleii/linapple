@@ -23,14 +23,14 @@ extern "C" {
 
 #ifndef BASETYPES
 #define BASETYPES
-typedef unsigned /*long*/int ULONG;
+typedef unsigned int ULONG;
 typedef ULONG *PULONG;
 typedef unsigned short USHORT;
 typedef USHORT *PUSHORT;
 typedef unsigned char UCHAR;
 typedef UCHAR *PUCHAR;
 typedef char *PSZ;
-#endif  /* !BASETYPES */
+#endif
 
 
 typedef void *HANDLE;
@@ -41,8 +41,6 @@ typedef unsigned short UINT16;    // why there was char instead of short? --bb ?
 typedef unsigned int UINT32;
 typedef unsigned char UINT8;
 typedef int INT32;
-//#define __stdcall _cdecl
-
 
 #define MAX_PATH          260
 
@@ -94,7 +92,7 @@ typedef int INT32;
 #define CONST               const
 #endif
 
-typedef unsigned /*long*/int DWORD;
+typedef unsigned int DWORD;
 typedef int BOOL;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
@@ -118,9 +116,6 @@ typedef int INT;
 typedef unsigned int UINT;
 typedef unsigned int *PUINT;
 
-//#define LPSTR        (char*)
-
-
 #define MAKEWORD(a, b)      ((WORD)(((BYTE)(a)) | ((WORD)((BYTE)(b))) << 8))
 #define MAKELONG(a, b)      ((LONG)(((WORD)(a)) | ((DWORD)((WORD)(b))) << 16))
 #define LOWORD(l)           ((WORD)(l))
@@ -132,12 +127,12 @@ typedef DWORD COLORREF;
 typedef DWORD *LPCOLORREF;
 
 
-////////////////////////// WINNT ///////////////////////////////
+// WINNT
 #ifndef VOID
 #define VOID void
 typedef char CHAR;
 typedef short SHORT;
-typedef /*long*/int LONG;
+typedef int LONG;
 typedef SHORT *PSHORT;
 typedef LONG *PLONG;
 #endif
@@ -152,10 +147,7 @@ typedef WCHAR *LPWSTR, *PWSTR;
 
 typedef CONST WCHAR *LPCWSTR, *PCWSTR;
 
-
-//
 // ANSI (Multi-byte Character) types
-//
 typedef CHAR *PCHAR;
 typedef CHAR *LPCH, *PCH;
 
@@ -169,14 +161,12 @@ typedef LPWSTR PTSTR, LPTSTR;
 typedef LPCWSTR LPCTSTR;
 typedef LPWSTR LP;
 
-
 #ifndef _TCHAR_DEFINED
 typedef char TCHAR, *PTCHAR;
 typedef unsigned char TBYTE, *PTBYTE;
 #define _TCHAR_DEFINED
-#endif /* !_TCHAR_DEFINED */
+#endif
 
-////////////////////////////////////////////////////
 typedef struct _OVERLAPPED {
   DWORD Internal;
   DWORD InternalHigh;
@@ -211,17 +201,8 @@ typedef struct tagPOINT {
 
 #define _tcscmp strcmp
 #define _tcsicmp stricmp
-//#define _tcsnccmp(const char *, const char *, size_t);
 #define _tcsncmp strncmp
-//#define _tcsncicmp(const char *, const char *, size_t);
 #define _tcsnicmp strnicmp
-
-// #define _tcscoll(const char *, const char *);
-// #define _tcsicoll(const char *, const char *);
-// #define _tcsnccoll(const char *, const char *, size_t);
-// #define _tcsncoll(const char *, const char *, size_t);
-// #define _tcsncicoll(const char *, const char *, size_t);
-// #define _tcsnicoll(const char *, const char *, size_t);
 
 /* Note that _mbscat, _mbscpy and _mbsdup are functionally equivalent to
     strcat, strcpy and strdup, respectively. */
@@ -247,5 +228,5 @@ typedef struct tagPOINT {
 }
 #endif
 
-#endif /* _WINDEF_ */
+#endif
 

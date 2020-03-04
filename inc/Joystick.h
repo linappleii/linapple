@@ -22,7 +22,6 @@ extern bool joyquitevent;
 
 void CheckJoyExit();
 
-
 void JoyInitialize();
 
 void JoyShutDown();

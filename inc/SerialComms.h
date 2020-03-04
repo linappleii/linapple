@@ -11,7 +11,7 @@ enum eFWMODE {
   FWMODE_CIC = 0, FWMODE_SIC_P8, FWMODE_PPC, FWMODE_SIC_P8A
 };  // NB. CIC = SSC
 
-//////// windows specific values
+// Windows specific values
 #define NOPARITY            0
 #define ODDPARITY           1
 #define EVENPARITY          2
@@ -21,12 +21,11 @@ enum eFWMODE {
 #define ONESTOPBIT          0
 #define ONE5STOPBITS        1
 #define TWOSTOPBITS         2
-///////////////////////////////
+
 // Undocumented CMSPAR flag for MARKPARITY and SPACEPARITY???
 #ifndef CMSPAR
 #define CMSPAR   010000000000
 #endif
-/////////////////////////////////////
 
 typedef struct {
   //DIPSW1
@@ -45,8 +44,7 @@ class CSuperSerialCard {
 public:
   CSuperSerialCard();
 
-  virtual ~CSuperSerialCard()
-  {
+  virtual ~CSuperSerialCard() {
   }
 
   void CommInitialize(LPBYTE pCxRomPeripheral, UINT uSlot);
@@ -63,13 +61,11 @@ public:
 
   DWORD CommSetSnapshot(SS_IO_Comms *pSS);
 
-  DWORD GetSerialPort()
-  {
+  DWORD GetSerialPort() {
     return m_dwSerialPort;
   }
 
-  void SetSerialPort(DWORD dwSerialPort)
-  {
+  void SetSerialPort(DWORD dwSerialPort) {
     m_dwSerialPort = dwSerialPort;
   }
 
@@ -112,8 +108,6 @@ private:
 
   void CommThUninit();
 
-  //
-
 private:
   DWORD m_dwSerialPort;
 
@@ -132,26 +126,17 @@ private:
   BYTE m_uControlByte;
   BYTE m_uCommandByte;
 
-  //
-
   int m_hCommHandle;  // file for communication with COM
   DWORD m_dwCommInactivity;
 
-
-  // how does CRITICAL_SECTION work in Linux? -- see in Wikipedia: http://en.wikipedia.org/wiki/Critical_section
-  // --> to main file
-  //  CRITICAL_SECTION  m_CriticalSection;  // To guard /g_vRecvBytes/
   BYTE m_RecvBuffer[uRecvBufferSize];  // NB: More work required if >1 is used
   volatile DWORD m_vRecvBytes;
-
-  //
 
   bool m_bTxIrqEnabled;
   bool m_bRxIrqEnabled;
 
   bool m_bWrittenTx;
   DWORD m_uLastBytesWritten;
-  //
 
   volatile bool m_vbCommIRQ;
   HANDLE m_hCommThread;
