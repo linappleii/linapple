@@ -332,6 +332,10 @@ void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
         g_nPdlTrimY--;
       }
       break;
+    case SDLK_KP5:
+    case SDLK_CLEAR:
+      g_nPdlTrimX = g_nPdlTrimY = 0;
+      break;
       default:
       break;
   }
