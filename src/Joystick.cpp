@@ -124,8 +124,8 @@ static int ypos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 static unsigned __int64
 g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
 
-static short g_nPdlTrimX = 0;
-static short g_nPdlTrimY = 0;
+static int g_nPdlTrimX = 0;
+static int g_nPdlTrimY = 0;
 
 DWORD joy1index = 0;
 DWORD joy2index = 1;
@@ -301,22 +301,66 @@ void JoyInitialize()
   }
 }
 
+// JoyUpdateTrimViaKey
+// This will adjust the trim by one "tick" according to the keypad.
+//
+// Entry:
+void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
+  switch (virtkey) {
+    case SDLK_DOWN:
+    case SDLK_KP2:
+      if (g_nPdlTrimY < 64) {
+        g_nPdlTrimY++;
+      }
+      break;
+    case SDLK_KP4:
+    case SDLK_LEFT:
+      if (g_nPdlTrimX > -64) {
+        g_nPdlTrimX--;
+      }
+      break;
+
+    case SDLK_KP6:
+    case SDLK_RIGHT:
+      if (g_nPdlTrimX < 64) {
+        g_nPdlTrimX++;
+      }
+      break;
+    case SDLK_KP8:
+    case SDLK_UP:
+      if (g_nPdlTrimY > -64) {
+        g_nPdlTrimY--;
+      }
+      break;
+      default:
+      break;
+  }
+}
+
 BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
+#if 0
+  // GPH Apple as button: This is confusing and results in situations where
+  // the solid-apple key (RALT) never gets released.  Going to comment out for
+  // now and solicit request for comment.
   BOOL isALT = ((virtkey == SDLK_LALT) | (virtkey == SDLK_RALT)); //if either ALT key pressed
   if ((joyinfo[joytype[0]].device != DEVICE_KEYBOARD) && (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) && (!isALT)) {
     return 0;
   }
-
+#endif
   // Joystick # which is being emulated by keyboard
   int nJoyNum = (joyinfo[joytype[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
   int nCenteringType = joyinfo[joytype[nJoyNum]].mode;  // MODE_STANDARD or MODE_CENTERING
 
   BOOL keychange = !extended;
-
+#if 0
+  // GPH Apple-as-button confusion
   if (isALT) {
     keychange = 1;
     keydown[JK_OPENAPPLE + (extended != 0)] = down;
-  } else if (!extended) {
+  }
+  else
+#endif
+  if (!extended) {
     if ((virtkey >= SDLK_KP1) && (virtkey <= SDLK_KP9)) {
       keydown[virtkey - SDLK_KP1] = down;
     } else {
@@ -394,8 +438,6 @@ BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
     } else if ((down && !autorep) || (nCenteringType == MODE_CENTERING)) {
       // It is the keypad direction keys 0-9; calculate quantitized
       // PDL(0) and PDL(1) values by taking the mean.
-
-
       int xsum = 0;
       int ysum = 0;
       int key_idx = 0;

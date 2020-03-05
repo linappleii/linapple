@@ -27,6 +27,8 @@ void JoyInitialize();
 
 void JoyShutDown();
 
+void JoyUpdateTrimViaKey(int);
+
 BOOL JoyProcessKey(int, BOOL, BOOL, BOOL);
 
 void JoyReset();

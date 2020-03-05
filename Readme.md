@@ -47,6 +47,7 @@ currently resides.
 | Numpad +       | Increase emulation speed.                                        |
 | Numpad -       | Decrease emulation speed.                                        |
 | Numpad *       | Reset emulation speed.                                           |
+| RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                          |
 
 **Warning**: Fullscreen mode does not properly exit in multi-monitor setups.  (This is a bug in SDL 1.2.)
 

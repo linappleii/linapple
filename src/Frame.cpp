@@ -307,7 +307,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
       break;
 
     case SDL_KEYDOWN:
-      if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & KMOD_CTRL) {
+      if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & KMOD_LCTRL) {
         FrameQuickState(mysym - SDLK_0, mymod);
         break;
       }
@@ -375,8 +375,14 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
           // . WM_KEYDOWN[Right-Alt]
           BOOL autorep = 0; //previous key was pressed? 30bit of lparam
           BOOL extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
-          if ((!JoyProcessKey(mysym, extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO)) {
-            KeybQueueKeypress(mysym, NOT_ASCII);
+          if (mymod & KMOD_RCTRL)     // GPH: Update trim?
+          {
+            JoyUpdateTrimViaKey(mysym);
+          } else {
+            // Regular joystick movement
+            if ((!JoyProcessKey(mysym, extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO)) {
+              KeybQueueKeypress(mysym, NOT_ASCII);
+            }
           }
         } else if (g_nAppMode == MODE_DEBUG) {
           DebuggerProcessKey(mysym);
@@ -587,6 +593,7 @@ void ProcessButtonClick(int button, int mod)
 
     case BTN_DRIVE1:
     case BTN_DRIVE2:
+      JoyReset();
       if (mod & KMOD_SHIFT) {
         if (mod & KMOD_ALT) {
           HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP
