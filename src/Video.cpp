@@ -1517,6 +1517,16 @@ void VideoChooseColor() {
 
 
 void VideoDestroy() {
+  // GPH Multithreaded
+  {
+    void *result;
+    video_worker_terminate_ = true;
+    if (video_worker_active_)
+      pthread_join(video_worker_thread_,&result);
+    video_worker_active_ = false;
+  }
+  // END GPH
+
   // Just free our SDL surfaces and free vidlastmem
   // DESTROY BUFFERS
   VirtualFree(vidlastmem, 0, MEM_RELEASE);
@@ -1553,14 +1563,6 @@ void VideoDestroy() {
     SDL_FreeSurface(charset40);
   }
   charset40 = NULL;
-
-  // GPH Multithreaded
-  {
-    void *result;
-    video_worker_terminate_ = true;
-    pthread_join(video_worker_thread_,&result);
-  }
-  // END GPH
 }
 
 void VideoDisplayLogo() {
