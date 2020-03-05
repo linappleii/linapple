@@ -1088,9 +1088,9 @@ int main(int argc, char *argv[])
     PrintDestroy();
     sg_SSC.CommDestroy();
     CpuDestroy();
-    MemDestroy();
     SpkrDestroy();
     VideoDestroy();
+    MemDestroy();
     MB_Destroy();
     MB_Reset();
     sg_Mouse.Uninitialize(); // Maybe restarting due to switching slot-4 card from mouse to MB
