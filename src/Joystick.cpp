@@ -179,13 +179,71 @@ void CheckJoystick0() {
     xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
     ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
 
-    // NB. This does not work for analogue joysticks (not self-centering) - except if Trim=0
-    if (xpos[0] == 127 || xpos[0] == 128) {
-      xpos[0] += g_nPdlTrimX;
+    // "Square" a modern analog stick (e.g. Playstation)
+    auto x = xpos[0];
+    auto y = ypos[0];
+    if (y < (int) PDL_CENTRAL) {
+      if (x < (int) PDL_CENTRAL) {
+        // upper-left quadrant
+        x = x - (PDL_CENTRAL - y) / 4;
+        y = y - (PDL_CENTRAL - xpos[0]) / 4;
+        if (x < 0) {
+          x = 0;
+        }
+        if (y < 0) {
+          y = 0;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      } else {
+        // upper-right quadrant
+        x = x + (PDL_CENTRAL - y) / 4;
+        y = y - (xpos[0] - PDL_CENTRAL) / 4;
+        if (x > 255) {
+          x = 255;
+        }
+        if (y < 0) {
+          y = 0;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      }
+
+    } else {
+      if (x < (int) PDL_CENTRAL) {
+        // lower-left quadrant
+        x = x - (y - PDL_CENTRAL) / 4;
+        y = y + (PDL_CENTRAL - xpos[0]) / 4;
+        if (x < 0) {
+          x = 0;
+        }
+        if (y > (int) PDL_MAX) {
+          y = PDL_MAX;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      } else {
+        // lower-right quadrant
+        x = x + (y - PDL_CENTRAL) / 4;
+        y = y + (xpos[0] - PDL_CENTRAL) / 4;
+        if (x > 255) {
+          x = 255;
+        }
+        if (y > (int) PDL_MAX) {
+          y = PDL_MAX;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      }
     }
-    if (ypos[0] == 127 || ypos[0] == 128) {
-      ypos[0] += g_nPdlTrimY;
-    }
+
+
+
+
+    xpos[0] += g_nPdlTrimX;
+    ypos[0] += g_nPdlTrimY;
+
+
   }
 }
 
