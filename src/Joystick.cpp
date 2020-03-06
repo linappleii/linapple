@@ -179,13 +179,70 @@ void CheckJoystick0() {
     xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
     ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
 
-    // NB. This does not work for analogue joysticks (not self-centering) - except if Trim=0
-    if (xpos[0] == 127 || xpos[0] == 128) {
-      xpos[0] += g_nPdlTrimX;
+    // "Square" a modern analog stick (e.g. Playstation)
+    auto x = xpos[0];
+    auto y = ypos[0];
+    if (y < (int) PDL_CENTRAL / 2) {
+      if (x < (int) PDL_CENTRAL / 2) {
+        // upper-left quadrant
+        x = x - (PDL_CENTRAL / 2 - y) / 2;
+        y = y - (PDL_CENTRAL / 2 - xpos[0]) / 2;
+        if (x < 0) {
+          x = 0;
+        }
+        if (y < 0) {
+          y = 0;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      } else if (x > (int) (PDL_CENTRAL + PDL_CENTRAL / 2)) {
+        // upper-right quadrant
+        x = x + (PDL_CENTRAL / 2 - y) / 2;
+        y = y - (xpos[0] - (PDL_CENTRAL + PDL_CENTRAL / 2)) / 2;
+        if (x > 255) {
+          x = 255;
+        }
+        if (y < 0) {
+          y = 0;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      }
+    } else if (y > (int) (PDL_CENTRAL + PDL_CENTRAL / 2)) {
+      if (x < (int) PDL_CENTRAL / 2) {
+        // lower-left quadrant
+        x = x - (y - (PDL_CENTRAL + PDL_CENTRAL / 2)) / 2;
+        y = y + (PDL_CENTRAL / 2 - xpos[0]) / 2;
+        if (x < 0) {
+          x = 0;
+        }
+        if (y > (int) PDL_MAX) {
+          y = PDL_MAX;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      } else if (x > (int) (PDL_CENTRAL + PDL_CENTRAL / 2)) {
+        // lower-right quadrant
+        x = x + (y - (int) (PDL_CENTRAL + PDL_CENTRAL / 2)) / 2;
+        y = y + (xpos[0] - (PDL_CENTRAL + PDL_CENTRAL / 2)) / 2;
+        if (x > 255) {
+          x = 255;
+        }
+        if (y > (int) PDL_MAX) {
+          y = PDL_MAX;
+        }
+        xpos[0] = x;
+        ypos[0] = y;
+      }
     }
-    if (ypos[0] == 127 || ypos[0] == 128) {
-      ypos[0] += g_nPdlTrimY;
-    }
+
+
+
+
+    xpos[0] += g_nPdlTrimX;
+    ypos[0] += g_nPdlTrimY;
+
+
   }
 }
 
