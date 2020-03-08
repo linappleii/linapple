@@ -1,6 +1,7 @@
 build/**
 bin/**
 res/splash.xpm
+res/charset*.xpm
 *.pcm
 *.d
 *.o
