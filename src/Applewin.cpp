@@ -429,6 +429,7 @@ void LoadConfiguration()
     default:
       break;
   }
+  printf("Selected machine type: %s\n", g_pAppTitle);
 
   if (registry) {
     LOAD(TEXT("Joystick 0"), &joytype[0]);

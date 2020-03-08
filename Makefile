@@ -157,7 +157,7 @@ uninstall:
 clean:
 	@$(RM) -rf $(BUILDDIR)
 	@$(RM) -rf $(TARGETDIR)
-	@$(RM) -f $(RESDIR)/splash.xpm
+	@$(RM) -f $(RESDIR)/splash.xpm $(RESDIR)/charset*.xpm
 
 #Full Clean, Objects and Binaries
 cleaner: clean
