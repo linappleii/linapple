@@ -384,6 +384,9 @@ void CreateDIBSections() {
   }
   g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
 
+  if (g_origscreen) {
+    SDL_FreeSurface(g_origscreen);
+  }
   g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
 
   if (g_hDeviceBitmap == NULL) {
@@ -393,6 +396,9 @@ void CreateDIBSections() {
   SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
   SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
 
+  if (g_hStatusSurface) {
+    SDL_FreeSurface(g_hStatusSurface);
+  }
   g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 
