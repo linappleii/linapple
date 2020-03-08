@@ -517,7 +517,7 @@ void LoadConfiguration()
     DWORD ToggleSwitch = 0;
     if (LOAD(TEXT(REGVALUE_KEYB_CHARSET_SWITCH), &ToggleSwitch)) {
       // select initial value of the keyboard character set toggle switch
-      g_KeyboardRockerSwitch = (ToggleSwitch>1);
+      g_KeyboardRockerSwitch = (ToggleSwitch>=1);
       printf("Keyboard rocker switch: %s\n", (g_KeyboardRockerSwitch) ? "local charset" : "standard/US charset");
     }
   }
