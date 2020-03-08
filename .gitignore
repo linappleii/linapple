@@ -1,5 +1,6 @@
 build/**
 bin/**
+res/splash.xpm
 *.pcm
 *.d
 *.o
