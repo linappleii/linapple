@@ -935,6 +935,12 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
        * (inverse lower-case letters, enhanced characters). */
       SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
+      if (g_Apple2Type == A2TYPE_APPLE2E)
+      {
+        /* non-enhanced Apple //e does not have the 32 enhanced characters:
+         * overwrite characters 32-63 with with a copy of the first 32 characters. */
+        SOFTSTRECH_MONO(hDstDC, 0, 256+dstYofs, 256, 32, hDstDC, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
+      }
     }
 
     // render character bitmap for 80 column mode (compress width of 40column bitmap)
@@ -980,6 +986,12 @@ void DrawTextSource(SDL_Surface *dc) {
        */
       SOFTSTRECH(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
+      if (g_Apple2Type == A2TYPE_APPLE2E)
+      {
+        /* non-enhanced Apple //e does not have the 32 enhanced characters:
+         * overwrite characters 32-63 with with a copy of the first 32 characters. */
+        SOFTSTRECH(dc, 0, 256+dstYofs, 256, 32, dc, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
+      }
     }
 
     // render character bitmap for 80 column mode (compress width of 40column bitmap)
