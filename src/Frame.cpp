@@ -160,21 +160,27 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         "Conf file is linapple.conf in current directory by default",
                                         "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
                                         "       F1 - Show help screen",
-                                        "  Ctrl+F2 - Cold reboot (Power off and back on.)",
+                                        "  Ctrl+F2 - Cold reboot (Power off and back on)",
                                         " Shift+F2 - Reload configuration file and cold reboot",
-                                        " Ctrl+F10 - Hot Reset (Control+Reset)", "      F12 - Quit", "",
+                                        " Ctrl+F10 - Hot Reset (Control+Reset)",
+                                        "      F12 - Quit",
+                                        "",
                                         "       F3 - Load floppy disk 1 (Slot 6, Drive 1)",
                                         "       F4 - Load floppy disk 2 (Slot 6, Drive 2)",
                                         "       F5 - Swap floppy disks",
                                         " Shift+F3 - Attach hard drive 1 (Slot 7, Drive 1)",
-                                        " Shift+F4 - Attach hard drive 2 (Slot 7, Drive 2)", "",
-                                        "       F6 - Toggle fullscreen mode", "       F8 - Take screenshot",
+                                        " Shift+F4 - Attach hard drive 2 (Slot 7, Drive 2)",
+                                        "",
+                                        "       F6 - Toggle fullscreen mode",
+                                        " Shift+F6 - Toggle character set (keyboard rocker switch)",
+                                        "       F8 - Take screenshot",
                                         " Shift+F8 - Save runtime changes to configuration file",
                                         "       F9 - Cycle through various video modes",
                                         " Shift+F9 - Budget video, for smoother music/audio",
-                                        "  F10/F11 - Load/save snapshot file", "       Pause - Pause/resume emulator",
-                                        " Scroll Lock - Toggle full speed", "    Numpad * - Normal speed",
-                                        "  Numpad +/- - Increase/Decrease speed"};
+                                        "  F10/F11 - Load/save snapshot file",
+                                        "       Pause - Pause/resume emulator",
+                                        " Scroll Lock - Toggle full speed",
+                                        "  Numpad +/-/* - Increase/Decrease/Normal speed"};
 
   SDL_Surface *my_screen; // for background
   SDL_Surface *tempSurface = NULL; // temporary surface
@@ -312,81 +318,71 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         break;
       }
 
-      if (mysym < 128 && mysym != SDLK_PAUSE) { // It should be ASCII code?
-        if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) ||
-            ((g_nAppMode == MODE_STEPPING) && (mysym != SDLK_ESCAPE))) {
-          KeybQueueKeypress(mysym, ASCII);
-        } else if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING)) {
-          DebuggerInputConsoleChar(mysym);
+      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
+        SetUsingCursor(0);
+        buttondown = mysym - SDLK_F1;  // special function keys processing
+      } else if (mysym == SDLK_KP_PLUS) { // Gray + - speed up the emulator!
+        g_dwSpeed = g_dwSpeed + 2;
+        if (g_dwSpeed > SPEED_MAX) {
+          g_dwSpeed = SPEED_MAX;
+        } // no Maximum trespassing!
+        printf("Now speed=%d\n", (int) g_dwSpeed);
+        SetCurrentCLK6502();
+      } else if (mysym == SDLK_KP_MINUS) { // Gray + - speed up the emulator!
+        if (g_dwSpeed > SPEED_MIN) {
+          g_dwSpeed = g_dwSpeed - 1;
+        }// dw is unsigned value!
+        printf("Now speed=%d\n", (int) g_dwSpeed);
+        SetCurrentCLK6502();
+      } else if (mysym == SDLK_KP_MULTIPLY) { // Gray * - normal speed!
+        g_dwSpeed = 10;// dw is unsigned value!
+        printf("Now speed=%d\n", (int) g_dwSpeed);
+        SetCurrentCLK6502();
+      } else if (mysym == SDLK_CAPSLOCK) {
+        KeybToggleCapsLock();
+      } else if (mysym == SDLK_PAUSE) {
+        SetUsingCursor(0); // release cursor?
+        switch (g_nAppMode) {
+          case MODE_RUNNING: // go in pause
+            g_nAppMode = MODE_PAUSED;
+            SoundCore_SetFade(FADE_OUT); // fade out sound?**************
+            break;
+          case MODE_PAUSED: // go to the normal mode?
+            g_nAppMode = MODE_RUNNING;
+            SoundCore_SetFade(FADE_IN);  // fade in sound?***************
+            break;
+          case MODE_STEPPING:
+            DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
+            break;
+          case MODE_LOGO:
+          case MODE_DEBUG:
+          default:
+            break;
         }
-        break;
-      } else { // This is function key?
-        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
-          SetUsingCursor(0);
-          buttondown = mysym - SDLK_F1;  // special function keys processing
-        } else if (mysym == SDLK_KP_PLUS) { // Gray + - speed up the emulator!
-          g_dwSpeed = g_dwSpeed + 2;
-          if (g_dwSpeed > SPEED_MAX) {
-            g_dwSpeed = SPEED_MAX;
-          } // no Maximum trespassing!
-          printf("Now speed=%d\n", (int) g_dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_KP_MINUS) { // Gray + - speed up the emulator!
-          if (g_dwSpeed > SPEED_MIN) {
-            g_dwSpeed = g_dwSpeed - 1;
-          }// dw is unsigned value!
-          printf("Now speed=%d\n", (int) g_dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_KP_MULTIPLY) { // Gray * - normal speed!
-          g_dwSpeed = 10;// dw is unsigned value!
-          printf("Now speed=%d\n", (int) g_dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_CAPSLOCK) {
-          KeybToggleCapsLock();
-        } else if (mysym == SDLK_PAUSE) {
-          SetUsingCursor(0); // release cursor?
-          switch (g_nAppMode) {
-            case MODE_RUNNING: // go in pause
-              g_nAppMode = MODE_PAUSED;
-              SoundCore_SetFade(FADE_OUT); // fade out sound?**************
-              break;
-            case MODE_PAUSED: // go to the normal mode?
-              g_nAppMode = MODE_RUNNING;
-              SoundCore_SetFade(FADE_IN);  // fade in sound?***************
-              break;
-            case MODE_STEPPING:
-              DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
-              break;
-            case MODE_LOGO:
-            case MODE_DEBUG:
-            default:
-              break;
-          }
-          DrawStatusArea(DRAW_TITLE);
-          if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG)) {
-            VideoRedrawScreen();
-          }
-          g_bResetTiming = true;
-        } else if (mysym == SDLK_SCROLLOCK) {
-          g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed; // turn on/off full speed?
-        } else if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) || (g_nAppMode == MODE_STEPPING)) {
-          // Note about Alt Gr (Right-Alt):
-          // . WM_KEYDOWN[Left-Control], then:
-          // . WM_KEYDOWN[Right-Alt]
-          BOOL autorep = 0; //previous key was pressed? 30bit of lparam
-          BOOL extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
-          if (mymod & KMOD_RCTRL)     // GPH: Update trim?
-          {
-            JoyUpdateTrimViaKey(mysym);
-          } else {
-            // Regular joystick movement
-            if ((!JoyProcessKey(mysym, extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO)) {
-              KeybQueueKeypress(mysym, NOT_ASCII);
-            }
-          }
-        } else if (g_nAppMode == MODE_DEBUG) {
-          DebuggerProcessKey(mysym);
+        DrawStatusArea(DRAW_TITLE);
+        if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG)) {
+          VideoRedrawScreen();
         }
+        g_bResetTiming = true;
+      } else if (mysym == SDLK_SCROLLOCK) {
+        g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed; // turn on/off full speed?
+      } else if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) || (g_nAppMode == MODE_STEPPING)) {
+        // Note about Alt Gr (Right-Alt):
+        // . WM_KEYDOWN[Left-Control], then:
+        // . WM_KEYDOWN[Right-Alt]
+        BOOL autorep = 0; //previous key was pressed? 30bit of lparam
+        BOOL extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
+        if (mymod & KMOD_RCTRL)     // GPH: Update trim?
+        {
+          JoyUpdateTrimViaKey(mysym);
+        } else {
+          // Regular joystick movement
+          if ((!JoyProcessKey(mysym, extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO)) {
+            KeybQueueKeypress(mysym, NOT_ASCII);
+          }
+        }
+      } else if (g_nAppMode == MODE_DEBUG) {
+        DebuggerProcessKey(mysym);
       }
       break;
 
@@ -614,14 +610,26 @@ void ProcessButtonClick(int button, int mod)
       break;
 
     case BTN_FULLSCR:  // F6 - Fullscreen on/off
-      if (fullscreen) {
-        fullscreen = 0;
-        SetNormalMode();
-      } else {
-        fullscreen = 1;
-        SetFullScreenMode();
+      if (mod & KMOD_SHIFT) {
+         // only IIe and enhanced have a keyboard rocker switch (and only non-US keyboards)
+         if ((g_KeyboardLanguage != English_US)&&
+             ((g_Apple2Type == A2TYPE_APPLE2E)||(g_Apple2Type == A2TYPE_APPLE2EEHANCED)))
+         {
+           g_KeyboardRockerSwitch = !g_KeyboardRockerSwitch;
+           printf("Toggling keyboard rocker switch. Selected character set: %s...\n", (g_KeyboardRockerSwitch) ? "local" : "standard/US");
+         }
       }
-      JoyReset();   // GPH: Sometimes lose ability to use buttons after switch
+      else
+      {
+        if (fullscreen) {
+          fullscreen = 0;
+          SetNormalMode();
+        } else {
+          fullscreen = 1;
+          SetFullScreenMode();
+        }
+        JoyReset();   // GPH: Sometimes lose ability to use buttons after switch
+      }
       break;
 
     case BTN_DEBUG:  // F7 - debug mode - not implemented yet? Please, see README about it. --bb
