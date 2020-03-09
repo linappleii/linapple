@@ -40,6 +40,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <atomic>
 #include <condition_variable>
 
+// include character set bitmaps
+#include "../res/charset40.xpm" // US/default
+#include "../res/charset40_IIplus.xpm"
+#include "../res/charset40_british.xpm"
+#include "../res/charset40_french.xpm"
+#include "../res/charset40_german.xpm"
+
 /* reference: technote tn-iigs-063 "Master Color Values"
 
    Color  Color Register LR HR  DHR Master Color R,G,B
@@ -129,8 +136,7 @@ enum Color_Palette_Index_e {
 };
 
 const int SRCOFFS_40COL = 0;
-const int SRCOFFS_IIPLUS = (SRCOFFS_40COL + 256);
-const int SRCOFFS_80COL = (SRCOFFS_IIPLUS + 256);
+const int SRCOFFS_80COL = (SRCOFFS_40COL + 256);
 const int SRCOFFS_LORES = (SRCOFFS_80COL + 128);
 const int SRCOFFS_HIRES = (SRCOFFS_LORES + 16);
 const int SRCOFFS_DHIRES = (SRCOFFS_HIRES + 512);
@@ -162,6 +168,31 @@ enum VideoFlag_e {
 #define  SWL_PAGE2         (vidmode_latched & VF_PAGE2)
 #define  SWL_TEXT          (vidmode_latched & VF_TEXT)
 
+#define  SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
+{ \
+  srcrect.x = SRC_X; \
+  srcrect.y = SRC_Y; \
+  srcrect.w = SRC_W; \
+  srcrect.h = SRC_H; \
+  dstrect.x = DST_X; \
+  dstrect.y = DST_Y; \
+  dstrect.w = DST_W; \
+  dstrect.h = DST_H; \
+  SDL_SoftStretch(SRC, &srcrect, DST, &dstrect);\
+}
+
+#define  SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
+{ \
+  srcrect.x = SRC_X; \
+  srcrect.y = SRC_Y; \
+  srcrect.w = SRC_W; \
+  srcrect.h = SRC_H; \
+  dstrect.x = DST_X; \
+  dstrect.y = DST_Y; \
+  dstrect.w = DST_W; \
+  dstrect.h = DST_H; \
+  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush);\
+}
 
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
 #define  SETFRAMECOLOR(i, r1, g1, b1)  framebufferinfo[i].r = r1; \
@@ -203,6 +234,7 @@ static LPBYTE g_pHiresBank0;
 
 SDL_Surface *g_hLogoBitmap = NULL;
 SDL_Surface *charset40 = NULL;    // Apple charset40 bitmap
+int g_MultiLanguageCharset = false; // true when charset supports a second language variant
 
 SDL_Surface *g_hStatusSurface = NULL;  // status panel
 int g_iStatusCycle = 0;    // cycler for status panel showing
@@ -212,7 +244,7 @@ SDL_Surface *g_hSourceBitmap = NULL;
 
 static LPBYTE g_pSourcePixels;
 SDL_Color g_pSourceHeader[256];
-const int MAX_SOURCE_Y = 512;
+const int MAX_SOURCE_Y = 512*2; // double size: second half of bitmap may contain a complete copy with an alternate language
 static LPBYTE g_aSourceStartofLine[MAX_SOURCE_Y];
 static LPBYTE g_pTextBank1; // Aux
 static LPBYTE g_pTextBank0; // Main
@@ -384,6 +416,9 @@ void CreateDIBSections() {
   }
   g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
 
+  if (g_origscreen) {
+    SDL_FreeSurface(g_origscreen);
+  }
   g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
 
   if (g_hDeviceBitmap == NULL) {
@@ -393,6 +428,9 @@ void CreateDIBSections() {
   SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
   SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
 
+  if (g_hStatusSurface) {
+    SDL_FreeSurface(g_hStatusSurface);
+  }
   g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 
@@ -435,7 +473,7 @@ void CreateDIBSections() {
   int locked = 0;
 
   // DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
-  ZeroMemory(g_pSourcePixels, SRCOFFS_TOTAL * /*512*/ MAX_SOURCE_Y); // be consistent, please,Thom! (bb) ^_^ ku
+  ZeroMemory(g_pSourcePixels, SRCOFFS_TOTAL * MAX_SOURCE_Y);
 
   if ((g_videotype != VT_MONO_CUSTOM) && (g_videotype != VT_MONO_AMBER) && (g_videotype != VT_MONO_GREEN) &&
       (g_videotype != VT_MONO_WHITE)) {
@@ -464,6 +502,10 @@ void CreateDIBSections() {
     DrawMonoHiResSource();
     DrawMonoDHiResSource();
   }
+
+  // debugging: show the complete bitmap
+  // SDL_SaveBMP(g_hSourceBitmap, "debug/g_hSourceBitmap.bmp");
+
   if (locked) {
     SDL_UnlockSurface(g_hSourceBitmap);
   }
@@ -865,38 +907,45 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
       break;
   }
   SDL_Rect srcrect, dstrect;
-  dstrect.x = SRCOFFS_40COL;
-  dstrect.y = 0;
-  dstrect.w = 256;
-  dstrect.h = 512;
 
-  srcrect.x = 0;
-  srcrect.y = 0;
-  srcrect.w = 256;
-  srcrect.h = 512;
+  if ((g_Apple2Type == A2TYPE_APPLE2)||
+      (g_Apple2Type == A2TYPE_APPLE2PLUS))
+  {
+    // render character bitmap: streched by a factor of 2
+    SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256, 256);
+  }
+  else
+  {
+    // process both language variants, when available
+    int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
+    for (int Language=0;Language<MaxLanguage;Language++)
+    {
+      /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
+       * while the local language set is always the first (offset 0). */
+      int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
+      int dstYofs = Language*(MAX_SOURCE_Y/2); // place local language in second half of our bitmap
 
-  // TODO: Update with APPLE_FONT_Y_ values
-  SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
+      // render character bitmap for Apple IIe and enhanced
+      SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL, dstYofs, 256, 256);
 
-  dstrect.x = SRCOFFS_IIPLUS;
-  dstrect.y = 0;
-  dstrect.w = 256;
-  dstrect.h = 256;
-  srcrect.x = 0;
-  srcrect.y = 512; // won't work?
-  srcrect.w = 256;
-  srcrect.h = 256;
-  SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
+      // create complete copy for the alternate character set
+      SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 256, hDstDC, SRCOFFS_40COL, 256+dstYofs, 256, 256);
 
-  dstrect.x = SRCOFFS_80COL;
-  dstrect.y = 0;
-  dstrect.w = 128;
-  dstrect.h = 512;
+      /* Now overwrite the characters 64-127 of the first set with a copy of characters 0-63:
+       * (inverse lower-case letters, enhanced characters). */
+      SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
-  srcrect.x = srcrect.y = 0;
-  srcrect.w = 256;
-  srcrect.h = 512;
-  SDL_SoftStretchMono8(charset40, &srcrect, hDstDC, &dstrect, hBrush);
+      if (g_Apple2Type == A2TYPE_APPLE2E)
+      {
+        /* non-enhanced Apple //e does not have the 32 enhanced characters:
+         * overwrite characters 32-63 with with a copy of the first 32 characters. */
+        SOFTSTRECH_MONO(hDstDC, 0, 256+dstYofs, 256, 32, hDstDC, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
+      }
+    }
+
+    // render character bitmap for 80 column mode (compress width of 40column bitmap)
+    SOFTSTRECH_MONO(hDstDC, 0, 0, 256, MAX_SOURCE_Y, hDstDC, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
+  }
 }
 
 void DrawTextSource(SDL_Surface *dc) {
@@ -908,35 +957,46 @@ void DrawTextSource(SDL_Surface *dc) {
   }
   SDL_Rect srcrect, dstrect;
 
-  dstrect.x = SRCOFFS_40COL;
-  dstrect.y = 0;
-  dstrect.w = srcrect.w = 256;
-  dstrect.h = srcrect.h = 512;
+  if ((g_Apple2Type == A2TYPE_APPLE2)||
+        (g_Apple2Type == A2TYPE_APPLE2PLUS))
+  {
+    // render character bitmap: streched by a factor of 2
+    SOFTSTRECH(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
+  }
+  else
+  {
+    // process both language variants, when available
+    int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
+    for (int Language=0;Language<MaxLanguage;Language++)
+    {
+      /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
+       * while the local language set is always the first (offset 0). */
+      int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
+      int dstYofs = Language*(MAX_SOURCE_Y/2); // place local language in second half of our bitmap
 
-  srcrect.x = 0;
-  srcrect.y = 0;
-  SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
+      // render character bitmap for Apple IIe and enhanced
+      SOFTSTRECH(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL, dstYofs, 256, 256);
 
-  // Chars for Apple ][
-  dstrect.x = SRCOFFS_IIPLUS;
-  dstrect.y = 0;
-  dstrect.w = srcrect.w = 256;
-  dstrect.h = srcrect.h = 256;
+      // create bitmap area with alternate character set (copy the first set)
+      SOFTSTRECH(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL, 256+dstYofs, 256, 256);
 
-  srcrect.x = 0;
-  srcrect.y = 512;
-  SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
+      /* Now overwrite the characters 64-127 of the first character set,
+       * with a copy of characters 0-63:
+       * replace inverse lower-case letters and enhanced letters with uppercase/default chars
+       */
+      SOFTSTRECH(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
-  // Chars for 80 col mode
-  dstrect.x = SRCOFFS_80COL;
-  dstrect.y = 0;
-  dstrect.w = 128;
-  dstrect.h = 512;
+      if (g_Apple2Type == A2TYPE_APPLE2E)
+      {
+        /* non-enhanced Apple //e does not have the 32 enhanced characters:
+         * overwrite characters 32-63 with with a copy of the first 32 characters. */
+        SOFTSTRECH(dc, 0, 256+dstYofs, 256, 32, dc, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
+      }
+    }
 
-  srcrect.x = srcrect.y = 0;
-  srcrect.w = 256;
-  srcrect.h = 512;
-  SDL_SoftStretch(charset40, &srcrect, dc, &dstrect);
+    // render character bitmap for 80 column mode (compress width of 40column bitmap)
+    SOFTSTRECH(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
+  }
 }
 
 void SetLastDrawnImage() {
@@ -975,8 +1035,9 @@ bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
     bool bInvert = bCharFlashing ? g_bTextFlashState : false;
 
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
-               (IS_APPLE2 ? SRCOFFS_IIPLUS : SRCOFFS_40COL) + ((ch & 0x0F) << 4),
-               (ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
+               SRCOFFS_40COL + ((ch & 0x0F) << 4),
+               (ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
+               ((g_KeyboardRockerSwitch && g_MultiLanguageCharset) ? 512:0));
     return true;
   }
   return false;
@@ -985,7 +1046,8 @@ bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
 inline bool _Update80ColumnCell(BYTE c, const int xPixel, const int yPixel, bool bCharFlashing) {
   bool bInvert = bCharFlashing ? g_bTextFlashState : false;
   CopySource(xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT, SRCOFFS_80COL + ((c & 15) << 3),
-             ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00));
+             ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
+             ((g_KeyboardRockerSwitch && g_MultiLanguageCharset) ? 512:0));
   return true;
 }
 
@@ -1252,6 +1314,58 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
     return true;
   }
   return false;
+}
+
+SDL_Surface* LoadCharset() {
+  SDL_Surface *tmp = NULL;
+
+  if ((g_Apple2Type == A2TYPE_APPLE2)||
+      (g_Apple2Type == A2TYPE_APPLE2PLUS))
+  {
+    // character bitmap for II and IIplus
+    tmp = IMG_ReadXPMFromArray(charset40_IIplus_xpm);
+  }
+  else
+  {
+    switch(g_KeyboardLanguage)
+    {
+    case English_UK:
+      tmp = IMG_ReadXPMFromArray(charset40_british_xpm);
+      break;
+    case French_FR:
+      tmp = IMG_ReadXPMFromArray(charset40_french_xpm);
+      break;
+    case German_DE:
+      tmp = IMG_ReadXPMFromArray(charset40_german_xpm);
+      break;
+    case English_US: // fall-through
+    default:
+      // character bitmap for IIe and enhanced
+      tmp = IMG_ReadXPMFromArray(charset40_xpm);
+    }
+  }
+
+  if (tmp)
+  {
+    // convert format
+    SDL_Surface *result = SDL_DisplayFormat(tmp);
+    SDL_FreeSurface(tmp);
+
+    /* correct character set bitmaps should be 128x128 (single language) or
+     * 256x128 for the Euro-ROMs with alternative language */
+    if (((result->h != 128)&&(result->h != 256))||
+        (result->w != 128))
+    {
+      printf("ERROR: loaded character set has an unexpected size: %ix%i\n", result->w, result->h);
+    }
+
+    // enable second language support when charset has the double height (256 instead of 128 pixels)
+    g_MultiLanguageCharset = (result->h == 256);
+    printf("Charset supports a second language: %s\n", (g_MultiLanguageCharset)?"YES":"NO");
+    return result;
+  }
+
+  return NULL;
 }
 
 // All globally accessible functions are below this line
@@ -1601,7 +1715,8 @@ void VideoInitialize() {
   g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
 
   // LOAD APPLE CHARSET40
-  charset40 = SDL_DisplayFormat(assets->charset40);
+  if (!charset40)
+    charset40 = LoadCharset();
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN THE BITMAPINFO STRUCTURE
   CreateIdentityPalette();

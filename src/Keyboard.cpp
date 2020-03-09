@@ -42,6 +42,9 @@ static int lastvirtkey = 0;  // Current PC keycode
 static BYTE keycode = 0;  // Current Apple keycode
 static DWORD keyboardqueries = 0;
 
+KeybLanguage g_KeyboardLanguage = English_US; // default keyboard language
+bool         g_KeyboardRockerSwitch = false;  // keyboard/video ROM charset toggle switch (Euro-Apple //e)
+
 #ifdef KEY_OLD
 // Original
 static BOOL keywaiting = 0;
@@ -116,90 +119,351 @@ DWORD KeybGetNumQueries()  // Used in determining 'idleness' of Apple system
   return result;
 }
 
+// decode keys for US-keyboard
+int KeybDecodeKeyUS(int key)
+{
+  if (g_bShiftKey) {
+    // convert shifted keys according to Apple // specific US-keyboard layout
+    switch (key) {
+      case '1':
+        return '!';
+      case '2':
+        return '@';
+      case '3':
+        return '#';
+      case '4':
+        return '$';
+      case '5':
+        return '%';
+      case '6':
+        return '^';
+      case '7':
+        return '&';
+      case '8':
+        return '*';
+      case '9':
+        return '(';
+      case '0':
+        return ')';
+      case '`':
+        return '~';
+      case '-':
+        return '_';
+      case '=':
+        return '+';
+      case '\\':
+        return '|';
+      case '[':
+        return '{';
+      case ']':
+        return '}';
+      case ';':
+        return ':';
+      case '\'':
+        return '"';
+      case ',':
+        return '<';
+      case '.':
+        return '>';
+      case '/':
+        return '?';
+      default:
+        break;
+    }
+  }
+  return key;
+}
+
+/* Note on keyboard mapping: unfortunately SDL1.2 does not support proper (standardized) scan codes,
+ * which identify the physical location of a key on the host keyboard. With SDL1.2 only the key code
+ * is usable (which is the character after the host's conversion). Only SDL2 introduced proper scan
+ * code support.
+ * So, with SDL 1.2 we must rely on the key codes. The following code assumes the host PC's keyboard
+ * layout matches the selected target language (i.e. host provides German/French/... converted key codes,
+ * when the Apple II emulation is set to German/French/... respectively. The mapping will be incorrect
+ * if a host PC with a US (or French) keyboard selected a German/.. Apple II keyboard.
+ * The mapping should be reworked once LinApple moved to SDL2.0, so we can support a correct keyboard
+ * mapping independently of the host PC's actual keyboard.
+ */
+
+// decode keys for UK keyboard to Apple characters
+int KeybDecodeKeyUK(int key)
+{
+  /* UK is almost identical to US layout, except for '#' vs 'the pound' character.
+   * Pound and '#' share the same Apple II ASCII code though - and their non-shifted
+   * keycode on the host PC is also identical - so no special keyboard mapping is
+   * required to achieve the proper mapping. We just rely on the US-conversion
+   * (no need to consider the rocker switch here - it only affects video output in
+   * UK mode). */
+  return KeybDecodeKeyUS(key);
+}
+
+// decode keys for German keyboard to Apple characters
+int KeybDecodeKeyDE(int key)
+{
+  //printf("German key: %i\n", key);
+
+  if (!g_KeyboardRockerSwitch)
+  {
+    /* Rocker switch in US-character-set mode: do a 'reverse' keyboard mapping, assuming the host PC's
+     * native keyboard has a German keyboard layout, so converting back to the respective character of a
+     * US keyboard layout. */
+
+    // swap Y and Z keys
+    if (key == 'z')
+      return 'y';
+    else
+    if (key == 'y')
+      return 'z';
+    if ((key>='0')&&(key<='9'))
+    {
+      // use US mapping when shift-0..9 is selected
+      return KeybDecodeKeyUS(key);
+    }
+
+    // reverse mapping of further German keyboard keys to appropriate US-keyboard keys, also considering the ShiftKey
+    switch(key)
+    {
+      case SDLK_WORLD_63: // German SZ
+        return (g_bShiftKey) ? '_' : '-';
+      case SDLK_WORLD_20: // key next to the German SZ
+        return (g_bShiftKey) ? '+' : '=';
+      case SDLK_WORLD_68: // German umlaut-a
+        return (g_bShiftKey) ? '"' : '\'';
+      case SDLK_WORLD_86: // German umlaut-o
+        return (g_bShiftKey) ? ':' : ';';
+      case SDLK_WORLD_92: // German umlaut-u
+        return (g_bShiftKey) ? '{' : '[';
+      case '+':
+        return (g_bShiftKey) ? '}' : ']';
+      case '#':
+        return (g_bShiftKey) ? '~' : '`';
+      case ',':
+        return (g_bShiftKey) ? '<' : ',';
+        break;
+      case '.':
+        return (g_bShiftKey) ? '>' : '.';
+        break;
+      case '-':
+        return (g_bShiftKey) ? '?' : '/';
+        break;
+      case '<':
+        return (g_bShiftKey) ? '|' : '\\';
+      default:
+        break;
+    }
+
+    return key;
+  }
+
+  // rocker switch is in German-character-set mode
+
+  if (g_bShiftKey) {
+    // map shifted keys to appropriate Apple II keys
+    switch (key) {
+      case '1':
+        return '!';
+      case '2':
+        return '"';
+      case '3':
+        return '@';
+      case '4':
+        return '$';
+      case '5':
+        return '%';
+      case '6':
+        return '&';
+      case '7':
+        return '/';
+      case '8':
+        return '(';
+      case '9':
+        return ')';
+      case '0':
+        return '=';
+      case '-':
+        return '_';
+      case '+':
+        return '*';
+      case '#':
+        return '^';
+      case ',':
+        return ';';
+      case '.':
+        return ':';
+      case '<':
+        return '>';
+      default:
+        break;
+    }
+  }
+
+  // map further keys
+  switch (key) {
+    case SDLK_WORLD_63: // German S
+      return (g_bShiftKey) ? '?' : '~';
+    case SDLK_WORLD_20: // key next to the German SZ
+      return (g_bShiftKey) ? '`' : '\'';
+    case SDLK_WORLD_68: // German umlaut-a
+      return (g_bShiftKey || g_bCapsLock) ? '[' : '{';
+    case SDLK_WORLD_86: // German umlaut-o
+      return (g_bShiftKey || g_bCapsLock) ? '\\' : '|';
+    case SDLK_WORLD_92: // German umlaut-u
+      return (g_bShiftKey || g_bCapsLock) ? ']' : '}';
+    default:
+      break;
+  }
+
+  return key;
+}
+
+// decode keys for French keyboard to Apple characters
+int KeybDecodeKeyFR(int key)
+{
+  //printf("French key: %i\n", key);
+  if (!g_KeyboardRockerSwitch)
+  {
+    /* Rocker switch in US-character-set mode: do a 'reverse' keyboard mapping, assuming the host PC's
+     * native keyboard has a French keyboard layout, so converting back to the respective character of a
+     * US keyboard layout. */
+    switch(key)
+    {
+      case '&':
+        return (g_bShiftKey) ? '!' : '1';
+      case SDLK_WORLD_73:
+        return (g_bShiftKey) ? '@' : '2';
+      case '"':
+        return (g_bShiftKey) ? '#' : '3';
+      case '\'':
+        return (g_bShiftKey) ? '$' : '4';
+      case '(':
+        return (g_bShiftKey) ? '%' : '5';
+      case '-':
+        return (g_bShiftKey) ? '^' : '6';
+      case SDLK_WORLD_72:
+        return (g_bShiftKey) ? '&' : '7';
+      case '_':
+        return (g_bShiftKey) ? '*' : '8';
+      case SDLK_WORLD_71:
+        return (g_bShiftKey) ? '(' : '9';
+      case SDLK_WORLD_64:
+        return (g_bShiftKey) ? ')' : '0';
+      case ')':
+        return (g_bShiftKey) ? '_' : '-';
+      case '=':
+        return (g_bShiftKey) ? '+' : '=';
+      case 'a':
+        return 'q';
+      case 'z':
+        return 'w';
+      case '^':
+        return (g_bShiftKey) ? '{' : '[';
+      case '$':
+        return (g_bShiftKey) ? '}' : ']';
+      case 'q':
+        return 'a';
+      case 'm':
+        return (g_bShiftKey) ? ':' : ';';
+      case SDLK_WORLD_89:
+        return (g_bShiftKey) ? '"' : '\'';
+      case '*':
+        return '~';
+      case '<':
+        return (g_bShiftKey) ? '|' : '\\';
+      case 'w':
+        return 'z';
+      case ',':
+        return (g_bShiftKey | g_bCapsLock) ? 'M' : 'm';
+      case ';':
+        return (g_bShiftKey) ? '<' : ',';
+      case ':':
+        return (g_bShiftKey) ? '>' : '.';
+      case '!':
+        return (g_bShiftKey) ? '?' : '/';
+      default:
+        break;
+    }
+    return key;
+  }
+
+  // rocker switch is in French-character-set mode
+  switch(key)
+  {
+    case '&':
+      return (g_bShiftKey) ? '1' : '&';
+    case SDLK_WORLD_73:
+      return (g_bShiftKey) ? '2' : '{';
+    case '"':
+      return (g_bShiftKey) ? '3' : '"';
+    case '\'':
+      return (g_bShiftKey) ? '4' : '\'';
+    case '(':
+      return (g_bShiftKey) ? '5' : '(';
+    case '-':
+      return (g_bShiftKey) ? '6' : ']';
+    case SDLK_WORLD_72:
+      return (g_bShiftKey) ? '7' : '}';
+    case '_':
+      return (g_bShiftKey) ? '8' : '!';
+    case SDLK_WORLD_71:
+      return (g_bShiftKey) ? '9' : '\\';
+    case SDLK_WORLD_64:
+      return (g_bShiftKey) ? '0' : '@';
+    case ')':
+      return (g_bShiftKey) ? '[' : ')';
+    case '=':
+      return (g_bShiftKey) ? '_' : '-';
+    case '^':
+      return (g_bShiftKey) ? '~' : '^';
+    case '$':
+      return (g_bShiftKey) ? '*' : '$';
+    case SDLK_WORLD_89:
+      return (g_bShiftKey) ? '%' : '|';
+    case '*':
+      return (g_bShiftKey) ? '`' : '#';
+    case '<':
+      return (g_bShiftKey) ? '>' : '<';
+    case ',':
+      return (g_bShiftKey) ? '?' : ',';
+    case ';':
+      return (g_bShiftKey) ? '.' : ';';
+    case ':':
+      return (g_bShiftKey) ? '/' : ':';
+    case '!':
+      return (g_bShiftKey) ? '+' : '=';
+    default:
+      break;
+  }
+
+  return key;
+}
+
 void KeybQueueKeypress(int key, BOOL bASCII)
 {
-  if (bASCII == ASCII) {
-    if (key > 0x7F) {
-      return;
-    }
-    // Conver SHIFTed keys to their secondary values
-    // maybe this is straitfoward method, but it seems to be working. What else we need?? --bb
-    KeybUpdateCtrlShiftStatus();
-    if (g_bShiftKey) {
-      // GPH fixed shift bug
-      if (isalpha(key)) {
-        key &= (char) (~0x20);
-      }
-      switch (key) {
-        case '1':
-          key = '!';
-          break;
-        case '2':
-          key = '@';
-          break;
-        case '3':
-          key = '#';
-          break;
-        case '4':
-          key = '$';
-          break;
-        case '5':
-          key = '%';
-          break;
-        case '6':
-          key = '^';
-          break;
-        case '7':
-          key = '&';
-          break;
-        case '8':
-          key = '*';
-          break;
-        case '9':
-          key = '(';
-          break;
-        case '0':
-          key = ')';
-          break;
-        case '`':
-          key = '~';
-          break;
-        case '-':
-          key = '_';
-          break;
-        case '=':
-          key = '+';
-          break;
-        case '\\':
-          key = '|';
-          break;
-        case '[':
-          key = '{';
-          break;
-        case ']':
-          key = '}';
-          break;
-        case ';':
-          key = ':';
-          break;
-        case '\'':
-          key = '"';
-          break;
-        case ',':
-          key = '<';
-          break;
-        case '.':
-          key = '>';
-          break;
-        case '/':
-          key = '?';
-          break;
-        default:
-          break;
-      }
-    } else if (g_bCtrlKey) {
-      if (key >= SDLK_a && key <= SDLK_z) {
-        key = key - SDLK_a + 1;
+  KeybUpdateCtrlShiftStatus();
+
+  // language dependent keyboard mappings
+  switch(g_KeyboardLanguage)
+  {
+    case English_UK:
+      key = KeybDecodeKeyUK(key);
+      break;
+    case French_FR:
+      key = KeybDecodeKeyFR(key);
+      break;
+    case German_DE:
+      key = KeybDecodeKeyDE(key);
+      break;
+    case English_US:
+    default:
+      key = KeybDecodeKeyUS(key);
+      break;
+  }
+
+  if ((key>=0)&&(key < 0x80)) {
+    if (g_bCtrlKey) {
+      if (key >= 'a' && key <= 'z') {
+        key = key - 'a' + 1;
       } else {
         switch (key) {
           case '\\':
