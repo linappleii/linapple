@@ -4,6 +4,16 @@ extern bool g_bShiftKey;
 extern bool g_bCtrlKey;
 extern bool g_bAltKey;
 
+typedef enum {
+  English_US=1,
+  English_UK=2,
+  French_FR=3,
+  German_DE=4
+} KeybLanguage;
+
+extern KeybLanguage g_KeyboardLanguage;
+extern bool         g_KeyboardRockerSwitch;
+
 void ClipboardInitiatePaste();
 
 void KeybReset();
