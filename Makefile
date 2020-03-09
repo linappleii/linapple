@@ -30,6 +30,8 @@ RESDIR      := res
 SRCEXT      := cpp
 DEPEXT      := d
 OBJEXT      := o
+IMGEXT      := png
+XPMEXT      := xpm
 
 # FIXME: Make this go away!
 INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
@@ -76,8 +78,8 @@ INSTASSETS  := \
 	Master.dsk
 CONFFILES   := \
 	linapple.conf
-SRCIMGFILES :=  \
-		$(foreach dir,$(RESDIR),$(subst .png,,$(wildcard $(dir)/*.png)))
+SRCIMGFILES := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
+DSTIMGFILES := $(SRCIMGFILES:.$(IMGEXT)=.$(XPMEXT))
 
 #Default Make
 all: images directories $(TARGETDIR)/$(TARGET)
@@ -85,11 +87,7 @@ all: images directories $(TARGETDIR)/$(TARGET)
 #Remake
 remake: cleaner all
 
-images:
-	for file in $(SRCIMGFILES); do \
-    convert -flatten "$$file".png "$$file".xpm ;\
-		sed -i 's/${file}\[\]/${file}_xpm[]/g' "$$file".xpm ;\
-	done
+images: $(DSTIMGFILES)
 
 #Copy Resources from Resources Directory to Target Directory
 resources: directories
@@ -159,6 +157,7 @@ uninstall:
 clean:
 	@$(RM) -rf $(BUILDDIR)
 	@$(RM) -rf $(TARGETDIR)
+	@$(RM) -f $(RESDIR)/splash.xpm $(RESDIR)/charset*.xpm
 
 #Full Clean, Objects and Binaries
 cleaner: clean
@@ -183,6 +182,10 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
 	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
 	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
+
+%.$(XPMEXT): %.$(IMGEXT)
+	convert -flatten "$<" "$@"
+	@sed -i 's/${$@:.$(IMGEXT)=}\[\]/${file}_xpm[]/g' "$@"
 
 #Non-File Targets
 .PHONY: all remake clean cleaner resources

@@ -429,6 +429,7 @@ void LoadConfiguration()
     default:
       break;
   }
+  printf("Selected machine type: %s\n", g_pAppTitle);
 
   if (registry) {
     LOAD(TEXT("Joystick 0"), &joytype[0]);
@@ -457,6 +458,70 @@ void LoadConfiguration()
     printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
            SDL_JoystickName(joy2index), joy2button1, joy2axis0, joy2axis1);
   }
+
+  // default: use keyboard language according to environment
+  {
+    const char* pEnvLanguage = getenv("LANG");
+    if (pEnvLanguage)
+    {
+      if (0 == strncmp(pEnvLanguage, "de", 2))
+        g_KeyboardLanguage = German_DE;
+      else
+      if (0 == strncmp(pEnvLanguage, "fr", 2))
+        g_KeyboardLanguage = French_FR;
+      else
+      if (0 == strncmp(pEnvLanguage, "en_UK", 5))
+        g_KeyboardLanguage = English_UK;
+    }
+  }
+
+  // check if configuration file contains specific keyboard language
+  if (registry)
+  {
+    DWORD Language = 0;
+    if (LOAD(TEXT(REGVALUE_KEYB_TYPE), &Language)) {
+      switch(Language)
+      {
+        case 1:
+          g_KeyboardLanguage = English_US;
+          break;
+        case 2:
+          g_KeyboardLanguage = English_UK;
+          break;
+        case 3:
+          g_KeyboardLanguage = French_FR;
+          break;
+        case 4:
+          g_KeyboardLanguage = German_DE;
+          break;
+      }
+    }
+
+    printf("Selected keyboard type: ");
+    switch(g_KeyboardLanguage)
+    {
+      case English_UK:
+        printf("UK\n");
+        break;
+      case French_FR:
+        printf("French\n");
+        break;
+      case German_DE:
+        printf("German\n");
+        break;
+      default:
+        printf("US\n");
+        break;
+    }
+
+    DWORD ToggleSwitch = 0;
+    if (LOAD(TEXT(REGVALUE_KEYB_CHARSET_SWITCH), &ToggleSwitch)) {
+      // select initial value of the keyboard character set toggle switch
+      g_KeyboardRockerSwitch = (ToggleSwitch>=1);
+      printf("Keyboard rocker switch: %s\n", (g_KeyboardRockerSwitch) ? "local charset" : "standard/US charset");
+    }
+  }
+
   if (registry) {
     LOAD(TEXT("Sound Emulation"), &soundtype);
   }

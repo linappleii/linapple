@@ -24,6 +24,40 @@
 
 
 ####################################################################
+# "Keyboard Type" specifies which type of keyboard and video ROM to
+# emulate (video ROM can only be switched on Apple IIe and enhanced).
+#
+# Possible values are:
+#   0 - automatic: type selected according to system language.
+#       (US-keyboard is selected when system language is not supported.)
+#   1 - US QWERTY keyboard/video ROM.
+#   2 - UK QWERTY keyboard/video ROM (only pound character vs '#' differs).
+#   3 - French AZERTY keyboard/video ROM.
+#   4 - German QWERTZ keyboard/video ROM.
+#
+# Note: Support of German/French keyboard layouts currently requires the host
+# machine to also use a German QWERTZ or French AZERTY keyboard layout respectively.
+#
+# Default is 0.
+	Keyboard Type = 0
+
+
+####################################################################
+# "Keyboard Rocker Switch" specifies the intial setting of the
+# keyboards character set rocker switch (only supported by Apple IIe
+# and enhanced when a non-US keyboard layout is enabled).
+# The rocker switch may be toggled at run-time (see help).
+#
+# Possible values are:
+#   0 - US-layout is enabled at start-up.
+#   1 - Local language is selected at start-up (see "Keyboard Type").
+#
+# Default is 0.
+
+	Keyboard Rocker Switch = 0
+
+
+####################################################################
 # "Sound Emulation" enables audio.
 #
 # Possible values are:

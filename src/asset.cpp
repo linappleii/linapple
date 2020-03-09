@@ -26,7 +26,6 @@
 #include "stdafx.h"  // for Disk.h DiskInsert()
 #include "shim.h"  // SDL_GetBasePath()
 
-#include "../res/charset40.xpm"
 #include "../res/font.xpm"
 #include "../res/icon.xpm"
 #include "../res/splash.xpm"
@@ -92,11 +91,6 @@ bool Asset_Init(void)
     return false;
   }
 
-  assets->charset40 = IMG_ReadXPMFromArray(charset40_xpm);
-  if (NULL == assets->charset40) {
-    return false;
-  }
-
   assets->splash = IMG_ReadXPMFromArray(splash_xpm);
   if (NULL == assets->splash) {
     return false;
@@ -116,11 +110,6 @@ void Asset_Quit(void)
     if (NULL != assets->font) {
       SDL_FreeSurface(assets->font);
       assets->font = NULL;
-    }
-
-    if (NULL != assets->charset40) {
-      SDL_FreeSurface(assets->charset40);
-      assets->charset40 = NULL;
     }
 
     if (NULL != assets->splash) {

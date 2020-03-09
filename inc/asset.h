@@ -23,7 +23,6 @@
 typedef struct {
   SDL_Surface *icon;
   SDL_Surface *font;
-  SDL_Surface *charset40;
   SDL_Surface *splash;
 } assets_t;
 

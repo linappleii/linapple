@@ -33,6 +33,8 @@ currently resides.
 | Shift+F4       | Attach hard disk image to slot 7.                                |
 | F5             | Swap drives for slot 6.                                          |
 | F6             | Toggle fullscreen mode.  See Warning below.                      |
+| Shift+F6       | Toggle character set (keyboard/video ROM rocker switch for       |
+|                | Apple IIe/enhanced with international keyboards/video ROMs)      |
 | F7             | Reserved for debugger.                                           |
 | F8             | Save screenshot as a bitmap.                                     |
 | Shift+F8       | Save runtime changes to configuration to the configuration file. |
