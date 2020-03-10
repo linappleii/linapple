@@ -1802,7 +1802,7 @@ void VideoRedrawScreen() {
 void VideoPerformRefresh() {
 
   // Claim until video refresh is complete
-  pthread_mutex_lock(&video_draw_mutex);
+  //pthread_mutex_lock(&video_draw_mutex);
 
   // latch video mode permutation and read the latch
   displaypage2_latched = displaypage2;
@@ -1824,7 +1824,7 @@ void VideoPerformRefresh() {
     frm_locked = 1; // the frame bitmap is locked
   }
 
-  if (g_singlethreaded) {
+  if (1) { //g_singlethreaded) {
     // This is the old, standard behavior -- just read the Apple II display data
     // directly
     g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
@@ -1934,7 +1934,7 @@ void VideoPerformRefresh() {
   hasrefreshed = 1;
 
   // Allow Disk Choose screen, help, etc
-  pthread_mutex_unlock(&video_draw_mutex);
+  //pthread_mutex_unlock(&video_draw_mutex);
 }
 
 void VideoReinitialize() {

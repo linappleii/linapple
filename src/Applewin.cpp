@@ -217,9 +217,8 @@ void ContinueExecution()
               // This tells the video to schedule a frame update now.
               // It will run in another thread, another core.
               VideoSetNextScheduledUpdate();
+              lasttime = currtime;
             }
-
-            lasttime = currtime;
           }
         }
         screenupdated = 1;
