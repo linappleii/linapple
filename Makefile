@@ -79,7 +79,7 @@ INSTASSETS  := \
 CONFFILES   := \
 	linapple.conf
 SRCIMGFILES := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
-DSTIMGFILES := $(SRCIMGFILES:.$(IMGEXT)=.$(XPMEXT))
+DSTIMGFILES := $(addprefix src/../,$(SRCIMGFILES:.$(IMGEXT)=.$(XPMEXT)))
 
 #Default Make
 all: images directories $(TARGETDIR)/$(TARGET)
@@ -185,8 +185,8 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 
 %.$(XPMEXT): %.$(IMGEXT)
 	convert -flatten "$<" "$@"
-	@sed -i 's/${$@:.$(IMGEXT)=}\[\]/${file}_xpm[]/g' "$@"
+	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
 #Non-File Targets
-.PHONY: all remake clean cleaner resources
+.PHONY: all remake clean cleaner resources package install uninstall images directories
 
