@@ -42,26 +42,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #define  MF_ALTZP      0x00000002
 #define  MF_AUXREAD    0x00000004
 #define  MF_AUXWRITE   0x00000008
-#define  MF_BANK2      0x00000010
+#define  MF_HRAM_BANK2 0x00000010
 #define  MF_HIGHRAM    0x00000020
 #define  MF_HIRES      0x00000040
 #define  MF_PAGE2      0x00000080
 #define  MF_SLOTC3ROM  0x00000100
 #define  MF_SLOTCXROM  0x00000200
-#define  MF_WRITERAM   0x00000400
-#define  MF_IMAGEMASK  0x000003F7
+#define  MF_HRAM_WRITE   0x00000400
+#define  MF_IMAGEMASK  0x000007F7
 
 #define  SW_80STORE    (memmode & MF_80STORE)
 #define  SW_ALTZP      (memmode & MF_ALTZP)
 #define  SW_AUXREAD    (memmode & MF_AUXREAD)
 #define  SW_AUXWRITE   (memmode & MF_AUXWRITE)
-#define  SW_BANK2      (memmode & MF_BANK2)
+#define  SW_HRAM_BANK2 (memmode & MF_HRAM_BANK2)
 #define  SW_HIGHRAM    (memmode & MF_HIGHRAM)
 #define  SW_HIRES      (memmode & MF_HIRES)
 #define  SW_PAGE2      (memmode & MF_PAGE2)
 #define  SW_SLOTC3ROM  (memmode & MF_SLOTC3ROM)
 #define  SW_SLOTCXROM  (memmode & MF_SLOTCXROM)
-#define  SW_WRITERAM   (memmode & MF_WRITERAM)
+#define  SW_HRAM_WRITE   (memmode & MF_HRAM_WRITE)
 
 static LPBYTE memshadow[0x100];
 LPBYTE memwrite[0x100];
@@ -85,7 +85,7 @@ static LPBYTE memimage = NULL;
 static LPBYTE pCxRomInternal = NULL;
 static LPBYTE pCxRomPeripheral = NULL;
 
-static DWORD memmode = MF_BANK2 | MF_SLOTCXROM | MF_WRITERAM;
+static DWORD memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
 static BOOL modechanging = 0;
 
 MemoryInitPattern_e g_eMemoryInitPattern = MIP_FF_FF_00_00;
@@ -591,7 +591,7 @@ void RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, io
 void ResetPaging(BOOL initialize)
 {
   lastwriteram = 0;
-  memmode = MF_BANK2 | MF_SLOTCXROM | MF_WRITERAM;
+  memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   UpdatePaging(initialize, 0);
 }
 
@@ -621,9 +621,11 @@ static void UpdatePaging(BOOL initialize, BOOL updatewriteonly) {
 
   for (loop = 0x02; loop < 0xC0; loop++) {
     memshadow[loop] = SW_AUXREAD ? memaux + (loop << 8) : memmain + (loop << 8);
-    memwrite[loop] = ((SW_AUXREAD != 0) == (SW_AUXWRITE != 0)) ? mem + (loop << 8) : SW_AUXWRITE ? memaux + (loop << 8)
-                                                                                                 : memmain +
-                                                                                                   (loop << 8);
+    memwrite[loop] = ((SW_AUXREAD != 0) == (SW_AUXWRITE != 0))
+											? mem + (loop << 8)
+											: SW_AUXWRITE
+												? memaux + (loop << 8)
+												: memmain + (loop << 8);
   }
 
   if (!updatewriteonly) {
@@ -646,23 +648,78 @@ static void UpdatePaging(BOOL initialize, BOOL updatewriteonly) {
   }
 
   for (loop = 0xD0; loop < 0xE0; loop++) {
-    int bankoffset = (SW_BANK2 ? 0 : 0x1000);
-    memshadow[loop] = SW_HIGHRAM ? SW_BANK2 ? memaux+(loop << 8)-bankoffset
-                        : memmain+(loop << 8)-bankoffset
-                  : memrom+((loop-0xD0) * 0x100);
+    int bankoffset = (SW_HRAM_BANK2 ? 0 : 0x1000);
+#if 0
+		memshadow[loop] = SW_HIGHRAM
+												? SW_ALTZP
+													?	memaux + (loop << 8) - bankoffset
+													: memmain + (loop << 8) - bankoffset
+												: memrom + ((loop - 0xD0) * 0x100);
 
-    memwrite[loop]  = SW_WRITERAM  ? SW_HIGHRAM  ? mem+(loop << 8)
-                            : SW_BANK2  ? memaux+(loop << 8)-bankoffset
-                                  : memmain+(loop << 8)-bankoffset
-                    : NULL;
+ 		memwrite[loop] = SW_HRAM_WRITE
+												? SW_HIGHRAM
+													? mem + (loop << 8)
+													: SW_ALTZP
+														? memaux + (loop << 8) - bankoffset
+														: memmain + (loop << 8) - bankoffset
+											: NULL;
+
+#else
+    memshadow[loop] = SW_HIGHRAM
+                        ? SW_HRAM_BANK2
+													? SW_AUXREAD
+                          	? memaux + (loop << 8)
+                          	: memmain + (loop << 8)
+													: SW_AUXREAD
+														? memaux + (loop << 8) - bankoffset
+                          	: memmain + (loop << 8) - bankoffset
+                        : memrom + ((loop - 0xD0) * 0x100);
+
+    memwrite[loop]  = SW_HRAM_WRITE
+                        ? SW_HIGHRAM
+													? SW_HRAM_BANK2
+														? SW_AUXWRITE
+															? memaux + (loop << 8)
+															: memmain + (loop << 8)
+											    : SW_AUXWRITE
+															? memaux + (loop << 8) - bankoffset
+                          		: memmain + (loop << 8) - bankoffset
+													: NULL
+												: NULL;
+#endif
   }
 
   for (loop = 0xE0; loop < 0x100; loop++) {
-    memshadow[loop] = SW_HIGHRAM ? SW_ALTZP ? memaux + (loop << 8) : memmain + (loop << 8) : memrom +
-                                                                                             ((loop - 0xD0) * 0x100);
-    memwrite[loop] = SW_WRITERAM ? SW_HIGHRAM ? mem + (loop << 8) : SW_ALTZP ? memaux + (loop << 8) : memmain +
-                                                                                                      (loop << 8)
-                                 : NULL;
+#if 0
+    memshadow[loop] = SW_HIGHRAM
+												? SW_ALTZP
+													? memaux + (loop << 8)
+													: memmain + (loop << 8)
+												: memrom + ((loop - 0xD0) * 0x100);
+
+    memwrite[loop] = SW_HRAM_WRITE
+											? SW_HIGHRAM
+												? mem + (loop << 8)
+												: SW_ALTZP
+													? memaux + (loop << 8)
+													: memmain + (loop << 8)
+                      : NULL;
+
+#else
+    memshadow[loop] = SW_HIGHRAM
+												? SW_AUXREAD
+													?	memaux + (loop << 8)
+													: memmain + (loop << 8)
+												: memrom + ((loop - 0xD0) * 0x100);
+
+    memwrite[loop] = SW_HRAM_WRITE
+											? SW_HIGHRAM
+												? SW_AUXWRITE
+													? memaux + (loop << 8)
+													: memmain + (loop << 8)
+												: NULL
+                      : NULL;
+#endif
   }
 
   if (SW_80STORE) {
@@ -704,7 +761,7 @@ BYTE MemCheckPaging(WORD, WORD address, BYTE, BYTE, ULONG) {
   BOOL result = 0;
   switch (address) {
     case 0x11:
-      result = SW_BANK2;
+      result = SW_HRAM_BANK2;
       break;
     case 0x12:
       result = SW_HIGHRAM;
@@ -746,6 +803,7 @@ void MemDestroy() {
   VirtualFree(memrom, 0, MEM_RELEASE);
   munlock(memimage, _6502_MEM_END + 1); /* POSIX: unlock memory from swapping */
   VirtualFree(memimage, 0, MEM_RELEASE);
+
   VirtualFree(pCxRomInternal, 0, MEM_RELEASE);
   VirtualFree(pCxRomPeripheral, 0, MEM_RELEASE);
 
@@ -981,17 +1039,19 @@ BYTE MemSetPaging(WORD programcounter, WORD address, BYTE write, BYTE value, ULO
   // Determine the new memory paging mode.
   if ((address >= 0x80) && (address <= 0x8F)) {
     BOOL writeram = (address & 1);
-    memmode &= ~(MF_BANK2 | MF_HIGHRAM | MF_WRITERAM);
-    lastwriteram = 1; // note: because diags.do doesn't set switches twice!
-    if (lastwriteram && writeram) {
-      memmode |= MF_WRITERAM;
-    }
-    if (!(address & 8)) {
-      memmode |= MF_BANK2;
-    }
-    if (((address & 2) >> 1) == (address & 1)) {
-      memmode |= MF_HIGHRAM;
-    }
+    memmode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
+		{
+			lastwriteram = 1; // note: because diags.do doesn't set switches twice!
+			if (lastwriteram && writeram) {
+				memmode |= MF_HRAM_WRITE;
+			}
+			if (!(address & 8)) {
+				memmode |= MF_HRAM_BANK2;
+			}
+			if (((address & 2) >> 1) == (address & 1)) {
+				memmode |= MF_HIGHRAM;
+			}
+		}
     lastwriteram = writeram;
   } else if (!IS_APPLE2) {
     switch (address) {
