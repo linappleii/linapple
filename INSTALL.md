@@ -19,6 +19,7 @@ sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-o
 
 ```bash
 sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel
+ImageMagick
 ```
 
 ### Clone
