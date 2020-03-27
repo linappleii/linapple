@@ -191,7 +191,7 @@ enum VideoFlag_e {
   dstrect.y = DST_Y; \
   dstrect.w = DST_W; \
   dstrect.h = DST_H; \
-  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush);\
+  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);\
 }
 
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
