@@ -26,11 +26,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Debug.h"
-
-#include "../Applewin.h"
+#include "Debugger_Console.h"
+#include "Debugger_Parser.h"
+#include "Debugger_Symbols.h"
+#include "Debugger_Help.h"
+#include "Util_Text.h"
+#include "AppleWin.h"
 
 	// 2.6.2.13 Added: Can now enable/disable selected symbol table(s) !
 	// Allow the user to disable/enable symbol tables
@@ -84,7 +88,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //===========================================================================
 void _PrintCurrentPath()
 {
-	ConsoleDisplayError( g_sProgramDir.c_str() );
+	ConsoleDisplayError( g_sProgramDir );
 }
 
 Update_t _PrintSymbolInvalidTable()
@@ -556,7 +560,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 	char sText[ CONSOLE_WIDTH * 3 ];
 	bool bFileDisplayed = false;
 
-	const int nMaxLen = min(MAX_TARGET_LEN,MAX_SYMBOLS_LEN);
+	const int nMaxLen = MIN((int)MAX_TARGET_LEN,(int)MAX_SYMBOLS_LEN);
 
 	int nSymbolsLoaded = 0;
 

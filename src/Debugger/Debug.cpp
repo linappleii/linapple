@@ -5,6 +5,7 @@ Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
 Copyright (C) 2002-2005, Tom Charlesworth
 Copyright (C) 2006-2014, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2020, Thorsten Brehm
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,27 +27,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-// disable warning C4786: symbol greater than 255 character:
-//#pragma warning(disable: 4786)
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
-#include "Debug.h"
-#include "DebugDefs.h"
+#include "Debugger_Help.h"
+#include "Debugger_Console.h"
+#include "Debugger_Parser.h"
+#include "Debugger_Assembler.h"
+#include "Debugger_Display.h"
+#include "Debugger_Symbols.h"
+#include "Debugger_Range.h"
+#include "Debugger_Color.h"
+#include "Video.h"
 
-#include "../Applewin.h"
-#include "../CardManager.h"
-#include "../CPU.h"
-#include "../Disk.h"
-#include "../Frame.h"
-#include "../Keyboard.h"
-#include "../Memory.h"
-#include "../NTSC.h"
-#include "../SoundCore.h"	// SoundCore_SetFade()
-#include "../Video.h"
+// for usleep
+#include <unistd.h>
 
-//	#define DEBUG_COMMAND_HELP  1
-//	#define DEBUG_ASM_HASH 1
+
 #define ALLOW_INPUT_LOWERCASE 1
 
 	// See /docs/Debugger_Changelog.txt for full details
@@ -67,7 +64,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	int  g_nDebugBreakOnInvalid  = 0; // Bit Flags of Invalid Opcode to break on: // iOpcodeType = AM_IMPLIED (BRK), AM_1, AM_2, AM_3
 	int  g_iDebugBreakOnOpcode   = 0;
 
-	static int  g_bDebugBreakpointHit = 0;	// See: BreakpointHit_t
+	static int  g_bDebugBreakpointHit = 0;  // See: BreakpointHit_t
 
 	int  g_nBreakpoints          = 0;
 	Breakpoint_t g_aBreakpoints[ MAX_BREAKPOINTS ];
@@ -124,27 +121,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	std::vector<int>       g_vPotentialCommands; // global, since TAB-completion also needs
 	std::vector<Command_t> g_vSortedCommands;
-
-//	static const char g_aFlagNames[_6502_NUM_FLAGS+1] = TEXT("CZIDBRVN");// Reversed since arrays are from left-to-right
-
-
 // Cursor (Console Input) _____________________________________________________
 
-//	char g_aInputCursor[] = "\|/-";
 	enum InputCursor
 	{
 		CURSOR_INSERT,
 		CURSOR_OVERSTRIKE,
 		NUM_INPUT_CURSORS
 	};
-	
+
 	const char g_aInputCursor[] = "_\x7F"; // insert over-write
 	bool       g_bInputCursor = false;
 	int        g_iInputCursor = CURSOR_OVERSTRIKE; // which cursor to use
 	const int  g_nInputCursor = sizeof( g_aInputCursor );
 
 	void DebuggerCursorUpdate();
-	char DebuggerCursorGet();
 
 // Cursor (Disasm) ____________________________________________________________
 
@@ -158,32 +149,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	int  g_nDisasmWinHeight = 0;
 
-//	char g_aConfigDisasmAddressColon[] = TEXT(" :");
-
 	extern const int WINDOW_DATA_BYTES_PER_LINE = 8;
 
-#if OLD_FONT
-// Font
-	TCHAR     g_sFontNameDefault[ MAX_FONT_NAME ] = TEXT("Courier New");
-	TCHAR     g_sFontNameConsole[ MAX_FONT_NAME ] = TEXT("Courier New");
-	TCHAR     g_sFontNameDisasm [ MAX_FONT_NAME ] = TEXT("Courier New");
-	TCHAR     g_sFontNameInfo   [ MAX_FONT_NAME ] = TEXT("Courier New");
-	TCHAR     g_sFontNameBranch [ MAX_FONT_NAME ] = TEXT("Webdings");
-	HFONT     g_hFontWebDings  = (HFONT)0;
-#endif
 	int       g_iFontSpacing = FONT_SPACING_CLEAN;
 
 	// TODO: This really needs to be phased out, and use the ConfigFont[] settings
-#if USE_APPLE_FONT
-	int       g_nFontHeight = CONSOLE_FONT_HEIGHT; // 13 -> 12 Lucida Console is readable
-#else
-	int       g_nFontHeight = 15; // 13 -> 12 Lucida Console is readable
-#endif
+	int       g_nFontHeight = 8;
 
 	const int MIN_DISPLAY_CONSOLE_LINES =  5; // doesn't include ConsoleInput
-
 	int g_nDisasmDisplayLines  = 0;
-
 
 // Config _____________________________________________________________________
 
@@ -205,6 +179,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	static bool g_bDebugFullSpeed      = false;
 	static bool g_bLastGoCmdWasFullSpeed = false;
 	static bool g_bGoCmd_ReinitFlag = false;
+	static bool g_bReportMissingScripts = true;
 
 // Display ____________________________________________________________________
 
@@ -275,8 +250,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	int                g_nZeroPagePointers = 0;
 	ZeroPagePointers_t g_aZeroPagePointers[ MAX_ZEROPAGE_POINTERS ]; // TODO: use vector<> ?
 
-
-// TODO: // CONFIG SAVE --> VERSION #
 	enum DebugConfigVersion_e
 	{
 		VERSION_0,
@@ -285,19 +258,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 // Misc. __________________________________________________________________________________________
-
-	std::string g_sFileNameConfig     =
-#ifdef MSDOS
-		"AWDEBUGR.CFG";
-#else
-		"AppleWinDebugger.cfg";
-#endif
+	std::string g_sFileNameConfig     =  "LinAppleDebugger.cfg";
 
 	static char      g_sFileNameTrace      [] = "Trace.txt";
 
 	static bool      g_bBenchmarking = false;
-
-	static BOOL      fulldisp      = 0;
 
 	static BOOL      g_bProfiling       = 0;
 	static int       g_nDebugSteps      = 0;
@@ -320,8 +285,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 // Prototypes _______________________________________________________________
-	static void DebugEnd ();
-
 	static	int ParseInput ( LPTSTR pConsoleInput, bool bCook = true );
 	static	Update_t ExecuteCommand ( int nArgs );
 
@@ -329,7 +292,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	void _BWZ_List ( const Breakpoint_t * aBreakWatchZero, const int iBWZ ); // bool bZeroBased = true );
 	void _BWZ_ListAll ( const Breakpoint_t * aBreakWatchZero, const int nMax );
 
-//	bool CheckBreakpoint (WORD address, BOOL memory);
 	bool _CmdBreakpointAddReg ( Breakpoint_t *pBP, BreakpointSource_t iSrc, BreakpointOperator_t iCmp, WORD nAddress, int nLen, bool bIsTempBreakpoint );
 	int  _CmdBreakpointAddCommonArg ( int iArg, int nArg, BreakpointSource_t iSrc, BreakpointOperator_t iCmp, bool bIsTempBreakpoint=false );
 	void _BWZ_Clear( Breakpoint_t * aBreakWatchZero, int iSlot );
@@ -345,8 +307,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	static	void _UpdateWindowFontHeights (int nFontHeight);
 
 // Source Level Debugging
-	static	bool BufferAssemblyListing ( const std::string & pFileName );
-	static	bool ParseAssemblyListing ( bool bBytesToMemory, bool bAddSymbols );
+	static  bool BufferAssemblyListing ( const std::string & pFileName );
+	static  bool ParseAssemblyListing ( bool bBytesToMemory, bool bAddSymbols );
 
 
 // Window
@@ -440,10 +402,10 @@ bool DebugGetVideoMode(UINT* pVideoMode)
 
 // File _______________________________________________________________________
 
-int _GetFileSize( FILE *hFile )
+size_t _GetFileSize( FILE *hFile )
 {
 	fseek( hFile, 0, SEEK_END );
-	int nFileBytes = ftell( hFile );
+	size_t nFileBytes = ftell( hFile );
 	fseek( hFile, 0, SEEK_SET );
 
 	return nFileBytes;
@@ -459,14 +421,12 @@ bool _Bookmark_Add( const int iBookmark, const WORD nAddress )
 {
 	if (iBookmark < MAX_BOOKMARKS)
 	{
-	//	g_aBookmarks.push_back( nAddress );
-//		g_aBookmarks.at( iBookmark ) = nAddress;
 		g_aBookmarks[ iBookmark ].nAddress = nAddress;
 		g_aBookmarks[ iBookmark ].bSet     = true;
 		g_nBookmarks++;
 		return true;
 	}
-	
+
 	return false;
 }
 
@@ -475,14 +435,10 @@ bool _Bookmark_Add( const int iBookmark, const WORD nAddress )
 bool _Bookmark_Del( const WORD nAddress )
 {
 	bool bDeleted = false;
-
-//	int nSize = g_aBookmarks.size();
-	int iBookmark;
-	for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
+	for (int iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
 	{
 		if (g_aBookmarks[ iBookmark ].nAddress == nAddress)
 		{
-//			g_aBookmarks.at( iBookmark ) = NO_6502_TARGET;
 			g_aBookmarks[ iBookmark ].bSet = false;
 			bDeleted = true;
 		}
@@ -493,7 +449,6 @@ bool _Bookmark_Del( const WORD nAddress )
 bool Bookmark_Find( const WORD nAddress )
 {
 	// Ugh, linear search
-//	int nSize = g_aBookmarks.size();
 	int iBookmark;
 	for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
 	{
@@ -510,7 +465,6 @@ bool Bookmark_Find( const WORD nAddress )
 //===========================================================================
 bool _Bookmark_Get( const int iBookmark, WORD & nAddress )
 {
-//	int nSize = g_aBookmarks.size();
 	if (iBookmark >= MAX_BOOKMARKS)
 		return false;
 
@@ -527,8 +481,6 @@ bool _Bookmark_Get( const int iBookmark, WORD & nAddress )
 //===========================================================================
 void _Bookmark_Reset()
 {
-//	g_aBookmarks.reserve( MAX_BOOKMARKS );
-//	g_aBookmarks.insert( g_aBookma	int iBookmark = 0;
 	int iBookmark = 0;
 	for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
 	{
@@ -598,7 +550,7 @@ Update_t CmdBookmarkAdd (int nArgs )
 			ConsoleDisplayPush( sText );
 			return ConsoleUpdate();
 		}
-		
+
 		if ((iBookmark < MAX_BOOKMARKS) && (g_nBookmarks < MAX_BOOKMARKS))
 		{
 			g_aBookmarks[iBookmark].bSet = true;
@@ -618,8 +570,6 @@ _Help:
 	return Help_Arg_1( CMD_BOOKMARK_ADD );
 
 }
-
-
 
 
 //===========================================================================
@@ -688,8 +638,6 @@ Update_t CmdBookmarkList (int nArgs)
 //===========================================================================
 Update_t CmdBookmarkLoad (int nArgs)
 {
-	char sFilePath[ MAX_PATH ] = "";
-
 	if (nArgs == 1)
 	{
 //		strcpy( sMiniFileName, pFileName );
@@ -742,8 +690,6 @@ Update_t CmdBookmarkSave (int nArgs)
 	return UPDATE_CONSOLE_DISPLAY;
 }
 
-
-
 // Benchmark ______________________________________________________________________________________
 
 //===========================================================================
@@ -753,7 +699,7 @@ Update_t CmdBenchmark (int nArgs)
 		CmdBenchmarkStart(0);
 	else
 		CmdBenchmarkStop(0);
-	
+
 	return UPDATE_ALL; // TODO/FIXME Verify
 }
 
@@ -772,7 +718,7 @@ Update_t CmdBenchmarkStop (int nArgs)
 {
 	g_bBenchmarking = false;
 	DebugEnd();
-	
+
 	FrameRefreshStatus(DRAW_TITLE);
 	VideoRedrawScreen();
 	DWORD currtime = GetTickCount();
@@ -829,7 +775,7 @@ Update_t CmdProfile (int nArgs)
 
 				int   nLine = g_nProfileLine;
 				int   iLine;
-				
+
 				for( iLine = 0; iLine < nLine; iLine++ )
 				{
 					pText = ProfileLinePeek( iLine );
@@ -841,7 +787,7 @@ Update_t CmdProfile (int nArgs)
 					}
 				}
 			}
-		
+
 			if (iParam == PARAM_SAVE)
 			{
 				if (ProfileSave())
@@ -870,7 +816,7 @@ _Help:
 //===========================================================================
 
 // iOpcodeType = AM_IMPLIED (BRK), AM_1, AM_2, AM_3
-static int IsDebugBreakOnInvalid( int iOpcodeType )
+static bool IsDebugBreakOnInvalid( int iOpcodeType )
 {
 	g_bDebugBreakpointHit |= ((g_nDebugBreakOnInvalid >> iOpcodeType) & 1) ? BP_HIT_INVALID : 0;
 	return g_bDebugBreakpointHit;
@@ -888,11 +834,25 @@ static void SetDebugBreakOnInvalid( int iOpcodeType, int nValue )
 
 Update_t CmdBreakInvalid (int nArgs) // Breakpoint IFF Full-speed!
 {
-	if (nArgs > 2) // || (nArgs == 0))
-		goto _Help;
+	// Cases:
+	// 0.  CMD            // display
+	// 1a. CMD #          // display
+	// 1b. CMD ON | OFF   //set
+	// 1c. CMD ?          // error
+	// 2a. CMD # ON | OFF // set
+	// 2b. CMD # ?        // error
+	TCHAR sText[ CONSOLE_WIDTH ];
+	bool bValidParam = true;
+
+	int iParamArg = nArgs;
+	int iParam;
+	int nFound;
 
 	int iType = AM_IMPLIED; // default to BRK
 	int nActive = 0;
+
+	if (nArgs > 2) // || (nArgs == 0))
+		goto _Help;
 
 	if (nArgs == 0)
 	{
@@ -903,19 +863,7 @@ Update_t CmdBreakInvalid (int nArgs) // Breakpoint IFF Full-speed!
 
 	iType = g_aArgs[ 1 ].nValue;
 
-	// Cases:
-	// 0.  CMD            // display
-	// 1a. CMD #          // display
-	// 1b. CMD ON | OFF   //set      
-	// 1c. CMD ?          // error
-	// 2a. CMD # ON | OFF // set
-	// 2b. CMD # ?        // error
-	TCHAR sText[ CONSOLE_WIDTH ];
-	bool bValidParam = true;
-
-	int iParamArg = nArgs;
-	int iParam;
-	int nFound = FindParam( g_aArgs[ iParamArg ].sArg, MATCH_EXACT, iParam, _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END );
+	nFound = FindParam( g_aArgs[ iParamArg ].sArg, MATCH_EXACT, iParam, _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END );
 
 	if (nFound)
 	{
@@ -937,7 +885,7 @@ Update_t CmdBreakInvalid (int nArgs) // Breakpoint IFF Full-speed!
 			if ((iType < AM_IMPLIED) || (iType > AM_3))
 				goto _Help;
 
-			if ( IsDebugBreakOnInvalid( iType ) ) 
+			if ( IsDebugBreakOnInvalid( iType ) )
 				iParam = PARAM_ON;
 			else
 				iParam = PARAM_OFF;
@@ -946,14 +894,14 @@ Update_t CmdBreakInvalid (int nArgs) // Breakpoint IFF Full-speed!
 		{
 			SetDebugBreakOnInvalid( iType, nActive );
 		}
-		
+
 		if (iType == 0)
 			ConsoleBufferPushFormat( sText, TEXT("Enter debugger on BRK opcode: %s"), g_aParameters[ iParam ].m_sName );
 		else
 			ConsoleBufferPushFormat( sText, TEXT("Enter debugger on INVALID %1X opcode: %s"), iType, g_aParameters[ iParam ].m_sName );
 		return ConsoleUpdate();
- 	}
-	else	
+	}
+	else
 	if (nArgs == 2)
 	{
 		if (! bValidParam) // case 2b
@@ -973,12 +921,12 @@ Update_t CmdBreakInvalid (int nArgs) // Breakpoint IFF Full-speed!
 				ConsoleBufferPushFormat( sText, TEXT("Enter debugger on INVALID %1X opcode: %s"), iType, g_aParameters[ iParam ].m_sName );
 			return ConsoleUpdate();
 		}
- 	}
+	}
 
 	return UPDATE_CONSOLE_DISPLAY;
 
 _Help:
-		return HelpLastCommand();
+	return HelpLastCommand();
 }
 
 
@@ -1030,7 +978,7 @@ bool GetBreakpointInfo ( WORD nOffset, bool & bBreakpointActive_, bool & bBreakp
 	for (int iBreakpoint = 0; iBreakpoint < MAX_BREAKPOINTS; iBreakpoint++)
 	{
 		Breakpoint_t *pBP = &g_aBreakpoints[ iBreakpoint ];
-		
+
 		if ((pBP->nLength)
 //			 && (pBP->bEnabled) // not bSet
 			 && (nOffset >= pBP->nAddress) && (nOffset < (pBP->nAddress + pBP->nLength))) // [nAddress,nAddress+nLength]
@@ -1088,12 +1036,12 @@ bool _CheckBreakpointValue( Breakpoint_t *pBP, int nVal )
 				bStatus = true;
 			break;
 		case BP_OP_EQUAL        : // Range is like C++ STL: [,)  (inclusive,not-inclusive)
-			 if ((nVal >= pBP->nAddress) && ((UINT)nVal < (pBP->nAddress + pBP->nLength)))
-			 	bStatus = true;
+			if ((nVal >= pBP->nAddress) && ((UINT)nVal < (pBP->nAddress + pBP->nLength)))
+				bStatus = true;
 			break;
 		case BP_OP_NOT_EQUAL    : // Rnage is: (,] (not-inclusive, inclusive)
-			 if ((nVal < pBP->nAddress) || ((UINT)nVal >= (pBP->nAddress + pBP->nLength)))
-			 	bStatus = true;
+			if ((nVal < pBP->nAddress) || ((UINT)nVal >= (pBP->nAddress + pBP->nLength)))
+				bStatus = true;
 			break;
 		case BP_OP_GREATER_THAN :
 			if (nVal > pBP->nAddress)
@@ -1195,7 +1143,7 @@ int CheckBreakpointsReg ()
 
 		switch (pBP->eSource)
 		{
-			case BP_SRC_REG_PC: 
+			case BP_SRC_REG_PC:
 				bBreakpointHit = _CheckBreakpointValue( pBP, regs.pc );
 				break;
 			case BP_SRC_REG_A:
@@ -1260,17 +1208,17 @@ Update_t CmdBreakpointAddSmart (int nArgs)
 	if (! nArgs)
 	{
 		nArgs = 1;
-		g_aArgs[ nArgs ].nValue = g_nDisasmCurAddress;		
+		g_aArgs[ nArgs ].nValue = g_nDisasmCurAddress;
 	}
 
-	if ((nAddress >= _6502_IO_BEGIN) && (nAddress <= _6502_IO_END))
+	if ((nAddress >= (int) _6502_IO_BEGIN) && (nAddress <= (int) _6502_IO_END))
 	{
 		return CmdBreakpointAddIO( nArgs );
 	}
 	else
 	{
 		CmdBreakpointAddReg( nArgs );
-		CmdBreakpointAddMem( nArgs );	
+		CmdBreakpointAddMem( nArgs );
 		return UPDATE_BREAKPOINTS;
 	}
 }
@@ -1303,7 +1251,7 @@ Update_t CmdBreakpointAddReg (int nArgs)
 		bHaveSrc = false;
 		bHaveCmp = false;
 
-		nFound = FindParam( sArg, MATCH_EXACT, iParamSrc, _PARAM_REGS_BEGIN, _PARAM_REGS_END ); 
+		nFound = FindParam( sArg, MATCH_EXACT, iParamSrc, _PARAM_REGS_BEGIN, _PARAM_REGS_END );
 		if (nFound)
 		{
 			switch (iParamSrc)
@@ -1324,13 +1272,13 @@ Update_t CmdBreakpointAddReg (int nArgs)
 		{
 			switch (iParamCmp)
 			{
-				case PARAM_BP_LESS_EQUAL   : iCmp = BP_OP_LESS_EQUAL   ; bHaveCmp = true; break;
-				case PARAM_BP_LESS_THAN    : iCmp = BP_OP_LESS_THAN    ; bHaveCmp = true; break;
-				case PARAM_BP_EQUAL        : iCmp = BP_OP_EQUAL        ; bHaveCmp = true; break;
-				case PARAM_BP_NOT_EQUAL    : iCmp = BP_OP_NOT_EQUAL    ; bHaveCmp = true; break;
-				case PARAM_BP_NOT_EQUAL_1  : iCmp = BP_OP_NOT_EQUAL    ; bHaveCmp = true; break;
-				case PARAM_BP_GREATER_THAN : iCmp = BP_OP_GREATER_THAN ; bHaveCmp = true; break;
-				case PARAM_BP_GREATER_EQUAL: iCmp = BP_OP_GREATER_EQUAL; bHaveCmp = true; break;
+				case PARAM_BP_LESS_EQUAL   : iCmp = BP_OP_LESS_EQUAL   ; break;
+				case PARAM_BP_LESS_THAN    : iCmp = BP_OP_LESS_THAN    ; break;
+				case PARAM_BP_EQUAL        : iCmp = BP_OP_EQUAL        ; break;
+				case PARAM_BP_NOT_EQUAL    : iCmp = BP_OP_NOT_EQUAL    ; break;
+				case PARAM_BP_NOT_EQUAL_1  : iCmp = BP_OP_NOT_EQUAL    ; break;
+				case PARAM_BP_GREATER_THAN : iCmp = BP_OP_GREATER_THAN ; break;
+				case PARAM_BP_GREATER_EQUAL: iCmp = BP_OP_GREATER_EQUAL; break;
 				default:
 					break;
 			}
@@ -1359,7 +1307,7 @@ bool _CmdBreakpointAddReg( Breakpoint_t *pBP, BreakpointSource_t iSrc, Breakpoin
 	if (pBP)
 	{
 		_ASSERT(nLen <= _6502_MEM_LEN);
-		if (nLen > _6502_MEM_LEN) nLen = _6502_MEM_LEN;
+		if (nLen > (int) _6502_MEM_LEN) nLen = (int) _6502_MEM_LEN;
 
 		pBP->eSource   = iSrc;
 		pBP->eOperator = iCmp;
@@ -1444,8 +1392,6 @@ Update_t CmdBreakpointAddPC (int nArgs)
 		g_aArgs[1].nValue = g_nDisasmCurAddress;
 	}
 
-	bool bHaveCmp = false;
-
 //	int iParamSrc;
 	int iParamCmp;
 
@@ -1463,12 +1409,12 @@ Update_t CmdBreakpointAddPC (int nArgs)
 			{
 				switch (iParamCmp)
 				{
-					case PARAM_BP_LESS_EQUAL   : iCmp = BP_OP_LESS_EQUAL   ; bHaveCmp = true; break;
-					case PARAM_BP_LESS_THAN    : iCmp = BP_OP_LESS_THAN    ; bHaveCmp = true; break;
-					case PARAM_BP_EQUAL        : iCmp = BP_OP_EQUAL        ; bHaveCmp = true; break;
-					case PARAM_BP_NOT_EQUAL    : iCmp = BP_OP_NOT_EQUAL    ; bHaveCmp = true; break;
-					case PARAM_BP_GREATER_THAN : iCmp = BP_OP_GREATER_THAN ; bHaveCmp = true; break;
-					case PARAM_BP_GREATER_EQUAL: iCmp = BP_OP_GREATER_EQUAL; bHaveCmp = true; break;
+					case PARAM_BP_LESS_EQUAL   : iCmp = BP_OP_LESS_EQUAL   ; break;
+					case PARAM_BP_LESS_THAN    : iCmp = BP_OP_LESS_THAN    ; break;
+					case PARAM_BP_EQUAL        : iCmp = BP_OP_EQUAL        ; break;
+					case PARAM_BP_NOT_EQUAL    : iCmp = BP_OP_NOT_EQUAL    ; break;
+					case PARAM_BP_GREATER_THAN : iCmp = BP_OP_GREATER_THAN ; break;
+					case PARAM_BP_GREATER_EQUAL: iCmp = BP_OP_GREATER_EQUAL; break;
 					default:
 						break;
 				}
@@ -1484,7 +1430,7 @@ Update_t CmdBreakpointAddPC (int nArgs)
 			iArg += dArg;
 		}
 	}
-	
+
 	return UPDATE_BREAKPOINTS | UPDATE_CONSOLE_DISPLAY; // 1;
 }
 
@@ -1493,7 +1439,6 @@ Update_t CmdBreakpointAddPC (int nArgs)
 Update_t CmdBreakpointAddIO   (int nArgs)
 {
 	return CmdBreakpointAddMem( nArgs );
-//	return UPDATE_BREAKPOINTS | UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
@@ -1518,12 +1463,12 @@ Update_t CmdBreakpointAddMem  (int nArgs, BreakpointSource_t bpSrc /*= BP_SRC_ME
 	BreakpointOperator_t iCmp = BP_OP_EQUAL;
 
 	int iArg = 0;
-	
+
 	while (iArg++ < nArgs)
 	{
 		if (g_aArgs[iArg].bType & TYPE_OPERATOR)
 		{
-				return Help_Arg_1( CMD_BREAKPOINT_ADD_MEM );
+			return Help_Arg_1( CMD_BREAKPOINT_ADD_MEM );
 		}
 		else
 		{
@@ -1570,7 +1515,7 @@ void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & nTotal
 void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, int & nTotal )
 {
 	int iSlot = 0;
-	
+
 	// Clear specified breakpoints
 	while (nArgs)
 	{
@@ -1607,7 +1552,7 @@ void _BWZ_EnableDisableViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const
 			for( ; iSlot < nMax; iSlot++ )
 			{
 				aBreakWatchZero[ iSlot ].bEnabled = bEnabled;
-			}			
+			}
 		}
 		else
 		if ((iSlot >= 0) && (iSlot < nMax))
@@ -1704,7 +1649,7 @@ void _BWZ_List( const Breakpoint_t * aBreakWatchZero, const int iBWZ ) //, bool 
 void _BWZ_ListAll( const Breakpoint_t * aBreakWatchZero, const int nMax )
 {
 	int iBWZ = 0;
-	while (iBWZ < nMax) // 
+	while (iBWZ < nMax) //
 	{
 		if (aBreakWatchZero[ iBWZ ].bSet)
 		{
@@ -1736,7 +1681,7 @@ Update_t CmdBreakpointList (int nArgs)
 		ConsoleBufferPushFormat( sText, TEXT("  There are no current breakpoints.  (Max: %d)"), MAX_BREAKPOINTS );
 	}
 	else
-	{	
+	{
 		_BWZ_ListAll( g_aBreakpoints, MAX_BREAKPOINTS );
 	}
 	return ConsoleUpdate();
@@ -1779,7 +1724,7 @@ Update_t CmdBreakpointSave (int nArgs)
 			);
 			g_ConfigState.PushLine( sText );
 		}
-		
+
 		iBreakpoint++;
 	}
 
@@ -1803,8 +1748,6 @@ Update_t CmdBreakpointSave (int nArgs)
 //===========================================================================
 Update_t _CmdAssemble( WORD nAddress, int iArg, int nArgs )
 {
-	bool bHaveLabel = false;
-
 	// if AlphaNumeric
 	ArgToken_e iTokenSrc = NO_TOKEN;
 	ParserFindToken( g_pConsoleInput, g_aTokens, NUM_TOKENS, &iTokenSrc );
@@ -1812,19 +1755,17 @@ Update_t _CmdAssemble( WORD nAddress, int iArg, int nArgs )
 	if (iTokenSrc == NO_TOKEN) // is TOKEN_ALPHANUMERIC
 	if (g_pConsoleInput[0] != CHAR_SPACE)
 	{
-		bHaveLabel = true;
-
 		// Symbol
 		char *pSymbolName = g_aArgs[ iArg ].sArg; // pArg->sArg;
 		SymbolUpdate( SYMBOLS_ASSEMBLY, pSymbolName, nAddress, false, true ); // bool bRemoveSymbol, bool bUpdateSymbol )
 
 		iArg++;
-	}	
+	}
 
 	bool bStatus = Assemble( iArg, nArgs, nAddress );
 	if ( bStatus)
 		return UPDATE_ALL;
-		
+
 	return UPDATE_CONSOLE_DISPLAY; // UPDATE_NOTHING;
 }
 
@@ -1850,13 +1791,13 @@ Update_t CmdAssemble (int nArgs)
 		AssemblerOn();
 		return UPDATE_CONSOLE_DISPLAY;
 	}
-		
+
 	g_nAssemblerAddress = g_aArgs[1].nValue;
 
 	if (nArgs == 1)
 	{
 		int iArg = 1;
-		
+
 		// undocumented ASM *
 		if ((! _tcscmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_WILDSTAR        ].m_sName )) ||
 			(! _tcscmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
@@ -1866,7 +1807,7 @@ Update_t CmdAssemble (int nArgs)
 
 		AssemblerOn();
 		return UPDATE_CONSOLE_DISPLAY;
-	
+
 //		return Help_Arg_1( CMD_ASSEMBLE );
 	}
 
@@ -1890,7 +1831,7 @@ static Update_t CmdGo (int nArgs, const bool bFullSpeed)
 {
 	// G StopAddress [SkipAddress,Length]
 	// Example:
-	//	G C600 FA00,FFFF 
+	//	G C600 FA00,FFFF
 	// TODO: G addr1,len   addr3,len
 	// TODO: G addr1:addr2 addr3:addr4
 
@@ -1907,7 +1848,7 @@ static Update_t CmdGo (int nArgs, const bool bFullSpeed)
 		return Help_Arg_1( kCmdGo );
 
 	//     G StopAddress [SkipAddress,Len]
-	// Old   1            2           2   
+	// Old   1            2           2
 	//     G addr addr [, len]
 	// New   1    2     3 4
 	if (nArgs > 1)
@@ -1929,7 +1870,7 @@ static Update_t CmdGo (int nArgs, const bool bFullSpeed)
 				{
 					nLen = g_aArgs[ iArg + 2 ].nValue;
 					nEnd = g_nDebugSkipStart + nLen;
-					if (nEnd > _6502_MEM_END)
+					if (nEnd > (int) _6502_MEM_END)
 						nEnd = _6502_MEM_END + 1;
 				}
 				else
@@ -1947,12 +1888,12 @@ static Update_t CmdGo (int nArgs, const bool bFullSpeed)
 		}
 		else
 			return Help_Arg_1( kCmdGo );
-		
+
 		nLen = nEnd - g_nDebugSkipStart;
 		if (nLen < 0)
 			nLen = -nLen;
 		g_nDebugSkipLen = nLen;
-		g_nDebugSkipLen &= _6502_MEM_END;			
+		g_nDebugSkipLen &= _6502_MEM_END;
 
 #if _DEBUG
 	TCHAR sText[ CONSOLE_WIDTH ];
@@ -2007,7 +1948,7 @@ Update_t CmdStepOver (int nArgs)
 		int nOpcode = *(mem + regs.pc); // g_nDisasmCurAddress
 	//	int eMode = g_aOpcodes[ nOpcode ].addrmode;
 	//	int nByte = g_aOpmodes[eMode]._nBytes;
-	//	if ((eMode ==  AM_A) && 
+	//	if ((eMode ==  AM_A) &&
 
 		CmdTrace(0);
 		if (nOpcode == OPCODE_JSR)
@@ -2082,7 +2023,7 @@ Update_t CmdTraceFile (int nArgs)
 		if (g_hTraceFile)
 		{
 			const char* pTextHdr = g_bTraceFileWithVideoScanner ? "Trace (with video info) started: %s"
-																: "Trace started: %s";
+						: "Trace started: %s";
 			ConsoleBufferPushFormat( sText, pTextHdr, sFilePath.c_str() );
 			g_bTraceHeader = true;
 		}
@@ -2121,7 +2062,7 @@ Update_t CmdUnassemble (int nArgs)
 {
 	if (! nArgs)
 		return Help_Arg_1( CMD_UNASSEMBLE );
-  
+
 	WORD nAddress = g_aArgs[1].nValue;
 	g_nDisasmTopAddress = nAddress;
 
@@ -2145,10 +2086,10 @@ Update_t CmdIn (int nArgs)
 {
 	if (!nArgs)
 		return Help_Arg_1( CMD_IN );
-  
+
 	WORD nAddress = g_aArgs[1].nValue;
 
-	IORead[ (nAddress>>4) & 0xF ](regs.pc, nAddress & 0xFF, 0, 0, 0); // g_aArgs[1].nValue 
+	IORead[ (nAddress>>4) & 0xF ](regs.pc, nAddress & 0xFF, 0, 0, 0); // g_aArgs[1].nValue
 
 	return UPDATE_CONSOLE_DISPLAY; // TODO: Verify // 1
 }
@@ -2187,7 +2128,7 @@ Update_t CmdNOP (int nArgs)
 	int iOpmode;
 	int nOpbytes;
 
- 	_6502_GetOpcodeOpmodeOpbyte( iOpcode, iOpmode, nOpbytes );
+	_6502_GetOpcodeOpmodeOpbyte( iOpcode, iOpmode, nOpbytes );
 
 	while (nOpbytes--)
 	{
@@ -2231,16 +2172,13 @@ void _CmdColorGet( const int iScheme, const int iColor )
 {
 	if (iColor < NUM_DEBUG_COLORS)
 	{
-//	COLORREF nColor = g_aColors[ iScheme ][ iColor ];
 		DebugColors_e eColor = static_cast<DebugColors_e>( iColor );
 		COLORREF nColor = DebuggerGetColor( eColor );
 		_ColorPrint( iColor, nColor );
 	}
 	else
 	{
-		TCHAR sText[ CONSOLE_WIDTH ];
-		wsprintf( sText, "Color: %d\nOut of range!", iColor );
-		MessageBox( g_hFrameWindow, sText, TEXT("ERROR"), MB_OK );
+		fprintf( stderr, "Color: %d\nOut of range!", iColor );
 	}
 }
 
@@ -2248,7 +2186,7 @@ void _CmdColorGet( const int iScheme, const int iColor )
 Update_t CmdConfigColorMono (int nArgs)
 {
 	int iScheme = 0;
-	
+
 	if (g_iCommand == CMD_CONFIG_COLOR)
 		iScheme = SCHEME_COLOR;
 	if (g_iCommand == CMD_CONFIG_MONOCHROME)
@@ -2350,7 +2288,7 @@ Update_t CmdConfigHColor (int nArgs)
 Update_t CmdConfigLoad (int nArgs)
 {
 	// TODO: CmdConfigRun( gaFileNameConfig )
-	
+
 //	TCHAR sFileNameConfig[ MAX_PATH ];
 	if (! nArgs)
 	{
@@ -2377,7 +2315,8 @@ bool ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
 	if (eConfigSave == CONFIG_SAVE_FILE_APPEND)
 		pMode = sModeAppend;
 
-	const std::string sFileName = g_sCurrentDir + pFileName; // TODO: g_sDebugDir
+	std::string sFileName = g_sCurrentDir;
+	sFileName += pFileName; // TODO: g_sDebugDir
 
 	FILE *hFile = fopen( pFileName, pMode );
 
@@ -2386,7 +2325,7 @@ bool ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
 		char *pText;
 		int   nLine = g_ConfigState.GetNumLines();
 		int   iLine;
-		
+
 		for( iLine = 0; iLine < nLine; iLine++ )
 		{
 			pText = g_ConfigState.GetLine( iLine );
@@ -2395,7 +2334,7 @@ bool ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
 				fputs( pText, hFile );
 			}
 		}
-		
+
 		fclose( hFile );
 		bStatus = true;
 	}
@@ -2471,7 +2410,7 @@ Update_t CmdConfigSave (int nArgs)
 
 		// Breakpoints
 		CmdBreakpointSave( 0 );
-		
+
 		// Watches
 		CmdWatchSave( 0 );
 
@@ -2568,7 +2507,7 @@ Update_t CmdConfigDisasm( int nArgs )
 
 				case PARAM_CONFIG_COLON:
 					if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
-					{					
+					{
 						iArg++;
 						g_bConfigDisasmAddressColon = (g_aArgs[ iArg ].nValue) ? true : false;
 					}
@@ -2621,10 +2560,10 @@ Update_t CmdConfigDisasm( int nArgs )
 						ConsoleBufferToDisplay();
 					}
 					break;
-					
+
 				case PARAM_CONFIG_TARGET:
 					if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
-					{					
+					{
 						iArg++;
 						g_iConfigDisasmTargets = g_aArgs[ iArg ].nValue;
 						if (g_iConfigDisasmTargets < 0)
@@ -2676,7 +2615,7 @@ Update_t CmdConfigFontMode( int nArgs )
 
 	if ((nMode < 0) || (nMode >= NUM_FONT_SPACING))
 		return Help_Arg_1( CMD_CONFIG_FONT );
-		
+
 	g_iFontSpacing = nMode;
 	_UpdateWindowFontHeights( g_aFontConfig[ FONT_DISASM_DEFAULT ]._nFontHeight );
 
@@ -2711,7 +2650,7 @@ Update_t CmdConfigFont (int nArgs)
 
 		int iFound;
 		int nFound;
-		
+
 		nFound = FindParam( g_aArgs[iArg].sArg, MATCH_EXACT, iFound, _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END );
 		if (nFound)
 		{
@@ -2726,7 +2665,7 @@ Update_t CmdConfigFont (int nArgs)
 				// TODO: FONT SIZE #
 				// TODO: AA {ON|OFF}
 				default:
-					break;		
+					break;
 			}
 		}
 
@@ -2739,7 +2678,7 @@ Update_t CmdConfigFont (int nArgs)
 
 		return CmdConfigSetFont( nArgs );
 	}
-	
+
 	return Help_Arg_1( CMD_CONFIG_FONT );
 }
 
@@ -2761,7 +2700,7 @@ void _UpdateWindowFontHeights( int nFontHeight )
 		}
 		else
 		if (g_iFontSpacing == FONT_SPACING_CLEAN)
-		{		
+		{
 			nHeight = nFontHeight;
 			g_nDisasmDisplayLines = nConsoleTopY / nHeight;
 		}
@@ -2773,7 +2712,7 @@ void _UpdateWindowFontHeights( int nFontHeight )
 		}
 
 		g_aFontConfig[ FONT_DISASM_DEFAULT ]._nLineHeight = nHeight;
-		
+
 //		int nHeightOptimal = (nHeight0 + nHeight1) / 2;
 //		int nLinesOptimal = nConsoleTopY / nHeightOptimal;
 //		g_nDisasmDisplayLines = nLinesOptimal;
@@ -2786,6 +2725,7 @@ void _UpdateWindowFontHeights( int nFontHeight )
 bool _CmdConfigFont ( int iFont, LPCSTR pFontName, int iPitchFamily, int nFontHeight )
 {
 	bool bStatus = false;
+#ifdef TODO // no font support for Linux yet
 	HFONT         hFont = (HFONT) 0;
 	FontConfig_t *pFont = NULL;
 
@@ -2795,7 +2735,7 @@ bool _CmdConfigFont ( int iFont, LPCSTR pFontName, int iPitchFamily, int nFontHe
 		return bStatus;
 
 	if (pFontName)
-	{	
+	{
 //		int nFontHeight = g_nFontHeight - 1;
 
 		int bAntiAlias = (nFontHeight < 14) ? DEFAULT_QUALITY : ANTIALIASED_QUALITY;
@@ -2853,7 +2793,7 @@ bool _CmdConfigFont ( int iFont, LPCSTR pFontName, int iPitchFamily, int nFontHe
 				//  Font Name     Avg Max  "W"
 				//  Arial           7   8   11
 				//  Courier         5  32   11
-				//  Courier New     7  14   
+				//  Courier New     7  14
 				nFontWidthAvg = tm.tmAveCharWidth;
 				nFontWidthMax = tm.tmMaxCharWidth;
 			}
@@ -2866,8 +2806,6 @@ bool _CmdConfigFont ( int iFont, LPCSTR pFontName, int iPitchFamily, int nFontHe
 
 			FrameReleaseDC();
 
-//			DeleteObject( g_hFontDisasm );		
-//			g_hFontDisasm = hFont;
 			pFont->_hFont = hFont;
 
 			pFont->_nFontWidthAvg = nFontWidthAvg;
@@ -2877,6 +2815,7 @@ bool _CmdConfigFont ( int iFont, LPCSTR pFontName, int iPitchFamily, int nFontHe
 			bStatus = true;
 		}
 	}
+#endif
 	return bStatus;
 }
 
@@ -2890,10 +2829,10 @@ Update_t CmdConfigSetFont (int nArgs)
 	int    nHeight = g_nFontHeight;
 	int    iFontTarget = FONT_DISASM_DEFAULT;
 	int    iFontPitch  = FIXED_PITCH   | FF_MODERN;
-//	int    iFontMode   = 
+//	int    iFontMode   =
 	bool   bHaveTarget = false;
 	bool   bHaveFont = false;
-		
+
 	if (! nArgs)
 	{ // reset to defaut font
 		pFontName = g_sFontNameDefault;
@@ -2917,7 +2856,7 @@ Update_t CmdConfigSetFont (int nArgs)
 				case PARAM_INFO   : iFontTarget = FONT_INFO          ; iFontPitch = FIXED_PITCH   | FF_MODERN    ; bHaveTarget = true; break;
 				case PARAM_CONSOLE: iFontTarget = FONT_CONSOLE       ; iFontPitch = DEFAULT_PITCH | FF_DECORATIVE; bHaveTarget = true; break;
 				default:
-					if (g_aArgs[2].bType != TOKEN_QUOTE_DOUBLE) 
+					if (g_aArgs[2].bType != TOKEN_QUOTE_DOUBLE)
 						return Help_Arg_1( CMD_CONFIG_FONT );
 					break;
 			}
@@ -2926,13 +2865,13 @@ Update_t CmdConfigSetFont (int nArgs)
 				pFontName = g_aArgs[2].sArg;
 			}
 		}
-		else		
+		else
 		if (nArgs == 2)
 		{
 			nHeight = atoi(g_aArgs[2].sArg );
 			if ((nHeight < 6) || (nHeight > 36))
-				nHeight = g_nFontHeight;			
-		}	
+				nHeight = g_nFontHeight;
+		}
 	}
 	else
 	{
@@ -2986,7 +2925,7 @@ void DisasmCalcTopFromCurAddress( bool bUpdateTop )
 	int iCur = g_nDisasmCurAddress;
 
 	g_bDisasmCurBad = false;
-	
+
 	bool bFound = false;
 	while (iTop <= iCur)
 	{
@@ -3031,7 +2970,7 @@ void DisasmCalcTopFromCurAddress( bool bUpdateTop )
 			break;
 		}
 		iTop++;
- 	}
+	}
 
 	if (! bFound)
 	{
@@ -3058,7 +2997,7 @@ void DisasmCalcTopFromCurAddress( bool bUpdateTop )
 			MessageBox( g_hFrameWindow, sText, "ERROR", MB_OK );
 #endif
 	}
- }
+}
 
 
 //===========================================================================
@@ -3124,7 +3063,7 @@ Update_t CmdCursorFollowTarget ( int nArgs )
 //===========================================================================
 Update_t CmdCursorLineDown (int nArgs)
 {
-	int iOpmode; 
+	int iOpmode;
 	int nOpbytes;
 	_6502_GetOpmodeOpbyte( g_nDisasmCurAddress, iOpmode, nOpbytes ); // g_nDisasmTopAddress
 
@@ -3207,8 +3146,10 @@ Update_t CmdCursorLineDown (int nArgs)
 //===========================================================================
 Update_t CmdCursorLineUp (int nArgs)
 {
+#if DEBUG_SCROLL>0
 	int nBytes = 1;
-	
+#endif
+
 	if (g_iWindowThis == WINDOW_DATA)
 	{
 		_CursorMoveUpAligned( WINDOW_DATA_BYTES_PER_LINE );
@@ -3216,7 +3157,9 @@ Update_t CmdCursorLineUp (int nArgs)
 	else
 	if (nArgs)
 	{
+#if DEBUG_SCROLL>0
 		nBytes = nArgs; // HACK: g_aArgs[1].nValue
+#endif
 
 		g_nDisasmTopAddress--;
 		DisasmCalcCurFromTopAddress();
@@ -3228,7 +3171,7 @@ Update_t CmdCursorLineUp (int nArgs)
 //		{
 //			g_nDisasmCurLine = 1;
 //			DisasmCalcTopFromCurAddress( false );
-			
+
 //			g_nDisasmCurLine = 0;
 //			DisasmCalcCurFromTopAddress();
 //			DisasmCalcBotFromTopAddress();
@@ -3245,7 +3188,7 @@ Update_t CmdCursorLineUp (int nArgs)
 		// b) Scroll up by 3 bytes
 		//    xx-3: 20 A9 xx   JSR $00A9
 		//    xxxx: top of window
-		// 
+		//
 #define DEBUG_SCROLL 3
 
 #if DEBUG_SCROLL == 1
@@ -3287,7 +3230,7 @@ Update_t CmdCursorLineUp (int nArgs)
 				|| ! _6502_IsOpcodeValid( iOpcode)
 				|| (nOpbytes != 1) )
 			{
- 				g_nDisasmTopAddress--;
+				g_nDisasmTopAddress--;
 				DisasmCalcCurFromTopAddress();
 
 				iOpcode = _6502_GetOpmodeOpbyte( g_nDisasmTopAddress, iOpmode, nOpbytes );
@@ -3425,7 +3368,7 @@ Update_t CmdCursorLineUp (int nArgs)
 #endif
 
 	}
-	
+
 	return UPDATE_DISASM;
 }
 
@@ -3461,7 +3404,7 @@ Update_t CmdCursorJumpRetAddr (int nArgs)
 {
 	WORD nAddress = 0;
 	if (_6502_GetStackReturnAddress( nAddress ))
-	{	
+	{
 		g_nDisasmCurAddress = nAddress;
 
 		if (CURSOR_ALIGN_CENTER == nArgs)
@@ -3493,7 +3436,7 @@ WORD _ClampAddress( int nAddress )
 {
 	if (nAddress < 0)
 		nAddress = 0;
-	if (nAddress > _6502_MEM_END)
+	if (nAddress > (int) _6502_MEM_END)
 		nAddress = _6502_MEM_END;
 
 	return (WORD) nAddress;
@@ -3581,7 +3524,7 @@ Update_t CmdCursorPageDown (int nArgs)
 		nLines -= (g_nDisasmCurLine + 1);
 		if (nLines < 1)
 			nLines = 1;
-			
+
 		while (iLines++ < nLines)
 		{
 			CmdCursorLineDown( 0 ); // nArgs
@@ -3615,7 +3558,7 @@ Update_t CmdCursorPageUp (int nArgs)
 {
 	int iLines = 0; // show at least 1 line from previous display
 	int nLines = WindowGetHeight( g_iWindowThis );
-	
+
 	if (nLines < 2)
 		nLines = 2;
 
@@ -3631,14 +3574,14 @@ Update_t CmdCursorPageUp (int nArgs)
 		nLines -= (g_nDisasmCurLine + 1);
 		if (nLines < 1)
 			nLines = 1;
-			
+
 		while (iLines++ < nLines)
 		{
 			CmdCursorLineUp( 0 ); // smart line up
 			// CmdCursorLineUp( -nLines );
 		}
 	}
-		
+
 	return UPDATE_DISASM;
 }
 
@@ -3690,7 +3633,7 @@ Update_t CmdFlagClear (int nArgs)
 				}
 				iFlag++;
 			}
-			iArg--;			
+			iArg--;
 		}
 	}
 	else
@@ -3706,7 +3649,7 @@ Update_t CmdFlagSet (int nArgs)
 {
 	int iFlag = (g_iCommand - CMD_FLAG_SET_C);
 
-	if (g_iCommand == CMD_FLAG_SET)	// Undocumented: "se f f ... f", eg: "se n v c"
+	if (g_iCommand == CMD_FLAG_SET) // Undocumented: "se f f ... f", eg: "se n v c"
 	{
 		int iArg = nArgs;
 		while (iArg)
@@ -3722,7 +3665,7 @@ Update_t CmdFlagSet (int nArgs)
 				}
 				iFlag++;
 			}
-			iArg--;			
+			iArg--;
 		}
 	}
 	else
@@ -3741,7 +3684,7 @@ Update_t CmdFlag (int nArgs)
 	else
 	if (g_iCommand == CMD_FLAG_SET)
 //	if (g_aArgs[0].sArg[0] == g_aParameters[PARAM_FLAG_SET].aName[0] ) // TEXT('S')
-		return CmdFlagSet( nArgs );
+	return CmdFlagSet( nArgs );
 
 	return UPDATE_ALL; // 0;
 }
@@ -3751,12 +3694,7 @@ Update_t CmdFlag (int nArgs)
 Update_t CmdDisk ( int nArgs)
 {
 	if (! nArgs)
-		goto _Help;
-
-	if (g_CardMgr.QuerySlot(SLOT6) != CT_Disk2)
-		return ConsoleDisplayError("No DiskII card in slot-6");
-
-	Disk2InterfaceCard& diskCard = dynamic_cast<Disk2InterfaceCard&>(g_CardMgr.GetRef(SLOT6));
+		return HelpLastCommand();
 
 	// check for info command
 	int iParam = 0;
@@ -3765,8 +3703,9 @@ Update_t CmdDisk ( int nArgs)
 	if (iParam == PARAM_DISK_INFO)
 	{
 		if (nArgs > 2)
-			goto _Help;
+			return HelpLastCommand();
 
+#ifdef TODO // Not support for Linux yet
 		char buffer[200] = "";
 		ConsoleBufferPushFormat(buffer, "FW%2d: D%d at T$%s, phase $%s, offset $%X, mask $%02X, extraCycles %.2f, %s",
 			diskCard.GetCurrentFirmware(),
@@ -3778,65 +3717,63 @@ Update_t CmdDisk ( int nArgs)
 			diskCard.GetCurrentExtraCycles(),
 			diskCard.GetCurrentState()
 		);
+#endif
 
 		return ConsoleUpdate();
 	}
 
 	if (nArgs < 2)
-		goto _Help;
+		return HelpLastCommand();
 
 	// first param should be drive
 	int iDrive = g_aArgs[ 1 ].nValue;
 
 	if ((iDrive < 1) || (iDrive > 2))
 		return HelpLastCommand();
-	
+
 	iDrive--;
 
 	// second param is command
 	int nFound = FindParam( g_aArgs[ 2 ].sArg, MATCH_EXACT, iParam, _PARAM_DISK_BEGIN, _PARAM_DISK_END );
 
 	if (! nFound)
-		goto _Help;
+		return HelpLastCommand();
 
 	if (iParam == PARAM_DISK_EJECT)
 	{
 		if (nArgs > 2)
-			goto _Help;
+			return HelpLastCommand();
 
-		diskCard.EjectDisk( iDrive );
+		DiskEject( iDrive );
 		FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);
 	}
 	else
 	if (iParam == PARAM_DISK_PROTECT)
 	{
 		if (nArgs > 3)
-			goto _Help;
+			return HelpLastCommand();
 
 		bool bProtect = true;
 
 		if (nArgs == 3)
 			bProtect = g_aArgs[ 3 ].nValue ? true : false;
 
-		diskCard.SetProtect( iDrive, bProtect );
+		DiskSetProtect( iDrive, bProtect );
 		FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);
 	}
 	else
 	{
 		if (nArgs != 3)
-			goto _Help;
+			return HelpLastCommand();
 
 		LPCTSTR pDiskName = g_aArgs[ 3 ].sArg;
 
 		// DISK # "Diskname"
-		diskCard.InsertDisk( iDrive, pDiskName, IMAGE_FORCE_WRITE_PROTECTED, IMAGE_DONT_CREATE );
+		DiskInsert( iDrive, pDiskName, true, false);
 		FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);
 	}
 
 	return UPDATE_CONSOLE_DISPLAY;
-
-_Help:
-	return HelpLastCommand();
 }
 
 
@@ -3967,7 +3904,7 @@ bool _MemoryCheckMiniDump ( int iWhich )
 	if ((iWhich < 0) || (iWhich > NUM_MEM_MINI_DUMPS))
 	{
 		TCHAR sText[ CONSOLE_WIDTH ];
-		wsprintf( sText, TEXT("  Only %d memory mini dumps"), NUM_MEM_MINI_DUMPS );
+		snprintf( sText, sizeof(sText), TEXT("  Only %d memory mini dumps"), NUM_MEM_MINI_DUMPS );
 		ConsoleDisplayError( sText );
 		return true;
 	}
@@ -4027,7 +3964,6 @@ Update_t CmdMemoryMiniDumpApple (int nArgs)
 //===========================================================================
 Update_t CmdMemoryEdit (int nArgs)
 {
-
 	return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -4040,7 +3976,7 @@ Update_t CmdMemoryEnterByte (int nArgs)
 	{
 		Help_Arg_1( CMD_MEMORY_ENTER_WORD );
 	}
-	
+
 	WORD nAddress = g_aArgs[1].nValue;
 	while (nArgs >= 2)
 	{
@@ -4070,7 +4006,7 @@ Update_t CmdMemoryEnterWord (int nArgs)
 	{
 		Help_Arg_1( CMD_MEMORY_ENTER_WORD );
 	}
-	
+
 	WORD nAddress = g_aArgs[1].nValue;
 	while (nArgs >= 2)
 	{
@@ -4115,7 +4051,7 @@ Update_t CmdMemoryFill (int nArgs)
 	{
 		nAddressStart = g_aArgs[1].nValue;
 		nAddressEnd   = g_aArgs[2].nValue;
-		nAddressLen = MIN(_6502_MEM_END , nAddressEnd - nAddressStart + 1 );
+		nAddressLen = MIN((int) _6502_MEM_END , nAddressEnd - nAddressStart + 1 );
 	}
 	else
 	{
@@ -4161,7 +4097,7 @@ Update_t CmdConfigGetDebugDir (int nArgs)
 
 	TCHAR sPath[ MAX_PATH + 8 ];
 	// TODO: debugger dir has no ` CONSOLE_COLOR_ESCAPE_CHAR ?!?!
-	ConsoleBufferPushFormat( sPath, "Path: %s", g_sCurrentDir.c_str() );
+	ConsoleBufferPushFormat( sPath, "Path: %s", g_sCurrentDir );
 
 	return ConsoleUpdate();
 }
@@ -4209,7 +4145,7 @@ Update_t CmdConfigSetDebugDir (int nArgs)
 	if ( SetCurrentImageDir( sPath ) )
 		nArgs = 0; // intentional fall into
 #else
-	#error "Need chdir() implemented"
+	#warning "Need chdir() implemented"
 #endif
 
 	return CmdConfigGetDebugDir(0);		// Show the new PWD
@@ -4220,8 +4156,8 @@ Update_t CmdConfigSetDebugDir (int nArgs)
 #if 0	// Original
 Update_t CmdMemoryLoad (int nArgs)
 {
-	// BLOAD ["Filename"] , addr[, len] 
-	// BLOAD ["Filename"] , addr[: end] 
+	// BLOAD ["Filename"] , addr[, len]
+	// BLOAD ["Filename"] , addr[: end]
 	//       1            2 3    4 5
 	if (nArgs > 5)
 		return Help_Arg_1( CMD_MEMORY_LOAD );
@@ -4282,7 +4218,7 @@ Update_t CmdMemoryLoad (int nArgs)
 				return Help_Arg_1( CMD_MEMORY_SAVE );
 			}
 		}
-		
+
 		BYTE *pMemory = new BYTE [ _6502_MEM_END + 1 ]; // default 64K buffer
 		BYTE *pDst = mem + nAddressStart;
 		BYTE *pSrc = pMemory;
@@ -4292,7 +4228,7 @@ Update_t CmdMemoryLoad (int nArgs)
 			_tcscpy( g_sMemoryLoadSaveFileName, g_aArgs[ 1 ].sArg );
 		}
 		_tcscat( sLoadSaveFilePath, g_sMemoryLoadSaveFileName );
-		
+
 		FILE *hFile = fopen( sLoadSaveFilePath, "rb" );
 		if (hFile)
 		{
@@ -4328,20 +4264,20 @@ Update_t CmdMemoryLoad (int nArgs)
 			TCHAR sFile[ MAX_PATH + 8 ];
 			ConsoleBufferPushFormat( sFile, "File: %s", g_sMemoryLoadSaveFileName );
 		}
-		
+
 		delete [] pMemory;
 	}
 	else
 		return Help_Arg_1( CMD_MEMORY_LOAD );
-	
+
 	return ConsoleUpdate();
 }
 #else	// Extended cmd for loading physical memory
 Update_t CmdMemoryLoad (int nArgs)
 {
 	// Active memory:
-	// BLOAD ["Filename"] , addr[, len] 
-	// BLOAD ["Filename"] , addr[: end] 
+	// BLOAD ["Filename"] , addr[, len]
+	// BLOAD ["Filename"] , addr[: end]
 	//       1            2 3    4 5
 	// Physical 64K memory bank:
 	// BLOAD ["Filename"] , bank : addr [, len]
@@ -4408,7 +4344,7 @@ Update_t CmdMemoryLoad (int nArgs)
 		int   nLength;
 	};
 
-	const KnownFileType_t aFileTypes[] = 
+	const KnownFileType_t aFileTypes[] =
 	{
 		 { ""     ,      0,      0 } // n/a
 		,{ ".hgr" , 0x2000, 0x2000 }
@@ -4481,7 +4417,7 @@ Update_t CmdMemoryLoad (int nArgs)
 		g_sMemoryLoadSaveFileName = pFileName;
 	}
 	const std::string sLoadSaveFilePath = g_sCurrentDir + g_sMemoryLoadSaveFileName; // TODO: g_sDebugDir
-	
+
 	BYTE * const pMemBankBase = bBankSpecified ? MemGetBankPtr(nBank) : mem;
 	if (!pMemBankBase)
 	{
@@ -4492,7 +4428,7 @@ Update_t CmdMemoryLoad (int nArgs)
 	FILE *hFile = fopen( sLoadSaveFilePath.c_str(), "rb" );
 	if (hFile)
 	{
-		int nFileBytes = _GetFileSize( hFile );
+		size_t nFileBytes = _GetFileSize( hFile );
 
 		if (nFileBytes > _6502_MEM_END)
 			nFileBytes = _6502_MEM_END + 1; // Bank-switched RAM/ROM is only 16-bit
@@ -4517,11 +4453,11 @@ Update_t CmdMemoryLoad (int nArgs)
 
 		if (bBankSpecified)
 		{
-			MemUpdatePaging(TRUE);
+			MemUpdatePaging(TRUE, FALSE);
 		}
 		else
 		{
-			for (UINT i=(nAddressStart>>8); i!=((nAddressStart+nAddressLen)>>8); i++)
+			for (WORD i=(nAddressStart>>8); i!=((nAddressStart+(WORD)nAddressLen)>>8); i++)
 			{
 				memdirty[i] = 0xff;
 			}
@@ -4536,7 +4472,7 @@ Update_t CmdMemoryLoad (int nArgs)
 		TCHAR sFile[ MAX_PATH + 8 ];
 		ConsoleBufferPushFormat( sFile, "File: ", g_sMemoryLoadSaveFileName.c_str() );
 	}
-	
+
 	return ConsoleUpdate();
 }
 #endif
@@ -4596,7 +4532,7 @@ Update_t CmdMemoryMove (int nArgs)
 #if 0	// Original
 Update_t CmdMemorySave (int nArgs)
 {
-	// BSAVE ["Filename"] , addr , len 
+	// BSAVE ["Filename"] , addr , len
 	// BSAVE ["Filename"] , addr : end
 	//       1            2 3    4 5
 	static WORD nAddressStart = 0;
@@ -4618,7 +4554,7 @@ Update_t CmdMemorySave (int nArgs)
 		else
 		{
 			ConsoleBufferPush( sLast, TEXT( "Last saved: none" ) );
-		}				
+		}
 	}
 	else
 	{
@@ -4646,7 +4582,7 @@ Update_t CmdMemorySave (int nArgs)
 				return Help_Arg_1( CMD_MEMORY_SAVE );
 		}
 
-//		if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) || 
+//		if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) ||
 //			(g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
 //			return Help_Arg_1( CMD_MEMORY_SAVE );
 
@@ -4677,7 +4613,7 @@ Update_t CmdMemorySave (int nArgs)
 				BYTE *pMemory = new BYTE [ nAddressLen ];
 				BYTE *pDst = pMemory;
 				BYTE *pSrc = mem + nAddressStart;
-				
+
 				// memcpy -- copy out of active memory bank
 				int iByte;
 				for( iByte = 0; iByte < nAddressLen; iByte++ )
@@ -4706,12 +4642,12 @@ Update_t CmdMemorySave (int nArgs)
 					}
 					fclose( hFile );
 				}
-				
+
 				delete [] pMemory;
 			}
 		}
 	}
-	
+
 	return ConsoleUpdate();
 }
 #else	// Extended cmd for saving physical memory
@@ -4750,7 +4686,7 @@ Update_t CmdMemorySave (int nArgs)
 		else
 		{
 			ConsoleBufferPush( TEXT( "Last saved: none" ) );
-		}				
+		}
 	}
 	else
 	{
@@ -4762,7 +4698,7 @@ Update_t CmdMemorySave (int nArgs)
 //		if (g_aArgs[1].bType & TOKEN_QUOTE_DOUBLE)
 //			bHaveFileName = true;
 
-		int iArgComma1  = 2;
+//		int iArgComma1  = 2;
 		int iArgAddress = 3;
 		int iArgComma2  = 4;
 		int iArgLength  = 5;
@@ -4771,7 +4707,7 @@ Update_t CmdMemorySave (int nArgs)
 
 		if (! bHaveFileName)
 		{
-			iArgComma1  = 1;
+//			iArgComma1  = 1;
 			iArgAddress = 2;
 			iArgComma2  = 3;
 			iArgLength  = 4;
@@ -4799,7 +4735,7 @@ Update_t CmdMemorySave (int nArgs)
 			bBankSpecified = false;
 		}
 
-//		if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) || 
+//		if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) ||
 //			(g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
 //			return Help_Arg_1( CMD_MEMORY_SAVE );
 
@@ -4864,7 +4800,7 @@ Update_t CmdMemorySave (int nArgs)
 			}
 		}
 	}
-	
+
 	return ConsoleUpdate();
 }
 #endif
@@ -4962,7 +4898,7 @@ size_t Util_GetDebuggerText( char* &pText_ )
 
 	*pEnd = 0;
 	g_nTextScreen = pEnd - pBeg;
-	
+
 	pText_ = pBeg;
 	return g_nTextScreen;
 }
@@ -5013,28 +4949,15 @@ size_t Util_GetTextScreen ( char* &pText_ )
 	*pEnd = 0;
 
 	g_nTextScreen = pEnd - pBeg;
-	
+
 	pText_ = pBeg;
 	return g_nTextScreen;
-}
-
-void Util_CopyTextToClipboard ( const size_t nSize, const char *pText )
-{
-	HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, nSize + 1 );
-	memcpy( GlobalLock(hMem), pText, nSize + 1 );
-	GlobalUnlock( hMem );
-
-	OpenClipboard(0);
-		EmptyClipboard();
-		SetClipboardData( CF_TEXT, hMem );
-	CloseClipboard();
-
-	// GlobalFree() ??
 }
 
 //===========================================================================
 Update_t CmdNTSC (int nArgs)
 {
+#ifdef TODO // Not supported for Linux yet
 	int iParam;
 	int nFound = FindParam( g_aArgs[ 1 ].sArg, MATCH_EXACT, iParam, _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END );
 
@@ -5051,7 +4974,7 @@ Update_t CmdNTSC (int nArgs)
 		,NUM_FILE_TYPES
 	};
 
-	const KnownFileType_t aFileTypes[ NUM_FILE_TYPES ] = 
+	const KnownFileType_t aFileTypes[ NUM_FILE_TYPES ] =
 	{
 		 { ""      } // n/a
 		,{ ".bmp"  }
@@ -5365,7 +5288,7 @@ Update_t CmdNTSC (int nArgs)
 							*pDst++ = pTmp[3];
 					}
 				}
-/*
+
 				// we duplicate phase 0 a total of 4 times
 				const size_t nBytesPerScanLine = 4096 * nBPP;
 				for( int iPhase = 1; iPhase < 4; iPhase++ )
@@ -5472,7 +5395,7 @@ Update_t CmdNTSC (int nArgs)
 	uint32_t* pChromaTable = NTSC_VideoGetChromaTable( false, bColorTV );
 	char aStatusText[ CONSOLE_WIDTH*2 ] = "Loaded";
 
-//uint8_t* pTmp = (uint8_t*) pChromaTable; 
+//uint8_t* pTmp = (uint8_t*) pChromaTable;
 //*pTmp++  = 0xFF; // b
 //*pTmp++ = 0x00; // g
 //*pTmp++ = 0x00; // r
@@ -5643,7 +5566,7 @@ _error:
 			return HelpLastCommand();
 	}
 //	else
-
+#endif
 	return ConsoleUpdate();
 }
 
@@ -5654,7 +5577,7 @@ int CmdTextSave (int nArgs)
 	// Save the TEXT1 40-colomn to text file (Default: AppleWin_Text40.txt"
 	// TSAVE ["Filename"]
 	// TSAVE ["Filename"]
-	//       1           
+	//       1
 	if (nArgs > 1)
 		return Help_Arg_1( CMD_TEXT_SAVE );
 
@@ -5732,19 +5655,19 @@ int _SearchMemoryFind(
 		{
 			MemorySearch_t ms = vMemorySearchValues.at( iBlock );
 			ms.m_bFound = false;
-		
-			if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT    ) || 
+
+			if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT    ) ||
 				(ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) ||
 				(ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT ))
 			{
 				BYTE nTarget = *(mem + nAddress2);
-	
+
 				if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT)
 					nTarget &= 0x0F;
 
 				if (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT)
 					nTarget &= 0xF0;
-				
+
 				if (ms.m_nValue == nTarget)
 				{ // ms.m_nAddress = nAddress2;
 					ms.m_bFound = true;
@@ -5767,24 +5690,24 @@ int _SearchMemoryFind(
 				// if next block matches, then this block matches (since we are wild)
 				if ((iBlock + 1) == nMemBlocks) // there is no next block, hence we match
 					continue;
-					
-				MemorySearch_t ms2 = vMemorySearchValues.at( iBlock + 1 );
+
+//				MemorySearch_t ms2 = vMemorySearchValues.at( iBlock + 1 );
 
 				WORD nAddress3 = nAddress2;
 				for (nAddress3 = nAddress2; nAddress3 < nAddressEnd; nAddress3++ )
 				{
-					if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT    ) || 
+					if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT    ) ||
 						(ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) ||
 						(ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT ))
 					{
 						BYTE nTarget = *(mem + nAddress3);
-			
+
 						if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT)
 							nTarget &= 0x0F;
 
 						if (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT)
 							nTarget &= 0xF0;
-						
+
 						if (ms.m_nValue == nTarget)
 						{
 							nAddress2 = nAddress3;
@@ -5884,7 +5807,7 @@ Update_t _SearchMemoryDisplay (int nArgs)
 		        StringCat( sResult, CHC_DEFAULT, nBuf );
 		nLen += StringCat( sResult, ": " , nBuf );
 
-		        StringCat( sResult, CHC_NUM_DEC, nBuf ); // intentional CHC_DEFAULT instead of 
+		        StringCat( sResult, CHC_NUM_DEC, nBuf ); // intentional CHC_DEFAULT instead of
 		sprintf( sText, "%d  ", nFound );
 		nLen += StringCat( sResult, sText, nBuf );
 
@@ -5900,7 +5823,7 @@ Update_t _SearchMemoryDisplay (int nArgs)
 
 		        StringCat( sResult, CHC_ARG_SEP, nBuf );
 		nLen += StringCat( sResult, ")" , nBuf );
-		
+
 		ConsolePrint( sResult );
 
 	// g_vMemorySearchResults is cleared in DebugEnd()
@@ -5926,19 +5849,14 @@ Update_t _CmdMemorySearch (int nArgs, bool bTextIsAscii = true )
 		return ConsoleDisplayError( TEXT("Error: Missing address seperator (comma or colon)" ) );
 
 	int iArgFirstByte = 4;
-
-	// S start,len #
-	int nMinLen = nArgs - (iArgFirstByte - 1);
-
-	bool bHaveWildCards = false;
 	int iArg;
 
 	MemorySearchValues_t vMemorySearchValues;
 	MemorySearch_e       tLastType = MEM_SEARCH_BYTE_N_WILD;
-	
+
 	// Get search "string"
 	Arg_t *pArg = & g_aArgs[ iArgFirstByte ];
-	
+
 	WORD nTarget;
 	for (iArg = iArgFirstByte; iArg <= nArgs; iArg++, pArg++ )
 	{
@@ -5982,7 +5900,7 @@ Update_t _CmdMemorySearch (int nArgs, bool bTextIsAscii = true )
 							ms.m_nValue |= 0x80;
 
 						// last char is handle in common case below
-						iChar++; 
+						iChar++;
 						if (iChar < nChars)
 							vMemorySearchValues.push_back( ms );
 					}
@@ -6012,7 +5930,7 @@ Update_t _CmdMemorySearch (int nArgs, bool bTextIsAscii = true )
 //							ms.m_nValue |= 0x80;
 
 						iChar++; // last char is handle in common case below
-						if (iChar < nChars) 
+						if (iChar < nChars)
 							vMemorySearchValues.push_back( ms );
 					}
 				}
@@ -6140,7 +6058,7 @@ Update_t CmdRegisterSet (int nArgs)
 
 			if (iArg > nArgs)
 				return Help_Arg_1( CMD_REGISTER_SET );
-				
+
 			BYTE b = (BYTE)(g_aArgs[ iArg ].nValue & 0xFF);
 			WORD w = (WORD)(g_aArgs[ iArg ].nValue & 0xFFFF);
 
@@ -6155,7 +6073,7 @@ Update_t CmdRegisterSet (int nArgs)
 			}
 		}
 	}
-	
+
 //	g_nDisasmCurAddress = regs.pc;
 //	DisasmCalcTopBotAddress();
 
@@ -6197,7 +6115,7 @@ Update_t CmdOutputCalc (int nArgs)
 	//    CHC_NUM_DEC
 	//    CHC_ARG_
 	//    CHC_STRING
-	wsprintf( sText, TEXT("$%04X  0z%08X  %5d  '%c' "),
+	snprintf( sText, sizeof(sText), TEXT("$%04X  0z%08X  %5d  '%c' "),
 		nAddress, nBit, nAddress, c );
 
 	if (bParen)
@@ -6227,8 +6145,6 @@ Update_t CmdOutputCalc (int nArgs)
 //===========================================================================
 Update_t CmdOutputEcho (int nArgs)
 {
-	TCHAR sText[ CONSOLE_WIDTH ] = TEXT("");
-
 	if (g_aArgs[1].bType & TYPE_QUOTED_2)
 	{
 		ConsoleDisplayPush( g_aArgs[1].sArg );
@@ -6297,7 +6213,7 @@ Update_t CmdOutputPrint (int nArgs)
 					goto _Help;
 		}
 		else
-		{			
+		{
 			nValue = g_aArgs[ iArg ].nValue;
 			sprintf( &sText[ nLen ], "%04X", nValue );
 
@@ -6308,7 +6224,7 @@ Update_t CmdOutputPrint (int nArgs)
 			if (iArg <= nArgs)
 				if (g_aArgs[ iArg ].eToken != TOKEN_COMMA)
 					goto _Help;
-		}		
+		}
 #if 0
 		sprintf( &sText[ nLen ], "%04X", nValue );
 		sprintf( &sText[ nLen ], "%d", nValue );
@@ -6338,18 +6254,18 @@ Update_t CmdOutputPrintf (int nArgs)
 	Arg_t         entry;
 	int iValue = 0;
 	int nValue = 0;
+	int nParamValues;
+	int nWidth = 0;
+	int nLen = 0;
+	PrintState_e eThis = PS_LITERAL;
+	int iArg;
 
 	if (! nArgs)
 		goto _Help;
 
-	int nLen = 0;
-
-	PrintState_e eThis = PS_LITERAL;
 //	PrintState_e eNext = PS_NEXT_ARG_HEX; // PS_LITERAL;
 
-	int nWidth = 0;
 
-	int iArg;
 	for (iArg = 1; iArg <= nArgs; iArg++ )
 	{
 		if (g_aArgs[ iArg ].bType & TYPE_QUOTED_2)
@@ -6366,7 +6282,7 @@ Update_t CmdOutputPrintf (int nArgs)
 //			aValues.push_back( nValue );
 		}
 	}
-	const int nParamValues = (int) aValues.size();
+	nParamValues = (int) aValues.size();
 
 	for (iArg = 1; iArg <= nArgs; iArg++ )
 	{
@@ -6462,7 +6378,7 @@ Update_t CmdOutputPrintf (int nArgs)
 		}
 		else
 		if (g_aArgs[ iArg ].eToken == TOKEN_COMMA)
-		{			
+		{
 			iArg++;
 			if (iArg > nArgs)
 				goto _Help;
@@ -6489,14 +6405,14 @@ Update_t CmdOutputRun (int nArgs)
 
 	if (nArgs != 1)
 		return Help_Arg_1( CMD_OUTPUT_RUN );
-	
+
 	// Read in script
 	// could be made global, to cache last run.
 	// Opens up the possibility of:
 	// CHEAT [ON | OFF] -> re-run script
 	// with conditional logic
 	// IF @ON ....
-	MemoryTextFile_t script; 
+	MemoryTextFile_t script;
 
 	const std::string pFileName = g_aArgs[ 1 ].sArg;
 
@@ -6505,10 +6421,10 @@ Update_t CmdOutputRun (int nArgs)
 
 //	if (g_aArgs[1].bType & TYPE_QUOTED_2)
 
-	sMiniFileName = pFileName.substr(0, min(pFileName.size(), CONSOLE_WIDTH));
+	sMiniFileName = pFileName.substr(0, MIN(pFileName.size(), CONSOLE_WIDTH));
 //	_tcscat( sMiniFileName, ".aws" ); // HACK: MAGIC STRING
 
-	if (pFileName[0] == '\\' || pFileName[1] == ':')	// NB. Any prefix quote has already been stripped
+	if (pFileName[0] == '/')  // NB. Any prefix quote has already been stripped
 	{
 		// Abs pathname
 		sFileName = sMiniFileName;
@@ -6516,15 +6432,15 @@ Update_t CmdOutputRun (int nArgs)
 	else
 	{
 		// Rel pathname
-		sFileName = g_sCurrentDir + sMiniFileName;
+		sFileName = g_sCurrentDir;
+		sFileName += "/" +sMiniFileName;
 	}
 
 	if (script.Read( sFileName ))
 	{
-		int iLine = 0;
 		int nLine = script.GetNumLines();
 
-		Update_t bUpdateDisplay = UPDATE_NOTHING;	
+		Update_t bUpdateDisplay = UPDATE_NOTHING;
 
 		for( int iLine = 0; iLine < nLine; iLine++ )
 		{
@@ -6534,6 +6450,7 @@ Update_t CmdOutputRun (int nArgs)
 		}
 	}
 	else
+	if (g_bReportMissingScripts)
 	{
 		char sText[ CONSOLE_WIDTH ];
 		ConsolePrintFormat(sText, "%sCouldn't load filename:", CHC_ERROR);
@@ -6640,10 +6557,6 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 
 	const DWORD INVALID_ADDRESS = _6502_MEM_END + 1;
 
-	bool bPrevSymbol = false;
-	bool bFourBytes = false;		
-	BYTE nByte4 = 0;
-
 	int nLines = g_AssemblerSourceBuffer.GetNumLines();
 	for( int iLine = 0; iLine < nLines; iLine++ )
 	{
@@ -6665,7 +6578,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 
 			if (bBytesToMemory)
 			{
-				char *pEnd = p + 1;				
+				char *pEnd = p + 1;
 				char *pStart;
 				int  iByte;
 				for (iByte = 0; iByte < 4; iByte++ ) // BUG: Some assemblers also put 4 bytes on a line
@@ -6700,7 +6613,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 		{
 			// Add user symbol:          symbolname EQU $address
 			//  or user symbol: address: symbolname DFB #bytes
- 			char *pEQU = strstr( sLine, "EQU" ); // EQUal / EQUate
+			char *pEQU = strstr( sLine, "EQU" ); // EQUal / EQUate
 			char *pDFB = strstr( sLine, "DFB" ); // DeFine Byte
 			char *pLabel = NULL;
 
@@ -6710,7 +6623,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 				pLabel = pDFB;
 
 			if (pLabel)
-			{	
+			{
 				char *pLabelEnd = pLabel - 1;
 				pLabelEnd = const_cast<char*>( SkipWhiteSpaceReverse( pLabelEnd, &sLine[ 0 ] ));
 				char * pLabelStart = NULL; // SkipWhiteSpaceReverse( pLabelEnd, &sLine[ 0 ] );
@@ -6719,7 +6632,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 					pLabelStart = const_cast<char*>( SkipUntilWhiteSpaceReverse( pLabelEnd, &sLine[ 0 ] ));
 					pLabelEnd++;
 					pLabelStart++;
-					
+
 					int nLen = pLabelEnd - pLabelStart;
 					nLen = MIN( nLen, MAX_SYMBOLS_LEN );
 					strncpy( sName, pLabelStart, nLen );
@@ -6750,7 +6663,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 	} // for
 
 	bStatus = true;
-	
+
 	return bStatus;
 }
 
@@ -6768,7 +6681,7 @@ Update_t CmdSource (int nArgs)
 		g_bSourceAddSymbols = false;
 
 		for( int iArg = 1; iArg <= nArgs; iArg++ )
-		{	
+		{
 			const std::string pFileName = g_aArgs[ iArg ].sArg;
 
 			int iParam;
@@ -6780,14 +6693,14 @@ Update_t CmdSource (int nArgs)
 			else
 			if (bFound && (iParam == PARAM_SRC_MEMORY))
 			{
-				g_bSourceAddMemory = true;	
+				g_bSourceAddMemory = true;
 			}
 			else
 			{
 				const std::string sFileName = g_sProgramDir + pFileName;
 
-				const int MAX_MINI_FILENAME = 20; 
-				const std::string sMiniFileName = sFileName.substr(0, min(MAX_MINI_FILENAME, sFileName.size()));
+				const int MAX_MINI_FILENAME = 20;
+				const std::string sMiniFileName = sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));
 
 				TCHAR buffer[MAX_PATH] = { 0 };
 
@@ -6824,14 +6737,14 @@ Update_t CmdSource (int nArgs)
 		return ConsoleUpdate();
 	}
 
-	return UPDATE_CONSOLE_DISPLAY;	
+	return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 Update_t CmdSync (int nArgs)
 {
 	// TODO
-	return UPDATE_CONSOLE_DISPLAY;	
+	return UPDATE_CONSOLE_DISPLAY;
 }
 
 
@@ -6922,7 +6835,7 @@ enum ViewVideoPage_t
 
 Update_t _ViewOutput( ViewVideoPage_t iPage, int bVideoModeFlags )
 {
-	switch( iPage ) 
+	switch( iPage )
 	{
 		case VIEW_PAGE_X:
 			bVideoModeFlags |= !VideoGetSWPAGE2() ? 0 : VF_PAGE2;
@@ -7086,9 +6999,9 @@ Update_t CmdWatchAdd (int nArgs)
 
 	if (!bAdded)
 		goto _Help;
-	
+
 	return UPDATE_WATCH;
-	
+
 _Help:
 	return Help_Arg_1( CMD_WATCH_ADD );
 }
@@ -7100,7 +7013,7 @@ Update_t CmdWatchClear (int nArgs)
 		return ConsoleDisplayError(TEXT("There are no watches defined."));
 
 	if (!nArgs)
-		return Help_Arg_1( CMD_WATCH_CLEAR );	
+		return Help_Arg_1( CMD_WATCH_CLEAR );
 
 	_BWZ_ClearViaArgs( nArgs, g_aWatches, MAX_WATCHES, g_nWatches );
 
@@ -7218,7 +7131,7 @@ Update_t _CmdWindowViewCommon ( int iNewWindow )
 	}
 	else
 	{
-		_WindowSwitch( iNewWindow ); 
+		_WindowSwitch( iNewWindow );
 	}
 
 //	WindowUpdateConsoleDisplayedSize();
@@ -7232,7 +7145,7 @@ Update_t _CmdWindowViewFull ( int iNewWindow )
 	if (g_iWindowThis != iNewWindow)
 	{
 		g_aWindowConfig[ iNewWindow ].bSplit = false;
-		_WindowSwitch( iNewWindow ); 
+		_WindowSwitch( iNewWindow );
 		WindowUpdateConsoleDisplayedSize();
 	}
 	return UPDATE_ALL;
@@ -7334,7 +7247,7 @@ Update_t CmdWindowShowCode (int nArgs)
 		g_aWindowConfig[ g_iWindowThis ].bSplit = false;
 		g_aWindowConfig[ g_iWindowThis ].eBot = WINDOW_CODE; // not really needed, but SAFE HEX ;-)
 	}
-	else	
+	else
 	if (g_iWindowThis == WINDOW_DATA)
 	{
 		g_aWindowConfig[ g_iWindowThis ].bSplit = true;
@@ -7354,7 +7267,7 @@ Update_t CmdWindowShowCode1 (int nArgs)
 	{
 		g_aWindowConfig[ g_iWindowThis ].bSplit = true;
 		g_aWindowConfig[ g_iWindowThis ].eTop = WINDOW_CODE;
-		
+
 		Window_e eWindow = WINDOW_CODE;
 		if (g_iWindowThis == WINDOW_DATA)
 			eWindow = WINDOW_DATA;
@@ -7376,12 +7289,12 @@ Update_t CmdWindowShowCode2 (int nArgs)
 			_WindowJoin();
 			WindowUpdateDisasmSize();
 		}
-		else		
+		else
 		if (g_iWindowThis == WINDOW_DATA)
 		{
 			_WindowSplit( WINDOW_CODE );
 			WindowUpdateDisasmSize();
-		}		
+		}
 		return UPDATE_DISASM;
 
 	}
@@ -7433,11 +7346,11 @@ Update_t CmdWindowShowData2 (int nArgs)
 		{
 			_WindowSplit( WINDOW_DATA );
 		}
-		else		
+		else
 		if (g_iWindowThis == WINDOW_DATA)
 		{
 			_WindowJoin();
-		}		
+		}
 		return UPDATE_DISASM;
 
 	}
@@ -7529,7 +7442,7 @@ Update_t CmdWindow (int nArgs)
 				return Help_Arg_1( CMD_WINDOW );
 				break;
 		}
-	}	
+	}
 
 	WindowUpdateConsoleDisplayedSize();
 
@@ -7573,7 +7486,7 @@ Update_t CmdZeroPageAdd     (int nArgs)
 		iZP = g_aArgs[ 1 ].nValue;
 		iArg++;
 	}
-	
+
 	bool bAdded = false;
 	for (; iArg <= nArgs; iArg++ )
 	{
@@ -7595,7 +7508,7 @@ Update_t CmdZeroPageAdd     (int nArgs)
 			ConsoleDisplayPush( sText );
 			return ConsoleUpdate();
 		}
-		
+
 		if ((iZP < MAX_ZEROPAGE_POINTERS) && (g_nZeroPagePointers < MAX_ZEROPAGE_POINTERS))
 		{
 			g_aZeroPagePointers[iZP].bSet = true;
@@ -7609,7 +7522,7 @@ Update_t CmdZeroPageAdd     (int nArgs)
 
 	if (!bAdded)
 		goto _Help;
-	
+
 	return UPDATE_ZERO_PAGE | ConsoleUpdate();
 
 _Help:
@@ -7682,7 +7595,7 @@ Update_t CmdZeroPageList    (int nArgs)
 		_ZeroPage_Error();
 	}
 	else
-	{	
+	{
 		_BWZ_ListAll( g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS );
 	}
 	return ConsoleUpdate();
@@ -7772,7 +7685,7 @@ int FindParam(LPCTSTR pLookupName, Match_e eMatch, int & iParam_, int iParamBegi
 	}
 	else
 	if (eMatch == MATCH_FUZZY)
-	{	
+	{
 #if ALLOW_INPUT_LOWERCASE
 		TCHAR aLookup[ 256 ] = "";
 		for( int i = 0; i < nLen; i++ )
@@ -7799,10 +7712,20 @@ int FindParam(LPCTSTR pLookupName, Match_e eMatch, int & iParam_, int iParamBegi
 					nFound = 1; // Exact match takes precidence over fuzzy matches
 					break;
 				}
-			}		
+			}
 		}
 	}
 	return nFound;
+}
+
+void _strupr(char* s)
+{
+	while (*s)
+	{
+		if ((*s >= 'a')&&(*s <= 'z'))
+			*s = *s+'A'-'a';
+		s++;
+	}
 }
 
 //===========================================================================
@@ -7841,7 +7764,7 @@ int FindCommand( LPCTSTR pName, CmdFuncPtr_t & pFunction_, int * iCommand_ )
 					if (iCommand_)
 						*iCommand_ = iCommand;
 // !_tcscmp
-					if (!_tcsicmp(pName, pCommandName)) // exact match?
+					if (!strcmp(sCommand, pCommandName)) // exact match?
 					{
 	//					if (iCommand_)
 	//						*iCommand_ = iCommand;
@@ -7889,7 +7812,7 @@ void DisplayAmbigiousCommands( int nFound )
 
 			if ((iWidth + nLen) >= (CONSOLE_WIDTH - 1))
 				break;
-				
+
 			sprintf( sText, "%s ", pName );
 			strcat( sPotentialCommands, sText );
 			iWidth += nLen + 1;
@@ -7914,7 +7837,7 @@ bool IsHexDigit( char c )
 
 
 //===========================================================================
-Update_t ExecuteCommand (int nArgs) 
+Update_t ExecuteCommand (int nArgs)
 {
 	Arg_t * pArg     = & g_aArgs[ 0 ];
 	char  * pCommand = & pArg->sArg[0];
@@ -7923,7 +7846,7 @@ Update_t ExecuteCommand (int nArgs)
 	int nFound = FindCommand( pCommand, pFunction );
 
 //	int nCookMask = (1 << NUM_TOKENS) - 1; // ArgToken_e used as bit mask!
-	
+
 	// BUGFIX: commands that are also valid hex addresses
 	// ####:# [#]
 	// #<#.#M
@@ -7945,7 +7868,7 @@ Update_t ExecuteCommand (int nArgs)
 					break;
 				}
 			}
-			
+
 			if (bIsHex)
 			{
 				// Support Apple Monitor commands
@@ -7988,7 +7911,7 @@ Update_t ExecuteCommand (int nArgs)
 					nArgs++;
 					pFunction = g_aCommands[ g_iCommand ].pFunction;
 					nFound = 1;
-				}					
+				}
 				else
 				// address: byte ...
 				if ((pArg+1)->eToken == TOKEN_COLON)
@@ -8040,7 +7963,7 @@ Update_t ExecuteCommand (int nArgs)
 						if( !IsHexDigit( *pChar ) )
 						{
 							break;
-						}	
+						}
 						pChar++;
 					}
 					if( pEnd ) {
@@ -8095,7 +8018,7 @@ Update_t ExecuteCommand (int nArgs)
 	{
 // ASSERT (nFound == g_vPotentialCommands.size() );
 		DisplayAmbigiousCommands( nFound );
-		
+
 		return ConsoleUpdate();
 //		return ConsoleDisplayError( gaPotentialCommands );
 	}
@@ -8130,6 +8053,7 @@ Update_t ExecuteCommand (int nArgs)
 //===========================================================================
 void OutputTraceLine ()
 {
+#ifdef TODO // Not supported for Linux yet
 	DisasmLine_t line;
 	GetDisassemblyLine( regs.pc, line );
 
@@ -8201,6 +8125,7 @@ void OutputTraceLine ()
 			//, sTarget // TODO: Show target?
 		);
 	}
+#endif
 }
 
 //===========================================================================
@@ -8236,13 +8161,13 @@ char * ProfileLinePeek ( int iLine )
 
 	if (iLine < 0)
 		iLine = 0;
-	
+
 	if (! g_nProfileLine)
 		pText = & g_aProfileLine[ iLine ][ 0 ];
 
 	if (iLine <= g_nProfileLine)
 		pText = & g_aProfileLine[ iLine ][ 0 ];
-	
+
 	return pText;
 }
 
@@ -8251,7 +8176,7 @@ char * ProfileLinePush ()
 {
 	if (g_nProfileLine < NUM_PROFILE_LINES)
 	{
-		g_nProfileLine++;	
+		g_nProfileLine++;
 	}
 
 	return ProfileLinePeek( g_nProfileLine  );
@@ -8271,7 +8196,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 	char sSeperator2[ 32 ] = "\t";
 	char sSeperator1[ 32 ] = "\t";
 	char sOpcode [ 8 ]; // 2 chars for opcode in hex, plus quotes on either side
-	char sAddress[MAX_OPMODE_NAME];
+	char sAddress[MAX_OPMODE_NAME+2];
 
 	if (eFormatMode == PROFILE_FORMAT_COMMA)
 	{
@@ -8297,7 +8222,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 	bool bOpmodeGood = true;
 
 	std::vector< ProfileOpcode_t > vProfileOpcode( &g_aProfileOpcodes[0], &g_aProfileOpcodes[ NUM_OPCODES ] );
-	std::vector< ProfileOpmode_t > vProfileOpmode( &g_aProfileOpmodes[0], &g_aProfileOpmodes[ NUM_OPMODES ] ); 
+	std::vector< ProfileOpmode_t > vProfileOpmode( &g_aProfileOpmodes[0], &g_aProfileOpmodes[ NUM_OPMODES ] );
 
 	// sort >
 	std::sort( vProfileOpcode.begin(), vProfileOpcode.end(), ProfileOpcode_t() );
@@ -8336,8 +8261,8 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 		pColorMnemonic = CHC_COMMAND; // green
 		pColorOpmode   = CHC_USAGE  ; // yellow
 		pColorTotal    = CHC_DEFAULT; // white
-	}	
-	
+	}
+
 // Opcode
 	if (bExport) // Export = SeperateColumns
 		sprintf( pText
@@ -8349,7 +8274,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 			, sSeperator7, sSeperator2, sSeperator1 );
 
 	pText = ProfileLinePush();
-			
+
 	for (iOpcode = 0; iOpcode < NUM_OPCODES; ++iOpcode )
 	{
 		ProfileOpcode_t tProfileOpcode = vProfileOpcode.at( iOpcode );
@@ -8363,7 +8288,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 		int       nOpcode = tProfileOpcode.m_iOpcode;
 		int       nOpmode = g_aOpcodes[ nOpcode ].nAddressMode;
 		double    nPercent = (100. * nCount) / nOpcodeTotal;
-		
+
 		char sOpmode[ MAX_OPMODE_FORMAT ];
 		sprintf( sOpmode, g_aOpmodes[ nOpmode ].m_sFormat, 0 );
 
@@ -8375,7 +8300,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 			// Workaround: Prefix with (') apostrophe -- this doesn't break HEX2DEC()
 			// This works properly in Openoffice.
 			// In Excel, this ONLY works IF you TYPE it in!
-			// 
+			//
 			// Solution: Quote the numbers, but you must select the "TEXT" Column data format for the "Opcode" column.
 			// We don't use .csv, since you aren't given the Import Dialog in Excel!
 			sprintf( sOpcode, "\"%02X\"", nOpcode ); // Works with Excel, IF using Import dialog & choose Text. (also works with OpenOffice)
@@ -8384,10 +8309,10 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 		}
 		else // not qouted if dumping to console
 		{
-			sprintf( sOpcode, "%02X", nOpcode ); 
+			sprintf( sOpcode, "%02X", nOpcode );
 			strcpy( sAddress, g_aOpmodes[ nOpmode ].m_sName );
 		}
-		
+
 		// BUG: Yeah 100% is off by 1 char. Profiling only one opcode isn't worth fixing this visual alignment bug.
 		sprintf( pText,
 			"%s%7.4f%s%%" DELIM "%s%9u" DELIM "%s%s" DELIM "%s%s" DELIM "%s%s\n"
@@ -8483,7 +8408,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
 
 	sprintf( pText
 		, "Total:  " DELIM "%s%9u\n"
-		, sSeperator2 
+		, sSeperator2
 		, pColorTotal
 		, static_cast<unsigned int>(nOpmodeTotal) );
 	pText = ProfileLinePush();
@@ -8538,7 +8463,7 @@ bool ProfileSave()
 		char *pText;
 		int   nLine = g_nProfileLine;
 		int   iLine;
-		
+
 		for( iLine = 0; iLine < nLine; iLine++ )
 		{
 			pText = ProfileLinePeek( iLine );
@@ -8547,7 +8472,7 @@ bool ProfileSave()
 				fputs( pText, hFile );
 			}
 		}
-		
+
 		fclose( hFile );
 		bStatus = true;
 	}
@@ -8571,13 +8496,14 @@ static void InitDisasm(void)
 void DebugBegin ()
 {
 	// This is called every time the debugger is entered.
+	g_nAppMode = MODE_DEBUG;
 
-	GetDebuggerMemDC();
+	AllocateDebuggerMemDC();
 
 	g_nAppMode = MODE_DEBUG;
 	FrameRefreshStatus(DRAW_TITLE);
 
-	if (GetMainCpu() == CPU_6502)
+	if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E))
 	{
 		g_aOpcodes = & g_aOpcodes6502[ 0 ];		// Apple ][, ][+, //e
 		g_aOpmodes[ AM_2 ].m_nBytes = 1;
@@ -8684,7 +8610,7 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay/*=false*/)
 			bForceSingleStepNext = false;
 			g_bDebugBreakpointHit = BP_HIT_NONE;	// Don't show 'Stop Reason' msg a 2nd time
 		}
-		else if (GetActiveCpu() != CPU_Z80)
+		else //if (GetActiveCpu() != CPU_Z80)
 		{
 			if (g_hTraceFile)
 				OutputTraceLine();
@@ -8737,11 +8663,11 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay/*=false*/)
 			else if (g_bDebugBreakpointHit & BP_HIT_REG)
 				pszStopReason = TEXT("Register matches value");
 			else if (g_bDebugBreakpointHit & BP_HIT_MEM)
-				sprintf_s(szStopMessage, sizeof(szStopMessage), "Memory access at $%04X", g_uBreakMemoryAddress);
+				snprintf(szStopMessage, sizeof(szStopMessage), "Memory access at $%04X", g_uBreakMemoryAddress);
 			else if (g_bDebugBreakpointHit & BP_HIT_MEMW)
-				sprintf_s(szStopMessage, sizeof(szStopMessage), "Write access at $%04X", g_uBreakMemoryAddress);
+				snprintf(szStopMessage, sizeof(szStopMessage), "Write access at $%04X", g_uBreakMemoryAddress);
 			else if (g_bDebugBreakpointHit & BP_HIT_MEMR)
-				sprintf_s(szStopMessage, sizeof(szStopMessage), "Read access at $%04X", g_uBreakMemoryAddress);
+				snprintf(szStopMessage, sizeof(szStopMessage), "Read access at $%04X", g_uBreakMemoryAddress);
 			else if (g_bDebugBreakpointHit & BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM)
 				pszStopReason = TEXT("PC reads from floating bus or I/O memory");
 			else
@@ -8791,32 +8717,17 @@ void DebugDestroy ()
 {
 	DebugEnd();
 
-	for (int iFont = 0; iFont < NUM_FONTS; iFont++ )
-	{
-		DeleteObject( g_aFontConfig[ iFont ]._hFont );
-		g_aFontConfig[ iFont ]._hFont = NULL;
-	}
-//	DeleteObject(g_hFontDisasm  );
-//	DeleteObject(g_hFontDebugger);
-//	DeleteObject(g_hFontWebDings);
-
 	// TODO: Symbols_Clear()
 	for( int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++ )
 	{
 		_CmdSymbolsClear( (SymbolTable_Index_e) iTable );
 	}
 	// TODO: DataDisassembly_Clear()
-
-	DeleteObject( g_hConsoleBrushFG );
-	DeleteObject( g_hConsoleBrushBG );
-
-	DeleteDC( g_hConsoleFontDC );
-	DeleteObject( g_hConsoleFontBitmap );
 }
 
 
 //===========================================================================
-static void DebugEnd ()
+void DebugEnd ()
 {
 	// Stepping ... calls us when key hit?!  FrameWndProc() ProcessButtonClick() DebugEnd()
 	if (g_bProfiling)
@@ -8825,7 +8736,7 @@ static void DebugEnd ()
 		ProfileFormat( true, PROFILE_FORMAT_TAB ); // Export in Excel-ready text format.
 		ProfileSave();
 	}
-	
+
 	if (g_hTraceFile)
 	{
 		fclose(g_hTraceFile);
@@ -8841,80 +8752,11 @@ static void DebugEnd ()
 
 
 //===========================================================================
-void DebugInitialize ()
+void DebugInitialize()
 {
+	AllocateDebuggerMemDC();
+
 	AssemblerOff(); // update prompt
-
-#if _DEBUG
-	DWORD nError = 0;
-#endif
-
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-	// Must select a bitmap into the temp DC !
-	HDC hTmpDC  = CreateCompatibleDC( FrameGetDC() );
-
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-	g_hConsoleFontDC = CreateCompatibleDC( FrameGetDC() );
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-#if APPLE_FONT_NEW
-	// Pre-scaled bitmap
-	g_hConsoleFontBitmap = LoadBitmap(g_hInstance,TEXT("IDB_DEBUG_FONT_7x8"));
-	SelectObject( g_hConsoleFontDC, g_hConsoleFontBitmap );
-#else
-	// Scale at run-time
-
-	// Black = Transparent
-	// White = Opaque
-	HBITMAP hTmpBitamp = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-	SelectObject( hTmpDC ,hTmpBitamp);
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-	g_hConsoleFontBrush = GetStockBrush( WHITE_BRUSH );
-	SelectObject(g_hConsoleFontDC, g_hConsoleFontBrush );
-
-//	SelectObject(hTmpDC, g_hDebugFontBrush );
-
-#if _DEBUG
-	nError = GetLastError();
-#endif
-
-	g_hConsoleFontBitmap = CreateCompatibleBitmap(
-		hTmpDC, 
-		APPLE_FONT_X_REGIONSIZE/2, APPLE_FONT_Y_REGIONSIZE/2
-	);
-#if _DEBUG
-	nError = GetLastError();
-#endif
-	SelectObject( g_hConsoleFontDC, g_hConsoleFontBitmap );
-
-	StretchBlt(
-		g_hConsoleFontDC,                                     // HDC hdcDest,                        // handle to destination DC
-		0, 0,                                                 // int nXOriginDest, int nYOriginDest, // y-coord of destination upper-left corner
-		APPLE_FONT_X_REGIONSIZE/2, APPLE_FONT_Y_REGIONSIZE/2, //  int nWidthDest,   int nHeightDest,  
-		hTmpDC,                                               // HDC hdcSrc,                         // handle to source DC
-		0, APPLE_FONT_Y_APPLE_80COL,                          // int nXOriginSrc,  int nYOriginSrc,
-		APPLE_FONT_X_REGIONSIZE, APPLE_FONT_Y_REGIONSIZE,     // int nWidthSrc,    int nHeightSrc,
-		SRCCOPY                                               // DWORD dwRop                         // raster operation code
-	);
-
-	DeleteObject( hTmpBitamp );
-	DeleteObject( hTmpDC );
-#endif
 
 	ZeroMemory( g_aConsoleDisplay, sizeof( g_aConsoleDisplay ) ); // CONSOLE_WIDTH * CONSOLE_HEIGHT );
 	ConsoleInputReset();
@@ -8974,73 +8816,26 @@ void DebugInitialize ()
 
 	for (int iFont = 0; iFont < NUM_FONTS; iFont++ )
 	{
-		g_aFontConfig[ iFont ]._hFont = NULL;
-#if USE_APPLE_FONT
 		g_aFontConfig[ iFont ]._nFontHeight   = CONSOLE_FONT_HEIGHT;
 		g_aFontConfig[ iFont ]._nFontWidthAvg = CONSOLE_FONT_WIDTH;
 		g_aFontConfig[ iFont ]._nFontWidthMax = CONSOLE_FONT_WIDTH;
 		g_aFontConfig[ iFont ]._nLineHeight   = CONSOLE_FONT_HEIGHT;
-#endif
 	}
 
-#if OLD_FONT
-	_CmdConfigFont( FONT_INFO          , g_sFontNameInfo   , FIXED_PITCH | FF_MODERN      , g_nFontHeight ); // DEFAULT_CHARSET
-	_CmdConfigFont( FONT_CONSOLE       , g_sFontNameConsole, FIXED_PITCH | FF_MODERN      , g_nFontHeight ); // DEFAULT_CHARSET
-	_CmdConfigFont( FONT_DISASM_DEFAULT, g_sFontNameDisasm , FIXED_PITCH | FF_MODERN      , g_nFontHeight ); // OEM_CHARSET
-	_CmdConfigFont( FONT_DISASM_BRANCH , g_sFontNameBranch , DEFAULT_PITCH | FF_DECORATIVE, g_nFontHeight+3); // DEFAULT_CHARSET
-#endif
 	_UpdateWindowFontHeights( g_aFontConfig[ FONT_DISASM_DEFAULT ]._nFontHeight );
 
-	int iColor;
-	
-	iColor = FG_CONSOLE_OUTPUT;
-	COLORREF nColor = g_aColorPalette[ g_aColorIndex[ iColor ] ];
-	g_anConsoleColor[ CONSOLE_COLOR_x ] = nColor;
+//	int iColor = FG_CONSOLE_OUTPUT;
+//	COLORREF nColor = g_aColorPalette[ g_aColorIndex[ iColor ] ];
+//	g_anConsoleColor[ CONSOLE_COLOR_x ] = nColor;
 
-/*
-	g_hFontDebugger = CreateFont( 
-		  g_nFontHeight // Height
-		, 0 // Width
-		, 0 // Escapement
-		, 0 // Orientatin
-		, FW_MEDIUM // Weight
-		, 0 // Italic
-		, 0 // Underline
-		, 0 // Strike Out
-		, DEFAULT_CHARSET // "OEM_CHARSET"  DEFAULT_CHARSET
-		, OUT_DEFAULT_PRECIS
-		, CLIP_DEFAULT_PRECIS
-		, ANTIALIASED_QUALITY // DEFAULT_QUALITY
-		, FIXED_PITCH | FF_MODERN // HACK: MAGIC #: 4 // FIXED_PITCH
-		, g_sFontNameDefault );
-
-	g_hFontWebDings = CreateFont(
-		  g_nFontHeight // Height
-		, 0 // Width
-		, 0 // Escapement
-		, 0 // Orientatin
-		, FW_MEDIUM // Weight
-		, 0 // Italic
-		, 0 // Underline
-		, 0 // Strike Out
-		, DEFAULT_CHARSET // ANSI_CHARSET  // OEM_CHARSET  DEFAULT_CHARSET
-		, OUT_DEFAULT_PRECIS
-		, CLIP_DEFAULT_PRECIS
-		, ANTIALIASED_QUALITY // DEFAULT_QUALITY
-		, DEFAULT_PITCH | FF_DECORATIVE // FIXED_PITCH | 4 | FF_MODERN
-		, g_sFontNameBranch );
-*/
-//	if (g_hFontWebDings)
-#if !USE_APPLE_FONT
-	if (g_aFontConfig[ FONT_DISASM_BRANCH ]._hFont)
+//	if (g_aFontConfig[ FONT_DISASM_BRANCH ]._hFont)
 	{
 		g_iConfigDisasmBranchType = DISASM_BRANCH_FANCY;
 	}
-	else
-	{
-		g_iConfigDisasmBranchType = DISASM_BRANCH_PLAIN;
-	}	
-#endif
+//	else
+//	{
+//		g_iConfigDisasmBranchType = DISASM_BRANCH_PLAIN;
+//	}
 
 	//	ConsoleInputReset(); already called in DebugInitialize()
 	TCHAR sText[ CONSOLE_WIDTH ];
@@ -9049,7 +8844,7 @@ void DebugInitialize ()
 
 	// Check all summary help to see if it fits within the console
 	for (int iCmd = 0; iCmd < NUM_COMMANDS; iCmd++ )
-	{	
+	{
 		char *pHelp = g_aCommands[ iCmd ].pHelpSummary;
 		if (pHelp)
 		{
@@ -9061,7 +8856,7 @@ void DebugInitialize ()
 			}
 		}
 	}
-	
+
 #if _DEBUG
 //g_bConsoleBufferPaused = true;
 #endif
@@ -9072,9 +8867,12 @@ void DebugInitialize ()
 	if (!doneAutoRun)	// Don't re-run on a VM restart
 	{
 		doneAutoRun = true;
-		std::string pathname = g_sProgramDir + "DebuggerAutoRun.txt";
-		strcpy_s(g_aArgs[1].sArg, MAX_ARG_LEN, pathname.c_str());
+		std::string pathname = g_sProgramDir;
+		pathname += "DebuggerAutoRun.txt";
+		strncpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
+		g_bReportMissingScripts = false;
 		CmdOutputRun(1);
+		g_bReportMissingScripts = true;
 	}
 
 	CmdMOTD(0);
@@ -9117,11 +8915,11 @@ void DebuggerInputConsoleChar( TCHAR ch )
 		if ((! g_nConsoleInputChars) && (! g_bAssemblerInput))
 			return;
 	}
-	
+
 	if (g_nConsoleInputChars > (g_nConsoleDisplayWidth-1))
 		return;
 
-	if ((ch >= CHAR_SPACE) && (ch <= 126)) // HACK MAGIC # 32 -> ' ', # 126 
+	if ((ch >= CHAR_SPACE) && (ch <= 126)) // HACK MAGIC # 32 -> ' ', # 126
 	{
 		if ((ch == TCHAR_QUOTE_DOUBLE) || (ch == TCHAR_QUOTE_SINGLE))
 			g_bConsoleInputQuoted = ! g_bConsoleInputQuoted;
@@ -9131,7 +8929,7 @@ void DebuggerInputConsoleChar( TCHAR ch )
 			// TODO: must fix param matching to ignore case
 #if ALLOW_INPUT_LOWERCASE
 #else
-			ch = (TCHAR)CharUpper((LPTSTR)ch);
+			ch = toupper(ch);
 #endif
 		}
 		ConsoleInputChar( ch );
@@ -9141,14 +8939,15 @@ void DebuggerInputConsoleChar( TCHAR ch )
 		DrawConsoleInput();
 		StretchBltMemToFrameDC();
 	}
+#ifdef TODO  // Linux port missing...
 	else
 	if (ch == 0x16) // HACK: Ctrl-V.  WTF!?
 	{
 		// Support Clipboard (paste)
-		if (!IsClipboardFormatAvailable(CF_TEXT)) 
+		if (!IsClipboardFormatAvailable(CF_TEXT))
 			return;
 
-		if (!OpenClipboard( g_hFrameWindow )) 
+		if (!OpenClipboard( g_hFrameWindow ))
 			return;
 
 		HGLOBAL hClipboard;
@@ -9172,7 +8971,7 @@ void DebuggerInputConsoleChar( TCHAR ch )
 
 					if (c == CHAR_CR)
 					{
-#if WIN32						
+#if WIN32
 						// Eat char
 #endif
 #if MACOSX
@@ -9182,8 +8981,8 @@ void DebuggerInputConsoleChar( TCHAR ch )
 					else
 					if (c == CHAR_LF)
 					{
-#if WIN32						
-						DebuggerProcessCommand( true );	
+#if WIN32
+						DebuggerProcessCommand( true );
 #endif
 #if MACOSX
 						#pragma error( "TODO: Mac port - handle CR/LF")
@@ -9193,7 +8992,7 @@ void DebuggerInputConsoleChar( TCHAR ch )
 					{
 						// If we didn't want verbatim, we could do:
 						// DebuggerInputConsoleChar( c );
-						if ((c >= CHAR_SPACE) && (c <= 126)) // HACK MAGIC # 32 -> ' ', # 126 
+						if ((c >= CHAR_SPACE) && (c <= 126)) // HACK MAGIC # 32 -> ' ', # 126
 							ConsoleInputChar( c );
 					}
 				}
@@ -9204,6 +9003,7 @@ void DebuggerInputConsoleChar( TCHAR ch )
 
 		UpdateDisplay( UPDATE_CONSOLE_DISPLAY );
 	}
+#endif
 }
 
 
@@ -9244,7 +9044,7 @@ Update_t DebuggerProcessCommand ( const bool bEchoConsoleInput )
 	else
 	if (g_nConsoleInputChars)
 	{
-		// BufferedInputPush( 
+		// BufferedInputPush(
 		// Handle Buffered Input
 		// while ( BufferedInputPeek() )
 		int nArgs = ParseInput( g_pConsoleInput );
@@ -9257,7 +9057,7 @@ Update_t DebuggerProcessCommand ( const bool bEchoConsoleInput )
 		{
 			bUpdateDisplay |= ExecuteCommand( nArgs ); // ParseInput());
 		}
-		
+
 		if (!g_bConsoleBufferPaused)
 		{
 			ConsoleInputReset();
@@ -9288,14 +9088,16 @@ void DebuggerProcessKey( int keycode )
 
 	if (DebugVideoMode::Instance().IsSet())
 	{
-		if ((VK_SHIFT == keycode) || (VK_CONTROL == keycode) || (VK_MENU == keycode))
+		if ((SDLK_LSHIFT == keycode) || (SDLK_RSHIFT == keycode) ||
+				(SDLK_LCTRL == keycode) || (SDLK_RCTRL == keycode) ||
+				(SDLK_MENU == keycode))
 		{
 			return;
 		}
 
 		// Normally any key press takes us out of "Viewing Apple Output" g_nAppMode
-		// VK_F# are already processed, so we can't use them to cycle next video g_nAppMode
-//		    if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG))
+		// SDLK_F# are already processed, so we can't use them to cycle next video g_nAppMode
+		//  if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG))
 		DebugVideoMode::Instance().Reset();
 		UpdateDisplay( UPDATE_ALL ); // 1
 		return;
@@ -9303,37 +9105,40 @@ void DebuggerProcessKey( int keycode )
 
 	Update_t bUpdateDisplay = UPDATE_NOTHING;
 
+	if ((keycode >= ' ') && (keycode <= 127))
+		DebuggerInputConsoleChar(keycode);
+
 	// For long output, allow user to read it
 	if (g_nConsoleBuffer)
 	{
-		if ((VK_SPACE == keycode) || (VK_RETURN == keycode) || (VK_TAB == keycode) || (VK_ESCAPE == keycode))
-		{		
+		if ((SDLK_SPACE == keycode) || (SDLK_RETURN == keycode) || (SDLK_TAB == keycode) || (SDLK_ESCAPE == keycode))
+		{
 			int nLines = MIN( g_nConsoleBuffer, g_nConsoleDisplayLines - 1 ); // was -2
-			if (VK_ESCAPE == keycode) // user doesn't want to read all this stu
+			if (SDLK_ESCAPE == keycode) // user doesn't want to read all this stu
 			{
 				nLines = g_nConsoleBuffer;
 			}
 			ConsoleBufferTryUnpause( nLines );
 
-			// don't really need since 'else if (keycode = VK_BACK)' but better safe then sorry
-			keycode = 0; // don't single-step 
+			// don't really need since 'else if (keycode = SDLK_BACK)' but better safe then sorry
+			keycode = 0; // don't single-step
 		}
 
 		bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY | UPDATE_CONSOLE_INPUT;
 		ConsoleDisplayPause();
 	}
 	else
- 	// If have console input, don't invoke curmovement
+	// If have console input, don't invoke curmovement
 	// TODO: Probably should disable all "movement" keys to map them to line editing g_nAppMode
- 	if ((keycode == VK_SPACE) && g_nConsoleInputChars)
+	if ((keycode == SDLK_SPACE) && g_nConsoleInputChars)
 		return;
-	else if (keycode == VK_ESCAPE)
+	else if (keycode == SDLK_ESCAPE)
 	{
 		g_bConsoleInputQuoted = false;
 		ConsoleInputReset();
 		bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
 	}
-	else if (keycode == VK_BACK)
+	else if (keycode == SDLK_BACKSPACE)
 	{
 		// Note: Checks prev char if QUTOE - SINGLE or DOUBLE
 //		ConsoleUpdateCursor( CHAR_SPACE );
@@ -9343,7 +9148,7 @@ void DebuggerProcessKey( int keycode )
 		}
 		bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
 	}
-	else if (keycode == VK_RETURN)
+	else if (keycode == SDLK_RETURN)
 	{
 //		ConsoleUpdateCursor( 0 );
 
@@ -9368,10 +9173,9 @@ void DebuggerProcessKey( int keycode )
 			// BUGFIX: main disassembly listing doesn't get updated in full screen console
 			//bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY;
 			bUpdateDisplay |= UPDATE_ALL;
-		}		
+		}
 	}
-	else if (( keycode == VK_OEM_3 ) ||	// US: Tilde ~ (key to the immediate left of numeral 1)
-			 ( keycode == VK_OEM_8 ))	// UK: Logical NOT ¬ (key to the immediate left of numeral 1)
+	else if (keycode == SDLK_CARET) // US: Tilde ~ (key to the immediate left of numeral 1)
 	{
 		if (KeybGetCtrlStatus())
 		{
@@ -9380,16 +9184,16 @@ void DebuggerProcessKey( int keycode )
 		}
 		else
 		{
-			g_nConsoleInputSkip = 0; // VK_OEM_3;
+			g_nConsoleInputSkip = 0; // SDLK_OEM_3;
 			DebuggerInputConsoleChar( '~' );
 		}
-		g_nConsoleInputSkip = '~'; // VK_OEM_3;
+		g_nConsoleInputSkip = '~'; // SDLK_OEM_3;
 	}
 	else
-	{	
+	{
 		switch (keycode)
 		{
-			case VK_TAB:
+			case SDLK_TAB:
 			{
 				if (g_nConsoleInputChars)
 				{
@@ -9407,7 +9211,7 @@ void DebuggerProcessKey( int keycode )
 					bUpdateDisplay |= CmdCursorJumpPC( CURSOR_ALIGN_CENTER );
 				break;
 			}
-			case VK_SPACE:
+			case SDLK_SPACE:
 				if (g_bAssemblerInput)
 				{
 //					if (g_nConsoleInputChars)
@@ -9417,7 +9221,7 @@ void DebuggerProcessKey( int keycode )
 //					}
 				}
 				else
-				{				
+				{
 					if (KeybGetShiftStatus())
 						bUpdateDisplay |= CmdStepOut(0);
 					else
@@ -9428,7 +9232,7 @@ void DebuggerProcessKey( int keycode )
 				}
 				break;
 
-			case VK_HOME:
+			case SDLK_HOME:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					ConsoleScrollHome();
@@ -9458,7 +9262,7 @@ void DebuggerProcessKey( int keycode )
 				bUpdateDisplay |= UPDATE_DISASM;
 				break;
 
-			case VK_END:
+			case SDLK_END:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					ConsoleScrollEnd();
@@ -9488,7 +9292,7 @@ void DebuggerProcessKey( int keycode )
 				bUpdateDisplay |= UPDATE_DISASM;
 				break;
 
-			case VK_PRIOR: // VK_PAGE_UP
+			case SDLK_PAGEUP:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					bUpdateDisplay |= ConsoleScrollPageUp();
@@ -9513,12 +9317,12 @@ void DebuggerProcessKey( int keycode )
 					else
 					if (KeybGetCtrlStatus())
 						bUpdateDisplay |= CmdCursorPageUp4K(0);
-					else		
+					else
 						bUpdateDisplay |= CmdCursorPageUp(0);
 				}
 				break;
 
-			case VK_NEXT: // VK_PAGE_DN
+			case SDLK_PAGEDOWN:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					bUpdateDisplay |= ConsoleScrollPageDn();
@@ -9543,12 +9347,12 @@ void DebuggerProcessKey( int keycode )
 					else
 					if (KeybGetCtrlStatus())
 						bUpdateDisplay |= CmdCursorPageDown4K(0);
-					else		
+					else
 						bUpdateDisplay |= CmdCursorPageDown(0);
 				}
 				break;
 
-			case VK_UP:
+			case SDLK_UP:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					bUpdateDisplay |= ConsoleScrollUp( 1 );
@@ -9577,7 +9381,7 @@ void DebuggerProcessKey( int keycode )
 				}
 				break;
 
-			case VK_DOWN:
+			case SDLK_DOWN:
 				if (g_iWindowThis == WINDOW_CONSOLE)
 				{
 					bUpdateDisplay |= ConsoleScrollDn( 1 );
@@ -9608,9 +9412,9 @@ void DebuggerProcessKey( int keycode )
 				}
 				break;
 
-			case VK_RIGHT:
+			case SDLK_RIGHT:
 				if (KeybGetCtrlStatus())
-					bUpdateDisplay |= CmdCursorSetPC( g_nDisasmCurAddress );		
+					bUpdateDisplay |= CmdCursorSetPC( g_nDisasmCurAddress );
 				else
 				if (KeybGetShiftStatus())
 					bUpdateDisplay |= CmdCursorJumpPC( CURSOR_ALIGN_TOP );
@@ -9621,7 +9425,7 @@ void DebuggerProcessKey( int keycode )
 					bUpdateDisplay |= CmdCursorFollowTarget( CURSOR_ALIGN_TOP );
 				break;
 
-			case VK_LEFT:
+			case SDLK_LEFT:
 				if (KeybGetShiftStatus())
 					bUpdateDisplay |= CmdCursorJumpRetAddr( CURSOR_ALIGN_TOP ); // Jump to Caller
 				else
@@ -9697,7 +9501,7 @@ void DebuggerCursorUpdate()
 	if (((nNow - nBeg) >= nUpdateInternal_ms) && !DebugVideoMode::Instance().IsSet())
 	{
 		nBeg = nNow;
-		
+
 		DebuggerCursorNext();
 
 		DrawConsoleCursor();
@@ -9705,7 +9509,7 @@ void DebuggerCursorUpdate()
 	}
 	else
 	{
-		Sleep(1);		// Stop process hogging CPU
+		usleep(1000);   // Stop process hogging CPU
 	}
 }
 
@@ -9719,14 +9523,6 @@ void DebuggerCursorNext()
 	else
 		ConsoleUpdateCursor( 0 ); // show char under cursor
 }
-
-
-//===========================================================================
-//char DebuggerCursorGet()
-//{
-//	return g_aInputCursor[ g_iInputCursor ];
-//}
-
 
 //===========================================================================
 void DebuggerMouseClick( int x, int y )
@@ -9742,18 +9538,18 @@ void DebuggerMouseClick( int x, int y )
 
 	// GH#462 disasm click #
 	if (iAltCtrlShift != g_bConfigDisasmClick)
+	{
 		return;
+	}
 
-	int nFontWidth  = g_aFontConfig[ FONT_DISASM_DEFAULT ]._nFontWidthAvg * GetViewportScale();
-	int nFontHeight = g_aFontConfig[ FONT_DISASM_DEFAULT ]._nLineHeight * GetViewportScale();
+	float scalex, scaley;
+	GetDebugViewPortScale(&scalex, &scaley);
+	int nFontWidth  = g_aFontConfig[ FONT_DISASM_DEFAULT ]._nFontWidthAvg / scalex;
+	int nFontHeight = g_aFontConfig[ FONT_DISASM_DEFAULT ]._nLineHeight / scaley;
 
 	// do picking
-
-	const int nOffsetX = IsFullScreen() ? GetFullScreenOffsetX() : Get3DBorderWidth();
-	const int nOffsetY = IsFullScreen() ? GetFullScreenOffsetY() : Get3DBorderHeight();
-
-	const int nOffsetInScreenX = x - nOffsetX;
-	const int nOffsetInScreenY = y - nOffsetY;
+	const int nOffsetInScreenX = x;
+	const int nOffsetInScreenY = y;
 
 	if (nOffsetInScreenX < 0 || nOffsetInScreenY < 0)
 		return;
@@ -9775,7 +9571,7 @@ void DebuggerMouseClick( int x, int y )
 		if( g_bConfigDisasmAddressView )
 		{
 			// HACK: hard-coded from DrawDisassemblyLine::aTabs[] !!!
-			if( cx < 4) // #### 
+			if( cx < 4) // ####
 			{
 				g_bConfigDisasmAddressView ^= true;
 				DebugDisplay();
@@ -9792,7 +9588,7 @@ void DebuggerMouseClick( int x, int y )
 				g_bConfigDisasmOpcodesView ^= true;
 				DebugDisplay();
 			}
-			
+
 		} else
 		{
 			if( cx == 0 ) //   :

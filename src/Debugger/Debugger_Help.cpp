@@ -26,13 +26,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include <cstdarg>
 
 #include "Debug.h"
+#include "Debugger_Console.h"
+#include "Debugger_Parser.h"
+#include "Debugger_Help.h"
 
-#include "../Applewin.h"
+#include "AppleWin.h"
 
 
 #define DEBUG_COLOR_CONSOLE 0
@@ -60,7 +63,6 @@ bool TestStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
 	int nLenDst = _tcslen( pDst );
 	int nLenSrc = _tcslen( pSrc );
 	int nSpcDst = nDstSize - nLenDst;
-	int nChars  = MIN( nLenSrc, nSpcDst );
 
 	bool bOverflow = (nSpcDst <= nLenSrc); // 2.5.6.25 BUGFIX
 	if (bOverflow)
@@ -128,7 +130,7 @@ Update_t Help_Arg_1( int iCommandHelp )
 {
 	_Arg_1( iCommandHelp );
 
-	wsprintf( g_aArgs[ 1 ].sArg, "%s", g_aCommands[ iCommandHelp ].m_sName ); // .3 Fixed: Help_Arg_1() now copies command name into arg.name
+	sprintf( g_aArgs[ 1 ].sArg, "%s", g_aCommands[ iCommandHelp ].m_sName ); // .3 Fixed: Help_Arg_1() now copies command name into arg.name
 
 	return CmdHelpSpecific( 1 );
 }
@@ -390,7 +392,6 @@ bool Colorize( char * pDst, const char * pSrc )
 	const char sExamples[] = "Examples:";
 	const int  nExamples = sizeof( sExamples ) - 1;
 
-	int nLen = 0;
 	while (*pSrc)
 	{
 		if (strncmp( sUsage, pSrc, nUsage) == 0)
@@ -496,7 +497,7 @@ inline bool ConsoleColorizePrintVa( char* colorizeBuf, size_t colorizeBufSz,
                                     char* buf, size_t bufsz,
                                     const char* format, va_list va )
 {
-   vsnprintf_s(buf, bufsz, _TRUNCATE, format, va);
+   vsnprintf(buf, bufsz, format, va);
    return ConsoleColorizePrint(colorizeBuf, colorizeBufSz, buf);
 }
 
@@ -543,7 +544,7 @@ Update_t CmdMOTD( int nArgs )	// Message Of The Day
 	ConsolePrint( "`2`A" );
 #endif
 
-	ConsolePrintFormat( sText, "`9`A`7 Apple `9][ ][+ //e `7Emulator for Windows (TM) `9`@" );
+	ConsolePrintFormat( sText, "`9`A`7 Apple `9][ ][+ //e `7Emulator for Linux `9`@" );
 
 	CmdVersion(0);
 	CmdSymbols(0);
@@ -771,51 +772,51 @@ Update_t CmdHelpSpecific (int nArgs)
 
 			// HACK: Major kludge to display category!!!
 			if (iCmd <= CMD_UNASSEMBLE)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CPU ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CPU ].m_sName );
 			else
 			if (iCmd <= CMD_BOOKMARK_SAVE)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BOOKMARKS ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BOOKMARKS ].m_sName );
 			else
 			if (iCmd <= CMD_BREAKPOINT_SAVE)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BREAKPOINTS ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BREAKPOINTS ].m_sName );
 			else
 			if (iCmd <= CMD_CONFIG_SET_DEBUG_DIR)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CONFIG ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CONFIG ].m_sName );
 			else
 			if (iCmd <= CMD_CURSOR_PAGE_DOWN_4K)
-				wsprintf( sCategory, "Scrolling" );
+				sprintf( sCategory, "Scrolling" );
 			else
 			if (iCmd <= CMD_FLAG_SET_N)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_FLAGS ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_FLAGS ].m_sName );
 			else
 			if (iCmd <= CMD_MOTD)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_HELP ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_HELP ].m_sName );
 			else
 			if (iCmd <= CMD_MEMORY_FILL)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_MEMORY ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_MEMORY ].m_sName );
 			else
 			if (iCmd <= CMD_OUTPUT_RUN)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_OUTPUT ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_OUTPUT ].m_sName );
 			else
 			if (iCmd <= CMD_SYNC)
-				wsprintf( sCategory, "Source" );
+				sprintf( sCategory, "Source" );
 			else
 			if (iCmd <= CMD_SYMBOLS_LIST)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_SYMBOLS ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_SYMBOLS ].m_sName );
 			else
 			if (iCmd <= CMD_VIEW_DHGR2)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_VIEW ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_VIEW ].m_sName );
 			else
 			if (iCmd <= CMD_WATCH_SAVE)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WATCHES ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WATCHES ].m_sName );
 			else
 			if (iCmd <= CMD_WINDOW_OUTPUT)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WINDOW ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WINDOW ].m_sName );
 			else
 			if (iCmd <= CMD_ZEROPAGE_POINTER_SAVE)
-				wsprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_ZEROPAGE ].m_sName );
+				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_ZEROPAGE ].m_sName );
 			else
-				wsprintf( sCategory, "Unknown!" );
+				sprintf( sCategory, "Unknown!" );
 
 			ConsolePrintFormat( sText, "%sCategory%s: %s%s"
 				, CHC_USAGE
@@ -1524,10 +1525,6 @@ Update_t CmdHelpList (int nArgs)
 
 	char sText[ nBuf ] = "";
 	
-	int nLenLine = strlen( sText );
-	int y = 0;
-	int nLinesScrolled = 0;
-
 	int nMaxWidth = g_nConsoleDisplayWidth - 1;
 	int iCommand;
 
@@ -1541,7 +1538,6 @@ Update_t CmdHelpList (int nArgs)
 		}
 		std::sort( g_vSortedCommands.begin(), g_vSortedCommands.end(), commands_functor_compare() );
 	}
-	int nCommands = g_vSortedCommands.size();
 
 	int nLen = 0;
 //		Colorize( sText, "Commands: " );

@@ -2,6 +2,7 @@
 AppleWin : An Apple //e emulator for Windows
 
 Copyright (C) 2009-2010, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2020, Thorsten Brehm
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,15 +24,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2009 - 2010 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Debug.h"
-
+#include "Debugger_Color.h"
 
 // Color ______________________________________________________________________
 
 	int g_iColorScheme = SCHEME_COLOR;
 
+#ifdef _WIN32
 	// Used when the colors are reset
 	COLORREF g_aColorPalette[ NUM_PALETTE ] =
 	{
@@ -64,6 +66,39 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		RGB(  0,  0,  0),
 		RGB(  0,  0,  0),
 	};
+#else
+	int g_aColorPalette[ NUM_PALETTE ] =
+	{
+		BLACK,
+		// NOTE: See _SetupColorRamp() if you want to programmatically set/change
+		RED, RED, RED, DARK_RED, DARK_RED, DARK_RED, DARK_RED, DARK_RED,  // 001 // Red
+		GREEN, GREEN, MONOCHROME_GREEN, MONOCHROME_GREEN, DARK_GREEN, DARKER_GREEN, DARKER_GREEN, DARKEST_GREEN,  // 010 // Green
+		YELLOW, YELLOW, YELLOW, DARK_YELLOW, DARK_YELLOW, DARKER_YELLOW, DARKER_YELLOW, DARKEST_YELLOW,  // 011 // Yellow
+		BLUE, BLUE, BLUE, BLUE, DARK_BLUE, DARK_BLUE, DARKER_BLUE, DARKER_BLUE,  // 100 // Blue
+		MAGENTA, MAGENTA, MAGENTA, MAGENTA, HGR_MAGENTA, HGR_MAGENTA, HGR_MAGENTA, HGR_MAGENTA,  // 101 // Magenta
+		CYAN, CYAN, CYAN, CYAN, DARK_CYAN, DARK_CYAN, DARKER_CYAN, DARKEST_CYAN,  // 110 // Cyan
+		WHITE, LIGHTEST_GRAY, LIGHT_GRAY, MEDIUM_GRAY, HGR_GREY1, HGR_GREY1, HGR_GREY1, HGR_GREY1,  // 111 // White/Gray
+
+		// Custom Colors
+		LIGHT_SKY_BLUE,  // Light  Sky Blue // Used for console FG
+		DARKER_SKY_BLUE, // Darker Sky Blue
+		DEEP_SKY_BLUE,   // Deep   Sky Blue
+		ORANGE,          // Orange (Full)
+		HALF_ORANGE,     // Orange (Half)
+		0,
+		0,
+		0,
+
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0
+	};
+#endif
 
 	// Index into "Palette" of colors
 	int g_aColorIndex[ NUM_DEBUG_COLORS ] =
@@ -137,17 +172,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	};
 
 
-static COLORREF g_aColors[ NUM_COLOR_SCHEMES ][ NUM_DEBUG_COLORS ];
-
+//static COLORREF g_aColors[ NUM_COLOR_SCHEMES ][ NUM_DEBUG_COLORS ];
 
 //===========================================================================
 COLORREF DebuggerGetColor( int iColor )
 {
-	COLORREF nColor = RGB(0,255,255); // 0xFFFF00; // Hot Pink! -- so we notice errors. Not that there is anything wrong with pink...
+	COLORREF nColor = 1;// 0xFFFF00; // Hot Pink! -- so we notice errors. Not that there is anything wrong with pink...
 
 	if ((g_iColorScheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
 	{
-		nColor = g_aColors[ g_iColorScheme ][ iColor ];
+		//nColor = g_aColors[ g_iColorScheme ][ iColor ];
+		nColor = g_aColorPalette[g_aColorIndex[iColor]];
 	}
 
 	return nColor;
@@ -156,6 +191,7 @@ COLORREF DebuggerGetColor( int iColor )
 
 bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColor )
 {
+#ifdef _WIN32
 	bool bStatus = false;
 	if ((g_iColorScheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
 	{
@@ -163,7 +199,7 @@ bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColo
 		bStatus = true;
 	}
 
-	// Propogate to console since it has its own copy of colors
+	// Propagate to console since it has its own copy of colors
 	if (iColor == FG_CONSOLE_OUTPUT)
 	{
 		COLORREF nConsole = DebuggerGetColor( FG_CONSOLE_OUTPUT );
@@ -171,6 +207,10 @@ bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColo
 	}
 	
 	return bStatus;
+#else
+	// color schemes ignored for Linux
+	return true;
+#endif
 }
 
 
@@ -222,6 +262,7 @@ void ConfigColorsReset(void)
 	//		_SetupColorRamp( iPrimary, iColor );
 	//	}
 
+#ifdef TODO // No color schemes for Linux yet
 	// Setup default colors
 	int iColor;
 	for (iColor = 0; iColor < NUM_DEBUG_COLORS; iColor++)
@@ -251,4 +292,5 @@ void ConfigColorsReset(void)
 		DebuggerSetColor(SCHEME_MONO, iColor, nMono);
 		DebuggerSetColor(SCHEME_BW, iColor, nBW);
 	}
+#endif
 }

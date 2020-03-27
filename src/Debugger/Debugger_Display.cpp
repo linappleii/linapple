@@ -5,6 +5,7 @@ Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
 Copyright (C) 2002-2005, Tom Charlesworth
 Copyright (C) 2006-2014, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2020, Thorsten Brehm
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,19 +27,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Debug.h"
+#include "Debugger_Console.h"
 #include "Debugger_Display.h"
+#include "Debugger_Color.h"
+#include "Debugger_Assembler.h"
+#include "Debugger_Parser.h"
+#include "Util_Text.h"
 
-#include "../Applewin.h"
-#include "../CPU.h"
-#include "../Frame.h"
-#include "../LanguageCard.h"
-#include "../Memory.h"
-#include "../Mockingboard.h"
-#include "../NTSC.h"
-#include "../Video.h"
+#include "AppleWin.h"
+#include "CPU.h"
+#include "Frame.h"
+//#include "LanguageCard.h"
+#include "Memory.h"
+#include "Mockingboard.h"
+//#include "NTSC.h"
+#include "Video.h"
+#include <SDL_image.h>
+#include "../res/charset40.xpm" // US/default
 
 // NEW UI debugging - force display ALL meta-info (regs, stack, bp, watches, zp) for debugging purposes
 #define DEBUG_FORCE_DISPLAY 0
@@ -76,33 +84,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	WindowSplit_t *g_pDisplayWindow = 0; // HACK
 // HACK
 
-// Display - Win32
-	static HDC g_hDebuggerMemDC = NULL;
-	static HBITMAP g_hDebuggerMemBM = NULL;
-
-	HDC     g_hConsoleFontDC     = NULL;
-	HBRUSH  g_hConsoleFontBrush  = NULL;
-	HBITMAP g_hConsoleFontBitmap = NULL;
-
-	HBRUSH g_hConsoleBrushFG = NULL;
-	HBRUSH g_hConsoleBrushBG = NULL;
-
-	// NOTE: Keep in sync ConsoleColors_e g_anConsoleColor !
-	COLORREF g_anConsoleColor[ NUM_CONSOLE_COLORS ] =
-	{                         // # <Bright Blue Green Red>
-		RGB(   0,   0,   0 ), // 0 0000 K
-		RGB( 255,  32,  32 ), // 1 1001 R
-		RGB(   0, 255,   0 ), // 2 1010 G
-		RGB( 255, 255,   0 ), // 3 1011 Y
-		RGB(  64,  64, 255 ), // 4 1100 B
-		RGB( 255,   0, 255 ), // 5 1101 M Purple/Magenta now used for warnings.
-		RGB(   0, 255, 255 ), // 6 1110 C
-		RGB( 255, 255, 255 ), // 7 1111 W
-		RGB( 255, 128,   0 ), // 8 0011 Orange
-		RGB( 128, 128, 128 ), // 9 0111 Grey
-
-		RGB(  80, 192, 255 )  // Lite Blue
-	};
+	// Display
+	SDL_Surface *g_hDebugScreen;
+	SDL_Surface *g_hDebugCharset;
+	int g_hConsoleBrushFG = 0;
+	int g_hConsoleBrushBG = 0;
 
 // Disassembly
 	/*
@@ -191,13 +177,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		int MAX_DISPLAY_MEMORY_LINES_2    = 4; // 4 // 2
 		int g_nDisplayMemoryLines;
 
-	// Height
-//		const int DISPLAY_LINES  =  24; // FIXME: Should be pixels
-		// 304 = bottom of disassembly
-		// 368 = bottom console
-		// 384 = 16 * 24 very bottom
-//		const int DEFAULT_HEIGHT = 16;
-
 		VideoScannerDisplayInfo g_videoScannerDisplayInfo;
 
 static char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iView,
@@ -224,376 +203,101 @@ static char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iV
 
 	void DrawRegister(int line, LPCTSTR name, int bytes, WORD value, int iSource = 0);
 
+#define  SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
+{ \
+  srcrect.x = SRC_X; \
+  srcrect.y = SRC_Y; \
+  srcrect.w = SRC_W; \
+  srcrect.h = SRC_H; \
+  dstrect.x = DST_X; \
+  dstrect.y = DST_Y; \
+  dstrect.w = DST_W; \
+  dstrect.h = DST_H; \
+  SDL_SoftStretch(SRC, &srcrect, DST, &dstrect);\
+}
 
-// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/gdi/pantdraw_6n77.asp
-enum WinROP4_e
-{
-	DSna    = 0x00220326,
-	DPSao   = 0x00EA02E9,
-};
-
-/*
-	Reverse Polish Notation
-		a 	Bitwise AND
-		n 	Bitwise NOT (inverse)
-		o 	Bitwise OR
-		x 	Bitwise exclusive OR (XOR)
-
-	Pen(P)         	1 	1 	0 	0 	Decimal Result
-	Dest(D)        	1 	0 	1 	0     	Boolean Operation
-
-	R2_BLACK       	0 	0 	0 	0 	0 	0
-	R2_NOTMERGEPEN 	0 	0 	0 	1 	1 	~(P | D)
-	R2_MASKNOTPEN  	0 	0 	1 	0 	2 	~P & D
-	R2_NOTCOPYPEN 	0 	0 	1 	1 	3 	~P
-	R2_MASKPENNOT 	0 	1 	0 	0 	4 	P & ~D
-	R2_NOT         	0 	1 	0 	1 	5 	~D
-	R2_XORPEN      	0 	1 	1 	0 	6 	P ^ D
-	R2_NOTMASKPEN  	0 	1 	1 	1 	7 	~(P & D)
-	R2_MASKPEN     	1 	0 	0 	0 	8 	P & D
-	R2_NOTXORPEN   	1 	0 	0 	1 	9 	~(P ^ D)
-	R2_NOPR2_NOP   	1 	0 	1 	0 	10 	D
-	R2_MERGENOTPEN 	1 	0 	1 	1 	11 	~P | D
-	R2_COPYPEN     	1 	1 	0 	0 	12 	P (default)
-	R2_MERGEPENNOT 	1 	1 	0 	1 	13 	P | ~D
-	R2_MERGEPEN    	1 	1 	1 	0 	14 	P | D
-	R2_WHITE       	1 	1 	1 	1 	15 	1 
-*/
-
-#if DEBUG_FONT_ROP
-const DWORD aROP4[ 256 ] =
-{
-	0x00000042, // BLACKNESS
-	0x00010289, // DPSoon 	
-	0x00020C89, // DPSona 	
-	0x000300AA, // PSon 	
-	0x00040C88, // SDPona 	
-	0x000500A9, // DPon 	
-	0x00060865, // PDSxnon 	
-	0x000702C5, // PDSaon 	
-	0x00080F08, // SDPnaa 	
-	0x00090245, // PDSxon 	
-	0x000A0329, // DPna 	
-	0x000B0B2A, // PSDnaon 	
-	0x000C0324, // SPna 	
-	0x000D0B25, // PDSnaon 	
-	0x000E08A5, // PDSonon 	
-	0x000F0001, // Pn 	
-	0x00100C85, // PDSona 	
-	0x001100A6, // DSon 	NOTSRCERASE
-	0x00120868, // SDPxnon 	
-	0x001302C8, // SDPaon 	
-	0x00140869, // DPSxnon 	
-	0x001502C9, // DPSaon 	
-	0x00165CCA, // PSDPSanaxx 	// 16
-	0x00171D54, // SSPxDSxaxn 	
-	0x00180D59, // SPxPDxa 	
-	0x00191CC8, // SDPSanaxn 	
-	0x001A06C5, // PDSPaox 	
-	0x001B0768, // SDPSxaxn 	
-	0x001C06CA, // PSDPaox 	
-	0x001D0766, // DSPDxaxn 	
-	0x001E01A5, // PDSox 	
-	0x001F0385, // PDSoan 	
-	0x00200F09, // DPSnaa 	
-	0x00210248, // SDPxon 	
-	0x00220326, // DSna 	
-	0x00230B24, // SPDnaon 	
-	0x00240D55, // SPxDSxa 	
-	0x00251CC5, // PDSPanaxn 	
-	0x002606C8, // SDPSaox 	
-	0x00271868, // SDPSxnox 	
-	0x00280369, // DPSxa 	
-	0x002916CA, // PSDPSaoxxn 	
-	0x002A0CC9, // DPSana 	
-	0x002B1D58, // SSPxPDxaxn 	
-	0x002C0784, // SPDSoax 	
-	0x002D060A, // PSDnox 	
-	0x002E064A, // PSDPxox 	
-	0x002F0E2A, // PSDnoan 	
-	0x0030032A, // PSna 	
-	0x00310B28, // SDPnaon 	
-	0x00320688, // SDPSoox 	
-	0x00330008, // Sn 	// 33 NOTSRCCOPY
-	0x003406C4, // SPDSaox 	
-	0x00351864, // SPDSxnox 	
-	0x003601A8, // SDPox 	
-	0x00370388, // SDPoan 	
-	0x0038078A, // PSDPoax 	
-	0x00390604, // SPDnox 	
-	0x003A0644, // SPDSxox 	
-	0x003B0E24, // SPDnoan 	
-	0x003C004A, // PSx 	
-	0x003D18A4, // SPDSonox 	
-	0x003E1B24, // SPDSnaox 	
-	0x003F00EA, // PSan 	
-	0x00400F0A, // PSDnaa 	
-	0x00410249, // DPSxon 	
-	0x00420D5D, // SDxPDxa 	
-	0x00431CC4, // SPDSanaxn 	
-	0x00440328, // SDna 	// 44 SRCERASE
-	0x00450B29, // DPSnaon 	
-	0x004606C6, // DSPDaox 	
-	0x0047076A, // PSDPxaxn 	
-	0x00480368, // SDPxa 	
-	0x004916C5, // PDSPDaoxxn 	
-	0x004A0789, // DPSDoax 	
-	0x004B0605, // PDSnox 	
-	0x004C0CC8, // SDPana 	
-	0x004D1954, // SSPxDSxoxn 	
-	0x004E0645, // PDSPxox 	
-	0x004F0E25, // PDSnoan 	
-	0x00500325, // PDna 	
-	0x00510B26, // DSPnaon 	
-	0x005206C9, // DPSDaox 	
-	0x00530764, // SPDSxaxn 	
-	0x005408A9, // DPSonon 	
-	0x00550009, // Dn 	// 55 DSTINVERT
-	0x005601A9, // DPSox 	
-	0x00570389, // DPSoan 	
-	0x00580785, // PDSPoax 	
-	0x00590609, // DPSnox 	
-	0x005A0049, // DPx 	// 5A PATINVERT
-	0x005B18A9, // DPSDonox 	
-	0x005C0649, // DPSDxox 	
-	0x005D0E29, // DPSnoan 	
-	0x005E1B29, // DPSDnaox 	
-	0x005F00E9, // DPan 	
-	0x00600365, // PDSxa 	
-	0x006116C6, // DSPDSaoxxn 	
-	0x00620786, // DSPDoax 	
-	0x00630608, // SDPnox 	
-	0x00640788, // SDPSoax 	
-	0x00650606, // DSPnox 	
-	0x00660046, // DSx 	// 66 SRCINVERT
-	0x006718A8, // SDPSonox 	
-	0x006858A6, // DSPDSonoxxn 	
-	0x00690145, // PDSxxn 	
-	0x006A01E9, // DPSax 	
-	0x006B178A, // PSDPSoaxxn 	
-	0x006C01E8, // SDPax 	
-	0x006D1785, // PDSPDoaxxn 	
-	0x006E1E28, // SDPSnoax 	
-	0x006F0C65, // PDSxnan 	
-	0x00700CC5, // PDSana 	
-	0x00711D5C, // SSDxPDxaxn 	
-	0x00720648, // SDPSxox 	
-	0x00730E28, // SDPnoan 	
-	0x00740646, // DSPDxox 	
-	0x00750E26, // DSPnoan 	
-	0x00761B28, // SDPSnaox 	
-	0x007700E6, // DSan 	
-	0x007801E5, // PDSax 	
-	0x00791786, // DSPDSoaxxn 	
-	0x007A1E29, // DPSDnoax 	
-	0x007B0C68, // SDPxnan 	
-	0x007C1E24, // SPDSnoax 	
-	0x007D0C69, // DPSxnan 	
-	0x007E0955, // SPxDSxo 	
-	0x007F03C9, // DPSaan 	
-	0x008003E9, // DPSaa 	
-	0x00810975, // SPxDSxon 	
-	0x00820C49, // DPSxna 	
-	0x00831E04, // SPDSnoaxn 	
-	0x00840C48, // SDPxna 	
-	0x00851E05, // PDSPnoaxn 	
-	0x008617A6, // DSPDSoaxx 	
-	0x008701C5, // PDSaxn 	
-	0x008800C6, // DSa 	// 88 SRCAND
-	0x00891B08, // SDPSnaoxn 	
-	0x008A0E06, // DSPnoa 	
-	0x008B0666, // DSPDxoxn 	
-	0x008C0E08, // SDPnoa 	
-	0x008D0668, // SDPSxoxn 	
-	0x008E1D7C, // SSDxPDxax 	
-	0x008F0CE5, // PDSanan 	
-	0x00900C45, // PDSxna 	
-	0x00911E08, // SDPSnoaxn 	
-	0x009217A9, // DPSDPoaxx 	
-	0x009301C4, // SPDaxn 	
-	0x009417AA, // PSDPSoaxx 	
-	0x009501C9, // DPSaxn 	
-	0x00960169, // DPSxx 	
-	0x0097588A, // PSDPSonoxx 	
-	0x00981888, // SDPSonoxn 	
-	0x00990066, // DSxn 	
-	0x009A0709, // DPSnax 	
-	0x009B07A8, // SDPSoaxn 	
-	0x009C0704, // SPDnax 	
-	0x009D07A6, // DSPDoaxn 	
-	0x009E16E6, // DSPDSaoxx 	
-	0x009F0345, // PDSxan 	
-	0x00A000C9, // DPa 	
-	0x00A11B05, // PDSPnaoxn 	
-	0x00A20E09, // DPSnoa 	
-	0x00A30669, // DPSDxoxn 	
-	0x00A41885, // PDSPonoxn 	
-	0x00A50065, // PDxn 	
-	0x00A60706, // DSPnax 	
-	0x00A707A5, // PDSPoaxn 	
-	0x00A803A9, // DPSoa 	
-	0x00A90189, // DPSoxn 	
-	0x00AA0029, // D 	// AA DSTCOPY
-	0x00AB0889, // DPSono 	
-	0x00AC0744, // SPDSxax 	
-	0x00AD06E9, // DPSDaoxn 	
-	0x00AE0B06, // DSPnao 	
-	0x00AF0229, // DPno 	
-	0x00B00E05, // PDSnoa 	
-	0x00B10665, // PDSPxoxn 	
-	0x00B21974, // SSPxDSxox 	
-	0x00B30CE8, // SDPanan 	
-	0x00B4070A, // PSDnax 	
-	0x00B507A9, // DPSDoaxn 	
-	0x00B616E9, // DPSDPaoxx 	
-	0x00B70348, // SDPxan 	
-	0x00B8074A, // PSDPxax 	
-	0x00B906E6, // DSPDaoxn 	
-	0x00BA0B09, // DPSnao 	
-	0x00BB0226, // DSno 	// BB MERGEPAINT
-	0x00BC1CE4, // SPDSanax 	
-	0x00BD0D7D, // SDxPDxan 	
-	0x00BE0269, // DPSxo 	
-	0x00BF08C9, // DPSano 	
-	0x00C000CA, // PSa 	// C0 MERGECOPY
-	0x00C11B04, // SPDSnaoxn 	
-	0x00C21884, // SPDSonoxn 	
-	0x00C3006A, // PSxn 	
-	0x00C40E04, // SPDnoa 	
-	0x00C50664, // SPDSxoxn 	
-	0x00C60708, // SDPnax 	
-	0x00C707AA, // PSDPoaxn 	
-	0x00C803A8, // SDPoa 	
-	0x00C90184, // SPDoxn 	
-	0x00CA0749, // DPSDxax 	
-	0x00CB06E4, // SPDSaoxn 	
-	0x00CC0020, // S 	// CC SRCCOPY
-	0x00CD0888, // SDPono 	
-	0x00CE0B08, // SDPnao 	
-	0x00CF0224, // SPno 	
-	0x00D00E0A, // PSDnoa 	
-	0x00D1066A, // PSDPxoxn 	
-	0x00D20705, // PDSnax 	
-	0x00D307A4, // SPDSoaxn 	
-	0x00D41D78, // SSPxPDxax 	
-	0x00D50CE9, // DPSanan 	
-	0x00D616EA, // PSDPSaoxx 	
-	0x00D70349, // DPSxan 	
-	0x00D80745, // PDSPxax 	
-	0x00D906E8, // SDPSaoxn 	
-	0x00DA1CE9, // DPSDanax 	
-	0x00DB0D75, // SPxDSxan 	
-	0x00DC0B04, // SPDnao 	
-	0x00DD0228, // SDno 	
-	0x00DE0268, // SDPxo 	
-	0x00DF08C8, // SDPano 	
-	0x00E003A5, // PDSoa 	
-	0x00E10185, // PDSoxn 	
-	0x00E20746, // DSPDxax 	
-	0x00E306EA, // PSDPaoxn 	
-	0x00E40748, // SDPSxax 	
-	0x00E506E5, // PDSPaoxn 	
-	0x00E61CE8, // SDPSanax 	
-	0x00E70D79, // SPxPDxan 	
-	0x00E81D74, // SSPxDSxax 	
-	0x00E95CE6, // DSPDSanaxxn 	
-	0x00EA02E9, // DPSao 	
-	0x00EB0849, // DPSxno 	
-	0x00EC02E8, // SDPao 	
-	0x00ED0848, // SDPxno 	
-	0x00EE0086, // DSo 	// EE SRCPAINT
-	0x00EF0A08, // SDPnoo 	
-	0x00F00021, // P 	// F0 PATCOPY
-	0x00F10885, // PDSono 	
-	0x00F20B05, // PDSnao 	
-	0x00F3022A, // PSno 	
-	0x00F40B0A, // PSDnao 	
-	0x00F50225, // PDno 	
-	0x00F60265, // PDSxo 	
-	0x00F708C5, // PDSano 	
-	0x00F802E5, // PDSao 	
-	0x00F90845, // PDSxno 	
-	0x00FA0089, // DPo 	
-	0x00FB0A09, // DPSnoo 	// FB PATPAINT
-	0x00FC008A, // PSo 	
-	0x00FD0A0A, // PSDnoo 	
-	0x00FE02A9, // DPSoo 	
-	0x00FF0062  // _WHITE // FF WHITENESS
-};
-#endif
-
-	// PATPAINT 
-	// MERGECOPY
-	// SRCINVERT
-	// SRCCOPY
-	// 0xAA00EC
-	// 0x00EC02E8
-
-#if DEBUG_FONT_ROP
-	static iRop4 = 0;
-#endif
+#define  SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
+{ \
+  srcrect.x = SRC_X; \
+  srcrect.y = SRC_Y; \
+  srcrect.w = SRC_W; \
+  srcrect.h = SRC_H; \
+  dstrect.x = DST_X; \
+  dstrect.y = DST_Y; \
+  dstrect.w = DST_W; \
+  dstrect.h = DST_H; \
+  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);\
+}
 
 //===========================================================================
 
-HDC GetDebuggerMemDC(void)
+void AllocateDebuggerMemDC(void)
 {
-	if (!g_hDebuggerMemDC)
-	{
-		HDC hFrameDC = FrameGetDC();
-		g_hDebuggerMemDC = CreateCompatibleDC(hFrameDC);
-		g_hDebuggerMemBM = CreateCompatibleBitmap(hFrameDC, GetFrameBufferWidth(), GetFrameBufferHeight());
-		SelectObject(g_hDebuggerMemDC, g_hDebuggerMemBM);
-	}
+  if (!g_hDebugScreen)
+  {
+    g_hDebugScreen = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
 
-	_ASSERT(g_hDebuggerMemDC);	// TC: Could this be NULL?
-	return g_hDebuggerMemDC;
+    // character bitmap for IIe and enhanced
+    SDL_Surface *tmp = IMG_ReadXPMFromArray(charset40_xpm);
+    // convert format
+    g_hDebugCharset = SDL_DisplayFormat(tmp);
+    SDL_FreeSurface(tmp);
+
+//    ZeroMemory(debugColors, sizeof(debugColors));
+//    for (int i=1;i<256;i++)
+//    {
+//      debugColors[i].r=255;
+//      debugColors[i].g=255;
+//      debugColors[i].b=255;
+//    }
+
+    //SDL_Color *palette = screen->format->palette->colors;
+    //palette = debugColors;
+
+    //SDL_SetColors(g_hDebugScreen, palette, 0, 256);
+    //SDL_SetColors(g_hDebugCharset, palette, 0, 256);
+  }
 }
 
 void ReleaseDebuggerMemDC(void)
 {
-	if (g_hDebuggerMemDC)
-	{
-		DeleteObject(g_hDebuggerMemBM);
-		g_hDebuggerMemBM = NULL;
-		DeleteDC(g_hDebuggerMemDC);
-		g_hDebuggerMemDC = NULL;
-		FrameReleaseDC();
-	}
+}
+
+void GetDebugViewPortScale(float *x, float *y)
+{
+	float f = ((float) g_hDebugScreen->w) / screen->w;
+	*x = (f>0.01) ? f : 0.01;
+	f = ((float) g_hDebugScreen->h) / screen->h;
+	*y = (f>0.01) ? f : 0.01;
 }
 
 void StretchBltMemToFrameDC(void)
 {
-	int nViewportCX, nViewportCY;
-	GetViewportCXCY(nViewportCX, nViewportCY);
+	SDL_Rect drect, srect;
 
-	int xdest = IsFullScreen() ? GetFullScreenOffsetX() : 0;
-	int ydest = IsFullScreen() ? GetFullScreenOffsetY() : 0;
-	int wdest = nViewportCX;
-	int hdest = nViewportCY;
+	pthread_mutex_lock(&video_draw_mutex);
 
-	BOOL bRes = StretchBlt(
-		FrameGetDC(),			                            // HDC hdcDest,
-		xdest, ydest,									    // int nXOriginDest, int nYOriginDest,
-		wdest, hdest,										// int nWidthDest,   int nHeightDest,
-		GetDebuggerMemDC(),									// HDC hdcSrc,
-		0, 0,												// int nXOriginSrc,  int nYOriginSrc,
-		GetFrameBufferBorderlessWidth(), GetFrameBufferBorderlessHeight(),	// int nWidthSrc,    int nHeightSrc,
-		SRCCOPY                                             // DWORD dwRop
-	);
+	drect.x = drect.y = srect.x = srect.y = 0;
+	drect.w = screen->w;
+	drect.h = screen->h;
+	srect.w = g_hDebugScreen->w;
+	srect.h = g_hDebugScreen->h;
+
+	SDL_SoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
+	SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
+
+	SDL_Flip(screen);
+
+	pthread_mutex_unlock(&video_draw_mutex);
 }
 
 // Font: Apple Text
 //===========================================================================
 void DebuggerSetColorFG( COLORREF nRGB )
 {
-#if USE_APPLE_FONT
-	if (g_hConsoleBrushFG)
-	{
-		SelectObject( GetDebuggerMemDC(), GetStockObject(NULL_BRUSH) );
-		DeleteObject( g_hConsoleBrushFG );
-		g_hConsoleBrushFG = NULL;
-	}
-
+#ifndef _WIN32
+	g_hConsoleBrushFG = nRGB;
+#elif USE_APPLE_FONT
 	g_hConsoleBrushFG = CreateSolidBrush( nRGB );
 #else
 	SetTextColor( GetDebuggerMemDC(), nRGB );
@@ -603,14 +307,9 @@ void DebuggerSetColorFG( COLORREF nRGB )
 //===================================================
 void DebuggerSetColorBG( COLORREF nRGB, bool bTransparent )
 {
-#if USE_APPLE_FONT
-	if (g_hConsoleBrushBG)
-	{
-		SelectObject( GetDebuggerMemDC(), GetStockObject(NULL_BRUSH) );
-		DeleteObject( g_hConsoleBrushBG );
-		g_hConsoleBrushBG = NULL;
-	}
-
+#ifndef _WIN32
+	g_hConsoleBrushBG = nRGB;
+#elif USE_APPLE_FONT
 	if (! bTransparent)
 	{
 		g_hConsoleBrushBG = CreateSolidBrush( nRGB );
@@ -620,18 +319,59 @@ void DebuggerSetColorBG( COLORREF nRGB, bool bTransparent )
 #endif
 }
 
+#define CONSOLE_FONT_GRID_X  8
+#define CONSOLE_FONT_GRID_Y  8
+#define CONSOLE_FONT_WIDTH   7
+#define CONSOLE_FONT_HEIGHT  8
+
+//SDL_Color debugColors[256];
+extern int g_hConsoleBrushFG;
+extern int g_hConsoleBrushBG;
+
+void FillRect(const RECT* r, int Brush)
+{
+	SDL_Rect sr;
+
+	sr.x = r->left;
+	sr.y = r->top;
+	sr.w = r->right - sr.x;
+	sr.h = r->bottom - sr.y;
+	SDL_FillRect(g_hDebugScreen, &sr, Brush);
+}
+
 // @param glyph Specifies a native glyph from the 16x16 chars Apple Font Texture.
 //===========================================================================
 void PrintGlyph( const int x, const int y, const char glyph )
 {	
-	HDC hDstDC = GetDebuggerMemDC();
+	char g = glyph;
 
-	int xDst = x;
-	int yDst = y;
+	int ySrc = 64;
+
+	if (glyph<32)
+	{
+		// mouse text
+		g -= 32;
+		ySrc = 48;
+	}
+	else
+	if ((glyph >= '@')&&(glyph <= '_'))
+	{
+		g -= '@';
+	}
+	else
+	if ((glyph >= ' ')&&(glyph <= '?'))
+	{
+		g += 32-' ';
+	}
+	else
+	if ((glyph >= '`')&&(glyph <= 127))
+	{
+		g += 6*16 - '`';
+	}
 
 	// 16x8 chars in bitmap
-	int xSrc = (glyph & 0x0F) * CONSOLE_FONT_GRID_X;
-	int ySrc = (glyph >>   4) * CONSOLE_FONT_GRID_Y;
+	int xSrc = (g & 0x0F) * CONSOLE_FONT_GRID_X;
+	ySrc += ((g >>   4) * CONSOLE_FONT_GRID_Y);
 
 	// BUG #239 - (Debugger) Save debugger "text screen" to clipboard / file
 	//	if( g_bDebuggerVirtualTextCapture )
@@ -639,7 +379,7 @@ void PrintGlyph( const int x, const int y, const char glyph )
 	{
 #if _DEBUG
 		if ((x < 0) || (y < 0))
-			MessageBox( g_hFrameWindow, "X or Y out of bounds!", "PrintGlyph()", MB_OK );
+			fprintf(stderr, "X or Y out of bounds: PrintGlyph(x,y)", x, y);
 #endif
 		int col = x / CONSOLE_FONT_WIDTH ;
 		int row = y / CONSOLE_FONT_HEIGHT;
@@ -654,76 +394,13 @@ void PrintGlyph( const int x, const int y, const char glyph )
 			g_aDebuggerVirtualTextScreen[ row ][ col ] = glyph;
 	}
 
-#if !DEBUG_FONT_NO_BACKGROUND_CHAR 
-	// Background color
-	if (g_hConsoleBrushBG)
-	{
-		SelectObject( hDstDC, g_hConsoleBrushBG );
+	SDL_Rect srcrect, dstrect;
 
-		// Draw Background (solid pattern)
-		BitBlt(
-			hDstDC,   // hdcDest
-			xDst, yDst, // nXDest, nYDest
-			CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT, // nWidth, nHeight
-			g_hConsoleFontDC, // hdcSrc
-			0, CONSOLE_FONT_GRID_Y * 2,  // nXSrc, nYSrc // FontTexture[2][0] = Solid (Filled) Space
-			PATCOPY     // dwRop
-		);
-	}
-#endif
-
-//	SelectObject( hDstDC, GetStockBrush( WHITE_BRUSH ) );
-
-	// http://kkow.net/etep/docs/rop.html
-	//  P 1 1 1 1 0 0 0 0 (Pen/Pattern)
-	//  S 1 1 0 0 1 1 0 0 (Source)
-	//  D 1 0 1 0 1 0 1 0 (Destination)
-	//  =================
-	//    0 0 1 0 0 0 1 0 0x22 DSna
-	//    1 1 1 0 1 0 1 0 0xEA DPSao
-
-	// Black = Transparent (DC Background)
-	// White = Opaque (DC Text color)
-
-#if DEBUG_FONT_ROP
-	SelectObject( hDstDC, g_hConsoleBrushFG );
-	BitBlt(
-		hDstDC,
-		xDst, yDst,
-		DEBUG_FONT_WIDTH, DEBUG_FONT_HEIGHT,
-		g_hDebugFontDC,
-		xSrc, ySrc,
-		aROP4[ iRop4 ]
-	);
-#else
-	// Use inverted source as mask (AND)
-	// D & ~S      ->  DSna
-	BitBlt(
-		hDstDC,
-		xDst, yDst,
-		CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT,
-		g_hConsoleFontDC,
-		xSrc, ySrc,
-		DSna
-	);
-
-	SelectObject( hDstDC, g_hConsoleBrushFG );
-
-	// Use Source as mask to make color Pattern mask (AND), then apply to dest (OR)
-	// D | (P & S) ->  DPSao
-	BitBlt(
-		hDstDC,
-		xDst, yDst,
-		CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT,
-		g_hConsoleFontDC,
-		xSrc, ySrc,
-		DPSao
-	);
-#endif
-
-	SelectObject( hDstDC, GetStockObject(NULL_BRUSH) );
+	Uint8 hBrush = g_hConsoleBrushFG;
+	Uint8 hBgBrush = g_hConsoleBrushBG;
+	SOFTSTRECH_MONO(g_hDebugCharset, xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT,
+		g_hDebugScreen, x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT);
 }
-
 
 //===========================================================================
 void DebuggerPrint ( int x, int y, const char *pText )
@@ -732,8 +409,8 @@ void DebuggerPrint ( int x, int y, const char *pText )
 
 	char c;
 	const char *p = pText;
-	
-	while (c = *p)
+
+	while ((c = *p))
 	{
 		if (c == '\n')
 		{
@@ -760,7 +437,7 @@ void DebuggerPrintColor( int x, int y, const conchar_t * pText )
 	if( !pText)
 		return;
 
-	while (g = (*pSrc))
+	while ((g = (*pSrc)))
 	{
 		if (g == '\n')
 		{
@@ -793,8 +470,10 @@ void DebuggerPrintColor( int x, int y, const conchar_t * pText )
 //===========================================================================
 bool CanDrawDebugger()
 {
+#ifdef _WIN32
 	if (DebugGetVideoMode(NULL))
 		return false;
+#endif
 
 	if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING))
 		return true;
@@ -814,7 +493,7 @@ int PrintText ( const char * pText, RECT & rRect )
 	int nLen = strlen( pText );
 
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
-	FillRect( GetDebuggerMemDC(), &rRect, g_hConsoleBrushBG );
+	FillRect(&rRect, g_hConsoleBrushBG );
 #endif
 
 	DebuggerPrint( rRect.left, rRect.top, pText );
@@ -825,7 +504,7 @@ int PrintText ( const char * pText, RECT & rRect )
 void PrintTextColor ( const conchar_t *pText, RECT & rRect )
 {
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
-	FillRect( GetDebuggerMemDC(), &rRect, g_hConsoleBrushBG );
+	FillRect(&rRect, g_hConsoleBrushBG );
 #endif
 
 	DebuggerPrintColor( rRect.left, rRect.top, pText );
@@ -968,7 +647,6 @@ char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iView,
 		const int iCtrlBackground /*= BG_INFO_CHAR*/, const int iCtrlForeground /*= FG_INFO_CHAR_LO*/ )
 {
 	bool bHighBit = false;
-	bool bAsciBit = false;
 	bool bCtrlBit = false;
 
 	int iTextBG = iAsciBackground;
@@ -1061,7 +739,6 @@ void DrawBreakpoints ( int line )
 	rect.right  = DISPLAY_WIDTH;
 	rect.bottom = rect.top + g_nFontHeight;
 
-	const int MAX_BP_LEN = 16;
 	char sText[16] = "Breakpoints"; // TODO: Move to BP1
 
 #if DISPLAY_BREAKPOINT_TITLE
@@ -1406,7 +1083,7 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 		(iOpmode != AM_3))
 	{
 		// Assume target address starts after the opcode ...
-		// BUT in the Assembler Directve / Data Disassembler case for define addr/word
+		// BUT in the Assembler Directive / Data Disassembler case for define addr/word
 		// the opcode literally IS the target address!
 		if( pData )
 		{
@@ -1520,9 +1197,9 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 			if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET)
 			{
 				int nAbsTargetOffset =  (line_.nTargetOffset > 0) ? line_.nTargetOffset : - line_.nTargetOffset;
-				sprintf( line_.sTargetOffset, "%d", nAbsTargetOffset );
+				snprintf( line_.sTargetOffset, sizeof(line_.sTargetOffset), "%d", nAbsTargetOffset );
 			}
-			sprintf( line_.sTarget, "%s", pTarget );
+			snprintf( line_.sTarget, sizeof(line_.sTarget), "%s", pTarget );
 
 
 		// Indirect / Indexed
@@ -1631,8 +1308,8 @@ const char* FormatAddress( WORD nAddress, int nBytes )
 	static TCHAR sSymbol[8] = TEXT("");
 	switch (nBytes)
 	{
-		case  2:	wsprintf(sSymbol,TEXT("$%02X"),(unsigned)nAddress);  break;
-		case  3:	wsprintf(sSymbol,TEXT("$%04X"),(unsigned)nAddress);  break;
+		case  2:	snprintf(sSymbol, 8, TEXT("$%02X"),(unsigned)nAddress);  break;
+		case  3:	snprintf(sSymbol, 8, TEXT("$%04X"),(unsigned)nAddress);  break;
 		// TODO: FIXME: Can we get called with nBytes == 16 ??
 		default:	sSymbol[0] = 0; break; // clear since is static
 	}
@@ -1670,10 +1347,9 @@ void FormatOpcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
 void FormatNopcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
 {
 		char *pDst = line_.sTarget;
-const	char *pSrc = 0;
+		const	char *pSrc = 0;
 		DWORD nStartAddress = line_.pDisasmData->nStartAddress;
 		DWORD nEndAddress   = line_.pDisasmData->nEndAddress  ;
-		int   nDataLen      = nEndAddress - nStartAddress + 1 ;
 		int   nDisplayLen   = nEndAddress - nBaseAddress  + 1 ; // *inclusive* KEEP IN SYNC: _CmdDefineByteRange() CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
 		int   len           = nDisplayLen;
 
@@ -1827,7 +1503,6 @@ WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return 0;
 
-	int iOpcode;
 	int iOpmode;
 	int nOpbyte;
 	DisasmLine_t line;
@@ -1838,7 +1513,6 @@ WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
 	int bDisasmFormatFlags = GetDisassemblyLine( nBaseAddress, line );
 	const DisasmData_t *pData = line.pDisasmData;
 
-	iOpcode = line.iOpcode;	
 	iOpmode = line.iOpmode;
 	nOpbyte = line.nOpbyte;
 
@@ -1891,7 +1565,6 @@ WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
 		aTabs[ TS_IMMEDIATE   ] -= 1;
 	}
 #endif	
-	const int OPCODE_TO_LABEL_SPACE = static_cast<int>( aTabs[ TS_INSTRUCTION ] - aTabs[ TS_LABEL ] );
 
 	int iTab = 0;
 	int nSpacer = 11; // 9
@@ -1916,12 +1589,6 @@ WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
 
 		aTabs[ iTab ] *= nDefaultFontWidth;
 	}	
-
-#if USE_APPLE_FONT
-	const int DISASM_SYMBOL_LEN = 12;
-#else
-	const int DISASM_SYMBOL_LEN = 9;
-#endif
 
 	int nFontHeight = g_aFontConfig[ FONT_DISASM_DEFAULT ]._nLineHeight; // _nFontHeight; // g_nFontHeight
 
@@ -2343,7 +2010,7 @@ void DrawFlags ( int line, WORD nRegFlags, LPTSTR pFlagNames_)
 		return;
 
 	char sFlagNames[ _6502_NUM_FLAGS+1 ] = ""; // = "NVRBDIZC"; // copy from g_aFlagNames
-	char sText[4] = "?";
+	char sText[8] = "?";
 	RECT rect;
 
 	int nFontWidth = g_aFontConfig[ FONT_INFO ]._nFontWidthAvg;
@@ -2360,9 +2027,6 @@ void DrawFlags ( int line, WORD nRegFlags, LPTSTR pFlagNames_)
 #endif
 
 	//
-
-	GetDebuggerMemDC();
-
 	rect.top    = line * g_nFontHeight;
 	rect.bottom = rect.top + g_nFontHeight;
 	rect.left   = DISPLAY_FLAG_COLUMN;
@@ -2375,7 +2039,7 @@ void DrawFlags ( int line, WORD nRegFlags, LPTSTR pFlagNames_)
 	rect.top    += g_nFontHeight;
 	rect.bottom += g_nFontHeight;
 
-	sprintf( sText, "%02X", nRegFlags );
+	snprintf( sText, sizeof(sText), "%02X", nRegFlags );
 
 	DebuggerSetColorBG( DebuggerGetColor( BG_INFO ));
 	DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
@@ -2459,12 +2123,10 @@ void DrawMemory ( int line, int iMemDump )
 	DEVICE_e     eDevice = pMD->eDevice;
 	MemoryView_e iView   = pMD->eView;
 
-	SS_CARD_MOCKINGBOARD_v1 SS_MB;
+	SS_CARD_MOCKINGBOARD SS_MB;
 
 	if ((eDevice == DEV_SY6522) || (eDevice == DEV_AY8910))
-		MB_GetSnapshot_v1(&SS_MB, 4+(nAddr>>1));		// Slot4 or Slot5
-
-	int nFontWidth = g_aFontConfig[ FONT_INFO ]._nFontWidthAvg;
+		MB_GetSnapshot(&SS_MB, 4+(nAddr>>1));		// Slot4 or Slot5
 
 	RECT rect;
 	rect.left   = DISPLAY_MINIMEM_COLUMN;
@@ -2477,10 +2139,9 @@ void DrawMemory ( int line, int iMemDump )
 
 	const int MAX_MEM_VIEW_TXT = 16;
 	char sText[ MAX_MEM_VIEW_TXT * 2 ];
-	char sData[ MAX_MEM_VIEW_TXT * 2 ];
 
-	char sType   [ 6 ] = "Mem";
-	char sAddress[ 8 ] = "";
+	char sType   [ 8 ] = "Mem";
+	char sAddress[ 12 ] = "";
 
 	int iForeground = FG_INFO_OPCODE;
 	int iBackground = BG_INFO;
@@ -2488,25 +2149,23 @@ void DrawMemory ( int line, int iMemDump )
 #if DISPLAY_MEMORY_TITLE
 	if (eDevice == DEV_SY6522)
 	{
-//		sprintf(sData,"Mem at SY#%d", nAddr);
-		sprintf( sAddress,"SY#%d", nAddr );
+		snprintf( sAddress, sizeof(sAddress), "SY#%d", nAddr );
 	}
 	else if(eDevice == DEV_AY8910)
 	{
-//		sprintf(sData,"Mem at AY#%d", nAddr);
-		sprintf( sAddress,"AY#%d", nAddr );
+		snprintf( sAddress, sizeof(sAddress),"AY#%d", nAddr );
 	}
 	else
 	{
-		sprintf( sAddress,"%04X",(unsigned)nAddr);
+		snprintf( sAddress, sizeof(sAddress),"%04X",(unsigned)nAddr);
 
 		if (iView == MEM_VIEW_HEX)
-			sprintf( sType, "HEX" );
+			snprintf( sType, sizeof(sType), "HEX" );
 		else
 		if (iView == MEM_VIEW_ASCII)
-			sprintf( sType, "ASCII" );
+			snprintf( sType, sizeof(sType), "ASCII" );
 		else
-			sprintf( sType, "TEXT" );
+			snprintf( sType, sizeof(sType), "TEXT" );
 	}
 
 	rect2 = rect;	
@@ -2523,8 +2182,6 @@ void DrawMemory ( int line, int iMemDump )
 
 	rect.top    = rect2.top;
 	rect.bottom = rect2.bottom;
-
-	sData[0] = 0;
 
 	WORD iAddress = nAddr;
 
@@ -2562,9 +2219,6 @@ void DrawMemory ( int line, int iMemDump )
 
 		for (int iCol = 0; iCol < nCols; iCol++)
 		{
-			bool bHiBit = false;
-			bool bLoBit = false;
-
 			DebuggerSetColorBG( DebuggerGetColor( iBackground ));
 			DebuggerSetColorFG( DebuggerGetColor( iForeground ));
 
@@ -2596,8 +2250,6 @@ void DrawMemory ( int line, int iMemDump )
 				BYTE nData = (unsigned)*(LPBYTE)(mem+iAddress);
 				sText[0] = 0;
 
-				char c = nData;
-
 				if (iView == MEM_VIEW_HEX)
 				{
 					if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END))
@@ -2617,6 +2269,7 @@ void DrawMemory ( int line, int iMemDump )
 				}
 			}
 			int nChars = PrintTextCursorX( sText, rect2 ); // PrintTextCursorX()
+			(void) nChars;
 			iAddress++;
 		}
 		// Windows HACK: Bugfix: Rest of line is still background color
@@ -2626,7 +2279,6 @@ void DrawMemory ( int line, int iMemDump )
 
 		rect.top    += g_nFontHeight;
 		rect.bottom += g_nFontHeight;
-		sData[0] = 0;
 	}
 }
 
@@ -2771,7 +2423,6 @@ void _DrawSoftSwitchAddress( RECT & rect, int nAddress, int bg_default = BG_INFO
 void _DrawSoftSwitch( RECT & rect, int nAddress, bool bSet, char *sPrefix, char *sOn, char *sOff, const char *sSuffix = NULL, int bg_default = BG_INFO )
 {
 	RECT temp = rect;
-	char sText[ 4 ] = "";
 
 	_DrawSoftSwitchAddress( temp, nAddress, bg_default );
 
@@ -2805,7 +2456,7 @@ void _DrawTriStateSoftSwitch( RECT & rect, int nAddress, const int iBankDisplay,
 	else // Main Memory is active, or Bank # is not active
 	{
 		RECT temp = rect;
-		int iBank = (GetMemMode() & MF_BANK2)
+		int iBank = (GetMemMode() & MF_HRAM_BANK2)
 			? 2
 			: 1
 			;
@@ -2875,14 +2526,14 @@ void _DrawSoftSwitchLanguageCardBank( RECT & rect, const int iBankDisplay, int b
 	// 0 = RAM
 	// 1 = Bank 1
 	// 2 = Bank 2
-	bool bBankWritable = (GetMemMode() & MF_WRITERAM) ? 1 : 0;
+	bool bBankWritable = (GetMemMode() & MF_HRAM_WRITE) ? 1 : 0;
 	int iBankActive    = (GetMemMode() & MF_HIGHRAM)
-		? (GetMemMode() & MF_BANK2)
+		? (GetMemMode() & MF_HRAM_BANK2)
 			? 2
 			: 1
 		: 0
 		;
-	bool bBankOn = (iBankActive == iBankDisplay);
+//	bool bBankOn = (iBankActive == iBankDisplay);
 
 	// B#/[M]
 	char sOn [ 4 ] = "B#"; // LC# but one char too wide :-/
@@ -2925,8 +2576,14 @@ void _DrawSoftSwitchLanguageCardBank( RECT & rect, const int iBankDisplay, int b
 
 		int iActiveBank = -1;
 		char sText[ 4 ] = "?"; // Default to RAMWORKS
-		if (GetCurrentExpansionMemType() == CT_RamWorksIII) { sText[0] = 'r'; iActiveBank = GetRamWorksActiveBank(); }
+
+#ifdef RAMWORKS
+		/*if (GetCurrentExpansionMemType() == CT_RamWorksIII)*/
+		{ sText[0] = 'r'; iActiveBank = GetRamWorksActiveBank(); }
+#endif
+#ifdef TODO // Not supported for Linux yet...
 		if (GetCurrentExpansionMemType() == CT_Saturn128K)  { sText[0] = 's'; iActiveBank = GetLanguageCard()->GetActiveBank(); }
+#endif
 
 		if (iActiveBank >= 0)
 		{
@@ -3017,10 +2674,9 @@ void DrawSoftSwitches( int iSoftSwitch )
 
 		DebuggerSetColorBG( DebuggerGetColor( BG_INFO ));
 		DebuggerSetColorFG( DebuggerGetColor( FG_INFO_TITLE ));
-
-		char sText[16] = "";
 		
 #if SOFTSWITCH_OLD
+		char sText[16] = "";
 		// $C050 / $C051 = TEXTOFF/TEXTON = SW.TXTCLR/SW.TXTSET
 		// GR  / TEXT
 		// GRAPH/TEXT
@@ -3325,7 +2981,6 @@ void DrawWatches (int line)
 			PrintTextCursorX( ":", rect2 );
 
 			BYTE nTarget8 = 0;
-			BYTE nValue8 = 0;
 
 			nTarget8 = (unsigned)*(LPBYTE)(mem+g_aWatches[iWatch].nAddress);
 			sprintf(sText,"%02X", nTarget8 );
@@ -3554,7 +3209,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 	const int nMaxOpcodes = WINDOW_DATA_BYTES_PER_LINE;
 	char  sAddress[ 5 ];
 
-	assert( CONSOLE_WIDTH > WINDOW_DATA_BYTES_PER_LINE );
+	_ASSERT( CONSOLE_WIDTH > WINDOW_DATA_BYTES_PER_LINE );
 
 	char sOpcodes  [ CONSOLE_WIDTH ] = "";
 	char sImmediate[ 4 ]; // 'c'
@@ -3567,8 +3222,6 @@ void DrawSubWindow_Data (Update_t bUpdate)
 
 	MemoryDump_t* pMD = &g_aMemDump[ iMemDump ];
 	USHORT       nAddress = pMD->nAddress;
-	DEVICE_e     eDevice  = pMD->eDevice;
-	MemoryView_e iView    = pMD->eView;
 
 //	if (!pMD->bActive)
 //		return;
@@ -3631,7 +3284,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 
 		rect.left = X_CHAR;
 
-	// Seperator
+	// Separator
 		DebuggerSetColorFG( DebuggerGetColor( FG_DISASM_OPERATOR ));
 		PrintTextCursorX( "  |  ", rect );
 
@@ -3721,9 +3374,9 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
 
 		char sValue[8];
 		if (g_videoScannerDisplayInfo.isDecimal)
-			sprintf_s(sValue, sizeof(sValue), "%03u", nValue);
+			snprintf(sValue, sizeof(sValue), "%03u", nValue);
 		else
-			sprintf_s(sValue, sizeof(sValue), "%03X", nValue);
+			snprintf(sValue, sizeof(sValue), "%03X", nValue);
 
 		if (!isVisible)
 			DebuggerSetColorFG(DebuggerGetColor(FG_VIDEOSCANNER_INVISIBLE));	// red
@@ -3738,6 +3391,7 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
 
 void DrawVideoScannerInfo (int line)
 {
+#ifdef TODO // Not supported for Linux yet
 	NTSC_VideoGetScannerAddressForDebugger();		// update g_nVideoClockHorz/g_nVideoClockVert
 
 	int v = g_nVideoClockVert;
@@ -3786,8 +3440,9 @@ void DrawVideoScannerInfo (int line)
 
 	char sValue[10];
 	const UINT cycles = g_videoScannerDisplayInfo.isAbsCycle ? (UINT)g_nCumulativeCycles : g_videoScannerDisplayInfo.cycleDelta;
-	sprintf_s(sValue, sizeof(sValue), "%08X", cycles);
+	snprintf(sValue, sizeof(sValue), "%08X", cycles);
 	PrintText(sValue, rect);
+#endif
 }
 
 //===========================================================================
@@ -3821,8 +3476,7 @@ void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
 		if (bUpdate & UPDATE_ZERO_PAGE)
 			DrawZeroPagePointers( yZeroPage );
 
-		bool bForceDisplaySoftSwitches = DEBUG_FORCE_DISPLAY || (bUpdate & UPDATE_SOFTSWITCHES);
-			DrawSoftSwitches( ySoft );
+		DrawSoftSwitches( ySoft );
 
 	#if defined(SUPPORT_Z80_EMU) && defined(OUTPUT_Z80_REGS)
 		DrawRegister( 19,"AF",2,*(WORD*)(membank+REG_AF));
@@ -3882,7 +3536,6 @@ void DrawSubWindow_Source2 (Update_t bUpdate)
 
 	DebuggerSetColorFG( DebuggerGetColor( FG_SOURCE ));
 
-	int iSource = g_iSourceDisplayStart;
 	int nLines  = g_nDisasmWinHeight;
 
 	int y = g_nDisasmWinHeight;
@@ -3898,7 +3551,8 @@ void DrawSubWindow_Source2 (Update_t bUpdate)
 	rect.right = DISPLAY_DISASM_RIGHT; // HACK: MAGIC #: 7
 
 // Draw Title
-	std::string sTitle = "   Source: " + g_aSourceFileName;
+	std::string sTitle = "   Source: ";
+	sTitle += g_aSourceFileName;
 	sTitle.resize(min(sTitle.size(), size_t(g_nConsoleDisplayWidth)));
 
 	DebuggerSetColorBG( DebuggerGetColor( BG_SOURCE_TITLE ));
@@ -3977,7 +3631,7 @@ void DrawWindow_Console( Update_t bUpdate )
 	// If the full screen console is only showing partial lines
 	// don't erase the background
 	
-	//		FillRect( GetDebuggerMemDC(), &rect, g_hConsoleBrushBG );
+	//		FillRect(&rect, g_hConsoleBrushBG );
 }
 
 //===========================================================================
@@ -4017,35 +3671,33 @@ void DrawWindow_ZeroPage( Update_t bUpdate )
 //===========================================================================
 void DrawWindowBackground_Main( int g_iWindowThis )
 {
+	// TODO/FIXME: COLOR_BG_CODE -> g_iWindowThis, once all tab backgrounds are listed first in g_aColors !
+	DebuggerSetColorBG( DebuggerGetColor( BG_DISASM_1 )); // COLOR_BG_CODE
+
+#if !DEBUG_FONT_NO_BACKGROUND_FILL_MAIN
 	RECT rect;
 	rect.left   = 0;
 	rect.top    = 0;
 	rect.right  = DISPLAY_DISASM_RIGHT;
 	int nTop = GetConsoleTopPixels( g_nConsoleDisplayLines - 1 );
 	rect.bottom = nTop;
-
-	// TODO/FIXME: COLOR_BG_CODE -> g_iWindowThis, once all tab backgrounds are listed first in g_aColors !
-	DebuggerSetColorBG( DebuggerGetColor( BG_DISASM_1 )); // COLOR_BG_CODE
-	
-#if !DEBUG_FONT_NO_BACKGROUND_FILL_MAIN
-	FillRect( GetDebuggerMemDC(), &rect, g_hConsoleBrushBG );
+	FillRect(&rect, g_hConsoleBrushBG );
 #endif
 }
 
 //===========================================================================
 void DrawWindowBackground_Info( int g_iWindowThis )
 {
-    RECT rect;
-    rect.top    = 0;
-	rect.left   = DISPLAY_DISASM_RIGHT;
-    rect.right  = DISPLAY_WIDTH;
-	int nTop = GetConsoleTopPixels( g_nConsoleDisplayLines - 1 );
-	rect.bottom = nTop;
-
 	DebuggerSetColorBG( DebuggerGetColor( BG_INFO )); // COLOR_BG_DATA
 
 #if !DEBUG_FONT_NO_BACKGROUND_FILL_INFO
-	FillRect( GetDebuggerMemDC(), &rect, g_hConsoleBrushBG );
+    RECT rect;
+    rect.top    = 0;
+    rect.left   = DISPLAY_DISASM_RIGHT;
+    rect.right  = DISPLAY_WIDTH;
+	int nTop = GetConsoleTopPixels( g_nConsoleDisplayLines - 1 );
+	rect.bottom = nTop;
+	FillRect(&rect, g_hConsoleBrushBG );
 #endif
 }
 
@@ -4068,7 +3720,9 @@ void UpdateDisplay (Update_t bUpdate)
 
 	if (bUpdate & UPDATE_BACKGROUND)
 	{
-#if USE_APPLE_FONT
+#ifndef _WIN32
+	  // linux
+#elif USE_APPLE_FONT
 		SetBkMode( GetDebuggerMemDC(), OPAQUE);
 		SetBkColor(GetDebuggerMemDC(), RGB(0,0,0));
 #else
@@ -4076,7 +3730,9 @@ void UpdateDisplay (Update_t bUpdate)
 #endif
 	}
 
+#ifdef _WIN32
 	SetTextAlign( GetDebuggerMemDC(), TA_TOP | TA_LEFT);
+#endif
 
 	if ((bUpdate & UPDATE_BREAKPOINTS)
 //		|| (bUpdate & UPDATE_DISASM)
