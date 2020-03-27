@@ -13,8 +13,6 @@
 
 #include <curl/curl.h>
 
-extern char VERSIONSTRING[];  // Contructed in WinMain()
-
 extern TCHAR *g_pAppTitle;
 
 extern eApple2Type g_Apple2Type;
