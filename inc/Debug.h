@@ -8,8 +8,10 @@
 using namespace std;
 
 #include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
 
 // Globals
+extern bool g_bDebuggerEatKey;
 
 // Benchmarking
 extern DWORD extbench;
@@ -19,6 +21,18 @@ extern int g_nBookmarks;
 extern Bookmark_t g_aBookmarks[MAX_BOOKMARKS];
 
 // Breakpoints
+enum BreakpointHit_t
+{
+  BP_HIT_NONE = 0,
+  BP_HIT_INVALID = (1 << 0),
+  BP_HIT_OPCODE = (1 << 1),
+  BP_HIT_REG = (1 << 2),
+  BP_HIT_MEM = (1 << 3),
+  BP_HIT_MEMR = (1 << 4),
+  BP_HIT_MEMW = (1 << 5),
+  BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM = (1 << 6)
+};
+
 extern int g_nBreakpoints;
 extern Breakpoint_t g_aBreakpoints[MAX_BREAKPOINTS];
 
@@ -27,8 +41,7 @@ extern const TCHAR *g_aBreakpointSymbols[NUM_BREAKPOINT_OPERATORS];
 
 // Full-Speed debugging
 extern int g_nDebugOnBreakInvalid;
-extern int g_iDebugOnOpcode;
-extern bool g_bDebugDelayBreakCheck;
+extern int g_iDebugBreakOnOpcode;
 
 // Commands
 extern const int NUM_COMMANDS_WITH_ALIASES; // = sizeof(g_aCommands) / sizeof (Command_t); // Determined at compile-time ;-)
@@ -37,8 +50,18 @@ extern int g_iCommand; // last command
 extern Command_t g_aCommands[];
 extern Command_t g_aParameters[];
 
+class commands_functor_compare
+{
+  public:
+    bool operator() ( const Command_t & rLHS, const Command_t & rRHS ) const
+    {
+      // return true if lhs<rhs
+      return (_tcscmp( rLHS.m_sName, rRHS.m_sName ) <= 0) ? true : false;
+    }
+};
+
 // Config - FileName
-extern char g_sFileNameConfig[];
+extern std::string g_sFileNameConfig;
 
 // Cursor
 extern WORD g_nDisasmTopAddress;
@@ -54,6 +77,8 @@ extern int g_nDisasmWinHeight;
 extern const int WINDOW_DATA_BYTES_PER_LINE;
 
 // Config - Disassembly
+extern bool g_bConfigDisasmAddressView;
+extern int  g_bConfigDisasmClick; // GH#462
 extern bool g_bConfigDisasmAddressColon;
 extern bool g_bConfigDisasmOpcodesView;
 extern bool g_bConfigDisasmOpcodeSpaces;
@@ -63,9 +88,6 @@ extern int g_bConfigDisasmImmediateChar;
 
 // Config - Info
 extern bool g_bConfigInfoTargetPointer;
-
-// Display
-extern bool g_bDebuggerViewingAppleOutput;
 
 // Font
 extern int g_nFontHeight;
@@ -77,7 +99,8 @@ extern MemoryDump_t g_aMemDump[NUM_MEM_DUMPS];
 extern vector<int> g_vMemorySearchResults;
 
 // Source Level Debugging
-extern TCHAR g_aSourceFileName[MAX_PATH];
+extern std::string g_aSourceFileName;
+extern MemoryTextFile_t g_AssemblerSourceBuffer;
 
 extern int g_iSourceDisplayStart;
 extern int g_nSourceAssembleBytes;
@@ -107,21 +130,8 @@ bool Bookmark_Find(const WORD nAddress);
 // Breakpoints
 bool GetBreakpointInfo(WORD nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
 
-// 0 = Brk, 1 = Invalid1, .. 3 = Invalid 3
-inline bool IsDebugBreakOnInvalid(int iOpcodeType) {
-  bool bActive = (g_nDebugOnBreakInvalid >> iOpcodeType) & 1;
-  return bActive;
-}
-
-inline void SetDebugBreakOnInvalid(int iOpcodeType, int nValue) {
-  if (iOpcodeType <= AM_3) {
-    g_nDebugOnBreakInvalid &= ~(1 << iOpcodeType);
-    g_nDebugOnBreakInvalid |= ((nValue & 1) << iOpcodeType);
-  }
-}
-
 // Color
-inline COLORREF DebuggerGetColor(int iColor);
+COLORREF DebuggerGetColor(int iColor);
 
 // Source Level Debugging
 int FindSourceLine(WORD nAddress);
@@ -132,7 +142,7 @@ LPCTSTR FormatAddress(WORD nAddress, int nBytes);
 bool FindAddressFromSymbol(LPCSTR pSymbol, WORD *pAddress_ = NULL, int *iTable_ = NULL);
 
 WORD GetAddressFromSymbol(LPCTSTR symbol); // HACK: returns 0 if symbol not found
-void SymbolUpdate(Symbols_e eSymbolTable, char *pSymbolName, WORD nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
+void SymbolUpdate(SymbolTable_Index_e eSymbolTable, char *pSymbolName, WORD nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
 
 LPCTSTR FindSymbolFromAddress(WORD nAdress, int *iTable_ = NULL);
 
@@ -149,11 +159,11 @@ enum {
 
 void DebugBegin();
 
-void DebugContinueStepping();
+void DebugContinueStepping(const bool bCallerWillUpdateDisplay=false);
 
 void DebugDestroy();
 
-void DebugDisplay(BOOL);
+void DebugDisplay(BOOL bInitDisasm=FALSE);
 
 void DebugEnd();
 
@@ -168,3 +178,9 @@ void DebuggerUpdate();
 void DebuggerCursorNext();
 
 void DebuggerMouseClick(int x, int y);
+
+void VerifyDebuggerCommandTable();
+
+bool IsDebugSteppingAtFullSpeed(void);
+
+bool DebugGetVideoMode(UINT* pVideoMode);

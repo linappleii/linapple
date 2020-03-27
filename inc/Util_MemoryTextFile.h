@@ -16,7 +16,7 @@ public:
     m_vLines.reserve(128);
   }
 
-  bool Read(TCHAR *pFileName);
+  bool Read( const std::string & pFileName );
 
   void Reset() {
     m_vBuffer.erase(m_vBuffer.begin(), m_vBuffer.end());
