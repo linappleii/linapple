@@ -17,9 +17,13 @@
 	#define APPLE_FONT_BITMAP_PADDED  1
 #endif
 
+	typedef struct
+	{
+		int left, right, top, bottom;
+	} RECT;
+
 	enum ConsoleFontSize_e
 	{
-#if APPLE_FONT_NEW
 		// Grid Alignment
 		CONSOLE_FONT_GRID_X = 7,
 		CONSOLE_FONT_GRID_Y = 8,
@@ -27,22 +31,10 @@
 		// Font Char Width/Height in pixels
 		CONSOLE_FONT_WIDTH  = 7,
 		CONSOLE_FONT_HEIGHT = 8,
-#else
-		CONSOLE_FONT_GRID_X = 8,
-		CONSOLE_FONT_GRID_Y = 8,
-
-		// Font Char Width/Height in pixels
-		CONSOLE_FONT_WIDTH  = 7,
-		CONSOLE_FONT_HEIGHT = 8,
-#endif
 	};
 
-	extern HBRUSH g_hConsoleBrushFG;
-	extern HBRUSH g_hConsoleBrushBG;
-
-	extern HDC     g_hConsoleFontDC;
-	extern HBRUSH  g_hConsoleFontBrush;
-	extern HBITMAP g_hConsoleFontBitmap;
+	extern int g_hConsoleBrushFG;
+	extern int g_hConsoleBrushBG;
 
 	enum
 	{
@@ -64,6 +56,8 @@
 
 	void PrintTextColor  ( const conchar_t * pText, RECT & rRect );
 
+	void GetDebugViewPortScale  (float *x, float *y);
+
 	void DrawWindow_Source      (Update_t bUpdate);
 
 	void DrawBreakpoints      ( int line);
@@ -83,9 +77,7 @@
 
 	void DrawFlags            ( int line, WORD nRegFlags, LPTSTR pFlagNames_);
 
-	//
-
-	extern HDC GetDebuggerMemDC(void);
+	extern void AllocateDebuggerMemDC(void);
 	extern void ReleaseDebuggerMemDC(void);
 	extern void StretchBltMemToFrameDC(void);
 

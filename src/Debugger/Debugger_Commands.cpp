@@ -2,6 +2,7 @@
 AppleWin : An Apple //e emulator for Windows
 
 Copyright (C) 2009-2014, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2020, Thorsten Brehm
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,11 +24,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2011 - 2011 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Debug.h"
+#include "Debugger_Console.h"
 
-#include "../Frame.h"
+#include "Frame.h"
 
 // Commands _______________________________________________________________________________________
 
@@ -510,30 +512,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 void VerifyDebuggerCommandTable()
 {
-	char sText[ CONSOLE_WIDTH * 2 ];
-
 	for (int iCmd = 0; iCmd < NUM_COMMANDS; iCmd++ )
 	{
 		if ( g_aCommands[ iCmd ].iCommand != iCmd)
 		{
-			sprintf( sText, "*** ERROR *** Enumerated Commands mis-matched at #%d!", iCmd );
-			MessageBoxA( g_hFrameWindow, sText, TEXT("ERROR"), MB_OK );
-			PostQuitMessage( 1 );
+			fprintf( stderr, "*** ERROR *** Enumerated Commands mis-matched at #%d: %s!", iCmd, g_aCommands[ iCmd ].m_sName);
 		}
 	}
 
-	// _tcscmp
 	if (strcmp( g_aCommands[ NUM_COMMANDS ].m_sName, DEBUGGER__COMMANDS_VERIFY_TXT__))
 	{
-		sprintf( sText, "*** ERROR *** Total Commands mis-matched!" );
-		MessageBoxA( g_hFrameWindow, sText, TEXT("ERROR"), MB_OK );
-		PostQuitMessage( 1 );
+		fprintf( stderr, "*** ERROR *** Total Commands mis-matched!" );
 	}
 
 	if (strcmp( g_aParameters[ NUM_PARAMS ].m_sName, DEBUGGER__PARAMS_VERIFY_TXT__))
 	{
-		sprintf( sText, "*** ERROR *** Total Parameters mis-matched!" );
-		MessageBoxA( g_hFrameWindow, sText, TEXT("ERROR"), MB_OK );
-		PostQuitMessage( 2 );
+		fprintf( stderr, "*** ERROR *** Total Parameters mis-matched!" );
 	}
 }

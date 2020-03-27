@@ -43,7 +43,7 @@
 		CONSOLE_COLOR_b, // : Light Blue
 		NUM_CONSOLE_COLORS
 	};
-	extern COLORREF g_anConsoleColor[ NUM_CONSOLE_COLORS ];
+	extern int g_anConsoleColor[ NUM_CONSOLE_COLORS ];
 
 	// Note: THe ` ~ key should always display ~ to prevent rendering errors
 	#define CONSOLE_COLOR_ESCAPE_CHAR '`'

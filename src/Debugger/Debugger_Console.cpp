@@ -5,6 +5,7 @@ Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
 Copyright (C) 2002-2005, Tom Charlesworth
 Copyright (C) 2006-2010, Tom Charlesworth, Michael Pohoreski
+Copyright (C) 2020, Thorsten Brehm
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,9 +27,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006 - 2010 Michael Pohoreski
  */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "Debug.h"
+#include "Debugger_Console.h"
+#include "Debugger_Display.h"
+#include "Debugger_Color.h"
+#include "Debugger_Assembler.h"
+#include "Debugger_Parser.h"
+#include "Util_Text.h"
 
 // Console ________________________________________________________________________________________
 
@@ -85,6 +92,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		bool         g_bConsoleInputQuoted = false; // Allows lower-case to be entered
 		char         g_nConsoleInputSkip   = '~';
 
+	  int g_anConsoleColor[ NUM_CONSOLE_COLORS ] = {
+	      WHITE, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE
+	  };
 // Prototypes _______________________________________________________________
 
 // Console ________________________________________________________________________________________
@@ -264,13 +274,13 @@ bool ConsolePrint ( const char * pText )
 
 bool ConsolePrintVa ( char* buf, size_t bufsz, const char * pFormat, va_list va )
 {
-	vsnprintf_s(buf, bufsz, _TRUNCATE, pFormat, va);
+	vsnprintf(buf, bufsz, pFormat, va);
 	return ConsolePrint(buf);
 }
 
 bool ConsoleBufferPushVa ( char* buf, size_t bufsz, const char * pFormat, va_list va )
 {
-	vsnprintf_s(buf, bufsz, _TRUNCATE, pFormat, va);
+	vsnprintf(buf, bufsz, pFormat, va);
 	return ConsoleBufferPush(buf);
 }
 
@@ -354,7 +364,6 @@ void ConsoleBufferToDisplay ()
 //===========================================================================
 void ConsoleConvertFromText ( conchar_t * sText, const char * pText )
 {
-	int x = 0;
 	const char *pSrc = pText;
 	conchar_t  *pDst = sText;
 	while (pSrc && *pSrc)
@@ -482,6 +491,7 @@ bool ConsoleInputChar ( const char ch )
 		g_nConsoleInputChars++;
 		return true;
 	}
+
 	return false;
 }
 
@@ -522,13 +532,6 @@ void ConsoleInputReset ()
 //	_tcscpy( g_aConsoleInput, g_sConsolePrompt ); // Assembler can change prompt
 	g_aConsoleInput[0] = g_sConsolePrompt[0];
 	g_nConsolePromptLen = 1;
-
-//	int nLen = strlen( g_aConsoleInput );
-#if CONSOLE_INPUT_CHAR16
-	int nLen = ConsoleLineLength( g_aConsoleInput );
-#else
-	int nLen = strlen( g_aConsoleInput );
-#endif
 
 	g_pConsoleInput = &g_aConsoleInput[ g_nConsolePromptLen ];
 	g_nConsoleInputChars = 0;

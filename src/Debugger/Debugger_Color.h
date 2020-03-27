@@ -133,7 +133,7 @@
 	};
 
 	extern int g_iColorScheme;
-	extern COLORREF g_aColorPalette[ NUM_PALETTE ];
+//	extern COLORREF g_aColorPalette[ NUM_PALETTE ];
 	extern int g_aColorIndex[ NUM_DEBUG_COLORS ];
 
 // Color
