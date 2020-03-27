@@ -32,6 +32,7 @@ DEPEXT      := d
 OBJEXT      := o
 IMGEXT      := png
 XPMEXT      := xpm
+SYMEXT      := SYM
 
 # FIXME: Make this go away!
 INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
@@ -80,9 +81,11 @@ CONFFILES   := \
 	linapple.conf
 SRCIMGFILES := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
 DSTIMGFILES := $(addprefix src/../,$(SRCIMGFILES:.$(IMGEXT)=.$(XPMEXT)))
+SRCSYMFILES := $(wildcard $(RESDIR)/*.$(SYMEXT))
+DSTSYMFILES := $(patsubst $(RESDIR)/%,$(TARGETDIR)/%,$(SRCSYMFILES))
 
 #Default Make
-all: images directories $(TARGETDIR)/$(TARGET)
+all: images directories $(TARGETDIR)/$(TARGET) symbolfiles
 
 #Remake
 remake: cleaner all
@@ -92,6 +95,9 @@ images: $(DSTIMGFILES)
 #Copy Resources from Resources Directory to Target Directory
 resources: directories
 	@cp $(RESDIR)/* $(TARGETDIR)/
+
+# Copy symbol files to target directory
+symbolfiles: $(DSTSYMFILES)
 
 #Make the Directories
 directories:
@@ -187,6 +193,9 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	convert -flatten "$<" "$@"
 	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
+$(TARGETDIR)/%.$(SYMEXT): $(RESDIR)/%.$(SYMEXT)
+	cp $< $@
+
 #Non-File Targets
-.PHONY: all remake clean cleaner resources package install uninstall images directories
+.PHONY: all remake clean cleaner resources package install uninstall images directories symbolfiles
 
