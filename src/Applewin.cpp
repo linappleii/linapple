@@ -136,6 +136,9 @@ double g_fMeanPeriod,g_fMeanFreq;
 ULONG g_nPerfFreq = 0;
 #endif
 
+static UINT g_uModeStepping_Cycles = 0;
+static bool g_uModeStepping_LastGetKey_ScrollLock = false;
+
 void ContinueExecution()
 {
   const double fUsecPerSec = 1.e6;
@@ -144,9 +147,8 @@ void ContinueExecution()
 
   bool bScrollLock_FullSpeed = g_bScrollLock_FullSpeed;
 
-  g_bFullSpeed = ((g_dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed ||
+  g_bFullSpeed = ((g_dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed || IsDebugSteppingAtFullSpeed() ||
                   (DiskIsSpinning() && enhancedisk && !Spkr_IsActive() && !MB_IsActive()));
-
 
   if (g_bFullSpeed) {
     // Don't call Spkr_Mute() - will get speaker clicks
@@ -159,28 +161,53 @@ void ContinueExecution()
     SysClk_StartTimerUsec(nExecutionPeriodUsec);
   }
 
-  int nCyclesToExecute = (int) fExecutionPeriodClks + g_nCpuCyclesFeedback;
-  if (nCyclesToExecute < 0) {
-    nCyclesToExecute = 0;
+  int nCyclesWithFeedback = (int) fExecutionPeriodClks + g_nCpuCyclesFeedback;
+  if (nCyclesWithFeedback < 0) {
+    nCyclesWithFeedback = 0;
   }
+  const UINT uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
+                                       : 0;
 
-  DWORD dwExecutedCycles = CpuExecute(nCyclesToExecute);
-  g_dwCyclesThisFrame += dwExecutedCycles;
+  const DWORD uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+                          /* MODE_STEPPING */ : 0;
 
-  cyclenum = dwExecutedCycles;
+  DWORD uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
+  g_dwCyclesThisFrame += uActualCyclesExecuted;
 
-  DiskUpdatePosition(dwExecutedCycles);
+  cyclenum = uActualCyclesExecuted;
+
+  DiskUpdatePosition(uActualCyclesExecuted);
   JoyUpdatePosition();
   // the next call does not present in current Applewin as on March 2012??
   VideoUpdateVbl(g_dwCyclesThisFrame);
+  //
 
-  SpkrUpdate(cyclenum);
+  DWORD uSpkrActualCyclesExecuted = uActualCyclesExecuted;
+
+  bool bModeStepping_WaitTimer = false;
+  if (g_nAppMode == MODE_STEPPING && !IsDebugSteppingAtFullSpeed())
+  {
+    g_uModeStepping_Cycles += uActualCyclesExecuted;
+    if (g_uModeStepping_Cycles >= uCyclesToExecuteWithFeedback)
+    {
+      uSpkrActualCyclesExecuted = g_uModeStepping_Cycles;
+
+      g_uModeStepping_Cycles -= uCyclesToExecuteWithFeedback;
+      bModeStepping_WaitTimer = true;
+    }
+  }
+
+  // For MODE_STEPPING: do this speaker update periodically
+  // - Otherwise kills performance due to sound-buffer lock/unlock for every 6502 opcode!
+  if (g_nAppMode == MODE_RUNNING || bModeStepping_WaitTimer)
+    SpkrUpdate(uSpkrActualCyclesExecuted);
+
   sg_SSC.CommUpdate(cyclenum);
   PrintUpdate(cyclenum);
 
   const DWORD CLKS_PER_MS = (DWORD) g_fCurrentCLK6502 / 1000;
 
-  emulmsec_frac += dwExecutedCycles;
+  emulmsec_frac += uActualCyclesExecuted;
   if (emulmsec_frac > CLKS_PER_MS) {
     emulmsec += emulmsec_frac / CLKS_PER_MS;
     emulmsec_frac %= CLKS_PER_MS;
@@ -232,7 +259,8 @@ void ContinueExecution()
     MB_EndOfVideoFrame();
   }
 
-  if (!g_bFullSpeed) {
+  if ((g_nAppMode == MODE_RUNNING && !g_bFullSpeed) || bModeStepping_WaitTimer)
+  {
     SysClk_WaitTimer();
 
     #if DBG_CALC_FREQ
@@ -253,6 +281,17 @@ void ContinueExecution()
     }
     #endif
   }
+}
+
+void SingleStep(bool bReinit)
+{
+  if (bReinit)
+  {
+    g_uModeStepping_Cycles = 0;
+    g_uModeStepping_LastGetKey_ScrollLock = false;
+  }
+
+  ContinueExecution();
 }
 
 // SetBudgetVideo
@@ -330,7 +369,7 @@ void EnterMessageLoop()
                 return;
               }
             }
-            if (g_bFullSpeed) {
+            if ((g_bFullSpeed)||(IsDebugSteppingAtFullSpeed())) {
               ContinueExecution();
             }
           }
@@ -1106,11 +1145,11 @@ int main(int argc, char *argv[])
 
     MB_Initialize();  // Mocking board
     SpkrInitialize();  // Speakers - of Apple][ ...grrrrrrrrrrr, I love them!--bb
-    DebugInitialize();
     JoyInitialize();
     MemInitialize();
     HD_SetEnabled(hddenabled);
     VideoInitialize();
+    DebugInitialize();
     Snapshot_Startup();    // Do this after everything has been init'ed
 
     if (szSnapshotFile) {
