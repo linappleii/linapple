@@ -16,6 +16,8 @@ extern bool         g_KeyboardRockerSwitch;
 
 void ClipboardInitiatePaste();
 
+int KeybDecodeKey(int key);
+
 void KeybReset();
 
 bool KeybGetAltStatus();

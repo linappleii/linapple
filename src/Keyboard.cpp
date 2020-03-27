@@ -438,7 +438,8 @@ int KeybDecodeKeyFR(int key)
   return key;
 }
 
-void KeybQueueKeypress(int key, BOOL bASCII)
+// decode keycode for selected keyboard
+int KeybDecodeKey(int key)
 {
   KeybUpdateCtrlShiftStatus();
 
@@ -459,6 +460,14 @@ void KeybQueueKeypress(int key, BOOL bASCII)
       key = KeybDecodeKeyUS(key);
       break;
   }
+
+  return key;
+}
+
+void KeybQueueKeypress(int key, BOOL bASCII)
+{
+  // language dependent keyboard mappings
+  key = KeybDecodeKey(key);
 
   if ((key>=0)&&(key < 0x80)) {
     if (g_bCtrlKey) {
