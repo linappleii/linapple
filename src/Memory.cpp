@@ -666,31 +666,25 @@ static void UpdatePaging(BOOL initialize, BOOL updatewriteonly) {
 
 #else
     memshadow[loop] = SW_HIGHRAM
-                        ? SW_HRAM_BANK2
-													? SW_AUXREAD
-                          	? memaux + (loop << 8)
-                          	: memmain + (loop << 8)
-													: SW_AUXREAD
-														? memaux + (loop << 8) - bankoffset
+												? SW_ALTZP
+                          	? memaux + (loop << 8) - bankoffset
                           	: memmain + (loop << 8) - bankoffset
                         : memrom + ((loop - 0xD0) * 0x100);
 
     memwrite[loop]  = SW_HRAM_WRITE
                         ? SW_HIGHRAM
-													? SW_HRAM_BANK2
-														? SW_AUXWRITE
-															? memaux + (loop << 8)
-															: memmain + (loop << 8)
-											    : SW_AUXWRITE
+													? mem + (loop << 8)
+													: SW_HRAM_BANK2
+														? SW_ALTZP
 															? memaux + (loop << 8) - bankoffset
-                          		: memmain + (loop << 8) - bankoffset
+															: memmain + (loop << 8) - bankoffset
 													: NULL
 												: NULL;
 #endif
   }
 
   for (loop = 0xE0; loop < 0x100; loop++) {
-#if 0
+#if 1
     memshadow[loop] = SW_HIGHRAM
 												? SW_ALTZP
 													? memaux + (loop << 8)
@@ -707,14 +701,14 @@ static void UpdatePaging(BOOL initialize, BOOL updatewriteonly) {
 
 #else
     memshadow[loop] = SW_HIGHRAM
-												? SW_AUXREAD
+												? SW_ALTZP
 													?	memaux + (loop << 8)
 													: memmain + (loop << 8)
 												: memrom + ((loop - 0xD0) * 0x100);
 
     memwrite[loop] = SW_HRAM_WRITE
 											? SW_HIGHRAM
-												? SW_AUXWRITE
+												? SW_ALTZP
 													? memaux + (loop << 8)
 													: memmain + (loop << 8)
 												: NULL
