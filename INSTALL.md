@@ -1,12 +1,6 @@
 # Installation
 
 
-## Ubuntu 16.04
-
-make
-cd bin
-./linapple
-
 ### Prerequisites
 
 #### Ubuntu
