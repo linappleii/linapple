@@ -188,7 +188,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // Memory _____________________________________________________________________
 
-	MemoryDump_t g_aMemDump[ NUM_MEM_DUMPS ];
+	MemoryDump_t g_aMemDump[ NUM_MEM_DUMPS ] = { {true, 0, DEV_MEMORY, MEM_VIEW_HEX},
+	                                             {false, 0, DEV_MEMORY, MEM_VIEW_HEX}};
 
 	// Made global so operator @# can be used with other commands.
 	MemorySearchResults_t g_vMemorySearchResults;
@@ -3604,7 +3605,7 @@ Update_t CmdCursorPageUp4K (int nArgs)
 //===========================================================================
 Update_t CmdCursorSetPC( int nArgs) // TODO rename
 {
-	regs.pc = nArgs; // HACK:
+	regs.pc = g_nDisasmCurAddress; // set PC to current cursor address
 	return UPDATE_DISASM;
 }
 
@@ -3895,6 +3896,12 @@ static Update_t _CmdMemoryDump (int nArgs, int iWhich, int iView )
 	g_aMemDump[iWhich].bActive = true;
 	g_aMemDump[iWhich].eView = (MemoryView_e) iView;
 
+	// make sure data window is visible
+	if (g_iWindowThis != WINDOW_DATA)
+	{
+		_CmdWindowViewCommon(WINDOW_DATA);
+	}
+
 	return UPDATE_MEM_DUMP; // TODO: This really needed? Don't think we do any actual ouput
 }
 
@@ -4145,7 +4152,7 @@ Update_t CmdConfigSetDebugDir (int nArgs)
 	if ( SetCurrentImageDir( sPath ) )
 		nArgs = 0; // intentional fall into
 #else
-	#warning "Need chdir() implemented"
+	//TODO chdir() not implemented (maybe not needed for Linux?)
 #endif
 
 	return CmdConfigGetDebugDir(0);		// Show the new PWD
@@ -7892,8 +7899,9 @@ Update_t ExecuteCommand (int nArgs)
 				}
 				else
 				// ####L -> Unassemble $address
-				if ((pCommand[nLen-1] == 'L') ||
-					(pCommand[nLen-1] == 'l'))
+				if (((pCommand[nLen-1] == 'L') ||
+				     (pCommand[nLen-1] == 'l'))&&
+				    (strcmp("cl", pCommand) != 0)) // workaround for ambiguous "cl": must be handled by "clear flag" command
 				{
 					pCommand[nLen-1] = 0;
 					ArgsGetValue( pArg, & nAddress );
