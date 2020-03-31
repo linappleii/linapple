@@ -747,28 +747,8 @@ void RequestDebugger()
   //  FrameWndProc( g_hFrameWindow, WM_KEYUP  , DEBUG_TOGGLE_KEY, 0 );
 }
 
-bool CheckDebugBreak(int iOpcode)
-{
-  if (g_bDebugDelayBreakCheck) {
-    g_bDebugDelayBreakCheck = false;
-    return false;
-  }
-
-  // Running at full speed? (debugger not running)
-  if ((g_nAppMode != MODE_DEBUG) && (g_nAppMode != MODE_STEPPING)) {
-    if (((iOpcode == 0) && IsDebugBreakOnInvalid(0)) ||
-        ((g_iDebugOnOpcode) && (g_iDebugOnOpcode == iOpcode))) // User wants to enter debugger on opcode?
-    {
-      RequestDebugger();
-      return true;
-    }
-  }
-
-  return false;
-}
-
 // Break into debugger on invalid opcodes
-#define INV if (IsDebugBreakOnInvalid(1)) { RequestDebugger(); bBreakOnInvalid = true; }
+#define INV
 
 // Opcode Table
 
@@ -816,20 +796,16 @@ static inline void DoIrqProfiling(DWORD uCycles)
 
 //===========================================================================
 
-static inline int Fetch(BYTE &iOpcode, ULONG uExecutedCycles)
+static inline void Fetch(BYTE &iOpcode, ULONG uExecutedCycles)
 {
+  const WORD PC = regs.pc;
   g_uInternalExecutedCycles = uExecutedCycles;
 
-  iOpcode = ((regs.pc & 0xF000) == 0xC000) ? IORead[(regs.pc >> 4) & 0xFF](regs.pc, regs.pc, 0, 0,
-                                                                           uExecutedCycles)  // Fetch opcode from I/O memory, but params are still from mem[]
-                                           : *(mem + regs.pc);
-
-  if (CheckDebugBreak(iOpcode)) {
-    return 0;
-  }
+  iOpcode = ((PC & 0xF000) == 0xC000) ? IORead[(PC >> 4) & 0xFF](PC, PC, 0, 0,
+                                                                 uExecutedCycles)  // Fetch opcode from I/O memory, but params are still from mem[]
+                                      : *(mem + PC);
 
   regs.pc++;
-  return 1;
 }
 
 //#define ENABLE_NMI_SUPPORT  // Not used - so don't enable
@@ -895,15 +871,12 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
   ULONG uExecutedCycles = 0;
   BOOL bSlowerOnPagecross;    // Set if opcode writes to memory (eg. ASL, STA)
   WORD base;
-  bool bBreakOnInvalid = false;
 
   do {
     UINT uExtraCycles = 0;
     BYTE iOpcode;
 
-    if (!Fetch(iOpcode, uExecutedCycles)) {
-      break;
-    }
+    Fetch(iOpcode, uExecutedCycles);
 
     switch (iOpcode) {
       case 0x00:
@@ -2172,10 +2145,6 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
     NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
     IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
 
-    if (bBreakOnInvalid) { // break to debugger window?
-      break;
-    }
-
   } while (uExecutedCycles < uTotalCycles);
 
   EF_TO_AF
@@ -2198,15 +2167,12 @@ static DWORD Cpu6502(DWORD uTotalCycles)
   ULONG uExecutedCycles = 0;
   BOOL bSlowerOnPagecross;    // Set if opcode writes to memory (eg. ASL, STA)
   WORD base;
-  bool bBreakOnInvalid = false;
 
   do {
     UINT uExtraCycles = 0;
     BYTE iOpcode;
 
-    if (!Fetch(iOpcode, uExecutedCycles)) {
-      break;
-    }
+    Fetch(iOpcode, uExecutedCycles);
 
     switch (iOpcode) {
       case 0x00:
@@ -3554,10 +3520,6 @@ static DWORD Cpu6502(DWORD uTotalCycles)
     NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
     IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
 
-    if (bBreakOnInvalid) {
-      break;
-    }
-
   } while (uExecutedCycles < uTotalCycles);
 
   EF_TO_AF
@@ -3566,7 +3528,6 @@ static DWORD Cpu6502(DWORD uTotalCycles)
 
 static DWORD InternalCpuExecute(DWORD uTotalCycles)
 {
-
   #ifdef UPDATE_ALL_PER_CYCLE
   MB_Update();
   #endif

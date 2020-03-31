@@ -37,20 +37,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for mlock - munlock
 #include <sys/mman.h>
 
-
-#define  MF_80STORE    0x00000001
-#define  MF_ALTZP      0x00000002
-#define  MF_AUXREAD    0x00000004
-#define  MF_AUXWRITE   0x00000008
-#define  MF_HRAM_BANK2 0x00000010
-#define  MF_HIGHRAM    0x00000020
-#define  MF_HIRES      0x00000040
-#define  MF_PAGE2      0x00000080
-#define  MF_SLOTC3ROM  0x00000100
-#define  MF_SLOTCXROM  0x00000200
-#define  MF_HRAM_WRITE   0x00000400
-#define  MF_IMAGEMASK  0x000007F7
-
 #define  SW_80STORE    (memmode & MF_80STORE)
 #define  SW_ALTZP      (memmode & MF_ALTZP)
 #define  SW_AUXREAD    (memmode & MF_AUXREAD)
@@ -61,7 +47,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #define  SW_PAGE2      (memmode & MF_PAGE2)
 #define  SW_SLOTC3ROM  (memmode & MF_SLOTC3ROM)
 #define  SW_SLOTCXROM  (memmode & MF_SLOTCXROM)
-#define  SW_HRAM_WRITE   (memmode & MF_HRAM_WRITE)
+#define  SW_HRAM_WRITE (memmode & MF_HRAM_WRITE)
 
 static LPBYTE memshadow[0x100];
 LPBYTE memwrite[0x100];
@@ -92,12 +78,18 @@ MemoryInitPattern_e g_eMemoryInitPattern = MIP_FF_FF_00_00;
 
 #ifdef RAMWORKS
 UINT      g_uMaxExPages  = 1; // user requested ram pages
+static UINT   g_uActiveBank = 0;        // 0 = aux 64K for: //e extended 80 Col card, or //c
 static LPBYTE  RWpages[128];  // pointers to RW memory banks
 #endif
 
+UINT GetRamWorksActiveBank(void)
+{
+  return g_uActiveBank;
+}
+
 BYTE IO_Annunciator(WORD programcounter, WORD address, BYTE write, BYTE value, ULONG nCycles);
 
-static void UpdatePaging(BOOL initialize, BOOL updatewriteonly);
+void MemUpdatePaging(BOOL initialize, BOOL updatewriteonly);
 
 static BYTE IORead_C00x(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft) {
   return KeybReadData(pc, addr, bWrite, d, nCyclesLeft);
@@ -587,15 +579,53 @@ void RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, io
   // By default I believe it's the 80-column + 64k RAM card usually in Slot 3.
   ExpansionRom[uSlot] = pExpansionRom;
 }
+//===========================================================================
+
+DWORD GetMemMode(void)
+{
+  return memmode;
+}
+
+void SetMemMode(DWORD uNewMemMode)
+{
+#if defined(_DEBUG) && 0
+  static DWORD dwOldDiff = 0;
+  DWORD dwDiff = memmode ^ uNewMemMode;
+  dwDiff &= ~(MF_SLOTC3ROM | MF_INTCXROM);
+  if (dwOldDiff != dwDiff)
+  {
+    dwOldDiff = dwDiff;
+    char szStr[100];
+    char* psz = szStr;
+    psz += sprintf(psz, "diff = %08X ", dwDiff);
+    psz += sprintf(psz, "80=%d "   , SW_80STORE   ? 1 : 0);
+    psz += sprintf(psz, "ALTZP=%d ", SW_ALTZP     ? 1 : 0);
+    psz += sprintf(psz, "AUXR=%d " , SW_AUXREAD   ? 1 : 0);
+    psz += sprintf(psz, "AUXW=%d " , SW_AUXWRITE  ? 1 : 0);
+    psz += sprintf(psz, "BANK2=%d ", SW_BANK2     ? 1 : 0);
+    psz += sprintf(psz, "HIRAM=%d ", SW_HIGHRAM   ? 1 : 0);
+    psz += sprintf(psz, "HIRES=%d ", SW_HIRES     ? 1 : 0);
+    psz += sprintf(psz, "PAGE2=%d ", SW_PAGE2     ? 1 : 0);
+    psz += sprintf(psz, "C3=%d "   , SW_SLOTC3ROM ? 1 : 0);
+    psz += sprintf(psz, "CX=%d "   , SW_INTCXROM  ? 1 : 0);
+    psz += sprintf(psz, "WRAM=%d " , SW_WRITERAM  ? 1 : 0);
+    psz += sprintf(psz, "\n");
+    OutputDebugString(szStr);
+  }
+#endif
+  memmode = uNewMemMode;
+}
+
+//===========================================================================
 
 void ResetPaging(BOOL initialize)
 {
   lastwriteram = 0;
   memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
-  UpdatePaging(initialize, 0);
+  MemUpdatePaging(initialize, 0);
 }
 
-static void UpdatePaging(BOOL initialize, BOOL updatewriteonly) {
+void MemUpdatePaging(BOOL initialize, BOOL updatewriteonly) {
   // Save the current paging shadow table
   LPBYTE oldshadow[256];
   if (!(initialize || updatewriteonly /*|| fastpaging*/ )) {
@@ -788,8 +818,6 @@ BYTE MemCheckPaging(WORD, WORD address, BYTE, BYTE, ULONG) {
   return KeybGetKeycode() | (result ? 0x80 : 0);
 }
 
-const unsigned int _6502_MEM_END = 0xFFFF;  // define memory area
-
 void MemDestroy() {
   VirtualFree(memaux, 0, MEM_RELEASE);
   VirtualFree(memmain, 0, MEM_RELEASE);
@@ -859,9 +887,71 @@ LPBYTE MemGetMainPtr(WORD offset)
   return (memshadow[(offset >> 8)] == (memmain + (offset & 0xFF00))) ? mem + offset : memmain + offset;
 }
 
+//===========================================================================
+
+// Used by:
+// . Savestate: MemSaveSnapshotMemory(), MemLoadSnapshotAux()
+// . Debugger : CmdMemorySave(), CmdMemoryLoad()
+LPBYTE MemGetBankPtr(const UINT nBank)
+{
+//  BackMainImage();  // Flush any dirty pages to back-buffer
+
+#ifdef RAMWORKS
+  if (nBank > g_uMaxExPages)
+    return NULL;
+
+  if (nBank == 0)
+    return memmain;
+
+  return RWpages[nBank-1];
+#else
+  return  (nBank == 0) ? memmain :
+      (nBank == 1) ? memaux :
+      NULL;
+#endif
+}
+
 LPBYTE MemGetCxRomPeripheral()
 {
   return pCxRomPeripheral;
+}
+
+//===========================================================================
+
+// Post:
+// . true:  code memory
+// . false: I/O memory or floating bus
+bool MemIsAddrCodeMemory(const USHORT addr)
+{
+  if (addr < 0xC000 || addr > FIRMWARE_EXPANSION_END) // Assume all A][ types have at least 48K
+    return true;
+
+  if (addr < APPLE_SLOT_BEGIN)    // [$C000..C0FF]
+    return false;
+
+  if (!IS_APPLE2 && SW_SLOTCXROM)    // [$C100..C7FF] //e or Enhanced //e internal ROM
+    return true;
+
+  if (!IS_APPLE2 && !SW_SLOTC3ROM && (addr >> 8) == 0xC3) // [$C300..C3FF] //e or Enhanced //e internal ROM
+    return true;
+
+  if (addr <= APPLE_SLOT_END)     // [$C100..C7FF]
+  {
+    const UINT uSlot = (addr >> 8) & 0x7;
+    return g_bmSlotInit & (1<<uSlot); // card present in this slot?
+  }
+
+  // [$C800..CFFF]
+  if (g_eExpansionRomType == eExpRomNull)
+  {
+#ifdef TODO
+    if (IO_SELECT || INTC8ROM)  // Was at $Csxx and now in [$C800..$CFFF]
+      return true;
+#endif
+    return false;
+  }
+
+  return true;
 }
 
 void MemPreInitialize()
@@ -1101,8 +1191,9 @@ BYTE MemSetPaging(WORD programcounter, WORD address, BYTE write, BYTE value, ULO
       case 0x71: // extended memory aux page number
       case 0x73: // Ramworks III set aux page number
         if ((value < g_uMaxExPages) && RWpages[value]) {
+          g_uActiveBank = value;
           memaux = RWpages[value];
-          UpdatePaging(0,0);
+          MemUpdatePaging(0,0);
         }
         break;
       #endif
@@ -1143,7 +1234,7 @@ BYTE MemSetPaging(WORD programcounter, WORD address, BYTE write, BYTE value, ULO
       }
     }
 
-    UpdatePaging(0, 0);
+    MemUpdatePaging(0, 0);
   }
 
   if ((address <= 1) || ((address >= 0x54) && (address <= 0x57))) {
@@ -1176,7 +1267,7 @@ DWORD MemSetSnapshot(SS_BaseMemory *pSS) {
   memcpy(memmain, pSS->nMemMain, nMemMainSize);
   memcpy(memaux, pSS->nMemAux, nMemAuxSize);
   modechanging = 0;
-  UpdatePaging(1, 0);    // Initialize=1, UpdateWriteOnly=0
+  MemUpdatePaging(1, 0);    // Initialize=1, UpdateWriteOnly=0
 
   return 0;
 }

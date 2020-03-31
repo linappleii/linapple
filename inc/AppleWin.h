@@ -13,8 +13,6 @@
 
 #include <curl/curl.h>
 
-extern char VERSIONSTRING[];  // Contructed in WinMain()
-
 extern TCHAR *g_pAppTitle;
 
 extern eApple2Type g_Apple2Type;
@@ -30,6 +28,7 @@ extern UINT g_ScreenWidth;
 extern UINT g_ScreenHeight;
 
 extern DWORD needsprecision;
+extern TCHAR g_sProgramDir[MAX_PATH];
 extern TCHAR g_sCurrentDir[MAX_PATH];
 extern TCHAR g_sHDDDir[MAX_PATH];
 extern TCHAR g_sSaveStateDir[MAX_PATH];
@@ -62,3 +61,5 @@ void SetBudgetVideo(bool);
 bool GetBudgetVideo();
 
 void SetCurrentCLK6502();
+
+void SingleStep(bool bReinit);

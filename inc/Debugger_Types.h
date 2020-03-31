@@ -93,12 +93,23 @@ enum AddressingMode_e { // ADDRESSING_MODES_e
   , AM_NZY  // 14 Indirect (Zeropage) Indexed, Y
   , AM_NZ   // 15 Indirect (Zeropage)
   , AM_NA   // 16 Indirect (Absolute) i.e. JMP
-  , NUM_ADDRESSING_MODES, NUM_OPMODES = NUM_ADDRESSING_MODES, AM_I = NUM_ADDRESSING_MODES, // for assembler
+  , AM_DATA // Not an opcode! Markup as data
+  , NUM_ADDRESSING_MODES,
+  NUM_OPMODES = NUM_ADDRESSING_MODES,
+  AM_I = NUM_ADDRESSING_MODES, // for assembler
 };
 
 // Assembler
 enum Prompt_e {
-  PROMPT_COMMAND, PROMPT_ASSEMBLER, NUM_PROMPTS
+  PROMPT_COMMAND,
+  PROMPT_ASSEMBLER,
+  NUM_PROMPTS
+};
+
+enum
+{
+        // raised from 13 to 31 for Contiki
+        MAX_SYMBOLS_LEN = 31
 };
 
 // Bookmarks
@@ -127,7 +138,9 @@ enum {
 // NOTE: Order must match Breakpoint_Source_t
 // NOTE: Order must match g_aBreakpointSource
 enum BreakpointSource_t {
-  BP_SRC_REG_A, BP_SRC_REG_X, BP_SRC_REG_Y,
+  BP_SRC_REG_A,
+  BP_SRC_REG_X,
+  BP_SRC_REG_Y,
 
   BP_SRC_REG_PC, // Program Counter
   BP_SRC_REG_S, // Stack Counter
@@ -142,7 +155,10 @@ enum BreakpointSource_t {
   BP_SRC_FLAG_V, // Overflow
   BP_SRC_FLAG_N, // Sign
 
-  BP_SRC_OPCODE, BP_SRC_MEM_1,
+  BP_SRC_OPCODE,
+  BP_SRC_MEM_RW,
+  BP_SRC_MEM_READ_ONLY,
+  BP_SRC_MEM_WRITE_ONLY,
 
   NUM_BREAKPOINT_SOURCES
 };
@@ -170,189 +186,12 @@ struct Breakpoint_t {
   BreakpointOperator_t eOperator;
   bool bSet; // used to be called enabled pre 2.0
   bool bEnabled;
+  bool bTemp;    // If true then remove BP when hit or stepping cancelled (eg. G xxxx)
 };
 
 typedef Breakpoint_t Bookmark_t;
 typedef Breakpoint_t Watches_t;
 typedef Breakpoint_t ZeroPagePointers_t;
-
-
-// Colors
-
-enum Color_Schemes_e {
-  SCHEME_COLOR, // NOTE: MUST match order in CMD_WINDOW_COLOR
-  SCHEME_MONO, // NOTE: MUST match order in CMD_WINDOW_MONOCHROME
-  SCHEME_BW, // NOTE: MUST match order in CMD_WINDOW_BW
-  NUM_COLOR_SCHEMES
-};
-
-// Named, since they are easier to remember.
-// Ok, maybe RGB + CYMK is a little "too" cute. But what the hell, it works out nicely.
-enum DebugPalette_e {
-  // mipmap level:   8   7   6   5   4   3   2   1   0
-  // color depth:  256 224 192 160 128  96  64  32   0
-  //               +32 +32 +32 +32 +32 +32 +32 +32
-  // NOTE: Levels of black are redundant.
-  //                              // BGR
-  K0,                             // ---  K
-  R8,
-  R7,
-  R6,
-  R5,
-  R4,
-  R3,
-  R2,
-  R1, // --1  R  Red
-  G8,
-  G7,
-  G6,
-  G5,
-  G4,
-  G3,
-  G2,
-  G1, // -1-  G  Green
-  Y8,
-  Y7,
-  Y6,
-  Y5,
-  Y4,
-  Y3,
-  Y2,
-  Y1, // -11  Y  Yellow
-  B8,
-  B7,
-  B6,
-  B5,
-  B4,
-  B3,
-  B2,
-  B1, // 1--  B  Blue
-  M8,
-  M7,
-  M6,
-  M5,
-  M4,
-  M3,
-  M2,
-  M1, // 1-1  M  Magenta
-  C8,
-  C7,
-  C6,
-  C5,
-  C4,
-  C3,
-  C2,
-  C1, // 11-  C  Cyan
-  W8,
-  W7,
-  W6,
-  W5,
-  W4,
-  W3,
-  W2,
-  W1, // 111  W  White / Gray / Black
-
-  COLOR_CUSTOM_01,
-  COLOR_CUSTOM_02,
-  COLOR_CUSTOM_03,
-  COLOR_CUSTOM_04,
-  COLOR_CUSTOM_05,
-  COLOR_CUSTOM_06,
-  COLOR_CUSTOM_07,
-  COLOR_CUSTOM_08,
-  COLOR_CUSTOM_09,
-  COLOR_CUSTOM_11,
-  CUSTOM_COLOR_11,
-  COLOR_CUSTOM_12,
-  COLOR_CUSTOM_13,
-  COLOR_CUSTOM_14,
-  COLOR_CUSTOM_15,
-  COLOR_CUSTOM_16,
-
-  NUM_PALETTE,
-
-  // Gray Aliases
-  G000 = K0,
-  G032 = W1,
-  G064 = W2,
-  G096 = W3,
-  G128 = W4,
-  G160 = W5,
-  G192 = W6,
-  G224 = W7,
-  G256 = W8
-};
-
-// Yeah, this was a PITA to organize.
-enum DebugColors_e {
-  BG_CONSOLE_OUTPUT,  // Black   Window
-  FG_CONSOLE_OUTPUT,  // White
-  BG_CONSOLE_INPUT,   // Black   Window
-  FG_CONSOLE_INPUT,   // Light Blue
-
-  BG_DISASM_1,        // Blue*   Odd address
-  BG_DISASM_2,        // Blue*   Even address
-
-  BG_DISASM_BP_S_C,   // Red     Breakpoint Set     (cursor)
-  FG_DISASM_BP_S_C,   // White   Breakpoint Set&Ena (cursor)
-
-  // Note: redundant BG_DISASM_BP_0_C = BG_DISASM_BP_S_C
-  BG_DISASM_BP_0_C,   // DimRed  Breakpoint Disabled (cursor)
-  FG_DISASM_BP_0_C,   // Gray192 Breakpoint Disabled (cursor)
-
-  FG_DISASM_BP_S_X,   // Red     Set      (not cursor)
-  FG_DISASM_BP_0_X,   // White   Disabled (not cursor)
-
-  BG_DISASM_C,        // White (Cursor)
-  FG_DISASM_C,        // Blue  (Cursor)
-
-  BG_DISASM_PC_C,     // Yellow (not cursor)
-  FG_DISASM_PC_C,     // White  (not cursor)
-
-  BG_DISASM_PC_X,     // Dim Yellow (not cursor)
-  FG_DISASM_PC_X,     // White      (not cursor)
-
-  BG_DISASM_BOOKMARK, // Lite Blue    (always)
-  FG_DISASM_BOOKMARK, // White   addr (always)
-
-  FG_DISASM_ADDRESS,  // White   addr
-  FG_DISASM_OPERATOR, // Gray192     :               $ (also around instruction addressing g_nAppMode)
-  FG_DISASM_OPCODE,   // Yellow       xx xx xx
-  FG_DISASM_MNEMONIC, // White                   LDA
-  FG_DISASM_TARGET,   // Orange                       FAC8
-  FG_DISASM_SYMBOL,   // Purple                       HOME
-  FG_DISASM_CHAR,     // Cyan                               'c'
-  FG_DISASM_BRANCH,   // Green                                   ^ = v
-
-  BG_INFO,            // Cyan    Regs/Stack/BP/Watch/ZP
-  FG_INFO_TITLE,      // White   Regs/Stack/BP/Watch/ZP
-  FG_INFO_BULLET,     //         1
-  FG_INFO_OPERATOR,   // Gray192  :    -
-  FG_INFO_ADDRESS,    // Orange    FA62 FA63 (Yellow -> Orange)
-  FG_INFO_OPCODE,     // Yellow              xx
-  FG_INFO_REG,        // Orange (Breakpoints)
-  BG_INFO_INVERSE,    // White
-  FG_INFO_INVERSE,    // Cyan
-  BG_INFO_CHAR,       // mid Cyan
-  FG_INFO_CHAR_HI,    // White
-  FG_INFO_CHAR_LO,    // Yellow
-
-  BG_INFO_IO_BYTE,    // Orange (high bit)
-  FG_INFO_IO_BYTE,    // Orange (non-high bit)
-
-  BG_DATA_1,          // Cyan*   Window
-  BG_DATA_2,          // Cyan*
-  FG_DATA_BYTE,       // default same as FG_DISASM_OPCODE
-  FG_DATA_TEXT,       // default same as FG_DISASM_NMEMONIC
-
-  BG_SYMBOLS_1,       // window
-  BG_SYMBOLS_2, FG_SYMBOLS_ADDRESS, // default same as FG_DISASM_ADDRESS
-  FG_SYMBOLS_NAME,    // default same as FG_DISASM_SYMBOL
-
-  BG_SOURCE_TITLE, FG_SOURCE_TITLE, BG_SOURCE_1,        // odd
-  BG_SOURCE_2,        // even
-  FG_SOURCE, NUM_COLORS
-};
 
 // Config
 
@@ -377,7 +216,8 @@ enum Update_e {
   UPDATE_TARGETS = (1 << 10),
   UPDATE_WATCH = (1 << 11),
   UPDATE_ZERO_PAGE = (1 << 12),
-
+  UPDATE_SOFTSWITCHES = (1 << 13),
+  UPDATE_VIDEOSCANNER = (1 << 14),
   UPDATE_ALL = -1
 };
 
@@ -400,13 +240,13 @@ struct Command_t {
 // Commands sorted by Category
 // NOTE: Commands_e and g_aCommands[] order _MUST_ match !!! Aliases are listed at the end
 enum Commands_e {
+  // Assembler
+  CMD_ASSEMBLE,
   // CPU
   CMD_CURSOR_JUMP_PC, // Shift
   CMD_CURSOR_SET_PC,  // Ctrl
-  CMD_ASSEMBLE,
-  CMD_BREAK_INVALID,
-  CMD_BREAK_OPCODE,
-  CMD_GO,
+  CMD_GO_NORMAL_SPEED,
+  CMD_GO_FULL_SPEED,
   CMD_IN,
   CMD_INPUT_KEY,
   CMD_JSR,
@@ -418,7 +258,7 @@ enum Commands_e {
   // CPU - Stack
   CMD_STACK_POP,
   CMD_STACK_POP_PSEUDO,
-  CMD_STACK_PUS,
+  CMD_STACK_PUSH,
   CMD_STEP_OVER,
   CMD_STEP_OUT,
   CMD_TRACE,
@@ -432,12 +272,17 @@ enum Commands_e {
   CMD_BOOKMARK_LIST,
   CMD_BOOKMARK_GOTO,
   CMD_BOOKMARK_SAVE,
+  // Breakpoints
+  CMD_BREAK_INVALID,
+  CMD_BREAK_OPCODE,
   CMD_BREAKPOINT,
   CMD_BREAKPOINT_ADD_SMART, // smart breakpoint
   CMD_BREAKPOINT_ADD_REG,   // break on: PC == Address (fetch/execute)
   CMD_BREAKPOINT_ADD_PC,    // alias BPX = BA
   CMD_BREAKPOINT_ADD_IO,  // break on: [$C000-$C7FF] Load/Store
   CMD_BREAKPOINT_ADD_MEM, // break on: [$0000-$FFFF], excluding IO
+  CMD_BREAKPOINT_ADD_MEMR, // break on read on: [$0000-$FFFF], excluding IO
+  CMD_BREAKPOINT_ADD_MEMW, // break on write on: [$0000-$FFFF], excluding IO
   CMD_BREAKPOINT_CLEAR,
   CMD_BREAKPOINT_DISABLE,
   CMD_BREAKPOINT_EDIT,
@@ -454,6 +299,8 @@ enum Commands_e {
   CMD_CONFIG_LOAD,
   CMD_CONFIG_MONOCHROME, // MONO  # rr gg bb
   CMD_CONFIG_SAVE,
+  CMD_CONFIG_GET_DEBUG_DIR,
+  CMD_CONFIG_SET_DEBUG_DIR,
   // Cursor
   CMD_CURSOR_JUMP_RET_ADDR,
   CMD_CURSOR_LINE_UP,   // Smart Line Up
@@ -466,6 +313,26 @@ enum Commands_e {
   CMD_CURSOR_PAGE_DOWN,
   CMD_CURSOR_PAGE_DOWN_256, // Down to nearest page boundary
   CMD_CURSOR_PAGE_DOWN_4K, // Down to nearest 4K boundary
+  // Cycles info
+  CMD_CYCLES_INFO,
+  // Disassembler Data
+  CMD_DISASM_DATA,
+  CMD_DISASM_CODE,
+  CMD_DISASM_LIST,
+  CMD_DEFINE_DATA_BYTE1,    // DB $00,$04,$08,$0C,$10,$14,$18,$1C
+  CMD_DEFINE_DATA_BYTE2,
+  CMD_DEFINE_DATA_BYTE4,
+  CMD_DEFINE_DATA_BYTE8,
+
+  CMD_DEFINE_DATA_WORD1,    // DW $300
+  CMD_DEFINE_DATA_WORD2,
+  CMD_DEFINE_DATA_WORD4,
+  CMD_DEFINE_DATA_STR,
+  //    , CMD_DEFINE_DATA_FACP // FAC Packed
+  //    , CMD_DEFINE_DATA_FACU // FAC Unpacked
+  //    , CMD_DATA_DEFINE_ADDR_BYTE_L  // DB< address symbol
+  //    , CMD_DATA_DEFINE_ADDR_BYTE_H  // DB> address symbol
+  CMD_DEFINE_ADDR_WORD,    // .DA address symbol
   // Disk
   CMD_DISK,
   // Flags - CPU
@@ -494,12 +361,8 @@ enum Commands_e {
   CMD_MOTD, // Message of the Day
   // Memory
   CMD_MEMORY_COMPARE,
-  _CMD_MEM_MINI_DUMP_HEX_1_1, // alias MD
-  _CMD_MEM_MINI_DUMP_HEX_1_2, // alias MD = D
-  CMD_MEM_MINI_DUMP_HEX_1,
-  CMD_MEM_MINI_DUMP_HEX_2,
-  _CMD_MEM_MINI_DUMP_HEX_1_3, // alias M1
-  _CMD_MEM_MINI_DUMP_HEX_2_1, // alias M2
+  CMD_MEM_MINI_DUMP_HEX_1, // Mini Memory Dump 1
+  CMD_MEM_MINI_DUMP_HEX_2, // Mini Memory Dump 2
   CMD_MEM_MINI_DUMP_ASCII_1,    // ASCII
   CMD_MEM_MINI_DUMP_ASCII_2,
   CMD_MEM_MINI_DUMP_APPLE_1, // Low-Bit inverse, High-Bit normal
@@ -511,8 +374,11 @@ enum Commands_e {
   CMD_MEMORY_MOVE,
   CMD_MEMORY_SAVE,
   CMD_MEMORY_SEARCH,
+  CMD_MEMORY_FIND_RESULTS,
   CMD_MEMORY_SEARCH_HEX,
   CMD_MEMORY_FILL,
+  CMD_NTSC,
+  CMD_TEXT_SAVE,
   // Output
   CMD_OUTPUT_CALC,
   CMD_OUTPUT_ECHO,
@@ -524,11 +390,38 @@ enum Commands_e {
   CMD_SYNC,
   // Symbols
   CMD_SYMBOLS_LOOKUP,
-  CMD_SYMBOLS_MAIN,
-  CMD_SYMBOLS_USER,
-  CMD_SYMBOLS_SRC,
+  CMD_SYMBOLS_ROM,
+  CMD_SYMBOLS_APPLESOFT,
+  CMD_SYMBOLS_ASSEMBLY,
+  CMD_SYMBOLS_USER_1,
+  CMD_SYMBOLS_USER_2,
+  CMD_SYMBOLS_SRC_1,
+  CMD_SYMBOLS_SRC_2,
+  CMD_SYMBOLS_DOS33,
+  CMD_SYMBOLS_PRODOS,
   CMD_SYMBOLS_INFO,
   CMD_SYMBOLS_LIST,
+  // Video-scanner info
+  CMD_VIDEO_SCANNER_INFO,
+  // View
+  CMD_VIEW_TEXT4X,
+  CMD_VIEW_TEXT41,
+  CMD_VIEW_TEXT42,
+  CMD_VIEW_TEXT8X,
+  CMD_VIEW_TEXT81,
+  CMD_VIEW_TEXT82,
+  CMD_VIEW_GRX,
+  CMD_VIEW_GR1,
+  CMD_VIEW_GR2,
+  CMD_VIEW_DGRX,
+  CMD_VIEW_DGR1,
+  CMD_VIEW_DGR2,
+  CMD_VIEW_HGRX,
+  CMD_VIEW_HGR1,
+  CMD_VIEW_HGR2,
+  CMD_VIEW_DHGRX,
+  CMD_VIEW_DHGR1,
+  CMD_VIEW_DHGR2,
   // Watch
   CMD_WATCH,
   CMD_WATCH_ADD,
@@ -571,16 +464,35 @@ enum Commands_e {
   NUM_COMMANDS
 };
 
-// CPU
-Update_t CmdCursorJumpPC(int nArgs);
-
-Update_t CmdCursorSetPC(int nArgs);
-
+// Assembler
 Update_t CmdAssemble(int nArgs);
 
+// Disassembler Data
+Update_t CmdDisasmDataDefCode     (int nArgs);
+Update_t CmdDisasmDataList        (int nArgs);
+
+Update_t CmdDisasmDataDefByte1    (int nArgs);
+Update_t CmdDisasmDataDefByte2    (int nArgs);
+Update_t CmdDisasmDataDefByte4    (int nArgs);
+Update_t CmdDisasmDataDefByte8    (int nArgs);
+
+Update_t CmdDisasmDataDefWord1    (int nArgs);
+Update_t CmdDisasmDataDefWord2    (int nArgs);
+Update_t CmdDisasmDataDefWord4    (int nArgs);
+
+Update_t CmdDisasmDataDefString   (int nArgs);
+
+Update_t CmdDisasmDataDefAddress8H(int nArgs);
+Update_t CmdDisasmDataDefAddress8L(int nArgs);
+Update_t CmdDisasmDataDefAddress16(int nArgs);
+
+// CPU
+Update_t CmdCursorJumpPC(int nArgs);
+Update_t CmdCursorSetPC(int nArgs);
 Update_t CmdBreakInvalid(int nArgs); // Breakpoint IFF Full-speed!
 Update_t CmdBreakOpcode(int nArgs); // Breakpoint IFF Full-speed!
-Update_t CmdGo(int nArgs);
+Update_t CmdGoNormalSpeed      (int nArgs);
+Update_t CmdGoFullSpeed        (int nArgs);
 
 Update_t CmdIn(int nArgs);
 
@@ -626,7 +538,13 @@ Update_t CmdBreakpointAddPC(int nArgs);
 
 Update_t CmdBreakpointAddIO(int nArgs);
 
-Update_t CmdBreakpointAddMem(int nArgs);
+Update_t CmdBreakpointAddMem(int nArgs, BreakpointSource_t bpSrc = BP_SRC_MEM_RW);
+
+Update_t CmdBreakpointAddMemA  (int nArgs);
+
+Update_t CmdBreakpointAddMemR  (int nArgs);
+
+Update_t CmdBreakpointAddMemW  (int nArgs);
 
 Update_t CmdBreakpointClear(int nArgs);
 
@@ -642,54 +560,39 @@ Update_t CmdBreakpointSave(int nArgs);
 
 // Benchmark
 Update_t CmdBenchmark(int nArgs);
-
 Update_t CmdBenchmarkStart(int nArgs); //Update_t CmdSetupBenchmark (int nArgs);
 Update_t CmdBenchmarkStop(int nArgs); //Update_t CmdExtBenchmark (int nArgs);
 Update_t CmdProfile(int nArgs);
-
 Update_t CmdProfileStart(int nArgs);
-
 Update_t CmdProfileStop(int nArgs);
 
 // Config
 Update_t CmdConfigColorMono(int nArgs);
-
 Update_t CmdConfigDisasm(int nArgs);
-
 Update_t CmdConfigFont(int nArgs);
-
 Update_t CmdConfigHColor(int nArgs);
-
 Update_t CmdConfigLoad(int nArgs);
-
 Update_t CmdConfigSave(int nArgs);
-
 Update_t CmdConfigSetFont(int nArgs);
-
 Update_t CmdConfigGetFont(int nArgs);
+Update_t CmdConfigGetDebugDir  (int nArgs);
+Update_t CmdConfigSetDebugDir  (int nArgs);
 
 // Cursor
 Update_t CmdCursorFollowTarget(int nArgs);
-
 Update_t CmdCursorLineDown(int nArgs);
-
 Update_t CmdCursorLineUp(int nArgs);
-
 Update_t CmdCursorJumpRetAddr(int nArgs);
-
 Update_t CmdCursorRunUntil(int nArgs);
-
 Update_t CmdCursorPageDown(int nArgs);
-
 Update_t CmdCursorPageDown256(int nArgs);
-
 Update_t CmdCursorPageDown4K(int nArgs);
-
 Update_t CmdCursorPageUp(int nArgs);
-
 Update_t CmdCursorPageUp256(int nArgs);
-
 Update_t CmdCursorPageUp4K(int nArgs);
+
+// Cycles info
+Update_t CmdCyclesInfo(int nArgs);
 
 // Disk
 Update_t CmdDisk(int nArgs);
@@ -712,33 +615,22 @@ Update_t CmdFlagSet(int nArgs);
 
 // Memory (Data)
 Update_t CmdMemoryCompare(int nArgs);
-
 Update_t CmdMemoryMiniDumpHex(int nArgs);
-
 Update_t CmdMemoryMiniDumpAscii(int nArgs);
-
 Update_t CmdMemoryMiniDumpApple(int nArgs);
-
 Update_t CmdMemoryEdit(int nArgs);
-
 Update_t CmdMemoryEnterByte(int nArgs);
-
 Update_t CmdMemoryEnterWord(int nArgs);
-
 Update_t CmdMemoryFill(int nArgs);
-
+Update_t CmdNTSC(int nArgs);
+Update_t CmdTextSave(int nArgs);
 Update_t CmdMemoryLoad(int nArgs);
-
 Update_t CmdMemoryMove(int nArgs);
-
 Update_t CmdMemorySave(int nArgs);
-
 Update_t CmdMemorySearch(int nArgs);
-
+Update_t _SearchMemoryDisplay  (int nArgs=0); // TODO: CLEANUP
 Update_t CmdMemorySearchAscii(int nArgs);
-
 Update_t CmdMemorySearchApple(int nArgs);
-
 Update_t CmdMemorySearchHex(int nArgs);
 
 // Output/Scripts
@@ -771,23 +663,40 @@ Update_t CmdStackReturn(int nArgs);
 
 // Symbols
 Update_t CmdSymbols(int nArgs);
-
 Update_t CmdSymbolsClear(int nArgs);
-
 Update_t CmdSymbolsList(int nArgs);
-
 Update_t CmdSymbolsLoad(int nArgs);
-
 Update_t CmdSymbolsInfo(int nArgs);
-
 Update_t CmdSymbolsMain(int nArgs);
-
 Update_t CmdSymbolsUser(int nArgs);
-
 Update_t CmdSymbolsSave(int nArgs);
+Update_t CmdSymbolsCommand     (int nArgs);
+//Update_t CmdSymbolsSource(int nArgs);
 
-Update_t CmdSymbolsSource(int nArgs);
+// Video-scanner info
+Update_t CmdVideoScannerInfo   (int nArgs);
 
+// View
+Update_t CmdViewOutput_Text4X  (int nArgs);
+Update_t CmdViewOutput_Text41  (int nArgs);
+Update_t CmdViewOutput_Text42  (int nArgs);
+Update_t CmdViewOutput_Text8X  (int nArgs);
+Update_t CmdViewOutput_Text81  (int nArgs);
+Update_t CmdViewOutput_Text82  (int nArgs);
+
+Update_t CmdViewOutput_GRX     (int nArgs);
+Update_t CmdViewOutput_GR1     (int nArgs);
+Update_t CmdViewOutput_GR2     (int nArgs);
+Update_t CmdViewOutput_DGRX    (int nArgs);
+Update_t CmdViewOutput_DGR1    (int nArgs);
+Update_t CmdViewOutput_DGR2    (int nArgs);
+
+Update_t CmdViewOutput_HGRX    (int nArgs);
+Update_t CmdViewOutput_HGR1    (int nArgs);
+Update_t CmdViewOutput_HGR2    (int nArgs);
+Update_t CmdViewOutput_DHGRX   (int nArgs);
+Update_t CmdViewOutput_DHGR1   (int nArgs);
+Update_t CmdViewOutput_DHGR2   (int nArgs);
 // Watch
 Update_t CmdWatch(int nArgs);
 
@@ -879,8 +788,56 @@ enum CursorHiLightState_e {
 
 
 // Disassembly
+
+// Data Disassembler
+enum Nopcode_e
+{
+  _NOP_REMOVED
+  ,NOP_BYTE_1 // 1 bytes/line
+  ,NOP_BYTE_2 // 2 bytes/line
+  ,NOP_BYTE_4 // 4 bytes/line
+  ,NOP_BYTE_8 // 8 bytes/line
+  ,NOP_WORD_1 // 1 words/line = 2 bytes (no symbol lookup)
+  ,NOP_WORD_2 // 2 words/line = 4 bytes
+  ,NOP_WORD_4 // 4 words/line = 8 bytes
+  ,NOP_ADDRESS// 1 word/line  = 2 bytes (with symbol lookup)
+  ,NOP_HEX    // hex string   =16 bytes
+  ,NOP_CHAR   // char string // TODO: FIXME: needed??
+  ,NOP_STRING_ASCII // Low Ascii
+  ,NOP_STRING_APPLE // High Ascii
+  ,NOP_STRING_APPLESOFT // Mixed Low/High
+  ,NOP_FAC
+  ,NOP_SPRITE
+  ,NUM_NOPCODE_TYPES
+};
+
+// Disassembler Data
+// type symbol[start:end]
+struct DisasmData_t
+{
+  char sSymbol[ MAX_SYMBOLS_LEN+1 ];
+
+  Nopcode_e eElementType ; // eElementType -> iNoptype
+  int       iDirective   ; // iDirective   -> iNopcode
+
+  WORD nStartAddress; // link to block [start,end)
+  WORD nEndAddress  ;
+  WORD nArraySize   ; // Total bytes
+  //  WORD nBytePerRow  ; // 1, 8
+
+  // with symbol lookup
+  char bSymbolLookup ;
+  WORD nTargetAddress;
+
+  WORD nSpriteW;
+  WORD nSpriteH;
+};
+
 enum DisasmBranch_e {
-  DISASM_BRANCH_OFF = 0, DISASM_BRANCH_PLAIN, DISASM_BRANCH_FANCY, NUM_DISASM_BRANCH_TYPES
+  DISASM_BRANCH_OFF = 0,
+  DISASM_BRANCH_PLAIN,
+  DISASM_BRANCH_FANCY,
+  NUM_DISASM_BRANCH_TYPES
 };
 
 enum DisasmFormat_e {
@@ -893,18 +850,28 @@ enum DisasmFormat_e {
 };
 
 enum DisasmImmediate_e {
-  DISASM_IMMED_OFF = 0, DISASM_IMMED_TARGET, DISASM_IMMED_MODE, DISASM_IMMED_BOTH, NUM_DISASM_IMMED_TYPES
+  DISASM_IMMED_OFF = 0,
+  DISASM_IMMED_TARGET,
+  DISASM_IMMED_MODE,
+  DISASM_IMMED_BOTH,
+  NUM_DISASM_IMMED_TYPES
 };
 
 enum DisasmTargets_e {
-  DISASM_TARGET_OFF = 0, DISASM_TARGET_VAL,  // Note: Also treated as bit flag !!
+  DISASM_TARGET_OFF = 0,
+  DISASM_TARGET_VAL,  // Note: Also treated as bit flag !!
   DISASM_TARGET_ADDR, // Note: Also treated as bit flag !!
   DISASM_TARGET_BOTH,// Note: Also treated as bit flag !!
   NUM_DISASM_TARGET_TYPES
 };
 
-enum DisasmText_e {
-  nMaxAddressLen = 40, nMaxOpcodes = 3, CHARS_FOR_ADDRESS = 8, // 4 digits plus null
+enum DisasmDisplay_e // TODO: Prefix enums with DISASM_DISPLAY_
+{
+  MAX_ADDRESS_LEN   = 40,
+  MAX_OPCODES       =  3, // only display 3 opcode bytes -- See FormatOpcodeBytes() // TODO: FIX when showing data hex
+  CHARS_FOR_ADDRESS =  8, // 4 digits + end-of-string + padding
+  MAX_IMMEDIATE_LEN = 20, // Data Disassembly
+  MAX_TARGET_LEN    = MAX_IMMEDIATE_LEN, // Debugger Display: pTarget = line.sTarget
 };
 
 struct DisasmLine_t {
@@ -913,16 +880,28 @@ struct DisasmLine_t {
   int nOpbyte;
 
   char sAddress[CHARS_FOR_ADDRESS];
-  char sOpCodes[(nMaxOpcodes * 3) + 1];
+  char sOpCodes[(MAX_OPCODES * 3) + 1];
 
-  int nTarget;
-  char sTarget[nMaxAddressLen];
+  // Added for Data Disassembler
+  char sLabel    [ MAX_SYMBOLS_LEN+1 ]; // label is a symbol
 
-  char sTargetOffset[CHARS_FOR_ADDRESS]; // +/- 255, realistically +/-1
-  int nTargetOffset;
+  Nopcode_e iNoptype; // basic element type
+  int       iNopcode; // assembler directive / pseudo opcode
+  int       nSlack  ;
 
-  char sTargetPointer[CHARS_FOR_ADDRESS];
-  char sTargetValue[CHARS_FOR_ADDRESS];
+  char sMnemonic [ MAX_SYMBOLS_LEN+1 ]; // either the real Mnemonic or the Assembler Directive
+  const   DisasmData_t* pDisasmData; // If != NULL then bytes are marked up as data not code
+  //
+
+  int  nTarget; // address -> string
+  char sTarget   [ MAX_ADDRESS_LEN ];
+
+  char sTargetOffset[ CHARS_FOR_ADDRESS+3 ]; // +/- 255, realistically +/-1
+  int  nTargetOffset;
+
+  char sTargetPointer[ CHARS_FOR_ADDRESS ];
+  char sTargetValue  [ CHARS_FOR_ADDRESS ];
+//  char sTargetAddress[ CHARS_FOR_ADDRESS ];
 
   char sImmediate[4]; // 'c'
   char nImmediate;
@@ -953,6 +932,7 @@ struct DisasmLine_t {
     nImmediate = 0;
 
     sBranch[0] = 0;
+    pDisasmData = NULL;
 
     bTargetImmediate = false;
     bTargetIndexed = false;
@@ -1031,10 +1011,16 @@ struct Instruction2_t {
 };
 
 enum Opcode_e {
-  OPCODE_BRA = 0x80,
-  OPCODE_JSR = 0x20, OPCODE_JMP_A = 0x4C, // Absolute
-  OPCODE_JMP_NA = 0x6C, // Indirect Absolute
+  OPCODE_BRA     = 0x80,
+  OPCODE_BRK     = 0x00,
+  OPCODE_JSR     = 0x20,
+  OPCODE_RTI     = 0x40,
+  OPCODE_JMP_A   = 0x4C, // Absolute
+  OPCODE_RTS     = 0x60,
+  OPCODE_JMP_NA  = 0x6C, // Indirect Absolute
   OPCODE_JMP_IAX = 0x7C, // Indexed (Absolute Indirect, X)
+  OPCODE_LDA_A   = 0xAD, // Absolute
+  OPCODE_NOP     = 0xEA // No operation
 };
 
 // Note: "int" causes overflow when profiling for any amount of time.
@@ -1069,14 +1055,17 @@ enum ProfileFormat_e {
 
 // Memory
 
-extern const int _6502_BRANCH_POS;//= +127
-extern const int _6502_BRANCH_NEG;//= -128
-extern const unsigned int _6502_ZEROPAGE_END;//= 0x00FF;
-extern const unsigned int _6502_STACK_END;//= 0x01FF;
-extern const unsigned int _6502_IO_BEGIN;//= 0xC000;
-extern const unsigned int _6502_IO_END;//= 0xC0FF;
-extern const unsigned int _6502_MEM_BEGIN;//= 0x0000;
-extern const unsigned int _6502_MEM_END;//= 0xFFFF;
+const          int _6502_BRANCH_POS      = +127;
+const          int _6502_BRANCH_NEG      = -128;
+const unsigned int _6502_ZEROPAGE_END    = 0x00FF;
+const unsigned int _6502_STACK_BEGIN     = 0x0100;
+const unsigned int _6502_STACK_END       = 0x01FF;
+const unsigned int _6502_IO_BEGIN        = 0xC000;
+const unsigned int _6502_IO_END          = 0xC0FF;
+const unsigned int _6502_BRK_VECTOR      = 0xFFFE;
+const unsigned int _6502_MEM_BEGIN = 0x0000;
+const unsigned int _6502_MEM_END   = 0xFFFF;
+const unsigned int _6502_MEM_LEN   = _6502_MEM_END + 1;
 
 
 enum DEVICE_e {
@@ -1253,6 +1242,7 @@ enum Parameters_e {
   // Disasm
   _PARAM_CONFIG_BEGIN = _PARAM_REGS_END, // Daisy Chain
   PARAM_CONFIG_BRANCH = _PARAM_CONFIG_BEGIN, // g_iConfigDisasmBranchType   [0|1|2]
+  PARAM_CONFIG_CLICK,   // g_bConfigDisasmClick        [0..7] // GH#462
   PARAM_CONFIG_COLON,   // g_bConfigDisasmAddressColon [0|1]
   PARAM_CONFIG_OPCODE,  // g_bConfigDisasmOpcodesView  [0|1]
   PARAM_CONFIG_POINTER, // g_bConfigInfoTargetPointer  [0|1]
@@ -1264,6 +1254,7 @@ enum Parameters_e {
   // Disk
   _PARAM_DISK_BEGIN = _PARAM_CONFIG_END, // Daisy Chain
   PARAM_DISK_EJECT = _PARAM_DISK_BEGIN, // DISK 1 EJECT
+  PARAM_DISK_INFO,                      // DISK 1 INFO
   PARAM_DISK_PROTECT,                   // DISK 1 PROTECT
   PARAM_DISK_READ,                      // DISK 1 READ Track Sector NumSectors MemAddress
   _PARAM_DISK_END,
@@ -1301,6 +1292,7 @@ enum Parameters_e {
   PARAM_CAT_OPERATORS,
   PARAM_CAT_RANGE,
   PARAM_CAT_SYMBOLS,
+  PARAM_CAT_VIEW,
   PARAM_CAT_WATCHES,
   PARAM_CAT_WINDOW,
   PARAM_CAT_ZEROPAGE,
@@ -1347,24 +1339,40 @@ enum {
 typedef map<WORD, int> SourceAssembly_t; // Address -> Line #  &  FileName
 
 // Symbols
-enum {
-  MAX_SYMBOLS_LEN = 13
-};
 
 // ****************************************
 // WARNING: This is the simple enumeration.
 // See: g_aSymbols[]
 // ****************************************
-enum Symbols_e {
-  SYMBOLS_MAIN, SYMBOLS_USER, SYMBOLS_SRC, NUM_SYMBOL_TABLES = 3
+enum SymbolTable_Index_e // Symbols_e -> SymbolTable_Index_e
+{
+  SYMBOLS_MAIN,
+  SYMBOLS_APPLESOFT,
+  SYMBOLS_ASSEMBLY,
+  SYMBOLS_USER_1,
+  SYMBOLS_USER_2,
+  SYMBOLS_SRC_1,
+  SYMBOLS_SRC_2,
+  SYMBOLS_DOS33,
+  SYMBOLS_PRODOS,
+  NUM_SYMBOL_TABLES
 };
 
 // ****************************************
 // WARNING: This is the bit-flags to select which table.
 // See: CmdSymbolsListTable()
 // ****************************************
-enum SymbolTable_e {
-  SYMBOL_TABLE_MAIN = (1 << 0), SYMBOL_TABLE_USER = (1 << 1), SYMBOL_TABLE_SRC = (1 << 2),
+enum SymbolTable_Masks_e // SymbolTable_e ->
+{
+  SYMBOL_TABLE_MAIN      = (1 << 0),
+  SYMBOL_TABLE_APPLESOFT = (1 << 1),
+  SYMBOL_TABLE_ASSEMBLY  = (1 << 2),
+  SYMBOL_TABLE_USER_1    = (1 << 3),
+  SYMBOL_TABLE_USER_2    = (1 << 4),
+  SYMBOL_TABLE_SRC_1     = (1 << 5),
+  SYMBOL_TABLE_SRC_2     = (1 << 6),
+  SYMBOL_TABLE_DOS33     = (1 << 7),
+  SYMBOL_TABLE_PRODOS    = (1 << 8),
 };
 
 typedef map <WORD, string> SymbolTable_t;
