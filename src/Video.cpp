@@ -71,69 +71,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 LR: Lo-Res   HR: Hi-Res   DHR: Double Hi-Res */
 
-#define RGB(r, g, b)          ((COLORREF)(((BYTE)(r)|((WORD)((BYTE)(g))<<8))|(((DWORD)(BYTE)(b))<<16)))
 #define GetRValue(rgb)      ((BYTE)(rgb))
 #define GetGValue(rgb)      ((BYTE)(((WORD)(rgb)) >> 8))
 #define GetBValue(rgb)      ((BYTE)((rgb)>>16))
 #define FLASH_80_COL 1
 #define HALF_SHIFT_DITHER 0
-
-// STANDARD /*WINDOWS*/ LINUX COLORS
-#define  CREAM            0xF6
-#define  MEDIUM_GRAY      0xF7
-#define  DARK_GRAY        0xF8
-#define  RED              0xF9
-#define  GREEN            0xFA
-#define  YELLOW           0xFB
-#define  BLUE             0xFC
-#define  MAGENTA          0xFD
-#define  CYAN             0xFE
-#define  WHITE            0xFF
-
-enum Color_Palette_Index_e {
-  // Really need to have Quater Green and Quarter Blue for Hi-Res
-  BLACK,
-  DARK_RED,
-  DARK_GREEN,       // Half Green
-  DARK_YELLOW,
-  DARK_BLUE,        // Half Blue
-  DARK_MAGENTA,
-  DARK_CYAN,
-  LIGHT_GRAY,
-  MONEY_GREEN,
-  SKY_BLUE,
-
-  // OUR CUSTOM COLORS
-  DEEP_RED,
-  LIGHT_BLUE,
-  BROWN,
-  ORANGE,
-  PINK,
-  AQUA,
-
-  // CUSTOM HGR COLORS (don't change order) - For tv emulation g_nAppMode
-  HGR_BLACK,
-  HGR_WHITE,
-  HGR_BLUE,
-  HGR_RED,
-  HGR_GREEN,
-  HGR_MAGENTA,
-  HGR_GREY1,
-  HGR_GREY2,
-  HGR_YELLOW,
-  HGR_AQUA,
-  HGR_PURPLE,
-  HGR_PINK,
-
-  // USER CUSTOMIZABLE COLOR
-  MONOCHROME_CUSTOM,
-
-  // Pre-set "Monochromes"
-  MONOCHROME_AMBER,
-  MONOCHROME_GREEN,
-  MONOCHROME_WHITE,
-  NUM_COLOR_PALETTE
-};
 
 const int SRCOFFS_40COL = 0;
 const int SRCOFFS_80COL = (SRCOFFS_40COL + 256);
@@ -142,23 +84,13 @@ const int SRCOFFS_HIRES = (SRCOFFS_LORES + 16);
 const int SRCOFFS_DHIRES = (SRCOFFS_HIRES + 512);
 const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 
-enum VideoFlag_e {
-  VF_80COL = 0x00000001,
-  VF_DHIRES = 0x00000002,
-  VF_HIRES = 0x00000004,
-  VF_MASK2 = 0x00000008,
-  VF_MIXED = 0x00000010,
-  VF_PAGE2 = 0x00000020,
-  VF_TEXT = 0x00000040
-};
-
-#define  SW_80COL         (vidmode & VF_80COL)
-#define  SW_DHIRES        (vidmode & VF_DHIRES)
-#define  SW_HIRES         (vidmode & VF_HIRES)
-#define  SW_MASK2         (vidmode & VF_MASK2)
-#define  SW_MIXED         (vidmode & VF_MIXED)
-#define  SW_PAGE2         (vidmode & VF_PAGE2)
-#define  SW_TEXT          (vidmode & VF_TEXT)
+#define  SW_80COL         (g_uVideoMode & VF_80COL)
+#define  SW_DHIRES        (g_uVideoMode & VF_DHIRES)
+#define  SW_HIRES         (g_uVideoMode & VF_HIRES)
+#define  SW_MASK2         (g_uVideoMode & VF_MASK2)
+#define  SW_MIXED         (g_uVideoMode & VF_MIXED)
+#define  SW_PAGE2         (g_uVideoMode & VF_PAGE2)
+#define  SW_TEXT          (g_uVideoMode & VF_TEXT)
 
 #define  SWL_80COL         (vidmode_latched & VF_80COL)
 #define  SWL_DHIRES        (vidmode_latched & VF_DHIRES)
@@ -191,7 +123,7 @@ enum VideoFlag_e {
   dstrect.y = DST_Y; \
   dstrect.w = DST_W; \
   dstrect.h = DST_H; \
-  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush);\
+  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);\
 }
 
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
@@ -267,7 +199,8 @@ COLORREF monochrome = RGB(0xC0, 0xC0, 0xC0);
 static BOOL redrawfull = 1;
 static DWORD dwVBlCounter = 0;
 static LPBYTE vidlastmem = NULL;
-static DWORD vidmode = VF_TEXT;
+DWORD g_uVideoMode = VF_TEXT;
+DWORD g_uDebugVideoMode = VF_TEXT;
 static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
 DWORD g_videotype = VT_COLOR_STANDARD;
 DWORD g_singlethreaded = 0;
@@ -403,6 +336,19 @@ void CreateIdentityPalette() {
   SETFRAMECOLOR(MAGENTA, 0xFF, 0x00, 0xFF);
   SETFRAMECOLOR(CYAN, 0x00, 0xFF, 0xFF);
   SETFRAMECOLOR(WHITE, 0xFF, 0xFF, 0xFF);
+
+  SETFRAMECOLOR(LIGHT_SKY_BLUE, 80, 192, 255);
+  SETFRAMECOLOR(DARKER_SKY_BLUE, 0, 128, 192);
+  SETFRAMECOLOR(DEEP_SKY_BLUE, 0,  64, 128 );
+  SETFRAMECOLOR(DARKER_CYAN,   0, 63, 63 );
+  SETFRAMECOLOR(DARKEST_CYAN,   0, 31, 31 );
+  SETFRAMECOLOR(HALF_ORANGE, 128, 64,   0 );
+  SETFRAMECOLOR(DARKER_BLUE, 0x00, 0x00, 63);
+  SETFRAMECOLOR(DARKER_YELLOW, 0x00, 63, 63);
+  SETFRAMECOLOR(DARKEST_YELLOW, 0x00, 31, 31);
+  SETFRAMECOLOR(LIGHTEST_GRAY, 223, 223, 223);
+  SETFRAMECOLOR(DARKER_GREEN, 0x00, 63, 0x00);
+  SETFRAMECOLOR(DARKEST_GREEN, 0x00, 31, 0x00);
 }
 
 void CreateDIBSections() {
@@ -1425,7 +1371,7 @@ void VideoBenchmark() {
   // going on, changing half of the bytes in the video buffer each frame to
   // simulate the activity of an average game
   DWORD totaltextfps = 0;
-  vidmode = VF_TEXT;
+  g_uVideoMode = VF_TEXT;
   FillMemory(mem + 0x400, 0x400, 0x14);
   VideoRedrawScreen();
   DWORD milliseconds = GetTickCount();
@@ -1449,7 +1395,7 @@ void VideoBenchmark() {
   // going on, changing half of the bytes in the video buffer each frame to
   // simulate the activity of an average game
   DWORD totalhiresfps = 0;
-  vidmode = VF_HIRES;
+  g_uVideoMode = VF_HIRES;
   FillMemory(mem + 0x2000, 0x2000, 0x14);
   VideoRedrawScreen();
   milliseconds = GetTickCount();
@@ -1806,7 +1752,23 @@ void VideoPerformRefresh() {
 
   // latch video mode permutation and read the latch
   displaypage2_latched = displaypage2;
-  vidmode_latched = vidmode;
+  vidmode_latched = g_uVideoMode;
+
+  if (g_nAppMode == MODE_DEBUG)
+  {
+    if (redrawfull==0)
+    {
+        // Allow Disk Choose screen, help, etc
+        pthread_mutex_unlock(&video_draw_mutex);
+        return;
+    }
+    if (g_uDebugVideoMode > 0)
+    {
+      vidmode_latched = g_uDebugVideoMode;
+      displaypage2_latched = (g_uDebugVideoMode & VF_PAGE2)>0;
+      g_uDebugVideoMode = 0;
+    }
+  }
 
   LPBYTE addr = framebufferbits;
   LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
@@ -1942,8 +1904,13 @@ void VideoReinitialize() {
   CreateDIBSections();
 }
 
-void VideoRefreshScreen() {
+void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRedrawWholeScreen /* =false*/ ) {
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
+  if (bRedrawWholeScreen)
+  {
+    g_uDebugVideoMode = uRedrawWholeScreenVideoMode;
+    redrawfull = 1;
+  }
   if (video_worker_active_) {
     video_worker_refresh_ = true;
   } else {
@@ -1955,7 +1922,7 @@ void VideoRefreshScreen() {
 void VideoResetState() {
   g_nAltCharSetOffset = 0;
   displaypage2 = 0;
-  vidmode = VF_TEXT;
+  g_uVideoMode = VF_TEXT;
   redrawfull = 1;
 }
 
@@ -1966,21 +1933,21 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
 
   address &= 0xFF;
   DWORD oldpage2 = SW_PAGE2;
-  int oldvalue = g_nAltCharSetOffset + (int) (vidmode & ~(VF_MASK2 | VF_PAGE2));
+  int oldvalue = g_nAltCharSetOffset + (int) (g_uVideoMode & ~(VF_MASK2 | VF_PAGE2));
   switch (address) {
     case 0x00:
-      vidmode &= ~VF_MASK2;
+      g_uVideoMode &= ~VF_MASK2;
       break;
     case 0x01:
-      vidmode |= VF_MASK2;
+      g_uVideoMode |= VF_MASK2;
       break;
     case 0x0C:
       if (!IS_APPLE2)
-        vidmode &= ~VF_80COL;
+        g_uVideoMode &= ~VF_80COL;
       break;
     case 0x0D:
       if (!IS_APPLE2)
-        vidmode |= VF_80COL;
+        g_uVideoMode |= VF_80COL;
       break;
     case 0x0E:
       if (!IS_APPLE2)
@@ -1991,41 +1958,41 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
         g_nAltCharSetOffset = 256;
       break;  // Alternate char set on
     case 0x50:
-      vidmode &= ~VF_TEXT;
+      g_uVideoMode &= ~VF_TEXT;
       break;
     case 0x51:
-      vidmode |= VF_TEXT;
+      g_uVideoMode |= VF_TEXT;
       break;
     case 0x52:
-      vidmode &= ~VF_MIXED;
+      g_uVideoMode &= ~VF_MIXED;
       break;
     case 0x53:
-      vidmode |= VF_MIXED;
+      g_uVideoMode |= VF_MIXED;
       break;
     case 0x54:
-      vidmode &= ~VF_PAGE2;
+      g_uVideoMode &= ~VF_PAGE2;
       break;
     case 0x55:
-      vidmode |= VF_PAGE2;
+      g_uVideoMode |= VF_PAGE2;
       break;
     case 0x56:
-      vidmode &= ~VF_HIRES;
+      g_uVideoMode &= ~VF_HIRES;
       break;
     case 0x57:
-      vidmode |= VF_HIRES;
+      g_uVideoMode |= VF_HIRES;
       break;
     case 0x5E:
       if (!IS_APPLE2)
-        vidmode |= VF_DHIRES;
+        g_uVideoMode |= VF_DHIRES;
       break;
     case 0x5F:
       if (!IS_APPLE2)
-        vidmode &= ~VF_DHIRES;
+        g_uVideoMode &= ~VF_DHIRES;
       break;
   }
   if (SW_MASK2)
-    vidmode &= ~VF_PAGE2;
-  if (oldvalue != g_nAltCharSetOffset + (int) (vidmode & ~(VF_MASK2 | VF_PAGE2))) {
+    g_uVideoMode &= ~VF_PAGE2;
+  if (oldvalue != g_nAltCharSetOffset + (int) (g_uVideoMode & ~(VF_MASK2 | VF_PAGE2))) {
     graphicsmode = !SW_TEXT;
     redrawfull = 1;
   }
@@ -2075,19 +2042,58 @@ void VideoUpdateFlash() {
   }
 }
 
-bool VideoGetSW80COL() {
-  return SW_80COL != 0;
+//===========================================================================
+
+bool VideoGetSW80COL(void)
+{
+  return SW_80COL ? true : false;
 }
 
+bool VideoGetSWDHIRES(void)
+{
+  return SW_DHIRES ? true : false;
+}
+
+bool VideoGetSWHIRES(void)
+{
+  return SW_HIRES ? true : false;
+}
+
+bool VideoGetSW80STORE(void)
+{
+  return SW_MASK2 ? true : false;
+}
+
+bool VideoGetSWMIXED(void)
+{
+  return SW_MIXED ? true : false;
+}
+
+bool VideoGetSWPAGE2(void)
+{
+  return SW_PAGE2 ? true : false;
+}
+
+bool VideoGetSWTEXT(void)
+{
+  return SW_TEXT ? true : false;
+}
+
+bool VideoGetSWAltCharSet(void)
+{
+  return g_nAltCharSetOffset != 0;
+}
+
+//===========================================================================
 DWORD VideoGetSnapshot(SS_IO_Video *pSS) {
   pSS->bAltCharSet = g_nAltCharSetOffset != 0;
-  pSS->dwVidMode = vidmode;
+  pSS->dwVidMode = g_uVideoMode;
   return 0;
 }
 
 DWORD VideoSetSnapshot(SS_IO_Video *pSS) {
   g_nAltCharSetOffset = !pSS->bAltCharSet ? 0 : 256;
-  vidmode = pSS->dwVidMode;
+  g_uVideoMode = pSS->dwVidMode;
 
   graphicsmode = !SW_TEXT;
   displaypage2 = (SW_PAGE2 != 0);
