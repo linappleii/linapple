@@ -909,16 +909,16 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     xdgConfigHome = std::string(home) + "/.config";
   }
 
-  std::vector <std::string> configDir;
-  configDir.push_back(xdgConfigDirs + "/linapple/linapple.conf");
+  std::vector <std::string> configFiles;
+  configFiles.push_back(xdgConfigDirs + "/linapple/linapple.conf");
   if (home) {
     // Suppport old locations under HOME.
-    configDir.push_back(std::string(home) + "/linapple/linapple.conf");
-    configDir.push_back(std::string(home) + "/.linapple/linapple.conf");
+    configFiles.push_back(std::string(home) + "/linapple/linapple.conf");
+    configFiles.push_back(std::string(home) + "/.linapple/linapple.conf");
   }
 
   std::string lastSuccessfulUserConfig;
-  for (std::vector<std::string>::reverse_iterator it = configDir.rbegin(); it != configDir.rend(); it++) {
+  for (std::vector<std::string>::reverse_iterator it = configFiles.rbegin(); it != configFiles.rend(); it++) {
     registry = fopen((*it).c_str(), "r");
     if (!registry) {
       continue;
