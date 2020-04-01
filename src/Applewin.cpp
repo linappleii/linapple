@@ -916,6 +916,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     configFiles.push_back(std::string(home) + "/linapple/linapple.conf");
     configFiles.push_back(std::string(home) + "/.linapple/linapple.conf");
   }
+  configFiles.push_back(xdgConfigHome + "/linapple/linapple.conf");
 
   std::string lastSuccessfulUserConfig;
   for (std::vector<std::string>::reverse_iterator it = configFiles.rbegin(); it != configFiles.rend(); it++) {
