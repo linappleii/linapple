@@ -94,18 +94,25 @@ images only have files and you must find the correct application to
 run. In this case you will need to execute BASIC commands to list the
 files on the disk and run programs.
 
-### Commands
+### Apple II Commands
 
-- `CATALOG`: This command lists the files on a disk. The first column
-  in the list identifies the file type. A for Applesoft BASIC. B for
-  binary. I for Integer BASIC. T for ASCII text. The third column
-  lists the name of the file.
-- `RUN file`: Execute the Applesoft BASIC or Integer BASIC file.
-- `BRUN file`: Execute the binary file.
-- `EXEC file`: Execute a text file as though it was typed from the
-  keyboard.
-- `LOAD file`: Load a file, usually a text file, into memory.
+This is a brief guide to get you started. For more information see
+[_Apple II: The DOS Manual_][dos3.3] (for DOS 3.3) and the [_ProDOS 8
+Technical Reference Manual_][prodos].
+
+- `CATALOG`: List the files on a disk. The first column in the list
+  identifies the file type: A for Applesoft BASIC, B for binary. I for
+  Integer BASIC. T for text.
+- `RUN file`: Load and run an Applesoft or Integer BASIC file.
+- `BRUN file`: Load and run a binary file. (Not all binary files can
+  be run.)
+- `EXEC file`: Read commands from a text file and execute them as if
+  they were typed at the keyboard.
+- `LOAD file`: Load an Applesoft or Integer BASIC file into memory.
 - `LIST`: List the current program in memory.
+
+[prodos]: http://www.easy68k.com/paulrsm/6502/PDOS8TRM.HTM
+[dos3.3]: https://archive.org/details/a2_the_DOS_Manual/page/n2/mode/1up
 
 
 Configuration
