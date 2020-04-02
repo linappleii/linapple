@@ -1,3 +1,5 @@
+XXXX mouse capture exit by function key
+
 # LinApple
 
 LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.
@@ -24,6 +26,9 @@ currently resides.
 * `--benchmark`: Specifies that benchmark should be loaded (untested)
 
 ## Using LinApple
+
+Clicking in the LinApple window will capture the mouse. It may be
+released by pressing any function key.
 
 | Key            | Function                                                         |
 | -------------- | -----------------------------------------------------------------|
