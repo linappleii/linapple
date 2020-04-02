@@ -36,6 +36,16 @@ Command Line Switches
 
 _Note: some command-line options have not been fully tested._
 
+### Command-line Examples
+
+To have LinApple start in fullscreen mode and automatically boot the
+disk `example.dsk`, you can open a shell and run:
+
+    $ linapple --d1 example.dsk -f --autoboot
+
+This command could also be placed in a shell script, which could be
+started from an icon or menu on the desktop.
+
 
 Using LinApple
 --------------
@@ -134,15 +144,3 @@ be searched"_. Each directory is separated by a colon (`:`). Defaults
 to `/etc/xdg`.
 
 [xdg]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-
-
-Examples
---------
-
-To have LinApple start in fullscreen mode and automatically boot the
-disk `example.dsk`, you can open a shell and run:
-
-    $ linapple --d1 example.dsk -f --autoboot
-
-This command could also be placed in a shell script, which could be
-started from an icon or menu on the desktop.
