@@ -34,6 +34,8 @@ Command Line Switches
 * `-l`: Logs output to a file called AppleWin.log (untested)
 * `--benchmark`: Specifies that benchmark should be loaded (untested)
 
+_Note: some command-line options have not been fully tested._
+
 
 Using LinApple
 --------------
@@ -144,5 +146,3 @@ disk `example.dsk`, you can open a shell and run:
 
 This command could also be placed in a shell script, which could be
 started from an icon or menu on the desktop.
-
-_Note: extensive testing has not been performed on all command-line options._
