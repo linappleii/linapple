@@ -13,6 +13,9 @@ currently resides.
 
 ## Command Line Switches
 
+* `-h|--help`: Print command-line options and exit.
+* `--conf path/to/file.conf`: Use only the specified configuration file.
+  (The standard configuration file search is not done.)
 * `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
 * `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
 * `-b|--autoboot`: Boots the system automatically, rather than displaying the splash screen
