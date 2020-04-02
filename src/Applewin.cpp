@@ -970,6 +970,7 @@ void PrintHelp()
          "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
          "\n"
          "  -h|--help      show this help message\n"
+         "  --conf <file>  use <file> instead of any default config files\n"
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
          "  -b|--autoboot  boot/reset at startup\n"
