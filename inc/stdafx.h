@@ -41,6 +41,7 @@
 
 #include "Frame.h"
 #include "Harddisk.h"
+#include "Clock.h"
 #include "Joystick.h"
 #include "Keyboard.h"
 #include "Log.h"

@@ -83,6 +83,7 @@ DWORD emulmsec = 0;
 static DWORD emulmsec_frac = 0;
 bool g_bFullSpeed = false;
 bool hddenabled = false;
+DWORD clockslot;
 static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 
@@ -622,6 +623,13 @@ void LoadConfiguration()
     }
   }
 
+  if (registry) {
+    if (LOAD(TEXT(REGVALUE_CLOCK_SLOT), &clockslot)) {
+      if (clockslot < 1 || clockslot > 7)
+        clockslot = 0;
+    }
+  }
+
   char *szHDFilename = NULL;
 
   if (registry) {
@@ -1153,6 +1161,9 @@ int main(int argc, char *argv[])
     JoyInitialize();
     MemInitialize();
     HD_SetEnabled(hddenabled);
+    if (clockslot) {
+      Clock_Insert(clockslot);
+    }
     VideoInitialize();
     DebugInitialize();
     Snapshot_Startup();    // Do this after everything has been init'ed
