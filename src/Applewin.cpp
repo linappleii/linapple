@@ -909,16 +909,17 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     xdgConfigHome = std::string(home) + "/.config";
   }
 
-  std::vector <std::string> configDir;
-  configDir.push_back(xdgConfigDirs + "/linapple/linapple.conf");
+  std::vector <std::string> configFiles;
+  configFiles.push_back(xdgConfigDirs + "/linapple/linapple.conf");
   if (home) {
     // Suppport old locations under HOME.
-    configDir.push_back(std::string(home) + "/linapple/linapple.conf");
-    configDir.push_back(std::string(home) + "/.linapple/linapple.conf");
+    configFiles.push_back(std::string(home) + "/linapple/linapple.conf");
+    configFiles.push_back(std::string(home) + "/.linapple/linapple.conf");
   }
+  configFiles.push_back(xdgConfigHome + "/linapple/linapple.conf");
 
   std::string lastSuccessfulUserConfig;
-  for (std::vector<std::string>::reverse_iterator it = configDir.rbegin(); it != configDir.rend(); it++) {
+  for (std::vector<std::string>::reverse_iterator it = configFiles.rbegin(); it != configFiles.rend(); it++) {
     registry = fopen((*it).c_str(), "r");
     if (!registry) {
       continue;
@@ -942,16 +943,19 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     return;
   }
 
-  if (!home) {
-    std::cerr << "WARNING!" << " No HOME set and no known location for user config files."
-              << " This can lead to unexpected behavior, even program crashes." << std::endl;
+  if (xdgConfigHome.length() == 0) {
+    std::cerr << "WARNING!"
+        << " Neither XDG_CONFIG_HOME nor HOME is set and no user config"
+        << " files were found."
+        << " This can lead to unexpected behavior, even program crashes."
+        << std::endl;
     return;
   }
 
   std::string userDir(home);
-  mkdir((userDir + "/.config").c_str(), 0700);
-  mkdir((userDir + "/.config/linapple").c_str(), 0700);
-  registry = fopen((userDir + "/.config/linapple/linapple.conf").c_str(), "w+");
+  mkdir(xdgConfigHome.c_str(), 0700);
+  mkdir((xdgConfigHome + "/linapple").c_str(), 0700);
+  registry = fopen((xdgConfigHome + "/linapple/linapple.conf").c_str(), "w+");
 }
 
 void RegisterExtensions()
@@ -966,6 +970,7 @@ void PrintHelp()
          "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
          "\n"
          "  -h|--help      show this help message\n"
+         "  --conf <file>  use <file> instead of any default config files\n"
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
          "  -b|--autoboot  boot/reset at startup\n"
