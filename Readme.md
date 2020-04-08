@@ -1,5 +1,3 @@
-XXXX mouse capture exit by function key
-
 # LinApple
 
 LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.
