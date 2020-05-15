@@ -988,6 +988,7 @@ void PrintHelp()
          "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
          #endif
          "  --benchmark    benchmark and quit\n"
+         "  --conf <file>  conf file for the emulator\n"
          "\n");
 }
 
