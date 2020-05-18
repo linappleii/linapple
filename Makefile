@@ -1,5 +1,8 @@
 #! /usr/bin/make -f
 
+# TODO conform to
+# https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
+
 PACKAGE     := linapple
 VERSION     := 2.1.1
 
@@ -9,17 +12,16 @@ CC          := g++
 # Where does this get installed
 PREFIX      ?= /usr/local
 
+# Where assets (font file, etc) are read from
+# (You can build a version that loads assets from the source tree with: DATADIR=`pwd`/res make )
+DATADIR     ?= share/$(PACKAGE)
+
 # Build and installation staging location.
 DESTDIR     := build
 
-# Where assets (font file, etc) are read from
-# (You can build a version that loads assets from the source tree
-#  with: ASSET_DIR=`pwd`/res make )
-ASSETDIR   ?= share/$(PACKAGE)
-
 # Where default versions of resource files (linapple.conf, etc) are obtained from initially
 # (You can build a version that copies resources from the source tree with: RESOURCE_INIT_DIR=`pwd`/res make )
-RESOURCE_INIT_DIR ?= $(ASSETDIR)
+RESOURCE_INIT_DIR ?= $(DATADIR)
 
 PKGDIR="pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
 
@@ -29,8 +31,10 @@ TARGET      := linapple
 #The Directories, Source, Includes, Objects, Binary and Resources
 SRCDIR      := src
 INCDIR      := inc
-BUILDDIR    := $(DESTDIR)/obj
-TARGETDIR   := $(DESTDIR)/bin
+BINDIR       = bin
+OBJDIR       = obj
+BUILDDIR    := $(DESTDIR)/$(OBJDIR)
+TARGETDIR   := $(DESTDIR)/$(BINDIR)
 RESDIR      := res
 SRCEXT      := cpp
 DEPEXT      := d
@@ -62,7 +66,7 @@ ifdef DEBUG
 CFLAGS := -Wall -O0 -ggdb -ansi -c -finstrument-functions -std=c++11
 endif
 
-CFLAGS += -DASSET_DIR=\"$(ASSET_DIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\" -DVERSIONSTRING=\"$(VERSION)\"
+CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\" -DVERSIONSTRING=\"$(VERSION)\"
 CFLAGS += $(SDL_CFLAGS)
 CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
@@ -91,20 +95,19 @@ remake: distclean all
 images: $(DSTIMGS) directories
 
 resources: directories images
-	@cp $(RESDIR)/linapple.conf $(DESTDIR)/$(ASSETDIR)
-	@cp $(RESDIR)/Master.dsk $(DESTDIR)/$(ASSETDIR)
+	@cp $(RESDIR)/linapple.conf $(DESTDIR)/$(DATADIR)
+	@cp $(RESDIR)/Master.dsk $(DESTDIR)/$(DATADIR)
 
 # Copy symbol files next to binary
 symbolfiles: $(DSTSYMS)
 
 directories:
-	@mkdir -p $(BUILDDIR) $(TARGETDIR) $(DESTDIR)/$(ASSETDIR)
+	@mkdir -p $(BUILDDIR) $(TARGETDIR) $(DESTDIR)/$(DATADIR)
 
 #Clean only Objects
 clean:
 	@$(RM) -rf $(BUILDDIR)
 	@$(RM) -rf $(TARGETDIR)
-	@$(RM) -f $(RESDIR)/splash.xpm $(RESDIR)/charset_*.xpm
 
 #Full Clean, Objects and Binaries
 cleaner: clean
@@ -140,29 +143,26 @@ distclean: cleaner
 	rm -rf $(DESTDIR)
 
 install: all
-	cp $(DSTIMGS) "$(DESTDIR)/$(ASSETDIR)"
-	install $(TARGETDIR)/linapple "$(PREFIX)/bin"
-	install -d "$(PREFIX)/$(ASSETDIR)"
-	install $(DESTDIR)/$(ASSETDIR)/* "$(PREFIX)/$(ASSETDIR)"
+	install -d "$(PREFIX)/$(BINDIR)"
+	install $(DESTDIR)/$(BINDIR)/$(TARGET) "$(PREFIX)/$(BINDIR)/$(TARGET)"
+	install -d "$(PREFIX)/$(DATADIR)"
+	install $(DESTDIR)/$(DATADIR)/* "$(PREFIX)/$(DATADIR)"
 
 uninstall:
 	$(RM) $(PREFIX)/bin/$(TARGET)
-	$(RM) $(PREFIX)/$(ASSETDIR)/*
-	rmdir $(PREFIX)/$(ASSETDIR)
+	$(RM) $(PREFIX)/$(DATADIR)/*
+	rmdir $(PREFIX)/$(DATADIR)
 
-deb:
+$(PACKAGE)/$(PACKAGE)-$(VERSION).deb:
 	@echo " Building a Debian package ..."
-	mkdir -p $(PKGDIR)
-	cp -r build/* $(PKGDIR)
+	rm -rf $(PKGDIR)
+	mkdir -p $(PKGDIR)/$(BINDIR)
+	cp $(DESTDIR)/$(BINDIR)/$(TARGET)/$(PKGDIR)/$(BINDIR)
+	mkdir -p $(PKGDIR)/$(DATADIR) 
+	cp -r $(DESTDIR)/$(DATADIR) $(PKGDIR)/$(DATADIR)
 	dpkg --build $(PKGDIR)
 	mv $(PACKAGE)/$(PACKAGE)-$(VERSION).deb" .
-package: deb
+package: $(PACKAGE)/$(PACKAGE)-$(VERSION).deb
 
 #Non-File Targets
 .PHONY: all clean cleaner deb directories distclean images install package remake resources symbolfiles
-
-#inspect:
-#	$(info PREFIX:  $(PREFIX))
-#	$(info DESTDIR: $(DESTDIR))
-#	$(info SRCIMGS: $(SRCIMGS))
-#	$(info DSTIMGS: $(DSTIMGS))
