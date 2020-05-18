@@ -4,7 +4,7 @@
 #define CHAR_CR           '\x0A'
 #define CHAR_SPACE        ' '
 #define CHAR_TAB          '\t'
-#define CHAR_QUOTE_DOUBLE '"' 
+#define CHAR_QUOTE_DOUBLE '"'
 #define CHAR_QUOTE_SINGLE '\''
 #define CHAR_ESCAPE       '\x1B'
 
@@ -109,14 +109,12 @@ inline	const char* SkipUntilWhiteSpaceReverse ( const char *pSrc, const char *pS
 
 /** Assumes text are valid hex digits!
 //=========================================================================== */
-inline	BYTE TextConvert2CharsToByte ( char *pText )
-		{
-			BYTE n = ((pText[0] <= '@') ? (pText[0] - '0') : (pText[0] - 'A' + 10)) << 4;
-				n += ((pText[1] <= '@') ? (pText[1] - '0') : (pText[1] - 'A' + 10)) << 0;
-			return n;
-		}
+inline	unsigned char TextConvert2CharsToByte ( char *pText ) {
+  unsigned char n = ((pText[0] <= '@') ? (pText[0] - '0') : (pText[0] - 'A' + 10)) << 4;
+    n += ((pText[1] <= '@') ? (pText[1] - '0') : (pText[1] - 'A' + 10)) << 0;
+  return n;
+}
 
-//===========================================================================
 inline	bool TextIsHexChar( char nChar )
 		{
 			if ((nChar >= '0') && (nChar <= '9'))
@@ -135,7 +133,7 @@ inline	bool TextIsHexChar( char nChar )
 //===========================================================================
 inline	bool TextIsHexByte( char *pText )
 		{
-			if (TextIsHexChar( pText[0] ) && 
+			if (TextIsHexChar( pText[0] ) &&
 				TextIsHexChar( pText[1] ))
 				return true;
 

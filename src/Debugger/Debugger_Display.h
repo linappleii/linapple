@@ -41,13 +41,13 @@
 		DISPLAY_HEIGHT = 384,
 		MAX_DISPLAY_LINES  = DISPLAY_HEIGHT / CONSOLE_FONT_HEIGHT,
 	};
-	
+
 	int GetConsoleTopPixels( int y );
 
 	extern FontConfig_t g_aFontConfig[ NUM_FONTS  ];
 
-	void DebuggerSetColorFG( COLORREF nRGB );
-	void DebuggerSetColorBG( COLORREF nRGB, bool bTransparent = false );
+	void DebuggerSetColorFG( unsigned int nRGB );
+	void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent = false );
 
 	void PrintGlyph      ( const int x, const int y, const int iChar );
 	int  PrintText       ( const char * pText, RECT & rRect );
@@ -65,17 +65,13 @@
 	void DrawConsoleLine      ( const conchar_t * pText, int y);
 	void DrawConsoleCursor    ();
 
-	int GetDisassemblyLine(  const WORD nOffset, DisasmLine_t & line_ );
-//		, int iOpcode, int iOpmode, int nOpbytes
-//		char *sAddress_, char *sOpCodes_,
-//		char *sTarget_, char *sTargetOffset_, int & nTargetOffset_, char *sTargetValue_,
-//		char * sImmediate_, char & nImmediate_, char *sBranch_ );
-	WORD DrawDisassemblyLine  ( int line, const WORD offset );
+	int GetDisassemblyLine(  const unsigned short nOffset, DisasmLine_t & line_ );
+	unsigned short DrawDisassemblyLine  ( int line, const unsigned short offset );
 	void FormatDisassemblyLine( const DisasmLine_t & line, char *sDisassembly_, const int nBufferSize );
-	void FormatOpcodeBytes    ( WORD nBaseAddress, DisasmLine_t & line_ );
-	void FormatNopcodeBytes   ( WORD nBaseAddress, DisasmLine_t & line_ );
+	void FormatOpcodeBytes    ( unsigned short nBaseAddress, DisasmLine_t & line_ );
+	void FormatNopcodeBytes   ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 
-	void DrawFlags            ( int line, WORD nRegFlags, LPTSTR pFlagNames_);
+	void DrawFlags            ( int line, unsigned short nRegFlags, LPTSTR pFlagNames_);
 
 	extern void AllocateDebuggerMemDC(void);
 	extern void ReleaseDebuggerMemDC(void);
@@ -103,7 +99,7 @@
 		bool isAbsCycle;
 
 		unsigned __int64 lastCumulativeCycles;
-		UINT cycleDelta;
+		unsigned int cycleDelta;
 	};
 
 	extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;

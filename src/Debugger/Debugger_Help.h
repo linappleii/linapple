@@ -26,8 +26,8 @@ inline void  UnpackVersion( const unsigned int nVersion,
 		nFixMinor_ = (nVersion >>  0) & 0xFF;
 	}
 
-	bool  TestStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize );
-	bool  TryStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize );
-	int  StringCat( TCHAR * pDst, LPCSTR pSrc, const int nDstSize );
+	bool  TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize );
+	bool  TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize );
+	int  StringCat( char * pDst, LPCSTR pSrc, const int nDstSize );
 
 #endif

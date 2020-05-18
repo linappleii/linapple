@@ -1,6 +1,6 @@
 // Motorola MC6821 PIA
 
-typedef void (*mem_write_handler)(void *objFrom, void *objTo, int nAddr, BYTE byData);
+typedef void (*mem_write_handler)(void *objFrom, void *objTo, int nAddr, unsigned char byData);
 
 typedef struct _STWriteHandler {
   void *objTo;
@@ -18,27 +18,27 @@ public:
 
   virtual ~C6821();
 
-  BYTE GetPB();
+  unsigned char GetPB();
 
-  BYTE GetPA();
+  unsigned char GetPA();
 
-  void SetPB(BYTE byData);
+  void SetPB(unsigned char byData);
 
-  void SetPA(BYTE byData);
+  void SetPA(unsigned char byData);
 
-  void SetCA1(BYTE byData);
+  void SetCA1(unsigned char byData);
 
-  void SetCA2(BYTE byData);
+  void SetCA2(unsigned char byData);
 
-  void SetCB1(BYTE byData);
+  void SetCB1(unsigned char byData);
 
-  void SetCB2(BYTE byData);
+  void SetCB2(unsigned char byData);
 
   void Reset();
 
-  BYTE Read(BYTE byRS);
+  unsigned char Read(unsigned char byRS);
 
-  void Write(BYTE byRS, BYTE byData);
+  void Write(unsigned char byRS, unsigned char byData);
 
   void UpdateInterrupts();
 
@@ -51,23 +51,23 @@ public:
   void SetListenerCB2(void *objTo, mem_write_handler func);
 
 protected:
-  BYTE m_byIA;
-  BYTE m_byCA1;
-  BYTE m_byICA2;
-  BYTE m_byOA;
-  BYTE m_byOCA2;
-  BYTE m_byDDRA;
-  BYTE m_byCTLA;
-  BYTE m_byIRQAState;
+  unsigned char m_byIA;
+  unsigned char m_byCA1;
+  unsigned char m_byICA2;
+  unsigned char m_byOA;
+  unsigned char m_byOCA2;
+  unsigned char m_byDDRA;
+  unsigned char m_byCTLA;
+  unsigned char m_byIRQAState;
 
-  BYTE m_byIB;
-  BYTE m_byCB1;
-  BYTE m_byICB2;
-  BYTE m_byOB;
-  BYTE m_byOCB2;
-  BYTE m_byDDRB;
-  BYTE m_byCTLB;
-  BYTE m_byIRQBState;
+  unsigned char m_byIB;
+  unsigned char m_byCB1;
+  unsigned char m_byICB2;
+  unsigned char m_byOB;
+  unsigned char m_byOCB2;
+  unsigned char m_byDDRB;
+  unsigned char m_byCTLB;
+  unsigned char m_byIRQBState;
 
   STWriteHandler m_stOutA;
   STWriteHandler m_stOutB;

@@ -35,7 +35,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #ifdef _WIN32
 	// Used when the colors are reset
-	COLORREF g_aColorPalette[ NUM_PALETTE ] =
+	unsigned int g_aColorPalette[ NUM_PALETTE ] =
 	{
 		RGB(0,0,0),
 		// NOTE: See _SetupColorRamp() if you want to programmatically set/change
@@ -113,7 +113,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		R6, W5,              // BG_DISASM_BP_0_C    FG_DISASM_BP_0_C
 
 		R7,                  // FG_DISASM_BP_S_X    // Y8 lookes better on Info Cyan // R6
-		W5,                  // FG_DISASM_BP_0_X 
+		W5,                  // FG_DISASM_BP_0_X
 
 		W8, K0,              // BG_DISASM_C         FG_DISASM_C     // B8 -> K0
 		Y8, K0,              // BG_DISASM_PC_C      FG_DISASM_PC_C  // K8 -> K0
@@ -146,9 +146,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		W8,                  //                     FG_INFO_CHAR_HI
 		Y8,                  //                     FG_INFO_CHAR_LO
 
-		COLOR_CUSTOM_04,     // BG_INFO_IO_BYTE 
+		COLOR_CUSTOM_04,     // BG_INFO_IO_BYTE
 		COLOR_CUSTOM_04,     //                     FG_INFO_IO_BYTE
-				
+
 		C1,   // BG_DATA_1 // 2.6.2.24 Changed: Tone-downed the alt. background cyan for the DATA window. C2, C3 -> C1,C2
 		C2,   // BG_DATA_2
 		Y8,   // FG_DATA_BYTE
@@ -171,17 +171,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		G8,   // FG_VIDEOSCANNER_VISIBLE
 	};
 
-
-//static COLORREF g_aColors[ NUM_COLOR_SCHEMES ][ NUM_DEBUG_COLORS ];
-
-//===========================================================================
-COLORREF DebuggerGetColor( int iColor )
+unsigned int DebuggerGetColor( int iColor )
 {
-	COLORREF nColor = 1;// 0xFFFF00; // Hot Pink! -- so we notice errors. Not that there is anything wrong with pink...
+	unsigned int nColor = 1;// 0xFFFF00; // Hot Pink! -- so we notice errors. Not that there is anything wrong with pink...
 
 	if ((g_iColorScheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
 	{
-		//nColor = g_aColors[ g_iColorScheme ][ iColor ];
 		nColor = g_aColorPalette[g_aColorIndex[iColor]];
 	}
 
@@ -189,7 +184,7 @@ COLORREF DebuggerGetColor( int iColor )
 }
 
 
-bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColor )
+bool DebuggerSetColor( const int iScheme, const int iColor, const unsigned int nColor )
 {
 #ifdef _WIN32
 	bool bStatus = false;
@@ -202,10 +197,10 @@ bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColo
 	// Propagate to console since it has its own copy of colors
 	if (iColor == FG_CONSOLE_OUTPUT)
 	{
-		COLORREF nConsole = DebuggerGetColor( FG_CONSOLE_OUTPUT );
+		unsigned int nConsole = DebuggerGetColor( FG_CONSOLE_OUTPUT );
 		g_anConsoleColor[ CONSOLE_COLOR_x ] = nConsole;
 	}
-	
+
 	return bStatus;
 #else
 	// color schemes ignored for Linux
@@ -219,9 +214,9 @@ bool DebuggerSetColor( const int iScheme, const int iColor, const COLORREF nColo
 //===========================================================================
 static void _SetupColorRamp(const int iPrimary, int & iColor_)
 {
-	TCHAR sRamp[CONSOLE_WIDTH * 2] = TEXT("");
+	char sRamp[CONSOLE_WIDTH * 2] = TEXT("");
 #if DEBUG_COLOR_RAMP
-	TCHAR sText[CONSOLE_WIDTH];
+	char sText[CONSOLE_WIDTH];
 #endif
 
 	bool bR = (iPrimary & 1) ? true : false;
@@ -235,7 +230,7 @@ static void _SetupColorRamp(const int iPrimary, int & iColor_)
 		int nR = bR ? nC : 0;
 		int nG = bG ? nC : 0;
 		int nB = bB ? nC : 0;
-		DWORD nColor = RGB(nR, nG, nB);
+		unsigned int nColor = RGB(nR, nG, nB);
 		g_aColorPalette[iColor_] = nColor;
 #if DEBUG_COLOR_RAMP
 		wsprintf(sText, TEXT("RGB(%3d,%3d,%3d), "), nR, nG, nB);
@@ -267,7 +262,7 @@ void ConfigColorsReset(void)
 	int iColor;
 	for (iColor = 0; iColor < NUM_DEBUG_COLORS; iColor++)
 	{
-		COLORREF nColor = g_aColorPalette[g_aColorIndex[iColor]];
+		unsigned int nColor = g_aColorPalette[g_aColorIndex[iColor]];
 
 		int R = (nColor >> 0) & 0xFF;
 		int G = (nColor >> 8) & 0xFF;
@@ -285,8 +280,8 @@ void ConfigColorsReset(void)
 		else
 			BW = 255;
 
-		COLORREF nMono = RGB(M, M, M);
-		COLORREF nBW = RGB(BW, BW, BW);
+		unsigned int nMono = RGB(M, M, M);
+		unsigned int nBW = RGB(BW, BW, BW);
 
 		DebuggerSetColor(SCHEME_COLOR, iColor, nColor);
 		DebuggerSetColor(SCHEME_MONO, iColor, nMono);

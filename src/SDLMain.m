@@ -40,8 +40,8 @@ extern OSErr CPSSetFrontProcess(CPSProcessSerNum *psn);
 
 static int gArgc;
 static char **gArgv;
-static BOOL gFinderLaunch;
-static BOOL gCalledAppMainline = FALSE;
+static bool gFinderLaunch;
+static bool gCalledAppMainline = false;
 
 static NSString *getApplicationName(void) {
   const NSDictionary *dict;
@@ -84,7 +84,7 @@ static NSString *getApplicationName(void) {
 @implementation SDLMain
 
 /* Set the working directory to the .app's parent directory */
-- (void)setupWorkingDirectory:(BOOL)shouldChdir {
+- (void)setupWorkingDirectory:(bool)shouldChdir {
   {
     char parentdir[MAXPATHLEN];
     CFURLRef url = CFBundleCopyBundleURL(CFBundleGetMainBundle());
@@ -250,38 +250,38 @@ static void CustomApplicationMain(int argc, char **argv) {
  *
  * This message is ignored once the app's mainline has been called.
  */
-- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename {
+- (bool)application:(NSApplication *)theApplication openFile:(NSString *)filename {
   const char *temparg;
   size_t arglen;
   char *arg;
   char **newargv;
 
   if (!gFinderLaunch) { /* MacOS is passing command line args. */
-    return FALSE;
+    return false;
   }
 
   if (gCalledAppMainline) { /* app has started, ignore this document. */
-    return FALSE;
+    return false;
   }
 
   temparg = [filename UTF8String];
   arglen = SDL_strlen(temparg) + 1;
   arg = (char *) SDL_malloc(arglen);
   if (arg == NULL) {
-    return FALSE;
+    return false;
   }
 
   newargv = (char **) realloc(gArgv, sizeof(char *) * (gArgc + 2));
   if (newargv == NULL) {
     SDL_free(arg);
-    return FALSE;
+    return false;
   }
   gArgv = newargv;
 
   SDL_strlcpy(arg, temparg, arglen);
   gArgv[gArgc++] = arg;
   gArgv[gArgc] = NULL;
-  return TRUE;
+  return true;
 }
 
 
@@ -298,7 +298,7 @@ static void CustomApplicationMain(int argc, char **argv) {
   #endif
 
   /* Hand off to main application code */
-  gCalledAppMainline = TRUE;
+  gCalledAppMainline = true;
   status = SDL_main(gArgc, gArgv);
 
   /* We're done, thank you for playing */

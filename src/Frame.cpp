@@ -70,12 +70,12 @@ static bool g_bAppActive = false;
 
 static int buttondown = -1;
 
-BOOL fullscreen = 0;
-BOOL g_WindowResized;  // if we do not have a normal window size
+bool fullscreen = 0;
+bool g_WindowResized;  // if we do not have a normal window size
 
-static BOOL usingcursor = 0;
+static bool usingcursor = 0;
 
-void DrawStatusArea(BOOL drawflags);
+void DrawStatusArea(int drawflags);
 
 void ProcessButtonClick(int button, int mod); // handle control buttons(F1-..F12) events
 
@@ -85,7 +85,7 @@ void SetFullScreenMode();
 
 void SetNormalMode();
 
-void SetUsingCursor(BOOL);
+void SetUsingCursor(bool);
 
 bool g_bScrollLock_FullSpeed = false;  // no in full speed!
 
@@ -372,14 +372,14 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         // Note about Alt Gr (Right-Alt):
         // . WM_KEYDOWN[Left-Control], then:
         // . WM_KEYDOWN[Right-Alt]
-        BOOL autorep = 0; //previous key was pressed? 30bit of lparam
-        BOOL extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
+        bool autorep = 0; //previous key was pressed? 30bit of lparam
+        bool extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
         if (mymod & KMOD_RCTRL)     // GPH: Update trim?
         {
           JoyUpdateTrimViaKey(mysym);
         } else {
           // Regular joystick movement
-          if ((!JoyProcessKey(mysym, extended, TRUE, autorep)) && (g_nAppMode != MODE_LOGO)) {
+          if ((!JoyProcessKey(mysym, extended, true, autorep)) && (g_nAppMode != MODE_LOGO)) {
             KeybQueueKeypress(mysym, NOT_ASCII);
           }
         }
@@ -409,7 +409,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         KeybToggleCapsLock();
       } else {  // Need to know what "extended" means, and what's so special about SDLK_UP?
         if (myscancode) { // GPH: Checking scan codes tells us if a key was REALLY released.
-          JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), FALSE, 0);
+          JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, 0);
         }
       }
       break;
@@ -496,9 +496,6 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
 bool PSP_SaveStateSelectImage(bool saveit)
 {
-  // Dialog for save or load StateImage
-  // if saveit == TRUE, then pick image for saving
-  //  else pick an image for loading
   static int fileIndex = 0;    // file index will be remembered for current dir
   static int backdx = 0;  // reserve
   static int dirdx = 0;  // reserve for dirs
@@ -692,9 +689,10 @@ void ProcessButtonClick(int button, int mod)
         {
           if (g_nAppMode == MODE_DEBUG)
           {
-            UINT debugVideoMode;
-            if ( DebugGetVideoMode(&debugVideoMode) )
+            unsigned int debugVideoMode;
+            if (DebugGetVideoMode(&debugVideoMode)) {
               VideoRefreshScreen();
+            }
           }
           else
           {
@@ -782,7 +780,7 @@ void SetNormalMode()
   }
 }
 
-void SetUsingCursor(BOOL newvalue) {
+void SetUsingCursor(bool newvalue) {
   usingcursor = newvalue;
   if (usingcursor) { // Hide mouse cursor and grab input (mouse and keyboard)
     SDL_ShowCursor(SDL_DISABLE);

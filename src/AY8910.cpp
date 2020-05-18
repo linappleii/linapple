@@ -41,8 +41,8 @@
 
 // typedefs & dummy funcs to allow MAME code to compile:
 
-typedef UINT8 (*mem_read_handler)(UINT32);
-typedef void (*mem_write_handler)(UINT32, UINT8);
+typedef unsigned char (*mem_read_handler)(unsigned int);
+typedef void (*mem_write_handler)(unsigned int, unsigned char);
 
 static void logerror(const char *psz, ...)
 {
@@ -110,21 +110,21 @@ static struct AY8910 AYPSG[MAX_8910];    /* array of PSG's */
 static bool g_bAYReset = false;    // Doing AY8910_reset()
 
 #ifdef LOG_AY8910
-static void LogAY8910(int n, int r, UINT uFreq)
+static void LogAY8910(int n, int r, unsigned int uFreq)
 {
   // TO DO: Determine freq from 6522 timer
 
   if ((g_fh == NULL) || g_bAYReset)
     return;
 
-  static UINT nCnt = 0;
-  const UINT nNumAYs = 4;        // 1..4
+  static unsigned int nCnt = 0;
+  const unsigned int nNumAYs = 4;        // 1..4
   if((r == 0))
   {
     if(nCnt == 0)
     {
       fprintf(g_fh, "Time : ");
-      for(UINT i=0; i<nNumAYs; i++)
+      for(unsigned int i=0; i<nNumAYs; i++)
         fprintf(g_fh, "APer BPer CPer NP EN AV BV CV  ");
       fprintf(g_fh, "\n");
     }
@@ -134,7 +134,7 @@ static void LogAY8910(int n, int r, UINT uFreq)
     for(int j=0; j<n*(3*5+5*3+1); j++)
       fprintf(g_fh, " ");
 
-    UINT i=n;
+    unsigned int i=n;
     {
       UCHAR* pAYRegs = &AYPSG[i].Regs[0];
       fprintf(g_fh, "%04X ", *(USHORT*)&pAYRegs[AY_AFINE]);
@@ -224,14 +224,14 @@ void _AYWriteReg(int n, int r, int v)
         /* write out 0xff if port set to input */
         if (PSG->PortAwrite)
           (*PSG->PortAwrite)(0,
-                             (UINT8)((PSG->Regs[AY_ENABLE] & 0x40) ? PSG->Regs[AY_PORTA] : 0xff));  // [TC: UINT8 cast]
+                             (unsigned char)((PSG->Regs[AY_ENABLE] & 0x40) ? PSG->Regs[AY_PORTA] : 0xff));
       }
 
       if ((PSG->lastEnable == -1) || ((PSG->lastEnable & 0x80) != (PSG->Regs[AY_ENABLE] & 0x80))) {
         /* write out 0xff if port set to input */
         if (PSG->PortBwrite)
           (*PSG->PortBwrite)(0,
-                             (UINT8)((PSG->Regs[AY_ENABLE] & 0x80) ? PSG->Regs[AY_PORTB] : 0xff));  // [TC: UINT8 cast]
+                             (unsigned char)((PSG->Regs[AY_ENABLE] & 0x80) ? PSG->Regs[AY_PORTB] : 0xff));
       }
 
       PSG->lastEnable = PSG->Regs[AY_ENABLE];
@@ -326,10 +326,10 @@ void _AYWriteReg(int n, int r, int v)
 
 // /length/ is the number of samples we require
 // NB. This should be called at twice the 6522 IRQ rate or (eg) 60Hz if no IRQ.
-void AY8910Update(int chip, INT16 **buffer, int length)  // [TC: Removed static]
+void AY8910Update(int chip, signed short **buffer, int length)  // [TC: Removed static]
 {
   struct AY8910 *PSG = &AYPSG[chip];
-  INT16 *buf1, *buf2, *buf3;
+  signed short *buf1, *buf2, *buf3;
   int outn;
 
   buf1 = buffer[0];
@@ -674,7 +674,7 @@ void ay8910_write_ym(int chip, int addr, int data)
     if (r < 14) {
       if (r == AY_ESHAPE || PSG->Regs[r] != data) {
         /* update the output buffer before changing the register */
-        AY8910Update(chip, INT16 **buffer, int length)
+        AY8910Update(chip, signed short **buffer, int length)
       }
     }
 
@@ -731,7 +731,7 @@ void AY8910_InitClock(int nClock)
   }
 }
 
-BYTE *AY8910_GetRegsPtr(UINT nAyNum)
+unsigned char *AY8910_GetRegsPtr(unsigned int nAyNum)
 {
   if (nAyNum >= MAX_8910) {
     return NULL;

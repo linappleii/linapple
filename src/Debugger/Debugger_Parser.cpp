@@ -41,14 +41,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	Arg_t g_aArgRaw[ MAX_ARGS ]; // pre-processing
 	Arg_t g_aArgs  [ MAX_ARGS ]; // post-processing (cooked)
 
-	const TCHAR TCHAR_LF     = TEXT('\x0D');
-	const TCHAR TCHAR_CR     = TEXT('\x0A');
-	const TCHAR TCHAR_SPACE  = TEXT(' ');
-	const TCHAR TCHAR_TAB    = TEXT('\t');
-//	const TCHAR TCHAR_QUOTED = TEXT('"');
-	const TCHAR TCHAR_QUOTE_DOUBLE = TEXT('"');
-	const TCHAR TCHAR_QUOTE_SINGLE = TEXT('\'');
-	const TCHAR TCHAR_ESCAPE = TEXT('\x1B');
+	const char TCHAR_LF     = TEXT('\x0D');
+	const char TCHAR_CR     = TEXT('\x0A');
+	const char TCHAR_SPACE  = TEXT(' ');
+	const char TCHAR_TAB    = TEXT('\t');
+//	const char TCHAR_QUOTED = TEXT('"');
+	const char TCHAR_QUOTE_DOUBLE = TEXT('"');
+	const char TCHAR_QUOTE_SINGLE = TEXT('\'');
+	const char TCHAR_ESCAPE = TEXT('\x1B');
 
 
 	// NOTE: ArgToken_e and g_aTokens must match!
@@ -56,14 +56,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	{ // Input
 		{ TOKEN_ALPHANUMERIC, TYPE_STRING  , 0    }, // Default, if doen't match anything else
 		{ TOKEN_AMPERSAND   , TYPE_OPERATOR, "&"  }, // bit-and
-		{ TOKEN_AT          , TYPE_OPERATOR, "@"  }, // reference results 
+		{ TOKEN_AT          , TYPE_OPERATOR, "@"  }, // reference results
 		{ TOKEN_BRACE_L     , TYPE_STRING  , "{"  },
 		{ TOKEN_BRACE_R     , TYPE_STRING  , "}"  },
 		{ TOKEN_BRACKET_L   , TYPE_STRING  , "["  },
 		{ TOKEN_BRACKET_R   , TYPE_STRING  , "]"  },
 		{ TOKEN_BSLASH      , TYPE_OPERATOR, "\\" },
 		{ TOKEN_CARET       , TYPE_OPERATOR, "^"  }, // bit-eor, C/C++: xor, Math: POWER
-		{ TOKEN_COLON       , TYPE_OPERATOR, ":"  }, 
+		{ TOKEN_COLON       , TYPE_OPERATOR, ":"  },
 		{ TOKEN_COMMA       , TYPE_OPERATOR, ","  },
 		{ TOKEN_DOLLAR      , TYPE_STRING  , "$"  },
 		{ TOKEN_EQUAL       , TYPE_OPERATOR, "="  },
@@ -102,7 +102,7 @@ int _Arg_1( int nValue )
 	g_aArgs[1].nValue = nValue;
 	return 1;
 }
-	
+
 //===========================================================================
 int _Arg_1( LPTSTR pName )
 {
@@ -158,7 +158,7 @@ int _Args_Insert( int iSrc, int iEnd, int nLen )
 
 	if (iSrc >= MAX_ARGS)
 		return ARG_SYNTAX_ERROR;
-	
+
 	while (nLen--)
 	{
 		g_aArgs[iDst] = g_aArgs[iSrc];
@@ -200,8 +200,7 @@ void ArgsClear ()
 	}
 }
 
-//===========================================================================
-bool ArgsGetValue ( Arg_t *pArg, WORD * pAddressValue_, const int nBase )
+bool ArgsGetValue ( Arg_t *pArg, unsigned short * pAddressValue_, const int nBase )
 {
 	_ASSERT(pArg);
 	if (pArg == NULL)
@@ -212,7 +211,7 @@ bool ArgsGetValue ( Arg_t *pArg, WORD * pAddressValue_, const int nBase )
 
 	if (pAddressValue_)
 	{
-		*pAddressValue_ = (WORD)(_tcstoul( pSrc, &pEnd, nBase) & _6502_MEM_END);
+		*pAddressValue_ = (unsigned short)(_tcstoul( pSrc, &pEnd, nBase) & _6502_MEM_END);
 		return true;
 	}
 
@@ -220,7 +219,7 @@ bool ArgsGetValue ( Arg_t *pArg, WORD * pAddressValue_, const int nBase )
 }
 
 //===========================================================================
-bool ArgsGetImmediateValue ( Arg_t *pArg, WORD * pAddressValue_ )
+bool ArgsGetImmediateValue ( Arg_t *pArg, unsigned short * pAddressValue_ )
 {
 	if (pArg && pAddressValue_)
 	{
@@ -236,7 +235,7 @@ bool ArgsGetImmediateValue ( Arg_t *pArg, WORD * pAddressValue_ )
 
 // Read console input, process the raw args, turning them into tokens and types.
 //===========================================================================
-int	ArgsGet ( TCHAR * pInput )
+int	ArgsGet ( char * pInput )
 {
 	LPCTSTR pSrc = pInput;
 	LPCTSTR pEnd = NULL;
@@ -252,7 +251,7 @@ int	ArgsGet ( TCHAR * pInput )
 	Arg_t  *pArg = &g_aArgRaw[0]; // &g_aArgs[0];
 
 	g_pConsoleFirstArg = NULL;
-					
+
 	// BP FAC8:FACA // Range=3
 	// BP FAC8,2    // Length=2
 	// ^ ^^   ^^
@@ -278,7 +277,7 @@ int	ArgsGet ( TCHAR * pInput )
 
 			if (iTokenSrc == TOKEN_COMMENT_EOL)
 				break; //pArg->eToken = iTokenSrc;
-			
+
 			if (iTokenSrc == NO_TOKEN)
 			{
 				iTokenSrc = TOKEN_ALPHANUMERIC;
@@ -323,7 +322,7 @@ int	ArgsGet ( TCHAR * pInput )
 
 				if (iTokenSrc == TOKEN_QUOTE_DOUBLE)
 				{
-					pEnd++; 
+					pEnd++;
 				}
 				else
 				if (iTokenSrc == TOKEN_QUOTE_SINGLE)
@@ -334,7 +333,7 @@ int	ArgsGet ( TCHAR * pInput )
 						// But we've extended the syntax to allow the user
 						// to input High-Bit Apple Text
 					}
-					pEnd++; 
+					pEnd++;
 				}
 
 				pSrc = pEnd;
@@ -361,7 +360,7 @@ int	ArgsGet ( TCHAR * pInput )
 
 
 //===========================================================================
-bool ArgsGetRegisterValue ( Arg_t *pArg, WORD * pAddressValue_ )
+bool ArgsGetRegisterValue ( Arg_t *pArg, unsigned short * pAddressValue_ )
 {
 	bool bStatus = false;
 
@@ -410,22 +409,22 @@ bool ArgsGetRegisterValue ( Arg_t *pArg, WORD * pAddressValue_ )
 void ArgsRawParse ( void )
 {
 	const int BASE = 16; // hex
-	TCHAR *pSrc  = NULL;
-	TCHAR *pEnd  = NULL;
+	char *pSrc  = NULL;
+	char *pEnd  = NULL;
 
 	int    iArg = 1;
 	Arg_t *pArg = & g_aArgRaw[ iArg ];
 	int    nArg = g_nArgRaw;
 
-	WORD   nAddressArg;
-	WORD   nAddressSymbol;
-	WORD   nAddressValue;
+	unsigned short   nAddressArg;
+	unsigned short   nAddressSymbol;
+	unsigned short   nAddressValue;
 
 	while (iArg <= nArg)
 	{
 		pSrc  = & (pArg->sArg[ 0 ]);
 
-		nAddressArg = (WORD)(_tcstoul( pSrc, &pEnd, BASE) & _6502_MEM_END);
+		nAddressArg = (unsigned short)(_tcstoul( pSrc, &pEnd, BASE) & _6502_MEM_END);
 		nAddressValue = nAddressArg;
 
 		bool bFound = false;
@@ -463,19 +462,19 @@ void ArgsRawParse ( void )
 int ArgsCook ( const int nArgs )
 {
 	const int BASE = 16; // hex
-	TCHAR *pSrc  = NULL;
-	TCHAR *pEnd2 = NULL;
+	char *pSrc  = NULL;
+	char *pEnd2 = NULL;
 
 	int    nArg = nArgs;
 	int    iArg = 1;
-	Arg_t *pArg = NULL; 
+	Arg_t *pArg = NULL;
 	Arg_t *pPrev = NULL;
 	Arg_t *pNext = NULL;
 
-	WORD   nAddressArg;
-	WORD   nAddressRHS;
-	WORD   nAddressSym;
-	WORD   nAddressVal;
+	unsigned short   nAddressArg;
+	unsigned short   nAddressRHS;
+	unsigned short   nAddressSym;
+	unsigned short   nAddressVal;
 	int    nParamLen = 0;
 	int    nArgsLeft = 0;
 
@@ -528,7 +527,7 @@ int ArgsCook ( const int nArgs )
 			// Pass wildstar '*' to commands if only arg
 			if ((pArg->eToken == TOKEN_STAR) && (nArg == 1))
 				;
-			else			
+			else
 			if (nArgsLeft > 0) // These ops take at least 1 argument
 			{
 				pNext = pArg + 1;
@@ -562,7 +561,7 @@ int ArgsCook ( const int nArgs )
 					pPrev->nValue &= nAddressRHS;
 					pPrev->bType |= TYPE_VALUE; // signal already up to date
 					nParamLen = 2;
-				}								
+				}
 
 				if (pArg->eToken == TOKEN_PIPE) // OR   | delta
 				{
@@ -573,7 +572,7 @@ int ArgsCook ( const int nArgs )
 					pPrev->nValue |= nAddressRHS;
 					pPrev->bType |= TYPE_VALUE; // signal already up to date
 					nParamLen = 2;
-				}								
+				}
 
 				if (pArg->eToken == TOKEN_CARET) // XOR   ^ delta
 				{
@@ -633,7 +632,7 @@ int ArgsCook ( const int nArgs )
 				if (pArg->eToken == TOKEN_FSLASH) // FORWARD SLASH / delta
 				{
 					if (pNext->eToken == TOKEN_FSLASH) // Comment
-					{					
+					{
 						nArg = iArg - 1;
 						return nArg;
 					}
@@ -650,10 +649,10 @@ int ArgsCook ( const int nArgs )
 
 				if (pArg->eToken == TOKEN_EQUAL) // EQUAL  = assign
 				{
-					pPrev->nValue = nAddressRHS; 
+					pPrev->nValue = nAddressRHS;
 					pPrev->bType |= TYPE_VALUE; // signal already up to date
 					nParamLen = 0; // need token for Smart BreakPoints
-				}					
+				}
 
 				if (pArg->eToken == TOKEN_AT) // AT @ pointer de-reference
 				{
@@ -673,7 +672,7 @@ int ArgsCook ( const int nArgs )
 					}
 					nParamLen = 0;
 				}
-				
+
 				if (pArg->eToken == TOKEN_HASH) // HASH    # immediate
 				{
 					pArg->nValue   = nAddressRHS;
@@ -705,7 +704,7 @@ int ArgsCook ( const int nArgs )
 					pArg->bType |= TYPE_VALUE; // signal already up to date
 					// Don't remove, since "SYM ! symbol" needs token to remove symbol
 				}
-				
+
 				if (pArg->eToken == TOKEN_PAREN_L)
 				{
 					nParenL++;
@@ -728,7 +727,7 @@ int ArgsCook ( const int nArgs )
 							// pArg->bType |= TYPE_INDIRECT;
 							// pArg->nValue  =  nAddressVal;
 							//nAddressVal = pNext->nValue;
-							pArg->nValue  =  * (WORD*) (mem + nAddressVal);
+							pArg->nValue  =  * (unsigned short*) (mem + nAddressVal);
 							pArg->bType   = TYPE_VALUE | TYPE_ADDRESS | TYPE_NO_REG;
 
 							iArg++; // eat ')'
@@ -738,7 +737,7 @@ int ArgsCook ( const int nArgs )
 						else
 							return ARG_SYNTAX_ERROR; // ERROR: unbalanced/unmatched ( )
 					}
-				}							
+				}
 
 				if (pArg->eToken == TOKEN_PAREN_R)
 				{
@@ -763,7 +762,7 @@ int ArgsCook ( const int nArgs )
 		}
 		else // not an operator, try (1) address, (2) symbol lookup
 		{
-			nAddressArg = (WORD)(_tcstoul( pSrc, &pEnd2, BASE) & _6502_MEM_END);
+			nAddressArg = (unsigned short)(_tcstoul( pSrc, &pEnd2, BASE) & _6502_MEM_END);
 
 			if (! (pArg->bType & TYPE_NO_REG))
 			{
@@ -806,7 +805,7 @@ const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, con
 	if (! pSrc)
 		return NULL;
 
-	const TCHAR        *pName  = NULL;
+	const char        *pName  = NULL;
 	int   iToken;
 
 	// Look-ahead for <=
@@ -842,12 +841,12 @@ const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, con
 
 
 //===========================================================================
-const TCHAR * FindTokenOrAlphaNumeric ( const TCHAR *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ )
+const char * FindTokenOrAlphaNumeric ( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ )
 {
 	if ( pToken_ )
 		*pToken_ = NO_TOKEN;
 
-	const TCHAR *pEnd = pSrc;
+	const char *pEnd = pSrc;
 
 	if (pSrc && (*pSrc))
 	{
@@ -855,7 +854,7 @@ const TCHAR * FindTokenOrAlphaNumeric ( const TCHAR *pSrc, const TokenTable_t *a
 		{
 			if (pToken_)
 				*pToken_ = TOKEN_ALPHANUMERIC;
-		}			
+		}
 		else
 		{
 			pEnd = ParserFindToken( pSrc, aTokens, nTokens, pToken_ );
@@ -867,8 +866,7 @@ const TCHAR * FindTokenOrAlphaNumeric ( const TCHAR *pSrc, const TokenTable_t *a
 }
 
 
-//===========================================================================
-void TextConvertTabsToSpaces( TCHAR *pDeTabified_, LPCTSTR pText, const int nDstSize, int nTabStop )
+void TextConvertTabsToSpaces( char *pDeTabified_, LPCTSTR pText, const int nDstSize, int nTabStop )
 {
 	int TAB_SPACING = 8;
 	int TAB_SPACING_1 = 16;
@@ -909,7 +907,7 @@ void TextConvertTabsToSpaces( TCHAR *pDeTabified_, LPCTSTR pText, const int nDst
 					nGap = (TAB_SPACING - nTab);
 				}
 			}
-			
+
 
 			if ((nCur + nGap) >= nDstSize)
 				break;
@@ -932,14 +930,13 @@ void TextConvertTabsToSpaces( TCHAR *pDeTabified_, LPCTSTR pText, const int nDst
 			nCur++;
 		}
 		pSrc++;
-	}	
+	}
 	*pDst = 0;
 }
 
 
 // @return Length of new string
-//===========================================================================
-int RemoveWhiteSpaceReverse ( TCHAR *pSrc )
+int RemoveWhiteSpaceReverse ( char *pSrc )
 {
 	int   nLen = _tcslen( pSrc );
 	char *pDst = pSrc + nLen;

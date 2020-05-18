@@ -180,8 +180,8 @@ enum BreakpointOperator_t {
 };
 
 struct Breakpoint_t {
-  WORD nAddress; // for registers, functions as nValue
-  WORD nLength;
+  unsigned short nAddress; // for registers, functions as nValue
+  unsigned short nLength;
   BreakpointSource_t eSource;
   BreakpointOperator_t eOperator;
   bool bSet; // used to be called enabled pre 2.0
@@ -820,17 +820,17 @@ struct DisasmData_t
   Nopcode_e eElementType ; // eElementType -> iNoptype
   int       iDirective   ; // iDirective   -> iNopcode
 
-  WORD nStartAddress; // link to block [start,end)
-  WORD nEndAddress  ;
-  WORD nArraySize   ; // Total bytes
-  //  WORD nBytePerRow  ; // 1, 8
+  unsigned short nStartAddress; // link to block [start,end)
+  unsigned short nEndAddress  ;
+  unsigned short nArraySize   ; // Total bytes
+  //  unsigned short nBytePerRow  ; // 1, 8
 
   // with symbol lookup
   char bSymbolLookup ;
-  WORD nTargetAddress;
+  unsigned short nTargetAddress;
 
-  WORD nSpriteW;
-  WORD nSpriteH;
+  unsigned short nSpriteW;
+  unsigned short nSpriteH;
 };
 
 enum DisasmBranch_e {
@@ -1085,7 +1085,7 @@ enum MemoryView_e {
 
 struct MemoryDump_t {
   bool bActive;
-  WORD nAddress;
+  unsigned short nAddress;
   DEVICE_e eDevice;
   MemoryView_e eView;
 };
@@ -1109,7 +1109,7 @@ enum MemorySearch_e {
 };
 
 struct MemorySearch_t {
-  BYTE m_nValue; // search value
+  unsigned char m_nValue; // search value
   MemorySearch_e m_iType; //
   bool m_bFound; //
 };
@@ -1189,7 +1189,7 @@ struct TokenTable_t {
 struct Arg_t {
   char sArg[MAX_ARG_LEN]; // Array chars comes first, for alignment
   int nArgLen; // Needed for TextSearch "ABC\x00"
-  WORD nValue; // 2
+  unsigned short nValue; // 2
   // Enums and Bools should come last for alignment
   ArgToken_e eToken; // 1/2/4
   int bType; // 1/2/4 // Flags of ArgType_e
@@ -1336,7 +1336,7 @@ enum {
   NO_SOURCE_LINE = -1
 };
 
-typedef map<WORD, int> SourceAssembly_t; // Address -> Line #  &  FileName
+typedef map<unsigned short, int> SourceAssembly_t; // Address -> Line #  &  FileName
 
 // Symbols
 
@@ -1375,7 +1375,7 @@ enum SymbolTable_Masks_e // SymbolTable_e ->
   SYMBOL_TABLE_PRODOS    = (1 << 8),
 };
 
-typedef map <WORD, string> SymbolTable_t;
+typedef map <unsigned short, string> SymbolTable_t;
 
 // Watches
 enum {

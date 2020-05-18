@@ -8,13 +8,13 @@ void HD_SetEnabled(bool bEnabled);
 
 LPCTSTR HD_GetFullName(int drive);
 
-VOID HD_Load_Rom(LPBYTE pCxRomPeripheral, UINT uSlot);
+void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
-VOID HD_Cleanup();
+void HD_Cleanup();
 
-BOOL HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
+bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
 
-BOOL HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
+bool HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
 
 void HD_Select(int nDrive);
 

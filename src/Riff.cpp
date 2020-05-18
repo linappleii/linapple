@@ -33,9 +33,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "wwrapper.h"
 
 static HANDLE g_hRiffFile = INVALID_HANDLE_VALUE;
-static DWORD dwTotalOffset;
-static DWORD dwDataOffset;
-static DWORD g_dwTotalNumberOfBytesWritten = 0;
+static unsigned int dwTotalOffset;
+static unsigned int dwDataOffset;
+static unsigned int g_dwTotalNumberOfBytesWritten = 0;
 static unsigned int g_NumChannels = 2;
 
 int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumChannels)
@@ -48,10 +48,10 @@ int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumC
 
   g_NumChannels = NumChannels;
 
-  UINT32 temp32;
-  UINT16 temp16;
+  unsigned int temp32;
+  unsigned short temp16;
 
-  DWORD dwNumberOfBytesWritten;
+  unsigned int dwNumberOfBytesWritten;
 
   WriteFile(g_hRiffFile, "RIFF", 4, &dwNumberOfBytesWritten, NULL);
 
@@ -98,9 +98,9 @@ int RiffFinishWriteFile() {
     return 1;
   }
 
-  UINT32 temp32;
+  unsigned int temp32;
 
-  DWORD dwNumberOfBytesWritten;
+  unsigned int dwNumberOfBytesWritten;
 
   temp32 = g_dwTotalNumberOfBytesWritten - (dwTotalOffset + 4);
   SetFilePointer(g_hRiffFile, dwTotalOffset, NULL, FILE_BEGIN);
@@ -118,7 +118,7 @@ int RiffPutSamples(short *buf, unsigned int uSamples) {
     return 1;
   }
 
-  DWORD dwNumberOfBytesWritten;
+  unsigned int dwNumberOfBytesWritten;
   WriteFile(g_hRiffFile, buf, uSamples * sizeof(short) * g_NumChannels, &dwNumberOfBytesWritten, NULL);
   g_dwTotalNumberOfBytesWritten += dwNumberOfBytesWritten;
 

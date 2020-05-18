@@ -58,16 +58,16 @@ const short SPKR_DATA_INIT = (short) 0x2000;  // data written to speakers buffer
 
 static short g_nSpeakerData = 0x0000;   //SPKR_DATA_INIT;
 static short *g_pSpeakerBuffer = NULL;
-static UINT g_nBufferIdx = 0;
+static unsigned int g_nBufferIdx = 0;
 
 static short *g_pStereoBuffer = NULL;  // buffer for stereo samples
 
 static short *g_pRemainderBuffer = NULL;  // Remainder buffer
-static UINT g_nRemainderBufferSize;    // Setup in SpkrInitialize()
-static UINT g_nRemainderBufferIdx;    // Setup in SpkrInitialize()
+static unsigned int g_nRemainderBufferSize;    // Setup in SpkrInitialize()
+static unsigned int g_nRemainderBufferIdx;    // Setup in SpkrInitialize()
 
 // Application-wide globals:
-DWORD soundtype = SOUND_WAVE; //default
+unsigned int soundtype = SOUND_WAVE; //default
 double g_fClksPerSpkrSample;    // Setup in SetClksPerSpkrSample()
 
 // Globals
@@ -89,17 +89,13 @@ static void Spkr_SetActive(bool bActive);
 #if 0
 static void DisplayBenchmarkResults () {
 
-  DWORD totaltime = GetTickCount() - extbench;
+  unsigned int totaltime = GetTickCount() - extbench;
   VideoRedrawScreen();
-  TCHAR buffer[64];
+  char buffer[64];
   sprintf(buffer,
            TEXT("This benchmark took %u.%02u seconds."),
            (unsigned)(totaltime / 1000),
            (unsigned)((totaltime / 10) % 100));
-/*  MessageBox(g_hFrameWindow,
-             buffer,
-             TEXT("Benchmark Results"),
-             MB_ICONINFORMATION | MB_SETFOREGROUND);*/
   printf("This benchmark took %u.%02u seconds.",
      (unsigned)(totaltime / 1000), (unsigned)((totaltime / 10) % 100));
 
@@ -112,7 +108,7 @@ static void SetClksPerSpkrSample() {
 
   // Use integer value: Better for MJ Mahon's RT.SYNTH.DSK (integer multiples of 1.023MHz Clk)
   // . 23 clks @ 1.023MHz    SPKR_SAMPLE_RATE = 44100Hz!?
-  g_fClksPerSpkrSample = (double) (UINT)(g_fCurrentCLK6502 / (double) SPKR_SAMPLE_RATE);
+  g_fClksPerSpkrSample = (double) (unsigned int)(g_fCurrentCLK6502 / (double) SPKR_SAMPLE_RATE);
 }
 
 //=============================================================================
@@ -120,7 +116,7 @@ static void SetClksPerSpkrSample() {
 static void InitRemainderBuffer() {
   delete[] g_pRemainderBuffer;
   SetClksPerSpkrSample();
-  g_nRemainderBufferSize = (UINT) g_fClksPerSpkrSample;
+  g_nRemainderBufferSize = (unsigned int) g_fClksPerSpkrSample;
   if ((double) g_nRemainderBufferSize != g_fClksPerSpkrSample) {
     g_nRemainderBufferSize++;
   }
@@ -189,7 +185,7 @@ void SpkrReset() {
 }
 
 #if 0
-BOOL SpkrSetEmulationType (DWORD newtype) {
+bool SpkrSetEmulationType (unsigned int newtype) {
   if (soundtype != SOUND_NONE)
     SpkrDestroy();
   soundtype = newtype;
@@ -205,7 +201,7 @@ BOOL SpkrSetEmulationType (DWORD newtype) {
 }
 #endif
 
-static void ReinitRemainderBuffer(UINT nCyclesRemaining) {
+static void ReinitRemainderBuffer(unsigned int nCyclesRemaining) {
   if (nCyclesRemaining == 0) {
     return;
   }
@@ -226,7 +222,7 @@ static void UpdateRemainderBuffer(ULONG *pnCycleDiff) {
     if (g_nRemainderBufferIdx == g_nRemainderBufferSize) {
       g_nRemainderBufferIdx = 0;
       signed long nSampleMean = 0;
-      for (UINT i = 0; i < g_nRemainderBufferSize; i++)
+      for (unsigned int i = 0; i < g_nRemainderBufferSize; i++)
         nSampleMean += (signed long) g_pRemainderBuffer[i];
       nSampleMean /= (signed long) g_nRemainderBufferSize;
 
@@ -252,7 +248,7 @@ static void UpdateSpkr() {
 }
 
 // Called by emulation code when Speaker I/O reg (0xC030) is accessed
-BYTE SpkrToggle(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char SpkrToggle(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
   g_bSpkrToggleFlag = true;
 
   if (!g_bFullSpeed) {
@@ -270,7 +266,7 @@ BYTE SpkrToggle(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
   return MemReadFloatingBus(nCyclesLeft); // reading from $C030..$C03F retrurns unpredictable value?
 }
 
-void SpkrUpdate(DWORD totalcycles) {
+void SpkrUpdate(unsigned int totalcycles) {
   if (!g_bSpkrToggleFlag) {
     if (!g_nSpkrQuietCycleCount) {
       g_nSpkrQuietCycleCount = g_nCumulativeCycles;
@@ -315,8 +311,8 @@ static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples)
   }
 
   // Convert mono Speakers sounds to stereo (mainly for Mockingboard support)
-  UINT len = nNumSamples * 2;  // stereo = 2 * mono
-  UINT i;
+  unsigned int len = nNumSamples * 2;  // stereo = 2 * mono
+  unsigned int i;
 
   for (i = 0; i < len; i += 2) {
     g_pStereoBuffer[i] = g_pStereoBuffer[i + 1] = pSpeakerBuffer[i >> 1];
@@ -351,11 +347,11 @@ bool Spkr_IsActive() {
 }
 
 // How to deal with volume in SDL Audio may be need to go to SDL Mixer?
-DWORD SpkrGetVolume() {
+unsigned int SpkrGetVolume() {
   return 0;
 }
 
-void SpkrSetVolume(DWORD dwVolume, DWORD dwVolumeMax) {
+void SpkrSetVolume(unsigned int dwVolume, unsigned int dwVolumeMax) {
 }
 
 bool Spkr_DSInit()
@@ -371,12 +367,12 @@ void Spkr_DSUninit()
 {
 }
 
-DWORD SpkrGetSnapshot(SS_IO_Speaker *pSS) {
+unsigned int SpkrGetSnapshot(SS_IO_Speaker *pSS) {
   pSS->g_nSpkrLastCycle = g_nSpkrLastCycle;
   return 0;
 }
 
-DWORD SpkrSetSnapshot(SS_IO_Speaker *pSS) {
+unsigned int SpkrSetSnapshot(SS_IO_Speaker *pSS) {
   g_nSpkrLastCycle = pSS->g_nSpkrLastCycle;
   return 0;
 }

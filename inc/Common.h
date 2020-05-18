@@ -8,10 +8,10 @@ const double CLOCK_6502 = ((M14 * 65.0) / 912.0); // 65 cycles per 912 14M clock
 // The effective Z-80 clock rate is 2.041MHz
 const double CLK_Z80 = (CLOCK_6502 * 2);
 
-const UINT uCyclesPerLine = 65; // 25 cycles of HBL & 40 cycles of HBL
-const UINT uVisibleLinesPerFrame = 64 * 3; // 192
-const UINT uLinesPerFrame = 262; // 64 in each third of the screen & 70 in VBL
-const DWORD dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
+const unsigned int uCyclesPerLine = 65; // 25 cycles of HBL & 40 cycles of HBL
+const unsigned int uVisibleLinesPerFrame = 64 * 3; // 192
+const unsigned int uLinesPerFrame = 262; // 64 in each third of the screen & 70 in VBL
+const unsigned int dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
 
 #define NUM_SLOTS 8
 
@@ -24,8 +24,8 @@ const DWORD dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
 #define MOCKINGBOARD // Mockingboard support
 
 // Use a base freq so that DirectX (or sound h/w) doesn't have to up/down-sample. Assume base freqs are 44.1KHz & 48KHz.
-const DWORD SPKR_SAMPLE_RATE = 44100;  // that is for Apple][ speakers
-const DWORD SAMPLE_RATE = 44100;  // that is for Phasor/Mockingboard?
+const unsigned int SPKR_SAMPLE_RATE = 44100;  // that is for Apple][ speakers
+const unsigned int SAMPLE_RATE = 44100;  // that is for Phasor/Mockingboard?
 
 enum AppMode_e {
   MODE_LOGO = 0,
@@ -118,7 +118,7 @@ enum eSOUNDCARDTYPE {
   SC_UNINIT = 0, SC_NONE, SC_MOCKINGBOARD, SC_PHASOR
 };  // Apple soundcard type
 
-typedef BYTE (*iofunction)(WORD nPC, WORD nAddr, BYTE nWriteFlag, BYTE nWriteValue, ULONG nCyclesLeft);
+typedef unsigned char (*iofunction)(unsigned short nPC, unsigned short nAddr, unsigned char nWriteFlag, unsigned char nWriteValue, ULONG nCyclesLeft);
 
 typedef struct _IMAGE__ {
   int unused;

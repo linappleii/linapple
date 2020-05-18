@@ -64,19 +64,19 @@ char Disk2_rom[] = "\xA2\x20\xA0\x00\xA2\x03\x86\x3C\x8A\x0A\x24\x3C\xF0\x10\x05
                    "\x3D\xCD\x00\x08\xA6\x2B\x90\xDB\x4C\x01\x08\x00\x00\x00\x00\x00";
 
 
-static BYTE DiskControlMotor(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskControlMotor(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskControlStepper(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskControlStepper(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskEnable(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskEnable(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskReadWrite(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskReadWrite(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskSetLatchValue(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskSetLatchValue(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskSetReadMode(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskSetReadMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-static BYTE DiskSetWriteMode(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+static unsigned char DiskSetWriteMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
 #define LOG_DISK_ENABLED 1
 
@@ -87,34 +87,34 @@ static BYTE DiskSetWriteMode(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyc
 #define LOG_DISK(...)
 #endif
 
-BOOL enhancedisk = 1;
+bool enhancedisk = 1;
 
 const int MAX_DISK_IMAGE_NAME = 15;
 const int MAX_DISK_FULL_NAME = MAX_PATH;
 
 struct Disk_t {
-  TCHAR imagename[MAX_DISK_IMAGE_NAME + 1];
-  TCHAR fullname[MAX_DISK_FULL_NAME + 1];
+  char imagename[MAX_DISK_IMAGE_NAME + 1];
+  char fullname[MAX_DISK_FULL_NAME + 1];
   HIMAGE imagehandle;
   int track;
   LPBYTE trackimage;
   int phase;
   int byte;
-  BOOL writeProtected;
-  BOOL trackimagedata;
-  BOOL trackimagedirty;
-  DWORD spinning;
-  DWORD writelight;
+  bool writeProtected;
+  bool trackimagedata;
+  bool trackimagedirty;
+  unsigned int spinning;
+  unsigned int writelight;
   int nibbles;
 };
 
-static WORD currdrive = 0;
-static BOOL diskaccessed = 0;
+static unsigned short currdrive = 0;
+static bool diskaccessed = 0;
 static Disk_t g_aFloppyDisk[DRIVES];
-static BYTE floppylatch = 0;
-static BOOL floppymotoron = 0;
-static BOOL floppywritemode = 0;
-static WORD phases; // state bits for stepper magnet phases 0 - 3
+static unsigned char floppylatch = 0;
+static bool floppymotoron = 0;
+static bool floppywritemode = 0;
+static unsigned short phases; // state bits for stepper magnet phases 0 - 3
 
 static void CheckSpinning();
 
@@ -130,7 +130,7 @@ static void WriteTrack(int drive);
 
 void CheckSpinning()
 {
-  DWORD modechange = (floppymotoron && !g_aFloppyDisk[currdrive].spinning);
+  unsigned int modechange = (floppymotoron && !g_aFloppyDisk[currdrive].spinning);
   if (floppymotoron)
     g_aFloppyDisk[currdrive].spinning = 20000;
   if (modechange)
@@ -159,7 +159,7 @@ Disk_Status_e GetDriveLightStatus(const int iDrive)
 
 char *GetImageTitle(LPCTSTR imageFileName, Disk_t *fptr)
 {
-  TCHAR imagetitle[MAX_DISK_FULL_NAME + 1];
+  char imagetitle[MAX_DISK_FULL_NAME + 1];
   LPCTSTR startpos = imageFileName;
 
   if (_tcsrchr(startpos, FILE_SEPARATOR))
@@ -168,7 +168,7 @@ char *GetImageTitle(LPCTSTR imageFileName, Disk_t *fptr)
   imagetitle[MAX_DISK_FULL_NAME] = 0;
 
   // if imagetitle contains a lowercase char, then found=1 (why?)
-  BOOL found = 0;
+  bool found = 0;
   int loop = 0;
   while (imagetitle[loop] && !found) {
     if (IsCharLower(imagetitle[loop])) {
@@ -300,14 +300,14 @@ void DiskBoot()
   }
 }
 
-static BYTE DiskControlMotor(WORD, WORD address, BYTE, BYTE, ULONG)
+static unsigned char DiskControlMotor(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG)
 {
   floppymotoron = address & 1;
   CheckSpinning();
   return MemReturnRandomData(1);
 }
 
-static BYTE DiskControlStepper(WORD, WORD address, BYTE, BYTE, ULONG)
+static unsigned char DiskControlStepper(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG)
 {
   Disk_t *fptr = &g_aFloppyDisk[currdrive];
   int phase = (address >> 1) & 3;
@@ -361,7 +361,7 @@ void DiskDestroy()
   unlink("drive1.dsk");
 }
 
-static BYTE DiskEnable(WORD, WORD address, BYTE, BYTE, ULONG)
+static unsigned char DiskEnable(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG)
 {
   currdrive = address & 1;
   g_aFloppyDisk[!currdrive].spinning = 0;
@@ -397,9 +397,9 @@ LPCTSTR DiskGetName(int drive)
   return g_aFloppyDisk[drive].imagename;
 }
 
-BYTE Disk_IORead(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char Disk_IORead(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-BYTE Disk_IOWrite(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char Disk_IOWrite(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
 void DiskInitialize()
 {
@@ -468,7 +468,7 @@ bool DiskUnZip(char *gzname, char *fname)
   return true;
 }
 
-int DiskInsert(int drive, LPCTSTR imageFileName, BOOL writeProtected, BOOL createIfNecessary)
+int DiskInsert(int drive, LPCTSTR imageFileName, bool writeProtected, bool createIfNecessary)
 {
   Disk_t *fptr = &g_aFloppyDisk[drive];
   char s_title[MAX_DISK_IMAGE_NAME + 32];
@@ -514,14 +514,14 @@ int DiskInsert(int drive, LPCTSTR imageFileName, BOOL writeProtected, BOOL creat
   return error;
 }
 
-BOOL DiskIsSpinning()
+bool DiskIsSpinning()
 {
   return floppymotoron;
 }
 
 void DiskNotifyInvalidImage(LPCTSTR imageFileName, int error)
 {
-  TCHAR buffer[MAX_PATH + 128];
+  char buffer[MAX_PATH + 128];
 
   switch (error) {
 
@@ -560,7 +560,7 @@ void DiskSetProtect(const int iDrive, const bool bWriteProtect)
   }
 }
 
-static BYTE DiskReadWrite(WORD programcounter, WORD, BYTE, BYTE, ULONG)
+static unsigned char DiskReadWrite(unsigned short programcounter, unsigned short, unsigned char, unsigned char, ULONG)
 {
   Disk_t *fptr = &g_aFloppyDisk[currdrive];
   diskaccessed = 1;
@@ -570,7 +570,7 @@ static BYTE DiskReadWrite(WORD programcounter, WORD, BYTE, BYTE, ULONG)
   if (!fptr->trackimagedata) {
     return 0xFF;
   }
-  BYTE result = 0;
+  unsigned char result = 0;
   if ((!floppywritemode) || (!fptr->writeProtected)) {
     if (floppywritemode) {
       if (floppylatch & 0x80) {
@@ -745,7 +745,7 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   }
   #else
   // using WIN32 method
-    if(GetFileAttributes(tempPath) != DWORD(-1)) {
+    if(GetFileAttributes(tempPath) != unsigned int(-1)) {
       error = 0;
     } else {
       error = ftp_get(fullPath, tempPath); // 0 on success
@@ -765,7 +765,7 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   DrawFrameWindow();
 }
 
-static BYTE DiskSetLatchValue(WORD, WORD, BYTE write, BYTE value, ULONG)
+static unsigned char DiskSetLatchValue(unsigned short, unsigned short, unsigned char write, unsigned char value, ULONG)
 {
   if (write) {
     floppylatch = value;
@@ -773,16 +773,16 @@ static BYTE DiskSetLatchValue(WORD, WORD, BYTE write, BYTE value, ULONG)
   return floppylatch;
 }
 
-static BYTE DiskSetReadMode(WORD, WORD, BYTE, BYTE, ULONG)
+static unsigned char DiskSetReadMode(unsigned short, unsigned short, unsigned char, unsigned char, ULONG)
 {
   floppywritemode = 0;
   return MemReturnRandomData(g_aFloppyDisk[currdrive].writeProtected);
 }
 
-static BYTE DiskSetWriteMode(WORD, WORD, BYTE, BYTE, ULONG)
+static unsigned char DiskSetWriteMode(unsigned short, unsigned short, unsigned char, unsigned char, ULONG)
 {
   floppywritemode = 1;
-  BOOL modechange = !g_aFloppyDisk[currdrive].writelight;
+  bool modechange = !g_aFloppyDisk[currdrive].writelight;
   g_aFloppyDisk[currdrive].writelight = 20000;
   if (modechange) {
     FrameRefreshStatus(DRAW_LEDS);
@@ -790,7 +790,7 @@ static BYTE DiskSetWriteMode(WORD, WORD, BYTE, BYTE, ULONG)
   return MemReturnRandomData(1);
 }
 
-void DiskUpdatePosition(DWORD cycles)
+void DiskUpdatePosition(unsigned int cycles)
 {
   int loop = 2;
   while (loop--) {
@@ -843,11 +843,11 @@ bool DiskDriveSwap()
   return true;
 }
 
-void DiskLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot)
+void DiskLoadRom(LPBYTE pCxRomPeripheral, unsigned int uSlot)
 {
-  const UINT DISK2_FW_SIZE = 256;
+  const unsigned int DISK2_FW_SIZE = 256;
 
-  BYTE *pData = (BYTE *) Disk2_rom;  // NB. Don't need to unlock resource
+  unsigned char *pData = (unsigned char *) Disk2_rom;  // NB. Don't need to unlock resource
 
   memcpy(pCxRomPeripheral + uSlot * 256, pData, DISK2_FW_SIZE);
 
@@ -859,7 +859,7 @@ void DiskLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot)
   RegisterIoHandler(uSlot, Disk_IORead, Disk_IOWrite, NULL, NULL, NULL, NULL);
 }
 
-/*static*/ BYTE Disk_IORead(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft)
+/*static*/ unsigned char Disk_IORead(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft)
 {
   addr &= 0xFF;
 
@@ -901,7 +901,7 @@ void DiskLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot)
   return 0;
 }
 
-/*static*/ BYTE Disk_IOWrite(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft)
+unsigned char Disk_IOWrite(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft)
 {
   addr &= 0xFF;
 
@@ -943,7 +943,7 @@ void DiskLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot)
   return 0;
 }
 
-DWORD DiskGetSnapshot(SS_CARD_DISK2 *pSS, DWORD dwSlot)
+unsigned int DiskGetSnapshot(SS_CARD_DISK2 *pSS, unsigned int dwSlot)
 {
   pSS->Hdr.UnitHdr.dwLength = sizeof(SS_CARD_DISK2);
   pSS->Hdr.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 2);
@@ -959,7 +959,7 @@ DWORD DiskGetSnapshot(SS_CARD_DISK2 *pSS, DWORD dwSlot)
   pSS->floppymotoron = floppymotoron;
   pSS->floppywritemode = floppywritemode;
 
-  for (UINT i = 0; i < 2; i++) {
+  for (unsigned int i = 0; i < 2; i++) {
     strcpy(pSS->Unit[i].szFileName, g_aFloppyDisk[i].fullname);
     pSS->Unit[i].track = g_aFloppyDisk[i].track;
     pSS->Unit[i].phase = g_aFloppyDisk[i].phase;
@@ -981,7 +981,7 @@ DWORD DiskGetSnapshot(SS_CARD_DISK2 *pSS, DWORD dwSlot)
   return 0;
 }
 
-DWORD DiskSetSnapshot(SS_CARD_DISK2 *pSS, DWORD)
+unsigned int DiskSetSnapshot(SS_CARD_DISK2 *pSS, unsigned int)
 {
   if (pSS->Hdr.UnitHdr.dwVersion > MAKE_VERSION(1, 0, 0, 2)) {
     return -1;
@@ -994,7 +994,7 @@ DWORD DiskSetSnapshot(SS_CARD_DISK2 *pSS, DWORD)
   floppymotoron = pSS->floppymotoron;
   floppywritemode = pSS->floppywritemode;
 
-  for (UINT i = 0; i < 2; i++) {
+  for (unsigned int i = 0; i < 2; i++) {
     bool bImageError = false;
 
     ZeroMemory(&g_aFloppyDisk[i], sizeof(Disk_t));
