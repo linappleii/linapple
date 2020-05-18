@@ -28,7 +28,7 @@
 
 #include "../res/font.xpm"
 #include "../res/icon.xpm"
-#include "../res/splash.xpm"
+#include "../build/obj/splash.xpm"
 
 #define ASSET_MASTER_DSK     "Master.dsk"
 
@@ -126,18 +126,73 @@ void Asset_Quit(void)
   }
 }
 
-// FIXME: How this is done is currently kinda screwed up. Refactor
-int Asset_InsertMasterDisk(void)
+int Asset_FindMasterDisk(char *path_out)
 {
-  int rc;
-  char *path = (char *) SDL_malloc(sizeof(char[PATH_MAX]));
-  snprintf(path, PATH_MAX, "%s%s", system_assets, ASSET_MASTER_DSK);
-  rc = DiskInsert(0, path, 0, 0);
-  if (IMAGE_ERROR_UNABLE_TO_OPEN == rc) {
-    snprintf(path, PATH_MAX, "%s%s", system_exedir, ASSET_MASTER_DSK);
-    rc = DiskInsert(0, path, 0, 0);
+  // {path_out} gets the path found.
+  // Returns non-zero if no path was found.
+  //
+  // TODO use XDG lookups eg XDG_CONFIG_HOME, XDG_CONFIG_PATHS.
+  // TODO the last ditch paths are bunk -- look for better conventions.
+
+  int err = 255;
+  const int count = 5;
+  char *paths[count];
+  char path[MAX_PATH+1];
+  
+  // Allocate.
+  for (int i=0; i<count; i++)
+    paths[i] = (char *)SDL_malloc(sizeof(char[PATH_MAX+1]));
+
+  // Define search paths in precedence order.
+  strcpy(paths[0], ".");
+  strcpy(paths[1], "share/linapple"); // testing convenience
+  strcpy(paths[2], SDL_getenv("HOME"));
+  strcat(paths[2], "/.local/share/linapple");
+  strcpy(paths[3], "/usr/local/share/linapple");
+  strcpy(paths[4], "/usr/share/linapple");
+
+  for (auto p: paths) {
+    sprintf(path, "%s/%s", p, ASSET_MASTER_DSK);
+    printf("[debug] Searching: %s for %s\n", p, ASSET_MASTER_DSK);
+    FILE *fp = fopen(path, "r");
+    if (fp) {
+      fclose(fp);
+      strcpy(path_out, path);
+      err = 0;
+      break;
+    }
   }
 
+  if (err)
+  {
+    printf("[warn ] could not find %s at any of:\n", ASSET_MASTER_DSK);
+    for (auto i=0; i<count; i++)
+      printf("[warn ] %s\n", paths[i]);
+  }
+  else
+  {
+    printf("[info ] Master disk: %s\n", path);
+  }
+
+  // Deallocate.
+  for (auto i=0; i<4; i++)
+    SDL_free(paths[i]);
+
+  return err;
+}
+
+int Asset_InsertMasterDisk(void)
+{
+  char *path = (char *) SDL_malloc(sizeof(char[PATH_MAX+1]));
+
+  int err = Asset_FindMasterDisk(path);
+  if (err) {
+    SDL_free(path);
+    return 255;
+  }
+
+  int rc = DiskInsert(0, path, 0, 0);
+
   SDL_free(path);
-  return 0;
+  return rc;
 }

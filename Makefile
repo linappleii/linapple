@@ -2,21 +2,26 @@
 
 PACKAGE     := linapple
 VERSION     := 2.1.1
-# DEBUG       := 1
-
-# Where does this get installed
-PREFIX      := /usr/local
-
-# Where assets (font file, etc) are read from
-# (You can build a version that loads assets from the source tree with: ASSET_DIR=`pwd`/res make )
-ASSET_DIR   ?= $(PREFIX)/share/$(PACKAGE)
-
-# Where default versions of resource files (linapple.conf, etc) are obtained from initially
-# (You can build a version that copies resources from the source tree with: RESOURCE_INIT_DIR=`pwd`/res make )
-RESOURCE_INIT_DIR ?= /etc/linapple
 
 #Compiler and Linker
 CC          := g++
+
+# Where does this get installed
+PREFIX      ?= /usr/local
+
+# Build and installation staging location.
+DESTDIR     := build
+
+# Where assets (font file, etc) are read from
+# (You can build a version that loads assets from the source tree
+#  with: ASSET_DIR=`pwd`/res make )
+ASSETDIR   ?= share/$(PACKAGE)
+
+# Where default versions of resource files (linapple.conf, etc) are obtained from initially
+# (You can build a version that copies resources from the source tree with: RESOURCE_INIT_DIR=`pwd`/res make )
+RESOURCE_INIT_DIR ?= $(ASSETDIR)
+
+PKGDIR="pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
 
 #The Target Binary Program
 TARGET      := linapple
@@ -24,8 +29,8 @@ TARGET      := linapple
 #The Directories, Source, Includes, Objects, Binary and Resources
 SRCDIR      := src
 INCDIR      := inc
-BUILDDIR    := build
-TARGETDIR   := bin
+BUILDDIR    := $(DESTDIR)/obj
+TARGETDIR   := $(DESTDIR)/bin
 RESDIR      := res
 SRCEXT      := cpp
 DEPEXT      := d
@@ -33,9 +38,6 @@ OBJEXT      := o
 IMGEXT      := png
 XPMEXT      := xpm
 SYMEXT      := SYM
-
-# FIXME: Make this go away!
-INSTDIR     := $(PREFIX)/lib/$(PACKAGE)
 
 #Flags, Libraries and Includes
 
@@ -70,107 +72,44 @@ LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 
-#---------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
-#---------------------------------------------------------------------------------
-SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
-INSTASSETS  := \
-	Master.dsk
-CONFFILES   := \
-	linapple.conf
-SRCIMGFILES := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
-DSTIMGFILES := $(addprefix src/../,$(SRCIMGFILES:.$(IMGEXT)=.$(XPMEXT)))
-SRCSYMFILES := $(wildcard $(RESDIR)/*.$(SYMEXT))
-DSTSYMFILES := $(patsubst $(RESDIR)/%,$(TARGETDIR)/%,$(SRCSYMFILES))
+# i'm going to. -rhaleblian
+#------------------------------------------------------------------------------
+SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
+SRCIMGS := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
+DSTIMGS := $(patsubst $(RESDIR)/%,$(BUILDDIR)/%,$(SRCIMGS:.$(IMGEXT)=.$(XPMEXT)))
+SRCSYMS := $(wildcard $(RESDIR)/*.$(SYMEXT))
+DSTSYMS := $(patsubst $(RESDIR)/%,$(TARGETDIR)/%,$(SRCSYMS))
 
-#Default Make
-all: images directories $(TARGETDIR)/$(TARGET) symbolfiles
+all: resources $(TARGETDIR)/$(TARGET) symbolfiles
 
-#Remake
-remake: cleaner all
+remake: distclean all
 
-images: $(DSTIMGFILES)
+# Create XPM versions of images.
+images: $(DSTIMGS) directories
 
-#Copy Resources from Resources Directory to Target Directory
-resources: directories
-	@cp $(RESDIR)/* $(TARGETDIR)/
+resources: directories images
+	@cp $(RESDIR)/linapple.conf $(DESTDIR)/$(ASSETDIR)
+	@cp $(RESDIR)/Master.dsk $(DESTDIR)/$(ASSETDIR)
 
-# Copy symbol files to target directory
-symbolfiles: $(DSTSYMFILES)
+# Copy symbol files next to binary
+symbolfiles: $(DSTSYMS)
 
-#Make the Directories
 directories:
-	@mkdir -p $(TARGETDIR)
-	@mkdir -p $(BUILDDIR)
-
-package: all
-	@echo " Building a package"
-	mkdir -p "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)/etc/$(PACKAGE)"
-	mkdir -p "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)/usr/bin/"
-	@cp -rf $(RESDIR)/* "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)/etc/$(PACKAGE)"
-	@cp $(TARGETDIR)/$(TARGET) "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)/usr/bin/$(TARGET)"
-	chown -R root:root "pkg/$(PACKAGE)"
-	dpkg --build "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
-	mv "pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION).deb" .
-
-install: all
-	@echo "`tput bold`o Creating '$(INSTDIR)'`tput sgr0`"
-	# Windows-style all-in-one dir. Let's get rid of this at some point
-	install -d -m 755 -o root -g root "$(INSTDIR)"
-
-	@echo
-	@echo "`tput bold`o Copying binary to install directory '$(INSTDIR)'`tput sgr0`"
-	# This should be able to live in $(PREFIX)/bin directly, symlink for now
-	install -m 755 -o root -g root "$(TARGETDIR)/$(TARGET)" "$(INSTDIR)/$(TARGET)"
-	# We'll use a symlink until then
-	if [ -L "$(PREFIX)/bin/$(TARGET)" ]; then \
-		rm -f "$(PREFIX)/bin/$(TARGET)" ;\
-	fi
-	ln -s $(INSTDIR)/$(TARGET) $(PREFIX)/bin/$(TARGET)
-
-	@echo
-	@echo "`tput bold`o Copying assets to '$(ASSET_DIR)'`tput sgr0`"
-	install -d -m 755 -o root -g root "$(ASSET_DIR)"
-	for file in $(INSTASSETS); do \
-		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(ASSET_DIR)/$$file" ;\
-	done
-
-	@echo
-	@echo "`tput bold`o Copying docs to install directory '$(INSTDIR)'`tput sgr0`"
-	# This belongs in $(PREFIX)/etc or /etc
-	for file in $(CONFFILES); do \
-		install -m 644 -o root -g root "$(RESDIR)/$$file" "$(INSTDIR)/$$file" ;\
-	done
-
-uninstall:
-	@echo "`tput bold`o Uninstalling $(TARGET) from '$(INSTDIR)'`tput sgr0`"
-	# We could possibly just rm -rf this, but that's kind of a no-no
-	for file in $(TARGET) $(INSTASSETS) $(CONFFILES); do \
-		rm -f "$(INSTDIR)/$$file" ;\
-	done
-	for file in $(INSTASSETS); do \
-		rm -f "$(ASSET_DIR)/$$file" ;\
-	done
-	# It's okay if these fail (examine the directories yourself)
-	rmdir $(INSTDIR) 2>/dev/null || true
-	rmdir $(ASSET_DIR) 2>/dev/null || true
-	# Don't forget the linapple symlink in $(PREFIX)/bin
-	rm -f "$(PREFIX)/bin/$(TARGET)"
-
+	@mkdir -p $(BUILDDIR) $(TARGETDIR) $(DESTDIR)/$(ASSETDIR)
 
 #Clean only Objects
 clean:
 	@$(RM) -rf $(BUILDDIR)
 	@$(RM) -rf $(TARGETDIR)
-	@$(RM) -f $(RESDIR)/splash.xpm $(RESDIR)/charset*.xpm
+	@$(RM) -f $(RESDIR)/splash.xpm $(RESDIR)/charset_*.xpm
 
 #Full Clean, Objects and Binaries
 cleaner: clean
 	@$(RM) -rf $(TARGETDIR)
 	@$(RM) $(TARGET)-$(VERSION).deb
-
-
 
 #Pull in dependency info for *existing* .o files
 -include $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
@@ -189,13 +128,41 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
 	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
 
-%.$(XPMEXT): %.$(IMGEXT)
+$(BUILDDIR)/%.$(XPMEXT): $(RESDIR)/%.$(IMGEXT)
 	convert -flatten "$<" "$@"
 	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
 $(TARGETDIR)/%.$(SYMEXT): $(RESDIR)/%.$(SYMEXT)
 	cp $< $@
 
-#Non-File Targets
-.PHONY: all remake clean cleaner resources package install uninstall images directories symbolfiles
+# https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
+distclean: cleaner
+	rm -rf $(DESTDIR)
 
+install: all
+	cp $(DSTIMGS) "$(DESTDIR)/$(ASSETDIR)"
+	install $(TARGETDIR)/linapple "$(PREFIX)/bin"
+	install -d "$(PREFIX)/$(ASSETDIR)"
+	install $(DESTDIR)/$(ASSETDIR)/* "$(PREFIX)/$(ASSETDIR)"
+
+uninstall:
+	$(RM) $(PREFIX)/bin/$(TARGET)
+	$(RM) $(PREFIX)/$(ASSETDIR)/*
+	rmdir $(PREFIX)/$(ASSETDIR)
+
+deb:
+	@echo " Building a Debian package ..."
+	mkdir -p $(PKGDIR)
+	cp -r build/* $(PKGDIR)
+	dpkg --build $(PKGDIR)
+	mv $(PACKAGE)/$(PACKAGE)-$(VERSION).deb" .
+package: deb
+
+#Non-File Targets
+.PHONY: all clean cleaner deb directories distclean images install package remake resources symbolfiles
+
+#inspect:
+#	$(info PREFIX:  $(PREFIX))
+#	$(info DESTDIR: $(DESTDIR))
+#	$(info SRCIMGS: $(SRCIMGS))
+#	$(info DSTIMGS: $(DSTIMGS))
