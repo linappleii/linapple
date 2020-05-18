@@ -86,14 +86,14 @@ enum JOYKEY {
   JK_MAX
 };
 
-const UINT PDL_MIN = 0;
-const UINT PDL_CENTRAL = 127;
-const UINT PDL_MAX = 255;
+const unsigned int PDL_MIN = 0;
+const unsigned int PDL_CENTRAL = 127;
+const unsigned int PDL_MAX = 255;
 
-static BOOL keydown[JK_MAX] = {FALSE};
-const INT PDL_SMAX = 127;
-const INT PDL_SCENTRAL = 0;
-const INT PDL_SMIN = -127;
+static bool keydown[JK_MAX] = {false};
+const int PDL_SMAX = 127;
+const int PDL_SCENTRAL = 0;
+const int PDL_SMIN = -127;
 
 static POINT keyvalue[9] = {{PDL_SMIN,     PDL_SMAX},
                             {PDL_SCENTRAL, PDL_SMAX},
@@ -106,17 +106,17 @@ static POINT keyvalue[9] = {{PDL_SMIN,     PDL_SMAX},
                             {PDL_SMAX,     PDL_SMIN}};
 
 
-static DWORD buttonlatch[3] = {0, 0, 0};
-static BOOL joybutton[3] = {0, 0, 0};
+static unsigned int buttonlatch[3] = {0, 0, 0};
+static bool joybutton[3] = {0, 0, 0};
 
 static int joyshrx[2] = {8, 8};
 static int joyshry[2] = {8, 8};
 static int joysubx[2] = {0, 0};
 static int joysuby[2] = {0, 0};
 
-DWORD joytype[2] = {DEVICE_JOYSTICK, DEVICE_NONE};  // Emulation Type for joysticks #0 & #1
+unsigned int joytype[2] = {DEVICE_JOYSTICK, DEVICE_NONE};  // Emulation Type for joysticks #0 & #1
 
-static BOOL setbutton[3] = {0, 0, 0}; // Used when a mouse button is pressed/released
+static bool setbutton[3] = {0, 0, 0}; // Used when a mouse button is pressed/released
 
 static int xpos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 static int ypos[2] = {PDL_CENTRAL, PDL_CENTRAL};
@@ -127,18 +127,18 @@ g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
 static int g_nPdlTrimX = 0;
 static int g_nPdlTrimY = 0;
 
-DWORD joy1index = 0;
-DWORD joy2index = 1;
-DWORD joy1button1 = 0;
-DWORD joy1button2 = 1;
-DWORD joy2button1 = 0;
-DWORD joy1axis0 = 0;
-DWORD joy1axis1 = 1;
-DWORD joy2axis0 = 0;
-DWORD joy2axis1 = 1;
-DWORD joyexitenable = 0;
-DWORD joyexitbutton0 = 8;
-DWORD joyexitbutton1 = 9;
+unsigned int joy1index = 0;
+unsigned int joy2index = 1;
+unsigned int joy1button1 = 0;
+unsigned int joy1button2 = 1;
+unsigned int joy2button1 = 0;
+unsigned int joy1axis0 = 0;
+unsigned int joy1axis1 = 1;
+unsigned int joy2axis0 = 0;
+unsigned int joy2axis1 = 1;
+unsigned int joyexitenable = 0;
+unsigned int joyexitbutton0 = 8;
+unsigned int joyexitbutton1 = 9;
 bool joyquitevent = 0;
 
 SDL_Joystick *joy1 = NULL;
@@ -157,8 +157,8 @@ void CheckJoystick0() {
   if (!joy1) {
     return;
   }
-  static DWORD lastcheck = 0;
-  DWORD currtime = GetTickCount();
+  static unsigned int lastcheck = 0;
+  unsigned int currtime = GetTickCount();
   if ((currtime - lastcheck >= 10) || joybutton[0] || joybutton[1]) {
     lastcheck = currtime;
     SDL_JoystickUpdate(); // update all joysticks states
@@ -250,8 +250,8 @@ void CheckJoystick1() {
   if (!joy2) {
     return;
   }
-  static DWORD lastcheck = 0;
-  DWORD currtime = GetTickCount();
+  static unsigned int lastcheck = 0;
+  unsigned int currtime = GetTickCount();
   if ((currtime - lastcheck >= 10) || joybutton[2]) {
     lastcheck = currtime;
     SDL_JoystickUpdate(); // update all joysticks states
@@ -317,8 +317,8 @@ void JoyInitialize()
       joyshry[0] = 0;
       joysubx[0] = AXIS_MIN; //just do not know how to get wXmin and alike from SDL joysticks
       joysuby[0] = AXIS_MIN;
-      UINT xrange = AXIS_MAX - AXIS_MIN;
-      UINT yrange = AXIS_MAX - AXIS_MIN;
+      unsigned int xrange = AXIS_MAX - AXIS_MIN;
+      unsigned int yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx[0]; // joystick threshold??
@@ -341,8 +341,8 @@ void JoyInitialize()
       joyshry[1] = 0;
       joysubx[1] = AXIS_MIN;
       joysuby[1] = AXIS_MIN;
-      UINT xrange = AXIS_MAX - AXIS_MIN;
-      UINT yrange = AXIS_MAX - AXIS_MIN;
+      unsigned int xrange = AXIS_MAX - AXIS_MIN;
+      unsigned int yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx[1];
@@ -398,12 +398,12 @@ void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
   }
 }
 
-BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
+bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
 #if 0
   // GPH Apple as button: This is confusing and results in situations where
   // the solid-apple key (RALT) never gets released.  Going to comment out for
   // now and solicit request for comment.
-  BOOL isALT = ((virtkey == SDLK_LALT) | (virtkey == SDLK_RALT)); //if either ALT key pressed
+  bool isALT = ((virtkey == SDLK_LALT) | (virtkey == SDLK_RALT)); //if either ALT key pressed
   if ((joyinfo[joytype[0]].device != DEVICE_KEYBOARD) && (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) && (!isALT)) {
     return 0;
   }
@@ -412,7 +412,7 @@ BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
   int nJoyNum = (joyinfo[joytype[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
   int nCenteringType = joyinfo[joytype[nJoyNum]].mode;  // MODE_STANDARD or MODE_CENTERING
 
-  BOOL keychange = !extended;
+  bool keychange = !extended;
 #if 0
   // GPH Apple-as-button confusion
   if (isALT) {
@@ -554,7 +554,7 @@ BOOL JoyProcessKey(int virtkey, BOOL extended, BOOL down, BOOL autorep) {
   return keychange;
 }
 
-BYTE JoyReadButton(WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
   address &= 0xFF;
 
   if (joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
@@ -564,7 +564,7 @@ BYTE JoyReadButton(WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
     CheckJoystick1();
   }
 
-  BOOL pressed = 0;
+  bool pressed = 0;
   switch (address) {
 
     case 0x61:
@@ -607,7 +607,7 @@ BYTE JoyReadButton(WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
 
 static const double PDL_CNTR_INTERVAL = 2816.0 / 255.0;  // 11.04 (From KEGS)
 
-BYTE JoyReadPosition(WORD programcounter, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char JoyReadPosition(unsigned short programcounter, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
   int nJoyNum = (address & 2) ? 1 : 0;  // $C064..$C067
 
   CpuCalcCycles(nCyclesLeft);
@@ -619,7 +619,7 @@ BYTE JoyReadPosition(WORD programcounter, WORD address, BYTE, BYTE, ULONG nCycle
   //if(nPdlPos >= 255)
   //  nPdlPos = 280;
 
-  BOOL nPdlCntrActive = g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (unsigned
+  bool nPdlCntrActive = g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (unsigned
   __int64) ((double) nPdlPos * PDL_CNTR_INTERVAL));
 
   return MemReadFloatingBus(nPdlCntrActive, nCyclesLeft);
@@ -628,10 +628,10 @@ BYTE JoyReadPosition(WORD programcounter, WORD address, BYTE, BYTE, ULONG nCycle
 void JoyReset() {
   int loop = 0;
   while (loop < JK_MAX)
-    keydown[loop++] = FALSE; // clear all joystick buttons and axis states
+    keydown[loop++] = false; // clear all joystick buttons and axis states
 }
 
-BYTE JoyResetPosition(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char JoyResetPosition(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
   CpuCalcCycles(nCyclesLeft);
   g_nJoyCntrResetCycle = g_nCumulativeCycles;
 
@@ -667,7 +667,7 @@ void JoySetButton(eBUTTON number, eBUTTONSTATE down) {
 }
 
 // Set new joystick type
-BOOL JoySetEmulationType(DWORD newType, int nJoystickNumber) {
+bool JoySetEmulationType(unsigned int newType, int nJoystickNumber) {
   if (joytype[nJoystickNumber] == newType) {
     return 1;  // Already set to this type. Return OK.
   }
@@ -710,7 +710,7 @@ void JoyUpdatePosition() {
   }
 }
 
-BOOL JoyUsingMouse() {
+bool JoyUsingMouse() {
   return (joyinfo[joytype[0]].device == DEVICE_MOUSE) || (joyinfo[joytype[1]].device == DEVICE_MOUSE);
 }
 
@@ -739,12 +739,12 @@ short JoyGetTrim(bool bAxisX) {
   return bAxisX ? g_nPdlTrimX : g_nPdlTrimY;
 }
 
-DWORD JoyGetSnapshot(SS_IO_Joystick *pSS) {
+unsigned int JoyGetSnapshot(SS_IO_Joystick *pSS) {
   pSS->g_nJoyCntrResetCycle = g_nJoyCntrResetCycle;
   return 0;
 }
 
-DWORD JoySetSnapshot(SS_IO_Joystick *pSS) {
+unsigned int JoySetSnapshot(SS_IO_Joystick *pSS) {
   g_nJoyCntrResetCycle = pSS->g_nJoyCntrResetCycle;
   return 0;
 }

@@ -6,7 +6,7 @@
 #define  DRIVES   2
 #define  TRACKS   35
 
-extern BOOL enhancedisk;
+extern bool enhancedisk;
 
 void DiskInitialize(); // DiskManagerStartup()
 void DiskDestroy(); // no, doesn't "destroy" the disk image.  DiskManagerShutdown()
@@ -25,9 +25,9 @@ void DiskGetLightStatus(int *pDisk1Status_, int *pDisk2Status_);
 
 LPCTSTR DiskGetName(int);
 
-int DiskInsert(int, LPCTSTR, BOOL, BOOL);
+int DiskInsert(int, LPCTSTR, bool, bool);
 
-BOOL DiskIsSpinning();
+bool DiskIsSpinning();
 
 void DiskNotifyInvalidImage(LPCTSTR, int);
 
@@ -41,12 +41,12 @@ void DiskSelect(int);
 
 void Disk_FTP_SelectImage(int);
 
-void DiskUpdatePosition(DWORD);
+void DiskUpdatePosition(unsigned int);
 
 bool DiskDriveSwap();
 
-void DiskLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot);
+void DiskLoadRom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
-DWORD DiskGetSnapshot(SS_CARD_DISK2 *pSS, DWORD dwSlot);
+unsigned int DiskGetSnapshot(SS_CARD_DISK2 *pSS, unsigned int dwSlot);
 
-DWORD DiskSetSnapshot(SS_CARD_DISK2 *pSS, DWORD dwSlot);
+unsigned int DiskSetSnapshot(SS_CARD_DISK2 *pSS, unsigned int dwSlot);

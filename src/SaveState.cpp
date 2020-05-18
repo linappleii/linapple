@@ -67,8 +67,8 @@ void Snapshot_LoadState() {
       throw (0);
     }
 
-    DWORD dwBytesRead;
-    BOOL bRes = ReadFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesRead, NULL);
+    unsigned int dwBytesRead;
+    bool bRes = ReadFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesRead, NULL);
 
     CloseHandle(hFile);
 
@@ -78,7 +78,7 @@ void Snapshot_LoadState() {
       throw (0);
     }
 
-    if (pSS->Hdr.dwTag != (DWORD) AW_SS_TAG) {
+    if (pSS->Hdr.dwTag != (unsigned int) AW_SS_TAG) {
       strcpy(szMessage, "File corrupt");
       throw (0);
     }
@@ -181,7 +181,7 @@ void Snapshot_SaveState() {
   HANDLE hFile = fopen(g_szSaveStateFilename, "wb");
 
   if (hFile != INVALID_HANDLE_VALUE) {
-    DWORD dwBytesWritten;
+    unsigned int dwBytesWritten;
     WriteFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesWritten, NULL);
     CloseHandle(hFile);
   }

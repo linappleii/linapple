@@ -39,15 +39,15 @@ bool g_bCtrlKey = false;
 bool g_bAltKey = false;
 static bool g_bCapsLock = true;
 static int lastvirtkey = 0;  // Current PC keycode
-static BYTE keycode = 0;  // Current Apple keycode
-static DWORD keyboardqueries = 0;
+static unsigned char keycode = 0;  // Current Apple keycode
+static unsigned int keyboardqueries = 0;
 
 KeybLanguage g_KeyboardLanguage = English_US; // default keyboard language
 bool         g_KeyboardRockerSwitch = false;  // keyboard/video ROM charset toggle switch (Euro-Apple //e)
 
 #ifdef KEY_OLD
 // Original
-static BOOL keywaiting = 0;
+static bool keywaiting = 0;
 #else
 // Buffered key input:
 // - Needed on faster PCs where aliasing occurs during short/fast bursts of 6502 code.
@@ -61,11 +61,11 @@ static int g_nKeyBufferCnt = 0;
 
 static struct {
   int nVirtKey;
-  BYTE nAppleKey;
+  unsigned char nAppleKey;
 } g_nKeyBuffer[KEY_BUFFER_MAX_SIZE];
 #endif
 
-static BYTE g_nLastKey = 0x00;
+static unsigned char g_nLastKey = 0x00;
 
 // All globally accessible functions are below this line
 
@@ -107,14 +107,14 @@ void KeybUpdateCtrlShiftStatus() {
   g_bAltKey = (keys[SDLK_LALT] | keys[SDLK_RALT]);  // ALT
 }
 
-BYTE KeybGetKeycode()    // Used by MemCheckPaging() & VideoCheckMode()
+unsigned char KeybGetKeycode()    // Used by MemCheckPaging() & VideoCheckMode()
 {
   return keycode;
 }
 
-DWORD KeybGetNumQueries()  // Used in determining 'idleness' of Apple system
+unsigned int KeybGetNumQueries()  // Used in determining 'idleness' of Apple system
 {
-  DWORD result = keyboardqueries;
+  unsigned int result = keyboardqueries;
   keyboardqueries = 0;
   return result;
 }
@@ -464,7 +464,7 @@ int KeybDecodeKey(int key)
   return key;
 }
 
-void KeybQueueKeypress(int key, BOOL bASCII)
+void KeybQueueKeypress(int key, bool bASCII)
 {
   // language dependent keyboard mappings
   key = KeybDecodeKey(key);
@@ -574,13 +574,13 @@ void KeybQueueKeypress(int key, BOOL bASCII)
   #endif
 }
 
-BYTE KeybReadData(WORD, WORD, BYTE, BYTE, ULONG) {
+unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
   keyboardqueries++;
 
   #ifdef KEY_OLD
   return keycode | (keywaiting ? 0x80 : 0);
   #else
-  BYTE nKey = g_nKeyBufferCnt ? 0x80 : 0;
+  unsigned char nKey = g_nKeyBufferCnt ? 0x80 : 0;
   if(g_nKeyBufferCnt)
   {
     nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
@@ -594,7 +594,7 @@ BYTE KeybReadData(WORD, WORD, BYTE, BYTE, ULONG) {
   #endif
 }
 
-BYTE KeybReadFlag(WORD, WORD, BYTE, BYTE, ULONG) {
+unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
   keyboardqueries++;
 
   Uint8 *keys;
@@ -603,7 +603,7 @@ BYTE KeybReadFlag(WORD, WORD, BYTE, BYTE, ULONG) {
   keywaiting = 0;
   return keycode | (keys[lastvirtkey] ? 0x80 : 0);
   #else
-  BYTE nKey = (keys[g_nKeyBuffer[g_nNextOutIdx].nVirtKey]) ? 0x80 : 0;
+  unsigned char nKey = (keys[g_nKeyBuffer[g_nNextOutIdx].nVirtKey]) ? 0x80 : 0;
   nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
   if(g_nKeyBufferCnt) {
     g_nKeyBufferCnt--;
@@ -621,13 +621,13 @@ void KeybToggleCapsLock()
   }
 }
 
-DWORD KeybGetSnapshot(SS_IO_Keyboard *pSS) {
+unsigned int KeybGetSnapshot(SS_IO_Keyboard *pSS) {
   pSS->keyboardqueries = keyboardqueries;
   pSS->nLastKey = g_nLastKey;
   return 0;
 }
 
-DWORD KeybSetSnapshot(SS_IO_Keyboard *pSS) {
+unsigned int KeybSetSnapshot(SS_IO_Keyboard *pSS) {
   keyboardqueries = pSS->keyboardqueries;
   g_nLastKey = pSS->nLastKey;
   return 0;

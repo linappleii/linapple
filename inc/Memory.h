@@ -38,11 +38,11 @@ extern LPBYTE mem;
 extern LPBYTE memdirty;
 
 #ifdef RAMWORKS
-extern UINT       g_uMaxExPages;  // user requested ram pages (from cmd line)
+extern unsigned int       g_uMaxExPages;  // user requested ram pages (from cmd line)
 #endif
 
-void RegisterIoHandler(UINT uSlot, iofunction IOReadC0, iofunction IOWriteC0, iofunction IOReadCx, iofunction IOWriteCx,
-                       LPVOID lpSlotParameter, BYTE *pExpansionRom);
+void RegisterIoHandler(unsigned int uSlot, iofunction IOReadC0, iofunction IOWriteC0, iofunction IOReadCx, iofunction IOWriteCx,
+                       LPVOID lpSlotParameter, unsigned char *pExpansionRom);
 
 void MemDestroy();
 
@@ -50,46 +50,46 @@ bool MemGet80Store();
 
 bool MemCheckSLOTCXROM();
 
-LPBYTE MemGetAuxPtr(WORD);
-LPBYTE MemGetMainPtr(WORD);
+LPBYTE MemGetAuxPtr(unsigned short);
+LPBYTE MemGetMainPtr(unsigned short);
 
 LPBYTE MemGetCxRomPeripheral();
-LPBYTE MemGetBankPtr(const UINT nBank);
+LPBYTE MemGetBankPtr(const unsigned int nBank);
 
-DWORD GetMemMode(void);
-void SetMemMode(DWORD memmode);
+unsigned int GetMemMode(void);
+void SetMemMode(unsigned int memmode);
 bool MemIsAddrCodeMemory(const USHORT addr);
 
 void MemPreInitialize();
 
 int MemInitialize();
 
-BYTE MemReadFloatingBus(const ULONG uExecutedCycles);
+unsigned char MemReadFloatingBus(const ULONG uExecutedCycles);
 
-BYTE MemReadFloatingBus(const BYTE highbit, const ULONG uExecutedCycles);
+unsigned char MemReadFloatingBus(const unsigned char highbit, const ULONG uExecutedCycles);
 
 void MemReset();
 
 void MemResetPaging();
 
-BYTE MemReturnRandomData(BYTE highbit);
+unsigned char MemReturnRandomData(unsigned char highbit);
 
-void MemSetFastPaging(BOOL);
+void MemSetFastPaging(bool);
 
 void MemTrimImages();
 
-LPVOID MemGetSlotParameters(UINT uSlot);
+LPVOID MemGetSlotParameters(unsigned int uSlot);
 
-DWORD MemGetSnapshot(SS_BaseMemory *pSS);
+unsigned int MemGetSnapshot(SS_BaseMemory *pSS);
 
-DWORD MemSetSnapshot(SS_BaseMemory *pSS);
+unsigned int MemSetSnapshot(SS_BaseMemory *pSS);
 
-BYTE IO_Null(WORD programcounter, WORD address, BYTE write, BYTE value, ULONG nCycles);
+unsigned char IO_Null(unsigned short programcounter, unsigned short address, unsigned char write, unsigned char value, ULONG nCycles);
 
-void MemUpdatePaging(BOOL initialize, BOOL updatewriteonly);
+void MemUpdatePaging(bool initialize, bool updatewriteonly);
 
-BYTE MemCheckPaging(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char MemCheckPaging(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-BYTE MemSetPaging(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char MemSetPaging(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-UINT GetRamWorksActiveBank(void);
+unsigned int GetRamWorksActiveBank(void);

@@ -17,8 +17,8 @@ extern SDL_Surface *screen;
 
 #define SHOW_CYCLES  15
 
-extern BOOL fullscreen;
-extern BOOL g_WindowResized;
+extern bool fullscreen;
+extern bool g_WindowResized;
 
 extern SDL_Rect origRect;
 extern SDL_Rect newRect;
@@ -38,7 +38,7 @@ void FrameReleaseVideoDC();
 void DrawFrameWindow();  // draw it!
 void FrameDispatchMessage(SDL_Event *e); // replacement for FrameWndProc.
 
-void SetUsingCursor(BOOL);
+void SetUsingCursor(bool);
 
 void SetFullScreenMode();
 

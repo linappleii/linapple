@@ -47,7 +47,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <unistd.h>
 
 #ifndef _WIN32
-static DWORD g_dwUsecPeriod = 0;
+static unsigned int g_dwUsecPeriod = 0;
 
 bool SysClk_InitTimer() {
   return true;
@@ -108,7 +108,7 @@ void SysClk_WaitTimer() {
   }
 }
 
-void SysClk_StartTimerUsec(DWORD dwUsecPeriod) {
+void SysClk_StartTimerUsec(unsigned int dwUsecPeriod) {
   g_dwUsecPeriod = dwUsecPeriod;
 }
 
@@ -118,11 +118,11 @@ void SysClk_StopTimer() {
 #else
 // Timer Functions - WINDOWS specific                       //
 
-static DWORD g_dwAdviseToken;
+static unsigned int g_dwAdviseToken;
 static IReferenceClock *g_pRefClock = NULL;
 static HANDLE g_hSemaphore = NULL;
 static bool g_bRefClockTimerActive = false;
-static DWORD g_dwLastUsecPeriod = 0;
+static unsigned int g_dwLastUsecPeriod = 0;
 
 bool SysClk_InitTimer() {
   g_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);    // Max count = 1
@@ -155,7 +155,7 @@ void SysClk_WaitTimer() {
   WaitForSingleObject(g_hSemaphore, INFINITE);
 }
 
-void SysClk_StartTimerUsec(DWORD dwUsecPeriod) {
+void SysClk_StartTimerUsec(unsigned int dwUsecPeriod) {
   if(g_bRefClockTimerActive && (g_dwLastUsecPeriod == dwUsecPeriod)) {
     return;
   }

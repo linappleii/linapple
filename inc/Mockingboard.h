@@ -1,7 +1,7 @@
 #pragma once
 
 extern bool g_bMBTimerIrqActive;
-extern UINT32 g_uTimer1IrqCount;  // DEBUG
+extern unsigned int g_uTimer1IrqCount;  // DEBUG
 
 void MB_Initialize();
 
@@ -33,15 +33,15 @@ double MB_GetFramePeriod();
 
 bool MB_IsActive();
 
-DWORD MB_GetVolume();
+unsigned int MB_GetVolume();
 
-void MB_SetVolume(DWORD dwVolume, DWORD dwVolumeMax);
+void MB_SetVolume(unsigned int dwVolume, unsigned int dwVolumeMax);
 
-DWORD MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, DWORD dwSlot);
+unsigned int MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, unsigned int dwSlot);
 
-DWORD MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, DWORD dwSlot);
+unsigned int MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, unsigned int dwSlot);
 
 extern short *pDSMockBuf;  // Mockingboard data buffer (in size of g_dwDSMockBufferSize samples?)
-extern UINT nDSMockWCur;  // write cursor
-extern UINT nDSMockRCur;  // read cursor
+extern unsigned int nDSMockWCur;  // write cursor
+extern unsigned int nDSMockRCur;  // read cursor
 

@@ -7,43 +7,43 @@
 #define AW_SS_TAG (('S'<<24)|('S'<<16)|('W'<<8)|'A')  // 'AWSS' = AppleWin SnapShot
 
 typedef struct {
-  DWORD dwTag;    // "AWSS"
-  DWORD dwVersion;
-  DWORD dwChecksum;
+  unsigned int dwTag;    // "AWSS"
+  unsigned int dwVersion;
+  unsigned int dwChecksum;
 } SS_FILE_HDR;
 
 typedef struct {
-  DWORD dwLength;    // Byte length of this unit struct
-  DWORD dwVersion;
+  unsigned int dwLength;    // Byte length of this unit struct
+  unsigned int dwVersion;
 } SS_UNIT_HDR;
 
-const UINT nMemMainSize = 64 * 1024;
-const UINT nMemAuxSize = 64 * 1024;
+const unsigned int nMemMainSize = 64 * 1024;
+const unsigned int nMemAuxSize = 64 * 1024;
 
 typedef struct {
-  BYTE A;
-  BYTE X;
-  BYTE Y;
-  BYTE P;
-  BYTE S;
+  unsigned char A;
+  unsigned char X;
+  unsigned char Y;
+  unsigned char P;
+  unsigned char S;
   USHORT PC;
   unsigned __int64
   g_nCumulativeCycles;
   // IRQ = OR-sum of all interrupt sources
 } SS_CPU6502;
 
-const UINT uRecvBufferSize = 9;
+const unsigned int uRecvBufferSize = 9;
 
 typedef struct {
-  DWORD baudrate;
-  BYTE bytesize;
-  BYTE commandbyte;
-  DWORD comminactivity;  // If non-zero then COM port open
-  BYTE controlbyte;
-  BYTE parity;
-  BYTE recvbuffer[uRecvBufferSize];
-  DWORD recvbytes;
-  BYTE stopbits;
+  unsigned int baudrate;
+  unsigned char bytesize;
+  unsigned char commandbyte;
+  unsigned int comminactivity;  // If non-zero then COM port open
+  unsigned char controlbyte;
+  unsigned char parity;
+  unsigned char recvbuffer[uRecvBufferSize];
+  unsigned int recvbytes;
+  unsigned char stopbits;
 } SS_IO_Comms;
 
 typedef struct {
@@ -52,8 +52,8 @@ typedef struct {
 } SS_IO_Joystick;
 
 typedef struct {
-  DWORD keyboardqueries;
-  BYTE nLastKey;
+  unsigned int keyboardqueries;
+  unsigned char nLastKey;
 } SS_IO_Keyboard;
 
 typedef struct {
@@ -63,14 +63,14 @@ typedef struct {
 
 typedef struct {
   bool bAltCharSet;  // charoffs
-  DWORD dwVidMode;
+  unsigned int dwVidMode;
 } SS_IO_Video;
 
 typedef struct {
-  DWORD dwMemMode;
-  BOOL bLastWriteRam;
-  BYTE nMemMain[nMemMainSize];
-  BYTE nMemAux[nMemAuxSize];
+  unsigned int dwMemMode;
+  bool bLastWriteRam;
+  unsigned char nMemMain[nMemMainSize];
+  unsigned char nMemAux[nMemAuxSize];
 } SS_BaseMemory;
 
 typedef struct {
@@ -86,35 +86,35 @@ typedef struct {
 } SS_APPLE2_Unit;
 
 typedef struct {
-  DWORD dwComputerEmulation;
+  unsigned int dwComputerEmulation;
   bool bCustomSpeed;
-  DWORD dwEmulationSpeed;
+  unsigned int dwEmulationSpeed;
   bool bEnhancedDiskSpeed;
-  DWORD dwJoystickType[2];
+  unsigned int dwJoystickType[2];
   bool bMockingboardEnabled;
-  DWORD dwMonochromeColor;
-  DWORD dwSerialPort;
-  DWORD dwSoundType;  // Sound Emulation
-  DWORD dwVideoType;  // Video Emulation
+  unsigned int dwMonochromeColor;
+  unsigned int dwSerialPort;
+  unsigned int dwSoundType;  // Sound Emulation
+  unsigned int dwVideoType;  // Video Emulation
 } SS_AW_CFG;
 
 typedef struct {
   char StartingDir[MAX_PATH];
-  DWORD dwWindowXpos;
-  DWORD dwWindowYpos;
+  unsigned int dwWindowXpos;
+  unsigned int dwWindowYpos;
 } SS_AW_PREFS;
 
 typedef struct {
   SS_UNIT_HDR UnitHdr;
-  DWORD dwAppleWinVersion;
+  unsigned int dwAppleWinVersion;
   SS_AW_PREFS Prefs;
   SS_AW_CFG Cfg;
 } SS_APPLEWIN_CONFIG;
 
 typedef struct {
   SS_UNIT_HDR UnitHdr;
-  DWORD dwType;    // SS_CARDTYPE
-  DWORD dwSlot;    // [1..7]
+  unsigned int dwType;    // SS_CARDTYPE
+  unsigned int dwSlot;    // [1..7]
 } SS_CARD_HDR;
 
 enum SS_CARDTYPE {
@@ -128,49 +128,49 @@ typedef struct {
   SS_CARD_HDR Hdr;
 } SS_CARD_EMPTY;
 
-const UINT NIBBLES_PER_TRACK = 0x1A00;
+const unsigned int NIBBLES_PER_TRACK = 0x1A00;
 
 typedef struct {
   char szFileName[MAX_PATH];
   int track;
   int phase;
   int byte;
-  BOOL writeprotected;
-  BOOL trackimagedata;
-  BOOL trackimagedirty;
-  DWORD spinning;
-  DWORD writelight;
+  bool writeprotected;
+  bool trackimagedata;
+  bool trackimagedirty;
+  unsigned int spinning;
+  unsigned int writelight;
   int nibbles;
-  BYTE nTrack[NIBBLES_PER_TRACK];
+  unsigned char nTrack[NIBBLES_PER_TRACK];
 } DISK2_Unit;
 
 typedef struct {
   SS_CARD_HDR Hdr;
   DISK2_Unit Unit[2];
-  WORD phases;
-  WORD currdrive;
-  BOOL diskaccessed;
-  BOOL enhancedisk;
-  BYTE floppylatch;
-  BOOL floppymotoron;
-  BOOL floppywritemode;
+  unsigned short phases;
+  unsigned short currdrive;
+  bool diskaccessed;
+  bool enhancedisk;
+  unsigned char floppylatch;
+  bool floppymotoron;
+  bool floppywritemode;
 } SS_CARD_DISK2;
 
 typedef struct {
   union {
     struct {
-      BYTE l;
-      BYTE h;
+      unsigned char l;
+      unsigned char h;
     };
     USHORT w;
   };
 } IWORD;
 
 typedef struct {
-  BYTE ORB;        // $00 - Port B
-  BYTE ORA;        // $01 - Port A (with handshaking)
-  BYTE DDRB;        // $02 - Data Direction Register B
-  BYTE DDRA;        // $03 - Data Direction Register A
+  unsigned char ORB;        // $00 - Port B
+  unsigned char ORA;        // $01 - Port A (with handshaking)
+  unsigned char DDRB;        // $02 - Data Direction Register B
+  unsigned char DDRA;        // $03 - Data Direction Register A
   //
   // $04 - Read counter (L) / Write latch (L)
   // $05 - Read / Write & initiate count (H)
@@ -183,35 +183,35 @@ typedef struct {
   IWORD TIMER2_COUNTER;
   IWORD TIMER2_LATCH;
   //
-  BYTE SERIAL_SHIFT;    // $0A
-  BYTE ACR;        // $0B - Auxiliary Control Register
-  BYTE PCR;        // $0C - Peripheral Control Register
-  BYTE IFR;        // $0D - Interrupt Flag Register
-  BYTE IER;        // $0E - Interrupt Enable Register
-  BYTE ORA_NO_HS;      // $0F - Port A (without handshaking)
+  unsigned char SERIAL_SHIFT;    // $0A
+  unsigned char ACR;        // $0B - Auxiliary Control Register
+  unsigned char PCR;        // $0C - Peripheral Control Register
+  unsigned char IFR;        // $0D - Interrupt Flag Register
+  unsigned char IER;        // $0E - Interrupt Enable Register
+  unsigned char ORA_NO_HS;      // $0F - Port A (without handshaking)
 } SY6522;
 
 typedef struct {
-  BYTE DurationPhonome;
-  BYTE Inflection;    // I10..I3
-  BYTE RateInflection;
-  BYTE CtrlArtAmp;
-  BYTE FilterFreq;
+  unsigned char DurationPhonome;
+  unsigned char Inflection;    // I10..I3
+  unsigned char RateInflection;
+  unsigned char CtrlArtAmp;
+  unsigned char FilterFreq;
   //
-  BYTE CurrentMode;    // b7:6=Mode; b0=D7 pin (for IRQ)
+  unsigned char CurrentMode;    // b7:6=Mode; b0=D7 pin (for IRQ)
 } SSI263A;
 
 typedef struct {
   SY6522 RegsSY6522;
-  BYTE RegsAY8910[16];
+  unsigned char RegsAY8910[16];
   SSI263A RegsSSI263;
-  BYTE nAYCurrentRegister;
+  unsigned char nAYCurrentRegister;
   bool bTimer1IrqPending;
   bool bTimer2IrqPending;
   bool bSpeechIrqPending;
 } MB_Unit;
 
-const UINT MB_UNITS_PER_CARD = 2;
+const unsigned int MB_UNITS_PER_CARD = 2;
 
 typedef struct {
   SS_CARD_HDR Hdr;

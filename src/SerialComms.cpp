@@ -192,7 +192,7 @@ SSC_DIPSW CSuperSerialCard::m_DIPSWDefault = {
   // DIPSW2:
   ONESTOPBIT, 8,        // ByteSize
   NOPARITY, true,      // LF
-  false,      // INT
+  false,
 };
 
 CSuperSerialCard::CSuperSerialCard() {
@@ -213,7 +213,7 @@ CSuperSerialCard::CSuperSerialCard() {
   m_vbCommIRQ = false;
   m_hCommThread = NULL;
 
-  for (UINT i = 0; i < COMMEVT_MAX; i++)
+  for (unsigned int i = 0; i < COMMEVT_MAX; i++)
     m_hCommEvent[i] = NULL;
 
   memset(&m_o, 0, sizeof(m_o));
@@ -252,14 +252,14 @@ void CSuperSerialCard::SetDIPSWDefaults()
   m_DIPSWCurrent.bInterrupts = m_DIPSWDefault.bInterrupts;
 }
 
-BYTE CSuperSerialCard::GenerateControl()
+unsigned char CSuperSerialCard::GenerateControl()
 {
-  const UINT CLK = 1;  // Internal
+  const unsigned int CLK = 1;  // Internal
 
-  UINT bmByteSize = (8 - m_uByteSize);  // [8,7,6,5] -> [0,1,2,3]
+  unsigned int bmByteSize = (8 - m_uByteSize);  // [8,7,6,5] -> [0,1,2,3]
   _ASSERT(bmByteSize <= 3);
 
-  UINT StopBit;
+  unsigned int StopBit;
   if (((m_uByteSize == 8) && (m_uParity != NOPARITY)) || (m_uStopBits != ONESTOPBIT)) {
     StopBit = 1;
   } else {
@@ -269,7 +269,7 @@ BYTE CSuperSerialCard::GenerateControl()
   return (StopBit << 7) | (bmByteSize << 5) | (CLK << 4) | BaudRateToIndex(m_uBaudRate);
 }
 
-UINT CSuperSerialCard::BaudRateToIndex(UINT uBaudRate) {
+unsigned int CSuperSerialCard::BaudRateToIndex(unsigned int uBaudRate) {
   switch (uBaudRate) { // changed: CBR_# to B# (for *nix?) --bb
     case B110:
       return 0x05;
@@ -366,11 +366,11 @@ void CSuperSerialCard::UpdateCommState() {
   tcsetattr(m_hCommHandle, TCSANOW, &dcb);
 }
 
-BOOL CSuperSerialCard::CheckComm() {
+bool CSuperSerialCard::CheckComm() {
   m_dwCommInactivity = 0;
 
   if ((m_hCommHandle == -1) && m_dwSerialPort) {
-    TCHAR portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
+    char portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
     if (m_dwSerialPort < 0 || m_dwSerialPort > 99) {
       m_dwSerialPort = 1; // buffer overflow check
     }
@@ -395,8 +395,8 @@ void CSuperSerialCard::CloseComm()
   m_dwCommInactivity = 0;
 }
 
-BYTE CSuperSerialCard::SSC_IORead(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft) {
-  UINT uSlot = ((uAddr & 0xff) >> 4) - 8;
+unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
 
   switch (uAddr & 0xf) {
@@ -437,8 +437,8 @@ BYTE CSuperSerialCard::SSC_IORead(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue,
   return 0;
 }
 
-BYTE CSuperSerialCard::SSC_IOWrite(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft) {
-  UINT uSlot = ((uAddr & 0xff) >> 4) - 8;
+unsigned char CSuperSerialCard::SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
 
   switch (uAddr & 0xf) {
@@ -479,7 +479,7 @@ BYTE CSuperSerialCard::SSC_IOWrite(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue
   return 0;
 }
 
-BYTE CSuperSerialCard::CommCommand(WORD, WORD, BYTE write, BYTE value, ULONG) {
+unsigned char CSuperSerialCard::CommCommand(unsigned short, unsigned short, unsigned char write, unsigned char value, ULONG) {
   if (!CheckComm()) {
     return 0;
   }
@@ -544,7 +544,7 @@ BYTE CSuperSerialCard::CommCommand(WORD, WORD, BYTE write, BYTE value, ULONG) {
   return m_uCommandByte;
 }
 
-BYTE CSuperSerialCard::CommControl(WORD, WORD, BYTE write, BYTE value, ULONG) {
+unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsigned char write, unsigned char value, ULONG) {
   if (!CheckComm()) {
     return 0;
   }
@@ -598,7 +598,7 @@ BYTE CSuperSerialCard::CommControl(WORD, WORD, BYTE write, BYTE value, ULONG) {
       // receiver clock source [0= external, 1= internal]
     }
 
-    // UPDATE THE BYTE SIZE
+    // UPDATE THE unsigned char SIZE
     switch (m_uControlByte & 0x60) {
       case 0x00:
         m_uByteSize = 8;
@@ -632,12 +632,12 @@ BYTE CSuperSerialCard::CommControl(WORD, WORD, BYTE write, BYTE value, ULONG) {
   return m_uControlByte;
 }
 
-BYTE CSuperSerialCard::CommReceive(WORD, WORD, BYTE, BYTE, ULONG) {
+unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
   if (!CheckComm()) {
     return 0;
   }
 
-  BYTE result = 0;
+  unsigned char result = 0;
   if (m_vRecvBytes) {
     // Don't need critical section in here as CommThread is waiting for ACK
     result = m_RecvBuffer[0];
@@ -652,12 +652,12 @@ BYTE CSuperSerialCard::CommReceive(WORD, WORD, BYTE, BYTE, ULONG) {
   return result;
 }
 
-BYTE CSuperSerialCard::CommTransmit(WORD, WORD, BYTE, BYTE value, ULONG) {
+unsigned char CSuperSerialCard::CommTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG) {
   if (!CheckComm()) {
     return 0;
   }
 
-  DWORD uBytesWritten;
+  unsigned int uBytesWritten;
   uBytesWritten = write(m_hCommHandle, &value, 1);
 
   m_bWrittenTx = true;  // Transmit done
@@ -695,13 +695,13 @@ enum {
   ST_IRQ = 1 << 7
 };
 
-BYTE CSuperSerialCard::CommStatus(WORD, WORD, BYTE, BYTE, ULONG)
+unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG)
 {
   if (!CheckComm())
     return ST_DSR | ST_DCD | ST_TX_EMPTY;
 
   #ifdef SUPPORT_MODEM
-  DWORD modemstatus = 0;
+  unsigned int modemstatus = 0;
   GetCommModemStatus(m_hCommHandle,&modemstatus);        // Returns 0x30 = MS_DSR_ON|MS_CTS_ON
   #endif
 
@@ -724,7 +724,7 @@ BYTE CSuperSerialCard::CommStatus(WORD, WORD, BYTE, BYTE, ULONG)
 
   m_bWrittenTx = false;  // Read status reg always clears IRQ
 
-  BYTE uStatus = ST_TX_EMPTY | (m_vRecvBytes ? ST_RX_FULL : 0x00)
+  unsigned char uStatus = ST_TX_EMPTY | (m_vRecvBytes ? ST_RX_FULL : 0x00)
                  #ifdef SUPPORT_MODEM
                  | ((modemstatus & MS_RLSD_ON)  ? 0x00 : ST_DCD)  // Need 0x00 to allow ZLink to start up
         | ((modemstatus & MS_DSR_ON)  ? 0x00 : ST_DSR)
@@ -737,8 +737,8 @@ BYTE CSuperSerialCard::CommStatus(WORD, WORD, BYTE, BYTE, ULONG)
   return uStatus;
 }
 
-BYTE CSuperSerialCard::CommDipSw(WORD, WORD addr, BYTE, BYTE, ULONG) {
-  BYTE sw = 0;
+unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, unsigned char, unsigned char, ULONG) {
+  unsigned char sw = 0;
   switch (addr & 0xf) {
     case 1:  // DIPSW1
       sw = (BaudRateToIndex(m_DIPSWCurrent.uBaudRate) << 4) | m_DIPSWCurrent.eFirmwareMode;
@@ -746,14 +746,14 @@ BYTE CSuperSerialCard::CommDipSw(WORD, WORD addr, BYTE, BYTE, ULONG) {
 
     case 2:  // DIPSW2
       // Comms mode - SSC manual, pg23/24
-      BYTE INT = m_DIPSWCurrent.uStopBits == TWOSTOPBITS ? 1 : 0;  // SW2-1 (Stop bits: 1-ON(0); 2-OFF(1))
-      BYTE DSR = 0;                        // Always zero
-      BYTE DCD = m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;      // SW2-2 (Data bits: 8-ON(0); 7-OFF(1))
-      BYTE TDR = 0;                        // Always zero
+      unsigned char INT = m_DIPSWCurrent.uStopBits == TWOSTOPBITS ? 1 : 0;  // SW2-1 (Stop bits: 1-ON(0); 2-OFF(1))
+      unsigned char DSR = 0;                        // Always zero
+      unsigned char DCD = m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;      // SW2-2 (Data bits: 8-ON(0); 7-OFF(1))
+      unsigned char TDR = 0;                        // Always zero
 
       // SW2-3 (Parity: odd-ON(0); even-OFF(1))
       // SW2-4 (Parity: none-ON(0); SW2-3-OFF(1))
-      BYTE RDR, OVR;
+      unsigned char RDR, OVR;
       switch (m_DIPSWCurrent.uParity) {
         case ODDPARITY:
           RDR = 0;
@@ -771,8 +771,8 @@ BYTE CSuperSerialCard::CommDipSw(WORD, WORD addr, BYTE, BYTE, ULONG) {
           break;
       }
 
-      BYTE FE = m_DIPSWCurrent.bLinefeed ? 1 : 0;          // SW2-5 (LF: yes-ON(0); no-OFF(1))
-      BYTE PE = m_DIPSWCurrent.bInterrupts ? 1 : 0;        // SW2-6 (Interrupts: yes-ON(0); no-OFF(1))
+      unsigned char FE = m_DIPSWCurrent.bLinefeed ? 1 : 0;          // SW2-5 (LF: yes-ON(0); no-OFF(1))
+      unsigned char PE = m_DIPSWCurrent.bInterrupts ? 1 : 0;        // SW2-6 (Interrupts: yes-ON(0); no-OFF(1))
 
       sw = (INT << 7) | (DSR << 6) | (DCD << 5) | (TDR << 4) | (RDR << 3) | (OVR << 2) | (FE << 1) | (PE << 0);
       break;
@@ -780,19 +780,19 @@ BYTE CSuperSerialCard::CommDipSw(WORD, WORD addr, BYTE, BYTE, ULONG) {
   return sw;
 }
 
-void CSuperSerialCard::CommInitialize(LPBYTE pCxRomPeripheral, UINT uSlot)
+void CSuperSerialCard::CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlot)
 {
-  const UINT SSC_FW_SIZE = 2 * 1024;
-  const UINT SSC_SLOT_FW_SIZE = 256;
-  const UINT SSC_SLOT_FW_OFFSET = 7 * 256;
+  const unsigned int SSC_FW_SIZE = 2 * 1024;
+  const unsigned int SSC_SLOT_FW_SIZE = 256;
+  const unsigned int SSC_SLOT_FW_OFFSET = 7 * 256;
 
-  BYTE *pData = (BYTE *) SSC_rom;  // NB. Don't need to unlock resource
+  unsigned char *pData = (unsigned char *) SSC_rom;  // NB. Don't need to unlock resource
 
   memcpy(pCxRomPeripheral + uSlot * 256, pData + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
 
   // Expansion ROM
   if (m_pExpansionRom == NULL) {
-    m_pExpansionRom = new BYTE[SSC_FW_SIZE];
+    m_pExpansionRom = new unsigned char[SSC_FW_SIZE];
     if (m_pExpansionRom) {
       memcpy(m_pExpansionRom, pData, SSC_FW_SIZE);
     }
@@ -818,7 +818,7 @@ void CSuperSerialCard::CommDestroy() {
   m_pExpansionRom = NULL;
 }
 
-void CSuperSerialCard::CommSetSerialPort(/*HWND window,*/ DWORD newserialport) {
+void CSuperSerialCard::CommSetSerialPort(/*HWND window,*/ unsigned int newserialport) {
   if (m_hCommHandle == -1) {
     m_dwSerialPort = newserialport;
   } else {
@@ -826,17 +826,17 @@ void CSuperSerialCard::CommSetSerialPort(/*HWND window,*/ DWORD newserialport) {
   }
 }
 
-void CSuperSerialCard::CommUpdate(DWORD totalcycles) {
+void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
   if (m_hCommHandle == -1) {
     return;
   }
 
   if ((m_dwCommInactivity += totalcycles) > 1000000) {
-    static DWORD lastcheck = 0;
+    static unsigned int lastcheck = 0;
 
     if ((m_dwCommInactivity > 2000000) || (m_dwCommInactivity - lastcheck > 99950)) {
       #ifdef SUPPORT_MODEM
-      DWORD modemstatus = 0;
+      unsigned int modemstatus = 0;
       GetCommModemStatus(m_hCommHandle,&modemstatus);
       if ((modemstatus & MS_RLSD_ON) || DiskIsSpinning())
         m_dwCommInactivity = 0;
@@ -848,9 +848,8 @@ void CSuperSerialCard::CommUpdate(DWORD totalcycles) {
   }
 }
 
-void CSuperSerialCard::CheckCommEvent(DWORD dwEvtMask) {
+void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
   pthread_mutex_lock(&m_CriticalSection);
-  //    ReadFile(m_hCommHandle, m_RecvBuffer, 1, (DWORD*)&m_vRecvBytes, &m_o);
   m_vRecvBytes = read(m_hCommHandle, m_RecvBuffer, 1);
   pthread_mutex_unlock(&m_CriticalSection);
 
@@ -860,7 +859,7 @@ void CSuperSerialCard::CheckCommEvent(DWORD dwEvtMask) {
   }
 }
 
-DWORD CSuperSerialCard::CommThread(LPVOID lpParameter) {
+unsigned int CSuperSerialCard::CommThread(LPVOID lpParameter) {
   return 0;
 }
 
@@ -871,7 +870,7 @@ bool CSuperSerialCard::CommThInit() {
 void CSuperSerialCard::CommThUninit() {
 }
 
-DWORD CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
+unsigned int CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
 {
   pSS->baudrate = m_uBaudRate;
   pSS->bytesize = m_uByteSize;
@@ -885,7 +884,7 @@ DWORD CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
   return 0;
 }
 
-DWORD CSuperSerialCard::CommSetSnapshot(SS_IO_Comms *pSS)
+unsigned int CSuperSerialCard::CommSetSnapshot(SS_IO_Comms *pSS)
 {
   m_uBaudRate = pSS->baudrate;
   m_uByteSize = pSS->bytesize;

@@ -116,9 +116,9 @@ void C6821::SetListenerCB2(void *objTo, mem_write_handler func)
   m_stOutCB2.func = func;
 }
 
-BYTE C6821::Read(BYTE byRS)
+unsigned char C6821::Read(unsigned char byRS)
 {
-  BYTE retval = 0;
+  unsigned char retval = 0;
   byRS &= 3;
   switch (byRS) {
     /******************* port A output/DDR read *******************/
@@ -192,7 +192,7 @@ BYTE C6821::Read(BYTE byRS)
   return retval;
 }
 
-void C6821::Write(BYTE byRS, BYTE byData)
+void C6821::Write(unsigned char byRS, unsigned char byData)
 {
   byRS &= 3;
 
@@ -338,7 +338,7 @@ void C6821::Reset()
 
 void C6821::UpdateInterrupts()
 {
-  BYTE byNewState;
+  unsigned char byNewState;
 
   // start with IRQ A
   byNewState = 0;
@@ -361,7 +361,7 @@ void C6821::UpdateInterrupts()
   }
 }
 
-void C6821::SetCA1(BYTE byData)
+void C6821::SetCA1(unsigned char byData)
 {
   byData = byData ? 1 : 0;
 
@@ -391,7 +391,7 @@ void C6821::SetCA1(BYTE byData)
   m_byCA1 = byData;
 }
 
-void C6821::SetCA2(BYTE byData)
+void C6821::SetCA2(unsigned char byData)
 {
   byData = byData ? 1 : 0;
 
@@ -414,7 +414,7 @@ void C6821::SetCA2(BYTE byData)
   m_byICA2 = byData;
 }
 
-void C6821::SetCB1(BYTE byData)
+void C6821::SetCB1(unsigned char byData)
 {
   byData = byData ? 1 : 0;
 
@@ -448,7 +448,7 @@ void C6821::SetCB1(BYTE byData)
 
 }
 
-void C6821::SetCB2(BYTE byData)
+void C6821::SetCB2(unsigned char byData)
 {
   byData = byData ? 1 : 0;
 
@@ -471,22 +471,22 @@ void C6821::SetCB2(BYTE byData)
   m_byICB2 = byData;
 }
 
-void C6821::SetPA(BYTE byData)
+void C6821::SetPA(unsigned char byData)
 {
   m_byIA = byData;
 }
 
-void C6821::SetPB(BYTE byData)
+void C6821::SetPB(unsigned char byData)
 {
   m_byIB = byData;
 }
 
-BYTE C6821::GetPA()
+unsigned char C6821::GetPA()
 {
   return m_byOA & m_byDDRA;
 }
 
-BYTE C6821::GetPB()
+unsigned char C6821::GetPB()
 {
   return m_byOB & m_byDDRB;
 }

@@ -37,11 +37,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // __ Debugger Interface ____________________________________________________________________________
 
 //===========================================================================
-WORD _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_)
+unsigned short _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_)
 {
-	WORD nAddress  = 0;
-	WORD nAddress2 = 0;
-	WORD nEnd      = 0;
+	unsigned short nAddress  = 0;
+	unsigned short nAddress2 = 0;
+	unsigned short nEnd      = 0;
 	int  nLen      = 0;
 
 	memset( (void*) &tData_, 0, sizeof(tData_) );
@@ -125,7 +125,7 @@ WORD _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_)
 
 	// bRemoveSymbol = false // use arg[2]
 	// bUpdateSymbol = true // add the symbol to the table
-	SymbolUpdate( eSymbolTable, pSymbolName, nAddress, false, true ); 
+	SymbolUpdate( eSymbolTable, pSymbolName, nAddress, false, true );
 
 	// TODO: Note: need to call ConsoleUpdate(), as may print symbol has been updated
 
@@ -146,7 +146,7 @@ Update_t CmdDisasmDataDefCode (int nArgs)
 
 	DisasmData_t tData;
 	int iArg = 2;
-	WORD nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	unsigned short nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 	// Need to iterate through all blocks
 	// DB TEST1 300:320
@@ -212,7 +212,7 @@ Update_t CmdDisasmDataList (int nArgs)
 			// `TEST `300`:`320
 			ConsolePrintFormat( sText, "%s%s %s%*s %s%04X%s:%s%04X"
 				, CHC_CATEGORY
-				, g_aNopcodeTypes[ pData->eElementType ] 
+				, g_aNopcodeTypes[ pData->eElementType ]
 				, (nLen > 0) ? CHC_SYMBOL     : CHC_DEFAULT
 				, MAX_SYMBOLS_LEN
 				, (nLen > 0) ? pData->sSymbol : "???"
@@ -237,7 +237,7 @@ Update_t _CmdDisasmDataDefByteX (int nArgs)
 	// DB symbol address
 	// DB symbol range:range
 	// DB address
-	// To "return to code" use ."X" 
+	// To "return to code" use ."X"
 	int iCmd = g_aArgs[0].nValue - NOP_BYTE_1;
 
 	if (nArgs > 4) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
@@ -254,7 +254,7 @@ Update_t _CmdDisasmDataDefByteX (int nArgs)
 			iArg = 1;
 	}
 
-	WORD nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	unsigned short nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 	// TODO: Allow user to select which assembler to use for displaying directives!
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_BYTE;
@@ -306,7 +306,7 @@ Update_t _CmdDisasmDataDefWordX (int nArgs)
 			iArg = 1;
 	}
 
-	WORD nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	unsigned short nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
 	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_WORD;
@@ -351,7 +351,7 @@ Update_t CmdDisasmDataDefAddress16 (int nArgs)
 
 	DisasmData_t tData;
 	int iArg = 2;
-	WORD nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	unsigned short nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
 	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_ADDRESS_16;
@@ -376,46 +376,46 @@ Update_t CmdDisasmDataDefAddress16 (int nArgs)
 Update_t CmdDisasmDataDefByte1 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_BYTE_1;
-	return _CmdDisasmDataDefByteX( nArgs );	
+	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 // DB2
 Update_t CmdDisasmDataDefByte2 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_BYTE_2;
-	return _CmdDisasmDataDefByteX( nArgs );	
+	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 Update_t CmdDisasmDataDefByte4 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_BYTE_4;
-	return _CmdDisasmDataDefByteX( nArgs );	
+	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 Update_t CmdDisasmDataDefByte8 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_BYTE_8;
-	return _CmdDisasmDataDefByteX( nArgs );	
+	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 // DW
 Update_t CmdDisasmDataDefWord1 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_WORD_1;
-	return _CmdDisasmDataDefWordX( nArgs );	
+	return _CmdDisasmDataDefWordX( nArgs );
 }
 
 // DW2
 Update_t CmdDisasmDataDefWord2 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_WORD_2;
-	return _CmdDisasmDataDefWordX( nArgs );	
+	return _CmdDisasmDataDefWordX( nArgs );
 }
 
 Update_t CmdDisasmDataDefWord4 ( int nArgs )
 {
 	g_aArgs[0].nValue = NOP_WORD_4;
-	return _CmdDisasmDataDefWordX( nArgs );	
+	return _CmdDisasmDataDefWordX( nArgs );
 }
 
 // Command: DS
@@ -438,7 +438,7 @@ Update_t CmdDisasmDataDefString ( int nArgs )
 			iArg = 1;
 	}
 
-	WORD nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	unsigned short nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_APPLE_TEXT;
 	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_ASCII; // ASM_MERLIN
@@ -487,7 +487,7 @@ DisasmData_t* Disassembly_Enumerate( DisasmData_t *pCurrent )
 
 // returns NULL if address has no data associated with it
 //===========================================================================
-DisasmData_t* Disassembly_IsDataAddress ( WORD nAddress )
+DisasmData_t* Disassembly_IsDataAddress ( unsigned short nAddress )
 {
 	DisasmData_t *pData = NULL; // bIsNopcode = false
 	int nDataTargets = g_aDisassemblerData.size();
@@ -521,7 +521,7 @@ void Disassembly_AddData( DisasmData_t tData)
 
 // DEPRECATED ! Inlined in _6502_GetOpmodeOpbyte() !
 //===========================================================================
-void Disassembly_GetData ( WORD nBaseAddress, const DisasmData_t *pData, DisasmLine_t & line_ )
+void Disassembly_GetData ( unsigned short nBaseAddress, const DisasmData_t *pData, DisasmLine_t & line_ )
 {
 	if( !pData )
 	{
@@ -536,7 +536,7 @@ void Disassembly_GetData ( WORD nBaseAddress, const DisasmData_t *pData, DisasmL
 void Disassembly_DelData( DisasmData_t tData)
 {
 	// g_aDisassemblerData.erase( );
-	WORD nAddress = tData.nStartAddress;
+	unsigned short nAddress = tData.nStartAddress;
 
 	DisasmData_t *pData = NULL; // bIsNopcode = false
 	int nDataTargets = g_aDisassemblerData.size();

@@ -58,7 +58,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // tests if pSrc fits into pDst
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-bool TestStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
+bool TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
 	int nLenDst = _tcslen( pDst );
 	int nLenSrc = _tcslen( pSrc );
@@ -76,7 +76,7 @@ bool TestStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
 // tests if pSrc fits into pDst
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-bool TryStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
+bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
 	int nLenDst = _tcslen( pDst );
 	int nLenSrc = _tcslen( pSrc );
@@ -88,7 +88,7 @@ bool TryStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
 	{
 		return false;
 	}
-	
+
 	_tcsncat( pDst, pSrc, nChars );
 	return true;
 }
@@ -96,7 +96,7 @@ bool TryStringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
 // cats string as much as possible
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-int StringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
+int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
 	int nLenDst = _tcslen( pDst );
 	int nLenSrc = _tcslen( pSrc );
@@ -108,7 +108,7 @@ int StringCat ( TCHAR * pDst, LPCSTR pSrc, const int nDstSize )
 	bool bOverflow = (nSpcDst < nLenSrc);
 	if (bOverflow)
 		return 0;
-		
+
 	return nChars;
 }
 
@@ -161,7 +161,7 @@ void Help_Categories()
 
 		for (int iCategory = _PARAM_HELPCATEGORIES_BEGIN ; iCategory < _PARAM_HELPCATEGORIES_END; iCategory++)
 		{
-			char *pName = g_aParameters[ iCategory ].m_sName; 
+			char *pName = g_aParameters[ iCategory ].m_sName;
 
 			if (nLen + strlen( pName ) >= (CONSOLE_WIDTH - 1))
 			{
@@ -195,7 +195,7 @@ void Help_Categories()
 
 //		ConsoleBufferPush( sText );
 		ConsolePrint( sText );  // Transcode colored text to native console color text
-		
+
 		ConsolePrintFormat( sText, "%sNotes%s: %s<>%s = mandatory, %s[]%s = optional, %s|%s argument option"
 			, CHC_USAGE
 			, CHC_DEFAULT
@@ -231,7 +231,7 @@ void Help_Range()
 void Help_Operators()
 {
 	char sText[ CONSOLE_WIDTH ];
-	
+
 //	ConsolePrintFormat( sText," %sOperators%s:"                                 , CHC_USAGE, CHC_DEFAULT );
 //	ConsolePrintFormat( sText,"  Operators: (Math)"                             );
 	ConsolePrintFormat( sText,"  Operators: (%sMath%s)"                         , CHC_USAGE, CHC_DEFAULT );
@@ -274,7 +274,7 @@ void Help_Operators()
 			_tcscat( sText, g_aBreakpointSymbols[ iBreakOp ] );
 			_tcscat( sText, " " );
 		}
-	}	
+	}
 	_tcscat( sText, CHC_DEFAULT );
 	ConsolePrint( sText );
 }
@@ -290,7 +290,7 @@ void Help_KeyboardShortcuts()
 	ConsoleBufferPush("    Page Down"                                        );
 	ConsoleBufferPush("    Shift + Page Up"                                  );
 	ConsoleBufferPush("    Shift + Page Down"                                );
-	
+
 	ConsoleBufferPush("  Bookmarks:"                                         );
 	ConsoleBufferPush("    Ctrl-Shift-#"                                     );
 	ConsoleBufferPush("    Ctrl-#      "                                     );
@@ -302,7 +302,7 @@ void _ColorizeHeader(
 	const char * pHeader, const int nHeaderLen )
 {
 	int nLen;
-	
+
 	nLen = strlen( CHC_USAGE );
 	strcpy( pDst, CHC_USAGE );
 	pDst += nLen;
@@ -341,7 +341,7 @@ void _ColorizeOperator(
 	char * pOperator )
 {
 	int nLen;
-	
+
 	nLen = strlen( pOperator );
 	strcpy( pDst, pOperator );
 	pDst += nLen;
@@ -373,7 +373,7 @@ bool Colorize( char * pDst, const char * pSrc )
 {
 	if (! pSrc)
 		return false;
-		
+
 	if (! pDst)
 		return false;
 
@@ -471,7 +471,7 @@ bool Colorize( char * pDst, const char * pSrc )
 		{
 			*pDst = *pSrc;
 			pDst++;
-			pSrc++;	
+			pSrc++;
 		}
 	}
 	*pDst = 0;
@@ -625,7 +625,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				case PARAM_CAT_FLAGS      :
 					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand ); // check if we have an exact command match first
 					if ( nFound ) // && (iCommand != CMD_MEMORY_FILL))
-						bCategory = false; 
+						bCategory = false;
 					else if ( nFoundCategory )
 					{
 						iCmdBegin = CMD_FLAG_CLEAR     ; iCmdEnd = CMD_FLAG_SET_N;
@@ -653,7 +653,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				case PARAM_CAT_OUTPUT     :
 					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if ( nFound ) // && (iCommand != CMD_OUT))
-						bCategory = false; 
+						bCategory = false;
 					else if ( nFoundCategory )
 					{
 						iCmdBegin = CMD_OUTPUT_CALC                         ; iCmdEnd = CMD_OUTPUT_RUN           ;
@@ -662,7 +662,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				case PARAM_CAT_SYMBOLS    :
 					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if ( nFound ) // && (iCommand != CMD_SYMBOLS_LOOKUP) && (iCommand != CMD_MEMORY_SEARCH))
-						bCategory = false; 
+						bCategory = false;
 					else if ( nFoundCategory )
 					{
 						iCmdBegin = CMD_SYMBOLS_LOOKUP                      ; iCmdEnd = CMD_SYMBOLS_LIST         ;
@@ -676,7 +676,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				case PARAM_CAT_WATCHES    :
 					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if (nFound) {
-						bCategory = false; 
+						bCategory = false;
 					} else  // 2.7.0.17: HELP <category> wasn't displaying when category was one of: FLAGS, OUTPUT, WATCHES
 						if( nFoundCategory )
 						{
@@ -722,7 +722,7 @@ Update_t CmdHelpSpecific (int nArgs)
 	}
 
 	for (iArg = 1; iArg <= nArgs; iArg++ )
-	{	
+	{
 		iCommand = 0;
 		nFound = 0;
 
@@ -763,7 +763,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			iCommand = NUM_COMMANDS;
 			pCommand = NULL;
 		}
-		
+
 //		if (nFound && (! bAllCommands) && (! bCategory))
 		if (nFound && (! bAllCommands) && bDisplayCategory)
 		{
@@ -828,7 +828,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				if (bDisplayCategory)
 					bDisplayCategory = false;
 		}
-		
+
 		if (pCommand)
 		{
 			char *pHelp = pCommand->pHelpSummary;
@@ -864,7 +864,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				ConsoleBufferPushFormat( sText, "%s  <-- Missing", pCommand->m_sName );
 	#if DEBUG_COMMAND_HELP
 				if (! bAllCommands) // Release version doesn't display message
-				{			
+				{
 					ConsoleBufferPushFormat( sText, "Missing Summary Help: %s", g_aCommands[ iCommand ].aName );
 				}
 	#endif
@@ -873,11 +873,11 @@ Update_t CmdHelpSpecific (int nArgs)
 
 			if (bCategory)
 				continue;
-		}		
+		}
 
 		// MASTER HELP
 		switch (iCommand)
-		{	
+		{
 	// CPU / General
 		case CMD_ASSEMBLE:
 			ConsoleBufferPush( " Built-in assember isn't functional yet." );
@@ -939,7 +939,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsoleBufferPushFormat( sText, "   %s: read symbols into Source symbol table.", g_aParameters[ PARAM_SRC_SYMBOLS ].m_sName );
 			ConsoleBufferPushFormat( sText, " Supports: %s."                               , g_aParameters[ PARAM_SRC_MERLIN  ].m_sName );
 			break;
-		case CMD_STEP_OUT: 
+		case CMD_STEP_OUT:
 			ConsoleBufferPush( "  Steps out of current subroutine" );
 			ConsoleBufferPush( "  Hotkey: Ctrl-Space" ); // TODO: FIXME
 			break;
@@ -1182,7 +1182,7 @@ Update_t CmdHelpSpecific (int nArgs)
 
 		case CMD_DEFINE_DATA_WORD1:
 			// DW        // use current debug line
-			// DW symbol 
+			// DW symbol
 			// DW symbol address
 			// DW symbol range:range
 			// DW address
@@ -1233,24 +1233,24 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_MEM_MINI_DUMP_ASCII_1:
 		case CMD_MEM_MINI_DUMP_ASCII_2:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol>" );
-			ConsoleBufferPush( TEXT("  Displays ASCII text in the Mini-Memory area") ); 
+			ConsoleBufferPush( TEXT("  Displays ASCII text in the Mini-Memory area") );
 			ConsoleBufferPush( TEXT("  ASCII control chars are hilighted") );
-			ConsoleBufferPush( TEXT("  ASCII hi-bit chars are normal") ); 
+			ConsoleBufferPush( TEXT("  ASCII hi-bit chars are normal") );
 //			break;
 //		case CMD_MEM_MINI_DUMP_TXT_LO_1:
 //		case CMD_MEM_MINI_DUMP_TXT_LO_2:
 		case CMD_MEM_MINI_DUMP_APPLE_1:
 		case CMD_MEM_MINI_DUMP_APPLE_2:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol>" );
-			ConsoleBufferPush( "  Displays APPLE text in the Mini-Memory area" ); 
+			ConsoleBufferPush( "  Displays APPLE text in the Mini-Memory area" );
 			ConsoleBufferPush( "  APPLE control chars are inverse" );
-			ConsoleBufferPush( "  APPLE hi-bit chars are normal"   ); 
+			ConsoleBufferPush( "  APPLE hi-bit chars are normal"   );
 			break;
 //		case CMD_MEM_MINI_DUMP_TXT_HI_1:
 //		case CMD_MEM_MINI_DUMP_TXT_HI_2:
-//			ConsoleBufferPush( TEXT(" Usage: <address | symbol>") ); 
-//			ConsoleBufferPush( TEXT("  Displays text in the Memory Mini-Dump area") ); 
-//			ConsoleBufferPush( TEXT("  ASCII chars with the hi-bit set, is inverse") ); 
+//			ConsoleBufferPush( TEXT(" Usage: <address | symbol>") );
+//			ConsoleBufferPush( TEXT("  Displays text in the Memory Mini-Dump area") );
+//			ConsoleBufferPush( TEXT("  ASCII chars with the hi-bit set, is inverse") );
 			break;
 
 		case CMD_MEMORY_LOAD:
@@ -1263,14 +1263,14 @@ Update_t CmdHelpSpecific (int nArgs)
 				ConsoleBufferPush( "  Notes: If no filename specified, defaults to the last filename (if possible)" );
 			}
 			if (iCommand == CMD_MEMORY_SAVE)
-			{			
+			{
 				ConsoleColorizePrint( sTemp, " Usage: [\"Filename\"],[bank:]address,length" );
 				ConsoleColorizePrint( sTemp, " Usage: [\"Filename\"],[bank:]range"          );
 				Help_Range();
 				ConsoleBufferPush( "  Notes: If no filename specified, defaults to: '####.####.[bank##].bin'" );
 				ConsoleBufferPush( "    Where the form is <address>.<length>.bin"                    );
 			}
-			
+
 //			ConsoleBufferPush( TEXT(" Examples:" ) );
 			Help_Examples();
 			ConsolePrintFormat( sText, "%s   BSAVE \"test\",FF00,100"  , CHC_EXAMPLE );
@@ -1343,7 +1343,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsolePrintFormat( sText,   "%s   %s PC"        , CHC_EXAMPLE, pCommand->m_sName );
 //			ConsoleBufferPush( TEXT("  Echo the string to the console" ) );
 			break;
-		case CMD_OUTPUT_PRINT: 
+		case CMD_OUTPUT_PRINT:
 			ConsoleColorizePrint( sText, " Usage: <string | expression> [, string | expression]*"       );
 			ConsoleColorizePrint( sText, "  Note: To print Register values, they must be in upper case" );
 			Help_Examples();
@@ -1388,7 +1388,7 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_SYMBOLS_SRC_1:
 		case CMD_SYMBOLS_SRC_2:
 //			ConsoleBufferPush( TEXT(" Usage: [ ON | OFF | symbol | address ]" ) );
-//			ConsoleBufferPush( TEXT(" Usage: [ LOAD [\"filename\"] | SAVE \"filename\"]" ) ); 
+//			ConsoleBufferPush( TEXT(" Usage: [ LOAD [\"filename\"] | SAVE \"filename\"]" ) );
 //			ConsoleBufferPush( TEXT("  ON  : Turns symbols on in the disasm window" ) );
 //			ConsoleBufferPush( TEXT("  OFF : Turns symbols off in the disasm window" ) );
 //			ConsoleBufferPush( TEXT("  LOAD: Loads symbols from last/default filename" ) );
@@ -1514,7 +1514,7 @@ Update_t CmdHelpSpecific (int nArgs)
 		}
 
 	}
-	
+
 	return ConsoleUpdate();
 }
 
@@ -1524,7 +1524,7 @@ Update_t CmdHelpList (int nArgs)
 	const int nBuf = CONSOLE_WIDTH * 2;
 
 	char sText[ nBuf ] = "";
-	
+
 	int nMaxWidth = g_nConsoleDisplayWidth - 1;
 	int iCommand;
 
@@ -1570,7 +1570,7 @@ Update_t CmdHelpList (int nArgs)
 			        StringCat( sText, CHC_COMMAND, nBuf );
 			nLen += StringCat( sText, pName, nBuf );
 		}
-		
+
 		strcat( sText, " " );
 		nLen++;
 	}
@@ -1582,11 +1582,10 @@ Update_t CmdHelpList (int nArgs)
 	return UPDATE_CONSOLE_DISPLAY;
 }
 
-	
-//===========================================================================
+
 Update_t CmdVersion (int nArgs)
 {
-	TCHAR sText[ CONSOLE_WIDTH ];
+	char sText[ CONSOLE_WIDTH ];
 
 	unsigned int nVersion = DEBUGGER_VERSION;
 	int nMajor;

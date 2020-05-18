@@ -9,11 +9,11 @@
 
 #ifdef ALERT_HOOKS
 // Replacement for a regular alert (with just an OK button)
-// Returns TRUE if OK clicked, FALSE otherwise
+// Returns true if OK clicked, false otherwise
 int HookedAlertNotice(const char* szMessage);
 
 // Replacement for a query alert (OK and Cancel buttons)
-// Returns TRUE if OK clicked, FALSE otherwise
+// Returns true if OK clicked, false otherwise
 int HookedAlertQuery(const char* szMessage);
 
 // Runtime switch to activate/deactivate alert hooks
