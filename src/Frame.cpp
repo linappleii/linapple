@@ -42,6 +42,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "MouseInterface.h"
 
+// Use this for suppression of GCC 7.1 format-truncation messages.
+int _unused __attribute__ ((unused)) = 0;
+
 #define ENABLE_MENU 0
 
 SDL_Surface *apple_icon;
@@ -263,7 +266,9 @@ void FrameQuickState(int num, int mod)
 {
   // quick load or save state with number num, if Shift is pressed, state is being saved, otherwise - being loaded
   char fpath[MAX_PATH];
-  snprintf(fpath, MAX_PATH, "%s/SaveState%d.aws", g_sSaveStateDir, num); // prepare file name
+
+  _unused = snprintf(fpath, MAX_PATH, "%s/SaveState%d.aws", g_sSaveStateDir, num); // prepare file name
+
   Snapshot_SetFilename(fpath);  // set it as a working name
   if (mod & KMOD_SHIFT) {
     Snapshot_SaveState();
@@ -528,7 +533,7 @@ bool PSP_SaveStateSelectImage(bool saveit)
         fileIndex = dirdx;  // restore
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
+          _unused = snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
         } else {
           snprintf(tempPath, MAX_PATH, "/%s", filename);
         }
@@ -543,7 +548,7 @@ bool PSP_SaveStateSelectImage(bool saveit)
 
   backdx = fileIndex; // Store cursor position
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
+  _unused = snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
   strcpy(fullPath, tempPath); // Got ot anew
 
   Snapshot_SetFilename(fullPath); // Set name for snapshot
@@ -556,12 +561,12 @@ void FrameSaveBMP(void) {
   // Save current screen as a .bmp file in current directory
   struct stat bufp;
   static int i = 1;  // index
-  char bmpName[20];  // file name
+  char bmpName[25];  // file name
 
-  snprintf(bmpName, 20, "linapple%d.bmp", i);
+  snprintf(bmpName, 24, "linapple%d.bmp", i);
   while (!stat(bmpName, &bufp)) { // Find first absent file
     i++;
-    snprintf(bmpName, 20, "linapple%d.bmp", i);
+    snprintf(bmpName, 24, "linapple%d.bmp", i);
   }
   SDL_SaveBMP(screen, bmpName);  // Save file using SDL inner function
   printf("File %s saved!\n", bmpName);

@@ -602,8 +602,8 @@ void DiskSelectImage(int drive, LPSTR pszFilename)
   static int dirdx = 0;     // reserve for dirs
 
   char *filename = NULL;   // given filename
-  char fullPath[MAX_PATH]; // full path for it
-  char tempPath[MAX_PATH];
+  char fullPath[MAX_PATH + 1]; // full path for it
+  char tempPath[MAX_PATH + 1];
   bool isdir;              // if given filename is a directory?
 
   fileIndex = backdx;
@@ -679,8 +679,8 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   static int dirdx = 0;  // reserve for dirs
 
   char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  char fullPath[MAX_PATH + 1];  // full path for it
+  char tempPath[MAX_PATH + 1];
   bool isdir;      // if given filename is a directory?
 
   #ifndef _WIN32

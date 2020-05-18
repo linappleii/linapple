@@ -397,8 +397,8 @@ void HD_Select(int nDrive)
   static int dirdx = 0;  // reserve for dirs
 
   char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  char fullPath[MAX_PATH + 1];  // full path for it
+  char tempPath[MAX_PATH + 1];
   bool isDirectory;      // if given filename is a directory?
 
   fileIndex = backdx;
