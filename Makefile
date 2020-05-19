@@ -19,10 +19,6 @@ DATADIR     ?= share/$(PACKAGE)
 # Build and installation staging location.
 DESTDIR     := build
 
-# Where default versions of resource files (linapple.conf, etc) are obtained from initially
-# (You can build a version that copies resources from the source tree with: RESOURCE_INIT_DIR=`pwd`/res make )
-RESOURCE_INIT_DIR ?= $(DATADIR)
-
 PKGDIR="pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
 
 #The Target Binary Program
@@ -66,7 +62,7 @@ ifdef DEBUG
 CFLAGS := -Wall -O0 -ggdb -ansi -c -finstrument-functions -std=c++11
 endif
 
-CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DRESOURCE_INIT_DIR=\"$(RESOURCE_INIT_DIR)\" -DVERSIONSTRING=\"$(VERSION)\"
+CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
 CFLAGS += $(SDL_CFLAGS)
 CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
