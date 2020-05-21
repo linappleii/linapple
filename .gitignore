@@ -1,8 +1,10 @@
+# Omit text editor backup files;
+# put those in your personal ignore configuration.
+
 build/**
 bin/**
 res/splash.xpm
 res/charset*.xpm
-*~
 *.pcm
 *.d
 *.o
