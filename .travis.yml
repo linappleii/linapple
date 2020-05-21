@@ -64,5 +64,18 @@ matrix:
             - libsdl-image1.2-dev
             - libcurl4-openssl-dev
             - zlib1g-dev
+    - os: linux
+      dist: bionic
+      addons:
+        apt:
+          sources:
+           - ubuntu-toolchain-r-test
+          packages:
+            - g++-10
+            - libzip-dev
+            - libsdl1.2-dev
+            - libsdl-image1.2-dev
+            - libcurl4-openssl-dev
+            - zlib1g-dev
 before_install:
   - eval "${MATRIX_EVAL}"
