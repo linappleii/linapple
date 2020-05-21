@@ -93,8 +93,8 @@ const int MAX_DISK_IMAGE_NAME = 15;
 const int MAX_DISK_FULL_NAME = MAX_PATH;
 
 struct Disk_t {
-  TCHAR imagename[MAX_DISK_IMAGE_NAME + 1];
-  TCHAR fullname[MAX_DISK_FULL_NAME + 1];
+  TCHAR imagename[MAX_DISK_IMAGE_NAME];
+  TCHAR fullname[MAX_DISK_FULL_NAME];
   HIMAGE imagehandle;
   int track;
   LPBYTE trackimage;
