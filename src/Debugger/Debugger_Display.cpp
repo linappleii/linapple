@@ -46,7 +46,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //#include "NTSC.h"
 #include "Video.h"
 #include <SDL_image.h>
-#include "../res/charset40.xpm" // US/default
+#include "../../build/obj/charset40.xpm" // US/default
 
 // NEW UI debugging - force display ALL meta-info (regs, stack, bp, watches, zp) for debugging purposes
 #define DEBUG_FORCE_DISPLAY 0
