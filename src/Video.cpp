@@ -41,11 +41,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <condition_variable>
 
 // include character set bitmaps
-#include "../res/charset40.xpm" // US/default
-#include "../res/charset40_IIplus.xpm"
-#include "../res/charset40_british.xpm"
-#include "../res/charset40_french.xpm"
-#include "../res/charset40_german.xpm"
+#include "../build/obj/charset40.xpm" // US/default
+#include "../build/obj/charset40_IIplus.xpm"
+#include "../build/obj/charset40_british.xpm"
+#include "../build/obj/charset40_french.xpm"
+#include "../build/obj/charset40_german.xpm"
 
 /* reference: technote tn-iigs-063 "Master Color Values"
 
