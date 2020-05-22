@@ -22,15 +22,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 #include "stdafx.h"
-
 #include "Util_Text.h"
 #include "Util_MemoryTextFile.h"
 
-// MemoryTextFile _________________________________________________________________________________
-
 const int EOL_NULL = 0;
 
-//===========================================================================
 bool MemoryTextFile_t::Read( const std::string & pFileName )
 {
 	bool bStatus = false;
@@ -43,10 +39,11 @@ bool MemoryTextFile_t::Read( const std::string & pFileName )
 		fseek( hFile, 0, SEEK_SET );
 
 		m_vBuffer.reserve( nSize + 1 );
-		m_vBuffer.insert( m_vBuffer.begin(), nSize+1, 0 ); // NOTE: Can NOT m_vBuffer.clear(); MUST insert() _before_ using at()
+    // NOTE: Can NOT m_vBuffer.clear(); MUST insert() _before_ using at()
+		m_vBuffer.insert( m_vBuffer.begin(), nSize+1, 0 );
 
 		char *pBuffer = & m_vBuffer.at(0);
-		fread( (void*)pBuffer, nSize, 1, hFile );
+		fread((void*)pBuffer, nSize, 1, hFile);
 		fclose(hFile);
 
 		m_bDirty = true;
@@ -59,13 +56,12 @@ bool MemoryTextFile_t::Read( const std::string & pFileName )
 }
 
 
-//===========================================================================
 void MemoryTextFile_t::GetLine( const int iLine, char *pLine, const int nMaxLineChars )
 {
 	if (m_bDirty)
 	{
 		GetLinePointers();
-	}		
+	}
 
 	ZeroMemory( pLine, nMaxLineChars );
 	strncpy( pLine, m_vLines[ iLine ], nMaxLineChars-1 );
@@ -73,7 +69,6 @@ void MemoryTextFile_t::GetLine( const int iLine, char *pLine, const int nMaxLine
 
 
 // cr/new lines are converted into null, string terminators
-//===========================================================================
 void MemoryTextFile_t::GetLinePointers()
 {
 	if (! m_bDirty)
@@ -102,25 +97,21 @@ void MemoryTextFile_t::GetLinePointers()
 		{
 			pStartNextLine = const_cast<char*>( EatEOL( pEnd ));
 
-			// DOS/Win "Text" mode converts LF CR (0D 0A) to CR (0D)
-			// but just in case, the file is read in binary.
+			// DOS/Win "Text" mode converts LF CR (0D 0A) to CR (0D) but just in case, the file is read in binary.
 			int nEOL = pStartNextLine - pEnd;
 			while (nEOL-- > 1)
 			{
 				*pEnd++ = ' ';
 			}
 
-			// assert( pEnd != NULL	);
 			*pEnd = EOL_NULL;
 		}
 		pBegin = pStartNextLine;
-	}			
+	}
 
 	m_bDirty = false;
 }
 
-
-//===========================================================================
 void MemoryTextFile_t::PushLine( char *pLine )
 {
 	char *pSrc = pLine;
@@ -129,12 +120,11 @@ void MemoryTextFile_t::PushLine( char *pLine )
 		if (*pSrc == CHAR_CR)
 			m_vBuffer.push_back( EOL_NULL );
 		else
-		if (*pSrc == CHAR_LF)			
+		if (*pSrc == CHAR_LF)
 			m_vBuffer.push_back( EOL_NULL );
 		else
 			m_vBuffer.push_back( *pSrc );
-
-		pSrc++;		
+		pSrc++;
 	}
 	m_vBuffer.push_back( EOL_NULL );
 

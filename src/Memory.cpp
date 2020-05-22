@@ -464,8 +464,7 @@ BYTE IORead_Cxxx(WORD programcounter, WORD address, BYTE write, BYTE value, ULON
       UINT uSlot = 1;
       for (; uSlot < NUM_SLOTS; uSlot++) {
         if (IO_SELECT & (1 << uSlot)) {
-          BYTE RemainingSelected = IO_SELECT & ~(1 << uSlot);
-          _ASSERT(RemainingSelected == 0);
+          _ASSERT(IO_SELECT & ~(1 << uSlot) == 0);
           break;
         }
       }
