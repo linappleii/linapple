@@ -4,20 +4,21 @@
 # https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
 
 PACKAGE     := linapple
-VERSION     := 2.1.1
+VERSION     := 2.2.1
 
 #Compiler and Linker
 CC          := g++
 
 # Where does this get installed
 PREFIX      ?= /usr/local
+DESTDIR     ?= $(PREFIX)
 
-# Where assets (font file, etc) are read from
+#Application configuration location
+CONFIGDIR   ?= etc/$(PACKAGE)
+
+#Where assets (font file, etc) are read from
 # (You can build a version that loads assets from the source tree with: DATADIR=`pwd`/res make )
 DATADIR     ?= share/$(PACKAGE)
-
-# Build and installation staging location.
-DESTDIR     := build
 
 PKGDIR="pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
 
@@ -29,8 +30,6 @@ SRCDIR      := src
 INCDIR      := inc
 BINDIR       = bin
 OBJDIR       = obj
-BUILDDIR    := $(DESTDIR)/$(OBJDIR)
-TARGETDIR   := $(DESTDIR)/$(BINDIR)
 RESDIR      := res
 SRCEXT      := cpp
 DEPEXT      := d
@@ -38,6 +37,9 @@ OBJEXT      := o
 IMGEXT      := png
 XPMEXT      := xpm
 SYMEXT      := SYM
+
+BUILDDIR    := build/$(OBJDIR)
+TARGETDIR   := build/$(BINDIR)
 
 #Flags, Libraries and Includes
 
@@ -50,7 +52,7 @@ CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
 CURL_LIBS = $(shell $(CURL_CONFIG) --libs)
 
-# By default, optimize the executable.
+#By default, optimize the executable.
 CFLAGS := -Wall -O3 -ansi -c -std=c++11
 
 ifdef PROFILING
@@ -74,7 +76,6 @@ INCDEP := -I$(INCDIR)
 
 #------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
-# i'm going to. -rhaleblian
 #------------------------------------------------------------------------------
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
@@ -87,27 +88,31 @@ all: resources $(TARGETDIR)/$(TARGET) symbolfiles
 
 remake: distclean all
 
-# Create XPM versions of images.
+#Create XPM versions of images
 images: $(DSTIMGS) directories
 
-resources: directories images
-	@cp $(RESDIR)/linapple.conf $(DESTDIR)/$(DATADIR)
-	@cp $(RESDIR)/Master.dsk $(DESTDIR)/$(DATADIR)
+resources: directories images build/$(CONFIGDIR)/linapple.conf build/$(DATADIR)/Master.dsk
 
-# Copy symbol files next to binary
+build/$(CONFIGDIR)/linapple.conf: $(RESDIR)/linapple.conf
+	@cp $< $@
+
+build/$(DATADIR)/Master.dsk: $(RESDIR)/Master.dsk
+	@cp $< $@
+
+#Copy symbol files next to binary
 symbolfiles: $(DSTSYMS)
 
 directories:
-	@mkdir -p $(BUILDDIR) $(TARGETDIR) $(DESTDIR)/$(DATADIR)
+	@mkdir -p $(BUILDDIR) $(TARGETDIR) build/$(DATADIR) build/$(CONFIGDIR)
 
 #Clean only Objects
 clean:
 	@$(RM) -rf $(BUILDDIR)
-	@$(RM) -rf $(TARGETDIR)
 
 #Full Clean, Objects and Binaries
-cleaner: clean
-	@$(RM) -rf $(TARGETDIR)
+#https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
+distclean: clean
+	@$(RM) -rf build
 	@$(RM) $(TARGET)-$(VERSION).deb
 
 #Pull in dependency info for *existing* .o files
@@ -134,20 +139,15 @@ $(BUILDDIR)/%.$(XPMEXT): $(RESDIR)/%.$(IMGEXT)
 $(TARGETDIR)/%.$(SYMEXT): $(RESDIR)/%.$(SYMEXT)
 	cp $< $@
 
-# https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
-distclean: cleaner
-	rm -rf $(DESTDIR)
-
 install: all
-	install -d "$(PREFIX)/$(BINDIR)"
-	install $(DESTDIR)/$(BINDIR)/$(TARGET) "$(PREFIX)/$(BINDIR)/$(TARGET)"
-	install -d "$(PREFIX)/$(DATADIR)"
-	install $(DESTDIR)/$(DATADIR)/* "$(PREFIX)/$(DATADIR)"
+	install -D --target-directory "$(DESTDIR)/$(BINDIR)" build/$(BINDIR)/$(TARGET)
+	install -D --target-directory "$(DESTDIR)/$(DATADIR)" build/$(DATADIR)/Master.dsk
+	install -D --target-directory "$(DESTDIR)/$(CONFIGDIR)" build/$(CONFIGDIR)/$(PACKAGE).conf
 
 uninstall:
-	$(RM) $(PREFIX)/bin/$(TARGET)
-	$(RM) $(PREFIX)/$(DATADIR)/*
-	rmdir $(PREFIX)/$(DATADIR)
+	$(RM) $(DESTDIR)/bin/$(TARGET)
+	$(RM) $(DESTDIR)/$(DATADIR)/*
+	rmdir $(DESTDIR)/$(DATADIR)
 
 $(PACKAGE)/$(PACKAGE)-$(VERSION).deb:
 	@echo " Building a Debian package ..."
@@ -158,7 +158,7 @@ $(PACKAGE)/$(PACKAGE)-$(VERSION).deb:
 	cp -r $(DESTDIR)/$(DATADIR) $(PKGDIR)/$(DATADIR)
 	dpkg --build $(PKGDIR)
 	mv $(PACKAGE)/$(PACKAGE)-$(VERSION).deb" .
-package: $(PACKAGE)/$(PACKAGE)-$(VERSION).deb
+deb: $(PACKAGE)/$(PACKAGE)-$(VERSION).deb
 
 #Non-File Targets
-.PHONY: all clean cleaner deb directories distclean images install package remake resources symbolfiles
+.PHONY: all clean deb directories distclean images install remake resources symbolfiles uninstall
