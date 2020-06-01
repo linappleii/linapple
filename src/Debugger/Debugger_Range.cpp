@@ -35,11 +35,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // Util - Range _______________________________________________________________
 
 
-//===========================================================================
-bool Range_CalcEndLen( const RangeType_t eRange
-	, const WORD & nAddress1, const WORD & nAddress2
-	, WORD & nAddressEnd_, int & nAddressLen_ )
-{
+bool Range_CalcEndLen(
+  const RangeType_t eRange,
+  const unsigned short & nAddress1,
+  const unsigned short & nAddress2,
+  unsigned short & nAddressEnd_,
+  int & nAddressLen_
+) {
 	bool bValid = false;
 
 	if (eRange == RANGE_HAS_LEN)
@@ -73,10 +75,9 @@ bool Range_CalcEndLen( const RangeType_t eRange
 }
 
 
-//===========================================================================
-RangeType_t Range_Get( WORD & nAddress1_, WORD & nAddress2_, const int iArg ) // =1
+RangeType_t Range_Get( unsigned short & nAddress1_, unsigned short & nAddress2_, const int iArg )
 {
-	nAddress1_ = (unsigned) g_aArgs[ iArg ].nValue; 
+	nAddress1_ = (unsigned) g_aArgs[ iArg ].nValue;
 	if (nAddress1_ > _6502_MEM_END)
 		nAddress1_ = _6502_MEM_END;
 

@@ -60,7 +60,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
         {TEXT("%02X,X")  , 2 , "Zero Page,X"   }, // AM_ZX     // %s,X
         {TEXT("%02X,Y")  , 2 , "Zero Page,Y"   }, // AM_ZY     // %s,Y
         {TEXT("%s")      , 2 , "Relative"      }, // AM_R
-        {TEXT("(%02X,X)"), 2 , "(Zero Page),X" }, // AM_IZX // ($%02X,X) -> %s,X 
+        {TEXT("(%02X,X)"), 2 , "(Zero Page),X" }, // AM_IZX // ($%02X,X) -> %s,X
         {TEXT("(%04X,X)"), 3 , "(Absolute),X"  }, // AM_IAX // ($%04X,X) -> %s,X
         {TEXT("(%02X),Y"), 2 , "(Zero Page),Y" }, // AM_NZY // ($%02X),Y
         {TEXT("(%02X)")  , 2 , "(Zero Page)"   }, // AM_NZ  // ($%02X) -> $%02X
@@ -87,7 +87,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 // @reference: http://www.6502.org/tutorials/compare_instructions.html
-// 10   signed: BPL BGE 
+// 10   signed: BPL BGE
 // B0 unsigned: BCS BGE
 
 #define R_ MEM_R
@@ -180,7 +180,7 @@ const Opcodes_t g_aOpcodes6502[ NUM_OPCODES ] =
 
 	If you really want to know what the undocumented --- (n/a) opcodes do, see
 	CPU.cpp
-	
+
 	x0     x1         x2       x3   x4       x5       x6       x7   x8   x9       xA      xB   xC        xD       xE      	xF
 0x	BRK    ORA (d,X)  ---      ---  tsb z    ORA d    ASL z    ---  PHP  ORA #    ASL A  ---  tsb a      ORA a    ASL a   	---
 1x	BPL r  ORA (d),Y  ora (z)  ---  trb d    ORA d,X  ASL z,X  ---  CLC  ORA a,Y  ina A  ---  trb a      ORA a,X  ASL a,X 	---
@@ -307,7 +307,7 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 // Private __________________________________________________________________
 
 	// NOTE: Keep in sync AsmDirectives_e g_aAssemblerDirectives !
-	AssemblerDirective_t g_aAssemblerDirectives[ NUM_ASM_DIRECTIVES ] = 
+	AssemblerDirective_t g_aAssemblerDirectives[ NUM_ASM_DIRECTIVES ] =
 	{
 		// NULL n/a
 		{""},
@@ -322,7 +322,7 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 		{"???"},
 		// Merlin
 		{"ASC"}, // ASC "postive" 'negative'
-		{"DDB"}, // Define Double Byte (Define WORD)
+		{"DDB"}, // Define Double Byte (Define unsigned short)
 		{"DFB"}, // DeFine Byte
 		{"DS" }, // Define Storage
 		{"HEX"}, // HEX ###### or HEX ##,##,...
@@ -399,7 +399,7 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 	enum AssemblerState_e
 	{
 		  AS_GET_MNEMONIC
-		, AS_GET_MNEMONIC_PARM 
+		, AS_GET_MNEMONIC_PARM
 		, AS_GET_HASH
 		, AS_GET_TARGET
 		, AS_GET_PAREN
@@ -414,18 +414,18 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 	struct DelayedTarget_t
 	{
 		char m_sAddress[ MAX_SYMBOLS_LEN + 1 ];
-		WORD m_nBaseAddress; // mem address to store symbol at
+		unsigned short m_nBaseAddress; // mem address to store symbol at
 		int  m_nOpcode ;
 		int  m_iOpmode ; // AddressingMode_e
 	};
-	
+
 	std::vector <DelayedTarget_t> m_vDelayedTargets;
 	bool                     m_bDelayedTargetsDirty = false;
 
 	int  m_nAsmBytes         = 0;
-	WORD m_nAsmBaseAddress   = 0;
-	WORD m_nAsmTargetAddress = 0;
-	WORD m_nAsmTargetValue   = 0;
+	unsigned short m_nAsmBaseAddress   = 0;
+	unsigned short m_nAsmTargetAddress = 0;
+	unsigned short m_nAsmTargetValue   = 0;
 
 // Private
 	void AssemblerHashOpcodes ();
@@ -435,7 +435,7 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 
 
 //===========================================================================
-bool _6502_CalcRelativeOffset( int nOpcode, int nBaseAddress, int nTargetAddress, WORD * pTargetOffset_ )
+bool _6502_CalcRelativeOffset( int nOpcode, int nBaseAddress, int nTargetAddress, unsigned short * pTargetOffset_ )
 {
 	if (_6502_IsOpcodeBranch( nOpcode))
 	{
@@ -455,7 +455,7 @@ bool _6502_CalcRelativeOffset( int nOpcode, int nBaseAddress, int nTargetAddress
 		// BaseAddress
 		int nDistance = nTargetAddress - nBaseAddress;
 		if (pTargetOffset_)
-			*pTargetOffset_ = (BYTE)(nDistance - 2); 
+			*pTargetOffset_ = (unsigned char)(nDistance - 2);
 
 		if ((nDistance - 2) > _6502_BRANCH_POS)
 			m_iAsmAddressMode = NUM_OPMODES; // signal bad
@@ -569,7 +569,7 @@ void _6502_GetOpcodeOpmodeOpbyte ( int & iOpcode_, int & iOpmode_, int & nOpbyte
 }
 
 //===========================================================================
-bool _6502_GetStackReturnAddress ( WORD & nAddress_ )
+bool _6502_GetStackReturnAddress ( unsigned short & nAddress_ )
 {
 	unsigned nStack = regs.sp;
 	nStack++;
@@ -578,7 +578,7 @@ bool _6502_GetStackReturnAddress ( WORD & nAddress_ )
 	{
 		nAddress_ = (unsigned)*(LPBYTE)(mem + nStack);
 		nStack++;
-		
+
 		nAddress_ += ((unsigned)*(LPBYTE)(mem + nStack)) << 8;
 		nAddress_++;
 		return true;
@@ -588,7 +588,7 @@ bool _6502_GetStackReturnAddress ( WORD & nAddress_ )
 
 
 //===========================================================================
-bool _6502_GetTargets ( WORD nAddress, int *pTargetPartial_, int *pTargetPartial2_, int *pTargetPointer_, int * pTargetBytes_,
+bool _6502_GetTargets ( unsigned short nAddress, int *pTargetPartial_, int *pTargetPartial2_, int *pTargetPointer_, int * pTargetBytes_,
 						bool bIgnoreBranch /*= true*/, bool bIncludeNextOpcodeAddress /*= true*/ )
 {
 	if (! pTargetPartial_)
@@ -608,11 +608,11 @@ bool _6502_GetTargets ( WORD nAddress, int *pTargetPartial_, int *pTargetPartial
 	*pTargetPointer_  = NO_6502_TARGET;
 
 	if (pTargetBytes_)
-		*pTargetBytes_  = 0;	
+		*pTargetBytes_  = 0;
 
-	BYTE nOpcode   = mem[nAddress];
-	BYTE nTarget8  = mem[(nAddress+1)&0xFFFF];
-	WORD nTarget16 = (mem[(nAddress+2)&0xFFFF]<<8) | nTarget8;
+	unsigned char nOpcode   = mem[nAddress];
+	unsigned char nTarget8  = mem[(nAddress+1)&0xFFFF];
+	unsigned short nTarget16 = (mem[(nAddress+2)&0xFFFF]<<8) | nTarget8;
 
 	int eMode = g_aOpcodes[ nOpcode ].nAddressMode;
 
@@ -626,7 +626,7 @@ bool _6502_GetTargets ( WORD nAddress, int *pTargetPartial_, int *pTargetPartial
 			{
 				if (nOpcode == OPCODE_RTI || nOpcode == OPCODE_RTS)	// RTI or RTS?
 				{
-					WORD sp = regs.sp;
+					unsigned short sp = regs.sp;
 
 					if (nOpcode == OPCODE_RTI)
 					{
@@ -725,7 +725,7 @@ bool _6502_GetTargets ( WORD nAddress, int *pTargetPartial_, int *pTargetPartial
 
 		case AM_NZY: // Indirect (Zeropage) Indexed, Y
 			*pTargetPartial_    = nTarget8;
-			*pTargetPointer_    = ((*(LPWORD)(mem + nTarget8)) + regs.y) & _6502_MEM_END; // Bugfix: 
+			*pTargetPointer_    = ((*(LPWORD)(mem + nTarget8)) + regs.y) & _6502_MEM_END; // Bugfix:
 			if (pTargetBytes_)
 				*pTargetBytes_ = 1;
 			break;
@@ -784,7 +784,7 @@ bool _6502_GetTargets ( WORD nAddress, int *pTargetPartial_, int *pTargetPartial
 
 
 //===========================================================================
-bool _6502_GetTargetAddress ( const WORD & nAddress, WORD & nTarget_ )
+bool _6502_GetTargetAddress ( const unsigned short & nAddress, unsigned short & nTarget_ )
 {
 	int iOpcode;
 	int iOpmode;
@@ -835,7 +835,7 @@ bool _6502_IsOpcodeBranch ( int iOpcode )
 
 	if ((iOpcode >> 4) & 1)
 		return true;
-	
+
 //		(nOpcode == 0x10) || // BPL
 //		(nOpcode == 0x30) || // BMI
 //		(nOpcode == 0x50) || // BVC
@@ -863,10 +863,9 @@ bool _6502_IsOpcodeValid ( int iOpcode )
 // Assembler ________________________________________________________________
 
 
-//===========================================================================
-unsigned int AssemblerHashMnemonic ( const TCHAR * pMnemonic )
+unsigned int AssemblerHashMnemonic ( const char * pMnemonic )
 {
-	const TCHAR *pText = pMnemonic;
+	const char *pText = pMnemonic;
 	int nMnemonicHash = 0;
 	int iHighBits;
 
@@ -886,7 +885,7 @@ unsigned int AssemblerHashMnemonic ( const TCHAR * pMnemonic )
 
 	while( *pText )
 //	for( int iChar = 0; iChar < 4; iChar++ )
-	{	
+	{
 		char c = tolower( *pText ); // TODO: based on ALLOW_INPUT_LOWERCASE ??
 
 		nMnemonicHash = (nMnemonicHash << NUM_MSK_BITS) + c;
@@ -910,7 +909,7 @@ void AssemblerHashOpcodes ()
 
 	for( iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++ )
 	{
-		const TCHAR *pMnemonic = g_aOpcodes65C02[ iOpcode ].sMnemonic;
+		const char *pMnemonic = g_aOpcodes65C02[ iOpcode ].sMnemonic;
 		nMnemonicHash = AssemblerHashMnemonic( pMnemonic );
 		g_aOpcodesHash[ iOpcode ] = nMnemonicHash;
 #if DEBUG_ASSEMBLER
@@ -932,8 +931,8 @@ void AssemblerHashDirectives ()
 	for( iOpcode = 0; iOpcode < NUM_ASM_M_DIRECTIVES; iOpcode++ )
 	{
 		int iNopcode = FIRST_M_DIRECTIVE + iOpcode;
-//.		const TCHAR *pMnemonic = g_aAssemblerDirectivesMerlin[ iOpcode ].m_pMnemonic;
-		const TCHAR *pMnemonic = g_aAssemblerDirectives[ iNopcode ].m_pMnemonic;
+//.		const char *pMnemonic = g_aAssemblerDirectivesMerlin[ iOpcode ].m_pMnemonic;
+		const char *pMnemonic = g_aAssemblerDirectives[ iNopcode ].m_pMnemonic;
 		nMnemonicHash = AssemblerHashMnemonic( pMnemonic );
 		g_aAssemblerDirectives[ iNopcode ].m_nHash = nMnemonicHash;
 	}
@@ -945,23 +944,23 @@ void AssemblerStartup()
 	AssemblerHashOpcodes();
 	AssemblerHashDirectives();
 }
- 
+
 //===========================================================================
 void _CmdAssembleHashDump ()
 {
 // #if DEBUG_ASM_HASH
 	std::vector<HashOpcode_t> vHashes;
 	HashOpcode_t         tHash;
-	TCHAR                sText[ CONSOLE_WIDTH ];
+	char                sText[ CONSOLE_WIDTH ];
 
 	int iOpcode;
 	for( iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++ )
 	{
 		tHash.m_iOpcode = iOpcode;
-		tHash.m_nValue  = g_aOpcodesHash[ iOpcode ]; 
+		tHash.m_nValue  = g_aOpcodesHash[ iOpcode ];
 		vHashes.push_back( tHash );
-	}	
-	
+	}
+
 	std::sort( vHashes.begin(), vHashes.end(), HashOpcode_t() );
 
 //	Hash_t nPrevHash = vHashes.at( 0 ).m_nValue;
@@ -982,7 +981,7 @@ void _CmdAssembleHashDump ()
 			, g_aOpmodes[ nOpmode  ].m_sName
 		);
 		nThisHash++;
-		
+
 //		if (nPrevHash != iThisHash)
 //		{
 //			ConsoleBufferPushFormat( sText, "Total: %d", nThisHash );
@@ -995,9 +994,9 @@ void _CmdAssembleHashDump ()
 }
 
 
- 
+
 //===========================================================================
-int AssemblerPokeAddress( const int Opcode, const int nOpmode, const WORD nBaseAddress, const WORD nTargetOffset )
+int AssemblerPokeAddress( const int Opcode, const int nOpmode, const unsigned short nBaseAddress, const unsigned short nTargetOffset )
 {
 //	int nOpmode  = g_aOpcodes[ nOpcode ].nAddressMode;
 	int nOpbytes = g_aOpmodes[ nOpmode ].m_nBytes;
@@ -1006,19 +1005,19 @@ int AssemblerPokeAddress( const int Opcode, const int nOpmode, const WORD nBaseA
 	//	ConsoleDisplayError( TEXT(" ERROR: Input Opcode bytes differs from actual!" ) );
 
 	*(memdirty + (nBaseAddress >> 8)) |= 1;
-//	*(mem + nBaseAddress) = (BYTE) nOpcode;
+//	*(mem + nBaseAddress) = (unsigned char) nOpcode;
 
 	if (nOpbytes > 1)
-		*(mem + nBaseAddress + 1) = (BYTE)(nTargetOffset >> 0);
+		*(mem + nBaseAddress + 1) = (unsigned char)(nTargetOffset >> 0);
 
 	if (nOpbytes > 2)
-		*(mem + nBaseAddress + 2) = (BYTE)(nTargetOffset >> 8);
+		*(mem + nBaseAddress + 2) = (unsigned char)(nTargetOffset >> 8);
 
 	return nOpbytes;
 }
 
 //===========================================================================
-bool AssemblerPokeOpcodeAddress( const WORD nBaseAddress )
+bool AssemblerPokeOpcodeAddress( const unsigned short nBaseAddress )
 {
 	int iAddressMode = m_iAsmAddressMode; // opmode detected from input
 	int nTargetValue = m_nAsmTargetValue;
@@ -1033,11 +1032,11 @@ bool AssemblerPokeOpcodeAddress( const WORD nBaseAddress )
 
 		if (nOpmode == iAddressMode)
 		{
-			*(mem + nBaseAddress) = (BYTE) nOpcode;
+			*(mem + nBaseAddress) = (unsigned char) nOpcode;
 			int nOpbytes = AssemblerPokeAddress( nOpcode, nOpmode, nBaseAddress, nTargetValue );
 
 			if (m_bDelayedTargetsDirty)
-			{			
+			{
 				int nDelayedTargets = m_vDelayedTargets.size();
 				DelayedTarget_t *pTarget = & m_vDelayedTargets.at( nDelayedTargets - 1 );
 
@@ -1083,10 +1082,10 @@ void SetFlag( AssemblerFlags_e eFlag, bool bValue = true )
 		AM_I // indexed or indirect
 */
 //===========================================================================
-bool AssemblerGetArgs( int iArg, int nArgs, WORD nBaseAddress )
+bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 {
 	m_iAsmAddressMode = AM_IMPLIED;
-	AssemblerState_e eNextState = AS_GET_MNEMONIC; 
+	AssemblerState_e eNextState = AS_GET_MNEMONIC;
 
 	m_bAsmFlags  = 0;
 	m_nAsmTargetAddress = 0;
@@ -1209,7 +1208,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, WORD nBaseAddress )
 				ArgsGetValue( pArg, & m_nAsmTargetAddress, nBase );
 
 				// Do Symbol Lookup
-				WORD nSymbolAddress;
+				unsigned short nSymbolAddress;
 				bool bExists = FindAddressFromSymbol( pArg->sArg, &nSymbolAddress );
 				if (bExists)
 				{
@@ -1221,7 +1220,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, WORD nBaseAddress )
 				else
 				{
 					// if valid hex address, don't have delayed target
-					TCHAR sAddress[ 32 ];
+					char sAddress[ 32 ];
 					snprintf( sAddress, sizeof(sAddress), "%X", m_nAsmTargetAddress);
 					if (_tcscmp( sAddress, pArg->sArg))
 					{
@@ -1236,7 +1235,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, WORD nBaseAddress )
 
 						tDelayedTarget.m_nOpcode = 0;
 						tDelayedTarget.m_iOpmode = m_iAsmAddressMode;
-						
+
 						m_vDelayedTargets.push_back( tDelayedTarget );
 
 						m_nAsmTargetAddress = 0;
@@ -1340,7 +1339,7 @@ bool AssemblerUpdateAddressingMode()
 				}
 			}
 		}
-	}		
+	}
 
 	if ((m_iAsmAddressMode == AM_A) || (m_iAsmAddressMode == AM_Z))
 	{
@@ -1362,7 +1361,7 @@ bool AssemblerUpdateAddressingMode()
 			}
 		}
 	}
-	
+
 	if (m_iAsmAddressMode == AM_I)
 	{
 		if (! TestFlag( AF_HaveEitherParen)) // if no paren
@@ -1373,7 +1372,7 @@ bool AssemblerUpdateAddressingMode()
 	}
 
 	m_nAsmTargetValue = m_nAsmTargetAddress;
-	
+
 	int nOpcode = m_vAsmOpcodes.at( 0 ); // branch opcodes don't vary (only 1 Addressing Mode)
 	if (_6502_CalcRelativeOffset( nOpcode, m_nAsmBaseAddress, m_nAsmTargetAddress, & m_nAsmTargetValue ))
 	{
@@ -1409,13 +1408,13 @@ void AssemblerProcessDelayedSymols()
 	while (! bModified)
 	{
 		bModified = false;
-		
+
 		std::vector<DelayedTarget_t>::iterator iSymbol;
 		for( iSymbol = m_vDelayedTargets.begin(); iSymbol != m_vDelayedTargets.end(); ++iSymbol )
 		{
 			DelayedTarget_t *pTarget = & (*iSymbol); // m_vDelayedTargets.at( iSymbol );
 
-			WORD nTargetAddress;
+			unsigned short nTargetAddress;
 			bool bExists = FindAddressFromSymbol( pTarget->m_sAddress, & nTargetAddress );
 			if (bExists)
 			{
@@ -1431,8 +1430,8 @@ void AssemblerProcessDelayedSymols()
 				// ^       ^      ^
 				// |       |      TargetAddress
 				// |       TargetValue
-				// BaseAddress				
-				WORD nTargetValue = nTargetAddress;
+				// BaseAddress
+				unsigned short nTargetValue = nTargetAddress;
 
 				if (_6502_CalcRelativeOffset( nOpcode, pTarget->m_nBaseAddress, nTargetAddress, & nTargetValue ))
 				{
@@ -1442,7 +1441,7 @@ void AssemblerProcessDelayedSymols()
 						bModified = false;
 					}
 				}
-				
+
 				if (bModified)
 				{
 					AssemblerPokeAddress( nOpcode, nOpmode, pTarget->m_nBaseAddress, nTargetValue );
@@ -1463,24 +1462,24 @@ void AssemblerProcessDelayedSymols()
 }
 
 
-bool Assemble( int iArg, int nArgs, WORD nAddress )
+bool Assemble( int iArg, int nArgs, unsigned short nAddress )
 {
 	bool bGotArgs;
 	bool bGotMode;
 	bool bGotByte;
-	
+
 	// Since, making 2-passes is not an option,
 	// we need to buffer the target address fix-ups.
 	AssemblerProcessDelayedSymols();
 
 	m_nAsmBaseAddress = nAddress;
 
-	TCHAR *pMnemonic = g_aArgs[ iArg ].sArg;
+	char *pMnemonic = g_aArgs[ iArg ].sArg;
 	unsigned int nMnemonicHash = AssemblerHashMnemonic( pMnemonic );
 
 #if DEBUG_ASSEMBLER
 	char sText[ CONSOLE_WIDTH * 2 ];
-	ConsolePrintFormat( sText, "%s%04X%s: %s%s%s -> %s%08X", 
+	ConsolePrintFormat( sText, "%s%04X%s: %s%s%s -> %s%08X",
 		CHC_ADDRESS, nAddress,
 		CHC_DEFAULT,
 		CHC_STRING, pMnemonic,
@@ -1490,7 +1489,7 @@ bool Assemble( int iArg, int nArgs, WORD nAddress )
 
 	m_vAsmOpcodes.clear(); // Candiate opcodes
 	int iOpcode;
-	
+
 	// Ugh! Linear search.
 	for( iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++ )
 	{

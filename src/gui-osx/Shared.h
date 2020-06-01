@@ -49,14 +49,14 @@ void GuiOsx_Resume(void);
 
 // Some useful tools
 // choose file to open
-- (NSString *)hopenfile:(BOOL)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types;
+- (NSString *)hopenfile:(bool)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types;
 
-- (NSString *)hopenfile:(BOOL)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre;
+- (NSString *)hopenfile:(bool)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre;
 
 // choose file to save
-- (NSString *)hsavefile:(BOOL)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types;
+- (NSString *)hsavefile:(bool)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types;
 
-- (NSString *)hsavefile:(BOOL)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre;
+- (NSString *)hsavefile:(bool)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre;
 
 // Return localized path, Full path or partial path.
 - (NSString *)localpath:(NSString *)thepath;    // Full

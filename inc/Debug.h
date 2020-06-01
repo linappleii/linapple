@@ -14,7 +14,7 @@ using namespace std;
 extern bool g_bDebuggerEatKey;
 
 // Benchmarking
-extern DWORD extbench;
+extern unsigned int extbench;
 
 // Bookmarks
 extern int g_nBookmarks;
@@ -37,7 +37,7 @@ extern int g_nBreakpoints;
 extern Breakpoint_t g_aBreakpoints[MAX_BREAKPOINTS];
 
 extern const char *g_aBreakpointSource[NUM_BREAKPOINT_SOURCES];
-extern const TCHAR *g_aBreakpointSymbols[NUM_BREAKPOINT_OPERATORS];
+extern const char *g_aBreakpointSymbols[NUM_BREAKPOINT_OPERATORS];
 
 // Full-Speed debugging
 extern int g_nDebugOnBreakInvalid;
@@ -64,9 +64,9 @@ class commands_functor_compare
 extern std::string g_sFileNameConfig;
 
 // Cursor
-extern WORD g_nDisasmTopAddress;
-extern WORD g_nDisasmBotAddress;
-extern WORD g_nDisasmCurAddress;
+extern unsigned short g_nDisasmTopAddress;
+extern unsigned short g_nDisasmBotAddress;
+extern unsigned short g_nDisasmCurAddress;
 
 extern bool g_bDisasmCurBad;
 extern int g_nDisasmCurLine; // Aligned to Top or Center
@@ -125,28 +125,28 @@ extern ZeroPagePointers_t g_aZeroPagePointers[MAX_ZEROPAGE_POINTERS]; // TODO: u
 // Prototypes
 
 // Bookmarks
-bool Bookmark_Find(const WORD nAddress);
+bool Bookmark_Find(const unsigned short nAddress);
 
 // Breakpoints
-bool GetBreakpointInfo(WORD nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
+bool GetBreakpointInfo(unsigned short nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
 
 // Color
-COLORREF DebuggerGetColor(int iColor);
+unsigned int DebuggerGetColor(int iColor);
 
 // Source Level Debugging
-int FindSourceLine(WORD nAddress);
+int FindSourceLine(unsigned short nAddress);
 
-LPCTSTR FormatAddress(WORD nAddress, int nBytes);
+LPCTSTR FormatAddress(unsigned short nAddress, int nBytes);
 
 // Symbol Table / Memory
-bool FindAddressFromSymbol(LPCSTR pSymbol, WORD *pAddress_ = NULL, int *iTable_ = NULL);
+bool FindAddressFromSymbol(LPCSTR pSymbol, unsigned short *pAddress_ = NULL, int *iTable_ = NULL);
 
-WORD GetAddressFromSymbol(LPCTSTR symbol); // HACK: returns 0 if symbol not found
-void SymbolUpdate(SymbolTable_Index_e eSymbolTable, char *pSymbolName, WORD nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
+unsigned short GetAddressFromSymbol(LPCTSTR symbol); // HACK: returns 0 if symbol not found
+void SymbolUpdate(SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned short nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
 
-LPCTSTR FindSymbolFromAddress(WORD nAdress, int *iTable_ = NULL);
+LPCTSTR FindSymbolFromAddress(unsigned short nAdress, int *iTable_ = NULL);
 
-LPCTSTR GetSymbol(WORD nAddress, int nBytes);
+LPCTSTR GetSymbol(unsigned short nAddress, int nBytes);
 
 Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
 
@@ -163,13 +163,13 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay=false);
 
 void DebugDestroy();
 
-void DebugDisplay(BOOL bInitDisasm=FALSE);
+void DebugDisplay(bool bInitDisasm=false);
 
 void DebugEnd();
 
 void DebugInitialize();
 
-void DebuggerInputConsoleChar(TCHAR ch);
+void DebuggerInputConsoleChar(char ch);
 
 void DebuggerProcessKey(int keycode);
 
@@ -183,4 +183,4 @@ void VerifyDebuggerCommandTable();
 
 bool IsDebugSteppingAtFullSpeed(void);
 
-bool DebugGetVideoMode(UINT* pVideoMode);
+bool DebugGetVideoMode(unsigned int* pVideoMode);

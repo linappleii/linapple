@@ -71,9 +71,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 LR: Lo-Res   HR: Hi-Res   DHR: Double Hi-Res */
 
-#define GetRValue(rgb)      ((BYTE)(rgb))
-#define GetGValue(rgb)      ((BYTE)(((WORD)(rgb)) >> 8))
-#define GetBValue(rgb)      ((BYTE)((rgb)>>16))
+#define GetRValue(rgb)      ((unsigned char)(rgb))
+#define GetGValue(rgb)      ((unsigned char)(((unsigned short)(rgb)) >> 8))
+#define GetBValue(rgb)      ((unsigned char)((rgb)>>16))
 #define FLASH_80_COL 1
 #define HALF_SHIFT_DITHER 0
 
@@ -152,8 +152,8 @@ int const kVSyncLines = 4; // lines per VSync duration
 
 typedef bool (*UpdateFunc_t)(int, int, int, int, int);
 
-static BYTE celldirty[40][32];
-static COLORREF customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
+static unsigned char celldirty[40][32];
+static unsigned int customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
 SDL_Surface *g_hDeviceBitmap;
 static LPBYTE framebufferbits;
@@ -183,38 +183,38 @@ static LPBYTE g_pTextBank0; // Main
 
 // For tv emulation g_nAppMode
 // 2 extra scan lines on bottom?
-static BYTE hgrpixelmatrix[280][192 + 2 * HGR_MATRIX_YOFFSET];
-static BYTE colormixbuffer[6];
-static WORD colormixmap[6][6][6];
+static unsigned char hgrpixelmatrix[280][192 + 2 * HGR_MATRIX_YOFFSET];
+static unsigned char colormixbuffer[6];
+static unsigned short colormixmap[6][6][6];
 
 static int g_nAltCharSetOffset = 0; // alternate character set
-static BOOL displaypage2 = 0;
-static BOOL displaypage2_latched = 0;
+static bool displaypage2 = 0;
+static bool displaypage2_latched = 0;
 static LPBYTE framebufferaddr = (LPBYTE) 0;
-static LONG/*int*/      framebufferpitch = 0;
-BOOL graphicsmode = 0;
+static int framebufferpitch = 0;
+bool graphicsmode = 0;
 static volatile bool hasrefreshed = false;
-static DWORD lastpageflip = 0;
-COLORREF monochrome = RGB(0xC0, 0xC0, 0xC0);
-static BOOL redrawfull = 1;
-static DWORD dwVBlCounter = 0;
+static unsigned int lastpageflip = 0;
+unsigned int monochrome = RGB(0xC0, 0xC0, 0xC0);
+static bool redrawfull = 1;
+static unsigned int dwVBlCounter = 0;
 static LPBYTE vidlastmem = NULL;
-DWORD g_uVideoMode = VF_TEXT;
-DWORD g_uDebugVideoMode = VF_TEXT;
-static DWORD vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
-DWORD g_videotype = VT_COLOR_STANDARD;
-DWORD g_singlethreaded = 0;
+unsigned int g_uVideoMode = VF_TEXT;
+unsigned int g_uDebugVideoMode = VF_TEXT;
+static unsigned int vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
+unsigned int g_videotype = VT_COLOR_STANDARD;
+unsigned int g_singlethreaded = 0;
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
 
 static bool bVideoScannerNTSC = true;  // NTSC video scanning (or PAL)
 
-BOOL g_ShowLeds = 1;  // show drive leds by default
+bool g_ShowLeds = 1;  // show drive leds by default
 
 // Video consts:
-const UINT nVBlStop_NTSC = 21;
-const UINT nVBlStop_PAL = 29;
+const unsigned int nVBlStop_NTSC = 21;
+const unsigned int nVBlStop_PAL = 29;
 
 void DrawDHiResSource();
 void DrawHiResSource();
@@ -272,7 +272,7 @@ void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sou
   }
 }
 
-void CreateFrameOffsetTable(LPBYTE addr, LONG/*int*/ pitch) {
+void CreateFrameOffsetTable(LPBYTE addr, int/*int*/ pitch) {
   // As I could take it's just needed for windzooeee DD while in FullScreen mode.
   // Left for compatiblity purposes. -- bb.
   if (framebufferaddr == addr && framebufferpitch == pitch) {
@@ -460,7 +460,7 @@ void CreateDIBSections() {
 }
 
 void DrawDHiResSource() {
-  BYTE colorval[16] = {BLACK, DARK_BLUE, DARK_GREEN, BLUE, BROWN, LIGHT_GRAY, GREEN, AQUA, DEEP_RED, MAGENTA, DARK_GRAY,
+  unsigned char colorval[16] = {BLACK, DARK_BLUE, DARK_GREEN, BLUE, BROWN, LIGHT_GRAY, GREEN, AQUA, DEEP_RED, MAGENTA, DARK_GRAY,
                        LIGHT_BLUE, ORANGE, PINK, YELLOW, WHITE};
 
   #define OFFSET  3
@@ -525,9 +525,9 @@ enum ColorMapping {
   CM_Magenta, CM_Blue, CM_Green, CM_Orange, CM_Black, CM_White, NUM_COLOR_MAPPING
 };
 
-const BYTE aColorIndex[NUM_COLOR_MAPPING] = {HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
+const unsigned char aColorIndex[NUM_COLOR_MAPPING] = {HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
 
-const BYTE aColorDimmedIndex[NUM_COLOR_MAPPING] = {DARK_MAGENTA, // <- HGR_MAGENTA
+const unsigned char aColorDimmedIndex[NUM_COLOR_MAPPING] = {DARK_MAGENTA, // <- HGR_MAGENTA
                                                    DARK_BLUE, // <- HGR_BLUE
                                                    DARK_GREEN, // <- HGR_GREEN
                                                    DEEP_RED, // <- HGR_RED
@@ -755,7 +755,7 @@ void DrawHiResSource() {
 
 
 void DrawLoResSource() {
-  BYTE colorval[16] = {BLACK, DEEP_RED, DARK_BLUE, MAGENTA, DARK_GREEN, DARK_GRAY, BLUE, LIGHT_BLUE, BROWN, ORANGE,
+  unsigned char colorval[16] = {BLACK, DEEP_RED, DARK_BLUE, MAGENTA, DARK_GREEN, DARK_GRAY, BLUE, LIGHT_BLUE, BROWN, ORANGE,
                        LIGHT_GRAY, PINK, GREEN, YELLOW, AQUA, WHITE};
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
@@ -796,7 +796,7 @@ void DrawMonoDHiResSource() {
       unsigned pattern = MAKEWORD(byteval, column);
       int y = byteval << 1;
       for (int x = 0; x < 10; x++) {
-        BYTE colorval = pattern & (1 << (x + 3)) ? iMonochrome : BLACK;
+        unsigned char colorval = pattern & (1 << (x + 3)) ? iMonochrome : BLACK;
 
         SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y, colorval);
         SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
@@ -812,7 +812,7 @@ void DrawMonoHiResSource() {
     for (int y = 0; y < 512; y += 2) {
       unsigned val = (y >> 1);
       for (int x = 0; x < 16; x += 2) {
-        BYTE colorval = (val & 1) ? iMonochrome : BLACK;
+        unsigned char colorval = (val & 1) ? iMonochrome : BLACK;
         val >>= 1;
         SETSOURCEPIXEL(SRCOFFS_HIRES + column + x, y, colorval);
         SETSOURCEPIXEL(SRCOFFS_HIRES + column + x + 1, y, colorval);
@@ -828,7 +828,7 @@ void DrawMonoLoResSource() {
   for (int color = 0; color < 16; color++)
     for (int x = 0; x < 16; x++)
       for (int y = 0; y < 16; y++) {
-        BYTE colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
+        unsigned char colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
         SETSOURCEPIXEL(SRCOFFS_LORES + x, (color << 4) + y, colorval);
       }
 }
@@ -969,7 +969,7 @@ void SetLastDrawnImage() {
 // This copies the literal Apple ROM font pixels
 // to the graphical display buffer.
 bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
-  BYTE ch = *(g_pTextBank0 + offset);
+  unsigned char ch = *(g_pTextBank0 + offset);
   bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
   // FLASHing chars:
@@ -989,7 +989,7 @@ bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   return false;
 }
 
-inline bool _Update80ColumnCell(BYTE c, const int xPixel, const int yPixel, bool bCharFlashing) {
+inline bool _Update80ColumnCell(unsigned char c, const int xPixel, const int yPixel, bool bCharFlashing) {
   bool bInvert = bCharFlashing ? g_bTextFlashState : false;
   CopySource(xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT, SRCOFFS_80COL + ((c & 15) << 3),
              ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
@@ -1001,8 +1001,8 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   bool bDirty = false;
 
   #if FLASH_80_COL
-  BYTE c1 = *(g_pTextBank1 + offset); // aux
-  BYTE c0 = *(g_pTextBank0 + offset); // main
+  unsigned char c1 = *(g_pTextBank1 + offset); // aux
+  unsigned char c0 = *(g_pTextBank0 + offset); // main
 
   bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_);
   bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
@@ -1019,8 +1019,8 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   }
 
   #else
-  BYTE auxval = *(g_pTextBank1 + offset); // aux
-  BYTE mainval = *(g_pTextBank0 + offset); // main
+  unsigned char auxval = *(g_pTextBank1 + offset); // aux
+  unsigned char mainval = *(g_pTextBank0 + offset); // main
 
   if ((auxval  != *(vidlastmem+offset)) ||
       (mainval != *(vidlastmem+offset+0x400)) ||
@@ -1046,14 +1046,14 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
   bool bDirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
-    BYTE byteval1 = (x > 0) ? *(g_pHiresBank0 + offset + yoffset - 1) : 0;
-    BYTE byteval2 = *(g_pHiresBank1 + offset + yoffset);
-    BYTE byteval3 = *(g_pHiresBank0 + offset + yoffset);
-    BYTE byteval4 = (x < 39) ? *(g_pHiresBank1 + offset + yoffset + 1) : 0;
+    unsigned char byteval1 = (x > 0) ? *(g_pHiresBank0 + offset + yoffset - 1) : 0;
+    unsigned char byteval2 = *(g_pHiresBank1 + offset + yoffset);
+    unsigned char byteval3 = *(g_pHiresBank0 + offset + yoffset);
+    unsigned char byteval4 = (x < 39) ? *(g_pHiresBank1 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset)) || (byteval3 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x70) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x70))) ||
         ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull || video_worker_active_) {
-      DWORD dwordval =
+      unsigned int dwordval =
         (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) | ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
       #define PIXEL  0
       #define COLOR  ((xpixel + PIXEL) & 3)
@@ -1075,7 +1075,7 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
   return bDirty;
 }
 
-BYTE MixColors(BYTE c1, BYTE c2)
+unsigned char MixColors(unsigned char c1, unsigned char c2)
 {
   // For tv emulation g_nAppMode
   #define COMBINATION(c1, c2, ref1, ref2) (((c1)==(ref1)&&(c2)==(ref2)) || ((c1)==(ref2)&&(c2)==(ref1)))
@@ -1107,8 +1107,8 @@ void CreateColorMixMap() {
   #define FROM_NEIGHBOUR 0x00
 
   int t, m, b;
-  BYTE cTop, cMid, cBot;
-  WORD mixTop, mixBot;
+  unsigned char cTop, cMid, cBot;
+  unsigned short mixTop, mixBot;
 
   for (t = 0; t < 6; t++)
     for (m = 0; m < 6; m++)
@@ -1145,7 +1145,7 @@ void CreateColorMixMap() {
 void MixColorsVertical(int matx, int maty)
 {
   // For tv emulation g_nAppMode
-  WORD twoHalfPixel;
+  unsigned short twoHalfPixel;
   int bot1idx, bot2idx;
 
   if (SW_MIXED && maty > 159) {
@@ -1214,9 +1214,9 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
   bool bDirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
-    BYTE byteval1 = (x > 0) ? *(g_pHiresBank0 + offset + yoffset - 1) : 0;
-    BYTE byteval2 = *(g_pHiresBank0 + offset + yoffset);
-    BYTE byteval3 = (x < 39) ? *(g_pHiresBank0 + offset + yoffset + 1) : 0;
+    unsigned char byteval1 = (x > 0) ? *(g_pHiresBank0 + offset + yoffset - 1) : 0;
+    unsigned char byteval2 = *(g_pHiresBank0 + offset + yoffset);
+    unsigned char byteval3 = (x < 39) ? *(g_pHiresBank0 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x60) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x60))) ||
         ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull || video_worker_active_) {
@@ -1239,7 +1239,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
 }
 
 bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
-  BYTE val = *(g_pTextBank0 + offset);
+  unsigned char val = *(g_pTextBank0 + offset);
   if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), ((val & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), (val & 0xF0));
@@ -1249,8 +1249,8 @@ bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
 }
 
 bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
-  BYTE auxval = *(g_pTextBank1 + offset);
-  BYTE mainval = *(g_pTextBank0 + offset);
+  unsigned char auxval = *(g_pTextBank1 + offset);
+  unsigned char mainval = *(g_pTextBank0 + offset);
 
   if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((auxval & 0xF) << 4));
@@ -1316,12 +1316,12 @@ SDL_Surface* LoadCharset() {
 
 // All globally accessible functions are below this line
 
-BOOL VideoApparentlyDirty() {
+bool VideoApparentlyDirty() {
   if (SW_MIXED || redrawfull || video_worker_active_) {
     return 1;
   }
-  DWORD address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
-  DWORD length = (SW_HIRES && !SW_TEXT) ? 0x20 : 0x4;
+  unsigned int address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
+  unsigned int length = (SW_HIRES && !SW_TEXT) ? 0x20 : 0x4;
   while (length--) {
     if (*(memdirty + (address++)) & 2) {
       return 1;
@@ -1332,13 +1332,13 @@ BOOL VideoApparentlyDirty() {
 
   // Scan visible text page for any flashing chars
   if ((SW_TEXT || SW_MIXED) && (g_nAltCharSetOffset == 0)) {
-    BYTE *pnMemText = MemGetMainPtr(0x400 << displaypage2);
+    unsigned char *pnMemText = MemGetMainPtr(0x400 << displaypage2);
 
     // Scan 8 long-lines of 120 chars (at 128 char offsets):
     // . Skip 8-char holes in TEXT
-    for (UINT y = 0; y < 8; y++) {
-      for (UINT x = 0; x < 40 * 3; x++) {
-        BYTE ch = pnMemText[y * 128 + x];
+    for (unsigned int y = 0; y < 8; y++) {
+      for (unsigned int x = 0; x < 40 * 3; x++) {
+        unsigned char ch = pnMemText[y * 128 + x];
         if ((ch >= 0x40) && (ch <= 0x7F)) {
           bCharFlashing = true;
           break;
@@ -1370,14 +1370,14 @@ void VideoBenchmark() {
   // See how many text frames per second we can produce with nothing else
   // going on, changing half of the bytes in the video buffer each frame to
   // simulate the activity of an average game
-  DWORD totaltextfps = 0;
+  unsigned int totaltextfps = 0;
   g_uVideoMode = VF_TEXT;
   FillMemory(mem + 0x400, 0x400, 0x14);
   VideoRedrawScreen();
-  DWORD milliseconds = GetTickCount();
+  unsigned int milliseconds = GetTickCount();
   while (GetTickCount() == milliseconds);
   milliseconds = GetTickCount();
-  DWORD cycle = 0;
+  unsigned int cycle = 0;
   do {
     if (cycle & 1) {
       FillMemory(mem + 0x400, 0x400, 0x14);
@@ -1394,7 +1394,7 @@ void VideoBenchmark() {
   // See how many hires frames per second we can produce with nothing else
   // going on, changing half of the bytes in the video buffer each frame to
   // simulate the activity of an average game
-  DWORD totalhiresfps = 0;
+  unsigned int totalhiresfps = 0;
   g_uVideoMode = VF_HIRES;
   FillMemory(mem + 0x2000, 0x2000, 0x14);
   VideoRedrawScreen();
@@ -1417,7 +1417,7 @@ void VideoBenchmark() {
 
   // Determine how many 65c02 clock cycles we can emulate per second with nothing else going on
   CpuSetupBenchmark();
-  DWORD totalmhz10 = 0;
+  unsigned int totalmhz10 = 0;
   milliseconds = GetTickCount();
   while (GetTickCount() == milliseconds);
   milliseconds = GetTickCount();
@@ -1432,8 +1432,8 @@ void VideoBenchmark() {
   if ((regs.pc < 0x300) || (regs.pc > 0x400)) {
     printf("The emulator has detected a problem while running the CPU benchmark.\n");
 
-    BOOL error = 0;
-    WORD lastpc = 0x300;
+    bool error = 0;
+    unsigned short lastpc = 0x300;
     int loop = 0;
     while ((loop < 10000) && !error) {
       CpuSetupBenchmark();
@@ -1458,7 +1458,7 @@ void VideoBenchmark() {
 
   // Do a realistic test of how many frames per second we can produce with
   // full emulation of the cpu, joystick, and disk happening at the same time
-  DWORD realisticfps = 0;
+  unsigned int realisticfps = 0;
   FillMemory(mem + 0x2000, 0x2000, 0xAA);
   VideoRedrawScreen();
   milliseconds = GetTickCount();
@@ -1469,7 +1469,7 @@ void VideoBenchmark() {
     if (realisticfps < 10) {
       int cycles = 100000;
       while (cycles > 0) {
-        DWORD executedcycles = CpuExecute(103);
+        unsigned int executedcycles = CpuExecute(103);
         cycles -= executedcycles;
         DiskUpdatePosition(executedcycles);
         JoyUpdatePosition();
@@ -1494,12 +1494,12 @@ void VideoBenchmark() {
   SDL_Delay(1500);
 }
 
-BYTE VideoCheckMode(WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char VideoCheckMode(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
   address &= 0xFF;
   if (address == 0x7F) {
     return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
   } else {
-    BOOL result = 0;
+    bool result = 0;
     switch (address) {
       case 0x1A:
         result = SW_TEXT;
@@ -1524,7 +1524,7 @@ BYTE VideoCheckMode(WORD, WORD address, BYTE, BYTE, ULONG nCyclesLeft) {
   }
 }
 
-void VideoCheckPage(BOOL force) {
+void VideoCheckPage(bool force) {
   if ((displaypage2 != (SW_PAGE2 != 0)) && (force || (emulmsec - lastpageflip > 500))) {
     displaypage2 = (SW_PAGE2 != 0);
     VideoRefreshScreen();
@@ -1532,7 +1532,7 @@ void VideoCheckPage(BOOL force) {
   }
 }
 
-BYTE VideoCheckVbl(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
+unsigned char VideoCheckVbl(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
   /*
   // Drol expects = 80
   68DE A5 02    LDX #02
@@ -1568,7 +1568,7 @@ BYTE VideoCheckVbl(WORD, WORD, BYTE, BYTE, ULONG nCyclesLeft) {
   */
   bool bVblBar;
   VideoGetScannerAddress(&bVblBar, nCyclesLeft);
-  BYTE r = KeybGetKeycode();
+  unsigned char r = KeybGetKeycode();
   return (r & ~0x80) | ((bVblBar) ? 0x80 : 0);
 }
 
@@ -1646,8 +1646,8 @@ void VideoDisplayLogo() {
   SDL_Flip(screen);
 }
 
-BOOL VideoHasRefreshed() {
-  BOOL result = hasrefreshed;
+bool VideoHasRefreshed() {
+  bool result = hasrefreshed;
   hasrefreshed = 0;
   return result;
 }
@@ -1771,8 +1771,8 @@ void VideoPerformRefresh() {
   }
 
   LPBYTE addr = framebufferbits;
-  LONG   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
-  // I could take pitch such: LONG pitch = screen->pitch; . May be it would be better, what'd you think? --bb
+  int   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
+  // I could take pitch such: int pitch = screen->pitch; . May be it would be better, what'd you think? --bb
   CreateFrameOffsetTable(addr, pitch);
 
   int src_locked = 0;
@@ -1818,7 +1818,7 @@ void VideoPerformRefresh() {
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
-  BOOL anydirty = 0;
+  bool anydirty = 0;
   int y = 0;
   int ypixel = 0;
   while (y < 20) {
@@ -1926,13 +1926,13 @@ void VideoResetState() {
   redrawfull = 1;
 }
 
-BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
+unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char write, unsigned char, ULONG nCyclesLeft) {
 
   // Claim video mutex giving deference to any drawing operation
   // in progress in another thread
 
   address &= 0xFF;
-  DWORD oldpage2 = SW_PAGE2;
+  unsigned int oldpage2 = SW_PAGE2;
   int oldvalue = g_nAltCharSetOffset + (int) (g_uVideoMode & ~(VF_MASK2 | VF_PAGE2));
   switch (address) {
     case 0x00:
@@ -1997,15 +1997,15 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
     redrawfull = 1;
   }
   if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
-    static DWORD lasttime = 0;
-    DWORD currtime = GetTickCount();
+    static unsigned int lasttime = 0;
+    unsigned int currtime = GetTickCount();
     if (currtime - lasttime >= 20)
       lasttime = currtime;
     else
       oldpage2 = SW_PAGE2;
   }
   if (oldpage2 != SW_PAGE2) {
-    static DWORD lastrefresh = 0;
+    static unsigned int lastrefresh = 0;
     if ((displaypage2 && !SW_PAGE2)) {
       displaypage2 = (SW_PAGE2 != 0);
       if (!redrawfull) {
@@ -2023,13 +2023,13 @@ BYTE VideoSetMode(WORD, WORD address, BYTE write, BYTE, ULONG nCyclesLeft) {
   return MemReadFloatingBus(nCyclesLeft);
 }
 
-void VideoUpdateVbl(DWORD dwCyclesThisFrame) {
-  dwVBlCounter = (DWORD)((double) dwCyclesThisFrame / (double) uCyclesPerLine);
+void VideoUpdateVbl(unsigned int dwCyclesThisFrame) {
+  dwVBlCounter = (unsigned int)((double) dwCyclesThisFrame / (double) uCyclesPerLine);
 }
 
 // Called at 60Hz (every 16.666ms)
 void VideoUpdateFlash() {
-  static UINT nTextFlashCnt = 0;
+  static unsigned int nTextFlashCnt = 0;
   nTextFlashCnt++;
   if (nTextFlashCnt == 60 / 6) { // Flash rate = 6Hz (every 166ms)
     nTextFlashCnt = 0;
@@ -2041,8 +2041,6 @@ void VideoUpdateFlash() {
     }
   }
 }
-
-//===========================================================================
 
 bool VideoGetSW80COL(void)
 {
@@ -2085,13 +2083,13 @@ bool VideoGetSWAltCharSet(void)
 }
 
 //===========================================================================
-DWORD VideoGetSnapshot(SS_IO_Video *pSS) {
+unsigned int VideoGetSnapshot(SS_IO_Video *pSS) {
   pSS->bAltCharSet = g_nAltCharSetOffset != 0;
   pSS->dwVidMode = g_uVideoMode;
   return 0;
 }
 
-DWORD VideoSetSnapshot(SS_IO_Video *pSS) {
+unsigned int VideoSetSnapshot(SS_IO_Video *pSS) {
   g_nAltCharSetOffset = !pSS->bAltCharSet ? 0 : 256;
   g_uVideoMode = pSS->dwVidMode;
 
@@ -2101,7 +2099,7 @@ DWORD VideoSetSnapshot(SS_IO_Video *pSS) {
   return 0;
 }
 
-WORD VideoGetScannerAddress(bool *pbVblBar_OUT, const DWORD uExecutedCycles) {
+unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uExecutedCycles) {
   // get video scanner position
   int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
 
@@ -2183,11 +2181,11 @@ WORD VideoGetScannerAddress(bool *pbVblBar_OUT, const DWORD uExecutedCycles) {
       *pbVblBar_OUT = true; // N: VBL' is true
     }
   }
-  return static_cast<WORD>(nAddress);
+  return static_cast<unsigned short>(nAddress);
 }
 
 // Derived from VideoGetScannerAddress()
-bool VideoGetVbl(const DWORD uExecutedCycles) {
+bool VideoGetVbl(const unsigned int uExecutedCycles) {
   // get video scanner position
   int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
 

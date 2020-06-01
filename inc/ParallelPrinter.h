@@ -2,11 +2,11 @@
 
 void PrintDestroy();
 
-void PrintLoadRom(LPBYTE pCxRomPeripheral, UINT uSlot);
+void PrintLoadRom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
 void PrintReset();
 
-void PrintUpdate(DWORD);
+void PrintUpdate(unsigned int);
 
 void Printer_SetIdleLimit(unsigned int Duration);
 

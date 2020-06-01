@@ -2,15 +2,15 @@
 
 extern FILE *registry;  // our opened file
 
-BOOL RegLoadString(LPCTSTR, LPCTSTR, BOOL, char **, DWORD);
+bool RegLoadString(LPCTSTR, LPCTSTR, bool, char **, unsigned int);
 
-BOOL RegLoadValue(LPCTSTR, LPCTSTR, BOOL, DWORD *);
+bool RegLoadValue(LPCTSTR, LPCTSTR, bool, unsigned int *);
 
-BOOL RegLoadBool(LPCTSTR, LPCTSTR, BOOL, BOOL *);
+bool RegLoadBool(LPCTSTR, LPCTSTR, bool, bool *);
 
-void RegSaveString(LPCTSTR, LPCTSTR, BOOL, LPCTSTR);
-void RegSaveValue(LPCTSTR, LPCTSTR, BOOL, DWORD);
-void RegSaveBool(LPCTSTR, LPCTSTR, BOOL, BOOL);
+void RegSaveString(LPCTSTR, LPCTSTR, bool, LPCTSTR);
+void RegSaveValue(LPCTSTR, LPCTSTR, bool, unsigned int);
+void RegSaveBool(LPCTSTR, LPCTSTR, bool, bool);
 
 char *php_trim(char *c, int len);  // trimming string like PHP function trim does!
 

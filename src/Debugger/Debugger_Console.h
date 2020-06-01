@@ -8,7 +8,7 @@
 		// Basic Symbol table has > 600 symbols
 		// Lines, was 128, but need ~ 256+16 for PROFILE LIST
 		// Output
-		CONSOLE_HEIGHT = 768, 
+		CONSOLE_HEIGHT = 768,
 		CONSOLE_WIDTH  =  80,
 
 		// need min 256+ lines for "profile list"
@@ -66,7 +66,7 @@
 	#define CHC_COMMAND  "`2" // Green
 	#define CHC_KEY      "`1" // Red
 	#define CHC_ARG_MAND "`7" // < >
-	#define CHC_ARG_OPT  "`4" // [ ] 
+	#define CHC_ARG_OPT  "`4" // [ ]
 	#define CHC_ARG_SEP  "`9" //  |  grey
 	#define CHC_NUM_DEC  "`6" // cyan looks better then yellow (_SearchMemoryDisplay), S D000:FFFF A9 00, PROFILE, HELP BP
 	#define CHC_NUM_HEX  "`3"
@@ -75,7 +75,7 @@
 	#define CHC_ERROR    "`1" // Red
 	#define CHC_WARNING  "`5" // Purple
 	#define CHC_INFO     "`3" // Yellow
-	#define CHC_STRING   "`6" // 
+	#define CHC_STRING   "`6" //
 	#define CHC_EXAMPLE  "`:"
 	#define CHC_PATH     "`:" // Light Blue
 #else
@@ -124,7 +124,7 @@
 	// <-- WE USE THIS
 	// 2) ccea  Pro: Efficient packing of plain text and mouse text
 	//          Pro: Color is optional (only record new color)
-	//          Con: need to provide char8 and char16 API 
+	//          Con: need to provide char8 and char16 API
 	//          Con: little more difficult to parse/convert plain text
 	//          i.e.
 	//       ea = 0x20 - 0x7F ASCII
@@ -152,7 +152,7 @@
 		return ConsoleColor_IsCharColor (g >> 8);
 	}
 
-	inline COLORREF ConsoleColor_GetColor( conchar_t g )
+	inline unsigned int ConsoleColor_GetColor( conchar_t g )
 	{
 		const int iColor = (g >> 8) - '0';
 		if (iColor < NUM_CONSOLE_COLORS)
@@ -161,7 +161,7 @@
 		return g_anConsoleColor[ 0 ];
 	}
 
-	inline char ConsoleColor_GetMeta( conchar_t g ) 
+	inline char ConsoleColor_GetMeta( conchar_t g )
 	{
 		return ((g >> 8) & _CONSOLE_COLOR_MASK);
 	}
@@ -213,7 +213,7 @@
 
 	// Buffer
 		extern bool      g_bConsoleBufferPaused;
-		extern int       g_nConsoleBuffer; 
+		extern int       g_nConsoleBuffer;
 		extern conchar_t g_aConsoleBuffer[ CONSOLE_BUFFER_HEIGHT ][ CONSOLE_WIDTH ]; // TODO: std::vector< line_t >
 
 	// Cursor
@@ -324,7 +324,7 @@
 	const char *ConsoleInputPeek      ();
 	bool     ConsoleInputClear     ();
 	bool     ConsoleInputBackSpace ();
-	bool     ConsoleInputChar      ( TCHAR ch );
+	bool     ConsoleInputChar      ( char ch );
 	void     ConsoleInputReset     ();
 	int      ConsoleInputTabCompletion ();
 

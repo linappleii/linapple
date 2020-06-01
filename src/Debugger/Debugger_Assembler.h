@@ -102,7 +102,7 @@
 
 	enum AsmCustomDirective_e
 	{
-		 ASM_DEFINE_BYTE	
+		 ASM_DEFINE_BYTE
 		,ASM_DEFINE_WORD
 //		,ASM_DEFINE_ADDRESS_8
 		,ASM_DEFINE_ADDRESS_16
@@ -130,7 +130,7 @@
 		FIRST_T_DIRECTIVE = FIRST_S_DIRECTIVE + NUM_ASM_S_DIRECTIVES, // Ted
 		FIRST_W_DIRECTIVE = FIRST_T_DIRECTIVE + NUM_ASM_T_DIRECTIVES, // Weller
 		FIRST_Z_DIRECTIVE = FIRST_W_DIRECTIVE + NUM_ASM_W_DIRECTIVES, // Custom
-	NUM_ASM_DIRECTIVES    = FIRST_Z_DIRECTIVE + NUM_ASM_Z_DIRECTIVES  
+	NUM_ASM_DIRECTIVES    = FIRST_Z_DIRECTIVE + NUM_ASM_Z_DIRECTIVES
 
 //		NUM_ASM_DIRECTIVES =  1 +  // Opcode ... rest are psuedo opcodes
 //			NUM_ASM_A_DIRECTIVES + // Acme
@@ -192,20 +192,19 @@ extern	int g_aAssemblerFirstDirective[ NUM_ASSEMBLERS ];
 
 	int  _6502_GetOpmodeOpbyte( const int iAddress, int & iOpmode_, int & nOpbytes_, const DisasmData_t** pData = NULL );
 	void _6502_GetOpcodeOpmodeOpbyte( int & iOpcode_, int & iOpmode_, int & nOpbytes_ );
-	bool _6502_GetStackReturnAddress( WORD & nAddress_ );
-	bool _6502_GetTargets( WORD nAddress, int *pTargetPartial_, int *pTargetPartial2_, int *pTargetPointer_, int * pBytes_,
+	bool _6502_GetStackReturnAddress( unsigned short & nAddress_ );
+	bool _6502_GetTargets( unsigned short nAddress, int *pTargetPartial_, int *pTargetPartial2_, int *pTargetPointer_, int * pBytes_,
 						   bool bIgnoreBranch = true, bool bIncludeNextOpcodeAddress = true );
-	bool _6502_GetTargetAddress( const WORD & nAddress, WORD & nTarget_ );
+	bool _6502_GetTargetAddress( const unsigned short & nAddress, unsigned short & nTarget_ );
 	bool _6502_IsOpcodeBranch( int nOpcode );
 	bool _6502_IsOpcodeValid( int nOpcode );
 
-	unsigned int AssemblerHashMnemonic ( const TCHAR * pMnemonic );
-//	bool AssemblerGetAddressingMode ( int iArg, int nArgs, WORD nAddress, std::vector<int> & vOpcodes );
+	unsigned int AssemblerHashMnemonic ( const char * pMnemonic );
 	void _CmdAssembleHashDump ();
-	
+
 	int AssemblerDelayedTargetsSize();
 	void AssemblerStartup ();
-	bool Assemble( int iArg, int nArgs, WORD nAddress );
+	bool Assemble( int iArg, int nArgs, unsigned short nAddress );
 
 	void AssemblerOn  ();
 	void AssemblerOff ();

@@ -29,13 +29,13 @@ enum eFWMODE {
 
 typedef struct {
   //DIPSW1
-  UINT uBaudRate;
+  unsigned int uBaudRate;
   eFWMODE eFirmwareMode;
 
   //DIPSW2
-  UINT uStopBits;
-  UINT uByteSize;
-  UINT uParity;
+  unsigned int uStopBits;
+  unsigned int uByteSize;
+  unsigned int uParity;
   bool bLinefeed;
   bool bInterrupts;
 } SSC_DIPSW;
@@ -47,96 +47,96 @@ public:
   virtual ~CSuperSerialCard() {
   }
 
-  void CommInitialize(LPBYTE pCxRomPeripheral, UINT uSlot);
+  void CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
   void CommReset();
 
   void CommDestroy();
 
-  void CommSetSerialPort(/*HWND,*/DWORD);
+  void CommSetSerialPort(unsigned int);
 
-  void CommUpdate(DWORD);
+  void CommUpdate(unsigned int);
 
-  DWORD CommGetSnapshot(SS_IO_Comms *pSS);
+  unsigned int CommGetSnapshot(SS_IO_Comms *pSS);
 
-  DWORD CommSetSnapshot(SS_IO_Comms *pSS);
+  unsigned int CommSetSnapshot(SS_IO_Comms *pSS);
 
-  DWORD GetSerialPort() {
+  unsigned int GetSerialPort() {
     return m_dwSerialPort;
   }
 
-  void SetSerialPort(DWORD dwSerialPort) {
+  void SetSerialPort(unsigned int dwSerialPort) {
     m_dwSerialPort = dwSerialPort;
   }
 
-  static BYTE SSC_IORead(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft);
+  static unsigned char SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
 
-  static BYTE SSC_IOWrite(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft);
+  static unsigned char SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
 
 private:
-  BYTE CommCommand(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommCommand(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-  BYTE CommControl(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommControl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-  BYTE CommDipSw(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommDipSw(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-  BYTE CommReceive(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommReceive(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-  BYTE CommStatus(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommStatus(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-  BYTE CommTransmit(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+  unsigned char CommTransmit(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
   void GetDIPSW();
 
   void SetDIPSWDefaults();
 
-  BYTE GenerateControl();
+  unsigned char GenerateControl();
 
-  UINT BaudRateToIndex(UINT uBaudRate);
+  unsigned int BaudRateToIndex(unsigned int uBaudRate);
 
   void UpdateCommState();
 
-  BOOL CheckComm();
+  bool CheckComm();
 
   void CloseComm();
 
-  void CheckCommEvent(DWORD dwEvtMask);
+  void CheckCommEvent(unsigned int dwEvtMask);
 
-  static DWORD CommThread(LPVOID lpParameter);
+  static unsigned int CommThread(LPVOID lpParameter);
 
   bool CommThInit();
 
   void CommThUninit();
 
 private:
-  DWORD m_dwSerialPort;
+  unsigned int m_dwSerialPort;
 
   static SSC_DIPSW m_DIPSWDefault;
   SSC_DIPSW m_DIPSWCurrent;
 
   // Derived from DIPSW1
-  UINT m_uBaudRate;
+  unsigned int m_uBaudRate;
 
   // Derived from DIPSW2
-  UINT m_uStopBits;
-  UINT m_uByteSize;
-  UINT m_uParity;
+  unsigned int m_uStopBits;
+  unsigned int m_uByteSize;
+  unsigned int m_uParity;
 
   // SSC Registers
-  BYTE m_uControlByte;
-  BYTE m_uCommandByte;
+  unsigned char m_uControlByte;
+  unsigned char m_uCommandByte;
 
   int m_hCommHandle;  // file for communication with COM
-  DWORD m_dwCommInactivity;
+  unsigned int m_dwCommInactivity;
 
-  BYTE m_RecvBuffer[uRecvBufferSize];  // NB: More work required if >1 is used
-  volatile DWORD m_vRecvBytes;
+  unsigned char m_RecvBuffer[uRecvBufferSize];  // NB: More work required if >1 is used
+  volatile unsigned int m_vRecvBytes;
 
   bool m_bTxIrqEnabled;
   bool m_bRxIrqEnabled;
 
   bool m_bWrittenTx;
-  DWORD m_uLastBytesWritten;
+  unsigned int m_uLastBytesWritten;
 
   volatile bool m_vbCommIRQ;
   HANDLE m_hCommThread;
@@ -144,5 +144,5 @@ private:
   HANDLE m_hCommEvent[COMMEVT_MAX];
   OVERLAPPED m_o;
 
-  BYTE *m_pExpansionRom;
+  unsigned char *m_pExpansionRom;
 };

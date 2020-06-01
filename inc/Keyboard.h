@@ -30,18 +30,18 @@ bool KeybGetShiftStatus();
 
 void KeybUpdateCtrlShiftStatus();
 
-BYTE KeybGetKeycode();
+unsigned char KeybGetKeycode();
 
-DWORD KeybGetNumQueries();
+unsigned int KeybGetNumQueries();
 
-void KeybQueueKeypress(int, BOOL);
+void KeybQueueKeypress(int, bool);
 
 void KeybToggleCapsLock();
 
-DWORD KeybGetSnapshot(SS_IO_Keyboard *pSS);
+unsigned int KeybGetSnapshot(SS_IO_Keyboard *pSS);
 
-DWORD KeybSetSnapshot(SS_IO_Keyboard *pSS);
+unsigned int KeybSetSnapshot(SS_IO_Keyboard *pSS);
 
-BYTE KeybReadData(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char KeybReadData(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-BYTE KeybReadFlag(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char KeybReadFlag(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);

@@ -179,12 +179,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 		VideoScannerDisplayInfo g_videoScannerDisplayInfo;
 
-static char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iView,
+static char ColorizeSpecialChar( char * sText, unsigned char nData, const MemoryView_e iView,
 			const int iTxtBackground  = BG_INFO     , const int iTxtForeground  = FG_DISASM_CHAR,
 			const int iHighBackground = BG_INFO_CHAR, const int iHighForeground = FG_INFO_CHAR_HI,
 			const int iLowBackground  = BG_INFO_CHAR, const int iLowForeground  = FG_INFO_CHAR_LO );
 
-	char  FormatCharTxtAsci ( const BYTE b, bool * pWasAsci_ );
+	char  FormatCharTxtAsci ( const unsigned char b, bool * pWasAsci_ );
 
 	void DrawSubWindow_Code ( int iWindow );
 	void DrawSubWindow_IO       (Update_t bUpdate);
@@ -196,12 +196,12 @@ static char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iV
 	void DrawWindowBottom ( Update_t bUpdate, int iWindow );
 
 	char* FormatCharCopy( char *pDst, const char *pSrc, const int nLen );
-	char  FormatCharTxtAsci( const BYTE b, bool * pWasAsci_ = NULL );
-	char  FormatCharTxtCtrl( const BYTE b, bool * pWasCtrl_ = NULL );
-	char  FormatCharTxtHigh( const BYTE b, bool *pWasHi_ = NULL );
-	char  FormatChar4Font  ( const BYTE b, bool *pWasHi_, bool *pWasLo_ );
+	char  FormatCharTxtAsci( const unsigned char b, bool * pWasAsci_ = NULL );
+	char  FormatCharTxtCtrl( const unsigned char b, bool * pWasCtrl_ = NULL );
+	char  FormatCharTxtHigh( const unsigned char b, bool *pWasHi_ = NULL );
+	char  FormatChar4Font  ( const unsigned char b, bool *pWasHi_, bool *pWasLo_ );
 
-	void DrawRegister(int line, LPCTSTR name, int bytes, WORD value, int iSource = 0);
+	void DrawRegister(int line, LPCTSTR name, int bytes, unsigned short value, int iSource = 0);
 
 #define  SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
 { \
@@ -292,8 +292,7 @@ void StretchBltMemToFrameDC(void)
 }
 
 // Font: Apple Text
-//===========================================================================
-void DebuggerSetColorFG( COLORREF nRGB )
+void DebuggerSetColorFG( unsigned int nRGB )
 {
 #ifndef _WIN32
 	g_hConsoleBrushFG = nRGB;
@@ -304,8 +303,7 @@ void DebuggerSetColorFG( COLORREF nRGB )
 #endif
 }
 
-//===================================================
-void DebuggerSetColorBG( COLORREF nRGB, bool bTransparent )
+void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent )
 {
 #ifndef _WIN32
 	g_hConsoleBrushBG = nRGB;
@@ -543,7 +541,7 @@ char* FormatCharCopy( char *pDst, const char *pSrc, const int nLen )
 }
 
 //===========================================================================
-char  FormatCharTxtAsci ( const BYTE b, bool * pWasAsci_ )
+char  FormatCharTxtAsci ( const unsigned char b, bool * pWasAsci_ )
 {
 	if (pWasAsci_)
 		*pWasAsci_ = false;
@@ -561,7 +559,7 @@ char  FormatCharTxtAsci ( const BYTE b, bool * pWasAsci_ )
 
 // Note: FormatCharTxtCtrl() and RemapChar()
 //===========================================================================
-char  FormatCharTxtCtrl ( const BYTE b, bool * pWasCtrl_ )
+char  FormatCharTxtCtrl ( const unsigned char b, bool * pWasCtrl_ )
 {
 	if (pWasCtrl_)
 		*pWasCtrl_ = false;
@@ -579,7 +577,7 @@ char  FormatCharTxtCtrl ( const BYTE b, bool * pWasCtrl_ )
 }
 
 //===========================================================================
-char  FormatCharTxtHigh ( const BYTE b, bool *pWasHi_ )
+char  FormatCharTxtHigh ( const unsigned char b, bool *pWasHi_ )
 {
 	if (pWasHi_)
 		*pWasHi_ = false;
@@ -598,11 +596,11 @@ char  FormatCharTxtHigh ( const BYTE b, bool *pWasHi_ )
 
 
 //===========================================================================
-char FormatChar4Font ( const BYTE b, bool *pWasHi_, bool *pWasLo_ )
+char FormatChar4Font ( const unsigned char b, bool *pWasHi_, bool *pWasLo_ )
 {
 	// Most Windows Fonts don't have (printable) glyphs for control chars
-	BYTE b1 = FormatCharTxtHigh( b , pWasHi_ );
-	BYTE b2 = FormatCharTxtCtrl( b1, pWasLo_ );
+	unsigned char b1 = FormatCharTxtHigh( b , pWasHi_ );
+	unsigned char b2 = FormatCharTxtCtrl( b1, pWasLo_ );
 	return b2;
 }
 
@@ -641,7 +639,7 @@ void SetupColorsHiLoBits ( bool bHighBit, bool bCtrlBit,
 
 // To flush out color bugs... swap: iAsciBackground & iHighBackground
 //===========================================================================
-char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iView,
+char ColorizeSpecialChar( char * sText, unsigned char nData, const MemoryView_e iView,
 		const int iAsciBackground /*= 0           */, const int iTextForeground /*= FG_DISASM_CHAR */,
 		const int iHighBackground /*= BG_INFO_CHAR*/, const int iHighForeground /*= FG_INFO_CHAR_HI*/,
 		const int iCtrlBackground /*= BG_INFO_CHAR*/, const int iCtrlForeground /*= FG_INFO_CHAR_LO*/ )
@@ -656,7 +654,7 @@ char ColorizeSpecialChar( char * sText, BYTE nData, const MemoryView_e iView,
 	int iHighFG = iHighForeground;
 	int iCtrlFG = iCtrlForeground;
 
-	BYTE nByte = FormatCharTxtHigh( nData, & bHighBit );
+	unsigned char nByte = FormatCharTxtHigh( nData, & bHighBit );
 	char nChar = FormatCharTxtCtrl( nByte, & bCtrlBit );
 
 	switch (iView)
@@ -755,7 +753,7 @@ void DrawBreakpoints ( int line )
 	for (iBreakpoint = 0; iBreakpoint < MAX_BREAKPOINTS; iBreakpoint++ )
 	{
 		Breakpoint_t *pBP = &g_aBreakpoints[iBreakpoint];
-		UINT nLength = pBP->nLength;
+		unsigned int nLength = pBP->nLength;
 
 #if DEBUG_FORCE_DISPLAY
 		nLength = 2;
@@ -764,8 +762,8 @@ void DrawBreakpoints ( int line )
 		{
 			bool bSet      = pBP->bSet;
 			bool bEnabled  = pBP->bEnabled;
-			WORD nAddress1 = pBP->nAddress;
-			WORD nAddress2 = nAddress1 + nLength - 1;
+			unsigned short nAddress1 = pBP->nAddress;
+			unsigned short nAddress2 = nAddress1 + nLength - 1;
 
 #if DEBUG_FORCE_DISPLAY
 //			if (iBreakpoint < MAX_DISPLAY_BREAKPOINTS_LINES)
@@ -844,7 +842,7 @@ void DrawBreakpoints ( int line )
 
 
 	int iColor = R8 + iBreakpoint;
-	COLORREF nColor = g_aColorPalette[ iColor ];
+	unsigned int nColor = g_aColorPalette[ iColor ];
 	if (iBreakpoint >= 8)
 	{
 		DebuggerSetColorBG( DebuggerGetColor( BG_DISASM_BP_S_C ) );
@@ -885,7 +883,7 @@ void DrawBreakpoints ( int line )
 				DebuggerSetColorBG( DebuggerGetColor( iBackground ) );
 				DebuggerSetColorFG( DebuggerGetColor( iForeground ) );
 #if DEBUG_FORCE_DISPLAY
-	COLORREF nColor = g_aColorPalette[ iColor ];
+	unsigned int nColor = g_aColorPalette[ iColor ];
 	if (iBreakpoint >= 8)
 	{
 		nColor = DebuggerGetColor( BG_INFO );
@@ -1018,7 +1016,7 @@ void DrawConsoleInput ()
 
 // Disassembly ____________________________________________________________________________________
 
-void GetTargets_IgnoreDirectJSRJMP(const BYTE iOpcode, int& nTargetPointer)
+void GetTargets_IgnoreDirectJSRJMP(const unsigned char iOpcode, int& nTargetPointer)
 {
 	if (iOpcode == OPCODE_JSR || iOpcode == OPCODE_JMP_A)
 		nTargetPointer = NO_6502_TARGET;
@@ -1028,7 +1026,7 @@ void GetTargets_IgnoreDirectJSRJMP(const BYTE iOpcode, int& nTargetPointer)
 // Disassembly formatting flags returned
 //	@parama sTargetValue_ indirect/indexed final value
 //===========================================================================
-int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
+int GetDisassemblyLine ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 //	char *sAddress_, char *sOpCodes_,
 //	char *sTarget_, char *sTargetOffset_, int & nTargetOffset_,
 //	char *sTargetPointer_, char *sTargetValue_,
@@ -1075,7 +1073,7 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 	int bDisasmFormatFlags = 0;
 
 	// Composite string that has the symbol or target nAddress
-	WORD nTarget = 0;
+	unsigned short nTarget = 0;
 
 	if ((iOpmode != AM_IMPLIED) &&
 		(iOpmode != AM_1) &&
@@ -1206,7 +1204,7 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 			int nTargetPartial;
 			int nTargetPartial2;
 			int nTargetPointer;
-			WORD nTargetValue = 0; // de-ref
+			unsigned short nTargetValue = 0; // de-ref
 			_6502_GetTargets( nBaseAddress, &nTargetPartial, &nTargetPartial2, &nTargetPointer, NULL );
 			GetTargets_IgnoreDirectJSRJMP(iOpcode, nTargetPointer);	// For *direct* JSR/JMP, don't show 'addr16:byte char'
 
@@ -1229,7 +1227,7 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 						sprintf( line_.sTargetValue, "%02X", nTargetValue & 0xFF );
 
 					bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
-					line_.nImmediate = (BYTE) nTargetValue;
+					line_.nImmediate = (unsigned char) nTargetValue;
 
 					unsigned _char = FormatCharTxtCtrl( FormatCharTxtHigh( line_.nImmediate, NULL ), NULL );
 					sprintf( line_.sImmediate, "%c", _char );
@@ -1259,7 +1257,7 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 			if (iOpmode == AM_M)
 			{
 				bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
-				line_.nImmediate = (BYTE) nTarget;
+				line_.nImmediate = (unsigned char) nTarget;
 				unsigned _char = FormatCharTxtCtrl( FormatCharTxtHigh( line_.nImmediate, NULL ), NULL );
 
 				sprintf( line_.sImmediate, "%c", _char );
@@ -1301,11 +1299,10 @@ int GetDisassemblyLine ( WORD nBaseAddress, DisasmLine_t & line_ )
 }
 
 
-//===========================================================================
-const char* FormatAddress( WORD nAddress, int nBytes )
+const char* FormatAddress( unsigned short nAddress, int nBytes )
 {
 	// There is no symbol for this nAddress
-	static TCHAR sSymbol[8] = TEXT("");
+	static char sSymbol[8] = TEXT("");
 	switch (nBytes)
 	{
 		case  2:	snprintf(sSymbol, 8, TEXT("$%02X"),(unsigned)nAddress);  break;
@@ -1316,9 +1313,7 @@ const char* FormatAddress( WORD nAddress, int nBytes )
 	return sSymbol;
 }
 
-
-//===========================================================================
-void FormatOpcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
+void FormatOpcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 {
 	int nOpbyte = line_.nOpbyte;
 
@@ -1329,7 +1324,7 @@ void FormatOpcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
 
 	for( int iByte = 0; iByte < nMaxOpBytes; iByte++ )
 	{
-		BYTE nMem = (unsigned)*(mem+nBaseAddress + iByte);
+		unsigned char nMem = (unsigned)*(mem+nBaseAddress + iByte);
 		sprintf( pDst, "%02X", nMem ); // sBytes+strlen(sBytes)
 		pDst += 2;
 
@@ -1344,19 +1339,19 @@ void FormatOpcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
 
 // Formats Target string with bytes,words, string, etc...
 //===========================================================================
-void FormatNopcodeBytes ( WORD nBaseAddress, DisasmLine_t & line_ )
+void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 {
 		char *pDst = line_.sTarget;
 		const	char *pSrc = 0;
-		DWORD nStartAddress = line_.pDisasmData->nStartAddress;
-		DWORD nEndAddress   = line_.pDisasmData->nEndAddress  ;
+		unsigned int nStartAddress = line_.pDisasmData->nStartAddress;
+		unsigned int nEndAddress   = line_.pDisasmData->nEndAddress  ;
 		int   nDisplayLen   = nEndAddress - nBaseAddress  + 1 ; // *inclusive* KEEP IN SYNC: _CmdDefineByteRange() CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
 		int   len           = nDisplayLen;
 
 	for( int iByte = 0; iByte < line_.nOpbyte; )
 	{
-		BYTE nTarget8  = *(LPBYTE)(mem + nBaseAddress + iByte);
-		WORD nTarget16 = *(LPWORD)(mem + nBaseAddress + iByte);
+		unsigned char nTarget8  = *(LPBYTE)(mem + nBaseAddress + iByte);
+		unsigned short nTarget16 = *(LPWORD)(mem + nBaseAddress + iByte);
 
 		switch( line_.iNoptype )
 		{
@@ -1498,7 +1493,7 @@ void FormatDisassemblyLine( const DisasmLine_t & line, char * sDisassembly, cons
 }
 
 //===========================================================================
-WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
+unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddress )
 {
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return 0;
@@ -2004,7 +1999,7 @@ WORD DrawDisassemblyLine ( int iLine, const WORD nBaseAddress )
 
 // Optionally copy the flags to pText_
 //===========================================================================
-void DrawFlags ( int line, WORD nRegFlags, LPTSTR pFlagNames_)
+void DrawFlags ( int line, unsigned short nRegFlags, LPTSTR pFlagNames_)
 {
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return;
@@ -2183,7 +2178,7 @@ void DrawMemory ( int line, int iMemDump )
 	rect.top    = rect2.top;
 	rect.bottom = rect2.bottom;
 
-	WORD iAddress = nAddr;
+	unsigned short iAddress = nAddr;
 
 	int nLines = g_nDisplayMemoryLines;
 	int nCols = 4;
@@ -2230,7 +2225,7 @@ void DrawMemory ( int line, int iMemDump )
 //			else
 			if (eDevice == DEV_SY6522)
 			{
-				sprintf( sText, "%02X", (unsigned) ((BYTE*)&SS_MB.Unit[nAddr & 1].RegsSY6522)[iAddress] );
+				sprintf( sText, "%02X", (unsigned) ((unsigned char*)&SS_MB.Unit[nAddr & 1].RegsSY6522)[iAddress] );
 				if (iCol & 1)
 					DebuggerSetColorFG( DebuggerGetColor( iForeground ));
 				else
@@ -2247,7 +2242,7 @@ void DrawMemory ( int line, int iMemDump )
 			}
 			else
 			{
-				BYTE nData = (unsigned)*(LPBYTE)(mem+iAddress);
+				unsigned char nData = (unsigned)*(LPBYTE)(mem+iAddress);
 				sText[0] = 0;
 
 				if (iView == MEM_VIEW_HEX)
@@ -2283,7 +2278,7 @@ void DrawMemory ( int line, int iMemDump )
 }
 
 //===========================================================================
-void DrawRegister ( int line, LPCTSTR name, const int nBytes, const WORD nValue, int iSource )
+void DrawRegister ( int line, LPCTSTR name, const int nBytes, const unsigned short nValue, int iSource )
 {
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return;
@@ -2323,7 +2318,7 @@ void DrawRegister ( int line, LPCTSTR name, const int nBytes, const WORD nValue,
 
 	if (PARAM_REG_SP == iSource)
 	{
-		WORD nStackDepth = _6502_STACK_END - nValue;
+		unsigned short nStackDepth = _6502_STACK_END - nValue;
 		sprintf( sValue, "%02X", nStackDepth );
 		int nFontWidth = g_aFontConfig[ FONT_INFO ]._nFontWidthAvg;
 		rect.left += (2 * nFontWidth) + (nFontWidth >> 1); // 2.5 looks a tad nicer then 2
@@ -2980,7 +2975,7 @@ void DrawWatches (int line)
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( ":", rect2 );
 
-			BYTE nTarget8 = 0;
+			unsigned char nTarget8 = 0;
 
 			nTarget8 = (unsigned)*(LPBYTE)(mem+g_aWatches[iWatch].nAddress);
 			sprintf(sText,"%02X", nTarget8 );
@@ -2996,7 +2991,7 @@ void DrawWatches (int line)
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( sText, rect2 );
 
-			WORD nTarget16 = (unsigned)*(LPWORD)(mem+g_aWatches[iWatch].nAddress);
+			unsigned short nTarget16 = (unsigned)*(LPWORD)(mem+g_aWatches[iWatch].nAddress);
 			sprintf( sText,"%04X", nTarget16 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_ADDRESS ));
 			PrintTextCursorX( sText, rect2 );
@@ -3005,7 +3000,7 @@ void DrawWatches (int line)
 //			PrintTextCursorX( ":", rect2 );
 			PrintTextCursorX( ")", rect2 );
 
-//			BYTE nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
+//			unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
 //			sprintf(sText,"%02X", nValue8 );
 //			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 //			PrintTextCursorX( sText, rect2 );
@@ -3029,7 +3024,7 @@ void DrawWatches (int line)
 				else
 					DebuggerSetColorBG( DebuggerGetColor( BG_DATA_2 ));
 
-				BYTE nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16 + iByte );
+				unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16 + iByte );
 				sprintf(sText,"%02X", nValue8 );
 				PrintTextCursorX( sText, rect2 );
 			}
@@ -3081,8 +3076,8 @@ void DrawZeroPagePointers ( int line )
 //			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 //			PrintTextCursorX( " ", rect2 );
 
-			BYTE nZPAddr1 = (g_aZeroPagePointers[iZP].nAddress  ) & 0xFF; // +MJP missig: "& 0xFF", or "(BYTE) ..."
-			BYTE nZPAddr2 = (g_aZeroPagePointers[iZP].nAddress+1) & 0xFF;
+			unsigned char nZPAddr1 = (g_aZeroPagePointers[iZP].nAddress  ) & 0xFF; // +MJP missig: "& 0xFF", or "(unsigned char) ..."
+			unsigned char nZPAddr2 = (g_aZeroPagePointers[iZP].nAddress+1) & 0xFF;
 
 			// Get nZPAddr1 last (for when neither symbol is not found - GetSymbol() return ptr to static buffer)
 			const char* pSymbol2 = GetSymbol(nZPAddr2, 2);		// 2:8-bit value (if symbol not found)
@@ -3137,7 +3132,7 @@ void DrawZeroPagePointers ( int line )
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( ":", rect2 );
 
-			WORD nTarget16 = (WORD)mem[ nZPAddr1 ] | ((WORD)mem[ nZPAddr2 ]<< 8);
+			unsigned short nTarget16 = (unsigned short)mem[ nZPAddr1 ] | ((unsigned short)mem[ nZPAddr2 ]<< 8);
 			sprintf( sText, "%04X", nTarget16 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_ADDRESS ));
 			PrintTextCursorX( sText, rect2 );
@@ -3145,7 +3140,7 @@ void DrawZeroPagePointers ( int line )
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( ":", rect2 );
 
-			BYTE nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
+			unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
 			sprintf(sText, "%02X", nValue8 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 			PrintTextCursorX( sText, rect2 );
@@ -3233,7 +3228,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 	rect.top = 0 + 0;
 
 	int  iByte;
-	WORD iAddress = nAddress;
+	unsigned short iAddress = nAddress;
 
 	int iLine;
 	int nLines = g_nDisasmWinHeight;
@@ -3248,7 +3243,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		sOpcodes[0] = 0;
 		for ( iByte = 0; iByte < nMaxOpcodes; iByte++ )
 		{
-			BYTE nData = (unsigned)*(LPBYTE)(mem + iAddress + iByte);
+			unsigned char nData = (unsigned)*(LPBYTE)(mem + iAddress + iByte);
 			sprintf( &sOpcodes[ iByte * 3 ], "%02X ", nData );
 		}
 		sOpcodes[ nMaxOpcodes * 3 ] = 0;
@@ -3299,7 +3294,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		iAddress = nAddress;
 		for (iByte = 0; iByte < nMaxOpcodes; iByte++ )
 		{
-			BYTE nImmediate = (unsigned)*(LPBYTE)(mem + iAddress);
+			unsigned char nImmediate = (unsigned)*(LPBYTE)(mem + iAddress);
 
 			ColorizeSpecialChar( sImmediate, (BYTE) nImmediate, eView, iBackground );
 			PrintTextCursorX( (LPCSTR) sImmediate, rect );
@@ -3386,7 +3381,7 @@ void DrawVideoScannerInfo (int line)
 
 	if (g_nCumulativeCycles != g_videoScannerDisplayInfo.lastCumulativeCycles)
 	{
-		g_videoScannerDisplayInfo.cycleDelta = (UINT) (g_nCumulativeCycles - g_videoScannerDisplayInfo.lastCumulativeCycles);
+		g_videoScannerDisplayInfo.cycleDelta = (unsigned int) (g_nCumulativeCycles - g_videoScannerDisplayInfo.lastCumulativeCycles);
 		g_videoScannerDisplayInfo.lastCumulativeCycles = g_nCumulativeCycles;
 	}
 
@@ -3413,7 +3408,7 @@ void DrawVideoScannerInfo (int line)
 	rect.left += nameWidth * nFontWidth;
 
 	char sValue[10];
-	const UINT cycles = g_videoScannerDisplayInfo.isAbsCycle ? (UINT)g_nCumulativeCycles : g_videoScannerDisplayInfo.cycleDelta;
+	const unsigned int cycles = g_videoScannerDisplayInfo.isAbsCycle ? (unsigned int)g_nCumulativeCycles : g_videoScannerDisplayInfo.cycleDelta;
 	snprintf(sValue, sizeof(sValue), "%08X", cycles);
 	PrintText(sValue, rect);
 #endif
@@ -3453,17 +3448,17 @@ void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
 		DrawSoftSwitches( ySoft );
 
 	#if defined(SUPPORT_Z80_EMU) && defined(OUTPUT_Z80_REGS)
-		DrawRegister( 19,"AF",2,*(WORD*)(membank+REG_AF));
-		DrawRegister( 20,"BC",2,*(WORD*)(membank+REG_BC));
-		DrawRegister( 21,"DE",2,*(WORD*)(membank+REG_DE));
-		DrawRegister( 22,"HL",2,*(WORD*)(membank+REG_HL));
-		DrawRegister( 23,"IX",2,*(WORD*)(membank+REG_IX));
+		DrawRegister( 19,"AF",2,*(unsigned short*)(membank+REG_AF));
+		DrawRegister( 20,"BC",2,*(unsigned short*)(membank+REG_BC));
+		DrawRegister( 21,"DE",2,*(unsigned short*)(membank+REG_DE));
+		DrawRegister( 22,"HL",2,*(unsigned short*)(membank+REG_HL));
+		DrawRegister( 23,"IX",2,*(unsigned short*)(membank+REG_IX));
 	#endif
 
 	// Right Side
 		int yBreakpoints = 0;
 		int yWatches     = yBreakpoints + MAX_BREAKPOINTS; // MAX_DISPLAY_BREAKPOINTS_LINES; // 7
-		const UINT numVideoScannerInfoLines = 4;		// There used to be 2 extra watches (and each watch is 2 lines)
+		const unsigned int numVideoScannerInfoLines = 4;		// There used to be 2 extra watches (and each watch is 2 lines)
 		int yMemory      = yWatches + numVideoScannerInfoLines + (MAX_WATCHES*2); // MAX_DISPLAY_WATCHES_LINES    ; // 14 // 2.7.0.15 Fixed: Memory Dump was over-writing watches
 
 	//	if ((MAX_DISPLAY_BREAKPOINTS_LINES + MAX_DISPLAY_WATCHES_LINES) < 12)
@@ -3809,9 +3804,8 @@ void DrawSubWindow_Code ( int iWindow )
 	SelectObject( GetDebuggerMemDC(), g_aFontConfig[ FONT_DISASM_DEFAULT ]._hFont );
 #endif
 
-	WORD nAddress = g_nDisasmTopAddress; // g_nDisasmCurAddress;
-	for (int iLine = 0; iLine < nLines; iLine++ )
-	{
+	unsigned short nAddress = g_nDisasmTopAddress;
+	for (int iLine = 0; iLine < nLines; iLine++ ) {
 		nAddress += DrawDisassemblyLine( iLine, nAddress );
 	}
 

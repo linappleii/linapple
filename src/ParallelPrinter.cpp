@@ -48,23 +48,23 @@ char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\
                       "\x05\x48\x29\x80\x09\x20\x2C\x58\xFF\xF0\x03\xFE\x38\x07\x70\x84";
 
 
-static DWORD inactivity = 0;
+static unsigned int inactivity = 0;
 static unsigned int g_PrinterIdleLimit = 10;
 static FILE *file = NULL;
-DWORD const PRINTDRVR_SIZE = 0x100;
+unsigned int const PRINTDRVR_SIZE = 0x100;
 bool g_bPrinterAppend = true;
 
-static BYTE PrintStatus(WORD, WORD, BYTE, BYTE, ULONG);
+static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG);
 
-static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG);
+static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG);
 
-void PrintLoadRom(LPBYTE pCxRomPeripheral, const UINT uSlot) {
-  BYTE *pData = (BYTE *) Parallel_bin;  // NB. Don't need to unlock resource
+void PrintLoadRom(LPBYTE pCxRomPeripheral, const unsigned int uSlot) {
+  unsigned char *pData = (unsigned char *) Parallel_bin;  // NB. Don't need to unlock resource
   memcpy(pCxRomPeripheral + uSlot * 256, pData, PRINTDRVR_SIZE);
   RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
 }
 
-static BOOL CheckPrint()
+static bool CheckPrint()
 {
   inactivity = 0;
   if (file == NULL) {
@@ -85,7 +85,7 @@ void PrintDestroy() {
   ClosePrint();
 }
 
-void PrintUpdate(DWORD totalcycles) {
+void PrintUpdate(unsigned int totalcycles) {
   if (file == NULL) {
     return;
   }
@@ -100,12 +100,12 @@ void PrintReset() {
   ClosePrint();
 }
 
-static BYTE PrintStatus(WORD, WORD, BYTE, BYTE, ULONG) {
+static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
   CheckPrint();
   return 0xFF; // status - TODO?
 }
 
-static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG) {
+static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG) {
   if (!CheckPrint()) {
     return 0;
   }
@@ -113,8 +113,6 @@ static BYTE PrintTransmit(WORD, WORD, BYTE, BYTE value, ULONG) {
   fwrite(&c, 1, 1, file);
   return 0;
 }
-
-//===========================================================================
 
 unsigned int Printer_GetIdleLimit()
 {
@@ -125,5 +123,3 @@ void Printer_SetIdleLimit(unsigned int Duration)
 {
   g_PrinterIdleLimit = Duration;
 }
-
-//===========================================================================
