@@ -4,27 +4,27 @@
 #define  SOUND_NONE    0
 #define  SOUND_WAVE    1
 
-extern DWORD soundtype;
+extern unsigned int soundtype;
 extern double g_fClksPerSpkrSample;
 
 // needed for DSPlaySnd callback function
 extern short *pDSSpkrBuf;  // speaker data buffer (in size of g_dwDSSpkrBufferSize samples?
-extern DWORD g_dwDSSpkrBufferSize;  // size of Speakers audio buffer
-extern UINT nDSSpkrWCur;  // write cursor
-extern UINT nDSSpkrRCur;  // read cursor
+extern unsigned int g_dwDSSpkrBufferSize;  // size of Speakers audio buffer
+extern unsigned int nDSSpkrWCur;  // write cursor
+extern unsigned int nDSSpkrRCur;  // read cursor
 
 void SpkrDestroy();
 void SpkrInitialize();
 void SpkrReinitialize();
 void SpkrReset();
-void SpkrUpdate(DWORD);
-DWORD SpkrGetVolume();
-void SpkrSetVolume(DWORD dwVolume, DWORD dwVolumeMax);
+void SpkrUpdate(unsigned int);
+unsigned int SpkrGetVolume();
+void SpkrSetVolume(unsigned int dwVolume, unsigned int dwVolumeMax);
 void Spkr_Mute();
 void Spkr_Demute();
 bool Spkr_IsActive();
 bool Spkr_DSInit();
 void Spkr_DSUninit();
-DWORD SpkrGetSnapshot(SS_IO_Speaker *pSS);
-DWORD SpkrSetSnapshot(SS_IO_Speaker *pSS);
-BYTE SpkrToggle(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned int SpkrGetSnapshot(SS_IO_Speaker *pSS);
+unsigned int SpkrSetSnapshot(SS_IO_Speaker *pSS);
+unsigned char SpkrToggle(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);

@@ -180,7 +180,7 @@ CMouseInterface::CMouseInterface() : m_pSlotRom(NULL) {
   m_by6821A = 0;
   m_by6821B = 0x40;    // Set PB6
   m_6821.SetPB(m_by6821B);
-  m_bVBL = FALSE;
+  m_bVBL = false;
 
   m_iX = 0;
   m_iMinX = 0;
@@ -192,7 +192,7 @@ CMouseInterface::CMouseInterface() : m_pSlotRom(NULL) {
   m_iMaxY = 1023;
   m_iRangeY = 0;
 
-  m_bButtons[0] = m_bButtons[1] = FALSE;
+  m_bButtons[0] = m_bButtons[1] = false;
 
   Reset();
   memset(m_byBuff, 0, sizeof(m_byBuff));
@@ -203,14 +203,14 @@ CMouseInterface::~CMouseInterface() {
   delete[] m_pSlotRom;
 }
 
-void CMouseInterface::Initialize(LPBYTE pCxRomPeripheral, UINT uSlot) {
-  const UINT FW_SIZE = 2 * 1024;
-  BYTE *pData = (BYTE *) MouseInterface_rom;  // NB. Don't need to unlock resource
+void CMouseInterface::Initialize(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
+  const unsigned int FW_SIZE = 2 * 1024;
+  unsigned char *pData = (unsigned char *) MouseInterface_rom;  // NB. Don't need to unlock resource
 
   m_uSlot = uSlot;
 
   if (m_pSlotRom == NULL) {
-    m_pSlotRom = new BYTE[FW_SIZE];
+    m_pSlotRom = new unsigned char[FW_SIZE];
     if (m_pSlotRom) {
       memcpy(m_pSlotRom, pData, FW_SIZE);
     }
@@ -228,39 +228,39 @@ void CMouseInterface::SetSlotRom() {
     return;
   }
 
-  UINT uOffset = (m_by6821B << 7) & 0x0700;
+  unsigned int uOffset = (m_by6821B << 7) & 0x0700;
   memcpy(pCxRomPeripheral + m_uSlot * 256, m_pSlotRom + uOffset, 256);
   if (mem) {
     memcpy(mem + 0xC000 + m_uSlot * 256, m_pSlotRom + uOffset, 256);
   }
 }
 
-BYTE CMouseInterface::IORead(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft) {
-  UINT uSlot = ((uAddr & 0xff) >> 4) - 8;
+unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
 
-  BYTE byRS;
+  unsigned char byRS;
   byRS = uAddr & 3;
   return pMouseIF->m_6821.Read(byRS);
 }
 
-BYTE CMouseInterface::IOWrite(WORD PC, WORD uAddr, BYTE bWrite, BYTE uValue, ULONG nCyclesLeft) {
-  UINT uSlot = ((uAddr & 0xff) >> 4) - 8;
+unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
 
-  BYTE byRS;
+  unsigned char byRS;
   byRS = uAddr & 3;
   pMouseIF->m_6821.Write(byRS, uValue);
 
   return 0;
 }
 
-void CMouseInterface::On6821_A(BYTE byData) {
+void CMouseInterface::On6821_A(unsigned char byData) {
   m_by6821A = byData;
 }
 
-void CMouseInterface::On6821_B(BYTE byData) {
-  BYTE byDiff = (m_by6821B ^ byData) & 0x3E;
+void CMouseInterface::On6821_B(unsigned char byData) {
+  unsigned char byDiff = (m_by6821B ^ byData) & 0x3E;
 
   if (byDiff) {
     m_by6821B &= ~0x3E;
@@ -422,9 +422,9 @@ void CMouseInterface::OnMouseEvent() {
     return;
   }
 
-  BOOL bBtn0 = m_bButtons[0];
-  BOOL bBtn1 = m_bButtons[1];
-  if ((UINT) m_nX != m_iX || (UINT) m_nY != m_iY) {
+  bool bBtn0 = m_bButtons[0];
+  bool bBtn1 = m_bButtons[1];
+  if ((unsigned int) m_nX != m_iX || (unsigned int) m_nY != m_iY) {
     byState |= 0x22;        // X/Y moved since last READMOUSE | Movement interrupt
   }
   if (m_bBtn0 != bBtn0 || m_bBtn1 != bBtn1) {
@@ -498,19 +498,19 @@ void CMouseInterface::SetPosition(int xvalue, int yvalue) {
     return;
   }
 
-  m_iX = (UINT)((xvalue * m_iMaxX) / m_iRangeX);
-  m_iY = (UINT)((yvalue * m_iMaxY) / m_iRangeY);
+  m_iX = (unsigned int)((xvalue * m_iMaxX) / m_iRangeX);
+  m_iY = (unsigned int)((yvalue * m_iMaxY) / m_iRangeY);
 }
 
 void CMouseInterface::SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
-  m_iRangeX = (UINT) xrange;
-  m_iRangeY = (UINT) yrange;
+  m_iRangeX = (unsigned int) xrange;
+  m_iRangeY = (unsigned int) yrange;
 
   SetPosition(xvalue, yvalue);
   OnMouseEvent();
 }
 
 void CMouseInterface::SetButton(eBUTTON Button, eBUTTONSTATE State) {
-  m_bButtons[Button] = (State == BUTTON_DOWN) ? TRUE : FALSE;
+  m_bButtons[Button] = (State == BUTTON_DOWN) ? true : false;
   OnMouseEvent();
 }

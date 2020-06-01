@@ -57,7 +57,7 @@ enum AppleFont_e {
 #define  CYAN             0xFE
 #define  WHITE            0xFF
 
-#define RGB(r, g, b)          ((COLORREF)(((BYTE)(r)|((WORD)((BYTE)(g))<<8))|(((DWORD)(BYTE)(b))<<16)))
+#define RGB(r, g, b)          ((unsigned int)(((unsigned char)(r)|((unsigned short)((unsigned char)(g))<<8))|(((unsigned int)(unsigned char)(b))<<16)))
 
 enum Color_Palette_Index_e {
   // Really need to have Quarter Green and Quarter Blue for Hi-Res
@@ -118,15 +118,15 @@ enum Color_Palette_Index_e {
 };
 
 // Globals
-extern INT32 g_iStatusCycle; // cycler for status panel showing
+extern int g_iStatusCycle; // cycler for status panel showing
 
-extern BOOL g_ShowLeds; // if we should show drive leds
+extern bool g_ShowLeds; // if we should show drive leds
 
-extern BOOL graphicsmode;
-extern COLORREF monochrome;
-extern DWORD g_videotype;
-extern DWORD g_uVideoMode;
-extern DWORD g_singlethreaded;
+extern bool graphicsmode;
+extern unsigned int monochrome;
+extern unsigned int g_videotype;
+extern unsigned int g_uVideoMode;
+extern unsigned int g_singlethreaded;
 extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL surface
 
 // Surfaces for drawing
@@ -140,11 +140,11 @@ extern SDL_Surface *g_origscreen; // reserved for stretching
 
 void CreateColorMixMap();
 
-BOOL VideoApparentlyDirty();
+bool VideoApparentlyDirty();
 
 void VideoBenchmark();
 
-void VideoCheckPage(BOOL);
+void VideoCheckPage(bool);
 
 void VideoChooseColor();
 
@@ -154,7 +154,7 @@ void VideoDrawLogoBitmap(/* HDC hDstDC */);
 
 void VideoDisplayLogo();
 
-BOOL VideoHasRefreshed();
+bool VideoHasRefreshed();
 
 void VideoInitialize();
 
@@ -172,11 +172,11 @@ void VideoReinitialize();
 
 void VideoResetState();
 
-WORD VideoGetScannerAddress(bool *pbVblBar_OUT, const DWORD uExecutedCycles);
+unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uExecutedCycles);
 
-bool VideoGetVbl(DWORD uExecutedCycles);
+bool VideoGetVbl(unsigned int uExecutedCycles);
 
-void VideoUpdateVbl(DWORD dwCyclesThisFrame);
+void VideoUpdateVbl(unsigned int dwCyclesThisFrame);
 
 void VideoUpdateFlash();
 
@@ -189,12 +189,12 @@ bool VideoGetSWPAGE2(void);
 bool VideoGetSWTEXT(void);
 bool VideoGetSWAltCharSet(void);
 
-DWORD VideoGetSnapshot(SS_IO_Video *pSS);
+unsigned int VideoGetSnapshot(SS_IO_Video *pSS);
 
-DWORD VideoSetSnapshot(SS_IO_Video *pSS);
+unsigned int VideoSetSnapshot(SS_IO_Video *pSS);
 
-BYTE VideoCheckMode(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char VideoCheckMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-BYTE VideoCheckVbl(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
-BYTE VideoSetMode(WORD pc, WORD addr, BYTE bWrite, BYTE d, ULONG nCyclesLeft);
+unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);

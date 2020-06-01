@@ -80,22 +80,19 @@ void GuiOsx_Resume(void)
   // Main_UnPauseEmulation();
 }
 
-//-----------------------------------------------------------------------------------------------------------
 // Add global services.  6 methods
-
 @implementation NSApplication (service)
 
 // Open file or directory
-//
-- (NSString *)hopenfile:(BOOL)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types {
+- (NSString *)hopenfile:(bool)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types {
   return [self hopenfile:chooseDir defoDir:defoDir defoFile:defoFile types:types titre:nil];
 }
 
 
-- (NSString *)hopenfile:(BOOL)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre {
+- (NSString *)hopenfile:(bool)chooseDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre {
   NSOpenPanel *openPanel;
   NSArray *lesURLs = nil;
-  BOOL btOk;
+  bool btOk;
 
   openPanel = [NSOpenPanel openPanel];
   [openPanel setCanChooseDirectories:chooseDir];
@@ -127,14 +124,14 @@ void GuiOsx_Resume(void)
 
 // Save file
 //
-- (NSString *)hsavefile:(BOOL)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types {
+- (NSString *)hsavefile:(bool)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types {
   return [self hsavefile:creatDir defoDir:defoDir defoFile:defoFile types:types titre:nil];
 }
 
-- (NSString *)hsavefile:(BOOL)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre {
+- (NSString *)hsavefile:(bool)creatDir defoDir:(NSString *)defoDir defoFile:(NSString *)defoFile types:(NSArray *)types titre:(NSString *)titre {
   NSSavePanel *savPanel;
   NSURL *lURL;
-  BOOL btOk;
+  bool btOk;
 
   savPanel = [NSSavePanel savePanel];
   [savPanel setCanCreateDirectories:creatDir];

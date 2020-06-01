@@ -63,7 +63,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{TEXT("PUSH")        , CmdStackPop          , CMD_STACK_PUSH           },
 //		{TEXT("RTS")         , CmdStackReturn       , CMD_STACK_RETURN         },
 		{TEXT("P")           , CmdStepOver          , CMD_STEP_OVER            , "Step current instruction"   },
-		{TEXT("RTS")         , CmdStepOut           , CMD_STEP_OUT             , "Step out of subroutine"     }, 
+		{TEXT("RTS")         , CmdStepOut           , CMD_STEP_OUT             , "Step out of subroutine"     },
 	// CPU - Meta Info
 		{TEXT("T")           , CmdTrace             , CMD_TRACE                , "Trace current instruction"  },
 		{TEXT("TF")          , CmdTraceFile         , CMD_TRACE_FILE           , "Save trace to filename [with video scanner info]" },
@@ -112,7 +112,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{TEXT("PWD")         , CmdConfigGetDebugDir , CMD_CONFIG_GET_DEBUG_DIR , "Displays the current debugger directory. Used for scripts & mem load/save." },
 		{TEXT("CD")          , CmdConfigSetDebugDir , CMD_CONFIG_SET_DEBUG_DIR , "Updates the current debugger directory." },
 	// Cursor
-		{TEXT("RET")         , CmdCursorJumpRetAddr , CMD_CURSOR_JUMP_RET_ADDR , "Sets the cursor to the sub-routine caller" }, 
+		{TEXT("RET")         , CmdCursorJumpRetAddr , CMD_CURSOR_JUMP_RET_ADDR , "Sets the cursor to the sub-routine caller" },
 		{TEXT(      "^")     , NULL                 , CMD_CURSOR_LINE_UP       }, // \x2191 = Up Arrow (Unicode)
 		{TEXT("Shift ^")     , NULL                 , CMD_CURSOR_LINE_UP_1     },
 		{TEXT(      "v")     , NULL                 , CMD_CURSOR_LINE_DOWN     }, // \x2193 = Dn Arrow (Unicode)
@@ -120,12 +120,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{TEXT("PAGEUP"   )   , CmdCursorPageUp      , CMD_CURSOR_PAGE_UP       , "Scroll up one screen"   },
 		{TEXT("PAGEUP256")   , CmdCursorPageUp256   , CMD_CURSOR_PAGE_UP_256   , "Scroll up 256 bytes"    }, // Shift
 		{TEXT("PAGEUP4K" )   , CmdCursorPageUp4K    , CMD_CURSOR_PAGE_UP_4K    , "Scroll up 4096 bytes"   }, // Ctrl
-		{TEXT("PAGEDN"     ) , CmdCursorPageDown    , CMD_CURSOR_PAGE_DOWN     , "Scroll down one scren"  }, 
+		{TEXT("PAGEDN"     ) , CmdCursorPageDown    , CMD_CURSOR_PAGE_DOWN     , "Scroll down one scren"  },
 		{TEXT("PAGEDOWN256") , CmdCursorPageDown256 , CMD_CURSOR_PAGE_DOWN_256 , "Scroll down 256 bytes"  }, // Shift
 		{TEXT("PAGEDOWN4K" ) , CmdCursorPageDown4K  , CMD_CURSOR_PAGE_DOWN_4K  , "Scroll down 4096 bytes" }, // Ctrl
 	// Cycles info
 		{TEXT("CYCLES")      , CmdCyclesInfo        , CMD_CYCLES_INFO, "Cycles display configuration" },
-	// Disassembler Data 
+	// Disassembler Data
 		{TEXT("Z")           , CmdDisasmDataDefByte1       , CMD_DISASM_DATA      , "Treat byte [range] as data"                },
 		{TEXT("X")           , CmdDisasmDataDefCode        , CMD_DISASM_CODE      , "Treat byte [range] as code"                },
 // TODO: Conflicts with monitor command #L -> 000DL
@@ -145,10 +145,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //		{TEXT("DA<>")        , CmdDisasmDataDefAddress8HL  , CMD_DEFINE_ADDR_8_HL , "Define split array of addresses, high byte section followed by low byte section" },
 //		{TEXT("DA><")        , CmdDisasmDataDefAddress8LH  , CMD_DEFINE_ADDR_8_LH , "Define split array of addresses, low byte section followed by high byte section" },
 //		{TEXT("DA<")         , CmdDisasmDataDefAddress8H   , CMD_DEFINE_ADDR_BYTE_H   , "Define array of high byte addresses"   },
-//		{TEXT("DB>")         , CmdDisasmDataDefAddress8L   , CMD_DEFINE_ADDR_BYTE_L   , "Define array of low byte addresses"    } 
+//		{TEXT("DB>")         , CmdDisasmDataDefAddress8L   , CMD_DEFINE_ADDR_BYTE_L   , "Define array of low byte addresses"    }
 		{TEXT("DA")          , CmdDisasmDataDefAddress16   , CMD_DEFINE_ADDR_WORD , "Define array of word addresses"            },
 // TODO: Rename config cmd: DISASM
-//		{TEXT("UA")          , CmdDisasmDataSmart          , CMD_SMART_DISASSEMBLE, "Analyze opcodes to determine if code or data" },		
+//		{TEXT("UA")          , CmdDisasmDataSmart          , CMD_SMART_DISASSEMBLE, "Analyze opcodes to determine if code or data" },
 	// Disk
 		{TEXT("DISK")        , CmdDisk              , CMD_DISK                 , "Access Disk Drive Functions" },
 	// Flags
@@ -169,7 +169,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{TEXT("SE")          , CmdFlag              , CMD_FLAG_SET   , "Set specified Flag"             },
 
 		{TEXT("SEC")         , CmdFlagSet           , CMD_FLAG_SET_C , "Set Flag Carry"                 }, // 0
-		{TEXT("SEZ")         , CmdFlagSet           , CMD_FLAG_SET_Z , "Set Flag Zero"                  }, // 1 
+		{TEXT("SEZ")         , CmdFlagSet           , CMD_FLAG_SET_Z , "Set Flag Zero"                  }, // 1
 		{TEXT("SEI")         , CmdFlagSet           , CMD_FLAG_SET_I , "Set Flag Interrupts Disabled"   }, // 2
 		{TEXT("SED")         , CmdFlagSet           , CMD_FLAG_SET_D , "Set Flag Decimal (BCD)"         }, // 3
 		{TEXT("SEB")         , CmdFlagSet           , CMD_FLAG_SET_B , "Set Flag Break"                 }, // 4 // Legacy
@@ -233,18 +233,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{"SYMDOS33"          , CmdSymbolsCommand    , CMD_SYMBOLS_DOS33        , "DOS 3.3 symbol table lookup/menu"       }, // CLEAR,LOAD,SAVE
 		{"SYMPRODOS"         , CmdSymbolsCommand    , CMD_SYMBOLS_PRODOS       , "ProDOS symbol table lookup/menu"        }, // CLEAR,LOAD,SAVE
 
-//		{TEXT("SYMCLEAR")    , CmdSymbolsClear      , CMD_SYMBOLS_CLEAR        }, // can't use SC = SetCarry
 		{TEXT("SYMINFO")     , CmdSymbolsInfo       , CMD_SYMBOLS_INFO         , "Display summary of symbols" },
-		{TEXT("SYMLIST")     , CmdSymbolsList       , CMD_SYMBOLS_LIST         , "Lookup symbol in main/user/src tables" }, // 'symbolname', can't use param '*' 
-	// Variables
-//		{TEXT("CLEAR")       , CmdVarsClear         , CMD_VARIABLES_CLEAR      }, 
-//		{TEXT("VAR")         , CmdVarsDefine        , CMD_VARIABLES_DEFINE     },
-//		{TEXT("INT8")        , CmdVarsDefineInt8    , CMD_VARIABLES_DEFINE_INT8},
-//		{TEXT("INT16")       , CmdVarsDefineInt16   , CMD_VARIABLES_DEFINE_INT16},
-//		{TEXT("VARS")        , CmdVarsList          , CMD_VARIABLES_LIST       }, 
-//		{TEXT("VARSLOAD")    , CmdVarsLoad          , CMD_VARIABLES_LOAD       },
-//		{TEXT("VARSSAVE")    , CmdVarsSave          , CMD_VARIABLES_SAVE       },
-//		{TEXT("SET")         , CmdVarsSet           , CMD_VARIABLES_SET        },
+		{TEXT("SYMLIST")     , CmdSymbolsList       , CMD_SYMBOLS_LIST         , "Lookup symbol in main/user/src tables" }, // 'symbolname', can't use param '*'
 	// Video-scanner info
 		{TEXT("VIDEOINFO")   , CmdVideoScannerInfo  , CMD_VIDEO_SCANNER_INFO, "Video-scanner display configuration" },
 	// View
@@ -334,7 +324,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{TEXT("RN")          , CmdFlagClear         , CMD_FLAG_CLR_N , "Clear Flag Negative (Sign)"     }, // 7
 		// Flags - Set
 		{TEXT("SC")          , CmdFlagSet           , CMD_FLAG_SET_C , "Set Flag Carry"                 }, // 0
-		{TEXT("SZ")          , CmdFlagSet           , CMD_FLAG_SET_Z , "Set Flag Zero"                  }, // 1 
+		{TEXT("SZ")          , CmdFlagSet           , CMD_FLAG_SET_Z , "Set Flag Zero"                  }, // 1
 		{TEXT("SI")          , CmdFlagSet           , CMD_FLAG_SET_I , "Set Flag Interrupts Disabled"   }, // 2
 		{TEXT("SD")          , CmdFlagSet           , CMD_FLAG_SET_D , "Set Flag Decimal (BCD)"         }, // 3
 		{TEXT("SB")          , CmdFlagSet           , CMD_FLAG_SET_B , "CLear Flag Break"               }, // 4 // Legacy
@@ -480,30 +470,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // Source level debugging
 		{TEXT("MEM")        , NULL, PARAM_SRC_MEMORY      },
 		{TEXT("MEMORY")     , NULL, PARAM_SRC_MEMORY      },
-		{TEXT("SYM")        , NULL, PARAM_SRC_SYMBOLS     },	
-		{TEXT("SYMBOLS")    , NULL, PARAM_SRC_SYMBOLS     },	
-		{TEXT("MERLIN")     , NULL, PARAM_SRC_MERLIN      },	
-		{TEXT("ORCA")       , NULL, PARAM_SRC_ORCA        },	
+		{TEXT("SYM")        , NULL, PARAM_SRC_SYMBOLS     },
+		{TEXT("SYMBOLS")    , NULL, PARAM_SRC_SYMBOLS     },
+		{TEXT("MERLIN")     , NULL, PARAM_SRC_MERLIN      },
+		{TEXT("ORCA")       , NULL, PARAM_SRC_ORCA        },
 // View
 //		{TEXT("VIEW")       , NULL, PARAM_SRC_??? },
 // Window                                                       Win   Cmd   WinEffects      CmdEffects
 		{TEXT("CODE")       , NULL, PARAM_CODE           }, //   x     x    code win only   switch to code window
-//		{TEXT("CODE1")      , NULL, PARAM_CODE_1         }, //   -     x    code/data win   
-		{TEXT("CODE2")      , NULL, PARAM_CODE_2         }, //   -     x    code/data win   
+//		{TEXT("CODE1")      , NULL, PARAM_CODE_1         }, //   -     x    code/data win
+		{TEXT("CODE2")      , NULL, PARAM_CODE_2         }, //   -     x    code/data win
 		{TEXT("CONSOLE")    , NULL, PARAM_CONSOLE        }, //   x     -                    switch to console window
 		{TEXT("DATA")       , NULL, PARAM_DATA           }, //   x     x    data win only   switch to data window
-//		{TEXT("DATA1")      , NULL, PARAM_DATA_1         }, //   -     x    code/data win   
-		{TEXT("DATA2")      , NULL, PARAM_DATA_2         }, //   -     x    code/data win   
-		{TEXT("DISASM")     , NULL, PARAM_DISASM         }, //                              
+//		{TEXT("DATA1")      , NULL, PARAM_DATA_1         }, //   -     x    code/data win
+		{TEXT("DATA2")      , NULL, PARAM_DATA_2         }, //   -     x    code/data win
+		{TEXT("DISASM")     , NULL, PARAM_DISASM         }, //
 		{TEXT("INFO")       , NULL, PARAM_INFO           }, //   -     x    code/data       Toggles showing/hiding Regs/Stack/BP/Watches/ZP
 		{TEXT("SOURCE")     , NULL, PARAM_SOURCE         }, //   x     x                    switch to source window
-		{TEXT("SRC")        , NULL, PARAM_SOURCE         }, // alias                        
-//		{TEXT("SOURCE_1")   , NULL, PARAM_SOURCE_1       }, //   -     x    code/data       
-		{TEXT("SOURCE2 ")   , NULL, PARAM_SOURCE_2       }, //   -     x                    
+		{TEXT("SRC")        , NULL, PARAM_SOURCE         }, // alias
+//		{TEXT("SOURCE_1")   , NULL, PARAM_SOURCE_1       }, //   -     x    code/data
+		{TEXT("SOURCE2 ")   , NULL, PARAM_SOURCE_2       }, //   -     x
 		{TEXT("SYMBOLS")    , NULL, PARAM_SYMBOLS        }, //   x     x    code/data win   switch to symbols window
 		{TEXT("SYM")        , NULL, PARAM_SYMBOLS        }, // alias   x                    SOURCE [SYM] [MEM] filename
-//		{TEXT("SYMBOL1")    , NULL, PARAM_SYMBOL_1       }, //   -     x    code/data win   
-		{TEXT("SYMBOL2")    , NULL, PARAM_SYMBOL_2       }, //   -     x    code/data win   
+//		{TEXT("SYMBOL1")    , NULL, PARAM_SYMBOL_1       }, //   -     x    code/data win
+		{TEXT("SYMBOL2")    , NULL, PARAM_SYMBOL_2       }, //   -     x    code/data win
 // Internal Consistency Check
 		{ DEBUGGER__PARAMS_VERIFY_TXT__, NULL, NUM_PARAMS     },
 	};

@@ -88,24 +88,24 @@ char *php_trim(char *c, int len) {
 }
 
 
-BOOL ReturnKeyValue(char *line, char **key, char **value) {
+bool ReturnKeyValue(char *line, char **key, char **value) {
   // line should be:  some key  =  some value
   // functions returns trimmed key and value
   char *br = strchr(line, '=');
   if (!br) {
-    return FALSE; // no sign of '=' sign. Sorry for some kalambur --bb
+    return false; // no sign of '=' sign. Sorry for some kalambur --bb
   }
   *br = '\0'; // cut the string where '=' is (or was)
   br++; //to the value
   *key = php_trim(line, strlen(line)); // trim those strings from beginning and trailing spaces
   if (*key != NULL && **key == '#') {
-    return FALSE; // omit comments (lines with #)
+    return false; // omit comments (lines with #)
   }
   *value = php_trim(br, strlen(br));
   if (*key && *value) {
-    return TRUE;
+    return true;
   }
-  return FALSE;
+  return false;
 }
 
 #define BUFSIZE 256
@@ -125,13 +125,13 @@ char *ReadRegString(char *key) {
   return NULL; // key has not been found in registry?
 }
 
-BOOL RegLoadString(LPCTSTR section, LPCTSTR key, BOOL peruser, char **buffer, DWORD chars) {
+bool RegLoadString(LPCTSTR section, LPCTSTR key, bool peruser, char **buffer, unsigned int chars) {
   // will ignore section, per user
-  BOOL success = FALSE;
+  bool success = false;
   char *value;
   value = ReadRegString((char *) key); // read value for a given keyhandle
   if (value) {
-    success = TRUE;
+    success = true;
     if (strlen(value) > chars)
       value[chars] = '\0'; // cut string
     *buffer = strdup(value);
@@ -139,7 +139,7 @@ BOOL RegLoadString(LPCTSTR section, LPCTSTR key, BOOL peruser, char **buffer, DW
   return success;
 }
 
-BOOL RegLoadValue(LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
+bool RegLoadValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int *value) {
   if (!value) {
     return 0;
   }
@@ -148,7 +148,7 @@ BOOL RegLoadValue(LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
   if (!RegLoadString(section, key, peruser, &sztmp, 32)) {
     return 0;
   }
-  *value = (DWORD) atoi(sztmp);
+  *value = (unsigned int) atoi(sztmp);
   return 1;
 }
 
@@ -195,13 +195,13 @@ void RegSaveKeyValue(char *NKey, char *NValue) {
   #endif /* REGISTRY_WRITEABLE */
 }
 
-void RegSaveString(LPCTSTR section, LPCTSTR key, BOOL peruser, LPCTSTR buffer) {
+void RegSaveString(LPCTSTR section, LPCTSTR key, bool peruser, LPCTSTR buffer) {
   RegSaveKeyValue((char *) key, (char *) buffer);
 }
 
-void RegSaveValue(LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD value)
+void RegSaveValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int value)
 {
-  TCHAR buffer[33] = TEXT("");
+  char buffer[33] = TEXT("");
   snprintf(buffer, 32, "%d", value);
 
   RegSaveString(section, key, peruser, buffer);

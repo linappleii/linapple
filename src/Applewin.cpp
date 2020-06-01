@@ -72,18 +72,18 @@ static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
 static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;
 static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
 
-TCHAR *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+char *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
 
-BOOL behind = 0;
-DWORD cumulativecycles = 0;      // Wraps after ~1hr 9mins
-DWORD cyclenum = 0;
-DWORD emulmsec = 0;
-static DWORD emulmsec_frac = 0;
+bool behind = 0;
+unsigned int cumulativecycles = 0;      // Wraps after ~1hr 9mins
+unsigned int cyclenum = 0;
+unsigned int emulmsec = 0;
+static unsigned int emulmsec_frac = 0;
 bool g_bFullSpeed = false;
 bool hddenabled = false;
-DWORD clockslot;
+unsigned int clockslot;
 static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
 
@@ -91,33 +91,33 @@ AppMode_e g_nAppMode = MODE_LOGO;
 
 // Default screen sizes
 // SCREEN_WIDTH & SCREEN_HEIGHT defined in Frame.h
-UINT g_ScreenWidth = SCREEN_WIDTH;
-UINT g_ScreenHeight = SCREEN_HEIGHT;
+unsigned int g_ScreenWidth = SCREEN_WIDTH;
+unsigned int g_ScreenHeight = SCREEN_HEIGHT;
 
-DWORD needsprecision = 0;
-TCHAR g_sProgramDir[MAX_PATH] = TEXT("");
-TCHAR g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
-TCHAR g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
-TCHAR g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
-TCHAR g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
+unsigned int needsprecision = 0;
+char g_sProgramDir[MAX_PATH] = TEXT("");
+char g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
+char g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
+char g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
+char g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
 
 // FTP Variables
-TCHAR g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
-TCHAR g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
-TCHAR g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
+char g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
+char g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
+char g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
 
-TCHAR g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
+char g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
 
 bool g_bResetTiming = false;
-BOOL restart = 0;
+bool restart = 0;
 
 // several parameters affecting the speed of emulated CPU
-DWORD g_dwSpeed = SPEED_NORMAL;  // Affected by Config dialog's speed slider bar
+unsigned int g_dwSpeed = SPEED_NORMAL;  // Affected by Config dialog's speed slider bar
 double g_fCurrentCLK6502 = CLOCK_6502;  // Affected by Config dialog's speed slider bar
 static double g_fMHz = 1.0;      // Affected by Config dialog's speed slider bar
 
 int g_nCpuCyclesFeedback = 0;
-DWORD g_dwCyclesThisFrame = 0;
+unsigned int g_dwCyclesThisFrame = 0;
 
 FILE *g_fh = NULL; // file for logging, let's use stderr instead?
 bool g_bDisableDirectSound = false;  // direct sound, use SDL Sound, or SDL_mixer???
@@ -125,25 +125,25 @@ bool g_bDisableDirectSound = false;  // direct sound, use SDL Sound, or SDL_mixe
 CSuperSerialCard sg_SSC;
 CMouseInterface sg_Mouse;
 
-UINT g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
+unsigned int g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
 CURL *g_curl = NULL;  // global easy curl resourse
 
 #define DBG_CALC_FREQ 0
 #if DBG_CALC_FREQ
-const UINT MAX_CNT = 256;
+const unsigned int MAX_CNT = 256;
 double g_fDbg[MAX_CNT];
-UINT g_nIdx = 0;
+unsigned int g_nIdx = 0;
 double g_fMeanPeriod,g_fMeanFreq;
 ULONG g_nPerfFreq = 0;
 #endif
 
-static UINT g_uModeStepping_Cycles = 0;
+static unsigned int g_uModeStepping_Cycles = 0;
 static bool g_uModeStepping_LastGetKey_ScrollLock = false;
 
 void ContinueExecution()
 {
   const double fUsecPerSec = 1.e6;
-  const UINT nExecutionPeriodUsec = 1000;    // 1.0ms
+  const unsigned int nExecutionPeriodUsec = 1000;    // 1.0ms
   const double fExecutionPeriodClks = g_fCurrentCLK6502 * ((double) nExecutionPeriodUsec / fUsecPerSec);
 
   bool bScrollLock_FullSpeed = g_bScrollLock_FullSpeed;
@@ -166,13 +166,13 @@ void ContinueExecution()
   if (nCyclesWithFeedback < 0) {
     nCyclesWithFeedback = 0;
   }
-  const UINT uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
+  const unsigned int uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
                                        : 0;
 
-  const DWORD uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+  const unsigned int uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
                           /* MODE_STEPPING */ : 0;
 
-  DWORD uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
+  unsigned int uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
   g_dwCyclesThisFrame += uActualCyclesExecuted;
 
   cyclenum = uActualCyclesExecuted;
@@ -183,7 +183,7 @@ void ContinueExecution()
   VideoUpdateVbl(g_dwCyclesThisFrame);
   //
 
-  DWORD uSpkrActualCyclesExecuted = uActualCyclesExecuted;
+  unsigned int uSpkrActualCyclesExecuted = uActualCyclesExecuted;
 
   bool bModeStepping_WaitTimer = false;
   if (g_nAppMode == MODE_STEPPING && !IsDebugSteppingAtFullSpeed())
@@ -206,7 +206,7 @@ void ContinueExecution()
   sg_SSC.CommUpdate(cyclenum);
   PrintUpdate(cyclenum);
 
-  const DWORD CLKS_PER_MS = (DWORD) g_fCurrentCLK6502 / 1000;
+  const unsigned int CLKS_PER_MS = (unsigned int) g_fCurrentCLK6502 / 1000;
 
   emulmsec_frac += uActualCyclesExecuted;
   if (emulmsec_frac > CLKS_PER_MS) {
@@ -219,9 +219,9 @@ void ContinueExecution()
   if (g_singlethreaded) {
     VideoCheckPage(0);
   }
-  BOOL screenupdated = VideoHasRefreshed();
+  bool screenupdated = VideoHasRefreshed();
   screenupdated |= (!g_singlethreaded);
-  BOOL systemidle = 0;
+  bool systemidle = 0;
 
   if (g_dwCyclesThisFrame >= dwClksPerFrame) {
     g_dwCyclesThisFrame -= dwClksPerFrame;
@@ -229,16 +229,16 @@ void ContinueExecution()
     if (g_nAppMode != MODE_LOGO) {
       VideoUpdateFlash();
 
-      static BOOL anyupdates = 0;
-      static BOOL lastupdates[2] = {0, 0};
+      static bool anyupdates = 0;
+      static bool lastupdates[2] = {0, 0};
 
       anyupdates |= screenupdated;
       bool update_clause = ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) || (!g_singlethreaded);
       if (update_clause && VideoApparentlyDirty()) {
         VideoCheckPage(1);
-        static DWORD lasttime = 0;
-        DWORD currtime = GetTickCount();
-        if ((!g_bFullSpeed) || (currtime - lasttime >= (DWORD)((graphicsmode || !systemidle) ? 100 : 25))) {
+        static unsigned int lasttime = 0;
+        unsigned int currtime = GetTickCount();
+        if ((!g_bFullSpeed) || (currtime - lasttime >= (unsigned int)((graphicsmode || !systemidle) ? 100 : 25))) {
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
             if (!g_singlethreaded) {
@@ -267,14 +267,14 @@ void ContinueExecution()
     #if DBG_CALC_FREQ
     if(g_nPerfFreq)
     {
-      LONG nTime1 = GetTickCount(); //no QueryPerformanceCounter and alike
-      LONG nTimeDiff = nTime1 - nTime0;
-      double fTime = (double)nTimeDiff / (double)(LONG)g_nPerfFreq;
+      int nTime1 = GetTickCount(); //no QueryPerformanceCounter and alike
+      int nTimeDiff = nTime1 - nTime0;
+      double fTime = (double)nTimeDiff / (double)(int)g_nPerfFreq;
 
       g_fDbg[g_nIdx] = fTime;
       g_nIdx = (g_nIdx+1) & (MAX_CNT-1);
       g_fMeanPeriod = 0.0;
-      for(UINT n=0; n<MAX_CNT; n++) {
+      for(unsigned int n=0; n<MAX_CNT; n++) {
         g_fMeanPeriod += g_fDbg[n];
       }
       g_fMeanPeriod /= (double)MAX_CNT;
@@ -314,7 +314,7 @@ bool GetBudgetVideo()
 
 void SetCurrentCLK6502()
 {
-  static DWORD dwPrevSpeed = (DWORD) - 1;
+  static unsigned int dwPrevSpeed = (unsigned int) - 1;
 
   if (dwPrevSpeed == g_dwSpeed) {
     return;
@@ -433,7 +433,7 @@ void setAutoBoot()
 void LoadConfiguration()
 {
   if (registry) {
-    DWORD dwComputerType;
+    unsigned int dwComputerType;
     LOAD(TEXT("Computer Emulation"), &dwComputerType);
 
     switch (dwComputerType) {
@@ -518,7 +518,7 @@ void LoadConfiguration()
   // check if configuration file contains specific keyboard language
   if (registry)
   {
-    DWORD Language = 0;
+    unsigned int Language = 0;
     if (LOAD(TEXT(REGVALUE_KEYB_TYPE), &Language)) {
       switch(Language)
       {
@@ -554,7 +554,7 @@ void LoadConfiguration()
         break;
     }
 
-    DWORD ToggleSwitch = 0;
+    unsigned int ToggleSwitch = 0;
     if (LOAD(TEXT(REGVALUE_KEYB_CHARSET_SWITCH), &ToggleSwitch)) {
       // select initial value of the keyboard character set toggle switch
       g_KeyboardRockerSwitch = (ToggleSwitch>=1);
@@ -565,7 +565,7 @@ void LoadConfiguration()
   if (registry) {
     LOAD(TEXT("Sound Emulation"), &soundtype);
   }
-  DWORD dwSerialPort;
+  unsigned int dwSerialPort;
   if (registry) {
     LOAD(TEXT("Serial Port"), &dwSerialPort);
   }
@@ -573,22 +573,22 @@ void LoadConfiguration()
 
   if (registry) {
     LOAD(TEXT("Emulation Speed"), &g_dwSpeed);
-    LOAD(TEXT("Enhance Disk Speed"), (DWORD * ) & enhancedisk);
+    LOAD(TEXT("Enhance Disk Speed"), (unsigned int * ) & enhancedisk);
     LOAD(TEXT("Video Emulation"), &g_videotype);
     LOAD(TEXT("Singlethreaded"), &g_singlethreaded);
   }
 
-  DWORD dwTmp = 0;  // temp var
+  unsigned int dwTmp = 0;  // temp var
 
   if (registry) {
     LOAD(TEXT("Fullscreen"), &dwTmp);  // load fullscreen flag
   }
-  fullscreen = (BOOL) dwTmp;
+  fullscreen = (bool) dwTmp;
   dwTmp = 1;
   if (registry) {
     LOAD(TEXT(REGVALUE_SHOW_LEDS), &dwTmp);  // load Show Leds flag
   }
-  g_ShowLeds = (BOOL) dwTmp;
+  g_ShowLeds = (bool) dwTmp;
 
   SetCurrentCLK6502();  // set up real speed
 
@@ -613,7 +613,7 @@ void LoadConfiguration()
 
   if (registry) {
     if (LOAD(TEXT(REGVALUE_PRINTER_APPEND), &dwTmp)) {
-      g_bPrinterAppend = dwTmp ? true : false;
+      g_bPrinterAppend = dwTmp != 0;
     }
   }
 
@@ -706,8 +706,8 @@ void LoadConfiguration()
     if (RegLoadString(TEXT("Configuration"), TEXT("Screen factor"), 1, &szFilename, 16)) {
       scrFactor = atof(szFilename);
       if (scrFactor > 0.1) {
-        g_ScreenWidth = UINT(g_ScreenWidth * scrFactor);
-        g_ScreenHeight = UINT(g_ScreenHeight * scrFactor);
+        g_ScreenWidth = (unsigned int)(g_ScreenWidth * scrFactor);
+        g_ScreenHeight = (unsigned int)(g_ScreenHeight * scrFactor);
       }
       free(szFilename);
       szFilename = NULL;

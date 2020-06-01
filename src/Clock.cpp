@@ -92,7 +92,7 @@ I/O map: (please add an offset of Slot#*16 to the address below)
 */
 
 
-BYTE Clock_ROM[] =
+unsigned char Clock_ROM[] =
 /*
 *
 * ROM code for a simplistic ProDOS-compatible clock card
@@ -187,7 +187,7 @@ D2
   };
 
 
-static BYTE latches[10];
+static unsigned char latches[10];
 
 static void set_latch_pair(int index, int value) {
   latches[index&=0x0E] = (value%=100) / 10;
@@ -208,9 +208,7 @@ static void update_latches() {
 }
 
 
-static BYTE /*__stdcall*/ Clock_IORead (WORD pc, WORD addr,
-					BYTE bWrite, BYTE d, ULONG nCyclesLeft)
-{
+static unsigned char Clock_IORead (unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft) {
   switch(addr &= 0x0F) {
   case 0: case 1:
   case 2: case 3:

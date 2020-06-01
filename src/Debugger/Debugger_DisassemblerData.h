@@ -6,11 +6,11 @@
 
 // Data Disassembler ______________________________________________________________________________
 
-	int Disassembly_FindOpcode( WORD nAddress );
-	DisasmData_t* Disassembly_IsDataAddress( WORD nAddress );
+	int Disassembly_FindOpcode( unsigned short nAddress );
+	DisasmData_t* Disassembly_IsDataAddress( unsigned short nAddress );
 
 	void Disassembly_AddData( DisasmData_t tData);
-	void Disassembly_GetData ( WORD nBaseAddress, const DisasmData_t *pData_, DisasmLine_t & line_ );
+	void Disassembly_GetData ( unsigned short nBaseAddress, const DisasmData_t *pData_, DisasmLine_t & line_ );
 	void Disassembly_DelData( DisasmData_t tData);
 	DisasmData_t* Disassembly_Enumerate( DisasmData_t *pCurrent = NULL );
 

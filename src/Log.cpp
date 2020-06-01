@@ -50,7 +50,7 @@ void LogOutput(LPCTSTR format, ...) {
   va_list args;
   va_start(args, format);
 
-  TCHAR output[512];
+  char output[512];
 
   vsnprintf(output, sizeof(output) - 1, format, args);
   fprintf(g_fh, "%s", output);

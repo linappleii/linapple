@@ -38,7 +38,7 @@
 
 char *md5str(const char *input); // forward declaration of md5str func
 
-TCHAR g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
+char g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
 int getstatFTP(struct ftpparse *fp, int *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
@@ -138,7 +138,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   }
   #else
   // in WIN32 let's use constant caching? -- need to be redone using file.mtime
-    if(GetFileAttributes(ftpdirpath) != DWORD(-1)) {
+    if(GetFileAttributes(ftpdirpath) != unsigned int(-1)) {
       OKI = false;
     } else {
       OKI = ftp_get(ftp_dir,ftpdirpath); // get ftp dir listing

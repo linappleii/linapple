@@ -127,8 +127,7 @@ Update_t _PrintSymbolInvalidTable()
 // Public _________________________________________________________________________________________
 
 
-//===========================================================================
-const char* GetSymbol (WORD nAddress, int nBytes)
+const char* GetSymbol (unsigned short nAddress, int nBytes)
 {
 	const char* pSymbol = FindSymbolFromAddress( nAddress );
 	if (pSymbol)
@@ -137,14 +136,12 @@ const char* GetSymbol (WORD nAddress, int nBytes)
 	return FormatAddress( nAddress, nBytes );
 }
 
-//===========================================================================
 int GetSymbolTableFromCommand()
 {
 	return (g_iCommand - CMD_SYMBOLS_ROM);
 }
 
-//===========================================================================
-const char* FindSymbolFromAddress (WORD nAddress, int * iTable_ )
+const char* FindSymbolFromAddress (unsigned short nAddress, int * iTable_ )
 {
 	// Bugfix/User feature: User symbols should be searched first
 	int iTable = NUM_SYMBOL_TABLES;
@@ -156,7 +153,7 @@ const char* FindSymbolFromAddress (WORD nAddress, int * iTable_ )
 		if (! (g_bDisplaySymbolTables & (1 << iTable)))
 			continue;
 
-		std::map<WORD, std::string>::iterator iSymbols = g_aSymbols[iTable].find(nAddress);
+		std::map<unsigned short, std::string>::iterator iSymbols = g_aSymbols[iTable].find(nAddress);
 		if(g_aSymbols[iTable].find(nAddress) != g_aSymbols[iTable].end())
 		{
 			if (iTable_)
@@ -165,12 +162,12 @@ const char* FindSymbolFromAddress (WORD nAddress, int * iTable_ )
 			}
 			return iSymbols->second.c_str();
 		}
-	}	
-	return NULL;	
+	}
+	return NULL;
 }
 
 //===========================================================================
-bool FindAddressFromSymbol ( const char* pSymbol, WORD * pAddress_, int * iTable_ )
+bool FindAddressFromSymbol ( const char* pSymbol, unsigned short * pAddress_, int * iTable_ )
 {
 	// Bugfix/User feature: User symbols should be searched first
 	for (int iTable = NUM_SYMBOL_TABLES; iTable-- > 0; )
@@ -207,9 +204,9 @@ bool FindAddressFromSymbol ( const char* pSymbol, WORD * pAddress_, int * iTable
 // Symbols ________________________________________________________________________________________
 
 //===========================================================================
-WORD GetAddressFromSymbol (const char* pSymbol)
+unsigned short GetAddressFromSymbol (const char* pSymbol)
 {
-	WORD nAddress;
+	unsigned short nAddress;
 	bool bFoundSymbol = FindAddressFromSymbol( pSymbol, & nAddress );
 	if (! bFoundSymbol)
 	{
@@ -220,10 +217,9 @@ WORD GetAddressFromSymbol (const char* pSymbol)
 
 
 
-//===========================================================================
-bool String2Address( LPCTSTR pText, WORD & nAddress_ )
+bool String2Address( LPCTSTR pText, unsigned short & nAddress_ )
 {
-	TCHAR sHexApple[ CONSOLE_WIDTH ];
+	char sHexApple[ CONSOLE_WIDTH ];
 
 	if (pText[0] == '$')
 	{
@@ -243,20 +239,20 @@ bool String2Address( LPCTSTR pText, WORD & nAddress_ )
 			if (!TextIsHexString( pText+2))
 				return false;
 
-			TCHAR *pEnd;
-			nAddress_ = (WORD) _tcstol( pText, &pEnd, 16 );
+			char *pEnd;
+			nAddress_ = (unsigned short) _tcstol( pText, &pEnd, 16 );
 			return true;
 		}
 		if (TextIsHexString( pText ))
 		{
-			TCHAR *pEnd;
-			nAddress_ = (WORD) _tcstol( pText, &pEnd, 16 );
+			char *pEnd;
+			nAddress_ = (unsigned short) _tcstol( pText, &pEnd, 16 );
 			return true;
 		}
 	}
 
 	return false;
-}		
+}
 
 
 //===========================================================================
@@ -276,7 +272,7 @@ Update_t CmdSymbols (int nArgs)
 //===========================================================================
 Update_t CmdSymbolsClear (int nArgs)
 {
-	SymbolTable_Index_e eSymbolTable = SYMBOLS_USER_1;	
+	SymbolTable_Index_e eSymbolTable = SYMBOLS_USER_1;
 	_CmdSymbolsClear( eSymbolTable );
 	return (UPDATE_DISASM | UPDATE_SYMBOLS);
 }
@@ -355,7 +351,7 @@ Update_t CmdSymbolsInfo (int nArgs)
 }
 
 //===========================================================================
-void _CmdPrintSymbol( LPCTSTR pSymbol, WORD nAddress, int iTable )
+void _CmdPrintSymbol( LPCTSTR pSymbol, unsigned short nAddress, int iTable )
 {
 	char   sText[ CONSOLE_WIDTH * 2 ];
 
@@ -414,7 +410,7 @@ bool _CmdSymbolList_Address2Symbol( int nAddress, int bSymbolTables )
 	const char* pSymbol = FindSymbolFromAddress( nAddress, &iTable );
 
 	if (pSymbol)
-	{				
+	{
 		if (_FindSymbolTable( bSymbolTables, iTable ))
 		{
 			_CmdPrintSymbol( pSymbol, nAddress, iTable );
@@ -429,8 +425,8 @@ bool _CmdSymbolList_Address2Symbol( int nAddress, int bSymbolTables )
 bool _CmdSymbolList_Symbol2Address( LPCTSTR pSymbol, int bSymbolTables )
 {
 	int  iTable;
-	WORD nAddress;
-	
+	unsigned short nAddress;
+
 
 	bool bFoundSymbol = FindAddressFromSymbol( pSymbol, &nAddress, &iTable );
 	if (bFoundSymbol)
@@ -470,16 +466,16 @@ Update_t _CmdSymbolsListTables (int nArgs, int bSymbolTables )
 			$FA6F INITAN
 			$FA59 OLDBRK
 		SYM B
-		
+
 		SYMBOL B = $2000
 		SYM B
 	*/
-		
-	TCHAR sText[ CONSOLE_WIDTH ] = "";
+
+	char sText[ CONSOLE_WIDTH ] = "";
 
 	for( int iArgs = 1; iArgs <= nArgs; iArgs++ )
 	{
-		WORD nAddress = g_aArgs[iArgs].nValue;
+		unsigned short nAddress = g_aArgs[iArgs].nValue;
 		LPCTSTR pSymbol = g_aArgs[iArgs].sArg;
 
 		// Dump all symbols for this table
@@ -568,8 +564,8 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 		return nSymbolsLoaded;
 
 //#if _UNICODE
-//	TCHAR sFormat1[ MAX_SYMBOLS_LEN ];
-//	TCHAR sFormat2[ MAX_SYMBOLS_LEN ];
+//	char sFormat1[ MAX_SYMBOLS_LEN ];
+//	char sFormat2[ MAX_SYMBOLS_LEN ];
 //	wsprintf( sFormat1, "%%x %%%ds", MAX_SYMBOLS_LEN ); // i.e. "%x %13s"
 //	wsprintf( sFormat2, "%%%ds %%x", MAX_SYMBOLS_LEN ); // i.e. "%13s %x"
 // ascii
@@ -587,7 +583,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 		_PrintCurrentPath();
 		nSymbolsLoaded = -1; // HACK: ERROR: FILE NOT EXIST
 	}
-	
+
 	bool bDupSymbolHeader = false;
 	if( hFile )
 	{
@@ -601,7 +597,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 			//    . SYMBOL  =$0000; Comment
 			//    . SYMBOL  =$FFFF; Comment
 			//
-			DWORD nAddress = _6502_MEM_END + 1; // default to invalid address
+			unsigned int nAddress = _6502_MEM_END + 1; // default to invalid address
 			char  sName[ MAX_SYMBOLS_LEN+1 ]  = "";
 
 			const int MAX_LINE = 256;
@@ -609,7 +605,6 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 
 			if( !fgets(szLine, MAX_LINE-1, hFile) )	// Get next line
 			{
-				//ConsolePrint("<<EOF");
 				break;
 			}
 
@@ -644,7 +639,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 				continue;
 
 			// If updating symbol, print duplicate symbols
-			WORD nAddressPrev;
+			unsigned short nAddressPrev;
 			int  iTable;
 
 			// 2.9.0.11 Bug #479
@@ -662,7 +657,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 			}
 
 			// 2.8.0.5 Bug #244 (Debugger) Duplicate symbols for identical memory addresses in APPLE2E.SYM
-			const char *pSymbolPrev = FindSymbolFromAddress( (WORD)nAddress, &iTable ); // don't care which table it is in
+			const char *pSymbolPrev = FindSymbolFromAddress( (unsigned short)nAddress, &iTable ); // don't care which table it is in
 			if( pSymbolPrev )
 			{
 				if( !bFileDisplayed )
@@ -741,10 +736,10 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 					, CHC_DEFAULT
 				);
 			}
-	
+
 			// else // It is not a bug to have duplicate addresses by different names
 
-			g_aSymbols[ eSymbolTableWrite ] [ (WORD) nAddress ] = sName;
+			g_aSymbols[ eSymbolTableWrite ] [ (unsigned short) nAddress ] = sName;
 			nSymbolsLoaded++; // TODO: FIXME: BUG: This is the total symbols read, not added
 		}
 		fclose(hFile);
@@ -777,7 +772,7 @@ Update_t CmdSymbolsLoad (int nArgs)
 	if (iArg <= nArgs)
 	{
 		std::string pFileName;
-		
+
 		if( g_aArgs[ iArg ].bType & TYPE_QUOTED_2 )
 		{
 			pFileName = g_aArgs[ iArg ].sArg;
@@ -830,20 +825,20 @@ Update_t CmdSymbolsLoad (int nArgs)
 Update_t _CmdSymbolsClear( SymbolTable_Index_e eSymbolTable )
 {
 	g_aSymbols[ eSymbolTable ].clear();
-	
+
 	return UPDATE_SYMBOLS;
 }
 
 
 //===========================================================================
-void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, WORD nAddress, bool bRemoveSymbol, bool bUpdateSymbol )
+void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned short nAddress, bool bRemoveSymbol, bool bUpdateSymbol )
 {
 	if (bRemoveSymbol)
 		pSymbolName = g_aArgs[2].sArg;
 
 	if (_tcslen( pSymbolName ) < MAX_SYMBOLS_LEN)
 	{
-		WORD nAddressPrev;
+		unsigned short nAddressPrev;
 		int  iTable;
 		bool bExists = FindAddressFromSymbol( pSymbolName, &nAddressPrev, &iTable );
 
@@ -863,14 +858,14 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, WORD nAd
 					char sText[ CONSOLE_WIDTH * 2 ];
 					ConsolePrintFormat( sText, " Updating %s%s%s from %s$%s%04X%s to %s$%s%04X%s"
 						, CHC_SYMBOL, pSymbolName, CHC_DEFAULT
-						, CHC_ARG_SEP					
+						, CHC_ARG_SEP
 						, CHC_ADDRESS, nAddressPrev, CHC_DEFAULT
-						, CHC_ARG_SEP					
+						, CHC_ARG_SEP
 						, CHC_ADDRESS, nAddress, CHC_DEFAULT
 					);
 				}
 			}
-		}					
+		}
 		else
 		{
 			if (bRemoveSymbol)
@@ -894,7 +889,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, WORD nAd
 			char sText[ CONSOLE_WIDTH * 2 ];
 			ConsolePrintFormat( sText, " Added symbol: %s%s%s %s$%s%04X%s"
 				, CHC_SYMBOL, pSymbolName, CHC_DEFAULT
-				, CHC_ARG_SEP					
+				, CHC_ARG_SEP
 				, CHC_ADDRESS, nAddress, CHC_DEFAULT
 			);
 		}
@@ -908,7 +903,7 @@ Update_t _CmdSymbolsUpdate( int nArgs, int bSymbolTables )
 	bool bRemoveSymbol = false;
 	bool bUpdateSymbol = false;
 
-	if ((nArgs == 2) && 
+	if ((nArgs == 2) &&
 		((g_aArgs[ 1 ].eToken == TOKEN_EXCLAMATION) || (g_aArgs[1].eToken == TOKEN_TILDE)) )
 		bRemoveSymbol = true;
 
@@ -917,8 +912,8 @@ Update_t _CmdSymbolsUpdate( int nArgs, int bSymbolTables )
 
 	if (bRemoveSymbol || bUpdateSymbol)
 	{
-		TCHAR *pSymbolName = g_aArgs[1].sArg;
-		WORD   nAddress    = g_aArgs[3].nValue;
+		char *pSymbolName = g_aArgs[1].sArg;
+		unsigned short   nAddress    = g_aArgs[3].nValue;
 
 		int iTable = _GetSymbolTableFromFlag( bSymbolTables );
 		SymbolUpdate( (SymbolTable_Index_e) iTable, pSymbolName, nAddress, bRemoveSymbol, bUpdateSymbol );
@@ -928,8 +923,6 @@ Update_t _CmdSymbolsUpdate( int nArgs, int bSymbolTables )
 	return UPDATE_NOTHING;
 }
 
-
-//===========================================================================
 Update_t _CmdSymbolsCommon ( int nArgs, int bSymbolTables )
 {
 	if (! nArgs)
@@ -941,7 +934,7 @@ Update_t _CmdSymbolsCommon ( int nArgs, int bSymbolTables )
 	if (iUpdate != UPDATE_NOTHING)
 		return iUpdate;
 
-	TCHAR sText[ CONSOLE_WIDTH ];
+	char sText[ CONSOLE_WIDTH ];
 
 	int iArg = 0;
 	while (iArg++ <= nArgs)
