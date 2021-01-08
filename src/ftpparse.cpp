@@ -28,21 +28,20 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <curl/curl.h>
 #include "ftpparse.h"
 
-struct FtpFile {
-  const char *filename;
-  FILE *stream;
-};
 
 CURLcode ftp_get(const char *ftp_path, const char *local_path)
 {
   // Download file from ftp_path to local_path
   CURLcode res;
-  struct FtpFile ftpfile;// = {
-  ftpfile.stream = NULL;
-  ftpfile.filename = local_path; // where to download a file
 
+  FILE *stream =fopen(local_path, "w");
+  if (stream == NULL) {
+    return CURLE_WRITE_ERROR;
+  }
+
+  curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
-  curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &ftpfile);
+  curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream);
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
 
   res = curl_easy_perform(g_curl);
@@ -52,9 +51,7 @@ CURLcode ftp_get(const char *ftp_path, const char *local_path)
     printf("Curl error with errorcode = %d\n", res);
   }
 
-  if (ftpfile.stream) {
-    fclose(ftpfile.stream); /* close the local file */
-  }
+  fclose(stream); /* close the local file */
 
   return res;
 }
