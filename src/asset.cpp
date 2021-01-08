@@ -175,7 +175,7 @@ int Asset_FindMasterDisk(char *path_out)
   }
 
   // Deallocate.
-  for (auto i=0; i<4; i++)
+  for (auto i=0; i<count; i++)
     SDL_free(paths[i]);
 
   return err;
