@@ -24,8 +24,9 @@
 #endif
 
 #include <time.h>
+#include <vector>
 
-#include "list.h"
+#include "file_entry.h"
 #include "DiskFTP.h"
 #include "ftpparse.h"
 
@@ -88,8 +89,8 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   char ftpdirpath[MAX_PATH];
   snprintf(ftpdirpath, MAX_PATH, "%.*s/%.*s%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(g_sFTPLocalDir)), g_sFTPDirListing, int(strlen(md5str(ftp_dir))), md5str(ftp_dir)); // get path for FTP dir listing
 
-  List<char> files;    // our files
-  List<char> sizes;    // and their sizes (or 'dir' for directories)
+
+  vector<file_entry_t> file_list;
 
   int act_file;    // current file
   int first_file;    // from which we output files
@@ -165,19 +166,10 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   FILE *fdir = fopen(ftpdirpath, "r");
 
   char *tmp;
-  int i, j, B, N;  // for cycles, beginning and end of list
 
   // build prev dir
   if (strcmp(ftp_dir, "ftp://")) {
-    tmp = new char[3];
-    strcpy(tmp, "..");
-    files.Add(tmp);
-    tmp = new char[5];
-    strcpy(tmp, "<UP>");
-    sizes.Add(tmp);  // add sign of directory
-    B = 1;
-  } else {
-    B = 0;  // for sorting dirs
+    file_list.push_back({ "..", file_entry_t::UP, 0 });
   }
 
   while ((tmp = fgets(tmpstr, 512, fdir))) // first looking for directories
@@ -189,27 +181,12 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     int what = getstatFTP(&FTP_PARSE, NULL);
 
     if (strlen(FTP_PARSE.name) > 0 && what == 1) { // is directory!
-      tmp = new char[strlen(FTP_PARSE.name) + 1];  // add entity to list
-      strcpy(tmp, FTP_PARSE.name);
-      files.Add(tmp);
-      tmp = new char[6];
-      strcpy(tmp, "<DIR>");
-      sizes.Add(tmp);  // add sign of directory
+      file_list.push_back({ FTP_PARSE.name, file_entry_t::DIR, 0 });
     }
 
   }
-  // sort directories. Please, don't laugh at my bubble sorting - it the simplest thing I've ever seen --bb
-  if (files.Length() > 2) {
-    N = files.Length() - 1;
-    //        B = 1; - defined above
-    for (i = N; i > B; i--)
-      for (j = B; j < i; j++)
-        if (strcasecmp(files[j], files[j + 1]) > 0) {
-          files.Swap(j, j + 1);
-          sizes.Swap(j, j + 1);
-        }
-  }
-  B = files.Length();  // start for files
+
+  std::sort(file_list.begin(), file_list.end());
 
   (void) rewind(fdir);  // to the start
   // now get all regular files
@@ -220,31 +197,16 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     ftpparse(&FTP_PARSE, tmp, strlen(tmp));
 
     if ((getstatFTP(&FTP_PARSE, &fsize) == 2)) {// is normal file!
-      tmp = new char[strlen(FTP_PARSE.name) + 1];  // add this entity to list
-      strcpy(tmp, FTP_PARSE.name);
-      files.Add(tmp);
-      tmp = new char[10];  // 1400000KB
-      snprintf(tmp, 9, "%dKB", fsize);
-      sizes.Add(tmp);  // add this size to list
+      file_list.push_back({ FTP_PARSE.name, file_entry_t::FILE, (unsigned)fsize*1024 });
     }
   }
   (void) fclose(fdir);
-  // do sorting for files
-  if (files.Length() > 2 && B < files.Length()) {
-    N = files.Length() - 1;
-    //B = 1;
-    for (i = N; i > B; i--) {
-      for (j = B; j < i; j++) {
-        if (strcasecmp(files[j], files[j + 1]) > 0) {
-          files.Swap(j, j + 1);
-          sizes.Swap(j, j + 1);
-        }
-      }
-    }
-  }
+
+  std::sort(file_list.begin(), file_list.end());
+
   //  Count out cursor position and file number output
   act_file = *index_file;
-  if (act_file >= files.Length()) {
+  if (act_file >= file_list.size()) {
     act_file = 0;    // cannot be more than files in list
   }
   first_file = act_file - (FILES_IN_SCREEN / 2);
@@ -253,8 +215,6 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   }
 
   // Show all directories (first) and files then
-  char *siz = NULL;
-
   while (true) {
     SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
     font_print_centered(sx / 2, 5 * facy, ftp_dir, screen, 1.5 * facx, 1.3 * facy);
@@ -271,43 +231,35 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     }
     font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.4 * facx, 1.1 * facy);
 
-    files.Rewind();  // from start
-    sizes.Rewind();
-    i = 0;
-
     // show all fetched dirs and files
     // topX of first fiel visible
     int TOPX = 45 * facy;
 
-    while (files.Iterate(tmp)) {
-      sizes.Iterate(siz);  // also fetch size string
-      if (i >= first_file && i < first_file + FILES_IN_SCREEN) { // FILES_IN_SCREEN items on screen
+    for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
+      const size_t i = first_file + j;
+      if (i >= file_list.size())
+        break;
+
+      const file_entry_t& file_entry = file_list[i];
+      const string& file_name = file_entry.name;
+      {
         if (i == act_file) { // show item under cursor (in inverse mode)
           SDL_Rect r;
           r.x = 2;
-          r.y = TOPX + (i - first_file) * 15 * facy - 1;
-          if (strlen(tmp) > 46)
+          r.y = TOPX + j * 15 * facy - 1;
+          if (file_name.size() > 46)
             r.w = 46 * 6 * 1.7 * facx + 2;
           else
-            r.w = strlen(tmp) * 6 * 1.7 * facx + 2;  // 6- FONT_SIZE_X
+            r.w = file_name.size() * 6 * 1.7 * facx + 2;  // 6- FONT_SIZE_X
           r.h = 9 * 1.5 * facy;
           SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 255, 0, 0));// in RED
         }
 
         // print file name with enlarged font
-        ch = 0;
-        if (strlen(tmp) > 46) {
-          ch = tmp[46];
-          tmp[46] = 0;
-        } //cut-off too long string
-        font_print(4, TOPX + (i - first_file) * 15 * facy, tmp, screen, 1.7 * facx, 1.5 * facy); // show name
-        font_print(sx - 70 * facx, TOPX + (i - first_file) * 15 * facy, siz, screen, 1.7 * facx,
+        font_print(4, TOPX + j * 15 * facy, file_name.substr(0, 46).c_str(), screen, 1.7 * facx, 1.5 * facy); // show name
+        font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.7 * facx,
                    1.5 * facy);// show info (dir or size)
-        if (ch) {
-          tmp[46] = ch; //restore cut-off char
-        }
       }
-      i++;
     }
 
     // draw rectangles
@@ -339,7 +291,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     }
 
     if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
-      if (act_file < (files.Length() - 1)) {
+      if (act_file < (file_list.size() - 1)) {
         act_file++;
       }
       if (act_file >= (first_file + FILES_IN_SCREEN)) {
@@ -357,8 +309,8 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
 
     if (keyboard[SDLK_PAGEDOWN]) {
       act_file += FILES_IN_SCREEN;
-      if (act_file >= files.Length())
-        act_file = (files.Length() - 1);
+      if (act_file >= file_list.size())
+        act_file = (file_list.size() - 1);
       if (act_file >= (first_file + FILES_IN_SCREEN))
         first_file = act_file - FILES_IN_SCREEN + 1;
     }
@@ -366,23 +318,22 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     // choose an item?
     if (keyboard[SDLK_RETURN]) {
       // dup string from selected file name
-      *filename = strdup(php_trim(files[act_file], strlen(files[act_file])));
-      if (!strcmp(sizes[act_file], "<DIR>") || !strcmp(sizes[act_file], "<UP>")) {
+      const file_entry_t& file_entry = file_list[act_file];
+      char *temp = strdup(file_entry.name.c_str());
+      *filename = strdup(php_trim(temp, file_entry.name.size()));
+      free(temp);
+      if (file_entry.is_dir_type()) {
         *isdir = true;
       } else {
         *isdir = false;  // this is directory (catalog in Apple][ terminology)
       }
       *index_file = act_file;  // remember current index
-      files.Delete();
-      sizes.Delete();
       SDL_FreeSurface(my_screen);
 
       return true;
     }
 
     if (keyboard[SDLK_ESCAPE]) {
-      files.Delete();
-      sizes.Delete();
       SDL_FreeSurface(my_screen);
       return false;    // ESC has been pressed
     }
@@ -392,7 +343,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
       first_file = 0;
     }
     if (keyboard[SDLK_END]) {
-      act_file = files.Length() - 1;  // go to the last possible file in list
+      act_file = file_list.size() - 1;  // go to the last possible file in list
       first_file = act_file - FILES_IN_SCREEN + 1;
       if (first_file < 0) {
         first_file = 0;

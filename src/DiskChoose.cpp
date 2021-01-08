@@ -25,7 +25,7 @@
 
 #include "stdafx.h"
 
-#include "list.h"
+#include "file_entry.h"
 
 #include "Video.h" // for contention avoidance w/video thread
 #include "DiskChoose.h"
@@ -33,6 +33,7 @@
 #include <pthread.h>
 
 #include <iostream>
+#include <vector>
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21
@@ -82,10 +83,9 @@ int compareNames(const void *const A, const void *const B)
 //        file list
 //        size list
 // Exit: true == success
-bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &sizes)
+bool get_sorted_directory(char *incoming_dir, vector<file_entry_t> &file_list)
 {
   DIR *dp;
-  char *tmp;
   int count;
   struct dirent **list;
   struct dirent *entry;
@@ -130,12 +130,8 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
     int what = getstat(incoming_dir, list[index]->d_name, NULL);
     if ((list[index]->d_name && strlen(list[index]->d_name) > 0) && (list[index]->d_name[0] != '.') &&
         what == 1) { // is directory!
-      tmp = new char[strlen(list[index]->d_name) + 1];  // add this entity to list
-      strcpy(tmp, list[index]->d_name);
-      files.Add(tmp);
-      tmp = new char[6];
-      strcpy(tmp, "<DIR>");
-      sizes.Add(tmp);  // add sign of directory
+
+      file_list.push_back({list[index]->d_name, file_entry_t::DIR, 0});
     }
   }
 
@@ -148,21 +144,7 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
         (getstat(incoming_dir, list[index]->d_name, &fsize) == 2)) { // is normal file!
       // DBG
       // std::cout << list[index]->d_name << std::endl;
-      tmp = new char[strlen(list[index]->d_name) + 1];  // add this entity to list
-      strcpy(tmp, list[index]->d_name);
-      files.Add(tmp);
-      tmp = new char[10];  // 1400000KB
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-      if (1000 > fsize) {   // Kilo
-        snprintf(tmp, 9, "%4dK", fsize);
-      } else if (1000000 > fsize) {   // Mega
-        snprintf(tmp, 9, "%4dM", (int) (fsize / 1000));
-      } else {  // Giga
-        snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
-      }
-#pragma GCC diagnostic pop
-      sizes.Add(tmp);  // add corresponding file size to list
+      file_list.push_back({ list[index]->d_name, file_entry_t::FILE, (unsigned) fsize*1024});
     }
   }
   closedir(dp);
@@ -191,8 +173,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
   // DIRECTORY-GETTING STUFF
 
-  List<char> files;    // our files
-  List<char> sizes;    // and their sizes (or 'dir' for directories)
+  std::vector<file_entry_t> file_list;
 
   int act_file;    // current file
   int first_file;    // from which we output files
@@ -201,26 +182,18 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
   /* POSIX specific routines of reading directory structure */
 
-  char *tmp;
-  int i;  // for cycles, beginning and end of list
-
   // Forcibly add ".." as first entry to navigate upward
   // to parent directory.
   if (strcmp(incoming_dir, "/")) {
-    tmp = new char[3];
-    strcpy(tmp, "..");
-    files.Add(tmp);
-    tmp = new char[5];
-    strcpy(tmp, "<UP>");
-    sizes.Add(tmp);  // add sign of directory
+    file_list.push_back({ "..", file_entry_t::UP, 0});
   }
 
   // Get sorted list of directories and files in the
   // directory specified by incoming_dir
-  if (get_sorted_directory(incoming_dir, files, sizes)) {
+  if (get_sorted_directory(incoming_dir, file_list)) {
     //  Count out cursor position and file number output
     act_file = *index_file;
-    if (act_file >= files.Length()) {
+    if (act_file >= file_list.size()) {
       act_file = 0;
     }    // cannot be more than files in list
     first_file = act_file - (FILES_IN_SCREEN / 2);
@@ -229,8 +202,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
     }
 
     // Show all directories (first) and files then
-    char *siz = NULL;
-
 
     // DISPLAY STUFF
 
@@ -289,47 +260,38 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
       font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
 
-      files.Rewind();  // from start
-      sizes.Rewind();
-      i = 0;
-
       // show all fetched dirs and files
       // topX of first fiel visible
       int TOPX = int(45 * facy);
 
       // Now, present the list
-      while (files.Iterate(tmp)) {
-        sizes.Iterate(siz);  // also fetch size string
-        if (i >= first_file && i < first_file + FILES_IN_SCREEN) { // FILES_IN_SCREEN items on screen
+      for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
+        const size_t i = first_file + j;
+        if (i >= file_list.size()) {
+          break;
+        }
+        const file_entry_t file_entry = file_list[i];
+        const string& file_name = file_entry.name;
+
+        {
           if (i == act_file) { // show item under cursor (in inverse mode)
             SDL_Rect r;
             r.x = 2;
-            r.y = TOPX + (i - first_file) * 15 * facy - 1;
-            if (strlen(tmp) > MAX_FILENAME) {
+            r.y = TOPX + j * 15 * facy - 1;
+            if (file_name.size() > MAX_FILENAME) {
               r.w = MAX_FILENAME * FONT_SIZE_X /* 6 */ * 1.0 * facx;
             } else {
-              r.w = strlen(tmp) * FONT_SIZE_X /* 6 */ * 1.0 * facx;  // 6- FONT_SIZE_X
+              r.w = file_name.size() * FONT_SIZE_X /* 6 */ * 1.0 * facx;  // 6- FONT_SIZE_X
             }
             r.h = 9 * 1.0 * facy;
             SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 64, 128, 190));
           }
 
           // Print file name
-          char ch;
-          ch = 0;
-          // Cut off too-long filename string
-          if (strlen(tmp) > MAX_FILENAME) {
-            ch = tmp[MAX_FILENAME];
-            tmp[MAX_FILENAME] = 0;
-          }
-          font_print(4, TOPX + (i - first_file) * 15 * facy, tmp, screen, 1.0 * facx, 1.0 * facy); // show name
-          font_print(sx - 70 * facx, TOPX + (i - first_file) * 15 * facy, siz, screen, 1.0 * facx,
+          font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy); // show name
+          font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
                      1.0 * facy);// show info (dir or size)
-          if (ch) {
-            tmp[MAX_FILENAME] = ch; //restore cut-off char
-          }
         }
-        i++;
       }
 
       // draw rectangles
@@ -353,8 +315,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       while (event.type != SDL_KEYDOWN) {  // wait for key pressed
         // GPH: Honor quit even if we're in the diskchoose state.
         if (SDL_QUIT == event.type) {
-          files.Delete();
-          sizes.Delete();
           SDL_FreeSurface(my_screen);
           SDL_PushEvent(&event); // push quit event
           return false;
@@ -374,7 +334,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
 
       if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
-        if (act_file < (files.Length() - 1))
+        if (act_file < (file_list.size() - 1))
           act_file++;
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
@@ -390,8 +350,8 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
       if (keyboard[SDLK_PAGEDOWN]) {
         act_file += FILES_IN_SCREEN;
-        if (act_file >= files.Length())
-          act_file = (files.Length() - 1);
+        if (act_file >= file_list.size())
+          act_file = (file_list.size() - 1);
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
@@ -399,22 +359,19 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       // choose an item?
       if (keyboard[SDLK_RETURN]) {
         // dup string from selected file name
-        *filename = strdup(files[act_file]);
-        if (!strcmp(sizes[act_file], "<DIR>") || !strcmp(sizes[act_file], "<UP>")) {
+        const file_entry_t& file_entry = file_list[act_file];
+        *filename = strdup(file_entry.name.c_str());
+        if (file_entry.is_dir_type()) {
           *isdir = true;
         } else {
           *isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
         *index_file = act_file;  // remember current index
-        files.Delete();
-        sizes.Delete();
         SDL_FreeSurface(my_screen);
         return true;
       }
 
       if (keyboard[SDLK_ESCAPE]) {
-        files.Delete();
-        sizes.Delete();
         SDL_FreeSurface(my_screen);
         return false;    // ESC has been pressed
       }
@@ -425,7 +382,7 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
 
       if (keyboard[SDLK_END]) {
-        act_file = files.Length() - 1;  // go to the last possible file in list
+        act_file = file_list.size() - 1;  // go to the last possible file in list
         first_file = act_file - FILES_IN_SCREEN + 1;
         if (first_file < 0)
           first_file = 0;
@@ -459,18 +416,12 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
             ch |= 0x20;
           }
           // Slow, linear search from top of list...
-          for ( int fidx = 0; fidx < files.Length(); fidx++ ) {
-            char file_char = files[fidx][0];
-            // Make lowercase, but only if it's a letter
-            if (file_char >= 'A' && file_char <= 'Z') {
-              file_char |= 0x20;
-            }
+          for (size_t fidx = 0; fidx < file_list.size(); fidx++ ) {
+            char file_char = tolower(file_list[fidx].name[0]);
             if (file_char == ch) {
               // If the current file is ALREADY the one found here, or prior,
               // then keep going
-              char candidate_char = files[act_file][0];
-              if (candidate_char >= 'A' && candidate_char <= 'Z')
-                candidate_char |= 0x20;
+              char candidate_char = tolower(file_list[act_file].name[0]);
 
               if (act_file < fidx || candidate_char != ch) {
                 act_file = fidx;
