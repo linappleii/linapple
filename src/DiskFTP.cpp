@@ -40,7 +40,7 @@
 char *md5str(const char *input); // forward declaration of md5str func
 
 char g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
-int getstatFTP(struct ftpparse *fp, int *size)
+int getstatFTP(struct ftpparse *fp, uintmax_t *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
   // In: fp - ftpparse struct ftom ftpparse.h
@@ -51,7 +51,7 @@ int getstatFTP(struct ftpparse *fp, int *size)
 
   if (fp->flagtryretr == 1) { // we're able to RETR, it's a file then?!
     if (size != NULL)
-      *size = (int) (fp->size / 1024);
+      *size = fp->size / 1024;
     return 2;
   }
   return 0;
@@ -178,31 +178,29 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
     memset(&FTP_PARSE, 0, sizeof(FTP_PARSE));
     ftpparse(&FTP_PARSE, tmp, strlen(tmp));
 
-    int what = getstatFTP(&FTP_PARSE, NULL);
-
-    if (strlen(FTP_PARSE.name) > 0 && what == 1) { // is directory!
-      file_list.push_back({ FTP_PARSE.name, file_entry_t::DIR, 0 });
+    uintmax_t fsize = 0;
+    const int what = getstatFTP(&FTP_PARSE, &fsize);
+    if (strlen(FTP_PARSE.name) < 1) {
+      continue;
     }
 
-  }
+    switch (what) {
+    case 1: // is directory!
+      file_list.push_back({ FTP_PARSE.name, file_entry_t::DIR, 0 });
+      break;
 
-  std::sort(file_list.begin(), file_list.end());
+    case 2: // is normal file!
+      file_list.push_back({ FTP_PARSE.name, file_entry_t::FILE, fsize*1024 });
+      break;
 
-  (void) rewind(fdir);  // to the start
-  // now get all regular files
-  while ((tmp = fgets(tmpstr, 512, fdir))) {
-    int fsize;
-    // clear and then try to fill in FTP_PARSE struct
-    memset(&FTP_PARSE, 0, sizeof(FTP_PARSE));
-    ftpparse(&FTP_PARSE, tmp, strlen(tmp));
-
-    if ((getstatFTP(&FTP_PARSE, &fsize) == 2)) {// is normal file!
-      file_list.push_back({ FTP_PARSE.name, file_entry_t::FILE, (unsigned)fsize*1024 });
+    default: // others: simply ignore
+      ;
     }
   }
   (void) fclose(fdir);
 
   std::sort(file_list.begin(), file_list.end());
+
 
   //  Count out cursor position and file number output
   act_file = *index_file;

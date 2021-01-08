@@ -45,7 +45,7 @@
 
 #ifndef _WIN32
 
-int getstat(char *catalog, char *fname, int *size)
+int getstat(const char *catalog, const char *fname, uintmax_t *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
   // In: catalog - working directory, fname - file name
@@ -61,7 +61,7 @@ int getstat(char *catalog, char *fname, int *size)
   }
   if (S_ISREG(info.st_mode)) {
     if (size != NULL) {
-      *size = (int) (info.st_size / 1024);  // get file size in Kbytes?!
+      *size = info.st_size / 1024;  // get file size in Kbytes?!
     }
     return 2;  // regular file
   }
@@ -86,8 +86,6 @@ int compareNames(const void *const A, const void *const B)
 bool get_sorted_directory(char *incoming_dir, vector<file_entry_t> &file_list)
 {
   DIR *dp;
-  int count;
-  struct dirent **list;
   struct dirent *entry;
 
   dp = opendir(incoming_dir);
@@ -97,58 +95,34 @@ bool get_sorted_directory(char *incoming_dir, vector<file_entry_t> &file_list)
       return false;
   }
 
-  /* First determine the number of entries */
-  count = 0;
-  while ((entry = readdir(dp)) != NULL)
-      ++count;
-  /* Allocate enough space */
-  list = (struct dirent **) malloc(count * sizeof(*list));
-  if (list == NULL)
-  {
-      closedir(dp);
-      fprintf(stderr, "memory exhausted.\n");
-      return false;
-  }
-  /* You don't need to allocate the list elements
-   * you can just store pointers to them in the
-   * pointer array `list'
-   */
-
-  rewinddir(dp); /* reset position */
   // save dirent pointer array in list
-  count = 0;
-  while ((entry = readdir(dp)) != NULL)
-    list[count++] = entry;
+  while ((entry = readdir(dp)) != NULL) {
+    const char *file_name = entry->d_name;
+    const size_t name_length = strlen(file_name);
 
-  // Sort the list
-  qsort(list, count, sizeof(*list), compareNames);
+    if (name_length < 1 || file_name[0] == '.')
+      continue;
 
-  // Add directories to list first
+    uintmax_t fsize = 0;
+    const int what = getstat(incoming_dir, file_name, &fsize);
 
-  for (int index = 0 ; index < count ; ++index) {
-    // Selectively add to our displayable list
-    int what = getstat(incoming_dir, list[index]->d_name, NULL);
-    if ((list[index]->d_name && strlen(list[index]->d_name) > 0) && (list[index]->d_name[0] != '.') &&
-        what == 1) { // is directory!
+    switch (what) {
+    case 1: // is directory!
+      file_list.push_back({ file_name, file_entry_t::DIR, 0 });
+      continue;
 
-      file_list.push_back({list[index]->d_name, file_entry_t::DIR, 0});
-    }
-  }
+    case 2: // is normal file!
+      file_list.push_back({ file_name, file_entry_t::FILE, fsize*1024});
+      continue;
 
-  // Add files to list
-
-  for (int index = 0 ; index < count ; ++index) {
-    // Selectively add to our displayable list
-    int fsize = 0;
-    if (strlen(list[index]->d_name) > 4 && list[index]->d_name[0] != '.' &&
-        (getstat(incoming_dir, list[index]->d_name, &fsize) == 2)) { // is normal file!
-      // DBG
-      // std::cout << list[index]->d_name << std::endl;
-      file_list.push_back({ list[index]->d_name, file_entry_t::FILE, (unsigned) fsize*1024});
+    default: // others: ignore!
+      ;
     }
   }
   closedir(dp);
-  free(list);
+
+  std::sort(file_list.begin(), file_list.end());
+
   return true;
 }
 
