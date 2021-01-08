@@ -433,7 +433,7 @@ void setAutoBoot()
 void LoadConfiguration()
 {
   if (registry) {
-    DWORD dwComputerType;
+    DWORD dwComputerType = 3;
     LOAD(TEXT("Computer Emulation"), &dwComputerType);
 
     switch (dwComputerType) {
