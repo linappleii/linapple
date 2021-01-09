@@ -4,7 +4,7 @@ extern bool g_bSaveStateOnExit;
 
 char *Snapshot_GetFilename();
 
-void Snapshot_SetFilename(char *pszFilename);
+void Snapshot_SetFilename(const char *pszFilename);
 
 void Snapshot_LoadState();
 

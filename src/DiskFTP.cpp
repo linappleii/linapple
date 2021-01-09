@@ -156,7 +156,8 @@ const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 }
 
 
-bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, bool *isdir, int *index_file)
+bool ChooseAnImageFTP(int sx, int sy, const std::string& ftp_dir, int slot,
+                      std::string& filename, bool& isdir, size_t& index_file)
 {
   /*  Parameters:
    sx, sy - window size,
