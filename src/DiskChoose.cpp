@@ -83,7 +83,7 @@ int compareNames(const void *const A, const void *const B)
 //        file list
 //        size list
 // Exit: true == success
-bool get_sorted_directory(char *incoming_dir, vector<file_entry_t> &file_list)
+bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_list)
 {
   DIR *dp;
   struct dirent *entry;
@@ -127,6 +127,47 @@ bool get_sorted_directory(char *incoming_dir, vector<file_entry_t> &file_list)
 }
 
 
+struct disk_file_list_generator_t : public file_list_generator_t {
+  disk_file_list_generator_t(const std::string& dir) :
+    directory(dir)
+  {}
+
+  const std::vector<file_entry_t> generate_file_list();
+
+  const std::string get_starting_message() {
+    return "Reading directory listing...";
+  }
+
+  const std::string get_failure_message() {
+    return failure_message;
+  }
+
+private:
+  std::string directory;
+  std::string failure_message = "(success)";
+};
+
+
+const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
+{
+  std::vector<file_entry_t> file_list;
+
+  // Forcibly add ".." as first entry to navigate upward
+  // to parent directory.
+  if (directory != "/") {
+    file_list.push_back({ "..", file_entry_t::UP, 0});
+  }
+
+  if (get_sorted_directory(directory.c_str(), file_list)) {
+    return file_list;
+  }
+
+  failure_message = "Failed to list directory: " + directory;
+  file_list.clear();
+  return file_list;
+}
+
+
 // GPH TODO: This entire thing needs to be refactored from a massive spinloop
 // to an event-driven state model incorporated into Frame.
 // Currently, everyhing here is handled inside an event handler.
@@ -143,42 +184,24 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
    Out:  filename  - chosen file name (or dir name)
     isdir    - if chosen name is a directory
   */
-  /* Surface: */
-
-  // DIRECTORY-GETTING STUFF
-
-  std::vector<file_entry_t> file_list;
-
-  int act_file;    // current file
-  int first_file;    // from which we output files
 
   //printf("Diskchoose! We are here: %s\n", incoming_dir);
 
-  /* POSIX specific routines of reading directory structure */
+  disk_file_list_generator_t file_list_generator(incoming_dir);
+  return ChooseImageDialog(sx, sy, incoming_dir, slot, &file_list_generator,
+                           filename, isdir, index_file);
+}
 
-  // Forcibly add ".." as first entry to navigate upward
-  // to parent directory.
-  if (strcmp(incoming_dir, "/")) {
-    file_list.push_back({ "..", file_entry_t::UP, 0});
-  }
 
-  // Get sorted list of directories and files in the
-  // directory specified by incoming_dir
-  if (get_sorted_directory(incoming_dir, file_list)) {
-    //  Count out cursor position and file number output
-    act_file = *index_file;
-    if (act_file >= file_list.size()) {
-      act_file = 0;
-    }    // cannot be more than files in list
-    first_file = act_file - (FILES_IN_SCREEN / 2);
-    if (first_file < 0) {
-      first_file = 0;  // cannot be negative
-    }
+bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_t* file_list_generator,
+                       char **filename, bool *isdir, int *index_file)
+{
+  // prepare screen
+  const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
+  const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
-    // Show all directories (first) and files then
-
-    // DISPLAY STUFF
-
+  SDL_Surface *my_screen;  // for background
+  {
     if (font_sfc == NULL) {
       if (!fonts_initialization()) {
         return false;  //if we don't have a font, we just can do none
@@ -187,11 +210,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
     // Wait for video refresh and claim ownership
     pthread_mutex_lock(&video_draw_mutex);
-
-
-    // prepare screen
-    double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
-    double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
     SDL_Surface *tempSurface = NULL;
     if (!g_WindowResized) {
@@ -207,7 +225,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       tempSurface = screen;  // use screen, if none available
     }
 
-    SDL_Surface *my_screen;  // for background
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
     if (tempSurface->format->palette && my_screen->format->palette) {
@@ -216,11 +233,61 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
     surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
     SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
+    SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+
+#define  NORMAL_LENGTH 60
+    char ch = 0;
+    if (strlen(dir) > NORMAL_LENGTH) {
+      ch = dir[NORMAL_LENGTH];
+      dir[NORMAL_LENGTH] = 0;
+    } //cut-off too long string
+    font_print_centered(sx / 2, 5 * facy, dir, screen, 1.5 * facx, 1.3 * facy);
+    if (ch) {
+      dir[NORMAL_LENGTH] = ch;
+    }
+
+    font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+    SDL_Flip(screen);  // show the screen
+  }
+
+  auto file_list = file_list_generator->generate_file_list();
+  if (file_list.size() < 1) {
+    printf("%s\n", file_list_generator->get_failure_message().c_str());
+
+    font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
+    SDL_Flip(screen);  // show the screen
+
+    pthread_mutex_unlock(&video_draw_mutex);
+    SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
+    // Wait for keypress
+    SDL_Event event;  // event
+
+    event.type = SDL_QUIT;
+    while (event.type != SDL_KEYDOWN) {  // wait for key pressed
+      SDL_Delay(100);
+      SDL_PollEvent(&event);
+    }
+    SDL_FreeSurface(my_screen);
+    return false;
+  }
+
+  int act_file;    // current file
+  int first_file;    // from which we output files
+  {
+    act_file = *index_file;
+    if (act_file >= file_list.size()) {
+      act_file = 0;
+    }    // cannot be more than files in list
+    first_file = act_file - (FILES_IN_SCREEN / 2);
+    if (first_file < 0) {
+      first_file = 0;  // cannot be negative
+    }
+
 
     while (true) {
 
       SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
-      font_print_centered(sx / 2, 5 * facy, incoming_dir, screen, 1.5 * facx, 1.3 * facy);
+      font_print_centered(sx / 2, 5 * facy, dir, screen, 1.5 * facx, 1.3 * facy);
       if (slot == 6) {
         font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
       } else if (slot == 7) {
