@@ -28,6 +28,13 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <curl/curl.h>
 #include "ftpparse.h"
 
+static int progress_callback(void* clientp,
+                             curl_off_t dltotal, curl_off_t dlnow,
+                             curl_off_t ultotal, curl_off_t ulnow) {
+  printf("FTP: %lu bytes downloaded\n", dlnow);
+  return 0;
+}
+
 
 CURLcode ftp_get(const char *ftp_path, const char *local_path)
 {
@@ -44,11 +51,16 @@ CURLcode ftp_get(const char *ftp_path, const char *local_path)
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream);
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
 
+  curl_easy_setopt(g_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+  curl_easy_setopt(g_curl, CURLOPT_NOPROGRESS, 0);
+
   res = curl_easy_perform(g_curl);
 
   if (res != CURLE_OK) {
     /* we failed */
     printf("Curl error with errorcode = %d\n", res);
+  } else {
+    printf("FTP: download completed\n");
   }
 
   fclose(stream); /* close the local file */
