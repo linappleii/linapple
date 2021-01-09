@@ -171,7 +171,8 @@ const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
 // GPH TODO: This entire thing needs to be refactored from a massive spinloop
 // to an event-driven state model incorporated into Frame.
 // Currently, everyhing here is handled inside an event handler.
-bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename, bool *isdir, int *index_file)
+bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
+                   std::string& filename, bool& isdir, size_t& index_file)
 {
   /*  Parameters:
    sx, sy - window size,
@@ -193,8 +194,8 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 }
 
 
-bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_t* file_list_generator,
-                       char **filename, bool *isdir, int *index_file)
+bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
+                       std::string& filename, bool& isdir, size_t& index_file)
 {
   // prepare screen
   const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
@@ -236,15 +237,7 @@ bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_
     SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
 
 #define  NORMAL_LENGTH 60
-    char ch = 0;
-    if (strlen(dir) > NORMAL_LENGTH) {
-      ch = dir[NORMAL_LENGTH];
-      dir[NORMAL_LENGTH] = 0;
-    } //cut-off too long string
-    font_print_centered(sx / 2, 5 * facy, dir, screen, 1.5 * facx, 1.3 * facy);
-    if (ch) {
-      dir[NORMAL_LENGTH] = ch;
-    }
+    font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
 
     font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
     SDL_Flip(screen);  // show the screen
@@ -271,23 +264,24 @@ bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_
     return false;
   }
 
-  int act_file;    // current file
-  int first_file;    // from which we output files
+  size_t act_file;    // current file
+  size_t first_file;    // from which we output files
   {
-    act_file = *index_file;
+    act_file = index_file;
     if (act_file >= file_list.size()) {
       act_file = 0;
     }    // cannot be more than files in list
-    first_file = act_file - (FILES_IN_SCREEN / 2);
-    if (first_file < 0) {
-      first_file = 0;  // cannot be negative
+    if (act_file <= FILES_IN_SCREEN / 2) {
+      first_file = 0;
+    } else {
+      first_file = act_file - (FILES_IN_SCREEN / 2);
     }
 
 
     while (true) {
 
       SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
-      font_print_centered(sx / 2, 5 * facy, dir, screen, 1.5 * facx, 1.3 * facy);
+      font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
       if (slot == 6) {
         font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
       } else if (slot == 7) {
@@ -382,9 +376,11 @@ bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_
       }
 
       if (keyboard[SDLK_PAGEUP]) {
-        act_file -= FILES_IN_SCREEN;
-        if (act_file < 0)
+        if (act_file <= FILES_IN_SCREEN) {
           act_file = 0;
+        } else {
+          act_file -= FILES_IN_SCREEN;
+        }
         if (act_file < first_file)
           first_file = act_file;
       }
@@ -401,13 +397,13 @@ bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_
       if (keyboard[SDLK_RETURN]) {
         // dup string from selected file name
         const file_entry_t& file_entry = file_list[act_file];
-        *filename = strdup(file_entry.name.c_str());
+        filename = file_entry.name;
         if (file_entry.is_dir_type()) {
-          *isdir = true;
+          isdir = true;
         } else {
-          *isdir = false;  // this is directory (catalog in Apple][ terminology)
+          isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
-        *index_file = act_file;  // remember current index
+        index_file = act_file;  // remember current index
         SDL_FreeSurface(my_screen);
         return true;
       }
@@ -424,9 +420,11 @@ bool ChooseImageDialog(int sx, int sy, char *dir, int slot, file_list_generator_
 
       if (keyboard[SDLK_END]) {
         act_file = file_list.size() - 1;  // go to the last possible file in list
-        first_file = act_file - FILES_IN_SCREEN + 1;
-        if (first_file < 0)
+        if (act_file <= FILES_IN_SCREEN - 1) {
           first_file = 0;
+        } else {
+          first_file = act_file - FILES_IN_SCREEN + 1;
+        }
       }
 
       // GPH: Check for A-Z, a-z, 0-9 and jump to first file starting therewith

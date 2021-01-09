@@ -1,4 +1,4 @@
-/*
+ /*
 AppleWin : An Apple //e emulator for Windows
 
 Copyright (C) 1994-1996, Michael O'Brien
@@ -322,69 +322,66 @@ bool HD_InsertDisk(int nDrive, LPCTSTR imageFileName) {
 void HD_FTP_Select(int nDrive)
 {
   // Selects HDrive from FTP directory
-  static int fileIndex = 0;  // file index will be remembered for current dir
-  static int backdx = 0;  //reserve
-  static int dirdx = 0;  // reserve for dirs
+  static size_t fileIndex = 0; // file index will be remembered for current dir
+  static size_t backdx = 0;  //reserve
+  static size_t dirdx = 0;  // reserve for dirs
 
-  char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  std::string filename;      // given filename
+  std::string fullPath;  // full path for it
   bool isDirectory = true;      // if given filename is a directory?
 
   fileIndex = backdx;
-  strcpy(fullPath, g_sFTPServerHDD);  // global var for FTP path for HDD
+  fullPath = g_sFTPServerHDD;  // global var for FTP path for HDD
 
   while (isDirectory) {
-    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 7, &filename, &isDirectory, &fileIndex)) {
+    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 7,
+                          filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
     // --
     if (isDirectory) {
-      if (!strcmp(filename, "..")) {
+      if (filename == "..") {
         // go to the upper directory
-        filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
-        if (filename) {
-          *filename = '\0';  // cut it off
-          filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
-          if (filename) {
-            *(++filename) = '\0';  // leave it on the place
-          }
+        auto r = fullPath.find_last_of(FTP_SEPARATOR);
+        if (r == fullPath.size()-1) {
+          r = fullPath.find_last_of(FTP_SEPARATOR, r-1);
         }
-        if (strlen(fullPath) == 0) {
-          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        if (r != std::string::npos) {
+          fullPath = fullPath.substr(0, 1+r);
+        }
+        if (fullPath == "") {
+          fullPath = "/";  //we don't want fullPath to be empty
         }
         fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%.*s%.*s/", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
+        if (fullPath != "/") {
+          fullPath += filename + "/";
         } else {
-          snprintf(tempPath, MAX_PATH, "/%.*s/", int(strlen(filename)), filename);
+          fullPath = "/" + filename + "/";
         }
-        strcpy(fullPath, tempPath);  // got ot anew
-        printf("HD_FTP_Select: we build %s\n", tempPath);
+        printf("HD_FTP_Select: we build %s\n", fullPath.c_str());
         dirdx = fileIndex; // store it
         fileIndex = 0;  // start with beginning of dir
       }
     }
   }
   // we chose some file
-  strcpy(g_sFTPServerHDD, fullPath);
+  strcpy(g_sFTPServerHDD, fullPath.c_str());
   RegSaveString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename);
-  strcpy(fullPath, tempPath); // fullPath - full path to file on FTP server
+  fullPath += "/" + filename;
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(filename)), filename); // local path for file
+  std::string localPath = std::string(g_sFTPLocalDir) + "/" + filename; // local path for file
 
-  int error = ftp_get(fullPath, tempPath);
+  int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (!error) {
-    if (HD_InsertDisk2(nDrive, tempPath)) {
+    if (HD_InsertDisk2(nDrive, localPath.c_str())) {
       // save file names for HDD disk 1 or 2
       if (nDrive) {
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, tempPath);
+        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, localPath.c_str());
       } else {
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, tempPath);
+        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, localPath.c_str());
       }
     }
   }
@@ -395,64 +392,61 @@ void HD_FTP_Select(int nDrive)
 void HD_Select(int nDrive)
 {
   // Selects HDrive from file list
-  static int fileIndex = 0;    // file index will be remembered for current dir
-  static int backdx = 0;  //reserve
-  static int dirdx = 0;  // reserve for dirs
+  static size_t fileIndex = 0; // file index will be remembered for current dir
+  static size_t backdx = 0;  //reserve
+  static size_t dirdx = 0;  // reserve for dirs
 
-  char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  std::string filename;      // given filename
+  std::string fullPath;  // full path for it
   bool isDirectory;      // if given filename is a directory?
 
   fileIndex = backdx;
   isDirectory = true;
-  strcpy(fullPath, g_sHDDDir);  // global var for disk selecting directory
+  fullPath = g_sHDDDir;  // global var for disk selecting directory
 
   while (isDirectory) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 7, &filename, &isDirectory, &fileIndex)) {
+    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 7,
+                       filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
     if (isDirectory) {
-      if (!strcmp(filename, "..")) { // go to the upper directory
-        filename = strrchr(fullPath, FILE_SEPARATOR); // look for last '/'
-        if (filename) {
-          *filename = '\0';  // cut it off
+      if (filename == "..") { // go to the upper directory
+        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        if (last_sep_pos != std::string::npos) {
+          fullPath = fullPath.substr(0, last_sep_pos);
         }
-        if (strlen(fullPath) == 0) {
-          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        if (fullPath == "") {
+          fullPath = "/";  //we don't want fullPath to be empty
         }
         fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
+        if (fullPath != "/") {
+          fullPath += "/" + filename;
+        } else {
+          fullPath = "/" + filename;
         }
-        else {
-          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
-        }
-        strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
         fileIndex = 0;  // start with beginning of dir
       }
     }
   }
   // we chose some file
-  strcpy(g_sHDDDir, fullPath);
+  strcpy(g_sHDDDir, fullPath.c_str());
   RegSaveString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir); // Save it
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
-  strcpy(fullPath, tempPath);  // Got ot anew
+  fullPath += "/" + filename;
 
   // in future: save file name in registry for future fetching
   // for one drive will be one reg parameter
-  if (HD_InsertDisk2(nDrive, fullPath)) {
+  if (HD_InsertDisk2(nDrive, fullPath.c_str())) {
     // save file names for HDD disk 1 or 2
     if (nDrive) {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, fullPath);
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, fullPath.c_str());
     } else {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, fullPath);
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, fullPath.c_str());
     }
-    printf("HDD disk image %s inserted\n", fullPath);
+    printf("HDD disk image %s inserted\n", fullPath.c_str());
   }
   backdx = fileIndex; // Store cursor position
   DrawFrameWindow();
