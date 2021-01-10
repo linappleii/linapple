@@ -411,6 +411,7 @@ void SetDiskImageDirectory(char *regKey, int driveNumber)
   char *szHDFilename = NULL;
   if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
     if (!ValidateDirectory(szHDFilename)) {
+      free(szHDFilename);
       RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
       RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
     }
