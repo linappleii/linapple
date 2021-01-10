@@ -93,24 +93,31 @@ BOOL ReturnKeyValue(char *line, char **key, char **value) {
   // functions returns trimmed key and value
   char *br = strchr(line, '=');
   if (!br) {
+    *key = *value = NULL;
     return FALSE; // no sign of '=' sign. Sorry for some kalambur --bb
   }
   *br = '\0'; // cut the string where '=' is (or was)
   br++; //to the value
   *key = php_trim(line, strlen(line)); // trim those strings from beginning and trailing spaces
   if (*key != NULL && **key == '#') {
+    free(*key);
+    *key = *value = NULL;
     return FALSE; // omit comments (lines with #)
   }
   *value = php_trim(br, strlen(br));
   if (*key && *value) {
     return TRUE;
   }
+
+  free(*key);
+  free(*value);
+  *key = *value = NULL;
   return FALSE;
 }
 
 #define BUFSIZE 256
 
-char *ReadRegString(char *key) {
+char *ReadRegString(const char *key) {
   // reads key for given value from the registry. Hmmm. What registry in Linux? I donna. --bb
   fseek(registry, 0, SEEK_SET); //to the start of file
   char *mkey;
@@ -119,24 +126,28 @@ char *ReadRegString(char *key) {
   int nkey = strlen(key);  // length of key
   while (fgets(line, BUFSIZE, registry)) {
     if (ReturnKeyValue(line, &mkey, &mvalue) && (!strncmp(mkey, key, nkey))) {
+      free(mkey);
       return mvalue;
     }
+    free(mkey);
+    free(mvalue);
   }
   return NULL; // key has not been found in registry?
 }
 
 BOOL RegLoadString(LPCTSTR section, LPCTSTR key, BOOL peruser, char **buffer, DWORD chars) {
   // will ignore section, per user
-  BOOL success = FALSE;
   char *value;
-  value = ReadRegString((char *) key); // read value for a given keyhandle
+  value = ReadRegString(key); // read value for a given keyhandle
   if (value) {
-    success = TRUE;
     if (strlen(value) > chars)
       value[chars] = '\0'; // cut string
-    *buffer = strdup(value);
+    *buffer = value;
+    return TRUE;
   }
-  return success;
+
+  *buffer = NULL;
+  return FALSE;
 }
 
 BOOL RegLoadValue(LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
@@ -149,6 +160,7 @@ BOOL RegLoadValue(LPCTSTR section, LPCTSTR key, BOOL peruser, DWORD *value) {
     return 0;
   }
   *value = (DWORD) atoi(sztmp);
+  free(sztmp);
   return 1;
 }
 

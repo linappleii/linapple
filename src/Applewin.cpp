@@ -411,6 +411,7 @@ void SetDiskImageDirectory(char *regKey, int driveNumber)
   char *szHDFilename = NULL;
   if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
     if (!ValidateDirectory(szHDFilename)) {
+      free(szHDFilename);
       RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
       RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
     }
@@ -433,7 +434,7 @@ void setAutoBoot()
 void LoadConfiguration()
 {
   if (registry) {
-    DWORD dwComputerType;
+    DWORD dwComputerType = g_Apple2Type;
     LOAD(TEXT("Computer Emulation"), &dwComputerType);
 
     switch (dwComputerType) {
