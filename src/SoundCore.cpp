@@ -80,7 +80,7 @@ unsigned getBufferFilled();
 
 unsigned getBufferFree();
 
-static void audioCallback(void *userdata, BYTE *strm, int len);
+static void audioCallback(void *userdata, Uint8 *strm, int len);
 
 unsigned frequency;
 
@@ -211,7 +211,7 @@ unsigned getFrequency() {
 
 
 // GPH this is called on IRQ to refresh the audio at regular intervals.
-void audioCallback(void *userdata, BYTE *strm, int len) {
+void audioCallback(void *userdata, Uint8 *strm, int len) {
   assert((len & 3) == 0); // stereo, 16-bit
   SDL_LockAudio();
   {
