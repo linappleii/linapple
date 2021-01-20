@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for Assertion
 #include <assert.h>
 #include <iostream>
+#include <functional>
 
 bool g_bDSAvailable = false;
 
@@ -71,8 +72,6 @@ void unmute();
 
 unsigned getFrequency();
 
-unsigned getSamples();
-
 double uploadBuffer(short *buffer, unsigned len);
 
 void reInit();
@@ -81,22 +80,56 @@ unsigned getBufferFilled();
 
 unsigned getBufferFree();
 
-static void audioCallbackHelper(void *userdata, unsigned char *strm, int len);
-
-void audioCallback(short *stream, unsigned len);
+static void audioCallback(void *userdata, BYTE *strm, int len);
 
 unsigned frequency;
 
-short *mixBuffer;
-short *mockBuffer;
+struct sample_buffer {
+  typedef int16_t sample_t;
+  typedef std::function<sample_t(sample_t,sample_t)> mix_func_t;
 
-unsigned fragmentSize;
-unsigned bufferSize;
-unsigned bufferIdxMask;
-unsigned readIdx, writeIdx, readIdx2, writeIdx2;
-double filledStat; /**< average filled status, 1.0 means filled exactly
-    the right amount, less than 1.0 mean under
-    filled, more than 1.0 means overfilled. */
+  std::vector<sample_t> buffer;
+  size_t read_index, write_index;
+  sample_t last_value;
+
+  sample_buffer(size_t size) : buffer(size), last_value(0) {}
+
+  void reinit() {
+    std::fill(buffer.begin(), buffer.end(), 0);
+    read_index = write_index = 0;
+  }
+
+  size_t get_filled() const {
+    size_t result;
+    if (read_index <= write_index) {
+      result = write_index - read_index;
+    } else {
+      result = buffer.size() + write_index - read_index;
+    }
+    assert((0 <= result) && (result < buffer.size()));
+    return result;
+  }
+
+  size_t get_free() const {
+    // we can't distinguish completely filled from completely empty
+    // (in both cases readIx would be equal to writeIdx), so instead
+    // we define full as '(writeIdx + 2) == readIdx' (note that index
+    // increases in steps of 2 (stereo)).
+    auto result = buffer.size() - 2 - get_filled();
+    assert((0 <= result) && (result < buffer.size()));
+    return result;
+  }
+
+  void upload(sample_t *src_buffer, size_t len);
+
+  void drain_to(sample_t *stream, size_t len);
+  void mix_into(sample_t *stream, size_t len,
+                mix_func_t func = std::plus<sample_t>());
+};
+
+sample_buffer *mix_buffer;
+sample_buffer *mock_buffer;
+
 bool muted;
 
 
@@ -114,7 +147,7 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
   desired.format = AUDIO_S16LSB;
   #endif
 
-  desired.callback = audioCallbackHelper; // must be a static method
+  desired.callback = audioCallback; // must be a static method
   desired.userdata = NULL;
   SDL_AudioSpec audioSpec;
   if (SDL_OpenAudio(&desired, &audioSpec) != 0) {
@@ -122,6 +155,9 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
     return false;
   }
   frequency = audioSpec.freq;
+
+  unsigned bufferSize;
+  unsigned bufferIdxMask;
   bufferSize = 8 * (audioSpec.size / sizeof(short));
   // GPH NOTE: bufferSize needs to be power of 2 for quick
   // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
@@ -130,8 +166,8 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
   bufferIdxMask = bufferSize - 1;
   printf("bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
 
-  mixBuffer = new short[bufferSize];  // buffer for Apple2 speakers
-  mockBuffer = new short[bufferSize];  // buffer for Mockingboard
+  mix_buffer = new sample_buffer(bufferSize);  // buffer for Apple2 speakers
+  mock_buffer = new sample_buffer(bufferSize);  // buffer for Mockingboard
 
   reInit();
   printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
@@ -143,18 +179,15 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
 }
 
 void SDLSoundDriverUninit() {
-  delete[] mixBuffer;
-  delete[] mockBuffer;
+  delete mix_buffer;
+  delete mock_buffer;
   SDL_CloseAudio();
 }
 
 
 void reInit() {
-  memset(mixBuffer, 0, bufferSize * sizeof(short));
-  memset(mockBuffer, 0, bufferSize * sizeof(short));
-  readIdx = readIdx2 = 0;
-  writeIdx = writeIdx2 = 0;
-  filledStat = 1.0;
+  mix_buffer->reinit();
+  mock_buffer->reinit();
 }
 
 void mute() {
@@ -176,208 +209,99 @@ unsigned getFrequency() {
   return frequency;
 }
 
-unsigned getSamples() {
-  return fragmentSize;
-}
-
-void audioCallbackHelper(void *userdata, unsigned char *strm, int len) {
-  assert((len & 3) == 0); // stereo, 16-bit
-  audioCallback((short *) strm, len / sizeof(short));
-}
-
-unsigned getBufferFilled() {
-  int tmp = writeIdx - readIdx;
-  int result = (0 <= tmp) ? tmp : tmp + bufferSize;
-  assert((0 <= result) && (unsigned(result) < bufferSize));
-  return result;
-}
-
-unsigned getBufferFree() {
-  // we can't distinguish completely filled from completely empty
-  // (in both cases readIx would be equal to writeIdx), so instead
-  // we define full as '(writeIdx + 2) == readIdx' (note that index
-  // increases in steps of 2 (stereo)).
-  int result = bufferSize - 2 - getBufferFilled();
-  assert((0 <= result) && (unsigned(result) < bufferSize));
-  return result;
-}
-
-// For Mockingboard support using another buffer
-
-// GPH NOTE: This is sample data that has has been written but yet to be streamed out as audio.
-unsigned getBuffer2Filled() {
-  int tmp = writeIdx2 - readIdx2;
-  int result = (0 <= tmp) ? tmp : tmp + bufferSize;
-  assert((0 <= result) && (unsigned(result) < bufferSize));
-  return result;
-}
-
-unsigned getBuffer2Free()
-{
-  // we can't distinguish completely filled from completely empty
-  // (in both cases readIx would be equal to writeIdx), so instead
-  // we define full as '(writeIdx + 2) == readIdx' (note that index
-  // increases in steps of 2 (stereo)).
-  int result = bufferSize - 2 - getBuffer2Filled();
-  assert((0 <= result) && (unsigned(result) < bufferSize));
-  return result;
-}
-
 
 // GPH this is called on IRQ to refresh the audio at regular intervals.
-// We'll mix the buffers here keeping in mind the need for speed.
-void audioCallback(short *stream, unsigned len) {
-  unsigned int i;
-  static short lastvalue = 0;
+void audioCallback(void *userdata, BYTE *strm, int len) {
+  assert((len & 3) == 0); // stereo, 16-bit
+  SDL_LockAudio();
+  {
+    // We'll mix the buffers here keeping in mind the need for speed.
+    auto stream = reinterpret_cast<sample_buffer::sample_t*>(strm);
+    const auto str_len = len / sizeof(sample_buffer::sample_t);
+    mix_buffer->drain_to(stream, str_len);
+#ifdef MOCKINGBOARD
+    mock_buffer->mix_into(stream, str_len);
+#endif
+  }
+  SDL_UnlockAudio();
+}
+
+
+void sample_buffer::drain_to(sample_t *stream, size_t len) {
+  const auto available = get_filled();
   assert((len & 1) == 0); // stereo
 
-  unsigned len1, len2;
-  unsigned available = getBufferFilled();
-  unsigned num = std::min(len, available);
-  if ((readIdx + num) < bufferSize) {
-    // No split in source (mixBuffer); perform straight-up copy.
-    //
-    //     |--------------------|
-    //       ^ (mixBuffer)   $
-    //
-    //     |--------------------|
-    //     ^     (stream)
-    memcpy(stream, &mixBuffer[readIdx], num * sizeof(short));
-    readIdx += num;
-  } else {
-    // Handle split in source
-    //
-    //     |--------------------|
-    //         (mixBuffer) ^
-    //
-    //     |--------------------|
-    //     ^     (stream)
-    len1 = bufferSize - readIdx;
-    memcpy(stream, &mixBuffer[readIdx], len1 * sizeof(short));
-    len2 = num - len1;
-    memcpy(&stream[len1], mixBuffer, len2 * sizeof(short));
-    readIdx = len2;
+  const auto num = std::min(len, available);
+  if (num > 0) {
+    mix_into(stream, num, [](const sample_t& ignored, const sample_t& new_value) {
+      return new_value;
+    });
   }
 
   // Fill the remainer of the buffer with last value to prevent potential
   // clicks and pops.
-  if (available != 0) {
-    if (readIdx != 0)
-      lastvalue = mixBuffer[readIdx - 1];
-    else
-      lastvalue = mixBuffer[bufferSize - 1];
+  if (available > 0) { // update last_value
+    last_value = read_index > 0 ? buffer[read_index-1] : buffer.back();
   }
+  std::fill_n(stream+num, len-num, last_value);
+}
 
-  for (i = num; i < len; i++) {
-    stream[i] = lastvalue;
-  }
-  /* GPH please don't do this in an IRQ handler!
-    unsigned target = (5 * bufferSize) / 8;
-    double factor = double(available) / target;
-    filledStat = (63 * filledStat + factor) / 64;
-  */
 
-  #ifdef MOCKINGBOARD
+void sample_buffer::mix_into(sample_t *stream, size_t len,
+                             mix_func_t mix_func) {
   // And add Mockingboard sound data to the stream
   // GPH: We are going to add the Mockingboard and speaker samples.
   // Their independent maximum amplitudes have been selected to eliminate
   // any possibility of wave peak clipping.  This speeds up the timing-sensitive
   // operation here (since we're in an IRQ handler) and eliminates the
   // need for a potentially expensive divide.
-available = getBuffer2Filled();
-//std::cerr << "DEBUG callback: " << available << std::endl;
-num = std::min(len, available);
-  const short *pSrc;
-  short *pDest = stream;
-if ((readIdx2 + num) < bufferSize) {
-      if( num ) {
-          pSrc = &mockBuffer[readIdx2];
-          readIdx2 += num;
-          while(num--) {
-              *pDest += *pSrc;
-              pDest++; pSrc++;
-          }
-      }
-} else {
-  // We crossed the "seam" on the circular mockBuffer.
-  // We will therefore perform two copies, the segmentation being determined
-  // by the split in the source buffer (mockBuffer).
-  //
-  //     |--------------------|
-  //         (mockBuffer) ^
-  //
-  //
-  //     |--------------------|
-  //     ^     (stream)
-  len1 = bufferSize - readIdx2;
-  len2 = num - len1;
-      if(len1) {
-          pSrc = &mockBuffer[readIdx2];
-          while(len1--) {
-              *pDest += *pSrc;
-              pDest++; pSrc++;
-          }
-      }
-  readIdx2 = len2;
-      if(len2) {
-          pSrc = mockBuffer;
-          while(len2--) {
-              *pDest += *pSrc;
-              pDest++; pSrc++;
-          }
-      }
-
-}
-  #endif
-  // normalization
-  // GPH TODO: Rather than do this in this handler, we should
-  // perform it efficiently by changing the values of
-  // MAX_OUTPUT (AY8910.cpp) and SPKR_DATA_INIT (Speaker.cpp),
-  // making them variables and making the appropriate access functions
-  // to call from Frame.cpp
-}
-
-double DSUploadBuffer(short *buffer, unsigned len) {
-  SDL_LockAudio();
-  unsigned free = getBufferFree();
-  unsigned num = std::min(len, free); // ignore overrun (drop samples)
-  if ((writeIdx + num) < bufferSize) {
-    memcpy(&mixBuffer[writeIdx], buffer, num * sizeof(short));
-    writeIdx += num;
-  } else {
-    unsigned len1 = bufferSize - writeIdx;
-    memcpy(&mixBuffer[writeIdx], buffer, len1 * sizeof(short));
-    unsigned len2 = num - len1;
-    memcpy(mixBuffer, &buffer[len1], len2 * sizeof(short));
-    writeIdx = len2;
+  const auto available = get_filled();
+  const auto num = std::min(len, available);
+  if (num < 1) {
+    return;
   }
 
-  double result = filledStat;
-  filledStat = 1.0; // only report difference once
-  SDL_UnlockAudio();
-  return result;
+  if ((read_index + num) < buffer.size()) { // No wrap around: straight copy
+    std::transform(stream, stream+num, buffer.begin()+read_index,
+                   stream, mix_func);
+    read_index += num;
+  } else { // handle wrap around
+    const auto len1 = buffer.size() - read_index;
+    if (len1) {
+      std::transform(stream, stream+len1, buffer.begin()+read_index,
+                     stream, mix_func);
+    }
+
+    const auto len2 = num - len1;
+    read_index = len2;
+    if (len2) {
+      std::transform(stream+len1, stream+len1+len2, buffer.begin(),
+                     stream+len1, mix_func);
+    }
+  }
+}
+
+
+void DSUploadBuffer(short *buffer, unsigned len) {
+  mix_buffer->upload(buffer, len);
+}
+
+void sample_buffer::upload(sample_t *src_buffer, size_t len) {
+  const auto num = std::min(len, get_free()); // ignore overrun (drop samples)
+  if ((write_index + num) < buffer.size()) {
+    std::copy_n(src_buffer, num, buffer.begin()+write_index);
+    write_index += num;
+  } else {
+    const auto len1 = buffer.size() - write_index;
+    std::copy_n(src_buffer, len1, buffer.begin()+write_index);
+    const auto len2 = num - len1;
+    std::copy_n(src_buffer+len1, len2, buffer.begin());
+    write_index = len2;
+  }
 }
 
 // Uploading sound data for Mockingboard buffer
 // GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
 void DSUploadMockBuffer(short *buffer, unsigned len) {
-  SDL_LockAudio();
-  unsigned free = getBuffer2Free();
-  unsigned samplesToWrite = std::min(len, free); // ignore overrun (drop samples)
-  // GPH Check for seam crossing on circular mockBuffer[].
-  if ((writeIdx2 + samplesToWrite) < bufferSize) {
-    memcpy(&mockBuffer[writeIdx2], buffer, samplesToWrite * sizeof(short));
-    writeIdx2 += samplesToWrite;
-  } else {
-    // GPH The player pointer at the mockBuffer will cross a seam;
-    // copy to the end of the buffer, and then to the beginning
-    unsigned len1 = bufferSize - writeIdx2;
-    memcpy(&mockBuffer[writeIdx2], buffer, len1 * sizeof(short));
-    unsigned len2 = samplesToWrite - len1;
-    memcpy(mockBuffer, &buffer[len1], len2 * sizeof(short));
-    writeIdx2 = len2;
-  }
-
-  SDL_UnlockAudio();
+  mock_buffer->upload(buffer, len);
 }
-
