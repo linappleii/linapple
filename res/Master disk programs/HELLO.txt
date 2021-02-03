@@ -1,0 +1,14 @@
+10 HOME
+15 VTAB 5
+20 PRINT TAB(13);"LinApple v2.2.1"
+25 PRINT TAB(15);"26 May 2020"
+30 PRINT
+35 PRINT TAB(9);: INVERSE : PRINT "F1";: NORMAL : PRINT " - Show help screen"
+40 PRINT TAB(9);: INVERSE : PRINT "CTRL-F2";: NORMAL : PRINT " - Reset / Reboot"
+45 PRINT TAB(9);: INVERSE : PRINT "F3";: NORMAL : PRINT " - Select DRIVE 1 DISK"
+50 PRINT TAB(9);: INVERSE : PRINT "F4";: NORMAL : PRINT " - Select DRIVE 2 DISK"
+55 PRINT TAB(9);: INVERSE : PRINT "F6";: NORMAL : PRINT " - Toggle full screen"
+60 PRINT TAB(9);: INVERSE : PRINT "F9";: NORMAL : PRINT " - Cycle display modes"
+65 PRINT
+70 PRINT TAB(5);"To recover captured mouse cursor"
+75 PRINT TAB(5);"to host press any function key."
