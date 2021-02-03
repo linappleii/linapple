@@ -56,14 +56,14 @@ released by pressing any function key.
 | Key            | Function                                                         |
 | -------------- | -----------------------------------------------------------------|
 | F1             | Show help screen.                                                |
-| Ctrl+F2        | Cold reboot. i.e. Power off and back on.                         |
+| Ctrl+F2        | Cold reboot, i.e. power off and back on.                         |
 | Shift+F2       | Reload configuration file and cold reboot.                       |
 | F3             | Load disk image for drive 1.                                     |
 | F4             | Load disk image for drive 2.                                     |
 | Shift+F3       | Attach hard disk image to slot 7.                                |
 | Shift+F4       | Attach hard disk image to slot 7.                                |
 | F5             | Swap drives for slot 6.                                          |
-| F6             | Toggle fullscreen mode.  See Warning below.                      |
+| F6             | Toggle fullscreen mode. See Warning below.                       |
 | Shift+F6       | Toggle character set (keyboard/video ROM rocker switch for       |
 |                | Apple IIe/enhanced with international keyboards/video ROMs)      |
 | F7             | Show debugger.                                                   |
@@ -76,7 +76,7 @@ released by pressing any function key.
 | Ctrl+0-9       | Load snapshot `n`.                                               |
 | Ctrl+Shift+0-9 | Save snapshot `n`.                                               |
 | Pause          | Pause/resume emulation.                                          |
-| Scroll Lock    | Toggle fulls peed emulation.                                     |
+| Scroll Lock    | Toggle full speed emulation.                                     |
 | Numpad +       | Increase emulation speed.                                        |
 | Numpad -       | Decrease emulation speed.                                        |
 | Numpad *       | Reset emulation speed.                                           |
