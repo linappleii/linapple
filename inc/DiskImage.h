@@ -1,8 +1,15 @@
 #pragma once
 
 #define  TRACKS      35
-#define  IMAGETYPES  7
+#define  IMAGETYPES  8
 #define  NIBBLES     6656
+#define  WOZ2_HEADER_SIZE     1536 /* three 512-byte blocks */
+#define  WOZ2_DATA_BLOCK_SIZE  512
+#define  WOZ2_TMAP_OFFSET       88 /* bytes from beginning of WOZ2 file */
+#define  WOZ2_TMAP_SIZE        160
+#define  WOZ2_TRKS_OFFSET      256 /* bytes from beginning of WOZ2 file */
+#define  WOZ2_TRKS_MAX_SIZE    160
+#define  WOZ2_TRK_SIZE           8
 
 bool ImageBoot(HIMAGE);
 void ImageClose(HIMAGE);
