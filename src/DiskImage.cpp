@@ -822,7 +822,7 @@ static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
         goto rescan;
       }
       if (nr_1s > 8) {
-        nr_1s = 1; // treat it as first FF
+        nr_FFs = 1; // treat it as first FF
       }
 
       unsigned int nr_0s = 0;
