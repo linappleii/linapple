@@ -3,6 +3,7 @@
  *  by beom beotiger, Nov 2007AD
 */
 
+#include "stdafx.h"
 #include "wwrapper.h"
 
 unsigned int SetFilePointer(HANDLE hFile, int lDistanceToMove, PLONG lpDistanceToMoveHigh, unsigned int dwMoveMethod)

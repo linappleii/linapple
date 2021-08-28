@@ -27,8 +27,7 @@ typedef struct {
   unsigned char P;
   unsigned char S;
   USHORT PC;
-  unsigned __int64
-  g_nCumulativeCycles;
+  UINT64 g_nCumulativeCycles;
   // IRQ = OR-sum of all interrupt sources
 } SS_CPU6502;
 
@@ -47,8 +46,7 @@ typedef struct {
 } SS_IO_Comms;
 
 typedef struct {
-  unsigned __int64
-  g_nJoyCntrResetCycle;
+  UINT64 g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
 typedef struct {
@@ -57,8 +55,7 @@ typedef struct {
 } SS_IO_Keyboard;
 
 typedef struct {
-  unsigned __int64
-  g_nSpkrLastCycle;
+  UINT64 g_nSpkrLastCycle;
 } SS_IO_Speaker;
 
 typedef struct {
