@@ -13,13 +13,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
+#include <stdint.h>
 
 #ifndef _WIN32
-
-#include "wincompat.h"
-
+#  include "wincompat.h"
 #else
-#include <windows.h>
+#  include <windows.h>
 #endif
 
 #include <SDL.h>

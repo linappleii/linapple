@@ -78,8 +78,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Needs adaptation for SDL and POSIX */
 
 #define LOG_SSI263 0
-#define UINT64 unsigned __int64
-
 
 #include "stdafx.h"
 
@@ -142,8 +140,7 @@ static SY6522_AY8910 g_MB[NUM_AY8910];
 // Timer vars
 static ULONG g_n6522TimerPeriod = 0;
 static USHORT g_nMBTimerDevice = 0;  // SY6522 device# which is generating timer IRQ
-static unsigned __int64
-g_uLastCumulativeCycles = 0;
+static UINT64 g_uLastCumulativeCycles = 0;
 
 #ifdef MB_SPEECH
 // SSI263 vars:
@@ -156,8 +153,7 @@ static HANDLE g_hThread = NULL;
 
 static short *ppAYVoiceBuffer[NUM_VOICES] = {0};
 
-static unsigned __int64
-g_nMB_InActiveCycleCount = 0;
+static UINT64 g_nMB_InActiveCycleCount = 0;
 static bool g_bMB_RegAccessedFlag = false;
 static bool g_bMB_Active = true;
 static bool g_bMBAvailable = false;
@@ -688,8 +684,7 @@ void MB_Update() {
   if (!g_bMB_RegAccessedFlag) {
     if (!g_nMB_InActiveCycleCount) {
       g_nMB_InActiveCycleCount = g_nCumulativeCycles;
-    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > (unsigned
-      __int64)g_fCurrentCLK6502 / 10) {
+    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > (UINT64)g_fCurrentCLK6502 / 10) {
       // After 0.1 sec of Apple time, assume MB is not active
       g_bMB_Active = false;
     }
