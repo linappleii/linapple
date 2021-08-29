@@ -61,7 +61,7 @@ LFLAGS := -pg
 endif
 
 ifdef DEBUG
-CFLAGS := -Wall -O0 -ggdb -ansi -c -finstrument-functions -std=c++11
+CFLAGS := -O0 -ggdb -ansi -c -finstrument-functions -std=c++11 -Wno-write-strings -Werror
 endif
 
 CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
@@ -113,6 +113,7 @@ clean:
 #https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
 distclean: clean
 	@$(RM) -rf build
+	@find . -type f -iname '*~' -exec rm -f {} \;
 	@$(RM) $(TARGET)-$(VERSION).deb
 
 #Pull in dependency info for *existing* .o files
