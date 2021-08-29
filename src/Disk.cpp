@@ -503,7 +503,7 @@ int DiskInsert(int drive, LPCTSTR imageFileName, bool writeProtected, bool creat
   int error = ImageOpen(tmp, &fptr->imagehandle, &fptr->writeProtected, createIfNecessary);
   if (error == IMAGE_ERROR_NONE) {
     tmp = GetImageTitle(imageFileName, fptr);
-    snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%s - %s", g_pAppTitle, tmp);
+    snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(tmp)), tmp);
     if (drive == 0) {
       SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
     }
@@ -629,9 +629,9 @@ void DiskSelectImage(int drive, LPSTR pszFilename)
 
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
+          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
         } else {
-          snprintf(tempPath, MAX_PATH, "/%s", filename);
+          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
         }
         strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
@@ -643,7 +643,7 @@ void DiskSelectImage(int drive, LPSTR pszFilename)
   strcpy(g_sCurrentDir, fullPath);
   RegSaveString(TEXT("Preferences"), REGVALUE_PREF_START_DIR, 1, g_sCurrentDir); // Save it
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
   strcpy(fullPath, tempPath); // Got ot anew
 
   int error = DiskInsert(drive, fullPath, 0, 1);
@@ -713,10 +713,10 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
         fileIndex = dirdx;  // restore
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s%s/", fullPath, filename); // next dir
+          snprintf(tempPath, MAX_PATH, "%.*s%.*s/", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
         }
         else {
-          snprintf(tempPath, MAX_PATH, "/%s/", filename);
+          snprintf(tempPath, MAX_PATH, "/%.*s/", int(strlen(filename)), filename);
         }
         strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
@@ -728,10 +728,10 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   strcpy(g_sFTPServer, fullPath);
   RegSaveString(TEXT("Preferences"), REGVALUE_FTP_DIR, 1, g_sFTPServer);// save it
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename);
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename);
   strcpy(fullPath, tempPath); // fullPath - full path to file on FTP server
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", g_sFTPLocalDir, filename); // local path for file
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(filename)), filename); // local path for file
 
   int error;
 
@@ -835,7 +835,7 @@ bool DiskDriveSwap()
   memcpy(&g_aFloppyDisk[0], &g_aFloppyDisk[1], sizeof(Disk_t));
   memcpy(&g_aFloppyDisk[1], &temp, sizeof(Disk_t));
   // change title
-  snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%s - %s", g_pAppTitle, g_aFloppyDisk[0].imagename);
+  snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(g_aFloppyDisk[0].imagename)), g_aFloppyDisk[0].imagename);
   SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
 
   FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);

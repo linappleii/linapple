@@ -263,7 +263,7 @@ void FrameQuickState(int num, int mod)
 {
   // quick load or save state with number num, if Shift is pressed, state is being saved, otherwise - being loaded
   char fpath[MAX_PATH];
-  snprintf(fpath, MAX_PATH, "%s/SaveState%d.aws", g_sSaveStateDir, num); // prepare file name
+  snprintf(fpath, MAX_PATH, "%.*s/SaveState%d.aws", int(strlen(g_sSaveStateDir)), g_sSaveStateDir, num); // prepare file name
   Snapshot_SetFilename(fpath);  // set it as a working name
   if (mod & KMOD_SHIFT) {
     Snapshot_SaveState();
@@ -525,9 +525,9 @@ bool PSP_SaveStateSelectImage(bool saveit)
         fileIndex = dirdx;  // restore
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
+          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
         } else {
-          snprintf(tempPath, MAX_PATH, "/%s", filename);
+          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
         }
         strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
@@ -540,7 +540,7 @@ bool PSP_SaveStateSelectImage(bool saveit)
 
   backdx = fileIndex; // Store cursor position
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
   strcpy(fullPath, tempPath); // Got ot anew
 
   Snapshot_SetFilename(fullPath); // Set name for snapshot
@@ -555,11 +555,15 @@ void FrameSaveBMP(void) {
   static int i = 1;  // index
   char bmpName[20];  // file name
 
-  snprintf(bmpName, 20, "linapple%d.bmp", i);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+  snprintf(bmpName, 20, "linapple%7d.bmp", i);
   while (!stat(bmpName, &bufp)) { // Find first absent file
     i++;
-    snprintf(bmpName, 20, "linapple%d.bmp", i);
+    snprintf(bmpName, 20, "linapple%7d.bmp", i);
   }
+#pragma GCC diagnostic pop
+
   SDL_SaveBMP(screen, bmpName);  // Save file using SDL inner function
   printf("File %s saved!\n", bmpName);
   i++;

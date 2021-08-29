@@ -43,7 +43,7 @@ bool MemoryTextFile_t::Read( const std::string & pFileName )
 		m_vBuffer.insert( m_vBuffer.begin(), nSize+1, 0 );
 
 		char *pBuffer = & m_vBuffer.at(0);
-		fread((void*)pBuffer, nSize, 1, hFile);
+		bStatus=(fread((void*)pBuffer, nSize, 1, hFile)>0?true:false);
 		fclose(hFile);
 
 		m_bDirty = true;

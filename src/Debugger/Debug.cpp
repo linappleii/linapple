@@ -8311,7 +8311,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
     if (bExport)
     {
       // Note: 2 extra dummy columns are inserted to keep Addressing Mode in same column
-      sprintf( sAddress, "%s%s\"%s\"", sSeperator1, sSeperator1, g_aOpmodes[ nOpmode ].m_sName );
+      sprintf( sAddress, "%.*s%.*s\"%.*s\"", int(strlen(sSeperator1)), sSeperator1, int(strlen(sSeperator1)), sSeperator1, int(strlen(g_aOpmodes[ nOpmode ].m_sName)), g_aOpmodes[ nOpmode ].m_sName );
     }
     else // not qouted if dumping to console
     {
@@ -8790,7 +8790,10 @@ void DebugInitialize()
     doneAutoRun = true;
     std::string pathname = g_sProgramDir;
     pathname += "DebuggerAutoRun.txt";
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
     strncpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
+#pragma GCC diagnostic pop
     g_bReportMissingScripts = false;
     CmdOutputRun(1);
     g_bReportMissingScripts = true;
