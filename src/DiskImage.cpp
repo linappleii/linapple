@@ -742,7 +742,12 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
 
   #define _MAX_EXT  5
   char ext[_MAX_EXT];
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
   _tcsncpy(ext, imagefileext, _MAX_EXT);
+#pragma GCC diagnostic pop
+
   CharLowerBuff(ext, _tcslen(ext));
 
   unsigned int size = GetFileSize(file, NULL);
@@ -809,7 +814,10 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
     if (*hDiskImage_) {
       ZeroMemory(*hDiskImage_, sizeof(imageinforec));
       // Do this in DiskInsert
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
       _tcsncpy(((imageinfoptr) *hDiskImage_)->filename, imagefilename, MAX_PATH);
+#pragma GCC diagnostic pop
       ((imageinfoptr) *hDiskImage_)->format = format;
       ((imageinfoptr) *hDiskImage_)->file = file;
       ((imageinfoptr) *hDiskImage_)->offset = pImage - view;

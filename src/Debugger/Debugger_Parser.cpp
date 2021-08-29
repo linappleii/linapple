@@ -113,7 +113,10 @@ int _Arg_1( LPTSTR pName )
 	}
 	else
 	{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 		_tcsncpy( g_aArgs[1].sArg, pName, MAX_ARG_LEN );
+#pragma GCC diagnostic pop
 	}
 	return 1;
 }
@@ -314,7 +317,10 @@ int	ArgsGet ( char * pInput )
 				//if (iTokenSrc == TOKEN_QUOTE_DOUBLE)
 				//	nLen = nBuf;
 				nLen = MIN( nBuf, MAX_ARG_LEN ); // NOTE: see Arg_t.sArg[] // GH#481
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 				_tcsncpy( pArg->sArg, pSrc, nLen );
+#pragma GCC diagnostic pop
 				pArg->sArg[ nLen ] = 0;
 				pArg->nArgLen      = nLen;
 				pArg->eToken       = iTokenSrc;

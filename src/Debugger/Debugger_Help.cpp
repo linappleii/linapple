@@ -89,7 +89,10 @@ bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 		return false;
 	}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 	_tcsncat( pDst, pSrc, nChars );
+#pragma GCC diagnostic pop
 	return true;
 }
 
@@ -103,7 +106,10 @@ int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 	int nSpcDst = nDstSize - nLenDst;
 	int nChars  = MIN( nLenSrc, nSpcDst );
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 	_tcsncat( pDst, pSrc, nChars );
+#pragma GCC diagnostic pop
 
 	bool bOverflow = (nSpcDst < nLenSrc);
 	if (bOverflow)
@@ -297,12 +303,12 @@ void Help_KeyboardShortcuts()
 }
 
 
-void _ColorizeHeader(
-	char * & pDst,const char * & pSrc,
-	const char * pHeader, const int nHeaderLen )
+void _ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, const int nHeaderLen )
 {
 	int nLen;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 	nLen = strlen( CHC_USAGE );
 	strcpy( pDst, CHC_USAGE );
 	pDst += nLen;
@@ -323,6 +329,7 @@ void _ColorizeHeader(
 	nLen = strlen( CHC_DEFAULT );
 	strcpy( pDst, CHC_DEFAULT );
 	pDst += nLen;
+#pragma GCC diagnostic pop
 }
 
 
@@ -378,7 +385,7 @@ bool Colorize( char * pDst, const char * pSrc )
 		return false;
 
 	const char sNote [] = "Note:";
-	const int  nNote    = sizeof( sNote ) - 1;
+	const int  nNote    = sizeof( sNote ) - 1; 
 
 	const char sSeeAlso[] = "See also:";
 	const char nSeeAlso   = sizeof( sSeeAlso ) - 1;
@@ -483,7 +490,7 @@ inline bool ConsoleColorizePrint( char* colorizeBuf, size_t /*colorizeBufSz*/,
                                   const char* pText )
 {
    if (!Colorize(colorizeBuf, pText)) return false;
-   return ConsolePrint(colorizeBuf);
+   return ConsolePrint(colorizeBuf)?true:false;
 }
 
 template<size_t _ColorizeBufSz>

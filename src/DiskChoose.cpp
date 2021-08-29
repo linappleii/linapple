@@ -152,6 +152,8 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
       strcpy(tmp, list[index]->d_name);
       files.Add(tmp);
       tmp = new char[10];  // 1400000KB
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
       if (1000 > fsize) {   // Kilo
         snprintf(tmp, 9, "%4dK", fsize);
       } else if (1000000 > fsize) {   // Mega
@@ -159,6 +161,7 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
       } else {  // Giga
         snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
       }
+#pragma GCC diagnostic pop
       sizes.Add(tmp);  // add corresponding file size to list
     }
   }
