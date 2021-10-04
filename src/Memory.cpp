@@ -676,7 +676,7 @@ void MemUpdatePaging(bool initialize, bool updatewriteonly) {
 
   for (loop = 0xD0; loop < 0xE0; loop++) {
     int bankoffset = (SW_HRAM_BANK2 ? 0 : 0x1000);
-#if 0
+#if 1
 		memshadow[loop] = SW_HIGHRAM
 												? SW_ALTZP
 													?	memaux + (loop << 8) - bankoffset
