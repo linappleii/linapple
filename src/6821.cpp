@@ -18,8 +18,7 @@
 //    information, if you find new information we would appreciate if you made it
 //    freely available as well.
 //
-
-#include "wincompat.h"
+#include "stdafx.h"
 #include "6821.h"
 
 // Ctrl-A(B) register bit mask define

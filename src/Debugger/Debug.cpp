@@ -200,7 +200,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
   ProfileOpcode_t g_aProfileOpcodes[ NUM_OPCODES ];
   ProfileOpmode_t g_aProfileOpmodes[ NUM_OPMODES ];
-  unsigned __int64 g_nProfileBeginCycles = 0; // g_nCumulativeCycles // PROFILE RESET
+  UINT64 g_nProfileBeginCycles = 0; // g_nCumulativeCycles // PROFILE RESET
 
   const std::string g_FileNameProfile = TEXT("Profile.txt"); // changed from .csv to .txt since Excel doesn't give import options.
   int   g_nProfileLine = 0;
@@ -8311,7 +8311,7 @@ void ProfileFormat( bool bExport, ProfileFormat_e eFormatMode )
     if (bExport)
     {
       // Note: 2 extra dummy columns are inserted to keep Addressing Mode in same column
-      sprintf( sAddress, "%s%s\"%s\"", sSeperator1, sSeperator1, g_aOpmodes[ nOpmode ].m_sName );
+      sprintf( sAddress, "%.*s%.*s\"%.*s\"", int(strlen(sSeperator1)), sSeperator1, int(strlen(sSeperator1)), sSeperator1, int(strlen(g_aOpmodes[ nOpmode ].m_sName)), g_aOpmodes[ nOpmode ].m_sName );
     }
     else // not qouted if dumping to console
     {
@@ -8790,7 +8790,10 @@ void DebugInitialize()
     doneAutoRun = true;
     std::string pathname = g_sProgramDir;
     pathname += "DebuggerAutoRun.txt";
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
     strncpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
+#pragma GCC diagnostic pop
     g_bReportMissingScripts = false;
     CmdOutputRun(1);
     g_bReportMissingScripts = true;
