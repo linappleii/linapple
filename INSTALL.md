@@ -19,16 +19,18 @@ ImageMagick
 ### Clone
 
 ```bash
-git clone git@github.com:linappleii/linapple.git 
+git clone https://github.com/linappleii/linapple.git
 ```
-Linapple - crossplatfom emulator of Apple][ (Apple2, Apple 2) series computer for Linux or other OSes with SDL support.
-
 
 ### Compile
 
 ```bash
 cd linapple
 make
+```
+For a faster compilation, you can add an option "-jx", where "x" is the number of threads of your CPU. For example, AMD Ryzen 1600 has 6 cores, but 12 threads:
+```bash
+make -j12
 ```
 
 ### Global Install
