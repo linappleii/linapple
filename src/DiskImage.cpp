@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
+#include <assert.h>
 #include "stdafx.h"
 #include "wwrapper.h"
 
@@ -94,6 +95,11 @@ bool PrgBoot(imageinfoptr ptr);
 
 unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize);
 
+unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize);
+
+void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+
+
 typedef struct _imagetyperec {
   LPCTSTR createExts;
   LPCTSTR rejectExts;
@@ -116,7 +122,9 @@ static imagetyperec imagetype[IMAGETYPES] = {{TEXT(".prg"),     TEXT(
                                              {TEXT(".nb2"),     TEXT(
                                                ".do;.iie;.po;.prg"),                            Nib2Detect, NULL,    Nib2Read, Nib2Write},
                                              {TEXT(".iie"),     TEXT(
-                                               ".do.;.nib;.po;.prg"),                           IieDetect,  NULL,    IieRead,  IieWrite}};
+                                               ".do.;.nib;.po;.prg"),                           IieDetect,  NULL,    IieRead,  IieWrite},
+                                             {TEXT(".woz"),     TEXT(
+                                     ".do;.dsk;.iie;.nib;.po;.prg"),                            Woz2Detect, NULL,    Woz2Read, NULL}};
 
 static unsigned char diskbyte[0x40] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
                               0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE,
@@ -658,6 +666,191 @@ bool PrgBoot(imageinfoptr ptr)
 unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize)
 {
   return (*(LPDWORD) imageptr == 0x214C470A) ? 2 : 0;
+}
+
+// WOZ2 (woz) format implementation
+// see: https://applesaucefdc.com/woz/reference2/
+
+unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize)
+{
+  if (strncmp((const char *) imageptr, "WOZ2\xFF\n\r\n", 8) != 0) {
+    return 0;
+  }
+  if (imagesize < WOZ2_HEADER_SIZE) {
+    return 0;
+  }
+  return 2;
+}
+
+static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
+                                         const unsigned int bit_count,
+                                         const unsigned int sync_bytes_needed,
+                                         const unsigned int trailing_0_count);
+
+void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+{
+  unsigned int bytesRead;
+  if (!ptr->header) {
+    ptr->header = (LPBYTE) VirtualAlloc(NULL, WOZ2_HEADER_SIZE, 0x1000, 0);
+    if (!ptr->header) {
+      *nibbles = 0;
+      return;
+    }
+    SetFilePointer(ptr->file, ptr->offset, NULL, FILE_BEGIN);
+    ReadFile(ptr->file, ptr->header, WOZ2_HEADER_SIZE, &bytesRead, NULL);
+    assert(bytesRead == WOZ2_HEADER_SIZE);
+  }
+
+  uint8_t* tmap = ptr->header + WOZ2_TMAP_OFFSET;
+  uint8_t* trks = ptr->header + WOZ2_TRKS_OFFSET;
+  uint8_t* trk = NULL;
+
+  // Sorry, only integral tracks supported.
+  // This is because the Disk II emulation does not properly handle
+  // track data for half-/quarter- tracks.
+  const unsigned int tmap_index = 4 * track;
+  assert(tmap_index <= WOZ2_TMAP_SIZE);
+
+  const unsigned int trks_index = tmap[tmap_index];
+
+  if (trks_index == 0xFF) { // unrecorded track ==> random data
+    for (unsigned int i = 0; i < NIBBLES; ++i) {
+      trackImageBuffer[i] = (uint8_t)(rand() & 0xFF);
+    }
+    *nibbles = NIBBLES;
+    return;
+  }
+
+  assert(trks_index <= WOZ2_TRKS_MAX_SIZE);
+  trk = trks + trks_index * WOZ2_TRK_SIZE;
+
+  const uint16_t starting_block = trk[0] | ((uint16_t) trk[1])<<8;
+  const uint16_t block_count = trk[2] | ((uint16_t) trk[3])<<8;
+  const uint32_t bit_count =  trk[4] | ((uint16_t) trk[5])<<8
+    | ((uint16_t) trk[6])<<16 | ((uint16_t) trk[7])<<24;
+
+  SetFilePointer(ptr->file, ptr->offset + starting_block * WOZ2_DATA_BLOCK_SIZE, NULL, FILE_BEGIN);
+
+  const unsigned int byte_count = block_count * WOZ2_DATA_BLOCK_SIZE;
+  LPBYTE buffer = (LPBYTE) VirtualAlloc(NULL, byte_count, 0x1000, 0);
+  if (!buffer) {
+    *nibbles = 0;
+    return;
+  }
+
+  ReadFile(ptr->file, buffer, byte_count, &bytesRead, NULL);
+  assert(bytesRead == byte_count);
+
+
+  // scan for sync bytes
+  // try 16-sector format first...
+  unsigned int i = woz2_scan_sync_bytes(buffer, bit_count,
+                                        4, // 4 sync bytes are enough
+                                        2);
+  if (i == 0) { // sync bytes not found: try 13-sector format...
+    i = woz2_scan_sync_bytes(buffer, bit_count,
+                             7, // need 7 sync bytes
+                             1);
+  }
+  if (i == 0) { // sync bytes (still) not found
+    VirtualFree(buffer, 0,/*MEM_RELEASE*/0);
+    *nibbles = 0;
+    return;
+  }
+
+
+  // now, scan for nibbles
+#define FETCH_BIT(i) ((buffer[(i)/8] & (0x80 >> ((i)%8))) == 0? 0 : 1)
+#define WRAP_BIT_INDEX(i)  do{ if ((i) >= bit_count) (i) -= bit_count; }while(0)
+  unsigned int bits_left = bit_count;
+  unsigned int nibbles_done = 0;
+  WRAP_BIT_INDEX(i);
+  while (nibbles_done < NIBBLES && bits_left > 0) {
+    while (bits_left > 0) {
+      if (FETCH_BIT(i) == 1)
+        break;
+      ++i;
+      WRAP_BIT_INDEX(i);
+      --bits_left;
+    }
+    if (bits_left < 8) {
+      break;
+    }
+
+    uint8_t nibble = 0;
+    for (int b=0; b<8; ++b) {
+      nibble = (nibble << 1) | FETCH_BIT(i);
+      ++i;
+      WRAP_BIT_INDEX(i);
+    }
+    bits_left -= 8;
+
+    trackImageBuffer[nibbles_done++] = nibble;
+  }
+
+  VirtualFree(buffer, 0,/*MEM_RELEASE*/0);
+
+  *nibbles = nibbles_done;
+}
+
+static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
+                                         const unsigned int bit_count,
+                                         const unsigned int sync_bytes_needed,
+                                         const unsigned int trailing_0_count)
+{
+#define FETCH_BIT(i) ((buffer[(i)/8] & (0x80 >> ((i)%8))) == 0? 0 : 1)
+
+  unsigned int i = 0;
+  bool found_sync_FFs = false;
+
+ rescan: for (;;) {
+    while (i < bit_count && FETCH_BIT(i)==0) {
+      ++i;
+    }
+    if (i >= bit_count) {
+      break;
+    }
+
+    unsigned int nr_FFs = 0;
+    for (;;) {
+      unsigned int nr_1s = 0;
+      while (i < bit_count && FETCH_BIT(i)==1) {
+        ++nr_1s;
+        ++i;
+      }
+      if (nr_1s < 8) {
+        goto rescan;
+      }
+      if (nr_1s > 8) {
+        nr_FFs = 1; // treat it as first FF
+      }
+
+      unsigned int nr_0s = 0;
+      while (i < bit_count && FETCH_BIT(i)==0) {
+        ++nr_0s;
+        ++i;
+      }
+      if (nr_0s != trailing_0_count) {
+        goto rescan;
+      }
+
+      // we've found 1111_1111_0[0].  This is an autosync byte
+      ++nr_FFs;
+      if (nr_FFs == sync_bytes_needed) {
+        found_sync_FFs = true;
+        break;
+      }
+    }
+    if (found_sync_FFs) {
+      break;
+    }
+  }
+
+  if (!found_sync_FFs) {
+    return 0; // 0 means not found
+  }
+
+  return i;
 }
 
 // All globally accessible functions are below this line
