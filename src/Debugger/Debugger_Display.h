@@ -86,7 +86,7 @@
 	extern char g_aDebuggerVirtualTextScreen[ DEBUG_VIRTUAL_TEXT_HEIGHT ][ DEBUG_VIRTUAL_TEXT_WIDTH ];
 	extern size_t Util_GetDebuggerText( char* &pText_ ); // Same API as Util_GetTextScreen()
 
-	extern unsigned __int64 g_nCumulativeCycles;
+	extern UINT64 g_nCumulativeCycles;
 	class VideoScannerDisplayInfo
 	{
 	public:
@@ -98,7 +98,7 @@
 		bool isHorzReal;
 		bool isAbsCycle;
 
-		unsigned __int64 lastCumulativeCycles;
+		UINT64 lastCumulativeCycles;
 		unsigned int cycleDelta;
 	};
 

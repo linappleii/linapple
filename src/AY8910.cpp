@@ -28,6 +28,8 @@
 //    freely available as well.
 //
 
+#include <inttypes.h>
+#include <stdint.h>
 #include "wincompat.h"
 #include <stdio.h>
 #include <string.h>

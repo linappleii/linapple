@@ -86,7 +86,7 @@ bool ChooseAnImageFTP(int sx, int sy, char *ftp_dir, int slot, char **filename, 
   }
   char tmpstr[512];
   char ftpdirpath[MAX_PATH];
-  snprintf(ftpdirpath, MAX_PATH, "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(ftp_dir)); // get path for FTP dir listing
+  snprintf(ftpdirpath, MAX_PATH, "%.*s/%.*s%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(g_sFTPLocalDir)), g_sFTPDirListing, int(strlen(md5str(ftp_dir))), md5str(ftp_dir)); // get path for FTP dir listing
 
   List<char> files;    // our files
   List<char> sizes;    // and their sizes (or 'dir' for directories)

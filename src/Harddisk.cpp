@@ -165,6 +165,8 @@ void HD_ResetStatus(void)
 
 static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
   char imagetitle[128];
   LPCTSTR startpos = imageFileName;
 
@@ -199,6 +201,7 @@ static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
 
   _tcsncpy(pHardDrive->hd_imagename, imagetitle, 15);
   pHardDrive->hd_imagename[15] = 0;
+#pragma GCC diagnostic pop
 }
 
 static void NotifyInvalidImage(char *filename)
@@ -354,9 +357,9 @@ void HD_FTP_Select(int nDrive)
         fileIndex = dirdx;  // restore
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s%s/", fullPath, filename); // next dir
+          snprintf(tempPath, MAX_PATH, "%.*s%.*s/", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
         } else {
-          snprintf(tempPath, MAX_PATH, "/%s/", filename);
+          snprintf(tempPath, MAX_PATH, "/%.*s/", int(strlen(filename)), filename);
         }
         strcpy(fullPath, tempPath);  // got ot anew
         printf("HD_FTP_Select: we build %s\n", tempPath);
@@ -369,10 +372,10 @@ void HD_FTP_Select(int nDrive)
   strcpy(g_sFTPServerHDD, fullPath);
   RegSaveString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename);
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename);
   strcpy(fullPath, tempPath); // fullPath - full path to file on FTP server
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", g_sFTPLocalDir, filename); // local path for file
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(filename)), filename); // local path for file
 
   int error = ftp_get(fullPath, tempPath);
   if (!error) {
@@ -422,10 +425,10 @@ void HD_Select(int nDrive)
         fileIndex = dirdx;  // restore
       } else {
         if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // next dir
+          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
         }
         else {
-          snprintf(tempPath, MAX_PATH, "/%s", filename);
+          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
         }
         strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
@@ -437,7 +440,7 @@ void HD_Select(int nDrive)
   strcpy(g_sHDDDir, fullPath);
   RegSaveString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir); // Save it
 
-  snprintf(tempPath, MAX_PATH, "%s/%s", fullPath, filename); // Next dir
+  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
   strcpy(fullPath, tempPath);  // Got ot anew
 
   // in future: save file name in registry for future fetching

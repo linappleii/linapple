@@ -121,8 +121,7 @@ static bool setbutton[3] = {0, 0, 0}; // Used when a mouse button is pressed/rel
 static int xpos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 static int ypos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 
-static unsigned __int64
-g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
+static UINT64 g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
 
 static int g_nPdlTrimX = 0;
 static int g_nPdlTrimY = 0;
@@ -619,8 +618,7 @@ unsigned char JoyReadPosition(unsigned short programcounter, unsigned short addr
   //if(nPdlPos >= 255)
   //  nPdlPos = 280;
 
-  bool nPdlCntrActive = g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (unsigned
-  __int64) ((double) nPdlPos * PDL_CNTR_INTERVAL));
+  bool nPdlCntrActive = (g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (UINT64) ((double) nPdlPos * PDL_CNTR_INTERVAL)));
 
   return MemReadFloatingBus(nPdlCntrActive, nCyclesLeft);
 }

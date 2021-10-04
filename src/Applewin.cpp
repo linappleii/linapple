@@ -166,13 +166,13 @@ void ContinueExecution()
   if (nCyclesWithFeedback < 0) {
     nCyclesWithFeedback = 0;
   }
-  const unsigned int uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
+  const DWORD uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
                                        : 0;
 
-  const unsigned int uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+  const DWORD uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
                           /* MODE_STEPPING */ : 0;
 
-  unsigned int uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
+  DWORD uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
   g_dwCyclesThisFrame += uActualCyclesExecuted;
 
   cyclenum = uActualCyclesExecuted;
