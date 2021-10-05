@@ -597,68 +597,66 @@ void DiskReset()
 void DiskSelectImage(int drive, LPSTR pszFilename)
 {
   // Omit pszFilename??? for some reason or not!
-  static int fileIndex = 0; // file index will be remembered for current dir
-  static int backdx = 0;    //reserve
-  static int dirdx = 0;     // reserve for dirs
+  static size_t fileIndex = 0; // file index will be remembered for current dir
+  static size_t backdx = 0;    //reserve
+  static size_t dirdx = 0;     // reserve for dirs
 
-  char *filename = NULL;   // given filename
-  char fullPath[MAX_PATH]; // full path for it
-  char tempPath[MAX_PATH];
+  std::string filename;   // given filename
+  std::string fullPath; // full path for it
   bool isdir;              // if given filename is a directory?
 
   fileIndex = backdx;
   isdir = true;
-  strcpy(fullPath, g_sCurrentDir);  // global var for disk selecting directory
+  fullPath = g_sCurrentDir;  // global var for disk selecting directory
 
   while (isdir) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 6, &filename, &isdir, &fileIndex)) {
+    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 6,
+                       filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
     if (isdir) {
-      if (!strcmp(filename, ".."))  // go to the upper directory
+      if (filename == "..")  // go to the upper directory
       {
-        filename = strrchr(fullPath, FILE_SEPARATOR); // look for last '/'
-        if (filename) {
-          *filename = '\0';  // cut it off
+        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        if (last_sep_pos != std::string::npos) {
+          fullPath = fullPath.substr(0, last_sep_pos);
         }
-        if (strlen(fullPath) == 0) {
-          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        if (fullPath == "") {
+          fullPath = "/";
         }
         fileIndex = dirdx;  // restore
 
       } else {
-        if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
+        if (fullPath != "/") {
+          fullPath += "/" + filename;
         } else {
-          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
+          fullPath = "/" + filename;
         }
-        strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
         fileIndex = 0;  // start with beginning of dir
       }
     }/* if isdir */
   } /* while isdir */
   // we chose some file
-  strcpy(g_sCurrentDir, fullPath);
+  strcpy(g_sCurrentDir, fullPath.c_str());
   RegSaveString(TEXT("Preferences"), REGVALUE_PREF_START_DIR, 1, g_sCurrentDir); // Save it
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
-  strcpy(fullPath, tempPath); // Got ot anew
+  fullPath += "/" + filename;
 
-  int error = DiskInsert(drive, fullPath, 0, 1);
+  int error = DiskInsert(drive, fullPath.c_str(), 0, 1);
   if (!error) {
     // in future: save file name in registry for future fetching
     // for one drive will be one reg parameter
     //  RegSaveString(TEXT("Preferences"),REGVALUE_PREF_START_DIR, 1,filename);
     if (drive == 0) {
-      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE1, 1, fullPath);
+      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE1, 1, fullPath.c_str());
     }
     else {
-      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE2, 1, fullPath);
+      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE2, 1, fullPath.c_str());
     }
   } else {
-    DiskNotifyInvalidImage(filename, error); // show error on the screen (or in console for our case)
+    DiskNotifyInvalidImage(filename.c_str(), error); // show error on the screen (or in console for our case)
   }
   backdx = fileIndex;  //store cursor position
   DrawFrameWindow();
@@ -674,13 +672,12 @@ void DiskSelect(int drive)
 void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 {
   //  omit pszFilename??? for some reason or not!
-  static int fileIndex = 0;  // file index will be remembered for current dir
-  static int backdx = 0;  //reserve
-  static int dirdx = 0;  // reserve for dirs
+  static size_t fileIndex = 0; // file index will be remembered for current dir
+  static size_t backdx = 0;  //reserve
+  static size_t dirdx = 0;  // reserve for dirs
 
-  char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  std::string filename;      // given filename
+  std::string fullPath;  // full path for it
   bool isdir;      // if given filename is a directory?
 
   #ifndef _WIN32
@@ -689,77 +686,74 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 
   fileIndex = backdx;
   isdir = true;
-  strcpy(fullPath, g_sFTPServer);  // global var for FTP path
+  fullPath = g_sFTPServer;  // global var for FTP path
 
   while (isdir) {
-    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 6, &filename, &isdir, &fileIndex)) {
+    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 6,
+                          filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
     if (isdir) {
-      if (!strcmp(filename, "..")) {
+      if (filename == "..") {
         // go to the upper directory
-        filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
-        if (filename) {
-          *filename = '\0';  // cut it off
-          filename = strrchr(fullPath, FTP_SEPARATOR); // look for last '/'
-          if (filename) {
-            *(++filename) = '\0';  // leave it on the place
-          }
+        auto r = fullPath.find_last_of(FTP_SEPARATOR);
+        if (r == fullPath.size() - 1) { // found: look for 2nd last
+          r = fullPath.find_last_of(FTP_SEPARATOR, r-1);
         }
-        if (strlen(fullPath) == 0) {
-          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+        if (r != std::string::npos) {
+          fullPath = fullPath.substr(0, 1+r);
+        }
+        if (fullPath == "") {
+          fullPath = "/";  //we don't want fullPath to be empty
         }
         fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%.*s%.*s/", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
+        if (fullPath != "/") {
+          fullPath += filename + "/";
+        } else {
+          fullPath = "/" + filename + "/";
         }
-        else {
-          snprintf(tempPath, MAX_PATH, "/%.*s/", int(strlen(filename)), filename);
-        }
-        strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
         fileIndex = 0;  // start with beginning of dir
       }
     }/* if isdir */
   } /* while isdir */
   // we chose some file
-  strcpy(g_sFTPServer, fullPath);
+  strcpy(g_sFTPServer, fullPath.c_str());
   RegSaveString(TEXT("Preferences"), REGVALUE_FTP_DIR, 1, g_sFTPServer);// save it
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename);
-  strcpy(fullPath, tempPath); // fullPath - full path to file on FTP server
+  fullPath += "/" + filename;
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(g_sFTPLocalDir)), g_sFTPLocalDir, int(strlen(filename)), filename); // local path for file
+  std::string localPath = std::string(g_sFTPLocalDir) + "/" +  filename; // local path for file
 
   int error;
 
   // One moment - if we have some file with the same name
   // we do not want to download it again
   #ifndef _WIN32
-  if (stat(tempPath, &info) == 0) {
+  if (stat(localPath.c_str(), &info) == 0) {
     error = 0; // use this file
   } else {
-    error = ftp_get(fullPath, tempPath); // 0 on success
+    error = ftp_get(fullPath.c_str(), localPath.c_str()); // 0 on success
   }
   #else
   // using WIN32 method
-    if(GetFileAttributes(tempPath) != unsigned int(-1)) {
+    if(GetFileAttributes(localPath) != unsigned int(-1)) {
       error = 0;
     } else {
-      error = ftp_get(fullPath, tempPath); // 0 on success
+      error = ftp_get(fullPath, localPath.c_str()); // 0 on success
     }
   #endif
 
   if (!error) {
-    error = DiskInsert(drive, tempPath, 0, 1);// try to insert downloaded file as a disk image
+    error = DiskInsert(drive, localPath.c_str(), 0, 1);// try to insert downloaded file as a disk image
     if (!error) {
     } else {
-      DiskNotifyInvalidImage(filename, error); // show error on the screen (or in console for our case)
+      DiskNotifyInvalidImage(filename.c_str(), error); // show error on the screen (or in console for our case)
     }
   } else
-    printf("Error downloading file %s\n", tempPath);
+    printf("Error downloading file %s\n", localPath.c_str());
 
   backdx = fileIndex;  //store cursor position
   DrawFrameWindow();

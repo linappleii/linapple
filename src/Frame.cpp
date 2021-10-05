@@ -496,55 +496,53 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
 bool PSP_SaveStateSelectImage(bool saveit)
 {
-  static int fileIndex = 0;    // file index will be remembered for current dir
+  static uintmax_t fileIndex = 0;    // file index will be remembered for current dir
   static int backdx = 0;  // reserve
   static int dirdx = 0;  // reserve for dirs
 
-  char *filename = NULL;      // given filename
-  char fullPath[MAX_PATH];  // full path for it
-  char tempPath[MAX_PATH];
+  std::string filename;      // given filename
+  std::string fullPath;  // full path for it
   bool isDirectory = true;      // if given filename is a directory?
 
   fileIndex = backdx;
-  strcpy(fullPath, g_sSaveStateDir);  // global var for disk selecting directory
+  fullPath = g_sSaveStateDir;  // global var for disk selecting directory
 
   while (isDirectory) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, saveit, &filename, &isDirectory, &fileIndex)) {
+    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, saveit,
+                       filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return false;  // if ESC was pressed, just leave
     }
     if (isDirectory) {
-      if (!strcmp(filename, "..")) {
-        filename = strrchr(fullPath, FILE_SEPARATOR); // look for last '/'
-        if (filename) {
-          *filename = '\0';
-        }  // cut it off
-        if (strlen(fullPath) == 0) {
-          strcpy(fullPath, "/");  //we don't want fullPath to be empty
+      if (filename == "..") {
+        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        if (last_sep_pos == std::string::npos) {
+          fullPath = fullPath.substr(0, last_sep_pos);
+        }
+        if (fullPath == "") {
+          fullPath = "/";  //we don't want fullPath to be empty
         }
         fileIndex = dirdx;  // restore
       } else {
-        if (strcmp(fullPath, "/")) {
-          snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // next dir
+        if (fullPath != "/") {
+          fullPath += "/" + filename;
         } else {
-          snprintf(tempPath, MAX_PATH, "/%.*s", int(strlen(filename)), filename);
+          fullPath = "/" + filename;
         }
-        strcpy(fullPath, tempPath);  // got ot anew
         dirdx = fileIndex; // store it
         fileIndex = 0;  // start with beginning of dir
       }
     }
   }
-  strcpy(g_sSaveStateDir, fullPath);
+  strcpy(g_sSaveStateDir, fullPath.c_str());
   RegSaveString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, g_sSaveStateDir); // Save it
 
   backdx = fileIndex; // Store cursor position
 
-  snprintf(tempPath, MAX_PATH, "%.*s/%.*s", int(strlen(fullPath)), fullPath, int(strlen(filename)), filename); // Next dir
-  strcpy(fullPath, tempPath); // Got ot anew
+  fullPath += "/" + filename;
 
-  Snapshot_SetFilename(fullPath); // Set name for snapshot
-  RegSaveString(TEXT("Preferences"), REGVALUE_SAVESTATE_FILENAME, 1, fullPath); // Save it
+  Snapshot_SetFilename(fullPath.c_str()); // Set name for snapshot
+  RegSaveString(TEXT("Preferences"), REGVALUE_SAVESTATE_FILENAME, 1, fullPath.c_str()); // Save it
   DrawFrameWindow();
   return true;
 }
