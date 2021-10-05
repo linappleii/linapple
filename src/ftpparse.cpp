@@ -28,33 +28,42 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <curl/curl.h>
 #include "ftpparse.h"
 
-struct FtpFile {
-  const char *filename;
-  FILE *stream;
-};
+static int progress_callback(void* clientp,
+                             curl_off_t dltotal, curl_off_t dlnow,
+                             curl_off_t ultotal, curl_off_t ulnow) {
+  printf("FTP: %lu bytes downloaded\n", dlnow);
+  return 0;
+}
+
 
 CURLcode ftp_get(const char *ftp_path, const char *local_path)
 {
   // Download file from ftp_path to local_path
   CURLcode res;
-  struct FtpFile ftpfile;// = {
-  ftpfile.stream = NULL;
-  ftpfile.filename = local_path; // where to download a file
 
+  FILE *stream =fopen(local_path, "w");
+  if (stream == NULL) {
+    return CURLE_WRITE_ERROR;
+  }
+
+  curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
-  curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &ftpfile);
+  curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream);
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
+
+  curl_easy_setopt(g_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+  curl_easy_setopt(g_curl, CURLOPT_NOPROGRESS, 0);
 
   res = curl_easy_perform(g_curl);
 
   if (res != CURLE_OK) {
     /* we failed */
     printf("Curl error with errorcode = %d\n", res);
+  } else {
+    printf("FTP: download completed\n");
   }
 
-  if (ftpfile.stream) {
-    fclose(ftpfile.stream); /* close the local file */
-  }
+  fclose(stream); /* close the local file */
 
   return res;
 }
