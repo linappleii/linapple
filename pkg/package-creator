@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Check if running in a Debian system
+if [[ $(uname -a | grep -i 'debian') = "" ]]; then
+    echo -e "
+ Technically, you are not running this script from a Debian system. Do you want
+ to proceed anyway? (y/n)"
+ 
+    read proceed
+    
+    if [ $proceed != "y" -a $proceed != "yes" ]; then
+        exit 0
+    fi
+fi
+
+# Check if user has compiled the source
+if [ ! -d ../build ]; then
+    echo -e "
+ Sorry, but you must first compile the program's source code. Read the
+ INSTALL.md file to learn how to do this.
+ 
+ Press ENTER to exit now."
+    read pause
+    exit 0
+fi
+
+# Creating basic structure
+mkdir linapple
+mkdir -p linapple/DEBIAN
+mkdir -p linapple/usr/local/bin
+
+# Populating pkg folder
+cp -r ../build/bin/linapple ./linapple/usr/local/bin/
+cp -r ../build/etc/ ./linapple/usr/local/
+cp -r ../build/share/ ./linapple/usr/local/
+
+# Default package maintainer, not developers
+MAINTAINER="LinApple team <https://github.com/linappleii/linapple/issues>"
+
+# GitHub page URL
+URL="https://github.com/linappleii/linapple"
+
+# Get version from makefile in above directory
+VERSION=$(cat ../Makefile | grep ^'VERSION' | sed 's/VERSION\| \|:=//g')
+
+# Calculate the total size of installed files
+#
+# As per Makefile linapple installs just 3 files. If developers change the
+# Makefile we will need to update this:
+#   /usr/local/bin/linapple
+#   /usr/local/etc/linapple.conf
+#   /usr/local/share/Master.dsk
+size1=$(du -s ./linapple/usr/local/bin | cut -f 1)
+size2=$(du -s ./linapple/usr/local/etc/ | cut -f 1)
+size3=$(du -s ./linapple/usr/local/share/ | cut -f 1)
+SIZE=`expr $size1 + $size2 + $size3`
+
+# Writing DEBIAN/conffiles
+echo "/usr/local/etc/linapple/linapple.conf
+/usr/local/share/linapple/Master.dsk" > ./linapple/DEBIAN/conffiles
+
+# Writing DEBIAN/control
+echo "Package: linapple
+Priority: optional
+Section: system
+Installed-Size: $SIZE
+Maintainer: $MAINTAINER
+Architecture: all
+Version: $VERSION
+Depends: libzip-dev, libsdl1.2-dev, libsdl-image1.2-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
+Homepage: $URL
+Description: A Linux emulator for Apple ][+, IIe and Enhanced //e with Mockingboard support" > ./linapple/DEBIAN/control
+
+# Writing DEBIAN/md5sums
+cd linapple
+find . -type d -name "DEBIAN" -prune -o -type f -printf '%P ' | xargs md5sum > ./DEBIAN/md5sums
+cd ..
+
+# Rename linapple folder for packaging
+pkgname="linapple_"$VERSION"_all"
+mv linapple $pkgname
+
+# Packaging
+dpkg-deb -b --root-owner-group $pkgname
+
+# Cleaning
+rm -r $pkgname
+
