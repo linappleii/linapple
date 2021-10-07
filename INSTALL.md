@@ -3,17 +3,16 @@
 
 ### Prerequisites
 
-#### Ubuntu
+#### Debian / Ubuntu
 
 ```bash
-sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev
+sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev imagemagick			
 ```
 
-#### Fedora
+#### Fedora / RHEL / CentOS
 
 ```bash
-sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel
-ImageMagick
+sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel GraphicsMagick GraphicsMagick-devel GraphicsMagick-perl
 ```
 
 ### Clone
@@ -28,36 +27,63 @@ git clone https://github.com/linappleii/linapple.git
 cd linapple
 make
 ```
-For a faster compilation, you can add an option "-jx", where "x" is the number of threads of your CPU. For example, AMD Ryzen 1600 has 6 cores, but 12 threads:
+For a faster compilation, you can add an option "-jX", where "X" is the number of threads of your CPU. For example, *AMD Ryzen 5 2600* has 6 cores, but 12 threads:
 ```bash
 make -j12
 ```
 
-### Global Install
-```shell
-make install
-```
+Don't worry about spurious warning messages, which can look like errors; chances are that the program will build successfully even with these warnings.
 
 ### Run
 
 ```bash
-bin/linapple
+cd build/bin
+./linapple
 ```
 
-Or if you did a global install.
+Or, to boot automatically into a standard Apple floppy disk provided by LinApple:
+
+```bash
+./linapple --autoboot --d1 ../share/linapple/Master.dsk
+```
+
+### Configuration file
+
+A configuration file can be found at `build/etc/linapple/linapple.conf`. It is highly recommended to read this file and edit it to your liking. File is self-explanatory.
+
+Once configured, you can load the configuration file and automatically boot to floppy:
+
+```bash
+./linapple --conf ../etc/linapple/linapple.conf --autoboot --d1 ../share/linapple/Master.dsk
+```
+
+### Global Install
+
+Optional step. Some contents of the recently created "build" folder will be installed on your system. The advantage of this step is that you will be capable to access LinApple from any directory, just typing "linapple", like any other program on the system.
+
+```shell
+make install
+```
+
+Now copy both configuration file `linapple.conf` and floppy disk `Master.dsk` to user's folder:
+
+```bash
+cp /usr/local/etc/linapple/linapple.conf ~/.config/linapple/
+cp /usr/local/share/linapple/Master.dsk ~/.linapple/disks/
+```
+
+> NOTE: by default they will be in `/usr/local`, otherwise copy them from the `build` folder just mentioned.
+
+
+In a global install, LinApple will load `~/.config/linapple/linapple.conf` automatically. You can set LinApple to load `Master.dsk` and boot it at startup in `linapple.conf`.
+
+To run LinApple after a global installation, type anywhere, in any folder you are in:
 
 ```bash
 linapple
 ```
 
-### Configure
-
-A directory name `linapple` can be found in your home directory. Edit the `linapple.conf` file.
-
-### Global Install
-```shell
-make install
-```
+Take a look at [README.md](README.md) for more detailed information.
 
 ### Debugging and Profiling
 

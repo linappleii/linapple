@@ -347,17 +347,23 @@ void EnterMessageLoop()
   SDL_Event event;
 
   while (true) {
+    bool event_was_key_F4 = false;
+
     if (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4) {
+      if (event.type == SDL_QUIT && !event_was_key_F4) {
         return;
       }
+      event_was_key_F4 = (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+        && event.key.keysym.sym == SDLK_F4;
       FrameDispatchMessage(&event);
 
       while ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_STEPPING)) {
         if (SDL_PollEvent(&event)) {
-          if (event.type == SDL_QUIT && event.key.keysym.sym != SDLK_F4) {
+          if (event.type == SDL_QUIT && !event_was_key_F4) {
             return;
           }
+          event_was_key_F4 = (event.type==SDL_KEYDOWN || event.type==SDL_KEYUP)
+            && event.key.keysym.sym == SDLK_F4;
           FrameDispatchMessage(&event);
         } else if (g_nAppMode == MODE_STEPPING) {
           DebugContinueStepping();
@@ -411,6 +417,7 @@ void SetDiskImageDirectory(char *regKey, int driveNumber)
   char *szHDFilename = NULL;
   if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
     if (!ValidateDirectory(szHDFilename)) {
+      free(szHDFilename);
       RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
       RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
     }
@@ -433,7 +440,7 @@ void setAutoBoot()
 void LoadConfiguration()
 {
   if (registry) {
-    unsigned int dwComputerType;
+    unsigned int dwComputerType = g_Apple2Type;
     LOAD(TEXT("Computer Emulation"), &dwComputerType);
 
     switch (dwComputerType) {
