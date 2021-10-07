@@ -41,7 +41,7 @@ char *Snapshot_GetFilename() {
   return g_szSaveStateFilename;
 }
 
-void Snapshot_SetFilename(char *pszFilename) {
+void Snapshot_SetFilename(const char *pszFilename) {
   if (*pszFilename)
     strcpy(g_szSaveStateFilename, (const char *) pszFilename);
   else

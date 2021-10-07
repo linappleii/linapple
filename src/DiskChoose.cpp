@@ -25,7 +25,7 @@
 
 #include "stdafx.h"
 
-#include "list.h"
+#include "file_entry.h"
 
 #include "Video.h" // for contention avoidance w/video thread
 #include "DiskChoose.h"
@@ -33,6 +33,7 @@
 #include <pthread.h>
 
 #include <iostream>
+#include <vector>
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21
@@ -44,7 +45,7 @@
 
 #ifndef _WIN32
 
-int getstat(char *catalog, char *fname, int *size)
+int getstat(const char *catalog, const char *fname, uintmax_t *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
   // In: catalog - working directory, fname - file name
@@ -60,7 +61,7 @@ int getstat(char *catalog, char *fname, int *size)
   }
   if (S_ISREG(info.st_mode)) {
     if (size != NULL) {
-      *size = (int) (info.st_size / 1024);  // get file size in Kbytes?!
+      *size = info.st_size / 1024;  // get file size in Kbytes?!
     }
     return 2;  // regular file
   }
@@ -82,12 +83,9 @@ int compareNames(const void *const A, const void *const B)
 //        file list
 //        size list
 // Exit: true == success
-bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &sizes)
+bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_list)
 {
   DIR *dp;
-  char *tmp;
-  int count;
-  struct dirent **list;
   struct dirent *entry;
 
   dp = opendir(incoming_dir);
@@ -97,84 +95,84 @@ bool get_sorted_directory(char *incoming_dir, List<char> &files, List<char> &siz
       return false;
   }
 
-  /* First determine the number of entries */
-  count = 0;
-  while ((entry = readdir(dp)) != NULL)
-      ++count;
-  /* Allocate enough space */
-  list = (struct dirent **) malloc(count * sizeof(*list));
-  if (list == NULL)
-  {
-      closedir(dp);
-      fprintf(stderr, "memory exhausted.\n");
-      return false;
-  }
-  /* You don't need to allocate the list elements
-   * you can just store pointers to them in the
-   * pointer array `list'
-   */
-
-  rewinddir(dp); /* reset position */
   // save dirent pointer array in list
-  count = 0;
-  while ((entry = readdir(dp)) != NULL)
-    list[count++] = entry;
+  while ((entry = readdir(dp)) != NULL) {
+    const char *file_name = entry->d_name;
+    const size_t name_length = strlen(file_name);
 
-  // Sort the list
-  qsort(list, count, sizeof(*list), compareNames);
+    if (name_length < 1 || file_name[0] == '.')
+      continue;
 
-  // Add directories to list first
+    uintmax_t fsize = 0;
+    const int what = getstat(incoming_dir, file_name, &fsize);
 
-  for (int index = 0 ; index < count ; ++index) {
-    // Selectively add to our displayable list
-    int what = getstat(incoming_dir, list[index]->d_name, NULL);
-    if ((list[index]->d_name && strlen(list[index]->d_name) > 0) && (list[index]->d_name[0] != '.') &&
-        what == 1) { // is directory!
-      tmp = new char[strlen(list[index]->d_name) + 1];  // add this entity to list
-      strcpy(tmp, list[index]->d_name);
-      files.Add(tmp);
-      tmp = new char[6];
-      strcpy(tmp, "<DIR>");
-      sizes.Add(tmp);  // add sign of directory
-    }
-  }
+    switch (what) {
+    case 1: // is directory!
+      file_list.push_back({ file_name, file_entry_t::DIR, 0 });
+      continue;
 
-  // Add files to list
+    case 2: // is normal file!
+      file_list.push_back({ file_name, file_entry_t::FILE, fsize*1024});
+      continue;
 
-  for (int index = 0 ; index < count ; ++index) {
-    // Selectively add to our displayable list
-    int fsize = 0;
-    if (strlen(list[index]->d_name) > 4 && list[index]->d_name[0] != '.' &&
-        (getstat(incoming_dir, list[index]->d_name, &fsize) == 2)) { // is normal file!
-      // DBG
-      // std::cout << list[index]->d_name << std::endl;
-      tmp = new char[strlen(list[index]->d_name) + 1];  // add this entity to list
-      strcpy(tmp, list[index]->d_name);
-      files.Add(tmp);
-      tmp = new char[10];  // 1400000KB
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-      if (1000 > fsize) {   // Kilo
-        snprintf(tmp, 9, "%4dK", fsize);
-      } else if (1000000 > fsize) {   // Mega
-        snprintf(tmp, 9, "%4dM", (int) (fsize / 1000));
-      } else {  // Giga
-        snprintf(tmp, 9, "%4dG", (int) (fsize / 1000000));
-      }
-#pragma GCC diagnostic pop
-      sizes.Add(tmp);  // add corresponding file size to list
+    default: // others: ignore!
+      ;
     }
   }
   closedir(dp);
-  free(list);
+
+  std::sort(file_list.begin(), file_list.end());
+
   return true;
+}
+
+
+struct disk_file_list_generator_t : public file_list_generator_t {
+  disk_file_list_generator_t(const std::string& dir) :
+    directory(dir)
+  {}
+
+  const std::vector<file_entry_t> generate_file_list();
+
+  const std::string get_starting_message() {
+    return "Reading directory listing...";
+  }
+
+  const std::string get_failure_message() {
+    return failure_message;
+  }
+
+private:
+  std::string directory;
+  std::string failure_message = "(success)";
+};
+
+
+const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
+{
+  std::vector<file_entry_t> file_list;
+
+  // Forcibly add ".." as first entry to navigate upward
+  // to parent directory.
+  if (directory != "/") {
+    file_list.push_back({ "..", file_entry_t::UP, 0});
+  }
+
+  if (get_sorted_directory(directory.c_str(), file_list)) {
+    return file_list;
+  }
+
+  failure_message = "Failed to list directory: " + directory;
+  file_list.clear();
+  return file_list;
 }
 
 
 // GPH TODO: This entire thing needs to be refactored from a massive spinloop
 // to an event-driven state model incorporated into Frame.
 // Currently, everyhing here is handled inside an event handler.
-bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename, bool *isdir, int *index_file)
+bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
+                   std::string& filename, bool& isdir, size_t& index_file)
 {
   /*  Parameters:
    sx, sy - window size,
@@ -187,53 +185,24 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
    Out:  filename  - chosen file name (or dir name)
     isdir    - if chosen name is a directory
   */
-  /* Surface: */
-
-  // DIRECTORY-GETTING STUFF
-
-  List<char> files;    // our files
-  List<char> sizes;    // and their sizes (or 'dir' for directories)
-
-  int act_file;    // current file
-  int first_file;    // from which we output files
 
   //printf("Diskchoose! We are here: %s\n", incoming_dir);
 
-  /* POSIX specific routines of reading directory structure */
-
-  char *tmp;
-  int i;  // for cycles, beginning and end of list
-
-  // Forcibly add ".." as first entry to navigate upward
-  // to parent directory.
-  if (strcmp(incoming_dir, "/")) {
-    tmp = new char[3];
-    strcpy(tmp, "..");
-    files.Add(tmp);
-    tmp = new char[5];
-    strcpy(tmp, "<UP>");
-    sizes.Add(tmp);  // add sign of directory
-  }
-
-  // Get sorted list of directories and files in the
-  // directory specified by incoming_dir
-  if (get_sorted_directory(incoming_dir, files, sizes)) {
-    //  Count out cursor position and file number output
-    act_file = *index_file;
-    if (act_file >= files.Length()) {
-      act_file = 0;
-    }    // cannot be more than files in list
-    first_file = act_file - (FILES_IN_SCREEN / 2);
-    if (first_file < 0) {
-      first_file = 0;  // cannot be negative
-    }
-
-    // Show all directories (first) and files then
-    char *siz = NULL;
+  disk_file_list_generator_t file_list_generator(incoming_dir);
+  return ChooseImageDialog(sx, sy, incoming_dir, slot, &file_list_generator,
+                           filename, isdir, index_file);
+}
 
 
-    // DISPLAY STUFF
+bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
+                       std::string& filename, bool& isdir, size_t& index_file)
+{
+  // prepare screen
+  const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
+  const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
+  SDL_Surface *my_screen;  // for background
+  {
     if (font_sfc == NULL) {
       if (!fonts_initialization()) {
         return false;  //if we don't have a font, we just can do none
@@ -242,11 +211,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
     // Wait for video refresh and claim ownership
     pthread_mutex_lock(&video_draw_mutex);
-
-
-    // prepare screen
-    double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
-    double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
     SDL_Surface *tempSurface = NULL;
     if (!g_WindowResized) {
@@ -262,7 +226,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       tempSurface = screen;  // use screen, if none available
     }
 
-    SDL_Surface *my_screen;  // for background
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
     if (tempSurface->format->palette && my_screen->format->palette) {
@@ -271,11 +234,54 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
 
     surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
     SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
+    SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+
+#define  NORMAL_LENGTH 60
+    font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
+
+    font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+    SDL_Flip(screen);  // show the screen
+  }
+
+  auto file_list = file_list_generator->generate_file_list();
+  if (file_list.size() < 1) {
+    printf("%s\n", file_list_generator->get_failure_message().c_str());
+
+    font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
+    SDL_Flip(screen);  // show the screen
+
+    pthread_mutex_unlock(&video_draw_mutex);
+    SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
+    // Wait for keypress
+    SDL_Event event;  // event
+
+    event.type = SDL_QUIT;
+    while (event.type != SDL_KEYDOWN) {  // wait for key pressed
+      SDL_Delay(100);
+      SDL_PollEvent(&event);
+    }
+    SDL_FreeSurface(my_screen);
+    return false;
+  }
+
+  size_t act_file;    // current file
+  size_t first_file;    // from which we output files
+  {
+    act_file = index_file;
+    if (act_file >= file_list.size()) {
+      act_file = 0;
+    }    // cannot be more than files in list
+    if (act_file <= FILES_IN_SCREEN / 2) {
+      first_file = 0;
+    } else {
+      first_file = act_file - (FILES_IN_SCREEN / 2);
+    }
+
 
     while (true) {
 
       SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
-      font_print_centered(sx / 2, 5 * facy, incoming_dir, screen, 1.5 * facx, 1.3 * facy);
+      font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
       if (slot == 6) {
         font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
       } else if (slot == 7) {
@@ -289,47 +295,38 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
       font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
 
-      files.Rewind();  // from start
-      sizes.Rewind();
-      i = 0;
-
       // show all fetched dirs and files
       // topX of first fiel visible
       int TOPX = int(45 * facy);
 
       // Now, present the list
-      while (files.Iterate(tmp)) {
-        sizes.Iterate(siz);  // also fetch size string
-        if (i >= first_file && i < first_file + FILES_IN_SCREEN) { // FILES_IN_SCREEN items on screen
+      for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
+        const size_t i = first_file + j;
+        if (i >= file_list.size()) {
+          break;
+        }
+        const file_entry_t file_entry = file_list[i];
+        const string& file_name = file_entry.name;
+
+        {
           if (i == act_file) { // show item under cursor (in inverse mode)
             SDL_Rect r;
             r.x = 2;
-            r.y = TOPX + (i - first_file) * 15 * facy - 1;
-            if (strlen(tmp) > MAX_FILENAME) {
+            r.y = TOPX + j * 15 * facy - 1;
+            if (file_name.size() > MAX_FILENAME) {
               r.w = MAX_FILENAME * FONT_SIZE_X /* 6 */ * 1.0 * facx;
             } else {
-              r.w = strlen(tmp) * FONT_SIZE_X /* 6 */ * 1.0 * facx;  // 6- FONT_SIZE_X
+              r.w = file_name.size() * FONT_SIZE_X /* 6 */ * 1.0 * facx;  // 6- FONT_SIZE_X
             }
             r.h = 9 * 1.0 * facy;
             SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 64, 128, 190));
           }
 
           // Print file name
-          char ch;
-          ch = 0;
-          // Cut off too-long filename string
-          if (strlen(tmp) > MAX_FILENAME) {
-            ch = tmp[MAX_FILENAME];
-            tmp[MAX_FILENAME] = 0;
-          }
-          font_print(4, TOPX + (i - first_file) * 15 * facy, tmp, screen, 1.0 * facx, 1.0 * facy); // show name
-          font_print(sx - 70 * facx, TOPX + (i - first_file) * 15 * facy, siz, screen, 1.0 * facx,
+          font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy); // show name
+          font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
                      1.0 * facy);// show info (dir or size)
-          if (ch) {
-            tmp[MAX_FILENAME] = ch; //restore cut-off char
-          }
         }
-        i++;
       }
 
       // draw rectangles
@@ -353,8 +350,6 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       while (event.type != SDL_KEYDOWN) {  // wait for key pressed
         // GPH: Honor quit even if we're in the diskchoose state.
         if (SDL_QUIT == event.type) {
-          files.Delete();
-          sizes.Delete();
           SDL_FreeSurface(my_screen);
           SDL_PushEvent(&event); // push quit event
           return false;
@@ -374,24 +369,26 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
 
       if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
-        if (act_file < (files.Length() - 1))
+        if (act_file < (file_list.size() - 1))
           act_file++;
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
 
       if (keyboard[SDLK_PAGEUP]) {
-        act_file -= FILES_IN_SCREEN;
-        if (act_file < 0)
+        if (act_file <= FILES_IN_SCREEN) {
           act_file = 0;
+        } else {
+          act_file -= FILES_IN_SCREEN;
+        }
         if (act_file < first_file)
           first_file = act_file;
       }
 
       if (keyboard[SDLK_PAGEDOWN]) {
         act_file += FILES_IN_SCREEN;
-        if (act_file >= files.Length())
-          act_file = (files.Length() - 1);
+        if (act_file >= file_list.size())
+          act_file = (file_list.size() - 1);
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
@@ -399,22 +396,19 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       // choose an item?
       if (keyboard[SDLK_RETURN]) {
         // dup string from selected file name
-        *filename = strdup(files[act_file]);
-        if (!strcmp(sizes[act_file], "<DIR>") || !strcmp(sizes[act_file], "<UP>")) {
-          *isdir = true;
+        const file_entry_t& file_entry = file_list[act_file];
+        filename = file_entry.name;
+        if (file_entry.is_dir_type()) {
+          isdir = true;
         } else {
-          *isdir = false;  // this is directory (catalog in Apple][ terminology)
+          isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
-        *index_file = act_file;  // remember current index
-        files.Delete();
-        sizes.Delete();
+        index_file = act_file;  // remember current index
         SDL_FreeSurface(my_screen);
         return true;
       }
 
       if (keyboard[SDLK_ESCAPE]) {
-        files.Delete();
-        sizes.Delete();
         SDL_FreeSurface(my_screen);
         return false;    // ESC has been pressed
       }
@@ -425,10 +419,12 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
       }
 
       if (keyboard[SDLK_END]) {
-        act_file = files.Length() - 1;  // go to the last possible file in list
-        first_file = act_file - FILES_IN_SCREEN + 1;
-        if (first_file < 0)
+        act_file = file_list.size() - 1;  // go to the last possible file in list
+        if (act_file <= FILES_IN_SCREEN - 1) {
           first_file = 0;
+        } else {
+          first_file = act_file - FILES_IN_SCREEN + 1;
+        }
       }
 
       // GPH: Check for A-Z, a-z, 0-9 and jump to first file starting therewith
@@ -459,18 +455,12 @@ bool ChooseAnImage(int sx, int sy, char *incoming_dir, int slot, char **filename
             ch |= 0x20;
           }
           // Slow, linear search from top of list...
-          for ( int fidx = 0; fidx < files.Length(); fidx++ ) {
-            char file_char = files[fidx][0];
-            // Make lowercase, but only if it's a letter
-            if (file_char >= 'A' && file_char <= 'Z') {
-              file_char |= 0x20;
-            }
+          for (size_t fidx = 0; fidx < file_list.size(); fidx++ ) {
+            char file_char = tolower(file_list[fidx].name[0]);
             if (file_char == ch) {
               // If the current file is ALREADY the one found here, or prior,
               // then keep going
-              char candidate_char = files[act_file][0];
-              if (candidate_char >= 'A' && candidate_char <= 'Z')
-                candidate_char |= 0x20;
+              char candidate_char = tolower(file_list[act_file].name[0]);
 
               if (act_file < fidx || candidate_char != ch) {
                 act_file = fidx;
