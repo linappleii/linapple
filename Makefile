@@ -150,16 +150,57 @@ uninstall:
 	$(RM) $(DESTDIR)/$(DATADIR)/*
 	rmdir $(DESTDIR)/$(DATADIR)
 
-$(PACKAGE)/$(PACKAGE)-$(VERSION).deb:
+# Calculate the total size of installed files
+# As per Makefile linapple installs just 3 files. If developers change the
+# Makefile we will need to update this:
+#   /usr/local/bin/linapple
+#   /usr/local/etc/linapple.conf
+#   /usr/local/share/Master.dsk
+size1 := $(shell du -s ./build/bin | cut -f 1)
+size2 := $(shell du -s ./build/etc/ | cut -f 1)
+size3 := $(shell du -s ./build/share/ | cut -f 1)
+SIZE  := $(shell echo `expr $(size1) + $(size2) + $(size3)`)
+
+# DEBIAN/conffiles
+define CONFFILES
+/usr/local/etc/linapple/linapple.conf
+/usr/local/share/linapple/Master.dsk
+endef
+export CONFFILES
+
+# Architecture
+ARCH := all
+
+# DEBIAN/control
+define CONTROL
+Package: linapple
+Priority: optional
+Section: system
+Installed-Size: $(SIZE)
+Maintainer: LinApple team <https://github.com/linappleii/linapple/issues>
+Architecture: $(ARCH)
+Version: $(VERSION)
+Depends: libzip-dev, libsdl1.2-dev, libsdl-image1.2-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
+Homepage: https://github.com/linappleii/linapple
+Description: A Linux emulator for Apple ][+, IIe and Enhanced //e with Mockingboard support
+endef
+export CONTROL
+
+deb:
 	@echo " Building a Debian package ..."
-	rm -rf $(PKGDIR)
-	mkdir -p $(PKGDIR)/$(BINDIR)
-	cp $(DESTDIR)/$(BINDIR)/$(TARGET)/$(PKGDIR)/$(BINDIR)
-	mkdir -p $(PKGDIR)/$(DATADIR) 
-	cp -r $(DESTDIR)/$(DATADIR) $(PKGDIR)/$(DATADIR)
-	dpkg --build $(PKGDIR)
-	mv $(PACKAGE)/$(PACKAGE)-$(VERSION).deb" .
-deb: $(PACKAGE)/$(PACKAGE)-$(VERSION).deb
+	@rm -rf pkg/
+	@mkdir -p pkg/$(PACKAGE)/DEBIAN/
+	@mkdir -p pkg/$(PACKAGE)/$(DESTDIR)/$(BINDIR)
+	@echo "$$CONFFILES" > pkg/$(PACKAGE)/DEBIAN/conffiles
+	@echo "$$CONTROL" > pkg/$(PACKAGE)/DEBIAN/control
+	@cp -r build/bin/$(TARGET) pkg/$(PACKAGE)/$(DESTDIR)/$(BINDIR)
+	@cp -r build/etc/ pkg/$(PACKAGE)/$(DESTDIR)
+	@cp -r build/share/ pkg/$(PACKAGE)/$(DESTDIR)
+	@cd pkg/$(PACKAGE) && find . -type d -name "DEBIAN" -prune -o -type f -printf '%P ' | xargs md5sum > DEBIAN/md5sums && cd ..
+	@mv pkg/$(PACKAGE) pkg/$(PACKAGE)_$(VERSION)_$(ARCH)
+	@dpkg-deb -b --root-owner-group pkg/$(PACKAGE)_$(VERSION)_$(ARCH)
+	@mv pkg/$(PACKAGE)_$(VERSION)_$(ARCH) pkg/$(PACKAGE)
+	@mv pkg/$(PACKAGE)_$(VERSION)_$(ARCH).deb .
 
 #Non-File Targets
 .PHONY: all clean deb directories distclean images install remake resources symbolfiles uninstall
