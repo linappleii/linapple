@@ -496,7 +496,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
 bool PSP_SaveStateSelectImage(bool saveit)
 {
-  static uintmax_t fileIndex = 0;    // file index will be remembered for current dir
+  static size_t fileIndex = 0;    // file index will be remembered for current dir
   static int backdx = 0;  // reserve
   static int dirdx = 0;  // reserve for dirs
 
