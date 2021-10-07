@@ -139,7 +139,7 @@ static bool g_bCritSectionValid = false;  // Deleting CritialSection when not va
 pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
 static volatile UINT32 g_bmIRQ = 0;
 static volatile UINT32 g_bmNMI = 0;
-static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
+static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 
 // General Purpose Macros
 #define AF_TO_EF  flagc = (regs.ps & AF_CARRY);            \
@@ -242,7 +242,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
 
 // Instruction Macros
 
-#define ADC_NMOS bSlowerOnPagecross = 1;                \
+#define ADC_NMOS bSlowerOnPagecross = true;                \
      temp = READ;                \
      if (regs.ps & AF_DECIMAL) {            \
        val    = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
@@ -268,7 +268,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
        regs.a = val & 0xFF;              \
        SETNZ(regs.a);              \
      }
-#define ADC_CMOS bSlowerOnPagecross = 1;                \
+#define ADC_CMOS bSlowerOnPagecross = true;                \
                  temp = READ;                \
                  flagv = !((regs.a ^ temp) & 0x80);          \
      if (regs.ps & AF_DECIMAL) {            \
@@ -307,7 +307,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagn = 0;                \
      regs.a >>= 1;                \
      SETZ(regs.a)
-#define AND   bSlowerOnPagecross = 1;                \
+#define AND   bSlowerOnPagecross = true;                \
      regs.a &= READ;              \
      SETNZ(regs.a)
 #define ANC   regs.a &= READ;              \
@@ -339,12 +339,12 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
        flagv = ((val & 0x40) ^ ((val & 0x20) << 1));      \
        regs.a = (val & 0xFF);            \
      }
-#define ASL_NMOS bSlowerOnPagecross = 0;                \
+#define ASL_NMOS bSlowerOnPagecross = false;                \
      val   = READ << 1;              \
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
      WRITE(val)
-#define ASL_CMOS bSlowerOnPagecross = 1;                \
+#define ASL_CMOS bSlowerOnPagecross = true;                \
      val   = READ << 1;              \
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
@@ -353,21 +353,21 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
      regs.a = (BYTE)val;
-#define ASO   bSlowerOnPagecross = 0;                \
+#define ASO   bSlowerOnPagecross = false;                \
      val   = READ << 1;              \
      flagc = (val > 0xFF);              \
      WRITE(val)                \
      regs.a |= val;                \
      SETNZ(regs.a)
-#define AXA   bSlowerOnPagecross = 0;/*FIXME: $93 case is still unclear*/      \
+#define AXA   bSlowerOnPagecross = false;/*FIXME: $93 case is still unclear*/      \
      val = regs.a & regs.x & (((base >> 8) + 1) & 0xFF);      \
      WRITE(val)
-#define AXS   bSlowerOnPagecross = 0;                \
+#define AXS   bSlowerOnPagecross = false;                \
      WRITE(regs.a & regs.x)
 #define BCC   if (!flagc) BRANCH_TAKEN;
 #define BCS   if ( flagc) BRANCH_TAKEN;
 #define BEQ   if ( flagz) BRANCH_TAKEN;
-#define BIT   bSlowerOnPagecross = 1;                \
+#define BIT   bSlowerOnPagecross = true;                \
      val   = READ;                \
      flagz = !(regs.a & val);            \
      flagn = val & 0x80;              \
@@ -390,7 +390,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
 #define CLD   regs.ps &= ~AF_DECIMAL;
 #define CLI   regs.ps &= ~AF_INTERRUPT;
 #define CLV   flagv = 0;
-#define CMP   bSlowerOnPagecross = 1;                \
+#define CMP   bSlowerOnPagecross = true;                \
      val   = READ;                \
      flagc = (regs.a >= val);            \
      val   = regs.a-val;              \
@@ -403,7 +403,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagc = (regs.y >= val);            \
      val   = regs.y-val;              \
      SETNZ(val)
-#define DCM   bSlowerOnPagecross = 0;                \
+#define DCM   bSlowerOnPagecross = false;                \
      val = READ-1;                \
      WRITE(val)                \
      flagc = (regs.a >= val);            \
@@ -411,11 +411,11 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      SETNZ(val)
 #define DEA   --regs.a;                \
      SETNZ(regs.a)
-#define DEC_NMOS bSlowerOnPagecross = 0;                \
+#define DEC_NMOS bSlowerOnPagecross = false;                \
      val = READ-1;                \
      SETNZ(val)                \
      WRITE(val)
-#define DEC_CMOS bSlowerOnPagecross = 1;                \
+#define DEC_CMOS bSlowerOnPagecross = true;                \
      val = READ-1;                \
      SETNZ(val)                \
      WRITE(val)
@@ -423,22 +423,22 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      SETNZ(regs.x)
 #define DEY   --regs.y;                \
      SETNZ(regs.y)
-#define EOR   bSlowerOnPagecross = 1;                \
+#define EOR   bSlowerOnPagecross = true;                \
      regs.a ^= READ;              \
      SETNZ(regs.a)
 #define HLT   regs.bJammed = 1;              \
      --regs.pc;
 #define INA   ++regs.a;                \
      SETNZ(regs.a)
-#define INC_NMOS bSlowerOnPagecross = 0;                \
+#define INC_NMOS bSlowerOnPagecross = false;                \
      val = READ+1;                \
      SETNZ(val)                \
      WRITE(val)
-#define INC_CMOS bSlowerOnPagecross = 1;                \
+#define INC_CMOS bSlowerOnPagecross = true;                \
      val = READ+1;                \
      SETNZ(val)                \
      WRITE(val)
-#define INS   bSlowerOnPagecross = 0;                \
+#define INS   bSlowerOnPagecross = false;                \
      val = READ+1;                \
      WRITE(val)                \
      temp = val;                                                \
@@ -473,38 +473,38 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      PUSH(regs.pc >> 8)              \
      PUSH(regs.pc & 0xFF)              \
      regs.pc = addr;
-#define LAS   bSlowerOnPagecross = 1;                \
+#define LAS   bSlowerOnPagecross = true;                \
      val = (BYTE)(READ & regs.sp);            \
      regs.a = regs.x = (BYTE) val;            \
      regs.sp = val | 0x100;              \
      SETNZ(val)
-#define LAX   bSlowerOnPagecross = 1;                \
+#define LAX   bSlowerOnPagecross = true;                \
      regs.a = regs.x = READ;            \
      SETNZ(regs.a)
-#define LDA   bSlowerOnPagecross = 1;                \
+#define LDA   bSlowerOnPagecross = true;                \
      regs.a = READ;                \
      SETNZ(regs.a)
-#define LDX   bSlowerOnPagecross = 1;                \
+#define LDX   bSlowerOnPagecross = true;                \
      regs.x = READ;                \
      SETNZ(regs.x)
-#define LDY   bSlowerOnPagecross = 1;                \
+#define LDY   bSlowerOnPagecross = true;                \
      regs.y = READ;                \
      SETNZ(regs.y)
-#define LSE   bSlowerOnPagecross = 0;                \
+#define LSE   bSlowerOnPagecross = false;                \
      val   = READ;                \
      flagc = (val & 1);              \
      val >>= 1;                \
      WRITE(val)                \
      regs.a ^= val;                \
      SETNZ(regs.a)
-#define LSR_NMOS bSlowerOnPagecross = 0;                \
+#define LSR_NMOS bSlowerOnPagecross = false;                \
      val   = READ;                \
      flagc = (val & 1);              \
      flagn = 0;                \
      val >>= 1;                \
      SETZ(val)                \
      WRITE(val)
-#define LSR_CMOS bSlowerOnPagecross = 1;                \
+#define LSR_CMOS bSlowerOnPagecross = true;                \
      val   = READ;                \
      flagc = (val & 1);              \
      flagn = 0;                \
@@ -515,12 +515,12 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagn = 0;                \
      regs.a >>= 1;                \
      SETZ(regs.a)
-#define NOP   bSlowerOnPagecross = 1;
+#define NOP   bSlowerOnPagecross = true;
 #define OAL   regs.a |= 0xEE;              \
      regs.a &= READ;              \
      regs.x = regs.a;              \
      SETNZ(regs.a)
-#define ORA   bSlowerOnPagecross = 1;                \
+#define ORA   bSlowerOnPagecross = true;                \
      regs.a |= READ;              \
      SETNZ(regs.a)
 #define PHA   PUSH(regs.a)
@@ -536,18 +536,18 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      SETNZ(regs.x)
 #define PLY   regs.y = POP;                \
      SETNZ(regs.y)
-#define RLA   bSlowerOnPagecross = 0;                \
+#define RLA   bSlowerOnPagecross = false;                \
      val   = (READ << 1) | flagc;            \
      flagc = (val > 0xFF);              \
      WRITE(val)                \
      regs.a &= val;                \
      SETNZ(regs.a)
-#define ROL_NMOS bSlowerOnPagecross = 0;                \
+#define ROL_NMOS bSlowerOnPagecross = false;                \
      val   = (READ << 1) | flagc;            \
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
      WRITE(val)
-#define ROL_CMOS bSlowerOnPagecross = 1;                \
+#define ROL_CMOS bSlowerOnPagecross = true;                \
      val   = (READ << 1) | flagc;            \
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
@@ -556,13 +556,13 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagc  = (val > 0xFF);              \
      regs.a = val & 0xFF;              \
      SETNZ(regs.a);
-#define ROR_NMOS bSlowerOnPagecross = 0;                \
+#define ROR_NMOS bSlowerOnPagecross = false;                \
      temp  = READ;                \
      val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
      flagc = (temp & 1);              \
      SETNZ(val)                \
      WRITE(val)
-#define ROR_CMOS bSlowerOnPagecross = 1;                \
+#define ROR_CMOS bSlowerOnPagecross = true;                \
      temp  = READ;                \
      val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
      flagc = (temp & 1);              \
@@ -572,7 +572,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagc  = (regs.a & 1);              \
      regs.a = val & 0xFF;              \
      SETNZ(regs.a)
-#define RRA   bSlowerOnPagecross = 0;                \
+#define RRA   bSlowerOnPagecross = false;                \
      temp  = READ;                \
      val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
      flagc = (temp & 1);              \
@@ -614,10 +614,10 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      flagc  = (temp >= val);            \
      regs.x = temp-val;              \
      SETNZ(regs.x)
-#define SAY   bSlowerOnPagecross = 0;                \
+#define SAY   bSlowerOnPagecross = false;                \
      val = regs.y & (((base >> 8) + 1) & 0xFF);        \
      WRITE(val)
-#define SBC_NMOS bSlowerOnPagecross = 1;                \
+#define SBC_NMOS bSlowerOnPagecross = true;                \
      temp = READ;                \
      temp2 = regs.a - temp - !flagc;          \
      if (regs.ps & AF_DECIMAL) {            \
@@ -641,7 +641,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
        regs.a = val & 0xFF;              \
        SETNZ(regs.a);              \
      }
-#define SBC_CMOS bSlowerOnPagecross = 1;                \
+#define SBC_CMOS bSlowerOnPagecross = true;                \
            temp = READ;                \
      flagv = ((regs.a ^ temp) & 0x80);          \
      if (regs.ps & AF_DECIMAL) {            \
@@ -687,15 +687,15 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
 #define SEC   flagc = 1;
 #define SED   regs.ps |= AF_DECIMAL;
 #define SEI   regs.ps |= AF_INTERRUPT;
-#define STA   bSlowerOnPagecross = 0;                \
+#define STA   bSlowerOnPagecross = false;                \
      WRITE(regs.a)
-#define STX   bSlowerOnPagecross = 0;                \
+#define STX   bSlowerOnPagecross = false;                \
      WRITE(regs.x)
-#define STY   bSlowerOnPagecross = 0;                \
+#define STY   bSlowerOnPagecross = false;                \
      WRITE(regs.y)
-#define STZ   bSlowerOnPagecross = 0;                \
+#define STZ   bSlowerOnPagecross = false;                \
      WRITE(0)
-#define TAS   bSlowerOnPagecross = 0;                \
+#define TAS   bSlowerOnPagecross = false;                \
      val = regs.a & regs.x;              \
      regs.sp = 0x100 | val;              \
      val &= (((base >> 8) + 1) & 0xFF);          \
@@ -704,12 +704,12 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
      SETNZ(regs.x)
 #define TAY   regs.y = regs.a;              \
      SETNZ(regs.y)
-#define TRB   bSlowerOnPagecross = 0;                \
+#define TRB   bSlowerOnPagecross = false;                \
      val   = READ;                \
      flagz = !(regs.a & val);            \
      val  &= ~regs.a;              \
      WRITE(val)
-#define TSB   bSlowerOnPagecross = 0;                \
+#define TSB   bSlowerOnPagecross = false;                \
      val   = READ;                \
      flagz = !(regs.a & val);            \
      val   |= regs.a;              \
@@ -724,7 +724,7 @@ static volatile BOOL g_bNmiFlank = false; // Positive going flank on NMI line
 #define XAA   regs.a = regs.x;              \
      regs.a &= READ;              \
      SETNZ(regs.a)
-#define XAS   bSlowerOnPagecross = 0;                \
+#define XAS   bSlowerOnPagecross = false;                \
      val = regs.x & (((base >> 8) + 1) & 0xFF);        \
      WRITE(val)
 
@@ -867,7 +867,7 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
   WORD val;
   AF_TO_EF
   ULONG uExecutedCycles = 0;
-  BOOL bSlowerOnPagecross = FALSE;    // Set if opcode writes to memory (eg. ASL, STA)
+  bool bSlowerOnPagecross = false;    // Set if opcode writes to memory (eg. ASL, STA)
   WORD base;
 
   do {
@@ -2163,7 +2163,7 @@ static DWORD Cpu6502(DWORD uTotalCycles)
   WORD val;
   AF_TO_EF
   ULONG uExecutedCycles = 0;
-  BOOL bSlowerOnPagecross = FALSE;    // Set if opcode writes to memory (eg. ASL, STA)
+  bool bSlowerOnPagecross = false;    // Set if opcode writes to memory (eg. ASL, STA)
   WORD base;
 
   do {
