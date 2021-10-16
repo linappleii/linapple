@@ -20,7 +20,7 @@ CONFIGDIR   ?= etc/$(PACKAGE)
 # (You can build a version that loads assets from the source tree with: DATADIR=`pwd`/res make )
 DATADIR     ?= share/$(PACKAGE)
 
-PKGDIR="pkg/$(PACKAGE)/$(PACKAGE)-$(VERSION)"
+PKGDIR="pkg/$(PACKAGE)"
 
 #The Target Binary Program
 TARGET      := linapple
@@ -74,9 +74,52 @@ LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 
-#------------------------------------------------------------------------------
-#DO NOT EDIT BELOW THIS LINE
-#------------------------------------------------------------------------------
+# Check if user has compiled the source
+define COMPILED
+
+ Sorry, but you must first compile the program's source code. Read INSTALL.md
+ file to learn how to do this.
+
+endef
+export COMPILED
+
+# Calculate the total size of installed files
+#   /usr/local/bin/linapple
+#   /usr/local/etc/linapple.conf
+#   /usr/local/share/Master.dsk
+size1 := $(shell du -s ./build/bin 2>&1 | cut -f 1)
+size2 := $(shell du -s ./build/etc/ 2>&1 | cut -f 1)
+size3 := $(shell du -s ./build/share/ 2>&1 | cut -f 1)
+SIZE  := $(shell echo `expr $(size1) + $(size2) + $(size3) 2>&1` )
+
+# DEBIAN/conffiles
+define CONFFILES
+$(DESTDIR)/$(CONFIGDIR)/linapple.conf
+$(DESTDIR)/$(DATADIR)/Master.dsk
+endef
+export CONFFILES
+
+# Architecture
+ARCH := all
+
+# DEBIAN/control
+define CONTROL
+Package: linapple
+Priority: optional
+Section: system
+Installed-Size: $(SIZE)
+Maintainer: LinApple team <https://github.com/linappleii/linapple/issues>
+Architecture: $(ARCH)
+Version: $(VERSION)
+Depends: libzip-dev, libsdl1.2-dev, libsdl-image1.2-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
+Homepage: https://github.com/linappleii/linapple
+Description: A Linux emulator for Apple ][+, IIe and Enhanced //e with Mockingboard support
+endef
+export CONTROL
+
+#-------------------------------------------------------------------------------
+# DO NOT EDIT BELOW THIS LINE
+#-------------------------------------------------------------------------------
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 SRCIMGS := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
@@ -150,57 +193,28 @@ uninstall:
 	$(RM) $(DESTDIR)/$(DATADIR)/*
 	rmdir $(DESTDIR)/$(DATADIR)
 
-# Calculate the total size of installed files
-# As per Makefile linapple installs just 3 files. If developers change the
-# Makefile we will need to update this:
-#   /usr/local/bin/linapple
-#   /usr/local/etc/linapple.conf
-#   /usr/local/share/Master.dsk
-size1 := $(shell du -s ./build/bin | cut -f 1)
-size2 := $(shell du -s ./build/etc/ | cut -f 1)
-size3 := $(shell du -s ./build/share/ | cut -f 1)
-SIZE  := $(shell echo `expr $(size1) + $(size2) + $(size3)`)
-
-# DEBIAN/conffiles
-define CONFFILES
-/usr/local/etc/linapple/linapple.conf
-/usr/local/share/linapple/Master.dsk
-endef
-export CONFFILES
-
-# Architecture
-ARCH := all
-
-# DEBIAN/control
-define CONTROL
-Package: linapple
-Priority: optional
-Section: system
-Installed-Size: $(SIZE)
-Maintainer: LinApple team <https://github.com/linappleii/linapple/issues>
-Architecture: $(ARCH)
-Version: $(VERSION)
-Depends: libzip-dev, libsdl1.2-dev, libsdl-image1.2-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
-Homepage: https://github.com/linappleii/linapple
-Description: A Linux emulator for Apple ][+, IIe and Enhanced //e with Mockingboard support
-endef
-export CONTROL
-
+.ONESHELL:
 deb:
-	@echo " Building a Debian package ..."
+	@if [ ! -d build ]; then
+		@echo "$$COMPILED"
+		@exit 0
+	@fi
+	@echo " Building a Debian package..."
 	@rm -rf pkg/
-	@mkdir -p pkg/$(PACKAGE)/DEBIAN/
-	@mkdir -p pkg/$(PACKAGE)/$(DESTDIR)/$(BINDIR)
-	@echo "$$CONFFILES" > pkg/$(PACKAGE)/DEBIAN/conffiles
-	@echo "$$CONTROL" > pkg/$(PACKAGE)/DEBIAN/control
-	@cp -r build/bin/$(TARGET) pkg/$(PACKAGE)/$(DESTDIR)/$(BINDIR)
-	@cp -r build/etc/ pkg/$(PACKAGE)/$(DESTDIR)
-	@cp -r build/share/ pkg/$(PACKAGE)/$(DESTDIR)
-	@cd pkg/$(PACKAGE) && find . -type d -name "DEBIAN" -prune -o -type f -printf '%P ' | xargs md5sum > DEBIAN/md5sums && cd ..
-	@mv pkg/$(PACKAGE) pkg/$(PACKAGE)_$(VERSION)_$(ARCH)
-	@dpkg-deb -b --root-owner-group pkg/$(PACKAGE)_$(VERSION)_$(ARCH)
-	@mv pkg/$(PACKAGE)_$(VERSION)_$(ARCH) pkg/$(PACKAGE)
-	@mv pkg/$(PACKAGE)_$(VERSION)_$(ARCH).deb .
+	@mkdir -p $(PKGDIR)/DEBIAN/
+	@mkdir -p $(PKGDIR)/$(DESTDIR)/$(BINDIR)
+	@echo "$$CONFFILES" > $(PKGDIR)/DEBIAN/conffiles
+	@echo "$$CONTROL" > $(PKGDIR)/DEBIAN/control
+	@cp -r build/bin/$(TARGET) $(PKGDIR)/$(DESTDIR)/$(BINDIR)
+	@cp -r build/etc/ $(PKGDIR)/$(DESTDIR)
+	@cp -r build/share/ $(PKGDIR)/$(DESTDIR)
+	@cd $(PKGDIR)
+	@find . -type d -name "DEBIAN" -prune -o -type f -printf '%P ' | xargs md5sum > DEBIAN/md5sums
+	@cd ../..
+	@mv $(PKGDIR) $(PKGDIR)_$(VERSION)_$(ARCH)
+	@dpkg-deb -b --root-owner-group $(PKGDIR)_$(VERSION)_$(ARCH)
+	@mv $(PKGDIR)_$(VERSION)_$(ARCH) $(PKGDIR)
+	@mv $(PKGDIR)_$(VERSION)_$(ARCH).deb .
 
 #Non-File Targets
 .PHONY: all clean deb directories distclean images install remake resources symbolfiles uninstall

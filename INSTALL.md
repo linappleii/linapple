@@ -6,7 +6,7 @@
 #### Debian / Ubuntu
 
 ```bash
-sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev imagemagick			
+sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev imagemagick
 ```
 
 #### Fedora / RHEL / CentOS
@@ -84,6 +84,25 @@ linapple
 ```
 
 Take a look at [README.md](README.md) for more detailed information.
+
+### Uninstall
+
+To uninstall a global install:
+
+```bash
+make uninstall
+```
+
+### Creating a debian package
+
+To create a debian package installable with `dpkg` you must have compiled the source code previously (see section "Compile" above).
+
+```bash
+make deb
+sudo dpkg -i linapple_VERSION_all.deb
+```
+
+Where "VERSION" is the LinApple version. See the created package and enter the correct name.
 
 ### Debugging and Profiling
 
