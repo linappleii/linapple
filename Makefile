@@ -178,6 +178,7 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 
 $(BUILDDIR)/%.$(XPMEXT): $(RESDIR)/%.$(IMGEXT)
 	convert -flatten "$<" "$@"
+	@sed -i 's/static const char/static char/g' "$@"
 	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
 $(TARGETDIR)/%.$(SYMEXT): $(RESDIR)/%.$(SYMEXT)
