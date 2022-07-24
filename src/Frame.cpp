@@ -278,6 +278,12 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
   int myscancode = e->key.keysym.scancode; // some special keys flags
   int x, y; // used for mouse cursor position
 
+  // Unicode Translated character
+  if (g_KeyboardLanguage == Spanish_ES && mysym == 0)
+  {
+    mysym = e->key.keysym.unicode;
+  }
+
   switch (e->type) {//type of SDL event
     case SDL_VIDEORESIZE:
       printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
