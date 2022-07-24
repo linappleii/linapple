@@ -37,6 +37,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 bool g_bShiftKey = false;
 bool g_bCtrlKey = false;
 bool g_bAltKey = false;
+bool g_bAltGrKey = false;
+
 static bool g_bCapsLock = true;
 static int lastvirtkey = 0;  // Current PC keycode
 static unsigned char keycode = 0;  // Current Apple keycode
@@ -105,6 +107,11 @@ void KeybUpdateCtrlShiftStatus() {
   g_bShiftKey = (keys[SDLK_LSHIFT] | keys[SDLK_RSHIFT]); // 0x8000 KF_UP   SHIFT
   g_bCtrlKey = (keys[SDLK_LCTRL] | keys[SDLK_RCTRL]);  // CTRL
   g_bAltKey = (keys[SDLK_LALT] | keys[SDLK_RALT]);  // ALT
+
+  if (g_KeyboardLanguage == Spanish_ES) {
+    g_bAltKey = keys[SDLK_LALT];  // ALT
+    g_bAltGrKey = keys[SDLK_RALT];  // ALT GR
+  }
 }
 
 unsigned char KeybGetKeycode()    // Used by MemCheckPaging() & VideoCheckMode()
@@ -438,6 +445,81 @@ int KeybDecodeKeyFR(int key)
   return key;
 }
 
+// decode keys for ES-keyboard  (EU Version Spanish)
+int KeybDecodeKeyES(int key)
+{
+  if (g_bShiftKey) {
+    // convert shifted keys according to Apple // specific ES-keyboard layout
+    switch (key) {
+      case '1':
+        return '!';
+      case '2':
+        return '"';
+      case '3':
+        return '#';
+      case '4':
+        return '$';
+      case '5':
+        return '%';
+      case '6':
+        return '&';
+      case '7':
+        return '/';
+      case '8':
+        return '(';
+      case '9':
+        return ')';
+      case '0':
+        return '=';
+      case '\'':
+        return '?';
+      case '`':
+        return '^';
+      case '+':
+        return '*';
+      case '-':
+        return '_';
+      case '.':
+        return ':';
+      case ',':
+        return ';';
+      case '<':
+        return '>';
+      default:
+        break;
+    }
+  }
+
+  if (g_bAltGrKey) {
+    // convert alt gr key according to Apple // specific ES-keyboard layout
+    switch (key) {
+      case '2':
+        return '@';
+      case '3':
+        return '#';
+      case '4':
+        return '~';
+      case '+':
+        return ']';
+      default:
+        break;
+    }
+  }
+
+  switch (key) {
+    case 180:
+      return '{';
+    case 186:
+      return '\\';
+    case 231:
+      return '}';
+    default:
+      break;
+  }
+
+  return key;
+}
+
 // decode keycode for selected keyboard
 int KeybDecodeKey(int key)
 {
@@ -454,6 +536,9 @@ int KeybDecodeKey(int key)
       break;
     case German_DE:
       key = KeybDecodeKeyDE(key);
+      break;
+    case Spanish_ES:
+      key = KeybDecodeKeyES(key);
       break;
     case English_US:
     default:
