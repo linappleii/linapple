@@ -30,11 +30,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 
-#define PATH_MAX 4096
-
 FILE *registry;
 
-char confPath[PATH_MAX];
+char confPath[MAX_PATH];
 
 // the following 3 functions are from PHP 5.0 with Zend engine sources
 // I'll tell, folks, PHP group is just great! -- bb
@@ -173,6 +171,8 @@ bool RegLoadValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int *valu
 }
 
 void RegSaveKeyValue(char *NKey, char *NValue) {
+  if (strlen(confPath) <= 0) return;
+
   printf("update conf = %s\n", confPath);
   #ifdef REGISTRY_WRITEABLE
   char MyStr[BUFSIZE];
