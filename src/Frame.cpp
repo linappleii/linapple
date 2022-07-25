@@ -606,10 +606,10 @@ void ProcessButtonClick(int button, int mod)
       JoyReset();
       if (mod & KMOD_CTRL) {
         if (mod & KMOD_SHIFT) {
-          printf("HDD  Eject Drive #%d\n", button - BTN_DRIVE1);
+          printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           HD_Eject(button - BTN_DRIVE1);
         } else {
-          printf("Disk Eject Drive #%d\n", button - BTN_DRIVE1);
+          printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           DiskEject(button - BTN_DRIVE1);
         }
         break;
