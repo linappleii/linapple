@@ -27,6 +27,12 @@ git clone https://github.com/linappleii/linapple.git
 cd linapple
 make
 ```
+
+to enable rewrite user settings
+```bash
+make -e REGISTRY_WRITEABLE=1
+```
+
 For a faster compilation, you can add an option "-jX", where "X" is the number of threads of your CPU. For example, *AMD Ryzen 5 2600* has 6 cores, but 12 threads:
 ```bash
 make -j12

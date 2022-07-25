@@ -885,6 +885,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
         exit(EXIT_SUCCESS);
       }
     }
+    RegConfPath(userSpecifiedFilename);
     LoadConfiguration();
     return;
   }
@@ -954,6 +955,8 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   // code. Doing so could affect all other users. Instead, a super-user should
   // edit the /etc/xdg/linapple/linapple.conf by hand.
   if (lastSuccessfulUserConfig.length() > 0) {
+
+    RegConfPath(lastSuccessfulUserConfig.c_str());
     registry = fopen(lastSuccessfulUserConfig.c_str(), "r+");
     return;
   }
@@ -970,6 +973,8 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   std::string userDir(home);
   mkdir(xdgConfigHome.c_str(), 0700);
   mkdir((xdgConfigHome + "/linapple").c_str(), 0700);
+
+  RegConfPath((xdgConfigHome + "/linapple/linapple.conf").c_str());
   registry = fopen((xdgConfigHome + "/linapple/linapple.conf").c_str(), "w+");
 }
 
