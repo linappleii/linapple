@@ -4,7 +4,7 @@
 # https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
 
 PACKAGE     := linapple
-VERSION     := 2.2.1
+VERSION     := 2.3.0
 
 #Compiler and Linker
 CC          := g++
@@ -62,6 +62,10 @@ endif
 
 ifdef DEBUG
 CFLAGS := -O0 -ggdb -ansi -c -finstrument-functions -std=c++11 -Wno-write-strings -Werror
+endif
+
+ifdef REGISTRY_WRITEABLE
+CFLAGS += "-DREGISTRY_WRITEABLE=1"
 endif
 
 CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
@@ -178,6 +182,7 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 
 $(BUILDDIR)/%.$(XPMEXT): $(RESDIR)/%.$(IMGEXT)
 	convert -flatten "$<" "$@"
+	@sed -i 's/static const char/static char/g' "$@"
 	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
 $(TARGETDIR)/%.$(SYMEXT): $(RESDIR)/%.$(SYMEXT)

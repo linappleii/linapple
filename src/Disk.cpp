@@ -374,6 +374,11 @@ void DiskEject(const int iDrive)
 {
   if (IsDriveValid(iDrive)) {
     RemoveDisk(iDrive);
+    if (iDrive == 0) {
+      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE1, 1, "");
+    } else {
+      RegSaveString(TEXT("Preferences"), REGVALUE_DISK_IMAGE2, 1, "");
+    }
   }
 }
 

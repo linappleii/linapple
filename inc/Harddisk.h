@@ -10,6 +10,8 @@ LPCTSTR HD_GetFullName(int drive);
 
 void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
+void HD_Eject(const int iDrive);
+
 void HD_Cleanup();
 
 bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
