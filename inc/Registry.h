@@ -12,5 +12,7 @@ void RegSaveString(LPCTSTR, LPCTSTR, bool, LPCTSTR);
 void RegSaveValue(LPCTSTR, LPCTSTR, bool, unsigned int);
 void RegSaveBool(LPCTSTR, LPCTSTR, bool, bool);
 
+void RegConfPath(const char *);
+
 char *php_trim(char *c, int len);  // trimming string like PHP function trim does!
 
