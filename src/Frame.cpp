@@ -604,6 +604,17 @@ void ProcessButtonClick(int button, int mod)
     case BTN_DRIVE1:
     case BTN_DRIVE2:
       JoyReset();
+      if (mod & KMOD_CTRL) {
+        if (mod & KMOD_SHIFT) {
+          printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
+          HD_Eject(button - BTN_DRIVE1);
+        } else {
+          printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
+          DiskEject(button - BTN_DRIVE1);
+        }
+        break;
+      }
+
       if (mod & KMOD_SHIFT) {
         if (mod & KMOD_ALT) {
           HD_FTP_Select(button - BTN_DRIVE1);// select HDV image through FTP

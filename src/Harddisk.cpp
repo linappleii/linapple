@@ -290,6 +290,17 @@ void HD_Cleanup() {
   }
 }
 
+void HD_Eject(const int iDrive) {
+  if (g_HardDrive[iDrive].hd_imageloaded) {
+    HD_CleanupDrive(iDrive);
+    if (iDrive == 0) {
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, "");
+    } else {
+      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, "");
+    }
+  }
+}
+
 // pszFilename is not qualified with path
 bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename) {
   if (*pszFilename == 0x00) {

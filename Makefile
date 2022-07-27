@@ -64,6 +64,10 @@ ifdef DEBUG
 CFLAGS := -O0 -ggdb -ansi -c -finstrument-functions -std=c++11 -Wno-write-strings -Werror
 endif
 
+ifdef REGISTRY_WRITEABLE
+CFLAGS += "-DREGISTRY_WRITEABLE=1"
+endif
+
 CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
 CFLAGS += $(SDL_CFLAGS)
 CFLAGS += $(CURL_CFLAGS)

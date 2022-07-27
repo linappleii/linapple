@@ -32,6 +32,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 FILE *registry;
 
+char confPath[MAX_PATH];
+
 // the following 3 functions are from PHP 5.0 with Zend engine sources
 // I'll tell, folks, PHP group is just great! -- bb
 void php_charmask(char *input, int len, char *mask) {
@@ -87,6 +89,10 @@ char *php_trim(char *c, int len) {
   return estrndup(c, len); // from c to c+len
 }
 
+void RegConfPath(const char * filename) {
+  strncpy(confPath, filename, MAX_PATH);
+  printf("conf = %s\n", confPath);
+}
 
 bool ReturnKeyValue(char *line, char **key, char **value) {
   // line should be:  some key  =  some value
@@ -165,6 +171,9 @@ bool RegLoadValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int *valu
 }
 
 void RegSaveKeyValue(char *NKey, char *NValue) {
+  if (strlen(confPath) <= 0) return;
+
+  printf("update conf = %s\n", confPath);
   #ifdef REGISTRY_WRITEABLE
   char MyStr[BUFSIZE];
   char line[BUFSIZE];
@@ -195,7 +204,7 @@ void RegSaveKeyValue(char *NKey, char *NValue) {
   fflush(tempf);
   fseek(tempf, 0, SEEK_SET);
   // FIXME if you re-enable this code, you will need to call config.GetRegistryPath() here instead!
-  registry = fopen(REGISTRY, "w+t");  // erase if been
+  registry = fopen(confPath, "w+t");  // erase if been
   while(fgets(line, BUFSIZE, tempf)) {
     fputs(line, registry);
   }
