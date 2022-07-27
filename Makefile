@@ -4,7 +4,7 @@
 # https://www.gnu.org/prep/standards/html_node/Standard-Targets.html
 
 PACKAGE     := linapple
-VERSION     := 2.2.1
+VERSION     := 2.3.0
 
 #Compiler and Linker
 CC          := g++
