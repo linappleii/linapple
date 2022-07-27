@@ -743,9 +743,9 @@ void LoadConfiguration()
 
       // validate resolutions validate for the dispmanx driver.
       if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
-        if (!(g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
+        if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
              (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
-             (g_ScreenWidth ==  800 && g_ScreenHeight ==  600)) {
+             (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
 
           // default
           g_ScreenWidth  = 640;
