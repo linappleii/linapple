@@ -3,6 +3,7 @@
 #include <pthread.h>
 
 extern class CSuperSerialCard sg_SSC;
+class DataRing;
 
 enum {
   COMMEVT_WAIT = 0, COMMEVT_ACK, COMMEVT_TERM, COMMEVT_MAX
@@ -43,9 +44,7 @@ typedef struct {
 class CSuperSerialCard {
 public:
   CSuperSerialCard();
-
-  virtual ~CSuperSerialCard() {
-  }
+  virtual ~CSuperSerialCard();
 
   void CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
@@ -129,8 +128,7 @@ private:
   int m_hCommHandle;  // file for communication with COM
   unsigned int m_dwCommInactivity;
 
-  unsigned char m_RecvBuffer[uRecvBufferSize];  // NB: More work required if >1 is used
-  volatile unsigned int m_vRecvBytes;
+	DataRing *rxbuf = nullptr;
 
   bool m_bTxIrqEnabled;
   bool m_bRxIrqEnabled;
