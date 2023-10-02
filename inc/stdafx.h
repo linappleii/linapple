@@ -14,7 +14,7 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
-#include <stdint.h>
+#include <cstdint>
 
 #ifndef _WIN32
 #  include "wincompat.h"
