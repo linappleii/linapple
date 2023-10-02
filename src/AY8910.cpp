@@ -29,7 +29,7 @@
 //
 
 #include <inttypes.h>
-#include <stdint.h>
+#include <cstdint>
 #include "wincompat.h"
 #include <stdio.h>
 #include <string.h>

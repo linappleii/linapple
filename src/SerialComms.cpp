@@ -50,6 +50,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // for read() and write()
 #include <unistd.h>
 
+#include "dataring.h"   // rxbuf
+
 char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x38"
                  "\x04\x9D\xB8\x05\x9D\x38\x06\x9D\xB8\x06\xB9\x82\xC0\x85\x2B\x4A"
                  "\x4A\x90\x04\x68\x29\xFE\x48\xB8\xB9\x81\xC0\x4A\xB0\x07\x4A\xB0"
@@ -180,7 +182,9 @@ char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x
                  "\x36\xE8\xE0\x04\x90\xF8\xAE\xF8\x07\x60\xC1\xD0\xD0\xCC\xC5\x08";
 
 
-pthread_mutex_t m_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
+// guards rxbuf. I don't think that the Linux port actually does still use threads,
+// but that's how it was in mainline linapple-pie so I'll keep it for now.
+static pthread_mutex_t 	m_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
 
 // Default: 19200-8-N-1
 // Maybe a better default is: 9600-7-N-1 (for HyperTrm)
@@ -200,8 +204,6 @@ CSuperSerialCard::CSuperSerialCard() {
 
   GetDIPSW();
 
-  m_vRecvBytes = 0;
-
   m_hCommHandle = -1;
   m_dwCommInactivity = 0;
 
@@ -217,7 +219,14 @@ CSuperSerialCard::CSuperSerialCard() {
     m_hCommEvent[i] = NULL;
 
   memset(&m_o, 0, sizeof(m_o));
+	rxbuf = new DataRing(256);
 }
+
+CSuperSerialCard::~CSuperSerialCard() {
+	delete rxbuf;
+	rxbuf = nullptr;
+}
+
 
 // TODO: Serial Comms - UI Property Sheet Page:
 // . Ability to config the 2x DIPSWs - only takes affect after next Apple2 reset
@@ -302,6 +311,9 @@ void CSuperSerialCard::UpdateCommState() {
   int l_databits = CS8;
   tcgetattr(m_hCommHandle, &dcb); // get current attributes for m_hCommHandle in dcb
 
+  // don't bork ascii CR chars
+	cfmakeraw(&dcb);
+
   // set input/output speed to m_uBaudRate
   cfsetispeed(&dcb, m_uBaudRate);
   cfsetospeed(&dcb, m_uBaudRate);
@@ -370,15 +382,19 @@ bool CSuperSerialCard::CheckComm() {
   m_dwCommInactivity = 0;
 
   if ((m_hCommHandle == -1) && m_dwSerialPort) {
-    char portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
+    char portname[32];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
     if (m_dwSerialPort < 0 || m_dwSerialPort > 99) {
       m_dwSerialPort = 1; // buffer overflow check
     }
-    sprintf(portname, TEXT("/dev/ttyS%u"), (unsigned int) (m_dwSerialPort - 1));
+    sprintf(portname, TEXT("/dev/ttyUSB%u"), (unsigned int) (m_dwSerialPort - 1));
     m_hCommHandle = open(portname, O_RDWR | O_NOCTTY | O_NDELAY);
     if (m_hCommHandle != -1) {
       UpdateCommState();
       CommThInit();
+      printf("Opened serial port %s\n", portname);
+    }
+    else {
+      printf("ERROR: failed to open serial port %s: %s\n", portname, strerror(errno));
     }
   }
 
@@ -398,6 +414,10 @@ void CSuperSerialCard::CloseComm()
 unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
+
+  // hack: we need to actually read the buffer sometimes since the receive thread
+  // isn't carried over from AppleWin
+  pSSC->CheckCommEvent(0);
 
   switch (uAddr & 0xf) {
     case 0x0:
@@ -632,24 +652,45 @@ unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsi
   return m_uControlByte;
 }
 
+static const char *descbyte(uint8_t byte) {
+	char tmp[8] = { '\'', (char)byte, '\'', ' ', 0 };
+	const char *bstr = tmp;
+	if (!isprint(byte)) {
+		switch(byte) {
+			case 13: bstr = "<CR> "; break;
+			case 10: bstr = "<LF> "; break;
+			case '\t': bstr = "<\\t> "; break;
+			case '\b': bstr = "<\\b> "; break;
+			default:
+				bstr = "";
+		}
+	}
+
+	static char retstr[32];
+	sprintf(retstr, "%s(%d, 0x%02x)", bstr, byte, byte);
+	return retstr;
+}
+
 unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
   if (!CheckComm()) {
     return 0;
   }
 
-  unsigned char result = 0;
-  if (m_vRecvBytes) {
-    // Don't need critical section in here as CommThread is waiting for ACK
-    result = m_RecvBuffer[0];
-    --m_vRecvBytes;
+	int rdchar = rxbuf->ReadByte();
+	if (rdchar >= 0) {
+		if (m_vbCommIRQ && rxbuf->IsEmpty()) {
+			// read last byte, so get CommThread to call WaitCommEvent() again
+			fprintf(stderr, "CommRecv: SetEvent - ACK\n");
+			//SetEvent(m_hCommEvent[COMMEVT_ACK]);
+		}
 
-    if (m_vbCommIRQ && !m_vRecvBytes) {
-      // Read last byte, so get CommThread to call WaitCommEvent() again
-      fprintf(stderr, "CommRecv: SetEvent - ACK\n");
-    }
-  }
-
-  return result;
+		printf("\e[1;94m <-- A2 reads incoming byte %s\e[0m\n", descbyte(rdchar));
+		return (BYTE)rdchar;
+	}
+	else {
+		printf("Apple II attempted to read serial w/ empty buffer\n");
+		return 0;
+	}
 }
 
 unsigned char CSuperSerialCard::CommTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG) {
@@ -718,13 +759,13 @@ unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsig
   if (m_bTxIrqEnabled && m_bWrittenTx) {
     bIRQ = true;
   }
-  if (m_bRxIrqEnabled && m_vRecvBytes) {
+  if (m_bRxIrqEnabled && rxbuf->IsEmpty()) {
     bIRQ = true;
   }
 
   m_bWrittenTx = false;  // Read status reg always clears IRQ
 
-  unsigned char uStatus = ST_TX_EMPTY | (m_vRecvBytes ? ST_RX_FULL : 0x00)
+  unsigned char uStatus = ST_TX_EMPTY | (!rxbuf->IsEmpty() ? ST_RX_FULL : 0x00)
                  #ifdef SUPPORT_MODEM
                  | ((modemstatus & MS_RLSD_ON)  ? 0x00 : ST_DCD)  // Need 0x00 to allow ZLink to start up
         | ((modemstatus & MS_DSR_ON)  ? 0x00 : ST_DSR)
@@ -805,7 +846,7 @@ void CSuperSerialCard::CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlo
 void CSuperSerialCard::CommReset() {
   CloseComm();
   GetDIPSW();
-  m_vRecvBytes = 0;
+  rxbuf->Clear();
   m_bTxIrqEnabled = false;
   m_bRxIrqEnabled = false;
   m_bWrittenTx = false;
@@ -849,14 +890,27 @@ void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
 }
 
 void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
-  pthread_mutex_lock(&m_CriticalSection);
-  m_vRecvBytes = read(m_hCommHandle, m_RecvBuffer, 1);
-  pthread_mutex_unlock(&m_CriticalSection);
+	int maxBytes = rxbuf->BytesFree();
+	if (maxBytes > 0) {
+		uint8_t temp[maxBytes];
+		int nbytes = read(m_hCommHandle, temp, maxBytes);
+		if (nbytes > 0) {
+      printf("got SZ! %d\n", nbytes);
+      for(int i=0;i<nbytes;i++) {
+        printf("byte %d: 0x%02x\n", i, temp[nbytes]);
+      }
 
-  if (m_bRxIrqEnabled && m_vRecvBytes) {
-    m_vbCommIRQ = true;
-    CpuIrqAssert(IS_SSC);
-  }
+			pthread_mutex_lock(&m_CriticalSection);
+			rxbuf->Append(temp, nbytes);
+			printf("serial: received %d bytes; now %d bytes in buffer\n", nbytes, rxbuf->BytesAvail());
+			pthread_mutex_unlock(&m_CriticalSection);
+
+			if (m_bRxIrqEnabled) {
+				m_vbCommIRQ = true;
+				CpuIrqAssert(IS_SSC);
+			}
+		}
+	}
 }
 
 unsigned int CSuperSerialCard::CommThread(LPVOID lpParameter) {
@@ -878,9 +932,12 @@ unsigned int CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
   pSS->comminactivity = m_dwCommInactivity;
   pSS->controlbyte = m_uControlByte;
   pSS->parity = m_uParity;
-  memcpy(pSS->recvbuffer, m_RecvBuffer, uRecvBufferSize);
-  pSS->recvbytes = m_vRecvBytes;
   pSS->stopbits = m_uStopBits;
+
+  int nbytes = rxbuf->BytesAvail();
+	uint8_t *peekbytes = rxbuf->Read(nbytes, false);
+	memcpy(pSS->recvbuffer, peekbytes, nbytes);
+	pSS->recvbytes = nbytes;
   return 0;
 }
 
@@ -892,8 +949,10 @@ unsigned int CSuperSerialCard::CommSetSnapshot(SS_IO_Comms *pSS)
   m_dwCommInactivity = pSS->comminactivity;
   m_uControlByte = pSS->controlbyte;
   m_uParity = pSS->parity;
-  memcpy(m_RecvBuffer, pSS->recvbuffer, uRecvBufferSize);
-  m_vRecvBytes = pSS->recvbytes;
   m_uStopBits = pSS->stopbits;
+
+  rxbuf->Clear();
+  rxbuf->Append(pSS->recvbuffer, pSS->recvbytes);
   return 0;
 }
+
