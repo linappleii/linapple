@@ -8,7 +8,8 @@ typedef enum {
   English_US=1,
   English_UK=2,
   French_FR=3,
-  German_DE=4
+  German_DE=4,
+  Spanish_ES=5
 } KeybLanguage;
 
 extern KeybLanguage g_KeyboardLanguage;

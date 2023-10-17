@@ -3,7 +3,7 @@
 
 ### Prerequisites
 
-#### Debian / Ubuntu
+#### Debian / Ubuntu / RetroPie
 
 ```bash
 sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev imagemagick
@@ -12,7 +12,7 @@ sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-o
 #### Fedora / RHEL / CentOS
 
 ```bash
-sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel GraphicsMagick GraphicsMagick-devel GraphicsMagick-perl
+sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel ImageMagick
 ```
 
 ### Clone
