@@ -1,6 +1,6 @@
 10 HOME
 15 VTAB 5
-20 PRINT TAB(13);"LinApple v2.2.1"
+20 PRINT TAB(13);"LinApple v2.3.0"
 25 PRINT TAB(15);"26 May 2020"
 30 PRINT
 35 PRINT TAB(9);: INVERSE : PRINT "F1";: NORMAL : PRINT " - Show help screen"

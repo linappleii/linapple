@@ -541,6 +541,9 @@ void LoadConfiguration()
         case 4:
           g_KeyboardLanguage = German_DE;
           break;
+        case 5:
+          g_KeyboardLanguage = Spanish_ES;
+          break;
       }
     }
 
@@ -555,6 +558,9 @@ void LoadConfiguration()
         break;
       case German_DE:
         printf("German\n");
+        break;
+      case Spanish_ES:
+        printf("Spanish\n");
         break;
       default:
         printf("US\n");
@@ -1113,6 +1119,11 @@ int main(int argc, char *argv[])
   if (InitSDL()) {
     return 1;
   } // init SDL subsystems, set icon
+
+  // add suport spanish special keys
+  if (SDL_EnableUNICODE(1)) {
+    return 1;
+  }
 
   // CURL routines
   curl_global_init(CURL_GLOBAL_DEFAULT);
