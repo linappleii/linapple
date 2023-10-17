@@ -108,7 +108,10 @@ int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-	_tcsncat( pDst, pSrc, nChars );
+    // secure the character \0
+    // fix warning: specified bound 2 equals source length.
+	_tcsncat( pDst, pSrc, nChars - 1);
+    pDst[nChars - 1] = '\0';
 #pragma GCC diagnostic pop
 
 	bool bOverflow = (nSpcDst < nLenSrc);

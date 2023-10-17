@@ -74,6 +74,9 @@ static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
 
 char *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
 
+// backend video x11, fbcon, dispmanx, kmsdrm, etc.
+char videoDriverName[100];
+
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
 
 bool behind = 0;
@@ -408,7 +411,7 @@ bool ValidateDirectory(char *dir)
       }
     }
   }
-  printf(" ---> %s is dir? %d\n", dir, ret);
+  printf("%s is dir? %d\n", dir ? dir : "undefined", ret);
   return ret;
 }
 
@@ -717,7 +720,10 @@ void LoadConfiguration()
   // Define screen sizes
   if (registry) {
     if (RegLoadString(TEXT("Configuration"), TEXT("Screen factor"), 1, &szFilename, 16)) {
-      scrFactor = atof(szFilename);
+      // fix: prevent resolution change, it usually gives graphic problems with the dispmanx driver
+      if (strncmp(videoDriverName, "dispmanx", 8) != 0) {
+        scrFactor = atof(szFilename);
+      }
       if (scrFactor > 0.1) {
         g_ScreenWidth = (unsigned int)(g_ScreenWidth * scrFactor);
         g_ScreenHeight = (unsigned int)(g_ScreenHeight * scrFactor);
@@ -740,6 +746,19 @@ void LoadConfiguration()
       if (dwTmp > 0) {
         g_ScreenHeight = dwTmp;
       }
+
+      // validate resolutions validate for the dispmanx driver.
+      if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
+        if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
+             (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
+             (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
+
+          // default
+          g_ScreenWidth  = 640;
+          g_ScreenHeight = 480;
+        }
+      }
+
     }
   }
 
@@ -1140,6 +1159,15 @@ int main(int argc, char *argv[])
   ImageInitialize();
   DiskInitialize();
   CreateColorMixMap();  // For tv emulation g_nAppMode
+
+#ifdef VERSIONSTRING
+  printf("LinApple %s\n", VERSIONSTRING);
+#else
+  printf("LinApple\n");
+#endif
+
+  SDL_VideoDriverName(&videoDriverName[0], 100);
+  printf("Video driver = %s\n", videoDriverName);
 
   do {
     // Do initialization that must be repeated for a restart
