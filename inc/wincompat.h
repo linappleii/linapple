@@ -115,7 +115,20 @@ typedef struct tagPOINT {
 #define CopyMemory(Destination, Source, Length) memcpy((Destination),(Source),(Length))
 #define ZeroMemory(Destination, Length) memset((Destination),0,(Length))
 
-#define GetTickCount SDL_GetTicks
+static inline bool IsCharLower(char ch) {
+  return isascii(ch) && islower(ch);
+}
+
+static inline bool IsCharUpper(char ch) {
+  return isascii(ch) && isupper(ch);
+}
+
+#define FILE_BEGIN   SEEK_SET
+#define FILE_CURRENT  SEEK_CUR
+#define FILE_END  SEEK_END
+
+#define DeleteFile remove
+#define INVALID_HANDLE_VALUE NULL
 
 #ifdef _DEBUG
   #include <cassert>

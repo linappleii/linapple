@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <SDL_image.h>
 #include "stdafx.h"
 #include "asset.h"
-#include "wwrapper.h"
 #include <pthread.h>
 #include <thread>
 #include <chrono>
@@ -1589,7 +1588,7 @@ void VideoDestroy() {
 
   // Just free our SDL surfaces and free vidlastmem
   // DESTROY BUFFERS
-  VirtualFree(vidlastmem, 0, MEM_RELEASE);
+  free(vidlastmem);
   vidlastmem = NULL;
   // DESTROY FRAME BUFFER
   if (g_hDeviceBitmap) {
@@ -1654,8 +1653,8 @@ bool VideoHasRefreshed() {
 
 void VideoInitialize() {
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
-  vidlastmem = (uint8_t*) VirtualAlloc(NULL, 0x10000, MEM_COMMIT, PAGE_READWRITE);
-  memset(vidlastmem, 0, 0x10000);
+  vidlastmem = (uint8_t*) malloc(0x10000);
+  if (vidlastmem) memset(vidlastmem, 0, 0x10000);
 
   // LOAD THE splash screen
   g_hLogoBitmap = SDL_DisplayFormat(assets->splash);

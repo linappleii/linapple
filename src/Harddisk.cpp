@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
-#include "wwrapper.h"
 #include "ftpparse.h"
 #include "DiskFTP.h"
 
@@ -132,7 +131,7 @@ typedef struct {
   unsigned short hd_diskblock;
   unsigned short hd_buf_ptr;
   bool hd_imageloaded;
-  HANDLE hd_file;
+  FILE* hd_file;
   unsigned char hd_buf[513];
 } HDD, *PHDD;
 
@@ -209,21 +208,30 @@ static void NotifyInvalidImage(char *filename)
   printf("HDD: Could not load %s\n", filename);
 }
 
+static size_t Util_GetFileSize(FILE* f) {
+  long current = ftell(f);
+  fseek(f, 0, SEEK_END);
+  size_t size = ftell(f);
+  fseek(f, current, SEEK_SET);
+  return size;
+}
+
 static void HD_CleanupDrive(int nDrive)
 {
   if (g_HardDrive[nDrive].hd_file) {
-    CloseHandle(g_HardDrive[nDrive].hd_file);
+    fclose(g_HardDrive[nDrive].hd_file);
+    g_HardDrive[nDrive].hd_file = NULL;
   }
   g_HardDrive[nDrive].hd_imageloaded = false;
   g_HardDrive[nDrive].hd_imagename[0] = 0;
   g_HardDrive[nDrive].hd_fullname[0] = 0;
 }
 
-static bool HD_Load_Image(int nDrive, const char* filename)
+static bool HD_Load_Image(int nDrive, const char *filename)
 {
   g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
 
-  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE) {
+  if (g_HardDrive[nDrive].hd_file == NULL) {
     g_HardDrive[nDrive].hd_imageloaded = false;
   } else {
     g_HardDrive[nDrive].hd_imageloaded = true;
@@ -486,7 +494,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
           switch (g_nHD_Command) {
             default:
             case 0x00: //status
-              if (GetFileSize(pHDD->hd_file, NULL) == 0) {
+              if (Util_GetFileSize(pHDD->hd_file) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
@@ -494,10 +502,11 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             case 0x01: //read
             {
               HDDStatus = DISK_STATUS_READ;
-              unsigned int br = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) { // read block into buffer
+              size_t br = Util_GetFileSize(pHDD->hd_file);
+              if ((size_t)(pHDD->hd_diskblock * 512) <= br) { // seek to block
+                fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET);  // seek to block
+                uint32_t bytesRead = fread(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                if (bytesRead == 512) { // read block into buffer
                   pHDD->hd_error = 0;
                   r = 0;
                   pHDD->hd_buf_ptr = 0;
@@ -514,11 +523,12 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             case 0x02: //write
             {
               HDDStatus = DISK_STATUS_WRITE;
-              unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
+              size_t bw = Util_GetFileSize(pHDD->hd_file);
+              if ((size_t)(pHDD->hd_diskblock * 512) <= bw) {
                 memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+                fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET);  // seek to block
+                uint32_t bytesWritten = fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                if (bytesWritten == 512) { // write buffer to file
                   pHDD->hd_error = 0;
                   r = 0;
                 } else {
@@ -526,17 +536,18 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
                   r = DEVICE_IO_ERROR;
                 }
               } else {
-                unsigned int fsize = SetFilePointer(pHDD->hd_file, 0, NULL, FILE_END);
+                fseek(pHDD->hd_file, 0, SEEK_END);
+                size_t fsize = ftell(pHDD->hd_file);
                 unsigned int addblocks = pHDD->hd_diskblock - (fsize / 512);
                 memset(pHDD->hd_buf,  0,  512);
                 while (addblocks--) {
-                  unsigned int bw;
-                  WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
+                  fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
                 }
-                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
+                if (fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET) == 0) {
                   // seek to block
                   memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
-                  if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+                  uint32_t bytesWritten = fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                  if (bytesWritten == 512) { // write buffer to file
                     pHDD->hd_error = 0;
                     r = 0;
                   } else {
