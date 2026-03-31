@@ -181,8 +181,7 @@ void Snapshot_SaveState() {
   FILE* hFile = fopen(g_szSaveStateFilename, "wb");
 
   if (hFile != NULL) {
-    unsigned int dwBytesWritten;
-    dwBytesWritten = fwrite(pSS, 1, sizeof(APPLEWIN_SNAPSHOT), hFile);
+    fwrite(pSS, 1, sizeof(APPLEWIN_SNAPSHOT), hFile);
     fclose(hFile);
   }
 
