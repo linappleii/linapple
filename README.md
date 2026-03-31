@@ -60,7 +60,6 @@ released by pressing any function key.
 | Shift+F2       | Reload configuration file and cold reboot.                       |
 | Ctrl+F10       | Hot Reset (Control+Reset)                                        |
 | F12            | Quit.                                                            |
-| -------------- | -----------------------------------------------------------------|
 | F3             | Load disk image to slot 6 drive 1.                               |
 | F4             | Load disk image to slot 6 drive 2.                               |
 | F5             | Swap drives for slot 6.                                          |
@@ -74,7 +73,6 @@ released by pressing any function key.
 | Ctrl+F4        | Eject disk image to slot 6 drive 2.                              |
 | Ctrl+Shift+F3  | Eject hard disk image to slot 7 drive 1.                         |
 | Ctrl+Shift+F4  | Eject hard disk image to slot 7 drive 2.                         |
-| -------------- | -----------------------------------------------------------------|
 | F6             | Toggle fullscreen mode. See Warning below.                       |
 | Shift+F6       | Toggle character set (keyboard/video ROM rocker switch for       |
 |                | Apple IIe/enhanced with international keyboards/video ROMs)      |
@@ -87,14 +85,12 @@ released by pressing any function key.
 | F11            | Save snapshot file.                                              |
 | Ctrl+0-9       | Load snapshot `n`.                                               |
 | Ctrl+Shift+0-9 | Save snapshot `n`.                                               |
-| -------------- | -----------------------------------------------------------------|
 | Pause          | Pause/resume emulation.                                          |
 | Scroll Lock    | Toggle full speed emulation.                                     |
 | Numpad +       | Increase emulation speed.                                        |
 | Numpad -       | Decrease emulation speed.                                        |
 | Numpad *       | Reset emulation speed.                                           |
 | RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                          |
-| -------------- | -----------------------------------------------------------------|
 
 **Warning**: Fullscreen mode does not properly exit in multi-monitor
 setups.  (This is a bug in SDL 1.2.)
@@ -107,6 +103,20 @@ Many disk images will boot straight into the application. Some disk
 images only have files and you must find the correct application to
 run. In this case you will need to execute BASIC commands to list the
 files on the disk and run programs.
+
+### LinApple Driver Video
+
+| driver name    | supported resolutions  | debugger panel (experimental) | keyboard    |
+| -------------- | ---------------------- | ----------------------------- | ----------- |
+| x11            | all                    | glitch graph or core dumped   | OK          |
+| fbcon          | max 1280x720 in rpi    | OK                            | OK          |
+| dispmanx       | 1920x1080         16:9 | OK                            | OK          |
+|                | 1280x 720         16:9 | OK                            | OK          |
+|                |  800x 600          4:3 | OK                            | OK          |
+|                |  640x 480          4:3 | OK                            | OK          |
+| kmsdrm         | all                    | NONE                          | NONE        |
+
+**Warning**: debugger panel only works in full screen.
 
 ### Apple II Commands
 
