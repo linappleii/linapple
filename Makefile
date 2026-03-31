@@ -181,7 +181,7 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT) images
 	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
 
 $(BUILDDIR)/%.$(XPMEXT): $(RESDIR)/%.$(IMGEXT)
-	convert -flatten "$<" "$@"
+	magick "$<" -layers flatten "$@"
 	@sed -i 's/static const char/static char/g' "$@"
 	@sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 
