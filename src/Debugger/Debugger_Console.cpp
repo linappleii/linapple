@@ -472,7 +472,7 @@ bool ConsoleInputBackSpace ()
 //===========================================================================
 bool ConsoleInputClear ()
 {
-	ZeroMemory( g_aConsoleInput, CONSOLE_WIDTH );
+	memset( g_aConsoleInput, 0, CONSOLE_WIDTH );
 
 	if (g_nConsoleInputChars)
 	{
@@ -529,7 +529,7 @@ void ConsoleInputReset ()
 
 	ConsoleInputClear();
 
-//	_tcscpy( g_aConsoleInput, g_sConsolePrompt ); // Assembler can change prompt
+//	strcpy( g_aConsoleInput, g_sConsolePrompt ); // Assembler can change prompt
 	g_aConsoleInput[0] = g_sConsolePrompt[0];
 	g_nConsolePromptLen = 1;
 

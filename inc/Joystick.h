@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 enum JOYNUM {
@@ -50,8 +51,8 @@ unsigned int JoyGetSnapshot(SS_IO_Joystick *pSS);
 
 unsigned int JoySetSnapshot(SS_IO_Joystick *pSS);
 
-unsigned char JoyReadButton(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char JoyReadButton(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char JoyReadPosition(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char JoyReadPosition(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char JoyResetPosition(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char JoyResetPosition(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);

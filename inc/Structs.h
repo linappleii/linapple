@@ -1,3 +1,5 @@
+#include <cstdint>
+
 // Structs used by save-state file
 
 // *** DON'T CHANGE ANY STRUCT WITHOUT CONSIDERING BACKWARDS COMPATIBILITY WITH .AWS FORMAT ***
@@ -26,8 +28,8 @@ typedef struct {
   unsigned char Y;
   unsigned char P;
   unsigned char S;
-  USHORT PC;
-  UINT64 g_nCumulativeCycles;
+  uint16_t PC;
+  uint64_t g_nCumulativeCycles;
   // IRQ = OR-sum of all interrupt sources
 } SS_CPU6502;
 
@@ -46,7 +48,7 @@ typedef struct {
 } SS_IO_Comms;
 
 typedef struct {
-  UINT64 g_nJoyCntrResetCycle;
+  uint64_t g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
 typedef struct {
@@ -55,7 +57,7 @@ typedef struct {
 } SS_IO_Keyboard;
 
 typedef struct {
-  UINT64 g_nSpkrLastCycle;
+  uint64_t g_nSpkrLastCycle;
 } SS_IO_Speaker;
 
 typedef struct {
@@ -159,7 +161,7 @@ typedef struct {
       unsigned char l;
       unsigned char h;
     };
-    USHORT w;
+    uint16_t w;
   };
 } IWORD;
 

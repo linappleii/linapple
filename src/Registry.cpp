@@ -141,7 +141,7 @@ char *ReadRegString(const char *key) {
   return NULL; // key has not been found in registry?
 }
 
-bool RegLoadString(LPCTSTR section, LPCTSTR key, bool peruser, char **buffer, unsigned int chars) {
+bool RegLoadString(const char* section, const char* key, bool peruser, char **buffer, unsigned int chars) {
   // will ignore section, per user
   char *value;
   value = ReadRegString(key); // read value for a given keyhandle
@@ -156,7 +156,7 @@ bool RegLoadString(LPCTSTR section, LPCTSTR key, bool peruser, char **buffer, un
   return false;
 }
 
-bool RegLoadValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int *value) {
+bool RegLoadValue(const char* section, const char* key, bool peruser, unsigned int *value) {
   if (!value) {
     return 0;
   }
@@ -216,13 +216,13 @@ void RegSaveKeyValue(char *NKey, char *NValue) {
   #endif /* REGISTRY_WRITEABLE */
 }
 
-void RegSaveString(LPCTSTR section, LPCTSTR key, bool peruser, LPCTSTR buffer) {
+void RegSaveString(const char* section, const char* key, bool peruser, const char* buffer) {
   RegSaveKeyValue((char *) key, (char *) buffer);
 }
 
-void RegSaveValue(LPCTSTR section, LPCTSTR key, bool peruser, unsigned int value)
+void RegSaveValue(const char* section, const char* key, bool peruser, unsigned int value)
 {
-  char buffer[33] = TEXT("");
+  char buffer[33] = "";
   snprintf(buffer, 32, "%d", value);
 
   RegSaveString(section, key, peruser, buffer);

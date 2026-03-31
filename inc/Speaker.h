@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 // For audio use only none or SDL_SOUND subsystem
@@ -27,4 +28,4 @@ bool Spkr_DSInit();
 void Spkr_DSUninit();
 unsigned int SpkrGetSnapshot(SS_IO_Speaker *pSS);
 unsigned int SpkrSetSnapshot(SS_IO_Speaker *pSS);
-unsigned char SpkrToggle(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char SpkrToggle(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);

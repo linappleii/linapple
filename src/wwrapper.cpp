@@ -6,15 +6,15 @@
 #include "stdafx.h"
 #include "wwrapper.h"
 
-unsigned int SetFilePointer(HANDLE hFile, int lDistanceToMove, PLONG lpDistanceToMoveHigh, unsigned int dwMoveMethod)
+unsigned int SetFilePointer(HANDLE hFile, int lDistanceToMove, int32_t* lpDistanceToMoveHigh, unsigned int dwMoveMethod)
 {
   /* ummm,fseek in Russian */
   fseek((FILE *) hFile, lDistanceToMove, dwMoveMethod);
   return ftell((FILE *) hFile);
 }
 
-bool ReadFile(HANDLE hFile, LPVOID lpBuffer, unsigned int nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
-              LPOVERLAPPED lpOverlapped)
+bool ReadFile(HANDLE hFile, void* lpBuffer, unsigned int nNumberOfBytesToRead, uint32_t* lpNumberOfBytesRead,
+              OVERLAPPED* lpOverlapped)
 {
 
   /* read something from file */
@@ -23,8 +23,8 @@ bool ReadFile(HANDLE hFile, LPVOID lpBuffer, unsigned int nNumberOfBytesToRead, 
   return (nNumberOfBytesToRead == bytesread);
 }
 
-bool WriteFile(HANDLE hFile, LPCVOID lpBuffer, unsigned int nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten,
-               LPOVERLAPPED lpOverlapped)
+bool WriteFile(HANDLE hFile, const void* lpBuffer, unsigned int nNumberOfBytesToWrite, uint32_t* lpNumberOfBytesWritten,
+               OVERLAPPED* lpOverlapped)
 {
   /* write something to file */
   unsigned int byteswritten = fwrite(lpBuffer, 1, nNumberOfBytesToWrite, (FILE *) hFile);
@@ -38,7 +38,7 @@ bool CloseHandle(HANDLE hObject)
   return (!fclose((FILE *) hObject));
 }
 
-bool DeleteFile(LPCTSTR lpFileName)
+bool DeleteFile(const char* lpFileName)
 {
   if (remove(lpFileName) == 0)
     return true;
@@ -46,7 +46,7 @@ bool DeleteFile(LPCTSTR lpFileName)
     return false;
 }
 
-unsigned int GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
+unsigned int GetFileSize(HANDLE hFile, uint32_t* lpFileSizeHigh)
 {
   /* what is the size of the specified file??? Hmmm, really I donna. ^_^ */
   long lcurset = ftell((FILE *) hFile); // remember current file position
@@ -57,24 +57,24 @@ unsigned int GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
   return lfilesize;
 }
 
-LPVOID VirtualAlloc(LPVOID lpAddress, size_t dwSize, unsigned int flAllocationType, unsigned int flProtect)
+void* VirtualAlloc(void* lpAddress, size_t dwSize, unsigned int flAllocationType, unsigned int flProtect)
 {
   /* just malloc and alles? 0_0 */
   void *mymemory;
   mymemory = malloc(dwSize);
   if (flAllocationType & 0x1000)
-    ZeroMemory(mymemory, dwSize); // original VirtualAlloc does this (if..)
+    memset(mymemory, 0, dwSize); // original VirtualAlloc does this (if..)
   return mymemory;
 }
 
-bool VirtualFree(LPVOID lpAddress, size_t dwSize, unsigned int dwFreeType)
+bool VirtualFree(void* lpAddress, size_t dwSize, unsigned int dwFreeType)
 {
   free(lpAddress);
   return true;
 }
 
 // make all chars in buffer lowercase
-unsigned int CharLowerBuff(LPTSTR lpsz, unsigned int cchLength)
+unsigned int CharLowerBuff(char* lpsz, unsigned int cchLength)
 {
   if (lpsz)
     for (; *lpsz; lpsz++)

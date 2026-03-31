@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #include <pthread.h>
@@ -47,7 +48,7 @@ public:
   virtual ~CSuperSerialCard() {
   }
 
-  void CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlot);
+  void CommInitialize(uint8_t* pCxRomPeripheral, unsigned int uSlot);
 
   void CommReset();
 
@@ -69,22 +70,22 @@ public:
     m_dwSerialPort = dwSerialPort;
   }
 
-  static unsigned char SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
+  static unsigned char SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
 
-  static unsigned char SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
+  static unsigned char SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
 
 private:
-  unsigned char CommCommand(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommCommand(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  unsigned char CommControl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommControl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  unsigned char CommDipSw(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommDipSw(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  unsigned char CommReceive(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommReceive(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  unsigned char CommStatus(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommStatus(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  unsigned char CommTransmit(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+  unsigned char CommTransmit(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
   void GetDIPSW();
 
@@ -102,7 +103,7 @@ private:
 
   void CheckCommEvent(unsigned int dwEvtMask);
 
-  static unsigned int CommThread(LPVOID lpParameter);
+  static unsigned int CommThread(void* lpParameter);
 
   bool CommThInit();
 

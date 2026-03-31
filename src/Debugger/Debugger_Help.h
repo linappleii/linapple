@@ -1,3 +1,5 @@
+#include <cstdint>
+
 #ifndef DEBUGGER_HELP_H
 #define DEBUGGER_HELP_H
 
@@ -14,8 +16,8 @@
 
 	void DisplayAmbigiousCommands ( int nFound );
 
-	int FindParam( LPCTSTR pLookupName, Match_e eMatch, int & iParam_, const int iParamBegin = 0, const int iParamEnd = NUM_PARAMS - 1 );
-	int FindCommand( LPCTSTR pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = NULL );
+	int FindParam( const char* pLookupName, Match_e eMatch, int & iParam_, const int iParamBegin = 0, const int iParamEnd = NUM_PARAMS - 1 );
+	int FindCommand( const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = NULL );
 
 inline void  UnpackVersion( const unsigned int nVersion,
 		int & nMajor_, int & nMinor_, int & nFixMajor_ , int & nFixMinor_ )
@@ -26,8 +28,8 @@ inline void  UnpackVersion( const unsigned int nVersion,
 		nFixMinor_ = (nVersion >>  0) & 0xFF;
 	}
 
-	bool  TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize );
-	bool  TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize );
-	int  StringCat( char * pDst, LPCSTR pSrc, const int nDstSize );
+	bool  TestStringCat ( char * pDst, const char* pSrc, const int nDstSize );
+	bool  TryStringCat ( char * pDst, const char* pSrc, const int nDstSize );
+	int  StringCat( char * pDst, const char* pSrc, const int nDstSize );
 
 #endif

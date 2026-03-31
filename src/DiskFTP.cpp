@@ -39,7 +39,7 @@
 
 char *md5str(const char *input); // forward declaration of md5str func
 
-char g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
+char g_sFTPDirListing[512] = "cache/ftp."; // name for FTP-directory listing
 int getstatFTP(struct ftpparse *fp, uintmax_t *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file

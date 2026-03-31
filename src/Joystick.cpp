@@ -121,7 +121,7 @@ static bool setbutton[3] = {0, 0, 0}; // Used when a mouse button is pressed/rel
 static int xpos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 static int ypos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 
-static UINT64 g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
+static uint64_t g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
 
 static int g_nPdlTrimX = 0;
 static int g_nPdlTrimY = 0;
@@ -157,7 +157,7 @@ void CheckJoystick0() {
     return;
   }
   static unsigned int lastcheck = 0;
-  unsigned int currtime = GetTickCount();
+  unsigned int currtime = SDL_GetTicks();
   if ((currtime - lastcheck >= 10) || joybutton[0] || joybutton[1]) {
     lastcheck = currtime;
     SDL_JoystickUpdate(); // update all joysticks states
@@ -250,7 +250,7 @@ void CheckJoystick1() {
     return;
   }
   static unsigned int lastcheck = 0;
-  unsigned int currtime = GetTickCount();
+  unsigned int currtime = SDL_GetTicks();
   if ((currtime - lastcheck >= 10) || joybutton[2]) {
     lastcheck = currtime;
     SDL_JoystickUpdate(); // update all joysticks states
@@ -553,7 +553,7 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
   return keychange;
 }
 
-unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   address &= 0xFF;
 
   if (joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
@@ -606,19 +606,19 @@ unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned cha
 
 static const double PDL_CNTR_INTERVAL = 2816.0 / 255.0;  // 11.04 (From KEGS)
 
-unsigned char JoyReadPosition(unsigned short programcounter, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char JoyReadPosition(unsigned short programcounter, unsigned short address, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   int nJoyNum = (address & 2) ? 1 : 0;  // $C064..$C067
 
   CpuCalcCycles(nCyclesLeft);
 
-  ULONG nPdlPos = (address & 1) ? ypos[nJoyNum] : xpos[nJoyNum];
+  uint32_t nPdlPos = (address & 1) ? ypos[nJoyNum] : xpos[nJoyNum];
 
   // This is from KEGS. It helps games like Championship Lode Runner & Boulderdash
   // GPH: Taking this out.   It's illogical and this is an 8-bit emulator, not a IIGS
   //if(nPdlPos >= 255)
   //  nPdlPos = 280;
 
-  bool nPdlCntrActive = (g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (UINT64) ((double) nPdlPos * PDL_CNTR_INTERVAL)));
+  bool nPdlCntrActive = (g_nCumulativeCycles <= (g_nJoyCntrResetCycle + (uint64_t) ((double) nPdlPos * PDL_CNTR_INTERVAL)));
 
   return MemReadFloatingBus(nPdlCntrActive, nCyclesLeft);
 }
@@ -629,7 +629,7 @@ void JoyReset() {
     keydown[loop++] = false; // clear all joystick buttons and axis states
 }
 
-unsigned char JoyResetPosition(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char JoyResetPosition(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   CpuCalcCycles(nCyclesLeft);
   g_nJoyCntrResetCycle = g_nCumulativeCycles;
 

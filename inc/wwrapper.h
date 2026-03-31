@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "wincompat.h"
 
 #include <stdio.h>
@@ -15,24 +16,24 @@
 #define MEM_RELEASE  0
 
 
-unsigned int SetFilePointer(HANDLE hFile, int lDistanceToMove, PLONG lpDistanceToMoveHigh, unsigned int dwMoveMethod);
+unsigned int SetFilePointer(HANDLE hFile, int lDistanceToMove, int32_t* lpDistanceToMoveHigh, unsigned int dwMoveMethod);
 
-bool ReadFile(HANDLE hFile, LPVOID lpBuffer, unsigned int nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
-              LPOVERLAPPED lpOverlapped);
+bool ReadFile(HANDLE hFile, void* lpBuffer, unsigned int nNumberOfBytesToRead, uint32_t* lpNumberOfBytesRead,
+              OVERLAPPED* lpOverlapped);
 
-bool WriteFile(HANDLE hFile, LPCVOID lpBuffer, unsigned int nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten,
-               LPOVERLAPPED lpOverlapped);
+bool WriteFile(HANDLE hFile, const void* lpBuffer, unsigned int nNumberOfBytesToWrite, uint32_t* lpNumberOfBytesWritten,
+               OVERLAPPED* lpOverlapped);
 
 /* close handle whatever it has been .... hmmmmm. I just love Microsoft! */
 bool CloseHandle(HANDLE hObject);
 
-bool DeleteFile(LPCTSTR lpFileName);
+bool DeleteFile(const char* lpFileName);
 
-unsigned int GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh);
+unsigned int GetFileSize(HANDLE hFile, uint32_t* lpFileSizeHigh);
 
-LPVOID VirtualAlloc(LPVOID lpAddress, size_t dwSize, unsigned int flAllocationType, unsigned int flProtect);
+void* VirtualAlloc(void* lpAddress, size_t dwSize, unsigned int flAllocationType, unsigned int flProtect);
 
-bool VirtualFree(LPVOID lpAddress, size_t dwSize, unsigned int dwFreeType);
+bool VirtualFree(void* lpAddress, size_t dwSize, unsigned int dwFreeType);
 
 static inline bool IsCharLower(char ch) {
   return isascii(ch) && islower(ch);
@@ -42,5 +43,5 @@ static inline bool IsCharUpper(char ch) {
   return isascii(ch) && isupper(ch);
 }
 
-unsigned int CharLowerBuff(LPTSTR lpsz, unsigned int cchLength);
+unsigned int CharLowerBuff(char* lpsz, unsigned int cchLength);
 

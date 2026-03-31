@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Remake for SDL Audio for Linux (or other SDL-compliant OSes) by beom beotiger --bb */
 
 #include "stdafx.h"
-// for _ASSERT ion. (here _ASSERT means Unix(tm) assert) --bb
+// for assert ion. (here assert means Unix(tm) assert) --bb
 #include <assert.h>
 
 // Notes:
@@ -71,15 +71,15 @@ unsigned int soundtype = SOUND_WAVE; //default
 double g_fClksPerSpkrSample;    // Setup in SetClksPerSpkrSample()
 
 // Globals
-static UINT64 g_nSpkrQuietCycleCount = 0;
-static UINT64 g_nSpkrLastCycle = 0;
+static uint64_t g_nSpkrQuietCycleCount = 0;
+static uint64_t g_nSpkrLastCycle = 0;
 static bool g_bSpkrToggleFlag = false;
 
 static bool g_bSpkrAvailable = false;
 static bool g_bSpkrRecentlyActive = false;
 
 // Forward refs:
-static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples);
+static uint32_t Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, uint32_t nNumSamples);
 
 static void Spkr_SetActive(bool bActive);
 
@@ -87,11 +87,11 @@ static void Spkr_SetActive(bool bActive);
 #if 0
 static void DisplayBenchmarkResults () {
 
-  unsigned int totaltime = GetTickCount() - extbench;
+  unsigned int totaltime = SDL_GetTicks() - extbench;
   VideoRedrawScreen();
   char buffer[64];
   sprintf(buffer,
-           TEXT("This benchmark took %u.%02u seconds."),
+           "This benchmark took %u.%02u seconds.",
            (unsigned)(totaltime / 1000),
            (unsigned)((totaltime / 10) % 100));
   printf("This benchmark took %u.%02u seconds.",
@@ -206,10 +206,10 @@ static void ReinitRemainderBuffer(unsigned int nCyclesRemaining) {
   for (g_nRemainderBufferIdx = 0; g_nRemainderBufferIdx < nCyclesRemaining; g_nRemainderBufferIdx++) {
     g_pRemainderBuffer[g_nRemainderBufferIdx] = g_nSpeakerData;
   }
-  _ASSERT(g_nRemainderBufferIdx < g_nRemainderBufferSize);
+  assert(g_nRemainderBufferIdx < g_nRemainderBufferSize);
 }
 
-static void UpdateRemainderBuffer(ULONG *pnCycleDiff) {
+static void UpdateRemainderBuffer(uint32_t *pnCycleDiff) {
   if (g_nRemainderBufferIdx) {
     while ((g_nRemainderBufferIdx < g_nRemainderBufferSize) && *pnCycleDiff) {
       g_pRemainderBuffer[g_nRemainderBufferIdx] = g_nSpeakerData;
@@ -233,10 +233,10 @@ static void UpdateRemainderBuffer(ULONG *pnCycleDiff) {
 
 static void UpdateSpkr() {
   if (!g_bFullSpeed) {
-    ULONG nCycleDiff = (ULONG)(g_nCumulativeCycles - g_nSpkrLastCycle);
+    uint32_t nCycleDiff = (uint32_t)(g_nCumulativeCycles - g_nSpkrLastCycle);
     UpdateRemainderBuffer(&nCycleDiff);
-    ULONG nNumSamples = (ULONG)((double) nCycleDiff / g_fClksPerSpkrSample);
-    ULONG nCyclesRemaining = (ULONG)((double) nCycleDiff - (double) nNumSamples * g_fClksPerSpkrSample);
+    uint32_t nNumSamples = (uint32_t)((double) nCycleDiff / g_fClksPerSpkrSample);
+    uint32_t nCyclesRemaining = (uint32_t)((double) nCycleDiff - (double) nNumSamples * g_fClksPerSpkrSample);
     while ((nNumSamples--) && (g_nBufferIdx < SPKR_SAMPLE_RATE - 1)) {
       g_pSpeakerBuffer[g_nBufferIdx++] = g_nSpeakerData;
     }
@@ -246,7 +246,7 @@ static void UpdateSpkr() {
 }
 
 // Called by emulation code when Speaker I/O reg (0xC030) is accessed
-unsigned char SpkrToggle(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char SpkrToggle(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   g_bSpkrToggleFlag = true;
 
   if (!g_bFullSpeed) {
@@ -268,7 +268,7 @@ void SpkrUpdate(unsigned int totalcycles) {
   if (!g_bSpkrToggleFlag) {
     if (!g_nSpkrQuietCycleCount) {
       g_nSpkrQuietCycleCount = g_nCumulativeCycles;
-    } else if (g_nCumulativeCycles - g_nSpkrQuietCycleCount > (UINT64)g_fCurrentCLK6502 / 5)
+    } else if (g_nCumulativeCycles - g_nSpkrQuietCycleCount > (uint64_t)g_fCurrentCLK6502 / 5)
     {
       // After 0.2 sec of Apple time, deactivate spkr voice
       // . This allows emulator to auto-switch to full-speed g_nAppMode for fast disk access
@@ -281,14 +281,14 @@ void SpkrUpdate(unsigned int totalcycles) {
 
   if (soundtype == SOUND_WAVE) {
     UpdateSpkr();
-    ULONG nSamplesUsed;
+    uint32_t nSamplesUsed;
 
     if (g_bFullSpeed) {
       g_nBufferIdx = 0;
     }
     else {
       nSamplesUsed = Spkr_SubmitWaveBuffer(g_pSpeakerBuffer, g_nBufferIdx);
-      _ASSERT(nSamplesUsed <= g_nBufferIdx);
+      assert(nSamplesUsed <= g_nBufferIdx);
       if (nSamplesUsed == 0) {
         return;
       }
@@ -298,7 +298,7 @@ void SpkrUpdate(unsigned int totalcycles) {
   }
 }
 
-static ULONG Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, ULONG nNumSamples)
+static uint32_t Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, uint32_t nNumSamples)
 {
   // submit nNumSamples (== 2bytes long each (sizeof short))??
   // from pSpeakerBuffer to pDSSpkrBuf for callback DSPlaySnd

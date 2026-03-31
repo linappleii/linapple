@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 // Types
@@ -193,8 +194,8 @@ unsigned int VideoGetSnapshot(SS_IO_Video *pSS);
 
 unsigned int VideoSetSnapshot(SS_IO_Video *pSS);
 
-unsigned char VideoCheckMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoCheckMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);

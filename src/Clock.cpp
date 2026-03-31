@@ -208,7 +208,7 @@ static void update_latches() {
 }
 
 
-static unsigned char Clock_IORead (unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft) {
+static unsigned char Clock_IORead (unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft) {
   switch(addr &= 0x0F) {
   case 0: case 1:
   case 2: case 3:

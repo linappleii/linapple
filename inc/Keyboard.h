@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 extern bool g_bShiftKey;
@@ -43,6 +44,6 @@ unsigned int KeybGetSnapshot(SS_IO_Keyboard *pSS);
 
 unsigned int KeybSetSnapshot(SS_IO_Keyboard *pSS);
 
-unsigned char KeybReadData(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char KeybReadData(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char KeybReadFlag(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char KeybReadFlag(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);

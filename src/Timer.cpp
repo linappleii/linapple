@@ -132,7 +132,7 @@ bool SysClk_InitTimer() {
   }
 
   if (CoCreateInstance(CLSID_SystemClock, NULL, CLSCTX_INPROC,
-                       IID_IReferenceClock, (LPVOID*)&g_pRefClock) != S_OK) {
+                       IID_IReferenceClock, (void**)&g_pRefClock) != S_OK) {
     fprintf(stderr, "Error initialising COM\n");
     return false;  // Fails for Win95!
   }
@@ -168,13 +168,13 @@ void SysClk_StartTimerUsec(unsigned int dwUsecPeriod) {
 
   if ((hr != S_OK) && (hr != S_FALSE)) {
     fprintf(stderr, "Error creating timer (GetTime failed)\n");
-    _ASSERT(0);
+    assert(0);
     return;
   }
 
   if (g_pRefClock->AdvisePeriodic(rtNow, rtPeriod, g_hSemaphore, &g_dwAdviseToken) != S_OK) {
     fprintf(stderr, "Error creating timer (AdvisePeriodic failed)\n");
-    _ASSERT(0);
+    assert(0);
     return;
   }
 
@@ -189,7 +189,7 @@ void SysClk_StopTimer() {
 
   if (g_pRefClock->Unadvise(g_dwAdviseToken) != S_OK) {
     fprintf(stderr, "Error deleting timer\n");
-    _ASSERT(0);
+    assert(0);
     return;
   }
 

@@ -98,18 +98,18 @@ unsigned int g_ScreenWidth = SCREEN_WIDTH;
 unsigned int g_ScreenHeight = SCREEN_HEIGHT;
 
 unsigned int needsprecision = 0;
-char g_sProgramDir[MAX_PATH] = TEXT("");
-char g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
-char g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
-char g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
-char g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
+char g_sProgramDir[MAX_PATH] = "";
+char g_sCurrentDir[MAX_PATH] = ""; // Also Starting Dir for Slot6 disk images?? --bb
+char g_sHDDDir[MAX_PATH] = ""; // starting dir for HDV (Apple][ HDD) images?? --bb
+char g_sSaveStateDir[MAX_PATH] = ""; // starting dir for states --bb
+char g_sParallelPrinterFile[MAX_PATH] = "Printer.txt";  // default file name for Parallel printer
 
 // FTP Variables
-char g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
-char g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
-char g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
+char g_sFTPLocalDir[MAX_PATH] = ""; // FTP Local Dir, see linapple.conf for details
+char g_sFTPServer[MAX_PATH] = ""; // full path to default FTP server
+char g_sFTPServerHDD[MAX_PATH] = ""; // full path to default FTP server
 
-char g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
+char g_sFTPUserPass[512] = "anonymous:mymail@hotmail.com"; // full login line
 
 bool g_bResetTiming = false;
 bool restart = 0;
@@ -137,7 +137,7 @@ const unsigned int MAX_CNT = 256;
 double g_fDbg[MAX_CNT];
 unsigned int g_nIdx = 0;
 double g_fMeanPeriod,g_fMeanFreq;
-ULONG g_nPerfFreq = 0;
+uint32_t g_nPerfFreq = 0;
 #endif
 
 static unsigned int g_uModeStepping_Cycles = 0;
@@ -169,13 +169,13 @@ void ContinueExecution()
   if (nCyclesWithFeedback < 0) {
     nCyclesWithFeedback = 0;
   }
-  const DWORD uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
+  const uint32_t uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
                                        : 0;
 
-  const DWORD uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+  const uint32_t uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
                           /* MODE_STEPPING */ : 0;
 
-  DWORD uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
+  uint32_t uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
   g_dwCyclesThisFrame += uActualCyclesExecuted;
 
   cyclenum = uActualCyclesExecuted;
@@ -240,7 +240,7 @@ void ContinueExecution()
       if (update_clause && VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static unsigned int lasttime = 0;
-        unsigned int currtime = GetTickCount();
+        unsigned int currtime = SDL_GetTicks();
         if ((!g_bFullSpeed) || (currtime - lasttime >= (unsigned int)((graphicsmode || !systemidle) ? 100 : 25))) {
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
@@ -270,7 +270,7 @@ void ContinueExecution()
     #if DBG_CALC_FREQ
     if(g_nPerfFreq)
     {
-      int nTime1 = GetTickCount(); //no QueryPerformanceCounter and alike
+      int nTime1 = SDL_GetTicks(); //no QueryPerformanceCounter and alike
       int nTimeDiff = nTime1 - nTime0;
       double fTime = (double)nTimeDiff / (double)(int)g_nPerfFreq;
 
@@ -395,7 +395,7 @@ void EnterMessageLoop()
   }
 }
 
-int DoDiskInsert(int nDrive, LPSTR szFileName)
+int DoDiskInsert(int nDrive, char* szFileName)
 {
   return DiskInsert(nDrive, szFileName, 0, 0);
 }
@@ -418,11 +418,11 @@ bool ValidateDirectory(char *dir)
 void SetDiskImageDirectory(char *regKey, int driveNumber)
 {
   char *szHDFilename = NULL;
-  if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
+  if (RegLoadString("Configuration", regKey, 1, &szHDFilename, MAX_PATH)) {
     if (!ValidateDirectory(szHDFilename)) {
       free(szHDFilename);
-      RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
-      RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
+      RegSaveString("Configuration", regKey, 1, "/");
+      RegLoadString("Configuration", regKey, 1, &szHDFilename, MAX_PATH);
     }
 
     DoDiskInsert(driveNumber, szHDFilename);
@@ -444,7 +444,7 @@ void LoadConfiguration()
 {
   if (registry) {
     unsigned int dwComputerType = g_Apple2Type;
-    LOAD(TEXT("Computer Emulation"), &dwComputerType);
+    LOAD("Computer Emulation", &dwComputerType);
 
     switch (dwComputerType) {
       case 0:
@@ -482,22 +482,22 @@ void LoadConfiguration()
   printf("Selected machine type: %s\n", g_pAppTitle);
 
   if (registry) {
-    LOAD(TEXT("Joystick 0"), &joytype[0]);
-    LOAD(TEXT("Joystick 1"), &joytype[1]);
-    LOAD(TEXT("Joy0Index"), &joy1index);
-    LOAD(TEXT("Joy1Index"), &joy2index);
+    LOAD("Joystick 0", &joytype[0]);
+    LOAD("Joystick 1", &joytype[1]);
+    LOAD("Joy0Index", &joy1index);
+    LOAD("Joy1Index", &joy2index);
 
-    LOAD(TEXT("Joy0Button1"), &joy1button1);
-    LOAD(TEXT("Joy0Button2"), &joy1button2);
-    LOAD(TEXT("Joy1Button1"), &joy2button1);
+    LOAD("Joy0Button1", &joy1button1);
+    LOAD("Joy0Button2", &joy1button2);
+    LOAD("Joy1Button1", &joy2button1);
 
-    LOAD(TEXT("Joy0Axis0"), &joy1axis0);
-    LOAD(TEXT("Joy0Axis1"), &joy1axis1);
-    LOAD(TEXT("Joy1Axis0"), &joy2axis0);
-    LOAD(TEXT("Joy1Axis1"), &joy2axis1);
-    LOAD(TEXT("JoyExitEnable"), &joyexitenable);
-    LOAD(TEXT("JoyExitButton0"), &joyexitbutton0);
-    LOAD(TEXT("JoyExitButton1"), &joyexitbutton1);
+    LOAD("Joy0Axis0", &joy1axis0);
+    LOAD("Joy0Axis1", &joy1axis1);
+    LOAD("Joy1Axis0", &joy2axis0);
+    LOAD("Joy1Axis1", &joy2axis1);
+    LOAD("JoyExitEnable", &joyexitenable);
+    LOAD("JoyExitButton0", &joyexitbutton0);
+    LOAD("JoyExitButton1", &joyexitbutton1);
   }
 
   if (joytype[0] == 1) {
@@ -529,7 +529,7 @@ void LoadConfiguration()
   if (registry)
   {
     unsigned int Language = 0;
-    if (LOAD(TEXT(REGVALUE_KEYB_TYPE), &Language)) {
+    if (LOAD(REGVALUE_KEYB_TYPE, &Language)) {
       switch(Language)
       {
         case 1:
@@ -571,7 +571,7 @@ void LoadConfiguration()
     }
 
     unsigned int ToggleSwitch = 0;
-    if (LOAD(TEXT(REGVALUE_KEYB_CHARSET_SWITCH), &ToggleSwitch)) {
+    if (LOAD(REGVALUE_KEYB_CHARSET_SWITCH, &ToggleSwitch)) {
       // select initial value of the keyboard character set toggle switch
       g_KeyboardRockerSwitch = (ToggleSwitch>=1);
       printf("Keyboard rocker switch: %s\n", (g_KeyboardRockerSwitch) ? "local charset" : "standard/US charset");
@@ -579,68 +579,68 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    LOAD(TEXT("Sound Emulation"), &soundtype);
+    LOAD("Sound Emulation", &soundtype);
   }
   unsigned int dwSerialPort;
   if (registry) {
-    LOAD(TEXT("Serial Port"), &dwSerialPort);
+    LOAD("Serial Port", &dwSerialPort);
   }
   sg_SSC.SetSerialPort(dwSerialPort);
 
   if (registry) {
-    LOAD(TEXT("Emulation Speed"), &g_dwSpeed);
-    LOAD(TEXT("Enhance Disk Speed"), (unsigned int * ) & enhancedisk);
-    LOAD(TEXT("Video Emulation"), &g_videotype);
-    LOAD(TEXT("Singlethreaded"), &g_singlethreaded);
+    LOAD("Emulation Speed", &g_dwSpeed);
+    LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);
+    LOAD("Video Emulation", &g_videotype);
+    LOAD("Singlethreaded", &g_singlethreaded);
   }
 
   unsigned int dwTmp = 0;  // temp var
 
   if (registry) {
-    LOAD(TEXT("Fullscreen"), &dwTmp);  // load fullscreen flag
+    LOAD("Fullscreen", &dwTmp);  // load fullscreen flag
   }
   fullscreen = (bool) dwTmp;
   dwTmp = 1;
   if (registry) {
-    LOAD(TEXT(REGVALUE_SHOW_LEDS), &dwTmp);  // load Show Leds flag
+    LOAD(REGVALUE_SHOW_LEDS, &dwTmp);  // load Show Leds flag
   }
   g_ShowLeds = (bool) dwTmp;
 
   SetCurrentCLK6502();  // set up real speed
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_MOUSE_IN_SLOT4), &dwTmp)) {
+    if (LOAD(REGVALUE_MOUSE_IN_SLOT4, &dwTmp)) {
       g_uMouseInSlot4 = dwTmp;
     }
   }
   g_Slot4 = g_uMouseInSlot4 ? CT_MouseInterface : CT_Mockingboard;
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_SOUNDCARD_TYPE), &dwTmp)) {
+    if (LOAD(REGVALUE_SOUNDCARD_TYPE, &dwTmp)) {
       MB_SetSoundcardType((eSOUNDCARDTYPE) dwTmp);
     }
   }
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp)) {
+    if (LOAD(REGVALUE_SAVE_STATE_ON_EXIT, &dwTmp)) {
       g_bSaveStateOnExit = (dwTmp != 0);
     }
   }
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_PRINTER_APPEND), &dwTmp)) {
+    if (LOAD(REGVALUE_PRINTER_APPEND, &dwTmp)) {
       g_bPrinterAppend = dwTmp != 0;
     }
   }
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) {
+    if (LOAD(REGVALUE_HDD_ENABLED, &dwTmp)) {
       hddenabled = (bool) dwTmp;
     }
   }
 
   if (registry) {
-    if (LOAD(TEXT(REGVALUE_CLOCK_SLOT), &clockslot)) {
+    if (LOAD(REGVALUE_CLOCK_SLOT, &clockslot)) {
       if (clockslot < 1 || clockslot > 7)
         clockslot = 0;
     }
@@ -649,7 +649,7 @@ void LoadConfiguration()
   char *szHDFilename = NULL;
 
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT("Monochrome Color"), 1, &szHDFilename, 10)) {
+    if (RegLoadString("Configuration", "Monochrome Color", 1, &szHDFilename, 10)) {
       if (!sscanf(szHDFilename, "#%X", &monochrome)) {
         monochrome = 0xC0C0C0;
       }
@@ -660,7 +660,7 @@ void LoadConfiguration()
 
   dwTmp = 0;
   if (registry) {
-    LOAD(TEXT("Boot at Startup"), &dwTmp);
+    LOAD("Boot at Startup", &dwTmp);
   }
 
   if (dwTmp) {
@@ -670,7 +670,7 @@ void LoadConfiguration()
 
   dwTmp = 0;
   if (registry) {
-    LOAD(TEXT("Slot 6 Autoload"), &dwTmp);  // load autoinsert for Slot 6 flag
+    LOAD("Slot 6 Autoload", &dwTmp);  // load autoinsert for Slot 6 flag
   }
   if (dwTmp) {
     // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
@@ -683,7 +683,7 @@ void LoadConfiguration()
 
   // Load hard disk images and insert it automatically in slot 7
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE1), 1, &szHDFilename, MAX_PATH)) {
+    if (RegLoadString("Configuration", REGVALUE_HDD_IMAGE1, 1, &szHDFilename, MAX_PATH)) {
       HD_InsertDisk2(0, szHDFilename);
       free(szHDFilename);
       szHDFilename = NULL;
@@ -691,7 +691,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE2), 1, &szHDFilename, MAX_PATH)) {
+    if (RegLoadString("Configuration", REGVALUE_HDD_IMAGE2, 1, &szHDFilename, MAX_PATH)) {
       HD_InsertDisk2(1, szHDFilename);
       free(szHDFilename);
       szHDFilename = NULL;
@@ -700,7 +700,7 @@ void LoadConfiguration()
 
   // file name for Parallel Printer
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_PPRINTER_FILENAME), 1, &szHDFilename, MAX_PATH)) {
+    if (RegLoadString("Configuration", REGVALUE_PPRINTER_FILENAME, 1, &szHDFilename, MAX_PATH)) {
       if (strlen(szHDFilename) > 1) {
         strncpy(g_sParallelPrinterFile, szHDFilename, MAX_PATH);
       }
@@ -710,7 +710,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    if (RegLoadValue(TEXT("Configuration"), TEXT(REGVALUE_PRINTER_IDLE_LIMIT), 1, &dwTmp)) {
+    if (RegLoadValue("Configuration", REGVALUE_PRINTER_IDLE_LIMIT, 1, &dwTmp)) {
       Printer_SetIdleLimit(dwTmp);
     }
   }
@@ -719,7 +719,7 @@ void LoadConfiguration()
   double scrFactor = 0.0;
   // Define screen sizes
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT("Screen factor"), 1, &szFilename, 16)) {
+    if (RegLoadString("Configuration", "Screen factor", 1, &szFilename, 16)) {
       // fix: prevent resolution change, it usually gives graphic problems with the dispmanx driver
       if (strncmp(videoDriverName, "dispmanx", 8) != 0) {
         scrFactor = atof(szFilename);
@@ -737,12 +737,12 @@ void LoadConfiguration()
     if (scrFactor <= 0.1) {
       // Try to set Screen Width & Height directly
       dwTmp = 0;
-      LOAD(TEXT("Screen Width"), &dwTmp);
+      LOAD("Screen Width", &dwTmp);
       if (dwTmp > 0) {
         g_ScreenWidth = dwTmp;
       }
       dwTmp = 0;
-      LOAD(TEXT("Screen Height"), &dwTmp);
+      LOAD("Screen Height", &dwTmp);
       if (dwTmp > 0) {
         g_ScreenHeight = dwTmp;
       }
@@ -763,7 +763,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_SAVESTATE_FILENAME), 1, &szFilename, MAX_PATH)) {
+    if (RegLoadString("Configuration", REGVALUE_SAVESTATE_FILENAME, 1, &szFilename, MAX_PATH)) {
       Snapshot_SetFilename(szFilename);  // If not in Registry than default will be used
       free(szFilename);
       szFilename = NULL;
@@ -772,7 +772,7 @@ void LoadConfiguration()
 
   // Current/Starting Dir is the "root" of where the user keeps his disk images
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_START_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_PREF_START_DIR, 1, &szFilename, MAX_PATH);
   }
 
   if (szFilename) {
@@ -791,7 +791,7 @@ void LoadConfiguration()
 
   // Load starting directory for HDV (Apple][ HDD) images
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_PREF_HDD_START_DIR, 1, &szFilename, MAX_PATH);
   }
 
   if (szFilename) {
@@ -811,7 +811,7 @@ void LoadConfiguration()
 
   // Load starting directory for saving current states
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_PREF_SAVESTATE_DIR, 1, &szFilename, MAX_PATH);
   }
   if (szFilename) {
     strcpy(g_sSaveStateDir, szFilename);
@@ -829,7 +829,7 @@ void LoadConfiguration()
 
   // Read and fill FTP variables - server, local dir, user name and password
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_FTP_DIR, 1, &szFilename, MAX_PATH);
   }
 
   if (szFilename) {
@@ -839,7 +839,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_FTP_HDD_DIR, 1, &szFilename, MAX_PATH);
   }
 
   if (szFilename) {
@@ -849,7 +849,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_LOCAL_DIR, 1, &szFilename, MAX_PATH);
+    RegLoadString("Preferences", REGVALUE_FTP_LOCAL_DIR, 1, &szFilename, MAX_PATH);
   }
 
   if (szFilename) {
@@ -859,7 +859,7 @@ void LoadConfiguration()
   }
 
   if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_USERPASS, 1, &szFilename, 512);
+    RegLoadString("Preferences", REGVALUE_FTP_USERPASS, 1, &szFilename, 512);
   }
 
   if (szFilename) {
@@ -1034,10 +1034,10 @@ int main(int argc, char *argv[])
   bool bSetFullScreen = false;
   bool bBoot = false;
   bool bBenchMark = false;
-  LPSTR szConfigurationFile = NULL;
-  LPSTR szImageName_drive1 = NULL;
-  LPSTR szImageName_drive2 = NULL;
-  LPSTR szSnapshotFile = NULL;
+  char* szConfigurationFile = NULL;
+  char* szImageName_drive1 = NULL;
+  char* szImageName_drive2 = NULL;
+  char* szSnapshotFile = NULL;
 
   int opt;
   int optind = 0;

@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	http://www.codeproject.com/cpp/unicode.asp
 
-				TEXT()       _tcsrev
+				       strrev
 	_UNICODE    Unicode      _wcsrev
 	_MBCS       Multi-byte   _mbsrev
 	n/a         ASCII        strrev
@@ -58,10 +58,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // tests if pSrc fits into pDst
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-bool TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
+bool TestStringCat ( char * pDst, const char* pSrc, const int nDstSize )
 {
-	int nLenDst = _tcslen( pDst );
-	int nLenSrc = _tcslen( pSrc );
+	int nLenDst = strlen( pDst );
+	int nLenSrc = strlen( pSrc );
 	int nSpcDst = nDstSize - nLenDst;
 
 	bool bOverflow = (nSpcDst <= nLenSrc); // 2.5.6.25 BUGFIX
@@ -76,24 +76,24 @@ bool TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 // tests if pSrc fits into pDst
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
+bool TryStringCat ( char * pDst, const char* pSrc, const int nDstSize )
 {
 	if (!TestStringCat( pDst, pSrc, nDstSize ))
 	{
 		return false;
 	}
 
-	_tcscat( pDst, pSrc );
+	strcat( pDst, pSrc );
 	return true;
 }
 
 // cats string as much as possible
 // returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
 //===========================================================================
-int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
+int StringCat ( char * pDst, const char* pSrc, const int nDstSize )
 {
-	int nLenDst = (int)_tcslen( pDst );
-	int nLenSrc = (int)_tcslen( pSrc );
+	int nLenDst = (int)strlen( pDst );
+	int nLenSrc = (int)strlen( pSrc );
 	int nRemaining = nDstSize - nLenDst - 1;
 
 	if (nRemaining < nLenSrc)
@@ -102,13 +102,13 @@ int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 		{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-			_tcsncat( pDst, pSrc, nRemaining );
+			strncat( pDst, pSrc, nRemaining );
 #pragma GCC diagnostic pop
 		}
 		return 0;
 	}
 
-	_tcscat( pDst, pSrc );
+	strcat( pDst, pSrc );
 	return nLenSrc;
 }
 
@@ -262,19 +262,19 @@ void Help_Operators()
 //ConsoleBufferPush( "  Operators: (Breakpoint)"                       );
 	ConsolePrintFormat( sText,"  Operators: (%sBreakpoint%s)"                   , CHC_USAGE, CHC_DEFAULT );
 
-	_tcscpy( sText, "    " );
-	_tcscat( sText, CHC_USAGE );
+	strcpy( sText, "    " );
+	strcat( sText, CHC_USAGE );
 	int iBreakOp = 0;
 	for( iBreakOp = 0; iBreakOp < NUM_BREAKPOINT_OPERATORS; iBreakOp++ )
 	{
 		if ((iBreakOp >= PARAM_BP_LESS_EQUAL) &&
 			(iBreakOp <= PARAM_BP_GREATER_EQUAL))
 		{
-			_tcscat( sText, g_aBreakpointSymbols[ iBreakOp ] );
-			_tcscat( sText, " " );
+			strcat( sText, g_aBreakpointSymbols[ iBreakOp ] );
+			strcat( sText, " " );
 		}
 	}
-	_tcscat( sText, CHC_DEFAULT );
+	strcat( sText, CHC_DEFAULT );
 	ConsolePrint( sText );
 }
 
@@ -574,8 +574,8 @@ Update_t CmdHelpSpecific (int nArgs)
 	int iArg;
 	char sText[ CONSOLE_WIDTH * 2 ];
 	char sTemp[ CONSOLE_WIDTH * 2 ];
-	ZeroMemory( sText, CONSOLE_WIDTH*2 );
-	ZeroMemory( sTemp, CONSOLE_WIDTH*2 );
+	memset( sText, 0, CONSOLE_WIDTH*2 );
+	memset( sTemp, 0, CONSOLE_WIDTH*2 );
 
 	if (! nArgs)
 	{
@@ -588,8 +588,8 @@ Update_t CmdHelpSpecific (int nArgs)
 	bool bCategory = false;
 	bool bDisplayCategory = true;
 
-	if ((! _tcscmp( g_aArgs[1].sArg, g_aParameters[ PARAM_WILDSTAR ].m_sName)) ||
-		(! _tcscmp( g_aArgs[1].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName)) )
+	if ((! strcmp( g_aArgs[1].sArg, g_aParameters[ PARAM_WILDSTAR ].m_sName)) ||
+		(! strcmp( g_aArgs[1].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName)) )
 	{
 		bAllCommands = true;
 		nArgs = NUM_COMMANDS;
@@ -904,11 +904,11 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsoleBufferPush( "  Pushes PC on stack; calls the named subroutine." );
 			break;
 		case CMD_NOP:
-			ConsoleBufferPush( TEXT("  Puts a NOP opcode at current instruction") );
+			ConsoleBufferPush( "  Puts a NOP opcode at current instruction" );
 			break;
 		case CMD_OUT:
 			ConsoleColorizePrint( sText, " Usage: [address8 | address16 | symbol] ## [##]" );
-			ConsoleBufferPush( TEXT("  Output a byte or word to the IO address $C0xx" ) );
+			ConsoleBufferPush( "  Output a byte or word to the IO address $C0xx"  );
 			break;
 		case CMD_PROFILE:
 			ConsoleColorizePrintFormat( sTemp, sText, " Usage: [%s | %s | %s]"
@@ -933,7 +933,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsolePrintFormat( sText, "%s  R A  #A1"      , CHC_EXAMPLE );
 			break;
 		case CMD_SOURCE:
-//			ConsoleBufferPush( TEXT(" Reads assembler source file." ) );
+//			ConsoleBufferPush( " Reads assembler source file."  );
 			ConsoleColorizePrintFormat( sTemp, sText, " Usage: [ %s | %s ] \"filename\""             , g_aParameters[ PARAM_SRC_MEMORY  ].m_sName, g_aParameters[ PARAM_SRC_SYMBOLS ].m_sName );
 			ConsoleBufferPushFormat( sText, "   %s: read source bytes into memory."        , g_aParameters[ PARAM_SRC_MEMORY  ].m_sName );
 			ConsoleBufferPushFormat( sText, "   %s: read symbols into Source symbol table.", g_aParameters[ PARAM_SRC_SYMBOLS ].m_sName );
@@ -986,7 +986,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			break;
 	// Breakpoints
 		case CMD_BREAK_INVALID:
-			ConsoleColorizePrintFormat( sTemp, sText, TEXT(" Usage: [%s%s | %s%s] | [ # | # %s%s | # %s%s ]")
+			ConsoleColorizePrintFormat( sTemp, sText, " Usage: [%s%s | %s%s] | [ # | # %s%s | # %s%s ]"
 				, CHC_COMMAND
 				, g_aParameters[ PARAM_ON  ].m_sName
 				, CHC_COMMAND
@@ -996,11 +996,11 @@ Update_t CmdHelpSpecific (int nArgs)
 				, CHC_COMMAND
 				, g_aParameters[ PARAM_OFF  ].m_sName
 			);
-			ConsoleColorizePrint( sTemp, TEXT("Where: # is 0=BRK, 1=Invalid Opcode_1, 2=Invalid Opcode_2, 3=Invalid Opcode_3"));
+			ConsoleColorizePrint( sTemp, "Where: # is 0=BRK, 1=Invalid Opcode_1, 2=Invalid Opcode_2, 3=Invalid Opcode_3");
 			break;
 //		case CMD_BREAK_OPCODE:
 		case CMD_BREAKPOINT:
-			ConsoleColorizePrintFormat( sTemp, sText, TEXT(" Usage: [%s%s | %s%s | %s%s]")
+			ConsoleColorizePrintFormat( sTemp, sText, " Usage: [%s%s | %s%s | %s%s]"
 				, CHC_COMMAND
 				, g_aParameters[ PARAM_LOAD  ].m_sName
 				, CHC_COMMAND
@@ -1076,16 +1076,16 @@ Update_t CmdHelpSpecific (int nArgs)
 			break;
 	// Config - Color
 		case CMD_CONFIG_COLOR:
-			ConsoleBufferPush( TEXT(" Usage: [<#> | <# RR GG BB>]" ) );
-			ConsoleBufferPush( TEXT("  0 params: switch to 'color' scheme" ) );
-			ConsoleBufferPush( TEXT("  1 param : dumps R G B for scheme 'color'") );
-			ConsoleBufferPush( TEXT("  4 params: sets  R G B for scheme 'color'" ) );
+			ConsoleBufferPush( " Usage: [<#> | <# RR GG BB>]"  );
+			ConsoleBufferPush( "  0 params: switch to 'color' scheme"  );
+			ConsoleBufferPush( "  1 param : dumps R G B for scheme 'color'" );
+			ConsoleBufferPush( "  4 params: sets  R G B for scheme 'color'"  );
 			break;
 		case CMD_CONFIG_MONOCHROME:
-			ConsoleBufferPush( TEXT(" Usage: [<#> | <# RR GG BB>]" ) );
-			ConsoleBufferPush( TEXT("  0 params: switch to 'monochrome' scheme" ) );
-			ConsoleBufferPush( TEXT("  1 param : dumps R G B for scheme 'monochrome'") );
-			ConsoleBufferPush( TEXT("  4 params: sets  R G B for scheme 'monochrome'" ) );
+			ConsoleBufferPush( " Usage: [<#> | <# RR GG BB>]"  );
+			ConsoleBufferPush( "  0 params: switch to 'monochrome' scheme"  );
+			ConsoleBufferPush( "  1 param : dumps R G B for scheme 'monochrome'" );
+			ConsoleBufferPush( "  4 params: sets  R G B for scheme 'monochrome'"  );
 			break;
 	// Config - Diasm
 		case CMD_CONFIG_DISASM:
@@ -1158,12 +1158,12 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_CONFIG_FONT:
 			ConsolePrint( " No longer applicable with new debugger font" );
 /*
-			ConsoleBufferPushFormat( sText, TEXT(" Usage: [%s | %s] \"FontName\" [Height]" ),
+			ConsoleBufferPushFormat( sText, " Usage: [%s | %s] \"FontName\" [Height]" ,
 				g_aParameters[ PARAM_FONT_MODE ].m_sName, g_aParameters[ PARAM_DISASM ].m_sName );
-			ConsoleBufferPush( TEXT(" i.e. FONT \"Courier\" 12" ) );
-			ConsoleBufferPush( TEXT(" i.e. FONT \"Lucida Console\" 12" ) );
-			ConsoleBufferPushFormat( sText, TEXT(" %s Controls line spacing."), g_aParameters[ PARAM_FONT_MODE ].m_sName );
-			ConsoleBufferPushFormat( sText, TEXT(" Valid values are: %d, %d, %d." ),
+			ConsoleBufferPush( " i.e. FONT \"Courier\" 12"  );
+			ConsoleBufferPush( " i.e. FONT \"Lucida Console\" 12"  );
+			ConsoleBufferPushFormat( sText, " %s Controls line spacing.", g_aParameters[ PARAM_FONT_MODE ].m_sName );
+			ConsoleBufferPushFormat( sText, " Valid values are: %d, %d, %d." ,
 				FONT_SPACING_CLASSIC, FONT_SPACING_CLEAN, FONT_SPACING_COMPRESSED );
 */
 			break;
@@ -1171,7 +1171,7 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_DEFINE_DATA_BYTE1:
 			ConsoleColorizePrintFormat( sTemp, sText, " Usage: %s <address> | <symbol address> | <symbol range>", pCommand->m_sName );
 
-			ConsoleBufferPush( TEXT("  Tell the diassembler to treat the BYTES as data instead of code." ) );
+			ConsoleBufferPush( "  Tell the diassembler to treat the BYTES as data instead of code."  );
 
 			Help_Examples();
 			ConsolePrintFormat( sText,  "%s   %s WNDTOP 22", CHC_EXAMPLE, pCommand->m_sName );
@@ -1188,7 +1188,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			// DW address
 			ConsoleColorizePrintFormat( sTemp, sText, " Usage: %s <address> | <symbol address> | <symbol range>", pCommand->m_sName );
 
-			ConsoleBufferPush( TEXT("  Tell the diassembler to treat the WORDS as data instead of code." ) );
+			ConsoleBufferPush( "  Tell the diassembler to treat the WORDS as data instead of code."  );
 
 			ConsoleColorizePrint( sTemp, "  The data is a range of 2-byte pointer data.");
 
@@ -1202,18 +1202,18 @@ Update_t CmdHelpSpecific (int nArgs)
 	// Memory
 		case CMD_MEMORY_ENTER_BYTE:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol> ## [## ... ##]" );
-			ConsoleBufferPush( TEXT("  Sets memory to the specified 8-Bit Values (bytes)" ) );
+			ConsoleBufferPush( "  Sets memory to the specified 8-Bit Values (bytes" );
 			Help_Examples();
 			ConsolePrintFormat( sText, "%s  %s 00 4C FF69", CHC_EXAMPLE, pCommand->m_sName );
 			ConsolePrintFormat( sText, "%s  00:4C FF69", CHC_EXAMPLE );
 			break;
 		case CMD_MEMORY_ENTER_WORD:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol> #### [#### ... ####]" );
-			ConsoleBufferPush( TEXT("  Sets memory to the specified 16-Bit Values (words)" ) );
+			ConsoleBufferPush( "  Sets memory to the specified 16-Bit Values (words" );
 			break;
 		case CMD_MEMORY_FILL:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol> <address | symbol> ##" );
-			ConsoleBufferPush( TEXT("  Fills the memory range with the specified byte" ) );
+			ConsoleBufferPush( "  Fills the memory range with the specified byte"  );
 			ConsoleColorizePrintFormat( sTemp, sText, " Note: Can't fill IO addresses %s$%sC0xx", CHC_ARG_SEP, CHC_ADDRESS );
 			Help_Examples();
 			ConsolePrintFormat( sText, "%s  %s 2000:3FFF 00   // Clear HGR page 1", CHC_EXAMPLE, pCommand->m_sName );
@@ -1222,7 +1222,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			break;
 		case CMD_MEMORY_MOVE:
 			ConsoleColorizePrint( sTemp, " Usage: destination range" );
-			ConsoleBufferPush( TEXT("  Copies bytes specified by the range to the destination starting address." ) );
+			ConsoleBufferPush( "  Copies bytes specified by the range to the destination starting address."  );
 			Help_Examples();
 			ConsolePrintFormat( sText, "%s  %s 4000 2000:3FFF   // move HGR page 1 to page 2", CHC_EXAMPLE, pCommand->m_sName );
 			ConsolePrintFormat( sText, "%s  %s 2001 2000:3FFF   // clear $2000-$3FFF with the byte at $2000", CHC_EXAMPLE, pCommand->m_sName );
@@ -1233,9 +1233,9 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_MEM_MINI_DUMP_ASCII_1:
 		case CMD_MEM_MINI_DUMP_ASCII_2:
 			ConsoleColorizePrint( sTemp, " Usage: <address | symbol>" );
-			ConsoleBufferPush( TEXT("  Displays ASCII text in the Mini-Memory area") );
-			ConsoleBufferPush( TEXT("  ASCII control chars are hilighted") );
-			ConsoleBufferPush( TEXT("  ASCII hi-bit chars are normal") );
+			ConsoleBufferPush( "  Displays ASCII text in the Mini-Memory area" );
+			ConsoleBufferPush( "  ASCII control chars are hilighted" );
+			ConsoleBufferPush( "  ASCII hi-bit chars are normal" );
 //			break;
 //		case CMD_MEM_MINI_DUMP_TXT_LO_1:
 //		case CMD_MEM_MINI_DUMP_TXT_LO_2:
@@ -1248,9 +1248,9 @@ Update_t CmdHelpSpecific (int nArgs)
 			break;
 //		case CMD_MEM_MINI_DUMP_TXT_HI_1:
 //		case CMD_MEM_MINI_DUMP_TXT_HI_2:
-//			ConsoleBufferPush( TEXT(" Usage: <address | symbol>") );
-//			ConsoleBufferPush( TEXT("  Displays text in the Memory Mini-Dump area") );
-//			ConsoleBufferPush( TEXT("  ASCII chars with the hi-bit set, is inverse") );
+//			ConsoleBufferPush( " Usage: <address | symbol>" );
+//			ConsoleBufferPush( "  Displays text in the Memory Mini-Dump area" );
+//			ConsoleBufferPush( "  ASCII chars with the hi-bit set, is inverse" );
 			break;
 
 		case CMD_MEMORY_LOAD:
@@ -1271,7 +1271,7 @@ Update_t CmdHelpSpecific (int nArgs)
 				ConsoleBufferPush( "    Where the form is <address>.<length>.bin"                    );
 			}
 
-//			ConsoleBufferPush( TEXT(" Examples:" ) );
+//			ConsoleBufferPush( " Examples:"  );
 			Help_Examples();
 			ConsolePrintFormat( sText, "%s   BSAVE \"test\",FF00,100"  , CHC_EXAMPLE );
 			ConsolePrintFormat( sText, "%s   BLOAD \"test\",2000:2010" , CHC_EXAMPLE );
@@ -1317,10 +1317,10 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsolePrintFormat( sText, "%s   U @1 - 1"            , CHC_EXAMPLE                    );
 			break;
 //		case CMD_MEMORY_SEARCH_APPLE:
-//			ConsoleBufferPushFormat( sText,   TEXT("Deprecated.  Use: %s" ), g_aCommands[ CMD_MEMORY_SEARCH ].m_sName );
+//			ConsoleBufferPushFormat( sText,   "Deprecated.  Use: %s" , g_aCommands[ CMD_MEMORY_SEARCH ].m_sName );
 //			break;
 //		case CMD_MEMORY_SEARCH_ASCII:
-//			ConsoleBufferPushFormat( sText,   TEXT("Deprecated.  Use: %s" ), g_aCommands[ CMD_MEMORY_SEARCH ].m_sName );
+//			ConsoleBufferPushFormat( sText,   "Deprecated.  Use: %s" , g_aCommands[ CMD_MEMORY_SEARCH ].m_sName );
 //			break;
 	// Output
 		case CMD_OUTPUT_CALC:
@@ -1337,11 +1337,11 @@ Update_t CmdHelpSpecific (int nArgs)
 			break;
 		case CMD_OUTPUT_ECHO:
 			ConsoleColorizePrint( sText, " Usage: string"    );
-//			ConsoleBufferPush( TEXT(" Examples:"        ) );
+//			ConsoleBufferPush( " Examples:"         );
 			Help_Examples();
 			ConsolePrintFormat( sText,   "%s   %s Checkpoint", CHC_EXAMPLE, pCommand->m_sName );
 			ConsolePrintFormat( sText,   "%s   %s PC"        , CHC_EXAMPLE, pCommand->m_sName );
-//			ConsoleBufferPush( TEXT("  Echo the string to the console" ) );
+//			ConsoleBufferPush( "  Echo the string to the console"  );
 			break;
 		case CMD_OUTPUT_PRINT:
 			ConsoleColorizePrint( sText, " Usage: <string | expression> [, string | expression]*"       );
@@ -1387,13 +1387,13 @@ Update_t CmdHelpSpecific (int nArgs)
 		case CMD_SYMBOLS_USER_2:
 		case CMD_SYMBOLS_SRC_1:
 		case CMD_SYMBOLS_SRC_2:
-//			ConsoleBufferPush( TEXT(" Usage: [ ON | OFF | symbol | address ]" ) );
-//			ConsoleBufferPush( TEXT(" Usage: [ LOAD [\"filename\"] | SAVE \"filename\"]" ) );
-//			ConsoleBufferPush( TEXT("  ON  : Turns symbols on in the disasm window" ) );
-//			ConsoleBufferPush( TEXT("  OFF : Turns symbols off in the disasm window" ) );
-//			ConsoleBufferPush( TEXT("  LOAD: Loads symbols from last/default filename" ) );
-//			ConsoleBufferPush( TEXT("  SAVE: Saves symbol table to file" ) );
-//			ConsoleBufferPush( TEXT(" CLEAR: Clears the symbol table" ) );
+//			ConsoleBufferPush( " Usage: [ ON | OFF | symbol | address ]"  );
+//			ConsoleBufferPush( " Usage: [ LOAD [\"filename\"] | SAVE \"filename\"]"  );
+//			ConsoleBufferPush( "  ON  : Turns symbols on in the disasm window"  );
+//			ConsoleBufferPush( "  OFF : Turns symbols off in the disasm window"  );
+//			ConsoleBufferPush( "  LOAD: Loads symbols from last/default filename"  );
+//			ConsoleBufferPush( "  SAVE: Saves symbol table to file"  );
+//			ConsoleBufferPush( " CLEAR: Clears the symbol table"  );
 			ConsoleColorizePrint( sText, " Usage: [ <cmd> | symbol | address ]" );
 			ConsoleBufferPush( "  Where <cmd> is one of:" );
 			ConsolePrintFormat( sText, "%s%-5s%s: Turns symbols on in the disasm window"       , CHC_STRING, g_aParameters[ PARAM_ON    ].m_sName, CHC_DEFAULT );
@@ -1608,8 +1608,8 @@ Update_t CmdVersion (int nArgs)
 		for (int iArg = 1; iArg <= g_nArgRaw; iArg++ )
 		{
 			// * PARAM_WILDSTAR -> ? PARAM_MEM_SEARCH_WILD
-			if ((! _tcscmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_WILDSTAR        ].m_sName )) ||
-				(! _tcscmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
+			if ((! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_WILDSTAR        ].m_sName )) ||
+				(! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
 			{
 				ConsoleBufferPushFormat( sText, "  Arg: %d bytes * %d = %d bytes",
 					sizeof(Arg_t), MAX_ARGS, sizeof(g_aArgs) );
@@ -1622,7 +1622,7 @@ Update_t CmdVersion (int nArgs)
 
 				ConsoleBufferPushFormat( sText, "  Cursor(%d)  T: %04X  C: %04X  B: %04X %c D: %02X", // Top, Cur, Bot, Delta
 					g_nDisasmCurLine, g_nDisasmTopAddress, g_nDisasmCurAddress, g_nDisasmBotAddress,
-					g_bDisasmCurBad ? TEXT('*') : TEXT(' ')
+					g_bDisasmCurBad ? '*' : ' '
 					, g_nDisasmBotAddress - g_nDisasmTopAddress
 				);
 

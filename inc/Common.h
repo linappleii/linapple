@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #define USE_SPEECH_API
@@ -59,16 +60,16 @@ enum AppMode_e {
 #define BTN_LOADST        9
 
 // TODO: Move to StringTable.h
-#define TITLE_APPLE_2      TEXT("Apple ][ Emulator")
-#define TITLE_APPLE_2_PLUS    TEXT("Apple ][+ Emulator")
-#define TITLE_APPLE_2E      TEXT("Apple //e Emulator")
-#define TITLE_APPLE_2E_ENHANCED  TEXT("Enhanced Apple //e Emulator")
+#define TITLE_APPLE_2      "Apple ][ Emulator"
+#define TITLE_APPLE_2_PLUS    "Apple ][+ Emulator"
+#define TITLE_APPLE_2E      "Apple //e Emulator"
+#define TITLE_APPLE_2E_ENHANCED  "Enhanced Apple //e Emulator"
 
-#define TITLE_PAUSED       TEXT(" Paused ")
-#define TITLE_STEPPING     TEXT("Stepping")
+#define TITLE_PAUSED       " Paused "
+#define TITLE_STEPPING     "Stepping"
 
-#define LOAD(a, b) RegLoadValue(TEXT("Configuration"),a,1,b)
-#define SAVE(a, b) RegSaveValue(TEXT("Configuration"),a,1,b)
+#define LOAD(a, b) RegLoadValue("Configuration",a,1,b)
+#define SAVE(a, b) RegSaveValue("Configuration",a,1,b)
 
 // Configuration
 #define REGVALUE_APPLE2_TYPE        "Apple2 Type"
@@ -96,18 +97,18 @@ enum AppMode_e {
 #define REGVALUE_MOUSE_IN_SLOT4     "Mouse in slot 4"
 
 // Preferences
-#define REGVALUE_PREF_START_DIR TEXT("Slot 6 Directory")
-#define REGVALUE_PREF_HDD_START_DIR TEXT("HDV Starting Directory")
-#define REGVALUE_PREF_SAVESTATE_DIR TEXT("Save State Directory")
+#define REGVALUE_PREF_START_DIR "Slot 6 Directory"
+#define REGVALUE_PREF_HDD_START_DIR "HDV Starting Directory"
+#define REGVALUE_PREF_SAVESTATE_DIR "Save State Directory"
 
-#define REGVALUE_SHOW_LEDS TEXT("Show Leds")
+#define REGVALUE_SHOW_LEDS "Show Leds"
 
 // For FTP access
-#define REGVALUE_FTP_DIR TEXT("FTP Server")
-#define REGVALUE_FTP_HDD_DIR TEXT("FTP ServerHDD")
+#define REGVALUE_FTP_DIR "FTP Server"
+#define REGVALUE_FTP_HDD_DIR "FTP ServerHDD"
 
-#define REGVALUE_FTP_LOCAL_DIR TEXT("FTP Local Dir")
-#define REGVALUE_FTP_USERPASS TEXT("FTP UserPass")
+#define REGVALUE_FTP_LOCAL_DIR "FTP Local Dir"
+#define REGVALUE_FTP_USERPASS "FTP UserPass"
 
 #define WM_USER_BENCHMARK  WM_USER+1
 #define WM_USER_RESTART    WM_USER+2
@@ -118,7 +119,7 @@ enum eSOUNDCARDTYPE {
   SC_UNINIT = 0, SC_NONE, SC_MOCKINGBOARD, SC_PHASOR
 };  // Apple soundcard type
 
-typedef unsigned char (*iofunction)(unsigned short nPC, unsigned short nAddr, unsigned char nWriteFlag, unsigned char nWriteValue, ULONG nCyclesLeft);
+typedef unsigned char (*iofunction)(unsigned short nPC, unsigned short nAddr, unsigned char nWriteFlag, unsigned char nWriteValue, uint32_t nCyclesLeft);
 
 typedef struct _IMAGE__ {
   int unused;
