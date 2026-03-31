@@ -1,491 +1,307 @@
-// Based on MAME's 6821pia.c
-// - by Kyle Kim (Apple in PC)
+/*
+LinApple : Apple ][ emulator for Linux
 
-//
-// From mame.txt (http://www.mame.net/readme.html)
-//
-// VI. Reuse of Source Code
-// --------------------------
-//    This chapter might not apply to specific portions of MAME (e.g. CPU
-//    emulators) which bear different copyright notices.
-//    The source code cannot be used in a commercial product without the written
-//    authorization of the authors. Use in non-commercial products is allowed, and
-//    indeed encouraged.  If you use portions of the MAME source code in your
-//    program, however, you must make the full source code freely available as
-//    well.
-//    Usage of the _information_ contained in the source code is free for any use.
-//    However, given the amount of time and energy it took to collect this
-//    information, if you find new information we would appreciate if you made it
-//    freely available as well.
-//
+Copyright (C) 2026, LinApple Team
+
+LinApple is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+LinApple is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with LinApple; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+/* Description: MC6821 PIA Emulation */
+
 #include "stdafx.h"
 #include "6821.h"
+#include <string.h>
 
-// Ctrl-A(B) register bit mask define
-/*
-      0        1
-  bit0  IRQ1_DISABLED  IRQ1_ENABLED
-  bit1  C1_HIGH_TO_LOW  C1_LOW_TO_HIGH
-  bit2  DDR_SELECTED  OUTPUT_SELECTED
+#define CRA_IRQ1    0x80
+#define CRA_IRQ2    0x40
+#define CRA_CA2_OUT 0x20
+#define CRA_CA2_SEL 0x10
+#define CRA_CA2_LVL 0x08
+#define CRA_DDR_SEL 0x04
+#define CRA_CA1_SEL 0x02
+#define CRA_CA1_EN  0x01
 
-  bit3  RESET_C2    SET_C2        ( C2_OUTPUT & C2_SETMODE )
-  bit3  STROBE_C1_RESET  STROBE_E_RESET    ( C2_OUTPUT & C2_STROBE_MODE )
-  bit4  C2_STROBE_MODE  C2_SETMODE      ( C2_OUTPUT )
+#define CRB_IRQ1    0x80
+#define CRB_IRQ2    0x40
+#define CRB_CB2_OUT 0x20
+#define CRB_CB2_SEL 0x10
+#define CRB_CB2_LVL 0x08
+#define CRB_DDR_SEL 0x04
+#define CRB_CB1_SEL 0x02
+#define CRB_CB1_EN  0x01
 
-  bit3  IRQ2_DISABLED  IRQ2_ENABLED    ( C2_INPUT )
-  bit4  C2_HIGH_TO_LOW  C2_HIGH_TO_LOW    ( C2_INPUT )
-  bit5  C2_INPUT    C2_OUTPUT
-*/
-#define PIA_IRQ1  0x80
-#define PIA_IRQ2  0x40
-#define SET_IRQ1(c)      c |= PIA_IRQ1;
-#define SET_IRQ2(c)      c |= PIA_IRQ2;
-#define CLEAR_IRQ1(c)    c &= ~PIA_IRQ1;
-#define CLEAR_IRQ2(c)    c &= ~PIA_IRQ2;
-#define IRQ1(c)        ( c & PIA_IRQ1 )
-#define IRQ2(c)        ( c & PIA_IRQ2 )
+#define PIA_CALL(h, val) if (h.func) h.func(h.objTo, val)
 
-#define IRQ1_ENABLED(c)     ( c & 0x01 )
-#define IRQ1_DISABLED(c)  !( c & 0x01 )
-#define C1_LOW_TO_HIGH(c)   ( c & 0x02 )
-#define C1_HIGH_TO_LOW(c)  !( c & 0x02 )
-#define OUTPUT_SELECTED(c)   ( c & 0x04 )
-#define DDR_SELECTED(c)    !( c & 0x04 )
-#define IRQ2_ENABLED(c)     ( c & 0x08 )
-#define IRQ2_DISABLED(c)  !( c & 0x08 )
-#define STROBE_E_RESET(c)   ( c & 0x08 )
-#define STROBE_C1_RESET(c)  !( c & 0x08 )
-#define SET_C2(c)       ( c & 0x08 )
-#define RESET_C2(c)      !( c & 0x08 )
-#define C2_LOW_TO_HIGH(c)   ( c & 0x10 )
-#define C2_HIGH_TO_LOW(c)  !( c & 0x10 )
-#define C2_SET_MODE(c)     ( c & 0x10 )
-#define C2_STROBE_MODE(c)  !( c & 0x10 )
-#define C2_OUTPUT(c)     ( c & 0x20 )
-#define C2_INPUT(c)      !( c & 0x20 )
+static void UpdateInterrupts(Pia6821* p) {
+  uint8_t irq_a = 0;
+  if (((p->cra & CRA_IRQ1) && (p->cra & CRA_CA1_EN)) ||
+    ((p->cra & CRA_IRQ2) && (!(p->cra & CRA_CA2_OUT)) && (p->cra & 0x08))) {
+    irq_a = 1;
+  }
 
-#define PIA_W_CALLBACK(st, val)  \
-  if ( st.func ) st.func( this, st.objTo, 0, val )
+  if (irq_a != p->irq_a_state) {
+    p->irq_a_state = irq_a;
+    PIA_CALL(p->out_irqa, p->irq_a_state);
+  }
 
-//////////////////////////////////////////////////////////////////////
+  uint8_t irq_b = 0;
+  if (((p->crb & CRB_IRQ1) && (p->crb & CRB_CB1_EN)) ||
+    ((p->crb & CRB_IRQ2) && (!(p->crb & CRB_CB2_OUT)) && (p->crb & 0x08))) {
+    irq_b = 1;
+  }
 
-C6821::C6821()
-{
-  Reset();
-  m_stOutA.objTo = NULL;
-  m_stOutA.func = NULL;
-  m_stOutB.objTo = NULL;
-  m_stOutB.func = NULL;
-  m_stOutCA2.objTo = NULL;
-  m_stOutCA2.func = NULL;
-  m_stOutCB2.objTo = NULL;
-  m_stOutCB2.func = NULL;
-  m_stOutIRQA.objTo = NULL;
-  m_stOutIRQA.func = NULL;
-  m_stOutIRQB.objTo = NULL;
-  m_stOutIRQB.func = NULL;
+  if (irq_b != p->irq_b_state) {
+    p->irq_b_state = irq_b;
+    PIA_CALL(p->out_irqb, p->irq_b_state);
+  }
 }
 
-C6821::~C6821()
-{
-
+void Pia6821_Reset(Pia6821* p) {
+  memset(p, 0, sizeof(Pia6821));
+  // Port A has internal pull-up devices
+  p->port_a_in = 0xFF;
+  p->port_b_in = 0xFF;
 }
 
-void C6821::SetListenerA(void *objTo, mem_write_handler func)
-{
-  m_stOutA.objTo = objTo;
-  m_stOutA.func = func;
-}
+uint8_t Pia6821_Read(Pia6821* p, uint8_t addr) {
+  uint8_t val = 0;
+  addr &= 0x03;
 
-void C6821::SetListenerB(void *objTo, mem_write_handler func)
-{
-  m_stOutB.objTo = objTo;
-  m_stOutB.func = func;
-}
+  switch (addr) {
+    case 0: // Port A or DDRA
+      if (p->cra & CRA_DDR_SEL) {
+        // Datasheet Page 8: "When reading Port A, the actual pin is read"
+        val = p->port_a_in;
+        p->cra &= ~(CRA_IRQ1 | CRA_IRQ2);
+        UpdateInterrupts(p);
 
-void C6821::SetListenerCA2(void *objTo, mem_write_handler func)
-{
-  m_stOutCA2.objTo = objTo;
-  m_stOutCA2.func = func;
-}
-
-void C6821::SetListenerCB2(void *objTo, mem_write_handler func)
-{
-  m_stOutCB2.objTo = objTo;
-  m_stOutCB2.func = func;
-}
-
-unsigned char C6821::Read(unsigned char byRS)
-{
-  unsigned char retval = 0;
-  byRS &= 3;
-  switch (byRS) {
-    /******************* port A output/DDR read *******************/
-    case PIA_DDRA:
-      // read output register
-      if (OUTPUT_SELECTED(m_byCTLA)) {
-        // combine input and output values
-        retval = (m_byOA & m_byDDRA) | (m_byIA & ~m_byDDRA);
-        // IRQ flags implicitly cleared by a read
-        CLEAR_IRQ1(m_byCTLA);
-        CLEAR_IRQ1(m_byCTLB);
-        UpdateInterrupts();
-        // CA2 is configured as output and in read strobe mode
-        if (C2_OUTPUT(m_byCTLA) && C2_STROBE_MODE(m_byCTLA)) {
-          // this will cause a transition low; call the output function if we're currently high
-          if (m_byOCA2)
-            PIA_W_CALLBACK(m_stOutCA2, 0);
-          m_byOCA2 = 0;
-
-          // if the CA2 strobe is cleared by the E, reset it right away
-          if (STROBE_E_RESET(m_byCTLA)) {
-            PIA_W_CALLBACK(m_stOutCA2, 1);
-            m_byOCA2 = 1;
+        if (p->cra & CRA_CA2_OUT) {
+          if (!(p->cra & CRA_CA2_SEL)) { // Read Strobe Mode
+            if (p->oca2 == 1) {
+              p->oca2 = 0;
+              PIA_CALL(p->out_ca2, 0);
+            }
+            if (p->cra & CRA_CA2_LVL) { // E-Reset
+              p->oca2 = 1;
+              PIA_CALL(p->out_ca2, 1);
+            }
           }
         }
-      }
-        // read DDR register
-      else {
-        retval = m_byDDRA;
+      } else {
+        val = p->ddra;
       }
       break;
 
-      /******************* port B output/DDR read *******************/
-    case PIA_DDRB:
+    case 1: // Control A
+      val = p->cra;
+      // Datasheet Page 10: IRQA2=0 if CA2 is an output
+      if (p->cra & CRA_CA2_OUT) val &= ~CRA_IRQ2;
+      break;
 
-      // read output register
-      if (OUTPUT_SELECTED(m_byCTLB)) {
-        // combine input and output values
-        retval = (m_byOB & m_byDDRB) + (m_byIB & ~m_byDDRB);
-
-        // IRQ flags implicitly cleared by a read
-        CLEAR_IRQ2(m_byCTLA);
-        CLEAR_IRQ2(m_byCTLB);
-        UpdateInterrupts();
-      }
-        /* read DDR register */
-      else {
-        retval = m_byDDRB;
+    case 2: // Port B or DDRB
+      if (p->crb & CRB_DDR_SEL) {
+        // Datasheet Page 8: "the B side read comes from an output latch"
+        val = (p->orb & p->ddrb) | (p->port_b_in & ~p->ddrb);
+        p->crb &= ~(CRB_IRQ1 | CRB_IRQ2);
+        UpdateInterrupts(p);
+      } else {
+        val = p->ddrb;
       }
       break;
 
-      /******************* port A control read *******************/
-    case PIA_CTLA:
-      // read control register
-      retval = m_byCTLA;
-      // when CA2 is an output, IRQA2 = 0, and is not affected by CA2 transitions.
-      if (C2_OUTPUT(m_byCTLA))
-        retval &= ~PIA_IRQ2;
+    case 3: // Control B
+      val = p->crb;
+      // Datasheet Page 10: IRQB2=0 if CB2 is an output
+      if (p->crb & CRB_CB2_OUT) val &= ~CRB_IRQ2;
       break;
-
-      /******************* port B control read *******************/
-    case PIA_CTLB:
-      retval = m_byCTLB;
-      // when CB2 is an output, IRQB2 = 0, and is not affected by CB2 transitions.
-      if (C2_OUTPUT(m_byCTLB))
-        retval &= ~PIA_IRQ2;
-      break;
-
   }
-
-  return retval;
+  return val;
 }
 
-void C6821::Write(unsigned char byRS, unsigned char byData)
-{
-  byRS &= 3;
+void Pia6821_Write(Pia6821* p, uint8_t addr, uint8_t val) {
+  addr &= 0x03;
 
-  switch (byRS) {
-    /******************* port A output/DDR write *******************/
-    case PIA_DDRA:
-
-      // write output register
-      if (OUTPUT_SELECTED(m_byCTLA)) {
-        // update the output value
-        m_byOA = byData;
-
-        // send it to the output function
-        if (m_byDDRA)
-          PIA_W_CALLBACK(m_stOutA, m_byOA & m_byDDRA);
-      }
-
-        // write DDR register
-      else {
-        if (m_byDDRA != byData) {
-          m_byDDRA = byData;
-
-          // send it to the output function
-          if (m_byDDRA)
-            PIA_W_CALLBACK(m_stOutA, m_byOA & m_byDDRA);
-        }
+  switch (addr) {
+    case 0: // Port A or DDRA
+      if (p->cra & CRA_DDR_SEL) {
+        p->ora = val;
+        PIA_CALL(p->out_a, p->ora & p->ddra);
+      } else {
+        p->ddra = val;
       }
       break;
 
-      /******************* port B output/DDR write *******************/
-    case PIA_DDRB:
+    case 1: // Control A
+      p->cra = (p->cra & 0xC0) | (val & 0x3F);
 
-      // write output register
-      if (OUTPUT_SELECTED(m_byCTLB)) {
-        // update the output value
-        m_byOB = byData;
+      if ((p->cra & CRA_CA2_OUT) && (p->cra & CRA_CA2_SEL)) {
+        uint8_t next_ca2 = (p->cra & CRA_CA2_LVL) ? 1 : 0;
+        if (next_ca2 != p->oca2) {
+          p->oca2 = next_ca2;
+          PIA_CALL(p->out_ca2, p->oca2);
+        }
+      }
+      UpdateInterrupts(p);
+      break;
 
-        // send it to the output function
-        if (m_byDDRB)
-          PIA_W_CALLBACK(m_stOutB, m_byOB & m_byDDRB);
+    case 2: // Port B or DDRB
+      if (p->crb & CRB_DDR_SEL) {
+        p->orb = val;
+        PIA_CALL(p->out_b, p->orb & p->ddrb);
 
-        // CB2 is configured as output and in write strobe mode
-        if (C2_OUTPUT(m_byCTLB) && C2_STROBE_MODE(m_byCTLB)) {
-          // this will cause a transition low; call the output function if we're currently high
-          if (m_byOCB2)
-            PIA_W_CALLBACK(m_stOutCB2, 0);
-          m_byOCB2 = 0;
-
-          // if the CB2 strobe is cleared by the E, reset it right away
-          if (STROBE_E_RESET(m_byCTLB)) {
-            PIA_W_CALLBACK(m_stOutCB2, 1);
-            m_byOCB2 = 1;
+        if (p->crb & CRB_CB2_OUT) {
+          if (!(p->crb & CRB_CB2_SEL)) { // Write Strobe Mode
+            if (p->ocb2 == 1) {
+              p->ocb2 = 0;
+              PIA_CALL(p->out_cb2, 0);
+            }
+            if (p->crb & CRB_CB2_LVL) { // E-Reset
+              p->ocb2 = 1;
+              PIA_CALL(p->out_cb2, 1);
+            }
           }
         }
+      } else {
+        p->ddrb = val;
       }
-        // write DDR register
-      else {
-        if (m_byDDRB != byData) {
-          m_byDDRB = byData;
+      break;
 
-          // send it to the output function
-          if (m_byDDRB)
-            PIA_W_CALLBACK(m_stOutB, m_byOB & m_byDDRB);
+    case 3: // Control B
+      p->crb = (p->crb & 0xC0) | (val & 0x3F);
+
+      if ((p->crb & CRB_CB2_OUT) && (p->crb & CRB_CB2_SEL)) {
+        uint8_t next_cb2 = (p->crb & CRB_CB2_LVL) ? 1 : 0;
+        if (next_cb2 != p->ocb2) {
+          p->ocb2 = next_cb2;
+          PIA_CALL(p->out_cb2, p->ocb2);
         }
       }
-      break;
-
-      /******************* port A control write *******************/
-    case PIA_CTLA:
-      // Bit 7 and 6 read only
-      byData &= 0x3f;
-
-      // CA2 is configured as output and in set/reset mode
-      if (C2_OUTPUT(byData)) {
-        // determine the new value
-        int temp = SET_C2(byData) ? 1 : 0;
-
-        // if this creates a transition, call the CA2 output function
-        if (m_byOCA2 ^ temp)
-          PIA_W_CALLBACK(m_stOutCA2, temp);
-
-        // set the new value
-        m_byOCA2 = temp;
-      }
-
-      // update the control register
-      m_byCTLA = (m_byCTLA & ~0x3F) | byData;
-
-      // update externals
-      UpdateInterrupts();
-      break;
-
-      /******************* port B control write *******************/
-    case PIA_CTLB:
-
-      /* Bit 7 and 6 read only - PD 16/01/00 */
-
-      byData &= 0x3f;
-
-      // CB2 is configured as output and in set/reset mode
-      if (C2_OUTPUT(byData)) {
-        // determine the new value
-        int temp = SET_C2(byData) ? 1 : 0;
-
-        // if this creates a transition, call the CA2 output function
-        if (m_byOCB2 ^ temp)
-          PIA_W_CALLBACK(m_stOutCB2, temp);
-
-        // set the new value
-        m_byOCB2 = temp;
-      }
-
-      // update the control register
-      m_byCTLB = (m_byCTLB & ~0x3F) | byData;
-
-      // update externals
-      UpdateInterrupts();
+      UpdateInterrupts(p);
       break;
   }
-
 }
 
-void C6821::Reset()
-{
-  m_byIA = 0;
-  m_byCA1 = 0;
-  m_byICA2 = 0;
-  m_byOA = 0;
-  m_byOCA2 = 0;
-  m_byDDRA = 0;
-  m_byCTLA = 0;
-  m_byIRQAState = 0;
+void Pia6821_SetPortA(Pia6821* p, uint8_t val) { p->port_a_in = val; }
+void Pia6821_SetPortB(Pia6821* p, uint8_t val) { p->port_b_in = val; }
 
-  m_byIB = 0;
-  m_byCB1 = 0;
-  m_byICB2 = 0;
-  m_byOB = 0;
-  m_byOCB2 = 0;
-  m_byDDRB = 0;
-  m_byCTLB = 0;
-  m_byIRQBState = 0;
-}
-
-void C6821::UpdateInterrupts()
-{
-  unsigned char byNewState;
-
-  // start with IRQ A
-  byNewState = 0;
-  if ((IRQ1(m_byCTLA) && IRQ1_ENABLED(m_byCTLA)) || (IRQ2(m_byCTLA) && IRQ2_ENABLED(m_byCTLA)))
-    byNewState = 1;
-
-  if (byNewState != m_byIRQAState) {
-    m_byIRQAState = byNewState;
-    PIA_W_CALLBACK(m_stOutIRQA, m_byIRQAState);
+void Pia6821_SetCA1(Pia6821* p, bool level) {
+  bool old = p->ca1_in;
+  p->ca1_in = level;
+  bool transition = false;
+  if (p->cra & CRA_CA1_SEL) { // High-to-Low
+    if (old && !level) transition = true;
+  } else { // Low-to-High
+    if (!old && level) transition = true;
   }
 
-  /* then do IRQ B */
-  byNewState = 0;
-  if ((IRQ1(m_byCTLB) && IRQ1_ENABLED(m_byCTLB)) || (IRQ2(m_byCTLB) && IRQ2_ENABLED(m_byCTLB)))
-    byNewState = 1;
-
-  if (byNewState != m_byIRQBState) {
-    m_byIRQBState = byNewState;
-    PIA_W_CALLBACK(m_stOutIRQB, m_byIRQBState);
-  }
-}
-
-void C6821::SetCA1(unsigned char byData)
-{
-  byData = byData ? 1 : 0;
-
-  // the new state has caused a transition
-  if (m_byCA1 ^ byData) {
-    // handle the active transition
-    if ((byData && C1_LOW_TO_HIGH(m_byCTLA)) || (!byData && C1_HIGH_TO_LOW(m_byCTLA))) {
-      // mark the IRQ
-      SET_IRQ1(m_byCTLA);
-
-      // update externals
-      UpdateInterrupts();
-
-      // CA2 is configured as output and in read strobe mode and cleared by a CA1 transition
-      if (C2_OUTPUT(m_byCTLA) && C2_STROBE_MODE(m_byCTLA) && STROBE_C1_RESET(m_byCTLA)) {
-        // call the CA2 output function
-        if (!m_byOCA2)
-          PIA_W_CALLBACK(m_stOutCA2, 1);
-
-        // clear CA2
-        m_byOCA2 = 1;
+  if (transition) {
+    p->cra |= CRA_IRQ1;
+    if ((p->cra & CRA_CA2_OUT) && (!(p->cra & CRA_CA2_SEL)) && (!(p->cra & CRA_CA2_LVL))) {
+      if (p->oca2 == 0) {
+        p->oca2 = 1;
+        PIA_CALL(p->out_ca2, 1);
       }
     }
+    UpdateInterrupts(p);
   }
-
-  // set the new value for CA1
-  m_byCA1 = byData;
 }
 
-void C6821::SetCA2(unsigned char byData)
-{
-  byData = byData ? 1 : 0;
-
-  // CA2 is in input mode
-  if (C2_INPUT(m_byCTLA)) {
-    // the new state has caused a transition
-    if (m_byICA2 ^ byData) {
-      // handle the active transition
-      if ((byData && C2_LOW_TO_HIGH(m_byCTLA)) || (!byData && C2_HIGH_TO_LOW(m_byCTLA))) {
-        // mark the IRQ
-        SET_IRQ2(m_byCTLA);
-
-        // update externals
-        UpdateInterrupts();
-      }
+void Pia6821_SetCA2(Pia6821* p, bool level) {
+  bool old = p->ca2_in;
+  p->ca2_in = level;
+  if (!(p->cra & CRA_CA2_OUT)) { // Input mode
+    bool transition = false;
+    if (p->cra & CRA_CA2_SEL) { // High-to-Low
+      if (old && !level) transition = true;
+    } else { // Low-to-High
+      if (!old && level) transition = true;
+    }
+    if (transition) {
+      p->cra |= CRA_IRQ2;
+      UpdateInterrupts(p);
     }
   }
-
-  // set the new value for CA2
-  m_byICA2 = byData;
 }
 
-void C6821::SetCB1(unsigned char byData)
-{
-  byData = byData ? 1 : 0;
-
-  // the new state has caused a transition
-  if (m_byCB1 ^ byData) {
-    // handle the active transition
-    if ((byData && C1_LOW_TO_HIGH(m_byCTLB)) || (!byData && C1_HIGH_TO_LOW(m_byCTLB))) {
-      // mark the IRQ
-      SET_IRQ1(m_byCTLB);
-
-      // update externals
-      UpdateInterrupts();
-
-      // CB2 is configured as output and in read strobe mode and cleared by a CA1 transition
-      if (C2_OUTPUT(m_byCTLB) && C2_STROBE_MODE(m_byCTLB) && STROBE_C1_RESET(m_byCTLB)) {
-        // the IRQ1 flag must have also been cleared
-        if (!IRQ1(m_byCTLB)) {
-          // call the CB2 output function
-          if (!m_byOCB2)
-            PIA_W_CALLBACK(m_stOutCB2, 1);
-
-          // clear CB2
-          m_byOCB2 = 1;
-        }
-      }
-    }
+void Pia6821_SetCB1(Pia6821* p, bool level) {
+  bool old = p->cb1_in;
+  p->cb1_in = level;
+  bool transition = false;
+  if (p->crb & CRB_CB1_SEL) { // High-to-Low
+    if (old && !level) transition = true;
+  } else { // Low-to-High
+    if (!old && level) transition = true;
   }
 
-  // set the new value for CA1
-  m_byCB1 = byData;
-
-}
-
-void C6821::SetCB2(unsigned char byData)
-{
-  byData = byData ? 1 : 0;
-
-  // CA2 is in input mode
-  if (C2_INPUT(m_byCTLB)) {
-    // the new state has caused a transition
-    if (m_byICB2 ^ byData) {
-      // handle the active transition
-      if ((byData && C2_LOW_TO_HIGH(m_byCTLB)) || (!byData && C2_HIGH_TO_LOW(m_byCTLB))) {
-        // mark the IRQ
-        SET_IRQ2(m_byCTLB);
-
-        // update externals
-        UpdateInterrupts();
+  if (transition) {
+    p->crb |= CRB_IRQ1;
+    if ((p->crb & CRB_CB2_OUT) && (!(p->crb & CRB_CB2_SEL)) && (!(p->crb & CRB_CB2_LVL))) {
+      if (p->ocb2 == 0) {
+        p->ocb2 = 1;
+        PIA_CALL(p->out_cb2, 1);
       }
     }
+    UpdateInterrupts(p);
   }
-
-  // set the new value for CA2
-  m_byICB2 = byData;
 }
 
-void C6821::SetPA(unsigned char byData)
-{
-  m_byIA = byData;
+void Pia6821_SetCB2(Pia6821* p, bool level) {
+  bool old = p->cb2_in;
+  p->cb2_in = level;
+  if (!(p->crb & CRB_CB2_OUT)) { // Input mode
+    bool transition = false;
+    if (p->crb & CRB_CB2_SEL) { // High-to-Low
+      if (old && !level) transition = true;
+    } else { // Low-to-High
+      if (!old && level) transition = true;
+    }
+    if (transition) {
+      p->crb |= CRB_IRQ2;
+      UpdateInterrupts(p);
+    }
+  }
 }
 
-void C6821::SetPB(unsigned char byData)
-{
-  m_byIB = byData;
+uint8_t Pia6821_GetPortA(Pia6821* p) {
+  return p->ora & p->ddra;
+}
+uint8_t Pia6821_GetPortB(Pia6821* p) {
+  return p->orb & p->ddrb;
 }
 
-unsigned char C6821::GetPA()
-{
-  return m_byOA & m_byDDRA;
+void Pia6821_SetListenerA(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_a.objTo = objTo;
+  p->out_a.func = func;
 }
-
-unsigned char C6821::GetPB()
-{
-  return m_byOB & m_byDDRB;
+void Pia6821_SetListenerB(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_b.objTo = objTo;
+  p->out_b.func = func;
+}
+void Pia6821_SetListenerCA2(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_ca2.objTo = objTo;
+  p->out_ca2.func = func;
+}
+void Pia6821_SetListenerCB2(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_cb2.objTo = objTo;
+  p->out_cb2.func = func;
+}
+void Pia6821_SetListenerIRQA(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_irqa.objTo = objTo;
+  p->out_irqa.func = func;
+}
+void Pia6821_SetListenerIRQB(Pia6821* p, void* objTo, PiaOutputCallback func) {
+  p->out_irqb.objTo = objTo;
+  p->out_irqb.func = func;
 }
