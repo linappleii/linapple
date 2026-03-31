@@ -35,9 +35,9 @@ public:
   void SetVBlank(bool bVBL);
 
 protected:
-  void On6821_A(unsigned char byData);
+  void On6821_A(uint8_t byData);
 
-  void On6821_B(unsigned char byData);
+  void On6821_B(uint8_t byData);
 
   void OnCommand();
 
@@ -47,9 +47,9 @@ protected:
 
   void Reset();
 
-  friend WRITE_HANDLER(M6821_Listener_A);
+  static void M6821_Listener_A(void* objTo, uint8_t byData);
 
-  friend WRITE_HANDLER(M6821_Listener_B);
+  static void M6821_Listener_B(void* objTo, uint8_t byData);
 
   void SetPosition(int xvalue, int yvalue);
 
@@ -57,7 +57,7 @@ protected:
 
   void ClampY(int iMinY, int iMaxY);
 
-  C6821 m_6821;
+  Pia6821 m_6821;
 
   int m_nDataLen;
   unsigned char m_byMode;

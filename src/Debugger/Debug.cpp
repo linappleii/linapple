@@ -7915,7 +7915,6 @@ Update_t ExecuteCommand (int nArgs)
 
               strcpy( pArg[4].sArg, pEnd );
               strcpy( pArg[3].sArg, g_aTokens[ TOKEN_COLON ].sToken );
-              strcpy( pArg[2].sArg, pSrc );
               strcpy( pArg[1].sArg, pDst );
               strcpy( pArg[0].sArg, g_aCommands[ g_iCommand ].m_sName );
               // pDst moved from arg0 to arg1 !

@@ -81,12 +81,10 @@ private:
 
 const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 {
-  char ftpdirpath[MAX_PATH];
-  int l;
-  l = snprintf(ftpdirpath, MAX_PATH,
-                "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+  char ftpdirpath[1024];
+  int l = snprintf(ftpdirpath, sizeof(ftpdirpath), "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
 
-  if (!(l>=0 && l<MAX_PATH)) {      // check returned value
+  if (!(l>=0 && l<(int)sizeof(ftpdirpath))) {      // check returned value
     failure_message = "Failed get path for FTP dir listing";
     return {};
   }
@@ -105,7 +103,7 @@ const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
     if(GetFileAttributes(ftpdirpath) != unsigned int(-1)) {
       OKI = false;
     } else {
-      OKI = ftp_get(ftp_dir,ftpdirpath); // get ftp dir listing
+      OKI = ftp_get(directory.c_str(),ftpdirpath); // get ftp dir listing
     }
   #endif
 

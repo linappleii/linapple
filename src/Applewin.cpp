@@ -411,7 +411,7 @@ bool ValidateDirectory(char *dir)
       }
     }
   }
-  printf("%s is dir? %d\n", dir ? dir : "undefined", ret);
+  printf(" ---> %s is dir? %d\n", dir ? dir : "(null)", ret);
   return ret;
 }
 

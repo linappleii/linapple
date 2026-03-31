@@ -1,78 +1,73 @@
-// Motorola MC6821 PIA
+#ifndef PIA6821_H
+#define PIA6821_H
 
-typedef void (*mem_write_handler)(void *objFrom, void *objTo, int nAddr, unsigned char byData);
+#include <stdint.h>
 
-typedef struct _STWriteHandler {
-  void *objTo;
-  mem_write_handler func;
-} STWriteHandler;
+// Motorola MC6821 Peripheral Interface Adapter (PIA)
+// Implementation based on official MC6821 datasheet.
 
-#define  PIA_DDRA  0
-#define  PIA_CTLA  1
-#define  PIA_DDRB  2
-#define  PIA_CTLB  3
+typedef void (*PiaOutputCallback)(void* objTo, uint8_t data);
 
-class C6821 {
-public:
-  C6821();
+typedef struct {
+  void* objTo;
+  PiaOutputCallback func;
+} PiaWriteHandler;
 
-  virtual ~C6821();
+typedef struct {
+  // Internal Registers
+  uint8_t ora;  // Output Register A
+  uint8_t orb;  // Output Register B
+  uint8_t ddra; // Data Direction Register A
+  uint8_t ddrb; // Data Direction Register B
+  uint8_t cra;  // Control Register A
+  uint8_t crb;  // Control Register B
 
-  unsigned char GetPB();
+  // External Line States (Inputs)
+  uint8_t port_a_in;
+  uint8_t port_b_in;
+  bool ca1_in;
+  bool ca2_in;
+  bool cb1_in;
+  bool cb2_in;
 
-  unsigned char GetPA();
+  // Internal State
+  uint8_t oca2; // Output CA2 state
+  uint8_t ocb2; // Output CB2 state
+  uint8_t irq_a_state;
+  uint8_t irq_b_state;
 
-  void SetPB(unsigned char byData);
+  // Callbacks
+  PiaWriteHandler out_a;
+  PiaWriteHandler out_b;
+  PiaWriteHandler out_ca2;
+  PiaWriteHandler out_cb2;
+  PiaWriteHandler out_irqa;
+  PiaWriteHandler out_irqb;
+} Pia6821;
 
-  void SetPA(unsigned char byData);
+// Interface
+void Pia6821_Reset(Pia6821* p);
+uint8_t Pia6821_Read(Pia6821* p, uint8_t addr);
+void Pia6821_Write(Pia6821* p, uint8_t addr, uint8_t val);
 
-  void SetCA1(unsigned char byData);
+// Signal Injection
+void Pia6821_SetPortA(Pia6821* p, uint8_t val);
+void Pia6821_SetPortB(Pia6821* p, uint8_t val);
+void Pia6821_SetCA1(Pia6821* p, bool level);
+void Pia6821_SetCA2(Pia6821* p, bool level);
+void Pia6821_SetCB1(Pia6821* p, bool level);
+void Pia6821_SetCB2(Pia6821* p, bool level);
 
-  void SetCA2(unsigned char byData);
+// Data Retrieval
+uint8_t Pia6821_GetPortA(Pia6821* p);
+uint8_t Pia6821_GetPortB(Pia6821* p);
 
-  void SetCB1(unsigned char byData);
+// Configuration
+void Pia6821_SetListenerA(Pia6821* p, void* objTo, PiaOutputCallback func);
+void Pia6821_SetListenerB(Pia6821* p, void* objTo, PiaOutputCallback func);
+void Pia6821_SetListenerCA2(Pia6821* p, void* objTo, PiaOutputCallback func);
+void Pia6821_SetListenerCB2(Pia6821* p, void* objTo, PiaOutputCallback func);
+void Pia6821_SetListenerIRQA(Pia6821* p, void* objTo, PiaOutputCallback func);
+void Pia6821_SetListenerIRQB(Pia6821* p, void* objTo, PiaOutputCallback func);
 
-  void SetCB2(unsigned char byData);
-
-  void Reset();
-
-  unsigned char Read(unsigned char byRS);
-
-  void Write(unsigned char byRS, unsigned char byData);
-
-  void UpdateInterrupts();
-
-  void SetListenerA(void *objTo, mem_write_handler func);
-
-  void SetListenerB(void *objTo, mem_write_handler func);
-
-  void SetListenerCA2(void *objTo, mem_write_handler func);
-
-  void SetListenerCB2(void *objTo, mem_write_handler func);
-
-protected:
-  unsigned char m_byIA;
-  unsigned char m_byCA1;
-  unsigned char m_byICA2;
-  unsigned char m_byOA;
-  unsigned char m_byOCA2;
-  unsigned char m_byDDRA;
-  unsigned char m_byCTLA;
-  unsigned char m_byIRQAState;
-
-  unsigned char m_byIB;
-  unsigned char m_byCB1;
-  unsigned char m_byICB2;
-  unsigned char m_byOB;
-  unsigned char m_byOCB2;
-  unsigned char m_byDDRB;
-  unsigned char m_byCTLB;
-  unsigned char m_byIRQBState;
-
-  STWriteHandler m_stOutA;
-  STWriteHandler m_stOutB;
-  STWriteHandler m_stOutCA2;
-  STWriteHandler m_stOutCB2;
-  STWriteHandler m_stOutIRQA;
-  STWriteHandler m_stOutIRQB;
-};
+#endif // PIA6821_H
