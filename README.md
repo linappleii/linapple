@@ -53,6 +53,8 @@ Using LinApple
 Clicking in the LinApple window will capture the mouse. It may be
 released by pressing any function key.
 
+~~~text
+| ----------------------------------------------------------------------------------|
 | Key            | Function                                                         |
 | -------------- | -----------------------------------------------------------------|
 | F1             | Show help screen.                                                |
@@ -94,7 +96,8 @@ released by pressing any function key.
 | Numpad -       | Decrease emulation speed.                                        |
 | Numpad *       | Reset emulation speed.                                           |
 | RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                          |
-| -------------- | -----------------------------------------------------------------|
+| ----------------------------------------------------------------------------------|
+~~~
 
 **Warning**: Fullscreen mode does not properly exit in multi-monitor
 setups.  (This is a bug in SDL 1.2.)
@@ -107,6 +110,27 @@ Many disk images will boot straight into the application. Some disk
 images only have files and you must find the correct application to
 run. In this case you will need to execute BASIC commands to list the
 files on the disk and run programs.
+
+### LinApple Driver Video
+
+~~~text
+| --------------------------------------------------------------------------------------|
+| driver name    | supported resolutions  | debugger panel (experimental) | keyboard    |
+| -------------- | ---------------------- | ----------------------------- | ----------- |
+| x11            | all                    | glitch graph or core dumped   | OK          |
+| -------------- | ---------------------- | ----------------------------- | ----------- |
+| fbcon          | max 1280x720 in rpi    | OK                            | OK          |
+| -------------- | ---------------------- | ----------------------------- | ----------- |
+| dispmanx       | 1920x1080         16:9 | OK                            | OK          |
+|                | 1280x 720         16:9 | OK                            | OK          |
+|                |  800x 600          4:3 | OK                            | OK          |
+|                |  640x 480          4:3 | OK                            | OK          |
+| -------------- | ---------------------- | ----------------------------- | ----------- |
+| kmsdrm         | all                    | NONE                          | NONE        |
+| --------------------------------------------------------------------------------------|
+~~~
+
+**Warning**: debugger panel only works in full screen.
 
 ### Apple II Commands
 
