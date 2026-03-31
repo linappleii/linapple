@@ -31,7 +31,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include "MouseInterface.h"
 #include "resource.h"
-#include "wwrapper.h"
 #include <assert.h>
 
 // for mlock - munlock
@@ -816,26 +815,24 @@ unsigned char MemCheckPaging(unsigned short, unsigned short address, unsigned ch
 }
 
 void MemDestroy() {
-  VirtualFree(memaux, 0, MEM_RELEASE);
-  VirtualFree(memmain, 0, MEM_RELEASE);
-  VirtualFree(memdirty, 0, MEM_RELEASE);
-  VirtualFree(memrom, 0, MEM_RELEASE);
+  free(memaux);
+  free(memmain);
+  free(memdirty);
+  free(memrom);
   munlock(memimage, _6502_MEM_END + 1); /* POSIX: unlock memory from swapping */
-  VirtualFree(memimage, 0, MEM_RELEASE);
+  free(memimage);
 
-  VirtualFree(pCxRomInternal, 0, MEM_RELEASE);
-  VirtualFree(pCxRomPeripheral, 0, MEM_RELEASE);
+  free(pCxRomInternal);
+  free(pCxRomPeripheral);
 
   #ifdef RAMWORKS
-  for (unsigned int i=1; i<g_uMaxExPages; i++)
-  {
-    if (RWpages[i])
-    {
-      VirtualFree(RWpages[i], 0, MEM_RELEASE);
+  for (unsigned int i = 1; i < g_uMaxExPages; i++) {
+    if (RWpages[i]) {
+      free(RWpages[i]);
       RWpages[i] = NULL;
     }
   }
-  RWpages[0]=NULL;
+  RWpages[0] = NULL;
   #endif
 
   memaux = NULL;
@@ -964,17 +961,26 @@ int MemInitialize() // returns -1 if any error during initialization
   const unsigned int Apple2eRomSize = Apple2RomSize + CxRomSize;
 
   // Allocate memory for the apple memory image and associated data structures
-  memaux = (uint8_t*) VirtualAlloc(NULL, _6502_MEM_END + 1, MEM_COMMIT, PAGE_READWRITE);
-  memmain = (uint8_t*) VirtualAlloc(NULL, _6502_MEM_END + 1, MEM_COMMIT, PAGE_READWRITE);
-  memdirty = (uint8_t*) VirtualAlloc(NULL, 0x100, MEM_COMMIT, PAGE_READWRITE);
-  memrom = (uint8_t*) VirtualAlloc(NULL, 0x5000, MEM_COMMIT, PAGE_READWRITE);
-  memimage = (uint8_t*) VirtualAlloc(NULL, _6502_MEM_END + 1, MEM_COMMIT, PAGE_READWRITE);
+  memaux = (uint8_t*) malloc(_6502_MEM_END + 1);
+  memmain = (uint8_t*) malloc(_6502_MEM_END + 1);
+  memdirty = (uint8_t*) malloc(0x100);
+  memrom = (uint8_t*) malloc(0x5000);
+  memimage = (uint8_t*) malloc(_6502_MEM_END + 1);
+
+  if (memaux) memset(memaux, 0, _6502_MEM_END + 1);
+  if (memmain) memset(memmain, 0, _6502_MEM_END + 1);
+  if (memdirty) memset(memdirty, 0, 0x100);
+  if (memrom) memset(memrom, 0, 0x5000);
+  if (memimage) memset(memimage, 0, _6502_MEM_END + 1);
 
   /* POSIX : lock memory from swapping */
   mlock(memimage, _6502_MEM_END + 1);
 
-  pCxRomInternal = (uint8_t*) VirtualAlloc(NULL, CxRomSize, MEM_COMMIT, PAGE_READWRITE);
-  pCxRomPeripheral = (uint8_t*) VirtualAlloc(NULL, CxRomSize, MEM_COMMIT, PAGE_READWRITE);
+  pCxRomInternal = (uint8_t*) malloc(CxRomSize);
+  pCxRomPeripheral = (uint8_t*) malloc(CxRomSize);
+
+  if (pCxRomInternal) memset(pCxRomInternal, 0, CxRomSize);
+  if (pCxRomPeripheral) memset(pCxRomPeripheral, 0, CxRomSize);
 
   if (!memaux || !memdirty || !memimage || !memmain || !memrom || !pCxRomInternal || !pCxRomPeripheral) {
     fprintf(stderr, "Unable to allocate required memory. Sorry.\n");
@@ -985,9 +991,14 @@ int MemInitialize() // returns -1 if any error during initialization
   // allocate memory for RAMWorks III - up to 8MB
   RWpages[0] = memaux;
   unsigned int i = 1;
-  while ((i < g_uMaxExPages) && (RWpages[i] =
-           (uint8_t*) VirtualAlloc(NULL,_6502_MEM_END+1,MEM_COMMIT,PAGE_READWRITE))) {
-    i++;
+  while (i < g_uMaxExPages) {
+    RWpages[i] = (uint8_t*) malloc(_6502_MEM_END + 1);
+    if (RWpages[i]) {
+      memset(RWpages[i], 0, _6502_MEM_END + 1);
+      i++;
+    } else {
+      break;
+    }
   }
   #endif
 

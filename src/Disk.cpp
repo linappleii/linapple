@@ -31,7 +31,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* AND March 2012 AD */
 
 #include "stdafx.h"
-#include "wwrapper.h"
 #include "ftpparse.h"
 #include "DiskFTP.h"
 
@@ -180,7 +179,7 @@ char *GetImageTitle(const char* imageFileName, Disk_t *fptr)
   }
 
   if ((!found) && (loop > 2)) {
-    CharLowerBuff(imagetitle + 1, strlen(imagetitle + 1));  // to lower case?
+    for (char* p = imagetitle + 1; *p; ++p) *p = (char)tolower((unsigned char)*p);
   }
 
   strncpy(fptr->fullname, /*imagetitle*/imageFileName, MAX_DISK_FULL_NAME);
@@ -217,7 +216,8 @@ bool IsDriveValid(const int iDrive)
 static void AllocTrack(int drive)
 {
   Disk_t *fptr = &g_aFloppyDisk[drive];
-  fptr->trackimage = (uint8_t*) VirtualAlloc(NULL, NIBBLES_PER_TRACK, MEM_COMMIT, PAGE_READWRITE);
+  fptr->trackimage = (uint8_t*) malloc(NIBBLES_PER_TRACK);
+  if (fptr->trackimage) memset(fptr->trackimage, 0, NIBBLES_PER_TRACK);
 }
 
 static void ReadTrack(int iDrive)
@@ -258,17 +258,19 @@ static void RemoveDisk(int iDrive)
 
     ImageClose(pFloppy->imagehandle);
     pFloppy->imagehandle = (HIMAGE) 0;
-  }
 
-  if (pFloppy->trackimage) {
-    VirtualFree(pFloppy->trackimage, 0, MEM_RELEASE);
-    pFloppy->trackimage = NULL;
+    if (pFloppy->trackimage) {
+      free(pFloppy->trackimage);
+      pFloppy->trackimage = NULL;
+    }
+
     pFloppy->trackimagedata = 0;
   }
 
   memset(pFloppy->imagename, 0, MAX_DISK_IMAGE_NAME + 1);
   memset(pFloppy->fullname, 0, MAX_DISK_FULL_NAME + 1);
 }
+
 
 static void WriteTrack(int iDrive)
 {
