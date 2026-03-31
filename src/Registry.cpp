@@ -90,8 +90,7 @@ char *php_trim(char *c, int len) {
 }
 
 void RegConfPath(const char * filename) {
-  strncpy(confPath, filename, MAX_PATH-1);
-  confPath[MAX_PATH-1] = '\0';
+  snprintf(confPath, sizeof(confPath), "%s", filename);
   printf("conf = %s\n", confPath);
 }
 

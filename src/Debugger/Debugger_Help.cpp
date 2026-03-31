@@ -78,21 +78,12 @@ bool TestStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 //===========================================================================
 bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
-	int nLenDst = _tcslen( pDst );
-	int nLenSrc = _tcslen( pSrc );
-	int nSpcDst = nDstSize - nLenDst;
-	int nChars  = MIN( nLenSrc, nSpcDst );
-
-	bool bOverflow = (nSpcDst < nLenSrc);
-	if (bOverflow)
+	if (!TestStringCat( pDst, pSrc, nDstSize ))
 	{
 		return false;
 	}
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
-	_tcsncat( pDst, pSrc, nChars );
-#pragma GCC diagnostic pop
+	_tcscat( pDst, pSrc );
 	return true;
 }
 
@@ -101,24 +92,24 @@ bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 //===========================================================================
 int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
-        int nLenDst = _tcslen( pDst );
-        int nLenSrc = _tcslen( pSrc );
-        int nSpcDst = nDstSize - nLenDst;
-        int nChars  = MIN( nLenSrc, nSpcDst );
+	int nLenDst = (int)_tcslen( pDst );
+	int nLenSrc = (int)_tcslen( pSrc );
+	int nRemaining = nDstSize - nLenDst - 1;
 
+	if (nRemaining < nLenSrc)
+	{
+		if (nRemaining > 0)
+		{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-    // secure the character \0
-    // fix warning: specified bound 2 equals source length.
-        _tcsncat( pDst, pSrc, nChars - 1);
-    pDst[nChars - 1] = '\0';
+			_tcsncat( pDst, pSrc, nRemaining );
 #pragma GCC diagnostic pop
+		}
+		return 0;
+	}
 
-        bool bOverflow = (nSpcDst < nLenSrc);
-        if (bOverflow)
-                return 0;
-
-        return nChars;
+	_tcscat( pDst, pSrc );
+	return nLenSrc;
 }
 
 

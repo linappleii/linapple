@@ -87,7 +87,7 @@ DEFINE_COPY_ROW_OR(copy_row_or4, Uint32)
 void copy_row3(Uint8 *src, int src_w, Uint8 *dst, int dst_w) {
   int i;
   int pos, inc;
-  Uint8 pixel[3];
+  Uint8 pixel[3] = {0, 0, 0};
 
   pos = 0x10000;
   inc = (src_w << 16) / dst_w;
