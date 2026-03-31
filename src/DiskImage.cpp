@@ -401,13 +401,12 @@ bool AplBoot(imageinfoptr ptr) {
   fseek(ptr->file, 0, SEEK_SET);
   unsigned short address = 0;
   unsigned short length = 0;
-  unsigned int bytesRead;
-  bytesRead = fread(&address, 1, sizeof(unsigned short), ptr->file);
-  bytesRead = fread(&length, 1, sizeof(unsigned short), ptr->file);
+  fread(&address, 1, sizeof(unsigned short), ptr->file);
+  fread(&length, 1, sizeof(unsigned short), ptr->file);
   if ((((unsigned short)(address + length)) <= address) || (address >= 0xC000) || (address + length - 1 >= 0xC000)) {
     return 0;
   }
-  bytesRead = fread(mem + address, 1, length, ptr->file);
+  fread(mem + address, 1, length, ptr->file);
   int loop = 192;
   while (loop--) {
     *(memdirty + loop) = 0xFF;
@@ -461,8 +460,7 @@ unsigned int DoDetect(uint8_t* imageptr, unsigned int imagesize) {
 void DoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles) {
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
   memset(workbuffer, 0, 4096);
-  unsigned int bytesRead;
-  bytesRead = fread(workbuffer, 1, 4096, ptr->file);
+  fread(workbuffer, 1, 4096, ptr->file);
   *nibbles = NibblizeTrack(trackImageBuffer, 1, track);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
@@ -474,8 +472,7 @@ void DoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage,
   memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 1, nibbles);
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
-  unsigned int bytesWritten;
-  bytesWritten = fwrite(workbuffer, 1, 4096, ptr->file);
+  fwrite(workbuffer, 1, 4096, ptr->file);
 }
 
 // SIMSYSTEM IIE (IIE) format implementation
@@ -515,9 +512,8 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageB
       return;
     }
     memset(ptr->header, 0, 88);
-    unsigned int bytesRead;
     fseek(ptr->file, 0, SEEK_SET);
-    bytesRead = fread(ptr->header, 1, 88, ptr->file);
+    fread(ptr->header, 1, 88, ptr->file);
   }
 
   if (*(ptr->header + 13) <= 2) {
@@ -525,8 +521,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageB
     IieConvertSectorOrder(ptr->header + 14);
     fseek(ptr->file, (track << 12) + 30, SEEK_SET);
     memset(workbuffer, 0, 4096);
-    unsigned int bytesRead;
-    bytesRead = fread(workbuffer, 1, 4096, ptr->file);
+    fread(workbuffer, 1, 4096, ptr->file);
     *nibbles = NibblizeTrack(trackImageBuffer, 2, track);
   } else {
     // Otherwise, if this image contains nibble information, read it directly into the track buffer
@@ -537,8 +532,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageB
     }
     fseek(ptr->file, offset, SEEK_SET);
     memset(trackImageBuffer, 0, *nibbles);
-    unsigned int bytesRead;
-    bytesRead = fread(trackImageBuffer, 1, *nibbles, ptr->file);
+    fread(trackImageBuffer, 1, *nibbles, ptr->file);
   }
 }
 
@@ -562,8 +556,7 @@ void Nib1Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImage
 void Nib1Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
   fseek(ptr->file, ptr->offset + track * NIBBLES, SEEK_SET);
-  unsigned int bytesWritten;
-  bytesWritten = fwrite(trackimage, 1, nibbles, ptr->file);
+  fwrite(trackimage, 1, nibbles, ptr->file);
 }
 
 // NIBBLIZED 6384-NIBBLE (NB2) FORMAT IMPLEMENTATION
@@ -582,8 +575,7 @@ void Nib2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImage
 void Nib2Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
   fseek(ptr->file, ptr->offset + track * 6384, SEEK_SET);
-  unsigned int bytesWritten;
-  bytesWritten = fwrite(trackimage, 1, nibbles, ptr->file);
+  fwrite(trackimage, 1, nibbles, ptr->file);
 }
 
 // PRODOS order (po) format implementation
@@ -629,8 +621,7 @@ void PoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBu
 {
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
   memset(workbuffer, 0, 4096);
-  unsigned int bytesRead;
-  bytesRead = fread(workbuffer, 1, 4096, ptr->file);
+  fread(workbuffer, 1, 4096, ptr->file);
   *nibbles = NibblizeTrack(trackImageBuffer, 0, track);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
@@ -642,8 +633,7 @@ void PoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage,
   memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 0, nibbles);
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
-  unsigned int bytesWritten;
-  bytesWritten = fwrite(workbuffer, 1, 4096, ptr->file);
+  fwrite(workbuffer, 1, 4096, ptr->file);
 }
 
 // PRODOS PROGRAM IMAGE (PRG) FORMAT IMPLEMENTATION
@@ -653,15 +643,14 @@ bool PrgBoot(imageinfoptr ptr)
   fseek(ptr->file, 5, SEEK_SET);
   unsigned short address = 0;
   unsigned short length = 0;
-  unsigned int bytesRead;
-  bytesRead = fread(&address, 1, sizeof(unsigned short), ptr->file);
-  bytesRead = fread(&length, 1, sizeof(unsigned short), ptr->file);
+  fread(&address, 1, sizeof(unsigned short), ptr->file);
+  fread(&length, 1, sizeof(unsigned short), ptr->file);
   length <<= 1;
   if ((((unsigned short)(address + length)) <= address) || (address >= 0xC000) || (address + length - 1 >= 0xC000)) {
     return 0;
   }
   fseek(ptr->file, 128, SEEK_SET);
-  bytesRead = fread(mem + address, 1, length, ptr->file);
+  fread(mem + address, 1, length, ptr->file);
   int loop = 192;
   while (loop--) {
     *(memdirty + loop) = 0xFF;
