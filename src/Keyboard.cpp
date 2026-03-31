@@ -659,7 +659,7 @@ void KeybQueueKeypress(int key, bool bASCII)
   #endif
 }
 
-unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
   #ifdef KEY_OLD
@@ -679,7 +679,7 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
   #endif
 }
 
-unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
   Uint8 *keys;

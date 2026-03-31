@@ -214,7 +214,7 @@ bool DebuggerSetColor( const int iScheme, const int iColor, const unsigned int n
 //===========================================================================
 static void _SetupColorRamp(const int iPrimary, int & iColor_)
 {
-	char sRamp[CONSOLE_WIDTH * 2] = TEXT("");
+	char sRamp[CONSOLE_WIDTH * 2] = "";
 #if DEBUG_COLOR_RAMP
 	char sText[CONSOLE_WIDTH];
 #endif
@@ -233,14 +233,14 @@ static void _SetupColorRamp(const int iPrimary, int & iColor_)
 		unsigned int nColor = RGB(nR, nG, nB);
 		g_aColorPalette[iColor_] = nColor;
 #if DEBUG_COLOR_RAMP
-		wsprintf(sText, TEXT("RGB(%3d,%3d,%3d), "), nR, nG, nB);
-		_tcscat(sRamp, sText);
+		wsprintf(sText, "RGB(%3d,%3d,%3d, ", nR, nG, nB);
+		strcat(sRamp, sText);
 #endif
 		iColor_++;
 	}
 #if DEBUG_COLOR_RAMP
-	wsprintf(sText, TEXT(" // %d%d%d\n"), bB, bG, bR);
-	_tcscat(sRamp, sText);
+	wsprintf(sText, " // %d%d%d\n", bB, bG, bR);
+	strcat(sRamp, sText);
 	OutputDebugString(sRamp);
 	sRamp[0] = 0;
 #endif

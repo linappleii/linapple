@@ -181,7 +181,7 @@ bool FindAddressFromSymbol ( const char* pSymbol, unsigned short * pAddress_, in
 		SymbolTable_t :: iterator  iSymbol = g_aSymbols[iTable].begin();
 		while (iSymbol != g_aSymbols[iTable].end())
 		{
-			if (!_tcsicmp( iSymbol->second.c_str(), pSymbol))
+			if (!strcasecmp( iSymbol->second.c_str(), pSymbol))
 			{
 				if (pAddress_)
 				{
@@ -217,7 +217,7 @@ unsigned short GetAddressFromSymbol (const char* pSymbol)
 
 
 
-bool String2Address( LPCTSTR pText, unsigned short & nAddress_ )
+bool String2Address( const char* pText, unsigned short & nAddress_ )
 {
 	char sHexApple[ CONSOLE_WIDTH ];
 
@@ -226,27 +226,27 @@ bool String2Address( LPCTSTR pText, unsigned short & nAddress_ )
 		if (!TextIsHexString( pText+1))
 			return false;
 
-		_tcscpy( sHexApple, "0x" );
-		_tcsncpy( sHexApple+2, pText+1, MAX_SYMBOLS_LEN - 3 );
+		strcpy( sHexApple, "0x" );
+		strncpy( sHexApple+2, pText+1, MAX_SYMBOLS_LEN - 3 );
 		sHexApple[2 + (MAX_SYMBOLS_LEN - 3) - 1] = 0;
 		pText = sHexApple;
 	}
 
-	if (pText[0] == TEXT('0'))
+	if (pText[0] == '0')
 	{
-		if ((pText[1] == TEXT('X')) || pText[1] == TEXT('x'))
+		if ((pText[1] == 'X') || pText[1] == 'x')
 		{
 			if (!TextIsHexString( pText+2))
 				return false;
 
 			char *pEnd;
-			nAddress_ = (unsigned short) _tcstol( pText, &pEnd, 16 );
+			nAddress_ = (unsigned short) strtol( pText, &pEnd, 16 );
 			return true;
 		}
 		if (TextIsHexString( pText ))
 		{
 			char *pEnd;
-			nAddress_ = (unsigned short) _tcstol( pText, &pEnd, 16 );
+			nAddress_ = (unsigned short) strtol( pText, &pEnd, 16 );
 			return true;
 		}
 	}
@@ -351,7 +351,7 @@ Update_t CmdSymbolsInfo (int nArgs)
 }
 
 //===========================================================================
-void _CmdPrintSymbol( LPCTSTR pSymbol, unsigned short nAddress, int iTable )
+void _CmdPrintSymbol( const char* pSymbol, unsigned short nAddress, int iTable )
 {
 	char   sText[ CONSOLE_WIDTH * 2 ];
 
@@ -422,7 +422,7 @@ bool _CmdSymbolList_Address2Symbol( int nAddress, int bSymbolTables )
 }
 
 //===========================================================================
-bool _CmdSymbolList_Symbol2Address( LPCTSTR pSymbol, int bSymbolTables )
+bool _CmdSymbolList_Symbol2Address( const char* pSymbol, int bSymbolTables )
 {
 	int  iTable;
 	unsigned short nAddress;
@@ -476,7 +476,7 @@ Update_t _CmdSymbolsListTables (int nArgs, int bSymbolTables )
 	for( int iArgs = 1; iArgs <= nArgs; iArgs++ )
 	{
 		unsigned short nAddress = g_aArgs[iArgs].nValue;
-		LPCTSTR pSymbol = g_aArgs[iArgs].sArg;
+		const char* pSymbol = g_aArgs[iArgs].sArg;
 
 		// Dump all symbols for this table
 		if( g_aArgRaw[iArgs].eToken == TOKEN_STAR)
@@ -516,7 +516,7 @@ Update_t _CmdSymbolsListTables (int nArgs, int bSymbolTables )
 				if (! _CmdSymbolList_Address2Symbol( nAddress, bSymbolTables))
 				{
 					ConsolePrintFormat( sText
-						, TEXT(" Address not found: %s$%s%04X%s" )
+						, " Address not found: %s$%s%04X%s" 
 						, CHC_ARG_SEP
 						, CHC_ADDRESS, nAddress, CHC_DEFAULT );
 				}
@@ -531,7 +531,7 @@ Update_t _CmdSymbolsListTables (int nArgs, int bSymbolTables )
 					if (! _CmdSymbolList_Address2Symbol( nAddress, bSymbolTables ))
 					{
 						ConsolePrintFormat( sText
-							, TEXT(" %sSymbol not found: %s%s%s")
+							, " %sSymbol not found: %s%s%s"
 							, CHC_ERROR, CHC_SYMBOL, pSymbol, CHC_DEFAULT
 						);
 					}
@@ -539,7 +539,7 @@ Update_t _CmdSymbolsListTables (int nArgs, int bSymbolTables )
 				else
 				{
 					ConsolePrintFormat( sText
-						, TEXT(" %sSymbol not found: %s%s%s")
+						, " %sSymbol not found: %s%s%s"
 						, CHC_ERROR, CHC_SYMBOL, pSymbol, CHC_DEFAULT
 					);
 				}
@@ -836,7 +836,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned
 	if (bRemoveSymbol)
 		pSymbolName = g_aArgs[2].sArg;
 
-	if (_tcslen( pSymbolName ) < MAX_SYMBOLS_LEN)
+	if (strlen( pSymbolName ) < MAX_SYMBOLS_LEN)
 	{
 		unsigned short nAddressPrev;
 		int  iTable;
@@ -848,7 +848,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned
 			{
 				if (bRemoveSymbol)
 				{
-					ConsoleBufferPush( TEXT(" Removing symbol." ) );
+					ConsoleBufferPush( " Removing symbol."  );
 				}
 
 				g_aSymbols[ eSymbolTable ].erase( nAddressPrev );
@@ -870,7 +870,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned
 		{
 			if (bRemoveSymbol)
 			{
-				ConsoleBufferPush( TEXT(" Symbol not in table." ) );
+				ConsoleBufferPush( " Symbol not in table."  );
 			}
 		}
 
@@ -949,7 +949,7 @@ Update_t _CmdSymbolsCommon ( int nArgs, int bSymbolTables )
 				if (iTable != NUM_SYMBOL_TABLES)
 				{
 					Update_t iUpdate = _CmdSymbolsClear( (SymbolTable_Index_e) iTable );
-					ConsolePrintFormat( sText, TEXT(" Cleared symbol table: %s%s")
+					ConsolePrintFormat( sText, " Cleared symbol table: %s%s"
 						, CHC_STRING, g_aSymbolTableNames[ iTable ]
 					 );
 					iUpdate |= ConsoleUpdate();
@@ -959,7 +959,7 @@ Update_t _CmdSymbolsCommon ( int nArgs, int bSymbolTables )
 				{
 					// Shouldn't have multiple symbol tables selected
 //					nArgs = _Arg_1( eSymbolsTable );
-					ConsoleBufferPush( TEXT(" Error: Unknown Symbol Table Type") );
+					ConsoleBufferPush( " Error: Unknown Symbol Table Type" );
 					return ConsoleUpdate();
 				}
 			}
@@ -985,7 +985,7 @@ Update_t _CmdSymbolsCommon ( int nArgs, int bSymbolTables )
 				}
 				else
 				{
-					ConsoleBufferPush( TEXT(" Error: Unknown Symbol Table Type") );
+					ConsoleBufferPush( " Error: Unknown Symbol Table Type" );
 				}
 				return ConsoleUpdate();
 			}

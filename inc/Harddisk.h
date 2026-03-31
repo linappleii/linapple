@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 extern bool g_bHD_Enabled;
@@ -6,17 +7,17 @@ bool HD_CardIsEnabled();
 
 void HD_SetEnabled(bool bEnabled);
 
-LPCTSTR HD_GetFullName(int drive);
+const char* HD_GetFullName(int drive);
 
-void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
+void HD_Load_Rom(uint8_t* pCxRomPeripheral, unsigned int uSlot);
 
 void HD_Eject(const int iDrive);
 
 void HD_Cleanup();
 
-bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename);
+bool HD_InsertDisk2(int nDrive, const char* pszFilename);
 
-bool HD_InsertDisk(int nDrive, LPCTSTR imagefilename);
+bool HD_InsertDisk(int nDrive, const char* imagefilename);
 
 void HD_Select(int nDrive);
 

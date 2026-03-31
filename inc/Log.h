@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #ifndef _VC71  // __VA_ARGS__ not supported on MSVC++ .NET 7.x
@@ -10,7 +11,7 @@
 
 extern void LogInitialize();
 
-extern void LogOutput(LPCTSTR format, ...);
+extern void LogOutput(const char* format, ...);
 
 extern void LogDestroy();
 

@@ -1,3 +1,4 @@
+#include <cassert>
 /*
 AppleWin : An Apple //e emulator for Windows
 
@@ -201,7 +202,7 @@ static char ColorizeSpecialChar( char * sText, unsigned char nData, const Memory
 	char  FormatCharTxtHigh( const unsigned char b, bool *pWasHi_ = NULL );
 	char  FormatChar4Font  ( const unsigned char b, bool *pWasHi_, bool *pWasLo_ );
 
-	void DrawRegister(int line, LPCTSTR name, int bytes, unsigned short value, int iSource = 0);
+	void DrawRegister(int line, const char* name, int bytes, unsigned short value, int iSource = 0);
 
 #define  SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
 { \
@@ -243,7 +244,7 @@ void AllocateDebuggerMemDC(void)
     g_hDebugCharset = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);
 
-//    ZeroMemory(debugColors, sizeof(debugColors));
+//    memset(debugColors, 0, sizeof(debugColors));
 //    for (int i=1;i<256;i++)
 //    {
 //      debugColors[i].r=255;
@@ -485,7 +486,7 @@ int PrintText ( const char * pText, RECT & rRect )
 {
 #if _DEBUG
 	if (! pText)
-		MessageBox( g_hFrameWindow, "pText = NULL!", "DrawText()", MB_OK );
+		fprintf(stderr, "%s: %s\n", "DrawText()", "pText = NULL!");
 #endif
 
 	int nLen = strlen( pText );
@@ -1087,7 +1088,7 @@ int GetDisassemblyLine ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 		{
 			nTarget = pData->nTargetAddress;
 		} else {
-			nTarget = *(LPWORD)(mem+nBaseAddress+1);
+			nTarget = *(uint16_t*)(mem+nBaseAddress+1);
 			if (nOpbyte == 2)
 				nTarget &= 0xFF;
 		}
@@ -1302,11 +1303,11 @@ int GetDisassemblyLine ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 const char* FormatAddress( unsigned short nAddress, int nBytes )
 {
 	// There is no symbol for this nAddress
-	static char sSymbol[8] = TEXT("");
+	static char sSymbol[8] = "";
 	switch (nBytes)
 	{
-		case  2:	snprintf(sSymbol, 8, TEXT("$%02X"),(unsigned)nAddress);  break;
-		case  3:	snprintf(sSymbol, 8, TEXT("$%04X"),(unsigned)nAddress);  break;
+		case  2:	snprintf(sSymbol, 8, "$%02X",(unsigned)nAddress);  break;
+		case  3:	snprintf(sSymbol, 8, "$%04X",(unsigned)nAddress);  break;
 		// TODO: FIXME: Can we get called with nBytes == 16 ??
 		default:	sSymbol[0] = 0; break; // clear since is static
 	}
@@ -1350,8 +1351,8 @@ void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 
 	for( int iByte = 0; iByte < line_.nOpbyte; )
 	{
-		unsigned char nTarget8  = *(LPBYTE)(mem + nBaseAddress + iByte);
-		unsigned short nTarget16 = *(LPWORD)(mem + nBaseAddress + iByte);
+		unsigned char nTarget8  = *(uint8_t*)(mem + nBaseAddress + iByte);
+		unsigned short nTarget16 = *(uint16_t*)(mem + nBaseAddress + iByte);
 
 		switch( line_.iNoptype )
 		{
@@ -1689,7 +1690,7 @@ unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddres
 
 	if( g_bConfigDisasmAddressView )
 	{
-		PrintTextCursorX( (LPCTSTR) line.sAddress, linerect );
+		PrintTextCursorX( (const char*) line.sAddress, linerect );
 	}
 
 	if (bAddressIsBookmark)
@@ -1714,7 +1715,7 @@ unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddres
 		DebuggerSetColorFG( DebuggerGetColor( FG_DISASM_OPCODE ) );
 
 	if (g_bConfigDisasmOpcodesView)
-		PrintTextCursorX( (LPCTSTR) line.sOpCodes, linerect );
+		PrintTextCursorX( (const char*) line.sOpCodes, linerect );
 
 	// Label
 	linerect.left = (int) aTabs[ TS_LABEL ];
@@ -1999,7 +2000,7 @@ unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddres
 
 // Optionally copy the flags to pText_
 //===========================================================================
-void DrawFlags ( int line, unsigned short nRegFlags, LPTSTR pFlagNames_)
+void DrawFlags ( int line, unsigned short nRegFlags, char* pFlagNames_)
 {
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return;
@@ -2114,7 +2115,7 @@ void DrawMemory ( int line, int iMemDump )
 	if( !bActive )
 		return;
 
-	USHORT       nAddr   = pMD->nAddress;
+	uint16_t       nAddr   = pMD->nAddress;
 	DEVICE_e     eDevice = pMD->eDevice;
 	MemoryView_e iView   = pMD->eView;
 
@@ -2242,7 +2243,7 @@ void DrawMemory ( int line, int iMemDump )
 			}
 			else
 			{
-				unsigned char nData = (unsigned)*(LPBYTE)(mem+iAddress);
+				unsigned char nData = (unsigned)*(uint8_t*)(mem+iAddress);
 				sText[0] = 0;
 
 				if (iView == MEM_VIEW_HEX)
@@ -2278,7 +2279,7 @@ void DrawMemory ( int line, int iMemDump )
 }
 
 //===========================================================================
-void DrawRegister ( int line, LPCTSTR name, const int nBytes, const unsigned short nValue, int iSource )
+void DrawRegister ( int line, const char* name, const int nBytes, const unsigned short nValue, int iSource )
 {
 	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
 		return;
@@ -2564,7 +2565,7 @@ void _DrawSoftSwitchLanguageCardBank( RECT & rect, const int iBankDisplay, int b
 	}
 	else
 	{
-		_ASSERT(iBankDisplay == 1);
+		assert(iBankDisplay == 1);
 
 		rect.left   += dx88;
 		rect.right  += 4*w;
@@ -2595,7 +2596,9 @@ void _DrawSoftSwitchLanguageCardBank( RECT & rect, const int iBankDisplay, int b
 		}
 	}
 
-	_ASSERT(rect.right == finalRectRight);
+#ifdef _DEBUG
+	assert(rect.right == finalRectRight);
+#endif
 
 	rect.top    += g_nFontHeight;
 	rect.bottom += g_nFontHeight;
@@ -2790,7 +2793,7 @@ void DrawSoftSwitches( int iSoftSwitch )
 void DrawSourceLine( int iSourceLine, RECT &rect )
 {
 	char sLine[ CONSOLE_WIDTH ];
-	ZeroMemory( sLine, CONSOLE_WIDTH );
+	memset( sLine, 0, CONSOLE_WIDTH );
 
 	if ((iSourceLine >=0) && (iSourceLine < g_AssemblerSourceBuffer.GetNumLines() ))
 	{
@@ -2853,7 +2856,7 @@ void DrawStack ( int line)
 		if (nAddress <= _6502_STACK_END)
 		{
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE )); // COLOR_FG_DATA_TEXT
-			sprintf(sText, "  %02X",(unsigned)*(LPBYTE)(mem+nAddress));
+			sprintf(sText, "  %02X",(unsigned)*(uint8_t*)(mem+nAddress));
 			PrintTextCursorX( sText, rect );
 		}
 		iStack++;
@@ -2894,9 +2897,9 @@ void DrawTargets ( int line)
 		{
 			sprintf(sAddress,"%04X",aTarget[iAddress]);
 			if (iAddress)
-				sprintf(sData,"%02X",*(LPBYTE)(mem+aTarget[iAddress]));
+				sprintf(sData,"%02X",*(uint8_t*)(mem+aTarget[iAddress]));
 			else
-				sprintf(sData,"%04X",*(LPWORD)(mem+aTarget[iAddress]));
+				sprintf(sData,"%04X",*(uint16_t*)(mem+aTarget[iAddress]));
 		}
 
 		rect.left   = DISPLAY_TARGETS_COLUMN;
@@ -2977,12 +2980,12 @@ void DrawWatches (int line)
 
 			unsigned char nTarget8 = 0;
 
-			nTarget8 = (unsigned)*(LPBYTE)(mem+g_aWatches[iWatch].nAddress);
+			nTarget8 = (unsigned)*(uint8_t*)(mem+g_aWatches[iWatch].nAddress);
 			sprintf(sText,"%02X", nTarget8 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 			PrintTextCursorX( sText, rect2 );
 
-			nTarget8 = (unsigned)*(LPBYTE)(mem+g_aWatches[iWatch].nAddress + 1);
+			nTarget8 = (unsigned)*(uint8_t*)(mem+g_aWatches[iWatch].nAddress + 1);
 			sprintf(sText,"%02X", nTarget8 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 			PrintTextCursorX( sText, rect2 );
@@ -2991,7 +2994,7 @@ void DrawWatches (int line)
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( sText, rect2 );
 
-			unsigned short nTarget16 = (unsigned)*(LPWORD)(mem+g_aWatches[iWatch].nAddress);
+			unsigned short nTarget16 = (unsigned)*(uint16_t*)(mem+g_aWatches[iWatch].nAddress);
 			sprintf( sText,"%04X", nTarget16 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_ADDRESS ));
 			PrintTextCursorX( sText, rect2 );
@@ -3000,7 +3003,7 @@ void DrawWatches (int line)
 //			PrintTextCursorX( ":", rect2 );
 			PrintTextCursorX( ")", rect2 );
 
-//			unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
+//			unsigned char nValue8 = (unsigned)*(uint8_t*)(mem + nTarget16);
 //			sprintf(sText,"%02X", nValue8 );
 //			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 //			PrintTextCursorX( sText, rect2 );
@@ -3024,7 +3027,7 @@ void DrawWatches (int line)
 				else
 					DebuggerSetColorBG( DebuggerGetColor( BG_DATA_2 ));
 
-				unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16 + iByte );
+				unsigned char nValue8 = (unsigned)*(uint8_t*)(mem + nTarget16 + iByte );
 				sprintf(sText,"%02X", nValue8 );
 				PrintTextCursorX( sText, rect2 );
 			}
@@ -3140,7 +3143,7 @@ void DrawZeroPagePointers ( int line )
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPERATOR ));
 			PrintTextCursorX( ":", rect2 );
 
-			unsigned char nValue8 = (unsigned)*(LPBYTE)(mem + nTarget16);
+			unsigned char nValue8 = (unsigned)*(uint8_t*)(mem + nTarget16);
 			sprintf(sText, "%02X", nValue8 );
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_OPCODE ));
 			PrintTextCursorX( sText, rect2 );
@@ -3204,7 +3207,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 	const int nMaxOpcodes = WINDOW_DATA_BYTES_PER_LINE;
 	char  sAddress[ 5 ];
 
-	_ASSERT( CONSOLE_WIDTH > WINDOW_DATA_BYTES_PER_LINE );
+	assert( CONSOLE_WIDTH > WINDOW_DATA_BYTES_PER_LINE );
 
 	char sOpcodes  [ CONSOLE_WIDTH ] = "";
 	char sImmediate[ 4 ]; // 'c'
@@ -3216,7 +3219,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 	int iMemDump = 0;
 
 	MemoryDump_t* pMD = &g_aMemDump[ iMemDump ];
-	USHORT       nAddress = pMD->nAddress;
+	uint16_t       nAddress = pMD->nAddress;
 
 //	if (!pMD->bActive)
 //		return;
@@ -3243,7 +3246,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		sOpcodes[0] = 0;
 		for ( iByte = 0; iByte < nMaxOpcodes; iByte++ )
 		{
-			unsigned char nData = (unsigned)*(LPBYTE)(mem + iAddress + iByte);
+			unsigned char nData = (unsigned)*(uint8_t*)(mem + iAddress + iByte);
 			sprintf( &sOpcodes[ iByte * 3 ], "%02X ", nData );
 		}
 		sOpcodes[ nMaxOpcodes * 3 ] = 0;
@@ -3266,7 +3269,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		DebuggerSetColorBG( DebuggerGetColor( iBackground ) );
 
 		DebuggerSetColorFG( DebuggerGetColor( FG_DISASM_ADDRESS ) );
-		PrintTextCursorX( (LPCTSTR) sAddress, rect );
+		PrintTextCursorX( (const char*) sAddress, rect );
 
 		DebuggerSetColorFG( DebuggerGetColor( FG_DISASM_OPERATOR ) );
 		if (g_bConfigDisasmAddressColon)
@@ -3275,7 +3278,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		rect.left = X_OPCODE;
 
 		DebuggerSetColorFG( DebuggerGetColor( FG_DATA_BYTE ) );
-		PrintTextCursorX( (LPCTSTR) sOpcodes, rect );
+		PrintTextCursorX( (const char*) sOpcodes, rect );
 
 		rect.left = X_CHAR;
 
@@ -3294,10 +3297,10 @@ void DrawSubWindow_Data (Update_t bUpdate)
 		iAddress = nAddress;
 		for (iByte = 0; iByte < nMaxOpcodes; iByte++ )
 		{
-			unsigned char nImmediate = (unsigned)*(LPBYTE)(mem + iAddress);
+			unsigned char nImmediate = (unsigned)*(uint8_t*)(mem + iAddress);
 
-			ColorizeSpecialChar( sImmediate, (BYTE) nImmediate, eView, iBackground );
-			PrintTextCursorX( (LPCSTR) sImmediate, rect );
+			ColorizeSpecialChar( sImmediate, (uint8_t) nImmediate, eView, iBackground );
+			PrintTextCursorX( (const char*) sImmediate, rect );
 
 			iAddress++;
 		}
@@ -3678,7 +3681,7 @@ void UpdateDisplay (Update_t bUpdate)
 	if (spDrawMutex)
 	{
 #if DEBUG
-		MessageBox( g_hFrameWindow, "Already drawing!", "!", MB_OK );
+		fprintf(stderr, "%s: %s\n", "!", "Already drawing!");
 #endif
 	}
 	spDrawMutex = true;

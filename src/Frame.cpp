@@ -541,14 +541,14 @@ bool PSP_SaveStateSelectImage(bool saveit)
     }
   }
   strcpy(g_sSaveStateDir, fullPath.c_str());
-  RegSaveString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, g_sSaveStateDir); // Save it
+  RegSaveString("Preferences", REGVALUE_PREF_SAVESTATE_DIR, 1, g_sSaveStateDir); // Save it
 
   backdx = fileIndex; // Store cursor position
 
   fullPath += "/" + filename;
 
   Snapshot_SetFilename(fullPath.c_str()); // Set name for snapshot
-  RegSaveString(TEXT("Preferences"), REGVALUE_SAVESTATE_FILENAME, 1, fullPath.c_str()); // Save it
+  RegSaveString("Preferences", REGVALUE_SAVESTATE_FILENAME, 1, fullPath.c_str()); // Save it
   DrawFrameWindow();
   return true;
 }
@@ -682,9 +682,9 @@ void ProcessButtonClick(int button, int mod)
       // F8 - save current screen as a .bmp file
       // Currently these setting are just next:
       if (mod & KMOD_SHIFT) {
-        RegSaveValue(TEXT("Configuration"), TEXT("Video Emulation"), 1, g_videotype);
-        RegSaveValue(TEXT("Configuration"), TEXT("Emulation Speed"), 1, g_dwSpeed);
-        RegSaveValue(TEXT("Configuration"), TEXT("Fullscreen"), 1, fullscreen);
+        RegSaveValue("Configuration", "Video Emulation", 1, g_videotype);
+        RegSaveValue("Configuration", "Emulation Speed", 1, g_dwSpeed);
+        RegSaveValue("Configuration", "Fullscreen", 1, fullscreen);
       } else {
         FrameSaveBMP();
       }

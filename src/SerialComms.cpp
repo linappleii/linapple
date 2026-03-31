@@ -257,7 +257,7 @@ unsigned char CSuperSerialCard::GenerateControl()
   const unsigned int CLK = 1;  // Internal
 
   unsigned int bmByteSize = (8 - m_uByteSize);  // [8,7,6,5] -> [0,1,2,3]
-  _ASSERT(bmByteSize <= 3);
+  assert(bmByteSize <= 3);
 
   unsigned int StopBit;
   if (((m_uByteSize == 8) && (m_uParity != NOPARITY)) || (m_uStopBits != ONESTOPBIT)) {
@@ -289,7 +289,7 @@ unsigned int CSuperSerialCard::BaudRateToIndex(unsigned int uBaudRate) {
       return 0x0F;
   }
 
-  _ASSERT(0);
+  assert(0);
   return BaudRateToIndex(B9600);
 }
 
@@ -374,7 +374,7 @@ bool CSuperSerialCard::CheckComm() {
     if (m_dwSerialPort < 0 || m_dwSerialPort > 99) {
       m_dwSerialPort = 1; // buffer overflow check
     }
-    sprintf(portname, TEXT("/dev/ttyS%u"), (unsigned int) (m_dwSerialPort - 1));
+    sprintf(portname, "/dev/ttyS%u", (unsigned int) (m_dwSerialPort - 1));
     m_hCommHandle = open(portname, O_RDWR | O_NOCTTY | O_NDELAY);
     if (m_hCommHandle != -1) {
       UpdateCommState();
@@ -395,7 +395,7 @@ void CSuperSerialCard::CloseComm()
   m_dwCommInactivity = 0;
 }
 
-unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
 
@@ -437,7 +437,7 @@ unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAd
   return 0;
 }
 
-unsigned char CSuperSerialCard::SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+unsigned char CSuperSerialCard::SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
 
@@ -479,7 +479,7 @@ unsigned char CSuperSerialCard::SSC_IOWrite(unsigned short PC, unsigned short uA
   return 0;
 }
 
-unsigned char CSuperSerialCard::CommCommand(unsigned short, unsigned short, unsigned char write, unsigned char value, ULONG) {
+unsigned char CSuperSerialCard::CommCommand(unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
   if (!CheckComm()) {
     return 0;
   }
@@ -544,7 +544,7 @@ unsigned char CSuperSerialCard::CommCommand(unsigned short, unsigned short, unsi
   return m_uCommandByte;
 }
 
-unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsigned char write, unsigned char value, ULONG) {
+unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
   if (!CheckComm()) {
     return 0;
   }
@@ -632,7 +632,7 @@ unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsi
   return m_uControlByte;
 }
 
-unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   if (!CheckComm()) {
     return 0;
   }
@@ -652,7 +652,7 @@ unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsi
   return result;
 }
 
-unsigned char CSuperSerialCard::CommTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG) {
+unsigned char CSuperSerialCard::CommTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
   if (!CheckComm()) {
     return 0;
   }
@@ -695,7 +695,7 @@ enum {
   ST_IRQ = 1 << 7
 };
 
-unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG)
+unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t)
 {
   if (!CheckComm())
     return ST_DSR | ST_DCD | ST_TX_EMPTY;
@@ -737,7 +737,7 @@ unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsig
   return uStatus;
 }
 
-unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, unsigned char, unsigned char, ULONG) {
+unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, unsigned char, unsigned char, uint32_t) {
   unsigned char sw = 0;
   switch (addr & 0xf) {
     case 1:  // DIPSW1
@@ -764,7 +764,7 @@ unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, u
           OVR = 1;
           break;
         default:
-          _ASSERT(0);
+          assert(0);
         case NOPARITY:
           RDR = 0;
           OVR = 0;
@@ -780,7 +780,7 @@ unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, u
   return sw;
 }
 
-void CSuperSerialCard::CommInitialize(LPBYTE pCxRomPeripheral, unsigned int uSlot)
+void CSuperSerialCard::CommInitialize(uint8_t* pCxRomPeripheral, unsigned int uSlot)
 {
   const unsigned int SSC_FW_SIZE = 2 * 1024;
   const unsigned int SSC_SLOT_FW_SIZE = 256;
@@ -859,7 +859,7 @@ void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
   }
 }
 
-unsigned int CSuperSerialCard::CommThread(LPVOID lpParameter) {
+unsigned int CSuperSerialCard::CommThread(void* lpParameter) {
   return 0;
 }
 

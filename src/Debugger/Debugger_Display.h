@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 // use the new Debugger Font (Apple Font)
@@ -71,7 +72,7 @@
 	void FormatOpcodeBytes    ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 	void FormatNopcodeBytes   ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 
-	void DrawFlags            ( int line, unsigned short nRegFlags, LPTSTR pFlagNames_);
+	void DrawFlags            ( int line, unsigned short nRegFlags, char* pFlagNames_);
 
 	extern void AllocateDebuggerMemDC(void);
 	extern void ReleaseDebuggerMemDC(void);
@@ -86,7 +87,7 @@
 	extern char g_aDebuggerVirtualTextScreen[ DEBUG_VIRTUAL_TEXT_HEIGHT ][ DEBUG_VIRTUAL_TEXT_WIDTH ];
 	extern size_t Util_GetDebuggerText( char* &pText_ ); // Same API as Util_GetTextScreen()
 
-	extern UINT64 g_nCumulativeCycles;
+	extern uint64_t g_nCumulativeCycles;
 	class VideoScannerDisplayInfo
 	{
 	public:
@@ -98,7 +99,7 @@
 		bool isHorzReal;
 		bool isAbsCycle;
 
-		UINT64 lastCumulativeCycles;
+		uint64_t lastCumulativeCycles;
 		unsigned int cycleDelta;
 	};
 

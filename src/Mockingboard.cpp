@@ -138,13 +138,13 @@ typedef struct {
 static SY6522_AY8910 g_MB[NUM_AY8910];
 
 // Timer vars
-static ULONG g_n6522TimerPeriod = 0;
-static USHORT g_nMBTimerDevice = 0;  // SY6522 device# which is generating timer IRQ
-static UINT64 g_uLastCumulativeCycles = 0;
+static uint32_t g_n6522TimerPeriod = 0;
+static uint16_t g_nMBTimerDevice = 0;  // SY6522 device# which is generating timer IRQ
+static uint64_t g_uLastCumulativeCycles = 0;
 
 #ifdef MB_SPEECH
 // SSI263 vars:
-static USHORT g_nSSI263Device = 0;  // SSI263 device# which is generating phoneme-complete IRQ
+static uint16_t g_nSSI263Device = 0;  // SSI263 device# which is generating phoneme-complete IRQ
 static int g_nCurrentActivePhoneme = -1;
 static bool g_bStopPhoneme = false;
 static bool g_bVotraxPhoneme = false;
@@ -153,7 +153,7 @@ static HANDLE g_hThread = NULL;
 
 static short *ppAYVoiceBuffer[NUM_VOICES] = {0};
 
-static UINT64 g_nMB_InActiveCycleCount = 0;
+static uint64_t g_nMB_InActiveCycleCount = 0;
 static bool g_bMB_RegAccessedFlag = false;
 static bool g_bMB_Active = true;
 static bool g_bMBAvailable = false;
@@ -193,7 +193,7 @@ unsigned int g_uTimer1IrqCount = 0;  // DEBUG
 
 // Forward refs:
 #ifdef MB_SPEECH
-static unsigned int SSI263Thread(LPVOID);
+static unsigned int SSI263Thread(void*);
 static void Votrax_Write(unsigned char nDevice, unsigned char nValue);
 #endif
 
@@ -205,7 +205,7 @@ static void StartTimer(SY6522_AY8910 *pMB) {
     return;
   }
 
-  USHORT nPeriod = pMB->sy6522.TIMER1_LATCH.w;
+  uint16_t nPeriod = pMB->sy6522.TIMER1_LATCH.w;
 
   if (nPeriod <= 0xff) { // Timer1L value has been written (but TIMER1H hasn't)
     return;
@@ -684,7 +684,7 @@ void MB_Update() {
   if (!g_bMB_RegAccessedFlag) {
     if (!g_nMB_InActiveCycleCount) {
       g_nMB_InActiveCycleCount = g_nCumulativeCycles;
-    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > (UINT64)g_fCurrentCLK6502 / 10) {
+    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > (uint64_t)g_fCurrentCLK6502 / 10) {
       // After 0.1 sec of Apple time, assume MB is not active
       g_bMB_Active = false;
     }
@@ -768,7 +768,7 @@ void MB_Update() {
 }
 
 #ifdef MB_SPEECH
-static unsigned int SSI263Thread(LPVOID lpParameter) {
+static unsigned int SSI263Thread(void* lpParameter) {
   while(1) {
     unsigned int dwWaitResult = WaitForMultipleObjects(
                 g_nNumEvents,    // number of handles in array
@@ -922,7 +922,7 @@ static bool MB_DSInit()
       memcpy(pDSLockedBuffer, &g_nPhonemeData[g_nPhonemeInfo[nPhoneme].nOffset], nPhonemeByteLength);
     }
 
-    hr = SSI263Voice[i].lpDSBvoice->QueryInterface(IID_IDirectSoundNotify, (LPVOID *)&SSI263Voice[i].lpDSNotify);
+    hr = SSI263Voice[i].lpDSBvoice->QueryInterface(IID_IDirectSoundNotify, (void* *)&SSI263Voice[i].lpDSNotify);
     if(FAILED(hr)) {
       if(g_fh) fprintf(g_fh, "SSI263: QueryInterface failed (%08X)\n",hr);
       return false;
@@ -1005,9 +1005,9 @@ static void MB_DSUninit() {
   #endif
 }
 
-static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft);
-static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft);
-static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft);
+static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
+static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
+static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
 
 void MB_Initialize() {
   if (g_bDisableDirectSound) {
@@ -1067,7 +1067,7 @@ void MB_Reset() {
   MB_Reinitialize();  // Reset CLK for AY8910s
 }
 
-static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft) {
+static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2 && !MemCheckSLOTCXROM()) {
@@ -1122,7 +1122,7 @@ static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned c
   }
 }
 
-static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft) {
+static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2 && !MemCheckSLOTCXROM()) {
@@ -1172,7 +1172,7 @@ static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned 
   return 0;
 }
 
-static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, ULONG nCyclesLeft) {
+static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
   if (!g_bPhasorEnable) {
     return MemReadFloatingBus(nCyclesLeft);
   }
@@ -1231,22 +1231,22 @@ void MB_EndOfVideoFrame() {
   }
 }
 
-void MB_UpdateCycles(ULONG uExecutedCycles) {
+void MB_UpdateCycles(uint32_t uExecutedCycles) {
   if (g_SoundcardType == SC_NONE) {
     return;
   }
 
   CpuCalcCycles(uExecutedCycles);
-  UINT64
+  uint64_t
   uCycles = g_nCumulativeCycles - g_uLastCumulativeCycles;
   g_uLastCumulativeCycles = g_nCumulativeCycles;
-  _ASSERT(uCycles < 0x10000);
-  USHORT nClocks = (USHORT) uCycles;
+  assert(uCycles < 0x10000);
+  uint16_t nClocks = (uint16_t) uCycles;
 
   for (int i = 0; i < NUM_SY6522; i++) {
     SY6522_AY8910 *pMB = &g_MB[i];
 
-    USHORT OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
+    uint16_t OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
 
     pMB->sy6522.TIMER1_COUNTER.w -= nClocks;
     pMB->sy6522.TIMER2_COUNTER.w -= nClocks;

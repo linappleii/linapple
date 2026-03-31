@@ -1,12 +1,13 @@
+#include <cstdint>
 #pragma once
 
 #ifdef _WIN32
-#define FILE_SEPARATOR  TEXT('\\')
+#define FILE_SEPARATOR  '\\'
 #else
-#define FILE_SEPARATOR  TEXT('/')
+#define FILE_SEPARATOR  '/'
 #endif
 
-#define FTP_SEPARATOR  TEXT('/')
+#define FTP_SEPARATOR  '/'
 
 // let it be our second version!
 #define LINAPPLE_VERSION  2

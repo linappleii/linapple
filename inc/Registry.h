@@ -1,16 +1,17 @@
+#include <cstdint>
 #pragma once
 
 extern FILE *registry;  // our opened file
 
-bool RegLoadString(LPCTSTR, LPCTSTR, bool, char **, unsigned int);
+bool RegLoadString(const char*, const char*, bool, char **, unsigned int);
 
-bool RegLoadValue(LPCTSTR, LPCTSTR, bool, unsigned int *);
+bool RegLoadValue(const char*, const char*, bool, unsigned int *);
 
-bool RegLoadBool(LPCTSTR, LPCTSTR, bool, bool *);
+bool RegLoadBool(const char*, const char*, bool, bool *);
 
-void RegSaveString(LPCTSTR, LPCTSTR, bool, LPCTSTR);
-void RegSaveValue(LPCTSTR, LPCTSTR, bool, unsigned int);
-void RegSaveBool(LPCTSTR, LPCTSTR, bool, bool);
+void RegSaveString(const char*, const char*, bool, const char*);
+void RegSaveValue(const char*, const char*, bool, unsigned int);
+void RegSaveBool(const char*, const char*, bool, bool);
 
 void RegConfPath(const char *);
 

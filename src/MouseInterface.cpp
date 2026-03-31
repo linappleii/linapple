@@ -203,7 +203,7 @@ CMouseInterface::~CMouseInterface() {
   delete[] m_pSlotRom;
 }
 
-void CMouseInterface::Initialize(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
+void CMouseInterface::Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot) {
   const unsigned int FW_SIZE = 2 * 1024;
   unsigned char *pData = (unsigned char *) MouseInterface_rom;  // NB. Don't need to unlock resource
 
@@ -223,7 +223,7 @@ void CMouseInterface::Initialize(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
 }
 
 void CMouseInterface::SetSlotRom() {
-  LPBYTE pCxRomPeripheral = MemGetCxRomPeripheral();
+  uint8_t* pCxRomPeripheral = MemGetCxRomPeripheral();
   if (pCxRomPeripheral == NULL) {
     return;
   }
@@ -235,7 +235,7 @@ void CMouseInterface::SetSlotRom() {
   }
 }
 
-unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
 
@@ -244,7 +244,7 @@ unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, u
   return pMouseIF->m_6821.Read(byRS);
 }
 
-unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft) {
+unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
   CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
 

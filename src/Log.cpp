@@ -42,7 +42,7 @@ void LogInitialize() {
   fprintf(g_fh, "*** Logging started: %s\n", time_str);
 }
 
-void LogOutput(LPCTSTR format, ...) {
+void LogOutput(const char* format, ...) {
   if (!g_fh) {
     return;
   }

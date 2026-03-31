@@ -110,16 +110,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #define   BENCHOPCODES  33
 
 // What is this 6502 code?
-static BYTE benchopcode[BENCHOPCODES] = {0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86, 0x91, 0x94,
+static uint8_t benchopcode[BENCHOPCODES] = {0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86, 0x91, 0x94,
                                          0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6, 0x19, 0x6D, 0x8D, 0x99,
                                          0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE};
 
 regsrec regs;
 
-UINT64 g_nCumulativeCycles = 0;
+uint64_t g_nCumulativeCycles = 0;
 
-static ULONG g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute()
-static ULONG g_nCyclesExecuted;
+static uint32_t g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute()
+static uint32_t g_nCyclesExecuted;
 
 static signed long g_uInternalExecutedCycles;
 // TODO: Use IRQ_CHECK_TIMEOUT=128 when running at full-speed else with IRQ_CHECK_TIMEOUT=1
@@ -137,8 +137,8 @@ static signed int g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
 static bool g_bCritSectionValid = false;  // Deleting CritialSection when not valid causes crash on Win98
 //static CRITICAL_SECTION g_CriticalSection;  // To guard /g_bmIRQ/ & /g_bmNMI/
 pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
-static volatile UINT32 g_bmIRQ = 0;
-static volatile UINT32 g_bmNMI = 0;
+static volatile uint32_t g_bmIRQ = 0;
+static volatile uint32_t g_bmNMI = 0;
 static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 
 // General Purpose Macros
@@ -171,11 +171,11 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 #define SETZ(a)   flagz = !((a) & 0xFF);
 #define WRITE(a) {                  \
        memdirty[addr >> 8] = 0xFF;            \
-       LPBYTE page = memwrite[addr >> 8];        \
+       uint8_t* page = memwrite[addr >> 8];        \
        if (page)                \
-         *(page+(addr & 0xFF)) = (BYTE)(a);          \
+         *(page+(addr & 0xFF)) = (uint8_t)(a);          \
        else if ((addr & 0xF000) == 0xC000)          \
-         IOWrite[(addr>>4) & 0xFF](regs.pc,addr,1,(BYTE)(a),uExecutedCycles); \
+         IOWrite[(addr>>4) & 0xFF](regs.pc,addr,1,(uint8_t)(a),uExecutedCycles); \
      }
 
 // ExtraCycles:
@@ -199,38 +199,38 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 
 // Addressing Mode Macros
 
-#define ABS   addr = *(LPWORD)(mem+regs.pc);   regs.pc += 2;
-#define IABSX    addr = *(LPWORD)(mem+(*(LPWORD)(mem+regs.pc))+(WORD)regs.x); regs.pc += 2;
-#define ABSX   base = *(LPWORD)(mem+regs.pc); addr = base+(WORD)regs.x; regs.pc += 2; CHECK_PAGE_CHANGE;
-#define ABSY   base = *(LPWORD)(mem+regs.pc); addr = base+(WORD)regs.y; regs.pc += 2; CHECK_PAGE_CHANGE;
-#define IABSCMOS base = *(LPWORD)(mem+regs.pc);                            \
-     addr = *(LPWORD)(mem+base);                      \
+#define ABS   addr = *(uint16_t*)(mem+regs.pc);   regs.pc += 2;
+#define IABSX    addr = *(uint16_t*)(mem+(*(uint16_t*)(mem+regs.pc))+(uint16_t)regs.x); regs.pc += 2;
+#define ABSX   base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.x; regs.pc += 2; CHECK_PAGE_CHANGE;
+#define ABSY   base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.y; regs.pc += 2; CHECK_PAGE_CHANGE;
+#define IABSCMOS base = *(uint16_t*)(mem+regs.pc);                            \
+     addr = *(uint16_t*)(mem+base);                      \
      if ((base & 0xFF) == 0xFF) uExtraCycles=1;      \
      regs.pc += 2;
-#define IABSNMOS base = *(LPWORD)(mem+regs.pc);                            \
+#define IABSNMOS base = *(uint16_t*)(mem+regs.pc);                            \
      if ((base & 0xFF) == 0xFF)          \
-           addr = *(mem+base)+((WORD)*(mem+(base&0xFF00))<<8);\
+           addr = *(mem+base)+((uint16_t)*(mem+(base&0xFF00))<<8);\
        else                                                   \
-           addr = *(LPWORD)(mem+base);                        \
+           addr = *(uint16_t*)(mem+base);                        \
      regs.pc += 2;
 #define IMM   addr = regs.pc++;
 #define INDX   base = ((*(mem+regs.pc++))+regs.x) & 0xFF;          \
      if (base == 0xFF)                                   \
-         addr = *(mem+0xFF)+(((WORD)*mem)<<8);           \
+         addr = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
      else                                                \
-         addr = *(LPWORD)(mem+base);
+         addr = *(uint16_t*)(mem+base);
 #define INDY   if (*(mem+regs.pc) == 0xFF)                         \
-         base = *(mem+0xFF)+(((WORD)*mem)<<8);           \
+         base = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
      else                                                \
-         base = *(LPWORD)(mem+*(mem+regs.pc));           \
+         base = *(uint16_t*)(mem+*(mem+regs.pc));           \
      regs.pc++;                                          \
-     addr = base+(WORD)regs.y;                           \
+     addr = base+(uint16_t)regs.y;                           \
      CHECK_PAGE_CHANGE;
 #define IZPG   base = *(mem+regs.pc++);                            \
      if (base == 0xFF)                                   \
-         addr = *(mem+0xFF)+(((WORD)*mem)<<8);           \
+         addr = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
      else                                                \
-         addr = *(LPWORD)(mem+base);
+         addr = *(uint16_t*)(mem+base);
 #define REL   addr = (signed char)*(mem+regs.pc++);
 
 // Optimiation note:
@@ -352,7 +352,7 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 #define ASLA   val   = regs.a << 1;              \
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
-     regs.a = (BYTE)val;
+     regs.a = (uint8_t)val;
 #define ASO   bSlowerOnPagecross = false;                \
      val   = READ << 1;              \
      flagc = (val > 0xFF);              \
@@ -383,7 +383,7 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      EF_TO_AF                \
      PUSH(regs.ps);                \
      regs.ps |= AF_INTERRUPT;            \
-     regs.pc = *(LPWORD)(mem+0xFFFE);
+     regs.pc = *(uint16_t*)(mem+0xFFFE);
 #define BVC   if (!flagv) BRANCH_TAKEN;
 #define BVS   if ( flagv) BRANCH_TAKEN;
 #define CLC   flagc = 0;
@@ -474,8 +474,8 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      PUSH(regs.pc & 0xFF)              \
      regs.pc = addr;
 #define LAS   bSlowerOnPagecross = true;                \
-     val = (BYTE)(READ & regs.sp);            \
-     regs.a = regs.x = (BYTE) val;            \
+     val = (uint8_t)(READ & regs.sp);            \
+     regs.a = regs.x = (uint8_t) val;            \
      regs.sp = val | 0x100;              \
      SETNZ(val)
 #define LAX   bSlowerOnPagecross = true;                \
@@ -552,7 +552,7 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      flagc = (val > 0xFF);              \
      SETNZ(val)                \
      WRITE(val)
-#define ROLA   val  = (((WORD)regs.a) << 1) | flagc;        \
+#define ROLA   val  = (((uint16_t)regs.a) << 1) | flagc;        \
      flagc  = (val > 0xFF);              \
      regs.a = val & 0xFF;              \
      SETNZ(regs.a);
@@ -568,7 +568,7 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      flagc = (temp & 1);              \
      SETNZ(val)                \
      WRITE(val)
-#define RORA   val  = (((WORD)regs.a) >> 1) | (flagc ? 0x80 : 0);      \
+#define RORA   val  = (((uint16_t)regs.a) >> 1) | (flagc ? 0x80 : 0);      \
      flagc  = (regs.a & 1);              \
      regs.a = val & 0xFF;              \
      SETNZ(regs.a)
@@ -605,9 +605,9 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 #define RTI   regs.ps = POP | AF_RESERVED | AF_BREAK;        \
      AF_TO_EF                \
      regs.pc = POP;                \
-     regs.pc |= (((WORD)POP) << 8);
+     regs.pc |= (((uint16_t)POP) << 8);
 #define RTS   regs.pc = POP;                \
-     regs.pc |= (((WORD)POP) << 8);            \
+     regs.pc |= (((uint16_t)POP) << 8);            \
      ++regs.pc;
 #define SAX   temp  = regs.a & regs.x;            \
      val  = READ;                \
@@ -752,25 +752,25 @@ void RequestDebugger()
 
 // Opcode Table
 
-UINT64 g_nCycleIrqStart;
-UINT64 g_nCycleIrqEnd;
-UINT16 g_nCycleIrqTime;
+uint64_t g_nCycleIrqStart;
+uint64_t g_nCycleIrqEnd;
+uint16_t g_nCycleIrqTime;
 
-UINT16 g_nIdx = 0;
-const UINT16 BUFFER_SIZE = 4096;  // 80 secs
-UINT16 g_nBuffer[BUFFER_SIZE];
-UINT32 g_nMean = 0;
-UINT32 g_nMin = 0xFFFFFFFF;
-UINT32 g_nMax = 0;
+uint16_t g_nIdx = 0;
+const uint16_t BUFFER_SIZE = 4096;  // 80 secs
+uint16_t g_nBuffer[BUFFER_SIZE];
+uint32_t g_nMean = 0;
+uint32_t g_nMin = 0xFFFFFFFF;
+uint32_t g_nMax = 0;
 
-static inline void DoIrqProfiling(DWORD uCycles)
+static inline void DoIrqProfiling(uint32_t uCycles)
 {
   #ifdef _DEBUG
   if(regs.ps & AF_INTERRUPT)
     return;    // Still in Apple's ROM
 
   g_nCycleIrqEnd = g_nCumulativeCycles + uCycles;
-  g_nCycleIrqTime = (UINT16) (g_nCycleIrqEnd - g_nCycleIrqStart);	// this *could* overflow, but it'd take a while
+  g_nCycleIrqTime = (uint16_t) (g_nCycleIrqEnd - g_nCycleIrqStart);	// this *could* overflow, but it'd take a while
 
   if(g_nCycleIrqTime > g_nMax) g_nMax = g_nCycleIrqTime;
   if(g_nCycleIrqTime < g_nMin) g_nMin = g_nCycleIrqTime;
@@ -783,8 +783,8 @@ static inline void DoIrqProfiling(DWORD uCycles)
 
   if(g_nIdx == BUFFER_SIZE)
   {
-    UINT16 nTotal = 0;
-    for(UINT16 i=0; i<BUFFER_SIZE; i++)
+    uint16_t nTotal = 0;
+    for(uint16_t i=0; i<BUFFER_SIZE; i++)
       nTotal += g_nBuffer[i];
 
     g_nMean = nTotal / BUFFER_SIZE;
@@ -794,9 +794,9 @@ static inline void DoIrqProfiling(DWORD uCycles)
 
 //===========================================================================
 
-static inline void Fetch(BYTE &iOpcode, ULONG uExecutedCycles)
+static inline void Fetch(uint8_t &iOpcode, uint32_t uExecutedCycles)
 {
-  const WORD PC = regs.pc;
+  const uint16_t PC = regs.pc;
   g_uInternalExecutedCycles = uExecutedCycles;
 
   iOpcode = ((PC & 0xF000) == 0xC000) ? IORead[(PC >> 4) & 0xFF](PC, PC, 0, 0,
@@ -807,7 +807,7 @@ static inline void Fetch(BYTE &iOpcode, ULONG uExecutedCycles)
 }
 
 //#define ENABLE_NMI_SUPPORT  // Not used - so don't enable
-static inline void NMI(ULONG &uExecutedCycles, UINT16 &uExtraCycles, BOOL &flagc, BOOL &flagn, BOOL &flagv, BOOL &flagz)
+static inline void NMI(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
 {
   #ifdef ENABLE_NMI_SUPPORT
   if(g_bNmiFlank)
@@ -820,13 +820,13 @@ static inline void NMI(ULONG &uExecutedCycles, UINT16 &uExtraCycles, BOOL &flagc
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = regs.ps | AF_INTERRUPT & ~AF_DECIMAL;
-    regs.pc = * (WORD*) (mem+0xFFFA);
+    regs.pc = * (uint16_t*) (mem+0xFFFA);
     CYC(7)
   }
   #endif
 }
 
-static inline void IRQ(ULONG &uExecutedCycles, UINT16 &uExtraCycles, BOOL &flagc, BOOL &flagn, BOOL &flagv, BOOL &flagz)
+static inline void IRQ(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
 {
   if (g_bmIRQ && !(regs.ps & AF_INTERRUPT)) {
     // IRQ signals are deasserted when a specific r/w operation is done on device
@@ -836,12 +836,12 @@ static inline void IRQ(ULONG &uExecutedCycles, UINT16 &uExtraCycles, BOOL &flagc
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = (regs.ps | AF_INTERRUPT) & (~AF_DECIMAL);
-    regs.pc = *(WORD * )(mem + 0xFFFE);
+    regs.pc = *(uint16_t * )(mem + 0xFFFE);
     CYC(7)
   }
 }
 
-static inline void CheckInterruptSources(ULONG uExecutedCycles)
+static inline void CheckInterruptSources(uint32_t uExecutedCycles)
 {
   if (g_nIrqCheckTimeout < 0) {
     #ifndef UPDATE_ALL_PER_CYCLE
@@ -852,27 +852,27 @@ static inline void CheckInterruptSources(ULONG uExecutedCycles)
   }
 }
 
-static DWORD Cpu65C02(DWORD uTotalCycles)
+static uint32_t Cpu65C02(uint32_t uTotalCycles)
 {
   // Optimisation:
   // . Copy the global /regs/ vars to stack-based local vars
   //   (Oliver Schmidt says this gives a performance gain, see email - The real deal: "1.10.5")
-  WORD addr;
-  BOOL flagc; // must always be 0 or 1, no other values allowed
-  BOOL flagn; // must always be 0 or 0x80.
-  BOOL flagv; // any value allowed
-  BOOL flagz; // any value allowed
-  WORD temp;
-  WORD temp2;
-  WORD val;
+  uint16_t addr;
+  uint8_t flagc; // must always be 0 or 1, no other values allowed
+  uint8_t flagn; // must always be 0 or 0x80.
+  uint8_t flagv; // any value allowed
+  uint8_t flagz; // any value allowed
+  uint16_t temp;
+  uint16_t temp2;
+  uint16_t val;
   AF_TO_EF
-  ULONG uExecutedCycles = 0;
+  uint32_t uExecutedCycles = 0;
   bool bSlowerOnPagecross = false;    // Set if opcode writes to memory (eg. ASL, STA)
-  WORD base;
+  uint16_t base;
 
   do {
-    UINT16 uExtraCycles = 0;
-    BYTE iOpcode;
+    uint16_t uExtraCycles = 0;
+    uint8_t iOpcode;
 
     Fetch(iOpcode, uExecutedCycles);
 
@@ -2151,24 +2151,24 @@ static DWORD Cpu65C02(DWORD uTotalCycles)
 
 //===========================================================================
 
-static DWORD Cpu6502(DWORD uTotalCycles)
+static uint32_t Cpu6502(uint32_t uTotalCycles)
 {
-  WORD addr;
-  BOOL flagc; // must always be 0 or 1, no other values allowed
-  BOOL flagn; // must always be 0 or 0x80.
-  BOOL flagv; // any value allowed
-  BOOL flagz; // any value allowed
-  WORD temp;
-  WORD temp2;
-  WORD val;
+  uint16_t addr;
+  uint8_t flagc; // must always be 0 or 1, no other values allowed
+  uint8_t flagn; // must always be 0 or 0x80.
+  uint8_t flagv; // any value allowed
+  uint8_t flagz; // any value allowed
+  uint16_t temp;
+  uint16_t temp2;
+  uint16_t val;
   AF_TO_EF
-  ULONG uExecutedCycles = 0;
+  uint32_t uExecutedCycles = 0;
   bool bSlowerOnPagecross = false;    // Set if opcode writes to memory (eg. ASL, STA)
-  WORD base;
+  uint16_t base;
 
   do {
-    UINT16 uExtraCycles = 0;
-    BYTE iOpcode;
+    uint16_t uExtraCycles = 0;
+    uint8_t iOpcode;
 
     Fetch(iOpcode, uExecutedCycles);
 
@@ -3524,7 +3524,7 @@ static DWORD Cpu6502(DWORD uTotalCycles)
   return uExecutedCycles;
 }
 
-static DWORD InternalCpuExecute(DWORD uTotalCycles)
+static uint32_t InternalCpuExecute(uint32_t uTotalCycles)
 {
   #ifdef UPDATE_ALL_PER_CYCLE
   MB_Update();
@@ -3551,12 +3551,12 @@ void CpuDestroy()
 //  g_nCyclesExecuted
 //  g_nCumulativeCycles
 //
-void CpuCalcCycles(ULONG nExecutedCycles)
+void CpuCalcCycles(uint32_t nExecutedCycles)
 {
   // Calc # of cycles executed since this func was last called
-  ULONG nCycles = nExecutedCycles - g_nCyclesExecuted;
+  uint32_t nCycles = nExecutedCycles - g_nCyclesExecuted;
   #ifdef UPDATE_ALL_PER_CYCLE
-  _ASSERT( (LONG)nCycles >= 0 );
+  assert( (int32_t)nCycles >= 0 );
   #endif
   g_nCyclesExecuted += nCycles;
   g_nCumulativeCycles += nCycles;
@@ -3570,14 +3570,14 @@ void CpuCalcCycles(ULONG nExecutedCycles)
 // -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every 128 cycles)
 
 #ifdef UPDATE_ALL_PER_CYCLE   // TODO: Measure perf increase by using this new method
-ULONG CpuGetCyclesThisFrame(ULONG)  // Old func using g_uInternalExecutedCycles
+uint32_t CpuGetCyclesThisFrame(uint32_t)  // Old func using g_uInternalExecutedCycles
 {
   CpuCalcCycles(g_uInternalExecutedCycles);
   return g_dwCyclesThisFrame + g_nCyclesExecuted;
 }
 #else
 
-ULONG CpuGetCyclesThisFrame(ULONG nExecutedCycles)
+uint32_t CpuGetCyclesThisFrame(uint32_t nExecutedCycles)
 {
   CpuCalcCycles(nExecutedCycles);
   return g_dwCyclesThisFrame + g_nCyclesExecuted;
@@ -3585,9 +3585,9 @@ ULONG CpuGetCyclesThisFrame(ULONG nExecutedCycles)
 
 #endif
 
-DWORD CpuExecute(DWORD uCycles)
+uint32_t CpuExecute(uint32_t uCycles)
 {
-  DWORD uExecutedCycles = 0;
+  uint32_t uExecutedCycles = 0;
 
   g_nCyclesSubmitted = uCycles;
   g_nCyclesExecuted = 0;
@@ -3604,7 +3604,7 @@ DWORD CpuExecute(DWORD uCycles)
   MB_UpdateCycles(uExecutedCycles);  // Update 6522s (NB. Do this before updating g_nCumulativeCycles below)
   #endif
 
-  UINT16 nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
+  uint16_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
   g_nCumulativeCycles += nRemainingCycles;
 
   return uExecutedCycles;
@@ -3632,8 +3632,8 @@ void CpuSetupBenchmark()
 
   // CREATE CODE SEGMENTS CONSISTING OF GROUPS OF COMMONLY-USED OPCODES
   {
-    UINT16 addr = 0x300;
-    BYTE opcode = 0;
+    uint16_t addr = 0x300;
+    uint8_t opcode = 0;
     do {
       *(mem + addr++) = benchopcode[opcode];
       *(mem + addr++) = benchopcode[opcode];
@@ -3656,7 +3656,7 @@ void CpuSetupBenchmark()
 
 void CpuIrqReset()
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3668,7 +3668,7 @@ void CpuIrqReset()
 
 void CpuIrqAssert(eIRQSRC Device)
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3680,7 +3680,7 @@ void CpuIrqAssert(eIRQSRC Device)
 
 void CpuIrqDeassert(eIRQSRC Device)
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3692,7 +3692,7 @@ void CpuIrqDeassert(eIRQSRC Device)
 
 void CpuNmiReset()
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3705,7 +3705,7 @@ void CpuNmiReset()
 
 void CpuNmiAssert(eIRQSRC Device)
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3720,7 +3720,7 @@ void CpuNmiAssert(eIRQSRC Device)
 
 void CpuNmiDeassert(eIRQSRC Device)
 {
-  _ASSERT(g_bCritSectionValid);
+  assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
@@ -3734,32 +3734,32 @@ void CpuReset()
 {
   // 7 cycles
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
-  regs.pc = *(WORD * )(mem + 0xFFFC);
+  regs.pc = *(uint16_t * )(mem + 0xFFFC);
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
 
   regs.bJammed = 0;
 }
 
-DWORD CpuGetSnapshot(SS_CPU6502 *pSS)
+uint32_t CpuGetSnapshot(SS_CPU6502 *pSS)
 {
   pSS->A = regs.a;
   pSS->X = regs.x;
   pSS->Y = regs.y;
   pSS->P = regs.ps | AF_RESERVED | AF_BREAK;
-  pSS->S = (BYTE)(regs.sp & 0xff);
+  pSS->S = (uint8_t)(regs.sp & 0xff);
   pSS->PC = regs.pc;
   pSS->g_nCumulativeCycles = g_nCumulativeCycles;
 
   return 0;
 }
 
-DWORD CpuSetSnapshot(SS_CPU6502 *pSS)
+uint32_t CpuSetSnapshot(SS_CPU6502 *pSS)
 {
   regs.a = pSS->A;
   regs.x = pSS->X;
   regs.y = pSS->Y;
   regs.ps = pSS->P | AF_RESERVED | AF_BREAK;
-  regs.sp = (USHORT) pSS->S | 0x100;
+  regs.sp = (uint16_t) pSS->S | 0x100;
   regs.pc = pSS->PC;
   CpuIrqReset();
   CpuNmiReset();

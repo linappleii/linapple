@@ -138,10 +138,10 @@ static void LogAY8910(int n, int r, unsigned int uFreq)
 
     unsigned int i=n;
     {
-      UCHAR* pAYRegs = &AYPSG[i].Regs[0];
-      fprintf(g_fh, "%04X ", *(USHORT*)&pAYRegs[AY_AFINE]);
-      fprintf(g_fh, "%04X ", *(USHORT*)&pAYRegs[AY_BFINE]);
-      fprintf(g_fh, "%04X ", *(USHORT*)&pAYRegs[AY_CFINE]);
+      uint8_t* pAYRegs = &AYPSG[i].Regs[0];
+      fprintf(g_fh, "%04X ", *(uint16_t*)&pAYRegs[AY_AFINE]);
+      fprintf(g_fh, "%04X ", *(uint16_t*)&pAYRegs[AY_BFINE]);
+      fprintf(g_fh, "%04X ", *(uint16_t*)&pAYRegs[AY_CFINE]);
       fprintf(g_fh, "%02X ", pAYRegs[AY_NOISEPER]);
       fprintf(g_fh, "%02X ", pAYRegs[AY_ENABLE]);
       fprintf(g_fh, "%02X ", pAYRegs[AY_AVOL]);
@@ -255,7 +255,7 @@ void _AYWriteReg(int n, int r, int v)
       break;
     case AY_EFINE:
     case AY_ECOARSE:
-      //    _ASSERT((PSG->Regs[AY_EFINE] == 0) && (PSG->Regs[AY_ECOARSE] == 0));
+      //    assert((PSG->Regs[AY_EFINE] == 0) && (PSG->Regs[AY_ECOARSE] == 0));
       old = PSG->PeriodE;
       PSG->PeriodE = ((PSG->Regs[AY_EFINE] + 256 * PSG->Regs[AY_ECOARSE])) * PSG->UpdateStep;
       if (PSG->PeriodE == 0)

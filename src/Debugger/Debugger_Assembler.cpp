@@ -1,3 +1,4 @@
+#include <cassert>
 /*
 AppleWin : An Apple //e emulator for Windows
 
@@ -48,23 +49,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	AddressingMode_t g_aOpmodes[ NUM_ADDRESSING_MODES ] =
 	{ // Output, but eventually used for Input when Assembler is working.
-		{TEXT("")        , 1 , "(implied)"              }, // (implied)
-        {TEXT("")        , 1 , "n/a 1"         }, // INVALID1
-        {TEXT("")        , 2 , "n/a 2"         }, // INVALID2
-        {TEXT("")        , 3 , "n/a 3"         }, // INVALID3
-		{TEXT("%02X")    , 2 , "Immediate"     }, // AM_M // #$%02X -> %02X
-        {TEXT("%04X")    , 3 , "Absolute"      }, // AM_A
-        {TEXT("%02X")    , 2 , "Zero Page"     }, // AM_Z
-        {TEXT("%04X,X")  , 3 , "Absolute,X"    }, // AM_AX     // %s,X
-        {TEXT("%04X,Y")  , 3 , "Absolute,Y"    }, // AM_AY     // %s,Y
-        {TEXT("%02X,X")  , 2 , "Zero Page,X"   }, // AM_ZX     // %s,X
-        {TEXT("%02X,Y")  , 2 , "Zero Page,Y"   }, // AM_ZY     // %s,Y
-        {TEXT("%s")      , 2 , "Relative"      }, // AM_R
-        {TEXT("(%02X,X)"), 2 , "(Zero Page),X" }, // AM_IZX // ($%02X,X) -> %s,X
-        {TEXT("(%04X,X)"), 3 , "(Absolute),X"  }, // AM_IAX // ($%04X,X) -> %s,X
-        {TEXT("(%02X),Y"), 2 , "(Zero Page),Y" }, // AM_NZY // ($%02X),Y
-        {TEXT("(%02X)")  , 2 , "(Zero Page)"   }, // AM_NZ  // ($%02X) -> $%02X
-        {TEXT("(%04X)")  , 3 , "(Absolute)"    }  // AM_NA  // (%04X) -> %s
+		{""        , 1 , "(implied)"              }, // (implied)
+        {""        , 1 , "n/a 1"         }, // INVALID1
+        {""        , 2 , "n/a 2"         }, // INVALID2
+        {""        , 3 , "n/a 3"         }, // INVALID3
+		{"%02X"    , 2 , "Immediate"     }, // AM_M // #$%02X -> %02X
+        {"%04X"    , 3 , "Absolute"      }, // AM_A
+        {"%02X"    , 2 , "Zero Page"     }, // AM_Z
+        {"%04X,X"  , 3 , "Absolute,X"    }, // AM_AX     // %s,X
+        {"%04X,Y"  , 3 , "Absolute,Y"    }, // AM_AY     // %s,Y
+        {"%02X,X"  , 2 , "Zero Page,X"   }, // AM_ZX     // %s,X
+        {"%02X,Y"  , 2 , "Zero Page,Y"   }, // AM_ZY     // %s,Y
+        {"%s"      , 2 , "Relative"      }, // AM_R
+        {"(%02X,X" , 2 , "(Zero Page),X" }, // AM_IZX // ($%02X,X) -> %s,X
+        {"(%04X,X" , 3 , "(Absolute),X"  }, // AM_IAX // ($%04X,X) -> %s,X
+        {"(%02X,Y" , 2 , "(Zero Page),Y" }, // AM_NZY // ($%02X),Y
+        {"(%02X"   , 2 , "(Zero Page)"   }, // AM_NZ  // ($%02X) -> $%02X
+        {"(%04X"   , 3 , "(Absolute)"    }  // AM_NA  // (%04X) -> %s
 	};
 
 
@@ -476,7 +477,7 @@ int  _6502_GetOpmodeOpbyte ( const int nBaseAddress, int & iOpmode_, int & nOpby
 #if _DEBUG
 	if (! g_aOpcodes)
 	{
-		MessageBox( g_hFrameWindow, "Debugger not properly initialized", "ERROR", MB_OK );
+		fprintf(stderr, "%s: %s\n", "ERROR", "Debugger not properly initialized");
 
 		g_aOpcodes = & g_aOpcodes65C02[ 0 ];	// Enhanced Apple //e
 		g_aOpmodes[ AM_2 ].m_nBytes = 2;
@@ -518,7 +519,7 @@ int  _6502_GetOpmodeOpbyte ( const int nBaseAddress, int & iOpmode_, int & nOpby
 			case NOP_WORD_2: nOpbyte_ = 4; iOpmode_ = AM_M; break;
 			case NOP_WORD_4: nOpbyte_ = 8; iOpmode_ = AM_M; break;
 			case NOP_ADDRESS:nOpbyte_ = 2; iOpmode_ = AM_A; // BUGFIX: 2.6.2.33 Define Address should be shown as Absolute mode, not Indirect Absolute mode. DA BASIC.FPTR D000:D080 // was showing as "da (END-1)" now shows as "da END-1"
-				pData->nTargetAddress = *(LPWORD)(mem+nBaseAddress);
+				pData->nTargetAddress = *(uint16_t*)(mem+nBaseAddress);
 				break;
 			case NOP_STRING_APPLE:
 				iOpmode_ = AM_DATA;
@@ -576,10 +577,10 @@ bool _6502_GetStackReturnAddress ( unsigned short & nAddress_ )
 
 	if (nStack <= (_6502_STACK_END - 1))
 	{
-		nAddress_ = (unsigned)*(LPBYTE)(mem + nStack);
+		nAddress_ = (unsigned)*(uint8_t*)(mem + nStack);
 		nStack++;
 
-		nAddress_ += ((unsigned)*(LPBYTE)(mem + nStack)) << 8;
+		nAddress_ += ((unsigned)*(uint8_t*)(mem + nStack)) << 8;
 		nAddress_++;
 		return true;
 	}
@@ -648,7 +649,7 @@ bool _6502_GetTargets ( unsigned short nAddress, int *pTargetPartial_, int *pTar
 					//*pTargetPartial3_ = _6502_STACK_BEGIN + ((regs.sp-2) & 0xFF);	// TODO: PHP
 					//*pTargetPartial4_ = _6502_BRK_VECTOR + 0;	// TODO
 					//*pTargetPartial5_ = _6502_BRK_VECTOR + 1;	// TODO
-					nTarget16 = *(LPWORD)(mem + _6502_BRK_VECTOR);
+					nTarget16 = *(uint16_t*)(mem + _6502_BRK_VECTOR);
 				}
 				else	// PHn/PLn
 				{
@@ -681,12 +682,12 @@ bool _6502_GetTargets ( unsigned short nAddress, int *pTargetPartial_, int *pTar
 			break;
 
 		case AM_IAX: // Indexed (Absolute) Indirect - ie. JMP (abs,x)
-			_ASSERT(nOpcode == OPCODE_JMP_IAX);
+			assert(nOpcode == OPCODE_JMP_IAX);
 			nTarget16 += regs.x;
 			*pTargetPartial_    = nTarget16;
 			*pTargetPartial2_   = nTarget16+1;
 			if (bIncludeNextOpcodeAddress)
-				*pTargetPointer_ = *(LPWORD)(mem + nTarget16);
+				*pTargetPointer_ = *(uint16_t*)(mem + nTarget16);
 			if (pTargetBytes_)
 				*pTargetBytes_ = 2;
 			break;
@@ -706,11 +707,11 @@ bool _6502_GetTargets ( unsigned short nAddress, int *pTargetPartial_, int *pTar
 			break;
 
 		case AM_NA: // Indirect (Absolute) - ie. JMP (abs)
-			_ASSERT(nOpcode == OPCODE_JMP_NA);
+			assert(nOpcode == OPCODE_JMP_NA);
 			*pTargetPartial_    = nTarget16;
 			*pTargetPartial2_   = nTarget16+1;
 			if (bIncludeNextOpcodeAddress)
-				*pTargetPointer_ = *(LPWORD)(mem + nTarget16);
+				*pTargetPointer_ = *(uint16_t*)(mem + nTarget16);
 			if (pTargetBytes_)
 				*pTargetBytes_ = 2;
 			break;
@@ -718,21 +719,21 @@ bool _6502_GetTargets ( unsigned short nAddress, int *pTargetPartial_, int *pTar
 		case AM_IZX: // Indexed (Zeropage Indirect, X)
 			nTarget8  += regs.x;
 			*pTargetPartial_    = nTarget8;
-			*pTargetPointer_    = *(LPWORD)(mem + nTarget8);
+			*pTargetPointer_    = *(uint16_t*)(mem + nTarget8);
 			if (pTargetBytes_)
 				*pTargetBytes_ = 2;
 			break;
 
 		case AM_NZY: // Indirect (Zeropage) Indexed, Y
 			*pTargetPartial_    = nTarget8;
-			*pTargetPointer_    = ((*(LPWORD)(mem + nTarget8)) + regs.y) & _6502_MEM_END; // Bugfix:
+			*pTargetPointer_    = ((*(uint16_t*)(mem + nTarget8)) + regs.y) & _6502_MEM_END; // Bugfix:
 			if (pTargetBytes_)
 				*pTargetBytes_ = 1;
 			break;
 
 		case AM_NZ: // Indirect (Zeropage)
 			*pTargetPartial_    = nTarget8;
-			*pTargetPointer_    = *(LPWORD)(mem + nTarget8);
+			*pTargetPointer_    = *(uint16_t*)(mem + nTarget8);
 			if (pTargetBytes_)
 				*pTargetBytes_ = 2;
 			break;
@@ -1002,7 +1003,7 @@ int AssemblerPokeAddress( const int Opcode, const int nOpmode, const unsigned sh
 	int nOpbytes = g_aOpmodes[ nOpmode ].m_nBytes;
 
 	// if (nOpbytes != nBytes)
-	//	ConsoleDisplayError( TEXT(" ERROR: Input Opcode bytes differs from actual!" ) );
+	//	ConsoleDisplayError( " ERROR: Input Opcode bytes differs from actual!"  );
 
 	*(memdirty + (nBaseAddress >> 8)) |= 1;
 //	*(mem + nBaseAddress) = (unsigned char) nOpcode;
@@ -1104,12 +1105,12 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 		{
 			if (eNextState != AS_GET_MNEMONIC_PARM)
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: '#'" ) );
+				ConsoleBufferPush(  " Syntax Error: '#'"  );
 				return false;
 			}
 			if (TestFlag( AF_HaveHash ))
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: Extra '#'" ) ); // No thanks, we already have one
+				ConsoleBufferPush(  " Syntax Error: Extra '#'"  ); // No thanks, we already have one
 				return false;
 			}
 			SetFlag( AF_HaveHash );
@@ -1123,7 +1124,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 		{
 			if (TestFlag( AF_HaveDollar ))
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: Extra '$'" ) ); // No thanks, we already have one
+				ConsoleBufferPush(  " Syntax Error: Extra '$'"  ); // No thanks, we already have one
 				return false;
 			}
 
@@ -1142,7 +1143,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 		{
 			if (TestFlag( AF_HaveLeftParen ))
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: Extra '('" ) ); // No thanks, we already have one
+				ConsoleBufferPush(  " Syntax Error: Extra '('"  ); // No thanks, we already have one
 				return false;
 			}
 			SetFlag( AF_HaveLeftParen );
@@ -1155,7 +1156,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 		{
 			if (TestFlag( AF_HaveRightParen ))
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: Extra ')'" ) ); // No thanks, we already have one
+				ConsoleBufferPush(  " Syntax Error: Extra ''" ); // No thanks, we already have one
 				return false;
 			}
 			SetFlag( AF_HaveRightParen );
@@ -1168,7 +1169,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 		{
 			if (TestFlag( AF_HaveComma ))
 			{
-				ConsoleBufferPush( TEXT( " Syntax Error: Extra ','" ) ); // No thanks, we already have one
+				ConsoleBufferPush(  " Syntax Error: Extra ','"  ); // No thanks, we already have one
 				return false;
 			}
 			SetFlag( AF_HaveComma );
@@ -1222,7 +1223,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 					// if valid hex address, don't have delayed target
 					char sAddress[ 32 ];
 					snprintf( sAddress, sizeof(sAddress), "%X", m_nAsmTargetAddress);
-					if (_tcscmp( sAddress, pArg->sArg))
+					if (strcmp( sAddress, pArg->sArg))
 					{
 						DelayedTarget_t tDelayedTarget;
 
@@ -1261,7 +1262,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 					{
 						if (! TestFlag( AF_HaveComma ))
 						{
-							ConsoleBufferPush( TEXT( " Syntax Error: Missing ','" ) );
+							ConsoleBufferPush(  " Syntax Error: Missing ','"  );
 							return false;
 						}
 						SetFlag( AF_HaveRegisterX );
@@ -1270,7 +1271,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 					{
 						if (! (TestFlag( AF_HaveComma )))
 						{
-							ConsoleBufferPush( TEXT( " Syntax Error: Missing ','" ) );
+							ConsoleBufferPush(  " Syntax Error: Missing ','"  );
 							return false;
 						}
 						SetFlag( AF_HaveRegisterY );
@@ -1295,13 +1296,13 @@ bool AssemblerUpdateAddressingMode()
 
 	if ((TestFlag( AF_HaveLeftParen )) && (! TestFlag( AF_HaveRightParen )))
 	{
-		ConsoleBufferPush( TEXT( " Syntax Error: Missing ')'" ) );
+		ConsoleBufferPush(  " Syntax Error: Missing ''" );
 		return false;
 	}
 
 	if ((! TestFlag( AF_HaveLeftParen )) && (  TestFlag( AF_HaveRightParen )))
 	{
-		ConsoleBufferPush( TEXT( " Syntax Error: Missing '('" ) );
+		ConsoleBufferPush(  " Syntax Error: Missing '('"  );
 		return false;
 	}
 
@@ -1309,7 +1310,7 @@ bool AssemblerUpdateAddressingMode()
 	{
 		if ((! TestFlag( AF_HaveRegisterX )) && (! TestFlag( AF_HaveRegisterY )))
 		{
-			ConsoleBufferPush( TEXT( " Syntax Error: Index 'X' or 'Y'" ) );
+			ConsoleBufferPush(  " Syntax Error: Index 'X' or 'Y'"  );
 			return false;
 		}
 	}
@@ -1504,7 +1505,7 @@ bool Assemble( int iArg, int nArgs, unsigned short nAddress )
 	{
 		// Check for assembler directive
 
-		ConsoleBufferPush( TEXT(" Syntax Error: Invalid mnemonic") );
+		ConsoleBufferPush( " Syntax Error: Invalid mnemonic" );
 		return false;
 	}
 	else
