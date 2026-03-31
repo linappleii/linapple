@@ -101,26 +101,25 @@ bool TryStringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 //===========================================================================
 int StringCat ( char * pDst, LPCSTR pSrc, const int nDstSize )
 {
-	int nLenDst = _tcslen( pDst );
-	int nLenSrc = _tcslen( pSrc );
-	int nSpcDst = nDstSize - nLenDst;
-	int nChars  = MIN( nLenSrc, nSpcDst );
+        int nLenDst = _tcslen( pDst );
+        int nLenSrc = _tcslen( pSrc );
+        int nSpcDst = nDstSize - nLenDst;
+        int nChars  = MIN( nLenSrc, nSpcDst );
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
     // secure the character \0
     // fix warning: specified bound 2 equals source length.
-	_tcsncat( pDst, pSrc, nChars - 1);
+        _tcsncat( pDst, pSrc, nChars - 1);
     pDst[nChars - 1] = '\0';
 #pragma GCC diagnostic pop
 
-	bool bOverflow = (nSpcDst < nLenSrc);
-	if (bOverflow)
-		return 0;
+        bool bOverflow = (nSpcDst < nLenSrc);
+        if (bOverflow)
+                return 0;
 
-	return nChars;
+        return nChars;
 }
-
 
 
 // Help ___________________________________________________________________________________________
