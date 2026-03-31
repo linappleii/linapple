@@ -82,7 +82,15 @@ private:
 const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 {
   char ftpdirpath[MAX_PATH];
-  snprintf(ftpdirpath, MAX_PATH, "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+  int l;
+  l = snprintf(ftpdirpath, MAX_PATH,
+                "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+
+  if (!(l>=0 && l<MAX_PATH)) {      // check returned value
+    failure_message = "Failed get path for FTP dir listing";
+    return {};
+  }
+
 
   bool OKI;
   #ifndef _WIN32

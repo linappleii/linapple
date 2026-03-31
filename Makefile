@@ -171,7 +171,7 @@ $(TARGETDIR)/$(TARGET): $(OBJECTS)
 	$(CC) $(LFLAGS) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
 
 #Compile
-$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
+$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT) images
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
