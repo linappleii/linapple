@@ -1,9 +1,11 @@
 #include "stdafx.h"
 #include "Registry.h"
+#include "Util_Path.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <sys/stat.h>
 
 // Helper to trim strings
 static std::string trim(const std::string& s) {
@@ -59,7 +61,9 @@ bool Configuration::Load(const std::string& path) {
 }
 
 bool Configuration::Save() {
-    if (m_path.empty()) return false;
+    if (m_path.empty()) {
+        m_path = Path::GetUserConfigDir() + "linapple.conf";
+    }
 
 #ifdef REGISTRY_WRITEABLE
     std::ofstream file(m_path);
@@ -84,7 +88,7 @@ std::string Configuration::GetString(const std::string& section, const std::stri
     if (m_data.count(section) && m_data[section].count(key)) {
         return m_data[section][key];
     }
-    // Fallback to searching all sections if not found in specific section (mirroring old behavior)
+    
     for (auto const& s : m_data) {
         if (s.second.count(key)) return s.second.at(key);
     }
@@ -123,6 +127,7 @@ void Configuration::SetBool(const std::string& section, const std::string& key, 
     m_data[section][key] = value ? "1" : "0";
 }
 
+// C-style wrapper for legacy LOAD macro
 bool Config_Load(const char* section, const char* key, uint32_t* value) {
     if (Configuration::Instance().GetString(section, key).empty()) return false;
     *value = Configuration::Instance().GetInt(section, key, *value);
