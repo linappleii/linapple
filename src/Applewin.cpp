@@ -819,14 +819,31 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
       if (Configuration::Instance().Load(configPath)) {
           lastSuccessfulConfig = configPath;
           LoadConfiguration();
+          break; // Stop at first successful load
       }
   }
 
   if (!lastSuccessfulConfig.empty()) {
       Configuration::Instance().SetPath(lastSuccessfulConfig);
   } else {
-      // Default to preferred user location if none found
-      Configuration::Instance().SetPath(Path::GetUserConfigDir() + "linapple.conf");
+      // Seed the user config from a template or internal defaults if none found
+      std::string userPath = Path::GetUserConfigDir() + "linapple.conf";
+      std::string templatePath = Path::FindDataFile("linapple.conf");
+      
+      if (!templatePath.empty()) {
+          if (Path::CopyFile(templatePath, userPath)) {
+              Configuration::Instance().Load(userPath);
+          } else {
+              Configuration::Instance().Load(templatePath);
+          }
+      } else {
+          Configuration::Instance().LoadDefaults();
+          Configuration::Instance().SetPath(userPath);
+#ifdef REGISTRY_WRITEABLE
+          Configuration::Instance().Save();
+#endif
+      }
+      LoadConfiguration();
   }
 }
 
@@ -1032,7 +1049,7 @@ int main(int argc, char *argv[])
     FrameCreateWindow();
 
     if (!DSInit()) {
-      soundtype = SOUND_NONE;    // Direct Sound and Stuff
+      soundtype = SOUND_NONE;
     }
 
     MB_Initialize();
@@ -1045,15 +1062,13 @@ int main(int argc, char *argv[])
     }
     VideoInitialize();
     DebugInitialize();
-    Snapshot_Startup();    // Do this after everything has been init'ed
+    Snapshot_Startup();
 
     if (szSnapshotFile) {
       Snapshot_SetFilename(szSnapshotFile);
-      LOG("[main ] using state file '%s'\n", Snapshot_GetFilename());
       Snapshot_LoadState();
     }
 
-    //Automatically boot from disk if specified on the command line
     if (bBoot) {
       setAutoBoot();
     }

@@ -60,6 +60,36 @@ bool Configuration::Load(const std::string& path) {
     return true;
 }
 
+void Configuration::LoadDefaults() {
+    m_data.clear();
+    SetInt("Configuration", "Computer Emulation", 3); // Enhanced //e
+    SetInt("Configuration", "Keyboard Type", 0);
+    SetInt("Configuration", "Keyboard Rocker Switch", 0);
+    SetInt("Configuration", "Sound Emulation", 1);
+    SetInt("Configuration", "Soundcard Type", 2); // Mockingboard
+    SetInt("Configuration", "Joystick 0", 2); // Keyboard
+    SetInt("Configuration", "Joystick 1", 0);
+    SetInt("Configuration", "Emulation Speed", 10);
+    SetInt("Configuration", "Enhance Disk Speed", 1);
+    SetInt("Configuration", "Video Emulation", 1);
+    SetString("Configuration", "Monochrome Color", "#C0C0C0");
+    SetInt("Configuration", "Mouse in slot 4", 0);
+    SetInt("Configuration", "Printer idle limit", 10);
+    SetInt("Configuration", "Append to printer file", 1);
+    SetInt("Configuration", "Harddisk Enable", 0);
+    SetInt("Configuration", "Clock Enable", 4);
+    SetInt("Configuration", "Slot 6 Autoload", 0);
+    SetInt("Configuration", "Save State On Exit", 0);
+    SetInt("Configuration", "Fullscreen", 0);
+    SetInt("Configuration", "Boot at Startup", 0);
+    SetInt("Configuration", "Show Leds", 1);
+    SetString("Configuration", "Screen factor", "1.0");
+    
+    SetString("Preferences", "FTP Server", "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
+    SetString("Preferences", "FTP ServerHDD", "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
+    SetString("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
+}
+
 bool Configuration::Save() {
     if (m_path.empty()) {
         m_path = Path::GetUserConfigDir() + "linapple.conf";
