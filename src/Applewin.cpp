@@ -875,13 +875,14 @@ int main(int argc, char *argv[])
   int opt;
   int optind = 0;
   const char *optname;
-  static struct option longopts[] = {{"autoboot", 0,                 0, 0},
-                                     {"conf",     required_argument, 0, 0},
-                                     {"d1",       required_argument, 0, 0},
-                                     {"d2",       required_argument, 0, 0},
-                                     {"help",     0,                 0, 0},
-                                     {"state",    required_argument, 0, 0},
-                                     {0,          0,                 0, 0}};
+  static struct option longopts[] = {{"autoboot",  no_argument,       0, 0},
+                                     {"benchmark", no_argument,       0, 0},
+                                     {"conf",      required_argument, 0, 0},
+                                     {"d1",        required_argument, 0, 0},
+                                     {"d2",        required_argument, 0, 0},
+                                     {"help",      no_argument,       0, 0},
+                                     {"state",     required_argument, 0, 0},
+                                     {0,           0,                 0, 0}};
 
   XInitThreads();
 
