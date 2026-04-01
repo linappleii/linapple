@@ -52,14 +52,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "Util_Path.h"
 
-#ifdef __APPLE__
-#include "AlertHooks.h"
-#endif
-
-#ifdef __APPLE__
-#include "AlertHooks.h"
-#endif
-
 // Satisfy modern compiler standards
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
 static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
