@@ -182,7 +182,7 @@ $(BINDIR)/$(TARGET): $(OBJECTS)
 	$(Q)$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # Pattern rule for objects with dependency generation
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | directories
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | directories resources
 	@mkdir -p $(dir $@)
 	@echo "  CXX     $<"
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<

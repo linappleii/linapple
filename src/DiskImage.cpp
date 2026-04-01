@@ -116,22 +116,22 @@ typedef struct _imagetyperec {
   writetype write;
 } imagetyperec, *imagetypeptr;
 
-static imagetyperec imagetype[IMAGETYPES] = {{".prg",     TEXT(
-  ".do;.dsk;.iie;.nib;.po"),                                                                      PrgDetect,  PrgBoot, NULL,     NULL},
-                                             {".do;.dsk", TEXT(
-                                               ".nib;.iie;.po;.prg"),                           DoDetect,   NULL,    DoRead,   DoWrite},
-                                             {".po",      TEXT(
-                                               ".do;.iie;.nib;.prg"),                           PoDetect,   NULL,    PoRead,   PoWrite},
-                                             {".apl",     TEXT(
-                                               ".do;.dsk;.iie;.nib;.po"),                       AplDetect,  AplBoot, NULL,     NULL},
-                                             {".nib",     TEXT(
-                                               ".do;.iie;.po;.prg"),                            Nib1Detect, NULL,    Nib1Read, Nib1Write},
-                                             {".nb2",     TEXT(
-                                               ".do;.iie;.po;.prg"),                            Nib2Detect, NULL,    Nib2Read, Nib2Write},
-                                             {".iie",     TEXT(
-                                               ".do.;.nib;.po;.prg"),                           IieDetect,  NULL,    IieRead,  IieWrite},
-                                             {".woz",     TEXT(
-                                     ".do;.dsk;.iie;.nib;.po;.prg"),                            Woz2Detect, NULL,    Woz2Read, NULL}};
+static imagetyperec imagetype[IMAGETYPES] = {{".prg",
+  ".do;.dsk;.iie;.nib;.po",                                                                      PrgDetect,  PrgBoot, NULL,     NULL},
+                                             {".do;.dsk",
+                                               ".nib;.iie;.po;.prg",                           DoDetect,   NULL,    DoRead,   DoWrite},
+                                             {".po",
+                                               ".do;.iie;.nib;.prg",                           PoDetect,   NULL,    PoRead,   PoWrite},
+                                             {".apl",
+                                               ".do;.dsk;.iie;.nib;.po",                       AplDetect,  AplBoot, NULL,     NULL},
+                                             {".nib",
+                                               ".do;.iie;.po;.prg",                            Nib1Detect, NULL,    Nib1Read, Nib1Write},
+                                             {".nb2",
+                                               ".do;.iie;.po;.prg",                            Nib2Detect, NULL,    Nib2Read, Nib2Write},
+                                             {".iie",
+                                               ".do.;.nib;.po;.prg",                           IieDetect,  NULL,    IieRead,  IieWrite},
+                                             {".woz",
+                                     ".do;.dsk;.iie;.nib;.po;.prg",                            Woz2Detect, NULL,    Woz2Read, NULL}};
 
 static unsigned char diskbyte[0x40] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
                               0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE,
