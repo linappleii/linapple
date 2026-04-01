@@ -34,11 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "ftpparse.h"
 #include "DiskFTP.h"
 
-#ifndef _WIN32
-
 #include <sys/stat.h>
-
-#endif
 
 // for DiskUnGzip
 #include <zlib.h>
@@ -690,9 +686,7 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   std::string fullPath;  // full path for it
   bool isdir;      // if given filename is a directory?
 
-  #ifndef _WIN32
   struct stat info;
-  #endif
 
   fileIndex = backdx;
   isdir = true;
@@ -742,20 +736,11 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 
   // One moment - if we have some file with the same name
   // we do not want to download it again
-  #ifndef _WIN32
   if (stat(localPath.c_str(), &info) == 0) {
     error = 0; // use this file
   } else {
     error = ftp_get(fullPath.c_str(), localPath.c_str()); // 0 on success
   }
-  #else
-  // using WIN32 method
-    if(GetFileAttributes(localPath) != unsigned int(-1)) {
-      error = 0;
-    } else {
-      error = ftp_get(fullPath, localPath.c_str()); // 0 on success
-    }
-  #endif
 
   if (!error) {
     error = DiskInsert(drive, localPath.c_str(), 0, 1);// try to insert downloaded file as a disk image

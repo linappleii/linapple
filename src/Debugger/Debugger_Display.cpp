@@ -295,27 +295,12 @@ void StretchBltMemToFrameDC(void)
 // Font: Apple Text
 void DebuggerSetColorFG( unsigned int nRGB )
 {
-#ifndef _WIN32
 	g_hConsoleBrushFG = nRGB;
-#elif USE_APPLE_FONT
-	g_hConsoleBrushFG = CreateSolidBrush( nRGB );
-#else
-	SetTextColor( GetDebuggerMemDC(), nRGB );
-#endif
 }
 
 void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent )
 {
-#ifndef _WIN32
 	g_hConsoleBrushBG = nRGB;
-#elif USE_APPLE_FONT
-	if (! bTransparent)
-	{
-		g_hConsoleBrushBG = CreateSolidBrush( nRGB );
-	}
-#else
-	SetBkColor( GetDebuggerMemDC(), nRGB );
-#endif
 }
 
 #define CONSOLE_FONT_GRID_X  8
@@ -469,11 +454,6 @@ void DebuggerPrintColor( int x, int y, const conchar_t * pText )
 //===========================================================================
 bool CanDrawDebugger()
 {
-#ifdef _WIN32
-	if (DebugGetVideoMode(NULL))
-		return false;
-#endif
-
 	if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING))
 		return true;
 
@@ -902,12 +882,10 @@ void DrawBreakpoints ( int line )
 					PrintTextCursorX("W", rect2);
 			}
 
-#if !USE_APPLE_FONT
 			// Windows HACK: Bugfix: Rest of line is still breakpoint background color
 			DebuggerSetColorBG( DebuggerGetColor( BG_INFO )); // COLOR_BG_DATA
 			DebuggerSetColorFG( DebuggerGetColor( FG_INFO_TITLE )); //COLOR_STATIC
 			PrintTextCursorX( " ", rect2 );
-#endif
 			rect.top    += g_nFontHeight;
 			rect.bottom += g_nFontHeight;
 		}
@@ -1996,7 +1974,6 @@ unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddres
 
 	return nOpbyte;
 }
-
 
 // Optionally copy the flags to pText_
 //===========================================================================
@@ -3636,7 +3613,7 @@ void DrawWindow_Symbols( Update_t bUpdate )
 
 void DrawWindow_ZeroPage( Update_t bUpdate )
 {
-	DrawSubWindow_ZeroPage( g_iWindowThis );
+	DrawSubWindow_ZeroPage( bUpdate );
 	DrawSubWindow_Info( bUpdate, g_iWindowThis );
 }
 
@@ -3692,19 +3669,8 @@ void UpdateDisplay (Update_t bUpdate)
 
 	if (bUpdate & UPDATE_BACKGROUND)
 	{
-#ifndef _WIN32
 	  // linux
-#elif USE_APPLE_FONT
-		SetBkMode( GetDebuggerMemDC(), OPAQUE);
-		SetBkColor(GetDebuggerMemDC(), RGB(0,0,0));
-#else
-		SelectObject( GetDebuggerMemDC(), g_aFontConfig[ FONT_INFO ]._hFont ); // g_hFontDebugger
-#endif
 	}
-
-#ifdef _WIN32
-	SetTextAlign( GetDebuggerMemDC(), TA_TOP | TA_LEFT);
-#endif
 
 	if ((bUpdate & UPDATE_BREAKPOINTS)
 //		|| (bUpdate & UPDATE_DISASM)
