@@ -1,12 +1,9 @@
+#include <cstdint>
 #pragma once
 
-#ifdef _WIN32
-#define FILE_SEPARATOR  TEXT('\\')
-#else
-#define FILE_SEPARATOR  TEXT('/')
-#endif
+#define FILE_SEPARATOR  '/'
 
-#define FTP_SEPARATOR  TEXT('/')
+#define FTP_SEPARATOR  '/'
 
 // let it be our second version!
 #define LINAPPLE_VERSION  2
@@ -52,7 +49,7 @@ extern int g_nCpuCyclesFeedback;
 extern unsigned int g_dwCyclesThisFrame;
 
 extern FILE *g_fh;        // Filehandle for log file
-extern bool g_bDisableDirectSound;  // Cmd line switch: don't init DS (so no MB support)
+extern bool g_bDisableDirectSound;  // Cmd line switch: disable sound (so no MB support)
 
 extern unsigned int g_Slot4;  // Mockingboard or Mouse in slot4
 

@@ -1,25 +1,27 @@
 #pragma once
 
+#include <cstdint>
+
 typedef struct _regsrec {
-  UINT8 a;   // accumulator
-  UINT8 x;   // index X
-  UINT8 y;   // index Y
-  UINT8 ps;  // processor status
-  UINT16 pc;  // program counter
-  UINT16 sp;  // stack pointer
-  UINT8 bJammed; // CPU has crashed (NMOS 6502 only)
+  uint8_t a;   // accumulator
+  uint8_t x;   // index X
+  uint8_t y;   // index Y
+  uint8_t ps;  // processor status
+  uint16_t pc;  // program counter
+  uint16_t sp;  // stack pointer
+  uint8_t bJammed; // CPU has crashed (NMOS 6502 only)
 } regsrec, *regsptr;
 
 extern regsrec regs;
-extern UINT64 g_nCumulativeCycles;
+extern uint64_t g_nCumulativeCycles;
 
 void CpuDestroy();
 
-void CpuCalcCycles(ULONG nExecutedCycles);
+void CpuCalcCycles(uint32_t nExecutedCycles);
 
-DWORD CpuExecute(DWORD);
+uint32_t CpuExecute(uint32_t);
 
-ULONG CpuGetCyclesThisFrame(ULONG nExecutedCycles);
+uint32_t CpuGetCyclesThisFrame(uint32_t nExecutedCycles);
 
 void CpuInitialize();
 
@@ -39,5 +41,5 @@ void CpuNmiDeassert(eIRQSRC Device);
 
 void CpuReset();
 
-DWORD CpuGetSnapshot(SS_CPU6502 *pSS);
-DWORD CpuSetSnapshot(SS_CPU6502 *pSS);
+uint32_t CpuGetSnapshot(SS_CPU6502 *pSS);
+uint32_t CpuSetSnapshot(SS_CPU6502 *pSS);

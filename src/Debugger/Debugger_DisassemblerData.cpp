@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 2006-2014, Tom Charlesworth, Michael Pohoreski
 

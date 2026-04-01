@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #define CHAR_LF           '\x0D'
@@ -141,7 +142,7 @@ inline	bool TextIsHexByte( char *pText )
 		}
 
 //===========================================================================
-inline	bool TextIsHexString ( LPCSTR pText )
+inline	bool TextIsHexString ( const char* pText )
 	{
 		while (*pText)
 		{

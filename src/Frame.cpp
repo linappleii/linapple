@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -541,14 +541,16 @@ bool PSP_SaveStateSelectImage(bool saveit)
     }
   }
   strcpy(g_sSaveStateDir, fullPath.c_str());
-  RegSaveString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, g_sSaveStateDir); // Save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR, g_sSaveStateDir);
+  Configuration::Instance().Save();
 
   backdx = fileIndex; // Store cursor position
 
   fullPath += "/" + filename;
 
   Snapshot_SetFilename(fullPath.c_str()); // Set name for snapshot
-  RegSaveString(TEXT("Preferences"), REGVALUE_SAVESTATE_FILENAME, 1, fullPath.c_str()); // Save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_SAVESTATE_FILENAME, fullPath.c_str());
+  Configuration::Instance().Save();
   DrawFrameWindow();
   return true;
 }
@@ -682,9 +684,11 @@ void ProcessButtonClick(int button, int mod)
       // F8 - save current screen as a .bmp file
       // Currently these setting are just next:
       if (mod & KMOD_SHIFT) {
-        RegSaveValue(TEXT("Configuration"), TEXT("Video Emulation"), 1, g_videotype);
-        RegSaveValue(TEXT("Configuration"), TEXT("Emulation Speed"), 1, g_dwSpeed);
-        RegSaveValue(TEXT("Configuration"), TEXT("Fullscreen"), 1, fullscreen);
+        Configuration::Instance().SetInt("Configuration", "Video Emulation", g_videotype);
+        Configuration::Instance().SetInt("Configuration", "Emulation Speed", g_dwSpeed);
+        Configuration::Instance().SetInt("Configuration", "Fullscreen", fullscreen ? 1 : 0);
+        Configuration::Instance().Save();
+
       } else {
         FrameSaveBMP();
       }
@@ -733,13 +737,13 @@ void ProcessButtonClick(int button, int mod)
       break;
     case BTN_LOADST: // Load state (F12) or Hot Reset (Ctrl+F12)
       if (mod & KMOD_CTRL) {
-        if (!IS_APPLE2) {
+        if (!IS_APPLE2()) {
           MemResetPaging();
         }
 
         DiskReset();
         KeybReset();
-        if (!IS_APPLE2) {
+        if (!IS_APPLE2()) {
           VideoResetState();
         }  // Switch Alternate char set off
         MB_Reset();

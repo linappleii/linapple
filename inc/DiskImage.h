@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #define  TRACKS      35
@@ -22,8 +23,8 @@ enum ImageError_e {
   IMAGE_ERROR_BAD_POINTER = -1, IMAGE_ERROR_NONE = 0, IMAGE_ERROR_UNABLE_TO_OPEN = 1, IMAGE_ERROR_BAD_SIZE = 2
 };
 
-int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_, bool bCreateIfNecessary);
+int ImageOpen(const char* imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_, bool bCreateIfNecessary);
 
-void ImageReadTrack(HIMAGE, int, int, LPBYTE, int *);
+void ImageReadTrack(HIMAGE, int, int, uint8_t*, int *);
 
-void ImageWriteTrack(HIMAGE, int, int, LPBYTE, int);
+void ImageWriteTrack(HIMAGE, int, int, uint8_t*, int);

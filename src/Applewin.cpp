@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -27,13 +27,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007, krez beotiger March 2012 AD */
-/*
-
-Linappple-pie was adapted in OCT 2015 for use with Retropie.
-By Mark Ormond.
-*/
-
-
 #include "stdafx.h"
 #include <cassert>
 #include <string>
@@ -57,14 +50,7 @@ By Mark Ormond.
 #include <getopt.h>
 
 #include "asset.h"
-
-#ifdef __APPLE__
-#include "AlertHooks.h"
-#endif
-
-#ifdef __APPLE__
-#include "AlertHooks.h"
-#endif
+#include "Util_Path.h"
 
 // Satisfy modern compiler standards
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
@@ -72,7 +58,7 @@ static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
 static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;
 static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
 
-char *g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+char *g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
 
 // backend video x11, fbcon, dispmanx, kmsdrm, etc.
 char videoDriverName[100];
@@ -98,18 +84,18 @@ unsigned int g_ScreenWidth = SCREEN_WIDTH;
 unsigned int g_ScreenHeight = SCREEN_HEIGHT;
 
 unsigned int needsprecision = 0;
-char g_sProgramDir[MAX_PATH] = TEXT("");
-char g_sCurrentDir[MAX_PATH] = TEXT(""); // Also Starting Dir for Slot6 disk images?? --bb
-char g_sHDDDir[MAX_PATH] = TEXT(""); // starting dir for HDV (Apple][ HDD) images?? --bb
-char g_sSaveStateDir[MAX_PATH] = TEXT(""); // starting dir for states --bb
-char g_sParallelPrinterFile[MAX_PATH] = TEXT("Printer.txt");  // default file name for Parallel printer
+char g_sProgramDir[MAX_PATH] = "";
+char g_sCurrentDir[MAX_PATH] = ""; // Also Starting Dir for Slot6 disk images?? --bb
+char g_sHDDDir[MAX_PATH] = ""; // starting dir for HDV (Apple][ HDD) images?? --bb
+char g_sSaveStateDir[MAX_PATH] = ""; // starting dir for states --bb
+char g_sParallelPrinterFile[MAX_PATH] = "Printer.txt";  // default file name for Parallel printer
 
 // FTP Variables
-char g_sFTPLocalDir[MAX_PATH] = TEXT(""); // FTP Local Dir, see linapple.conf for details
-char g_sFTPServer[MAX_PATH] = TEXT(""); // full path to default FTP server
-char g_sFTPServerHDD[MAX_PATH] = TEXT(""); // full path to default FTP server
+char g_sFTPLocalDir[MAX_PATH] = ""; // FTP Local Dir, see linapple.conf for details
+char g_sFTPServer[MAX_PATH] = ""; // full path to default FTP server
+char g_sFTPServerHDD[MAX_PATH] = ""; // full path to default FTP server
 
-char g_sFTPUserPass[512] = TEXT("anonymous:mymail@hotmail.com"); // full login line
+char g_sFTPUserPass[512] = "anonymous:mymail@hotmail.com"; // full login line
 
 bool g_bResetTiming = false;
 bool restart = 0;
@@ -137,7 +123,7 @@ const unsigned int MAX_CNT = 256;
 double g_fDbg[MAX_CNT];
 unsigned int g_nIdx = 0;
 double g_fMeanPeriod,g_fMeanFreq;
-ULONG g_nPerfFreq = 0;
+uint32_t g_nPerfFreq = 0;
 #endif
 
 static unsigned int g_uModeStepping_Cycles = 0;
@@ -169,13 +155,13 @@ void ContinueExecution()
   if (nCyclesWithFeedback < 0) {
     nCyclesWithFeedback = 0;
   }
-  const DWORD uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
+  const uint32_t uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
                                        : 0;
 
-  const DWORD uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+  const uint32_t uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
                           /* MODE_STEPPING */ : 0;
 
-  DWORD uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
+  uint32_t uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
   g_dwCyclesThisFrame += uActualCyclesExecuted;
 
   cyclenum = uActualCyclesExecuted;
@@ -240,7 +226,7 @@ void ContinueExecution()
       if (update_clause && VideoApparentlyDirty()) {
         VideoCheckPage(1);
         static unsigned int lasttime = 0;
-        unsigned int currtime = GetTickCount();
+        unsigned int currtime = SDL_GetTicks();
         if ((!g_bFullSpeed) || (currtime - lasttime >= (unsigned int)((graphicsmode || !systemidle) ? 100 : 25))) {
           if (!g_bBudgetVideo || (currtime - lasttime >= 200)) {   // update every 12 frames
             VideoRefreshScreen();
@@ -270,7 +256,7 @@ void ContinueExecution()
     #if DBG_CALC_FREQ
     if(g_nPerfFreq)
     {
-      int nTime1 = GetTickCount(); //no QueryPerformanceCounter and alike
+      int nTime1 = SDL_GetTicks(); //no QueryPerformanceCounter and alike
       int nTimeDiff = nTime1 - nTime0;
       double fTime = (double)nTimeDiff / (double)(int)g_nPerfFreq;
 
@@ -395,17 +381,17 @@ void EnterMessageLoop()
   }
 }
 
-int DoDiskInsert(int nDrive, LPSTR szFileName)
+int DoDiskInsert(int nDrive, const char* szFileName)
 {
   return DiskInsert(nDrive, szFileName, 0, 0);
 }
 
-bool ValidateDirectory(char *dir)
+bool ValidateDirectory(const char *dir)
 {
   bool ret = false;
   if (dir && *dir) {
     struct stat st;
-    if (stat("/tmp", &st) == 0) {
+    if (stat(dir, &st) == 0) {
       if ((st.st_mode & S_IFDIR) != 0) {
         ret = true;
       }
@@ -415,18 +401,22 @@ bool ValidateDirectory(char *dir)
   return ret;
 }
 
+static void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
+    if (size == 0) return;
+    strncpy(dest, src, size - 1);
+    dest[size - 1] = '\0';
+}
+
 void SetDiskImageDirectory(char *regKey, int driveNumber)
 {
-  char *szHDFilename = NULL;
-  if (RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH)) {
-    if (!ValidateDirectory(szHDFilename)) {
-      free(szHDFilename);
-      RegSaveString(TEXT("Configuration"), TEXT(regKey), 1, "/");
-      RegLoadString(TEXT("Configuration"), TEXT(regKey), 1, &szHDFilename, MAX_PATH);
+  std::string sHDFilename = Configuration::Instance().GetString("Configuration", regKey);
+  if (!sHDFilename.empty()) {
+    if (!ValidateDirectory(sHDFilename.c_str())) {
+      Configuration::Instance().SetString("Configuration", regKey, "/");
+      Configuration::Instance().Save();
+      sHDFilename = "/";
     }
-
-    DoDiskInsert(driveNumber, szHDFilename);
-    free(szHDFilename);
+    DoDiskInsert(driveNumber, sHDFilename.c_str());
   }
 }
 
@@ -439,12 +429,11 @@ void setAutoBoot()
   SDL_PushEvent(&user_ev);
 }
 
-// Let us load main configuration from config file.  Y_Y  --bb
+// Load configuration from config file
 void LoadConfiguration()
 {
-  if (registry) {
     unsigned int dwComputerType = g_Apple2Type;
-    LOAD(TEXT("Computer Emulation"), &dwComputerType);
+    LOAD("Computer Emulation", &dwComputerType);
 
     switch (dwComputerType) {
       case 0:
@@ -460,45 +449,42 @@ void LoadConfiguration()
         g_Apple2Type = A2TYPE_APPLE2EEHANCED;
         break;
     }
-  }
 
   // determine Apple type and set appropriate caption -- should be in (F9)switching modes?
   switch (g_Apple2Type) {
     case A2TYPE_APPLE2:
-      g_pAppTitle = TITLE_APPLE_2_;
+      g_pAppTitle = (char*)TITLE_APPLE_2_;
       break;
     case A2TYPE_APPLE2PLUS:
-      g_pAppTitle = TITLE_APPLE_2_PLUS_;
+      g_pAppTitle = (char*)TITLE_APPLE_2_PLUS_;
       break;
     case A2TYPE_APPLE2E:
-      g_pAppTitle = TITLE_APPLE_2E_;
+      g_pAppTitle = (char*)TITLE_APPLE_2E_;
       break;
     case A2TYPE_APPLE2EEHANCED:
-      g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+      g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
       break;
     default:
       break;
   }
   printf("Selected machine type: %s\n", g_pAppTitle);
 
-  if (registry) {
-    LOAD(TEXT("Joystick 0"), &joytype[0]);
-    LOAD(TEXT("Joystick 1"), &joytype[1]);
-    LOAD(TEXT("Joy0Index"), &joy1index);
-    LOAD(TEXT("Joy1Index"), &joy2index);
+    LOAD("Joystick 0", (unsigned int*)&joytype[0]);
+    LOAD("Joystick 1", (unsigned int*)&joytype[1]);
+    LOAD("Joy0Index", (unsigned int*)&joy1index);
+    LOAD("Joy1Index", (unsigned int*)&joy2index);
 
-    LOAD(TEXT("Joy0Button1"), &joy1button1);
-    LOAD(TEXT("Joy0Button2"), &joy1button2);
-    LOAD(TEXT("Joy1Button1"), &joy2button1);
+    LOAD("Joy0Button1", (unsigned int*)&joy1button1);
+    LOAD("Joy0Button2", (unsigned int*)&joy1button2);
+    LOAD("Joy1Button1", (unsigned int*)&joy2button1);
 
-    LOAD(TEXT("Joy0Axis0"), &joy1axis0);
-    LOAD(TEXT("Joy0Axis1"), &joy1axis1);
-    LOAD(TEXT("Joy1Axis0"), &joy2axis0);
-    LOAD(TEXT("Joy1Axis1"), &joy2axis1);
-    LOAD(TEXT("JoyExitEnable"), &joyexitenable);
-    LOAD(TEXT("JoyExitButton0"), &joyexitbutton0);
-    LOAD(TEXT("JoyExitButton1"), &joyexitbutton1);
-  }
+    LOAD("Joy0Axis0", (unsigned int*)&joy1axis0);
+    LOAD("Joy0Axis1", (unsigned int*)&joy1axis1);
+    LOAD("Joy1Axis0", (unsigned int*)&joy2axis0);
+    LOAD("Joy1Axis1", (unsigned int*)&joy2axis1);
+    LOAD("JoyExitEnable", (unsigned int*)&joyexitenable);
+    LOAD("JoyExitButton0", (unsigned int*)&joyexitbutton0);
+    LOAD("JoyExitButton1", (unsigned int*)&joyexitbutton1);
 
   if (joytype[0] == 1) {
     printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
@@ -526,10 +512,9 @@ void LoadConfiguration()
   }
 
   // check if configuration file contains specific keyboard language
-  if (registry)
   {
     unsigned int Language = 0;
-    if (LOAD(TEXT(REGVALUE_KEYB_TYPE), &Language)) {
+    if (LOAD(REGVALUE_KEYB_TYPE, &Language)) {
       switch(Language)
       {
         case 1:
@@ -571,97 +556,71 @@ void LoadConfiguration()
     }
 
     unsigned int ToggleSwitch = 0;
-    if (LOAD(TEXT(REGVALUE_KEYB_CHARSET_SWITCH), &ToggleSwitch)) {
+    if (LOAD(REGVALUE_KEYB_CHARSET_SWITCH, &ToggleSwitch)) {
       // select initial value of the keyboard character set toggle switch
       g_KeyboardRockerSwitch = (ToggleSwitch>=1);
       printf("Keyboard rocker switch: %s\n", (g_KeyboardRockerSwitch) ? "local charset" : "standard/US charset");
     }
   }
 
-  if (registry) {
-    LOAD(TEXT("Sound Emulation"), &soundtype);
-  }
-  unsigned int dwSerialPort;
-  if (registry) {
-    LOAD(TEXT("Serial Port"), &dwSerialPort);
-  }
+  LOAD("Sound Emulation", &soundtype);
+  unsigned int dwSerialPort = 0;
+  LOAD("Serial Port", &dwSerialPort);
   sg_SSC.SetSerialPort(dwSerialPort);
 
-  if (registry) {
-    LOAD(TEXT("Emulation Speed"), &g_dwSpeed);
-    LOAD(TEXT("Enhance Disk Speed"), (unsigned int * ) & enhancedisk);
-    LOAD(TEXT("Video Emulation"), &g_videotype);
-    LOAD(TEXT("Singlethreaded"), &g_singlethreaded);
-  }
+  LOAD("Emulation Speed", &g_dwSpeed);
+  LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);
+  LOAD("Video Emulation", &g_videotype);
+  LOAD("Singlethreaded", (unsigned int*)&g_singlethreaded);
 
   unsigned int dwTmp = 0;  // temp var
 
-  if (registry) {
-    LOAD(TEXT("Fullscreen"), &dwTmp);  // load fullscreen flag
-  }
+  LOAD("Fullscreen", &dwTmp);  // load fullscreen flag
   fullscreen = (bool) dwTmp;
   dwTmp = 1;
-  if (registry) {
-    LOAD(TEXT(REGVALUE_SHOW_LEDS), &dwTmp);  // load Show Leds flag
-  }
+  LOAD(REGVALUE_SHOW_LEDS, &dwTmp);  // load Show Leds flag
   g_ShowLeds = (bool) dwTmp;
 
   SetCurrentCLK6502();  // set up real speed
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_MOUSE_IN_SLOT4), &dwTmp)) {
-      g_uMouseInSlot4 = dwTmp;
-    }
+  if (LOAD(REGVALUE_MOUSE_IN_SLOT4, &dwTmp)) {
+    g_uMouseInSlot4 = (bool)dwTmp;
   }
   g_Slot4 = g_uMouseInSlot4 ? CT_MouseInterface : CT_Mockingboard;
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_SOUNDCARD_TYPE), &dwTmp)) {
-      MB_SetSoundcardType((eSOUNDCARDTYPE) dwTmp);
-    }
+  if (LOAD(REGVALUE_SOUNDCARD_TYPE, &dwTmp)) {
+    MB_SetSoundcardType((eSOUNDCARDTYPE) dwTmp);
   }
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_SAVE_STATE_ON_EXIT), &dwTmp)) {
-      g_bSaveStateOnExit = (dwTmp != 0);
-    }
+  if (LOAD(REGVALUE_SAVE_STATE_ON_EXIT, &dwTmp)) {
+    g_bSaveStateOnExit = (dwTmp != 0);
   }
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_PRINTER_APPEND), &dwTmp)) {
-      g_bPrinterAppend = dwTmp != 0;
-    }
+  if (LOAD(REGVALUE_PRINTER_APPEND, &dwTmp)) {
+    g_bPrinterAppend = dwTmp != 0;
   }
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_HDD_ENABLED), &dwTmp)) {
-      hddenabled = (bool) dwTmp;
-    }
+  if (LOAD(REGVALUE_HDD_ENABLED, &dwTmp)) {
+    hddenabled = (bool) dwTmp;
   }
 
-  if (registry) {
-    if (LOAD(TEXT(REGVALUE_CLOCK_SLOT), &clockslot)) {
-      if (clockslot < 1 || clockslot > 7)
-        clockslot = 0;
-    }
+  if (LOAD(REGVALUE_CLOCK_SLOT, &dwTmp)) {
+    if (dwTmp < 1 || dwTmp > 7)
+      dwTmp = 0;
+    clockslot = (char)dwTmp;
   }
 
-  char *szHDFilename = NULL;
+  std::string sHDFilename;
 
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT("Monochrome Color"), 1, &szHDFilename, 10)) {
-      if (!sscanf(szHDFilename, "#%X", &monochrome)) {
-        monochrome = 0xC0C0C0;
-      }
-      free(szHDFilename);
-      szHDFilename = NULL;
+  sHDFilename = Configuration::Instance().GetString("Configuration", "Monochrome Color");
+  if (!sHDFilename.empty()) {
+    if (!sscanf(sHDFilename.c_str(), "#%X", &monochrome)) {
+      monochrome = 0xC0C0C0;
     }
   }
 
   dwTmp = 0;
-  if (registry) {
-    LOAD(TEXT("Boot at Startup"), &dwTmp);
-  }
+  LOAD("Boot at Startup", &dwTmp);
 
   if (dwTmp) {
     // autostart
@@ -669,9 +628,7 @@ void LoadConfiguration()
   }
 
   dwTmp = 0;
-  if (registry) {
-    LOAD(TEXT("Slot 6 Autoload"), &dwTmp);  // load autoinsert for Slot 6 flag
-  }
+  LOAD("Slot 6 Autoload", &dwTmp);  // load autoinsert for Slot 6 flag
   if (dwTmp) {
     // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
     static char szDiskImage1[] = REGVALUE_DISK_IMAGE1;
@@ -682,122 +639,93 @@ void LoadConfiguration()
   }
 
   // Load hard disk images and insert it automatically in slot 7
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE1), 1, &szHDFilename, MAX_PATH)) {
-      HD_InsertDisk2(0, szHDFilename);
-      free(szHDFilename);
-      szHDFilename = NULL;
-    }
+  sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_HDD_IMAGE1);
+  if (!sHDFilename.empty()) {
+    HD_InsertDisk2(0, sHDFilename.c_str());
   }
 
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_HDD_IMAGE2), 1, &szHDFilename, MAX_PATH)) {
-      HD_InsertDisk2(1, szHDFilename);
-      free(szHDFilename);
-      szHDFilename = NULL;
-    }
+  sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_HDD_IMAGE2);
+  if (!sHDFilename.empty()) {
+    HD_InsertDisk2(1, sHDFilename.c_str());
   }
 
   // file name for Parallel Printer
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_PPRINTER_FILENAME), 1, &szHDFilename, MAX_PATH)) {
-      if (strlen(szHDFilename) > 1) {
-        strncpy(g_sParallelPrinterFile, szHDFilename, MAX_PATH);
-      }
-      free(szHDFilename);
-      szHDFilename = NULL;
-    }
+  sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_PPRINTER_FILENAME);
+  if (sHDFilename.length() > 1) {
+    Util_SafeStrCpy(g_sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
   }
 
-  if (registry) {
-    if (RegLoadValue(TEXT("Configuration"), TEXT(REGVALUE_PRINTER_IDLE_LIMIT), 1, &dwTmp)) {
-      Printer_SetIdleLimit(dwTmp);
-    }
-  }
+  Printer_SetIdleLimit(Configuration::Instance().GetInt("Configuration", REGVALUE_PRINTER_IDLE_LIMIT, 0));
 
-  char *szFilename = NULL;
+  std::string sFilename;
   double scrFactor = 0.0;
+  
+  // Reset to base dimensions before applying factor
+  g_ScreenWidth = 560;
+  g_ScreenHeight = 384;
+
   // Define screen sizes
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT("Screen factor"), 1, &szFilename, 16)) {
-      // fix: prevent resolution change, it usually gives graphic problems with the dispmanx driver
-      if (strncmp(videoDriverName, "dispmanx", 8) != 0) {
-        scrFactor = atof(szFilename);
-      }
-      if (scrFactor > 0.1) {
-        g_ScreenWidth = (unsigned int)(g_ScreenWidth * scrFactor);
-        g_ScreenHeight = (unsigned int)(g_ScreenHeight * scrFactor);
-      }
-      free(szFilename);
-      szFilename = NULL;
+  sFilename = Configuration::Instance().GetString("Configuration", "Screen factor");
+  if (!sFilename.empty()) {
+    // fix: prevent resolution change, it usually gives graphic problems with the dispmanx driver
+    if (strncmp(videoDriverName, "dispmanx", 8) != 0) {
+      scrFactor = atof(sFilename.c_str());
+    }
+    if (scrFactor > 0.1) {
+      g_ScreenWidth = (unsigned int)(g_ScreenWidth * scrFactor);
+      g_ScreenHeight = (unsigned int)(g_ScreenHeight * scrFactor);
     }
   }
 
-  if (registry) {
-    if (scrFactor <= 0.1) {
-      // Try to set Screen Width & Height directly
-      dwTmp = 0;
-      LOAD(TEXT("Screen Width"), &dwTmp);
-      if (dwTmp > 0) {
-        g_ScreenWidth = dwTmp;
-      }
-      dwTmp = 0;
-      LOAD(TEXT("Screen Height"), &dwTmp);
-      if (dwTmp > 0) {
-        g_ScreenHeight = dwTmp;
-      }
+  if (scrFactor <= 0.1) {
+    // Try to set Screen Width & Height directly
+    dwTmp = 0;
+    LOAD("Screen Width", &dwTmp);
+    if (dwTmp > 0) {
+      g_ScreenWidth = dwTmp;
+    }
+    dwTmp = 0;
+    LOAD("Screen Height", &dwTmp);
+    if (dwTmp > 0) {
+      g_ScreenHeight = dwTmp;
+    }
 
-      // validate resolutions validate for the dispmanx driver.
-      if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
-        if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
-             (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
-             (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
+    // validate resolutions validate for the dispmanx driver.
+    if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
+      if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
+           (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
+           (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
 
-          // default
-          g_ScreenWidth  = 640;
-          g_ScreenHeight = 480;
-        }
+        // default
+        g_ScreenWidth  = 640;
+        g_ScreenHeight = 480;
       }
-
     }
   }
 
-  if (registry) {
-    if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_SAVESTATE_FILENAME), 1, &szFilename, MAX_PATH)) {
-      Snapshot_SetFilename(szFilename);  // If not in Registry than default will be used
-      free(szFilename);
-      szFilename = NULL;
-    }
+  sFilename = Configuration::Instance().GetString("Configuration", REGVALUE_SAVESTATE_FILENAME);
+  if (!sFilename.empty()) {
+    Snapshot_SetFilename(sFilename.c_str());  // If not in Registry than default will be used
   }
 
   // Current/Starting Dir is the "root" of where the user keeps his disk images
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_START_DIR, 1, &szFilename, MAX_PATH);
-  }
-
-  if (szFilename) {
-    strcpy(g_sCurrentDir, szFilename);
-    free(szFilename);
-    szFilename = NULL;
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_START_DIR);
+  if (!sFilename.empty()) {
+    Util_SafeStrCpy(g_sCurrentDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') {
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
     if (tmp == NULL) {
       strcpy(g_sCurrentDir, "/");  //begin from the root, then
     } else {
-      strcpy(g_sCurrentDir, tmp);
+      Util_SafeStrCpy(g_sCurrentDir, tmp, MAX_PATH);
     }
   }
 
   // Load starting directory for HDV (Apple][ HDD) images
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, &szFilename, MAX_PATH);
-  }
-
-  if (szFilename) {
-    strcpy(g_sHDDDir, szFilename);
-    free(szFilename);
-    szFilename = NULL;
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_HDD_START_DIR);
+  if (!sFilename.empty()) {
+    Util_SafeStrCpy(g_sHDDDir, sFilename.c_str(), MAX_PATH);
   }
 
   if (strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') {
@@ -805,68 +733,37 @@ void LoadConfiguration()
     if (tmp == NULL) {
       strcpy(g_sHDDDir, "/");  //begin from the root, then
     } else {
-      strcpy(g_sHDDDir, tmp);
+      Util_SafeStrCpy(g_sHDDDir, tmp, MAX_PATH);
     }
   }
 
   // Load starting directory for saving current states
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_PREF_SAVESTATE_DIR, 1, &szFilename, MAX_PATH);
-  }
-  if (szFilename) {
-    strcpy(g_sSaveStateDir, szFilename);
-    free(szFilename);
-    szFilename = NULL;
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR);
+  if (!sFilename.empty()) {
+    Util_SafeStrCpy(g_sSaveStateDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') {
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
     if (tmp == NULL) {
       strcpy(g_sSaveStateDir, "/");  //begin from the root, then
     } else {
-      strcpy(g_sSaveStateDir, tmp);
+      Util_SafeStrCpy(g_sSaveStateDir, tmp, MAX_PATH);
     }
   }
 
   // Read and fill FTP variables - server, local dir, user name and password
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_DIR, 1, &szFilename, MAX_PATH);
-  }
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_DIR);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServer, sFilename.c_str(), MAX_PATH);
 
-  if (szFilename) {
-    strcpy(g_sFTPServer, szFilename);
-    free(szFilename);
-    szFilename = NULL;
-  }
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_HDD_DIR);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServerHDD, sFilename.c_str(), MAX_PATH);
 
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, &szFilename, MAX_PATH);
-  }
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_LOCAL_DIR);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPLocalDir, sFilename.c_str(), MAX_PATH);
 
-  if (szFilename) {
-    strcpy(g_sFTPServerHDD, szFilename);
-    free(szFilename);
-    szFilename = NULL;
-  }
+  sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_USERPASS);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPUserPass, sFilename.c_str(), 512);
 
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_LOCAL_DIR, 1, &szFilename, MAX_PATH);
-  }
-
-  if (szFilename) {
-    strcpy(g_sFTPLocalDir, szFilename);
-    free(szFilename);
-    szFilename = NULL;
-  }
-
-  if (registry) {
-    RegLoadString(TEXT("Preferences"), REGVALUE_FTP_USERPASS, 1, &szFilename, 512);
-  }
-
-  if (szFilename) {
-    strcpy(g_sFTPUserPass, szFilename);
-    free(szFilename);
-    szFilename = NULL;
-  }
   // Print some debug strings
   printf("Ready login = %s\n", g_sFTPUserPass);
 }
@@ -894,113 +791,49 @@ std::vector <std::string> split(const std::string &string, const std::string &de
 // load from known user-specific configuration locations.
 void LoadAllConfigurations(const char *userSpecifiedFilename)
 {
-  // At this point, registry should not be set. If it is, it means someone
-  // probably tried to load configuration values in a different function.
-  assert(!registry);
-
-  // Default values should be set, but some other globals that depend on them may not be.
+  // 1. Initial defaults
   LoadConfiguration();
 
+  // 2. Load specified config if provided
   if (userSpecifiedFilename) {
-    registry = fopen(userSpecifiedFilename, "r+");
-    if (!registry) {
-      registry = fopen(userSpecifiedFilename, "w+");
-      if (!registry) {
-        std::cerr << "WARNING! Failed to open config file: " << userSpecifiedFilename << std::endl;
+    if (Configuration::Instance().Load(userSpecifiedFilename)) {
+        LoadConfiguration();
+        return;
+    } else {
+        std::cerr << "WARNING! Failed to load config file: " << userSpecifiedFilename << std::endl;
         exit(EXIT_SUCCESS);
-      }
     }
-    RegConfPath(userSpecifiedFilename);
-    LoadConfiguration();
-    return;
   }
 
-  char *envvar = NULL;
-
-  // Try known system configuration paths.
-  envvar = getenv("XDG_CONFIG_DIRS");
-
-  std::string xdgConfigDirs = envvar ? envvar : "";
-  if (xdgConfigDirs.length() == 0) {
-    xdgConfigDirs = "/etc/xdg";
-  }
-
-  std::vector <std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
-
-  // Support the old /etc/linapple/linapple.conf location.
+  std::vector<std::string> configSearchPaths;
+  configSearchPaths.push_back("./linapple.conf");
+  configSearchPaths.push_back(Path::GetUserConfigDir() + "linapple.conf");
+  configSearchPaths.push_back(Path::GetUserDataDir() + "linapple.conf");
+  
+  // System paths
+  char *envvar = getenv("XDG_CONFIG_DIRS");
+  std::string xdgConfigDirs = envvar ? envvar : "/etc/xdg";
+  std::vector<std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
   sysConfigDirs.push_back("/etc");
 
-  for (std::vector<std::string>::reverse_iterator it = sysConfigDirs.rbegin(); it != sysConfigDirs.rend(); it++) {
-    std::string config = *it + "/linapple/linapple.conf";
-    registry = fopen(config.c_str(), "r");
-    if (!registry) {
-      continue;
-    }
-    LoadConfiguration();
-    fclose(registry);
-    registry = NULL;
+  for (const auto& dir : sysConfigDirs) {
+      configSearchPaths.push_back(dir + "/linapple/linapple.conf");
   }
 
-  // Next, try known user-specified paths.
-  char *home = getenv("HOME");
-
-  envvar = getenv("XDG_CONFIG_HOME");
-  std::string xdgConfigHome = envvar ? envvar : "";
-  if (xdgConfigHome.length() == 0 && home) {
-    xdgConfigHome = std::string(home) + "/.config";
+  std::string lastSuccessfulConfig;
+  for (const auto& configPath : configSearchPaths) {
+      if (Configuration::Instance().Load(configPath)) {
+          lastSuccessfulConfig = configPath;
+          LoadConfiguration();
+      }
   }
 
-  std::vector <std::string> configFiles;
-  configFiles.push_back(xdgConfigDirs + "/linapple/linapple.conf");
-  if (home) {
-    // Suppport old locations under HOME.
-    configFiles.push_back(std::string(home) + "/linapple/linapple.conf");
-    configFiles.push_back(std::string(home) + "/.linapple/linapple.conf");
+  if (!lastSuccessfulConfig.empty()) {
+      Configuration::Instance().SetPath(lastSuccessfulConfig);
+  } else {
+      // Default to preferred user location if none found
+      Configuration::Instance().SetPath(Path::GetUserConfigDir() + "linapple.conf");
   }
-  configFiles.push_back(xdgConfigHome + "/linapple/linapple.conf");
-
-  std::string lastSuccessfulUserConfig;
-  for (std::vector<std::string>::reverse_iterator it = configFiles.rbegin(); it != configFiles.rend(); it++) {
-    registry = fopen((*it).c_str(), "r");
-    if (!registry) {
-      continue;
-    }
-    lastSuccessfulUserConfig = *it;
-
-    LoadConfiguration();
-    fclose(registry);
-    registry = NULL;
-  }
-
-  // TODO: add a corresponding SaveConfiguration function in which the user's
-  // preferences can be saved instead of this hack of opening the last
-  // successfully opened user file or creating one if it doesn't exist.
-
-  // Note: there is NO REASON to update the system-wide configuration files in
-  // code. Doing so could affect all other users. Instead, a super-user should
-  // edit the /etc/xdg/linapple/linapple.conf by hand.
-  if (lastSuccessfulUserConfig.length() > 0) {
-
-    RegConfPath(lastSuccessfulUserConfig.c_str());
-    registry = fopen(lastSuccessfulUserConfig.c_str(), "r+");
-    return;
-  }
-
-  if (xdgConfigHome.length() == 0) {
-    std::cerr << "WARNING!"
-        << " Neither XDG_CONFIG_HOME nor HOME is set and no user config"
-        << " files were found."
-        << " This can lead to unexpected behavior, even program crashes."
-        << std::endl;
-    return;
-  }
-
-  std::string userDir(home);
-  mkdir(xdgConfigHome.c_str(), 0700);
-  mkdir((xdgConfigHome + "/linapple").c_str(), 0700);
-
-  RegConfPath((xdgConfigHome + "/linapple/linapple.conf").c_str());
-  registry = fopen((xdgConfigHome + "/linapple/linapple.conf").c_str(), "w+");
 }
 
 void RegisterExtensions()
@@ -1034,10 +867,10 @@ int main(int argc, char *argv[])
   bool bSetFullScreen = false;
   bool bBoot = false;
   bool bBenchMark = false;
-  LPSTR szConfigurationFile = NULL;
-  LPSTR szImageName_drive1 = NULL;
-  LPSTR szImageName_drive2 = NULL;
-  LPSTR szSnapshotFile = NULL;
+  char* szConfigurationFile = NULL;
+  char* szImageName_drive1 = NULL;
+  char* szImageName_drive2 = NULL;
+  char* szSnapshotFile = NULL;
 
   int opt;
   int optind = 0;
@@ -1207,8 +1040,8 @@ int main(int argc, char *argv[])
       soundtype = SOUND_NONE;    // Direct Sound and Stuff
     }
 
-    MB_Initialize();  // Mocking board
-    SpkrInitialize();  // Speakers - of Apple][ ...grrrrrrrrrrr, I love them!--bb
+    MB_Initialize();
+    SpkrInitialize();
     JoyInitialize();
     MemInitialize();
     HD_SetEnabled(hddenabled);
@@ -1233,16 +1066,16 @@ int main(int argc, char *argv[])
     JoyReset();
     SetUsingCursor(0);
 
-    // trying fullscreen
+    // Try fullscreen
     if (!fullscreen) {
       SetNormalMode();
     } else {
       SetFullScreenMode();
     }
 
-    DrawFrameWindow();  // we do not have WM_PAINT?
+    DrawFrameWindow();
 
-    // ENTER THE MAIN MESSAGE LOOP
+    // Main message loop
     if (bBenchMark) {
       VideoBenchmark(); // start VideoBenchmark and exit
     } else {
@@ -1273,9 +1106,6 @@ int main(int argc, char *argv[])
   SysClk_UninitTimer();
 
   RiffFinishWriteFile();
-  if (registry != NULL) {
-    fclose(registry); // close conf file (linapple.conf by default)
-  }
 
   SDL_Quit();
   curl_easy_cleanup(g_curl);

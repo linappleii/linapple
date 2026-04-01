@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 extern bool g_bMBTimerIrqActive;
@@ -21,7 +22,7 @@ void MB_EndOfVideoFrame();
 
 void MB_CheckIRQ();
 
-void MB_UpdateCycles(ULONG uExecutedCycles);
+void MB_UpdateCycles(uint32_t uExecutedCycles);
 
 void MB_Update();
 

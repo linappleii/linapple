@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
-#include "wwrapper.h"
 
 #define DEFAULT_SNAPSHOT_NAME "SaveState.aws"
 
@@ -59,18 +58,19 @@ void Snapshot_LoadState() {
       throw (0);
 
     memset(pSS, 0, sizeof(APPLEWIN_SNAPSHOT));
-    HANDLE hFile = (FILE *) fopen(g_szSaveStateFilename, "rb");
+    FILE* hFile = fopen(g_szSaveStateFilename, "rb");
 
-    if (hFile == INVALID_HANDLE_VALUE) {
+    if (hFile == NULL) {
       strcpy(szMessage, "File not found: ");
       strcpy(szMessage + strlen(szMessage), g_szSaveStateFilename);
       throw (0);
     }
 
     unsigned int dwBytesRead;
-    bool bRes = ReadFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesRead, NULL);
+    dwBytesRead = fread(pSS, 1, sizeof(APPLEWIN_SNAPSHOT), hFile);
+    bool bRes = (dwBytesRead == sizeof(APPLEWIN_SNAPSHOT));
 
-    CloseHandle(hFile);
+    fclose(hFile);
 
     if (!bRes || (dwBytesRead != sizeof(APPLEWIN_SNAPSHOT))) {
       // File size wrong: probably because of version mismatch or corrupt file
@@ -92,7 +92,7 @@ void Snapshot_LoadState() {
     // Reset all sub-systems
     MemReset();
 
-    if (!IS_APPLE2) {
+    if (!IS_APPLE2()) {
       MemResetPaging();
     }
 
@@ -178,12 +178,11 @@ void Snapshot_SaveState() {
   // Slot6: Disk][
   DiskGetSnapshot(&pSS->Disk2, 6);
 
-  HANDLE hFile = fopen(g_szSaveStateFilename, "wb");
+  FILE* hFile = fopen(g_szSaveStateFilename, "wb");
 
-  if (hFile != INVALID_HANDLE_VALUE) {
-    unsigned int dwBytesWritten;
-    WriteFile(hFile, pSS, sizeof(APPLEWIN_SNAPSHOT), &dwBytesWritten, NULL);
-    CloseHandle(hFile);
+  if (hFile != NULL) {
+    fwrite(pSS, 1, sizeof(APPLEWIN_SNAPSHOT), hFile);
+    fclose(hFile);
   }
 
   delete[] pSS;

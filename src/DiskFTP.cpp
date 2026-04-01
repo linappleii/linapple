@@ -17,11 +17,7 @@
 # include <string.h>
 #include <stddef.h>
 
-#ifndef _WIN32
-//#include <sys/types.h>
 #include <sys/stat.h>
-//#include <dirent.h>
-#endif
 
 #include <time.h>
 #include <vector>
@@ -39,7 +35,7 @@
 
 char *md5str(const char *input); // forward declaration of md5str func
 
-char g_sFTPDirListing[512] = TEXT("cache/ftp."); // name for FTP-directory listing
+char g_sFTPDirListing[512] = "cache/ftp."; // name for FTP-directory listing
 int getstatFTP(struct ftpparse *fp, uintmax_t *size)
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
@@ -91,21 +87,12 @@ const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 
 
   bool OKI;
-  #ifndef _WIN32
   struct stat info;
   if (stat(ftpdirpath, &info) == 0 && info.st_mtime > time(NULL) - RENEW_TIME) {
     OKI = false; // use this file
   } else {
     OKI = ftp_get(directory.c_str(), ftpdirpath); // get ftp dir listing
   }
-  #else
-  // in WIN32 let's use constant caching? -- need to be redone using file.mtime
-    if(GetFileAttributes(ftpdirpath) != unsigned int(-1)) {
-      OKI = false;
-    } else {
-      OKI = ftp_get(directory.c_str(),ftpdirpath); // get ftp dir listing
-    }
-  #endif
 
   if (OKI) {  // error
     failure_message =

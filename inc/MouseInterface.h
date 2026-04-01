@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "6821.h"
 #include "Common.h"
 
@@ -12,7 +13,7 @@ public:
 
   virtual ~CMouseInterface();
 
-  void Initialize(LPBYTE pCxRomPeripheral, unsigned int uSlot);
+  void Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot);
 
   void Uninitialize() {
     m_bActive = false;
@@ -20,9 +21,9 @@ public:
 
   void SetSlotRom();
 
-  static unsigned char IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
+  static unsigned char IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
 
-  static unsigned char IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
+  static unsigned char IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
 
   void SetPosition(int xvalue, int xrange, int yvalue, int yrange);
 
@@ -87,6 +88,6 @@ protected:
   bool m_bButtons[2];
 
   bool m_bActive;
-  LPBYTE m_pSlotRom;
+  uint8_t* m_pSlotRom;
   unsigned int m_uSlot;
 };

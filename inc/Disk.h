@@ -1,10 +1,11 @@
+#include <cstdint>
 #pragma once
 
-#define  DRIVE_1  0
-#define  DRIVE_2  1
+constexpr int DRIVE_1 = 0;
+constexpr int DRIVE_2 = 1;
 
-#define  DRIVES   2
-#define  TRACKS   35
+constexpr int DRIVES = 2;
+constexpr int TRACKS = 35;
 
 extern bool enhancedisk;
 
@@ -15,7 +16,7 @@ void DiskBoot();
 
 void DiskEject(const int iDrive);
 
-LPCTSTR DiskGetFullName(int);
+const char* DiskGetFullName(int);
 
 enum Disk_Status_e {
   DISK_STATUS_OFF, DISK_STATUS_READ, DISK_STATUS_WRITE, DISK_STATUS_PROT, NUM_DISK_STATUS
@@ -23,13 +24,13 @@ enum Disk_Status_e {
 
 void DiskGetLightStatus(int *pDisk1Status_, int *pDisk2Status_);
 
-LPCTSTR DiskGetName(int);
+const char* DiskGetName(int);
 
-int DiskInsert(int, LPCTSTR, bool, bool);
+int DiskInsert(int, const char*, bool, bool);
 
 bool DiskIsSpinning();
 
-void DiskNotifyInvalidImage(LPCTSTR, int);
+void DiskNotifyInvalidImage(const char*, int);
 
 void DiskReset();
 
@@ -45,7 +46,7 @@ void DiskUpdatePosition(unsigned int);
 
 bool DiskDriveSwap();
 
-void DiskLoadRom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
+void DiskLoadRom(uint8_t* pCxRomPeripheral, unsigned int uSlot);
 
 unsigned int DiskGetSnapshot(SS_CARD_DISK2 *pSS, unsigned int dwSlot);
 

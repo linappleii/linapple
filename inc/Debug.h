@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 #include <vector>
@@ -56,7 +57,7 @@ class commands_functor_compare
     bool operator() ( const Command_t & rLHS, const Command_t & rRHS ) const
     {
       // return true if lhs<rhs
-      return (_tcscmp( rLHS.m_sName, rRHS.m_sName ) <= 0) ? true : false;
+      return (strcmp( rLHS.m_sName, rRHS.m_sName ) <= 0) ? true : false;
     }
 };
 
@@ -136,17 +137,17 @@ unsigned int DebuggerGetColor(int iColor);
 // Source Level Debugging
 int FindSourceLine(unsigned short nAddress);
 
-LPCTSTR FormatAddress(unsigned short nAddress, int nBytes);
+const char* FormatAddress(unsigned short nAddress, int nBytes);
 
 // Symbol Table / Memory
-bool FindAddressFromSymbol(LPCSTR pSymbol, unsigned short *pAddress_ = NULL, int *iTable_ = NULL);
+bool FindAddressFromSymbol(const char* pSymbol, unsigned short *pAddress_ = NULL, int *iTable_ = NULL);
 
-unsigned short GetAddressFromSymbol(LPCTSTR symbol); // HACK: returns 0 if symbol not found
+unsigned short GetAddressFromSymbol(const char* symbol); // HACK: returns 0 if symbol not found
 void SymbolUpdate(SymbolTable_Index_e eSymbolTable, char *pSymbolName, unsigned short nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
 
-LPCTSTR FindSymbolFromAddress(unsigned short nAdress, int *iTable_ = NULL);
+const char* FindSymbolFromAddress(unsigned short nAdress, int *iTable_ = NULL);
 
-LPCTSTR GetSymbol(unsigned short nAddress, int nBytes);
+const char* GetSymbol(unsigned short nAddress, int nBytes);
 
 Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
 

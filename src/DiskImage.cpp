@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -30,7 +30,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <assert.h>
 #include "stdafx.h"
-#include "wwrapper.h"
 
 /* DO logical order  0 1 2 3 4 5 6 7 8 9 A B C D E F */
 /*    physical order 0 D B 9 7 5 3 1 E C A 8 6 4 2 F */
@@ -41,90 +40,98 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 typedef struct _imageinforec {
   char filename[MAX_PATH];
   unsigned int format;
-  HANDLE file;
+  FILE* file;
   unsigned int offset;
   bool writeProtected;
   unsigned int headerSize;
-  LPBYTE header;
+  uint8_t* header;
   bool validTrack[TRACKS];
 } imageinforec, *imageinfoptr;
 
 typedef bool (*boottype  )(imageinfoptr);
 
-typedef unsigned int(*detecttype)(LPBYTE, unsigned int);
+typedef unsigned int(*detecttype)(uint8_t*, unsigned int);
 
-typedef void (*readtype  )(imageinfoptr, int, int, LPBYTE, int *);
+typedef void (*readtype  )(imageinfoptr, int, int, uint8_t*, int *);
 
-typedef void (*writetype )(imageinfoptr, int, int, LPBYTE, int);
+typedef void (*writetype )(imageinfoptr, int, int, uint8_t*, int);
+
+static size_t Util_GetFileSize(FILE* f) {
+  long current = ftell(f);
+  fseek(f, 0, SEEK_END);
+  size_t size = ftell(f);
+  fseek(f, current, SEEK_SET);
+  return size;
+}
 
 bool AplBoot(imageinfoptr ptr);
 
-unsigned int AplDetect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int AplDetect(uint8_t* imageptr, unsigned int imagesize);
 
-unsigned int DoDetect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int DoDetect(uint8_t* imageptr, unsigned int imagesize);
 
-void DoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void DoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
-void DoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles);
+void DoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles);
 
-unsigned int IieDetect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int IieDetect(uint8_t* imageptr, unsigned int imagesize);
 
-void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
-void IieWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles);
+void IieWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles);
 
-unsigned int Nib1Detect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int Nib1Detect(uint8_t* imageptr, unsigned int imagesize);
 
-void Nib1Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void Nib1Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
-void Nib1Write(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles);
+void Nib1Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles);
 
-unsigned int Nib2Detect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int Nib2Detect(uint8_t* imageptr, unsigned int imagesize);
 
-void Nib2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void Nib2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
-void Nib2Write(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles);
+void Nib2Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles);
 
-unsigned int PoDetect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int PoDetect(uint8_t* imageptr, unsigned int imagesize);
 
-void PoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void PoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
-void PoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles);
+void PoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles);
 
 bool PrgBoot(imageinfoptr ptr);
 
-unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int PrgDetect(uint8_t* imageptr, unsigned int imagesize);
 
-unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int Woz2Detect(uint8_t* imageptr, unsigned int imagesize);
 
-void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+void Woz2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles);
 
 
 typedef struct _imagetyperec {
-  LPCTSTR createExts;
-  LPCTSTR rejectExts;
+  const char* createExts;
+  const char* rejectExts;
   detecttype detect;
   boottype boot;
   readtype read;
   writetype write;
 } imagetyperec, *imagetypeptr;
 
-static imagetyperec imagetype[IMAGETYPES] = {{TEXT(".prg"),     TEXT(
-  ".do;.dsk;.iie;.nib;.po"),                                                                      PrgDetect,  PrgBoot, NULL,     NULL},
-                                             {TEXT(".do;.dsk"), TEXT(
-                                               ".nib;.iie;.po;.prg"),                           DoDetect,   NULL,    DoRead,   DoWrite},
-                                             {TEXT(".po"),      TEXT(
-                                               ".do;.iie;.nib;.prg"),                           PoDetect,   NULL,    PoRead,   PoWrite},
-                                             {TEXT(".apl"),     TEXT(
-                                               ".do;.dsk;.iie;.nib;.po"),                       AplDetect,  AplBoot, NULL,     NULL},
-                                             {TEXT(".nib"),     TEXT(
-                                               ".do;.iie;.po;.prg"),                            Nib1Detect, NULL,    Nib1Read, Nib1Write},
-                                             {TEXT(".nb2"),     TEXT(
-                                               ".do;.iie;.po;.prg"),                            Nib2Detect, NULL,    Nib2Read, Nib2Write},
-                                             {TEXT(".iie"),     TEXT(
-                                               ".do.;.nib;.po;.prg"),                           IieDetect,  NULL,    IieRead,  IieWrite},
-                                             {TEXT(".woz"),     TEXT(
-                                     ".do;.dsk;.iie;.nib;.po;.prg"),                            Woz2Detect, NULL,    Woz2Read, NULL}};
+static imagetyperec imagetype[IMAGETYPES] = {{".prg",
+  ".do;.dsk;.iie;.nib;.po",                                                                      PrgDetect,  PrgBoot, NULL,     NULL},
+                                             {".do;.dsk",
+                                               ".nib;.iie;.po;.prg",                           DoDetect,   NULL,    DoRead,   DoWrite},
+                                             {".po",
+                                               ".do;.iie;.nib;.prg",                           PoDetect,   NULL,    PoRead,   PoWrite},
+                                             {".apl",
+                                               ".do;.dsk;.iie;.nib;.po",                       AplDetect,  AplBoot, NULL,     NULL},
+                                             {".nib",
+                                               ".do;.iie;.po;.prg",                            Nib1Detect, NULL,    Nib1Read, Nib1Write},
+                                             {".nb2",
+                                               ".do;.iie;.po;.prg",                            Nib2Detect, NULL,    Nib2Read, Nib2Write},
+                                             {".iie",
+                                               ".do.;.nib;.po;.prg",                           IieDetect,  NULL,    IieRead,  IieWrite},
+                                             {".woz",
+                                     ".do;.dsk;.iie;.nib;.po;.prg",                            Woz2Detect, NULL,    Woz2Read, NULL}};
 
 static unsigned char diskbyte[0x40] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
                               0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE,
@@ -136,17 +143,17 @@ static unsigned char sectornumber[3][0x10] = {{0x00, 0x08, 0x01, 0x09, 0x02, 0x0
                                      {0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04, 0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F},
                                      {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
-static LPBYTE workbuffer = NULL;
+static uint8_t* workbuffer = NULL;
 
 // Nibblization functions
-LPBYTE Code62(int sector)
+uint8_t* Code62(int sector)
 {
 
   // Convert the 256 8-bit bytes into 342 6-bit bytes, which we store
   // Starting at 4k into the work buffer.
   {
-    LPBYTE sectorBase = workbuffer + (sector << 8);
-    LPBYTE resultptr = workbuffer + 0x1000;
+    uint8_t* sectorBase = workbuffer + (sector << 8);
+    uint8_t* resultptr = workbuffer + 0x1000;
     unsigned char offset = 0xAC;
     while (offset != 0x02) {
       unsigned char value = 0;
@@ -175,8 +182,8 @@ LPBYTE Code62(int sector)
   // Block of 343 bytes starting at 5k into the work buffer.
   {
     unsigned char savedval = 0;
-    LPBYTE sourceptr = workbuffer + 0x1000;
-    LPBYTE resultptr = workbuffer + 0x1400;
+    uint8_t* sourceptr = workbuffer + 0x1000;
+    uint8_t* resultptr = workbuffer + 0x1400;
     int loop = 342;
     while (loop--) {
       *(resultptr++) = savedval ^ *sourceptr;
@@ -191,8 +198,8 @@ LPBYTE Code62(int sector)
   // zero bits. The converted block of 343 bytes is stored starting at 4k
   // into the work buffer.
   {
-    LPBYTE sourceptr = workbuffer + 0x1400;
-    LPBYTE resultptr = workbuffer + 0x1000;
+    uint8_t* sourceptr = workbuffer + 0x1400;
+    uint8_t* resultptr = workbuffer + 0x1000;
     int loop = 343;
     while (loop--) {
       *(resultptr++) = diskbyte[(*(sourceptr++)) >> 2];
@@ -202,7 +209,7 @@ LPBYTE Code62(int sector)
   return workbuffer + 0x1000;
 }
 
-void Decode62(LPBYTE imageptr)
+void Decode62(uint8_t* imageptr)
 {
 
   // If we haven't already done so, generate a table for converting
@@ -210,7 +217,7 @@ void Decode62(LPBYTE imageptr)
   static bool tablegenerated = 0;
   static unsigned char sixbitbyte[0x80];
   if (!tablegenerated) {
-    ZeroMemory(sixbitbyte, 0x80);
+    memset(sixbitbyte, 0, 0x80);
     int loop = 0;
     while (loop < 0x40) {
       sixbitbyte[diskbyte[loop] - 0x80] = loop << 2;
@@ -221,8 +228,8 @@ void Decode62(LPBYTE imageptr)
 
   // Using our table, convert the disk bytes back into 6-bit bytes
   {
-    LPBYTE sourceptr = workbuffer + 0x1000;
-    LPBYTE resultptr = workbuffer + 0x1400;
+    uint8_t* sourceptr = workbuffer + 0x1000;
+    uint8_t* resultptr = workbuffer + 0x1400;
     int loop = 343;
     while (loop--) {
       *(resultptr++) = sixbitbyte[*(sourceptr++) & 0x7F];
@@ -233,8 +240,8 @@ void Decode62(LPBYTE imageptr)
   // to undo the effects of the checksumming process
   {
     unsigned char savedval = 0;
-    LPBYTE sourceptr = workbuffer + 0x1400;
-    LPBYTE resultptr = workbuffer + 0x1000;
+    uint8_t* sourceptr = workbuffer + 0x1400;
+    uint8_t* resultptr = workbuffer + 0x1000;
     int loop = 342;
     while (loop--) {
       *resultptr = savedval ^ *(sourceptr++);
@@ -244,8 +251,8 @@ void Decode62(LPBYTE imageptr)
 
   // Convert the 342 6-bit bytes into 256 8-bit bytes
   {
-    LPBYTE lowbitsptr = workbuffer + 0x1000;
-    LPBYTE sectorBase = workbuffer + 0x1056;
+    uint8_t* lowbitsptr = workbuffer + 0x1000;
+    uint8_t* sectorBase = workbuffer + 0x1056;
     unsigned char offset = 0xAC;
     while (offset != 0x02) {
       if (offset >= 0xAC) {
@@ -264,9 +271,9 @@ void Decode62(LPBYTE imageptr)
   }
 }
 
-void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
+void DenibblizeTrack(uint8_t* trackimage, bool dosorder, int nibbles)
 {
-  ZeroMemory(workbuffer, 0x1000);
+  memset(workbuffer, 0, 0x1000);
 
   // Search through the track image for each sector. For every sector
   // we find, copy the nibblized data for that sector into the work
@@ -311,10 +318,10 @@ void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
   }
 }
 
-unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
+unsigned int NibblizeTrack(uint8_t* trackImageBuffer, bool dosorder, int track)
 {
-  ZeroMemory(workbuffer + 4096, 4096);
-  LPBYTE imageptr = trackImageBuffer;
+  memset(workbuffer + 4096, 0, 4096);
+  uint8_t* imageptr = trackImageBuffer;
   unsigned char sector = 0;
 
   // Write gap one, which contains 48 self-sync bytes
@@ -364,7 +371,7 @@ unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
     *(imageptr++) = 0xD5;
     *(imageptr++) = 0xAA;
     *(imageptr++) = 0xAD;
-    CopyMemory(imageptr, Code62(sectornumber[dosorder][sector]), 343);
+    memcpy(imageptr,  Code62(sectornumber[dosorder][sector]),  343);
     imageptr += 343;
     *(imageptr++) = 0xDE;
     *(imageptr++) = 0xAA;
@@ -380,27 +387,26 @@ unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
   return imageptr - trackImageBuffer;
 }
 
-void SkewTrack(int track, int nibbles, LPBYTE trackImageBuffer)
+void SkewTrack(int track, int nibbles, uint8_t* trackImageBuffer)
 {
   int skewbytes = (track * 768) % nibbles;
-  CopyMemory(workbuffer, trackImageBuffer, nibbles);
-  CopyMemory(trackImageBuffer, workbuffer + skewbytes, nibbles - skewbytes);
-  CopyMemory(trackImageBuffer + nibbles - skewbytes, workbuffer, skewbytes);
+  memcpy(workbuffer,  trackImageBuffer,  nibbles);
+  memcpy(trackImageBuffer,  workbuffer + skewbytes,  nibbles - skewbytes);
+  memcpy(trackImageBuffer + nibbles - skewbytes,  workbuffer,  skewbytes);
 }
 
 // RAW PROGRAM IMAGE (APL) FORMAT IMPLEMENTATION
 
 bool AplBoot(imageinfoptr ptr) {
-  SetFilePointer(ptr->file, 0, NULL, FILE_BEGIN);
+  fseek(ptr->file, 0, SEEK_SET);
   unsigned short address = 0;
   unsigned short length = 0;
-  unsigned int bytesRead;
-  ReadFile(ptr->file, &address, sizeof(unsigned short), &bytesRead, NULL);
-  ReadFile(ptr->file, &length, sizeof(unsigned short), &bytesRead, NULL);
+  fread(&address, 1, sizeof(unsigned short), ptr->file);
+  fread(&length, 1, sizeof(unsigned short), ptr->file);
   if ((((unsigned short)(address + length)) <= address) || (address >= 0xC000) || (address + length - 1 >= 0xC000)) {
     return 0;
   }
-  ReadFile(ptr->file, mem + address, length, &bytesRead, NULL);
+  fread(mem + address, 1, length, ptr->file);
   int loop = 192;
   while (loop--) {
     *(memdirty + loop) = 0xFF;
@@ -409,13 +415,13 @@ bool AplBoot(imageinfoptr ptr) {
   return 1;
 }
 
-unsigned int AplDetect(LPBYTE imageptr, unsigned int imagesize) {
-  unsigned int length = *(LPWORD)(imageptr + 2);
+unsigned int AplDetect(uint8_t* imageptr, unsigned int imagesize) {
+  unsigned int length = *(uint16_t*)(imageptr + 2);
   return (((length + 4) == imagesize) || ((length + 4 + ((256 - ((length + 4) & 255)) & 255)) == imagesize));
 }
 
 // DOS ORDER (DO) FORMAT IMPLEMENTATION
-unsigned int DoDetect(LPBYTE imageptr, unsigned int imagesize) {
+unsigned int DoDetect(uint8_t* imageptr, unsigned int imagesize) {
   if (((imagesize < 143105) || (imagesize > 143364)) && (imagesize != 143403) && (imagesize != 143488)) {
     return 0;
   }
@@ -439,8 +445,8 @@ unsigned int DoDetect(LPBYTE imageptr, unsigned int imagesize) {
     int loop = 1;
     bool mismatch = 0;
     while ((loop++ < 5) && !mismatch) {
-      if ((*(LPWORD)(imageptr + (loop << 9) + 0x100) != ((loop == 5) ? 0 : 6 - loop)) ||
-          (*(LPWORD)(imageptr + (loop << 9) + 0x102) != ((loop == 2) ? 0 : 8 - loop))) {
+      if ((*(uint16_t*)(imageptr + (loop << 9) + 0x100) != ((loop == 5) ? 0 : 6 - loop)) ||
+          (*(uint16_t*)(imageptr + (loop << 9) + 0x102) != ((loop == 2) ? 0 : 8 - loop))) {
         mismatch = 1;
       }
     }
@@ -451,29 +457,27 @@ unsigned int DoDetect(LPBYTE imageptr, unsigned int imagesize) {
   return 1;
 }
 
-void DoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles) {
-  SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  ZeroMemory(workbuffer, 4096);
-  unsigned int bytesRead;
-  ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
+void DoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles) {
+  fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
+  memset(workbuffer, 0, 4096);
+  fread(workbuffer, 1, 4096, ptr->file);
   *nibbles = NibblizeTrack(trackImageBuffer, 1, track);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
   }
 }
 
-void DoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
+void DoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 1, nibbles);
-  SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  unsigned int bytesWritten;
-  WriteFile(ptr->file, workbuffer, 4096, &bytesWritten, NULL);
+  fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
+  fwrite(workbuffer, 1, 4096, ptr->file);
 }
 
 // SIMSYSTEM IIE (IIE) format implementation
 
-void IieConvertSectorOrder(LPBYTE sourceorder) {
+void IieConvertSectorOrder(uint8_t* sourceorder) {
   int loop = 16;
   while (loop--) {
     unsigned char found = 0xFF;
@@ -490,7 +494,7 @@ void IieConvertSectorOrder(LPBYTE sourceorder) {
   }
 }
 
-unsigned int IieDetect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int IieDetect(uint8_t* imageptr, unsigned int imagesize)
 {
   if (strncmp((const char *) imageptr, "SIMSYSTEM_IIE", 13) || (*(imageptr + 13) > 3)) {
     return 0;
@@ -498,90 +502,85 @@ unsigned int IieDetect(LPBYTE imageptr, unsigned int imagesize)
   return 2;
 }
 
-void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
   // If we haven't already done so, read the image file header
   if (!ptr->header) {
-    ptr->header = (LPBYTE) VirtualAlloc(NULL, 88, 0x1000, 0);
+    ptr->header = (uint8_t*) malloc(88);
     if (!ptr->header) {
       *nibbles = 0;
       return;
     }
-    ZeroMemory(ptr->header, 88);
-    unsigned int bytesRead;
-    SetFilePointer(ptr->file, 0, NULL, FILE_BEGIN);
-    ReadFile(ptr->file, ptr->header, 88, &bytesRead, NULL);
+    memset(ptr->header, 0, 88);
+    fseek(ptr->file, 0, SEEK_SET);
+    fread(ptr->header, 1, 88, ptr->file);
   }
 
   if (*(ptr->header + 13) <= 2) {
     // If this image contains user data, read the track and nibblize it
     IieConvertSectorOrder(ptr->header + 14);
-    SetFilePointer(ptr->file, (track << 12) + 30, NULL, FILE_BEGIN);
-    ZeroMemory(workbuffer, 4096);
-    unsigned int bytesRead;
-    ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
+    fseek(ptr->file, (track << 12) + 30, SEEK_SET);
+    memset(workbuffer, 0, 4096);
+    fread(workbuffer, 1, 4096, ptr->file);
     *nibbles = NibblizeTrack(trackImageBuffer, 2, track);
   } else {
     // Otherwise, if this image contains nibble information, read it directly into the track buffer
-    *nibbles = *(LPWORD)(ptr->header + (track << 1) + 14);
+    *nibbles = *(uint16_t*)(ptr->header + (track << 1) + 14);
     unsigned int offset = 88;
     while (track--) {
-      offset += *(LPWORD)(ptr->header + (track << 1) + 14);
+      offset += *(uint16_t*)(ptr->header + (track << 1) + 14);
     }
-    SetFilePointer(ptr->file, offset, NULL, FILE_BEGIN);
-    ZeroMemory(trackImageBuffer, *nibbles);
-    unsigned int bytesRead;
-    ReadFile(ptr->file, trackImageBuffer, *nibbles, &bytesRead, NULL);
+    fseek(ptr->file, offset, SEEK_SET);
+    memset(trackImageBuffer, 0, *nibbles);
+    fread(trackImageBuffer, 1, *nibbles, ptr->file);
   }
 }
 
-void IieWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
+void IieWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
 }
 
 // Nibblized 6656-nibble (nib) format implementation
 
-unsigned int Nib1Detect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int Nib1Detect(uint8_t* imageptr, unsigned int imagesize)
 {
   return (imagesize == 232960) ? 2 : 0;
 }
 
-void Nib1Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+void Nib1Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
-  SetFilePointer(ptr->file, ptr->offset + track * NIBBLES, NULL, FILE_BEGIN);
-  ReadFile(ptr->file, trackImageBuffer, NIBBLES, (unsigned int *) nibbles, NULL);
+  fseek(ptr->file, ptr->offset + track * NIBBLES, SEEK_SET);
+  *nibbles = fread(trackImageBuffer, 1, NIBBLES, ptr->file);
 }
 
-void Nib1Write(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
+void Nib1Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
-  SetFilePointer(ptr->file, ptr->offset + track * NIBBLES, NULL, FILE_BEGIN);
-  unsigned int bytesWritten;
-  WriteFile(ptr->file, trackimage, nibbles, &bytesWritten, NULL);
+  fseek(ptr->file, ptr->offset + track * NIBBLES, SEEK_SET);
+  fwrite(trackimage, 1, nibbles, ptr->file);
 }
 
 // NIBBLIZED 6384-NIBBLE (NB2) FORMAT IMPLEMENTATION
 
-unsigned int Nib2Detect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int Nib2Detect(uint8_t* imageptr, unsigned int imagesize)
 {
   return (imagesize == 223440) ? 2 : 0;
 }
 
-void Nib2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+void Nib2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
-  SetFilePointer(ptr->file, ptr->offset + track * 6384, NULL, FILE_BEGIN);
-  ReadFile(ptr->file, trackImageBuffer, 6384, (unsigned int *) nibbles, NULL);
+  fseek(ptr->file, ptr->offset + track * 6384, SEEK_SET);
+  *nibbles = fread(trackImageBuffer, 1, 6384, ptr->file);
 }
 
-void Nib2Write(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
+void Nib2Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
-  SetFilePointer(ptr->file, ptr->offset + track * 6384, NULL, FILE_BEGIN);
-  unsigned int bytesWritten;
-  WriteFile(ptr->file, trackimage, nibbles, &bytesWritten, NULL);
+  fseek(ptr->file, ptr->offset + track * 6384, SEEK_SET);
+  fwrite(trackimage, 1, nibbles, ptr->file);
 }
 
 // PRODOS order (po) format implementation
 
-unsigned int PoDetect(LPBYTE imageptr, unsigned int imagesize) {
+unsigned int PoDetect(uint8_t* imageptr, unsigned int imagesize) {
   if (((imagesize < 143105) || (imagesize > 143364)) && (imagesize != 143488)) {
     return 0;
   }
@@ -605,8 +604,8 @@ unsigned int PoDetect(LPBYTE imageptr, unsigned int imagesize) {
     int loop = 1;
     bool mismatch = 0;
     while ((loop++ < 5) && !mismatch) {
-      if ((*(LPWORD)(imageptr + (loop << 9)) != ((loop == 2) ? 0 : loop - 1)) ||
-          (*(LPWORD)(imageptr + (loop << 9) + 2) != ((loop == 5) ? 0 : loop + 1))) {
+      if ((*(uint16_t*)(imageptr + (loop << 9)) != ((loop == 2) ? 0 : loop - 1)) ||
+          (*(uint16_t*)(imageptr + (loop << 9) + 2) != ((loop == 5) ? 0 : loop + 1))) {
         mismatch = 1;
       }
     }
@@ -618,43 +617,40 @@ unsigned int PoDetect(LPBYTE imageptr, unsigned int imagesize) {
   return 1;
 }
 
-void PoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+void PoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
-  SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  ZeroMemory(workbuffer, 4096);
-  unsigned int bytesRead;
-  ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
+  fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
+  memset(workbuffer, 0, 4096);
+  fread(workbuffer, 1, 4096, ptr->file);
   *nibbles = NibblizeTrack(trackImageBuffer, 0, track);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
   }
 }
 
-void PoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
+void PoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 0, nibbles);
-  SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  unsigned int bytesWritten;
-  WriteFile(ptr->file, workbuffer, 4096, &bytesWritten, NULL);
+  fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
+  fwrite(workbuffer, 1, 4096, ptr->file);
 }
 
 // PRODOS PROGRAM IMAGE (PRG) FORMAT IMPLEMENTATION
 
 bool PrgBoot(imageinfoptr ptr)
 {
-  SetFilePointer(ptr->file, 5, NULL, FILE_BEGIN);
+  fseek(ptr->file, 5, SEEK_SET);
   unsigned short address = 0;
   unsigned short length = 0;
-  unsigned int bytesRead;
-  ReadFile(ptr->file, &address, sizeof(unsigned short), &bytesRead, NULL);
-  ReadFile(ptr->file, &length, sizeof(unsigned short), &bytesRead, NULL);
+  fread(&address, 1, sizeof(unsigned short), ptr->file);
+  fread(&length, 1, sizeof(unsigned short), ptr->file);
   length <<= 1;
   if ((((unsigned short)(address + length)) <= address) || (address >= 0xC000) || (address + length - 1 >= 0xC000)) {
     return 0;
   }
-  SetFilePointer(ptr->file, 128, NULL, FILE_BEGIN);
-  ReadFile(ptr->file, mem + address, length, &bytesRead, NULL);
+  fseek(ptr->file, 128, SEEK_SET);
+  fread(mem + address, 1, length, ptr->file);
   int loop = 192;
   while (loop--) {
     *(memdirty + loop) = 0xFF;
@@ -663,15 +659,15 @@ bool PrgBoot(imageinfoptr ptr)
   return 1;
 }
 
-unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int PrgDetect(uint8_t* imageptr, unsigned int imagesize)
 {
-  return (*(LPDWORD) imageptr == 0x214C470A) ? 2 : 0;
+  return (*(uint32_t*) imageptr == 0x214C470A) ? 2 : 0;
 }
 
 // WOZ2 (woz) format implementation
 // see: https://applesaucefdc.com/woz/reference2/
 
-unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int Woz2Detect(uint8_t* imageptr, unsigned int imagesize)
 {
   if (strncmp((const char *) imageptr, "WOZ2\xFF\n\r\n", 8) != 0) {
     return 0;
@@ -687,17 +683,18 @@ static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
                                          const unsigned int sync_bytes_needed,
                                          const unsigned int trailing_0_count);
 
-void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+void Woz2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
   unsigned int bytesRead;
   if (!ptr->header) {
-    ptr->header = (LPBYTE) VirtualAlloc(NULL, WOZ2_HEADER_SIZE, 0x1000, 0);
+    ptr->header = (uint8_t*) malloc(WOZ2_HEADER_SIZE);
     if (!ptr->header) {
       *nibbles = 0;
       return;
     }
-    SetFilePointer(ptr->file, ptr->offset, NULL, FILE_BEGIN);
-    ReadFile(ptr->file, ptr->header, WOZ2_HEADER_SIZE, &bytesRead, NULL);
+    memset(ptr->header, 0, WOZ2_HEADER_SIZE);
+    fseek(ptr->file, ptr->offset, SEEK_SET);
+    bytesRead = fread(ptr->header, 1, WOZ2_HEADER_SIZE, ptr->file);
     assert(bytesRead == WOZ2_HEADER_SIZE);
   }
 
@@ -729,16 +726,17 @@ void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
   const uint32_t bit_count =  trk[4] | ((uint16_t) trk[5])<<8
     | ((uint16_t) trk[6])<<16 | ((uint16_t) trk[7])<<24;
 
-  SetFilePointer(ptr->file, ptr->offset + starting_block * WOZ2_DATA_BLOCK_SIZE, NULL, FILE_BEGIN);
+  fseek(ptr->file, ptr->offset + starting_block * WOZ2_DATA_BLOCK_SIZE, SEEK_SET);
 
   const unsigned int byte_count = block_count * WOZ2_DATA_BLOCK_SIZE;
-  LPBYTE buffer = (LPBYTE) VirtualAlloc(NULL, byte_count, 0x1000, 0);
+  uint8_t* buffer = (uint8_t*) malloc(byte_count);
+  if (buffer) memset(buffer, 0, byte_count);
   if (!buffer) {
     *nibbles = 0;
     return;
   }
 
-  ReadFile(ptr->file, buffer, byte_count, &bytesRead, NULL);
+  bytesRead = fread(buffer, 1, byte_count, ptr->file);
   assert(bytesRead == byte_count);
 
 
@@ -753,7 +751,10 @@ void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
                              1);
   }
   if (i == 0) { // sync bytes (still) not found
-    VirtualFree(buffer, 0,/*MEM_RELEASE*/0);
+    if (buffer) {
+      free(buffer);
+      buffer = NULL;
+    }
     *nibbles = 0;
     return;
   }
@@ -788,7 +789,10 @@ void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
     trackImageBuffer[nibbles_done++] = nibble;
   }
 
-  VirtualFree(buffer, 0,/*MEM_RELEASE*/0);
+  if (buffer) {
+    free(buffer);
+    buffer = NULL;
+  }
 
   *nibbles = nibbles_done;
 }
@@ -870,67 +874,71 @@ bool ImageBoot(HIMAGE imageHandle) {
 void ImageClose(HIMAGE imageHandle)
 {
   imageinfoptr ptr = (imageinfoptr) imageHandle;
-  if (ptr->file != INVALID_HANDLE_VALUE) {
-    CloseHandle(ptr->file);
+  if (ptr->file != NULL) {
+    fclose(ptr->file);
   }
   for (int track = 0; track < TRACKS; track++) {
     if (!ptr->validTrack[track]) {
-      DeleteFile(ptr->filename);
+      remove(ptr->filename);
       break;
     }
   }
   if (ptr->header) {
-    VirtualFree(ptr->header, 0,/*MEM_RELEASE*/0);
+    free(ptr->header);
+    ptr->header = NULL;
   }
-  VirtualFree(ptr, 0,/*MEM_RELEASE*/0);
+  free(ptr);
 }
 
 void ImageDestroy()
 {
-  VirtualFree(workbuffer, 0,/*MEM_RELEASE*/0);
-  workbuffer = NULL;
+  if (workbuffer) {
+    free(workbuffer);
+    workbuffer = NULL;
+  }
 }
 
 void ImageInitialize()
 {
-  workbuffer = (LPBYTE) VirtualAlloc(NULL, 0x2000, 0x1000,/*PAGE_READWRITE*/0);
+  workbuffer = (uint8_t*) malloc(0x2000);
+  if (workbuffer) memset(workbuffer, 0, 0x2000);
 }
 
-int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_, bool bCreateIfNecessary)
+int ImageOpen(const char* imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_, bool bCreateIfNecessary)
 {
   if (!(imagefilename && hDiskImage_ && pWriteProtected_ && workbuffer)) {
     return IMAGE_ERROR_BAD_POINTER;
   } // HACK: MAGIC # -1
 
   // Try to open the image file
-  HANDLE file = INVALID_HANDLE_VALUE;
+  FILE* file = NULL;
 
   if (!*pWriteProtected_)
     file = fopen(imagefilename, "r+b"); // open file in r/w mode
   // File may have read-only attribute set, so try to open as read-only.
-  if (file == INVALID_HANDLE_VALUE) {
+  if (file == NULL) {
     file = fopen(imagefilename, "rb"); // open file just for reading
 
-    if (file != INVALID_HANDLE_VALUE)
+    if (file != NULL)
       *pWriteProtected_ = 1;
   }
 
-  if ((file == INVALID_HANDLE_VALUE) && bCreateIfNecessary) {
+  if ((file == NULL) && bCreateIfNecessary) {
     file = fopen(imagefilename, "a+b"); // create file
   }
 
   // If we aren't able to open the file, return
-  if (file == INVALID_HANDLE_VALUE) {
+  if (file == NULL) {
     return IMAGE_ERROR_UNABLE_TO_OPEN; // HACK: MAGIC # 1
   }
 
   // Determine the file's extension and convert it to lowercase
-  LPCTSTR imagefileext = imagefilename;
-  if (_tcsrchr(imagefileext, FILE_SEPARATOR)) {
-    imagefileext = _tcsrchr(imagefileext, FILE_SEPARATOR) + 1;
+  const char* imagefileext = imagefilename;
+  if (strrchr(imagefileext, FILE_SEPARATOR)) {
+    imagefileext = strrchr(imagefileext, FILE_SEPARATOR) + 1;
   }
-  if (_tcsrchr(imagefileext, TEXT('.'))) {
-    imagefileext = _tcsrchr(imagefileext, TEXT('.'));
+  if (strrchr(imagefileext, '.')) {
+    imagefileext = strrchr(imagefileext, '.');
   }
 
   #define _MAX_EXT  5
@@ -938,23 +946,23 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-  _tcsncpy(ext, imagefileext, _MAX_EXT);
+  strncpy(ext, imagefileext, _MAX_EXT);
 #pragma GCC diagnostic pop
 
-  CharLowerBuff(ext, _tcslen(ext));
+  for (char* p = ext; *p; ++p) *p = (char)tolower((unsigned char)*p);
 
-  unsigned int size = GetFileSize(file, NULL);
-  LPBYTE view = NULL;
-  LPBYTE pImage = NULL;
+  unsigned int size = Util_GetFileSize(file);
+  uint8_t* view = NULL;
+  uint8_t* pImage = NULL;
 
   const unsigned int UNKNOWN_FORMAT = 0xFFFFFFFF;
   unsigned int format = UNKNOWN_FORMAT;
 
   if (size > 0) {
-    view = (LPBYTE) malloc(size);
-    size_t bytesRead = fread(view, 1, size, (FILE *) file);
+    view = (uint8_t*) malloc(size);
+    size_t bytesRead = fread(view, 1, size, file);
     if (bytesRead > 0) {
-      fseek((FILE *) file, 0, FILE_BEGIN); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
+      fseek(file, 0, SEEK_SET); // I just got accustomed to mrsftish FILE_BEGIN, FILE_END, etc. Hmm. ^_^
     }
     pImage = view;
 
@@ -970,7 +978,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
       unsigned int possibleformat = UNKNOWN_FORMAT;
       int loop = 0;
       while ((loop < IMAGETYPES) && (format == UNKNOWN_FORMAT)) {
-        if (*ext && _tcsstr(imagetype[loop].rejectExts, ext)) {
+        if (*ext && strstr(imagetype[loop].rejectExts, ext)) {
           ++loop;
         } else {
           unsigned int result = imagetype[loop].detect(pImage, size);
@@ -992,7 +1000,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
   } else {
     // We create only DOS order (do) or 6656-nibble (nib) format files
     for (int loop = 1; loop <= 4; loop += 3) {
-      if (*ext && _tcsstr(imagetype[loop].createExts, ext)) {
+      if (*ext && strstr(imagetype[loop].createExts, ext)) {
         format = loop;
         break;
       }
@@ -1003,13 +1011,13 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
   // If the file does match a known format
   if (format != UNKNOWN_FORMAT) {
     // Create a record for the file, and return an image handle
-    *hDiskImage_ = (HIMAGE) VirtualAlloc(NULL, sizeof(imageinforec), 0x1000, 0);
+    *hDiskImage_ = (HIMAGE) malloc(sizeof(imageinforec));
     if (*hDiskImage_) {
-      ZeroMemory(*hDiskImage_, sizeof(imageinforec));
+      memset(*hDiskImage_, 0, sizeof(imageinforec));
       // Do this in DiskInsert
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-      _tcsncpy(((imageinfoptr) *hDiskImage_)->filename, imagefilename, MAX_PATH);
+      strncpy(((imageinfoptr) *hDiskImage_)->filename, imagefilename, MAX_PATH);
 #pragma GCC diagnostic pop
       ((imageinfoptr) *hDiskImage_)->format = format;
       ((imageinfoptr) *hDiskImage_)->file = file;
@@ -1024,15 +1032,15 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
     }
   }
 
-  CloseHandle(file);
+  fclose(file);
   if (size <= 0) {
-    DeleteFile(imagefilename);
+    remove(imagefilename);
   }
 
   return IMAGE_ERROR_BAD_SIZE; // HACK: MAGIC # 2
 }
 
-void ImageReadTrack(HIMAGE imageHandle, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles) {
+void ImageReadTrack(HIMAGE imageHandle, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles) {
   imageinfoptr ptr = (imageinfoptr) imageHandle;
   if (imagetype[ptr->format].read && ptr->validTrack[track]) {
     imagetype[ptr->format].read(ptr, track, quartertrack, trackImageBuffer, nibbles);
@@ -1043,7 +1051,7 @@ void ImageReadTrack(HIMAGE imageHandle, int track, int quartertrack, LPBYTE trac
   }
 }
 
-void ImageWriteTrack(HIMAGE imageHandle, int track, int quartertrack, LPBYTE trackimage, int nibbles) {
+void ImageWriteTrack(HIMAGE imageHandle, int track, int quartertrack, uint8_t* trackimage, int nibbles) {
   imageinfoptr ptr = (imageinfoptr) imageHandle;
   if (imagetype[ptr->format].write && !ptr->writeProtected) {
     imagetype[ptr->format].write(ptr, track, quartertrack, trackimage, nibbles);

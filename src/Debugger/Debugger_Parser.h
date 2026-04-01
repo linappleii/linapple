@@ -1,12 +1,13 @@
 #ifndef DEBUGGER_PARSER_H
 #define DEBUGGER_PARSER_H
 
+#include <cstdint>
 #include "Util_Text.h"
 
 const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
 const char * FindTokenOrAlphaNumeric ( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
 int RemoveWhiteSpaceReverse( char *pSrc );
-void TextConvertTabsToSpaces( char *pDeTabified_, LPCTSTR pText, const int nDstSize, int nTabStop = 0 );
+void TextConvertTabsToSpaces( char *pDeTabified_, const char* pText, const int nDstSize, int nTabStop = 0 );
 
 inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e *pToken_ )
 	{
@@ -35,8 +36,8 @@ inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens
 
 	extern	const char TCHAR_LF    ;//= 0x0D;
 	extern	const char TCHAR_CR    ;//= 0x0A;
-	extern	const char TCHAR_SPACE ;//= TEXT(' ');
-	extern	const char TCHAR_TAB   ;//= TEXT('\t');
+	extern	const char TCHAR_SPACE ;//= ' ';
+	extern	const char TCHAR_TAB   ;//= '\t';
 	extern	const char TCHAR_QUOTE_DOUBLE;
 	extern	const char TCHAR_QUOTE_SINGLE;
 
@@ -45,7 +46,7 @@ inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens
 // Arg - Command Processing
 	Update_t Help_Arg_1( int iCommandHelp );
 	int _Arg_1     ( int nValue );
-	int _Arg_1     ( LPTSTR pName );
+	int _Arg_1     ( char* pName );
 	int _Arg_Shift ( int iSrc, int iEnd, int iDst = 0 );
 	int _Args_Insert( int iSrc, int iEnd, int nLen );
 	void ArgsClear ();

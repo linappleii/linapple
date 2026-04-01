@@ -16,13 +16,12 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#ifndef _WIN32
-#  include "wincompat.h"
-#else
-#  include <windows.h>
-#endif
-
 #include <SDL.h>
+#include <cassert>
+#include <cstring>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
 
 #include "Common.h"
 #include "Structs.h"

@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <SDL_image.h>
 #include "stdafx.h"
 #include "asset.h"
-#include "wwrapper.h"
 #include <pthread.h>
 #include <thread>
 #include <chrono>
@@ -156,13 +155,13 @@ static unsigned char celldirty[40][32];
 static unsigned int customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
 SDL_Surface *g_hDeviceBitmap;
-static LPBYTE framebufferbits;
+static uint8_t* framebufferbits;
 SDL_Color framebufferinfo[256];
 
 const int MAX_FRAME_Y = 384; // 192 Apple scan lines * 2x host scanline = 384
-static LPBYTE frameoffsettable[384];
-static LPBYTE g_pHiresBank1;
-static LPBYTE g_pHiresBank0;
+static uint8_t* frameoffsettable[384];
+static uint8_t* g_pHiresBank1;
+static uint8_t* g_pHiresBank0;
 
 SDL_Surface *g_hLogoBitmap = NULL;
 SDL_Surface *charset40 = NULL;    // Apple charset40 bitmap
@@ -174,12 +173,12 @@ int g_iStatusCycle = 0;    // cycler for status panel showing
 SDL_Surface *g_origscreen = NULL;
 SDL_Surface *g_hSourceBitmap = NULL;
 
-static LPBYTE g_pSourcePixels;
+static uint8_t* g_pSourcePixels;
 SDL_Color g_pSourceHeader[256];
 const int MAX_SOURCE_Y = 512*2; // double size: second half of bitmap may contain a complete copy with an alternate language
-static LPBYTE g_aSourceStartofLine[MAX_SOURCE_Y];
-static LPBYTE g_pTextBank1; // Aux
-static LPBYTE g_pTextBank0; // Main
+static uint8_t* g_aSourceStartofLine[MAX_SOURCE_Y];
+static uint8_t* g_pTextBank1; // Aux
+static uint8_t* g_pTextBank0; // Main
 
 // For tv emulation g_nAppMode
 // 2 extra scan lines on bottom?
@@ -190,7 +189,7 @@ static unsigned short colormixmap[6][6][6];
 static int g_nAltCharSetOffset = 0; // alternate character set
 static bool displaypage2 = 0;
 static bool displaypage2_latched = 0;
-static LPBYTE framebufferaddr = (LPBYTE) 0;
+static uint8_t* framebufferaddr = (uint8_t*) 0;
 static int framebufferpitch = 0;
 bool graphicsmode = 0;
 static volatile bool hasrefreshed = false;
@@ -198,7 +197,7 @@ static unsigned int lastpageflip = 0;
 unsigned int monochrome = RGB(0xC0, 0xC0, 0xC0);
 static bool redrawfull = 1;
 static unsigned int dwVBlCounter = 0;
-static LPBYTE vidlastmem = NULL;
+static uint8_t* vidlastmem = NULL;
 unsigned int g_uVideoMode = VF_TEXT;
 unsigned int g_uDebugVideoMode = VF_TEXT;
 static unsigned int vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
@@ -242,8 +241,8 @@ static char display_pipeline_[0x2000*4 + 0x400*4];
 
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
-  LPBYTE currdestptr = frameoffsettable[desty] + destx;
-  LPBYTE currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
+  uint8_t* currdestptr = frameoffsettable[desty] + destx;
+  uint8_t* currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
   int bytesleft;
   while (ysize--) {
     bytesleft = xsize;
@@ -262,7 +261,7 @@ void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sou
       // GPH Provide scanlines for all but first couple of modes
       // TODO: Optimize
       if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
-        *(LPDWORD)(currdestptr + bytesleft) = *(LPDWORD)(currsourceptr + bytesleft);
+        *(uint32_t*)(currdestptr + bytesleft) = *(uint32_t*)(currsourceptr + bytesleft);
       } else {
         *(currdestptr + bytesleft) = 0;
       }
@@ -272,7 +271,7 @@ void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sou
   }
 }
 
-void CreateFrameOffsetTable(LPBYTE addr, int/*int*/ pitch) {
+void CreateFrameOffsetTable(uint8_t* addr, int/*int*/ pitch) {
   // As I could take it's just needed for windzooeee DD while in FullScreen mode.
   // Left for compatiblity purposes. -- bb.
   if (framebufferaddr == addr && framebufferpitch == pitch) {
@@ -288,7 +287,7 @@ void CreateFrameOffsetTable(LPBYTE addr, int/*int*/ pitch) {
 }
 
 void CreateIdentityPalette() {
-  ZeroMemory(framebufferinfo, 256 * sizeof(SDL_Color)); // must be cleared???
+  memset(framebufferinfo, 0, 256 * sizeof(SDL_Color)); // must be cleared???
   // SET FRAME BUFFER TABLE ENTRIES TO CUSTOM COLORS
   SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
   SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
@@ -354,7 +353,7 @@ void CreateIdentityPalette() {
 void CreateDIBSections() {
   pthread_mutex_lock(&video_draw_mutex);
 
-  CopyMemory(g_pSourceHeader, framebufferinfo, 256 * sizeof(SDL_Color));
+  memcpy(g_pSourceHeader,  framebufferinfo,  256 * sizeof(SDL_Color));
 
   // CREATE THE FRAME BUFFER DIB SECTION
   if (g_hDeviceBitmap) {
@@ -370,7 +369,7 @@ void CreateDIBSections() {
   if (g_hDeviceBitmap == NULL) {
     fprintf(stderr, "g_hDeviceBitmap was not created!\n");
   }
-  framebufferbits = (LPBYTE) g_hDeviceBitmap->pixels;
+  framebufferbits = (uint8_t*) g_hDeviceBitmap->pixels;
   SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
   SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
 
@@ -407,7 +406,7 @@ void CreateDIBSections() {
     fprintf(stderr, "g_hSourceBitmap was not created!\n");
   }
 
-  g_pSourcePixels = (LPBYTE) g_hSourceBitmap->pixels;
+  g_pSourcePixels = (uint8_t*) g_hSourceBitmap->pixels;
   SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
 
   // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
@@ -419,7 +418,7 @@ void CreateDIBSections() {
   int locked = 0;
 
   // DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
-  ZeroMemory(g_pSourcePixels, SRCOFFS_TOTAL * MAX_SOURCE_Y);
+  memset(g_pSourcePixels, 0, SRCOFFS_TOTAL * MAX_SOURCE_Y);
 
   if ((g_videotype != VT_MONO_CUSTOM) && (g_videotype != VT_MONO_AMBER) && (g_videotype != VT_MONO_GREEN) &&
       (g_videotype != VT_MONO_WHITE)) {
@@ -469,8 +468,8 @@ void DrawDHiResSource() {
     int coloffs = SIZE * column;
     for (unsigned byteval = 0; byteval < 256; byteval++) {
       int color[SIZE];
-      ZeroMemory(color, sizeof(color));
-      unsigned pattern = MAKEWORD(byteval, column);
+      memset(color, 0, sizeof(color));
+      unsigned pattern = ((uint16_t)(((uint8_t)(byteval)) | ((uint16_t)((uint8_t)(column))) << 8));
       int pixel;
       for (pixel = 1; pixel < 15; pixel++) {
         if (pattern & (1 << pixel)) {
@@ -793,7 +792,7 @@ void DrawMonoDHiResSource() {
   for (int column = 0; column < 256; column++) {
     int coloffs = 10 * column;
     for (unsigned byteval = 0; byteval < 256; byteval++) {
-      unsigned pattern = MAKEWORD(byteval, column);
+      unsigned pattern = ((uint16_t)(((uint8_t)(byteval)) | ((uint16_t)((uint8_t)(column))) << 8));
       int y = byteval << 1;
       for (int x = 0; x < 10; x++) {
         unsigned char colorval = pattern & (1 << (x + 3)) ? iMonochrome : BLACK;
@@ -896,7 +895,7 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
 
 void DrawTextSource(SDL_Surface *dc) {
   //  HDC     memdc  = CreateCompatibleDC(dc);
-  //  HBITMAP bitmap = LoadBitmap(g_hInstance,TEXT("CHARSET40"));
+  //  HBITMAP bitmap = LoadBitmap(g_hInstance,"CHARSET40");
   //  SelectObject(memdc,bitmap);
   if (charset40 == NULL) {
     return;
@@ -1058,12 +1057,12 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
       #define PIXEL  0
       #define COLOR  ((xpixel + PIXEL) & 3)
       #define VALUE  (dwordval >> (4 + PIXEL - COLOR))
-      CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2, SRCOFFS_DHIRES + 10 * HIBYTE(VALUE) + COLOR,
-                 LOBYTE(VALUE) << 1);
+      CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2, SRCOFFS_DHIRES + 10 * ((uint8_t)(((uint16_t)(VALUE) >> 8) & 0xFF)) + COLOR,
+                 ((uint8_t)(VALUE)) << 1);
       #undef PIXEL
       #define PIXEL  7
-      CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2, SRCOFFS_DHIRES + 10 * HIBYTE(VALUE) + COLOR,
-                 LOBYTE(VALUE) << 1);
+      CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2, SRCOFFS_DHIRES + 10 * ((uint8_t)(((uint16_t)(VALUE) >> 8) & 0xFF)) + COLOR,
+                 ((uint8_t)(VALUE)) << 1);
       #undef PIXEL
       #undef COLOR
       #undef VALUE
@@ -1176,9 +1175,9 @@ void MixColorsVertical(int matx, int maty)
 
 void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
   // For tv emulation g_nAppMode
-  LPBYTE currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
-  LPBYTE currdestptr = frameoffsettable[y << 1] + (x << 1);
-  LPBYTE currptr;
+  uint8_t* currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
+  uint8_t* currdestptr = frameoffsettable[y << 1] + (x << 1);
+  uint8_t* currptr;
 
   int matx = x;
   int maty = HGR_MATRIX_YOFFSET + y;
@@ -1359,7 +1358,7 @@ void VideoBenchmark() {
   // Prepare two different frame buffers, each of which have half of the
   // bytes set to 0X14 and the other half set to 0XAA
   int loop;
-  LPDWORD mem32 = (LPDWORD) mem;
+  uint32_t* mem32 = (uint32_t*) mem;
   for (loop = 4096; loop < 6144; loop++) {
     *(mem32 + loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0x14141414 : 0xAAAAAAAA;
   }
@@ -1372,60 +1371,60 @@ void VideoBenchmark() {
   // simulate the activity of an average game
   unsigned int totaltextfps = 0;
   g_uVideoMode = VF_TEXT;
-  FillMemory(mem + 0x400, 0x400, 0x14);
+  memset(mem + 0x400,  0x14,  0x400);
   VideoRedrawScreen();
-  unsigned int milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds);
-  milliseconds = GetTickCount();
+  unsigned int milliseconds = SDL_GetTicks();
+  while (SDL_GetTicks() == milliseconds);
+  milliseconds = SDL_GetTicks();
   unsigned int cycle = 0;
   do {
     if (cycle & 1) {
-      FillMemory(mem + 0x400, 0x400, 0x14);
+      memset(mem + 0x400,  0x14,  0x400);
     } else {
-      CopyMemory(mem + 0x400, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x400);
+      memcpy(mem + 0x400,  mem + ((cycle & 2) ? 0x4000 : 0x6000),  0x400);
     }
     VideoRefreshScreen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
     totaltextfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (SDL_GetTicks() - milliseconds < 1000);
 
   // See how many hires frames per second we can produce with nothing else
   // going on, changing half of the bytes in the video buffer each frame to
   // simulate the activity of an average game
   unsigned int totalhiresfps = 0;
   g_uVideoMode = VF_HIRES;
-  FillMemory(mem + 0x2000, 0x2000, 0x14);
+  memset(mem + 0x2000,  0x14,  0x2000);
   VideoRedrawScreen();
-  milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds);
-  milliseconds = GetTickCount();
+  milliseconds = SDL_GetTicks();
+  while (SDL_GetTicks() == milliseconds);
+  milliseconds = SDL_GetTicks();
   cycle = 0;
   do {
     if (cycle & 1) {
-      FillMemory(mem + 0x2000, 0x2000, 0x14);
+      memset(mem + 0x2000,  0x14,  0x2000);
     } else {
-      CopyMemory(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
+      memcpy(mem + 0x2000,  mem + ((cycle & 2) ? 0x4000 : 0x6000),  0x2000);
     }
     VideoRefreshScreen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
     totalhiresfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (SDL_GetTicks() - milliseconds < 1000);
 
   // Determine how many 65c02 clock cycles we can emulate per second with nothing else going on
   CpuSetupBenchmark();
   unsigned int totalmhz10 = 0;
-  milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds);
-  milliseconds = GetTickCount();
+  milliseconds = SDL_GetTicks();
+  while (SDL_GetTicks() == milliseconds);
+  milliseconds = SDL_GetTicks();
   cycle = 0;
   do {
     CpuExecute(100000);
     totalmhz10++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (SDL_GetTicks() - milliseconds < 1000);
 
   // If the program counter is not in the expected range at the end of the
   // CPU benchmark, report an error and optionally track it down
@@ -1459,11 +1458,11 @@ void VideoBenchmark() {
   // Do a realistic test of how many frames per second we can produce with
   // full emulation of the cpu, joystick, and disk happening at the same time
   unsigned int realisticfps = 0;
-  FillMemory(mem + 0x2000, 0x2000, 0xAA);
+  memset(mem + 0x2000,  0xAA,  0x2000);
   VideoRedrawScreen();
-  milliseconds = GetTickCount();
-  while (GetTickCount() == milliseconds);
-  milliseconds = GetTickCount();
+  milliseconds = SDL_GetTicks();
+  while (SDL_GetTicks() == milliseconds);
+  milliseconds = SDL_GetTicks();
   cycle = 0;
   do {
     if (realisticfps < 10) {
@@ -1477,24 +1476,24 @@ void VideoBenchmark() {
       }
     }
     if (cycle & 1) {
-      FillMemory(mem + 0x2000, 0x2000, 0xAA);
+      memset(mem + 0x2000,  0xAA,  0x2000);
     } else {
-      CopyMemory(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
+      memcpy(mem + 0x2000,  mem + ((cycle & 2) ? 0x4000 : 0x6000),  0x2000);
     }
     VideoRefreshScreen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
     realisticfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (SDL_GetTicks() - milliseconds < 1000);
   printf("Pure Video FPS:\t%u hires, %u text\n", (unsigned) totalhiresfps, (unsigned) totaltextfps);
   printf("Pure CPU MHz:\t%u.%u%s\n\n", (unsigned) (totalmhz10 / 10), (unsigned) (totalmhz10 % 10),
-         (LPCTSTR)(IS_APPLE2 ? TEXT(" (6502)") : TEXT("")));
+         (const char*)(IS_APPLE2() ? " (6502" : ""));
   printf("EXPECTED AVERAGE VIDEO GAME PERFORMANCE:\t%u FPS\n\n", (unsigned) realisticfps);
   SDL_Delay(1500);
 }
 
-unsigned char VideoCheckMode(unsigned short, unsigned short address, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char VideoCheckMode(unsigned short, unsigned short address, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   address &= 0xFF;
   if (address == 0x7F) {
     return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
@@ -1532,7 +1531,7 @@ void VideoCheckPage(bool force) {
   }
 }
 
-unsigned char VideoCheckVbl(unsigned short, unsigned short, unsigned char, unsigned char, ULONG nCyclesLeft) {
+unsigned char VideoCheckVbl(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t nCyclesLeft) {
   /*
   // Drol expects = 80
   68DE A5 02    LDX #02
@@ -1589,7 +1588,7 @@ void VideoDestroy() {
 
   // Just free our SDL surfaces and free vidlastmem
   // DESTROY BUFFERS
-  VirtualFree(vidlastmem, 0, MEM_RELEASE);
+  free(vidlastmem);
   vidlastmem = NULL;
   // DESTROY FRAME BUFFER
   if (g_hDeviceBitmap) {
@@ -1654,8 +1653,8 @@ bool VideoHasRefreshed() {
 
 void VideoInitialize() {
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
-  vidlastmem = (LPBYTE) VirtualAlloc(NULL, 0x10000, MEM_COMMIT, PAGE_READWRITE);
-  ZeroMemory(vidlastmem, 0x10000);
+  vidlastmem = (uint8_t*) malloc(0x10000);
+  if (vidlastmem) memset(vidlastmem, 0, 0x10000);
 
   // LOAD THE splash screen
   g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
@@ -1770,7 +1769,7 @@ void VideoPerformRefresh() {
     }
   }
 
-  LPBYTE addr = framebufferbits;
+  uint8_t* addr = framebufferbits;
   int   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
   // I could take pitch such: int pitch = screen->pitch; . May be it would be better, what'd you think? --bb
   CreateFrameOffsetTable(addr, pitch);
@@ -1803,14 +1802,14 @@ void VideoPerformRefresh() {
     memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << displaypage2_latched), 0x0400);
     memcpy(display_pipeline_+0x4400,MemGetMainPtr( 0x0400 << displaypage2_latched), 0x0400);
 
-    g_pHiresBank1 = (LPBYTE) display_pipeline_;
-    g_pHiresBank0 = (LPBYTE) display_pipeline_ + 0x2000;
-    g_pTextBank1 =  (LPBYTE) display_pipeline_ + 0x4000;
-    g_pTextBank0 =  (LPBYTE) display_pipeline_ + 0x4400;
+    g_pHiresBank1 = (uint8_t*) display_pipeline_;
+    g_pHiresBank0 = (uint8_t*) display_pipeline_ + 0x2000;
+    g_pTextBank1 =  (uint8_t*) display_pipeline_ + 0x4000;
+    g_pTextBank0 =  (uint8_t*) display_pipeline_ + 0x4400;
   }
   // Check each cell for changed bytes.  redraw pixels for the changed bytes
   // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
-  ZeroMemory(celldirty, 40 * 32);
+  memset(celldirty, 0, 40 * 32);
   UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
                                                                                             : UpdateHiResCell
@@ -1926,7 +1925,7 @@ void VideoResetState() {
   redrawfull = 1;
 }
 
-unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char write, unsigned char, ULONG nCyclesLeft) {
+unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char write, unsigned char, uint32_t nCyclesLeft) {
 
   // Claim video mutex giving deference to any drawing operation
   // in progress in another thread
@@ -1942,19 +1941,19 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
       g_uVideoMode |= VF_MASK2;
       break;
     case 0x0C:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode &= ~VF_80COL;
       break;
     case 0x0D:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode |= VF_80COL;
       break;
     case 0x0E:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_nAltCharSetOffset = 0;
       break;  // Alternate char set off
     case 0x0F:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_nAltCharSetOffset = 256;
       break;  // Alternate char set on
     case 0x50:
@@ -1982,11 +1981,11 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
       g_uVideoMode |= VF_HIRES;
       break;
     case 0x5E:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode |= VF_DHIRES;
       break;
     case 0x5F:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode &= ~VF_DHIRES;
       break;
   }
@@ -1998,7 +1997,7 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
   }
   if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
     static unsigned int lasttime = 0;
-    unsigned int currtime = GetTickCount();
+    unsigned int currtime = SDL_GetTicks();
     if (currtime - lasttime >= 20)
       lasttime = currtime;
     else
@@ -2167,7 +2166,7 @@ unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uEx
     nAddress |= (nPage2 & (1 ^ n80Store)) << 14; // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
-    if ((IS_APPLE2) && // Apple ][?
+    if ((IS_APPLE2()) && // Apple ][?
         (kHPEClock <= nHClock) && // Y: HBL?
         (nHClock <= (kHClocks - 1))) {
       nAddress |= 1 << 12; // Y: a12 (add $1000 to address!)

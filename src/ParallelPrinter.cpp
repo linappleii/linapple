@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -54,11 +54,11 @@ static FILE *file = NULL;
 unsigned int const PRINTDRVR_SIZE = 0x100;
 bool g_bPrinterAppend = true;
 
-static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG);
+static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t);
 
-static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG);
+static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t);
 
-void PrintLoadRom(LPBYTE pCxRomPeripheral, const unsigned int uSlot) {
+void PrintLoadRom(uint8_t* pCxRomPeripheral, const unsigned int uSlot) {
   unsigned char *pData = (unsigned char *) Parallel_bin;  // NB. Don't need to unlock resource
   memcpy(pCxRomPeripheral + uSlot * 256, pData, PRINTDRVR_SIZE);
   RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
@@ -100,12 +100,12 @@ void PrintReset() {
   ClosePrint();
 }
 
-static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   CheckPrint();
   return 0xFF; // status - TODO?
 }
 
-static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, ULONG) {
+static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
   if (!CheckPrint()) {
     return 0;
   }
