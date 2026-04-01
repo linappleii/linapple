@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <unistd.h>
+#include <fstream>
 #include "shim.h"
 
 namespace Path {
@@ -65,6 +66,16 @@ inline std::string FindDataFile(const std::string& filename) {
         }
     }
     return "";
+}
+
+// Standard binary file copy
+inline bool CopyFile(const std::string& src, const std::string& dst) {
+    std::ifstream src_file(src, std::ios::binary);
+    if (!src_file.is_open()) return false;
+    std::ofstream dst_file(dst, std::ios::binary);
+    if (!dst_file.is_open()) return false;
+    dst_file << src_file.rdbuf();
+    return true;
 }
 
 } // namespace Path
