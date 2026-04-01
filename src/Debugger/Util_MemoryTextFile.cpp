@@ -64,7 +64,7 @@ void MemoryTextFile_t::GetLine( const int iLine, char *pLine, const int nMaxLine
 	}
 
 	memset( pLine, 0, nMaxLineChars );
-	strncpy( pLine, m_vLines[ iLine ], nMaxLineChars-1 );
+	Util_SafeStrCpy( pLine, m_vLines[ iLine ], nMaxLineChars-1 );
 }
 
 

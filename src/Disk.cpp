@@ -158,8 +158,7 @@ char *GetImageTitle(const char* imageFileName, Disk_t *fptr)
 
   if (strrchr(startpos, FILE_SEPARATOR))
     startpos = strrchr(startpos, FILE_SEPARATOR) + 1;
-  strncpy(imagetitle, startpos, MAX_DISK_FULL_NAME);
-  imagetitle[MAX_DISK_FULL_NAME] = 0;
+  Util_SafeStrCpy(imagetitle, startpos, MAX_DISK_FULL_NAME);
 
   // if imagetitle contains a lowercase char, then found=1 (why?)
   bool found = 0;
@@ -177,8 +176,7 @@ char *GetImageTitle(const char* imageFileName, Disk_t *fptr)
     for (char* p = imagetitle + 1; *p; ++p) *p = (char)tolower((unsigned char)*p);
   }
 
-  strncpy(fptr->fullname, /*imagetitle*/imageFileName, MAX_DISK_FULL_NAME);
-  fptr->fullname[MAX_DISK_FULL_NAME] = 0;
+  Util_SafeStrCpy(fptr->fullname, /*imagetitle*/imageFileName, MAX_DISK_FULL_NAME);
 
   if (imagetitle[0]) {
     char* dot = imagetitle;
@@ -190,8 +188,7 @@ char *GetImageTitle(const char* imageFileName, Disk_t *fptr)
     }
   }
 
-  strncpy(fptr->imagename, imagetitle, MAX_DISK_IMAGE_NAME);
-  fptr->imagename[MAX_DISK_IMAGE_NAME] = 0;
+  Util_SafeStrCpy(fptr->imagename, imagetitle, MAX_DISK_IMAGE_NAME);
   return fptr->imagename;  // return it
 }
 

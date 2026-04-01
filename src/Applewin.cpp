@@ -401,12 +401,6 @@ bool ValidateDirectory(const char *dir)
   return ret;
 }
 
-static void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
-    if (size == 0) return;
-    strncpy(dest, src, size - 1);
-    dest[size - 1] = '\0';
-}
-
 void SetDiskImageDirectory(char *regKey, int driveNumber)
 {
   std::string sHDFilename = Configuration::Instance().GetString("Configuration", regKey);

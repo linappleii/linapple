@@ -96,15 +96,13 @@ int StringCat ( char * pDst, const char* pSrc, const int nDstSize )
 	int nLenSrc = (int)strlen( pSrc );
 	int nRemaining = nDstSize - nLenDst - 1;
 
-	if (nRemaining < nLenSrc)
+	if (nRemaining <= 0)
+		return 0;
+
+	if (nLenSrc > nRemaining)
 	{
-		if (nRemaining > 0)
-		{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
-			strncat( pDst, pSrc, nRemaining );
-#pragma GCC diagnostic pop
-		}
+		memcpy( pDst + nLenDst, pSrc, nRemaining );
+		pDst[nDstSize - 1] = '\0';
 		return 0;
 	}
 
@@ -300,14 +298,12 @@ void _ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, 
 {
 	int nLen;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
 	nLen = strlen( CHC_USAGE );
 	strcpy( pDst, CHC_USAGE );
 	pDst += nLen;
 
 	nLen = nHeaderLen - 1;
-	strncpy( pDst, pHeader, nLen );
+	Util_SafeStrCpy( pDst, pHeader, nLen );
 	pDst += nLen;
 
 	pSrc += nHeaderLen;
@@ -322,7 +318,6 @@ void _ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, 
 	nLen = strlen( CHC_DEFAULT );
 	strcpy( pDst, CHC_DEFAULT );
 	pDst += nLen;
-#pragma GCC diagnostic pop
 }
 
 

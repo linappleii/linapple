@@ -1364,7 +1364,7 @@ void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 				break;
 			case NOP_STRING_APPLESOFT:
 				iByte = line_.nOpbyte;
-				strncpy( pDst, (const char*)(mem + nBaseAddress), iByte );
+				Util_SafeStrCpy( pDst, (const char*)(mem + nBaseAddress), iByte );
 				pDst += iByte;
 				*pDst = 0;
 			case NOP_STRING_APPLE:
@@ -1460,7 +1460,7 @@ void FormatDisassemblyLine( const DisasmLine_t & line, char * sDisassembly, cons
 		if (line.bTargetImmediate)
 		{
 			strcat( sDisassembly, "#" );
-			strncpy( sTarget, line.sTarget, sizeof(sTarget) );
+			Util_SafeStrCpy( sTarget, line.sTarget, sizeof(sTarget) );
 			sTarget[sizeof(sTarget)-1] = 0;
 		}
 		else
