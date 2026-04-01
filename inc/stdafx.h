@@ -58,6 +58,7 @@
 #include "stretch.h"
 
 #include "Timer.h"
+#include "Util_Text.h"
 
 #include "Video.h"
 

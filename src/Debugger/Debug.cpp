@@ -2688,8 +2688,7 @@ bool _CmdConfigFont ( int iFont, const char* pFontName, int iPitchFamily, int nF
       if (iFont == FONT_DISASM_DEFAULT)
         _UpdateWindowFontHeights( nFontHeight );
 
-      strncpy( pFont->_sFontName, pFontName, MAX_FONT_NAME-1 );
-      pFont->_sFontName[ MAX_FONT_NAME-1 ] = 0;
+      Util_SafeStrCpy( pFont->_sFontName, pFontName, MAX_FONT_NAME-1 );
 
       HDC hDC = FrameGetDC();
 
@@ -4936,7 +4935,7 @@ Update_t CmdNTSC (int nArgs)
 #endif
             // File path is too long
             // TODO: Need to split very long path names
-            strncpy( text, sPaletteFilePath.c_str(), CONSOLE_WIDTH );
+            Util_SafeStrCpy( text, sPaletteFilePath.c_str(), CONSOLE_WIDTH );
             ConsoleBufferPush( text );  // TODO: Switch ConsoleBufferPush() to ConsoleBufferPushFormat()
           }
           else
@@ -6525,8 +6524,7 @@ bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
 
           int nLen = pLabelEnd - pLabelStart;
           nLen = MIN( nLen, MAX_SYMBOLS_LEN );
-          strncpy( sName, pLabelStart, nLen );
-          sName[ nLen - 1 ] = 0;
+          Util_SafeStrCpy( sName, pLabelStart, nLen );
 
           char *pAddressEQU = strstr( pLabel, "$" );
           char *pAddressDFB = strstr( sLine, ":" ); // Get address from start of line
@@ -8750,10 +8748,7 @@ void DebugInitialize()
     doneAutoRun = true;
     std::string pathname = g_sProgramDir;
     pathname += "DebuggerAutoRun.txt";
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
-    strncpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
-#pragma GCC diagnostic pop
+    Util_SafeStrCpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
     g_bReportMissingScripts = false;
     CmdOutputRun(1);
     g_bReportMissingScripts = true;

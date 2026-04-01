@@ -1228,8 +1228,7 @@ bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 						DelayedTarget_t tDelayedTarget;
 
 						tDelayedTarget.m_nBaseAddress = nBaseAddress;
-						strncpy( tDelayedTarget.m_sAddress, pArg->sArg, MAX_SYMBOLS_LEN );
-						tDelayedTarget.m_sAddress[ MAX_SYMBOLS_LEN ] = 0;
+						Util_SafeStrCpy( tDelayedTarget.m_sAddress, pArg->sArg, MAX_SYMBOLS_LEN );
 
 						// Flag this target that we need to update it when we have the relevent info
 						m_bDelayedTargetsDirty = true;

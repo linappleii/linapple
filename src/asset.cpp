@@ -106,7 +106,7 @@ int Asset_FindMasterDisk(char *path_out)
     return 255;
   }
 
-  strncpy(path_out, fullPath.c_str(), MAX_PATH);
+  Util_SafeStrCpy(path_out, fullPath.c_str(), MAX_PATH);
   printf("[info ] Master disk: %s\n", path_out);
   return 0;
 }

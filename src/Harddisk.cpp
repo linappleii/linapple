@@ -164,15 +164,13 @@ void HD_ResetStatus(void)
 
 static void GetImageTitle(const char* imageFileName, PHDD pHardDrive)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
   char imagetitle[128];
   const char* startpos = imageFileName;
 
   if (strrchr(startpos, FILE_SEPARATOR)) {
     startpos = strrchr(startpos, FILE_SEPARATOR) + 1;
   }
-  strncpy(imagetitle, startpos, 127);
+  Util_SafeStrCpy(imagetitle, startpos, 127);
   imagetitle[127] = 0;
 
   bool found = 0;
@@ -185,8 +183,7 @@ static void GetImageTitle(const char* imageFileName, PHDD pHardDrive)
     }
   }
 
-  strncpy(pHardDrive->hd_fullname, imagetitle, 127);
-  pHardDrive->hd_fullname[127] = 0;
+  Util_SafeStrCpy(pHardDrive->hd_fullname, imagetitle, 127);
 
   if (imagetitle[0]) {
     char* dot = imagetitle;
@@ -198,9 +195,7 @@ static void GetImageTitle(const char* imageFileName, PHDD pHardDrive)
     }
   }
 
-  strncpy(pHardDrive->hd_imagename, imagetitle, 15);
-  pHardDrive->hd_imagename[15] = 0;
-#pragma GCC diagnostic pop
+  Util_SafeStrCpy(pHardDrive->hd_imagename, imagetitle, 15);
 }
 
 static void NotifyInvalidImage(char *filename)

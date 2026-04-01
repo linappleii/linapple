@@ -153,3 +153,12 @@ inline	bool TextIsHexString ( const char* pText )
 		}
 		return true;
 	}
+
+inline void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
+    if (size == 0) return;
+    size_t i;
+    for (i = 0; i < size - 1 && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
+}

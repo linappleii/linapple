@@ -129,10 +129,7 @@ unsigned short _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_)
 
 	// TODO: Note: need to call ConsoleUpdate(), as may print symbol has been updated
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
-	strncpy( tData_.sSymbol, pSymbolName, sizeof(tData_.sSymbol));
-#pragma GCC diagnostic pop
+	Util_SafeStrCpy( tData_.sSymbol, pSymbolName, sizeof(tData_.sSymbol));
 
 	return nAddress;
 }

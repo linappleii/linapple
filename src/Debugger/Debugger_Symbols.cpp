@@ -227,8 +227,7 @@ bool String2Address( const char* pText, unsigned short & nAddress_ )
 			return false;
 
 		strcpy( sHexApple, "0x" );
-		strncpy( sHexApple+2, pText+1, MAX_SYMBOLS_LEN - 3 );
-		sHexApple[2 + (MAX_SYMBOLS_LEN - 3) - 1] = 0;
+		Util_SafeStrCpy( sHexApple+2, pText+1, MAX_SYMBOLS_LEN - 3 );
 		pText = sHexApple;
 	}
 
