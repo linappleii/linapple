@@ -415,6 +415,12 @@ bool ValidateDirectory(const char *dir)
   return ret;
 }
 
+static void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
+    if (size == 0) return;
+    strncpy(dest, src, size - 1);
+    dest[size - 1] = '\0';
+}
+
 void SetDiskImageDirectory(char *regKey, int driveNumber)
 {
   std::string sHDFilename = Configuration::Instance().GetString("Configuration", regKey);
@@ -660,7 +666,7 @@ void LoadConfiguration()
   // file name for Parallel Printer
   sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_PPRINTER_FILENAME);
   if (sHDFilename.length() > 1) {
-    strncpy(g_sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
   }
 
   Printer_SetIdleLimit(Configuration::Instance().GetInt("Configuration", REGVALUE_PRINTER_IDLE_LIMIT, 0));
@@ -714,21 +720,21 @@ void LoadConfiguration()
   // Current/Starting Dir is the "root" of where the user keeps his disk images
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_START_DIR);
   if (!sFilename.empty()) {
-    strncpy(g_sCurrentDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_sCurrentDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') {
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
     if (tmp == NULL) {
       strcpy(g_sCurrentDir, "/");  //begin from the root, then
     } else {
-      strncpy(g_sCurrentDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_sCurrentDir, tmp, MAX_PATH);
     }
   }
 
   // Load starting directory for HDV (Apple][ HDD) images
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_HDD_START_DIR);
   if (!sFilename.empty()) {
-    strncpy(g_sHDDDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_sHDDDir, sFilename.c_str(), MAX_PATH);
   }
 
   if (strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') {
@@ -736,36 +742,36 @@ void LoadConfiguration()
     if (tmp == NULL) {
       strcpy(g_sHDDDir, "/");  //begin from the root, then
     } else {
-      strncpy(g_sHDDDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_sHDDDir, tmp, MAX_PATH);
     }
   }
 
   // Load starting directory for saving current states
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR);
   if (!sFilename.empty()) {
-    strncpy(g_sSaveStateDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_sSaveStateDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') {
     char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
     if (tmp == NULL) {
       strcpy(g_sSaveStateDir, "/");  //begin from the root, then
     } else {
-      strncpy(g_sSaveStateDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_sSaveStateDir, tmp, MAX_PATH);
     }
   }
 
   // Read and fill FTP variables - server, local dir, user name and password
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_DIR);
-  if (!sFilename.empty()) strncpy(g_sFTPServer, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServer, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_HDD_DIR);
-  if (!sFilename.empty()) strncpy(g_sFTPServerHDD, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServerHDD, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_LOCAL_DIR);
-  if (!sFilename.empty()) strncpy(g_sFTPLocalDir, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPLocalDir, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_USERPASS);
-  if (!sFilename.empty()) strncpy(g_sFTPUserPass, sFilename.c_str(), 512);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPUserPass, sFilename.c_str(), 512);
 
   // Print some debug strings
   printf("Ready login = %s\n", g_sFTPUserPass);
