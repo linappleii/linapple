@@ -68,8 +68,8 @@ enum AppMode_e {
 #define TITLE_PAUSED       " Paused "
 #define TITLE_STEPPING     "Stepping"
 
-#define LOAD(a, b) RegLoadValue("Configuration",a,1,b)
-#define SAVE(a, b) RegSaveValue("Configuration",a,1,b)
+#define LOAD(a, b) Config_Load("Configuration", a, (uint32_t*)(b))
+#define SAVE(a, b) Configuration::Instance().SetInt("Configuration", a, b)
 
 // Configuration
 #define REGVALUE_APPLE2_TYPE        "Apple2 Type"

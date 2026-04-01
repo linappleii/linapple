@@ -1,229 +1,136 @@
-/*
-AppleWin : An Apple //e emulator for Windows
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Registry module
- *
- * Author: Various
- */
-
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
-
 #include "stdafx.h"
+#include "Registry.h"
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <iostream>
 
-FILE *registry;
-
-char confPath[MAX_PATH];
-
-// the following 3 functions are from PHP 5.0 with Zend engine sources
-// I'll tell, folks, PHP group is just great! -- bb
-void php_charmask(char *input, int len, char *mask) {
-  char *end;
-  char c;
-
-  memset(mask, 0, 256);
-  for (end = input + len; input < end; input++) {
-    c = *input;
-    mask[(unsigned int) c] = 1;
-  }
+// Helper to trim strings
+static std::string trim(const std::string& s) {
+    auto start = s.begin();
+    while (start != s.end() && std::isspace((unsigned char)*start)) {
+        start++;
+    }
+    auto end = s.end();
+    if (start == end) return "";
+    do {
+        end--;
+    } while (std::distance(start, end) > 0 && std::isspace((unsigned char)*end));
+    return std::string(start, end + 1);
 }
 
-char *estrndup(const char *s, uint length) {
-  char *p;
+Configuration& Configuration::Instance() {
+    static Configuration instance;
+    return instance;
+}
 
-  p = (char *) malloc(length + 1);
-  if (!p) {
-    return (char *) NULL;
-  }
-  memcpy(p, s, length);
-  p[length] = 0;
-  return p;
+void Configuration::SetPath(const std::string& path) {
+    m_path = path;
+}
+
+bool Configuration::Load(const std::string& path) {
+    m_path = path;
+    m_data.clear();
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    std::string currentSection = "Default";
+    while (std::getline(file, line)) {
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.length() - 2);
+            continue;
+        }
+
+        size_t pos = line.find('=');
+        if (pos != std::string::npos) {
+            std::string key = trim(line.substr(0, pos));
+            std::string value = trim(line.substr(pos + 1));
+            m_data[currentSection][key] = value;
+        }
+    }
+    return true;
+}
+
+bool Configuration::Save() {
+    if (m_path.empty()) return false;
+
+#ifdef REGISTRY_WRITEABLE
+    std::ofstream file(m_path);
+    if (!file.is_open()) return false;
+
+    for (auto const& section : m_data) {
+        if (section.first != "Default") {
+            file << "[" << section.first << "]" << std::endl;
+        }
+        for (auto const& kv : section.second) {
+            file << kv.first << " = " << kv.second << std::endl;
+        }
+        file << std::endl;
+    }
+    return true;
+#else
+    return false;
+#endif
+}
+
+std::string Configuration::GetString(const std::string& section, const std::string& key, const std::string& defaultValue) {
+    if (m_data.count(section) && m_data[section].count(key)) {
+        return m_data[section][key];
+    }
+    // Fallback to searching all sections if not found in specific section (mirroring old behavior)
+    for (auto const& s : m_data) {
+        if (s.second.count(key)) return s.second.at(key);
+    }
+    return defaultValue;
+}
+
+uint32_t Configuration::GetInt(const std::string& section, const std::string& key, uint32_t defaultValue) {
+    std::string val = GetString(section, key);
+    if (val.empty()) return defaultValue;
+    try {
+        return std::stoul(val, nullptr, 0);
+    } catch (...) {
+        return defaultValue;
+    }
+}
+
+bool Configuration::GetBool(const std::string& section, const std::string& key, bool defaultValue) {
+    std::string val = GetString(section, key);
+    if (val.empty()) return defaultValue;
+    std::string lowVal = val;
+    std::transform(lowVal.begin(), lowVal.end(), lowVal.begin(), ::tolower);
+    if (lowVal == "true" || lowVal == "1" || lowVal == "yes") return true;
+    if (lowVal == "false" || lowVal == "0" || lowVal == "no") return false;
+    return defaultValue;
+}
+
+void Configuration::SetString(const std::string& section, const std::string& key, const std::string& value) {
+    m_data[section][key] = value;
+}
+
+void Configuration::SetInt(const std::string& section, const std::string& key, uint32_t value) {
+    m_data[section][key] = std::to_string(value);
+}
+
+void Configuration::SetBool(const std::string& section, const std::string& key, bool value) {
+    m_data[section][key] = value ? "1" : "0";
+}
+
+bool Config_Load(const char* section, const char* key, uint32_t* value) {
+    if (Configuration::Instance().GetString(section, key).empty()) return false;
+    *value = Configuration::Instance().GetInt(section, key, *value);
+    return true;
 }
 
 char *php_trim(char *c, int len) {
-  register int i;
-  int trimmed = 0;
-  char mask[256];
-  static char maskVal[] = " \n\r\t\v\0";
-
-  php_charmask(maskVal, 6, mask);
-
-  // trim chars from beginning of the line
-  for (i = 0; i < len; i++) {
-    if (mask[(unsigned char) c[i]]) {
-      trimmed++;
-    } else {
-      break;
-    }
-  }
-  len -= trimmed;
-  c += trimmed;
-
-  // trim chars from line end
-  for (i = len - 1; i >= 0; i--) {
-    if (mask[(unsigned char) c[i]]) {
-      len--;
-    } else {
-      break;
-    }
-  }
-  return estrndup(c, len); // from c to c+len
-}
-
-void RegConfPath(const char * filename) {
-  snprintf(confPath, sizeof(confPath), "%s", filename);
-  printf("conf = %s\n", confPath);
-}
-
-bool ReturnKeyValue(char *line, char **key, char **value) {
-  // line should be:  some key  =  some value
-  // functions returns trimmed key and value
-  char *br = strchr(line, '=');
-  if (!br) {
-    *key = *value = NULL;
-    return false; // no sign of '=' sign. Sorry for some kalambur --bb
-  }
-  *br = '\0'; // cut the string where '=' is (or was)
-  br++; //to the value
-  *key = php_trim(line, strlen(line)); // trim those strings from beginning and trailing spaces
-  if (*key != NULL && **key == '#') {
-    free(*key);
-    *key = *value = NULL;
-    return false; // omit comments (lines with #)
-  }
-  *value = php_trim(br, strlen(br));
-  if (*key && *value) {
-    return true;
-  }
-
-  free(*key);
-  free(*value);
-  *key = *value = NULL;
-  return false;
-}
-
-#define BUFSIZE 256
-
-char *ReadRegString(const char *key) {
-  // reads key for given value from the registry. Hmmm. What registry in Linux? I donna. --bb
-  fseek(registry, 0, SEEK_SET); //to the start of file
-  char *mkey;
-  char *mvalue;
-  char line[BUFSIZE];
-  int nkey = strlen(key);  // length of key
-  while (fgets(line, BUFSIZE, registry)) {
-    if (ReturnKeyValue(line, &mkey, &mvalue) && (!strncmp(mkey, key, nkey))) {
-      free(mkey);
-      return mvalue;
-    }
-    free(mkey);
-    free(mvalue);
-  }
-  return NULL; // key has not been found in registry?
-}
-
-bool RegLoadString(const char* section, const char* key, bool peruser, char **buffer, unsigned int chars) {
-  // will ignore section, per user
-  char *value;
-  value = ReadRegString(key); // read value for a given keyhandle
-  if (value) {
-    if (strlen(value) > chars)
-      value[chars] = '\0'; // cut string
-    *buffer = value;
-    return true;
-  }
-
-  *buffer = NULL;
-  return false;
-}
-
-bool RegLoadValue(const char* section, const char* key, bool peruser, unsigned int *value) {
-  if (!value) {
-    return 0;
-  }
-
-  char *sztmp;
-  if (!RegLoadString(section, key, peruser, &sztmp, 32)) {
-    return 0;
-  }
-  *value = (unsigned int) atoi(sztmp);
-  free(sztmp);
-  return 1;
-}
-
-void RegSaveKeyValue(char *NKey, char *NValue) {
-  if (strlen(confPath) <= 0) return;
-
-  printf("update conf = %s\n", confPath);
-  #ifdef REGISTRY_WRITEABLE
-  char MyStr[BUFSIZE];
-  char line[BUFSIZE];
-  char templine[BUFSIZE];
-  char *sztmp;
-  FILE * tempf = tmpfile();  // open temp file
-  if(!tempf) {
-    return;
-  }
-  snprintf(MyStr, BUFSIZE, "\t%s =\t%s\n", NKey, NValue);  // prepare string
-  fseek(registry, 0, SEEK_SET);  //
-  bool found = false;
-
-  while(fgets(line, BUFSIZE, registry)) {
-    strcpy(templine, line);
-    if(ReturnKeyValue(templine, &sztmp, &NValue) && !(strcmp(sztmp, NKey)))
-    {
-      fputs(MyStr, tempf);
-      found = true;
-    }
-    else fputs(line, tempf);
-  }
-
-  if(!found) fputs(MyStr, tempf);
-  // now swap tempf and registry
-  fclose(registry);
-
-  fflush(tempf);
-  fseek(tempf, 0, SEEK_SET);
-  // FIXME if you re-enable this code, you will need to call config.GetRegistryPath() here instead!
-  registry = fopen(confPath, "w+t");  // erase if been
-  while(fgets(line, BUFSIZE, tempf)) {
-    fputs(line, registry);
-  }
-  fflush(registry);
-  fclose(tempf);
-  // do not close registry, it should be open while emu working...
-  #else
-  printf("Attempt to set '%s' to '%s' ignored (registry is read-only)\n", NKey, NValue);
-  #endif /* REGISTRY_WRITEABLE */
-}
-
-void RegSaveString(const char* section, const char* key, bool peruser, const char* buffer) {
-  RegSaveKeyValue((char *) key, (char *) buffer);
-}
-
-void RegSaveValue(const char* section, const char* key, bool peruser, unsigned int value)
-{
-  char buffer[33] = "";
-  snprintf(buffer, 32, "%d", value);
-
-  RegSaveString(section, key, peruser, buffer);
+    std::string s(c, len);
+    std::string t = trim(s);
+    return strdup(t.c_str());
 }
