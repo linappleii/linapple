@@ -166,20 +166,21 @@ char MouseInterface_rom[] = "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x2
                             "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xCE";
 
 
-WRITE_HANDLER( M6821_Listener_B ) {
+void CMouseInterface::M6821_Listener_B(void* objTo, uint8_t byData) {
   ((CMouseInterface *) objTo)->On6821_B(byData);
 }
 
-WRITE_HANDLER( M6821_Listener_A ) {
+void CMouseInterface::M6821_Listener_A(void* objTo, uint8_t byData) {
   ((CMouseInterface *) objTo)->On6821_A(byData);
 }
 
 CMouseInterface::CMouseInterface() : m_pSlotRom(NULL) {
-  m_6821.SetListenerB(this, M6821_Listener_B);
-  m_6821.SetListenerA(this, M6821_Listener_A);
+  Pia6821_Reset(&m_6821);
+  Pia6821_SetListenerB(&m_6821, this, M6821_Listener_B);
+  Pia6821_SetListenerA(&m_6821, this, M6821_Listener_A);
   m_by6821A = 0;
   m_by6821B = 0x40;    // Set PB6
-  m_6821.SetPB(m_by6821B);
+  Pia6821_SetPortB(&m_6821, m_by6821B);
   m_bVBL = false;
 
   m_iX = 0;
@@ -241,7 +242,7 @@ unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, u
 
   unsigned char byRS;
   byRS = uAddr & 3;
-  return pMouseIF->m_6821.Read(byRS);
+  return Pia6821_Read(&pMouseIF->m_6821, byRS);
 }
 
 unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
@@ -250,16 +251,16 @@ unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, 
 
   unsigned char byRS;
   byRS = uAddr & 3;
-  pMouseIF->m_6821.Write(byRS, uValue);
+  Pia6821_Write(&pMouseIF->m_6821, byRS, uValue);
 
   return 0;
 }
 
-void CMouseInterface::On6821_A(unsigned char byData) {
+void CMouseInterface::On6821_A(uint8_t byData) {
   m_by6821A = byData;
 }
 
-void CMouseInterface::On6821_B(unsigned char byData) {
+void CMouseInterface::On6821_B(uint8_t byData) {
   unsigned char byDiff = (m_by6821B ^ byData) & 0x3E;
 
   if (byDiff) {
@@ -280,7 +281,7 @@ void CMouseInterface::On6821_B(unsigned char byData) {
           m_nBuffPos = 0;
         }
         m_by6821B &= ~BIT7;    // for next reading
-        m_6821.SetPB(m_by6821B);
+        Pia6821_SetPortB(&m_6821, m_by6821B);
       }
     }
     if (byDiff & BIT4) {// Read from 0285 chip ?
@@ -293,12 +294,12 @@ void CMouseInterface::On6821_B(unsigned char byData) {
         if (m_nBuffPos == m_nDataLen || m_nBuffPos > 7) {
           m_nBuffPos = 0; // Have read all, ready for next command.
         } else {
-          m_6821.SetPA(m_byBuff[m_nBuffPos]);
+          Pia6821_SetPortA(&m_6821, m_byBuff[m_nBuffPos]);
         }
         m_by6821B |= BIT6;    // for next writing
       }
     }
-    m_6821.SetPB(m_by6821B);
+    Pia6821_SetPortB(&m_6821, m_by6821B);
 
     SetSlotRom();  // Update Cn00 ROM page
   }
@@ -387,7 +388,7 @@ void CMouseInterface::OnCommand() {
       m_nDataLen = 1;
       break;
   }
-  m_6821.SetPA(m_byBuff[1]);
+  Pia6821_SetPortA(&m_6821, m_byBuff[1]);
 }
 
 void CMouseInterface::OnWrite() {
