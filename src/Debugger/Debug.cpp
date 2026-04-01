@@ -8393,7 +8393,7 @@ void DebugBegin ()
   g_nAppMode = MODE_DEBUG;
   FrameRefreshStatus(DRAW_TITLE);
 
-  if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E))
+  if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E))
   {
     g_aOpcodes = & g_aOpcodes6502[ 0 ];    // Apple ][, ][+, //e
     g_aOpmodes[ AM_2 ].m_nBytes = 1;

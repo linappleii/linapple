@@ -628,7 +628,7 @@ void MB_Reset() {
 static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
   MB_UpdateCycles(nCyclesLeft);
 
-  if (!IS_APPLE2 && !MemCheckSLOTCXROM()) {
+  if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
     return mem[nAddr];
   }
 
@@ -677,7 +677,7 @@ static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned c
 static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
   MB_UpdateCycles(nCyclesLeft);
 
-  if (!IS_APPLE2 && !MemCheckSLOTCXROM()) {
+  if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
     return 0;
   }
 

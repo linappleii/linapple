@@ -737,13 +737,13 @@ void ProcessButtonClick(int button, int mod)
       break;
     case BTN_LOADST: // Load state (F12) or Hot Reset (Ctrl+F12)
       if (mod & KMOD_CTRL) {
-        if (!IS_APPLE2) {
+        if (!IS_APPLE2()) {
           MemResetPaging();
         }
 
         DiskReset();
         KeybReset();
-        if (!IS_APPLE2) {
+        if (!IS_APPLE2()) {
           VideoResetState();
         }  // Switch Alternate char set off
         MB_Reset();

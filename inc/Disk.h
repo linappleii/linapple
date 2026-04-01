@@ -1,11 +1,11 @@
 #include <cstdint>
 #pragma once
 
-#define  DRIVE_1  0
-#define  DRIVE_2  1
+constexpr int DRIVE_1 = 0;
+constexpr int DRIVE_2 = 1;
 
-#define  DRIVES   2
-#define  TRACKS   35
+constexpr int DRIVES = 2;
+constexpr int TRACKS = 35;
 
 extern bool enhancedisk;
 
