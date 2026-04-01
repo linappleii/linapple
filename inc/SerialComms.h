@@ -103,12 +103,6 @@ private:
 
   void CheckCommEvent(unsigned int dwEvtMask);
 
-  static unsigned int CommThread(void* lpParameter);
-
-  bool CommThInit();
-
-  void CommThUninit();
-
 private:
   unsigned int m_dwSerialPort;
 
@@ -140,10 +134,6 @@ private:
   unsigned int m_uLastBytesWritten;
 
   volatile bool m_vbCommIRQ;
-  HANDLE m_hCommThread;
-
-  HANDLE m_hCommEvent[COMMEVT_MAX];
-  OVERLAPPED m_o;
 
   unsigned char *m_pExpansionRom;
 };

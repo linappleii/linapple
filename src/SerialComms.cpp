@@ -211,12 +211,6 @@ CSuperSerialCard::CSuperSerialCard() {
   m_bWrittenTx = false;
 
   m_vbCommIRQ = false;
-  m_hCommThread = NULL;
-
-  for (unsigned int i = 0; i < COMMEVT_MAX; i++)
-    m_hCommEvent[i] = NULL;
-
-  memset(&m_o, 0, sizeof(m_o));
 }
 
 // TODO: Serial Comms - UI Property Sheet Page:
@@ -378,7 +372,6 @@ bool CSuperSerialCard::CheckComm() {
     m_hCommHandle = open(portname, O_RDWR | O_NOCTTY | O_NDELAY);
     if (m_hCommHandle != -1) {
       UpdateCommState();
-      CommThInit();
     }
   }
 
@@ -387,7 +380,6 @@ bool CSuperSerialCard::CheckComm() {
 
 void CSuperSerialCard::CloseComm()
 {
-  CommThUninit();    // Kill CommThread before closing COM handle
   if (m_hCommHandle != -1) {
     close(m_hCommHandle); // close device (port?)
   }
@@ -645,7 +637,6 @@ unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsi
 
     if (m_vbCommIRQ && !m_vRecvBytes) {
       // Read last byte, so get CommThread to call WaitCommEvent() again
-      fprintf(stderr, "CommRecv: SetEvent - ACK\n");
     }
   }
 
@@ -857,17 +848,6 @@ void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
     m_vbCommIRQ = true;
     CpuIrqAssert(IS_SSC);
   }
-}
-
-unsigned int CSuperSerialCard::CommThread(void* lpParameter) {
-  return 0;
-}
-
-bool CSuperSerialCard::CommThInit() {
-  return true;
-}
-
-void CSuperSerialCard::CommThUninit() {
 }
 
 unsigned int CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
