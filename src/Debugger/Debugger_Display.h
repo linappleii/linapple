@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+#include "Common.h"
+
 // use the new Debugger Font (Apple Font)
 #define USE_APPLE_FONT   1
 
@@ -17,11 +19,6 @@
 #else
 	#define APPLE_FONT_BITMAP_PADDED  1
 #endif
-
-	typedef struct
-	{
-		int left, right, top, bottom;
-	} RECT;
 
 	enum ConsoleFontSize_e
 	{

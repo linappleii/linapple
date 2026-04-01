@@ -110,10 +110,31 @@ enum AppMode_e {
 #define REGVALUE_FTP_LOCAL_DIR "FTP Local Dir"
 #define REGVALUE_FTP_USERPASS "FTP UserPass"
 
-#define WM_USER_BENCHMARK  WM_USER+1
-#define WM_USER_RESTART    WM_USER+2
-#define WM_USER_SAVESTATE  WM_USER+3
-#define WM_USER_LOADSTATE  WM_USER+4
+// Win32 compatibility types
+typedef void *HANDLE;
+typedef uint32_t COLORREF;
+
+typedef struct tagPOINT {
+  int32_t x;
+  int32_t y;
+} POINT;
+
+typedef struct tagRECT {
+  int32_t left;
+  int32_t top;
+  int32_t right;
+  int32_t bottom;
+} RECT;
+
+#define MAX_PATH 260
+
+static inline bool IsCharLower(char ch) {
+  return (ch >= 'a' && ch <= 'z');
+}
+
+static inline bool IsCharUpper(char ch) {
+  return (ch >= 'A' && ch <= 'Z');
+}
 
 enum eSOUNDCARDTYPE {
   SC_UNINIT = 0, SC_NONE, SC_MOCKINGBOARD, SC_PHASOR

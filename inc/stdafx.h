@@ -16,9 +16,12 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#include "wincompat.h"
-
 #include <SDL.h>
+#include <cassert>
+#include <cstring>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
 
 #include "Common.h"
 #include "Structs.h"
