@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -75,8 +75,7 @@ static unsigned char DiskSetWriteMode(unsigned short pc, unsigned short addr, un
 
 #define LOG_DISK_ENABLED 1
 
-// __VA_ARGS__ not supported on MSVC++ .NET 7.x
-#if (LOG_DISK_ENABLED) && !defined(_VC71)
+#if (LOG_DISK_ENABLED)
 #define LOG_DISK(format, ...) LOG(format, __VA_ARGS__)
 #else
 #define LOG_DISK(...)

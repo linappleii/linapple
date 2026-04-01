@@ -24,7 +24,7 @@ const unsigned int dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
 #define RAMWORKS // 8MB RamWorks III support
 #define MOCKINGBOARD // Mockingboard support
 
-// Use a base freq so that DirectX (or sound h/w) doesn't have to up/down-sample. Assume base freqs are 44.1KHz & 48KHz.
+// Use a base freq so that sound h/w doesn't have to up/down-sample. Assume base freqs are 44.1KHz & 48KHz.
 const unsigned int SPKR_SAMPLE_RATE = 44100;  // that is for Apple][ speakers
 const unsigned int SAMPLE_RATE = 44100;  // that is for Phasor/Mockingboard?
 
