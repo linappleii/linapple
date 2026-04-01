@@ -302,9 +302,9 @@ void HD_Eject(const int iDrive) {
   if (g_HardDrive[iDrive].hd_imageloaded) {
     HD_CleanupDrive(iDrive);
     if (iDrive == 0) {
-      RegSaveString("Preferences", REGVALUE_HDD_IMAGE1, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, ""); Configuration::Instance().Save();
     } else {
-      RegSaveString("Preferences", REGVALUE_HDD_IMAGE2, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, ""); Configuration::Instance().Save();
     }
   }
 }
@@ -387,7 +387,7 @@ void HD_FTP_Select(int nDrive)
   }
   // we chose some file
   strcpy(g_sFTPServerHDD, fullPath.c_str());
-  RegSaveString("Preferences", REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_HDD_DIR, g_sFTPServerHDD); Configuration::Instance().Save();// save it
 
   fullPath += "/" + filename;
 
@@ -398,9 +398,9 @@ void HD_FTP_Select(int nDrive)
     if (HD_InsertDisk2(nDrive, localPath.c_str())) {
       // save file names for HDD disk 1 or 2
       if (nDrive) {
-        RegSaveString("Preferences", REGVALUE_HDD_IMAGE2, 1, localPath.c_str());
+        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str()); Configuration::Instance().Save();
       } else {
-        RegSaveString("Preferences", REGVALUE_HDD_IMAGE1, 1, localPath.c_str());
+        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, localPath.c_str()); Configuration::Instance().Save();
       }
     }
   }
@@ -452,7 +452,7 @@ void HD_Select(int nDrive)
   }
   // we chose some file
   strcpy(g_sHDDDir, fullPath.c_str());
-  RegSaveString("Preferences", REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir); // Save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_HDD_START_DIR, g_sHDDDir); Configuration::Instance().Save(); // Save it
 
   fullPath += "/" + filename;
 
@@ -461,9 +461,9 @@ void HD_Select(int nDrive)
   if (HD_InsertDisk2(nDrive, fullPath.c_str())) {
     // save file names for HDD disk 1 or 2
     if (nDrive) {
-      RegSaveString("Preferences", REGVALUE_HDD_IMAGE2, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, fullPath.c_str()); Configuration::Instance().Save();
     } else {
-      RegSaveString("Preferences", REGVALUE_HDD_IMAGE1, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, fullPath.c_str()); Configuration::Instance().Save();
     }
     printf("HDD disk image %s inserted\n", fullPath.c_str());
   }

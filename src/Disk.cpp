@@ -377,10 +377,11 @@ void DiskEject(const int iDrive)
   if (IsDriveValid(iDrive)) {
     RemoveDisk(iDrive);
     if (iDrive == 0) {
-      RegSaveString("Preferences", REGVALUE_DISK_IMAGE1, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_DISK_IMAGE1, "");
     } else {
-      RegSaveString("Preferences", REGVALUE_DISK_IMAGE2, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_DISK_IMAGE2, "");
     }
+    Configuration::Instance().Save();
   }
 }
 
@@ -647,7 +648,8 @@ void DiskSelectImage(int drive, char* pszFilename)
   } /* while isdir */
   // we chose some file
   strcpy(g_sCurrentDir, fullPath.c_str());
-  RegSaveString("Preferences", REGVALUE_PREF_START_DIR, 1, g_sCurrentDir); // Save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR, g_sCurrentDir);
+  Configuration::Instance().Save();
 
   fullPath += "/" + filename;
 
@@ -657,11 +659,12 @@ void DiskSelectImage(int drive, char* pszFilename)
     // for one drive will be one reg parameter
     //  RegSaveString("Preferences",REGVALUE_PREF_START_DIR, 1,filename);
     if (drive == 0) {
-      RegSaveString("Preferences", REGVALUE_DISK_IMAGE1, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_DISK_IMAGE1, fullPath.c_str());
     }
     else {
-      RegSaveString("Preferences", REGVALUE_DISK_IMAGE2, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_DISK_IMAGE2, fullPath.c_str());
     }
+    Configuration::Instance().Save();
   } else {
     DiskNotifyInvalidImage(filename.c_str(), error); // show error on the screen (or in console for our case)
   }
@@ -728,7 +731,8 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   } /* while isdir */
   // we chose some file
   strcpy(g_sFTPServer, fullPath.c_str());
-  RegSaveString("Preferences", REGVALUE_FTP_DIR, 1, g_sFTPServer);// save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_DIR, g_sFTPServer);
+  Configuration::Instance().Save();
 
   fullPath += "/" + filename;
 
