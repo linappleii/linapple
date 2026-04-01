@@ -33,40 +33,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	int g_iColorScheme = SCHEME_COLOR;
 
-#ifdef _WIN32
-	// Used when the colors are reset
-	unsigned int g_aColorPalette[ NUM_PALETTE ] =
-	{
-		RGB(0,0,0),
-		// NOTE: See _SetupColorRamp() if you want to programmatically set/change
-		RGB(255,  0,  0), RGB(223,  0,  0), RGB(191,  0,  0), RGB(159,  0,  0), RGB(127,  0,  0), RGB( 95,  0,  0), RGB( 63,  0,  0), RGB( 31,  0,  0),  // 001 // Red
-		RGB(  0,255,  0), RGB(  0,223,  0), RGB(  0,191,  0), RGB(  0,159,  0), RGB(  0,127,  0), RGB(  0, 95,  0), RGB(  0, 63,  0), RGB(  0, 31,  0),  // 010 // Green
-		RGB(255,255,  0), RGB(223,223,  0), RGB(191,191,  0), RGB(159,159,  0), RGB(127,127,  0), RGB( 95, 95,  0), RGB( 63, 63,  0), RGB( 31, 31,  0),  // 011 // Yellow
-		RGB(  0,  0,255), RGB(  0,  0,223), RGB(  0,  0,191), RGB(  0,  0,159), RGB(  0,  0,127), RGB(  0,  0, 95), RGB(  0,  0, 63), RGB(  0,  0, 31),  // 100 // Blue
-		RGB(255,  0,255), RGB(223,  0,223), RGB(191,  0,191), RGB(159,  0,159), RGB(127,  0,127), RGB( 95,  0, 95), RGB( 63,  0, 63), RGB( 31,  0, 31),  // 101 // Magenta
-		RGB(  0,255,255), RGB(  0,223,223), RGB(  0,191,191), RGB(  0,159,159), RGB(  0,127,127), RGB(  0, 95, 95), RGB(  0, 63, 63), RGB(  0, 31, 31),  // 110 // Cyan
-		RGB(255,255,255), RGB(223,223,223), RGB(191,191,191), RGB(159,159,159), RGB(127,127,127), RGB( 95, 95, 95), RGB( 63, 63, 63), RGB( 31, 31, 31),  // 111 // White/Gray
-
-		// Custom Colors
-		RGB( 80,192,255), // Light  Sky Blue // Used for console FG
-		RGB(  0,128,192), // Darker Sky Blue
-		RGB(  0, 64,128), // Deep   Sky Blue
-		RGB(255,128,  0), // Orange (Full)
-		RGB(128, 64,  0), // Orange (Half)
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-		RGB(  0,  0,  0),
-	};
-#else
 	int g_aColorPalette[ NUM_PALETTE ] =
 	{
 		BLACK,
@@ -98,7 +64,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		0,
 		0
 	};
-#endif
 
 	// Index into "Palette" of colors
 	int g_aColorIndex[ NUM_DEBUG_COLORS ] =
@@ -186,26 +151,8 @@ unsigned int DebuggerGetColor( int iColor )
 
 bool DebuggerSetColor( const int iScheme, const int iColor, const unsigned int nColor )
 {
-#ifdef _WIN32
-	bool bStatus = false;
-	if ((g_iColorScheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
-	{
-		g_aColors[ iScheme ][ iColor ] = nColor;
-		bStatus = true;
-	}
-
-	// Propagate to console since it has its own copy of colors
-	if (iColor == FG_CONSOLE_OUTPUT)
-	{
-		unsigned int nConsole = DebuggerGetColor( FG_CONSOLE_OUTPUT );
-		g_anConsoleColor[ CONSOLE_COLOR_x ] = nConsole;
-	}
-
-	return bStatus;
-#else
 	// color schemes ignored for Linux
 	return true;
-#endif
 }
 
 

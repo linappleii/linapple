@@ -16,11 +16,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#ifndef _WIN32
-#  include "wincompat.h"
-#else
-#  include <windows.h>
-#endif
+#include "wincompat.h"
 
 #include <SDL.h>
 

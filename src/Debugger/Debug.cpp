@@ -4044,41 +4044,7 @@ Update_t CmdConfigSetDebugDir (int nArgs)
   if ( nArgs == 0 )
     return CmdConfigGetDebugDir(0);
 
-#if _WIN32
-  // http://msdn.microsoft.com/en-us/library/aa365530(VS.85).aspx
-
-  // TODO: Support paths prefixed with "\\?\" (for long/unicode pathnames)
-  if (strncmp("\\\\?\\", g_aArgs[1].sArg, 4) == 0)
-    return Help_Arg_1( CMD_CONFIG_SET_DEBUG_DIR );
-
-  std::string sPath;
-
-  if (g_aArgs[1].sArg[1] == ':')      // Absolute
-  {
-    sPath = g_aArgs[1].sArg;
-  }
-  else if (g_aArgs[1].sArg[0] == '\\')  // Absolute
-  {
-    if (g_sCurrentDir[1] == ':')
-    {
-      sPath = g_sCurrentDir.substr(0, 2) + g_aArgs[1].sArg;  // Prefix with drive letter & colon
-    }
-    else
-    {
-      sPath = g_aArgs[1].sArg;
-    }
-  }
-  else                  // Relative
-  {
-    // TODO: Support ".." - currently just appends (which still works)
-    sPath = g_sCurrentDir + g_aArgs[1].sArg; // TODO: debugger dir has no ` CONSOLE_COLOR_ESCAPE_CHAR ?!?!
-  }
-
-  if ( SetCurrentImageDir( sPath ) )
-    nArgs = 0; // intentional fall into
-#else
   //TODO chdir() not implemented (maybe not needed for Linux?)
-#endif
 
   return CmdConfigGetDebugDir(0);    // Show the new PWD
 }
@@ -4822,9 +4788,6 @@ size_t Util_GetDebuggerText( char* &pText_ )
         c = ' '; // convert null to spaces to keep everything non-proptional
       *pEnd++ = c;
     }
-#ifdef _WIN32
-    *pEnd++ = 0x0D; // CR // Windows inserts extra char
-#endif
     *pEnd++ = 0x0A; // LF // OSX, Linux
   }
 
@@ -4873,9 +4836,6 @@ size_t Util_GetTextScreen ( char* &pText_ )
     }
 
     // Newline // http://en.wikipedia.org/wiki/Newline
-#ifdef _WIN32
-    *pEnd++ = 0x0D; // CR // Windows inserts extra char
-#endif
     *pEnd++ = 0x0A; // LF // OSX, Linux
   }
   *pEnd = 0;
@@ -8893,22 +8853,11 @@ void DebuggerInputConsoleChar( char ch )
 
           if (c == CHAR_CR)
           {
-#if WIN32
-            // Eat char
-#endif
-#if MACOSX
-            #pragma error( "TODO: Mac port - handle CR/LF")
-#endif
           }
           else
           if (c == CHAR_LF)
           {
-#if WIN32
             DebuggerProcessCommand( true );
-#endif
-#if MACOSX
-            #pragma error( "TODO: Mac port - handle CR/LF")
-#endif
           }
           else
           {

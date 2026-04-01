@@ -1,11 +1,7 @@
 #include <cstdint>
 #pragma once
 
-#ifdef _WIN32
-#define FILE_SEPARATOR  '\\'
-#else
 #define FILE_SEPARATOR  '/'
-#endif
 
 #define FTP_SEPARATOR  '/'
 
