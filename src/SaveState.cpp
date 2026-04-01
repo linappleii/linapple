@@ -92,7 +92,7 @@ void Snapshot_LoadState() {
     // Reset all sub-systems
     MemReset();
 
-    if (!IS_APPLE2) {
+    if (!IS_APPLE2()) {
       MemResetPaging();
     }
 

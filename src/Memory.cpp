@@ -444,7 +444,7 @@ unsigned char IORead_Cxxx(unsigned short programcounter, unsigned short address,
 
   unsigned char IO_STROBE = 0;
 
-  if (IS_APPLE2 || SW_SLOTCXROM) {
+  if (IS_APPLE2() || SW_SLOTCXROM) {
     if ((address >= 0xC100) && (address <= 0xC7FF)) {
       const unsigned int uSlot = (address >> 8) & 0xF;
       if ((uSlot != 3) && ExpansionRom[uSlot]) {
@@ -483,7 +483,7 @@ unsigned char IORead_Cxxx(unsigned short programcounter, unsigned short address,
     }
   }
 
-  if (!IS_APPLE2 && !SW_SLOTCXROM) {
+  if (!IS_APPLE2() && !SW_SLOTCXROM) {
     // !SW_SLOTC3ROM = Internal ROM: $C300-C3FF
     // !SW_SLOTCXROM = Internal ROM: $C100-CFFF
 
@@ -923,10 +923,10 @@ bool MemIsAddrCodeMemory(const uint16_t addr)
   if (addr < APPLE_SLOT_BEGIN)    // [$C000..C0FF]
     return false;
 
-  if (!IS_APPLE2 && SW_SLOTCXROM)    // [$C100..C7FF] //e or Enhanced //e internal ROM
+  if (!IS_APPLE2() && SW_SLOTCXROM)    // [$C100..C7FF] //e or Enhanced //e internal ROM
     return true;
 
-  if (!IS_APPLE2 && !SW_SLOTC3ROM && (addr >> 8) == 0xC3) // [$C300..C3FF] //e or Enhanced //e internal ROM
+  if (!IS_APPLE2() && !SW_SLOTC3ROM && (addr >> 8) == 0xC3) // [$C300..C3FF] //e or Enhanced //e internal ROM
     return true;
 
   if (addr <= APPLE_SLOT_END)     // [$C100..C7FF]
@@ -1145,7 +1145,7 @@ unsigned char MemSetPaging(unsigned short programcounter, unsigned short address
 			}
 		}
     lastwriteram = writeram;
-  } else if (!IS_APPLE2) {
+  } else if (!IS_APPLE2()) {
     switch (address) {
       case 0x00:
         memmode &= ~MF_80STORE;

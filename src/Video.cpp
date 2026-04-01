@@ -1488,7 +1488,7 @@ void VideoBenchmark() {
   } while (SDL_GetTicks() - milliseconds < 1000);
   printf("Pure Video FPS:\t%u hires, %u text\n", (unsigned) totalhiresfps, (unsigned) totaltextfps);
   printf("Pure CPU MHz:\t%u.%u%s\n\n", (unsigned) (totalmhz10 / 10), (unsigned) (totalmhz10 % 10),
-         (const char*)(IS_APPLE2 ? " (6502" : ""));
+         (const char*)(IS_APPLE2() ? " (6502" : ""));
   printf("EXPECTED AVERAGE VIDEO GAME PERFORMANCE:\t%u FPS\n\n", (unsigned) realisticfps);
   SDL_Delay(1500);
 }
@@ -1941,19 +1941,19 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
       g_uVideoMode |= VF_MASK2;
       break;
     case 0x0C:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode &= ~VF_80COL;
       break;
     case 0x0D:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode |= VF_80COL;
       break;
     case 0x0E:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_nAltCharSetOffset = 0;
       break;  // Alternate char set off
     case 0x0F:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_nAltCharSetOffset = 256;
       break;  // Alternate char set on
     case 0x50:
@@ -1981,11 +1981,11 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
       g_uVideoMode |= VF_HIRES;
       break;
     case 0x5E:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode |= VF_DHIRES;
       break;
     case 0x5F:
-      if (!IS_APPLE2)
+      if (!IS_APPLE2())
         g_uVideoMode &= ~VF_DHIRES;
       break;
   }
@@ -2166,7 +2166,7 @@ unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uEx
     nAddress |= (nPage2 & (1 ^ n80Store)) << 14; // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
-    if ((IS_APPLE2) && // Apple ][?
+    if ((IS_APPLE2()) && // Apple ][?
         (kHPEClock <= nHClock) && // Y: HBL?
         (nHClock <= (kHClocks - 1))) {
       nAddress |= 1 << 12; // Y: a12 (add $1000 to address!)

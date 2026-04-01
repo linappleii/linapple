@@ -3529,7 +3529,7 @@ static uint32_t InternalCpuExecute(uint32_t uTotalCycles)
   #ifdef UPDATE_ALL_PER_CYCLE
   MB_Update();
   #endif
-  if (IS_APPLE2 || (g_Apple2Type == A2TYPE_APPLE2E)) {
+  if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E)) {
     return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e
   } else {
     return Cpu65C02(uTotalCycles);

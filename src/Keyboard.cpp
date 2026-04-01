@@ -579,7 +579,7 @@ void KeybQueueKeypress(int key, bool bASCII)
       }
     }
 
-    if (!IS_APPLE2) {
+    if (!IS_APPLE2()) {
       if (g_bCapsLock && (key >= 'a') && (key <= 'z')) {
         keycode = key - 32;
       } else {
@@ -594,7 +594,7 @@ void KeybQueueKeypress(int key, bool bASCII)
     }
     lastvirtkey = key;
   } else {
-    if (IS_APPLE2) {
+    if (IS_APPLE2()) {
       switch (key) {
         case SDLK_LEFT:
           keycode = 0x08;
@@ -700,7 +700,7 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
 
 void KeybToggleCapsLock()
 {
-  if (!IS_APPLE2) {
+  if (!IS_APPLE2()) {
     g_bCapsLock = !g_bCapsLock;
     FrameRefreshStatus(DRAW_LEDS);
   }
