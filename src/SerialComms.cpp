@@ -45,6 +45,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include <assert.h>
 // for terminal structure and funcs
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <fcntl.h>
 // for read() and write()
@@ -196,7 +197,7 @@ SSC_DIPSW CSuperSerialCard::m_DIPSWDefault = {
 };
 
 CSuperSerialCard::CSuperSerialCard() {
-  m_dwSerialPort = 0;
+  m_dwSerialPort = NULL;
 
   GetDIPSW();
 
@@ -305,6 +306,7 @@ void CSuperSerialCard::UpdateCommState() {
   // set input/output speed to m_uBaudRate
   cfsetispeed(&dcb, m_uBaudRate);
   cfsetospeed(&dcb, m_uBaudRate);
+
   // Enable the receiver and set localmode
   dcb.c_cflag |= (CLOCAL | CREAD);
 
@@ -359,9 +361,24 @@ void CSuperSerialCard::UpdateCommState() {
       dcb.c_cflag |= CSTOPB; // 1.5 and 2 stopbits.
       break;
   }
-  dcb.c_cflag &= ~CRTSCTS;               /* Disable hardware flow control */
+  dcb.c_cflag |= CRTSCTS;               /* Enable hardware flow control */
   /* Enable data to be processed as raw input */
-  dcb.c_lflag &= ~(ICANON | ECHO | ISIG);
+  dcb.c_cflag &= ~PARENB;
+  dcb.c_cflag &= ~CSTOPB;
+  dcb.c_cflag |= CS8;
+  dcb.c_cflag |= CREAD | CLOCAL;
+
+  dcb.c_lflag &= ~ICANON;
+  dcb.c_lflag &= ~ECHO;
+  dcb.c_lflag &= ~ISIG;
+  dcb.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+
+  dcb.c_iflag &= ~(IXON | IXOFF | IXANY);
+  dcb.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
+
+  dcb.c_oflag &= ~OPOST;
+  dcb.c_oflag &= ~ONLCR;
+/* end */
   /* Set the new options for the port */
   tcsetattr(m_hCommHandle, TCSANOW, &dcb);
 }
@@ -369,13 +386,8 @@ void CSuperSerialCard::UpdateCommState() {
 bool CSuperSerialCard::CheckComm() {
   m_dwCommInactivity = 0;
 
-  if ((m_hCommHandle == -1) && m_dwSerialPort) {
-    char portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
-    if (m_dwSerialPort < 0 || m_dwSerialPort > 99) {
-      m_dwSerialPort = 1; // buffer overflow check
-    }
-    sprintf(portname, TEXT("/dev/ttyS%u"), (unsigned int) (m_dwSerialPort - 1));
-    m_hCommHandle = open(portname, O_RDWR | O_NOCTTY | O_NDELAY);
+  if ((m_hCommHandle == -1) && m_dwSerialPort != NULL) {
+    m_hCommHandle = open(m_dwSerialPort, O_RDWR | O_NOCTTY | O_NDELAY);
     if (m_hCommHandle != -1) {
       UpdateCommState();
       CommThInit();
@@ -645,10 +657,8 @@ unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsi
 
     if (m_vbCommIRQ && !m_vRecvBytes) {
       // Read last byte, so get CommThread to call WaitCommEvent() again
-      fprintf(stderr, "CommRecv: SetEvent - ACK\n");
     }
   }
-
   return result;
 }
 
@@ -715,6 +725,7 @@ unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsig
   //  EnterCriticalSection(&m_CriticalSection);
   pthread_mutex_lock(&m_CriticalSection);
   bool bIRQ = false;
+
   if (m_bTxIrqEnabled && m_bWrittenTx) {
     bIRQ = true;
   }
@@ -818,14 +829,6 @@ void CSuperSerialCard::CommDestroy() {
   m_pExpansionRom = NULL;
 }
 
-void CSuperSerialCard::CommSetSerialPort(/*HWND window,*/ unsigned int newserialport) {
-  if (m_hCommHandle == -1) {
-    m_dwSerialPort = newserialport;
-  } else {
-    fprintf(stderr, "You cannot change the serial port while it is in use!\n");
-  }
-}
-
 void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
   if (m_hCommHandle == -1) {
     return;
@@ -850,7 +853,10 @@ void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
 
 void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
   pthread_mutex_lock(&m_CriticalSection);
-  m_vRecvBytes = read(m_hCommHandle, m_RecvBuffer, 1);
+  int r = read(m_hCommHandle, m_RecvBuffer, 1);
+  if (r > 0) {
+    m_vRecvBytes += r;
+  }
   pthread_mutex_unlock(&m_CriticalSection);
 
   if (m_bRxIrqEnabled && m_vRecvBytes) {
@@ -859,15 +865,40 @@ void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
   }
 }
 
-unsigned int CSuperSerialCard::CommThread(LPVOID lpParameter) {
-  return 0;
+pthread_t comm_thread_;
+static int comm_thread_started = 0;
+static int comm_thread_terminate = 0;
+
+void *CSuperSerialCard::CommThread(void *param) {
+  CSuperSerialCard *card = (CSuperSerialCard *)param;
+  while (!comm_thread_terminate) {
+    card->CheckCommEvent(0);
+    usleep(100);
+  }
+  return NULL;
 }
 
 bool CSuperSerialCard::CommThInit() {
+  comm_thread_terminate = 0;
+  comm_thread_started = 1;
+  int error = pthread_create(
+    &comm_thread_,
+    NULL,
+    &CommThread,
+    this);
+  if (error) {
+    printf("failed to start serial thread\n");
+  }
   return true;
 }
 
 void CSuperSerialCard::CommThUninit() {
+  void *result = NULL;
+  if (comm_thread_started) {
+    comm_thread_terminate = 1;
+    pthread_join(comm_thread_, &result);
+    comm_thread_started = 0;
+  }
 }
 
 unsigned int CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)

@@ -581,11 +581,6 @@ void LoadConfiguration()
   if (registry) {
     LOAD(TEXT("Sound Emulation"), &soundtype);
   }
-  unsigned int dwSerialPort;
-  if (registry) {
-    LOAD(TEXT("Serial Port"), &dwSerialPort);
-  }
-  sg_SSC.SetSerialPort(dwSerialPort);
 
   if (registry) {
     LOAD(TEXT("Emulation Speed"), &g_dwSpeed);
@@ -1018,6 +1013,7 @@ void PrintHelp()
          "  --conf <file>  use <file> instead of any default config files\n"
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
+         "  --ser <file>   serial port to use and map on slot2\n"
          "  -b|--autoboot  boot/reset at startup\n"
          "  -f             run fullscreen\n"
          "  -l             write log to 'AppleWin.log'\n"
@@ -1038,6 +1034,7 @@ int main(int argc, char *argv[])
   LPSTR szImageName_drive1 = NULL;
   LPSTR szImageName_drive2 = NULL;
   LPSTR szSnapshotFile = NULL;
+  LPSTR szSerialFile = NULL;
 
   int opt;
   int optind = 0;
@@ -1046,6 +1043,7 @@ int main(int argc, char *argv[])
                                      {"conf",     required_argument, 0, 0},
                                      {"d1",       required_argument, 0, 0},
                                      {"d2",       required_argument, 0, 0},
+                                     {"ser",      required_argument, 0, 0},
                                      {"help",     0,                 0, 0},
                                      {"state",    required_argument, 0, 0},
                                      {0,          0,                 0, 0}};
@@ -1106,6 +1104,8 @@ int main(int argc, char *argv[])
           return 0;
         } else if (!strcmp(optname, "state")) {
           szSnapshotFile = optarg;
+        } else if (!strcmp(optname, "ser")) {
+          szSerialFile = optarg;
         } else {
           printf("Unknown option '%s'.\n\n", optname);
           PrintHelp();
@@ -1207,6 +1207,10 @@ int main(int argc, char *argv[])
       soundtype = SOUND_NONE;    // Direct Sound and Stuff
     }
 
+    if (szSerialFile) {
+      sg_SSC.SetSerialPort(szSerialFile);
+    }
+
     MB_Initialize();  // Mocking board
     SpkrInitialize();  // Speakers - of Apple][ ...grrrrrrrrrrr, I love them!--bb
     JoyInitialize();
@@ -1285,4 +1289,3 @@ int main(int argc, char *argv[])
   printf("Linapple: successfully exited!\n");
   return 0;
 }
-
