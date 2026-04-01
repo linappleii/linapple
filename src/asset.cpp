@@ -1,6 +1,6 @@
 /*
 	asset.cpp - LinApple asset management
-	<one line to give the program's name and a brief idea of what it does.>
+	Handles loading of ROMs, bitmaps, and disk images.
 	Copyright (C) 2018  T. Joseph Carter
 
 	This program is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 #include <SDL_image.h>
 
 #include "asset.h"
-#include "stdafx.h"  // for Disk.h DiskInsert()
-#include "shim.h"  // SDL_GetBasePath()
+#include "stdafx.h"
+#include "Util_Path.h"
 
 #include "../res/font.xpm"
 #include "../res/icon.xpm"
@@ -34,47 +34,24 @@
 
 assets_t *assets = NULL;
 
-#ifdef ASSET_DIR
-static char system_assets[] = ASSET_DIR "/";
-#else
-static char system_assets[] = "./";
-#endif
-static char *system_exedir = NULL;
-
 SDL_Surface *Asset_LoadBMP(const char *filename)
 {
-  SDL_Surface *surf;
-  char *path = (char *) SDL_malloc(sizeof(char[PATH_MAX]));
-  if (NULL == path) {
-    fprintf(stderr, "Asset_LoadBMP: Allocating path: %s\n", SDL_GetError());
+  std::string fullPath = Path::FindDataFile(filename);
+  if (fullPath.empty()) {
+    fprintf(stderr, "Asset_LoadBMP: Couldn't find %s in any search path!\n", filename);
     return NULL;
   }
 
-  snprintf(path, PATH_MAX, "%s%s", system_assets, filename);
-  surf = SDL_LoadBMP(path);
-  if (NULL == surf) {
-    snprintf(path, PATH_MAX, "%s%s", system_exedir, filename);
-    surf = SDL_LoadBMP(path);
-  }
-
+  SDL_Surface *surf = SDL_LoadBMP(fullPath.c_str());
   if (NULL != surf) {
-    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename, path);
-  } else {
-    fprintf(stderr, "Asset_LoadBMP: Couldn't load %s in either %s or %s!\n", filename, system_assets, system_exedir);
+    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename, fullPath.c_str());
   }
 
-  SDL_free(path);
   return surf;
 }
 
 bool Asset_Init(void)
 {
-  system_exedir = SDL_GetBasePath();
-  if (NULL == system_exedir) {
-    fprintf(stderr, "Asset_Init: Warning: SDL_GetBasePath() returned NULL, using \"./\"\n");
-    system_exedir = SDL_strdup("./");
-  }
-
   assets = (assets_t *) SDL_calloc(1, sizeof(assets_t));
   if (NULL == assets) {
     fprintf(stderr, "Asset_Init: Allocating assets: %s\n", SDL_GetError());
@@ -117,68 +94,21 @@ void Asset_Quit(void)
       assets->splash = NULL;
     }
 
-    if (NULL != system_exedir) {
-      SDL_free(system_exedir);
-      system_exedir = NULL;
-    }
-
     SDL_free(assets);
   }
 }
 
 int Asset_FindMasterDisk(char *path_out)
 {
-  // {path_out} gets the path found.
-  // Returns non-zero if no path was found.
-  //
-  // TODO use XDG lookups eg XDG_CONFIG_HOME, XDG_CONFIG_PATHS.
-  // TODO the last ditch paths are bunk -- look for better conventions.
-
-  int err = 255;
-  const int count = 5;
-  char *paths[count];
-  char path[MAX_PATH+1];
-  
-  // Allocate.
-  for (int i=0; i<count; i++)
-    paths[i] = (char *)SDL_malloc(sizeof(char[PATH_MAX+1]));
-
-  // Define search paths in precedence order.
-  strcpy(paths[0], ".");
-  strcpy(paths[1], "share/linapple"); // testing convenience
-  strcpy(paths[2], SDL_getenv("HOME"));
-  strcat(paths[2], "/.local/share/linapple");
-  strcpy(paths[3], "/usr/local/share/linapple");
-  strcpy(paths[4], "/usr/share/linapple");
-
-  for (auto p: paths) {
-    sprintf(path, "%s/%s", p, ASSET_MASTER_DSK);
-    printf("[debug] Searching: %s for %s\n", p, ASSET_MASTER_DSK);
-    FILE *fp = fopen(path, "r");
-    if (fp) {
-      fclose(fp);
-      strcpy(path_out, path);
-      err = 0;
-      break;
-    }
+  std::string fullPath = Path::FindDataFile(ASSET_MASTER_DSK);
+  if (fullPath.empty()) {
+    printf("[warn ] could not find %s in any search path\n", ASSET_MASTER_DSK);
+    return 255;
   }
 
-  if (err)
-  {
-    printf("[warn ] could not find %s at any of:\n", ASSET_MASTER_DSK);
-    for (auto i=0; i<count; i++)
-      printf("[warn ] %s\n", paths[i]);
-  }
-  else
-  {
-    printf("[info ] Master disk: %s\n", path);
-  }
-
-  // Deallocate.
-  for (auto i=0; i<count; i++)
-    SDL_free(paths[i]);
-
-  return err;
+  strncpy(path_out, fullPath.c_str(), MAX_PATH);
+  printf("[info ] Master disk: %s\n", path_out);
+  return 0;
 }
 
 int Asset_InsertMasterDisk(void)

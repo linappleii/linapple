@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -63,7 +63,7 @@ void MemoryTextFile_t::GetLine( const int iLine, char *pLine, const int nMaxLine
 		GetLinePointers();
 	}
 
-	ZeroMemory( pLine, nMaxLineChars );
+	memset( pLine, 0, nMaxLineChars );
 	strncpy( pLine, m_vLines[ iLine ], nMaxLineChars-1 );
 }
 

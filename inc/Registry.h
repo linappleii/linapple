@@ -1,18 +1,33 @@
+#include <cstdint>
+#include <string>
+#include <map>
+
 #pragma once
 
-extern FILE *registry;  // our opened file
+// Modern C++ Configuration API
+class Configuration {
+public:
+    static Configuration& Instance();
 
-bool RegLoadString(LPCTSTR, LPCTSTR, bool, char **, unsigned int);
+    bool Load(const std::string& path);
+    bool Save();
+    void SetPath(const std::string& path);
+    const std::string& GetPath() const { return m_path; }
 
-bool RegLoadValue(LPCTSTR, LPCTSTR, bool, unsigned int *);
+    std::string GetString(const std::string& section, const std::string& key, const std::string& defaultValue = "");
+    uint32_t GetInt(const std::string& section, const std::string& key, uint32_t defaultValue = 0);
+    bool GetBool(const std::string& section, const std::string& key, bool defaultValue = false);
 
-bool RegLoadBool(LPCTSTR, LPCTSTR, bool, bool *);
+    void SetString(const std::string& section, const std::string& key, const std::string& value);
+    void SetInt(const std::string& section, const std::string& key, uint32_t value);
+    void SetBool(const std::string& section, const std::string& key, bool value);
 
-void RegSaveString(LPCTSTR, LPCTSTR, bool, LPCTSTR);
-void RegSaveValue(LPCTSTR, LPCTSTR, bool, unsigned int);
-void RegSaveBool(LPCTSTR, LPCTSTR, bool, bool);
+private:
+    Configuration() {}
+    std::string m_path;
+    std::map<std::string, std::map<std::string, std::string>> m_data;
+};
 
-void RegConfPath(const char *);
+bool Config_Load(const char* section, const char* key, uint32_t* value);
 
-char *php_trim(char *c, int len);  // trimming string like PHP function trim does!
-
+char *php_trim(char *c, int len);

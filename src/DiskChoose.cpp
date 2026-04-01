@@ -10,17 +10,11 @@
 // Brain Games crew creates brilliant retro-remakes! Please visit their site to find out more.
 //
 */
-#ifdef _WIN32
-#include "windows.h"
-#else
-
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include "ctype.h"
-
-#endif
 
 
 #include "stdafx.h"
@@ -42,8 +36,6 @@
 #define KEY_DELAY    25
 
 #define MAX_FILENAME  80
-
-#ifndef _WIN32
 
 int getstat(const char *catalog, const char *fname, uintmax_t *size)
 {
@@ -68,8 +60,6 @@ int getstat(const char *catalog, const char *fname, uintmax_t *size)
 
   return 0;
 }
-
-#endif
 
 int compareNames(const void *const A, const void *const B)
 {

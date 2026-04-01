@@ -1,3 +1,4 @@
+#include <cstdint>
 #pragma once
 
 // Types
@@ -45,19 +46,21 @@ enum AppleFont_e {
   APPLE_FONT_Y_APPLE_40COL = 512, // ][
 };
 
-// STANDARD /*WINDOWS*/ LINUX COLORS
-#define  CREAM            0xF6
-#define  MEDIUM_GRAY      0xF7
-#define  DARK_GRAY        0xF8
-#define  RED              0xF9
-#define  GREEN            0xFA
-#define  YELLOW           0xFB
-#define  BLUE             0xFC
-#define  MAGENTA          0xFD
-#define  CYAN             0xFE
-#define  WHITE            0xFF
+// STANDARD LINUX COLORS
+constexpr uint8_t CREAM       = 0xF6;
+constexpr uint8_t MEDIUM_GRAY = 0xF7;
+constexpr uint8_t DARK_GRAY   = 0xF8;
+constexpr uint8_t RED         = 0xF9;
+constexpr uint8_t GREEN       = 0xFA;
+constexpr uint8_t YELLOW      = 0xFB;
+constexpr uint8_t BLUE        = 0xFC;
+constexpr uint8_t MAGENTA     = 0xFD;
+constexpr uint8_t CYAN        = 0xFE;
+constexpr uint8_t WHITE       = 0xFF;
 
-#define RGB(r, g, b)          ((unsigned int)(((unsigned char)(r)|((unsigned short)((unsigned char)(g))<<8))|(((unsigned int)(unsigned char)(b))<<16)))
+inline uint32_t RGB(uint8_t r, uint8_t g, uint8_t b) {
+    return ((uint32_t)r) | ((uint32_t)g << 8) | ((uint32_t)b << 16);
+}
 
 enum Color_Palette_Index_e {
   // Really need to have Quarter Green and Quarter Blue for Hi-Res
@@ -193,8 +196,8 @@ unsigned int VideoGetSnapshot(SS_IO_Video *pSS);
 
 unsigned int VideoSetSnapshot(SS_IO_Video *pSS);
 
-unsigned char VideoCheckMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoCheckMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);

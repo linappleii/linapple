@@ -1,5 +1,6 @@
+#include <cassert>
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -41,14 +42,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	Arg_t g_aArgRaw[ MAX_ARGS ]; // pre-processing
 	Arg_t g_aArgs  [ MAX_ARGS ]; // post-processing (cooked)
 
-	const char TCHAR_LF     = TEXT('\x0D');
-	const char TCHAR_CR     = TEXT('\x0A');
-	const char TCHAR_SPACE  = TEXT(' ');
-	const char TCHAR_TAB    = TEXT('\t');
-//	const char TCHAR_QUOTED = TEXT('"');
-	const char TCHAR_QUOTE_DOUBLE = TEXT('"');
-	const char TCHAR_QUOTE_SINGLE = TEXT('\'');
-	const char TCHAR_ESCAPE = TEXT('\x1B');
+	const char TCHAR_LF     = '\x0D';
+	const char TCHAR_CR     = '\x0A';
+	const char TCHAR_SPACE  = ' ';
+	const char TCHAR_TAB    = '\t';
+//	const char TCHAR_QUOTED = '"';
+	const char TCHAR_QUOTE_DOUBLE = '"';
+	const char TCHAR_QUOTE_SINGLE = '\'';
+	const char TCHAR_ESCAPE = '\x1B';
 
 
 	// NOTE: ArgToken_e and g_aTokens must match!
@@ -78,13 +79,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{ TOKEN_PERCENT     , TYPE_OPERATOR, "%"  }, // mod
 		{ TOKEN_PIPE        , TYPE_OPERATOR, "|"  }, // bit-or
 		{ TOKEN_PLUS        , TYPE_OPERATOR, "+"  }, // add
-//		{ TOKEN_QUESTION    , TYPE_OPERATOR, TEXT('?')  }, // Not a token 1) wildcard needs to stay together with other chars
+//		{ TOKEN_QUESTION    , TYPE_OPERATOR, '?'  }, // Not a token 1) wildcard needs to stay together with other chars
 		{ TOKEN_QUOTE_SINGLE, TYPE_QUOTED_1, "\'" },
 		{ TOKEN_QUOTE_DOUBLE, TYPE_QUOTED_2, "\"" }, // for strings
 		{ TOKEN_SEMI        , TYPE_STRING  , ";"  },
 		{ TOKEN_SPACE       , TYPE_STRING  , " "  }, // space is also a delimiter between tokens/args
 		{ TOKEN_STAR        , TYPE_OPERATOR, "*"  }, // Not a token 1) wildcard needs to stay together with other chars
-//		{ TOKEN_TAB         , TYPE_STRING  , TEXT('\t') }
+//		{ TOKEN_TAB         , TYPE_STRING  , '\t' }
 		{ TOKEN_TILDE       , TYPE_OPERATOR, "~"  }, // C/C++: Not.  Used for console.
 
 		{ TOKEN_COMMENT_EOL , TYPE_STRING  , "//" },
@@ -104,18 +105,18 @@ int _Arg_1( int nValue )
 }
 
 //===========================================================================
-int _Arg_1( LPTSTR pName )
+int _Arg_1( char* pName )
 {
-	int nLen = _tcslen( g_aArgs[1].sArg );
+	int nLen = strlen( g_aArgs[1].sArg );
 	if (nLen < MAX_ARG_LEN)
 	{
-		_tcscpy( g_aArgs[1].sArg, pName );
+		strcpy( g_aArgs[1].sArg, pName );
 	}
 	else
 	{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-		_tcsncpy( g_aArgs[1].sArg, pName, MAX_ARG_LEN );
+		strncpy( g_aArgs[1].sArg, pName, MAX_ARG_LEN );
 #pragma GCC diagnostic pop
 	}
 	return 1;
@@ -205,7 +206,7 @@ void ArgsClear ()
 
 bool ArgsGetValue ( Arg_t *pArg, unsigned short * pAddressValue_, const int nBase )
 {
-	_ASSERT(pArg);
+	assert(pArg);
 	if (pArg == NULL)
 		return false;
 
@@ -214,7 +215,7 @@ bool ArgsGetValue ( Arg_t *pArg, unsigned short * pAddressValue_, const int nBas
 
 	if (pAddressValue_)
 	{
-		*pAddressValue_ = (unsigned short)(_tcstoul( pSrc, &pEnd, nBase) & _6502_MEM_END);
+		*pAddressValue_ = (unsigned short)(strtoul( pSrc, &pEnd, nBase) & _6502_MEM_END);
 		return true;
 	}
 
@@ -240,8 +241,8 @@ bool ArgsGetImmediateValue ( Arg_t *pArg, unsigned short * pAddressValue_ )
 //===========================================================================
 int	ArgsGet ( char * pInput )
 {
-	LPCTSTR pSrc = pInput;
-	LPCTSTR pEnd = NULL;
+	const char* pSrc = pInput;
+	const char* pEnd = NULL;
 	int     nBuf = 0;
 
 	ArgToken_e iTokenSrc = NO_TOKEN;
@@ -319,7 +320,7 @@ int	ArgsGet ( char * pInput )
 				nLen = MIN( nBuf, MAX_ARG_LEN ); // NOTE: see Arg_t.sArg[] // GH#481
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-				_tcsncpy( pArg->sArg, pSrc, nLen );
+				strncpy( pArg->sArg, pSrc, nLen );
 #pragma GCC diagnostic pop
 				pArg->sArg[ nLen ] = 0;
 				pArg->nArgLen      = nLen;
@@ -400,7 +401,7 @@ bool ArgsGetRegisterValue ( Arg_t *pArg, unsigned short * pAddressValue_ )
 			else
 			if (iReg == BP_SRC_REG_PC)
 			{
-				if ((pArg->nArgLen == 2) && (_tcscmp( pArg->sArg, g_aBreakpointSource[ iReg ] ) == 0))
+				if ((pArg->nArgLen == 2) && (strcmp( pArg->sArg, g_aBreakpointSource[ iReg ] ) == 0))
 				{
 					*pAddressValue_ = regs.pc       ; bStatus = true; break;
 				}
@@ -430,7 +431,7 @@ void ArgsRawParse ( void )
 	{
 		pSrc  = & (pArg->sArg[ 0 ]);
 
-		nAddressArg = (unsigned short)(_tcstoul( pSrc, &pEnd, BASE) & _6502_MEM_END);
+		nAddressArg = (unsigned short)(strtoul( pSrc, &pEnd, BASE) & _6502_MEM_END);
 		nAddressValue = nAddressArg;
 
 		bool bFound = false;
@@ -768,7 +769,7 @@ int ArgsCook ( const int nArgs )
 		}
 		else // not an operator, try (1) address, (2) symbol lookup
 		{
-			nAddressArg = (unsigned short)(_tcstoul( pSrc, &pEnd2, BASE) & _6502_MEM_END);
+			nAddressArg = (unsigned short)(strtoul( pSrc, &pEnd2, BASE) & _6502_MEM_END);
 
 			if (! (pArg->bType & TYPE_NO_REG))
 			{
@@ -872,7 +873,7 @@ const char * FindTokenOrAlphaNumeric ( const char *pSrc, const TokenTable_t *aTo
 }
 
 
-void TextConvertTabsToSpaces( char *pDeTabified_, LPCTSTR pText, const int nDstSize, int nTabStop )
+void TextConvertTabsToSpaces( char *pDeTabified_, const char* pText, const int nDstSize, int nTabStop )
 {
 	int TAB_SPACING = 8;
 	int TAB_SPACING_1 = 16;
@@ -881,8 +882,8 @@ void TextConvertTabsToSpaces( char *pDeTabified_, LPCTSTR pText, const int nDstS
 	if (nTabStop)
 		TAB_SPACING = nTabStop;
 
-	LPCTSTR pSrc = pText;
-	LPTSTR  pDst = pDeTabified_;
+	const char* pSrc = pText;
+	char*  pDst = pDeTabified_;
 
 	int nTab = 0; // gap left to next tab
 	int nGap = 0; // actual gap
@@ -944,7 +945,7 @@ void TextConvertTabsToSpaces( char *pDeTabified_, LPCTSTR pText, const int nDstS
 // @return Length of new string
 int RemoveWhiteSpaceReverse ( char *pSrc )
 {
-	int   nLen = _tcslen( pSrc );
+	int   nLen = strlen( pSrc );
 	char *pDst = pSrc + nLen;
 	while (nLen--)
 	{

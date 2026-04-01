@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -579,7 +579,7 @@ void KeybQueueKeypress(int key, bool bASCII)
       }
     }
 
-    if (!IS_APPLE2) {
+    if (!IS_APPLE2()) {
       if (g_bCapsLock && (key >= 'a') && (key <= 'z')) {
         keycode = key - 32;
       } else {
@@ -594,7 +594,7 @@ void KeybQueueKeypress(int key, bool bASCII)
     }
     lastvirtkey = key;
   } else {
-    if (IS_APPLE2) {
+    if (IS_APPLE2()) {
       switch (key) {
         case SDLK_LEFT:
           keycode = 0x08;
@@ -659,7 +659,7 @@ void KeybQueueKeypress(int key, bool bASCII)
   #endif
 }
 
-unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
   #ifdef KEY_OLD
@@ -679,7 +679,7 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
   #endif
 }
 
-unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, ULONG) {
+unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
   Uint8 *keys;
@@ -700,7 +700,7 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
 
 void KeybToggleCapsLock()
 {
-  if (!IS_APPLE2) {
+  if (!IS_APPLE2()) {
     g_bCapsLock = !g_bCapsLock;
     FrameRefreshStatus(DRAW_LEDS);
   }

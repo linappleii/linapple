@@ -1,4 +1,7 @@
+#include <cstdint>
 #pragma once
+
+#include "Common.h"
 
 // use the new Debugger Font (Apple Font)
 #define USE_APPLE_FONT   1
@@ -16,11 +19,6 @@
 #else
 	#define APPLE_FONT_BITMAP_PADDED  1
 #endif
-
-	typedef struct
-	{
-		int left, right, top, bottom;
-	} RECT;
 
 	enum ConsoleFontSize_e
 	{
@@ -71,7 +69,7 @@
 	void FormatOpcodeBytes    ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 	void FormatNopcodeBytes   ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 
-	void DrawFlags            ( int line, unsigned short nRegFlags, LPTSTR pFlagNames_);
+	void DrawFlags            ( int line, unsigned short nRegFlags, char* pFlagNames_);
 
 	extern void AllocateDebuggerMemDC(void);
 	extern void ReleaseDebuggerMemDC(void);
@@ -86,7 +84,7 @@
 	extern char g_aDebuggerVirtualTextScreen[ DEBUG_VIRTUAL_TEXT_HEIGHT ][ DEBUG_VIRTUAL_TEXT_WIDTH ];
 	extern size_t Util_GetDebuggerText( char* &pText_ ); // Same API as Util_GetTextScreen()
 
-	extern UINT64 g_nCumulativeCycles;
+	extern uint64_t g_nCumulativeCycles;
 	class VideoScannerDisplayInfo
 	{
 	public:
@@ -98,7 +96,7 @@
 		bool isHorzReal;
 		bool isAbsCycle;
 
-		UINT64 lastCumulativeCycles;
+		uint64_t lastCumulativeCycles;
 		unsigned int cycleDelta;
 	};
 

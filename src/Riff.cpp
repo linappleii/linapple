@@ -1,5 +1,5 @@
 /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -29,12 +29,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include <inttypes.h>
-#include <stdint.h>
-#include "wincompat.h"
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include "Common.h"
 #include "Riff.h"
-#include "wwrapper.h"
 
-static HANDLE g_hRiffFile = INVALID_HANDLE_VALUE;
+static FILE* g_hRiffFile = NULL;
 static unsigned int dwTotalOffset;
 static unsigned int dwDataOffset;
 static unsigned int g_dwTotalNumberOfBytesWritten = 0;
@@ -42,9 +43,9 @@ static unsigned int g_NumChannels = 2;
 
 int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumChannels)
 {
-  g_hRiffFile = fopen(pszFile, "w");
+  g_hRiffFile = fopen(pszFile, "wb");
 
-  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
+  if (g_hRiffFile == NULL) {
     return 1;
   }
 
@@ -53,76 +54,76 @@ int RiffInitWriteFile(char *pszFile, unsigned int sample_rate, unsigned int NumC
   unsigned int temp32;
   unsigned short temp16;
 
-  unsigned int dwNumberOfBytesWritten;
-
-  WriteFile(g_hRiffFile, "RIFF", 4, &dwNumberOfBytesWritten, NULL);
+  fwrite("RIFF", 1, 4, g_hRiffFile);
 
   temp32 = 0;        // total size
-  dwTotalOffset = SetFilePointer(g_hRiffFile, 0, NULL, FILE_CURRENT);
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  dwTotalOffset = ftell(g_hRiffFile);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
-  WriteFile(g_hRiffFile, "WAVE", 4, &dwNumberOfBytesWritten, NULL);
+  fwrite("WAVE", 1, 4, g_hRiffFile);
 
-  WriteFile(g_hRiffFile, "fmt ", 4, &dwNumberOfBytesWritten, NULL);
+  fwrite("fmt ", 1, 4, g_hRiffFile);
 
   temp32 = 16;      // format length
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
   temp16 = 1;        // PCM format
-  WriteFile(g_hRiffFile, &temp16, 2, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp16, 1, 2, g_hRiffFile);
 
   temp16 = NumChannels;    // channels
-  WriteFile(g_hRiffFile, &temp16, 2, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp16, 1, 2, g_hRiffFile);
 
   temp32 = sample_rate;  // sample rate
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
   temp32 = sample_rate * 2 * NumChannels;  // bytes/second
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
   temp16 = 2 * NumChannels;  // block align
-  WriteFile(g_hRiffFile, &temp16, 2, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp16, 1, 2, g_hRiffFile);
 
   temp16 = 16;      // bits/sample
-  WriteFile(g_hRiffFile, &temp16, 2, &dwNumberOfBytesWritten, NULL);
+  fwrite(&temp16, 1, 2, g_hRiffFile);
 
-  WriteFile(g_hRiffFile, "data", 4, &dwNumberOfBytesWritten, NULL);
+  fwrite("data", 1, 4, g_hRiffFile);
 
   temp32 = 0;        // data length
-  dwDataOffset = SetFilePointer(g_hRiffFile, 0, NULL, FILE_CURRENT);
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  dwDataOffset = ftell(g_hRiffFile);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
+
+  g_dwTotalNumberOfBytesWritten = ftell(g_hRiffFile);
 
   return 0;
 }
 
 int RiffFinishWriteFile() {
-  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
+  if (g_hRiffFile == NULL) {
     return 1;
   }
 
   unsigned int temp32;
 
-  unsigned int dwNumberOfBytesWritten;
-
   temp32 = g_dwTotalNumberOfBytesWritten - (dwTotalOffset + 4);
-  SetFilePointer(g_hRiffFile, dwTotalOffset, NULL, FILE_BEGIN);
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  fseek(g_hRiffFile, dwTotalOffset, SEEK_SET);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
   temp32 = g_dwTotalNumberOfBytesWritten - (dwDataOffset + 4);
-  SetFilePointer(g_hRiffFile, dwDataOffset, NULL, FILE_BEGIN);
-  WriteFile(g_hRiffFile, &temp32, 4, &dwNumberOfBytesWritten, NULL);
+  fseek(g_hRiffFile, dwDataOffset, SEEK_SET);
+  fwrite(&temp32, 1, 4, g_hRiffFile);
 
-  return CloseHandle(g_hRiffFile);
+  int res = fclose(g_hRiffFile);
+  g_hRiffFile = NULL;
+  return (res == 0) ? 0 : 1;
 }
 
 int RiffPutSamples(short *buf, unsigned int uSamples) {
-  if (g_hRiffFile == INVALID_HANDLE_VALUE) {
+  if (g_hRiffFile == NULL) {
     return 1;
   }
 
-  unsigned int dwNumberOfBytesWritten;
-  WriteFile(g_hRiffFile, buf, uSamples * sizeof(short) * g_NumChannels, &dwNumberOfBytesWritten, NULL);
-  g_dwTotalNumberOfBytesWritten += dwNumberOfBytesWritten;
+  size_t bytesToWrite = uSamples * sizeof(short) * g_NumChannels;
+  size_t bytesWritten = fwrite(buf, 1, bytesToWrite, g_hRiffFile);
+  g_dwTotalNumberOfBytesWritten += (unsigned int)bytesWritten;
 
   return 0;
 }

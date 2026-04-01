@@ -1,6 +1,5 @@
 # Installation
 
-
 ### Prerequisites
 
 #### Debian / Ubuntu / RetroPie
@@ -25,17 +24,24 @@ git clone https://github.com/linappleii/linapple.git
 
 ```bash
 cd linapple
-make
+make help    # View all available build options and targets
+make         # Build the application (default)
 ```
 
-to enable rewrite user settings
+To enable rewrite user settings:
 ```bash
-make -e REGISTRY_WRITEABLE=1
+make REGISTRY_WRITEABLE=1
 ```
 
 For a faster compilation, you can add an option "-jX", where "X" is the number of threads of your CPU. For example, *AMD Ryzen 5 2600* has 6 cores, but 12 threads:
 ```bash
 make -j12
+```
+
+#### Troubleshooting
+If the build fails or you want to see the exact commands being executed, use the verbosity flag:
+```bash
+make V=1
 ```
 
 Don't worry about spurious warning messages, which can look like errors; chances are that the program will build successfully even with these warnings.
@@ -71,6 +77,12 @@ Optional step. Some contents of the recently created "build" folder will be inst
 make install
 ```
 
+#### Custom Installation Path
+To install to a different location (e.g., your home directory), you can override the `prefix` variable:
+```bash
+make install prefix=$HOME/.local
+```
+
 Now copy both configuration file `linapple.conf` and floppy disk `Master.dsk` to user's folder:
 
 ```bash
@@ -101,9 +113,10 @@ make uninstall
 
 ### Creating a debian package
 
-To create a debian package installable with `dpkg` you must have compiled the source code previously (see section "Compile" above).
+To create a debian package installable with `dpkg`:
 
 ```bash
+make
 make deb
 sudo dpkg -i linapple_VERSION_all.deb
 ```
@@ -114,12 +127,14 @@ Where "VERSION" is the LinApple version. See the created package and enter the c
 
 By default, the `make` command will compile an optimized version of `linapple`.
 
-It is possible to compile a version with debugging symbols. To do so, you must
-set the `DEBUG` environment variable:
+It is possible to compile a version with debugging symbols:
 
-    DEBUG=1 make
+```bash
+make DEBUG=1
+```
 
-If you would like to also include extra code that writes profile information
-suitable for the analysis program `gprof`:
+If you would like to also include extra code that writes profile information suitable for the analysis program `gprof`:
 
-    PROFILING=1 make
+```bash
+make PROFILING=1
+```

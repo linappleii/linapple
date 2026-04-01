@@ -1,5 +1,5 @@
  /*
-AppleWin : An Apple //e emulator for Windows
+linapple : An Apple //e emulator for Linux
 
 Copyright (C) 1994-1996, Michael O'Brien
 Copyright (C) 1999-2001, Oliver Schmidt
@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
-#include "wwrapper.h"
 #include "ftpparse.h"
 #include "DiskFTP.h"
 
@@ -132,7 +131,7 @@ typedef struct {
   unsigned short hd_diskblock;
   unsigned short hd_buf_ptr;
   bool hd_imageloaded;
-  HANDLE hd_file;
+  FILE* hd_file;
   unsigned char hd_buf[513];
 } HDD, *PHDD;
 
@@ -163,17 +162,17 @@ void HD_ResetStatus(void)
 }
 
 
-static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
+static void GetImageTitle(const char* imageFileName, PHDD pHardDrive)
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
   char imagetitle[128];
-  LPCTSTR startpos = imageFileName;
+  const char* startpos = imageFileName;
 
-  if (_tcsrchr(startpos, FILE_SEPARATOR)) {
-    startpos = _tcsrchr(startpos, FILE_SEPARATOR) + 1;
+  if (strrchr(startpos, FILE_SEPARATOR)) {
+    startpos = strrchr(startpos, FILE_SEPARATOR) + 1;
   }
-  _tcsncpy(imagetitle, startpos, 127);
+  strncpy(imagetitle, startpos, 127);
   imagetitle[127] = 0;
 
   bool found = 0;
@@ -186,20 +185,20 @@ static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
     }
   }
 
-  _tcsncpy(pHardDrive->hd_fullname, imagetitle, 127);
+  strncpy(pHardDrive->hd_fullname, imagetitle, 127);
   pHardDrive->hd_fullname[127] = 0;
 
   if (imagetitle[0]) {
-    LPTSTR dot = imagetitle;
-    if (_tcsrchr(dot, TEXT('.'))) {
-      dot = _tcsrchr(dot, TEXT('.'));
+    char* dot = imagetitle;
+    if (strrchr(dot, '.')) {
+      dot = strrchr(dot, '.');
     }
     if (dot > imagetitle) {
       *dot = 0;
     }
   }
 
-  _tcsncpy(pHardDrive->hd_imagename, imagetitle, 15);
+  strncpy(pHardDrive->hd_imagename, imagetitle, 15);
   pHardDrive->hd_imagename[15] = 0;
 #pragma GCC diagnostic pop
 }
@@ -209,21 +208,30 @@ static void NotifyInvalidImage(char *filename)
   printf("HDD: Could not load %s\n", filename);
 }
 
+static size_t Util_GetFileSize(FILE* f) {
+  long current = ftell(f);
+  fseek(f, 0, SEEK_END);
+  size_t size = ftell(f);
+  fseek(f, current, SEEK_SET);
+  return size;
+}
+
 static void HD_CleanupDrive(int nDrive)
 {
   if (g_HardDrive[nDrive].hd_file) {
-    CloseHandle(g_HardDrive[nDrive].hd_file);
+    fclose(g_HardDrive[nDrive].hd_file);
+    g_HardDrive[nDrive].hd_file = NULL;
   }
   g_HardDrive[nDrive].hd_imageloaded = false;
   g_HardDrive[nDrive].hd_imagename[0] = 0;
   g_HardDrive[nDrive].hd_fullname[0] = 0;
 }
 
-static bool HD_Load_Image(int nDrive, LPCSTR filename)
+static bool HD_Load_Image(int nDrive, const char *filename)
 {
   g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
 
-  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE) {
+  if (g_HardDrive[nDrive].hd_file == NULL) {
     g_HardDrive[nDrive].hd_imageloaded = false;
   } else {
     g_HardDrive[nDrive].hd_imageloaded = true;
@@ -233,7 +241,7 @@ static bool HD_Load_Image(int nDrive, LPCSTR filename)
 }
 
 #if 0
-static LPCTSTR HD_DiskGetName (int nDrive)
+static const char* HD_DiskGetName (int nDrive)
 {
   return g_HardDrive[nDrive].hd_imagename;
 }
@@ -241,7 +249,7 @@ static LPCTSTR HD_DiskGetName (int nDrive)
 
 // Everything below is global
 
-static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
+static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
 static const unsigned int HDDRVR_SIZE = 0x100;
 
@@ -255,7 +263,7 @@ void HD_SetEnabled(bool bEnabled) {
 
   g_bHD_Enabled = bEnabled;
 
-  LPBYTE pCxRomPeripheral = MemGetCxRomPeripheral();
+  uint8_t* pCxRomPeripheral = MemGetCxRomPeripheral();
   if (pCxRomPeripheral == NULL) { // This will be NULL when called after loading value from Registry
     return;
   }
@@ -269,11 +277,11 @@ void HD_SetEnabled(bool bEnabled) {
   RegisterIoHandler(g_uSlot, HD_IO_EMUL, HD_IO_EMUL, NULL, NULL, NULL, NULL);
 }
 
-LPCTSTR HD_GetFullName(int nDrive) {
+const char* HD_GetFullName(int nDrive) {
   return g_HardDrive[nDrive].hd_fullname;
 }
 
-void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
+void HD_Load_Rom(uint8_t* pCxRomPeripheral, unsigned int uSlot) {
   if (!g_bHD_Enabled)
     return;
 
@@ -294,15 +302,15 @@ void HD_Eject(const int iDrive) {
   if (g_HardDrive[iDrive].hd_imageloaded) {
     HD_CleanupDrive(iDrive);
     if (iDrive == 0) {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, ""); Configuration::Instance().Save();
     } else {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, "");
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, ""); Configuration::Instance().Save();
     }
   }
 }
 
 // pszFilename is not qualified with path
-bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename) {
+bool HD_InsertDisk2(int nDrive, const char* pszFilename) {
   if (*pszFilename == 0x00) {
     return false;
   }
@@ -310,7 +318,7 @@ bool HD_InsertDisk2(int nDrive, LPCTSTR pszFilename) {
 }
 
 // imageFileName is qualified with path
-bool HD_InsertDisk(int nDrive, LPCTSTR imageFileName) {
+bool HD_InsertDisk(int nDrive, const char* imageFileName) {
   if (*imageFileName == 0x00) {
     return false;
   }
@@ -379,7 +387,7 @@ void HD_FTP_Select(int nDrive)
   }
   // we chose some file
   strcpy(g_sFTPServerHDD, fullPath.c_str());
-  RegSaveString(TEXT("Preferences"), REGVALUE_FTP_HDD_DIR, 1, g_sFTPServerHDD);// save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_HDD_DIR, g_sFTPServerHDD); Configuration::Instance().Save();// save it
 
   fullPath += "/" + filename;
 
@@ -390,9 +398,9 @@ void HD_FTP_Select(int nDrive)
     if (HD_InsertDisk2(nDrive, localPath.c_str())) {
       // save file names for HDD disk 1 or 2
       if (nDrive) {
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, localPath.c_str());
+        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str()); Configuration::Instance().Save();
       } else {
-        RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, localPath.c_str());
+        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, localPath.c_str()); Configuration::Instance().Save();
       }
     }
   }
@@ -444,7 +452,7 @@ void HD_Select(int nDrive)
   }
   // we chose some file
   strcpy(g_sHDDDir, fullPath.c_str());
-  RegSaveString(TEXT("Preferences"), REGVALUE_PREF_HDD_START_DIR, 1, g_sHDDDir); // Save it
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_HDD_START_DIR, g_sHDDDir); Configuration::Instance().Save(); // Save it
 
   fullPath += "/" + filename;
 
@@ -453,9 +461,9 @@ void HD_Select(int nDrive)
   if (HD_InsertDisk2(nDrive, fullPath.c_str())) {
     // save file names for HDD disk 1 or 2
     if (nDrive) {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE2, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, fullPath.c_str()); Configuration::Instance().Save();
     } else {
-      RegSaveString(TEXT("Preferences"), REGVALUE_HDD_IMAGE1, 1, fullPath.c_str());
+      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1, fullPath.c_str()); Configuration::Instance().Save();
     }
     printf("HDD disk image %s inserted\n", fullPath.c_str());
   }
@@ -467,7 +475,7 @@ void HD_Select(int nDrive)
 #define DEVICE_UNKNOWN_ERROR  0x03
 #define DEVICE_IO_ERROR      0x08
 
-static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft) {
+static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft) {
   unsigned char r = DEVICE_OK;
   addr &= 0xFF;
 
@@ -486,7 +494,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
           switch (g_nHD_Command) {
             default:
             case 0x00: //status
-              if (GetFileSize(pHDD->hd_file, NULL) == 0) {
+              if (Util_GetFileSize(pHDD->hd_file) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
@@ -494,10 +502,11 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             case 0x01: //read
             {
               HDDStatus = DISK_STATUS_READ;
-              unsigned int br = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) { // read block into buffer
+              size_t br = Util_GetFileSize(pHDD->hd_file);
+              if ((size_t)(pHDD->hd_diskblock * 512) <= br) { // seek to block
+                fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET);  // seek to block
+                uint32_t bytesRead = fread(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                if (bytesRead == 512) { // read block into buffer
                   pHDD->hd_error = 0;
                   r = 0;
                   pHDD->hd_buf_ptr = 0;
@@ -514,11 +523,12 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             case 0x02: //write
             {
               HDDStatus = DISK_STATUS_WRITE;
-              unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
-                MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+              size_t bw = Util_GetFileSize(pHDD->hd_file);
+              if ((size_t)(pHDD->hd_diskblock * 512) <= bw) {
+                memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
+                fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET);  // seek to block
+                uint32_t bytesWritten = fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                if (bytesWritten == 512) { // write buffer to file
                   pHDD->hd_error = 0;
                   r = 0;
                 } else {
@@ -526,17 +536,18 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
                   r = DEVICE_IO_ERROR;
                 }
               } else {
-                unsigned int fsize = SetFilePointer(pHDD->hd_file, 0, NULL, FILE_END);
+                fseek(pHDD->hd_file, 0, SEEK_END);
+                size_t fsize = ftell(pHDD->hd_file);
                 unsigned int addblocks = pHDD->hd_diskblock - (fsize / 512);
-                FillMemory(pHDD->hd_buf, 512, 0);
+                memset(pHDD->hd_buf,  0,  512);
                 while (addblocks--) {
-                  unsigned int bw;
-                  WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
+                  fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
                 }
-                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
+                if (fseek(pHDD->hd_file, pHDD->hd_diskblock * 512, SEEK_SET) == 0) {
                   // seek to block
-                  MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                  if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+                  memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
+                  uint32_t bytesWritten = fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file);
+                  if (bytesWritten == 512) { // write buffer to file
                     pHDD->hd_error = 0;
                     r = 0;
                   } else {
