@@ -27,13 +27,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007, krez beotiger March 2012 AD */
-/*
-
-Linappple-pie was adapted in OCT 2015 for use with Retropie.
-By Mark Ormond.
-*/
-
-
 #include "stdafx.h"
 #include <cassert>
 #include <string>
@@ -57,6 +50,7 @@ By Mark Ormond.
 #include <getopt.h>
 
 #include "asset.h"
+#include "Util_Path.h"
 
 #ifdef __APPLE__
 #include "AlertHooks.h"
@@ -443,7 +437,7 @@ void setAutoBoot()
   SDL_PushEvent(&user_ev);
 }
 
-// Let us load main configuration from config file.  Y_Y  --bb
+// Load configuration from config file
 void LoadConfiguration()
 {
     unsigned int dwComputerType = g_Apple2Type;
@@ -673,6 +667,11 @@ void LoadConfiguration()
 
   std::string sFilename;
   double scrFactor = 0.0;
+  
+  // Reset to base dimensions before applying factor
+  g_ScreenWidth = 560;
+  g_ScreenHeight = 384;
+
   // Define screen sizes
   sFilename = Configuration::Instance().GetString("Configuration", "Screen factor");
   if (!sFilename.empty()) {
@@ -800,9 +799,10 @@ std::vector <std::string> split(const std::string &string, const std::string &de
 // load from known user-specific configuration locations.
 void LoadAllConfigurations(const char *userSpecifiedFilename)
 {
-  // Default values should be set, but some other globals that depend on them may not be.
+  // 1. Initial defaults
   LoadConfiguration();
 
+  // 2. Load specified config if provided
   if (userSpecifiedFilename) {
     if (Configuration::Instance().Load(userSpecifiedFilename)) {
         LoadConfiguration();
@@ -813,71 +813,35 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
     }
   }
 
-  char *envvar = NULL;
-
-  // Try known system configuration paths.
-  envvar = getenv("XDG_CONFIG_DIRS");
-
-  std::string xdgConfigDirs = envvar ? envvar : "";
-  if (xdgConfigDirs.length() == 0) {
-    xdgConfigDirs = "/etc/xdg";
-  }
-
-  std::vector <std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
-
-  // Support the old /etc/linapple/linapple.conf location.
+  std::vector<std::string> configSearchPaths;
+  configSearchPaths.push_back("./linapple.conf");
+  configSearchPaths.push_back(Path::GetUserConfigDir() + "linapple.conf");
+  configSearchPaths.push_back(Path::GetUserDataDir() + "linapple.conf");
+  
+  // System paths
+  char *envvar = getenv("XDG_CONFIG_DIRS");
+  std::string xdgConfigDirs = envvar ? envvar : "/etc/xdg";
+  std::vector<std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
   sysConfigDirs.push_back("/etc");
 
-  for (auto const& dir : sysConfigDirs) {
-    std::string config = dir + "/linapple/linapple.conf";
-    if (Configuration::Instance().Load(config)) {
-        LoadConfiguration();
-    }
+  for (const auto& dir : sysConfigDirs) {
+      configSearchPaths.push_back(dir + "/linapple/linapple.conf");
   }
 
-  // Next, try known user-specified paths.
-  char *home = getenv("HOME");
-
-  envvar = getenv("XDG_CONFIG_HOME");
-  std::string xdgConfigHome = envvar ? envvar : "";
-  if (xdgConfigHome.length() == 0 && home) {
-    xdgConfigHome = std::string(home) + "/.config";
+  std::string lastSuccessfulConfig;
+  for (const auto& configPath : configSearchPaths) {
+      if (Configuration::Instance().Load(configPath)) {
+          lastSuccessfulConfig = configPath;
+          LoadConfiguration();
+      }
   }
 
-  std::vector <std::string> configFiles;
-  configFiles.push_back(xdgConfigDirs + "/linapple/linapple.conf");
-  if (home) {
-    // Suppport old locations under HOME.
-    configFiles.push_back(std::string(home) + "/linapple/linapple.conf");
-    configFiles.push_back(std::string(home) + "/.linapple/linapple.conf");
+  if (!lastSuccessfulConfig.empty()) {
+      Configuration::Instance().SetPath(lastSuccessfulConfig);
+  } else {
+      // Default to preferred user location if none found
+      Configuration::Instance().SetPath(Path::GetUserConfigDir() + "linapple.conf");
   }
-  configFiles.push_back(xdgConfigHome + "/linapple/linapple.conf");
-
-  std::string lastSuccessfulUserConfig;
-  for (auto const& config : configFiles) {
-    if (Configuration::Instance().Load(config)) {
-        lastSuccessfulUserConfig = config;
-        LoadConfiguration();
-    }
-  }
-
-  if (lastSuccessfulUserConfig.length() > 0) {
-    Configuration::Instance().SetPath(lastSuccessfulUserConfig);
-    return;
-  }
-
-  if (xdgConfigHome.length() == 0) {
-    std::cerr << "WARNING!"
-        << " Neither XDG_CONFIG_HOME nor HOME is set and no user config"
-        << " files were found."
-        << " This can lead to unexpected behavior, even program crashes."
-        << std::endl;
-    return;
-  }
-
-  mkdir(xdgConfigHome.c_str(), 0700);
-  mkdir((xdgConfigHome + "/linapple").c_str(), 0700);
-  Configuration::Instance().SetPath(xdgConfigHome + "/linapple/linapple.conf");
 }
 
 void RegisterExtensions()
@@ -1084,8 +1048,8 @@ int main(int argc, char *argv[])
       soundtype = SOUND_NONE;    // Direct Sound and Stuff
     }
 
-    MB_Initialize();  // Mocking board
-    SpkrInitialize();  // Speakers - of Apple][ ...grrrrrrrrrrr, I love them!--bb
+    MB_Initialize();
+    SpkrInitialize();
     JoyInitialize();
     MemInitialize();
     HD_SetEnabled(hddenabled);
@@ -1110,16 +1074,16 @@ int main(int argc, char *argv[])
     JoyReset();
     SetUsingCursor(0);
 
-    // trying fullscreen
+    // Try fullscreen
     if (!fullscreen) {
       SetNormalMode();
     } else {
       SetFullScreenMode();
     }
 
-    DrawFrameWindow();  // we do not have WM_PAINT?
+    DrawFrameWindow();
 
-    // ENTER THE MAIN MESSAGE LOOP
+    // Main message loop
     if (bBenchMark) {
       VideoBenchmark(); // start VideoBenchmark and exit
     } else {
