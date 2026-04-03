@@ -81,7 +81,7 @@
 		, FG_DISASM_BOOKMARK // White   addr (always)
 
 		, FG_DISASM_ADDRESS  // White   addr
-		, FG_DISASM_OPERATOR // Gray192     :               $ (also around instruction addressing g_nAppMode)
+		, FG_DISASM_OPERATOR // Gray192     :               $ (also around instruction addressing mode)
 		, FG_DISASM_OPCODE   // Yellow       xx xx xx
 		, FG_DISASM_MNEMONIC // White                   LDA
 /*ZZZ*/	, FG_DISASM_DIRECTIVE// Purple                  db

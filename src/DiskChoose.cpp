@@ -150,76 +150,217 @@ const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
 }
 
 
+DiskChooseState g_diskChooseState;
+
+void DiskChoose_Tick(SDL_Event* event)
+{
+  if (!g_diskChooseState.active) return;
+  if (event->type != SDL_EVENT_KEY_DOWN) return;
+
+  SDL_Keycode key = event->key.key;
+
+  if (key == SDLK_UP || key == SDLK_LEFT) {
+    if (g_diskChooseState.act_file > 0)
+      g_diskChooseState.act_file--;
+    if (g_diskChooseState.act_file < g_diskChooseState.first_file)
+      g_diskChooseState.first_file = g_diskChooseState.act_file;
+  }
+
+  if (key == SDLK_DOWN || key == SDLK_RIGHT) {
+    if (g_diskChooseState.act_file < (g_diskChooseState.file_list.size() - 1))
+      g_diskChooseState.act_file++;
+    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN))
+      g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+  }
+
+  if (key == SDLK_PAGEUP) {
+    if (g_diskChooseState.act_file <= FILES_IN_SCREEN) {
+      g_diskChooseState.act_file = 0;
+    } else {
+      g_diskChooseState.act_file -= FILES_IN_SCREEN;
+    }
+    if (g_diskChooseState.act_file < g_diskChooseState.first_file)
+      g_diskChooseState.first_file = g_diskChooseState.act_file;
+  }
+
+  if (key == SDLK_PAGEDOWN) {
+    g_diskChooseState.act_file += FILES_IN_SCREEN;
+    if (g_diskChooseState.act_file >= g_diskChooseState.file_list.size())
+      g_diskChooseState.act_file = (g_diskChooseState.file_list.size() - 1);
+    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN))
+      g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+  }
+
+  if (key == SDLK_RETURN) {
+    const file_entry_t& file_entry = g_diskChooseState.file_list[g_diskChooseState.act_file];
+    g_diskChooseState.result_filename = file_entry.name;
+    g_diskChooseState.result_isdir = file_entry.is_dir_type();
+    if (g_diskChooseState.p_index_file) {
+      *g_diskChooseState.p_index_file = g_diskChooseState.act_file;
+    }
+    g_diskChooseState.finished = true;
+    g_diskChooseState.active = false;
+  }
+
+  if (key == SDLK_ESCAPE) {
+    g_diskChooseState.active = false;
+    g_diskChooseState.cancelled = true;
+  }
+
+  if (key == SDLK_HOME) {
+    g_diskChooseState.act_file = 0;
+    g_diskChooseState.first_file = 0;
+  }
+
+  if (key == SDLK_END) {
+    g_diskChooseState.act_file = g_diskChooseState.file_list.size() - 1;
+    if (g_diskChooseState.act_file <= FILES_IN_SCREEN - 1) {
+      g_diskChooseState.first_file = 0;
+    } else {
+      g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+    }
+  }
+
+  // Check for A-Z, a-z, 0-9 and jump to first file starting therewith
+  {
+    bool char_hit = false;
+    if ((key >= 'A' && key <= 'Z') || (key >= 'a' && key <= 'z') || (key >= '0' && key <= '9')) {
+      char_hit = true;
+    }
+    if (char_hit) {
+      for (size_t i = 0; i < g_diskChooseState.file_list.size(); ++i) {
+        if (g_diskChooseState.file_list[i].name.size() > 0) {
+          if (toupper(g_diskChooseState.file_list[i].name[0]) == toupper((char) key)) {
+            g_diskChooseState.act_file = i;
+            if (g_diskChooseState.act_file < g_diskChooseState.first_file) {
+              g_diskChooseState.first_file = g_diskChooseState.act_file;
+            }
+            if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
+              g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+void DiskChoose_Draw()
+{
+  if (!g_diskChooseState.active) return;
+
+  const double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
+  const double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
+  const int sx = g_state.ScreenWidth;
+
+  // We assume ownership of video_draw_mutex is handled by the caller (main loop or blocking proxy)
+
+  SDL_SoftStretchMy(g_diskChooseState.bg_screen, NULL, screen, NULL);
+  
+#define  NORMAL_LENGTH 60
+  font_print_centered(sx / 2, 5 * facy, g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
+  
+  if (g_diskChooseState.slot == 6) {
+    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
+  } else if (g_diskChooseState.slot == 7) {
+    font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", screen, 1 * facx, 1 * facy);
+  } else if (g_diskChooseState.slot == 5) {
+    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", screen, 1 * facx, 1 * facy);
+  } else if (g_diskChooseState.slot == 1) {
+    font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", screen, 1 * facx, 1 * facy);
+  } else if (g_diskChooseState.slot == 0) {
+    font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", screen, 1 * facx, 1 * facy);
+  }
+  font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
+
+  int TOPX = int(45 * facy);
+
+  for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
+    const size_t i = g_diskChooseState.first_file + j;
+    if (i >= g_diskChooseState.file_list.size()) {
+      break;
+    }
+    const file_entry_t file_entry = g_diskChooseState.file_list[i];
+    const string& file_name = file_entry.name;
+
+    if (i == g_diskChooseState.act_file) {
+      SDL_Rect r;
+      r.x = 2;
+      r.y = TOPX + j * 15 * facy - 1;
+      if (file_name.size() > MAX_FILENAME) {
+        r.w = MAX_FILENAME * FONT_SIZE_X * 1.0 * facx;
+      } else {
+        r.w = file_name.size() * FONT_SIZE_X * 1.0 * facx;
+      }
+      r.h = 9 * 1.0 * facy;
+      SDL_FillSurfaceRect(screen, &r, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 64, 128, 190));
+    }
+
+    font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy);
+    font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
+               1.0 * facy);
+  }
+
+  rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+  rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+
+  DrawFrameWindow();
+}
+
 bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
                    std::string& filename, bool& isdir, size_t& index_file)
 {
-  /*  Parameters:
-   sx, sy - window size,
-   incoming_dir - in what dir find files,
-   slot - in what slot should an image go (common: #6 for 5.25' 140Kb floppy disks, and #7 for hard-disks).
-     slot #5 - for 800Kb floppy disks, but we do not use them in Apple][?
-    (They are as a rule with .2mg extension)
-   index_file  - from which file we should start cursor (should be static and 0 when changing dir)
-
-   Out:  filename  - chosen file name (or dir name)
-    isdir    - if chosen name is a directory
-  */
-
   disk_file_list_generator_t file_list_generator(incoming_dir);
   return ChooseImageDialog(sx, sy, incoming_dir, slot, &file_list_generator,
                            filename, isdir, index_file);
 }
 
-
 bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
+  (void)sy;
                        std::string& filename, bool& isdir, size_t& index_file)
 {
-  const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
-  const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
+  const double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
+  const double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
 
-  SDL_Surface *my_screen;
-  {
-    if (font_sfc == NULL) {
-      if (!fonts_initialization()) {
-        return false;
-      }
+  if (font_sfc == NULL) {
+    if (!fonts_initialization()) {
+      return false;
     }
-
-    // Wait for video refresh and claim ownership
-    pthread_mutex_lock(&video_draw_mutex);
-
-    SDL_Surface *tempSurface = NULL;
-    if (!g_WindowResized) {
-      if (g_nAppMode == MODE_LOGO) {
-        tempSurface = g_hLogoBitmap;
-      } else {
-        tempSurface = g_hDeviceBitmap;
-      }
-    } else
-      tempSurface = g_origscreen;
-
-    if (tempSurface == NULL) {
-      tempSurface = screen;
-    }
-
-    my_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, tempSurface->format);
-    if (SDL_GetSurfacePalette(tempSurface) && SDL_GetSurfacePalette(my_screen)) {
-      SDL_SetPaletteColors(SDL_GetSurfacePalette(my_screen), SDL_GetSurfacePalette(tempSurface)->colors, 0, SDL_GetSurfacePalette(tempSurface)->ncolors);
-    }
-
-    surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);
-    SDL_SoftStretchMy(tempSurface, NULL, my_screen, NULL);
-    SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
-
-#define  NORMAL_LENGTH 60
-    font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
-
-    font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
-    DrawFrameWindow();
   }
 
-  auto file_list = file_list_generator->generate_file_list();
-  if (file_list.size() < 1) {
+  // Wait for video refresh and claim ownership
+  pthread_mutex_lock(&video_draw_mutex);
+
+  SDL_Surface *tempSurface = NULL;
+  if (!g_WindowResized) {
+    if (g_state.mode == MODE_LOGO) {
+      tempSurface = g_hLogoBitmap;
+    } else {
+      tempSurface = g_hDeviceBitmap;
+    }
+  } else
+    tempSurface = g_origscreen;
+
+  if (tempSurface == NULL) {
+    tempSurface = screen;
+  }
+
+  g_diskChooseState.bg_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, tempSurface->format);
+  if (SDL_GetSurfacePalette(tempSurface) && SDL_GetSurfacePalette(g_diskChooseState.bg_screen)) {
+    SDL_SetPaletteColors(SDL_GetSurfacePalette(g_diskChooseState.bg_screen), SDL_GetSurfacePalette(tempSurface)->colors, 0, SDL_GetSurfacePalette(tempSurface)->ncolors);
+  }
+
+  surface_fader(g_diskChooseState.bg_screen, 0.2F, 0.2F, 0.2F, -1, 0);
+  SDL_SoftStretchMy(tempSurface, NULL, g_diskChooseState.bg_screen, NULL);
+  SDL_SoftStretchMy(g_diskChooseState.bg_screen, NULL, screen, NULL);
+
+  font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
+  font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+  DrawFrameWindow();
+
+  g_diskChooseState.file_list = file_list_generator->generate_file_list();
+  if (g_diskChooseState.file_list.size() < 1) {
     printf("%s\n", file_list_generator->get_failure_message().c_str());
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
@@ -234,193 +375,58 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       SDL_Delay(100);
       SDL_PollEvent(&event);
     }
-    SDL_DestroySurface(my_screen);
+    SDL_DestroySurface(g_diskChooseState.bg_screen);
+    g_diskChooseState.bg_screen = NULL;
     return false;
   }
 
-  size_t act_file;
-  size_t first_file;
-  {
-    act_file = index_file;
-    if (act_file >= file_list.size()) {
-      act_file = 0;
-    }
-    if (act_file <= FILES_IN_SCREEN / 2) {
-      first_file = 0;
-    } else {
-      first_file = act_file - (FILES_IN_SCREEN / 2);
-    }
-
-
-    while (true) {
-
-      SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
-      font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
-      if (slot == 6) {
-        font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
-      } else if (slot == 7) {
-        font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", screen, 1 * facx, 1 * facy);
-      } else if (slot == 5) {
-        font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", screen, 1 * facx, 1 * facy);
-      } else if (slot == 1) {
-        font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", screen, 1 * facx, 1 * facy);
-      } else if (slot == 0) {
-        font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", screen, 1 * facx, 1 * facy);
-      }
-      font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
-
-      int TOPX = int(45 * facy);
-
-      for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
-        const size_t i = first_file + j;
-        if (i >= file_list.size()) {
-          break;
-        }
-        const file_entry_t file_entry = file_list[i];
-        const string& file_name = file_entry.name;
-
-        {
-          if (i == act_file) {
-            SDL_Rect r;
-            r.x = 2;
-            r.y = TOPX + j * 15 * facy - 1;
-            if (file_name.size() > MAX_FILENAME) {
-              r.w = MAX_FILENAME * FONT_SIZE_X * 1.0 * facx;
-            } else {
-              r.w = file_name.size() * FONT_SIZE_X * 1.0 * facx;
-            }
-            r.h = 9 * 1.0 * facy;
-            SDL_FillSurfaceRect(screen, &r, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 64, 128, 190));
-          }
-
-          font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy);
-          font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
-                     1.0 * facy);
-        }
-      }
-
-      rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-      rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-
-      DrawFrameWindow();
-
-
-      // Relinquish video ownership
-      pthread_mutex_unlock(&video_draw_mutex);
-
-
-      SDL_Delay(KEY_DELAY);
-
-      SDL_Event event;
-
-      event.type = 0;
-      while (event.type != SDL_EVENT_KEY_DOWN) {
-        // Honor quit even if we're in the diskchoose state.
-        if (SDL_EVENT_QUIT == event.type) {
-          SDL_DestroySurface(my_screen);
-          SDL_PushEvent(&event);
-          return false;
-        }
-        SDL_Delay(10);
-        SDL_PollEvent(&event);
-      }
-
-      SDL_Keycode key = event.key.key;
-
-      if (key == SDLK_UP || key == SDLK_LEFT) {
-        if (act_file > 0)
-          act_file--;
-        if (act_file < first_file)
-          first_file = act_file;
-      }
-
-      if (key == SDLK_DOWN || key == SDLK_RIGHT) {
-        if (act_file < (file_list.size() - 1))
-          act_file++;
-        if (act_file >= (first_file + FILES_IN_SCREEN))
-          first_file = act_file - FILES_IN_SCREEN + 1;
-      }
-
-      if (key == SDLK_PAGEUP) {
-        if (act_file <= FILES_IN_SCREEN) {
-          act_file = 0;
-        } else {
-          act_file -= FILES_IN_SCREEN;
-        }
-        if (act_file < first_file)
-          first_file = act_file;
-      }
-
-      if (key == SDLK_PAGEDOWN) {
-        act_file += FILES_IN_SCREEN;
-        if (act_file >= file_list.size())
-          act_file = (file_list.size() - 1);
-        if (act_file >= (first_file + FILES_IN_SCREEN))
-          first_file = act_file - FILES_IN_SCREEN + 1;
-      }
-
-      if (key == SDLK_RETURN) {
-        const file_entry_t& file_entry = file_list[act_file];
-        filename = file_entry.name;
-        if (file_entry.is_dir_type()) {
-          isdir = true;
-        } else {
-          isdir = false;  // this is directory (catalog in Apple][ terminology)
-        }
-        index_file = act_file;
-        SDL_DestroySurface(my_screen);
-        return true;
-      }
-
-      if (key == SDLK_ESCAPE) {
-        SDL_DestroySurface(my_screen);
-        return false;
-      }
-
-      if (key == SDLK_HOME) {
-        act_file = 0;
-        first_file = 0;
-      }
-
-      if (key == SDLK_END) {
-        act_file = file_list.size() - 1;
-        if (act_file <= FILES_IN_SCREEN - 1) {
-          first_file = 0;
-        } else {
-          first_file = act_file - FILES_IN_SCREEN + 1;
-        }
-      }
-
-      // Check for A-Z, a-z, 0-9 and jump to first file starting therewith
-      {
-        bool char_hit = false;
-        if ((key >= 'A' && key <= 'Z') || (key >= 'a' && key <= 'z') || (key >= '0' && key <= '9')) {
-          char_hit = true;
-        }
-
-        if (char_hit) {
-          char ch = (char)key;
-          if (ch >= 'A' && ch <= 'Z') {
-            ch |= 0x20;
-          }
-          // Slow, linear search from top of list...
-          for (size_t fidx = 0; fidx < file_list.size(); fidx++ ) {
-            char file_char = tolower(file_list[fidx].name[0]);
-            if (file_char == ch) {
-              // If the current file is ALREADY the one found here, or prior,
-              // then keep going
-              char candidate_char = tolower(file_list[act_file].name[0]);
-
-              if (act_file < fidx || candidate_char != ch) {
-                act_file = fidx;
-                first_file = fidx;
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
+  g_diskChooseState.slot = slot;
+  g_diskChooseState.current_dir = dir;
+  g_diskChooseState.act_file = index_file;
+  if (g_diskChooseState.act_file >= g_diskChooseState.file_list.size()) {
+    g_diskChooseState.act_file = 0;
   }
+  if (g_diskChooseState.act_file <= FILES_IN_SCREEN / 2) {
+    g_diskChooseState.first_file = 0;
+  } else {
+    g_diskChooseState.first_file = g_diskChooseState.act_file - (FILES_IN_SCREEN / 2);
+  }
+  g_diskChooseState.active = true;
+  g_diskChooseState.finished = false;
+  g_diskChooseState.cancelled = false;
+  g_diskChooseState.p_index_file = &index_file;
+
+  AppMode_e old_mode = g_state.mode;
+  g_state.mode = MODE_DISK_CHOOSE;
+
+  pthread_mutex_unlock(&video_draw_mutex);
+
+  // Still blocking for now, but using the new tick/draw functions via Sys_Input/Sys_Draw
+  while (g_diskChooseState.active) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT) {
+        g_state.mode = MODE_EXIT;
+        g_diskChooseState.active = false;
+        break;
+      }
+      DiskChoose_Tick(&event);
+    }
+    pthread_mutex_lock(&video_draw_mutex);
+    DiskChoose_Draw();
+    pthread_mutex_unlock(&video_draw_mutex);
+    SDL_Delay(10);
+  }
+
+  g_state.mode = old_mode;
+  SDL_DestroySurface(g_diskChooseState.bg_screen);
+  g_diskChooseState.bg_screen = NULL;
+
+  if (g_diskChooseState.finished) {
+    filename = g_diskChooseState.result_filename;
+    isdir = g_diskChooseState.result_isdir;
+    return true;
+  }
+  
   return false;
 }

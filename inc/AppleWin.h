@@ -18,30 +18,8 @@ extern unsigned int cyclenum;
 extern unsigned int emulmsec;
 extern bool g_bFullSpeed;
 
-extern AppMode_e g_nAppMode;
-
-extern unsigned int g_ScreenWidth;
-extern unsigned int g_ScreenHeight;
-
-extern unsigned int needsprecision;
-extern char g_sProgramDir[MAX_PATH];
-extern char g_sCurrentDir[MAX_PATH];
-extern char g_sHDDDir[MAX_PATH];
-extern char g_sSaveStateDir[MAX_PATH];
-extern char g_sParallelPrinterFile[MAX_PATH];
-
-// FTP vars
-extern char g_sFTPLocalDir[MAX_PATH]; // FTP Local Dir, see linapple.conf for details
-extern char g_sFTPServer[MAX_PATH]; // full path to default FTP server
-extern char g_sFTPServerHDD[MAX_PATH]; // full path to default FTP server
-extern char g_sFTPUserPass[512]; // full login line
-
 extern CURL *g_curl;
 
-extern bool g_bResetTiming;
-extern bool restart;
-
-extern unsigned int g_dwSpeed;
 extern double g_fCurrentCLK6502;
 
 extern int g_nCpuCyclesFeedback;

@@ -151,6 +151,7 @@ unsigned int DebuggerGetColor( int iColor )
 
 bool DebuggerSetColor( const int iScheme, const int iColor, const unsigned int nColor )
 {
+	(void) iScheme; (void) iColor; (void) nColor;
 	// color schemes ignored for Linux
 	return true;
 }

@@ -365,7 +365,7 @@ bool CSuperSerialCard::CheckComm() {
 
   if ((m_hCommHandle == -1) && m_dwSerialPort) {
     char portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
-    if (m_dwSerialPort < 0 || m_dwSerialPort > 99) {
+    if (m_dwSerialPort > 99) {
       m_dwSerialPort = 1; // buffer overflow check
     }
     sprintf(portname, "/dev/ttyS%u", (unsigned int) (m_dwSerialPort - 1));
@@ -840,6 +840,7 @@ void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
 }
 
 void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
+  (void)dwEvtMask;
   pthread_mutex_lock(&m_CriticalSection);
   m_vRecvBytes = read(m_hCommHandle, m_RecvBuffer, 1);
   pthread_mutex_unlock(&m_CriticalSection);

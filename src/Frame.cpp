@@ -21,11 +21,6 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/* Description: Frame
- *
- * Author: Various
- */
-
 #include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -65,7 +60,6 @@ static bool g_bAppActive = false;
 
 static int buttondown = -1;
 
-bool fullscreen = 0;
 bool g_WindowResized;
 
 static bool usingcursor = 0;
@@ -91,10 +85,10 @@ void DrawAppleContent()
 
   DrawStatusArea(DRAW_BACKGROUND | DRAW_LEDS);
 
-  if (g_nAppMode == MODE_LOGO) {
+  if (g_state.mode == MODE_LOGO) {
     VideoDisplayLogo();
     g_bFrameReady = true;
-  } else if (g_nAppMode == MODE_DEBUG) {
+  } else if (g_state.mode == MODE_DEBUG) {
     DebugDisplay(1);
     g_bFrameReady = true;
   } else {
@@ -169,6 +163,7 @@ void DrawStatusArea(int drawflags)
 }
 
 void FrameShowHelpScreen(int sx, int sy)
+  (void)sy;
 {
   const int MAX_LINES = 25;
   const char *HelpStrings[MAX_LINES] = {"Welcome to LinApple - Apple][ emulator for Linux!",
@@ -184,7 +179,7 @@ void FrameShowHelpScreen(int sx, int sy)
                                         "       F5 - Swap floppy disks",
                                         " Shift+F3/F4 - Attach hard drive 1/2 (Slot 7, Drive 1/2)",
                                         "",
-                                        "       F6 - Toggle fullscreen mode",
+                                        "       F6 - Toggle g_state.fullscreen mode",
                                         " Shift+F6 - Toggle character set (keyboard rocker switch)",
                                         "       F7 - Toggle debugging view",
                                         "       F8 - Take screenshot",
@@ -207,7 +202,7 @@ void FrameShowHelpScreen(int sx, int sy)
     }
   }
   if (!g_WindowResized) {
-    if (g_nAppMode == MODE_LOGO) {
+    if (g_state.mode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;
     } else {
       tempSurface = g_hDeviceBitmap;
@@ -225,8 +220,8 @@ void FrameShowHelpScreen(int sx, int sy)
   SDL_SoftStretchMy(tempSurface, NULL, my_screen, NULL);
   SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
 
-  double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
-  double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
+  double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
+  double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
 
   font_print_centered(sx / 2, int(5 * facy), (char *) HelpStrings[0], screen, 1.5 * facx, 1.3 * facy);
   font_print_centered(sx / 2, int(20 * facy), (char *) HelpStrings[1], screen, 1.3 * facx, 1.2 * facy);
@@ -239,9 +234,9 @@ void FrameShowHelpScreen(int sx, int sy)
                1.5 * facy);
   }
 
-  rectangle(screen, 0, Help_TopX - 5, g_ScreenWidth - 1, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-  rectangle(screen, 1, Help_TopX - 4, g_ScreenWidth, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-  rectangle(screen, 1, 1, g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 0));
+  rectangle(screen, 0, Help_TopX - 5, g_state.ScreenWidth - 1, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+  rectangle(screen, 1, Help_TopX - 4, g_state.ScreenWidth, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+  rectangle(screen, 1, 1, g_state.ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 0));
 
   tempSurface = assets->icon;
   SDL_Rect logo, scrr;
@@ -277,7 +272,7 @@ void FrameQuickState(int num, int mod)
 {
   // quick load or save state with number num, if Shift is pressed, state is being saved, otherwise - being loaded
   char fpath[MAX_PATH];
-  snprintf(fpath, MAX_PATH, "%.*s/SaveState%d.aws", int(strlen(g_sSaveStateDir)), g_sSaveStateDir, num);
+  snprintf(fpath, MAX_PATH, "%.*s/SaveState%d.aws", int(strlen(g_state.sSaveStateDir)), g_state.sSaveStateDir, num);
   Snapshot_SetFilename(fpath);
   if (mod & SDL_KMOD_SHIFT) {
     Snapshot_SaveState();
@@ -295,33 +290,33 @@ void FrameDispatchMessage(SDL_Event *e) {
   switch (e->type) {
     case SDL_EVENT_WINDOW_RESIZED:
       pthread_mutex_lock(&video_draw_mutex);
-      printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
-      g_ScreenWidth = e->window.data1;
-      g_ScreenHeight = (e->window.data2 / 96) * 96;
-      if (g_ScreenHeight < 192) {
-        g_ScreenHeight = 192;
+      printf("OLD DIMENSIONS: %d  %d\n", g_state.ScreenWidth, g_state.ScreenHeight);
+      g_state.ScreenWidth = e->window.data1;
+      g_state.ScreenHeight = (e->window.data2 / 96) * 96;
+      if (g_state.ScreenHeight < 192) {
+        g_state.ScreenHeight = 192;
       }
 
       if (screen) SDL_DestroySurface(screen);
-      screen = SDL_CreateSurface(g_ScreenWidth, g_ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
+      screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
 
       if (g_texture) SDL_DestroyTexture(g_texture);
-      g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_ScreenWidth, g_ScreenHeight);
+      g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_state.ScreenWidth, g_state.ScreenHeight);
 
       if (screen == NULL || g_texture == NULL) {
         pthread_mutex_unlock(&video_draw_mutex);
         SDL_Quit();
         return;
       } else {
-        g_WindowResized = (g_ScreenWidth != SCREEN_WIDTH) | (g_ScreenHeight != SCREEN_HEIGHT);
-        printf("Screen size is %dx%d\n", g_ScreenWidth, g_ScreenHeight);
+        g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) | (g_state.ScreenHeight != SCREEN_HEIGHT);
+        printf("Screen size is %dx%d\n", g_state.ScreenWidth, g_state.ScreenHeight);
         if (g_WindowResized) {
           origRect.x = origRect.y = newRect.x = newRect.y = 0;
           origRect.w = SCREEN_WIDTH;
           origRect.h = SCREEN_HEIGHT;
-          newRect.w = g_ScreenWidth;
-          newRect.h = g_ScreenHeight;
-          if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG)) {
+          newRect.w = g_state.ScreenWidth;
+          newRect.h = g_state.ScreenHeight;
+          if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
             VideoRedrawScreen();
           }
         }
@@ -346,33 +341,33 @@ void FrameDispatchMessage(SDL_Event *e) {
         SetUsingCursor(0);
         buttondown = mysym - SDLK_F1;
       } else if (mysym == SDLK_KP_PLUS) {
-        g_dwSpeed = g_dwSpeed + 2;
-        if (g_dwSpeed > SPEED_MAX) {
-          g_dwSpeed = SPEED_MAX;
+        g_state.dwSpeed = g_state.dwSpeed + 2;
+        if (g_state.dwSpeed > SPEED_MAX) {
+          g_state.dwSpeed = SPEED_MAX;
         }
-        printf("Now speed=%d\n", (int) g_dwSpeed);
+        printf("Now speed=%d\n", (int) g_state.dwSpeed);
         SetCurrentCLK6502();
       } else if (mysym == SDLK_KP_MINUS) {
-        if (g_dwSpeed > SPEED_MIN) {
-          g_dwSpeed = g_dwSpeed - 1;
+        if (g_state.dwSpeed > SPEED_MIN) {
+          g_state.dwSpeed = g_state.dwSpeed - 1;
         }
-        printf("Now speed=%d\n", (int) g_dwSpeed);
+        printf("Now speed=%d\n", (int) g_state.dwSpeed);
         SetCurrentCLK6502();
       } else if (mysym == SDLK_KP_MULTIPLY) {
-        g_dwSpeed = 10;
-        printf("Now speed=%d\n", (int) g_dwSpeed);
+        g_state.dwSpeed = 10;
+        printf("Now speed=%d\n", (int) g_state.dwSpeed);
         SetCurrentCLK6502();
       } else if (mysym == SDLK_CAPSLOCK) {
         KeybToggleCapsLock();
       } else if (mysym == SDLK_PAUSE) {
         SetUsingCursor(0);
-        switch (g_nAppMode) {
+        switch (g_state.mode) {
           case MODE_RUNNING:
-            g_nAppMode = MODE_PAUSED;
+            g_state.mode = MODE_PAUSED;
             SoundCore_SetFade(FADE_OUT);
             break;
           case MODE_PAUSED:
-            g_nAppMode = MODE_RUNNING;
+            g_state.mode = MODE_RUNNING;
             SoundCore_SetFade(FADE_IN);
             break;
           case MODE_STEPPING:
@@ -384,13 +379,13 @@ void FrameDispatchMessage(SDL_Event *e) {
             break;
         }
         DrawStatusArea(DRAW_TITLE);
-        if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG)) {
+        if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
           VideoRedrawScreen();
         }
-        g_bResetTiming = true;
+        g_state.bResetTiming = true;
       } else if (mysym == SDLK_SCROLLLOCK) {
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
-      } else if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) || (g_nAppMode == MODE_STEPPING)) {
+      } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
         g_bDebuggerEatKey = false;
         // Note about Alt Gr (Right-Alt):
         // . WM_KEYDOWN[Left-Control], then:
@@ -401,11 +396,11 @@ void FrameDispatchMessage(SDL_Event *e) {
         {
           JoyUpdateTrimViaKey(mysym);
         } else {
-          if ((!JoyProcessKey(mysym, extended, true, autorep)) && (g_nAppMode != MODE_LOGO)) {
+          if ((!JoyProcessKey(mysym, extended, true, autorep)) && (g_state.mode != MODE_LOGO)) {
             KeybQueueKeypress(mysym, NOT_ASCII);
           }
         }
-      } else if (g_nAppMode == MODE_DEBUG) {
+      } else if (g_state.mode == MODE_DEBUG) {
         if (((mymod & (SDL_KMOD_LSHIFT|SDL_KMOD_RSHIFT|SDL_KMOD_CAPS))>0)&&
             ((mysym>='a')&&(mysym<='z')))
         {
@@ -438,7 +433,7 @@ void FrameDispatchMessage(SDL_Event *e) {
         if (buttondown == -1) {
           x = (int)e->button.x;
           y = (int)e->button.y;
-          if (g_nAppMode == MODE_DEBUG)
+          if (g_state.mode == MODE_DEBUG)
             DebuggerMouseClick(x, y);
           else
           if (usingcursor) {
@@ -454,7 +449,7 @@ void FrameDispatchMessage(SDL_Event *e) {
             }
           }
           else
-          if ((((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_STEPPING))) ||
+          if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
               (sg_Mouse.Active())) {
             SetUsingCursor(1);
           }
@@ -524,10 +519,10 @@ bool PSP_SaveStateSelectImage(bool saveit)
   bool isDirectory = true;
 
   fileIndex = backdx;
-  fullPath = g_sSaveStateDir;
+  fullPath = g_state.sSaveStateDir;
 
   while (isDirectory) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, saveit,
+    if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, saveit,
                        filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return false;
@@ -553,8 +548,8 @@ bool PSP_SaveStateSelectImage(bool saveit)
       }
     }
   }
-  strcpy(g_sSaveStateDir, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR, g_sSaveStateDir);
+  strcpy(g_state.sSaveStateDir, fullPath.c_str());
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR, g_state.sSaveStateDir);
   Configuration::Instance().Save();
 
   backdx = fileIndex;
@@ -601,20 +596,20 @@ void ProcessButtonClick(int button, int mod)
 
     case BTN_RUN:
       if ((mod & (SDL_KMOD_LCTRL)) == (SDL_KMOD_LCTRL) || (mod & (SDL_KMOD_RCTRL)) == (SDL_KMOD_RCTRL)) {
-        if (g_nAppMode == MODE_LOGO) {
+        if (g_state.mode == MODE_LOGO) {
           DiskBoot();
-        } else if (g_nAppMode == MODE_RUNNING) {
+        } else if (g_state.mode == MODE_RUNNING) {
           ResetMachineState();
         }
-        if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING)) {
+        if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING)) {
           DebugEnd();
         }
-        g_nAppMode = MODE_RUNNING;
+        g_state.mode = MODE_RUNNING;
         DrawStatusArea(DRAW_TITLE);
         VideoRedrawScreen();
-        g_bResetTiming = true;
+        g_state.bResetTiming = true;
       } else if (mod & SDL_KMOD_SHIFT) {
-        restart = 1;
+        g_state.restart = 1;
         qe.type = SDL_EVENT_QUIT;
         SDL_PushEvent(&qe);
       }
@@ -665,11 +660,11 @@ void ProcessButtonClick(int button, int mod)
       }
       else
       {
-        if (fullscreen) {
-          fullscreen = 0;
+        if (g_state.fullscreen) {
+          g_state.fullscreen = 0;
           SetNormalMode();
         } else {
-          fullscreen = 1;
+          g_state.fullscreen = 1;
           SetFullScreenMode();
         }
         JoyReset();
@@ -677,23 +672,23 @@ void ProcessButtonClick(int button, int mod)
       break;
 
     case BTN_DEBUG:
-      if (g_nAppMode != MODE_DEBUG)
+      if (g_state.mode != MODE_DEBUG)
       {
         DebugBegin();
         SetUsingCursor(0);
       }
       else
-      if (g_nAppMode == MODE_DEBUG)
+      if (g_state.mode == MODE_DEBUG)
       {
-        g_nAppMode = MODE_RUNNING;
+        g_state.mode = MODE_RUNNING;
       }
       break;
 
     case BTN_SETUP:
       if (mod & SDL_KMOD_SHIFT) {
         Configuration::Instance().SetInt("Configuration", "Video Emulation", g_videotype);
-        Configuration::Instance().SetInt("Configuration", "Emulation Speed", g_dwSpeed);
-        Configuration::Instance().SetInt("Configuration", "Fullscreen", fullscreen ? 1 : 0);
+        Configuration::Instance().SetInt("Configuration", "Emulation Speed", g_state.dwSpeed);
+        Configuration::Instance().SetInt("Configuration", "Fullscreen", g_state.fullscreen ? 1 : 0);
         Configuration::Instance().Save();
 
       } else {
@@ -711,9 +706,9 @@ void ProcessButtonClick(int button, int mod)
           g_videotype = 0;
         }
         VideoReinitialize();
-        if (g_nAppMode != MODE_LOGO)
+        if (g_state.mode != MODE_LOGO)
         {
-          if (g_nAppMode == MODE_DEBUG)
+          if (g_state.mode == MODE_DEBUG)
           {
             unsigned int debugVideoMode;
             if (DebugGetVideoMode(&debugVideoMode)) {
@@ -759,7 +754,7 @@ void ProcessButtonClick(int button, int mod)
       break;
   }
 
-  if ((g_nAppMode != MODE_DEBUG) && (g_nAppMode != MODE_PAUSED)) {
+  if ((g_state.mode != MODE_DEBUG) && (g_state.mode != MODE_PAUSED)) {
     SoundCore_SetFade(FADE_IN);
   }
 }
@@ -784,7 +779,7 @@ void SetFullScreenMode() {
   if (!bIamFullScreened) {
     bIamFullScreened = true;
     SDL_SetWindowFullscreen(g_window, true);
-    if (g_nAppMode != MODE_DEBUG)
+    if (g_state.mode != MODE_DEBUG)
       SDL_HideCursor();
   }
 }
@@ -799,7 +794,7 @@ void SetNormalMode()
     }
   }
   else
-  if (g_nAppMode == MODE_DEBUG)
+  if (g_state.mode == MODE_DEBUG)
   {
     SDL_ShowCursor();
     SDL_SetWindowMouseGrab(g_window, false);
@@ -812,7 +807,7 @@ void SetUsingCursor(bool newvalue) {
     SDL_HideCursor();
     SDL_SetWindowMouseGrab(g_window, true);
   } else {
-    if ((!bIamFullScreened)||(g_nAppMode == MODE_DEBUG)) {
+    if ((!bIamFullScreened)||(g_state.mode == MODE_DEBUG)) {
       SDL_ShowCursor();
     }
     SDL_SetWindowMouseGrab(g_window, false);
@@ -824,9 +819,9 @@ int FrameCreateWindow()
   bIamFullScreened = false;
 
   Uint32 flags = 0;
-  if (fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
+  if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
-  g_window = SDL_CreateWindow(g_pAppTitle, g_ScreenWidth, g_ScreenHeight, flags);
+  g_window = SDL_CreateWindow(g_pAppTitle, g_state.ScreenWidth, g_state.ScreenHeight, flags);
   if (!g_window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
     return 1;
@@ -838,22 +833,22 @@ int FrameCreateWindow()
     return 1;
   }
 
-  screen = SDL_CreateSurface(g_ScreenWidth, g_ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
+  screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
   if (screen == NULL) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
-  g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_ScreenWidth, g_ScreenHeight);
+  g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_state.ScreenWidth, g_state.ScreenHeight);
 
-  g_WindowResized = (g_ScreenWidth != SCREEN_WIDTH) | (g_ScreenHeight != SCREEN_HEIGHT);
-  printf("Screen size is %dx%d\n", g_ScreenWidth, g_ScreenHeight);
+  g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) | (g_state.ScreenHeight != SCREEN_HEIGHT);
+  printf("Screen size is %dx%d\n", g_state.ScreenWidth, g_state.ScreenHeight);
   if (g_WindowResized) {
     origRect.x = origRect.y = newRect.x = newRect.y = 0;
     origRect.w = SCREEN_WIDTH;
     origRect.h = SCREEN_HEIGHT;
-    newRect.w = g_ScreenWidth;
-    newRect.h = g_ScreenHeight;
+    newRect.w = g_state.ScreenWidth;
+    newRect.h = g_state.ScreenHeight;
   }
   return 0;
 }

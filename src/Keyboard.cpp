@@ -549,6 +549,7 @@ int KeybDecodeKey(int key)
 
 void KeybQueueKeypress(int key, bool bASCII)
 {
+  (void)bASCII;
   key = KeybDecodeKey(key);
 
   if ((key>=0)&&(key < 0x80)) {

@@ -562,6 +562,7 @@ void DiskSetProtect(const int iDrive, const bool bWriteProtect)
 
 static unsigned char DiskReadWrite(unsigned short programcounter, unsigned short, unsigned char, unsigned char, uint32_t)
 {
+  (void)programcounter;
   Disk_t *fptr = &g_aFloppyDisk[currdrive];
   diskaccessed = 1;
   if ((!fptr->trackimagedata) && fptr->imagehandle) {
@@ -596,27 +597,28 @@ void DiskReset()
 
 void DiskSelectImage(int drive, char* pszFilename)
 {
+  (void)pszFilename;
   // Omit pszFilename??? for some reason or not!
   static size_t fileIndex = 0; // file index will be remembered for current dir
   static size_t backdx = 0;    //reserve
   static size_t dirdx = 0;     // reserve for dirs
 
-  std::string filename;   // given filename
-  std::string fullPath; // full path for it
-  bool isdir;              // if given filename is a directory?
+  std::string filename;
+  std::string fullPath;
+  bool isdir;
 
   fileIndex = backdx;
   isdir = true;
-  fullPath = g_sCurrentDir;  // global var for disk selecting directory
+  fullPath = g_state.sCurrentDir;
 
   while (isdir) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 6,
+    if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
                        filename, isdir, fileIndex)) {
       DrawFrameWindow();
-      return;  // if ESC was pressed, just leave
+      return;
     }
     if (isdir) {
-      if (filename == "..")  // go to the upper directory
+      if (filename == "..")
       {
         const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
         if (last_sep_pos != std::string::npos) {
@@ -625,7 +627,7 @@ void DiskSelectImage(int drive, char* pszFilename)
         if (fullPath == "") {
           fullPath = "/";
         }
-        fileIndex = dirdx;  // restore
+        fileIndex = dirdx;
 
       } else {
         if (fullPath != "/") {
@@ -633,21 +635,19 @@ void DiskSelectImage(int drive, char* pszFilename)
         } else {
           fullPath = "/" + filename;
         }
-        dirdx = fileIndex; // store it
-        fileIndex = 0;  // start with beginning of dir
+        dirdx = fileIndex;
+        fileIndex = 0;
       }
-    }/* if isdir */
-  } /* while isdir */
-  // we chose some file
-  strcpy(g_sCurrentDir, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR, g_sCurrentDir);
+    }
+  }
+  strcpy(g_state.sCurrentDir, fullPath.c_str());
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR, g_state.sCurrentDir);
   Configuration::Instance().Save();
 
   fullPath += "/" + filename;
 
   int error = DiskInsert(drive, fullPath.c_str(), 0, 1);
   if (!error) {
-    // in future: save file name in registry for future fetching
     // for one drive will be one reg parameter
     //  RegSaveString("Preferences",REGVALUE_PREF_START_DIR, 1,filename);
     if (drive == 0) {
@@ -686,10 +686,10 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 
   fileIndex = backdx;
   isdir = true;
-  fullPath = g_sFTPServer;  // global var for FTP path
+  fullPath = g_state.sFTPServer;  // global var for FTP path
 
   while (isdir) {
-    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 6,
+    if (!ChooseAnImageFTP(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
                           filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
@@ -720,13 +720,13 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
     }/* if isdir */
   } /* while isdir */
   // we chose some file
-  strcpy(g_sFTPServer, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_DIR, g_sFTPServer);
+  strcpy(g_state.sFTPServer, fullPath.c_str());
+  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_DIR, g_state.sFTPServer);
   Configuration::Instance().Save();
 
   fullPath += "/" + filename;
 
-  std::string localPath = std::string(g_sFTPLocalDir) + "/" +  filename; // local path for file
+  std::string localPath = std::string(g_state.sFTPLocalDir) + "/" +  filename; // local path for file
 
   int error;
 
@@ -795,7 +795,7 @@ void DiskUpdatePosition(unsigned int cycles)
       }
     }
     if ((!enhancedisk) && (!diskaccessed) && fptr->spinning) {
-      needsprecision = cumulativecycles;
+      g_state.needsprecision = cumulativecycles;
       fptr->byte += (cycles >> 5);
       if (fptr->byte >= fptr->nibbles) {
         fptr->byte -= fptr->nibbles;

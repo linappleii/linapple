@@ -209,6 +209,7 @@ static void ResetSY6522(SY6522_AY8910 *pMB) {
 }
 
 static void AY8910_Write(unsigned char nDevice, unsigned char nReg, unsigned char nValue, unsigned char nAYDevice) {
+  (void) nReg;
   SY6522_AY8910 *pMB = &g_MB[nDevice];
 
   if ((nValue & 4) == 0) {
@@ -626,6 +627,7 @@ void MB_Reset() {
 }
 
 static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
+  (void) PC; (void) bWrite; (void) nValue;
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
@@ -675,6 +677,7 @@ static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned c
 }
 
 static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
+  (void) PC; (void) bWrite;
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
@@ -720,6 +723,7 @@ static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned 
 }
 
 static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft) {
+  (void) PC; (void) bWrite; (void) nValue;
   if (!g_bPhasorEnable) {
     return MemReadFloatingBus(nCyclesLeft);
   }
@@ -830,6 +834,7 @@ unsigned int MB_GetVolume() {
 }
 
 void MB_SetVolume(unsigned int dwVolume, unsigned int dwVolumeMax) {
+  (void) dwVolume; (void) dwVolumeMax;
 }
 
 unsigned int MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, unsigned int dwSlot)

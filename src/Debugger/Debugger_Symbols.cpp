@@ -88,7 +88,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //===========================================================================
 void _PrintCurrentPath()
 {
-	ConsoleDisplayError( g_sProgramDir );
+	ConsoleDisplayError( g_state.sProgramDir );
 }
 
 Update_t _PrintSymbolInvalidTable()
@@ -270,6 +270,7 @@ Update_t CmdSymbols (int nArgs)
 
 //===========================================================================
 Update_t CmdSymbolsClear (int nArgs)
+  (void)nArgs;
 {
 	SymbolTable_Index_e eSymbolTable = SYMBOLS_USER_1;
 	_CmdSymbolsClear( eSymbolTable );
@@ -750,7 +751,7 @@ int ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSym
 //===========================================================================
 Update_t CmdSymbolsLoad (int nArgs)
 {
-	std::string sFileName = g_sProgramDir;
+	std::string sFileName = g_state.sProgramDir;
 
 	int iSymbolTable = GetSymbolTableFromCommand();
 	if ((iSymbolTable < 0) || (iSymbolTable >= NUM_SYMBOL_TABLES))
@@ -776,7 +777,7 @@ Update_t CmdSymbolsLoad (int nArgs)
 		{
 			pFileName = g_aArgs[ iArg ].sArg;
 
-			sFileName = g_sProgramDir + pFileName;
+			sFileName = g_state.sProgramDir + pFileName;
 
 			// Remember File Name of last symbols loaded
 			g_sFileNameSymbolsUser = pFileName;
@@ -1043,6 +1044,7 @@ Update_t CmdSymbolsCommand (int nArgs)
 
 //===========================================================================
 Update_t CmdSymbolsSave (int nArgs)
+  (void)nArgs;
 {
 	return UPDATE_CONSOLE_DISPLAY;
 }

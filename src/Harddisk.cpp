@@ -144,7 +144,7 @@ static unsigned char g_nHD_UnitNum = DRIVE_1;
 // . ProDOS will write to Command before switching drives
 static unsigned char g_nHD_Command;
 
-static HDD g_HardDrive[2] = {0};
+static HDD g_HardDrive[2] = {};
 
 static unsigned int g_uSlot = 7;
 
@@ -345,13 +345,13 @@ void HD_FTP_Select(int nDrive)
   bool isDirectory = true;      // if given filename is a directory?
 
   fileIndex = backdx;
-  fullPath = g_sFTPServerHDD;  // global var for FTP path for HDD
+  fullPath = g_state.sFTPServerHDD;  // global var for FTP path for HDD
 
   while (isDirectory) {
-    if (!ChooseAnImageFTP(g_ScreenWidth, g_ScreenHeight, fullPath, 7,
+    if (!ChooseAnImageFTP(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 7,
                           filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
-      return;  // if ESC was pressed, just leave
+      return;
     }
     // --
     if (isDirectory) {
@@ -381,12 +381,12 @@ void HD_FTP_Select(int nDrive)
     }
   }
   // we chose some file
-  strcpy(g_sFTPServerHDD, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_HDD_DIR, g_sFTPServerHDD); Configuration::Instance().Save();// save it
+  strcpy(g_state.sFTPServerHDD, fullPath.c_str());
+  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_HDD_DIR, g_state.sFTPServerHDD); Configuration::Instance().Save();// save it
 
   fullPath += "/" + filename;
 
-  std::string localPath = std::string(g_sFTPLocalDir) + "/" + filename; // local path for file
+  std::string localPath = std::string(g_state.sFTPLocalDir) + "/" + filename; // local path for file
 
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (!error) {
@@ -416,17 +416,18 @@ void HD_Select(int nDrive)
 
   fileIndex = backdx;
   isDirectory = true;
-  fullPath = g_sHDDDir;  // global var for disk selecting directory
+  fullPath = g_state.sHDDDir;  // global var for disk selecting directory
 
   while (isDirectory) {
-    if (!ChooseAnImage(g_ScreenWidth, g_ScreenHeight, fullPath, 7,
+    if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 7,
                        filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
     if (isDirectory) {
-      if (filename == "..") { // go to the upper directory
+      if (filename == "..") {
         const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+
         if (last_sep_pos != std::string::npos) {
           fullPath = fullPath.substr(0, last_sep_pos);
         }
@@ -446,8 +447,8 @@ void HD_Select(int nDrive)
     }
   }
   // we chose some file
-  strcpy(g_sHDDDir, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_HDD_START_DIR, g_sHDDDir); Configuration::Instance().Save(); // Save it
+  strcpy(g_state.sHDDDir, fullPath.c_str());
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.sHDDDir); Configuration::Instance().Save(); // Save it
 
   fullPath += "/" + filename;
 

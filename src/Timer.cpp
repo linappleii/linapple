@@ -61,7 +61,7 @@ inline uint32_t uSecSinceStart() {
 }
 
 inline void nsleep(unsigned long us) {
-  struct timespec req = {0};
+  struct timespec req = {};
   time_t sec = (time_t) (us / 1000000);
   long nsec = (long)((us % 1000000) * 1000);
   req.tv_sec = sec;

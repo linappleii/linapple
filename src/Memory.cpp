@@ -403,6 +403,9 @@ static eExpansionRomType g_eExpansionRomType = eExpRomNull;
 static unsigned int g_uPeripheralRomSlot = 0;
 
 unsigned char IO_Null(unsigned short programcounter, unsigned short address, unsigned char write, unsigned char value, uint32_t nCyclesLeft) {
+  (void)value;
+  (void)programcounter;
+  (void)address;
   if (!write) {
     return MemReadFloatingBus(nCyclesLeft);
   }
@@ -410,6 +413,11 @@ unsigned char IO_Null(unsigned short programcounter, unsigned short address, uns
 }
 
 unsigned char IO_Annunciator(unsigned short programcounter, unsigned short address, unsigned char write, unsigned char value, uint32_t nCyclesLeft) {
+  (void)value;
+  (void)nCyclesLeft;
+  (void)programcounter;
+  (void)address;
+  (void)write;
   // Apple//e ROM:
   // . PC=FA6F: LDA $C058 (SETAN0)
   // . PC=FA72: LDA $C05A (SETAN1)
@@ -509,6 +517,11 @@ unsigned char IORead_Cxxx(unsigned short programcounter, unsigned short address,
 }
 
 unsigned char IOWrite_Cxxx(unsigned short programcounter, unsigned short address, unsigned char write, unsigned char value, uint32_t nCyclesLeft) {
+  (void)value;
+  (void)nCyclesLeft;
+  (void)programcounter;
+  (void)address;
+  (void)write;
   return 0;
 }
 

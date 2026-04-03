@@ -21,11 +21,6 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/* Description: main
- *
- * Author: Various
- */
-
 #include "stdafx.h"
 #include <cassert>
 #include <string>
@@ -50,7 +45,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "Util_Path.h"
 
-// Satisfy modern compiler standards
+#include "DiskChoose.h"
+
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
 static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
 static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;
@@ -73,31 +69,12 @@ unsigned int clockslot;
 static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;
 
-AppMode_e g_nAppMode = MODE_LOGO;
+SystemState_t g_state = {
+  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com"
+};
+
 
 // Default screen sizes
-// SCREEN_WIDTH & SCREEN_HEIGHT defined in Frame.h
-unsigned int g_ScreenWidth = SCREEN_WIDTH;
-unsigned int g_ScreenHeight = SCREEN_HEIGHT;
-
-unsigned int needsprecision = 0;
-char g_sProgramDir[MAX_PATH] = "";
-char g_sCurrentDir[MAX_PATH] = "";
-char g_sHDDDir[MAX_PATH] = "";
-char g_sSaveStateDir[MAX_PATH] = "";
-char g_sParallelPrinterFile[MAX_PATH] = "Printer.txt";  // default file name for Parallel printer
-
-// FTP Variables
-char g_sFTPLocalDir[MAX_PATH] = ""; // FTP Local Dir, see linapple.conf for details
-char g_sFTPServer[MAX_PATH] = ""; // full path to default FTP server
-char g_sFTPServerHDD[MAX_PATH] = ""; // full path to default FTP server
-
-char g_sFTPUserPass[512] = "anonymous:mymail@hotmail.com"; // full login line
-
-bool g_bResetTiming = false;
-bool restart = 0;
-
-unsigned int g_dwSpeed = SPEED_NORMAL;
 double g_fCurrentCLK6502 = CLOCK_6502;
 static double g_fMHz = 1.0;
 
@@ -124,7 +101,7 @@ void ContinueExecution()
 
   bool bScrollLock_FullSpeed = g_bScrollLock_FullSpeed;
 
-  g_bFullSpeed = ((g_dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed || IsDebugSteppingAtFullSpeed() ||
+  g_bFullSpeed = ((g_state.dwSpeed == SPEED_MAX) || bScrollLock_FullSpeed || IsDebugSteppingAtFullSpeed() ||
                   (DiskIsSpinning() && enhancedisk && !Spkr_IsActive() && !MB_IsActive()));
 
   if (g_bFullSpeed) {
@@ -145,7 +122,7 @@ void ContinueExecution()
   const uint32_t uCyclesToExecuteWithFeedback = (nCyclesWithFeedback >= 0) ? nCyclesWithFeedback
                                        : 0;
 
-  const uint32_t uCyclesToExecute = (g_nAppMode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
+  const uint32_t uCyclesToExecute = (g_state.mode == MODE_RUNNING)   ? uCyclesToExecuteWithFeedback
                           /* MODE_STEPPING */ : 0;
 
   uint32_t uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
@@ -160,7 +137,7 @@ void ContinueExecution()
   unsigned int uSpkrActualCyclesExecuted = uActualCyclesExecuted;
 
   bool bModeStepping_WaitTimer = false;
-  if (g_nAppMode == MODE_STEPPING && !IsDebugSteppingAtFullSpeed())
+  if (g_state.mode == MODE_STEPPING && !IsDebugSteppingAtFullSpeed())
   {
     g_uModeStepping_Cycles += uActualCyclesExecuted;
     if (g_uModeStepping_Cycles >= uCyclesToExecuteWithFeedback)
@@ -174,7 +151,7 @@ void ContinueExecution()
 
   // For MODE_STEPPING: do this speaker update periodically
   // - Otherwise kills performance due to sound-buffer lock/unlock for every 6502 opcode!
-  if (g_nAppMode == MODE_RUNNING || bModeStepping_WaitTimer)
+  if (g_state.mode == MODE_RUNNING || bModeStepping_WaitTimer)
     SpkrUpdate(uSpkrActualCyclesExecuted);
 
   sg_SSC.CommUpdate(cyclenum);
@@ -200,7 +177,7 @@ void ContinueExecution()
   if (g_dwCyclesThisFrame >= dwClksPerFrame) {
     g_dwCyclesThisFrame -= dwClksPerFrame;
 
-    if (g_nAppMode != MODE_LOGO) {
+    if (g_state.mode != MODE_LOGO) {
       VideoUpdateFlash();
 
       static bool anyupdates = 0;
@@ -234,7 +211,7 @@ void ContinueExecution()
     MB_EndOfVideoFrame();
   }
 
-  if ((g_nAppMode == MODE_RUNNING && !g_bFullSpeed) || bModeStepping_WaitTimer)
+  if ((g_state.mode == MODE_RUNNING && !g_bFullSpeed) || bModeStepping_WaitTimer)
   {
     SysClk_WaitTimer();
   }
@@ -265,11 +242,11 @@ void SetCurrentCLK6502()
 {
   static unsigned int dwPrevSpeed = (unsigned int) - 1;
 
-  if (dwPrevSpeed == g_dwSpeed) {
+  if (dwPrevSpeed == g_state.dwSpeed) {
     return;
   }
 
-  dwPrevSpeed = g_dwSpeed;
+  dwPrevSpeed = g_state.dwSpeed;
 
   // SPEED_MIN    =  0 = 0.50 MHz
   // SPEED_NORMAL = 10 = 1.00 MHz
@@ -277,10 +254,10 @@ void SetCurrentCLK6502()
   // SPEED_MAX-1  = 39 = 3.90 MHz
   // SPEED_MAX    = 40 = ???? MHz (run full-speed, /g_fCurrentCLK6502/ is ignored)
 
-  if (g_dwSpeed < SPEED_NORMAL) {
-    g_fMHz = 0.5 + (double) g_dwSpeed * 0.05;
+  if (g_state.dwSpeed < SPEED_NORMAL) {
+    g_fMHz = 0.5 + (double) g_state.dwSpeed * 0.05;
   } else {
-    g_fMHz = (double) g_dwSpeed / 10.0;
+    g_fMHz = (double) g_state.dwSpeed / 10.0;
   }
 
   g_fCurrentCLK6502 = CLOCK_6502 * g_fMHz;
@@ -290,58 +267,91 @@ void SetCurrentCLK6502()
   MB_Reinitialize();
 }
 
-void EnterMessageLoop()
+void Sys_Input()
 {
   SDL_Event event;
-  uint64_t last_flash_time = SDL_GetTicks();
-
-  while (true) {
-    // Call VideoUpdateFlash roughly at 60Hz
-    uint64_t current_time = SDL_GetTicks();
-    if (current_time - last_flash_time >= 16) {
-      VideoUpdateFlash();
-      last_flash_time = current_time;
+  while (SDL_PollEvent(&event)) {
+    if (event.type == SDL_EVENT_QUIT) {
+      g_state.mode = MODE_EXIT;
+      return;
     }
-
-    // Process all pending events
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_EVENT_QUIT) {
-        return;
-      }
+    if (g_state.mode == MODE_DISK_CHOOSE) {
+      DiskChoose_Tick(&event);
+    } else {
       FrameDispatchMessage(&event);
     }
+  }
+}
 
-    if (g_nAppMode == MODE_DEBUG) {
-      DebuggerUpdate();
-      DrawFrameWindow();
-      SDL_Delay(10);
-    } else if (g_nAppMode == MODE_LOGO || g_nAppMode == MODE_PAUSED) {
-      DrawAppleContent();
-      DrawFrameWindow();
-      SDL_Delay(10);
-    } else if (g_nAppMode == MODE_RUNNING || g_nAppMode == MODE_STEPPING) {
-      if (g_nAppMode == MODE_STEPPING) {
-        DebugContinueStepping();
-      } else {
-        ContinueExecution();
-        if (g_nAppMode != MODE_DEBUG) {
-          if (joyexitenable) {
-            CheckJoyExit();
-            if (joyquitevent) {
-              return;
-            }
-          }
-          if ((g_bFullSpeed)||(IsDebugSteppingAtFullSpeed())) {
-            ContinueExecution();
+void Sys_Think()
+{
+  if (g_state.mode == MODE_DISK_CHOOSE) {
+    SDL_Delay(10);
+    return;
+  }
+  
+  if (g_state.mode == MODE_DEBUG) {
+    DebuggerUpdate();
+    SDL_Delay(10);
+  } else if (g_state.mode == MODE_LOGO || g_state.mode == MODE_PAUSED) {
+    SDL_Delay(10);
+  } else if (g_state.mode == MODE_RUNNING || g_state.mode == MODE_STEPPING) {
+    if (g_state.mode == MODE_STEPPING) {
+      DebugContinueStepping();
+    } else {
+      ContinueExecution();
+      if (g_state.mode != MODE_DEBUG) {
+        if (joyexitenable) {
+          CheckJoyExit();
+          if (joyquitevent) {
+            g_state.mode = MODE_EXIT;
+            return;
           }
         }
+        if ((g_bFullSpeed) || (IsDebugSteppingAtFullSpeed())) {
+          ContinueExecution();
+        }
       }
-      if (VideoHasRefreshed()) {
-        DrawFrameWindow();
-      }
-    } else {
-      SDL_Delay(1);
     }
+  } else {
+    SDL_Delay(1);
+  }
+}
+
+void Sys_Draw()
+{
+  static uint64_t last_flash_time = 0;
+  uint64_t current_time = SDL_GetTicks();
+
+  if (current_time - last_flash_time >= 16) {
+    VideoUpdateFlash();
+    last_flash_time = current_time;
+  }
+
+  if (g_state.mode == MODE_DISK_CHOOSE) {
+    DiskChoose_Draw();
+    return;
+  }
+  
+  if (g_state.mode == MODE_DEBUG) {
+    DrawFrameWindow();
+  } else if (g_state.mode == MODE_LOGO || g_state.mode == MODE_PAUSED) {
+    DrawAppleContent();
+    DrawFrameWindow();
+  } else if (g_state.mode == MODE_RUNNING || g_state.mode == MODE_STEPPING) {
+    if (VideoHasRefreshed()) {
+      DrawFrameWindow();
+    }
+  }
+}
+
+void EnterMessageLoop()
+{
+  while (g_state.mode != MODE_EXIT && !g_state.restart) {
+    Sys_Input();
+    if (g_state.mode == MODE_EXIT) break;
+    Sys_Think();
+    Sys_Draw();
   }
 }
 
@@ -535,7 +545,7 @@ void LoadConfiguration()
   LOAD("Serial Port", &dwSerialPort);
   sg_SSC.SetSerialPort(dwSerialPort);
 
-  LOAD("Emulation Speed", &g_dwSpeed);
+  LOAD("Emulation Speed", &g_state.dwSpeed);
   LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);
   LOAD("Video Emulation", &g_videotype);
   LOAD("Singlethreaded", (unsigned int*)&g_singlethreaded);
@@ -543,7 +553,7 @@ void LoadConfiguration()
   unsigned int dwTmp = 0;
 
   LOAD("Fullscreen", &dwTmp);
-  fullscreen = (bool) dwTmp;
+  g_state.fullscreen = (bool) dwTmp;
   dwTmp = 1;
   LOAD(REGVALUE_SHOW_LEDS, &dwTmp);
   g_ShowLeds = (bool) dwTmp;
@@ -615,7 +625,7 @@ void LoadConfiguration()
 
   sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_PPRINTER_FILENAME);
   if (sHDFilename.length() > 1) {
-    Util_SafeStrCpy(g_sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_state.sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
   }
 
   Printer_SetIdleLimit(Configuration::Instance().GetInt("Configuration", REGVALUE_PRINTER_IDLE_LIMIT, 0));
@@ -624,8 +634,8 @@ void LoadConfiguration()
   double scrFactor = 0.0;
   
   // Reset to base dimensions before applying factor
-  g_ScreenWidth = 560;
-  g_ScreenHeight = 384;
+  g_state.ScreenWidth = 560;
+  g_state.ScreenHeight = 384;
 
   sFilename = Configuration::Instance().GetString("Configuration", "Screen factor");
   if (!sFilename.empty()) {
@@ -634,8 +644,8 @@ void LoadConfiguration()
       scrFactor = atof(sFilename.c_str());
     }
     if (scrFactor > 0.1) {
-      g_ScreenWidth = (unsigned int)(g_ScreenWidth * scrFactor);
-      g_ScreenHeight = (unsigned int)(g_ScreenHeight * scrFactor);
+      g_state.ScreenWidth = (unsigned int)(g_state.ScreenWidth * scrFactor);
+      g_state.ScreenHeight = (unsigned int)(g_state.ScreenHeight * scrFactor);
     }
   }
 
@@ -643,21 +653,21 @@ void LoadConfiguration()
     dwTmp = 0;
     LOAD("Screen Width", &dwTmp);
     if (dwTmp > 0) {
-      g_ScreenWidth = dwTmp;
+      g_state.ScreenWidth = dwTmp;
     }
     dwTmp = 0;
     LOAD("Screen Height", &dwTmp);
     if (dwTmp > 0) {
-      g_ScreenHeight = dwTmp;
+      g_state.ScreenHeight = dwTmp;
     }
 
     if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
-      if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
-           (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
-           (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
+      if (!((g_state.ScreenWidth == 1920 && g_state.ScreenHeight == 1080) ||
+           (g_state.ScreenWidth == 1280 && g_state.ScreenHeight ==  720) ||
+           (g_state.ScreenWidth ==  800 && g_state.ScreenHeight ==  600))) {
 
-        g_ScreenWidth  = 640;
-        g_ScreenHeight = 480;
+        g_state.ScreenWidth  = 640;
+        g_state.ScreenHeight = 480;
       }
     }
   }
@@ -670,57 +680,57 @@ void LoadConfiguration()
   // Current/Starting Dir is the "root" of where the user keeps his disk images
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_START_DIR);
   if (!sFilename.empty()) {
-    Util_SafeStrCpy(g_sCurrentDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_state.sCurrentDir, sFilename.c_str(), MAX_PATH);
   }
-  if (strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') {
+  if (strlen(g_state.sCurrentDir) == 0 || g_state.sCurrentDir[0] != '/') {
     char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sCurrentDir, "/");
+      strcpy(g_state.sCurrentDir, "/");
     } else {
-      Util_SafeStrCpy(g_sCurrentDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_state.sCurrentDir, tmp, MAX_PATH);
     }
   }
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_HDD_START_DIR);
   if (!sFilename.empty()) {
-    Util_SafeStrCpy(g_sHDDDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_state.sHDDDir, sFilename.c_str(), MAX_PATH);
   }
 
-  if (strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') {
+  if (strlen(g_state.sHDDDir) == 0 || g_state.sHDDDir[0] != '/') {
     char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sHDDDir, "/");
+      strcpy(g_state.sHDDDir, "/");
     } else {
-      Util_SafeStrCpy(g_sHDDDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_state.sHDDDir, tmp, MAX_PATH);
     }
   }
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR);
   if (!sFilename.empty()) {
-    Util_SafeStrCpy(g_sSaveStateDir, sFilename.c_str(), MAX_PATH);
+    Util_SafeStrCpy(g_state.sSaveStateDir, sFilename.c_str(), MAX_PATH);
   }
-  if (strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') {
+  if (strlen(g_state.sSaveStateDir) == 0 || g_state.sSaveStateDir[0] != '/') {
     char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sSaveStateDir, "/");
+      strcpy(g_state.sSaveStateDir, "/");
     } else {
-      Util_SafeStrCpy(g_sSaveStateDir, tmp, MAX_PATH);
+      Util_SafeStrCpy(g_state.sSaveStateDir, tmp, MAX_PATH);
     }
   }
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_DIR);
-  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServer, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_state.sFTPServer, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_HDD_DIR);
-  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServerHDD, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_state.sFTPServerHDD, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_LOCAL_DIR);
-  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPLocalDir, sFilename.c_str(), MAX_PATH);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_state.sFTPLocalDir, sFilename.c_str(), MAX_PATH);
 
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_USERPASS);
-  if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPUserPass, sFilename.c_str(), 512);
+  if (!sFilename.empty()) Util_SafeStrCpy(g_state.sFTPUserPass, sFilename.c_str(), 512);
 
-  printf("Ready login = %s\n", g_sFTPUserPass);
+  printf("Ready login = %s\n", g_state.sFTPUserPass);
 }
 
 // Splits a string into a sequence of substrings each delimited by delimiter.
@@ -828,6 +838,150 @@ void PrintHelp()
          "\n");
 }
 
+int SysInit(bool bLog)
+{
+  if (bLog) {
+    LogInitialize();
+  }
+  if (!Asset_Init()) {
+    return 1;
+  }
+
+  if (InitSDL()) {
+    return 1;
+  }
+
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+  g_curl = curl_easy_init();
+  if (!g_curl) {
+    printf("Could not initialize CURL easy interface");
+    return 1;
+  }
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
+
+  MemPreInitialize();
+  ImageInitialize();
+  DiskInitialize();
+  CreateColorMixMap();
+
+#ifdef VERSIONSTRING
+  printf("LinApple %s\n", VERSIONSTRING);
+#else
+  printf("LinApple\n");
+#endif
+
+  const char* driver = SDL_GetCurrentVideoDriver();
+  if (driver) Util_SafeStrCpy(videoDriverName, driver, 100);
+  printf("Video driver = %s\n", videoDriverName);
+
+  return 0;
+}
+
+void SysShutdown()
+{
+  DSUninit();
+  SysClk_UninitTimer();
+
+  RiffFinishWriteFile();
+
+  SDL_Quit();
+  curl_easy_cleanup(g_curl);
+  curl_global_cleanup();
+  Asset_Quit();
+  LogDestroy();
+  printf("Linapple: successfully exited!\n");
+}
+
+int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
+                const char* szImageName_drive1, const char* szImageName_drive2,
+                const char* szSnapshotFile, bool bBoot)
+{
+  g_state.mode = MODE_LOGO;
+  g_state.fullscreen = false;
+
+  LoadAllConfigurations(szConfigurationFile);
+
+  if (bSetFullScreen) {
+    g_state.fullscreen = bSetFullScreen;
+  }
+
+  int nError = 0;
+  if (szImageName_drive1) {
+    nError = DoDiskInsert(0, szImageName_drive1);
+    if (nError) {
+      LOG("Cannot insert image %s into drive 1.", szImageName_drive1);
+      return 1;
+    }
+  }
+  if (szImageName_drive2) {
+    nError |= DoDiskInsert(1, szImageName_drive2);
+    if (nError) {
+      LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
+      return 1;
+    }
+  }
+
+  FrameCreateWindow();
+
+  if (!DSInit()) {
+    soundtype = SOUND_NONE;
+  }
+
+  MB_Initialize();
+  SpkrInitialize();
+  JoyInitialize();
+  MemInitialize();
+  HD_SetEnabled(hddenabled);
+  if (clockslot) {
+    Clock_Insert(clockslot);
+  }
+  VideoInitialize();
+  DebugInitialize();
+  Snapshot_Startup();
+
+  if (szSnapshotFile) {
+    Snapshot_SetFilename(szSnapshotFile);
+    Snapshot_LoadState();
+  }
+
+  if (bBoot) {
+    setAutoBoot();
+  }
+
+  JoyReset();
+  SetUsingCursor(0);
+
+  if (!g_state.fullscreen) {
+    SetNormalMode();
+  } else {
+    SetFullScreenMode();
+  }
+
+  DrawFrameWindow();
+  return 0;
+}
+
+void SessionShutdown()
+{
+  Snapshot_Shutdown();
+  DebugDestroy();
+  if (!g_state.restart) {
+    DiskDestroy();
+    ImageDestroy();
+    HD_Cleanup();
+  }
+  PrintDestroy();
+  sg_SSC.CommDestroy();
+  CpuDestroy();
+  SpkrDestroy();
+  VideoDestroy();
+  MemDestroy();
+  MB_Destroy();
+  MB_Reset();
+  sg_Mouse.Uninitialize();
+  JoyShutDown();
+}
+
 int main(int argc, char *argv[])
 {
   bool bLog = false;
@@ -921,104 +1075,18 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (bLog) {
-    LogInitialize();
-  }
-  if (!Asset_Init()) {
+  if (SysInit(bLog) != 0) {
     return 1;
   }
-
-  if (InitSDL()) {
-    return 1;
-  }
-
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  g_curl = curl_easy_init();
-  if (!g_curl) {
-    printf("Could not initialize CURL easy interface");
-    return 1;
-  }
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
-
-  MemPreInitialize();
-  ImageInitialize();
-  DiskInitialize();
-  CreateColorMixMap();
-
-#ifdef VERSIONSTRING
-  printf("LinApple %s\n", VERSIONSTRING);
-#else
-  printf("LinApple\n");
-#endif
-
-  const char* driver = SDL_GetCurrentVideoDriver();
-  if (driver) Util_SafeStrCpy(videoDriverName, driver, 100);
-  printf("Video driver = %s\n", videoDriverName);
 
   do {
-    restart = 0;
-    g_nAppMode = MODE_LOGO;
-    fullscreen = false;
+    g_state.restart = false;
 
-    LoadAllConfigurations(szConfigurationFile);
-
-    if (bSetFullScreen) {
-      fullscreen = bSetFullScreen;
+    if (SessionInit(szConfigurationFile, bSetFullScreen,
+                    szImageName_drive1, szImageName_drive2,
+                    szSnapshotFile, bBoot) != 0) {
+      break;
     }
-
-    int nError = 0;
-    if (szImageName_drive1) {
-      nError = DoDiskInsert(0, szImageName_drive1);
-      if (nError) {
-        LOG("Cannot insert image %s into drive 1.", szImageName_drive1);
-        break;
-      }
-    }
-    if (szImageName_drive2) {
-      nError |= DoDiskInsert(1, szImageName_drive2);
-      if (nError) {
-        LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
-        break;
-      }
-    }
-
-    FrameCreateWindow();
-
-    if (!DSInit()) {
-      soundtype = SOUND_NONE;
-    }
-
-    MB_Initialize();
-    SpkrInitialize();
-    JoyInitialize();
-    MemInitialize();
-    HD_SetEnabled(hddenabled);
-    if (clockslot) {
-      Clock_Insert(clockslot);
-    }
-    VideoInitialize();
-    DebugInitialize();
-    Snapshot_Startup();
-
-    if (szSnapshotFile) {
-      Snapshot_SetFilename(szSnapshotFile);
-      Snapshot_LoadState();
-    }
-
-    if (bBoot) {
-      setAutoBoot();
-    }
-
-    JoyReset();
-    SetUsingCursor(0);
-
-    if (!fullscreen) {
-      SetNormalMode();
-    } else {
-      SetFullScreenMode();
-    }
-
-    DrawFrameWindow();
 
     if (bBenchMark) {
       VideoBenchmark();
@@ -1026,36 +1094,10 @@ int main(int argc, char *argv[])
       EnterMessageLoop();
     }
 
-    Snapshot_Shutdown();
-    DebugDestroy();
-    if (!restart) {
-      DiskDestroy();
-      ImageDestroy();
-      HD_Cleanup();
-    }
-    PrintDestroy();
-    sg_SSC.CommDestroy();
-    CpuDestroy();
-    SpkrDestroy();
-    VideoDestroy();
-    MemDestroy();
-    MB_Destroy();
-    MB_Reset();
-    sg_Mouse.Uninitialize();
-    JoyShutDown();
-  } while (restart);
+    SessionShutdown();
+  } while (g_state.restart);
 
-  DSUninit();
-  SysClk_UninitTimer();
-
-  RiffFinishWriteFile();
-
-  SDL_Quit();
-  curl_easy_cleanup(g_curl);
-  curl_global_cleanup();
-  Asset_Quit();
-  LogDestroy();
-  printf("Linapple: successfully exited!\n");
+  SysShutdown();
   return 0;
 }
 

@@ -264,7 +264,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
   static char      g_sFileNameTrace      [] = "Trace.txt";
 
-  static bool      g_bBenchmarking = false;
 
   static bool      g_bProfiling       = 0;
   static int       g_nDebugSteps      = 0;
@@ -303,7 +302,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
   void ConfigSave_PrepareHeader ( const Parameters_e eCategory, const Commands_e eCommandClear );
 
 // Drawing
-  static  void _CmdColorGet ( const int iScheme, const int iColor );
 
 // Font
   static  void _UpdateWindowFontHeights (int nFontHeight);
@@ -614,6 +612,7 @@ Update_t CmdBookmarkGoto ( int nArgs )
 
 Update_t CmdBookmarkList (int nArgs)
 {
+  (void)nArgs;
   if (! g_nBookmarks)
   {
     char sText[ CONSOLE_WIDTH ];
@@ -634,7 +633,7 @@ Update_t CmdBookmarkLoad (int nArgs)
 //    strcpy( sMiniFileName, pFileName );
   //  strcat( sMiniFileName, ".aws" ); // HACK: MAGIC STRING
 
-//    strcpy(sFileName, g_sCurrentDir); //
+//    strcpy(sFileName, g_state.sCurrentDir); //
 //    strcat(sFileName, sMiniFileName);
   }
 
@@ -684,6 +683,7 @@ Update_t CmdBookmarkSave (int nArgs)
 
 Update_t CmdBenchmark (int nArgs)
 {
+  (void)nArgs;
   if (g_bBenchmarking)
     CmdBenchmarkStart(0);
   else
@@ -694,6 +694,7 @@ Update_t CmdBenchmark (int nArgs)
 
 Update_t CmdBenchmarkStart (int nArgs)
 {
+  (void)nArgs;
   CpuSetupBenchmark();
   g_nDisasmCurAddress = regs.pc;
   DisasmCalcTopBotAddress();
@@ -703,6 +704,7 @@ Update_t CmdBenchmarkStart (int nArgs)
 
 Update_t CmdBenchmarkStop (int nArgs)
 {
+  (void)nArgs;
   g_bBenchmarking = false;
   DebugEnd();
 
@@ -1561,6 +1563,7 @@ Update_t CmdBreakpointDisable (int nArgs)
 //===========================================================================
 Update_t CmdBreakpointEdit (int nArgs)
 {
+  (void)nArgs;
   return (UPDATE_DISASM | UPDATE_BREAKPOINTS);
 }
 
@@ -1624,6 +1627,7 @@ void _BWZ_ListAll( const Breakpoint_t * aBreakWatchZero, const int nMax )
 //===========================================================================
 Update_t CmdBreakpointList (int nArgs)
 {
+  (void)nArgs;
 //  ConsoleBufferPush( );
 //  std::vector<int> vBreakpoints;
 //  int iBreakpoint = MAX_BREAKPOINTS;
@@ -1652,6 +1656,7 @@ Update_t CmdBreakpointList (int nArgs)
 //===========================================================================
 Update_t CmdBreakpointLoad (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_ALL;
 }
 
@@ -1879,7 +1884,7 @@ static Update_t CmdGo (int nArgs, const bool bFullSpeed)
   g_bLastGoCmdWasFullSpeed = bFullSpeed;
   g_bGoCmd_ReinitFlag = true;
 
-  g_nAppMode = MODE_STEPPING;
+  g_state.mode = MODE_STEPPING;
   FrameRefreshStatus(DRAW_TITLE);
 
   SoundCore_SetFade(FADE_IN);
@@ -1948,7 +1953,7 @@ Update_t CmdTrace (int nArgs)
   g_nDebugStepCycles  = 0;
   g_nDebugStepStart = regs.pc;
   g_nDebugStepUntil = -1;
-  g_nAppMode = MODE_STEPPING;
+  g_state.mode = MODE_STEPPING;
   FrameRefreshStatus(DRAW_TITLE);
   DebugContinueStepping(true);
 
@@ -1978,7 +1983,7 @@ Update_t CmdTraceFile (int nArgs)
 
     g_bTraceFileWithVideoScanner = (nArgs >= 2);
 
-    const std::string sFilePath = g_sCurrentDir + sFileName;
+    const std::string sFilePath = g_state.sCurrentDir + sFileName;
 
     g_hTraceFile = fopen( sFilePath.c_str(), "wt" );
 
@@ -2008,7 +2013,7 @@ Update_t CmdTraceLine (int nArgs)
   g_nDebugStepStart = regs.pc;
   g_nDebugStepUntil = -1;
 
-  g_nAppMode = MODE_STEPPING;
+  g_state.mode = MODE_STEPPING;
   FrameRefreshStatus(DRAW_TITLE);
   DebugContinueStepping(true);
 
@@ -2086,6 +2091,7 @@ Update_t CmdJSR (int nArgs)
 //===========================================================================
 Update_t CmdNOP (int nArgs)
 {
+  (void)nArgs;
   int iOpcode;
   int iOpmode;
   int nOpbytes;
@@ -2131,6 +2137,7 @@ void _ColorPrint( int iColor, unsigned int nColor )
 }
 
 void _CmdColorGet( const int iScheme, const int iColor )
+  (void)iScheme;
 {
   if (iColor < NUM_DEBUG_COLORS)
   {
@@ -2275,7 +2282,7 @@ bool ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
   if (eConfigSave == CONFIG_SAVE_FILE_APPEND)
     pMode = sModeAppend;
 
-  std::string sFileName = g_sCurrentDir;
+  std::string sFileName = g_state.sCurrentDir;
   sFileName += pFileName; // TODO: g_sDebugDir
 
   FILE *hFile = fopen( pFileName, pMode );
@@ -2330,7 +2337,8 @@ void ConfigSave_PrepareHeader ( const Parameters_e eCategory, const Commands_e e
 //===========================================================================
 Update_t CmdConfigSave (int nArgs)
 {
-  const std::string sFilename = g_sProgramDir + g_sFileNameConfig;
+  (void)nArgs;
+  const std::string sFilename = g_state.sProgramDir + g_sFileNameConfig;
 
     // Bookmarks
     CmdBookmarkSave( 0 );
@@ -2519,6 +2527,7 @@ Update_t CmdConfigDisasm( int nArgs )
 
 //===========================================================================
 Update_t CmdConfigFontLoad( int nArgs )
+  (void)nArgs;
 {
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -2526,6 +2535,7 @@ Update_t CmdConfigFontLoad( int nArgs )
 
 //===========================================================================
 Update_t CmdConfigFontSave( int nArgs )
+  (void)nArgs;
 {
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -2648,7 +2658,12 @@ void _UpdateWindowFontHeights( int nFontHeight )
 }
 
 //===========================================================================
+  (void)iFont; (void)pFontName; (void)iPitchFamily; (void)nFontHeight;
 bool _CmdConfigFont ( int iFont, const char* pFontName, int iPitchFamily, int nFontHeight )
+  (void)iFont;
+  (void)pFontName;
+  (void)iPitchFamily;
+  (void)nFontHeight;
 {
   bool bStatus = false;
 #ifdef TODO // no font support for Linux yet
@@ -2748,6 +2763,7 @@ bool _CmdConfigFont ( int iFont, const char* pFontName, int iPitchFamily, int nF
 //===========================================================================
 Update_t CmdConfigSetFont (int nArgs)
 {
+  (void)nArgs;
 #if OLD_FONT
   HFONT  hFont = (HFONT) 0;
   char *pFontName = NULL;
@@ -2839,8 +2855,10 @@ Update_t CmdConfigGetFont (int nArgs)
 // @param bUpdateCur
 // true  = Update Cur based on Top
 // false = Update Top & Bot based on Cur
+  (void)bUpdateTop;
 //===========================================================================
 void DisasmCalcTopFromCurAddress( bool bUpdateTop )
+  (void)bUpdateTop;
 {
   int nLen = ((g_nDisasmWinHeight - g_nDisasmCurLine) * 3); // max 3 opcodes/instruction, is our search window
 
@@ -3428,6 +3446,7 @@ void _CursorMoveUpAligned( int nDelta )
 //===========================================================================
 Update_t CmdCursorPageDown (int nArgs)
 {
+  (void)nArgs;
   int iLines = 0; // show at least 1 line from previous display
   int nLines = WindowGetHeight( g_iWindowThis );
 
@@ -3465,6 +3484,7 @@ Update_t CmdCursorPageDown (int nArgs)
 //===========================================================================
 Update_t CmdCursorPageDown256 (int nArgs)
 {
+  (void)nArgs;
   const int nStep = 256;
   _CursorMoveDownAligned( nStep );
   return UPDATE_DISASM;
@@ -3473,6 +3493,7 @@ Update_t CmdCursorPageDown256 (int nArgs)
 //===========================================================================
 Update_t CmdCursorPageDown4K (int nArgs)
 {
+  (void)nArgs;
   const int nStep = 4096;
   _CursorMoveDownAligned( nStep );
   return UPDATE_DISASM;
@@ -3481,6 +3502,7 @@ Update_t CmdCursorPageDown4K (int nArgs)
 //===========================================================================
 Update_t CmdCursorPageUp (int nArgs)
 {
+  (void)nArgs;
   int iLines = 0; // show at least 1 line from previous display
   int nLines = WindowGetHeight( g_iWindowThis );
 
@@ -3513,6 +3535,7 @@ Update_t CmdCursorPageUp (int nArgs)
 //===========================================================================
 Update_t CmdCursorPageUp256 (int nArgs)
 {
+  (void)nArgs;
   const int nStep = 256;
   _CursorMoveUpAligned( nStep );
   return UPDATE_DISASM;
@@ -3521,6 +3544,7 @@ Update_t CmdCursorPageUp256 (int nArgs)
 //===========================================================================
 Update_t CmdCursorPageUp4K (int nArgs)
 {
+  (void)nArgs;
   const int nStep = 4096;
   _CursorMoveUpAligned( nStep );
   return UPDATE_DISASM;
@@ -3528,6 +3552,7 @@ Update_t CmdCursorPageUp4K (int nArgs)
 
 //===========================================================================
 Update_t CmdCursorSetPC( int nArgs) // TODO rename
+  (void)nArgs;
 {
   regs.pc = g_nDisasmCurAddress; // set PC to current cursor address
   return UPDATE_DISASM;
@@ -3895,6 +3920,7 @@ Update_t CmdMemoryMiniDumpApple (int nArgs)
 //===========================================================================
 Update_t CmdMemoryEdit (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -4028,7 +4054,7 @@ Update_t CmdConfigGetDebugDir (int nArgs)
 
   char sPath[ MAX_PATH + 8 ];
   // TODO: debugger dir has no ` CONSOLE_COLOR_ESCAPE_CHAR ?!?!
-  ConsoleBufferPushFormat( sPath, "Path: %s", g_sCurrentDir );
+  ConsoleBufferPushFormat( sPath, "Path: %s", g_state.sCurrentDir );
 
   return ConsoleUpdate();
 }
@@ -4093,7 +4119,7 @@ Update_t CmdMemoryLoad (int nArgs)
       return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ MAX_PATH ];
-    strcpy( sLoadSaveFilePath, g_sCurrentDir ); // TODO: g_sDebugDir
+    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // TODO: g_sDebugDir
 
     unsigned short nAddressStart;
     unsigned short nAddress2   = 0;
@@ -4313,7 +4339,7 @@ Update_t CmdMemoryLoad (int nArgs)
   {
     g_sMemoryLoadSaveFileName = pFileName;
   }
-  const std::string sLoadSaveFilePath = g_sCurrentDir + g_sMemoryLoadSaveFileName; // TODO: g_sDebugDir
+  const std::string sLoadSaveFilePath = g_state.sCurrentDir + g_sMemoryLoadSaveFileName; // TODO: g_sDebugDir
 
   unsigned char * const pMemBankBase = bBankSpecified ? MemGetBankPtr(nBank) : mem;
   if (!pMemBankBase)
@@ -4484,7 +4510,7 @@ Update_t CmdMemorySave (int nArgs)
 //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ MAX_PATH ];
-    strcpy( sLoadSaveFilePath, g_sCurrentDir ); // g_sProgramDir
+    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // g_state.sProgramDir
 
     RangeType_t eRange;
     eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
@@ -4636,7 +4662,7 @@ Update_t CmdMemorySave (int nArgs)
 //      (g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
 //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
-    std::string sLoadSaveFilePath = g_sCurrentDir; // g_sProgramDir
+    std::string sLoadSaveFilePath = g_state.sCurrentDir; // g_state.sProgramDir
 
     RangeType_t eRange;
     eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
@@ -4848,6 +4874,7 @@ size_t Util_GetTextScreen ( char* &pText_ )
 //===========================================================================
 Update_t CmdNTSC (int nArgs)
 {
+  (void)nArgs;
 #ifdef TODO // Not supported for Linux yet
   int iParam;
   int nFound = FindParam( g_aArgs[ 1 ].sArg, MATCH_EXACT, iParam, _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END );
@@ -4909,7 +4936,7 @@ Update_t CmdNTSC (int nArgs)
     pFileName = "AppleWinNTSC4096x4@32.data";
 
   static std::string sPaletteFilePath;
-  sPaletteFilePath = g_sCurrentDir + pFileName;
+  sPaletteFilePath = g_state.sCurrentDir + pFileName;
 
   class ConsoleFilename
   {
@@ -5480,7 +5507,7 @@ int CmdTextSave (int nArgs)
   char  *pText;
   size_t nSize = Util_GetTextScreen( pText );
 
-  std::string sLoadSaveFilePath = g_sCurrentDir; // g_sProgramDir
+  std::string sLoadSaveFilePath = g_state.sCurrentDir; // g_state.sProgramDir
 
   if( bHaveFileName )
     g_sMemoryLoadSaveFileName = g_aArgs[ 1 ].sArg;
@@ -5629,6 +5656,7 @@ int _SearchMemoryFind(
 
 Update_t _SearchMemoryDisplay (int nArgs)
 {
+  (void)nArgs;
   const unsigned int nBuf = CONSOLE_WIDTH * 2;
 
   int nFound = g_vMemorySearchResults.size() - 1;
@@ -5721,9 +5749,11 @@ Update_t _SearchMemoryDisplay (int nArgs)
   return ConsoleUpdate();
 }
 
+  (void)bTextIsAscii;
 
 //===========================================================================
 Update_t _CmdMemorySearch (int nArgs, bool bTextIsAscii = true )
+  (void)bTextIsAscii;
 {
   unsigned short nAddressStart = 0;
   unsigned short nAddress2   = 0;
@@ -6034,6 +6064,7 @@ Update_t CmdOutputCalc (int nArgs)
 //===========================================================================
 Update_t CmdOutputEcho (int nArgs)
 {
+  (void)nArgs;
   if (g_aArgs[1].bType & TYPE_QUOTED_2)
   {
     ConsoleDisplayPush( g_aArgs[1].sArg );
@@ -6321,7 +6352,7 @@ Update_t CmdOutputRun (int nArgs)
   else
   {
     // Rel pathname
-    sFileName = g_sCurrentDir;
+    sFileName = g_state.sCurrentDir;
     sFileName += "/" +sMiniFileName;
   }
 
@@ -6585,7 +6616,7 @@ Update_t CmdSource (int nArgs)
       }
       else
       {
-        const std::string sFileName = g_sProgramDir + pFileName;
+        const std::string sFileName = g_state.sProgramDir + pFileName;
 
         const int MAX_MINI_FILENAME = 20;
         const std::string sMiniFileName = sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));
@@ -6631,6 +6662,7 @@ Update_t CmdSource (int nArgs)
 //===========================================================================
 Update_t CmdSync (int nArgs)
 {
+  (void)nArgs;
   // TODO
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -6642,18 +6674,21 @@ Update_t CmdSync (int nArgs)
 //===========================================================================
 Update_t CmdStackPush (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 Update_t CmdStackPop (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 Update_t CmdStackPopPseudo (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -6743,79 +6778,97 @@ Update_t _ViewOutput( ViewVideoPage_t iPage, int bVideoModeFlags )
 
 // Text 40
   Update_t CmdViewOutput_Text4X (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, VF_TEXT );
   }
   Update_t CmdViewOutput_Text41 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, VF_TEXT );
   }
   Update_t CmdViewOutput_Text42 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, VF_TEXT );
   }
 // Text 80
   Update_t CmdViewOutput_Text8X (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, VF_TEXT | VF_80COL );
   }
   Update_t CmdViewOutput_Text81 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, VF_TEXT | VF_80COL );
   }
   Update_t CmdViewOutput_Text82 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, VF_TEXT | VF_80COL );
   }
 // Lo-Res
   Update_t CmdViewOutput_GRX (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, 0 );
   }
   Update_t CmdViewOutput_GR1 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, 0 );
   }
   Update_t CmdViewOutput_GR2 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, 0 );
   }
 // Double Lo-Res
   Update_t CmdViewOutput_DGRX (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DGR1 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DGR2 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, VF_DHIRES | VF_80COL );
   }
 // Hi-Res
   Update_t CmdViewOutput_HGRX (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, VF_HIRES );
   }
   Update_t CmdViewOutput_HGR1 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, VF_HIRES );
   }
   Update_t CmdViewOutput_HGR2 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, VF_HIRES );
   }
 // Double Hi-Res
   Update_t CmdViewOutput_DHGRX (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_X, VF_HIRES | VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DHGR1 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_1, VF_HIRES | VF_DHIRES | VF_80COL);
   }
   Update_t CmdViewOutput_DHGR2 (int nArgs)
+  (void)nArgs;
   {
     return _ViewOutput( VIEW_PAGE_2, VF_HIRES | VF_DHIRES | VF_80COL );
   }
@@ -6945,6 +6998,7 @@ Update_t CmdWatchEnable (int nArgs)
 //===========================================================================
 Update_t CmdWatchList (int nArgs)
 {
+  (void)nArgs;
   if (! g_nWatches)
   {
     char sText[ CONSOLE_WIDTH ];
@@ -7067,10 +7121,12 @@ void WindowUpdateConsoleDisplayedSize()
     g_bConsoleFullWidth = true;
   }
 #endif
+  (void)iWindow;
 }
 
 //===========================================================================
 int WindowGetHeight( int iWindow )
+  (void)iWindow;
 {
 //  if (iWindow == WINDOW_CODE)
   return g_nDisasmWinHeight;
@@ -7102,6 +7158,7 @@ void WindowUpdateSizes()
 
 //===========================================================================
 Update_t CmdWindowCycleNext( int nArgs )
+  (void)nArgs;
 {
   g_iWindowThis++;
   if (g_iWindowThis >= NUM_WINDOWS)
@@ -7114,6 +7171,7 @@ Update_t CmdWindowCycleNext( int nArgs )
 
 //===========================================================================
 Update_t CmdWindowCyclePrev( int nArgs )
+  (void)nArgs;
 {
   g_iWindowThis--;
   if (g_iWindowThis < 0)
@@ -7127,6 +7185,7 @@ Update_t CmdWindowCyclePrev( int nArgs )
 //===========================================================================
 Update_t CmdWindowShowCode (int nArgs)
 {
+  (void)nArgs;
   // g_bWindowDisplayShowChild = false;
   // g_bWindowDisplayShowRoot  = WINDOW_CODE;
 
@@ -7150,6 +7209,7 @@ Update_t CmdWindowShowCode (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowCode1 (int nArgs)
 {
+  (void)nArgs;
 /*
   if ((g_iWindowThis == WINDOW_CODE) || (g_iWindowThis != WINDOW_DATA))
   {
@@ -7170,6 +7230,7 @@ Update_t CmdWindowShowCode1 (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowCode2 (int nArgs)
 {
+  (void)nArgs;
   if ((g_iWindowThis == WINDOW_CODE) || (g_iWindowThis == WINDOW_DATA))
   {
     if (g_iWindowThis == WINDOW_CODE)
@@ -7193,6 +7254,7 @@ Update_t CmdWindowShowCode2 (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowData (int nArgs)
 {
+  (void)nArgs;
   if (g_iWindowThis == WINDOW_CODE)
   {
     g_aWindowConfig[ g_iWindowThis ].bSplit = true;
@@ -7214,6 +7276,7 @@ Update_t CmdWindowShowData (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowData1 (int nArgs)
 {
+  (void)nArgs;
 /*
   if (g_iWindowThis != PARAM_CODE_1)
   {
@@ -7228,6 +7291,7 @@ Update_t CmdWindowShowData1 (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowData2 (int nArgs)
 {
+  (void)nArgs;
   if ((g_iWindowThis == WINDOW_CODE) || (g_iWindowThis == WINDOW_DATA))
   {
     if (g_iWindowThis == WINDOW_CODE)
@@ -7248,6 +7312,7 @@ Update_t CmdWindowShowData2 (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowSource (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -7255,12 +7320,14 @@ Update_t CmdWindowShowSource (int nArgs)
 //===========================================================================
 Update_t CmdWindowShowSource1 (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 Update_t CmdWindowShowSource2 (int nArgs)
 {
+  (void)nArgs;
   _WindowSplit( WINDOW_SOURCE );
   WindowUpdateSizes();
 
@@ -7270,24 +7337,28 @@ Update_t CmdWindowShowSource2 (int nArgs)
 //===========================================================================
 Update_t CmdWindowViewCode (int nArgs)
 {
+  (void)nArgs;
   return _CmdWindowViewCommon( WINDOW_CODE );
 }
 
 //===========================================================================
 Update_t CmdWindowViewConsole (int nArgs)
 {
+  (void)nArgs;
   return _CmdWindowViewFull( WINDOW_CONSOLE );
 }
 
 //===========================================================================
 Update_t CmdWindowViewData (int nArgs)
 {
+  (void)nArgs;
   return _CmdWindowViewCommon( WINDOW_DATA );
 }
 
 //===========================================================================
 Update_t CmdWindowViewOutput (int nArgs)
 {
+  (void)nArgs;
   VideoRedrawScreen();
 
   DebugVideoMode::Instance().Set(g_uVideoMode);
@@ -7298,12 +7369,14 @@ Update_t CmdWindowViewOutput (int nArgs)
 //===========================================================================
 Update_t CmdWindowViewSource (int nArgs)
 {
+  (void)nArgs;
   return _CmdWindowViewFull( WINDOW_CONSOLE );
 }
 
 //===========================================================================
 Update_t CmdWindowViewSymbols (int nArgs)
 {
+  (void)nArgs;
   return _CmdWindowViewFull( WINDOW_CONSOLE );
 }
 
@@ -7340,6 +7413,7 @@ Update_t CmdWindow (int nArgs)
 //===========================================================================
 Update_t CmdWindowLast (int nArgs)
 {
+  (void)nArgs;
   _WindowLast();
   WindowUpdateConsoleDisplayedSize();
   return UPDATE_ALL;
@@ -7478,6 +7552,7 @@ Update_t CmdZeroPageEnable  (int nArgs)
 //===========================================================================
 Update_t CmdZeroPageList    (int nArgs)
 {
+  (void)nArgs;
   if (! g_nZeroPagePointers)
   {
     _ZeroPage_Error();
@@ -7501,6 +7576,7 @@ Update_t CmdZeroPageLoad    (int nArgs)
 //===========================================================================
 Update_t CmdZeroPageSave    (int nArgs)
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -7773,7 +7849,7 @@ Update_t ExecuteCommand (int nArgs)
 
           regs.pc = nAddress;
 
-          g_nAppMode = MODE_RUNNING; // exit the debugger
+          g_state.mode = MODE_RUNNING; // exit the debugger
 
           nFound = 1;
           g_iCommand = CMD_OUTPUT_ECHO; // hack: don't cook args
@@ -8013,11 +8089,13 @@ void OutputTraceLine ()
       //, sTarget // TODO: Show target?
     );
   }
+  (void)bCook;
 #endif
 }
 
 //===========================================================================
 int ParseInput ( char* pConsoleInput, bool bCook )
+  (void)bCook;
 {
   int nArg = 0;
 
@@ -8342,7 +8420,7 @@ bool ProfileSave()
 {
   bool bStatus = false;
 
-  const std::string sFilename = g_sProgramDir + g_FileNameProfile; // TODO: Allow user to decide?
+  const std::string sFilename = g_state.sProgramDir + g_FileNameProfile; // TODO: Allow user to decide?
 
   FILE *hFile = fopen( sFilename.c_str(), "wt" );
 
@@ -8384,11 +8462,11 @@ static void InitDisasm(void)
 void DebugBegin ()
 {
   // This is called every time the debugger is entered.
-  g_nAppMode = MODE_DEBUG;
+  g_state.mode = MODE_DEBUG;
 
   AllocateDebuggerMemDC();
 
-  g_nAppMode = MODE_DEBUG;
+  g_state.mode = MODE_DEBUG;
   FrameRefreshStatus(DRAW_TITLE);
 
   if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E))
@@ -8479,13 +8557,13 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay/*=false*/)
     {
       // Enter turbo debugger mode -- UI not updated, etc.
       g_nDebugSteps = -1;
-      g_nAppMode = MODE_STEPPING;
+      g_state.mode = MODE_STEPPING;
     }
     else
     {
       // Enter normal debugger mode -- UI updated every instruction, etc.
       g_nDebugSteps = 1;
-      g_nAppMode = MODE_STEPPING;
+      g_state.mode = MODE_STEPPING;
     }
   }
 
@@ -8575,7 +8653,7 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay/*=false*/)
   {
     SoundCore_SetFade(FADE_OUT);  // NB. Call when MODE_STEPPING (not MODE_DEBUG) - see function
 
-    g_nAppMode = MODE_DEBUG;
+    g_state.mode = MODE_DEBUG;
     FrameRefreshStatus(DRAW_TITLE);
 // BUG: PageUp, Trace - doesn't center cursor
 
@@ -8591,9 +8669,9 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay/*=false*/)
 //===========================================================================
 void DebugStopStepping(void)
 {
-  assert(g_nAppMode == MODE_STEPPING);
+  assert(g_state.mode == MODE_STEPPING);
 
-  if (g_nAppMode != MODE_STEPPING)
+  if (g_state.mode != MODE_STEPPING)
     return;
 
   g_nDebugSteps = 0; // On next DebugContinueStepping(), stop single-stepping and transition to MODE_DEBUG
@@ -8633,7 +8711,7 @@ void DebugEnd ()
 
   g_vMemorySearchResults.erase( g_vMemorySearchResults.begin(), g_vMemorySearchResults.end() );
 
-  g_nAppMode = MODE_RUNNING;
+  g_state.mode = MODE_RUNNING;
 
   ReleaseDebuggerMemDC();
 }
@@ -8743,10 +8821,10 @@ void DebugInitialize()
   _Bookmark_Reset();
 
   static bool doneAutoRun = false;
-  if (!doneAutoRun)  // Don't re-run on a VM restart
+  if (!doneAutoRun)  // Don't re-run on a VM g_state.restart
   {
     doneAutoRun = true;
-    std::string pathname = g_sProgramDir;
+    std::string pathname = g_state.sProgramDir;
     pathname += "DebuggerAutoRun.txt";
     Util_SafeStrCpy(g_aArgs[1].sArg, pathname.c_str(), MAX_ARG_LEN);
     g_bReportMissingScripts = false;
@@ -8765,9 +8843,9 @@ void DebugReset(void)
 // Add character to the input line
 void DebuggerInputConsoleChar( char ch )
 {
-  assert(g_nAppMode == MODE_DEBUG);
+  assert(g_state.mode == MODE_DEBUG);
 
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_state.mode != MODE_DEBUG)
     return;
 
   if (g_bConsoleBufferPaused)
@@ -8949,7 +9027,7 @@ void ToggleFullScreenConsole()
 //===========================================================================
 void DebuggerProcessKey( int keycode )
 {
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_state.mode != MODE_DEBUG)
     return;
 
   if (DebugVideoMode::Instance().IsSet())
@@ -8961,9 +9039,9 @@ void DebuggerProcessKey( int keycode )
       return;
     }
 
-    // Normally any key press takes us out of "Viewing Apple Output" g_nAppMode
-    // SDLK_F# are already processed, so we can't use them to cycle next video g_nAppMode
-    //  if ((g_nAppMode != MODE_LOGO) && (g_nAppMode != MODE_DEBUG))
+    // Normally any key press takes us out of "Viewing Apple Output" mode
+    // SDLK_F# are already processed, so we can't use them to cycle next video mode
+    //  if ((mode != MODE_LOGO) && (mode != MODE_DEBUG))
     DebugVideoMode::Instance().Reset();
     UpdateDisplay( UPDATE_ALL ); // 1
     return;
@@ -8995,7 +9073,7 @@ void DebuggerProcessKey( int keycode )
   }
   else
   // If have console input, don't invoke curmovement
-  // TODO: Probably should disable all "movement" keys to map them to line editing g_nAppMode
+  // TODO: Probably should disable all "movement" keys to map them to line editing mode
   if ((keycode == SDLK_SPACE) && g_nConsoleInputChars)
     return;
   else if (keycode == SDLK_ESCAPE)
@@ -9355,7 +9433,7 @@ void DebuggerUpdate()
 
 void DebuggerCursorUpdate()
 {
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_state.mode != MODE_DEBUG)
     return;
 
   const  int nUpdatesPerSecond = 4;
@@ -9391,7 +9469,7 @@ void DebuggerCursorNext()
 //===========================================================================
 void DebuggerMouseClick( int x, int y )
 {
-  if (g_nAppMode != MODE_DEBUG)
+  if (g_state.mode != MODE_DEBUG)
     return;
 
   KeybUpdateCtrlShiftStatus();
@@ -9518,5 +9596,5 @@ void DebuggerMouseClick( int x, int y )
 
 bool IsDebugSteppingAtFullSpeed(void)
 {
-  return (g_nAppMode == MODE_STEPPING) && g_bDebugFullSpeed;
+  return (g_state.mode == MODE_STEPPING) && g_bDebugFullSpeed;
 }
