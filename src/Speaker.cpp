@@ -253,7 +253,7 @@ unsigned char SpkrToggle(unsigned short, unsigned short, unsigned char, unsigned
     Spkr_SetActive(true);
   }
 
-  needsprecision = cumulativecycles;  // ?
+  g_state.needsprecision = cumulativecycles;  // ?
 
   if (soundtype == SOUND_WAVE) {
     CpuCalcCycles(nCyclesLeft);
@@ -265,13 +265,14 @@ unsigned char SpkrToggle(unsigned short, unsigned short, unsigned char, unsigned
 }
 
 void SpkrUpdate(unsigned int totalcycles) {
+  (void)totalcycles;
   if (!g_bSpkrToggleFlag) {
     if (!g_nSpkrQuietCycleCount) {
       g_nSpkrQuietCycleCount = g_nCumulativeCycles;
     } else if (g_nCumulativeCycles - g_nSpkrQuietCycleCount > (uint64_t)g_fCurrentCLK6502 / 5)
     {
       // After 0.2 sec of Apple time, deactivate spkr voice
-      // . This allows emulator to auto-switch to full-speed g_nAppMode for fast disk access
+      // . This allows emulator to auto-switch to full-speed mode for fast disk access
       Spkr_SetActive(false);
     }
   } else {
@@ -349,6 +350,8 @@ unsigned int SpkrGetVolume() {
 }
 
 void SpkrSetVolume(unsigned int dwVolume, unsigned int dwVolumeMax) {
+  (void)dwVolume;
+  (void)dwVolumeMax;
 }
 
 bool Spkr_DSInit()

@@ -66,7 +66,7 @@ static bool CheckPrint()
 {
   inactivity = 0;
   if (file == NULL) {
-    file = fopen(g_sParallelPrinterFile, (g_bPrinterAppend) ? "ab" : "wb");
+    file = fopen(g_state.sParallelPrinterFile, (g_bPrinterAppend) ? "ab" : "wb");
   }
   return (file != NULL);
 }

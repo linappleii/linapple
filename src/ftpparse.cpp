@@ -31,6 +31,10 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 static int progress_callback(void* clientp,
                              curl_off_t dltotal, curl_off_t dlnow,
                              curl_off_t ultotal, curl_off_t ulnow) {
+  (void)clientp;
+  (void)dltotal;
+  (void)ultotal;
+  (void)ulnow;
   printf("FTP: %lu bytes downloaded\n", dlnow);
   return 0;
 }
@@ -49,7 +53,7 @@ CURLcode ftp_get(const char *ftp_path, const char *local_path)
   curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream);
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
 
   curl_easy_setopt(g_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
   curl_easy_setopt(g_curl, CURLOPT_NOPROGRESS, 0);

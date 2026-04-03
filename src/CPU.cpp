@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // . The exception is, what he calls "SKB" and "SKW" I call "NOP",
 // . for consistency's sake. Several other naming conventions exist.
 // . Of course, only the 6502 has illegal opcodes, the 65C02 doesn't.
-// . Thus they're not emulated in Enhanced //e g_nAppMode. Games relying on them
+// . Thus they're not emulated in Enhanced //e mode. Games relying on them
 // . don't run on a real Enhanced //e either. The old mixture of 65C02
 // . emulation and skipping the right number of bytes for illegal 6502
 // . opcodes, while working surprisingly well in practice, was IMHO
@@ -73,7 +73,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 // NB2. bSlowerOnPagecross can't be used for r/w detection, as these
 // .    opcodes don't init this flag:
-// . $EC CPX ABS (since there's no addressing g_nAppMode of CPY which has variable cycle number)
+// . $EC CPX ABS (since there's no addressing mode of CPY which has variable cycle number)
 // . $CC CPY ABS (same)
 //
 // 65C02 info:
@@ -764,6 +764,7 @@ uint32_t g_nMin = 0xFFFFFFFF;
 uint32_t g_nMax = 0;
 
 static inline void DoIrqProfiling(uint32_t uCycles)
+  (void)uCycles;
 {
   #ifdef _DEBUG
   if(regs.ps & AF_INTERRUPT)
@@ -808,6 +809,12 @@ static inline void Fetch(uint8_t &iOpcode, uint32_t uExecutedCycles)
 
 //#define ENABLE_NMI_SUPPORT  // Not used - so don't enable
 static inline void NMI(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
+  (void)flagn;
+  (void)flagv;
+  (void)flagz;
+  (void)uExecutedCycles;
+  (void)uExtraCycles;
+  (void)flagc;
 {
   #ifdef ENABLE_NMI_SUPPORT
   if(g_bNmiFlank)

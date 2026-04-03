@@ -268,6 +268,7 @@ void DebuggerSetColorFG( unsigned int nRGB )
 
 void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent )
 {
+	(void) bTransparent;
 	g_hConsoleBrushBG = nRGB;
 }
 
@@ -316,7 +317,7 @@ void PrintGlyph( const int x, const int y, const char glyph )
 		g += 32-' ';
 	}
 	else
-	if ((glyph >= '`')&&(glyph <= 127))
+	if ((glyph >= '`')&&((unsigned char)glyph <= 127))
 	{
 		g += 6*16 - '`';
 	}
@@ -416,7 +417,7 @@ void DebuggerPrintColor( int x, int y, const conchar_t * pText )
 //===========================================================================
 bool CanDrawDebugger()
 {
-	if ((g_nAppMode == MODE_DEBUG) || (g_nAppMode == MODE_STEPPING))
+	if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING))
 		return true;
 
 	return false;
@@ -1222,6 +1223,7 @@ void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 				Util_SafeStrCpy( pDst, (const char*)(mem + nBaseAddress), iByte );
 				pDst += iByte;
 				*pDst = 0;
+				break;
 			case NOP_STRING_APPLE:
 				iByte = line_.nOpbyte;
 				pSrc = (const char*)mem + nStartAddress;
@@ -1256,6 +1258,7 @@ void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 
 //===========================================================================
 void FormatDisassemblyLine( const DisasmLine_t & line, char * sDisassembly, const int nBufferSize )
+  (void)nBufferSize;
 {
 	//> Address Seperator Opcodes   Label Mnemonic Target [Immediate] [Branch]
 	//
@@ -2201,6 +2204,8 @@ void _DrawSoftSwitch( RECT & rect, int nAddress, bool bSet, char *sPrefix, char 
 }
 
 void _DrawTriStateSoftSwitch( RECT & rect, int nAddress, const int iBankDisplay, int iActive, char *sPrefix, char *sOn, char *sOff, const char *sSuffix = NULL, int bg_default = BG_INFO )
+  (void)sPrefix;
+  (void)sSuffix;
 {
 	bool bSet = (iBankDisplay == iActive);
 
@@ -2809,6 +2814,7 @@ void DrawSubWindow_Console (Update_t bUpdate)
 
 //===========================================================================
 void DrawSubWindow_Data (Update_t bUpdate)
+  (void)bUpdate;
 {
 	int iBackground;
 
@@ -2960,6 +2966,7 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
 //===========================================================================
 
 void DrawVideoScannerInfo (int line)
+  (void)line;
 {
 #ifdef TODO // Not supported for Linux yet
 	NTSC_VideoGetScannerAddressForDebugger();		// update g_nVideoClockHorz/g_nVideoClockVert
@@ -3017,6 +3024,7 @@ void DrawVideoScannerInfo (int line)
 
 //===========================================================================
 void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
+  (void)iWindow;
 {
 	if (g_iWindowThis == WINDOW_CONSOLE)
 		return;
@@ -3089,17 +3097,20 @@ void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
 
 //===========================================================================
 void DrawSubWindow_IO (Update_t bUpdate)
+  (void)bUpdate;
 {
 }
 
 //===========================================================================
 void DrawSubWindow_Source (Update_t bUpdate)
+  (void)bUpdate;
 {
 }
 
 
 //===========================================================================
 void DrawSubWindow_Source2 (Update_t bUpdate)
+  (void)bUpdate;
 {
 	DebuggerSetColorFG( DebuggerGetColor( FG_SOURCE ));
 
@@ -3167,11 +3178,13 @@ void DrawSubWindow_Source2 (Update_t bUpdate)
 
 //===========================================================================
 void DrawSubWindow_Symbols (Update_t bUpdate)
+  (void)bUpdate;
 {
 }
 
 //===========================================================================
 void DrawSubWindow_ZeroPage (Update_t bUpdate)
+  (void)bUpdate;
 {
 }
 
@@ -3190,6 +3203,7 @@ void DrawWindow_Code( Update_t bUpdate )
 // Full Screen console
 //===========================================================================
 void DrawWindow_Console( Update_t bUpdate )
+  (void)bUpdate;
 {
 	// Nothing to do, since text and draw background handled by DrawSubWindow_Console()
 	// If the full screen console is only showing partial lines
@@ -3234,6 +3248,7 @@ void DrawWindow_ZeroPage( Update_t bUpdate )
 
 //===========================================================================
 void DrawWindowBackground_Main( int g_iWindowThis )
+  (void)g_iWindowThis;
 {
 	// TODO/FIXME: COLOR_BG_CODE -> g_iWindowThis, once all tab backgrounds are listed first in g_aColors !
 	DebuggerSetColorBG( DebuggerGetColor( BG_DISASM_1 )); // COLOR_BG_CODE
@@ -3251,6 +3266,7 @@ void DrawWindowBackground_Main( int g_iWindowThis )
 
 //===========================================================================
 void DrawWindowBackground_Info( int g_iWindowThis )
+  (void)g_iWindowThis;
 {
 	DebuggerSetColorBG( DebuggerGetColor( BG_INFO )); // COLOR_BG_DATA
 
@@ -3371,6 +3387,7 @@ void DrawWindowBottom ( Update_t bUpdate, int iWindow )
 
 //===========================================================================
 void DrawSubWindow_Code ( int iWindow )
+  (void)iWindow;
 {
 	int nLines = g_nDisasmWinHeight;
 

@@ -127,7 +127,7 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
                                                            framebufferinfo[i].g = g1; \
 framebufferinfo[i].b  = b1;
 
-#define  HGR_MATRIX_YOFFSET 2  // For tv emulation g_nAppMode
+#define  HGR_MATRIX_YOFFSET 2  // For tv emulation mode
 
 // video scanner constants
 int const kHBurstClock = 53; // clock when Color Burst starts
@@ -353,7 +353,7 @@ void CreateDIBSections() {
   if (g_origscreen) {
     SDL_DestroySurface(g_origscreen);
   }
-  g_origscreen = SDL_CreateSurface(g_ScreenWidth, g_ScreenHeight, SDL_PIXELFORMAT_INDEX8);
+  g_origscreen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_INDEX8);
 
   if (g_hDeviceBitmap == NULL || g_origscreen == NULL) {
     fprintf(stderr, "g_hDeviceBitmap or g_origscreen was not created: %s\n", SDL_GetError());
@@ -496,7 +496,7 @@ void DrawDHiResSource() {
 
       if (g_videotype == VT_COLOR_TEXT_OPTIMIZED) {
         // Activate for fringe reduction on white hgr text
-        // drawback: loss of color mix patterns in hgr g_nAppMode.
+        // drawback: loss of color mix patterns in hgr mode.
         // select g_videotype by index
 
         for (pixel = 0; pixel < 13; pixel++) {
@@ -572,7 +572,7 @@ void DrawHiResSourceHalfShiftDim() {
               color = ((odd ^ (iPixel & 1)) << 1) | hibit;
           } else if (aPixels[iPixel - 1] && aPixels[iPixel + 1]) {
             // Activate for fringe reduction on white hgr text -
-            // drawback: loss of color mix patterns in hgr g_nAppMode.
+            // drawback: loss of color mix patterns in hgr mode.
             // select g_videotype by index exclusion
             if (!(aPixels[iPixel - 2] && aPixels[iPixel + 2]))
               color = ((odd ^ !(iPixel & 1)) << 1) | hibit;
@@ -910,6 +910,8 @@ void SetLastDrawnImage() {
 // This copies the literal Apple ROM font pixels
 // to the graphical display buffer.
 bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)x;
+  (void)y;
   unsigned char ch = *(g_pTextBank0 + offset);
   bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
 
@@ -939,6 +941,8 @@ inline bool _Update80ColumnCell(unsigned char c, const int xPixel, const int yPi
 }
 
 bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)x;
+  (void)y;
   bool bDirty = false;
 
   #if FLASH_80_COL
@@ -964,6 +968,7 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
 }
 
 bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)y;
   bool bDirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
@@ -1122,6 +1127,7 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
 }
 
 bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)y;
   bool bDirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
@@ -1150,6 +1156,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
 }
 
 bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)y;
   unsigned char val = *(g_pTextBank0 + offset);
   if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
     CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), ((val & 0xF) << 4));
@@ -1160,6 +1167,7 @@ bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
 }
 
 bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
+  (void)y;
   unsigned char auxval = *(g_pTextBank1 + offset);
   unsigned char mainval = *(g_pTextBank0 + offset);
 
@@ -1604,6 +1612,7 @@ void VideoSetNextScheduledUpdate()
 // Simple polling thread that calls the refresh function
 // when necessary.
 void *VideoWorkerThread(void *params)
+  (void)params;
 {
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
@@ -1654,7 +1663,7 @@ void VideoPerformRefresh() {
   displaypage2_latched = displaypage2;
   vidmode_latched = g_uVideoMode;
 
-  if (g_nAppMode == MODE_DEBUG)
+  if (g_state.mode == MODE_DEBUG)
   {
     if (redrawfull==0)
     {
@@ -1828,6 +1837,7 @@ void VideoResetState() {
 }
 
 unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char write, unsigned char, uint32_t nCyclesLeft) {
+  (void)write;
 
   // Claim video mutex giving deference to any drawing operation
   // in progress in another thread
@@ -1936,7 +1946,7 @@ void VideoUpdateFlash() {
     nTextFlashCnt = 0;
     g_bTextFlashState = !g_bTextFlashState;
 
-    // Redraw any FLASHing chars if any text showing. NB. No FLASH g_nAppMode for 80 cols
+    // Redraw any FLASHing chars if any text showing. NB. No FLASH mode for 80 cols
     if ((SW_TEXT || SW_MIXED)) { // FIX: FLASH 80-Column
       g_bTextFlashFlag = true;
     }

@@ -78,7 +78,7 @@ private:
 const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 {
   char ftpdirpath[1024];
-  int l = snprintf(ftpdirpath, sizeof(ftpdirpath), "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+  int l = snprintf(ftpdirpath, sizeof(ftpdirpath), "%s/%s%s", g_state.sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
 
   if (!(l>=0 && l<(int)sizeof(ftpdirpath))) {      // check returned value
     failure_message = "Failed get path for FTP dir listing";

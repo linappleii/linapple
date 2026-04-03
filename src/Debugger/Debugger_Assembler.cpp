@@ -49,23 +49,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	AddressingMode_t g_aOpmodes[ NUM_ADDRESSING_MODES ] =
 	{ // Output, but eventually used for Input when Assembler is working.
-		{""        , 1 , "(implied)"              }, // (implied)
-        {""        , 1 , "n/a 1"         }, // INVALID1
-        {""        , 2 , "n/a 2"         }, // INVALID2
-        {""        , 3 , "n/a 3"         }, // INVALID3
-		{"%02X"    , 2 , "Immediate"     }, // AM_M // #$%02X -> %02X
-        {"%04X"    , 3 , "Absolute"      }, // AM_A
-        {"%02X"    , 2 , "Zero Page"     }, // AM_Z
-        {"%04X,X"  , 3 , "Absolute,X"    }, // AM_AX     // %s,X
-        {"%04X,Y"  , 3 , "Absolute,Y"    }, // AM_AY     // %s,Y
-        {"%02X,X"  , 2 , "Zero Page,X"   }, // AM_ZX     // %s,X
-        {"%02X,Y"  , 2 , "Zero Page,Y"   }, // AM_ZY     // %s,Y
-        {"%s"      , 2 , "Relative"      }, // AM_R
-        {"(%02X,X" , 2 , "(Zero Page),X" }, // AM_IZX // ($%02X,X) -> %s,X
-        {"(%04X,X" , 3 , "(Absolute),X"  }, // AM_IAX // ($%04X,X) -> %s,X
-        {"(%02X,Y" , 2 , "(Zero Page),Y" }, // AM_NZY // ($%02X),Y
-        {"(%02X"   , 2 , "(Zero Page)"   }, // AM_NZ  // ($%02X) -> $%02X
-        {"(%04X"   , 3 , "(Absolute)"    }  // AM_NA  // (%04X) -> %s
+		{"", 1, "(implied)"}, // (implied)
+        {"", 1, "n/a 1"}, // INVALID1
+        {"", 2, "n/a 2"}, // INVALID2
+        {"", 3, "n/a 3"}, // INVALID3
+		{"%02X", 2, "Immediate"}, // AM_M // #$%02X -> %02X
+        {"%04X", 3, "Absolute"}, // AM_A
+        {"%02X", 2, "Zero Page"}, // AM_Z
+        {"%04X,X", 3, "Absolute,X"}, // AM_AX     // %s,X
+        {"%04X,Y", 3, "Absolute,Y"}, // AM_AY     // %s,Y
+        {"%02X,X", 2, "Zero Page,X"}, // AM_ZX     // %s,X
+        {"%02X,Y", 2, "Zero Page,Y"}, // AM_ZY     // %s,Y
+        {"%s", 2, "Relative"}, // AM_R
+        {"(%02X,X", 2, "(Zero Page),X"}, // AM_IZX // ($%02X,X) -> %s,X
+        {"(%04X,X", 3, "(Absolute),X"}, // AM_IAX // ($%04X,X) -> %s,X
+        {"(%02X,Y", 2, "(Zero Page),Y"}, // AM_NZY // ($%02X),Y
+        {"(%02X", 2, "(Zero Page)"}, // AM_NZ  // ($%02X) -> $%02X
+        {"(%04X", 3, "(Absolute)"}  // AM_NA  // (%04X) -> %s
 	};
 
 
@@ -100,77 +100,77 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #define SR MEM_S | MEM_RI
 const Opcodes_t g_aOpcodes65C02[ NUM_OPCODES ] =
 {
-	{"BRK", 0     , SW}, {"ORA", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // 00 .. 03
-	{"TSB", AM_Z  , _W}, {"ORA", AM_Z  , R_}, {"ASL", AM_Z  , RW}, {"nop", 0  , 0 }, // 04 .. 07
-	{"PHP", 0     , SW}, {"ORA", AM_M  , im}, {"ASL", 0     ,  0}, {"nop", 0  , 0 }, // 08 .. 0B
-	{"TSB", AM_A  , _W}, {"ORA", AM_A  , R_}, {"ASL", AM_A  , RW}, {"nop", 0  , 0 }, // 0C .. 0F
-	{"BPL", AM_R  ,  0}, {"ORA", AM_NZY, R_}, {"ORA", AM_NZ , R_}, {"nop", 0  , 0 }, // 10 .. 13
-	{"TRB", AM_Z  , _W}, {"ORA", AM_ZX , R_}, {"ASL", AM_ZX , RW}, {"nop", 0  , 0 }, // 14 .. 17
-	{"CLC", 0     ,  0}, {"ORA", AM_AY , R_}, {"INC", 0     ,  0}, {"nop", 0  , 0 }, // 18 .. 1B
-	{"TRB", AM_A  , _W}, {"ORA", AM_AX , R_}, {"ASL", AM_AX , RW}, {"nop", 0  , 0 }, // 1C .. 1F
+	{"BRK", 0, SW}, {"ORA", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // 00 .. 03
+	{"TSB", AM_Z, _W}, {"ORA", AM_Z, R_}, {"ASL", AM_Z, RW}, {"nop", 0, 0}, // 04 .. 07
+	{"PHP", 0, SW}, {"ORA", AM_M, im}, {"ASL", 0, 0}, {"nop", 0, 0}, // 08 .. 0B
+	{"TSB", AM_A, _W}, {"ORA", AM_A, R_}, {"ASL", AM_A, RW}, {"nop", 0, 0}, // 0C .. 0F
+	{"BPL", AM_R, 0}, {"ORA", AM_NZY, R_}, {"ORA", AM_NZ, R_}, {"nop", 0, 0}, // 10 .. 13
+	{"TRB", AM_Z, _W}, {"ORA", AM_ZX, R_}, {"ASL", AM_ZX, RW}, {"nop", 0, 0}, // 14 .. 17
+	{"CLC", 0, 0}, {"ORA", AM_AY, R_}, {"INC", 0, 0}, {"nop", 0, 0}, // 18 .. 1B
+	{"TRB", AM_A, _W}, {"ORA", AM_AX, R_}, {"ASL", AM_AX, RW}, {"nop", 0, 0}, // 1C .. 1F
 
-	{"JSR", AM_A  , SW}, {"AND", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // 20 .. 23
-	{"BIT", AM_Z  , R_}, {"AND", AM_Z  , R_}, {"ROL", AM_Z  , RW}, {"nop", 0  , 0 }, // 24 .. 27
-	{"PLP", 0     , SR}, {"AND", AM_M  , im}, {"ROL", 0     ,  0}, {"nop", 0  , 0 }, // 28 .. 2B
-	{"BIT", AM_A  , R_}, {"AND", AM_A  , R_}, {"ROL", AM_A  , RW}, {"nop", 0  , 0 }, // 2C .. 2F
-	{"BMI", AM_R  ,  0}, {"AND", AM_NZY, R_}, {"AND", AM_NZ , R_}, {"nop", 0  , 0 }, // 30 .. 33
-	{"BIT", AM_ZX , R_}, {"AND", AM_ZX , R_}, {"ROL", AM_ZX , RW}, {"nop", 0  , 0 }, // 34 .. 37
-	{"SEC", 0     ,  0}, {"AND", AM_AY , R_}, {"DEC", 0     ,  0}, {"nop", 0  , 0 }, // 38 .. 3B
-	{"BIT", AM_AX , R_}, {"AND", AM_AX , R_}, {"ROL", AM_AX , RW}, {"nop", 0  , 0 }, // 3C .. 3F
+	{"JSR", AM_A, SW}, {"AND", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // 20 .. 23
+	{"BIT", AM_Z, R_}, {"AND", AM_Z, R_}, {"ROL", AM_Z, RW}, {"nop", 0, 0}, // 24 .. 27
+	{"PLP", 0, SR}, {"AND", AM_M, im}, {"ROL", 0, 0}, {"nop", 0, 0}, // 28 .. 2B
+	{"BIT", AM_A, R_}, {"AND", AM_A, R_}, {"ROL", AM_A, RW}, {"nop", 0, 0}, // 2C .. 2F
+	{"BMI", AM_R, 0}, {"AND", AM_NZY, R_}, {"AND", AM_NZ, R_}, {"nop", 0, 0}, // 30 .. 33
+	{"BIT", AM_ZX, R_}, {"AND", AM_ZX, R_}, {"ROL", AM_ZX, RW}, {"nop", 0, 0}, // 34 .. 37
+	{"SEC", 0, 0}, {"AND", AM_AY, R_}, {"DEC", 0, 0}, {"nop", 0, 0}, // 38 .. 3B
+	{"BIT", AM_AX, R_}, {"AND", AM_AX, R_}, {"ROL", AM_AX, RW}, {"nop", 0, 0}, // 3C .. 3F
 
-	{"RTI", 0     , SR}, {"EOR", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // 40 .. 43
-	{"nop", AM_Z  ,  0}, {"EOR", AM_Z  , R_}, {"LSR", AM_Z  , _W}, {"nop", 0  , 0 }, // 44 .. 47
-	{"PHA", 0     , SW}, {"EOR", AM_M  , im}, {"LSR", 0     ,  0}, {"nop", 0  , 0 }, // 48 .. 4B
-	{"JMP", AM_A  ,  0}, {"EOR", AM_A  , R_}, {"LSR", AM_A  , _W}, {"nop", 0  , 0 }, // 4C .. 4F
-	{"BVC", AM_R  ,  0}, {"EOR", AM_NZY, R_}, {"EOR", AM_NZ , R_}, {"nop", 0  , 0 }, // 50 .. 53
-	{"nop", AM_ZX ,  0}, {"EOR", AM_ZX , R_}, {"LSR", AM_ZX , _W}, {"nop", 0  , 0 }, // 54 .. 57
-	{"CLI", 0     ,  0}, {"EOR", AM_AY , R_}, {"PHY", 0     , SW}, {"nop", 0  , 0 }, // 58 .. 5B
-	{"nop", AM_AX ,  0}, {"EOR", AM_AX , R_}, {"LSR", AM_AX , RW}, {"nop", 0  , 0 }, // 5C .. 5F
+	{"RTI", 0, SR}, {"EOR", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // 40 .. 43
+	{"nop", AM_Z, 0}, {"EOR", AM_Z, R_}, {"LSR", AM_Z, _W}, {"nop", 0, 0}, // 44 .. 47
+	{"PHA", 0, SW}, {"EOR", AM_M, im}, {"LSR", 0, 0}, {"nop", 0, 0}, // 48 .. 4B
+	{"JMP", AM_A, 0}, {"EOR", AM_A, R_}, {"LSR", AM_A, _W}, {"nop", 0, 0}, // 4C .. 4F
+	{"BVC", AM_R, 0}, {"EOR", AM_NZY, R_}, {"EOR", AM_NZ, R_}, {"nop", 0, 0}, // 50 .. 53
+	{"nop", AM_ZX, 0}, {"EOR", AM_ZX, R_}, {"LSR", AM_ZX, _W}, {"nop", 0, 0}, // 54 .. 57
+	{"CLI", 0, 0}, {"EOR", AM_AY, R_}, {"PHY", 0, SW}, {"nop", 0, 0}, // 58 .. 5B
+	{"nop", AM_AX, 0}, {"EOR", AM_AX, R_}, {"LSR", AM_AX, RW}, {"nop", 0, 0}, // 5C .. 5F
 
-	{"RTS", 0     , SR}, {"ADC", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // 60 .. 63
-	{"STZ", AM_Z  , _W}, {"ADC", AM_Z  , R_}, {"ROR", AM_Z  , RW}, {"nop", 0  , 0 }, // 64 .. 67
-	{"PLA", 0     , SR}, {"ADC", AM_M  , im}, {"ROR", 0     ,  0}, {"nop", 0  , 0 }, // 68 .. 6B
-	{"JMP", AM_NA , R_}, {"ADC", AM_A  , R_}, {"ROR", AM_A  , RW}, {"nop", 0  , 0 }, // 6C .. 6F
-	{"BVS", AM_R  ,  0}, {"ADC", AM_NZY, R_}, {"ADC", AM_NZ , R_}, {"nop", 0  , 0 }, // 70 .. 73
-	{"STZ", AM_ZX , _W}, {"ADC", AM_ZX , R_}, {"ROR", AM_ZX , RW}, {"nop", 0  , 0 }, // 74 .. 77
-	{"SEI", 0     ,  0}, {"ADC", AM_AY , R_}, {"PLY", 0     , SR}, {"nop", 0  , 0 }, // 78 .. 7B
-	{"JMP", AM_IAX, R_}, {"ADC", AM_AX , R_}, {"ROR", AM_AX , RW}, {"nop", 0  , 0 }, // 7C .. 7F
+	{"RTS", 0, SR}, {"ADC", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // 60 .. 63
+	{"STZ", AM_Z, _W}, {"ADC", AM_Z, R_}, {"ROR", AM_Z, RW}, {"nop", 0, 0}, // 64 .. 67
+	{"PLA", 0, SR}, {"ADC", AM_M, im}, {"ROR", 0, 0}, {"nop", 0, 0}, // 68 .. 6B
+	{"JMP", AM_NA, R_}, {"ADC", AM_A, R_}, {"ROR", AM_A, RW}, {"nop", 0, 0}, // 6C .. 6F
+	{"BVS", AM_R, 0}, {"ADC", AM_NZY, R_}, {"ADC", AM_NZ, R_}, {"nop", 0, 0}, // 70 .. 73
+	{"STZ", AM_ZX, _W}, {"ADC", AM_ZX, R_}, {"ROR", AM_ZX, RW}, {"nop", 0, 0}, // 74 .. 77
+	{"SEI", 0, 0}, {"ADC", AM_AY, R_}, {"PLY", 0, SR}, {"nop", 0, 0}, // 78 .. 7B
+	{"JMP", AM_IAX, R_}, {"ADC", AM_AX, R_}, {"ROR", AM_AX, RW}, {"nop", 0, 0}, // 7C .. 7F
 
-	{"BRA", AM_R  ,  0}, {"STA", AM_IZX, _W}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // 80 .. 83
-	{"STY", AM_Z  , _W}, {"STA", AM_Z  , _W}, {"STX", AM_Z  , _W}, {"nop", 0  , 0 }, // 84 .. 87
-	{"DEY", 0     ,  0}, {"BIT", AM_M  , im}, {"TXA", 0     ,  0}, {"nop", 0  , 0 }, // 88 .. 8B
-	{"STY", AM_A  , _W}, {"STA", AM_A  , _W}, {"STX", AM_A  , _W}, {"nop", 0  , 0 }, // 8C .. 8F
-	{"BCC", AM_R  ,  0}, {"STA", AM_NZY, _W}, {"STA", AM_NZ , _W}, {"nop", 0  , 0 }, // 90 .. 93
-	{"STY", AM_ZX , _W}, {"STA", AM_ZX , _W}, {"STX", AM_ZY , _W}, {"nop", 0  , 0 }, // 94 .. 97
-	{"TYA", 0     ,  0}, {"STA", AM_AY , _W}, {"TXS", 0     ,  0}, {"nop", 0  , 0 }, // 98 .. 9B
-	{"STZ", AM_A  , _W}, {"STA", AM_AX , _W}, {"STZ", AM_AX , _W}, {"nop", 0  , 0 }, // 9C .. 9F
+	{"BRA", AM_R, 0}, {"STA", AM_IZX, _W}, {"nop", AM_M, im}, {"nop", 0, 0}, // 80 .. 83
+	{"STY", AM_Z, _W}, {"STA", AM_Z, _W}, {"STX", AM_Z, _W}, {"nop", 0, 0}, // 84 .. 87
+	{"DEY", 0, 0}, {"BIT", AM_M, im}, {"TXA", 0, 0}, {"nop", 0, 0}, // 88 .. 8B
+	{"STY", AM_A, _W}, {"STA", AM_A, _W}, {"STX", AM_A, _W}, {"nop", 0, 0}, // 8C .. 8F
+	{"BCC", AM_R, 0}, {"STA", AM_NZY, _W}, {"STA", AM_NZ, _W}, {"nop", 0, 0}, // 90 .. 93
+	{"STY", AM_ZX, _W}, {"STA", AM_ZX, _W}, {"STX", AM_ZY, _W}, {"nop", 0, 0}, // 94 .. 97
+	{"TYA", 0, 0}, {"STA", AM_AY, _W}, {"TXS", 0, 0}, {"nop", 0, 0}, // 98 .. 9B
+	{"STZ", AM_A, _W}, {"STA", AM_AX, _W}, {"STZ", AM_AX, _W}, {"nop", 0, 0}, // 9C .. 9F
 
-	{"LDY", AM_M  , im}, {"LDA", AM_IZX, R_}, {"LDX", AM_M  , im}, {"nop", 0  , 0 }, // A0 .. A3
-	{"LDY", AM_Z  , R_}, {"LDA", AM_Z  , R_}, {"LDX", AM_Z  , R_}, {"nop", 0  , 0 }, // A4 .. A7
-	{"TAY", 0     ,  0}, {"LDA", AM_M  , im}, {"TAX", 0     , 0 }, {"nop", 0  , 0 }, // A8 .. AB
-	{"LDY", AM_A  , R_}, {"LDA", AM_A  , R_}, {"LDX", AM_A  , R_}, {"nop", 0  , 0 }, // AC .. AF
-	{"BCS", AM_R  ,  0}, {"LDA", AM_NZY, R_}, {"LDA", AM_NZ , R_}, {"nop", 0  , 0 }, // B0 .. B3
-	{"LDY", AM_ZX , R_}, {"LDA", AM_ZX , R_}, {"LDX", AM_ZY , R_}, {"nop", 0  , 0 }, // B4 .. B7
-	{"CLV", 0     ,  0}, {"LDA", AM_AY , R_}, {"TSX", 0     , 0 }, {"nop", 0  , 0 }, // B8 .. BB
-	{"LDY", AM_AX , R_}, {"LDA", AM_AX , R_}, {"LDX", AM_AY , R_}, {"nop", 0  , 0 }, // BC .. BF
+	{"LDY", AM_M, im}, {"LDA", AM_IZX, R_}, {"LDX", AM_M, im}, {"nop", 0, 0}, // A0 .. A3
+	{"LDY", AM_Z, R_}, {"LDA", AM_Z, R_}, {"LDX", AM_Z, R_}, {"nop", 0, 0}, // A4 .. A7
+	{"TAY", 0, 0}, {"LDA", AM_M, im}, {"TAX", 0, 0}, {"nop", 0, 0}, // A8 .. AB
+	{"LDY", AM_A, R_}, {"LDA", AM_A, R_}, {"LDX", AM_A, R_}, {"nop", 0, 0}, // AC .. AF
+	{"BCS", AM_R, 0}, {"LDA", AM_NZY, R_}, {"LDA", AM_NZ, R_}, {"nop", 0, 0}, // B0 .. B3
+	{"LDY", AM_ZX, R_}, {"LDA", AM_ZX, R_}, {"LDX", AM_ZY, R_}, {"nop", 0, 0}, // B4 .. B7
+	{"CLV", 0, 0}, {"LDA", AM_AY, R_}, {"TSX", 0, 0}, {"nop", 0, 0}, // B8 .. BB
+	{"LDY", AM_AX, R_}, {"LDA", AM_AX, R_}, {"LDX", AM_AY, R_}, {"nop", 0, 0}, // BC .. BF
 
-	{"CPY", AM_M  , im}, {"CMP", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // C0 .. C3
-	{"CPY", AM_Z  , R_}, {"CMP", AM_Z  , R_}, {"DEC", AM_Z  , RW}, {"nop", 0  , 0 }, // C4 .. C7
-	{"INY", 0     ,  0}, {"CMP", AM_M  , im}, {"DEX", 0     ,  0}, {"nop", 0  , 0 }, // C8 .. CB
-	{"CPY", AM_A  , R_}, {"CMP", AM_A  , R_}, {"DEC", AM_A  , RW}, {"nop", 0  , 0 }, // CC .. CF
-	{"BNE", AM_R  ,  0}, {"CMP", AM_NZY, R_}, {"CMP", AM_NZ ,  0}, {"nop", 0  , 0 }, // D0 .. D3
-	{"nop", AM_ZX ,  0}, {"CMP", AM_ZX , R_}, {"DEC", AM_ZX , RW}, {"nop", 0  , 0 }, // D4 .. D7
-	{"CLD", 0     ,  0}, {"CMP", AM_AY , R_}, {"PHX", 0     , SW}, {"nop", 0  , 0 }, // D8 .. DB
-	{"nop", AM_AX ,  0}, {"CMP", AM_AX , R_}, {"DEC", AM_AX , RW}, {"nop", 0  , 0 }, // DC .. DF
+	{"CPY", AM_M, im}, {"CMP", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // C0 .. C3
+	{"CPY", AM_Z, R_}, {"CMP", AM_Z, R_}, {"DEC", AM_Z, RW}, {"nop", 0, 0}, // C4 .. C7
+	{"INY", 0, 0}, {"CMP", AM_M, im}, {"DEX", 0, 0}, {"nop", 0, 0}, // C8 .. CB
+	{"CPY", AM_A, R_}, {"CMP", AM_A, R_}, {"DEC", AM_A, RW}, {"nop", 0, 0}, // CC .. CF
+	{"BNE", AM_R, 0}, {"CMP", AM_NZY, R_}, {"CMP", AM_NZ, 0}, {"nop", 0, 0}, // D0 .. D3
+	{"nop", AM_ZX, 0}, {"CMP", AM_ZX, R_}, {"DEC", AM_ZX, RW}, {"nop", 0, 0}, // D4 .. D7
+	{"CLD", 0, 0}, {"CMP", AM_AY, R_}, {"PHX", 0, SW}, {"nop", 0, 0}, // D8 .. DB
+	{"nop", AM_AX, 0}, {"CMP", AM_AX, R_}, {"DEC", AM_AX, RW}, {"nop", 0, 0}, // DC .. DF
 
-	{"CPX", AM_M  , im}, {"SBC", AM_IZX, R_}, {"nop", AM_M  , im}, {"nop", 0  , 0 }, // E0 .. E3
-	{"CPX", AM_Z  , R_}, {"SBC", AM_Z  , R_}, {"INC", AM_Z  , RW}, {"nop", 0  , 0 }, // E4 .. E7
-	{"INX", 0     ,  0}, {"SBC", AM_M  , R_}, {"NOP", 0     ,  0}, {"nop", 0  , 0 }, // E8 .. EB
-	{"CPX", AM_A  , R_}, {"SBC", AM_A  , R_}, {"INC", AM_A  , RW}, {"nop", 0  , 0 }, // EC .. EF
-	{"BEQ", AM_R  ,  0}, {"SBC", AM_NZY, R_}, {"SBC", AM_NZ ,  0}, {"nop", 0  , 0 }, // F0 .. F3
-	{"nop", AM_ZX ,  0}, {"SBC", AM_ZX , R_}, {"INC", AM_ZX , RW}, {"nop", 0  , 0 }, // F4 .. F7
-	{"SED", 0     ,  0}, {"SBC", AM_AY , R_}, {"PLX", 0     , SR}, {"nop", 0  , 0 }, // F8 .. FB
-	{"nop", AM_AX ,  0}, {"SBC", AM_AX , R_}, {"INC", AM_AX , RW}, {"nop", 0  , 0 }  // FF .. FF
+	{"CPX", AM_M, im}, {"SBC", AM_IZX, R_}, {"nop", AM_M, im}, {"nop", 0, 0}, // E0 .. E3
+	{"CPX", AM_Z, R_}, {"SBC", AM_Z, R_}, {"INC", AM_Z, RW}, {"nop", 0, 0}, // E4 .. E7
+	{"INX", 0, 0}, {"SBC", AM_M, R_}, {"NOP", 0, 0}, {"nop", 0, 0}, // E8 .. EB
+	{"CPX", AM_A, R_}, {"SBC", AM_A, R_}, {"INC", AM_A, RW}, {"nop", 0, 0}, // EC .. EF
+	{"BEQ", AM_R, 0}, {"SBC", AM_NZY, R_}, {"SBC", AM_NZ, 0}, {"nop", 0, 0}, // F0 .. F3
+	{"nop", AM_ZX, 0}, {"SBC", AM_ZX, R_}, {"INC", AM_ZX, RW}, {"nop", 0, 0}, // F4 .. F7
+	{"SED", 0, 0}, {"SBC", AM_AY, R_}, {"PLX", 0, SR}, {"nop", 0, 0}, // F8 .. FB
+	{"nop", AM_AX, 0}, {"SBC", AM_AX, R_}, {"INC", AM_AX, RW}, {"nop", 0, 0}  // FF .. FF
 };
 
 const Opcodes_t g_aOpcodes6502[ NUM_OPCODES ] =
@@ -222,77 +222,77 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 		(d),Y
 
 */
-	{"BRK", 0     , SW}, {"ORA", AM_IZX, R_}, {"hlt", 0     , 0 }, {"aso", AM_IZX, RW}, // 00 .. 03
-	{"nop", AM_Z  , R_}, {"ORA", AM_Z  , R_}, {"ASL", AM_Z  , RW}, {"aso", AM_Z  , RW}, // 04 .. 07
-	{"PHP", 0     , SW}, {"ORA", AM_M  , im}, {"ASL", 0     ,  0}, {"anc", AM_M  , im}, // 08 .. 0B
-	{"nop", AM_AX ,  0}, {"ORA", AM_A  , R_}, {"ASL", AM_A  , RW}, {"aso", AM_A  , RW}, // 0C .. 0F
-	{"BPL", AM_R  ,  0}, {"ORA", AM_NZY, R_}, {"hlt", 0     ,  0}, {"aso", AM_NZY, RW}, // 10 .. 13
-	{"nop", AM_ZX ,  0}, {"ORA", AM_ZX , R_}, {"ASL", AM_ZX , RW}, {"aso", AM_ZX , RW}, // 14 .. 17
-	{"CLC", 0     ,  0}, {"ORA", AM_AY , R_}, {"nop", 0     ,  0}, {"aso", AM_AY , RW}, // 18 .. 1B
-	{"nop", AM_AX ,  0}, {"ORA", AM_AX , R_}, {"ASL", AM_AX , RW}, {"aso", AM_AX , RW}, // 1C .. 1F
+	{"BRK", 0, SW}, {"ORA", AM_IZX, R_}, {"hlt", 0, 0}, {"aso", AM_IZX, RW}, // 00 .. 03
+	{"nop", AM_Z, R_}, {"ORA", AM_Z, R_}, {"ASL", AM_Z, RW}, {"aso", AM_Z, RW}, // 04 .. 07
+	{"PHP", 0, SW}, {"ORA", AM_M, im}, {"ASL", 0, 0}, {"anc", AM_M, im}, // 08 .. 0B
+	{"nop", AM_AX, 0}, {"ORA", AM_A, R_}, {"ASL", AM_A, RW}, {"aso", AM_A, RW}, // 0C .. 0F
+	{"BPL", AM_R, 0}, {"ORA", AM_NZY, R_}, {"hlt", 0, 0}, {"aso", AM_NZY, RW}, // 10 .. 13
+	{"nop", AM_ZX, 0}, {"ORA", AM_ZX, R_}, {"ASL", AM_ZX, RW}, {"aso", AM_ZX, RW}, // 14 .. 17
+	{"CLC", 0, 0}, {"ORA", AM_AY, R_}, {"nop", 0, 0}, {"aso", AM_AY, RW}, // 18 .. 1B
+	{"nop", AM_AX, 0}, {"ORA", AM_AX, R_}, {"ASL", AM_AX, RW}, {"aso", AM_AX, RW}, // 1C .. 1F
 
-	{"JSR", AM_A  , SW}, {"AND", AM_IZX, R_}, {"hlt", 0     ,  0}, {"rla", AM_IZX, RW}, // 20 .. 23
-	{"BIT", AM_Z  , R_}, {"AND", AM_Z  , R_}, {"ROL", AM_Z  , RW}, {"rla", AM_Z  , RW}, // 24 .. 27
-	{"PLP", 0     , SR}, {"AND", AM_M  , im}, {"ROL", 0     ,  0}, {"anc", AM_M  , im}, // 28 .. 2B
-	{"BIT", AM_A  , R_}, {"AND", AM_A  , R_}, {"ROL", AM_A  , RW}, {"rla", AM_A  , RW}, // 2C .. 2F
-	{"BMI", AM_R  ,  0}, {"AND", AM_NZY, R_}, {"hlt", 0     ,  0}, {"rla", AM_NZY, RW}, // 30 .. 33
-	{"nop", AM_ZX ,  0}, {"AND", AM_ZX , R_}, {"ROL", AM_ZX , RW}, {"rla", AM_ZX , RW}, // 34 .. 37
-	{"SEC", 0     ,  0}, {"AND", AM_AY , R_}, {"nop", 0     ,  0}, {"rla", AM_AY , RW}, // 38 .. 3B
-	{"nop", AM_AX ,  0}, {"AND", AM_AX , R_}, {"ROL", AM_AX , RW}, {"rla", AM_AX , RW}, // 3C .. 3F
+	{"JSR", AM_A, SW}, {"AND", AM_IZX, R_}, {"hlt", 0, 0}, {"rla", AM_IZX, RW}, // 20 .. 23
+	{"BIT", AM_Z, R_}, {"AND", AM_Z, R_}, {"ROL", AM_Z, RW}, {"rla", AM_Z, RW}, // 24 .. 27
+	{"PLP", 0, SR}, {"AND", AM_M, im}, {"ROL", 0, 0}, {"anc", AM_M, im}, // 28 .. 2B
+	{"BIT", AM_A, R_}, {"AND", AM_A, R_}, {"ROL", AM_A, RW}, {"rla", AM_A, RW}, // 2C .. 2F
+	{"BMI", AM_R, 0}, {"AND", AM_NZY, R_}, {"hlt", 0, 0}, {"rla", AM_NZY, RW}, // 30 .. 33
+	{"nop", AM_ZX, 0}, {"AND", AM_ZX, R_}, {"ROL", AM_ZX, RW}, {"rla", AM_ZX, RW}, // 34 .. 37
+	{"SEC", 0, 0}, {"AND", AM_AY, R_}, {"nop", 0, 0}, {"rla", AM_AY, RW}, // 38 .. 3B
+	{"nop", AM_AX, 0}, {"AND", AM_AX, R_}, {"ROL", AM_AX, RW}, {"rla", AM_AX, RW}, // 3C .. 3F
 
-	{"RTI", 0     , SR}, {"EOR", AM_IZX, R_}, {"hlt", 0     ,  0}, {"lse", AM_IZX, RW}, // 40 .. 43
-	{"nop", AM_Z  ,  0}, {"EOR", AM_Z  , R_}, {"LSR", AM_Z  , RW}, {"lse", AM_Z  , RW}, // 44 .. 47
-	{"PHA", 0     , SW}, {"EOR", AM_M  , im}, {"LSR", 0     ,  0}, {"alr", AM_M  , im}, // 48 .. 4B
-	{"JMP", AM_A  ,  0}, {"EOR", AM_A  , R_}, {"LSR", AM_A  , RW}, {"lse", AM_A  , RW}, // 4C .. 4F
-	{"BVC", AM_R  ,  0}, {"EOR", AM_NZY, R_}, {"hlt", 0     ,  0}, {"lse", AM_NZY, RW}, // 50 .. 53
-	{"nop", AM_ZX ,  0}, {"EOR", AM_ZX , R_}, {"LSR", AM_ZX , RW}, {"lse", AM_ZX , RW}, // 54 .. 57
-	{"CLI", 0     ,  0}, {"EOR", AM_AY , R_}, {"nop", 0     ,  0}, {"lse", AM_AY , RW}, // 58 .. 5B
-	{"nop", AM_AX ,  0}, {"EOR", AM_AX , R_}, {"LSR", AM_AX , RW}, {"lse", AM_AX , RW}, // 5C .. 5F
+	{"RTI", 0, SR}, {"EOR", AM_IZX, R_}, {"hlt", 0, 0}, {"lse", AM_IZX, RW}, // 40 .. 43
+	{"nop", AM_Z, 0}, {"EOR", AM_Z, R_}, {"LSR", AM_Z, RW}, {"lse", AM_Z, RW}, // 44 .. 47
+	{"PHA", 0, SW}, {"EOR", AM_M, im}, {"LSR", 0, 0}, {"alr", AM_M, im}, // 48 .. 4B
+	{"JMP", AM_A, 0}, {"EOR", AM_A, R_}, {"LSR", AM_A, RW}, {"lse", AM_A, RW}, // 4C .. 4F
+	{"BVC", AM_R, 0}, {"EOR", AM_NZY, R_}, {"hlt", 0, 0}, {"lse", AM_NZY, RW}, // 50 .. 53
+	{"nop", AM_ZX, 0}, {"EOR", AM_ZX, R_}, {"LSR", AM_ZX, RW}, {"lse", AM_ZX, RW}, // 54 .. 57
+	{"CLI", 0, 0}, {"EOR", AM_AY, R_}, {"nop", 0, 0}, {"lse", AM_AY, RW}, // 58 .. 5B
+	{"nop", AM_AX, 0}, {"EOR", AM_AX, R_}, {"LSR", AM_AX, RW}, {"lse", AM_AX, RW}, // 5C .. 5F
 
-	{"RTS", 0     , SR}, {"ADC", AM_IZX, R_}, {"hlt", 0     ,  0}, {"rra", AM_IZX, RW}, // 60 .. 63
-	{"nop", AM_Z  ,  0}, {"ADC", AM_Z  , R_}, {"ROR", AM_Z  , RW}, {"rra", AM_Z  , RW}, // 64 .. 67
-	{"PLA", 0     , SR}, {"ADC", AM_M  , im}, {"ROR", 0     ,  0}, {"arr", AM_M  , im}, // 68 .. 6B
-	{"JMP", AM_NA , R_}, {"ADC", AM_A  , R_}, {"ROR", AM_A  , RW}, {"rra", AM_A  , RW}, // 6C .. 6F
-	{"BVS", AM_R  ,  0}, {"ADC", AM_NZY, R_}, {"hlt", 0     ,  0}, {"rra", AM_NZY, RW}, // 70 .. 73
-	{"nop", AM_ZX ,  0}, {"ADC", AM_ZX , R_}, {"ROR", AM_ZX , RW}, {"rra", AM_ZX , RW}, // 74 .. 77
-	{"SEI", 0     ,  0}, {"ADC", AM_AY , R_}, {"nop", 0     ,  0}, {"rra", AM_AY , RW}, // 78 .. 7B
-	{"nop", AM_AX ,  0}, {"ADC", AM_AX , R_}, {"ROR", AM_AX , RW}, {"rra", AM_AX , RW}, // 7C .. 7F
+	{"RTS", 0, SR}, {"ADC", AM_IZX, R_}, {"hlt", 0, 0}, {"rra", AM_IZX, RW}, // 60 .. 63
+	{"nop", AM_Z, 0}, {"ADC", AM_Z, R_}, {"ROR", AM_Z, RW}, {"rra", AM_Z, RW}, // 64 .. 67
+	{"PLA", 0, SR}, {"ADC", AM_M, im}, {"ROR", 0, 0}, {"arr", AM_M, im}, // 68 .. 6B
+	{"JMP", AM_NA, R_}, {"ADC", AM_A, R_}, {"ROR", AM_A, RW}, {"rra", AM_A, RW}, // 6C .. 6F
+	{"BVS", AM_R, 0}, {"ADC", AM_NZY, R_}, {"hlt", 0, 0}, {"rra", AM_NZY, RW}, // 70 .. 73
+	{"nop", AM_ZX, 0}, {"ADC", AM_ZX, R_}, {"ROR", AM_ZX, RW}, {"rra", AM_ZX, RW}, // 74 .. 77
+	{"SEI", 0, 0}, {"ADC", AM_AY, R_}, {"nop", 0, 0}, {"rra", AM_AY, RW}, // 78 .. 7B
+	{"nop", AM_AX, 0}, {"ADC", AM_AX, R_}, {"ROR", AM_AX, RW}, {"rra", AM_AX, RW}, // 7C .. 7F
 
-	{"nop", AM_M  , im}, {"STA", AM_IZX, _W}, {"nop", AM_M  , im}, {"axs", AM_IZX, _W}, // 80 .. 83
-	{"STY", AM_Z  , _W}, {"STA", AM_Z  , _W}, {"STX", AM_Z  , _W}, {"axs", AM_Z  , _W}, // 84 .. 87
-	{"DEY", 0     ,  0}, {"nop", AM_M  , im}, {"TXA", 0     ,  0}, {"xaa", AM_M  , im}, // 88 .. 8B
-	{"STY", AM_A  , _W}, {"STA", AM_A  , _W}, {"STX", AM_A  , _W}, {"axs", AM_A  , _W}, // 8C .. 8F
-	{"BCC", AM_R  ,  0}, {"STA", AM_NZY, _W}, {"hlt",     0 ,  0}, {"axa", AM_NZY, _W}, // 90 .. 93
-	{"STY", AM_ZX , _W}, {"STA", AM_ZX , _W}, {"STX", AM_ZY , _W}, {"axs", AM_ZY , _W}, // 94 .. 97
-	{"TYA", 0     ,  0}, {"STA", AM_AY , _W}, {"TXS", 0     ,  0}, {"tas", AM_AY , _W}, // 98 .. 9B
-	{"say", AM_AX , _W}, {"STA", AM_AX , _W}, {"xas", AM_AX , _W}, {"axa", AM_AY , _W}, // 9C .. 9F
+	{"nop", AM_M, im}, {"STA", AM_IZX, _W}, {"nop", AM_M, im}, {"axs", AM_IZX, _W}, // 80 .. 83
+	{"STY", AM_Z, _W}, {"STA", AM_Z, _W}, {"STX", AM_Z, _W}, {"axs", AM_Z, _W}, // 84 .. 87
+	{"DEY", 0, 0}, {"nop", AM_M, im}, {"TXA", 0, 0}, {"xaa", AM_M, im}, // 88 .. 8B
+	{"STY", AM_A, _W}, {"STA", AM_A, _W}, {"STX", AM_A, _W}, {"axs", AM_A, _W}, // 8C .. 8F
+	{"BCC", AM_R, 0}, {"STA", AM_NZY, _W}, {"hlt", 0, 0}, {"axa", AM_NZY, _W}, // 90 .. 93
+	{"STY", AM_ZX, _W}, {"STA", AM_ZX, _W}, {"STX", AM_ZY, _W}, {"axs", AM_ZY, _W}, // 94 .. 97
+	{"TYA", 0, 0}, {"STA", AM_AY, _W}, {"TXS", 0, 0}, {"tas", AM_AY, _W}, // 98 .. 9B
+	{"say", AM_AX, _W}, {"STA", AM_AX, _W}, {"xas", AM_AX, _W}, {"axa", AM_AY, _W}, // 9C .. 9F
 
-	{"LDY", AM_M  , im}, {"LDA", AM_IZX, R_}, {"LDX", AM_M  , im}, {"lax", AM_IZX, R_}, // A0 .. A3
-	{"LDY", AM_Z  , R_}, {"LDA", AM_Z  , R_}, {"LDX", AM_Z  , R_}, {"lax", AM_Z  , R_}, // A4 .. A7
-	{"TAY", 0     ,  0}, {"LDA", AM_M  , im}, {"TAX", 0     , 0 }, {"oal", AM_M  , im}, // A8 .. AB
-	{"LDY", AM_A  , R_}, {"LDA", AM_A  , R_}, {"LDX", AM_A  , R_}, {"lax", AM_A  , R_}, // AC .. AF
-	{"BCS", AM_R  ,  0}, {"LDA", AM_NZY, R_}, {"hlt", 0     , 0 }, {"lax", AM_NZY, R_}, // B0 .. B3
-	{"LDY", AM_ZX , R_}, {"LDA", AM_ZX , R_}, {"LDX", AM_ZY , R_}, {"lax", AM_ZY , 0 }, // B4 .. B7
-	{"CLV", 0     ,  0}, {"LDA", AM_AY , R_}, {"TSX", 0     , 0 }, {"las", AM_AY , R_}, // B8 .. BB
-	{"LDY", AM_AX , R_}, {"LDA", AM_AX , R_}, {"LDX", AM_AY , R_}, {"lax", AM_AY , R_}, // BC .. BF
+	{"LDY", AM_M, im}, {"LDA", AM_IZX, R_}, {"LDX", AM_M, im}, {"lax", AM_IZX, R_}, // A0 .. A3
+	{"LDY", AM_Z, R_}, {"LDA", AM_Z, R_}, {"LDX", AM_Z, R_}, {"lax", AM_Z, R_}, // A4 .. A7
+	{"TAY", 0, 0}, {"LDA", AM_M, im}, {"TAX", 0, 0}, {"oal", AM_M, im}, // A8 .. AB
+	{"LDY", AM_A, R_}, {"LDA", AM_A, R_}, {"LDX", AM_A, R_}, {"lax", AM_A, R_}, // AC .. AF
+	{"BCS", AM_R, 0}, {"LDA", AM_NZY, R_}, {"hlt", 0, 0}, {"lax", AM_NZY, R_}, // B0 .. B3
+	{"LDY", AM_ZX, R_}, {"LDA", AM_ZX, R_}, {"LDX", AM_ZY, R_}, {"lax", AM_ZY, 0}, // B4 .. B7
+	{"CLV", 0, 0}, {"LDA", AM_AY, R_}, {"TSX", 0, 0}, {"las", AM_AY, R_}, // B8 .. BB
+	{"LDY", AM_AX, R_}, {"LDA", AM_AX, R_}, {"LDX", AM_AY, R_}, {"lax", AM_AY, R_}, // BC .. BF
 
-	{"CPY", AM_M  , im}, {"CMP", AM_IZX, R_}, {"nop", AM_M  , im}, {"dcm", AM_IZX, RW}, // C0 .. C3
-	{"CPY", AM_Z  , R_}, {"CMP", AM_Z  , R_}, {"DEC", AM_Z  , RW}, {"dcm", AM_Z  , RW}, // C4 .. C7
-	{"INY", 0     ,  0}, {"CMP", AM_M  , im}, {"DEX", 0     ,  0}, {"sax", AM_M  , im}, // C8 .. CB
-	{"CPY", AM_A  , R_}, {"CMP", AM_A  , R_}, {"DEC", AM_A  , RW}, {"dcm", AM_A  , RW}, // CC .. CF
-	{"BNE", AM_R  ,  0}, {"CMP", AM_NZY, R_}, {"hlt", 0     ,  0}, {"dcm", AM_NZY, RW}, // D0 .. D3
-	{"nop", AM_ZX ,  0}, {"CMP", AM_ZX , R_}, {"DEC", AM_ZX , RW}, {"dcm", AM_ZX , RW}, // D4 .. D7
-	{"CLD", 0     ,  0}, {"CMP", AM_AY , R_}, {"nop", 0     ,  0}, {"dcm", AM_AY , RW}, // D8 .. DB
-	{"nop", AM_AX ,  0}, {"CMP", AM_AX , R_}, {"DEC", AM_AX , RW}, {"dcm", AM_AX , RW}, // DC .. DF
+	{"CPY", AM_M, im}, {"CMP", AM_IZX, R_}, {"nop", AM_M, im}, {"dcm", AM_IZX, RW}, // C0 .. C3
+	{"CPY", AM_Z, R_}, {"CMP", AM_Z, R_}, {"DEC", AM_Z, RW}, {"dcm", AM_Z, RW}, // C4 .. C7
+	{"INY", 0, 0}, {"CMP", AM_M, im}, {"DEX", 0, 0}, {"sax", AM_M, im}, // C8 .. CB
+	{"CPY", AM_A, R_}, {"CMP", AM_A, R_}, {"DEC", AM_A, RW}, {"dcm", AM_A, RW}, // CC .. CF
+	{"BNE", AM_R, 0}, {"CMP", AM_NZY, R_}, {"hlt", 0, 0}, {"dcm", AM_NZY, RW}, // D0 .. D3
+	{"nop", AM_ZX, 0}, {"CMP", AM_ZX, R_}, {"DEC", AM_ZX, RW}, {"dcm", AM_ZX, RW}, // D4 .. D7
+	{"CLD", 0, 0}, {"CMP", AM_AY, R_}, {"nop", 0, 0}, {"dcm", AM_AY, RW}, // D8 .. DB
+	{"nop", AM_AX, 0}, {"CMP", AM_AX, R_}, {"DEC", AM_AX, RW}, {"dcm", AM_AX, RW}, // DC .. DF
 
-	{"CPX", AM_M  , im}, {"SBC", AM_IZX, R_}, {"nop", AM_M  , im}, {"ins", AM_IZX, RW}, // E0 .. E3
-	{"CPX", AM_Z  , R_}, {"SBC", AM_Z  , R_}, {"INC", AM_Z  , RW}, {"ins", AM_Z  , RW}, // E4 .. E7
-	{"INX", 0     ,  0}, {"SBC", AM_M  , im}, {"NOP", 0     ,  0}, {"sbc", AM_M  , im}, // E8 .. EB
-	{"CPX", AM_A  , R_}, {"SBC", AM_A  , R_}, {"INC", AM_A  , RW}, {"ins", AM_A  , RW}, // EC .. EF
-	{"BEQ", AM_R  ,  0}, {"SBC", AM_NZY, R_}, {"hlt", 0     ,  0}, {"ins", AM_NZY, RW}, // F0 .. F3
-	{"nop", AM_ZX ,  0}, {"SBC", AM_ZX , R_}, {"INC", AM_ZX , RW}, {"ins", AM_ZX , RW}, // F4 .. F7
-	{"SED", 0     ,  0}, {"SBC", AM_AY , R_}, {"nop", 0     ,  0}, {"ins", AM_AY , RW}, // F8 .. FB
-	{"nop", AM_AX ,  0}, {"SBC", AM_AX , R_}, {"INC", AM_AX , RW}, {"ins", AM_AX , RW}  // FF .. FF
+	{"CPX", AM_M, im}, {"SBC", AM_IZX, R_}, {"nop", AM_M, im}, {"ins", AM_IZX, RW}, // E0 .. E3
+	{"CPX", AM_Z, R_}, {"SBC", AM_Z, R_}, {"INC", AM_Z, RW}, {"ins", AM_Z, RW}, // E4 .. E7
+	{"INX", 0, 0}, {"SBC", AM_M, im}, {"NOP", 0, 0}, {"sbc", AM_M, im}, // E8 .. EB
+	{"CPX", AM_A, R_}, {"SBC", AM_A, R_}, {"INC", AM_A, RW}, {"ins", AM_A, RW}, // EC .. EF
+	{"BEQ", AM_R, 0}, {"SBC", AM_NZY, R_}, {"hlt", 0, 0}, {"ins", AM_NZY, RW}, // F0 .. F3
+	{"nop", AM_ZX, 0}, {"SBC", AM_ZX, R_}, {"INC", AM_ZX, RW}, {"ins", AM_ZX, RW}, // F4 .. F7
+	{"SED", 0, 0}, {"SBC", AM_AY, R_}, {"nop", 0, 0}, {"ins", AM_AY, RW}, // F8 .. FB
+	{"nop", AM_AX, 0}, {"SBC", AM_AX, R_}, {"INC", AM_AX, RW}, {"ins", AM_AX, RW}  // FF .. FF
 };
 
 #undef R_
@@ -311,55 +311,55 @@ Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y 
 	AssemblerDirective_t g_aAssemblerDirectives[ NUM_ASM_DIRECTIVES ] =
 	{
 		// NULL n/a
-		{""},
+		{"", 0},
 		// Origin, Target Address, EndProg, Equate, Data, AsciiString,HexString
 		// Acme
-		{"???"},
+		{"???", 0},
 		// Big Mac
-		{"???"},
+		{"???", 0},
 		// DOS Tool Kit
-		{"???"},
+		{"???", 0},
 		// Lisa
-		{"???"},
+		{"???", 0},
 		// Merlin
-		{"ASC"}, // ASC "postive" 'negative'
-		{"DDB"}, // Define Double Byte (Define unsigned short)
-		{"DFB"}, // DeFine Byte
-		{"DS" }, // Define Storage
-		{"HEX"}, // HEX ###### or HEX ##,##,...
-		{"ORG"}, // Origin
+		{"ASC", 0}, // ASC "postive" 'negative'
+		{"DDB", 0}, // Define Double Byte (Define unsigned short)
+		{"DFB", 0}, // DeFine Byte
+		{"DS", 0}, // Define Storage
+		{"HEX", 0}, // HEX ###### or HEX ##,##,...
+		{"ORG", 0}, // Origin
 		// MicroSparc
-		{"???"},
+		{"???", 0},
 		// ORCA/M
-		{"???"},
+		{"???", 0},
 		// SC ...
-		{".OR"}, //    ORigin
-		{".TA"}, //    Target Address
-		{".EN"}, //    ENd of program
-		{".EQ"}, //    EQuate
-		{".DA"}, //    DAta
-		{".AS"}, //    Ascii String
-		{".HS"}, //    Hex String
+		{".OR", 0}, //    ORigin
+		{".TA", 0}, //    Target Address
+		{".EN", 0}, //    ENd of program
+		{".EQ", 0}, //    EQuate
+		{".DA", 0}, //    DAta
+		{".AS", 0}, //    Ascii String
+		{".HS", 0}, //    Hex String
 		// Ted II
-		{"???"},
+		{"???", 0},
 		// Weller
-		{"???"},
+		{"???", 0},
 	// User-Defined
 	// NOTE: Keep in sync AsmCustomDirective_e g_aAssemblerDirectives !
-		{"db" }, // ASM_DEFINE_BYTE
-		{"dw" }, // ASM_DEFINE_WORD
-		{"da" }, // ASM_DEFINE_ADDRESS_16
+		{"db", 0}, // ASM_DEFINE_BYTE
+		{"dw", 0}, // ASM_DEFINE_WORD
+		{"da", 0}, // ASM_DEFINE_ADDRESS_16
 // d    memory Dump
 // da   Memory Ascii, Define Address
 // ds   S = Ascii (Low),
 // dt   T = Apple (High)
 // dm   M = Mixed (Low,High=EndofString)
-		{"ds" }, // ASM_DEFINE_ASCII_TEXT
-		{"dt" }, // ASM_DEFINE_APPLE_TEXT
-		{"dm" }, // ASM_DEFINE_TEXT_HI_LO
+		{"ds", 0}, // ASM_DEFINE_ASCII_TEXT
+		{"dt", 0}, // ASM_DEFINE_APPLE_TEXT
+		{"dm", 0}, // ASM_DEFINE_TEXT_HI_LO
 
-		{"df" }, // ASM_DEFINE_FLOAT
-		{"dfx"}, // ASM_DEFINE_FLOAT_X
+		{"df", 0}, // ASM_DEFINE_FLOAT
+		{"dfx", 0}, // ASM_DEFINE_FLOAT_X
 	};
 
 	int g_iAssemblerSyntax = ASM_CUSTOM; // Which assembler syntax to use
@@ -998,6 +998,7 @@ void _CmdAssembleHashDump ()
 
 //===========================================================================
 int AssemblerPokeAddress( const int Opcode, const int nOpmode, const unsigned short nBaseAddress, const unsigned short nTargetOffset )
+  (void)Opcode;
 {
 //	int nOpmode  = g_aOpcodes[ nOpcode ].nAddressMode;
 	int nOpbytes = g_aOpmodes[ nOpmode ].m_nBytes;
@@ -1083,6 +1084,7 @@ void SetFlag( AssemblerFlags_e eFlag, bool bValue = true )
 		AM_I // indexed or indirect
 */
 //===========================================================================
+  (void)nArgs;
 bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 {
 	m_iAsmAddressMode = AM_IMPLIED;

@@ -19,7 +19,6 @@ extern SDL_Texture *g_texture;
 
 #define SHOW_CYCLES  15
 
-extern bool fullscreen;
 extern bool g_WindowResized;
 
 extern SDL_Rect origRect;

@@ -613,6 +613,7 @@ unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned cha
 static const double PDL_CNTR_INTERVAL = 2816.0 / 255.0;  // 11.04 (From KEGS)
 
 unsigned char JoyReadPosition(unsigned short programcounter, unsigned short address, unsigned char, unsigned char, uint32_t nCyclesLeft) {
+  (void)programcounter;
   int nJoyNum = (address & 2) ? 1 : 0;  // $C064..$C067
 
   CpuCalcCycles(nCyclesLeft);

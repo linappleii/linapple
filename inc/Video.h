@@ -84,7 +84,7 @@ enum Color_Palette_Index_e {
   PINK,
   AQUA,
 
-  // CUSTOM HGR COLORS (don't change order) - For tv emulation g_nAppMode
+  // CUSTOM HGR COLORS (don't change order) - For tv emulation mode
   HGR_BLACK,
   HGR_WHITE,
   HGR_BLUE,

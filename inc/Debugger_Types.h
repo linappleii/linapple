@@ -40,7 +40,7 @@ struct AddressingMode_t {
 
 Opcode: opc aaa od
   opc...od = Mnemonic / Opcode
-  ...aaa.. = Addressing g_nAppMode
+  ...aaa.. = Addressing mode
 od = 00
   000  #Immediate
   001  Zero page

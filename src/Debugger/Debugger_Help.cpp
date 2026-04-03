@@ -529,6 +529,7 @@ inline bool ConsoleColorizePrintFormat( char (&colorizeBuf)[_ColorizeBufSz],
 
 //===========================================================================
 Update_t CmdMOTD( int nArgs )	// Message Of The Day
+  (void)nArgs;
 {
 	char sText[ CONSOLE_WIDTH*2 ];
 	char sTemp[ CONSOLE_WIDTH*2 ];
@@ -1231,7 +1232,7 @@ Update_t CmdHelpSpecific (int nArgs)
 			ConsoleBufferPush( "  Displays ASCII text in the Mini-Memory area" );
 			ConsoleBufferPush( "  ASCII control chars are hilighted" );
 			ConsoleBufferPush( "  ASCII hi-bit chars are normal" );
-//			break;
+			break;
 //		case CMD_MEM_MINI_DUMP_TXT_LO_1:
 //		case CMD_MEM_MINI_DUMP_TXT_LO_2:
 		case CMD_MEM_MINI_DUMP_APPLE_1:
@@ -1515,6 +1516,7 @@ Update_t CmdHelpSpecific (int nArgs)
 
 //===========================================================================
 Update_t CmdHelpList (int nArgs)
+  (void)nArgs;
 {
 	const int nBuf = CONSOLE_WIDTH * 2;
 

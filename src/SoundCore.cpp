@@ -206,6 +206,8 @@ unsigned getFrequency() {
 
 // GPH this is called on IRQ to refresh the audio at regular intervals.
 static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+  (void)total_amount;
+  (void)userdata;
   if (additional_amount <= 0) return;
 
   int16_t *temp_buf = (int16_t *)SDL_malloc(additional_amount);
@@ -230,6 +232,7 @@ void sample_buffer::drain_to(sample_t *stream, size_t len) {
   const auto num = std::min(len, available);
   if (num > 0) {
     mix_into(stream, num, [](const sample_t& ignored, const sample_t& new_value) {
+  (void)ignored;
       return new_value;
     });
   }

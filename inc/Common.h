@@ -18,8 +18,9 @@ const unsigned int dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
 constexpr int NUM_SLOTS = 8;
 
 #ifndef MIN
-#define MAX(a, b) (std::max<decltype((a) > (b) ? (a) : (b))>((a), (b)))
-#define MIN(a, b) (std::min<decltype((a) < (b) ? (a) : (b))>((a), (b)))
+#define MIN(a, b) (std::min<decltype((a) + (b))>((a), (b)))
+#define MAX(a, b) (std::max<decltype((a) + (b))>((a), (b)))
+
 #endif
 
 #define RAMWORKS // 8MB RamWorks III support
@@ -35,7 +36,33 @@ enum AppMode_e {
   MODE_RUNNING, // 6502 is running at normal speed (Debugger breakpoints may or may not be active)
   MODE_DEBUG, // 6502 is paused
   MODE_STEPPING, // 6502 is running at full speed (Debugger breakpoints always active)
+  MODE_DISK_CHOOSE, // Selecting a disk image
+  MODE_EXIT, // Application is exiting
 };
+
+constexpr int MAX_PATH = 260;
+
+typedef struct {
+  AppMode_e mode;
+  bool restart;
+  bool fullscreen;
+  unsigned int dwSpeed;
+  unsigned int ScreenWidth;
+  unsigned int ScreenHeight;
+  bool bResetTiming;
+  unsigned int needsprecision;
+  char sProgramDir[MAX_PATH];
+  char sCurrentDir[MAX_PATH];
+  char sHDDDir[MAX_PATH];
+  char sSaveStateDir[MAX_PATH];
+  char sParallelPrinterFile[MAX_PATH];
+  char sFTPLocalDir[MAX_PATH];
+  char sFTPServer[MAX_PATH];
+  char sFTPServerHDD[MAX_PATH];
+  char sFTPUserPass[512];
+} SystemState_t;
+
+extern SystemState_t g_state;
 
 constexpr int SPEED_MIN    = 0;
 constexpr int SPEED_NORMAL = 10;
@@ -126,8 +153,6 @@ typedef struct tagRECT {
   int32_t right;
   int32_t bottom;
 } RECT;
-
-constexpr int MAX_PATH = 260;
 
 static inline bool IsCharLower(char ch) {
   return (ch >= 'a' && ch <= 'z');
