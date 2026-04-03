@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007, krez beotiger March 2012 AD */
 #include "stdafx.h"
 #include <cassert>
 #include <string>
@@ -35,7 +34,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Log.h"
 #include "MouseInterface.h"
 
-// for time logging
 #include <time.h>
 #include <sys/time.h>
 #include <sys/param.h>
@@ -60,7 +58,6 @@ static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
 
 char *g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
 
-// backend video x11, fbcon, dispmanx, kmsdrm, etc.
 char videoDriverName[100];
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
@@ -74,7 +71,7 @@ bool g_bFullSpeed = false;
 bool hddenabled = false;
 unsigned int clockslot;
 static bool g_bBudgetVideo = false;
-static bool g_uMouseInSlot4 = false;  // not any mouse in slot4??--bb
+static bool g_uMouseInSlot4 = false;
 
 AppMode_e g_nAppMode = MODE_LOGO;
 
@@ -85,9 +82,9 @@ unsigned int g_ScreenHeight = SCREEN_HEIGHT;
 
 unsigned int needsprecision = 0;
 char g_sProgramDir[MAX_PATH] = "";
-char g_sCurrentDir[MAX_PATH] = ""; // Also Starting Dir for Slot6 disk images?? --bb
-char g_sHDDDir[MAX_PATH] = ""; // starting dir for HDV (Apple][ HDD) images?? --bb
-char g_sSaveStateDir[MAX_PATH] = ""; // starting dir for states --bb
+char g_sCurrentDir[MAX_PATH] = "";
+char g_sHDDDir[MAX_PATH] = "";
+char g_sSaveStateDir[MAX_PATH] = "";
 char g_sParallelPrinterFile[MAX_PATH] = "Printer.txt";  // default file name for Parallel printer
 
 // FTP Variables
@@ -100,31 +97,21 @@ char g_sFTPUserPass[512] = "anonymous:mymail@hotmail.com"; // full login line
 bool g_bResetTiming = false;
 bool restart = 0;
 
-// several parameters affecting the speed of emulated CPU
-unsigned int g_dwSpeed = SPEED_NORMAL;  // Affected by Config dialog's speed slider bar
-double g_fCurrentCLK6502 = CLOCK_6502;  // Affected by Config dialog's speed slider bar
-static double g_fMHz = 1.0;      // Affected by Config dialog's speed slider bar
+unsigned int g_dwSpeed = SPEED_NORMAL;
+double g_fCurrentCLK6502 = CLOCK_6502;
+static double g_fMHz = 1.0;
 
 int g_nCpuCyclesFeedback = 0;
 unsigned int g_dwCyclesThisFrame = 0;
 
-FILE *g_fh = NULL; // file for logging, let's use stderr instead?
-bool g_bDisableDirectSound = false;  // direct sound, use SDL Sound, or SDL_mixer???
+FILE *g_fh = NULL;
+bool g_bDisableDirectSound = false;
 
 CSuperSerialCard sg_SSC;
 CMouseInterface sg_Mouse;
 
 unsigned int g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
-CURL *g_curl = NULL;  // global easy curl resourse
-
-#define DBG_CALC_FREQ 0
-#if DBG_CALC_FREQ
-const unsigned int MAX_CNT = 256;
-double g_fDbg[MAX_CNT];
-unsigned int g_nIdx = 0;
-double g_fMeanPeriod,g_fMeanFreq;
-uint32_t g_nPerfFreq = 0;
-#endif
+CURL *g_curl = NULL;
 
 static unsigned int g_uModeStepping_Cycles = 0;
 static bool g_uModeStepping_LastGetKey_ScrollLock = false;
@@ -168,9 +155,7 @@ void ContinueExecution()
 
   DiskUpdatePosition(uActualCyclesExecuted);
   JoyUpdatePosition();
-  // the next call does not present in current Applewin as on March 2012??
   VideoUpdateVbl(g_dwCyclesThisFrame);
-  //
 
   unsigned int uSpkrActualCyclesExecuted = uActualCyclesExecuted;
 
@@ -252,24 +237,6 @@ void ContinueExecution()
   if ((g_nAppMode == MODE_RUNNING && !g_bFullSpeed) || bModeStepping_WaitTimer)
   {
     SysClk_WaitTimer();
-
-    #if DBG_CALC_FREQ
-    if(g_nPerfFreq)
-    {
-      int nTime1 = SDL_GetTicks(); //no QueryPerformanceCounter and alike
-      int nTimeDiff = nTime1 - nTime0;
-      double fTime = (double)nTimeDiff / (double)(int)g_nPerfFreq;
-
-      g_fDbg[g_nIdx] = fTime;
-      g_nIdx = (g_nIdx+1) & (MAX_CNT-1);
-      g_fMeanPeriod = 0.0;
-      for(unsigned int n=0; n<MAX_CNT; n++) {
-        g_fMeanPeriod += g_fDbg[n];
-      }
-      g_fMeanPeriod /= (double)MAX_CNT;
-      g_fMeanFreq = 1.0 / g_fMeanPeriod;
-    }
-    #endif
   }
 }
 
@@ -284,18 +251,11 @@ void SingleStep(bool bReinit)
   ContinueExecution();
 }
 
-// SetBudgetVideo
-// This sets the video to only update every 12 60Hz frames for
-// computers with limited graphics hardware.
-// Entry: BudgetVideo on/off
 void SetBudgetVideo(bool budgetVideo)
 {
   g_bBudgetVideo = budgetVideo;
 }
 
-// GetBudgetVideo
-// This returns the current BudgetVideo status
-// Exit: BudgetVideo
 bool GetBudgetVideo()
 {
   return g_bBudgetVideo;
@@ -332,51 +292,55 @@ void SetCurrentCLK6502()
 
 void EnterMessageLoop()
 {
-  //  MSG message;
   SDL_Event event;
+  uint64_t last_flash_time = SDL_GetTicks();
 
   while (true) {
-    bool event_was_key_F4 = false;
+    // Call VideoUpdateFlash roughly at 60Hz
+    uint64_t current_time = SDL_GetTicks();
+    if (current_time - last_flash_time >= 16) {
+      VideoUpdateFlash();
+      last_flash_time = current_time;
+    }
 
-    if (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT && !event_was_key_F4) {
+    // Process all pending events
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT) {
         return;
       }
-      event_was_key_F4 = (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
-        && event.key.keysym.sym == SDLK_F4;
       FrameDispatchMessage(&event);
+    }
 
-      while ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_STEPPING)) {
-        if (SDL_PollEvent(&event)) {
-          if (event.type == SDL_QUIT && !event_was_key_F4) {
-            return;
+    if (g_nAppMode == MODE_DEBUG) {
+      DebuggerUpdate();
+      DrawFrameWindow();
+      SDL_Delay(10);
+    } else if (g_nAppMode == MODE_LOGO || g_nAppMode == MODE_PAUSED) {
+      DrawAppleContent();
+      DrawFrameWindow();
+      SDL_Delay(10);
+    } else if (g_nAppMode == MODE_RUNNING || g_nAppMode == MODE_STEPPING) {
+      if (g_nAppMode == MODE_STEPPING) {
+        DebugContinueStepping();
+      } else {
+        ContinueExecution();
+        if (g_nAppMode != MODE_DEBUG) {
+          if (joyexitenable) {
+            CheckJoyExit();
+            if (joyquitevent) {
+              return;
+            }
           }
-          event_was_key_F4 = (event.type==SDL_KEYDOWN || event.type==SDL_KEYUP)
-            && event.key.keysym.sym == SDLK_F4;
-          FrameDispatchMessage(&event);
-        } else if (g_nAppMode == MODE_STEPPING) {
-          DebugContinueStepping();
-        } else {
-          ContinueExecution();
-          if (g_nAppMode != MODE_DEBUG) {
-            if (joyexitenable) {
-              CheckJoyExit();
-              if (joyquitevent) {
-                return;
-              }
-            }
-            if ((g_bFullSpeed)||(IsDebugSteppingAtFullSpeed())) {
-              ContinueExecution();
-            }
+          if ((g_bFullSpeed)||(IsDebugSteppingAtFullSpeed())) {
+            ContinueExecution();
           }
         }
       }
-    } else {
-      if (g_nAppMode == MODE_DEBUG) {
-        DebuggerUpdate();
-      } else if (g_nAppMode == MODE_LOGO || g_nAppMode == MODE_PAUSED) {
-        SDL_Delay(100); // Stop process hogging CPU
+      if (VideoHasRefreshed()) {
+        DrawFrameWindow();
       }
+    } else {
+      SDL_Delay(1);
     }
   }
 }
@@ -418,9 +382,20 @@ void SetDiskImageDirectory(char *regKey, int driveNumber)
 void setAutoBoot()
 {
   SDL_Event user_ev;
-  user_ev.type = SDL_USEREVENT;
+  user_ev.type = SDL_EVENT_USER;
   user_ev.user.code = 1;  //restart
   SDL_PushEvent(&user_ev);
+}
+
+static const char* GetJoystickNameByIndex(int index) {
+  int count;
+  SDL_JoystickID* joysticks = SDL_GetJoysticks(&count);
+  const char* name = "Unknown";
+  if (joysticks && index >= 0 && index < count) {
+    name = SDL_GetJoystickNameForID(joysticks[index]);
+  }
+  SDL_free(joysticks);
+  return name;
 }
 
 // Load configuration from config file
@@ -444,7 +419,6 @@ void LoadConfiguration()
         break;
     }
 
-  // determine Apple type and set appropriate caption -- should be in (F9)switching modes?
   switch (g_Apple2Type) {
     case A2TYPE_APPLE2:
       g_pAppTitle = (char*)TITLE_APPLE_2_;
@@ -482,11 +456,11 @@ void LoadConfiguration()
 
   if (joytype[0] == 1) {
     printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
-           SDL_JoystickName(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
+           GetJoystickNameByIndex(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
   }
   if (joytype[1] == 1) {
     printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
-           SDL_JoystickName(joy2index), joy2button1, joy2axis0, joy2axis1);
+           GetJoystickNameByIndex(joy2index), joy2button1, joy2axis0, joy2axis1);
   }
 
   // default: use keyboard language according to environment
@@ -551,7 +525,6 @@ void LoadConfiguration()
 
     unsigned int ToggleSwitch = 0;
     if (LOAD(REGVALUE_KEYB_CHARSET_SWITCH, &ToggleSwitch)) {
-      // select initial value of the keyboard character set toggle switch
       g_KeyboardRockerSwitch = (ToggleSwitch>=1);
       printf("Keyboard rocker switch: %s\n", (g_KeyboardRockerSwitch) ? "local charset" : "standard/US charset");
     }
@@ -567,15 +540,15 @@ void LoadConfiguration()
   LOAD("Video Emulation", &g_videotype);
   LOAD("Singlethreaded", (unsigned int*)&g_singlethreaded);
 
-  unsigned int dwTmp = 0;  // temp var
+  unsigned int dwTmp = 0;
 
-  LOAD("Fullscreen", &dwTmp);  // load fullscreen flag
+  LOAD("Fullscreen", &dwTmp);
   fullscreen = (bool) dwTmp;
   dwTmp = 1;
-  LOAD(REGVALUE_SHOW_LEDS, &dwTmp);  // load Show Leds flag
+  LOAD(REGVALUE_SHOW_LEDS, &dwTmp);
   g_ShowLeds = (bool) dwTmp;
 
-  SetCurrentCLK6502();  // set up real speed
+  SetCurrentCLK6502();
 
   if (LOAD(REGVALUE_MOUSE_IN_SLOT4, &dwTmp)) {
     g_uMouseInSlot4 = (bool)dwTmp;
@@ -617,14 +590,12 @@ void LoadConfiguration()
   LOAD("Boot at Startup", &dwTmp);
 
   if (dwTmp) {
-    // autostart
     setAutoBoot();
   }
 
   dwTmp = 0;
-  LOAD("Slot 6 Autoload", &dwTmp);  // load autoinsert for Slot 6 flag
+  LOAD("Slot 6 Autoload", &dwTmp);
   if (dwTmp) {
-    // Load floppy disk images and insert it automatically in slot 6 drive 1 and 2
     static char szDiskImage1[] = REGVALUE_DISK_IMAGE1;
     SetDiskImageDirectory(szDiskImage1, 0);
     SetDiskImageDirectory(szDiskImage1, 1);
@@ -632,7 +603,6 @@ void LoadConfiguration()
     Asset_InsertMasterDisk();
   }
 
-  // Load hard disk images and insert it automatically in slot 7
   sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_HDD_IMAGE1);
   if (!sHDFilename.empty()) {
     HD_InsertDisk2(0, sHDFilename.c_str());
@@ -643,7 +613,6 @@ void LoadConfiguration()
     HD_InsertDisk2(1, sHDFilename.c_str());
   }
 
-  // file name for Parallel Printer
   sHDFilename = Configuration::Instance().GetString("Configuration", REGVALUE_PPRINTER_FILENAME);
   if (sHDFilename.length() > 1) {
     Util_SafeStrCpy(g_sParallelPrinterFile, sHDFilename.c_str(), MAX_PATH);
@@ -658,7 +627,6 @@ void LoadConfiguration()
   g_ScreenWidth = 560;
   g_ScreenHeight = 384;
 
-  // Define screen sizes
   sFilename = Configuration::Instance().GetString("Configuration", "Screen factor");
   if (!sFilename.empty()) {
     // fix: prevent resolution change, it usually gives graphic problems with the dispmanx driver
@@ -672,7 +640,6 @@ void LoadConfiguration()
   }
 
   if (scrFactor <= 0.1) {
-    // Try to set Screen Width & Height directly
     dwTmp = 0;
     LOAD("Screen Width", &dwTmp);
     if (dwTmp > 0) {
@@ -684,13 +651,11 @@ void LoadConfiguration()
       g_ScreenHeight = dwTmp;
     }
 
-    // validate resolutions validate for the dispmanx driver.
     if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
       if (!((g_ScreenWidth == 1920 && g_ScreenHeight == 1080) ||
            (g_ScreenWidth == 1280 && g_ScreenHeight ==  720) ||
            (g_ScreenWidth ==  800 && g_ScreenHeight ==  600))) {
 
-        // default
         g_ScreenWidth  = 640;
         g_ScreenHeight = 480;
       }
@@ -699,7 +664,7 @@ void LoadConfiguration()
 
   sFilename = Configuration::Instance().GetString("Configuration", REGVALUE_SAVESTATE_FILENAME);
   if (!sFilename.empty()) {
-    Snapshot_SetFilename(sFilename.c_str());  // If not in Registry than default will be used
+    Snapshot_SetFilename(sFilename.c_str());
   }
 
   // Current/Starting Dir is the "root" of where the user keeps his disk images
@@ -708,44 +673,41 @@ void LoadConfiguration()
     Util_SafeStrCpy(g_sCurrentDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sCurrentDir) == 0 || g_sCurrentDir[0] != '/') {
-    char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
+    char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sCurrentDir, "/");  //begin from the root, then
+      strcpy(g_sCurrentDir, "/");
     } else {
       Util_SafeStrCpy(g_sCurrentDir, tmp, MAX_PATH);
     }
   }
 
-  // Load starting directory for HDV (Apple][ HDD) images
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_HDD_START_DIR);
   if (!sFilename.empty()) {
     Util_SafeStrCpy(g_sHDDDir, sFilename.c_str(), MAX_PATH);
   }
 
   if (strlen(g_sHDDDir) == 0 || g_sHDDDir[0] != '/') {
-    char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
+    char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sHDDDir, "/");  //begin from the root, then
+      strcpy(g_sHDDDir, "/");
     } else {
       Util_SafeStrCpy(g_sHDDDir, tmp, MAX_PATH);
     }
   }
 
-  // Load starting directory for saving current states
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_PREF_SAVESTATE_DIR);
   if (!sFilename.empty()) {
     Util_SafeStrCpy(g_sSaveStateDir, sFilename.c_str(), MAX_PATH);
   }
   if (strlen(g_sSaveStateDir) == 0 || g_sSaveStateDir[0] != '/') {
-    char *tmp = getenv("HOME"); /* we don't have HOME?  ^_^  0_0  $_$  */
+    char *tmp = getenv("HOME");
     if (tmp == NULL) {
-      strcpy(g_sSaveStateDir, "/");  //begin from the root, then
+      strcpy(g_sSaveStateDir, "/");
     } else {
       Util_SafeStrCpy(g_sSaveStateDir, tmp, MAX_PATH);
     }
   }
 
-  // Read and fill FTP variables - server, local dir, user name and password
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_DIR);
   if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPServer, sFilename.c_str(), MAX_PATH);
 
@@ -758,7 +720,6 @@ void LoadConfiguration()
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_USERPASS);
   if (!sFilename.empty()) Util_SafeStrCpy(g_sFTPUserPass, sFilename.c_str(), 512);
 
-  // Print some debug strings
   printf("Ready login = %s\n", g_sFTPUserPass);
 }
 
@@ -785,10 +746,8 @@ std::vector <std::string> split(const std::string &string, const std::string &de
 // load from known user-specific configuration locations.
 void LoadAllConfigurations(const char *userSpecifiedFilename)
 {
-  // 1. Initial defaults
   LoadConfiguration();
 
-  // 2. Load specified config if provided
   if (userSpecifiedFilename) {
     if (Configuration::Instance().Load(userSpecifiedFilename)) {
         LoadConfiguration();
@@ -804,7 +763,6 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   configSearchPaths.push_back(Path::GetUserConfigDir() + "linapple.conf");
   configSearchPaths.push_back(Path::GetUserDataDir() + "linapple.conf");
   
-  // System paths
   char *envvar = getenv("XDG_CONFIG_DIRS");
   std::string xdgConfigDirs = envvar ? envvar : "/etc/xdg";
   std::vector<std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
@@ -819,14 +777,13 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
       if (Configuration::Instance().Load(configPath)) {
           lastSuccessfulConfig = configPath;
           LoadConfiguration();
-          break; // Stop at first successful load
+          break;
       }
   }
 
   if (!lastSuccessfulConfig.empty()) {
       Configuration::Instance().SetPath(lastSuccessfulConfig);
   } else {
-      // Seed the user config from a template or internal defaults if none found
       std::string userPath = Path::GetUserConfigDir() + "linapple.conf";
       std::string templatePath = Path::FindDataFile("linapple.conf");
       
@@ -849,7 +806,6 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
 
 void RegisterExtensions()
 {
-  // TO DO: register extensions for KDE or GNOME desktops?? Do not know, if it is sane idea. He-he. --bb
 }
 
 void PrintHelp()
@@ -972,38 +928,22 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  #if DBG_CALC_FREQ
-  g_nPerfFreq = 1000;//milliseconds?
-  if(g_fh) fprintf(g_fh, "Performance frequency = %d\n",g_nPerfFreq);
-  #endif
-
-  // Initialize COM
-  // . NB. DSInit() is done when g_hFrameWindow is created (WM_CREATE)
-
   if (InitSDL()) {
-    return 1;
-  } // init SDL subsystems, set icon
-
-  // add suport spanish special keys
-  if (SDL_EnableUNICODE(1)) {
     return 1;
   }
 
-  // CURL routines
   curl_global_init(CURL_GLOBAL_DEFAULT);
   g_curl = curl_easy_init();
   if (!g_curl) {
     printf("Could not initialize CURL easy interface");
     return 1;
   }
-  /* Set user name and password to access FTP server */
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_sFTPUserPass);
 
-  // Do one-time initialization
-  MemPreInitialize();    // Call before any of the slot devices are initialized
+  MemPreInitialize();
   ImageInitialize();
   DiskInitialize();
-  CreateColorMixMap();  // For tv emulation g_nAppMode
+  CreateColorMixMap();
 
 #ifdef VERSIONSTRING
   printf("LinApple %s\n", VERSIONSTRING);
@@ -1011,25 +951,21 @@ int main(int argc, char *argv[])
   printf("LinApple\n");
 #endif
 
-  SDL_VideoDriverName(&videoDriverName[0], 100);
+  const char* driver = SDL_GetCurrentVideoDriver();
+  if (driver) Util_SafeStrCpy(videoDriverName, driver, 100);
   printf("Video driver = %s\n", videoDriverName);
 
   do {
-    // Do initialization that must be repeated for a restart
     restart = 0;
     g_nAppMode = MODE_LOGO;
     fullscreen = false;
 
-    // Start with default configuration, which we will override if command line options were specified
     LoadAllConfigurations(szConfigurationFile);
 
-    // Overwrite configuration file's set fullscreen option, if one was specified on the command line
     if (bSetFullScreen) {
       fullscreen = bSetFullScreen;
     }
 
-    // This part of the code inserts disks if any were specified on the command line, overwriting the
-    // configuration settings.
     int nError = 0;
     if (szImageName_drive1) {
       nError = DoDiskInsert(0, szImageName_drive1);
@@ -1076,7 +1012,6 @@ int main(int argc, char *argv[])
     JoyReset();
     SetUsingCursor(0);
 
-    // Try fullscreen
     if (!fullscreen) {
       SetNormalMode();
     } else {
@@ -1085,11 +1020,10 @@ int main(int argc, char *argv[])
 
     DrawFrameWindow();
 
-    // Main message loop
     if (bBenchMark) {
-      VideoBenchmark(); // start VideoBenchmark and exit
+      VideoBenchmark();
     } else {
-      EnterMessageLoop();  // else we just start game
+      EnterMessageLoop();
     }
 
     Snapshot_Shutdown();
@@ -1107,11 +1041,10 @@ int main(int argc, char *argv[])
     MemDestroy();
     MB_Destroy();
     MB_Reset();
-    sg_Mouse.Uninitialize(); // Maybe restarting due to switching slot-4 card from mouse to MB
-    JoyShutDown();  // close opened (if any) joysticks
+    sg_Mouse.Uninitialize();
+    JoyShutDown();
   } while (restart);
 
-  // Release COM
   DSUninit();
   SysClk_UninitTimer();
 

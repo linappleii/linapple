@@ -4,7 +4,6 @@
 
 #pragma once
 
-// Modern C++ Configuration API
 class Configuration {
 public:
     static Configuration& Instance();
@@ -29,7 +28,6 @@ private:
     std::map<std::string, std::map<std::string, std::string>> m_data;
 };
 
-// Helper for legacy LOAD macro
 bool Config_Load(const char* section, const char* key, uint32_t* value);
 
 char *php_trim(char *c, int len);

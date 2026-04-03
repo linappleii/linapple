@@ -3,12 +3,12 @@
 #include <cstdint>
 
 typedef struct _regsrec {
-  uint8_t a;   // accumulator
-  uint8_t x;   // index X
-  uint8_t y;   // index Y
-  uint8_t ps;  // processor status
-  uint16_t pc;  // program counter
-  uint16_t sp;  // stack pointer
+  uint8_t a;
+  uint8_t x;
+  uint8_t y;
+  uint8_t ps;
+  uint16_t pc;
+  uint16_t sp;
   uint8_t bJammed; // CPU has crashed (NMOS 6502 only)
 } regsrec, *regsptr;
 

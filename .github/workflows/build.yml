@@ -1,0 +1,80 @@
+---
+name: Multi-Distro SDL3 Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 1. Ubuntu LTS (x86_64) - Standard Debian-based testing
+  ubuntu-build:
+    name: Ubuntu ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL3 & Dependencies
+        run: |
+          sudo apt-get update
+          # Note: libsdl3-dev is available in 24.04; 22.04 may require a PPA or manual build
+          sudo apt-get install -y g++ make libzip-dev libsdl3-dev \
+            libsdl3-image-dev libcurl4-openssl-dev zlib1g-dev
+      - name: Build
+        run: make
+
+  # 2. Rocky Linux & Fedora (RPM-based) - Enterprise & Cutting-Edge
+  rpm-build:
+    name: ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro: ["rockylinux:9", "rockylinux:10", "fedora:latest"]
+    container:
+      image: ${{ matrix.distro }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL3 & Dependencies
+        run: |
+          dnf install -y epel-release || true
+          # Note: SDL3 names may vary (e.g., sdl3-devel)
+          dnf install -y gcc-c++ make libzip-devel sdl3-devel \
+            sdl3_image-devel libcurl-devel zlib-devel
+      - name: Build
+        run: make
+
+  # 3. Arch Linux - Your daily driver (Rolling Release)
+  arch-build:
+    name: Arch Linux (Rolling)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL3 & Dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel libzip sdl3 sdl3_image \
+            libcurl-gnutls zlib
+      - name: Build
+        run: make
+
+  # 4. Authentic Raspberry Pi OS Trixie (Native ARM64)
+  # This is the "Gold Standard" for your Pi deployment
+  pi-os-trixie-build:
+    name: Raspberry Pi OS Trixie (Native ARM64)
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: vascoguita/raspios:trixie-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pi-Specific SDL3 Deps
+        run: |
+          apt-get update
+          apt-get install -y g++ make libzip-dev libsdl3-dev \
+            libsdl3-image-dev libcurl4-openssl-dev zlib1g-dev
+      - name: Build
+        run: make

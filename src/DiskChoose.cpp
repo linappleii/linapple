@@ -2,13 +2,6 @@
 ////////////////////////////////////////////////////////////////////////////
 ////////////  Choose disk image for given slot number? ////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-//// Adapted for linapple - apple][ emulator for Linux by beom beotiger Nov 2007   /////
-///////////////////////////////////////////////////////////////////////////////////////
-// Original source from one of Brain Games (http://www.braingames.getput.com)
-//  game Super Transball 2.(http://www.braingames.getput.com/stransball2/default.asp)
-//
-// Brain Games crew creates brilliant retro-remakes! Please visit their site to find out more.
-//
 */
 #include <stddef.h>
 #include <sys/types.h>
@@ -44,18 +37,18 @@ int getstat(const char *catalog, const char *fname, uintmax_t *size)
   struct stat info;
   char tempname[MAX_PATH];
 
-  snprintf(tempname, MAX_PATH, "%s/%s", catalog, fname);  // get full path for the file
+  snprintf(tempname, MAX_PATH, "%s/%s", catalog, fname);
   if (stat(tempname, &info) == -1) {
     return 0;
   }
   if (S_ISDIR(info.st_mode)) {
-    return 1;  // seems to be directory
+    return 1;
   }
   if (S_ISREG(info.st_mode)) {
     if (size != NULL) {
-      *size = info.st_size / 1024;  // get file size in Kbytes?!
+      *size = info.st_size / 1024;
     }
-    return 2;  // regular file
+    return 2;
   }
 
   return 0;
@@ -85,7 +78,6 @@ bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_l
       return false;
   }
 
-  // save dirent pointer array in list
   while ((entry = readdir(dp)) != NULL) {
     const char *file_name = entry->d_name;
     const size_t name_length = strlen(file_name);
@@ -97,15 +89,15 @@ bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_l
     const int what = getstat(incoming_dir, file_name, &fsize);
 
     switch (what) {
-    case 1: // is directory!
+    case 1:
       file_list.push_back({ file_name, file_entry_t::DIR, 0 });
       continue;
 
-    case 2: // is normal file!
+    case 2:
       file_list.push_back({ file_name, file_entry_t::FILE, fsize*1024});
       continue;
 
-    default: // others: ignore!
+    default:
       ;
     }
   }
@@ -158,9 +150,6 @@ const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
 }
 
 
-// GPH TODO: This entire thing needs to be refactored from a massive spinloop
-// to an event-driven state model incorporated into Frame.
-// Currently, everyhing here is handled inside an event handler.
 bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
                    std::string& filename, bool& isdir, size_t& index_file)
 {
@@ -176,8 +165,6 @@ bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
     isdir    - if chosen name is a directory
   */
 
-  //printf("Diskchoose! We are here: %s\n", incoming_dir);
-
   disk_file_list_generator_t file_list_generator(incoming_dir);
   return ChooseImageDialog(sx, sy, incoming_dir, slot, &file_list_generator,
                            filename, isdir, index_file);
@@ -187,15 +174,14 @@ bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
 bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
                        std::string& filename, bool& isdir, size_t& index_file)
 {
-  // prepare screen
   const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
   const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
-  SDL_Surface *my_screen;  // for background
+  SDL_Surface *my_screen;
   {
     if (font_sfc == NULL) {
       if (!fonts_initialization()) {
-        return false;  //if we don't have a font, we just can do none
+        return false;
       }
     }
 
@@ -205,7 +191,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     SDL_Surface *tempSurface = NULL;
     if (!g_WindowResized) {
       if (g_nAppMode == MODE_LOGO) {
-        tempSurface = g_hLogoBitmap;  // use logobitmap
+        tempSurface = g_hLogoBitmap;
       } else {
         tempSurface = g_hDeviceBitmap;
       }
@@ -213,24 +199,23 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       tempSurface = g_origscreen;
 
     if (tempSurface == NULL) {
-      tempSurface = screen;  // use screen, if none available
+      tempSurface = screen;
     }
 
-    my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
-                                     0, 0, 0);
-    if (tempSurface->format->palette && my_screen->format->palette) {
-      SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+    my_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, tempSurface->format);
+    if (SDL_GetSurfacePalette(tempSurface) && SDL_GetSurfacePalette(my_screen)) {
+      SDL_SetPaletteColors(SDL_GetSurfacePalette(my_screen), SDL_GetSurfacePalette(tempSurface)->colors, 0, SDL_GetSurfacePalette(tempSurface)->ncolors);
     }
 
-    surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
-    SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
-    SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+    surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);
+    SDL_SoftStretchMy(tempSurface, NULL, my_screen, NULL);
+    SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
 
 #define  NORMAL_LENGTH 60
     font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
 
     font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
-    SDL_Flip(screen);  // show the screen
+    DrawFrameWindow();
   }
 
   auto file_list = file_list_generator->generate_file_list();
@@ -238,29 +223,28 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     printf("%s\n", file_list_generator->get_failure_message().c_str());
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
-    SDL_Flip(screen);  // show the screen
+    DrawFrameWindow();
 
     pthread_mutex_unlock(&video_draw_mutex);
-    SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
-    // Wait for keypress
-    SDL_Event event;  // event
+    SDL_Delay(KEY_DELAY);
+    SDL_Event event;
 
-    event.type = SDL_QUIT;
-    while (event.type != SDL_KEYDOWN) {  // wait for key pressed
+    event.type = SDL_EVENT_QUIT;
+    while (event.type != SDL_EVENT_KEY_DOWN) {
       SDL_Delay(100);
       SDL_PollEvent(&event);
     }
-    SDL_FreeSurface(my_screen);
+    SDL_DestroySurface(my_screen);
     return false;
   }
 
-  size_t act_file;    // current file
-  size_t first_file;    // from which we output files
+  size_t act_file;
+  size_t first_file;
   {
     act_file = index_file;
     if (act_file >= file_list.size()) {
       act_file = 0;
-    }    // cannot be more than files in list
+    }
     if (act_file <= FILES_IN_SCREEN / 2) {
       first_file = 0;
     } else {
@@ -270,7 +254,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
 
     while (true) {
 
-      SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+      SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
       font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
       if (slot == 6) {
         font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
@@ -285,11 +269,8 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       }
       font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
 
-      // show all fetched dirs and files
-      // topX of first fiel visible
       int TOPX = int(45 * facy);
 
-      // Now, present the list
       for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
         const size_t i = first_file + j;
         if (i >= file_list.size()) {
@@ -299,73 +280,68 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         const string& file_name = file_entry.name;
 
         {
-          if (i == act_file) { // show item under cursor (in inverse mode)
+          if (i == act_file) {
             SDL_Rect r;
             r.x = 2;
             r.y = TOPX + j * 15 * facy - 1;
             if (file_name.size() > MAX_FILENAME) {
-              r.w = MAX_FILENAME * FONT_SIZE_X /* 6 */ * 1.0 * facx;
+              r.w = MAX_FILENAME * FONT_SIZE_X * 1.0 * facx;
             } else {
-              r.w = file_name.size() * FONT_SIZE_X /* 6 */ * 1.0 * facx;  // 6- FONT_SIZE_X
+              r.w = file_name.size() * FONT_SIZE_X * 1.0 * facx;
             }
             r.h = 9 * 1.0 * facy;
-            SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 64, 128, 190));
+            SDL_FillSurfaceRect(screen, &r, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 64, 128, 190));
           }
 
-          // Print file name
-          font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy); // show name
+          font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy);
           font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
-                     1.0 * facy);// show info (dir or size)
+                     1.0 * facy);
         }
       }
 
-      // draw rectangles
-      rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
-      rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
+      rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+      rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
 
-      SDL_Flip(screen);  // show the screen
+      DrawFrameWindow();
 
 
       // Relinquish video ownership
       pthread_mutex_unlock(&video_draw_mutex);
 
 
-      SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
+      SDL_Delay(KEY_DELAY);
 
-      // Wait for keypress
-      SDL_Event event;  // event
-      Uint8 *keyboard;  // key state
+      SDL_Event event;
 
       event.type = 0;
-      while (event.type != SDL_KEYDOWN) {  // wait for key pressed
-        // GPH: Honor quit even if we're in the diskchoose state.
-        if (SDL_QUIT == event.type) {
-          SDL_FreeSurface(my_screen);
-          SDL_PushEvent(&event); // push quit event
+      while (event.type != SDL_EVENT_KEY_DOWN) {
+        // Honor quit even if we're in the diskchoose state.
+        if (SDL_EVENT_QUIT == event.type) {
+          SDL_DestroySurface(my_screen);
+          SDL_PushEvent(&event);
           return false;
         }
         SDL_Delay(10);
         SDL_PollEvent(&event);
       }
 
-      // control cursor
-      keyboard = SDL_GetKeyState(NULL);  // get current state of pressed (and not pressed) keys
+      SDL_Keycode key = event.key.key;
 
-      if (keyboard[SDLK_UP] || keyboard[SDLK_LEFT]) {
+      if (key == SDLK_UP || key == SDLK_LEFT) {
         if (act_file > 0)
-          act_file--;  // up one position
+          act_file--;
         if (act_file < first_file)
           first_file = act_file;
       }
 
-      if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
+      if (key == SDLK_DOWN || key == SDLK_RIGHT) {
         if (act_file < (file_list.size() - 1))
           act_file++;
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
 
-      if (keyboard[SDLK_PAGEUP]) {
+      if (key == SDLK_PAGEUP) {
         if (act_file <= FILES_IN_SCREEN) {
           act_file = 0;
         } else {
@@ -375,7 +351,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
           first_file = act_file;
       }
 
-      if (keyboard[SDLK_PAGEDOWN]) {
+      if (key == SDLK_PAGEDOWN) {
         act_file += FILES_IN_SCREEN;
         if (act_file >= file_list.size())
           act_file = (file_list.size() - 1);
@@ -383,9 +359,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
 
-      // choose an item?
-      if (keyboard[SDLK_RETURN]) {
-        // dup string from selected file name
+      if (key == SDLK_RETURN) {
         const file_entry_t& file_entry = file_list[act_file];
         filename = file_entry.name;
         if (file_entry.is_dir_type()) {
@@ -393,23 +367,23 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         } else {
           isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
-        index_file = act_file;  // remember current index
-        SDL_FreeSurface(my_screen);
+        index_file = act_file;
+        SDL_DestroySurface(my_screen);
         return true;
       }
 
-      if (keyboard[SDLK_ESCAPE]) {
-        SDL_FreeSurface(my_screen);
-        return false;    // ESC has been pressed
+      if (key == SDLK_ESCAPE) {
+        SDL_DestroySurface(my_screen);
+        return false;
       }
 
-      if (keyboard[SDLK_HOME]) {
+      if (key == SDLK_HOME) {
         act_file = 0;
         first_file = 0;
       }
 
-      if (keyboard[SDLK_END]) {
-        act_file = file_list.size() - 1;  // go to the last possible file in list
+      if (key == SDLK_END) {
+        act_file = file_list.size() - 1;
         if (act_file <= FILES_IN_SCREEN - 1) {
           first_file = 0;
         } else {
@@ -417,30 +391,15 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         }
       }
 
-      // GPH: Check for A-Z, a-z, 0-9 and jump to first file starting therewith
-      // (Would be nice to use event-driven keydown, but since we're within
-      // an event-handler that's not really feasible without a major restructure.)
+      // Check for A-Z, a-z, 0-9 and jump to first file starting therewith
       {
         bool char_hit = false;
-        char ch;
-        int char_range_idx = 0;
-        static char char_range[4][2] = {{'A','Z'},{'a','z'},{'0','9'},{0,0}};
-        while (!char_hit && char_range[char_range_idx][0]) {
-          if (!char_hit) {
-            for (ch = char_range[char_range_idx][0]; ch <= char_range[char_range_idx][1]; ch++) {
-              if (keyboard[(unsigned int) ch]) {
-                char_hit = true;
-                break;
-              }
-            } // for
-          } // if
-          char_range_idx++;
-        } // while
+        if ((key >= 'A' && key <= 'Z') || (key >= 'a' && key <= 'z') || (key >= '0' && key <= '9')) {
+          char_hit = true;
+        }
 
-        // If user hit a key in one of the ranges, jump to files beginning
-        // with that character...
         if (char_hit) {
-          // Make pressed char lowercase
+          char ch = (char)key;
           if (ch >= 'A' && ch <= 'Z') {
             ch |= 0x20;
           }

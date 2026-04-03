@@ -4,16 +4,18 @@ enum {
   NOT_ASCII = 0, ASCII
 };
 
-// 3D Border  (do not use for now? --bb)
 #define  VIEWPORTX   5
 #define  VIEWPORTY   5
 
 
-// if you gonna change these values, consider changing some values in Video.cpp --bb
+// if you gonna change these values, consider changing some values in Video.cpp
 #define SCREEN_WIDTH  560
 #define SCREEN_HEIGHT  384
 #define SCREEN_BPP  8
 extern SDL_Surface *screen;
+extern SDL_Window *g_window;
+extern SDL_Renderer *g_renderer;
+extern SDL_Texture *g_texture;
 
 #define SHOW_CYCLES  15
 
@@ -35,8 +37,9 @@ void FrameReleaseDC();
 
 void FrameReleaseVideoDC();
 
-void DrawFrameWindow();  // draw it!
-void FrameDispatchMessage(SDL_Event *e); // replacement for FrameWndProc.
+void DrawAppleContent();
+void DrawFrameWindow();
+void FrameDispatchMessage(SDL_Event *e);
 
 void SetUsingCursor(bool);
 

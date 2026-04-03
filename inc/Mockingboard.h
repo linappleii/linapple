@@ -2,7 +2,7 @@
 #pragma once
 
 extern bool g_bMBTimerIrqActive;
-extern unsigned int g_uTimer1IrqCount;  // DEBUG
+extern unsigned int g_uTimer1IrqCount;
 
 void MB_Initialize();
 

@@ -6,13 +6,13 @@ enum {
   FADE_OUT, FADE_IN
 };
 
-bool DSInit();    // init SDL_Auidio
-void DSUninit();  // uninit SDL_Auidio
+bool DSInit();
+void DSUninit();
 
-void SoundCore_SetFade(int how);  //
+void SoundCore_SetFade(int how);
 
 void DSUploadBuffer(short *buffer, unsigned len);
 
-void DSUploadMockBuffer(short *buffer, unsigned len);  // Upload Mockingboard data
+void DSUploadMockBuffer(short *buffer, unsigned len);
 
 extern bool g_bDSAvailable;

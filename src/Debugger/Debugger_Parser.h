@@ -30,14 +30,14 @@ inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens
 	extern	Arg_t g_aArgRaw[ MAX_ARGS ]; // pre-processing
 	extern	Arg_t g_aArgs  [ MAX_ARGS ]; // post-processing
 
-	extern	const char * g_pConsoleFirstArg; //    = 0; // points to first arg
+	extern	const char * g_pConsoleFirstArg; // points to first arg
 
 	extern	const TokenTable_t g_aTokens[ NUM_TOKENS ];
 
-	extern	const char TCHAR_LF    ;//= 0x0D;
-	extern	const char TCHAR_CR    ;//= 0x0A;
-	extern	const char TCHAR_SPACE ;//= ' ';
-	extern	const char TCHAR_TAB   ;//= '\t';
+	extern	const char TCHAR_LF    ;
+	extern	const char TCHAR_CR    ;
+	extern	const char TCHAR_SPACE ;
+	extern	const char TCHAR_TAB   ;
 	extern	const char TCHAR_QUOTE_DOUBLE;
 	extern	const char TCHAR_QUOTE_SINGLE;
 

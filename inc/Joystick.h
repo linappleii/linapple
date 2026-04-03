@@ -27,9 +27,9 @@ void JoyInitialize();
 
 void JoyShutDown();
 
-void JoyUpdateTrimViaKey(int);
+void JoyUpdateTrimViaKey(SDL_Keycode);
 
-bool JoyProcessKey(int, bool, bool, bool);
+bool JoyProcessKey(SDL_Keycode, bool, bool, bool);
 
 void JoyReset();
 

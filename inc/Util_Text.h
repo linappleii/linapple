@@ -9,8 +9,6 @@
 #define CHAR_QUOTE_SINGLE '\''
 #define CHAR_ESCAPE       '\x1B'
 
-// Text Util
-
 inline	const char* EatEOL                    ( const char *pSrc )
 		{
 			if (pSrc)
@@ -106,10 +104,7 @@ inline	const char* SkipUntilWhiteSpaceReverse ( const char *pSrc, const char *pS
 			return pSrc;
 		}
 
-
-
-/** Assumes text are valid hex digits!
-//=========================================================================== */
+/** Assumes text are valid hex digits! */
 inline	unsigned char TextConvert2CharsToByte ( char *pText ) {
   unsigned char n = ((pText[0] <= '@') ? (pText[0] - '0') : (pText[0] - 'A' + 10)) << 4;
     n += ((pText[1] <= '@') ? (pText[1] - '0') : (pText[1] - 'A' + 10)) << 0;
@@ -130,8 +125,6 @@ inline	bool TextIsHexChar( char nChar )
 			return false;
 		}
 
-
-//===========================================================================
 inline	bool TextIsHexByte( char *pText )
 		{
 			if (TextIsHexChar( pText[0] ) &&
@@ -141,7 +134,6 @@ inline	bool TextIsHexByte( char *pText )
 			return false;
 		}
 
-//===========================================================================
 inline	bool TextIsHexString ( const char* pText )
 	{
 		while (*pText)

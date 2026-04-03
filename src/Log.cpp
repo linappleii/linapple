@@ -30,15 +30,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string.h>
 
 void LogInitialize() {
-  g_fh = fopen("AppleWin.log", "a+t");  // Open log file (append & text g_nAppMode)
-  // Start of Unix(tm) specific code
+  g_fh = fopen("AppleWin.log", "a+t");
   struct timeval tv;
   struct tm *ptm;
   char time_str[40];
   gettimeofday(&tv, NULL);
   ptm = localtime(&tv.tv_sec);
   strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
-  // end of Unix(tm) specific code
   fprintf(g_fh, "*** Logging started: %s\n", time_str);
 }
 

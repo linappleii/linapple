@@ -321,11 +321,11 @@ static uint32_t Spkr_SubmitWaveBuffer(short *pSpeakerBuffer, uint32_t nNumSample
 
 // Mute - set volume to MINIMUM,  Demute - set volume to NORMAL STATE? -bb
 void Spkr_Mute() {
-  SDL_PauseAudio(1);  // dangerous functions - will mute Mockingboard, too. Need to be changed
+  SoundCore_SetFade(FADE_OUT);  // dangerous functions - will mute Mockingboard, too. Need to be changed
 }
 
 void Spkr_Demute() {
-  SDL_PauseAudio(0);
+  SoundCore_SetFade(FADE_IN);
 }
 
 static void Spkr_SetActive(bool bActive) {

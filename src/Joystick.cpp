@@ -144,8 +144,8 @@ SDL_Joystick *joy1 = NULL;
 SDL_Joystick *joy2 = NULL;
 
 void CheckJoyExit() {
-  SDL_JoystickUpdate(); // update all joysticks states
-  if (SDL_JoystickGetButton(joy1, joyexitbutton0) && SDL_JoystickGetButton(joy1, joyexitbutton1)) {
+  SDL_UpdateJoysticks(); // update all joysticks states
+  if (SDL_GetJoystickButton(joy1, joyexitbutton0) && SDL_GetJoystickButton(joy1, joyexitbutton1)) {
     joyquitevent = true;
   } else {
     joyquitevent = false;
@@ -160,23 +160,23 @@ void CheckJoystick0() {
   unsigned int currtime = SDL_GetTicks();
   if ((currtime - lastcheck >= 10) || joybutton[0] || joybutton[1]) {
     lastcheck = currtime;
-    SDL_JoystickUpdate(); // update all joysticks states
-    if ((SDL_JoystickGetButton(joy1, joy1button1)) && !joybutton[0]) {
+    SDL_UpdateJoysticks(); // update all joysticks states
+    if ((SDL_GetJoystickButton(joy1, joy1button1)) && !joybutton[0]) {
       buttonlatch[0] = BUTTONTIME;
     }
-    if ((SDL_JoystickGetButton(joy1, joy1button2)) && !joybutton[1] &&
+    if ((SDL_GetJoystickButton(joy1, joy1button2)) && !joybutton[1] &&
         (joyinfo[joytype[1]].device == DEVICE_NONE)  // Only consider 2nd button if NOT emulating a 2nd Apple joystick
       ) {
       buttonlatch[1] = BUTTONTIME;
     }
-    joybutton[0] = SDL_JoystickGetButton(joy1, joy1button1);
+    joybutton[0] = SDL_GetJoystickButton(joy1, joy1button1);
     if (joyinfo[joytype[1]].device ==
         DEVICE_NONE) { // Only consider 2nd button if NOT emulating a 2nd Apple joystick button
-      joybutton[1] = SDL_JoystickGetButton(joy1, joy1button2);
+      joybutton[1] = SDL_GetJoystickButton(joy1, joy1button2);
     }
 
-    xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
-    ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
+    xpos[0] = (SDL_GetJoystickAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
+    ypos[0] = (SDL_GetJoystickAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
 
     // "Square" a modern analog stick (e.g. Playstation)
     auto x = xpos[0];
@@ -253,21 +253,21 @@ void CheckJoystick1() {
   unsigned int currtime = SDL_GetTicks();
   if ((currtime - lastcheck >= 10) || joybutton[2]) {
     lastcheck = currtime;
-    SDL_JoystickUpdate(); // update all joysticks states
-    if (SDL_JoystickGetButton(joy2, joy2button1) && !joybutton[2]) {
+    SDL_UpdateJoysticks(); // update all joysticks states
+    if (SDL_GetJoystickButton(joy2, joy2button1) && !joybutton[2]) {
       buttonlatch[2] = BUTTONTIME;
       if (joyinfo[joytype[1]].device != DEVICE_NONE) {
         buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
       }
     }
-    joybutton[2] = SDL_JoystickGetButton(joy2, joy2button1);
+    joybutton[2] = SDL_GetJoystickButton(joy2, joy2button1);
 
     if (joyinfo[joytype[1]].device != DEVICE_NONE) {
-      joybutton[1] = SDL_JoystickGetButton(joy2, joy2button1); // Re-map this button when emulating a 2nd Apple joystick
+      joybutton[1] = SDL_GetJoystickButton(joy2, joy2button1); // Re-map this button when emulating a 2nd Apple joystick
     }
 
-    xpos[1] = (SDL_JoystickGetAxis(joy2, joy2axis0) - joysubx[1]) >> joyshrx[1];
-    ypos[1] = (SDL_JoystickGetAxis(joy2, joy2axis1) - joysuby[1]) >> joyshry[1];
+    xpos[1] = (SDL_GetJoystickAxis(joy2, joy2axis0) - joysubx[1]) >> joyshrx[1];
+    ypos[1] = (SDL_GetJoystickAxis(joy2, joy2axis1) - joysuby[1]) >> joyshry[1];
 
     // NB. This does not work for analogue joysticks (not self-centreing) - except if Trim=0
     if (xpos[1] == 127 || xpos[1] == 128) {
@@ -284,10 +284,10 @@ void CheckJoystick1() {
 void JoyShutDown() {
   // First of all, let's close all existing SDL joysticks
   if (joy1) {
-    SDL_JoystickClose(joy1);
+    SDL_CloseJoystick(joy1);
   }
   if (joy2) {
-    SDL_JoystickClose(joy2);
+    SDL_CloseJoystick(joy2);
   }
 }
 
@@ -302,16 +302,19 @@ void JoyInitialize()
 
   // First of all, let's close all existing SDL joysticks
   if (joy1) {
-    SDL_JoystickClose(joy1);
+    SDL_CloseJoystick(joy1);
+    joy1 = NULL;
   }
   if (joy2) {
-    SDL_JoystickClose(joy2);
+    SDL_CloseJoystick(joy2);
+    joy2 = NULL;
   }
-  int number_of_joysticks = SDL_NumJoysticks();
+  int number_of_joysticks = 0;
+  SDL_JoystickID *joysticks = SDL_GetJoysticks(&number_of_joysticks);
 
   if (joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 0) {
-      joy1 = SDL_JoystickOpen(joy1index); // open joystick and get its information into SDL_Joystick struct
+    if (number_of_joysticks > 0 && (int)joy1index < number_of_joysticks) {
+      joy1 = SDL_OpenJoystick(joysticks[joy1index]); // open joystick and get its information into SDL_Joystick struct
       joyshrx[0] = 0;
       joyshry[0] = 0;
       joysubx[0] = AXIS_MIN; //just do not know how to get wXmin and alike from SDL joysticks
@@ -334,8 +337,8 @@ void JoyInitialize()
   // Init for emulated joystick #1:
 
   if (joyinfo[joytype[1]].device == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 1) {
-      joy2 = SDL_JoystickOpen(joy2index); // open joystick #2 and get its information into SDL_Joystick struct
+    if (number_of_joysticks > 1 && (int)joy2index < number_of_joysticks) {
+      joy2 = SDL_OpenJoystick(joysticks[joy2index]); // open joystick #2 and get its information into SDL_Joystick struct
       joyshrx[1] = 0;
       joyshry[1] = 0;
       joysubx[1] = AXIS_MIN;
@@ -355,40 +358,43 @@ void JoyInitialize()
       joytype[1] = DEVICE_NONE; // do not use
     }
   }
+  if (joysticks) {
+    SDL_free(joysticks);
+  }
 }
 
 // JoyUpdateTrimViaKey
 // This will adjust the trim by one "tick" according to the keypad.
 //
 // Entry:
-void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
+void JoyUpdateTrimViaKey(SDL_Keycode virtkey) {  // Adjust trim?
   switch (virtkey) {
     case SDLK_DOWN:
-    case SDLK_KP2:
+    case SDLK_KP_2:
       if (g_nPdlTrimY < 64) {
         g_nPdlTrimY++;
       }
       break;
-    case SDLK_KP4:
+    case SDLK_KP_4:
     case SDLK_LEFT:
       if (g_nPdlTrimX > -64) {
         g_nPdlTrimX--;
       }
       break;
 
-    case SDLK_KP6:
+    case SDLK_KP_6:
     case SDLK_RIGHT:
       if (g_nPdlTrimX < 64) {
         g_nPdlTrimX++;
       }
       break;
-    case SDLK_KP8:
+    case SDLK_KP_8:
     case SDLK_UP:
       if (g_nPdlTrimY > -64) {
         g_nPdlTrimY--;
       }
       break;
-    case SDLK_KP5:
+    case SDLK_KP_5:
     case SDLK_CLEAR:
       g_nPdlTrimX = g_nPdlTrimY = 0;
       break;
@@ -397,7 +403,7 @@ void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
   }
 }
 
-bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
+bool JoyProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool autorep) {
 #if 0
   // GPH Apple as button: This is confusing and results in situations where
   // the solid-apple key (RALT) never gets released.  Going to comment out for
@@ -421,47 +427,47 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
   else
 #endif
   if (!extended) {
-    if ((virtkey >= SDLK_KP1) && (virtkey <= SDLK_KP9)) {
-      keydown[virtkey - SDLK_KP1] = down;
+    if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
+      keydown[virtkey - SDLK_KP_1] = down;
     } else {
       switch (virtkey) {
-        case SDLK_KP1:
+        case SDLK_KP_1:
         case SDLK_END:
           keydown[0] = down;
           break;
-        case SDLK_KP2:
+        case SDLK_KP_2:
         case SDLK_DOWN:
           keydown[1] = down;
           break;
-        case SDLK_KP3:
+        case SDLK_KP_3:
         case SDLK_PAGEDOWN:
           keydown[2] = down;
           break;
-        case SDLK_KP4:
+        case SDLK_KP_4:
         case SDLK_LEFT:
           keydown[3] = down;
           break;
-        case SDLK_KP5:
+        case SDLK_KP_5:
         case SDLK_CLEAR:
           keydown[4] = down;
           break;
-        case SDLK_KP6:
+        case SDLK_KP_6:
         case SDLK_RIGHT:
           keydown[5] = down;
           break;
-        case SDLK_KP7:
+        case SDLK_KP_7:
         case SDLK_HOME:
           keydown[6] = down;
           break;
-        case SDLK_KP8:
+        case SDLK_KP_8:
         case SDLK_UP:
           keydown[7] = down;
           break;
-        case SDLK_KP9:
+        case SDLK_KP_9:
         case SDLK_PAGEUP:
           keydown[8] = down;
           break;
-        case SDLK_KP0:
+        case SDLK_KP_0:
         case SDLK_INSERT:
           keydown[9] = down;
           break;  // Button #0
@@ -478,7 +484,7 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
 
   if (keychange) {
     // Is it a joystick button 0 or 1 (open-apple or solid apple)?
-    if ((virtkey == SDLK_KP0) || (virtkey == SDLK_INSERT)) {
+    if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
       // It's a joystick button...
       if (down) {
         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
@@ -671,7 +677,12 @@ bool JoySetEmulationType(unsigned int newType, int nJoystickNumber) {
   }
 
   if (joyinfo[newType].device == DEVICE_JOYSTICK) {
-    if (SDL_NumJoysticks() <= nJoystickNumber) {
+    int count = 0;
+    SDL_JoystickID *joysticks = SDL_GetJoysticks(&count);
+    if (joysticks) {
+      SDL_free(joysticks);
+    }
+    if (count <= nJoystickNumber) {
       fprintf(stderr, "Can not find joystick #%d - disabling it\n", nJoystickNumber);
       return 0;
     }

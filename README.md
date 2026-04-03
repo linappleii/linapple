@@ -92,9 +92,6 @@ released by pressing any function key.
 | Numpad *       | Reset emulation speed.                                           |
 | RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                          |
 
-**Warning**: Fullscreen mode does not properly exit in multi-monitor
-setups.  (This is a bug in SDL 1.2.)
-
 When you first start the emulator, press the F3 key and select a disk
 image file. Press Ctrl+F2 to restart the emulator with the disk
 "inserted" if the application doesn't automatically load.
@@ -106,17 +103,19 @@ files on the disk and run programs.
 
 ### LinApple Driver Video
 
-| driver name    | supported resolutions  | debugger panel (experimental) | keyboard    |
-| -------------- | ---------------------- | ----------------------------- | ----------- |
-| x11            | all                    | glitch graph or core dumped   | OK          |
-| fbcon          | max 1280x720 in rpi    | OK                            | OK          |
-| dispmanx       | 1920x1080         16:9 | OK                            | OK          |
-|                | 1280x 720         16:9 | OK                            | OK          |
-|                |  800x 600          4:3 | OK                            | OK          |
-|                |  640x 480          4:3 | OK                            | OK          |
-| kmsdrm         | all                    | NONE                          | NONE        |
+LinApple uses SDL 3, which supports several video backends. You can
+select a specific driver by setting the `SDL_VIDEO_DRIVER` environment
+variable.
 
-**Warning**: debugger panel only works in full screen.
+| driver name    | description                                                      |
+| -------------- | -----------------------------------------------------------------|
+| wayland        | Modern Linux display protocol (default on most new distros)      |
+| x11            | Traditional X Window System                                      |
+| kmsdrm         | Kernel Mode Setting / Direct Rendering Manager (console/embedded)|
+| dummy          | No video output (used for testing)                               |
+
+**Note**: The debugger and other features are now integrated using
+the SDL 3 hardware accelerated renderer.
 
 ### Apple II Commands
 

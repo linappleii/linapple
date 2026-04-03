@@ -505,7 +505,7 @@ int DiskInsert(int drive, const char* imageFileName, bool writeProtected, bool c
     tmp = GetImageTitle(imageFileName, fptr);
     snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(tmp)), tmp);
     if (drive == 0) {
-      SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
+      SDL_SetWindowTitle(g_window, s_title);// change caption just for drive 0 (leading)
     }
     printf("Disk is inserted. Full name = %s\n", imageFileName);
   } else {
@@ -822,7 +822,7 @@ bool DiskDriveSwap()
   memcpy(&g_aFloppyDisk[1], &temp, sizeof(Disk_t));
   // change title
   snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(g_aFloppyDisk[0].imagename)), g_aFloppyDisk[0].imagename);
-  SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
+  SDL_SetWindowTitle(g_window, s_title);// change caption just for drive 0 (leading)
 
   FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);
 

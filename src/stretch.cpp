@@ -28,12 +28,7 @@
 */
 
 
-/* This isn't ready for general consumption yet - it should be folded
-   into the general blitting mechanism.
-*/
-
-// For embedded XPMs.
-#include <SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 
 #include "stdafx.h"
 #include "asset.h"
@@ -56,7 +51,6 @@ void name(type *src, int src_w, type *dst, int dst_w)  \
     pos += inc;        \
   }            \
 }
-// the same as above, but pixels ORed with the destination
 #define DEFINE_COPY_ROW_OR(name, type)      \
 void name(type *src, int src_w, type *dst, int dst_w)  \
 {              \
@@ -83,7 +77,54 @@ DEFINE_COPY_ROW_OR(copy_row_or1, Uint8)
 DEFINE_COPY_ROW_OR(copy_row_or2, Uint16)
 DEFINE_COPY_ROW_OR(copy_row_or4, Uint32)
 
-/* The ASM code doesn't handle 24-bpp stretch blits */
+void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
+{
+  int i;
+  int pos, inc;
+  Uint32 pixel = 0;
+  SDL_Color *colors = palette ? palette->colors : NULL;
+
+  pos = 0x10000;
+  inc = (src_w << 16) / dst_w;
+  for ( i=dst_w; i>0; --i ) {
+    while ( pos >= 0x10000L ) {
+      Uint8 s = *src++;
+      if (colors) {
+        pixel = (colors[s].r << 16) | (colors[s].g << 8) | colors[s].b;
+      } else {
+        pixel = 0;
+      }
+      pos -= 0x10000L;
+    }
+    *dst++ = pixel;
+    pos += inc;
+  }
+}
+
+void copy_row_or1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
+{
+  int i;
+  int pos, inc;
+  Uint32 pixel = 0;
+  SDL_Color *colors = palette ? palette->colors : NULL;
+
+  pos = 0x10000;
+  inc = (src_w << 16) / dst_w;
+  for ( i=dst_w; i>0; --i ) {
+    while ( pos >= 0x10000L ) {
+      Uint8 s = *src++;
+      if (colors) {
+        pixel = (colors[s].r << 16) | (colors[s].g << 8) | colors[s].b;
+      } else {
+        pixel = 0;
+      }
+      pos -= 0x10000L;
+    }
+    *dst++ |= pixel;
+    pos += inc;
+  }
+}
+
 void copy_row3(Uint8 *src, int src_w, Uint8 *dst, int dst_w) {
   int i;
   int pos, inc;
@@ -118,14 +159,16 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
   Uint8 *dstp;
   SDL_Rect full_src;
   SDL_Rect full_dst;
-  const int bpp = dst->format->BytesPerPixel;
-
-  if (src->format->BitsPerPixel != dst->format->BitsPerPixel) {
-    SDL_SetError("Only works with same format surfaces");
-    return (-1);
+  if (!src || !dst) return -1;
+  if (!src->pixels || !dst->pixels) {
+      return -1;
   }
+  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
+  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
+  if (!sfmt || !dfmt) return -1;
+  const int sbpp = sfmt->bytes_per_pixel;
+  const int dbpp = dfmt->bytes_per_pixel;
 
-  /* Verify the blit rectangles */
   if (!srcrect) {
     full_src.x = 0;
     full_src.y = 0;
@@ -141,18 +184,16 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     dstrect = &full_dst;
   }
 
-  /* Lock the destination if it's in hardware */
   dst_locked = 0;
   if (SDL_MUSTLOCK(dst)) {
-    if (SDL_LockSurface(dst) < 0) {
+    if (!SDL_LockSurface(dst)) {
       return -1;
     }
     dst_locked = 1;
   }
-  /* Lock the source if it's in hardware */
   src_locked = 0;
   if (SDL_MUSTLOCK(src)) {
-    if (SDL_LockSurface(src) < 0) {
+    if (!SDL_LockSurface(src)) {
       if (dst_locked) {
         SDL_UnlockSurface(dst);
       }
@@ -161,39 +202,45 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     src_locked = 1;
   }
 
-  /* Set up the data... */
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
 
-  /* Perform the stretch blit */
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * bpp);
+    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * bpp);
+      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
-    switch (bpp) {
-      case 1:
-        copy_row1(srcp, srcrect->w, dstp, dstrect->w);
-        break;
-      case 2:
-        copy_row2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
-        break;
-      case 3:
-        copy_row3(srcp, srcrect->w, dstp, dstrect->w);
-        break;
-      case 4:
-        copy_row4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
-        break;
+    if (sbpp == 1 && dbpp == 4) {
+        SDL_Palette *pal = SDL_GetSurfacePalette(src);
+        if (pal) {
+            copy_row1to4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, pal);
+        } else {
+            memset(dstp, 0, dstrect->w * 4);
+        }
+    } else {
+        switch (dbpp) {
+          case 1:
+            copy_row1(srcp, srcrect->w, dstp, dstrect->w);
+            break;
+          case 2:
+            copy_row2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
+            break;
+          case 3:
+            copy_row3(srcp, srcrect->w, dstp, dstrect->w);
+            break;
+          case 4:
+            copy_row4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
+            break;
+        }
     }
     pos += inc;
   }
 
-  /* We need to unlock the surfaces if they're locked */
   if (dst_locked) {
     SDL_UnlockSurface(dst);
   }
@@ -203,11 +250,6 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
   return (0);
 }
 
-// MONO8
-/* Perform a monochrome stretch blit between two surfaces of the 8bpp format,
-   using the given foreground and background color (index from palette).
-   NOTE:  This function is not safe to call from multiple threads!
-*/
 void copy8mono(Uint8 *src, int src_w, Uint8 *dst, int dst_w, Uint8 fgbrush, Uint8 bgbrush) {
   int i;
   int pos, inc;
@@ -228,9 +270,28 @@ void copy8mono(Uint8 *src, int src_w, Uint8 *dst, int dst_w, Uint8 fgbrush, Uint
   }
 }
 
-int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint8 fgbrush, Uint8 bgbrush)
+void copy8mono4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, Uint32 fgbrush, Uint32 bgbrush) {
+  int i;
+  int pos, inc;
+  Uint8 pixel = 0;
+  pos = 0x10000;
+  inc = (src_w << 16) / dst_w;
+  for (i = dst_w; i > 0; --i) {
+    while (pos >= 0x10000L) {
+      pixel = *src++;
+      pos -= 0x10000L;
+    }
+    if (pixel) {
+      *dst++ = fgbrush;
+    } else {
+      *dst++ = bgbrush;
+    }
+    pos += inc;
+  }
+}
+
+int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint32 fgbrush, Uint32 bgbrush)
 {
-  //fgbrush/bgbrush - monochrome color (index from palette)
   int src_locked;
   int dst_locked;
   int pos, inc;
@@ -240,9 +301,16 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
   Uint8 *dstp;
   SDL_Rect full_src;
   SDL_Rect full_dst;
-  const int bpp = dst->format->BytesPerPixel;
+  if (!src || !dst) return -1;
+  if (!src->pixels || !dst->pixels) {
+      return -1;
+  }
+  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
+  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
+  if (!sfmt || !dfmt) return -1;
+  const int sbpp = sfmt->bytes_per_pixel;
+  const int dbpp = dfmt->bytes_per_pixel;
 
-  /* Verify the blit rectangles */
   if (!srcrect) {
     full_src.x = 0;
     full_src.y = 0;
@@ -258,18 +326,16 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
     dstrect = &full_dst;
   }
 
-  /* Lock the destination if it's in hardware */
   dst_locked = 0;
   if (SDL_MUSTLOCK(dst)) {
-    if (SDL_LockSurface(dst) < 0) {
+    if (!SDL_LockSurface(dst)) {
       return -1;
     }
     dst_locked = 1;
   }
-  /* Lock the source if it's in hardware */
   src_locked = 0;
   if (SDL_MUSTLOCK(src)) {
-    if (SDL_LockSurface(src) < 0) {
+    if (!SDL_LockSurface(src)) {
       if (dst_locked) {
         SDL_UnlockSurface(dst);
       }
@@ -278,32 +344,33 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
     src_locked = 1;
   }
 
-  /* Set up the data... */
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
 
-  /* Perform the stretch blit */
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * bpp);
+    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * bpp);
+      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
-    switch (bpp) {
-      case 1:
-        copy8mono(srcp, srcrect->w, dstp, dstrect->w, fgbrush, bgbrush);
-        break;
-      default:
-        break;
+    if (sbpp == 1 && dbpp == 4) {
+        copy8mono4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, fgbrush, bgbrush);
+    } else {
+        switch (dbpp) {
+          case 1:
+            copy8mono(srcp, srcrect->w, dstp, dstrect->w, (Uint8)fgbrush, (Uint8)bgbrush);
+            break;
+          default:
+            break;
+        }
     }
     pos += inc;
   }
 
-  /* We need to unlock the surfaces if they're locked */
   if (dst_locked) {
     SDL_UnlockSurface(dst);
   }
@@ -312,10 +379,6 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
   }
   return (0);
 }
-
-/*  SDL_SoftStretchOr  - the same as SDL_SoftStretch, but ORed with destination
-  NOTE: 24bpp does not support  -- beom beotiger 2007 November
-*/
 
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!
@@ -330,14 +393,16 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
   Uint8 *dstp;
   SDL_Rect full_src;
   SDL_Rect full_dst;
-  const int bpp = dst->format->BytesPerPixel;
-
-  if (src->format->BitsPerPixel != dst->format->BitsPerPixel) {
-    SDL_SetError("Only works with same format surfaces");
-    return (-1);
+  if (!src || !dst) return -1;
+  if (!src->pixels || !dst->pixels) {
+      return -1;
   }
+  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
+  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
+  if (!sfmt || !dfmt) return -1;
+  const int sbpp = sfmt->bytes_per_pixel;
+  const int dbpp = dfmt->bytes_per_pixel;
 
-  /* Verify the blit rectangles */
   if (!srcrect) {
     full_src.x = 0;
     full_src.y = 0;
@@ -353,18 +418,16 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     dstrect = &full_dst;
   }
 
-  /* Lock the destination if it's in hardware */
   dst_locked = 0;
   if (SDL_MUSTLOCK(dst)) {
-    if (SDL_LockSurface(dst) < 0) {
+    if (!SDL_LockSurface(dst)) {
       return -1;
     }
     dst_locked = 1;
   }
-  /* Lock the source if it's in hardware */
   src_locked = 0;
   if (SDL_MUSTLOCK(src)) {
-    if (SDL_LockSurface(src) < 0) {
+    if (!SDL_LockSurface(src)) {
       if (dst_locked) {
         SDL_UnlockSurface(dst);
       }
@@ -373,39 +436,40 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     src_locked = 1;
   }
 
-  /* Set up the data... */
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
 
-  /* Perform the stretch blit */
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * bpp);
+    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * bpp);
+      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
-    switch (bpp) {
-      case 1:
-        copy_row_or1(srcp, srcrect->w, dstp, dstrect->w);
-        break;
-      case 2:
-        copy_row_or2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
-        break;
-      case 3:
-        copy_row3(srcp, srcrect->w, dstp, dstrect->w);
-        break;
-      case 4:
-        copy_row_or4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
-        break;
+    if (sbpp == 1 && dbpp == 4) {
+        copy_row_or1to4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, SDL_GetSurfacePalette(src));
+    } else {
+        switch (dbpp) {
+          case 1:
+            copy_row_or1(srcp, srcrect->w, dstp, dstrect->w);
+            break;
+          case 2:
+            copy_row_or2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
+            break;
+          case 3:
+            copy_row3(srcp, srcrect->w, dstp, dstrect->w);
+            break;
+          case 4:
+            copy_row_or4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
+            break;
+        }
     }
     pos += inc;
   }
 
-  /* We need to unlock the surfaces if they're locked */
   if (dst_locked) {
     SDL_UnlockSurface(dst);
   }
@@ -415,25 +479,22 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
   return (0);
 }
 
-// Font routines
-SDL_Surface *font_sfc = NULL;  // used for font
+SDL_Surface *font_sfc = NULL;
 
 bool fonts_initialization(void) {
-  font_sfc = SDL_DisplayFormat(assets->font);
-  /* Transparant color is BLACK: */
-  SDL_SetColorKey(font_sfc, SDL_SRCCOLORKEY, SDL_MapRGB(font_sfc->format, 0, 0, 0));
+  font_sfc = SDL_ConvertSurface(assets->font, SDL_PIXELFORMAT_INDEX8);
+  SDL_SetSurfaceColorKey(font_sfc, true, SDL_MapRGB(SDL_GetPixelFormatDetails(font_sfc->format), SDL_GetSurfacePalette(font_sfc), 0, 0, 0));
 
   return true;
 }
 
 void fonts_termination(void) {
-  SDL_FreeSurface(font_sfc);
+  SDL_DestroySurface(font_sfc);
   font_sfc = NULL;
 }
 
 void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
 {
-  // kx, ky - stretching koefficients for width and height of destination chars respectively
   int i, c;
   SDL_Rect s, d;
 
@@ -442,7 +503,7 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
     c = int(text[i]);
 
     if (c > 127 || c < 0) {
-      c = '?';  // cut-off non-ASCII chars
+      c = '?';
     }
 
     row = c / CHARS_IN_ROW;
@@ -462,7 +523,6 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
 
 void font_print_right(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
 {
-  // kx, ky - stretching koefficients for width and height of destination chars respectively
   int i, c;
   SDL_Rect s, d;
 
@@ -472,7 +532,7 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
     int row;
     c = int(text[i]);
     if (c > 127 || c < 0) {
-      c = '?';  // cut-off non-ASCII chars
+      c = '?';
     }
 
     row = c / CHARS_IN_ROW;
@@ -491,11 +551,10 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
 
 void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
 {
-  // kx, ky - stretching koefficients for width and height of destination chars respectively
   int i, c;
   SDL_Rect s, d;
 
-  x -= strlen(text) * FONT_SIZE_X * kx / 2;  // centered position
+  x -= strlen(text) * FONT_SIZE_X * kx / 2;
   if (x < 0) {
     x = 0;
   }
@@ -504,7 +563,7 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
     int row;
     c = int(text[i]);
     if (c > 127 || c < 0) {
-      c = '?';  // cut-off non-ASCII chars
+      c = '?';
     }
 
     row = c / CHARS_IN_ROW;
@@ -521,12 +580,10 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
   }
 }
 
-// Some auxiliary functions
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r) {
-  // my rebiuld for 8BPP palettized surfaces! --bb
   SDL_Rect r2;
   int i;
-  SDL_Color mycolors[256];  // faded colors
+  SDL_Color mycolors[256];
   SDL_Color *colors;
 
   if (r == 0) {
@@ -537,26 +594,25 @@ void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b
     r = &r2;
   }
 
-  // fading just for 8BPP surfaces!
-  if (surface->format->BytesPerPixel != 1) {
+  if (SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel != 1) {
     return;
   }
 
-  colors = (SDL_Color *) surface->format->palette->colors; // get pointer to origin colors
+  colors = (SDL_Color *) SDL_GetSurfacePalette(surface)->colors;
   for (i = 0; i < 256; i++) {
     mycolors[i].r = (Uint8)(colors[i].r * r_factor);
     mycolors[i].g = (Uint8)(colors[i].g * g_factor);
     mycolors[i].b = (Uint8)(colors[i].b * b_factor);
   }
 
-  SDL_SetColors(surface, mycolors, 0, 256);
+  SDL_SetPaletteColors(SDL_GetSurfacePalette(surface), mycolors, 0, 256);
 }
 
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
   SDL_Rect clip;
-  int bpp = surface->format->BytesPerPixel;
+  int bpp = SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel;
 
-  SDL_GetClipRect(surface, &clip);
+  SDL_GetSurfaceClipRect(surface, &clip);
 
   if (x < clip.x || x >= clip.x + clip.w || y < clip.y || y >= clip.y + clip.h) {
     return;
@@ -601,7 +657,7 @@ void rectangle(SDL_Surface *surface, int x, int y, int w, int h, Uint32 pixel) {
   for (i = 0; i < w; i++) {
     putpixel(surface, x + i, y, pixel);
     putpixel(surface, x + i, y + h, pixel);
-  } /* for */
+  }
   for (i = 0; i <= h; i++) {
     putpixel(surface, x, y + i, pixel);
     putpixel(surface, x + w, y + i, pixel);

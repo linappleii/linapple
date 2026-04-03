@@ -57,10 +57,10 @@ constexpr int BTN_DEBUG     = 6;
 constexpr int BTN_SETUP     = 7;
 constexpr int BTN_CYCLE     = 8;
 constexpr int BTN_QUIT      = 11;
+// BTN_SAVEST and BTN_LOADST
 constexpr int BTN_SAVEST    = 10;
 constexpr int BTN_LOADST    = 9;
 
-// TODO: Move to StringTable.h
 #define TITLE_APPLE_2           "Apple ][ Emulator"
 #define TITLE_APPLE_2_PLUS      "Apple ][+ Emulator"
 #define TITLE_APPLE_2E          "Apple //e Emulator"

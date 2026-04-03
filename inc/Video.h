@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <atomic>
 #pragma once
 
 // Types
@@ -131,9 +132,10 @@ extern unsigned int g_videotype;
 extern unsigned int g_uVideoMode;
 extern unsigned int g_singlethreaded;
 extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL surface
+extern std::atomic<bool> g_bFrameReady;
 
 // Surfaces for drawing
-extern SDL_Surface *g_hLogoBitmap; // our Linux logo!
+extern SDL_Surface *g_hLogoBitmap;
 extern SDL_Surface *g_hStatusSurface;  // status panel
 
 extern SDL_Surface *g_hSourceBitmap;

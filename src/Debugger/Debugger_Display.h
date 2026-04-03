@@ -3,15 +3,10 @@
 
 #include "Common.h"
 
-// use the new Debugger Font (Apple Font)
 #define USE_APPLE_FONT   1
 
-// Test Colors & Glyphs
 #define DEBUG_APPLE_FONT 0
 
-// Win32 Debugger Font
-// 1 = Use Debugger_Font.BMP (7x8)
-// 0 = Use CHARSET40.bmp (fg & bg colors aren't proper)
 #define APPLE_FONT_NEW            1
 
 #if APPLE_FONT_NEW
@@ -22,11 +17,9 @@
 
 	enum ConsoleFontSize_e
 	{
-		// Grid Alignment
 		CONSOLE_FONT_GRID_X = 7,
 		CONSOLE_FONT_GRID_Y = 8,
 
-		// Font Char Width/Height in pixels
 		CONSOLE_FONT_WIDTH  = 7,
 		CONSOLE_FONT_HEIGHT = 8,
 	};
