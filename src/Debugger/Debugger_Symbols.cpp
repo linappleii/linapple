@@ -270,8 +270,8 @@ Update_t CmdSymbols (int nArgs)
 
 //===========================================================================
 Update_t CmdSymbolsClear (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 	SymbolTable_Index_e eSymbolTable = SYMBOLS_USER_1;
 	_CmdSymbolsClear( eSymbolTable );
 	return (UPDATE_DISASM | UPDATE_SYMBOLS);
@@ -1044,7 +1044,7 @@ Update_t CmdSymbolsCommand (int nArgs)
 
 //===========================================================================
 Update_t CmdSymbolsSave (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 	return UPDATE_CONSOLE_DISPLAY;
 }

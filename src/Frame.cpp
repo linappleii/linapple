@@ -163,8 +163,8 @@ void DrawStatusArea(int drawflags)
 }
 
 void FrameShowHelpScreen(int sx, int sy)
-  (void)sy;
 {
+  (void)sy;
   const int MAX_LINES = 25;
   const char *HelpStrings[MAX_LINES] = {"Welcome to LinApple - Apple][ emulator for Linux!",
                                         "Conf file is linapple.conf in current directory by default",

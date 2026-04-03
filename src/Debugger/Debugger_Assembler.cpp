@@ -998,8 +998,8 @@ void _CmdAssembleHashDump ()
 
 //===========================================================================
 int AssemblerPokeAddress( const int Opcode, const int nOpmode, const unsigned short nBaseAddress, const unsigned short nTargetOffset )
-  (void)Opcode;
 {
+  (void)Opcode;
 //	int nOpmode  = g_aOpcodes[ nOpcode ].nAddressMode;
 	int nOpbytes = g_aOpmodes[ nOpmode ].m_nBytes;
 
@@ -1084,9 +1084,9 @@ void SetFlag( AssemblerFlags_e eFlag, bool bValue = true )
 		AM_I // indexed or indirect
 */
 //===========================================================================
-  (void)nArgs;
 bool AssemblerGetArgs( int iArg, int nArgs, unsigned short nBaseAddress )
 {
+  (void)nArgs;
 	m_iAsmAddressMode = AM_IMPLIED;
 	AssemblerState_e eNextState = AS_GET_MNEMONIC;
 

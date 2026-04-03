@@ -30,6 +30,7 @@ Command Line Switches
 * `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
 * `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
 * `-b|--autoboot`: Boots the system automatically, rather than displaying the splash screen
+* `--pal`: Use PAL (50Hz) video timing instead of NTSC (60Hz)
 * `-f`: Specifies that the emulator should run in fullscreen mode
 * `-l`: Logs output to a file called AppleWin.log (untested)
 * `--benchmark`: Specifies that benchmark should be loaded (untested)

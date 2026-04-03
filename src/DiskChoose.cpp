@@ -317,9 +317,9 @@ bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
 }
 
 bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
-  (void)sy;
                        std::string& filename, bool& isdir, size_t& index_file)
 {
+  (void)sy;
   const double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
   const double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
 

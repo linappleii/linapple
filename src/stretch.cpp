@@ -581,6 +581,7 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
 }
 
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r) {
+  (void)a_factor;
   SDL_Rect r2;
   int i;
   SDL_Color mycolors[256];

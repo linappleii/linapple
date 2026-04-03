@@ -264,7 +264,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
   static char      g_sFileNameTrace      [] = "Trace.txt";
 
-
+  static bool      g_bBenchmarking    = false;
   static bool      g_bProfiling       = 0;
   static int       g_nDebugSteps      = 0;
   static unsigned int     g_nDebugStepCycles = 0;
@@ -1933,6 +1933,7 @@ Update_t CmdStepOver (int nArgs)
 //===========================================================================
 Update_t CmdStepOut (int nArgs)
 {
+  (void)nArgs;
   // TODO: "RET" should probably pop the Call stack
   // Also see: CmdCursorJumpRetAddr
   unsigned short nAddress;
@@ -2137,8 +2138,8 @@ void _ColorPrint( int iColor, unsigned int nColor )
 }
 
 void _CmdColorGet( const int iScheme, const int iColor )
-  (void)iScheme;
 {
+  (void)iScheme;
   if (iColor < NUM_DEBUG_COLORS)
   {
     DebugColors_e eColor = static_cast<DebugColors_e>( iColor );
@@ -2527,16 +2528,16 @@ Update_t CmdConfigDisasm( int nArgs )
 
 //===========================================================================
 Update_t CmdConfigFontLoad( int nArgs )
-  (void)nArgs;
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 
 //===========================================================================
 Update_t CmdConfigFontSave( int nArgs )
-  (void)nArgs;
 {
+  (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -2658,13 +2659,12 @@ void _UpdateWindowFontHeights( int nFontHeight )
 }
 
 //===========================================================================
-  (void)iFont; (void)pFontName; (void)iPitchFamily; (void)nFontHeight;
 bool _CmdConfigFont ( int iFont, const char* pFontName, int iPitchFamily, int nFontHeight )
+{
   (void)iFont;
   (void)pFontName;
   (void)iPitchFamily;
   (void)nFontHeight;
-{
   bool bStatus = false;
 #ifdef TODO // no font support for Linux yet
   HFONT         hFont = (HFONT) 0;
@@ -2855,11 +2855,10 @@ Update_t CmdConfigGetFont (int nArgs)
 // @param bUpdateCur
 // true  = Update Cur based on Top
 // false = Update Top & Bot based on Cur
-  (void)bUpdateTop;
 //===========================================================================
 void DisasmCalcTopFromCurAddress( bool bUpdateTop )
-  (void)bUpdateTop;
 {
+  (void)bUpdateTop;
   int nLen = ((g_nDisasmWinHeight - g_nDisasmCurLine) * 3); // max 3 opcodes/instruction, is our search window
 
   // Look for a start address that when disassembled,
@@ -3552,8 +3551,8 @@ Update_t CmdCursorPageUp4K (int nArgs)
 
 //===========================================================================
 Update_t CmdCursorSetPC( int nArgs) // TODO rename
-  (void)nArgs;
 {
+  (void)nArgs;
   regs.pc = g_nDisasmCurAddress; // set PC to current cursor address
   return UPDATE_DISASM;
 }
@@ -5749,12 +5748,10 @@ Update_t _SearchMemoryDisplay (int nArgs)
   return ConsoleUpdate();
 }
 
-  (void)bTextIsAscii;
-
 //===========================================================================
 Update_t _CmdMemorySearch (int nArgs, bool bTextIsAscii = true )
-  (void)bTextIsAscii;
 {
+  (void)bTextIsAscii;
   unsigned short nAddressStart = 0;
   unsigned short nAddress2   = 0;
   unsigned short nAddressEnd = 0;
@@ -6778,98 +6775,98 @@ Update_t _ViewOutput( ViewVideoPage_t iPage, int bVideoModeFlags )
 
 // Text 40
   Update_t CmdViewOutput_Text4X (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, VF_TEXT );
   }
   Update_t CmdViewOutput_Text41 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, VF_TEXT );
   }
   Update_t CmdViewOutput_Text42 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, VF_TEXT );
   }
 // Text 80
   Update_t CmdViewOutput_Text8X (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, VF_TEXT | VF_80COL );
   }
   Update_t CmdViewOutput_Text81 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, VF_TEXT | VF_80COL );
   }
   Update_t CmdViewOutput_Text82 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, VF_TEXT | VF_80COL );
   }
 // Lo-Res
   Update_t CmdViewOutput_GRX (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, 0 );
   }
   Update_t CmdViewOutput_GR1 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, 0 );
   }
   Update_t CmdViewOutput_GR2 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, 0 );
   }
 // Double Lo-Res
   Update_t CmdViewOutput_DGRX (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DGR1 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DGR2 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, VF_DHIRES | VF_80COL );
   }
 // Hi-Res
   Update_t CmdViewOutput_HGRX (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, VF_HIRES );
   }
   Update_t CmdViewOutput_HGR1 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, VF_HIRES );
   }
   Update_t CmdViewOutput_HGR2 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, VF_HIRES );
   }
 // Double Hi-Res
   Update_t CmdViewOutput_DHGRX (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_X, VF_HIRES | VF_DHIRES | VF_80COL );
   }
   Update_t CmdViewOutput_DHGR1 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_1, VF_HIRES | VF_DHIRES | VF_80COL);
   }
   Update_t CmdViewOutput_DHGR2 (int nArgs)
-  (void)nArgs;
   {
+  (void)nArgs;
     return _ViewOutput( VIEW_PAGE_2, VF_HIRES | VF_DHIRES | VF_80COL );
   }
 
@@ -7121,13 +7118,11 @@ void WindowUpdateConsoleDisplayedSize()
     g_bConsoleFullWidth = true;
   }
 #endif
-  (void)iWindow;
 }
-
 //===========================================================================
 int WindowGetHeight( int iWindow )
-  (void)iWindow;
 {
+  (void)iWindow;
 //  if (iWindow == WINDOW_CODE)
   return g_nDisasmWinHeight;
 }
@@ -7158,8 +7153,8 @@ void WindowUpdateSizes()
 
 //===========================================================================
 Update_t CmdWindowCycleNext( int nArgs )
-  (void)nArgs;
 {
+  (void)nArgs;
   g_iWindowThis++;
   if (g_iWindowThis >= NUM_WINDOWS)
     g_iWindowThis = 0;
@@ -7171,8 +7166,8 @@ Update_t CmdWindowCycleNext( int nArgs )
 
 //===========================================================================
 Update_t CmdWindowCyclePrev( int nArgs )
-  (void)nArgs;
 {
+  (void)nArgs;
   g_iWindowThis--;
   if (g_iWindowThis < 0)
     g_iWindowThis = NUM_WINDOWS-1;
@@ -8095,8 +8090,8 @@ void OutputTraceLine ()
 
 //===========================================================================
 int ParseInput ( char* pConsoleInput, bool bCook )
-  (void)bCook;
 {
+  (void)bCook;
   int nArg = 0;
 
   // TODO: need to check for non-quoted command seperator ';', and buffer input
