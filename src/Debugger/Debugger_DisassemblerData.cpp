@@ -196,8 +196,8 @@ char* g_aNopcodeTypes[ NUM_NOPCODE_TYPES ] =
 // List the data blocks
 //===========================================================================
 Update_t CmdDisasmDataList (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 
 	// Need to iterate through all blocks
 	DisasmData_t* pData = NULL;
@@ -330,15 +330,15 @@ Update_t _CmdDisasmDataDefWordX (int nArgs)
 
 //===========================================================================
 Update_t CmdDisasmDataDefAddress8H (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 	return UPDATE_DISASM;
 }
 
 //===========================================================================
 Update_t CmdDisasmDataDefAddress8L (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 	return UPDATE_DISASM;
 }
 
@@ -525,9 +525,9 @@ void Disassembly_AddData( DisasmData_t tData)
 // DEPRECATED ! Inlined in _6502_GetOpmodeOpbyte() !
 //===========================================================================
 void Disassembly_GetData ( unsigned short nBaseAddress, const DisasmData_t *pData, DisasmLine_t & line_ )
+{
   (void)nBaseAddress;
   (void)line_;
-{
 	if( !pData )
 	{
 #if _DEBUG

@@ -13,7 +13,6 @@ const double CLK_Z80 = (CLOCK_6502 * 2);
 const unsigned int uCyclesPerLine = 65; // 25 cycles of HBL & 40 cycles of HBL
 const unsigned int uVisibleLinesPerFrame = 64 * 3; // 192
 const unsigned int uLinesPerFrame = 262; // 64 in each third of the screen & 70 in VBL
-const unsigned int dwClksPerFrame = uCyclesPerLine * uLinesPerFrame; // 17030
 
 constexpr int NUM_SLOTS = 8;
 
@@ -60,6 +59,8 @@ typedef struct {
   char sFTPServer[MAX_PATH];
   char sFTPServerHDD[MAX_PATH];
   char sFTPUserPass[512];
+  bool bVideoScannerNTSC;
+  unsigned int dwClksPerFrame;
 } SystemState_t;
 
 extern SystemState_t g_state;

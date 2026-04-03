@@ -764,8 +764,8 @@ uint32_t g_nMin = 0xFFFFFFFF;
 uint32_t g_nMax = 0;
 
 static inline void DoIrqProfiling(uint32_t uCycles)
-  (void)uCycles;
 {
+  (void)uCycles;
   #ifdef _DEBUG
   if(regs.ps & AF_INTERRUPT)
     return;    // Still in Apple's ROM
@@ -809,13 +809,13 @@ static inline void Fetch(uint8_t &iOpcode, uint32_t uExecutedCycles)
 
 //#define ENABLE_NMI_SUPPORT  // Not used - so don't enable
 static inline void NMI(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
+{
   (void)flagn;
   (void)flagv;
   (void)flagz;
   (void)uExecutedCycles;
   (void)uExtraCycles;
   (void)flagc;
-{
   #ifdef ENABLE_NMI_SUPPORT
   if(g_bNmiFlank)
   {

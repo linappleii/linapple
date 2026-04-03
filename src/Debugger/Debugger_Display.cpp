@@ -1258,8 +1258,8 @@ void FormatNopcodeBytes ( unsigned short nBaseAddress, DisasmLine_t & line_ )
 
 //===========================================================================
 void FormatDisassemblyLine( const DisasmLine_t & line, char * sDisassembly, const int nBufferSize )
-  (void)nBufferSize;
 {
+  (void)nBufferSize;
 	//> Address Seperator Opcodes   Label Mnemonic Target [Immediate] [Branch]
 	//
 	// Data Disassembler
@@ -2204,9 +2204,9 @@ void _DrawSoftSwitch( RECT & rect, int nAddress, bool bSet, char *sPrefix, char 
 }
 
 void _DrawTriStateSoftSwitch( RECT & rect, int nAddress, const int iBankDisplay, int iActive, char *sPrefix, char *sOn, char *sOff, const char *sSuffix = NULL, int bg_default = BG_INFO )
+{
   (void)sPrefix;
   (void)sSuffix;
-{
 	bool bSet = (iBankDisplay == iActive);
 
 	if ( bSet )
@@ -2814,8 +2814,8 @@ void DrawSubWindow_Console (Update_t bUpdate)
 
 //===========================================================================
 void DrawSubWindow_Data (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 	int iBackground;
 
 	const int nMaxOpcodes = WINDOW_DATA_BYTES_PER_LINE;
@@ -2966,8 +2966,8 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
 //===========================================================================
 
 void DrawVideoScannerInfo (int line)
-  (void)line;
 {
+  (void)line;
 #ifdef TODO // Not supported for Linux yet
 	NTSC_VideoGetScannerAddressForDebugger();		// update g_nVideoClockHorz/g_nVideoClockVert
 
@@ -3024,8 +3024,8 @@ void DrawVideoScannerInfo (int line)
 
 //===========================================================================
 void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
-  (void)iWindow;
 {
+  (void)iWindow;
 	if (g_iWindowThis == WINDOW_CONSOLE)
 		return;
 
@@ -3097,21 +3097,21 @@ void DrawSubWindow_Info ( Update_t bUpdate, int iWindow )
 
 //===========================================================================
 void DrawSubWindow_IO (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 }
 
 //===========================================================================
 void DrawSubWindow_Source (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 }
 
 
 //===========================================================================
 void DrawSubWindow_Source2 (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 	DebuggerSetColorFG( DebuggerGetColor( FG_SOURCE ));
 
 	int nLines  = g_nDisasmWinHeight;
@@ -3178,14 +3178,14 @@ void DrawSubWindow_Source2 (Update_t bUpdate)
 
 //===========================================================================
 void DrawSubWindow_Symbols (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 }
 
 //===========================================================================
 void DrawSubWindow_ZeroPage (Update_t bUpdate)
-  (void)bUpdate;
 {
+  (void)bUpdate;
 }
 
 
@@ -3203,8 +3203,8 @@ void DrawWindow_Code( Update_t bUpdate )
 // Full Screen console
 //===========================================================================
 void DrawWindow_Console( Update_t bUpdate )
-  (void)bUpdate;
 {
+  (void)bUpdate;
 	// Nothing to do, since text and draw background handled by DrawSubWindow_Console()
 	// If the full screen console is only showing partial lines
 	// don't erase the background
@@ -3248,8 +3248,8 @@ void DrawWindow_ZeroPage( Update_t bUpdate )
 
 //===========================================================================
 void DrawWindowBackground_Main( int g_iWindowThis )
-  (void)g_iWindowThis;
 {
+  (void)g_iWindowThis;
 	// TODO/FIXME: COLOR_BG_CODE -> g_iWindowThis, once all tab backgrounds are listed first in g_aColors !
 	DebuggerSetColorBG( DebuggerGetColor( BG_DISASM_1 )); // COLOR_BG_CODE
 
@@ -3266,8 +3266,8 @@ void DrawWindowBackground_Main( int g_iWindowThis )
 
 //===========================================================================
 void DrawWindowBackground_Info( int g_iWindowThis )
-  (void)g_iWindowThis;
 {
+  (void)g_iWindowThis;
 	DebuggerSetColorBG( DebuggerGetColor( BG_INFO )); // COLOR_BG_DATA
 
 #if !DEBUG_FONT_NO_BACKGROUND_FILL_INFO
@@ -3387,8 +3387,8 @@ void DrawWindowBottom ( Update_t bUpdate, int iWindow )
 
 //===========================================================================
 void DrawSubWindow_Code ( int iWindow )
-  (void)iWindow;
 {
+  (void)iWindow;
 	int nLines = g_nDisasmWinHeight;
 
 //	WindowSplit_t * pWindow = &g_aWindowConfig[ iWindow ];

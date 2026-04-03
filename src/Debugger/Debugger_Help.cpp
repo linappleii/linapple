@@ -529,8 +529,8 @@ inline bool ConsoleColorizePrintFormat( char (&colorizeBuf)[_ColorizeBufSz],
 
 //===========================================================================
 Update_t CmdMOTD( int nArgs )	// Message Of The Day
-  (void)nArgs;
 {
+  (void)nArgs;
 	char sText[ CONSOLE_WIDTH*2 ];
 	char sTemp[ CONSOLE_WIDTH*2 ];
 
@@ -1516,8 +1516,8 @@ Update_t CmdHelpSpecific (int nArgs)
 
 //===========================================================================
 Update_t CmdHelpList (int nArgs)
-  (void)nArgs;
 {
+  (void)nArgs;
 	const int nBuf = CONSOLE_WIDTH * 2;
 
 	char sText[ nBuf ] = "";

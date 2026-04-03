@@ -203,8 +203,6 @@ std::atomic<bool> g_bFrameReady(false);
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
 
-static bool bVideoScannerNTSC = true;
-
 bool g_ShowLeds = 1;
 
 const unsigned int nVBlStop_NTSC = 21;
@@ -1612,8 +1610,8 @@ void VideoSetNextScheduledUpdate()
 // Simple polling thread that calls the refresh function
 // when necessary.
 void *VideoWorkerThread(void *params)
-  (void)params;
 {
+  (void)params;
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
   while (!video_worker_terminate_) {
@@ -2020,7 +2018,7 @@ unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uEx
   int n80Store = (MemGet80Store()) ? 1 : 0;
 
   // calculate video parameters according to display standard
-  int nScanLines = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
+  int nScanLines = g_state.bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
 
   // calculate horizontal scanning state
   int nHClock = (nCycles + kHPEClock) % kHClocks; // which horizontal scanning clock
@@ -2101,7 +2099,7 @@ bool VideoGetVbl(const unsigned int uExecutedCycles) {
   int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
 
   // calculate video parameters according to display standard
-  int nScanLines = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
+  int nScanLines = g_state.bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
 
   // calculate vertical scanning state
   int nVLine = nCycles / kHClocks; // which vertical scanning line

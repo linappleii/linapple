@@ -458,6 +458,7 @@ unsigned int DoDetect(uint8_t* imageptr, unsigned int imagesize) {
 }
 
 void DoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles) {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
   memset(workbuffer, 0, 4096);
   fread(workbuffer, 1, 4096, ptr->file);
@@ -469,6 +470,7 @@ void DoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBu
 
 void DoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
+  (void)quartertrack;
   memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 1, nibbles);
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
@@ -496,6 +498,7 @@ void IieConvertSectorOrder(uint8_t* sourceorder) {
 
 unsigned int IieDetect(uint8_t* imageptr, unsigned int imagesize)
 {
+  (void)imagesize;
   if (strncmp((const char *) imageptr, "SIMSYSTEM_IIE", 13) || (*(imageptr + 13) > 3)) {
     return 0;
   }
@@ -504,6 +507,7 @@ unsigned int IieDetect(uint8_t* imageptr, unsigned int imagesize)
 
 void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
+  (void)quartertrack;
   // If we haven't already done so, read the image file header
   if (!ptr->header) {
     ptr->header = (uint8_t*) malloc(88);
@@ -538,23 +542,31 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageB
 
 void IieWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
+  (void)ptr;
+  (void)track;
+  (void)quartertrack;
+  (void)trackimage;
+  (void)nibbles;
 }
 
 // Nibblized 6656-nibble (nib) format implementation
 
 unsigned int Nib1Detect(uint8_t* imageptr, unsigned int imagesize)
 {
+  (void)imageptr;
   return (imagesize == 232960) ? 2 : 0;
 }
 
 void Nib1Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + track * NIBBLES, SEEK_SET);
   *nibbles = fread(trackImageBuffer, 1, NIBBLES, ptr->file);
 }
 
 void Nib1Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + track * NIBBLES, SEEK_SET);
   fwrite(trackimage, 1, nibbles, ptr->file);
 }
@@ -563,17 +575,20 @@ void Nib1Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimag
 
 unsigned int Nib2Detect(uint8_t* imageptr, unsigned int imagesize)
 {
+  (void)imageptr;
   return (imagesize == 223440) ? 2 : 0;
 }
 
 void Nib2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + track * 6384, SEEK_SET);
   *nibbles = fread(trackImageBuffer, 1, 6384, ptr->file);
 }
 
 void Nib2Write(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + track * 6384, SEEK_SET);
   fwrite(trackimage, 1, nibbles, ptr->file);
 }
@@ -619,6 +634,7 @@ unsigned int PoDetect(uint8_t* imageptr, unsigned int imagesize) {
 
 void PoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
+  (void)quartertrack;
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
   memset(workbuffer, 0, 4096);
   fread(workbuffer, 1, 4096, ptr->file);
@@ -630,6 +646,7 @@ void PoRead(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBu
 
 void PoWrite(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackimage, int nibbles)
 {
+  (void)quartertrack;
   memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 0, nibbles);
   fseek(ptr->file, ptr->offset + (track << 12), SEEK_SET);
@@ -661,6 +678,7 @@ bool PrgBoot(imageinfoptr ptr)
 
 unsigned int PrgDetect(uint8_t* imageptr, unsigned int imagesize)
 {
+  (void)imagesize;
   return (*(uint32_t*) imageptr == 0x214C470A) ? 2 : 0;
 }
 
@@ -685,6 +703,7 @@ static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
 
 void Woz2Read(imageinfoptr ptr, int track, int quartertrack, uint8_t* trackImageBuffer, int *nibbles)
 {
+  (void)quartertrack;
   unsigned int bytesRead;
   if (!ptr->header) {
     ptr->header = (uint8_t*) malloc(WOZ2_HEADER_SIZE);

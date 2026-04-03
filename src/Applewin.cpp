@@ -70,7 +70,7 @@ static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;
 
 SystemState_t g_state = {
-  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com"
+  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com", true, 17030
 };
 
 
@@ -174,8 +174,8 @@ void ContinueExecution()
   screenupdated |= (!g_singlethreaded);
   bool systemidle = 0;
 
-  if (g_dwCyclesThisFrame >= dwClksPerFrame) {
-    g_dwCyclesThisFrame -= dwClksPerFrame;
+  if (g_dwCyclesThisFrame >= g_state.dwClksPerFrame) {
+    g_dwCyclesThisFrame -= g_state.dwClksPerFrame;
 
     if (g_state.mode != MODE_LOGO) {
       VideoUpdateFlash();
@@ -408,6 +408,16 @@ static const char* GetJoystickNameByIndex(int index) {
   return name;
 }
 
+void SetVideoStandard(bool bNTSC)
+{
+  g_state.bVideoScannerNTSC = bNTSC;
+  if (bNTSC) {
+    g_state.dwClksPerFrame = 65 * 262;
+  } else {
+    g_state.dwClksPerFrame = 65 * 312;
+  }
+}
+
 // Load configuration from config file
 void LoadConfiguration()
 {
@@ -548,6 +558,10 @@ void LoadConfiguration()
   LOAD("Emulation Speed", &g_state.dwSpeed);
   LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);
   LOAD("Video Emulation", &g_videotype);
+  unsigned int videoStandard = 0;
+  LOAD("Video Standard", &videoStandard);
+  SetVideoStandard(videoStandard == 0);
+
   LOAD("Singlethreaded", (unsigned int*)&g_singlethreaded);
 
   unsigned int dwTmp = 0;
@@ -829,6 +843,7 @@ void PrintHelp()
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
          "  -b|--autoboot  boot/reset at startup\n"
+         "  --pal          use PAL (50Hz) video timing\n"
          "  -f             run fullscreen\n"
          "  -l             write log to 'AppleWin.log'\n"
          #ifdef RAMWORKS
@@ -894,7 +909,7 @@ void SysShutdown()
 
 int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
                 const char* szImageName_drive1, const char* szImageName_drive2,
-                const char* szSnapshotFile, bool bBoot)
+                const char* szSnapshotFile, bool bBoot, bool bPAL)
 {
   g_state.mode = MODE_LOGO;
   g_state.fullscreen = false;
@@ -903,6 +918,10 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
 
   if (bSetFullScreen) {
     g_state.fullscreen = bSetFullScreen;
+  }
+
+  if (bPAL) {
+    SetVideoStandard(false);
   }
 
   int nError = 0;
@@ -988,6 +1007,7 @@ int main(int argc, char *argv[])
   bool bSetFullScreen = false;
   bool bBoot = false;
   bool bBenchMark = false;
+  bool bPAL = false;
   char* szConfigurationFile = NULL;
   char* szImageName_drive1 = NULL;
   char* szImageName_drive2 = NULL;
@@ -1002,12 +1022,13 @@ int main(int argc, char *argv[])
                                      {"d1",        required_argument, 0, 0},
                                      {"d2",        required_argument, 0, 0},
                                      {"help",      no_argument,       0, 0},
+                                     {"pal",       no_argument,       0, 0},
                                      {"state",     required_argument, 0, 0},
                                      {0,           0,                 0, 0}};
 
   XInitThreads();
 
-  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
+  while ((opt = getopt_long(argc, argv, "1:2:abfhlpr:", longopts, &optind)) != -1) {
     switch (opt) {
       case '1':
         szImageName_drive1 = optarg;
@@ -1032,6 +1053,10 @@ int main(int argc, char *argv[])
 
       case 'l':
         bLog = true;
+        break;
+
+      case 'p':
+        bPAL = true;
         break;
 
       #ifdef RAMWORKS
@@ -1059,6 +1084,8 @@ int main(int argc, char *argv[])
         } else if (!strcmp(optname, "help")) {
           PrintHelp();
           return 0;
+        } else if (!strcmp(optname, "pal")) {
+          bPAL = true;
         } else if (!strcmp(optname, "state")) {
           szSnapshotFile = optarg;
         } else {
@@ -1084,7 +1111,7 @@ int main(int argc, char *argv[])
 
     if (SessionInit(szConfigurationFile, bSetFullScreen,
                     szImageName_drive1, szImageName_drive2,
-                    szSnapshotFile, bBoot) != 0) {
+                    szSnapshotFile, bBoot, bPAL) != 0) {
       break;
     }
 

@@ -802,8 +802,8 @@ int ArgsCook ( const int nArgs )
 
 //===========================================================================
 const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ )
-  (void)nTokens;
 {
+  (void)nTokens;
 	if (! pSrc)
 		return NULL;
 
