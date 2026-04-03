@@ -97,8 +97,8 @@ constexpr int BTN_LOADST    = 9;
 #define TITLE_PAUSED   " Paused "
 #define TITLE_STEPPING "Stepping"
 
-#define LOAD(a, b) Config_Load("Configuration", a, (uint32_t*)(b))
-#define SAVE(a, b) Configuration::Instance().SetInt("Configuration", a, b)
+#define LOAD(a, b) ConfigLoadInt("Configuration", a, (uint32_t*)(b))
+#define SAVE(a, b) ConfigSaveInt("Configuration", a, b)
 
 // Configuration
 #define REGVALUE_APPLE2_TYPE         "Apple2 Type"

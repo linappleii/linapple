@@ -7,7 +7,6 @@
 #include <iostream>
 #include <sys/stat.h>
 
-// Helper to trim strings
 static std::string trim(const std::string& s) {
     auto start = s.begin();
     while (start != s.end() && std::isspace((unsigned char)*start)) {
@@ -19,6 +18,13 @@ static std::string trim(const std::string& s) {
         end--;
     } while (std::distance(start, end) > 0 && std::isspace((unsigned char)*end));
     return std::string(start, end + 1);
+}
+
+static std::string unquote(const std::string& s) {
+    if (s.length() >= 2 && s.front() == '"' && s.back() == '"') {
+        return s.substr(1, s.length() - 2);
+    }
+    return s;
 }
 
 Configuration& Configuration::Instance() {
@@ -53,7 +59,7 @@ bool Configuration::Load(const std::string& path) {
         size_t pos = line.find('=');
         if (pos != std::string::npos) {
             std::string key = trim(line.substr(0, pos));
-            std::string value = trim(line.substr(pos + 1));
+            std::string value = unquote(trim(line.substr(pos + 1)));
             m_data[currentSection][key] = value;
         }
     }
@@ -157,11 +163,14 @@ void Configuration::SetBool(const std::string& section, const std::string& key, 
     m_data[section][key] = value ? "1" : "0";
 }
 
-// C-style wrapper for legacy LOAD macro
-bool Config_Load(const char* section, const char* key, uint32_t* value) {
+bool ConfigLoadInt(const char* section, const char* key, uint32_t* value) {
     if (Configuration::Instance().GetString(section, key).empty()) return false;
     *value = Configuration::Instance().GetInt(section, key, *value);
     return true;
+}
+
+void ConfigSaveInt(const char* section, const char* key, uint32_t value) {
+    Configuration::Instance().SetInt(section, key, value);
 }
 
 char *php_trim(char *c, int len) {

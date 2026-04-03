@@ -28,6 +28,7 @@ private:
     std::map<std::string, std::map<std::string, std::string>> m_data;
 };
 
-bool Config_Load(const char* section, const char* key, uint32_t* value);
+bool ConfigLoadInt(const char* section, const char* key, uint32_t* value);
+void ConfigSaveInt(const char* section, const char* key, uint32_t value);
 
 char *php_trim(char *c, int len);
