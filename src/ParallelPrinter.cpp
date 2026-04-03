@@ -26,8 +26,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Nick Westgate
  */
 
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
-
 #include "stdafx.h"
 
 char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\x68\x68"
@@ -102,7 +100,7 @@ void PrintReset() {
 
 static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   CheckPrint();
-  return 0xFF; // status - TODO?
+  return 0xFF;
 }
 
 static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {

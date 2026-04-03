@@ -26,10 +26,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
-
 #include <iostream>
-#include <SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 #include "stdafx.h"
 #include "asset.h"
 #include <pthread.h>
@@ -39,8 +37,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <atomic>
 #include <condition_variable>
 
-// include character set bitmaps
-#include "../build/obj/charset40.xpm" // US/default
+#include "../build/obj/charset40.xpm"
 #include "../build/obj/charset40_IIplus.xpm"
 #include "../build/obj/charset40_british.xpm"
 #include "../build/obj/charset40_french.xpm"
@@ -109,7 +106,7 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
   dstrect.y = DST_Y; \
   dstrect.w = DST_W; \
   dstrect.h = DST_H; \
-  SDL_SoftStretch(SRC, &srcrect, DST, &dstrect);\
+  SDL_BlitSurfaceScaled(SRC, &srcrect, DST, &dstrect, SDL_SCALEMODE_NEAREST);\
 }
 
 #define  SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
@@ -158,35 +155,33 @@ SDL_Surface *g_hDeviceBitmap;
 static uint8_t* framebufferbits;
 SDL_Color framebufferinfo[256];
 
-const int MAX_FRAME_Y = 384; // 192 Apple scan lines * 2x host scanline = 384
+const int MAX_FRAME_Y = 384;
 static uint8_t* frameoffsettable[384];
 static uint8_t* g_pHiresBank1;
 static uint8_t* g_pHiresBank0;
 
 SDL_Surface *g_hLogoBitmap = NULL;
-SDL_Surface *charset40 = NULL;    // Apple charset40 bitmap
-int g_MultiLanguageCharset = false; // true when charset supports a second language variant
+SDL_Surface *charset40 = NULL;
+int g_MultiLanguageCharset = false;
 
-SDL_Surface *g_hStatusSurface = NULL;  // status panel
-int g_iStatusCycle = 0;    // cycler for status panel showing
+SDL_Surface *g_hStatusSurface = NULL;
+int g_iStatusCycle = 0;
 
 SDL_Surface *g_origscreen = NULL;
 SDL_Surface *g_hSourceBitmap = NULL;
 
 static uint8_t* g_pSourcePixels;
 SDL_Color g_pSourceHeader[256];
-const int MAX_SOURCE_Y = 512*2; // double size: second half of bitmap may contain a complete copy with an alternate language
+const int MAX_SOURCE_Y = 512*2;
 static uint8_t* g_aSourceStartofLine[MAX_SOURCE_Y];
-static uint8_t* g_pTextBank1; // Aux
-static uint8_t* g_pTextBank0; // Main
+static uint8_t* g_pTextBank1;
+static uint8_t* g_pTextBank0;
 
-// For tv emulation g_nAppMode
-// 2 extra scan lines on bottom?
 static unsigned char hgrpixelmatrix[280][192 + 2 * HGR_MATRIX_YOFFSET];
 static unsigned char colormixbuffer[6];
 static unsigned short colormixmap[6][6][6];
 
-static int g_nAltCharSetOffset = 0; // alternate character set
+static int g_nAltCharSetOffset = 0;
 static bool displaypage2 = 0;
 static bool displaypage2_latched = 0;
 static uint8_t* framebufferaddr = (uint8_t*) 0;
@@ -200,18 +195,18 @@ static unsigned int dwVBlCounter = 0;
 static uint8_t* vidlastmem = NULL;
 unsigned int g_uVideoMode = VF_TEXT;
 unsigned int g_uDebugVideoMode = VF_TEXT;
-static unsigned int vidmode_latched = VF_TEXT; // Latch vals @ time of refresh req.
+static unsigned int vidmode_latched = VF_TEXT;
 unsigned int g_videotype = VT_COLOR_STANDARD;
 unsigned int g_singlethreaded = 0;
+std::atomic<bool> g_bFrameReady(false);
 
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
 
-static bool bVideoScannerNTSC = true;  // NTSC video scanning (or PAL)
+static bool bVideoScannerNTSC = true;
 
-bool g_ShowLeds = 1;  // show drive leds by default
+bool g_ShowLeds = 1;
 
-// Video consts:
 const unsigned int nVBlStop_NTSC = 21;
 const unsigned int nVBlStop_PAL = 29;
 
@@ -223,7 +218,7 @@ void DrawLoResSource();
 void DrawMonoDHiResSource();
 void DrawMonoHiResSource();
 void DrawMonoLoResSource();
-void DrawMonoTextSource(SDL_Surface *dc); // yes, we have just SDL_Surface either for DeviceContext, or bitmap
+void DrawMonoTextSource(SDL_Surface *dc);
 void DrawTextSource(SDL_Surface *dc);
 
 // Multithreaded
@@ -248,8 +243,6 @@ void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sou
     bytesleft = xsize;
     while (bytesleft & 3) {
       --bytesleft;
-      // GPH Provide scanlines for all but first couple of modes
-      // TODO: Optimize
       if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
         *(currdestptr + bytesleft) = *(currsourceptr + bytesleft);
       } else {
@@ -258,22 +251,18 @@ void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sou
     }
     while (bytesleft) {
       bytesleft -= 4;
-      // GPH Provide scanlines for all but first couple of modes
-      // TODO: Optimize
       if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
         *(uint32_t*)(currdestptr + bytesleft) = *(uint32_t*)(currsourceptr + bytesleft);
       } else {
         *(currdestptr + bytesleft) = 0;
       }
     }
-    currdestptr += framebufferpitch; // we are going top to bottom, as all normal people do! ^_^ (bb)
+    currdestptr += framebufferpitch;
     currsourceptr += SRCOFFS_TOTAL;
   }
 }
 
-void CreateFrameOffsetTable(uint8_t* addr, int/*int*/ pitch) {
-  // As I could take it's just needed for windzooeee DD while in FullScreen mode.
-  // Left for compatiblity purposes. -- bb.
+void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
   if (framebufferaddr == addr && framebufferpitch == pitch) {
     return;
   }
@@ -282,12 +271,12 @@ void CreateFrameOffsetTable(uint8_t* addr, int/*int*/ pitch) {
 
   // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE FRAME BUFFER
   for (int loop = 0; loop < 384; loop++) {
-    frameoffsettable[loop] = framebufferaddr + framebufferpitch * loop; //(383-loop);
+    frameoffsettable[loop] = framebufferaddr + framebufferpitch * loop;
   }
 }
 
 void CreateIdentityPalette() {
-  memset(framebufferinfo, 0, 256 * sizeof(SDL_Color)); // must be cleared???
+  memset(framebufferinfo, 0, 256 * sizeof(SDL_Color));
   // SET FRAME BUFFER TABLE ENTRIES TO CUSTOM COLORS
   SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
   SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
@@ -296,7 +285,7 @@ void CreateIdentityPalette() {
   SETFRAMECOLOR(PINK, 0xFF, 0x90, 0x80);
   SETFRAMECOLOR(AQUA, 0x40, 0xFF, 0x90);
 
-  SETFRAMECOLOR(HGR_BLACK, 0x00, 0x00, 0x00);  // For tv emulation g_nAppMode
+  SETFRAMECOLOR(HGR_BLACK, 0x00, 0x00, 0x00);
   SETFRAMECOLOR(HGR_WHITE, 0xFF, 0xFF, 0xFE);
   SETFRAMECOLOR(HGR_BLUE, 0x00, 0x80, 0xFF);
   SETFRAMECOLOR(HGR_RED, 0xF0, 0x50, 0x00);
@@ -310,7 +299,7 @@ void CreateIdentityPalette() {
   SETFRAMECOLOR(HGR_PINK, 0xD0, 0x40, 0xA0);
 
   SETFRAMECOLOR(MONOCHROME_CUSTOM, GetBValue(monochrome), GetGValue(monochrome),
-                GetRValue(monochrome));  // chngrd B<->R, why? By me. --bb ^_^
+                GetRValue(monochrome));
 
   SETFRAMECOLOR(MONOCHROME_AMBER, 0xFF, 0x80, 0x00);
   SETFRAMECOLOR(MONOCHROME_GREEN, 0x00, 0xC0, 0x00);
@@ -357,65 +346,83 @@ void CreateDIBSections() {
 
   // CREATE THE FRAME BUFFER DIB SECTION
   if (g_hDeviceBitmap) {
-    SDL_FreeSurface(g_hDeviceBitmap);
+    SDL_DestroySurface(g_hDeviceBitmap);
   }
-  g_hDeviceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, 560, 384, 8, 0, 0, 0, 0);
+  g_hDeviceBitmap = SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_INDEX8);
 
   if (g_origscreen) {
-    SDL_FreeSurface(g_origscreen);
+    SDL_DestroySurface(g_origscreen);
   }
-  g_origscreen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, 8, 0, 0, 0, 0);
+  g_origscreen = SDL_CreateSurface(g_ScreenWidth, g_ScreenHeight, SDL_PIXELFORMAT_INDEX8);
 
-  if (g_hDeviceBitmap == NULL) {
-    fprintf(stderr, "g_hDeviceBitmap was not created!\n");
+  if (g_hDeviceBitmap == NULL || g_origscreen == NULL) {
+    fprintf(stderr, "g_hDeviceBitmap or g_origscreen was not created: %s\n", SDL_GetError());
+    pthread_mutex_unlock(&video_draw_mutex);
+    return;
   }
+
+  SDL_CreateSurfacePalette(g_hDeviceBitmap);
+  SDL_CreateSurfacePalette(g_origscreen);
+
   framebufferbits = (uint8_t*) g_hDeviceBitmap->pixels;
-  SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
-  SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
+  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hDeviceBitmap), g_pSourceHeader, 0, 256);
+  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_origscreen), g_pSourceHeader, 0, 256);
 
   if (g_hStatusSurface) {
-    SDL_FreeSurface(g_hStatusSurface);
+    SDL_DestroySurface(g_hStatusSurface);
   }
-  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
-  SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
+  g_hStatusSurface = SDL_CreateSurface(STATUS_PANEL_W, STATUS_PANEL_H, SDL_PIXELFORMAT_INDEX8);
+  if (g_hStatusSurface == NULL) {
+    fprintf(stderr, "g_hStatusSurface was not created: %s\n", SDL_GetError());
+    pthread_mutex_unlock(&video_draw_mutex);
+    return;
+  }
+  SDL_CreateSurfacePalette(g_hStatusSurface);
+  if (SDL_GetSurfacePalette(g_hStatusSurface)) {
+    SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hStatusSurface), g_pSourceHeader, 0, 256);
+  }
 
   /* Create status panel background */
   SDL_Rect srect;
-  Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
-  Uint32 myyell = SDL_MapRGB(screen->format, 255, 255, 0);  // yellow color?
+  Uint32 mybluez = 0;
+  Uint32 myyell = 0;
+  if (screen) {
+    mybluez = SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 10, 10, 255);
+    myyell = SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 0);
+  }
 
   srect.x = srect.y = 0;
   srect.w = STATUS_PANEL_W;
   srect.h = STATUS_PANEL_H;
-  SDL_FillRect(g_hStatusSurface, &srect, mybluez);  // fill status panel
+  SDL_FillSurfaceRect(g_hStatusSurface, &srect, mybluez);
   rectangle(g_hStatusSurface, 0, 0, STATUS_PANEL_W - 1, STATUS_PANEL_H - 1, myyell);
   rectangle(g_hStatusSurface, 2, 2, STATUS_PANEL_W - 5, STATUS_PANEL_H - 5, myyell);
   if (font_sfc == NULL)
     fonts_initialization();
   if (font_sfc != NULL) {
-    font_print(7, 6, "FDD1", g_hStatusSurface, 1.3, 1.5); // show signs
+    font_print(7, 6, "FDD1", g_hStatusSurface, 1.3, 1.5);
     font_print(40, 6, "FDD2", g_hStatusSurface, 1.3, 1.5);
     font_print(74, 6, "HDD", g_hStatusSurface, 1.3, 1.5);
   }
   // CREATE THE SOURCE IMAGE DIB SECTION
   if (g_hSourceBitmap) {
-    SDL_FreeSurface(g_hSourceBitmap);
+    SDL_DestroySurface(g_hSourceBitmap);
   }
-  g_hSourceBitmap = SDL_CreateRGBSurface(SDL_SWSURFACE, SRCOFFS_TOTAL, MAX_SOURCE_Y, 8, 0, 0, 0, 0);
+  g_hSourceBitmap = SDL_CreateSurface(SRCOFFS_TOTAL, MAX_SOURCE_Y, SDL_PIXELFORMAT_INDEX8);
   if (g_hSourceBitmap == NULL) {
-    fprintf(stderr, "g_hSourceBitmap was not created!\n");
+    fprintf(stderr, "g_hSourceBitmap was not created: %s\n", SDL_GetError());
+    pthread_mutex_unlock(&video_draw_mutex);
+    return;
   }
+  SDL_CreateSurfacePalette(g_hSourceBitmap);
 
   g_pSourcePixels = (uint8_t*) g_hSourceBitmap->pixels;
-  SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
+  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hSourceBitmap), framebufferinfo, 0, 256);
 
   // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_aSourceStartofLine[y] = g_pSourcePixels + SRCOFFS_TOTAL * y;
   }
-
-  // before direct access to surface pixels we MUST? lock it (surface)
-  int locked = 0;
 
   // DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
   memset(g_pSourcePixels, 0, SRCOFFS_TOTAL * MAX_SOURCE_Y);
@@ -426,7 +433,6 @@ void CreateDIBSections() {
 
     if (SDL_MUSTLOCK(g_hSourceBitmap)) {
       SDL_LockSurface(g_hSourceBitmap);
-      locked = 1; // the source bitmap is locked
     }
 
     DrawLoResSource();
@@ -440,7 +446,6 @@ void CreateDIBSections() {
     DrawMonoTextSource(g_hSourceBitmap);
     if (SDL_MUSTLOCK(g_hSourceBitmap)) {
       SDL_LockSurface(g_hSourceBitmap);
-      locked = 1; // the source bitmap is locked
     }
 
     DrawMonoLoResSource();
@@ -448,10 +453,7 @@ void CreateDIBSections() {
     DrawMonoDHiResSource();
   }
 
-  // debugging: show the complete bitmap
-  // SDL_SaveBMP(g_hSourceBitmap, "debug/g_hSourceBitmap.bmp");
-
-  if (locked) {
+  if (SDL_MUSTLOCK(g_hSourceBitmap)) {
     SDL_UnlockSurface(g_hSourceBitmap);
   }
 
@@ -595,17 +597,16 @@ Fortunately double-hires is supported via pixel doubling, so we can do half-pixe
 */
           switch (color) {
             case CM_Magenta:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_MAGENTA); // aColorIndex
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, DARK_MAGENTA); // aColorDimmedIndex
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, HGR_MAGENTA); // aColorIndex
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, DARK_MAGENTA); // aColorDimmedIndex
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_MAGENTA);
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, DARK_MAGENTA);
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, HGR_MAGENTA);
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, DARK_MAGENTA);
               break;
             case CM_Blue   :
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, HGR_BLUE);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y, DARK_BLUE);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, HGR_BLUE);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1, DARK_BLUE);
-              // Prevent column gaps
               if (hibit) {
                 if (iPixel <= 2) {
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, DARK_BLUE);
@@ -621,14 +622,13 @@ Fortunately double-hires is supported via pixel doubling, so we can do half-pixe
               break;
             case CM_Orange:
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, HGR_RED);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y, BROWN); // DARK_RED is a bit "too" red
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y, BROWN);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, HGR_RED);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1, BROWN); // DARK_RED is a bit "too" red
-              // Prevent column gaps
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1, BROWN);
               if (hibit) {
                 if (iPixel <= 2) {
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN); // DARK_RED is a bit "too" red
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, BROWN); // DARK_RED is a bit "too" red
+                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
+                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, BROWN);
                 }
               }
               break;
@@ -639,39 +639,17 @@ Fortunately double-hires is supported via pixel doubling, so we can do half-pixe
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, HGR_BLACK);
               break;
             case CM_White :
-
-              #if HALF_SHIFT_DIM
-              // 50% dither -- would look OK, except Gumball, on the "Gumball" font has splotches
-              //              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  , HGR_WHITE );
-              //              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1, HGR_WHITE );
-              //              if (! hibit)
-              //              {
-              //                SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y  , HGR_WHITE );
-              //                SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y+1, HGR_WHITE );
-              //              }
-
-              // 75% dither -- looks kind of nice actually.  Passes the Gumball cutscene quality test!
-              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y  , HGR_WHITE );
-              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj+1,y+1, HGR_WHITE );
-
-              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y  , LIGHT_GRAY );
-              SETSOURCEPIXEL(SRCOFFS_HIRES+coloffs+x+adj ,y+1, LIGHT_GRAY );
-              #else
               // Don't dither / half-shift white, since DROL cutscene looks bad :(
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, HGR_WHITE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             HGR_WHITE); // LIGHT_GRAY <- for that half scan-line look
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             HGR_WHITE); // LIGHT_GRAY <- for that half scan-line look
-              // Prevent column gaps
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, HGR_WHITE);
+              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, HGR_WHITE);
               if (hibit) {
                 if (iPixel <= 2) {
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE); // LIGHT_GRAY HGR_GREY1
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, HGR_WHITE); // LIGHT_GRAY HGR_GREY1
+                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE);
+                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, HGR_WHITE);
                 }
               }
-            #endif
               break;
             default:
               break;
@@ -719,30 +697,21 @@ void DrawHiResSource() {
             else
               color = ((odd ^ (iPixel & 1)) << 1) | hibit;
           } else if (aPixels[iPixel - 1] && aPixels[iPixel + 1]) {
-            // Activate for fringe reduction on white hgr text -
-            // drawback: loss of color mix patterns in hgr g_nAppMode.
-            // select g_videotype by index exclusion
-
             if ((g_videotype == VT_COLOR_STANDARD) || (g_videotype == VT_COLOR_TVEMU) ||
                 !(aPixels[iPixel - 2] && aPixels[iPixel + 2])) {
-              color = ((odd ^ !(iPixel & 1)) << 1) | hibit;  // // No white HGR text optimization
+              color = ((odd ^ !(iPixel & 1)) << 1) | hibit;
             }
           }
 
-          // Colors - Top/Bottom Left/Right
-          // cTL cTR
-          // cBL cBR
-          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, aColorIndex[color]); // TL
-          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, aColorIndex[color]); // TR
+          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, aColorIndex[color]);
+          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, aColorIndex[color]);
 
-          // GPH Provide scanlines for all but first couple of modes
-          // TODO: Optimize this
           if (VT_COLOR_TVEMU > g_videotype) {
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, aColorIndex[color]); // BL
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, aColorIndex[color]); // BR
+            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, aColorIndex[color]);
+            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, aColorIndex[color]);
           } else {
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, aColorIndex[0]); // BL
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, aColorIndex[0]); // BR
+            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1, aColorIndex[0]);
+            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1, aColorIndex[0]);
           }
 
           x += 2;
@@ -856,47 +825,33 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
   if ((g_Apple2Type == A2TYPE_APPLE2)||
       (g_Apple2Type == A2TYPE_APPLE2PLUS))
   {
-    // render character bitmap: streched by a factor of 2
     SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256, 256);
   }
   else
   {
-    // process both language variants, when available
     int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
     for (int Language=0;Language<MaxLanguage;Language++)
     {
       /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
        * while the local language set is always the first (offset 0). */
       int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
-      int dstYofs = Language*(MAX_SOURCE_Y/2); // place local language in second half of our bitmap
+      int dstYofs = Language*(MAX_SOURCE_Y/2);
 
-      // render character bitmap for Apple IIe and enhanced
       SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL, dstYofs, 256, 256);
-
-      // create complete copy for the alternate character set
       SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 256, hDstDC, SRCOFFS_40COL, 256+dstYofs, 256, 256);
-
-      /* Now overwrite the characters 64-127 of the first set with a copy of characters 0-63:
-       * (inverse lower-case letters, enhanced characters). */
       SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
       if (g_Apple2Type == A2TYPE_APPLE2E)
       {
-        /* non-enhanced Apple //e does not have the 32 enhanced characters:
-         * overwrite characters 32-63 with with a copy of the first 32 characters. */
         SOFTSTRECH_MONO(hDstDC, 0, 256+dstYofs, 256, 32, hDstDC, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
       }
     }
 
-    // render character bitmap for 80 column mode (compress width of 40column bitmap)
     SOFTSTRECH_MONO(hDstDC, 0, 0, 256, MAX_SOURCE_Y, hDstDC, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
   }
 }
 
 void DrawTextSource(SDL_Surface *dc) {
-  //  HDC     memdc  = CreateCompatibleDC(dc);
-  //  HBITMAP bitmap = LoadBitmap(g_hInstance,"CHARSET40");
-  //  SelectObject(memdc,bitmap);
   if (charset40 == NULL) {
     return;
   }
@@ -905,41 +860,28 @@ void DrawTextSource(SDL_Surface *dc) {
   if ((g_Apple2Type == A2TYPE_APPLE2)||
         (g_Apple2Type == A2TYPE_APPLE2PLUS))
   {
-    // render character bitmap: streched by a factor of 2
     SOFTSTRECH(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
   }
   else
   {
-    // process both language variants, when available
     int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
     for (int Language=0;Language<MaxLanguage;Language++)
     {
       /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
        * while the local language set is always the first (offset 0). */
       int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
-      int dstYofs = Language*(MAX_SOURCE_Y/2); // place local language in second half of our bitmap
+      int dstYofs = Language*(MAX_SOURCE_Y/2);
 
-      // render character bitmap for Apple IIe and enhanced
       SOFTSTRECH(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL, dstYofs, 256, 256);
-
-      // create bitmap area with alternate character set (copy the first set)
       SOFTSTRECH(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL, 256+dstYofs, 256, 256);
-
-      /* Now overwrite the characters 64-127 of the first character set,
-       * with a copy of characters 0-63:
-       * replace inverse lower-case letters and enhanced letters with uppercase/default chars
-       */
       SOFTSTRECH(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
       if (g_Apple2Type == A2TYPE_APPLE2E)
       {
-        /* non-enhanced Apple //e does not have the 32 enhanced characters:
-         * overwrite characters 32-63 with with a copy of the first 32 characters. */
         SOFTSTRECH(dc, 0, 256+dstYofs, 256, 32, dc, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
       }
     }
 
-    // render character bitmap for 80 column mode (compress width of 40column bitmap)
     SOFTSTRECH(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
   }
 }
@@ -1000,8 +942,8 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   bool bDirty = false;
 
   #if FLASH_80_COL
-  unsigned char c1 = *(g_pTextBank1 + offset); // aux
-  unsigned char c0 = *(g_pTextBank0 + offset); // main
+  unsigned char c1 = *(g_pTextBank1 + offset);
+  unsigned char c0 = *(g_pTextBank0 + offset);
 
   bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_);
   bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
@@ -1015,26 +957,6 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
 
   if (bC0Changed || (bC0Flashing && g_bTextFlashFlag) ) {
     bDirty |= _Update80ColumnCell(c0, xpixel + 7, ypixel, bC0Flashing);
-  }
-
-  #else
-  unsigned char auxval = *(g_pTextBank1 + offset); // aux
-  unsigned char mainval = *(g_pTextBank0 + offset); // main
-
-  if ((auxval  != *(vidlastmem+offset)) ||
-      (mainval != *(vidlastmem+offset+0x400)) ||
-      redrawfull || video_worker_active_) {
-    CopySource(xpixel, ypixel,
-        (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
-        SRCOFFS_80COL + ((auxval & 15)<<3),
-        ((auxval>>4)<<4) + g_nAltCharSetOffset);
-
-    CopySource(xpixel+7, ypixel,
-        (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
-        SRCOFFS_80COL + ((mainval & 15)<<3),
-        ((mainval>>4)<<4) + g_nAltCharSetOffset );
-
-    bDirty = true;
   }
   #endif
 
@@ -1076,7 +998,6 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
 
 unsigned char MixColors(unsigned char c1, unsigned char c2)
 {
-  // For tv emulation g_nAppMode
   #define COMBINATION(c1, c2, ref1, ref2) (((c1)==(ref1)&&(c2)==(ref2)) || ((c1)==(ref2)&&(c2)==(ref1)))
 
   if (c1 == c2) {
@@ -1102,9 +1023,6 @@ unsigned char MixColors(unsigned char c1, unsigned char c2)
 }
 
 void CreateColorMixMap() {
-  // For tv emulation g_nAppMode
-  #define FROM_NEIGHBOUR 0x00
-
   int t, m, b;
   unsigned char cTop, cMid, cBot;
   unsigned short mixTop, mixBot;
@@ -1119,31 +1037,29 @@ void CreateColorMixMap() {
           mixTop = mixBot = cMid;
         } else {
           if (cTop < HGR_BLUE) {
-            mixTop = FROM_NEIGHBOUR;
+            mixTop = 0x00;
           } else {
             mixTop = MixColors(cMid, cTop);
           }
           if (cBot < HGR_BLUE) {
-            mixBot = FROM_NEIGHBOUR;
+            mixBot = 0x00;
           } else {
             mixBot = MixColors(cMid, cBot);
           }
-          if (mixTop == FROM_NEIGHBOUR && mixBot != FROM_NEIGHBOUR) {
+          if (mixTop == 0x00 && mixBot != 0x00) {
             mixTop = mixBot;
-          } else if (mixBot == FROM_NEIGHBOUR && mixTop != FROM_NEIGHBOUR) {
+          } else if (mixBot == 0x00 && mixTop != 0x00) {
             mixBot = mixTop;
-          } else if (mixBot == FROM_NEIGHBOUR && mixTop == FROM_NEIGHBOUR) {
+          } else if (mixBot == 0x00 && mixTop == 0x00) {
             mixBot = mixTop = cMid;
           }
         }
         colormixmap[t][m][b] = (mixTop << 8) | mixBot;
       }
-  #undef FROM_NEIGHBOUR
 }
 
 void MixColorsVertical(int matx, int maty)
 {
-  // For tv emulation g_nAppMode
   unsigned short twoHalfPixel;
   int bot1idx, bot2idx;
 
@@ -1174,7 +1090,6 @@ void MixColorsVertical(int matx, int maty)
 }
 
 void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
-  // For tv emulation g_nAppMode
   uint8_t* currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
   uint8_t* currdestptr = frameoffsettable[y << 1] + (x << 1);
   uint8_t* currptr;
@@ -1189,17 +1104,14 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
   int istart = 2 - (hgrlinesabove << 1);
   int iend = 3 + (hgrlinesbelow << 1);
 
-  // transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
   for (count = 0, bufxoffset = 0; count < 7; count++, bufxoffset += 2) {
     hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
-    // color mixing between adjacent scanlines at current x position
     MixColorsVertical(matx + count, maty);
-    // transfer up to 6 mixed (half-)pixels of current column to framebuffer
     currptr = currdestptr + bufxoffset;
     if (hgrlinesabove) {
-      currptr -= framebufferpitch << 1;  // we just should change sign of op: '-' instead of '+'
+      currptr -= framebufferpitch << 1;
     }
-    for (i = istart; i <= iend; currptr += framebufferpitch, i++) {  // and vice versa
+    for (i = istart; i <= iend; currptr += framebufferpitch, i++) {
       if (~i & 1) {
         *currptr = *(currptr + 1) = colormixbuffer[i];
       } else {
@@ -1293,8 +1205,8 @@ SDL_Surface* LoadCharset() {
   if (tmp)
   {
     // convert format
-    SDL_Surface *result = SDL_DisplayFormat(tmp);
-    SDL_FreeSurface(tmp);
+    SDL_Surface *result = SDL_ConvertSurface(tmp, SDL_PIXELFORMAT_XRGB8888);
+    SDL_DestroySurface(tmp);
 
     /* correct character set bitmaps should be 128x128 (single language) or
      * 256x128 for the Euro-ROMs with alternative language */
@@ -1353,10 +1265,8 @@ bool VideoApparentlyDirty() {
 }
 
 void VideoBenchmark() {
-  SDL_Delay(1500);  // wait for 1.5 sec before running benchmark
+  SDL_Delay(1500);
 
-  // Prepare two different frame buffers, each of which have half of the
-  // bytes set to 0X14 and the other half set to 0XAA
   int loop;
   uint32_t* mem32 = (uint32_t*) mem;
   for (loop = 4096; loop < 6144; loop++) {
@@ -1366,9 +1276,6 @@ void VideoBenchmark() {
     *(mem32 + loop) = ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0xAAAAAAAA : 0x14141414;
   }
 
-  // See how many text frames per second we can produce with nothing else
-  // going on, changing half of the bytes in the video buffer each frame to
-  // simulate the activity of an average game
   unsigned int totaltextfps = 0;
   g_uVideoMode = VF_TEXT;
   memset(mem + 0x400,  0x14,  0x400);
@@ -1390,9 +1297,6 @@ void VideoBenchmark() {
     totaltextfps++;
   } while (SDL_GetTicks() - milliseconds < 1000);
 
-  // See how many hires frames per second we can produce with nothing else
-  // going on, changing half of the bytes in the video buffer each frame to
-  // simulate the activity of an average game
   unsigned int totalhiresfps = 0;
   g_uVideoMode = VF_HIRES;
   memset(mem + 0x2000,  0x14,  0x2000);
@@ -1414,7 +1318,6 @@ void VideoBenchmark() {
     totalhiresfps++;
   } while (SDL_GetTicks() - milliseconds < 1000);
 
-  // Determine how many 65c02 clock cycles we can emulate per second with nothing else going on
   CpuSetupBenchmark();
   unsigned int totalmhz10 = 0;
   milliseconds = SDL_GetTicks();
@@ -1426,8 +1329,6 @@ void VideoBenchmark() {
     totalmhz10++;
   } while (SDL_GetTicks() - milliseconds < 1000);
 
-  // If the program counter is not in the expected range at the end of the
-  // CPU benchmark, report an error and optionally track it down
   if ((regs.pc < 0x300) || (regs.pc > 0x400)) {
     printf("The emulator has detected a problem while running the CPU benchmark.\n");
 
@@ -1450,13 +1351,9 @@ void VideoBenchmark() {
       printf(" After the error, it had jumped to $%04X.\n", (unsigned) regs.pc);
     } else {
       printf("The emulator was unable to locate the exact point of the error.\n");
-      printf("This probably means that the problem is external to the emulator, happening asynchronously,\n");
-      printf("such as a problem in a timer interrupt handler.\n");
     }
   }
 
-  // Do a realistic test of how many frames per second we can produce with
-  // full emulation of the cpu, joystick, and disk happening at the same time
   unsigned int realisticfps = 0;
   memset(mem + 0x2000,  0xAA,  0x2000);
   VideoRedrawScreen();
@@ -1592,34 +1489,34 @@ void VideoDestroy() {
   vidlastmem = NULL;
   // DESTROY FRAME BUFFER
   if (g_hDeviceBitmap) {
-    SDL_FreeSurface(g_hDeviceBitmap);
+    SDL_DestroySurface(g_hDeviceBitmap);
   }
   g_hDeviceBitmap = NULL;
 
   if (g_origscreen) {
-    SDL_FreeSurface(g_origscreen);
+    SDL_DestroySurface(g_origscreen);
   }
   g_origscreen = NULL;
 
   if (g_hStatusSurface) {
-    SDL_FreeSurface(g_hStatusSurface);
+    SDL_DestroySurface(g_hStatusSurface);
   }
   g_hStatusSurface = NULL;
 
   // DESTROY SOURCE IMAGE
   if (g_hSourceBitmap) {
-    SDL_FreeSurface(g_hSourceBitmap);
+    SDL_DestroySurface(g_hSourceBitmap);
   }
   g_hSourceBitmap = NULL;
 
   // DESTROY LOGO
   if (g_hLogoBitmap) {
-    SDL_FreeSurface(g_hLogoBitmap);
+    SDL_DestroySurface(g_hLogoBitmap);
   }
   g_hLogoBitmap = NULL;
 
   if (charset40) {
-    SDL_FreeSurface(charset40);
+    SDL_DestroySurface(charset40);
   }
   charset40 = NULL;
 }
@@ -1627,12 +1524,11 @@ void VideoDestroy() {
 void VideoDisplayLogo() {
   SDL_Rect drect, srect;
 
-  if (!g_hLogoBitmap) {
+  if (!g_hLogoBitmap || !screen) {
     return; // nothing to display?
   }
-  if (screen->format->palette && g_hLogoBitmap->format->palette) {
-    SDL_SetColors(screen, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
-  }
+
+  SDL_FillSurfaceRect(screen, NULL, 0);
 
   drect.x = drect.y = srect.x = srect.y = 0;
   drect.w = screen->w;
@@ -1640,9 +1536,8 @@ void VideoDisplayLogo() {
   srect.w = g_hLogoBitmap->w;
   srect.h = g_hLogoBitmap->h;
 
-  SDL_SoftStretch(g_hLogoBitmap, &srect, screen, &drect);
-  SDL_SoftStretch(g_hLogoBitmap, &srect, g_origscreen, &drect);
-  SDL_Flip(screen);
+  SDL_BlitSurfaceScaled(g_hLogoBitmap, &srect, screen, &drect, SDL_SCALEMODE_NEAREST);
+  SDL_BlitSurfaceScaled(g_hLogoBitmap, &srect, g_origscreen, &drect, SDL_SCALEMODE_NEAREST);
 }
 
 bool VideoHasRefreshed() {
@@ -1652,12 +1547,22 @@ bool VideoHasRefreshed() {
 }
 
 void VideoInitialize() {
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&video_draw_mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+    mutex_initialized = true;
+  }
+
   // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem = (uint8_t*) malloc(0x10000);
   if (vidlastmem) memset(vidlastmem, 0, 0x10000);
 
   // LOAD THE splash screen
-  g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
+  g_hLogoBitmap = SDL_ConvertSurface(assets->splash, SDL_PIXELFORMAT_XRGB8888);
 
   // LOAD APPLE CHARSET40
   if (!charset40)
@@ -1681,7 +1586,6 @@ void VideoInitialize() {
   if (!g_singlethreaded) {
     VideoInitWorker();
   }
-  // END GPH
 }
 
 // VideoSetNextScheduledUpdate
@@ -1745,11 +1649,8 @@ void VideoRedrawScreen() {
 }
 
 void VideoPerformRefresh() {
-
-  // Claim until video refresh is complete
   pthread_mutex_lock(&video_draw_mutex);
 
-  // latch video mode permutation and read the latch
   displaypage2_latched = displaypage2;
   vidmode_latched = g_uVideoMode;
 
@@ -1757,7 +1658,6 @@ void VideoPerformRefresh() {
   {
     if (redrawfull==0)
     {
-        // Allow Disk Choose screen, help, etc
         pthread_mutex_unlock(&video_draw_mutex);
         return;
     }
@@ -1770,33 +1670,27 @@ void VideoPerformRefresh() {
   }
 
   uint8_t* addr = framebufferbits;
-  int   pitch = 560; // pitch stands for pixels in a row, if one pixel stands for one byte (560 in our case)
-  // I could take pitch such: int pitch = screen->pitch; . May be it would be better, what'd you think? --bb
+  int pitch = 560;
   CreateFrameOffsetTable(addr, pitch);
 
   int src_locked = 0;
   if (SDL_MUSTLOCK(g_hSourceBitmap)) {
     SDL_LockSurface(g_hSourceBitmap);
-    src_locked = 1; // the source bitmap is locked
+    src_locked = 1;
   }
   int frm_locked = 0;
   if (SDL_MUSTLOCK(g_hDeviceBitmap)) {
     SDL_LockSurface(g_hDeviceBitmap);
-    frm_locked = 1; // the frame bitmap is locked
+    frm_locked = 1;
   }
 
   if (g_singlethreaded) {
-    // This is the old, standard behavior -- just read the Apple II display data
-    // directly
     g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
     g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
     g_pTextBank1 = MemGetAuxPtr(0x0400 << displaypage2_latched);
     g_pTextBank0 = MemGetMainPtr(0x0400 << displaypage2_latched);
   } else {
-    // What if we copy all the bytes that are there now, as we start this redraw?
-    // This is a one-level pipelining
-    // That way, the 6502 CPU emulation can go on its merry way without
-    // causing display glitches as emulation runs concurrently with screen drawing
+    // One-level pipelining to allow CPU emulation to run concurrently without display glitches.
     memcpy(display_pipeline_       ,MemGetAuxPtr ( 0x2000 << displaypage2_latched), 0x2000);
     memcpy(display_pipeline_+0x2000,MemGetMainPtr( 0x2000 << displaypage2_latched), 0x2000);
     memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << displaypage2_latched), 0x0400);
@@ -1807,8 +1701,6 @@ void VideoPerformRefresh() {
     g_pTextBank1 =  (uint8_t*) display_pipeline_ + 0x4000;
     g_pTextBank0 =  (uint8_t*) display_pipeline_ + 0x4400;
   }
-  // Check each cell for changed bytes.  redraw pixels for the changed bytes
-  // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
   memset(celldirty, 0, 40 * 32);
   UpdateFunc_t update = SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell : SWL_HIRES ? (SWL_DHIRES && SWL_80COL)
                                                                                             ? UpdateDHiResCell
@@ -1817,7 +1709,10 @@ void VideoPerformRefresh() {
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
-  bool anydirty = 0;
+  bool anydirty = redrawfull | g_bTextFlashFlag;
+  if (redrawfull && screen) {
+    SDL_FillSurfaceRect(screen, NULL, 0);
+  }
   int y = 0;
   int ypixel = 0;
   while (y < 20) {
@@ -1856,10 +1751,17 @@ void VideoPerformRefresh() {
   if (src_locked) {
     SDL_UnlockSurface(g_hSourceBitmap);
   }
-  // Clear this flag after TEXT screen has been updated
-  g_bTextFlashFlag = false;
+  if (anydirty) {
+    g_bTextFlashFlag = false;
+  }
+
+  if (!screen) {
+    return;
+  }
 
   SDL_Rect srect;
+  srect.w = STATUS_PANEL_W;
+  srect.h = STATUS_PANEL_H;
   srect.x = screen->w - STATUS_PANEL_W - 5;
   srect.y = screen->h - STATUS_PANEL_H - 5;
 
@@ -1867,34 +1769,34 @@ void VideoPerformRefresh() {
   if (g_iStatusCycle > 0) {
     g_iStatusCycle--;
     if (!g_iStatusCycle) {
-      HD_ResetStatus();  // just do not know other way to switch off HD leds
+      HD_ResetStatus();
     }
   }
-  // New simplified code:
-  // . Oliver Schmidt gets a flickering mouse cursor with this code
   if (anydirty) {
-    // Draw up entire Apple 2 screen
     if (!g_WindowResized) {
-      SDL_BlitSurface(g_hDeviceBitmap, NULL, screen, NULL);
+      SDL_Rect r = {0, 0, 560, 384};
+      SDL_SoftStretchMy(g_hDeviceBitmap, &r, screen, &r);
     } else {
-      SDL_SoftStretch(g_hDeviceBitmap, &origRect, g_origscreen, &newRect);
-      SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
+      SDL_BlitSurfaceScaled(g_hDeviceBitmap, &origRect, g_origscreen, &newRect, SDL_SCALEMODE_NEAREST);
+      SDL_SoftStretchMy(g_origscreen, &newRect, screen, &newRect);
     }
     if (bStatusShow && g_ShowLeds) {
-      SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
+      SDL_SoftStretchMy(g_hStatusSurface, NULL, screen, &srect);
     }
-    SDL_Flip(screen);  // flip SDL buffers
   } else if (bStatusShow) {
     if (g_ShowLeds) {
-      SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
+      SDL_SoftStretchMy(g_hStatusSurface, NULL, screen, &srect);
     }
-    SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
   }
+
+  if ((anydirty || bStatusShow) && g_texture && screen) {
+    g_bFrameReady = true;
+  }
+
   SetLastDrawnImage();
   redrawfull = 0;
   hasrefreshed = 1;
 
-  // Allow Disk Choose screen, help, etc
   pthread_mutex_unlock(&video_draw_mutex);
 }
 

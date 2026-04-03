@@ -90,7 +90,6 @@ void MemoryTextFile_t::GetLinePointers()
 
 		if (*pEnd == EOL_NULL)
 		{
-			// Found EOL via null
 			pStartNextLine = pEnd + 1;
 		}
 		else

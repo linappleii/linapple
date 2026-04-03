@@ -5,7 +5,6 @@
 
 #define FTP_SEPARATOR  '/'
 
-// let it be our second version!
 #define LINAPPLE_VERSION  2
 
 #include <curl/curl.h>

@@ -22,11 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 /* Description: Save-state (snapshot) module
- *
- * Author: Copyright (c) 2004-2006 Tom Charlesworth
  */
-
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "stdafx.h"
 

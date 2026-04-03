@@ -26,10 +26,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth
  */
 
-/*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
-
-// Timers like functions for Windows and Posix
-
 #include <unistd.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -80,8 +76,6 @@ void SysClk_WaitTimer() {
   uint32_t current;
   uint32_t elapsed;
 
-  // Loop until next period
-  // if more than 500usec sleep to give up CPU
   while (1) {
     current = uSecSinceStart();
     elapsed = current - old;

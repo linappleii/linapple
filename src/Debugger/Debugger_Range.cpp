@@ -119,9 +119,5 @@ RangeType_t Range_Get( unsigned short & nAddress1_, unsigned short & nAddress2_,
 			nAddress2_ = nTemp;
 	}
 
-	// .17 Bug Fix: D000,FFFF -> D000,CFFF (nothing searched!)
-//	if (nTemp > _6502_MEM_END)
-//		nTemp = _6502_MEM_END;
-
 	return eRange;
 }

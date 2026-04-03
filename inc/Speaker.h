@@ -9,10 +9,10 @@ extern unsigned int soundtype;
 extern double g_fClksPerSpkrSample;
 
 // needed for DSPlaySnd callback function
-extern short *pDSSpkrBuf;  // speaker data buffer (in size of g_dwDSSpkrBufferSize samples?
-extern unsigned int g_dwDSSpkrBufferSize;  // size of Speakers audio buffer
-extern unsigned int nDSSpkrWCur;  // write cursor
-extern unsigned int nDSSpkrRCur;  // read cursor
+extern short *pDSSpkrBuf;
+extern unsigned int g_dwDSSpkrBufferSize;
+extern unsigned int nDSSpkrWCur;
+extern unsigned int nDSSpkrRCur;
 
 void SpkrDestroy();
 void SpkrInitialize();

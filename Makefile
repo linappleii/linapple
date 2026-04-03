@@ -9,7 +9,7 @@ SHELL := /bin/sh
 # --- Configuration -----------------------------------------------------------
 
 PACKAGE     := linapple
-VERSION     := 2.3.0
+VERSION     := 3.0.0
 TARGET      := linapple
 
 # --- Installation Paths ------------------------------------------------------
@@ -52,9 +52,9 @@ BINDIR      := $(BUILD_ROOT)/bin
 
 # --- Flags & Libraries -------------------------------------------------------
 
-# Library detection via pkg-config with legacy fallback
-SDL_CFLAGS  := $(shell $(PKG_CONFIG) --cflags sdl SDL_image 2>/dev/null || sdl-config --cflags)
-SDL_LIBS    := $(shell $(PKG_CONFIG) --libs sdl SDL_image 2>/dev/null || (sdl-config --libs && echo "-lSDL_image"))
+# Library detection via pkg-config
+SDL_CFLAGS  := $(shell $(PKG_CONFIG) --cflags sdl3 sdl3-image)
+SDL_LIBS    := $(shell $(PKG_CONFIG) --libs sdl3 sdl3-image)
 CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config --cflags)
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 

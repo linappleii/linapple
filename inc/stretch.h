@@ -22,18 +22,10 @@
 */
 
 
-/*  Auxiallary routines */
-
-
 /* This a stretch blit implementation based on ideas given to me by
    Tomasz Cejner - thanks! :)
    April 27, 2000 - Sam Lantinga
 */
-
-/* This isn't ready for general consumption yet - it should be folded
-   into the general blitting mechanism.
-*/
-//static unsigned char copy_row[4096];
 
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!
@@ -43,14 +35,14 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
 
 
 /*  SDL_SoftStretchOr  - the same as SDL_SoftStretch, but ORed with destination
-  NOTE: 24bpp does not support  -- beom beotiger 2007 November
+  NOTE: 24bpp does not support
 */
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!
 */
 int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect);
 
-int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint8 fgbrush, Uint8 bgbrush);
+int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint32 fgbrush, Uint32 bgbrush);
 
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN

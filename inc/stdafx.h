@@ -1,9 +1,3 @@
-//#define WIN32_LEAN_AND_MEAN
-
-// Mouse Wheel is not supported on Win95.
-// If we didn't care about supporting Win95 (compile/run-time errors)
-// we would just define the minmimum windows version to support.
-// #define _WIN32_WINDOWS  0x0401
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL 0x020A
 #endif
@@ -16,7 +10,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <cassert>
 #include <cstring>
 #include <cctype>
@@ -52,7 +46,7 @@
 #include "Riff.h"
 #include "SaveState.h"
 #include "SerialComms.h"
-#include "SoundCore.h"  //- will do later
+#include "SoundCore.h"
 #include "Speaker.h"
 
 #include "stretch.h"
@@ -61,6 +55,3 @@
 #include "Util_Text.h"
 
 #include "Video.h"
-
-// This is to faciliate porting to SDL2
-#include "shim.h"

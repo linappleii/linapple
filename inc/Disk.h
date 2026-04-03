@@ -9,8 +9,8 @@ constexpr int TRACKS = 35;
 
 extern bool enhancedisk;
 
-void DiskInitialize(); // DiskManagerStartup()
-void DiskDestroy(); // no, doesn't "destroy" the disk image.  DiskManagerShutdown()
+void DiskInitialize();
+void DiskDestroy();
 
 void DiskBoot();
 

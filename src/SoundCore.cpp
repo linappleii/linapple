@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
 
+#include <atomic>
 #include "stdafx.h"
 // for Assertion
 #include <assert.h>
@@ -35,10 +36,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <functional>
 
 bool g_bDSAvailable = false;
+SDL_AudioStream *g_audioStream = NULL;
 
 // forward decls    ------------------------
 void SDLSoundDriverUninit();    // for DSInit()
 bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples);  // for DSUninit?
+static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
 
 bool DSInit() {
   if (g_bDSAvailable) {
@@ -58,9 +61,9 @@ void DSUninit() {
 
 void SoundCore_SetFade(int how) {
   if (how == FADE_OUT) {
-    SDL_PauseAudio(1);  //stop playing sound
+    SDL_PauseAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));  //stop playing sound
   } else {
-    SDL_PauseAudio(0);  //start playing
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));  //start playing
   }
 }
 
@@ -80,8 +83,6 @@ unsigned getBufferFilled();
 
 unsigned getBufferFree();
 
-static void audioCallback(void *userdata, Uint8 *strm, int len);
-
 unsigned frequency;
 
 struct sample_buffer {
@@ -89,34 +90,34 @@ struct sample_buffer {
   typedef std::function<sample_t(sample_t,sample_t)> mix_func_t;
 
   std::vector<sample_t> buffer;
-  size_t read_index, write_index;
+  std::atomic<size_t> read_index;
+  std::atomic<size_t> write_index;
   sample_t last_value;
 
-  sample_buffer(size_t size) : buffer(size), last_value(0) {}
+  sample_buffer(size_t size) : buffer(size), read_index(0), write_index(0), last_value(0) {}
 
   void reinit() {
     std::fill(buffer.begin(), buffer.end(), 0);
-    read_index = write_index = 0;
+    read_index = 0;
+    write_index = 0;
   }
 
   size_t get_filled() const {
+    size_t r = read_index.load(std::memory_order_relaxed);
+    size_t w = write_index.load(std::memory_order_relaxed);
     size_t result;
-    if (read_index <= write_index) {
-      result = write_index - read_index;
+    if (r <= w) {
+      result = w - r;
     } else {
-      result = buffer.size() + write_index - read_index;
+      result = buffer.size() + w - r;
     }
-    assert((0 <= result) && (result < buffer.size()));
+    if (result >= buffer.size()) result = buffer.size() - 1; // Prevent crash if slightly out of sync
     return result;
   }
 
   size_t get_free() const {
-    // we can't distinguish completely filled from completely empty
-    // (in both cases readIx would be equal to writeIdx), so instead
-    // we define full as '(writeIdx + 2) == readIdx' (note that index
-    // increases in steps of 2 (stereo)).
     auto result = buffer.size() - 2 - get_filled();
-    assert((0 <= result) && (result < buffer.size()));
+    if (result >= buffer.size()) result = 0;
     return result;
   }
 
@@ -137,28 +138,19 @@ bool muted;
 bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
   SDL_AudioSpec desired;
   desired.freq = wantedFreq;
-  desired.samples = wantedSamples;
-
   desired.channels = 2; // stereo(2)  or mono(1)
-  // be courteous with BIG_Endian systems, please! --bb
-  #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-  desired.format = AUDIO_S16MSB;
-  #else
-  desired.format = AUDIO_S16LSB;
-  #endif
+  desired.format = SDL_AUDIO_S16;
 
-  desired.callback = audioCallback; // must be a static method
-  desired.userdata = NULL;
-  SDL_AudioSpec audioSpec;
-  if (SDL_OpenAudio(&desired, &audioSpec) != 0) {
+  g_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, sdl3AudioCallback, NULL);
+  if (g_audioStream == NULL) {
     printf("Unable to open SDL audio: %s", SDL_GetError());
     return false;
   }
-  frequency = audioSpec.freq;
+  frequency = wantedFreq;
 
   unsigned bufferSize;
   unsigned bufferIdxMask;
-  bufferSize = 8 * (audioSpec.size / sizeof(short));
+  bufferSize = 16 * wantedSamples;
   // GPH NOTE: bufferSize needs to be power of 2 for quick
   // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
   // and because of the high volume of work against mixBuffer and mockBuffer, that is
@@ -170,10 +162,11 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
   mock_buffer = new sample_buffer(bufferSize);  // buffer for Mockingboard
 
   reInit();
-  printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
-  printf("Freq=%d,format=%d,channels=%d,silence=%d\n", audioSpec.freq, audioSpec.format, audioSpec.channels,
-         audioSpec.silence);
-  printf("samples=%d,size=%d,bufferSize=%d\n", audioSpec.samples, audioSpec.size, bufferSize);
+
+  SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
+
+  printf("Freq=%d,format=%d,channels=%d\n", desired.freq, desired.format, desired.channels);
+  printf("samples=%d,bufferSize=%d\n", wantedSamples, bufferSize);
 
   return true;
 }
@@ -181,7 +174,8 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
 void SDLSoundDriverUninit() {
   delete mix_buffer;
   delete mock_buffer;
-  SDL_CloseAudio();
+  SDL_DestroyAudioStream(g_audioStream);
+  g_audioStream = NULL;
 }
 
 
@@ -193,7 +187,7 @@ void reInit() {
 void mute() {
   if (!muted) {
     muted = true;
-    SDL_PauseAudio(1);
+    SDL_PauseAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
   }
 }
 
@@ -201,7 +195,7 @@ void unmute() {
   if (muted) {
     muted = false;
     reInit();
-    SDL_PauseAudio(0);
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
   }
 }
 
@@ -211,19 +205,21 @@ unsigned getFrequency() {
 
 
 // GPH this is called on IRQ to refresh the audio at regular intervals.
-void audioCallback(void *userdata, Uint8 *strm, int len) {
-  assert((len & 3) == 0); // stereo, 16-bit
-  SDL_LockAudio();
-  {
-    // We'll mix the buffers here keeping in mind the need for speed.
-    auto stream = reinterpret_cast<sample_buffer::sample_t*>(strm);
-    const auto str_len = len / sizeof(sample_buffer::sample_t);
-    mix_buffer->drain_to(stream, str_len);
+static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+  if (additional_amount <= 0) return;
+
+  int16_t *temp_buf = (int16_t *)SDL_malloc(additional_amount);
+  if (!temp_buf) return;
+
+  int num_samples = additional_amount / sizeof(int16_t);
+
+  mix_buffer->drain_to(temp_buf, num_samples);
 #ifdef MOCKINGBOARD
-    mock_buffer->mix_into(stream, str_len);
+  mock_buffer->mix_into(temp_buf, num_samples);
 #endif
-  }
-  SDL_UnlockAudio();
+
+  SDL_PutAudioStreamData(stream, temp_buf, additional_amount);
+  SDL_free(temp_buf);
 }
 
 

@@ -19,8 +19,8 @@
 */
 
 #include <sys/param.h>
-#include <SDL.h>
-#include <SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 
 #include "asset.h"
 #include "stdafx.h"
@@ -80,17 +80,17 @@ void Asset_Quit(void)
 {
   if (NULL != assets) {
     if (NULL != assets->icon) {
-      SDL_FreeSurface(assets->icon);
+      SDL_DestroySurface(assets->icon);
       assets->icon = NULL;
     }
 
     if (NULL != assets->font) {
-      SDL_FreeSurface(assets->font);
+      SDL_DestroySurface(assets->font);
       assets->font = NULL;
     }
 
     if (NULL != assets->splash) {
-      SDL_FreeSurface(assets->splash);
+      SDL_DestroySurface(assets->splash);
       assets->splash = NULL;
     }
 

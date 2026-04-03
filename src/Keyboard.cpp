@@ -26,13 +26,41 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 
 #include "stdafx.h"
 #include <iostream>
 
-#define KEY_OLD
+#ifndef SDLK_WORLD_20
+#define SDLK_WORLD_20 0xB4
+#endif
+#ifndef SDLK_WORLD_63
+#define SDLK_WORLD_63 0xDF
+#endif
+#ifndef SDLK_WORLD_64
+#define SDLK_WORLD_64 0xE0
+#endif
+#ifndef SDLK_WORLD_68
+#define SDLK_WORLD_68 0xE4
+#endif
+#ifndef SDLK_WORLD_71
+#define SDLK_WORLD_71 0xE7
+#endif
+#ifndef SDLK_WORLD_72
+#define SDLK_WORLD_72 0xE8
+#endif
+#ifndef SDLK_WORLD_73
+#define SDLK_WORLD_73 0xE9
+#endif
+#ifndef SDLK_WORLD_86
+#define SDLK_WORLD_86 0xF6
+#endif
+#ifndef SDLK_WORLD_89
+#define SDLK_WORLD_89 0xF9
+#endif
+#ifndef SDLK_WORLD_92
+#define SDLK_WORLD_92 0xFC
+#endif
 
 bool g_bShiftKey = false;
 bool g_bCtrlKey = false;
@@ -40,23 +68,20 @@ bool g_bAltKey = false;
 bool g_bAltGrKey = false;
 
 static bool g_bCapsLock = true;
-static int lastvirtkey = 0;  // Current PC keycode
-static unsigned char keycode = 0;  // Current Apple keycode
+static int lastvirtkey = 0;
+static unsigned char keycode = 0;
 static unsigned int keyboardqueries = 0;
 
-KeybLanguage g_KeyboardLanguage = English_US; // default keyboard language
-bool         g_KeyboardRockerSwitch = false;  // keyboard/video ROM charset toggle switch (Euro-Apple //e)
+KeybLanguage g_KeyboardLanguage = English_US;
+bool         g_KeyboardRockerSwitch = false;
+static bool  g_bKeybBufferEnable = true;
 
-#ifdef KEY_OLD
-// Original
-static bool keywaiting = 0;
-#else
 // Buffered key input:
 // - Needed on faster PCs where aliasing occurs during short/fast bursts of 6502 code.
 // - Keyboard only sampled during 6502 execution, so if it's run too fast then key presses will be missed.
 const int KEY_BUFFER_MIN_SIZE = 1;
-const int KEY_BUFFER_MAX_SIZE = 2;
-static int g_nKeyBufferSize = KEY_BUFFER_MAX_SIZE;  // Circ key buffer size
+const int KEY_BUFFER_MAX_SIZE = 16;
+static int g_nKeyBufferSize = KEY_BUFFER_MAX_SIZE;
 static int g_nNextInIdx = 0;
 static int g_nNextOutIdx = 0;
 static int g_nKeyBufferCnt = 0;
@@ -64,24 +89,20 @@ static int g_nKeyBufferCnt = 0;
 static struct {
   int nVirtKey;
   unsigned char nAppleKey;
+  uint64_t nTimestamp;
 } g_nKeyBuffer[KEY_BUFFER_MAX_SIZE];
-#endif
 
 static unsigned char g_nLastKey = 0x00;
 
 // All globally accessible functions are below this line
 
 void KeybReset() {
-  #ifdef KEY_OLD
-  keywaiting = 0;
-  #else
   g_nNextInIdx = 0;
   g_nNextOutIdx = 0;
   g_nKeyBufferCnt = 0;
   g_nLastKey = 0x00;
 
   g_nKeyBufferSize = g_bKeybBufferEnable ? KEY_BUFFER_MAX_SIZE : KEY_BUFFER_MIN_SIZE;
-  #endif
 }
 
 bool KeybGetAltStatus() {
@@ -101,25 +122,25 @@ bool KeybGetShiftStatus() {
 }
 
 void KeybUpdateCtrlShiftStatus() {
-  Uint8 *keys;
-  keys = SDL_GetKeyState(NULL);
+  const bool *keys;
+  keys = SDL_GetKeyboardState(NULL);
 
-  g_bShiftKey = (keys[SDLK_LSHIFT] | keys[SDLK_RSHIFT]); // 0x8000 KF_UP   SHIFT
-  g_bCtrlKey = (keys[SDLK_LCTRL] | keys[SDLK_RCTRL]);  // CTRL
-  g_bAltKey = (keys[SDLK_LALT] | keys[SDLK_RALT]);  // ALT
+  g_bShiftKey = (keys[SDL_SCANCODE_LSHIFT] | keys[SDL_SCANCODE_RSHIFT]);
+  g_bCtrlKey = (keys[SDL_SCANCODE_LCTRL] | keys[SDL_SCANCODE_RCTRL]);
+  g_bAltKey = (keys[SDL_SCANCODE_LALT] | keys[SDL_SCANCODE_RALT]);
 
   if (g_KeyboardLanguage == Spanish_ES) {
-    g_bAltKey = keys[SDLK_LALT];  // ALT
-    g_bAltGrKey = keys[SDLK_RALT];  // ALT GR
+    g_bAltKey = keys[SDL_SCANCODE_LALT];
+    g_bAltGrKey = keys[SDL_SCANCODE_RALT];
   }
 }
 
-unsigned char KeybGetKeycode()    // Used by MemCheckPaging() & VideoCheckMode()
+unsigned char KeybGetKeycode()
 {
   return keycode;
 }
 
-unsigned int KeybGetNumQueries()  // Used in determining 'idleness' of Apple system
+unsigned int KeybGetNumQueries()
 {
   unsigned int result = keyboardqueries;
   keyboardqueries = 0;
@@ -130,7 +151,6 @@ unsigned int KeybGetNumQueries()  // Used in determining 'idleness' of Apple sys
 int KeybDecodeKeyUS(int key)
 {
   if (g_bShiftKey) {
-    // convert shifted keys according to Apple // specific US-keyboard layout
     switch (key) {
       case '1':
         return '!';
@@ -181,18 +201,6 @@ int KeybDecodeKeyUS(int key)
   return key;
 }
 
-/* Note on keyboard mapping: unfortunately SDL1.2 does not support proper (standardized) scan codes,
- * which identify the physical location of a key on the host keyboard. With SDL1.2 only the key code
- * is usable (which is the character after the host's conversion). Only SDL2 introduced proper scan
- * code support.
- * So, with SDL 1.2 we must rely on the key codes. The following code assumes the host PC's keyboard
- * layout matches the selected target language (i.e. host provides German/French/... converted key codes,
- * when the Apple II emulation is set to German/French/... respectively. The mapping will be incorrect
- * if a host PC with a US (or French) keyboard selected a German/.. Apple II keyboard.
- * The mapping should be reworked once LinApple moved to SDL2.0, so we can support a correct keyboard
- * mapping independently of the host PC's actual keyboard.
- */
-
 // decode keys for UK keyboard to Apple characters
 int KeybDecodeKeyUK(int key)
 {
@@ -208,15 +216,12 @@ int KeybDecodeKeyUK(int key)
 // decode keys for German keyboard to Apple characters
 int KeybDecodeKeyDE(int key)
 {
-  //printf("German key: %i\n", key);
-
   if (!g_KeyboardRockerSwitch)
   {
     /* Rocker switch in US-character-set mode: do a 'reverse' keyboard mapping, assuming the host PC's
      * native keyboard has a German keyboard layout, so converting back to the respective character of a
      * US keyboard layout. */
 
-    // swap Y and Z keys
     if (key == 'z')
       return 'y';
     else
@@ -224,7 +229,6 @@ int KeybDecodeKeyDE(int key)
       return 'z';
     if ((key>='0')&&(key<='9'))
     {
-      // use US mapping when shift-0..9 is selected
       return KeybDecodeKeyUS(key);
     }
 
@@ -266,7 +270,6 @@ int KeybDecodeKeyDE(int key)
   // rocker switch is in German-character-set mode
 
   if (g_bShiftKey) {
-    // map shifted keys to appropriate Apple II keys
     switch (key) {
       case '1':
         return '!';
@@ -305,7 +308,6 @@ int KeybDecodeKeyDE(int key)
     }
   }
 
-  // map further keys
   switch (key) {
     case SDLK_WORLD_63: // German S
       return (g_bShiftKey) ? '?' : '~';
@@ -327,7 +329,6 @@ int KeybDecodeKeyDE(int key)
 // decode keys for French keyboard to Apple characters
 int KeybDecodeKeyFR(int key)
 {
-  //printf("French key: %i\n", key);
   if (!g_KeyboardRockerSwitch)
   {
     /* Rocker switch in US-character-set mode: do a 'reverse' keyboard mapping, assuming the host PC's
@@ -449,7 +450,6 @@ int KeybDecodeKeyFR(int key)
 int KeybDecodeKeyES(int key)
 {
   if (g_bShiftKey) {
-    // convert shifted keys according to Apple // specific ES-keyboard layout
     switch (key) {
       case '1':
         return '!';
@@ -491,7 +491,6 @@ int KeybDecodeKeyES(int key)
   }
 
   if (g_bAltGrKey) {
-    // convert alt gr key according to Apple // specific ES-keyboard layout
     switch (key) {
       case '2':
         return '@';
@@ -525,7 +524,6 @@ int KeybDecodeKey(int key)
 {
   KeybUpdateCtrlShiftStatus();
 
-  // language dependent keyboard mappings
   switch(g_KeyboardLanguage)
   {
     case English_UK:
@@ -551,7 +549,6 @@ int KeybDecodeKey(int key)
 
 void KeybQueueKeypress(int key, bool bASCII)
 {
-  // language dependent keyboard mappings
   key = KeybDecodeKey(key);
 
   if ((key>=0)&&(key < 0x80)) {
@@ -600,13 +597,13 @@ void KeybQueueKeypress(int key, bool bASCII)
           keycode = 0x08;
           break;
         case SDLK_UP:
-          keycode = 0x0D;
+          keycode = 0x0D; // CR for Apple ][
           break;
         case SDLK_RIGHT:
           keycode = 0x15;
           break;
         case SDLK_DOWN:
-          keycode = 0x2F;
+          keycode = 0x2F; // '/' for Apple ][
           break;
         case SDLK_DELETE:
           keycode = 0x00;
@@ -620,13 +617,13 @@ void KeybQueueKeypress(int key, bool bASCII)
           keycode = 0x08;
           break;
         case SDLK_UP:
-          keycode = 0x0B;
+          keycode = 0x0B; // Control-K for IIe
           break;
         case SDLK_RIGHT:
           keycode = 0x15;
           break;
         case SDLK_DOWN:
-          keycode = 0x0A;
+          keycode = 0x0A; // Control-J for IIe
           break;
         case SDLK_DELETE:
           keycode = 0x7F;
@@ -638,9 +635,6 @@ void KeybQueueKeypress(int key, bool bASCII)
     lastvirtkey = key;
   }
 
-  #ifdef KEY_OLD
-  keywaiting = 1;
-  #else
   bool bOverflow = false;
 
   if(g_nKeyBufferCnt < g_nKeyBufferSize) {
@@ -651,51 +645,54 @@ void KeybQueueKeypress(int key, bool bASCII)
 
   g_nKeyBuffer[g_nNextInIdx].nVirtKey = lastvirtkey;
   g_nKeyBuffer[g_nNextInIdx].nAppleKey = keycode;
+  g_nKeyBuffer[g_nNextInIdx].nTimestamp = SDL_GetTicks();
   g_nNextInIdx = (g_nNextInIdx + 1) % g_nKeyBufferSize;
 
   if(bOverflow) {
     g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;
   }
-  #endif
 }
 
 unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
-  #ifdef KEY_OLD
-  return keycode | (keywaiting ? 0x80 : 0);
-  #else
   unsigned char nKey = g_nKeyBufferCnt ? 0x80 : 0;
   if(g_nKeyBufferCnt)
   {
     nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
     g_nLastKey = g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
+
+    if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
+        uint64_t now = SDL_GetTicks();
+        fprintf(stderr, "PERF: Key 0x%02X read after %llu ms\n", (int)g_nLastKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
+        fflush(stderr);
+        g_nKeyBuffer[g_nNextOutIdx].nTimestamp = 0;
+    }
   }
   else
   {
     nKey |= g_nLastKey;
   }
   return nKey;
-  #endif
 }
 
 unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
 
-  Uint8 *keys;
-  keys = SDL_GetKeyState(NULL);
-  #ifdef KEY_OLD
-  keywaiting = 0;
-  return keycode | (keys[lastvirtkey] ? 0x80 : 0);
-  #else
-  unsigned char nKey = (keys[g_nKeyBuffer[g_nNextOutIdx].nVirtKey]) ? 0x80 : 0;
+  const bool *keys;
+  keys = SDL_GetKeyboardState(NULL);
+  unsigned char nKey = (keys[SDL_GetScancodeFromKey(g_nKeyBuffer[g_nNextOutIdx].nVirtKey, NULL)]) ? 0x80 : 0;
   nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
   if(g_nKeyBufferCnt) {
+    if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
+        uint64_t now = SDL_GetTicks();
+        fprintf(stderr, "PERF: Key 0x%02X cleared after %llu ms\n", (int)g_nKeyBuffer[g_nNextOutIdx].nAppleKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
+        fflush(stderr);
+    }
     g_nKeyBufferCnt--;
     g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;
   }
   return nKey;
-  #endif
 }
 
 void KeybToggleCapsLock()
