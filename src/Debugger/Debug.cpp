@@ -265,7 +265,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
   static char      g_sFileNameTrace      [] = "Trace.txt";
 
   static bool      g_bBenchmarking    = false;
-  static bool      g_bProfiling       = 0;
+  static bool      g_bProfiling       = false;
   static int       g_nDebugSteps      = 0;
   static unsigned int     g_nDebugStepCycles = 0;
   static int       g_nDebugStepStart  = 0;
@@ -737,7 +737,7 @@ Update_t CmdProfile (int nArgs)
     if (iParam == PARAM_RESET)
     {
       ProfileReset();
-      g_bProfiling = 1;
+      g_bProfiling = true;
       ConsoleBufferPush( " Resetting profile data."  );
     }
     else
@@ -781,7 +781,7 @@ Update_t CmdProfile (int nArgs)
         if (ProfileSave())
         {
           char sText[ CONSOLE_WIDTH ];
-          ConsoleBufferPushFormat ( sText, " Saved: %s", g_FileNameProfile );
+          ConsoleBufferPushFormat ( sText, " Saved: %s", g_FileNameProfile.c_str() );
         }
         else
           ConsoleBufferPush( " ERROR: Couldn't save file. (In use?" );
@@ -1051,7 +1051,7 @@ int CheckBreakpointsIO ()
     NO_6502_TARGET
   };
   int  nBytes;
-  bool bBreakpointHit = 0;
+  bool bBreakpointHit = false;
 
   int  iTarget;
   int  nAddress;
@@ -2444,7 +2444,7 @@ Update_t CmdConfigDisasm( int nArgs )
           if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
           {
             iArg++;
-            g_bConfigDisasmAddressColon = (g_aArgs[ iArg ].nValue) ? true : false;
+            g_bConfigDisasmAddressColon = (g_aArgs[ iArg ].nValue) != 0;
           }
           else // show current setting
           {
@@ -2458,7 +2458,7 @@ Update_t CmdConfigDisasm( int nArgs )
           if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
           {
             iArg++;
-            g_bConfigDisasmOpcodesView = (g_aArgs[ iArg ].nValue) ? true : false;
+            g_bConfigDisasmOpcodesView = (g_aArgs[ iArg ].nValue) != 0;
           }
           else
           {
@@ -2472,7 +2472,7 @@ Update_t CmdConfigDisasm( int nArgs )
           if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
           {
             iArg++;
-            g_bConfigInfoTargetPointer = (g_aArgs[ iArg ].nValue) ? true : false;
+            g_bConfigInfoTargetPointer = (g_aArgs[ iArg ].nValue) != 0;
           }
           else
           {
@@ -2486,7 +2486,7 @@ Update_t CmdConfigDisasm( int nArgs )
           if ((nArgs > 1) && (! bDisplayCurrentSettings)) // set
           {
             iArg++;
-            g_bConfigDisasmOpcodeSpaces = (g_aArgs[ iArg ].nValue) ? true : false;
+            g_bConfigDisasmOpcodeSpaces = (g_aArgs[ iArg ].nValue) != 0;
           }
           else
           {
@@ -3705,7 +3705,7 @@ Update_t CmdDisk ( int nArgs)
     bool bProtect = true;
 
     if (nArgs == 3)
-      bProtect = g_aArgs[ 3 ].nValue ? true : false;
+      bProtect = g_aArgs[ 3 ].nValue != 0;
 
     DiskSetProtect( iDrive, bProtect );
     FrameRefreshStatus(DRAW_LEDS | DRAW_BUTTON_DRIVES);
@@ -4244,7 +4244,7 @@ Update_t CmdMemoryLoad (int nArgs)
 
   if (nArgs >= 5)
   {
-    if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS && g_aArgs[iArgColon].eToken == TOKEN_COLON))
+    if (!g_aArgs[iArgBank].bType & TYPE_ADDRESS || g_aArgs[iArgColon].eToken != TOKEN_COLON)
       return Help_Arg_1( CMD_MEMORY_LOAD );
 
     nBank = g_aArgs[iArgBank].nValue;
@@ -4642,7 +4642,7 @@ Update_t CmdMemorySave (int nArgs)
 
     if (nArgs > 5)
     {
-      if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS && g_aArgs[iArgColon].eToken == TOKEN_COLON))
+      if (!g_aArgs[iArgBank].bType & TYPE_ADDRESS || g_aArgs[iArgColon].eToken != TOKEN_COLON)
         return Help_Arg_1( CMD_MEMORY_SAVE );
 
       nBank = g_aArgs[iArgBank].nValue;
@@ -6601,7 +6601,7 @@ Update_t CmdSource (int nArgs)
       const std::string pFileName = g_aArgs[ iArg ].sArg;
 
       int iParam;
-      bool bFound = FindParam( pFileName.c_str(), MATCH_EXACT, iParam, _PARAM_SOURCE_BEGIN, _PARAM_SOURCE_END ) > 0 ? true : false;
+      bool bFound = FindParam( pFileName.c_str(), MATCH_EXACT, iParam, _PARAM_SOURCE_BEGIN, _PARAM_SOURCE_END ) > 0;
       if (bFound && (iParam == PARAM_SRC_SYMBOLS))
       {
         g_bSourceAddSymbols = true;

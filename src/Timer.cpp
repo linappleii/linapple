@@ -76,7 +76,7 @@ void SysClk_WaitTimer() {
   uint32_t current;
   uint32_t elapsed;
 
-  while (1) {
+  while (true) {
     current = uSecSinceStart();
     elapsed = current - old;
     if (elapsed >= g_dwUsecPeriod) {

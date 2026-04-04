@@ -62,7 +62,7 @@ static int buttondown = -1;
 
 bool g_WindowResized;
 
-static bool usingcursor = 0;
+static bool usingcursor = false;
 
 void DrawStatusArea(int drawflags);
 
@@ -89,7 +89,7 @@ void DrawAppleContent()
     VideoDisplayLogo();
     g_bFrameReady = true;
   } else if (g_state.mode == MODE_DEBUG) {
-    DebugDisplay(1);
+    DebugDisplay(true);
     g_bFrameReady = true;
   } else {
     VideoRedrawScreen();
@@ -338,7 +338,7 @@ void FrameDispatchMessage(SDL_Event *e) {
       }
 
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
-        SetUsingCursor(0);
+        SetUsingCursor(false);
         buttondown = mysym - SDLK_F1;
       } else if (mysym == SDLK_KP_PLUS) {
         g_state.dwSpeed = g_state.dwSpeed + 2;
@@ -360,7 +360,7 @@ void FrameDispatchMessage(SDL_Event *e) {
       } else if (mysym == SDLK_CAPSLOCK) {
         KeybToggleCapsLock();
       } else if (mysym == SDLK_PAUSE) {
-        SetUsingCursor(0);
+        SetUsingCursor(false);
         switch (g_state.mode) {
           case MODE_RUNNING:
             g_state.mode = MODE_PAUSED;
@@ -390,7 +390,7 @@ void FrameDispatchMessage(SDL_Event *e) {
         // Note about Alt Gr (Right-Alt):
         // . WM_KEYDOWN[Left-Control], then:
         // . WM_KEYDOWN[Right-Alt]
-        bool autorep = 0;
+        bool autorep = false;
         bool extended = (mysym >= SDLK_UP);
         if (mymod & SDL_KMOD_RCTRL)
         {
@@ -423,7 +423,7 @@ void FrameDispatchMessage(SDL_Event *e) {
         KeybToggleCapsLock();
       } else {
         if (myscancode) {
-          JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, 0);
+          JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, false);
         }
       }
       break;
@@ -439,7 +439,7 @@ void FrameDispatchMessage(SDL_Event *e) {
           if (usingcursor) {
             KeybUpdateCtrlShiftStatus();
             if (g_bShiftKey | g_bCtrlKey) {
-              SetUsingCursor(0);
+              SetUsingCursor(false);
             } else {
               if (sg_Mouse.Active()) {
                 sg_Mouse.SetButton(BUTTON0, BUTTON_DOWN);
@@ -451,7 +451,7 @@ void FrameDispatchMessage(SDL_Event *e) {
           else
           if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
               (sg_Mouse.Active())) {
-            SetUsingCursor(1);
+            SetUsingCursor(true);
           }
         }
       }
@@ -609,7 +609,7 @@ void ProcessButtonClick(int button, int mod)
         VideoRedrawScreen();
         g_state.bResetTiming = true;
       } else if (mod & SDL_KMOD_SHIFT) {
-        g_state.restart = 1;
+        g_state.restart = true;
         qe.type = SDL_EVENT_QUIT;
         SDL_PushEvent(&qe);
       }
@@ -661,10 +661,10 @@ void ProcessButtonClick(int button, int mod)
       else
       {
         if (g_state.fullscreen) {
-          g_state.fullscreen = 0;
+          g_state.fullscreen = false;
           SetNormalMode();
         } else {
-          g_state.fullscreen = 1;
+          g_state.fullscreen = true;
           SetFullScreenMode();
         }
         JoyReset();
@@ -675,7 +675,7 @@ void ProcessButtonClick(int button, int mod)
       if (g_state.mode != MODE_DEBUG)
       {
         DebugBegin();
-        SetUsingCursor(0);
+        SetUsingCursor(false);
       }
       else
       if (g_state.mode == MODE_DEBUG)
@@ -761,7 +761,7 @@ void ProcessButtonClick(int button, int mod)
 
 void ResetMachineState() {
   DiskReset();
-  g_bFullSpeed = 0;  // Might've hit reset in middle of InternalCpuExecute() - so beep may get (partially) muted
+  g_bFullSpeed = false;  // Might've hit reset in middle of InternalCpuExecute() - so beep may get (partially) muted
 
   MemReset();
   DiskBoot();
@@ -787,7 +787,7 @@ void SetFullScreenMode() {
 void SetNormalMode()
 {
   if (bIamFullScreened) {
-    bIamFullScreened = 0;
+    bIamFullScreened = false;
     SDL_SetWindowFullscreen(g_window, false);
     if (!usingcursor) {
       SDL_ShowCursor();

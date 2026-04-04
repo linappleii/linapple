@@ -65,11 +65,7 @@ bool TestStringCat ( char * pDst, const char* pSrc, const int nDstSize )
 	int nSpcDst = nDstSize - nLenDst;
 
 	bool bOverflow = (nSpcDst <= nLenSrc); // 2.5.6.25 BUGFIX
-	if (bOverflow)
-	{
-		return false;
-	}
-	return true;
+	return !bOverflow;
 }
 
 
@@ -478,7 +474,7 @@ inline bool ConsoleColorizePrint( char* colorizeBuf, size_t /*colorizeBufSz*/,
                                   const char* pText )
 {
    if (!Colorize(colorizeBuf, pText)) return false;
-   return ConsolePrint(colorizeBuf)?true:false;
+   return ConsolePrint(colorizeBuf);
 }
 
 template<size_t _ColorizeBufSz>
@@ -608,10 +604,7 @@ Update_t CmdHelpSpecific (int nArgs)
 		{
 	//		int nFoundCategory = FindParam( g_aArgs[ iArg ].sArg, MATCH_EXACT, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
 			int nFoundCategory = FindParam( g_aArgs[ iArg ].sArg, MATCH_FUZZY, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
-			if( nFoundCategory )
-				bCategory = true;
-			else
-				bCategory = false;
+			bCategory = nFoundCategory != 0;
 			switch( iParam )
 			{
 				case PARAM_CAT_BOOKMARKS  : iCmdBegin = CMD_BOOKMARK        ; iCmdEnd = CMD_BOOKMARK_SAVE        ; break;

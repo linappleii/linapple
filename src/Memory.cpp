@@ -55,7 +55,7 @@ iofunction IORead[256];
 iofunction IOWrite[256];
 static void* SlotParameters[NUM_SLOTS];
 
-static bool lastwriteram = 0;
+static bool lastwriteram = false;
 
 uint8_t* mem = NULL;
 
@@ -71,7 +71,7 @@ static uint8_t* pCxRomInternal = NULL;
 static uint8_t* pCxRomPeripheral = NULL;
 
 static unsigned int memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
-static bool modechanging = 0;
+static bool modechanging = false;
 
 MemoryInitPattern_e g_eMemoryInitPattern = MIP_FF_FF_00_00;
 
@@ -629,9 +629,9 @@ void SetMemMode(unsigned int uNewMemMode)
 
 void ResetPaging(bool initialize)
 {
-  lastwriteram = 0;
+  lastwriteram = false;
   memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
-  MemUpdatePaging(initialize, 0);
+  MemUpdatePaging(initialize, false);
 }
 
 void MemUpdatePaging(bool initialize, bool updatewriteonly) {
@@ -791,7 +791,7 @@ void MemUpdatePaging(bool initialize, bool updatewriteonly) {
 // TODO: >= Apple2e only?
 unsigned char MemCheckPaging(unsigned short, unsigned short address, unsigned char, unsigned char, uint32_t) {
   address &= 0xFF;
-  bool result = 0;
+  bool result = false;
   switch (address) {
     case 0x11:
       result = SW_HRAM_BANK2;
@@ -1102,7 +1102,7 @@ void MemReset() {
   mem = memimage;
 
   // Initialize paging, filling in the 64k memory image
-  ResetPaging(1);
+  ResetPaging(true);
 
   // Initialize & reset the cpu
   // . Do this after ROM has been copied back to mem[], so that PC is correctly init'ed from 6502's reset vector
@@ -1113,7 +1113,7 @@ void MemReset() {
 // . Soft-reset (Ctrl+Reset)
 // . Snapshot_LoadState()
 void MemResetPaging() {
-  ResetPaging(0);
+  ResetPaging(false);
 }
 
 // Called by Disk][ I/O only
@@ -1146,7 +1146,7 @@ unsigned char MemSetPaging(unsigned short programcounter, unsigned short address
     bool writeram = (address & 1);
     memmode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
 		{
-			lastwriteram = 1; // note: because diags.do doesn't set switches twice!
+			lastwriteram = true; // note: because diags.do doesn't set switches twice!
 			if (lastwriteram && writeram) {
 				memmode |= MF_HRAM_WRITE;
 			}
@@ -1214,7 +1214,7 @@ unsigned char MemSetPaging(unsigned short programcounter, unsigned short address
         if ((value < g_uMaxExPages) && RWpages[value]) {
           g_uActiveBank = value;
           memaux = RWpages[value];
-          MemUpdatePaging(0,0);
+          MemUpdatePaging(false,false);
         }
         break;
       #endif
@@ -1224,19 +1224,19 @@ unsigned char MemSetPaging(unsigned short programcounter, unsigned short address
   // If the emulated program has just update the memory write mode and is
   // about to update the memory read mode, hold off on any processing until it does so.
   if ((address >= 4) && (address <= 5) && ((*(uint32_t*)(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D)) {
-    modechanging = 1;
+    modechanging = true;
     return write ? 0 : MemReadFloatingBus(1, nCyclesLeft);
   }
   if ((address >= 0x80) && (address <= 0x8F) && (programcounter < 0xC000) &&
       (((*(uint32_t*)(mem + programcounter) & 0x00FFFEFF) == 0x00C0048D) ||
        ((*(uint32_t*)(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D))) {
-    modechanging = 1;
+    modechanging = true;
     return write ? 0 : MemReadFloatingBus(1, nCyclesLeft);
   }
 
   // If the memory paging mode has changed, update our memory images and write tables.
   if ((lastmemmode != memmode) || modechanging) {
-    modechanging = 0;
+    modechanging = false;
 
     if ((lastmemmode & MF_SLOTCXROM) != (memmode & MF_SLOTCXROM)) {
       if (SW_SLOTCXROM) {
@@ -1255,7 +1255,7 @@ unsigned char MemSetPaging(unsigned short programcounter, unsigned short address
       }
     }
 
-    MemUpdatePaging(0, 0);
+    MemUpdatePaging(false, false);
   }
 
   if ((address <= 1) || ((address >= 0x54) && (address <= 0x57))) {
@@ -1287,8 +1287,8 @@ unsigned int MemSetSnapshot(SS_BaseMemory *pSS) {
   lastwriteram = pSS->bLastWriteRam;
   memcpy(memmain, pSS->nMemMain, nMemMainSize);
   memcpy(memaux, pSS->nMemAux, nMemAuxSize);
-  modechanging = 0;
-  MemUpdatePaging(1, 0);    // Initialize=1, UpdateWriteOnly=0
+  modechanging = false;
+  MemUpdatePaging(true, false);    // Initialize=1, UpdateWriteOnly=0
 
   return 0;
 }

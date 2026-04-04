@@ -139,7 +139,7 @@ unsigned short _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_)
 Update_t CmdDisasmDataDefCode (int nArgs)
 {
 	// treat memory (bytes) as code
-	if (! ((nArgs <= 2) || (nArgs == 4)))
+	if ((nArgs > 2) && (nArgs != 4))
 	{
 		return Help_Arg_1( CMD_DISASM_CODE );
 	}
@@ -347,7 +347,7 @@ Update_t CmdDisasmDataDefAddress16 (int nArgs)
 {
 	int iCmd = NOP_WORD_1 - g_aArgs[0].nValue;
 
-	if (! ((nArgs <= 2) || (nArgs == 4)))
+	if ((nArgs > 2) && (nArgs != 4))
 	{
 		return Help_Arg_1( CMD_DEFINE_DATA_WORD1 + iCmd );
 	}

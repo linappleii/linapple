@@ -598,7 +598,6 @@ void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b
     r2.y = 0;
     r2.w = surface->w;
     r2.h = surface->h;
-    r = &r2;
   }
 
   if (SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel != 1) {

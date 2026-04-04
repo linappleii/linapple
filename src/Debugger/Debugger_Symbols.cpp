@@ -282,7 +282,7 @@ Update_t CmdSymbolsClear (int nArgs)
 void _CmdSymbolsInfoHeader( int iTable, char * pText, int nDisplaySize /* = 0 */ )
 {
 	// Common case is to use/calc the table size
-	bool bActive = (g_bDisplaySymbolTables & (1 << iTable)) ? true : false;
+	bool bActive = (g_bDisplaySymbolTables & (1 << iTable)) != 0;
 	int nSymbols  = nDisplaySize ? nDisplaySize : g_aSymbols[ iTable ].size();
 
 	// Short Desc: `MAIN`: `1000`
@@ -376,12 +376,7 @@ bool _FindSymbolTable( int bSymbolTables, int iTable )
 	// iTable is enumeration
 	// bSymbolTables is bit-flags of enabled tables to search
 
-	if( bSymbolTables & (1 << iTable) )
-	{
-		return true;
-	}
-
-	return false;
+	return (bSymbolTables & (1 << iTable)) != 0;
 }
 
 // Convert bit-mask to index
