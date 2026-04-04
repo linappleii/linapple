@@ -146,10 +146,15 @@ distclean: clean ## Remove all build artifacts and generated files
 maintainer-clean: distclean
 	@echo "Cleaning for maintainers..."
 
-check: test-cpu ## Run tests
+check: test-cpu test-integration ## Run all tests
 
 test-cpu: all ## Run automated CPU functional tests
 	@bash scripts/run_cpu_tests.sh
+
+test-integration: all ## Run C++ clean-room hardware integration tests
+	@echo "  TEST    build/bin/test_integration"
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests tests/test_main.cpp $(filter-out %/Applewin.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
+	@./build/bin/test_integration
 
 installcheck: ## Run tests on installed program
 	@echo "No installation tests defined."
