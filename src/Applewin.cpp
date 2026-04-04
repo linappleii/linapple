@@ -1001,6 +1001,51 @@ void SessionShutdown()
   JoyShutDown();
 }
 
+void CpuTestHeadless(const char* filename) {
+    if (MemInitialize() != 0) {
+        fprintf(stderr, "Failed to initialize memory\n");
+        return;
+    }
+    CpuInitialize();
+    
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "Failed to open test file: %s\n", filename);
+        return;
+    }
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (size > 65536) size = 65536;
+    if (fread(mem, 1, size, f) != (size_t)size) {
+        fprintf(stderr, "Failed to read test file\n");
+        fclose(f);
+        return;
+    }
+    fclose(f);
+    
+    regs.pc = 0x400; 
+    regs.ps = 0;
+    uint16_t last_pc = 0;
+    uint64_t count = 0;
+    
+    while (true) {
+        last_pc = regs.pc;
+        CpuExecute(1000);
+        count += 100;
+        
+        if (regs.pc == last_pc) {
+            printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
+            break;
+        }
+        
+        if (count > 1000000000ULL) {
+            printf("Test timed out at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
+            break;
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
   bool bLog = false;
@@ -1008,10 +1053,12 @@ int main(int argc, char *argv[])
   bool bBoot = false;
   bool bBenchMark = false;
   bool bPAL = false;
+  bool bTestCpu = false;
   char* szConfigurationFile = NULL;
   char* szImageName_drive1 = NULL;
   char* szImageName_drive2 = NULL;
   char* szSnapshotFile = NULL;
+  char* szTestFile = NULL;
 
   int opt;
   int optind = 0;
@@ -1024,6 +1071,9 @@ int main(int argc, char *argv[])
                                      {"help",      no_argument,       0, 0},
                                      {"pal",       no_argument,       0, 0},
                                      {"state",     required_argument, 0, 0},
+                                     {"test-cpu",  required_argument, 0, 0},
+                                     {"test-6502",  no_argument,      0, 0},
+                                     {"test-65c02", no_argument,      0, 0},
                                      {0,           0,                 0, 0}};
 
   XInitThreads();
@@ -1088,6 +1138,13 @@ int main(int argc, char *argv[])
           bPAL = true;
         } else if (!strcmp(optname, "state")) {
           szSnapshotFile = optarg;
+        } else if (!strcmp(optname, "test-cpu")) {
+          bTestCpu = true;
+          szTestFile = optarg;
+        } else if (!strcmp(optname, "test-6502")) {
+          g_Apple2Type = A2TYPE_APPLE2PLUS;
+        } else if (!strcmp(optname, "test-65c02")) {
+          g_Apple2Type = A2TYPE_APPLE2EEHANCED;
         } else {
           printf("Unknown option '%s'.\n\n", optname);
           PrintHelp();
@@ -1104,6 +1161,12 @@ int main(int argc, char *argv[])
 
   if (SysInit(bLog) != 0) {
     return 1;
+  }
+
+  if (bTestCpu) {
+    CpuTestHeadless(szTestFile);
+    SysShutdown();
+    return 0;
   }
 
   do {

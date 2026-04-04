@@ -146,8 +146,10 @@ distclean: clean ## Remove all build artifacts and generated files
 maintainer-clean: distclean
 	@echo "Cleaning for maintainers..."
 
-check: ## Run tests
-	@echo "No tests defined."
+check: test-cpu ## Run tests
+
+test-cpu: all ## Run automated CPU functional tests
+	@bash scripts/run_cpu_tests.sh
 
 installcheck: ## Run tests on installed program
 	@echo "No installation tests defined."
