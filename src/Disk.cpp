@@ -76,7 +76,7 @@ static unsigned char DiskSetWriteMode(unsigned short pc, unsigned short addr, un
 #define LOG_DISK_ENABLED 1
 
 #if (LOG_DISK_ENABLED)
-#define LOG_DISK(format, ...) LOG(format, __VA_ARGS__)
+#define LOG_DISK(format, ...) Logger::Info(format, __VA_ARGS__)
 #else
 #define LOG_DISK(...)
 #endif

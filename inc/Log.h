@@ -1,17 +1,27 @@
 #include <cstdint>
 #pragma once
 
-#ifndef _VC71  // __VA_ARGS__ not supported on MSVC++ .NET 7.x
-#ifdef _DEBUG
-#define LOG(format, ...) LogOutput(format, __VA_ARGS__)
-#else
-#define LOG(...)
+enum class LogLevel {
+    None = 0,
+    Error = 1,
+    Warn = 2,
+    Info = 3,
+    Perf = 4,
+    Debug = 5
+};
+
+namespace Logger {
+    void Initialize();
+    void SetVerbosity(LogLevel level);
+    void Error(const char* format, ...);
+    void Warn(const char* format, ...);
+    void Info(const char* format, ...);
+    void Perf(const char* format, ...);
+    void Debug(const char* format, ...);
+    void Destroy();
+}
+
+#ifndef _VC71
+#define LOG(format, ...) Logger::Debug(format, __VA_ARGS__)
 #endif
-#endif
-
-extern void LogInitialize();
-
-extern void LogOutput(const char* format, ...);
-
-extern void LogDestroy();
 

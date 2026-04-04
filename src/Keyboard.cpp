@@ -663,12 +663,12 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
     nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
     g_nLastKey = g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
 
-    if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
-        uint64_t now = SDL_GetTicks();
-        fprintf(stderr, "PERF: Key 0x%02X read after %llu ms\n", (int)g_nLastKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
-        fflush(stderr);
-        g_nKeyBuffer[g_nNextOutIdx].nTimestamp = 0;
-    }
+      if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
+          uint64_t now = SDL_GetTicks();
+          Logger::Perf("Key 0x%02X read after %llu ms\n", (int)g_nLastKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
+          g_nKeyBuffer[g_nNextOutIdx].nTimestamp = 0;
+      }
+
   }
   else
   {
@@ -687,8 +687,7 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
   if(g_nKeyBufferCnt) {
     if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
         uint64_t now = SDL_GetTicks();
-        fprintf(stderr, "PERF: Key 0x%02X cleared after %llu ms\n", (int)g_nKeyBuffer[g_nNextOutIdx].nAppleKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
-        fflush(stderr);
+        Logger::Perf("Key 0x%02X cleared after %llu ms\n", (int)g_nKeyBuffer[g_nNextOutIdx].nAppleKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
     }
     g_nKeyBufferCnt--;
     g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;

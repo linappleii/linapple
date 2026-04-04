@@ -83,8 +83,11 @@ void SysClk_WaitTimer() {
       old = current;
       return;
     }
-    if ((g_dwUsecPeriod - elapsed) > 500) {
-      nsleep(1);
+    
+    // If we have more than 500us left, sleep for a bit instead of spinning
+    uint32_t remaining = g_dwUsecPeriod - elapsed;
+    if (remaining > 500) {
+      nsleep(remaining / 2); // Sleep for half the remaining time
     }
   }
 }

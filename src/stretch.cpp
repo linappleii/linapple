@@ -33,67 +33,75 @@
 #include "stdafx.h"
 #include "asset.h"
 
-#define DEFINE_COPY_ROW(name, type)      \
-void name(type *src, int src_w, type *dst, int dst_w)  \
-{              \
-  int i;            \
-  int pos, inc;          \
-  type pixel = 0;          \
-              \
-  pos = 0x10000;          \
-  inc = (src_w << 16) / dst_w;      \
-  for ( i=dst_w; i>0; --i ) {      \
-    while ( pos >= 0x10000L ) {    \
-      pixel = *src++;      \
-      pos -= 0x10000L;    \
-    }          \
-    *dst++ = pixel;        \
-    pos += inc;        \
-  }            \
-}
-#define DEFINE_COPY_ROW_OR(name, type)      \
-void name(type *src, int src_w, type *dst, int dst_w)  \
-{              \
-  int i;            \
-  int pos, inc;          \
-  type pixel = 0;          \
-              \
-  pos = 0x10000;          \
-  inc = (src_w << 16) / dst_w;      \
-  for ( i=dst_w; i>0; --i ) {      \
-    while ( pos >= 0x10000L ) {    \
-      pixel = *src++;      \
-      pos -= 0x10000L;    \
-}          \
-    *dst++ |= pixel;      \
-    pos += inc;        \
-}            \
+template <typename T>
+static void CopyRow(T *src, int src_w, T *dst, int dst_w)
+{
+  int pos = 0x10000;
+  int inc = (src_w << 16) / dst_w;
+  T pixel = 0;
+  for (int i = dst_w; i > 0; --i) {
+    while (pos >= 0x10000L) {
+      pixel = *src++;
+      pos -= 0x10000L;
+    }
+    *dst++ = pixel;
+    pos += inc;
+  }
 }
 
-DEFINE_COPY_ROW(copy_row1, Uint8)
-DEFINE_COPY_ROW(copy_row2, Uint16)
-DEFINE_COPY_ROW(copy_row4, Uint32)
-DEFINE_COPY_ROW_OR(copy_row_or1, Uint8)
-DEFINE_COPY_ROW_OR(copy_row_or2, Uint16)
-DEFINE_COPY_ROW_OR(copy_row_or4, Uint32)
+template <typename T>
+static void CopyRowOr(T *src, int src_w, T *dst, int dst_w)
+{
+  int pos = 0x10000;
+  int inc = (src_w << 16) / dst_w;
+  T pixel = 0;
+  for (int i = dst_w; i > 0; --i) {
+    while (pos >= 0x10000L) {
+      pixel = *src++;
+      pos -= 0x10000L;
+    }
+    *dst++ |= pixel;
+    pos += inc;
+  }
+}
+
+void copy_row1(Uint8 *src, int src_w, Uint8 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+void copy_row2(Uint16 *src, int src_w, Uint16 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+void copy_row4(Uint32 *src, int src_w, Uint32 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+void copy_row_or1(Uint8 *src, int src_w, Uint8 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+void copy_row_or2(Uint16 *src, int src_w, Uint16 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+void copy_row_or4(Uint32 *src, int src_w, Uint32 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+
+static Uint32 g_palette_lut[256];
+static SDL_Palette* g_last_palette = NULL;
+static uint32_t g_last_palette_version = 0;
+
+static void UpdatePaletteLUT(SDL_Palette* palette) {
+    if (!palette) return;
+    if (palette == g_last_palette && palette->version == g_last_palette_version) return;
+
+    for (int i = 0; i < 256; ++i) {
+        g_palette_lut[i] = (palette->colors[i].r << 16) | (palette->colors[i].g << 8) | palette->colors[i].b;
+    }
+    g_last_palette = palette;
+    g_last_palette_version = palette->version;
+}
 
 void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
 {
-  int i;
-  int pos, inc;
+  UpdatePaletteLUT(palette);
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      *dst++ = g_palette_lut[*src++];
+    }
+    return;
+  }
+  int pos = 0x10000;
+  int inc = (src_w << 16) / dst_w;
   Uint32 pixel = 0;
-  SDL_Color *colors = palette ? palette->colors : NULL;
-
-  pos = 0x10000;
-  inc = (src_w << 16) / dst_w;
-  for ( i=dst_w; i>0; --i ) {
-    while ( pos >= 0x10000L ) {
-      Uint8 s = *src++;
-      if (colors) {
-        pixel = (colors[s].r << 16) | (colors[s].g << 8) | colors[s].b;
-      } else {
-        pixel = 0;
-      }
+  for (int i = dst_w; i > 0; --i) {
+    while (pos >= 0x10000L) {
+      pixel = g_palette_lut[*src++];
       pos -= 0x10000L;
     }
     *dst++ = pixel;
@@ -103,21 +111,19 @@ void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *pa
 
 void copy_row_or1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
 {
-  int i;
-  int pos, inc;
+  UpdatePaletteLUT(palette);
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      *dst++ |= g_palette_lut[*src++];
+    }
+    return;
+  }
+  int pos = 0x10000;
+  int inc = (src_w << 16) / dst_w;
   Uint32 pixel = 0;
-  SDL_Color *colors = palette ? palette->colors : NULL;
-
-  pos = 0x10000;
-  inc = (src_w << 16) / dst_w;
-  for ( i=dst_w; i>0; --i ) {
-    while ( pos >= 0x10000L ) {
-      Uint8 s = *src++;
-      if (colors) {
-        pixel = (colors[s].r << 16) | (colors[s].g << 8) | colors[s].b;
-      } else {
-        pixel = 0;
-      }
+  for (int i = dst_w; i > 0; --i) {
+    while (pos >= 0x10000L) {
+      pixel = g_palette_lut[*src++];
       pos -= 0x10000L;
     }
     *dst++ |= pixel;
