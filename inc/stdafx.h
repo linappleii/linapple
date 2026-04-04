@@ -40,6 +40,7 @@
 #include "Log.h"
 #include "Memory.h"
 #include "Mockingboard.h"
+#include "MouseInterface.h"
 #include "ParallelPrinter.h"
 #include "Registry.h"
 
@@ -55,3 +56,5 @@
 #include "Util_Text.h"
 
 #include "Video.h"
+
+#include "Common_Globals.h"

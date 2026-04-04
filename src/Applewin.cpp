@@ -26,8 +26,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 #include <vector>
 #include <X11/Xlib.h>
-#include "Log.h"
-#include "MouseInterface.h"
 
 #include <time.h>
 #include <sys/time.h>
@@ -45,50 +43,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "Util_Path.h"
 
-#include "DiskChoose.h"
-
-static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
-static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
-static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;
-static char TITLE_APPLE_2E_ENHANCED_[] = TITLE_APPLE_2E_ENHANCED;
-
-char *g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
-
-char videoDriverName[100];
-
-eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
-
-bool behind = false;
-unsigned int cumulativecycles = 0;      // Wraps after ~1hr 9mins
-unsigned int cyclenum = 0;
-unsigned int emulmsec = 0;
 static unsigned int emulmsec_frac = 0;
-bool g_bFullSpeed = false;
-bool hddenabled = false;
-unsigned int clockslot;
 static bool g_bBudgetVideo = false;
 static bool g_uMouseInSlot4 = false;
 
-SystemState_t g_state = {
-  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com", true, 17030
-};
-
-
 // Default screen sizes
-double g_fCurrentCLK6502 = CLOCK_6502;
 static double g_fMHz = 1.0;
-
-int g_nCpuCyclesFeedback = 0;
-unsigned int g_dwCyclesThisFrame = 0;
-
-FILE *g_fh = NULL;
-bool g_bDisableDirectSound = false;
-
-CSuperSerialCard sg_SSC;
-CMouseInterface sg_Mouse;
-
-unsigned int g_Slot4 = CT_Mockingboard;  // CT_Mockingboard or CT_MouseInterface
-CURL *g_curl = NULL;
 
 static unsigned int g_uModeStepping_Cycles = 0;
 static bool g_uModeStepping_LastGetKey_ScrollLock = false;
@@ -441,20 +401,21 @@ void LoadConfiguration()
 
   switch (g_Apple2Type) {
     case A2TYPE_APPLE2:
-      g_pAppTitle = (char*)TITLE_APPLE_2_;
+      g_pAppTitle = GetTitleApple2();
       break;
     case A2TYPE_APPLE2PLUS:
-      g_pAppTitle = (char*)TITLE_APPLE_2_PLUS_;
+      g_pAppTitle = GetTitleApple2Plus();
       break;
     case A2TYPE_APPLE2E:
-      g_pAppTitle = (char*)TITLE_APPLE_2E_;
+      g_pAppTitle = GetTitleApple2e();
       break;
     case A2TYPE_APPLE2EEHANCED:
-      g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
+      g_pAppTitle = GetTitleApple2eEnhanced();
       break;
     default:
       break;
   }
+
   Logger::Info("Selected machine type: %s\n", g_pAppTitle);
 
     LOAD("Joystick 0", (unsigned int*)&joytype[0]);
@@ -1115,7 +1076,7 @@ int main(int argc, char *argv[])
         break;
 
       case 'v':
-        Logger::SetVerbosity(LogLevel::Perf);
+        Logger::SetVerbosity(LogLevel::LL_Perf);
         break;
 
       #ifdef RAMWORKS
@@ -1155,7 +1116,7 @@ int main(int argc, char *argv[])
         } else if (!strcmp(optname, "test-65c02")) {
           g_Apple2Type = A2TYPE_APPLE2EEHANCED;
         } else if (!strcmp(optname, "verbose")) {
-          Logger::SetVerbosity(LogLevel::Perf);
+          Logger::SetVerbosity(LogLevel::LL_Perf);
         } else {
           printf("Unknown option '%s'.\n\n", optname);
           PrintHelp();
