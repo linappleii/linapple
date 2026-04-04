@@ -245,20 +245,16 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 #define ADC_NMOS bSlowerOnPagecross = true;                \
      temp = READ;                \
      if (regs.ps & AF_DECIMAL) {            \
-       val    = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
-       if (val > 0x09)              \
-         val += 0x06;              \
-       if (val <= 0x0F)              \
-         val = (val & 0x0F) + (regs.a & 0xF0) + (temp & 0xF0);  \
-       else                  \
-         val = (val & 0x0F) + (regs.a & 0xF0) + (temp & 0xF0) + 0x10;\
-       flagz = !((regs.a + temp + flagc) & 0xFF);        \
-       flagn = (val & 0x80);            \
+       val = regs.a + temp + flagc;          \
+       flagz = !(val & 0xFF);            \
+       flagn = val & 0x80;            \
        flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);\
-       if ((val & 0x1F0) > 0x90)            \
-         val += 0x60;              \
-       flagc = ((val & 0xFF0) > 0xF0);          \
-       regs.a = val & 0xFF;                                     \
+       low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
+       if (low > 0x09) low += 0x06;          \
+       high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);  \
+       if (high > 0x09) high += 0x06;          \
+       flagc = (high > 0x0F);            \
+       regs.a = (high << 4) | (low & 0x0F);        \
       }                  \
      else {                  \
        val    = regs.a + temp + flagc;          \
@@ -442,22 +438,20 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      val = READ+1;                \
      WRITE(val)                \
      temp = val;                                                \
-     temp2 = regs.a - temp - !flagc;          \
      if (regs.ps & AF_DECIMAL) {            \
-       val  = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
-       if (val & 0x10)              \
-         val = ((val - 0x06) & 0x0F) | ((regs.a & 0xF0) - (temp & 0xF0) - 0x10);\
-       else                  \
-         val = (val & 0x0F) | ((regs.a & 0xF0) - (temp & 0xF0));\
-       if (val & 0x100)              \
-         val -= 0x60;              \
-       flagc  = (temp2 < 0x100);            \
-       SETNZ(temp2 & 0xFF);              \
-       flagv = ((regs.a ^ temp2) & 0x80) && ((regs.a ^ temp) & 0x80);\
-       regs.a = val & 0xFF;              \
+       val = regs.a - temp - !flagc;          \
+       flagn = val & 0x80;            \
+       flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);\
+       flagz = !(val & 0xFF);            \
+       low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
+       if (low & 0x10) low -= 0x06;          \
+       high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);  \
+       if (high & 0x10) high -= 0x06;          \
+       flagc = !(high & 0x10);            \
+       regs.a = (high << 4) | (low & 0x0F);        \
      }                  \
      else {                  \
-       val    = temp2;              \
+       val    = regs.a - temp - !flagc;          \
        flagc  = (val < 0x100);            \
        flagv  = (((regs.a & 0x80) != (temp & 0x80)) &&      \
            ((regs.a & 0x80) != (val & 0x80)));      \
@@ -579,20 +573,16 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      WRITE(val)                \
      temp = val;                \
      if (regs.ps & AF_DECIMAL) {            \
-       val    = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
-       if (val > 0x09)              \
-         val += 0x06;              \
-       if (val <= 0x0F)              \
-         val = (val & 0x0F) + (regs.a & 0xF0) + (temp & 0xF0);  \
-       else                  \
-         val = (val & 0x0F) + (regs.a & 0xF0) + (temp & 0xF0) + 0x10;\
-       flagz = !((regs.a + temp + flagc) & 0xFF);        \
-       flagn = (val & 0x80);            \
+       val = regs.a + temp + flagc;          \
+       flagz = !(val & 0xFF);            \
+       flagn = val & 0x80;            \
        flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);\
-       if ((val & 0x1F0) > 0x90)            \
-         val += 0x60;              \
-       flagc = ((val & 0xFF0) > 0xF0);          \
-       regs.a = val & 0xFF;                                     \
+       low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
+       if (low > 0x09) low += 0x06;          \
+       high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);  \
+       if (high > 0x09) high += 0x06;          \
+       flagc = (high > 0x0F);            \
+       regs.a = (high << 4) | (low & 0x0F);        \
      }                  \
      else {                  \
        val    = regs.a + temp + flagc;          \
@@ -619,22 +609,20 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
      WRITE(val)
 #define SBC_NMOS bSlowerOnPagecross = true;                \
      temp = READ;                \
-     temp2 = regs.a - temp - !flagc;          \
      if (regs.ps & AF_DECIMAL) {            \
-       val  = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
-       if (val & 0x10)              \
-         val = ((val - 0x06) & 0x0F) | ((regs.a & 0xF0) - (temp & 0xF0) - 0x10);\
-       else                  \
-         val = (val & 0x0F) | ((regs.a & 0xF0) - (temp & 0xF0));\
-       if (val & 0x100)              \
-         val -= 0x60;              \
-       flagc  = (temp2 < 0x100);            \
-       SETNZ(temp2 & 0xFF);              \
-       flagv = ((regs.a ^ temp2) & 0x80) && ((regs.a ^ temp) & 0x80);\
-       regs.a = val & 0xFF;              \
+       val = regs.a - temp - !flagc;          \
+       flagn = val & 0x80;            \
+       flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);\
+       flagz = !(val & 0xFF);            \
+       low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
+       if (low & 0x10) low -= 0x06;          \
+       high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);  \
+       if (high & 0x10) high -= 0x06;          \
+       flagc = !(high & 0x10);            \
+       regs.a = (high << 4) | (low & 0x0F);        \
      }                  \
      else {                  \
-       val    = temp2;              \
+       val    = regs.a - temp - !flagc;          \
        flagc  = (val < 0x100);            \
        flagv  = (((regs.a & 0x80) != (temp & 0x80)) &&      \
            ((regs.a & 0x80) != (val & 0x80)));      \
@@ -2166,8 +2154,9 @@ static uint32_t Cpu6502(uint32_t uTotalCycles)
   uint8_t flagv; // any value allowed
   uint8_t flagz; // any value allowed
   uint16_t temp;
-  uint16_t temp2;
   uint16_t val;
+  uint16_t low;
+  uint16_t high;
   AF_TO_EF
   uint32_t uExecutedCycles = 0;
   bool bSlowerOnPagecross = false;    // Set if opcode writes to memory (eg. ASL, STA)
