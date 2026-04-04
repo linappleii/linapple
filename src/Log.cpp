@@ -29,35 +29,90 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include <string.h>
 
-void LogInitialize() {
-  g_fh = fopen("AppleWin.log", "a+t");
-  struct timeval tv;
-  struct tm *ptm;
-  char time_str[40];
-  gettimeofday(&tv, NULL);
-  ptm = localtime(&tv.tv_sec);
-  strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
-  fprintf(g_fh, "*** Logging started: %s\n", time_str);
-}
+static LogLevel g_verbosity = LogLevel::Info;
 
-void LogOutput(const char* format, ...) {
-  if (!g_fh) {
+static void vLogOutput(LogLevel level, const char* format, va_list args) {
+  if (level > g_verbosity) {
     return;
   }
 
-  va_list args;
-  va_start(args, format);
-
   char output[512];
-
   vsnprintf(output, sizeof(output) - 1, format, args);
-  fprintf(g_fh, "%s", output);
+
+  if (g_fh) {
+    fprintf(g_fh, "%s", output);
+    fflush(g_fh);
+  }
+
+  // Terminal visibility
+  if (level <= LogLevel::Error) {
+    fprintf(stderr, "ERROR: %s", output);
+  } else if (level == LogLevel::Perf) {
+    printf("PERF: %s", output);
+  } else if (level <= LogLevel::Info) {
+    printf("%s", output);
+  }
 }
 
-void LogDestroy() {
-  if (g_fh) {
-    fprintf(g_fh, "*** Logging ended\n\n");
-    fclose(g_fh);
+namespace Logger {
+  void Initialize() {
+    g_fh = fopen("AppleWin.log", "a+t");
+    struct timeval tv;
+    struct tm *ptm;
+    char time_str[40];
+    gettimeofday(&tv, NULL);
+    ptm = localtime(&tv.tv_sec);
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
+    if (g_fh) {
+      fprintf(g_fh, "*** Logging started: %s\n", time_str);
+    }
+  }
+
+  void SetVerbosity(LogLevel level) {
+    g_verbosity = level;
+  }
+
+  void Error(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vLogOutput(LogLevel::Error, format, args);
+    va_end(args);
+  }
+
+  void Warn(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vLogOutput(LogLevel::Warn, format, args);
+    va_end(args);
+  }
+
+  void Info(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vLogOutput(LogLevel::Info, format, args);
+    va_end(args);
+  }
+
+  void Perf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vLogOutput(LogLevel::Perf, format, args);
+    va_end(args);
+  }
+
+  void Debug(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vLogOutput(LogLevel::Debug, format, args);
+    va_end(args);
+  }
+
+  void Destroy() {
+    if (g_fh) {
+      fprintf(g_fh, "*** Logging ended\n\n");
+      fclose(g_fh);
+      g_fh = NULL;
+    }
   }
 }
 

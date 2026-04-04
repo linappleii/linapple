@@ -64,11 +64,11 @@ CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 
 # Compiler flags
-CXXFLAGS += -Wall -Wextra -O3 -ansi -std=c++11 -Wno-write-strings
+CXXFLAGS += -Wall -Wextra -O3 -march=native -flto -ansi -std=c++11 -Wno-write-strings
 CXXFLAGS += -MMD -MP
 
 # Linker flags
-LDFLAGS  += -pthread
+LDFLAGS  += -pthread -flto
 LDLIBS   += $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lX11
 
 # --- Build Modes -------------------------------------------------------------

@@ -455,7 +455,7 @@ void LoadConfiguration()
     default:
       break;
   }
-  printf("Selected machine type: %s\n", g_pAppTitle);
+  Logger::Info("Selected machine type: %s\n", g_pAppTitle);
 
     LOAD("Joystick 0", (unsigned int*)&joytype[0]);
     LOAD("Joystick 1", (unsigned int*)&joytype[1]);
@@ -475,11 +475,11 @@ void LoadConfiguration()
     LOAD("JoyExitButton1", (unsigned int*)&joyexitbutton1);
 
   if (joytype[0] == 1) {
-    printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
+    Logger::Info("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
            GetJoystickNameByIndex(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
   }
   if (joytype[1] == 1) {
-    printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
+    Logger::Info("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
            GetJoystickNameByIndex(joy2index), joy2button1, joy2axis0, joy2axis1);
   }
 
@@ -744,7 +744,7 @@ void LoadConfiguration()
   sFilename = Configuration::Instance().GetString("Preferences", REGVALUE_FTP_USERPASS);
   if (!sFilename.empty()) Util_SafeStrCpy(g_state.sFTPUserPass, sFilename.c_str(), 512);
 
-  printf("Ready login = %s\n", g_state.sFTPUserPass);
+  Logger::Info("Ready login = %s\n", g_state.sFTPUserPass);
 }
 
 // Splits a string into a sequence of substrings each delimited by delimiter.
@@ -846,6 +846,10 @@ void PrintHelp()
          "  --pal          use PAL (50Hz) video timing\n"
          "  -f             run fullscreen\n"
          "  -l             write log to 'AppleWin.log'\n"
+         "  -v|--verbose   enable verbose performance logging\n"
+         "  --test-cpu <f> run headless CPU functional test from binary file <f>\n"
+         "  --test-6502    use NMOS 6502 core for headless test\n"
+         "  --test-65c02   use CMOS 65C02 core for headless test\n"
          #ifdef RAMWORKS
          "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
          #endif
@@ -856,7 +860,7 @@ void PrintHelp()
 int SysInit(bool bLog)
 {
   if (bLog) {
-    LogInitialize();
+    Logger::Initialize();
   }
   if (!Asset_Init()) {
     return 1;
@@ -869,7 +873,7 @@ int SysInit(bool bLog)
   curl_global_init(CURL_GLOBAL_DEFAULT);
   g_curl = curl_easy_init();
   if (!g_curl) {
-    printf("Could not initialize CURL easy interface");
+    Logger::Error("Could not initialize CURL easy interface\n");
     return 1;
   }
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
@@ -880,14 +884,14 @@ int SysInit(bool bLog)
   CreateColorMixMap();
 
 #ifdef VERSIONSTRING
-  printf("LinApple %s\n", VERSIONSTRING);
+  Logger::Info("LinApple %s\n", VERSIONSTRING);
 #else
-  printf("LinApple\n");
+  Logger::Info("LinApple\n");
 #endif
 
   const char* driver = SDL_GetCurrentVideoDriver();
   if (driver) Util_SafeStrCpy(videoDriverName, driver, 100);
-  printf("Video driver = %s\n", videoDriverName);
+  Logger::Info("Video driver = %s\n", videoDriverName);
 
   return 0;
 }
@@ -903,8 +907,8 @@ void SysShutdown()
   curl_easy_cleanup(g_curl);
   curl_global_cleanup();
   Asset_Quit();
-  LogDestroy();
-  printf("Linapple: successfully exited!\n");
+  Logger::Destroy();
+  Logger::Info("Linapple: successfully exited!\n");
 }
 
 int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
@@ -928,14 +932,14 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
   if (szImageName_drive1) {
     nError = DoDiskInsert(0, szImageName_drive1);
     if (nError) {
-      LOG("Cannot insert image %s into drive 1.", szImageName_drive1);
+      Logger::Error("Cannot insert image %s into drive 1.\n", szImageName_drive1);
       return 1;
     }
   }
   if (szImageName_drive2) {
     nError |= DoDiskInsert(1, szImageName_drive2);
     if (nError) {
-      LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
+      Logger::Error("Cannot insert image %s into drive 2.\n", szImageName_drive2);
       return 1;
     }
   }
@@ -1003,14 +1007,14 @@ void SessionShutdown()
 
 void CpuTestHeadless(const char* filename) {
     if (MemInitialize() != 0) {
-        fprintf(stderr, "Failed to initialize memory\n");
+        Logger::Error("Failed to initialize memory\n");
         return;
     }
     CpuInitialize();
     
     FILE* f = fopen(filename, "rb");
     if (!f) {
-        fprintf(stderr, "Failed to open test file: %s\n", filename);
+        Logger::Error("Failed to open test file: %s\n", filename);
         return;
     }
     fseek(f, 0, SEEK_END);
@@ -1018,7 +1022,7 @@ void CpuTestHeadless(const char* filename) {
     fseek(f, 0, SEEK_SET);
     if (size > 65536) size = 65536;
     if (fread(mem, 1, size, f) != (size_t)size) {
-        fprintf(stderr, "Failed to read test file\n");
+        Logger::Error("Failed to read test file\n");
         fclose(f);
         return;
     }
@@ -1035,12 +1039,12 @@ void CpuTestHeadless(const char* filename) {
         count += 100;
         
         if (regs.pc == last_pc) {
-            printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
+            Logger::Info("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
             break;
         }
         
         if (count > 1000000000ULL) {
-            printf("Test timed out at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
+            Logger::Info("Test timed out at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
             break;
         }
     }
@@ -1074,11 +1078,12 @@ int main(int argc, char *argv[])
                                      {"test-cpu",  required_argument, 0, 0},
                                      {"test-6502",  no_argument,      0, 0},
                                      {"test-65c02", no_argument,      0, 0},
+                                     {"verbose",   no_argument,       0, 0},
                                      {0,           0,                 0, 0}};
 
   XInitThreads();
 
-  while ((opt = getopt_long(argc, argv, "1:2:abfhlpr:", longopts, &optind)) != -1) {
+  while ((opt = getopt_long(argc, argv, "1:2:abfhlpr:v", longopts, &optind)) != -1) {
     switch (opt) {
       case '1':
         szImageName_drive1 = optarg;
@@ -1107,6 +1112,10 @@ int main(int argc, char *argv[])
 
       case 'p':
         bPAL = true;
+        break;
+
+      case 'v':
+        Logger::SetVerbosity(LogLevel::Perf);
         break;
 
       #ifdef RAMWORKS
@@ -1145,6 +1154,8 @@ int main(int argc, char *argv[])
           g_Apple2Type = A2TYPE_APPLE2PLUS;
         } else if (!strcmp(optname, "test-65c02")) {
           g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        } else if (!strcmp(optname, "verbose")) {
+          Logger::SetVerbosity(LogLevel::Perf);
         } else {
           printf("Unknown option '%s'.\n\n", optname);
           PrintHelp();
