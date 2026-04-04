@@ -107,7 +107,7 @@ static POINT keyvalue[9] = {{PDL_SMIN,     PDL_SMAX},
 
 
 static unsigned int buttonlatch[3] = {0, 0, 0};
-static bool joybutton[3] = {0, 0, 0};
+static bool joybutton[3] = {false, false, false};
 
 static int joyshrx[2] = {8, 8};
 static int joyshry[2] = {8, 8};
@@ -116,7 +116,7 @@ static int joysuby[2] = {0, 0};
 
 unsigned int joytype[2] = {DEVICE_JOYSTICK, DEVICE_NONE};  // Emulation Type for joysticks #0 & #1
 
-static bool setbutton[3] = {0, 0, 0}; // Used when a mouse button is pressed/released
+static bool setbutton[3] = {false, false, false}; // Used when a mouse button is pressed/released
 
 static int xpos[2] = {PDL_CENTRAL, PDL_CENTRAL};
 static int ypos[2] = {PDL_CENTRAL, PDL_CENTRAL};
@@ -138,18 +138,14 @@ unsigned int joy2axis1 = 1;
 unsigned int joyexitenable = 0;
 unsigned int joyexitbutton0 = 8;
 unsigned int joyexitbutton1 = 9;
-bool joyquitevent = 0;
+bool joyquitevent = false;
 
 SDL_Joystick *joy1 = NULL;
 SDL_Joystick *joy2 = NULL;
 
 void CheckJoyExit() {
   SDL_UpdateJoysticks(); // update all joysticks states
-  if (SDL_GetJoystickButton(joy1, joyexitbutton0) && SDL_GetJoystickButton(joy1, joyexitbutton1)) {
-    joyquitevent = true;
-  } else {
-    joyquitevent = false;
-  }
+  joyquitevent = SDL_GetJoystickButton(joy1, joyexitbutton0) && SDL_GetJoystickButton(joy1, joyexitbutton1);
 }
 
 void CheckJoystick0() {
@@ -476,7 +472,7 @@ bool JoyProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool autorep) 
           keydown[10] = down;
           break;  // Button #1
         default:
-          keychange = 0;
+          keychange = false;
           break;
       }
     }
@@ -569,7 +565,7 @@ unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned cha
     CheckJoystick1();
   }
 
-  bool pressed = 0;
+  bool pressed = false;
   switch (address) {
 
     case 0x61:
@@ -674,7 +670,7 @@ void JoySetButton(eBUTTON number, eBUTTONSTATE down) {
 // Set new joystick type
 bool JoySetEmulationType(unsigned int newType, int nJoystickNumber) {
   if (joytype[nJoystickNumber] == newType) {
-    return 1;  // Already set to this type. Return OK.
+    return true;  // Already set to this type. Return OK.
   }
 
   if (joyinfo[newType].device == DEVICE_JOYSTICK) {
@@ -685,19 +681,19 @@ bool JoySetEmulationType(unsigned int newType, int nJoystickNumber) {
     }
     if (count <= nJoystickNumber) {
       fprintf(stderr, "Can not find joystick #%d - disabling it\n", nJoystickNumber);
-      return 0;
+      return false;
     }
   } else if ((joyinfo[newType].device == DEVICE_MOUSE) && (joyinfo[joytype[nJoystickNumber]].device != DEVICE_MOUSE)) {
     if (sg_Mouse.Active()) {
       fprintf(stderr, "Mouse interface card is enabled - unable to use mouse for joystick emulation.\n");
-      return 0;
+      return false;
     }
     printf("To release mouse cursor, press Ctrl + left mouse button.\n");
   }
   joytype[nJoystickNumber] = newType;
   JoyInitialize();
   JoyReset();
-  return 1;
+  return true;
 }
 
 

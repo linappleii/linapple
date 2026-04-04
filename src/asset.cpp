@@ -69,11 +69,7 @@ bool Asset_Init(void)
   }
 
   assets->splash = IMG_ReadXPMFromArray(splash_xpm);
-  if (NULL == assets->splash) {
-    return false;
-  }
-
-  return true;
+  return NULL != assets->splash;
 }
 
 void Asset_Quit(void)
@@ -121,7 +117,7 @@ int Asset_InsertMasterDisk(void)
     return 255;
   }
 
-  int rc = DiskInsert(0, path, 0, 0);
+  int rc = DiskInsert(0, path, false, false);
 
   SDL_free(path);
   return rc;

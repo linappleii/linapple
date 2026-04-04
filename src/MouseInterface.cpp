@@ -467,8 +467,8 @@ void CMouseInterface::Reset() {
   m_byState = 0;
   m_nX = 0;
   m_nY = 0;
-  m_bBtn0 = 0;
-  m_bBtn1 = 0;
+  m_bBtn0 = false;
+  m_bBtn1 = false;
   ClampX(0, 1023);
   ClampY(0, 1023);
   SetPosition(0, 0);
@@ -520,6 +520,6 @@ void CMouseInterface::SetPosition(int xvalue, int xrange, int yvalue, int yrange
 }
 
 void CMouseInterface::SetButton(eBUTTON Button, eBUTTONSTATE State) {
-  m_bButtons[Button] = (State == BUTTON_DOWN) ? true : false;
+  m_bButtons[Button] = State == BUTTON_DOWN;
   OnMouseEvent();
 }

@@ -55,7 +55,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	// NOTE: ArgToken_e and g_aTokens must match!
 	const TokenTable_t g_aTokens[ NUM_TOKENS ] =
 	{ // Input
-		{ TOKEN_ALPHANUMERIC, TYPE_STRING  , 0    }, // Default, if doen't match anything else
+		{ TOKEN_ALPHANUMERIC, TYPE_STRING  , {0}    }, // Default, if doen't match anything else
 		{ TOKEN_AMPERSAND   , TYPE_OPERATOR, "&"  }, // bit-and
 		{ TOKEN_AT          , TYPE_OPERATOR, "@"  }, // reference results
 		{ TOKEN_BRACE_L     , TYPE_STRING  , "{"  },

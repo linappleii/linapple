@@ -173,11 +173,11 @@ static void GetImageTitle(const char* imageFileName, PHDD pHardDrive)
   Util_SafeStrCpy(imagetitle, startpos, 127);
   imagetitle[127] = 0;
 
-  bool found = 0;
+  bool found = false;
   int loop = 0;
   while (imagetitle[loop] && !found) {
     if (IsCharLower(imagetitle[loop])) {
-      found = 1;
+      found = true;
     } else {
       loop++;
     }
@@ -226,11 +226,7 @@ static bool HD_Load_Image(int nDrive, const char *filename)
 {
   g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
 
-  if (g_HardDrive[nDrive].hd_file == NULL) {
-    g_HardDrive[nDrive].hd_imageloaded = false;
-  } else {
-    g_HardDrive[nDrive].hd_imageloaded = true;
-  }
+  g_HardDrive[nDrive].hd_imageloaded = g_HardDrive[nDrive].hd_file != NULL;
 
   return g_HardDrive[nDrive].hd_imageloaded;
 }

@@ -58,7 +58,7 @@ char videoDriverName[100];
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
 
-bool behind = 0;
+bool behind = false;
 unsigned int cumulativecycles = 0;      // Wraps after ~1hr 9mins
 unsigned int cyclenum = 0;
 unsigned int emulmsec = 0;
@@ -168,11 +168,11 @@ void ContinueExecution()
   // Determine whether the screen was updated, the disk was spinning,
   // or the keyboard I/O ports were being excessively queried this clocktick
   if (g_singlethreaded) {
-    VideoCheckPage(0);
+    VideoCheckPage(false);
   }
   bool screenupdated = VideoHasRefreshed();
   screenupdated |= (!g_singlethreaded);
-  bool systemidle = 0;
+  bool systemidle = false;
 
   if (g_dwCyclesThisFrame >= g_state.dwClksPerFrame) {
     g_dwCyclesThisFrame -= g_state.dwClksPerFrame;
@@ -180,13 +180,13 @@ void ContinueExecution()
     if (g_state.mode != MODE_LOGO) {
       VideoUpdateFlash();
 
-      static bool anyupdates = 0;
-      static bool lastupdates[2] = {0, 0};
+      static bool anyupdates = false;
+      static bool lastupdates[2] = {false, false};
 
       anyupdates |= screenupdated;
       bool update_clause = ((!anyupdates) && (!lastupdates[0]) && (!lastupdates[1])) || (!g_singlethreaded);
       if (update_clause && VideoApparentlyDirty()) {
-        VideoCheckPage(1);
+        VideoCheckPage(true);
         static unsigned int lasttime = 0;
         unsigned int currtime = SDL_GetTicks();
         if ((!g_bFullSpeed) || (currtime - lasttime >= (unsigned int)((graphicsmode || !systemidle) ? 100 : 25))) {
@@ -201,12 +201,12 @@ void ContinueExecution()
             lasttime = currtime;
           }
         }
-        screenupdated = 1;
+        screenupdated = true;
       }
 
       lastupdates[1] = lastupdates[0];
       lastupdates[0] = anyupdates;
-      anyupdates = 0;
+      anyupdates = false;
     }
     MB_EndOfVideoFrame();
   }
@@ -357,7 +357,7 @@ void EnterMessageLoop()
 
 int DoDiskInsert(int nDrive, const char* szFileName)
 {
-  return DiskInsert(nDrive, szFileName, 0, 0);
+  return DiskInsert(nDrive, szFileName, false, false);
 }
 
 bool ValidateDirectory(const char *dir)
@@ -676,9 +676,9 @@ void LoadConfiguration()
     }
 
     if (strncmp(videoDriverName, "dispmanx", 8) == 0) {
-      if (!((g_state.ScreenWidth == 1920 && g_state.ScreenHeight == 1080) ||
-           (g_state.ScreenWidth == 1280 && g_state.ScreenHeight ==  720) ||
-           (g_state.ScreenWidth ==  800 && g_state.ScreenHeight ==  600))) {
+      if ((g_state.ScreenWidth != 1920 || g_state.ScreenHeight != 1080) &&
+           (g_state.ScreenWidth != 1280 || g_state.ScreenHeight !=  720) &&
+           (g_state.ScreenWidth !=  800 || g_state.ScreenHeight !=  600)) {
 
         g_state.ScreenWidth  = 640;
         g_state.ScreenHeight = 480;
@@ -972,7 +972,7 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
   }
 
   JoyReset();
-  SetUsingCursor(0);
+  SetUsingCursor(false);
 
   if (!g_state.fullscreen) {
     SetNormalMode();

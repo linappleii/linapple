@@ -417,10 +417,7 @@ void DebuggerPrintColor( int x, int y, const conchar_t * pText )
 //===========================================================================
 bool CanDrawDebugger()
 {
-	if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING))
-		return true;
-
-	return false;
+	return (g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING);
 }
 
 
@@ -672,7 +669,7 @@ void ColorizeFlags( bool bSet, int bg_default = BG_INFO, int fg_default = FG_INF
 //===========================================================================
 void DrawBreakpoints ( int line )
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	RECT rect;
@@ -1327,7 +1324,7 @@ void FormatDisassemblyLine( const DisasmLine_t & line, char * sDisassembly, cons
 //===========================================================================
 unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddress )
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return 0;
 
 	int iOpmode;
@@ -1792,7 +1789,7 @@ unsigned short DrawDisassemblyLine ( int iLine, const unsigned short nBaseAddres
 //===========================================================================
 void DrawFlags ( int line, unsigned short nRegFlags, char* pFlagNames_)
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	char sFlagNames[ _6502_NUM_FLAGS+1 ] = ""; // = "NVRBDIZC"; // copy from g_aFlagNames
@@ -1894,7 +1891,7 @@ void DrawFlags ( int line, unsigned short nRegFlags, char* pFlagNames_)
 //===========================================================================
 void DrawMemory ( int line, int iMemDump )
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	MemoryDump_t* pMD = &g_aMemDump[ iMemDump ];
@@ -2057,7 +2054,7 @@ void DrawMemory ( int line, int iMemDump )
 //===========================================================================
 void DrawRegister ( int line, const char* name, const int nBytes, const unsigned short nValue, int iSource )
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	int nFontWidth = g_aFontConfig[ FONT_INFO ]._nFontWidthAvg;
@@ -2273,7 +2270,7 @@ void _DrawSoftSwitchLanguageCardBank( RECT & rect, const int iBankDisplay, int b
 
 	rect.right = rect.left + dx80;
 
-	bool bBankWritable = (GetMemMode() & MF_HRAM_WRITE) ? 1 : 0;
+	bool bBankWritable = (GetMemMode() & MF_HRAM_WRITE) ? true : false;
 	int iBankActive    = (GetMemMode() & MF_HIGHRAM)
 		? (GetMemMode() & MF_HRAM_BANK2)
 			? 2
@@ -2348,8 +2345,8 @@ void _DrawSoftSwitchMainAuxBanks( RECT & rect, int bg_default = BG_INFO )
 	int dx = 7 * w;
 
 	int  nAddress  = 0xC002;
-	bool bMainRead = (GetMemMode() & MF_AUXREAD)  ? true : false;
-	bool bAuxWrite = (GetMemMode() & MF_AUXWRITE) ? true : false;
+	bool bMainRead = (GetMemMode() & MF_AUXREAD) != 0;
+	bool bAuxWrite = (GetMemMode() & MF_AUXWRITE) != 0;
 
 	temp.right = rect.left + dx;
 	_DrawSoftSwitch( temp, nAddress, !bMainRead, "R", "m", "x", NULL, BG_DATA_2 );
@@ -2482,7 +2479,7 @@ void DrawSourceLine( int iSourceLine, RECT &rect )
 //===========================================================================
 void DrawStack ( int line)
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	unsigned nAddress = regs.sp;
@@ -2523,7 +2520,7 @@ void DrawStack ( int line)
 
 void DrawTargets ( int line)
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	int aTarget[3];
@@ -2578,7 +2575,7 @@ void DrawTargets ( int line)
 
 void DrawWatches (int line)
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	RECT rect;
@@ -2672,7 +2669,7 @@ void DrawWatches (int line)
 
 void DrawZeroPagePointers ( int line )
 {
-	if (! ((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	int nFontWidth = g_aFontConfig[ FONT_INFO ]._nFontWidthAvg;
@@ -2921,7 +2918,7 @@ void DrawSubWindow_Data (Update_t bUpdate)
 
 void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
 {
-	if (!((g_iWindowThis == WINDOW_CODE) || ((g_iWindowThis == WINDOW_DATA))))
+	if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA)))
 		return;
 
 	const int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;

@@ -182,15 +182,15 @@ static unsigned char colormixbuffer[6];
 static unsigned short colormixmap[6][6][6];
 
 static int g_nAltCharSetOffset = 0;
-static bool displaypage2 = 0;
-static bool displaypage2_latched = 0;
+static bool displaypage2 = false;
+static bool displaypage2_latched = false;
 static uint8_t* framebufferaddr = (uint8_t*) 0;
 static int framebufferpitch = 0;
-bool graphicsmode = 0;
+bool graphicsmode = false;
 static volatile bool hasrefreshed = false;
 static unsigned int lastpageflip = 0;
 unsigned int monochrome = RGB(0xC0, 0xC0, 0xC0);
-static bool redrawfull = 1;
+static bool redrawfull = true;
 static unsigned int dwVBlCounter = 0;
 static uint8_t* vidlastmem = NULL;
 unsigned int g_uVideoMode = VF_TEXT;
@@ -203,7 +203,7 @@ std::atomic<bool> g_bFrameReady(false);
 static bool g_bTextFlashState = false;
 static bool g_bTextFlashFlag = false;
 
-bool g_ShowLeds = 1;
+bool g_ShowLeds = true;
 
 const unsigned int nVBlStop_NTSC = 21;
 const unsigned int nVBlStop_PAL = 29;
@@ -1235,13 +1235,13 @@ SDL_Surface* LoadCharset() {
 
 bool VideoApparentlyDirty() {
   if (SW_MIXED || redrawfull || video_worker_active_) {
-    return 1;
+    return true;
   }
   unsigned int address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
   unsigned int length = (SW_HIRES && !SW_TEXT) ? 0x20 : 0x4;
   while (length--) {
     if (*(memdirty + (address++)) & 2) {
-      return 1;
+      return true;
     }
   }
 
@@ -1265,9 +1265,9 @@ bool VideoApparentlyDirty() {
   }
 
   if (bCharFlashing) {
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
 void VideoBenchmark() {
@@ -1338,14 +1338,14 @@ void VideoBenchmark() {
   if ((regs.pc < 0x300) || (regs.pc > 0x400)) {
     printf("The emulator has detected a problem while running the CPU benchmark.\n");
 
-    bool error = 0;
+    bool error = false;
     unsigned short lastpc = 0x300;
     int loop = 0;
     while ((loop < 10000) && !error) {
       CpuSetupBenchmark();
       CpuExecute(loop);
       if ((regs.pc < 0x300) || (regs.pc > 0x400))
-        error = 1;
+        error = true;
       else {
         lastpc = regs.pc;
         ++loop;
@@ -1401,7 +1401,7 @@ unsigned char VideoCheckMode(unsigned short, unsigned short address, unsigned ch
   if (address == 0x7F) {
     return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
   } else {
-    bool result = 0;
+    bool result = false;
     switch (address) {
       case 0x1A:
         result = SW_TEXT;
@@ -1548,7 +1548,7 @@ void VideoDisplayLogo() {
 
 bool VideoHasRefreshed() {
   bool result = hasrefreshed;
-  hasrefreshed = 0;
+  hasrefreshed = false;
   return result;
 }
 
@@ -1651,7 +1651,7 @@ void VideoRealizePalette() {
 }
 
 void VideoRedrawScreen() {
-  redrawfull = 1;
+  redrawfull = true;
   VideoRefreshScreen();
 }
 
@@ -1801,8 +1801,8 @@ void VideoPerformRefresh() {
   }
 
   SetLastDrawnImage();
-  redrawfull = 0;
-  hasrefreshed = 1;
+  redrawfull = false;
+  hasrefreshed = true;
 
   pthread_mutex_unlock(&video_draw_mutex);
 }
@@ -1817,7 +1817,7 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
   if (bRedrawWholeScreen)
   {
     g_uDebugVideoMode = uRedrawWholeScreenVideoMode;
-    redrawfull = 1;
+    redrawfull = true;
   }
   if (video_worker_active_) {
     video_worker_refresh_ = true;
@@ -1829,9 +1829,9 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
 
 void VideoResetState() {
   g_nAltCharSetOffset = 0;
-  displaypage2 = 0;
+  displaypage2 = false;
   g_uVideoMode = VF_TEXT;
-  redrawfull = 1;
+  redrawfull = true;
 }
 
 unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char write, unsigned char, uint32_t nCyclesLeft) {
@@ -1903,7 +1903,7 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
     g_uVideoMode &= ~VF_PAGE2;
   if (oldvalue != g_nAltCharSetOffset + (int) (g_uVideoMode & ~(VF_MASK2 | VF_PAGE2))) {
     graphicsmode = !SW_TEXT;
-    redrawfull = 1;
+    redrawfull = true;
   }
   if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
     static unsigned int lasttime = 0;
@@ -1922,7 +1922,7 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
         lastrefresh = emulmsec;
       }
     } else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec - lastrefresh >= 20)) {
-      displaypage2 = 0;
+      displaypage2 = false;
       VideoRefreshScreen();
       lastrefresh = emulmsec;
     }
@@ -1953,37 +1953,37 @@ void VideoUpdateFlash() {
 
 bool VideoGetSW80COL(void)
 {
-  return SW_80COL ? true : false;
+  return SW_80COL != 0;
 }
 
 bool VideoGetSWDHIRES(void)
 {
-  return SW_DHIRES ? true : false;
+  return SW_DHIRES != 0;
 }
 
 bool VideoGetSWHIRES(void)
 {
-  return SW_HIRES ? true : false;
+  return SW_HIRES != 0;
 }
 
 bool VideoGetSW80STORE(void)
 {
-  return SW_MASK2 ? true : false;
+  return SW_MASK2 != 0;
 }
 
 bool VideoGetSWMIXED(void)
 {
-  return SW_MIXED ? true : false;
+  return SW_MIXED != 0;
 }
 
 bool VideoGetSWPAGE2(void)
 {
-  return SW_PAGE2 ? true : false;
+  return SW_PAGE2 != 0;
 }
 
 bool VideoGetSWTEXT(void)
 {
-  return SW_TEXT ? true : false;
+  return SW_TEXT != 0;
 }
 
 bool VideoGetSWAltCharSet(void)

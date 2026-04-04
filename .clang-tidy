@@ -1,7 +1,6 @@
 Checks:          'clang-diagnostic-*,clang-analyzer-*,bugprone-bool-pointer-implicit-conversion,readability-implicit-bool-cast,readability-simplify-boolean-expr,modernize-use-bool-literals'
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
 CheckOptions:
   - key:             cert-dcl16-c.NewSuffixes
     value:           'L;LL;LU;LLU'

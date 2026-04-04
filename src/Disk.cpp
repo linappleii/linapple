@@ -81,7 +81,7 @@ static unsigned char DiskSetWriteMode(unsigned short pc, unsigned short addr, un
 #define LOG_DISK(...)
 #endif
 
-bool enhancedisk = 1;
+bool enhancedisk = true;
 
 const int MAX_DISK_IMAGE_NAME = 15;
 const int MAX_DISK_FULL_NAME = MAX_PATH;
@@ -103,11 +103,11 @@ struct Disk_t {
 };
 
 static unsigned short currdrive = 0;
-static bool diskaccessed = 0;
+static bool diskaccessed = false;
 static Disk_t g_aFloppyDisk[DRIVES];
 static unsigned char floppylatch = 0;
-static bool floppymotoron = 0;
-static bool floppywritemode = 0;
+static bool floppymotoron = false;
+static bool floppywritemode = false;
 static unsigned short phases; // state bits for stepper magnet phases 0 - 3
 
 static void CheckSpinning();
@@ -161,11 +161,11 @@ char *GetImageTitle(const char* imageFileName, Disk_t *fptr)
   Util_SafeStrCpy(imagetitle, startpos, MAX_DISK_FULL_NAME);
 
   // if imagetitle contains a lowercase char, then found=1 (why?)
-  bool found = 0;
+  bool found = false;
   int loop = 0;
   while (imagetitle[loop] && !found) {
     if (IsCharLower(imagetitle[loop])) {
-      found = 1;
+      found = true;
     }
     else {
       loop++;
@@ -221,7 +221,7 @@ static void ReadTrack(int iDrive)
   Disk_t *pFloppy = &g_aFloppyDisk[iDrive];
 
   if (pFloppy->track >= TRACKS) {
-    pFloppy->trackimagedata = 0;
+    pFloppy->trackimagedata = false;
     return;
   }
 
@@ -256,7 +256,7 @@ static void RemoveDisk(int iDrive)
       pFloppy->trackimage = NULL;
     }
 
-    pFloppy->trackimagedata = 0;
+    pFloppy->trackimagedata = false;
   }
 
   memset(pFloppy->imagename, 0, MAX_DISK_IMAGE_NAME + 1);
@@ -280,7 +280,7 @@ static void WriteTrack(int iDrive)
     ImageWriteTrack(pFloppy->imagehandle, pFloppy->track, pFloppy->phase, pFloppy->trackimage, pFloppy->nibbles);
   }
 
-  pFloppy->trackimagedirty = 0;
+  pFloppy->trackimagedirty = false;
 }
 
 // All globally accessible functions are below this line
@@ -290,7 +290,7 @@ void DiskBoot()
   // This function reloads a program image if one is loaded in drive one.
   // If a disk image or no image is loaded in drive one, it does nothing.
   if (g_aFloppyDisk[0].imagehandle && ImageBoot(g_aFloppyDisk[0].imagehandle)) {
-    floppymotoron = 0;
+    floppymotoron = false;
   }
 }
 
@@ -341,7 +341,7 @@ static unsigned char DiskControlStepper(unsigned short, unsigned short address, 
         WriteTrack(currdrive);
       }
       fptr->track = newtrack;
-      fptr->trackimagedata = 0;
+      fptr->trackimagedata = false;
     }
   }
   return (address == 0xE0) ? 0xFF : MemReturnRandomData(1);
@@ -485,16 +485,16 @@ int DiskInsert(int drive, const char* imageFileName, bool writeProtected, bool c
   if (lf > 3 && imageFileName[lf - 1] == 'z' && imageFileName[lf - 2] == 'g' && imageFileName[lf - 3] == '.') {
     snprintf(tempDisk, 12, "drive%d.dsk", drive);
     if (DiskUnGzip((char *) imageFileName, tempDisk)) {
-      writeProtected = 1;
-      createIfNecessary = 0;
+      writeProtected = true;
+      createIfNecessary = false;
       tmp = tempDisk;
     }
   } else if (lf > 4 && imageFileName[lf - 1] == 'p' && imageFileName[lf - 2] == 'i' && imageFileName[lf - 3] == 'z' &&
              imageFileName[lf - 4] == '.') {
     snprintf(tempDisk, 12, "drive%d.dsk", drive);
     if (DiskUnZip((char *) imageFileName, tempDisk)) {
-      writeProtected = 1;
-      createIfNecessary = 0;
+      writeProtected = true;
+      createIfNecessary = false;
       tmp = tempDisk;
     }
   }
@@ -564,7 +564,7 @@ static unsigned char DiskReadWrite(unsigned short programcounter, unsigned short
 {
   (void)programcounter;
   Disk_t *fptr = &g_aFloppyDisk[currdrive];
-  diskaccessed = 1;
+  diskaccessed = true;
   if ((!fptr->trackimagedata) && fptr->imagehandle) {
     ReadTrack(currdrive);
   }
@@ -576,7 +576,7 @@ static unsigned char DiskReadWrite(unsigned short programcounter, unsigned short
     if (floppywritemode) {
       if (floppylatch & 0x80) {
         *(fptr->trackimage + fptr->byte) = floppylatch;
-        fptr->trackimagedirty = 1;
+        fptr->trackimagedirty = true;
       } else {
         return 0;
       }
@@ -591,7 +591,7 @@ static unsigned char DiskReadWrite(unsigned short programcounter, unsigned short
 
 void DiskReset()
 {
-  floppymotoron = 0;
+  floppymotoron = false;
   phases = 0;
 }
 
@@ -646,7 +646,7 @@ void DiskSelectImage(int drive, char* pszFilename)
 
   fullPath += "/" + filename;
 
-  int error = DiskInsert(drive, fullPath.c_str(), 0, 1);
+  int error = DiskInsert(drive, fullPath.c_str(), false, true);
   if (!error) {
     // for one drive will be one reg parameter
     //  RegSaveString("Preferences",REGVALUE_PREF_START_DIR, 1,filename);
@@ -739,7 +739,7 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
   }
 
   if (!error) {
-    error = DiskInsert(drive, localPath.c_str(), 0, 1);// try to insert downloaded file as a disk image
+    error = DiskInsert(drive, localPath.c_str(), false, true);// try to insert downloaded file as a disk image
     if (!error) {
     } else {
       DiskNotifyInvalidImage(filename.c_str(), error); // show error on the screen (or in console for our case)
@@ -761,13 +761,13 @@ static unsigned char DiskSetLatchValue(unsigned short, unsigned short, unsigned 
 
 static unsigned char DiskSetReadMode(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t)
 {
-  floppywritemode = 0;
+  floppywritemode = false;
   return MemReturnRandomData(g_aFloppyDisk[currdrive].writeProtected);
 }
 
 static unsigned char DiskSetWriteMode(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t)
 {
-  floppywritemode = 1;
+  floppywritemode = true;
   bool modechange = !g_aFloppyDisk[currdrive].writelight;
   g_aFloppyDisk[currdrive].writelight = 20000;
   if (modechange) {
@@ -802,7 +802,7 @@ void DiskUpdatePosition(unsigned int cycles)
       }
     }
   }
-  diskaccessed = 0;
+  diskaccessed = false;
 }
 
 bool DiskDriveSwap()
@@ -987,7 +987,7 @@ unsigned int DiskSetSnapshot(SS_CARD_DISK2 *pSS, unsigned int)
     if (pSS->Unit[i].szFileName[0] == 0x00)
       continue;
 
-    if (DiskInsert(i, pSS->Unit[i].szFileName, 0, 0)) {
+    if (DiskInsert(i, pSS->Unit[i].szFileName, false, false)) {
       bImageError = true;
     }
     g_aFloppyDisk[i].track = pSS->Unit[i].track;
@@ -1013,8 +1013,8 @@ unsigned int DiskSetSnapshot(SS_CARD_DISK2 *pSS, unsigned int)
     }
 
     if (bImageError) {
-      g_aFloppyDisk[i].trackimagedata = 0;
-      g_aFloppyDisk[i].trackimagedirty = 0;
+      g_aFloppyDisk[i].trackimagedata = false;
+      g_aFloppyDisk[i].trackimagedirty = false;
       g_aFloppyDisk[i].nibbles = 0;
     }
   }
