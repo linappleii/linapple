@@ -1125,7 +1125,7 @@ void SessionShutdown()
   MemDestroy();
   MB_Destroy();
   MB_Reset();
-  sg_Mouse.Uninitialize();
+  Mouse_Uninitialize();
   JoyShutDown();
   JoyFrontend_ShutDown();
 }

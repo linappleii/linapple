@@ -1,8 +1,21 @@
-// Based on Apple in PC's mousecard.cpp
-// - Permission given by Kyle Kim to reuse in AppleWin
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
+/*
+linapple : An Apple //e emulator for Linux
 
+Based on Apple in PC's mousecard.cpp
+- Permission given by Kyle Kim to reuse in AppleWin
+Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 
+*/
+
+#include <cstdint>
+#include <cstring>
 #include "stdafx.h"
+#include "MouseInterface.h"
+#include "6821.h"
+#include "Common.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Log.h"
+#include "Video.h"
 
 // Sets mouse mode
 #define MOUSE_SET    0x00
@@ -34,8 +47,9 @@
 #define BIT6    0x40
 #define BIT7    0x80
 
+struct MouseInterface sg_Mouse;
 
-char MouseInterface_rom[] = "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x20\xF4\xF4\xF4"
+static char MouseInterface_rom[] = "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x20\xF4\xF4\xF4"
                             "\xF4\x00\xB3\xC4\x9B\xA4\xC0\x8A\xDD\xBC\x48\xF0\x53\xE1\xE6\xEC"
                             "\x08\x78\x8D\xF8\x07\x48\x98\x48\x8A\x48\x20\x58\xFF\xBA\xBD\x00"
                             "\x01\xAA\x08\x0A\x0A\x0A\x0A\x28\xA8\xAD\xF8\x07\x8E\xF8\x07\x48"
@@ -166,360 +180,349 @@ char MouseInterface_rom[] = "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x2
                             "\xFF\xFF\xFF\xCE";
 
 
-void CMouseInterface::M6821_Listener_B(void* objTo, uint8_t byData) {
-  ((CMouseInterface *) objTo)->On6821_B(byData);
+static void Mouse_Reset();
+static void Mouse_SetPositionInternal(int xvalue, int yvalue);
+static void Mouse_ClampX(int iMinX, int iMaxX);
+static void Mouse_ClampY(int iMinY, int iMaxY);
+static void Mouse_OnMouseEvent();
+static void Mouse_OnCommand();
+static void Mouse_OnWrite();
+
+static void M6821_Listener_A(void* objTo, uint8_t byData) {
+  (void)objTo;
+  sg_Mouse.m_by6821A = byData;
 }
 
-void CMouseInterface::M6821_Listener_A(void* objTo, uint8_t byData) {
-  ((CMouseInterface *) objTo)->On6821_A(byData);
+static void M6821_Listener_B(void* objTo, uint8_t byData) {
+  (void)objTo;
+  unsigned char byDiff = (sg_Mouse.m_by6821B ^ byData) & 0x3E;
+
+  if (byDiff) {
+    sg_Mouse.m_by6821B &= ~0x3E;
+    sg_Mouse.m_by6821B |= byData & 0x3E;
+    if (byDiff & BIT5)      // Write to 0285 chip
+    {
+      if (byData & BIT5) {
+        sg_Mouse.m_by6821B |= BIT7;    // OK, I'm ready to read from MC6821
+      }
+      else {// Clock Activate for read
+        sg_Mouse.m_byBuff[sg_Mouse.m_nBuffPos++] = sg_Mouse.m_by6821A;
+        if (sg_Mouse.m_nBuffPos == 1) {
+          Mouse_OnCommand();
+        }
+        if (sg_Mouse.m_nBuffPos == sg_Mouse.m_nDataLen || sg_Mouse.m_nBuffPos > 7) {
+          Mouse_OnWrite();      // Have written all, Commit the command.
+          sg_Mouse.m_nBuffPos = 0;
+        }
+        sg_Mouse.m_by6821B &= ~BIT7;    // for next reading
+        Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+      }
+    }
+    if (byDiff & BIT4) {// Read from 0285 chip ?
+      if (byData & BIT4) {
+        sg_Mouse.m_by6821B &= ~BIT6;    // OK, I'll prepare next value
+      } else { // Clock Activate for write
+        if (sg_Mouse.m_nBuffPos) { // if m_nBuffPos is 0, something goes wrong!
+          sg_Mouse.m_nBuffPos++;
+        }
+        if (sg_Mouse.m_nBuffPos == sg_Mouse.m_nDataLen || sg_Mouse.m_nBuffPos > 7) {
+          sg_Mouse.m_nBuffPos = 0; // Have read all, ready for next command.
+        } else {
+          Pia6821_SetPortA(&sg_Mouse.m_6821, sg_Mouse.m_byBuff[sg_Mouse.m_nBuffPos]);
+        }
+        sg_Mouse.m_by6821B |= BIT6;    // for next writing
+      }
+    }
+    Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+
+    Mouse_SetSlotRom();  // Update Cn00 ROM page
+  }
 }
 
-CMouseInterface::CMouseInterface() : m_pSlotRom(NULL) {
-  Pia6821_Reset(&m_6821);
-  Pia6821_SetListenerB(&m_6821, this, M6821_Listener_B);
-  Pia6821_SetListenerA(&m_6821, this, M6821_Listener_A);
-  m_by6821A = 0;
-  m_by6821B = 0x40;    // Set PB6
-  Pia6821_SetPortB(&m_6821, m_by6821B);
-  m_bVBL = false;
-
-  m_iX = 0;
-  m_iMinX = 0;
-  m_iMaxX = 1023;
-  m_iRangeX = 0;
-
-  m_iY = 0;
-  m_iMinY = 0;
-  m_iMaxY = 1023;
-  m_iRangeY = 0;
-
-  m_bButtons[0] = m_bButtons[1] = false;
-
-  Reset();
-  memset(m_byBuff, 0, sizeof(m_byBuff));
-  m_bActive = false;
-}
-
-CMouseInterface::~CMouseInterface() {
-  delete[] m_pSlotRom;
-}
-
-void CMouseInterface::Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot) {
+void Mouse_Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot) {
   (void)pCxRomPeripheral;
   const unsigned int FW_SIZE = 2 * 1024;
-  unsigned char *pData = (unsigned char *) MouseInterface_rom;  // NB. Don't need to unlock resource
+  unsigned char *pData = (unsigned char *) MouseInterface_rom;
 
-  m_uSlot = uSlot;
+  memset(&sg_Mouse, 0, sizeof(sg_Mouse));
+  Pia6821_Reset(&sg_Mouse.m_6821);
+  Pia6821_SetListenerB(&sg_Mouse.m_6821, NULL, M6821_Listener_B);
+  Pia6821_SetListenerA(&sg_Mouse.m_6821, NULL, M6821_Listener_A);
+  
+  sg_Mouse.m_by6821A = 0;
+  sg_Mouse.m_by6821B = 0x40;    // Set PB6
+  Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+  
+  sg_Mouse.m_iMinX = 0;
+  sg_Mouse.m_iMaxX = 1023;
+  sg_Mouse.m_iMinY = 0;
+  sg_Mouse.m_iMaxY = 1023;
 
-  if (m_pSlotRom == NULL) {
-    m_pSlotRom = new unsigned char[FW_SIZE];
-    if (m_pSlotRom) {
-      memcpy(m_pSlotRom, pData, FW_SIZE);
+  Mouse_Reset();
+
+  sg_Mouse.m_uSlot = uSlot;
+  if (sg_Mouse.m_pSlotRom == NULL) {
+    sg_Mouse.m_pSlotRom = new unsigned char[FW_SIZE];
+    if (sg_Mouse.m_pSlotRom) {
+      memcpy(sg_Mouse.m_pSlotRom, pData, FW_SIZE);
     }
   }
 
-  SetSlotRom();
-  RegisterIoHandler(uSlot, &CMouseInterface::IORead, &CMouseInterface::IOWrite, NULL, NULL, this, NULL);
-  m_bActive = true;
+  Mouse_SetSlotRom();
+  RegisterIoHandler(uSlot, &Mouse_IORead, &Mouse_IOWrite, NULL, NULL, NULL, NULL);
+  sg_Mouse.m_bActive = true;
   Logger::Info("MouseInterface Rom loaded and registered\n");
 }
 
-void CMouseInterface::SetSlotRom() {
+void Mouse_Uninitialize() {
+  sg_Mouse.m_bActive = false;
+  if (sg_Mouse.m_pSlotRom) {
+    delete[] sg_Mouse.m_pSlotRom;
+    sg_Mouse.m_pSlotRom = NULL;
+  }
+}
+
+void Mouse_SetSlotRom() {
   uint8_t* pCxRomPeripheral = MemGetCxRomPeripheral();
   if (pCxRomPeripheral == NULL) {
     return;
   }
 
-  unsigned int uOffset = (m_by6821B << 7) & 0x0700;
-  memcpy(pCxRomPeripheral + m_uSlot * 256, m_pSlotRom + uOffset, 256);
+  unsigned int uOffset = (sg_Mouse.m_by6821B << 7) & 0x0700;
+  memcpy(pCxRomPeripheral + sg_Mouse.m_uSlot * 256, sg_Mouse.m_pSlotRom + uOffset, 256);
   if (mem) {
-    memcpy(mem + 0xC000 + m_uSlot * 256, m_pSlotRom + uOffset, 256);
+    memcpy(mem + 0xC000 + sg_Mouse.m_uSlot * 256, sg_Mouse.m_pSlotRom + uOffset, 256);
   }
 }
 
-unsigned char CMouseInterface::IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
+unsigned char Mouse_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   (void)uValue;
   (void)nCyclesLeft;
   (void)PC;
   (void)bWrite;
-  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
-  CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
-
-  unsigned char byRS;
-  byRS = uAddr & 3;
-  return Pia6821_Read(&pMouseIF->m_6821, byRS);
+  unsigned char byRS = uAddr & 3;
+  return Pia6821_Read(&sg_Mouse.m_6821, byRS);
 }
 
-unsigned char CMouseInterface::IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
+unsigned char Mouse_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   (void)nCyclesLeft;
   (void)PC;
   (void)bWrite;
-  unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
-  CMouseInterface *pMouseIF = (CMouseInterface *) MemGetSlotParameters(uSlot);
-
-  unsigned char byRS;
-  byRS = uAddr & 3;
-  Pia6821_Write(&pMouseIF->m_6821, byRS, uValue);
-
+  unsigned char byRS = uAddr & 3;
+  Pia6821_Write(&sg_Mouse.m_6821, byRS, uValue);
   return 0;
 }
 
-void CMouseInterface::On6821_A(uint8_t byData) {
-  m_by6821A = byData;
-}
-
-void CMouseInterface::On6821_B(uint8_t byData) {
-  unsigned char byDiff = (m_by6821B ^ byData) & 0x3E;
-
-  if (byDiff) {
-    m_by6821B &= ~0x3E;
-    m_by6821B |= byData & 0x3E;
-    if (byDiff & BIT5)      // Write to 0285 chip
-    {
-      if (byData & BIT5) {
-        m_by6821B |= BIT7;    // OK, I'm ready to read from MC6821
-      }
-      else {// Clock Activate for read
-        m_byBuff[m_nBuffPos++] = m_by6821A;
-        if (m_nBuffPos == 1) {
-          OnCommand();
-        }
-        if (m_nBuffPos == m_nDataLen || m_nBuffPos > 7) {
-          OnWrite();      // Have written all, Commit the command.
-          m_nBuffPos = 0;
-        }
-        m_by6821B &= ~BIT7;    // for next reading
-        Pia6821_SetPortB(&m_6821, m_by6821B);
-      }
-    }
-    if (byDiff & BIT4) {// Read from 0285 chip ?
-      if (byData & BIT4) {
-        m_by6821B &= ~BIT6;    // OK, I'll prepare next value
-      } else { // Clock Activate for write
-        if (m_nBuffPos) { // if m_nBuffPos is 0, something goes wrong!
-          m_nBuffPos++;
-        }
-        if (m_nBuffPos == m_nDataLen || m_nBuffPos > 7) {
-          m_nBuffPos = 0; // Have read all, ready for next command.
-        } else {
-          Pia6821_SetPortA(&m_6821, m_byBuff[m_nBuffPos]);
-        }
-        m_by6821B |= BIT6;    // for next writing
-      }
-    }
-    Pia6821_SetPortB(&m_6821, m_by6821B);
-
-    SetSlotRom();  // Update Cn00 ROM page
-  }
-}
-
-
-void CMouseInterface::OnCommand() {
-  switch (m_byBuff[0] & 0xF0) {
+static void Mouse_OnCommand() {
+  switch (sg_Mouse.m_byBuff[0] & 0xF0) {
     case MOUSE_SET:
-      m_nDataLen = 1;
-      m_byMode = m_byBuff[0] & 0x0F;
+      sg_Mouse.m_nDataLen = 1;
+      sg_Mouse.m_byMode = sg_Mouse.m_byBuff[0] & 0x0F;
       break;
     case MOUSE_READ:
-      m_nDataLen = 6;
-      m_byState &= 0x20;
-      m_nX = m_iX;
-      m_nY = m_iY;
-      if (m_bBtn0) {
-        m_byState |= 0x40;      // Previous Button 0
+      sg_Mouse.m_nDataLen = 6;
+      sg_Mouse.m_byState &= 0x20;
+      sg_Mouse.m_nX = sg_Mouse.m_iX;
+      sg_Mouse.m_nY = sg_Mouse.m_iY;
+      if (sg_Mouse.m_bBtn0) {
+        sg_Mouse.m_byState |= 0x40;      // Previous Button 0
       }
-      if (m_bBtn1) {
-        m_byState |= 0x01;      // Previous Button 1
+      if (sg_Mouse.m_bBtn1) {
+        sg_Mouse.m_byState |= 0x01;      // Previous Button 1
       }
-      m_bBtn0 = m_bButtons[0];
-      m_bBtn1 = m_bButtons[1];
-      if (m_bBtn0) {
-        m_byState |= 0x80;      // Current Button 0
+      sg_Mouse.m_bBtn0 = sg_Mouse.m_bButtons[0];
+      sg_Mouse.m_bBtn1 = sg_Mouse.m_bButtons[1];
+      if (sg_Mouse.m_bBtn0) {
+        sg_Mouse.m_byState |= 0x80;      // Current Button 0
       }
-      if (m_bBtn1) {
-        m_byState |= 0x10;      // Current Button 1
+      if (sg_Mouse.m_bBtn1) {
+        sg_Mouse.m_byState |= 0x10;      // Current Button 1
       }
-      m_byBuff[1] = m_nX & 0xFF;
-      m_byBuff[2] = (m_nX >> 8) & 0xFF;
-      m_byBuff[3] = m_nY & 0xFF;
-      m_byBuff[4] = (m_nY >> 8) & 0xFF;
-      m_byBuff[5] = m_byState;      // button 0/1 interrupt status
-      m_byState &= ~0x20;
+      sg_Mouse.m_byBuff[1] = sg_Mouse.m_nX & 0xFF;
+      sg_Mouse.m_byBuff[2] = (sg_Mouse.m_nX >> 8) & 0xFF;
+      sg_Mouse.m_byBuff[3] = sg_Mouse.m_nY & 0xFF;
+      sg_Mouse.m_byBuff[4] = (sg_Mouse.m_nY >> 8) & 0xFF;
+      sg_Mouse.m_byBuff[5] = sg_Mouse.m_byState;      // button 0/1 interrupt status
+      sg_Mouse.m_byState &= ~0x20;
       break;
     case MOUSE_SERV:
-      m_nDataLen = 2;
-      m_byBuff[1] = m_byState & ~0x20;      // reason of interrupt
+      sg_Mouse.m_nDataLen = 2;
+      sg_Mouse.m_byBuff[1] = sg_Mouse.m_byState & ~0x20;      // reason of interrupt
       CpuIrqDeassert(IS_MOUSE);
       break;
     case MOUSE_CLEAR:
-      Reset();
-      m_nDataLen = 1;
+      Mouse_Reset();
+      sg_Mouse.m_nDataLen = 1;
       break;
     case MOUSE_POS:
-      m_nDataLen = 5;
+      sg_Mouse.m_nDataLen = 5;
       break;
     case MOUSE_INIT:
-      m_nDataLen = 3;
-      m_byBuff[1] = 0xFF;      // I don't know what it is
+      sg_Mouse.m_nDataLen = 3;
+      sg_Mouse.m_byBuff[1] = 0xFF;      // I don't know what it is
       break;
     case MOUSE_CLAMP:
-      m_nDataLen = 5;
+      sg_Mouse.m_nDataLen = 5;
       break;
     case MOUSE_HOME:
-      m_nDataLen = 1;
-      SetPosition(0, 0);
+      sg_Mouse.m_nDataLen = 1;
+      Mouse_SetPositionInternal(0, 0);
       break;
     case MOUSE_TIME:    // 0x90
-      switch (m_byBuff[0] & 0x0C) {
+      switch (sg_Mouse.m_byBuff[0] & 0x0C) {
         case 0x00:
-          m_nDataLen = 1;
+          sg_Mouse.m_nDataLen = 1;
           break;  // write cmd ( #$90 is DATATIME 60Hz, #$91 is 50Hz )
         case 0x04:
-          m_nDataLen = 3;
+          sg_Mouse.m_nDataLen = 3;
           break;  // write cmd, $0478, $04F8
         case 0x08:
-          m_nDataLen = 2;
+          sg_Mouse.m_nDataLen = 2;
           break;  // write cmd, $0578
         case 0x0C:
-          m_nDataLen = 4;
+          sg_Mouse.m_nDataLen = 4;
           break;  // write cmd, $0478, $04F8, $0578
       }
       break;
     case 0xA0:
-      m_nDataLen = 2;
+      sg_Mouse.m_nDataLen = 2;
       break;
     case 0xB0:
     case 0xC0:
-      m_nDataLen = 1;
+      sg_Mouse.m_nDataLen = 1;
       break;
     default:
-      m_nDataLen = 1;
+      sg_Mouse.m_nDataLen = 1;
       break;
   }
-  Pia6821_SetPortA(&m_6821, m_byBuff[1]);
+  Pia6821_SetPortA(&sg_Mouse.m_6821, sg_Mouse.m_byBuff[1]);
 }
 
-void CMouseInterface::OnWrite() {
+static void Mouse_OnWrite() {
   int nMin, nMax;
-  switch (m_byBuff[0] & 0xF0) {
+  switch (sg_Mouse.m_byBuff[0] & 0xF0) {
     case MOUSE_CLAMP:
-      nMin = (m_byBuff[3] << 8) | m_byBuff[1];
-      nMax = (m_byBuff[4] << 8) | m_byBuff[2];
-      if (m_byBuff[0] & 1)  // Clamp Y
-        ClampY(nMin, nMax);
+      nMin = (sg_Mouse.m_byBuff[3] << 8) | sg_Mouse.m_byBuff[1];
+      nMax = (sg_Mouse.m_byBuff[4] << 8) | sg_Mouse.m_byBuff[2];
+      if (sg_Mouse.m_byBuff[0] & 1)  // Clamp Y
+        Mouse_ClampY(nMin, nMax);
       else          // Clamp X
-        ClampX(nMin, nMax);
+        Mouse_ClampX(nMin, nMax);
       break;
     case MOUSE_POS:
-      m_nX = (m_byBuff[2] << 8) | m_byBuff[1];
-      m_nY = (m_byBuff[4] << 8) | m_byBuff[3];
-      SetPosition(m_nX, m_nY);
+      sg_Mouse.m_nX = (sg_Mouse.m_byBuff[2] << 8) | sg_Mouse.m_byBuff[1];
+      sg_Mouse.m_nY = (sg_Mouse.m_byBuff[4] << 8) | sg_Mouse.m_byBuff[3];
+      Mouse_SetPositionInternal(sg_Mouse.m_nX, sg_Mouse.m_nY);
       break;
     case MOUSE_INIT:
-      m_nX = 0;
-      m_nY = 0;
-      ClampX(0, 1023);
-      ClampY(0, 1023);
-      SetPosition(0, 0);
+      sg_Mouse.m_nX = 0;
+      sg_Mouse.m_nY = 0;
+      Mouse_ClampX(0, 1023);
+      Mouse_ClampY(0, 1023);
+      Mouse_SetPositionInternal(0, 0);
       break;
   }
 }
 
-void CMouseInterface::OnMouseEvent() {
+static void Mouse_OnMouseEvent() {
   int byState = 0;
-  if (!(m_byMode & 1)) { // Mouse Off
+  if (!(sg_Mouse.m_byMode & 1)) { // Mouse Off
     return;
   }
 
-  bool bBtn0 = m_bButtons[0];
-  bool bBtn1 = m_bButtons[1];
-  if ((unsigned int) m_nX != m_iX || (unsigned int) m_nY != m_iY) {
+  bool bBtn0 = sg_Mouse.m_bButtons[0];
+  bool bBtn1 = sg_Mouse.m_bButtons[1];
+  if ((unsigned int) sg_Mouse.m_nX != sg_Mouse.m_iX || (unsigned int) sg_Mouse.m_nY != sg_Mouse.m_iY) {
     byState |= 0x22;        // X/Y moved since last READMOUSE | Movement interrupt
   }
-  if (m_bBtn0 != bBtn0 || m_bBtn1 != bBtn1) {
+  if (sg_Mouse.m_bBtn0 != bBtn0 || sg_Mouse.m_bBtn1 != bBtn1) {
     byState |= 0x04;        // Button 0/1 interrupt
   }
-  if (m_bVBL) {
+  if (sg_Mouse.m_bVBL) {
     byState |= 0x08;
   }
-  byState &= ((m_byMode & 0x0E) |
+  byState &= ((sg_Mouse.m_byMode & 0x0E) |
               0x20);  // Keep "X/Y moved since last READMOUSE" for next MOUSE_READ (Contiki v1.3 uses this)
   if (byState & 0x0E) {
-    m_byState |= byState;
+    sg_Mouse.m_byState |= byState;
     CpuIrqAssert(IS_MOUSE);
   }
 }
 
-void CMouseInterface::SetVBlank(bool bVBL) {
-  if (m_bVBL != bVBL) {
-    m_bVBL = bVBL;
-    if (m_bVBL) { // Rising edge
-      OnMouseEvent();
+void Mouse_SetVBlank(bool bVBL) {
+  if (sg_Mouse.m_bVBL != bVBL) {
+    sg_Mouse.m_bVBL = bVBL;
+    if (sg_Mouse.m_bVBL) { // Rising edge
+      Mouse_OnMouseEvent();
     }
   }
 }
 
-void CMouseInterface::Reset() {
-  m_nBuffPos = 0;
-  m_nDataLen = 1;
+static void Mouse_Reset() {
+  sg_Mouse.m_nBuffPos = 0;
+  sg_Mouse.m_nDataLen = 1;
 
-  m_byMode = 0;
-  m_byState = 0;
-  m_nX = 0;
-  m_nY = 0;
-  m_bBtn0 = false;
-  m_bBtn1 = false;
-  ClampX(0, 1023);
-  ClampY(0, 1023);
-  SetPosition(0, 0);
+  sg_Mouse.m_byMode = 0;
+  sg_Mouse.m_byState = 0;
+  sg_Mouse.m_nX = 0;
+  sg_Mouse.m_nY = 0;
+  sg_Mouse.m_bBtn0 = false;
+  sg_Mouse.m_bBtn1 = false;
+  Mouse_ClampX(0, 1023);
+  Mouse_ClampY(0, 1023);
+  Mouse_SetPositionInternal(0, 0);
 }
 
-void CMouseInterface::ClampX(int iMinX, int iMaxX) {
+static void Mouse_ClampX(int iMinX, int iMaxX) {
   if (iMinX < 0 || iMinX > iMaxX) {
     return;
   }
-  m_iMaxX = iMaxX;
-  m_iMinX = iMinX;
-  if (m_iX > m_iMaxX) {
-    m_iX = m_iMaxX;
-  } else if (m_iX < m_iMinX) {
-    m_iX = m_iMinX;
+  sg_Mouse.m_iMaxX = iMaxX;
+  sg_Mouse.m_iMinX = iMinX;
+  if (sg_Mouse.m_iX > sg_Mouse.m_iMaxX) {
+    sg_Mouse.m_iX = sg_Mouse.m_iMaxX;
+  } else if (sg_Mouse.m_iX < sg_Mouse.m_iMinX) {
+    sg_Mouse.m_iX = sg_Mouse.m_iMinX;
   }
 }
 
-void CMouseInterface::ClampY(int iMinY, int iMaxY) {
+static void Mouse_ClampY(int iMinY, int iMaxY) {
   if (iMinY < 0 || iMinY > iMaxY) {
     return;
   }
-  m_iMaxY = iMaxY;
-  m_iMinY = iMinY;
-  if (m_iY > m_iMaxY) {
-    m_iY = m_iMaxY;
-  } else if (m_iY < m_iMinX) {
-    m_iY = m_iMinY;
+  sg_Mouse.m_iMaxY = iMaxY;
+  sg_Mouse.m_iMinY = iMinY;
+  if (sg_Mouse.m_iY > sg_Mouse.m_iMaxY) {
+    sg_Mouse.m_iY = sg_Mouse.m_iMaxY;
+  } else if (sg_Mouse.m_iY < sg_Mouse.m_iMinX) {
+    sg_Mouse.m_iY = sg_Mouse.m_iMinY;
   }
 }
 
-void CMouseInterface::SetPosition(int xvalue, int yvalue) {
-  if ((m_iRangeX == 0) || (m_iRangeY == 0)) {
-    m_nX = m_iX = m_iMinX;
-    m_nY = m_iY = m_iMinY;
+static void Mouse_SetPositionInternal(int xvalue, int yvalue) {
+  if ((sg_Mouse.m_iRangeX == 0) || (sg_Mouse.m_iRangeY == 0)) {
+    sg_Mouse.m_nX = sg_Mouse.m_iX = sg_Mouse.m_iMinX;
+    sg_Mouse.m_nY = sg_Mouse.m_iY = sg_Mouse.m_iMinY;
     return;
   }
 
-  m_iX = (unsigned int)((xvalue * m_iMaxX) / m_iRangeX);
-  m_iY = (unsigned int)((yvalue * m_iMaxY) / m_iRangeY);
+  sg_Mouse.m_iX = (unsigned int)((xvalue * sg_Mouse.m_iMaxX) / sg_Mouse.m_iRangeX);
+  sg_Mouse.m_iY = (unsigned int)((yvalue * sg_Mouse.m_iMaxY) / sg_Mouse.m_iRangeY);
 }
 
-void CMouseInterface::SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
-  m_iRangeX = (unsigned int) xrange;
-  m_iRangeY = (unsigned int) yrange;
+void Mouse_SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
+  sg_Mouse.m_iRangeX = (unsigned int) xrange;
+  sg_Mouse.m_iRangeY = (unsigned int) yrange;
 
-  SetPosition(xvalue, yvalue);
-  OnMouseEvent();
+  Mouse_SetPositionInternal(xvalue, yvalue);
+  Mouse_OnMouseEvent();
 }
 
-void CMouseInterface::SetButton(eBUTTON Button, eBUTTONSTATE State) {
-  m_bButtons[Button] = State == BUTTON_DOWN;
-  OnMouseEvent();
+void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State) {
+  sg_Mouse.m_bButtons[Button] = State == BUTTON_DOWN;
+  Mouse_OnMouseEvent();
+}
+
+bool Mouse_Active() {
+  return sg_Mouse.m_bActive;
 }

@@ -465,8 +465,8 @@ void FrameDispatchMessage(SDL_Event *e) {
             if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               SetUsingCursor(false);
             } else {
-              if (sg_Mouse.Active()) {
-                sg_Mouse.SetButton(BUTTON0, BUTTON_DOWN);
+              if (Mouse_Active()) {
+                Mouse_SetButton(BUTTON0, BUTTON_DOWN);
               } else {
                 JoySetButton(BUTTON0, BUTTON_DOWN);
               }
@@ -474,15 +474,15 @@ void FrameDispatchMessage(SDL_Event *e) {
           }
           else
           if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
-              (sg_Mouse.Active())) {
+              (Mouse_Active())) {
             SetUsingCursor(true);
           }
         }
       }
       else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
-          if (sg_Mouse.Active()) {
-            sg_Mouse.SetButton(BUTTON1, BUTTON_DOWN);
+          if (Mouse_Active()) {
+            Mouse_SetButton(BUTTON1, BUTTON_DOWN);
           } else {
             JoySetButton(BUTTON1, BUTTON_DOWN);
           }
@@ -494,16 +494,16 @@ void FrameDispatchMessage(SDL_Event *e) {
     case SDL_EVENT_MOUSE_BUTTON_UP:
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (usingcursor) {
-          if (sg_Mouse.Active()) {
-            sg_Mouse.SetButton(BUTTON0, BUTTON_UP);
+          if (Mouse_Active()) {
+            Mouse_SetButton(BUTTON0, BUTTON_UP);
           } else {
             JoySetButton(BUTTON0, BUTTON_UP);
           }
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
-          if (sg_Mouse.Active()) {
-            sg_Mouse.SetButton(BUTTON1, BUTTON_UP);
+          if (Mouse_Active()) {
+            Mouse_SetButton(BUTTON1, BUTTON_UP);
           } else {
             JoySetButton(BUTTON1, BUTTON_UP);
           }
@@ -515,8 +515,8 @@ void FrameDispatchMessage(SDL_Event *e) {
       x = (int)e->motion.x;
       y = (int)e->motion.y;
       if (usingcursor) {
-        if (sg_Mouse.Active()) {
-          sg_Mouse.SetPosition(x, VIEWPORTCX - 4, y, VIEWPORTCY - 4);
+        if (Mouse_Active()) {
+          Mouse_SetPosition(x, VIEWPORTCX - 4, y, VIEWPORTCY - 4);
         } else {
           JoySetPosition(x, VIEWPORTCX - 4, y, VIEWPORTCY - 4);
         }
