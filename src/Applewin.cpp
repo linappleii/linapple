@@ -42,6 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "asset.h"
 #include "Util_Path.h"
+#include "JoystickFrontend.h"
 
 static unsigned int emulmsec_frac = 0;
 static bool g_bBudgetVideo = false;
@@ -409,7 +410,9 @@ void Sys_Think()
     SDL_Delay(10);
     return;
   }
-  
+
+  JoyFrontend_Update();
+
   if (g_state.mode == MODE_DEBUG) {
     DebuggerUpdate();
     SDL_Delay(10);
@@ -422,7 +425,7 @@ void Sys_Think()
       ContinueExecution();
       if (g_state.mode != MODE_DEBUG) {
         if (joyexitenable) {
-          CheckJoyExit();
+          JoyFrontend_CheckExit();
           if (joyquitevent) {
             g_state.mode = MODE_EXIT;
             return;
@@ -437,7 +440,6 @@ void Sys_Think()
     SDL_Delay(1);
   }
 }
-
 void Sys_Draw()
 {
   static uint64_t last_flash_time = 0;
@@ -1074,6 +1076,7 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
   MB_Initialize();
   SpkrInitialize();
   JoyInitialize();
+  JoyFrontend_Initialize();
   MemInitialize();
   HD_SetEnabled(hddenabled);
   if (clockslot) {
@@ -1124,6 +1127,7 @@ void SessionShutdown()
   MB_Reset();
   sg_Mouse.Uninitialize();
   JoyShutDown();
+  JoyFrontend_ShutDown();
 }
 
 void CpuTestHeadless(const char* filename) {

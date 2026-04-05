@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <SDL3_image/SDL_image.h>
 
 #include "stdafx.h"
+#include "JoystickFrontend.h"
 #include "asset.h"
 
 extern uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
@@ -392,9 +393,9 @@ void FrameDispatchMessage(SDL_Event *e) {
         bool extended = (mysym >= SDLK_UP);
         if (mymod & SDL_KMOD_RCTRL)
         {
-          JoyUpdateTrimViaKey(mysym);
+          JoyFrontend_UpdateTrimViaKey(mysym);
         } else {
-          if ((!JoyProcessKey(mysym, extended, true, autorep)) && (g_state.mode != MODE_LOGO)) {
+          if ((!JoyFrontend_ProcessKey(mysym, extended, true, autorep)) && (g_state.mode != MODE_LOGO)) {
             uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
             if (apple_code) KeybPushAppleKey(apple_code);
           }
@@ -413,7 +414,7 @@ void FrameDispatchMessage(SDL_Event *e) {
         KeybToggleCapsLock();
       } else {
         if (myscancode) {
-          JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, false);
+          JoyFrontend_ProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, false);
         }
       }
       break;
