@@ -141,8 +141,8 @@ For all new code and architectural changes, favor a **procedural C-like coding s
     *   **Mouse:** [DONE] Moved SDL mouse input to frontend (`Frame.cpp`). Core implements firmware protocol using C-style `struct MouseInterface` and receives deltas/positions via a procedural API.
     *   **Mockingboard:** [DONE] Core emulates 6522/AY-3-8910 using procedural C-style code. Removed SDL dependencies and legacy global buffers. Samples are submitted to `SoundCore` for mixing.
     *   **Sound Core:** [DONE] Core handles multi-channel mixing of all sound sources (Speaker, Mockingboard) into internal buffers. Frontend manages the final SDL audio callback.
-    *   **Serial Port (SSC):** Core emulates 6551 ACIA; Frontend handles TTY/Socket.
-    *   **Parallel Printer:** Core emulates interface; Frontend handles output target.
+    *   **Serial Port (SSC):** [DONE] Core emulates 6551 ACIA logic using C-style `struct SuperSerialCard`. All POSIX serial port code moved to `SerialCommsFrontend.cpp`. Implemented a clean interface between core and frontend.
+    *   **Parallel Printer:** [DONE] Core emulates parallel interface card using procedural C-style code. All file I/O moved to `PrinterFrontend.cpp`. Implemented a clean interface via `PrinterFrontend_SendChar`.
 3.  **Restore/Verify POST:** [DONE] Verified that Number Munchers and MAD3 boot correctly through the unified map.
 
 ## Phase 11: Clean-Room Hardware Integration Tests
