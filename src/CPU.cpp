@@ -117,9 +117,11 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 #define PUSH(a)   *(mem+regs.sp--) = (a);            \
      if (regs.sp < 0x100)              \
        regs.sp = 0x1FF;
+extern unsigned char IOMap_Dispatch(unsigned short pc, unsigned short addr, unsigned char write, unsigned char d, uint32_t cycles);
+
 #define READ   (                  \
         ((addr & 0xF000) == 0xC000)            \
-        ? IORead[(addr>>4) & 0xFF](regs.pc,addr,0,0,uExecutedCycles) \
+        ? IOMap_Dispatch(regs.pc,addr,0,0,uExecutedCycles) \
       : *(mem+addr)              \
      )
 #define SETNZ(a) {                  \
@@ -133,7 +135,7 @@ static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
        if (page)                \
          *(page+(addr & 0xFF)) = (uint8_t)(a);          \
        else if ((addr & 0xF000) == 0xC000)          \
-         IOWrite[(addr>>4) & 0xFF](regs.pc,addr,1,(uint8_t)(a),uExecutedCycles); \
+         IOMap_Dispatch(regs.pc,addr,1,(uint8_t)(a),uExecutedCycles); \
      }
 
 // ExtraCycles:

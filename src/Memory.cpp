@@ -52,6 +52,20 @@ uint8_t* memwrite[0x100];
 
 iofunction IORead[256];
 iofunction IOWrite[256];
+
+// Centralized hardware I/O dispatch for $C000-$CFFF
+unsigned char IOMap_Dispatch(unsigned short pc, unsigned short addr, unsigned char write, unsigned char d, uint32_t cycles) {
+  if ((addr & 0xFF00) == 0xC000) {
+    uint8_t bucket = (addr >> 4) & 0x0F;
+    if (write) return IOWrite[bucket](pc, addr, write, d, cycles);
+    else return IORead[bucket](pc, addr, write, d, cycles);
+  } else {
+    uint8_t page = (addr >> 8) & 0x0F;
+    if (write) return IOWrite[page * 16](pc, addr, write, d, cycles);
+    else return IORead[page * 16](pc, addr, write, d, cycles);
+  }
+}
+
 static void* SlotParameters[NUM_SLOTS];
 
 static bool lastwriteram = false;
