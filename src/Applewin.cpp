@@ -53,6 +53,106 @@ static double g_fMHz = 1.0;
 static unsigned int g_uModeStepping_Cycles = 0;
 static bool g_uModeStepping_LastGetKey_ScrollLock = false;
 
+// SDL Audio Stream for Frontend
+bool g_bDSAvailable = false;
+SDL_AudioStream *g_audioStream = NULL;
+static double g_fClksPerSpkrSample = 0;
+static bool g_bLastSpkrState = false;
+static double g_nextSampleCycle = 0;
+static int16_t g_monoBuffer[4096];
+static int16_t g_stereoBuffer[8192];
+
+static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+  (void)userdata;
+  (void)total_amount;
+  if (additional_amount <= 0) return;
+
+  int16_t *temp_buf = (int16_t *)SDL_malloc(additional_amount);
+  if (!temp_buf) return;
+
+  int num_samples = additional_amount / (sizeof(int16_t) * 2); // stereo
+  SoundCore_GetSamples(temp_buf, num_samples * 2);
+
+  SDL_PutAudioStreamData(stream, temp_buf, additional_amount);
+  SDL_free(temp_buf);
+}
+
+bool DSInit() {
+  if (g_audioStream) return true;
+
+  SDL_AudioSpec desired;
+  desired.freq = SPKR_SAMPLE_RATE;
+  desired.channels = 2;
+  desired.format = SDL_AUDIO_S16;
+
+  g_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, sdl3AudioCallback, NULL);
+  if (g_audioStream == NULL) {
+    printf("Unable to open SDL audio: %s\n", SDL_GetError());
+    return false;
+  }
+
+  SoundCore_Initialize();
+  SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
+  g_bDSAvailable = true;
+  return true;
+}
+
+void DSUninit() {
+  if (g_audioStream) {
+    SDL_DestroyAudioStream(g_audioStream);
+    g_audioStream = NULL;
+  }
+  SoundCore_Destroy();
+  g_bDSAvailable = false;
+}
+
+void SoundCore_SetFade(int how) {
+  if (g_audioStream) {
+    if (how == FADE_OUT) {
+      SDL_PauseAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
+    } else {
+      SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
+    }
+  }
+}
+
+void Frontend_UpdateSpeaker() {
+  if (soundtype == SOUND_NONE || g_bFullSpeed) {
+    SpkrGetEvents(NULL, 0);
+    return;
+  }
+
+  if (g_fClksPerSpkrSample == 0) {
+    g_fClksPerSpkrSample = g_fCurrentCLK6502 / (double)SPKR_SAMPLE_RATE;
+  }
+
+  if (g_nextSampleCycle == 0) {
+    g_nextSampleCycle = (double)g_nCumulativeCycles;
+    g_bLastSpkrState = SpkrGetCurrentState();
+  }
+
+  SpkrEvent events[1024];
+  int num_events = SpkrGetEvents(events, 1024);
+  int event_idx = 0;
+  int samples_to_gen = 0;
+
+  while (g_nextSampleCycle <= (double)g_nCumulativeCycles && samples_to_gen < 4096) {
+    while (event_idx < num_events && (double)events[event_idx].cycle <= g_nextSampleCycle) {
+      g_bLastSpkrState = events[event_idx].state;
+      event_idx++;
+    }
+    g_monoBuffer[samples_to_gen++] = g_bLastSpkrState ? 0x2000 : 0x0000;
+    g_nextSampleCycle += g_fClksPerSpkrSample;
+  }
+
+  if (samples_to_gen > 0) {
+    for (int i = 0; i < samples_to_gen; ++i) {
+      g_stereoBuffer[i * 2] = g_stereoBuffer[i * 2 + 1] = g_monoBuffer[i];
+    }
+    DSUploadBuffer(g_stereoBuffer, samples_to_gen * 2);
+  }
+}
+
 void ContinueExecution()
 {
   const double fUsecPerSec = 1.e6;
@@ -94,16 +194,12 @@ void ContinueExecution()
   JoyUpdatePosition();
   VideoUpdateVbl(g_dwCyclesThisFrame);
 
-  unsigned int uSpkrActualCyclesExecuted = uActualCyclesExecuted;
-
   bool bModeStepping_WaitTimer = false;
   if (g_state.mode == MODE_STEPPING && !IsDebugSteppingAtFullSpeed())
   {
     g_uModeStepping_Cycles += uActualCyclesExecuted;
     if (g_uModeStepping_Cycles >= uCyclesToExecuteWithFeedback)
     {
-      uSpkrActualCyclesExecuted = g_uModeStepping_Cycles;
-
       g_uModeStepping_Cycles -= uCyclesToExecuteWithFeedback;
       bModeStepping_WaitTimer = true;
     }
@@ -112,7 +208,7 @@ void ContinueExecution()
   // For MODE_STEPPING: do this speaker update periodically
   // - Otherwise kills performance due to sound-buffer lock/unlock for every 6502 opcode!
   if (g_state.mode == MODE_RUNNING || bModeStepping_WaitTimer)
-    SpkrUpdate(uSpkrActualCyclesExecuted);
+    Frontend_UpdateSpeaker();
 
   sg_SSC.CommUpdate(cyclenum);
   PrintUpdate(cyclenum);

@@ -21,78 +21,23 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/* Description: Core sound related functionality
+/* Description: Core sound mixing functionality
  *
- * Author: Tom Charlesworth
+ * Author: Tom Charlesworth, modified for decoupling.
  */
 
-/*  Adaption for Linux+SDL done by beom beotiger. Peace! LLL */
-
-#include <atomic>
 #include "stdafx.h"
-// for Assertion
-#include <assert.h>
-#include <iostream>
-#include <functional>
+#include <vector>
+#include <algorithm>
+#include <atomic>
+#include <cstring>
 
-bool g_bDSAvailable = false;
-SDL_AudioStream *g_audioStream = NULL;
-
-// forward decls    ------------------------
-void SDLSoundDriverUninit();    // for DSInit()
-bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples);  // for DSUninit?
-static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
-
-bool DSInit() {
-  if (g_bDSAvailable) {
-    return true;  // do not need to repeat all process?? --bb
-  }
-  g_bDSAvailable = SDLSoundDriverInit(SPKR_SAMPLE_RATE, 1024);// I just do not know what number of samples use.
-  return g_bDSAvailable;  //
-}
-
-void DSUninit() {
-  if (!g_bDSAvailable) {
-    return;
-  }
-  SDLSoundDriverUninit();  // using code from OpenMSX
-}
-
-
-void SoundCore_SetFade(int how) {
-  if (how == FADE_OUT) {
-    SDL_PauseAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));  //stop playing sound
-  } else {
-    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));  //start playing
-  }
-}
-
-//  Code from OpenMSX  (http://openmsx.sourceforge.net)
-
-void mute();
-
-void unmute();
-
-unsigned getFrequency();
-
-double uploadBuffer(short *buffer, unsigned len);
-
-void reInit();
-
-unsigned getBufferFilled();
-
-unsigned getBufferFree();
-
-unsigned frequency;
-
+// Core buffers for mixing
 struct sample_buffer {
-  typedef int16_t sample_t;
-  typedef std::function<sample_t(sample_t,sample_t)> mix_func_t;
-
-  std::vector<sample_t> buffer;
+  std::vector<int16_t> buffer;
   std::atomic<size_t> read_index;
   std::atomic<size_t> write_index;
-  sample_t last_value;
+  int16_t last_value;
 
   sample_buffer(size_t size) : buffer(size), read_index(0), write_index(0), last_value(0) {}
 
@@ -100,207 +45,122 @@ struct sample_buffer {
     std::fill(buffer.begin(), buffer.end(), 0);
     read_index = 0;
     write_index = 0;
+    last_value = 0;
   }
 
   size_t get_filled() const {
     size_t r = read_index.load(std::memory_order_relaxed);
     size_t w = write_index.load(std::memory_order_relaxed);
-    size_t result;
-    if (r <= w) {
-      result = w - r;
-    } else {
-      result = buffer.size() + w - r;
-    }
-    if (result >= buffer.size()) result = buffer.size() - 1; // Prevent crash if slightly out of sync
-    return result;
+    if (r <= w) return w - r;
+    return buffer.size() + w - r;
   }
 
   size_t get_free() const {
-    auto result = buffer.size() - 2 - get_filled();
-    if (result >= buffer.size()) result = 0;
-    return result;
+    size_t filled = get_filled();
+    if (filled >= buffer.size() - 1) return 0;
+    return buffer.size() - 1 - filled;
   }
 
-  void upload(sample_t *src_buffer, size_t len);
+  void upload(const int16_t *src, size_t len) {
+    size_t free = get_free();
+    size_t num = (len < free) ? len : free;
+    if (num == 0) return;
 
-  void drain_to(sample_t *stream, size_t len);
-  void mix_into(sample_t *stream, size_t len,
-                mix_func_t func = std::plus<sample_t>());
+    size_t w = write_index.load(std::memory_order_relaxed);
+    if (w + num < buffer.size()) {
+      memcpy(&buffer[w], src, num * sizeof(int16_t));
+      write_index.store(w + num, std::memory_order_release);
+    } else {
+      size_t len1 = buffer.size() - w;
+      memcpy(&buffer[w], src, len1 * sizeof(int16_t));
+      size_t len2 = num - len1;
+      memcpy(&buffer[0], src + len1, len2 * sizeof(int16_t));
+      write_index.store(len2, std::memory_order_release);
+    }
+  }
+
+  void drain_to(int16_t *dest, size_t len, bool mix) {
+    size_t available = get_filled();
+    size_t num = (len < available) ? len : available;
+    
+    size_t r = read_index.load(std::memory_order_relaxed);
+    auto process = [&](const int16_t* src, size_t count, size_t offset) {
+      if (mix) {
+        for (size_t i = 0; i < count; ++i) {
+          int32_t val = (int32_t)dest[offset + i] + (int32_t)src[i];
+          if (val > 32767) val = 32767;
+          else if (val < -32768) val = -32768;
+          dest[offset + i] = (int16_t)val;
+        }
+      } else {
+        memcpy(dest + offset, src, count * sizeof(int16_t));
+      }
+    };
+
+    if (num > 0) {
+      if (r + num < buffer.size()) {
+        process(&buffer[r], num, 0);
+        r += num;
+      } else {
+        size_t len1 = buffer.size() - r;
+        process(&buffer[r], len1, 0);
+        size_t len2 = num - len1;
+        process(&buffer[0], len2, len1);
+        r = len2;
+      }
+      read_index.store(r, std::memory_order_release);
+      last_value = (r > 0) ? buffer[r - 1] : buffer.back();
+    }
+
+    // Fill remaining with last_value
+    if (num < len) {
+        if (mix) {
+            for (size_t i = num; i < len; ++i) {
+                int32_t val = (int32_t)dest[i] + (int32_t)last_value;
+                if (val > 32767) val = 32767;
+                else if (val < -32768) val = -32768;
+                dest[i] = (int16_t)val;
+            }
+        } else {
+            for (size_t i = num; i < len; ++i) dest[i] = last_value;
+        }
+    }
+  }
 };
 
-sample_buffer *mix_buffer;
-sample_buffer *mock_buffer;
+static sample_buffer *g_spkrMixBuffer = nullptr;
+static sample_buffer *g_mockMixBuffer = nullptr;
 
-bool muted;
-
-
-//  Main part
-bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
-  SDL_AudioSpec desired;
-  desired.freq = wantedFreq;
-  desired.channels = 2; // stereo(2)  or mono(1)
-  desired.format = SDL_AUDIO_S16;
-
-  g_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, sdl3AudioCallback, NULL);
-  if (g_audioStream == NULL) {
-    printf("Unable to open SDL audio: %s", SDL_GetError());
-    return false;
-  }
-  frequency = wantedFreq;
-
-  unsigned bufferSize;
-  unsigned bufferIdxMask;
-  bufferSize = 16 * wantedSamples;
-  // GPH NOTE: bufferSize needs to be power of 2 for quick
-  // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
-  // and because of the high volume of work against mixBuffer and mockBuffer, that is
-  // undesirable.
-  bufferIdxMask = bufferSize - 1;
-  printf("bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
-
-  mix_buffer = new sample_buffer(bufferSize);  // buffer for Apple2 speakers
-  mock_buffer = new sample_buffer(bufferSize);  // buffer for Mockingboard
-
-  reInit();
-
-  SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
-
-  printf("Freq=%d,format=%d,channels=%d\n", desired.freq, desired.format, desired.channels);
-  printf("samples=%d,bufferSize=%d\n", wantedSamples, bufferSize);
-
-  return true;
+void SoundCore_Initialize() {
+  if (!g_spkrMixBuffer) g_spkrMixBuffer = new sample_buffer(16384);
+  if (!g_mockMixBuffer) g_mockMixBuffer = new sample_buffer(16384);
+  g_spkrMixBuffer->reinit();
+  g_mockMixBuffer->reinit();
 }
 
-void SDLSoundDriverUninit() {
-  delete mix_buffer;
-  delete mock_buffer;
-  SDL_DestroyAudioStream(g_audioStream);
-  g_audioStream = NULL;
+void SoundCore_Destroy() {
+  delete g_spkrMixBuffer;
+  delete g_mockMixBuffer;
+  g_spkrMixBuffer = nullptr;
+  g_mockMixBuffer = nullptr;
 }
-
-
-void reInit() {
-  mix_buffer->reinit();
-  mock_buffer->reinit();
-}
-
-void mute() {
-  if (!muted) {
-    muted = true;
-    SDL_PauseAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
-  }
-}
-
-void unmute() {
-  if (muted) {
-    muted = false;
-    reInit();
-    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(g_audioStream));
-  }
-}
-
-unsigned getFrequency() {
-  return frequency;
-}
-
-
-// GPH this is called on IRQ to refresh the audio at regular intervals.
-static void SDLCALL sdl3AudioCallback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
-  (void)total_amount;
-  (void)userdata;
-  if (additional_amount <= 0) return;
-
-  int16_t *temp_buf = (int16_t *)SDL_malloc(additional_amount);
-  if (!temp_buf) return;
-
-  int num_samples = additional_amount / sizeof(int16_t);
-
-  mix_buffer->drain_to(temp_buf, num_samples);
-#ifdef MOCKINGBOARD
-  mock_buffer->mix_into(temp_buf, num_samples);
-#endif
-
-  SDL_PutAudioStreamData(stream, temp_buf, additional_amount);
-  SDL_free(temp_buf);
-}
-
-
-void sample_buffer::drain_to(sample_t *stream, size_t len) {
-  const auto available = get_filled();
-  assert((len & 1) == 0); // stereo
-
-  const auto num = std::min(len, available);
-  if (num > 0) {
-    mix_into(stream, num, [](const sample_t& ignored, const sample_t& new_value) {
-  (void)ignored;
-      return new_value;
-    });
-  }
-
-  // Fill the remainer of the buffer with last value to prevent potential
-  // clicks and pops.
-  if (available > 0) { // update last_value
-    last_value = read_index > 0 ? buffer[read_index-1] : buffer.back();
-  }
-  std::fill_n(stream+num, len-num, last_value);
-}
-
-
-void sample_buffer::mix_into(sample_t *stream, size_t len,
-                             mix_func_t mix_func) {
-  // And add Mockingboard sound data to the stream
-  // GPH: We are going to add the Mockingboard and speaker samples.
-  // Their independent maximum amplitudes have been selected to eliminate
-  // any possibility of wave peak clipping.  This speeds up the timing-sensitive
-  // operation here (since we're in an IRQ handler) and eliminates the
-  // need for a potentially expensive divide.
-  const auto available = get_filled();
-  const auto num = std::min(len, available);
-  if (num < 1) {
-    return;
-  }
-
-  if ((read_index + num) < buffer.size()) { // No wrap around: straight copy
-    std::transform(stream, stream+num, buffer.begin()+read_index,
-                   stream, mix_func);
-    read_index += num;
-  } else { // handle wrap around
-    const auto len1 = buffer.size() - read_index;
-    if (len1) {
-      std::transform(stream, stream+len1, buffer.begin()+read_index,
-                     stream, mix_func);
-    }
-
-    const auto len2 = num - len1;
-    read_index = len2;
-    if (len2) {
-      std::transform(stream+len1, stream+len1+len2, buffer.begin(),
-                     stream+len1, mix_func);
-    }
-  }
-}
-
 
 void DSUploadBuffer(short *buffer, unsigned len) {
-  mix_buffer->upload(buffer, len);
+  if (g_spkrMixBuffer) g_spkrMixBuffer->upload(buffer, len);
 }
 
-void sample_buffer::upload(sample_t *src_buffer, size_t len) {
-  const auto num = std::min(len, get_free()); // ignore overrun (drop samples)
-  if ((write_index + num) < buffer.size()) {
-    std::copy_n(src_buffer, num, buffer.begin()+write_index);
-    write_index += num;
-  } else {
-    const auto len1 = buffer.size() - write_index;
-    std::copy_n(src_buffer, len1, buffer.begin()+write_index);
-    const auto len2 = num - len1;
-    std::copy_n(src_buffer+len1, len2, buffer.begin());
-    write_index = len2;
-  }
-}
-
-// Uploading sound data for Mockingboard buffer
-// GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
 void DSUploadMockBuffer(short *buffer, unsigned len) {
-  mock_buffer->upload(buffer, len);
+  if (g_mockMixBuffer) g_mockMixBuffer->upload(buffer, len);
+}
+
+void SoundCore_GetSamples(int16_t *out, size_t num_samples) {
+  if (!g_spkrMixBuffer || !g_mockMixBuffer) {
+    memset(out, 0, num_samples * sizeof(int16_t));
+    return;
+  }
+  
+  // Speaker is primary (not mixed yet)
+  g_spkrMixBuffer->drain_to(out, num_samples, false);
+  // Mockingboard is mixed into Speaker
+  g_mockMixBuffer->drain_to(out, num_samples, true);
 }
