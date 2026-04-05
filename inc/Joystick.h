@@ -1,4 +1,5 @@
 #include <cstdint>
+#include "Common.h"
 #pragma once
 
 enum JOYNUM {
@@ -21,19 +22,13 @@ extern unsigned int joyexitbutton0;
 extern unsigned int joyexitbutton1;
 extern bool joyquitevent;
 
-void CheckJoyExit();
-
 void JoyInitialize();
 
 void JoyShutDown();
 
-void JoyUpdateTrimViaKey(SDL_Keycode);
-
-bool JoyProcessKey(SDL_Keycode, bool, bool, bool);
-
 void JoyReset();
 
-void JoySetButton(eBUTTON, eBUTTONSTATE);
+void JoySetButton(eBUTTON number, eBUTTONSTATE down);
 
 bool JoySetEmulationType(unsigned int, int);
 
@@ -46,6 +41,10 @@ bool JoyUsingMouse();
 void JoySetTrim(short nValue, bool bAxisX);
 
 short JoyGetTrim(bool bAxisX);
+
+void JoySetRawPosition(int joy, int x, int y);
+
+void JoySetRawButton(int button_idx, bool down);
 
 unsigned int JoyGetSnapshot(SS_IO_Joystick *pSS);
 
