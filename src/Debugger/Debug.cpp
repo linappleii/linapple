@@ -4244,7 +4244,7 @@ Update_t CmdMemoryLoad (int nArgs)
 
   if (nArgs >= 5)
   {
-    if (!g_aArgs[iArgBank].bType & TYPE_ADDRESS || g_aArgs[iArgColon].eToken != TOKEN_COLON)
+    if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS) || g_aArgs[iArgColon].eToken != TOKEN_COLON)
       return Help_Arg_1( CMD_MEMORY_LOAD );
 
     nBank = g_aArgs[iArgBank].nValue;
@@ -4642,7 +4642,7 @@ Update_t CmdMemorySave (int nArgs)
 
     if (nArgs > 5)
     {
-      if (!g_aArgs[iArgBank].bType & TYPE_ADDRESS || g_aArgs[iArgColon].eToken != TOKEN_COLON)
+      if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS) || g_aArgs[iArgColon].eToken != TOKEN_COLON)
         return Help_Arg_1( CMD_MEMORY_SAVE );
 
       nBank = g_aArgs[iArgBank].nValue;

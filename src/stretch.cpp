@@ -588,16 +588,17 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
 
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r) {
   (void)a_factor;
-  SDL_Rect r2;
   int i;
   SDL_Color mycolors[256];
   SDL_Color *colors;
 
   if (r == 0) {
+    SDL_Rect r2;
     r2.x = 0;
     r2.y = 0;
     r2.w = surface->w;
     r2.h = surface->h;
+    r = &r2;
   }
 
   if (SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel != 1) {

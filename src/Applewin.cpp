@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[])
         break;
 
       case 'v':
-        Logger::SetVerbosity(LogLevel::LL_Perf);
+        Logger::SetVerbosity(LogLevel::Perf);
         break;
 
       #ifdef RAMWORKS
@@ -1116,7 +1116,7 @@ int main(int argc, char *argv[])
         } else if (!strcmp(optname, "test-65c02")) {
           g_Apple2Type = A2TYPE_APPLE2EEHANCED;
         } else if (!strcmp(optname, "verbose")) {
-          Logger::SetVerbosity(LogLevel::LL_Perf);
+          Logger::SetVerbosity(LogLevel::Perf);
         } else {
           printf("Unknown option '%s'.\n\n", optname);
           PrintHelp();
