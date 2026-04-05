@@ -713,7 +713,7 @@ Update_t CmdBenchmarkStop (int nArgs)
   unsigned int currtime = SDL_GetTicks();
   while ((extbench = SDL_GetTicks()) != currtime)
     ; // intentional busy-waiting
-  KeybQueueKeypress(' ' ,ASCII);
+  KeybQueueKeypress(' ');
 
   return UPDATE_ALL; // 0;
 }
@@ -2044,8 +2044,8 @@ Update_t CmdUnassemble (int nArgs)
 //===========================================================================
 Update_t CmdKey (int nArgs)
 {
-  KeybQueueKeypress(
-    nArgs ? g_aArgs[1].nValue ? g_aArgs[1].nValue : g_aArgs[1].sArg[0] : ' ', ASCII); // FIXME!!!
+  uint8_t code = nArgs ? (g_aArgs[1].nValue ? (uint8_t)g_aArgs[1].nValue : (uint8_t)g_aArgs[1].sArg[0]) : (uint8_t)' ';
+  KeybQueueKeypress(code);
   return UPDATE_CONSOLE_DISPLAY;
 }
 
@@ -9467,7 +9467,6 @@ void DebuggerMouseClick( int x, int y )
   if (g_state.mode != MODE_DEBUG)
     return;
 
-  KeybUpdateCtrlShiftStatus();
   int iAltCtrlShift  = 0;
   iAltCtrlShift |= KeybGetAltStatus()   ? 1<<0 : 0;
   iAltCtrlShift |= KeybGetCtrlStatus()  ? 1<<1 : 0;

@@ -582,7 +582,6 @@ unsigned char JoyReadButton(unsigned short, unsigned short address, unsigned cha
       break;
 
     case 0x63:
-      KeybUpdateCtrlShiftStatus();
       pressed = (buttonlatch[2] || joybutton[2] || setbutton[2] || (g_bShiftKey));// SHIFT is PRESSED
       buttonlatch[2] = 0;
       break;
