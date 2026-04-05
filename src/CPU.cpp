@@ -705,7 +705,7 @@ static inline void Fetch(uint8_t &iOpcode, uint32_t uExecutedCycles)
   const uint16_t PC = regs.pc;
   g_uInternalExecutedCycles = uExecutedCycles;
 
-  iOpcode = ((PC & 0xF000) == 0xC000) ? IORead[(PC >> 4) & 0xFF](PC, PC, 0, 0,
+  iOpcode = ((PC & 0xF000) == 0xC000) ? IOMap_Dispatch(PC, PC, 0, 0,
                                                                  uExecutedCycles)  // Fetch opcode from I/O memory, but params are still from mem[]
                                       : *(mem + PC);
 

@@ -50,19 +50,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 static uint8_t* memshadow[0x100];
 uint8_t* memwrite[0x100];
 
-iofunction IORead[256];
-iofunction IOWrite[256];
+iofunction IORead[512];
+iofunction IOWrite[512];
 
-// Centralized hardware I/O dispatch for $C000-$CFFF
 unsigned char IOMap_Dispatch(unsigned short pc, unsigned short addr, unsigned char write, unsigned char d, uint32_t cycles) {
   if ((addr & 0xFF00) == 0xC000) {
-    uint8_t bucket = (addr >> 4) & 0x0F;
-    if (write) return IOWrite[bucket](pc, addr, write, d, cycles);
-    else return IORead[bucket](pc, addr, write, d, cycles);
+    uint8_t index = addr & 0xFF;
+    if (write) return IOWrite[index](pc, addr, write, d, cycles);
+    else return IORead[index](pc, addr, write, d, cycles);
   } else {
     uint8_t page = (addr >> 8) & 0x0F;
-    if (write) return IOWrite[page * 16](pc, addr, write, d, cycles);
-    else return IORead[page * 16](pc, addr, write, d, cycles);
+    if (write) return IOWrite[0x100 + page](pc, addr, write, d, cycles);
+    else return IORead[0x100 + page](pc, addr, write, d, cycles);
   }
 }
 
@@ -542,21 +541,24 @@ static unsigned char g_bmSlotInit = 0;
 
 static void InitIoHandlers() {
   g_bmSlotInit = 0;
-  unsigned int i = 0;
+  unsigned int i;
 
-  for (; i < 8; i++) { // C00x..C07x
-    IORead[i] = IORead_C0xx[i];
-    IOWrite[i] = IOWrite_C0xx[i];
-  }
-
-  for (; i < 16; i++) { // C08x..C0Fx
+  // Clear all handlers
+  for (i = 0; i < 512; i++) {
     IORead[i] = IO_Null;
     IOWrite[i] = IO_Null;
   }
 
-  for (; i < 256; i++) { // C10x..CFFx
-    IORead[i] = IORead_Cxxx;
-    IOWrite[i] = IOWrite_Cxxx;
+  // $C000..$C07F: 1:1 mapping to existing 16-byte buckets
+  for (i = 0; i < 0x80; i++) {
+    IORead[i] = IORead_C0xx[i >> 4];
+    IOWrite[i] = IOWrite_C0xx[i >> 4];
+  }
+
+  // $C1..$CF: Page-based multiplexer
+  for (i = 1; i < 16; i++) {
+    IORead[0x100 + i] = IORead_Cxxx;
+    IOWrite[0x100 + i] = IOWrite_Cxxx;
   }
 
   IO_SELECT = 0;
@@ -576,31 +578,20 @@ void RegisterIoHandler(unsigned int uSlot, iofunction IOReadC0, iofunction IOWri
   g_bmSlotInit |= 1 << uSlot;
   SlotParameters[uSlot] = lpSlotParameter;
 
-  IORead[uSlot + 8] = IOReadC0;
-  IOWrite[uSlot + 8] = IOWriteC0;
-
-  if (uSlot == 0) {
-    // Don't trash C0xx handlers
-    return;
-  }
-
-  if (IOReadCx == NULL) {
-    IOReadCx = IORead_Cxxx;
-  }
-  if (IOWriteCx == NULL) {
-    IOWriteCx = IOWrite_Cxxx;
-  }
-
+  uint16_t index = 0x80 + (uSlot << 4);
   for (unsigned int i = 0; i < 16; i++) {
-    IORead[uSlot * 16 + i] = IOReadCx;
-    IOWrite[uSlot * 16 + i] = IOWriteCx;
+    IORead[index + i] = IOReadC0;
+    IOWrite[index + i] = IOWriteC0;
   }
 
-  // What about [$C80x..$CFEx]? - Do any cards use this as I/O memory?
-  // GPH: No.  That is language ROM for use by peripherals.  Writing to
-  // $CFFF switches out the peripheral whose ROM is mapped to this space,
-  // according to http://mirrors.apple2.org.za/apple.cabi.net/Languages.Programming/MemoryMap.IIe.64K.128K.txt
-  // By default I believe it's the 80-column + 64k RAM card usually in Slot 3.
+  if (uSlot == 0) return;
+
+  if (IOReadCx == NULL) IOReadCx = IORead_Cxxx;
+  if (IOWriteCx == NULL) IOWriteCx = IOWrite_Cxxx;
+
+  IORead[0x100 + uSlot] = IOReadCx;
+  IOWrite[0x100 + uSlot] = IOWriteCx;
+
   ExpansionRom[uSlot] = pExpansionRom;
 }
 //===========================================================================

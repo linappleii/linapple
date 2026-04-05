@@ -32,8 +32,8 @@ enum MemoryInitPattern_e {
 };
 extern MemoryInitPattern_e g_eMemoryInitPattern;
 
-extern iofunction IORead[256];
-extern iofunction IOWrite[256];
+extern iofunction IORead[512];
+extern iofunction IOWrite[512];
 extern uint8_t* memwrite[0x100];
 extern uint8_t* mem;
 extern uint8_t* memdirty;

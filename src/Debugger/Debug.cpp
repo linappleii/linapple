@@ -2057,7 +2057,7 @@ Update_t CmdIn (int nArgs)
 
   unsigned short nAddress = g_aArgs[1].nValue;
 
-  IORead[ (nAddress>>4) & 0xF ](regs.pc, nAddress & 0xFF, 0, 0, 0); // g_aArgs[1].nValue
+  IOMap_Dispatch(regs.pc, nAddress & 0xFFFF, 0, 0, 0);
 
   return UPDATE_CONSOLE_DISPLAY; // TODO: Verify // 1
 }
