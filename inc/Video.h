@@ -2,6 +2,8 @@
 #include <atomic>
 #pragma once
 
+struct SS_IO_Video;
+
 // Types
 enum VIDEOTYPE {
   VT_MONO_CUSTOM,
@@ -135,12 +137,48 @@ extern pthread_mutex_t video_draw_mutex; // drawing mutex for writing to SDL sur
 extern std::atomic<bool> g_bFrameReady;
 
 // Surfaces for drawing
-extern SDL_Surface *g_hLogoBitmap;
-extern SDL_Surface *g_hStatusSurface;  // status panel
+struct VideoColor {
+  uint8_t r, g, b, a;
+};
 
-extern SDL_Surface *g_hSourceBitmap;
-extern SDL_Surface *g_hDeviceBitmap;
-extern SDL_Surface *g_origscreen; // reserved for stretching
+struct VideoRect {
+  int x, y, w, h;
+};
+
+struct VideoSurface {
+  uint8_t* pixels;
+  int w, h, pitch;
+  int bpp; // bytes per pixel: 1 for INDEX8, 4 for RGB32
+  VideoColor palette[256];
+};
+
+extern VideoSurface *g_hLogoBitmap;
+extern VideoSurface *g_hStatusSurface;  // status panel
+
+extern VideoSurface *g_hSourceBitmap;
+extern VideoSurface *g_hDeviceBitmap;
+extern VideoSurface *g_origscreen; // reserved for stretching
+
+VideoSurface* VideoCreateSurface(int w, int h, int bpp);
+void VideoDestroySurface(VideoSurface* s);
+VideoSurface* VideoLoadXPM(const char * const *xpm);
+
+#include <SDL3/SDL.h>
+inline VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s) {
+    VideoSurface vs;
+    vs.pixels = (uint8_t*)s->pixels;
+    vs.w = s->w;
+    vs.h = s->h;
+    vs.pitch = s->pitch;
+    vs.bpp = 4; // Assuming RGB32
+    if (s->format == SDL_PIXELFORMAT_INDEX8) {
+        vs.bpp = 1;
+    }
+    return vs;
+}
+
+uint32_t* VideoGetOutputBuffer();
+VideoColor* VideoGetOutputPalette();
 // Prototypes
 
 void CreateColorMixMap();

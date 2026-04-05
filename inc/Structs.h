@@ -60,7 +60,7 @@ typedef struct {
   uint64_t g_nSpkrLastCycle;
 } SS_IO_Speaker;
 
-typedef struct {
+typedef struct SS_IO_Video {
   bool bAltCharSet;  // charoffs
   unsigned int dwVidMode;
 } SS_IO_Video;

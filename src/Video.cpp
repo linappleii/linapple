@@ -27,7 +27,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include <iostream>
-#include <SDL3_image/SDL_image.h>
 #include "stdafx.h"
 #include "asset.h"
 #include <pthread.h>
@@ -43,29 +42,75 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "../build/obj/charset40_french.xpm"
 #include "../build/obj/charset40_german.xpm"
 
-/* reference: technote tn-iigs-063 "Master Color Values"
+static uint32_t g_pVideoOutput[560 * 384];
 
-   Color  Color Register LR HR  DHR Master Color R,G,B
-   Name       Value      #  #   #      Value
-   ----------------------------------------------------
-   Black       0         0  0,4 0      $0000    (0,0,0) -> (00,00,00) Windows
-   (Magenta) Deep Red    1         1      1      $0D03    (D,0,3) -> (D0,00,30) Custom
-   Dark Blue   2         2      8      $0009    (0,0,9) -> (00,00,80) Windows
-   (Violet) Purple      3         3  2   9      $0D2D    (D,2,D) -> (FF,00,FF) Windows
-   Dark Green  4         4      4      $0072    (0,7,2) -> (00,80,00) Windows
-   (Gray 1) Dark Gray   5         5      5      $0555    (5,5,5) -> (80,80,80) Windows
-   (Blue) Medium Blue 6         6  6   C      $022F    (2,2,F) -> (00,00,FF) Windows
-   (Cyan) Light Blue  7         7      D      $06AF    (6,A,F) -> (60,A0,FF) Custom
-   Brown       8         8      2      $0850    (8,5,0) -> (80,50,00) Custom
-   Orange      9         9  5   3      $0F60    (F,6,0) -> (FF,80,00) Custom (modified to match better with the other Hi-Res Colors)
-   (Gray 2) Light Gray  A         A      A      $0AAA    (A,A,A) -> (C0,C0,C0) Windows
-   Pink        B         B      B      $0F98    (F,9,8) -> (FF,90,80) Custom
-   (Green) Light Green C         C  1   6      $01D0    (1,D,0) -> (00,FF,00) Windows
-   Yellow      D         D      7      $0FF0    (F,F,0) -> (FF,FF,00) Windows
-   (Aqua) Aquamarine  E         E      E      $04F9    (4,F,9) -> (40,FF,90) Custom
-   White       F         F  3,7 F      $0FFF    (F,F,F) -> (FF,FF,FF) Windows
+uint32_t* VideoGetOutputBuffer() {
+  return g_pVideoOutput;
+}
 
-LR: Lo-Res   HR: Hi-Res   DHR: Double Hi-Res */
+VideoSurface* VideoCreateSurface(int w, int h, int bpp) {
+  VideoSurface* s = (VideoSurface*)calloc(1, sizeof(VideoSurface));
+  s->w = w;
+  s->h = h;
+  s->bpp = bpp;
+  s->pitch = w * bpp;
+  s->pixels = (uint8_t*)calloc(1, s->pitch * h);
+  return s;
+}
+
+void VideoDestroySurface(VideoSurface* s) {
+  if (s) {
+    free(s->pixels);
+    free(s);
+  }
+}
+
+static uint8_t hex_to_int(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  return 0;
+}
+
+VideoSurface* VideoLoadXPM(const char * const *xpm) {
+  int w, h, colors, cpp;
+  if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) return NULL;
+  if (cpp != 1) return NULL; // Only support 1 char per pixel for simplicity
+
+  VideoSurface* s = VideoCreateSurface(w, h, 1);
+  struct { char c; VideoColor color; } palette_map[256];
+  for (int i = 0; i < colors; ++i) {
+    char c;
+    char color_str[16];
+    if (sscanf(xpm[i + 1], "%c c %s", &c, color_str) == 2) {
+      palette_map[i].c = c;
+      if (color_str[0] == '#') {
+          palette_map[i].color.r = (hex_to_int(color_str[1]) << 4) | hex_to_int(color_str[2]);
+          palette_map[i].color.g = (hex_to_int(color_str[3]) << 4) | hex_to_int(color_str[4]);
+          palette_map[i].color.b = (hex_to_int(color_str[5]) << 4) | hex_to_int(color_str[6]);
+      } else if (strcmp(color_str, "None") == 0) {
+          palette_map[i].color = {0, 0, 0, 0};
+      } else {
+          palette_map[i].color = {255, 255, 255, 255}; // Default to white
+      }
+      s->palette[i] = palette_map[i].color;
+    }
+  }
+
+  for (int y = 0; y < h; ++y) {
+    const char* line = xpm[1 + colors + y];
+    for (int x = 0; x < w; ++x) {
+      char c = line[x];
+      for (int i = 0; i < colors; ++i) {
+        if (palette_map[i].c == c) {
+          s->pixels[y * s->pitch + x] = i;
+          break;
+        }
+      }
+    }
+  }
+  return s;
+}
 
 #define GetRValue(rgb)      ((unsigned char)(rgb))
 #define GetGValue(rgb)      ((unsigned char)(((unsigned short)(rgb)) >> 8))
@@ -98,28 +143,16 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 
 #define  SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
 { \
-  srcrect.x = SRC_X; \
-  srcrect.y = SRC_Y; \
-  srcrect.w = SRC_W; \
-  srcrect.h = SRC_H; \
-  dstrect.x = DST_X; \
-  dstrect.y = DST_Y; \
-  dstrect.w = DST_W; \
-  dstrect.h = DST_H; \
-  SDL_BlitSurfaceScaled(SRC, &srcrect, DST, &dstrect, SDL_SCALEMODE_NEAREST);\
+  VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H}; \
+  VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H}; \
+  VideoSoftStretch(SRC, &srcrect, DST, &dstrect);\
 }
 
 #define  SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
 { \
-  srcrect.x = SRC_X; \
-  srcrect.y = SRC_Y; \
-  srcrect.w = SRC_W; \
-  srcrect.h = SRC_H; \
-  dstrect.x = DST_X; \
-  dstrect.y = DST_Y; \
-  dstrect.w = DST_W; \
-  dstrect.h = DST_H; \
-  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);\
+  VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H}; \
+  VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H}; \
+  VideoSoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);\
 }
 
 #define  SETSOURCEPIXEL(x, y, c)  g_aSourceStartofLine[(y)][(x)] = (c)
@@ -151,27 +184,31 @@ typedef bool (*UpdateFunc_t)(int, int, int, int, int);
 static unsigned char celldirty[40][32];
 static unsigned int customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
-SDL_Surface *g_hDeviceBitmap;
+VideoSurface *g_hDeviceBitmap;
 static uint8_t* framebufferbits;
-SDL_Color framebufferinfo[256];
+VideoColor framebufferinfo[256];
+
+VideoColor* VideoGetOutputPalette() {
+  return framebufferinfo;
+}
 
 const int MAX_FRAME_Y = 384;
 static uint8_t* frameoffsettable[384];
 static uint8_t* g_pHiresBank1;
 static uint8_t* g_pHiresBank0;
 
-SDL_Surface *g_hLogoBitmap = NULL;
-SDL_Surface *charset40 = NULL;
+VideoSurface *g_hLogoBitmap = NULL;
+VideoSurface *charset40 = NULL;
 int g_MultiLanguageCharset = false;
 
-SDL_Surface *g_hStatusSurface = NULL;
+VideoSurface *g_hStatusSurface = NULL;
 int g_iStatusCycle = 0;
 
-SDL_Surface *g_origscreen = NULL;
-SDL_Surface *g_hSourceBitmap = NULL;
+VideoSurface *g_origscreen = NULL;
+VideoSurface *g_hSourceBitmap = NULL;
 
 static uint8_t* g_pSourcePixels;
-SDL_Color g_pSourceHeader[256];
+VideoColor g_pSourceHeader[256];
 const int MAX_SOURCE_Y = 512*2;
 static uint8_t* g_aSourceStartofLine[MAX_SOURCE_Y];
 static uint8_t* g_pTextBank1;
@@ -216,8 +253,8 @@ void DrawLoResSource();
 void DrawMonoDHiResSource();
 void DrawMonoHiResSource();
 void DrawMonoLoResSource();
-void DrawMonoTextSource(SDL_Surface *dc);
-void DrawTextSource(SDL_Surface *dc);
+void DrawMonoTextSource(VideoSurface *dc);
+void DrawTextSource(VideoSurface *dc);
 
 // Multithreaded
 
@@ -274,7 +311,7 @@ void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
 }
 
 void CreateIdentityPalette() {
-  memset(framebufferinfo, 0, 256 * sizeof(SDL_Color));
+  memset(framebufferinfo, 0, 256 * sizeof(VideoColor));
   // SET FRAME BUFFER TABLE ENTRIES TO CUSTOM COLORS
   SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
   SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
@@ -296,8 +333,8 @@ void CreateIdentityPalette() {
   SETFRAMECOLOR(HGR_PURPLE, 0x60, 0x50, 0xE0);
   SETFRAMECOLOR(HGR_PINK, 0xD0, 0x40, 0xA0);
 
-  SETFRAMECOLOR(MONOCHROME_CUSTOM, GetBValue(monochrome), GetGValue(monochrome),
-                GetRValue(monochrome));
+  SETFRAMECOLOR(MONOCHROME_CUSTOM, GetRValue(monochrome), GetGValue(monochrome),
+                GetBValue(monochrome));
 
   SETFRAMECOLOR(MONOCHROME_AMBER, 0xFF, 0x80, 0x00);
   SETFRAMECOLOR(MONOCHROME_GREEN, 0x00, 0xC0, 0x00);
@@ -340,59 +377,49 @@ void CreateIdentityPalette() {
 void CreateDIBSections() {
   pthread_mutex_lock(&video_draw_mutex);
 
-  memcpy(g_pSourceHeader,  framebufferinfo,  256 * sizeof(SDL_Color));
+  memcpy(g_pSourceHeader,  framebufferinfo,  256 * sizeof(VideoColor));
 
   // CREATE THE FRAME BUFFER DIB SECTION
   if (g_hDeviceBitmap) {
-    SDL_DestroySurface(g_hDeviceBitmap);
+    VideoDestroySurface(g_hDeviceBitmap);
   }
-  g_hDeviceBitmap = SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_INDEX8);
+  g_hDeviceBitmap = VideoCreateSurface(560, 384, 1);
 
   if (g_origscreen) {
-    SDL_DestroySurface(g_origscreen);
+    VideoDestroySurface(g_origscreen);
   }
-  g_origscreen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_INDEX8);
+  g_origscreen = VideoCreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, 1);
 
   if (g_hDeviceBitmap == NULL || g_origscreen == NULL) {
-    fprintf(stderr, "g_hDeviceBitmap or g_origscreen was not created: %s\n", SDL_GetError());
+    fprintf(stderr, "g_hDeviceBitmap or g_origscreen was not created\n");
     pthread_mutex_unlock(&video_draw_mutex);
     return;
   }
-
-  SDL_CreateSurfacePalette(g_hDeviceBitmap);
-  SDL_CreateSurfacePalette(g_origscreen);
 
   framebufferbits = (uint8_t*) g_hDeviceBitmap->pixels;
-  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hDeviceBitmap), g_pSourceHeader, 0, 256);
-  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_origscreen), g_pSourceHeader, 0, 256);
+  memcpy(g_hDeviceBitmap->palette, g_pSourceHeader, 256 * sizeof(VideoColor));
+  memcpy(g_origscreen->palette, g_pSourceHeader, 256 * sizeof(VideoColor));
 
   if (g_hStatusSurface) {
-    SDL_DestroySurface(g_hStatusSurface);
+    VideoDestroySurface(g_hStatusSurface);
   }
-  g_hStatusSurface = SDL_CreateSurface(STATUS_PANEL_W, STATUS_PANEL_H, SDL_PIXELFORMAT_INDEX8);
+  g_hStatusSurface = VideoCreateSurface(STATUS_PANEL_W, STATUS_PANEL_H, 1);
   if (g_hStatusSurface == NULL) {
-    fprintf(stderr, "g_hStatusSurface was not created: %s\n", SDL_GetError());
+    fprintf(stderr, "g_hStatusSurface was not created\n");
     pthread_mutex_unlock(&video_draw_mutex);
     return;
   }
-  SDL_CreateSurfacePalette(g_hStatusSurface);
-  if (SDL_GetSurfacePalette(g_hStatusSurface)) {
-    SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hStatusSurface), g_pSourceHeader, 0, 256);
-  }
+  memcpy(g_hStatusSurface->palette, g_pSourceHeader, 256 * sizeof(VideoColor));
 
   /* Create status panel background */
-  SDL_Rect srect;
-  Uint32 mybluez = 0;
-  Uint32 myyell = 0;
-  if (screen) {
-    mybluez = SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 10, 10, 255);
-    myyell = SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 0);
-  }
+  VideoRect srect;
+  uint8_t mybluez = DARK_BLUE;
+  uint8_t myyell = YELLOW;
 
   srect.x = srect.y = 0;
   srect.w = STATUS_PANEL_W;
   srect.h = STATUS_PANEL_H;
-  SDL_FillSurfaceRect(g_hStatusSurface, &srect, mybluez);
+  memset(g_hStatusSurface->pixels, mybluez, STATUS_PANEL_W * STATUS_PANEL_H);
   rectangle(g_hStatusSurface, 0, 0, STATUS_PANEL_W - 1, STATUS_PANEL_H - 1, myyell);
   rectangle(g_hStatusSurface, 2, 2, STATUS_PANEL_W - 5, STATUS_PANEL_H - 5, myyell);
   if (font_sfc == NULL)
@@ -404,18 +431,17 @@ void CreateDIBSections() {
   }
   // CREATE THE SOURCE IMAGE DIB SECTION
   if (g_hSourceBitmap) {
-    SDL_DestroySurface(g_hSourceBitmap);
+    VideoDestroySurface(g_hSourceBitmap);
   }
-  g_hSourceBitmap = SDL_CreateSurface(SRCOFFS_TOTAL, MAX_SOURCE_Y, SDL_PIXELFORMAT_INDEX8);
+  g_hSourceBitmap = VideoCreateSurface(SRCOFFS_TOTAL, MAX_SOURCE_Y, 1);
   if (g_hSourceBitmap == NULL) {
-    fprintf(stderr, "g_hSourceBitmap was not created: %s\n", SDL_GetError());
+    fprintf(stderr, "g_hSourceBitmap was not created\n");
     pthread_mutex_unlock(&video_draw_mutex);
     return;
   }
-  SDL_CreateSurfacePalette(g_hSourceBitmap);
 
   g_pSourcePixels = (uint8_t*) g_hSourceBitmap->pixels;
-  SDL_SetPaletteColors(SDL_GetSurfacePalette(g_hSourceBitmap), framebufferinfo, 0, 256);
+  memcpy(g_hSourceBitmap->palette, framebufferinfo, 256 * sizeof(VideoColor));
 
   // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
@@ -429,10 +455,6 @@ void CreateDIBSections() {
       (g_videotype != VT_MONO_WHITE)) {
     DrawTextSource(g_hSourceBitmap);
 
-    if (SDL_MUSTLOCK(g_hSourceBitmap)) {
-      SDL_LockSurface(g_hSourceBitmap);
-    }
-
     DrawLoResSource();
     if (g_videotype == VT_COLOR_HALF_SHIFT_DIM) {
       DrawHiResSourceHalfShiftDim();
@@ -442,17 +464,10 @@ void CreateDIBSections() {
     DrawDHiResSource();
   } else {
     DrawMonoTextSource(g_hSourceBitmap);
-    if (SDL_MUSTLOCK(g_hSourceBitmap)) {
-      SDL_LockSurface(g_hSourceBitmap);
-    }
 
     DrawMonoLoResSource();
     DrawMonoHiResSource();
     DrawMonoDHiResSource();
-  }
-
-  if (SDL_MUSTLOCK(g_hSourceBitmap)) {
-    SDL_UnlockSurface(g_hSourceBitmap);
   }
 
   pthread_mutex_unlock(&video_draw_mutex);
@@ -799,11 +814,11 @@ void DrawMonoLoResSource() {
       }
 }
 
-void DrawMonoTextSource(SDL_Surface *hDstDC) {
+void DrawMonoTextSource(VideoSurface *hDstDC) {
   if (charset40 == NULL) {
     return;
   }
-  Uint8 hBrush;
+  uint8_t hBrush;
   switch (g_videotype) {
     case VT_MONO_AMBER:
       hBrush = MONOCHROME_AMBER;
@@ -818,7 +833,6 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
       hBrush = MONOCHROME_CUSTOM;
       break;
   }
-  SDL_Rect srcrect, dstrect;
 
   if ((g_Apple2Type == A2TYPE_APPLE2)||
       (g_Apple2Type == A2TYPE_APPLE2PLUS))
@@ -849,11 +863,10 @@ void DrawMonoTextSource(SDL_Surface *hDstDC) {
   }
 }
 
-void DrawTextSource(SDL_Surface *dc) {
+void DrawTextSource(VideoSurface *dc) {
   if (charset40 == NULL) {
     return;
   }
-  SDL_Rect srcrect, dstrect;
 
   if ((g_Apple2Type == A2TYPE_APPLE2)||
         (g_Apple2Type == A2TYPE_APPLE2PLUS))
@@ -1179,41 +1192,37 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   return false;
 }
 
-SDL_Surface* LoadCharset() {
-  SDL_Surface *tmp = NULL;
+VideoSurface* LoadCharset() {
+  VideoSurface *result = NULL;
 
   if ((g_Apple2Type == A2TYPE_APPLE2)||
       (g_Apple2Type == A2TYPE_APPLE2PLUS))
   {
     // character bitmap for II and IIplus
-    tmp = IMG_ReadXPMFromArray(charset40_IIplus_xpm);
+    result = VideoLoadXPM(charset40_IIplus_xpm);
   }
   else
   {
     switch(g_KeyboardLanguage)
     {
     case English_UK:
-      tmp = IMG_ReadXPMFromArray(charset40_british_xpm);
+      result = VideoLoadXPM(charset40_british_xpm);
       break;
     case French_FR:
-      tmp = IMG_ReadXPMFromArray(charset40_french_xpm);
+      result = VideoLoadXPM(charset40_french_xpm);
       break;
     case German_DE:
-      tmp = IMG_ReadXPMFromArray(charset40_german_xpm);
+      result = VideoLoadXPM(charset40_german_xpm);
       break;
     case English_US: // fall-through
     default:
       // character bitmap for IIe and enhanced
-      tmp = IMG_ReadXPMFromArray(charset40_xpm);
+      result = VideoLoadXPM(charset40_xpm);
     }
   }
 
-  if (tmp)
+  if (result)
   {
-    // convert format
-    SDL_Surface *result = SDL_ConvertSurface(tmp, SDL_PIXELFORMAT_XRGB8888);
-    SDL_DestroySurface(tmp);
-
     /* correct character set bitmaps should be 128x128 (single language) or
      * 256x128 for the Euro-ROMs with alternative language */
     if (((result->h != 128)&&(result->h != 256))||
@@ -1271,6 +1280,8 @@ bool VideoApparentlyDirty() {
 }
 
 void VideoBenchmark() {
+  // Benchmark needs SDL_GetTicks and SDL_Delay, so we keep those.
+  // But we replace any VideoSurface related calls.
   SDL_Delay(1500);
 
   int loop;
@@ -1286,9 +1297,9 @@ void VideoBenchmark() {
   g_uVideoMode = VF_TEXT;
   memset(mem + 0x400,  0x14,  0x400);
   VideoRedrawScreen();
-  unsigned int milliseconds = SDL_GetTicks();
+  unsigned int milliseconds = (unsigned int)SDL_GetTicks();
   while (SDL_GetTicks() == milliseconds);
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   unsigned int cycle = 0;
   do {
     if (cycle & 1) {
@@ -1307,9 +1318,9 @@ void VideoBenchmark() {
   g_uVideoMode = VF_HIRES;
   memset(mem + 0x2000,  0x14,  0x2000);
   VideoRedrawScreen();
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   while (SDL_GetTicks() == milliseconds);
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   cycle = 0;
   do {
     if (cycle & 1) {
@@ -1326,9 +1337,9 @@ void VideoBenchmark() {
 
   CpuSetupBenchmark();
   unsigned int totalmhz10 = 0;
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   while (SDL_GetTicks() == milliseconds);
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   cycle = 0;
   do {
     CpuExecute(100000);
@@ -1363,9 +1374,9 @@ void VideoBenchmark() {
   unsigned int realisticfps = 0;
   memset(mem + 0x2000,  0xAA,  0x2000);
   VideoRedrawScreen();
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   while (SDL_GetTicks() == milliseconds);
-  milliseconds = SDL_GetTicks();
+  milliseconds = (unsigned int)SDL_GetTicks();
   cycle = 0;
   do {
     if (realisticfps < 10) {
@@ -1413,7 +1424,7 @@ unsigned char VideoCheckMode(unsigned short, unsigned short address, unsigned ch
         result = SW_HIRES;
         break;
       case 0x1E:
-        result = g_nAltCharSetOffset;
+        result = g_nAltCharSetOffset != 0;
         break;
       case 0x1F:
         result = SW_80COL;
@@ -1435,39 +1446,6 @@ void VideoCheckPage(bool force) {
 }
 
 unsigned char VideoCheckVbl(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t nCyclesLeft) {
-  /*
-  // Drol expects = 80
-  68DE A5 02    LDX #02
-  68E0 AD 50 C0 LDA TXTCLR
-  68E3 C9 80    CMP #80
-  68E5 D0 F7    BNE $68DE
-
-  6957 A5 02    LDX #02
-  6959 AD 50 C0 LDA TXTCLR
-  695C C9 80    CMP #80
-  695E D0 F7    BNE $68DE
-
-  69D3 A5 02    LDX #02
-  69D5 AD 50 C0 LDA TXTCLR
-  69D8 C9 80    CMP #80
-  69DA D0 F7    BNE $68DE
-
-  // Karateka expects < 80
-  07DE AD 19 C0 LDA RDVBLBAR
-  07E1 30 FB    BMI $7DE
-
-  77A1 AD 19 C0 LDA RDVBLBAR
-  77A4 30 FB    BMI $7DE
-
-  // Gumball expects non-zero low-nibble on VBL
-  BBB5 A5 60    LDA $60
-  BBB7 4D 50 C0 EOR TXTCLR
-  BBBA 85 60    STA $60
-  BBBC 29 0F    AND #$0F
-  BBBE F0 F5    BEQ $BBB5
-  BBC0 C9 0F    CMP #$0F
-  BBC2 F0 F1    BEQ $BBB5
-  */
   bool bVblBar;
   VideoGetScannerAddress(&bVblBar, nCyclesLeft);
   unsigned char r = KeybGetKeycode();
@@ -1489,61 +1467,68 @@ void VideoDestroy() {
   }
   // END GPH
 
-  // Just free our SDL surfaces and free vidlastmem
+  // Just free our surfaces and free vidlastmem
   // DESTROY BUFFERS
   free(vidlastmem);
   vidlastmem = NULL;
   // DESTROY FRAME BUFFER
   if (g_hDeviceBitmap) {
-    SDL_DestroySurface(g_hDeviceBitmap);
+    VideoDestroySurface(g_hDeviceBitmap);
   }
   g_hDeviceBitmap = NULL;
 
   if (g_origscreen) {
-    SDL_DestroySurface(g_origscreen);
+    VideoDestroySurface(g_origscreen);
   }
   g_origscreen = NULL;
 
   if (g_hStatusSurface) {
-    SDL_DestroySurface(g_hStatusSurface);
+    VideoDestroySurface(g_hStatusSurface);
   }
   g_hStatusSurface = NULL;
 
   // DESTROY SOURCE IMAGE
   if (g_hSourceBitmap) {
-    SDL_DestroySurface(g_hSourceBitmap);
+    VideoDestroySurface(g_hSourceBitmap);
   }
   g_hSourceBitmap = NULL;
 
-  // DESTROY LOGO
-  if (g_hLogoBitmap) {
-    SDL_DestroySurface(g_hLogoBitmap);
+  // DESTROY LOGO - ONLY IF IT WASN'T FROM ASSETS
+  if (g_hLogoBitmap && (g_hLogoBitmap != assets->splash)) {
+    VideoDestroySurface(g_hLogoBitmap);
   }
   g_hLogoBitmap = NULL;
 
   if (charset40) {
-    SDL_DestroySurface(charset40);
+    VideoDestroySurface(charset40);
   }
   charset40 = NULL;
+
+  if (font_sfc && (font_sfc != assets->font)) {
+    VideoDestroySurface(font_sfc);
+  }
+  font_sfc = NULL;
 }
 
 void VideoDisplayLogo() {
-  SDL_Rect drect, srect;
+  VideoRect drect, srect;
 
-  if (!g_hLogoBitmap || !screen) {
+  if (!g_hLogoBitmap) {
     return; // nothing to display?
   }
 
-  SDL_FillSurfaceRect(screen, NULL, 0);
-
-  drect.x = drect.y = srect.x = srect.y = 0;
-  drect.w = screen->w;
-  drect.h = screen->h;
+  // Clear logo destination if needed, but normally we just stretch to it
+  srect.x = srect.y = 0;
   srect.w = g_hLogoBitmap->w;
   srect.h = g_hLogoBitmap->h;
 
-  SDL_BlitSurfaceScaled(g_hLogoBitmap, &srect, screen, &drect, SDL_SCALEMODE_NEAREST);
-  SDL_BlitSurfaceScaled(g_hLogoBitmap, &srect, g_origscreen, &drect, SDL_SCALEMODE_NEAREST);
+  drect.x = drect.y = 0;
+  drect.w = 560; // Standard output width
+  drect.h = 384; // Standard output height
+
+  if (g_hDeviceBitmap) {
+      VideoSoftStretch(g_hLogoBitmap, &srect, g_hDeviceBitmap, &drect);
+  }
 }
 
 bool VideoHasRefreshed() {
@@ -1568,11 +1553,16 @@ void VideoInitialize() {
   if (vidlastmem) memset(vidlastmem, 0, 0x10000);
 
   // LOAD THE splash screen
-  g_hLogoBitmap = SDL_ConvertSurface(assets->splash, SDL_PIXELFORMAT_XRGB8888);
+  g_hLogoBitmap = assets->splash;
 
   // LOAD APPLE CHARSET40
   if (!charset40)
     charset40 = LoadCharset();
+
+  // Load font_sfc for stretch.h
+  if (font_sfc == NULL) {
+    font_sfc = assets->font;
+  }
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN THE BITMAPINFO STRUCTURE
   CreateIdentityPalette();
@@ -1655,6 +1645,26 @@ void VideoRedrawScreen() {
   VideoRefreshScreen();
 }
 
+void VideoUpdateOutputBuffer() {
+    VideoRect s = {0, 0, 560, 384};
+    VideoSurface dst;
+    dst.pixels = (uint8_t*)g_pVideoOutput;
+    dst.w = 560;
+    dst.h = 384;
+    dst.pitch = 560 * 4;
+    dst.bpp = 4;
+
+    // Convert internal INDEX8 bitmap to RGB32 output buffer
+    VideoSoftStretch(g_hDeviceBitmap, &s, &dst, &s);
+
+    // If status panel is visible, overlay it
+    if (g_iStatusCycle > 0 && g_ShowLeds && g_hStatusSurface) {
+        VideoRect ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
+        VideoRect ds = {560 - STATUS_PANEL_W - 5, 384 - STATUS_PANEL_H - 5, STATUS_PANEL_W, STATUS_PANEL_H};
+        VideoSoftStretch(g_hStatusSurface, &ss, &dst, &ds);
+    }
+}
+
 void VideoPerformRefresh() {
   pthread_mutex_lock(&video_draw_mutex);
 
@@ -1679,17 +1689,6 @@ void VideoPerformRefresh() {
   uint8_t* addr = framebufferbits;
   int pitch = 560;
   CreateFrameOffsetTable(addr, pitch);
-
-  int src_locked = 0;
-  if (SDL_MUSTLOCK(g_hSourceBitmap)) {
-    SDL_LockSurface(g_hSourceBitmap);
-    src_locked = 1;
-  }
-  int frm_locked = 0;
-  if (SDL_MUSTLOCK(g_hDeviceBitmap)) {
-    SDL_LockSurface(g_hDeviceBitmap);
-    frm_locked = 1;
-  }
 
   if (g_singlethreaded) {
     g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
@@ -1717,9 +1716,7 @@ void VideoPerformRefresh() {
                                                                                             : UpdateLoResCell;
 
   bool anydirty = redrawfull | g_bTextFlashFlag;
-  if (redrawfull && screen) {
-    SDL_FillSurfaceRect(screen, NULL, 0);
-  }
+
   int y = 0;
   int ypixel = 0;
   while (y < 20) {
@@ -1752,53 +1749,21 @@ void VideoPerformRefresh() {
     ypixel += 16;
   }
 
-  if (frm_locked) {
-    SDL_UnlockSurface(g_hDeviceBitmap);
-  }
-  if (src_locked) {
-    SDL_UnlockSurface(g_hSourceBitmap);
-  }
   if (anydirty) {
     g_bTextFlashFlag = false;
   }
 
-  if (!screen) {
-    return;
-  }
-
-  SDL_Rect srect;
-  srect.w = STATUS_PANEL_W;
-  srect.h = STATUS_PANEL_H;
-  srect.x = screen->w - STATUS_PANEL_W - 5;
-  srect.y = screen->h - STATUS_PANEL_H - 5;
-
-  int bStatusShow = g_iStatusCycle;
   if (g_iStatusCycle > 0) {
     g_iStatusCycle--;
     if (!g_iStatusCycle) {
       HD_ResetStatus();
     }
   }
-  if (anydirty) {
-    if (!g_WindowResized) {
-      SDL_Rect r = {0, 0, 560, 384};
-      SDL_SoftStretchMy(g_hDeviceBitmap, &r, screen, &r);
-    } else {
-      SDL_BlitSurfaceScaled(g_hDeviceBitmap, &origRect, g_origscreen, &newRect, SDL_SCALEMODE_NEAREST);
-      SDL_SoftStretchMy(g_origscreen, &newRect, screen, &newRect);
-    }
-    if (bStatusShow && g_ShowLeds) {
-      SDL_SoftStretchMy(g_hStatusSurface, NULL, screen, &srect);
-    }
-  } else if (bStatusShow) {
-    if (g_ShowLeds) {
-      SDL_SoftStretchMy(g_hStatusSurface, NULL, screen, &srect);
-    }
-  }
 
-  if ((anydirty || bStatusShow) && g_texture && screen) {
-    g_bFrameReady = true;
-  }
+  // Update final output buffer
+  VideoUpdateOutputBuffer();
+
+  g_bFrameReady = true;
 
   SetLastDrawnImage();
   redrawfull = false;

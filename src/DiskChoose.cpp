@@ -256,23 +256,26 @@ void DiskChoose_Draw()
 
   // We assume ownership of video_draw_mutex is handled by the caller (main loop or blocking proxy)
 
-  SDL_SoftStretchMy(g_diskChooseState.bg_screen, NULL, screen, NULL);
+  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
+  VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+
+  VideoSoftStretch(&vs_bg, NULL, &vs_screen, NULL);
   
 #define  NORMAL_LENGTH 60
-  font_print_centered(sx / 2, 5 * facy, g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
+  font_print_centered(sx / 2, 5 * facy, g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(), &vs_screen, 1.5 * facx, 1.3 * facy);
   
   if (g_diskChooseState.slot == 6) {
-    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
+    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", &vs_screen, 1 * facx, 1 * facy);
   } else if (g_diskChooseState.slot == 7) {
-    font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", screen, 1 * facx, 1 * facy);
+    font_print_centered(sx / 2, 20 * facy, "Choose image for Hard Disk", &vs_screen, 1 * facx, 1 * facy);
   } else if (g_diskChooseState.slot == 5) {
-    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", screen, 1 * facx, 1 * facy);
+    font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 800KB drive", &vs_screen, 1 * facx, 1 * facy);
   } else if (g_diskChooseState.slot == 1) {
-    font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", screen, 1 * facx, 1 * facy);
+    font_print_centered(sx / 2, 20 * facy, "Select file name for saving snapshot", &vs_screen, 1 * facx, 1 * facy);
   } else if (g_diskChooseState.slot == 0) {
-    font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", screen, 1 * facx, 1 * facy);
+    font_print_centered(sx / 2, 20 * facy, "Select snapshot file name for loading", &vs_screen, 1 * facx, 1 * facy);
   }
-  font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", screen, 1.0 * facx, 1.0 * facy);
+  font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", &vs_screen, 1.0 * facx, 1.0 * facy);
 
   int TOPX = int(45 * facy);
 
@@ -297,13 +300,13 @@ void DiskChoose_Draw()
       SDL_FillSurfaceRect(screen, &r, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 64, 128, 190));
     }
 
-    font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), screen, 1.0 * facx, 1.0 * facy);
-    font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), screen, 1.0 * facx,
+    font_print(4, TOPX + j * 15 * facy, file_name.substr(0, MAX_FILENAME).c_str(), &vs_screen, 1.0 * facx, 1.0 * facy);
+    font_print(sx - 70 * facx, TOPX + j * 15 * facy, file_entry.type_or_size_as_string().c_str(), &vs_screen, 1.0 * facx,
                1.0 * facy);
   }
 
-  rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-  rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
+  rectangle(&vs_screen, 0, TOPX - 5, sx, 320 * facy, RGB(255, 255, 255));
+  rectangle(&vs_screen, 480 * facx, TOPX - 5, 0, 320 * facy, RGB(255, 255, 255));
 
   DrawFrameWindow();
 }
@@ -332,7 +335,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   // Wait for video refresh and claim ownership
   pthread_mutex_lock(&video_draw_mutex);
 
-  SDL_Surface *tempSurface = NULL;
+  VideoSurface *tempSurface = NULL;
   if (!g_WindowResized) {
     if (g_state.mode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;
@@ -342,28 +345,30 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   } else
     tempSurface = g_origscreen;
 
+  static VideoSurface vs_screen;
   if (tempSurface == NULL) {
-    tempSurface = screen;
+    vs_screen = SDLSurfaceToVideoSurface(screen);
+    tempSurface = &vs_screen;
   }
 
-  g_diskChooseState.bg_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, tempSurface->format);
-  if (SDL_GetSurfacePalette(tempSurface) && SDL_GetSurfacePalette(g_diskChooseState.bg_screen)) {
-    SDL_SetPaletteColors(SDL_GetSurfacePalette(g_diskChooseState.bg_screen), SDL_GetSurfacePalette(tempSurface)->colors, 0, SDL_GetSurfacePalette(tempSurface)->ncolors);
-  }
+  g_diskChooseState.bg_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_XRGB8888);
+  
+  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
+  VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
 
-  surface_fader(g_diskChooseState.bg_screen, 0.2F, 0.2F, 0.2F, -1, 0);
-  SDL_SoftStretchMy(tempSurface, NULL, g_diskChooseState.bg_screen, NULL);
-  SDL_SoftStretchMy(g_diskChooseState.bg_screen, NULL, screen, NULL);
+  surface_fader(&vs_bg, 0.2F, 0.2F, 0.2F, -1, NULL);
+  VideoSoftStretch(tempSurface, NULL, &vs_bg, NULL);
+  VideoSoftStretch(&vs_bg, NULL, &vs_actual_screen, NULL);
 
-  font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
-  font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+  font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), &vs_actual_screen, 1.5 * facx, 1.3 * facy);
+  font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), &vs_actual_screen, 1 * facx, 1 * facy);
   DrawFrameWindow();
 
   g_diskChooseState.file_list = file_list_generator->generate_file_list();
   if (g_diskChooseState.file_list.size() < 1) {
     printf("%s\n", file_list_generator->get_failure_message().c_str());
 
-    font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
+    font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", &vs_actual_screen, 1.4 * facx, 1.1 * facy);
     DrawFrameWindow();
 
     pthread_mutex_unlock(&video_draw_mutex);

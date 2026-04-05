@@ -27,47 +27,23 @@
    April 27, 2000 - Sam Lantinga
 */
 
+#include "Video.h"
+
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!
 */
 
-int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect);
+int VideoSoftStretch(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect);
 
-
-/*  SDL_SoftStretchOr  - the same as SDL_SoftStretch, but ORed with destination
+/*  VideoSoftStretchOr  - the same as VideoSoftStretch, but ORed with destination
   NOTE: 24bpp does not support
 */
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!
 */
-int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect);
+int VideoSoftStretchOr(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect);
 
-int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint32 fgbrush, Uint32 bgbrush);
-
-
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-// PPC values:
-#define AMASK  0xff000000
-#define BMASK  0x000000ff
-#define GMASK  0x0000ff00
-#define RMASK  0x00ff0000
-#define AOFFSET 0
-#define BOFFSET 3
-#define GOFFSET 2
-#define ROFFSET 1
-
-#else
-// Intel values:
-#define AMASK  0xff000000
-#define BMASK  0x000000ff
-#define GMASK  0x0000ff00
-#define RMASK  0x00ff0000
-#define AOFFSET 3
-#define BOFFSET 0
-#define GOFFSET 1
-#define ROFFSET 2
-
-#endif
+int VideoSoftStretchMono8(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect, uint32_t fgbrush, uint32_t bgbrush);
 
 // Font Routines
 
@@ -75,21 +51,21 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
 #define FONT_SIZE_Y  8
 // chars in row in font bitmap
 #define CHARS_IN_ROW  45
-extern SDL_Surface *font_sfc;
+extern VideoSurface *font_sfc;
 
 bool fonts_initialization(void);
 
 void fonts_termination(void);
 
-void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
+void font_print(int x, int y, const char *text, VideoSurface *surface, double kx, double ky);
 
-void font_print_right(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
+void font_print_right(int x, int y, const char *text, VideoSurface *surface, double kx, double ky);
 
-void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
+void font_print_centered(int x, int y, const char *text, VideoSurface *surface, double kx, double ky);
 
 // Some auxiliary functions
-void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r);
+void surface_fader(VideoSurface *surface, float r_factor, float g_factor, float b_factor, float a_factor, VideoRect *r);
 
-void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel);
+void putpixel(VideoSurface *surface, int x, int y, uint32_t pixel);
 
-void rectangle(SDL_Surface *surface, int x, int y, int w, int h, Uint32 pixel);
+void rectangle(VideoSurface *surface, int x, int y, int w, int h, uint32_t pixel);
