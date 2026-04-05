@@ -26,29 +26,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-// TO DO:
-// . Enable & test Tx IRQ
-// . DIP switch read values
-//
-
-// Refs:
-// (1) "Super Serial Card (SSC) Memory Locations for Programmers" - Aaron Heiss
-// (2) SSC recv IRQ example: http://www.wright.edu/~john.matthews/ssc.html#lst - John B. Matthews, 5/13/87
-// (3) WaitCommEvent, etc: http://mail.python.org/pipermail/python-list/2002-November/131437.html
-// (4) SY6551 info: http://www.axess.com/twilight/sock/rs232pak.html
-//
-
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
-
-// for read() and write()
-#include <unistd.h>
 #include "stdafx.h"
 #include <assert.h>
-// for terminal structure and funcs
-#include <termios.h>
-#include <fcntl.h>
-// for read() and write()
-#include <unistd.h>
+#include <cstdio>
+#include <cstring>
+#include "SerialComms.h"
+#include "SerialCommsFrontend.h"
+#include "CPU.h"
 
 char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x38"
                  "\x04\x9D\xB8\x05\x9D\x38\x06\x9D\xB8\x06\xB9\x82\xC0\x85\x2B\x4A"
@@ -179,14 +163,10 @@ char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x
                  "\x0A\x0A\x85\x26\x8D\xFF\xCF\xA5\x36\x9D\x38\x06\xA2\x00\x68\x95"
                  "\x36\xE8\xE0\x04\x90\xF8\xAE\xF8\x07\x60\xC1\xD0\xD0\xCC\xC5\x08";
 
-
-pthread_mutex_t m_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
-
 // Default: 19200-8-N-1
-// Maybe a better default is: 9600-7-N-1 (for HyperTrm)
-SSC_DIPSW CSuperSerialCard::m_DIPSWDefault = {
+SSC_DIPSW g_DIPSWDefault = {
   // DIPSW1:
-  B19200, // CBR_# (win32) -> B# (*nix?)
+  SSC_B19200, // Baud rate constant
   FWMODE_CIC,
 
   // DIPSW2:
@@ -195,686 +175,282 @@ SSC_DIPSW CSuperSerialCard::m_DIPSWDefault = {
   false,
 };
 
-CSuperSerialCard::CSuperSerialCard() {
-  m_dwSerialPort = 0;
+static void GetDIPSW(SuperSerialCard* pSSC);
+static void SetDIPSWDefaults(SuperSerialCard* pSSC);
+static unsigned char GenerateControl(SuperSerialCard* pSSC);
+static unsigned int BaudRateToIndex(unsigned int uBaudRate);
+static void UpdateCommState(SuperSerialCard* pSSC);
 
-  GetDIPSW();
+static unsigned char CommCommand(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+static unsigned char CommControl(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+static unsigned char CommDipSw(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+static unsigned char CommReceive(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+static unsigned char CommStatus(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+static unsigned char CommTransmit(SuperSerialCard* pSSC, unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-  m_vRecvBytes = 0;
-
-  m_hCommHandle = -1;
-  m_dwCommInactivity = 0;
-
-  m_bTxIrqEnabled = false;
-  m_bRxIrqEnabled = false;
-
-  m_bWrittenTx = false;
-
-  m_vbCommIRQ = false;
+void SSC_Reset(SuperSerialCard* pSSC) {
+  GetDIPSW(pSSC);
+  pSSC->m_vRecvBytes = 0;
+  pSSC->m_bTxIrqEnabled = false;
+  pSSC->m_bRxIrqEnabled = false;
+  pSSC->m_bWrittenTx = false;
+  pSSC->m_vbCommIRQ = false;
 }
 
-// TODO: Serial Comms - UI Property Sheet Page:
-// . Ability to config the 2x DIPSWs - only takes affect after next Apple2 reset
-// . 'Default' button that resets DIPSWs to DIPSWDefaults
+void SSC_Initialize(SuperSerialCard* pSSC, uint8_t* pCxRomPeripheral, unsigned int uSlot) {
+  const unsigned int SSC_FW_SIZE = 2 * 1024;
+  const unsigned int SSC_SLOT_FW_SIZE = 256;
+  const unsigned int SSC_SLOT_FW_OFFSET = 7 * 256;
 
-void CSuperSerialCard::GetDIPSW() {
-  // TODO: Read settings from Registry
-  // In the meantime, use the defaults:
-  SetDIPSWDefaults();
+  unsigned char *pData = (unsigned char *) SSC_rom;
 
-  m_uBaudRate = m_DIPSWCurrent.uBaudRate;
-  m_uStopBits = m_DIPSWCurrent.uStopBits;
-  m_uByteSize = m_DIPSWCurrent.uByteSize;
-  m_uParity = m_DIPSWCurrent.uParity;
-  m_uControlByte = GenerateControl();
-  m_uCommandByte = 0x00;
+  memcpy(pCxRomPeripheral + uSlot * 256, pData + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
+
+  // Expansion ROM
+  if (pSSC->m_pExpansionRom == NULL) {
+    pSSC->m_pExpansionRom = new unsigned char[SSC_FW_SIZE];
+    if (pSSC->m_pExpansionRom) {
+      memcpy(pSSC->m_pExpansionRom, pData, SSC_FW_SIZE);
+    }
+  }
+
+  RegisterIoHandler(uSlot, &SSC_IORead, &SSC_IOWrite, NULL, NULL, pSSC,
+                    pSSC->m_pExpansionRom);
 }
 
-void CSuperSerialCard::SetDIPSWDefaults()
-{
-  // Default DIPSW settings (comms mode)
-
-  // DIPSW1:
-  m_DIPSWCurrent.uBaudRate = m_DIPSWDefault.uBaudRate;
-  m_DIPSWCurrent.eFirmwareMode = m_DIPSWDefault.eFirmwareMode;
-
-  // DIPSW2:
-  m_DIPSWCurrent.uStopBits = m_DIPSWDefault.uStopBits;
-  m_DIPSWCurrent.uByteSize = m_DIPSWDefault.uByteSize;
-  m_DIPSWCurrent.uParity = m_DIPSWDefault.uParity;
-  m_DIPSWCurrent.bLinefeed = m_DIPSWDefault.bLinefeed;
-  m_DIPSWCurrent.bInterrupts = m_DIPSWDefault.bInterrupts;
+void SSC_Destroy(SuperSerialCard* pSSC) {
+  SSC_Reset(pSSC);
+  delete[] pSSC->m_pExpansionRom;
+  pSSC->m_pExpansionRom = NULL;
 }
 
-unsigned char CSuperSerialCard::GenerateControl()
-{
+static void GetDIPSW(SuperSerialCard* pSSC) {
+  SetDIPSWDefaults(pSSC);
+
+  pSSC->m_uBaudRate = pSSC->m_DIPSWCurrent.uBaudRate;
+  pSSC->m_uStopBits = pSSC->m_DIPSWCurrent.uStopBits;
+  pSSC->m_uByteSize = pSSC->m_DIPSWCurrent.uByteSize;
+  pSSC->m_uParity = pSSC->m_DIPSWCurrent.uParity;
+  pSSC->m_uControlByte = GenerateControl(pSSC);
+  pSSC->m_uCommandByte = 0x00;
+}
+
+static void SetDIPSWDefaults(SuperSerialCard* pSSC) {
+  pSSC->m_DIPSWCurrent = g_DIPSWDefault;
+}
+
+static unsigned char GenerateControl(SuperSerialCard* pSSC) {
   const unsigned int CLK = 1;  // Internal
-
-  unsigned int bmByteSize = (8 - m_uByteSize);  // [8,7,6,5] -> [0,1,2,3]
+  unsigned int bmByteSize = (8 - pSSC->m_uByteSize);
   assert(bmByteSize <= 3);
 
   unsigned int StopBit;
-  if (((m_uByteSize == 8) && (m_uParity != NOPARITY)) || (m_uStopBits != ONESTOPBIT)) {
+  if (((pSSC->m_uByteSize == 8) && (pSSC->m_uParity != NOPARITY)) || (pSSC->m_uStopBits != ONESTOPBIT)) {
     StopBit = 1;
   } else {
     StopBit = 0;
   }
 
-  return (StopBit << 7) | (bmByteSize << 5) | (CLK << 4) | BaudRateToIndex(m_uBaudRate);
+  return (StopBit << 7) | (bmByteSize << 5) | (CLK << 4) | BaudRateToIndex(pSSC->m_uBaudRate);
 }
 
-unsigned int CSuperSerialCard::BaudRateToIndex(unsigned int uBaudRate) {
-  switch (uBaudRate) { // changed: CBR_# to B# (for *nix?) --bb
-    case B110:
-      return 0x05;
-    case B300:
-      return 0x06;
-    case B600:
-      return 0x07;
-    case B1200:
-      return 0x08;
-    case B2400:
-      return 0x0A;
-    case B4800:
-      return 0x0C;
-    case B9600:
-      return 0x0E;
-    case B19200:
-      return 0x0F;
+static unsigned int BaudRateToIndex(unsigned int uBaudRate) {
+  switch (uBaudRate) {
+    case SSC_B110:   return 0x05;
+    case SSC_B300:   return 0x06;
+    case SSC_B600:   return 0x07;
+    case SSC_B1200:  return 0x08;
+    case SSC_B2400:  return 0x0A;
+    case SSC_B4800:  return 0x0C;
+    case SSC_B9600:  return 0x0E;
+    case SSC_B19200: return 0x0F;
   }
-
-  assert(0);
-  return BaudRateToIndex(B9600);
+  return 0x0E; // Default 9600
 }
 
-void CSuperSerialCard::UpdateCommState() {
-  if (m_hCommHandle == -1) {
-    return;
+static void UpdateCommState(SuperSerialCard* pSSC) {
+  if (SSCFrontend_IsActive()) {
+      SSCFrontend_UpdateState(pSSC->m_uBaudRate, pSSC->m_uByteSize, pSSC->m_uParity, pSSC->m_uStopBits);
   }
-
-  struct termios dcb;
-  int l_databits = CS8;
-  tcgetattr(m_hCommHandle, &dcb); // get current attributes for m_hCommHandle in dcb
-
-  // set input/output speed to m_uBaudRate
-  cfsetispeed(&dcb, m_uBaudRate);
-  cfsetospeed(&dcb, m_uBaudRate);
-  // Enable the receiver and set localmode
-  dcb.c_cflag |= (CLOCAL | CREAD);
-
-  switch (m_uParity) {
-    case NOPARITY: /* NONE */
-      dcb.c_cflag &= ~PARENB;
-      break;
-
-    case EVENPARITY: /* EVEN */
-      dcb.c_cflag |= PARENB;
-      dcb.c_cflag &= ~PARODD;
-      break;
-
-    case ODDPARITY: /* ODD */
-      dcb.c_cflag |= PARENB;
-      dcb.c_cflag |= PARODD;
-      break;
-
-    case MARKPARITY: /* MARKPARITY */
-      dcb.c_cflag |= PARENB | CMSPAR | PARODD;
-      break;
-
-    case SPACEPARITY: /* SPACEPARITY */
-      dcb.c_cflag |= PARENB | CMSPAR;
-      dcb.c_cflag &= ~PARODD;
-      break;
-  }
-
-  switch (m_uByteSize) { // data bits
-    case 5:
-      l_databits = CS5;
-      break;
-    case 6:
-      l_databits = CS6;
-      break;
-    case 7:
-      l_databits = CS7;
-      break;
-    case 8:
-      l_databits = CS8;
-      break;
-  }
-  dcb.c_cflag &= ~CSIZE;
-  dcb.c_cflag |= l_databits;
-
-  switch (m_uStopBits) {
-    case ONE5STOPBITS:
-    case ONESTOPBIT:
-      dcb.c_cflag &= ~CSTOPB; // 1 stopbit
-      break;
-    case TWOSTOPBITS:
-      dcb.c_cflag |= CSTOPB; // 1.5 and 2 stopbits.
-      break;
-  }
-  dcb.c_cflag &= ~CRTSCTS;               /* Disable hardware flow control */
-  /* Enable data to be processed as raw input */
-  dcb.c_lflag &= ~(ICANON | ECHO | ISIG);
-  /* Set the new options for the port */
-  tcsetattr(m_hCommHandle, TCSANOW, &dcb);
 }
 
-bool CSuperSerialCard::CheckComm() {
-  m_dwCommInactivity = 0;
-
-  if ((m_hCommHandle == -1) && m_dwSerialPort) {
-    char portname[12];  // we have /dev/ttyS0..X instead of COM1..COMX+1?
-    if (m_dwSerialPort > 99) {
-      m_dwSerialPort = 1; // buffer overflow check
-    }
-    sprintf(portname, "/dev/ttyS%u", (unsigned int) (m_dwSerialPort - 1));
-    m_hCommHandle = open(portname, O_RDWR | O_NOCTTY | O_NDELAY);
-    if (m_hCommHandle != -1) {
-      UpdateCommState();
-    }
-  }
-
-  return (m_hCommHandle != -1);
-}
-
-void CSuperSerialCard::CloseComm()
-{
-  if (m_hCommHandle != -1) {
-    close(m_hCommHandle); // close device (port?)
-  }
-  m_hCommHandle = -1;
-  m_dwCommInactivity = 0;
-}
-
-unsigned char CSuperSerialCard::SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
+unsigned char SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
-  CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
+  SuperSerialCard *pSSC = (SuperSerialCard *) MemGetSlotParameters(uSlot);
 
   switch (uAddr & 0xf) {
-    case 0x0:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x1:
-      return pSSC->CommDipSw(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x2:
-      return pSSC->CommDipSw(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x3:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x4:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x5:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x6:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x7:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x8:
-      return pSSC->CommReceive(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x9:
-      return pSSC->CommStatus(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xA:
-      return pSSC->CommCommand(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xB:
-      return pSSC->CommControl(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xC:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xD:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xE:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xF:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x1: return CommDipSw(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x2: return CommDipSw(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x8: return CommReceive(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x9: return CommStatus(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0xA: return CommCommand(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0xB: return CommControl(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    default:  return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
   }
-
-  return 0;
 }
 
-unsigned char CSuperSerialCard::SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
+unsigned char SSC_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft) {
   unsigned int uSlot = ((uAddr & 0xff) >> 4) - 8;
-  CSuperSerialCard *pSSC = (CSuperSerialCard *) MemGetSlotParameters(uSlot);
+  SuperSerialCard *pSSC = (SuperSerialCard *) MemGetSlotParameters(uSlot);
 
   switch (uAddr & 0xf) {
-    case 0x0:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x1:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x2:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x3:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x4:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x5:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x6:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x7:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x8:
-      return pSSC->CommTransmit(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0x9:
-      return pSSC->CommStatus(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xA:
-      return pSSC->CommCommand(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xB:
-      return pSSC->CommControl(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xC:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xD:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xE:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
-    case 0xF:
-      return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x8: return CommTransmit(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0x9: return CommStatus(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0xA: return CommCommand(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    case 0xB: return CommControl(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+    default:  return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
   }
-
-  return 0;
 }
 
-unsigned char CSuperSerialCard::CommCommand(unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
-  if (!CheckComm()) {
-    return 0;
-  }
-
-  if (write && (value != m_uCommandByte)) {
-    m_uCommandByte = value;
-
-    // Update the parity
-    if (m_uCommandByte & 0x20) {
-      switch (m_uCommandByte & 0xC0) {
-        case 0x00 :
-          m_uParity = ODDPARITY;
-          break;
-        case 0x40 :
-          m_uParity = EVENPARITY;
-          break;
-        case 0x80 :
-          m_uParity = MARKPARITY;
-          break;
-        case 0xC0 :
-          m_uParity = SPACEPARITY;
-          break;
+static unsigned char CommCommand(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
+  if (write && (value != pSSC->m_uCommandByte)) {
+    pSSC->m_uCommandByte = value;
+    if (pSSC->m_uCommandByte & 0x20) {
+      switch (pSSC->m_uCommandByte & 0xC0) {
+        case 0x00 : pSSC->m_uParity = ODDPARITY; break;
+        case 0x40 : pSSC->m_uParity = EVENPARITY; break;
+        case 0x80 : pSSC->m_uParity = MARKPARITY; break;
+        case 0xC0 : pSSC->m_uParity = SPACEPARITY; break;
       }
     } else {
-      m_uParity = NOPARITY;
+      pSSC->m_uParity = NOPARITY;
     }
 
-    if (m_uCommandByte & 0x10)  // Receiver mode echo [0=no echo, 1=echo]
-    {
+    switch (pSSC->m_uCommandByte & 0x0C) {
+      case 0 << 2: pSSC->m_bTxIrqEnabled = false; break;
+      case 1 << 2: pSSC->m_bTxIrqEnabled = true; break;
+      case 2 << 2: pSSC->m_bTxIrqEnabled = false; break;
+      case 3 << 2: pSSC->m_bTxIrqEnabled = false; break;
     }
-
-    switch (m_uCommandByte & 0x0C)  // transmitter interrupt control
-    {
-      // Note: the RTS signal must be set 'low' in order to receive any
-      // incoming data from the serial device
-      case 0 << 2: // set RTS high and transmit no interrupts
-        m_bTxIrqEnabled = false;
-        break;
-      case 1 << 2: // set RTS low and transmit interrupts
-        m_bTxIrqEnabled = true;
-        break;
-      case 2 << 2: // set RTS low and transmit no interrupts
-        m_bTxIrqEnabled = false;
-        break;
-      case 3 << 2: // set RTS low and transmit break signals instead of interrupts
-        m_bTxIrqEnabled = false;
-        break;
-    }
-
-    // interrupt request disable [0=enable receiver interrupts]
-    m_bRxIrqEnabled = ((m_uCommandByte & 0x02) == 0);
-
-    if (m_uCommandByte & 0x01)  // Data Terminal Ready (DTR) setting [0=set DTR high (indicates 'not ready')]
-    {
-      // Note that, although the DTR is generally not used in the SSC (it may actually not
-      // be connected!), it must be set to 'low' in order for the 6551 to function correctly.
-    }
-
-    UpdateCommState();
+    pSSC->m_bRxIrqEnabled = ((pSSC->m_uCommandByte & 0x02) == 0);
+    UpdateCommState(pSSC);
   }
-
-  return m_uCommandByte;
+  return pSSC->m_uCommandByte;
 }
 
-unsigned char CSuperSerialCard::CommControl(unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
-  if (!CheckComm()) {
-    return 0;
-  }
-
-  if (write && (value != m_uControlByte)) {
-    m_uControlByte = value;
-
-    // UPDATE THE BAUD RATE
-    switch (m_uControlByte & 0x0F) {
-      // Note that 1 MHz Apples (everything other than the Apple IIgs and //c
-      // Plus running in "fast" mode) cannot handle 19.2 kbps, and even 9600
-      // bps on these machines requires either some highly optimised code or
-      // a decent buffer in the device being accessed.  The faster Apples
-      // have no difficulty with this speed, however.
-
-      case 0x00: // fall through [16x external clock]
-      case 0x01: // fall through [50 bps]
-      case 0x02: // fall through [75 bps]
-      case 0x03: // fall through [109.92 bps]
-      case 0x04: // fall through [134.58 bps]
-      case 0x05:
-        m_uBaudRate = B110;
-        break;  // [150 bps]
-      case 0x06:
-        m_uBaudRate = B300;
-        break;
-      case 0x07:
-        m_uBaudRate = B600;
-        break;
-      case 0x08:
-        m_uBaudRate = B1200;
-        break;
-      case 0x09: // fall through [1800 bps]
-      case 0x0A:
-        m_uBaudRate = B2400;
-        break;
-      case 0x0B: // fall through [3600 bps]
-      case 0x0C:
-        m_uBaudRate = B4800;
-        break;
-      case 0x0D: // fall through [7200 bps]
-      case 0x0E:
-        m_uBaudRate = B9600;
-        break;
-      case 0x0F:
-        m_uBaudRate = B19200;
-        break;
+static unsigned char CommControl(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char write, unsigned char value, uint32_t) {
+  if (write && (value != pSSC->m_uControlByte)) {
+    pSSC->m_uControlByte = value;
+    switch (pSSC->m_uControlByte & 0x0F) {
+      case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05:
+        pSSC->m_uBaudRate = SSC_B110; break;
+      case 0x06: pSSC->m_uBaudRate = SSC_B300; break;
+      case 0x07: pSSC->m_uBaudRate = SSC_B600; break;
+      case 0x08: pSSC->m_uBaudRate = SSC_B1200; break;
+      case 0x09: case 0x0A: pSSC->m_uBaudRate = SSC_B2400; break;
+      case 0x0B: case 0x0C: pSSC->m_uBaudRate = SSC_B4800; break;
+      case 0x0D: case 0x0E: pSSC->m_uBaudRate = SSC_B9600; break;
+      case 0x0F: pSSC->m_uBaudRate = SSC_B19200; break;
     }
 
-    if (m_uControlByte & 0x10) {
-      // receiver clock source [0= external, 1= internal]
+    switch (pSSC->m_uControlByte & 0x60) {
+      case 0x00: pSSC->m_uByteSize = 8; break;
+      case 0x20: pSSC->m_uByteSize = 7; break;
+      case 0x40: pSSC->m_uByteSize = 6; break;
+      case 0x60: pSSC->m_uByteSize = 5; break;
     }
 
-    // UPDATE THE unsigned char SIZE
-    switch (m_uControlByte & 0x60) {
-      case 0x00:
-        m_uByteSize = 8;
-        break;
-      case 0x20:
-        m_uByteSize = 7;
-        break;
-      case 0x40:
-        m_uByteSize = 6;
-        break;
-      case 0x60:
-        m_uByteSize = 5;
-        break;
-    }
-
-    // UPDATE THE NUMBER OF STOP BITS
-    if (m_uControlByte & 0x80) {
-      if ((m_uByteSize == 8) && (m_uParity != NOPARITY))
-        m_uStopBits = ONESTOPBIT;
-      else if ((m_uByteSize == 5) && (m_uParity == NOPARITY))
-        m_uStopBits = ONE5STOPBITS;
-      else
-        m_uStopBits = TWOSTOPBITS;
+    if (pSSC->m_uControlByte & 0x80) {
+      if ((pSSC->m_uByteSize == 8) && (pSSC->m_uParity != NOPARITY)) pSSC->m_uStopBits = ONESTOPBIT;
+      else if ((pSSC->m_uByteSize == 5) && (pSSC->m_uParity == NOPARITY)) pSSC->m_uStopBits = ONE5STOPBITS;
+      else pSSC->m_uStopBits = TWOSTOPBITS;
     } else {
-      m_uStopBits = ONESTOPBIT;
+      pSSC->m_uStopBits = ONESTOPBIT;
     }
-
-    UpdateCommState();
+    UpdateCommState(pSSC);
   }
-
-  return m_uControlByte;
+  return pSSC->m_uControlByte;
 }
 
-unsigned char CSuperSerialCard::CommReceive(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
-  if (!CheckComm()) {
-    return 0;
-  }
-
+static unsigned char CommReceive(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   unsigned char result = 0;
-  if (m_vRecvBytes) {
-    // Don't need critical section in here as CommThread is waiting for ACK
-    result = m_RecvBuffer[0];
-    --m_vRecvBytes;
-
-    if (m_vbCommIRQ && !m_vRecvBytes) {
-      // Read last byte, so get CommThread to call WaitCommEvent() again
+  if (pSSC->m_vRecvBytes) {
+    result = pSSC->m_RecvBuffer[0];
+    pSSC->m_vRecvBytes--;
+    for (unsigned int i = 0; i < pSSC->m_vRecvBytes; ++i) {
+        pSSC->m_RecvBuffer[i] = pSSC->m_RecvBuffer[i+1];
     }
   }
-
   return result;
 }
 
-unsigned char CSuperSerialCard::CommTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
-  if (!CheckComm()) {
-    return 0;
-  }
-
-  unsigned int uBytesWritten;
-  uBytesWritten = write(m_hCommHandle, &value, 1);
-
-  m_bWrittenTx = true;  // Transmit done
-  m_uLastBytesWritten = uBytesWritten;
-
-  // TO DO:
-  // 1) Use CommThread determine when transmit is complete
-  // 2) OR do this:
-  //if (m_bTxIrqEnabled)
-  //  CpuIrqAssert(IS_SSC);
-
+static unsigned char CommTransmit(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
+  SSCFrontend_SendByte(value);
+  pSSC->m_bWrittenTx = true;
   return 0;
 }
 
-// 6551 ACIA Status Register ($C089+s0)
-// ------------------------------------
-// Bit   Value   Meaning
-// 0    1       Parity error
-// 1    1       Framing error
-// 2    1       Overrun error
-// 3    1       Receive register full
-// 4    1       Transmit register empty
-// 5    0       Data Carrier Detect (DCD) true [0=DCD low (detected), 1=DCD high (not detected)]
-// 6    0       Data Set Ready (DSR) true [0=DSR low (ready), 1=DSR high (not ready)]
-// 7    1       Interrupt (IRQ) true (cleared by reading status reg [Ref.4])
-
 enum {
-  ST_PARITY_ERR = 1 << 0,
-  ST_FRAMING_ERR = 1 << 1,
-  ST_OVERRUN_ERR = 1 << 2,
-  ST_RX_FULL = 1 << 3,
-  ST_TX_EMPTY = 1 << 4,
-  ST_DCD = 1 << 5,
-  ST_DSR = 1 << 6,
-  ST_IRQ = 1 << 7
+  ST_PARITY_ERR = 1 << 0, ST_FRAMING_ERR = 1 << 1, ST_OVERRUN_ERR = 1 << 2,
+  ST_RX_FULL = 1 << 3, ST_TX_EMPTY = 1 << 4, ST_DCD = 1 << 5,
+  ST_DSR = 1 << 6, ST_IRQ = 1 << 7
 };
 
-unsigned char CSuperSerialCard::CommStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t)
-{
-  if (!CheckComm())
-    return ST_DSR | ST_DCD | ST_TX_EMPTY;
-
-  #ifdef SUPPORT_MODEM
-  unsigned int modemstatus = 0;
-  GetCommModemStatus(m_hCommHandle,&modemstatus);        // Returns 0x30 = MS_DSR_ON|MS_CTS_ON
-  #endif
-
-  // TO DO - ST_TX_EMPTY:
-  // . IRQs enabled  : set after WaitCommEvent has signaled that TX has completed
-  // . IRQs disabled : always set it [Currently done]
-  //
-
-  // So that /m_vRecvBytes/ doesn't change midway (from 0 to 1):
-  // . bIRQ=false, but uStatus.ST_RX_FULL=1
-  //  EnterCriticalSection(&m_CriticalSection);
-  pthread_mutex_lock(&m_CriticalSection);
+static unsigned char CommStatus(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   bool bIRQ = false;
-  if (m_bTxIrqEnabled && m_bWrittenTx) {
-    bIRQ = true;
-  }
-  if (m_bRxIrqEnabled && m_vRecvBytes) {
-    bIRQ = true;
-  }
+  if (pSSC->m_bTxIrqEnabled && pSSC->m_bWrittenTx) bIRQ = true;
+  if (pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes) bIRQ = true;
 
-  m_bWrittenTx = false;  // Read status reg always clears IRQ
+  pSSC->m_bWrittenTx = false;
 
-  unsigned char uStatus = ST_TX_EMPTY | (m_vRecvBytes ? ST_RX_FULL : 0x00)
-                 #ifdef SUPPORT_MODEM
-                 | ((modemstatus & MS_RLSD_ON)  ? 0x00 : ST_DCD)  // Need 0x00 to allow ZLink to start up
-        | ((modemstatus & MS_DSR_ON)  ? 0x00 : ST_DSR)
-                 #endif
-                 | (bIRQ ? ST_IRQ : 0x00);
+  unsigned char uStatus = ST_TX_EMPTY | (pSSC->m_vRecvBytes ? ST_RX_FULL : 0x00) | (bIRQ ? ST_IRQ : 0x00);
+  if (!SSCFrontend_IsActive()) uStatus |= ST_DSR | ST_DCD;
 
-  pthread_mutex_unlock(&m_CriticalSection);
   CpuIrqDeassert(IS_SSC);
-
   return uStatus;
 }
 
-unsigned char CSuperSerialCard::CommDipSw(unsigned short, unsigned short addr, unsigned char, unsigned char, uint32_t) {
+static unsigned char CommDipSw(SuperSerialCard* pSSC, unsigned short, unsigned short addr, unsigned char, unsigned char, uint32_t) {
   unsigned char sw = 0;
-  switch (addr & 0xf) {
-    case 1:  // DIPSW1
-      sw = (BaudRateToIndex(m_DIPSWCurrent.uBaudRate) << 4) | m_DIPSWCurrent.eFirmwareMode;
-      break;
-
-    case 2:  // DIPSW2
-      // Comms mode - SSC manual, pg23/24
-      unsigned char INT = m_DIPSWCurrent.uStopBits == TWOSTOPBITS ? 1 : 0;  // SW2-1 (Stop bits: 1-ON(0); 2-OFF(1))
-      unsigned char DSR = 0;                        // Always zero
-      unsigned char DCD = m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;      // SW2-2 (Data bits: 8-ON(0); 7-OFF(1))
-      unsigned char TDR = 0;                        // Always zero
-
-      // SW2-3 (Parity: odd-ON(0); even-OFF(1))
-      // SW2-4 (Parity: none-ON(0); SW2-3-OFF(1))
-      unsigned char RDR, OVR;
-      switch (m_DIPSWCurrent.uParity) {
-        case ODDPARITY:
-          RDR = 0;
-          OVR = 1;
-          break;
-        case EVENPARITY:
-          RDR = 1;
-          OVR = 1;
-          break;
-        default:
-          assert(0);
-        case NOPARITY:
-          RDR = 0;
-          OVR = 0;
-          break;
-      }
-
-      unsigned char FE = m_DIPSWCurrent.bLinefeed ? 1 : 0;          // SW2-5 (LF: yes-ON(0); no-OFF(1))
-      unsigned char PE = m_DIPSWCurrent.bInterrupts ? 1 : 0;        // SW2-6 (Interrupts: yes-ON(0); no-OFF(1))
-
-      sw = (INT << 7) | (DSR << 6) | (DCD << 5) | (TDR << 4) | (RDR << 3) | (OVR << 2) | (FE << 1) | (PE << 0);
-      break;
+  if ((addr & 0xf) == 1) {
+    sw = (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) | pSSC->m_DIPSWCurrent.eFirmwareMode;
+  } else if ((addr & 0xf) == 2) {
+    unsigned char INT = pSSC->m_DIPSWCurrent.uStopBits == TWOSTOPBITS ? 1 : 0;
+    unsigned char DCD = pSSC->m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;
+    unsigned char RDR, OVR;
+    switch (pSSC->m_DIPSWCurrent.uParity) {
+      case ODDPARITY:  RDR = 0; OVR = 1; break;
+      case EVENPARITY: RDR = 1; OVR = 1; break;
+      default:         RDR = 0; OVR = 0; break;
+    }
+    unsigned char FE = pSSC->m_DIPSWCurrent.bLinefeed ? 1 : 0;
+    unsigned char PE = pSSC->m_DIPSWCurrent.bInterrupts ? 1 : 0;
+    sw = (INT << 7) | (DCD << 5) | (RDR << 3) | (OVR << 2) | (FE << 1) | (PE << 0);
   }
   return sw;
 }
 
-void CSuperSerialCard::CommInitialize(uint8_t* pCxRomPeripheral, unsigned int uSlot)
-{
-  const unsigned int SSC_FW_SIZE = 2 * 1024;
-  const unsigned int SSC_SLOT_FW_SIZE = 256;
-  const unsigned int SSC_SLOT_FW_OFFSET = 7 * 256;
-
-  unsigned char *pData = (unsigned char *) SSC_rom;  // NB. Don't need to unlock resource
-
-  memcpy(pCxRomPeripheral + uSlot * 256, pData + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
-
-  // Expansion ROM
-  if (m_pExpansionRom == NULL) {
-    m_pExpansionRom = new unsigned char[SSC_FW_SIZE];
-    if (m_pExpansionRom) {
-      memcpy(m_pExpansionRom, pData, SSC_FW_SIZE);
+void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
+    if (pSSC->m_vRecvBytes < uRecvBufferSize) {
+        pSSC->m_RecvBuffer[pSSC->m_vRecvBytes++] = byte;
+        if (pSSC->m_bRxIrqEnabled) {
+            pSSC->m_vbCommIRQ = true;
+            CpuIrqAssert(IS_SSC);
+        }
     }
-  }
-
-  RegisterIoHandler(uSlot, &CSuperSerialCard::SSC_IORead, &CSuperSerialCard::SSC_IOWrite, NULL, NULL, this,
-                    m_pExpansionRom);
 }
 
-void CSuperSerialCard::CommReset() {
-  CloseComm();
-  GetDIPSW();
-  m_vRecvBytes = 0;
-  m_bTxIrqEnabled = false;
-  m_bRxIrqEnabled = false;
-  m_bWrittenTx = false;
-  m_vbCommIRQ = false;
-}
-
-void CSuperSerialCard::CommDestroy() {
-  CommReset();
-  delete[] m_pExpansionRom;
-  m_pExpansionRom = NULL;
-}
-
-void CSuperSerialCard::CommSetSerialPort(/*HWND window,*/ unsigned int newserialport) {
-  if (m_hCommHandle == -1) {
-    m_dwSerialPort = newserialport;
-  } else {
-    fprintf(stderr, "You cannot change the serial port while it is in use!\n");
-  }
-}
-
-void CSuperSerialCard::CommUpdate(unsigned int totalcycles) {
-  if (m_hCommHandle == -1) {
-    return;
-  }
-
-  if ((m_dwCommInactivity += totalcycles) > 1000000) {
-    static unsigned int lastcheck = 0;
-
-    if ((m_dwCommInactivity > 2000000) || (m_dwCommInactivity - lastcheck > 99950)) {
-      #ifdef SUPPORT_MODEM
-      unsigned int modemstatus = 0;
-      GetCommModemStatus(m_hCommHandle,&modemstatus);
-      if ((modemstatus & MS_RLSD_ON) || DiskIsSpinning())
-        m_dwCommInactivity = 0;
-      #else
-      if (DiskIsSpinning())
-        m_dwCommInactivity = 0;
-      #endif
-    }
-  }
-}
-
-void CSuperSerialCard::CheckCommEvent(unsigned int dwEvtMask) {
-  (void)dwEvtMask;
-  pthread_mutex_lock(&m_CriticalSection);
-  m_vRecvBytes = read(m_hCommHandle, m_RecvBuffer, 1);
-  pthread_mutex_unlock(&m_CriticalSection);
-
-  if (m_bRxIrqEnabled && m_vRecvBytes) {
-    m_vbCommIRQ = true;
-    CpuIrqAssert(IS_SSC);
-  }
-}
-
-unsigned int CSuperSerialCard::CommGetSnapshot(SS_IO_Comms *pSS)
-{
-  pSS->baudrate = m_uBaudRate;
-  pSS->bytesize = m_uByteSize;
-  pSS->commandbyte = m_uCommandByte;
-  pSS->comminactivity = m_dwCommInactivity;
-  pSS->controlbyte = m_uControlByte;
-  pSS->parity = m_uParity;
-  memcpy(pSS->recvbuffer, m_RecvBuffer, uRecvBufferSize);
-  pSS->recvbytes = m_vRecvBytes;
-  pSS->stopbits = m_uStopBits;
+unsigned int SSC_GetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms *pSS) {
+  pSS->baudrate = pSSC->m_uBaudRate;
+  pSS->bytesize = pSSC->m_uByteSize;
+  pSS->commandbyte = pSSC->m_uCommandByte;
+  pSS->comminactivity = 0;
+  pSS->controlbyte = pSSC->m_uControlByte;
+  pSS->parity = pSSC->m_uParity;
+  memcpy(pSS->recvbuffer, pSSC->m_RecvBuffer, uRecvBufferSize);
+  pSS->recvbytes = pSSC->m_vRecvBytes;
+  pSS->stopbits = pSSC->m_uStopBits;
   return 0;
 }
 
-unsigned int CSuperSerialCard::CommSetSnapshot(SS_IO_Comms *pSS)
-{
-  m_uBaudRate = pSS->baudrate;
-  m_uByteSize = pSS->bytesize;
-  m_uCommandByte = pSS->commandbyte;
-  m_dwCommInactivity = pSS->comminactivity;
-  m_uControlByte = pSS->controlbyte;
-  m_uParity = pSS->parity;
-  memcpy(m_RecvBuffer, pSS->recvbuffer, uRecvBufferSize);
-  m_vRecvBytes = pSS->recvbytes;
-  m_uStopBits = pSS->stopbits;
+unsigned int SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms *pSS) {
+  pSSC->m_uBaudRate = pSS->baudrate;
+  pSSC->m_uByteSize = pSS->bytesize;
+  pSSC->m_uCommandByte = pSS->commandbyte;
+  pSSC->m_uControlByte = pSS->controlbyte;
+  pSSC->m_uParity = pSS->parity;
+  memcpy(pSSC->m_RecvBuffer, pSS->recvbuffer, uRecvBufferSize);
+  pSSC->m_vRecvBytes = pSS->recvbytes;
+  pSSC->m_uStopBits = pSS->stopbits;
   return 0;
 }

@@ -1072,7 +1072,7 @@ int MemInitialize() // returns -1 if any error during initialization
   RegisterIoHandler(uSlot, MemSetPaging, MemSetPaging, NULL, NULL, NULL, NULL);
 
   PrintLoadRom(pCxRomPeripheral, 1);        // $C100 : Parallel printer f/w
-  sg_SSC.CommInitialize(pCxRomPeripheral, 2);    // $C200 : SSC
+  SSC_Initialize(&sg_SSC, pCxRomPeripheral, 2);    // $C200 : SSC
   if (g_Slot4 == CT_MouseInterface)
     Mouse_Initialize(pCxRomPeripheral, 4);  // $C400 : Mouse f/w
   DiskLoadRom(pCxRomPeripheral, 6);        // $C600 : Disk][ f/w

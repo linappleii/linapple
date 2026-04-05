@@ -30,7 +30,7 @@ unsigned int g_dwCyclesThisFrame = 0;
 FILE *g_fh = NULL;
 bool g_bDisableDirectSound = false;
 
-CSuperSerialCard sg_SSC;
+SuperSerialCard sg_SSC;
 
 unsigned int g_Slot4 = CT_Mockingboard;
 CURL *g_curl = NULL;

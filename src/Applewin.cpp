@@ -40,6 +40,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <fcntl.h>
 #include <getopt.h>
 
+#include "SerialComms.h"
+#include "SerialCommsFrontend.h"
 #include "asset.h"
 #include "Util_Path.h"
 #include "JoystickFrontend.h"
@@ -211,7 +213,7 @@ void ContinueExecution()
   if (g_state.mode == MODE_RUNNING || bModeStepping_WaitTimer)
     Frontend_UpdateSpeaker();
 
-  sg_SSC.CommUpdate(cyclenum);
+  SSCFrontend_Update(&sg_SSC, cyclenum);
   PrintUpdate(cyclenum);
 
   const unsigned int CLKS_PER_MS = (unsigned int) g_fCurrentCLK6502 / 1000;
@@ -676,7 +678,7 @@ void LoadConfiguration()
   LOAD("Sound Emulation", &soundtype);
   unsigned int dwSerialPort = 0;
   LOAD("Serial Port", &dwSerialPort);
-  sg_SSC.SetSerialPort(dwSerialPort);
+  SSCFrontend_SetSerialPort(dwSerialPort);
 
   LOAD("Emulation Speed", &g_state.dwSpeed);
   LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);
@@ -1118,7 +1120,7 @@ void SessionShutdown()
     HD_Cleanup();
   }
   PrintDestroy();
-  sg_SSC.CommDestroy();
+  SSC_Destroy(&sg_SSC);
   CpuDestroy();
   SpkrDestroy();
   VideoDestroy();
