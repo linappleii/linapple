@@ -75,12 +75,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //   . ORB  = 0x3F (STOP)
 //
 
-/* Needs adaptation for SDL and POSIX */
-
-#include "stdafx.h"
-
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 #include <assert.h>
+
+#include "Common.h"
+#include "Structs.h"
+#include "AppleWin.h"
 #include "AY8910.h"
+#include "CPU.h"
+#include "Memory.h"
+#include "Mockingboard.h"
+#include "SoundCore.h"
+#include "Log.h"
+#include "Video.h"
 
 #define SY6522_DEVICE_A 0
 #define SY6522_DEVICE_B 1
@@ -556,14 +566,6 @@ void MB_Update() {
   #endif  // if defined MOCKINGBOARD
 }
 
-static bool MB_DSInit()
-{
-  return true;
-}
-
-static void MB_DSUninit() {
-}
-
 static unsigned char PhasorIO(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
 static unsigned char MB_Read(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
 static unsigned char MB_Write(unsigned short PC, unsigned short nAddr, unsigned char bWrite, unsigned char nValue, uint32_t nCyclesLeft);
@@ -576,7 +578,7 @@ void MB_Initialize() {
 
     int i;
     for (i = 0; i < NUM_VOICES; i++) {
-      ppAYVoiceBuffer[i] = new short[SAMPLE_RATE];  // Buffer can hold a max of 1 seconds worth of samples
+      ppAYVoiceBuffer[i] = (short*)malloc(SAMPLE_RATE * sizeof(short));  // Buffer can hold a max of 1 seconds worth of samples
     }
 
     AY8910_InitAll((int) g_fCurrentCLK6502, SAMPLE_RATE);
@@ -585,7 +587,7 @@ void MB_Initialize() {
       g_MB[i].nAY8910Number = i;
     }
 
-    g_bMBAvailable = MB_DSInit();
+    g_bMBAvailable = true;
     MB_Reset();
   }
 
@@ -607,9 +609,8 @@ void MB_Reinitialize() {
 }
 
 void MB_Destroy() {
-  MB_DSUninit();
   for (int i = 0; i < NUM_VOICES; i++)
-    delete[] ppAYVoiceBuffer[i];
+    free(ppAYVoiceBuffer[i]);
 }
 
 void MB_Reset() {
