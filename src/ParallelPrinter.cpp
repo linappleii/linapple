@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "stdafx.h"
+#include "PrinterFrontend.h"
 
 char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\x68\x68"
                       "\x68\x68\xA8\xCA\x9A\x68\x28\xAA\x90\x38\xBD\xB8\x05\x10\x19\x98"
@@ -45,79 +46,35 @@ char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\
                       "\x05\x98\x48\x8A\x0A\x0A\x0A\x0A\xA8\xBD\x38\x07\xC5\x24\x68\xB0"
                       "\x05\x48\x29\x80\x09\x20\x2C\x58\xFF\xF0\x03\xFE\x38\x07\x70\x84";
 
-
-static unsigned int inactivity = 0;
-static unsigned int g_PrinterIdleLimit = 10;
-static FILE *file = NULL;
 unsigned int const PRINTDRVR_SIZE = 0x100;
-bool g_bPrinterAppend = true;
 
 static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t);
-
 static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t);
 
 void PrintLoadRom(uint8_t* pCxRomPeripheral, const unsigned int uSlot) {
-  unsigned char *pData = (unsigned char *) Parallel_bin;  // NB. Don't need to unlock resource
+  unsigned char *pData = (unsigned char *) Parallel_bin;
   memcpy(pCxRomPeripheral + uSlot * 256, pData, PRINTDRVR_SIZE);
   RegisterIoHandler(uSlot, PrintStatus, PrintTransmit, NULL, NULL, NULL, NULL);
 }
 
-static bool CheckPrint()
-{
-  inactivity = 0;
-  if (file == NULL) {
-    file = fopen(g_state.sParallelPrinterFile, (g_bPrinterAppend) ? "ab" : "wb");
-  }
-  return (file != NULL);
-}
-
-static void ClosePrint() {
-  if (file != NULL) {
-    fclose(file);
-    file = NULL;
-  }
-  inactivity = 0;
-}
-
 void PrintDestroy() {
-  ClosePrint();
+  PrinterFrontend_Destroy();
 }
 
 void PrintUpdate(unsigned int totalcycles) {
-  if (file == NULL) {
-    return;
-  }
-  if ((inactivity += totalcycles) > (Printer_GetIdleLimit() * 1000 * 1000))
-  {
-    // inactive, so close the file (next print will overwrite it)
-    ClosePrint();
-  }
+  PrinterFrontend_Update(totalcycles);
 }
 
 void PrintReset() {
-  ClosePrint();
+  PrinterFrontend_Reset();
 }
 
 static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
-  CheckPrint();
+  PrinterFrontend_CheckStatus();
   return 0xFF;
 }
 
 static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
-  if (!CheckPrint()) {
-    return 0;
-  }
-  char c = value & 0x7F;
-  fwrite(&c, 1, 1, file);
+  PrinterFrontend_SendChar(value);
   return 0;
-}
-
-unsigned int Printer_GetIdleLimit()
-{
-  return g_PrinterIdleLimit;
-}
-
-void Printer_SetIdleLimit(unsigned int Duration)
-{
-  g_PrinterIdleLimit = Duration;
 }
