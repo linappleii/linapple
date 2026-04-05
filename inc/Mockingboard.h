@@ -42,7 +42,3 @@ unsigned int MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, unsigned int dwSlot);
 
 unsigned int MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, unsigned int dwSlot);
 
-extern short *pDSMockBuf;  // Mockingboard data buffer (in size of g_dwDSMockBufferSize samples?)
-extern unsigned int nDSMockWCur;  // write cursor
-extern unsigned int nDSMockRCur;  // read cursor
-
