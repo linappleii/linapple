@@ -1,3 +1,6 @@
+#ifndef STRUCTS_H
+#define STRUCTS_H
+
 #include <cstdint>
 
 // Structs used by save-state file
@@ -229,3 +232,4 @@ typedef struct {
   SS_CARD_DISK2 Disk2;        // Slot6
   SS_CARD_EMPTY Empty7;        // Slot7
 } APPLEWIN_SNAPSHOT;
+#endif // STRUCTS_H

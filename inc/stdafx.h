@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <SDL3/SDL.h>
+#include <pthread.h>
 #include <cassert>
 #include <cstring>
 #include <cctype>
