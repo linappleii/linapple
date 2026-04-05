@@ -89,6 +89,8 @@ unsigned char IO_Null(unsigned short programcounter, unsigned short address, uns
 
 void MemUpdatePaging(bool initialize, bool updatewriteonly);
 
+unsigned char IOMap_Dispatch(unsigned short pc, unsigned short addr, unsigned char write, unsigned char d, uint32_t cycles);
+
 unsigned char MemCheckPaging(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
 unsigned char MemSetPaging(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
