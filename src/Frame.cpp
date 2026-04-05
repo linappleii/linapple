@@ -108,7 +108,24 @@ void DrawFrameWindow()
 
   pthread_mutex_lock(&video_draw_mutex);
   if (g_texture && screen) {
-      SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+      uint32_t* output = VideoGetOutputBuffer();
+      SDL_Rect r = {0, 0, 560, 384};
+
+      // Fill screen from RGB32 output buffer
+      VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+      VideoSurface vs_output;
+      vs_output.pixels = (uint8_t*)output;
+      vs_output.w = 560;
+      vs_output.h = 384;
+      vs_output.pitch = 560 * 4;
+      vs_output.bpp = 4;
+
+      if (!g_WindowResized) {
+          VideoSoftStretch(&vs_output, (VideoRect*)&r, &vs_screen, (VideoRect*)&r);
+      } else {
+          VideoSoftStretch(&vs_output, (VideoRect*)&origRect, &vs_screen, (VideoRect*)&newRect);
+      }
+
       SDL_UpdateTexture(g_texture, NULL, screen->pixels, screen->pitch);
       SDL_RenderClear(g_renderer);
       SDL_RenderTexture(g_renderer, g_texture, NULL, NULL);
@@ -127,8 +144,8 @@ void DrawStatusArea(int drawflags)
     }
   }
 
-  SDL_Rect srect;
-  Uint32 mybluez = SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 10, 10, 255);
+  VideoRect srect;
+  uint8_t mybluez = DARK_BLUE;
 
   if (drawflags & DRAW_BACKGROUND) {
     g_iStatusCycle = SHOW_CYCLES;
@@ -138,7 +155,11 @@ void DrawStatusArea(int drawflags)
     srect.y = 22;
     srect.w = STATUS_PANEL_W - 8;
     srect.h = STATUS_PANEL_H - 25;
-    SDL_FillSurfaceRect(g_hStatusSurface, &srect, mybluez);
+    
+    // Fill background of status surface
+    for (int y = srect.y; y < srect.y + srect.h; ++y) {
+        memset(g_hStatusSurface->pixels + y * g_hStatusSurface->pitch + srect.x, mybluez, srect.w);
+    }
 
     char leds[2] = "\x64";
     #define LEDS  1
@@ -194,8 +215,7 @@ void FrameShowHelpScreen(int sx, int sy)
                                         " Scroll Lock - Toggle full speed",
                                         "  Numpad +/-/* - Increase/Decrease/Normal speed"};
 
-  SDL_Surface *my_screen;
-  SDL_Surface *tempSurface = NULL;
+  VideoSurface *tempSurface = NULL;
 
   if (font_sfc == NULL) {
     if (!fonts_initialization()) {
@@ -214,41 +234,53 @@ void FrameShowHelpScreen(int sx, int sy)
   }
 
   if (tempSurface == NULL) {
-    tempSurface = screen;
+    // Wrap screen as fallback
+    static VideoSurface vs_screen;
+    vs_screen = SDLSurfaceToVideoSurface(screen);
+    tempSurface = &vs_screen;
   }
-  my_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, tempSurface->format);
 
-  surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);
-  SDL_SoftStretchMy(tempSurface, NULL, my_screen, NULL);
-  SDL_SoftStretchMy(my_screen, NULL, screen, NULL);
+  VideoSurface *my_screen_vs = VideoCreateSurface(tempSurface->w, tempSurface->h, tempSurface->bpp);
+  VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
+
+  surface_fader(my_screen_vs, 0.2F, 0.2F, 0.2F, -1, 0);
+  VideoSoftStretch(tempSurface, NULL, my_screen_vs, NULL);
+  VideoSoftStretch(my_screen_vs, NULL, &vs_actual_screen, NULL);
 
   double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
   double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
 
-  font_print_centered(sx / 2, int(5 * facy), (char *) HelpStrings[0], screen, 1.5 * facx, 1.3 * facy);
-  font_print_centered(sx / 2, int(20 * facy), (char *) HelpStrings[1], screen, 1.3 * facx, 1.2 * facy);
-  font_print_centered(sx / 2, int(30 * facy), (char *) HelpStrings[2], screen, 1.2 * facx, 1.0 * facy);
+  font_print_centered(sx / 2, int(5 * facy), (char *) HelpStrings[0], &vs_actual_screen, 1.5 * facx, 1.3 * facy);
+  font_print_centered(sx / 2, int(20 * facy), (char *) HelpStrings[1], &vs_actual_screen, 1.3 * facx, 1.2 * facy);
+  font_print_centered(sx / 2, int(30 * facy), (char *) HelpStrings[2], &vs_actual_screen, 1.2 * facx, 1.0 * facy);
 
   int Help_TopX = int(45 * facy);
   for (int i = 3; i < MAX_LINES; i++) {
     if (HelpStrings[i])
-      font_print(4, Help_TopX + (i - 3) * 15 * facy, (char *) HelpStrings[i], screen, 1.5 * facx,
+      font_print(4, Help_TopX + (i - 3) * 15 * facy, (char *) HelpStrings[i], &vs_actual_screen, 1.5 * facx,
                1.5 * facy);
   }
 
-  rectangle(screen, 0, Help_TopX - 5, g_state.ScreenWidth - 1, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-  rectangle(screen, 1, Help_TopX - 4, g_state.ScreenWidth, int(335 * facy), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 255));
-  rectangle(screen, 1, 1, g_state.ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format), SDL_GetSurfacePalette(screen), 255, 255, 0));
+  rectangle(&vs_actual_screen, 0, Help_TopX - 5, g_state.ScreenWidth - 1, int(335 * facy), 0xFFFFFF);
+  rectangle(&vs_actual_screen, 1, Help_TopX - 4, g_state.ScreenWidth, int(335 * facy), 0xFFFFFF);
+  rectangle(&vs_actual_screen, 1, 1, g_state.ScreenWidth - 2, (Help_TopX - 8), 0xFFFF00);
 
-  tempSurface = assets->icon;
-  SDL_Rect logo, scrr;
+  // Logo bit
+  VideoSurface vs_icon;
+  vs_icon.pixels = (uint8_t*)assets->icon->pixels;
+  vs_icon.w = assets->icon->w;
+  vs_icon.h = assets->icon->h;
+  vs_icon.pitch = assets->icon->pitch;
+  vs_icon.bpp = 4; // Assuming RGB32
+
+  VideoRect logo, scrr;
   logo.x = logo.y = 0;
-  logo.w = tempSurface->w;
-  logo.h = tempSurface->h;
+  logo.w = vs_icon.w;
+  logo.h = vs_icon.h;
   scrr.x = int(460 * facx);
   scrr.y = int(270 * facy);
   scrr.w = scrr.h = int(100 * facy);
-  SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
+  VideoSoftStretchOr(&vs_icon, &logo, &vs_actual_screen, &scrr);
 
   if (g_texture && screen) {
       SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
@@ -258,6 +290,8 @@ void FrameShowHelpScreen(int sx, int sy)
       SDL_RenderPresent(g_renderer);
   }
   SDL_Delay(1000);
+
+  VideoDestroySurface(my_screen_vs);
 
   SDL_Event event;
 

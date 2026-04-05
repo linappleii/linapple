@@ -1,37 +1,7 @@
-/*
-    SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2004 Sam Lantinga
-
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Library General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Library General Public License for more details.
-
-    You should have received a copy of the GNU Library General Public
-    License along with this library; if not, write to the Free
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-    Sam Lantinga
-    slouken@libsdl.org
-*/
-
-
-/* This a stretch blit implementation based on ideas given to me by
-   Tomasz Cejner - thanks! :)
-
-   April 27, 2000 - Sam Lantinga
-*/
-
-
-#include <SDL3_image/SDL_image.h>
-
 #include "stdafx.h"
-#include "asset.h"
+#include "Video.h"
+#include "stretch.h"
+#include <cstring>
 
 template <typename T>
 static void CopyRow(T *src, int src_w, T *dst, int dst_w)
@@ -65,29 +35,27 @@ static void CopyRowOr(T *src, int src_w, T *dst, int dst_w)
   }
 }
 
-void copy_row1(Uint8 *src, int src_w, Uint8 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
-void copy_row2(Uint16 *src, int src_w, Uint16 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
-void copy_row4(Uint32 *src, int src_w, Uint32 *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
-void copy_row_or1(Uint8 *src, int src_w, Uint8 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
-void copy_row_or2(Uint16 *src, int src_w, Uint16 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
-void copy_row_or4(Uint32 *src, int src_w, Uint32 *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+static void copy_row1(uint8_t *src, int src_w, uint8_t *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+static void copy_row2(uint16_t *src, int src_w, uint16_t *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+static void copy_row4(uint32_t *src, int src_w, uint32_t *dst, int dst_w) { CopyRow(src, src_w, dst, dst_w); }
+static void copy_row_or1(uint8_t *src, int src_w, uint8_t *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+static void copy_row_or2(uint16_t *src, int src_w, uint16_t *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
+static void copy_row_or4(uint32_t *src, int src_w, uint32_t *dst, int dst_w) { CopyRowOr(src, src_w, dst, dst_w); }
 
-static Uint32 g_palette_lut[256];
-static SDL_Palette* g_last_palette = NULL;
-static uint32_t g_last_palette_version = 0;
+static uint32_t g_palette_lut[256];
+static VideoColor* g_last_palette = NULL;
 
-static void UpdatePaletteLUT(SDL_Palette* palette) {
+static void UpdatePaletteLUT(VideoColor* palette) {
     if (!palette) return;
-    if (palette == g_last_palette && palette->version == g_last_palette_version) return;
+    if (palette == g_last_palette) return;
 
     for (int i = 0; i < 256; ++i) {
-        g_palette_lut[i] = (palette->colors[i].r << 16) | (palette->colors[i].g << 8) | palette->colors[i].b;
+        g_palette_lut[i] = (palette[i].r << 16) | (palette[i].g << 8) | palette[i].b;
     }
     g_last_palette = palette;
-    g_last_palette_version = palette->version;
 }
 
-void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
+static void copy_row1to4(uint8_t *src, int src_w, uint32_t *dst, int dst_w, VideoColor *palette)
 {
   UpdatePaletteLUT(palette);
   if (src_w == dst_w) {
@@ -98,7 +66,7 @@ void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *pa
   }
   int pos = 0x10000;
   int inc = (src_w << 16) / dst_w;
-  Uint32 pixel = 0;
+  uint32_t pixel = 0;
   for (int i = dst_w; i > 0; --i) {
     while (pos >= 0x10000L) {
       pixel = g_palette_lut[*src++];
@@ -109,7 +77,7 @@ void copy_row1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *pa
   }
 }
 
-void copy_row_or1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette *palette)
+static void copy_row_or1to4(uint8_t *src, int src_w, uint32_t *dst, int dst_w, VideoColor *palette)
 {
   UpdatePaletteLUT(palette);
   if (src_w == dst_w) {
@@ -120,7 +88,7 @@ void copy_row_or1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette 
   }
   int pos = 0x10000;
   int inc = (src_w << 16) / dst_w;
-  Uint32 pixel = 0;
+  uint32_t pixel = 0;
   for (int i = dst_w; i > 0; --i) {
     while (pos >= 0x10000L) {
       pixel = g_palette_lut[*src++];
@@ -131,10 +99,10 @@ void copy_row_or1to4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, SDL_Palette 
   }
 }
 
-void copy_row3(Uint8 *src, int src_w, Uint8 *dst, int dst_w) {
+static void copy_row3(uint8_t *src, int src_w, uint8_t *dst, int dst_w) {
   int i;
   int pos, inc;
-  Uint8 pixel[3] = {0, 0, 0};
+  uint8_t pixel[3] = {0, 0, 0};
 
   pos = 0x10000;
   inc = (src_w << 16) / dst_w;
@@ -152,28 +120,20 @@ void copy_row3(Uint8 *src, int src_w, Uint8 *dst, int dst_w) {
   }
 }
 
-/* Perform a stretch blit between two surfaces of the same format.
-   NOTE:  This function is not safe to call from multiple threads!
-*/
-int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
-  int src_locked;
-  int dst_locked;
+int VideoSoftStretch(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect) {
   int pos, inc;
   int dst_maxrow;
   int src_row, dst_row;
-  Uint8 *srcp = NULL;
-  Uint8 *dstp;
-  SDL_Rect full_src;
-  SDL_Rect full_dst;
+  uint8_t *srcp = NULL;
+  uint8_t *dstp;
+  VideoRect full_src;
+  VideoRect full_dst;
   if (!src || !dst) return -1;
   if (!src->pixels || !dst->pixels) {
       return -1;
   }
-  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
-  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
-  if (!sfmt || !dfmt) return -1;
-  const int sbpp = sfmt->bytes_per_pixel;
-  const int dbpp = dfmt->bytes_per_pixel;
+  const int sbpp = src->bpp;
+  const int dbpp = dst->bpp;
 
   if (!srcrect) {
     full_src.x = 0;
@@ -190,76 +150,46 @@ int SDL_SoftStretchMy(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     dstrect = &full_dst;
   }
 
-  dst_locked = 0;
-  if (SDL_MUSTLOCK(dst)) {
-    if (!SDL_LockSurface(dst)) {
-      return -1;
-    }
-    dst_locked = 1;
-  }
-  src_locked = 0;
-  if (SDL_MUSTLOCK(src)) {
-    if (!SDL_LockSurface(src)) {
-      if (dst_locked) {
-        SDL_UnlockSurface(dst);
-      }
-      return (-1);
-    }
-    src_locked = 1;
-  }
-
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
-
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
+    dstp = (uint8_t *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
+      srcp = (uint8_t *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
     if (sbpp == 1 && dbpp == 4) {
-        SDL_Palette *pal = SDL_GetSurfacePalette(src);
-        if (pal) {
-            copy_row1to4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, pal);
-        } else {
-            memset(dstp, 0, dstrect->w * 4);
-        }
+        copy_row1to4(srcp, srcrect->w, (uint32_t *)dstp, dstrect->w, src->palette);
     } else {
         switch (dbpp) {
           case 1:
             copy_row1(srcp, srcrect->w, dstp, dstrect->w);
             break;
           case 2:
-            copy_row2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
+            copy_row2((uint16_t *) srcp, srcrect->w, (uint16_t *) dstp, dstrect->w);
             break;
           case 3:
             copy_row3(srcp, srcrect->w, dstp, dstrect->w);
             break;
           case 4:
-            copy_row4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
+            copy_row4((uint32_t *) srcp, srcrect->w, (uint32_t *) dstp, dstrect->w);
             break;
         }
     }
     pos += inc;
   }
 
-  if (dst_locked) {
-    SDL_UnlockSurface(dst);
-  }
-  if (src_locked) {
-    SDL_UnlockSurface(src);
-  }
   return (0);
 }
 
-void copy8mono(Uint8 *src, int src_w, Uint8 *dst, int dst_w, Uint8 fgbrush, Uint8 bgbrush) {
+static void copy8mono(uint8_t *src, int src_w, uint8_t *dst, int dst_w, uint8_t fgbrush, uint8_t bgbrush) {
   int i;
   int pos, inc;
-  Uint8 pixel = 0;
+  uint8_t pixel = 0;
   pos = 0x10000;
   inc = (src_w << 16) / dst_w;
   for (i = dst_w; i > 0; --i) {
@@ -276,10 +206,10 @@ void copy8mono(Uint8 *src, int src_w, Uint8 *dst, int dst_w, Uint8 fgbrush, Uint
   }
 }
 
-void copy8mono4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, Uint32 fgbrush, Uint32 bgbrush) {
+static void copy8mono4(uint8_t *src, int src_w, uint32_t *dst, int dst_w, uint32_t fgbrush, uint32_t bgbrush) {
   int i;
   int pos, inc;
-  Uint8 pixel = 0;
+  uint8_t pixel = 0;
   pos = 0x10000;
   inc = (src_w << 16) / dst_w;
   for (i = dst_w; i > 0; --i) {
@@ -296,26 +226,21 @@ void copy8mono4(Uint8 *src, int src_w, Uint32 *dst, int dst_w, Uint32 fgbrush, U
   }
 }
 
-int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, Uint32 fgbrush, Uint32 bgbrush)
+int VideoSoftStretchMono8(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect, uint32_t fgbrush, uint32_t bgbrush)
 {
-  int src_locked;
-  int dst_locked;
   int pos, inc;
   int dst_maxrow;
   int src_row, dst_row;
-  Uint8 *srcp = NULL;
-  Uint8 *dstp;
-  SDL_Rect full_src;
-  SDL_Rect full_dst;
+  uint8_t *srcp = NULL;
+  uint8_t *dstp;
+  VideoRect full_src;
+  VideoRect full_dst;
   if (!src || !dst) return -1;
   if (!src->pixels || !dst->pixels) {
       return -1;
   }
-  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
-  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
-  if (!sfmt || !dfmt) return -1;
-  const int sbpp = sfmt->bytes_per_pixel;
-  const int dbpp = dfmt->bytes_per_pixel;
+  const int sbpp = src->bpp;
+  const int dbpp = dst->bpp;
 
   if (!srcrect) {
     full_src.x = 0;
@@ -332,43 +257,24 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
     dstrect = &full_dst;
   }
 
-  dst_locked = 0;
-  if (SDL_MUSTLOCK(dst)) {
-    if (!SDL_LockSurface(dst)) {
-      return -1;
-    }
-    dst_locked = 1;
-  }
-  src_locked = 0;
-  if (SDL_MUSTLOCK(src)) {
-    if (!SDL_LockSurface(src)) {
-      if (dst_locked) {
-        SDL_UnlockSurface(dst);
-      }
-      return (-1);
-    }
-    src_locked = 1;
-  }
-
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
-
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
+    dstp = (uint8_t *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
+      srcp = (uint8_t *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
     if (sbpp == 1 && dbpp == 4) {
-        copy8mono4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, fgbrush, bgbrush);
+        copy8mono4(srcp, srcrect->w, (uint32_t *)dstp, dstrect->w, fgbrush, bgbrush);
     } else {
         switch (dbpp) {
           case 1:
-            copy8mono(srcp, srcrect->w, dstp, dstrect->w, (Uint8)fgbrush, (Uint8)bgbrush);
+            copy8mono(srcp, srcrect->w, dstp, dstrect->w, (uint8_t)fgbrush, (uint8_t)bgbrush);
             break;
           default:
             break;
@@ -377,37 +283,23 @@ int SDL_SoftStretchMono8(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, 
     pos += inc;
   }
 
-  if (dst_locked) {
-    SDL_UnlockSurface(dst);
-  }
-  if (src_locked) {
-    SDL_UnlockSurface(src);
-  }
   return (0);
 }
 
-/* Perform a stretch blit between two surfaces of the same format.
-   NOTE:  This function is not safe to call from multiple threads!
-*/
-int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
-  int src_locked;
-  int dst_locked;
+int VideoSoftStretchOr(VideoSurface *src, VideoRect *srcrect, VideoSurface *dst, VideoRect *dstrect) {
   int pos, inc;
   int dst_maxrow;
   int src_row, dst_row;
-  Uint8 *srcp = NULL;
-  Uint8 *dstp;
-  SDL_Rect full_src;
-  SDL_Rect full_dst;
+  uint8_t *srcp = NULL;
+  uint8_t *dstp;
+  VideoRect full_src;
+  VideoRect full_dst;
   if (!src || !dst) return -1;
   if (!src->pixels || !dst->pixels) {
       return -1;
   }
-  const SDL_PixelFormatDetails *sfmt = SDL_GetPixelFormatDetails(src->format);
-  const SDL_PixelFormatDetails *dfmt = SDL_GetPixelFormatDetails(dst->format);
-  if (!sfmt || !dfmt) return -1;
-  const int sbpp = sfmt->bytes_per_pixel;
-  const int dbpp = dfmt->bytes_per_pixel;
+  const int sbpp = src->bpp;
+  const int dbpp = dst->bpp;
 
   if (!srcrect) {
     full_src.x = 0;
@@ -424,91 +316,71 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
     dstrect = &full_dst;
   }
 
-  dst_locked = 0;
-  if (SDL_MUSTLOCK(dst)) {
-    if (!SDL_LockSurface(dst)) {
-      return -1;
-    }
-    dst_locked = 1;
-  }
-  src_locked = 0;
-  if (SDL_MUSTLOCK(src)) {
-    if (!SDL_LockSurface(src)) {
-      if (dst_locked) {
-        SDL_UnlockSurface(dst);
-      }
-      return (-1);
-    }
-    src_locked = 1;
-  }
-
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
   dst_row = dstrect->y;
 
-
   for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    dstp = (Uint8 *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
+    dstp = (uint8_t *) dst->pixels + (dst_row * dst->pitch) + (dstrect->x * dbpp);
     while (pos >= 0x10000L) {
-      srcp = (Uint8 *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
+      srcp = (uint8_t *) src->pixels + (src_row * src->pitch) + (srcrect->x * sbpp);
       ++src_row;
       pos -= 0x10000L;
     }
     if (sbpp == 1 && dbpp == 4) {
-        copy_row_or1to4(srcp, srcrect->w, (Uint32 *)dstp, dstrect->w, SDL_GetSurfacePalette(src));
+        copy_row_or1to4(srcp, srcrect->w, (uint32_t *)dstp, dstrect->w, src->palette);
     } else {
         switch (dbpp) {
           case 1:
             copy_row_or1(srcp, srcrect->w, dstp, dstrect->w);
             break;
           case 2:
-            copy_row_or2((Uint16 *) srcp, srcrect->w, (Uint16 *) dstp, dstrect->w);
+            copy_row_or2((uint16_t *) srcp, srcrect->w, (uint16_t *) dstp, dstrect->w);
             break;
           case 3:
             copy_row3(srcp, srcrect->w, dstp, dstrect->w);
             break;
           case 4:
-            copy_row_or4((Uint32 *) srcp, srcrect->w, (Uint32 *) dstp, dstrect->w);
+            copy_row_or4((uint32_t *) srcp, srcrect->w, (uint32_t *) dstp, dstrect->w);
             break;
         }
     }
     pos += inc;
   }
 
-  if (dst_locked) {
-    SDL_UnlockSurface(dst);
-  }
-  if (src_locked) {
-    SDL_UnlockSurface(src);
-  }
   return (0);
 }
 
-SDL_Surface *font_sfc = NULL;
+VideoSurface *font_sfc = NULL;
 
 bool fonts_initialization(void) {
-  font_sfc = SDL_ConvertSurface(assets->font, SDL_PIXELFORMAT_INDEX8);
-  SDL_SetSurfaceColorKey(font_sfc, true, SDL_MapRGB(SDL_GetPixelFormatDetails(font_sfc->format), SDL_GetSurfacePalette(font_sfc), 0, 0, 0));
-
-  return true;
+    // This will be handled by the frontend loading assets and passing them to core
+    // Or core will load them using its own non-SDL loader.
+    // For now, I'll let Video.cpp handle it.
+    return true;
 }
 
 void fonts_termination(void) {
-  SDL_DestroySurface(font_sfc);
-  font_sfc = NULL;
+  if (font_sfc) {
+    free(font_sfc->pixels);
+    free(font_sfc);
+    font_sfc = NULL;
+  }
 }
 
-void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
+void font_print(int x, int y, const char *text, VideoSurface *surface, double kx, double ky)
 {
   int i, c;
-  SDL_Rect s, d;
+  VideoRect s, d;
+
+  if (!font_sfc) return;
 
   for (i = 0; text[i] != 0 && x < surface->w; i++) {
     int row;
-    c = int(text[i]);
+    c = (unsigned char)(text[i]);
 
-    if (c > 127 || c < 0) {
+    if (c > 127) {
       c = '?';
     }
 
@@ -519,25 +391,27 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
     s.h = FONT_SIZE_Y;
     s.w = FONT_SIZE_X;
 
-    d.x = x + i * FONT_SIZE_X * kx;
+    d.x = (int)(x + i * FONT_SIZE_X * kx);
     d.y = y;
-    d.w = s.w * kx;
-    d.h = s.h * ky;
-    SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+    d.w = (int)(s.w * kx);
+    d.h = (int)(s.h * ky);
+    VideoSoftStretchOr(font_sfc, &s, surface, &d);
   }
 }
 
-void font_print_right(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
+void font_print_right(int x, int y, const char *text, VideoSurface *surface, double kx, double ky)
 {
   int i, c;
-  SDL_Rect s, d;
+  VideoRect s, d;
 
-  x -= strlen(text) * FONT_SIZE_X * kx;
+  if (!font_sfc) return;
+
+  x -= (int)(strlen(text) * FONT_SIZE_X * kx);
 
   for (i = 0; text[i] != 0 && x < surface->w; i++) {
     int row;
-    c = int(text[i]);
-    if (c > 127 || c < 0) {
+    c = (unsigned char)(text[i]);
+    if (c > 127) {
       c = '?';
     }
 
@@ -547,28 +421,30 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
     s.h = FONT_SIZE_Y;
     s.w = FONT_SIZE_X;
 
-    d.x = x + i * FONT_SIZE_X * kx;
+    d.x = (int)(x + i * FONT_SIZE_X * kx);
     d.y = y;
-    d.w = s.w * kx;
-    d.h = s.h * ky;
-    SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+    d.w = (int)(s.w * kx);
+    d.h = (int)(s.h * ky);
+    VideoSoftStretchOr(font_sfc, &s, surface, &d);
   }
 }
 
-void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
+void font_print_centered(int x, int y, const char *text, VideoSurface *surface, double kx, double ky)
 {
   int i, c;
-  SDL_Rect s, d;
+  VideoRect s, d;
 
-  x -= strlen(text) * FONT_SIZE_X * kx / 2;
+  if (!font_sfc) return;
+
+  x -= (int)(strlen(text) * FONT_SIZE_X * kx / 2);
   if (x < 0) {
     x = 0;
   }
 
   for (i = 0; text[i] != 0 && ((x * kx) < surface->w); i++) {
     int row;
-    c = int(text[i]);
-    if (c > 127 || c < 0) {
+    c = (unsigned char)(text[i]);
+    if (c > 127) {
       c = '?';
     }
 
@@ -578,87 +454,53 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
     s.h = FONT_SIZE_Y;
     s.w = FONT_SIZE_X;
 
-    d.x = x + i * FONT_SIZE_X * kx;
+    d.x = (int)(x + i * FONT_SIZE_X * kx);
     d.y = y;
-    d.w = s.w * kx;
-    d.h = s.h * ky;
-    SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+    d.w = (int)(s.w * kx);
+    d.h = (int)(s.h * ky);
+    VideoSoftStretchOr(font_sfc, &s, surface, &d);
   }
 }
 
-void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r) {
+void surface_fader(VideoSurface *surface, float r_factor, float g_factor, float b_factor, float a_factor, VideoRect *r) {
   (void)a_factor;
+  (void)r;
   int i;
-  SDL_Color mycolors[256];
-  SDL_Color *colors;
+  VideoColor *colors;
 
-  if (r == 0) {
-    SDL_Rect r2;
-    r2.x = 0;
-    r2.y = 0;
-    r2.w = surface->w;
-    r2.h = surface->h;
-    r = &r2;
-  }
-
-  if (SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel != 1) {
+  if (surface->bpp != 1) {
     return;
   }
 
-  colors = (SDL_Color *) SDL_GetSurfacePalette(surface)->colors;
+  colors = surface->palette;
   for (i = 0; i < 256; i++) {
-    mycolors[i].r = (Uint8)(colors[i].r * r_factor);
-    mycolors[i].g = (Uint8)(colors[i].g * g_factor);
-    mycolors[i].b = (Uint8)(colors[i].b * b_factor);
+    colors[i].r = (uint8_t)(colors[i].r * r_factor);
+    colors[i].g = (uint8_t)(colors[i].g * g_factor);
+    colors[i].b = (uint8_t)(colors[i].b * b_factor);
   }
-
-  SDL_SetPaletteColors(SDL_GetSurfacePalette(surface), mycolors, 0, 256);
 }
 
-void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
-  SDL_Rect clip;
-  int bpp = SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel;
-
-  SDL_GetSurfaceClipRect(surface, &clip);
-
-  if (x < clip.x || x >= clip.x + clip.w || y < clip.y || y >= clip.y + clip.h) {
-    return;
-  }
-
+void putpixel(VideoSurface *surface, int x, int y, uint32_t pixel) {
   if (x < 0 || x >= surface->w || y < 0 || y >= surface->h) {
     return;
   }
 
-  Uint8 *p = (Uint8 *) surface->pixels + y * surface->pitch + x * bpp;
+  uint8_t *p = (uint8_t *) surface->pixels + y * surface->pitch + x * surface->bpp;
 
-  switch (bpp) {
+  switch (surface->bpp) {
     case 1:
-      *p = pixel;
+      *p = (uint8_t)pixel;
       break;
-
     case 2:
-      *(Uint16 *) p = pixel;
+      *(uint16_t *) p = (uint16_t)pixel;
       break;
-
-    case 3:
-      if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-        p[0] = (pixel >> 16) & 0xff;
-        p[1] = (pixel >> 8) & 0xff;
-        p[2] = pixel & 0xff;
-      } else {
-        p[0] = pixel & 0xff;
-        p[1] = (pixel >> 8) & 0xff;
-        p[2] = (pixel >> 16) & 0xff;
-      }
-      break;
-
     case 4:
-      *(Uint32 *) p = pixel;
+      *(uint32_t *) p = pixel;
       break;
   }
 }
 
-void rectangle(SDL_Surface *surface, int x, int y, int w, int h, Uint32 pixel) {
+void rectangle(VideoSurface *surface, int x, int y, int w, int h, uint32_t pixel) {
   int i;
 
   for (i = 0; i < w; i++) {

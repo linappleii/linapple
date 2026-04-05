@@ -75,8 +75,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 	WindowSplit_t *g_pDisplayWindow = 0;
 
-	SDL_Surface *g_hDebugScreen;
-	SDL_Surface *g_hDebugCharset;
+	VideoSurface *g_hDebugScreen;
+	VideoSurface *g_hDebugCharset;
 	int g_hConsoleBrushFG = 0;
 	int g_hConsoleBrushBG = 0;
 
@@ -211,7 +211,7 @@ static char ColorizeSpecialChar( char * sText, unsigned char nData, const Memory
   dstrect.y = DST_Y; \
   dstrect.w = DST_W; \
   dstrect.h = DST_H; \
-  SDL_SoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);\
+  VideoSoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);\
 }
 
 //===========================================================================
@@ -220,11 +220,8 @@ void AllocateDebuggerMemDC(void)
 {
   if (!g_hDebugScreen)
   {
-    g_hDebugScreen = SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_INDEX8);
-
-    SDL_Surface *tmp = IMG_ReadXPMFromArray(charset40_xpm);
-    g_hDebugCharset = SDL_ConvertSurface(tmp, SDL_PIXELFORMAT_INDEX8);
-    SDL_DestroySurface(tmp);
+    g_hDebugScreen = VideoCreateSurface(560, 384, 1);
+    g_hDebugCharset = VideoLoadXPM(charset40_xpm);
   }
 }
 
@@ -234,26 +231,27 @@ void ReleaseDebuggerMemDC(void)
 
 void GetDebugViewPortScale(float *x, float *y)
 {
-	float f = ((float) g_hDebugScreen->w) / screen->w;
+	float f = ((float) g_hDebugScreen->w) / SCREEN_WIDTH;
 	*x = (f>0.01) ? f : 0.01;
-	f = ((float) g_hDebugScreen->h) / screen->h;
+	f = ((float) g_hDebugScreen->h) / SCREEN_HEIGHT;
 	*y = (f>0.01) ? f : 0.01;
 }
 
 void StretchBltMemToFrameDC(void)
 {
-	SDL_Rect drect, srect;
+	VideoRect drect, srect;
 
 	pthread_mutex_lock(&video_draw_mutex);
 
 	drect.x = drect.y = srect.x = srect.y = 0;
-	drect.w = screen->w;
-	drect.h = screen->h;
+	drect.w = 560; // Assuming screen resolution
+	drect.h = 384;
 	srect.w = g_hDebugScreen->w;
 	srect.h = g_hDebugScreen->h;
 
-	SDL_SoftStretchMy(g_hDebugScreen, &srect, g_origscreen, &drect);
-	SDL_SoftStretchMy(g_origscreen, NULL, screen, NULL);
+	VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+	VideoSoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
+	VideoSoftStretch(g_origscreen, NULL, &vs_screen, NULL);
 
 	DrawFrameWindow();
 
@@ -281,16 +279,11 @@ void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent )
 extern int g_hConsoleBrushFG;
 extern int g_hConsoleBrushBG;
 
-void FillRect(const RECT* r, int Brush)
+void FillRect(const RECT *r, int Brush)
 {
-	SDL_Rect sr;
-
-	sr.x = r->left;
-	sr.y = r->top;
-	sr.w = r->right - sr.x;
-	sr.h = r->bottom - sr.y;
-	SDL_FillSurfaceRect(g_hDebugScreen, &sr, Brush);
+	rectangle(g_hDebugScreen, r->left, r->top, r->right - r->left, r->bottom - r->top, Brush);
 }
+
 
 // @param glyph Specifies a native glyph from the 16x16 chars Apple Font Texture.
 //===========================================================================
@@ -341,10 +334,10 @@ void PrintGlyph( const int x, const int y, const char glyph )
 			g_aDebuggerVirtualTextScreen[ row ][ col ] = glyph;
 	}
 
-	SDL_Rect srcrect, dstrect;
+	VideoRect srcrect, dstrect;
 
-	Uint8 hBrush = g_hConsoleBrushFG;
-	Uint8 hBgBrush = g_hConsoleBrushBG;
+	uint8_t hBrush = g_hConsoleBrushFG;
+	uint8_t hBgBrush = g_hConsoleBrushBG;
 	SOFTSTRECH_MONO(g_hDebugCharset, xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT,
 		g_hDebugScreen, x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT);
 }
