@@ -42,6 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "SerialComms.h"
 #include "SerialCommsFrontend.h"
+#include "PrinterFrontend.h"
 #include "asset.h"
 #include "Util_Path.h"
 #include "JoystickFrontend.h"
