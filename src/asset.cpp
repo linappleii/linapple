@@ -63,12 +63,12 @@ bool Asset_Init(void)
     return false;
   }
 
-  assets->font = IMG_ReadXPMFromArray(font_xpm);
+  assets->font = VideoLoadXPM(font_xpm);
   if (NULL == assets->font) {
     return false;
   }
 
-  assets->splash = IMG_ReadXPMFromArray(splash_xpm);
+  assets->splash = VideoLoadXPM(splash_xpm);
   return NULL != assets->splash;
 }
 
@@ -81,12 +81,12 @@ void Asset_Quit(void)
     }
 
     if (NULL != assets->font) {
-      SDL_DestroySurface(assets->font);
+      VideoDestroySurface(assets->font);
       assets->font = NULL;
     }
 
     if (NULL != assets->splash) {
-      SDL_DestroySurface(assets->splash);
+      VideoDestroySurface(assets->splash);
       assets->splash = NULL;
     }
 

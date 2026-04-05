@@ -20,10 +20,12 @@
 #ifndef __asset_h
 #define __asset_h
 
+#include "Video.h"
+
 typedef struct {
-  SDL_Surface *icon;
-  SDL_Surface *font;
-  SDL_Surface *splash;
+  SDL_Surface  *icon;
+  VideoSurface *font;
+  VideoSurface *splash;
 } assets_t;
 
 extern assets_t *assets;
