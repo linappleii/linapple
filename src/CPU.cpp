@@ -759,7 +759,7 @@ static inline void CheckInterruptSources(uint32_t uExecutedCycles)
     #ifndef UPDATE_ALL_PER_CYCLE
     MB_UpdateCycles(uExecutedCycles);
     #endif
-    sg_Mouse.SetVBlank(VideoGetVbl(uExecutedCycles));
+    Mouse_SetVBlank(VideoGetVbl(uExecutedCycles));
     g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
   }
 }

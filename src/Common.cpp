@@ -31,7 +31,6 @@ FILE *g_fh = NULL;
 bool g_bDisableDirectSound = false;
 
 CSuperSerialCard sg_SSC;
-CMouseInterface sg_Mouse;
 
 unsigned int g_Slot4 = CT_Mockingboard;
 CURL *g_curl = NULL;

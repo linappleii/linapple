@@ -1074,7 +1074,7 @@ int MemInitialize() // returns -1 if any error during initialization
   PrintLoadRom(pCxRomPeripheral, 1);        // $C100 : Parallel printer f/w
   sg_SSC.CommInitialize(pCxRomPeripheral, 2);    // $C200 : SSC
   if (g_Slot4 == CT_MouseInterface)
-    sg_Mouse.Initialize(pCxRomPeripheral, 4);  // $C400 : Mouse f/w
+    Mouse_Initialize(pCxRomPeripheral, 4);  // $C400 : Mouse f/w
   DiskLoadRom(pCxRomPeripheral, 6);        // $C600 : Disk][ f/w
   HD_Load_Rom(pCxRomPeripheral, 7);        // $C700 : HDD f/w
 

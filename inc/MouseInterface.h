@@ -1,63 +1,11 @@
+#ifndef MOUSEINTERFACE_H
+#define MOUSEINTERFACE_H
+
 #include <cstdint>
 #include "6821.h"
 #include "Common.h"
 
-#define WRITE_HANDLER(func)    void func( void* objFrom, void* objTo, int nAddr, unsigned char byData )
-#define CALLBACK_HANDLER(func)  void func( void* objFrom, void* objTo, LPARAM lParam )
-
-extern class CMouseInterface sg_Mouse;
-
-class CMouseInterface {
-public:
-  CMouseInterface();
-
-  virtual ~CMouseInterface();
-
-  void Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot);
-
-  void Uninitialize() {
-    m_bActive = false;
-  }
-
-  void SetSlotRom();
-
-  static unsigned char IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
-
-  static unsigned char IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
-
-  void SetPosition(int xvalue, int xrange, int yvalue, int yrange);
-
-  void SetButton(eBUTTON Button, eBUTTONSTATE State);
-
-  bool Active() {
-    return m_bActive;
-  }
-
-  void SetVBlank(bool bVBL);
-
-protected:
-  void On6821_A(uint8_t byData);
-
-  void On6821_B(uint8_t byData);
-
-  void OnCommand();
-
-  void OnWrite();
-
-  void OnMouseEvent();
-
-  void Reset();
-
-  static void M6821_Listener_A(void* objTo, uint8_t byData);
-
-  static void M6821_Listener_B(void* objTo, uint8_t byData);
-
-  void SetPosition(int xvalue, int yvalue);
-
-  void ClampX(int iMinX, int iMaxX);
-
-  void ClampY(int iMinY, int iMaxY);
-
+struct MouseInterface {
   Pia6821 m_6821;
 
   int m_nDataLen;
@@ -91,3 +39,17 @@ protected:
   uint8_t* m_pSlotRom;
   unsigned int m_uSlot;
 };
+
+void Mouse_Initialize(uint8_t* pCxRomPeripheral, unsigned int uSlot);
+void Mouse_Uninitialize();
+void Mouse_SetSlotRom();
+unsigned char Mouse_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
+unsigned char Mouse_IOWrite(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, uint32_t nCyclesLeft);
+void Mouse_SetPosition(int xvalue, int xrange, int yvalue, int yrange);
+void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State);
+bool Mouse_Active();
+void Mouse_SetVBlank(bool bVBL);
+
+extern struct MouseInterface sg_Mouse;
+
+#endif
