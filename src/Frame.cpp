@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "stdafx.h"
 #include "asset.h"
 
+extern uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
+
 #define ENABLE_MENU 0
 
 SDL_Surface *apple_icon;
@@ -386,9 +388,6 @@ void FrameDispatchMessage(SDL_Event *e) {
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
       } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
         g_bDebuggerEatKey = false;
-        // Note about Alt Gr (Right-Alt):
-        // . WM_KEYDOWN[Left-Control], then:
-        // . WM_KEYDOWN[Right-Alt]
         bool autorep = false;
         bool extended = (mysym >= SDLK_UP);
         if (mymod & SDL_KMOD_RCTRL)
@@ -396,21 +395,13 @@ void FrameDispatchMessage(SDL_Event *e) {
           JoyUpdateTrimViaKey(mysym);
         } else {
           if ((!JoyProcessKey(mysym, extended, true, autorep)) && (g_state.mode != MODE_LOGO)) {
-            KeybQueueKeypress(mysym, NOT_ASCII);
+            uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
+            if (apple_code) KeybPushAppleKey(apple_code);
           }
         }
       } else if (g_state.mode == MODE_DEBUG) {
-        if (((mymod & (SDL_KMOD_LSHIFT|SDL_KMOD_RSHIFT|SDL_KMOD_CAPS))>0)&&
-            ((mysym>='a')&&(mysym<='z')))
-        {
-          mysym += 'A'-'a';
-        }
-        else
-        {
-          KeybUpdateCtrlShiftStatus();
-          mysym = KeybDecodeKey(mysym);
-        }
-        DebuggerProcessKey(mysym);
+        uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
+        if (apple_code) DebuggerProcessKey(apple_code);
       }
       break;
 
@@ -436,8 +427,7 @@ void FrameDispatchMessage(SDL_Event *e) {
             DebuggerMouseClick(x, y);
           else
           if (usingcursor) {
-            KeybUpdateCtrlShiftStatus();
-            if (g_bShiftKey | g_bCtrlKey) {
+            if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               SetUsingCursor(false);
             } else {
               if (sg_Mouse.Active()) {

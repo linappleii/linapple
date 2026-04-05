@@ -16,34 +16,23 @@ typedef enum {
 extern KeybLanguage g_KeyboardLanguage;
 extern bool         g_KeyboardRockerSwitch;
 
-void ClipboardInitiatePaste();
-
-int KeybDecodeKey(int key);
-
 void KeybReset();
-
-bool KeybGetAltStatus();
-
-bool KeybGetCapsStatus();
-
-bool KeybGetCtrlStatus();
-
-bool KeybGetShiftStatus();
-
-void KeybUpdateCtrlShiftStatus();
-
-unsigned char KeybGetKeycode();
-
-unsigned int KeybGetNumQueries();
-
-void KeybQueueKeypress(int, bool);
-
+void KeybSetModifiers(bool bShift, bool bCtrl, bool bAlt);
+void KeybPushAppleKey(uint8_t apple_code);
+void KeybQueueKeypress(uint8_t apple_code);
 void KeybToggleCapsLock();
 
-unsigned int KeybGetSnapshot(SS_IO_Keyboard *pSS);
-
-unsigned int KeybSetSnapshot(SS_IO_Keyboard *pSS);
+bool KeybGetAltStatus();
+bool KeybGetCapsStatus();
+bool KeybGetCtrlStatus();
+bool KeybGetShiftStatus();
+void KeybUpdateCtrlShiftStatus();
+unsigned char KeybGetKeycode();
 
 unsigned char KeybReadData(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
-
 unsigned char KeybReadFlag(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
+
+void ClipboardInitiatePaste();
+unsigned int KeybGetNumQueries();
+unsigned int KeybGetSnapshot(SS_IO_Keyboard *pSS);
+unsigned int KeybSetSnapshot(SS_IO_Keyboard *pSS);
