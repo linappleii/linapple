@@ -32,6 +32,7 @@ INSTALL_PROGRAM := $(INSTALL)
 INSTALL_DATA    := $(INSTALL) -m 644
 RM              := rm -rf
 PKG_CONFIG      := pkg-config
+MAGICK          := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null || echo magick)
 
 # --- Verbosity Control -------------------------------------------------------
 
@@ -146,7 +147,7 @@ distclean: clean ## Remove all build artifacts and generated files
 maintainer-clean: distclean
 	@echo "Cleaning for maintainers..."
 
-check: test-cpu test-integration ## Run all tests
+check: test-cpu test-integration test-keyboard ## Run all tests
 
 test-cpu: all ## Run automated CPU functional tests
 	@bash scripts/run_cpu_tests.sh
@@ -155,6 +156,11 @@ test-integration: all ## Run C++ clean-room hardware integration tests
 	@echo "  TEST    build/bin/test_integration"
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests tests/test_main.cpp $(filter-out %/Applewin.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
 	@./build/bin/test_integration
+
+test-keyboard: all ## Run comprehensive keyboard translation tests
+	@echo "  TEST    build/bin/test_keyboard"
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests tests/full_keyboard_test.cpp build/obj/sdl3/Keyboard.o build/obj/Keyboard.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_keyboard
+	@./build/bin/test_keyboard
 
 installcheck: ## Run tests on installed program
 	@echo "No installation tests defined."
@@ -197,7 +203,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | directories resources
 # Asset conversion (PNG to XPM)
 $(OBJDIR)/%.xpm: $(RESDIR)/%.png | directories
 	@echo "  XPM     $<"
-	$(Q)magick "$<" -layers flatten "$@"
+	$(Q)$(MAGICK) "$<" -layers flatten "$@"
 	$(Q)sed -i 's/static const char/static char/g' "$@"
 	$(Q)sed -i 's/$(notdir $(basename $@))\[\]/$(notdir $(basename $@))_xpm[]/g' "$@"
 

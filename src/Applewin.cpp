@@ -329,62 +329,6 @@ void SetCurrentCLK6502()
   MB_Reinitialize();
 }
 
-// Key translation logic from Keyboard.cpp
-uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
-  bool bShift = (mod & SDL_KMOD_SHIFT) != 0;
-  bool bCtrl = (mod & SDL_KMOD_CTRL) != 0;
-  bool bCaps = KeybGetCapsStatus();
-
-  uint8_t apple_code = 0;
-
-  if (key >= 'a' && key <= 'z') {
-    if (bCtrl) {
-      apple_code = key - 'a' + 1;
-    } else if (bCaps || bShift) {
-      apple_code = key - 'a' + 'A';
-    } else {
-      apple_code = key;
-    }
-  } else if (key >= '0' && key <= '9') {
-    if (bShift) {
-      static const uint8_t shift_nums[] = { ')','!','@','#','$','%','^','&','*','(' };
-      apple_code = shift_nums[key - '0'];
-    } else {
-      apple_code = key;
-    }
-  } else {
-    // Handling special keys and symbols
-    switch (key) {
-      case SDLK_RETURN: apple_code = 0x0D; break;
-      case SDLK_ESCAPE: apple_code = 0x1B; break;
-      case SDLK_BACKSPACE: apple_code = 0x08; break;
-      case SDLK_TAB:    apple_code = 0x09; break;
-      case SDLK_SPACE:  apple_code = 0x20; break;
-      case SDLK_LEFT:   apple_code = 0x08; break;
-      case SDLK_RIGHT:  apple_code = 0x15; break;
-      case SDLK_UP:     apple_code = IS_APPLE2() ? 0x0D : 0x0B; break;
-      case SDLK_DOWN:   apple_code = IS_APPLE2() ? 0x2F : 0x0A; break;
-      case SDLK_DELETE: apple_code = IS_APPLE2() ? 0x00 : 0x7F; break;
-
-      // Symbols
-      case '`': apple_code = bShift ? '~' : '`'; break;
-      case '-': apple_code = bShift ? '_' : '-'; break;
-      case '=': apple_code = bShift ? '+' : '='; break;
-      case '[': apple_code = bShift ? '{' : '['; break;
-      case ']': apple_code = bShift ? '}' : ']'; break;
-      case '\\': apple_code = bShift ? '|' : '\\'; break;
-      case ';': apple_code = bShift ? ':' : ';'; break;
-      case '\'': apple_code = bShift ? '"' : '\''; break;
-      case ',': apple_code = bShift ? '<' : ','; break;
-      case '.': apple_code = bShift ? '>' : '.'; break;
-      case '/': apple_code = bShift ? '?' : '/'; break;
-      default: break;
-    }
-  }
-
-  return apple_code;
-}
-
 void Sys_Input()
 {
   SDL_Event event;
@@ -561,7 +505,7 @@ void LoadConfiguration()
         g_Apple2Type = A2TYPE_APPLE2E;
         break;
       default:
-        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        g_Apple2Type = A2TYPE_APPLE2EENHANCED;
         break;
     }
 
@@ -575,7 +519,7 @@ void LoadConfiguration()
     case A2TYPE_APPLE2E:
       g_pAppTitle = GetTitleApple2e();
       break;
-    case A2TYPE_APPLE2EEHANCED:
+    case A2TYPE_APPLE2EENHANCED:
       g_pAppTitle = GetTitleApple2eEnhanced();
       break;
     default:
@@ -1270,7 +1214,7 @@ int main(int argc, char *argv[])
         g_Apple2Type = A2TYPE_APPLE2PLUS;
         break;
       case 'C':
-        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        g_Apple2Type = A2TYPE_APPLE2EENHANCED;
         break;
 
 #ifdef RAMWORKS

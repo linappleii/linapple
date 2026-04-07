@@ -21,6 +21,8 @@ void KeybSetModifiers(bool bShift, bool bCtrl, bool bAlt);
 void KeybPushAppleKey(uint8_t apple_code);
 void KeybQueueKeypress(uint8_t apple_code);
 void KeybToggleCapsLock();
+void KeybSetAnyKeyDownStatus(bool bDown);
+bool KeybGetAnyKeyDownStatus();
 
 bool KeybGetAltStatus();
 bool KeybGetCapsStatus();

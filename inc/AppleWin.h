@@ -8,6 +8,7 @@
 #define LINAPPLE_VERSION  2
 
 #include <curl/curl.h>
+#include <SDL3/SDL.h>
 
 extern char *g_pAppTitle;
 
@@ -37,3 +38,5 @@ bool GetBudgetVideo();
 void SetCurrentCLK6502();
 
 void SingleStep(bool bReinit);
+
+uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);

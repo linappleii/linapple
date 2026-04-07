@@ -28,9 +28,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 #include "JoystickFrontend.h"
+#include "Keyboard.h"
 #include "asset.h"
-
-extern uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
 
 #define ENABLE_MENU 0
 
@@ -319,6 +318,23 @@ void FrameQuickState(int num, int mod)
   }
 }
 
+static bool IsModifierKey(SDL_Keycode sym) {
+  switch (sym) {
+    case SDLK_LSHIFT:
+    case SDLK_RSHIFT:
+    case SDLK_LCTRL:
+    case SDLK_RCTRL:
+    case SDLK_LALT:
+    case SDLK_RALT:
+    case SDLK_LGUI:
+    case SDLK_RGUI:
+    case SDLK_CAPSLOCK:
+      return true;
+    default:
+      return false;
+  }
+}
+
 void FrameDispatchMessage(SDL_Event *e) {
   SDL_Keycode mysym = e->key.key;
   SDL_Keymod mymod = e->key.mod;
@@ -370,6 +386,9 @@ void FrameDispatchMessage(SDL_Event *e) {
       break;
 
     case SDL_EVENT_KEY_DOWN:
+      if (e->key.repeat == 0 && !IsModifierKey(mysym)) {
+        KeybSetAnyKeyDownStatus(true);
+      }
       if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & SDL_KMOD_LCTRL) {
         FrameQuickState(mysym - SDLK_0, mymod);
         break;
@@ -425,8 +444,8 @@ void FrameDispatchMessage(SDL_Event *e) {
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
       } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
         g_bDebuggerEatKey = false;
-        bool autorep = false;
-        bool extended = (mysym >= SDLK_UP);
+        bool autorep = (e->key.repeat != 0);
+        bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
         if (mymod & SDL_KMOD_RCTRL)
         {
           JoyFrontend_UpdateTrimViaKey(mysym);
@@ -443,6 +462,10 @@ void FrameDispatchMessage(SDL_Event *e) {
       break;
 
     case SDL_EVENT_KEY_UP:
+      if (!IsModifierKey(mysym)) {
+        KeybSetAnyKeyDownStatus(false);
+      }
+
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && ((SDL_Keycode)buttondown == mysym - SDLK_F1)) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
@@ -450,7 +473,8 @@ void FrameDispatchMessage(SDL_Event *e) {
         KeybToggleCapsLock();
       } else {
         if (myscancode) {
-          JoyFrontend_ProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, false);
+          bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
+          JoyFrontend_ProcessKey(mysym, extended, false, false);
         }
       }
       break;
@@ -678,7 +702,7 @@ void ProcessButtonClick(int button, int mod)
       if (mod & SDL_KMOD_SHIFT) {
          // only IIe and enhanced have a keyboard rocker switch (and only non-US keyboards)
          if ((g_KeyboardLanguage != English_US)&&
-             ((g_Apple2Type == A2TYPE_APPLE2E)||(g_Apple2Type == A2TYPE_APPLE2EEHANCED)))
+             ((g_Apple2Type == A2TYPE_APPLE2E)||(g_Apple2Type == A2TYPE_APPLE2EENHANCED)))
          {
            g_KeyboardRockerSwitch = !g_KeyboardRockerSwitch;
            printf("Toggling keyboard rocker switch. Selected character set: %s...\n", (g_KeyboardRockerSwitch) ? "local" : "standard/US");

@@ -49,13 +49,30 @@ static struct {
 } g_nKeyBuffer[KEY_BUFFER_MAX_SIZE];
 
 static unsigned char g_nLastKey = 0x00;
+static bool g_bAnyKeyDown = false;
+static int g_nKeysDownCount = 0;
 
 void KeybReset() {
   g_nNextInIdx = 0;
   g_nNextOutIdx = 0;
   g_nKeyBufferCnt = 0;
   g_nLastKey = 0x00;
+  g_bAnyKeyDown = false;
+  g_nKeysDownCount = 0;
   g_nKeyBufferSize = g_bKeybBufferEnable ? KEY_BUFFER_MAX_SIZE : KEY_BUFFER_MIN_SIZE;
+}
+
+void KeybSetAnyKeyDownStatus(bool bDown) {
+  if (bDown) {
+    g_nKeysDownCount++;
+  } else {
+    if (g_nKeysDownCount > 0) g_nKeysDownCount--;
+  }
+  g_bAnyKeyDown = (g_nKeysDownCount > 0);
+}
+
+bool KeybGetAnyKeyDownStatus() {
+  return g_bAnyKeyDown;
 }
 
 void KeybSetModifiers(bool bShift, bool bCtrl, bool bAlt) {
@@ -120,7 +137,11 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
 
 unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
-  unsigned char nKey = g_nLastKey;
+  unsigned char nKey = g_nLastKey & 0x7F;
+  g_nLastKey &= 0x7F;
+  if (!IS_APPLE2()) {
+    if (g_bAnyKeyDown) nKey |= 0x80;
+  }
   if (g_nKeyBufferCnt) {
     if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
       uint64_t now = SDL_GetTicks();

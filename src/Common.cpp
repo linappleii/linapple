@@ -9,7 +9,7 @@ char *g_pAppTitle = (char*)TITLE_APPLE_2E_ENHANCED_;
 
 char videoDriverName[100];
 
-eApple2Type g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 
 bool behind = false;
 unsigned int cumulativecycles = 0;

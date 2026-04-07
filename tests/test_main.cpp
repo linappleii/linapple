@@ -14,7 +14,7 @@ void reset_machine() {
         sdl_init = true;
     }
     
-    g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+    g_Apple2Type = A2TYPE_APPLE2EENHANCED;
     MemInitialize();
     CpuInitialize();
 }
