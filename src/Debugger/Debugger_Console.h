@@ -10,7 +10,6 @@
 		// Lines, was 128, but need ~ 256+16 for PROFILE LIST
 		// Output
 		CONSOLE_HEIGHT = 768,
-		CONSOLE_WIDTH  =  80,
 
 		// need min 256+ lines for "profile list"
 		CONSOLE_BUFFER_HEIGHT = CONSOLE_HEIGHT,
@@ -248,7 +247,7 @@
 		extern const char * g_pConsoleFirstArg    ; // points to first arg
 		extern bool         g_bConsoleInputQuoted ;
 
-		extern char         g_nConsoleInputSkip   ;
+		extern int          g_nConsoleInputSkip   ;
 
 
 // Prototypes _______________________________________________________________

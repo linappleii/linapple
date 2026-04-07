@@ -112,18 +112,20 @@ void DrawFrameWindow()
       SDL_Rect r = {0, 0, 560, 384};
 
       // Fill screen from RGB32 output buffer
-      VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
-      VideoSurface vs_output;
-      vs_output.pixels = (uint8_t*)output;
-      vs_output.w = 560;
-      vs_output.h = 384;
-      vs_output.pitch = 560 * 4;
-      vs_output.bpp = 4;
+      if (g_state.mode != MODE_DEBUG) {
+          VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+          VideoSurface vs_output;
+          vs_output.pixels = (uint8_t*)output;
+          vs_output.w = 560;
+          vs_output.h = 384;
+          vs_output.pitch = 560 * 4;
+          vs_output.bpp = 4;
 
-      if (!g_WindowResized) {
-          VideoSoftStretch(&vs_output, (VideoRect*)&r, &vs_screen, (VideoRect*)&r);
-      } else {
-          VideoSoftStretch(&vs_output, (VideoRect*)&origRect, &vs_screen, (VideoRect*)&newRect);
+          if (!g_WindowResized) {
+              VideoSoftStretch(&vs_output, (VideoRect*)&r, &vs_screen, (VideoRect*)&r);
+          } else {
+              VideoSoftStretch(&vs_output, (VideoRect*)&origRect, &vs_screen, (VideoRect*)&newRect);
+          }
       }
 
       SDL_UpdateTexture(g_texture, NULL, screen->pixels, screen->pitch);

@@ -10,16 +10,68 @@ using namespace std;
 
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
+#include "../src/Debugger/Debugger_Breakpoints.h"
 
 // Globals
 extern bool g_bDebuggerEatKey;
+extern unsigned short g_uBreakMemoryAddress;
+extern int g_iCommand;
+extern std::vector<Command_t> g_vSortedCommands;
 
 // Benchmarking
 extern unsigned int extbench;
+extern bool g_bBenchmarking;
+
+// Profile
+extern bool g_bProfiling;
+extern ProfileOpcode_t g_aProfileOpcodes[NUM_OPCODES];
+extern ProfileOpmode_t g_aProfileOpmodes[NUM_OPMODES];
+extern uint64_t g_nProfileBeginCycles;
+extern const std::string g_FileNameProfile;
+extern int g_nProfileLine;
+extern char g_aProfileLine[NUM_PROFILE_LINES][CONSOLE_WIDTH];
+
+void ProfileReset();
+bool ProfileSave();
+void ProfileFormat(bool bSeperateColumns, int eFormatMode);
+char* ProfileLinePeek(int iLine);
+char* ProfileLinePush();
+void ProfileLineReset();
+
+void DisasmCalcTopBotAddress();
+
+// Window
+extern int g_nConsoleDisplayLines;
+extern bool g_bConsoleFullWidth;
+extern int g_nConsoleDisplayWidth;
+extern int g_nDisasmWinHeight;
+extern int g_nDisasmCurLine;
+
+void WindowUpdateDisasmSize();
+void WindowUpdateConsoleDisplayedSize();
+void WindowUpdateSizes();
+int  WindowGetHeight(int iWindow);
+
+char FormatChar4Font(const unsigned char b, bool *pWasHi_, bool *pWasLo_);
+
+extern int g_nDebugSteps;
+extern unsigned int g_nDebugStepCycles;
+extern int g_nDebugStepStart;
+extern int g_nDebugStepUntil;
+extern int g_nDebugSkipStart;
+extern int g_nDebugSkipLen;
+
+extern bool g_bDebugFullSpeed;
+extern bool g_bLastGoCmdWasFullSpeed;
+extern bool g_bGoCmd_ReinitFlag;
+
+extern FILE *g_hTraceFile;
+extern bool g_bTraceHeader;
+extern bool g_bTraceFileWithVideoScanner;
+extern char g_sFileNameTrace[];
 
 // Bookmarks
-extern int g_nBookmarks;
-extern Bookmark_t g_aBookmarks[MAX_BOOKMARKS];
+#include "../src/Debugger/Debugger_Bookmarks.h"
 
 // Breakpoints
 enum BreakpointHit_t
@@ -33,23 +85,14 @@ enum BreakpointHit_t
   BP_HIT_MEMW = (1 << 5),
   BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM = (1 << 6)
 };
-
-extern int g_nBreakpoints;
-extern Breakpoint_t g_aBreakpoints[MAX_BREAKPOINTS];
-
-extern const char *g_aBreakpointSource[NUM_BREAKPOINT_SOURCES];
-extern const char *g_aBreakpointSymbols[NUM_BREAKPOINT_OPERATORS];
-
-// Full-Speed debugging
-extern int g_nDebugOnBreakInvalid;
 extern int g_iDebugBreakOnOpcode;
 
 // Commands
-extern const int NUM_COMMANDS_WITH_ALIASES; // = sizeof(g_aCommands) / sizeof (Command_t); // Determined at compile-time ;-)
 extern int g_iCommand; // last command
 
 extern Command_t g_aCommands[];
 extern Command_t g_aParameters[];
+extern const int NUM_COMMANDS_WITH_ALIASES;
 
 class commands_functor_compare
 {
@@ -95,9 +138,7 @@ extern int g_nFontHeight;
 extern int g_iFontSpacing;
 
 // Memory
-extern MemoryDump_t g_aMemDump[NUM_MEM_DUMPS];
-
-extern vector<int> g_vMemorySearchResults;
+#include "../src/Debugger/Debugger_Memory.h"
 
 // Source Level Debugging
 extern std::string g_aSourceFileName;
@@ -149,16 +190,106 @@ const char* FindSymbolFromAddress(unsigned short nAdress, int *iTable_ = NULL);
 
 const char* GetSymbol(unsigned short nAddress, int nBytes);
 
+// DebugVideoMode _____________________________________________________________
+
+// Fix for GH#345
+// Wrap & protect the debugger's video mode in its own class:
+// . This may seem like overkill but it stops the video mode being (erroneously) additionally used as a flag.
+// . VideoMode is a bitmap of video flags and a VideoMode value of zero is a valid video mode (GR,PAGE1,non-mixed).
+class DebugVideoMode  // NB. Implemented as a singleton
+{
+protected:
+  DebugVideoMode()
+  {
+    Reset();
+  }
+
+public:
+  ~DebugVideoMode(){}
+
+  static DebugVideoMode& Instance()
+  {
+    return m_Instance;
+  }
+
+  void Reset(void)
+  {
+    m_bIsVideoModeValid = false;
+    m_uVideoMode = 0;
+  }
+
+  bool IsSet(void)
+  {
+    return m_bIsVideoModeValid;
+  }
+
+  bool Get(unsigned int* pVideoMode)
+  {
+    if (pVideoMode)
+      *pVideoMode = m_bIsVideoModeValid ? m_uVideoMode : 0;
+    return m_bIsVideoModeValid;
+  }
+
+  void Set(unsigned int videoMode)
+  {
+    m_bIsVideoModeValid = true;
+    m_uVideoMode = videoMode;
+  }
+
+private:
+  bool m_bIsVideoModeValid;
+  uint32_t m_uVideoMode;
+
+  static DebugVideoMode m_Instance;
+};
+
 Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
 
+void UpdateDisplay(Update_t bUpdate);
+
 // Prototypes
+extern const int DEBUGGER_VERSION;
 
 enum {
   DEBUG_EXIT_KEY = 0x1B, // Escape
   DEBUG_TOGGLE_KEY = SDLK_F1 + BTN_DEBUG
 };
 
+Update_t CmdGoNormalSpeed(int nArgs);
+Update_t CmdGoFullSpeed(int nArgs);
+Update_t CmdKey(int nArgs);
+Update_t CmdSync(int nArgs);
+Update_t CmdStackPush(int nArgs);
+Update_t CmdStackPop(int nArgs);
+Update_t CmdStackPopPseudo(int nArgs);
+Update_t CmdVideoScannerInfo(int nArgs);
+Update_t CmdCyclesInfo(int nArgs);
+Update_t CmdFlagClear(int nArgs);
+Update_t CmdFlagSet(int nArgs);
+Update_t CmdFlag(int nArgs);
+
+Update_t CmdUnassemble(int nArgs);
+Update_t CmdDisk(int nArgs);
+Update_t CmdSource(int nArgs);
+Update_t CmdWatch(int nArgs);
+Update_t CmdWatchAdd(int nArgs);
+Update_t CmdWatchClear(int nArgs);
+Update_t CmdWatchDisable(int nArgs);
+Update_t CmdWatchEnable(int nArgs);
+Update_t CmdWatchList(int nArgs);
+Update_t CmdWatchLoad(int nArgs);
+Update_t CmdWatchSave(int nArgs);
+
 void DebugBegin();
+
+bool IsDebugBreakOnInvalid(int iOpcodeType);
+void SetDebugBreakOnInvalid(int iOpcodeType, int nValue);
+int CheckBreakpointsIO();
+int CheckBreakpointsReg();
+void ClearTempBreakpoints();
+bool GetBreakpointInfo(unsigned short nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
+
+void DebuggerRunScript(const char* sFileName);
 
 void DebugContinueStepping(const bool bCallerWillUpdateDisplay=false);
 
@@ -170,18 +301,25 @@ void DebugEnd();
 
 void DebugInitialize();
 
-void DebuggerInputConsoleChar(char ch);
-
-void DebuggerProcessKey(int keycode);
+// Cursor/Input
+extern bool g_bInputCursor;
+extern int  g_iInputCursor;
+extern const char g_aInputCursor[];
+extern bool g_bConsoleInputQuoted;
+extern int  g_nConsoleInputSkip;
+extern bool g_bIgnoreNextKey;
 
 void DebuggerUpdate();
-
+void DebuggerCursorUpdate();
 void DebuggerCursorNext();
-
+void DebuggerProcessKey(int keycode);
+void DebuggerInputConsoleChar(char ch);
 void DebuggerMouseClick(int x, int y);
+void ToggleFullScreenConsole();
 
 void VerifyDebuggerCommandTable();
 
 bool IsDebugSteppingAtFullSpeed(void);
 
 bool DebugGetVideoMode(unsigned int* pVideoMode);
+bool CanDrawDebugger(void);

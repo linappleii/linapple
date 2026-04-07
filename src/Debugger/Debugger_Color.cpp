@@ -28,6 +28,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debug.h"
 #include "Debugger_Color.h"
+#include "Debugger_Console.h"
+#include "Video.h"
 
 // Color ______________________________________________________________________
 
@@ -236,4 +238,29 @@ void ConfigColorsReset(void)
 		DebuggerSetColor(SCHEME_BW, iColor, nBW);
 	}
 #endif
+}
+
+void _ColorPrint( int iColor, unsigned int nColor )
+{
+	int R = (nColor >>  0) & 0xFF;
+	int G = (nColor >>  8) & 0xFF;
+	int B = (nColor >> 16) & 0xFF;
+
+	char sText[ CONSOLE_WIDTH ];
+	ConsoleBufferPushFormat( sText, " Color %01X: %02X %02X %02X", iColor, R, G, B ); // TODO: print name of colors!
+}
+
+void _CmdColorGet( const int iScheme, const int iColor )
+{
+	(void)iScheme;
+	if (iColor < NUM_DEBUG_COLORS)
+	{
+		DebugColors_e eColor = static_cast<DebugColors_e>( iColor );
+		unsigned int nColor = DebuggerGetColor( eColor );
+		_ColorPrint( iColor, nColor );
+	}
+	else
+	{
+		fprintf( stderr, "Color: %d\nOut of range!", iColor );
+	}
 }

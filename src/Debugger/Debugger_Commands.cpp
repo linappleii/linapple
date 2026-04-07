@@ -31,7 +31,119 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Frame.h"
 
-// Commands _______________________________________________________________________________________
+#include "Debugger_Commands.h"
+#include "Frame.h"
+
+#include "Debugger_Parser.h"
+#include "Debugger_Assembler.h"
+#include "Debugger_Display.h"
+#include "Debugger_Cmd_Window.h"
+#include "Debugger_Help.h"
+#include "Log.h"
+
+// Globals
+std::vector<Command_t> g_vSortedCommands;
+int g_nNumCommandsWithAliases = 0;
+
+// Implementation
+Update_t ExecuteCommand(int nArgs)
+{
+  Update_t bUpdateDisplay = UPDATE_NOTHING;
+
+  if (nArgs > 0)
+  {
+    CmdFuncPtr_t pFunction = NULL;
+    int iCommandAlias = -1;
+    int nFound = FindCommand(g_aArgs[0].sArg, pFunction, &iCommandAlias);
+
+    if (nFound == 1)
+    {
+      if (pFunction)
+      {
+        bUpdateDisplay |= pFunction(nArgs - 1);
+      }
+    }
+    else if (nFound > 1)
+    {
+      DisplayAmbigiousCommands(nFound);
+    }
+    else
+    {
+      unsigned short nAddress;
+      if (ArgsGetValue(&g_aArgs[0], &nAddress))
+      {
+        g_nDisasmCurAddress = nAddress;
+        DisasmCalcTopBotAddress();
+        bUpdateDisplay |= UPDATE_DISASM;
+      }
+      else
+      {
+        char sText[CONSOLE_WIDTH];
+        sprintf(sText, "Unknown command: %s", g_aArgs[0].sArg);
+        bUpdateDisplay |= ConsoleDisplayError(sText);
+      }
+    }
+  }
+
+  return bUpdateDisplay;
+}
+
+Update_t DebuggerProcessCommand(const bool bEchoConsoleInput)
+{
+  Update_t bUpdateDisplay = UPDATE_NOTHING;
+
+  char sText[CONSOLE_WIDTH];
+
+  if (bEchoConsoleInput)
+    ConsoleDisplayPush(ConsoleInputPeek());
+
+  if (g_bAssemblerInput)
+  {
+    if (g_nConsoleInputChars)
+    {
+      ParseInput(g_pConsoleInput, false); // Don't cook the args
+      bUpdateDisplay |= _CmdAssemble(g_nAssemblerAddress, 0, g_nArgRaw);
+    }
+    else
+    {
+      AssemblerOff();
+
+      int nDelayedTargets = AssemblerDelayedTargetsSize();
+      if (nDelayedTargets)
+      {
+        sprintf(sText, " Asm: %d sym declared, not defined", nDelayedTargets);
+        ConsoleDisplayPush(sText);
+        bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY;
+      }
+    }
+    ConsoleInputReset();
+    bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY | UPDATE_CONSOLE_INPUT;
+    ConsoleUpdate(); // udpate console, don't pause
+  }
+  else
+  if (g_nConsoleInputChars)
+  {
+    int nArgs = ParseInput(g_pConsoleInput);
+    if (nArgs == ARG_SYNTAX_ERROR)
+    {
+      sprintf(sText, "Syntax error: %s", g_aArgs[0].sArg);
+      bUpdateDisplay |= ConsoleDisplayError(sText);
+    }
+    else if (nArgs > 0)
+    {
+      bUpdateDisplay |= ExecuteCommand(nArgs);
+    }
+
+    if (!g_bConsoleBufferPaused)
+    {
+      ConsoleInputReset();
+    }
+  }
+
+  return bUpdateDisplay;
+}
+
+//===========================================================================
 
 	#define DEBUGGER__COMMANDS_VERIFY_TXT__ "\xDE\xAD\xC0\xDE"
 
@@ -328,9 +440,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{"SI", CmdFlagSet, CMD_FLAG_SET_I, "Set Flag Interrupts Disabled"}, // 2
 		{"SD", CmdFlagSet, CMD_FLAG_SET_D, "Set Flag Decimal (BCD)"}, // 3
 		{"SB", CmdFlagSet, CMD_FLAG_SET_B, "CLear Flag Break"}, // 4 // Legacy
-		{"SR", CmdFlagSet, CMD_FLAG_SET_R, "Clear Flag Reserved"}, // 5
-		{"SV", CmdFlagSet, CMD_FLAG_SET_V, "Clear Flag Overflow"}, // 6
-		{"SN", CmdFlagSet, CMD_FLAG_SET_N, "Clear Flag Negative"}, // 7
+		{"SR", CmdFlagSet, CMD_FLAG_SET_R, "Set Flag Reserved"}, // 5
+		{"SV", CmdFlagSet, CMD_FLAG_SET_V, "Set Flag Overflow"}, // 6
+		{"SN", CmdFlagSet, CMD_FLAG_SET_N, "Set Flag Negative"}, // 7
 	// Memory
 		{"D", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, "Hex dump in the mini memory area 1"}, // FIXME: Must also work in DATA screen
 		{"M1", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, NULL}, // alias
@@ -377,8 +489,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{"MDB", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, NULL}, // MemoryDumpByte  // Did anyone actually use this??
 //		{"MEMORY", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, NULL}, // MemoryDumpByte  // Did anyone actually use this??
 };
-
-	const int NUM_COMMANDS_WITH_ALIASES = sizeof(g_aCommands) / sizeof (Command_t); // Determined at compile-time ;-)
 
 // Parameters _____________________________________________________________________________________
 
@@ -502,6 +612,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 void VerifyDebuggerCommandTable()
 {
+	g_nNumCommandsWithAliases = sizeof(g_aCommands) / sizeof (Command_t);
+
 	for (int iCmd = 0; iCmd < NUM_COMMANDS; iCmd++ )
 	{
 		if ( g_aCommands[ iCmd ].iCommand != iCmd)

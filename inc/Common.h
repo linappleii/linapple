@@ -59,6 +59,7 @@ typedef struct {
   char sFTPServer[MAX_PATH];
   char sFTPServerHDD[MAX_PATH];
   char sFTPUserPass[512];
+  char sDebuggerScript[MAX_PATH];
   bool bVideoScannerNTSC;
   unsigned int dwClksPerFrame;
 } SystemState_t;

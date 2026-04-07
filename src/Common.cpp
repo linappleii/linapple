@@ -20,7 +20,7 @@ bool hddenabled = false;
 unsigned int clockslot;
 
 SystemState_t g_state = {
-  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com", true, 17030
+  MODE_LOGO, false, false, SPEED_NORMAL, 560, 384, false, 0, "", "", "", "", "Printer.txt", "", "", "", "anonymous:mymail@hotmail.com", "", true, 17030
 };
 
 double g_fCurrentCLK6502 = CLOCK_6502;

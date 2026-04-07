@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "stdafx.h"
+#include "Debugger_Commands.h"
 
 #include "Debug.h"
 #include "Debugger_Parser.h"
@@ -36,11 +37,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "CPU.h"
 #include "Memory.h"
 
+#include <algorithm>
+#include <vector>
+#include "Debugger_Help.h"
+#include "Debugger_Console.h"
+
 // Args ___________________________________________________________________________________________
 
 	int   g_nArgRaw;
 	Arg_t g_aArgRaw[ MAX_ARGS ]; // pre-processing
 	Arg_t g_aArgs  [ MAX_ARGS ]; // post-processing (cooked)
+
+	int g_iCommand;
+	std::vector<int> g_vPotentialCommands;
 
 	const char TCHAR_LF     = '\x0D';
 	const char TCHAR_CR     = '\x0A';
@@ -70,84 +79,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		{ TOKEN_EQUAL       , TYPE_OPERATOR, "="  },
 		{ TOKEN_EXCLAMATION , TYPE_OPERATOR, "!"  }, // NOT
 		{ TOKEN_FSLASH      , TYPE_OPERATOR, "/"  }, // div
-		{ TOKEN_GREATER_THAN, TYPE_OPERATOR, ">"  }, // TODO/FIXME: Parser will break up '>=' (needed for uber breakpoints)
+		{ TOKEN_GREATER_THAN, TYPE_OPERATOR, ">"  },
 		{ TOKEN_HASH        , TYPE_OPERATOR, "#"  },
 		{ TOKEN_LESS_THAN   , TYPE_OPERATOR, "<"  },
-		{ TOKEN_MINUS       , TYPE_OPERATOR, "-"  }, // sub
-		{ TOKEN_PAREN_L     , TYPE_OPERATOR, "("  },
-		{ TOKEN_PAREN_R     , TYPE_OPERATOR, ")"  },
-		{ TOKEN_PERCENT     , TYPE_OPERATOR, "%"  }, // mod
-		{ TOKEN_PIPE        , TYPE_OPERATOR, "|"  }, // bit-or
-		{ TOKEN_PLUS        , TYPE_OPERATOR, "+"  }, // add
-//		{ TOKEN_QUESTION    , TYPE_OPERATOR, '?'  }, // Not a token 1) wildcard needs to stay together with other chars
-		{ TOKEN_QUOTE_SINGLE, TYPE_QUOTED_1, "\'" },
-		{ TOKEN_QUOTE_DOUBLE, TYPE_QUOTED_2, "\"" }, // for strings
-		{ TOKEN_SEMI        , TYPE_STRING  , ";"  },
-		{ TOKEN_SPACE       , TYPE_STRING  , " "  }, // space is also a delimiter between tokens/args
-		{ TOKEN_STAR        , TYPE_OPERATOR, "*"  }, // Not a token 1) wildcard needs to stay together with other chars
-//		{ TOKEN_TAB         , TYPE_STRING  , '\t' }
-		{ TOKEN_TILDE       , TYPE_OPERATOR, "~"  }, // C/C++: Not.  Used for console.
-
-		{ TOKEN_COMMENT_EOL , TYPE_STRING  , "//" },
-		{ TOKEN_GREATER_EQUAL,TYPE_OPERATOR, ">=" },
-		{ TOKEN_LESS_EQUAL  , TYPE_OPERATOR, "<=" },
-		{ TOKEN_NOT_EQUAL  , TYPE_OPERATOR , "!=" }
+		{ TOKEN_MINUS       , TYPE_OPERATOR, "-"  },
+		{ TOKEN_PAREN_L     , TYPE_STRING  , "("  },
+		{ TOKEN_PAREN_R     , TYPE_STRING  , ")"  },
+		{ TOKEN_PERCENT     , TYPE_OPERATOR, "%"  },
+		{ TOKEN_PIPE        , TYPE_OPERATOR, "|"  },
+		{ TOKEN_PLUS        , TYPE_OPERATOR, "+"  },
+		{ TOKEN_QUOTE_SINGLE, TYPE_STRING  , "'"  },
+		{ TOKEN_QUOTE_DOUBLE, TYPE_STRING  , "\"" },
+		{ TOKEN_SEMI        , TYPE_OPERATOR, ";"  },
+		{ TOKEN_SPACE       , TYPE_STRING  , " "  },
+		{ TOKEN_STAR        , TYPE_OPERATOR, "*"  },
+		{ TOKEN_TILDE       , TYPE_OPERATOR, "~"  },
 	};
-
-// Arg ____________________________________________________________________________________________
-
-
-//===========================================================================
-int _Arg_1( int nValue )
-{
-	g_aArgs[1].nValue = nValue;
-	return 1;
-}
-
-//===========================================================================
-int _Arg_1( char* pName )
-{
-	int nLen = strlen( g_aArgs[1].sArg );
-	if (nLen < MAX_ARG_LEN)
-	{
-		strcpy( g_aArgs[1].sArg, pName );
-	}
-	else
-	{
-		Util_SafeStrCpy( g_aArgs[1].sArg, pName, MAX_ARG_LEN );
-	}
-	return 1;
-}
-
-/**
-	@description Copies Args[iSrc .. iEnd] to Args[0]
-	@param iSrc First argument to copy
-	@param iEnd Last argument to end
-	@return nArgs Number of new args
-	Usually called as: nArgs = _Arg_Shift( iArg, nArgs );
-//=========================================================================== */
-int _Arg_Shift( int iSrc, int iEnd, int iDst )
-{
-	if (iDst < 0)
-		return ARG_SYNTAX_ERROR;
-	if (iDst >= MAX_ARGS)
-		return ARG_SYNTAX_ERROR;
-
-	int nArgs = (iEnd - iSrc);
-	int nLen = nArgs + 1;
-
-	if ((iDst + nLen) > MAX_ARGS)
-		return ARG_SYNTAX_ERROR;
-
-	while (nLen--)
-	{
-		g_aArgs[iDst] = g_aArgs[iSrc];
-		iSrc++;
-		iDst++;
-	}
-	return nArgs;
-}
-
 //===========================================================================
 int _Args_Insert( int iSrc, int iEnd, int nLen )
 {
@@ -314,8 +261,9 @@ int	ArgsGet ( char * pInput )
 				// Technically, we are capped via ParseInput(), g_aArgs[ iArg ] = g_aArgRaw[ iArg ];
 				//if (iTokenSrc == TOKEN_QUOTE_DOUBLE)
 				//	nLen = nBuf;
-				nLen = MIN( nBuf, MAX_ARG_LEN ); // NOTE: see Arg_t.sArg[] // GH#481
-				Util_SafeStrCpy( pArg->sArg, pSrc, nLen );
+				memset( pArg, 0, sizeof( Arg_t ) );
+				nLen = MIN( nBuf, MAX_ARG_LEN - 1 ); // NOTE: see Arg_t.sArg[] // GH#481
+				Util_SafeStrCpy( pArg->sArg, pSrc, nLen + 1 );
 				pArg->sArg[ nLen ] = 0;
 				pArg->nArgLen      = nLen;
 				pArg->eToken       = iTokenSrc;
@@ -955,4 +903,218 @@ int RemoveWhiteSpaceReverse ( char *pSrc )
 		}
 	}
 	return nLen;
+}
+
+//===========================================================================
+int FindParam(const char* pLookupName, Match_e eMatch, int & iParam_, int iParamBegin, int iParamEnd )
+{
+  int nFound = 0;
+  int nLen     = strlen( pLookupName );
+  int iParam = 0;
+
+  if (! nLen)
+    return nFound;
+
+#if ALLOW_INPUT_LOWERCASE
+  eMatch = MATCH_FUZZY;
+#endif
+
+  if (eMatch == MATCH_EXACT)
+  {
+//    while (iParam < NUM_PARAMS )
+    for (iParam = iParamBegin; iParam <= iParamEnd; iParam++ )
+    {
+      char *pParamName = g_aParameters[iParam].m_sName;
+      int eCompare = strcasecmp(pLookupName, pParamName);
+      if (! eCompare) // exact match?
+      {
+        nFound++;
+        iParam_ = g_aParameters[iParam].iCommand;
+        break;
+      }
+    }
+  }
+  else
+  if (eMatch == MATCH_FUZZY)
+  {
+#if ALLOW_INPUT_LOWERCASE
+    char aLookup[ 256 ] = "";
+    for( int i = 0; i < nLen; i++ )
+    {
+      aLookup[ i ] = toupper( pLookupName[ i ] );
+    }
+#endif
+    for (iParam = iParamBegin; iParam <= iParamEnd; iParam++ )
+    {
+      char *pParamName = g_aParameters[ iParam ].m_sName;
+// _tcsnccmp
+
+#if ALLOW_INPUT_LOWERCASE
+      if (! strncmp(aLookup, pParamName ,nLen))
+#else
+      if (! strncmp(pLookupName, pParamName ,nLen))
+#endif
+      {
+        nFound++;
+        iParam_ = g_aParameters[iParam].iCommand;
+
+        if (!strcasecmp(pLookupName, pParamName)) // exact match?
+        {
+          nFound = 1; // Exact match takes precidence over fuzzy matches
+          break;
+        }
+      }
+    }
+  }
+  return nFound;
+}
+
+void _strupr(char* s)
+{
+  while (*s)
+  {
+    if ((*s >= 'a')&&(*s <= 'z'))
+      *s = *s+'A'-'a';
+    s++;
+  }
+}
+
+//===========================================================================
+int FindCommand( const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ )
+{
+  g_vPotentialCommands.erase( g_vPotentialCommands.begin(), g_vPotentialCommands.end() );
+
+  int nFound   = 0;
+  int nLen     = strlen( pName );
+  int iCommand = 0;
+
+  if (! nLen)
+    return nFound;
+
+  char sCommand[ CONSOLE_WIDTH ];
+  strcpy( sCommand, pName );
+  _strupr( sCommand );
+
+  while ((iCommand < g_nNumCommandsWithAliases)) // && (name[0] >= g_aCommands[iCommand].aName[0])) Command no longer in Alphabetical order
+  {
+    char *pCommandName = g_aCommands[iCommand].m_sName;
+
+    if (! strncmp( sCommand, pCommandName, nLen ))
+    {
+      g_iCommand = g_aCommands[iCommand].iCommand;
+
+      // Don't push the same comamnd/alias if already on the list
+      if (std::find( g_vPotentialCommands.begin(), g_vPotentialCommands.end(), g_iCommand) == g_vPotentialCommands.end())
+      {
+        nFound++;
+        g_vPotentialCommands.push_back( g_iCommand );
+
+        if (iCommand_)
+          *iCommand_ = iCommand;
+// !strcmp
+        if (!strcmp(sCommand, pCommandName)) // exact match?
+        {
+//          if (iCommand_)
+//            *iCommand_ = iCommand;
+
+          nFound = 1; // Exact match takes precidence over fuzzy matches
+          g_vPotentialCommands.erase( g_vPotentialCommands.begin(), g_vPotentialCommands.end() );
+          break;
+        }
+      }
+    }
+    iCommand++;
+  }
+
+  if (nFound == 1)
+  {
+    int nCommand = g_vPotentialCommands.size() ? g_vPotentialCommands[0] : *iCommand_;
+    pFunction_ = g_aCommands[ nCommand ].pFunction;
+  }
+
+  return nFound;
+}
+
+void DisplayAmbigiousCommands( int nFound )
+{
+  char sText[ CONSOLE_WIDTH * 2 ];
+  ConsolePrintFormat( sText, "Ambiguous %s%d%s Commands:"
+    , CHC_NUM_DEC
+    , (int)g_vPotentialCommands.size()
+    , CHC_DEFAULT
+  );
+
+  int iCommand = 0;
+  while (iCommand < nFound)
+  {
+    char sPotentialCommands[ CONSOLE_WIDTH ] = "";
+    sprintf( sPotentialCommands, "%s ", CHC_COMMAND );
+
+    int iWidth = strlen( sPotentialCommands );
+    while ((iCommand < nFound) && (iWidth < g_nConsoleDisplayWidth))
+    {
+      int   nCommand = g_vPotentialCommands[ iCommand ];
+      char *pName = g_aCommands[ nCommand ].m_sName;
+      int   nLen = (int)strlen( pName );
+
+      if ((iWidth + nLen) >= (CONSOLE_WIDTH - 1))
+        break;
+
+      strcat( sPotentialCommands, pName );
+      strcat( sPotentialCommands, " " );
+      iWidth += nLen + 1;
+      iCommand++;
+    }
+    ConsoleDisplayPush( sPotentialCommands );
+  }
+}
+
+int _Arg_1( int nValue )
+{
+	ArgsClear();
+	g_aArgs[1].nValue = nValue;
+	g_aArgs[1].bType  = TYPE_VALUE;
+	return 1;
+}
+
+int _Arg_1( char* pName )
+{
+	ArgsClear();
+	Util_SafeStrCpy( g_aArgs[1].sArg, pName, MAX_ARG_LEN );
+	g_aArgs[1].bType  = TYPE_STRING;
+	return 1;
+}
+
+int _Arg_Shift( int iSrc, int iEnd, int iDst )
+{
+	int nArgs = iEnd - iSrc;
+	int iArg = 0;
+
+	while (iArg <= nArgs)
+	{
+		g_aArgs[ iDst + iArg ] = g_aArgs[ iSrc + iArg ];
+		iArg++;
+	}
+
+	return nArgs;
+}
+
+int ParseInput ( char* pConsoleInput, bool bCook )
+{
+	(void)bCook;
+	int nArg = 0;
+
+	// TODO: need to check for non-quoted command seperator ';', and buffer input
+	RemoveWhiteSpaceReverse( pConsoleInput );
+
+	ArgsClear();
+	nArg = ArgsGet( pConsoleInput ); // Get the Raw Args
+
+	int iArg;
+	for( iArg = 0; iArg <= nArg; iArg++ )
+	{
+		g_aArgs[ iArg ] = g_aArgRaw[ iArg ];
+	}
+
+	return nArg;
 }

@@ -41,7 +41,15 @@ inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens
 	extern	const char TCHAR_QUOTE_DOUBLE;
 	extern	const char TCHAR_QUOTE_SINGLE;
 
+	extern	std::vector<int> g_vPotentialCommands;
+
 // Prototypes _______________________________________________________________
+
+	void _strupr(char* s);
+	int FindParam(const char* pLookupName, Match_e eMatch, int & iParam_, int iParamBegin = 0, int iParamEnd = NUM_PARAMS - 1);
+	int FindCommand(const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = NULL);
+	void DisplayAmbigiousCommands(int nFound);
+	int  ParseInput(char* pConsoleInput, bool bCook = true);
 
 // Arg - Command Processing
 	Update_t Help_Arg_1( int iCommandHelp );

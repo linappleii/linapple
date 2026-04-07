@@ -3,7 +3,8 @@
 // Addressing
 
 enum {
-  MAX_OPMODE_FORMAT = 12, MAX_OPMODE_NAME = 32, NO_6502_TARGET = -1, _6502_NUM_FLAGS = 8
+  MAX_OPMODE_FORMAT = 12, MAX_OPMODE_NAME = 32, NO_6502_TARGET = -1, _6502_NUM_FLAGS = 8,
+  CONSOLE_WIDTH = 80
 };
 
 enum RangeType_t {
@@ -1401,4 +1402,20 @@ struct WindowSplit_t {
 // Zero Page
 enum {
   MAX_ZEROPAGE_POINTERS = 8
+};
+
+enum Match_e {
+  MATCH_EXACT,
+  MATCH_FUZZY
+};
+
+enum InputCursor
+{
+  CURSOR_INSERT,
+  CURSOR_OVERSTRIKE,
+  NUM_INPUT_CURSORS
+};
+
+enum {
+  NUM_PROFILE_LINES = NUM_OPCODES + NUM_OPMODES + 16
 };

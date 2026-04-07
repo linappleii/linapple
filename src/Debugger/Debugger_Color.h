@@ -1,3 +1,6 @@
+#ifndef DEBUGGER_COLOR_H
+#define DEBUGGER_COLOR_H
+
 // Colors ___________________________________________________________________
 
 	enum Color_Schemes_e
@@ -109,6 +112,7 @@
 		, FG_INFO_IO_BYTE    // Orange (non-high bit)
 
 		, BG_DATA_1          // Cyan*   Window
+		, BG_INFO_DATA       = BG_DATA_1
 		, BG_DATA_2          // Cyan*
 		, FG_DATA_BYTE       // default same as FG_DISASM_OPCODE
 		, FG_DATA_TEXT       // default same as FG_DISASM_NMEMONIC
@@ -139,3 +143,6 @@
 	unsigned int DebuggerGetColor( int iColor );
 	bool DebuggerSetColor ( const int iScheme, const int iColor, const unsigned int nColor );
 	void ConfigColorsReset(void);
+	void _CmdColorGet( const int iScheme, const int iColor );
+
+#endif

@@ -2,6 +2,8 @@
 #pragma once
 
 #include "Common.h"
+#include "Debugger_Color.h"
+#include "Debugger_Console.h"
 
 #define USE_APPLE_FONT   1
 
@@ -63,10 +65,22 @@
 	void FormatNopcodeBytes   ( unsigned short nBaseAddress, DisasmLine_t & line_ );
 
 	void DrawFlags            ( int line, unsigned short nRegFlags, char* pFlagNames_);
+	void DrawStack            ( int line);
+	void DrawMemory           ( int line, int iMemDump );
+	void DrawRegisters        ( int line );
+	void DrawSoftSwitches     ( int iSoftSwitch );
+	void DrawTargets          ( int line);
+	void DrawWatches          ( int line);
+	void DrawZeroPagePointers ( int line );
+	void DrawVideoScannerInfo ( int line );
 
 	extern void AllocateDebuggerMemDC(void);
 	extern void ReleaseDebuggerMemDC(void);
 	extern void StretchBltMemToFrameDC(void);
+	bool CanDrawDebugger(void);
+
+	void InitDisasm(void);
+	void UpdateDisplay(Update_t bUpdate);
 
 	enum DebugVirtualTextScreen_e
 	{
@@ -92,5 +106,42 @@
 		uint64_t lastCumulativeCycles;
 		unsigned int cycleDelta;
 	};
+
+	void DrawWindow_Code        (Update_t bUpdate);
+	void DrawWindow_Console     (Update_t bUpdate);
+	void DrawWindow_Data        (Update_t bUpdate);
+	void DrawWindow_IO          (Update_t bUpdate);
+	void DrawWindow_Symbols     (Update_t bUpdate);
+	void DrawWindow_ZeroPage    (Update_t bUpdate);
+
+	void DrawSourceLine(int iSourceLine, RECT & rect);
+
+	char ColorizeSpecialChar(char * sText, unsigned char nData, const MemoryView_e iView,
+		const int iAsciBackground = BG_INFO, const int iTextForeground = FG_DISASM_CHAR,
+		const int iHighBackground = BG_INFO_CHAR, const int iHighForeground = FG_INFO_CHAR_HI,
+		const int iCtrlBackground = BG_INFO_CHAR, const int iCtrlForeground = FG_INFO_CHAR_LO);
+
+	void SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit,
+		int iTextBG, int iTextFG, int iHighBG, int iHighFG, int iCtrlBG, int iCtrlFG);
+
+	void DrawWindowBottom(Update_t bUpdate, int iWindow);
+	void DrawSubWindow_Info(Update_t bUpdate, int iWindow);
+	void DrawSubWindow_Code(int iWindow);
+	void DrawSubWindow_Source(Update_t bUpdate);
+	void DrawSubWindow_Source2(Update_t bUpdate);
+	void DrawSubWindow_IO(Update_t bUpdate);
+	void FillRect(const RECT *r, int Brush);
+	void DrawSubWindow_Symbols(Update_t bUpdate);
+	void DrawSubWindow_ZeroPage(Update_t bUpdate);
+	void DrawSubWindow_Console(Update_t bUpdate);
+	void DrawWindow_Data(Update_t bUpdate);
+	void DrawWindow_IO(Update_t bUpdate);
+	void DrawWindow_Symbols(Update_t bUpdate);
+	void DrawWindow_ZeroPage(Update_t bUpdate);
+	void DrawWindow_Console(Update_t bUpdate);
+	void DrawWindowBackground_Main(int iWindow);
+	void DrawWindowBackground_Info(int iWindow);
+	void DrawRegister(int line, const char* name, const int nBytes, const unsigned short nValue, int iSource);
+	void GetTargets_IgnoreDirectJSRJMP(const unsigned char iOpcode, int& nTargetPointer);
 
 	extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;

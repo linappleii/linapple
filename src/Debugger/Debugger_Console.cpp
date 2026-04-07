@@ -35,7 +35,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Color.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Cmd_CPU.h"
+#include "Debugger_Cmd_Window.h"
+#include "Debugger_Cmd_Output.h"
 #include "Util_Text.h"
+#include "Keyboard.h"
+#include "Video.h"
+#include <unistd.h>
+
+// Globals originally from Debug.cpp
+const char g_aInputCursor[] = "_\x7F"; // insert over-write
+bool       g_bInputCursor = false;
+int        g_iInputCursor = CURSOR_OVERSTRIKE; // which cursor to use
+const int  g_nInputCursor = sizeof( g_aInputCursor );
+
+bool g_bIgnoreNextKey = false;
+
+extern bool g_bDebugFullSpeed;
+
+Update_t ConsoleInputHistoryPrev();
+Update_t ConsoleInputHistoryNext();
 
 // Console ________________________________________________________________________________________
 
@@ -90,7 +109,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		      char * g_pConsoleInput       = 0; // points to past prompt
 		const char * g_pConsoleFirstArg    = 0; // points to first arg
 		bool         g_bConsoleInputQuoted = false; // Allows lower-case to be entered
-		char         g_nConsoleInputSkip   = '~';
+		int          g_nConsoleInputSkip   = 0;
 
 	  int g_anConsoleColor[ NUM_CONSOLE_COLORS ] = {
 	      WHITE, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE
@@ -638,4 +657,278 @@ void ConsoleFlush ()
 {
 	int nLines = g_nConsoleBuffer;
 	ConsoleBufferTryUnpause( nLines );
+}
+
+void DebuggerCursorUpdate()
+{
+  if (g_state.mode != MODE_DEBUG)
+    return;
+
+  const  int nUpdatesPerSecond = 4;
+  const  unsigned int nUpdateInternal_ms = 1000 / nUpdatesPerSecond;
+  static unsigned int nBeg = SDL_GetTicks(); // timeGetTime();
+         unsigned int nNow = SDL_GetTicks(); // timeGetTime();
+
+  if (((nNow - nBeg) >= nUpdateInternal_ms) && !DebugVideoMode::Instance().IsSet())
+  {
+    nBeg = nNow;
+
+    DebuggerCursorNext();
+
+    DrawConsoleCursor();
+    StretchBltMemToFrameDC();
+  }
+  else
+  {
+    usleep(1000);   // Stop process hogging CPU
+  }
+}
+
+void DebuggerCursorNext()
+{
+  g_bInputCursor ^= true;
+  if (g_bInputCursor)
+    ConsoleUpdateCursor( g_aInputCursor[ g_iInputCursor ] );
+  else
+    ConsoleUpdateCursor( 0 ); // show char under cursor
+}
+
+void DebuggerUpdate()
+{
+  DebuggerCursorUpdate();
+}
+
+void DebuggerInputConsoleChar( char ch )
+{
+  assert(g_state.mode == MODE_DEBUG);
+
+  if (g_state.mode != MODE_DEBUG)
+    return;
+
+  if (g_bConsoleBufferPaused)
+    return;
+
+  if (g_bIgnoreNextKey)
+  {
+    g_bIgnoreNextKey = false;
+    return;
+  }
+
+  if ((ch >= CHAR_SPACE) && (ch <= 126)) // HACK MAGIC # 32 -> ' ', # 126
+  {
+    if ((ch == TCHAR_QUOTE_DOUBLE) || (ch == TCHAR_QUOTE_SINGLE))
+      g_bConsoleInputQuoted = ! g_bConsoleInputQuoted;
+
+    if (!g_bConsoleInputQuoted)
+    {
+      // TODO: must fix param matching to ignore case
+#if ALLOW_INPUT_LOWERCASE
+#else
+      ch = toupper(ch);
+#endif
+    }
+    ConsoleInputChar( ch );
+
+    DebuggerCursorNext();
+
+    DrawConsoleInput();
+    StretchBltMemToFrameDC();
+  }
+}
+
+void ToggleFullScreenConsole()
+{
+  // Switch to Console Window
+  if (g_iWindowThis != WINDOW_CONSOLE)
+  {
+    CmdWindowViewConsole( 0 );
+  }
+  else // switch back to last window
+  {
+    CmdWindowLast( 0 );
+  }
+}
+
+void DebuggerProcessKey( int keycode )
+{
+  if (g_state.mode != MODE_DEBUG)
+    return;
+
+  if (DebugVideoMode::Instance().IsSet())
+  {
+    if ((SDLK_LSHIFT == keycode) || (SDLK_RSHIFT == keycode) ||
+        (SDLK_LCTRL == keycode) || (SDLK_RCTRL == keycode) ||
+        (SDLK_MENU == keycode))
+    {
+      return;
+    }
+
+    // Normally any key press takes us out of "Viewing Apple Output" mode
+    // SDLK_F# are already processed, so we can't use them to cycle next video mode
+    //  if ((mode != MODE_LOGO) && (mode != MODE_DEBUG))
+    DebugVideoMode::Instance().Reset();
+    UpdateDisplay( UPDATE_ALL ); // 1
+    return;
+  }
+
+  Update_t bUpdateDisplay = UPDATE_NOTHING;
+
+  if ((keycode >= ' ') && (keycode <= 127))
+    DebuggerInputConsoleChar(keycode);
+
+  // For long output, allow user to read it
+  if (g_nConsoleBuffer)
+  {
+    if ((SDLK_SPACE == keycode) || (SDLK_RETURN == keycode) || (SDLK_TAB == keycode) || (SDLK_ESCAPE == keycode))
+    {
+      int nLines = MIN( g_nConsoleBuffer, g_nConsoleDisplayLines - 1 ); // was -2
+      if (SDLK_ESCAPE == keycode) // user doesn't want to read all this stu
+      {
+        nLines = g_nConsoleBuffer;
+      }
+      ConsoleBufferTryUnpause( nLines );
+
+      // don't really need since 'else if (keycode = SDLK_BACK)' but better safe then sorry
+      keycode = 0; // don't single-step
+    }
+  }
+
+  if (keycode == SDLK_BACKSPACE)
+  {
+    if (g_nConsoleInputChars)
+    {
+      ConsoleInputBackSpace();
+      DebuggerCursorNext();
+      DrawConsoleInput();
+      StretchBltMemToFrameDC();
+    }
+  }
+  else if ((keycode == SDLK_RETURN) || (keycode == SDLK_KP_ENTER))
+  {
+    if (g_nConsoleInputChars)
+    {
+      // TODO: g_bConsoleBufferPaused ???
+      bUpdateDisplay |= DebuggerProcessCommand( true ); // copy console input to console output
+    }
+    else
+    {
+      // Repeat last command?
+      // No, for now we just single-step
+      bUpdateDisplay |= CmdGoNormalSpeed( 0 );
+    }
+  }
+  else if (keycode == SDLK_CARET) // US: Tilde ~ (key to the immediate left of numeral 1)
+  {
+    if (KeybGetCtrlStatus())
+    {
+      ToggleFullScreenConsole();
+      bUpdateDisplay |= UPDATE_ALL;
+    }
+    else
+    {
+      g_nConsoleInputSkip = 0; // SDLK_OEM_3;
+      DebuggerInputConsoleChar( '~' );
+    }
+    g_nConsoleInputSkip = '~'; // SDLK_OEM_3;
+  }
+  else
+  {
+    switch (keycode)
+    {
+      case SDLK_TAB:
+      {
+        if (g_nConsoleInputChars)
+        {
+          // TODO: TabCompletionCommand()
+          // TODO: TabCompletionSymbol()
+          bUpdateDisplay |= ConsoleInputTabCompletion();
+        }
+        else
+        {
+          ToggleFullScreenConsole();
+          bUpdateDisplay |= UPDATE_ALL;
+        }
+        break;
+      }
+
+      case SDLK_UP:    bUpdateDisplay |= ConsoleInputHistoryPrev(); break;
+      case SDLK_DOWN:  bUpdateDisplay |= ConsoleInputHistoryNext(); break;
+
+      case SDLK_PAGEUP:
+        if (KeybGetCtrlStatus())
+          _CursorMoveUpAligned( WindowGetHeight( g_iWindowThis ) );
+        else
+          _CursorMoveUpAligned( 1 );
+        bUpdateDisplay |= UPDATE_DISASM;
+        break;
+
+      case SDLK_PAGEDOWN:
+        if (KeybGetCtrlStatus())
+          _CursorMoveDownAligned( WindowGetHeight( g_iWindowThis ) );
+        else
+          _CursorMoveDownAligned( 1 );
+        bUpdateDisplay |= UPDATE_DISASM;
+        break;
+
+      case SDLK_F1:
+      case SDLK_F2:
+      case SDLK_F3:
+      case SDLK_F4:
+      case SDLK_F5:
+      case SDLK_F6:
+      case SDLK_F7:
+      case SDLK_F8:
+      case SDLK_F9:
+      case SDLK_F10:
+      case SDLK_F11:
+      case SDLK_F12:
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  if (bUpdateDisplay)
+  {
+    // BUGFIX: main disassembly listing doesn't get updated in full screen console
+    //bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY;
+    bUpdateDisplay |= UPDATE_ALL;
+    UpdateDisplay( bUpdateDisplay );
+  }
+}
+
+void DebuggerMouseClick( int x, int y )
+{
+  if (g_state.mode != MODE_DEBUG)
+    return;
+
+  int iAltCtrlShift  = 0;
+  iAltCtrlShift |= KeybGetAltStatus()   ? 1<<0 : 0;
+  iAltCtrlShift |= KeybGetCtrlStatus()  ? 1<<1 : 0;
+  iAltCtrlShift |= KeybGetShiftStatus() ? 1<<2 : 0;
+
+  // GH#462 disasm click #
+  if (iAltCtrlShift != g_bConfigDisasmClick)
+    return;
+
+  // TODO: WindowMouseClick( x, y );
+}
+
+Update_t ConsoleInputHistoryPrev()
+{
+	if (g_nHistoryLinesTotal)
+	{
+		// TODO: Implement history browsing
+	}
+	return UPDATE_NOTHING;
+}
+
+Update_t ConsoleInputHistoryNext()
+{
+	if (g_nHistoryLinesTotal)
+	{
+		// TODO: Implement history browsing
+	}
+	return UPDATE_NOTHING;
 }

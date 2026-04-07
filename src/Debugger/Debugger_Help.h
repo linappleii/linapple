@@ -3,21 +3,30 @@
 #ifndef DEBUGGER_HELP_H
 #define DEBUGGER_HELP_H
 
-	enum Match_e
+#include "Debugger_Types.h"
+
+// Types ____________________________________________________________________
+
+	enum HelpType_e
 	{
-		MATCH_EXACT,
-		MATCH_FUZZY
+		  HELP_TYPE_USAGE
+		, HELP_TYPE_NOTE
+		, HELP_TYPE_EXAMPLE
+		, HELP_TYPE_RANGE
+		, HELP_TYPE_SEE_ALSO
+		, NUM_HELP_TYPES
 	};
 
+	struct HelpEntry_t
+	{
+		int iCommand;
+		HelpType_e eType;
+		const char *pText;
+	};
 
 // Prototypes _______________________________________________________________
 
 	Update_t HelpLastCommand();
-
-	void DisplayAmbigiousCommands ( int nFound );
-
-	int FindParam( const char* pLookupName, Match_e eMatch, int & iParam_, const int iParamBegin = 0, const int iParamEnd = NUM_PARAMS - 1 );
-	int FindCommand( const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = NULL );
 
 inline void  UnpackVersion( const unsigned int nVersion,
 		int & nMajor_, int & nMinor_, int & nFixMajor_ , int & nFixMinor_ )

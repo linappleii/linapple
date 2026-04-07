@@ -46,6 +46,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "Util_Path.h"
 #include "JoystickFrontend.h"
+#include "Debug.h"
+#include "Debugger_Cmd_Output.h"
 
 static unsigned int emulmsec_frac = 0;
 static bool g_bBudgetVideo = false;
@@ -363,7 +365,7 @@ uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
       case SDLK_UP:     apple_code = IS_APPLE2() ? 0x0D : 0x0B; break;
       case SDLK_DOWN:   apple_code = IS_APPLE2() ? 0x2F : 0x0A; break;
       case SDLK_DELETE: apple_code = IS_APPLE2() ? 0x00 : 0x7F; break;
-      
+
       // Symbols
       case '`': apple_code = bShift ? '~' : '`'; break;
       case '-': apple_code = bShift ? '_' : '-'; break;
@@ -394,8 +396,8 @@ void Sys_Input()
 
     if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) {
       SDL_Keymod mod = SDL_GetModState();
-      KeybSetModifiers((mod & SDL_KMOD_SHIFT) != 0, 
-                       (mod & SDL_KMOD_CTRL) != 0, 
+      KeybSetModifiers((mod & SDL_KMOD_SHIFT) != 0,
+                       (mod & SDL_KMOD_CTRL) != 0,
                        (mod & SDL_KMOD_ALT) != 0);
     }
 
@@ -457,10 +459,8 @@ void Sys_Draw()
     DiskChoose_Draw();
     return;
   }
-  
-  if (g_state.mode == MODE_DEBUG) {
-    DrawFrameWindow();
-  } else if (g_state.mode == MODE_LOGO || g_state.mode == MODE_PAUSED) {
+
+  if (g_state.mode == MODE_DEBUG || g_state.mode == MODE_LOGO || g_state.mode == MODE_PAUSED) {
     DrawAppleContent();
     DrawFrameWindow();
   } else if (g_state.mode == MODE_RUNNING || g_state.mode == MODE_STEPPING) {
@@ -469,20 +469,21 @@ void Sys_Draw()
     }
   }
 }
-
 void EnterMessageLoop()
 {
+  static bool bScriptRan = false;
+
   while (g_state.mode != MODE_EXIT && !g_state.restart) {
     Sys_Input();
     if (g_state.mode == MODE_EXIT) break;
     Sys_Think();
     Sys_Draw();
-  }
-}
 
-int DoDiskInsert(int nDrive, const char* szFileName)
-{
-  return DiskInsert(nDrive, szFileName, false, false);
+    if (g_state.sDebuggerScript[0] && !bScriptRan && CanDrawDebugger()) {
+      DebuggerRunScript(g_state.sDebuggerScript);
+      bScriptRan = true;
+    }
+  }
 }
 
 bool ValidateDirectory(const char *dir)
@@ -509,7 +510,7 @@ void SetDiskImageDirectory(char *regKey, int driveNumber)
       Configuration::Instance().Save();
       sHDFilename = "/";
     }
-    DoDiskInsert(driveNumber, sHDFilename.c_str());
+    DiskInsert(driveNumber, sHDFilename.c_str(), false, false);
   }
 }
 
@@ -772,7 +773,7 @@ void LoadConfiguration()
 
   std::string sFilename;
   double scrFactor = 0.0;
-  
+
   // Reset to base dimensions before applying factor
   g_state.ScreenWidth = 560;
   g_state.ScreenHeight = 384;
@@ -912,7 +913,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   configSearchPaths.push_back("./linapple.conf");
   configSearchPaths.push_back(Path::GetUserConfigDir() + "linapple.conf");
   configSearchPaths.push_back(Path::GetUserDataDir() + "linapple.conf");
-  
+
   char *envvar = getenv("XDG_CONFIG_DIRS");
   std::string xdgConfigDirs = envvar ? envvar : "/etc/xdg";
   std::vector<std::string> sysConfigDirs(split(xdgConfigDirs, ":"));
@@ -936,7 +937,7 @@ void LoadAllConfigurations(const char *userSpecifiedFilename)
   } else {
       std::string userPath = Path::GetUserConfigDir() + "linapple.conf";
       std::string templatePath = Path::FindDataFile("linapple.conf");
-      
+
       if (!templatePath.empty()) {
           if (Path::CopyFile(templatePath, userPath)) {
               Configuration::Instance().Load(userPath);
@@ -958,29 +959,32 @@ void RegisterExtensions()
 {
 }
 
-void PrintHelp()
-{
-  printf("usage: linapple [options]\n"
-         "\n"
-         "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
-         "\n"
-         "  -h|--help      show this help message\n"
-         "  --conf <file>  use <file> instead of any default config files\n"
-         "  --d1 <file>    insert disk image into first drive\n"
-         "  --d2 <file>    insert disk image into second drive\n"
-         "  -b|--autoboot  boot/reset at startup\n"
-         "  --pal          use PAL (50Hz) video timing\n"
-         "  -f             run fullscreen\n"
-         "  -l             write log to 'AppleWin.log'\n"
-         "  -v|--verbose   enable verbose performance logging\n"
-         "  --test-cpu <f> run headless CPU functional test from binary file <f>\n"
-         "  --test-6502    use NMOS 6502 core for headless test\n"
-         "  --test-65c02   use CMOS 65C02 core for headless test\n"
-         #ifdef RAMWORKS
-         "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
-         #endif
-         "  --benchmark    benchmark and quit\n"
-         "\n");
+void PrintHelp() {
+    printf("Usage: linapple [OPTIONS]\n\n");
+
+    printf("Disk & State Management:\n");
+    printf("  -1, --d1 <file>          Load disk image into Drive 1\n");
+    printf("  -2, --d2 <file>          Load disk image into Drive 2\n");
+    printf("  -s, --state <file>       Load a specific snapshot/state file\n");
+    printf("  -c, --conf <file>        Use a custom configuration file\n\n");
+
+    printf("Emulation Controls:\n");
+    printf("  -b, --autoboot           Boot the system immediately on launch\n");
+    printf("  -p, --pal                Set video mode to PAL (default is NTSC)\n");
+    printf("  -r, --ramworks <1-128>   Set RamWorks expansion size in pages\n");
+    printf("  -6, --test-6502          Emulate original Apple II+ (6502)\n");
+    printf("  -C, --test-65c02         Emulate Apple IIe Enhanced (65c02)\n\n");
+
+    printf("Debugging & Performance:\n");
+    printf("  -m, --benchmark          Run in benchmark mode (uncapped speed)\n");
+    printf("  -T, --test-cpu <file>    Run CPU test suite from file\n");
+    printf("  -x, --debug-script <f>   Execute a debugger script on startup\n");
+    printf("  -v, --verbose            Enable high-verbosity performance logging\n\n");
+
+    printf("General:\n");
+    printf("  -f, --fullscreen         Start in fullscreen mode\n");
+    printf("  -l, --log                Enable general system logging\n");
+    printf("  -h, --help               Display this help message and exit\n");
 }
 
 int SysInit(bool bLog)
@@ -1042,6 +1046,10 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
                 const char* szSnapshotFile, bool bBoot, bool bPAL)
 {
   g_state.mode = MODE_LOGO;
+  if (g_state.sDebuggerScript[0]) {
+    g_state.mode = MODE_DEBUG;
+  }
+
   g_state.fullscreen = false;
 
   LoadAllConfigurations(szConfigurationFile);
@@ -1056,14 +1064,14 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
 
   int nError = 0;
   if (szImageName_drive1) {
-    nError = DoDiskInsert(0, szImageName_drive1);
+    DiskInsert(0, szImageName_drive1, false, false);
     if (nError) {
       Logger::Error("Cannot insert image %s into drive 1.\n", szImageName_drive1);
       return 1;
     }
   }
   if (szImageName_drive2) {
-    nError |= DoDiskInsert(1, szImageName_drive2);
+    DiskInsert(1, szImageName_drive2, false, false);
     if (nError) {
       Logger::Error("Cannot insert image %s into drive 2.\n", szImageName_drive2);
       return 1;
@@ -1087,6 +1095,7 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
   }
   VideoInitialize();
   DebugInitialize();
+
   Snapshot_Startup();
 
   if (szSnapshotFile) {
@@ -1094,7 +1103,7 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
     Snapshot_LoadState();
   }
 
-  if (bBoot) {
+  if (bBoot && !g_state.sDebuggerScript[0]) {
     setAutoBoot();
   }
 
@@ -1139,7 +1148,7 @@ void CpuTestHeadless(const char* filename) {
         return;
     }
     CpuInitialize();
-    
+
     FILE* f = fopen(filename, "rb");
     if (!f) {
         Logger::Error("Failed to open test file: %s\n", filename);
@@ -1155,22 +1164,22 @@ void CpuTestHeadless(const char* filename) {
         return;
     }
     fclose(f);
-    
-    regs.pc = 0x400; 
+
+    regs.pc = 0x400;
     regs.ps = 0;
     uint16_t last_pc = 0;
     uint64_t count = 0;
-    
+
     while (true) {
         last_pc = regs.pc;
         CpuExecute(1000);
         count += 100;
-        
+
         if (regs.pc == last_pc) {
             Logger::Info("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
             break;
         }
-        
+
         if (count > 1000000000ULL) {
             Logger::Info("Test timed out at 0x%04X after %" PRIu64 " cycles\n", regs.pc, count);
             break;
@@ -1195,105 +1204,89 @@ int main(int argc, char *argv[])
   int opt;
   int optind = 0;
   const char *optname;
-  static struct option longopts[] = {{"autoboot",  no_argument,       0, 0},
-                                     {"benchmark", no_argument,       0, 0},
-                                     {"conf",      required_argument, 0, 0},
-                                     {"d1",        required_argument, 0, 0},
-                                     {"d2",        required_argument, 0, 0},
-                                     {"help",      no_argument,       0, 0},
-                                     {"pal",       no_argument,       0, 0},
-                                     {"state",     required_argument, 0, 0},
-                                     {"test-cpu",  required_argument, 0, 0},
-                                     {"test-6502",  no_argument,      0, 0},
-                                     {"test-65c02", no_argument,      0, 0},
-                                     {"verbose",   no_argument,       0, 0},
-                                     {0,           0,                 0, 0}};
+  static struct option OptionTable[] = {
+    {"autoboot",     no_argument,       0, 'b'},
+    {"benchmark",    no_argument,       0, 'm'},
+    {"conf",         required_argument, 0, 'c'},
+    {"d1",           required_argument, 0, '1'},
+    {"d2",           required_argument, 0, '2'},
+    {"debug-script", required_argument, 0, 'x'},
+    {"help",         no_argument,       0, 'h'},
+    {"pal",          no_argument,       0, 'p'},
+    {"state",        required_argument, 0, 's'},
+    {"test-cpu",     required_argument, 0, 'T'},
+    {"test-6502",    no_argument,       0, '6'},
+    {"test-65c02",   no_argument,       0, 'C'},
+    {"verbose",      no_argument,       0, 'v'},
+    {0, 0, 0, 0}
+  };
 
   XInitThreads();
 
-  while ((opt = getopt_long(argc, argv, "1:2:abfhlpr:v", longopts, &optind)) != -1) {
+  while ((opt = getopt_long(argc, argv, "1:2:abc:fhlmpr:s:vx:T:6C", OptionTable, &optind)) != -1) {
     switch (opt) {
       case '1':
         szImageName_drive1 = optarg;
         break;
-
       case '2':
         szImageName_drive2 = optarg;
+        break;
+      case 's':
+        szSnapshotFile = optarg;
+        break;
+      case 'c':
+        szConfigurationFile = optarg;
         break;
 
       case 'b':
         bBoot = true;
         break;
-
+      case 'm':
+        bBenchMark = true;
+        break;
       case 'f':
         bSetFullScreen = true;
         break;
-
-      case 'h':
-        PrintHelp();
-        return 0;
-        break;
-
       case 'l':
         bLog = true;
         break;
-
       case 'p':
         bPAL = true;
         break;
-
       case 'v':
         Logger::SetVerbosity(LogLevel::Perf);
         break;
 
-      #ifdef RAMWORKS
-      case 'r': // RamWorks size [1..127]
-        g_uMaxExPages = atoi(optarg);
-        if (g_uMaxExPages > 127)
-          g_uMaxExPages = 128;
-        else if (g_uMaxExPages < 1)
-          g_uMaxExPages = 1;
+      case 'x':
+        Util_SafeStrCpy(g_state.sDebuggerScript, optarg, MAX_PATH);
         break;
-      #endif
 
-      case 0:
-        optname = longopts[optind].name;
-        if (!strcmp(optname, "autoboot")) {
-          bBoot = true;
-        } else if (!strcmp(optname, "benchmark")) {
-          bBenchMark = true;
-        } else if (!strcmp(optname, "conf")) {
-          szConfigurationFile = optarg;
-        } else if (!strcmp(optname, "d1")) {
-          szImageName_drive1 = optarg;
-        } else if (!strcmp(optname, "d2")) {
-          szImageName_drive2 = optarg;
-        } else if (!strcmp(optname, "help")) {
-          PrintHelp();
-          return 0;
-        } else if (!strcmp(optname, "pal")) {
-          bPAL = true;
-        } else if (!strcmp(optname, "state")) {
-          szSnapshotFile = optarg;
-        } else if (!strcmp(optname, "test-cpu")) {
-          bTestCpu = true;
-          szTestFile = optarg;
-        } else if (!strcmp(optname, "test-6502")) {
-          g_Apple2Type = A2TYPE_APPLE2PLUS;
-        } else if (!strcmp(optname, "test-65c02")) {
-          g_Apple2Type = A2TYPE_APPLE2EEHANCED;
-        } else if (!strcmp(optname, "verbose")) {
-          Logger::SetVerbosity(LogLevel::Perf);
-        } else {
-          printf("Unknown option '%s'.\n\n", optname);
-          PrintHelp();
-          return 255;
-        }
+      case 'T':
+        bTestCpu = true;
+        szTestFile = optarg;
         break;
+
+      case '6':
+        g_Apple2Type = A2TYPE_APPLE2PLUS;
+        break;
+      case 'C':
+        g_Apple2Type = A2TYPE_APPLE2EEHANCED;
+        break;
+
+#ifdef RAMWORKS
+      case 'r':
+        g_uMaxExPages = atoi(optarg);
+        if (g_uMaxExPages > 127) g_uMaxExPages = 128;
+        else if (g_uMaxExPages < 1) g_uMaxExPages = 1;
+        break;
+#endif
+
+      case 'h':
+        PrintHelp();
+        return 0;
 
       default:
-        printf("Unknown option '%s'.\n\n", optarg);
-        PrintHelp();
+        fprintf(stderr, "Check --help for proper usage.\n");
         return 255;
     }
   }

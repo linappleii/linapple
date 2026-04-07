@@ -209,4 +209,26 @@ extern	int g_aAssemblerFirstDirective[ NUM_ASSEMBLERS ];
 	void AssemblerOn  ();
 	void AssemblerOff ();
 
+	size_t   _GetFileSize(FILE* hFile);
+	Update_t _CmdAssemble(unsigned short nAddress, int iArg, int nArgs);
+
+	Update_t CmdAssemble(int nArgs);
+	Update_t CmdSource(int nArgs);
+	Update_t CmdUnassemble(int nArgs);
+
+	extern bool  g_bSourceLevelDebugging;
+	extern bool  g_bSourceAddSymbols;
+	extern bool  g_bSourceAddMemory;
+	extern std::string g_aSourceFileName;
+	extern MemoryTextFile_t g_AssemblerSourceBuffer;
+	extern int    g_iSourceDisplayStart;
+	extern int    g_nSourceAssembleBytes;
+	extern int    g_nSourceAssemblySymbols;
+	extern SourceAssembly_t g_aSourceDebug;
+
+	bool BufferAssemblyListing(const std::string& pFileName);
+	bool ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols);
+	int  FindAddressFromSourceLine(int nLine);
+	int  FindSourceLineFromAddress(unsigned short nAddress);
+
 #endif

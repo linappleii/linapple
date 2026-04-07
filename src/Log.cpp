@@ -47,10 +47,13 @@ static void vLogOutput(LogLevel level, const char* format, va_list args) {
   // Terminal visibility
   if (level <= LogLevel::Error) {
     fprintf(stderr, "ERROR: %s", output);
+    fflush(stderr);
   } else if (level == LogLevel::Perf) {
     printf("PERF: %s", output);
+    fflush(stdout);
   } else if (level <= LogLevel::Info) {
     printf("%s", output);
+    fflush(stdout);
   }
 }
 

@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "stdafx.h"
+#include "Common.h"
 #include <vector>
 
 #include "Debug.h"
@@ -923,6 +924,131 @@ void AssemblerHashOpcodes ()
 	ConsoleUpdate();
 }
 
+
+//===========================================================================
+Update_t CmdAssemble (int nArgs)
+{
+  if (! g_bAssemblerOpcodesHashed)
+  {
+    AssemblerStartup();
+    g_bAssemblerOpcodesHashed = true;
+  }
+
+  // 0 : A
+  // 1 : A address
+  // 2+: A address mnemonic...
+
+  if (! nArgs)
+  {
+//    return Help_Arg_1( CMD_ASSEMBLE );
+
+    // Start assembler, continue with last assembled address
+    AssemblerOn();
+    return UPDATE_CONSOLE_DISPLAY;
+  }
+
+  g_nAssemblerAddress = g_aArgs[1].nValue;
+
+  if (nArgs == 1)
+  {
+    int iArg = 1;
+
+    // undocumented ASM *
+    if ((! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_WILDSTAR        ].m_sName )) ||
+      (! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
+    {
+      _CmdAssembleHashDump();
+    }
+
+    AssemblerOn();
+    return UPDATE_CONSOLE_DISPLAY;
+
+//    return Help_Arg_1( CMD_ASSEMBLE );
+  }
+
+  if (nArgs > 1)
+  {
+    return _CmdAssemble( g_nAssemblerAddress, 2, nArgs ); // disasm, memory, watches, zeropage
+  }
+
+//    return Help_Arg_1( CMD_ASSEMBLE );
+  // g_nAssemblerAddress; // g_aArgs[1].nValue;
+//  return ConsoleUpdate();
+
+  return UPDATE_CONSOLE_DISPLAY;
+}
+
+//===========================================================================
+Update_t CmdSource (int nArgs)
+{
+  if (! nArgs)
+  {
+    g_bSourceLevelDebugging = false;
+  }
+  else
+  {
+    g_bSourceAddMemory = false;
+    g_bSourceAddSymbols = false;
+
+    for( int iArg = 1; iArg <= nArgs; iArg++ )
+    {
+      const std::string pFileName = g_aArgs[ iArg ].sArg;
+
+      int iParam;
+      bool bFound = FindParam( pFileName.c_str(), MATCH_EXACT, iParam, _PARAM_SOURCE_BEGIN, _PARAM_SOURCE_END ) > 0;
+      if (bFound && (iParam == PARAM_SRC_SYMBOLS))
+      {
+        g_bSourceAddSymbols = true;
+      }
+      else
+      if (bFound && (iParam == PARAM_SRC_MEMORY))
+      {
+        g_bSourceAddMemory = true;
+      }
+      else
+      {
+        const std::string sFileName = std::string(g_state.sProgramDir) + pFileName;
+
+        const int MAX_MINI_FILENAME = 20;
+        const std::string sMiniFileName = sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));
+
+        char buffer[MAX_PATH] = { 0 };
+
+        if (BufferAssemblyListing( sFileName ))
+        {
+          g_aSourceFileName = pFileName;
+
+          if (! ParseAssemblyListing( g_bSourceAddMemory, g_bSourceAddSymbols ))
+          {
+            ConsoleBufferPushFormat( buffer, "Couldn't load filename: %s", sMiniFileName.c_str() );
+          }
+          else
+          {
+            g_bSourceLevelDebugging = true;
+            ConsoleBufferPushFormat( buffer, "Loaded filename: %s", sMiniFileName.c_str() );
+          }
+        }
+        else
+        {
+          ConsoleBufferPushFormat( buffer, "Couldn't load filename: %s", sMiniFileName.c_str() );
+        }
+        ConsoleBufferToDisplay();
+      }
+    }
+  }
+
+  return UPDATE_ALL;
+}
+
+//===========================================================================
+Update_t CmdSync (int nArgs)
+{
+  (void)nArgs;
+  // TODO
+  return UPDATE_CONSOLE_DISPLAY;
+}
+
+
 //===========================================================================
 void AssemblerHashDirectives ()
 {
@@ -939,8 +1065,245 @@ void AssemblerHashDirectives ()
 	}
 }
 
+#include <map>
+#include <string>
+#include "Debugger_Help.h"
+#include "Debugger_Parser.h"
+#include "Debugger_Symbols.h"
+#include "Debugger_Console.h"
+
+// Implementation helpers originally from Debug.cpp
+bool  g_bSourceLevelDebugging = false;
+bool  g_bSourceAddSymbols     = false;
+bool  g_bSourceAddMemory      = false;
+
+std::string g_aSourceFileName;
+
+MemoryTextFile_t g_AssemblerSourceBuffer;
+
+int    g_iSourceDisplayStart  = 0;
+int    g_nSourceAssembleBytes = 0;
+int    g_nSourceAssemblySymbols = 0;
+
+// TODO: Support multiple source filenames
+SourceAssembly_t g_aSourceDebug;
+
+size_t _GetFileSize( FILE *hFile )
+{
+  fseek( hFile, 0, SEEK_END );
+  size_t nFileBytes = ftell( hFile );
+  fseek( hFile, 0, SEEK_SET );
+
+  return nFileBytes;
+}
+
+Update_t _CmdAssemble( unsigned short nAddress, int iArg, int nArgs )
+{
+  // if AlphaNumeric
+  ArgToken_e iTokenSrc = NO_TOKEN;
+  ParserFindToken( g_pConsoleInput, g_aTokens, NUM_TOKENS, &iTokenSrc );
+
+  if (iTokenSrc == NO_TOKEN) // is TOKEN_ALPHANUMERIC
+  if (g_pConsoleInput[0] != CHAR_SPACE)
+  {
+    // Symbol
+    char *pSymbolName = g_aArgs[ iArg ].sArg; // pArg->sArg;
+    SymbolUpdate( SYMBOLS_ASSEMBLY, pSymbolName, nAddress, false, true ); // bool bRemoveSymbol, bool bUpdateSymbol )
+
+    iArg++;
+  }
+
+  bool bStatus = Assemble( iArg, nArgs, nAddress );
+  if ( bStatus)
+    return UPDATE_ALL;
+
+  return UPDATE_CONSOLE_DISPLAY; // UPDATE_NOTHING;
+}
+
 //===========================================================================
-void AssemblerStartup()
+bool BufferAssemblyListing( const std::string & pFileName )
+{
+  bool bStatus = false; // true = loaded
+
+  if (pFileName.empty())
+    return bStatus;
+
+  g_AssemblerSourceBuffer.Reset();
+  g_AssemblerSourceBuffer.Read( pFileName );
+
+  if (g_AssemblerSourceBuffer.GetNumLines())
+  {
+    g_bSourceLevelDebugging = true;
+    bStatus = true;
+  }
+
+  return bStatus;
+}
+
+//===========================================================================
+int FindSourceLineFromAddress( unsigned short nAddress )
+{
+  int iAddress = 0;
+  int iLine = 0;
+  int iSourceLine = NO_SOURCE_LINE;
+
+  SourceAssembly_t::iterator iSource = g_aSourceDebug.begin();
+  while (iSource != g_aSourceDebug.end() )
+  {
+    iAddress = iSource->first;
+    iLine = iSource->second;
+
+    if (iAddress == nAddress)
+    {
+      iSourceLine = iLine;
+      break;
+    }
+
+    iSource++;
+  }
+
+  return iSourceLine;
+}
+
+//===========================================================================
+int FindAddressFromSourceLine( int nLine )
+{
+  int iAddress = NO_SOURCE_LINE; // Reuse constant for "not found"
+
+  SourceAssembly_t::iterator iSource = g_aSourceDebug.begin();
+  while (iSource != g_aSourceDebug.end() )
+  {
+    if (iSource->second == nLine)
+    {
+      iAddress = iSource->first;
+      break;
+    }
+    iSource++;
+  }
+
+  return iAddress;
+}
+
+//===========================================================================
+bool ParseAssemblyListing( bool bBytesToMemory, bool bAddSymbols )
+{
+  bool bStatus = false; // true = loaded
+
+  char sName[ MAX_SYMBOLS_LEN ];
+
+  const int MAX_LINE = 256;
+  char  sLine[ MAX_LINE ];
+  char  sText[ MAX_LINE ];
+
+  g_nSourceAssembleBytes = 0;
+  g_nSourceAssemblySymbols = 0;
+
+  const unsigned int INVALID_ADDRESS = _6502_MEM_END + 1;
+
+  int nLines = g_AssemblerSourceBuffer.GetNumLines();
+  for( int iLine = 0; iLine < nLines; iLine++ )
+  {
+    g_AssemblerSourceBuffer.GetLine( iLine, sText, MAX_LINE - 1 );
+
+    unsigned int nAddress = INVALID_ADDRESS;
+
+    strcpy( sLine, sText );
+    char *p = sLine;
+    p = strstr( sLine, ":" );
+    if (p)
+    {
+      *p = 0;
+      sscanf( sLine, "%X", &nAddress );
+
+      if (nAddress >= INVALID_ADDRESS)
+        continue;
+
+      if (bBytesToMemory)
+      {
+        char *pEnd = p + 1;
+        char *pStart;
+        int  iByte;
+        for (iByte = 0; iByte < 4; iByte++ )
+        {
+          pStart = pEnd + 1;
+          pEnd = const_cast<char*>( SkipUntilWhiteSpace( pStart ));
+          int nLen = (pEnd - pStart);
+          if (nLen != 2)
+          {
+            break;
+          }
+          *pEnd = 0;
+          if (TextIsHexByte( pStart ))
+          {
+            unsigned char nByte = TextConvert2CharsToByte( pStart );
+            *(mem + ((unsigned short)nAddress) + iByte ) = nByte;
+          }
+        }
+        g_nSourceAssembleBytes += iByte;
+      }
+
+      g_aSourceDebug[ (unsigned short) nAddress ] = iLine;
+    }
+
+    strcpy( sLine, sText );
+    if (bAddSymbols)
+    {
+      char *pEQU = strstr( sLine, "EQU" );
+      char *pDFB = strstr( sLine, "DFB" );
+      char *pLabel = NULL;
+
+      if (pEQU)
+        pLabel = pEQU;
+      if (pDFB)
+        pLabel = pDFB;
+
+      if (pLabel)
+      {
+        char *pLabelEnd = pLabel - 1;
+        pLabelEnd = const_cast<char*>( SkipWhiteSpaceReverse( pLabelEnd, &sLine[ 0 ] ));
+        char * pLabelStart = NULL;
+        if (pLabelEnd)
+        {
+          pLabelStart = const_cast<char*>( SkipUntilWhiteSpaceReverse( pLabelEnd, &sLine[ 0 ] ));
+          pLabelEnd++;
+          pLabelStart++;
+
+          int nLen = pLabelEnd - pLabelStart;
+          nLen = MIN( nLen, MAX_SYMBOLS_LEN );
+          Util_SafeStrCpy( sName, pLabelStart, nLen );
+
+          char *pAddressEQU = strstr( pLabel, "$" );
+          char *pAddressDFB = strstr( sLine, ":" );
+          char *pAddress = NULL;
+
+          if (pAddressEQU)
+            pAddress = pAddressEQU + 1;
+          if (pAddressDFB)
+          {
+            *pAddressDFB = 0;
+            pAddress = sLine;
+          }
+
+          if (pAddress)
+          {
+            char *pAddressEnd;
+            nAddress = (unsigned int) strtol( pAddress, &pAddressEnd, 16 );
+            g_aSymbols[ SYMBOLS_SRC_2 ][ (unsigned short) nAddress] = sName;
+            g_nSourceAssemblySymbols++;
+          }
+        }
+      }
+    }
+  } // for
+
+  bStatus = true;
+
+  return bStatus;
+}
+
+//===========================================================================
+void AssemblerStartup ()
+
 {
 	AssemblerHashOpcodes();
 	AssemblerHashDirectives();
@@ -1537,4 +1900,15 @@ void AssemblerOff ()
 	g_bAssemblerInput = false;
 	g_sConsolePrompt[0] = g_aConsolePrompt[ PROMPT_COMMAND ];
 }
+
+
+// Window _________________________________________________________________________________________
+  extern int           g_iWindowLast;
+  extern int           g_iWindowThis;
+  extern WindowSplit_t g_aWindowConfig[ NUM_WINDOWS ];
+
+
+// Zero Page Pointers _____________________________________________________________________________
+  extern int                g_nZeroPagePointers;
+  extern ZeroPagePointers_t g_aZeroPagePointers[ MAX_ZEROPAGE_POINTERS ];
 
