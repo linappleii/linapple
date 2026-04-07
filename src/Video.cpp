@@ -88,8 +88,11 @@ VideoSurface* VideoLoadXPM(const char * const *xpm) {
           palette_map[i].color.r = (hex_to_int(color_str[1]) << 4) | hex_to_int(color_str[2]);
           palette_map[i].color.g = (hex_to_int(color_str[3]) << 4) | hex_to_int(color_str[4]);
           palette_map[i].color.b = (hex_to_int(color_str[5]) << 4) | hex_to_int(color_str[6]);
+          palette_map[i].color.a = 255;
       } else if (strcmp(color_str, "None") == 0) {
           palette_map[i].color = {0, 0, 0, 0};
+      } else if (strcmp(color_str, "black") == 0) {
+          palette_map[i].color = {0, 0, 0, 255};
       } else {
           palette_map[i].color = {255, 255, 255, 255}; // Default to white
       }
@@ -867,11 +870,12 @@ void DrawTextSource(VideoSurface *dc) {
   if (charset40 == NULL) {
     return;
   }
+  uint8_t hBrush = GetMonochromeIndex();
 
   if ((g_Apple2Type == A2TYPE_APPLE2)||
         (g_Apple2Type == A2TYPE_APPLE2PLUS))
   {
-    SOFTSTRECH(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
+    SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
   }
   else
   {
@@ -883,17 +887,17 @@ void DrawTextSource(VideoSurface *dc) {
       int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
       int dstYofs = Language*(MAX_SOURCE_Y/2);
 
-      SOFTSTRECH(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL, dstYofs, 256, 256);
-      SOFTSTRECH(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL, 256+dstYofs, 256, 256);
-      SOFTSTRECH(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64+dstYofs, 256, 64);
+      SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL, dstYofs, 256, 256);
+      SOFTSTRECH_MONO(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL, 256+dstYofs, 256, 256);
+      SOFTSTRECH_MONO(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64+dstYofs, 256, 64);
 
       if (g_Apple2Type == A2TYPE_APPLE2E)
       {
-        SOFTSTRECH(dc, 0, 256+dstYofs, 256, 32, dc, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
+        SOFTSTRECH_MONO(dc, 0, 256+dstYofs, 256, 32, dc, SRCOFFS_40COL, 256+64+dstYofs, 256, 32);
       }
     }
 
-    SOFTSTRECH(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
+    SOFTSTRECH_MONO(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128, MAX_SOURCE_Y);
   }
 }
 
