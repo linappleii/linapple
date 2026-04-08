@@ -41,8 +41,8 @@ const int DISPLAY_VIDEO_SCANNER_COLUMN = 357;
 const int MAX_DISPLAY_REGS_LINES = 12;
 const int MAX_DISPLAY_ZEROPAGE_LINES = 10;
 const int MAX_DISPLAY_TARGET_PTR_LINES = 3;
-const int DISPLAY_MEMORY_TITLE = 1;
-const int SOFTSWITCH_LANGCARD = 1;
+#define DISPLAY_MEMORY_TITLE 1
+#define SOFTSWITCH_LANGCARD 1
 
 // Function prototypes for helpers in other files
 extern void ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG);
@@ -425,7 +425,7 @@ void _DrawSoftSwitchLanguageCardBank(RECT & rect, const int iBankDisplay, int bg
   rect.bottom += g_nFontHeight;
 }
 
-void _DrawSoftSwitchMainAuxBanks(RECT & rect, int bg_default = BG_INFO)
+void _DrawSoftSwitchMainAuxBanks(RECT & rect)
 {
   RECT temp = rect;
   rect.top += g_nFontHeight;
@@ -489,7 +489,7 @@ void DrawSoftSwitches(int iSoftSwitch)
   bSet = !VideoGetSW80STORE();
   _DrawSoftSwitch(rect, 0xC000, bSet, "80Sto", "0", "1", NULL, bgMemory);
 
-  _DrawSoftSwitchMainAuxBanks(rect, bgMemory);
+  _DrawSoftSwitchMainAuxBanks(rect);
 
   bSet = !VideoGetSW80COL();
   _DrawSoftSwitch(rect, 0xC00C, bSet, "Col", "40", "80", NULL, bgMemory);

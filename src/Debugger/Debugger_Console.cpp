@@ -898,7 +898,7 @@ void DebuggerProcessKey( int keycode )
   }
 }
 
-void DebuggerMouseClick( int x, int y )
+void DebuggerMouseClick( int /*x*/, int /*y*/ )
 {
   if (g_state.mode != MODE_DEBUG)
     return;

@@ -1147,7 +1147,6 @@ int main(int argc, char *argv[])
 
   int opt;
   int optind = 0;
-  const char *optname;
   static struct option OptionTable[] = {
     {"autoboot",     no_argument,       0, 'b'},
     {"benchmark",    no_argument,       0, 'm'},
