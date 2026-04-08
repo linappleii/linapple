@@ -46,6 +46,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "Util_Path.h"
 #include "JoystickFrontend.h"
+#include "Joystick.h"
 #include "Debug.h"
 #include "Debugger_Cmd_Output.h"
 
@@ -328,6 +329,17 @@ void SetCurrentCLK6502()
   SpkrReinitialize();
   MB_Reinitialize();
 }
+
+void Linapple_SetAppleKey(int apple_key, bool bDown)
+{
+  // Apple II Open/Closed Apple keys are electrically mapped to paddle buttons
+  if (apple_key == 0) {
+    JoySetButton(BUTTON0, bDown ? BUTTON_DOWN : BUTTON_UP);
+  } else if (apple_key == 1) {
+    JoySetButton(BUTTON1, bDown ? BUTTON_DOWN : BUTTON_UP);
+  }
+}
+
 
 void Sys_Input()
 {

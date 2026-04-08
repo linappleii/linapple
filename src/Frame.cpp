@@ -443,6 +443,10 @@ void FrameDispatchMessage(SDL_Event *e) {
       } else if (mysym == SDLK_SCROLLLOCK) {
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
       } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
+        if (Frontend_HandleKeyEvent(mysym, true)) {
+          break;
+        }
+
         g_bDebuggerEatKey = false;
         bool autorep = (e->key.repeat != 0);
         bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
@@ -469,6 +473,8 @@ void FrameDispatchMessage(SDL_Event *e) {
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && ((SDL_Keycode)buttondown == mysym - SDLK_F1)) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
+      } else if (Frontend_HandleKeyEvent(mysym, false)) {
+        // Handle specialized key release
       } else if (mysym == SDLK_CAPSLOCK) {
         KeybToggleCapsLock();
       } else {

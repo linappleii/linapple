@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Keyboard.h"
+#include "AppleWin.h"
 
 // SDL3 specific key translation logic
 uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
@@ -55,4 +56,21 @@ uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
   }
 
   return apple_code;
+}
+
+bool Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown) {
+  switch (key) {
+    case SDLK_LALT:
+    case SDLK_LGUI:
+      Linapple_SetAppleKey(0, bDown);
+      return true;
+
+    case SDLK_RALT:
+    case SDLK_RGUI:
+      Linapple_SetAppleKey(1, bDown);
+      return true;
+
+    default:
+      return false;
+  }
 }

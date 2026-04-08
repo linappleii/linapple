@@ -40,3 +40,8 @@ void SetCurrentCLK6502();
 void SingleStep(bool bReinit);
 
 uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
+
+bool Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown);
+
+void Linapple_SetAppleKey(int apple_key, bool bDown);
+
