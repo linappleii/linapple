@@ -2,7 +2,6 @@
 #include "Keyboard.h"
 #include "AppleWin.h"
 
-// SDL3 specific key translation logic
 uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
   bool bShift = (mod & SDL_KMOD_SHIFT) != 0;
   bool bCtrl = (mod & SDL_KMOD_CTRL) != 0;

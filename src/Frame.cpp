@@ -386,82 +386,84 @@ void FrameDispatchMessage(SDL_Event *e) {
       break;
 
     case SDL_EVENT_KEY_DOWN:
-      if (e->key.repeat == 0 && !IsModifierKey(mysym)) {
-        KeybSetAnyKeyDownStatus(true);
-      }
-      if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & SDL_KMOD_LCTRL) {
-        FrameQuickState(mysym - SDLK_0, mymod);
-        break;
-      }
+      if (e->key.repeat == 0) {
+        if (!IsModifierKey(mysym)) {
+          KeybSetAnyKeyDownStatus(true);
+        }
 
-      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
-        SetUsingCursor(false);
-        buttondown = mysym - SDLK_F1;
-      } else if (mysym == SDLK_KP_PLUS) {
-        g_state.dwSpeed = g_state.dwSpeed + 2;
-        if (g_state.dwSpeed > SPEED_MAX) {
-          g_state.dwSpeed = SPEED_MAX;
-        }
-        printf("Now speed=%d\n", (int) g_state.dwSpeed);
-        SetCurrentCLK6502();
-      } else if (mysym == SDLK_KP_MINUS) {
-        if (g_state.dwSpeed > SPEED_MIN) {
-          g_state.dwSpeed = g_state.dwSpeed - 1;
-        }
-        printf("Now speed=%d\n", (int) g_state.dwSpeed);
-        SetCurrentCLK6502();
-      } else if (mysym == SDLK_KP_MULTIPLY) {
-        g_state.dwSpeed = 10;
-        printf("Now speed=%d\n", (int) g_state.dwSpeed);
-        SetCurrentCLK6502();
-      } else if (mysym == SDLK_CAPSLOCK) {
-        KeybToggleCapsLock();
-      } else if (mysym == SDLK_PAUSE) {
-        SetUsingCursor(false);
-        switch (g_state.mode) {
-          case MODE_RUNNING:
-            g_state.mode = MODE_PAUSED;
-            SoundCore_SetFade(FADE_OUT);
-            break;
-          case MODE_PAUSED:
-            g_state.mode = MODE_RUNNING;
-            SoundCore_SetFade(FADE_IN);
-            break;
-          case MODE_STEPPING:
-            DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
-            break;
-          case MODE_LOGO:
-          case MODE_DEBUG:
-          default:
-            break;
-        }
-        DrawStatusArea(DRAW_TITLE);
-        if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-          VideoRedrawScreen();
-        }
-        g_state.bResetTiming = true;
-      } else if (mysym == SDLK_SCROLLLOCK) {
-        g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
-      } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
         if (Frontend_HandleKeyEvent(mysym, true)) {
           break;
         }
 
-        g_bDebuggerEatKey = false;
-        bool autorep = (e->key.repeat != 0);
-        bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
-        if (mymod & SDL_KMOD_RCTRL)
-        {
-          JoyFrontend_UpdateTrimViaKey(mysym);
-        } else {
-          if ((!JoyFrontend_ProcessKey(mysym, extended, true, autorep)) && (g_state.mode != MODE_LOGO)) {
-            uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-            if (apple_code) KeybPushAppleKey(apple_code);
-          }
+        if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & SDL_KMOD_LCTRL) {
+          FrameQuickState(mysym - SDLK_0, mymod);
+          break;
         }
-      } else if (g_state.mode == MODE_DEBUG) {
-        uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-        if (apple_code) DebuggerProcessKey(apple_code);
+
+        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
+          SetUsingCursor(false);
+          buttondown = mysym - SDLK_F1;
+        } else if (mysym == SDLK_KP_PLUS) {
+          g_state.dwSpeed = g_state.dwSpeed + 2;
+          if (g_state.dwSpeed > SPEED_MAX) {
+            g_state.dwSpeed = SPEED_MAX;
+          }
+          printf("Now speed=%d\n", (int) g_state.dwSpeed);
+          SetCurrentCLK6502();
+        } else if (mysym == SDLK_KP_MINUS) {
+          if (g_state.dwSpeed > SPEED_MIN) {
+            g_state.dwSpeed = g_state.dwSpeed - 1;
+          }
+          printf("Now speed=%d\n", (int) g_state.dwSpeed);
+          SetCurrentCLK6502();
+        } else if (mysym == SDLK_KP_MULTIPLY) {
+          g_state.dwSpeed = 10;
+          printf("Now speed=%d\n", (int) g_state.dwSpeed);
+          SetCurrentCLK6502();
+        } else if (mysym == SDLK_CAPSLOCK) {
+          KeybToggleCapsLock();
+        } else if (mysym == SDLK_PAUSE) {
+          SetUsingCursor(false);
+          switch (g_state.mode) {
+            case MODE_RUNNING:
+              g_state.mode = MODE_PAUSED;
+              SoundCore_SetFade(FADE_OUT);
+              break;
+            case MODE_PAUSED:
+              g_state.mode = MODE_RUNNING;
+              SoundCore_SetFade(FADE_IN);
+              break;
+            case MODE_STEPPING:
+              DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
+              break;
+            case MODE_LOGO:
+            case MODE_DEBUG:
+            default:
+              break;
+          }
+          DrawStatusArea(DRAW_TITLE);
+          if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+            VideoRedrawScreen();
+          }
+          g_state.bResetTiming = true;
+        } else if (mysym == SDLK_SCROLLLOCK) {
+          g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
+        } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
+          g_bDebuggerEatKey = false;
+          bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
+          if (mymod & SDL_KMOD_RCTRL)
+          {
+            JoyFrontend_UpdateTrimViaKey(mysym);
+          } else {
+            if (!JoyFrontend_ProcessKey(mysym, extended, true, false)) {
+              uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
+              Linapple_SetKeyState(apple_code, true);
+            }
+          }
+        } else if (g_state.mode == MODE_DEBUG) {
+          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
+          if (apple_code) DebuggerProcessKey(apple_code);
+        }
       }
       break;
 
@@ -474,13 +476,13 @@ void FrameDispatchMessage(SDL_Event *e) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
       } else if (Frontend_HandleKeyEvent(mysym, false)) {
-        // Handle specialized key release
       } else if (mysym == SDLK_CAPSLOCK) {
         KeybToggleCapsLock();
       } else {
-        if (myscancode) {
-          bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
-          JoyFrontend_ProcessKey(mysym, extended, false, false);
+        bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
+        if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {
+          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
+          Linapple_SetKeyState(apple_code, false);
         }
       }
       break;

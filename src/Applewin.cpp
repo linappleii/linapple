@@ -195,6 +195,8 @@ void ContinueExecution()
   uint32_t uActualCyclesExecuted = CpuExecute(uCyclesToExecute);
   g_dwCyclesThisFrame += uActualCyclesExecuted;
 
+  Linapple_KeyboardThink(uActualCyclesExecuted);
+
   cyclenum = uActualCyclesExecuted;
 
   DiskUpdatePosition(uActualCyclesExecuted);
@@ -340,6 +342,49 @@ void Linapple_SetAppleKey(int apple_key, bool bDown)
   }
 }
 
+static uint8_t g_nRepeatKey = 0;
+static uint32_t g_nRepeatDelayCycles = 0;
+static bool g_bRepeating = false;
+
+const uint32_t KEY_REPEAT_INITIAL_DELAY = 512000; // ~0.5s at 1.023MHz
+const uint32_t KEY_REPEAT_RATE = 68000;          // ~15Hz
+
+void Linapple_SetKeyState(uint8_t apple_code, bool bDown)
+{
+  if (bDown) {
+    if (g_nRepeatKey == apple_code) return; // Ignore if already down (prevents double-push)
+    g_nRepeatKey = apple_code;
+    g_nRepeatDelayCycles = 0;
+    g_bRepeating = false;
+    if (apple_code) KeybPushAppleKey(apple_code);
+  } else {
+    if (g_nRepeatKey == apple_code) {
+      g_nRepeatKey = 0;
+      g_bRepeating = false;
+    }
+  }
+}
+
+void Linapple_KeyboardThink(uint32_t dwCycles)
+{
+  if (g_nRepeatKey == 0) return;
+
+  g_nRepeatDelayCycles += dwCycles;
+
+  if (!g_bRepeating) {
+    if (g_nRepeatDelayCycles >= KEY_REPEAT_INITIAL_DELAY) {
+      g_bRepeating = true;
+      g_nRepeatDelayCycles = 0;
+      KeybPushAppleKey(g_nRepeatKey);
+    }
+  } else {
+    if (g_nRepeatDelayCycles >= KEY_REPEAT_RATE) {
+      g_nRepeatDelayCycles = 0;
+      KeybPushAppleKey(g_nRepeatKey);
+    }
+  }
+}
+
 
 void Sys_Input()
 {
@@ -371,6 +416,8 @@ void Sys_Think()
     SDL_Delay(10);
     return;
   }
+
+  // (rest of Sys_Think ...)
 
   JoyFrontend_Update();
 
