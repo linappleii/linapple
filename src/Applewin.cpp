@@ -342,6 +342,11 @@ void Linapple_SetAppleKey(int apple_key, bool bDown)
   }
 }
 
+void Linapple_SetCapsLockState(bool bEnabled)
+{
+  KeybSetCapsLock(bEnabled);
+}
+
 static uint8_t g_nRepeatKey = 0;
 static uint32_t g_nRepeatDelayCycles = 0;
 static bool g_bRepeating = false;
@@ -352,7 +357,7 @@ const uint32_t KEY_REPEAT_RATE = 68000;          // ~15Hz
 void Linapple_SetKeyState(uint8_t apple_code, bool bDown)
 {
   if (bDown) {
-    if (g_nRepeatKey == apple_code) return; // Ignore if already down (prevents double-push)
+    if (g_nRepeatKey == apple_code) return;
     g_nRepeatKey = apple_code;
     g_nRepeatDelayCycles = 0;
     g_bRepeating = false;
@@ -400,6 +405,7 @@ void Sys_Input()
       KeybSetModifiers((mod & SDL_KMOD_SHIFT) != 0,
                        (mod & SDL_KMOD_CTRL) != 0,
                        (mod & SDL_KMOD_ALT) != 0);
+      Linapple_SetCapsLockState((mod & SDL_KMOD_CAPS) != 0);
     }
 
     if (g_state.mode == MODE_DISK_CHOOSE) {

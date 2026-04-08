@@ -20,7 +20,7 @@ void KeybReset();
 void KeybSetModifiers(bool bShift, bool bCtrl, bool bAlt);
 void KeybPushAppleKey(uint8_t apple_code);
 void KeybQueueKeypress(uint8_t apple_code);
-void KeybToggleCapsLock();
+void KeybSetCapsLock(bool bState);
 void KeybSetAnyKeyDownStatus(bool bDown);
 bool KeybGetAnyKeyDownStatus();
 

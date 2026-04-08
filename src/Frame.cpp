@@ -421,7 +421,7 @@ void FrameDispatchMessage(SDL_Event *e) {
           printf("Now speed=%d\n", (int) g_state.dwSpeed);
           SetCurrentCLK6502();
         } else if (mysym == SDLK_CAPSLOCK) {
-          KeybToggleCapsLock();
+          Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
         } else if (mysym == SDLK_PAUSE) {
           SetUsingCursor(false);
           switch (g_state.mode) {
@@ -476,8 +476,9 @@ void FrameDispatchMessage(SDL_Event *e) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
       } else if (Frontend_HandleKeyEvent(mysym, false)) {
+        break;
       } else if (mysym == SDLK_CAPSLOCK) {
-        KeybToggleCapsLock();
+        Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
       } else {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
         if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {

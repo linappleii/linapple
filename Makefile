@@ -65,11 +65,11 @@ CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 
 # Compiler flags
-CXXFLAGS += -Wall -Wextra -O3 -march=native -flto -ansi -std=c++11 -Wno-write-strings
+CXXFLAGS += -Wall -Wextra -O3 -march=native -flto=auto -ansi -std=c++11 -Wno-write-strings
 CXXFLAGS += -MMD -MP
 
 # Linker flags
-LDFLAGS  += -pthread -flto
+LDFLAGS  += -pthread -flto=auto
 LDLIBS   += $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lX11
 
 # --- Build Modes -------------------------------------------------------------
@@ -159,7 +159,7 @@ test-integration: all ## Run C++ clean-room hardware integration tests
 
 test-keyboard: all ## Run comprehensive keyboard translation tests
 	@echo "  TEST    build/bin/test_keyboard"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests tests/full_keyboard_test.cpp build/obj/sdl3/Keyboard.o build/obj/Keyboard.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_keyboard
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests tests/full_keyboard_test.cpp build/obj/sdl3/Keyboard.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_keyboard
 	@./build/bin/test_keyboard
 
 installcheck: ## Run tests on installed program

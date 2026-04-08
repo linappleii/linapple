@@ -153,10 +153,12 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
   return nKey;
 }
 
-void KeybToggleCapsLock() {
+void KeybSetCapsLock(bool bState) {
   if (!IS_APPLE2()) {
-    g_bCapsLock = !g_bCapsLock;
-    FrameRefreshStatus(DRAW_LEDS);
+    if (g_bCapsLock != bState) {
+      g_bCapsLock = bState;
+      FrameRefreshStatus(DRAW_LEDS);
+    }
   }
 }
 
