@@ -154,6 +154,7 @@ uint8_t* Code62(int sector)
   {
     uint8_t* sectorBase = workbuffer + (sector << 8);
     uint8_t* resultptr = workbuffer + 0x1000;
+    int resIdx = 0;
     unsigned char offset = 0xAC;
     while (offset != 0x02) {
       unsigned char value = 0;
@@ -167,13 +168,15 @@ uint8_t* Code62(int sector)
       ADDVALUE(*(sectorBase + offset));
       offset -= 0x53;
       #undef ADDVALUE
-      *(resultptr++) = value << 2;
+      resultptr[resIdx++] = value << 2;
     }
-    *(resultptr - 2) &= 0x3F;
-    *(resultptr - 1) &= 0x3F;
+    if (resIdx >= 2) {
+      resultptr[resIdx - 2] &= 0x3F;
+      resultptr[resIdx - 1] &= 0x3F;
+    }
     int loop = 0;
     while (loop < 0x100) {
-      *(resultptr++) = *(sectorBase + (loop++));
+      resultptr[resIdx++] = *(sectorBase + (loop++));
     }
   }
 

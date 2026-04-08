@@ -902,6 +902,8 @@ void DrawTextSource(VideoSurface *dc) {
 }
 
 void SetLastDrawnImage() {
+  if (vidlastmem == NULL)
+    return;
   memcpy(vidlastmem + 0x400, g_pTextBank0, 0x400);
   if (SWL_HIRES) {
     memcpy(vidlastmem + 0x2000, g_pHiresBank0, 0x2000);
