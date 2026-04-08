@@ -73,7 +73,7 @@ static unsigned char DiskSetReadMode(unsigned short pc, unsigned short addr, uns
 
 static unsigned char DiskSetWriteMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft);
 
-#define LOG_DISK_ENABLED 1
+#define LOG_DISK_ENABLED 0
 
 #if (LOG_DISK_ENABLED)
 #define LOG_DISK(format, ...) Logger::Info(format, __VA_ARGS__)
