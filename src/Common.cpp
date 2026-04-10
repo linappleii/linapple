@@ -13,7 +13,6 @@ char videoDriverName[100];
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 
-bool behind = false;
 unsigned int cumulativecycles = 0;
 unsigned int cyclenum = 0;
 unsigned int emulmsec = 0;

@@ -7,7 +7,6 @@
 extern char *g_pAppTitle;
 extern char videoDriverName[100];
 extern eApple2Type g_Apple2Type;
-extern bool behind;
 extern unsigned int cumulativecycles;
 extern unsigned int cyclenum;
 extern unsigned int emulmsec;

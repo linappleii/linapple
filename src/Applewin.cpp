@@ -133,14 +133,12 @@ void ContinueExecution() {
   cyclenum += dwExecutedCycles;
   g_nCumulativeCycles += dwExecutedCycles;
 
-  if (behind) {
-    VideoUpdateVbl(dwExecutedCycles);
-    JoyUpdatePosition(dwExecutedCycles);
-    SSCFrontend_Update(&sg_SSC, dwExecutedCycles);
-    PrinterFrontend_Update(dwExecutedCycles);
-    MB_UpdateCycles(dwExecutedCycles);
-    SpkrUpdate(dwExecutedCycles);
-  }
+  VideoUpdateVbl(dwExecutedCycles);
+  JoyUpdatePosition(dwExecutedCycles);
+  SSCFrontend_Update(&sg_SSC, dwExecutedCycles);
+  PrinterFrontend_Update(dwExecutedCycles);
+  MB_UpdateCycles(dwExecutedCycles);
+  SpkrUpdate(dwExecutedCycles);
 }
 
 int SysInit(bool bLog) {

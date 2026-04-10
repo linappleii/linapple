@@ -246,7 +246,6 @@ static volatile bool hasrefreshed = false;
 static unsigned int lastpageflip = 0;
 unsigned int monochrome = RGB(0xC0, 0xC0, 0xC0);
 static bool redrawfull = true;
-static unsigned int dwVBlCounter = 0;
 static uint8_t* vidlastmem = NULL;
 unsigned int g_uVideoMode = VF_TEXT;
 unsigned int g_uDebugVideoMode = VF_TEXT;
@@ -1918,8 +1917,14 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
   return MemReadFloatingBus(nCyclesLeft);
 }
 
+static uint32_t g_dwVideoCyclesInFrame = 0;
 void VideoUpdateVbl(unsigned int dwCyclesThisFrame) {
-  dwVBlCounter = (unsigned int)((double) dwCyclesThisFrame / (double) uCyclesPerLine);
+  g_dwVideoCyclesInFrame += dwCyclesThisFrame;
+  if (g_dwVideoCyclesInFrame >= 17030) {
+    g_dwVideoCyclesInFrame -= 17030;
+    VideoRefreshScreen();
+    VideoUpdateFlash();
+  }
 }
 
 // Called at 60Hz (every 16.666ms)

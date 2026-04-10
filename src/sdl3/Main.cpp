@@ -80,8 +80,10 @@ void Sys_Think() {
     ContinueExecution();
   } else if (g_state.mode == MODE_STEPPING) {
     SingleStep(false);
+  } else if (g_state.mode == MODE_LOGO) {
+    DrawAppleContent();
   } else if (g_state.mode == MODE_DEBUG) {
-    // Debugger might handle its own update
+    // Debugger handles its own logic via Sys_Draw and single steps
   }
 }
 
@@ -109,6 +111,11 @@ void EnterMessageLoop() {
       next_game_tick += SKIP_TICKS;
       loops++;
     }
+
+    if (loops == 0) {
+        SDL_Delay(1);
+    }
+
     Sys_Draw();
   }
 }
@@ -154,8 +161,6 @@ int main(int argc, char* argv[]) {
     {0, 0, 0, 0}
   };
 
-  XInitThreads();
-
   while ((opt = getopt_long(argc, argv, "1:2:abc:fhlmpr:s:vx:T:6C", OptionTable, &optind)) != -1) {
     switch (opt) {
       case '1': szImageName_drive1 = optarg; break;
@@ -179,7 +184,13 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  XInitThreads();
+
   if (SysInit(bLog) != 0) return 1;
+
+  if (bBoot) {
+    g_state.mode = MODE_RUNNING;
+  }
 
   if (bTestCpu) {
     CpuTestHeadless(szTestFile);
