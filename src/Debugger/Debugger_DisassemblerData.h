@@ -1,6 +1,9 @@
 #ifndef DEBUGGER_DISASSEMBLERDATA_H
 #define DEBUGGER_DISASSEMBLERDATA_H
 
+#include <vector>
+#include "Debugger_Types.h"
+
 	Update_t _CmdDisasmDataDefByteX    (int nArgs);
 	Update_t _CmdDisasmDataDefWordX    (int nArgs);
 

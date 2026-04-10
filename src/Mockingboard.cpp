@@ -1,3 +1,4 @@
+#include "Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 

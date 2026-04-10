@@ -1,3 +1,19 @@
+#include "Common.h"
+#include <cstdio>
+#include <cstring>
+#include "SaveState.h"
+#include "Structs.h"
+#include "CPU.h"
+#include "Memory.h"
+#include "Keyboard.h"
+#include "Joystick.h"
+#include "Speaker.h"
+#include "Disk.h"
+#include "Mockingboard.h"
+#include "Video.h"
+#include "SerialComms.h"
+#include "Common_Globals.h"
+#include "Log.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -23,8 +39,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Description: Save-state (snapshot) module
  */
-
-#include "stdafx.h"
 
 #define DEFAULT_SNAPSHOT_NAME "SaveState.aws"
 

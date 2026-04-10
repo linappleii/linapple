@@ -26,11 +26,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth
  */
 
+#include "Common.h"
 #include <unistd.h>
-#include <signal.h>
+#include <csignal>
 #include <sys/time.h>
-#include <assert.h>
-#include "stdafx.h"
+#include <ctime>
+#include <time.h>
+#include <cassert>
+#include <cstdint>
 #include "Timer.h"
 
 static unsigned int g_dwUsecPeriod = 0;

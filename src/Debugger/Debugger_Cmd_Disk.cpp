@@ -1,6 +1,7 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Types.h"
 #include "Debugger_Commands.h"
+#include <cstddef>
 
 Update_t CmdDisk ( int nArgs)
 {

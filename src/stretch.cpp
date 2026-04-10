@@ -1,7 +1,9 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Video.h"
 #include "stretch.h"
 #include <cstring>
+#include <pthread.h>
+#include <cstddef>
 
 template <typename T>
 static void CopyRow(T *src, int src_w, T *dst, int dst_w)

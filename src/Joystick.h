@@ -2,6 +2,8 @@
 #include "Common.h"
 #pragma once
 
+typedef struct tagSS_IO_Joystick SS_IO_Joystick;
+
 enum JOYNUM {
   JN_JOYSTICK0 = 0, JN_JOYSTICK1
 };
@@ -34,7 +36,7 @@ bool JoySetEmulationType(unsigned int, int);
 
 void JoySetPosition(int, int, int, int);
 
-void JoyUpdatePosition();
+void JoyUpdatePosition(uint32_t dwExecutedCycles);
 
 bool JoyUsingMouse();
 

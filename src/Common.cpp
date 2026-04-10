@@ -1,5 +1,7 @@
-#include "stdafx.h"
-
+#include "Common.h"
+#include "SerialComms.h"
+#include <curl/curl.h>
+#include <cstdio>
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
 static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
 static char TITLE_APPLE_2E_[] = TITLE_APPLE_2E;

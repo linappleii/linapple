@@ -11,3 +11,5 @@ res/charset*.xpm
 *.swp
 *.swo
 *.orig
+gmon.out
+compile_commands.json

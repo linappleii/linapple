@@ -1,11 +1,12 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Types.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Display.h"
 #include "CPU.h"
-#include <ctype.h>
+#include <cctype>
+#include <cstddef>
 
 extern int g_iCommand;
 

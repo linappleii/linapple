@@ -1,6 +1,11 @@
 #ifndef DEBUGGER_ASSEMBLER_H
 #define DEBUGGER_ASSEMBLER_H
 
+#include <string>
+#include <vector>
+#include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
+
 // Directives
 
 	// Assemblers

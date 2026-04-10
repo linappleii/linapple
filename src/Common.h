@@ -29,6 +29,12 @@ const unsigned int uLinesPerFrame = 262; // 64 in each third of the screen & 70 
 
 constexpr int NUM_SLOTS = 8;
 
+constexpr uint32_t _6502_MEM_END = 0xFFFF;
+constexpr uint32_t _6502_MEM_LEN = _6502_MEM_END + 1;
+
+constexpr char FILE_SEPARATOR = '/';
+constexpr char FTP_SEPARATOR = '/';
+
 #ifndef MIN
 #define MIN(a, b) (std::min<decltype((a) + (b))>((a), (b)))
 #define MAX(a, b) (std::max<decltype((a) + (b))>((a), (b)))

@@ -1,10 +1,5 @@
-#include "stdafx.h"
-#include <vector>
-#include <string>
-#include <algorithm>
-
-#include "Debug.h"
 #include "Common.h"
+#include "Debug.h"
 #include "CPU.h"
 #include "Memory.h"
 #include "Debugger_Display.h"
@@ -15,6 +10,11 @@
 #include "Debugger_Assembler.h"
 #include "Debugger_DisassemblerData.h"
 #include "Util_Text.h"
+
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cstring>
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_iWindowThis;

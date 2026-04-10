@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Memory.h"
 #include "CPU.h"
 #include "Memory.h"
@@ -10,7 +10,11 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Range.h"
 #include "Debugger_Assembler.h"
+#include "Video.h"
 #include "Log.h"
+#include <cstring>
+#include <cassert>
+#include <cstddef>
 
 // Globals
 MemoryDump_t g_aMemDump[ NUM_MEM_DUMPS ] = { {true, 0, DEV_MEMORY, MEM_VIEW_HEX},

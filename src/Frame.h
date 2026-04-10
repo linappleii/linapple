@@ -1,4 +1,10 @@
+#include <cstdint>
+#include <SDL3/SDL.h>
 #pragma once
+
+// Frontend-specific keyboard helpers
+uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
+bool Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown);
 
 enum {
   NOT_ASCII = 0, ASCII

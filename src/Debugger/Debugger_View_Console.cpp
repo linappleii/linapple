@@ -1,7 +1,6 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Display.h"
 #include "Debug.h"
-#include "Common.h"
 #include "Debugger_Console.h"
 #include "Debugger_Color.h"
 

@@ -27,8 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006 - 2010 Michael Pohoreski
  */
 
-#include "stdafx.h"
-
+#include "Common.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
@@ -42,6 +41,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Keyboard.h"
 #include "Video.h"
 #include <unistd.h>
+#include <cstring>
+#include <cassert>
+#include "SDL3/SDL.h"
 
 // Globals originally from Debug.cpp
 const char g_aInputCursor[] = "_\x7F"; // insert over-write

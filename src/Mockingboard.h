@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+typedef struct tagSS_CARD_MOCKINGBOARD SS_CARD_MOCKINGBOARD;
+
 extern bool g_bMBTimerIrqActive;
 extern unsigned int g_uTimer1IrqCount;
 

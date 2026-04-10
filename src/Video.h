@@ -179,6 +179,11 @@ inline VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s) {
 
 uint32_t* VideoGetOutputBuffer();
 VideoColor* VideoGetOutputPalette();
+
+void SetBudgetVideo(bool);
+bool GetBudgetVideo();
+void SetCurrentCLK6502();
+
 // Prototypes
 
 void CreateColorMixMap();

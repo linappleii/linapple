@@ -1,6 +1,12 @@
-#include "stdafx.h"
-#include "Joystick.h"
+#include "Common.h"
 #include <iostream>
+#include <cstring>
+#include "Joystick.h"
+#include "SDL3/SDL.h"
+#include "Structs.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "JoystickFrontend.h"
 
 #define  DEVICE_NONE      0
 #define  DEVICE_JOYSTICK  1

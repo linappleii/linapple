@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "SerialCommsFrontend.h"
 #include "SerialComms.h"
 #include "Registry.h"
@@ -144,6 +144,8 @@ void SSCFrontend_Close() {
 }
 
 void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalcycles) {
+  (void)pSSC;
+  (void)totalcycles;
   if (!SSCFrontend_IsActive()) {
     return;
   }
@@ -167,6 +169,7 @@ bool SSCFrontend_TransmitByte(uint8_t byte) {
 }
 
 bool SSCFrontend_CheckReceive(SuperSerialCard* pSSC) {
+  (void)pSSC;
   // Now handled by SerialPollingThread
   return false;
 }

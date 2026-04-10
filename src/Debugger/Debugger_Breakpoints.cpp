@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Breakpoints.h"
 #include "CPU.h"
 #include "Memory.h"
@@ -11,6 +11,8 @@
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Assembler.h"
 #include "Log.h"
+#include <cassert>
+#include <cstddef>
 
 extern unsigned short g_uBreakMemoryAddress;
 extern MemoryTextFile_t g_ConfigState;

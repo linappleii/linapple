@@ -1,40 +1,10 @@
-#include <cassert>
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2014, Tom Charlesworth, Michael Pohoreski
-Copyright (C) 2020, Thorsten Brehm
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Debugger
- *
- * Author: Copyright (C) 2006-2010 Michael Pohoreski
- */
-
-
-#include "stdafx.h"
+#include "Common.h"
+#include "Structs.h"
+#include "Debug.h"
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Bookmarks.h"
 #include "Debugger_Memory.h"
 #include "Debugger_Cmd_CPU.h"
-
 #include "Debugger_Help.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
@@ -48,13 +18,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_ZeroPage.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Cmd_Output.h"
-#include "Debugger_Cmd_CPU.h"
-#include "Debugger_Assembler.h"
 #include "Debugger_Commands.h"
 #include "Video.h"
 
 // for usleep
 #include <unistd.h>
+#include <cassert>
+#include <cstddef>
 
 
 #define ALLOW_INPUT_LOWERCASE 1
@@ -79,5 +49,35 @@ bool IsDebugSteppingAtFullSpeed(void)
 {
   return (g_state.mode == MODE_STEPPING) && g_bDebugFullSpeed;
 }
+
+bool g_bDebuggerEatKey = false;
+
+unsigned short g_nDisasmTopAddress = 0;
+unsigned short g_nDisasmBotAddress = 0;
+unsigned short g_nDisasmCurAddress = 0;
+
+bool g_bDisasmCurBad    = false;
+int  g_nDisasmCurLine   = 0; // Aligned to Top or Center
+int  g_iDisasmCurState = CURSOR_NORMAL;
+
+int  g_nDisasmWinHeight = 0;
+
+int       g_iFontSpacing = FONT_SPACING_CLEAN;
+int       g_nFontHeight = 8;
+int       g_nDisasmDisplayLines  = 0;
+
+int       g_nWatches = 0;
+Watches_t g_aWatches[ MAX_WATCHES ];
+
+int           g_iWindowLast = WINDOW_CODE;
+int           g_iWindowThis = WINDOW_CODE;
+WindowSplit_t g_aWindowConfig[ NUM_WINDOWS ];
+
+int                g_nZeroPagePointers = 0;
+ZeroPagePointers_t g_aZeroPagePointers[ MAX_ZEROPAGE_POINTERS ];
+
+const int DEBUGGER_VERSION = MAKE_VERSION(2,9,0,15);
+
+const int WINDOW_DATA_BYTES_PER_LINE = 8;
 
 DebugVideoMode DebugVideoMode::m_Instance;

@@ -13,18 +13,24 @@
 
 /* March 2012 AD by Krez, Beom Beotiger */
 
-#include "stdafx.h"
-# include <string.h>
-#include <stddef.h>
-
+#include "Common.h"
+#include <cstring>
+#include <cstddef>
 #include <sys/stat.h>
-
-#include <time.h>
+#include <ctime>
 #include <vector>
+#include <cstdio>
+#include <string>
 
 #include "file_entry.h"
 #include "DiskFTP.h"
 #include "ftpparse.h"
+#include "Common_Globals.h"
+#include "Util_Text.h"
+#include "DiskChoose.h"
+#include "Frame.h"
+#include "Log.h"
+#include "Registry.h"
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21

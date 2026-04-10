@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+typedef struct tagSS_IO_Keyboard SS_IO_Keyboard;
+
 extern bool g_bShiftKey;
 extern bool g_bCtrlKey;
 extern bool g_bAltKey;

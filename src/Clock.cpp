@@ -1,44 +1,11 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-Copyright (C) 2008, LEE Sau Dan
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Emulation of a ProDOS-compatible clock card
- *
- * Author: Copyright (c) 2008, LEE Sau Dan
- *
- * Note: Since ProDOS calculates the year using day+month+{day of week},
- *       the year calculated has a period of 7 years.  Every 6 years,
- *       you need to update ProDOS's built-in year-table.  A utility
- *       for doing this can be found at:
- *
- * http://www.apple2.org.za/mirrors/ftp.gno.org/prodos/system/pdosclockup.shk
- */
-
-#include <time.h>
-#include <stdio.h>
-#include <assert.h>
-#include "stdafx.h"
+#include "Common.h"
+#include <ctime>
+#include <cstdio>
+#include <cassert>
+#include <cstring>
+#include <cstdint>
 #include "Clock.h"
+#include "Memory.h"
 
 
 /*

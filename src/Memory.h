@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+typedef struct tagSS_BaseMemory SS_BaseMemory;
+
 // Memory Flag
 #define  MF_80STORE    0x00000001
 #define  MF_ALTZP      0x00000002

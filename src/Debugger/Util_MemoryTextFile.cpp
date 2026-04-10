@@ -21,9 +21,13 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "stdafx.h"
+#include "Common.h"
 #include "Util_Text.h"
 #include "Util_MemoryTextFile.h"
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <cstddef>
 
 const int EOL_NULL = 0;
 

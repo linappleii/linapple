@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstdarg>
+#include "Debugger_Types.h"
 
 	enum
 	{

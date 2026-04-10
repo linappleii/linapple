@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+typedef struct tagSS_IO_Speaker SS_IO_Speaker;
+
 // For audio use none or SDL_SOUND subsystem
 #define SOUND_NONE 0
 #define SOUND_WAVE 1

@@ -28,9 +28,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "stdafx.h"
-#include "ftpparse.h"
+#include "Common.h"
+#include <SDL3/SDL.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
+#include <string>
+#include <sys/stat.h>
+
+#include "Harddisk.h"
+#include "Disk.h"
 #include "DiskFTP.h"
+#include "ftpparse.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "Util_Text.h"
+#include "Util_Path.h"
+#include "Registry.h"
+#include "DiskChoose.h"
+#include "Frame.h"
 
 /*
 Memory map:

@@ -1,5 +1,5 @@
 #include <cstdint>
-
+#include "Debugger_Types.h"
 
 	extern 	SymbolTable_t g_aSymbols[ NUM_SYMBOL_TABLES ];
 

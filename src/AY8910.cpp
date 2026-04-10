@@ -20,10 +20,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Description: AY-3-8910 sound chip emulation */
 
-#include "stdafx.h"
+#include "Common.h"
 #include "AY8910.h"
-#include <string.h>
-#include <math.h>
+#include <cstring>
+#include <cmath>
+#include <cstdint>
 
 // Clean-room AY-3-8910 implementation
 // Based on GI AY-3-8910 and Yamaha YM2149 datasheets.

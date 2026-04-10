@@ -8,6 +8,8 @@
 
 using namespace std;
 
+#include <cstring>
+#include <SDL3/SDL.h>
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "../src/Debugger/Debugger_Breakpoints.h"

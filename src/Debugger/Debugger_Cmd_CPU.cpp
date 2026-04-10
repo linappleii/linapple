@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Cmd_CPU.h"
 #include "CPU.h"
 #include "Debug.h"
@@ -12,8 +12,15 @@
 #include "Debugger_Cmd_Output.h"
 #include "Debugger_Assembler.h"
 #include "Video.h"
+#include "Frame.h"
+#include "SoundCore.h"
+#include "Keyboard.h"
 #include "Log.h"
 #include "Memory.h"
+#include "SDL3/SDL.h"
+#include <cstddef>
+#include <cstdio>
+#include <cassert>
 
 // Definitions
 int g_nDebugSteps = 0;

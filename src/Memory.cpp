@@ -28,9 +28,27 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "stdafx.h"
+#include "Common.h"
+#include "Structs.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Video.h"
+#include "Keyboard.h"
+#include "Speaker.h"
+#include "Joystick.h"
+#include "ParallelPrinter.h"
+#include "SerialComms.h"
+#include "MouseInterface.h"
+#include "Disk.h"
+#include "Harddisk.h"
+#include "Log.h"
+#include "Common_Globals.h"
 #include "resource.h"
+
 #include <assert.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
 // for mlock - munlock
 #include <sys/mman.h>

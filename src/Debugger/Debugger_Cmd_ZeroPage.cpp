@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Cmd_ZeroPage.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -8,6 +8,8 @@
 #include "Debugger_Breakpoints.h"
 #include "Log.h"
 #include "Util_Text.h"
+#include <cstddef>
+#include <cstdio>
 
 // Globals originally from Debug.cpp
 extern ZeroPagePointers_t g_aZeroPagePointers[ MAX_ZEROPAGE_POINTERS ];

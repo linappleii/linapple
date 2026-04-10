@@ -6,16 +6,18 @@ Based on Apple in PC's mousecard.cpp
 Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 
 */
 
+#include "Common.h"
 #include <cstdint>
 #include <cstring>
-#include "stdafx.h"
+#include <cstdio>
 #include "MouseInterface.h"
 #include "6821.h"
-#include "Common.h"
 #include "Memory.h"
 #include "CPU.h"
 #include "Log.h"
 #include "Video.h"
+#include "Structs.h"
+#include "Common_Globals.h"
 
 // Sets mouse mode
 #define MOUSE_SET    0x00

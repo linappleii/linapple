@@ -1,5 +1,6 @@
-#include "stdafx.h"
+#include "Common.h"
 #include <vector>
+#include <string>
 #include "Debugger_Cmd_Output.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -10,6 +11,8 @@
 #include "Video.h"
 #include "Util_Text.h"
 #include "Util_MemoryTextFile.h"
+#include "SDL3/SDL.h"
+#include <cstddef>
 
 // Globals originally from Debug.cpp
 extern bool g_bReportMissingScripts;

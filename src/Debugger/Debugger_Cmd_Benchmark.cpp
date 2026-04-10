@@ -1,6 +1,7 @@
-#include "stdafx.h"
+#include "Common.h"
 #include <algorithm>
 #include <vector>
+#include <string>
 #include "Debugger_Cmd_Benchmark.h"
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Assembler.h"
@@ -12,8 +13,11 @@
 #include "Debugger_Color.h"
 #include "Log.h"
 #include "Video.h"
+#include "Frame.h"
+#include "CPU.h"
 #include "Util_Text.h"
 #include "Keyboard.h"
+#include "SDL3/SDL.h"
 
 // Globals originally from Debug.cpp
 bool g_bBenchmarking = false;

@@ -1,11 +1,12 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Types.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
-#include <string.h>
+#include <cstring>
+#include <cstddef>
 
 extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;
 

@@ -1,3 +1,4 @@
+#include "Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -21,15 +22,41 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include "Common.h"
 #include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdio>
+#include <cstring>
+#include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
-#include "stdafx.h"
+#include "Frame.h"
 #include "JoystickFrontend.h"
 #include "Keyboard.h"
 #include "asset.h"
+#include "Structs.h"
+#include "Video.h"
+#include "stretch.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "Debugger/Debug.h"
+#include "Registry.h"
+#include "Disk.h"
+#include "Harddisk.h"
+#include "DiskFTP.h"
+#include "SoundCore.h"
+#include "MouseInterface.h"
+#include "AppleWin.h"
+#include "SerialComms.h"
+#include "ParallelPrinter.h"
+#include "Speaker.h"
+#include "DiskChoose.h"
+#include "SaveState.h"
+#include "Joystick.h"
+#include "Mockingboard.h"
+#include "CPU.h"
+#include "Memory.h"
 
 #define ENABLE_MENU 0
 

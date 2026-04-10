@@ -48,12 +48,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "stdafx.h"
-#include "Debug.h"
-#include <assert.h>
-
-// for CRITICAL_SECTION handling
+#include "Common.h"
+#include <cassert>
 #include <pthread.h>
+#include <cstdint>
+#include <cstring>
+#include <cstdio>
+
+#include "CPU.h"
+#include "Structs.h"
+#include "Memory.h"
+#include "Video.h"
+#include "Speaker.h"
+#include "Joystick.h"
+#include "ParallelPrinter.h"
+#include "SerialComms.h"
+#include "Mockingboard.h"
+#include "MouseInterface.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "Debugger/Debug.h"
 
 #define   AF_SIGN       0x80
 #define   AF_OVERFLOW   0x40

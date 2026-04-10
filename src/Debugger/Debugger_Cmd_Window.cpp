@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -10,8 +10,10 @@
 #include "Log.h"
 #include "Video.h"
 #include "Util_Text.h"
-
 #include "CPU.h"
+#include "SDL3/SDL.h"
+#include <cstddef>
+#include <cassert>
 
 // Globals originally from Debug.cpp
 extern int           g_iWindowLast;

@@ -1,11 +1,12 @@
-#include "stdafx.h"
+#include "Common.h"
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
+#include <cstring>
 
 #include "Debug.h"
-#include "Common.h"
+#include "Structs.h"
 #include "CPU.h"
 #include "Memory.h"
 #include "Debugger_Display.h"
@@ -18,6 +19,7 @@
 #include "Debugger_Assembler.h"
 #include "Mockingboard.h"
 #include "Video.h"
+#include "SDL3/SDL.h"
 
 // Externs for globals
 extern int g_iWindowThis;

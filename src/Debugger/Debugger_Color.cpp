@@ -24,12 +24,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2009 - 2010 Michael Pohoreski
  */
 
-#include "stdafx.h"
-
+#include "Common.h"
 #include "Debug.h"
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
 #include "Video.h"
+#include "SDL3/SDL.h"
+#include <cstring>
 
 // Color ______________________________________________________________________
 

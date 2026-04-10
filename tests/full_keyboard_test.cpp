@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Common.h"
 #include "Keyboard.h"
 #include "AppleWin.h"
@@ -6,6 +5,7 @@
 #include <cassert>
 #include <iostream>
 #include <vector>
+#include <cstdint>
 
 // --- Re-implement Core logic for testing (since Applewin.o is excluded) ---
 static uint8_t g_nRepeatKey = 0;

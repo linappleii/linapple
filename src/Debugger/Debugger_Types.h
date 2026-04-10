@@ -1,3 +1,11 @@
+#include <vector>
+#include <map>
+#include <string>
+
+using std::vector;
+using std::map;
+using std::string;
+
 #pragma once
 
 // Addressing
@@ -1065,8 +1073,6 @@ const unsigned int _6502_IO_BEGIN        = 0xC000;
 const unsigned int _6502_IO_END          = 0xC0FF;
 const unsigned int _6502_BRK_VECTOR      = 0xFFFE;
 const unsigned int _6502_MEM_BEGIN = 0x0000;
-const unsigned int _6502_MEM_END   = 0xFFFF;
-const unsigned int _6502_MEM_LEN   = _6502_MEM_END + 1;
 
 
 enum DEVICE_e {

@@ -45,7 +45,7 @@ endif
 # --- Directories -------------------------------------------------------------
 
 SRCDIR      := src
-INCDIR      := inc
+INCDIR      := src
 RESDIR      := res
 BUILD_ROOT  := build
 OBJDIR      := $(BUILD_ROOT)/obj
@@ -60,7 +60,7 @@ CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 
 # Preprocessor flags
-CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger
+CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/sdl3
 CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 
@@ -147,20 +147,25 @@ distclean: clean ## Remove all build artifacts and generated files
 maintainer-clean: distclean
 	@echo "Cleaning for maintainers..."
 
-check: test-cpu test-integration test-keyboard ## Run all tests
+check: test-cpu test-integration test-keyboard test-ssc ## Run all tests
 
 test-cpu: all ## Run automated CPU functional tests
 	@bash scripts/run_cpu_tests.sh
 
 test-integration: all ## Run C++ clean-room hardware integration tests
 	@echo "  TEST    build/bin/test_integration"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Applewin.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Applewin.o %/Main.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
 	@./build/bin/test_integration
 
 test-keyboard: all ## Run comprehensive keyboard translation tests
 	@echo "  TEST    build/bin/test_keyboard"
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/full_keyboard_test.cpp build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_keyboard
 	@./build/bin/test_keyboard
+
+test-ssc: all ## Run Super Serial Card unit tests
+	@echo "  TEST    build/bin/test_ssc"
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_ssc.cpp build/obj/SerialComms.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_ssc
+	@./build/bin/test_ssc
 
 installcheck: ## Run tests on installed program
 	@echo "No installation tests defined."

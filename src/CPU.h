@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+typedef struct tagSS_CPU6502 SS_CPU6502;
+
 typedef struct _regsrec {
   uint8_t a;
   uint8_t x;

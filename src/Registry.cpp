@@ -1,4 +1,5 @@
-#include "stdafx.h"
+#include "Common.h"
+#include <SDL3/SDL.h>
 #include "Registry.h"
 #include "Util_Path.h"
 #include <fstream>
@@ -6,6 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <sys/stat.h>
+#include <cstring>
 
 static std::string trim(const std::string& s) {
     auto start = s.begin();

@@ -1,6 +1,8 @@
 #include <cstdint>
 #pragma once
 
+typedef struct tagSS_CARD_DISK2 SS_CARD_DISK2;
+
 constexpr int DRIVE_1 = 0;
 constexpr int DRIVE_2 = 1;
 

@@ -20,9 +20,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Description: MC6821 PIA Emulation */
 
-#include "stdafx.h"
+#include "Common.h"
 #include "6821.h"
-#include <string.h>
+#include <cstring>
+#include <cstdint>
 
 #define CRA_IRQ1    0x80
 #define CRA_IRQ2    0x40

@@ -1,33 +1,9 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski, Nick Westgate
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Parallel Printer Interface Card emulation
- *
- * Author: Nick Westgate
- */
-
-#include "stdafx.h"
+#include "Common.h"
 #include "PrinterFrontend.h"
+#include <cstdint>
+#include <cstring>
+#include "ParallelPrinter.h"
+#include "Memory.h"
 
 char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\x68\x68"
                       "\x68\x68\xA8\xCA\x9A\x68\x28\xAA\x90\x38\xBD\xB8\x05\x10\x19\x98"
@@ -50,6 +26,10 @@ unsigned int const PRINTDRVR_SIZE = 0x100;
 
 static unsigned char PrintStatus(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t);
 static unsigned char PrintTransmit(unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t);
+
+void PrintInitialize() {
+  // Currently no initialization needed for Parallel Printer Card
+}
 
 void PrintLoadRom(uint8_t* pCxRomPeripheral, const unsigned int uSlot) {
   unsigned char *pData = (unsigned char *) Parallel_bin;

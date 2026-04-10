@@ -1,5 +1,12 @@
-#include "stdafx.h"
+#include "Common.h"
 #include <iostream>
+#include <cstdint>
+#include "Joystick.h"
+#include "Structs.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Common_Globals.h"
+#include "Log.h"
 
 #define  BUTTONTIME       5000
 
@@ -132,7 +139,8 @@ void JoySetRawButton(int button_idx, bool down) {
   }
 }
 
-void JoyUpdatePosition() {
+void JoyUpdatePosition(uint32_t dwExecutedCycles) {
+  (void)dwExecutedCycles;
   for (int i = 0; i < 3; i++) {
     if (buttonlatch[i]) {
       --buttonlatch[i];

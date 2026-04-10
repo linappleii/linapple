@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Bookmarks.h"
 #include "Debug.h"
 #include "CPU.h"
@@ -9,6 +9,8 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Breakpoints.h"
 #include "Log.h"
+#include <cassert>
+#include <cstddef>
 
 // Globals
 int        g_nBookmarks = 0;

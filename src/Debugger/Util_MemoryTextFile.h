@@ -1,5 +1,10 @@
 #pragma once
 
+#include <vector>
+#include <string>
+
+using std::vector;
+
 class MemoryTextFile_t {
   vector<char> m_vBuffer;
   vector<char *> m_vLines;

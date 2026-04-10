@@ -26,8 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "stdafx.h"
-
+#include "Common.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
@@ -35,6 +34,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Help.h"
 #include "Util_Text.h"
 #include "AppleWin.h"
+#include "SDL3/SDL.h"
+#include <cstring>
 
 	// 2.6.2.13 Added: Can now enable/disable selected symbol table(s) !
 	// Allow the user to disable/enable symbol tables

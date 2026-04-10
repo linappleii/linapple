@@ -1,3 +1,11 @@
+#include "Common.h"
+#include <cstring>
+#include "Speaker.h"
+#include "Structs.h"
+#include "CPU.h"
+#include "Memory.h"
+#include "Common_Globals.h"
+#include "Log.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -26,8 +34,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * This module tracks cycle-exact speaker toggles.
  * Sample generation and SDL audio are handled by the frontend.
  */
-
-#include "stdafx.h"
 
 #define MAX_SPKR_EVENTS 4096
 

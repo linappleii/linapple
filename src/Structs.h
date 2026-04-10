@@ -25,7 +25,7 @@ typedef struct {
 const unsigned int nMemMainSize = 64 * 1024;
 const unsigned int nMemAuxSize = 64 * 1024;
 
-typedef struct {
+typedef struct tagSS_CPU6502 {
   unsigned char A;
   unsigned char X;
   unsigned char Y;
@@ -50,16 +50,16 @@ typedef struct {
   unsigned char stopbits;
 } SS_IO_Comms;
 
-typedef struct {
+typedef struct tagSS_IO_Joystick {
   uint64_t g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
-typedef struct {
+typedef struct tagSS_IO_Keyboard {
   unsigned int keyboardqueries;
   unsigned char nLastKey;
 } SS_IO_Keyboard;
 
-typedef struct {
+typedef struct tagSS_IO_Speaker {
   uint64_t g_nSpkrLastCycle;
 } SS_IO_Speaker;
 
@@ -68,7 +68,7 @@ typedef struct SS_IO_Video {
   unsigned int dwVidMode;
 } SS_IO_Video;
 
-typedef struct {
+typedef struct tagSS_BaseMemory {
   unsigned int dwMemMode;
   bool bLastWriteRam;
   unsigned char nMemMain[nMemMainSize];
@@ -146,7 +146,7 @@ typedef struct {
   unsigned char nTrack[NIBBLES_PER_TRACK];
 } DISK2_Unit;
 
-typedef struct {
+typedef struct tagSS_CARD_DISK2 {
   SS_CARD_HDR Hdr;
   DISK2_Unit Unit[2];
   unsigned short phases;
@@ -215,7 +215,7 @@ typedef struct {
 
 const unsigned int MB_UNITS_PER_CARD = 2;
 
-typedef struct {
+typedef struct tagSS_CARD_MOCKINGBOARD {
   SS_CARD_HDR Hdr;
   MB_Unit Unit[MB_UNITS_PER_CARD];
 } SS_CARD_MOCKINGBOARD;

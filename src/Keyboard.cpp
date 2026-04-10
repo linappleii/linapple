@@ -21,8 +21,16 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "stdafx.h"
+#include "Common.h"
 #include <iostream>
+#include <cstring>
+#include "SDL3/SDL.h"
+#include "Keyboard.h"
+#include "Structs.h"
+#include "CPU.h"
+#include "Common_Globals.h"
+#include "Log.h"
+#include "Frame.h"
 
 bool g_bShiftKey = false;
 bool g_bCtrlKey = false;

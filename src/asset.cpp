@@ -18,13 +18,19 @@
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include "Common.h"
 #include <sys/param.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
 #include "asset.h"
-#include "stdafx.h"
 #include "Util_Path.h"
+#include "Util_Text.h"
+#include "Disk.h"
+#include "Structs.h"
 
 #include "../res/font.xpm"
 #include "../res/icon.xpm"

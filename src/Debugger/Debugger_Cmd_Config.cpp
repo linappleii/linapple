@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Common.h"
 #include "Debugger_Cmd_Config.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -13,6 +13,9 @@
 #include "Video.h"
 #include "Util_Text.h"
 #include "Util_MemoryTextFile.h"
+#include "SDL3/SDL.h"
+#include <cstddef>
+#include <string>
 
 // Globals originally from Debug.cpp
 bool  g_bConfigDisasmAddressView   = true;

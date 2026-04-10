@@ -1,6 +1,9 @@
 #ifndef COMMON_GLOBALS_H
 #define COMMON_GLOBALS_H
 
+#include "Common.h"
+#include <curl/curl.h>
+
 extern char *g_pAppTitle;
 extern char videoDriverName[100];
 extern eApple2Type g_Apple2Type;

@@ -2,7 +2,9 @@
 #define DEBUGGER_PARSER_H
 
 #include <cstdint>
+#include <vector>
 #include "Util_Text.h"
+#include "Debugger_Types.h"
 
 const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
 const char * FindTokenOrAlphaNumeric ( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );

@@ -26,15 +26,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
+#include "Common.h"
 #include <iostream>
-#include "stdafx.h"
-#include "asset.h"
 #include <pthread.h>
 #include <thread>
 #include <chrono>
 #include <unistd.h>
 #include <atomic>
 #include <condition_variable>
+#include <cstring>
+#include <cstdio>
+
+#include "asset.h"
+#include "Video.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Joystick.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "Keyboard.h"
+#include "Util_Text.h"
+#include "stretch.h"
+#include "Structs.h"
+#include "Disk.h"
+#include "Harddisk.h"
 
 #include "../build/obj/charset40.xpm"
 #include "../build/obj/charset40_IIplus.xpm"
@@ -1391,7 +1406,7 @@ void VideoBenchmark() {
         unsigned int executedcycles = CpuExecute(103);
         cycles -= executedcycles;
         DiskUpdatePosition(executedcycles);
-        JoyUpdatePosition();
+        JoyUpdatePosition(executedcycles);
         VideoUpdateVbl(0);
       }
     }

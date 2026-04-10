@@ -30,16 +30,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* AND March 2012 AD */
 
-#include "stdafx.h"
-#include "ftpparse.h"
-#include "DiskFTP.h"
-
+#include "Common.h"
 #include <sys/stat.h>
-
-// for DiskUnGzip
 #include <zlib.h>
-// for DiskUnZip
 #include <zip.h>
+#include <SDL3/SDL.h>
+#include <string>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
+
+#include "Disk.h"
+#include "DiskImage.h"
+#include "DiskFTP.h"
+#include "ftpparse.h"
+#include "Memory.h"
+#include "CPU.h"
+#include "Video.h"
+#include "Log.h"
+#include "Common_Globals.h"
+#include "Structs.h"
+#include "Frame.h"
+#include "Util_Text.h"
+#include "Util_Path.h"
+#include "Registry.h"
+#include "DiskChoose.h"
 
 char Disk2_rom[] = "\xA2\x20\xA0\x00\xA2\x03\x86\x3C\x8A\x0A\x24\x3C\xF0\x10\x05\x3C"
                    "\x49\xFF\x29\x7E\xB0\x08\x4A\xD0\xFB\x98\x9D\x56\x03\xC8\xE8\x10"

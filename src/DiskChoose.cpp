@@ -3,24 +3,36 @@
 ////////////  Choose disk image for given slot number? ////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 */
-#include <stddef.h>
+#include "Common.h"
+#include <cstddef>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include "ctype.h"
-
-
-#include "stdafx.h"
-
-#include "file_entry.h"
-
-#include "Video.h" // for contention avoidance w/video thread
-#include "DiskChoose.h"
-#include <errno.h>
+#include <cctype>
+#include <cerrno>
 #include <pthread.h>
-
 #include <iostream>
 #include <vector>
+#include <string>
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+
+using std::vector;
+using std::string;
+
+#include "file_entry.h"
+#include "Video.h"
+#include "DiskChoose.h"
+#include "Util_Text.h"
+#include "Log.h"
+#include "Keyboard.h"
+#include "Disk.h"
+#include "Harddisk.h"
+#include "Frame.h"
+#include "stretch.h"
+#include "asset.h"
+#include "Structs.h"
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21

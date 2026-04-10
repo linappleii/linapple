@@ -1,8 +1,9 @@
-#include "stdafx.h"
+#include "Common.h"
 #include <cstdio>
 #include <cstdint>
 #include "PrinterFrontend.h"
 #include "Common_Globals.h"
+#include "ParallelPrinter.h"
 
 static unsigned int inactivity = 0;
 static unsigned int g_PrinterIdleLimit = 10;

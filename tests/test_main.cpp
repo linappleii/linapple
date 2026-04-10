@@ -1,6 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "Common.h"
+#include <SDL3/SDL.h>
+#include <cstring>
+#include <cstdint>
 #include "doctest.h"
-#include "stdafx.h"
 #include "CPU.h"
 #include "Memory.h"
 #include "Common_Globals.h"
