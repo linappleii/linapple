@@ -167,11 +167,11 @@ char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x
 SSC_DIPSW g_DIPSWDefault = {
   // DIPSW1:
   SSC_B19200, // Baud rate constant
-  FWMODE_CIC,
+  FIRMWARE_CIC,
 
   // DIPSW2:
-  ONESTOPBIT, 8,        // ByteSize
-  NOPARITY, true,      // LF
+  SSC_STOP_BITS_1, 8,        // ByteSize
+  SSC_PARITY_NONE, true,      // LF
   false,
 };
 
@@ -195,6 +195,7 @@ void SSC_Reset(SuperSerialCard* pSSC) {
   pSSC->m_bRxIrqEnabled = false;
   pSSC->m_bWrittenTx = false;
   pSSC->m_vbCommIRQ = false;
+  pSSC->m_uCommandByte = 0xFF; // Ensure first write always triggers UpdateCommState
 }
 
 void SSC_Initialize(SuperSerialCard* pSSC, uint8_t* pCxRomPeripheral, unsigned int uSlot) {
@@ -228,9 +229,9 @@ static void GetDIPSW(SuperSerialCard* pSSC) {
   SetDIPSWDefaults(pSSC);
 
   pSSC->m_uBaudRate = pSSC->m_DIPSWCurrent.uBaudRate;
-  pSSC->m_uStopBits = pSSC->m_DIPSWCurrent.uStopBits;
+  pSSC->m_eStopBits = pSSC->m_DIPSWCurrent.eStopBits;
   pSSC->m_uByteSize = pSSC->m_DIPSWCurrent.uByteSize;
-  pSSC->m_uParity = pSSC->m_DIPSWCurrent.uParity;
+  pSSC->m_eParity = pSSC->m_DIPSWCurrent.eParity;
   pSSC->m_uControlByte = GenerateControl(pSSC);
   pSSC->m_uCommandByte = 0x00;
 }
@@ -245,7 +246,7 @@ static unsigned char GenerateControl(SuperSerialCard* pSSC) {
   assert(bmByteSize <= 3);
 
   unsigned int StopBit;
-  if (((pSSC->m_uByteSize == 8) && (pSSC->m_uParity != NOPARITY)) || (pSSC->m_uStopBits != ONESTOPBIT)) {
+  if (((pSSC->m_uByteSize == 8) && (pSSC->m_eParity != SSC_PARITY_NONE)) || (pSSC->m_eStopBits != SSC_STOP_BITS_1)) {
     StopBit = 1;
   } else {
     StopBit = 0;
@@ -270,7 +271,7 @@ static unsigned int BaudRateToIndex(unsigned int uBaudRate) {
 
 static void UpdateCommState(SuperSerialCard* pSSC) {
   if (SSCFrontend_IsActive()) {
-      SSCFrontend_UpdateState(pSSC->m_uBaudRate, pSSC->m_uByteSize, pSSC->m_uParity, pSSC->m_uStopBits);
+      SSCFrontend_UpdateState(pSSC->m_uBaudRate, pSSC->m_uByteSize, pSSC->m_eParity, pSSC->m_eStopBits);
   }
 }
 
@@ -307,13 +308,13 @@ static unsigned char CommCommand(SuperSerialCard* pSSC, unsigned short, unsigned
     pSSC->m_uCommandByte = value;
     if (pSSC->m_uCommandByte & 0x20) {
       switch (pSSC->m_uCommandByte & 0xC0) {
-        case 0x00 : pSSC->m_uParity = ODDPARITY; break;
-        case 0x40 : pSSC->m_uParity = EVENPARITY; break;
-        case 0x80 : pSSC->m_uParity = MARKPARITY; break;
-        case 0xC0 : pSSC->m_uParity = SPACEPARITY; break;
+        case 0x00 : pSSC->m_eParity = SSC_PARITY_ODD; break;
+        case 0x40 : pSSC->m_eParity = SSC_PARITY_EVEN; break;
+        case 0x80 : pSSC->m_eParity = SSC_PARITY_MARK; break;
+        case 0xC0 : pSSC->m_eParity = SSC_PARITY_SPACE; break;
       }
     } else {
-      pSSC->m_uParity = NOPARITY;
+      pSSC->m_eParity = SSC_PARITY_NONE;
     }
 
     switch (pSSC->m_uCommandByte & 0x0C) {
@@ -351,11 +352,11 @@ static unsigned char CommControl(SuperSerialCard* pSSC, unsigned short, unsigned
     }
 
     if (pSSC->m_uControlByte & 0x80) {
-      if ((pSSC->m_uByteSize == 8) && (pSSC->m_uParity != NOPARITY)) pSSC->m_uStopBits = ONESTOPBIT;
-      else if ((pSSC->m_uByteSize == 5) && (pSSC->m_uParity == NOPARITY)) pSSC->m_uStopBits = ONE5STOPBITS;
-      else pSSC->m_uStopBits = TWOSTOPBITS;
+      if ((pSSC->m_uByteSize == 8) && (pSSC->m_eParity != SSC_PARITY_NONE)) pSSC->m_eStopBits = SSC_STOP_BITS_1;
+      else if ((pSSC->m_uByteSize == 5) && (pSSC->m_eParity == SSC_PARITY_NONE)) pSSC->m_eStopBits = SSC_STOP_BITS_1_5;
+      else pSSC->m_eStopBits = SSC_STOP_BITS_2;
     } else {
-      pSSC->m_uStopBits = ONESTOPBIT;
+      pSSC->m_eStopBits = SSC_STOP_BITS_1;
     }
     UpdateCommState(pSSC);
   }
@@ -376,7 +377,11 @@ static unsigned char CommReceive(SuperSerialCard* pSSC, unsigned short, unsigned
 
 static unsigned char CommTransmit(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char, unsigned char value, uint32_t) {
   SSCFrontend_SendByte(value);
-  pSSC->m_bWrittenTx = true;
+  pSSC->m_bWrittenTx = true; // Transmit interrupt pending
+  if (pSSC->m_bTxIrqEnabled) {
+      pSSC->m_vbCommIRQ = true;
+      CpuIrqAssert(IS_SSC);
+  }
   return 0;
 }
 
@@ -386,17 +391,38 @@ enum {
   ST_DSR = 1 << 6, ST_IRQ = 1 << 7
 };
 
-static unsigned char CommStatus(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
-  bool bIRQ = false;
-  if (pSSC->m_bTxIrqEnabled && pSSC->m_bWrittenTx) bIRQ = true;
-  if (pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes) bIRQ = true;
+static unsigned char CommStatus(SuperSerialCard* pSSC, unsigned short, unsigned short, unsigned char write, unsigned char, uint32_t) {
+  if (write) {
+    // Programmed Reset: Datasheet pg 6-8
+    // Clears bits 0-4 of Command Register
+    pSSC->m_uCommandByte &= 0xE0;
+    pSSC->m_bTxIrqEnabled = false;
+    pSSC->m_bRxIrqEnabled = true; // Bit 1 = 0 means enabled for 6551
 
+    // Status bits 0-3 cleared, bit 4 (TDRE) set, IRQ cleared
+    pSSC->m_bWrittenTx = false;
+    pSSC->m_vRecvBytes = 0;
+    pSSC->m_vbCommIRQ = false;
+    CpuIrqDeassert(IS_SSC);
+    return 0;
+  }
+
+  bool bTxIRQ = pSSC->m_bTxIrqEnabled && pSSC->m_bWrittenTx;
+  bool bRxIRQ = pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes;
+  bool bIRQ = bTxIRQ || bRxIRQ;
+
+  // Reading the Status Register clears the TDRE interrupt bit (m_bWrittenTx)
   pSSC->m_bWrittenTx = false;
 
   unsigned char uStatus = ST_TX_EMPTY | (pSSC->m_vRecvBytes ? ST_RX_FULL : 0x00) | (bIRQ ? ST_IRQ : 0x00);
   if (!SSCFrontend_IsActive()) uStatus |= ST_DSR | ST_DCD;
 
-  CpuIrqDeassert(IS_SSC);
+  // Deassert IRQ only if no other interrupt sources are active
+  if (!(pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes)) {
+      CpuIrqDeassert(IS_SSC);
+      pSSC->m_vbCommIRQ = false;
+  }
+
   return uStatus;
 }
 
@@ -405,13 +431,13 @@ static unsigned char CommDipSw(SuperSerialCard* pSSC, unsigned short, unsigned s
   if ((addr & 0xf) == 1) {
     sw = (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) | pSSC->m_DIPSWCurrent.eFirmwareMode;
   } else if ((addr & 0xf) == 2) {
-    unsigned char INT = pSSC->m_DIPSWCurrent.uStopBits == TWOSTOPBITS ? 1 : 0;
+    unsigned char INT = pSSC->m_DIPSWCurrent.eStopBits == SSC_STOP_BITS_2 ? 1 : 0;
     unsigned char DCD = pSSC->m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;
     unsigned char RDR, OVR;
-    switch (pSSC->m_DIPSWCurrent.uParity) {
-      case ODDPARITY:  RDR = 0; OVR = 1; break;
-      case EVENPARITY: RDR = 1; OVR = 1; break;
-      default:         RDR = 0; OVR = 0; break;
+    switch (pSSC->m_DIPSWCurrent.eParity) {
+      case SSC_PARITY_ODD:  RDR = 0; OVR = 1; break;
+      case SSC_PARITY_EVEN: RDR = 1; OVR = 1; break;
+      default:              RDR = 0; OVR = 0; break;
     }
     unsigned char FE = pSSC->m_DIPSWCurrent.bLinefeed ? 1 : 0;
     unsigned char PE = pSSC->m_DIPSWCurrent.bInterrupts ? 1 : 0;
@@ -436,10 +462,10 @@ unsigned int SSC_GetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms *pSS) {
   pSS->commandbyte = pSSC->m_uCommandByte;
   pSS->comminactivity = 0;
   pSS->controlbyte = pSSC->m_uControlByte;
-  pSS->parity = pSSC->m_uParity;
+  pSS->parity = pSSC->m_eParity;
   memcpy(pSS->recvbuffer, pSSC->m_RecvBuffer, uRecvBufferSize);
   pSS->recvbytes = pSSC->m_vRecvBytes;
-  pSS->stopbits = pSSC->m_uStopBits;
+  pSS->stopbits = pSSC->m_eStopBits;
   return 0;
 }
 
@@ -448,9 +474,9 @@ unsigned int SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms *pSS) {
   pSSC->m_uByteSize = pSS->bytesize;
   pSSC->m_uCommandByte = pSS->commandbyte;
   pSSC->m_uControlByte = pSS->controlbyte;
-  pSSC->m_uParity = pSS->parity;
+  pSSC->m_eParity = (SscParity)pSS->parity;
   memcpy(pSSC->m_RecvBuffer, pSS->recvbuffer, uRecvBufferSize);
   pSSC->m_vRecvBytes = pSS->recvbytes;
-  pSSC->m_uStopBits = pSS->stopbits;
+  pSSC->m_eStopBits = (SscStopBits)pSS->stopbits;
   return 0;
 }

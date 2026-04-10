@@ -687,9 +687,15 @@ void LoadConfiguration()
   }
 
   LOAD("Sound Emulation", &soundtype);
-  unsigned int dwSerialPort = 0;
-  LOAD("Serial Port", &dwSerialPort);
-  SSCFrontend_SetSerialPort(dwSerialPort);
+  std::string sSerialPort = "";
+  if (LOAD("Serial Port", &sSerialPort)) {
+    SSCFrontend_SetSerialPortPath(sSerialPort.c_str());
+  }
+
+  bool bLoopback = false;
+  if (LOAD("Serial Loopback", &bLoopback)) {
+      SSCFrontend_SetLoopback(bLoopback);
+  }
 
   LOAD("Emulation Speed", &g_state.dwSpeed);
   LOAD("Enhance Disk Speed", (unsigned int * ) & enhancedisk);

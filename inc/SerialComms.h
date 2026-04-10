@@ -5,19 +5,33 @@
 #include "Structs.h"
 
 // SSC DIPSW structure
-enum eFWMODE {
-  FWMODE_CIC = 0, FWMODE_SIC_P8, FWMODE_PPC, FWMODE_SIC_P8A
+enum FirmwareMode {
+  FIRMWARE_CIC = 0, FIRMWARE_SIC_P8, FIRMWARE_PPC, FIRMWARE_SIC_P8A
+};
+
+enum SscParity {
+  SSC_PARITY_NONE = 0,
+  SSC_PARITY_ODD = 1,
+  SSC_PARITY_EVEN = 2,
+  SSC_PARITY_MARK = 3,
+  SSC_PARITY_SPACE = 4
+};
+
+enum SscStopBits {
+  SSC_STOP_BITS_1 = 0,
+  SSC_STOP_BITS_1_5 = 1,
+  SSC_STOP_BITS_2 = 2
 };
 
 typedef struct {
   //DIPSW1
   unsigned int uBaudRate;
-  eFWMODE eFirmwareMode;
+  FirmwareMode eFirmwareMode;
 
   //DIPSW2
-  unsigned int uStopBits;
+  SscStopBits eStopBits;
   unsigned int uByteSize;
-  unsigned int uParity;
+  SscParity eParity;
   bool bLinefeed;
   bool bInterrupts;
 } SSC_DIPSW;
@@ -38,9 +52,9 @@ struct SuperSerialCard {
 
   // Derived from DIPSWs
   unsigned int m_uBaudRate;
-  unsigned int m_uStopBits;
+  SscStopBits m_eStopBits;
   unsigned int m_uByteSize;
-  unsigned int m_uParity;
+  SscParity m_eParity;
 
   // SSC Registers
   unsigned char m_uControlByte;
@@ -78,22 +92,7 @@ void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte);
 // Interface for Core to call Frontend (implemented in Frontend)
 extern void SSCFrontend_SendByte(uint8_t byte);
 extern bool SSCFrontend_IsActive();
-extern void SSCFrontend_UpdateState(unsigned int baud, unsigned int bits, unsigned int parity, unsigned int stop);
-
-// Windows specific values (needed for core parity logic)
-#ifndef NOPARITY
-#define NOPARITY            0
-#define ODDPARITY           1
-#define EVENPARITY          2
-#define MARKPARITY          3
-#define SPACEPARITY         4
-#endif
-
-#ifndef ONESTOPBIT
-#define ONESTOPBIT          0
-#define ONE5STOPBITS        1
-#define TWOSTOPBITS         2
-#endif
+extern void SSCFrontend_UpdateState(unsigned int baud, unsigned int bits, SscParity parity, SscStopBits stop);
 
 // Global instance (to be moved/handled)
 extern struct SuperSerialCard sg_SSC;

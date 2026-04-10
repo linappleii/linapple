@@ -1,7 +1,20 @@
 #include <cstdint>
 #include <algorithm>
+#include <string>
+
 #pragma once
 
+// Forward declarations for configuration
+bool ConfigLoadInt(const char* section, const char* key, uint32_t* value);
+bool ConfigLoadBool(const char* section, const char* key, bool* value);
+bool ConfigLoadString(const char* section, const char* key, std::string* value);
+void ConfigSaveInt(const char* section, const char* key, uint32_t value);
+
+enum eIRQSRC {
+  IS_6522 = 0, IS_SPEECH, IS_SSC, IS_MOUSE
+};
+
+// Configuration functions for type safety
 #define USE_SPEECH_API
 
 const double M14 = (157500000.0 / 11.0); // 14.3181818... * 10^6
@@ -98,8 +111,22 @@ constexpr int BTN_LOADST    = 9;
 #define TITLE_PAUSED   " Paused "
 #define TITLE_STEPPING "Stepping"
 
-#define LOAD(a, b) ConfigLoadInt("Configuration", a, (uint32_t*)(b))
-#define SAVE(a, b) ConfigSaveInt("Configuration", a, b)
+// Configuration functions for type safety
+inline bool LOAD(const char* key, uint32_t* value) {
+    return ConfigLoadInt("Configuration", key, value);
+}
+
+inline bool LOAD(const char* key, bool* value) {
+    return ConfigLoadBool("Configuration", key, value);
+}
+
+inline bool LOAD(const char* key, std::string* value) {
+    return ConfigLoadString("Configuration", key, value);
+}
+
+inline void SAVE(const char* key, uint32_t value) {
+    ConfigSaveInt("Configuration", key, value);
+}
 
 // Configuration
 #define REGVALUE_APPLE2_TYPE         "Apple2 Type"
@@ -173,10 +200,6 @@ typedef unsigned char (*iofunction)(unsigned short nPC, unsigned short nAddr, un
 typedef struct _IMAGE__ {
   int unused;
 } *HIMAGE;
-
-enum eIRQSRC {
-  IS_6522 = 0, IS_SPEECH, IS_SSC, IS_MOUSE
-};
 
 constexpr uint8_t APPLE2E_MASK = 0x10;
 constexpr uint8_t APPLE2C_MASK = 0x20;

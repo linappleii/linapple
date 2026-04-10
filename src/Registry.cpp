@@ -169,6 +169,19 @@ bool ConfigLoadInt(const char* section, const char* key, uint32_t* value) {
     return true;
 }
 
+bool ConfigLoadBool(const char* section, const char* key, bool* value) {
+    if (Configuration::Instance().GetString(section, key).empty()) return false;
+    *value = Configuration::Instance().GetBool(section, key, *value);
+    return true;
+}
+
+bool ConfigLoadString(const char* section, const char* key, std::string* value) {
+    std::string s = Configuration::Instance().GetString(section, key);
+    if (s.empty()) return false;
+    *value = s;
+    return true;
+}
+
 void ConfigSaveInt(const char* section, const char* key, uint32_t value) {
     Configuration::Instance().SetInt(section, key, value);
 }

@@ -1,11 +1,10 @@
 #ifndef SERIALCOMMSFRONTEND_H
 #define SERIALCOMMSFRONTEND_H
 
-#include <cstdint>
 #include "SerialComms.h"
 
 // Initialize the host-side serial port
-bool SSCFrontend_Initialize(unsigned int serialPort);
+bool SSCFrontend_Initialize(const char* serialPortPath);
 
 // Close the host-side serial port
 void SSCFrontend_Close();
@@ -14,16 +13,15 @@ void SSCFrontend_Close();
 void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalCycles);
 
 // Send a byte to the host-side serial port (called by core)
-bool SSCFrontend_TransmitByte(uint8_t byte);
+void SSCFrontend_SendByte(uint8_t byte);
 
 // Check for and receive a byte from the host-side serial port
-// (called by frontend update, which then pushes to core)
 bool SSCFrontend_CheckReceive(SuperSerialCard* pSSC);
 
-// Set the serial port number
-void SSCFrontend_SetSerialPort(unsigned int serialPort);
+// Set the serial port path
+void SSCFrontend_SetSerialPortPath(const char* serialPortPath);
 
-// Get the serial port number
-unsigned int SSCFrontend_GetSerialPort();
+// Set loopback mode
+void SSCFrontend_SetLoopback(bool enable);
 
 #endif // SERIALCOMMSFRONTEND_H

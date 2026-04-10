@@ -29,6 +29,8 @@ private:
 };
 
 bool ConfigLoadInt(const char* section, const char* key, uint32_t* value);
+bool ConfigLoadBool(const char* section, const char* key, bool* value);
+bool ConfigLoadString(const char* section, const char* key, std::string* value);
 void ConfigSaveInt(const char* section, const char* key, uint32_t value);
 
 char *php_trim(char *c, int len);
