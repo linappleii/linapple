@@ -135,44 +135,33 @@ static unsigned char IOWrite_C00x(unsigned short pc, unsigned short addr, unsign
 static unsigned char IORead_C01x(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft) {
   switch (addr & 0xf) {
     case 0x0:
-      return KeybReadFlag(pc, addr, bWrite, d, nCyclesLeft);
+      return KeybClearFlag(pc, addr, bWrite, d, nCyclesLeft);
     case 0x1:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x2:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x3:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x4:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x5:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x6:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x7:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x8:
       return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x9:
       return VideoCheckVbl(pc, addr, bWrite, d, nCyclesLeft);
     case 0xA:
-      return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
     case 0xB:
       return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
     case 0xC:
-      return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0xD:
       return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0xE:
-      return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
     case 0xF:
       return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
   }
-
   return 0;
 }
 
 static unsigned char IOWrite_C01x(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft) {
-  return KeybReadFlag(pc, addr, bWrite, d, nCyclesLeft);
+  return KeybClearFlag(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static unsigned char IORead_C02x(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, uint32_t nCyclesLeft) {
@@ -1004,6 +993,7 @@ int MemInitialize() // returns -1 if any error during initialization
 
   if (memaux) memset(memaux, 0, _6502_MEM_END + 1);
   if (memmain) memset(memmain, 0, _6502_MEM_END + 1);
+  mem = memmain;
   if (memdirty) memset(memdirty, 0, 0x100);
   if (memrom) memset(memrom, 0, 0x5000);
   if (memimage) memset(memimage, 0, _6502_MEM_END + 1);

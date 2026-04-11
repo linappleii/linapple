@@ -145,11 +145,15 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
 
 unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   keyboardqueries++;
-  unsigned char nKey = g_nLastKey & 0x7F;
-  g_nLastKey &= 0x7F;
+  unsigned char nKey = g_nLastKey;
   if (!IS_APPLE2()) {
     if (g_bAnyKeyDown) nKey |= 0x80;
   }
+  return nKey;
+}
+
+unsigned char KeybClearFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
+  g_nLastKey &= 0x7F;
   if (g_nKeyBufferCnt) {
     if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
       uint64_t now = SDL_GetTicks();
@@ -157,8 +161,11 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
     }
     g_nKeyBufferCnt--;
     g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;
+    if (g_nKeyBufferCnt) {
+        g_nLastKey = g_nKeyBuffer[g_nNextOutIdx].nAppleKey | 0x80;
+    }
   }
-  return nKey;
+  return 0;
 }
 
 void KeybSetCapsLock(bool bState) {

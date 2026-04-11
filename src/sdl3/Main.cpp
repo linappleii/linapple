@@ -13,6 +13,7 @@
 #include "Video.h"
 #include "Frame.h"
 #include "Log.h"
+#include <X11/Xlib.h>
 #include "Common_Globals.h"
 #include "Util_Text.h"
 #include "Debugger/Debug.h"
@@ -111,10 +112,15 @@ void EnterMessageLoop() {
       loops++;
     }
 
-    if (loops == 0) {
-        uint64_t now = SDL_GetTicks();
-        if (next_game_tick > now) {
-            SDL_Delay((uint32_t)(next_game_tick - now));
+    uint64_t now = SDL_GetTicks();
+    if (now < next_game_tick) {
+        SDL_Delay((uint32_t)(next_game_tick - now));
+    } else {
+        // If we are way behind, reset next_game_tick to avoid massive catch-up loop
+        if (now > next_game_tick + 1000) {
+            printf("Resyncing timing: behind by %llu ms\n", (unsigned long long)(now - next_game_tick));
+            fflush(stdout);
+            next_game_tick = now;
         }
     }
 
@@ -185,6 +191,8 @@ int main(int argc, char* argv[]) {
         return 255;
     }
   }
+
+  XInitThreads();
 
   if (SysInit(bLog) != 0) return 1;
 

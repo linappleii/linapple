@@ -1809,6 +1809,7 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
   } else {
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
+    hasrefreshed = true;
   }
 }
 
