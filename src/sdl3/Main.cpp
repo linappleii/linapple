@@ -78,6 +78,7 @@ void Sys_Input() {
 void Sys_Think(uint32_t dwCycles) {
   if (g_state.mode == MODE_RUNNING) {
     ContinueExecution(dwCycles);
+    MB_EndOfVideoFrame();
   } else if (g_state.mode == MODE_STEPPING) {
     SingleStep(false);
   } else if (g_state.mode == MODE_LOGO) {

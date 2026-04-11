@@ -125,6 +125,43 @@ void SingleStep(bool bReinit) {
   UpdateDisplay(UPDATE_ALL);
 }
 
+static int16_t g_spkrBuffer[8192];
+
+void SpkrFrontend_Update(uint32_t dwExecutedCycles) {
+  if (dwExecutedCycles == 0) return;
+
+  static bool s_lastState = false;
+  static double s_nextSampleCycle = 0;
+  double clksPerSample = (double)g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
+
+  SpkrEvent events[MAX_SPKR_EVENTS];
+  int num_events = SpkrGetEvents(events, MAX_SPKR_EVENTS);
+  int event_idx = 0;
+
+  uint64_t startCycle = g_nCumulativeCycles - dwExecutedCycles;
+  uint64_t endCycle = g_nCumulativeCycles;
+
+  if (s_nextSampleCycle < (double)startCycle)
+    s_nextSampleCycle = (double)startCycle;
+
+  int numSamples = 0;
+  while (s_nextSampleCycle < (double)endCycle && numSamples < 8190) {
+    // Find if any events happened before this sample point
+    while (event_idx < num_events && (double)events[event_idx].cycle <= s_nextSampleCycle) {
+      s_lastState = events[event_idx].state;
+      event_idx++;
+    }
+    int16_t val = s_lastState ? 0x4000 : -0x4000;
+    g_spkrBuffer[numSamples++] = val; // L
+    g_spkrBuffer[numSamples++] = val; // R
+    s_nextSampleCycle += clksPerSample;
+  }
+
+  if (numSamples > 0) {
+    DSUploadBuffer(g_spkrBuffer, numSamples);
+  }
+}
+
 void ContinueExecution(uint32_t dwCycles) {
   if (dwCycles == 0) return;
 
@@ -138,6 +175,7 @@ void ContinueExecution(uint32_t dwCycles) {
   PrinterFrontend_Update(dwExecutedCycles);
   MB_UpdateCycles(dwExecutedCycles);
   SpkrUpdate(dwExecutedCycles);
+  SpkrFrontend_Update(dwExecutedCycles);
 }
 
 int SysInit(bool bLog) {
@@ -148,6 +186,7 @@ int SysInit(bool bLog) {
 
   Logger::Initialize();
   Asset_Init();
+  SoundCore_Initialize();
 
   if (InitSDL() != 0) {
     return 1;
@@ -180,6 +219,7 @@ void SysShutdown() {
     curl_easy_cleanup(g_curl);
     curl_global_cleanup();
   }
+  SoundCore_Destroy();
   Asset_Quit();
   Logger::Destroy();
 }

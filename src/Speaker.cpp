@@ -35,8 +35,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Sample generation and SDL audio are handled by the frontend.
  */
 
-#define MAX_SPKR_EVENTS 4096
-
 static SpkrEvent g_spkrEvents[MAX_SPKR_EVENTS];
 static int g_nNumSpkrEvents = 0;
 static bool g_bSpkrState = false;

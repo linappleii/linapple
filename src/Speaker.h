@@ -7,6 +7,8 @@ typedef struct tagSS_IO_Speaker SS_IO_Speaker;
 #define SOUND_NONE 0
 #define SOUND_WAVE 1
 
+#define MAX_SPKR_EVENTS 4096
+
 extern unsigned int soundtype;
 
 typedef struct {
