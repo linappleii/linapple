@@ -125,11 +125,10 @@ void SingleStep(bool bReinit) {
   UpdateDisplay(UPDATE_ALL);
 }
 
-void ContinueExecution() {
-  uint32_t dwCyclesThisFrame = CpuGetCyclesThisFrame(cyclenum);
-  if (dwCyclesThisFrame == 0) return;
+void ContinueExecution(uint32_t dwCycles) {
+  if (dwCycles == 0) return;
 
-  uint32_t dwExecutedCycles = CpuExecute(dwCyclesThisFrame);
+  uint32_t dwExecutedCycles = CpuExecute(dwCycles);
   cyclenum += dwExecutedCycles;
   g_nCumulativeCycles += dwExecutedCycles;
 

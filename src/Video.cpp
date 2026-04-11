@@ -251,7 +251,7 @@ unsigned int g_uVideoMode = VF_TEXT;
 unsigned int g_uDebugVideoMode = VF_TEXT;
 static unsigned int vidmode_latched = VF_TEXT;
 unsigned int g_videotype = VT_COLOR_STANDARD;
-unsigned int g_singlethreaded = 0;
+unsigned int g_singlethreaded = 1;
 std::atomic<bool> g_bFrameReady(false);
 
 static bool g_bTextFlashState = false;

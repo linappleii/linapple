@@ -13,7 +13,6 @@
 #include "Video.h"
 #include "Frame.h"
 #include "Log.h"
-#include <X11/Xlib.h>
 #include "Common_Globals.h"
 #include "Util_Text.h"
 #include "Debugger/Debug.h"
@@ -75,15 +74,15 @@ void Sys_Input() {
   }
 }
 
-void Sys_Think() {
+void Sys_Think(uint32_t dwCycles) {
   if (g_state.mode == MODE_RUNNING) {
-    ContinueExecution();
+    ContinueExecution(dwCycles);
   } else if (g_state.mode == MODE_STEPPING) {
     SingleStep(false);
   } else if (g_state.mode == MODE_LOGO) {
     DrawAppleContent();
   } else if (g_state.mode == MODE_DEBUG) {
-    // Debugger handles its own logic via Sys_Draw and single steps
+    // Debugger handles its own logic
   }
 }
 
@@ -99,21 +98,24 @@ void EnterMessageLoop() {
   const int TICKS_PER_SECOND = 60;
   const int SKIP_TICKS = 1000 / TICKS_PER_SECOND;
   const int MAX_FRAMESKIP = 5;
+  const uint32_t CYCLES_PER_TICK = 17030; // ~1.023 MHz / 60
 
   uint64_t next_game_tick = SDL_GetTicks();
-  int loops;
 
   while (g_state.mode != MODE_EXIT) {
-    loops = 0;
-    while (SDL_GetTicks() > next_game_tick && loops < MAX_FRAMESKIP) {
+    int loops = 0;
+    while (SDL_GetTicks() >= next_game_tick && loops < MAX_FRAMESKIP) {
       Sys_Input();
-      Sys_Think();
+      Sys_Think(CYCLES_PER_TICK);
       next_game_tick += SKIP_TICKS;
       loops++;
     }
 
     if (loops == 0) {
-        SDL_Delay(1);
+        uint64_t now = SDL_GetTicks();
+        if (next_game_tick > now) {
+            SDL_Delay((uint32_t)(next_game_tick - now));
+        }
     }
 
     Sys_Draw();
@@ -183,8 +185,6 @@ int main(int argc, char* argv[]) {
         return 255;
     }
   }
-
-  XInitThreads();
 
   if (SysInit(bLog) != 0) return 1;
 
