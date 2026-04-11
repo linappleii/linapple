@@ -130,7 +130,7 @@ void ContinueExecution(uint32_t dwCycles) {
 
   uint32_t dwExecutedCycles = CpuExecute(dwCycles);
   cyclenum += dwExecutedCycles;
-  g_nCumulativeCycles += dwExecutedCycles;
+  cumulativecycles = g_nCumulativeCycles;
 
   VideoUpdateVbl(dwExecutedCycles);
   JoyUpdatePosition(dwExecutedCycles);

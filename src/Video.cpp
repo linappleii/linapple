@@ -1735,7 +1735,8 @@ void VideoPerformRefresh() {
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
-  bool anydirty = redrawfull | g_bTextFlashFlag;
+  bool anydirty = true; // Force redraw to fix highlights/blinking
+  redrawfull = true;
 
   int y = 0;
   int ypixel = 0;
@@ -1890,6 +1891,7 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
   if (oldvalue != g_nAltCharSetOffset + (int) (g_uVideoMode & ~(VF_MASK2 | VF_PAGE2))) {
     graphicsmode = !SW_TEXT;
     redrawfull = true;
+    VideoRefreshScreen();
   }
   if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
     static unsigned int lasttime = 0;
@@ -2002,7 +2004,7 @@ unsigned int VideoSetSnapshot(SS_IO_Video *pSS) {
 
 unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uExecutedCycles) {
   // get video scanner position
-  int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
+  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % 17030;
 
   // machine state switches
   int nHires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
@@ -2077,35 +2079,21 @@ unsigned short VideoGetScannerAddress(bool *pbVblBar_OUT, const unsigned int uEx
 
   if (pbVblBar_OUT != NULL) {
     if (v_4 & v_3) { // VBL?
-      *pbVblBar_OUT = false; // Y: VBL' is false
+      *pbVblBar_OUT = true; // Y: VBL is true
     } else {
-      *pbVblBar_OUT = true; // N: VBL' is true
+      *pbVblBar_OUT = false; // N: VBL is false
     }
   }
   return static_cast<unsigned short>(nAddress);
 }
 
-// Derived from VideoGetScannerAddress()
 bool VideoGetVbl(const unsigned int uExecutedCycles) {
-  // get video scanner position
-  int nCycles = CpuGetCyclesThisFrame(uExecutedCycles);
-
-  // calculate video parameters according to display standard
-  int nScanLines = g_state.bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
-
-  // calculate vertical scanning state
-  int nVLine = nCycles / kHClocks; // which vertical scanning line
-  int nVState = kVLine0State + nVLine; // V state bits
-  if ((nVLine >= kVPresetLine)) { // check for previous vertical state preset
-    nVState -= nScanLines; // compensate for preset
-  }
-  int v_3 = (nVState >> 6) & 1;
-  int v_4 = (nVState >> 7) & 1;
-
-  // update VBL' state
-  if (v_4 & v_3) { // VBL?
-    return false; // Y: VBL' is false
-  } else {
-    return true; // N: VBL' is true
-  }
+  // get cycles within current frame
+  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % 17030;
+  
+  // Apple II NTSC: 262 lines, 65 cycles per line.
+  // Visible area: lines 0-191. VBL: lines 192-261.
+  // VBL starts at cycle 192 * 65 = 12480.
+  
+  return (nCycles >= 12480);
 }

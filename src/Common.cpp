@@ -13,8 +13,8 @@ char videoDriverName[100];
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 
-unsigned int cumulativecycles = 0;
-unsigned int cyclenum = 0;
+uint64_t cumulativecycles = 0;
+uint64_t cyclenum = 0;
 unsigned int emulmsec = 0;
 bool g_bFullSpeed = false;
 bool hddenabled = false;

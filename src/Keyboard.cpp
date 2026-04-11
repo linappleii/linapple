@@ -165,7 +165,7 @@ unsigned char KeybClearFlag(unsigned short, unsigned short, unsigned char, unsig
         g_nLastKey = g_nKeyBuffer[g_nNextOutIdx].nAppleKey | 0x80;
     }
   }
-  return 0;
+  return g_nLastKey;
 }
 
 void KeybSetCapsLock(bool bState) {

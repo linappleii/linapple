@@ -154,8 +154,6 @@ void DrawFrameWindow()
       }
 
       SDL_UpdateTexture(g_texture, NULL, screen->pixels, screen->pitch);
-      SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
-      SDL_RenderClear(g_renderer);
       SDL_RenderTexture(g_renderer, g_texture, NULL, NULL);
       SDL_RenderPresent(g_renderer);
       g_bFrameReady = false;
@@ -363,12 +361,13 @@ static bool IsModifierKey(SDL_Keycode sym) {
 }
 
 void FrameDispatchMessage(SDL_Event *e) {
-  SDL_Keycode mysym = e->key.key;
-  SDL_Keymod mymod = e->key.mod;
-  SDL_Scancode myscancode = e->key.scancode;
   int x, y;
 
   switch (e->type) {
+    case SDL_EVENT_QUIT:
+      g_state.mode = MODE_EXIT;
+      break;
+
     case SDL_EVENT_WINDOW_RESIZED:
       pthread_mutex_lock(&video_draw_mutex);
       printf("OLD DIMENSIONS: %d  %d\n", g_state.ScreenWidth, g_state.ScreenHeight);
@@ -413,6 +412,11 @@ void FrameDispatchMessage(SDL_Event *e) {
       break;
 
     case SDL_EVENT_KEY_DOWN:
+    {
+      SDL_Keycode mysym = e->key.key;
+      SDL_Keymod mymod = e->key.mod;
+      SDL_Scancode myscancode = e->key.scancode;
+
       if (e->key.repeat == 0) {
         if (!IsModifierKey(mysym)) {
           KeybSetAnyKeyDownStatus(true);
@@ -493,8 +497,14 @@ void FrameDispatchMessage(SDL_Event *e) {
         }
       }
       break;
+    }
 
     case SDL_EVENT_KEY_UP:
+    {
+      SDL_Keycode mysym = e->key.key;
+      SDL_Keymod mymod = e->key.mod;
+      SDL_Scancode myscancode = e->key.scancode;
+
       if (!IsModifierKey(mysym)) {
         KeybSetAnyKeyDownStatus(false);
       }
@@ -514,8 +524,11 @@ void FrameDispatchMessage(SDL_Event *e) {
         }
       }
       break;
+    }
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    {
+      SDL_Keymod mymod = SDL_GetModState();
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (buttondown == -1) {
           x = (int)e->button.x;
@@ -552,6 +565,7 @@ void FrameDispatchMessage(SDL_Event *e) {
       }
 
       break;
+    }
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
       if (e->button.button == SDL_BUTTON_LEFT) {
