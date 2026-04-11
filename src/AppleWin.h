@@ -14,7 +14,7 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
                 const char* szImageName_drive1, const char* szImageName_drive2,
                 const char* szSnapshotFile, bool bBoot, bool bPAL);
 void SessionShutdown();
-void ContinueExecution();
+void ContinueExecution(uint32_t dwCycles);
 void CpuTestHeadless(const char* szTestFile);
 
 // Entry point helpers (implemented in Frontend)

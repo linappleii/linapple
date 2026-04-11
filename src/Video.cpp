@@ -290,24 +290,11 @@ static char display_pipeline_[0x2000*4 + 0x400*4];
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
   uint8_t* currdestptr = frameoffsettable[desty] + destx;
   uint8_t* currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
-  int bytesleft;
   while (ysize--) {
-    bytesleft = xsize;
-    while (bytesleft & 3) {
-      --bytesleft;
-      if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
-        *(currdestptr + bytesleft) = *(currsourceptr + bytesleft);
-      } else {
-        *(currdestptr + bytesleft) = 0;
-      }
-    }
-    while (bytesleft) {
-      bytesleft -= 4;
-      if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
-        *(uint32_t*)(currdestptr + bytesleft) = *(uint32_t*)(currsourceptr + bytesleft);
-      } else {
-        *(currdestptr + bytesleft) = 0;
-      }
+    if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
+      memcpy(currdestptr, currsourceptr, xsize);
+    } else {
+      memset(currdestptr, 0, xsize);
     }
     currdestptr += framebufferpitch;
     currsourceptr += SRCOFFS_TOTAL;
@@ -1735,8 +1722,7 @@ void VideoPerformRefresh() {
                                                                                             ? UpdateDLoResCell
                                                                                             : UpdateLoResCell;
 
-  bool anydirty = true; // Force redraw to fix highlights/blinking
-  redrawfull = true;
+  bool anydirty = redrawfull | g_bTextFlashFlag;
 
   int y = 0;
   int ypixel = 0;
@@ -1893,28 +1879,11 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
     redrawfull = true;
     VideoRefreshScreen();
   }
-  if (g_bFullSpeed && oldpage2 && !SW_PAGE2) {
-    static unsigned int lasttime = 0;
-    unsigned int currtime = SDL_GetTicks();
-    if (currtime - lasttime >= 20)
-      lasttime = currtime;
-    else
-      oldpage2 = SW_PAGE2;
-  }
-  if (oldpage2 != SW_PAGE2) {
-    static unsigned int lastrefresh = 0;
-    if ((displaypage2 && !SW_PAGE2)) {
-      displaypage2 = (SW_PAGE2 != 0);
-      if (!redrawfull) {
-        VideoRefreshScreen();
-        lastrefresh = emulmsec;
-      }
-    } else if ((!SW_PAGE2) && (!redrawfull) && (emulmsec - lastrefresh >= 20)) {
-      displaypage2 = false;
-      VideoRefreshScreen();
-      lastrefresh = emulmsec;
-    }
-    lastpageflip = emulmsec;
+
+  if (displaypage2 != (SW_PAGE2 != 0)) {
+    displaypage2 = (SW_PAGE2 != 0);
+    redrawfull = true;
+    VideoRefreshScreen();
   }
 
   return MemReadFloatingBus(nCyclesLeft);
@@ -1923,7 +1892,7 @@ unsigned char VideoSetMode(unsigned short, unsigned short address, unsigned char
 static uint32_t g_dwVideoCyclesInFrame = 0;
 void VideoUpdateVbl(unsigned int dwCyclesThisFrame) {
   g_dwVideoCyclesInFrame += dwCyclesThisFrame;
-  if (g_dwVideoCyclesInFrame >= 17030) {
+  while (g_dwVideoCyclesInFrame >= 17030) {
     g_dwVideoCyclesInFrame -= 17030;
     VideoRefreshScreen();
     VideoUpdateFlash();

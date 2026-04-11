@@ -118,8 +118,6 @@ void EnterMessageLoop() {
     } else {
         // If we are way behind, reset next_game_tick to avoid massive catch-up loop
         if (now > next_game_tick + 1000) {
-            printf("Resyncing timing: behind by %llu ms\n", (unsigned long long)(now - next_game_tick));
-            fflush(stdout);
             next_game_tick = now;
         }
     }
@@ -192,8 +190,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  XInitThreads();
-
   if (SysInit(bLog) != 0) return 1;
 
   if (bBoot) {
@@ -212,6 +208,10 @@ int main(int argc, char* argv[]) {
                     szImageName_drive1, szImageName_drive2,
                     szSnapshotFile, bBoot, bPAL) != 0) {
       break;
+    }
+
+    if (bBoot) {
+        VideoRedrawScreen();
     }
 
     if (bBenchMark) VideoBenchmark();
