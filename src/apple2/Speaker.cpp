@@ -1,9 +1,9 @@
 #include "Common.h"
 #include <cstring>
-#include "Speaker.h"
+#include "apple2/Speaker.h"
 #include "Structs.h"
-#include "CPU.h"
-#include "Memory.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "Common_Globals.h"
 #include "Log.h"
 /*

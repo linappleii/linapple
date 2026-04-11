@@ -3,8 +3,8 @@
 #include "Debug.h"
 #include "Debugger_Parser.h"
 #include "Util_Text.h"
-#include "CPU.h"
-#include "Memory.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "Debugger_Help.h"
 #include "Debugger_Console.h"
 

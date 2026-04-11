@@ -2,7 +2,7 @@
 #define MOUSEINTERFACE_H
 
 #include <cstdint>
-#include "6821.h"
+#include "apple2/6821.h"
 #include "Common.h"
 
 struct MouseInterface {

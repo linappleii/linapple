@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "Debugger_Bookmarks.h"
 #include "Debug.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"

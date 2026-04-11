@@ -26,7 +26,7 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <time.h>
 #include <stdio.h>
 #include <curl/curl.h>
-#include "ftpparse.h"
+#include "apple2/ftpparse.h"
 #include "Common_Globals.h"
 
 static int progress_callback(void* clientp,

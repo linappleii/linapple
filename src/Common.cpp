@@ -1,5 +1,5 @@
 #include "Common.h"
-#include "SerialComms.h"
+#include "apple2/SerialComms.h"
 #include <curl/curl.h>
 #include <cstdio>
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;

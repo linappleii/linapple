@@ -27,9 +27,9 @@
 #include <string>
 
 #include "asset.h"
-#include "Util_Path.h"
+#include "core/Util_Path.h"
 #include "Util_Text.h"
-#include "Disk.h"
+#include "apple2/Disk.h"
 #include "Structs.h"
 
 #include "../res/font.xpm"

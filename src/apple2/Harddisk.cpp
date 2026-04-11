@@ -29,23 +29,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
 #include "Common.h"
-#include <SDL3/SDL.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
 #include <string>
 #include <sys/stat.h>
 
-#include "Harddisk.h"
-#include "Disk.h"
-#include "DiskFTP.h"
-#include "ftpparse.h"
-#include "Memory.h"
-#include "CPU.h"
+#include "apple2/Harddisk.h"
+#include "apple2/Disk.h"
+#include "apple2/DiskFTP.h"
+#include "apple2/ftpparse.h"
+#include "apple2/Memory.h"
+#include "apple2/CPU.h"
 #include "Log.h"
 #include "Common_Globals.h"
 #include "Util_Text.h"
-#include "Util_Path.h"
+#include "core/Util_Path.h"
 #include "Registry.h"
 #include "DiskChoose.h"
 #include "Frame.h"

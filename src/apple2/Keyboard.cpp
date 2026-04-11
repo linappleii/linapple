@@ -24,13 +24,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Common.h"
 #include <iostream>
 #include <cstring>
-#include "SDL3/SDL.h"
-#include "Keyboard.h"
+#include "apple2/Keyboard.h"
 #include "Structs.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Common_Globals.h"
 #include "Log.h"
-#include "Frame.h"
+
+extern void FrameRefreshStatus(int);
 
 bool g_bShiftKey = false;
 bool g_bCtrlKey = false;
@@ -98,7 +98,7 @@ void KeybPushAppleKey(uint8_t apple_code) {
   }
 
   g_nKeyBuffer[g_nNextInIdx].nAppleKey = apple_code;
-  g_nKeyBuffer[g_nNextInIdx].nTimestamp = SDL_GetTicks();
+  g_nKeyBuffer[g_nNextInIdx].nTimestamp = 0;
   g_nNextInIdx = (g_nNextInIdx + 1) % g_nKeyBufferSize;
 
   if (bOverflow) {
@@ -132,11 +132,7 @@ unsigned char KeybReadData(unsigned short, unsigned short, unsigned char, unsign
   if (g_nKeyBufferCnt) {
     nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
     g_nLastKey = g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
-    if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
-      uint64_t now = SDL_GetTicks();
-      Logger::Perf("Key 0x%02X read after %llu ms\n", (int)g_nLastKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
-      g_nKeyBuffer[g_nNextOutIdx].nTimestamp = 0;
-    }
+    g_nKeyBuffer[g_nNextOutIdx].nTimestamp = 0;
   } else {
     nKey |= g_nLastKey;
   }
@@ -155,10 +151,6 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
 unsigned char KeybClearFlag(unsigned short, unsigned short, unsigned char, unsigned char, uint32_t) {
   g_nLastKey &= 0x7F;
   if (g_nKeyBufferCnt) {
-    if (g_nKeyBuffer[g_nNextOutIdx].nTimestamp > 0) {
-      uint64_t now = SDL_GetTicks();
-      Logger::Perf("Key 0x%02X cleared after %llu ms\n", (int)g_nKeyBuffer[g_nNextOutIdx].nAppleKey, (unsigned long long)(now - g_nKeyBuffer[g_nNextOutIdx].nTimestamp));
-    }
     g_nKeyBufferCnt--;
     g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;
     if (g_nKeyBufferCnt) {

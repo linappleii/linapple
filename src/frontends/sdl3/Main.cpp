@@ -5,11 +5,11 @@
 #include <cstdlib>
 
 #include "AppleWin.h"
-#include "Keyboard.h"
-#include "Speaker.h"
-#include "Disk.h"
-#include "Mockingboard.h"
-#include "SoundCore.h"
+#include "apple2/Keyboard.h"
+#include "apple2/Speaker.h"
+#include "apple2/Disk.h"
+#include "apple2/Mockingboard.h"
+#include "apple2/SoundCore.h"
 #include "Video.h"
 #include "Frame.h"
 #include "Log.h"

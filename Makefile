@@ -60,7 +60,7 @@ CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 
 # Preprocessor flags
-CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/sdl3
+CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/frontends/sdl3
 CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 

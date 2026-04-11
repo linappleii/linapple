@@ -24,10 +24,10 @@
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Range.h"
 #include "AppleWin.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Frame.h"
-#include "Memory.h"
-#include "Mockingboard.h"
+#include "apple2/Memory.h"
+#include "apple2/Mockingboard.h"
 #include "stretch.h"
 #include "asset.h"
 #include <pthread.h>

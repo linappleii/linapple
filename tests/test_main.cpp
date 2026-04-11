@@ -4,8 +4,8 @@
 #include <cstring>
 #include <cstdint>
 #include "doctest.h"
-#include "CPU.h"
-#include "Memory.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "Common_Globals.h"
 
 // The emulator currently uses a global state.

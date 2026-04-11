@@ -1,7 +1,7 @@
 #include "Common.h"
 #include <SDL3/SDL.h>
 #include "Registry.h"
-#include "Util_Path.h"
+#include "core/Util_Path.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>

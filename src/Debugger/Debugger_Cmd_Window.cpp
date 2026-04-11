@@ -10,7 +10,7 @@
 #include "Log.h"
 #include "Video.h"
 #include "Util_Text.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "SDL3/SDL.h"
 #include <cstddef>
 #include <cassert>

@@ -4,7 +4,7 @@
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Display.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include <cctype>
 #include <cstddef>
 

@@ -11,9 +11,9 @@
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Frame.h"
-#include "Memory.h"
+#include "apple2/Memory.h"
 
 #define DEBUG_ASSEMBLER 0
 

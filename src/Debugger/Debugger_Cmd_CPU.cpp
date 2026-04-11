@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "Debugger_Cmd_CPU.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Debug.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
@@ -13,10 +13,10 @@
 #include "Debugger_Assembler.h"
 #include "Video.h"
 #include "Frame.h"
-#include "SoundCore.h"
-#include "Keyboard.h"
+#include "apple2/SoundCore.h"
+#include "apple2/Keyboard.h"
 #include "Log.h"
-#include "Memory.h"
+#include "apple2/Memory.h"
 #include "SDL3/SDL.h"
 #include <cstddef>
 #include <cstdio>

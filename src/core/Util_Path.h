@@ -9,22 +9,10 @@
 namespace Path {
 
 // Returns the directory where the executable is located.
-inline std::string GetExecutableDir() {
-    const char* base = SDL_GetBasePath();
-    if (!base) return "./";
-    std::string result(base);
-    // In SDL3, we don't free the result of SDL_GetBasePath
-    return result;
-}
+std::string GetExecutableDir();
 
 // Returns the user's data directory (~/.local/share/linapple/)
-inline std::string GetUserDataDir() {
-    const char* pref = SDL_GetPrefPath(NULL, "linapple");
-    if (!pref) return "./";
-    std::string result(pref);
-    // In SDL3, we don't free the result of SDL_GetPrefPath
-    return result;
-}
+std::string GetUserDataDir();
 
 // Returns the user's configuration directory (~/.config/linapple/)
 inline std::string GetUserConfigDir() {

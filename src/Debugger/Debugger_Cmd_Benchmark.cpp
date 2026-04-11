@@ -14,9 +14,9 @@
 #include "Log.h"
 #include "Video.h"
 #include "Frame.h"
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Util_Text.h"
-#include "Keyboard.h"
+#include "apple2/Keyboard.h"
 #include "SDL3/SDL.h"
 
 // Globals originally from Debug.cpp

@@ -1,9 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "Common.h"
-#include "SerialComms.h"
-#include "CPU.h"
-#include "Memory.h"
+#include "apple2/SerialComms.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "Common_Globals.h"
 #include <cstring>
 #include <cstdint>

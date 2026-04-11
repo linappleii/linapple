@@ -33,9 +33,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <cstdint>
 
-#include "SoundCore.h"
-#include "Mockingboard.h"
-#include "Speaker.h"
+#include "apple2/SoundCore.h"
+#include "apple2/Mockingboard.h"
+#include "apple2/Speaker.h"
 #include "Log.h"
 #include "Common_Globals.h"
 

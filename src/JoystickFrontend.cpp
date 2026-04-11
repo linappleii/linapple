@@ -1,7 +1,7 @@
 #include "Common.h"
 #include <iostream>
 #include <cstring>
-#include "Joystick.h"
+#include "apple2/Joystick.h"
 #include "SDL3/SDL.h"
 #include "Structs.h"
 #include "Log.h"

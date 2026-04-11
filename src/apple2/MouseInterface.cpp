@@ -10,10 +10,10 @@ Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
-#include "MouseInterface.h"
-#include "6821.h"
-#include "Memory.h"
-#include "CPU.h"
+#include "apple2/MouseInterface.h"
+#include "apple2/6821.h"
+#include "apple2/Memory.h"
+#include "apple2/CPU.h"
 #include "Log.h"
 #include "Video.h"
 #include "Structs.h"

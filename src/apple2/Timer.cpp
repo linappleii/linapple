@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <time.h>
 #include <cassert>
 #include <cstdint>
-#include "Timer.h"
+#include "apple2/Timer.h"
 
 static unsigned int g_dwUsecPeriod = 0;
 

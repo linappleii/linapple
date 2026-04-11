@@ -55,16 +55,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <cstdio>
 
-#include "CPU.h"
+#include "apple2/CPU.h"
 #include "Structs.h"
-#include "Memory.h"
+#include "apple2/Memory.h"
 #include "Video.h"
-#include "Speaker.h"
-#include "Joystick.h"
+#include "apple2/Speaker.h"
+#include "apple2/Joystick.h"
 #include "ParallelPrinter.h"
-#include "SerialComms.h"
-#include "Mockingboard.h"
-#include "MouseInterface.h"
+#include "apple2/SerialComms.h"
+#include "apple2/Mockingboard.h"
+#include "apple2/MouseInterface.h"
 #include "Log.h"
 #include "Common_Globals.h"
 #include "Debugger/Debug.h"

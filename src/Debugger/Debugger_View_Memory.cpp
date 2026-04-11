@@ -7,8 +7,8 @@
 
 #include "Debug.h"
 #include "Structs.h"
-#include "CPU.h"
-#include "Memory.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "Debugger_Display.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
@@ -17,7 +17,7 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Color.h"
 #include "Debugger_Assembler.h"
-#include "Mockingboard.h"
+#include "apple2/Mockingboard.h"
 #include "Video.h"
 #include "SDL3/SDL.h"
 

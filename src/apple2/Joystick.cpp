@@ -1,10 +1,10 @@
 #include "Common.h"
 #include <iostream>
 #include <cstdint>
-#include "Joystick.h"
+#include "apple2/Joystick.h"
 #include "Structs.h"
-#include "Memory.h"
-#include "CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/CPU.h"
 #include "Common_Globals.h"
 #include "Log.h"
 

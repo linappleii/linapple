@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "SerialCommsFrontend.h"
-#include "SerialComms.h"
+#include "apple2/SerialComms.h"
 #include "Registry.h"
 #include <unistd.h>
 #include <termios.h>

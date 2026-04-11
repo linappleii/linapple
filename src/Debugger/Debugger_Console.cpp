@@ -38,7 +38,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Cmd_Output.h"
 #include "Util_Text.h"
-#include "Keyboard.h"
+#include "apple2/Keyboard.h"
 #include "Video.h"
 #include <unistd.h>
 #include <cstring>

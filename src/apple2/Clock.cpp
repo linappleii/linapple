@@ -4,8 +4,8 @@
 #include <cassert>
 #include <cstring>
 #include <cstdint>
-#include "Clock.h"
-#include "Memory.h"
+#include "apple2/Clock.h"
+#include "apple2/Memory.h"
 
 
 /*

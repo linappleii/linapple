@@ -23,8 +23,8 @@
 #include <string>
 
 #include "file_entry.h"
-#include "DiskFTP.h"
-#include "ftpparse.h"
+#include "apple2/DiskFTP.h"
+#include "apple2/ftpparse.h"
 #include "Common_Globals.h"
 #include "Util_Text.h"
 #include "DiskChoose.h"

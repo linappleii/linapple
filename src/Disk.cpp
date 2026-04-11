@@ -40,19 +40,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <cstdint>
 
-#include "Disk.h"
-#include "DiskImage.h"
-#include "DiskFTP.h"
-#include "ftpparse.h"
-#include "Memory.h"
-#include "CPU.h"
+#include "apple2/Disk.h"
+#include "apple2/DiskImage.h"
+#include "apple2/DiskFTP.h"
+#include "apple2/ftpparse.h"
+#include "apple2/Memory.h"
+#include "apple2/CPU.h"
 #include "Video.h"
 #include "Log.h"
 #include "Common_Globals.h"
 #include "Structs.h"
 #include "Frame.h"
 #include "Util_Text.h"
-#include "Util_Path.h"
+#include "core/Util_Path.h"
 #include "Registry.h"
 #include "DiskChoose.h"
 
