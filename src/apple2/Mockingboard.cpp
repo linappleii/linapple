@@ -91,7 +91,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
 #include "Log.h"
-#include "Video.h"
+#include "apple2/Video.h"
 
 #define SY6522_DEVICE_A 0
 #define SY6522_DEVICE_B 1

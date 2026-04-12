@@ -10,7 +10,7 @@
 #include "apple2/Disk.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "Frame.h"
 #include "Log.h"
 #include <X11/Xlib.h>

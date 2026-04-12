@@ -15,7 +15,7 @@ Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "Log.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "Structs.h"
 #include "Common_Globals.h"
 

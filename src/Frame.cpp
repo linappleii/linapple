@@ -32,11 +32,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <SDL3_image/SDL_image.h>
 
 #include "Frame.h"
-#include "JoystickFrontend.h"
+#include "frontends/sdl3/SDL_Video.h"
+VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s);
+#include "frontends/sdl3/JoystickFrontend.h"
 #include "apple2/Keyboard.h"
 #include "asset.h"
 #include "Structs.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "stretch.h"
 #include "Log.h"
 #include "Common_Globals.h"
@@ -110,7 +112,7 @@ bool g_bScrollLock_FullSpeed = false;
 
 void DrawAppleContent()
 {
-  pthread_mutex_lock(&video_draw_mutex);
+  g_video_draw_mutex.lock();
   VideoRealizePalette();
 
   DrawStatusArea(DRAW_BACKGROUND | DRAW_LEDS);
@@ -124,14 +126,14 @@ void DrawAppleContent()
   } else {
     VideoRedrawScreen();
   }
-  pthread_mutex_unlock(&video_draw_mutex);
+  g_video_draw_mutex.unlock();
 }
 
 void DrawFrameWindow()
 {
   if (!g_bFrameReady) return;
 
-  pthread_mutex_lock(&video_draw_mutex);
+  g_video_draw_mutex.lock();
   if (g_texture && screen) {
       uint32_t* output = VideoGetOutputBuffer();
       SDL_Rect r = {0, 0, 560, 384};
@@ -158,7 +160,7 @@ void DrawFrameWindow()
       SDL_RenderPresent(g_renderer);
       g_bFrameReady = false;
   }
-  pthread_mutex_unlock(&video_draw_mutex);
+  g_video_draw_mutex.unlock();
 }
 
 void DrawStatusArea(int drawflags)
@@ -293,10 +295,10 @@ void FrameShowHelpScreen(int sx, int sy)
 
   // Logo bit
   VideoSurface vs_icon;
-  vs_icon.pixels = (uint8_t*)assets->icon->pixels;
-  vs_icon.w = assets->icon->w;
-  vs_icon.h = assets->icon->h;
-  vs_icon.pitch = assets->icon->pitch;
+  vs_icon.pixels = (uint8_t*)((SDL_Surface*)assets->icon)->pixels;
+  vs_icon.w = ((SDL_Surface*)assets->icon)->w;
+  vs_icon.h = ((SDL_Surface*)assets->icon)->h;
+  vs_icon.pitch = ((SDL_Surface*)assets->icon)->pitch;
   vs_icon.bpp = 4; // Assuming RGB32
 
   VideoRect logo, scrr;
@@ -369,7 +371,7 @@ void FrameDispatchMessage(SDL_Event *e) {
       break;
 
     case SDL_EVENT_WINDOW_RESIZED:
-      pthread_mutex_lock(&video_draw_mutex);
+      g_video_draw_mutex.lock();
       printf("OLD DIMENSIONS: %d  %d\n", g_state.ScreenWidth, g_state.ScreenHeight);
       g_state.ScreenWidth = e->window.data1;
       g_state.ScreenHeight = (e->window.data2 / 96) * 96;
@@ -384,7 +386,7 @@ void FrameDispatchMessage(SDL_Event *e) {
       g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_state.ScreenWidth, g_state.ScreenHeight);
 
       if (screen == NULL || g_texture == NULL) {
-        pthread_mutex_unlock(&video_draw_mutex);
+        g_video_draw_mutex.unlock();
         SDL_Quit();
         return;
       } else {
@@ -401,7 +403,7 @@ void FrameDispatchMessage(SDL_Event *e) {
           }
         }
       }
-      pthread_mutex_unlock(&video_draw_mutex);
+      g_video_draw_mutex.unlock();
       break;
 
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
@@ -914,8 +916,12 @@ void SetUsingCursor(bool newvalue) {
   }
 }
 
+extern void SDL_Asset_LoadIcon();
+extern void SDL_Asset_FreeIcon();
+
 int FrameCreateWindow()
 {
+  SDL_Asset_LoadIcon();
   bIamFullScreened = false;
 
   Uint32 flags = 0;
@@ -961,11 +967,11 @@ void SetIcon()
 {
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
-  Uint32 colorkey = SDL_MapRGB(SDL_GetPixelFormatDetails(assets->icon->format), SDL_GetSurfacePalette(assets->icon), 0, 0, 0);
-  SDL_SetSurfaceColorKey(assets->icon, true, colorkey);
+  Uint32 colorkey = SDL_MapRGB(SDL_GetPixelFormatDetails(((SDL_Surface*)assets->icon)->format), SDL_GetSurfacePalette((SDL_Surface*)assets->icon), 0, 0, 0);
+  SDL_SetSurfaceColorKey((SDL_Surface*)assets->icon, true, colorkey);
 
   /* No need to pass a mask given the above. */
-  SDL_SetWindowIcon(g_window, assets->icon);
+  SDL_SetWindowIcon(g_window, (SDL_Surface*)assets->icon);
 }
 
 int InitSDL()

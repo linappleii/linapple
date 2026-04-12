@@ -58,7 +58,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/CPU.h"
 #include "Structs.h"
 #include "apple2/Memory.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "apple2/Speaker.h"
 #include "apple2/Joystick.h"
 #include "ParallelPrinter.h"

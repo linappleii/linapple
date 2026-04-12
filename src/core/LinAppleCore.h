@@ -100,6 +100,13 @@ typedef void (*LinappleVideoCallback)(const uint32_t* pixels, int width, int hei
 typedef void (*LinappleAudioCallback)(const int16_t* samples, size_t num_samples);
 
 /**
+ * @brief Callback signature for window title updates.
+ * 
+ * @param title New window title.
+ */
+typedef void (*LinappleTitleCallback)(const char* title);
+
+/**
  * @brief Register a callback for video frame rendering.
  */
 void Linapple_SetVideoCallback(LinappleVideoCallback cb);
@@ -108,6 +115,11 @@ void Linapple_SetVideoCallback(LinappleVideoCallback cb);
  * @brief Register a callback for audio sample output.
  */
 void Linapple_SetAudioCallback(LinappleAudioCallback cb);
+
+/**
+ * @brief Register a callback for window title updates.
+ */
+void Linapple_SetTitleCallback(LinappleTitleCallback cb);
 
 
 #ifdef __cplusplus

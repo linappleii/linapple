@@ -164,7 +164,7 @@ test-keyboard: all ## Run comprehensive keyboard translation tests
 
 test-ssc: all ## Run Super Serial Card unit tests
 	@echo "  TEST    build/bin/test_ssc"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_ssc.cpp build/obj/SerialComms.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_ssc
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_ssc.cpp build/obj/apple2/SerialComms.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_ssc
 	@./build/bin/test_ssc
 
 installcheck: ## Run tests on installed program

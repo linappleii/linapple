@@ -20,7 +20,8 @@
 #include "Debugger_Assembler.h"
 #include "Debugger_Parser.h"
 #include "Util_Text.h"
-#include "Video.h"
+#include "apple2/Video.h"
+#include "frontends/sdl3/SDL_Video.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Range.h"
 #include "AppleWin.h"
@@ -223,10 +224,10 @@ void StretchBltMemToFrameDC(void)
 {
 	VideoRect drect, srect;
 
-	pthread_mutex_lock(&video_draw_mutex);
+	g_video_draw_mutex.lock();
 
   if (!g_hDebugScreen) {
-    pthread_mutex_unlock(&video_draw_mutex);
+    g_video_draw_mutex.unlock();
     return;
   }
 
@@ -240,7 +241,7 @@ void StretchBltMemToFrameDC(void)
 	VideoSoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
 	VideoSoftStretch(g_origscreen, NULL, &vs_screen, NULL);
 
-	pthread_mutex_unlock(&video_draw_mutex);
+	g_video_draw_mutex.unlock();
 }
 
 // Font: Apple Text

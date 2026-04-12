@@ -25,7 +25,7 @@
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
 #include "apple2/MouseInterface.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "Registry.h"
 #include "SaveState.h"
 #include "Frame.h"
@@ -39,7 +39,7 @@
 #include "asset.h"
 #include "core/Util_Path.h"
 #include "Util_Text.h"
-#include "JoystickFrontend.h"
+#include "frontends/sdl3/JoystickFrontend.h"
 #include "apple2/Joystick.h"
 #include "Debugger/Debug.h"
 #include "Debugger_Cmd_Output.h"
@@ -77,7 +77,7 @@ void Linapple_KeyboardThink(uint32_t dwCycles) {
   }
 }
 
-void Linapple_SetKeyState(uint8_t apple_code, bool bDown) {
+extern "C" void Linapple_SetKeyState(uint8_t apple_code, bool bDown) {
   if (bDown) {
     if (g_nRepeatKey == apple_code) return;
     g_nRepeatKey = apple_code;
@@ -92,7 +92,7 @@ void Linapple_SetKeyState(uint8_t apple_code, bool bDown) {
   }
 }
 
-void Linapple_SetAppleKey(int apple_key, bool bDown) {
+extern "C" void Linapple_SetAppleKey(int apple_key, bool bDown) {
   JoySetRawButton(apple_key, bDown);
 }
 
@@ -224,6 +224,15 @@ void SysShutdown() {
   Logger::Destroy();
 }
 
+#include "core/LinAppleCore.h"
+
+static void Frontend_SetWindowTitle(const char* title) {
+    extern SDL_Window *g_window;
+    if (g_window) {
+        SDL_SetWindowTitle(g_window, title);
+    }
+}
+
 int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
                 const char* szImageName_drive1, const char* szImageName_drive2,
                 const char* szSnapshotFile, bool bBoot, bool bPAL) {
@@ -233,6 +242,8 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
     std::string configPath = Path::GetUserDataDir() + "/linapple.conf";
     Configuration::Instance().Load(configPath);
   }
+
+  Linapple_SetTitleCallback(Frontend_SetWindowTitle);
 
   if (bSetFullScreen) g_state.fullscreen = true;
 

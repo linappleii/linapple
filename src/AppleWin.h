@@ -27,9 +27,9 @@ void Sys_Draw();
 bool DSInit();
 void DSShutdown();
 void SingleStep(bool bReinit);
-void Linapple_SetAppleKey(int apple_key, bool bDown);
+extern "C" void Linapple_SetAppleKey(int apple_key, bool bDown);
 void Linapple_SetCapsLockState(bool bEnabled);
-void Linapple_SetKeyState(uint8_t apple_code, bool bDown);
+extern "C" void Linapple_SetKeyState(uint8_t apple_code, bool bDown);
 void Linapple_KeyboardThink(uint32_t dwCycles);
 
 // Constants
