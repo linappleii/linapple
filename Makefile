@@ -11,6 +11,7 @@ SHELL := /bin/sh
 PACKAGE     := linapple
 VERSION     := 3.0.0
 TARGET      := linapple
+FRONTEND    ?= sdl3
 
 # --- Installation Paths ------------------------------------------------------
 
@@ -60,7 +61,7 @@ CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 
 # Preprocessor flags
-CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/frontends/sdl3 -Isrc/apple2 -Isrc/core
+CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/frontends/$(FRONTEND) -Isrc/apple2 -Isrc/core
 CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 
@@ -89,7 +90,15 @@ endif
 
 # --- Source Discovery --------------------------------------------------------
 
-SOURCES := $(shell find $(SRCDIR) -type f -name "*.cpp")
+# Core and hardware are always included
+SOURCES_CORE := $(shell find $(SRCDIR)/core -type f -name "*.cpp")
+SOURCES_A2   := $(shell find $(SRCDIR)/apple2 -type f -name "*.cpp")
+SOURCES_DBG  := $(shell find $(SRCDIR)/Debugger -type f -name "*.cpp")
+
+# Select frontend based on FRONTEND variable
+SOURCES_FE   := $(shell find $(SRCDIR)/frontends/$(FRONTEND) -type f -name "*.cpp")
+
+SOURCES := $(SOURCES_CORE) $(SOURCES_A2) $(SOURCES_DBG) $(SOURCES_FE)
 OBJECTS := $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 DEPS    := $(OBJECTS:.o=.d)
 
@@ -154,7 +163,7 @@ test-cpu: all ## Run automated CPU functional tests
 
 test-integration: all ## Run C++ clean-room hardware integration tests
 	@echo "  TEST    build/bin/test_integration"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Applewin.o %/Main.o %/SDL_Input.o %/MainSession.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Main.o %/MainSession.o %/SDL_Input.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
 	@./build/bin/test_integration
 
 test-keyboard: all ## Run comprehensive keyboard translation tests

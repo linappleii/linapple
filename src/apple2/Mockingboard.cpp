@@ -84,7 +84,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "core/Common.h"
 #include "apple2/Structs.h"
-#include "frontends/sdl3/AppleWin.h"
+#include "frontends/sdl3/Frontend.h"
 #include "AY8910.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"

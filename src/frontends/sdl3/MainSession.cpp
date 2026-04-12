@@ -1,17 +1,9 @@
-#include "frontends/sdl3/AppleWin.h"
+#include "frontends/sdl3/Frontend.h"
 
 #include <SDL3/SDL.h>
-#include <X11/Xlib.h>
 #include <curl/curl.h>
-#include <fcntl.h>
-#include <getopt.h>
-#include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <cinttypes>
 #include <string>
 #include <vector>
@@ -21,39 +13,23 @@
 #include "Debugger/Debug.h"
 #include "frontends/sdl3/Frame.h"
 #include "core/Log.h"
-#include "apple2/ParallelPrinter.h"
 #include "core/Registry.h"
-#include "apple2/SaveState.h"
 #include "apple2/CPU.h"
-#include "apple2/Clock.h"
-#include "apple2/Disk.h"
-#include "apple2/DiskImage.h"
-#include "apple2/Joystick.h"
-#include "apple2/Keyboard.h"
 #include "apple2/Memory.h"
-#include "apple2/Mockingboard.h"
-#include "apple2/Riff.h"
-#include "apple2/SerialComms.h"
-#include "apple2/SoundCore.h"
-#include "apple2/Speaker.h"
-#include "apple2/Timer.h"
 #include "apple2/Video.h"
+#include "apple2/Disk.h"
+#include "apple2/SaveState.h"
 #include "core/asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
 using Logger::Error;
 using Logger::Info;
-using std::string;
-using std::vector;
-
-// Tier 3: Core Application Logic (Applewin.cpp)
 
 static bool g_bBudgetVideo = false;
 
 void SetBudgetVideo(bool b) { g_bBudgetVideo = b; }
-
-auto GetBudgetVideo() -> bool { return g_bBudgetVideo; }
+bool GetBudgetVideo() { return g_bBudgetVideo; }
 
 void SetCurrentCLK6502() {
   g_fCurrentCLK6502 = 1.023 * 1000000.0;
@@ -63,14 +39,8 @@ void SoundCore_SetFade(int fade) { (void)fade; }
 
 void SingleStep(bool bReinit) {
   (void)bReinit;
-  uint32_t dwExecutedCycles = CpuExecute(1);
-  cyclenum += dwExecutedCycles;
-  g_nCumulativeCycles += dwExecutedCycles;
-  VideoUpdateVbl(dwExecutedCycles);
-  UpdateDisplay(UPDATE_ALL);
+  Linapple_RunFrame(1);
 }
-
-void ContinueExecution(uint32_t dwCycles) { Linapple_RunFrame(dwCycles); }
 
 int SysInit(bool bLog) {
   if (bLog) {
@@ -80,7 +50,6 @@ int SysInit(bool bLog) {
 
   Logger::Initialize();
   Asset_Init();
-  SoundCore_Initialize();
 
   if (InitSDL() != 0) {
     return 1;
@@ -94,17 +63,13 @@ int SysInit(bool bLog) {
   }
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
 
-  MemPreInitialize();
-  ImageInitialize();
-  DiskInitialize();
-  CreateColorMixMap();
+  Linapple_Init();
 
   return 0;
 }
 
 void SysShutdown() {
-  SysClk_UninitTimer();
-  RiffFinishWriteFile();
+  Linapple_Shutdown();
 
   DSShutdown();
 
@@ -113,7 +78,6 @@ void SysShutdown() {
     curl_easy_cleanup(g_curl);
     curl_global_cleanup();
   }
-  SoundCore_Destroy();
   Asset_Quit();
   Logger::Destroy();
 }
@@ -141,18 +105,6 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
 
   if (FrameCreateWindow() != 0) return 1;
 
-  MemInitialize();
-  CpuInitialize();
-  VideoInitialize();
-  SpkrInitialize();
-  KeybReset();
-  JoyReset();
-  MB_Initialize();
-
-  uint8_t* pCxRomPeripheral = MemGetAuxPtr(APPLE_SLOT_BEGIN);
-  SSC_Initialize(&sg_SSC, pCxRomPeripheral, 2);
-  PrintInitialize();
-
   if (bPAL) g_videotype = VT_COLOR_TVEMU;
 
   if (szSnapshotFile) {
@@ -170,19 +122,13 @@ int SessionInit(const char* szConfigurationFile, bool bSetFullScreen,
 }
 
 void SessionShutdown() {
-  PrintDestroy();
-  MB_Destroy();
-  DiskDestroy();
-  VideoDestroy();
-  MemDestroy();
-  CpuDestroy();
+    // Session-specific cleanup if needed beyond core shutdown
 }
 
 void CpuTestHeadless(const char* szTestFile) {
   if (!szTestFile) return;
 
-  MemInitialize();
-  CpuInitialize();
+  Linapple_Init();
 
   FILE* f = fopen(szTestFile, "rb");
   if (!f) return;

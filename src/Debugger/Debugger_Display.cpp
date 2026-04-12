@@ -24,7 +24,7 @@
 #include "frontends/sdl3/SDL_Video.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Range.h"
-#include "frontends/sdl3/AppleWin.h"
+#include "frontends/sdl3/Frontend.h"
 #include "apple2/CPU.h"
 #include "frontends/sdl3/Frame.h"
 #include "apple2/Memory.h"

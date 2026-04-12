@@ -1,10 +1,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include "Common.h"
+#include "core/Common.h"
 #include "apple2/SerialComms.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "Common_Globals.h"
+#include "core/Common_Globals.h"
 #include <cstring>
 #include <cstdint>
 

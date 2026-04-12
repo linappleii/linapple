@@ -49,7 +49,7 @@ VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s);
 #include "apple2/DiskFTP.h"
 #include "apple2/SoundCore.h"
 #include "apple2/MouseInterface.h"
-#include "frontends/sdl3/AppleWin.h"
+#include "frontends/sdl3/Frontend.h"
 #include "apple2/SerialComms.h"
 #include "apple2/ParallelPrinter.h"
 #include "apple2/Speaker.h"

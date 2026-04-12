@@ -21,6 +21,7 @@
 #include <vector>
 #include <cstdio>
 #include <string>
+#include <algorithm>
 
 #include "core/file_entry.h"
 #include "apple2/DiskFTP.h"

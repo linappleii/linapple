@@ -1,12 +1,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "Common.h"
+#include "core/Common.h"
 #include <SDL3/SDL.h>
 #include <cstring>
 #include <cstdint>
 #include "doctest.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "Common_Globals.h"
+#include "core/Common_Globals.h"
 
 // The emulator currently uses a global state.
 // To make it testable, we provide a clean initialization for every test.

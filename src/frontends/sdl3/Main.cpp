@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "frontends/sdl3/AppleWin.h"
+#include "frontends/sdl3/Frontend.h"
 #include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Disk.h"
@@ -55,6 +55,12 @@ bool DSInit() {
 
   SDL_ResumeAudioStreamDevice(g_audioStream);
   g_bDSAvailable = true;
+
+  // Register frontend callback to core
+  Linapple_SetAudioCallback([](const int16_t* samples, size_t num_samples) {
+      DSUploadBuffer((short*)samples, (unsigned)num_samples);
+  });
+
   return true;
 }
 

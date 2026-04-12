@@ -1,6 +1,6 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "apple2/Keyboard.h"
-#include "AppleWin.h"
+#include "core/LinAppleCore.h"
 #include <SDL3/SDL.h>
 #include <cassert>
 #include <iostream>

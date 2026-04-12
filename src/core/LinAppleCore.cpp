@@ -120,6 +120,7 @@ void Linapple_Init() {
   ImageInitialize();
   DiskInitialize();
   CreateColorMixMap();
+  SoundCore_Initialize();
 
   MemInitialize();
   CpuInitialize();
@@ -141,6 +142,7 @@ void Linapple_Shutdown() {
   VideoDestroy();
   MemDestroy();
   CpuDestroy();
+  SoundCore_Destroy();
 }
 
 static int16_t g_spkrBuffer[8192];

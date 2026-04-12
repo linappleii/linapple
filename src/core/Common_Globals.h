@@ -4,7 +4,7 @@
 #include "core/Common.h"
 #include <curl/curl.h>
 
-extern char *g_pAppTitle;
+extern const char *g_pAppTitle;
 extern char videoDriverName[100];
 extern eApple2Type g_Apple2Type;
 extern uint64_t cumulativecycles;
@@ -24,9 +24,9 @@ extern struct MouseInterface sg_Mouse;
 extern unsigned int g_Slot4;
 extern CURL *g_curl;
 
-char* GetTitleApple2();
-char* GetTitleApple2Plus();
-char* GetTitleApple2e();
-char* GetTitleApple2eEnhanced();
+const char* GetTitleApple2();
+const char* GetTitleApple2Plus();
+const char* GetTitleApple2e();
+const char* GetTitleApple2eEnhanced();
 
 #endif
