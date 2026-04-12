@@ -24,6 +24,7 @@ auto DSInit() -> bool;
 void DSShutdown();
 void SingleStep(bool bReinit);
 void Linapple_KeyboardThink(uint32_t dwCycles);
+LinAppleKey Frontend_ToCoreKey(int key, unsigned int mod);
 
 // Constants
 constexpr int WINDOW_WIDTH = 560;

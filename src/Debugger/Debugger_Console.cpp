@@ -43,7 +43,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <unistd.h>
 #include <cstring>
 #include <cassert>
-#include "SDL3/SDL.h"
 
 // Globals originally from Debug.cpp
 const char g_aInputCursor[] = "_\x7F"; // insert over-write
@@ -668,8 +667,8 @@ void DebuggerCursorUpdate()
 
   const  int nUpdatesPerSecond = 4;
   const  unsigned int nUpdateInternal_ms = 1000 / nUpdatesPerSecond;
-  static unsigned int nBeg = SDL_GetTicks(); // timeGetTime();
-         unsigned int nNow = SDL_GetTicks(); // timeGetTime();
+  static unsigned int nBeg = Linapple_GetTicks(); // timeGetTime();
+         unsigned int nNow = Linapple_GetTicks(); // timeGetTime();
 
   if (((nNow - nBeg) >= nUpdateInternal_ms) && !DebugVideoMode::Instance().IsSet())
   {
@@ -758,15 +757,14 @@ void DebuggerProcessKey( int keycode )
 
   if (DebugVideoMode::Instance().IsSet())
   {
-    if ((SDLK_LSHIFT == keycode) || (SDLK_RSHIFT == keycode) ||
-        (SDLK_LCTRL == keycode) || (SDLK_RCTRL == keycode) ||
-        (SDLK_MENU == keycode))
+    if ((LINAPPLE_KEY_LSHIFT == keycode) || (LINAPPLE_KEY_RSHIFT == keycode) ||
+        (LINAPPLE_KEY_LCTRL == keycode) || (LINAPPLE_KEY_RCTRL == keycode) ||
+        (LINAPPLE_KEY_MENU == keycode))
     {
       return;
     }
 
     // Normally any key press takes us out of "Viewing Apple Output" mode
-    // SDLK_F# are already processed, so we can't use them to cycle next video mode
     //  if ((mode != MODE_LOGO) && (mode != MODE_DEBUG))
     DebugVideoMode::Instance().Reset();
     UpdateDisplay( UPDATE_ALL ); // 1
@@ -781,21 +779,20 @@ void DebuggerProcessKey( int keycode )
   // For long output, allow user to read it
   if (g_nConsoleBuffer)
   {
-    if ((SDLK_SPACE == keycode) || (SDLK_RETURN == keycode) || (SDLK_TAB == keycode) || (SDLK_ESCAPE == keycode))
+    if ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) || (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode))
     {
       int nLines = MIN( g_nConsoleBuffer, g_nConsoleDisplayLines - 1 ); // was -2
-      if (SDLK_ESCAPE == keycode) // user doesn't want to read all this stu
+      if (LINAPPLE_KEY_ESCAPE == keycode) // user doesn't want to read all this stu
       {
         nLines = g_nConsoleBuffer;
       }
       ConsoleBufferTryUnpause( nLines );
 
-      // don't really need since 'else if (keycode = SDLK_BACK)' but better safe then sorry
       keycode = 0; // don't single-step
     }
   }
 
-  if (keycode == SDLK_BACKSPACE)
+  if (keycode == LINAPPLE_KEY_BACKSPACE)
   {
     if (g_nConsoleInputChars)
     {
@@ -805,7 +802,7 @@ void DebuggerProcessKey( int keycode )
       StretchBltMemToFrameDC();
     }
   }
-  else if ((keycode == SDLK_RETURN) || (keycode == SDLK_KP_ENTER))
+  else if ((keycode == LINAPPLE_KEY_RETURN) || (keycode == LINAPPLE_KEY_KP_ENTER))
   {
     if (g_nConsoleInputChars)
     {
@@ -819,7 +816,7 @@ void DebuggerProcessKey( int keycode )
       bUpdateDisplay |= CmdGoNormalSpeed( 0 );
     }
   }
-  else if (keycode == SDLK_CARET) // US: Tilde ~ (key to the immediate left of numeral 1)
+  else if (keycode == LINAPPLE_KEY_UNKNOWN) // US: Tilde ~ (key to the immediate left of numeral 1)
   {
     if (KeybGetCtrlStatus())
     {
@@ -828,16 +825,14 @@ void DebuggerProcessKey( int keycode )
     }
     else
     {
-      g_nConsoleInputSkip = 0; // SDLK_OEM_3;
       DebuggerInputConsoleChar( '~' );
     }
-    g_nConsoleInputSkip = '~'; // SDLK_OEM_3;
   }
   else
   {
     switch (keycode)
     {
-      case SDLK_TAB:
+      case LINAPPLE_KEY_TAB:
       {
         if (g_nConsoleInputChars)
         {
@@ -853,10 +848,10 @@ void DebuggerProcessKey( int keycode )
         break;
       }
 
-      case SDLK_UP:    bUpdateDisplay |= ConsoleInputHistoryPrev(); break;
-      case SDLK_DOWN:  bUpdateDisplay |= ConsoleInputHistoryNext(); break;
+      case LINAPPLE_KEY_UP:    bUpdateDisplay |= ConsoleInputHistoryPrev(); break;
+      case LINAPPLE_KEY_DOWN:  bUpdateDisplay |= ConsoleInputHistoryNext(); break;
 
-      case SDLK_PAGEUP:
+      case LINAPPLE_KEY_PAGEUP:
         if (KeybGetCtrlStatus())
           _CursorMoveUpAligned( WindowGetHeight( g_iWindowThis ) );
         else
@@ -864,7 +859,7 @@ void DebuggerProcessKey( int keycode )
         bUpdateDisplay |= UPDATE_DISASM;
         break;
 
-      case SDLK_PAGEDOWN:
+      case LINAPPLE_KEY_PAGEDOWN:
         if (KeybGetCtrlStatus())
           _CursorMoveDownAligned( WindowGetHeight( g_iWindowThis ) );
         else
@@ -872,18 +867,18 @@ void DebuggerProcessKey( int keycode )
         bUpdateDisplay |= UPDATE_DISASM;
         break;
 
-      case SDLK_F1:
-      case SDLK_F2:
-      case SDLK_F3:
-      case SDLK_F4:
-      case SDLK_F5:
-      case SDLK_F6:
-      case SDLK_F7:
-      case SDLK_F8:
-      case SDLK_F9:
-      case SDLK_F10:
-      case SDLK_F11:
-      case SDLK_F12:
+      case LINAPPLE_KEY_F1:
+      case LINAPPLE_KEY_F2:
+      case LINAPPLE_KEY_F3:
+      case LINAPPLE_KEY_F4:
+      case LINAPPLE_KEY_F5:
+      case LINAPPLE_KEY_F6:
+      case LINAPPLE_KEY_F7:
+      case LINAPPLE_KEY_F8:
+      case LINAPPLE_KEY_F9:
+      case LINAPPLE_KEY_F10:
+      case LINAPPLE_KEY_F11:
+      case LINAPPLE_KEY_F12:
         break;
 
       default:

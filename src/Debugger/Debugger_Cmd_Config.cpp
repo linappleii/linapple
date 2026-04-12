@@ -13,7 +13,6 @@
 #include "Video.h"
 #include "core/Util_Text.h"
 #include "Util_MemoryTextFile.h"
-#include "SDL3/SDL.h"
 #include <cstddef>
 #include <string>
 

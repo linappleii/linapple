@@ -2,11 +2,10 @@
 #include <cassert>
 #include <algorithm>
 #include <unistd.h>
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
 
 #include "Debugger_Display.h"
 #include "Debug.h"
+extern void FrameRefreshStatus(int);
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Cmd_Output.h"
@@ -21,17 +20,13 @@
 #include "Debugger_Parser.h"
 #include "core/Util_Text.h"
 #include "apple2/Video.h"
-#include "frontends/sdl3/SDL_Video.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Range.h"
-#include "frontends/sdl3/Frontend.h"
 #include "apple2/CPU.h"
-#include "frontends/sdl3/Frame.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/stretch.h"
 #include "core/asset.h"
-#include <pthread.h>
 
 #include "../../build/obj/charset40.xpm" // US/default
 
@@ -177,7 +172,7 @@ char ColorizeSpecialChar( char * sText, unsigned char nData, const MemoryView_e 
   dstrect.y = DST_Y; \
   dstrect.w = DST_W; \
   dstrect.h = DST_H; \
-  SDL_SoftStretch(SRC, &srcrect, DST, &dstrect);\
+  VideoSoftStretch(SRC, &srcrect, DST, &dstrect);\
 }
 
 #define  SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, DST_H) \
@@ -220,29 +215,6 @@ void GetDebugViewPortScale(float *x, float *y)
 	*y = (f>0.01) ? f : 0.01;
 }
 
-void StretchBltMemToFrameDC(void)
-{
-	VideoRect drect, srect;
-
-	g_video_draw_mutex.lock();
-
-  if (!g_hDebugScreen) {
-    g_video_draw_mutex.unlock();
-    return;
-  }
-
-	drect.x = drect.y = srect.x = srect.y = 0;
-	drect.w = 560; // Assuming screen resolution
-	drect.h = 384;
-	srect.w = g_hDebugScreen->w;
-	srect.h = g_hDebugScreen->h;
-
-	VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
-	VideoSoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
-	VideoSoftStretch(g_origscreen, NULL, &vs_screen, NULL);
-
-	g_video_draw_mutex.unlock();
-}
 
 // Font: Apple Text
 void DebuggerSetColorFG( unsigned int nRGB )
@@ -261,7 +233,6 @@ void DebuggerSetColorBG( unsigned int nRGB, bool bTransparent )
 #define CONSOLE_FONT_WIDTH   7
 #define CONSOLE_FONT_HEIGHT  8
 
-//SDL_Color debugColors[256];
 extern int g_hConsoleBrushFG;
 extern int g_hConsoleBrushBG;
 

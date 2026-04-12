@@ -1,11 +1,9 @@
 #include "core/LinAppleCore.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
-#include "apple2/Memory.h"
 #include <cstdio>
 #include <iostream>
 #include <getopt.h>
-#include <string>
 #include <cstring>
 
 void VideoCallback(const uint32_t* pixels, int width, int height, int pitch) {
@@ -59,7 +57,7 @@ int main(int argc, char* argv[]) {
     // Simulate 60 frames (1 second of emulation)
     for (int i = 0; i < 60; ++i) {
         Linapple_RunFrame(17030);
-        
+
         if (i == 10) {
             Linapple_SetKeyState('H', true);
             Linapple_RunFrame(100);

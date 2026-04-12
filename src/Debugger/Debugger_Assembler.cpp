@@ -12,7 +12,6 @@
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "apple2/CPU.h"
-#include "frontends/sdl3/Frame.h"
 #include "apple2/Memory.h"
 
 #define DEBUG_ASSEMBLER 0
@@ -1045,7 +1044,6 @@ void AssemblerHashDirectives ()
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
 #include "Debugger_Console.h"
-#include "SDL3/SDL.h"
 #include "string.h"
 #include <string.h>
 #include <string.h>

@@ -126,8 +126,8 @@ void SDL_HandleEvent(SDL_Event *e) {
             }
           }
         } else if (g_state.mode == MODE_DEBUG) {
-          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-          if (apple_code) DebuggerProcessKey(apple_code);
+          LinAppleKey core_key = Frontend_ToCoreKey(mysym, mymod);
+          if (core_key != LINAPPLE_KEY_UNKNOWN) DebuggerProcessKey(core_key);
         }
       }
       break;

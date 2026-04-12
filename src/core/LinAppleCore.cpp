@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <vector>
 #include <cinttypes>
+#include <chrono>
 #include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Disk.h"
@@ -86,8 +87,6 @@ extern "C" void Linapple_SetAppleKey(int apple_key, bool bDown) {
 }
 
 extern "C" void Linapple_SetJoystickAxis(int axis, int value) {
-    // axis 0=X, 1=Y
-    // value -32768 to 32767
     static int s_joyX = 127;
     static int s_joyY = 127;
     int joy_val = ((value + 32768) * 255) / 65535;
@@ -115,7 +114,6 @@ void Linapple_SetTitleCallback(LinappleTitleCallback cb) {
     g_titleCB = cb;
 }
 
-// Internal bridge functions
 void Linapple_UpdateTitle(const char* title) {
     if (g_titleCB) {
         g_titleCB(title);
@@ -165,18 +163,24 @@ void Linapple_CpuTest(const char* szTestFile) {
   fread(mem, 1, 65536, f);
   fclose(f);
 
-  regs.pc = 0x0400;  // Common start for functional tests
+  regs.pc = 0x0400;
   uint64_t count = 0;
   while (count < 100000000) {
     uint32_t executed = CpuExecute(1);
     count += executed;
-    if (regs.pc == 0x3469) {  // Success trap
+    if (regs.pc == 0x3469) {
       Logger::Info("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc,
                    count);
       break;
     }
   }
   Linapple_Shutdown();
+}
+
+uint32_t Linapple_GetTicks() {
+    static auto start_time = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
 }
 
 static int16_t g_spkrBuffer[8192];
@@ -215,7 +219,6 @@ void SpkrFrontend_Update(uint32_t dwExecutedCycles) {
     if (g_audioCB) {
         g_audioCB(g_spkrBuffer, numSamples);
     } else {
-        // Fallback to legacy DSUpload if no callback registered
         DSUploadBuffer(g_spkrBuffer, numSamples);
     }
   }
@@ -243,7 +246,6 @@ static auto Internal_RunCycles(uint32_t dwCycles) -> uint32_t {
 auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
   if (g_state.mode == MODE_RUNNING) {
 #ifndef HEADLESS
-    // Debugger check
     if (IsDebugSteppingAtFullSpeed()) {
         DebugContinueStepping();
         return 0;
@@ -253,7 +255,6 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
     uint32_t executed = Internal_RunCycles(cycles);
     MB_EndOfVideoFrame();
 
-    // Check for video callback
     if (g_videoCB && g_bFrameReady) {
         uint32_t* output = VideoGetOutputBuffer();
         g_videoCB(output, 560, 384, 560 * 4);
@@ -261,7 +262,6 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
     }
     return executed;
   } else if (g_state.mode == MODE_STEPPING) {
-    // SingleStep logic
     uint32_t dwExecutedCycles = CpuExecute(1);
     cyclenum += dwExecutedCycles;
     g_nCumulativeCycles += dwExecutedCycles;
@@ -270,8 +270,6 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
     UpdateDisplay(UPDATE_ALL);
 #endif
     return dwExecutedCycles;
-  } else if (g_state.mode == MODE_LOGO) {
-    // DrawAppleContent();
   }
   return 0;
 }

@@ -19,7 +19,6 @@
 #include "Debugger_Assembler.h"
 #include "apple2/Mockingboard.h"
 #include "Video.h"
-#include "SDL3/SDL.h"
 
 // Externs for globals
 extern int g_iWindowThis;

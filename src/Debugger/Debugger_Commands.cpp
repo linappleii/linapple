@@ -27,7 +27,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Common.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
-#include "frontends/sdl3/Frame.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Assembler.h"
@@ -35,7 +34,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Help.h"
 #include "core/Log.h"
-#include "SDL3/SDL.h"
 #include <cstring>
 #include <vector>
 #include <algorithm>

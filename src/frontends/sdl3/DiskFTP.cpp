@@ -28,10 +28,10 @@
 #include "apple2/ftpparse.h"
 #include "core/Common_Globals.h"
 #include "core/Util_Text.h"
-#include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/Frame.h"
 #include "core/Log.h"
 #include "core/Registry.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/Frame.h"
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21

@@ -62,6 +62,14 @@ enum AppMode_e {
 
 constexpr int MAX_PATH = 260;
 
+#define SCREEN_WIDTH  560
+#define SCREEN_HEIGHT  384
+
+#define  VIEWPORTX   5
+#define  VIEWPORTY   5
+#define  VIEWPORTCX  560
+#define  VIEWPORTCY  384
+
 typedef struct SystemState_tag {
   AppMode_e mode;
   bool restart;

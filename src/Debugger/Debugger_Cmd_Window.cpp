@@ -11,7 +11,6 @@
 #include "Video.h"
 #include "core/Util_Text.h"
 #include "apple2/CPU.h"
-#include "SDL3/SDL.h"
 #include <cstddef>
 #include <cassert>
 

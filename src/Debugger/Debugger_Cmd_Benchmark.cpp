@@ -6,6 +6,7 @@
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Assembler.h"
 #include "Debug.h"
+extern void FrameRefreshStatus(int);
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
@@ -13,11 +14,9 @@
 #include "Debugger_Color.h"
 #include "core/Log.h"
 #include "Video.h"
-#include "frontends/sdl3/Frame.h"
 #include "apple2/CPU.h"
 #include "core/Util_Text.h"
 #include "apple2/Keyboard.h"
-#include "SDL3/SDL.h"
 
 // Globals originally from Debug.cpp
 bool g_bBenchmarking = false;
@@ -69,8 +68,8 @@ Update_t CmdBenchmarkStop (int nArgs)
 
   FrameRefreshStatus(DRAW_TITLE);
   VideoRedrawScreen();
-  unsigned int currtime = SDL_GetTicks();
-  while ((extbench = SDL_GetTicks()) != currtime)
+  unsigned int currtime = Linapple_GetTicks();
+  while ((extbench = Linapple_GetTicks()) != currtime)
     ; // intentional busy-waiting
   KeybQueueKeypress(' ');
 

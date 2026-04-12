@@ -2,6 +2,7 @@
 #include "Debugger_Cmd_CPU.h"
 #include "apple2/CPU.h"
 #include "Debug.h"
+extern void FrameRefreshStatus(int);
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
 #include "Debugger_Display.h"
@@ -12,12 +13,10 @@
 #include "Debugger_Cmd_Output.h"
 #include "Debugger_Assembler.h"
 #include "Video.h"
-#include "frontends/sdl3/Frame.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Keyboard.h"
 #include "core/Log.h"
 #include "apple2/Memory.h"
-#include "SDL3/SDL.h"
 #include <cstddef>
 #include <cstdio>
 #include <cassert>

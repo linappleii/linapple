@@ -33,8 +33,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Symbols.h"
 #include "Debugger_Help.h"
 #include "core/Util_Text.h"
-#include "frontends/sdl3/Frontend.h"
-#include "SDL3/SDL.h"
 #include <cstring>
 
 	// 2.6.2.13 Added: Can now enable/disable selected symbol table(s) !

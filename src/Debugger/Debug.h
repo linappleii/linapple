@@ -9,10 +9,10 @@
 using namespace std;
 
 #include <cstring>
-#include <SDL3/SDL.h>
+#include "core/LinAppleCore.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "../src/Debugger/Debugger_Breakpoints.h"
+#include "Debugger_Breakpoints.h"
 
 // Globals
 extern bool g_bDebuggerEatKey;
@@ -73,7 +73,7 @@ extern bool g_bTraceFileWithVideoScanner;
 extern char g_sFileNameTrace[];
 
 // Bookmarks
-#include "../src/Debugger/Debugger_Bookmarks.h"
+#include "Debugger_Bookmarks.h"
 
 // Breakpoints
 enum BreakpointHit_t
@@ -140,7 +140,7 @@ extern int g_nFontHeight;
 extern int g_iFontSpacing;
 
 // Memory
-#include "../src/Debugger/Debugger_Memory.h"
+#include "Debugger_Memory.h"
 
 // Source Level Debugging
 extern std::string g_aSourceFileName;
@@ -254,7 +254,7 @@ extern const int DEBUGGER_VERSION;
 
 enum {
   DEBUG_EXIT_KEY = 0x1B, // Escape
-  DEBUG_TOGGLE_KEY = SDLK_F1 + BTN_DEBUG
+  DEBUG_TOGGLE_KEY = LINAPPLE_KEY_F1 + 6
 };
 
 Update_t CmdGoNormalSpeed(int nArgs);
