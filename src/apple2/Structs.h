@@ -2,6 +2,7 @@
 #define STRUCTS_H
 
 #include <cstdint>
+#include "core/Common.h"
 
 // Structs used by save-state file
 

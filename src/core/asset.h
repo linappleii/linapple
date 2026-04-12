@@ -3,8 +3,8 @@
 
 #include "apple2/Video.h"
 
-typedef struct {
-  void         *icon;
+typedef struct assets_tag {
+  void         *icon; // Platform-specific icon handle
   VideoSurface *font;
   VideoSurface *splash;
 } assets_t;

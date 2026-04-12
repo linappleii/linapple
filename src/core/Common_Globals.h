@@ -24,9 +24,9 @@ extern struct MouseInterface sg_Mouse;
 extern unsigned int g_Slot4;
 extern CURL *g_curl;
 
-const char* GetTitleApple2();
-const char* GetTitleApple2Plus();
-const char* GetTitleApple2e();
-const char* GetTitleApple2eEnhanced();
+auto GetTitleApple2() -> const char*;
+auto GetTitleApple2Plus() -> const char*;
+auto GetTitleApple2e() -> const char*;
+auto GetTitleApple2eEnhanced() -> const char*;
 
 #endif

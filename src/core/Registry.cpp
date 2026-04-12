@@ -3,33 +3,31 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include <fstream>
-#include <sstream>
 #include <algorithm>
-#include <iostream>
 #include <sys/stat.h>
 #include <cstring>
 
-static std::string trim(const std::string& s) {
+static auto trim(const std::string& s) -> std::string {
     auto start = s.begin();
-    while (start != s.end() && std::isspace((unsigned char)*start)) {
+    while (start != s.end() && std::isspace(static_cast<unsigned char>(*start))) {
         start++;
     }
     auto end = s.end();
     if (start == end) return "";
     do {
         end--;
-    } while (std::distance(start, end) > 0 && std::isspace((unsigned char)*end));
+    } while (std::distance(start, end) > 0 && std::isspace(static_cast<unsigned char>(*end)));
     return std::string(start, end + 1);
 }
 
-static std::string unquote(const std::string& s) {
+static auto unquote(const std::string& s) -> std::string {
     if (s.length() >= 2 && s.front() == '"' && s.back() == '"') {
         return s.substr(1, s.length() - 2);
     }
     return s;
 }
 
-Configuration& Configuration::Instance() {
+auto Configuration::Instance() -> Configuration& {
     static Configuration instance;
     return instance;
 }
@@ -38,7 +36,7 @@ void Configuration::SetPath(const std::string& path) {
     m_path = path;
 }
 
-bool Configuration::Load(const std::string& path) {
+auto Configuration::Load(const std::string& path) -> bool {
     m_path = path;
     m_data.clear();
 
@@ -92,13 +90,13 @@ void Configuration::LoadDefaults() {
     SetInt("Configuration", "Boot at Startup", 0);
     SetInt("Configuration", "Show Leds", 1);
     SetString("Configuration", "Screen factor", "1.0");
-    
+
     SetString("Preferences", "FTP Server", "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
     SetString("Preferences", "FTP ServerHDD", "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
     SetString("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
 }
 
-bool Configuration::Save() {
+auto Configuration::Save() -> bool {
     if (m_path.empty()) {
         m_path = Path::GetUserConfigDir() + "linapple.conf";
     }
@@ -122,18 +120,18 @@ bool Configuration::Save() {
 #endif
 }
 
-std::string Configuration::GetString(const std::string& section, const std::string& key, const std::string& defaultValue) {
+auto Configuration::GetString(const std::string& section, const std::string& key, const std::string& defaultValue) -> std::string {
     if (m_data.count(section) && m_data[section].count(key)) {
         return m_data[section][key];
     }
-    
+
     for (auto const& s : m_data) {
         if (s.second.count(key)) return s.second.at(key);
     }
     return defaultValue;
 }
 
-uint32_t Configuration::GetInt(const std::string& section, const std::string& key, uint32_t defaultValue) {
+auto Configuration::GetInt(const std::string& section, const std::string& key, uint32_t defaultValue) -> uint32_t {
     std::string val = GetString(section, key);
     if (val.empty()) return defaultValue;
     try {
@@ -143,7 +141,7 @@ uint32_t Configuration::GetInt(const std::string& section, const std::string& ke
     }
 }
 
-bool Configuration::GetBool(const std::string& section, const std::string& key, bool defaultValue) {
+auto Configuration::GetBool(const std::string& section, const std::string& key, bool defaultValue) -> bool {
     std::string val = GetString(section, key);
     if (val.empty()) return defaultValue;
     std::string lowVal = val;
@@ -165,19 +163,19 @@ void Configuration::SetBool(const std::string& section, const std::string& key, 
     m_data[section][key] = value ? "1" : "0";
 }
 
-bool ConfigLoadInt(const char* section, const char* key, uint32_t* value) {
+auto ConfigLoadInt(const char* section, const char* key, uint32_t* value) -> bool {
     if (Configuration::Instance().GetString(section, key).empty()) return false;
     *value = Configuration::Instance().GetInt(section, key, *value);
     return true;
 }
 
-bool ConfigLoadBool(const char* section, const char* key, bool* value) {
+auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool {
     if (Configuration::Instance().GetString(section, key).empty()) return false;
     *value = Configuration::Instance().GetBool(section, key, *value);
     return true;
 }
 
-bool ConfigLoadString(const char* section, const char* key, std::string* value) {
+auto ConfigLoadString(const char* section, const char* key, std::string* value) -> bool {
     std::string s = Configuration::Instance().GetString(section, key);
     if (s.empty()) return false;
     *value = s;
@@ -188,7 +186,7 @@ void ConfigSaveInt(const char* section, const char* key, uint32_t value) {
     Configuration::Instance().SetInt(section, key, value);
 }
 
-char *php_trim(char *c, int len) {
+auto php_trim(char *c, int len) -> char * {
     std::string s(c, len);
     std::string t = trim(s);
     return strdup(t.c_str());

@@ -3,8 +3,8 @@
 #pragma once
 
 // Frontend-specific keyboard helpers
-uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod);
-bool Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown);
+auto Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) -> uint8_t;
+auto Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown) -> bool;
 
 enum {
   NOT_ASCII = 0, ASCII

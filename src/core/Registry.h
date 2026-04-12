@@ -6,17 +6,17 @@
 
 class Configuration {
 public:
-    static Configuration& Instance();
+    static auto Instance() -> Configuration&;
 
-    bool Load(const std::string& path);
+    auto Load(const std::string& path) -> bool;
     void LoadDefaults();
-    bool Save();
+    auto Save() -> bool;
     void SetPath(const std::string& path);
-    const std::string& GetPath() const { return m_path; }
+    auto GetPath() const -> const std::string& { return m_path; }
 
-    std::string GetString(const std::string& section, const std::string& key, const std::string& defaultValue = "");
-    uint32_t GetInt(const std::string& section, const std::string& key, uint32_t defaultValue = 0);
-    bool GetBool(const std::string& section, const std::string& key, bool defaultValue = false);
+    auto GetString(const std::string& section, const std::string& key, const std::string& defaultValue = "") -> std::string;
+    auto GetInt(const std::string& section, const std::string& key, uint32_t defaultValue = 0) -> uint32_t;
+    auto GetBool(const std::string& section, const std::string& key, bool defaultValue = false) -> bool;
 
     void SetString(const std::string& section, const std::string& key, const std::string& value);
     void SetInt(const std::string& section, const std::string& key, uint32_t value);
@@ -28,9 +28,9 @@ private:
     std::map<std::string, std::map<std::string, std::string>> m_data;
 };
 
-bool ConfigLoadInt(const char* section, const char* key, uint32_t* value);
-bool ConfigLoadBool(const char* section, const char* key, bool* value);
-bool ConfigLoadString(const char* section, const char* key, std::string* value);
+auto ConfigLoadInt(const char* section, const char* key, uint32_t* value) -> bool;
+auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool;
+auto ConfigLoadString(const char* section, const char* key, std::string* value) -> bool;
 void ConfigSaveInt(const char* section, const char* key, uint32_t value);
 
-char *php_trim(char *c, int len);
+auto php_trim(char *c, int len) -> char *;

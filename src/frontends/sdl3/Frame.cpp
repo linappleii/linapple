@@ -23,7 +23,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 #include "core/Common.h"
-#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdio>
@@ -33,23 +32,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
-VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s);
-#include "frontends/sdl3/JoystickFrontend.h"
+auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/Keyboard.h"
 #include "core/asset.h"
-#include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "apple2/stretch.h"
-#include "core/Log.h"
 #include "core/Common_Globals.h"
 #include "Debugger/Debug.h"
 #include "core/Registry.h"
 #include "apple2/Disk.h"
 #include "apple2/Harddisk.h"
-#include "apple2/DiskFTP.h"
 #include "apple2/SoundCore.h"
-#include "apple2/MouseInterface.h"
-#include "frontends/sdl3/Frontend.h"
 #include "apple2/SerialComms.h"
 #include "apple2/ParallelPrinter.h"
 #include "apple2/Speaker.h"
@@ -141,7 +134,7 @@ void DrawFrameWindow()
       // Fill screen from RGB32 output buffer
       if (g_state.mode != MODE_DEBUG) {
           VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
-          VideoSurface vs_output;
+          VideoSurface vs_output{};
           vs_output.pixels = (uint8_t*)output;
           vs_output.w = 560;
           vs_output.h = 384;
@@ -155,8 +148,8 @@ void DrawFrameWindow()
           }
       }
 
-      SDL_UpdateTexture(g_texture, NULL, screen->pixels, screen->pitch);
-      SDL_RenderTexture(g_renderer, g_texture, NULL, NULL);
+      SDL_UpdateTexture(g_texture, nullptr, screen->pixels, screen->pitch);
+      SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
       SDL_RenderPresent(g_renderer);
       g_bFrameReady = false;
   }
@@ -183,7 +176,7 @@ void DrawStatusArea(int drawflags)
     srect.y = 22;
     srect.w = STATUS_PANEL_W - 8;
     srect.h = STATUS_PANEL_H - 25;
-    
+
     // Fill background of status surface
     for (int y = srect.y; y < srect.y + srect.h; ++y) {
         memset(g_hStatusSurface->pixels + y * g_hStatusSurface->pitch + srect.x, mybluez, srect.w);
@@ -275,12 +268,12 @@ void FrameShowHelpScreen(int sx, int sy)
   VideoSoftStretch(tempSurface, NULL, my_screen_vs, NULL);
   VideoSoftStretch(my_screen_vs, NULL, &vs_actual_screen, NULL);
 
-  double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
-  double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
+  double facx = static_cast<double>(g_state.ScreenWidth) / static_cast<double>(SCREEN_WIDTH);
+  double facy = static_cast<double>(g_state.ScreenHeight) / static_cast<double>(SCREEN_HEIGHT);
 
-  font_print_centered(sx / 2, int(5 * facy), (char *) HelpStrings[0], &vs_actual_screen, 1.5 * facx, 1.3 * facy);
-  font_print_centered(sx / 2, int(20 * facy), (char *) HelpStrings[1], &vs_actual_screen, 1.3 * facx, 1.2 * facy);
-  font_print_centered(sx / 2, int(30 * facy), (char *) HelpStrings[2], &vs_actual_screen, 1.2 * facx, 1.0 * facy);
+  font_print_centered(sx / 2, static_cast<int>(5 * facy), const_cast<char *>(HelpStrings[0]), &vs_actual_screen, 1.5 * facx, 1.3 * facy);
+  font_print_centered(sx / 2, static_cast<int>(20 * facy), const_cast<char *>(HelpStrings[1]), &vs_actual_screen, 1.3 * facx, 1.2 * facy);
+  font_print_centered(sx / 2, static_cast<int>(30 * facy), const_cast<char *>(HelpStrings[2]), &vs_actual_screen, 1.2 * facx, 1.0 * facy);
 
   int Help_TopX = int(45 * facy);
   for (int i = 3; i < MAX_LINES; i++) {
@@ -294,20 +287,20 @@ void FrameShowHelpScreen(int sx, int sy)
   rectangle(&vs_actual_screen, 1, 1, g_state.ScreenWidth - 2, (Help_TopX - 8), 0xFFFF00);
 
   // Logo bit
-  VideoSurface vs_icon;
-  vs_icon.pixels = (uint8_t*)((SDL_Surface*)assets->icon)->pixels;
-  vs_icon.w = ((SDL_Surface*)assets->icon)->w;
-  vs_icon.h = ((SDL_Surface*)assets->icon)->h;
-  vs_icon.pitch = ((SDL_Surface*)assets->icon)->pitch;
+  VideoSurface vs_icon{};
+  vs_icon.pixels = static_cast<uint8_t*>((static_cast<SDL_Surface*>(assets->icon))->pixels);
+  vs_icon.w = (static_cast<SDL_Surface*>(assets->icon))->w;
+  vs_icon.h = (static_cast<SDL_Surface*>(assets->icon))->h;
+  vs_icon.pitch = (static_cast<SDL_Surface*>(assets->icon))->pitch;
   vs_icon.bpp = 4; // Assuming RGB32
 
-  VideoRect logo, scrr;
+  VideoRect logo{}, scrr{};
   logo.x = logo.y = 0;
   logo.w = vs_icon.w;
   logo.h = vs_icon.h;
-  scrr.x = int(460 * facx);
-  scrr.y = int(270 * facy);
-  scrr.w = scrr.h = int(100 * facy);
+  scrr.x = static_cast<int>(460 * facx);
+  scrr.y = static_cast<int>(270 * facy);
+  scrr.w = scrr.h = static_cast<int>(100 * facy);
   VideoSoftStretchOr(&vs_icon, &logo, &vs_actual_screen, &scrr);
 
   if (g_texture && screen) {
@@ -336,7 +329,7 @@ void FrameQuickState(int num, int mod)
 {
   // quick load or save state with number num, if Shift is pressed, state is being saved, otherwise - being loaded
   char fpath[MAX_PATH];
-  snprintf(fpath, MAX_PATH, "%.*s/SaveState%d.aws", int(strlen(g_state.sSaveStateDir)), g_state.sSaveStateDir, num);
+  snprintf(fpath, MAX_PATH, "%.*s/SaveState%d.aws", static_cast<int>(strlen(g_state.sSaveStateDir)), g_state.sSaveStateDir, num);
   Snapshot_SetFilename(fpath);
   if (mod & SDL_KMOD_SHIFT) {
     Snapshot_SaveState();
@@ -406,7 +399,7 @@ void Frame_OnExpose() {
     }
 }
 
-bool PSP_SaveStateSelectImage(bool saveit)
+auto PSP_SaveStateSelectImage(bool saveit) -> bool
 {
   static size_t fileIndex = 0;
   static int backdx = 0;
@@ -608,7 +601,7 @@ void ProcessButtonClick(int button, int mod)
         {
           if (g_state.mode == MODE_DEBUG)
           {
-            unsigned int debugVideoMode;
+            unsigned int debugVideoMode = 0;
             if (DebugGetVideoMode(&debugVideoMode)) {
               VideoRefreshScreen();
             }
@@ -677,8 +670,9 @@ void SetFullScreenMode() {
   if (!bIamFullScreened) {
     bIamFullScreened = true;
     SDL_SetWindowFullscreen(g_window, true);
-    if (g_state.mode != MODE_DEBUG)
+    if (g_state.mode != MODE_DEBUG) {
       SDL_HideCursor();
+    }
   }
 }
 
@@ -715,7 +709,7 @@ void SetUsingCursor(bool newvalue) {
 extern void SDL_Asset_LoadIcon();
 extern void SDL_Asset_FreeIcon();
 
-int FrameCreateWindow()
+auto FrameCreateWindow() -> int
 {
   SDL_Asset_LoadIcon();
   bIamFullScreened = false;

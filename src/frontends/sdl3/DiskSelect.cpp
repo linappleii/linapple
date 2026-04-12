@@ -10,7 +10,6 @@
 #include "frontends/sdl3/Frame.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 
 // Note: These were previously in Disk.cpp but are now in the frontend
 // because they drive the UI (DiskChoose) and use frontend-specific logic.
@@ -25,7 +24,7 @@ void DiskSelectImage(int drive, char* pszFilename)
 
   std::string filename;
   std::string fullPath;
-  bool isdir;
+  bool isdir = false;
 
   fileIndex = backdx;
   isdir = true;
@@ -100,9 +99,9 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 
   std::string filename;      // given filename
   std::string fullPath;  // full path for it
-  bool isdir;      // if given filename is a directory?
+  bool isdir = false;      // if given filename is a directory?
 
-  struct stat info;
+  struct stat info{};
 
   fileIndex = backdx;
   isdir = true;
@@ -148,7 +147,7 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
 
   std::string localPath = std::string(g_state.sFTPLocalDir) + "/" +  filename; // local path for file
 
-  int error;
+  int error = 0;
 
   // One moment - if we have some file with the same name
   // we do not want to download it again
@@ -164,8 +163,9 @@ void Disk_FTP_SelectImage(int drive)  // select a disk image using FTP
     } else {
       DiskNotifyInvalidImage(filename.c_str(), error); // show error on the screen (or in console for our case)
     }
-  } else
+  } else {
     printf("Error downloading file %s\n", localPath.c_str());
+  }
 
   backdx = fileIndex;  //store cursor position
   DrawFrameWindow();

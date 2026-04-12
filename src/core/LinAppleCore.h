@@ -19,7 +19,7 @@ extern "C" {
 
 /**
  * @brief Initialize the emulator core and its internal state.
- * 
+ *
  * This must be called before any other Linapple_ function.
  * It sets up the virtual Apple II hardware, memory, and CPU.
  */
@@ -30,25 +30,30 @@ void Linapple_Init();
  */
 void Linapple_Shutdown();
 
+/**
+ * @brief Run a headless CPU test from a file.
+ */
+void Linapple_CpuTest(const char* szTestFile);
+
 
 // --- Execution Control ---
 
 /**
  * @brief Run the emulator for a specific number of cycles.
- * 
+ *
  * Typically called once per frame (approx. 17,030 cycles for Apple II).
- * 
+ *
  * @param cycles Requested number of cycles to execute.
  * @return uint32_t Actual number of cycles executed.
  */
-uint32_t Linapple_RunFrame(uint32_t cycles);
+auto Linapple_RunFrame(uint32_t cycles) -> uint32_t;
 
 
 // --- Input Handling ---
 
 /**
  * @brief Set the state of a specific Apple II key code.
- * 
+ *
  * @param apple_code The 7-bit Apple II keyboard code.
  * @param down True if the key is pressed, false if released.
  */
@@ -61,7 +66,7 @@ void Linapple_SetCapsLockState(bool enabled);
 
 /**
  * @brief Set the state of a special Apple key (Open/Closed Apple).
- * 
+ *
  * @param key Key identifier (e.g., 0 for Open Apple, 1 for Closed Apple).
  * @param down True if pressed, false if released.
  */
@@ -69,7 +74,7 @@ void Linapple_SetAppleKey(int key, bool down);
 
 /**
  * @brief Update joystick axis position.
- * 
+ *
  * @param axis Axis index (0 for X, 1 for Y).
  * @param value Axis value, typically ranging from -32768 to 32767.
  */
@@ -77,7 +82,7 @@ void Linapple_SetJoystickAxis(int axis, int value);
 
 /**
  * @brief Set the state of a joystick button.
- * 
+ *
  * @param button Button index (0 or 1).
  * @param down True if pressed, false if released.
  */
@@ -88,28 +93,28 @@ void Linapple_SetJoystickButton(int button, bool down);
 
 /**
  * @brief Callback signature for video frame updates.
- * 
+ *
  * @param pixels Pointer to the 32-bit RGBA pixel data.
  * @param width Width of the frame in pixels.
  * @param height Height of the frame in pixels.
  * @param pitch Number of bytes per row of pixels.
  */
-typedef void (*LinappleVideoCallback)(const uint32_t* pixels, int width, int height, int pitch);
+using LinappleVideoCallback = void (*)(const uint32_t* pixels, int width, int height, int pitch);
 
 /**
  * @brief Callback signature for audio sample updates.
- * 
+ *
  * @param samples Pointer to interleaved 16-bit signed stereo samples.
  * @param num_samples Number of samples (frames * channels).
  */
-typedef void (*LinappleAudioCallback)(const int16_t* samples, size_t num_samples);
+using LinappleAudioCallback = void (*)(const int16_t* samples, size_t num_samples);
 
 /**
  * @brief Callback signature for window title updates.
- * 
+ *
  * @param title New window title.
  */
-typedef void (*LinappleTitleCallback)(const char* title);
+using LinappleTitleCallback = void (*)(const char* title);
 
 /**
  * @brief Register a callback for video frame rendering.

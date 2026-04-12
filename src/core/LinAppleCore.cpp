@@ -2,6 +2,7 @@
 #include "core/Common.h"
 #include <cstdio>
 #include <vector>
+#include <cinttypes>
 #include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Disk.h"
@@ -18,11 +19,14 @@
 #include "apple2/SerialComms.h"
 #include "apple2/Joystick.h"
 #include "apple2/Riff.h"
+#ifndef HEADLESS
 #include "Debugger/Debug.h"
+#endif
 #include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "apple2/Structs.h"
 #include "apple2/ParallelPrinter.h"
+#include "core/asset.h"
 
 // Forward declarations for coupled frontend functions (to be decoupled in later phases)
 extern void SSCFrontend_Update(struct SuperSerialCard*, uint32_t);
@@ -87,8 +91,11 @@ extern "C" void Linapple_SetJoystickAxis(int axis, int value) {
     static int s_joyX = 127;
     static int s_joyY = 127;
     int joy_val = ((value + 32768) * 255) / 65535;
-    if (axis == 0) s_joyX = joy_val;
-    else if (axis == 1) s_joyY = joy_val;
+    if (axis == 0) {
+      s_joyX = joy_val;
+    } else if (axis == 1) {
+      s_joyY = joy_val;
+    }
     JoySetRawPosition(0, s_joyX, s_joyY);
 }
 
@@ -117,6 +124,7 @@ void Linapple_UpdateTitle(const char* title) {
 
 void Linapple_Init() {
   MemPreInitialize();
+  Asset_Init();
   ImageInitialize();
   DiskInitialize();
   CreateColorMixMap();
@@ -129,7 +137,7 @@ void Linapple_Init() {
   KeybReset();
   JoyReset();
   MB_Initialize();
-  
+
   uint8_t* pCxRomPeripheral = MemGetAuxPtr(APPLE_SLOT_BEGIN);
   SSC_Initialize(&sg_SSC, pCxRomPeripheral, 2); // Slot 2
   PrintInitialize();
@@ -143,6 +151,32 @@ void Linapple_Shutdown() {
   MemDestroy();
   CpuDestroy();
   SoundCore_Destroy();
+  Asset_Quit();
+}
+
+void Linapple_CpuTest(const char* szTestFile) {
+  if (!szTestFile) return;
+
+  Linapple_Init();
+
+  FILE* f = fopen(szTestFile, "rb");
+  if (!f) return;
+
+  fread(mem, 1, 65536, f);
+  fclose(f);
+
+  regs.pc = 0x0400;  // Common start for functional tests
+  uint64_t count = 0;
+  while (count < 100000000) {
+    uint32_t executed = CpuExecute(1);
+    count += executed;
+    if (regs.pc == 0x3469) {  // Success trap
+      Logger::Info("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc,
+                   count);
+      break;
+    }
+  }
+  Linapple_Shutdown();
 }
 
 static int16_t g_spkrBuffer[8192];
@@ -152,7 +186,7 @@ void SpkrFrontend_Update(uint32_t dwExecutedCycles) {
 
   static bool s_lastState = false;
   static double s_nextSampleCycle = 0;
-  double clksPerSample = (double)g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
+  double clksPerSample = g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
 
   SpkrEvent events[MAX_SPKR_EVENTS];
   int num_events = SpkrGetEvents(events, MAX_SPKR_EVENTS);
@@ -161,12 +195,13 @@ void SpkrFrontend_Update(uint32_t dwExecutedCycles) {
   uint64_t startCycle = g_nCumulativeCycles - dwExecutedCycles;
   uint64_t endCycle = g_nCumulativeCycles;
 
-  if (s_nextSampleCycle < (double)startCycle)
+  if (s_nextSampleCycle < static_cast<double>(startCycle)) {
     s_nextSampleCycle = (double)startCycle;
+  }
 
   int numSamples = 0;
-  while (s_nextSampleCycle < (double)endCycle && numSamples < 8190) {
-    while (event_idx < num_events && (double)events[event_idx].cycle <= s_nextSampleCycle) {
+  while (s_nextSampleCycle < static_cast<double>(endCycle) && numSamples < 8190) {
+    while (event_idx < num_events && static_cast<double>(events[event_idx].cycle) <= s_nextSampleCycle) {
       s_lastState = events[event_idx].state;
       event_idx++;
     }
@@ -186,7 +221,7 @@ void SpkrFrontend_Update(uint32_t dwExecutedCycles) {
   }
 }
 
-static uint32_t Internal_RunCycles(uint32_t dwCycles) {
+static auto Internal_RunCycles(uint32_t dwCycles) -> uint32_t {
   if (dwCycles == 0) return 0;
 
   uint32_t dwExecutedCycles = CpuExecute(dwCycles);
@@ -205,18 +240,19 @@ static uint32_t Internal_RunCycles(uint32_t dwCycles) {
   return dwExecutedCycles;
 }
 
-uint32_t Linapple_RunFrame(uint32_t cycles) {
+auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
   if (g_state.mode == MODE_RUNNING) {
+#ifndef HEADLESS
     // Debugger check
     if (IsDebugSteppingAtFullSpeed()) {
         DebugContinueStepping();
-        // MB_EndOfVideoFrame(); // ???
-        return 0; // Not sure how to count cycles here yet
+        return 0;
     }
+#endif
 
     uint32_t executed = Internal_RunCycles(cycles);
     MB_EndOfVideoFrame();
-    
+
     // Check for video callback
     if (g_videoCB && g_bFrameReady) {
         uint32_t* output = VideoGetOutputBuffer();
@@ -230,7 +266,9 @@ uint32_t Linapple_RunFrame(uint32_t cycles) {
     cyclenum += dwExecutedCycles;
     g_nCumulativeCycles += dwExecutedCycles;
     VideoUpdateVbl(dwExecutedCycles);
+#ifndef HEADLESS
     UpdateDisplay(UPDATE_ALL);
+#endif
     return dwExecutedCycles;
   } else if (g_state.mode == MODE_LOGO) {
     // DrawAppleContent();

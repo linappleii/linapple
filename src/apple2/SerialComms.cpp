@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <cstdint>
 #include "apple2/SerialComms.h"
-#include "SerialCommsFrontend.h"
 #include "apple2/CPU.h"
 #include "core/Log.h"
 #include "apple2/Memory.h"

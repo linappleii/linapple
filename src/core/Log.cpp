@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Nick Westgate
  */
 
-#include "core/Common.h"
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
@@ -64,10 +63,10 @@ static void vLogOutput(LogLevel level, const char* format, va_list args) {
 namespace Logger {
   void Initialize() {
     g_fh = fopen("AppleWin.log", "a+t");
-    struct timeval tv;
-    struct tm *ptm;
+    struct timeval tv{};
+    struct tm *ptm = nullptr;
     char time_str[40];
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
     ptm = localtime(&tv.tv_sec);
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", ptm);
     if (g_fh) {
@@ -121,5 +120,5 @@ namespace Logger {
       g_fh = NULL;
     }
   }
-}
+} // namespace Logger
 

@@ -55,8 +55,12 @@ BINDIR      := $(BUILD_ROOT)/bin
 # --- Flags & Libraries -------------------------------------------------------
 
 # Library detection via pkg-config
-SDL_CFLAGS  := $(shell $(PKG_CONFIG) --cflags sdl3 sdl3-image)
-SDL_LIBS    := $(shell $(PKG_CONFIG) --libs sdl3 sdl3-image)
+ifeq ($(FRONTEND),sdl3)
+  SDL_CFLAGS  := $(shell $(PKG_CONFIG) --cflags sdl3 sdl3-image)
+  SDL_LIBS    := $(shell $(PKG_CONFIG) --libs sdl3 sdl3-image)
+  FRONTEND_LIBS := $(SDL_LIBS) -lX11
+endif
+
 CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config --cflags)
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 
@@ -71,7 +75,7 @@ CXXFLAGS += -MMD -MP
 
 # Linker flags
 LDFLAGS  += -pthread -flto=auto
-LDLIBS   += $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lX11
+LDLIBS   += $(FRONTEND_LIBS) $(CURL_LIBS) -lz -lzip
 
 # --- Build Modes -------------------------------------------------------------
 
@@ -90,12 +94,17 @@ endif
 
 # --- Source Discovery --------------------------------------------------------
 
+# Select frontend based on FRONTEND variable
+ifeq ($(FRONTEND),headless)
+  CPPFLAGS += -DHEADLESS
+else
+  SOURCES_DBG  := $(shell find $(SRCDIR)/Debugger -type f -name "*.cpp")
+endif
+
 # Core and hardware are always included
 SOURCES_CORE := $(shell find $(SRCDIR)/core -type f -name "*.cpp")
 SOURCES_A2   := $(shell find $(SRCDIR)/apple2 -type f -name "*.cpp")
-SOURCES_DBG  := $(shell find $(SRCDIR)/Debugger -type f -name "*.cpp")
 
-# Select frontend based on FRONTEND variable
 SOURCES_FE   := $(shell find $(SRCDIR)/frontends/$(FRONTEND) -type f -name "*.cpp")
 
 SOURCES := $(SOURCES_CORE) $(SOURCES_A2) $(SOURCES_DBG) $(SOURCES_FE)

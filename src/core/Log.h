@@ -1,4 +1,3 @@
-#include <cstdint>
 #pragma once
 
 enum class LogLevel {

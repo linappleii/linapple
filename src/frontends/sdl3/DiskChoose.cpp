@@ -28,6 +28,7 @@ constexpr int FILES_IN_SCREEN = 21;
 constexpr int KEY_DELAY = 25;
 
 constexpr int MAX_FILENAME = 80;
+constexpr int NORMAL_LENGTH = 60;
 
 auto getstat(const char *catalog, const char *fname, uintmax_t *size) -> int
 {
@@ -55,7 +56,9 @@ auto getstat(const char *catalog, const char *fname, uintmax_t *size) -> int
 
 int compareNames(const void *const A, const void *const B)
 {
-    return strcasecmp((*static_cast<const struct dirent * const *>(A))->d_name, (*static_cast<const struct dirent * const *>(B))->d_name);
+    return strcasecmp(
+    (*static_cast<const struct dirent * const *>(A))->d_name,
+    (*static_cast<const struct dirent * const *>(B))->d_name);
 }
 
 // get_sorted_directory
@@ -65,7 +68,7 @@ int compareNames(const void *const A, const void *const B)
 //        file list
 //        size list
 // Exit: true == success
-bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_list)
+auto get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_list) -> bool
 {
   DIR *dp = nullptr;
   struct dirent *entry = nullptr;
@@ -190,10 +193,12 @@ void DiskChoose_Tick(SDL_Event* event)
 
   if (key == SDLK_PAGEDOWN) {
     g_diskChooseState.act_file += FILES_IN_SCREEN;
-    if (g_diskChooseState.act_file >= g_diskChooseState.file_list.size())
+    if (g_diskChooseState.act_file >= g_diskChooseState.file_list.size()) {
       g_diskChooseState.act_file = (g_diskChooseState.file_list.size() - 1);
-    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN))
+    }
+    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
       g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+    }
   }
 
   if (key == SDLK_RETURN) {
@@ -235,7 +240,7 @@ void DiskChoose_Tick(SDL_Event* event)
     if (char_hit) {
       for (size_t i = 0; i < g_diskChooseState.file_list.size(); ++i) {
         if (g_diskChooseState.file_list[i].name.size() > 0) {
-          if (toupper(g_diskChooseState.file_list[i].name[0]) == toupper((char) key)) {
+          if (toupper(g_diskChooseState.file_list[i].name[0]) == toupper(static_cast<char>(key))) {
             g_diskChooseState.act_file = i;
             if (g_diskChooseState.act_file < g_diskChooseState.first_file) {
               g_diskChooseState.first_file = g_diskChooseState.act_file;
@@ -255,8 +260,8 @@ void DiskChoose_Draw()
 {
   if (!g_diskChooseState.active) return;
 
-  const double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
-  const double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
+  const double facx = static_cast<double>(g_state.ScreenWidth) / static_cast<double>(SCREEN_WIDTH);
+  const double facy = static_cast<double>(g_state.ScreenHeight) / static_cast<double>(SCREEN_HEIGHT);
   const int sx = g_state.ScreenWidth;
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main loop or blocking proxy)
@@ -266,7 +271,7 @@ void DiskChoose_Draw()
 
   VideoSoftStretch(&vs_bg, NULL, &vs_screen, NULL);
 
-#define  NORMAL_LENGTH 60
+  constexpr int NORMAL_LENGTH = 60;
   font_print_centered(sx / 2, 5 * facy, g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(), &vs_screen, 1.5 * facx, 1.3 * facy);
 
   if (g_diskChooseState.slot == 6) {
@@ -282,7 +287,7 @@ void DiskChoose_Draw()
   }
   font_print_centered(sx / 2, 30 * facy, "Press ENTER to choose, or ESC to cancel", &vs_screen, 1.0 * facx, 1.0 * facy);
 
-  int TOPX = int(45 * facy);
+  int TOPX = static_cast<int>(45 * facy);
 
   for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
     const size_t i = g_diskChooseState.first_file + j;
@@ -316,22 +321,22 @@ void DiskChoose_Draw()
   DrawFrameWindow();
 }
 
-bool ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
-                   std::string& filename, bool& isdir, size_t& index_file)
+auto ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
+                   std::string& filename, bool& isdir, size_t& index_file) -> bool
 {
   disk_file_list_generator_t file_list_generator(incoming_dir);
   return ChooseImageDialog(sx, sy, incoming_dir, slot, &file_list_generator,
                            filename, isdir, index_file);
 }
 
-bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
-                       std::string& filename, bool& isdir, size_t& index_file)
+auto ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_generator_t* file_list_generator,
+                       std::string& filename, bool& isdir, size_t& index_file) -> bool
 {
   (void)sy;
-  const double facx = double(g_state.ScreenWidth) / double(SCREEN_WIDTH);
-  const double facy = double(g_state.ScreenHeight) / double(SCREEN_HEIGHT);
+  const double facx = static_cast<double>(g_state.ScreenWidth) / static_cast<double>(SCREEN_WIDTH);
+  const double facy = static_cast<double>(g_state.ScreenHeight) / static_cast<double>(SCREEN_HEIGHT);
 
-  if (font_sfc == NULL) {
+  if (font_sfc == nullptr) {
     if (!fonts_initialization()) {
       return false;
     }
@@ -347,11 +352,12 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     } else {
       tempSurface = g_hDeviceBitmap;
     }
-  } else
+  } else {
     tempSurface = g_origscreen;
+  }
 
   static VideoSurface vs_screen;
-  if (tempSurface == NULL) {
+  if (tempSurface == nullptr) {
     vs_screen = SDLSurfaceToVideoSurface(screen);
     tempSurface = &vs_screen;
   }
@@ -361,9 +367,9 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
   VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
 
-  surface_fader(&vs_bg, 0.2F, 0.2F, 0.2F, -1, NULL);
-  VideoSoftStretch(tempSurface, NULL, &vs_bg, NULL);
-  VideoSoftStretch(&vs_bg, NULL, &vs_actual_screen, NULL);
+  surface_fader(&vs_bg, 0.2F, 0.2F, 0.2F, -1, nullptr);
+  VideoSoftStretch(tempSurface, nullptr, &vs_bg, nullptr);
+  VideoSoftStretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
 
   font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), &vs_actual_screen, 1.5 * facx, 1.3 * facy);
   font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), &vs_actual_screen, 1 * facx, 1 * facy);

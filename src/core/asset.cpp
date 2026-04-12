@@ -13,18 +13,16 @@
 #include "core/Util_Text.h"
 #include "apple2/Disk.h"
 #include "apple2/Video.h"
-#include "apple2/Structs.h"
 
 #include "../res/font.xpm"
 #include "../build/obj/splash.xpm"
 
 #define ASSET_MASTER_DSK     "Master.dsk"
 
-assets_t *assets = NULL;
+assets_t *assets = nullptr;
 
-bool Asset_Init(void)
-{
-  assets = (assets_t *) calloc(1, sizeof(assets_t));
+auto Asset_Init() -> bool {
+  assets = static_cast<assets_t *>(calloc(1, sizeof(assets_t)));
   if (NULL == assets) {
     return false;
   }
@@ -40,28 +38,26 @@ bool Asset_Init(void)
   return NULL != assets->splash;
 }
 
-void Asset_Quit(void)
-{
-  if (NULL != assets) {
+void Asset_Quit() {
+  if (nullptr != assets) {
     // Icon is freed by the frontend
 
-    if (NULL != assets->font) {
+    if (nullptr != assets->font) {
       VideoDestroySurface(assets->font);
-      assets->font = NULL;
+      assets->font = nullptr;
     }
 
-    if (NULL != assets->splash) {
+    if (nullptr != assets->splash) {
       VideoDestroySurface(assets->splash);
-      assets->splash = NULL;
+      assets->splash = nullptr;
     }
 
     free(assets);
-    assets = NULL;
+    assets = nullptr;
   }
 }
 
-int Asset_FindMasterDisk(char *path_out)
-{
+auto Asset_FindMasterDisk(char *path_out) -> int {
   std::string fullPath = Path::FindDataFile(ASSET_MASTER_DSK);
   if (fullPath.empty()) {
     printf("[warn ] could not find %s in any search path\n", ASSET_MASTER_DSK);
@@ -73,9 +69,8 @@ int Asset_FindMasterDisk(char *path_out)
   return 0;
 }
 
-int Asset_InsertMasterDisk(void)
-{
-  char *path = (char *) malloc(MAX_PATH);
+auto Asset_InsertMasterDisk() -> int {
+  char *path = static_cast<char *>(malloc(MAX_PATH));
 
   int err = Asset_FindMasterDisk(path);
   if (err) {

@@ -49,7 +49,6 @@ int SysInit(bool bLog) {
   }
 
   Logger::Initialize();
-  Asset_Init();
 
   if (InitSDL() != 0) {
     return 1;
@@ -78,7 +77,6 @@ void SysShutdown() {
     curl_easy_cleanup(g_curl);
     curl_global_cleanup();
   }
-  Asset_Quit();
   Logger::Destroy();
 }
 
