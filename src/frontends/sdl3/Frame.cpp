@@ -1,4 +1,4 @@
-#include "Common_Globals.h"
+#include "core/Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -22,7 +22,7 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -31,30 +31,30 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
-#include "Frame.h"
+#include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
 VideoSurface SDLSurfaceToVideoSurface(SDL_Surface* s);
 #include "frontends/sdl3/JoystickFrontend.h"
 #include "apple2/Keyboard.h"
-#include "asset.h"
-#include "Structs.h"
+#include "core/asset.h"
+#include "apple2/Structs.h"
 #include "apple2/Video.h"
-#include "stretch.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "apple2/stretch.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 #include "Debugger/Debug.h"
-#include "Registry.h"
+#include "core/Registry.h"
 #include "apple2/Disk.h"
 #include "apple2/Harddisk.h"
 #include "apple2/DiskFTP.h"
 #include "apple2/SoundCore.h"
 #include "apple2/MouseInterface.h"
-#include "AppleWin.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "apple2/SerialComms.h"
-#include "ParallelPrinter.h"
+#include "apple2/ParallelPrinter.h"
 #include "apple2/Speaker.h"
-#include "DiskChoose.h"
-#include "SaveState.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "apple2/SaveState.h"
 #include "apple2/Joystick.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/CPU.h"
@@ -88,11 +88,11 @@ SDL_Rect newRect;
 
 static bool g_bAppActive = false;
 
-static int buttondown = -1;
+int buttondown = -1;
 
 bool g_WindowResized;
 
-static bool usingcursor = false;
+bool usingcursor = false;
 
 void DrawStatusArea(int drawflags);
 
@@ -345,7 +345,7 @@ void FrameQuickState(int num, int mod)
   }
 }
 
-static bool IsModifierKey(SDL_Keycode sym) {
+bool IsModifierKey(SDL_Keycode sym) {
   switch (sym) {
     case SDLK_LSHIFT:
     case SDLK_RSHIFT:
@@ -362,252 +362,48 @@ static bool IsModifierKey(SDL_Keycode sym) {
   }
 }
 
-void FrameDispatchMessage(SDL_Event *e) {
-  int x, y;
-
-  switch (e->type) {
-    case SDL_EVENT_QUIT:
-      g_state.mode = MODE_EXIT;
-      break;
-
-    case SDL_EVENT_WINDOW_RESIZED:
-      g_video_draw_mutex.lock();
-      printf("OLD DIMENSIONS: %d  %d\n", g_state.ScreenWidth, g_state.ScreenHeight);
-      g_state.ScreenWidth = e->window.data1;
-      g_state.ScreenHeight = (e->window.data2 / 96) * 96;
-      if (g_state.ScreenHeight < 192) {
-        g_state.ScreenHeight = 192;
-      }
-
-      if (screen) SDL_DestroySurface(screen);
-      screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
-
-      if (g_texture) SDL_DestroyTexture(g_texture);
-      g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_state.ScreenWidth, g_state.ScreenHeight);
-
-      if (screen == NULL || g_texture == NULL) {
-        g_video_draw_mutex.unlock();
-        SDL_Quit();
-        return;
-      } else {
-        g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) | (g_state.ScreenHeight != SCREEN_HEIGHT);
-        printf("Screen size is %dx%d\n", g_state.ScreenWidth, g_state.ScreenHeight);
-        if (g_WindowResized) {
-          origRect.x = origRect.y = newRect.x = newRect.y = 0;
-          origRect.w = SCREEN_WIDTH;
-          origRect.h = SCREEN_HEIGHT;
-          newRect.w = g_state.ScreenWidth;
-          newRect.h = g_state.ScreenHeight;
-          if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-            VideoRedrawScreen();
-          }
-        }
-      }
-      g_video_draw_mutex.unlock();
-      break;
-
-    case SDL_EVENT_WINDOW_FOCUS_GAINED:
-      g_bAppActive = true;
-      break;
-    case SDL_EVENT_WINDOW_FOCUS_LOST:
-      g_bAppActive = false;
-      break;
-
-    case SDL_EVENT_KEY_DOWN:
-    {
-      SDL_Keycode mysym = e->key.key;
-      SDL_Keymod mymod = e->key.mod;
-      SDL_Scancode myscancode = e->key.scancode;
-
-      if (e->key.repeat == 0) {
-        if (!IsModifierKey(mysym)) {
-          KeybSetAnyKeyDownStatus(true);
-        }
-
-        if (Frontend_HandleKeyEvent(mysym, true)) {
-          break;
-        }
-
-        if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & SDL_KMOD_LCTRL) {
-          FrameQuickState(mysym - SDLK_0, mymod);
-          break;
-        }
-
-        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
-          SetUsingCursor(false);
-          buttondown = mysym - SDLK_F1;
-        } else if (mysym == SDLK_KP_PLUS) {
-          g_state.dwSpeed = g_state.dwSpeed + 2;
-          if (g_state.dwSpeed > SPEED_MAX) {
-            g_state.dwSpeed = SPEED_MAX;
-          }
-          printf("Now speed=%d\n", (int) g_state.dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_KP_MINUS) {
-          if (g_state.dwSpeed > SPEED_MIN) {
-            g_state.dwSpeed = g_state.dwSpeed - 1;
-          }
-          printf("Now speed=%d\n", (int) g_state.dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_KP_MULTIPLY) {
-          g_state.dwSpeed = 10;
-          printf("Now speed=%d\n", (int) g_state.dwSpeed);
-          SetCurrentCLK6502();
-        } else if (mysym == SDLK_CAPSLOCK) {
-          Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
-        } else if (mysym == SDLK_PAUSE) {
-          SetUsingCursor(false);
-          switch (g_state.mode) {
-            case MODE_RUNNING:
-              g_state.mode = MODE_PAUSED;
-              SoundCore_SetFade(FADE_OUT);
-              break;
-            case MODE_PAUSED:
-              g_state.mode = MODE_RUNNING;
-              SoundCore_SetFade(FADE_IN);
-              break;
-            case MODE_STEPPING:
-              DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
-              break;
-            case MODE_LOGO:
-            case MODE_DEBUG:
-            default:
-              break;
-          }
-          DrawStatusArea(DRAW_TITLE);
-          if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-            VideoRedrawScreen();
-          }
-          g_state.bResetTiming = true;
-        } else if (mysym == SDLK_SCROLLLOCK) {
-          g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
-        } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
-          g_bDebuggerEatKey = false;
-          bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
-          if (mymod & SDL_KMOD_RCTRL)
-          {
-            JoyFrontend_UpdateTrimViaKey(mysym);
-          } else {
-            if (!JoyFrontend_ProcessKey(mysym, extended, true, false)) {
-              uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-              Linapple_SetKeyState(apple_code, true);
-            }
-          }
-        } else if (g_state.mode == MODE_DEBUG) {
-          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-          if (apple_code) DebuggerProcessKey(apple_code);
-        }
-      }
-      break;
-    }
-
-    case SDL_EVENT_KEY_UP:
-    {
-      SDL_Keycode mysym = e->key.key;
-      SDL_Keymod mymod = e->key.mod;
-      SDL_Scancode myscancode = e->key.scancode;
-
-      if (!IsModifierKey(mysym)) {
-        KeybSetAnyKeyDownStatus(false);
-      }
-
-      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && ((SDL_Keycode)buttondown == mysym - SDLK_F1)) {
-        buttondown = -1;
-        ProcessButtonClick(mysym - SDLK_F1, mymod);
-      } else if (Frontend_HandleKeyEvent(mysym, false)) {
-        break;
-      } else if (mysym == SDLK_CAPSLOCK) {
-        Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
-      } else {
-        bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
-        if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {
-          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-          Linapple_SetKeyState(apple_code, false);
-        }
-      }
-      break;
-    }
-
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-    {
-      SDL_Keymod mymod = SDL_GetModState();
-      if (e->button.button == SDL_BUTTON_LEFT) {
-        if (buttondown == -1) {
-          x = (int)e->button.x;
-          y = (int)e->button.y;
-          if (g_state.mode == MODE_DEBUG)
-            DebuggerMouseClick(x, y);
-          else
-          if (usingcursor) {
-            if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
-              SetUsingCursor(false);
-            } else {
-              if (Mouse_Active()) {
-                Mouse_SetButton(BUTTON0, BUTTON_DOWN);
-              } else {
-                JoySetButton(BUTTON0, BUTTON_DOWN);
-              }
-            }
-          }
-          else
-          if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
-              (Mouse_Active())) {
-            SetUsingCursor(true);
-          }
-        }
-      }
-      else if (e->button.button == SDL_BUTTON_RIGHT) {
-        if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON1, BUTTON_DOWN);
-          } else {
-            JoySetButton(BUTTON1, BUTTON_DOWN);
-          }
-        }
-      }
-
-      break;
-    }
-
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-      if (e->button.button == SDL_BUTTON_LEFT) {
-        if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON0, BUTTON_UP);
-          } else {
-            JoySetButton(BUTTON0, BUTTON_UP);
-          }
-        }
-      } else if (e->button.button == SDL_BUTTON_RIGHT) {
-        if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON1, BUTTON_UP);
-          } else {
-            JoySetButton(BUTTON1, BUTTON_UP);
-          }
-        }
-      }
-      break;
-
-    case SDL_EVENT_MOUSE_MOTION:
-      x = (int)e->motion.x;
-      y = (int)e->motion.y;
-      if (usingcursor) {
-        if (Mouse_Active()) {
-          Mouse_SetPosition(x, VIEWPORTCX - 4, y, VIEWPORTCY - 4);
-        } else {
-          JoySetPosition(x, VIEWPORTCX - 4, y, VIEWPORTCY - 4);
-        }
-      }
-      break;
-
-    case SDL_EVENT_USER:
-      if (e->user.code == 1) {
-        ProcessButtonClick(BTN_RUN, SDL_KMOD_LCTRL);
-      }
-      break;
-
+void Frame_OnResize(int w, int h) {
+  g_video_draw_mutex.lock();
+  g_state.ScreenWidth = w;
+  g_state.ScreenHeight = (h / 96) * 96;
+  if (g_state.ScreenHeight < 192) {
+    g_state.ScreenHeight = 192;
   }
+
+  if (screen) SDL_DestroySurface(screen);
+  screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight, SDL_PIXELFORMAT_XRGB8888);
+
+  if (g_texture) SDL_DestroyTexture(g_texture);
+  g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, g_state.ScreenWidth, g_state.ScreenHeight);
+
+  if (screen == NULL || g_texture == NULL) {
+    g_video_draw_mutex.unlock();
+    SDL_Quit();
+    return;
+  } else {
+    g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) | (g_state.ScreenHeight != SCREEN_HEIGHT);
+    if (g_WindowResized) {
+      origRect.x = origRect.y = newRect.x = newRect.y = 0;
+      origRect.w = SCREEN_WIDTH;
+      origRect.h = SCREEN_HEIGHT;
+      newRect.w = g_state.ScreenWidth;
+      newRect.h = g_state.ScreenHeight;
+      if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+        VideoRedrawScreen();
+      }
+    }
+  }
+  g_video_draw_mutex.unlock();
+}
+
+void Frame_OnFocus(bool gained) {
+    g_bAppActive = gained;
+}
+
+void Frame_OnExpose() {
+    if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+        VideoRedrawScreen();
+    }
 }
 
 bool PSP_SaveStateSelectImage(bool saveit)

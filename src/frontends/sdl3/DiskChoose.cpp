@@ -1,53 +1,39 @@
-/*
-////////////////////////////////////////////////////////////////////////////
-////////////  Choose disk image for given slot number? ////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////
-*/
-#include "Common.h"
+#include "core/Common.h"
 #include <cstddef>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <cctype>
-#include <cerrno>
 #include <pthread.h>
-#include <iostream>
 #include <vector>
 #include <string>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
 
+#include "core/file_entry.h"
+#include "apple2/Video.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/Frame.h"
+#include "frontends/sdl3/SDL_Video.h"
+#include "apple2/stretch.h"
+
 using std::vector;
 using std::string;
 
-#include "file_entry.h"
-#include "apple2/Video.h"
-#include "DiskChoose.h"
-#include "Util_Text.h"
-#include "Log.h"
-#include "apple2/Keyboard.h"
-#include "apple2/Disk.h"
-#include "apple2/Harddisk.h"
-#include "Frame.h"
-#include "frontends/sdl3/SDL_Video.h"
-#include "stretch.h"
-#include "asset.h"
-#include "Structs.h"
-
 // how many file names we are able to see at once!
-#define FILES_IN_SCREEN    21
+constexpr int FILES_IN_SCREEN = 21;
 
 // delay after key pressed (in milliseconds??)
-#define KEY_DELAY    25
+constexpr int KEY_DELAY = 25;
 
-#define MAX_FILENAME  80
+constexpr int MAX_FILENAME = 80;
 
-int getstat(const char *catalog, const char *fname, uintmax_t *size)
+auto getstat(const char *catalog, const char *fname, uintmax_t *size) -> int
 {
   // gets file status and returns: 0 - special or error, 1 - file is a directory, 2 - file is a normal file
   // In: catalog - working directory, fname - file name
-  struct stat info;
+  struct stat info{};
   char tempname[MAX_PATH];
 
   snprintf(tempname, MAX_PATH, "%s/%s", catalog, fname);
@@ -58,7 +44,7 @@ int getstat(const char *catalog, const char *fname, uintmax_t *size)
     return 1;
   }
   if (S_ISREG(info.st_mode)) {
-    if (size != NULL) {
+    if (size != nullptr) {
       *size = info.st_size / 1024;
     }
     return 2;
@@ -69,7 +55,7 @@ int getstat(const char *catalog, const char *fname, uintmax_t *size)
 
 int compareNames(const void *const A, const void *const B)
 {
-    return strcasecmp((*(struct dirent **) A)->d_name, (*(struct dirent **) B)->d_name);
+    return strcasecmp((*static_cast<const struct dirent * const *>(A))->d_name, (*static_cast<const struct dirent * const *>(B))->d_name);
 }
 
 // get_sorted_directory
@@ -81,8 +67,8 @@ int compareNames(const void *const A, const void *const B)
 // Exit: true == success
 bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_list)
 {
-  DIR *dp;
-  struct dirent *entry;
+  DIR *dp = nullptr;
+  struct dirent *entry = nullptr;
 
   dp = opendir(incoming_dir);
   if (dp == NULL)
@@ -95,19 +81,20 @@ bool get_sorted_directory(const char *incoming_dir, vector<file_entry_t> &file_l
     const char *file_name = entry->d_name;
     const size_t name_length = strlen(file_name);
 
-    if (name_length < 1 || file_name[0] == '.')
+    if (name_length < 1 || file_name[0] == '.') {
       continue;
+    }
 
     uintmax_t fsize = 0;
     const int what = getstat(incoming_dir, file_name, &fsize);
 
     switch (what) {
     case 1:
-      file_list.push_back({ file_name, file_entry_t::DIR, 0 });
+      file_list.emplace_back( file_name, file_entry_t::DIR, 0 );
       continue;
 
     case 2:
-      file_list.push_back({ file_name, file_entry_t::FILE, fsize*1024});
+      file_list.emplace_back( file_name, file_entry_t::FILE, fsize*1024);
       continue;
 
     default:
@@ -130,7 +117,7 @@ struct disk_file_list_generator_t : public file_list_generator_t {
   const std::vector<file_entry_t> generate_file_list();
 
   const std::string get_starting_message() {
-    return "Reading directory listing...";
+    return "Reading directory listing…";
   }
 
   const std::string get_failure_message() {
@@ -143,14 +130,14 @@ private:
 };
 
 
-const std::vector<file_entry_t> disk_file_list_generator_t::generate_file_list()
+auto disk_file_list_generator_t::generate_file_list() -> const std::vector<file_entry_t>
 {
   std::vector<file_entry_t> file_list;
 
   // Forcibly add ".." as first entry to navigate upward
   // to parent directory.
   if (directory != "/") {
-    file_list.push_back({ "..", file_entry_t::UP, 0});
+    file_list.emplace_back( "..", file_entry_t::UP, 0);
   }
 
   if (get_sorted_directory(directory.c_str(), file_list)) {
@@ -173,17 +160,21 @@ void DiskChoose_Tick(SDL_Event* event)
   SDL_Keycode key = event->key.key;
 
   if (key == SDLK_UP || key == SDLK_LEFT) {
-    if (g_diskChooseState.act_file > 0)
+    if (g_diskChooseState.act_file > 0) {
       g_diskChooseState.act_file--;
-    if (g_diskChooseState.act_file < g_diskChooseState.first_file)
+    }
+    if (g_diskChooseState.act_file < g_diskChooseState.first_file) {
       g_diskChooseState.first_file = g_diskChooseState.act_file;
+    }
   }
 
   if (key == SDLK_DOWN || key == SDLK_RIGHT) {
-    if (g_diskChooseState.act_file < (g_diskChooseState.file_list.size() - 1))
+    if (g_diskChooseState.act_file < (g_diskChooseState.file_list.size() - 1)) {
       g_diskChooseState.act_file++;
-    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN))
+    }
+    if (g_diskChooseState.act_file >= (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
       g_diskChooseState.first_file = g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+    }
   }
 
   if (key == SDLK_PAGEUP) {
@@ -192,8 +183,9 @@ void DiskChoose_Tick(SDL_Event* event)
     } else {
       g_diskChooseState.act_file -= FILES_IN_SCREEN;
     }
-    if (g_diskChooseState.act_file < g_diskChooseState.first_file)
+    if (g_diskChooseState.act_file < g_diskChooseState.first_file) {
       g_diskChooseState.first_file = g_diskChooseState.act_file;
+    }
   }
 
   if (key == SDLK_PAGEDOWN) {
@@ -273,10 +265,10 @@ void DiskChoose_Draw()
   VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
 
   VideoSoftStretch(&vs_bg, NULL, &vs_screen, NULL);
-  
+
 #define  NORMAL_LENGTH 60
   font_print_centered(sx / 2, 5 * facy, g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(), &vs_screen, 1.5 * facx, 1.3 * facy);
-  
+
   if (g_diskChooseState.slot == 6) {
     font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", &vs_screen, 1 * facx, 1 * facy);
   } else if (g_diskChooseState.slot == 7) {
@@ -365,7 +357,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   }
 
   g_diskChooseState.bg_screen = SDL_CreateSurface(tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_XRGB8888);
-  
+
   VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
   VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
 
@@ -445,6 +437,6 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     isdir = g_diskChooseState.result_isdir;
     return true;
   }
-  
+
   return false;
 }

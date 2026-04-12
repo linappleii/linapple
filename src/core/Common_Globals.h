@@ -1,7 +1,7 @@
 #ifndef COMMON_GLOBALS_H
 #define COMMON_GLOBALS_H
 
-#include "Common.h"
+#include "core/Common.h"
 #include <curl/curl.h>
 
 extern char *g_pAppTitle;

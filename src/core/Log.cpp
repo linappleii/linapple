@@ -26,12 +26,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Nick Westgate
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
-#include "Log.h"
-#include "Common_Globals.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 
 static LogLevel g_verbosity = LogLevel::Info;
 

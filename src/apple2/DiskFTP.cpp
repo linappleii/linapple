@@ -13,7 +13,7 @@
 
 /* March 2012 AD by Krez, Beom Beotiger */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstring>
 #include <cstddef>
 #include <sys/stat.h>
@@ -22,15 +22,15 @@
 #include <cstdio>
 #include <string>
 
-#include "file_entry.h"
+#include "core/file_entry.h"
 #include "apple2/DiskFTP.h"
 #include "apple2/ftpparse.h"
-#include "Common_Globals.h"
-#include "Util_Text.h"
-#include "DiskChoose.h"
-#include "Frame.h"
-#include "Log.h"
-#include "Registry.h"
+#include "core/Common_Globals.h"
+#include "core/Util_Text.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/Frame.h"
+#include "core/Log.h"
+#include "core/Registry.h"
 
 // how many file names we are able to see at once!
 #define FILES_IN_SCREEN    21

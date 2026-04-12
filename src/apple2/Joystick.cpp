@@ -1,12 +1,12 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <iostream>
 #include <cstdint>
 #include "apple2/Joystick.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
-#include "Common_Globals.h"
-#include "Log.h"
+#include "core/Common_Globals.h"
+#include "core/Log.h"
 
 #define  BUTTONTIME       5000
 

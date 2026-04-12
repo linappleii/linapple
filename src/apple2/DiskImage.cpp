@@ -28,18 +28,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include "apple2/Disk.h"
 #include "apple2/DiskImage.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "core/Util_Path.h"
-#include "Util_Text.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "core/Util_Text.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 /* DO logical order  0 1 2 3 4 5 6 7 8 9 A B C D E F */

@@ -1,9 +1,9 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdio>
 #include <cstdint>
-#include "PrinterFrontend.h"
-#include "Common_Globals.h"
-#include "ParallelPrinter.h"
+#include "frontends/sdl3/PrinterFrontend.h"
+#include "core/Common_Globals.h"
+#include "apple2/ParallelPrinter.h"
 
 static unsigned int inactivity = 0;
 static unsigned int g_PrinterIdleLimit = 10;

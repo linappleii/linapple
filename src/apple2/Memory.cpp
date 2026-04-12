@@ -28,22 +28,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "Common.h"
-#include "Structs.h"
+#include "core/Common.h"
+#include "apple2/Structs.h"
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Joystick.h"
-#include "ParallelPrinter.h"
+#include "apple2/ParallelPrinter.h"
 #include "apple2/SerialComms.h"
 #include "apple2/MouseInterface.h"
 #include "apple2/Disk.h"
 #include "apple2/Harddisk.h"
-#include "Log.h"
-#include "Common_Globals.h"
-#include "resource.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
+#include "core/resource.h"
 
 #include <assert.h>
 #include <stdint.h>

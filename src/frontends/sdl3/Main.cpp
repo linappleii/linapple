@@ -1,23 +1,24 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <SDL3/SDL.h>
 #include <getopt.h>
 #include <cstdio>
 #include <cstdlib>
 
-#include "AppleWin.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Disk.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
-#include "Frame.h"
-#include "Log.h"
+#include "frontends/sdl3/Frame.h"
+#include "core/Log.h"
 #include <X11/Xlib.h>
-#include "Common_Globals.h"
-#include "Util_Text.h"
+#include "core/Common_Globals.h"
+#include "core/Util_Text.h"
 #include "Debugger/Debug.h"
-#include "DiskChoose.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "core/LinAppleCore.h"
 
 // SDL Audio Stream for Frontend
 bool g_bDSAvailable = false;
@@ -64,6 +65,8 @@ void DSShutdown() {
   }
 }
 
+extern void SDL_HandleEvent(SDL_Event *e);
+
 void Sys_Input() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -71,20 +74,16 @@ void Sys_Input() {
       DiskChoose_Tick(&event);
       continue;
     }
-    FrameDispatchMessage(&event);
+    SDL_HandleEvent(&event);
   }
 }
 
 void Sys_Think(uint32_t dwCycles) {
-  if (g_state.mode == MODE_RUNNING) {
-    ContinueExecution(dwCycles);
-    MB_EndOfVideoFrame();
-  } else if (g_state.mode == MODE_STEPPING) {
-    SingleStep(false);
-  } else if (g_state.mode == MODE_LOGO) {
+  Linapple_RunFrame(dwCycles);
+  if (g_state.mode == MODE_LOGO) {
     DrawAppleContent();
   } else if (g_state.mode == MODE_DEBUG) {
-    // Debugger handles its own logic
+    DebuggerUpdate();
   }
 }
 

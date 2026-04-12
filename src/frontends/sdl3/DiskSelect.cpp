@@ -1,15 +1,15 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <sys/stat.h>
 #include "apple2/Disk.h"
-#include "DiskChoose.h"
+#include "frontends/sdl3/DiskChoose.h"
 #include "apple2/DiskFTP.h"
 #include "apple2/ftpparse.h"
-#include "Frame.h"
-#include "Common_Globals.h"
-#include "Registry.h"
+#include "frontends/sdl3/Frame.h"
+#include "core/Common_Globals.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 
 // Note: These were previously in Disk.cpp but are now in the frontend

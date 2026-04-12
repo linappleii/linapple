@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Breakpoints.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -10,7 +10,7 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Assembler.h"
-#include "Log.h"
+#include "core/Log.h"
 #include <cassert>
 #include <cstddef>
 

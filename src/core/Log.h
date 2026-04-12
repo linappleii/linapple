@@ -2,7 +2,7 @@
 #pragma once
 
 enum class LogLevel {
-    None = 0,
+    Silent = 0,
     Error = 1,
     Warn = 2,
     Info = 3,
@@ -24,4 +24,3 @@ namespace Logger {
 #ifndef _VC71
 #define LOG(format, ...) Logger::Debug(format, __VA_ARGS__)
 #endif
-

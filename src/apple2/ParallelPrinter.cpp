@@ -1,8 +1,8 @@
-#include "Common.h"
-#include "PrinterFrontend.h"
+#include "core/Common.h"
+#include "frontends/sdl3/PrinterFrontend.h"
 #include <cstdint>
 #include <cstring>
-#include "ParallelPrinter.h"
+#include "apple2/ParallelPrinter.h"
 #include "apple2/Memory.h"
 
 char Parallel_bin[] = "\x18\xB0\x38\x48\x8A\x48\x98\x48\x08\x78\x20\x58\xFF\xBA\x68\x68"

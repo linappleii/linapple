@@ -60,7 +60,7 @@ CURL_CFLAGS := $(shell $(PKG_CONFIG) --cflags libcurl 2>/dev/null || curl-config
 CURL_LIBS   := $(shell $(PKG_CONFIG) --libs libcurl 2>/dev/null || curl-config --libs)
 
 # Preprocessor flags
-CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/frontends/sdl3
+CPPFLAGS += -I$(INCDIR) -I/usr/local/include -Isrc/Debugger -Isrc/frontends/sdl3 -Isrc/apple2 -Isrc/core
 CPPFLAGS += -DASSET_DIR=\"$(datadir)\" -DVERSIONSTRING=\"$(VERSION)\"
 CPPFLAGS += $(SDL_CFLAGS) $(CURL_CFLAGS)
 
@@ -154,17 +154,17 @@ test-cpu: all ## Run automated CPU functional tests
 
 test-integration: all ## Run C++ clean-room hardware integration tests
 	@echo "  TEST    build/bin/test_integration"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Applewin.o %/Main.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_main.cpp $(filter-out %/Applewin.o %/Main.o %/SDL_Input.o %/MainSession.o,$(OBJECTS)) $(LDLIBS) -o build/bin/test_integration
 	@./build/bin/test_integration
 
 test-keyboard: all ## Run comprehensive keyboard translation tests
 	@echo "  TEST    build/bin/test_keyboard"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/full_keyboard_test.cpp build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_keyboard
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/full_keyboard_test.cpp build/obj/core/Common.o build/obj/core/Log.o $(LDLIBS) -o build/bin/test_keyboard
 	@./build/bin/test_keyboard
 
 test-ssc: all ## Run Super Serial Card unit tests
 	@echo "  TEST    build/bin/test_ssc"
-	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_ssc.cpp build/obj/apple2/SerialComms.o build/obj/Common.o build/obj/Log.o $(LDLIBS) -o build/bin/test_ssc
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Itests -I/usr/include/doctest tests/test_ssc.cpp build/obj/apple2/SerialComms.o build/obj/core/Common.o build/obj/core/Log.o $(LDLIBS) -o build/bin/test_ssc
 	@./build/bin/test_ssc
 
 installcheck: ## Run tests on installed program

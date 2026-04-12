@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include "apple2/6821.h"
-#include "Common.h"
+#include "core/Common.h"
 
 struct MouseInterface {
   Pia6821 m_6821;

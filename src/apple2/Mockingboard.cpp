@@ -1,4 +1,4 @@
-#include "Common_Globals.h"
+#include "core/Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -82,15 +82,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <math.h>
 #include <assert.h>
 
-#include "Common.h"
-#include "Structs.h"
-#include "AppleWin.h"
+#include "core/Common.h"
+#include "apple2/Structs.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "AY8910.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "apple2/Video.h"
 
 #define SY6522_DEVICE_A 0

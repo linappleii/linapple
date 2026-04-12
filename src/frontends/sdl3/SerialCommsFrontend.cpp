@@ -1,7 +1,7 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "SerialCommsFrontend.h"
 #include "apple2/SerialComms.h"
-#include "Registry.h"
+#include "core/Registry.h"
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>

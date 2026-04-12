@@ -28,7 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
@@ -41,13 +41,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/ftpparse.h"
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
-#include "Log.h"
-#include "Common_Globals.h"
-#include "Util_Text.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
+#include "core/Util_Text.h"
 #include "core/Util_Path.h"
-#include "Registry.h"
-#include "DiskChoose.h"
-#include "Frame.h"
+#include "core/Registry.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/Frame.h"
 
 /*
 Memory map:

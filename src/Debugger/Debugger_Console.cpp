@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006 - 2010 Michael Pohoreski
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
@@ -37,7 +37,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Cmd_Output.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "apple2/Keyboard.h"
 #include "Video.h"
 #include <unistd.h>

@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* AND March 2012 AD */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <sys/stat.h>
 #include <zlib.h>
 #include <zip.h>
@@ -46,12 +46,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "Log.h"
-#include "Common_Globals.h"
-#include "Structs.h"
-#include "Util_Text.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
+#include "apple2/Structs.h"
+#include "core/Util_Text.h"
 #include "core/Util_Path.h"
-#include "Registry.h"
+#include "core/Registry.h"
 #include "core/LinAppleCore.h"
 extern void Linapple_UpdateTitle(const char* title);
 extern void FrameRefreshStatus(int);

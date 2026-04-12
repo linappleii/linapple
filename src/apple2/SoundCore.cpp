@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth, modified for decoupling.
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <vector>
 #include <algorithm>
 #include <atomic>
@@ -36,8 +36,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/SoundCore.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/Speaker.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 
 // Core buffers for mixing
 struct sample_buffer {

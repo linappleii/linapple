@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <cassert>
 #include <algorithm>
 #include <unistd.h>
@@ -19,18 +19,18 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_Parser.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "apple2/Video.h"
 #include "frontends/sdl3/SDL_Video.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Range.h"
-#include "AppleWin.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "apple2/CPU.h"
-#include "Frame.h"
+#include "frontends/sdl3/Frame.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
-#include "stretch.h"
-#include "asset.h"
+#include "apple2/stretch.h"
+#include "core/asset.h"
 #include <pthread.h>
 
 #include "../../build/obj/charset40.xpm" // US/default

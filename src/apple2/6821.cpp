@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Description: MC6821 PIA Emulation */
 
-#include "Common.h"
+#include "core/Common.h"
 #include "apple2/6821.h"
 #include <cstring>
 #include <cstdint>

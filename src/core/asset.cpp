@@ -2,18 +2,18 @@
 	asset.cpp - LinApple asset management (Core)
 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <cstdlib>
 
-#include "asset.h"
+#include "core/asset.h"
 #include "core/Util_Path.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "apple2/Disk.h"
 #include "apple2/Video.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 
 #include "../res/font.xpm"
 #include "../build/obj/splash.xpm"

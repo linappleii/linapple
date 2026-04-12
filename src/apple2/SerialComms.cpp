@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/SerialComms.h"
 #include "SerialCommsFrontend.h"
 #include "apple2/CPU.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "apple2/Memory.h"
 
 char SSC_rom[] = "\x20\x9B\xC9\xA9\x16\x48\xA9\x00\x9D\xB8\x04\x9D\xB8\x03\x9D\x38"

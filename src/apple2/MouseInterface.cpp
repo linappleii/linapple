@@ -6,7 +6,7 @@ Based on Apple in PC's mousecard.cpp
 Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 
 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
@@ -14,10 +14,10 @@ Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
 #include "apple2/6821.h"
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "apple2/Video.h"
-#include "Structs.h"
-#include "Common_Globals.h"
+#include "apple2/Structs.h"
+#include "core/Common_Globals.h"
 
 // Sets mouse mode
 #define MOUSE_SET    0x00

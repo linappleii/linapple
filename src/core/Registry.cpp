@@ -1,6 +1,6 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <SDL3/SDL.h>
-#include "Registry.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 #include <fstream>
 #include <sstream>

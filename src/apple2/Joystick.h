@@ -1,5 +1,5 @@
 #include <cstdint>
-#include "Common.h"
+#include "core/Common.h"
 #pragma once
 
 typedef struct tagSS_IO_Joystick SS_IO_Joystick;

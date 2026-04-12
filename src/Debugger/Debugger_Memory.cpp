@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -11,7 +11,7 @@
 #include "Debugger_Range.h"
 #include "Debugger_Assembler.h"
 #include "Video.h"
-#include "Log.h"
+#include "core/Log.h"
 #include <cstring>
 #include <cassert>
 #include <cstddef>

@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Types.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Parser.h"

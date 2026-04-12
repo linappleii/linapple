@@ -2,7 +2,7 @@
 #define SERIALCOMMS_H
 
 #include <cstdint>
-#include "Structs.h"
+#include "apple2/Structs.h"
 
 // SSC DIPSW structure
 enum FirmwareMode {

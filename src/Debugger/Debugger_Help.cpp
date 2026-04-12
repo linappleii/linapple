@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdarg>
 #include <cstring>
 #include "Debug.h"
@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
 #include "Debugger_Commands.h"
-#include "AppleWin.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "SDL3/SDL.h"
 
 

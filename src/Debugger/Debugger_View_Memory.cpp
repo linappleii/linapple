@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -6,7 +6,7 @@
 #include <cstring>
 
 #include "Debug.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "Debugger_Display.h"

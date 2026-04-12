@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -7,9 +7,9 @@
 #include "Debugger_Display.h"
 #include "Debugger_Color.h"
 #include "Debugger_Assembler.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "Video.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "apple2/CPU.h"
 #include "SDL3/SDL.h"
 #include <cstddef>

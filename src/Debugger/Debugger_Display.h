@@ -1,7 +1,7 @@
 #include <cstdint>
 #pragma once
 
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
 

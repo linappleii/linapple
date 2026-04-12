@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Cmd_Config.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -9,9 +9,9 @@
 #include "Debugger_Bookmarks.h"
 #include "Debugger_Memory.h"
 #include "Debugger_Color.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "Video.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "Util_MemoryTextFile.h"
 #include "SDL3/SDL.h"
 #include <cstddef>

@@ -12,6 +12,8 @@ enum {
 
 #define  VIEWPORTX   5
 #define  VIEWPORTY   5
+#define  VIEWPORTCX  560
+#define  VIEWPORTCY  384
 
 
 // if you gonna change these values, consider changing some values in Video.cpp
@@ -44,7 +46,9 @@ void FrameReleaseVideoDC();
 
 void DrawAppleContent();
 void DrawFrameWindow();
-void FrameDispatchMessage(SDL_Event *e);
+void Frame_OnResize(int w, int h);
+void Frame_OnFocus(bool gained);
+void Frame_OnExpose();
 
 void SetUsingCursor(bool);
 

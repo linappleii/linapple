@@ -27,7 +27,7 @@
    April 27, 2000 - Sam Lantinga
 */
 
-#include "Video.h"
+#include "apple2/Video.h"
 
 /* Perform a stretch blit between two surfaces of the same format.
    NOTE:  This function is not safe to call from multiple threads!

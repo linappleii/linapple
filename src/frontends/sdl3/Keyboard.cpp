@@ -1,8 +1,8 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "apple2/Keyboard.h"
-#include "AppleWin.h"
+#include "frontends/sdl3/AppleWin.h"
 #include "SDL3/SDL.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 
 uint8_t Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) {
   bool bShift = (mod & SDL_KMOD_SHIFT) != 0;

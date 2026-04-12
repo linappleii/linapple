@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <algorithm>
 #include <vector>
 #include <string>
@@ -11,11 +11,11 @@
 #include "Debugger_Help.h"
 #include "Debugger_Display.h"
 #include "Debugger_Color.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "Video.h"
-#include "Frame.h"
+#include "frontends/sdl3/Frame.h"
 #include "apple2/CPU.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "apple2/Keyboard.h"
 #include "SDL3/SDL.h"
 

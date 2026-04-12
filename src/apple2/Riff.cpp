@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include "Common.h"
+#include "core/Common.h"
 #include "apple2/Riff.h"
 
 static FILE* g_hRiffFile = NULL;

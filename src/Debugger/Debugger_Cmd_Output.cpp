@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <vector>
 #include <string>
 #include "Debugger_Cmd_Output.h"
@@ -7,9 +7,9 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
 #include "Debugger_Display.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "Video.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 #include "Util_MemoryTextFile.h"
 #include "SDL3/SDL.h"
 #include <cstddef>

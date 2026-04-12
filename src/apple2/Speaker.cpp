@@ -1,11 +1,11 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <cstring>
 #include "apple2/Speaker.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "Common_Globals.h"
-#include "Log.h"
+#include "core/Common_Globals.h"
+#include "core/Log.h"
 /*
 linapple : An Apple //e emulator for Linux
 

@@ -1,8 +1,8 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <cstdio>
 #include <cstring>
-#include "SaveState.h"
-#include "Structs.h"
+#include "apple2/SaveState.h"
+#include "apple2/Structs.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Keyboard.h"
@@ -12,8 +12,8 @@
 #include "apple2/Mockingboard.h"
 #include "Video.h"
 #include "apple2/SerialComms.h"
-#include "Common_Globals.h"
-#include "Log.h"
+#include "core/Common_Globals.h"
+#include "core/Log.h"
 /*
 linapple : An Apple //e emulator for Linux
 

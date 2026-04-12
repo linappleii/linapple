@@ -55,6 +55,11 @@ uint32_t Linapple_RunFrame(uint32_t cycles);
 void Linapple_SetKeyState(uint8_t apple_code, bool down);
 
 /**
+ * @brief Set the state of the Apple II Caps Lock.
+ */
+void Linapple_SetCapsLockState(bool enabled);
+
+/**
  * @brief Set the state of a special Apple key (Open/Closed Apple).
  * 
  * @param key Key identifier (e.g., 0 for Open Apple, 1 for Closed Apple).

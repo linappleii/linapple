@@ -1,11 +1,11 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <iostream>
 #include <cstring>
 #include "apple2/Joystick.h"
 #include "SDL3/SDL.h"
-#include "Structs.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "apple2/Structs.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 
 #define  DEVICE_NONE      0

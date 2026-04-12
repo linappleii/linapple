@@ -24,17 +24,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2011 - 2011 Michael Pohoreski
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
-#include "Frame.h"
+#include "frontends/sdl3/Frame.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_Display.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Help.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "SDL3/SDL.h"
 #include <cstring>
 #include <vector>

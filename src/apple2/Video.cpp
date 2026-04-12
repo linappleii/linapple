@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -37,7 +37,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <cstdio>
 
-#include "asset.h"
+#include "core/asset.h"
 #include "apple2/Video.h"
 
 static uint32_t GetTickCount() {
@@ -47,12 +47,12 @@ static uint32_t GetTickCount() {
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Joystick.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 #include "apple2/Keyboard.h"
-#include "Util_Text.h"
-#include "stretch.h"
-#include "Structs.h"
+#include "core/Util_Text.h"
+#include "apple2/stretch.h"
+#include "apple2/Structs.h"
 #include "apple2/Disk.h"
 #include "apple2/Harddisk.h"
 

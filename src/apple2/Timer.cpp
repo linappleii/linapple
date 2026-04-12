@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Tom Charlesworth
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <unistd.h>
 #include <csignal>
 #include <sys/time.h>

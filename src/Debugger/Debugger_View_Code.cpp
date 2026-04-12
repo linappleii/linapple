@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -9,7 +9,7 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_DisassemblerData.h"
-#include "Util_Text.h"
+#include "core/Util_Text.h"
 
 #include <vector>
 #include <string>

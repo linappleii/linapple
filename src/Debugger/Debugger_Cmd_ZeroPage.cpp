@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Debugger_Cmd_ZeroPage.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
@@ -6,8 +6,8 @@
 #include "Debugger_Help.h"
 #include "Debugger_Display.h"
 #include "Debugger_Breakpoints.h"
-#include "Log.h"
-#include "Util_Text.h"
+#include "core/Log.h"
+#include "core/Util_Text.h"
 #include <cstddef>
 #include <cstdio>
 

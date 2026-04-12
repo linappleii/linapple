@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "Common.h"
+#include "core/Common.h"
 #include "Debug.h"
 #include "Debugger_Range.h"
 #include "Debugger_Parser.h"

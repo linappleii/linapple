@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <vector>
 #include <string>
 #include <cstring>
@@ -12,7 +12,7 @@
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "apple2/CPU.h"
-#include "Frame.h"
+#include "frontends/sdl3/Frame.h"
 #include "apple2/Memory.h"
 
 #define DEBUG_ASSEMBLER 0

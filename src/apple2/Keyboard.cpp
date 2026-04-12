@@ -21,14 +21,14 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <iostream>
 #include <cstring>
 #include "apple2/Keyboard.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "apple2/CPU.h"
-#include "Common_Globals.h"
-#include "Log.h"
+#include "core/Common_Globals.h"
+#include "core/Log.h"
 
 extern void FrameRefreshStatus(int);
 

@@ -1,6 +1,6 @@
-#include "Common.h"
+#include "core/Common.h"
 #include "Video.h"
-#include "stretch.h"
+#include "apple2/stretch.h"
 #include <cstring>
 #include <pthread.h>
 #include <cstddef>

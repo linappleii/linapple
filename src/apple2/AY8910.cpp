@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Description: AY-3-8910 sound chip emulation */
 
-#include "Common.h"
+#include "core/Common.h"
 #include "AY8910.h"
 #include <cstring>
 #include <cmath>

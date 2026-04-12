@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "Common.h"
+#include "core/Common.h"
 #include <cassert>
 #include <pthread.h>
 #include <cstdint>
@@ -56,17 +56,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdio>
 
 #include "apple2/CPU.h"
-#include "Structs.h"
+#include "apple2/Structs.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/Speaker.h"
 #include "apple2/Joystick.h"
-#include "ParallelPrinter.h"
+#include "apple2/ParallelPrinter.h"
 #include "apple2/SerialComms.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/MouseInterface.h"
-#include "Log.h"
-#include "Common_Globals.h"
+#include "core/Log.h"
+#include "core/Common_Globals.h"
 #include "Debugger/Debug.h"
 
 #define   AF_SIGN       0x80

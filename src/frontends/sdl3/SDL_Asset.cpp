@@ -1,7 +1,7 @@
-#include "Common.h"
+#include "core/Common.h"
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
-#include "asset.h"
+#include "core/asset.h"
 #include "core/Util_Path.h"
 
 #include "../../../res/icon.xpm"
