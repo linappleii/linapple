@@ -1,6 +1,8 @@
-# Installation
+Installation
+============
 
-### Prerequisites
+Prerequisites
+-------------
 
 LinApple uses **CMake** as its build system.
 
@@ -24,6 +26,10 @@ sudo pacman -Syu
 sudo pacman -S base-devel cmake imagemagick libzip sdl3 sdl3_image libcurl-gnutls zlib
 ```
 
+
+Fetching and Building
+---------------------
+
 ### Clone
 
 ```bash
@@ -42,12 +48,17 @@ cmake --build build -j$(nproc)
 ```
 
 #### Build Options
+
 You can pass various options to the `cmake` configuration step:
 - `-DFRONTEND=sdl3` : (Default) Build the emulator with the SDL3-based graphical frontend.
 - `-DFRONTEND=headless` : Build the emulator without GUI or SDL dependencies (useful for automated testing or server environments).
 - `-DREGISTRY_WRITEABLE=ON` : Enable saving emulator configuration settings back to the config file.
 - `-DPROFILING=ON` : Enable `gprof` profiling output.
 - `-DCMAKE_BUILD_TYPE=Debug` : Build with debugging symbols instead of release optimizations.
+
+
+Execution and Installation
+--------------------------
 
 ### Run Locally
 
@@ -72,7 +83,12 @@ To install LinApple so it can be run from anywhere, use the `install` target.
 cmake --install build
 ```
 
+
+Configuration Notes
+-------------------
+
 #### XDG Compliance (Linux)
+
 The build system uses standard `GNUInstallDirs` and automatically adapts to your privileges:
 - **Non-root install (Default):** If you run `cmake --install build` as a regular user without overriding the prefix, it will install to `~/.local/bin/`, `~/.local/share/linapple/`, and `~/.config/linapple/`. This is fully compliant with XDG Base Directory specifications and does not require `sudo`.
 - **System-wide install (Root):** If you run `sudo cmake --install build`, it will install system-wide to `/usr/local/bin/`, `/usr/local/share/linapple/`, and `/usr/local/etc/linapple/`.
