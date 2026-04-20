@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "core/Common.h"
+#include "apple2/Speaker_Structs.h"
 
 // Structs used by save-state file
 
@@ -59,10 +60,6 @@ typedef struct tagSS_IO_Keyboard {
   uint32_t keyboardqueries;
   uint8_t nLastKey;
 } SS_IO_Keyboard;
-
-typedef struct tagSS_IO_Speaker {
-  uint64_t g_nSpkrLastCycle;
-} SS_IO_Speaker;
 
 typedef struct SS_IO_Video {
   bool bAltCharSet;  // charoffs

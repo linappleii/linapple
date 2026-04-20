@@ -211,6 +211,12 @@ int Linapple_LoadProgram(const char* path) {
 
   uint16_t load_addr = (size == 65536) ? 0x0000 : 0x800;
 
+  // Defensive check: ensure the file fits in the remaining memory buffer to prevent overflow.
+  if (static_cast<size_t>(load_addr) + static_cast<size_t>(size) > 65536) {
+    fclose(f);
+    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+  }
+
   if (fread(mem + load_addr, 1, size, f) != static_cast<size_t>(size)) {
     fclose(f);
     return -1;

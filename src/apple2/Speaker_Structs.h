@@ -1,32 +1,34 @@
-#ifndef SPEAKER_STRUCTS_H
-#define SPEAKER_STRUCTS_H
+#pragma once
 
 #include <cstdint>
 #include <array>
+#include <cstddef>
 
-#define MAX_SPKR_EVENTS 4096
-#define SPKR_BUFFER_SIZE 8192
+static constexpr size_t MAX_SPKR_EVENTS = 4096;
+static constexpr size_t SPKR_BUFFER_SIZE = 8192;
 
-typedef struct {
-  uint64_t cycle;
-  bool state;
-} SpkrEvent;
+struct SpkrEvent {
+  uint64_t cycle = 0;
+  bool state = false;
+};
 
-typedef struct Speaker_t {
-  SpkrEvent events[MAX_SPKR_EVENTS];
-  int num_events;
-  bool state;
-  uint64_t last_cycle;
-  uint64_t quiet_cycle_count;
-  bool recently_active;
-  bool toggle_flag;
+struct SS_IO_Speaker {
+  uint64_t g_nSpkrLastCycle = 0;
+};
+
+struct Speaker_t {
+  std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
+  int num_events = 0;
+  bool state = false;
+  uint64_t last_cycle = 0;
+  uint64_t quiet_cycle_count = 0;
+  bool recently_active = false;
+  bool toggle_flag = false;
   
   // Sample generation state
-  bool last_sample_state;
-  double next_sample_cycle;
-  std::array<int16_t, SPKR_BUFFER_SIZE> sample_buffer;
+  bool last_sample_state = false;
+  double next_sample_cycle = 0.0;
+  std::array<int16_t, SPKR_BUFFER_SIZE> sample_buffer{};
   
-  void* host; // Opaque pointer to HostInterface_t
-} Speaker_t;
-
-#endif // SPEAKER_STRUCTS_H
+  void* host = nullptr; // Opaque pointer to HostInterface_t
+};

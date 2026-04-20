@@ -40,12 +40,16 @@ struct DirectIoHandler_t {
     void* instance;
 };
 
+// Justification: Global arrays are necessary to track the current state of registered peripherals
+// and their I/O handlers for the core memory map.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<ActivePeripheral_t, NUM_SLOTS> g_active_peripherals;
+// Justification: Tracking activity status globally is required for full-speed/turbo mode logic.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
 
 static constexpr size_t IO_DIRECT_COUNT = 16;
+// Justification: Global registration for direct I/O handlers (like the speaker at $C030).
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<DirectIoHandler_t, IO_DIRECT_COUNT> g_direct_io_handlers;
 static size_t g_num_direct_handlers = 0;
@@ -133,7 +137,7 @@ static auto Host_AssertIrq(int slot, bool assert) -> void {
 
 static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0, 
                            PeripheralIOHandler readCx, PeripheralIOHandler writeCx) -> void {
-    if (slot < 0 || slot >= NUM_SLOTS) return;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     ap.readC0 = readC0;
     ap.writeC0 = writeC0;
@@ -152,13 +156,14 @@ static auto Host_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
     if (slot < 1 || slot > 7) return;
     uint8_t* cxrom = MemGetCxRomPeripheral();
     if (cxrom) {
+        // Justification: Pointer arithmetic is necessary to offset into the contiguous slot ROM space ($C100-$C7FF).
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         memcpy(cxrom + (static_cast<uint16_t>(slot) << ADDR_SLOT_ROM_SHIFT), rom_ptr, 256);
     }
 }
 
 static auto Host_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
-    if (slot < 0 || slot >= NUM_SLOTS) return;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     ap.expansionRom = rom_ptr;
     RegisterIoHandler(static_cast<uint32_t>(slot), 
@@ -211,7 +216,7 @@ static auto Host_NotifyStatusChanged(int slot) -> void {
 }
 
 static auto Host_NotifyActivityChanged(int slot, bool active) -> void {
-    if (slot >= 0 && slot < NUM_SLOTS) {
+    if (slot >= 0 && slot < static_cast<int>(NUM_SLOTS)) {
         g_peripheral_activity_state.at(static_cast<size_t>(slot)) = active;
     }
 }
@@ -225,11 +230,13 @@ static auto Host_AudioPushSamples(void* instance, const int16_t* buffer, size_t 
     if (g_frontendAudioCB) {
         g_frontendAudioCB(buffer, num_samples);
     } else {
+        // Justification: const_cast is required to bridge the modern const buffer from peripherals to the legacy DSUploadBuffer signature.
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
         DSUploadBuffer(const_cast<int16_t*>(buffer), static_cast<uint32_t>(num_samples));
     }
 }
 
+// Justification: Global immutable dispatch table for services provided to peripherals via the Peripheral ABI.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static const HostInterface_t g_host_interface = {
     Host_Log,
@@ -260,6 +267,7 @@ struct QueuedCommand {
     uint8_t data[PERIPHERAL_CMD_MAX_DATA];
 };
 
+// Justification: Global queue and mutex are required for thread-safe command processing between the core and peripherals.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::queue<QueuedCommand> g_command_queue;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -273,7 +281,7 @@ static auto Peripheral_DrainCommandQueue() -> void {
     }
     while (!local.empty()) {
         const QueuedCommand& cmd = local.front();
-        if (cmd.slot >= 0 && cmd.slot < NUM_SLOTS) {
+        if (cmd.slot >= 0 && cmd.slot < static_cast<int>(NUM_SLOTS)) {
             ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(cmd.slot));
             if (ap.api && ap.api->command) {
                 ap.api->command(ap.instance, cmd.cmd_id, cmd.data, cmd.data_size);
@@ -360,13 +368,16 @@ auto Peripheral_IsAnyActive() -> bool {
 }
 
 auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
-    if (!api || slot < 0 || slot >= NUM_SLOTS) return -1;
+    if (!api || slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
     if (api->abi_version != LINAPPLE_ABI_VERSION) return -1;
 
     if (!(api->compatible_slots & (1u << static_cast<uint32_t>(slot)))) {
         return -1;
     }
 
+    // Justification: The Peripheral ABI is a C interface; the HostInterface must be passed 
+    // as a non-const pointer to allow peripherals to store it, but we provide a central const implementation.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     void* instance = api->init(slot, const_cast<HostInterface_t*>(&g_host_interface));
     if (!instance) return -1;
 
@@ -379,7 +390,7 @@ auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
 }
 
 auto Peripheral_Unregister(int slot) -> int {
-    if (slot < 0 || slot >= NUM_SLOTS) return -1;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     if (ap.api) {
         if (ap.api->shutdown) {
@@ -393,7 +404,7 @@ auto Peripheral_Unregister(int slot) -> int {
 }
 
 auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data, size_t size) -> PeripheralStatus {
-    if (slot < 0 || slot >= NUM_SLOTS || size > PERIPHERAL_CMD_MAX_DATA) return PERIPHERAL_ERROR;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || size > PERIPHERAL_CMD_MAX_DATA) return PERIPHERAL_ERROR;
     QueuedCommand cmd{};
     cmd.slot = slot;
     cmd.cmd_id = cmd_id;
@@ -405,7 +416,7 @@ auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data, size_t size
 }
 
 auto Peripheral_Query(int slot, uint32_t cmd_id, void* out, size_t* out_size) -> PeripheralStatus {
-    if (slot < 0 || slot >= NUM_SLOTS) return PERIPHERAL_ERROR;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return PERIPHERAL_ERROR;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     if (!ap.api || !ap.api->query) return PERIPHERAL_ERROR;
     return ap.api->query(ap.instance, cmd_id, out, out_size);
@@ -438,8 +449,8 @@ auto Peripheral_VerifyManifest(const SS_PERIPHERAL_MANIFEST* manifest) -> bool {
     return true;
 }
 
-void Peripheral_SaveState(int slot, void* buffer, size_t* size) {
-    if (slot < 0 || slot >= NUM_SLOTS) return;
+auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void {
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     if (ap.api && ap.api->save_state) {
         ap.api->save_state(ap.instance, buffer, size);
@@ -448,9 +459,8 @@ void Peripheral_SaveState(int slot, void* buffer, size_t* size) {
     }
 }
 
-
 auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void {
-    if (slot < 0 || slot >= NUM_SLOTS) return;
+    if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     if (ap.api && ap.api->load_state) {
         ap.api->load_state(ap.instance, buffer, size);

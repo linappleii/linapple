@@ -8,18 +8,11 @@
 #include "core/Common_Globals.h"
 #include "apple2/SoundCore.h"
 
-// Define a test callback to capture audio output
-static std::vector<int16_t> g_testAudioBuffer;
-static void TestAudioCallback(const int16_t* samples, size_t num_samples) {
-    g_testAudioBuffer.insert(g_testAudioBuffer.end(), samples, samples + num_samples);
-}
-
 TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
     Linapple_Init();
     // In Task 6.6 we'll modernize how the callback is registered, 
     // but for now we'll use the DSUploadBuffer fallback which tests can hook
     // actually, let's keep it simple and just use the pointer API for now.
-    g_testAudioBuffer.clear();
     
     // Ensure cycles are initialized so CpuCalcCycles works predictably
     CpuInitialize();
@@ -49,7 +42,6 @@ TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
         // Clear any previous events
         std::array<SpkrEvent, MAX_SPKR_EVENTS> dump{};
         Speaker_GetEvents(nullptr, dump.data(), MAX_SPKR_EVENTS);
-        g_testAudioBuffer.clear();
         
         // Advance cycle so we're not at 0, using a clean cycle baseline
         g_nCumulativeCycles = 2000;

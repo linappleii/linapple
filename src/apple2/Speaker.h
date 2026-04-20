@@ -1,14 +1,16 @@
-#include <cstdint>
-#include "apple2/Speaker_Structs.h"
 #pragma once
 
-typedef struct tagSS_IO_Speaker SS_IO_Speaker;
+#include <cstdint>
+#include "apple2/Speaker_Structs.h"
 
-// For audio use none or SDL_SOUND subsystem
-#define SOUND_NONE 0
-#define SOUND_WAVE 1
+struct SS_IO_Speaker;
 
-#define SPKR_SAMPLE_VOLUME 0x4000
+enum {
+  SOUND_NONE = 0,
+  SOUND_WAVE = 1
+};
+
+static constexpr int16_t SPKR_SAMPLE_VOLUME = 0x4000;
 
 extern uint32_t soundtype;
 

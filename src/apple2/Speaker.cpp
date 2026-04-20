@@ -1,15 +1,3 @@
-#include "core/Common.h"
-#include <cstring>
-#include "apple2/Speaker.h"
-#include "apple2/Structs.h"
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
-#include "core/Common_Globals.h"
-#include "core/Log.h"
-#include "core/Peripheral.h"
-#include "core/LinAppleCore.h"
-
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -39,13 +27,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Sample generation and audio routing are handled via Peripheral ABI.
  */
 
+#include <cstring>
+#include <array>
+#include "apple2/Speaker.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/SoundCore.h"
+#include "core/Common_Globals.h"
+#include "core/Peripheral.h"
+
 uint32_t soundtype = SOUND_WAVE;
 
 // Internal default instance for legacy API
 static Speaker_t g_defaultSpeaker;
 
 static constexpr int SPKR_QUIET_CYCLES_DIVISOR = 5;
-static constexpr uint8_t INVALID_SAMPLE_DATA = 0xFF;
 
 // Forward declaration of legacy callback for cases where the Peripheral ABI host is not present (e.g. some standalone tests)
 extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
@@ -100,6 +96,8 @@ auto Speaker_IsActive(Speaker_t* instance) -> bool {
   return spkr->recently_active;
 }
 
+// Justification: Parameters must match the 'iofunction' signature required by the Core memory map dispatch tables.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto Speaker_Toggle(Speaker_t* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   (void)pc; (void)addr; (void)bWrite; (void)d;
   Speaker_t* spkr = instance ? instance : &g_defaultSpeaker;
@@ -112,10 +110,10 @@ auto Speaker_Toggle(Speaker_t* instance, uint16_t pc, uint16_t addr, uint8_t bWr
   }
 
   // Record toggle event
-  if (soundtype == SOUND_WAVE && spkr->num_events < MAX_SPKR_EVENTS) {
+  if (soundtype == SOUND_WAVE && static_cast<size_t>(spkr->num_events) < MAX_SPKR_EVENTS) {
     const auto idx = static_cast<size_t>(spkr->num_events);
-    spkr->events[idx].cycle = g_nCumulativeCycles;
-    spkr->events[idx].state = spkr->state = !spkr->state;
+    spkr->events.at(idx).cycle = g_nCumulativeCycles;
+    spkr->events.at(idx).state = spkr->state = !spkr->state;
     spkr->num_events++;
   }
 
@@ -126,41 +124,42 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles) -> 
   if (dwExecutedCycles == 0) return;
   Speaker_t* spkr = instance ? instance : &g_defaultSpeaker;
 
-  double clksPerSample = g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
+  const double clksPerSample = g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
+  if (clksPerSample <= 0.0) return;
 
   // Local event capture
-  SpkrEvent events[MAX_SPKR_EVENTS];
-  int num_events = Speaker_GetEvents(spkr, events, MAX_SPKR_EVENTS);
+  std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
+  int num_events = Speaker_GetEvents(spkr, events.data(), MAX_SPKR_EVENTS);
   int event_idx = 0;
 
-  uint64_t startCycle = g_nCumulativeCycles - dwExecutedCycles;
-  uint64_t endCycle = g_nCumulativeCycles;
+  const uint64_t startCycle = g_nCumulativeCycles - dwExecutedCycles;
+  const uint64_t endCycle = g_nCumulativeCycles;
 
   if (spkr->next_sample_cycle < static_cast<double>(startCycle)) {
     spkr->next_sample_cycle = static_cast<double>(startCycle);
   }
 
-  int numSamples = 0;
+  size_t numSamples = 0;
   while (spkr->next_sample_cycle <= static_cast<double>(endCycle) &&
          numSamples < (SPKR_BUFFER_SIZE - 2)) {
-    double sampleStart = spkr->next_sample_cycle;
-    double sampleEnd = spkr->next_sample_cycle + clksPerSample;
+    const double sampleStart = spkr->next_sample_cycle;
+    const double sampleEnd = spkr->next_sample_cycle + clksPerSample;
 
     double sum = 0.0;
     double currentTime = sampleStart;
 
     while (event_idx < num_events &&
-           static_cast<double>(events[static_cast<size_t>(event_idx)].cycle) <
+           static_cast<double>(events.at(static_cast<size_t>(event_idx)).cycle) <
                sampleEnd) {
       const auto event_idx_st = static_cast<size_t>(event_idx);
-      double eventTime =
-          static_cast<double>(events[event_idx_st].cycle);
+      const auto eventTime =
+          static_cast<double>(events.at(event_idx_st).cycle);
 
       if (eventTime <= sampleStart) {
-        spkr->last_sample_state = events[event_idx_st].state;
+        spkr->last_sample_state = events.at(event_idx_st).state;
       } else {
         sum += (eventTime - currentTime) * (spkr->last_sample_state ? 1.0 : -1.0);
-        spkr->last_sample_state = events[event_idx_st].state;
+        spkr->last_sample_state = events.at(event_idx_st).state;
         currentTime = eventTime;
       }
       event_idx++;
@@ -168,20 +167,18 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles) -> 
 
     sum += (sampleEnd - currentTime) * (spkr->last_sample_state ? 1.0 : -1.0);
 
-    double average = sum / clksPerSample;
+    const double average = sum / clksPerSample;
     const auto val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
 
-    const auto left_idx = static_cast<size_t>(numSamples++);
-    const auto right_idx = static_cast<size_t>(numSamples++);
-    spkr->sample_buffer[left_idx] = val; // Left
-    spkr->sample_buffer[right_idx] = val; // Right
+    spkr->sample_buffer.at(numSamples++) = val; // Left
+    spkr->sample_buffer.at(numSamples++) = val; // Right
     spkr->next_sample_cycle += clksPerSample;
   }
 
   if (numSamples > 0) {
     auto* host = static_cast<HostInterface_t*>(spkr->host);
     if (host && host->AudioPushSamples) {
-      host->AudioPushSamples(spkr, spkr->sample_buffer.data(), static_cast<size_t>(numSamples));
+      host->AudioPushSamples(spkr, spkr->sample_buffer.data(), numSamples);
     } else {
       // Fallback for tests and environments without a fully initialized Peripheral ABI host.
       DSUploadBuffer(spkr->sample_buffer.data(), static_cast<uint32_t>(numSamples));
@@ -190,10 +187,11 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles) -> 
 }
 
 auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent *events, int max_events) -> int {
+  if (events == nullptr) return 0;
   Speaker_t* spkr = instance ? instance : &g_defaultSpeaker;
   int count = (spkr->num_events < max_events) ? spkr->num_events : max_events;
   if (count > 0) {
-    memcpy(events, spkr->events, static_cast<size_t>(count) * sizeof(SpkrEvent));
+    memcpy(events, spkr->events.data(), static_cast<size_t>(count) * sizeof(SpkrEvent));
     spkr->num_events = 0;
   }
   return count;
@@ -211,6 +209,8 @@ auto Speaker_GetCurrentState(Speaker_t* instance) -> bool {
 
 // --- Legacy API Wrappers ---
 
+// Justification: Signature is required for compatibility with the Core memory map iofunction pointers.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto SpkrToggle(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   Speaker_t* spkr = instance ? static_cast<Speaker_t*>(instance) : &g_defaultSpeaker;
   return Speaker_Toggle(spkr, pc, addr, bWrite, d, nCyclesLeft);
@@ -258,6 +258,8 @@ static auto Spkr_ABI_Think(void* instance, uint32_t cycles) -> void {
   Speaker_GenerateSamples(static_cast<Speaker_t*>(instance), cycles);
 }
 
+// Justification: Signature is fixed by the stable LinApple Peripheral ABI.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static auto Spkr_ABI_SaveState(void* instance, void* buffer, size_t* size) -> PeripheralStatus {
   if (!buffer || !size || *size < sizeof(SS_IO_Speaker)) {
     if (size) *size = sizeof(SS_IO_Speaker);
@@ -270,6 +272,8 @@ static auto Spkr_ABI_SaveState(void* instance, void* buffer, size_t* size) -> Pe
   return PERIPHERAL_OK;
 }
 
+// Justification: Signature is fixed by the stable LinApple Peripheral ABI.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static auto Spkr_ABI_LoadState(void* instance, const void* buffer, size_t size) -> PeripheralStatus {
   if (!buffer || size < sizeof(SS_IO_Speaker)) {
     return PERIPHERAL_ERROR;
