@@ -63,10 +63,9 @@ void Snapshot_LoadState() {
   char szMessage[32 + PATH_MAX_LEN];
   szMessage[0] = '\0';
 
-  std::unique_ptr<APPLEWIN_SNAPSHOT> pSS(new APPLEWIN_SNAPSHOT());
+  auto pSS = std::unique_ptr<APPLEWIN_SNAPSHOT>(new APPLEWIN_SNAPSHOT());
 
   try {
-    memset(pSS.get(), 0, sizeof(APPLEWIN_SNAPSHOT));
     FilePtr hFile(fopen(g_szSaveStateFilename, "rb"), fclose);
 
     if (!hFile) {
@@ -157,9 +156,7 @@ void Snapshot_LoadState() {
 }
 
 void Snapshot_SaveState() {
-  std::unique_ptr<APPLEWIN_SNAPSHOT> pSS(new APPLEWIN_SNAPSHOT());
-
-  memset(pSS.get(), 0, sizeof(APPLEWIN_SNAPSHOT));
+  auto pSS = std::unique_ptr<APPLEWIN_SNAPSHOT>(new APPLEWIN_SNAPSHOT());
 
   pSS->Hdr.dwTag = AW_SS_TAG;
   pSS->Hdr.dwVersion = MAKE_VERSION(1, 0, 0, 1);
