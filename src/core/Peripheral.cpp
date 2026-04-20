@@ -438,15 +438,21 @@ auto Peripheral_VerifyManifest(const SS_PERIPHERAL_MANIFEST* manifest) -> bool {
     return true;
 }
 
-auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void {
+void Peripheral_SaveState(int slot, void* buffer, size_t* size) {
     if (slot < 0 || slot >= NUM_SLOTS) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
-    if (ap.api && ap.api->save_state) ap.api->save_state(ap.instance, buffer, size);
-    else if (size) *size = 0;
+    if (ap.api && ap.api->save_state) {
+        ap.api->save_state(ap.instance, buffer, size);
+    } else if (size) {
+        *size = 0;
+    }
 }
+
 
 auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void {
     if (slot < 0 || slot >= NUM_SLOTS) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
-    if (ap.api && ap.api->load_state) ap.api->load_state(ap.instance, buffer, size);
+    if (ap.api && ap.api->load_state) {
+        ap.api->load_state(ap.instance, buffer, size);
+    }
 }

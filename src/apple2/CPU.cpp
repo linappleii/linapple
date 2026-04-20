@@ -766,11 +766,8 @@ static inline void IRQ(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_
 
 static inline void CheckInterruptSources(uint32_t uExecutedCycles)
 {
+  (void)uExecutedCycles;
   if (g_nIrqCheckTimeout < 0) {
-    #ifndef UPDATE_ALL_PER_CYCLE
-    Peripheral_Manager_Think(uExecutedCycles);
-    #endif
-    Peripheral_Manager_OnVBlank(VideoGetVbl(uExecutedCycles));
     g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
   }
 }
@@ -3491,7 +3488,7 @@ void CpuCalcCycles(uint32_t nExecutedCycles)
 // -                  75.9, 78.5MHz  (with check for VBL IRQ every 128 cycles)
 // -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every 128 cycles)
 
-#ifdef UPDATE_ALL_PER_CYCLE   // TODO: Measure perf increase by using this new method
+#ifdef UPDATE_ALL_PER_CYCLE
 uint32_t CpuGetCyclesThisFrame(uint32_t)  // Old func using g_uInternalExecutedCycles
 {
   CpuCalcCycles(g_uInternalExecutedCycles);

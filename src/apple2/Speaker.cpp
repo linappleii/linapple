@@ -47,7 +47,7 @@ static Speaker_t g_defaultSpeaker;
 static constexpr int SPKR_QUIET_CYCLES_DIVISOR = 5;
 static constexpr uint8_t INVALID_SAMPLE_DATA = 0xFF;
 
-// Forward declaration of legacy callback for fallback (Task 6.6 will eventually clean this up)
+// Forward declaration of legacy callback for cases where the Peripheral ABI host is not present (e.g. some standalone tests)
 extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
 
 auto Speaker_Destroy(Speaker_t* instance) -> void {
@@ -183,7 +183,7 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles) -> 
     if (host && host->AudioPushSamples) {
       host->AudioPushSamples(spkr, spkr->sample_buffer.data(), static_cast<size_t>(numSamples));
     } else {
-      // Fallback for tests and legacy paths
+      // Fallback for tests and environments without a fully initialized Peripheral ABI host.
       DSUploadBuffer(spkr->sample_buffer.data(), static_cast<uint32_t>(numSamples));
     }
   }

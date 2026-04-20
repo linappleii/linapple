@@ -192,27 +192,27 @@ static auto IOWrite_C01x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, 
 }
 
 static auto IORead_C02x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IOWrite_C02x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IORead_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IORead_C04x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IOWrite_C04x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IORead_C05x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {

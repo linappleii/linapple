@@ -1406,7 +1406,6 @@ void VideoBenchmark() {
       while (cycles > 0) {
         uint32_t executedcycles = CpuExecute(static_cast<uint32_t>(103));
         cycles -= executedcycles;
-        Peripheral_Manager_Think(executedcycles);
         VideoUpdateVbl(0);
       }
     }
