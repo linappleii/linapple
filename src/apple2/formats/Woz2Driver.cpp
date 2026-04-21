@@ -1,5 +1,6 @@
 #include "apple2/formats/Woz2Driver.h"
 
+#include <array>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -31,7 +32,7 @@ constexpr int NIBBLES_PER_TRACK = 6656;
 
 struct Woz2Instance {
   FILE* file = nullptr;
-  uint8_t header[WOZ2_HEADER_SIZE]{};
+  std::array<uint8_t, WOZ2_HEADER_SIZE> header{};
   bool format_write_protected = false;
   bool os_readonly = false;
 
@@ -44,9 +45,9 @@ struct Woz2Instance {
 
   // Not copyable/movable
   Woz2Instance(const Woz2Instance&) = delete;
-  Woz2Instance& operator=(const Woz2Instance&) = delete;
+  auto operator=(const Woz2Instance&) -> Woz2Instance& = delete;
   Woz2Instance(Woz2Instance&&) = delete;
-  Woz2Instance& operator=(Woz2Instance&&) = delete;
+  auto operator=(Woz2Instance&&) -> Woz2Instance& = delete;
 };
 
 static uint32_t woz2_scan_sync_bytes(const uint8_t* buffer, uint32_t bit_count,
@@ -96,8 +97,8 @@ static uint32_t woz2_scan_sync_bytes(const uint8_t* buffer, uint32_t bit_count,
 }
 }  // namespace
 
-static DiskProbe_e Woz2Probe(const uint8_t* header, size_t header_size,
-                            uint32_t file_size, const char* ext_hint) {
+static auto Woz2Probe(const uint8_t* header, size_t header_size,
+                            uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)ext_hint;
 
   if (header_size >= WOZ2_SIGNATURE_LEN && file_size >= WOZ2_HEADER_SIZE) {
@@ -109,8 +110,8 @@ static DiskProbe_e Woz2Probe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static DiskError_e Woz2Open(const char* path, uint32_t file_offset,
-                            bool* out_os_readonly, void** out_instance) {
+static auto Woz2Open(const char* path, uint32_t file_offset,
+                            bool* out_os_readonly, void** out_instance) -> DiskError_e {
   auto* instance = new Woz2Instance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -131,8 +132,13 @@ static DiskError_e Woz2Open(const char* path, uint32_t file_offset,
 
   // WOZ2 files are usually not MacBinary-wrapped, but we support the offset
   // just in case.
-  fseek(instance->file, static_cast<long>(file_offset), SEEK_SET);
-  if (fread(instance->header, 1, WOZ2_HEADER_SIZE, instance->file) !=
+  if (fseek(instance->file, static_cast<long>(file_offset), SEEK_SET) != 0) {
+    fclose(instance->file);
+    instance->file = nullptr;
+    delete instance;
+    return DISK_ERR_IO;
+  }
+  if (fread(instance->header.data(), 1, WOZ2_HEADER_SIZE, instance->file) !=
       WOZ2_HEADER_SIZE) {
     fclose(instance->file);
     instance->file = nullptr;
@@ -161,7 +167,7 @@ static void Woz2Close(void* instance) {
   delete reinterpret_cast<Woz2Instance*>(instance);
 }
 
-static bool Woz2IsWriteProtected(void* instance) {
+static auto Woz2IsWriteProtected(void* instance) -> bool {
   return reinterpret_cast<Woz2Instance*>(instance)->format_write_protected;
 }
 
@@ -170,7 +176,7 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
   (void)phase;
   auto* wi = reinterpret_cast<Woz2Instance*>(instance);
 
-  // TODO: Implement half-track support for accurate head-positioning
+  // TODO(davidbaucum): Implement half-track support for accurate head-positioning
   // Currently we only read integral tracks using the base quarter-track index.
   uint32_t tmap_index =
       static_cast<uint32_t>(track) * WOZ2_QUARTER_TRACKS_PER_TRACK;
@@ -185,6 +191,14 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
       trackImageBuffer[i] = static_cast<uint8_t>(rand() & 0xFF);
     }
     *nibbles_out = NIBBLES_PER_TRACK;
+    return;
+  }
+
+  // Defensive check: ensure trks_index points within the header buffer.
+  // TRKS chunk starts at 256, each entry is 8 bytes. Header is 1536 bytes.
+  // (1536 - 256) / 8 = 160 entries max.
+  if (trks_index >= 160) {
+    *nibbles_out = 0;
     return;
   }
 
@@ -203,6 +217,13 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
 
   uint32_t byte_count =
       static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE;
+
+  // Defensive check: ensure bit_count does not exceed the available data bytes.
+  if (bit_count > byte_count * 8) {
+    *nibbles_out = 0;
+    return;
+  }
+
   std::vector<uint8_t> buffer(byte_count);
   fseek(wi->file,
         static_cast<long>(static_cast<uint32_t>(starting_block) *

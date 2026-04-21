@@ -19,7 +19,7 @@ void reset_machine() {
 void machine_execute(const uint8_t* code, size_t size, uint32_t max_cycles = 1000) {
     memcpy(mem + 0x0300, code, size);
     regs.pc = 0x0300;
-    
+
     uint32_t cycles = 0;
     while (mem[regs.pc] != 0x60 && cycles < max_cycles) {
         CpuExecute(1);
@@ -51,7 +51,7 @@ TEST_CASE("Legacy: [MEM-01] Language Card RAM Banking") {
 
 TEST_CASE("Legacy: [ROM-01] Firmware Integrity (Autostart ROM)") {
     reset_machine();
-    
+
     // Requirement: entry point $FF65 must exist (Monitor)
     // We check the memory directly
     CHECK(mem[0xFF65] != 0x00);

@@ -20,7 +20,7 @@ static bool s_initialized = false;
 
 auto AppController_Initialize(AppConfig* config) -> int {
     if (!config) return -1;
-    
+
     // Idempotency: ensure we start from a clean state if called multiple times
     if (s_initialized) {
         AppController_Shutdown();
@@ -37,6 +37,8 @@ auto AppController_Initialize(AppConfig* config) -> int {
     g_Apple2Type = config->apple2Type;
     if (config->bPAL) {
         g_videotype = VT_COLOR_TVEMU;
+    } else {
+        g_videotype = VT_COLOR_STANDARD;
     }
 
     // 4. Init Snapshots
@@ -143,11 +145,11 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
 
 void AppController_Shutdown() {
     if (!s_initialized) return;
-    
+
     Snapshot_Shutdown();
     Linapple_Shutdown();
     Logger::Destroy();
-    
+
     s_initialized = false;
 }
 

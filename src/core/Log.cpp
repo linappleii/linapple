@@ -32,8 +32,8 @@ static void OutputLogMessage(LogLevel level, const char* format, va_list args) {
   // Small-buffer optimization: Try a stack buffer first.
   std::array<char, kMaxStackLogSize> stack_buffer{};
   va_list args_copy;
-  
-  // Justification for NOLINT: va_list is often an array type that decays to a pointer 
+
+  // Justification for NOLINT: va_list is often an array type that decays to a pointer
   // when passed to C-library functions like va_copy, vsnprintf, and va_end.
   // This is an unavoidable consequence of using the C standard library for formatting.
   va_copy(args_copy, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
@@ -89,7 +89,7 @@ void Initialize() {
   if (!g_log_file) {
     std::string data_dir = Path::GetUserDataDir();
     Path::EnsureDirExists(data_dir);
-    // Justification for NOLINT: fopen returns a raw pointer that is immediately 
+    // Justification for NOLINT: fopen returns a raw pointer that is immediately
     // wrapped in a unique_ptr for safe resource management.
     g_log_file.reset(fopen((data_dir + "linapple.log").c_str(), "a+t")); // NOLINT(cppcoreguidelines-owning-memory)
   }
@@ -119,7 +119,7 @@ void LogMessageV(LogLevel level, const char* format, va_list args) {
 
 void Error(const char* format, ...) {
   va_list args;
-  // Justification for NOLINT: va_start/va_end and passing va_list triggers 
+  // Justification for NOLINT: va_start/va_end and passing va_list triggers
   // unavoidable pointer decay as part of the C standard library variadic mechanism.
   va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   OutputLogMessage(LogLevel::kError, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)

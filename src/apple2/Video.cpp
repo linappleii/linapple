@@ -1479,7 +1479,7 @@ void VideoChooseColor() {
 void VideoDestroy() {
   // GPH Multithreaded
   {
-    
+
     video_worker_terminate_ = true;
     if (video_worker_active_) {
       if (video_worker_thread_.joinable()) video_worker_thread_.join();
@@ -1633,7 +1633,7 @@ void VideoWorkerThread()
       }
     }
   }
-  
+
 }
 
 // VideoIniteWorker
@@ -2073,10 +2073,10 @@ auto VideoGetScannerAddress(bool *pbVblBar_OUT, const uint32_t uExecutedCycles) 
 auto VideoGetVbl(const uint32_t uExecutedCycles) -> bool {
   // get cycles within current frame
   int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % 17030;
-  
+
   // Apple II NTSC: 262 lines, 65 cycles per line.
   // Visible area: lines 0-191. VBL: lines 192-261.
   // VBL starts at cycle 192 * 65 = 12480.
-  
+
   return (nCycles >= 12480);
 }

@@ -526,7 +526,7 @@ auto GetDisassemblyLine ( uint16_t nBaseAddress, DisasmLine_t & line_ ) -> int
   int nOpbyte = 0;
 
   iOpcode = _6502_GetOpmodeOpbyte( nBaseAddress, iOpmode, nOpbyte, &line_.pDisasmData );
-  
+
   line_.iOpcode = iOpcode;
   line_.iOpmode = iOpmode;
   line_.nOpbyte = nOpbyte;
@@ -666,7 +666,7 @@ void DebugBegin ()
 
   DebugInitialize();
   AllocateDebuggerMemDC();
-  
+
   g_state.mode = MODE_DEBUG;
   FrameRefreshStatus(DRAW_TITLE);
 

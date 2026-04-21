@@ -22,7 +22,7 @@ struct LoadedPlugin {
 static std::vector<LoadedPlugin> g_loaded_plugins;
 
 /**
- * Justification: Peripheral Manager requires a static list of built-in hardware 
+ * Justification: Peripheral Manager requires a static list of built-in hardware
  * to support runtime slot assignment via configuration.
  */
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-interfaces-global-init)
@@ -56,7 +56,7 @@ static const std::array<Peripheral_t*, 9> g_builtin_peripherals = {{
 
 auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
     if (!name) return nullptr;
-    
+
     Peripheral_Plugins_Init();
 
     for (auto const& p : g_builtin_peripherals) {
@@ -97,7 +97,7 @@ static auto GetDefaultPeripheralForSlot(int slot) -> const char* {
         case SLOT_PRINTER: return "Parallel Printer";
         case SLOT_SSC: return "Super Serial Card";
         case SLOT_DISK: return "Disk II";
-        case SLOT_HARDDISK: 
+        case SLOT_HARDDISK:
             return hddenabled ? "Harddisk" : nullptr;
         default:
             if (static_cast<uint32_t>(slot) == clockslot && clockslot != 0) {
@@ -124,12 +124,12 @@ void Peripheral_Register_Internal() {
         char key[KEY_SIZE];
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         snprintf(key, sizeof(key), "Slot %d", slot);
-        
+
         std::string name;
         // Justification: Loading slot configuration from registry.
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         bool in_config = ConfigLoadString("Slots", key, &name);
-        
+
         if (in_config) {
             if (name == "None" || name.empty()) {
                 continue;
@@ -142,7 +142,7 @@ void Peripheral_Register_Internal() {
                 continue;
             }
         }
-        
+
         Peripheral_t* p = Peripheral_Find_Internal(name.c_str());
         if (p) {
             Peripheral_Register(p, slot);

@@ -52,3 +52,14 @@ TEST_CASE("AppArgs: Help Intent") {
 
     CHECK(config.intent == INTENT_HELP);
 }
+
+TEST_CASE("AppArgs: Missing Argument Error") {
+    // --config requires an argument. Passing it as the last flag should trigger an error.
+    char* argv[] = {(char*)"linapple", (char*)"--config"};
+    int argc = 2;
+    AppConfig config = {};
+    int result = AppArgs_Parse(argc, argv, &config);
+
+    CHECK(result != 0);
+    CHECK(config.intent == INTENT_ERROR);
+}

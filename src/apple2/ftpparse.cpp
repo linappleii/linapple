@@ -388,7 +388,7 @@ auto ftpparse(struct ftpparse *fp, char *buf, int len) -> int
   if (buf[0] == 'd') {
     fp->flagtrycwd = 1;
   }
-  
+
   // Skip permissions, links, owner, group
   int spaces = 0;
   while (i < len && spaces < 4) {
@@ -457,7 +457,7 @@ auto ftpparse(struct ftpparse *fp, char *buf, int len) -> int
         }
         fp->mtimetype = FTPPARSE_MTIME_REMOTEDAY;
       }
-      
+
       fp->mtime = totai(year, month, mday) + hour * SECONDS_PER_HOUR + minute * SECONDS_PER_MINUTE;
     }
   }

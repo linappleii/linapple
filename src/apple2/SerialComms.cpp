@@ -239,7 +239,7 @@ auto SSC_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uin
 static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   g_pSSCHost = host;
   g_nSSCSlot = slot;
-  
+
   const uint32_t SSC_FW_SIZE = 2 * 1024;
   const uint32_t SSC_SLOT_FW_SIZE = 256;
   const uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
@@ -259,7 +259,7 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   host->RegisterExpansionROM(slot, sg_SSC.m_pExpansionRom);
 
   host->RegisterIO(slot, SSC_IORead, SSC_IOWrite, nullptr, nullptr);
-  
+
   return &sg_SSC; // Use the global instance for now
 }
 

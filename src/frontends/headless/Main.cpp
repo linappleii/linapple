@@ -43,7 +43,7 @@ auto main(int argc, char* argv[]) -> int {
 
   constexpr int HEADLESS_FRAMES = 60;
   constexpr int APPLE2_FRAME_CYCLES = 17030;
-  
+
   for (int i = 0; i < HEADLESS_FRAMES; ++i) {
     Linapple_RunFrame(APPLE2_FRAME_CYCLES);
   }

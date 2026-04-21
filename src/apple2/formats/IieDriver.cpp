@@ -1,5 +1,6 @@
 #include "apple2/formats/IieDriver.h"
 
+#include <array>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -23,9 +24,9 @@ constexpr int IIE_NIBBLE_MAP_OFFSET = 14;
 
 struct IieInstance {
   FILE* file = nullptr;
-  uint8_t header[IIE_HEADER_SIZE]{};
-  uint8_t sector_order[SECTORS_PER_TRACK_16]{};
-  uint8_t work_buffer[GCR_WORKBUF_SIZE]{};
+  std::array<uint8_t, IIE_HEADER_SIZE> header{};
+  std::array<uint8_t, SECTORS_PER_TRACK_16> sector_order{};
+  std::array<uint8_t, GCR_WORKBUF_SIZE> work_buffer{};
   bool os_readonly = false;
 
   IieInstance() = default;
@@ -36,9 +37,9 @@ struct IieInstance {
   }
 
   IieInstance(const IieInstance&) = delete;
-  IieInstance& operator=(const IieInstance&) = delete;
+  auto operator=(const IieInstance&) -> IieInstance& = delete;
   IieInstance(IieInstance&&) = delete;
-  IieInstance& operator=(IieInstance&&) = delete;
+  auto operator=(IieInstance&&) -> IieInstance& = delete;
 };
 
 static void IieConvertSectorOrder(const uint8_t* sourceorder, uint8_t* sector_order) {
@@ -54,14 +55,13 @@ static void IieConvertSectorOrder(const uint8_t* sourceorder, uint8_t* sector_or
     sector_order[loop] = (found == 0xFF) ? 0 : found;
   }
 }
-} // namespace
 
-static DiskProbe_e IieProbe(const uint8_t* header, size_t header_size,
-                            uint32_t file_size, const char* ext_hint) {
+static auto IieProbe(const uint8_t* header, size_t header_size,
+                            uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)file_size;
   (void)ext_hint;
 
-  if (header_size > IIE_VARIANT_OFFSET) {
+  if (header_size > static_cast<size_t>(IIE_VARIANT_OFFSET)) {
     if (memcmp(header, IIE_SIGNATURE, IIE_SIGNATURE_LEN) == 0 &&
         header[IIE_VARIANT_OFFSET] <= 3) {
       return DISK_PROBE_DEFINITE;
@@ -71,8 +71,8 @@ static DiskProbe_e IieProbe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static DiskError_e IieOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) {
+static auto IieOpen(const char* path, uint32_t file_offset,
+                           bool* out_os_readonly, void** out_instance) -> DiskError_e {
   (void)file_offset;
 
   auto* instance = new IieInstance();
@@ -93,7 +93,7 @@ static DiskError_e IieOpen(const char* path, uint32_t file_offset,
     *out_os_readonly = instance->os_readonly;
   }
 
-  if (fread(instance->header, 1, IIE_HEADER_SIZE, instance->file) !=
+  if (fread(instance->header.data(), 1, IIE_HEADER_SIZE, instance->file) !=
       IIE_HEADER_SIZE) {
     fclose(instance->file);
     instance->file = nullptr;
@@ -103,7 +103,7 @@ static DiskError_e IieOpen(const char* path, uint32_t file_offset,
 
   if (instance->header[IIE_VARIANT_OFFSET] <= 2) {
     IieConvertSectorOrder(&instance->header[IIE_SECTOR_MAP_OFFSET],
-                          instance->sector_order);
+                          instance->sector_order.data());
   }
 
   *out_instance = reinterpret_cast<void*>(instance);
@@ -114,7 +114,7 @@ static void IieClose(void* instance) {
   delete reinterpret_cast<IieInstance*>(instance);
 }
 
-static bool IieIsWriteProtected(void* instance) {
+static auto IieIsWriteProtected(void* instance) -> bool {
   (void)instance;
   return false;
 }
@@ -130,14 +130,20 @@ static void IieReadTrack(void* instance, int track, int phase,
   }
 
   if (ii->header[IIE_VARIANT_OFFSET] <= 2) {
-    memset(ii->work_buffer, 0, GCR_WORKBUF_SIZE);
-    fseek(ii->file,
-          static_cast<long>(static_cast<size_t>(track) * DOS_TRACK_SIZE +
-                            IIE_TRACK_DATA_OFFSET),
-          SEEK_SET);
-    fread(ii->work_buffer, 1, DOS_TRACK_SIZE, ii->file);
+    std::fill(ii->work_buffer.begin(), ii->work_buffer.end(), 0);
+    if (fseek(ii->file,
+              static_cast<long>(static_cast<size_t>(track) * DOS_TRACK_SIZE +
+                                IIE_TRACK_DATA_OFFSET),
+              SEEK_SET) != 0) {
+      *nibbles_out = 0;
+      return;
+    }
+    if (fread(ii->work_buffer.data(), 1, DOS_TRACK_SIZE, ii->file) != DOS_TRACK_SIZE) {
+      *nibbles_out = 0;
+      return;
+    }
     *nibbles_out = static_cast<int>(GCR_NibblizeTrackCustomOrder(
-        ii->work_buffer, trackImageBuffer, ii->sector_order, track));
+        ii->work_buffer.data(), trackImageBuffer, ii->sector_order.data(), track));
   } else {
     // Pre-nibblized variant
     uint16_t nib_count = *reinterpret_cast<uint16_t*>(
@@ -149,10 +155,19 @@ static void IieReadTrack(void* instance, int track, int phase,
 
     uint32_t offset = IIE_HEADER_SIZE;
     for (int t = 0; t < track; ++t) {
-      offset += *reinterpret_cast<uint16_t*>(
+      uint16_t prev_nib_count = *reinterpret_cast<uint16_t*>(
           &ii->header[(t << 1) + IIE_NIBBLE_MAP_OFFSET]);
+      // Use a reasonable upper bound for previous track sizes.
+      // SIMSYSTEM_IIE tracks should not exceed NIBBLES_PER_TRACK.
+      if (prev_nib_count > NIBBLES_PER_TRACK) {
+        prev_nib_count = NIBBLES_PER_TRACK;
+      }
+      offset += prev_nib_count;
     }
-    fseek(ii->file, static_cast<long>(offset), SEEK_SET);
+    if (fseek(ii->file, static_cast<long>(offset), SEEK_SET) != 0) {
+        *nibbles_out = 0;
+        return;
+    }
     *nibbles_out =
         static_cast<int>(fread(trackImageBuffer, 1, nib_count, ii->file));
   }
@@ -167,6 +182,8 @@ static void IieWriteTrack(void* instance, int track, int phase,
   (void)nibbles;
   // Write is intentionally not implemented for IIE
 }
+
+} // namespace
 
 extern "C" const DiskFormatDriver_t g_iie_driver = {
     LINAPPLE_DISK_ABI_VERSION,

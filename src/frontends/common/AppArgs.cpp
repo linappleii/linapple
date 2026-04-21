@@ -59,13 +59,16 @@ void AppArgs_PrintHelp() {
 }
 
 int AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) {
+    if (!outConfig) {
+        return -1;
+    }
     AppConfig_Default(outConfig);
-    
-    int opt = 0;
-    int opt_idx = 0;
+
+    int opt = -1;
+    int opt_idx = -1;
     opterr = 0; // Suppress getopt error messages
     optind = 1; // Reset for multiple calls if necessary
-    
+
     while ((opt = getopt_long(argc, argv, OptString, OptionTable, &opt_idx)) != -1) {
         switch (opt) {
             case '1':
@@ -136,6 +139,12 @@ int AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) {
                 return 0;
             case '?':
                 // Pass-through: unknown option or missing argument
+                // If optopt is set, it means a required argument was missing.
+                if (optopt != 0) {
+                    fprintf(stderr, "Error: Option -%c requires an argument.\n", optopt);
+                    outConfig->intent = INTENT_ERROR;
+                    return -1;
+                }
                 if (outConfig->argc_extra < 64) {
                     outConfig->argv_extra[outConfig->argc_extra++] = argv[optind-1];
                 }
@@ -144,7 +153,7 @@ int AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) {
                 break;
         }
     }
-    
+
     // Collect remaining non-option arguments
     while (optind < argc) {
         if (outConfig->argc_extra < 64) {
@@ -153,6 +162,6 @@ int AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) {
             optind++;
         }
     }
-    
+
     return 0;
 }

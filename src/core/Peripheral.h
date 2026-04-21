@@ -57,7 +57,7 @@ typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc, uint16_t add
 typedef struct {
     void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
     void (*AssertIrq)(int slot, bool assert);
-    void (*RegisterIO)(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0, 
+    void (*RegisterIO)(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0,
                                  PeripheralIOHandler readCx, PeripheralIOHandler writeCx);
     void (*RegisterCxROM)(int slot, uint8_t* rom_ptr);
     void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);

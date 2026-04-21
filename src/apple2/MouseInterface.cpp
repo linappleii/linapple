@@ -3,7 +3,7 @@ linapple : An Apple //e emulator for Linux
 
 Based on Apple in PC's mousecard.cpp
 - Permission given by Kyle Kim to reuse in AppleWin
-Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 
+Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
 */
 
 #include "core/Common.h"
@@ -293,11 +293,11 @@ static auto Mouse_ABI_Init(int slot, HostInterface_t* host) -> void* {
   Pia6821_Reset(&sg_Mouse.m_6821);
   Pia6821_SetListenerB(&sg_Mouse.m_6821, nullptr, M6821_Listener_B);
   Pia6821_SetListenerA(&sg_Mouse.m_6821, nullptr, M6821_Listener_A);
-  
+
   sg_Mouse.m_by6821A = 0;
   sg_Mouse.m_by6821B = 0x40;    // Set PB6
   Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
-  
+
   sg_Mouse.m_iMinX = 0;
   sg_Mouse.m_iMaxX = 1023;
   sg_Mouse.m_iMinY = 0;

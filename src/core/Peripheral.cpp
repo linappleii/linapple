@@ -135,7 +135,7 @@ static auto Host_AssertIrq(int slot, bool assert) -> void {
     (void)assert;
 }
 
-static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0, 
+static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0,
                            PeripheralIOHandler readCx, PeripheralIOHandler writeCx) -> void {
     if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
@@ -143,8 +143,8 @@ static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0, PeripheralIOHa
     ap.writeC0 = writeC0;
     ap.readCx = readCx;
     ap.writeCx = writeCx;
-    
-    RegisterIoHandler(static_cast<uint32_t>(slot), 
+
+    RegisterIoHandler(static_cast<uint32_t>(slot),
                       readC0 ? Slot_ReadC0_Bridge : nullptr,
                       writeC0 ? Slot_WriteC0_Bridge : nullptr,
                       readCx ? Slot_ReadCx_Bridge : nullptr,
@@ -166,7 +166,7 @@ static auto Host_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
     if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
     ActivePeripheral_t& ap = g_active_peripherals.at(static_cast<size_t>(slot));
     ap.expansionRom = rom_ptr;
-    RegisterIoHandler(static_cast<uint32_t>(slot), 
+    RegisterIoHandler(static_cast<uint32_t>(slot),
                       ap.readC0 ? Slot_ReadC0_Bridge : nullptr,
                       ap.writeC0 ? Slot_WriteC0_Bridge : nullptr,
                       ap.readCx ? Slot_ReadCx_Bridge : nullptr,
@@ -179,13 +179,13 @@ static auto Host_RegisterDirectIO(void* instance, uint16_t addr, PeripheralIOHan
         Logger::Error("Too many direct IO handlers registered!");
         return;
     }
-    
+
     g_direct_io_handlers.at(g_num_direct_handlers) = {addr, read, write, instance};
     g_num_direct_handlers++;
-    
-    RegisterDirectIoHandler(addr, 
-                            read ? DirectIO_Read_Bridge : nullptr, 
-                            write ? DirectIO_Write_Bridge : nullptr, 
+
+    RegisterDirectIoHandler(addr,
+                            read ? DirectIO_Read_Bridge : nullptr,
+                            write ? DirectIO_Write_Bridge : nullptr,
                             instance);
 }
 
@@ -375,7 +375,7 @@ auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
         return -1;
     }
 
-    // Justification: The Peripheral ABI is a C interface; the HostInterface must be passed 
+    // Justification: The Peripheral ABI is a C interface; the HostInterface must be passed
     // as a non-const pointer to allow peripherals to store it, but we provide a central const implementation.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     void* instance = api->init(slot, const_cast<HostInterface_t*>(&g_host_interface));

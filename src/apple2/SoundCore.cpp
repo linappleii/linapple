@@ -89,7 +89,7 @@ struct sample_buffer {
   void drain_to(int16_t *dest, size_t len, bool mix) {
     size_t available = get_filled();
     size_t num = (len < available) ? len : available;
-    
+
     size_t r = read_index.load(std::memory_order_relaxed);
     auto process = [&](const int16_t* src, size_t count, size_t offset) -> void {
       if (mix) {
@@ -167,7 +167,7 @@ void SoundCore_GetSamples(int16_t *out, size_t num_samples) {
     memset(out, 0, num_samples * sizeof(int16_t));
     return;
   }
-  
+
   // Speaker is primary (not mixed yet)
   g_spkrMixBuffer->drain_to(out, num_samples, false);
   // Mockingboard is mixed into Speaker

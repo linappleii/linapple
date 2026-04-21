@@ -55,7 +55,7 @@ void DebugInitialize()
 
     AssemblerStartup();
     InitDisasm();
-    
+
     bInitialized = true;
 }
 

@@ -834,18 +834,18 @@ void FrameRefreshStatus(int drawflags) {
   if (drawflags & DRAW_LEDS) {
     size_t size = sizeof(g_lastDiskStatus);
     if (Peripheral_Query(DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS, &g_lastDiskStatus, &size) == PERIPHERAL_OK) {
-      if (g_lastDiskStatus.drive0_last_error != DISK_ERR_NONE && 
+      if (g_lastDiskStatus.drive0_last_error != DISK_ERR_NONE &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 1 Error", 
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 1 Error",
                                  DiskUI_GetErrorMessage(g_lastDiskStatus.drive0_last_error), g_window);
         g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
       } else if (g_lastDiskStatus.drive0_last_error == DISK_ERR_NONE) {
         g_drive0_last_reported_error = DISK_ERR_NONE;
       }
 
-      if (g_lastDiskStatus.drive1_last_error != DISK_ERR_NONE && 
+      if (g_lastDiskStatus.drive1_last_error != DISK_ERR_NONE &&
           g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 2 Error", 
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 2 Error",
                                  DiskUI_GetErrorMessage(g_lastDiskStatus.drive1_last_error), g_window);
         g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
       } else if (g_lastDiskStatus.drive1_last_error == DISK_ERR_NONE) {

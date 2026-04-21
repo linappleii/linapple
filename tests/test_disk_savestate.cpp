@@ -41,7 +41,7 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
     size_t state_size = 0;
     Peripheral_SaveState(SL6, nullptr, &state_size);
     REQUIRE(state_size > 0);
-    
+
     std::vector<uint8_t> buffer(state_size);
     Peripheral_SaveState(SL6, buffer.data(), &state_size);
 
@@ -52,7 +52,7 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
 
     // Restore State
     Peripheral_LoadState(SL6, buffer.data(), state_size);
-    
+
     Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &s_size);
     CHECK(status.drive0_loaded == true);
     CHECK(status.drive0_last_error == DISK_ERR_NONE);
@@ -94,7 +94,7 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
     DiskStatus_t status{};
     size_t s_size = sizeof(status);
     Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &s_size);
-    
+
     // Should handle gracefully: not loaded, but reported error
     CHECK(status.drive0_loaded == false);
     CHECK(status.drive0_last_error == DISK_ERR_FILE_NOT_FOUND);

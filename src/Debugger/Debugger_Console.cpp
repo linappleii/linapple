@@ -69,12 +69,12 @@ auto ConsoleInputHistoryNext() -> Update_t;
 	// g_nConsoleBuffer -> g_aConsoleBuffer[2] |      | g_aConsoleDisplay[3]        :
 	//          :          g_aConsoleBuffer[1] v      | g_aConsoleDisplay[2]        :
 	//          .          g_aConsoleBuffer[0] -----> | g_aConsoleDisplay[1]        .
-	//                                                | 
-	// g_aBufferedInput[0] -----> ConsoleInput ---->  | g_aConsoleDisplay[0]   
+	//                                                |
+	// g_aBufferedInput[0] -----> ConsoleInput ---->  | g_aConsoleDisplay[0]
 	// g_aBufferedInput[1] ^
 	// g_aBufferedInput[2] |
 	// g_aBufferedInput[3] |
-	
+
 	// Buffer
 		bool      g_bConsoleBufferPaused = false; // buffered output is waiting for user to continue
 		int       g_nConsoleBuffer = 0;
@@ -82,7 +82,7 @@ auto ConsoleInputHistoryNext() -> Update_t;
 
 	// Cursor
 		char      g_sConsoleCursor[] = "_";
-	
+
 	// Display
 		char      g_aConsolePrompt[] = ">!"; // input, assembler // NUM_PROMPTS
 		char      g_sConsolePrompt[] = ">"; // No, NOT Integer Basic!  The nostalgic '*' "Monitor" doesn't look as good, IMHO. :-(
@@ -149,7 +149,7 @@ auto ConsolePrint ( const char * pText ) -> bool
 {
 	while (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT)
 	{
-		ConsoleBufferToDisplay();	
+		ConsoleBufferToDisplay();
 	}
 
 	// Convert color string to native console color text
@@ -172,12 +172,12 @@ auto ConsolePrint ( const char * pText ) -> bool
 			x = 0;
 			if (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT)
 			{
-				ConsoleBufferToDisplay();	
+				ConsoleBufferToDisplay();
 			}
 			else
 			{
 				g_nConsoleBuffer++;
-			}							
+			}
 			pDst = & g_aConsoleBuffer[ g_nConsoleBuffer ][ 0 ];
 		}
 		else
@@ -221,7 +221,7 @@ auto ConsolePrint ( const char * pText ) -> bool
 			{
 				if (bHaveColor)
 				{
-					g = ConsoleColor_MakeColor( cColor, c );	
+					g = ConsoleColor_MakeColor( cColor, c );
 					bHaveColor = false;
 				}
 				*pDst = g;
@@ -331,7 +331,7 @@ auto ConsoleBufferPush ( const char * pText ) -> bool
 			x = 0;
 			if (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT)
 			{
-				ConsoleBufferToDisplay();	
+				ConsoleBufferToDisplay();
 			}
 			else
 			{
@@ -437,7 +437,7 @@ void ConsoleDisplayPush ( const conchar_t * pText )
 			, sizeof(conchar_t) * CONSOLE_WIDTH
 		);
 	}
-	
+
 	g_nConsoleDisplayTotal++;
 	if (g_nConsoleDisplayTotal > (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE)) {
 		g_nConsoleDisplayTotal = (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE);

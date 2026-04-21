@@ -109,7 +109,7 @@ uint8_t nAY8910Number;
 int nTimerStatus;
 } SY6522_AY8910;
 
-// Justification: Legacy hardware emulation relies on global state for 
+// Justification: Legacy hardware emulation relies on global state for
 // cycle-accurate timing and multi-chip coordination.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static SY6522_AY8910 g_MB[NUM_AY8910];
@@ -239,7 +239,7 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
   }
 }
 
-// Justification: Peripheral Host Interface requires storage of core callback 
+// Justification: Peripheral Host Interface requires storage of core callback
 // services and active slot information for the migrated Mockingboard instance.
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static HostInterface_t* g_pMBHost = nullptr;
@@ -480,7 +480,7 @@ void MB_Update() {
     for (int i = 0; i < nNumSamples; i++) {
       int nDataL = 0;
       int nDataR = 0;
-      
+
       for(int j=0; j<3; j++) {
         // Slot4
         nDataL += static_cast<int>(static_cast<double>(ppAYVoiceBuffer[0 * 3 + j].get()[i]) * fAttenuation);
@@ -507,7 +507,7 @@ void MB_Update() {
       g_nMixBuffer[i * 2] = static_cast<short>(nDataL);
       g_nMixBuffer[i * 2 + 1] = static_cast<short>(nDataR);
     }
-    
+
     DSUploadMockBuffer(g_nMixBuffer, nNumSamples * 2);
 
     #ifndef HEADLESS
@@ -808,17 +808,17 @@ auto MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, uint32_t) -> uint32_t {
 static auto MB_ABI_Init(int slot, HostInterface_t* host) -> void* {
   g_pMBHost = host;
   g_nMB_Slot = slot;
-  
+
   static bool s_mb_initialized = false;
   if (!s_mb_initialized) {
     MB_Initialize();
     s_mb_initialized = true;
   }
-  
+
   // MB_Initialize already calls RegisterIoHandler, but we also register via
   // the host interface to ensure the manager is aware.
   host->RegisterIO(slot, PhasorIO, PhasorIO, MB_Read, MB_Write);
-  
+
   return reinterpret_cast<void*>(1); // Dummy instance
 }
 

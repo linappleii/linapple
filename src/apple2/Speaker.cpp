@@ -58,10 +58,10 @@ auto Speaker_Initialize(Speaker_t* instance) -> void {
   spkr->quiet_cycle_count = 0;
   spkr->recently_active = false;
   spkr->toggle_flag = false;
-  
+
   spkr->last_sample_state = false;
   spkr->next_sample_cycle = static_cast<double>(g_nCumulativeCycles);
-  
+
   // Only clear host if this is a fresh non-default instance.
   // The default speaker's host is set by Spkr_ABI_Init and must persist.
   if (instance != nullptr && instance != &g_defaultSpeaker) {
@@ -237,11 +237,11 @@ static auto Spkr_ABI_Init(int slot, HostInterface_t* host) -> void* {
   // Use the default instance for now until multiple instances are fully supported
   g_defaultSpeaker.host = static_cast<void*>(host);
   Speaker_Initialize(&g_defaultSpeaker);
-  
+
   // Speaker is at $C030
   // Note: we pass g_defaultSpeaker as the instance pointer to the IO handler
   host->RegisterDirectIO(&g_defaultSpeaker, ADDR_SPEAKER, SpkrToggle, SpkrToggle);
-  
+
   return &g_defaultSpeaker;
 }
 

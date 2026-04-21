@@ -1,19 +1,21 @@
 #include "apple2/formats/PoDriver.h"
 
+#include <array>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 
+#include "apple2/DiskCommands.h"
 #include "apple2/DiskGCR.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// TODO: pass via driver config, not global
+// TODO(davidbaucum): pass via driver config, not global
 extern bool enhancedisk;
 
-// TODO: share between DO/PO
+// TODO(davidbaucum): share between DO/PO
 namespace {
 constexpr int DISK_SIZE_140K = 143360;
 constexpr int MIN_140K_DISK_SIZE = 143105;
@@ -28,7 +30,7 @@ struct PoInstance {
   FILE* file = nullptr;
   uint32_t macbinary_offset = 0;
   bool os_readonly = false;
-  uint8_t work_buffer[GCR_WORKBUF_SIZE]{};
+  std::array<uint8_t, GCR_WORKBUF_SIZE> work_buffer{};
 
   PoInstance() = default;
   virtual ~PoInstance() {
@@ -38,14 +40,14 @@ struct PoInstance {
   }
 
   PoInstance(const PoInstance&) = delete;
-  PoInstance& operator=(const PoInstance&) = delete;
+  auto operator=(const PoInstance&) -> PoInstance& = delete;
   PoInstance(PoInstance&&) = delete;
-  PoInstance& operator=(PoInstance&&) = delete;
+  auto operator=(PoInstance&&) -> PoInstance& = delete;
 };
 }  // namespace
 
-static DiskProbe_e PoProbe(const uint8_t* header, size_t header_size,
-                           uint32_t file_size, const char* ext_hint) {
+static auto PoProbe(const uint8_t* header, size_t header_size,
+                           uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)header;
   (void)header_size;
   (void)ext_hint;
@@ -59,7 +61,7 @@ static DiskProbe_e PoProbe(const uint8_t* header, size_t header_size,
   // ProDOS directory chain check on track 0, starting at block 2 (Sectors 4,5
   // of Track 0). A typical ProDOS directory header at block 2, sector 4 (0x400)
   // has next/prev pointers.
-  if (header_size >= (2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2) {
+  if (header_size >= static_cast<size_t>((2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
     uint16_t prev = *reinterpret_cast<const uint16_t*>(
         header + (2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE);
     uint16_t next = *reinterpret_cast<const uint16_t*>(
@@ -70,7 +72,7 @@ static DiskProbe_e PoProbe(const uint8_t* header, size_t header_size,
     }
   }
 
-  if (header_size >= VTOC_OFFSET + 2 + (13 * PAGE_SIZE)) {
+  if (header_size >= static_cast<size_t>(VTOC_OFFSET + 2 + (13 * PAGE_SIZE))) {
     bool mismatch = false;
     for (int loop = 5; loop <= 13; ++loop) {
       if (header[VTOC_OFFSET + 2 + (loop * PAGE_SIZE)] != 14 - loop) {
@@ -90,8 +92,8 @@ static DiskProbe_e PoProbe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_POSSIBLE;  // Correct size is often enough to be "possible"
 }
 
-static DiskError_e PoOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) {
+static auto PoOpen(const char* path, uint32_t file_offset,
+                           bool* out_os_readonly, void** out_instance) -> DiskError_e {
   auto* instance = new PoInstance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -118,7 +120,7 @@ static void PoClose(void* instance) {
   delete reinterpret_cast<PoInstance*>(instance);
 }
 
-static bool PoIsWriteProtected(void* instance) {
+static auto PoIsWriteProtected(void* instance) -> bool {
   (void)instance;
   return false;
 }
@@ -127,18 +129,28 @@ static void PoReadTrack(void* instance, int track, int phase,
                         uint8_t* trackImageBuffer, int* nibbles_out) {
   (void)phase;
   auto* di = reinterpret_cast<PoInstance*>(instance);
-  memset(di->work_buffer, 0, GCR_WORKBUF_SIZE);
-  fseek(di->file,
+  if (track < 0 || track >= TRACKS) {
+    *nibbles_out = 0;
+    return;
+  }
+  std::fill(di->work_buffer.begin(), di->work_buffer.end(), 0);
+  if (fseek(di->file,
         static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
-        SEEK_SET);
-  fread(di->work_buffer, 1, DOS_TRACK_SIZE, di->file);
+        SEEK_SET) != 0) {
+    *nibbles_out = 0;
+    return;
+  }
+  if (fread(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file) != DOS_TRACK_SIZE) {
+    *nibbles_out = 0;
+    return;
+  }
 
   uint32_t nibbles =
-      GCR_NibblizeTrack(di->work_buffer, trackImageBuffer, false, track);
+      GCR_NibblizeTrack(di->work_buffer.data(), trackImageBuffer, false, track);
   *nibbles_out = static_cast<int>(nibbles);
 
   if (!enhancedisk) {
-    GCR_SkewTrack(di->work_buffer, track, *nibbles_out, trackImageBuffer);
+    GCR_SkewTrack(di->work_buffer.data(), track, *nibbles_out, trackImageBuffer);
   }
 }
 
@@ -146,25 +158,26 @@ static void PoWriteTrack(void* instance, int track, int phase,
                          const uint8_t* trackImage, int nibbles) {
   (void)phase;
   auto* di = reinterpret_cast<PoInstance*>(instance);
-  if (di->os_readonly) return;
+  if (di->os_readonly || track < 0 || track >= TRACKS) return;
 
-  memset(di->work_buffer, 0, GCR_WORKBUF_SIZE);
-  GCR_DenibblizeTrack(di->work_buffer, const_cast<uint8_t*>(trackImage), false,
+  std::fill(di->work_buffer.begin(), di->work_buffer.end(), 0);
+  GCR_DenibblizeTrack(di->work_buffer.data(), const_cast<uint8_t*>(trackImage), false,
                       nibbles);
-  fseek(di->file,
+  if (fseek(di->file,
         static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
-        SEEK_SET);
-  fwrite(di->work_buffer, 1, DOS_TRACK_SIZE, di->file);
+        SEEK_SET) == 0) {
+    (void)fwrite(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file);
+  }
 }
 
-static DiskError_e PoCreate(const char* path) {
+static auto PoCreate(const char* path) -> DiskError_e {
   FILE* f = fopen(path, "wb");
   if (!f) return DISK_ERR_IO;
 
-  uint8_t zero[1024];
-  memset(zero, 0, sizeof(zero));
+  std::array<uint8_t, 1024> zero{};
+  zero.fill(0);
   for (int i = 0; i < DISK_SIZE_140K / 1024; ++i) {
-    fwrite(zero, 1, 1024, f);
+    fwrite(zero.data(), 1, zero.size(), f);
   }
   fclose(f);
   return DISK_ERR_NONE;

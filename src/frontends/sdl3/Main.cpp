@@ -128,7 +128,7 @@ auto main(int argc, char* argv[]) -> int {
 
   do {
     AppController_SetRestart(false);
-    
+
     if (SessionInit(&config) != 0) {
       break;
     }

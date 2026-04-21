@@ -127,7 +127,7 @@ TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
     // Verify Reset propagation
     Peripheral_Manager_Reset();
     CHECK(g_dummy_reset_called == true);
-    
+
     // Verify Shutdown
     Peripheral_Manager_Shutdown();
     CHECK(g_dummy_shutdown_called == true);

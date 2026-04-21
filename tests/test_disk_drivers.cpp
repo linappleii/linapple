@@ -172,7 +172,8 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip & Verbatim") {
   FILE* f = fopen(tmp_file, "rb");
   fseek(f, 5 * 6656, SEEK_SET);
   uint8_t file_bytes[6656];
-  fread(file_bytes, 1, 6656, f);
+  size_t read_bytes = fread(file_bytes, 1, 6656, f);
+  (void)read_bytes;
   fclose(f);
   CHECK(memcmp(original_track, file_bytes, 6656) == 0);
 
@@ -208,7 +209,8 @@ TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
   if (!f) f = fopen("../tests/fixtures/minimal.woz", "rb");
   REQUIRE(f != nullptr);
   uint8_t header[1536];
-  fread(header, 1, 1536, f);
+  size_t rb = fread(header, 1, 1536, f);
+  (void)rb;
   fclose(f);
 
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == DISK_PROBE_DEFINITE);
@@ -356,4 +358,105 @@ TEST_CASE("DiskDrivers: [DRV-14] DO Track Round-trip") {
 
   g_do_driver.close(instance);
   remove(tmp_file);
+}
+
+TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
+  const char* tmp_file = "malicious_trks.woz";
+  FILE* f = fopen(tmp_file, "wb");
+  uint8_t h[1536]{};
+  memcpy(h, "WOZ2\xFF\n\r\n", 8);
+  h[21] = 1; // 5.25"
+  // TMAP starts at offset 88. Set track 0 to use trks_index 160 (out of bounds)
+  h[88] = 160;
+  fwrite(h, 1, 1536, f);
+  fclose(f);
+
+  void* instance = nullptr;
+  bool os_ro = false;
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, &os_ro, &instance) == DISK_ERR_NONE);
+
+  uint8_t buffer[6656];
+  int count = 0;
+  // Should handle gracefully (e.g., return 0 nibbles) rather than crashing
+  g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
+  CHECK(count == 0);
+
+  g_woz2_driver.close(instance);
+  remove(tmp_file);
+}
+
+TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
+  const char* tmp_file = "malicious_bits.woz";
+  FILE* f = fopen(tmp_file, "wb");
+  uint8_t h[1536]{};
+  memcpy(h, "WOZ2\xFF\n\r\n", 8);
+  h[21] = 1;
+  h[88] = 0; // Track 0 uses trks_index 0
+  // TRKS entry 0 starts at 256.
+  // starting_block = 3 (offset 1536), block_count = 1 (512 bytes)
+  h[256] = 3; h[257] = 0;
+  h[258] = 1; h[259] = 0;
+  // bit_count = 512 * 8 + 1 (exceeds data)
+  uint32_t bad_bits = 512 * 8 + 1;
+  memcpy(h + 260, &bad_bits, 4);
+  fwrite(h, 1, 1536, f);
+  uint8_t dummy_data[512]{};
+  fwrite(dummy_data, 1, 512, f);
+  fclose(f);
+
+  void* instance = nullptr;
+  bool os_ro = false;
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, &os_ro, &instance) == DISK_ERR_NONE);
+
+  uint8_t buffer[6656];
+  int count = 0;
+  g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
+  CHECK(count == 0);
+
+  g_woz2_driver.close(instance);
+  remove(tmp_file);
+}
+
+TEST_CASE("DiskDrivers: [SEC-03] IIE Malicious nib_count chain") {
+  const char* tmp_file = "malicious_iie.iie";
+  FILE* f = fopen(tmp_file, "wb");
+  uint8_t h[88]{};
+  memcpy(h, "SIMSYSTEM_IIE", 13);
+  h[13] = 3; // Pre-nibblized variant
+  // Set track 0 nib_count to 0xFFFF (maliciously large)
+  uint16_t bad_nib = 0xFFFF;
+  memcpy(h + 14, &bad_nib, 2);
+  fwrite(h, 1, 88, f);
+  fclose(f);
+
+  void* instance = nullptr;
+  bool os_ro = false;
+  REQUIRE(g_iie_driver.open(tmp_file, 0, &os_ro, &instance) == DISK_ERR_NONE);
+
+  uint8_t buffer[6656];
+  int count = 0;
+  // Reading track 1 should not crash even if track 0 had a huge nib_count
+  g_iie_driver.read_track(instance, 1, 0, buffer, &count);
+
+  g_iie_driver.close(instance);
+  remove(tmp_file);
+}
+
+TEST_CASE("DiskDrivers: [SEC-04] Driver Track Bounds") {
+    // Test DO driver with invalid track
+    const char* tmp_do = "bounds.dsk";
+    g_do_driver.create(tmp_do);
+    void* inst = nullptr;
+    bool ro = false;
+    g_do_driver.open(tmp_do, 0, &ro, &inst);
+    uint8_t buf[6656];
+    int count = 0;
+
+    g_do_driver.read_track(inst, -1, 0, buf, &count);
+    CHECK(count == 0);
+    g_do_driver.read_track(inst, 40, 0, buf, &count);
+    CHECK(count == 0);
+
+    g_do_driver.close(inst);
+    remove(tmp_do);
 }

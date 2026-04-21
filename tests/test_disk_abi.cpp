@@ -59,7 +59,7 @@ TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
     size_t size = buffer.size();
     buffer.fill(BUFFER_INIT_VAL);
     Peripheral_SaveState(SL6, buffer.data(), &size);
-    CHECK(buffer[0] == BUFFER_INIT_VAL); 
+    CHECK(buffer[0] == BUFFER_INIT_VAL);
     Linapple_Shutdown();
 }
 
@@ -70,11 +70,11 @@ TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
     Peripheral_SaveState(SL6, nullptr, &size);
     std::vector<uint8_t> buffer(size);
     Peripheral_SaveState(SL6, buffer.data(), &size);
-    
+
     // Corrupt version (first 4 bytes of DiskSavedState_t is Header_t {version, size})
     auto* version = reinterpret_cast<uint32_t*>(buffer.data());
     *version = BAD_VERSION;
-    
+
     Peripheral_LoadState(SL6, buffer.data(), size);
     Linapple_Shutdown();
 }

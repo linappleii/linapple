@@ -49,12 +49,13 @@ void AppEnv_ResolvePaths(AppConfig* config) {
     // Populate back to config
     Util_SafeStrCpy(config->szConfigPath, configPath.c_str(), PATH_MAX_LEN);
 
-    // Consolidate Registry (Configuration) initialization
-    Configuration::Instance().Load(configPath);
+    // Consolidate Registry (Configuration) initialization.
+    // Use the path from config->szConfigPath to ensure consistency if truncation occurred.
+    Configuration::Instance().Load(config->szConfigPath);
 
     // Consolidate Logger initialization
     Logger::Initialize();
-    
+
     // Set verbosity based on config
     if (config->bVerbose) {
         Logger::SetVerbosity(LogLevel::kPerf);

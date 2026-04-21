@@ -640,11 +640,11 @@ void RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0, iofunction IOWriteC0
 void RegisterDirectIoHandler(uint16_t addr, iofunction read, iofunction write, void* instance) {
   if ((addr & 0xFF00) != 0xC000) return;
   uint8_t index = static_cast<uint8_t>(addr & 0xFF);
-  
+
   if (read) IORead[index] = read;
   if (write) IOWrite[index] = write;
-  
-  // Note: we don't currently have a way to store the 'instance' 
+
+  // Note: we don't currently have a way to store the 'instance'
   // for the generic iofunction signature without changing the core.
   // Peripherals using this must handle their own instance (e.g. via default global).
   (void)instance;

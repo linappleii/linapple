@@ -229,7 +229,7 @@ void JoyFrontend_Update() {
 
       if (x == 127 || x == 128) x += JoyGetTrim(true);
       if (y == 127 || y == 128) y += JoyGetTrim(false);
-      
+
       if (x < 0) x = 0;
       if (x > 255) x = 255;
       if (y < 0) y = 0;

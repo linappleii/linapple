@@ -22,16 +22,16 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
     Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz", DISK_INSERT_PATH_MAX);
     Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
-    
+
     DiskStatus_t status{};
     size_t size = sizeof(status);
     PeripheralStatus ps = Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
-    
+
     REQUIRE(ps == PERIPHERAL_OK);
     CHECK(status.drive0_loaded != 0);
     CHECK(strstr(status.drive0_full_path, "minimal.woz") != nullptr);
     CHECK(status.drive0_write_protected == 0);
-    
+
     Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

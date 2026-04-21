@@ -520,7 +520,7 @@ auto _CmdSymbolsListTables (int nArgs, int bSymbolTables ) -> Update_t
 				if (! _CmdSymbolList_Address2Symbol( nAddress, bSymbolTables))
 				{
 					ConsolePrintFormat( sText
-						, " Address not found: %s$%s%04X%s" 
+						, " Address not found: %s$%s%04X%s"
 						, CHC_ARG_SEP
 						, CHC_ADDRESS, nAddress, CHC_DEFAULT );
 				}

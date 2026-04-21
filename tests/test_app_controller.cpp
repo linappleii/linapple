@@ -7,32 +7,45 @@
 #include "core/Common_Globals.h"
 #include "core/Util_Text.h"
 #include "apple2/Disk.h"
+#include "apple2/Video.h"
 #include "core/Registry.h"
 #include <fstream>
 
 TEST_CASE("AppController: Initialize and Shutdown") {
     AppConfig config = {};
     AppConfig_Default(&config);
-    
+
     AppEnv_ResolvePaths(&config);
     // Test initialization
     int result = AppController_Initialize(&config);
     CHECK(result == 0);
     CHECK(g_state.mode == MODE_RUNNING);
-    
+
     // Test shutdown
     AppController_Shutdown();
 }
 
-TEST_CASE("AppController: Media Loading") {
-    {
-        std::ofstream tmp_conf("test_media.conf");
-        tmp_conf << "[Slots]\nDisk Image 1=../res/Master.dsk\n";
-    }
-
+TEST_CASE("AppController: Video Mode Reset") {
     AppConfig config = {};
     AppConfig_Default(&config);
-    Util_SafeStrCpy(config.szConfigPath, "test_media.conf", PATH_MAX_LEN);
+
+    // 1. Init with PAL
+    config.bPAL = true;
+    AppController_Initialize(&config);
+    CHECK(g_videotype == VT_COLOR_TVEMU);
+
+    // 2. Re-init without PAL (should reset to standard)
+    config.bPAL = false;
+    AppController_Initialize(&config);
+    CHECK(g_videotype == VT_COLOR_STANDARD);
+
+    AppController_Shutdown();
+}
+
+TEST_CASE("AppController: Media Loading") {
+    AppConfig config = {};
+    AppConfig_Default(&config);
+    Util_SafeStrCpy(config.szDiskPath[0], "res/Master.dsk", PATH_MAX_LEN);
 
     AppEnv_ResolvePaths(&config);
     AppController_Initialize(&config);
@@ -52,18 +65,17 @@ TEST_CASE("AppController: Media Loading") {
     CHECK(status.drive0_loaded == 1);
 
     AppController_Shutdown();
-    remove("test_media.conf");
 }
 
 TEST_CASE("AppController: Diagnostic Commands") {
     AppConfig config = {};
     AppConfig_Default(&config);
     config.intent = INTENT_HELP;
-    
+
     // We don't want to actually print help to stdout during tests usually,
     // but here we just verify it returns true as expected.
     CHECK(AppController_HandleDiagnosticCommands(&config) == true);
-    
+
     config.intent = INTENT_RUN;
     CHECK(AppController_HandleDiagnosticCommands(&config) == false);
 }

@@ -5,11 +5,11 @@
 # We utilize the following exclusions from standard C++ Core Guidelines:
 #
 # 1. pro-type-vararg & avoid-variadic-functions:
-#    Favoring printf-style formatting over iostream for performance, 
+#    Favoring printf-style formatting over iostream for performance,
 #    conciseness in hex-formatting, and C99 ABI compatibility.
 #
 # 2. avoid-non-const-global-variables:
-#    Global hardware state (CPU, Memory, Registers) is a core design 
+#    Global hardware state (CPU, Memory, Registers) is a core design
 #    pattern in this emulator's procedural architecture.
 
 Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'

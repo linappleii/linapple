@@ -455,7 +455,7 @@ auto Colorize( char * pDst, const char * pSrc ) -> bool
 }
 
 	const char sNote [] = "Note:";
-	const int  nNote    = sizeof( sNote ) - 1; 
+	const int  nNote    = sizeof( sNote ) - 1;
 
 	const char sSeeAlso[] = "See also:";
 	const char nSeeAlso   = sizeof( sSeeAlso ) - 1;
