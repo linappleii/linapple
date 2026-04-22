@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string>
+#include <vector>
 #include "core/Util_Path.h"
 #include "core/Registry.h"
 #include "core/Log.h"
@@ -13,49 +14,45 @@ void AppEnv_ResolvePaths(AppConfig* config) {
     return;
   }
 
-  std::string configPath;
+  std::vector<std::string> searchPaths;
 
   // 1. Explicit --config CLI override
   if (config->szConfigPath[0] != '\0') {
-    if (access(&config->szConfigPath[0], R_OK) == 0) {
-      configPath = &config->szConfigPath[0];
-    }
+    searchPaths.emplace_back(&config->szConfigPath[0]);
   }
 
   // 2. XDG Base Directory Specification (~/.config/linapple/)
-  if (configPath.empty()) {
-    std::string xdg = Path::GetUserConfigDir() + CONFIG_FILE_NAME;
-    if (access(xdg.c_str(), R_OK) == 0) {
-      configPath = xdg;
-    }
-  }
+  searchPaths.emplace_back(Path::GetUserConfigDir() + CONFIG_FILE_NAME);
 
   // 3. Current Working Directory
-  if (configPath.empty()) {
-    if (access(CONFIG_FILE_NAME, R_OK) == 0) {
-      configPath = CONFIG_FILE_NAME;
+  searchPaths.emplace_back(CONFIG_FILE_NAME);
+
+  // 4. System-wide installation paths
+  // FindDataFile handles /etc/linapple/ and /usr/share/linapple/ via GetDataSearchPaths
+  searchPaths.emplace_back(Path::FindDataFile(CONFIG_FILE_NAME));
+
+  std::string finalPath;
+  bool loaded = false;
+
+  for (const auto& path : searchPaths) {
+    if (path.empty()) continue;
+    if (Configuration::Instance().Load(path)) {
+      finalPath = path;
+      loaded = true;
+      break;
     }
   }
 
-  // 4. System-wide installation paths
-  if (configPath.empty()) {
-    // FindDataFile handles /etc/linapple/ and /usr/share/linapple/ via GetDataSearchPaths
-    // which includes relative paths from the executable and common system paths.
-    configPath = Path::FindDataFile(CONFIG_FILE_NAME);
-  }
-
-  // Fallback: use XDG path even if it doesn't exist yet
-  if (configPath.empty()) {
-    configPath = Path::GetUserConfigDir() + CONFIG_FILE_NAME;
+  // Fallback: if nothing loaded, use XDG path even if it doesn't exist yet
+  if (!loaded) {
+    finalPath = Path::GetUserConfigDir() + CONFIG_FILE_NAME;
     Path::EnsureDirExists(Path::GetUserConfigDir());
+    // We don't call Load() again here as we know it's not there or failed,
+    // we just want to set the path where it *should* be saved later.
   }
 
   // Populate back to config
-  Util_SafeStrCpy(&config->szConfigPath[0], configPath.c_str(), PATH_MAX_LEN);
-
-  // Consolidate Registry (Configuration) initialization.
-  // Use the path from config->szConfigPath to ensure consistency if truncation occurred.
-  Configuration::Instance().Load(&config->szConfigPath[0]);
+  Util_SafeStrCpy(&config->szConfigPath[0], finalPath.c_str(), PATH_MAX_LEN);
 
   // Consolidate Logger initialization
   Logger::Initialize();

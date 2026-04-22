@@ -36,15 +36,10 @@ void DiskLoader_Register(DiskFormatDriver_t* driver) {
   }
 }
 
-static bool DiskUnGzip(const char* gzname, const char* outname) {
+static bool DiskUnGzip(const char* gzname, FILE* dskF) {
+  if (!dskF) return false;
   gzFile gzF = gzopen(gzname, "rb");
   if (!gzF) return false;
-
-  FILE* dskF = fopen(outname, "wb");
-  if (!dskF) {
-    gzclose(gzF);
-    return false;
-  }
 
   char buffer[8192];
   int len = 0;
@@ -52,24 +47,17 @@ static bool DiskUnGzip(const char* gzname, const char* outname) {
     fwrite(buffer, 1, static_cast<size_t>(len), dskF);
   }
   gzclose(gzF);
-  fclose(dskF);
   return true;
 }
 
-static bool DiskUnZip(const char* zipname, const char* outname) {
+static bool DiskUnZip(const char* zipname, FILE* dskF) {
+  if (!dskF) return false;
   int err = 0;
   zip* arch = zip_open(zipname, 0, &err);
   if (!arch) return false;
 
   zip_file* zf = zip_fopen_index(arch, 0, 0);
   if (!zf) {
-    zip_close(arch);
-    return false;
-  }
-
-  FILE* dskF = fopen(outname, "wb");
-  if (!dskF) {
-    zip_fclose(zf);
     zip_close(arch);
     return false;
   }
@@ -81,7 +69,6 @@ static bool DiskUnZip(const char* zipname, const char* outname) {
   }
   zip_fclose(zf);
   zip_close(arch);
-  fclose(dskF);
   return true;
 }
 
@@ -103,21 +90,36 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
   bool is_temporary = false;
 
   size_t name_len = strlen(filename);
-  if (name_len > 3 && strcasecmp(filename + name_len - 3, ".gz") == 0) {
-    static int temp_counter = 0;
-    snprintf(temp_path, sizeof(temp_path), "/tmp/linapple_%d_drive%d.dsk", getpid(), temp_counter++ % 2);
-    unlink(temp_path);
-    if (DiskUnGzip(filename, temp_path)) {
-      load_path = temp_path;
-      is_temporary = true;
-    }
-  } else if (name_len > 4 && strcasecmp(filename + name_len - 4, ".zip") == 0) {
-    static int temp_counter = 0;
-    snprintf(temp_path, sizeof(temp_path), "/tmp/linapple_%d_drive%d.dsk", getpid(), temp_counter++ % 2);
-    unlink(temp_path);
-    if (DiskUnZip(filename, temp_path)) {
-      load_path = temp_path;
-      is_temporary = true;
+  if ((name_len > 3 && strcasecmp(filename + name_len - 3, ".gz") == 0) ||
+      (name_len > 4 && strcasecmp(filename + name_len - 4, ".zip") == 0)) {
+    
+    snprintf(temp_path, sizeof(temp_path), "/tmp/linapple_XXXXXX");
+    int fd = mkstemp(temp_path);
+    if (fd != -1) {
+      FILE* dskF = fdopen(fd, "wb");
+      if (dskF) {
+        bool success = false;
+        if (strcasecmp(filename + name_len - 3, ".gz") == 0) {
+          success = DiskUnGzip(filename, dskF);
+        } else {
+          success = DiskUnZip(filename, dskF);
+        }
+        fclose(dskF);
+
+        if (success) {
+          load_path = temp_path;
+          is_temporary = true;
+        } else {
+          unlink(temp_path);
+          return DISK_ERR_IO;
+        }
+      } else {
+        close(fd);
+        unlink(temp_path);
+        return DISK_ERR_IO;
+      }
+    } else {
+      return DISK_ERR_IO;
     }
   }
 
@@ -130,7 +132,10 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
         f = fopen(load_path, "rb");
       }
     }
-    if (!f) return DISK_ERR_FILE_NOT_FOUND;
+    if (!f) {
+      if (is_temporary) unlink(temp_path);
+      return DISK_ERR_FILE_NOT_FOUND;
+    }
   }
 
   fseek(f, 0, SEEK_END);
@@ -179,6 +184,13 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
     bool os_readonly = false;
     DiskError_e err =
         best_driver->open(load_path, file_offset, &os_readonly, out_instance);
+    
+    // If it was a temporary file, we can unlink it now if the driver has its own handle
+    // or if we just want to clean up. Most drivers in LinApple read the whole thing anyway.
+    if (is_temporary) {
+      unlink(temp_path);
+    }
+
     if (err == DISK_ERR_NONE) {
       *out_driver = best_driver;
       if (pWriteProtected != nullptr) {
@@ -189,5 +201,6 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
     return err;
   }
 
+  if (is_temporary) unlink(temp_path);
   return DISK_ERR_UNSUPPORTED_FORMAT;
 }
