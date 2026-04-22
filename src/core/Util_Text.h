@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #define CHAR_LF           '\x0D'
 #define CHAR_CR           '\x0A'
 #define CHAR_SPACE        ' '

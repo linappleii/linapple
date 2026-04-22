@@ -143,6 +143,8 @@ set(SOURCES_CORE
     src/frontends/common/AppArgs.cpp
     src/frontends/common/AppEnvironment.cpp
     src/frontends/common/AppController.cpp
+    src/frontends/common/FileBrowser.cpp
+    src/frontends/common/Util_Hash.cpp
 )
 
 # Mandatory Apple II hardware
@@ -529,6 +531,22 @@ target_include_directories(test-headless-boot PRIVATE src src/core src/apple2 sr
 target_compile_definitions(test-headless-boot PRIVATE ${PERIPHERAL_DEFINITIONS})
 target_link_libraries(test-headless-boot PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-headless-boot COMMAND test-headless-boot)
+
+# test-file-browser
+add_executable(test-file-browser
+    tests/test_file_browser.cpp
+    src/frontends/common/FileBrowser.cpp
+)
+target_include_directories(test-file-browser PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
+add_test(NAME test-file-browser COMMAND test-file-browser)
+
+# test-util-hash
+add_executable(test-util-hash
+    tests/test_util_hash.cpp
+    src/frontends/common/Util_Hash.cpp
+)
+target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
+add_test(NAME test-util-hash COMMAND test-util-hash)
 
 # test-disk-ui
 add_executable(test-disk-ui

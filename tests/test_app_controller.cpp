@@ -1,82 +1,83 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h"
-#include "core/LinAppleCore.h"
-#include "frontends/common/AppController.h"
-#include "frontends/common/AppEnvironment.h"
-#include "frontends/common/AppArgs.h"
-#include "core/Common_Globals.h"
-#include "core/Util_Text.h"
-#include "apple2/Disk.h"
-#include "apple2/Video.h"
-#include "core/Registry.h"
 #include <fstream>
 
+#include "apple2/Disk.h"
+#include "apple2/Video.h"
+#include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
+#include "core/Util_Text.h"
+#include "doctest.h"
+#include "frontends/common/AppArgs.h"
+#include "frontends/common/AppController.h"
+#include "frontends/common/AppEnvironment.h"
+
 TEST_CASE("AppController: Initialize and Shutdown") {
-    AppConfig config = {};
-    AppConfig_Default(&config);
+  AppConfig config = {};
+  AppConfig_Default(&config);
 
-    AppEnv_ResolvePaths(&config);
-    // Test initialization
-    int result = AppController_Initialize(&config);
-    CHECK(result == 0);
-    CHECK(g_state.mode == MODE_RUNNING);
+  AppEnv_ResolvePaths(&config);
+  // Test initialization
+  int result = AppController_Initialize(&config);
+  CHECK(result == 0);
+  CHECK(g_state.mode == MODE_RUNNING);
 
-    // Test shutdown
-    AppController_Shutdown();
+  // Test shutdown
+  AppController_Shutdown();
 }
 
 TEST_CASE("AppController: Video Mode Reset") {
-    AppConfig config = {};
-    AppConfig_Default(&config);
+  AppConfig config = {};
+  AppConfig_Default(&config);
 
-    // 1. Init with PAL
-    config.bPAL = true;
-    AppController_Initialize(&config);
-    CHECK(g_videotype == VT_COLOR_TVEMU);
+  // 1. Init with PAL
+  config.bPAL = true;
+  AppController_Initialize(&config);
+  CHECK(g_videotype == VT_COLOR_TVEMU);
 
-    // 2. Re-init without PAL (should reset to standard)
-    config.bPAL = false;
-    AppController_Initialize(&config);
-    CHECK(g_videotype == VT_COLOR_STANDARD);
+  // 2. Re-init without PAL (should reset to standard)
+  config.bPAL = false;
+  AppController_Initialize(&config);
+  CHECK(g_videotype == VT_COLOR_STANDARD);
 
-    AppController_Shutdown();
+  AppController_Shutdown();
 }
 
 TEST_CASE("AppController: Media Loading") {
-    AppConfig config = {};
-    AppConfig_Default(&config);
-    Util_SafeStrCpy(config.szDiskPath[0], "res/Master.dsk", PATH_MAX_LEN);
+  AppConfig config = {};
+  AppConfig_Default(&config);
+  Util_SafeStrCpy(config.szDiskPath[0], "../res/Master.dsk", PATH_MAX_LEN);
 
-    AppEnv_ResolvePaths(&config);
-    AppController_Initialize(&config);
-    AppController_LoadInitialMedia(&config);
+  AppEnv_ResolvePaths(&config);
+  AppController_Initialize(&config);
+  AppController_LoadInitialMedia(&config);
 
-    // Explicitly think a bit to process commands from LoadInitialMedia
-    for (int i = 0; i < 500; ++i) {
-        Peripheral_Manager_Think(100);
-    }
+  // Explicitly think a bit to process commands from LoadInitialMedia
+  for (int i = 0; i < 500; ++i) {
+    Peripheral_Manager_Think(100);
+  }
 
-    // Check if disk was loaded
-    DiskStatus_t status = {};
-    size_t status_size = sizeof(status);
-    PeripheralStatus res = Peripheral_Query(DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS, &status, &status_size);
+  // Check if disk was loaded
+  DiskStatus_t status = {};
+  size_t status_size = sizeof(status);
+  PeripheralStatus res = Peripheral_Query(
+      DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS, &status, &status_size);
 
-    CHECK(res == PERIPHERAL_OK);
-    CHECK(status.drive0_loaded == 1);
+  CHECK(res == PERIPHERAL_OK);
+  CHECK(status.drive0_loaded == 1);
 
-    AppController_Shutdown();
+  AppController_Shutdown();
 }
 
 TEST_CASE("AppController: Diagnostic Commands") {
-    AppConfig config = {};
-    AppConfig_Default(&config);
-    config.intent = INTENT_HELP;
+  AppConfig config = {};
+  AppConfig_Default(&config);
+  config.intent = INTENT_HELP;
 
-    // We don't want to actually print help to stdout during tests usually,
-    // but here we just verify it returns true as expected.
-    CHECK(AppController_HandleDiagnosticCommands(&config) == true);
+  // We don't want to actually print help to stdout during tests usually,
+  // but here we just verify it returns true as expected.
+  CHECK(AppController_HandleDiagnosticCommands(&config) == true);
 
-    config.intent = INTENT_RUN;
-    CHECK(AppController_HandleDiagnosticCommands(&config) == false);
+  config.intent = INTENT_RUN;
+  CHECK(AppController_HandleDiagnosticCommands(&config) == false);
 }
-
