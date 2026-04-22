@@ -2,6 +2,14 @@
 
 #include <cstring>
 #include "core/Common.h"
+#include "apple2/DiskCommands.h"
+#include "apple2/CPU.h"
+
+// These are required for this specific C-compatible architectural boundary.
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays)
+// NOLINTBEGIN(modernize-avoid-c-arrays)
+// NOLINTBEGIN(cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(cppcoreguidelines-pro-type-member-init)
 
 enum AppIntent {
   INTENT_RUN,
@@ -10,43 +18,50 @@ enum AppIntent {
   INTENT_ERROR
 };
 
+enum {
+  ARGV_EXTRA_MAX = 64
+};
+
 struct AppConfig {
-  AppIntent intent;
-  char szDiskPath[2][PATH_MAX_LEN];
-  char szProgramPath[PATH_MAX_LEN];
-  char szConfigPath[PATH_MAX_LEN];
-  char szSnapshotPath[PATH_MAX_LEN];
-  char szAudioDumpPath[PATH_MAX_LEN];
+  AppIntent intent = INTENT_RUN;
+  char szDiskPath[DISK_DRIVE_COUNT][PATH_MAX_LEN] = {};
+  char szProgramPath[PATH_MAX_LEN] = {};
+  char szConfigPath[PATH_MAX_LEN] = {};
+  char szSnapshotPath[PATH_MAX_LEN] = {};
+  char szAudioDumpPath[PATH_MAX_LEN] = {};
 
-  eApple2Type apple2Type;
-  bool bPAL;
-  bool bFullscreen;
-  bool bBoot;
-  bool bBenchmark;
-  bool bLog;
-  bool bVerbose;
+  eApple2Type apple2Type = A2TYPE_APPLE2EENHANCED;
+  bool bPAL = false;
+  bool bFullscreen = false;
+  bool bBoot = false;
+  bool bBenchmark = false;
+  bool bLog = false;
+  bool bVerbose = false;
 
-  bool bListHardware;
-  char szHardwareInfoName[PATH_MAX_LEN];
+  bool bListHardware = false;
+  char szHardwareInfoName[PATH_MAX_LEN] = {};
 
   // Test/Diagnostic fields
-  char szTestCpuFile[PATH_MAX_LEN];
-  uint16_t uTestCpuTrap;
-  char szDebuggerScript[PATH_MAX_LEN];
+  char szTestCpuFile[PATH_MAX_LEN] = {};
+  uint16_t uTestCpuTrap = TRAP_NMOS_DEFAULT;
+  char szDebuggerScript[PATH_MAX_LEN] = {};
 
   // Extra args for frontend pass-through
-  int argc_extra;
-  const char* argv_extra[64];
+  int argc_extra = 0;
+  const char* argv_extra[ARGV_EXTRA_MAX] = {};
 };
 
 /**
  * Initialize AppConfig with default values.
+ * Note: Member initializers handle most defaults, this ensures parity for existing calls.
  */
 inline void AppConfig_Default(AppConfig* pConfig) {
   if (pConfig) {
-    memset(pConfig, 0, sizeof(AppConfig));
-    pConfig->intent = INTENT_RUN;
-    pConfig->apple2Type = A2TYPE_APPLE2EENHANCED;
-    pConfig->uTestCpuTrap = 0x336D; // Default for NMOS
+    *pConfig = AppConfig{};
   }
 }
+
+// NOLINTEND(cppcoreguidelines-pro-type-member-init)
+// NOLINTEND(cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-avoid-c-arrays)
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays)

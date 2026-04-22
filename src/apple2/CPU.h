@@ -9,6 +9,9 @@ const uint16_t NMI_VECTOR_ADDR   = 0xFFFA;
 const uint16_t RESET_VECTOR_ADDR = 0xFFFC;
 const uint16_t IRQ_VECTOR_ADDR   = 0xFFFE;
 
+const uint16_t TRAP_NMOS_DEFAULT = 0x336D;
+const uint16_t TRAP_CMOS_DEFAULT = 0x3469;
+
 const uint32_t UINT32_MAX_VAL    = 0xFFFFFFFF;
 
 typedef struct _regsrec {
