@@ -190,8 +190,17 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data, 
         kp->logic.repeat_delay_cycles = 0;
         kp->logic.repeating = false;
       } else {
-        if (kp->logic.keys_down_count > 0) kp->logic.keys_down_count--;
-        kp->logic.repeat_key = 0;
+        if (kp->logic.keys_down_count > 0) {
+          kp->logic.keys_down_count--;
+        }
+
+        // Only clear the repeat key if the key being released matches it.
+        // If ascii=0, we don't know which physical key it was, but we assume
+        // it shouldn't clear a non-zero repeat key unless no keys are left.
+        if (ev->ascii == kp->logic.repeat_key || kp->logic.keys_down_count == 0) {
+          kp->logic.repeat_key = 0;
+          kp->logic.repeating = false;
+        }
       }
       return PERIPHERAL_OK;
     }

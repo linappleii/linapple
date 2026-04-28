@@ -368,8 +368,15 @@ auto CmdUnassemble (int nArgs) -> Update_t
 auto CmdKey (int nArgs) -> Update_t
 {
   uint8_t code = nArgs ? (g_aArgs[1].nValue ? static_cast<uint8_t>(g_aArgs[1].nValue) : static_cast<uint8_t>(g_aArgs[1].sArg[0])) : static_cast<uint8_t>(' ');
+
+  // Send key-down event
   KeyboardEvent_t ev = {code, 1U};
   Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
+  // Send key-up event immediately to simulate a momentary press
+  ev.is_down = 0U;
+  Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
   return UPDATE_CONSOLE_DISPLAY;
 }
 

@@ -199,12 +199,10 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode, uint32_t mod
         apple_ascii = Frontend_TranslateKey(static_cast<SDL_Keycode>(keycode), static_cast<SDL_Keymod>(mod));
     }
 
-    // Only dispatch events with a valid ASCII code. Sending key-up for an
-    // unrecognized key (ascii=0) would clear repeat_key without a matching key-down.
-    if (apple_ascii != 0) {
-        KeyboardEvent_t ev = { apple_ascii, static_cast<uint8_t>(bDown ? 1 : 0) };
-        Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
-    }
+    // Dispatch events to the core. Even if apple_ascii is 0 (e.g. unmapped keys),
+    // we send the event so that the "Any-Key-Down" flag ($C010 bit 7) is updated.
+    KeyboardEvent_t ev = { apple_ascii, static_cast<uint8_t>(bDown ? 1 : 0) };
+    Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
 }
 
 // LinAppleKey encodes both named special keys (0x100+) and raw 7-bit ASCII codes (1-127).

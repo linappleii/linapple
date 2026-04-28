@@ -74,3 +74,78 @@ TEST_CASE("Keyboard Peripheral: Strobe and Latch Behavior") {
 
     g_keyboard_peripheral.shutdown(instance);
 }
+
+TEST_CASE("Keyboard Peripheral: Multiple keys and ASCII 0") {
+    g_mock_handlers.clear();
+    void* instance = g_keyboard_peripheral.init(0, &mock_host);
+
+    // 1. Press 'A'
+    KeyboardEvent_t evA = {'a', 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evA, sizeof(evA));
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) != 0);
+
+    // 2. Press 'B'
+    KeyboardEvent_t evB = {'b', 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evB, sizeof(evB));
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) != 0);
+
+    // 3. Release 'A' - Bit 7 should STILL be set because 'B' is down
+    evA.is_down = 0;
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evA, sizeof(evA));
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) != 0);
+
+    // 4. Release 'B' - Bit 7 should now be clear
+    evB.is_down = 0;
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evB, sizeof(evB));
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) == 0);
+
+    // 5. Test ASCII 0 (Ctrl-@)
+    KeyboardEvent_t evCtrlAt = {0, 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evCtrlAt, sizeof(evCtrlAt));
+    // Bit 7 should be set for ASCII 0 too
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) != 0);
+
+    evCtrlAt.is_down = 0;
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evCtrlAt, sizeof(evCtrlAt));
+    CHECK((g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0) & 0x80) == 0);
+
+    g_keyboard_peripheral.shutdown(instance);
+}
+
+TEST_CASE("Keyboard Peripheral: Repeat key logic") {
+    g_mock_handlers.clear();
+    void* instance = g_keyboard_peripheral.init(0, &mock_host);
+
+    // 1. Press 'A'
+    KeyboardEvent_t evA = {'a', 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evA, sizeof(evA));
+
+    // 2. Press 'B'
+    KeyboardEvent_t evB = {'b', 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evB, sizeof(evB));
+
+    // 3. Wait for repeat (KEY_REPEAT_INITIAL_DELAY = 512000 cycles)
+    // First, clear the strobe so we can see it being set again
+    g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
+
+    g_keyboard_peripheral.think(instance, 600000);
+    // Strobe should be set now (repeating 'B')
+    uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) != 0);
+    CHECK((val & 0x7F) == 'b');
+
+    // 4. Release 'A' (while 'B' is still held)
+    evA.is_down = 0;
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &evA, sizeof(evA));
+
+    // 5. Clear strobe and wait for another repeat
+    g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
+    g_keyboard_peripheral.think(instance, 100000); // Repeat rate is 68000
+
+    // In BUGGY code, 'B' will NO LONGER REPEAT because release of 'A' cleared repeat_key!
+    val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) != 0); // Fails in buggy code
+    CHECK((val & 0x7F) == 'b');
+
+    g_keyboard_peripheral.shutdown(instance);
+}
