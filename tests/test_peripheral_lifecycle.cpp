@@ -2,6 +2,7 @@
 #include "doctest/doctest.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Registry.h"
 #include "apple2/Memory.h"
 
 static bool g_mock_shutdown_called = false;
@@ -88,4 +89,37 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
     uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
+}
+
+TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
+    Linapple_Init();
+    Peripheral_Manager_Init();
+
+    // We need a way to get the HostInterface_t.
+    // We can use a dummy peripheral and register it.
+    static char captured_val1[32];
+    static char captured_val2[32];
+
+    Peripheral_t test_api = {
+        LINAPPLE_ABI_VERSION,
+        "ConfigTest",
+        0xFF,
+        [](int slot, HostInterface_t* host) -> void* {
+            (void)slot;
+            host->GetConfig("Peripheral", "TestKey1", captured_val1, sizeof(captured_val1));
+            host->GetConfig("Peripheral", "TestKey2", captured_val2, sizeof(captured_val2));
+            return (void*)0x1234;
+        },
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
+    };
+
+    // Set some config values
+    ConfigSaveString("Peripheral", "TestKey1", "Value1");
+    ConfigSaveString("Peripheral", "TestKey2", "Value2");
+
+    Peripheral_Register(&test_api, 1);
+
+    // Now they should both be correct because they have their own buffers.
+    CHECK(std::string(captured_val2) == "Value2");
+    CHECK(std::string(captured_val1) == "Value1");
 }

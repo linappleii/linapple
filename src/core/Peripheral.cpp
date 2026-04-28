@@ -248,13 +248,17 @@ static auto Host_GetMemPtr(uint16_t addr) -> uint8_t* {
 
 static auto Host_GetCycles() -> uint64_t { return cumulativecycles; }
 
-static auto Host_GetConfig(const char* section, const char* key) -> const
-    char* {
-  static std::string last_val;
-  if (ConfigLoadString(section, key, &last_val)) {
-    return last_val.c_str();
+static auto Host_GetConfig(const char* section, const char* key, char* buffer,
+                           size_t buffer_size) -> bool {
+  std::string val;
+  if (ConfigLoadString(section, key, &val)) {
+    if (buffer && buffer_size > 0) {
+      strncpy(buffer, val.c_str(), buffer_size - 1);
+      buffer[buffer_size - 1] = '\0';
+    }
+    return true;
   }
-  return nullptr;
+  return false;
 }
 
 static auto Host_SetConfig(const char* section, const char* key,

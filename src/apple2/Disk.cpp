@@ -633,17 +633,11 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
   DiskInitialize();
 
-  const char* img1 = host->GetConfig("Slots", REGVALUE_DISK_IMAGE1);
   char path1[PATH_MAX_LEN] = {0};
-  if (img1) {
-    Util_SafeStrCpy(path1, img1, sizeof(path1));
-  }
+  host->GetConfig("Slots", REGVALUE_DISK_IMAGE1, path1, sizeof(path1));
 
-  const char* img2 = host->GetConfig("Slots", REGVALUE_DISK_IMAGE2);
   char path2[PATH_MAX_LEN] = {0};
-  if (img2) {
-    Util_SafeStrCpy(path2, img2, sizeof(path2));
-  }
+  host->GetConfig("Slots", REGVALUE_DISK_IMAGE2, path2, sizeof(path2));
 
   if (path1[0]) {
     DiskInsert_Internal(0, path1, false, false);

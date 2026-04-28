@@ -45,7 +45,7 @@ typedef struct {
     void (*RegisterDirectIO)(void* instance, uint16_t addr, PeripheralIOHandler read, PeripheralIOHandler write);
     uint8_t* (*GetMemPtr)(uint16_t addr);
     uint64_t (*GetCycles)(void);
-    const char* (*GetConfig)(const char* section, const char* key);
+    bool (*GetConfig)(const char* section, const char* key, char* buffer, size_t buffer_size);
     void (*SetConfig)(const char* section, const char* key, const char* value);
     void (*NotifyStatusChanged)(int slot);
     void (*NotifyActivityChanged)(int slot, bool active);

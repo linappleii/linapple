@@ -159,15 +159,16 @@ TEST_CASE("ABI: [ABI-03] Slot Compatibility Validation") {
     Peripheral_Manager_Shutdown();
 }
 
-TEST_CASE("ABI: [ABI-04] HostInterface GetConfig stub returns null") {
+TEST_CASE("ABI: [ABI-04] HostInterface GetConfig stub returns false") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
     MemInitialize();
     Peripheral_Manager_Init();
     Peripheral_Register(&g_dummy_peripheral, 2);
 
     REQUIRE(g_captured_host != nullptr);
-    CHECK(g_captured_host->GetConfig("section", "key") == nullptr);
-    CHECK(g_captured_host->GetConfig("", "") == nullptr);
+    char buf[32];
+    CHECK(g_captured_host->GetConfig("section", "key", buf, sizeof(buf)) == false);
+    CHECK(g_captured_host->GetConfig("", "", buf, sizeof(buf)) == false);
 
     Peripheral_Manager_Shutdown();
 }
