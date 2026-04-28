@@ -1,5 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest/doctest.h"
+#include "doctest.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
@@ -100,7 +100,7 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     static char captured_val1[32];
     static char captured_val2[32];
 
-    Peripheral_t test_api = {
+    static Peripheral_t test_api_config = {
         LINAPPLE_ABI_VERSION,
         "ConfigTest",
         0xFF,
@@ -117,7 +117,7 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     ConfigSaveString("Peripheral", "TestKey1", "Value1");
     ConfigSaveString("Peripheral", "TestKey2", "Value2");
 
-    Peripheral_Register(&test_api, 1);
+    Peripheral_Register(&test_api_config, 1);
 
     // Now they should both be correct because they have their own buffers.
     CHECK(std::string(captured_val2) == "Value2");
@@ -155,7 +155,7 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
     static size_t captured_size = 0;
     static uint8_t last_byte = 0;
 
-    Peripheral_t test_api = {
+    static Peripheral_t test_api = {
         LINAPPLE_ABI_VERSION,
         "MaxPayloadTest",
         0xFF,
@@ -163,7 +163,9 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus {
             captured_size = size;
-            if (size > 0) last_byte = static_cast<const uint8_t*>(data)[size-1];
+            if (size > 0) {
+                last_byte = static_cast<const uint8_t*>(data)[size-1];
+            }
             return PERIPHERAL_OK;
         },
         nullptr
