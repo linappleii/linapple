@@ -1,11 +1,9 @@
-LinApple
-========
+# LinApple
 
-LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and
+LinApple is an emulator for Apple ][[, Apple ]][+, Apple //e, and
 Enhanced Apple //e computers.
 
-History
--------
+## History
 
 LinApple started as a fork of [AppleWin], ported to run on Linux. The
 source code was downloaded from [SourceForge] and uploaded to Github
@@ -20,16 +18,17 @@ development currently resides.
 [maxolasersquad]: https://github.com/maxolasersquad
 [linappleii]: https://github.com/linappleii
 
-
-Command Line Switches
----------------------
+## Command Line Switches
 
 * `-h|--help`: Print command-line options and exit.
 * `--conf path/to/file.conf`: Use only the specified configuration file.
   (The standard configuration file search is not done.)
-* `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
-* `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
-* `-b|--autoboot`: Boots the system automatically, rather than displaying the splash screen
+* `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1
+  (drive 0)
+* `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1
+  (drive 1)
+* `-b|--autoboot`: Boots the system automatically, rather than displaying the
+  splash screen
 * `--pal`: Use PAL (50Hz) video timing instead of NTSC (60Hz)
 * `-f`: Specifies that the emulator should run in fullscreen mode
 * `-l`: Logs output to a file called AppleWin.log (untested)
@@ -42,56 +41,56 @@ _Note: some command-line options have not been fully tested._
 To have LinApple start in fullscreen mode and automatically boot the
 disk `example.dsk`, you can open a shell and run:
 
-    $ linapple --d1 example.dsk -f --autoboot
+```bash
+linapple --d1 example.dsk -f --autoboot
+```
 
 This command could also be placed in a shell script, which could be
 started from an icon or menu on the desktop.
 
-
-Using LinApple
---------------
+## Using LinApple
 
 Clicking in the LinApple window will capture the mouse. It may be
 released by pressing any function key.
 
-| Key            | Function                                                         |
-| -------------- | -----------------------------------------------------------------|
-| F1             | Show help screen.                                                |
-| Ctrl+F2        | Cold reboot, i.e. power off and back on.                         |
-| Shift+F2       | Reload configuration file and cold reboot.                       |
-| Ctrl+F10       | Hot Reset (Control+Reset)                                        |
-| F12            | Quit.                                                            |
-| F3             | Load disk image to slot 6 drive 1.                               |
-| F4             | Load disk image to slot 6 drive 2.                               |
-| F5             | Swap drives for slot 6.                                          |
-| Alt+F3         | Load disk image to slot 6 drive 1 from FTP server.               |
-| Alt+F4         | Load disk image to slot 6 drive 2 from FTP server.               |
-| Shift+F3       | Attach hard disk image to slot 7 drive 1.                        |
-| Shift+F4       | Attach hard disk image to slot 7 drive 2.                        |
-| Alt+Shift+F3   | Attach hard disk image to slot 7 from FTP server.                |
-| Alt+Shift+F4   | Attach hard disk image to slot 7 from FTP server.                |
-| Ctrl+F3        | Eject disk image to slot 6 drive 1.                              |
-| Ctrl+F4        | Eject disk image to slot 6 drive 2.                              |
-| Ctrl+Shift+F3  | Eject hard disk image to slot 7 drive 1.                         |
-| Ctrl+Shift+F4  | Eject hard disk image to slot 7 drive 2.                         |
-| F6             | Toggle fullscreen mode. See Warning below.                       |
-| Shift+F6       | Toggle character set (keyboard/video ROM rocker switch for       |
-|                | Apple IIe/enhanced with international keyboards/video ROMs)      |
-| F7             | Show debugger.                                                   |
-| F8             | Save screenshot as a bitmap.                                     |
-| Shift+F8       | Save runtime changes to configuration to the configuration file. |
-| F9             | Cycle through video modes.                                       |
-| Shift+F9       | Budget video, for smoother music/audio.                          |
-| F10            | Load snapshot file.                                              |
-| F11            | Save snapshot file.                                              |
-| Ctrl+0-9       | Load snapshot `n`.                                               |
-| Ctrl+Shift+0-9 | Save snapshot `n`.                                               |
-| Pause          | Pause/resume emulation.                                          |
-| Scroll Lock    | Toggle full speed emulation.                                     |
-| Numpad +       | Increase emulation speed.                                        |
-| Numpad -       | Decrease emulation speed.                                        |
-| Numpad *       | Reset emulation speed.                                           |
-| RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                          |
+| Key            | Function                                                      |
+| -------------- | ------------------------------------------------------------- |
+| F1             | Show help screen.                                             |
+| Ctrl+F2        | Cold reboot, i.e. power off and back on.                      |
+| Shift+F2       | Reload configuration file and cold reboot.                    |
+| Ctrl+F10       | Hot Reset (Control+Reset)                                     |
+| F12            | Quit.                                                         |
+| F3             | Load disk image to slot 6 drive 1.                            |
+| F4             | Load disk image to slot 6 drive 2.                            |
+| F5             | Swap drives for slot 6.                                       |
+| Alt+F3         | Load disk image to slot 6 drive 1 from FTP server.            |
+| Alt+F4         | Load disk image to slot 6 drive 2 from FTP server.            |
+| Shift+F3       | Attach hard disk image to slot 7 drive 1.                     |
+| Shift+F4       | Attach hard disk image to slot 7 drive 2.                     |
+| Alt+Shift+F3   | Attach hard disk image to slot 7 from FTP server.             |
+| Alt+Shift+F4   | Attach hard disk image to slot 7 from FTP server.             |
+| Ctrl+F3        | Eject disk image to slot 6 drive 1.                           |
+| Ctrl+F4        | Eject disk image to slot 6 drive 2.                           |
+| Ctrl+Shift+F3  | Eject hard disk image to slot 7 drive 1.                      |
+| Ctrl+Shift+F4  | Eject hard disk image to slot 7 drive 2.                      |
+| F6             | Toggle fullscreen mode. See Warning below.                    |
+| Shift+F6       | Toggle character set (keyboard/video ROM rocker switch). See  |
+|                | [Keyboard Configuration](#keyboard-configuration) below.      |
+| F7             | Show debugger.                                                |
+| F8             | Save screenshot as a bitmap.                                  |
+| Shift+F8       | Save runtime changes to config to the configuration file.     |
+| F9             | Cycle through video modes.                                    |
+| Shift+F9       | Budget video, for smoother music/audio.                       |
+| F10            | Load snapshot file.                                           |
+| F11            | Save snapshot file.                                           |
+| Ctrl+0-9       | Load snapshot `n`.                                            |
+| Ctrl+Shift+0-9 | Save snapshot `n`.                                            |
+| Pause          | Pause/resume emulation.                                       |
+| Scroll Lock    | Toggle full speed emulation.                                  |
+| Numpad +       | Increase emulation speed.                                     |
+| Numpad -       | Decrease emulation speed.                                     |
+| Numpad *       | Reset emulation speed.                                        |
+| RtCtrl+Numpad  | Adjust pdl TrimX (4, 6) or TrimY (2, 8)                       |
 
 When you first start the emulator, press the F3 key and select a disk
 image file. Press Ctrl+F2 to restart the emulator with the disk
@@ -102,18 +101,67 @@ images only have files and you must find the correct application to
 run. In this case you will need to execute BASIC commands to list the
 files on the disk and run programs.
 
+## Keyboard Configuration
+
+LinApple supports international keyboard layouts and two different ways of
+mapping your physical keyboard to the emulated Apple II. These are configured
+in the `[Keyboard]` section of `linapple.conf`.
+
+### Mapping Modes
+
+The `Mapping Mode` setting determines how your physical key presses are
+interpreted:
+
+* **Symbolic Mode (`Mapping Mode = 0`, Default)**:
+  Uses your host operating system's character mapping. If your OS is set to
+  a French AZERTY layout and you press the top-left letter key, LinApple
+  receives 'A' and sends 'A' to the emulator. This is usually what you want
+  if you want the keys to match what is printed on them.
+* **Positional Mode (`Mapping Mode = 1`)**:
+  Ignores the host OS character mapping and maps the physical position of the
+  key to an Apple II key based on the `Layout` setting. For example, if you
+  have a US keyboard but set `Layout = French`, pressing the 'Q' key (top-left)
+  will send 'A' to the emulator, because that is the physical position of 'A'
+  on a French Apple II.
+
+### Layouts
+
+The `Layout` setting is used in **Positional Mode** to define the target Apple II
+keyboard layout. Supported values include:
+
+* `US` (Default)
+* `French`
+* `German`
+* `Japanese`
+
+### International Support (Rocker Switch)
+
+International Apple IIe and Enhanced models featured a physical "Rocker Switch"
+that allowed users to toggle between the standard US character set and a local
+character set (e.g., with accented characters).
+
+* **`Shift + F6`**: Toggles this virtual rocker switch at runtime.
+* **`Keyboard Rocker Switch`**: (in `[Configuration]` section) Set to `1` to
+  start with the local language enabled, or `0` for US.
+
+### Apple II Special Keys
+
+* **Open Apple**: Mapped to the host `GUI` key (Windows key or Command key).
+* **Closed Apple**: Mapped to the host `Alt` key.
+* **Reset**: `Ctrl + F10` (emulates `Ctrl + Reset` on a real Apple II).
+
 ### LinApple Driver Video
 
 LinApple uses SDL 3, which supports several video backends. You can
 select a specific driver by setting the `SDL_VIDEO_DRIVER` environment
 variable.
 
-| driver name    | description                                                      |
-| -------------- | -----------------------------------------------------------------|
-| wayland        | Modern Linux display protocol (default on most new distros)      |
-| x11            | Traditional X Window System                                      |
-| kmsdrm         | Kernel Mode Setting / Direct Rendering Manager (console/embedded)|
-| dummy          | No video output (used for testing)                               |
+| driver name    | description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| wayland        | Modern Linux display protocol (default on most new distros)  |
+| x11            | Traditional X Window System                                  |
+| kmsdrm         | Kernel Mode Setting / DRM (console/embedded)                 |
+| dummy          | No video output (used for testing)                           |
 
 **Note**: The debugger and other features are now integrated using
 the SDL 3 hardware accelerated renderer.
@@ -124,23 +172,21 @@ This is a brief guide to get you started. For more information see
 [_Apple II: The DOS Manual_][dos3.3] (for DOS 3.3) and the [_ProDOS 8
 Technical Reference Manual_][prodos].
 
-- `CATALOG`: List the files on a disk. The first column in the list
+* `CATALOG`: List the files on a disk. The first column in the list
   identifies the file type: A for Applesoft BASIC, B for binary. I for
   Integer BASIC. T for text.
-- `RUN file`: Load and run an Applesoft or Integer BASIC file.
-- `BRUN file`: Load and run a binary file. (Not all binary files can
+* `RUN file`: Load and run an Applesoft or Integer BASIC file.
+* `BRUN file`: Load and run a binary file. (Not all binary files can
   be run.)
-- `EXEC file`: Read commands from a text file and execute them as if
+* `EXEC file`: Read commands from a text file and execute them as if
   they were typed at the keyboard.
-- `LOAD file`: Load an Applesoft or Integer BASIC file into memory.
-- `LIST`: List the current program in memory.
+* `LOAD file`: Load an Applesoft or Integer BASIC file into memory.
+* `LIST`: List the current program in memory.
 
 [prodos]: http://www.easy68k.com/paulrsm/6502/PDOS8TRM.HTM
 [dos3.3]: https://archive.org/details/a2_the_DOS_Manual/page/n2/mode/1up
 
-
-Configuration
--------------
+## Configuration
 
 LinApple has several configuration options. Most values are loaded
 from [INI files](https://en.wikipedia.org/wiki/INI_file) and
@@ -154,12 +200,12 @@ environment variables that change the behavior of LinApple.
 2. If the command-line switch `--conf` is used, values are read from
    the specified file.
 3. Otherwise, values are:
-   1. read from the system-wide configuration files.
-      * These are found in the `$XDG_CONFIG_DIRS` path. On Linux, the
-        file is typically found at `/etc/xdg/linapple/linapple.conf`.
-   2. read from user-specific configuration files.
-      * These are found in the `$XDG_CONFIG_HOME` path. On Linux, the
-        file is typically found at `~/.config/linapple/linapple.conf`.
+   * read from the system-wide configuration files.
+     * These are found in the `$XDG_CONFIG_DIRS` path. On Linux, the
+       file is typically found at `/etc/xdg/linapple/linapple.conf`.
+   * read from user-specific configuration files.
+     * These are found in the `$XDG_CONFIG_HOME` path. On Linux, the
+       file is typically found at `~/.config/linapple/linapple.conf`.
 
 ### Environment Variables
 
