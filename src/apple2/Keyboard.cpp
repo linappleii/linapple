@@ -166,9 +166,8 @@ static void Keyb_ABI_Think(void* instance, uint32_t cycles) {
     kp->logic.repeating = true;
     kp->logic.repeat_delay_cycles -= delay;
     kp->strobe = true;
-    while (kp->logic.repeat_delay_cycles >= KEY_REPEAT_RATE) {
-      kp->logic.repeat_delay_cycles -= KEY_REPEAT_RATE;
-    }
+    // Drain any remaining cycles to find the next threshold point.
+    kp->logic.repeat_delay_cycles %= KEY_REPEAT_RATE;
   }
 }
 

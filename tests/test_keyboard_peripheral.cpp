@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "core/Peripheral.h"
+#include "core/Common_Globals.h"
 #include "apple2/KeyboardCommands.h"
 #include <cstring>
 #include <map>
@@ -171,6 +172,41 @@ TEST_CASE("Keyboard Peripheral: International character safety") {
     val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
     CHECK((val & 0x80) == 0); // Strobe NOT set because event was ignored
     CHECK((val & 0x7F) == 0x7B); // Latch still holds previous valid key
+
+    g_keyboard_peripheral.shutdown(instance);
+}
+
+TEST_CASE("Keyboard Peripheral: Repeat timer overflow and large batch safety") {
+    g_mock_handlers.clear();
+    // Ensure we are in a mode that supports auto-repeat
+    g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+
+    void* instance = g_keyboard_peripheral.init(0, &mock_host);
+
+    // Press 'A'
+    KeyboardEvent_t ev = {'a', 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
+    // 1. Verify basic wrap-around safety (what was in issue 288)
+    // Clear strobe so we can detect the repeat
+    g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
+
+    // Pass a huge cycle count that would cause wrap-around if added naively.
+    // Result should trigger a repeat if correctly clamped or handled.
+    g_keyboard_peripheral.think(instance, 400000);
+    uint32_t huge_cycles = 0xFFFFFFFFU - 300000U;
+    g_keyboard_peripheral.think(instance, huge_cycles);
+
+    uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) != 0); // Strobe should be set by repeat
+
+    // 2. Verify large batch performance/safety (O(1) modulo)
+    // Even if we passed a huge number without clamping, modulo would keep it fast.
+    // Since we still clamp in Think, this is mostly checking the state is valid.
+    g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0); // clear strobe
+    g_keyboard_peripheral.think(instance, 0xFFFFFFFFU);
+    val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) != 0); // Should fire again
 
     g_keyboard_peripheral.shutdown(instance);
 }
