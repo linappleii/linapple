@@ -149,3 +149,28 @@ TEST_CASE("Keyboard Peripheral: Repeat key logic") {
 
     g_keyboard_peripheral.shutdown(instance);
 }
+
+TEST_CASE("Keyboard Peripheral: International character safety") {
+    g_mock_handlers.clear();
+    void* instance = g_keyboard_peripheral.init(0, &mock_host);
+
+    // 1. Press 'é' as a hardware-accurate 7-bit code (0x7B)
+    // This is how Map_FR now stores it.
+    KeyboardEvent_t ev = {0x7B, 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
+    uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x7F) == 0x7B);
+
+    // 2. Press a stray Latin-1 code (0xE9) - should be rejected/ignored
+    // This verifies we don't accidentally mask it to 0x69 ('i').
+    g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0); // clear strobe
+    ev.ascii = 0xE9;
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
+    val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) == 0); // Strobe NOT set because event was ignored
+    CHECK((val & 0x7F) == 0x7B); // Latch still holds previous valid key
+
+    g_keyboard_peripheral.shutdown(instance);
+}

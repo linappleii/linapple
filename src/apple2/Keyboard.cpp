@@ -183,7 +183,13 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data, 
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
 
       if (ev->is_down) {
-        kp->current_latch = ev->ascii & KEY_CODE_MASK;
+        if (ev->ascii > 0x7F) {
+            // Positional map supplied non-ASCII value; no Apple II equivalent.
+            // Ignore it to avoid corruption of the latch.
+            return PERIPHERAL_OK;
+        }
+
+        kp->current_latch = ev->ascii;
         kp->strobe = true;
         kp->logic.keys_down_count++;
         kp->logic.repeat_key = ev->ascii;
