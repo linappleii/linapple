@@ -21,6 +21,8 @@ struct LoadedPlugin {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::vector<LoadedPlugin> g_loaded_plugins;
 
+static bool g_plugins_initialized = false;
+
 /**
  * Justification: Peripheral Manager requires a static list of built-in hardware
  * to support runtime slot assignment via configuration.
@@ -195,9 +197,10 @@ void Linapple_ListHardware() {
 }
 
 void Peripheral_Plugins_Init(void) {
-    static bool s_initialized = false;
-    if (s_initialized) return;
-    s_initialized = true;
+    if (g_plugins_initialized) {
+        return;
+    }
+    g_plugins_initialized = true;
 
     auto paths = Path::GetPluginSearchPaths();
     for (const auto& path : paths) {
@@ -248,4 +251,5 @@ void Peripheral_Plugins_Shutdown(void) {
         }
     }
     g_loaded_plugins.clear();
+    g_plugins_initialized = false;
 }
