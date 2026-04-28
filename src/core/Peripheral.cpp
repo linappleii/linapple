@@ -363,6 +363,14 @@ static auto Peripheral_DrainCommandQueue() -> void {
 }
 
 static auto ClearAllPeripherals() -> void {
+  // Close the bridge window first — zero the dispatch table before freeing instances.
+  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
+    RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
+                            nullptr);
+  }
+  g_num_direct_handlers = 0;
+  g_direct_io_handlers.fill({});
+
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     g_peripheral_activity_state.at(i) = false;
     for (auto& ap : g_active_peripherals.at(i)) {
@@ -382,7 +390,6 @@ auto Peripheral_Manager_Init() -> void {
     g_command_queue = {};
   }
   ClearAllPeripherals();
-  g_num_direct_handlers = 0;
 }
 
 auto Peripheral_Manager_Reset() -> void {

@@ -618,6 +618,14 @@ target_compile_definitions(test-speaker PRIVATE ${PERIPHERAL_DEFINITIONS})
 target_link_libraries(test-speaker PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-speaker COMMAND test-speaker)
 
+# Test Peripheral Lifecycle
+add_executable(test-peripheral-lifecycle tests/test_peripheral_lifecycle.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+add_dependencies(test-peripheral-lifecycle generate_xpms)
+target_include_directories(test-peripheral-lifecycle PRIVATE src src/core src/apple2 src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(test-peripheral-lifecycle PRIVATE ${PERIPHERAL_DEFINITIONS})
+target_link_libraries(test-peripheral-lifecycle PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+add_test(NAME test-peripheral-lifecycle COMMAND test-peripheral-lifecycle)
+
 endif() # BUILD_TESTING
 
 # --- Packaging Aliases (Issue #231) ---
