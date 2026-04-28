@@ -1,6 +1,8 @@
 #include "doctest.h"
 #include "core/Peripheral.h"
 #include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
+#include "apple2/Memory.h"
 #include "apple2/KeyboardCommands.h"
 #include <cstring>
 #include <map>
@@ -207,6 +209,22 @@ TEST_CASE("Keyboard Peripheral: Repeat timer overflow and large batch safety") {
     g_keyboard_peripheral.think(instance, 0xFFFFFFFFU);
     val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
     CHECK((val & 0x80) != 0); // Should fire again
+
+    g_keyboard_peripheral.shutdown(instance);
+}
+
+TEST_CASE("Keyboard Peripheral: Ctrl+@ (NUL) handling") {
+    g_mock_handlers.clear();
+    void* instance = g_keyboard_peripheral.init(0, &mock_host);
+
+    // Verify NUL (Ctrl+@) works through direct command
+    KeyboardEvent_t ev = {0x00, 1};
+    g_keyboard_peripheral.command(instance, KEYB_CMD_EVENT, &ev, sizeof(ev));
+
+    // Bit 7 should be set (strobe), bits 0-6 should be 0
+    uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+    CHECK((val & 0x80) != 0);
+    CHECK((val & 0x7F) == 0x00);
 
     g_keyboard_peripheral.shutdown(instance);
 }
