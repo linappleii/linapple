@@ -123,3 +123,27 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     CHECK(std::string(captured_val2) == "Value2");
     CHECK(std::string(captured_val1) == "Value1");
 }
+
+#include <dlfcn.h>
+#include "core/Util_Path.h"
+
+TEST_CASE("Peripheral Manager: Plugin path construction") {
+    // This test verifies that we can construct a valid path even if the directory
+    // doesn't have a trailing slash.
+    std::string dir = "/tmp/linapple-test";
+    std::string file = "plugin.so";
+
+    std::string fullPath = Path::Join(dir, file);
+    CHECK(fullPath == "/tmp/linapple-test/plugin.so");
+
+    // Test with trailing slash already present
+    dir = "/tmp/linapple-test/";
+    fullPath = Path::Join(dir, file);
+    CHECK(fullPath == "/tmp/linapple-test/plugin.so");
+
+    // Test with empty dir
+    CHECK(Path::Join("", file) == file);
+
+    // Test with empty file
+    CHECK(Path::Join(dir, "") == dir);
+}

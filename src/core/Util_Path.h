@@ -97,9 +97,22 @@ inline auto GetDataSearchPaths() -> std::vector<std::string> {
 }
 
 // Attempts to find a file in the data search paths.
+inline auto Join(const std::string& dir, const std::string& filename) -> std::string {
+    if (dir.empty()) {
+        return filename;
+    }
+    if (filename.empty()) {
+        return dir;
+    }
+    if (dir.back() == '/') {
+        return dir + filename;
+    }
+    return dir + "/" + filename;
+}
+
 inline auto FindDataFile(const std::string& filename) -> std::string {
     for (const auto& dir : GetDataSearchPaths()) {
-        std::string fullPath = dir + filename;
+        std::string fullPath = Join(dir, filename);
         if (access(fullPath.c_str(), R_OK) == 0) {
             return fullPath;
         }

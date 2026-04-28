@@ -207,8 +207,12 @@ void Peripheral_Plugins_Init(void) {
         struct dirent* ent = nullptr;
         while ((ent = readdir(dir)) != nullptr) {
             std::string filename = ent->d_name;
-            if (filename.length() > 3 && filename.substr(filename.length() - 3) == ".so") {
-                std::string fullPath = path + filename;
+            if (filename.length() > 3 &&
+                filename.substr(filename.length() - 3) == ".so") {
+                if (filename.find('/') != std::string::npos) {
+                    continue;
+                }
+                std::string fullPath = Path::Join(path, filename);
                 void* handle = dlopen(fullPath.c_str(), RTLD_NOW | RTLD_LOCAL);
                 if (handle) {
                     auto* p = reinterpret_cast<Peripheral_t*>(dlsym(handle, "linapple_peripheral_descriptor"));
