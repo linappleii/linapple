@@ -1,9 +1,5 @@
 /*
  * Peripheral.h - The LinApple Peripheral ABI
- *
- * This header defines the stable binary interface for emulator peripherals.
- * Peripherals implemented against this ABI can be statically linked or
- * loaded as shared objects.
  */
 
 #ifndef LINAPPLE_PERIPHERAL_H
@@ -22,18 +18,12 @@ extern "C" {
 
 enum { PERIPHERAL_CMD_MAX_DATA = 512 };
 
-/**
- * @brief Standard return codes for ABI functions.
- */
 typedef enum {
     PERIPHERAL_OK = 0,
     PERIPHERAL_ERROR = -1,
     PERIPHERAL_INCOMPATIBLE = -2
 } PeripheralStatus;
 
-/**
- * @brief Log levels for peripherals.
- */
 typedef enum {
     LOG_DEBUG = 0,
     LOG_INFO,
@@ -41,19 +31,10 @@ typedef enum {
     LOG_ERROR
 } PeripheralLogLevel;
 
-/**
- * @brief Mask indicating compatibility with any slot (0-7).
- */
 #define LINAPPLE_ANY_SLOT_MASK 0xFF
 
-/**
- * @brief Standard I/O handler signature.
- */
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc, uint16_t addr, uint8_t write, uint8_t val, uint32_t cycles_left);
 
-/**
- * @brief Services provided by the emulator core to the peripheral.
- */
 typedef struct {
     void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
     void (*AssertIrq)(int slot, bool assert);
@@ -64,32 +45,25 @@ typedef struct {
     void (*RegisterDirectIO)(void* instance, uint16_t addr, PeripheralIOHandler read, PeripheralIOHandler write);
     uint8_t* (*GetMemPtr)(uint16_t addr);
     uint64_t (*GetCycles)(void);
-
-    // The returned pointer is valid until the next GetConfig call.
     const char* (*GetConfig)(const char* section, const char* key);
-
     void (*SetConfig)(const char* section, const char* key, const char* value);
-
     void (*NotifyStatusChanged)(int slot);
-
-    // Call only on state changes.
     void (*NotifyActivityChanged)(int slot, bool active);
-
     void (*RequestPreciseTiming)(void);
-
-    // Audio Logging (Riff)
     int (*RiffInitWriteFile)(char *pszFile, uint32_t sample_rate, uint32_t NumChannels);
     int (*RiffFinishWriteFile)(void);
     int (*RiffPutSamples)(short *buf, uint32_t uSamples);
-
-    // Modern Audio Routing
     void (*AudioPushSamples)(void* instance, const int16_t* buffer, size_t num_samples);
+    void (*ResetSystem)(void* instance);
 } HostInterface_t;
+
+// Forward declaration
+struct Peripheral_t;
 
 /**
  * @brief The interface a peripheral must implement.
  */
-typedef struct {
+typedef struct Peripheral_t {
     int abi_version;
     const char* name;
     uint32_t compatible_slots;
@@ -100,9 +74,7 @@ typedef struct {
     void (*on_vblank)(void* instance, bool vblank);
     PeripheralStatus (*save_state)(void* instance, void* buffer, size_t* size);
     PeripheralStatus (*load_state)(void* instance, const void* buffer, size_t size);
-    // NULL if the peripheral does not accept commands; called via Peripheral_Command().
     PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data, size_t size);
-    // NULL if the peripheral does not support queries; called via Peripheral_Query().
     PeripheralStatus (*query)(void* instance, uint32_t cmd_id, void* out, size_t* out_size);
 } Peripheral_t;
 
@@ -110,6 +82,20 @@ typedef struct {
     extern "C" { \
         Peripheral_t linapple_peripheral_descriptor = peripheral_struct; \
     }
+
+/**
+ * @brief Public Peripheral Management API.
+ */
+int Peripheral_Register(Peripheral_t* api, int slot);
+int Peripheral_Unregister(int slot);
+PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data, size_t size);
+PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out, size_t* out_size);
+void Peripheral_SaveState(int slot, void* buffer, size_t* size);
+void Peripheral_LoadState(int slot, const void* buffer, size_t size);
+void Peripheral_SaveStateByName(int slot, const char* name, void* buffer, size_t* size);
+void Peripheral_LoadStateByName(int slot, const char* name, const void* buffer, size_t size);
+void Peripheral_GetManifest(void* manifest);
+bool Peripheral_VerifyManifest(const void* manifest);
 
 #ifdef __cplusplus
 }

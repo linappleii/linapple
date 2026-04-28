@@ -56,10 +56,7 @@ typedef struct tagSS_IO_Joystick {
   uint64_t g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
-typedef struct tagSS_IO_Keyboard {
-  uint32_t keyboardqueries;
-  uint8_t nLastKey;
-} SS_IO_Keyboard;
+#include "apple2/Keyboard_Structs.h"
 
 typedef struct SS_IO_Video {
   bool bAltCharSet;  // charoffs

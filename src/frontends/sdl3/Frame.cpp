@@ -33,6 +33,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <array>
 
 #include "core/Common.h"
+#include "apple2/KeyboardCommands.h"
+#include "core/Peripheral.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
@@ -40,7 +42,6 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/CPU.h"
 #include "apple2/Harddisk.h"
 #include "apple2/Joystick.h"
-#include "apple2/Keyboard.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/ParallelPrinter.h"
@@ -448,7 +449,15 @@ void Frame_OnResize(int width, int height) {
   g_video_draw_mutex.unlock();
 }
 
-void Frame_OnFocus(bool gained) { g_bAppActive = gained; }
+void Frame_OnFocus(bool gained) {
+    g_bAppActive = gained;
+    if (g_bAppActive) {
+        // Re-sync Caps Lock state upon regaining focus
+        SDL_Keymod mod = SDL_GetModState();
+        uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
+        Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+    }
+}
 
 void Frame_OnExpose() {
   if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
@@ -606,14 +615,18 @@ void ProcessButtonClick(int button, int mod) {
       if (mod & SDL_KMOD_SHIFT) {
         // only IIe and enhanced have a keyboard rocker switch (and only non-US
         // keyboards)
-        if ((g_KeyboardLanguage != English_US) &&
+        if ((g_Language != A2LANG_US) &&
             ((g_Apple2Type == A2TYPE_APPLE2E) ||
              (g_Apple2Type == A2TYPE_APPLE2EENHANCED))) {
-          g_KeyboardRockerSwitch = !g_KeyboardRockerSwitch;
+          uint8_t cur_rocker = 0;
+          size_t rocker_sz = sizeof(cur_rocker);
+          Peripheral_Query(0, KEYB_QUERY_ROCKER, &cur_rocker, &rocker_sz);
+          uint8_t new_rocker = cur_rocker ? 0 : 1;
+          Peripheral_Command(0, KEYB_CMD_SET_ROCKER, &new_rocker, 1);
           printf(
               "Toggling keyboard rocker switch. Selected character set: "
               "%s...\n",
-              (g_KeyboardRockerSwitch) ? "local" : "standard/US");
+              new_rocker ? "local" : "standard/US");
         }
       } else {
         if (g_state.fullscreen) {
@@ -690,7 +703,6 @@ void ProcessButtonClick(int button, int mod) {
         }
 
         Peripheral_Manager_Reset();
-        KeybReset();
         if (!IS_APPLE2()) {
           VideoResetState();
         }

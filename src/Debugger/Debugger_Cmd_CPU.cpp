@@ -14,7 +14,8 @@ extern void FrameRefreshStatus(int);
 #include "Debugger_Assembler.h"
 #include "Video.h"
 #include "apple2/SoundCore.h"
-#include "apple2/Keyboard.h"
+#include "apple2/KeyboardCommands.h"
+#include "core/Peripheral.h"
 #include "core/Log.h"
 #include "apple2/Memory.h"
 #include <cstddef>
@@ -367,7 +368,8 @@ auto CmdUnassemble (int nArgs) -> Update_t
 auto CmdKey (int nArgs) -> Update_t
 {
   uint8_t code = nArgs ? (g_aArgs[1].nValue ? static_cast<uint8_t>(g_aArgs[1].nValue) : static_cast<uint8_t>(g_aArgs[1].sArg[0])) : static_cast<uint8_t>(' ');
-  KeybQueueKeypress(code);
+  KeyboardEvent_t ev = {code, 1U};
+  Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
   return UPDATE_CONSOLE_DISPLAY;
 }
 

@@ -12,6 +12,7 @@
 #include "apple2/DiskCommands.h"
 #include "apple2/CPU.h"
 #include "core/Peripheral.h"
+#include "frontends/sdl3/Frontend.h"
 #include <cstdio>
 
 static bool s_initialized = false;
@@ -50,6 +51,7 @@ auto AppController_Initialize(AppConfig* config) -> int {
   // 6. Register Peripherals
   Peripheral_Manager_Init();
   Linapple_RegisterPeripherals();
+  Frontend_UpdateKeyboardMapping();
 
   if (config->szDebuggerScript[0] != '\0') {
     Util_SafeStrCpy(&g_state.sDebuggerScript[0], &config->szDebuggerScript[0], PATH_MAX_LEN);

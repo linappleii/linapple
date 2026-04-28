@@ -52,7 +52,6 @@ static auto GetTickCount() -> uint32_t {
 #include "core/Peripheral.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
-#include "apple2/Keyboard.h"
 #include "core/Util_Text.h"
 #include "apple2/stretch.h"
 #include "apple2/Structs.h"
@@ -959,7 +958,7 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
                SRCOFFS_40COL + ((ch & 0x0F) << 4),
                (ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-               ((g_KeyboardRockerSwitch && g_MultiLanguageCharset) ? 512:0));
+               ((g_LanguageRockerSwitch && g_MultiLanguageCharset) ? 512:0));
     return true;
   }
   return false;
@@ -969,7 +968,7 @@ inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel, bo
   bool bInvert = bCharFlashing ? g_bTextFlashState : false;
   CopySource(xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT, SRCOFFS_80COL + ((c & 15) << 3),
              ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-             ((g_KeyboardRockerSwitch && g_MultiLanguageCharset) ? 512:0));
+             ((g_LanguageRockerSwitch && g_MultiLanguageCharset) ? 512:0));
   return true;
 }
 
@@ -1227,18 +1226,18 @@ auto LoadCharset() -> VideoSurface* {
   }
   else
   {
-    switch(g_KeyboardLanguage)
+    switch(g_Language)
     {
-    case English_UK:
+    case A2LANG_UK:
       result = VideoLoadXPM(charset40_british_xpm);
       break;
-    case French_FR:
+    case A2LANG_FR:
       result = VideoLoadXPM(charset40_french_xpm);
       break;
-    case German_DE:
+    case A2LANG_DE:
       result = VideoLoadXPM(charset40_german_xpm);
       break;
-    case English_US: // fall-through
+    case A2LANG_US: // fall-through
     default:
       // character bitmap for IIe and enhanced
       result = VideoLoadXPM(charset40_xpm);
@@ -1453,7 +1452,7 @@ auto VideoCheckMode(uint16_t, uint16_t address, uint8_t, uint8_t, uint32_t nCycl
         result = SW_DHIRES;
         break;
     }
-    return KeybGetKeycode() | (result ? 0x80 : 0);
+    return (MemReadFloatingBus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0);
   }
 }
 
@@ -1468,7 +1467,7 @@ void VideoCheckPage(bool force) {
 auto VideoCheckVbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft) -> uint8_t {
   bool bVblBar = false;
   VideoGetScannerAddress(&bVblBar, nCyclesLeft);
-  uint8_t r = KeybGetKeycode();
+  uint8_t r = MemReadFloatingBus(nCyclesLeft);
   return static_cast<uint8_t>((r & ~0x80) | ((bVblBar) ? 0x80 : 0));
 }
 

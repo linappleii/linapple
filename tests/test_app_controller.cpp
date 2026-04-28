@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <fstream>
+#include <unistd.h>
 
 #include "apple2/Disk.h"
 #include "apple2/Video.h"
@@ -46,7 +47,9 @@ TEST_CASE("AppController: Video Mode Reset") {
 TEST_CASE("AppController: Media Loading") {
   AppConfig config = {};
   AppConfig_Default(&config);
-  Util_SafeStrCpy(config.szDiskPath[0], "../res/Master.dsk", PATH_MAX_LEN);
+  const char* disk_path = access("../res/Master.dsk", R_OK) == 0
+      ? "../res/Master.dsk" : "res/Master.dsk";
+  Util_SafeStrCpy(config.szDiskPath[0], disk_path, PATH_MAX_LEN);
 
   AppEnv_ResolvePaths(&config);
   AppController_Initialize(&config);

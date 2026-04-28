@@ -26,6 +26,8 @@ auto DSInit() -> bool;
 void DSShutdown();
 void SingleStep(bool bReinit);
 void Linapple_KeyboardThink(uint32_t dwCycles);
+void Frontend_UpdateKeyboardMapping();
+void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode, uint32_t mod, bool bDown);
 LinAppleKey Frontend_ToCoreKey(int key, uint32_t mod);
 
 // Constants

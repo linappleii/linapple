@@ -33,7 +33,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/CPU.h"
 #include "apple2/Clock.h"
 #include "apple2/Joystick.h"
-#include "apple2/Keyboard.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SaveState.h"
@@ -45,6 +44,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/ProgramLoader.h"
 #include "Debugger/Debug.h"
 #include "apple2/ParallelPrinter.h"
+#include "apple2/KeyboardCommands.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
@@ -61,12 +61,7 @@ const uint16_t CPU_TEST_TRAP_PC = 0x3469;  // Example trap PC
 const uint64_t CPU_TEST_MAX_CYCLES = 100000000;
 const int FULL_SPEED_DISK_ITERATIONS = 100;
 
-// Repetition logic
-static uint8_t g_nRepeatKey = 0;
-static uint32_t g_nRepeatDelayCycles = 0;
-static bool g_bRepeating = false;
-const uint32_t KEY_REPEAT_INITIAL_DELAY = 512000;
-const uint32_t KEY_REPEAT_RATE = 68000;
+// Repetition logic moved to Keyboard peripheral.
 
 // Callbacks
 static LinappleVideoCallback g_videoCB = nullptr;
@@ -83,23 +78,6 @@ void Linapple_SetTitleCallback(LinappleTitleCallback cb) { g_titleCB = cb; }
 void Linapple_UpdateTitle(const char* title) {
   if (g_titleCB) {
     g_titleCB(title);
-  }
-}
-
-void Linapple_KeyboardThink(uint32_t dwCycles) {
-  if (g_nRepeatKey == 0) return;
-  g_nRepeatDelayCycles += dwCycles;
-  if (!g_bRepeating) {
-    if (g_nRepeatDelayCycles >= KEY_REPEAT_INITIAL_DELAY) {
-      g_bRepeating = true;
-      g_nRepeatDelayCycles = 0;
-      KeybPushAppleKey(g_nRepeatKey);
-    }
-  } else {
-    if (g_nRepeatDelayCycles >= KEY_REPEAT_RATE) {
-      g_nRepeatDelayCycles = 0;
-      KeybPushAppleKey(g_nRepeatKey);
-    }
   }
 }
 
@@ -240,8 +218,6 @@ static auto Internal_RunCycles(uint32_t dwCycles) -> uint32_t {
   VideoUpdateVbl(dwExecutedCycles);
   JoyUpdatePosition(dwExecutedCycles);
 
-  Linapple_KeyboardThink(dwExecutedCycles);
-
   return dwExecutedCycles;
 }
 
@@ -272,26 +248,23 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
 }
 
 void Linapple_SetKeyState(uint8_t apple_code, bool down) {
-  if (down) {
-    KeybQueueKeypress(apple_code);
-    g_nRepeatKey = apple_code;
-    g_nRepeatDelayCycles = 0;
-    g_bRepeating = false;
-  } else {
-    if (g_nRepeatKey == apple_code) {
-      g_nRepeatKey = 0;
-    }
-  }
-  KeybSetAnyKeyDownStatus(down);
+  KeyboardEvent_t ev = { apple_code, (uint8_t)(down ? 1 : 0) };
+  Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
 }
 
-void Linapple_SetCapsLockState(bool enabled) { KeybSetCapsLock(enabled); }
+void Linapple_SetCapsLockState(bool enabled) {
+  uint8_t caps = enabled ? 1 : 0;
+  Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+}
 
 void Linapple_SetAppleKey(int key, bool down) {
-  if (key == 0)
-    g_bShiftKey = down;
-  else
-    g_bAltKey = down;
+  // Read current modifier state first so we only toggle the one apple key.
+  KeyboardModifiers_t mods = {};
+  size_t sz = sizeof(mods);
+  Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &sz);
+  if (key == 0) { mods.gui = down ? 1U : 0U; }
+  else          { mods.alt = down ? 1U : 0U; }
+  Peripheral_Command(0, KEYB_CMD_SET_MODS, &mods, sizeof(mods));
 }
 
 void Linapple_SetJoystickAxis(int axis, int value) {

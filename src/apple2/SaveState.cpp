@@ -1,20 +1,22 @@
-#include "core/Common.h"
+#include "apple2/SaveState.h"
+
+#include <unistd.h>
+
 #include <cstdio>
 #include <cstring>
-#include <unistd.h>
-#include "apple2/SaveState.h"
-#include "apple2/Structs.h"
+
 #include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "apple2/Keyboard.h"
 #include "apple2/Joystick.h"
-#include "apple2/Speaker.h"
+#include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
-#include "apple2/Video.h"
 #include "apple2/SerialComms.h"
+#include "apple2/Speaker.h"
+#include "apple2/Structs.h"
+#include "apple2/Video.h"
+#include "core/Common.h"
 #include "core/Common_Globals.h"
-#include "core/Log.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -47,11 +49,9 @@ bool g_bSaveStateOnExit = false;
 
 static char g_szSaveStateFilename[PATH_MAX_LEN] = {0};
 
-auto Snapshot_GetFilename() -> char * {
-  return g_szSaveStateFilename;
-}
+auto Snapshot_GetFilename() -> char* { return g_szSaveStateFilename; }
 
-void Snapshot_SetFilename(const char *pszFilename) {
+void Snapshot_SetFilename(const char* pszFilename) {
   if (pszFilename && *pszFilename) {
     strcpy(g_szSaveStateFilename, pszFilename);
   } else {
@@ -71,34 +71,35 @@ void Snapshot_LoadState() {
     if (!hFile) {
       strcpy(szMessage, "File not found: ");
       strcpy(szMessage + strlen(szMessage), g_szSaveStateFilename);
-      throw (0);
+      throw(0);
     }
 
     uint32_t dwBytesRead = 0;
-    dwBytesRead = static_cast<uint32_t>(fread(pSS.get(), 1, sizeof(APPLEWIN_SNAPSHOT), hFile.get()));
+    dwBytesRead = static_cast<uint32_t>(
+        fread(pSS.get(), 1, sizeof(APPLEWIN_SNAPSHOT), hFile.get()));
     bool bRes = (dwBytesRead == sizeof(APPLEWIN_SNAPSHOT));
 
     if (!bRes || (dwBytesRead != sizeof(APPLEWIN_SNAPSHOT))) {
       // File size wrong: probably because of version mismatch or corrupt file
       strcpy(szMessage, "File size mismatch");
-      throw (0);
+      throw(0);
     }
 
-    if (pSS->Hdr.dwTag != static_cast<uint32_t>AW_SS_TAG) {
+    if (pSS->Hdr.dwTag != static_cast<uint32_t> AW_SS_TAG) {
       strcpy(szMessage, "File corrupt");
-      throw (0);
+      throw(0);
     }
 
     /* Let it be any version, never mind it! ^_^ */
     if (pSS->Hdr.dwVersion != MAKE_VERSION(1, 0, 0, 1)) {
       strcpy(szMessage, "Version mismatch");
-      throw (0);
+      throw(0);
     }
 
     // Verify peripheral manifest
     if (!Peripheral_VerifyManifest(&pSS->Manifest)) {
       strcpy(szMessage, "Hardware configuration mismatch - load aborted");
-      throw (0);
+      throw(0);
     }
 
     // Reset all sub-systems
@@ -109,48 +110,76 @@ void Snapshot_LoadState() {
     }
 
     Peripheral_Manager_Reset();
-    KeybReset();
     VideoResetState();
 
     CpuSetSnapshot(&pSS->Apple2Unit.CPU6502);
     JoySetSnapshot(&pSS->Apple2Unit.Joystick);
-    KeybSetSnapshot(&pSS->Apple2Unit.Keyboard);
+    Peripheral_LoadStateByName(0, "Keyboard", &pSS->Apple2Unit.Keyboard,
+                               sizeof(pSS->Apple2Unit.Keyboard));
     VideoSetSnapshot(&pSS->Apple2Unit.Video);
     MemSetSnapshot(&pSS->Apple2Unit.Memory);
 
     // Slots 0-7
     for (int i = 0; i < 8; ++i) {
-        void* slot_state = nullptr;
-        size_t slot_size = 0;
-        switch(i) {
-            case 0: slot_state = &pSS->Apple2Unit.Speaker; slot_size = sizeof(pSS->Apple2Unit.Speaker); break;
-            case 1: slot_state = &pSS->Empty1; slot_size = sizeof(pSS->Empty1); break;
-            case 2: slot_state = &pSS->Apple2Unit.Comms; slot_size = sizeof(pSS->Apple2Unit.Comms); break;
-            case 3: slot_state = &pSS->Empty3; slot_size = sizeof(pSS->Empty3); break;
-            case 4: slot_state = &pSS->Mockingboard1; slot_size = sizeof(pSS->Mockingboard1); break;
-            case 5: slot_state = &pSS->Mockingboard2; slot_size = sizeof(pSS->Mockingboard2); break;
-            case 6: break; // Slot 6 handled via manifest/ABI
-            case 7: slot_state = &pSS->Empty7; slot_size = sizeof(pSS->Empty7); break;
-        }
-        if (slot_state) {
-            Peripheral_LoadState(i, slot_state, slot_size);
-        }
+      void* slot_state = nullptr;
+      size_t slot_size = 0;
+      const char* name = nullptr;
+      switch (i) {
+        case 0:
+          name = "Speaker";
+          slot_state = &pSS->Apple2Unit.Speaker;
+          slot_size = sizeof(pSS->Apple2Unit.Speaker);
+          break;
+        case 1:
+          slot_state = &pSS->Empty1;
+          slot_size = sizeof(pSS->Empty1);
+          break;
+        case 2:
+          slot_state = &pSS->Apple2Unit.Comms;
+          slot_size = sizeof(pSS->Apple2Unit.Comms);
+          break;
+        case 3:
+          slot_state = &pSS->Empty3;
+          slot_size = sizeof(pSS->Empty3);
+          break;
+        case 4:
+          slot_state = &pSS->Mockingboard1;
+          slot_size = sizeof(pSS->Mockingboard1);
+          break;
+        case 5:
+          slot_state = &pSS->Mockingboard2;
+          slot_size = sizeof(pSS->Mockingboard2);
+          break;
+        case 6:
+          break;  // Slot 6 handled via manifest/ABI
+        case 7:
+          slot_state = &pSS->Empty7;
+          slot_size = sizeof(pSS->Empty7);
+          break;
+      }
+      if (slot_state) {
+        if (name)
+          Peripheral_LoadStateByName(i, name, slot_state, slot_size);
+        else
+          Peripheral_LoadState(i, slot_state, slot_size);
+      }
     }
 
     // Hmmm. And SLOT 7 (HDD1 and HDD2)? Where are they??? -- beom beotiger ^_^
   } catch (int) {
-    fprintf(stderr, "ERROR: %s\n", szMessage); // instead of wndzoooe messagebox let's use powerful stderr
+    fprintf(
+        stderr, "ERROR: %s\n",
+        szMessage);  // instead of wndzoooe messagebox let's use powerful stderr
 
     // Ensure system is in a clean state even if load fails
     if (mem) {
-        MemReset();
-        if (!IS_APPLE2()) {
-            MemResetPaging();
-        }
+      MemReset();
+      if (!IS_APPLE2()) {
+        MemResetPaging();
+      }
     }
     CpuReset();
     Peripheral_Manager_Reset();
-    KeybReset();
     VideoResetState();
   }
 }
@@ -170,32 +199,63 @@ void Snapshot_SaveState() {
 
   CpuGetSnapshot(&pSS->Apple2Unit.CPU6502);
   JoyGetSnapshot(&pSS->Apple2Unit.Joystick);
-  KeybGetSnapshot(&pSS->Apple2Unit.Keyboard);
   VideoGetSnapshot(&pSS->Apple2Unit.Video);
   MemGetSnapshot(&pSS->Apple2Unit.Memory);
 
+  // Use Peripheral_SaveStateByName for Keyboard (Slot 0)
+  size_t kbd_size = sizeof(pSS->Apple2Unit.Keyboard);
+  Peripheral_SaveStateByName(0, "Keyboard", &pSS->Apple2Unit.Keyboard,
+                             &kbd_size);
+
   // Slots 0-7
   for (int i = 0; i < 8; ++i) {
-      void* slot_state = nullptr;
-      size_t slot_size = 0;
-      switch(i) {
-          case 0: slot_state = &pSS->Apple2Unit.Speaker; slot_size = sizeof(pSS->Apple2Unit.Speaker); break;
-          case 1: slot_state = &pSS->Empty1; slot_size = sizeof(pSS->Empty1); break;
-          case 2: slot_state = &pSS->Apple2Unit.Comms; slot_size = sizeof(pSS->Apple2Unit.Comms); break;
-          case 3: slot_state = &pSS->Empty3; slot_size = sizeof(pSS->Empty3); break;
-          case 4: slot_state = &pSS->Mockingboard1; slot_size = sizeof(pSS->Mockingboard1); break;
-          case 5: slot_state = &pSS->Mockingboard2; slot_size = sizeof(pSS->Mockingboard2); break;
-          case 6: break; // Slot 6 handled via manifest/ABI
-          case 7: slot_state = &pSS->Empty7; slot_size = sizeof(pSS->Empty7); break;
-      }
-      if (slot_state) {
-          Peripheral_SaveState(i, slot_state, &slot_size);
-      }
+    void* slot_state = nullptr;
+    size_t slot_size = 0;
+    const char* name = nullptr;
+    switch (i) {
+      case 0:
+        name = "Speaker";
+        slot_state = &pSS->Apple2Unit.Speaker;
+        slot_size = sizeof(pSS->Apple2Unit.Speaker);
+        break;
+      case 1:
+        slot_state = &pSS->Empty1;
+        slot_size = sizeof(pSS->Empty1);
+        break;
+      case 2:
+        slot_state = &pSS->Apple2Unit.Comms;
+        slot_size = sizeof(pSS->Apple2Unit.Comms);
+        break;
+      case 3:
+        slot_state = &pSS->Empty3;
+        slot_size = sizeof(pSS->Empty3);
+        break;
+      case 4:
+        slot_state = &pSS->Mockingboard1;
+        slot_size = sizeof(pSS->Mockingboard1);
+        break;
+      case 5:
+        slot_state = &pSS->Mockingboard2;
+        slot_size = sizeof(pSS->Mockingboard2);
+        break;
+      case 6:
+        break;  // Slot 6 handled via manifest/ABI
+      case 7:
+        slot_state = &pSS->Empty7;
+        slot_size = sizeof(pSS->Empty7);
+        break;
+    }
+    if (slot_state) {
+      if (name)
+        Peripheral_SaveStateByName(i, name, slot_state, &slot_size);
+      else
+        Peripheral_SaveState(i, slot_state, &slot_size);
+    }
   }
 
   const char* pszFilename = g_szSaveStateFilename;
   if (pszFilename[0] == '\0') {
-      pszFilename = DEFAULT_SNAPSHOT_NAME;
+    pszFilename = DEFAULT_SNAPSHOT_NAME;
   }
 
   FilePtr hFile(fopen(pszFilename, "wb"), fclose);
@@ -204,7 +264,8 @@ void Snapshot_SaveState() {
     fwrite(pSS.get(), 1, sizeof(APPLEWIN_SNAPSHOT), hFile.get());
     Logger::Info("Saved state to: %s\n", pszFilename);
   } else {
-    Logger::Error("Failed to open save state file for writing: %s\n", pszFilename);
+    Logger::Error("Failed to open save state file for writing: %s\n",
+                  pszFilename);
   }
 }
 

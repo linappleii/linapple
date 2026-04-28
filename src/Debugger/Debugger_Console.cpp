@@ -39,7 +39,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Cmd_Output.h"
 #include "core/Util_Text.h"
-#include "apple2/Keyboard.h"
+#include "core/Peripheral.h"
+#include "apple2/KeyboardCommands.h"
 #include "Video.h"
 #include <unistd.h>
 #include <cstring>
@@ -853,6 +854,10 @@ void DebuggerProcessKey( int keycode )
   }
   else
   {
+    KeyboardModifiers_t mods = {};
+    size_t mods_sz = sizeof(mods);
+    Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &mods_sz);
+
     switch (keycode)
     {
       case LINAPPLE_KEY_TAB:
@@ -875,7 +880,7 @@ void DebuggerProcessKey( int keycode )
       case LINAPPLE_KEY_DOWN:  bUpdateDisplay |= ConsoleInputHistoryNext(); break;
 
       case LINAPPLE_KEY_PAGEUP:
-        if (KeybGetCtrlStatus()) {
+        if (mods.ctrl) {
           _CursorMoveUpAligned( WindowGetHeight( g_iWindowThis ) );
         } else {
           _CursorMoveUpAligned( 1 );
@@ -884,7 +889,7 @@ void DebuggerProcessKey( int keycode )
         break;
 
       case LINAPPLE_KEY_PAGEDOWN:
-        if (KeybGetCtrlStatus()) {
+        if (mods.ctrl) {
           _CursorMoveDownAligned( WindowGetHeight( g_iWindowThis ) );
         } else {
           _CursorMoveDownAligned( 1 );
@@ -923,10 +928,14 @@ void DebuggerMouseClick( int /*x*/, int /*y*/ )
     return;
 }
 
+  KeyboardModifiers_t mods = {};
+  size_t mods_sz = sizeof(mods);
+  Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &mods_sz);
+
   int iAltCtrlShift  = 0;
-  iAltCtrlShift |= KeybGetAltStatus()   ? 1<<0 : 0;
-  iAltCtrlShift |= KeybGetCtrlStatus()  ? 1<<1 : 0;
-  iAltCtrlShift |= KeybGetShiftStatus() ? 1<<2 : 0;
+  iAltCtrlShift |= mods.alt   ? 1<<0 : 0;
+  iAltCtrlShift |= mods.ctrl  ? 1<<1 : 0;
+  iAltCtrlShift |= mods.shift ? 1<<2 : 0;
 
   // GH#462 disasm click #
   if (iAltCtrlShift != g_bConfigDisasmClick) {

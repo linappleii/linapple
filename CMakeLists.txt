@@ -27,6 +27,7 @@ option(BUILD_SHARED_PERIPHERALS "Build peripherals as shared libraries instead o
 
 # Peripheral Options
 option(PERIPHERAL_SPEAKER "Enable built-in speaker peripheral" ON)
+option(PERIPHERAL_KEYBOARD "Enable built-in keyboard peripheral" ON)
 option(PERIPHERAL_MOCKINGBOARD "Enable Mockingboard peripheral" ON)
 option(PERIPHERAL_DISK "Enable Disk II peripheral" ON)
 option(PERIPHERAL_SSC "Enable Super Serial Card peripheral" ON)
@@ -163,6 +164,7 @@ set(SOURCES_A2
     src/apple2/formats/Woz2Driver.cpp
     src/apple2/Joystick.cpp
     src/apple2/Keyboard.cpp
+    src/apple2/Keyboard_Maps.c
     src/apple2/Memory.cpp
     src/apple2/SaveState.cpp
     src/apple2/SoundCore.cpp
@@ -177,6 +179,7 @@ add_definitions(-DENABLE_RIFF)
 
 # Optional peripherals
 add_peripheral_target(speaker PERIPHERAL_SPEAKER "src/apple2/Speaker.cpp" "" TRUE)
+add_peripheral_target(keyboard PERIPHERAL_KEYBOARD "src/apple2/Keyboard.cpp;src/apple2/Keyboard_Maps.c" "" TRUE)
 add_peripheral_target(disk PERIPHERAL_DISK "src/apple2/Disk.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral_target(harddisk PERIPHERAL_HARDDISK "src/apple2/Harddisk.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral_target(mouse PERIPHERAL_MOUSE "src/apple2/MouseInterface.cpp" "" TRUE)
@@ -356,14 +359,6 @@ target_compile_definitions(test-ssc PRIVATE ${PERIPHERAL_DEFINITIONS})
 target_link_libraries(test-ssc PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-ssc COMMAND test-ssc)
 
-# Test Keyboard
-if(FRONTEND STREQUAL "sdl3")
-    add_executable(test-keyboard tests/full_keyboard_test.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
-    target_include_directories(test-keyboard PRIVATE src src/core ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-    target_compile_definitions(test-keyboard PRIVATE ${PERIPHERAL_DEFINITIONS})
-    target_link_libraries(test-keyboard PRIVATE SDL3::SDL3 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-    add_test(NAME test-keyboard COMMAND test-keyboard)
-endif()
 
 # Test ABI
 add_executable(test-abi tests/test_abi.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
@@ -389,6 +384,44 @@ target_include_directories(test-peripheral-abi PRIVATE src src/core src/apple2 s
 target_compile_definitions(test-peripheral-abi PRIVATE ${PERIPHERAL_DEFINITIONS})
 target_link_libraries(test-peripheral-abi PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-peripheral-abi COMMAND test-peripheral-abi)
+
+add_executable(test-keyboard-maps
+    tests/test_keyboard_maps_standalone.cpp
+    src/apple2/Keyboard_Maps.c
+)
+target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
+add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
+
+add_executable(test-keyboard-peripheral
+    tests/test_main.cpp
+    tests/test_keyboard_peripheral.cpp
+    ${SOURCES_CORE}
+    ${SOURCES_A2}
+    ${SOURCES_DBG}
+    src/frontends/headless/Stubs.cpp
+    src/frontends/headless/Headless_Path.cpp
+)
+add_dependencies(test-keyboard-peripheral generate_xpms)
+target_include_directories(test-keyboard-peripheral PRIVATE src src/core src/apple2 src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(test-keyboard-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
+target_link_libraries(test-keyboard-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+add_test(NAME test-keyboard-peripheral COMMAND test-keyboard-peripheral)
+
+# Test Peripheral Slot 0
+add_executable(test-peripheral-slot0
+    tests/test_main.cpp
+    tests/test_peripheral_slot0.cpp
+    ${SOURCES_CORE}
+    ${SOURCES_A2}
+    ${SOURCES_DBG}
+    src/frontends/headless/Stubs.cpp
+    src/frontends/headless/Headless_Path.cpp
+)
+add_dependencies(test-peripheral-slot0 generate_xpms)
+target_include_directories(test-peripheral-slot0 PRIVATE src src/core src/apple2 src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(test-peripheral-slot0 PRIVATE ${PERIPHERAL_DEFINITIONS})
+target_link_libraries(test-peripheral-slot0 PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+add_test(NAME test-peripheral-slot0 COMMAND test-peripheral-slot0)
 
 # Test Disk ABI
 add_executable(test-disk-abi

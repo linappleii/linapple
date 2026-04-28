@@ -11,7 +11,7 @@ extern "C" {
 /**
  * Returns a static pointer to avoid complex manual memory management in the C
  * ABI.
- * 
+ *
  * @param input Null-terminated string.
  * @return Static pointer to a 32-character hex string (+ null).
  */

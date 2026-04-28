@@ -2,7 +2,7 @@
 #include <SDL3/SDL.h>
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
-#include "apple2/Keyboard.h"
+#include "apple2/KeyboardCommands.h"
 #include "apple2/Joystick.h"
 #include "apple2/Video.h"
 #include "apple2/SoundCore.h"
@@ -10,6 +10,7 @@
 #include "frontends/sdl3/JoystickFrontend.h"
 #include "Debugger/Debug.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral.h"
 
 // Forward declarations for functions still in Frame.cpp
 extern void ProcessButtonClick(int button, int mod);
@@ -51,10 +52,6 @@ void SDL_HandleEvent(SDL_Event *e) {
       SDL_Scancode myscancode = e->key.scancode;
 
       if (e->key.repeat == 0) {
-        if (!IsModifierKey(mysym)) {
-          KeybSetAnyKeyDownStatus(true);
-        }
-
         if (Frontend_HandleKeyEvent(mysym, true)) {
           break;
         }
@@ -85,7 +82,8 @@ void SDL_HandleEvent(SDL_Event *e) {
           printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
           SetCurrentCLK6502();
         } else if (mysym == SDLK_CAPSLOCK) {
-          Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
+          uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
+          Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
         } else if (mysym == SDLK_PAUSE) {
           SetUsingCursor(false);
           switch (g_state.mode) {
@@ -120,8 +118,7 @@ void SDL_HandleEvent(SDL_Event *e) {
             JoyFrontend_UpdateTrimViaKey(mysym);
           } else {
             if (!JoyFrontend_ProcessKey(mysym, extended, true, false)) {
-              uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-              Linapple_SetKeyState(apple_code, true);
+              Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
             }
           }
         } else if (g_state.mode == MODE_DEBUG) {
@@ -138,22 +135,18 @@ void SDL_HandleEvent(SDL_Event *e) {
       SDL_Keymod mymod = e->key.mod;
       SDL_Scancode myscancode = e->key.scancode;
 
-      if (!IsModifierKey(mysym)) {
-        KeybSetAnyKeyDownStatus(false);
-      }
-
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (static_cast<SDL_Keycode>(buttondown) == mysym - SDLK_F1)) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
       } else if (Frontend_HandleKeyEvent(mysym, false)) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
-        Linapple_SetCapsLockState((mymod & SDL_KMOD_CAPS) != 0);
+        uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
+        Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
       } else {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
         if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {
-          uint8_t apple_code = Frontend_TranslateKey(mysym, mymod);
-          Linapple_SetKeyState(apple_code, false);
+          Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
         }
       }
       break;

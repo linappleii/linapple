@@ -113,11 +113,6 @@ PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
 
 #ifdef __cplusplus
 /**
- * @brief Register a peripheral in a specific slot.
- */
-int Peripheral_Register(Peripheral_t* api, int slot);
-
-/**
  * @brief Unregister the peripheral in a specific slot.
  */
 int Peripheral_Unregister(int slot);
@@ -125,12 +120,12 @@ int Peripheral_Unregister(int slot);
 /**
  * @brief Get the current peripheral manifest.
  */
-void Peripheral_GetManifest(SS_PERIPHERAL_MANIFEST* manifest);
+void Peripheral_GetManifest(void* manifest);
 
 /**
  * @brief Verify a peripheral manifest from a save state.
  */
-bool Peripheral_VerifyManifest(const SS_PERIPHERAL_MANIFEST* manifest);
+bool Peripheral_VerifyManifest(const void* manifest);
 
 /**
  * @brief Save the state of the peripheral in a specific slot.
@@ -142,6 +137,8 @@ void Peripheral_SaveState(int slot, void* buffer, size_t* size);
  */
 void Peripheral_LoadState(int slot, const void* buffer, size_t size);
 #endif
+
+void Linapple_RegisterPeripherals();
 
 /**
  * @brief Get information about built-in hardware.

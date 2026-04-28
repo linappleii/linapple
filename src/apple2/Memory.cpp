@@ -33,7 +33,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "apple2/Keyboard.h"
 #include "apple2/Speaker.h"
 #include "apple2/Joystick.h"
 #include "core/Log.h"
@@ -144,7 +143,10 @@ auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write, ui
 void MemUpdatePaging(bool initialize, bool updatewriteonly);
 
 static auto IORead_C00x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return KeybReadData(pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d;
+  // $C000-$C00F are owned by the keyboard peripheral once initialized.
+  // RegisterDirectIO overwrites these dispatch slots before any CPU execution.
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
 static const uint8_t LAST_MEM_SOFT_SWITCH_OFFSET = 0x0B;
@@ -159,8 +161,6 @@ static auto IOWrite_C00x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, 
 
 static auto IORead_C01x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   switch (addr & ADDR_NIBBLE_MASK) {
-    case 0x0: // KBDSTRB
-      return KeybClearFlag(pc, addr, bWrite, d, nCyclesLeft);
     case 0x1: // RDLCRAM
     case 0x2: // RDRAMRD
     case 0x3: // RDRAMWRT
@@ -188,31 +188,36 @@ static auto IORead_C01x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, u
 }
 
 static auto IOWrite_C01x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return KeybClearFlag(pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d;
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
 static auto IORead_C02x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d;
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
 static auto IOWrite_C02x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d; (void)nCyclesLeft;
+  return 0;
 }
 
 static auto IORead_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  return Speaker_Toggle(nullptr, pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  return Speaker_Toggle(nullptr, pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto IORead_C04x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IORead[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d;
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
 static auto IOWrite_C04x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return IOWrite[static_cast<uint8_t>(addr & 0xFF)](pc, addr, bWrite, d, nCyclesLeft);
+  (void)pc; (void)addr; (void)bWrite; (void)d; (void)nCyclesLeft;
+  return 0;
 }
 
 static auto IORead_C05x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
@@ -786,8 +791,8 @@ void MemUpdatePaging(bool initialize, bool updatewriteonly) {
 
 // All globally accessible functions are below this line
 
-// TODO: >= Apple2e only?
-auto MemCheckPaging(uint16_t, uint16_t address, uint8_t, uint8_t, uint32_t) -> uint8_t {
+auto MemCheckPaging(uint16_t programcounter, uint16_t address, uint8_t write, uint8_t value, uint32_t nCyclesLeft) -> uint8_t {
+  (void)programcounter; (void)write; (void)value;
   address &= 0xFF;
   bool result = false;
   switch (address) {
@@ -824,7 +829,7 @@ auto MemCheckPaging(uint16_t, uint16_t address, uint8_t, uint8_t, uint32_t) -> u
     default:
       break;
   }
-  return KeybGetKeycode() | (result ? 0x80 : 0);
+  return (MemReadFloatingBus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0x00);
 }
 
 void MemDestroy() {

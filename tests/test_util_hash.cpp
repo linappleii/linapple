@@ -5,7 +5,7 @@
 
 TEST_CASE("Util_Hash: MD5 correctness") {
     // Expected values generated with 'md5sum' CLI
-    
+
     SUBCASE("Empty string") {
         CHECK(std::string(md5str("")) == "D41D8CD98F00B204E9800998ECF8427E");
     }

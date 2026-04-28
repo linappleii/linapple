@@ -221,6 +221,15 @@ enum eApple2Type {
   A2TYPE_MAX
 };
 
+enum eApple2Language {
+  A2LANG_US = 1,
+  A2LANG_UK,
+  A2LANG_FR,
+  A2LANG_DE,
+  A2LANG_JP_ROMAN,
+  A2LANG_JP_KANA
+};
+
 extern eApple2Type g_Apple2Type;
 
 inline auto IS_APPLE2() -> bool {

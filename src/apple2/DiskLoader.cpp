@@ -24,9 +24,7 @@ const uint8_t MACBINARY_MAGIC_VALUE = 0x81;
 
 static std::vector<DiskFormatDriver_t*> g_drivers;
 
-void DiskLoader_Init() {
-  g_drivers.clear();
-}
+void DiskLoader_Init() { g_drivers.clear(); }
 
 void DiskLoader_Shutdown() { g_drivers.clear(); }
 
@@ -92,7 +90,6 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
   size_t name_len = strlen(filename);
   if ((name_len > 3 && strcasecmp(filename + name_len - 3, ".gz") == 0) ||
       (name_len > 4 && strcasecmp(filename + name_len - 4, ".zip") == 0)) {
-    
     snprintf(temp_path, sizeof(temp_path), "/tmp/linapple_XXXXXX");
     int fd = mkstemp(temp_path);
     if (fd != -1) {
@@ -184,9 +181,10 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
     bool os_readonly = false;
     DiskError_e err =
         best_driver->open(load_path, file_offset, &os_readonly, out_instance);
-    
-    // If it was a temporary file, we can unlink it now if the driver has its own handle
-    // or if we just want to clean up. Most drivers in LinApple read the whole thing anyway.
+
+    // If it was a temporary file, we can unlink it now if the driver has its
+    // own handle or if we just want to clean up. Most drivers in LinApple read
+    // the whole thing anyway.
     if (is_temporary) {
       unlink(temp_path);
     }

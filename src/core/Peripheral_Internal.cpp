@@ -112,6 +112,10 @@ static auto GetDefaultPeripheralForSlot(int slot) -> const char* {
 }
 
 void Peripheral_Register_Internal() {
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+    // Keyboard is internal (Slot 0)
+    Peripheral_Register(&g_keyboard_peripheral, 0);
+#endif
 #if defined(ENABLE_PERIPHERAL_SPEAKER)
     // Speaker is internal (Slot 0)
     Peripheral_Register(&g_speaker_peripheral, 0);

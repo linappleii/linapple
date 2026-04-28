@@ -1,47 +1,76 @@
-#include "apple2/SerialComms.h"
 #include <cstdint>
+#include "core/LinAppleCore.h"
+#include "frontends/sdl3/Frontend.h"
+#include "apple2/Video.h"
+#include "apple2/Joystick.h"
+#include "apple2/SerialComms.h"
 
-// These functions are currently coupled to the frontend in LinAppleCore.cpp or hardware files
-// but should eventually be part of the bridge or a specialized frontend component.
+// Use weak symbols so that real implementations in unit tests take precedence
+#define WEAK __attribute__((weak))
 
-bool g_bDSAvailable = false;
-
-void SSCFrontend_Update(struct SuperSerialCard* pSSC, uint32_t cycles) { (void)pSSC; (void)cycles; }
-void PrinterFrontend_Update(uint32_t cycles) { (void)cycles; }
-
-// Printer Frontend stubs
-auto PrinterFrontend_CheckStatus() -> uint8_t { return 0; }
-void PrinterFrontend_SendChar(uint8_t c) { (void)c; }
-void PrinterFrontend_Destroy() {}
-
-// SSC Frontend stubs
-void SSCFrontend_SendByte(uint8_t byte) { (void)byte; }
-auto SSCFrontend_IsActive() -> bool { return false; }
-void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, SscParity parity, SscStopBits stop) {
-    (void)baud; (void)bits; (void)parity; (void)stop;
+// Stubs for headless/test environments
+WEAK void Frontend_UpdateKeyboardMapping() {}
+WEAK void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode, uint32_t mod, bool bDown) {
+    (void)scancode; (void)keycode; (void)mod; (void)bDown;
+}
+WEAK LinAppleKey Frontend_ToCoreKey(int key, uint32_t mod) {
+    (void)key; (void)mod;
+    return LINAPPLE_KEY_UNKNOWN;
 }
 
-// UI stubs
-void FrameRefreshStatus(int flags) { (void)flags; }
-void DrawFrameWindow() {}
-void DrawAppleContent() {}
+WEAK void FrameRefreshStatus(int drawflags) { (void)drawflags; }
 
-// Legacy sound stubs
-void DSInit() {}
-void DSShutdown() {}
+// Printer Stubs
+WEAK void PrinterFrontend_Reset() {}
+WEAK void PrinterFrontend_Destroy() {}
+WEAK void PrinterFrontend_Update(uint32_t cycles) { (void)cycles; }
+WEAK uint8_t PrinterFrontend_CheckStatus() { return 0; }
+WEAK void PrinterFrontend_SendChar(uint8_t c) { (void)c; }
 
-// Debugger stubs (normally in SDL_Video.cpp)
-void StretchBltMemToFrameDC() {}
+// SSC Stubs
+WEAK bool SSCFrontend_IsActive() { return false; }
+WEAK void SSCFrontend_UpdateState(uint32_t b, uint32_t d, SscParity p, SscStopBits s) { (void)b; (void)d; (void)p; (void)s; }
+WEAK void SSCFrontend_SendByte(uint8_t c) { (void)c; }
+WEAK void SSCFrontend_Update(struct SuperSerialCard* ssc, uint32_t c) { (void)ssc; (void)c; }
 
-void SoundCore_SetFade(int fade) { (void)fade; }
-void PrinterFrontend_Reset() {}
+// Video/Frontend Stubs needed for Debugger source linkage
+WEAK void StretchBltMemToFrameDC(void) {}
+WEAK void SoundCore_SetFade(int) {}
+WEAK void JoySetTrim(short, bool) {}
+WEAK void JoySetButton(eBUTTON, eBUTTONSTATE) {}
+WEAK void JoyUpdatePosition(uint32_t) {}
+WEAK void VideoUpdateVbl(uint32_t) {}
+WEAK void VideoRedrawScreen() {}
+WEAK void VideoResetState() {}
+WEAK uint16_t VideoGetScannerAddress(bool*, uint32_t) { return 0; }
+WEAK void VideoChooseColor() {}
+WEAK void VideoSetBorderColor(uint8_t) {}
+WEAK void Linapple_UpdateTitle(const char*) {}
+WEAK void Linapple_ListHardware() {}
+WEAK void Linapple_CpuTest(const char*, uint16_t) {}
+WEAK int Linapple_LoadProgram(const char*) { return 0; }
+WEAK void Linapple_Shutdown() {}
+WEAK void Linapple_Init() {}
 
-#ifndef ENABLE_RIFF
-int RiffInitWriteFile(char *pszFile, uint32_t sample_rate, uint32_t NumChannels) {
-    (void)pszFile; (void)sample_rate; (void)NumChannels; return 0;
-}
-int RiffFinishWriteFile() { return 0; }
-int RiffPutSamples(short *buf, uint32_t uSamples) {
-    (void)buf; (void)uSamples; return 0;
-}
-#endif
+WEAK uint8_t MemReadFloatingBus(uint32_t) { return 0; }
+WEAK uint8_t* GetMemPtr(uint16_t) { return nullptr; }
+WEAK uint8_t* MemGetCxRomPeripheral() { return nullptr; }
+WEAK void RegisterIoHandler(uint32_t, iofunction, iofunction, iofunction, iofunction, void*, uint8_t*) {}
+WEAK void RegisterDirectIoHandler(uint16_t, iofunction, iofunction, void*) {}
+
+#include <stdarg.h>
+#include "core/Log.h"
+WEAK void Logger::Perf(const char*, ...) {}
+WEAK void Logger::Info(const char*, ...) {}
+WEAK void Logger::Warning(const char*, ...) {}
+WEAK void Logger::Error(const char*, ...) {}
+WEAK void Logger::Initialize() {}
+WEAK void Logger::Destroy() {}
+WEAK void Logger::SetVerbosity(LogLevel) {}
+
+WEAK uint64_t g_nCumulativeCycles = 0;
+WEAK SystemState_t g_state = {};
+WEAK eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+WEAK uint32_t g_videotype = 0;
+WEAK void (*g_frontendAudioCB)(const int16_t*, size_t) = nullptr;
+WEAK void DSUploadBuffer(int16_t*, uint32_t) {}

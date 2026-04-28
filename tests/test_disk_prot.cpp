@@ -49,7 +49,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
       FilePtr dst(fopen(dst_p, "wb"), fclose);
       REQUIRE(src != nullptr);
       std::vector<uint8_t> buf(size);
-      fread(buf.data(), 1, size, src.get());
+      REQUIRE(fread(buf.data(), 1, size, src.get()) == size);
       fwrite(buf.data(), 1, size, dst.get());
     };
 
