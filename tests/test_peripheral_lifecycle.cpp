@@ -147,3 +147,45 @@ TEST_CASE("Peripheral Manager: Plugin path construction") {
     // Test with empty file
     CHECK(Path::Join(dir, "") == dir);
 }
+
+TEST_CASE("Peripheral Manager: Command payload capacity") {
+    Linapple_Init();
+    Peripheral_Manager_Init();
+
+    static size_t captured_size = 0;
+    static uint8_t last_byte = 0;
+
+    Peripheral_t test_api = {
+        LINAPPLE_ABI_VERSION,
+        "MaxPayloadTest",
+        0xFF,
+        [](int, HostInterface_t*) -> void* { return (void*)0x1; },
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus {
+            captured_size = size;
+            if (size > 0) last_byte = static_cast<const uint8_t*>(data)[size-1];
+            return PERIPHERAL_OK;
+        },
+        nullptr
+    };
+
+    Peripheral_Register(&test_api, 1);
+
+    // 1. Send exactly PERIPHERAL_CMD_MAX_DATA (512) bytes
+    std::vector<uint8_t> payload(512, 0xAA);
+    payload.back() = 0xBB;
+
+    PeripheralStatus status = Peripheral_Command(1, 0x123, payload.data(), payload.size());
+    CHECK(status == PERIPHERAL_OK);
+
+    // Commands are queued and processed during Think(0)
+    Peripheral_Manager_Think(0);
+
+    CHECK(captured_size == 512);
+    CHECK(last_byte == 0xBB);
+
+    // 2. Send 513 bytes - should be rejected
+    std::vector<uint8_t> huge_payload(513, 0xCC);
+    status = Peripheral_Command(1, 0x124, huge_payload.data(), huge_payload.size());
+    CHECK(status == PERIPHERAL_ERROR);
+}

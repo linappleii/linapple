@@ -338,6 +338,9 @@ struct QueuedCommand {
   uint8_t data[PERIPHERAL_CMD_MAX_DATA];
 };
 
+static_assert(sizeof(((QueuedCommand*)0)->data) == PERIPHERAL_CMD_MAX_DATA,
+              "QueuedCommand::data size must match PERIPHERAL_CMD_MAX_DATA");
+
 // Justification: Global queue and mutex are required for thread-safe command
 // processing between the core and peripherals.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -537,6 +540,8 @@ auto Peripheral_Unregister(int slot) -> int {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus {
+  // Reject payloads that exceed the fixed buffer capacity of QueuedCommand.data.
+  // size == PERIPHERAL_CMD_MAX_DATA is valid as it fills the buffer exactly.
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
       size > PERIPHERAL_CMD_MAX_DATA)
     return PERIPHERAL_ERROR;
