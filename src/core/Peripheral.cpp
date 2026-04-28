@@ -490,10 +490,35 @@ auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
   return 0;
 }
 
+static auto RemoveDirectIoHandlersForInstance(void* instance) -> void {
+  if (!instance) return;
+
+  size_t j = 0;
+  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
+    if (g_direct_io_handlers.at(i).instance == instance) {
+      // Unregister from core memory map
+      RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
+                              nullptr);
+    } else {
+      if (i != j) {
+        g_direct_io_handlers.at(j) = g_direct_io_handlers.at(i);
+      }
+      j++;
+    }
+  }
+
+  // Clear remaining slots
+  for (size_t i = j; i < g_num_direct_handlers; ++i) {
+    g_direct_io_handlers.at(i) = {};
+  }
+  g_num_direct_handlers = j;
+}
+
 auto Peripheral_Unregister(int slot) -> int {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {
+    RemoveDirectIoHandlersForInstance(ap.instance);
     if (ap.api && ap.api->shutdown) {
       ap.api->shutdown(ap.instance);
     }

@@ -70,3 +70,22 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
 }
+
+TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral is unregistered") {
+    Linapple_Init();
+    Peripheral_Manager_Init();
+
+    // 1. Register
+    Peripheral_Register(&g_mock_peripheral, 1);
+    CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
+
+    // 2. Unregister
+    Peripheral_Unregister(1);
+
+    // After unregistering slot 1, the mock peripheral is gone.
+    // Any direct IO handlers it registered should also be gone.
+    // In the buggy version, the handler remains and will call the lambda with shutdown=true.
+    uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
+    CHECK(val != 0xAA);
+    CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
+}
