@@ -8,7 +8,7 @@ extern const char *g_pAppTitle;
 extern char videoDriverName[100];
 extern eApple2Type g_Apple2Type;
 extern eApple2Language g_Language;
-extern bool g_LanguageRockerSwitch;
+extern bool language_rocker_switch;
 extern uint64_t cumulativecycles;
 extern uint64_t cyclenum;
 extern uint32_t emulmsec;

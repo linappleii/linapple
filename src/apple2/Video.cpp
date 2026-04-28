@@ -221,7 +221,7 @@ static uint8_t* g_pHiresBank0;
 
 VideoSurface *g_hLogoBitmap = nullptr;
 VideoSurface *charset40 = nullptr;
-int g_MultiLanguageCharset = false;
+int multi_language_charset = false;
 
 VideoSurface *g_hStatusSurface = nullptr;
 int g_iStatusCycle = 0;
@@ -858,12 +858,12 @@ void DrawMonoTextSource(VideoSurface *hDstDC) {
   }
   else
   {
-    int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
+    int MaxLanguage = (multi_language_charset) ? 2 : 1;
     for (int Language=0;Language<MaxLanguage;Language++)
     {
       /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
        * while the local language set is always the first (offset 0). */
-      int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
+      int srcYofs = ((Language==0)&&(multi_language_charset)) ? 128:0;
       int dstYofs = Language*(MAX_SOURCE_Y/2);
 
       SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL, dstYofs, 256, 256);
@@ -893,12 +893,12 @@ void DrawTextSource(VideoSurface *dc) {
   }
   else
   {
-    int MaxLanguage = (g_MultiLanguageCharset) ? 2 : 1;
+    int MaxLanguage = (multi_language_charset) ? 2 : 1;
     for (int Language=0;Language<MaxLanguage;Language++)
     {
       /* When ROM contains two character sets: US/default set is the second (starting at offset 128),
        * while the local language set is always the first (offset 0). */
-      int srcYofs = ((Language==0)&&(g_MultiLanguageCharset)) ? 128:0;
+      int srcYofs = ((Language==0)&&(multi_language_charset)) ? 128:0;
       int dstYofs = Language*(MAX_SOURCE_Y/2);
 
       SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL, dstYofs, 256, 256);
@@ -958,7 +958,7 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
                SRCOFFS_40COL + ((ch & 0x0F) << 4),
                (ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-               ((g_LanguageRockerSwitch && g_MultiLanguageCharset) ? 512:0));
+               ((language_rocker_switch && multi_language_charset) ? 512:0));
     return true;
   }
   return false;
@@ -968,7 +968,7 @@ inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel, bo
   bool bInvert = bCharFlashing ? g_bTextFlashState : false;
   CopySource(xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT, SRCOFFS_80COL + ((c & 15) << 3),
              ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-             ((g_LanguageRockerSwitch && g_MultiLanguageCharset) ? 512:0));
+             ((language_rocker_switch && multi_language_charset) ? 512:0));
   return true;
 }
 
@@ -1255,8 +1255,8 @@ auto LoadCharset() -> VideoSurface* {
     }
 
     // enable second language support when charset has the double height (256 instead of 128 pixels)
-    g_MultiLanguageCharset = (result->h == 256);
-    printf("Charset supports a second language: %s\n", (g_MultiLanguageCharset)?"YES":"NO");
+    multi_language_charset = (result->h == 256);
+    printf("Charset supports a second language: %s\n", (multi_language_charset)?"YES":"NO");
   }
   return result;
 }

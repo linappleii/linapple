@@ -5,8 +5,12 @@
  * C-compatible for use in all LinApple frontends.
  */
 
-#ifndef KEYBOARD_MAPS_H
-#define KEYBOARD_MAPS_H
+#pragma once
+
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+// cppcoreguidelines-use-enum-class) Justification: This header defines
+// C-compatible structures and types for the keyboard mapping system to ensure
+// interoperability across different frontends.
 
 #include <stdint.h>
 
@@ -14,7 +18,10 @@
 extern "C" {
 #endif
 
-#define KEYB_MAP_SIZE 128  // Covers the physical scancode range (max index 82)
+enum {
+  KEYB_MAP_SIZE = 128,  // Covers the physical scancode range (max index 82)
+  KEYB_NAME_SIZE = 32
+};
 
 /**
  * @brief Positional Indices for the hardware encoder maps.
@@ -100,7 +107,7 @@ typedef enum {
 } KeyboardIdx_e;
 
 typedef struct {
-  char name[32];
+  char name[KEYB_NAME_SIZE];
   uint8_t map[KEYB_MAP_SIZE];
 } Apple2KeyboardMap_t;
 
@@ -114,4 +121,5 @@ extern const Apple2KeyboardMap_t Map_JP_Kana;
 }
 #endif
 
-#endif  // KEYBOARD_MAPS_H
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+// cppcoreguidelines-use-enum-class)

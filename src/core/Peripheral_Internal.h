@@ -13,7 +13,7 @@ extern Peripheral_t g_speaker_peripheral;
 #endif
 
 #if defined(ENABLE_PERIPHERAL_KEYBOARD)
-extern Peripheral_t g_keyboard_peripheral;
+extern Peripheral_t keyboard_peripheral;
 #endif
 
 #if defined(ENABLE_PERIPHERAL_DISK)

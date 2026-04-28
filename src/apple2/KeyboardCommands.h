@@ -5,8 +5,12 @@
  * It is C-compatible for use in all LinApple frontends.
  */
 
-#ifndef KEYBOARDCOMMANDS_H
-#define KEYBOARDCOMMANDS_H
+#pragma once
+
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+// cppcoreguidelines-use-enum-class) Justification: This header defines a
+// C-compatible binary interface for the keyboard command and query system,
+// requiring C-style headers, structs, and enums.
 
 #include <stdint.h>
 
@@ -82,4 +86,5 @@ typedef struct {
 }
 #endif
 
-#endif  // KEYBOARDCOMMANDS_H
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+// cppcoreguidelines-use-enum-class)

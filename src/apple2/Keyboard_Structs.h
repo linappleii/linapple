@@ -1,13 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <cstddef>
 
 /**
  * @brief Snapshot of the keyboard state for save-files.
  */
 struct SS_IO_Keyboard {
-  uint8_t nLastKey = 0;
+  uint8_t last_key = 0;
 };
 
 /**
@@ -16,7 +15,7 @@ struct SS_IO_Keyboard {
 struct Keyboard_t {
   // --- Register State ---
   uint8_t last_key = 0;
-  uint32_t keys_down_count = 0; // Physical counter for Bit 7 of $C010
+  uint32_t keys_down_count = 0;  // Physical counter for Bit 7 of $C010
   bool caps_lock = true;
 
   // --- Modifiers ---

@@ -17,7 +17,7 @@ char videoDriverName[100];
 
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 eApple2Language g_Language = A2LANG_US;
-bool g_LanguageRockerSwitch = false;
+bool language_rocker_switch = false;
 
 uint64_t cumulativecycles = 0;
 uint64_t cyclenum = 0;
