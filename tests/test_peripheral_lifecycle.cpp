@@ -70,6 +70,8 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
     uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
+
+    Linapple_Shutdown();
 }
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral is unregistered") {
@@ -89,6 +91,8 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
     uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
+
+    Linapple_Shutdown();
 }
 
 TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
@@ -122,6 +126,8 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     // Now they should both be correct because they have their own buffers.
     CHECK(std::string(captured_val2) == "Value2");
     CHECK(std::string(captured_val1) == "Value1");
+
+    Linapple_Shutdown();
 }
 
 #include <dlfcn.h>
@@ -190,4 +196,6 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
     std::vector<uint8_t> huge_payload(513, 0xCC);
     status = Peripheral_Command(1, 0x124, huge_payload.data(), huge_payload.size());
     CHECK(status == PERIPHERAL_ERROR);
+
+    Linapple_Shutdown();
 }
