@@ -227,11 +227,19 @@ static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
 }
 
 static void Clock_ABI_Reset(void* instance) {
-  (void)instance;
+  if (!instance) {
+    return;
+  }
+  auto* cp = static_cast<ClockPeripheral_t*>(instance);
+  cp->latches.fill(0);
 }
 
 static void Clock_ABI_Shutdown(void* instance) {
-  (void)instance;
+  if (!instance) {
+    return;
+  }
+  auto* cp = static_cast<ClockPeripheral_t*>(instance);
+  delete cp;
 }
 
 Peripheral_t g_clock_peripheral = {
