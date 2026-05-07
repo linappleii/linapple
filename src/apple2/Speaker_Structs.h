@@ -24,6 +24,7 @@ struct Speaker_t {
   uint64_t quiet_cycle_count = 0;
   bool recently_active = false;
   bool toggle_flag = false;
+  uint32_t sound_type = 1; // Default to SOUND_WAVE (1)
 
   // Sample generation state
   bool last_sample_state = false;
@@ -31,4 +32,5 @@ struct Speaker_t {
   std::array<int16_t, SPKR_BUFFER_SIZE> sample_buffer{};
 
   void* host = nullptr; // Opaque pointer to HostInterface_t
+  int slot = 0;
 };

@@ -94,7 +94,9 @@ static auto ShouldRunFullSpeed() -> bool {
   mb_active = MB_IsActive();
 #endif
 
-  bool spkr_active = Spkr_IsActive();
+  bool spkr_active = false;
+  size_t out_size = sizeof(bool);
+  Peripheral_Query(0, SPEAKER_QUERY_IS_ACTIVE, &spkr_active, &out_size);
   bool peripheral_active = Peripheral_IsAnyActive();
 
   bool shouldTurbo = peripheral_active && (g_state.needsprecision == 0) &&

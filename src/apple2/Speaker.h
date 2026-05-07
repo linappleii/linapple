@@ -12,8 +12,6 @@ enum {
 
 static constexpr int16_t SPKR_SAMPLE_VOLUME = 0x4000;
 
-extern uint32_t soundtype;
-
 // Pointer-based API
 auto Speaker_Destroy(Speaker_t* instance) -> void;
 auto Speaker_Initialize(Speaker_t* instance) -> void;
@@ -28,8 +26,7 @@ auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent *events, int max_events) -
 auto Speaker_GetLastCycle(Speaker_t* instance) -> uint64_t;
 auto Speaker_GetCurrentState(Speaker_t* instance) -> bool;
 
-// Legacy API (for backward compatibility during migration, to be removed)
-auto SpkrToggle(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
-auto Spkr_IsActive() -> bool;
-auto SpkrGetSnapshot(SS_IO_Speaker *pSS) -> uint32_t;
-auto SpkrSetSnapshot(SS_IO_Speaker *pSS) -> uint32_t;
+// Speaker Query IDs
+enum {
+  SPEAKER_QUERY_IS_ACTIVE = 0x100
+};

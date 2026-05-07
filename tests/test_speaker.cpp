@@ -18,16 +18,19 @@ TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
     CpuInitialize();
     g_nCumulativeCycles = 1000;
 
+    Speaker_t spkr_instance{};
+    Speaker_Initialize(&spkr_instance);
+
     SUBCASE("Speaker records toggles with cycle accuracy") {
         uint64_t initialCycles = g_nCumulativeCycles;
 
         // We mock the executed cycles directly since we're bypassing CpuExecute
         uint32_t executedCycles = 10;
         CpuCalcCycles(executedCycles);
-        SpkrToggle(nullptr, 0, 0, 0, 0, 0); // Toggle at the current cycle
+        Speaker_Toggle(&spkr_instance, 0, 0, 0, 0, 0); // Toggle at the current cycle
 
         std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
-        int count = Speaker_GetEvents(nullptr, events.data(), MAX_SPKR_EVENTS); // nullptr gets default instance
+        int count = Speaker_GetEvents(&spkr_instance, events.data(), MAX_SPKR_EVENTS);
 
         CHECK(count >= 1);
         // The last event should be the one we just triggered
@@ -41,11 +44,11 @@ TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
 
         // Clear any previous events
         std::array<SpkrEvent, MAX_SPKR_EVENTS> dump{};
-        Speaker_GetEvents(nullptr, dump.data(), MAX_SPKR_EVENTS);
+        Speaker_GetEvents(&spkr_instance, dump.data(), MAX_SPKR_EVENTS);
 
         // Advance cycle so we're not at 0, using a clean cycle baseline
         g_nCumulativeCycles = 2000;
-        Speaker_Reset(nullptr);
+        Speaker_Reset(&spkr_instance);
 
         // Simulate a PWM pulse: High for exactly 25% of a sample period, then low for 75%
         uint32_t pulseWidth = static_cast<uint32_t>(clksPerSample * 0.25);
@@ -53,24 +56,16 @@ TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
 
         // Toggle ON (move cycles forward by 1, then toggle)
         CpuCalcCycles(1);
-        SpkrToggle(nullptr, 0, 0, 0, 0, 0);
+        Speaker_Toggle(&spkr_instance, 0, 0, 0, 0, 0);
 
         // Move forward by pulseWidth and toggle OFF
         CpuCalcCycles(pulseWidth);
-        SpkrToggle(nullptr, 0, 0, 0, 0, 0);
+        Speaker_Toggle(&spkr_instance, 0, 0, 0, 0, 0);
 
         // Move forward to complete the sample period
         CpuCalcCycles(remainingWidth);
 
-        // Hook DSUploadBuffer manually if possible, or just rely on the fact
-        // that Speaker_GenerateSamples is now testable if we provide a mock host.
-        // For now, the existing test relies on SpkrFrontend_Update.
-        // Let's use Speaker_GenerateSamples directly.
-
-        Speaker_GenerateSamples(nullptr, 1 + pulseWidth + remainingWidth);
-
-        // Since we can't easily hook the callback in this subcase without Task 6.6,
-        // we'll verify the internal state.
+        Speaker_GenerateSamples(&spkr_instance, 1 + pulseWidth + remainingWidth);
     }
 
     Linapple_Shutdown();
