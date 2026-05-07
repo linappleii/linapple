@@ -184,14 +184,14 @@ static void update_latches(ClockPeripheral_t* cp) {
 }
 
 static auto Clock_IORead(void* instance, uint16_t pc, uint16_t addr,
-                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+                         uint8_t write, uint8_t val, uint32_t cycles_left)
     -> uint8_t {
   if (!instance) {
-    return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+    return IO_Null(pc, addr, write, val, cycles_left);
   }
   auto* cp = static_cast<ClockPeripheral_t*>(instance);
 
-  switch (addr &= 0x0F) {
+  switch (addr & 0x0F) {
     case 0:
     case 1:
     case 2:
@@ -202,14 +202,14 @@ static auto Clock_IORead(void* instance, uint16_t pc, uint16_t addr,
     case 7:
     case 8:
     case 9:
-      return cp->latches[static_cast<size_t>(addr)];
+      return cp->latches[static_cast<size_t>(addr & 0x0F)];
 
     case 0xF:
       update_latches(cp);
       return 0;
 
     default:
-      return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+      return IO_Null(pc, addr, write, val, cycles_left);
   }
 }
 
@@ -221,8 +221,23 @@ static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
   uint8_t slot_rom[256];
   memset(slot_rom, 0, 256);
   memcpy(slot_rom, Clock_ROM.data(), Clock_ROM.size());
-  host->RegisterCxROM(slot, slot_rom);
-  host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
+
+  // ProDOS-compatible clock cards expect ROM at $Cx00
+  if (slot > 0 && slot < 8) {
+    host->RegisterCxROM(slot, slot_rom);
+  }
+
+  // Registers are at $C080-$C08F (No-Slot Clock style)
+  // or $C0n0-$C0nF (Slot-based style).
+  // Integrated Slot 0 Clock uses $C080-$C08F.
+  if (host->RegisterDirectIO) {
+    for (uint16_t addr = 0xC080; addr <= 0xC08F; ++addr) {
+      host->RegisterDirectIO(cp, addr, Clock_IORead, nullptr);
+    }
+  } else {
+    host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
+  }
+
   return cp;
 }
 
@@ -242,6 +257,46 @@ static void Clock_ABI_Shutdown(void* instance) {
   delete cp;
 }
 
+static auto Clock_ABI_SaveState(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus {
+  if (!instance || !size) {
+    return PERIPHERAL_ERROR;
+  }
+
+  auto* cp = static_cast<ClockPeripheral_t*>(instance);
+  constexpr size_t state_size = sizeof(cp->latches);
+
+  if (!buffer) {
+    *size = state_size;
+    return PERIPHERAL_OK;
+  }
+
+  if (*size < state_size) {
+    return PERIPHERAL_ERROR;
+  }
+
+  memcpy(buffer, cp->latches.data(), state_size);
+  *size = state_size;
+  return PERIPHERAL_OK;
+}
+
+static auto Clock_ABI_LoadState(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus {
+  if (!instance || !buffer) {
+    return PERIPHERAL_ERROR;
+  }
+
+  auto* cp = static_cast<ClockPeripheral_t*>(instance);
+  constexpr size_t state_size = sizeof(cp->latches);
+
+  if (size != state_size) {
+    return PERIPHERAL_ERROR;
+  }
+
+  memcpy(cp->latches.data(), buffer, state_size);
+  return PERIPHERAL_OK;
+}
+
 Peripheral_t g_clock_peripheral = {
     LINAPPLE_ABI_VERSION,
     "No-Slot Clock",
@@ -251,8 +306,8 @@ Peripheral_t g_clock_peripheral = {
     Clock_ABI_Shutdown,
     nullptr, // think
     nullptr, // on_vblank
-    nullptr, // save_state
-    nullptr, // load_state
+    Clock_ABI_SaveState,
+    Clock_ABI_LoadState,
     nullptr, // command
     nullptr  // query
 };
