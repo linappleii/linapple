@@ -4,7 +4,8 @@
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
 #include <array>
 #include <cassert>
@@ -235,7 +236,6 @@ static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
     host->RegisterCxROM(slot, slot_rom);
   }
 
-
   host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
 
   return cp;
@@ -320,4 +320,5 @@ EXPORT_PERIPHERAL(g_clock_peripheral)
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
