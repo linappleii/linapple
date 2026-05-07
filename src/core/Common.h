@@ -1,7 +1,7 @@
 #include <cstdint>
-#include <string>
-#include <memory>
 #include <cstdio>
+#include <memory>
+#include <string>
 
 #pragma once
 
@@ -9,12 +9,26 @@
 using FilePtr = std::unique_ptr<FILE, int (*)(FILE*)>;
 
 // Forward declarations for configuration
-auto ConfigLoadInt(const char* section, const char* key, uint32_t* value) -> bool;
+auto ConfigLoadInt(const char* section, const char* key, uint32_t* value)
+    -> bool;
 auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool;
-auto ConfigLoadString(const char* section, const char* key, std::string* value) -> bool;
+auto ConfigLoadString(const char* section, const char* key, std::string* value)
+    -> bool;
 void ConfigSaveInt(const char* section, const char* key, uint32_t value);
 
-enum eIRQSRC { IS_6522 = 0, IS_SPEECH, IS_SSC, IS_MOUSE, IS_SLOT1, IS_SLOT2, IS_SLOT3, IS_SLOT4, IS_SLOT5, IS_SLOT6, IS_SLOT7 };
+enum eIRQSRC {
+  IS_6522 = 0,
+  IS_SPEECH,
+  IS_SSC,
+  IS_MOUSE,
+  IS_SLOT1,
+  IS_SLOT2,
+  IS_SLOT3,
+  IS_SLOT4,
+  IS_SLOT5,
+  IS_SLOT6,
+  IS_SLOT7
+};
 
 // Configuration functions for type safety
 #define USE_SPEECH_API
@@ -66,13 +80,13 @@ enum AppMode_e {
 
 constexpr int PATH_MAX_LEN = 260;
 
-#define SCREEN_WIDTH  560
-#define SCREEN_HEIGHT  384
+#define SCREEN_WIDTH 560
+#define SCREEN_HEIGHT 384
 
-#define  VIEWPORTX   5
-#define  VIEWPORTY   5
-#define  VIEWPORTCX  560
-#define  VIEWPORTCY  384
+#define VIEWPORTX 5
+#define VIEWPORTY 5
+#define VIEWPORTCX 560
+#define VIEWPORTCY 384
 
 using SystemState_t = struct SystemState_tag {
   AppMode_e mode;
@@ -192,18 +206,19 @@ typedef struct DiskImage_tag {
   int unused;
 }* DiskImagePtr_t;
 
-static inline auto IsCharLower(char ch) -> bool { return (ch >= 'a' && ch <= 'z'); }
+static inline auto IsCharLower(char ch) -> bool {
+  return (ch >= 'a' && ch <= 'z');
+}
 
-static inline auto IsCharUpper(char ch) -> bool { return (ch >= 'A' && ch <= 'Z'); }
+static inline auto IsCharUpper(char ch) -> bool {
+  return (ch >= 'A' && ch <= 'Z');
+}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef uint8_t (*iofunction)(uint16_t nPC,
-                               uint16_t nAddr,
-                               uint8_t nWriteFlag,
-                               uint8_t nWriteValue,
-                               uint32_t nCyclesLeft);
+typedef uint8_t (*iofunction)(uint16_t nPC, uint16_t nAddr, uint8_t nWriteFlag,
+                              uint8_t nWriteValue, uint32_t nCyclesLeft);
 #ifdef __cplusplus
 }
 #endif

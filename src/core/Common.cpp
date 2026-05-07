@@ -60,4 +60,6 @@ CURL* g_curl = nullptr;
 auto GetTitleApple2() -> const char* { return TITLE_APPLE_2_; }
 auto GetTitleApple2Plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
 auto GetTitleApple2e() -> const char* { return TITLE_APPLE_2E_; }
-auto GetTitleApple2eEnhanced() -> const char* { return TITLE_APPLE_2E_ENHANCED_; }
+auto GetTitleApple2eEnhanced() -> const char* {
+  return TITLE_APPLE_2E_ENHANCED_;
+}
