@@ -9,6 +9,7 @@
 #include "apple2/Clock.h"
 #include "apple2/Memory.h"
 #include "apple2/Structs.h"
+#include "core/Peripheral.h"
 
 
 /*
@@ -157,55 +158,72 @@ D2
   }};
 
 
-static std::array<uint8_t, 10> latches;
+struct ClockPeripheral_t {
+  std::array<uint8_t, 10> latches{};
+  HostInterface_t* host = nullptr;
+  int slot = 0;
+};
 
-static void set_latch_pair(int index, int value) {
-  latches[static_cast<size_t>(index&=0x0E)] = static_cast<uint8_t>((value%=100) / 10);
-  latches[static_cast<size_t>(index|1)] = static_cast<uint8_t>(value%10);
+static void set_latch_pair(ClockPeripheral_t* cp, int index, int value) {
+  cp->latches[static_cast<size_t>(index &= 0x0E)] =
+      static_cast<uint8_t>((value %= 100) / 10);
+  cp->latches[static_cast<size_t>(index | 1)] = static_cast<uint8_t>(value % 10);
 }
 
-static void update_latches() {
+static void update_latches(ClockPeripheral_t* cp) {
   time_t t = 0;
-  struct tm tm{};
+  struct tm tm {};
 
   time(&t);
   localtime_r(&t, &tm);
-  set_latch_pair(0, 1+tm.tm_mon);
-  set_latch_pair(2, tm.tm_wday);
-  set_latch_pair(4, tm.tm_mday);
-  set_latch_pair(6, tm.tm_hour);
-  set_latch_pair(8, tm.tm_min);
+  set_latch_pair(cp, 0, 1 + tm.tm_mon);
+  set_latch_pair(cp, 2, tm.tm_wday);
+  set_latch_pair(cp, 4, tm.tm_mday);
+  set_latch_pair(cp, 6, tm.tm_hour);
+  set_latch_pair(cp, 8, tm.tm_min);
 }
 
-
-static auto Clock_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  (void)instance;
-  switch(addr &= 0x0F) {
-  case 0: case 1:
-  case 2: case 3:
-  case 4: case 5:
-  case 6: case 7:
-  case 8: case 9:
-    return latches[static_cast<size_t>(addr)];
-
-  case 0xF:
-    update_latches();
-    return 0;
-
-  default:
+static auto Clock_IORead(void* instance, uint16_t pc, uint16_t addr,
+                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t {
+  if (!instance) {
     return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  }
+  auto* cp = static_cast<ClockPeripheral_t*>(instance);
+
+  switch (addr &= 0x0F) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+      return cp->latches[static_cast<size_t>(addr)];
+
+    case 0xF:
+      update_latches(cp);
+      return 0;
+
+    default:
+      return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
   }
 }
 
-#include "core/Peripheral.h"
-
 static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
+  auto* cp = new ClockPeripheral_t();
+  cp->slot = slot;
+  cp->host = host;
+
   uint8_t slot_rom[256];
   memset(slot_rom, 0, 256);
   memcpy(slot_rom, Clock_ROM.data(), Clock_ROM.size());
   host->RegisterCxROM(slot, slot_rom);
   host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
-  return reinterpret_cast<void*>(1); // Dummy instance
+  return cp;
 }
 
 static void Clock_ABI_Reset(void* instance) {
