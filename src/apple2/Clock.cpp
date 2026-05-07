@@ -235,16 +235,8 @@ static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
     host->RegisterCxROM(slot, slot_rom);
   }
 
-  // Registers are at $C080-$C08F (No-Slot Clock style)
-  // or $C0n0-$C0nF (Slot-based style).
-  // Integrated Slot 0 Clock uses $C080-$C08F.
-  if (host->RegisterDirectIO) {
-    for (uint16_t addr = 0xC080; addr <= 0xC08F; ++addr) {
-      host->RegisterDirectIO(cp, addr, Clock_IORead, nullptr);
-    }
-  } else {
-    host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
-  }
+
+  host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
 
   return cp;
 }
@@ -307,7 +299,7 @@ static auto Clock_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
 Peripheral_t g_clock_peripheral = {
     LINAPPLE_ABI_VERSION,
-    "No-Slot Clock",
+    "Clock Card",
     LINAPPLE_ANY_SLOT_MASK,
     Clock_ABI_Init,
     Clock_ABI_Reset,

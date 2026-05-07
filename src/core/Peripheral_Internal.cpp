@@ -75,6 +75,11 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
     }
   }
 
+  // Support legacy configuration names to prevent breakage of existing user setups.
+  if (strcmp(name, "No-Slot Clock") == 0 || strcmp(name, "Clock") == 0) {
+    return Peripheral_Find_Internal("Clock Card");
+  }
+
   return nullptr;
 }
 
@@ -106,12 +111,18 @@ static auto GetDefaultPeripheralForSlot(int slot) -> const char* {
       return "Disk II";
     case SLOT_HARDDISK:
       return hddenabled ? "Harddisk" : nullptr;
-    default:
+    default: {
+      uint32_t clock_slot = 0;
+      if (LOAD(REGVALUE_CLOCK_ENABLED, &clock_slot) &&
+          clock_slot == static_cast<uint32_t>(slot)) {
+        return "Clock Card";
+      }
       if (slot == 4) {
         if (g_Slot4 == CT_Mockingboard) return "Mockingboard";
         if (g_Slot4 == CT_MouseInterface) return "Mouse Interface";
       }
       return nullptr;
+    }
   }
 }
 
@@ -119,15 +130,6 @@ void Peripheral_Register_Internal() {
 #if defined(ENABLE_PERIPHERAL_KEYBOARD)
   // Keyboard is internal (Slot 0)
   Peripheral_Register(&keyboard_peripheral, 0);
-#endif
-
-#if defined(ENABLE_PERIPHERAL_CLOCK)
-  // No-Slot Clock is internal (Slot 0)
-  bool clock_enabled = true;
-  LOAD(REGVALUE_CLOCK_ENABLED, &clock_enabled);
-  if (clock_enabled) {
-    Peripheral_Register(&g_clock_peripheral, 0);
-  }
 #endif
 
 #if defined(ENABLE_PERIPHERAL_SPEAKER)

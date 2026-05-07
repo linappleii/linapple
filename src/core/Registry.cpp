@@ -84,7 +84,7 @@ void Configuration::LoadDefaults() {
   SetInt("Configuration", "Printer idle limit", 10);
   SetInt("Configuration", "Append to printer file", 1);
   SetInt("Configuration", "Harddisk Enable", 0);
-  SetInt("Configuration", "Clock Enable", 1);
+  SetInt("Configuration", "Clock Enable", 4);
   SetInt("Configuration", "Show Leds", 15);
   SetInt("Configuration", "Save State On Exit", 0);
   SetInt("Configuration", "Fullscreen", 0);
@@ -94,7 +94,7 @@ void Configuration::LoadDefaults() {
 
   SetString("Slots", "Slot 1", "Parallel Printer");
   SetString("Slots", "Slot 2", "Super Serial Card");
-  SetString("Slots", "Slot 3", "No-Slot Clock");
+  SetString("Slots", "Slot 3", "None");
   SetString("Slots", "Slot 4", "Mockingboard");
   SetString("Slots", "Slot 5", "Mockingboard");
   SetString("Slots", "Slot 6", "Disk II");
