@@ -148,7 +148,7 @@ constexpr const char* REGVALUE_HDD_IMAGE1 = "Harddisk Image 1";
 constexpr const char* REGVALUE_HDD_IMAGE2 = "Harddisk Image 2";
 constexpr const char* REGVALUE_DISK_IMAGE1 = "Disk Image 1";
 constexpr const char* REGVALUE_DISK_IMAGE2 = "Disk Image 2";
-constexpr const char* REGVALUE_CLOCK_SLOT = "Clock Enable";
+constexpr const char* REGVALUE_CLOCK_ENABLED = "Clock Enable";
 
 constexpr const char* REGVALUE_PPRINTER_FILENAME = "Parallel Printer Filename";
 constexpr const char* REGVALUE_PRINTER_APPEND = "Append to printer file";

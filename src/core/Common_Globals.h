@@ -14,7 +14,6 @@ extern uint64_t cyclenum;
 extern uint32_t emulmsec;
 extern bool g_bFullSpeed;
 extern bool hddenabled;
-extern uint32_t clockslot;
 extern SystemState_t g_state;
 extern double g_fCurrentCLK6502;
 extern int g_nCpuCyclesFeedback;

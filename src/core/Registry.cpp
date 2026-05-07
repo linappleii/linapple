@@ -82,8 +82,8 @@ void Configuration::LoadDefaults() {
     SetInt("Configuration", "Printer idle limit", 10);
     SetInt("Configuration", "Append to printer file", 1);
     SetInt("Configuration", "Harddisk Enable", 0);
-    SetInt("Configuration", "Clock Enable", 4);
-    SetInt("Configuration", "Slot 6 Autoload", 0);
+    SetInt("Configuration", "Clock Enable", 1);
+    SetInt("Configuration", "Show Leds", 15);
     SetInt("Configuration", "Save State On Exit", 0);
     SetInt("Configuration", "Fullscreen", 0);
     SetInt("Configuration", "Boot at Startup", 0);
