@@ -307,13 +307,37 @@ void FrameShowHelpScreen(int sx, int sy) {
     tempSurface = &vs_screen;
   }
 
-  VideoSurface* my_screen_vs =
-      VideoCreateSurface(tempSurface->w, tempSurface->h, tempSurface->bpp);
   VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
 
-  surface_fader(my_screen_vs, 0.2F, 0.2F, 0.2F, -1, nullptr);
-  VideoSoftStretch(tempSurface, nullptr, my_screen_vs, nullptr);
-  VideoSoftStretch(my_screen_vs, nullptr, &vs_actual_screen, nullptr);
+  // Capture original screen
+  VideoSoftStretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
+
+  // Blur the background by downscaling and upscaling
+  // We use a small temporary surface (1/16 size) to create a pixelated blur
+  // effect
+  SDL_Surface* blur_temp = SDL_CreateSurface(screen->w / 16, screen->h / 16,
+                                             SDL_PIXELFORMAT_ARGB8888);
+  if (blur_temp) {
+    VideoSurface vs_blur = SDLSurfaceToVideoSurface(blur_temp);
+    VideoSoftStretch(&vs_actual_screen, nullptr, &vs_blur,
+                     nullptr);  // Downscale
+    VideoSoftStretch(&vs_blur, nullptr, &vs_actual_screen,
+                     nullptr);  // Upscale back
+    SDL_DestroySurface(blur_temp);
+  }
+
+  // Dim the background using SDL blending for better text readability
+  SDL_Surface* dim_surface =
+      SDL_CreateSurface(screen->w, screen->h, SDL_PIXELFORMAT_ARGB8888);
+  if (dim_surface) {
+    Uint32 dim_color =
+        SDL_MapRGBA(SDL_GetPixelFormatDetails(dim_surface->format),
+                    SDL_GetSurfacePalette(dim_surface), 0, 0, 0, 200);
+    SDL_FillSurfaceRect(dim_surface, nullptr, dim_color);
+    SDL_SetSurfaceBlendMode(dim_surface, SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(dim_surface, nullptr, screen, nullptr);
+    SDL_DestroySurface(dim_surface);
+  }
 
   const float facx_f = static_cast<float>(g_state.ScreenWidth) /
                        static_cast<float>(SCREEN_WIDTH);
@@ -375,8 +399,6 @@ void FrameShowHelpScreen(int sx, int sy) {
 
   FrameRefresh();
   SDL_Delay(1000);
-
-  VideoDestroySurface(my_screen_vs);
 
   SDL_Event event;
 

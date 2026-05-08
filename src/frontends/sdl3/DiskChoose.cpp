@@ -292,13 +292,39 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
   }
 
   g_diskChooseState.bg_screen = SDL_CreateSurface(
-      tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_XRGB8888);
+      tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_ARGB8888);
 
   VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
   VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
 
-  surface_fader(&vs_bg, 0.2F, 0.2F, 0.2F, -1, nullptr);
+  // Capture original screen
   VideoSoftStretch(tempSurface, nullptr, &vs_bg, nullptr);
+
+  // Blur the background by downscaling and upscaling
+  // We use a small temporary surface (1/16 size) to create a pixelated blur
+  // effect
+  SDL_Surface* blur_temp = SDL_CreateSurface(
+      tempSurface->w / 16, tempSurface->h / 16, SDL_PIXELFORMAT_ARGB8888);
+  if (blur_temp) {
+    VideoSurface vs_blur = SDLSurfaceToVideoSurface(blur_temp);
+    VideoSoftStretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
+    VideoSoftStretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
+    SDL_DestroySurface(blur_temp);
+  }
+
+  // Dim the background using SDL blending for better text readability
+  SDL_Surface* dim_surface = SDL_CreateSurface(tempSurface->w, tempSurface->h,
+                                               SDL_PIXELFORMAT_ARGB8888);
+  if (dim_surface) {
+    Uint32 dim_color =
+        SDL_MapRGBA(SDL_GetPixelFormatDetails(dim_surface->format),
+                    SDL_GetSurfacePalette(dim_surface), 0, 0, 0, 160);
+    SDL_FillSurfaceRect(dim_surface, nullptr, dim_color);
+    SDL_SetSurfaceBlendMode(dim_surface, SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(dim_surface, nullptr, g_diskChooseState.bg_screen, nullptr);
+    SDL_DestroySurface(dim_surface);
+  }
+
   VideoSoftStretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
 
   font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(),
