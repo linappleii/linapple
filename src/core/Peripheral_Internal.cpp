@@ -23,47 +23,58 @@ struct LoadedPlugin {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::vector<LoadedPlugin> g_loaded_plugins;
 
-static bool g_plugins_initialized = false;
-
 /**
- * Justification: Peripheral Manager requires a static list of built-in hardware
+ * Justification: Peripheral Manager requires a registry of built-in hardware
  * to support runtime slot assignment via configuration.
  */
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-interfaces-global-init)
-static const std::array<Peripheral_t*, 9> g_builtin_peripherals = {{
-#if defined(ENABLE_PERIPHERAL_SPEAKER)
-    &g_speaker_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
-    &g_mockingboard_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_DISK)
-    &g_disk_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_SSC)
-    &g_ssc_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_PRINTER)
-    &g_printer_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_HARDDISK)
-    &g_harddisk_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_MOUSE)
-    &g_mouse_peripheral,
-#endif
-#if defined(ENABLE_PERIPHERAL_CLOCK)
-    &g_clock_peripheral,
-#endif
-    nullptr}};
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static std::vector<Peripheral_t*> g_builtin_registry;
+
+static bool g_plugins_initialized = false;
+static bool g_builtins_discovered = false;
+
+extern "C" {
+__attribute__((weak)) void Register_Speaker();
+__attribute__((weak)) void Register_Mockingboard();
+__attribute__((weak)) void Register_Disk();
+__attribute__((weak)) void Register_SSC();
+__attribute__((weak)) void Register_Printer();
+__attribute__((weak)) void Register_Harddisk();
+__attribute__((weak)) void Register_Mouse();
+__attribute__((weak)) void Register_Clock();
+__attribute__((weak)) void Register_Keyboard();
+}
+
+void Peripheral_Register_Builtin(Peripheral_t* p) {
+  if (p) {
+    g_builtin_registry.push_back(p);
+  }
+}
+
+static void Discover_Builtins() {
+  if (g_builtins_discovered) {
+    return;
+  }
+  g_builtins_discovered = true;
+
+  if (Register_Speaker) Register_Speaker();
+  if (Register_Mockingboard) Register_Mockingboard();
+  if (Register_Disk) Register_Disk();
+  if (Register_SSC) Register_SSC();
+  if (Register_Printer) Register_Printer();
+  if (Register_Harddisk) Register_Harddisk();
+  if (Register_Mouse) Register_Mouse();
+  if (Register_Clock) Register_Clock();
+  if (Register_Keyboard) Register_Keyboard();
+}
 
 auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
   if (!name) return nullptr;
 
+  Discover_Builtins();
   Peripheral_Plugins_Init();
 
-  for (auto const& p : g_builtin_peripherals) {
+  for (auto const& p : g_builtin_registry) {
     if (p && strcmp(p->name, name) == 0) {
       return p;
     }
@@ -75,7 +86,8 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
     }
   }
 
-  // Support legacy configuration names to prevent breakage of existing user setups.
+  // Support legacy configuration names to prevent breakage of existing user
+  // setups.
   if (strcmp(name, "No-Slot Clock") == 0 || strcmp(name, "Clock") == 0) {
     return Peripheral_Find_Internal("Clock Card");
   }
@@ -83,9 +95,10 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
   return nullptr;
 }
 
-const char* Peripheral_GetPluginPath(const char* name) {
+auto Peripheral_GetPluginPath(const char* name) -> const char* {
   if (!name) return nullptr;
 
+  Discover_Builtins();
   Peripheral_Plugins_Init();
 
   for (auto const& lp : g_loaded_plugins) {
@@ -127,15 +140,18 @@ static auto GetDefaultPeripheralForSlot(int slot) -> const char* {
 }
 
 void Peripheral_Register_Internal() {
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
-  // Keyboard is internal (Slot 0)
-  Peripheral_Register(&keyboard_peripheral, 0);
-#endif
+  Discover_Builtins();
 
-#if defined(ENABLE_PERIPHERAL_SPEAKER)
-  // Speaker is internal (Slot 0)
-  Peripheral_Register(&g_speaker_peripheral, 0);
-#endif
+  // Internal peripherals (Slot 0)
+  Peripheral_t* kbd = Peripheral_Find_Internal("Keyboard");
+  if (kbd) {
+    Peripheral_Register(kbd, 0);
+  }
+
+  Peripheral_t* spkr = Peripheral_Find_Internal("Speaker");
+  if (spkr) {
+    Peripheral_Register(spkr, 0);
+  }
 
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     const size_t KEY_SIZE = 16;
@@ -173,11 +189,12 @@ void Peripheral_Register_Internal() {
 }
 
 void Linapple_ListHardware() {
+  Discover_Builtins();
   Peripheral_Plugins_Init();
 
   printf("Built-in Peripherals:\n");
   printf("---------------------\n");
-  for (auto const& p : g_builtin_peripherals) {
+  for (auto const& p : g_builtin_registry) {
     if (p) {
       printf("- %-20s (Compatible Slots: ", p->name);
       bool first = true;
@@ -212,7 +229,7 @@ void Linapple_ListHardware() {
   }
 }
 
-void Peripheral_Plugins_Init(void) {
+void Peripheral_Plugins_Init() {
   if (g_plugins_initialized) {
     return;
   }
@@ -267,7 +284,7 @@ void Peripheral_Plugins_Init(void) {
   }
 }
 
-void Peripheral_Plugins_Shutdown(void) {
+void Peripheral_Plugins_Shutdown() {
   for (auto& plugin : g_loaded_plugins) {
     if (plugin.handle) {
       dlclose(plugin.handle);

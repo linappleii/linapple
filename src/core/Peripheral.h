@@ -5,10 +5,10 @@
 #ifndef LINAPPLE_PERIPHERAL_H
 #define LINAPPLE_PERIPHERAL_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,42 +19,49 @@ extern "C" {
 enum { PERIPHERAL_CMD_MAX_DATA = 512 };
 
 typedef enum {
-    PERIPHERAL_OK = 0,
-    PERIPHERAL_ERROR = -1,
-    PERIPHERAL_INCOMPATIBLE = -2
+  PERIPHERAL_OK = 0,
+  PERIPHERAL_ERROR = -1,
+  PERIPHERAL_INCOMPATIBLE = -2
 } PeripheralStatus;
 
 typedef enum {
-    LOG_DEBUG = 0,
-    LOG_INFO,
-    LOG_WARN,
-    LOG_ERROR
+  LOG_DEBUG = 0,
+  LOG_INFO,
+  LOG_WARN,
+  LOG_ERROR
 } PeripheralLogLevel;
 
 #define LINAPPLE_ANY_SLOT_MASK 0xFF
 
-typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc, uint16_t addr, uint8_t write, uint8_t val, uint32_t cycles_left);
+typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
+                                       uint16_t addr, uint8_t write,
+                                       uint8_t val, uint32_t cycles_left);
 
 typedef struct {
-    void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
-    void (*AssertIrq)(int slot, bool assert);
-    void (*RegisterIO)(int slot, PeripheralIOHandler readC0, PeripheralIOHandler writeC0,
-                                 PeripheralIOHandler readCx, PeripheralIOHandler writeCx);
-    void (*RegisterCxROM)(int slot, uint8_t* rom_ptr);
-    void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
-    void (*RegisterDirectIO)(void* instance, uint16_t addr, PeripheralIOHandler read, PeripheralIOHandler write);
-    uint8_t* (*GetMemPtr)(uint16_t addr);
-    uint64_t (*GetCycles)(void);
-    bool (*GetConfig)(const char* section, const char* key, char* buffer, size_t buffer_size);
-    void (*SetConfig)(const char* section, const char* key, const char* value);
-    void (*NotifyStatusChanged)(int slot);
-    void (*NotifyActivityChanged)(int slot, bool active);
-    void (*RequestPreciseTiming)(void);
-    int (*RiffInitWriteFile)(char *pszFile, uint32_t sample_rate, uint32_t NumChannels);
-    int (*RiffFinishWriteFile)(void);
-    int (*RiffPutSamples)(short *buf, uint32_t uSamples);
-    void (*AudioPushSamples)(void* instance, const int16_t* buffer, size_t num_samples);
-    void (*ResetSystem)(void* instance);
+  void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
+  void (*AssertIrq)(int slot, bool assert);
+  void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
+                     PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
+                     PeripheralIOHandler writeCx);
+  void (*RegisterCxROM)(int slot, uint8_t* rom_ptr);
+  void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
+  void (*RegisterDirectIO)(void* instance, uint16_t addr,
+                           PeripheralIOHandler read, PeripheralIOHandler write);
+  uint8_t* (*GetMemPtr)(uint16_t addr);
+  uint64_t (*GetCycles)(void);
+  bool (*GetConfig)(const char* section, const char* key, char* buffer,
+                    size_t buffer_size);
+  void (*SetConfig)(const char* section, const char* key, const char* value);
+  void (*NotifyStatusChanged)(int slot);
+  void (*NotifyActivityChanged)(int slot, bool active);
+  void (*RequestPreciseTiming)(void);
+  int (*RiffInitWriteFile)(char* pszFile, uint32_t sample_rate,
+                           uint32_t NumChannels);
+  int (*RiffFinishWriteFile)(void);
+  int (*RiffPutSamples)(short* buf, uint32_t uSamples);
+  void (*AudioPushSamples)(void* instance, const int16_t* buffer,
+                           size_t num_samples);
+  void (*ResetSystem)(void* instance);
 } HostInterface_t;
 
 // Forward declaration
@@ -64,36 +71,44 @@ struct Peripheral_t;
  * @brief The interface a peripheral must implement.
  */
 typedef struct Peripheral_t {
-    int abi_version;
-    const char* name;
-    uint32_t compatible_slots;
-    void* (*init)(int slot, HostInterface_t* host);
-    void (*reset)(void* instance);
-    void (*shutdown)(void* instance);
-    void (*think)(void* instance, uint32_t cycles);
-    void (*on_vblank)(void* instance, bool vblank);
-    PeripheralStatus (*save_state)(void* instance, void* buffer, size_t* size);
-    PeripheralStatus (*load_state)(void* instance, const void* buffer, size_t size);
-    PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data, size_t size);
-    PeripheralStatus (*query)(void* instance, uint32_t cmd_id, void* out, size_t* out_size);
+  int abi_version;
+  const char* name;
+  uint32_t compatible_slots;
+  void* (*init)(int slot, HostInterface_t* host);
+  void (*reset)(void* instance);
+  void (*shutdown)(void* instance);
+  void (*think)(void* instance, uint32_t cycles);
+  void (*on_vblank)(void* instance, bool vblank);
+  PeripheralStatus (*save_state)(void* instance, void* buffer, size_t* size);
+  PeripheralStatus (*load_state)(void* instance, const void* buffer,
+                                 size_t size);
+  PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data,
+                              size_t size);
+  PeripheralStatus (*query)(void* instance, uint32_t cmd_id, void* out,
+                            size_t* out_size);
 } Peripheral_t;
 
-#define EXPORT_PERIPHERAL(peripheral_struct) \
-    extern "C" { \
-        Peripheral_t linapple_peripheral_descriptor = peripheral_struct; \
-    }
+#define EXPORT_PERIPHERAL(peripheral_struct)                       \
+  extern "C" {                                                     \
+  Peripheral_t linapple_peripheral_descriptor = peripheral_struct; \
+  }
 
 /**
  * @brief Public Peripheral Management API.
  */
 int Peripheral_Register(Peripheral_t* api, int slot);
+void Peripheral_Register_Builtin(Peripheral_t* api);
 int Peripheral_Unregister(int slot);
-PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data, size_t size);
-PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out, size_t* out_size);
+PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
+                                    size_t size);
+PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
+                                  size_t* out_size);
 void Peripheral_SaveState(int slot, void* buffer, size_t* size);
 void Peripheral_LoadState(int slot, const void* buffer, size_t size);
-void Peripheral_SaveStateByName(int slot, const char* name, void* buffer, size_t* size);
-void Peripheral_LoadStateByName(int slot, const char* name, const void* buffer, size_t size);
+void Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
+                                size_t* size);
+void Peripheral_LoadStateByName(int slot, const char* name, const void* buffer,
+                                size_t size);
 void Peripheral_GetManifest(void* manifest);
 bool Peripheral_VerifyManifest(const void* manifest);
 
@@ -101,4 +116,4 @@ bool Peripheral_VerifyManifest(const void* manifest);
 }
 #endif
 
-#endif // LINAPPLE_PERIPHERAL_H
+#endif  // LINAPPLE_PERIPHERAL_H

@@ -69,17 +69,17 @@ static DiskError_e DiskInsert_Internal(int drive, const char* imageFileName,
                                        bool writeProtected,
                                        bool createIfNecessary);
 
-static auto Disk_ABI_Command(void* instance, uint32_t cmd,
-                                         const void* data, size_t size) -> PeripheralStatus;
+static auto Disk_ABI_Command(void* instance, uint32_t cmd, const void* data,
+                             size_t size) -> PeripheralStatus;
 
 static auto Disk_ABI_Query(void* instance, uint32_t cmd, void* data,
-                                       size_t* size) -> PeripheralStatus;
+                           size_t* size) -> PeripheralStatus;
 
-static auto Disk_ABI_SaveState(void* instance, void* buffer,
-                                           size_t* size) -> PeripheralStatus;
+static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus;
 
-static auto Disk_ABI_LoadState(void* instance, const void* buffer,
-                                           size_t size) -> PeripheralStatus;
+static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus;
 
 constexpr int DISK_STATE_VERSION = 1;
 
@@ -211,7 +211,8 @@ static auto DiskIsEffectivelyWriteProtected(const int iDrive) -> bool {
     if (!has_write_cap) {
       protected_result = true;
     } else {
-      protected_result = fptr->driver->is_write_protected(fptr->driver_instance);
+      protected_result =
+          fptr->driver->is_write_protected(fptr->driver_instance);
     }
   }
 
@@ -356,15 +357,15 @@ static void DiskBoot() {
   }
 }
 
-static auto DiskControlMotor(uint16_t, uint16_t address, uint8_t,
-                             uint8_t, uint32_t) -> uint8_t {
+static auto DiskControlMotor(uint16_t, uint16_t address, uint8_t, uint8_t,
+                             uint32_t) -> uint8_t {
   floppymotoron = (address & 1) != 0;
   CheckSpinning();
   return MemReturnRandomData(1);
 }
 
-static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t,
-                               uint8_t, uint32_t) -> uint8_t {
+static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t, uint8_t,
+                               uint32_t) -> uint8_t {
   Disk_t* fptr = &g_aFloppyDisk[currdrive];
   int phase = (address >> 1) & 3;
   int phase_bit = (1 << phase);
@@ -405,7 +406,10 @@ static void DiskDestroy() {
 
 static auto DiskEnable(uint16_t pc, uint16_t address, uint8_t bWrite, uint8_t d,
                        uint32_t nCyclesLeft) -> uint8_t {
-  (void)pc; (void)bWrite; (void)d; (void)nCyclesLeft;
+  (void)pc;
+  (void)bWrite;
+  (void)d;
+  (void)nCyclesLeft;
   currdrive = address & 1;
   g_aFloppyDisk[!currdrive].spinning = 0;
   g_aFloppyDisk[!currdrive].writelight = 0;
@@ -434,8 +438,8 @@ auto DiskInitialize() -> void {
 }
 
 static auto DiskInsert_Internal(int drive, const char* imageFileName,
-                                bool writeProtected,
-                                bool createIfNecessary) -> DiskError_e {
+                                bool writeProtected, bool createIfNecessary)
+    -> DiskError_e {
   Disk_t* fptr = &g_aFloppyDisk[drive];
 
   if (fptr->driver != nullptr) {
@@ -482,8 +486,8 @@ static void DiskSetProtect(const int iDrive, const bool bWriteProtect) {
   }
 }
 
-static auto DiskReadWrite(uint16_t, uint16_t, uint8_t, uint8_t,
-                          uint32_t) -> uint8_t {
+static auto DiskReadWrite(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
+    -> uint8_t {
   Disk_t* fptr = &g_aFloppyDisk[currdrive];
   diskaccessed = true;
   if ((!fptr->trackimagedata) && fptr->driver) {
@@ -583,7 +587,8 @@ auto DiskUpdatePosition(uint32_t cycles) -> void {
       if (g_pDiskHost) g_pDiskHost->RequestPreciseTiming();
       fptr->byte += rotation_ticks;
       if (fptr->byte >= static_cast<uint32_t>(fptr->nibbles)) {
-        fptr->byte %= (fptr->nibbles ? static_cast<uint32_t>(fptr->nibbles) : 1);
+        fptr->byte %=
+            (fptr->nibbles ? static_cast<uint32_t>(fptr->nibbles) : 1);
       }
     }
   }
@@ -750,8 +755,8 @@ static auto Disk_ABI_Query(void* instance, uint32_t cmd, void* data,
   return PERIPHERAL_ERROR;
 }
 
-static auto Disk_ABI_SaveState(void* instance, void* buffer,
-                                           size_t* size) -> PeripheralStatus {
+static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus {
   (void)instance;
   if (size == nullptr) return PERIPHERAL_ERROR;
 
@@ -802,8 +807,8 @@ static auto Disk_ABI_SaveState(void* instance, void* buffer,
   return PERIPHERAL_OK;
 }
 
-static auto Disk_ABI_LoadState(void* instance, const void* buffer,
-                               size_t size) -> PeripheralStatus {
+static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus {
   (void)instance;
   if (buffer == nullptr || size < sizeof(DiskSavedState_t)) {
     return PERIPHERAL_ERROR;
@@ -851,7 +856,8 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer,
         }
       }
     } else {
-      DiskError_e saved_err = static_cast<DiskError_e>(g_aFloppyDisk[i].last_error);
+      DiskError_e saved_err =
+          static_cast<DiskError_e>(g_aFloppyDisk[i].last_error);
       memset(&g_aFloppyDisk[i], 0, sizeof(Disk_t));
       g_aFloppyDisk[i].last_error = saved_err;
     }
@@ -876,6 +882,10 @@ Peripheral_t g_disk_peripheral = {LINAPPLE_ABI_VERSION,
                                   Disk_ABI_LoadState,
                                   Disk_ABI_Command,
                                   Disk_ABI_Query};
+
+extern "C" void Register_Disk() {
+  Peripheral_Register_Builtin(&g_disk_peripheral);
+}
 
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_disk_peripheral)

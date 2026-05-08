@@ -380,6 +380,10 @@ Peripheral_t keyboard_peripheral = {LINAPPLE_ABI_VERSION,
                                     Keyb_ABI_Command,
                                     Keyb_ABI_Query};
 
+extern "C" void Register_Keyboard() {
+  Peripheral_Register_Builtin(&keyboard_peripheral);
+}
+
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(keyboard_peripheral)
 #endif

@@ -28,8 +28,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "apple2/Speaker.h"
+
 #include <array>
 #include <cstring>
+
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SoundCore.h"
@@ -38,7 +40,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 static constexpr int SPKR_QUIET_CYCLES_DIVISOR = 5;
 
-// Forward declaration of legacy callback for cases where the Peripheral ABI host is not present (e.g. some standalone tests)
+// Forward declaration of legacy callback for cases where the Peripheral ABI
+// host is not present (e.g. some standalone tests)
 extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
 
 auto Speaker_Destroy(Speaker_t* instance) -> void { (void)instance; }
@@ -51,7 +54,7 @@ auto Speaker_Initialize(Speaker_t* instance) -> void {
   instance->quiet_cycle_count = 0;
   instance->recently_active = false;
   instance->toggle_flag = false;
-  instance->sound_type = 1; // SOUND_WAVE
+  instance->sound_type = 1;  // SOUND_WAVE
 
   instance->last_sample_state = false;
   instance->next_sample_cycle = static_cast<double>(g_nCumulativeCycles);
@@ -86,7 +89,8 @@ auto Speaker_IsActive(Speaker_t* instance) -> bool {
   return instance ? instance->recently_active : false;
 }
 
-// Justification: Parameters must match the 'iofunction' signature required by the Core memory map dispatch tables.
+// Justification: Parameters must match the 'iofunction' signature required by
+// the Core memory map dispatch tables.
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto Speaker_Toggle(Speaker_t* instance, uint16_t pc, uint16_t addr,
                     uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
@@ -145,8 +149,8 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
     double currentTime = sampleStart;
 
     while (event_idx < num_events &&
-           static_cast<double>(events.at(static_cast<size_t>(event_idx)).cycle) <
-               sampleEnd) {
+           static_cast<double>(
+               events.at(static_cast<size_t>(event_idx)).cycle) < sampleEnd) {
       const auto event_idx_st = static_cast<size_t>(event_idx);
       const auto eventTime = static_cast<double>(events.at(event_idx_st).cycle);
 
@@ -161,7 +165,8 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
       event_idx++;
     }
 
-    sum += (sampleEnd - currentTime) * (instance->last_sample_state ? 1.0 : -1.0);
+    sum +=
+        (sampleEnd - currentTime) * (instance->last_sample_state ? 1.0 : -1.0);
 
     const double average = sum / clksPerSample;
     const auto val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
@@ -303,19 +308,22 @@ static auto Spkr_ABI_Query(void* instance, uint32_t query_id, void* out,
   }
 }
 
-Peripheral_t g_speaker_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "Speaker",
-    LINAPPLE_ANY_SLOT_MASK,
-    Spkr_ABI_Init,
-    Spkr_ABI_Reset,
-    Spkr_ABI_Shutdown,
-    Spkr_ABI_Think,
-    nullptr,  // on_vblank
-    Spkr_ABI_SaveState,
-    Spkr_ABI_LoadState,
-    nullptr,  // command
-    Spkr_ABI_Query};
+Peripheral_t g_speaker_peripheral = {LINAPPLE_ABI_VERSION,
+                                     "Speaker",
+                                     LINAPPLE_ANY_SLOT_MASK,
+                                     Spkr_ABI_Init,
+                                     Spkr_ABI_Reset,
+                                     Spkr_ABI_Shutdown,
+                                     Spkr_ABI_Think,
+                                     nullptr,  // on_vblank
+                                     Spkr_ABI_SaveState,
+                                     Spkr_ABI_LoadState,
+                                     nullptr,  // command
+                                     Spkr_ABI_Query};
+
+extern "C" void Register_Speaker() {
+  Peripheral_Register_Builtin(&g_speaker_peripheral);
+}
 
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_speaker_peripheral)

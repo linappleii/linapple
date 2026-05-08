@@ -27,52 +27,35 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (c) 2002-2006, Tom Charlesworth
  */
 
+#include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
-#include <cassert>
 
-#include "core/Common.h"
-#include "apple2/Structs.h"
 #include "AY8910.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
+#include "apple2/Structs.h"
+#include "apple2/Video.h"
+#include "core/Common.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
-#include "apple2/Video.h"
 
-enum {
-SY6522_DEVICE_A = 0,
-SY6522_DEVICE_B = 1
-};
+enum { SY6522_DEVICE_A = 0, SY6522_DEVICE_B = 1 };
 
-enum {
-SY6522A_Offset = 0x00,
-SY6522B_Offset = 0x80
-};
+enum { SY6522A_Offset = 0x00, SY6522B_Offset = 0x80 };
 
-enum {
-IxR_TIMER1 = 0x40,
-IxR_TIMER2 = 0x20
-};
+enum { IxR_TIMER1 = 0x40, IxR_TIMER2 = 0x20 };
 
-enum {
-VIA_IFR_BIT_MASK = 0x7F,
-VIA_IFR_IRQ_FLAG = 0x80
-};
+enum { VIA_IFR_BIT_MASK = 0x7F, VIA_IFR_IRQ_FLAG = 0x80 };
 
-enum {
-RUNMODE = 0x40,
-RM_ONESHOT = 0x00
-};
+enum { RUNMODE = 0x40, RM_ONESHOT = 0x00 };
 
-enum {
-TIMER_LOW_BYTE_MAX = 0xFF
-};
+enum { TIMER_LOW_BYTE_MAX = 0xFF };
 
 enum {
   VIA_REG_ORB = 0x0,
@@ -102,11 +85,11 @@ static const int SLOT4 = 4;
 #if defined MOCKINGBOARD
 
 typedef struct {
-SY6522 sy6522;
-SSI263A SpeechChip;
-uint16_t nAYCurrentRegister;
-uint8_t nAY8910Number;
-int nTimerStatus;
+  SY6522 sy6522;
+  SSI263A SpeechChip;
+  uint16_t nAYCurrentRegister;
+  uint8_t nAY8910Number;
+  int nTimerStatus;
 } SY6522_AY8910;
 
 // Justification: Legacy hardware emulation relies on global state for
@@ -117,17 +100,16 @@ static SY6522_AY8910 g_MB[NUM_AY8910];
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static uint32_t g_n6522TimerPeriod = 0;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static uint16_t g_nMBTimerDevice = 0;  // SY6522 device# which is generating timer IRQ
+static uint16_t g_nMBTimerDevice =
+    0;  // SY6522 device# which is generating timer IRQ
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static uint64_t g_uLastCumulativeCycles = 0;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::unique_ptr<short[], void(*)(void*)> ppAYVoiceBuffer[NUM_VOICES] = {
-  {nullptr, free}, {nullptr, free}, {nullptr, free},
-  {nullptr, free}, {nullptr, free}, {nullptr, free},
-  {nullptr, free}, {nullptr, free}, {nullptr, free},
-  {nullptr, free}, {nullptr, free}, {nullptr, free}
-};
+static std::unique_ptr<short[], void (*)(void*)> ppAYVoiceBuffer[NUM_VOICES] = {
+    {nullptr, free}, {nullptr, free}, {nullptr, free}, {nullptr, free},
+    {nullptr, free}, {nullptr, free}, {nullptr, free}, {nullptr, free},
+    {nullptr, free}, {nullptr, free}, {nullptr, free}, {nullptr, free}};
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static uint64_t g_nMB_InActiveCycleCount = 0;
@@ -139,7 +121,8 @@ static bool g_bMB_Active = true;
 static bool g_bMBAvailable = false;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static eSOUNDCARDTYPE g_SoundcardType = SC_MOCKINGBOARD;  // Mockingboard enable (dialog var)
+static eSOUNDCARDTYPE g_SoundcardType =
+    SC_MOCKINGBOARD;  // Mockingboard enable (dialog var)
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static bool g_bPhasorEnable = false;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -147,13 +130,15 @@ static uint8_t g_nPhasorMode = 0;  // 0=Mockingboard emulation, 1=Phasor native
 
 static const uint16_t g_nMB_NumChannels = 2;
 
-static const uint32_t g_dwDSBufferSize = static_cast<size_t>(32 * 1024) * sizeof(short) * g_nMB_NumChannels;
+static const uint32_t g_dwDSBufferSize =
+    static_cast<size_t>(32 * 1024) * sizeof(short) * g_nMB_NumChannels;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static short g_nMixBuffer[g_dwDSBufferSize / sizeof(short)];
 
 // When 6522 IRQ is *not* active use 60Hz update freq for MB voices
-static const double g_f6522TimerPeriod_NoIRQ = CLOCK_6502 / 60.0;    // Constant whatever the CLK is set to
+static const double g_f6522TimerPeriod_NoIRQ =
+    CLOCK_6502 / 60.0;  // Constant whatever the CLK is set to
 
 // External global vars:
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -163,7 +148,7 @@ uint32_t g_uTimer1IrqCount = 0;  // DEBUG
 
 // Forward refs:
 
-static void StartTimer(SY6522_AY8910 *pMB) {
+static void StartTimer(SY6522_AY8910* pMB) {
   if ((pMB->nAY8910Number & 1) != SY6522_DEVICE_A) {
     return;
   }
@@ -173,7 +158,8 @@ static void StartTimer(SY6522_AY8910 *pMB) {
 
   uint16_t nPeriod = pMB->sy6522.TIMER1_LATCH.w;
 
-  if (nPeriod <= TIMER_LOW_BYTE_MAX) { // Timer1L value has been written (but TIMER1H hasn't)
+  if (nPeriod <= TIMER_LOW_BYTE_MAX) {  // Timer1L value has been written (but
+                                        // TIMER1H hasn't)
     return;
   }
 
@@ -186,13 +172,13 @@ static void StartTimer(SY6522_AY8910 *pMB) {
   g_nMBTimerDevice = pMB->nAY8910Number;
 }
 
-static void StopTimer(SY6522_AY8910 *pMB) {
+static void StopTimer(SY6522_AY8910* pMB) {
   pMB->nTimerStatus = 0;
   g_bMBTimerIrqActive = false;
   g_nMBTimerDevice = 0;
 }
 
-static void ResetSY6522(SY6522_AY8910 *pMB) {
+static void ResetSY6522(SY6522_AY8910* pMB) {
   memset(&pMB->sy6522, 0, sizeof(SY6522));
   if (pMB->nTimerStatus) {
     StopTimer(pMB);
@@ -200,9 +186,10 @@ static void ResetSY6522(SY6522_AY8910 *pMB) {
   pMB->nAYCurrentRegister = 0;
 }
 
-static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t nAYDevice) {
-  (void) nReg;
-  SY6522_AY8910 *pMB = &g_MB[nDevice];
+static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue,
+                         uint8_t nAYDevice) {
+  (void)nReg;
+  SY6522_AY8910* pMB = &g_MB[nDevice];
 
   if ((nValue & 4) == 0) {
     // RESET: Reset AY8910 only
@@ -210,29 +197,37 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
   } else {
     // Determine the AY8910 inputs
     int nBDIR = (nValue & 2) ? 1 : 0;
-    const int nBC2 = 1;    // Hardwired to +5V
+    const int nBC2 = 1;  // Hardwired to +5V
     int nBC1 = nValue & 1;
 
     int nAYFunc = (nBDIR << 2) | (nBC2 << 1) | nBC1;
     enum {
-      AY_NOP0, AY_NOP1, AY_INACTIVE, AY_READ, AY_NOP4, AY_NOP5, AY_WRITE, AY_LATCH
+      AY_NOP0,
+      AY_NOP1,
+      AY_INACTIVE,
+      AY_READ,
+      AY_NOP4,
+      AY_NOP5,
+      AY_WRITE,
+      AY_LATCH
     };
 
     switch (nAYFunc) {
       case AY_INACTIVE:  // 4: INACTIVE
         break;
 
-      case AY_READ:    // 5: READ FROM PSG (need to set DDRA to input)
+      case AY_READ:  // 5: READ FROM PSG (need to set DDRA to input)
         break;
 
-      case AY_WRITE:    // 6: WRITE TO PSG
-        _AYWriteReg(nDevice + 2 * nAYDevice, pMB->nAYCurrentRegister, pMB->sy6522.ORA);
+      case AY_WRITE:  // 6: WRITE TO PSG
+        _AYWriteReg(nDevice + 2 * nAYDevice, pMB->nAYCurrentRegister,
+                    pMB->sy6522.ORA);
         break;
 
-      case AY_LATCH:    // 7: LATCH ADDRESS
+      case AY_LATCH:  // 7: LATCH ADDRESS
         if (pMB->sy6522.ORA <= 0x0F) {
           pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
-}
+        }
         // else Pro-Mockingboard (clone from HK)
         break;
     }
@@ -246,7 +241,7 @@ static HostInterface_t* g_pMBHost = nullptr;
 static int g_nMB_Slot = 0;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
-static void UpdateIFR(SY6522_AY8910 *pMB) {
+static void UpdateIFR(SY6522_AY8910* pMB) {
   pMB->sy6522.IFR &= VIA_IFR_BIT_MASK;
 
   if (pMB->sy6522.IFR & pMB->sy6522.IER & VIA_IFR_BIT_MASK) {
@@ -256,7 +251,7 @@ static void UpdateIFR(SY6522_AY8910 *pMB) {
   // Now update the IRQ signal from all 6522s
   // . OR-sum of all active TIMER1, TIMER2 & SPEECH sources (from all 6522s)
   uint32_t bIRQ = 0;
-  for (auto & i : g_MB) {
+  for (auto& i : g_MB) {
     bIRQ |= i.sy6522.IFR & VIA_IFR_IRQ_FLAG;
   }
 
@@ -271,7 +266,7 @@ static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue) {
   g_bMB_RegAccessedFlag = true;
   g_bMB_Active = true;
 
-  SY6522_AY8910 *pMB = &g_MB[nDevice];
+  SY6522_AY8910* pMB = &g_MB[nDevice];
 
   switch (nReg) {
     case VIA_REG_ORB:  // ORB
@@ -284,11 +279,11 @@ static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue) {
 
         if (nAY_CS & 1) {
           AY8910_Write(nDevice, nReg, nValue, 0);
-}
+        }
 
         if (nAY_CS & 2) {
           AY8910_Write(nDevice, nReg, nValue, 1);
-}
+        }
       } else {
         AY8910_Write(nDevice, nReg, nValue, 0);
       }
@@ -363,11 +358,11 @@ static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue) {
         // Check if timer has been disabled.
         if (pMB->sy6522.IER & IxR_TIMER1) {
           break;
-}
+        }
 
         if (pMB->nTimerStatus == 0) {
           break;
-}
+        }
 
         pMB->nTimerStatus = 0;
 
@@ -391,7 +386,7 @@ static auto SY6522_Read(uint8_t nDevice, uint8_t nReg) -> uint8_t {
   g_bMB_RegAccessedFlag = true;
   g_bMB_Active = true;
 
-  SY6522_AY8910 *pMB = &g_MB[nDevice];
+  SY6522_AY8910* pMB = &g_MB[nDevice];
 
   switch (nReg) {
     case VIA_REG_ORB:  // ORB
@@ -441,7 +436,8 @@ void MB_Update() {
   if (!g_bMB_RegAccessedFlag) {
     if (!g_nMB_InActiveCycleCount) {
       g_nMB_InActiveCycleCount = g_nCumulativeCycles;
-    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
+    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount >
+               static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
       // After 0.1 sec of Apple time, assume MB is not active
       g_bMB_Active = false;
     }
@@ -451,18 +447,21 @@ void MB_Update() {
     g_bMB_Active = true;
   }
 
-  #if defined MOCKINGBOARD
+#if defined MOCKINGBOARD
   static int nNumSamplesError = 0;
 
   double n6522TimerPeriod = MB_GetFramePeriod();
-  double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod - 0.5;      // GPH: Round DOWN instead of up
-  int nNumSamplesPerPeriod = static_cast<int>(static_cast<double>(SAMPLE_RATE) / nIrqFreq);    // Eg. For 60Hz this is 735
-  int nNumSamples = nNumSamplesPerPeriod + nNumSamplesError;          // Apply correction
-  if(nNumSamples <= 0) {
+  double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod -
+                    0.5;  // GPH: Round DOWN instead of up
+  int nNumSamplesPerPeriod = static_cast<int>(
+      static_cast<double>(SAMPLE_RATE) / nIrqFreq);  // Eg. For 60Hz this is 735
+  int nNumSamples =
+      nNumSamplesPerPeriod + nNumSamplesError;  // Apply correction
+  if (nNumSamples <= 0) {
     nNumSamples = 0;
   }
-  if(nNumSamples > 2*nNumSamplesPerPeriod) {
-    nNumSamples = 2*nNumSamplesPerPeriod;
+  if (nNumSamples > 2 * nNumSamplesPerPeriod) {
+    nNumSamples = 2 * nNumSamplesPerPeriod;
   }
 
   if (nNumSamples > 0) {
@@ -474,33 +473,41 @@ void MB_Update() {
       AY8910Update(i, voices, nNumSamples);
     }
 
-    double fAttenuation = g_bPhasorEnable ? 2.0/3.0 : 1.0;
+    double fAttenuation = g_bPhasorEnable ? 2.0 / 3.0 : 1.0;
 
     // MB output is stereo: L=AY0+AY2, R=AY1+AY3
     for (int i = 0; i < nNumSamples; i++) {
       int nDataL = 0;
       int nDataR = 0;
 
-      for(int j=0; j<3; j++) {
+      for (int j = 0; j < 3; j++) {
         // Slot4
-        nDataL += static_cast<int>(static_cast<double>(ppAYVoiceBuffer[0 * 3 + j].get()[i]) * fAttenuation);
-        nDataR += static_cast<int>(static_cast<double>(ppAYVoiceBuffer[1 * 3 + j].get()[i]) * fAttenuation);
+        nDataL += static_cast<int>(
+            static_cast<double>(ppAYVoiceBuffer[0 * 3 + j].get()[i]) *
+            fAttenuation);
+        nDataR += static_cast<int>(
+            static_cast<double>(ppAYVoiceBuffer[1 * 3 + j].get()[i]) *
+            fAttenuation);
 
         // Slot5
-        nDataL += static_cast<int>(static_cast<double>(ppAYVoiceBuffer[2 * 3 + j].get()[i]) * fAttenuation);
-        nDataR += static_cast<int>(static_cast<double>(ppAYVoiceBuffer[3 * 3 + j].get()[i]) * fAttenuation);
+        nDataL += static_cast<int>(
+            static_cast<double>(ppAYVoiceBuffer[2 * 3 + j].get()[i]) *
+            fAttenuation);
+        nDataR += static_cast<int>(
+            static_cast<double>(ppAYVoiceBuffer[3 * 3 + j].get()[i]) *
+            fAttenuation);
       }
 
       // Cap the superpositioned output
-      if(nDataL < -32768) {
+      if (nDataL < -32768) {
         nDataL = -32768;
-      } else if(nDataL > 32767) {
+      } else if (nDataL > 32767) {
         nDataL = 32767;
       }
 
-      if(nDataR < -32768) {
+      if (nDataR < -32768) {
         nDataR = -32768;
-      } else if(nDataR > 32767) {
+      } else if (nDataR > 32767) {
         nDataR = 32767;
       }
 
@@ -510,25 +517,34 @@ void MB_Update() {
 
     DSUploadMockBuffer(g_nMixBuffer, nNumSamples * 2);
 
-    #ifndef HEADLESS
+#ifndef HEADLESS
     if (g_pMBHost && g_pMBHost->RiffPutSamples) {
-      g_pMBHost->RiffPutSamples(&g_nMixBuffer[0], static_cast<uint32_t>(nNumSamples * 2));
+      g_pMBHost->RiffPutSamples(&g_nMixBuffer[0],
+                                static_cast<uint32_t>(nNumSamples * 2));
     }
-    #endif
+#endif
   }
-  #endif  // if defined MOCKINGBOARD
+#endif  // if defined MOCKINGBOARD
 }
 
-static auto PhasorIO(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t;
-static auto MB_Read(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t;
-static auto MB_Write(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t;
+static auto PhasorIO(void* instance, uint16_t PC, uint16_t nAddr,
+                     uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft)
+    -> uint8_t;
+static auto MB_Read(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite,
+                    uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t;
+static auto MB_Write(void* instance, uint16_t PC, uint16_t nAddr,
+                     uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 void MB_Initialize() {
   if (g_bDisableDirectSound) {
     g_SoundcardType = SC_NONE;
   } else {
     for (int i = 0; i < NUM_VOICES; i++) {
-      ppAYVoiceBuffer[i].reset( static_cast<short*>(malloc(SAMPLE_RATE * sizeof(short))));  // Buffer can hold a max of 1 seconds worth of samples
+      ppAYVoiceBuffer[i].reset(static_cast<short*>(malloc(
+          SAMPLE_RATE *
+          sizeof(
+              short))));  // Buffer can hold a max of 1 seconds worth of samples
     }
 
     for (int i = 0; i < NUM_AY8910; i++) {
@@ -548,9 +564,9 @@ void MB_Reinitialize() {
 }
 
 void MB_Destroy() {
-  for (auto & i : ppAYVoiceBuffer) {
+  for (auto& i : ppAYVoiceBuffer) {
     i.reset();
-}
+  }
 }
 
 void MB_Reset() {
@@ -572,8 +588,12 @@ void MB_Reset() {
   MB_Reinitialize();  // Reset CLK for AY8910s
 }
 
-static auto MB_Read(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void) instance; (void) PC; (void) bWrite; (void) nValue;
+static auto MB_Read(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite,
+                    uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t {
+  (void)instance;
+  (void)PC;
+  (void)bWrite;
+  (void)nValue;
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
@@ -584,16 +604,23 @@ static auto MB_Read(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite,
   uint8_t nOffset = nAddr & 0xff;
 
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
-    return SY6522_Read(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A, nOffset & ADDR_NIBBLE_MASK);
-  } else if ((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset + 0x0F))) {
-    return SY6522_Read(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B, nOffset & ADDR_NIBBLE_MASK);
+    return SY6522_Read(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A,
+                       nOffset & ADDR_NIBBLE_MASK);
+  } else if ((nOffset >= SY6522B_Offset) &&
+             (nOffset <= (SY6522B_Offset + 0x0F))) {
+    return SY6522_Read(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B,
+                       nOffset & ADDR_NIBBLE_MASK);
   } else {
     return MemReadFloatingBus(nCyclesLeft);
   }
 }
 
-static auto MB_Write(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void) instance; (void) PC; (void) bWrite;
+static auto MB_Write(void* instance, uint16_t PC, uint16_t nAddr,
+                     uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft)
+    -> uint8_t {
+  (void)instance;
+  (void)PC;
+  (void)bWrite;
   MB_UpdateCycles(nCyclesLeft);
 
   if (!IS_APPLE2() && !MemCheckSLOTCXROM()) {
@@ -604,15 +631,23 @@ static auto MB_Write(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite
   uint8_t nOffset = nAddr & 0xff;
 
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
-    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A, nOffset & ADDR_NIBBLE_MASK, nValue);
-  } else if ((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset + 0x0F))) {
-    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B, nOffset & ADDR_NIBBLE_MASK, nValue);
+    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A,
+                 nOffset & ADDR_NIBBLE_MASK, nValue);
+  } else if ((nOffset >= SY6522B_Offset) &&
+             (nOffset <= (SY6522B_Offset + 0x0F))) {
+    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B,
+                 nOffset & ADDR_NIBBLE_MASK, nValue);
   }
   return 0;
 }
 
-static auto PhasorIO(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void) instance; (void) PC; (void) bWrite; (void) nValue;
+static auto PhasorIO(void* instance, uint16_t PC, uint16_t nAddr,
+                     uint8_t bWrite, uint8_t nValue, uint32_t nCyclesLeft)
+    -> uint8_t {
+  (void)instance;
+  (void)PC;
+  (void)bWrite;
+  (void)nValue;
   if (!g_bPhasorEnable) {
     return MemReadFloatingBus(nCyclesLeft);
   }
@@ -624,37 +659,35 @@ static auto PhasorIO(void* instance, uint16_t PC, uint16_t nAddr, uint8_t bWrite
   uint8_t CS = 0;
 
   if (g_nPhasorMode == 0) {
-      CS = ((nAddr & 0x80) >> 6) | ((nAddr & 0x10) >> 4);  // 0, 1, 2 or 3
+    CS = ((nAddr & 0x80) >> 6) | ((nAddr & 0x10) >> 4);  // 0, 1, 2 or 3
   } else {
-      CS = ((nAddr & 0x80) >> 7) + 1; // 1 or 2
+    CS = ((nAddr & 0x80) >> 7) + 1;  // 1 or 2
   }
 
   if (CS == 1) {
-    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A, nAddr & ADDR_NIBBLE_MASK, nValue);
+    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_A,
+                 nAddr & ADDR_NIBBLE_MASK, nValue);
   } else if (CS == 2) {
-    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B, nAddr & ADDR_NIBBLE_MASK, nValue);
+    SY6522_Write(nMB * NUM_DEVS_PER_MB + SY6522_DEVICE_B,
+                 nAddr & ADDR_NIBBLE_MASK, nValue);
   }
   return 0;
 }
 
-void MB_CheckIRQ() {
-}
+void MB_CheckIRQ() {}
 
-void MB_Mute() {
-}
+void MB_Mute() {}
 
-void MB_Demute() {
-}
+void MB_Demute() {}
 
-void MB_StartOfCpuExecute() {
-  g_uLastCumulativeCycles = g_nCumulativeCycles;
-}
+void MB_StartOfCpuExecute() { g_uLastCumulativeCycles = g_nCumulativeCycles; }
 
 void MB_EndOfVideoFrame() {
   if (g_SoundcardType == SC_NONE) {
     return;
   }
-  if (!g_bFullSpeed && !g_bMBTimerIrqActive && !(g_MB[0].sy6522.IFR & IxR_TIMER1)) {
+  if (!g_bFullSpeed && !g_bMBTimerIrqActive &&
+      !(g_MB[0].sy6522.IFR & IxR_TIMER1)) {
     MB_Update();
   }
 }
@@ -669,11 +702,12 @@ void MB_UpdateCycles(uint32_t uExecutedCycles) {
   g_uLastCumulativeCycles = g_nCumulativeCycles;
 
   while (uCycles > 0) {
-    uint16_t nClocks = (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
+    uint16_t nClocks =
+        (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
     uCycles -= nClocks;
 
     for (int i = 0; i < NUM_SY6522; i++) {
-      SY6522_AY8910 *pMB = &g_MB[i];
+      SY6522_AY8910* pMB = &g_MB[i];
 
       uint16_t OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
 
@@ -681,7 +715,8 @@ void MB_UpdateCycles(uint32_t uExecutedCycles) {
       pMB->sy6522.TIMER2_COUNTER.w -= nClocks;
 
       // Check for counter underflow
-      bool bTimer1Underflow = (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
+      bool bTimer1Underflow =
+          (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
 
       if (bTimer1Underflow && (g_nMBTimerDevice == i) && g_bMBTimerIrqActive) {
         g_uTimer1IrqCount++;  // DEBUG
@@ -691,7 +726,7 @@ void MB_UpdateCycles(uint32_t uExecutedCycles) {
 
         if ((pMB->sy6522.ACR & RUNMODE) == RM_ONESHOT) {
           // One-shot mode
-          StopTimer(pMB);    // Phasor's playback code uses one-shot mode
+          StopTimer(pMB);  // Phasor's playback code uses one-shot mode
         } else {
           // Free-running mode
           // - Ultima4/5 change ACCESS_TIMER1 after a couple of IRQs into tune
@@ -709,8 +744,10 @@ void MB_UpdateCycles(uint32_t uExecutedCycles) {
   if (!g_bMB_RegAccessedFlag) {
     if (!g_nMB_InActiveCycleCount) {
       g_nMB_InActiveCycleCount = g_nCumulativeCycles;
-    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount > static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
-      // After 0.1 sec of Apple time with no MB register access, assume MB is inactive
+    } else if (g_nCumulativeCycles - g_nMB_InActiveCycleCount >
+               static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
+      // After 0.1 sec of Apple time with no MB register access, assume MB is
+      // inactive
       g_bMB_Active = false;
     }
   } else {
@@ -720,12 +757,11 @@ void MB_UpdateCycles(uint32_t uExecutedCycles) {
   }
 }
 
-auto MB_GetSoundcardType() -> eSOUNDCARDTYPE {
-  return g_SoundcardType;
-}
+auto MB_GetSoundcardType() -> eSOUNDCARDTYPE { return g_SoundcardType; }
 
 void MB_SetSoundcardType(eSOUNDCARDTYPE NewSoundcardType) {
-  if ((NewSoundcardType == SC_UNINIT) || (g_SoundcardType == NewSoundcardType)) {
+  if ((NewSoundcardType == SC_UNINIT) ||
+      (g_SoundcardType == NewSoundcardType)) {
     return;
   }
 
@@ -739,25 +775,25 @@ void MB_SetSoundcardType(eSOUNDCARDTYPE NewSoundcardType) {
 }
 
 auto MB_GetFramePeriod() -> double {
-  return (g_bMBTimerIrqActive || (g_MB[0].sy6522.IFR & IxR_TIMER1)) ? static_cast<double>(g_n6522TimerPeriod)
-                                                                    : g_f6522TimerPeriod_NoIRQ;
+  return (g_bMBTimerIrqActive || (g_MB[0].sy6522.IFR & IxR_TIMER1))
+             ? static_cast<double>(g_n6522TimerPeriod)
+             : g_f6522TimerPeriod_NoIRQ;
 }
 
 auto MB_IsActive() -> bool {
-  // Ignore /g_bMBTimerIrqActive/ as timer's irq handler will access 6522 regs affecting /g_bMB_Active/
+  // Ignore /g_bMBTimerIrqActive/ as timer's irq handler will access 6522 regs
+  // affecting /g_bMB_Active/
   return g_bMB_Active;
 }
 
-auto MB_GetVolume() -> uint32_t {
-  return 0;
-}
+auto MB_GetVolume() -> uint32_t { return 0; }
 
 void MB_SetVolume(uint32_t dwVolume, uint32_t dwVolumeMax) {
-  (void) dwVolume; (void) dwVolumeMax;
+  (void)dwVolume;
+  (void)dwVolumeMax;
 }
 
-auto MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, uint32_t dwSlot) -> uint32_t
-{
+auto MB_GetSnapshot(SS_CARD_MOCKINGBOARD* pSS, uint32_t dwSlot) -> uint32_t {
   pSS->Hdr.UnitHdr.dwLength = sizeof(SS_CARD_EMPTY);
   pSS->Hdr.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
 
@@ -766,9 +802,9 @@ auto MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, uint32_t dwSlot) -> uint32_t
 
   uint32_t nMbCardNum = dwSlot - SLOT4;
   uint32_t nDeviceNum = nMbCardNum * 2;
-  SY6522_AY8910 *pMB = &g_MB[nDeviceNum];
+  SY6522_AY8910* pMB = &g_MB[nDeviceNum];
 
-  for (auto & i : pSS->Unit) {
+  for (auto& i : pSS->Unit) {
     memcpy(&i.RegsSY6522, &pMB->sy6522, sizeof(SY6522));
     memcpy(&i.RegsAY8910, AY8910_GetRegsPtr(nDeviceNum), 16);
     memcpy(&i.RegsSSI263, &pMB->SpeechChip, sizeof(SSI263A));
@@ -781,16 +817,16 @@ auto MB_GetSnapshot(SS_CARD_MOCKINGBOARD *pSS, uint32_t dwSlot) -> uint32_t
   return 0;
 }
 
-auto MB_SetSnapshot(SS_CARD_MOCKINGBOARD *pSS, uint32_t) -> uint32_t {
+auto MB_SetSnapshot(SS_CARD_MOCKINGBOARD* pSS, uint32_t) -> uint32_t {
   if (pSS->Hdr.UnitHdr.dwVersion != MAKE_VERSION(1, 0, 0, 0)) {
     return -1;
   }
 
   uint32_t nMbCardNum = pSS->Hdr.dwSlot - SLOT4;
   uint32_t nDeviceNum = nMbCardNum * 2;
-  SY6522_AY8910 *pMB = &g_MB[nDeviceNum];
+  SY6522_AY8910* pMB = &g_MB[nDeviceNum];
 
-  for (auto & i : pSS->Unit) {
+  for (auto& i : pSS->Unit) {
     memcpy(&pMB->sy6522, &i.RegsSY6522, sizeof(SY6522));
     memcpy(AY8910_GetRegsPtr(nDeviceNum), &i.RegsAY8910, 16);
     memcpy(&pMB->SpeechChip, &i.RegsSSI263, sizeof(SSI263A));
@@ -819,7 +855,7 @@ static auto MB_ABI_Init(int slot, HostInterface_t* host) -> void* {
   // the host interface to ensure the manager is aware.
   host->RegisterIO(slot, PhasorIO, PhasorIO, MB_Read, MB_Write);
 
-  return reinterpret_cast<void*>(1); // Dummy instance
+  return reinterpret_cast<void*>(1);  // Dummy instance
 }
 
 static void MB_ABI_Reset(void* instance) {
@@ -837,7 +873,8 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   MB_UpdateCycles(cycles);
 }
 
-static auto MB_ABI_SaveState(void* instance, void* buffer, size_t* size) -> PeripheralStatus {
+static auto MB_ABI_SaveState(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus {
   (void)instance;
   if (!buffer || !size || *size < sizeof(SS_CARD_MOCKINGBOARD)) {
     if (size) *size = sizeof(SS_CARD_MOCKINGBOARD);
@@ -848,29 +885,36 @@ static auto MB_ABI_SaveState(void* instance, void* buffer, size_t* size) -> Peri
   return PERIPHERAL_OK;
 }
 
-static auto MB_ABI_LoadState(void* instance, const void* buffer, size_t size) -> PeripheralStatus {
+static auto MB_ABI_LoadState(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus {
   (void)instance;
   if (!buffer || size < sizeof(SS_CARD_MOCKINGBOARD)) {
     return PERIPHERAL_ERROR;
   }
-  MB_SetSnapshot(const_cast<SS_CARD_MOCKINGBOARD*>(static_cast<const SS_CARD_MOCKINGBOARD*>(buffer)), g_nMB_Slot);
+  MB_SetSnapshot(const_cast<SS_CARD_MOCKINGBOARD*>(
+                     static_cast<const SS_CARD_MOCKINGBOARD*>(buffer)),
+                 g_nMB_Slot);
   return PERIPHERAL_OK;
 }
 
 Peripheral_t g_mockingboard_peripheral = {
     LINAPPLE_ABI_VERSION,
     "Mockingboard",
-    0xFE, // Slots 1-7
+    0xFE,  // Slots 1-7
     MB_ABI_Init,
     MB_ABI_Reset,
     MB_ABI_Shutdown,
     MB_ABI_Think,
-    nullptr, // on_vblank
+    nullptr,  // on_vblank
     MB_ABI_SaveState,
     MB_ABI_LoadState,
-    nullptr, // command
-    nullptr  // query
+    nullptr,  // command
+    nullptr   // query
 };
+
+extern "C" void Register_Mockingboard() {
+  Peripheral_Register_Builtin(&g_mockingboard_peripheral);
+}
 
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_mockingboard_peripheral)

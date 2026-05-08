@@ -312,6 +312,10 @@ Peripheral_t g_clock_peripheral = {
     nullptr   // query
 };
 
+extern "C" void Register_Clock() {
+  Peripheral_Register_Builtin(&g_clock_peripheral);
+}
+
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_clock_peripheral)
 #endif
