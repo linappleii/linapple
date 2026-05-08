@@ -146,6 +146,8 @@ void DiskChoose_Tick(SDL_Event* event) {
   }
 }
 
+extern void FrameRefresh();
+
 void DiskChoose_Draw() {
   if (!g_diskChooseState.active) return;
 
@@ -250,7 +252,7 @@ void DiskChoose_Draw() {
   rectangle(&vs_screen, static_cast<int>(480.0 * static_cast<double>(facx_f)),
             TOPX - 5, 0, static_cast<int>(320.0 * facy), RGB(255, 255, 255));
 
-  DrawFrameWindow();
+  FrameRefresh();
 }
 
 auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
@@ -305,7 +307,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
       sx / 2, 20 * facy,
       file_list_generator->get_starting_message(file_list_generator),
       &vs_actual_screen, 1 * facx, 1 * facy);
-  DrawFrameWindow();
+  FrameRefresh();
 
   g_diskChooseState.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
@@ -316,7 +318,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!",
                         &vs_actual_screen, 1.4 * facx, 1.1 * facy);
-    DrawFrameWindow();
+    FrameRefresh();
 
     g_video_draw_mutex.unlock();
     SDL_Delay(KEY_DELAY);

@@ -1,19 +1,21 @@
-#include "core/Common.h"
+#include <SDL3/SDL.h>
+#include <sys/stat.h>
+
 #include <cstdio>
 #include <cstring>
 #include <string>
-#include <sys/stat.h>
-#include <SDL3/SDL.h>
-#include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/DiskUI.h"
+
+#include "apple2/DiskCommands.h"
 #include "apple2/DiskFTP.h"
 #include "apple2/ftpparse.h"
-#include "frontends/sdl3/Frame.h"
+#include "core/Common.h"
 #include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
-#include "core/LinAppleCore.h"
-#include "apple2/DiskCommands.h"
+#include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/DiskUI.h"
+#include "frontends/sdl3/Frame.h"
 
 void DiskSelectImage(int drive, char* pszFilename) {
   (void)pszFilename;
@@ -36,8 +38,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
       return;
     }
     if (isdir) {
-      if (filename == "..")
-      {
+      if (filename == "..") {
         const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
         if (last_sep_pos != std::string::npos) {
           fullPath = fullPath.substr(0, last_sep_pos);
@@ -59,7 +60,8 @@ void DiskSelectImage(int drive, char* pszFilename) {
     }
   }
   strcpy(g_state.sCurrentDir, fullPath.c_str());
-  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR, g_state.sCurrentDir);
+  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR,
+                                      g_state.sCurrentDir);
   Configuration::Instance().Save();
 
   fullPath += "/" + filename;

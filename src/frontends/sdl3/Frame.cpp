@@ -27,19 +27,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <array>
 
-#include "core/Common.h"
 #include "apple2/KeyboardCommands.h"
+#include "core/Common.h"
 #include "core/Peripheral.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
+#include "apple2/DiskCommands.h"
 #include "apple2/Harddisk.h"
 #include "apple2/Joystick.h"
 #include "apple2/Memory.h"
@@ -52,10 +53,9 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/Video.h"
 #include "apple2/stretch.h"
 #include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/asset.h"
-#include "core/LinAppleCore.h"
-#include "apple2/DiskCommands.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/DiskUI.h"
 
@@ -76,18 +76,12 @@ SDL_Rect newRect;
 #define VIEWPORTCY 384
 #endif
 #define BUTTONX (VIEWPORTCX + (VIEWPORTX << 1))
-enum {
-BUTTONY = 0,
-BUTTONCX = 45,
-BUTTONCY = 45
-};
+enum { BUTTONY = 0, BUTTONCX = 45, BUTTONCY = 45 };
 #define FSVIEWPORTX (640 - BUTTONCX - VIEWPORTX - VIEWPORTCX)
 #define FSVIEWPORTY ((480 - VIEWPORTCY) >> 1)
 #define FSBUTTONX (640 - BUTTONCX)
 #define FSBUTTONY (((480 - VIEWPORTCY) >> 1) - 1)
-enum {
-BUTTONS = 8
-};
+enum { BUTTONS = 8 };
 
 static bool g_bAppActive = false;
 
@@ -103,7 +97,8 @@ bool usingcursor = false;
 
 void DrawStatusArea(int drawflags);
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are semantically distinct
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
+// semantically distinct
 void ProcessButtonClick(int button, int mod);
 
 void ResetMachineState();
@@ -136,6 +131,14 @@ void DrawAppleContent() {
   g_video_draw_mutex.unlock();
 }
 
+void FrameRefresh() {
+  if (g_texture && screen) {
+    SDL_UpdateTexture(g_texture, nullptr, screen->pixels, screen->pitch);
+    SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
+    SDL_RenderPresent(g_renderer);
+  }
+}
+
 void DrawFrameWindow() {
   if (!g_bFrameReady) return;
 
@@ -155,11 +158,11 @@ void DrawFrameWindow() {
       vs_output.bpp = 4;
 
       if (!g_WindowResized) {
-        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&r), &vs_screen,
-                         reinterpret_cast<VideoRect*>(&r));
+        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&r),
+                         &vs_screen, reinterpret_cast<VideoRect*>(&r));
       } else {
-        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&origRect), &vs_screen,
-                         reinterpret_cast<VideoRect*>(&newRect));
+        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&origRect),
+                         &vs_screen, reinterpret_cast<VideoRect*>(&newRect));
       }
     } else {
       // Debugger draws directly to g_hDebugScreen (INDEX8)
@@ -168,18 +171,17 @@ void DrawFrameWindow() {
       if (g_hDebugScreen) {
         VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
         if (!g_WindowResized) {
-          VideoSoftStretch(g_hDebugScreen, reinterpret_cast<VideoRect*>(&r), &vs_screen,
-                           reinterpret_cast<VideoRect*>(&r));
+          VideoSoftStretch(g_hDebugScreen, reinterpret_cast<VideoRect*>(&r),
+                           &vs_screen, reinterpret_cast<VideoRect*>(&r));
         } else {
-          VideoSoftStretch(g_hDebugScreen, reinterpret_cast<VideoRect*>(&origRect), &vs_screen,
+          VideoSoftStretch(g_hDebugScreen,
+                           reinterpret_cast<VideoRect*>(&origRect), &vs_screen,
                            reinterpret_cast<VideoRect*>(&newRect));
         }
       }
     }
 
-    SDL_UpdateTexture(g_texture, nullptr, screen->pixels, screen->pitch);
-    SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
-    SDL_RenderPresent(g_renderer);
+    FrameRefresh();
     g_bFrameReady = false;
   }
   g_video_draw_mutex.unlock();
@@ -206,7 +208,8 @@ void DrawStatusArea(int drawflags) {
     srect.h = static_cast<int16_t>(STATUS_PANEL_H - 25);
 
     for (int y = srect.y; y < srect.y + srect.h; ++y) {
-      memset(g_hStatusSurface->pixels + static_cast<ptrdiff_t>(y * g_hStatusSurface->pitch) + srect.x,
+      memset(g_hStatusSurface->pixels +
+                 static_cast<ptrdiff_t>(y * g_hStatusSurface->pitch) + srect.x,
              mybluez, static_cast<size_t>(srect.w));
     }
 
@@ -217,14 +220,18 @@ void DrawStatusArea(int drawflags) {
     int iHDDStatus = DISK_STATUS_OFF;
 
     if (g_lastDiskStatus.drive0_spinning) {
-      iDrive1Status = g_lastDiskStatus.drive0_writing ? DISK_STATUS_WRITE : DISK_STATUS_READ;
-    } else if (g_lastDiskStatus.drive0_loaded && g_lastDiskStatus.drive0_write_protected) {
+      iDrive1Status = g_lastDiskStatus.drive0_writing ? DISK_STATUS_WRITE
+                                                      : DISK_STATUS_READ;
+    } else if (g_lastDiskStatus.drive0_loaded &&
+               g_lastDiskStatus.drive0_write_protected) {
       iDrive1Status = DISK_STATUS_PROT;
     }
 
     if (g_lastDiskStatus.drive1_spinning) {
-      iDrive2Status = g_lastDiskStatus.drive1_writing ? DISK_STATUS_WRITE : DISK_STATUS_READ;
-    } else if (g_lastDiskStatus.drive1_loaded && g_lastDiskStatus.drive1_write_protected) {
+      iDrive2Status = g_lastDiskStatus.drive1_writing ? DISK_STATUS_WRITE
+                                                      : DISK_STATUS_READ;
+    } else if (g_lastDiskStatus.drive1_loaded &&
+               g_lastDiskStatus.drive1_write_protected) {
       iDrive2Status = DISK_STATUS_PROT;
     }
 
@@ -308,8 +315,10 @@ void FrameShowHelpScreen(int sx, int sy) {
   VideoSoftStretch(tempSurface, nullptr, my_screen_vs, nullptr);
   VideoSoftStretch(my_screen_vs, nullptr, &vs_actual_screen, nullptr);
 
-  const float facx_f = static_cast<float>(g_state.ScreenWidth) / static_cast<float>(SCREEN_WIDTH);
-  const float facy_f = static_cast<float>(g_state.ScreenHeight) / static_cast<float>(SCREEN_HEIGHT);
+  const float facx_f = static_cast<float>(g_state.ScreenWidth) /
+                       static_cast<float>(SCREEN_WIDTH);
+  const float facy_f = static_cast<float>(g_state.ScreenHeight) /
+                       static_cast<float>(SCREEN_HEIGHT);
   const double facy = static_cast<double>(facy_f);
 
   font_print_centered(sx / 2, static_cast<int>(5.0 * facy),
@@ -325,25 +334,33 @@ void FrameShowHelpScreen(int sx, int sy) {
   int Help_TopX = static_cast<int>(45.0 * facy);
   for (int i = 3; i < MAX_LINES; i++) {
     if (HelpStrings[i]) {
-      font_print(4, static_cast<int>(static_cast<double>(Help_TopX) + static_cast<double>(i - 3) * 15.0 * facy), const_cast<char*>(HelpStrings[i]),
-                 &vs_actual_screen, 1.5f * facx_f, 1.5f * facy_f);
-}
+      font_print(4,
+                 static_cast<int>(static_cast<double>(Help_TopX) +
+                                  static_cast<double>(i - 3) * 15.0 * facy),
+                 const_cast<char*>(HelpStrings[i]), &vs_actual_screen,
+                 1.5f * facx_f, 1.5f * facy_f);
+    }
   }
 
-  rectangle(&vs_actual_screen, 0, Help_TopX - 5, static_cast<int>(g_state.ScreenWidth - 1),
+  rectangle(&vs_actual_screen, 0, Help_TopX - 5,
+            static_cast<int>(g_state.ScreenWidth - 1),
             static_cast<int>(335.0 * facy), 0xFFFFFF);
-  rectangle(&vs_actual_screen, 1, Help_TopX - 4, static_cast<int>(g_state.ScreenWidth),
+  rectangle(&vs_actual_screen, 1, Help_TopX - 4,
+            static_cast<int>(g_state.ScreenWidth),
             static_cast<int>(335.0 * facy), 0xFFFFFF);
-  rectangle(&vs_actual_screen, 1, 1, static_cast<int>(g_state.ScreenWidth - 2), (Help_TopX - 8),
-            0xFFFF00);
+  rectangle(&vs_actual_screen, 1, 1, static_cast<int>(g_state.ScreenWidth - 2),
+            (Help_TopX - 8), 0xFFFF00);
 
   // Logo bit
   VideoSurface vs_icon{};
   vs_icon.pixels =
       static_cast<uint8_t*>((static_cast<SDL_Surface*>(assets->icon))->pixels);
-  vs_icon.w = static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->w);
-  vs_icon.h = static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->h);
-  vs_icon.pitch = static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->pitch);
+  vs_icon.w =
+      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->w);
+  vs_icon.h =
+      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->h);
+  vs_icon.pitch =
+      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->pitch);
   vs_icon.bpp = 4;  // Assuming RGB32
 
   VideoRect logo{}, scrr{};
@@ -356,13 +373,7 @@ void FrameShowHelpScreen(int sx, int sy) {
   scrr.h = static_cast<int16_t>(100.0f * facy_f);
   VideoSoftStretchOr(&vs_icon, &logo, &vs_actual_screen, &scrr);
 
-  if (g_texture && screen) {
-    SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
-    SDL_UpdateTexture(g_texture, nullptr, screen->pixels, screen->pitch);
-    SDL_RenderClear(g_renderer);
-    SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
-    SDL_RenderPresent(g_renderer);
-  }
+  FrameRefresh();
   SDL_Delay(1000);
 
   VideoDestroySurface(my_screen_vs);
@@ -377,8 +388,8 @@ void FrameShowHelpScreen(int sx, int sy) {
 
   DrawFrameWindow();
 }
-
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are semantically distinct
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
+// semantically distinct
 void FrameQuickState(int num, int mod) {
   // quick load or save state with number num, if Shift is pressed, state is
   // being saved, otherwise - being loaded
@@ -450,13 +461,13 @@ void Frame_OnResize(int width, int height) {
 }
 
 void Frame_OnFocus(bool gained) {
-    g_bAppActive = gained;
-    if (g_bAppActive) {
-        // Re-sync Caps Lock state upon regaining focus
-        SDL_Keymod mod = SDL_GetModState();
-        uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
-        Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
-    }
+  g_bAppActive = gained;
+  if (g_bAppActive) {
+    // Re-sync Caps Lock state upon regaining focus
+    SDL_Keymod mod = SDL_GetModState();
+    uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
+    Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+  }
 }
 
 void Frame_OnExpose() {
@@ -470,7 +481,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   static int backdx = 0;
   static int dirdx = 0;
 
-  std::string filename;      // given filename
+  std::string filename;  // given filename
   std::string fullPath;  // full path for it
   bool isDirectory = true;
 
@@ -505,8 +516,8 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
     }
   }
   strcpy(g_state.sSaveStateDir, fullPath.c_str());
-  Configuration::Instance().SetString(
-      "Preferences", "Save State Directory", g_state.sSaveStateDir);
+  Configuration::Instance().SetString("Preferences", "Save State Directory",
+                                      g_state.sSaveStateDir);
   Configuration::Instance().Save();
 
   backdx = fileIndex;
@@ -541,7 +552,8 @@ void FrameSaveBMP() {
   i++;
 }
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are semantically distinct
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
+// semantically distinct
 void ProcessButtonClick(int button, int mod) {
   SDL_Event qe;
 
@@ -585,7 +597,8 @@ void ProcessButtonClick(int button, int mod) {
           printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           DiskEjectCmd_t ecmd{};
           ecmd.drive = static_cast<uint8_t>(button - BTN_DRIVE1);
-          Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_EJECT, &ecmd, sizeof(ecmd));
+          Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_EJECT, &ecmd,
+                             sizeof(ecmd));
         }
         break;
       }
@@ -824,9 +837,11 @@ void SetIcon() {
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
   Uint32 colorkey = SDL_MapRGB(
-      SDL_GetPixelFormatDetails((static_cast<SDL_Surface*>(assets->icon))->format),
+      SDL_GetPixelFormatDetails(
+          (static_cast<SDL_Surface*>(assets->icon))->format),
       SDL_GetSurfacePalette(static_cast<SDL_Surface*>(assets->icon)), 0, 0, 0);
-  SDL_SetSurfaceColorKey(static_cast<SDL_Surface*>(assets->icon), true, colorkey);
+  SDL_SetSurfaceColorKey(static_cast<SDL_Surface*>(assets->icon), true,
+                         colorkey);
 
   /* No need to pass a mask given the above. */
   SDL_SetWindowIcon(g_window, static_cast<SDL_Surface*>(assets->icon));
@@ -845,11 +860,14 @@ auto InitSDL() -> int {
 void FrameRefreshStatus(int drawflags) {
   if (drawflags & DRAW_LEDS) {
     size_t size = sizeof(g_lastDiskStatus);
-    if (Peripheral_Query(DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS, &g_lastDiskStatus, &size) == PERIPHERAL_OK) {
+    if (Peripheral_Query(DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS,
+                         &g_lastDiskStatus, &size) == PERIPHERAL_OK) {
       if (g_lastDiskStatus.drive0_last_error != DISK_ERR_NONE &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 1 Error",
-                                 DiskUI_GetErrorMessage(g_lastDiskStatus.drive0_last_error), g_window);
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR, "Disk 1 Error",
+            DiskUI_GetErrorMessage(g_lastDiskStatus.drive0_last_error),
+            g_window);
         g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
       } else if (g_lastDiskStatus.drive0_last_error == DISK_ERR_NONE) {
         g_drive0_last_reported_error = DISK_ERR_NONE;
@@ -857,8 +875,10 @@ void FrameRefreshStatus(int drawflags) {
 
       if (g_lastDiskStatus.drive1_last_error != DISK_ERR_NONE &&
           g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Disk 2 Error",
-                                 DiskUI_GetErrorMessage(g_lastDiskStatus.drive1_last_error), g_window);
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR, "Disk 2 Error",
+            DiskUI_GetErrorMessage(g_lastDiskStatus.drive1_last_error),
+            g_window);
         g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
       } else if (g_lastDiskStatus.drive1_last_error == DISK_ERR_NONE) {
         g_drive1_last_reported_error = DISK_ERR_NONE;
@@ -866,7 +886,8 @@ void FrameRefreshStatus(int drawflags) {
 
       char s_title[512];
       if (g_lastDiskStatus.drive0_loaded) {
-        snprintf(s_title, sizeof(s_title), "%s - %s", g_pAppTitle, g_lastDiskStatus.drive0_name);
+        snprintf(s_title, sizeof(s_title), "%s - %s", g_pAppTitle,
+                 g_lastDiskStatus.drive0_name);
       } else {
         snprintf(s_title, sizeof(s_title), "%s", g_pAppTitle);
       }

@@ -1,21 +1,39 @@
 #include "frontends/common/AppController.h"
-#include "frontends/common/AppArgs.h"
-#include "frontends/common/AppEnvironment.h"
-#include "core/LinAppleCore.h"
-#include "core/Common_Globals.h"
-#include "core/Log.h"
-#include "core/ProgramLoader.h"
-#include "core/Peripheral_Internal.h"
-#include "core/Util_Text.h"
-#include "apple2/SaveState.h"
-#include "apple2/Video.h"
-#include "apple2/DiskCommands.h"
-#include "apple2/CPU.h"
-#include "core/Peripheral.h"
-#include "frontends/sdl3/Frontend.h"
+
 #include <cstdio>
 
+#include "apple2/CPU.h"
+#include "apple2/DiskCommands.h"
+#include "apple2/SaveState.h"
+#include "apple2/Video.h"
+#include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
+#include "core/Log.h"
+#include "core/Peripheral.h"
+#include "core/Peripheral_Internal.h"
+#include "core/ProgramLoader.h"
+#include "core/Registry.h"
+#include "core/Util_Path.h"
+#include "core/Util_Text.h"
+#include "frontends/common/AppArgs.h"
+#include "frontends/common/AppEnvironment.h"
+#include "frontends/sdl3/Frontend.h"
+
 static bool s_initialized = false;
+
+static void InitializeDirectory(const char* reg_key, char* target_buffer,
+                                size_t buffer_size) {
+  std::string path =
+      Configuration::Instance().GetString("Preferences", reg_key);
+  if (path.empty()) {
+    path = Path::GetUserDataDir();
+  }
+
+  if (!path.empty()) {
+    Util_SafeStrCpy(target_buffer, path.c_str(), buffer_size);
+    Path::EnsureDirExists(path);
+  }
+}
 
 auto AppController_Initialize(AppConfig* config) -> int {
   if (!config) {
@@ -48,13 +66,22 @@ auto AppController_Initialize(AppConfig* config) -> int {
   }
   Snapshot_Startup();
 
+  // 5. Initialize directories
+  InitializeDirectory(REGVALUE_PREF_START_DIR, g_state.sCurrentDir,
+                      sizeof(g_state.sCurrentDir));
+  InitializeDirectory(REGVALUE_PREF_HDD_START_DIR, g_state.sHDDDir,
+                      sizeof(g_state.sHDDDir));
+  InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, g_state.sSaveStateDir,
+                      sizeof(g_state.sSaveStateDir));
+
   // 6. Register Peripherals
   Peripheral_Manager_Init();
   Linapple_RegisterPeripherals();
   Frontend_UpdateKeyboardMapping();
 
   if (config->szDebuggerScript[0] != '\0') {
-    Util_SafeStrCpy(&g_state.sDebuggerScript[0], &config->szDebuggerScript[0], PATH_MAX_LEN);
+    Util_SafeStrCpy(&g_state.sDebuggerScript[0], &config->szDebuggerScript[0],
+                    PATH_MAX_LEN);
   }
 
   g_state.mode = MODE_RUNNING;
@@ -80,7 +107,8 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
       return true;
     }
     if (config->szHardwareInfoName[0] != '\0') {
-      Peripheral_t* p = Peripheral_Find_Internal(&config->szHardwareInfoName[0]);
+      Peripheral_t* p =
+          Peripheral_Find_Internal(&config->szHardwareInfoName[0]);
       if (p) {
         printf("Hardware Info: %s\n", p->name);
         printf("ABI Version: %d\n", p->abi_version);
@@ -88,18 +116,20 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
         bool first = true;
         for (int i = 0; i < NUM_SLOTS; ++i) {
           if (p->compatible_slots & (1u << static_cast<uint32_t>(i))) {
-          if (!first) printf(", ");
-          printf("%d", i);
-          first = false;
+            if (!first) printf(", ");
+            printf("%d", i);
+            first = false;
           }
         }
         printf("\n");
-        const char* path = Peripheral_GetPluginPath(&config->szHardwareInfoName[0]);
+        const char* path =
+            Peripheral_GetPluginPath(&config->szHardwareInfoName[0]);
         if (path) {
           printf("Plugin Path: %s\n", path);
         }
       } else {
-        fprintf(stderr, "Error: Unknown hardware '%s'\n", &config->szHardwareInfoName[0]);
+        fprintf(stderr, "Error: Unknown hardware '%s'\n",
+                &config->szHardwareInfoName[0]);
       }
       return true;
     }
@@ -117,7 +147,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
 
   // 1. Load Disks or Programs via probing
   for (int i = 0; i < 2; ++i) {
-    const char* path = (i == 0) ? &config->szDiskPath[0][0] : &config->szDiskPath[1][0];
+    const char* path =
+        (i == 0) ? &config->szDiskPath[0][0] : &config->szDiskPath[1][0];
     if (*path != '\0') {
       int res = Linapple_LoadProgram(path);
       if (res == PROGRAM_LOAD_NOT_A_PROGRAM) {
@@ -125,7 +156,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
         Util_SafeStrCpy(&cmd.path[0], path, DISK_INSERT_PATH_MAX);
-        Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+        Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_INSERT, &cmd,
+                           sizeof(cmd));
       }
     }
   }
@@ -133,7 +165,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
   // 2. Load explicit program path
   if (config->szProgramPath[0] != '\0') {
     if (Linapple_LoadProgram(&config->szProgramPath[0]) != 0) {
-      fprintf(stderr, "Error: Could not load program '%s'\n", &config->szProgramPath[0]);
+      fprintf(stderr, "Error: Could not load program '%s'\n",
+              &config->szProgramPath[0]);
     }
   }
 
@@ -157,10 +190,6 @@ void AppController_Shutdown() {
   s_initialized = false;
 }
 
-auto AppController_ShouldRestart() -> bool {
-  return g_state.restart;
-}
+auto AppController_ShouldRestart() -> bool { return g_state.restart; }
 
-void AppController_SetRestart(bool restart) {
-  g_state.restart = restart;
-}
+void AppController_SetRestart(bool restart) { g_state.restart = restart; }
