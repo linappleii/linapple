@@ -437,12 +437,13 @@ EXPORT_PERIPHERAL(g_ssc_peripheral)
 void SSC_Reset(SuperSerialCard* pSSC) {
   // If we can find the peripheral instance, use it
   SSCPeripheral_t* mp = active_ssc_instance;
-  // Fallback to just using pSSC if mp logic doesn't match pSSC (unlikely for single instance)
+  // Fallback to just using pSSC if mp logic doesn't match pSSC (unlikely for
+  // single instance)
   if (mp && &mp->logic == pSSC) {
     GetDIPSW(mp);
   } else {
-    // This is a bit of a hack but matches the requirement to use active_ssc_instance
-    // if we can't get it from pSSC.
+    // This is a bit of a hack but matches the requirement to use
+    // active_ssc_instance if we can't get it from pSSC.
     pSSC->m_vRecvBytes = 0;
     pSSC->m_bTxIrqEnabled = false;
     pSSC->m_bRxIrqEnabled = false;
@@ -792,7 +793,8 @@ static auto CommDipSw(SSCPeripheral_t* mp, uint16_t, uint16_t addr, uint8_t,
 }
 
 void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
-  // Use active_ssc_instance if available, otherwise fallback to pSSC but without IRQ
+  // Use active_ssc_instance if available, otherwise fallback to pSSC but
+  // without IRQ
   SSCPeripheral_t* mp = active_ssc_instance;
   if (mp && &mp->logic == pSSC) {
     if (mp->logic.m_vRecvBytes < uRecvBufferSize) {
