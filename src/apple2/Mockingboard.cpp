@@ -185,7 +185,6 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
       if (mp->type == SC_PHASOR) {
         int nAY_CS = mp->phasor_native ? (~(nValue >> 3) & 3) : 1;
         if (nAY_CS & 1) AY8910_Write_Instance(mp, nDevice, nValue, 0);
-        // Phasor has 4 AY chips, but for now we only emulate 2 per card instance
       } else {
         AY8910_Write_Instance(mp, nDevice, nValue, 0);
       }
@@ -326,6 +325,7 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
 }
 
 static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExecutedCycles) {
+  (void)uExecutedCycles;
   if (mp->type == SC_NONE) return;
 
   uint64_t uCycles = g_nCumulativeCycles - mp->uLastCumulativeCycles;
@@ -411,7 +411,7 @@ static auto PhasorIO(void* instance, uint16_t pc, uint16_t addr,
   if (!instance) return MemReadFloatingBus(cycles_left);
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
 
-  if (mp->phasor_native == 0) {
+  if (!mp->phasor_native) {
     mp->phasor_native = (addr & 1) != 0;
   }
 
@@ -492,6 +492,13 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   }
 }
 
+static void MB_ABI_OnVBlank(void* instance, bool vblank) {
+  (void)vblank;
+  if (!instance) return;
+  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  // End of frame logic
+}
+
 Peripheral_t g_mockingboard_peripheral = {
     LINAPPLE_ABI_VERSION,
     "Mockingboard",
@@ -500,7 +507,8 @@ Peripheral_t g_mockingboard_peripheral = {
     MB_ABI_Reset,
     MB_ABI_Shutdown,
     MB_ABI_Think,
-    nullptr, nullptr, nullptr, nullptr, nullptr
+    MB_ABI_OnVBlank, 
+    nullptr, nullptr, nullptr, nullptr
 };
 
 extern "C" void Register_Mockingboard() {
@@ -510,24 +518,6 @@ extern "C" void Register_Mockingboard() {
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_mockingboard_peripheral)
 #endif
-
-// --- Legacy Stubs for Build Compatibility ---
-void MB_Initialize() {}
-void MB_Reinitialize() {}
-void MB_Destroy() {}
-void MB_Reset() {}
-void MB_Update() {}
-void MB_UpdateCycles(uint32_t) {}
-void MB_EndOfVideoFrame() {}
-void MB_StartOfCpuExecute() {}
-bool MB_IsActive() { return true; }
-eSOUNDCARDTYPE MB_GetSoundcardType() { return SC_MOCKINGBOARD; }
-void MB_SetSoundcardType(eSOUNDCARDTYPE) {}
-double MB_GetFramePeriod() { return 1.0; }
-uint32_t MB_GetVolume() { return 0; }
-void MB_SetVolume(uint32_t, uint32_t) {}
-uint32_t MB_GetSnapshot(SS_CARD_MOCKINGBOARD*, uint32_t) { return 0; }
-uint32_t MB_SetSnapshot(SS_CARD_MOCKINGBOARD*, uint32_t) { return 0; }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

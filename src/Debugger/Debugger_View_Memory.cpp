@@ -67,12 +67,6 @@ void DrawMemory(int line, int iMemDump)
   DEVICE_e     eDevice = pMD->eDevice;
   MemoryView_e iView = pMD->eView;
 
-  SS_CARD_MOCKINGBOARD SS_MB;
-
-  if ((eDevice == DEV_SY6522) || (eDevice == DEV_AY8910)) {
-    MB_GetSnapshot(&SS_MB, 4 + (nAddr >> 1));
-}
-
   Rect_t rect;
   rect.left = DISPLAY_MINIMEM_COLUMN;
   rect.top = (line * g_nFontHeight);
@@ -92,25 +86,14 @@ void DrawMemory(int line, int iMemDump)
   int iBackground = BG_INFO;
 
 #if DISPLAY_MEMORY_TITLE
-  if (eDevice == DEV_SY6522)
-  {
-    snprintf(sAddress, sizeof(sAddress), "SY#%d", nAddr);
-  }
-  else if (eDevice == DEV_AY8910)
-  {
-    snprintf(sAddress, sizeof(sAddress), "AY#%d", nAddr);
-  }
-  else
-  {
-    snprintf(sAddress, sizeof(sAddress), "%04X", static_cast<unsigned>(nAddr));
+  snprintf(sAddress, sizeof(sAddress), "%04X", static_cast<unsigned>(nAddr));
 
-    if (iView == MEM_VIEW_HEX) {
-      snprintf(sType, sizeof(sType), "HEX");
-    } else if (iView == MEM_VIEW_ASCII) {
-      snprintf(sType, sizeof(sType), "ASCII");
-    } else {
-      snprintf(sType, sizeof(sType), "TEXT");
-}
+  if (iView == MEM_VIEW_HEX) {
+    snprintf(sType, sizeof(sType), "HEX");
+  } else if (iView == MEM_VIEW_ASCII) {
+    snprintf(sType, sizeof(sType), "ASCII");
+  } else {
+    snprintf(sType, sizeof(sType), "TEXT");
   }
 
   rect2 = rect;
@@ -164,33 +147,12 @@ void DrawMemory(int line, int iMemDump)
 
     for (int iCol = 0; iCol < nCols; iCol++)
     {
-      DebuggerSetColorBG(DebuggerGetColor(iBackground));
       DebuggerSetColorFG(DebuggerGetColor(iForeground));
 
-      if (eDevice == DEV_SY6522)
-      {
-        sprintf(sText, "%02X", static_cast<unsigned>((reinterpret_cast<uint8_t*>(&SS_MB.Unit[nAddr & 1].RegsSY6522))[iAddress]));
-        if (iCol & 1) {
-          DebuggerSetColorFG(DebuggerGetColor(iForeground));
-        } else {
-          DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
-}
-      }
-      else if (eDevice == DEV_AY8910)
-      {
-        sprintf(sText, "%02X", static_cast<unsigned>(SS_MB.Unit[nAddr & 1].RegsAY8910[iAddress]));
-        if (iCol & 1) {
-          DebuggerSetColorFG(DebuggerGetColor(iForeground));
-        } else {
-          DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
-}
-      }
-      else
-      {
-        uint8_t nData = static_cast<unsigned>(*(mem + iAddress));
-        sText[0] = 0;
+      uint8_t nData = static_cast<unsigned>(*(mem + iAddress));
+      sText[0] = 0;
 
-        if (iView == MEM_VIEW_HEX)
+      if (iView == MEM_VIEW_HEX)
         {
           if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END))
           {
@@ -203,11 +165,11 @@ void DrawMemory(int line, int iMemDump)
         {
           if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END)) {
             iBackground = BG_INFO_IO_BYTE;
-}
+          }
 
           ColorizeSpecialChar(sText, nData, iView, iBackground);
         }
-      }
+
       int nChars = PrintTextCursorX(sText, rect2);
       (void)nChars;
       iAddress++;

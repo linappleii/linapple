@@ -90,18 +90,9 @@ auto Linapple_GetTicks() -> uint32_t {
 }
 
 static auto ShouldRunFullSpeed() -> bool {
-  bool mb_active = false;
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
-  mb_active = MB_IsActive();
-#endif
-
-  bool spkr_active = false;
-  size_t out_size = sizeof(bool);
-  Peripheral_Query(0, SPEAKER_QUERY_IS_ACTIVE, &spkr_active, &out_size);
   bool peripheral_active = Peripheral_IsAnyActive();
 
-  bool shouldTurbo = peripheral_active && (g_state.needsprecision == 0) &&
-                     !mb_active && !spkr_active;
+  bool shouldTurbo = peripheral_active && (g_state.needsprecision == 0);
 
   if (shouldTurbo && !s_wasTurbo) {
     s_turboStartMs = Linapple_GetTicks();
@@ -234,9 +225,7 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
       executed = Internal_RunCycles(cycles);
     }
 
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
-    MB_EndOfVideoFrame();
-#endif
+    Peripheral_Manager_OnVBlank(true);
 
     if (g_videoCB && g_bFrameReady) {
       uint32_t* output = VideoGetOutputBuffer();

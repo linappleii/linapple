@@ -3509,21 +3509,11 @@ auto CpuExecute(uint32_t uCycles) -> uint32_t {
   g_nCyclesSubmitted = uCycles;
   g_nCyclesExecuted = 0;
 
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
-  MB_StartOfCpuExecute();
-#endif
-
   if (uCycles == 0) {  // Do single step
     uExecutedCycles = InternalCpuExecute(0);
   } else {        // Do multi-opcode emulation
     uExecutedCycles = InternalCpuExecute(uCycles);
   }
-
-  #ifndef UPDATE_ALL_PER_CYCLE
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
-  MB_UpdateCycles(uExecutedCycles);  // Update 6522s (NB. Do this before updating g_nCumulativeCycles below)
-#endif
-  #endif
 
   uint16_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
   g_nCumulativeCycles += nRemainingCycles;

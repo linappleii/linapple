@@ -2,7 +2,8 @@
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include <doctest/doctest.h>
 
 #include <cstring>
@@ -38,24 +39,24 @@ static void Mock_RegisterIO(int slot, PeripheralIOHandler r,
 }
 
 static HostInterface_t mock_host = {
-    nullptr,        // Log
-    Mock_AssertIrq, // AssertIrq
-    Mock_RegisterIO, // RegisterIO
-    nullptr,        // RegisterCxROM
-    nullptr,        // RegisterExpansionROM
-    nullptr,        // RegisterDirectIO
-    nullptr,        // GetMemPtr
-    nullptr,        // GetCycles
-    Mock_GetConfig, // GetConfig
-    nullptr,        // SetConfig
-    nullptr,        // NotifyStatusChanged
-    nullptr,        // NotifyActivityChanged
-    nullptr,        // RequestPreciseTiming
-    nullptr,        // RiffInitWriteFile
-    nullptr,        // RiffFinishWriteFile
-    nullptr,        // RiffPutSamples
-    nullptr,        // AudioPushSamples
-    nullptr         // ResetSystem
+    nullptr,          // Log
+    Mock_AssertIrq,   // AssertIrq
+    Mock_RegisterIO,  // RegisterIO
+    nullptr,          // RegisterCxROM
+    nullptr,          // RegisterExpansionROM
+    nullptr,          // RegisterDirectIO
+    nullptr,          // GetMemPtr
+    nullptr,          // GetCycles
+    Mock_GetConfig,   // GetConfig
+    nullptr,          // SetConfig
+    nullptr,          // NotifyStatusChanged
+    nullptr,          // NotifyActivityChanged
+    nullptr,          // RequestPreciseTiming
+    nullptr,          // RiffInitWriteFile
+    nullptr,          // RiffFinishWriteFile
+    nullptr,          // RiffPutSamples
+    nullptr,          // AudioPushSamples
+    nullptr           // ResetSystem
 };
 
 extern Peripheral_t g_mockingboard_peripheral;
@@ -70,13 +71,12 @@ TEST_CASE("Mockingboard Peripheral ABI") {
     CHECK(irq_asserted == false);
   }
 
-  SUBCASE("Lifecycle") {
-    g_mockingboard_peripheral.shutdown(instance);
-  }
+  SUBCASE("Lifecycle") { g_mockingboard_peripheral.shutdown(instance); }
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)

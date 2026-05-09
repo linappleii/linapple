@@ -27,8 +27,10 @@ typedef struct {
 } AY8910;
 
 void AY8910_reset_instance(AY8910* p);
-void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock, int sample_rate);
-void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_clock, int sample_rate);
+void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock,
+                           int sample_rate);
+void AY8910_update_instance(AY8910* p, int16_t** buffer, int length,
+                            int ay_clock, int sample_rate);
 
 // Legacy stubs
 void AY8910_InitAll(int clock_rate, int sample_rate);

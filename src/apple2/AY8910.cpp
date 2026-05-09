@@ -21,16 +21,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* Description: AY-3-8910 sound chip emulation */
 
 #include "AY8910.h"
-#include <cstring>
-#include <cstdint>
+
 #include <array>
+#include <cstdint>
+#include <cstring>
 
 // Logarithmic volume table for AY-3-8910 (16 levels)
 // Based on -3dB per step as indicated in datasheet Fig 3.
-static const std::array<uint16_t, 16> vol_table = {{
-  0, 103, 150, 218, 316, 458, 665, 963,
-  1396, 2023, 2933, 4251, 6163, 8934, 12952, 18776
-}};
+static const std::array<uint16_t, 16> vol_table = {
+    {0, 103, 150, 218, 316, 458, 665, 963, 1396, 2023, 2933, 4251, 6163, 8934,
+     12952, 18776}};
 
 void AY8910_reset_instance(AY8910* p) {
   if (!p) return;
@@ -38,15 +38,28 @@ void AY8910_reset_instance(AY8910* p) {
   p->rng = 1;
 }
 
-void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock, int sample_rate) {
-  (void)ay_clock; (void)sample_rate;
+void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock,
+                           int sample_rate) {
+  (void)ay_clock;
+  (void)sample_rate;
   if (!p || r < 0 || r >= 16) return;
   p->regs[r] = v & 0xFF;
   switch (r) {
-    case 1: case 3: case 5: p->regs[r] &= 0x0F; break;
-    case 6: p->regs[r] &= 0x1F; break;
-    case 8: case 9: case 10: p->regs[r] &= 0x1F; break;
-    case 13: p->regs[r] &= 0x0F;
+    case 1:
+    case 3:
+    case 5:
+      p->regs[r] &= 0x0F;
+      break;
+    case 6:
+      p->regs[r] &= 0x1F;
+      break;
+    case 8:
+    case 9:
+    case 10:
+      p->regs[r] &= 0x1F;
+      break;
+    case 13:
+      p->regs[r] &= 0x0F;
       p->count_e = 0;
       p->envelope_step = 0;
       p->env_holding = false;
@@ -54,7 +67,8 @@ void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock, int sample_rat
   }
 }
 
-void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_clock, int sample_rate) {
+void AY8910_update_instance(AY8910* p, int16_t** buffer, int length,
+                            int ay_clock, int sample_rate) {
   if (!p) return;
 
   uint16_t period_a = p->regs[0] | (p->regs[1] << 8);
@@ -65,7 +79,8 @@ void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_cloc
   uint8_t enable = p->regs[7];
   uint8_t shape = p->regs[13];
 
-  double psg_cycles_per_sample = static_cast<double>(ay_clock) / (16.0 * sample_rate);
+  double psg_cycles_per_sample =
+      static_cast<double>(ay_clock) / (16.0 * sample_rate);
 
   for (int i = 0; i < length; i++) {
     p->count_accum += psg_cycles_per_sample;
@@ -74,21 +89,30 @@ void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_cloc
 
     if (period_a > 0) {
       p->count_a += psg_cycles;
-      while (p->count_a >= period_a) { p->count_a -= period_a; p->out_a ^= 1; }
+      while (p->count_a >= period_a) {
+        p->count_a -= period_a;
+        p->out_a ^= 1;
+      }
     } else {
       p->out_a = 1;
     }
 
     if (period_b > 0) {
       p->count_b += psg_cycles;
-      while (p->count_b >= period_b) { p->count_b -= period_b; p->out_b ^= 1; }
+      while (p->count_b >= period_b) {
+        p->count_b -= period_b;
+        p->out_b ^= 1;
+      }
     } else {
       p->out_b = 1;
     }
 
     if (period_c > 0) {
       p->count_c += psg_cycles;
-      while (p->count_c >= period_c) { p->count_c -= period_c; p->out_c ^= 1; }
+      while (p->count_c >= period_c) {
+        p->count_c -= period_c;
+        p->out_c ^= 1;
+      }
     } else {
       p->out_c = 1;
     }
@@ -143,7 +167,8 @@ void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_cloc
       chan_b = vol_table[vol];
     }
     if ((!(enable & 0x04) ? p->out_c : 1) & (!(enable & 0x20) ? p->out_n : 1)) {
-      uint8_t vol = (p->regs[10] & 0x10) ? p->envelope_vol : (p->regs[10] & 0x0F);
+      uint8_t vol =
+          (p->regs[10] & 0x10) ? p->envelope_vol : (p->regs[10] & 0x0F);
       chan_c = vol_table[vol];
     }
 
@@ -166,8 +191,24 @@ void AY8910_InitAll(int clock_rate, int sample_rate) {
   }
 }
 void AY8910_InitClock(int nClock) { ay_clock = nClock; }
-void AY8910_reset(int chip) { if (chip >= 0 && chip < MAX_8910) AY8910_reset_instance(&ay_chips[chip]); }
-void AY8910_write_ym(int chip, int addr, int data) { if (chip >= 0 && chip < MAX_8910) AY8910_write_instance(&ay_chips[chip], addr, data, ay_clock, ay_sample_rate); }
-void _AYWriteReg(int n, int r, int v) { if (n >= 0 && n < MAX_8910) AY8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate); }
-void AY8910Update(int chip, int16_t **buffer, int length) { if (chip >= 0 && chip < MAX_8910) AY8910_update_instance(&ay_chips[chip], buffer, length, ay_clock, ay_sample_rate); }
-auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t* { if (nAyNum >= MAX_8910) return nullptr; return ay_chips[nAyNum].regs; }
+void AY8910_reset(int chip) {
+  if (chip >= 0 && chip < MAX_8910) AY8910_reset_instance(&ay_chips[chip]);
+}
+void AY8910_write_ym(int chip, int addr, int data) {
+  if (chip >= 0 && chip < MAX_8910)
+    AY8910_write_instance(&ay_chips[chip], addr, data, ay_clock,
+                          ay_sample_rate);
+}
+void _AYWriteReg(int n, int r, int v) {
+  if (n >= 0 && n < MAX_8910)
+    AY8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate);
+}
+void AY8910Update(int chip, int16_t** buffer, int length) {
+  if (chip >= 0 && chip < MAX_8910)
+    AY8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
+                           ay_sample_rate);
+}
+auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t* {
+  if (nAyNum >= MAX_8910) return nullptr;
+  return ay_chips[nAyNum].regs;
+}
