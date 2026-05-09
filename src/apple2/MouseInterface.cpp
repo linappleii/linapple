@@ -6,7 +6,6 @@
 // the core C interface and maintain peripheral singletons.
 
 #include "apple2/MouseInterface.h"
-#include "apple2/MouseCommands.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +15,7 @@
 #include "apple2/6821.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/MouseCommands.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "core/Common.h"
@@ -192,7 +192,8 @@ static char MouseInterface_rom[] =
     "\xFF\xFF\xFF\xCE";
 
 static void Mouse_Reset_Internal(MousePeripheral_t* mp);
-static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue, int yvalue);
+static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
+                                      int yvalue);
 static void Mouse_ClampX(MousePeripheral_t* mp, int iMinX, int iMaxX);
 static void Mouse_ClampY(MousePeripheral_t* mp, int iMinY, int iMaxY);
 static void Mouse_OnMouseEvent(MousePeripheral_t* mp);
@@ -226,7 +227,7 @@ static void M6821_Listener_B(void* objTo, uint8_t byData) {
     {
       if (byData & BIT5) {
         mp->logic.m_by6821B |= BIT7;  // OK, I'm ready to read from MC6821
-      } else {                       // Clock Activate for read
+      } else {                        // Clock Activate for read
         mp->logic.m_byBuff[mp->logic.m_nBuffPos++] = mp->logic.m_by6821A;
         if (mp->logic.m_nBuffPos == 1) {
           Mouse_OnCommand(mp);
@@ -243,8 +244,9 @@ static void M6821_Listener_B(void* objTo, uint8_t byData) {
     if (byDiff & BIT4) {  // Read from 0285 chip ?
       if (byData & BIT4) {
         mp->logic.m_by6821B &= ~BIT6;  // OK, I'll prepare next value
-      } else {                        // Clock Activate for write
-        if (mp->logic.m_nBuffPos) {  // if m_nBuffPos is 0, something goes wrong!
+      } else {                         // Clock Activate for write
+        if (mp->logic
+                .m_nBuffPos) {  // if m_nBuffPos is 0, something goes wrong!
           mp->logic.m_nBuffPos++;
         }
         if (mp->logic.m_nBuffPos == mp->logic.m_nDataLen ||
@@ -263,18 +265,25 @@ static void M6821_Listener_B(void* objTo, uint8_t byData) {
   }
 }
 
-static auto Mouse_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
-                  uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void)PC; (void)bWrite; (void)uValue; (void)nCyclesLeft;
+static auto Mouse_IORead(void* instance, uint16_t PC, uint16_t uAddr,
+                         uint8_t bWrite, uint8_t uValue, uint32_t nCyclesLeft)
+    -> uint8_t {
+  (void)PC;
+  (void)bWrite;
+  (void)uValue;
+  (void)nCyclesLeft;
   if (!instance) return MemReadFloatingBus(nCyclesLeft);
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   uint8_t byRS = uAddr & 3;
   return Pia6821_Read(&mp->logic.m_6821, byRS);
 }
 
-static auto Mouse_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
-                   uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void)PC; (void)bWrite; (void)nCyclesLeft;
+static auto Mouse_IOWrite(void* instance, uint16_t PC, uint16_t uAddr,
+                          uint8_t bWrite, uint8_t uValue, uint32_t nCyclesLeft)
+    -> uint8_t {
+  (void)PC;
+  (void)bWrite;
+  (void)nCyclesLeft;
   if (!instance) return 0;
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   uint8_t byRS = uAddr & 3;
@@ -348,7 +357,7 @@ static void Mouse_ABI_OnVBlank(void* instance, bool vblank) {
 }
 
 static auto Mouse_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
-                               size_t size) -> PeripheralStatus {
+                              size_t size) -> PeripheralStatus {
   if (!instance || !data) return PERIPHERAL_ERROR;
   auto* mp = static_cast<MousePeripheral_t*>(instance);
 
@@ -387,7 +396,7 @@ Peripheral_t g_mouse_peripheral = {
     nullptr,  // save_state
     nullptr,  // load_state
     Mouse_ABI_Command,
-    nullptr   // query
+    nullptr  // query
 };
 
 extern "C" void Register_Mouse() {
@@ -427,14 +436,18 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
       mp->logic.m_byBuff[2] = (mp->logic.m_nX >> 8) & 0xFF;
       mp->logic.m_byBuff[3] = mp->logic.m_nY & 0xFF;
       mp->logic.m_byBuff[4] = (mp->logic.m_nY >> 8) & 0xFF;
-      mp->logic.m_byBuff[5] = mp->logic.m_byState;  // button 0/1 interrupt status
+      mp->logic.m_byBuff[5] =
+          mp->logic.m_byState;  // button 0/1 interrupt status
       mp->logic.m_byState &= ~0x20;
       break;
     case MOUSE_SERV:
       mp->logic.m_nDataLen = 2;
-      mp->logic.m_byBuff[1] = mp->logic.m_byState & ~0x20;  // reason of interrupt
-      if (mp->host && mp->host->AssertIrq) mp->host->AssertIrq(mp->slot, false);
-      else CpuIrqDeassert(IS_MOUSE);
+      mp->logic.m_byBuff[1] =
+          mp->logic.m_byState & ~0x20;  // reason of interrupt
+      if (mp->host && mp->host->AssertIrq)
+        mp->host->AssertIrq(mp->slot, false);
+      else
+        CpuIrqDeassert(IS_MOUSE);
       break;
     case MOUSE_CLEAR:
       Mouse_Reset_Internal(mp);
@@ -456,13 +469,23 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
       break;
     case MOUSE_TIME:  // 0x90
       switch (mp->logic.m_byBuff[0] & 0x0C) {
-        case 0x00: mp->logic.m_nDataLen = 1; break;
-        case 0x04: mp->logic.m_nDataLen = 3; break;
-        case 0x08: mp->logic.m_nDataLen = 2; break;
-        case 0x0C: mp->logic.m_nDataLen = 4; break;
+        case 0x00:
+          mp->logic.m_nDataLen = 1;
+          break;
+        case 0x04:
+          mp->logic.m_nDataLen = 3;
+          break;
+        case 0x08:
+          mp->logic.m_nDataLen = 2;
+          break;
+        case 0x0C:
+          mp->logic.m_nDataLen = 4;
+          break;
       }
       break;
-    default: mp->logic.m_nDataLen = 1; break;
+    default:
+      mp->logic.m_nDataLen = 1;
+      break;
   }
   Pia6821_SetPortA(&mp->logic.m_6821, mp->logic.m_byBuff[1]);
 }
@@ -516,8 +539,10 @@ static void Mouse_OnMouseEvent(MousePeripheral_t* mp) {
 
   if (byState & 0x0E) {
     mp->logic.m_byState |= byState;
-    if (mp->host && mp->host->AssertIrq) mp->host->AssertIrq(mp->slot, true);
-    else CpuIrqAssert(IS_MOUSE);
+    if (mp->host && mp->host->AssertIrq)
+      mp->host->AssertIrq(mp->slot, true);
+    else
+      CpuIrqAssert(IS_MOUSE);
   }
 }
 
@@ -540,27 +565,34 @@ static void Mouse_ClampX(MousePeripheral_t* mp, int iMinX, int iMaxX) {
   if (iMinX < 0 || iMinX > iMaxX) return;
   mp->logic.m_iMaxX = static_cast<uint32_t>(iMaxX);
   mp->logic.m_iMinX = static_cast<uint32_t>(iMinX);
-  if (mp->logic.m_iX > mp->logic.m_iMaxX) mp->logic.m_iX = mp->logic.m_iMaxX;
-  else if (mp->logic.m_iX < mp->logic.m_iMinX) mp->logic.m_iX = mp->logic.m_iMinX;
+  if (mp->logic.m_iX > mp->logic.m_iMaxX)
+    mp->logic.m_iX = mp->logic.m_iMaxX;
+  else if (mp->logic.m_iX < mp->logic.m_iMinX)
+    mp->logic.m_iX = mp->logic.m_iMinX;
 }
 
 static void Mouse_ClampY(MousePeripheral_t* mp, int iMinY, int iMaxY) {
   if (iMinY < 0 || iMinY > iMaxY) return;
   mp->logic.m_iMaxY = static_cast<uint32_t>(iMaxY);
   mp->logic.m_iMinY = static_cast<uint32_t>(iMinY);
-  if (mp->logic.m_iY > mp->logic.m_iMaxY) mp->logic.m_iY = mp->logic.m_iMaxY;
-  else if (mp->logic.m_iY < mp->logic.m_iMinY) mp->logic.m_iY = mp->logic.m_iMinY;
+  if (mp->logic.m_iY > mp->logic.m_iMaxY)
+    mp->logic.m_iY = mp->logic.m_iMaxY;
+  else if (mp->logic.m_iY < mp->logic.m_iMinY)
+    mp->logic.m_iY = mp->logic.m_iMinY;
 }
 
-static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue, int yvalue) {
+static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
+                                      int yvalue) {
   if ((mp->logic.m_iRangeX == 0) || (mp->logic.m_iRangeY == 0)) {
     mp->logic.m_nX = static_cast<int>(mp->logic.m_iX = mp->logic.m_iMinX);
     mp->logic.m_nY = static_cast<int>(mp->logic.m_iY = mp->logic.m_iMinY);
     return;
   }
 
-  mp->logic.m_iX = (static_cast<uint32_t>(xvalue) * mp->logic.m_iMaxX) / mp->logic.m_iRangeX;
-  mp->logic.m_iY = (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
+  mp->logic.m_iX =
+      (static_cast<uint32_t>(xvalue) * mp->logic.m_iMaxX) / mp->logic.m_iRangeX;
+  mp->logic.m_iY =
+      (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
 }
 
 // --- Legacy Procedural API ---

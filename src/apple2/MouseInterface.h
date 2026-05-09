@@ -2,6 +2,7 @@
 #define MOUSEINTERFACE_H
 
 #include <cstdint>
+
 #include "apple2/6821.h"
 #include "core/Common.h"
 
@@ -13,7 +14,7 @@ struct MouseInterface {
 
   uint8_t m_by6821B;
   uint8_t m_by6821A;
-  uint8_t m_byBuff[8]; // m_byBuff[0] is mode byte
+  uint8_t m_byBuff[8];  // m_byBuff[0] is mode byte
   int m_nBuffPos;
 
   uint8_t m_byState;
