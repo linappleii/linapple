@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
@@ -5,7 +6,7 @@
 // instance state, raw memory management, and static global state to bridge with
 // the core C interface and maintain peripheral singletons.
 
-#include "core/Common_Globals.h"
+#include "apple2/Mockingboard.h"
 
 #include <cassert>
 #include <cmath>
@@ -19,11 +20,11 @@
 #include "AY8910.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Mockingboard.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "core/Common.h"
+#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
@@ -69,7 +70,7 @@ typedef struct {
 struct MockingboardPeripheral_t {
   std::array<SY6522_AY8910, CHIPS_PER_CARD> chips;
   std::array<std::unique_ptr<short[]>, VOICES_PER_CARD> voice_buffers;
-  short mix_buffer[SAMPLE_RATE * 2]; // Stereo mix
+  short mix_buffer[SAMPLE_RATE * 2];  // Stereo mix
   uint32_t n6522TimerPeriod = 0;
   uint16_t nMBTimerDevice = 0;
   uint64_t uLastCumulativeCycles = 0;
@@ -116,14 +117,14 @@ static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   pMB->nTimerStatus = 1;
   mp->n6522TimerPeriod = nPeriod;
   mp->bTimerIrqActive = true;
-  g_bMBTimerIrqActive = true; // Legacy support
+  g_bMBTimerIrqActive = true;  // Legacy support
   mp->nMBTimerDevice = static_cast<uint16_t>(chip_idx);
 }
 
 static void StopTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   mp->chips[chip_idx].nTimerStatus = 0;
   mp->bTimerIrqActive = false;
-  g_bMBTimerIrqActive = false; // Legacy support
+  g_bMBTimerIrqActive = false;  // Legacy support
 }
 
 static void UpdateIFR(MockingboardPeripheral_t* mp, int chip_idx) {
@@ -154,7 +155,7 @@ static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
                                   uint8_t nValue, uint8_t nAYDevice) {
   (void)nAYDevice;
   SY6522_AY8910* pMB = &mp->chips[nDevice];
-  
+
   if ((nValue & 4) == 0) {
     AY8910_reset_instance(&pMB->ay_chip);
   } else {
@@ -162,9 +163,11 @@ static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     int nBC1 = nValue & 1;
     int nAYFunc = (nBDIR << 2) | (1 << 1) | nBC1;
 
-    if (nAYFunc == 6) { // AY_WRITE
-      AY8910_write_instance(&pMB->ay_chip, pMB->nAYCurrentRegister, pMB->sy6522.ORA, static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
-    } else if (nAYFunc == 7) { // AY_LATCH
+    if (nAYFunc == 6) {  // AY_WRITE
+      AY8910_write_instance(&pMB->ay_chip, pMB->nAYCurrentRegister,
+                            pMB->sy6522.ORA,
+                            static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
+    } else if (nAYFunc == 7) {  // AY_LATCH
       if (pMB->sy6522.ORA <= 0x0F) {
         pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
       }
@@ -192,10 +195,16 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     case VIA_REG_ORA:
       pMB->sy6522.ORA = nValue & pMB->sy6522.DDRA;
       break;
-    case VIA_REG_DDRB: pMB->sy6522.DDRB = nValue; break;
-    case VIA_REG_DDRA: pMB->sy6522.DDRA = nValue; break;
+    case VIA_REG_DDRB:
+      pMB->sy6522.DDRB = nValue;
+      break;
+    case VIA_REG_DDRA:
+      pMB->sy6522.DDRA = nValue;
+      break;
     case VIA_REG_T1L_C:
-    case VIA_REG_T1L_L: pMB->sy6522.TIMER1_LATCH.l = nValue; break;
+    case VIA_REG_T1L_L:
+      pMB->sy6522.TIMER1_LATCH.l = nValue;
+      break;
     case VIA_REG_T1H_C:
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
@@ -208,15 +217,21 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
       break;
-    case VIA_REG_T2L_C: pMB->sy6522.TIMER2_LATCH.l = nValue; break;
+    case VIA_REG_T2L_C:
+      pMB->sy6522.TIMER2_LATCH.l = nValue;
+      break;
     case VIA_REG_T2H_C:
       pMB->sy6522.IFR &= ~IxR_TIMER2;
       UpdateIFR(mp, nDevice);
       pMB->sy6522.TIMER2_LATCH.h = nValue;
       pMB->sy6522.TIMER2_COUNTER.w = pMB->sy6522.TIMER2_LATCH.w;
       break;
-    case VIA_REG_ACR: pMB->sy6522.ACR = nValue; break;
-    case VIA_REG_PCR: pMB->sy6522.PCR = nValue; break;
+    case VIA_REG_ACR:
+      pMB->sy6522.ACR = nValue;
+      break;
+    case VIA_REG_PCR:
+      pMB->sy6522.PCR = nValue;
+      break;
     case VIA_REG_IFR:
       nValue |= VIA_IFR_IRQ_FLAG;
       nValue ^= VIA_IFR_BIT_MASK;
@@ -251,27 +266,40 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   SY6522_AY8910* pMB = &mp->chips[nDevice];
 
   switch (nReg) {
-    case VIA_REG_ORB: return pMB->sy6522.ORB;
-    case VIA_REG_ORA: return pMB->sy6522.ORA;
-    case VIA_REG_DDRB: return pMB->sy6522.DDRB;
-    case VIA_REG_DDRA: return pMB->sy6522.DDRA;
+    case VIA_REG_ORB:
+      return pMB->sy6522.ORB;
+    case VIA_REG_ORA:
+      return pMB->sy6522.ORA;
+    case VIA_REG_DDRB:
+      return pMB->sy6522.DDRB;
+    case VIA_REG_DDRA:
+      return pMB->sy6522.DDRA;
     case VIA_REG_T1L_C:
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
       return pMB->sy6522.TIMER1_COUNTER.l;
-    case VIA_REG_T1H_C: return pMB->sy6522.TIMER1_COUNTER.h;
-    case VIA_REG_T1L_L: return pMB->sy6522.TIMER1_LATCH.l;
-    case VIA_REG_T1H_L: return pMB->sy6522.TIMER1_LATCH.h;
+    case VIA_REG_T1H_C:
+      return pMB->sy6522.TIMER1_COUNTER.h;
+    case VIA_REG_T1L_L:
+      return pMB->sy6522.TIMER1_LATCH.l;
+    case VIA_REG_T1H_L:
+      return pMB->sy6522.TIMER1_LATCH.h;
     case VIA_REG_T2L_C:
       pMB->sy6522.IFR &= ~IxR_TIMER2;
       UpdateIFR(mp, nDevice);
       return pMB->sy6522.TIMER2_COUNTER.l;
-    case VIA_REG_T2H_C: return pMB->sy6522.TIMER2_COUNTER.h;
-    case VIA_REG_ACR: return pMB->sy6522.ACR;
-    case VIA_REG_PCR: return pMB->sy6522.PCR;
-    case VIA_REG_IFR: return pMB->sy6522.IFR;
-    case VIA_REG_IER: return pMB->sy6522.IER | 0x80;
-    case VIA_REG_ORA_NO_HANDSHAKE: return pMB->sy6522.ORA;
+    case VIA_REG_T2H_C:
+      return pMB->sy6522.TIMER2_COUNTER.h;
+    case VIA_REG_ACR:
+      return pMB->sy6522.ACR;
+    case VIA_REG_PCR:
+      return pMB->sy6522.PCR;
+    case VIA_REG_IFR:
+      return pMB->sy6522.IFR;
+    case VIA_REG_IER:
+      return pMB->sy6522.IER | 0x80;
+    case VIA_REG_ORA_NO_HANDSHAKE:
+      return pMB->sy6522.ORA;
   }
   return 0;
 }
@@ -279,12 +307,14 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
 static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
   if (mp->type == SC_NONE) return;
 
-  double n6522TimerPeriod = (mp->bTimerIrqActive || (mp->chips[0].sy6522.IFR & IxR_TIMER1))
-             ? static_cast<double>(mp->n6522TimerPeriod)
-             : (CLOCK_6502 / 60.0);
-  
+  double n6522TimerPeriod =
+      (mp->bTimerIrqActive || (mp->chips[0].sy6522.IFR & IxR_TIMER1))
+          ? static_cast<double>(mp->n6522TimerPeriod)
+          : (CLOCK_6502 / 60.0);
+
   double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod;
-  int nNumSamples = static_cast<int>(static_cast<double>(SAMPLE_RATE) / nIrqFreq);
+  int nNumSamples =
+      static_cast<int>(static_cast<double>(SAMPLE_RATE) / nIrqFreq);
 
   if (nNumSamples > 0) {
     if (nNumSamples > SAMPLE_RATE) nNumSamples = SAMPLE_RATE;
@@ -294,7 +324,8 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       voices[0] = &mp->voice_buffers[i * 3 + 0].get()[0];
       voices[1] = &mp->voice_buffers[i * 3 + 1].get()[0];
       voices[2] = &mp->voice_buffers[i * 3 + 2].get()[0];
-      AY8910_update_instance(&mp->chips[i].ay_chip, voices, nNumSamples, static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
+      AY8910_update_instance(&mp->chips[i].ay_chip, voices, nNumSamples,
+                             static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     }
 
     double fAttenuation = (mp->type == SC_PHASOR) ? 2.0 / 3.0 : 1.0;
@@ -305,26 +336,38 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       int nDataR = 0;
 
       for (int j = 0; j < 3; j++) {
-        nDataL += static_cast<int>(static_cast<double>(mp->voice_buffers[0 * 3 + j].get()[i]) * fAttenuation);
-        nDataR += static_cast<int>(static_cast<double>(mp->voice_buffers[1 * 3 + j].get()[i]) * fAttenuation);
+        nDataL += static_cast<int>(
+            static_cast<double>(mp->voice_buffers[0 * 3 + j].get()[i]) *
+            fAttenuation);
+        nDataR += static_cast<int>(
+            static_cast<double>(mp->voice_buffers[1 * 3 + j].get()[i]) *
+            fAttenuation);
       }
 
-      if (nDataL < -32768) nDataL = -32768; else if (nDataL > 32767) nDataL = 32767;
-      if (nDataR < -32768) nDataR = -32768; else if (nDataR > 32767) nDataR = 32767;
+      if (nDataL < -32768)
+        nDataL = -32768;
+      else if (nDataL > 32767)
+        nDataL = 32767;
+      if (nDataR < -32768)
+        nDataR = -32768;
+      else if (nDataR > 32767)
+        nDataR = 32767;
 
       mp->mix_buffer[i * 2] = static_cast<short>(nDataL);
       mp->mix_buffer[i * 2 + 1] = static_cast<short>(nDataR);
     }
 
     if (mp->host && mp->host->AudioPushSamples) {
-      mp->host->AudioPushSamples(mp, mp->mix_buffer, static_cast<uint32_t>(nNumSamples * 2));
+      mp->host->AudioPushSamples(mp, mp->mix_buffer,
+                                 static_cast<uint32_t>(nNumSamples * 2));
     } else {
       DSUploadMockBuffer(mp->mix_buffer, nNumSamples * 2);
     }
   }
 }
 
-static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExecutedCycles) {
+static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
+                                     uint32_t uExecutedCycles) {
   (void)uExecutedCycles;
   if (mp->type == SC_NONE) return;
 
@@ -332,7 +375,8 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExe
   mp->uLastCumulativeCycles = g_nCumulativeCycles;
 
   while (uCycles > 0) {
-    uint16_t nClocks = (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
+    uint16_t nClocks =
+        (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
     uCycles -= nClocks;
 
     for (int i = 0; i < CHIPS_PER_CARD; i++) {
@@ -341,8 +385,10 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExe
       pMB->sy6522.TIMER1_COUNTER.w -= nClocks;
       pMB->sy6522.TIMER2_COUNTER.w -= nClocks;
 
-      bool bTimer1Underflow = (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
-      if (bTimer1Underflow && (mp->nMBTimerDevice == i) && mp->bTimerIrqActive) {
+      bool bTimer1Underflow =
+          (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
+      if (bTimer1Underflow && (mp->nMBTimerDevice == i) &&
+          mp->bTimerIrqActive) {
         g_uTimer1IrqCount++;
         pMB->sy6522.IFR |= IxR_TIMER1;
         UpdateIFR(mp, i);
@@ -372,9 +418,12 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExe
   }
 }
 
-static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                       uint8_t val, uint32_t cycles_left) -> uint8_t {
-  (void)pc; (void)write; (void)val;
+static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr,
+                       uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
+  (void)pc;
+  (void)write;
+  (void)val;
   if (!instance) return MemReadFloatingBus(cycles_left);
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles_left);
@@ -382,15 +431,18 @@ static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr, uint8_t write
   uint8_t nOffset = addr & 0xff;
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
     return SY6522_Read_Instance(mp, SY6522_DEVICE_A, nOffset & 0x0F);
-  } else if ((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset + 0x0F))) {
+  } else if ((nOffset >= SY6522B_Offset) &&
+             (nOffset <= (SY6522B_Offset + 0x0F))) {
     return SY6522_Read_Instance(mp, SY6522_DEVICE_B, nOffset & 0x0F);
   }
   return MemReadFloatingBus(cycles_left);
 }
 
-static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                        uint8_t val, uint32_t cycles_left) -> uint8_t {
-  (void)pc; (void)write;
+static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr,
+                        uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
+  (void)pc;
+  (void)write;
   if (!instance) return 0;
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles_left);
@@ -398,16 +450,17 @@ static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr, uint8_t writ
   uint8_t nOffset = addr & 0xff;
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
     SY6522_Write_Instance(mp, SY6522_DEVICE_A, nOffset & 0x0F, val);
-  } else if ((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset + 0x0F))) {
+  } else if ((nOffset >= SY6522B_Offset) &&
+             (nOffset <= (SY6522B_Offset + 0x0F))) {
     SY6522_Write_Instance(mp, SY6522_DEVICE_B, nOffset & 0x0F, val);
   }
   return 0;
 }
 
-static auto PhasorIO(void* instance, uint16_t pc, uint16_t addr,
-                     uint8_t write, uint8_t val, uint32_t cycles_left)
-    -> uint8_t {
-  (void)pc; (void)write;
+static auto PhasorIO(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
+                     uint8_t val, uint32_t cycles_left) -> uint8_t {
+  (void)pc;
+  (void)write;
   if (!instance) return MemReadFloatingBus(cycles_left);
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
 
@@ -482,10 +535,11 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   if (!instance) return;
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles);
-  
+
   if (!mp->bTimerIrqActive && !(mp->chips[0].sy6522.IFR & IxR_TIMER1)) {
     static uint64_t last_60hz = 0;
-    if (g_nCumulativeCycles - last_60hz > static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
+    if (g_nCumulativeCycles - last_60hz >
+        static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
       last_60hz = g_nCumulativeCycles;
       MB_Update_Instance(mp);
     }
@@ -499,17 +553,18 @@ static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   // End of frame logic
 }
 
-Peripheral_t g_mockingboard_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "Mockingboard",
-    0xFE,  // Slots 1-7
-    MB_ABI_Init,
-    MB_ABI_Reset,
-    MB_ABI_Shutdown,
-    MB_ABI_Think,
-    MB_ABI_OnVBlank, 
-    nullptr, nullptr, nullptr, nullptr
-};
+Peripheral_t g_mockingboard_peripheral = {LINAPPLE_ABI_VERSION,
+                                          "Mockingboard",
+                                          0xFE,  // Slots 1-7
+                                          MB_ABI_Init,
+                                          MB_ABI_Reset,
+                                          MB_ABI_Shutdown,
+                                          MB_ABI_Think,
+                                          MB_ABI_OnVBlank,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr};
 
 extern "C" void Register_Mockingboard() {
   Peripheral_Register_Builtin(&g_mockingboard_peripheral);
@@ -522,3 +577,4 @@ EXPORT_PERIPHERAL(g_mockingboard_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)

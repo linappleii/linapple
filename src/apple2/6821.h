@@ -15,12 +15,12 @@ typedef struct PiaWriteHandler_tag {
 
 typedef struct Pia6821_tag {
   // Internal Registers
-  uint8_t ora;  // Output Register A
-  uint8_t orb;  // Output Register B
-  uint8_t ddra; // Data Direction Register A
-  uint8_t ddrb; // Data Direction Register B
-  uint8_t cra;  // Control Register A
-  uint8_t crb;  // Control Register B
+  uint8_t ora;   // Output Register A
+  uint8_t orb;   // Output Register B
+  uint8_t ddra;  // Data Direction Register A
+  uint8_t ddrb;  // Data Direction Register B
+  uint8_t cra;   // Control Register A
+  uint8_t crb;   // Control Register B
 
   // External Line States (Inputs)
   uint8_t port_a_in;
@@ -31,8 +31,8 @@ typedef struct Pia6821_tag {
   bool cb2_in;
 
   // Internal State
-  uint8_t oca2; // Output CA2 state
-  uint8_t ocb2; // Output CB2 state
+  uint8_t oca2;  // Output CA2 state
+  uint8_t ocb2;  // Output CB2 state
   uint8_t irq_a_state;
   uint8_t irq_b_state;
 
@@ -70,4 +70,4 @@ void Pia6821_SetListenerCB2(Pia6821* p, void* objTo, PiaOutputCallback func);
 void Pia6821_SetListenerIRQA(Pia6821* p, void* objTo, PiaOutputCallback func);
 void Pia6821_SetListenerIRQB(Pia6821* p, void* objTo, PiaOutputCallback func);
 
-#endif // PIA6821_H
+#endif  // PIA6821_H
