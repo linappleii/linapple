@@ -1,7 +1,7 @@
 #include "apple2/formats/IieDriver.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -42,7 +42,8 @@ struct IieInstance {
   auto operator=(IieInstance&&) -> IieInstance& = delete;
 };
 
-static void IieConvertSectorOrder(const uint8_t* sourceorder, uint8_t* sector_order) {
+static void IieConvertSectorOrder(const uint8_t* sourceorder,
+                                  uint8_t* sector_order) {
   for (int loop = 0; loop < SECTORS_PER_TRACK_16; ++loop) {
     uint8_t found = 0xFF;
     for (int loop2 = 0; loop2 < SECTORS_PER_TRACK_16; ++loop2) {
@@ -57,7 +58,7 @@ static void IieConvertSectorOrder(const uint8_t* sourceorder, uint8_t* sector_or
 }
 
 static auto IieProbe(const uint8_t* header, size_t header_size,
-                            uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+                     uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)file_size;
   (void)ext_hint;
 
@@ -72,7 +73,7 @@ static auto IieProbe(const uint8_t* header, size_t header_size,
 }
 
 static auto IieOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) -> DiskError_e {
+                    bool* out_os_readonly, void** out_instance) -> DiskError_e {
   (void)file_offset;
 
   auto* instance = new IieInstance();
@@ -138,12 +139,14 @@ static void IieReadTrack(void* instance, int track, int phase,
       *nibbles_out = 0;
       return;
     }
-    if (fread(ii->work_buffer.data(), 1, DOS_TRACK_SIZE, ii->file) != DOS_TRACK_SIZE) {
+    if (fread(ii->work_buffer.data(), 1, DOS_TRACK_SIZE, ii->file) !=
+        DOS_TRACK_SIZE) {
       *nibbles_out = 0;
       return;
     }
-    *nibbles_out = static_cast<int>(GCR_NibblizeTrackCustomOrder(
-        ii->work_buffer.data(), trackImageBuffer, ii->sector_order.data(), track));
+    *nibbles_out = static_cast<int>(
+        GCR_NibblizeTrackCustomOrder(ii->work_buffer.data(), trackImageBuffer,
+                                     ii->sector_order.data(), track));
   } else {
     // Pre-nibblized variant
     uint16_t nib_count = *reinterpret_cast<uint16_t*>(
@@ -165,8 +168,8 @@ static void IieReadTrack(void* instance, int track, int phase,
       offset += prev_nib_count;
     }
     if (fseek(ii->file, static_cast<long>(offset), SEEK_SET) != 0) {
-        *nibbles_out = 0;
-        return;
+      *nibbles_out = 0;
+      return;
     }
     *nibbles_out =
         static_cast<int>(fread(trackImageBuffer, 1, nib_count, ii->file));
@@ -183,7 +186,7 @@ static void IieWriteTrack(void* instance, int track, int phase,
   // Write is intentionally not implemented for IIE
 }
 
-} // namespace
+}  // namespace
 
 extern "C" const DiskFormatDriver_t g_iie_driver = {
     LINAPPLE_DISK_ABI_VERSION,

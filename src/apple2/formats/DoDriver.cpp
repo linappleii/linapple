@@ -1,7 +1,7 @@
 #include "apple2/formats/DoDriver.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -48,7 +48,7 @@ struct DoInstance {
 }  // namespace
 
 static auto DoProbe(const uint8_t* header, size_t header_size,
-                           uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+                    uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)header;
   (void)ext_hint;
   if (file_size < MIN_140K_DISK_SIZE || file_size > MAX_140K_DISK_SIZE) {
@@ -72,7 +72,8 @@ static auto DoProbe(const uint8_t* header, size_t header_size,
   }
 
   // ProDOS bitmap chain check as secondary heuristic
-  if (header_size >= static_cast<size_t>((5 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
+  if (header_size >=
+      static_cast<size_t>((5 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
     bool mismatch = false;
     for (int loop = 2; loop <= 5; ++loop) {
       uint16_t next = *reinterpret_cast<const uint16_t*>(
@@ -94,7 +95,7 @@ static auto DoProbe(const uint8_t* header, size_t header_size,
 }
 
 static auto DoOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) -> DiskError_e {
+                   bool* out_os_readonly, void** out_instance) -> DiskError_e {
   auto* instance = new DoInstance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -141,7 +142,8 @@ static void DoReadTrack(void* instance, int track, int phase,
     *nibbles_out = 0;
     return;
   }
-  if (fread(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file) != DOS_TRACK_SIZE) {
+  if (fread(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file) !=
+      DOS_TRACK_SIZE) {
     *nibbles_out = 0;
     return;
   }
@@ -151,7 +153,8 @@ static void DoReadTrack(void* instance, int track, int phase,
   *nibbles_out = static_cast<int>(nibbles);
 
   if (!enhancedisk) {
-    GCR_SkewTrack(di->work_buffer.data(), track, *nibbles_out, trackImageBuffer);
+    GCR_SkewTrack(di->work_buffer.data(), track, *nibbles_out,
+                  trackImageBuffer);
   }
 }
 
@@ -162,8 +165,8 @@ static void DoWriteTrack(void* instance, int track, int phase,
   if (di->os_readonly || track < 0 || track >= TRACKS) return;
 
   std::fill(di->work_buffer.begin(), di->work_buffer.end(), 0);
-  GCR_DenibblizeTrack(di->work_buffer.data(), const_cast<uint8_t*>(trackImage), true,
-                      nibbles);
+  GCR_DenibblizeTrack(di->work_buffer.data(), const_cast<uint8_t*>(trackImage),
+                      true, nibbles);
   if (fseek(di->file,
             static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
             SEEK_SET) == 0) {

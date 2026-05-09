@@ -2,6 +2,7 @@
 #define DISK_H
 
 #include <cstdint>
+
 #include "apple2/DiskCommands.h"
 #include "core/Common.h"
 #include "core/Peripheral.h"

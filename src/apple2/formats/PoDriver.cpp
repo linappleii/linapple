@@ -1,7 +1,7 @@
 #include "apple2/formats/PoDriver.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -47,7 +47,7 @@ struct PoInstance {
 }  // namespace
 
 static auto PoProbe(const uint8_t* header, size_t header_size,
-                           uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+                    uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)header;
   (void)header_size;
   (void)ext_hint;
@@ -61,7 +61,8 @@ static auto PoProbe(const uint8_t* header, size_t header_size,
   // ProDOS directory chain check on track 0, starting at block 2 (Sectors 4,5
   // of Track 0). A typical ProDOS directory header at block 2, sector 4 (0x400)
   // has next/prev pointers.
-  if (header_size >= static_cast<size_t>((2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
+  if (header_size >=
+      static_cast<size_t>((2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
     uint16_t prev = *reinterpret_cast<const uint16_t*>(
         header + (2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE);
     uint16_t next = *reinterpret_cast<const uint16_t*>(
@@ -93,7 +94,7 @@ static auto PoProbe(const uint8_t* header, size_t header_size,
 }
 
 static auto PoOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) -> DiskError_e {
+                   bool* out_os_readonly, void** out_instance) -> DiskError_e {
   auto* instance = new PoInstance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -135,12 +136,13 @@ static void PoReadTrack(void* instance, int track, int phase,
   }
   std::fill(di->work_buffer.begin(), di->work_buffer.end(), 0);
   if (fseek(di->file,
-        static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
-        SEEK_SET) != 0) {
+            static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
+            SEEK_SET) != 0) {
     *nibbles_out = 0;
     return;
   }
-  if (fread(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file) != DOS_TRACK_SIZE) {
+  if (fread(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file) !=
+      DOS_TRACK_SIZE) {
     *nibbles_out = 0;
     return;
   }
@@ -150,7 +152,8 @@ static void PoReadTrack(void* instance, int track, int phase,
   *nibbles_out = static_cast<int>(nibbles);
 
   if (!enhancedisk) {
-    GCR_SkewTrack(di->work_buffer.data(), track, *nibbles_out, trackImageBuffer);
+    GCR_SkewTrack(di->work_buffer.data(), track, *nibbles_out,
+                  trackImageBuffer);
   }
 }
 
@@ -161,11 +164,11 @@ static void PoWriteTrack(void* instance, int track, int phase,
   if (di->os_readonly || track < 0 || track >= TRACKS) return;
 
   std::fill(di->work_buffer.begin(), di->work_buffer.end(), 0);
-  GCR_DenibblizeTrack(di->work_buffer.data(), const_cast<uint8_t*>(trackImage), false,
-                      nibbles);
+  GCR_DenibblizeTrack(di->work_buffer.data(), const_cast<uint8_t*>(trackImage),
+                      false, nibbles);
   if (fseek(di->file,
-        static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
-        SEEK_SET) == 0) {
+            static_cast<long>(di->macbinary_offset + (track * DOS_TRACK_SIZE)),
+            SEEK_SET) == 0) {
     (void)fwrite(di->work_buffer.data(), 1, DOS_TRACK_SIZE, di->file);
   }
 }

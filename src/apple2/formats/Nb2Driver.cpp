@@ -43,7 +43,7 @@ static DiskProbe_e Nb2Probe(const uint8_t* header, size_t header_size,
 }
 
 static DiskError_e Nb2Open(const char* path, uint32_t file_offset,
-                            bool* out_os_readonly, void** out_instance) {
+                           bool* out_os_readonly, void** out_instance) {
   auto* instance = new Nb2Instance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {

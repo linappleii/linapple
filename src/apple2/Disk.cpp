@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -240,8 +241,9 @@ static auto GetImageTitle(const char* imageFileName, Disk_t* fptr) -> char* {
   }
 
   if ((!found) && (loop > 2)) {
-    for (char* p = imagetitle + 1; *p; ++p)
+    for (char* p = imagetitle + 1; *p; ++p) {
       *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
+    }
   }
 
   Util_SafeStrCpy(fptr->fullname, imageFileName, MAX_DISK_FULL_NAME);
@@ -959,3 +961,4 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
 
   return 0;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

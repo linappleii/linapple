@@ -1,7 +1,7 @@
 #include "apple2/formats/Woz2Driver.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,11 +38,12 @@ struct Woz2Instance {
 };
 
 static auto FindChunk(const uint8_t* header, const char* id) -> uint32_t {
-  for (uint32_t i = 12; i < WOZ2_HEADER_SIZE - 8; ) {
+  for (uint32_t i = 12; i < WOZ2_HEADER_SIZE - 8;) {
     if (memcmp(&header[i], id, 4) == 0) {
       return i + 8;
     }
-    uint32_t chunk_size = header[i+4] | (header[i+5] << 8) | (header[i+6] << 16) | (header[i+7] << 24);
+    uint32_t chunk_size = header[i + 4] | (header[i + 5] << 8) |
+                          (header[i + 6] << 16) | (header[i + 7] << 24);
     i += 8 + chunk_size;
   }
   return 0;
@@ -110,7 +111,7 @@ static auto Woz2Open(const char* path, uint32_t file_offset,
   }
 
   // WOZ 2.0 INFO Data: offset 0=Version, 1=DiskType
-  if (instance->header[info_ptr + 1] == 2) { 
+  if (instance->header[info_ptr + 1] == 2) {
     fclose(instance->file);
     instance->file = nullptr;
     delete instance;
@@ -132,11 +133,12 @@ static auto Woz2IsWriteProtected(void* instance) -> bool {
 }
 
 static void Woz2ReadTrack(void* instance, int track, int phase,
-                         uint8_t* trackImageBuffer, int* nibbles_out) {
+                          uint8_t* trackImageBuffer, int* nibbles_out) {
   (void)track;
   auto* wi = reinterpret_cast<Woz2Instance*>(instance);
 
-  // 'phase' from Disk.cpp is 0-79 (half-tracks). TMAP needs 0-159 (quarter-tracks).
+  // 'phase' from Disk.cpp is 0-79 (half-tracks). TMAP needs 0-159
+  // (quarter-tracks).
   uint32_t tmap_index = static_cast<uint32_t>(phase) * 2;
   if (tmap_index >= 160) {
     *nibbles_out = 0;
@@ -169,9 +171,13 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
     return;
   }
 
-  uint32_t byte_count = static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE;
+  uint32_t byte_count =
+      static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE;
   std::vector<uint8_t> buffer(byte_count);
-  fseek(wi->file, static_cast<long>(static_cast<uint32_t>(starting_block) * WOZ2_DATA_BLOCK_SIZE), SEEK_SET);
+  fseek(wi->file,
+        static_cast<long>(static_cast<uint32_t>(starting_block) *
+                          WOZ2_DATA_BLOCK_SIZE),
+        SEEK_SET);
   if (fread(buffer.data(), 1, byte_count, wi->file) != byte_count) {
     *nibbles_out = 0;
     return;
