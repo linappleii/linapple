@@ -74,6 +74,7 @@ struct MockingboardPeripheral_t {
   uint64_t nMB_InActiveCycleCount = 0;
   bool bMB_RegAccessedFlag = false;
   bool bMB_Active = true;
+  bool bTimerIrqActive = false;
   eSOUNDCARDTYPE type = SC_MOCKINGBOARD;
   bool phasor_native = false;
   HostInterface_t* host = nullptr;
@@ -97,7 +98,7 @@ uint32_t g_uTimer1IrqCount = 0;
 
 static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   SY6522_AY8910* pMB = &mp->chips[chip_idx];
-  if ((pMB->nAY8910Number & 1) != SY6522_DEVICE_A) {
+  if (chip_idx != SY6522_DEVICE_A) {
     return;
   }
   if ((pMB->sy6522.IER & IxR_TIMER1) == 0x00) {
@@ -111,14 +112,15 @@ static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
 
   pMB->nTimerStatus = 1;
   mp->n6522TimerPeriod = nPeriod;
-  g_bMBTimerIrqActive = true;
-  mp->nMBTimerDevice = pMB->nAY8910Number;
+  mp->bTimerIrqActive = true;
+  g_bMBTimerIrqActive = true; // Legacy support
+  mp->nMBTimerDevice = static_cast<uint16_t>(chip_idx);
 }
 
 static void StopTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   mp->chips[chip_idx].nTimerStatus = 0;
-  g_bMBTimerIrqActive = false;
-  mp->nMBTimerDevice = 0;
+  mp->bTimerIrqActive = false;
+  g_bMBTimerIrqActive = false; // Legacy support
 }
 
 static void UpdateIFR(MockingboardPeripheral_t* mp, int chip_idx) {
@@ -134,17 +136,21 @@ static void UpdateIFR(MockingboardPeripheral_t* mp, int chip_idx) {
     bIRQ |= i.sy6522.IFR & VIA_IFR_IRQ_FLAG;
   }
 
-  if (bIRQ) {
-    CpuIrqAssert(IS_6522);
+  if (mp->host && mp->host->AssertIrq) {
+    mp->host->AssertIrq(mp->slot, bIRQ != 0);
   } else {
-    CpuIrqDeassert(IS_6522);
+    if (bIRQ) {
+      CpuIrqAssert(IS_6522);
+    } else {
+      CpuIrqDeassert(IS_6522);
+    }
   }
 }
 
 static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
                                   uint8_t nValue, uint8_t nAYDevice) {
   SY6522_AY8910* pMB = &mp->chips[nDevice];
-  int ay_chip_global_idx = (mp->slot == 4 ? 0 : 2) + nDevice; // Legacy remapping
+  int ay_chip_global_idx = (mp->slot == 4 ? 0 : 2) + nDevice;
 
   if ((nValue & 4) == 0) {
     AY8910_reset(ay_chip_global_idx);
@@ -262,11 +268,64 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   return 0;
 }
 
+static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
+  (void)mp;
+  // Audio generation will be refactored in #314
+}
+
+static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExecutedCycles) {
+  if (mp->type == SC_NONE) return;
+
+  uint64_t uCycles = g_nCumulativeCycles - mp->uLastCumulativeCycles;
+  mp->uLastCumulativeCycles = g_nCumulativeCycles;
+
+  while (uCycles > 0) {
+    uint16_t nClocks = (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
+    uCycles -= nClocks;
+
+    for (int i = 0; i < CHIPS_PER_CARD; i++) {
+      SY6522_AY8910* pMB = &mp->chips[i];
+      uint16_t OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
+      pMB->sy6522.TIMER1_COUNTER.w -= nClocks;
+      pMB->sy6522.TIMER2_COUNTER.w -= nClocks;
+
+      bool bTimer1Underflow = (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
+      if (bTimer1Underflow && (mp->nMBTimerDevice == i) && mp->bTimerIrqActive) {
+        g_uTimer1IrqCount++;
+        pMB->sy6522.IFR |= IxR_TIMER1;
+        UpdateIFR(mp, i);
+
+        if ((pMB->sy6522.ACR & RUNMODE) == RM_ONESHOT) {
+          StopTimer(mp, i);
+        } else {
+          pMB->sy6522.TIMER1_COUNTER.w = pMB->sy6522.TIMER1_LATCH.w;
+          StartTimer(mp, i);
+        }
+        MB_Update_Instance(mp);
+      }
+    }
+  }
+
+  if (!mp->bMB_RegAccessedFlag) {
+    if (!mp->nMB_InActiveCycleCount) {
+      mp->nMB_InActiveCycleCount = g_nCumulativeCycles;
+    } else if (g_nCumulativeCycles - mp->nMB_InActiveCycleCount >
+               static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
+      mp->bMB_Active = false;
+    }
+  } else {
+    mp->nMB_InActiveCycleCount = 0;
+    mp->bMB_RegAccessedFlag = false;
+    mp->bMB_Active = true;
+  }
+}
+
 static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
                        uint8_t val, uint32_t cycles_left) -> uint8_t {
   (void)pc; (void)write; (void)val;
   if (!instance) return MemReadFloatingBus(cycles_left);
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  MB_UpdateCycles_Instance(mp, cycles_left);
 
   uint8_t nOffset = addr & 0xff;
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
@@ -282,6 +341,7 @@ static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr, uint8_t writ
   (void)pc; (void)write;
   if (!instance) return 0;
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  MB_UpdateCycles_Instance(mp, cycles_left);
 
   uint8_t nOffset = addr & 0xff;
   if (nOffset <= (SY6522A_Offset + 0x0F)) {
@@ -330,8 +390,9 @@ static void MB_ABI_Shutdown(void* instance) {
 }
 
 static void MB_ABI_Think(void* instance, uint32_t cycles) {
-  (void)instance; (void)cycles;
-  // Cycle-accurate timer updates will be implemented in #313
+  if (!instance) return;
+  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  MB_UpdateCycles_Instance(mp, cycles);
 }
 
 Peripheral_t g_mockingboard_peripheral = {
