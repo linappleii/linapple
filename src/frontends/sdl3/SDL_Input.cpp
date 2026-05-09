@@ -5,6 +5,7 @@
 #include "apple2/KeyboardCommands.h"
 #include "apple2/Joystick.h"
 #include "apple2/JoystickCommands.h"
+#include "apple2/MouseCommands.h"
 #include "apple2/Video.h"
 #include "apple2/SoundCore.h"
 #include "apple2/MouseInterface.h"
@@ -12,6 +13,7 @@
 #include "Debugger/Debug.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Common_Globals.h"
 
 // Forward declarations for functions still in Frame.cpp
 extern void ProcessButtonClick(int button, int mod);
@@ -166,12 +168,8 @@ void SDL_HandleEvent(SDL_Event *e) {
             if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               SetUsingCursor(false);
             } else {
-              if (Mouse_Active()) {
-                Mouse_SetButton(BUTTON0, BUTTON_DOWN);
-              } else {
-                JoystickButtonPayload_t payload = {0, true};
-                Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
-              }
+              MouseButtonPayload_t payload = {0, true};
+              Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
             }
           }
           else
@@ -183,12 +181,8 @@ void SDL_HandleEvent(SDL_Event *e) {
       }
       else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON1, BUTTON_DOWN);
-          } else {
-            JoystickButtonPayload_t payload = {1, true};
-            Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
-          }
+          MouseButtonPayload_t payload = {1, true};
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
         }
       }
 
@@ -198,21 +192,13 @@ void SDL_HandleEvent(SDL_Event *e) {
     case SDL_EVENT_MOUSE_BUTTON_UP:
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON0, BUTTON_UP);
-          } else {
-            JoystickButtonPayload_t payload = {0, false};
-            Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
-          }
+          MouseButtonPayload_t payload = {0, false};
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
-          if (Mouse_Active()) {
-            Mouse_SetButton(BUTTON1, BUTTON_UP);
-          } else {
-            JoystickButtonPayload_t payload = {1, false};
-            Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
-          }
+          MouseButtonPayload_t payload = {1, false};
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
         }
       }
       break;
@@ -221,16 +207,8 @@ void SDL_HandleEvent(SDL_Event *e) {
       x_local = static_cast<int>(e->motion.x);
       y_local = static_cast<int>(e->motion.y);
       if (usingcursor) {
-        if (Mouse_Active()) {
-          Mouse_SetPosition(x_local, VIEWPORTCX - 4, y_local, VIEWPORTCY - 4);
-        } else {
-          int x = (x_local * 255) / (VIEWPORTCX - 4);
-          int y = (y_local * 255) / (VIEWPORTCY - 4);
-          JoystickAxisPayload_t px = {0, 0, static_cast<uint8_t>(x)};
-          Peripheral_Command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
-          JoystickAxisPayload_t py = {0, 1, static_cast<uint8_t>(y)};
-          Peripheral_Command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
-        }
+        MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local, VIEWPORTCY - 4};
+        Peripheral_Command(0, MOUSE_CMD_SET_POS, &payload, sizeof(payload));
       }
       break;
 
@@ -239,6 +217,5 @@ void SDL_HandleEvent(SDL_Event *e) {
         ProcessButtonClick(BTN_RUN, SDL_KMOD_LCTRL);
       }
       break;
-
   }
 }

@@ -6,6 +6,7 @@
 // the core C interface and maintain peripheral singletons.
 
 #include "apple2/MouseInterface.h"
+#include "apple2/MouseCommands.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -346,6 +347,34 @@ static void Mouse_ABI_OnVBlank(void* instance, bool vblank) {
   }
 }
 
+static auto Mouse_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
+                               size_t size) -> PeripheralStatus {
+  if (!instance || !data) return PERIPHERAL_ERROR;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+
+  switch (static_cast<MouseCmd_e>(cmd_id)) {
+    case MOUSE_CMD_SET_POS: {
+      if (size < sizeof(MousePosPayload_t)) return PERIPHERAL_ERROR;
+      const auto* p = static_cast<const MousePosPayload_t*>(data);
+      mp->logic.m_iRangeX = static_cast<uint32_t>(p->x_range);
+      mp->logic.m_iRangeY = static_cast<uint32_t>(p->y_range);
+      Mouse_SetPositionInternal(mp, p->x, p->y);
+      Mouse_OnMouseEvent(mp);
+      return PERIPHERAL_OK;
+    }
+    case MOUSE_CMD_SET_BUTTON: {
+      if (size < sizeof(MouseButtonPayload_t)) return PERIPHERAL_ERROR;
+      const auto* p = static_cast<const MouseButtonPayload_t*>(data);
+      if (p->button < 2) {
+        mp->logic.m_bButtons[p->button] = p->down;
+        Mouse_OnMouseEvent(mp);
+      }
+      return PERIPHERAL_OK;
+    }
+  }
+  return PERIPHERAL_ERROR;
+}
+
 Peripheral_t g_mouse_peripheral = {
     LINAPPLE_ABI_VERSION,
     "Mouse Interface",
@@ -357,7 +386,7 @@ Peripheral_t g_mouse_peripheral = {
     Mouse_ABI_OnVBlank,
     nullptr,  // save_state
     nullptr,  // load_state
-    nullptr,  // command
+    Mouse_ABI_Command,
     nullptr   // query
 };
 
@@ -540,16 +569,14 @@ void Mouse_SetSlotRom() { Mouse_SetSlotRom_Instance(active_mouse_instance); }
 
 void Mouse_SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
   if (!active_mouse_instance) return;
-  active_mouse_instance->logic.m_iRangeX = static_cast<uint32_t>(xrange);
-  active_mouse_instance->logic.m_iRangeY = static_cast<uint32_t>(yrange);
-  Mouse_SetPositionInternal(active_mouse_instance, xvalue, yvalue);
-  Mouse_OnMouseEvent(active_mouse_instance);
+  MousePosPayload_t p = {xvalue, xrange, yvalue, yrange};
+  Mouse_ABI_Command(active_mouse_instance, MOUSE_CMD_SET_POS, &p, sizeof(p));
 }
 
 void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State) {
   if (!active_mouse_instance) return;
-  active_mouse_instance->logic.m_bButtons[Button] = State == BUTTON_DOWN;
-  Mouse_OnMouseEvent(active_mouse_instance);
+  MouseButtonPayload_t p = {static_cast<uint8_t>(Button), State == BUTTON_DOWN};
+  Mouse_ABI_Command(active_mouse_instance, MOUSE_CMD_SET_BUTTON, &p, sizeof(p));
 }
 
 auto Mouse_Active() -> bool {
