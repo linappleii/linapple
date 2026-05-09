@@ -2,12 +2,15 @@
  * RawHdDriver.cpp - LinApple Raw Harddisk Format Driver
  */
 
+#include <sys/stat.h>
+
 #include <cstdio>
 #include <cstring>
-#include <sys/stat.h>
+
 #include "apple2/HarddiskFormatDriver.h"
 
-// NOLINTBEGIN(cppcoreguidelines-owning-memory, modernize-use-trailing-return-type)
+// NOLINTBEGIN(cppcoreguidelines-owning-memory,
+// modernize-use-trailing-return-type)
 
 namespace {
 struct RawHdInstance {
@@ -26,17 +29,19 @@ struct RawHdInstance {
   RawHdInstance(const RawHdInstance&) = delete;
   RawHdInstance& operator=(const RawHdInstance&) = delete;
 };
-} // namespace
+}  // namespace
 
 static HarddiskProbe_e RawHd_Probe(const uint8_t* header, size_t header_size,
-                                  uint32_t file_size, const char* ext_hint) {
+                                   uint32_t file_size, const char* ext_hint) {
   (void)header;
   (void)header_size;
 
   // Raw images should be a multiple of 512 bytes
   if (file_size > 0 && (file_size % 512) == 0) {
-    if (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0 || strcmp(ext_hint, ".2mg") != 0) {
-      // .2mg is handled by another driver (once implemented), so we avoid claiming it definitely
+    if (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0 ||
+        strcmp(ext_hint, ".2mg") != 0) {
+      // .2mg is handled by another driver (once implemented), so we avoid
+      // claiming it definitely
       return HARDDISK_PROBE_POSSIBLE;
     }
   }
@@ -44,9 +49,10 @@ static HarddiskProbe_e RawHd_Probe(const uint8_t* header, size_t header_size,
   return HARDDISK_PROBE_NO;
 }
 
-static HarddiskError_e RawHd_Open(const char* path, bool* out_os_readonly, void** out_instance) {
+static HarddiskError_e RawHd_Open(const char* path, bool* out_os_readonly,
+                                  void** out_instance) {
   auto* instance = new RawHdInstance();
-  
+
   instance->file = fopen(path, "r+b");
   if (instance->file) {
     instance->os_readonly = false;
@@ -80,7 +86,8 @@ static bool RawHd_IsWriteProtected(void* instance) {
   return ri->os_readonly;
 }
 
-static HarddiskError_e RawHd_ReadBlock(void* instance, uint32_t block_num, uint8_t* buffer) {
+static HarddiskError_e RawHd_ReadBlock(void* instance, uint32_t block_num,
+                                       uint8_t* buffer) {
   auto* ri = reinterpret_cast<RawHdInstance*>(instance);
   if (block_num >= ri->total_blocks) {
     return HARDDISK_ERR_IO;
@@ -97,7 +104,8 @@ static HarddiskError_e RawHd_ReadBlock(void* instance, uint32_t block_num, uint8
   return HARDDISK_ERR_NONE;
 }
 
-static HarddiskError_e RawHd_WriteBlock(void* instance, uint32_t block_num, const uint8_t* buffer) {
+static HarddiskError_e RawHd_WriteBlock(void* instance, uint32_t block_num,
+                                        const uint8_t* buffer) {
   auto* ri = reinterpret_cast<RawHdInstance*>(instance);
   if (ri->os_readonly) {
     return HARDDISK_ERR_READ_ONLY;
@@ -108,11 +116,11 @@ static HarddiskError_e RawHd_WriteBlock(void* instance, uint32_t block_num, cons
     fseek(ri->file, 0, SEEK_END);
     uint32_t current_blocks = static_cast<uint32_t>(ftell(ri->file) / 512);
     if (block_num > current_blocks) {
-       // Fill gap with zeros
-       uint8_t zero[512] = {0};
-       for (uint32_t i = current_blocks; i < block_num; ++i) {
-         fwrite(zero, 1, 512, ri->file);
-       }
+      // Fill gap with zeros
+      uint8_t zero[512] = {0};
+      for (uint32_t i = current_blocks; i < block_num; ++i) {
+        fwrite(zero, 1, 512, ri->file);
+      }
     }
     ri->total_blocks = block_num + 1;
   }
@@ -143,7 +151,7 @@ extern "C" HarddiskFormatDriver_t g_raw_hd_driver = {
     RawHd_IsWriteProtected,
     RawHd_ReadBlock,
     RawHd_WriteBlock,
-    RawHd_GetTotalBlocks
-};
+    RawHd_GetTotalBlocks};
 
-// NOLINTEND(cppcoreguidelines-owning-memory, modernize-use-trailing-return-type)
+// NOLINTEND(cppcoreguidelines-owning-memory,
+// modernize-use-trailing-return-type)

@@ -37,6 +37,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/CPU.h"
 #include "apple2/DiskCommands.h"
 #include "apple2/DiskFTP.h"
+#include "apple2/HarddiskCommands.h"
+#include "apple2/HarddiskFormatDriver.h"
+#include "apple2/HarddiskLoader.h"
 #include "apple2/Memory.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
@@ -45,9 +48,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Peripheral.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "apple2/HarddiskFormatDriver.h"
-#include "apple2/HarddiskLoader.h"
-#include "apple2/HarddiskCommands.h"
 
 static const char Hddrvr_dat[] =
     "\xA9\x20\xA9\x00\xA9\x03\xA9\x3C\xA9\x00\x8D\xF2\xC0\xA9\x70\x8D"
@@ -131,8 +131,8 @@ void HD_ResetStatus() {
   if (g_pHDInstance) g_pHDInstance->status = DISK_STATUS_OFF;
 }
 
-static void GetImageTitle(const char* imageFileName, HarddiskDrive_t* pHardDrive)
-{
+static void GetImageTitle(const char* imageFileName,
+                          HarddiskDrive_t* pHardDrive) {
   char imagetitle[128];
   const char* startpos = imageFileName;
 
@@ -163,14 +163,15 @@ static void GetImageTitle(const char* imageFileName, HarddiskDrive_t* pHardDrive
   Util_SafeStrCpy(pHardDrive->hd_imagename, imagetitle, 15);
 }
 
-static void NotifyInvalidImage(const char *filename) { printf("HDD: Could not load %s\n", filename); }
+static void NotifyInvalidImage(const char* filename) {
+  printf("HDD: Could not load %s\n", filename);
+}
 
 static auto IsDriveValid(const int iDrive) -> bool {
   return (iDrive >= 0 && iDrive < HARDDISK_DRIVE_COUNT);
 }
 
-static void HD_CleanupDrive(HarddiskDrive_t* pDrive)
-{
+static void HD_CleanupDrive(HarddiskDrive_t* pDrive) {
   if (pDrive->driver && pDrive->driver_instance) {
     pDrive->driver->close(pDrive->driver_instance);
   }
@@ -184,8 +185,9 @@ static void HD_CleanupDrive(HarddiskDrive_t* pDrive)
   pDrive->last_error = HARDDISK_ERR_NONE;
 }
 
-static auto HD_Insert_Internal(HarddiskPeripheral_t* hp, int drive, const char* imageFileName,
-                                bool writeProtected) -> HarddiskError_e {
+static auto HD_Insert_Internal(HarddiskPeripheral_t* hp, int drive,
+                               const char* imageFileName, bool writeProtected)
+    -> HarddiskError_e {
   if (!IsDriveValid(drive)) return HARDDISK_ERR_IO;
   HarddiskDrive_t* pDrive = &hp->drives[drive];
 
@@ -194,7 +196,9 @@ static auto HD_Insert_Internal(HarddiskPeripheral_t* hp, int drive, const char* 
   }
 
   pDrive->user_write_protected = writeProtected;
-  HarddiskError_e error = HarddiskLoader_Open(imageFileName, &pDrive->os_readonly, &pDrive->driver, &pDrive->driver_instance);
+  HarddiskError_e error =
+      HarddiskLoader_Open(imageFileName, &pDrive->os_readonly, &pDrive->driver,
+                          &pDrive->driver_instance);
 
   pDrive->last_error = error;
 
@@ -215,10 +219,12 @@ static auto HD_Insert_Internal(HarddiskPeripheral_t* hp, int drive, const char* 
   return error;
 }
 
-static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
-                             size_t size) -> PeripheralStatus {
+                           size_t size) -> PeripheralStatus {
   if (!instance) return PERIPHERAL_ERROR;
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
 
@@ -236,14 +242,16 @@ static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
       HD_CleanupDrive(&hp->drives[c->drive]);
       if (hp->host) {
-        const char* key = (c->drive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
+        const char* key =
+            (c->drive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
         hp->host->SetConfig("Preferences", key, "");
         hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
       }
       return PERIPHERAL_OK;
     }
     case HARDDISK_CMD_SET_PROTECT: {
-      if (!data || size < sizeof(HarddiskSetProtectCmd_t)) return PERIPHERAL_ERROR;
+      if (!data || size < sizeof(HarddiskSetProtectCmd_t))
+        return PERIPHERAL_ERROR;
       auto* c = static_cast<const HarddiskSetProtectCmd_t*>(data);
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
       hp->drives[c->drive].user_write_protected = (c->write_protected != 0);
@@ -257,8 +265,8 @@ static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
   }
 }
 
-static auto HD_ABI_Query(void* instance, uint32_t cmd, void* data,
-                           size_t* size) -> PeripheralStatus {
+static auto HD_ABI_Query(void* instance, uint32_t cmd, void* data, size_t* size)
+    -> PeripheralStatus {
   if (!instance || !size) return PERIPHERAL_ERROR;
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
 
@@ -272,15 +280,23 @@ static auto HD_ABI_Query(void* instance, uint32_t cmd, void* data,
 
     s->drive0_last_error = static_cast<int32_t>(hp->drives[0].last_error);
     s->drive0_loaded = hp->drives[0].hd_imageloaded ? 1 : 0;
-    s->drive0_write_protected = (hp->drives[0].user_write_protected || hp->drives[0].os_readonly) ? 1 : 0;
-    Util_SafeStrCpy(s->drive0_name, hp->drives[0].hd_imagename, HARDDISK_STATUS_NAME_MAX);
-    Util_SafeStrCpy(s->drive0_full_path, hp->drives[0].hd_fullname, HARDDISK_STATUS_PATH_MAX);
+    s->drive0_write_protected =
+        (hp->drives[0].user_write_protected || hp->drives[0].os_readonly) ? 1
+                                                                          : 0;
+    Util_SafeStrCpy(s->drive0_name, hp->drives[0].hd_imagename,
+                    HARDDISK_STATUS_NAME_MAX);
+    Util_SafeStrCpy(s->drive0_full_path, hp->drives[0].hd_fullname,
+                    HARDDISK_STATUS_PATH_MAX);
 
     s->drive1_last_error = static_cast<int32_t>(hp->drives[1].last_error);
     s->drive1_loaded = hp->drives[1].hd_imageloaded ? 1 : 0;
-    s->drive1_write_protected = (hp->drives[1].user_write_protected || hp->drives[1].os_readonly) ? 1 : 0;
-    Util_SafeStrCpy(s->drive1_name, hp->drives[1].hd_imagename, HARDDISK_STATUS_NAME_MAX);
-    Util_SafeStrCpy(s->drive1_full_path, hp->drives[1].hd_fullname, HARDDISK_STATUS_PATH_MAX);
+    s->drive1_write_protected =
+        (hp->drives[1].user_write_protected || hp->drives[1].os_readonly) ? 1
+                                                                          : 0;
+    Util_SafeStrCpy(s->drive1_name, hp->drives[1].hd_imagename,
+                    HARDDISK_STATUS_NAME_MAX);
+    Util_SafeStrCpy(s->drive1_full_path, hp->drives[1].hd_fullname,
+                    HARDDISK_STATUS_PATH_MAX);
 
     *size = sizeof(HarddiskStatus_t);
     return PERIPHERAL_OK;
@@ -310,10 +326,12 @@ static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
   // Auto-load images from config if present
   char path[512];
-  if (host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) && path[0]) {
+  if (host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) &&
+      path[0]) {
     HD_Insert_Internal(hp, 0, path, false);
   }
-  if (host->GetConfig("Preferences", "Harddisk Image 2", path, sizeof(path)) && path[0]) {
+  if (host->GetConfig("Preferences", "Harddisk Image 2", path, sizeof(path)) &&
+      path[0]) {
     HD_Insert_Internal(hp, 1, path, false);
   }
 
@@ -332,20 +350,18 @@ static void HD_ABI_Shutdown(void* instance) {
   delete hp;
 }
 
-Peripheral_t g_harddisk_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "Harddisk",
-    0xFE,  // Slots 1-7
-    HD_ABI_Init,
-    HD_ABI_Reset,
-    HD_ABI_Shutdown,
-    nullptr, // think
-    nullptr, // on_vblank
-    nullptr, // save_state
-    nullptr, // load_state
-    HD_ABI_Command,
-    HD_ABI_Query
-};
+Peripheral_t g_harddisk_peripheral = {LINAPPLE_ABI_VERSION,
+                                      "Harddisk",
+                                      0xFE,  // Slots 1-7
+                                      HD_ABI_Init,
+                                      HD_ABI_Reset,
+                                      HD_ABI_Shutdown,
+                                      nullptr,  // think
+                                      nullptr,  // on_vblank
+                                      nullptr,  // save_state
+                                      nullptr,  // load_state
+                                      HD_ABI_Command,
+                                      HD_ABI_Query};
 
 extern "C" void Register_Harddisk() {
   Peripheral_Register_Builtin(&g_harddisk_peripheral);
@@ -368,11 +384,13 @@ void HD_SetEnabled(bool bEnabled) {
   if (g_pHDInstance->enabled) {
     uint8_t slot_rom[256];
     memcpy(slot_rom, Hddrvr_dat, 256);
-    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot), slot_rom);
+    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot),
+                                       slot_rom);
     g_pHDInstance->rom_loaded = true;
   } else {
     uint8_t empty_rom[256] = {0};
-    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot), empty_rom);
+    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot),
+                                       empty_rom);
     g_pHDInstance->rom_loaded = false;
   }
 }
@@ -397,14 +415,16 @@ void HD_Eject(const int iDrive) {
     if (g_pHDInstance->host) {
       const char* key = (iDrive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
       g_pHDInstance->host->SetConfig("Preferences", key, "");
-      g_pHDInstance->host->NotifyStatusChanged(static_cast<int>(g_pHDInstance->slot));
+      g_pHDInstance->host->NotifyStatusChanged(
+          static_cast<int>(g_pHDInstance->slot));
     }
   }
 }
 
 auto HD_InsertDisk(int nDrive, const char* imageFileName) -> bool {
   if (!g_pHDInstance || !IsDriveValid(nDrive)) return false;
-  return HD_Insert_Internal(g_pHDInstance, nDrive, imageFileName, false) == HARDDISK_ERR_NONE;
+  return HD_Insert_Internal(g_pHDInstance, nDrive, imageFileName, false) ==
+         HARDDISK_ERR_NONE;
 }
 
 auto HD_InsertDisk2(int nDrive, const char* pszFilename) -> bool {
@@ -413,23 +433,26 @@ auto HD_InsertDisk2(int nDrive, const char* pszFilename) -> bool {
 
 enum { DEVICE_OK = 0x00, DEVICE_UNKNOWN_ERROR = 0x03, DEVICE_IO_ERROR = 0x08 };
 
-static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t {
   if (!instance) return DEVICE_UNKNOWN_ERROR;
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
 
   uint8_t r = DEVICE_OK;
   addr &= 0xFF;
-  if (!hp->rom_loaded || !hp->enabled) return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  if (!hp->rom_loaded || !hp->enabled)
+    return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 
   HarddiskDrive_t* pHDD = &hp->drives[hp->unit_num >> 7];
 
-  if (bWrite == 0) { // read
+  if (bWrite == 0) {  // read
     switch (addr) {
       case 0xF0: {
         if (pHDD->hd_imageloaded) {
           switch (hp->command) {
             default:
-            case 0x00: //status
+            case 0x00:  // status
               if (pHDD->driver->get_total_blocks(pHDD->driver_instance) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
@@ -438,30 +461,32 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
             case 0x01:  // read
             {
               hp->status = DISK_STATUS_READ;
-              if (pHDD->driver->read_block(pHDD->driver_instance, pHDD->hd_diskblock, pHDD->hd_buf) == HARDDISK_ERR_NONE) {
-                  pHDD->hd_error = 0;
-                  r = 0;
-                  pHDD->hd_buf_ptr = 0;
-                } else {
-                  pHDD->hd_error = 1;
-                  r = DEVICE_IO_ERROR;
-                }
-            }
-              break;
-            case 0x02: //write
+              if (pHDD->driver->read_block(pHDD->driver_instance,
+                                           pHDD->hd_diskblock,
+                                           pHDD->hd_buf) == HARDDISK_ERR_NONE) {
+                pHDD->hd_error = 0;
+                r = 0;
+                pHDD->hd_buf_ptr = 0;
+              } else {
+                pHDD->hd_error = 1;
+                r = DEVICE_IO_ERROR;
+              }
+            } break;
+            case 0x02:  // write
             {
               hp->status = DISK_STATUS_WRITE;
-              memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
-              if (pHDD->driver->write_block(pHDD->driver_instance, pHDD->hd_diskblock, pHDD->hd_buf) == HARDDISK_ERR_NONE) {
+              memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
+              if (pHDD->driver->write_block(pHDD->driver_instance,
+                                            pHDD->hd_diskblock, pHDD->hd_buf) ==
+                  HARDDISK_ERR_NONE) {
                 pHDD->hd_error = 0;
                 r = 0;
               } else {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
-            }
-              break;
-            case 0x03: //format
+            } break;
+            case 0x03:  // format
               hp->status = DISK_STATUS_WRITE;
               break;
           }
@@ -471,25 +496,56 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
           r = DEVICE_UNKNOWN_ERROR;
         }
       } break;
-      case 0xF1: r = pHDD->hd_error; break;
-      case 0xF2: r = hp->command; break;
-      case 0xF3: r = hp->unit_num; break;
-      case 0xF4: r = static_cast<uint8_t>(pHDD->hd_memblock & 0x00FF); break;
-      case 0xF5: r = static_cast<uint8_t>((pHDD->hd_memblock & 0xFF00) >> 8); break;
-      case 0xF6: r = static_cast<uint8_t>(pHDD->hd_diskblock & 0x00FF); break;
-      case 0xF7: r = static_cast<uint8_t>((pHDD->hd_diskblock & 0xFF00) >> 8); break;
-      case 0xF8: r = pHDD->hd_buf[pHDD->hd_buf_ptr]; pHDD->hd_buf_ptr++; break;
-      default: return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+      case 0xF1:
+        r = pHDD->hd_error;
+        break;
+      case 0xF2:
+        r = hp->command;
+        break;
+      case 0xF3:
+        r = hp->unit_num;
+        break;
+      case 0xF4:
+        r = static_cast<uint8_t>(pHDD->hd_memblock & 0x00FF);
+        break;
+      case 0xF5:
+        r = static_cast<uint8_t>((pHDD->hd_memblock & 0xFF00) >> 8);
+        break;
+      case 0xF6:
+        r = static_cast<uint8_t>(pHDD->hd_diskblock & 0x00FF);
+        break;
+      case 0xF7:
+        r = static_cast<uint8_t>((pHDD->hd_diskblock & 0xFF00) >> 8);
+        break;
+      case 0xF8:
+        r = pHDD->hd_buf[pHDD->hd_buf_ptr];
+        pHDD->hd_buf_ptr++;
+        break;
+      default:
+        return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     }
   } else {  // write
     switch (addr) {
-      case 0xF2: hp->command = d; break;
-      case 0xF3: hp->unit_num = d; break;
-      case 0xF4: pHDD->hd_memblock = (pHDD->hd_memblock & 0xFF00) | d; break;
-      case 0xF5: pHDD->hd_memblock = (pHDD->hd_memblock & 0x00FF) | (d << 8); break;
-      case 0xF6: pHDD->hd_diskblock = (pHDD->hd_diskblock & 0xFF00) | d; break;
-      case 0xF7: pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | (d << 8); break;
-      default: return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+      case 0xF2:
+        hp->command = d;
+        break;
+      case 0xF3:
+        hp->unit_num = d;
+        break;
+      case 0xF4:
+        pHDD->hd_memblock = (pHDD->hd_memblock & 0xFF00) | d;
+        break;
+      case 0xF5:
+        pHDD->hd_memblock = (pHDD->hd_memblock & 0x00FF) | (d << 8);
+        break;
+      case 0xF6:
+        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0xFF00) | d;
+        break;
+      case 0xF7:
+        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | (d << 8);
+        break;
+      default:
+        return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     }
   }
   if (hp->host) hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));

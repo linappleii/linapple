@@ -3,11 +3,13 @@
  */
 
 #include "apple2/HarddiskLoader.h"
-#include <vector>
-#include <cstdio>
-#include <cstring>
+
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <cstring>
+#include <vector>
+
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -22,9 +24,7 @@ void HarddiskLoader_Init(void) {
   HarddiskLoader_Register(&g_raw_hd_driver);
 }
 
-void HarddiskLoader_Shutdown(void) {
-  g_harddisk_drivers.clear();
-}
+void HarddiskLoader_Shutdown(void) { g_harddisk_drivers.clear(); }
 
 void HarddiskLoader_Register(HarddiskFormatDriver_t* driver) {
   if (driver) {
@@ -32,10 +32,9 @@ void HarddiskLoader_Register(HarddiskFormatDriver_t* driver) {
   }
 }
 
-HarddiskError_e HarddiskLoader_Open(const char* filename,
-                                   bool* out_os_readonly,
-                                   HarddiskFormatDriver_t** out_driver,
-                                   void** out_instance) {
+HarddiskError_e HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
+                                    HarddiskFormatDriver_t** out_driver,
+                                    void** out_instance) {
   if (!filename || !out_driver || !out_instance) {
     return HARDDISK_ERR_IO;
   }
@@ -66,7 +65,8 @@ HarddiskError_e HarddiskLoader_Open(const char* filename,
   HarddiskProbe_e best_probe = HARDDISK_PROBE_NO;
 
   for (auto* driver : g_harddisk_drivers) {
-    HarddiskProbe_e result = driver->probe(header, header_size, file_size, ext_hint);
+    HarddiskProbe_e result =
+        driver->probe(header, header_size, file_size, ext_hint);
     if (result > best_probe) {
       best_probe = result;
       best_driver = driver;
@@ -77,7 +77,8 @@ HarddiskError_e HarddiskLoader_Open(const char* filename,
   }
 
   if (best_driver && best_probe != HARDDISK_PROBE_NO) {
-    HarddiskError_e err = best_driver->open(filename, out_os_readonly, out_instance);
+    HarddiskError_e err =
+        best_driver->open(filename, out_os_readonly, out_instance);
     if (err == HARDDISK_ERR_NONE) {
       *out_driver = best_driver;
       return HARDDISK_ERR_NONE;

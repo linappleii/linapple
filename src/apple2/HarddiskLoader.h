@@ -15,10 +15,9 @@ void HarddiskLoader_Shutdown(void);
 
 void HarddiskLoader_Register(HarddiskFormatDriver_t* driver);
 
-HarddiskError_e HarddiskLoader_Open(const char* filename,
-                                   bool* out_os_readonly,
-                                   HarddiskFormatDriver_t** out_driver,
-                                   void** out_instance);
+HarddiskError_e HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
+                                    HarddiskFormatDriver_t** out_driver,
+                                    void** out_instance);
 
 #ifdef __cplusplus
 }
