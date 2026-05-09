@@ -2,7 +2,8 @@
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
 #include <array>
 #include <cstring>
@@ -128,7 +129,8 @@ TEST_CASE("Clock Peripheral: Time Latching Behavior") {
 
   // 2. Read latches $C0n0-$C0n9
   for (uint16_t i = 0; i <= 9; ++i) {
-    uint8_t val = g_mock_handlers[base + i].read(instance, 0, base + i, 0, 0, 0);
+    uint8_t val =
+        g_mock_handlers[base + i].read(instance, 0, base + i, 0, 0, 0);
     CHECK(val <= 9);
   }
 
@@ -160,7 +162,7 @@ TEST_CASE("Clock Peripheral: State Persistence") {
   g_clock_peripheral.save_state(instance1, buffer.data(), &state_size);
 
   // 4. Create a new instance and load state
-  int slot2 = 5; // Different slot to test slot-independence of state
+  int slot2 = 5;  // Different slot to test slot-independence of state
   void* instance2 = Clock_Init_With_Mock(slot2);
   uint16_t base2 = 0xC080 + (slot2 << 4);
 
@@ -190,4 +192,5 @@ TEST_CASE("Clock Peripheral: State Persistence") {
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
