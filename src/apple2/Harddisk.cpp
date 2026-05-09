@@ -303,7 +303,10 @@ static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
     hp->rom_loaded = true;
   }
 
-  host->RegisterIO(slot, HD_IO_EMUL, HD_IO_EMUL, nullptr, nullptr);
+  // Register surgical I/O for Slot 7 ($C0F0-$C0F8)
+  for (uint16_t addr = 0xC0F0; addr <= 0xC0F8; ++addr) {
+    host->RegisterDirectIO(hp, addr, HD_IO_EMUL, HD_IO_EMUL);
+  }
 
   // Auto-load images from config if present
   char path[512];
