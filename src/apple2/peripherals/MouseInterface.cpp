@@ -386,8 +386,13 @@ static auto Mouse_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
 
 Peripheral_t g_mouse_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "linapple.mouse",
     "Mouse Interface",
+    "Apple II Mouse Card emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
     0xFE,  // Slots 1-7
+    4,     // Default Slot 4
     Mouse_ABI_Init,
     Mouse_ABI_Reset,
     Mouse_ABI_Shutdown,
@@ -396,16 +401,10 @@ Peripheral_t g_mouse_peripheral = {
     nullptr,  // save_state
     nullptr,  // load_state
     Mouse_ABI_Command,
-    nullptr  // query
+    nullptr   // query
 };
 
-extern "C" void Register_Mouse() {
-  Peripheral_Register_Builtin(&g_mouse_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_mouse_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_mouse_peripheral)
 
 static void Mouse_OnCommand(MousePeripheral_t* mp) {
   switch (mp->logic.m_byBuff[0] & 0xF0) {

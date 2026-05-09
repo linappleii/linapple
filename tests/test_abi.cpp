@@ -86,8 +86,13 @@ static auto Dummy_Query(void* /*instance*/, uint32_t /*cmd_id*/, void* out, size
 
 static Peripheral_t g_dummy_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "test.dummy",
     "Dummy Peripheral",
+    "A test dummy peripheral",
+    "Test Author",
+    "1.0.0",
     0xFE, // Slots 1-7
+    -1,   // No default
     Dummy_Init,
     Dummy_Reset,
     Dummy_Shutdown,

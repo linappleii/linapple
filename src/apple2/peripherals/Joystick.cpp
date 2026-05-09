@@ -297,26 +297,26 @@ static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
-                                      "Joystick",
-                                      0x01,  // Slot 0 (Internal)
-                                      Joystick_ABI_Init,
-                                      Joystick_ABI_Reset,
-                                      Joystick_ABI_Shutdown,
-                                      Joystick_ABI_Think,
-                                      nullptr,  // on_vblank
-                                      Joystick_ABI_SaveState,
-                                      Joystick_ABI_LoadState,
-                                      Joystick_ABI_Command,
-                                      nullptr};
+Peripheral_t g_joystick_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.joystick",
+    "Joystick",
+    "Analog joystick and paddle emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0x01,  // Slot 0 (Internal)
+    0,     // Default Slot 0
+    Joystick_ABI_Init,
+    Joystick_ABI_Reset,
+    Joystick_ABI_Shutdown,
+    Joystick_ABI_Think,
+    nullptr,  // on_vblank
+    Joystick_ABI_SaveState,
+    Joystick_ABI_LoadState,
+    Joystick_ABI_Command,
+    nullptr};
 
-extern "C" void Register_Joystick() {
-  Peripheral_Register_Builtin(&g_joystick_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_joystick_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_joystick_peripheral)
 
 // --- Legacy Procedural API ---
 

@@ -873,26 +873,26 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_disk_peripheral = {LINAPPLE_ABI_VERSION,
-                                  "Disk II",
-                                  0xFE,  // Slots 1-7
-                                  Disk_ABI_Init,
-                                  Disk_ABI_Reset,
-                                  Disk_ABI_Shutdown,
-                                  Disk_ABI_Think,
-                                  nullptr,  // on_vblank
-                                  Disk_ABI_SaveState,
-                                  Disk_ABI_LoadState,
-                                  Disk_ABI_Command,
-                                  Disk_ABI_Query};
+Peripheral_t g_disk_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.disk_ii",
+    "Disk II",
+    "Apple II floppy disk controller emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0xFE,  // Slots 1-7
+    6,     // Default Slot 6
+    Disk_ABI_Init,
+    Disk_ABI_Reset,
+    Disk_ABI_Shutdown,
+    Disk_ABI_Think,
+    nullptr,  // on_vblank
+    Disk_ABI_SaveState,
+    Disk_ABI_LoadState,
+    Disk_ABI_Command,
+    Disk_ABI_Query};
 
-extern "C" void Register_Disk() {
-  Peripheral_Register_Builtin(&g_disk_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_disk_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_disk_peripheral)
 
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {

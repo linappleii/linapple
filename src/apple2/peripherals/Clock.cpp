@@ -299,8 +299,13 @@ static auto Clock_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
 Peripheral_t g_clock_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "linapple.clock",
     "Clock Card",
+    "Thunderclock and No-Slot Clock emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
     LINAPPLE_ANY_SLOT_MASK,
+    -1,  // No fixed default slot
     Clock_ABI_Init,
     Clock_ABI_Reset,
     Clock_ABI_Shutdown,
@@ -312,13 +317,7 @@ Peripheral_t g_clock_peripheral = {
     nullptr   // query
 };
 
-extern "C" void Register_Clock() {
-  Peripheral_Register_Builtin(&g_clock_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_clock_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_clock_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

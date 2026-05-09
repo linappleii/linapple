@@ -351,26 +351,26 @@ static void HD_ABI_Shutdown(void* instance) {
   delete hp;
 }
 
-Peripheral_t g_harddisk_peripheral = {LINAPPLE_ABI_VERSION,
-                                      "Harddisk",
-                                      0xFE,  // Slots 1-7
-                                      HD_ABI_Init,
-                                      HD_ABI_Reset,
-                                      HD_ABI_Shutdown,
-                                      nullptr,  // think
-                                      nullptr,  // on_vblank
-                                      nullptr,  // save_state
-                                      nullptr,  // load_state
-                                      HD_ABI_Command,
-                                      HD_ABI_Query};
+Peripheral_t g_harddisk_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.harddisk",
+    "Harddisk",
+    "SmartPort hard disk controller emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0xFE,  // Slots 1-7
+    7,     // Default Slot 7
+    HD_ABI_Init,
+    HD_ABI_Reset,
+    HD_ABI_Shutdown,
+    nullptr,  // think
+    nullptr,  // on_vblank
+    nullptr,  // save_state
+    nullptr,  // load_state
+    HD_ABI_Command,
+    HD_ABI_Query};
 
-extern "C" void Register_Harddisk() {
-  Peripheral_Register_Builtin(&g_harddisk_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_harddisk_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_harddisk_peripheral)
 
 auto HD_CardIsEnabled() -> bool {
   return g_pHDInstance && g_pHDInstance->rom_loaded && g_pHDInstance->enabled;

@@ -22,6 +22,21 @@ extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
 // The frontend audio sink registered via Linapple_SetAudioCallback
 LinappleAudioCallback g_frontendAudioCB = nullptr;
 
+/**
+ * Justification: Peripheral Manager requires a registry of built-in hardware
+ * to support runtime slot assignment via configuration.
+ */
+auto Peripheral_GetBuiltinRegistry() -> std::vector<Peripheral_t*>& {
+  static std::vector<Peripheral_t*> registry;
+  return registry;
+}
+
+void Peripheral_Register_Builtin(Peripheral_t* p) {
+  if (p) {
+    Peripheral_GetBuiltinRegistry().push_back(p);
+  }
+}
+
 // --- Internal Types ---
 
 struct ActivePeripheral_t {

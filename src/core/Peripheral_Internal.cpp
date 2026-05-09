@@ -23,67 +23,23 @@ struct LoadedPlugin {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::vector<LoadedPlugin> g_loaded_plugins;
 
-/**
- * Justification: Peripheral Manager requires a registry of built-in hardware
- * to support runtime slot assignment via configuration.
- */
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::vector<Peripheral_t*> g_builtin_registry;
+extern auto Peripheral_GetBuiltinRegistry() -> std::vector<Peripheral_t*>&;
 
 static bool g_plugins_initialized = false;
-static bool g_builtins_discovered = false;
-
-extern "C" {
-__attribute__((weak)) void Register_Speaker();
-__attribute__((weak)) void Register_Mockingboard();
-__attribute__((weak)) void Register_Disk();
-__attribute__((weak)) void Register_SSC();
-__attribute__((weak)) void Register_Printer();
-__attribute__((weak)) void Register_Harddisk();
-__attribute__((weak)) void Register_Mouse();
-__attribute__((weak)) void Register_Clock();
-__attribute__((weak)) void Register_Keyboard();
-__attribute__((weak)) void Register_Joystick();
-}
-
-void Peripheral_Register_Builtin(Peripheral_t* p) {
-  if (p) {
-    g_builtin_registry.push_back(p);
-  }
-}
-
-static void Discover_Builtins() {
-  if (g_builtins_discovered) {
-    return;
-  }
-  g_builtins_discovered = true;
-
-  if (Register_Speaker) Register_Speaker();
-  if (Register_Mockingboard) Register_Mockingboard();
-  if (Register_Disk) Register_Disk();
-  if (Register_SSC) Register_SSC();
-  if (Register_Printer) Register_Printer();
-  if (Register_Harddisk) Register_Harddisk();
-  if (Register_Mouse) Register_Mouse();
-  if (Register_Clock) Register_Clock();
-  if (Register_Keyboard) Register_Keyboard();
-  if (Register_Joystick) Register_Joystick();
-}
 
 auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
   if (!name) return nullptr;
 
-  Discover_Builtins();
   Peripheral_Plugins_Init();
 
-  for (auto const& p : g_builtin_registry) {
-    if (p && strcmp(p->name, name) == 0) {
+  for (auto const& p : Peripheral_GetBuiltinRegistry()) {
+    if (p && (strcmp(p->name, name) == 0 || strcmp(p->id, name) == 0)) {
       return p;
     }
   }
 
   for (auto const& lp : g_loaded_plugins) {
-    if (lp.p && strcmp(lp.p->name, name) == 0) {
+    if (lp.p && (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.p;
     }
   }
@@ -100,79 +56,30 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
 auto Peripheral_GetPluginPath(const char* name) -> const char* {
   if (!name) return nullptr;
 
-  Discover_Builtins();
   Peripheral_Plugins_Init();
 
   for (auto const& lp : g_loaded_plugins) {
-    if (lp.p && strcmp(lp.p->name, name) == 0) {
+    if (lp.p && (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.path.c_str();
     }
   }
   return nullptr;
 }
 
-static auto GetDefaultPeripheralForSlot(int slot) -> const char* {
-  const int SLOT_PRINTER = 1;
-  const int SLOT_SSC = 2;
-  const int SLOT_DISK = 6;
-  const int SLOT_HARDDISK = 7;
-
-  switch (slot) {
-    case SLOT_PRINTER:
-      return "Parallel Printer";
-    case SLOT_SSC:
-      return "Super Serial Card";
-    case SLOT_DISK:
-      return "Disk II";
-    case SLOT_HARDDISK:
-      return hddenabled ? "Harddisk" : nullptr;
-    default: {
-      uint32_t clock_slot = 0;
-      if (LOAD(REGVALUE_CLOCK_ENABLED, &clock_slot) &&
-          clock_slot == static_cast<uint32_t>(slot)) {
-        return "Clock Card";
-      }
-      if (slot == 4) {
-        if (g_Slot4 == CT_Mockingboard) return "Mockingboard";
-        if (g_Slot4 == CT_MouseInterface) return "Mouse Interface";
-      }
-      return nullptr;
-    }
-  }
-}
-
 void Peripheral_Register_Internal() {
-  Discover_Builtins();
-
   // Internal peripherals (Slot 0)
-  Peripheral_t* kbd = Peripheral_Find_Internal("Keyboard");
-  if (kbd) {
-    Peripheral_Register(kbd, 0);
-  }
-
-  Peripheral_t* spkr = Peripheral_Find_Internal("Speaker");
-  if (spkr) {
-    Peripheral_Register(spkr, 0);
-  }
-
-  Peripheral_t* joy = Peripheral_Find_Internal("Joystick");
-  if (joy) {
-    Peripheral_Register(joy, 0);
+  for (auto* p : Peripheral_GetBuiltinRegistry()) {
+    if (p->default_slot == 0) {
+      Peripheral_Register(p, 0);
+    }
   }
 
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     const size_t KEY_SIZE = 16;
-    // Justification: Formatting slot key name for registry lookup.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,
-    // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
     char key[KEY_SIZE];
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg,
-    // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     snprintf(key, sizeof(key), "Slot %d", slot);
 
     std::string name;
-    // Justification: Loading slot configuration from registry.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     bool in_config = ConfigLoadString("Slots", key, &name);
 
     if (in_config) {
@@ -180,12 +87,15 @@ void Peripheral_Register_Internal() {
         continue;
       }
     } else {
-      const char* default_name = GetDefaultPeripheralForSlot(slot);
-      if (default_name) {
-        name = default_name;
-      } else {
-        continue;
+      // Look for a built-in peripheral that prefers this slot
+      for (auto* p : Peripheral_GetBuiltinRegistry()) {
+        if (p->default_slot == slot) {
+          if (slot == 7 && !hddenabled) continue;
+          name = p->id;
+          break;
+        }
       }
+      if (name.empty()) continue;
     }
 
     Peripheral_t* p = Peripheral_Find_Internal(name.c_str());
@@ -196,14 +106,16 @@ void Peripheral_Register_Internal() {
 }
 
 void Linapple_ListHardware() {
-  Discover_Builtins();
   Peripheral_Plugins_Init();
 
   printf("Built-in Peripherals:\n");
   printf("---------------------\n");
-  for (auto const& p : g_builtin_registry) {
+  for (auto const& p : Peripheral_GetBuiltinRegistry()) {
     if (p) {
-      printf("- %-20s (Compatible Slots: ", p->name);
+      printf("- %-24s [%s] v%s\n", p->name, p->id, p->version);
+      printf("  Author: %s\n", p->author);
+      printf("  Desc:   %s\n", p->description);
+      printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
         if (p->compatible_slots & (1u << static_cast<uint32_t>(i))) {
@@ -212,16 +124,20 @@ void Linapple_ListHardware() {
           first = false;
         }
       }
-      printf(")\n");
+      printf("\n\n");
     }
   }
-  printf("\n");
 
   if (!g_loaded_plugins.empty()) {
     printf("Dynamically Loaded Peripherals:\n");
     printf("-------------------------------\n");
     for (auto const& plugin : g_loaded_plugins) {
-      printf("- %-20s (Compatible Slots: ", plugin.p->name);
+      printf("- %-24s [%s] v%s\n", plugin.p->name, plugin.p->id,
+             plugin.p->version);
+      printf("  Path:   %s\n", plugin.path.c_str());
+      printf("  Author: %s\n", plugin.p->author);
+      printf("  Desc:   %s\n", plugin.p->description);
+      printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
         if (plugin.p->compatible_slots & (1u << static_cast<uint32_t>(i))) {
@@ -230,9 +146,8 @@ void Linapple_ListHardware() {
           first = false;
         }
       }
-      printf(") [%s]\n", plugin.path.c_str());
+      printf("\n\n");
     }
-    printf("\n");
   }
 }
 

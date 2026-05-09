@@ -355,26 +355,26 @@ static auto Spkr_ABI_Query(void* instance, uint32_t query_id, void* out,
   }
 }
 
-Peripheral_t g_speaker_peripheral = {LINAPPLE_ABI_VERSION,
-                                     "Speaker",
-                                     LINAPPLE_ANY_SLOT_MASK,
-                                     Spkr_ABI_Init,
-                                     Spkr_ABI_Reset,
-                                     Spkr_ABI_Shutdown,
-                                     Spkr_ABI_Think,
-                                     nullptr,  // on_vblank
-                                     Spkr_ABI_SaveState,
-                                     Spkr_ABI_LoadState,
-                                     nullptr,  // command
-                                     Spkr_ABI_Query};
+Peripheral_t g_speaker_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.speaker",
+    "Speaker",
+    "Built-in Apple II speaker and cassette port emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0x01,  // Slot 0 (Internal)
+    0,     // Default Slot 0
+    Spkr_ABI_Init,
+    Spkr_ABI_Reset,
+    Spkr_ABI_Shutdown,
+    Spkr_ABI_Think,
+    nullptr,  // on_vblank
+    Spkr_ABI_SaveState,
+    Spkr_ABI_LoadState,
+    nullptr,  // command
+    Spkr_ABI_Query};
 
-extern "C" void Register_Speaker() {
-  Peripheral_Register_Builtin(&g_speaker_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_speaker_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_speaker_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

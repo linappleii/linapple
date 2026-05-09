@@ -413,8 +413,13 @@ static auto SSC_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
 Peripheral_t g_ssc_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "linapple.ssc",
     "Super Serial Card",
+    "Apple II Super Serial Card (6551 ACIA) emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
     0xFE,  // Slots 1-7
+    2,     // Default Slot 2
     SSC_ABI_Init,
     SSC_ABI_Reset,
     SSC_ABI_Shutdown,
@@ -426,13 +431,7 @@ Peripheral_t g_ssc_peripheral = {
     nullptr   // query
 };
 
-extern "C" void Register_SSC() {
-  Peripheral_Register_Builtin(&g_ssc_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_ssc_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_ssc_peripheral)
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 void SSC_Reset(SuperSerialCard* pSSC) {

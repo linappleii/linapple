@@ -77,8 +77,13 @@ struct Peripheral_t;
  */
 typedef struct Peripheral_t {
   int abi_version;
-  const char* name;
-  uint32_t compatible_slots;
+  const char* id;           // Namespaced ID (e.g. "linapple.disk_ii")
+  const char* name;         // Human readable name
+  const char* description;  // Short summary
+  const char* author;       // Implementation author
+  const char* version;      // Implementation version
+  uint8_t compatible_slots;
+  int8_t default_slot;      // Preferred slot (1-7), 0 for internal, or -1 for any
   void* (*init)(int slot, HostInterface_t* host);
   void (*reset)(void* instance);
   void (*shutdown)(void* instance);
@@ -93,10 +98,30 @@ typedef struct Peripheral_t {
                             size_t* out_size);
 } Peripheral_t;
 
-#define EXPORT_PERIPHERAL(peripheral_struct)                       \
+#ifdef BUILD_SHARED_PERIPHERAL
+#define PERIPHERAL_REGISTER(peripheral_struct)                     \
   extern "C" {                                                     \
   Peripheral_t linapple_peripheral_descriptor = peripheral_struct; \
   }
+#else
+#ifdef __cplusplus
+#define PERIPHERAL_REGISTER(peripheral_struct)                         \
+  namespace {                                                          \
+  struct PeripheralRegistration_ ## peripheral_struct {                \
+    PeripheralRegistration_ ## peripheral_struct() {                   \
+      Peripheral_Register_Builtin(const_cast<Peripheral_t*>(&(peripheral_struct))); \
+    }                                                                  \
+  } g_registration_ ## peripheral_struct;                              \
+  }
+#else
+#define PERIPHERAL_REGISTER(peripheral_struct) \
+  __attribute__((constructor)) static void Register_ ## peripheral_struct() { \
+    Peripheral_Register_Builtin(&(peripheral_struct)); \
+  }
+#endif
+#endif
+
+#define EXPORT_PERIPHERAL(peripheral_struct) PERIPHERAL_REGISTER(peripheral_struct)
 
 /**
  * @brief Public Peripheral Management API.

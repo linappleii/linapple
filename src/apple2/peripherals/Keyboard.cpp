@@ -367,26 +367,26 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
   }
 }
 
-Peripheral_t keyboard_peripheral = {LINAPPLE_ABI_VERSION,
-                                    "Keyboard",
-                                    0x01,
-                                    Keyb_ABI_Init,
-                                    Keyb_ABI_Reset,
-                                    Keyb_ABI_Shutdown,
-                                    Keyb_ABI_Think,
-                                    nullptr,  // on_vblank
-                                    Keyb_ABI_SaveState,
-                                    Keyb_ABI_LoadState,
-                                    Keyb_ABI_Command,
-                                    Keyb_ABI_Query};
+Peripheral_t keyboard_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.keyboard",
+    "Keyboard",
+    "Standard Apple II keyboard emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0x01,  // Slot 0 (Internal)
+    0,     // Default Slot 0
+    Keyb_ABI_Init,
+    Keyb_ABI_Reset,
+    Keyb_ABI_Shutdown,
+    Keyb_ABI_Think,
+    nullptr,  // on_vblank
+    Keyb_ABI_SaveState,
+    Keyb_ABI_LoadState,
+    Keyb_ABI_Command,
+    Keyb_ABI_Query};
 
-extern "C" void Register_Keyboard() {
-  Peripheral_Register_Builtin(&keyboard_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(keyboard_peripheral)
-#endif
+PERIPHERAL_REGISTER(keyboard_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

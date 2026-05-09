@@ -21,20 +21,10 @@ endif()
 if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "headless")
     message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3' or 'headless'.")
 endif()
+
 option(PROFILING "Enable profiling" OFF)
 option(REGISTRY_WRITEABLE "Enable registry writing" OFF)
 option(BUILD_SHARED_PERIPHERALS "Build peripherals as shared libraries instead of built-in" OFF)
-
-# Peripheral Options
-option(PERIPHERAL_SPEAKER "Enable built-in speaker peripheral" ON)
-option(PERIPHERAL_KEYBOARD "Enable built-in keyboard peripheral" ON)
-option(PERIPHERAL_MOCKINGBOARD "Enable Mockingboard peripheral" ON)
-option(PERIPHERAL_DISK "Enable Disk II peripheral" ON)
-option(PERIPHERAL_SSC "Enable Super Serial Card peripheral" ON)
-option(PERIPHERAL_PRINTER "Enable Parallel Printer peripheral" ON)
-option(PERIPHERAL_HARDDISK "Enable Harddisk peripheral" ON)
-option(PERIPHERAL_MOUSE "Enable Mouse peripheral" ON)
-option(PERIPHERAL_CLOCK "Enable No-Slot Clock peripheral" ON)
 
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
@@ -58,8 +48,6 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBZIP REQUIRED libzip)
-
-
 
 # --- Tools ---
 find_program(MAGICK_EXECUTABLE NAMES magick convert)
@@ -107,31 +95,25 @@ endforeach()
 
 add_custom_target(generate_xpms DEPENDS ${XPM_HEADERS})
 
-# --- Peripheral Helper ---
-set(PERIPHERAL_DEFINITIONS "")
-set(PERIPHERAL_MODULES "")
+# --- Include Paths ---
+set(LINAPPLE_INCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/chips"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/disk"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/harddisk"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Debugger"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/common"
+    "${GEN_RES_DIR}"
+    "${RES_DIR}"
+    ${CURL_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
+    ${LIBZIP_INCLUDE_DIRS}
+)
 
-function(add_peripheral_target name option_name sources extra_libs force_builtin)
-    if(${option_name})
-        if(BUILD_SHARED_PERIPHERALS AND NOT force_builtin)
-            add_library(peripheral-${name} SHARED ${sources})
-            target_compile_definitions(peripheral-${name} PRIVATE BUILD_SHARED_PERIPHERAL)
-            target_include_directories(peripheral-${name} PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR})
-            target_link_libraries(peripheral-${name} PRIVATE ${extra_libs})
-            set_target_properties(peripheral-${name} PROPERTIES PREFIX "" OUTPUT_NAME "${name}")
-            list(APPEND PERIPHERAL_MODULES peripheral-${name})
-            set(PERIPHERAL_MODULES ${PERIPHERAL_MODULES} PARENT_SCOPE)
-        else()
-            list(APPEND SOURCES_A2 ${sources})
-            set(SOURCES_A2 ${SOURCES_A2} PARENT_SCOPE)
-            string(TOUPPER ${name} upper_name)
-            string(REPLACE "-" "_" upper_name ${upper_name})
-            list(APPEND PERIPHERAL_DEFINITIONS -DENABLE_PERIPHERAL_${upper_name})
-            set(PERIPHERAL_DEFINITIONS ${PERIPHERAL_DEFINITIONS} PARENT_SCOPE)
-        endif()
-    endif()
-endfunction()
-# --- Source Discovery ---
+# --- Source Lists ---
 set(SOURCES_CORE
     src/core/Common.cpp
     src/core/LinAppleCore.cpp
@@ -148,45 +130,17 @@ set(SOURCES_CORE
     src/frontends/common/Util_Hash.cpp
 )
 
-# Mandatory Apple II hardware
-set(SOURCES_A2
+set(SOURCES_A2_MANDATORY
     src/apple2/chips/6821.cpp
     src/apple2/CPU.cpp
-    src/apple2/peripherals/disk/DiskGCR.cpp
-    src/apple2/peripherals/disk/DiskLoader.cpp
-    src/apple2/peripherals/harddisk/HarddiskLoader.cpp
-    src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp
-
-    src/apple2/peripherals/disk/formats/DoDriver.cpp
-    src/apple2/peripherals/disk/formats/IieDriver.cpp
-    src/apple2/peripherals/disk/formats/Nb2Driver.cpp
-    src/apple2/peripherals/disk/formats/NibDriver.cpp
-    src/apple2/peripherals/disk/formats/PoDriver.cpp
-    src/apple2/peripherals/disk/formats/Woz2Driver.cpp
-    src/apple2/peripherals/Joystick.cpp
     src/apple2/Memory.cpp
     src/apple2/SaveState.cpp
     src/apple2/SoundCore.cpp
     src/apple2/Timer.cpp
     src/apple2/Video.cpp
-    src/apple2/peripherals/disk/ftpparse.cpp
     src/apple2/stretch.cpp
     src/apple2/Riff.cpp
 )
-
-add_definitions(-DENABLE_RIFF)
-
-# Optional peripherals
-add_peripheral_target(speaker PERIPHERAL_SPEAKER "src/apple2/peripherals/Speaker.cpp" "" TRUE)
-add_peripheral_target(keyboard PERIPHERAL_KEYBOARD "src/apple2/peripherals/Keyboard.cpp;src/apple2/peripherals/Keyboard_Maps.c" "" TRUE)
-add_peripheral_target(disk PERIPHERAL_DISK "src/apple2/peripherals/disk/Disk.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
-add_peripheral_target(harddisk PERIPHERAL_HARDDISK "src/apple2/peripherals/harddisk/Harddisk.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
-add_peripheral_target(mouse PERIPHERAL_MOUSE "src/apple2/peripherals/MouseInterface.cpp" "" TRUE)
-add_peripheral_target(mockingboard PERIPHERAL_MOCKINGBOARD "src/apple2/peripherals/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
-add_peripheral_target(ssc PERIPHERAL_SSC "src/apple2/peripherals/SerialComms.cpp" "" TRUE)
-
-add_peripheral_target(printer PERIPHERAL_PRINTER "src/apple2/peripherals/ParallelPrinter.cpp" "" FALSE)
-add_peripheral_target(clock PERIPHERAL_CLOCK "src/apple2/peripherals/Clock.cpp" "" FALSE)
 
 set(SOURCES_DBG "")
 if(NOT FRONTEND STREQUAL "headless")
@@ -248,479 +202,174 @@ elseif(FRONTEND STREQUAL "headless")
     )
 endif()
 
-set(SOURCES ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} ${SOURCES_FE})
+# --- Peripheral Refinement ---
+set(PERIPHERAL_DEFINITIONS "")
+set(PERIPHERAL_MODULES "")
+set(SOURCES_A2_OPTIONAL "")
 
-# --- Target ---
-add_executable(linapple ${SOURCES})
+# Macro to add a peripheral with optional compilation and shared lib support
+macro(add_peripheral name desc sources extra_libs force_builtin)
+    string(TOUPPER ${name} upper_name)
+    string(REPLACE "-" "_" upper_name ${upper_name})
+    set(opt_name "ENABLE_PERIPHERAL_${upper_name}")
+    
+    option(${opt_name} "Enable ${desc}" ON)
+    
+    if(${opt_name})
+        if(BUILD_SHARED_PERIPHERALS AND NOT force_builtin)
+            add_library(peripheral-${name} SHARED ${sources})
+            target_compile_definitions(peripheral-${name} PRIVATE BUILD_SHARED_PERIPHERAL)
+            target_include_directories(peripheral-${name} PRIVATE ${LINAPPLE_INCLUDES})
+            target_link_libraries(peripheral-${name} PRIVATE ${extra_libs})
+            set_target_properties(peripheral-${name} PROPERTIES PREFIX "" OUTPUT_NAME "${name}")
+            list(APPEND PERIPHERAL_MODULES peripheral-${name})
+        else()
+            list(APPEND SOURCES_A2_OPTIONAL ${sources})
+            list(APPEND PERIPHERAL_DEFINITIONS -DENABLE_PERIPHERAL_${upper_name})
+        endif()
+    endif()
+endmacro()
+
+# Define all peripherals
+add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/Speaker.cpp" "" TRUE)
+add_peripheral(keyboard "keyboard" "src/apple2/peripherals/Keyboard.cpp;src/apple2/peripherals/Keyboard_Maps.c" "" TRUE)
+add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskGCR.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
+add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
+add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/MouseInterface.cpp" "" TRUE)
+add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
+add_peripheral(ssc "Super Serial Card" "src/apple2/peripherals/SerialComms.cpp" "" TRUE)
+add_peripheral(joystick "Joystick" "src/apple2/peripherals/Joystick.cpp" "" TRUE)
+add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/ParallelPrinter.cpp" "" FALSE)
+add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/Clock.cpp" "" FALSE)
+
+# --- Main Target ---
+add_executable(linapple ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_FE} ${SOURCES_A2_OPTIONAL})
 add_dependencies(linapple generate_xpms)
 set_target_properties(linapple PROPERTIES ENABLE_EXPORTS TRUE)
 
-target_include_directories(linapple PRIVATE
-    src
-    src/core
-    src/apple2
-    src/apple2/chips
-    src/apple2/peripherals
-    src/apple2/peripherals/disk
-    src/apple2/peripherals/harddisk
-    src/Debugger
-    src/frontends/${FRONTEND}
-    ${GEN_RES_DIR}
-    ${RES_DIR}
-    ${CURL_INCLUDE_DIRS}
-    ${ZLIB_INCLUDE_DIRS}
-    ${LIBZIP_INCLUDE_DIRS}
-)
+target_include_directories(linapple PRIVATE ${LINAPPLE_INCLUDES})
 
 if(FRONTEND STREQUAL "sdl3")
-    target_link_libraries(linapple PRIVATE
-        SDL3::SDL3
-        SDL3_image::SDL3_image
-    )
+    target_link_libraries(linapple PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 endif()
 
 target_link_libraries(linapple PRIVATE
-    ${CURL_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    ${LIBZIP_LIBRARIES}
-    ${CMAKE_DL_LIBS}
-    Threads::Threads
+    ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads
 )
+
+target_compile_definitions(linapple PRIVATE
+    ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
+    SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+    ${PERIPHERAL_DEFINITIONS}
+)
+target_compile_definitions(linapple PUBLIC ENABLE_RIFF)
 
 # --- Installation ---
 include(GNUInstallDirs)
-
-# Default installation paths
-set(BIN_DIR "${CMAKE_INSTALL_BINDIR}")
-set(DATA_DIR "${CMAKE_INSTALL_DATADIR}/linapple")
-set(CONF_DIR "${CMAKE_INSTALL_SYSCONFDIR}/linapple")
-set(PLUGIN_DIR "${CMAKE_INSTALL_LIBDIR}/linapple/plugins")
-
-target_compile_definitions(linapple PRIVATE
-    ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${DATA_DIR}"
-    SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CONF_DIR}"
-    ${PERIPHERAL_DEFINITIONS}
-)
-
-install(TARGETS linapple DESTINATION ${BIN_DIR})
+install(TARGETS linapple DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(PERIPHERAL_MODULES)
-    install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${PLUGIN_DIR})
+    install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/linapple/plugins)
 endif()
-install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${DATA_DIR})
-install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CONF_DIR})
+install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
+install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
 
 # --- Tests ---
 include(CTest)
-
 if(BUILD_TESTING)
-    # Doctest include path
     find_path(DOCTEST_INCLUDE_DIR doctest.h PATH_SUFFIXES doctest)
     if(NOT DOCTEST_INCLUDE_DIR)
         include(FetchContent)
-        FetchContent_Declare(
-          doctest
-          GIT_REPOSITORY https://github.com/doctest/doctest.git
-          GIT_TAG v2.4.11
-        )
+        FetchContent_Declare(doctest GIT_REPOSITORY https://github.com/doctest/doctest.git GIT_TAG v2.4.11)
         FetchContent_MakeAvailable(doctest)
         set(DOCTEST_INCLUDE_DIR ${doctest_SOURCE_DIR}/doctest)
     endif()
 
-add_executable(test-app-config tests/test_app_config.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
-target_include_directories(test-app-config PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
-add_test(NAME AppConfig COMMAND test-app-config)
+    # Helper for adding tests
+    macro(add_linapple_test name sources)
+        add_executable(test-${name} ${sources} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+        target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
+        target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
+        target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        add_test(NAME test-${name} COMMAND test-${name})
+    endmacro()
 
-add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
-target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
-add_test(NAME AppArgs COMMAND test-app-args)
+    # Refactored tests
+    add_executable(test-app-config tests/test_app_config.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-app-config PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME AppConfig COMMAND test-app-config)
 
-add_executable(test-app-env tests/test_app_env.cpp ${SOURCES_CORE} src/frontends/headless/Headless_Path.cpp)
-target_include_directories(test-app-env PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR} ${GEN_RES_DIR} ${RES_DIR})
-add_dependencies(test-app-env generate_xpms)
-add_test(NAME AppEnv COMMAND test-app-env)
+    add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME AppArgs COMMAND test-app-args)
 
-add_executable(test-app-controller tests/test_app_controller.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-app-controller generate_xpms)
-target_include_directories(test-app-controller PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-app-controller PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-app-controller PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME AppController COMMAND test-app-controller)
+    add_linapple_test(app-env tests/test_app_env.cpp)
+    add_linapple_test(app-controller tests/test_app_controller.cpp)
+    add_linapple_test(integration tests/test_main.cpp)
+    
+    # Custom test-ssc to avoid symbol conflict
+    add_executable(test-ssc tests/test_ssc.cpp src/apple2/peripherals/SerialComms.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-ssc PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
+    target_compile_definitions(test-ssc PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
+    target_link_libraries(test-ssc PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+    add_test(NAME test-ssc COMMAND test-ssc)
 
+    add_linapple_test(abi tests/test_abi.cpp)
+    add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
+    
+    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/Keyboard_Maps.c src/core/Peripheral.cpp)
+    target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
 
-# Test Integration
-add_executable(test-integration tests/test_main.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-integration generate_xpms)
-target_include_directories(test-integration PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-integration PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-integration PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-integration COMMAND test-integration)
+    add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")
+    add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp")
+    add_linapple_test(printer-peripheral "tests/test_main.cpp;tests/test_printer_peripheral.cpp")
+    add_linapple_test(mouse-peripheral "tests/test_main.cpp;tests/test_mouse_peripheral.cpp")
+    add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
+    add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
+    add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
+    add_linapple_test(disk-abi "tests/test_disk_abi.cpp;tests/test_disk_abi_c.c")
+    
+    add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskGCR.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
-# Test SSC
-add_executable(test-ssc tests/test_ssc.cpp src/apple2/peripherals/SerialComms.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
-target_include_directories(test-ssc PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-ssc PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-ssc PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-ssc COMMAND test-ssc)
+    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskGCR.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
+    add_linapple_test(program-loader tests/test_program_loader.cpp)
+    add_linapple_test(disk-smoke tests/test_disk_smoke.cpp)
+    add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
+    add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
+    add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
+    add_linapple_test(headless-boot tests/test_headless_boot.cpp)
 
-# Test ABI
-add_executable(test-abi tests/test_abi.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-abi generate_xpms)
-target_include_directories(test-abi PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-abi PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-abi PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-abi COMMAND test-abi)
+    add_executable(test-file-browser tests/test_file_browser.cpp src/frontends/common/FileBrowser.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-file-browser PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-file-browser COMMAND test-file-browser)
 
-# Test Peripheral ABI (C and C++)
-add_executable(test-peripheral-abi
-    tests/test_main.cpp
-    tests/test_peripheral_abi.cpp
-    tests/test_peripheral_abi_c.c
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-peripheral-abi generate_xpms)
-target_include_directories(test-peripheral-abi PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-peripheral-abi PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-peripheral-abi PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-peripheral-abi COMMAND test-peripheral-abi)
+    add_executable(test-util-hash tests/test_util_hash.cpp src/frontends/common/Util_Hash.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-util-hash COMMAND test-util-hash)
 
-add_executable(test-keyboard-maps
-    tests/test_keyboard_maps_standalone.cpp
-    src/apple2/peripherals/Keyboard_Maps.c
-)
-target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
-add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
+    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-disk-ui COMMAND test-disk-ui)
 
-add_executable(test-keyboard-peripheral
-    tests/test_main.cpp
-    tests/test_keyboard_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-keyboard-peripheral generate_xpms)
-target_include_directories(test-keyboard-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-keyboard-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-keyboard-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-keyboard-peripheral COMMAND test-keyboard-peripheral)
+    foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors)
+        string(REPLACE "_" "-" TEST_NAME ${T})
+        add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
+    endforeach()
 
-add_executable(test-clock-peripheral
-    tests/test_main.cpp
-    tests/test_clock_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-clock-peripheral generate_xpms)
-target_include_directories(test-clock-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-clock-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-clock-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-clock-peripheral COMMAND test-clock-peripheral)
+    add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
+    set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:linapple>")
 
-# Test Printer Peripheral
-add_executable(test-printer-peripheral
-    tests/test_main.cpp
-    tests/test_printer_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-printer-peripheral generate_xpms)
-target_include_directories(test-printer-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-printer-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-printer-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-printer-peripheral COMMAND test-printer-peripheral)
+    add_linapple_test(speaker tests/test_main.cpp;tests/test_speaker.cpp)
+    add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
+    add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
+endif()
 
-# Test Mouse Peripheral
-add_executable(test-mouse-peripheral
-    tests/test_main.cpp
-    tests/test_mouse_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-mouse-peripheral generate_xpms)
-target_include_directories(test-mouse-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-mouse-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-mouse-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-mouse-peripheral COMMAND test-mouse-peripheral)
-
-# Test Mockingboard Peripheral
-add_executable(test-mockingboard-peripheral
-    tests/test_main.cpp
-    tests/test_mockingboard_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-mockingboard-peripheral generate_xpms)
-target_include_directories(test-mockingboard-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-mockingboard-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-mockingboard-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-mockingboard-peripheral COMMAND test-mockingboard-peripheral)
-
-# Test Joystick Peripheral
-add_executable(test-joystick-peripheral
-    tests/test_main.cpp
-    tests/test_joystick_peripheral.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-joystick-peripheral generate_xpms)
-target_include_directories(test-joystick-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-joystick-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-joystick-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-joystick-peripheral COMMAND test-joystick-peripheral)
-
-# Test Peripheral Slot 0
-add_executable(test-peripheral-slot0
-    tests/test_main.cpp
-    tests/test_peripheral_slot0.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-peripheral-slot0 generate_xpms)
-target_include_directories(test-peripheral-slot0 PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-peripheral-slot0 PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-peripheral-slot0 PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-peripheral-slot0 COMMAND test-peripheral-slot0)
-
-# Test Disk ABI
-add_executable(test-disk-abi
-    tests/test_disk_abi.cpp
-    tests/test_disk_abi_c.c
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-disk-abi generate_xpms)
-target_include_directories(test-disk-abi PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-disk-abi PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-disk-abi PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-disk-abi COMMAND test-disk-abi)
-
-# Test Disk GCR
-add_executable(test-disk-gcr
-    tests/test_disk_gcr.cpp
-    src/apple2/peripherals/disk/DiskGCR.cpp
-)
-target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
-add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
-
-# Test Disk Drivers
-add_executable(test-disk-drivers
-    tests/test_disk_drivers.cpp
-    src/apple2/peripherals/disk/formats/DoDriver.cpp
-    src/apple2/peripherals/disk/formats/IieDriver.cpp
-    src/apple2/peripherals/disk/formats/Nb2Driver.cpp
-    src/apple2/peripherals/disk/formats/NibDriver.cpp
-    src/apple2/peripherals/disk/formats/PoDriver.cpp
-    src/apple2/peripherals/disk/formats/Woz2Driver.cpp
-    src/apple2/peripherals/disk/DiskGCR.cpp
-)
-target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
-add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
-
-# Test Program Loader
-add_executable(test-program-loader
-    tests/test_program_loader.cpp
-    src/core/ProgramLoader.cpp
-    src/core/Common.cpp
-    src/core/Log.cpp
-    src/apple2/Memory.cpp
-    src/apple2/CPU.cpp
-    src/apple2/Video.cpp
-    src/apple2/peripherals/Keyboard.cpp
-    src/apple2/stretch.cpp
-    src/apple2/peripherals/harddisk/Harddisk.cpp
-    src/apple2/peripherals/disk/Disk.cpp
-    src/apple2/peripherals/disk/DiskGCR.cpp
-    src/apple2/peripherals/disk/DiskLoader.cpp
-    src/apple2/chips/6821.cpp
-    src/apple2/peripherals/disk/formats/DoDriver.cpp
-    src/apple2/peripherals/disk/formats/IieDriver.cpp
-    src/apple2/peripherals/disk/formats/Nb2Driver.cpp
-    src/apple2/peripherals/disk/formats/NibDriver.cpp
-    src/apple2/peripherals/disk/formats/PoDriver.cpp
-    src/apple2/peripherals/disk/formats/Woz2Driver.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-program-loader generate_xpms)
-target_include_directories(test-program-loader PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_link_libraries(test-program-loader PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-program-loader COMMAND test-program-loader)
-
-# test-disk-smoke
-add_executable(test-disk-smoke
-    tests/test_disk_smoke.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-disk-smoke generate_xpms)
-target_include_directories(test-disk-smoke PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-disk-smoke PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-disk-smoke PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-disk-smoke COMMAND test-disk-smoke)
-
-# Integration Tests
-add_executable(test-disk-config-startup
-    tests/test_disk_config_startup.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-disk-config-startup generate_xpms)
-target_include_directories(test-disk-config-startup PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-disk-config-startup PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-disk-config-startup PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-disk-config-startup COMMAND test-disk-config-startup)
-
-# test-disk-config-runtime-insert
-add_executable(test-disk-config-runtime-insert
-    tests/test_disk_config_runtime_insert.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-disk-config-runtime-insert generate_xpms)
-target_include_directories(test-disk-config-runtime-insert PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-disk-config-runtime-insert PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-disk-config-runtime-insert PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-disk-config-runtime-insert COMMAND test-disk-config-runtime-insert)
-
-# test-disk-config-runtime-eject
-add_executable(test-disk-config-runtime-eject
-    tests/test_disk_config_runtime_eject.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-disk-config-runtime-eject generate_xpms)
-target_include_directories(test-disk-config-runtime-eject PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-disk-config-runtime-eject PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-disk-config-runtime-eject PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-disk-config-runtime-eject COMMAND test-disk-config-runtime-eject)
-
-# test-headless-boot
-add_executable(test-headless-boot
-    tests/test_headless_boot.cpp
-    ${SOURCES_CORE}
-    ${SOURCES_A2}
-    ${SOURCES_DBG}
-    src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
-)
-add_dependencies(test-headless-boot generate_xpms)
-target_include_directories(test-headless-boot PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-target_compile_definitions(test-headless-boot PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-headless-boot PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-headless-boot COMMAND test-headless-boot)
-
-# test-file-browser
-add_executable(test-file-browser
-    tests/test_file_browser.cpp
-    src/frontends/common/FileBrowser.cpp
-)
-target_include_directories(test-file-browser PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
-add_test(NAME test-file-browser COMMAND test-file-browser)
-
-# test-util-hash
-add_executable(test-util-hash
-    tests/test_util_hash.cpp
-    src/frontends/common/Util_Hash.cpp
-)
-target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
-add_test(NAME test-util-hash COMMAND test-util-hash)
-
-# test-disk-ui
-add_executable(test-disk-ui
-    tests/test_disk_ui.cpp
-    src/frontends/sdl3/DiskUI.cpp
-)
-target_include_directories(test-disk-ui PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk ${DOCTEST_INCLUDE_DIR})
-add_test(NAME test-disk-ui COMMAND test-disk-ui)
-
-foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors)
-    string(REPLACE "_" "-" TEST_NAME ${T})
-    add_executable(test-${TEST_NAME}
-        tests/test_${T}.cpp
-        ${SOURCES_CORE}
-        ${SOURCES_A2}
-        ${SOURCES_DBG}
-        src/frontends/headless/Stubs.cpp
-        src/frontends/headless/Headless_Path.cpp
-    )
-    add_dependencies(test-${TEST_NAME} generate_xpms)
-    target_include_directories(test-${TEST_NAME} PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${DOCTEST_INCLUDE_DIR} ${RES_DIR})
-    target_compile_definitions(test-${TEST_NAME} PRIVATE ${PERIPHERAL_DEFINITIONS})
-    target_link_libraries(test-${TEST_NAME} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-    add_test(NAME test-${TEST_NAME} COMMAND test-${TEST_NAME})
-endforeach()
-
-# CPU tests (using the built linapple binary)
-add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
-set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:linapple>")
-
-# Test Speaker Subsystem
-add_executable(test-speaker tests/test_main.cpp tests/test_speaker.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-speaker generate_xpms)
-target_include_directories(test-speaker PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-speaker PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-speaker PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-speaker COMMAND test-speaker)
-
-# Test Peripheral Lifecycle
-add_executable(test-peripheral-lifecycle tests/test_peripheral_lifecycle.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-peripheral-lifecycle generate_xpms)
-target_include_directories(test-peripheral-lifecycle PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-peripheral-lifecycle PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-peripheral-lifecycle PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-peripheral-lifecycle COMMAND test-peripheral-lifecycle)
-
-# Test Harddisk Peripheral
-add_executable(test-harddisk-peripheral tests/test_harddisk_peripheral.cpp ${SOURCES_CORE} ${SOURCES_A2} ${SOURCES_DBG} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-add_dependencies(test-harddisk-peripheral generate_xpms)
-target_include_directories(test-harddisk-peripheral PRIVATE src src/core src/apple2 src/apple2/chips src/apple2/peripherals src/apple2/peripherals/disk src/apple2/peripherals/harddisk src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(test-harddisk-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
-target_link_libraries(test-harddisk-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-add_test(NAME test-harddisk-peripheral COMMAND test-harddisk-peripheral)
-
-endif() # BUILD_TESTING
-
-# --- Packaging Aliases (Issue #231) ---
 add_custom_target(linapple-core DEPENDS linapple)
-
 if(PERIPHERAL_MODULES)
     add_custom_target(linapple-peripherals-standard DEPENDS ${PERIPHERAL_MODULES})
 endif()

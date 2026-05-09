@@ -67,26 +67,26 @@ static void Printer_ABI_Think(void* instance, uint32_t cycles) {
   (void)cycles;
 }
 
-Peripheral_t g_printer_peripheral = {LINAPPLE_ABI_VERSION,
-                                     "Parallel Printer",
-                                     0xFE,  // Slots 1-7
-                                     Printer_ABI_Init,
-                                     Printer_ABI_Reset,
-                                     Printer_ABI_Shutdown,
-                                     Printer_ABI_Think,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr};
+Peripheral_t g_printer_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.printer",
+    "Parallel Printer",
+    "Standard parallel printer interface emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0xFE,  // Slots 1-7
+    1,     // Default Slot 1
+    Printer_ABI_Init,
+    Printer_ABI_Reset,
+    Printer_ABI_Shutdown,
+    Printer_ABI_Think,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr};
 
-extern "C" void Register_Printer() {
-  Peripheral_Register_Builtin(&g_printer_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_printer_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_printer_peripheral)
 
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {

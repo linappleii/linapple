@@ -577,26 +577,26 @@ static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   // End of frame logic
 }
 
-Peripheral_t g_mockingboard_peripheral = {LINAPPLE_ABI_VERSION,
-                                          "Mockingboard",
-                                          0xFE,  // Slots 1-7
-                                          MB_ABI_Init,
-                                          MB_ABI_Reset,
-                                          MB_ABI_Shutdown,
-                                          MB_ABI_Think,
-                                          MB_ABI_OnVBlank,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr};
+Peripheral_t g_mockingboard_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "linapple.mockingboard",
+    "Mockingboard",
+    "Dual AY-3-8910 sound card emulation",
+    "LinApple Contributors",
+    VERSIONSTRING,
+    0xFE,  // Slots 1-7
+    4,     // Default Slot 4
+    MB_ABI_Init,
+    MB_ABI_Reset,
+    MB_ABI_Shutdown,
+    MB_ABI_Think,
+    MB_ABI_OnVBlank,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr};
 
-extern "C" void Register_Mockingboard() {
-  Peripheral_Register_Builtin(&g_mockingboard_peripheral);
-}
-
-#ifdef BUILD_SHARED_PERIPHERAL
-EXPORT_PERIPHERAL(g_mockingboard_peripheral)
-#endif
+PERIPHERAL_REGISTER(g_mockingboard_peripheral)
 
 // --- Legacy Stubs for Build Compatibility ---
 void MB_Initialize() {}

@@ -30,8 +30,13 @@ static auto Mock_Shutdown(void* instance) -> void {
 
 static Peripheral_t g_mock_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "test.mock",
     "MockPeripheral",
+    "Description",
+    "Author",
+    "1.0.0",
     0xFF,
+    -1,
     Mock_Init,
     nullptr, // reset
     Mock_Shutdown,
@@ -106,8 +111,13 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
 
     static Peripheral_t test_api_config = {
         LINAPPLE_ABI_VERSION,
+        "test.config",
         "ConfigTest",
+        "Desc",
+        "Author",
+        "1.0.0",
         0xFF,
+        -1,
         [](int slot, HostInterface_t* host) -> void* {
             (void)slot;
             host->GetConfig("Peripheral", "TestKey1", captured_val1, sizeof(captured_val1));
@@ -163,8 +173,13 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
     static Peripheral_t test_api = {
         LINAPPLE_ABI_VERSION,
+        "test.max_payload",
         "MaxPayloadTest",
+        "Desc",
+        "Author",
+        "1.0.0",
         0xFF,
+        -1,
         [](int, HostInterface_t*) -> void* { return (void*)0x1; },
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus {

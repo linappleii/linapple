@@ -39,8 +39,13 @@ static void Test_Shutdown(void* instance) {
 
 Peripheral_t g_test_c_peripheral = {
     LINAPPLE_ABI_VERSION,
+    "test.c_peripheral",
     "TestCPeripheral",
+    "A C-based test peripheral",
+    "Test Author",
+    "1.0.0",
     0xFF,
+    -1,
     Test_Init,
     Test_Reset,
     Test_Shutdown,

@@ -37,8 +37,13 @@ static void Mock2_Think(void* instance, uint32_t cycles) {
 
 static Peripheral_t g_mock1 = {
     LINAPPLE_ABI_VERSION,
+    "test.mock1",
     "Mock1",
+    "Desc",
+    "Author",
+    "1.0.0",
     0x01, // Compatible with Slot 0
+    0,
     Mock1_Init,
     Mock1_Reset,
     nullptr, // Shutdown
@@ -52,8 +57,13 @@ static Peripheral_t g_mock1 = {
 
 static Peripheral_t g_mock2 = {
     LINAPPLE_ABI_VERSION,
+    "test.mock2",
     "Mock2",
+    "Desc",
+    "Author",
+    "1.0.0",
     0x01, // Compatible with Slot 0
+    0,
     Mock2_Init,
     Mock2_Reset,
     nullptr, // Shutdown
