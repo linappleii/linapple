@@ -43,6 +43,7 @@ __attribute__((weak)) void Register_Harddisk();
 __attribute__((weak)) void Register_Mouse();
 __attribute__((weak)) void Register_Clock();
 __attribute__((weak)) void Register_Keyboard();
+__attribute__((weak)) void Register_Joystick();
 }
 
 void Peripheral_Register_Builtin(Peripheral_t* p) {
@@ -66,6 +67,7 @@ static void Discover_Builtins() {
   if (Register_Mouse) Register_Mouse();
   if (Register_Clock) Register_Clock();
   if (Register_Keyboard) Register_Keyboard();
+  if (Register_Joystick) Register_Joystick();
 }
 
 auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {

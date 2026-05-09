@@ -1,58 +1,70 @@
-#include "core/Common.h"
-#include <iostream>
-#include <cstdint>
-#include <array>
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
+// implements the C11-compatible Peripheral ABI. It requires void* pointers for
+// instance state, raw memory management, and static global state to bridge with
+// the core C interface and maintain peripheral singletons.
+
 #include "apple2/Joystick.h"
-#include "apple2/Structs.h"
-#include "apple2/Memory.h"
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <iostream>
+
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/Structs.h"
+#include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
+#include "core/Peripheral.h"
+
+enum { BUTTONTIME = 5000 };
 
 enum {
-BUTTONTIME =       5000
+  DEVICE_NONE = 0,
+  DEVICE_JOYSTICK = 1,
+  DEVICE_KEYBOARD = 2,
+  DEVICE_MOUSE = 3
 };
 
 enum {
-DEVICE_NONE =      0,
-DEVICE_JOYSTICK =  1,
-DEVICE_KEYBOARD =  2,
-DEVICE_MOUSE =     3
-};
-
-enum {
-MODE_NONE =        0,
-MODE_STANDARD =    1,
-MODE_CENTERING =   2,
-MODE_SMOOTH =      3
+  MODE_NONE = 0,
+  MODE_STANDARD = 1,
+  MODE_CENTERING = 2,
+  MODE_SMOOTH = 3
 };
 
 using joyinforec = struct joyinforec {
   int device;
   int mode;
 };
-using joyinfoptr = joyinforec*;
 
-static const std::array<joyinforec, 5> joyinfo = {{
-  {DEVICE_NONE,     MODE_NONE},
-  {DEVICE_JOYSTICK, MODE_STANDARD},
-  {DEVICE_KEYBOARD, MODE_STANDARD},
-  {DEVICE_KEYBOARD, MODE_CENTERING},
-  {DEVICE_MOUSE,    MODE_STANDARD}
-}};
+static const std::array<joyinforec, 5> joyinfo = {
+    {{DEVICE_NONE, MODE_NONE},
+     {DEVICE_JOYSTICK, MODE_STANDARD},
+     {DEVICE_KEYBOARD, MODE_STANDARD},
+     {DEVICE_KEYBOARD, MODE_CENTERING},
+     {DEVICE_MOUSE,    MODE_STANDARD}}};
 
-std::array<uint32_t, 2> joytype = {{DEVICE_JOYSTICK, DEVICE_NONE}};  // Emulation Type for joysticks #0 & #1
+struct JoystickPeripheral_t {
+  std::array<uint32_t, 2> joytype = {{DEVICE_JOYSTICK, DEVICE_NONE}};
+  std::array<uint32_t, 3> buttonlatch = {{0, 0, 0}};
+  std::array<bool, 3> joybutton = {{false, false, false}};
+  std::array<int, 2> xpos = {{127, 127}};
+  std::array<int, 2> ypos = {{127, 127}};
+  uint64_t reset_cycle = 0;
+  int trim_x = 0;
+  int trim_y = 0;
+  HostInterface_t* host = nullptr;
+  int slot = 0;
+};
 
-static std::array<uint32_t, 3> buttonlatch = {{0, 0, 0}};
-static std::array<bool, 3> joybutton = {{false, false, false}};
+static JoystickPeripheral_t* active_joystick_instance = nullptr;
 
-static std::array<int, 2> xpos = {{127, 127}};
-static std::array<int, 2> ypos = {{127, 127}};
-
-static uint64_t g_nJoyCntrResetCycle = 0;  // Abs cycle that joystick counters were reset
-
-static int g_nPdlTrimX = 0;
-static int g_nPdlTrimY = 0;
+// Emulation Type for joysticks #0 & #1 (Legacy support)
+std::array<uint32_t, 2> joytype = {{DEVICE_JOYSTICK, DEVICE_NONE}};
 
 uint32_t joy1index = 0;
 uint32_t joy2index = 1;
@@ -68,90 +80,151 @@ uint32_t joyexitbutton0 = 8;
 uint32_t joyexitbutton1 = 9;
 bool joyquitevent = false;
 
-// All globally accessible functions are below this line
+static const double PDL_CNTR_INTERVAL = 2816.0 / 255.0;  // 11.04 (From KEGS)
+
+// --- Internal Functions ---
+
+static auto Joy_IO_ReadButton(void* instance, uint16_t pc, uint16_t addr,
+                              uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
+  (void)pc;
+  (void)write;
+  (void)val;
+  if (!instance) {
+    return MemReadFloatingBus(cycles_left);
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  int idx = (addr & 0xFF) - 0x61;
+  bool pressed = false;
+  if (idx >= 0 && idx < 3) {
+    pressed = (jp->buttonlatch[static_cast<size_t>(idx)] ||
+               jp->joybutton[static_cast<size_t>(idx)]);
+    jp->buttonlatch[static_cast<size_t>(idx)] = 0;
+  }
+  return MemReadFloatingBus(pressed, cycles_left);
+}
+
+static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
+                                uint8_t write, uint8_t val,
+                                uint32_t cycles_left) -> uint8_t {
+  (void)pc;
+  (void)write;
+  (void)val;
+  if (!instance) {
+    return MemReadFloatingBus(cycles_left);
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  int nJoyNum = (addr & 2) ? 1 : 0;  // $C064..$C067
+  CpuCalcCycles(cycles_left);
+
+  uint32_t nPdlPos = (addr & 1)
+                         ? static_cast<uint32_t>(jp->ypos[static_cast<size_t>(nJoyNum)])
+                         : static_cast<uint32_t>(jp->xpos[static_cast<size_t>(nJoyNum)]);
+
+  bool nPdlCntrActive = (g_nCumulativeCycles <= (jp->reset_cycle + static_cast<uint64_t>(static_cast<double>(nPdlPos) * PDL_CNTR_INTERVAL)));
+
+  return MemReadFloatingBus(nPdlCntrActive, cycles_left);
+}
+
+static auto Joy_IO_ResetPosition(void* instance, uint16_t pc, uint16_t addr,
+                                 uint8_t write, uint8_t val,
+                                 uint32_t cycles_left) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)write;
+  (void)val;
+  if (!instance) {
+    return MemReadFloatingBus(cycles_left);
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  CpuCalcCycles(cycles_left);
+  jp->reset_cycle = g_nCumulativeCycles;
+  return MemReadFloatingBus(cycles_left);
+}
+
+// --- ABI Implementation ---
+
+static void* Joystick_ABI_Init(int slot, HostInterface_t* host) {
+  if (active_joystick_instance) {
+    return active_joystick_instance;
+  }
+
+  auto* jp = new JoystickPeripheral_t{};
+  jp->host = host;
+  jp->slot = slot;
+
+  active_joystick_instance = jp;
+  return jp;
+}
+
+Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
+                                      "Joystick",
+                                      0x01,  // Slot 0 (Internal)
+                                      Joystick_ABI_Init,
+                                      nullptr,  // reset
+                                      nullptr,  // shutdown
+                                      nullptr,  // think
+                                      nullptr,  // on_vblank
+                                      nullptr,  // save_state
+                                      nullptr,  // load_state
+                                      nullptr,  // command
+                                      nullptr};
+
+extern "C" void Register_Joystick() {
+  Peripheral_Register_Builtin(&g_joystick_peripheral);
+}
+
+#ifdef BUILD_SHARED_PERIPHERAL
+EXPORT_PERIPHERAL(g_joystick_peripheral)
+#endif
+
+// --- Legacy Procedural API ---
 
 void JoyShutDown() {
 }
 
 void JoyInitialize() {
+  // Initialization now handled by Peripheral Manager
 }
 
 void JoyReset() {
-  for (int i = 0; i < 3; i++) {
-    buttonlatch[static_cast<size_t>(i)] = 0;
-    joybutton[static_cast<size_t>(i)] = false;
-  }
-  for (int i = 0; i < 2; i++) {
-    xpos[static_cast<size_t>(i)] = 127;
-    ypos[static_cast<size_t>(i)] = 127;
-  }
 }
 
-auto JoyReadButton(uint16_t, uint16_t address, uint8_t, uint8_t, uint32_t nCyclesLeft) -> uint8_t {
-  address &= 0xFF;
-  bool pressed = false;
-  int idx = address - 0x61;
-  if (idx >= 0 && idx < 3) {
-    pressed = (buttonlatch[static_cast<size_t>(idx)] || joybutton[static_cast<size_t>(idx)]);
-    buttonlatch[static_cast<size_t>(idx)] = 0;
-  }
-  return MemReadFloatingBus(pressed, nCyclesLeft);
+auto JoyReadButton(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ReadButton(active_joystick_instance, pc, address, write, val, nCyclesLeft);
 }
 
-// PREAD:    ; $FB1E
-//  AD 70 C0 : (4) LDA $C070
-//  A0 00    : (2) LDA #$00
-//  EA       : (2) NOP
-//  EA       : (2) NOP
-// Lbl1:            ; 11 cycles is the normal duration of the loop
-//  BD 64 C0 : (4) LDA $C064,X
-//  10 04    : (2) BPL Lbl2    ; NB. 3 cycles if branch taken (not likely)
-//  C8       : (2) INY
-//  D0 F8    : (3) BNE Lbl1    ; NB. 2 cycles if branck not taken (not likely)
-//  88       : (2) DEY
-// Lbl2:
-//  60       : (6) RTS
-
-static const double PDL_CNTR_INTERVAL = 2816.0 / 255.0;  // 11.04 (From KEGS)
-
-auto JoyReadPosition(uint16_t programcounter, uint16_t address, uint8_t, uint8_t, uint32_t nCyclesLeft) -> uint8_t {
-  (void)programcounter;
-  int nJoyNum = (address & 2) ? 1 : 0;  // $C064..$C067
-
-  CpuCalcCycles(nCyclesLeft);
-
-  uint32_t nPdlPos = (address & 1) ? static_cast<uint32_t>(ypos[static_cast<size_t>(nJoyNum)]) : static_cast<uint32_t>(xpos[static_cast<size_t>(nJoyNum)]);
-
-  bool nPdlCntrActive = (g_nCumulativeCycles <= (g_nJoyCntrResetCycle + static_cast<uint64_t>(static_cast<double>(nPdlPos) * PDL_CNTR_INTERVAL)));
-
-  return MemReadFloatingBus(nPdlCntrActive, nCyclesLeft);
+auto JoyReadPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ReadPosition(active_joystick_instance, pc, address, write, val, nCyclesLeft);
 }
 
-auto JoyResetPosition(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft) -> uint8_t {
-  CpuCalcCycles(nCyclesLeft);
-  g_nJoyCntrResetCycle = g_nCumulativeCycles;
-  return MemReadFloatingBus(nCyclesLeft);
+auto JoyResetPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ResetPosition(active_joystick_instance, pc, address, write, val, nCyclesLeft);
 }
 
 void JoySetRawPosition(int joy, int x, int y) {
-  if (joy >= 0 && joy < 2) {
-    xpos[static_cast<size_t>(joy)] = x;
-    ypos[static_cast<size_t>(joy)] = y;
+  if (active_joystick_instance && joy >= 0 && joy < 2) {
+    active_joystick_instance->xpos[static_cast<size_t>(joy)] = x;
+    active_joystick_instance->ypos[static_cast<size_t>(joy)] = y;
   }
 }
 
 void JoySetRawButton(int button_idx, bool down) {
-  if (button_idx >= 0 && button_idx < 3) {
-    if (down && !joybutton[static_cast<size_t>(button_idx)]) {
-      buttonlatch[static_cast<size_t>(button_idx)] = BUTTONTIME;
+  if (active_joystick_instance && button_idx >= 0 && button_idx < 3) {
+    if (down && !active_joystick_instance->joybutton[static_cast<size_t>(button_idx)]) {
+      active_joystick_instance->buttonlatch[static_cast<size_t>(button_idx)] = BUTTONTIME;
     }
-    joybutton[static_cast<size_t>(button_idx)] = down;
+    active_joystick_instance->joybutton[static_cast<size_t>(button_idx)] = down;
   }
 }
 
 void JoyUpdatePosition(uint32_t dwExecutedCycles) {
   (void)dwExecutedCycles;
-  for (uint32_t & i : buttonlatch) {
+  if (!active_joystick_instance) return;
+  for (uint32_t& i : active_joystick_instance->buttonlatch) {
     if (i) {
       --i;
     }
@@ -159,12 +232,16 @@ void JoyUpdatePosition(uint32_t dwExecutedCycles) {
 }
 
 auto JoyGetSnapshot(SS_IO_Joystick *pSS) -> uint32_t {
-  pSS->g_nJoyCntrResetCycle = g_nJoyCntrResetCycle;
+  if (active_joystick_instance) {
+    pSS->g_nJoyCntrResetCycle = active_joystick_instance->reset_cycle;
+  }
   return 0;
 }
 
 auto JoySetSnapshot(SS_IO_Joystick *pSS) -> uint32_t {
-  g_nJoyCntrResetCycle = pSS->g_nJoyCntrResetCycle;
+  if (active_joystick_instance) {
+    active_joystick_instance->reset_cycle = pSS->g_nJoyCntrResetCycle;
+  }
   return 0;
 }
 
@@ -178,25 +255,36 @@ void JoySetPosition(int xvalue, int xrange, int yvalue, int yrange) {
 }
 
 auto JoySetEmulationType(uint32_t newType, int nJoystickNumber) -> bool {
-  if (nJoystickNumber >= 0 && nJoystickNumber < 2) {
-    joytype[static_cast<size_t>(nJoystickNumber)] = newType;
+  if (active_joystick_instance && nJoystickNumber >= 0 && nJoystickNumber < 2) {
+    active_joystick_instance->joytype[static_cast<size_t>(nJoystickNumber)] = newType;
     return true;
   }
   return false;
 }
 
 auto JoyUsingMouse() -> bool {
-  return (joyinfo[static_cast<size_t>(joytype[0])].device == DEVICE_MOUSE) || (joyinfo[static_cast<size_t>(joytype[1])].device == DEVICE_MOUSE);
+  if (!active_joystick_instance) return false;
+  return (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[0])].device == DEVICE_MOUSE) ||
+         (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[1])].device == DEVICE_MOUSE);
 }
 
 void JoySetTrim(short nValue, bool bAxisX) {
-  if (bAxisX) {
-    g_nPdlTrimX = nValue;
-  } else {
-    g_nPdlTrimY = nValue;
+  if (active_joystick_instance) {
+    if (bAxisX) {
+      active_joystick_instance->trim_x = nValue;
+    } else {
+      active_joystick_instance->trim_y = nValue;
+    }
   }
 }
 
 auto JoyGetTrim(bool bAxisX) -> short {
-  return bAxisX ? g_nPdlTrimX : g_nPdlTrimY;
+  if (active_joystick_instance) {
+    return bAxisX ? active_joystick_instance->trim_x : active_joystick_instance->trim_y;
+  }
+  return 0;
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables)
