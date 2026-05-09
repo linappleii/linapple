@@ -27,6 +27,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Sample generation and audio routing are handled via Peripheral ABI.
  */
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
+// implements the C11-compatible Peripheral ABI. It requires void* pointers for
+// instance state, raw memory management, and static global state to bridge with
+// the core C interface and maintain peripheral singletons.
+
 #include "apple2/Speaker.h"
 
 #include <array>
@@ -328,3 +335,7 @@ extern "C" void Register_Speaker() {
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_speaker_peripheral)
 #endif
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables)
