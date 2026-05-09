@@ -3,10 +3,12 @@
 #include <cstring>
 #include <array>
 #include "apple2/Joystick.h"
+#include "apple2/JoystickCommands.h"
 #include "SDL3/SDL.h"
 #include "apple2/Structs.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
+#include "core/Peripheral.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 
 enum {
@@ -82,6 +84,9 @@ static std::array<int, 2> joysuby = {0, 0};
 
 SDL_Joystick *joy1 = nullptr;
 SDL_Joystick *joy2 = nullptr;
+
+static int g_frontend_pdl_trim_x = 0;
+static int g_frontend_pdl_trim_y = 0;
 
 void JoyFrontend_Initialize() {
   #define AXIS_MIN        -32768  /* minimum value for axis coordinate */
@@ -177,8 +182,11 @@ void JoyFrontend_Update() {
       if (joyinfo[joytype[1]].device == DEVICE_NONE) {
         b1 = SDL_GetJoystickButton(joy1, static_cast<int>(joy1button2));
       }
-      JoySetRawButton(0, b0);
-      JoySetRawButton(1, b1);
+      
+      JoystickButtonPayload_t pb0 = {0, b0};
+      Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
+      JoystickButtonPayload_t pb1 = {1, b1};
+      Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
       int x = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(joy1axis0))) - joysubx[0]) >> joyshrx[0];
       int y = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(joy1axis1))) - joysuby[0]) >> joyshry[0];
@@ -206,7 +214,10 @@ void JoyFrontend_Update() {
       if (y < 0) y = 0;
       if (y > 255) y = 255;
 
-      JoySetRawPosition(0, x + JoyGetTrim(true), y + JoyGetTrim(false));
+      JoystickAxisPayload_t px = {0, 0, static_cast<uint8_t>(x + g_frontend_pdl_trim_x)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      JoystickAxisPayload_t py = {0, 1, static_cast<uint8_t>(y + g_frontend_pdl_trim_y)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
 
@@ -219,56 +230,57 @@ void JoyFrontend_Update() {
       SDL_UpdateJoysticks();
 
       bool b2 = SDL_GetJoystickButton(joy2, static_cast<int>(joy2button1));
-      JoySetRawButton(2, b2);
+      JoystickButtonPayload_t pb2 = {2, b2};
+      Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
       if (joyinfo[joytype[1]].device != DEVICE_NONE) {
-        JoySetRawButton(1, b2); // Remap for 2nd joystick
+        JoystickButtonPayload_t pb1 = {1, b2};
+        Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
 
       int x = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(joy2axis0))) - joysubx[1]) >> joyshrx[1];
       int y = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(joy2axis1))) - joysuby[1]) >> joyshry[1];
 
-      if (x == 127 || x == 128) x += JoyGetTrim(true);
-      if (y == 127 || y == 128) y += JoyGetTrim(false);
+      if (x == 127 || x == 128) x += g_frontend_pdl_trim_x;
+      if (y == 127 || y == 128) y += g_frontend_pdl_trim_y;
 
       if (x < 0) x = 0;
       if (x > 255) x = 255;
       if (y < 0) y = 0;
       if (y > 255) y = 255;
 
-      JoySetRawPosition(1, x, y);
+      JoystickAxisPayload_t px = {1, 0, static_cast<uint8_t>(x)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      JoystickAxisPayload_t py = {1, 1, static_cast<uint8_t>(y)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
 }
 
 void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
-  short tx = JoyGetTrim(true);
-  short ty = JoyGetTrim(false);
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP_2:
-      if (ty < 64) ty++;
+      if (g_frontend_pdl_trim_y < 64) g_frontend_pdl_trim_y++;
       break;
     case SDLK_KP_4:
     case SDLK_LEFT:
-      if (tx > -64) tx--;
+      if (g_frontend_pdl_trim_x > -64) g_frontend_pdl_trim_x--;
       break;
     case SDLK_KP_6:
     case SDLK_RIGHT:
-      if (tx < 64) tx++;
+      if (g_frontend_pdl_trim_x < 64) g_frontend_pdl_trim_x++;
       break;
     case SDLK_KP_8:
     case SDLK_UP:
-      if (ty > -64) ty--;
+      if (g_frontend_pdl_trim_y > -64) g_frontend_pdl_trim_y--;
       break;
     case SDLK_KP_5:
     case SDLK_CLEAR:
-      tx = ty = 0;
+      g_frontend_pdl_trim_x = g_frontend_pdl_trim_y = 0;
       break;
     default:
       break;
   }
-  JoySetTrim(tx, true);
-  JoySetTrim(ty, false);
 }
 
 auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool autorep) -> bool {
@@ -301,27 +313,35 @@ auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool 
     if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
       if (down) {
         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
-          JoySetRawButton(0, true);
+          JoystickButtonPayload_t p = {0, true};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (joyinfo[joytype[1]].device != DEVICE_NONE) {
-          JoySetRawButton(2, true);
-          JoySetRawButton(1, true);
+          JoystickButtonPayload_t p2 = {2, true};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
+          JoystickButtonPayload_t p1 = {1, true};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       } else {
          if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
-          JoySetRawButton(0, false);
+          JoystickButtonPayload_t p = {0, false};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (joyinfo[joytype[1]].device != DEVICE_NONE) {
-          JoySetRawButton(2, false);
-          JoySetRawButton(1, false);
+          JoystickButtonPayload_t p2 = {2, false};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
+          JoystickButtonPayload_t p1 = {1, false};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       }
     } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
       if (down) {
         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
-          JoySetRawButton(1, true);
+          JoystickButtonPayload_t p = {1, true};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       } else {
         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
-          JoySetRawButton(1, false);
+          JoystickButtonPayload_t p = {1, false};
+          Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       }
     } else if ((down && !autorep) || (nCenteringType == MODE_CENTERING)) {
@@ -344,13 +364,16 @@ auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool 
       }
       int x = 0, y = 0;
       if (keydown_count) {
-        x = (xsum / keydown_count) + static_cast<int>(PDL_CENTRAL) + JoyGetTrim(true);
-        y = (ysum / keydown_count) + static_cast<int>(PDL_CENTRAL) + JoyGetTrim(false);
+        x = (xsum / keydown_count) + static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_x;
+        y = (ysum / keydown_count) + static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_y;
       } else {
-        x = static_cast<int>(PDL_CENTRAL) + JoyGetTrim(true);
-        y = static_cast<int>(PDL_CENTRAL) + JoyGetTrim(false);
+        x = static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_x;
+        y = static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_y;
       }
-      JoySetRawPosition(nJoyNum, x, y);
+      JoystickAxisPayload_t px = {static_cast<uint8_t>(nJoyNum), 0, static_cast<uint8_t>(x)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      JoystickAxisPayload_t py = {static_cast<uint8_t>(nJoyNum), 1, static_cast<uint8_t>(y)};
+      Peripheral_Command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
   return keychange;

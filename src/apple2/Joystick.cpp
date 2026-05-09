@@ -262,7 +262,7 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd_id,
 }
 
 static auto Joystick_ABI_SaveState(void* instance, void* buffer,
-                                    size_t* size) -> PeripheralStatus {
+                                   size_t* size) -> PeripheralStatus {
   if (!instance || !size) {
     return PERIPHERAL_ERROR;
   }
@@ -279,15 +279,13 @@ static auto Joystick_ABI_SaveState(void* instance, void* buffer,
 
   auto* ss = static_cast<SS_IO_Joystick*>(buffer);
   ss->g_nJoyCntrResetCycle = jp->reset_cycle;
-  // Note: SS_IO_Joystick currently only has reset_cycle.
-  // We could expand it if needed, but keeping it simple for now.
 
   *size = sizeof(SS_IO_Joystick);
   return PERIPHERAL_OK;
 }
 
 static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
-                                    size_t size) -> PeripheralStatus {
+                                   size_t size) -> PeripheralStatus {
   if (!instance || !buffer || size < sizeof(SS_IO_Joystick)) {
     return PERIPHERAL_ERROR;
   }
@@ -334,64 +332,46 @@ void JoyReset() {
   Joystick_ABI_Reset(active_joystick_instance);
 }
 
-auto JoyReadButton(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
-  return Joy_IO_ReadButton(active_joystick_instance, pc, address, write, val, nCyclesLeft);
+auto JoyReadButton(uint16_t pc, uint16_t address, uint8_t write, uint8_t val,
+                   uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ReadButton(active_joystick_instance, pc, address, write, val,
+                           nCyclesLeft);
 }
 
-auto JoyReadPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
-  return Joy_IO_ReadPosition(active_joystick_instance, pc, address, write, val, nCyclesLeft);
+auto JoyReadPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val,
+                     uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ReadPosition(active_joystick_instance, pc, address, write, val,
+                             nCyclesLeft);
 }
 
-auto JoyResetPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
-  return Joy_IO_ResetPosition(active_joystick_instance, pc, address, write, val, nCyclesLeft);
-}
-
-void JoySetRawPosition(int joy, int x, int y) {
-  if (active_joystick_instance && joy >= 0 && joy < 2) {
-    active_joystick_instance->xpos[static_cast<size_t>(joy)] = x;
-    active_joystick_instance->ypos[static_cast<size_t>(joy)] = y;
-  }
-}
-
-void JoySetRawButton(int button_idx, bool down) {
-  if (active_joystick_instance && button_idx >= 0 && button_idx < 3) {
-    if (down && !active_joystick_instance->joybutton[static_cast<size_t>(button_idx)]) {
-      active_joystick_instance->buttonlatch[static_cast<size_t>(button_idx)] = BUTTONTIME;
-    }
-    active_joystick_instance->joybutton[static_cast<size_t>(button_idx)] = down;
-  }
+auto JoyResetPosition(uint16_t pc, uint16_t address, uint8_t write, uint8_t val,
+                      uint32_t nCyclesLeft) -> uint8_t {
+  return Joy_IO_ResetPosition(active_joystick_instance, pc, address, write, val,
+                              nCyclesLeft);
 }
 
 void JoyUpdatePosition(uint32_t dwExecutedCycles) {
   Joystick_ABI_Think(active_joystick_instance, dwExecutedCycles);
 }
 
-auto JoyGetSnapshot(SS_IO_Joystick *pSS) -> uint32_t {
+auto JoyGetSnapshot(SS_IO_Joystick* pSS) -> uint32_t {
   if (active_joystick_instance) {
     pSS->g_nJoyCntrResetCycle = active_joystick_instance->reset_cycle;
   }
   return 0;
 }
 
-auto JoySetSnapshot(SS_IO_Joystick *pSS) -> uint32_t {
+auto JoySetSnapshot(SS_IO_Joystick* pSS) -> uint32_t {
   if (active_joystick_instance) {
     active_joystick_instance->reset_cycle = pSS->g_nJoyCntrResetCycle;
   }
   return 0;
 }
 
-void JoySetButton(eBUTTON number, eBUTTONSTATE down) {
-  JoySetRawButton(static_cast<int>(number), down == BUTTON_DOWN);
-}
-
-void JoySetPosition(int xvalue, int xrange, int yvalue, int yrange) {
-  if (xrange == 0 || yrange == 0) return;
-  JoySetRawPosition(0, (xvalue * 255) / xrange, (yvalue * 255) / yrange);
-}
-
 auto JoySetEmulationType(uint32_t newType, int nJoystickNumber) -> bool {
   if (active_joystick_instance && nJoystickNumber >= 0 && nJoystickNumber < 2) {
-    active_joystick_instance->joytype[static_cast<size_t>(nJoystickNumber)] = newType;
+    active_joystick_instance->joytype[static_cast<size_t>(nJoystickNumber)] =
+        newType;
     return true;
   }
   return false;
@@ -399,25 +379,10 @@ auto JoySetEmulationType(uint32_t newType, int nJoystickNumber) -> bool {
 
 auto JoyUsingMouse() -> bool {
   if (!active_joystick_instance) return false;
-  return (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[0])].device == DEVICE_MOUSE) ||
-         (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[1])].device == DEVICE_MOUSE);
-}
-
-void JoySetTrim(short nValue, bool bAxisX) {
-  if (active_joystick_instance) {
-    if (bAxisX) {
-      active_joystick_instance->trim_x = nValue;
-    } else {
-      active_joystick_instance->trim_y = nValue;
-    }
-  }
-}
-
-auto JoyGetTrim(bool bAxisX) -> short {
-  if (active_joystick_instance) {
-    return bAxisX ? active_joystick_instance->trim_x : active_joystick_instance->trim_y;
-  }
-  return 0;
+  return (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[0])]
+              .device == DEVICE_MOUSE) ||
+         (joyinfo[static_cast<size_t>(active_joystick_instance->joytype[1])]
+              .device == DEVICE_MOUSE);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,

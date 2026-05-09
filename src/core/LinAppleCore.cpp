@@ -33,6 +33,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/CPU.h"
 #include "apple2/Clock.h"
 #include "apple2/Joystick.h"
+#include "apple2/JoystickCommands.h"
 #include "apple2/Memory.h"
 #include "apple2/Mockingboard.h"
 #include "apple2/SaveState.h"
@@ -124,7 +125,6 @@ void Linapple_Init() {
   MemInitialize();
   CpuInitialize();
   VideoInitialize();
-  JoyInitialize();
 }
 
 void Linapple_RegisterPeripherals() {
@@ -218,7 +218,6 @@ static auto Internal_RunCycles(uint32_t dwCycles) -> uint32_t {
   Peripheral_Manager_Think(dwExecutedCycles);
 
   VideoUpdateVbl(dwExecutedCycles);
-  JoyUpdatePosition(dwExecutedCycles);
 
   return dwExecutedCycles;
 }
@@ -270,9 +269,11 @@ void Linapple_SetAppleKey(int key, bool down) {
 }
 
 void Linapple_SetJoystickAxis(int axis, int value) {
-  JoySetTrim(static_cast<short>(value), axis == 0);
+  JoystickTrimPayload_t payload = {axis == 0, static_cast<int16_t>(value)};
+  Peripheral_Command(0, JOY_CMD_SET_TRIM, &payload, sizeof(payload));
 }
 
 void Linapple_SetJoystickButton(int button, bool down) {
-  JoySetButton(static_cast<eBUTTON>(button), down ? BUTTON_DOWN : BUTTON_UP);
+  JoystickButtonPayload_t payload = {static_cast<uint8_t>(button), down};
+  Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }

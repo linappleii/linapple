@@ -31,23 +31,11 @@ void JoyShutDown();
 
 void JoyReset();
 
-void JoySetButton(eBUTTON number, eBUTTONSTATE down);
-
 bool JoySetEmulationType(uint32_t, int);
-
-void JoySetPosition(int, int, int, int);
 
 void JoyUpdatePosition(uint32_t dwExecutedCycles);
 
 bool JoyUsingMouse();
-
-void JoySetTrim(short nValue, bool bAxisX);
-
-short JoyGetTrim(bool bAxisX);
-
-void JoySetRawPosition(int joy, int x, int y);
-
-void JoySetRawButton(int button_idx, bool down);
 
 uint32_t JoyGetSnapshot(SS_IO_Joystick *pSS);
 
