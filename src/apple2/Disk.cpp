@@ -385,13 +385,14 @@ static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t, uint8_t,
   }
 
   if (direction) {
+    int oldphase = fptr->phase;
     fptr->phase = MAX(0, MIN(79, fptr->phase + direction));
-    int newtrack = MIN(TRACKS - 1, fptr->phase >> 1);
-    if (newtrack != fptr->track) {
+    fptr->track = MIN(TRACKS - 1, fptr->phase >> 1);
+
+    if (fptr->phase != oldphase) {
       if (fptr->trackimage && fptr->trackimagedirty) {
         WriteTrack(currdrive);
       }
-      fptr->track = newtrack;
       fptr->trackimagedata = false;
     }
   }
