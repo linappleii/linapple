@@ -182,7 +182,13 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     case VIA_REG_ORB:
       nValue &= pMB->sy6522.DDRB;
       pMB->sy6522.ORB = nValue;
-      AY8910_Write_Instance(mp, nDevice, nValue, 0);
+      if (mp->type == SC_PHASOR) {
+        int nAY_CS = mp->phasor_native ? (~(nValue >> 3) & 3) : 1;
+        if (nAY_CS & 1) AY8910_Write_Instance(mp, nDevice, nValue, 0);
+        // Phasor has 4 AY chips, but for now we only emulate 2 per card instance
+      } else {
+        AY8910_Write_Instance(mp, nDevice, nValue, 0);
+      }
       break;
     case VIA_REG_ORA:
       pMB->sy6522.ORA = nValue & pMB->sy6522.DDRA;
@@ -292,15 +298,16 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       AY8910_update_instance(&mp->chips[i].ay_chip, voices, nNumSamples, static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     }
 
+    double fAttenuation = (mp->type == SC_PHASOR) ? 2.0 / 3.0 : 1.0;
+
     // Mix to stereo
     for (int i = 0; i < nNumSamples; i++) {
       int nDataL = 0;
       int nDataR = 0;
 
-      // Chip 0 -> Left, Chip 1 -> Right
       for (int j = 0; j < 3; j++) {
-        nDataL += mp->voice_buffers[0 * 3 + j].get()[i];
-        nDataR += mp->voice_buffers[1 * 3 + j].get()[i];
+        nDataL += static_cast<int>(static_cast<double>(mp->voice_buffers[0 * 3 + j].get()[i]) * fAttenuation);
+        nDataR += static_cast<int>(static_cast<double>(mp->voice_buffers[1 * 3 + j].get()[i]) * fAttenuation);
       }
 
       if (nDataL < -32768) nDataL = -32768; else if (nDataL > 32767) nDataL = 32767;
@@ -397,6 +404,32 @@ static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr, uint8_t writ
   return 0;
 }
 
+static auto PhasorIO(void* instance, uint16_t pc, uint16_t addr,
+                     uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
+  (void)pc; (void)write;
+  if (!instance) return MemReadFloatingBus(cycles_left);
+  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+
+  if (mp->phasor_native == 0) {
+    mp->phasor_native = (addr & 1) != 0;
+  }
+
+  uint8_t CS = 0;
+  if (!mp->phasor_native) {
+    CS = ((addr & 0x80) >> 6) | ((addr & 0x10) >> 4);  // 0, 1, 2 or 3
+  } else {
+    CS = ((addr & 0x80) >> 7) + 1;  // 1 or 2
+  }
+
+  if (CS == 1) {
+    SY6522_Write_Instance(mp, SY6522_DEVICE_A, addr & 0x0F, val);
+  } else if (CS == 2) {
+    SY6522_Write_Instance(mp, SY6522_DEVICE_B, addr & 0x0F, val);
+  }
+  return 0;
+}
+
 static auto MB_ABI_Init(int slot, HostInterface_t* host) -> void* {
   if (active_mb_instances[slot]) return active_mb_instances[slot];
 
@@ -405,7 +438,17 @@ static auto MB_ABI_Init(int slot, HostInterface_t* host) -> void* {
   mp->slot = slot;
   active_mb_instances[slot] = mp;
 
-  host->RegisterIO(slot, nullptr, nullptr, MB_IO_Read, MB_IO_Write);
+  // Use SC_PHASOR if configured
+  char type_str[16];
+  if (host->GetConfig("Mockingboard", "Type", type_str, sizeof(type_str))) {
+    if (strcmp(type_str, "Phasor") == 0) mp->type = SC_PHASOR;
+  }
+
+  if (mp->type == SC_PHASOR) {
+    host->RegisterIO(slot, PhasorIO, PhasorIO, MB_IO_Read, MB_IO_Write);
+  } else {
+    host->RegisterIO(slot, nullptr, nullptr, MB_IO_Read, MB_IO_Write);
+  }
   return mp;
 }
 
@@ -418,6 +461,7 @@ static void MB_ABI_Reset(void* instance) {
   mp->bMB_RegAccessedFlag = false;
   mp->bMB_Active = true;
   mp->nMB_InActiveCycleCount = 0;
+  mp->phasor_native = false;
 
   for (int i = 0; i < CHIPS_PER_CARD; i++) {
     memset(&mp->chips[i].sy6522, 0, sizeof(SY6522));
@@ -439,7 +483,6 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles);
   
-  // If timer not active, update at 60Hz
   if (!mp->bTimerIrqActive && !(mp->chips[0].sy6522.IFR & IxR_TIMER1)) {
     static uint64_t last_60hz = 0;
     if (g_nCumulativeCycles - last_60hz > static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
