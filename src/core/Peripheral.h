@@ -62,6 +62,8 @@ typedef struct {
   void (*AudioPushSamples)(void* instance, const int16_t* buffer,
                            size_t num_samples);
   void (*ResetSystem)(void* instance);
+  void (*PrinterPutChar)(void* instance, uint8_t c);
+  uint8_t (*PrinterGetStatus)(void* instance);
 } HostInterface_t;
 
 // Forward declaration

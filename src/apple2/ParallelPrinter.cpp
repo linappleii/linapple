@@ -8,12 +8,6 @@
 #include "core/Common.h"
 #include "core/Peripheral.h"
 
-extern void PrinterFrontend_SendChar(uint8_t c);
-extern auto PrinterFrontend_CheckStatus() -> uint8_t;
-extern void PrinterFrontend_Update(uint32_t totalcycles);
-extern void PrinterFrontend_Destroy();
-extern void PrinterFrontend_Reset();
-
 static const std::array<uint8_t, 256> Parallel_bin = {
     {0x18, 0xB0, 0x38, 0x48, 0x8A, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
      0xFF, 0xBA, 0x68, 0x68, 0x68, 0x68, 0xA8, 0xCA, 0x9A, 0x68, 0x28, 0xAA,
@@ -62,18 +56,16 @@ static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
 static void Printer_ABI_Reset(void* instance) {
   (void)instance;
-  PrinterFrontend_Reset();
 }
 
 static void Printer_ABI_Shutdown(void* instance) {
   auto* pp = static_cast<PrinterPeripheral_t*>(instance);
-  PrinterFrontend_Destroy();
   delete pp;
 }
 
 static void Printer_ABI_Think(void* instance, uint32_t cycles) {
   (void)instance;
-  PrinterFrontend_Update(cycles);
+  (void)cycles;
 }
 
 Peripheral_t g_printer_peripheral = {
@@ -97,14 +89,18 @@ EXPORT_PERIPHERAL(g_printer_peripheral)
 
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {
-  (void)instance;
-  PrinterFrontend_CheckStatus();
+  auto* pp = static_cast<PrinterPeripheral_t*>(instance);
+  if (pp->host && pp->host->PrinterGetStatus) {
+    return pp->host->PrinterGetStatus(pp);
+  }
   return 0xFF;
 }
 
 static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
                           uint8_t value, uint32_t) -> uint8_t {
-  (void)instance;
-  PrinterFrontend_SendChar(value);
+  auto* pp = static_cast<PrinterPeripheral_t*>(instance);
+  if (pp->host && pp->host->PrinterPutChar) {
+    pp->host->PrinterPutChar(pp, value);
+  }
   return 0;
 }

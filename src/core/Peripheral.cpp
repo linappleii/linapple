@@ -304,6 +304,19 @@ static auto Host_ResetSystem(void* instance) -> void {
   Peripheral_Manager_Reset();
 }
 
+extern void PrinterFrontend_SendChar(uint8_t c);
+extern auto PrinterFrontend_CheckStatus() -> uint8_t;
+
+static auto Host_PrinterPutChar(void* instance, uint8_t c) -> void {
+  (void)instance;
+  PrinterFrontend_SendChar(c);
+}
+
+static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
+  (void)instance;
+  return PrinterFrontend_CheckStatus();
+}
+
 // Justification: Global immutable dispatch table for services provided to
 // peripherals via the Peripheral ABI.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -324,7 +337,9 @@ static const HostInterface_t g_host_interface = {Host_Log,
                                                  RiffFinishWriteFile,
                                                  RiffPutSamples,
                                                  Host_AudioPushSamples,
-                                                 Host_ResetSystem};
+                                                 Host_ResetSystem,
+                                                 Host_PrinterPutChar,
+                                                 Host_PrinterGetStatus};
 
 // --- Command Queue ---
 
