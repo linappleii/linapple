@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <atomic>
 #include <cstring>
 #include <cstdint>
+#include <cstdio>
 
 #include "apple2/SoundCore.h"
 #include "apple2/Mockingboard.h"
@@ -120,19 +121,30 @@ struct sample_buffer {
       last_value = (r > 0) ? buffer[r - 1] : buffer.back();
     }
 
-    // Fill remaining with last_value
+    // Fill remaining with last_value (fade out to 0)
     if (num < len) {
-        if (mix) {
-            for (size_t i = num; i < len; ++i) {
-                int32_t val = static_cast<int32_t>(dest[i]) + static_cast<int32_t>(last_value);
-                if (val > 32767) { val = 32767;
-                } else if (val < -32768) { val = -32768;
-}
-                dest[i] = static_cast<int16_t>(val);
-            }
-        } else {
-            for (size_t i = num; i < len; ++i) dest[i] = last_value;
+      for (size_t i = num; i < len; ++i) {
+        if (last_value != 0) {
+          const int16_t fade_step = 800;
+          if (last_value > 0) {
+            last_value = (last_value > fade_step) ? (last_value - fade_step) : 0;
+          } else {
+            last_value = (last_value < -fade_step) ? (last_value + fade_step) : 0;
+          }
         }
+
+        if (mix) {
+          int32_t val = static_cast<int32_t>(dest[i]) + static_cast<int32_t>(last_value);
+          if (val > 32767) {
+            val = 32767;
+          } else if (val < -32768) {
+            val = -32768;
+          }
+          dest[i] = static_cast<int16_t>(val);
+        } else {
+          dest[i] = last_value;
+        }
+      }
     }
   }
 };
@@ -165,6 +177,14 @@ void DSUploadMockBuffer(short *buffer, unsigned len) {
 void SoundCore_GetSamples(int16_t *out, size_t num_samples) {
   if (!g_spkrMixBuffer || !g_mockMixBuffer) {
     memset(out, 0, num_samples * sizeof(int16_t));
+    return;
+  }
+
+  // Requirement: if both buffers are empty, output is explicitly zeroed
+  if (g_spkrMixBuffer->get_filled() == 0 && g_mockMixBuffer->get_filled() == 0) {
+    memset(out, 0, num_samples * sizeof(int16_t));
+    g_spkrMixBuffer->last_value = 0;
+    g_mockMixBuffer->last_value = 0;
     return;
   }
 

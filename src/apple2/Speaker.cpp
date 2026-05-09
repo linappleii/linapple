@@ -82,10 +82,15 @@ auto Speaker_Update(Speaker_t* instance, uint32_t totalcycles) -> void {
     } else if (g_nCumulativeCycles - instance->quiet_cycle_count >
                static_cast<uint64_t>(g_fCurrentCLK6502) /
                    SPKR_QUIET_CYCLES_DIVISOR) {
-      // After 0.2 sec of Apple time, deactivate spkr voice
+      if (instance->recently_active) {
+        // Logger::Info("Speaker: Deactivated\n");
+      }
       instance->recently_active = false;
     }
   } else {
+    if (!instance->recently_active) {
+      // Logger::Info("Speaker: Activated\n");
+    }
     instance->quiet_cycle_count = 0;
     instance->toggle_flag = false;
   }
@@ -134,11 +139,6 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   const double clksPerSample = g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
   if (clksPerSample <= 0.0) return;
 
-  // Local event capture
-  std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
-  int num_events = Speaker_GetEvents(instance, events.data(), MAX_SPKR_EVENTS);
-  int event_idx = 0;
-
   const uint64_t startCycle = g_nCumulativeCycles - dwExecutedCycles;
   const uint64_t endCycle = g_nCumulativeCycles;
 
@@ -147,40 +147,58 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   }
 
   size_t numSamples = 0;
-  while (instance->next_sample_cycle <= static_cast<double>(endCycle) &&
-         numSamples < (SPKR_BUFFER_SIZE - 2)) {
-    const double sampleStart = instance->next_sample_cycle;
-    const double sampleEnd = instance->next_sample_cycle + clksPerSample;
 
-    double sum = 0.0;
-    double currentTime = sampleStart;
-
-    while (event_idx < num_events &&
-           static_cast<double>(
-               events.at(static_cast<size_t>(event_idx)).cycle) < sampleEnd) {
-      const auto event_idx_st = static_cast<size_t>(event_idx);
-      const auto eventTime = static_cast<double>(events.at(event_idx_st).cycle);
-
-      if (eventTime <= sampleStart) {
-        instance->last_sample_state = events.at(event_idx_st).state;
-      } else {
-        sum += (eventTime - currentTime) *
-               (instance->last_sample_state ? 1.0 : -1.0);
-        instance->last_sample_state = events.at(event_idx_st).state;
-        currentTime = eventTime;
-      }
-      event_idx++;
+  if (!instance->recently_active) {
+    // Fill buffer with zeros and advance next_sample_cycle
+    while (instance->next_sample_cycle <= static_cast<double>(endCycle) &&
+           numSamples < (SPKR_BUFFER_SIZE - 2)) {
+      instance->sample_buffer.at(numSamples++) = 0;  // Left
+      instance->sample_buffer.at(numSamples++) = 0;  // Right
+      instance->next_sample_cycle += clksPerSample;
     }
 
-    sum +=
-        (sampleEnd - currentTime) * (instance->last_sample_state ? 1.0 : -1.0);
+    // Clear any pending events to keep state consistent
+    instance->num_events = 0;
+  } else {
+    // Local event capture
+    std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
+    uint32_t num_events =
+        Speaker_GetEvents(instance, events.data(), MAX_SPKR_EVENTS);
+    uint32_t event_idx = 0;
 
-    const double average = sum / clksPerSample;
-    const auto val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
+    while (instance->next_sample_cycle <= static_cast<double>(endCycle) &&
+           numSamples < (SPKR_BUFFER_SIZE - 2)) {
+      const double sampleStart = instance->next_sample_cycle;
+      const double sampleEnd = instance->next_sample_cycle + clksPerSample;
 
-    instance->sample_buffer.at(numSamples++) = val;  // Left
-    instance->sample_buffer.at(numSamples++) = val;  // Right
-    instance->next_sample_cycle += clksPerSample;
+      double sum = 0.0;
+      double currentTime = sampleStart;
+
+      while (event_idx < num_events &&
+             static_cast<double>(events.at(event_idx).cycle) < sampleEnd) {
+        const auto eventTime = static_cast<double>(events.at(event_idx).cycle);
+
+        if (eventTime <= sampleStart) {
+          instance->last_sample_state = events.at(event_idx).state;
+        } else {
+          sum += (eventTime - currentTime) *
+                 (instance->last_sample_state ? 1.0 : -1.0);
+          instance->last_sample_state = events.at(event_idx).state;
+          currentTime = eventTime;
+        }
+        event_idx++;
+      }
+
+      sum +=
+          (sampleEnd - currentTime) * (instance->last_sample_state ? 1.0 : -1.0);
+
+      const double average = sum / clksPerSample;
+      const int16_t val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
+
+      instance->sample_buffer.at(numSamples++) = val;  // Left
+      instance->sample_buffer.at(numSamples++) = val;  // Right
+      instance->next_sample_cycle += clksPerSample;
+    }
   }
 
   if (numSamples > 0) {
@@ -197,10 +215,10 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   }
 }
 
-auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events, int max_events)
-    -> int {
+auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events, uint32_t max_events)
+    -> uint32_t {
   if (events == nullptr || !instance) return 0;
-  int count =
+  uint32_t count =
       (instance->num_events < max_events) ? instance->num_events : max_events;
   if (count > 0) {
     memcpy(events, instance->events.data(),
@@ -221,6 +239,7 @@ auto Speaker_GetCurrentState(Speaker_t* instance) -> bool {
 // --- ABI Implementation ---
 
 static constexpr uint16_t ADDR_SPEAKER = 0xC030;
+static Speaker_t* g_spkr_instance = nullptr;
 
 // Justification: Signature is required for compatibility with the Core memory
 // map iofunction pointers.
@@ -233,18 +252,24 @@ static auto SpkrToggleBridge(void* instance, uint16_t pc, uint16_t addr,
 }
 
 static auto Spkr_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  auto* spkr = new Speaker_t{};
-  spkr->host = static_cast<void*>(host);
-  spkr->slot = slot;
-  Speaker_Initialize(spkr);
+  if (g_spkr_instance) {
+    g_spkr_instance->host = static_cast<void*>(host);
+    g_spkr_instance->slot = slot;
+    return g_spkr_instance;
+  }
+
+  g_spkr_instance = new Speaker_t{};
+  g_spkr_instance->host = static_cast<void*>(host);
+  g_spkr_instance->slot = slot;
+  Speaker_Initialize(g_spkr_instance);
 
   // Speaker is at $C030
   if (host && host->RegisterDirectIO) {
-    host->RegisterDirectIO(spkr, ADDR_SPEAKER, SpkrToggleBridge,
+    host->RegisterDirectIO(g_spkr_instance, ADDR_SPEAKER, SpkrToggleBridge,
                            SpkrToggleBridge);
   }
 
-  return spkr;
+  return g_spkr_instance;
 }
 
 static auto Spkr_ABI_Reset(void* instance) -> void {
@@ -253,6 +278,9 @@ static auto Spkr_ABI_Reset(void* instance) -> void {
 
 static auto Spkr_ABI_Shutdown(void* instance) -> void {
   auto* spkr = static_cast<Speaker_t*>(instance);
+  if (spkr == g_spkr_instance) {
+    g_spkr_instance = nullptr;
+  }
   Speaker_Destroy(spkr);
   delete spkr;
 }
@@ -277,6 +305,12 @@ static auto Spkr_ABI_SaveState(void* instance, void* buffer, size_t* size)
   auto* spkr = static_cast<Speaker_t*>(instance);
   auto* pSS = static_cast<SS_IO_Speaker*>(buffer);
   pSS->g_nSpkrLastCycle = spkr->last_cycle;
+  pSS->quiet_cycle_count = spkr->quiet_cycle_count;
+  pSS->recently_active = spkr->recently_active ? 1 : 0;
+  pSS->state = spkr->state ? 1 : 0;
+  pSS->next_sample_cycle = spkr->next_sample_cycle;
+  pSS->last_sample_state = spkr->last_sample_state ? 1 : 0;
+
   *size = sizeof(SS_IO_Speaker);
   return PERIPHERAL_OK;
 }
@@ -291,6 +325,12 @@ static auto Spkr_ABI_LoadState(void* instance, const void* buffer, size_t size)
   auto* spkr = static_cast<Speaker_t*>(instance);
   const auto* pSS = static_cast<const SS_IO_Speaker*>(buffer);
   spkr->last_cycle = pSS->g_nSpkrLastCycle;
+  spkr->quiet_cycle_count = pSS->quiet_cycle_count;
+  spkr->recently_active = (pSS->recently_active != 0);
+  spkr->state = (pSS->state != 0);
+  spkr->next_sample_cycle = pSS->next_sample_cycle;
+  spkr->last_sample_state = (pSS->last_sample_state != 0);
+
   return PERIPHERAL_OK;
 }
 
