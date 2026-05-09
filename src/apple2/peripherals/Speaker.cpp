@@ -374,8 +374,8 @@ Peripheral_t g_speaker_peripheral = {
     nullptr,  // command
     Spkr_ABI_Query};
 
-PERIPHERAL_REGISTER(g_speaker_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
+PERIPHERAL_REGISTER(g_speaker_peripheral)

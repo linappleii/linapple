@@ -386,8 +386,8 @@ Peripheral_t keyboard_peripheral = {
     Keyb_ABI_Command,
     Keyb_ABI_Query};
 
-PERIPHERAL_REGISTER(keyboard_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
+PERIPHERAL_REGISTER(keyboard_peripheral)

@@ -86,7 +86,6 @@ Peripheral_t g_printer_peripheral = {
     nullptr,
     nullptr};
 
-PERIPHERAL_REGISTER(g_printer_peripheral)
 
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {
@@ -106,3 +105,4 @@ static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
   return 0;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+PERIPHERAL_REGISTER(g_printer_peripheral)

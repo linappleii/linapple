@@ -317,7 +317,6 @@ Peripheral_t g_clock_peripheral = {
     nullptr   // query
 };
 
-PERIPHERAL_REGISTER(g_clock_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
@@ -325,3 +324,4 @@ PERIPHERAL_REGISTER(g_clock_peripheral)
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+PERIPHERAL_REGISTER(g_clock_peripheral)

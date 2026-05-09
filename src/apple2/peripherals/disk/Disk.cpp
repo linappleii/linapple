@@ -892,7 +892,6 @@ Peripheral_t g_disk_peripheral = {
     Disk_ABI_Command,
     Disk_ABI_Query};
 
-PERIPHERAL_REGISTER(g_disk_peripheral)
 
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
@@ -962,3 +961,4 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
   return 0;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+PERIPHERAL_REGISTER(g_disk_peripheral)

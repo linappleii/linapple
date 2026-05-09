@@ -11,7 +11,7 @@
 
 TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
     Linapple_Init();
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     // Initial state: empty
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "");

@@ -16,7 +16,8 @@ static void setup_smoke_test(const char* imagePath) {
     if (imagePath) {
         Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, imagePath);
     }
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); // Clear auto-registered cards
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals(); // Re-register with new config
 }
 
 static void teardown_smoke_test() {
@@ -83,7 +84,7 @@ TEST_CASE("DiskSmoke: [SMK-07] Error - Unsupported Format") {
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
     Linapple_Init();
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "../tests/fixtures/minimal.woz");
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     size_t stateSize = 0;
     Peripheral_SaveState(6, nullptr, &stateSize);
@@ -92,7 +93,7 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 
     teardown_smoke_test();
     Linapple_Init();
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     Peripheral_LoadState(6, buffer.data(), stateSize);
 

@@ -13,7 +13,8 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
     Linapple_Init();
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "../tests/fixtures/minimal.woz");
 
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -30,7 +31,8 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
     Linapple_Init();
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "nonexistent.dsk");
 
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     DiskStatus_t status{};
     size_t size = sizeof(status);

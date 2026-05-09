@@ -26,7 +26,7 @@ constexpr int SL6 = 6;
 
 TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     Linapple_Init();
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     const char* fixture_woz = "../tests/fixtures/minimal.woz";
     const char* fixture_dsk = "../tests/fixtures/minimal.dsk";

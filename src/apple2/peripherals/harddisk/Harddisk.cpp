@@ -370,7 +370,6 @@ Peripheral_t g_harddisk_peripheral = {
     HD_ABI_Command,
     HD_ABI_Query};
 
-PERIPHERAL_REGISTER(g_harddisk_peripheral)
 
 auto HD_CardIsEnabled() -> bool {
   return g_pHDInstance && g_pHDInstance->rom_loaded && g_pHDInstance->enabled;
@@ -553,3 +552,4 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
   return r;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class)
+PERIPHERAL_REGISTER(g_harddisk_peripheral)

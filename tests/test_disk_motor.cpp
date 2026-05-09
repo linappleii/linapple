@@ -32,7 +32,7 @@ void run_cycles(uint64_t cycles) {
 
 TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
     Linapple_Init();
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     // Set PC to a safe loop: $0000: 4C 00 00 (JMP $0000)
     uint8_t* m = MemGetBankPtr(0);

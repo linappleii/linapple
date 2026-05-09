@@ -404,7 +404,6 @@ Peripheral_t g_mouse_peripheral = {
     nullptr   // query
 };
 
-PERIPHERAL_REGISTER(g_mouse_peripheral)
 
 static void Mouse_OnCommand(MousePeripheral_t* mp) {
   switch (mp->logic.m_byBuff[0] & 0xF0) {
@@ -621,3 +620,4 @@ void Mouse_SetVBlank(bool bVBL) {
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
+PERIPHERAL_REGISTER(g_mouse_peripheral)

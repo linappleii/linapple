@@ -74,9 +74,6 @@ auto AppController_Initialize(AppConfig* config) -> int {
   InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, g_state.sSaveStateDir,
                       sizeof(g_state.sSaveStateDir));
 
-  // 6. Register Peripherals
-  Peripheral_Manager_Init();
-  Linapple_RegisterPeripherals();
   Frontend_UpdateKeyboardMapping();
 
   if (config->szDebuggerScript[0] != '\0') {

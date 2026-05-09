@@ -15,7 +15,7 @@ constexpr int SL6 = 6;
 
 TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
     Linapple_Init();
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
     DiskInsertCmd_t cmd{};
     cmd.drive = DISK_DRIVE_0;
     cmd.write_protected = false;

@@ -116,10 +116,13 @@ void Linapple_Init() {
   MemInitialize();
   CpuInitialize();
   VideoInitialize();
+
+  Peripheral_Manager_Init();
+  Peripheral_Register_Internal();
 }
 
 void Linapple_RegisterPeripherals() {
-    Peripheral_Register_Internal();
+  Peripheral_Register_Internal();
 }
 
 void Linapple_Shutdown() {

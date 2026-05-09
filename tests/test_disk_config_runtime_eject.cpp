@@ -12,7 +12,7 @@
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
     Linapple_Init();
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "../tests/fixtures/minimal.woz");
-    Linapple_RegisterPeripherals();
+    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     DiskEjectCmd_t cmd{};
     cmd.drive = DISK_DRIVE_0;

@@ -46,7 +46,7 @@ TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (PACKED)") {
 
 TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
   Linapple_Init();
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
   size_t size = 0;
   Peripheral_SaveState(SL6, nullptr, &size);
   CHECK(size > 0);
@@ -55,7 +55,7 @@ TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
 
 TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
   Linapple_Init();
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
   std::array<uint8_t, 4> buffer{};
   size_t size = buffer.size();
   buffer.fill(BUFFER_INIT_VAL);
@@ -66,7 +66,7 @@ TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
 
 TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
   Linapple_Init();
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
   size_t size = 0;
   Peripheral_SaveState(SL6, nullptr, &size);
   std::vector<uint8_t> buffer(size);

@@ -316,7 +316,6 @@ Peripheral_t g_joystick_peripheral = {
     Joystick_ABI_Command,
     nullptr};
 
-PERIPHERAL_REGISTER(g_joystick_peripheral)
 
 // --- Legacy Procedural API ---
 
@@ -384,3 +383,4 @@ auto JoyUsingMouse() -> bool {
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
+PERIPHERAL_REGISTER(g_joystick_peripheral)

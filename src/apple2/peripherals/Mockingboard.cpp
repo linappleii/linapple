@@ -596,7 +596,6 @@ Peripheral_t g_mockingboard_peripheral = {
     nullptr,
     nullptr};
 
-PERIPHERAL_REGISTER(g_mockingboard_peripheral)
 
 // --- Legacy Stubs for Build Compatibility ---
 void MB_Initialize() {}
@@ -631,3 +630,4 @@ uint32_t MB_SetSnapshot(SS_CARD_MOCKINGBOARD*, uint32_t) { return 0; }
 // cppcoreguidelines-use-enum-class,
 // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
 // cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+PERIPHERAL_REGISTER(g_mockingboard_peripheral)

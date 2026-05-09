@@ -22,7 +22,7 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.woz");
 
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -44,7 +44,7 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE2,
                                       "../tests/fixtures/minimal.dsk");
 
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -65,7 +65,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.txt");
 
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -85,7 +85,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 
 TEST_CASE("Headless: [HL-04] Program loading") {
   Linapple_Init();
-  Linapple_RegisterPeripherals();
+  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   int err = Linapple_LoadProgram("../tests/fixtures/minimal.woz");
   CHECK(err != 0);
