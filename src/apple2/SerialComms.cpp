@@ -324,16 +324,22 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   // Copy the 256 byte portion to CxROM
   uint8_t slot_rom[256];
   memcpy(slot_rom, SSC_rom.data() + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
-  host->RegisterCxROM(slot, slot_rom);
+  if (host && host->RegisterCxROM) {
+    host->RegisterCxROM(slot, slot_rom);
+  }
 
   // Expansion ROM
   instance->logic.m_pExpansionRom = new uint8_t[SSC_FW_SIZE];
   if (instance->logic.m_pExpansionRom) {
     memcpy(instance->logic.m_pExpansionRom, SSC_rom.data(), SSC_FW_SIZE);
   }
-  host->RegisterExpansionROM(slot, instance->logic.m_pExpansionRom);
+  if (host && host->RegisterExpansionROM) {
+    host->RegisterExpansionROM(slot, instance->logic.m_pExpansionRom);
+  }
 
-  host->RegisterIO(slot, SSC_IORead, SSC_IOWrite, nullptr, nullptr);
+  if (host && host->RegisterIO) {
+    host->RegisterIO(slot, SSC_IORead, SSC_IOWrite, nullptr, nullptr);
+  }
 
   SSC_Reset(&instance->logic);
 
@@ -351,11 +357,9 @@ static void SSC_ABI_Shutdown(void* instance) {
   delete pSSCP;
 }
 
-extern void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalcycles);
-
 static void SSC_ABI_Think(void* instance, uint32_t cycles) {
-  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
-  SSCFrontend_Update(&pSSCP->logic, cycles);
+  (void)instance;
+  (void)cycles;
 }
 
 static auto SSC_ABI_SaveState(void* instance, void* buffer, size_t* size)
@@ -511,10 +515,11 @@ static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t {
 }
 
 static void UpdateCommState(SSCPeripheral_t* mp) {
-  if (SSCFrontend_IsActive()) {
-    auto* pSSC = &mp->logic;
-    SSCFrontend_UpdateState(pSSC->m_uBaudRate, pSSC->m_uByteSize,
-                            pSSC->m_eParity, pSSC->m_eStopBits);
+  auto* pSSC = &mp->logic;
+  if (mp->host && mp->host->SerialUpdateState) {
+    mp->host->SerialUpdateState(mp, pSSC->m_uBaudRate, pSSC->m_uByteSize,
+                                static_cast<int>(pSSC->m_eParity),
+                                static_cast<int>(pSSC->m_eStopBits));
   }
 }
 
@@ -685,6 +690,9 @@ static auto CommReceive(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t,
     for (uint32_t i = 0; i < pSSC->m_vRecvBytes; ++i) {
       pSSC->m_RecvBuffer[i] = pSSC->m_RecvBuffer[i + 1];
     }
+    if (mp->host && mp->host->NotifyActivityChanged) {
+      mp->host->NotifyActivityChanged(mp->slot, true);
+    }
   }
   return result;
 }
@@ -692,11 +700,18 @@ static auto CommReceive(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t,
 static auto CommTransmit(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t,
                          uint8_t value, uint32_t) -> uint8_t {
   auto* pSSC = &mp->logic;
-  SSCFrontend_SendByte(value);
+  if (mp->host && mp->host->SerialTransmitByte) {
+    mp->host->SerialTransmitByte(mp, value);
+  }
   pSSC->m_bWrittenTx = true;  // Transmit interrupt pending
   if (pSSC->m_bTxIrqEnabled) {
     pSSC->m_vbCommIRQ = true;
-    mp->host->AssertIrq(mp->slot, true);
+    if (mp->host && mp->host->AssertIrq) {
+      mp->host->AssertIrq(mp->slot, true);
+    }
+  }
+  if (mp->host && mp->host->NotifyActivityChanged) {
+    mp->host->NotifyActivityChanged(mp->slot, true);
   }
   return 0;
 }
@@ -715,7 +730,9 @@ static auto CommStatus(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
     pSSC->m_bWrittenTx = false;
     pSSC->m_vRecvBytes = 0;
     pSSC->m_vbCommIRQ = false;
-    mp->host->AssertIrq(mp->slot, false);
+    if (mp->host && mp->host->AssertIrq) {
+      mp->host->AssertIrq(mp->slot, false);
+    }
     return 0;
   }
 
@@ -728,11 +745,13 @@ static auto CommStatus(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
 
   uint8_t uStatus = ST_TX_EMPTY | (pSSC->m_vRecvBytes ? ST_RX_FULL : 0x00) |
                     (bIRQ ? ST_IRQ : 0x00);
-  if (!SSCFrontend_IsActive()) uStatus |= ST_DSR | ST_DCD;
+  uStatus |= ST_DSR | ST_DCD;
 
   // Deassert IRQ only if no other interrupt sources are active
   if (!(pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes)) {
-    mp->host->AssertIrq(mp->slot, false);
+    if (mp->host && mp->host->AssertIrq) {
+      mp->host->AssertIrq(mp->slot, false);
+    }
     pSSC->m_vbCommIRQ = false;
   }
 
@@ -780,7 +799,12 @@ void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
       mp->logic.m_RecvBuffer[mp->logic.m_vRecvBytes++] = byte;
       if (mp->logic.m_bRxIrqEnabled) {
         mp->logic.m_vbCommIRQ = true;
-        mp->host->AssertIrq(mp->slot, true);
+        if (mp->host && mp->host->AssertIrq) {
+          mp->host->AssertIrq(mp->slot, true);
+        }
+      }
+      if (mp->host && mp->host->NotifyActivityChanged) {
+        mp->host->NotifyActivityChanged(mp->slot, true);
       }
     }
   } else if (pSSC) {

@@ -88,12 +88,6 @@ auto SSC_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite, ui
 // Interface for Frontend to Core
 void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte);
 
-// Interface for Core to call Frontend (implemented in Frontend)
-extern void SSCFrontend_SendByte(uint8_t byte);
-extern auto SSCFrontend_IsActive() -> bool;
-extern void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits,
-                                           SscParity parity, SscStopBits stop);
-
 // Global instance (to be moved/handled)
 extern struct SuperSerialCard sg_SSC;
 

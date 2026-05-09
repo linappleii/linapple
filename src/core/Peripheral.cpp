@@ -317,6 +317,24 @@ static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
   return PrinterFrontend_CheckStatus();
 }
 
+extern void SSCFrontend_SendByte(uint8_t byte);
+extern auto SSCFrontend_IsActive() -> bool;
+extern void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits,
+                                    int parity, int stop);
+
+static auto Host_SerialTransmitByte(void* instance, uint8_t byte) -> void {
+  (void)instance;
+  SSCFrontend_SendByte(byte);
+}
+
+static auto Host_SerialUpdateState(void* instance, uint32_t baud, uint32_t bits,
+                                   int parity, int stop) -> void {
+  (void)instance;
+  if (SSCFrontend_IsActive()) {
+    SSCFrontend_UpdateState(baud, bits, parity, stop);
+  }
+}
+
 // Justification: Global immutable dispatch table for services provided to
 // peripherals via the Peripheral ABI.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -339,7 +357,9 @@ static const HostInterface_t g_host_interface = {Host_Log,
                                                  Host_AudioPushSamples,
                                                  Host_ResetSystem,
                                                  Host_PrinterPutChar,
-                                                 Host_PrinterGetStatus};
+                                                 Host_PrinterGetStatus,
+                                                 Host_SerialTransmitByte,
+                                                 Host_SerialUpdateState};
 
 // --- Command Queue ---
 

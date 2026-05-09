@@ -64,6 +64,9 @@ typedef struct {
   void (*ResetSystem)(void* instance);
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);
+  void (*SerialTransmitByte)(void* instance, uint8_t byte);
+  void (*SerialUpdateState)(void* instance, uint32_t baud, uint32_t bits,
+                            int parity, int stop);
 } HostInterface_t;
 
 // Forward declaration

@@ -32,16 +32,9 @@ void SSCFrontend_SendByte(uint8_t byte) {
     g_sendCalled = true;
 }
 auto SSCFrontend_IsActive() -> bool { return true; }
-void SSCFrontend_UpdateState(uint32_t b, uint32_t s, SscParity p, SscStopBits t) {
+void SSCFrontend_UpdateState(uint32_t b, uint32_t s, int p, int t) {
     (void)b; (void)s; (void)p; (void)t;
 }
-
-// Mock structure matching SSCPeripheral_t in SerialComms.cpp
-struct MockSSCPeripheral {
-  SuperSerialCard logic;
-  HostInterface_t* host;
-  int slot;
-};
 
 static bool g_irqAsserted = false;
 static void MockAssertIrq(int slot, bool assert) {
@@ -49,52 +42,50 @@ static void MockAssertIrq(int slot, bool assert) {
     g_irqAsserted = assert;
 }
 
-// Helper for slot parameters
-auto MemGetSlotParameters(uint32_t slot) -> void* {
-    (void)slot;
-    return &sg_SSC;
-}
+extern Peripheral_t g_ssc_peripheral;
 
 TEST_CASE("SSC: Status Register Bit 4 (TDRE) Set On Reset") {
-    MockSSCPeripheral mp;
-    memset(&mp, 0, sizeof(mp));
     HostInterface_t host;
     memset(&host, 0, sizeof(host));
     host.AssertIrq = MockAssertIrq;
-    mp.host = &host;
-    mp.slot = 2;
+    
+    void* instance = g_ssc_peripheral.init(2, &host);
+    REQUIRE(instance != nullptr);
 
-    SSC_Reset(&mp.logic);
     g_sendCalled = false;
 
-    // Hardware Reset (SSC_Reset)
-    uint8_t status = SSC_IORead(&mp, 0, 0xC0A9, 0, 0, 0); // Slot 2, Offset 9 (Status)
+    // Hardware Reset
+    g_ssc_peripheral.reset(instance);
+
+    // Check status
+    uint8_t status = SSC_IORead(instance, 0, 0xC0A9, 0, 0, 0); 
     CHECK((status & (1 << 4)) != 0); // TDRE should be 1 (Empty)
+    
+    g_ssc_peripheral.shutdown(instance);
 }
 
 TEST_CASE("SSC: Transmit Sets TDRE Interrupt") {
-    MockSSCPeripheral mp;
-    memset(&mp, 0, sizeof(mp));
     HostInterface_t host;
     memset(&host, 0, sizeof(host));
     host.AssertIrq = MockAssertIrq;
-    mp.host = &host;
-    mp.slot = 2;
+    
+    void* instance = g_ssc_peripheral.init(2, &host);
+    REQUIRE(instance != nullptr);
 
-    SSC_Reset(&mp.logic);
     g_sendCalled = false;
     g_irqAsserted = false;
 
-    // 1. Enable Transmit Interrupts (Command Register is Offset 0xA)
-    // bit 3=0, bit 2=1 -> Transmit interrupt enabled, RTS low.
-    SSC_IOWrite(&mp, 0, 0xC0AA, 1, 0x04, 0); // Command Register (Offset 0xA)
+    // 1. Enable Transmit Interrupts
+    SSC_IOWrite(instance, 0, 0xC0AA, 1, 0x04, 0); 
 
-    // 2. Write to Transmit Data Register (Offset 0x8)
-    SSC_IOWrite(&mp, 0, 0xC0A8, 1, 0x41, 0); // Data 'A'
+    // 2. Write to Transmit Data Register
+    SSC_IOWrite(instance, 0, 0xC0A8, 1, 0x41, 0); 
     CHECK(g_irqAsserted == true);
 
-    // 3. Check status (TDRE should be 1 after immediate mock transmit)
-    uint8_t status = SSC_IORead(&mp, 0, 0xC0A9, 0, 0, 0); // Status Register (Offset 0x9)
+    // 3. Check status
+    uint8_t status = SSC_IORead(instance, 0, 0xC0A9, 0, 0, 0); 
     CHECK((status & (1 << 4)) != 0);
-    CHECK(g_irqAsserted == false); // Should be deasserted after status read
+    CHECK(g_irqAsserted == false); 
+    
+    g_ssc_peripheral.shutdown(instance);
 }

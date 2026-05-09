@@ -124,8 +124,8 @@ auto SSCFrontend_IsActive() -> bool {
   return (g_hCommHandle != -1);
 }
 
-void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, SscParity parity, SscStopBits stop) {
-  SSCFrontend_UpdateCommState(baud, bits, parity, stop);
+void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity, int stop) {
+  SSCFrontend_UpdateCommState(baud, bits, static_cast<SscParity>(parity), static_cast<SscStopBits>(stop));
 }
 
 void SSCFrontend_Close() {

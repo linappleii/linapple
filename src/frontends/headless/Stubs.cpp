@@ -29,7 +29,7 @@ WEAK void PrinterFrontend_SendChar(uint8_t c) { (void)c; }
 
 // SSC Stubs
 WEAK bool SSCFrontend_IsActive() { return false; }
-WEAK void SSCFrontend_UpdateState(uint32_t b, uint32_t d, SscParity p, SscStopBits s) { (void)b; (void)d; (void)p; (void)s; }
+WEAK void SSCFrontend_UpdateState(uint32_t b, uint32_t d, int p, int s) { (void)b; (void)d; (void)p; (void)s; }
 WEAK void SSCFrontend_SendByte(uint8_t c) { (void)c; }
 WEAK void SSCFrontend_Update(struct SuperSerialCard* ssc, uint32_t c) { (void)ssc; (void)c; }
 
