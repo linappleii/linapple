@@ -25,13 +25,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdint>
 #include <array>
 
-// Clean-room AY-3-8910 implementation
-// Based on GI AY-3-8910 and Yamaha YM2149 datasheets.
-
-static std::array<AY8910, MAX_8910> ay_chips;
-static int ay_clock = 1000000;
-static int ay_sample_rate = 44100;
-
 // Logarithmic volume table for AY-3-8910 (16 levels)
 // Based on -3dB per step as indicated in datasheet Fig 3.
 static const std::array<uint16_t, 16> vol_table = {{
@@ -39,32 +32,15 @@ static const std::array<uint16_t, 16> vol_table = {{
   1396, 2023, 2933, 4251, 6163, 8934, 12952, 18776
 }};
 
-void AY8910_InitAll(int clock_rate, int sample_rate) {
-  ay_clock = clock_rate;
-  ay_sample_rate = sample_rate;
-  for (int i = 0; i < MAX_8910; i++) {
-    AY8910_reset(i);
-  }
+void AY8910_reset_instance(AY8910* p) {
+  if (!p) return;
+  memset(p, 0, sizeof(AY8910));
+  p->rng = 1;
 }
 
-void AY8910_InitClock(int nClock) {
-  ay_clock = nClock;
-}
-
-void AY8910_reset(int chip) {
-  if (chip < 0 || chip >= MAX_8910) return;
-  memset(&ay_chips[chip], 0, sizeof(AY8910));
-  ay_chips[chip].rng = 1;
-}
-
-auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t* {
-  if (nAyNum >= MAX_8910) return nullptr;
-  return ay_chips[nAyNum].regs;
-}
-
-void _AYWriteReg(int n, int r, int v) {
-  if (n < 0 || n >= MAX_8910 || r < 0 || r >= 16) return;
-  AY8910 *p = &ay_chips[n];
+void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock, int sample_rate) {
+  (void)ay_clock; (void)sample_rate;
+  if (!p || r < 0 || r >= 16) return;
   p->regs[r] = v & 0xFF;
   switch (r) {
     case 1: case 3: case 5: p->regs[r] &= 0x0F; break;
@@ -78,13 +54,8 @@ void _AYWriteReg(int n, int r, int v) {
   }
 }
 
-void AY8910_write_ym(int chip, int addr, int data) {
-  _AYWriteReg(chip, addr, data);
-}
-
-void AY8910Update(int chip, int16_t **buffer, int length) {
-  if (chip < 0 || chip >= MAX_8910) return;
-  AY8910 *p = &ay_chips[chip];
+void AY8910_update_instance(AY8910* p, int16_t** buffer, int length, int ay_clock, int sample_rate) {
+  if (!p) return;
 
   uint16_t period_a = p->regs[0] | (p->regs[1] << 8);
   uint16_t period_b = p->regs[2] | (p->regs[3] << 8);
@@ -94,7 +65,7 @@ void AY8910Update(int chip, int16_t **buffer, int length) {
   uint8_t enable = p->regs[7];
   uint8_t shape = p->regs[13];
 
-  double psg_cycles_per_sample = static_cast<double>(ay_clock) / (16.0 * ay_sample_rate);
+  double psg_cycles_per_sample = static_cast<double>(ay_clock) / (16.0 * sample_rate);
 
   for (int i = 0; i < length; i++) {
     p->count_accum += psg_cycles_per_sample;
@@ -126,13 +97,11 @@ void AY8910Update(int chip, int16_t **buffer, int length) {
     p->count_n += psg_cycles;
     while (p->count_n >= n_p) {
       p->count_n -= n_p;
-      // 17-bit LFSR with taps at bits 0 and 3
       if (((p->rng + 1) & 2) ^ (p->rng & 1)) p->out_n ^= 1;
       p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
     }
 
     if (!p->env_holding) {
-      // Envelope steps every 16 * period internal cycles (256 clock cycles)
       uint32_t e_p = (period_e ? period_e : 1) * 16;
       p->count_e += psg_cycles;
       while (p->count_e >= e_p) {
@@ -183,3 +152,22 @@ void AY8910Update(int chip, int16_t **buffer, int length) {
     buffer[2][i] = static_cast<int16_t>(chan_c);
   }
 }
+
+// Legacy Global State for compatibility
+static std::array<AY8910, MAX_8910> ay_chips;
+static int ay_clock = 1000000;
+static int ay_sample_rate = 44100;
+
+void AY8910_InitAll(int clock_rate, int sample_rate) {
+  ay_clock = clock_rate;
+  ay_sample_rate = sample_rate;
+  for (int i = 0; i < MAX_8910; i++) {
+    AY8910_reset(i);
+  }
+}
+void AY8910_InitClock(int nClock) { ay_clock = nClock; }
+void AY8910_reset(int chip) { if (chip >= 0 && chip < MAX_8910) AY8910_reset_instance(&ay_chips[chip]); }
+void AY8910_write_ym(int chip, int addr, int data) { if (chip >= 0 && chip < MAX_8910) AY8910_write_instance(&ay_chips[chip], addr, data, ay_clock, ay_sample_rate); }
+void _AYWriteReg(int n, int r, int v) { if (n >= 0 && n < MAX_8910) AY8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate); }
+void AY8910Update(int chip, int16_t **buffer, int length) { if (chip >= 0 && chip < MAX_8910) AY8910_update_instance(&ay_chips[chip], buffer, length, ay_clock, ay_sample_rate); }
+auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t* { if (nAyNum >= MAX_8910) return nullptr; return ay_chips[nAyNum].regs; }

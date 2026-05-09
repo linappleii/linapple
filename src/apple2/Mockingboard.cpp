@@ -60,6 +60,7 @@ static const int VOICES_PER_CARD = NUM_VOICES_PER_CHIP * CHIPS_PER_CARD;
 typedef struct {
   SY6522 sy6522;
   SSI263A SpeechChip;
+  AY8910 ay_chip;
   uint16_t nAYCurrentRegister;
   uint8_t nAY8910Number;
   int nTimerStatus;
@@ -68,6 +69,7 @@ typedef struct {
 struct MockingboardPeripheral_t {
   std::array<SY6522_AY8910, CHIPS_PER_CARD> chips;
   std::array<std::unique_ptr<short[]>, VOICES_PER_CARD> voice_buffers;
+  short mix_buffer[SAMPLE_RATE * 2]; // Stereo mix
   uint32_t n6522TimerPeriod = 0;
   uint16_t nMBTimerDevice = 0;
   uint64_t uLastCumulativeCycles = 0;
@@ -86,6 +88,7 @@ struct MockingboardPeripheral_t {
     }
     for (int i = 0; i < CHIPS_PER_CARD; ++i) {
       chips[i].nAY8910Number = static_cast<uint8_t>(i);
+      AY8910_reset_instance(&chips[i].ay_chip);
     }
   }
 };
@@ -149,18 +152,18 @@ static void UpdateIFR(MockingboardPeripheral_t* mp, int chip_idx) {
 
 static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
                                   uint8_t nValue, uint8_t nAYDevice) {
+  (void)nAYDevice;
   SY6522_AY8910* pMB = &mp->chips[nDevice];
-  int ay_chip_global_idx = (mp->slot == 4 ? 0 : 2) + nDevice;
-
+  
   if ((nValue & 4) == 0) {
-    AY8910_reset(ay_chip_global_idx);
+    AY8910_reset_instance(&pMB->ay_chip);
   } else {
     int nBDIR = (nValue & 2) ? 1 : 0;
     int nBC1 = nValue & 1;
     int nAYFunc = (nBDIR << 2) | (1 << 1) | nBC1;
 
     if (nAYFunc == 6) { // AY_WRITE
-      _AYWriteReg(ay_chip_global_idx, pMB->nAYCurrentRegister, pMB->sy6522.ORA);
+      AY8910_write_instance(&pMB->ay_chip, pMB->nAYCurrentRegister, pMB->sy6522.ORA, static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     } else if (nAYFunc == 7) { // AY_LATCH
       if (pMB->sy6522.ORA <= 0x0F) {
         pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
@@ -269,8 +272,50 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
 }
 
 static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
-  (void)mp;
-  // Audio generation will be refactored in #314
+  if (mp->type == SC_NONE) return;
+
+  double n6522TimerPeriod = (mp->bTimerIrqActive || (mp->chips[0].sy6522.IFR & IxR_TIMER1))
+             ? static_cast<double>(mp->n6522TimerPeriod)
+             : (CLOCK_6502 / 60.0);
+  
+  double nIrqFreq = g_fCurrentCLK6502 / n6522TimerPeriod;
+  int nNumSamples = static_cast<int>(static_cast<double>(SAMPLE_RATE) / nIrqFreq);
+
+  if (nNumSamples > 0) {
+    if (nNumSamples > SAMPLE_RATE) nNumSamples = SAMPLE_RATE;
+
+    for (int i = 0; i < CHIPS_PER_CARD; i++) {
+      int16_t* voices[3];
+      voices[0] = &mp->voice_buffers[i * 3 + 0].get()[0];
+      voices[1] = &mp->voice_buffers[i * 3 + 1].get()[0];
+      voices[2] = &mp->voice_buffers[i * 3 + 2].get()[0];
+      AY8910_update_instance(&mp->chips[i].ay_chip, voices, nNumSamples, static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
+    }
+
+    // Mix to stereo
+    for (int i = 0; i < nNumSamples; i++) {
+      int nDataL = 0;
+      int nDataR = 0;
+
+      // Chip 0 -> Left, Chip 1 -> Right
+      for (int j = 0; j < 3; j++) {
+        nDataL += mp->voice_buffers[0 * 3 + j].get()[i];
+        nDataR += mp->voice_buffers[1 * 3 + j].get()[i];
+      }
+
+      if (nDataL < -32768) nDataL = -32768; else if (nDataL > 32767) nDataL = 32767;
+      if (nDataR < -32768) nDataR = -32768; else if (nDataR > 32767) nDataR = 32767;
+
+      mp->mix_buffer[i * 2] = static_cast<short>(nDataL);
+      mp->mix_buffer[i * 2 + 1] = static_cast<short>(nDataR);
+    }
+
+    if (mp->host && mp->host->AudioPushSamples) {
+      mp->host->AudioPushSamples(mp, mp->mix_buffer, static_cast<uint32_t>(nNumSamples * 2));
+    } else {
+      DSUploadMockBuffer(mp->mix_buffer, nNumSamples * 2);
+    }
+  }
 }
 
 static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp, uint32_t uExecutedCycles) {
@@ -376,9 +421,9 @@ static void MB_ABI_Reset(void* instance) {
 
   for (int i = 0; i < CHIPS_PER_CARD; i++) {
     memset(&mp->chips[i].sy6522, 0, sizeof(SY6522));
+    AY8910_reset_instance(&mp->chips[i].ay_chip);
     mp->chips[i].nTimerStatus = 0;
     mp->chips[i].nAYCurrentRegister = 0;
-    AY8910_reset((mp->slot == 4 ? 0 : 2) + i);
   }
 }
 
@@ -393,6 +438,15 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   if (!instance) return;
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles);
+  
+  // If timer not active, update at 60Hz
+  if (!mp->bTimerIrqActive && !(mp->chips[0].sy6522.IFR & IxR_TIMER1)) {
+    static uint64_t last_60hz = 0;
+    if (g_nCumulativeCycles - last_60hz > static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
+      last_60hz = g_nCumulativeCycles;
+      MB_Update_Instance(mp);
+    }
+  }
 }
 
 Peripheral_t g_mockingboard_peripheral = {
