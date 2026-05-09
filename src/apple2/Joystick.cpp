@@ -261,6 +261,44 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd_id,
   return PERIPHERAL_ERROR;
 }
 
+static auto Joystick_ABI_SaveState(void* instance, void* buffer,
+                                    size_t* size) -> PeripheralStatus {
+  if (!instance || !size) {
+    return PERIPHERAL_ERROR;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  if (buffer == nullptr) {
+    *size = sizeof(SS_IO_Joystick);
+    return PERIPHERAL_OK;
+  }
+
+  if (*size < sizeof(SS_IO_Joystick)) {
+    return PERIPHERAL_ERROR;
+  }
+
+  auto* ss = static_cast<SS_IO_Joystick*>(buffer);
+  ss->g_nJoyCntrResetCycle = jp->reset_cycle;
+  // Note: SS_IO_Joystick currently only has reset_cycle.
+  // We could expand it if needed, but keeping it simple for now.
+
+  *size = sizeof(SS_IO_Joystick);
+  return PERIPHERAL_OK;
+}
+
+static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
+                                    size_t size) -> PeripheralStatus {
+  if (!instance || !buffer || size < sizeof(SS_IO_Joystick)) {
+    return PERIPHERAL_ERROR;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  const auto* ss = static_cast<const SS_IO_Joystick*>(buffer);
+
+  jp->reset_cycle = ss->g_nJoyCntrResetCycle;
+
+  return PERIPHERAL_OK;
+}
+
 Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
                                       "Joystick",
                                       0x01,  // Slot 0 (Internal)
@@ -269,8 +307,8 @@ Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
                                       Joystick_ABI_Shutdown,
                                       Joystick_ABI_Think,
                                       nullptr,  // on_vblank
-                                      nullptr,  // save_state
-                                      nullptr,  // load_state
+                                      Joystick_ABI_SaveState,
+                                      Joystick_ABI_LoadState,
                                       Joystick_ABI_Command,
                                       nullptr};
 
