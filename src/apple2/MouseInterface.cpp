@@ -1,10 +1,9 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Based on Apple in PC's mousecard.cpp
-- Permission given by Kyle Kim to reuse in AppleWin
-Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
-*/
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
+// implements the C11-compatible Peripheral ABI. It requires void* pointers for
+// instance state, raw memory management, and static global state to bridge with
+// the core C interface and maintain peripheral singletons.
 
 #include "apple2/MouseInterface.h"
 
@@ -21,24 +20,17 @@ Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
+#include "core/Peripheral.h"
 
 // Sets mouse mode
 enum {
   MOUSE_SET = 0x00,
-  // Reads mouse position
   MOUSE_READ = 0x10,
-  // Services mouse interrupt
   MOUSE_SERV = 0x20,
-  // Clears mouse positions to 0 (for delta mode)
   MOUSE_CLEAR = 0x30,
-  // Sets mouse position to a user-defined pos
   MOUSE_POS = 0x40,
-  // Resets mouse clamps to default values
-  // Sets mouse position to 0,0
   MOUSE_INIT = 0x50,
-  // Sets mouse bounds in a window
   MOUSE_CLAMP = 0x60,
-  // Sets mouse to upper-left corner of clamp win
   MOUSE_HOME = 0x70
 };
 
@@ -56,6 +48,15 @@ enum {
   BIT7 = 0x80
 };
 
+struct MousePeripheral_t {
+  MouseInterface logic{};
+  HostInterface_t* host = nullptr;
+  int slot = 0;
+};
+
+static MousePeripheral_t* active_mouse_instance = nullptr;
+
+// Legacy global (will be removed)
 struct MouseInterface sg_Mouse;
 
 static char MouseInterface_rom[] =
@@ -64,7 +65,7 @@ static char MouseInterface_rom[] =
     "\x08\x78\x8D\xF8\x07\x48\x98\x48\x8A\x48\x20\x58\xFF\xBA\xBD\x00"
     "\x01\xAA\x08\x0A\x0A\x0A\x0A\x28\xA8\xAD\xF8\x07\x8E\xF8\x07\x48"
     "\xA9\x08\x70\x67\x90\x4D\xB0\x55\x29\x01\x09\xF0\x9D\x38\x06\xA9"
-    "\x02\xD0\x40\x29\x0F\x09\x90\xD0\x35\xFF\xFF\xB9\x83\xC0\x29\xFB"
+    "\x02\xD0\x40\x29\x0F\x09\xB0\xD0\x35\xFF\xFF\xB9\x83\xC0\x29\xFB"
     "\x99\x83\xC0\xA9\x3E\x99\x82\xC0\xB9\x83\xC0\x09\x04\x99\x83\xC0"
     "\xB9\x82\xC0\x29\xC1\x1D\xB8\x05\x99\x82\xC0\x68\xF0\x0A\x6A\x90"
     "\x75\x68\xAA\x68\xA8\x68\x28\x60\x18\x60\x29\x01\x09\x60\x9D\x38"
@@ -189,158 +190,160 @@ static char MouseInterface_rom[] =
     "\xD6\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
     "\xFF\xFF\xFF\xCE";
 
-static void Mouse_Reset();
-static void Mouse_SetPositionInternal(int xvalue, int yvalue);
-static void Mouse_ClampX(int iMinX, int iMaxX);
-static void Mouse_ClampY(int iMinY, int iMaxY);
-static void Mouse_OnMouseEvent();
-static void Mouse_OnCommand();
-static void Mouse_OnWrite();
+static void Mouse_Reset_Internal(MousePeripheral_t* mp);
+static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue, int yvalue);
+static void Mouse_ClampX(MousePeripheral_t* mp, int iMinX, int iMaxX);
+static void Mouse_ClampY(MousePeripheral_t* mp, int iMinY, int iMaxY);
+static void Mouse_OnMouseEvent(MousePeripheral_t* mp);
+static void Mouse_OnCommand(MousePeripheral_t* mp);
+static void Mouse_OnWrite(MousePeripheral_t* mp);
+
+static void Mouse_SetSlotRom_Instance(MousePeripheral_t* mp) {
+  if (!mp || !mp->host) return;
+
+  uint32_t uOffset = (mp->logic.m_by6821B << 7) & 0x0700;
+  if (mp->logic.m_pSlotRom) {
+    uint8_t slot_rom[256];
+    memcpy(slot_rom, mp->logic.m_pSlotRom + uOffset, 256);
+    mp->host->RegisterCxROM(mp->slot, slot_rom);
+  }
+}
 
 static void M6821_Listener_A(void* objTo, uint8_t byData) {
-  (void)objTo;
-  sg_Mouse.m_by6821A = byData;
+  auto* mp = static_cast<MousePeripheral_t*>(objTo);
+  mp->logic.m_by6821A = byData;
 }
 
 static void M6821_Listener_B(void* objTo, uint8_t byData) {
-  (void)objTo;
-  uint8_t byDiff = (sg_Mouse.m_by6821B ^ byData) & 0x3E;
+  auto* mp = static_cast<MousePeripheral_t*>(objTo);
+  uint8_t byDiff = (mp->logic.m_by6821B ^ byData) & 0x3E;
 
   if (byDiff) {
-    sg_Mouse.m_by6821B &= ~0x3E;
-    sg_Mouse.m_by6821B |= byData & 0x3E;
+    mp->logic.m_by6821B &= ~0x3E;
+    mp->logic.m_by6821B |= byData & 0x3E;
     if (byDiff & BIT5)  // Write to 0285 chip
     {
       if (byData & BIT5) {
-        sg_Mouse.m_by6821B |= BIT7;  // OK, I'm ready to read from MC6821
+        mp->logic.m_by6821B |= BIT7;  // OK, I'm ready to read from MC6821
       } else {                       // Clock Activate for read
-        sg_Mouse.m_byBuff[sg_Mouse.m_nBuffPos++] = sg_Mouse.m_by6821A;
-        if (sg_Mouse.m_nBuffPos == 1) {
-          Mouse_OnCommand();
+        mp->logic.m_byBuff[mp->logic.m_nBuffPos++] = mp->logic.m_by6821A;
+        if (mp->logic.m_nBuffPos == 1) {
+          Mouse_OnCommand(mp);
         }
-        if (sg_Mouse.m_nBuffPos == sg_Mouse.m_nDataLen ||
-            sg_Mouse.m_nBuffPos > 7) {
-          Mouse_OnWrite();  // Have written all, Commit the command.
-          sg_Mouse.m_nBuffPos = 0;
+        if (mp->logic.m_nBuffPos == mp->logic.m_nDataLen ||
+            mp->logic.m_nBuffPos > 7) {
+          Mouse_OnWrite(mp);  // Have written all, Commit the command.
+          mp->logic.m_nBuffPos = 0;
         }
-        sg_Mouse.m_by6821B &= ~BIT7;  // for next reading
-        Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+        mp->logic.m_by6821B &= ~BIT7;  // for next reading
+        Pia6821_SetPortB(&mp->logic.m_6821, mp->logic.m_by6821B);
       }
     }
     if (byDiff & BIT4) {  // Read from 0285 chip ?
       if (byData & BIT4) {
-        sg_Mouse.m_by6821B &= ~BIT6;  // OK, I'll prepare next value
+        mp->logic.m_by6821B &= ~BIT6;  // OK, I'll prepare next value
       } else {                        // Clock Activate for write
-        if (sg_Mouse.m_nBuffPos) {  // if m_nBuffPos is 0, something goes wrong!
-          sg_Mouse.m_nBuffPos++;
+        if (mp->logic.m_nBuffPos) {  // if m_nBuffPos is 0, something goes wrong!
+          mp->logic.m_nBuffPos++;
         }
-        if (sg_Mouse.m_nBuffPos == sg_Mouse.m_nDataLen ||
-            sg_Mouse.m_nBuffPos > 7) {
-          sg_Mouse.m_nBuffPos = 0;  // Have read all, ready for next command.
+        if (mp->logic.m_nBuffPos == mp->logic.m_nDataLen ||
+            mp->logic.m_nBuffPos > 7) {
+          mp->logic.m_nBuffPos = 0;  // Have read all, ready for next command.
         } else {
-          Pia6821_SetPortA(&sg_Mouse.m_6821,
-                           sg_Mouse.m_byBuff[sg_Mouse.m_nBuffPos]);
+          Pia6821_SetPortA(&mp->logic.m_6821,
+                           mp->logic.m_byBuff[mp->logic.m_nBuffPos]);
         }
-        sg_Mouse.m_by6821B |= BIT6;  // for next writing
+        mp->logic.m_by6821B |= BIT6;  // for next writing
       }
     }
-    Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+    Pia6821_SetPortB(&mp->logic.m_6821, mp->logic.m_by6821B);
 
-    Mouse_SetSlotRom();  // Update Cn00 ROM page
+    Mouse_SetSlotRom_Instance(mp);  // Update Cn00 ROM page
   }
 }
 
-#include "core/Peripheral.h"
-
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static HostInterface_t* g_pMouseHost = nullptr;
-
-void Mouse_SetSlotRom() {
-  if (!g_pMouseHost) return;
-
-  uint32_t uOffset = (sg_Mouse.m_by6821B << 7) & 0x0700;
-  if (sg_Mouse.m_pSlotRom) {
-    uint8_t slot_rom[256];
-    memcpy(slot_rom, sg_Mouse.m_pSlotRom + uOffset, 256);
-    g_pMouseHost->RegisterCxROM(sg_Mouse.m_uSlot, slot_rom);
-  }
-}
-
-auto Mouse_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
+static auto Mouse_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                   uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void)instance;
-  (void)uValue;
-  (void)nCyclesLeft;
-  (void)PC;
-  (void)bWrite;
+  (void)PC; (void)bWrite; (void)uValue; (void)nCyclesLeft;
+  if (!instance) return MemReadFloatingBus(nCyclesLeft);
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
   uint8_t byRS = uAddr & 3;
-  return Pia6821_Read(&sg_Mouse.m_6821, byRS);
+  return Pia6821_Read(&mp->logic.m_6821, byRS);
 }
 
-auto Mouse_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
+static auto Mouse_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                    uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  (void)instance;
-  (void)nCyclesLeft;
-  (void)PC;
-  (void)bWrite;
+  (void)PC; (void)bWrite; (void)nCyclesLeft;
+  if (!instance) return 0;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
   uint8_t byRS = uAddr & 3;
-  Pia6821_Write(&sg_Mouse.m_6821, byRS, uValue);
+  Pia6821_Write(&mp->logic.m_6821, byRS, uValue);
   return 0;
 }
 
 static auto Mouse_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  g_pMouseHost = host;
+  if (active_mouse_instance) return active_mouse_instance;
+
+  auto* mp = new MousePeripheral_t{};
+  mp->host = host;
+  mp->slot = slot;
+  active_mouse_instance = mp;
+
   const uint32_t FW_SIZE = 2 * 1024;
   auto* pData = reinterpret_cast<uint8_t*>(MouseInterface_rom);
 
-  memset(&sg_Mouse, 0, sizeof(sg_Mouse));
-  Pia6821_Reset(&sg_Mouse.m_6821);
-  Pia6821_SetListenerB(&sg_Mouse.m_6821, nullptr, M6821_Listener_B);
-  Pia6821_SetListenerA(&sg_Mouse.m_6821, nullptr, M6821_Listener_A);
+  Pia6821_Reset(&mp->logic.m_6821);
+  Pia6821_SetListenerB(&mp->logic.m_6821, mp, M6821_Listener_B);
+  Pia6821_SetListenerA(&mp->logic.m_6821, mp, M6821_Listener_A);
 
-  sg_Mouse.m_by6821A = 0;
-  sg_Mouse.m_by6821B = 0x40;  // Set PB6
-  Pia6821_SetPortB(&sg_Mouse.m_6821, sg_Mouse.m_by6821B);
+  mp->logic.m_by6821A = 0;
+  mp->logic.m_by6821B = 0x40;  // Set PB6
+  Pia6821_SetPortB(&mp->logic.m_6821, mp->logic.m_by6821B);
 
-  sg_Mouse.m_iMinX = 0;
-  sg_Mouse.m_iMaxX = 1023;
-  sg_Mouse.m_iMinY = 0;
-  sg_Mouse.m_iMaxY = 1023;
+  mp->logic.m_iMinX = 0;
+  mp->logic.m_iMaxX = 1023;
+  mp->logic.m_iMinY = 0;
+  mp->logic.m_iMaxY = 1023;
 
-  Mouse_Reset();
+  Mouse_Reset_Internal(mp);
 
-  sg_Mouse.m_uSlot = slot;
-  if (sg_Mouse.m_pSlotRom == nullptr) {
-    sg_Mouse.m_pSlotRom = new uint8_t[FW_SIZE];
-    if (sg_Mouse.m_pSlotRom) {
-      memcpy(sg_Mouse.m_pSlotRom, pData, FW_SIZE);
-    }
-  }
+  mp->logic.m_uSlot = static_cast<uint32_t>(slot);
+  mp->logic.m_pSlotRom = new uint8_t[FW_SIZE];
+  memcpy(mp->logic.m_pSlotRom, pData, FW_SIZE);
 
-  Mouse_SetSlotRom();
+  Mouse_SetSlotRom_Instance(mp);
   host->RegisterIO(slot, Mouse_IORead, Mouse_IOWrite, nullptr, nullptr);
-  sg_Mouse.m_bActive = true;
-  return reinterpret_cast<void*>(1);
+  mp->logic.m_bActive = true;
+  return mp;
 }
 
 static void Mouse_ABI_Reset(void* instance) {
-  (void)instance;
-  Mouse_Reset();
+  if (!instance) return;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+  Mouse_Reset_Internal(mp);
 }
 
 static void Mouse_ABI_Shutdown(void* instance) {
-  (void)instance;
-  sg_Mouse.m_bActive = false;
-  if (sg_Mouse.m_pSlotRom) {
-    delete[] sg_Mouse.m_pSlotRom;
-    sg_Mouse.m_pSlotRom = nullptr;
+  if (!instance) return;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+  mp->logic.m_bActive = false;
+  if (mp->logic.m_pSlotRom) {
+    delete[] mp->logic.m_pSlotRom;
+    mp->logic.m_pSlotRom = nullptr;
   }
-  g_pMouseHost = nullptr;
+  if (active_mouse_instance == mp) active_mouse_instance = nullptr;
+  delete mp;
 }
 
 static void Mouse_ABI_OnVBlank(void* instance, bool vblank) {
-  (void)instance;
-  Mouse_SetVBlank(vblank);
+  if (!instance) return;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+  if (mp->logic.m_bVBL != vblank) {
+    mp->logic.m_bVBL = vblank;
+    if (mp->logic.m_bVBL) {  // Rising edge
+      Mouse_OnMouseEvent(mp);
+    }
+  }
 }
 
 Peripheral_t g_mouse_peripheral = {
@@ -365,219 +368,196 @@ extern "C" void Register_Mouse() {
 #ifdef BUILD_SHARED_PERIPHERAL
 EXPORT_PERIPHERAL(g_mouse_peripheral)
 #endif
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
-static void Mouse_OnCommand() {
-  switch (sg_Mouse.m_byBuff[0] & 0xF0) {
+static void Mouse_OnCommand(MousePeripheral_t* mp) {
+  switch (mp->logic.m_byBuff[0] & 0xF0) {
     case MOUSE_SET:
-      sg_Mouse.m_nDataLen = 1;
-      sg_Mouse.m_byMode = sg_Mouse.m_byBuff[0] & 0x0F;
+      mp->logic.m_nDataLen = 1;
+      mp->logic.m_byMode = mp->logic.m_byBuff[0] & 0x0F;
       break;
     case MOUSE_READ:
-      sg_Mouse.m_nDataLen = 6;
-      sg_Mouse.m_byState &= 0x20;
-      sg_Mouse.m_nX = sg_Mouse.m_iX;
-      sg_Mouse.m_nY = sg_Mouse.m_iY;
-      if (sg_Mouse.m_bBtn0) {
-        sg_Mouse.m_byState |= 0x40;  // Previous Button 0
+      mp->logic.m_nDataLen = 6;
+      mp->logic.m_byState &= 0x20;
+      mp->logic.m_nX = static_cast<int>(mp->logic.m_iX);
+      mp->logic.m_nY = static_cast<int>(mp->logic.m_iY);
+      if (mp->logic.m_bBtn0) {
+        mp->logic.m_byState |= 0x40;  // Previous Button 0
       }
-      if (sg_Mouse.m_bBtn1) {
-        sg_Mouse.m_byState |= 0x01;  // Previous Button 1
+      if (mp->logic.m_bBtn1) {
+        mp->logic.m_byState |= 0x01;  // Previous Button 1
       }
-      sg_Mouse.m_bBtn0 = sg_Mouse.m_bButtons[0];
-      sg_Mouse.m_bBtn1 = sg_Mouse.m_bButtons[1];
-      if (sg_Mouse.m_bBtn0) {
-        sg_Mouse.m_byState |= 0x80;  // Current Button 0
+      mp->logic.m_bBtn0 = mp->logic.m_bButtons[0];
+      mp->logic.m_bBtn1 = mp->logic.m_bButtons[1];
+      if (mp->logic.m_bBtn0) {
+        mp->logic.m_byState |= 0x80;  // Current Button 0
       }
-      if (sg_Mouse.m_bBtn1) {
-        sg_Mouse.m_byState |= 0x10;  // Current Button 1
+      if (mp->logic.m_bBtn1) {
+        mp->logic.m_byState |= 0x10;  // Current Button 1
       }
-      sg_Mouse.m_byBuff[1] = sg_Mouse.m_nX & 0xFF;
-      sg_Mouse.m_byBuff[2] = (sg_Mouse.m_nX >> 8) & 0xFF;
-      sg_Mouse.m_byBuff[3] = sg_Mouse.m_nY & 0xFF;
-      sg_Mouse.m_byBuff[4] = (sg_Mouse.m_nY >> 8) & 0xFF;
-      sg_Mouse.m_byBuff[5] = sg_Mouse.m_byState;  // button 0/1 interrupt status
-      sg_Mouse.m_byState &= ~0x20;
+      mp->logic.m_byBuff[1] = mp->logic.m_nX & 0xFF;
+      mp->logic.m_byBuff[2] = (mp->logic.m_nX >> 8) & 0xFF;
+      mp->logic.m_byBuff[3] = mp->logic.m_nY & 0xFF;
+      mp->logic.m_byBuff[4] = (mp->logic.m_nY >> 8) & 0xFF;
+      mp->logic.m_byBuff[5] = mp->logic.m_byState;  // button 0/1 interrupt status
+      mp->logic.m_byState &= ~0x20;
       break;
     case MOUSE_SERV:
-      sg_Mouse.m_nDataLen = 2;
-      sg_Mouse.m_byBuff[1] = sg_Mouse.m_byState & ~0x20;  // reason of interrupt
+      mp->logic.m_nDataLen = 2;
+      mp->logic.m_byBuff[1] = mp->logic.m_byState & ~0x20;  // reason of interrupt
       CpuIrqDeassert(IS_MOUSE);
       break;
     case MOUSE_CLEAR:
-      Mouse_Reset();
-      sg_Mouse.m_nDataLen = 1;
+      Mouse_Reset_Internal(mp);
+      mp->logic.m_nDataLen = 1;
       break;
     case MOUSE_POS:
-      sg_Mouse.m_nDataLen = 5;
+      mp->logic.m_nDataLen = 5;
       break;
     case MOUSE_INIT:
-      sg_Mouse.m_nDataLen = 3;
-      sg_Mouse.m_byBuff[1] = 0xFF;  // I don't know what it is
+      mp->logic.m_nDataLen = 3;
+      mp->logic.m_byBuff[1] = 0xFF;
       break;
     case MOUSE_CLAMP:
-      sg_Mouse.m_nDataLen = 5;
+      mp->logic.m_nDataLen = 5;
       break;
     case MOUSE_HOME:
-      sg_Mouse.m_nDataLen = 1;
-      Mouse_SetPositionInternal(0, 0);
+      mp->logic.m_nDataLen = 1;
+      Mouse_SetPositionInternal(mp, 0, 0);
       break;
     case MOUSE_TIME:  // 0x90
-      switch (sg_Mouse.m_byBuff[0] & 0x0C) {
-        case 0x00:
-          sg_Mouse.m_nDataLen = 1;
-          break;  // write cmd ( #$90 is DATATIME 60Hz, #$91 is 50Hz )
-        case 0x04:
-          sg_Mouse.m_nDataLen = 3;
-          break;  // write cmd, $0478, $04F8
-        case 0x08:
-          sg_Mouse.m_nDataLen = 2;
-          break;  // write cmd, $0578
-        case 0x0C:
-          sg_Mouse.m_nDataLen = 4;
-          break;  // write cmd, $0478, $04F8, $0578
+      switch (mp->logic.m_byBuff[0] & 0x0C) {
+        case 0x00: mp->logic.m_nDataLen = 1; break;
+        case 0x04: mp->logic.m_nDataLen = 3; break;
+        case 0x08: mp->logic.m_nDataLen = 2; break;
+        case 0x0C: mp->logic.m_nDataLen = 4; break;
       }
       break;
-    case 0xA0:
-      sg_Mouse.m_nDataLen = 2;
-      break;
-    case 0xB0:
-    case 0xC0:
-      sg_Mouse.m_nDataLen = 1;
-      break;
-    default:
-      sg_Mouse.m_nDataLen = 1;
-      break;
+    default: mp->logic.m_nDataLen = 1; break;
   }
-  Pia6821_SetPortA(&sg_Mouse.m_6821, sg_Mouse.m_byBuff[1]);
+  Pia6821_SetPortA(&mp->logic.m_6821, mp->logic.m_byBuff[1]);
 }
 
-static void Mouse_OnWrite() {
+static void Mouse_OnWrite(MousePeripheral_t* mp) {
   int nMin = 0, nMax = 0;
-  switch (sg_Mouse.m_byBuff[0] & 0xF0) {
+  switch (mp->logic.m_byBuff[0] & 0xF0) {
     case MOUSE_CLAMP:
-      nMin = (sg_Mouse.m_byBuff[3] << 8) | sg_Mouse.m_byBuff[1];
-      nMax = (sg_Mouse.m_byBuff[4] << 8) | sg_Mouse.m_byBuff[2];
-      if (sg_Mouse.m_byBuff[0] & 1) {  // Clamp Y
-        Mouse_ClampY(nMin, nMax);
+      nMin = (mp->logic.m_byBuff[3] << 8) | mp->logic.m_byBuff[1];
+      nMax = (mp->logic.m_byBuff[4] << 8) | mp->logic.m_byBuff[2];
+      if (mp->logic.m_byBuff[0] & 1) {  // Clamp Y
+        Mouse_ClampY(mp, nMin, nMax);
       } else {  // Clamp X
-        Mouse_ClampX(nMin, nMax);
+        Mouse_ClampX(mp, nMin, nMax);
       }
       break;
     case MOUSE_POS:
-      sg_Mouse.m_nX = (sg_Mouse.m_byBuff[2] << 8) | sg_Mouse.m_byBuff[1];
-      sg_Mouse.m_nY = (sg_Mouse.m_byBuff[4] << 8) | sg_Mouse.m_byBuff[3];
-      Mouse_SetPositionInternal(sg_Mouse.m_nX, sg_Mouse.m_nY);
+      mp->logic.m_nX = (mp->logic.m_byBuff[2] << 8) | mp->logic.m_byBuff[1];
+      mp->logic.m_nY = (mp->logic.m_byBuff[4] << 8) | mp->logic.m_byBuff[3];
+      Mouse_SetPositionInternal(mp, mp->logic.m_nX, mp->logic.m_nY);
       break;
     case MOUSE_INIT:
-      sg_Mouse.m_nX = 0;
-      sg_Mouse.m_nY = 0;
-      Mouse_ClampX(0, 1023);
-      Mouse_ClampY(0, 1023);
-      Mouse_SetPositionInternal(0, 0);
+      mp->logic.m_nX = 0;
+      mp->logic.m_nY = 0;
+      Mouse_ClampX(mp, 0, 1023);
+      Mouse_ClampY(mp, 0, 1023);
+      Mouse_SetPositionInternal(mp, 0, 0);
       break;
   }
 }
 
-static void Mouse_OnMouseEvent() {
+static void Mouse_OnMouseEvent(MousePeripheral_t* mp) {
   int byState = 0;
-  if (!(sg_Mouse.m_byMode & 1)) {  // Mouse Off
+  if (!(mp->logic.m_byMode & 1)) {  // Mouse Off
     return;
   }
 
-  bool bBtn0 = sg_Mouse.m_bButtons[0];
-  bool bBtn1 = sg_Mouse.m_bButtons[1];
-  if (static_cast<uint32_t>(sg_Mouse.m_nX) != sg_Mouse.m_iX ||
-      static_cast<uint32_t>(sg_Mouse.m_nY) != sg_Mouse.m_iY) {
+  bool bBtn0 = mp->logic.m_bButtons[0];
+  bool bBtn1 = mp->logic.m_bButtons[1];
+  if (static_cast<uint32_t>(mp->logic.m_nX) != mp->logic.m_iX ||
+      static_cast<uint32_t>(mp->logic.m_nY) != mp->logic.m_iY) {
     byState |= 0x22;  // X/Y moved since last READMOUSE | Movement interrupt
   }
-  if (sg_Mouse.m_bBtn0 != bBtn0 || sg_Mouse.m_bBtn1 != bBtn1) {
+  if (mp->logic.m_bBtn0 != bBtn0 || mp->logic.m_bBtn1 != bBtn1) {
     byState |= 0x04;  // Button 0/1 interrupt
   }
-  if (sg_Mouse.m_bVBL) {
+  if (mp->logic.m_bVBL) {
     byState |= 0x08;
   }
-  byState &= ((sg_Mouse.m_byMode & 0x0E) |
-              0x20);  // Keep "X/Y moved since last READMOUSE" for next
-                      // MOUSE_READ (Contiki v1.3 uses this)
+  byState &= ((mp->logic.m_byMode & 0x0E) | 0x20);
+
   if (byState & 0x0E) {
-    sg_Mouse.m_byState |= byState;
+    mp->logic.m_byState |= byState;
     CpuIrqAssert(IS_MOUSE);
   }
 }
 
-void Mouse_SetVBlank(bool bVBL) {
-  if (sg_Mouse.m_bVBL != bVBL) {
-    sg_Mouse.m_bVBL = bVBL;
-    if (sg_Mouse.m_bVBL) {  // Rising edge
-      Mouse_OnMouseEvent();
-    }
-  }
+static void Mouse_Reset_Internal(MousePeripheral_t* mp) {
+  mp->logic.m_nBuffPos = 0;
+  mp->logic.m_nDataLen = 1;
+
+  mp->logic.m_byMode = 0;
+  mp->logic.m_byState = 0;
+  mp->logic.m_nX = 0;
+  mp->logic.m_nY = 0;
+  mp->logic.m_bBtn0 = false;
+  mp->logic.m_bBtn1 = false;
+  Mouse_ClampX(mp, 0, 1023);
+  Mouse_ClampY(mp, 0, 1023);
+  Mouse_SetPositionInternal(mp, 0, 0);
 }
 
-static void Mouse_Reset() {
-  sg_Mouse.m_nBuffPos = 0;
-  sg_Mouse.m_nDataLen = 1;
-
-  sg_Mouse.m_byMode = 0;
-  sg_Mouse.m_byState = 0;
-  sg_Mouse.m_nX = 0;
-  sg_Mouse.m_nY = 0;
-  sg_Mouse.m_bBtn0 = false;
-  sg_Mouse.m_bBtn1 = false;
-  Mouse_ClampX(0, 1023);
-  Mouse_ClampY(0, 1023);
-  Mouse_SetPositionInternal(0, 0);
+static void Mouse_ClampX(MousePeripheral_t* mp, int iMinX, int iMaxX) {
+  if (iMinX < 0 || iMinX > iMaxX) return;
+  mp->logic.m_iMaxX = static_cast<uint32_t>(iMaxX);
+  mp->logic.m_iMinX = static_cast<uint32_t>(iMinX);
+  if (mp->logic.m_iX > mp->logic.m_iMaxX) mp->logic.m_iX = mp->logic.m_iMaxX;
+  else if (mp->logic.m_iX < mp->logic.m_iMinX) mp->logic.m_iX = mp->logic.m_iMinX;
 }
 
-static void Mouse_ClampX(int iMinX, int iMaxX) {
-  if (iMinX < 0 || iMinX > iMaxX) {
-    return;
-  }
-  sg_Mouse.m_iMaxX = iMaxX;
-  sg_Mouse.m_iMinX = iMinX;
-  if (sg_Mouse.m_iX > sg_Mouse.m_iMaxX) {
-    sg_Mouse.m_iX = sg_Mouse.m_iMaxX;
-  } else if (sg_Mouse.m_iX < sg_Mouse.m_iMinX) {
-    sg_Mouse.m_iX = sg_Mouse.m_iMinX;
-  }
+static void Mouse_ClampY(MousePeripheral_t* mp, int iMinY, int iMaxY) {
+  if (iMinY < 0 || iMinY > iMaxY) return;
+  mp->logic.m_iMaxY = static_cast<uint32_t>(iMaxY);
+  mp->logic.m_iMinY = static_cast<uint32_t>(iMinY);
+  if (mp->logic.m_iY > mp->logic.m_iMaxY) mp->logic.m_iY = mp->logic.m_iMaxY;
+  else if (mp->logic.m_iY < mp->logic.m_iMinY) mp->logic.m_iY = mp->logic.m_iMinY;
 }
 
-static void Mouse_ClampY(int iMinY, int iMaxY) {
-  if (iMinY < 0 || iMinY > iMaxY) {
-    return;
-  }
-  sg_Mouse.m_iMaxY = iMaxY;
-  sg_Mouse.m_iMinY = iMinY;
-  if (sg_Mouse.m_iY > sg_Mouse.m_iMaxY) {
-    sg_Mouse.m_iY = sg_Mouse.m_iMaxY;
-  } else if (sg_Mouse.m_iY < sg_Mouse.m_iMinX) {
-    sg_Mouse.m_iY = sg_Mouse.m_iMinY;
-  }
-}
-
-static void Mouse_SetPositionInternal(int xvalue, int yvalue) {
-  if ((sg_Mouse.m_iRangeX == 0) || (sg_Mouse.m_iRangeY == 0)) {
-    sg_Mouse.m_nX = sg_Mouse.m_iX = sg_Mouse.m_iMinX;
-    sg_Mouse.m_nY = sg_Mouse.m_iY = sg_Mouse.m_iMinY;
+static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue, int yvalue) {
+  if ((mp->logic.m_iRangeX == 0) || (mp->logic.m_iRangeY == 0)) {
+    mp->logic.m_nX = static_cast<int>(mp->logic.m_iX = mp->logic.m_iMinX);
+    mp->logic.m_nY = static_cast<int>(mp->logic.m_iY = mp->logic.m_iMinY);
     return;
   }
 
-  sg_Mouse.m_iX = ((xvalue * sg_Mouse.m_iMaxX) / sg_Mouse.m_iRangeX);
-  sg_Mouse.m_iY = ((yvalue * sg_Mouse.m_iMaxY) / sg_Mouse.m_iRangeY);
+  mp->logic.m_iX = (static_cast<uint32_t>(xvalue) * mp->logic.m_iMaxX) / mp->logic.m_iRangeX;
+  mp->logic.m_iY = (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
 }
+
+// --- Legacy Procedural API ---
+
+void Mouse_SetSlotRom() { Mouse_SetSlotRom_Instance(active_mouse_instance); }
 
 void Mouse_SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
-  sg_Mouse.m_iRangeX = static_cast<uint32_t>(xrange);
-  sg_Mouse.m_iRangeY = static_cast<uint32_t>(yrange);
-
-  Mouse_SetPositionInternal(xvalue, yvalue);
-  Mouse_OnMouseEvent();
+  if (!active_mouse_instance) return;
+  active_mouse_instance->logic.m_iRangeX = static_cast<uint32_t>(xrange);
+  active_mouse_instance->logic.m_iRangeY = static_cast<uint32_t>(yrange);
+  Mouse_SetPositionInternal(active_mouse_instance, xvalue, yvalue);
+  Mouse_OnMouseEvent(active_mouse_instance);
 }
 
 void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State) {
-  sg_Mouse.m_bButtons[Button] = State == BUTTON_DOWN;
-  Mouse_OnMouseEvent();
+  if (!active_mouse_instance) return;
+  active_mouse_instance->logic.m_bButtons[Button] = State == BUTTON_DOWN;
+  Mouse_OnMouseEvent(active_mouse_instance);
 }
 
-auto Mouse_Active() -> bool { return sg_Mouse.m_bActive; }
+auto Mouse_Active() -> bool {
+  return active_mouse_instance && active_mouse_instance->logic.m_bActive;
+}
+
+void Mouse_SetVBlank(bool bVBL) {
+  Mouse_ABI_OnVBlank(active_mouse_instance, bVBL);
+}
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables)
