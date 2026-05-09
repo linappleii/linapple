@@ -15,9 +15,11 @@
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
+extern "C" HarddiskFormatDriver_t g_raw_hd_driver;
+
 void HarddiskLoader_Init(void) {
   g_harddisk_drivers.clear();
-  // Built-in drivers will be registered here in subsequent steps
+  HarddiskLoader_Register(&g_raw_hd_driver);
 }
 
 void HarddiskLoader_Shutdown(void) {

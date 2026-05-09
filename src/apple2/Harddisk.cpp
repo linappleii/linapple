@@ -77,7 +77,9 @@ struct HarddiskDrive_t {
   uint16_t hd_diskblock;
   uint16_t hd_buf_ptr;
   bool hd_imageloaded;
-  FilePtr hd_file; // Keep for now until Phase 3 (Raw driver extraction)
+  HarddiskFormatDriver_t* driver;
+  void* driver_instance;
+  bool os_readonly;
   uint8_t hd_buf[513];
 
   HarddiskDrive_t()
@@ -86,7 +88,9 @@ struct HarddiskDrive_t {
         hd_diskblock(0),
         hd_buf_ptr(0),
         hd_imageloaded(false),
-        hd_file(nullptr, fclose) {
+        driver(nullptr),
+        driver_instance(nullptr),
+        os_readonly(false) {
     memset(hd_imagename, 0, sizeof(hd_imagename));
     memset(hd_fullname, 0, sizeof(hd_fullname));
     memset(hd_buf, 0, sizeof(hd_buf));
@@ -159,26 +163,23 @@ static void GetImageTitle(const char* imageFileName, HarddiskDrive_t* pHardDrive
 
 static void NotifyInvalidImage(const char *filename) { printf("HDD: Could not load %s\n", filename); }
 
-static auto Util_GetFileSize(FILE* f) -> size_t {
-  long current = ftell(f);
-  fseek(f, 0, SEEK_END);
-  size_t size = static_cast<size_t>(ftell(f));
-  fseek(f, current, SEEK_SET);
-  return size;
-}
-
 static void HD_CleanupDrive(HarddiskDrive_t* pDrive)
 {
-  pDrive->hd_file.reset();
+  if (pDrive->driver && pDrive->driver_instance) {
+    pDrive->driver->close(pDrive->driver_instance);
+  }
+  pDrive->driver = nullptr;
+  pDrive->driver_instance = nullptr;
   pDrive->hd_imageloaded = false;
   pDrive->hd_imagename[0] = 0;
   pDrive->hd_fullname[0] = 0;
+  pDrive->os_readonly = false;
 }
 
 static auto HD_Load_Image(HarddiskDrive_t* pDrive, const char *filename) -> bool
 {
-  pDrive->hd_file.reset(fopen(filename, "r+b"));
-  pDrive->hd_imageloaded = pDrive->hd_file != nullptr;
+  HarddiskError_e err = HarddiskLoader_Open(filename, &pDrive->os_readonly, &pDrive->driver, &pDrive->driver_instance);
+  pDrive->hd_imageloaded = (err == HARDDISK_ERR_NONE);
   return pDrive->hd_imageloaded;
 }
 
@@ -327,8 +328,8 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
         if (pHDD->hd_imageloaded) {
           switch (hp->command) {
             default:
-            case 0x00:  // status
-              if (Util_GetFileSize(pHDD->hd_file.get()) == 0) {
+            case 0x00: //status
+              if (pHDD->driver->get_total_blocks(pHDD->driver_instance) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
@@ -336,11 +337,7 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
             case 0x01:  // read
             {
               hp->status = DISK_STATUS_READ;
-              size_t br = Util_GetFileSize(pHDD->hd_file.get());
-              if (static_cast<size_t>(pHDD->hd_diskblock * 512) <= br) {
-                fseek(pHDD->hd_file.get(),
-                      static_cast<long>(pHDD->hd_diskblock * 512), SEEK_SET);
-                if (fread(pHDD->hd_buf, 1, 512, pHDD->hd_file.get()) == 512) {
+              if (pHDD->driver->read_block(pHDD->driver_instance, pHDD->hd_diskblock, pHDD->hd_buf) == HARDDISK_ERR_NONE) {
                   pHDD->hd_error = 0;
                   r = 0;
                   pHDD->hd_buf_ptr = 0;
@@ -348,46 +345,18 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
                   pHDD->hd_error = 1;
                   r = DEVICE_IO_ERROR;
                 }
+            }
+              break;
+            case 0x02: //write
+            {
+              hp->status = DISK_STATUS_WRITE;
+              memmove(pHDD->hd_buf,  mem + pHDD->hd_memblock,  512);
+              if (pHDD->driver->write_block(pHDD->driver_instance, pHDD->hd_diskblock, pHDD->hd_buf) == HARDDISK_ERR_NONE) {
+                pHDD->hd_error = 0;
+                r = 0;
               } else {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
-              }
-            } break;
-            case 0x02:  // write
-            {
-              hp->status = DISK_STATUS_WRITE;
-              size_t bw = Util_GetFileSize(pHDD->hd_file.get());
-              if (static_cast<size_t>(pHDD->hd_diskblock * 512) <= bw) {
-                memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                fseek(pHDD->hd_file.get(),
-                      static_cast<long>(pHDD->hd_diskblock * 512), SEEK_SET);
-                if (fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file.get()) == 512) {
-                  pHDD->hd_error = 0;
-                  r = 0;
-                } else {
-                  pHDD->hd_error = 1;
-                  r = DEVICE_IO_ERROR;
-                }
-              } else {
-                fseek(pHDD->hd_file.get(), 0, SEEK_END);
-                size_t fsize = ftell(pHDD->hd_file.get());
-                uint32_t addblocks = pHDD->hd_diskblock - (fsize / 512);
-                memset(pHDD->hd_buf, 0, 512);
-                while (addblocks--)
-                  fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file.get());
-                if (fseek(pHDD->hd_file.get(),
-                          static_cast<long>(pHDD->hd_diskblock * 512),
-                          SEEK_SET) == 0) {
-                  memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                  if (fwrite(pHDD->hd_buf, 1, 512, pHDD->hd_file.get()) ==
-                      512) {
-                    pHDD->hd_error = 0;
-                    r = 0;
-                  } else {
-                    pHDD->hd_error = 1;
-                    r = DEVICE_IO_ERROR;
-                  }
-                }
               }
             }
               break;
