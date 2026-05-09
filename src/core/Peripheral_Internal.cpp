@@ -155,6 +155,11 @@ void Peripheral_Register_Internal() {
     Peripheral_Register(spkr, 0);
   }
 
+  Peripheral_t* joy = Peripheral_Find_Internal("Joystick");
+  if (joy) {
+    Peripheral_Register(joy, 0);
+  }
+
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     const size_t KEY_SIZE = 16;
     // Justification: Formatting slot key name for registry lookup.

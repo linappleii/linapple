@@ -158,6 +158,20 @@ static void* Joystick_ABI_Init(int slot, HostInterface_t* host) {
   jp->slot = slot;
 
   active_joystick_instance = jp;
+
+  // $C061-$C063: Buttons
+  for (uint16_t addr = 0xC061; addr <= 0xC063; ++addr) {
+    host->RegisterDirectIO(jp, addr, Joy_IO_ReadButton, nullptr);
+  }
+
+  // $C064-$C067: Paddles
+  for (uint16_t addr = 0xC064; addr <= 0xC067; ++addr) {
+    host->RegisterDirectIO(jp, addr, Joy_IO_ReadPosition, nullptr);
+  }
+
+  // $C070: Paddle Reset
+  host->RegisterDirectIO(jp, 0xC070, Joy_IO_ResetPosition, Joy_IO_ResetPosition);
+
   return jp;
 }
 
