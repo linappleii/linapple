@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "frontends/sdl3/DiskUI.h"
-#include "apple2/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include <cstring>
 
 TEST_CASE("DiskUI: Error Message Mapping") {

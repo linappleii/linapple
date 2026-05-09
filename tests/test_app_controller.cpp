@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "apple2/Disk.h"
+#include "apple2/peripherals/disk/Disk.h"
 #include "apple2/Video.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"

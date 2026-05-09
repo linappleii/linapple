@@ -7,9 +7,9 @@
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "core/Util_Path.h"
-#include "apple2/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/Memory.h"
-#include "apple2/Disk.h"
+#include "apple2/peripherals/disk/Disk.h"
 #include "apple2/CPU.h"
 #include <cstring>
 #include <cstdio>

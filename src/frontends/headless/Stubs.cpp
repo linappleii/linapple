@@ -2,8 +2,8 @@
 #include "core/LinAppleCore.h"
 #include "frontends/sdl3/Frontend.h"
 #include "apple2/Video.h"
-#include "apple2/Joystick.h"
-#include "apple2/SerialComms.h"
+#include "apple2/peripherals/Joystick.h"
+#include "apple2/peripherals/SerialComms.h"
 
 // Use weak symbols so that real implementations in unit tests take precedence
 #define WEAK __attribute__((weak))

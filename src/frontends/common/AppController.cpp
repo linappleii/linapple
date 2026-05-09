@@ -3,7 +3,7 @@
 #include <cstdio>
 
 #include "apple2/CPU.h"
-#include "apple2/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/SaveState.h"
 #include "apple2/Video.h"
 #include "core/Common_Globals.h"

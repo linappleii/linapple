@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include "core/Common.h"
-#include "apple2/Speaker_Structs.h"
+#include "apple2/peripherals/Speaker_Structs.h"
 
 // Structs used by save-state file
 
@@ -56,7 +56,7 @@ typedef struct tagSS_IO_Joystick {
   uint64_t g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
-#include "apple2/Keyboard_Structs.h"
+#include "apple2/peripherals/Keyboard_Structs.h"
 
 typedef struct SS_IO_Video {
   bool bAltCharSet;  // charoffs

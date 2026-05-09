@@ -1,6 +1,6 @@
 #pragma once
 
-#include "apple2/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -4,7 +4,7 @@
 #include "core/Peripheral.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
-#include "apple2/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

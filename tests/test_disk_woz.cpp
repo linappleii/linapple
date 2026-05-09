@@ -5,8 +5,8 @@
 #include "core/Peripheral_Internal.h"
 #include "core/Common_Globals.h"
 #include "core/Util_Text.h"
-#include "apple2/DiskCommands.h"
-#include "apple2/Disk.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/Disk.h"
 #include <cstring>
 
 namespace {

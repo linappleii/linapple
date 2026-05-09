@@ -11,7 +11,7 @@
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
 #include "core/Registry.h"
-#include "apple2/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/Video.h"
 
 #include "font.xpm"

@@ -18,7 +18,7 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Color.h"
 #include "Debugger_Assembler.h"
-#include "apple2/Mockingboard.h"
+#include "apple2/peripherals/Mockingboard.h"
 #include "Video.h"
 
 // Externs for globals

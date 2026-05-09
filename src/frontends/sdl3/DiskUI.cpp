@@ -1,5 +1,5 @@
 #include "frontends/sdl3/DiskUI.h"
-#include "apple2/DiskError.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include <cstring>
 
 extern "C" auto DiskUI_GetErrorMessage(int error_code) -> const char* {

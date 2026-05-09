@@ -4,7 +4,7 @@
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SerialComms.h"
+#include "apple2/peripherals/SerialComms.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"

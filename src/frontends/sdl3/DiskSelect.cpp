@@ -5,9 +5,9 @@
 #include <cstring>
 #include <string>
 
-#include "apple2/DiskCommands.h"
-#include "apple2/DiskFTP.h"
-#include "apple2/ftpparse.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskFTP.h"
+#include "apple2/peripherals/disk/ftpparse.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"

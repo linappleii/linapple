@@ -4,7 +4,7 @@
 
 #include "apple2/CPU.h"
 #include "apple2/SoundCore.h"
-#include "apple2/Speaker.h"
+#include "apple2/peripherals/Speaker.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"

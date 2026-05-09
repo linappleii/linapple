@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include "core/Common.h"
-#include "apple2/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/CPU.h"
 
 // These are required for this specific C-compatible architectural boundary.

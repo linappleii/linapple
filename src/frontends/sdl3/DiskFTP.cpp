@@ -1,4 +1,4 @@
-#include "apple2/DiskFTP.h"
+#include "apple2/peripherals/disk/DiskFTP.h"
 
 #include <sys/stat.h>
 
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "apple2/ftpparse.h"
+#include "apple2/peripherals/disk/ftpparse.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"

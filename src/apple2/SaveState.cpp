@@ -6,11 +6,11 @@
 #include <cstring>
 
 #include "apple2/CPU.h"
-#include "apple2/Joystick.h"
+#include "apple2/peripherals/Joystick.h"
 #include "apple2/Memory.h"
-#include "apple2/Mockingboard.h"
-#include "apple2/SerialComms.h"
-#include "apple2/Speaker.h"
+#include "apple2/peripherals/Mockingboard.h"
+#include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/Speaker.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "core/Common.h"

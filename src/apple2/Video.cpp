@@ -47,7 +47,7 @@ static auto GetTickCount() -> uint32_t {
 
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
-#include "apple2/Joystick.h"
+#include "apple2/peripherals/Joystick.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Log.h"
@@ -55,7 +55,7 @@ static auto GetTickCount() -> uint32_t {
 #include "core/Util_Text.h"
 #include "apple2/stretch.h"
 #include "apple2/Structs.h"
-#include "apple2/Harddisk.h"
+#include "apple2/peripherals/harddisk/Harddisk.h"
 
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"

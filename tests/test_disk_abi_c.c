@@ -1,6 +1,6 @@
 /* C99 compilation smoke test — if this file compiles, the headers are C99-compatible. */
-#include "apple2/DiskCommands.h"
-#include "apple2/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 
 void disk_abi_c_smoke(void) {
   DiskInsertCmd_t cmd;

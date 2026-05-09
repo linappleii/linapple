@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "LinAppleCore.h"
-#include "apple2/JoystickCommands.h"
+#include "apple2/peripherals/JoystickCommands.h"
 #include "core/Peripheral.h"
 
 // Mock Host Interface

@@ -3,13 +3,13 @@
 #include <cstring>
 #include <vector>
 
-#include "apple2/DiskGCR.h"
-#include "apple2/formats/DoDriver.h"
-#include "apple2/formats/IieDriver.h"
-#include "apple2/formats/Nb2Driver.h"
-#include "apple2/formats/NibDriver.h"
-#include "apple2/formats/PoDriver.h"
-#include "apple2/formats/Woz2Driver.h"
+#include "apple2/peripherals/disk/DiskGCR.h"
+#include "apple2/peripherals/disk/formats/DoDriver.h"
+#include "apple2/peripherals/disk/formats/IieDriver.h"
+#include "apple2/peripherals/disk/formats/Nb2Driver.h"
+#include "apple2/peripherals/disk/formats/NibDriver.h"
+#include "apple2/peripherals/disk/formats/PoDriver.h"
+#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "doctest.h"
 
 // Mock for enhancedisk
@@ -225,6 +225,10 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t header[1536]{};
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
+  memcpy(header + 12, "INFO", 4);
+  header[16] = 60; // INFO chunk size
+  memcpy(header + 80, "TMAP", 4); header[84] = 160;
+  memcpy(header + 248, "TRKS", 4); header[252] = 1;
   header[21] = 2;  // 3.5" disk type
   fwrite(header, 1, 1536, f);
   fclose(f);
@@ -242,6 +246,9 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect Flag") {
     FILE* f = fopen(path, "wb");
     uint8_t h[1536]{};
     memcpy(h, "WOZ2\xFF\n\r\n", 8);
+    memcpy(h + 12, "INFO", 4); h[16] = 60;
+    memcpy(h + 80, "TMAP", 4); h[84] = 160;
+    memcpy(h + 248, "TRKS", 4); h[252] = 1;
     h[21] = 1;        // 5.25"
     h[22] = wp_byte;  // write protect
     fwrite(h, 1, 1536, f);
@@ -269,7 +276,9 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  h[21] = 1;
+  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
+  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 248, "TRKS", 4);
   memset(h + 88, 0xFF, 160);  // TMAP: all unrecorded
   fwrite(h, 1, 1536, f);
   fclose(f);
@@ -365,7 +374,9 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  h[21] = 1; // 5.25"
+  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
+  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 248, "TRKS", 4);
   // TMAP starts at offset 88. Set track 0 to use trks_index 160 (out of bounds)
   h[88] = 160;
   fwrite(h, 1, 1536, f);
@@ -390,7 +401,9 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  h[21] = 1;
+  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
+  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 248, "TRKS", 4);
   h[88] = 0; // Track 0 uses trks_index 0
   // TRKS entry 0 starts at 256.
   // starting_block = 3 (offset 1536), block_count = 1 (512 bytes)

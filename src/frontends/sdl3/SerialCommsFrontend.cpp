@@ -1,5 +1,5 @@
 #include "SerialCommsFrontend.h"
-#include "apple2/SerialComms.h"
+#include "apple2/peripherals/SerialComms.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include <unistd.h>

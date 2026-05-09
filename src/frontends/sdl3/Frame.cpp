@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdio>
 #include <cstring>
 
-#include "apple2/KeyboardCommands.h"
+#include "apple2/peripherals/KeyboardCommands.h"
 #include "core/Common.h"
 #include "core/Peripheral.h"
 #include "frontends/sdl3/Frame.h"
@@ -40,16 +40,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
-#include "apple2/DiskCommands.h"
-#include "apple2/Harddisk.h"
-#include "apple2/Joystick.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/harddisk/Harddisk.h"
+#include "apple2/peripherals/Joystick.h"
 #include "apple2/Memory.h"
-#include "apple2/Mockingboard.h"
-#include "apple2/ParallelPrinter.h"
+#include "apple2/peripherals/Mockingboard.h"
+#include "apple2/peripherals/ParallelPrinter.h"
 #include "apple2/SaveState.h"
-#include "apple2/SerialComms.h"
+#include "apple2/peripherals/SerialComms.h"
 #include "apple2/SoundCore.h"
-#include "apple2/Speaker.h"
+#include "apple2/peripherals/Speaker.h"
 #include "apple2/Video.h"
 #include "apple2/stretch.h"
 #include "core/Common_Globals.h"

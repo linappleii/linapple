@@ -57,8 +57,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Structs.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-#include "apple2/Mockingboard.h"
-#include "apple2/MouseInterface.h"
+#include "apple2/peripherals/Mockingboard.h"
+#include "apple2/peripherals/MouseInterface.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 

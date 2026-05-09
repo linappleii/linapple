@@ -5,9 +5,9 @@
 #include <string>
 #include <sys/stat.h>
 
-#include "apple2/Harddisk.h"
-#include "apple2/DiskFTP.h"
-#include "apple2/ftpparse.h"
+#include "apple2/peripherals/harddisk/Harddisk.h"
+#include "apple2/peripherals/disk/DiskFTP.h"
+#include "apple2/peripherals/disk/ftpparse.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
 #include "frontends/sdl3/DiskChoose.h"

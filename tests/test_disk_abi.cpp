@@ -4,8 +4,8 @@
 #include <cstring>
 #include <vector>
 
-#include "apple2/DiskCommands.h"
-#include "apple2/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
