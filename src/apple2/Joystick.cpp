@@ -6,7 +6,6 @@
 // the core C interface and maintain peripheral singletons.
 
 #include "apple2/Joystick.h"
-#include "apple2/JoystickCommands.h"
 
 #include <algorithm>
 #include <array>
@@ -14,6 +13,7 @@
 #include <iostream>
 
 #include "apple2/CPU.h"
+#include "apple2/JoystickCommands.h"
 #include "apple2/Memory.h"
 #include "apple2/Structs.h"
 #include "core/Common.h"
@@ -30,12 +30,7 @@ enum {
   DEVICE_MOUSE = 3
 };
 
-enum {
-  MODE_NONE = 0,
-  MODE_STANDARD = 1,
-  MODE_CENTERING = 2,
-  MODE_SMOOTH = 3
-};
+enum { MODE_NONE = 0, MODE_STANDARD = 1, MODE_CENTERING = 2, MODE_SMOOTH = 3 };
 
 using joyinforec = struct joyinforec {
   int device;
@@ -47,7 +42,7 @@ static const std::array<joyinforec, 5> joyinfo = {
      {DEVICE_JOYSTICK, MODE_STANDARD},
      {DEVICE_KEYBOARD, MODE_STANDARD},
      {DEVICE_KEYBOARD, MODE_CENTERING},
-     {DEVICE_MOUSE,    MODE_STANDARD}}};
+     {DEVICE_MOUSE, MODE_STANDARD}}};
 
 struct JoystickPeripheral_t {
   std::array<uint32_t, 2> joytype = {{DEVICE_JOYSTICK, DEVICE_NONE}};
@@ -120,11 +115,15 @@ static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
   int nJoyNum = (addr & 2) ? 1 : 0;  // $C064..$C067
   CpuCalcCycles(cycles_left);
 
-  uint32_t nPdlPos = (addr & 1)
-                         ? static_cast<uint32_t>(jp->ypos[static_cast<size_t>(nJoyNum)])
-                         : static_cast<uint32_t>(jp->xpos[static_cast<size_t>(nJoyNum)]);
+  uint32_t nPdlPos =
+      (addr & 1)
+          ? static_cast<uint32_t>(jp->ypos[static_cast<size_t>(nJoyNum)])
+          : static_cast<uint32_t>(jp->xpos[static_cast<size_t>(nJoyNum)]);
 
-  bool nPdlCntrActive = (g_nCumulativeCycles <= (jp->reset_cycle + static_cast<uint64_t>(static_cast<double>(nPdlPos) * PDL_CNTR_INTERVAL)));
+  bool nPdlCntrActive =
+      (g_nCumulativeCycles <=
+       (jp->reset_cycle + static_cast<uint64_t>(static_cast<double>(nPdlPos) *
+                                                PDL_CNTR_INTERVAL)));
 
   return MemReadFloatingBus(nPdlCntrActive, cycles_left);
 }
@@ -170,7 +169,8 @@ static void* Joystick_ABI_Init(int slot, HostInterface_t* host) {
   }
 
   // $C070: Paddle Reset
-  host->RegisterDirectIO(jp, 0xC070, Joy_IO_ResetPosition, Joy_IO_ResetPosition);
+  host->RegisterDirectIO(jp, 0xC070, Joy_IO_ResetPosition,
+                         Joy_IO_ResetPosition);
 
   return jp;
 }
@@ -261,8 +261,8 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd_id,
   return PERIPHERAL_ERROR;
 }
 
-static auto Joystick_ABI_SaveState(void* instance, void* buffer,
-                                   size_t* size) -> PeripheralStatus {
+static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus {
   if (!instance || !size) {
     return PERIPHERAL_ERROR;
   }
@@ -320,17 +320,13 @@ EXPORT_PERIPHERAL(g_joystick_peripheral)
 
 // --- Legacy Procedural API ---
 
-void JoyShutDown() {
-  Joystick_ABI_Shutdown(active_joystick_instance);
-}
+void JoyShutDown() { Joystick_ABI_Shutdown(active_joystick_instance); }
 
 void JoyInitialize() {
   // Initialization now handled by Peripheral Manager
 }
 
-void JoyReset() {
-  Joystick_ABI_Reset(active_joystick_instance);
-}
+void JoyReset() { Joystick_ABI_Reset(active_joystick_instance); }
 
 auto JoyReadButton(uint16_t pc, uint16_t address, uint8_t write, uint8_t val,
                    uint32_t nCyclesLeft) -> uint8_t {

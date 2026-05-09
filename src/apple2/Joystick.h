@@ -1,13 +1,12 @@
-#include <cstdint>
 #include <array>
+#include <cstdint>
+
 #include "core/Common.h"
 #pragma once
 
 typedef struct tagSS_IO_Joystick SS_IO_Joystick;
 
-enum JOYNUM {
-  JN_JOYSTICK0 = 0, JN_JOYSTICK1
-};
+enum JOYNUM { JN_JOYSTICK0 = 0, JN_JOYSTICK1 };
 
 extern std::array<uint32_t, 2> joytype;
 
@@ -37,12 +36,15 @@ void JoyUpdatePosition(uint32_t dwExecutedCycles);
 
 bool JoyUsingMouse();
 
-uint32_t JoyGetSnapshot(SS_IO_Joystick *pSS);
+uint32_t JoyGetSnapshot(SS_IO_Joystick* pSS);
 
-uint32_t JoySetSnapshot(SS_IO_Joystick *pSS);
+uint32_t JoySetSnapshot(SS_IO_Joystick* pSS);
 
-uint8_t JoyReadButton(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
+uint8_t JoyReadButton(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+                      uint32_t nCyclesLeft);
 
-uint8_t JoyReadPosition(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
+uint8_t JoyReadPosition(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+                        uint32_t nCyclesLeft);
 
-uint8_t JoyResetPosition(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
+uint8_t JoyResetPosition(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+                         uint32_t nCyclesLeft);
