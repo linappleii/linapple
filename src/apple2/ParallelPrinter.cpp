@@ -6,12 +6,13 @@
 #include <cstring>
 
 #include "core/Common.h"
+#include "core/Peripheral.h"
+
 extern void PrinterFrontend_SendChar(uint8_t c);
 extern auto PrinterFrontend_CheckStatus() -> uint8_t;
 extern void PrinterFrontend_Update(uint32_t totalcycles);
 extern void PrinterFrontend_Destroy();
 extern void PrinterFrontend_Reset();
-#include "apple2/Memory.h"
 
 static const std::array<uint8_t, 256> Parallel_bin = {
     {0x18, 0xB0, 0x38, 0x48, 0x8A, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
@@ -37,9 +38,10 @@ static const std::array<uint8_t, 256> Parallel_bin = {
      0x05, 0x48, 0x29, 0x80, 0x09, 0x20, 0x2C, 0x58, 0xFF, 0xF0, 0x03, 0xFE,
      0x38, 0x07, 0x70, 0x84}};
 
-#include "core/Peripheral.h"
-
-uint32_t const PRINTDRVR_SIZE = 0x100;
+struct PrinterPeripheral_t {
+  HostInterface_t* host = nullptr;
+  int slot = 0;
+};
 
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t;
@@ -47,11 +49,15 @@ static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
                           uint8_t value, uint32_t) -> uint8_t;
 
 static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
+  auto* pp = new PrinterPeripheral_t{};
+  pp->host = host;
+  pp->slot = slot;
+
   uint8_t slot_rom[256];
   memcpy(slot_rom, Parallel_bin.data(), Parallel_bin.size());
   host->RegisterCxROM(slot, slot_rom);
   host->RegisterIO(slot, PrintStatus, PrintTransmit, nullptr, nullptr);
-  return reinterpret_cast<void*>(1);  // Dummy instance
+  return pp;
 }
 
 static void Printer_ABI_Reset(void* instance) {
@@ -60,8 +66,9 @@ static void Printer_ABI_Reset(void* instance) {
 }
 
 static void Printer_ABI_Shutdown(void* instance) {
-  (void)instance;
+  auto* pp = static_cast<PrinterPeripheral_t*>(instance);
   PrinterFrontend_Destroy();
+  delete pp;
 }
 
 static void Printer_ABI_Think(void* instance, uint32_t cycles) {
@@ -77,11 +84,7 @@ Peripheral_t g_printer_peripheral = {
     Printer_ABI_Reset,
     Printer_ABI_Shutdown,
     Printer_ABI_Think,
-    nullptr,  // on_vblank
-    nullptr,  // save_state
-    nullptr,  // load_state
-    nullptr,  // command
-    nullptr   // query
+    nullptr, nullptr, nullptr, nullptr, nullptr
 };
 
 extern "C" void Register_Printer() {
