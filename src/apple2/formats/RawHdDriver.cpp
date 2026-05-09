@@ -142,7 +142,8 @@ static uint32_t RawHd_GetTotalBlocks(void* instance) {
   return ri->total_blocks;
 }
 
-extern "C" HarddiskFormatDriver_t g_raw_hd_driver = {
+extern "C" {
+HarddiskFormatDriver_t g_raw_hd_driver = {
     LINAPPLE_HARDDISK_ABI_VERSION,
     HARDDISK_DRIVER_CAP_WRITE,
     "Raw",
@@ -153,6 +154,7 @@ extern "C" HarddiskFormatDriver_t g_raw_hd_driver = {
     RawHd_ReadBlock,
     RawHd_WriteBlock,
     RawHd_GetTotalBlocks};
+}
 
 // NOLINTEND(cppcoreguidelines-owning-memory,
 // modernize-use-trailing-return-type)

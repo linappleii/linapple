@@ -1363,7 +1363,6 @@ void _CmdAssembleHashDump ()
 	std::sort( vHashes.begin(), vHashes.end(), HashOpcode_t() );
 
 //	Hash_t nPrevHash = vHashes.at( 0 ).m_nValue;
-	Hash_t nThisHash = 0;
 
 	for( iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++ )
 	{
@@ -1379,7 +1378,6 @@ void _CmdAssembleHashDump ()
 			, g_aOpcodes65C02[ nOpcode ].sMnemonic
 			, g_aOpmodes[ nOpmode  ].m_sName
 		);
-		nThisHash++;
 
 //		if (nPrevHash != iThisHash)
 //		{

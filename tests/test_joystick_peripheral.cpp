@@ -42,7 +42,11 @@ static HostInterface_t mock_host = {
     nullptr,                // RiffFinishWriteFile
     nullptr,                // RiffPutSamples
     nullptr,                // AudioPushSamples
-    nullptr                 // ResetSystem
+    nullptr,                // ResetSystem
+    nullptr,                // PrinterPutChar
+    nullptr,                // PrinterGetStatus
+    nullptr,                // SerialTransmitByte
+    nullptr                 // SerialUpdateState
 };
 
 extern Peripheral_t g_joystick_peripheral;

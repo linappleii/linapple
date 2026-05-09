@@ -86,7 +86,11 @@ static HostInterface_t mock_host = {
     /*.RiffFinishWriteFile =*/nullptr,
     /*.RiffPutSamples =*/nullptr,
     /*.AudioPushSamples =*/nullptr,
-    /*.ResetSystem =*/nullptr};
+    /*.ResetSystem =*/nullptr,
+    /*.PrinterPutChar =*/nullptr,
+    /*.PrinterGetStatus =*/nullptr,
+    /*.SerialTransmitByte =*/nullptr,
+    /*.SerialUpdateState =*/nullptr};
 
 static void* Clock_Init_With_Mock(int slot) {
   // Initialize the peripheral and associate the returned instance with the

@@ -512,6 +512,8 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   int iArgAddress = 3;
   int iArgComma2 = 4;
   int iArgLength = 5;
+  (void)iArgComma2;
+  (void)iArgLength;
   int iArgBank = 3;
   int iArgColon = 4;
 
@@ -902,6 +904,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     int iArgAddress = 3;
     int iArgComma2 = 4;
     int iArgLength = 5;
+    (void)iArgComma2;
+    (void)iArgLength;
     int iArgBank = 3;
     int iArgColon = 4;
 

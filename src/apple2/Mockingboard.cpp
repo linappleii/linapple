@@ -317,7 +317,7 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       static_cast<int>(static_cast<double>(SAMPLE_RATE) / nIrqFreq);
 
   if (nNumSamples > 0) {
-    if (nNumSamples > SAMPLE_RATE) nNumSamples = SAMPLE_RATE;
+    if (nNumSamples > static_cast<int>(SAMPLE_RATE)) nNumSamples = static_cast<int>(SAMPLE_RATE);
 
     for (int i = 0; i < CHIPS_PER_CARD; i++) {
       int16_t* voices[3];
@@ -548,8 +548,7 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
 
 static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   (void)vblank;
-  if (!instance) return;
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  (void)instance;
   // End of frame logic
 }
 

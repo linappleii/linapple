@@ -59,7 +59,9 @@ static HostInterface_t mock_host = {
     nullptr,               // AudioPushSamples
     nullptr,               // ResetSystem
     Mock_PrinterPutChar,   // PrinterPutChar
-    Mock_PrinterGetStatus  // PrinterGetStatus
+    Mock_PrinterGetStatus, // PrinterGetStatus
+    nullptr,               // SerialTransmitByte
+    nullptr                // SerialUpdateState
 };
 
 extern Peripheral_t g_printer_peripheral;
