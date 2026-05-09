@@ -258,6 +258,23 @@ const uint8_t CONTROL_STOP_BITS_BIT = 0x80;
 
 const uint16_t TIMER_LOW_BYTE_MAX = 0xFF;
 
+static constexpr uint8_t ST_PARITY_ERR = 1 << 0;
+static constexpr uint8_t ST_FRAMING_ERR = 1 << 1;
+static constexpr uint8_t ST_OVERRUN_ERR = 1 << 2;
+static constexpr uint8_t ST_RX_FULL = 1 << 3;
+static constexpr uint8_t ST_TX_EMPTY = 1 << 4;
+static constexpr uint8_t ST_DCD = 1 << 5;
+static constexpr uint8_t ST_DSR = 1 << 6;
+static constexpr uint8_t ST_IRQ = 1 << 7;
+
+#include "core/Peripheral.h"
+
+struct SSCPeripheral_t {
+  SuperSerialCard logic;
+  HostInterface_t* host;
+  int slot;
+};
+
 static void GetDIPSW(SuperSerialCard* pSSC);
 static void SetDIPSWDefaults(SuperSerialCard* pSSC);
 static auto GenerateControl(SuperSerialCard* pSSC) -> uint8_t;
@@ -283,20 +300,16 @@ static auto CommTransmit(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
                          uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
 
-#include "core/Peripheral.h"
-
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static HostInterface_t* g_pSSCHost = nullptr;
-static int g_nSSCSlot = 0;
-
 auto SSC_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                 uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
 auto SSC_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
 
 static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  g_pSSCHost = host;
-  g_nSSCSlot = slot;
+  auto* instance = new SSCPeripheral_t();
+  instance->host = host;
+  instance->slot = slot;
 
   const uint32_t SSC_FW_SIZE = 2 * 1024;
   const uint32_t SSC_SLOT_FW_SIZE = 256;
@@ -308,41 +321,60 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   host->RegisterCxROM(slot, slot_rom);
 
   // Expansion ROM
-  if (sg_SSC.m_pExpansionRom == nullptr) {
-    sg_SSC.m_pExpansionRom = new uint8_t[SSC_FW_SIZE];
-    if (sg_SSC.m_pExpansionRom) {
-      memcpy(sg_SSC.m_pExpansionRom, SSC_rom.data(), SSC_FW_SIZE);
-    }
+  instance->logic.m_pExpansionRom = new uint8_t[SSC_FW_SIZE];
+  if (instance->logic.m_pExpansionRom) {
+    memcpy(instance->logic.m_pExpansionRom, SSC_rom.data(), SSC_FW_SIZE);
   }
-  host->RegisterExpansionROM(slot, sg_SSC.m_pExpansionRom);
+  host->RegisterExpansionROM(slot, instance->logic.m_pExpansionRom);
 
   host->RegisterIO(slot, SSC_IORead, SSC_IOWrite, nullptr, nullptr);
 
-  return &sg_SSC;  // Use the global instance for now
+  SSC_Reset(&instance->logic);
+
+  return instance;
 }
 
 static void SSC_ABI_Reset(void* instance) {
-  SSC_Reset(static_cast<SuperSerialCard*>(instance));
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  SSC_Reset(&pSSCP->logic);
 }
 
 static void SSC_ABI_Shutdown(void* instance) {
-  SSC_Destroy(static_cast<SuperSerialCard*>(instance));
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  SSC_Destroy(&pSSCP->logic);
+  delete pSSCP;
 }
 
 extern void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalcycles);
 
 static void SSC_ABI_Think(void* instance, uint32_t cycles) {
-  SSCFrontend_Update(static_cast<SuperSerialCard*>(instance), cycles);
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  SSCFrontend_Update(&pSSCP->logic, cycles);
 }
 
 static auto SSC_ABI_SaveState(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus {
-  if (!instance || !buffer || !size || *size < sizeof(SS_IO_Comms)) {
-    if (size) *size = sizeof(SS_IO_Comms);
-    return PERIPHERAL_ERROR;
+  if (!instance || !size) return PERIPHERAL_ERROR;
+  if (buffer == nullptr) {
+    *size = sizeof(SS_IO_Comms);
+    return PERIPHERAL_OK;
   }
-  SSC_GetSnapshot(static_cast<SuperSerialCard*>(instance),
-                  static_cast<SS_IO_Comms*>(buffer));
+  if (*size < sizeof(SS_IO_Comms)) return PERIPHERAL_ERROR;
+
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  auto* pSSC = &pSSCP->logic;
+  auto* pSS = static_cast<SS_IO_Comms*>(buffer);
+
+  pSS->baudrate = pSSC->m_uBaudRate;
+  pSS->bytesize = pSSC->m_uByteSize;
+  pSS->commandbyte = pSSC->m_uCommandByte;
+  pSS->comminactivity = 0;
+  pSS->controlbyte = pSSC->m_uControlByte;
+  pSS->parity = pSSC->m_eParity;
+  memcpy(pSS->recvbuffer, pSSC->m_RecvBuffer, uRecvBufferSize);
+  pSS->recvbytes = pSSC->m_vRecvBytes;
+  pSS->stopbits = pSSC->m_eStopBits;
+
   *size = sizeof(SS_IO_Comms);
   return PERIPHERAL_OK;
 }
@@ -352,9 +384,19 @@ static auto SSC_ABI_LoadState(void* instance, const void* buffer, size_t size)
   if (!instance || !buffer || size < sizeof(SS_IO_Comms)) {
     return PERIPHERAL_ERROR;
   }
-  SSC_SetSnapshot(
-      static_cast<SuperSerialCard*>(instance),
-      const_cast<SS_IO_Comms*>(static_cast<const SS_IO_Comms*>(buffer)));
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  auto* pSSC = &pSSCP->logic;
+  const auto* pSS = static_cast<const SS_IO_Comms*>(buffer);
+
+  pSSC->m_uBaudRate = pSS->baudrate;
+  pSSC->m_uByteSize = pSS->bytesize;
+  pSSC->m_uCommandByte = pSS->commandbyte;
+  pSSC->m_uControlByte = pSS->controlbyte;
+  pSSC->m_eParity = static_cast<SscParity>(pSS->parity);
+  memcpy(pSSC->m_RecvBuffer, pSS->recvbuffer, uRecvBufferSize);
+  pSSC->m_vRecvBytes = pSS->recvbytes;
+  pSSC->m_eStopBits = static_cast<SscStopBits>(pSS->stopbits);
+
   return PERIPHERAL_OK;
 }
 
@@ -462,7 +504,8 @@ static void UpdateCommState(SuperSerialCard* pSSC) {
 
 auto SSC_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                 uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  auto* pSSC = static_cast<SuperSerialCard*>(instance);
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  auto* pSSC = &pSSCP->logic;
 
   switch (uAddr & ADDR_NIBBLE_MASK) {
     case SSC_OFFSET_DIPSW1:
@@ -484,7 +527,8 @@ auto SSC_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
 
 auto SSC_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                  uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  auto* pSSC = static_cast<SuperSerialCard*>(instance);
+  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
+  auto* pSSC = &pSSCP->logic;
 
   switch (uAddr & ADDR_NIBBLE_MASK) {
     case SSC_OFFSET_DATA:
@@ -638,15 +682,6 @@ static auto CommTransmit(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t,
   }
   return 0;
 }
-
-static constexpr uint8_t ST_PARITY_ERR = 1 << 0;
-static constexpr uint8_t ST_FRAMING_ERR = 1 << 1;
-static constexpr uint8_t ST_OVERRUN_ERR = 1 << 2;
-static constexpr uint8_t ST_RX_FULL = 1 << 3;
-static constexpr uint8_t ST_TX_EMPTY = 1 << 4;
-static constexpr uint8_t ST_DCD = 1 << 5;
-static constexpr uint8_t ST_DSR = 1 << 6;
-static constexpr uint8_t ST_IRQ = 1 << 7;
 
 static auto CommStatus(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t write,
                        uint8_t, uint32_t) -> uint8_t {
