@@ -65,7 +65,7 @@ static char MouseInterface_rom[] =
     "\x08\x78\x8D\xF8\x07\x48\x98\x48\x8A\x48\x20\x58\xFF\xBA\xBD\x00"
     "\x01\xAA\x08\x0A\x0A\x0A\x0A\x28\xA8\xAD\xF8\x07\x8E\xF8\x07\x48"
     "\xA9\x08\x70\x67\x90\x4D\xB0\x55\x29\x01\x09\xF0\x9D\x38\x06\xA9"
-    "\x02\xD0\x40\x29\x0F\x09\xB0\xD0\x35\xFF\xFF\xB9\x83\xC0\x29\xFB"
+    "\x02\xD0\x40\x29\x0F\x09\x90\xD0\x35\xFF\xFF\xB9\x83\xC0\x29\xFB"
     "\x99\x83\xC0\xA9\x3E\x99\x82\xC0\xB9\x83\xC0\x09\x04\x99\x83\xC0"
     "\xB9\x82\xC0\x29\xC1\x1D\xB8\x05\x99\x82\xC0\x68\xF0\x0A\x6A\x90"
     "\x75\x68\xAA\x68\xA8\x68\x28\x60\x18\x60\x29\x01\x09\x60\x9D\x38"
@@ -404,7 +404,8 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
     case MOUSE_SERV:
       mp->logic.m_nDataLen = 2;
       mp->logic.m_byBuff[1] = mp->logic.m_byState & ~0x20;  // reason of interrupt
-      CpuIrqDeassert(IS_MOUSE);
+      if (mp->host && mp->host->AssertIrq) mp->host->AssertIrq(mp->slot, false);
+      else CpuIrqDeassert(IS_MOUSE);
       break;
     case MOUSE_CLEAR:
       Mouse_Reset_Internal(mp);
@@ -486,7 +487,8 @@ static void Mouse_OnMouseEvent(MousePeripheral_t* mp) {
 
   if (byState & 0x0E) {
     mp->logic.m_byState |= byState;
-    CpuIrqAssert(IS_MOUSE);
+    if (mp->host && mp->host->AssertIrq) mp->host->AssertIrq(mp->slot, true);
+    else CpuIrqAssert(IS_MOUSE);
   }
 }
 
