@@ -424,6 +424,22 @@ target_compile_definitions(test-clock-peripheral PRIVATE ${PERIPHERAL_DEFINITION
 target_link_libraries(test-clock-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-clock-peripheral COMMAND test-clock-peripheral)
 
+# Test Mockingboard Peripheral
+add_executable(test-mockingboard-peripheral
+    tests/test_main.cpp
+    tests/test_mockingboard_peripheral.cpp
+    ${SOURCES_CORE}
+    ${SOURCES_A2}
+    ${SOURCES_DBG}
+    src/frontends/headless/Stubs.cpp
+    src/frontends/headless/Headless_Path.cpp
+)
+add_dependencies(test-mockingboard-peripheral generate_xpms)
+target_include_directories(test-mockingboard-peripheral PRIVATE src src/core src/apple2 src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(test-mockingboard-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
+target_link_libraries(test-mockingboard-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+add_test(NAME test-mockingboard-peripheral COMMAND test-mockingboard-peripheral)
+
 # Test Joystick Peripheral
 add_executable(test-joystick-peripheral
     tests/test_main.cpp
