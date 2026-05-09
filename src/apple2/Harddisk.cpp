@@ -43,13 +43,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
-#include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "apple2/HarddiskFormatDriver.h"
 #include "apple2/HarddiskLoader.h"
-
-extern void FrameRefreshStatus(int);
+#include "apple2/HarddiskCommands.h"
 
 static const char Hddrvr_dat[] =
     "\xA9\x20\xA9\x00\xA9\x03\xA9\x3C\xA9\x00\x8D\xF2\xC0\xA9\x70\x8D"
@@ -80,6 +78,8 @@ struct HarddiskDrive_t {
   HarddiskFormatDriver_t* driver;
   void* driver_instance;
   bool os_readonly;
+  bool user_write_protected;
+  HarddiskError_e last_error;
   uint8_t hd_buf[513];
 
   HarddiskDrive_t()
@@ -90,7 +90,9 @@ struct HarddiskDrive_t {
         hd_imageloaded(false),
         driver(nullptr),
         driver_instance(nullptr),
-        os_readonly(false) {
+        os_readonly(false),
+        user_write_protected(false),
+        last_error(HARDDISK_ERR_NONE) {
     memset(hd_imagename, 0, sizeof(hd_imagename));
     memset(hd_fullname, 0, sizeof(hd_fullname));
     memset(hd_buf, 0, sizeof(hd_buf));
@@ -163,6 +165,10 @@ static void GetImageTitle(const char* imageFileName, HarddiskDrive_t* pHardDrive
 
 static void NotifyInvalidImage(const char *filename) { printf("HDD: Could not load %s\n", filename); }
 
+static auto IsDriveValid(const int iDrive) -> bool {
+  return (iDrive >= 0 && iDrive < HARDDISK_DRIVE_COUNT);
+}
+
 static void HD_CleanupDrive(HarddiskDrive_t* pDrive)
 {
   if (pDrive->driver && pDrive->driver_instance) {
@@ -174,22 +180,119 @@ static void HD_CleanupDrive(HarddiskDrive_t* pDrive)
   pDrive->hd_imagename[0] = 0;
   pDrive->hd_fullname[0] = 0;
   pDrive->os_readonly = false;
+  pDrive->user_write_protected = false;
+  pDrive->last_error = HARDDISK_ERR_NONE;
 }
 
-static auto HD_Load_Image(HarddiskDrive_t* pDrive, const char *filename) -> bool
-{
-  HarddiskError_e err = HarddiskLoader_Open(filename, &pDrive->os_readonly, &pDrive->driver, &pDrive->driver_instance);
-  pDrive->hd_imageloaded = (err == HARDDISK_ERR_NONE);
-  return pDrive->hd_imageloaded;
+static auto HD_Insert_Internal(HarddiskPeripheral_t* hp, int drive, const char* imageFileName,
+                                bool writeProtected) -> HarddiskError_e {
+  if (!IsDriveValid(drive)) return HARDDISK_ERR_IO;
+  HarddiskDrive_t* pDrive = &hp->drives[drive];
+
+  if (pDrive->hd_imageloaded) {
+    HD_CleanupDrive(pDrive);
+  }
+
+  pDrive->user_write_protected = writeProtected;
+  HarddiskError_e error = HarddiskLoader_Open(imageFileName, &pDrive->os_readonly, &pDrive->driver, &pDrive->driver_instance);
+
+  pDrive->last_error = error;
+
+  if (error == HARDDISK_ERR_NONE) {
+    pDrive->hd_imageloaded = true;
+    GetImageTitle(imageFileName, pDrive);
+    if (hp->host) {
+      const char* key = (drive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
+      hp->host->SetConfig("Preferences", key, imageFileName);
+      hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
+    }
+  } else {
+    NotifyInvalidImage(imageFileName);
+    if (hp->host) {
+      hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
+    }
+  }
+  return error;
 }
 
 static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+
+static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
+                             size_t size) -> PeripheralStatus {
+  if (!instance) return PERIPHERAL_ERROR;
+  auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
+
+  switch (static_cast<HarddiskCmd_e>(cmd)) {
+    case HARDDISK_CMD_INSERT: {
+      if (!data || size < sizeof(HarddiskInsertCmd_t)) return PERIPHERAL_ERROR;
+      auto* c = static_cast<const HarddiskInsertCmd_t*>(data);
+      if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
+      HD_Insert_Internal(hp, c->drive, c->path, c->write_protected != 0);
+      return PERIPHERAL_OK;
+    }
+    case HARDDISK_CMD_EJECT: {
+      if (!data || size < sizeof(HarddiskEjectCmd_t)) return PERIPHERAL_ERROR;
+      auto* c = static_cast<const HarddiskEjectCmd_t*>(data);
+      if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
+      HD_CleanupDrive(&hp->drives[c->drive]);
+      if (hp->host) {
+        const char* key = (c->drive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
+        hp->host->SetConfig("Preferences", key, "");
+        hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
+      }
+      return PERIPHERAL_OK;
+    }
+    case HARDDISK_CMD_SET_PROTECT: {
+      if (!data || size < sizeof(HarddiskSetProtectCmd_t)) return PERIPHERAL_ERROR;
+      auto* c = static_cast<const HarddiskSetProtectCmd_t*>(data);
+      if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
+      hp->drives[c->drive].user_write_protected = (c->write_protected != 0);
+      if (hp->host) {
+        hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
+      }
+      return PERIPHERAL_OK;
+    }
+    default:
+      return PERIPHERAL_INCOMPATIBLE;
+  }
+}
+
+static auto HD_ABI_Query(void* instance, uint32_t cmd, void* data,
+                           size_t* size) -> PeripheralStatus {
+  if (!instance || !size) return PERIPHERAL_ERROR;
+  auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
+
+  if (cmd == HARDDISK_CMD_GET_STATUS) {
+    if (!data || *size < sizeof(HarddiskStatus_t)) {
+      *size = sizeof(HarddiskStatus_t);
+      return PERIPHERAL_ERROR;
+    }
+    auto* s = static_cast<HarddiskStatus_t*>(data);
+    memset(s, 0, sizeof(HarddiskStatus_t));
+
+    s->drive0_last_error = static_cast<int32_t>(hp->drives[0].last_error);
+    s->drive0_loaded = hp->drives[0].hd_imageloaded ? 1 : 0;
+    s->drive0_write_protected = (hp->drives[0].user_write_protected || hp->drives[0].os_readonly) ? 1 : 0;
+    Util_SafeStrCpy(s->drive0_name, hp->drives[0].hd_imagename, HARDDISK_STATUS_NAME_MAX);
+    Util_SafeStrCpy(s->drive0_full_path, hp->drives[0].hd_fullname, HARDDISK_STATUS_PATH_MAX);
+
+    s->drive1_last_error = static_cast<int32_t>(hp->drives[1].last_error);
+    s->drive1_loaded = hp->drives[1].hd_imageloaded ? 1 : 0;
+    s->drive1_write_protected = (hp->drives[1].user_write_protected || hp->drives[1].os_readonly) ? 1 : 0;
+    Util_SafeStrCpy(s->drive1_name, hp->drives[1].hd_imagename, HARDDISK_STATUS_NAME_MAX);
+    Util_SafeStrCpy(s->drive1_full_path, hp->drives[1].hd_fullname, HARDDISK_STATUS_PATH_MAX);
+
+    *size = sizeof(HarddiskStatus_t);
+    return PERIPHERAL_OK;
+  }
+  return PERIPHERAL_INCOMPATIBLE;
+}
 
 static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
   auto* hp = new HarddiskPeripheral_t();
   hp->host = host;
   hp->slot = static_cast<uint32_t>(slot);
-  hp->enabled = true; // Default to enabled for now to maintain existing behavior
+  hp->enabled = true;
 
   HarddiskLoader_Init();
 
@@ -201,6 +304,15 @@ static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
   }
 
   host->RegisterIO(slot, HD_IO_EMUL, HD_IO_EMUL, nullptr, nullptr);
+
+  // Auto-load images from config if present
+  char path[512];
+  if (host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) && path[0]) {
+    HD_Insert_Internal(hp, 0, path, false);
+  }
+  if (host->GetConfig("Preferences", "Harddisk Image 2", path, sizeof(path)) && path[0]) {
+    HD_Insert_Internal(hp, 1, path, false);
+  }
 
   g_pHDInstance = hp;
   return hp;
@@ -224,12 +336,12 @@ Peripheral_t g_harddisk_peripheral = {
     HD_ABI_Init,
     HD_ABI_Reset,
     HD_ABI_Shutdown,
-    nullptr,  // think
-    nullptr,  // on_vblank
-    nullptr,  // save_state
-    nullptr,  // load_state
-    nullptr,  // command
-    nullptr   // query
+    nullptr, // think
+    nullptr, // on_vblank
+    nullptr, // save_state
+    nullptr, // load_state
+    HD_ABI_Command,
+    HD_ABI_Query
 };
 
 extern "C" void Register_Harddisk() {
@@ -274,36 +386,22 @@ void HD_Cleanup() {
 }
 
 void HD_Eject(const int iDrive) {
-  if (!g_pHDInstance || iDrive < 0 || iDrive >= 2) return;
+  if (!g_pHDInstance || !IsDriveValid(iDrive)) return;
   HarddiskDrive_t* pDrive = &g_pHDInstance->drives[iDrive];
 
   if (pDrive->hd_imageloaded) {
     HD_CleanupDrive(pDrive);
-    if (iDrive == 0) {
-      Configuration::Instance().SetString("Preferences", "Harddisk Image 1",
-                                          "");
-    } else {
-      Configuration::Instance().SetString("Preferences", "Harddisk Image 2",
-                                          "");
+    if (g_pHDInstance->host) {
+      const char* key = (iDrive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
+      g_pHDInstance->host->SetConfig("Preferences", key, "");
+      g_pHDInstance->host->NotifyStatusChanged(static_cast<int>(g_pHDInstance->slot));
     }
-    Configuration::Instance().Save();
   }
 }
 
 auto HD_InsertDisk(int nDrive, const char* imageFileName) -> bool {
-  if (!g_pHDInstance || nDrive < 0 || nDrive >= 2) return false;
-  if (!imageFileName || *imageFileName == 0x00) return false;
-
-  HarddiskDrive_t* pDrive = &g_pHDInstance->drives[nDrive];
-  if (pDrive->hd_imageloaded) HD_CleanupDrive(pDrive);
-
-  bool result = HD_Load_Image(pDrive, imageFileName);
-  if (result) {
-    GetImageTitle(imageFileName, pDrive);
-  } else {
-    NotifyInvalidImage(imageFileName);
-  }
-  return result;
+  if (!g_pHDInstance || !IsDriveValid(nDrive)) return false;
+  return HD_Insert_Internal(g_pHDInstance, nDrive, imageFileName, false) == HARDDISK_ERR_NONE;
 }
 
 auto HD_InsertDisk2(int nDrive, const char* pszFilename) -> bool {
@@ -391,6 +489,6 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrit
       default: return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  FrameRefreshStatus(DRAW_LEDS);
+  if (hp->host) hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
   return r;
 }
