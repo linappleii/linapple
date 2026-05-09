@@ -424,6 +424,22 @@ target_compile_definitions(test-clock-peripheral PRIVATE ${PERIPHERAL_DEFINITION
 target_link_libraries(test-clock-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 add_test(NAME test-clock-peripheral COMMAND test-clock-peripheral)
 
+# Test Printer Peripheral
+add_executable(test-printer-peripheral
+    tests/test_main.cpp
+    tests/test_printer_peripheral.cpp
+    ${SOURCES_CORE}
+    ${SOURCES_A2}
+    ${SOURCES_DBG}
+    src/frontends/headless/Stubs.cpp
+    src/frontends/headless/Headless_Path.cpp
+)
+add_dependencies(test-printer-peripheral generate_xpms)
+target_include_directories(test-printer-peripheral PRIVATE src src/core src/apple2 src/Debugger ${GEN_RES_DIR} ${RES_DIR} ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(test-printer-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS})
+target_link_libraries(test-printer-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+add_test(NAME test-printer-peripheral COMMAND test-printer-peripheral)
+
 # Test Mouse Peripheral
 add_executable(test-mouse-peripheral
     tests/test_main.cpp

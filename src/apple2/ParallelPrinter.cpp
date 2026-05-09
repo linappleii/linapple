@@ -54,9 +54,7 @@ static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
   return pp;
 }
 
-static void Printer_ABI_Reset(void* instance) {
-  (void)instance;
-}
+static void Printer_ABI_Reset(void* instance) { (void)instance; }
 
 static void Printer_ABI_Shutdown(void* instance) {
   auto* pp = static_cast<PrinterPeripheral_t*>(instance);
@@ -68,16 +66,18 @@ static void Printer_ABI_Think(void* instance, uint32_t cycles) {
   (void)cycles;
 }
 
-Peripheral_t g_printer_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "Parallel Printer",
-    0xFE,  // Slots 1-7
-    Printer_ABI_Init,
-    Printer_ABI_Reset,
-    Printer_ABI_Shutdown,
-    Printer_ABI_Think,
-    nullptr, nullptr, nullptr, nullptr, nullptr
-};
+Peripheral_t g_printer_peripheral = {LINAPPLE_ABI_VERSION,
+                                     "Parallel Printer",
+                                     0xFE,  // Slots 1-7
+                                     Printer_ABI_Init,
+                                     Printer_ABI_Reset,
+                                     Printer_ABI_Shutdown,
+                                     Printer_ABI_Think,
+                                     nullptr,
+                                     nullptr,
+                                     nullptr,
+                                     nullptr,
+                                     nullptr};
 
 extern "C" void Register_Printer() {
   Peripheral_Register_Builtin(&g_printer_peripheral);
