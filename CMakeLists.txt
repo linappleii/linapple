@@ -155,6 +155,7 @@ set(SOURCES_A2
     src/apple2/Disk.cpp
     src/apple2/DiskGCR.cpp
     src/apple2/DiskLoader.cpp
+    src/apple2/HarddiskLoader.cpp
 
     src/apple2/formats/DoDriver.cpp
     src/apple2/formats/IieDriver.cpp
