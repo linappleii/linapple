@@ -6,6 +6,7 @@
 // the core C interface and maintain peripheral singletons.
 
 #include "apple2/Joystick.h"
+#include "apple2/JoystickCommands.h"
 
 #include <algorithm>
 #include <array>
@@ -200,6 +201,52 @@ static void Joystick_ABI_Think(void* instance, uint32_t cycles) {
   }
 }
 
+static auto Joystick_ABI_Command(void* instance, uint32_t cmd_id,
+                                 const void* data, size_t size)
+    -> PeripheralStatus {
+  if (!instance || !data) {
+    return PERIPHERAL_ERROR;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  switch (static_cast<JoystickCmd_e>(cmd_id)) {
+    case JOY_CMD_SET_AXIS: {
+      if (size < sizeof(JoystickAxisPayload_t)) return PERIPHERAL_ERROR;
+      const auto* payload = static_cast<const JoystickAxisPayload_t*>(data);
+      if (payload->joystick < 2) {
+        if (payload->axis == 0) {
+          jp->xpos[payload->joystick] = payload->value;
+        } else {
+          jp->ypos[payload->joystick] = payload->value;
+        }
+      }
+      return PERIPHERAL_OK;
+    }
+    case JOY_CMD_SET_BUTTON: {
+      if (size < sizeof(JoystickButtonPayload_t)) return PERIPHERAL_ERROR;
+      const auto* payload = static_cast<const JoystickButtonPayload_t*>(data);
+      if (payload->button < 3) {
+        if (payload->down && !jp->joybutton[payload->button]) {
+          jp->buttonlatch[payload->button] = BUTTONTIME;
+        }
+        jp->joybutton[payload->button] = payload->down;
+      }
+      return PERIPHERAL_OK;
+    }
+    case JOY_CMD_SET_TRIM: {
+      if (size < sizeof(JoystickTrimPayload_t)) return PERIPHERAL_ERROR;
+      const auto* payload = static_cast<const JoystickTrimPayload_t*>(data);
+      if (payload->axis_x) {
+        jp->trim_x = payload->value;
+      } else {
+        jp->trim_y = payload->value;
+      }
+      return PERIPHERAL_OK;
+    }
+  }
+  return PERIPHERAL_ERROR;
+}
+
 Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
                                       "Joystick",
                                       0x01,  // Slot 0 (Internal)
@@ -210,7 +257,7 @@ Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
                                       nullptr,  // on_vblank
                                       nullptr,  // save_state
                                       nullptr,  // load_state
-                                      nullptr,  // command
+                                      Joystick_ABI_Command,
                                       nullptr};
 
 extern "C" void Register_Joystick() {
@@ -224,6 +271,7 @@ EXPORT_PERIPHERAL(g_joystick_peripheral)
 // --- Legacy Procedural API ---
 
 void JoyShutDown() {
+  Joystick_ABI_Shutdown(active_joystick_instance);
 }
 
 void JoyInitialize() {
@@ -231,6 +279,7 @@ void JoyInitialize() {
 }
 
 void JoyReset() {
+  Joystick_ABI_Reset(active_joystick_instance);
 }
 
 auto JoyReadButton(uint16_t pc, uint16_t address, uint8_t write, uint8_t val, uint32_t nCyclesLeft) -> uint8_t {
@@ -262,13 +311,7 @@ void JoySetRawButton(int button_idx, bool down) {
 }
 
 void JoyUpdatePosition(uint32_t dwExecutedCycles) {
-  (void)dwExecutedCycles;
-  if (!active_joystick_instance) return;
-  for (uint32_t& i : active_joystick_instance->buttonlatch) {
-    if (i) {
-      --i;
-    }
-  }
+  Joystick_ABI_Think(active_joystick_instance, dwExecutedCycles);
 }
 
 auto JoyGetSnapshot(SS_IO_Joystick *pSS) -> uint32_t {
