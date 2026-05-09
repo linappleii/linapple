@@ -275,28 +275,32 @@ struct SSCPeripheral_t {
   int slot;
 };
 
-static void GetDIPSW(SuperSerialCard* pSSC);
-static void SetDIPSWDefaults(SuperSerialCard* pSSC);
-static auto GenerateControl(SuperSerialCard* pSSC) -> uint8_t;
-static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t;
-static void UpdateCommState(SuperSerialCard* pSSC);
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+static SSCPeripheral_t* active_ssc_instance = nullptr;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
-static auto CommCommand(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static void GetDIPSW(SSCPeripheral_t* mp);
+static void SetDIPSWDefaults(SSCPeripheral_t* mp);
+static auto GenerateControl(SSCPeripheral_t* mp) -> uint8_t;
+static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t;
+static void UpdateCommState(SSCPeripheral_t* mp);
+
+static auto CommCommand(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
-static auto CommControl(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static auto CommControl(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
-static auto CommDipSw(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static auto CommDipSw(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
-static auto CommReceive(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static auto CommReceive(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
-static auto CommStatus(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static auto CommStatus(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                        uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
-static auto CommTransmit(SuperSerialCard* pSSC, uint16_t pc, uint16_t addr,
+static auto CommTransmit(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                          uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t;
 
@@ -310,6 +314,8 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   auto* instance = new SSCPeripheral_t();
   instance->host = host;
   instance->slot = slot;
+
+  active_ssc_instance = instance;
 
   const uint32_t SSC_FW_SIZE = 2 * 1024;
   const uint32_t SSC_SLOT_FW_SIZE = 256;
@@ -425,14 +431,21 @@ EXPORT_PERIPHERAL(g_ssc_peripheral)
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 void SSC_Reset(SuperSerialCard* pSSC) {
-  GetDIPSW(pSSC);
-  pSSC->m_vRecvBytes = 0;
-  pSSC->m_bTxIrqEnabled = false;
-  pSSC->m_bRxIrqEnabled = false;
-  pSSC->m_bWrittenTx = false;
-  pSSC->m_vbCommIRQ = false;
-  pSSC->m_uCommandByte =
-      0xFF;  // Ensure first write always triggers UpdateCommState
+  // If we can find the peripheral instance, use it
+  SSCPeripheral_t* mp = active_ssc_instance;
+  // Fallback to just using pSSC if mp logic doesn't match pSSC (unlikely for single instance)
+  if (mp && &mp->logic == pSSC) {
+    GetDIPSW(mp);
+  } else {
+    // This is a bit of a hack but matches the requirement to use active_ssc_instance
+    // if we can't get it from pSSC.
+    pSSC->m_vRecvBytes = 0;
+    pSSC->m_bTxIrqEnabled = false;
+    pSSC->m_bRxIrqEnabled = false;
+    pSSC->m_bWrittenTx = false;
+    pSSC->m_vbCommIRQ = false;
+    pSSC->m_uCommandByte = 0xFF;
+  }
 }
 
 void SSC_Destroy(SuperSerialCard* pSSC) {
@@ -441,22 +454,24 @@ void SSC_Destroy(SuperSerialCard* pSSC) {
   pSSC->m_pExpansionRom = nullptr;
 }
 
-static void GetDIPSW(SuperSerialCard* pSSC) {
-  SetDIPSWDefaults(pSSC);
+static void GetDIPSW(SSCPeripheral_t* mp) {
+  SetDIPSWDefaults(mp);
 
+  auto* pSSC = &mp->logic;
   pSSC->m_uBaudRate = pSSC->m_DIPSWCurrent.uBaudRate;
   pSSC->m_eStopBits = pSSC->m_DIPSWCurrent.eStopBits;
   pSSC->m_uByteSize = pSSC->m_DIPSWCurrent.uByteSize;
   pSSC->m_eParity = pSSC->m_DIPSWCurrent.eParity;
-  pSSC->m_uControlByte = GenerateControl(pSSC);
+  pSSC->m_uControlByte = GenerateControl(mp);
   pSSC->m_uCommandByte = 0x00;
 }
 
-static void SetDIPSWDefaults(SuperSerialCard* pSSC) {
-  pSSC->m_DIPSWCurrent = g_DIPSWDefault;
+static void SetDIPSWDefaults(SSCPeripheral_t* mp) {
+  mp->logic.m_DIPSWCurrent = g_DIPSWDefault;
 }
 
-static auto GenerateControl(SuperSerialCard* pSSC) -> uint8_t {
+static auto GenerateControl(SSCPeripheral_t* mp) -> uint8_t {
+  auto* pSSC = &mp->logic;
   const uint32_t CLK = 1;  // Internal
   uint32_t bmByteSize = (8 - pSSC->m_uByteSize);
   assert(bmByteSize <= 3);
@@ -495,8 +510,9 @@ static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t {
   return BAUD_9600_INDEX;  // Default 9600
 }
 
-static void UpdateCommState(SuperSerialCard* pSSC) {
+static void UpdateCommState(SSCPeripheral_t* mp) {
   if (SSCFrontend_IsActive()) {
+    auto* pSSC = &mp->logic;
     SSCFrontend_UpdateState(pSSC->m_uBaudRate, pSSC->m_uByteSize,
                             pSSC->m_eParity, pSSC->m_eStopBits);
   }
@@ -504,22 +520,21 @@ static void UpdateCommState(SuperSerialCard* pSSC) {
 
 auto SSC_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                 uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
-  auto* pSSC = &pSSCP->logic;
+  auto* mp = static_cast<SSCPeripheral_t*>(instance);
 
   switch (uAddr & ADDR_NIBBLE_MASK) {
     case SSC_OFFSET_DIPSW1:
-      return CommDipSw(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommDipSw(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_DIPSW2:
-      return CommDipSw(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommDipSw(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_DATA:
-      return CommReceive(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommReceive(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_STATUS:
-      return CommStatus(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommStatus(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_COMMAND:
-      return CommCommand(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommCommand(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_CONTROL:
-      return CommControl(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommControl(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     default:
       return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
   }
@@ -527,25 +542,25 @@ auto SSC_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
 
 auto SSC_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
                  uint8_t uValue, uint32_t nCyclesLeft) -> uint8_t {
-  auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
-  auto* pSSC = &pSSCP->logic;
+  auto* mp = static_cast<SSCPeripheral_t*>(instance);
 
   switch (uAddr & ADDR_NIBBLE_MASK) {
     case SSC_OFFSET_DATA:
-      return CommTransmit(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommTransmit(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_STATUS:
-      return CommStatus(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommStatus(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_COMMAND:
-      return CommCommand(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommCommand(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_CONTROL:
-      return CommControl(pSSC, PC, uAddr, bWrite, uValue, nCyclesLeft);
+      return CommControl(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     default:
       return IO_Null(PC, uAddr, bWrite, uValue, nCyclesLeft);
   }
 }
 
-static auto CommCommand(SuperSerialCard* pSSC, uint16_t, uint16_t,
-                        uint8_t write, uint8_t value, uint32_t) -> uint8_t {
+static auto CommCommand(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
+                        uint8_t value, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   if (write && (value != pSSC->m_uCommandByte)) {
     pSSC->m_uCommandByte = value;
     if (pSSC->m_uCommandByte & COMMAND_PARITY_ENABLED_BIT) {
@@ -583,13 +598,14 @@ static auto CommCommand(SuperSerialCard* pSSC, uint16_t, uint16_t,
     }
     pSSC->m_bRxIrqEnabled =
         ((pSSC->m_uCommandByte & COMMAND_RX_IRQ_DISABLED_BIT) == 0);
-    UpdateCommState(pSSC);
+    UpdateCommState(mp);
   }
   return pSSC->m_uCommandByte;
 }
 
-static auto CommControl(SuperSerialCard* pSSC, uint16_t, uint16_t,
-                        uint8_t write, uint8_t value, uint32_t) -> uint8_t {
+static auto CommControl(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
+                        uint8_t value, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   if (write && (value != pSSC->m_uControlByte)) {
     pSSC->m_uControlByte = value;
     switch (pSSC->m_uControlByte & CONTROL_BAUD_RATE_MASK) {
@@ -654,13 +670,14 @@ static auto CommControl(SuperSerialCard* pSSC, uint16_t, uint16_t,
     } else {
       pSSC->m_eStopBits = SSC_STOP_BITS_1;
     }
-    UpdateCommState(pSSC);
+    UpdateCommState(mp);
   }
   return pSSC->m_uControlByte;
 }
 
-static auto CommReceive(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t,
+static auto CommReceive(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t,
                         uint8_t, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   uint8_t result = 0;
   if (pSSC->m_vRecvBytes) {
     result = pSSC->m_RecvBuffer[0];
@@ -672,19 +689,21 @@ static auto CommReceive(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t,
   return result;
 }
 
-static auto CommTransmit(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t,
+static auto CommTransmit(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t,
                          uint8_t value, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   SSCFrontend_SendByte(value);
   pSSC->m_bWrittenTx = true;  // Transmit interrupt pending
   if (pSSC->m_bTxIrqEnabled) {
     pSSC->m_vbCommIRQ = true;
-    CpuIrqAssert(IS_SSC);
+    mp->host->AssertIrq(mp->slot, true);
   }
   return 0;
 }
 
-static auto CommStatus(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t write,
+static auto CommStatus(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
                        uint8_t, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   if (write) {
     // Programmed Reset: Datasheet pg 6-8
     // Clears bits 0-4 of Command Register
@@ -696,7 +715,7 @@ static auto CommStatus(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t write,
     pSSC->m_bWrittenTx = false;
     pSSC->m_vRecvBytes = 0;
     pSSC->m_vbCommIRQ = false;
-    CpuIrqDeassert(IS_SSC);
+    mp->host->AssertIrq(mp->slot, false);
     return 0;
   }
 
@@ -713,15 +732,16 @@ static auto CommStatus(SuperSerialCard* pSSC, uint16_t, uint16_t, uint8_t write,
 
   // Deassert IRQ only if no other interrupt sources are active
   if (!(pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes)) {
-    CpuIrqDeassert(IS_SSC);
+    mp->host->AssertIrq(mp->slot, false);
     pSSC->m_vbCommIRQ = false;
   }
 
   return uStatus;
 }
 
-static auto CommDipSw(SuperSerialCard* pSSC, uint16_t, uint16_t addr, uint8_t,
+static auto CommDipSw(SSCPeripheral_t* mp, uint16_t, uint16_t addr, uint8_t,
                       uint8_t, uint32_t) -> uint8_t {
+  auto* pSSC = &mp->logic;
   uint8_t sw = 0;
   if ((addr & ADDR_NIBBLE_MASK) == 1) {
     sw = (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) |
@@ -753,11 +773,24 @@ static auto CommDipSw(SuperSerialCard* pSSC, uint16_t, uint16_t addr, uint8_t,
 }
 
 void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
-  if (pSSC->m_vRecvBytes < uRecvBufferSize) {
-    pSSC->m_RecvBuffer[pSSC->m_vRecvBytes++] = byte;
-    if (pSSC->m_bRxIrqEnabled) {
-      pSSC->m_vbCommIRQ = true;
-      CpuIrqAssert(IS_SSC);
+  // Use active_ssc_instance if available, otherwise fallback to pSSC but without IRQ
+  SSCPeripheral_t* mp = active_ssc_instance;
+  if (mp && &mp->logic == pSSC) {
+    if (mp->logic.m_vRecvBytes < uRecvBufferSize) {
+      mp->logic.m_RecvBuffer[mp->logic.m_vRecvBytes++] = byte;
+      if (mp->logic.m_bRxIrqEnabled) {
+        mp->logic.m_vbCommIRQ = true;
+        mp->host->AssertIrq(mp->slot, true);
+      }
+    }
+  } else if (pSSC) {
+    if (pSSC->m_vRecvBytes < uRecvBufferSize) {
+      pSSC->m_RecvBuffer[pSSC->m_vRecvBytes++] = byte;
+      if (pSSC->m_bRxIrqEnabled) {
+        pSSC->m_vbCommIRQ = true;
+        // We can't assert IRQ here because we don't have the host/slot
+        // but this case shouldn't happen with the current architecture.
+      }
     }
   }
 }

@@ -5,6 +5,7 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/Common_Globals.h"
+#include "core/Peripheral.h"
 #include <cstring>
 #include <cstdint>
 
@@ -35,6 +36,19 @@ void SSCFrontend_UpdateState(uint32_t b, uint32_t s, SscParity p, SscStopBits t)
     (void)b; (void)s; (void)p; (void)t;
 }
 
+// Mock structure matching SSCPeripheral_t in SerialComms.cpp
+struct MockSSCPeripheral {
+  SuperSerialCard logic;
+  HostInterface_t* host;
+  int slot;
+};
+
+static bool g_irqAsserted = false;
+static void MockAssertIrq(int slot, bool assert) {
+    (void)slot;
+    g_irqAsserted = assert;
+}
+
 // Helper for slot parameters
 auto MemGetSlotParameters(uint32_t slot) -> void* {
     (void)slot;
@@ -42,30 +56,45 @@ auto MemGetSlotParameters(uint32_t slot) -> void* {
 }
 
 TEST_CASE("SSC: Status Register Bit 4 (TDRE) Set On Reset") {
-    memset(&sg_SSC, 0, sizeof(sg_SSC));
-    SSC_Reset(&sg_SSC);
+    MockSSCPeripheral mp;
+    memset(&mp, 0, sizeof(mp));
+    HostInterface_t host;
+    memset(&host, 0, sizeof(host));
+    host.AssertIrq = MockAssertIrq;
+    mp.host = &host;
+    mp.slot = 2;
+
+    SSC_Reset(&mp.logic);
     g_sendCalled = false;
 
     // Hardware Reset (SSC_Reset)
-    uint8_t status = SSC_IORead(&sg_SSC, 0, 0xC090 | (2 << 4) | 0x9, 0, 0, 0); // Slot 2, Offset 9
+    uint8_t status = SSC_IORead(&mp, 0, 0xC0A9, 0, 0, 0); // Slot 2, Offset 9 (Status)
     CHECK((status & (1 << 4)) != 0); // TDRE should be 1 (Empty)
 }
 
 TEST_CASE("SSC: Transmit Sets TDRE Interrupt") {
-    memset(&sg_SSC, 0, sizeof(sg_SSC));
-    SSC_Reset(&sg_SSC);
+    MockSSCPeripheral mp;
+    memset(&mp, 0, sizeof(mp));
+    HostInterface_t host;
+    memset(&host, 0, sizeof(host));
+    host.AssertIrq = MockAssertIrq;
+    mp.host = &host;
+    mp.slot = 2;
+
+    SSC_Reset(&mp.logic);
     g_sendCalled = false;
+    g_irqAsserted = false;
 
-    // 1. Enable Transmit Interrupts (Command Register bit 0=0 for enabled? No, bit 0 is parity)
-    // 6551 ACIA: Command Register bits 2-3 control transmitter interrupt
+    // 1. Enable Transmit Interrupts (Command Register is Offset 0xA)
     // bit 3=0, bit 2=1 -> Transmit interrupt enabled, RTS low.
-    SSC_IOWrite(&sg_SSC, 0, 0xC090 | (2 << 4) | 0xB, 1, 0x04, 0); // Command Register
+    SSC_IOWrite(&mp, 0, 0xC0AA, 1, 0x04, 0); // Command Register (Offset 0xA)
 
-    // 2. Write to Transmit Data Register
-    SSC_IOWrite(&sg_SSC, 0, 0xC090 | (2 << 4) | 0x8, 1, 0x41, 0); // Data 'A'
+    // 2. Write to Transmit Data Register (Offset 0x8)
+    SSC_IOWrite(&mp, 0, 0xC0A8, 1, 0x41, 0); // Data 'A'
+    CHECK(g_irqAsserted == true);
 
-    // 3. Check status (TDRE should be 0 immediately if busy, or 1 after transmit)
-    // Our mock transmit is immediate.
-    uint8_t status = SSC_IORead(&sg_SSC, 0, 0xC090 | (2 << 4) | 0x9, 0, 0, 0);
+    // 3. Check status (TDRE should be 1 after immediate mock transmit)
+    uint8_t status = SSC_IORead(&mp, 0, 0xC0A9, 0, 0, 0); // Status Register (Offset 0x9)
     CHECK((status & (1 << 4)) != 0);
+    CHECK(g_irqAsserted == false); // Should be deasserted after status read
 }
