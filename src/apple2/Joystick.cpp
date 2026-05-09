@@ -160,13 +160,53 @@ static void* Joystick_ABI_Init(int slot, HostInterface_t* host) {
   return jp;
 }
 
+static void Joystick_ABI_Reset(void* instance) {
+  if (!instance) {
+    return;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  for (int i = 0; i < 3; i++) {
+    jp->buttonlatch[static_cast<size_t>(i)] = 0;
+    jp->joybutton[static_cast<size_t>(i)] = false;
+  }
+  for (int i = 0; i < 2; i++) {
+    jp->xpos[static_cast<size_t>(i)] = 127;
+    jp->ypos[static_cast<size_t>(i)] = 127;
+  }
+  jp->reset_cycle = 0;
+}
+
+static void Joystick_ABI_Shutdown(void* instance) {
+  if (!instance) {
+    return;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  if (active_joystick_instance == jp) {
+    active_joystick_instance = nullptr;
+  }
+  delete jp;
+}
+
+static void Joystick_ABI_Think(void* instance, uint32_t cycles) {
+  (void)cycles;
+  if (!instance) {
+    return;
+  }
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  for (uint32_t& i : jp->buttonlatch) {
+    if (i) {
+      --i;
+    }
+  }
+}
+
 Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
                                       "Joystick",
                                       0x01,  // Slot 0 (Internal)
                                       Joystick_ABI_Init,
-                                      nullptr,  // reset
-                                      nullptr,  // shutdown
-                                      nullptr,  // think
+                                      Joystick_ABI_Reset,
+                                      Joystick_ABI_Shutdown,
+                                      Joystick_ABI_Think,
                                       nullptr,  // on_vblank
                                       nullptr,  // save_state
                                       nullptr,  // load_state
