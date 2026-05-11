@@ -57,16 +57,35 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-static HostInterface_t* g_pDiskHost = nullptr;
-static int g_nDiskSlot = 0;
+struct DiskPeripheral_t {
+  Disk_t drives[DRIVES];
+  uint16_t currdrive = 0;
+  bool diskaccessed = false;
+  uint8_t floppylatch = 0;
+  bool floppymotoron = false;
+  bool floppywritemode = false;
+  uint16_t phases = 0;
+  uint32_t s_spin_accumulator = 0;
+  uint32_t s_rotation_accumulator = 0;
+  HostInterface_t* host = nullptr;
+  int slot = 0;
 
-static void CheckSpinning();
+  DiskPeripheral_t() {
+    for (int i = 0; i < DRIVES; ++i) {
+      memset(&drives[i], 0, sizeof(Disk_t));
+    }
+  }
+};
+
+static void CheckSpinning(DiskPeripheral_t* dp);
 static auto IsDriveValid(const int iDrive) -> bool;
-static void ReadTrack(int drive);
-static void RemoveDisk(int drive);
-static void WriteTrack(int drive);
+static void ReadTrack(DiskPeripheral_t* dp, int drive);
+static void RemoveDisk(DiskPeripheral_t* dp, int drive);
+static void WriteTrack(DiskPeripheral_t* dp, int drive);
+static void AllocTrack(DiskPeripheral_t* dp, int drive);
 
-static DiskError_e DiskInsert_Internal(int drive, const char* imageFileName,
+static DiskError_e DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
+                                       const char* imageFileName,
                                        bool writeProtected,
                                        bool createIfNecessary);
 
@@ -135,26 +154,33 @@ static const char Disk2_rom[] =
     "\x03\x2A\x5E\x00\x03\x2A\x91\x26\xC8\xD0\xEE\xE6\x27\xE6\x3D\xA5"
     "\x3D\xCD\x00\x08\xA6\x2B\x90\xDB\x4C\x01\x08\x00\x00\x00\x00\x00";
 
-static auto DiskControlMotor(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                             uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskControlMotor(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                             uint8_t bWrite, uint8_t d,
+                             uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskControlStepper(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                               uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskControlStepper(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                               uint8_t bWrite, uint8_t d,
+                               uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskEnable(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+static auto DiskEnable(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                       uint8_t bWrite, uint8_t d,
                        uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskReadWrite(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+static auto DiskReadWrite(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                          uint8_t bWrite, uint8_t d,
                           uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskSetLatchValue(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                              uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetLatchValue(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                              uint8_t bWrite, uint8_t d,
+                              uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskSetReadMode(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                            uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetReadMode(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                            uint8_t bWrite, uint8_t d,
+                            uint32_t nCyclesLeft) -> uint8_t;
 
-static auto DiskSetWriteMode(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                             uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetWriteMode(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
+                             uint8_t bWrite, uint8_t d,
+                             uint32_t nCyclesLeft) -> uint8_t;
 
 #define LOG_DISK_ENABLED 0
 
@@ -164,37 +190,25 @@ static auto DiskSetWriteMode(uint16_t pc, uint16_t addr, uint8_t bWrite,
 #define LOG_DISK(...)
 #endif
 
-bool enhancedisk = true;
-
-static uint16_t currdrive = 0;
-static bool diskaccessed = false;
-static Disk_t g_aFloppyDisk[DRIVES];
-static uint8_t floppylatch = 0;
-static bool floppymotoron = false;
-static bool floppywritemode = false;
-static uint16_t phases;  // state bits for stepper magnet phases 0 - 3
-static uint32_t s_spin_accumulator = 0;
-static uint32_t s_rotation_accumulator = 0;
-
-static auto CheckSpinning() -> void {
-  Disk_t* fptr = &g_aFloppyDisk[currdrive];
+static auto CheckSpinning(DiskPeripheral_t* dp) -> void {
+  Disk_t* fptr = &dp->drives[dp->currdrive];
   bool was_spinning = (fptr->spinning > 0);
-  if (floppymotoron) {
+  if (dp->floppymotoron) {
     fptr->spinning = 20000;
   }
   bool now_spinning = (fptr->spinning > 0);
 
   if (was_spinning != now_spinning) {
-    if (g_pDiskHost) {
-      g_pDiskHost->NotifyActivityChanged(g_nDiskSlot, now_spinning);
-      g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+    if (dp->host) {
+      dp->host->NotifyActivityChanged(dp->slot, now_spinning);
+      dp->host->NotifyStatusChanged(dp->slot);
     }
   }
 }
 
-static auto DiskIsEffectivelyWriteProtected(const int iDrive) -> bool {
+static auto DiskIsEffectivelyWriteProtected(DiskPeripheral_t* dp, const int iDrive) -> bool {
   if (iDrive < 0 || iDrive >= 2) return false;
-  Disk_t* fptr = &g_aFloppyDisk[iDrive];
+  Disk_t* fptr = &dp->drives[iDrive];
 
   bool protected_result = false;
 
@@ -263,19 +277,19 @@ static auto IsDriveValid(const int iDrive) -> bool {
   return (iDrive >= 0 && iDrive < DRIVES);
 }
 
-static void AllocTrack(int drive) {
-  Disk_t* fptr = &g_aFloppyDisk[drive];
+static void AllocTrack(DiskPeripheral_t* dp, int drive) {
+  Disk_t* fptr = &dp->drives[drive];
   const int NIBBLES_HARDWARE = 6656;
   fptr->trackimage = static_cast<uint8_t*>(malloc(NIBBLES_HARDWARE));
   if (fptr->trackimage) memset(fptr->trackimage, 0, NIBBLES_HARDWARE);
 }
 
-static void ReadTrack(int iDrive) {
+static void ReadTrack(DiskPeripheral_t* dp, int iDrive) {
   if (!IsDriveValid(iDrive)) {
     return;
   }
 
-  Disk_t* pFloppy = &g_aFloppyDisk[iDrive];
+  Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->track >= TRACKS) {
     pFloppy->trackimagedata = false;
@@ -283,7 +297,7 @@ static void ReadTrack(int iDrive) {
   }
 
   if (!pFloppy->trackimage) {
-    AllocTrack(iDrive);
+    AllocTrack(dp, iDrive);
   }
 
   if (pFloppy->trackimage && pFloppy->driver && pFloppy->driver_instance) {
@@ -299,12 +313,12 @@ static void ReadTrack(int iDrive) {
   }
 }
 
-static void RemoveDisk(int iDrive) {
-  Disk_t* pFloppy = &g_aFloppyDisk[iDrive];
+static void RemoveDisk(DiskPeripheral_t* dp, int iDrive) {
+  Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->driver) {
     if (pFloppy->trackimage && pFloppy->trackimagedirty) {
-      WriteTrack(iDrive);
+      WriteTrack(dp, iDrive);
     }
 
     pFloppy->driver->close(pFloppy->driver_instance);
@@ -318,11 +332,11 @@ static void RemoveDisk(int iDrive) {
 
     pFloppy->trackimagedata = false;
 
-    if (g_pDiskHost) {
+    if (dp->host) {
       const char* key =
           (iDrive == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-      g_pDiskHost->SetConfig("Slots", key, "");
-      g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+      dp->host->SetConfig("Slots", key, "");
+      dp->host->NotifyStatusChanged(dp->slot);
     }
   }
 
@@ -333,14 +347,14 @@ static void RemoveDisk(int iDrive) {
   memset(pFloppy->fullname, 0, MAX_DISK_FULL_NAME + 1);
 }
 
-static void WriteTrack(int iDrive) {
-  Disk_t* pFloppy = &g_aFloppyDisk[iDrive];
+static void WriteTrack(DiskPeripheral_t* dp, int iDrive) {
+  Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->track >= TRACKS) {
     return;
   }
 
-  if (DiskIsEffectivelyWriteProtected(iDrive)) return;
+  if (DiskIsEffectivelyWriteProtected(dp, iDrive)) return;
 
   if (pFloppy->trackimage && pFloppy->driver_instance) {
     pFloppy->driver->write_track(pFloppy->driver_instance, pFloppy->track,
@@ -351,38 +365,38 @@ static void WriteTrack(int iDrive) {
   pFloppy->trackimagedirty = false;
 }
 
-static void DiskBoot() {
-  if (g_aFloppyDisk[0].driver) {
+static void DiskBoot(DiskPeripheral_t* dp) {
+  if (dp->drives[0].driver) {
     // Standard hardware boot: point CPU to $Cx00
     // (Actual logic is handled by frontend or CPU start)
-    floppymotoron = false;
+    dp->floppymotoron = false;
   }
 }
 
-static auto DiskControlMotor(uint16_t, uint16_t address, uint8_t, uint8_t,
-                             uint32_t) -> uint8_t {
-  floppymotoron = (address & 1) != 0;
-  CheckSpinning();
+static auto DiskControlMotor(DiskPeripheral_t* dp, uint16_t, uint16_t address,
+                             uint8_t, uint8_t, uint32_t) -> uint8_t {
+  dp->floppymotoron = (address & 1) != 0;
+  CheckSpinning(dp);
   return MemReturnRandomData(1);
 }
 
-static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t, uint8_t,
-                               uint32_t) -> uint8_t {
-  Disk_t* fptr = &g_aFloppyDisk[currdrive];
+static auto DiskControlStepper(DiskPeripheral_t* dp, uint16_t, uint16_t address,
+                               uint8_t, uint8_t, uint32_t) -> uint8_t {
+  Disk_t* fptr = &dp->drives[dp->currdrive];
   int phase = (address >> 1) & 3;
   int phase_bit = (1 << phase);
 
   if (address & 1) {
-    phases |= phase_bit;
+    dp->phases |= phase_bit;
   } else {
-    phases &= ~phase_bit;
+    dp->phases &= ~phase_bit;
   }
 
   int direction = 0;
-  if (phases & (1 << ((fptr->phase + 1) & 3))) {
+  if (dp->phases & (1 << ((fptr->phase + 1) & 3))) {
     direction += 1;
   }
-  if (phases & (1 << ((fptr->phase + 3) & 3))) {
+  if (dp->phases & (1 << ((fptr->phase + 3) & 3))) {
     direction -= 1;
   }
 
@@ -393,7 +407,7 @@ static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t, uint8_t,
 
     if (fptr->phase != oldphase) {
       if (fptr->trackimage && fptr->trackimagedirty) {
-        WriteTrack(currdrive);
+        WriteTrack(dp, dp->currdrive);
       }
       fptr->trackimagedata = false;
     }
@@ -401,52 +415,54 @@ static auto DiskControlStepper(uint16_t, uint16_t address, uint8_t, uint8_t,
   return (address == 0xE0) ? 0xFF : MemReturnRandomData(1);
 }
 
-static void DiskDestroy() {
+static void DiskDestroy(DiskPeripheral_t* dp) {
   DiskLoader_Shutdown();
-  RemoveDisk(0);
-  RemoveDisk(1);
+  RemoveDisk(dp, 0);
+  RemoveDisk(dp, 1);
 }
 
-static auto DiskEnable(uint16_t pc, uint16_t address, uint8_t bWrite, uint8_t d,
+static auto DiskEnable(DiskPeripheral_t* dp, uint16_t pc, uint16_t address,
+                       uint8_t bWrite, uint8_t d,
                        uint32_t nCyclesLeft) -> uint8_t {
   (void)pc;
   (void)bWrite;
   (void)d;
   (void)nCyclesLeft;
-  currdrive = address & 1;
-  g_aFloppyDisk[!currdrive].spinning = 0;
-  g_aFloppyDisk[!currdrive].writelight = 0;
-  CheckSpinning();
+  dp->currdrive = address & 1;
+  dp->drives[!dp->currdrive].spinning = 0;
+  dp->drives[!dp->currdrive].writelight = 0;
+  CheckSpinning(dp);
   return 0;
 }
 
-static void DiskEject(const int iDrive) {
+static void DiskEject(DiskPeripheral_t* dp, const int iDrive) {
   if (IsDriveValid(iDrive)) {
-    RemoveDisk(iDrive);
-    if (g_pDiskHost) {
+    RemoveDisk(dp, iDrive);
+    if (dp->host) {
       const char* key =
           (iDrive == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-      g_pDiskHost->SetConfig("Slots", key, "");
+      dp->host->SetConfig("Slots", key, "");
     }
   }
 }
 
-auto DiskInitialize() -> void {
+auto DiskInitialize(DiskPeripheral_t* dp) -> void {
   int loop = DRIVES;
   while (loop--) {
-    memset(&g_aFloppyDisk[loop], 0, sizeof(Disk_t));
+    memset(&dp->drives[loop], 0, sizeof(Disk_t));
   }
-  s_spin_accumulator = 0;
-  s_rotation_accumulator = 0;
+  dp->s_spin_accumulator = 0;
+  dp->s_rotation_accumulator = 0;
 }
 
-static auto DiskInsert_Internal(int drive, const char* imageFileName,
-                                bool writeProtected, bool createIfNecessary)
-    -> DiskError_e {
-  Disk_t* fptr = &g_aFloppyDisk[drive];
+static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
+                                       const char* imageFileName,
+                                       bool writeProtected,
+                                       bool createIfNecessary) -> DiskError_e {
+  Disk_t* fptr = &dp->drives[drive];
 
   if (fptr->driver != nullptr) {
-    RemoveDisk(drive);
+    RemoveDisk(dp, drive);
   }
   memset(fptr, 0, sizeof(Disk_t));
 
@@ -466,47 +482,48 @@ static auto DiskInsert_Internal(int drive, const char* imageFileName,
              static_cast<int>(strlen(tmp)), tmp);
     Linapple_UpdateTitle(s_title);
 
-    if (g_pDiskHost != nullptr) {
+    if (dp->host != nullptr) {
       const char* key =
           (drive == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-      g_pDiskHost->SetConfig("Slots", key, imageFileName);
-      g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+      dp->host->SetConfig("Slots", key, imageFileName);
+      dp->host->NotifyStatusChanged(dp->slot);
     }
   } else {
-    if (g_pDiskHost != nullptr) {
-      g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+    if (dp->host != nullptr) {
+      dp->host->NotifyStatusChanged(dp->slot);
     }
   }
   return error;
 }
 
-static void DiskSetProtect(const int iDrive, const bool bWriteProtect) {
+static void DiskSetProtect(DiskPeripheral_t* dp, const int iDrive,
+                           const bool bWriteProtect) {
   if (IsDriveValid(iDrive)) {
-    g_aFloppyDisk[iDrive].user_write_protected = bWriteProtect;
-    if (g_pDiskHost) {
-      g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+    dp->drives[iDrive].user_write_protected = bWriteProtect;
+    if (dp->host) {
+      dp->host->NotifyStatusChanged(dp->slot);
     }
   }
 }
 
-static auto DiskReadWrite(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
-  Disk_t* fptr = &g_aFloppyDisk[currdrive];
-  diskaccessed = true;
+static auto DiskReadWrite(DiskPeripheral_t* dp, uint16_t, uint16_t, uint8_t,
+                          uint8_t, uint32_t) -> uint8_t {
+  Disk_t* fptr = &dp->drives[dp->currdrive];
+  dp->diskaccessed = true;
   if ((!fptr->trackimagedata) && fptr->driver) {
-    ReadTrack(currdrive);
+    ReadTrack(dp, dp->currdrive);
   }
   if (!fptr->trackimagedata) {
     return 0xFF;
   }
   uint8_t result = 0;
 
-  bool is_protected = DiskIsEffectivelyWriteProtected(currdrive);
+  bool is_protected = DiskIsEffectivelyWriteProtected(dp, dp->currdrive);
 
-  if ((!floppywritemode) || (!is_protected)) {
-    if (floppywritemode) {
-      if (floppylatch & 0x80) {
-        *(fptr->trackimage + fptr->byte) = floppylatch;
+  if ((!dp->floppywritemode) || (!is_protected)) {
+    if (dp->floppywritemode) {
+      if (dp->floppylatch & 0x80) {
+        *(fptr->trackimage + fptr->byte) = dp->floppylatch;
         fptr->trackimagedirty = true;
       } else {
         return 0;
@@ -521,73 +538,74 @@ static auto DiskReadWrite(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
   return result;
 }
 
-static void DiskReset() {
-  floppymotoron = false;
-  phases = 0;
+static void DiskReset(DiskPeripheral_t* dp) {
+  dp->floppymotoron = false;
+  dp->phases = 0;
 }
 
-static auto DiskSetLatchValue(uint16_t, uint16_t, uint8_t write, uint8_t value,
-                              uint32_t) -> uint8_t {
+static auto DiskSetLatchValue(DiskPeripheral_t* dp, uint16_t, uint16_t,
+                              uint8_t write, uint8_t value, uint32_t)
+    -> uint8_t {
   if (write) {
-    floppylatch = value;
+    dp->floppylatch = value;
   }
-  return floppylatch;
+  return dp->floppylatch;
 }
 
-static auto DiskSetReadMode(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
-  floppywritemode = false;
-  return MemReturnRandomData(DiskIsEffectivelyWriteProtected(currdrive));
+static auto DiskSetReadMode(DiskPeripheral_t* dp, uint16_t, uint16_t, uint8_t,
+                            uint8_t, uint32_t) -> uint8_t {
+  dp->floppywritemode = false;
+  return MemReturnRandomData(DiskIsEffectivelyWriteProtected(dp, dp->currdrive));
 }
 
-static auto DiskSetWriteMode(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
-  floppywritemode = true;
-  bool modechange = !g_aFloppyDisk[currdrive].writelight;
-  g_aFloppyDisk[currdrive].writelight = 20000;
+static auto DiskSetWriteMode(DiskPeripheral_t* dp, uint16_t, uint16_t, uint8_t,
+                             uint8_t, uint32_t) -> uint8_t {
+  dp->floppywritemode = true;
+  bool modechange = !dp->drives[dp->currdrive].writelight;
+  dp->drives[dp->currdrive].writelight = 20000;
   if (modechange) {
-    if (g_pDiskHost) g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+    if (dp->host) dp->host->NotifyStatusChanged(dp->slot);
   }
   return MemReturnRandomData(1);
 }
 
-auto DiskUpdatePosition(uint32_t cycles) -> void {
-  s_spin_accumulator += cycles;
-  uint32_t spin_ticks = s_spin_accumulator >> 6;
-  s_spin_accumulator &= 63;
+auto DiskUpdatePosition(DiskPeripheral_t* dp, uint32_t cycles) -> void {
+  dp->s_spin_accumulator += cycles;
+  uint32_t spin_ticks = dp->s_spin_accumulator >> 6;
+  dp->s_spin_accumulator &= 63;
 
-  s_rotation_accumulator += cycles;
-  uint32_t rotation_ticks = s_rotation_accumulator >> 5;
-  s_rotation_accumulator &= 31;
+  dp->s_rotation_accumulator += cycles;
+  uint32_t rotation_ticks = dp->s_rotation_accumulator >> 5;
+  dp->s_rotation_accumulator &= 31;
 
   int loop = 2;
   while (loop--) {
-    Disk_t* fptr = &g_aFloppyDisk[loop];
-    if (fptr->spinning && !floppymotoron) {
+    Disk_t* fptr = &dp->drives[loop];
+    if (fptr->spinning && !dp->floppymotoron) {
       if (spin_ticks >= fptr->spinning) {
         fptr->spinning = 0;
-        if (g_pDiskHost) {
-          g_pDiskHost->NotifyActivityChanged(g_nDiskSlot, false);
-          g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+        if (dp->host) {
+          dp->host->NotifyActivityChanged(dp->slot, false);
+          dp->host->NotifyStatusChanged(dp->slot);
         }
       } else {
         fptr->spinning -= spin_ticks;
       }
     }
-    if (floppywritemode && (currdrive == loop) && fptr->spinning) {
+    if (dp->floppywritemode && (dp->currdrive == loop) && fptr->spinning) {
       fptr->writelight = 20000;
     } else if (fptr->writelight) {
       if (spin_ticks >= fptr->writelight) {
         fptr->writelight = 0;
-        if (g_pDiskHost) {
-          g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+        if (dp->host) {
+          dp->host->NotifyStatusChanged(dp->slot);
         }
       } else {
         fptr->writelight -= spin_ticks;
       }
     }
-    if ((!enhancedisk) && (!diskaccessed) && fptr->spinning) {
-      if (g_pDiskHost) g_pDiskHost->RequestPreciseTiming();
+    if ((!enhancedisk) && (!dp->diskaccessed) && fptr->spinning) {
+      if (dp->host) dp->host->RequestPreciseTiming();
       fptr->byte += rotation_ticks;
       if (fptr->byte >= static_cast<uint32_t>(fptr->nibbles)) {
         fptr->byte %=
@@ -595,28 +613,28 @@ auto DiskUpdatePosition(uint32_t cycles) -> void {
       }
     }
   }
-  diskaccessed = false;
+  dp->diskaccessed = false;
 }
 
-static auto DiskDriveSwap() -> bool {
-  if (g_aFloppyDisk[0].spinning || g_aFloppyDisk[1].spinning) {
+static auto DiskDriveSwap(DiskPeripheral_t* dp) -> bool {
+  if (dp->drives[0].spinning || dp->drives[1].spinning) {
     return false;
   }
 
   Disk_t temp{};
-  memcpy(&temp, &g_aFloppyDisk[0], sizeof(Disk_t));
-  memcpy(&g_aFloppyDisk[0], &g_aFloppyDisk[1], sizeof(Disk_t));
-  memcpy(&g_aFloppyDisk[1], &temp, sizeof(Disk_t));
+  memcpy(&temp, &dp->drives[0], sizeof(Disk_t));
+  memcpy(&dp->drives[0], &dp->drives[1], sizeof(Disk_t));
+  memcpy(&dp->drives[1], &temp, sizeof(Disk_t));
 
   char s_title[MAX_DISK_IMAGE_NAME + 32];
   snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s",
            static_cast<int>(strlen(g_pAppTitle)), g_pAppTitle,
-           static_cast<int>(strlen(g_aFloppyDisk[0].imagename)),
-           g_aFloppyDisk[0].imagename);
+           static_cast<int>(strlen(dp->drives[0].imagename)),
+           dp->drives[0].imagename);
   Linapple_UpdateTitle(s_title);
 
-  if (g_pDiskHost) {
-    g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+  if (dp->host) {
+    dp->host->NotifyStatusChanged(dp->slot);
   }
 
   return true;
@@ -628,8 +646,9 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                   uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
 
 static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  g_pDiskHost = host;
-  g_nDiskSlot = slot;
+  auto* dp = new DiskPeripheral_t();
+  dp->host = host;
+  dp->slot = slot;
 
   DiskLoader_Init();
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_woz2_driver));
@@ -639,7 +658,11 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
 
-  DiskInitialize();
+  uint32_t enh_val = 1;
+  LOAD("Enhance Disk Speed", &enh_val);
+  enhancedisk = (enh_val != 0);
+
+  DiskInitialize(dp);
 
   char path1[PATH_MAX_LEN] = {0};
   host->GetConfig("Slots", REGVALUE_DISK_IMAGE1, path1, sizeof(path1));
@@ -648,10 +671,10 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
   host->GetConfig("Slots", REGVALUE_DISK_IMAGE2, path2, sizeof(path2));
 
   if (path1[0]) {
-    DiskInsert_Internal(0, path1, false, false);
+    DiskInsert_Internal(dp, 0, path1, false, false);
   }
   if (path2[0]) {
-    DiskInsert_Internal(1, path2, false, false);
+    DiskInsert_Internal(dp, 1, path2, false, false);
   }
 
   static uint8_t patched_rom[256];
@@ -664,36 +687,37 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
   host->RegisterIO(slot, Disk_IORead, Disk_IOWrite, nullptr, nullptr);
 
-  return reinterpret_cast<void*>(1);  // Dummy instance
+  return dp;
 }
 
 static void Disk_ABI_Reset(void* instance) {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   for (int i = 0; i < 2; ++i) {
-    RemoveDisk(i);
+    RemoveDisk(dp, i);
   }
-  DiskReset();
+  DiskReset(dp);
 }
 
 static void Disk_ABI_Shutdown(void* instance) {
-  (void)instance;
-  DiskDestroy();
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  DiskDestroy(dp);
+  delete dp;
 }
 
 static auto Disk_ABI_Think(void* instance, uint32_t cycles) -> void {
-  (void)instance;
-  DiskUpdatePosition(cycles);
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  DiskUpdatePosition(dp, cycles);
 }
 
-static void PopulateDiskStatus(DiskStatus_t* status) {
-  Disk_t* d0 = &g_aFloppyDisk[0];
-  Disk_t* d1 = &g_aFloppyDisk[1];
+static void PopulateDiskStatus(DiskPeripheral_t* dp, DiskStatus_t* status) {
+  Disk_t* d0 = &dp->drives[0];
+  Disk_t* d1 = &dp->drives[1];
 
   status->drive0_last_error = static_cast<int32_t>(d0->last_error);
   status->drive0_loaded = (d0->driver != nullptr) ? 1 : 0;
   status->drive0_spinning = (d0->spinning > 0) ? 1 : 0;
   status->drive0_writing = (d0->writelight > 0) ? 1 : 0;
-  status->drive0_write_protected = DiskIsEffectivelyWriteProtected(0) ? 1 : 0;
+  status->drive0_write_protected = DiskIsEffectivelyWriteProtected(dp, 0) ? 1 : 0;
   Util_SafeStrCpy(status->drive0_name, d0->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive0_full_path, d0->fullname, DISK_STATUS_PATH_MAX);
 
@@ -701,20 +725,20 @@ static void PopulateDiskStatus(DiskStatus_t* status) {
   status->drive1_loaded = (d1->driver != nullptr) ? 1 : 0;
   status->drive1_spinning = (d1->spinning > 0) ? 1 : 0;
   status->drive1_writing = (d1->writelight > 0) ? 1 : 0;
-  status->drive1_write_protected = DiskIsEffectivelyWriteProtected(1) ? 1 : 0;
+  status->drive1_write_protected = DiskIsEffectivelyWriteProtected(dp, 1) ? 1 : 0;
   Util_SafeStrCpy(status->drive1_name, d1->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive1_full_path, d1->fullname, DISK_STATUS_PATH_MAX);
 }
 
 static auto Disk_ABI_Command(void* instance, uint32_t cmd, const void* data,
                              size_t size) -> PeripheralStatus {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   switch (cmd) {
     case DISK_CMD_INSERT: {
       if (!data || size < sizeof(DiskInsertCmd_t)) return PERIPHERAL_ERROR;
       auto* c = static_cast<const DiskInsertCmd_t*>(data);
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
-      DiskInsert_Internal(c->drive, c->path, c->write_protected != 0,
+      DiskInsert_Internal(dp, c->drive, c->path, c->write_protected != 0,
                           c->create_if_necessary != 0);
       return PERIPHERAL_OK;
     }
@@ -722,20 +746,20 @@ static auto Disk_ABI_Command(void* instance, uint32_t cmd, const void* data,
       if (!data || size < sizeof(DiskEjectCmd_t)) return PERIPHERAL_ERROR;
       auto* c = static_cast<const DiskEjectCmd_t*>(data);
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
-      DiskEject(c->drive);
+      DiskEject(dp, c->drive);
       return PERIPHERAL_OK;
     }
     case DISK_CMD_SWAP_DRIVES:
-      DiskDriveSwap();
+      DiskDriveSwap(dp);
       return PERIPHERAL_OK;
     case DISK_CMD_BOOT:
-      DiskBoot();
+      DiskBoot(dp);
       return PERIPHERAL_OK;
     case DISK_CMD_SET_PROTECT: {
       if (!data || size < sizeof(DiskSetProtectCmd_t)) return PERIPHERAL_ERROR;
       auto* c = static_cast<const DiskSetProtectCmd_t*>(data);
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
-      DiskSetProtect(c->drive, c->write_protected != 0);
+      DiskSetProtect(dp, c->drive, c->write_protected != 0);
       return PERIPHERAL_OK;
     }
     default:
@@ -745,13 +769,13 @@ static auto Disk_ABI_Command(void* instance, uint32_t cmd, const void* data,
 
 static auto Disk_ABI_Query(void* instance, uint32_t cmd, void* data,
                            size_t* size) -> PeripheralStatus {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   if (cmd == DISK_CMD_GET_STATUS) {
     if (!data || !size || *size < sizeof(DiskStatus_t)) {
       if (size) *size = sizeof(DiskStatus_t);
       return PERIPHERAL_ERROR;
     }
-    PopulateDiskStatus(static_cast<DiskStatus_t*>(data));
+    PopulateDiskStatus(dp, static_cast<DiskStatus_t*>(data));
     *size = sizeof(DiskStatus_t);
     return PERIPHERAL_OK;
   }
@@ -760,7 +784,7 @@ static auto Disk_ABI_Query(void* instance, uint32_t cmd, void* data,
 
 static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   if (size == nullptr) return PERIPHERAL_ERROR;
 
   if (buffer == nullptr) {
@@ -779,7 +803,7 @@ static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
   ds->header.size = sizeof(DiskSavedState_t);
 
   for (int i = 0; i < 2; ++i) {
-    Disk_t* fptr = &g_aFloppyDisk[i];
+    Disk_t* fptr = &dp->drives[i];
     DiskDriveState_t* dds = &ds->drives[i];
 
     Util_SafeStrCpy(dds->fullname, fptr->fullname, MAX_DISK_FULL_NAME + 1);
@@ -799,20 +823,20 @@ static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
     }
   }
 
-  ds->phases = phases;
-  ds->currdrive = static_cast<uint16_t>(currdrive);
-  ds->diskaccessed = diskaccessed;
+  ds->phases = dp->phases;
+  ds->currdrive = static_cast<uint16_t>(dp->currdrive);
+  ds->diskaccessed = dp->diskaccessed;
   ds->enhancedisk = enhancedisk;
-  ds->floppylatch = floppylatch;
-  ds->floppymotoron = floppymotoron;
-  ds->floppywritemode = floppywritemode;
+  ds->floppylatch = dp->floppylatch;
+  ds->floppymotoron = dp->floppymotoron;
+  ds->floppywritemode = dp->floppywritemode;
 
   return PERIPHERAL_OK;
 }
 
 static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   if (buffer == nullptr || size < sizeof(DiskSavedState_t)) {
     return PERIPHERAL_ERROR;
   }
@@ -822,23 +846,23 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
     return PERIPHERAL_ERROR;
   }
 
-  phases = ds->phases;
-  currdrive = ds->currdrive;
-  diskaccessed = ds->diskaccessed;
+  dp->phases = ds->phases;
+  dp->currdrive = ds->currdrive;
+  dp->diskaccessed = ds->diskaccessed;
   enhancedisk = ds->enhancedisk;
-  floppylatch = ds->floppylatch;
-  floppymotoron = ds->floppymotoron;
-  floppywritemode = ds->floppywritemode;
+  dp->floppylatch = ds->floppylatch;
+  dp->floppymotoron = ds->floppymotoron;
+  dp->floppywritemode = ds->floppywritemode;
 
   for (int i = 0; i < 2; ++i) {
     const DiskDriveState_t* dds = &ds->drives[i];
 
-    RemoveDisk(i);
+    RemoveDisk(dp, i);
 
     DiskError_e err =
-        DiskInsert_Internal(i, dds->fullname, dds->user_write_protected, false);
+        DiskInsert_Internal(dp, i, dds->fullname, dds->user_write_protected, false);
     if (err == DISK_ERR_NONE) {
-      Disk_t* fptr = &g_aFloppyDisk[i];
+      Disk_t* fptr = &dp->drives[i];
       fptr->track = dds->track;
       fptr->phase = dds->phase;
       fptr->byte = dds->byte_pos;
@@ -860,14 +884,14 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
       }
     } else {
       DiskError_e saved_err =
-          static_cast<DiskError_e>(g_aFloppyDisk[i].last_error);
-      memset(&g_aFloppyDisk[i], 0, sizeof(Disk_t));
-      g_aFloppyDisk[i].last_error = saved_err;
+          static_cast<DiskError_e>(dp->drives[i].last_error);
+      memset(&dp->drives[i], 0, sizeof(Disk_t));
+      dp->drives[i].last_error = saved_err;
     }
   }
 
-  if (g_pDiskHost) {
-    g_pDiskHost->NotifyStatusChanged(g_nDiskSlot);
+  if (dp->host) {
+    dp->host->NotifyStatusChanged(dp->slot);
   }
 
   return PERIPHERAL_OK;
@@ -895,7 +919,7 @@ Peripheral_t g_disk_peripheral = {
 
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   addr &= 0xFF;
 
   switch (addr & 0xf) {
@@ -907,21 +931,21 @@ auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
     case 0x5:
     case 0x6:
     case 0x7:
-      return DiskControlStepper(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskControlStepper(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0x8:
     case 0x9:
-      return DiskControlMotor(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskControlMotor(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xA:
     case 0xB:
-      return DiskEnable(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskEnable(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xC:
-      return DiskReadWrite(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskReadWrite(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xD:
-      return DiskSetLatchValue(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetLatchValue(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xE:
-      return DiskSetReadMode(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetReadMode(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xF:
-      return DiskSetWriteMode(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetWriteMode(dp, pc, addr, bWrite, d, nCyclesLeft);
   }
 
   return 0;
@@ -929,7 +953,7 @@ auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
 
 auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                   uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  (void)instance;
+  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   addr &= 0xFF;
 
   switch (addr & 0xf) {
@@ -941,21 +965,21 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
     case 0x5:
     case 0x6:
     case 0x7:
-      return DiskControlStepper(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskControlStepper(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0x8:
     case 0x9:
-      return DiskControlMotor(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskControlMotor(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xA:
     case 0xB:
-      return DiskEnable(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskEnable(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xC:
-      return DiskReadWrite(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskReadWrite(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xD:
-      return DiskSetLatchValue(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetLatchValue(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xE:
-      return DiskSetReadMode(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetReadMode(dp, pc, addr, bWrite, d, nCyclesLeft);
     case 0xF:
-      return DiskSetWriteMode(pc, addr, bWrite, d, nCyclesLeft);
+      return DiskSetWriteMode(dp, pc, addr, bWrite, d, nCyclesLeft);
   }
 
   return 0;

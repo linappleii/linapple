@@ -24,6 +24,7 @@ uint64_t cyclenum = 0;
 uint32_t emulmsec = 0;
 bool g_bFullSpeed = false;
 bool hddenabled = false;
+bool enhancedisk = true;
 
 SystemState_t g_state = {MODE_LOGO,
                          false,

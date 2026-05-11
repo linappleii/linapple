@@ -16,7 +16,15 @@ extern "C" {
 // Forward declarations
 struct DiskFormatDriver_t;
 
+#ifdef __cplusplus
+}
+#endif
+
 extern bool enhancedisk;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum { DISK_DEFAULT_SLOT = 6 };
 
