@@ -48,7 +48,6 @@ struct KeyboardPeripheral_t {
   bool rocker_switch = false;  // Language rocker switch (US=false, Local=true)
 };
 
-static KeyboardPeripheral_t* active_keyboard_instance = nullptr;
 
 // --- I/O Handlers ---
 
@@ -132,9 +131,6 @@ static auto Keyb_IO_ReadAppleKeys(void* instance, uint16_t pc, uint16_t addr,
 
 static void* Keyb_ABI_Init(int slot, HostInterface_t* host) {
   // Keyboard is a singleton; return existing instance if already initialized.
-  if (active_keyboard_instance) {
-    return active_keyboard_instance;
-  }
 
   auto* kp = new KeyboardPeripheral_t{};
   kp->host = host;
@@ -162,7 +158,7 @@ static void* Keyb_ABI_Init(int slot, HostInterface_t* host) {
     host->RegisterDirectIO(kp, ADDR_SHIFT_KEY, Keyb_IO_ReadAppleKeys, nullptr);
   }
 
-  active_keyboard_instance = kp;
+  
   return kp;
 }
 
@@ -184,9 +180,6 @@ static void Keyb_ABI_Shutdown(void* instance) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-  if (active_keyboard_instance == kp) {
-    active_keyboard_instance = nullptr;
-  }
   delete kp;
 }
 
