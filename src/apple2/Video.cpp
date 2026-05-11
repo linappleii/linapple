@@ -47,7 +47,6 @@ static auto GetTickCount() -> uint32_t {
 
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
-#include "apple2/peripherals/Joystick.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/Peripheral.h"
 #include "core/LinAppleCore.h"

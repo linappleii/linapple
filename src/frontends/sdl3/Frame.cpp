@@ -42,7 +42,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/CPU.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/Joystick.h"
+#include "apple2/peripherals/JoystickCommands.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Mockingboard.h"
 #include "apple2/peripherals/ParallelPrinter.h"
@@ -614,7 +614,7 @@ void ProcessButtonClick(int button, int mod) {
 
     case BTN_DRIVE1:
     case BTN_DRIVE2:
-      JoyReset();
+      Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
       if (mod & SDL_KMOD_CTRL) {
         if (mod & SDL_KMOD_SHIFT) {
           printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
@@ -676,7 +676,7 @@ void ProcessButtonClick(int button, int mod) {
           g_state.fullscreen = true;
           SetFullScreenMode();
         }
-        JoyReset();
+        Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
       }
       break;
 
@@ -768,7 +768,7 @@ void ResetMachineState() {
   Peripheral_Manager_Reset();
   Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_BOOT, nullptr, 0);
   VideoResetState();
-  JoyReset();
+  Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
 static bool bIamFullScreened;

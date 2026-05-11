@@ -13,7 +13,8 @@ extern "C" {
 typedef enum {
   JOY_CMD_SET_AXIS = 0,    // data: JoystickAxisPayload_t
   JOY_CMD_SET_BUTTON = 1,  // data: JoystickButtonPayload_t
-  JOY_CMD_SET_TRIM = 2     // data: JoystickTrimPayload_t
+  JOY_CMD_SET_TRIM = 2,    // data: JoystickTrimPayload_t
+  JOY_CMD_RESET = 3        // data: none
 } JoystickCmd_e;
 
 typedef struct {

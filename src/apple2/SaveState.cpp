@@ -113,7 +113,10 @@ void Snapshot_LoadState() {
     VideoResetState();
 
     CpuSetSnapshot(&pSS->Apple2Unit.CPU6502);
-    JoySetSnapshot(&pSS->Apple2Unit.Joystick);
+    {
+      size_t size = sizeof(pSS->Apple2Unit.Joystick);
+      Peripheral_LoadState(0, &pSS->Apple2Unit.Joystick, size);
+    }
     Peripheral_LoadStateByName(0, "Keyboard", &pSS->Apple2Unit.Keyboard,
                                sizeof(pSS->Apple2Unit.Keyboard));
     VideoSetSnapshot(&pSS->Apple2Unit.Video);
@@ -198,7 +201,10 @@ void Snapshot_SaveState() {
   Peripheral_GetManifest(&pSS->Manifest);
 
   CpuGetSnapshot(&pSS->Apple2Unit.CPU6502);
-  JoyGetSnapshot(&pSS->Apple2Unit.Joystick);
+  {
+    size_t size = sizeof(pSS->Apple2Unit.Joystick);
+    Peripheral_SaveState(0, &pSS->Apple2Unit.Joystick, &size);
+  }
   VideoGetSnapshot(&pSS->Apple2Unit.Video);
   MemGetSnapshot(&pSS->Apple2Unit.Memory);
 
