@@ -36,7 +36,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "apple2/SoundCore.h"
 #include "apple2/peripherals/Mockingboard.h"
-#include "apple2/peripherals/Speaker.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
 

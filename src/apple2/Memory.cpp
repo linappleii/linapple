@@ -33,7 +33,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/Speaker.h"
 #include "apple2/peripherals/Joystick.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
@@ -202,12 +201,22 @@ static auto IOWrite_C02x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, 
   return 0;
 }
 
-static auto IORead_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return Speaker_Toggle(nullptr, pc, addr, bWrite, d, nCyclesLeft);
+static auto IORead_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite,
+                        uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)bWrite;
+  (void)d;
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
-static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  return Speaker_Toggle(nullptr, pc, addr, bWrite, d, nCyclesLeft);
+static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t bWrite,
+                         uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)bWrite;
+  (void)d;
+  return MemReadFloatingBus(nCyclesLeft);
 }
 
 static auto IORead_C04x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft) -> uint8_t {

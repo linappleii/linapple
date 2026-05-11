@@ -39,7 +39,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/SaveState.h"
 #include "apple2/peripherals/SerialComms.h"
 #include "apple2/SoundCore.h"
-#include "apple2/peripherals/Speaker.h"
 #include "apple2/Video.h"
 #include "core/Common.h"
 #include "core/ProgramLoader.h"
