@@ -57,7 +57,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/Structs.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/Mockingboard.h"
 #include "apple2/peripherals/MouseInterface.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
@@ -3446,7 +3445,6 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t
 static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t
 {
   #ifdef UPDATE_ALL_PER_CYCLE
-  MB_Update();
   #endif
   if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E)) {
     return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e

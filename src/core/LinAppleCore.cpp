@@ -35,7 +35,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/Joystick.h"
 #include "apple2/peripherals/JoystickCommands.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/Mockingboard.h"
 #include "apple2/SaveState.h"
 #include "apple2/peripherals/SerialComms.h"
 #include "apple2/SoundCore.h"

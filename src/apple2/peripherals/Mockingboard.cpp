@@ -602,19 +602,6 @@ void MB_Initialize() {}
 void MB_Reinitialize() {}
 void MB_Destroy() {}
 void MB_Reset() {}
-void MB_Update() {}
-void MB_UpdateCycles(uint32_t) {}
-void MB_EndOfVideoFrame() {}
-void MB_StartOfCpuExecute() {}
-bool MB_IsActive() { return true; }
-eSOUNDCARDTYPE MB_GetSoundcardType() { return SC_MOCKINGBOARD; }
-void MB_SetSoundcardType(eSOUNDCARDTYPE) {}
-double MB_GetFramePeriod() { return 1.0; }
-uint32_t MB_GetVolume() { return 0; }
-void MB_SetVolume(uint32_t, uint32_t) {}
-uint32_t MB_GetSnapshot(SS_CARD_MOCKINGBOARD*, uint32_t) { return 0; }
-uint32_t MB_SetSnapshot(SS_CARD_MOCKINGBOARD*, uint32_t) { return 0; }
-
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
