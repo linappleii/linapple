@@ -1,5 +1,5 @@
 #include "SerialCommsFrontend.h"
-#include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/SerialCommsCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include <unistd.h>
@@ -87,7 +87,7 @@ void SSCFrontend_UpdateCommState(uint32_t baud, uint32_t bits, SscParity parity,
 }
 
 static auto SerialPollingThread(void* arg) -> void* {
-    auto* pSSC = static_cast<SuperSerialCard*>(arg);
+    (void)arg;
     std::array<uint8_t, 256> buffer;
 
     while (!g_bThreadTerminate) {
@@ -96,7 +96,7 @@ static auto SerialPollingThread(void* arg) -> void* {
             if (n > 0) {
                 pthread_mutex_lock(&g_CriticalSection);
                 for (int i = 0; i < n; ++i) {
-                    SSC_PushRxByte(pSSC, buffer[static_cast<size_t>(i)]);
+                    Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE, &buffer[static_cast<size_t>(i)], 1);
                 }
                 pthread_mutex_unlock(&g_CriticalSection);
             }
@@ -115,7 +115,7 @@ auto SSCFrontend_IsActive() -> bool {
         // Start polling thread if not already running
         if (!g_bThreadRunning) {
             g_bThreadTerminate = false;
-            if (pthread_create(&g_CommThread, nullptr, SerialPollingThread, &sg_SSC) == 0) {
+            if (pthread_create(&g_CommThread, nullptr, SerialPollingThread, nullptr) == 0) {
                 g_bThreadRunning = true;
             }
         }
@@ -159,7 +159,7 @@ void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalcycles) {
 auto SSCFrontend_TransmitByte(uint8_t byte) -> bool {
   if (g_bSerialLoopback) {
       pthread_mutex_lock(&g_CriticalSection);
-      SSC_PushRxByte(&sg_SSC, byte);
+      Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE, &byte, 1);
       pthread_mutex_unlock(&g_CriticalSection);
       return true;
   }

@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/SerialCommsCommands.h"
 
 #include <array>
 #include <cassert>
@@ -411,6 +412,21 @@ static auto SSC_ABI_LoadState(void* instance, const void* buffer, size_t size)
   return PERIPHERAL_OK;
 }
 
+static auto SSC_ABI_Command(void* instance, uint32_t cmd, const void* data,
+                            size_t size) -> PeripheralStatus {
+  if (!instance) return PERIPHERAL_ERROR;
+  auto* mp = static_cast<SSCPeripheral_t*>(instance);
+
+  switch (static_cast<SerialCommsCmd_e>(cmd)) {
+    case SSC_CMD_PUSH_RX_BYTE: {
+      if (size < 1) return PERIPHERAL_ERROR;
+      SSC_PushRxByte(&mp->logic, *static_cast<const uint8_t*>(data));
+      return PERIPHERAL_OK;
+    }
+  }
+  return PERIPHERAL_ERROR;
+}
+
 Peripheral_t g_ssc_peripheral = {
     LINAPPLE_ABI_VERSION,
     "linapple.ssc",
@@ -427,7 +443,7 @@ Peripheral_t g_ssc_peripheral = {
     nullptr,  // on_vblank
     SSC_ABI_SaveState,
     SSC_ABI_LoadState,
-    nullptr,  // command
+    SSC_ABI_Command,
     nullptr   // query
 };
 
