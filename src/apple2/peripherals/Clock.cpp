@@ -317,7 +317,6 @@ Peripheral_t g_clock_peripheral = {
     nullptr   // query
 };
 
-
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,

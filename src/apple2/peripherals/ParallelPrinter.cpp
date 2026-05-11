@@ -1,4 +1,9 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include "apple2/peripherals/ParallelPrinter.h"
 
 #include <array>
@@ -86,7 +91,6 @@ Peripheral_t g_printer_peripheral = {
     nullptr,
     nullptr};
 
-
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {
   auto* pp = static_cast<PrinterPeripheral_t*>(instance);
@@ -104,5 +108,10 @@ static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
   }
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 PERIPHERAL_REGISTER(g_printer_peripheral)

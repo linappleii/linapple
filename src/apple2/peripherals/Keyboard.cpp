@@ -11,9 +11,9 @@
 
 #include <algorithm>
 
+#include "apple2/Memory.h"
 #include "apple2/peripherals/KeyboardCommands.h"
 #include "apple2/peripherals/Keyboard_Structs.h"
-#include "apple2/Memory.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"
@@ -47,7 +47,6 @@ struct KeyboardPeripheral_t {
   bool strobe = false;         // $C000 bit 7
   bool rocker_switch = false;  // Language rocker switch (US=false, Local=true)
 };
-
 
 // --- I/O Handlers ---
 
@@ -158,7 +157,6 @@ static void* Keyb_ABI_Init(int slot, HostInterface_t* host) {
     host->RegisterDirectIO(kp, ADDR_SHIFT_KEY, Keyb_IO_ReadAppleKeys, nullptr);
   }
 
-  
   return kp;
 }
 
@@ -360,25 +358,23 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
   }
 }
 
-Peripheral_t keyboard_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.keyboard",
-    "Keyboard",
-    "Standard Apple II keyboard emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0x01,  // Slot 0 (Internal)
-    0,     // Default Slot 0
-    Keyb_ABI_Init,
-    Keyb_ABI_Reset,
-    Keyb_ABI_Shutdown,
-    Keyb_ABI_Think,
-    nullptr,  // on_vblank
-    Keyb_ABI_SaveState,
-    Keyb_ABI_LoadState,
-    Keyb_ABI_Command,
-    Keyb_ABI_Query};
-
+Peripheral_t keyboard_peripheral = {LINAPPLE_ABI_VERSION,
+                                    "linapple.keyboard",
+                                    "Keyboard",
+                                    "Standard Apple II keyboard emulation",
+                                    "LinApple Contributors",
+                                    VERSIONSTRING,
+                                    0x01,  // Slot 0 (Internal)
+                                    0,     // Default Slot 0
+                                    Keyb_ABI_Init,
+                                    Keyb_ABI_Reset,
+                                    Keyb_ABI_Shutdown,
+                                    Keyb_ABI_Think,
+                                    nullptr,  // on_vblank
+                                    Keyb_ABI_SaveState,
+                                    Keyb_ABI_LoadState,
+                                    Keyb_ABI_Command,
+                                    Keyb_ABI_Query};
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

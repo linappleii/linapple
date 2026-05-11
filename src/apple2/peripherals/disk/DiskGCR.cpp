@@ -1,22 +1,29 @@
 #include "apple2/peripherals/disk/DiskGCR.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/Memory.h"
-#include <cstring>
+
 #include <algorithm>
+#include <cstring>
 
-static uint8_t diskbyte[GCR_ENCODE_TABLE_SIZE] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
-                              0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE,
-                              0xCF, 0xD3, 0xD6, 0xD7, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE5, 0xE6, 0xE7, 0xE9,
-                              0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF9, 0xFA, 0xFB,
-                              0xFC, 0xFD, 0xFE, 0xFF};
+#include "apple2/Memory.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 
-static uint8_t sectornumber[NUM_INTERLEAVE_MODES][SECTORS_PER_TRACK_16] = {{0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B, 0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F},
-                                     {0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04, 0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F},
-                                     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+static uint8_t diskbyte[GCR_ENCODE_TABLE_SIZE] = {
+    0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
+    0xAD, 0xAE, 0xAF, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA,
+    0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE, 0xCF, 0xD3, 0xD6,
+    0xD7, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE5, 0xE6, 0xE7,
+    0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF2, 0xF3, 0xF4, 0xF5,
+    0xF6, 0xF7, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
+
+static uint8_t sectornumber[NUM_INTERLEAVE_MODES][SECTORS_PER_TRACK_16] = {
+    {0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B, 0x04, 0x0C, 0x05, 0x0D,
+     0x06, 0x0E, 0x07, 0x0F},
+    {0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04, 0x0B, 0x03, 0x0A, 0x02,
+     0x09, 0x01, 0x08, 0x0F},
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00}};
 
 // Nibblization functions
-static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t*
-{
+static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t* {
   // Convert the 256 8-bit bytes into 342 6-bit bytes, which we store
   // Starting at 4k into the work buffer.
   {
@@ -26,16 +33,15 @@ static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t*
     uint8_t offset = 0xAC;
     while (offset != 0x02) {
       uint8_t value = 0;
-      #define ADDVALUE(a) value = (value << 2) |        \
-                            (((a) & 0x01) << 1) | \
-                            (((a) & 0x02) >> 1)
+#define ADDVALUE(a) \
+  value = (value << 2) | (((a) & 0x01) << 1) | (((a) & 0x02) >> 1)
       ADDVALUE(sectorBase[offset]);
       offset -= 0x56;
       ADDVALUE(sectorBase[offset]);
       offset -= 0x56;
       ADDVALUE(sectorBase[offset]);
       offset -= 0x53;
-      #undef ADDVALUE
+#undef ADDVALUE
       resultptr[resIdx++] = value << 2;
     }
     if (resIdx >= 2) {
@@ -77,8 +83,7 @@ static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t*
   return &workbuf[GCR_WORK_BUFFER_OFFSET];
 }
 
-static void Decode62(uint8_t* workbuf, uint8_t* imageptr)
-{
+static void Decode62(uint8_t* workbuf, uint8_t* imageptr) {
   // If we haven't already done so, generate a table for converting
   // disk bytes back into 6-bit bytes
   static bool tablegenerated = false;
@@ -121,23 +126,26 @@ static void Decode62(uint8_t* workbuf, uint8_t* imageptr)
     uint8_t offset = 0xAC;
     while (offset != 0x02) {
       if (offset >= 0xAC) {
-        imageptr[offset] =
-          (sectorBase[offset] & 0xFC) | ((lowbitsptr[0] & 0x80) >> 7) | ((lowbitsptr[0] & 0x40) >> 5);
+        imageptr[offset] = (sectorBase[offset] & 0xFC) |
+                           ((lowbitsptr[0] & 0x80) >> 7) |
+                           ((lowbitsptr[0] & 0x40) >> 5);
       }
       offset -= 0x56;
-      imageptr[offset] =
-        (sectorBase[offset] & 0xFC) | ((lowbitsptr[0] & 0x20) >> 5) | ((lowbitsptr[0] & 0x10) >> 3);
+      imageptr[offset] = (sectorBase[offset] & 0xFC) |
+                         ((lowbitsptr[0] & 0x20) >> 5) |
+                         ((lowbitsptr[0] & 0x10) >> 3);
       offset -= 0x56;
-      imageptr[offset] =
-        (sectorBase[offset] & 0xFC) | ((lowbitsptr[0] & 0x08) >> 3) | ((lowbitsptr[0] & 0x04) >> 1);
+      imageptr[offset] = (sectorBase[offset] & 0xFC) |
+                         ((lowbitsptr[0] & 0x08) >> 3) |
+                         ((lowbitsptr[0] & 0x04) >> 1);
       offset -= 0x53;
       lowbitsptr++;
     }
   }
 }
 
-void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder, int nibbles)
-{
+void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder,
+                         int nibbles) {
   memset(workbuf, 0, GCR_WORK_BUFFER_OFFSET);
 
   // Search through the track image for each sector. For every sector
@@ -173,9 +181,12 @@ void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder, i
           }
         }
         if (byteval[2] == 0x96) {
-          sector = ((workbuf[GCR_WORK_BUFFER_OFFSET + 4] & 0x55) << 1) | (workbuf[GCR_WORK_BUFFER_OFFSET + 5] & 0x55);
+          sector = ((workbuf[GCR_WORK_BUFFER_OFFSET + 4] & 0x55) << 1) |
+                   (workbuf[GCR_WORK_BUFFER_OFFSET + 5] & 0x55);
         } else if (byteval[2] == 0xAD) {
-          Decode62(workbuf, &workbuf[sectornumber[dosorder ? 1 : 0][sector] * PAGE_SIZE]);
+          Decode62(
+              workbuf,
+              &workbuf[sectornumber[dosorder ? 1 : 0][sector] * PAGE_SIZE]);
           sector = 0;
         }
       }
@@ -183,9 +194,11 @@ void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder, i
   }
 }
 
-uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf, uint8_t* trackImageBuffer, uint8_t* sector_order, int track)
-{
-  // Note: we assume workbuf contains the track data in the first 4k (DOS_TRACK_SIZE)
+uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
+                                      uint8_t* trackImageBuffer,
+                                      uint8_t* sector_order, int track) {
+  // Note: we assume workbuf contains the track data in the first 4k
+  // (DOS_TRACK_SIZE)
   uint32_t offset = 0;
   uint8_t sector = 0;
 
@@ -196,7 +209,6 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf, uint8_t* trackImageBuffe
   }
 
   while (sector < SECTORS_PER_TRACK_16) {
-
     // Write the address field, which contains:
     //   - PROLOGUE (D5AA96)
     //   - VOLUME NUMBER ("4 AND 4" ENCODED)
@@ -207,19 +219,19 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf, uint8_t* trackImageBuffe
     trackImageBuffer[offset++] = 0xD5;
     trackImageBuffer[offset++] = 0xAA;
     trackImageBuffer[offset++] = 0x96;
-    #define VOLUME 0xFE
-    #define CODE44A(a) ((((a) >> 1) & 0x55) | 0xAA)
-    #define CODE44B(a) (((a) & 0x55) | 0xAA)
+#define VOLUME 0xFE
+#define CODE44A(a) ((((a) >> 1) & 0x55) | 0xAA)
+#define CODE44B(a) (((a) & 0x55) | 0xAA)
     trackImageBuffer[offset++] = CODE44A(VOLUME);
     trackImageBuffer[offset++] = CODE44B(VOLUME);
-    trackImageBuffer[offset++] = CODE44A((uint8_t) track);
-    trackImageBuffer[offset++] = CODE44B((uint8_t) track);
+    trackImageBuffer[offset++] = CODE44A((uint8_t)track);
+    trackImageBuffer[offset++] = CODE44B((uint8_t)track);
     trackImageBuffer[offset++] = CODE44A(sector);
     trackImageBuffer[offset++] = CODE44B(sector);
-    trackImageBuffer[offset++] = CODE44A(VOLUME ^ ((uint8_t) track) ^ sector);
-    trackImageBuffer[offset++] = CODE44B(VOLUME ^ ((uint8_t) track) ^ sector);
-    #undef CODE44A
-    #undef CODE44B
+    trackImageBuffer[offset++] = CODE44A(VOLUME ^ ((uint8_t)track) ^ sector);
+    trackImageBuffer[offset++] = CODE44B(VOLUME ^ ((uint8_t)track) ^ sector);
+#undef CODE44A
+#undef CODE44B
     trackImageBuffer[offset++] = 0xDE;
     trackImageBuffer[offset++] = 0xAA;
     trackImageBuffer[offset++] = 0xEB;
@@ -237,7 +249,8 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf, uint8_t* trackImageBuffe
     trackImageBuffer[offset++] = 0xD5;
     trackImageBuffer[offset++] = 0xAA;
     trackImageBuffer[offset++] = 0xAD;
-    memcpy(trackImageBuffer + offset,  Code62(workbuf, sector_order[sector]),  GCR_SECTOR_WITH_CHECKSUM_SIZE);
+    memcpy(trackImageBuffer + offset, Code62(workbuf, sector_order[sector]),
+           GCR_SECTOR_WITH_CHECKSUM_SIZE);
     offset += GCR_SECTOR_WITH_CHECKSUM_SIZE;
     trackImageBuffer[offset++] = 0xDE;
     trackImageBuffer[offset++] = 0xAA;
@@ -254,16 +267,19 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf, uint8_t* trackImageBuffe
   return offset;
 }
 
-uint32_t GCR_NibblizeTrack(uint8_t* workbuf, uint8_t* trackImageBuffer, bool dosorder, int track)
-{
-  return GCR_NibblizeTrackCustomOrder(workbuf, trackImageBuffer, sectornumber[dosorder ? 1 : 0], track);
+uint32_t GCR_NibblizeTrack(uint8_t* workbuf, uint8_t* trackImageBuffer,
+                           bool dosorder, int track) {
+  return GCR_NibblizeTrackCustomOrder(workbuf, trackImageBuffer,
+                                      sectornumber[dosorder ? 1 : 0], track);
 }
 
-void GCR_SkewTrack(uint8_t* workbuf, int track, int nibbles, uint8_t* trackImageBuffer)
-{
+void GCR_SkewTrack(uint8_t* workbuf, int track, int nibbles,
+                   uint8_t* trackImageBuffer) {
   const int SKEW_FACTOR = 768;
   int skewbytes = (track * SKEW_FACTOR) % nibbles;
-  memcpy(workbuf,  trackImageBuffer,  static_cast<size_t>(nibbles));
-  memcpy(trackImageBuffer,  &workbuf[skewbytes],  static_cast<size_t>(nibbles - skewbytes));
-  memcpy(trackImageBuffer + static_cast<size_t>(nibbles - skewbytes),  workbuf,  static_cast<size_t>(skewbytes));
+  memcpy(workbuf, trackImageBuffer, static_cast<size_t>(nibbles));
+  memcpy(trackImageBuffer, &workbuf[skewbytes],
+         static_cast<size_t>(nibbles - skewbytes));
+  memcpy(trackImageBuffer + static_cast<size_t>(nibbles - skewbytes), workbuf,
+         static_cast<size_t>(skewbytes));
 }

@@ -12,12 +12,12 @@
 #include <cstdio>
 #include <cstring>
 
-#include "apple2/chips/6821.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/MouseCommands.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
+#include "apple2/chips/6821.h"
+#include "apple2/peripherals/MouseCommands.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
@@ -55,9 +55,7 @@ struct MousePeripheral_t {
   int slot = 0;
 };
 
-
 // Legacy global (will be removed)
-static struct MouseInterface sg_Mouse;
 
 static char MouseInterface_rom[] =
     "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x20\xF4\xF4\xF4"
@@ -395,25 +393,23 @@ static auto Mouse_ABI_Query(void* instance, uint32_t query_id, void* out,
   return PERIPHERAL_ERROR;
 }
 
-Peripheral_t g_mouse_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.mouse",
-    "Mouse Interface",
-    "Apple II Mouse Card emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    4,     // Default Slot 4
-    Mouse_ABI_Init,
-    Mouse_ABI_Reset,
-    Mouse_ABI_Shutdown,
-    nullptr,  // think
-    Mouse_ABI_OnVBlank,
-    nullptr,  // save_state
-    nullptr,  // load_state
-    Mouse_ABI_Command,
-    Mouse_ABI_Query};
-
+Peripheral_t g_mouse_peripheral = {LINAPPLE_ABI_VERSION,
+                                   "linapple.mouse",
+                                   "Mouse Interface",
+                                   "Apple II Mouse Card emulation",
+                                   "LinApple Contributors",
+                                   VERSIONSTRING,
+                                   0xFE,  // Slots 1-7
+                                   4,     // Default Slot 4
+                                   Mouse_ABI_Init,
+                                   Mouse_ABI_Reset,
+                                   Mouse_ABI_Shutdown,
+                                   nullptr,  // think
+                                   Mouse_ABI_OnVBlank,
+                                   nullptr,  // save_state
+                                   nullptr,  // load_state
+                                   Mouse_ABI_Command,
+                                   Mouse_ABI_Query};
 
 static void Mouse_OnCommand(MousePeripheral_t* mp) {
   switch (mp->logic.m_byBuff[0] & 0xF0) {

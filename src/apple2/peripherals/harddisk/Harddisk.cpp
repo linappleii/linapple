@@ -1,4 +1,18 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -36,12 +50,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "apple2/Memory.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
@@ -482,5 +496,19 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
   if (hp->host) hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
   return r;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class)
 PERIPHERAL_REGISTER(g_harddisk_peripheral)

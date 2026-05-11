@@ -1,4 +1,20 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
 /*
 LinApple : Apple ][ emulator for Linux
 
@@ -310,4 +326,20 @@ void Pia6821_SetListenerIRQB(Pia6821* p, void* objTo, PiaOutputCallback func) {
   p->out_irqb.objTo = objTo;
   p->out_irqb.func = func;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)

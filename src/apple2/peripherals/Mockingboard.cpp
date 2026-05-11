@@ -2,13 +2,15 @@
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,
 // cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
 // google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
 // cppcoreguidelines-pro-type-const-cast, google-readability-todo,
 // cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
 // cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
 // cppcoreguidelines-use-enum-class,
 // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
@@ -41,7 +43,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * This module emulates the SY6522 VIA and AY-3-8910 PSG chips.
  */
 
-#include "core/Common_Globals.h"
+#include "apple2/peripherals/Mockingboard.h"
 
 #include <cassert>
 #include <cmath>
@@ -52,14 +54,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <memory>
 #include <vector>
 
-#include "apple2/chips/AY8910.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/Mockingboard.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
+#include "apple2/chips/AY8910.h"
 #include "core/Common.h"
+#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
@@ -124,15 +126,13 @@ struct MockingboardPeripheral_t {
       buf.reset(new short[SAMPLE_RATE]);
     }
     for (int i = 0; i < CHIPS_PER_CARD; ++i) {
-      chips.at(static_cast<size_t>(i)).nAY8910Number =
-          static_cast<uint8_t>(i);
+      chips.at(static_cast<size_t>(i)).nAY8910Number = static_cast<uint8_t>(i);
       AY8910_reset_instance(&chips.at(static_cast<size_t>(i)).ay_chip);
     }
   }
 };
 
-static std::array<MockingboardPeripheral_t*, 8> active_mb_instances = {
-    nullptr};
+static std::array<MockingboardPeripheral_t*, 8> active_mb_instances = {nullptr};
 
 // Legacy global vars (kept for now, will be removed)
 bool g_bMBTimerIrqActive = false;
@@ -203,8 +203,8 @@ static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
 
     if (nAYFunc == 6) {  // AY_WRITE
       AY8910_write_instance(&pMB->ay_chip, pMB->nAYCurrentRegister,
-                            pMB->sy6522.ORA, static_cast<int>(g_fCurrentCLK6502),
-                            SAMPLE_RATE);
+                            pMB->sy6522.ORA,
+                            static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     } else if (nAYFunc == 7) {  // AY_LATCH
       if (pMB->sy6522.ORA <= 0x0F) {
         pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
@@ -232,11 +232,19 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
         AY8910_Write_Instance(mp, nDevice, nValue, 0);
       }
       break;
-    case VIA_REG_ORA: pMB->sy6522.ORA = nValue & pMB->sy6522.DDRA; break;
-    case VIA_REG_DDRB: pMB->sy6522.DDRB = nValue; break;
-    case VIA_REG_DDRA: pMB->sy6522.DDRA = nValue; break;
+    case VIA_REG_ORA:
+      pMB->sy6522.ORA = nValue & pMB->sy6522.DDRA;
+      break;
+    case VIA_REG_DDRB:
+      pMB->sy6522.DDRB = nValue;
+      break;
+    case VIA_REG_DDRA:
+      pMB->sy6522.DDRA = nValue;
+      break;
     case VIA_REG_T1L_C:
-    case VIA_REG_T1L_L: pMB->sy6522.TIMER1_LATCH.l = nValue; break;
+    case VIA_REG_T1L_L:
+      pMB->sy6522.TIMER1_LATCH.l = nValue;
+      break;
     case VIA_REG_T1H_C:
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
@@ -249,15 +257,21 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
       break;
-    case VIA_REG_T2L_C: pMB->sy6522.TIMER2_LATCH.l = nValue; break;
+    case VIA_REG_T2L_C:
+      pMB->sy6522.TIMER2_LATCH.l = nValue;
+      break;
     case VIA_REG_T2H_C:
       pMB->sy6522.IFR &= ~IxR_TIMER2;
       UpdateIFR(mp, nDevice);
       pMB->sy6522.TIMER2_LATCH.h = nValue;
       pMB->sy6522.TIMER2_COUNTER.w = pMB->sy6522.TIMER2_LATCH.w;
       break;
-    case VIA_REG_ACR: pMB->sy6522.ACR = nValue; break;
-    case VIA_REG_PCR: pMB->sy6522.PCR = nValue; break;
+    case VIA_REG_ACR:
+      pMB->sy6522.ACR = nValue;
+      break;
+    case VIA_REG_PCR:
+      pMB->sy6522.PCR = nValue;
+      break;
     case VIA_REG_IFR:
       nValue |= VIA_IFR_IRQ_FLAG;
       nValue ^= VIA_IFR_BIT_MASK;
@@ -294,27 +308,40 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(nDevice));
 
   switch (nReg) {
-    case VIA_REG_ORB: return pMB->sy6522.ORB;
-    case VIA_REG_ORA: return pMB->sy6522.ORA;
-    case VIA_REG_DDRB: return pMB->sy6522.DDRB;
-    case VIA_REG_DDRA: return pMB->sy6522.DDRA;
+    case VIA_REG_ORB:
+      return pMB->sy6522.ORB;
+    case VIA_REG_ORA:
+      return pMB->sy6522.ORA;
+    case VIA_REG_DDRB:
+      return pMB->sy6522.DDRB;
+    case VIA_REG_DDRA:
+      return pMB->sy6522.DDRA;
     case VIA_REG_T1L_C:
       pMB->sy6522.IFR &= ~IxR_TIMER1;
       UpdateIFR(mp, nDevice);
       return pMB->sy6522.TIMER1_COUNTER.l;
-    case VIA_REG_T1H_C: return pMB->sy6522.TIMER1_COUNTER.h;
-    case VIA_REG_T1L_L: return pMB->sy6522.TIMER1_LATCH.l;
-    case VIA_REG_T1H_L: return pMB->sy6522.TIMER1_LATCH.h;
+    case VIA_REG_T1H_C:
+      return pMB->sy6522.TIMER1_COUNTER.h;
+    case VIA_REG_T1L_L:
+      return pMB->sy6522.TIMER1_LATCH.l;
+    case VIA_REG_T1H_L:
+      return pMB->sy6522.TIMER1_LATCH.h;
     case VIA_REG_T2L_C:
       pMB->sy6522.IFR &= ~IxR_TIMER2;
       UpdateIFR(mp, nDevice);
       return pMB->sy6522.TIMER2_COUNTER.l;
-    case VIA_REG_T2H_C: return pMB->sy6522.TIMER2_COUNTER.h;
-    case VIA_REG_ACR: return pMB->sy6522.ACR;
-    case VIA_REG_PCR: return pMB->sy6522.PCR;
-    case VIA_REG_IFR: return pMB->sy6522.IFR;
-    case VIA_REG_IER: return pMB->sy6522.IER | 0x80;
-    case VIA_REG_ORA_NO_HANDSHAKE: return pMB->sy6522.ORA;
+    case VIA_REG_T2H_C:
+      return pMB->sy6522.TIMER2_COUNTER.h;
+    case VIA_REG_ACR:
+      return pMB->sy6522.ACR;
+    case VIA_REG_PCR:
+      return pMB->sy6522.PCR;
+    case VIA_REG_IFR:
+      return pMB->sy6522.IFR;
+    case VIA_REG_IER:
+      return pMB->sy6522.IER | 0x80;
+    case VIA_REG_ORA_NO_HANDSHAKE:
+      return pMB->sy6522.ORA;
   }
   return 0;
 }
@@ -379,7 +406,8 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       mp->host->AudioPushSamples(mp, mp->mix_buffer,
                                  static_cast<uint32_t>(nNumSamples * 2));
     } else {
-      DSUploadMockBuffer(mp->mix_buffer, static_cast<unsigned>(nNumSamples * 2));
+      DSUploadMockBuffer(mp->mix_buffer,
+                         static_cast<unsigned>(nNumSamples * 2));
     }
   }
 }
@@ -405,7 +433,8 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
 
       bool bTimer1Underflow =
           (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
-      if (bTimer1Underflow && (mp->nMBTimerDevice == i) && mp->bTimerIrqActive) {
+      if (bTimer1Underflow && (mp->nMBTimerDevice == i) &&
+          mp->bTimerIrqActive) {
         g_uTimer1IrqCount++;
         pMB->sy6522.IFR |= IxR_TIMER1;
         UpdateIFR(mp, i);
@@ -437,8 +466,9 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
   }
 }
 
-static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                       uint8_t val, uint32_t cycles_left) -> uint8_t {
+static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr,
+                       uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
@@ -560,8 +590,7 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles);
 
-  if (!mp->bTimerIrqActive &&
-      !(mp->chips.at(0).sy6522.IFR & IxR_TIMER1)) {
+  if (!mp->bTimerIrqActive && !(mp->chips.at(0).sy6522.IFR & IxR_TIMER1)) {
     if (mp->last_60hz == 0) mp->last_60hz = g_nCumulativeCycles;
     if (g_nCumulativeCycles - mp->last_60hz >
         static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
@@ -577,25 +606,23 @@ static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   // End of frame logic
 }
 
-Peripheral_t g_mockingboard_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.mockingboard",
-    "Mockingboard",
-    "Dual AY-3-8910 sound card emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    4,     // Default Slot 4
-    MB_ABI_Init,
-    MB_ABI_Reset,
-    MB_ABI_Shutdown,
-    MB_ABI_Think,
-    MB_ABI_OnVBlank,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr};
-
+Peripheral_t g_mockingboard_peripheral = {LINAPPLE_ABI_VERSION,
+                                          "linapple.mockingboard",
+                                          "Mockingboard",
+                                          "Dual AY-3-8910 sound card emulation",
+                                          "LinApple Contributors",
+                                          VERSIONSTRING,
+                                          0xFE,  // Slots 1-7
+                                          4,     // Default Slot 4
+                                          MB_ABI_Init,
+                                          MB_ABI_Reset,
+                                          MB_ABI_Shutdown,
+                                          MB_ABI_Think,
+                                          MB_ABI_OnVBlank,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr};
 
 // --- Legacy Stubs for Build Compatibility ---
 void MB_Initialize() {}
@@ -606,13 +633,15 @@ void MB_Reset() {}
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,
 // cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
 // google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
 // cppcoreguidelines-pro-type-const-cast, google-readability-todo,
 // cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
 // cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
 // cppcoreguidelines-use-enum-class,
 // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,

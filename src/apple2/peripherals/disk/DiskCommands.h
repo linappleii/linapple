@@ -5,8 +5,9 @@
 #ifndef DISKCOMMANDS_H
 #define DISKCOMMANDS_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+
 #include "apple2/peripherals/disk/DiskError.h"
 
 #ifdef __cplusplus
@@ -85,12 +86,12 @@ typedef struct {
 } Disk_t;
 
 typedef enum {
-  DISK_CMD_INSERT      = 0x0001,  /* payload: DiskInsertCmd_t */
-  DISK_CMD_EJECT       = 0x0002,  /* payload: DiskEjectCmd_t */
-  DISK_CMD_SWAP_DRIVES = 0x0003,  /* no payload */
-  DISK_CMD_SET_PROTECT = 0x0004,  /* payload: DiskSetProtectCmd_t */
-  DISK_CMD_GET_STATUS  = 0x0005,  /* synchronous only; payload: DiskStatus_t* */
-  DISK_CMD_BOOT        = 0x0006   /* no payload */
+  DISK_CMD_INSERT = 0x0001,      /* payload: DiskInsertCmd_t */
+  DISK_CMD_EJECT = 0x0002,       /* payload: DiskEjectCmd_t */
+  DISK_CMD_SWAP_DRIVES = 0x0003, /* no payload */
+  DISK_CMD_SET_PROTECT = 0x0004, /* payload: DiskSetProtectCmd_t */
+  DISK_CMD_GET_STATUS = 0x0005,  /* synchronous only; payload: DiskStatus_t* */
+  DISK_CMD_BOOT = 0x0006         /* no payload */
 } DiskCmd_e;
 
 #define DISK_INSERT_PATH_MAX 504
@@ -98,10 +99,10 @@ typedef enum {
 #pragma pack(push, 1)
 typedef struct {
   uint8_t drive;
-  char    path[DISK_INSERT_PATH_MAX];
+  char path[DISK_INSERT_PATH_MAX];
   uint8_t write_protected;
   uint8_t create_if_necessary;
-  uint8_t padding[5]; // Pad to 512
+  uint8_t padding[5];  // Pad to 512
 } DiskInsertCmd_t;
 
 typedef struct {
@@ -117,21 +118,21 @@ typedef struct {
 #define DISK_STATUS_PATH_MAX 256
 
 typedef struct {
-  int32_t     drive0_last_error;
-  uint8_t     drive0_loaded;
-  uint8_t     drive0_spinning;
-  uint8_t     drive0_writing;
-  uint8_t     drive0_write_protected;
-  char        drive0_name[DISK_STATUS_NAME_MAX];
-  char        drive0_full_path[DISK_STATUS_PATH_MAX];
+  int32_t drive0_last_error;
+  uint8_t drive0_loaded;
+  uint8_t drive0_spinning;
+  uint8_t drive0_writing;
+  uint8_t drive0_write_protected;
+  char drive0_name[DISK_STATUS_NAME_MAX];
+  char drive0_full_path[DISK_STATUS_PATH_MAX];
 
-  int32_t     drive1_last_error;
-  uint8_t     drive1_loaded;
-  uint8_t     drive1_spinning;
-  uint8_t     drive1_writing;
-  uint8_t     drive1_write_protected;
-  char        drive1_name[DISK_STATUS_NAME_MAX];
-  char        drive1_full_path[DISK_STATUS_PATH_MAX];
+  int32_t drive1_last_error;
+  uint8_t drive1_loaded;
+  uint8_t drive1_spinning;
+  uint8_t drive1_writing;
+  uint8_t drive1_write_protected;
+  char drive1_name[DISK_STATUS_NAME_MAX];
+  char drive1_full_path[DISK_STATUS_PATH_MAX];
 } DiskStatus_t;
 
 #pragma pack(pop)
@@ -140,4 +141,4 @@ typedef struct {
 }
 #endif
 
-#endif // DISKCOMMANDS_H
+#endif  // DISKCOMMANDS_H

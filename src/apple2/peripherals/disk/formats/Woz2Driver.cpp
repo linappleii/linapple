@@ -166,7 +166,8 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
                        (static_cast<uint32_t>(trk[6]) << 16) |
                        (static_cast<uint32_t>(trk[7]) << 24);
 
-  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE * 8) {
+  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
+                                        WOZ2_DATA_BLOCK_SIZE * 8) {
     *nibbles_out = 0;
     return;
   }

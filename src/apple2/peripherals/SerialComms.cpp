@@ -1,4 +1,19 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -28,7 +43,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "apple2/peripherals/SerialComms.h"
-#include "apple2/peripherals/SerialCommsCommands.h"
 
 #include <array>
 #include <cassert>
@@ -39,6 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/peripherals/SerialCommsCommands.h"
 #include "core/Common.h"
 #include "core/Log.h"
 
@@ -442,7 +457,7 @@ Peripheral_t g_ssc_peripheral = {
     SSC_ABI_SaveState,
     SSC_ABI_LoadState,
     SSC_ABI_Command,
-    nullptr   // query
+    nullptr  // query
 };
 
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
@@ -839,5 +854,20 @@ auto SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms* pSS) -> uint32_t {
   pSSC->m_eStopBits = static_cast<SscStopBits>(pSS->stopbits);
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 PERIPHERAL_REGISTER(g_ssc_peripheral)

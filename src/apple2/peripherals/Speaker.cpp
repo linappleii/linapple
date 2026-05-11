@@ -189,8 +189,8 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
         event_idx++;
       }
 
-      sum +=
-          (sampleEnd - currentTime) * (instance->last_sample_state ? 1.0 : -1.0);
+      sum += (sampleEnd - currentTime) *
+             (instance->last_sample_state ? 1.0 : -1.0);
 
       const double average = sum / clksPerSample;
       const int16_t val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
@@ -215,8 +215,8 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   }
 }
 
-auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events, uint32_t max_events)
-    -> uint32_t {
+auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events,
+                       uint32_t max_events) -> uint32_t {
   if (events == nullptr || !instance) return 0;
   uint32_t count =
       (instance->num_events < max_events) ? instance->num_events : max_events;
@@ -373,7 +373,6 @@ Peripheral_t g_speaker_peripheral = {
     Spkr_ABI_LoadState,
     nullptr,  // command
     Spkr_ABI_Query};
-
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

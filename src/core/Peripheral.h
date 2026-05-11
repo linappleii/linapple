@@ -108,7 +108,7 @@ typedef struct Peripheral_t {
 #define PERIPHERAL_REGISTER(peripheral_struct)                         \
   namespace {                                                          \
   struct PeripheralRegistration_ ## peripheral_struct {                \
-    PeripheralRegistration_ ## peripheral_struct() {                   \
+    PeripheralRegistration_ ## peripheral_struct() noexcept {                   \
       Peripheral_Register_Builtin(const_cast<Peripheral_t*>(&(peripheral_struct))); \
     }                                                                  \
   } g_registration_ ## peripheral_struct;                              \

@@ -3,7 +3,6 @@
 
 typedef struct tagSS_CARD_MOCKINGBOARD SS_CARD_MOCKINGBOARD;
 
-
 enum eSOUNDCARDTYPE {
   SC_UNINIT = 0,
   SC_NONE,

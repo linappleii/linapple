@@ -47,5 +47,4 @@ void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State);
 bool Mouse_Active();
 void Mouse_SetVBlank(bool bVBL);
 
-
 #endif

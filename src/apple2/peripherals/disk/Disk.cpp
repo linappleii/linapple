@@ -1,4 +1,9 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -34,13 +39,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/Structs.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/DiskGCR.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/Memory.h"
-#include "apple2/Structs.h"
-#include "apple2/Video.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -155,32 +160,32 @@ static const char Disk2_rom[] =
     "\x3D\xCD\x00\x08\xA6\x2B\x90\xDB\x4C\x01\x08\x00\x00\x00\x00\x00";
 
 static auto DiskControlMotor(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                             uint8_t bWrite, uint8_t d,
-                             uint32_t nCyclesLeft) -> uint8_t;
+                             uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskControlStepper(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                               uint8_t bWrite, uint8_t d,
-                               uint32_t nCyclesLeft) -> uint8_t;
+                               uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskEnable(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                       uint8_t bWrite, uint8_t d,
-                       uint32_t nCyclesLeft) -> uint8_t;
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskReadWrite(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                          uint8_t bWrite, uint8_t d,
-                          uint32_t nCyclesLeft) -> uint8_t;
+                          uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskSetLatchValue(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                              uint8_t bWrite, uint8_t d,
-                              uint32_t nCyclesLeft) -> uint8_t;
+                              uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskSetReadMode(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                            uint8_t bWrite, uint8_t d,
-                            uint32_t nCyclesLeft) -> uint8_t;
+                            uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 static auto DiskSetWriteMode(DiskPeripheral_t* dp, uint16_t pc, uint16_t addr,
-                             uint8_t bWrite, uint8_t d,
-                             uint32_t nCyclesLeft) -> uint8_t;
+                             uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
 #define LOG_DISK_ENABLED 0
 
@@ -206,7 +211,8 @@ static auto CheckSpinning(DiskPeripheral_t* dp) -> void {
   }
 }
 
-static auto DiskIsEffectivelyWriteProtected(DiskPeripheral_t* dp, const int iDrive) -> bool {
+static auto DiskIsEffectivelyWriteProtected(DiskPeripheral_t* dp,
+                                            const int iDrive) -> bool {
   if (iDrive < 0 || iDrive >= 2) return false;
   Disk_t* fptr = &dp->drives[iDrive];
 
@@ -422,8 +428,8 @@ static void DiskDestroy(DiskPeripheral_t* dp) {
 }
 
 static auto DiskEnable(DiskPeripheral_t* dp, uint16_t pc, uint16_t address,
-                       uint8_t bWrite, uint8_t d,
-                       uint32_t nCyclesLeft) -> uint8_t {
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t {
   (void)pc;
   (void)bWrite;
   (void)d;
@@ -456,9 +462,8 @@ auto DiskInitialize(DiskPeripheral_t* dp) -> void {
 }
 
 static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
-                                       const char* imageFileName,
-                                       bool writeProtected,
-                                       bool createIfNecessary) -> DiskError_e {
+                                const char* imageFileName, bool writeProtected,
+                                bool createIfNecessary) -> DiskError_e {
   Disk_t* fptr = &dp->drives[drive];
 
   if (fptr->driver != nullptr) {
@@ -555,7 +560,8 @@ static auto DiskSetLatchValue(DiskPeripheral_t* dp, uint16_t, uint16_t,
 static auto DiskSetReadMode(DiskPeripheral_t* dp, uint16_t, uint16_t, uint8_t,
                             uint8_t, uint32_t) -> uint8_t {
   dp->floppywritemode = false;
-  return MemReturnRandomData(DiskIsEffectivelyWriteProtected(dp, dp->currdrive));
+  return MemReturnRandomData(
+      DiskIsEffectivelyWriteProtected(dp, dp->currdrive));
 }
 
 static auto DiskSetWriteMode(DiskPeripheral_t* dp, uint16_t, uint16_t, uint8_t,
@@ -717,7 +723,8 @@ static void PopulateDiskStatus(DiskPeripheral_t* dp, DiskStatus_t* status) {
   status->drive0_loaded = (d0->driver != nullptr) ? 1 : 0;
   status->drive0_spinning = (d0->spinning > 0) ? 1 : 0;
   status->drive0_writing = (d0->writelight > 0) ? 1 : 0;
-  status->drive0_write_protected = DiskIsEffectivelyWriteProtected(dp, 0) ? 1 : 0;
+  status->drive0_write_protected =
+      DiskIsEffectivelyWriteProtected(dp, 0) ? 1 : 0;
   Util_SafeStrCpy(status->drive0_name, d0->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive0_full_path, d0->fullname, DISK_STATUS_PATH_MAX);
 
@@ -725,7 +732,8 @@ static void PopulateDiskStatus(DiskPeripheral_t* dp, DiskStatus_t* status) {
   status->drive1_loaded = (d1->driver != nullptr) ? 1 : 0;
   status->drive1_spinning = (d1->spinning > 0) ? 1 : 0;
   status->drive1_writing = (d1->writelight > 0) ? 1 : 0;
-  status->drive1_write_protected = DiskIsEffectivelyWriteProtected(dp, 1) ? 1 : 0;
+  status->drive1_write_protected =
+      DiskIsEffectivelyWriteProtected(dp, 1) ? 1 : 0;
   Util_SafeStrCpy(status->drive1_name, d1->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive1_full_path, d1->fullname, DISK_STATUS_PATH_MAX);
 }
@@ -859,8 +867,8 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
     RemoveDisk(dp, i);
 
-    DiskError_e err =
-        DiskInsert_Internal(dp, i, dds->fullname, dds->user_write_protected, false);
+    DiskError_e err = DiskInsert_Internal(dp, i, dds->fullname,
+                                          dds->user_write_protected, false);
     if (err == DISK_ERR_NONE) {
       Disk_t* fptr = &dp->drives[i];
       fptr->track = dds->track;
@@ -897,25 +905,23 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_disk_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.disk_ii",
-    "Disk II",
-    "Apple II floppy disk controller emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    6,     // Default Slot 6
-    Disk_ABI_Init,
-    Disk_ABI_Reset,
-    Disk_ABI_Shutdown,
-    Disk_ABI_Think,
-    nullptr,  // on_vblank
-    Disk_ABI_SaveState,
-    Disk_ABI_LoadState,
-    Disk_ABI_Command,
-    Disk_ABI_Query};
-
+Peripheral_t g_disk_peripheral = {LINAPPLE_ABI_VERSION,
+                                  "linapple.disk_ii",
+                                  "Disk II",
+                                  "Apple II floppy disk controller emulation",
+                                  "LinApple Contributors",
+                                  VERSIONSTRING,
+                                  0xFE,  // Slots 1-7
+                                  6,     // Default Slot 6
+                                  Disk_ABI_Init,
+                                  Disk_ABI_Reset,
+                                  Disk_ABI_Shutdown,
+                                  Disk_ABI_Think,
+                                  nullptr,  // on_vblank
+                                  Disk_ABI_SaveState,
+                                  Disk_ABI_LoadState,
+                                  Disk_ABI_Command,
+                                  Disk_ABI_Query};
 
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
@@ -984,5 +990,10 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
 
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 PERIPHERAL_REGISTER(g_disk_peripheral)

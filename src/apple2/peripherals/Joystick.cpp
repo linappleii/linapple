@@ -26,25 +26,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Michael O'Brien, modified for decoupling.
  */
 
-#include "core/Common.h"
-#include <vector>
+#include "apple2/peripherals/Joystick.h"
+
 #include <algorithm>
-#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
+#include <vector>
 
-#include "apple2/peripherals/Joystick.h"
-#include "apple2/peripherals/JoystickCommands.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Structs.h"
-#include "core/Log.h"
+#include "apple2/peripherals/JoystickCommands.h"
+#include "core/Common.h"
 #include "core/Common_Globals.h"
+#include "core/Log.h"
 #include "core/Peripheral.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables)
 
-#define BUTTONTIME  (uint64_t)(g_fCurrentCLK6502 / 100.0)
+#define BUTTONTIME (uint64_t)(g_fCurrentCLK6502 / 100.0)
 
 struct JoystickPeripheral_t {
   uint64_t reset_cycle = 0;
@@ -57,25 +60,25 @@ struct JoystickPeripheral_t {
 
   JoystickConfig_t config;
   bool joyquitevent = false;
-  
+
   HostInterface_t* host = nullptr;
   int slot = 0;
 
   JoystickPeripheral_t() {
     memset(&config, 0, sizeof(config));
-    for (int i=0; i<2; i++) {
-        xpos[i] = 127;
-        ypos[i] = 127;
+    for (int i = 0; i < 2; i++) {
+      xpos[i] = 127;
+      ypos[i] = 127;
     }
-    for (int i=0; i<3; i++) {
-        joybutton[i] = false;
-        buttonlatch[i] = 0;
+    for (int i = 0; i < 3; i++) {
+      joybutton[i] = false;
+      buttonlatch[i] = 0;
     }
   }
 };
 
 static auto Joy_IO_ReadButton(void* instance, uint16_t pc, uint16_t addr,
-                               uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+                              uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t {
   (void)pc;
   (void)bWrite;
@@ -95,7 +98,7 @@ static auto Joy_IO_ReadButton(void* instance, uint16_t pc, uint16_t addr,
 }
 
 static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
-                                 uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+                                uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t {
   (void)pc;
   (void)bWrite;
@@ -105,12 +108,14 @@ static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
 
   uint8_t res = MemReadFloatingBus(nCyclesLeft) & 0x7F;
   int pdl = addr & 0x03;
-  
+
   uint32_t val = (pdl & 1) ? jp->ypos[pdl >> 1] : jp->xpos[pdl >> 1];
-  
-  // Apple II analog timing: high bit is set if (cycles - reset_cycle) < constant * position
+
+  // Apple II analog timing: high bit is set if (cycles - reset_cycle) <
+  // constant * position
   uint64_t elapsed = g_nCumulativeCycles - jp->reset_cycle;
-  uint64_t limit = static_cast<uint64_t>(val) * 11 + 10; // Approximate timing constant
+  uint64_t limit =
+      static_cast<uint64_t>(val) * 11 + 10;  // Approximate timing constant
 
   if (elapsed < limit) {
     res |= 0x80;
@@ -119,8 +124,8 @@ static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
 }
 
 static auto Joy_IO_ResetPosition(void* instance, uint16_t pc, uint16_t addr,
-                                  uint8_t bWrite, uint8_t d, uint32_t cycles_left)
-    -> uint8_t {
+                                 uint8_t bWrite, uint8_t d,
+                                 uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)bWrite;
@@ -301,25 +306,26 @@ static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_joystick_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.joystick",
-    "Joystick",
-    "Analog joystick and paddle emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0x01,  // Slot 0 (Internal)
-    0,     // Default Slot 0
-    Joystick_ABI_Init,
-    Joystick_ABI_Reset,
-    Joystick_ABI_Shutdown,
-    Joystick_ABI_Think,
-    nullptr,  // on_vblank
-    Joystick_ABI_SaveState,
-    Joystick_ABI_LoadState,
-    Joystick_ABI_Command,
-    Joystick_ABI_Query};
+Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
+                                      "linapple.joystick",
+                                      "Joystick",
+                                      "Analog joystick and paddle emulation",
+                                      "LinApple Contributors",
+                                      VERSIONSTRING,
+                                      0x01,  // Slot 0 (Internal)
+                                      0,     // Default Slot 0
+                                      Joystick_ABI_Init,
+                                      Joystick_ABI_Reset,
+                                      Joystick_ABI_Shutdown,
+                                      Joystick_ABI_Think,
+                                      nullptr,  // on_vblank
+                                      Joystick_ABI_SaveState,
+                                      Joystick_ABI_LoadState,
+                                      Joystick_ABI_Command,
+                                      Joystick_ABI_Query};
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
 
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables)

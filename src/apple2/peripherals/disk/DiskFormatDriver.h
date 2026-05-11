@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
 #include "apple2/peripherals/disk/DiskError.h"
 
 #ifdef __cplusplus
@@ -45,11 +46,12 @@ typedef struct FluxBit_s FluxBit_t;
  * read_track()/write_track() buffers are always 6656 bytes (NIBBLES_PER_TRACK).
  */
 typedef struct DiskFormatDriver_t {
-  int         abi_version;
-  uint32_t    capabilities;  /* bitmask of DiskDriverCap_e */
-  const char* name;          /* e.g. "WOZ2" */
+  int abi_version;
+  uint32_t capabilities; /* bitmask of DiskDriverCap_e */
+  const char* name;      /* e.g. "WOZ2" */
 
-  /* null-terminated array of creatable extensions, e.g. {".do", ".dsk", NULL}; NULL if none */
+  /* null-terminated array of creatable extensions, e.g. {".do", ".dsk", NULL};
+   * NULL if none */
   const char* const* creatable_exts;
 
   /* header contains up to 4096 bytes (header_size may be less).
@@ -75,7 +77,8 @@ typedef struct DiskFormatDriver_t {
   void (*read_track)(void* instance, int track, int phase,
                      uint8_t* trackImageBuffer, int* nibbles_out);
 
-  /* NULL unless DRIVER_CAP_WRITE is set. track/phase same ranges as read_track. */
+  /* NULL unless DRIVER_CAP_WRITE is set. track/phase same ranges as read_track.
+   */
   void (*write_track)(void* instance, int track, int phase,
                       const uint8_t* trackImage, int nibbles);
 

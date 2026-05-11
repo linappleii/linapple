@@ -62,7 +62,8 @@ typedef struct {
   char drive1_name[HARDDISK_STATUS_NAME_MAX];
   char drive1_full_path[HARDDISK_STATUS_PATH_MAX];
 
-  uint8_t activity_status; // 0=Off, 1=Read, 2=Write, etc. (matches DISK_STATUS_*)
+  uint8_t
+      activity_status;  // 0=Off, 1=Read, 2=Write, etc. (matches DISK_STATUS_*)
 } HarddiskStatus_t;
 
 #pragma pack(pop)

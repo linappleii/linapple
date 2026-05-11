@@ -17,7 +17,7 @@ typedef enum {
 } MouseCmd_e;
 
 typedef enum {
-  MOUSE_QUERY_IS_ACTIVE = 0x0001 // out: uint8_t (0=inactive, 1=active)
+  MOUSE_QUERY_IS_ACTIVE = 0x0001  // out: uint8_t (0=inactive, 1=active)
 } MouseQuery_e;
 
 typedef struct {

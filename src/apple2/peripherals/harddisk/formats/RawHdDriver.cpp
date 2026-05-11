@@ -1,4 +1,18 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class)
 /*
  * RawHdDriver.cpp - LinApple Raw Harddisk Format Driver
  */
@@ -143,19 +157,32 @@ static uint32_t RawHd_GetTotalBlocks(void* instance) {
 }
 
 extern "C" {
-HarddiskFormatDriver_t g_raw_hd_driver = {
-    LINAPPLE_HARDDISK_ABI_VERSION,
-    HARDDISK_DRIVER_CAP_WRITE,
-    "Raw",
-    RawHd_Probe,
-    RawHd_Open,
-    RawHd_Close,
-    RawHd_IsWriteProtected,
-    RawHd_ReadBlock,
-    RawHd_WriteBlock,
-    RawHd_GetTotalBlocks};
+HarddiskFormatDriver_t g_raw_hd_driver = {LINAPPLE_HARDDISK_ABI_VERSION,
+                                          HARDDISK_DRIVER_CAP_WRITE,
+                                          "Raw",
+                                          RawHd_Probe,
+                                          RawHd_Open,
+                                          RawHd_Close,
+                                          RawHd_IsWriteProtected,
+                                          RawHd_ReadBlock,
+                                          RawHd_WriteBlock,
+                                          RawHd_GetTotalBlocks};
 }
 
 // NOLINTEND(cppcoreguidelines-owning-memory,
 // modernize-use-trailing-return-type)
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case,
+// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
+// cppcoreguidelines-use-enum-class)

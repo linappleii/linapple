@@ -22,8 +22,8 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
     -> void;
 
 // Core Speaker API for Frontend (Pointer-based)
-auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events, uint32_t max_events)
-    -> uint32_t;
+auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events,
+                       uint32_t max_events) -> uint32_t;
 auto Speaker_GetLastCycle(Speaker_t* instance) -> uint64_t;
 auto Speaker_GetCurrentState(Speaker_t* instance) -> bool;
 

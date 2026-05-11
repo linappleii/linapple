@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,16 +20,16 @@ typedef enum {
 } JoystickCmd_e;
 
 typedef enum {
-  JOY_QUERY_CONFIG = 0x0001,    // out: JoystickConfig_t
-  JOY_QUERY_EXIT_EVENT = 0x0002 // out: uint8_t (0 or 1)
+  JOY_QUERY_CONFIG = 0x0001,     // out: JoystickConfig_t
+  JOY_QUERY_EXIT_EVENT = 0x0002  // out: uint8_t (0 or 1)
 } JoystickQuery_e;
 
 typedef struct {
   uint32_t joytype[2];
   uint32_t joyindex[2];
-  uint32_t joybutton[2]; // joy1button1, joy1button2 (for joy 0)
+  uint32_t joybutton[2];  // joy1button1, joy1button2 (for joy 0)
   uint32_t joy2button1;
-  uint32_t joyaxis[2][2]; // [joy][axis]
+  uint32_t joyaxis[2][2];  // [joy][axis]
   uint32_t joyexitenable;
   uint32_t joyexitbutton[2];
 } JoystickConfig_t;
