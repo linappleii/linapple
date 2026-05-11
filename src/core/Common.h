@@ -164,6 +164,21 @@ constexpr const char* REGVALUE_DISK_IMAGE1 = "Disk Image 1";
 constexpr const char* REGVALUE_DISK_IMAGE2 = "Disk Image 2";
 constexpr const char* REGVALUE_CLOCK_ENABLED = "Clock Enable";
 
+constexpr const char* REGVALUE_JOY_TYPE1 = "Joystick 0";
+constexpr const char* REGVALUE_JOY_TYPE2 = "Joystick 1";
+constexpr const char* REGVALUE_JOY_INDEX1 = "Joystick 0 Index";
+constexpr const char* REGVALUE_JOY_INDEX2 = "Joystick 1 Index";
+constexpr const char* REGVALUE_JOY_BUTTON1_1 = "Joystick 0 Button 1";
+constexpr const char* REGVALUE_JOY_BUTTON1_2 = "Joystick 0 Button 2";
+constexpr const char* REGVALUE_JOY_BUTTON2_1 = "Joystick 1 Button 1";
+constexpr const char* REGVALUE_JOY_AXIS1_0 = "Joystick 0 Axis 0";
+constexpr const char* REGVALUE_JOY_AXIS1_1 = "Joystick 0 Axis 1";
+constexpr const char* REGVALUE_JOY_AXIS2_0 = "Joystick 1 Axis 0";
+constexpr const char* REGVALUE_JOY_AXIS2_1 = "Joystick 1 Axis 1";
+constexpr const char* REGVALUE_JOY_EXIT_ENABLE = "Joystick Exit Enable";
+constexpr const char* REGVALUE_JOY_EXIT_BUTTON0 = "Joystick Exit Button 0";
+constexpr const char* REGVALUE_JOY_EXIT_BUTTON1 = "Joystick Exit Button 1";
+
 constexpr const char* REGVALUE_PPRINTER_FILENAME = "Parallel Printer Filename";
 constexpr const char* REGVALUE_PRINTER_APPEND = "Append to printer file";
 constexpr const char* REGVALUE_PRINTER_IDLE_LIMIT = "Printer idle limit";

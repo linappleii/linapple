@@ -46,21 +46,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #define BUTTONTIME  (uint64_t)(g_fCurrentCLK6502 / 100.0)
 
-std::array<uint32_t, 2> joytype = {{0, 0}};
-uint32_t joy1index = 0;
-uint32_t joy2index = 1;
-uint32_t joy1button1 = 0;
-uint32_t joy1button2 = 1;
-uint32_t joy2button1 = 0;
-uint32_t joy1axis0 = 0;
-uint32_t joy1axis1 = 1;
-uint32_t joy2axis0 = 0;
-uint32_t joy2axis1 = 1;
-uint32_t joyexitenable = 0;
-uint32_t joyexitbutton0 = 0;
-uint32_t joyexitbutton1 = 1;
-bool joyquitevent = false;
-
 struct JoystickPeripheral_t {
   uint64_t reset_cycle = 0;
   uint8_t xpos[2]{127, 127};
@@ -69,16 +54,18 @@ struct JoystickPeripheral_t {
   uint64_t buttonlatch[3]{0, 0, 0};
   int16_t trim_x = 0;
   int16_t trim_y = 0;
-  uint32_t joytype[2]{0, 0};
+
+  JoystickConfig_t config;
+  bool joyquitevent = false;
   
   HostInterface_t* host = nullptr;
   int slot = 0;
 
   JoystickPeripheral_t() {
+    memset(&config, 0, sizeof(config));
     for (int i=0; i<2; i++) {
         xpos[i] = 127;
         ypos[i] = 127;
-        joytype[i] = 0;
     }
     for (int i=0; i<3; i++) {
         joybutton[i] = false;
@@ -247,6 +234,33 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
       Joystick_ABI_Reset(instance);
       return PERIPHERAL_OK;
     }
+    case JOY_CMD_SET_CONFIG: {
+      if (size < sizeof(JoystickConfig_t)) return PERIPHERAL_ERROR;
+      memcpy(&jp->config, data, sizeof(JoystickConfig_t));
+      return PERIPHERAL_OK;
+    }
+  }
+  return PERIPHERAL_ERROR;
+}
+
+static auto Joystick_ABI_Query(void* instance, uint32_t cmd, void* out,
+                               size_t* size) -> PeripheralStatus {
+  if (!instance || !out || !size) return PERIPHERAL_ERROR;
+  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+
+  switch (static_cast<JoystickQuery_e>(cmd)) {
+    case JOY_QUERY_CONFIG: {
+      if (*size < sizeof(JoystickConfig_t)) return PERIPHERAL_ERROR;
+      memcpy(out, &jp->config, sizeof(JoystickConfig_t));
+      *size = sizeof(JoystickConfig_t);
+      return PERIPHERAL_OK;
+    }
+    case JOY_QUERY_EXIT_EVENT: {
+      if (*size < 1) return PERIPHERAL_ERROR;
+      *static_cast<uint8_t*>(out) = jp->joyquitevent ? 1 : 0;
+      *size = 1;
+      return PERIPHERAL_OK;
+    }
   }
   return PERIPHERAL_ERROR;
 }
@@ -304,7 +318,7 @@ Peripheral_t g_joystick_peripheral = {
     Joystick_ABI_SaveState,
     Joystick_ABI_LoadState,
     Joystick_ABI_Command,
-    nullptr};
+    Joystick_ABI_Query};
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
 

@@ -2,13 +2,13 @@
 #include <iostream>
 #include <cstring>
 #include <array>
-#include "apple2/peripherals/Joystick.h"
 #include "apple2/peripherals/JoystickCommands.h"
 #include "SDL3/SDL.h"
 #include "apple2/Structs.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"
+#include "core/Registry.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 
 enum {
@@ -29,7 +29,6 @@ using joyinforec = struct joyinforec {
   int device;
   int mode;
 };
-using joyinfoptr = joyinforec*;
 
 static const std::array<joyinforec, 5> joyinfo = {{
   {DEVICE_NONE,     MODE_NONE},
@@ -82,11 +81,13 @@ static std::array<int, 2> joyshry = {8, 8};
 static std::array<int, 2> joysubx = {0, 0};
 static std::array<int, 2> joysuby = {0, 0};
 
-SDL_Joystick *joy1 = nullptr;
-SDL_Joystick *joy2 = nullptr;
+static SDL_Joystick *joy1 = nullptr;
+static SDL_Joystick *joy2 = nullptr;
 
 static int g_frontend_pdl_trim_x = 0;
 static int g_frontend_pdl_trim_y = 0;
+
+static JoystickConfig_t g_joyConfig;
 
 void JoyFrontend_Initialize() {
   #define AXIS_MIN        -32768  /* minimum value for axis coordinate */
@@ -100,12 +101,34 @@ void JoyFrontend_Initialize() {
     SDL_CloseJoystick(joy2);
     joy2 = nullptr;
   }
+
+  // Load config from registry
+  memset(&g_joyConfig, 0, sizeof(g_joyConfig));
+  uint32_t val = 0;
+  if (LOAD(REGVALUE_JOY_TYPE1, &val)) g_joyConfig.joytype[0] = val;
+  if (LOAD(REGVALUE_JOY_TYPE2, &val)) g_joyConfig.joytype[1] = val;
+  if (LOAD(REGVALUE_JOY_INDEX1, &val)) g_joyConfig.joyindex[0] = val;
+  if (LOAD(REGVALUE_JOY_INDEX2, &val)) g_joyConfig.joyindex[1] = val;
+  if (LOAD(REGVALUE_JOY_BUTTON1_1, &val)) g_joyConfig.joybutton[0] = val;
+  if (LOAD(REGVALUE_JOY_BUTTON1_2, &val)) g_joyConfig.joybutton[1] = val;
+  if (LOAD(REGVALUE_JOY_BUTTON2_1, &val)) g_joyConfig.joy2button1 = val;
+  if (LOAD(REGVALUE_JOY_AXIS1_0, &val)) g_joyConfig.joyaxis[0][0] = val;
+  if (LOAD(REGVALUE_JOY_AXIS1_1, &val)) g_joyConfig.joyaxis[0][1] = val;
+  if (LOAD(REGVALUE_JOY_AXIS2_0, &val)) g_joyConfig.joyaxis[1][0] = val;
+  if (LOAD(REGVALUE_JOY_AXIS2_1, &val)) g_joyConfig.joyaxis[1][1] = val;
+  if (LOAD(REGVALUE_JOY_EXIT_ENABLE, &val)) g_joyConfig.joyexitenable = val;
+  if (LOAD(REGVALUE_JOY_EXIT_BUTTON0, &val)) g_joyConfig.joyexitbutton[0] = val;
+  if (LOAD(REGVALUE_JOY_EXIT_BUTTON1, &val)) g_joyConfig.joyexitbutton[1] = val;
+
+  // Sync to peripheral
+  Peripheral_Command(0, JOY_CMD_SET_CONFIG, &g_joyConfig, sizeof(g_joyConfig));
+
   int number_of_joysticks = 0;
   SDL_JoystickID *joysticks = SDL_GetJoysticks(&number_of_joysticks);
 
-  if (joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 0 && static_cast<int>(joy1index) < number_of_joysticks) {
-      joy1 = SDL_OpenJoystick(joysticks[joy1index]);
+  if (joyinfo[g_joyConfig.joytype[0]].device == DEVICE_JOYSTICK) {
+    if (number_of_joysticks > 0 && static_cast<int>(g_joyConfig.joyindex[0]) < number_of_joysticks) {
+      joy1 = SDL_OpenJoystick(joysticks[g_joyConfig.joyindex[0]]);
       joyshrx[0] = 0;
       joyshry[0] = 0;
       joysubx[0] = AXIS_MIN;
@@ -121,13 +144,13 @@ void JoyFrontend_Initialize() {
         ++joyshry[0];
       }
     } else {
-      joytype[0] = DEVICE_MOUSE;
+      g_joyConfig.joytype[0] = DEVICE_MOUSE;
     }
   }
 
-  if (joyinfo[joytype[1]].device == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 1 && static_cast<int>(joy2index) < number_of_joysticks) {
-      joy2 = SDL_OpenJoystick(joysticks[joy2index]);
+  if (joyinfo[g_joyConfig.joytype[1]].device == DEVICE_JOYSTICK) {
+    if (number_of_joysticks > 1 && static_cast<int>(g_joyConfig.joyindex[1]) < number_of_joysticks) {
+      joy2 = SDL_OpenJoystick(joysticks[g_joyConfig.joyindex[1]]);
       joyshrx[1] = 0;
       joyshry[1] = 0;
       joysubx[1] = AXIS_MIN;
@@ -143,7 +166,7 @@ void JoyFrontend_Initialize() {
         ++joyshry[1];
       }
     } else {
-      joytype[1] = DEVICE_NONE;
+      g_joyConfig.joytype[1] = DEVICE_NONE;
     }
   }
   if (joysticks) {
@@ -163,24 +186,31 @@ void JoyFrontend_ShutDown() {
 }
 
 void JoyFrontend_CheckExit() {
-  if (!joy1) return;
+  if (!joy1 || !g_joyConfig.joyexitenable) return;
   SDL_UpdateJoysticks();
-  joyquitevent = SDL_GetJoystickButton(joy1, static_cast<int>(joyexitbutton0)) && SDL_GetJoystickButton(joy1, static_cast<int>(joyexitbutton1));
+  bool quit = SDL_GetJoystickButton(joy1, static_cast<int>(g_joyConfig.joyexitbutton[0])) && 
+              SDL_GetJoystickButton(joy1, static_cast<int>(g_joyConfig.joyexitbutton[1]));
+  
+  // We can push this back to the peripheral via a command if needed, but for now we just use a local bool if it's strictly for frontend exit.
+  // Wait, the core might need to know if we want to quit.
+  if (quit) {
+    g_state.mode = MODE_EXIT;
+  }
 }
 
 void JoyFrontend_Update() {
   // Joystick 0
-  if (joy1 && joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
+  if (joy1 && joyinfo[g_joyConfig.joytype[0]].device == DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
       SDL_UpdateJoysticks();
 
-      bool b0 = SDL_GetJoystickButton(joy1, static_cast<int>(joy1button1));
+      bool b0 = SDL_GetJoystickButton(joy1, static_cast<int>(g_joyConfig.joybutton[0]));
       bool b1 = false;
-      if (joyinfo[joytype[1]].device == DEVICE_NONE) {
-        b1 = SDL_GetJoystickButton(joy1, static_cast<int>(joy1button2));
+      if (joyinfo[g_joyConfig.joytype[1]].device == DEVICE_NONE) {
+        b1 = SDL_GetJoystickButton(joy1, static_cast<int>(g_joyConfig.joybutton[1]));
       }
       
       JoystickButtonPayload_t pb0 = {0, b0};
@@ -188,8 +218,8 @@ void JoyFrontend_Update() {
       JoystickButtonPayload_t pb1 = {1, b1};
       Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
-      int x = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(joy1axis0))) - joysubx[0]) >> joyshrx[0];
-      int y = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(joy1axis1))) - joysuby[0]) >> joyshry[0];
+      int x = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(g_joyConfig.joyaxis[0][0]))) - joysubx[0]) >> joyshrx[0];
+      int y = (static_cast<int>(SDL_GetJoystickAxis(joy1, static_cast<int>(g_joyConfig.joyaxis[0][1]))) - joysuby[0]) >> joyshry[0];
 
       // "Square" a modern analog stick
       if (y < static_cast<int>(PDL_CENTRAL) / 2) {
@@ -222,23 +252,23 @@ void JoyFrontend_Update() {
   }
 
   // Joystick 1
-  if (joy2 && joyinfo[joytype[1]].device == DEVICE_JOYSTICK) {
+  if (joy2 && joyinfo[g_joyConfig.joytype[1]].device == DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
       SDL_UpdateJoysticks();
 
-      bool b2 = SDL_GetJoystickButton(joy2, static_cast<int>(joy2button1));
+      bool b2 = SDL_GetJoystickButton(joy2, static_cast<int>(g_joyConfig.joy2button1));
       JoystickButtonPayload_t pb2 = {2, b2};
       Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
-      if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+      if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_NONE) {
         JoystickButtonPayload_t pb1 = {1, b2};
         Peripheral_Command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
 
-      int x = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(joy2axis0))) - joysubx[1]) >> joyshrx[1];
-      int y = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(joy2axis1))) - joysuby[1]) >> joyshry[1];
+      int x = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(g_joyConfig.joyaxis[1][0]))) - joysubx[1]) >> joyshrx[1];
+      int y = (static_cast<int>(SDL_GetJoystickAxis(joy2, static_cast<int>(g_joyConfig.joyaxis[1][1]))) - joysuby[1]) >> joyshry[1];
 
       if (x == 127 || x == 128) x += g_frontend_pdl_trim_x;
       if (y == 127 || y == 128) y += g_frontend_pdl_trim_y;
@@ -284,8 +314,8 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
 }
 
 auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool autorep) -> bool {
-  int nJoyNum = (joyinfo[joytype[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
-  int nCenteringType = joyinfo[joytype[static_cast<size_t>(nJoyNum)]].mode;
+  int nJoyNum = (joyinfo[g_joyConfig.joytype[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
+  int nCenteringType = joyinfo[g_joyConfig.joytype[static_cast<size_t>(nJoyNum)]].mode;
 
   bool keychange = !extended;
   if (!extended) {
@@ -312,20 +342,20 @@ auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool 
   if (keychange) {
     if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
       if (down) {
-        if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+        if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_KEYBOARD) {
           JoystickButtonPayload_t p = {0, true};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
-        } else if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+        } else if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_NONE) {
           JoystickButtonPayload_t p2 = {2, true};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
           JoystickButtonPayload_t p1 = {1, true};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       } else {
-         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+         if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_KEYBOARD) {
           JoystickButtonPayload_t p = {0, false};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
-        } else if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+        } else if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_NONE) {
           JoystickButtonPayload_t p2 = {2, false};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
           JoystickButtonPayload_t p1 = {1, false};
@@ -334,12 +364,12 @@ auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down, bool 
       }
     } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
       if (down) {
-        if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+        if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_KEYBOARD) {
           JoystickButtonPayload_t p = {1, true};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       } else {
-        if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+        if (joyinfo[g_joyConfig.joytype[1]].device != DEVICE_KEYBOARD) {
           JoystickButtonPayload_t p = {1, false};
           Peripheral_Command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
