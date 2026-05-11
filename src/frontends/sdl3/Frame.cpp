@@ -41,7 +41,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/Harddisk.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/Joystick.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Mockingboard.h"
@@ -235,7 +235,12 @@ void DrawStatusArea(int drawflags) {
       iDrive2Status = DISK_STATUS_PROT;
     }
 
-    iHDDStatus = HD_GetStatus();
+    HarddiskStatus_t hstatus{};
+    size_t hsize = sizeof(hstatus);
+    if (Peripheral_Query(7, HARDDISK_CMD_GET_STATUS, &hstatus, &hsize) ==
+        PERIPHERAL_OK) {
+      iHDDStatus = hstatus.activity_status;
+    }
 
     leds[0] = static_cast<char>(LEDS + iDrive1Status);
     font_print(8, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
@@ -614,7 +619,8 @@ void ProcessButtonClick(int button, int mod) {
       if (mod & SDL_KMOD_CTRL) {
         if (mod & SDL_KMOD_SHIFT) {
           printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
-          HD_Eject(button - BTN_DRIVE1);
+          HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - BTN_DRIVE1)};
+          Peripheral_Command(7, HARDDISK_CMD_EJECT, &ecmd, sizeof(ecmd));
         } else {
           printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           DiskEjectCmd_t ecmd{};
@@ -627,9 +633,9 @@ void ProcessButtonClick(int button, int mod) {
 
       if (mod & SDL_KMOD_SHIFT) {
         if (mod & SDL_KMOD_ALT) {
-          HD_FTP_Select(button - BTN_DRIVE1);
+          HarddiskUI_FTPSelect(button - BTN_DRIVE1);
         } else {
-          HD_Select(button - BTN_DRIVE1);
+          HarddiskUI_Select(button - BTN_DRIVE1);
         }
       } else {
         extern void DiskSelect(int drive);

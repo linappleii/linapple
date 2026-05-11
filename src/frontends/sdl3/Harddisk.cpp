@@ -5,18 +5,19 @@
 #include <string>
 #include <sys/stat.h>
 
-#include "apple2/peripherals/harddisk/Harddisk.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
+#include "core/Peripheral.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/Frame.h"
 
 // Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
 // This file only contains frontend UI functions.
 
-void HD_FTP_Select(int nDrive)
+void HarddiskUI_FTPSelect(int nDrive)
 {
   // Selects HDrive from FTP directory
   static size_t fileIndex = 0; // file index will be remembered for current dir
@@ -72,7 +73,11 @@ void HD_FTP_Select(int nDrive)
 
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (!error) {
-    if (HD_InsertDisk2(nDrive, localPath.c_str())) {
+    HarddiskInsertCmd_t cmd{};
+    cmd.drive = static_cast<uint8_t>(nDrive);
+    strncpy(cmd.path, localPath.c_str(), sizeof(cmd.path) - 1);
+    
+    if (Peripheral_Command(7, HARDDISK_CMD_INSERT, &cmd, sizeof(cmd)) == PERIPHERAL_OK) {
       // save file names for HDD disk 1 or 2
       if (nDrive) {
         Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str()); Configuration::Instance().Save();
@@ -85,7 +90,7 @@ void HD_FTP_Select(int nDrive)
   DrawFrameWindow();
 }
 
-void HD_Select(int nDrive)
+void HarddiskUI_Select(int nDrive)
 {
   // Selects HDrive from file list
   static size_t fileIndex = 0; // file index will be remembered for current dir
@@ -136,7 +141,11 @@ void HD_Select(int nDrive)
 
   // in future: save file name in registry for future fetching
   // for one drive will be one reg parameter
-  if (HD_InsertDisk2(nDrive, fullPath.c_str())) {
+  HarddiskInsertCmd_t cmd{};
+  cmd.drive = static_cast<uint8_t>(nDrive);
+  strncpy(cmd.path, fullPath.c_str(), sizeof(cmd.path) - 1);
+
+  if (Peripheral_Command(7, HARDDISK_CMD_INSERT, &cmd, sizeof(cmd)) == PERIPHERAL_OK) {
     // save file names for HDD disk 1 or 2
     if (nDrive) {
       Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2, fullPath.c_str()); Configuration::Instance().Save();

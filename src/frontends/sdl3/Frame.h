@@ -63,5 +63,8 @@ void SetFullScreenMode();
 
 void SetNormalMode();
 
+void HarddiskUI_FTPSelect(int nDrive);
+void HarddiskUI_Select(int nDrive);
+
 extern bool g_bScrollLock_FullSpeed;
 

@@ -1,26 +1,5 @@
-#include <cstdint>
 #pragma once
 
-extern bool g_bHD_Enabled;
-
-bool HD_CardIsEnabled();
-
-void HD_SetEnabled(bool bEnabled);
-
-const char* HD_GetFullName(int drive);
-
-void HD_Eject(const int iDrive);
-
-void HD_Cleanup();
-
-bool HD_InsertDisk2(int nDrive, const char* pszFilename);
-
-bool HD_InsertDisk(int nDrive, const char* imagefilename);
-
-void HD_Select(int nDrive);
-
-void HD_FTP_Select(int nDrive);
-
-int HD_GetStatus(void);
-
-void HD_ResetStatus(void);
+// Harddisk peripheral now uses the standardized Peripheral ABI.
+// All interactions should go through Peripheral_Command and Peripheral_Query
+// using the IDs defined in HarddiskCommands.h.

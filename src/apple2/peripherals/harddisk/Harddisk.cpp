@@ -120,18 +120,6 @@ struct HarddiskPeripheral_t {
         host(nullptr) {}
 };
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static HarddiskPeripheral_t* g_pHDInstance = nullptr;
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
-
-auto HD_GetStatus() -> int {
-  return g_pHDInstance ? g_pHDInstance->status : DISK_STATUS_OFF;
-}
-
-void HD_ResetStatus() {
-  if (g_pHDInstance) g_pHDInstance->status = DISK_STATUS_OFF;
-}
-
 static void GetImageTitle(const char* imageFileName,
                           HarddiskDrive_t* pHardDrive) {
   char imagetitle[128];
@@ -261,6 +249,10 @@ static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
       }
       return PERIPHERAL_OK;
     }
+    case HARDDISK_CMD_RESET_STATUS: {
+      hp->status = DISK_STATUS_OFF;
+      return PERIPHERAL_OK;
+    }
     default:
       return PERIPHERAL_INCOMPATIBLE;
   }
@@ -299,6 +291,8 @@ static auto HD_ABI_Query(void* instance, uint32_t cmd, void* data, size_t* size)
     Util_SafeStrCpy(s->drive1_full_path, hp->drives[1].hd_fullname,
                     HARDDISK_STATUS_PATH_MAX);
 
+    s->activity_status = static_cast<uint8_t>(hp->status);
+
     *size = sizeof(HarddiskStatus_t);
     return PERIPHERAL_OK;
   }
@@ -336,7 +330,6 @@ static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
     HD_Insert_Internal(hp, 1, path, false);
   }
 
-  g_pHDInstance = hp;
   return hp;
 }
 
@@ -347,9 +340,10 @@ static void HD_ABI_Shutdown(void* instance) {
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
   for (int i = 0; i < 2; i++) HD_CleanupDrive(&hp->drives[i]);
   HarddiskLoader_Shutdown();
-  if (g_pHDInstance == hp) g_pHDInstance = nullptr;
   delete hp;
 }
+
+enum { DEVICE_OK = 0x00, DEVICE_UNKNOWN_ERROR = 0x03, DEVICE_IO_ERROR = 0x08 };
 
 Peripheral_t g_harddisk_peripheral = {
     LINAPPLE_ABI_VERSION,
@@ -369,69 +363,6 @@ Peripheral_t g_harddisk_peripheral = {
     nullptr,  // load_state
     HD_ABI_Command,
     HD_ABI_Query};
-
-
-auto HD_CardIsEnabled() -> bool {
-  return g_pHDInstance && g_pHDInstance->rom_loaded && g_pHDInstance->enabled;
-}
-
-void HD_SetEnabled(bool bEnabled) {
-  if (!g_pHDInstance) return;
-  if (g_pHDInstance->enabled == bEnabled) return;
-  g_pHDInstance->enabled = bEnabled;
-  if (!g_pHDInstance->host) return;
-
-  if (g_pHDInstance->enabled) {
-    uint8_t slot_rom[256];
-    memcpy(slot_rom, Hddrvr_dat, 256);
-    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot),
-                                       slot_rom);
-    g_pHDInstance->rom_loaded = true;
-  } else {
-    uint8_t empty_rom[256] = {0};
-    g_pHDInstance->host->RegisterCxROM(static_cast<int>(g_pHDInstance->slot),
-                                       empty_rom);
-    g_pHDInstance->rom_loaded = false;
-  }
-}
-
-auto HD_GetFullName(int nDrive) -> const char* {
-  if (!g_pHDInstance || nDrive < 0 || nDrive >= 2) return "";
-  return g_pHDInstance->drives[nDrive].hd_fullname;
-}
-
-void HD_Cleanup() {
-  if (g_pHDInstance) {
-    for (int i = 0; i < 2; i++) HD_CleanupDrive(&g_pHDInstance->drives[i]);
-  }
-}
-
-void HD_Eject(const int iDrive) {
-  if (!g_pHDInstance || !IsDriveValid(iDrive)) return;
-  HarddiskDrive_t* pDrive = &g_pHDInstance->drives[iDrive];
-
-  if (pDrive->hd_imageloaded) {
-    HD_CleanupDrive(pDrive);
-    if (g_pHDInstance->host) {
-      const char* key = (iDrive == 0) ? "Harddisk Image 1" : "Harddisk Image 2";
-      g_pHDInstance->host->SetConfig("Preferences", key, "");
-      g_pHDInstance->host->NotifyStatusChanged(
-          static_cast<int>(g_pHDInstance->slot));
-    }
-  }
-}
-
-auto HD_InsertDisk(int nDrive, const char* imageFileName) -> bool {
-  if (!g_pHDInstance || !IsDriveValid(nDrive)) return false;
-  return HD_Insert_Internal(g_pHDInstance, nDrive, imageFileName, false) ==
-         HARDDISK_ERR_NONE;
-}
-
-auto HD_InsertDisk2(int nDrive, const char* pszFilename) -> bool {
-  return HD_InsertDisk(nDrive, pszFilename);
-}
-
-enum { DEVICE_OK = 0x00, DEVICE_UNKNOWN_ERROR = 0x03, DEVICE_IO_ERROR = 0x08 };
 
 static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
                        uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
