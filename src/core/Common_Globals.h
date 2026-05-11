@@ -22,7 +22,6 @@ extern int g_nCpuCyclesFeedback;
 extern uint32_t g_dwCyclesThisFrame;
 extern bool g_bDisableDirectSound;
 extern struct SuperSerialCard sg_SSC;
-extern struct MouseInterface sg_Mouse;
 extern uint32_t g_Slot4;
 extern CURL* g_curl;
 

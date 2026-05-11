@@ -3,8 +3,6 @@
 
 typedef struct tagSS_CARD_MOCKINGBOARD SS_CARD_MOCKINGBOARD;
 
-extern bool g_bMBTimerIrqActive;
-extern uint32_t g_uTimer1IrqCount;
 
 enum eSOUNDCARDTYPE {
   SC_UNINIT = 0,

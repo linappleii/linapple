@@ -136,7 +136,7 @@ static std::array<MockingboardPeripheral_t*, 8> active_mb_instances = {
 
 // Legacy global vars (kept for now, will be removed)
 bool g_bMBTimerIrqActive = false;
-uint32_t g_uTimer1IrqCount = 0;
+static uint32_t g_uTimer1IrqCount = 0;
 
 static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(chip_idx));

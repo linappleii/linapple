@@ -30,7 +30,7 @@ static constexpr int KEY_DELAY = 25;
 // define time when cache ftp dir.listing must be refreshed
 static constexpr int RENEW_TIME = 24 * 3600;
 
-std::array<char, 512> g_sFTPDirListing = {
+static std::array<char, 512> g_sFTPDirListing = {
     {"cache/ftp."}};  // name for FTP-directory listing
 
 struct FTPGeneratorContext {

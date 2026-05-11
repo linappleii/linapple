@@ -57,7 +57,7 @@ struct MousePeripheral_t {
 
 
 // Legacy global (will be removed)
-struct MouseInterface sg_Mouse;
+static struct MouseInterface sg_Mouse;
 
 static char MouseInterface_rom[] =
     "\x2C\x58\xFF\x70\x1B\x38\x90\x18\xB8\x50\x15\x01\x20\xF4\xF4\xF4"
