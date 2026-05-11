@@ -94,7 +94,4 @@ auto SSC_IOWrite(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
 // Interface for Frontend to Core
 void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte);
 
-// Global instance (to be moved/handled)
-extern struct SuperSerialCard sg_SSC;
-
 #endif  // SERIALCOMMS_H

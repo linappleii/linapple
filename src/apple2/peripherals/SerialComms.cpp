@@ -277,15 +277,12 @@ struct SSCPeripheral_t {
   int slot;
 };
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static SSCPeripheral_t* active_ssc_instance = nullptr;
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
-
 static void GetDIPSW(SSCPeripheral_t* mp);
 static void SetDIPSWDefaults(SSCPeripheral_t* mp);
 static auto GenerateControl(SSCPeripheral_t* mp) -> uint8_t;
 static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t;
 static void UpdateCommState(SSCPeripheral_t* mp);
+static void SSC_PushRxByte_Internal(SSCPeripheral_t* mp, uint8_t byte);
 
 static auto CommCommand(SSCPeripheral_t* mp, uint16_t pc, uint16_t addr,
                         uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
@@ -317,8 +314,6 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
   instance->host = host;
   instance->slot = slot;
 
-  active_ssc_instance = instance;
-
   const uint32_t SSC_FW_SIZE = 2 * 1024;
   const uint32_t SSC_SLOT_FW_SIZE = 256;
   const uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
@@ -349,11 +344,14 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
 }
 
 static void SSC_ABI_Reset(void* instance) {
+  if (!instance) return;
   auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
   SSC_Reset(&pSSCP->logic);
+  GetDIPSW(pSSCP);
 }
 
 static void SSC_ABI_Shutdown(void* instance) {
+  if (!instance) return;
   auto* pSSCP = static_cast<SSCPeripheral_t*>(instance);
   SSC_Destroy(&pSSCP->logic);
   delete pSSCP;
@@ -420,7 +418,7 @@ static auto SSC_ABI_Command(void* instance, uint32_t cmd, const void* data,
   switch (static_cast<SerialCommsCmd_e>(cmd)) {
     case SSC_CMD_PUSH_RX_BYTE: {
       if (size < 1) return PERIPHERAL_ERROR;
-      SSC_PushRxByte(&mp->logic, *static_cast<const uint8_t*>(data));
+      SSC_PushRxByte_Internal(mp, *static_cast<const uint8_t*>(data));
       return PERIPHERAL_OK;
     }
   }
@@ -450,22 +448,12 @@ Peripheral_t g_ssc_peripheral = {
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 void SSC_Reset(SuperSerialCard* pSSC) {
-  // If we can find the peripheral instance, use it
-  SSCPeripheral_t* mp = active_ssc_instance;
-  // Fallback to just using pSSC if mp logic doesn't match pSSC (unlikely for
-  // single instance)
-  if (mp && &mp->logic == pSSC) {
-    GetDIPSW(mp);
-  } else {
-    // This is a bit of a hack but matches the requirement to use
-    // active_ssc_instance if we can't get it from pSSC.
-    pSSC->m_vRecvBytes = 0;
-    pSSC->m_bTxIrqEnabled = false;
-    pSSC->m_bRxIrqEnabled = false;
-    pSSC->m_bWrittenTx = false;
-    pSSC->m_vbCommIRQ = false;
-    pSSC->m_uCommandByte = 0xFF;
-  }
+  pSSC->m_vRecvBytes = 0;
+  pSSC->m_bTxIrqEnabled = false;
+  pSSC->m_bRxIrqEnabled = false;
+  pSSC->m_bWrittenTx = false;
+  pSSC->m_vbCommIRQ = false;
+  pSSC->m_uCommandByte = 0xFF;
 }
 
 void SSC_Destroy(SuperSerialCard* pSSC) {
@@ -807,33 +795,24 @@ static auto CommDipSw(SSCPeripheral_t* mp, uint16_t, uint16_t addr, uint8_t,
   return sw;
 }
 
-void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
-  // Use active_ssc_instance if available, otherwise fallback to pSSC but
-  // without IRQ
-  SSCPeripheral_t* mp = active_ssc_instance;
-  if (mp && &mp->logic == pSSC) {
-    if (mp->logic.m_vRecvBytes < uRecvBufferSize) {
-      mp->logic.m_RecvBuffer[mp->logic.m_vRecvBytes++] = byte;
-      if (mp->logic.m_bRxIrqEnabled) {
-        mp->logic.m_vbCommIRQ = true;
-        if (mp->host && mp->host->AssertIrq) {
-          mp->host->AssertIrq(mp->slot, true);
-        }
-      }
-      if (mp->host && mp->host->NotifyActivityChanged) {
-        mp->host->NotifyActivityChanged(mp->slot, true);
+static void SSC_PushRxByte_Internal(SSCPeripheral_t* mp, uint8_t byte) {
+  if (mp->logic.m_vRecvBytes < uRecvBufferSize) {
+    mp->logic.m_RecvBuffer[mp->logic.m_vRecvBytes++] = byte;
+    if (mp->logic.m_bRxIrqEnabled) {
+      mp->logic.m_vbCommIRQ = true;
+      if (mp->host && mp->host->AssertIrq) {
+        mp->host->AssertIrq(mp->slot, true);
       }
     }
-  } else if (pSSC) {
-    if (pSSC->m_vRecvBytes < uRecvBufferSize) {
-      pSSC->m_RecvBuffer[pSSC->m_vRecvBytes++] = byte;
-      if (pSSC->m_bRxIrqEnabled) {
-        pSSC->m_vbCommIRQ = true;
-        // We can't assert IRQ here because we don't have the host/slot
-        // but this case shouldn't happen with the current architecture.
-      }
+    if (mp->host && mp->host->NotifyActivityChanged) {
+      mp->host->NotifyActivityChanged(mp->slot, true);
     }
   }
+}
+
+void SSC_PushRxByte(SuperSerialCard* pSSC, uint8_t byte) {
+  (void)pSSC;
+  (void)byte;
 }
 
 auto SSC_GetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms* pSS) -> uint32_t {
