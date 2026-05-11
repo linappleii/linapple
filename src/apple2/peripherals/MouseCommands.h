@@ -16,6 +16,10 @@ typedef enum {
   MOUSE_CMD_SET_BUTTON = 1  // data: MouseButtonPayload_t
 } MouseCmd_e;
 
+typedef enum {
+  MOUSE_QUERY_IS_ACTIVE = 0x0001 // out: uint8_t (0=inactive, 1=active)
+} MouseQuery_e;
+
 typedef struct {
   int x;
   int x_range;

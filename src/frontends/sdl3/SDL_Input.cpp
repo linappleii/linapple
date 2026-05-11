@@ -8,7 +8,6 @@
 #include "apple2/peripherals/MouseCommands.h"
 #include "apple2/Video.h"
 #include "apple2/SoundCore.h"
-#include "apple2/peripherals/MouseInterface.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 #include "Debugger/Debug.h"
 #include "core/LinAppleCore.h"
@@ -172,10 +171,14 @@ void SDL_HandleEvent(SDL_Event *e) {
               Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
             }
           }
-          else
-          if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
-              (Mouse_Active())) {
-            SetUsingCursor(true);
+          else {
+            uint8_t mouse_active = 0;
+            size_t qsize = 1;
+            Peripheral_Query(4, MOUSE_QUERY_IS_ACTIVE, &mouse_active, &qsize);
+            if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
+                (mouse_active != 0)) {
+              SetUsingCursor(true);
+            }
           }
         }
       }

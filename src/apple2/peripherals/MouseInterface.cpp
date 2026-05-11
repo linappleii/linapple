@@ -55,7 +55,6 @@ struct MousePeripheral_t {
   int slot = 0;
 };
 
-static MousePeripheral_t* active_mouse_instance = nullptr;
 
 // Legacy global (will be removed)
 struct MouseInterface sg_Mouse;
@@ -292,12 +291,9 @@ static auto Mouse_IOWrite(void* instance, uint16_t PC, uint16_t uAddr,
 }
 
 static auto Mouse_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  if (active_mouse_instance) return active_mouse_instance;
-
   auto* mp = new MousePeripheral_t{};
   mp->host = host;
   mp->slot = slot;
-  active_mouse_instance = mp;
 
   const uint32_t FW_SIZE = 2 * 1024;
   auto* pData = reinterpret_cast<uint8_t*>(MouseInterface_rom);
@@ -341,7 +337,6 @@ static void Mouse_ABI_Shutdown(void* instance) {
     delete[] mp->logic.m_pSlotRom;
     mp->logic.m_pSlotRom = nullptr;
   }
-  if (active_mouse_instance == mp) active_mouse_instance = nullptr;
   delete mp;
 }
 
@@ -384,6 +379,22 @@ static auto Mouse_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
   return PERIPHERAL_ERROR;
 }
 
+static auto Mouse_ABI_Query(void* instance, uint32_t query_id, void* out,
+                            size_t* out_size) -> PeripheralStatus {
+  if (!instance || !out || !out_size) return PERIPHERAL_ERROR;
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+
+  switch (static_cast<MouseQuery_e>(query_id)) {
+    case MOUSE_QUERY_IS_ACTIVE: {
+      if (*out_size < 1) return PERIPHERAL_ERROR;
+      *static_cast<uint8_t*>(out) = mp->logic.m_bActive ? 1 : 0;
+      *out_size = 1;
+      return PERIPHERAL_OK;
+    }
+  }
+  return PERIPHERAL_ERROR;
+}
+
 Peripheral_t g_mouse_peripheral = {
     LINAPPLE_ABI_VERSION,
     "linapple.mouse",
@@ -401,8 +412,7 @@ Peripheral_t g_mouse_peripheral = {
     nullptr,  // save_state
     nullptr,  // load_state
     Mouse_ABI_Command,
-    nullptr   // query
-};
+    Mouse_ABI_Query};
 
 
 static void Mouse_OnCommand(MousePeripheral_t* mp) {
@@ -593,31 +603,8 @@ static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
       (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
 }
 
-// --- Legacy Procedural API ---
-
-void Mouse_SetSlotRom() { Mouse_SetSlotRom_Instance(active_mouse_instance); }
-
-void Mouse_SetPosition(int xvalue, int xrange, int yvalue, int yrange) {
-  if (!active_mouse_instance) return;
-  MousePosPayload_t p = {xvalue, xrange, yvalue, yrange};
-  Mouse_ABI_Command(active_mouse_instance, MOUSE_CMD_SET_POS, &p, sizeof(p));
-}
-
-void Mouse_SetButton(eBUTTON Button, eBUTTONSTATE State) {
-  if (!active_mouse_instance) return;
-  MouseButtonPayload_t p = {static_cast<uint8_t>(Button), State == BUTTON_DOWN};
-  Mouse_ABI_Command(active_mouse_instance, MOUSE_CMD_SET_BUTTON, &p, sizeof(p));
-}
-
-auto Mouse_Active() -> bool {
-  return active_mouse_instance && active_mouse_instance->logic.m_bActive;
-}
-
-void Mouse_SetVBlank(bool bVBL) {
-  Mouse_ABI_OnVBlank(active_mouse_instance, bVBL);
-}
+PERIPHERAL_REGISTER(g_mouse_peripheral)
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
-PERIPHERAL_REGISTER(g_mouse_peripheral)
