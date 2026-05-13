@@ -14,7 +14,7 @@ extern void FrameRefreshStatus(int);
 #include "Debugger_Assembler.h"
 #include "Video.h"
 #include "apple2/SoundCore.h"
-#include "apple2/peripherals/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Peripheral.h"
 #include "core/Log.h"
 #include "apple2/Memory.h"

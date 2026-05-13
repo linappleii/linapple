@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdio>
 #include <cstring>
 
-#include "apple2/peripherals/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Common.h"
 #include "core/Peripheral.h"
 #include "frontends/sdl3/Frame.h"

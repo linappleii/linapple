@@ -40,7 +40,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Cmd_Output.h"
 #include "core/Util_Text.h"
 #include "core/Peripheral.h"
-#include "apple2/peripherals/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "Video.h"
 #include <unistd.h>
 #include <cstring>

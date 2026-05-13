@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include "apple2/peripherals/Keyboard_Maps.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include <cstring>
 
 TEST_CASE("Keyboard Maps: Map_US sanity check") {

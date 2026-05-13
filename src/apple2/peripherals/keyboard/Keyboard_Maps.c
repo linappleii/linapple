@@ -2,7 +2,7 @@
  * Keyboard_Maps.c - Shared Keyboard Mapping Implementation
  */
 
-#include "apple2/peripherals/Keyboard_Maps.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 
 // US Layout hardware encoder mapping (un-shifted ASCII)
 const Apple2KeyboardMap_t Map_US = {

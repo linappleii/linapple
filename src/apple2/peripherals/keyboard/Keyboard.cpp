@@ -12,8 +12,8 @@
 #include <algorithm>
 
 #include "apple2/Memory.h"
-#include "apple2/peripherals/KeyboardCommands.h"
-#include "apple2/peripherals/Keyboard_Structs.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/Keyboard_Structs.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"

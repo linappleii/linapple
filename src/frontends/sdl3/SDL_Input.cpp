@@ -2,7 +2,7 @@
 #include <SDL3/SDL.h>
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
-#include "apple2/peripherals/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/MouseCommands.h"

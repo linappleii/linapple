@@ -9,8 +9,8 @@
 // the logic follows a repetitive pattern, even if returning distinct values.
 
 #include "SDL3/SDL.h"
-#include "apple2/peripherals/KeyboardCommands.h"
-#include "apple2/peripherals/Keyboard_Maps.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include "apple2/Structs.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"

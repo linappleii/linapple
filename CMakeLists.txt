@@ -232,7 +232,7 @@ endmacro()
 
 # Define all peripherals
 add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/Speaker.cpp" "" TRUE)
-add_peripheral(keyboard "keyboard" "src/apple2/peripherals/Keyboard.cpp;src/apple2/peripherals/Keyboard_Maps.c" "" TRUE)
+add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" TRUE)
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskGCR.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/MouseInterface.cpp" "" TRUE)
@@ -316,7 +316,7 @@ if(BUILD_TESTING)
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
     
-    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/Keyboard_Maps.c src/core/Peripheral.cpp)
+    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/keyboard/Keyboard_Maps.c src/core/Peripheral.cpp)
     target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
 
