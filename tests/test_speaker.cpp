@@ -73,5 +73,36 @@ TEST_CASE("Speaker subsystem accurately generates and filters PCM audio") {
     Speaker_GenerateSamples(&spkr_instance, 1 + pulseWidth + remainingWidth);
   }
 
+  SUBCASE("High-pass filter eliminates DC offset and decays to zero") {
+    // 1. Simulate a persistent 'ON' state by toggling once and doing nothing
+    // else.
+    g_nCumulativeCycles = 3000;
+    Speaker_Reset(&spkr_instance);
+    spkr_instance.recently_active = true;
+
+    // Toggle ON
+    Speaker_Toggle(&spkr_instance, 0, 0, 0, 0, 0);
+
+    // Generate many samples. Without a high-pass filter, the output would stay
+    // at max amplitude.
+    uint32_t totalCycles = 1000000;
+    CpuCalcCycles(totalCycles);
+    Speaker_GenerateSamples(&spkr_instance, totalCycles);
+
+    // The filter should have brought the final samples very close to zero
+    // despite the speaker still being logically "on" (state=true).
+    int16_t lastSample = spkr_instance.sample_buffer.at(0);
+    // We check that it's significantly decayed from the peak volume (0x4000)
+    CHECK(std::abs(lastSample) < 100);
+
+    // 2. Simulate transition to inactivity.
+    spkr_instance.recently_active = false;
+    spkr_instance.filter_state = 1.0f; // Force a high offset
+    Speaker_GenerateSamples(&spkr_instance, 100);
+
+    // The logic should have flushed the filter to zero.
+    CHECK(spkr_instance.filter_state == 0.0f);
+  }
+
   Linapple_Shutdown();
 }
