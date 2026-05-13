@@ -313,8 +313,9 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
      WRITE(val)                \
      regs.a |= val;                \
      SETNZ(regs.a)
-#define AXA   /*FIXME: $93 case is still unclear*/      \
+#define AXA \
      val = regs.a & regs.x & (((base >> 8) + 1) & 0xFF);      \
+     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
      WRITE(val)
 #define AXS   WRITE(regs.a & regs.x)
 #define BCC   if (!flagc) BRANCH_TAKEN;
@@ -516,7 +517,7 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
        if (high > 0x09) high += 0x06;          \
        flagc = (high > 0x0F);            \
        regs.a = (high << 4) | (low & 0x0F);        \
-     }                  \
+      }                  \
      else {                  \
        val    = regs.a + temp + flagc;          \
        flagc  = (val > 0xFF);            \
@@ -537,7 +538,9 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
      flagc  = (temp >= val);            \
      regs.x = temp-val;              \
      SETNZ(regs.x)
-#define SAY   val = regs.y & (((base >> 8) + 1) & 0xFF);        \
+#define SAY \
+     val = regs.y & (((base >> 8) + 1) & 0xFF);      \
+     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
      WRITE(val)
 #define SBC_NMOS temp = READ;                \
      if (regs.ps & AF_DECIMAL) {            \
@@ -612,6 +615,7 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 #define TAS   val = regs.a & regs.x;              \
      regs.sp = 0x100 | val;              \
      val &= (((base >> 8) + 1) & 0xFF);          \
+     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
      WRITE(val)
 #define TAX   regs.x = regs.a;              \
      SETNZ(regs.x)
@@ -635,9 +639,10 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 #define XAA   regs.a = regs.x;              \
      regs.a &= READ;              \
      SETNZ(regs.a)
-#define XAS   val = regs.x & (((base >> 8) + 1) & 0xFF);        \
+#define XAS \
+     val = regs.x & (((base >> 8) + 1) & 0xFF);      \
+     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
      WRITE(val)
-
 void RequestDebugger()
 {
   // BUG: This causes DebugBegin to constantly be called.
