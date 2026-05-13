@@ -1,4 +1,4 @@
-#include "apple2/peripherals/Clock.h"
+#include "apple2/peripherals/clock/Clock.h"
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

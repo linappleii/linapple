@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <vector>
 
 #include "apple2/CPU.h"
-#include "apple2/peripherals/Clock.h"
+#include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/Joystick.h"
 #include "apple2/peripherals/JoystickCommands.h"
 #include "apple2/Memory.h"

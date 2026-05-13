@@ -240,7 +240,7 @@ add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/Mockingboard.
 add_peripheral(ssc "Super Serial Card" "src/apple2/peripherals/SerialComms.cpp" "" TRUE)
 add_peripheral(joystick "Joystick" "src/apple2/peripherals/Joystick.cpp" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/ParallelPrinter.cpp" "" FALSE)
-add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/Clock.cpp" "" FALSE)
+add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
 
 # --- Main Target ---
 add_executable(linapple ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_FE} ${SOURCES_A2_OPTIONAL})

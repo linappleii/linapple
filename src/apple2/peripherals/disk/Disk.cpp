@@ -682,13 +682,8 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
     DiskInsert_Internal(dp, 1, path2, false, false);
   }
 
-  static uint8_t patched_rom[256];
-  memcpy(patched_rom, Disk2_rom, 256);
-  // TODO/FIXME: HACK! REMOVE A WAIT ROUTINE FROM THE DISK CONTROLLER'S FIRMWARE
-  patched_rom[0x4C] = 0xA9;
-  patched_rom[0x4D] = 0x00;
-  patched_rom[0x4E] = 0xEA;
-  host->RegisterCxROM(slot, patched_rom);
+  host->RegisterCxROM(slot,
+                      reinterpret_cast<uint8_t*>(const_cast<char*>(Disk2_rom)));
 
   host->RegisterIO(slot, Disk_IORead, Disk_IOWrite, nullptr, nullptr);
 
