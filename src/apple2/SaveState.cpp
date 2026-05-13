@@ -10,7 +10,7 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/ssc/SerialComms.h"
-#include "apple2/peripherals/Speaker.h"
+#include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "core/Common.h"

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "apple2/peripherals/Speaker_Structs.h"
+#include "apple2/peripherals/speaker/Speaker_Structs.h"
 
 struct SS_IO_Speaker;
 

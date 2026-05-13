@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // implements the C11-compatible Peripheral ABI. It requires void* pointers for
 // instance state and raw memory management to bridge with the core C interface.
 
-#include "apple2/peripherals/Speaker.h"
+#include "apple2/peripherals/speaker/Speaker.h"
 
 #include <array>
 #include <cstring>
