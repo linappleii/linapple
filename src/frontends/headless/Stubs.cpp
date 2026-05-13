@@ -3,7 +3,7 @@
 #include "frontends/sdl3/Frontend.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/ssc/SerialComms.h"
 
 // Use weak symbols so that real implementations in unit tests take precedence
 #define WEAK __attribute__((weak))

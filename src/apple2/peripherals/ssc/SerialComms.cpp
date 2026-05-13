@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Various
  */
 
-#include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/ssc/SerialComms.h"
 
 #include <array>
 #include <cassert>
@@ -53,7 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/SerialCommsCommands.h"
+#include "apple2/peripherals/ssc/SerialCommsCommands.h"
 #include "core/Common.h"
 #include "core/Log.h"
 

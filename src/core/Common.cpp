@@ -4,7 +4,7 @@
 
 #include <cstdio>
 
-#include "apple2/peripherals/SerialComms.h"
+#include "apple2/peripherals/ssc/SerialComms.h"
 
 static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
 static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
