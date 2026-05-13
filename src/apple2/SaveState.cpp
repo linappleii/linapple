@@ -6,7 +6,7 @@
 #include <cstring>
 
 #include "apple2/CPU.h"
-#include "apple2/peripherals/Joystick.h"
+#include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Mockingboard.h"
 #include "apple2/peripherals/SerialComms.h"

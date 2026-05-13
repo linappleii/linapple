@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include <array>
-#include "apple2/peripherals/JoystickCommands.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "SDL3/SDL.h"
 #include "apple2/Structs.h"
 #include "core/Log.h"

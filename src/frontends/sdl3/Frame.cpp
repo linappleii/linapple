@@ -42,7 +42,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/CPU.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/JoystickCommands.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/ParallelPrinter.h"
 #include "apple2/SaveState.h"

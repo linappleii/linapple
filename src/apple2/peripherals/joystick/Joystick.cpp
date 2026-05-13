@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Michael O'Brien, modified for decoupling.
  */
 
-#include "apple2/peripherals/Joystick.h"
+#include "apple2/peripherals/joystick/Joystick.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -37,7 +37,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Structs.h"
-#include "apple2/peripherals/JoystickCommands.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
