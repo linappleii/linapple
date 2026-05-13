@@ -899,12 +899,10 @@ auto MemIsAddrCodeMemory(const uint16_t addr) -> bool
   }
 
   // [$C800..CFFF]
-  if (g_eExpansionRomType == eExpRomNull)
-  {
-#ifdef TODO
-    if (IO_SELECT || INTC8ROM)  // Was at $Csxx and now in [$C800..$CFFF]
+  if (g_eExpansionRomType == eExpRomNull) {
+    if (IO_SELECT || IO_SELECT_InternalROM) {
       return true;
-#endif
+    }
     return false;
   }
 
