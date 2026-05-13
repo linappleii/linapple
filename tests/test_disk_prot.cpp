@@ -39,9 +39,10 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     std::string repo_root = cwd_raw;
     free(cwd_raw);
     
-    // If we are in 'build', go up one level
-    if (repo_root.size() > 5 && repo_root.substr(repo_root.size() - 5) == "build") {
-        repo_root = repo_root.substr(0, repo_root.size() - 6);
+    // If we are in a build directory, go up one level
+    size_t build_pos = repo_root.find("/build");
+    if (build_pos != std::string::npos) {
+        repo_root = repo_root.substr(0, build_pos);
     }
 
     std::string fixture_dir = repo_root + "/tests/fixtures";
