@@ -65,6 +65,8 @@ auto Speaker_Initialize(Speaker_t* instance) -> void {
 
   instance->last_sample_state = false;
   instance->next_sample_cycle = static_cast<double>(g_nCumulativeCycles);
+  instance->filter_state = 0.0f;
+  instance->last_input = 0.0f;
   instance->host = nullptr;
 }
 
@@ -192,12 +194,36 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
       sum += (sampleEnd - currentTime) *
              (instance->last_sample_state ? 1.0 : -1.0);
 
-      const double average = sum / clksPerSample;
-      const int16_t val = static_cast<int16_t>(average * SPKR_SAMPLE_VOLUME);
+      float average = static_cast<float>(sum / clksPerSample);
+
+      // Simple High-Pass Filter (DC Blocker) to prevent popping from DC offset
+      // out = (in - last_in) + 0.999 * last_out
+      instance->filter_state =
+          (average - instance->last_input) + (0.999f * instance->filter_state);
+      instance->last_input = average;
+
+      const int16_t val =
+          static_cast<int16_t>(instance->filter_state * SPKR_SAMPLE_VOLUME);
 
       instance->sample_buffer.at(numSamples++) = val;  // Left
       instance->sample_buffer.at(numSamples++) = val;  // Right
       instance->next_sample_cycle += clksPerSample;
+    }
+  }
+
+  // If we just became inactive, ensure we flush a bit of silence through the
+  // filter to let it decay to zero smoothly.
+  if (!instance->recently_active && instance->filter_state != 0.0f) {
+    while (numSamples < (SPKR_BUFFER_SIZE - 2) &&
+           std::abs(instance->filter_state) > 0.001f) {
+      instance->filter_state *= 0.99f;
+      const int16_t val =
+          static_cast<int16_t>(instance->filter_state * SPKR_SAMPLE_VOLUME);
+      instance->sample_buffer.at(numSamples++) = val;
+      instance->sample_buffer.at(numSamples++) = val;
+    }
+    if (std::abs(instance->filter_state) <= 0.001f) {
+      instance->filter_state = 0.0f;
     }
   }
 
@@ -310,6 +336,7 @@ static auto Spkr_ABI_SaveState(void* instance, void* buffer, size_t* size)
   pSS->state = spkr->state ? 1 : 0;
   pSS->next_sample_cycle = spkr->next_sample_cycle;
   pSS->last_sample_state = spkr->last_sample_state ? 1 : 0;
+  pSS->filter_state = spkr->filter_state;
 
   *size = sizeof(SS_IO_Speaker);
   return PERIPHERAL_OK;
@@ -330,6 +357,7 @@ static auto Spkr_ABI_LoadState(void* instance, const void* buffer, size_t size)
   spkr->state = (pSS->state != 0);
   spkr->next_sample_cycle = pSS->next_sample_cycle;
   spkr->last_sample_state = (pSS->last_sample_state != 0);
+  spkr->filter_state = pSS->filter_state;
 
   return PERIPHERAL_OK;
 }

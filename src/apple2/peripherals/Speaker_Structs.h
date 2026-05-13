@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
-static constexpr size_t MAX_SPKR_EVENTS = 4096;
-static constexpr size_t SPKR_BUFFER_SIZE = 8192;
+static constexpr size_t MAX_SPKR_EVENTS = 16384;
+static constexpr size_t SPKR_BUFFER_SIZE = 16384;
 
 struct SpkrEvent {
   uint64_t cycle = 0;
@@ -19,6 +19,7 @@ struct SS_IO_Speaker {
   uint32_t state = 0;
   double next_sample_cycle = 0.0;
   uint32_t last_sample_state = 0;
+  float filter_state = 0.0f;
 };
 
 struct Speaker_t {
@@ -35,6 +36,9 @@ struct Speaker_t {
   bool last_sample_state = false;
   double next_sample_cycle = 0.0;
   std::array<int16_t, SPKR_BUFFER_SIZE> sample_buffer{};
+
+  float filter_state = 0.0f;
+  float last_input = 0.0f;
 
   void* host = nullptr;  // Opaque pointer to HostInterface_t
   int slot = 0;

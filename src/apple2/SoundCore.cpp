@@ -151,8 +151,8 @@ static sample_buffer *g_spkrMixBuffer = nullptr;
 static sample_buffer *g_mockMixBuffer = nullptr;
 
 void SoundCore_Initialize() {
-  if (!g_spkrMixBuffer) g_spkrMixBuffer = new sample_buffer(16384);
-  if (!g_mockMixBuffer) g_mockMixBuffer = new sample_buffer(16384);
+  if (!g_spkrMixBuffer) g_spkrMixBuffer = new sample_buffer(65536);
+  if (!g_mockMixBuffer) g_mockMixBuffer = new sample_buffer(65536);
   g_spkrMixBuffer->reinit();
   g_mockMixBuffer->reinit();
 }
