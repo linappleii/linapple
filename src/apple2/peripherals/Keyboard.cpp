@@ -6,8 +6,8 @@
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
 // implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state, raw memory management, and static global state to bridge with
-// the core C interface and maintain peripheral singletons.
+// instance state, raw memory management, and instance state to bridge with
+// the core C interface
 
 #include <algorithm>
 

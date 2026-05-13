@@ -116,6 +116,7 @@ struct MockingboardPeripheral_t {
   bool bMB_RegAccessedFlag = false;
   bool bMB_Active = false;
   bool bTimerIrqActive = false;
+  uint32_t uTimer1IrqCount = 0;
   eSOUNDCARDTYPE type = SC_MOCKINGBOARD;
   bool phasor_native = false;
   HostInterface_t* host = nullptr;
@@ -134,10 +135,6 @@ struct MockingboardPeripheral_t {
 
 static std::array<MockingboardPeripheral_t*, 8> active_mb_instances = {nullptr};
 
-// Legacy global vars (kept for now, will be removed)
-bool g_bMBTimerIrqActive = false;
-static uint32_t g_uTimer1IrqCount = 0;
-
 static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(chip_idx));
   if (chip_idx != SY6522_DEVICE_A) {
@@ -155,14 +152,14 @@ static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   pMB->nTimerStatus = 1;
   mp->n6522TimerPeriod = nPeriod;
   mp->bTimerIrqActive = true;
-  g_bMBTimerIrqActive = true;  // Legacy support
+  mp->bTimerIrqActive = true;  // Legacy support
   mp->nMBTimerDevice = static_cast<uint16_t>(chip_idx);
 }
 
 static void StopTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   mp->chips.at(static_cast<size_t>(chip_idx)).nTimerStatus = 0;
   mp->bTimerIrqActive = false;
-  g_bMBTimerIrqActive = false;  // Legacy support
+  mp->bTimerIrqActive = false;  // Legacy support
 }
 
 static void UpdateIFR(MockingboardPeripheral_t* mp, int chip_idx) {
@@ -435,7 +432,7 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
           (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
       if (bTimer1Underflow && (mp->nMBTimerDevice == i) &&
           mp->bTimerIrqActive) {
-        g_uTimer1IrqCount++;
+        mp->uTimer1IrqCount++;
         pMB->sy6522.IFR |= IxR_TIMER1;
         UpdateIFR(mp, i);
 

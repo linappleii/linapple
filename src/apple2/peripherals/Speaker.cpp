@@ -31,8 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
 // implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state, raw memory management, and static global state to bridge with
-// the core C interface and maintain peripheral singletons.
+// instance state and raw memory management to bridge with the core C interface.
 
 #include "apple2/peripherals/Speaker.h"
 
@@ -265,7 +264,6 @@ auto Speaker_GetCurrentState(Speaker_t* instance) -> bool {
 // --- ABI Implementation ---
 
 static constexpr uint16_t ADDR_SPEAKER = 0xC030;
-static Speaker_t* g_spkr_instance = nullptr;
 
 // Justification: Signature is required for compatibility with the Core memory
 // map iofunction pointers.
@@ -278,24 +276,18 @@ static auto SpkrToggleBridge(void* instance, uint16_t pc, uint16_t addr,
 }
 
 static auto Spkr_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  if (g_spkr_instance) {
-    g_spkr_instance->host = static_cast<void*>(host);
-    g_spkr_instance->slot = slot;
-    return g_spkr_instance;
-  }
-
-  g_spkr_instance = new Speaker_t{};
-  g_spkr_instance->host = static_cast<void*>(host);
-  g_spkr_instance->slot = slot;
-  Speaker_Initialize(g_spkr_instance);
+  auto* instance = new Speaker_t{};
+  instance->host = static_cast<void*>(host);
+  instance->slot = slot;
+  Speaker_Initialize(instance);
 
   // Speaker is at $C030
   if (host && host->RegisterDirectIO) {
-    host->RegisterDirectIO(g_spkr_instance, ADDR_SPEAKER, SpkrToggleBridge,
+    host->RegisterDirectIO(instance, ADDR_SPEAKER, SpkrToggleBridge,
                            SpkrToggleBridge);
   }
 
-  return g_spkr_instance;
+  return instance;
 }
 
 static auto Spkr_ABI_Reset(void* instance) -> void {
@@ -304,9 +296,6 @@ static auto Spkr_ABI_Reset(void* instance) -> void {
 
 static auto Spkr_ABI_Shutdown(void* instance) -> void {
   auto* spkr = static_cast<Speaker_t*>(instance);
-  if (spkr == g_spkr_instance) {
-    g_spkr_instance = nullptr;
-  }
   Speaker_Destroy(spkr);
   delete spkr;
 }
