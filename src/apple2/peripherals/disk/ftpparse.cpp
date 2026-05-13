@@ -32,6 +32,7 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 
 #include "core/Common.h"
 #include "core/Common_Globals.h"
+#include "core/Log.h"
 
 const long SECONDS_PER_DAY = 86400;
 const long SECONDS_PER_HOUR = 3600;
@@ -51,7 +52,7 @@ static auto progress_callback(void* clientp, curl_off_t dltotal,
   (void)dltotal;
   (void)ultotal;
   (void)ulnow;
-  printf("FTP: %lu bytes downloaded\n", dlnow);
+  Logger::Info("FTP: %lu bytes downloaded\n", dlnow);
   return 0;
 }
 
@@ -76,9 +77,9 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
 
   if (res != CURLE_OK) {
     /* we failed */
-    printf("Curl error with errorcode = %d\n", res);
+    Logger::Error("Curl error with errorcode = %d\n", res);
   } else {
-    printf("FTP: download completed\n");
+    Logger::Info("FTP: download completed\n");
   }
 
   return res;

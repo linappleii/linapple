@@ -90,12 +90,7 @@ static uint32_t g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute
 static uint32_t g_nCyclesExecuted;
 
 static signed long g_uInternalExecutedCycles;
-// TODO: Use IRQ_CHECK_TIMEOUT=128 when running at full-speed else with IRQ_CHECK_TIMEOUT=1
-// - What about when running benchmark?
-// GPH Dropped to IRQ_CHECK_TIMOUT=16 - Mockingboard-intensive applications sound
-// "jerky" at 128.  Does not show appreciable CPU impact in top CPU profiler.
-static const int IRQ_CHECK_TIMEOUT = 16;
-static signed int g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
+static signed int g_nIrqCheckTimeout = 16;
 
 //
 
@@ -763,11 +758,10 @@ static inline void IRQ(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_
   }
 }
 
-static inline void CheckInterruptSources(uint32_t uExecutedCycles)
-{
+static inline void CheckInterruptSources(uint32_t uExecutedCycles) {
   (void)uExecutedCycles;
-  if (g_nIrqCheckTimeout < 0) {
-    g_nIrqCheckTimeout = IRQ_CHECK_TIMEOUT;
+  if (g_nIrqCheckTimeout <= 0) {
+    g_nIrqCheckTimeout = g_bFullSpeed ? 128 : 16;
   }
 }
 
