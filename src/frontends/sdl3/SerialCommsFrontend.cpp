@@ -1,5 +1,5 @@
 #include "SerialCommsFrontend.h"
-#include "apple2/peripherals/ssc/SerialCommsCommands.h"
+#include "apple2/peripherals/super_serial_card/SerialCommsCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include <unistd.h>

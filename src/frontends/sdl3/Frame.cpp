@@ -46,7 +46,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/Memory.h"
 #include "apple2/peripherals/printer/ParallelPrinter.h"
 #include "apple2/SaveState.h"
-#include "apple2/peripherals/ssc/SerialComms.h"
+#include "apple2/peripherals/super_serial_card/SerialComms.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
 #include "apple2/stretch.h"

@@ -1,7 +1,7 @@
 #ifndef SERIALCOMMSFRONTEND_H
 #define SERIALCOMMSFRONTEND_H
 
-#include "apple2/peripherals/ssc/SerialComms.h"
+#include "apple2/peripherals/super_serial_card/SerialComms.h"
 
 // Initialize the host-side serial port
 auto SSCFrontend_Initialize(const char* serialPortPath) -> bool;
