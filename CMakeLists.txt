@@ -352,6 +352,8 @@ if(BUILD_TESTING)
     target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-hash COMMAND test-util-hash)
 
+    add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
+
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp src/core/Peripheral.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-ui COMMAND test-disk-ui)

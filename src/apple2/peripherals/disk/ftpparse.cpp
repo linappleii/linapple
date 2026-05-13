@@ -357,7 +357,8 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
         fp->flagtrycwd = 0;
         break;
       case 'l':
-        fp->flagtrycwd = 0;  // TODO: handle links
+        fp->flagtrycwd = 1;
+        fp->flagtryretr = 1;
         break;
       default:
         return 0;
@@ -411,6 +412,11 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
   int i = 0;
   if (buf[0] == 'd') {
     fp->flagtrycwd = 1;
+  } else if (buf[0] == 'l') {
+    fp->flagtrycwd = 1;
+    fp->flagtryretr = 1;
+  } else if (buf[0] == '-') {
+    fp->flagtryretr = 1;
   }
 
   // Skip permissions, links, owner, group
@@ -493,6 +499,17 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
   }
   fp->name = buf + i;
   fp->namelen = len - i;
+
+  // Handle symbolic link suffix: "name -> target"
+  if (buf[0] == 'l') {
+    for (int k = 0; k + 3 < fp->namelen; ++k) {
+      if (fp->name[k] == ' ' && fp->name[k + 1] == '-' &&
+          fp->name[k + 2] == '>' && fp->name[k + 3] == ' ') {
+        fp->namelen = k;
+        break;
+      }
+    }
+  }
 
   return 1;
 }
