@@ -5,7 +5,7 @@
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/peripherals/MouseCommands.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "apple2/Video.h"
 #include "apple2/SoundCore.h"
 #include "frontends/sdl3/JoystickFrontend.h"

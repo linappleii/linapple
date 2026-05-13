@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "LinAppleCore.h"
-#include "apple2/peripherals/MouseCommands.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
 
 // Mock Host Interface

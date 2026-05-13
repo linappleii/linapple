@@ -5,7 +5,7 @@
 // instance state, raw memory management, and instance state to bridge with
 // the core C interface
 
-#include "apple2/peripherals/MouseInterface.h"
+#include "apple2/peripherals/mouse/MouseInterface.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -17,7 +17,7 @@
 #include "apple2/Structs.h"
 #include "apple2/Video.h"
 #include "apple2/chips/6821.h"
-#include "apple2/peripherals/MouseCommands.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
