@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Common.h"
 #include "core/ProgramLoader.h"
 #include "Debugger/Debug.h"
-#include "apple2/peripherals/ParallelPrinter.h"
+#include "apple2/peripherals/printer/ParallelPrinter.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"

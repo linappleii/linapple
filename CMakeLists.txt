@@ -239,7 +239,7 @@ add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/MouseInterf
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
 add_peripheral(ssc "Super Serial Card" "src/apple2/peripherals/SerialComms.cpp" "" TRUE)
 add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" TRUE)
-add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/ParallelPrinter.cpp" "" FALSE)
+add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/ParallelPrinter.cpp" "" FALSE)
 add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
 
 # --- Main Target ---

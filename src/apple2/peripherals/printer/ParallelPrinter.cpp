@@ -4,7 +4,7 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-#include "apple2/peripherals/ParallelPrinter.h"
+#include "apple2/peripherals/printer/ParallelPrinter.h"
 
 #include <array>
 #include <cstddef>
