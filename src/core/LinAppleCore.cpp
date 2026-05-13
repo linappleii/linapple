@@ -157,20 +157,20 @@ void Linapple_CpuTest(const char* szTestFile, uint16_t trap_addr) {
 int Linapple_LoadProgram(const char* path) {
   auto res = ProgramLoader_TryLoad(path);
   if (res == PROGRAM_LOAD_OK) return 0;
-  if (res != PROGRAM_LOAD_NOT_A_PROGRAM) return -1;
+  if (res != PROGRAM_LOAD_NOT_A_PROGRAM) return static_cast<int>(res);
 
   // Avoid trying to load known disk image formats as raw programs
   const char* ext = strrchr(path, '.');
   if (ext) {
     static const char* disk_exts[] = {".woz", ".dsk", ".nib", ".2mg", ".po", ".do"};
     for (auto d_ext : disk_exts) {
-      if (strcasecmp(ext, d_ext) == 0) return -1;
+      if (strcasecmp(ext, d_ext) == 0) return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
     }
   }
 
   // Raw binary fallback
   FILE* f = fopen(path, "rb");
-  if (!f) return -1;
+  if (!f) return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
 
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
@@ -178,7 +178,7 @@ int Linapple_LoadProgram(const char* path) {
 
   if (size <= 0 || size > 65536) {
     fclose(f);
-    return -1;
+    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
   }
 
   uint16_t load_addr = (size == 65536) ? 0x0000 : 0x800;
@@ -191,13 +191,13 @@ int Linapple_LoadProgram(const char* path) {
 
   if (fread(mem + load_addr, 1, size, f) != static_cast<size_t>(size)) {
     fclose(f);
-    return -1;
+    return static_cast<int>(PROGRAM_LOAD_FILE_ERROR);
   }
   fclose(f);
 
   memset(memdirty, 0xFF, NUM_PAGES_48K);
   regs.pc = load_addr;
-  return 0;
+  return static_cast<int>(PROGRAM_LOAD_OK);
 }
 
 static auto Internal_RunCycles(uint32_t dwCycles) -> uint32_t {
