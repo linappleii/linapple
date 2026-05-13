@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "core/Peripheral_Types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,21 +20,7 @@ extern "C" {
 
 enum { PERIPHERAL_CMD_MAX_DATA = 512 };
 
-typedef enum {
-  PERIPHERAL_OK = 0,
-  PERIPHERAL_ERROR = -1,
-  PERIPHERAL_INCOMPATIBLE = -2
-} PeripheralStatus;
-
-typedef enum {
-  LOG_DEBUG = 0,
-  LOG_INFO,
-  LOG_WARN,
-  LOG_ERROR
-} PeripheralLogLevel;
-
 #define LINAPPLE_ANY_SLOT_MASK 0xFF
-
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
                                        uint8_t val, uint32_t cycles_left);

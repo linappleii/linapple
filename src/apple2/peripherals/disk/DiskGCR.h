@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-constexpr int GCR_WORKBUF_SIZE = 0x2000;
+constexpr int GCR_WORKBUF_SIZE = 0x3000;
 
 uint32_t GCR_NibblizeTrack(uint8_t* workbuf, uint8_t* trackImageBuffer,
                            bool dosorder, int track);

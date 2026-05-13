@@ -21,7 +21,6 @@ struct Woz2Instance {
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
   bool format_write_protected = false;
-  bool os_readonly = false;
 
   Woz2Instance() = default;
   virtual ~Woz2Instance() {
@@ -64,39 +63,33 @@ static auto Woz2Probe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static auto Woz2Open(const char* path, uint32_t file_offset,
-                     bool* out_os_readonly, void** out_instance)
-    -> DiskError_e {
+static auto Woz2Open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
+                     bool* out_os_readonly, void** out_instance) -> DiskError_e {
+  (void)enhanced_speed;
   auto* instance = new Woz2Instance();
+
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
-    instance->os_readonly = false;
+    *out_os_readonly = false;
   } else {
     instance->file = fopen(path, "rb");
     if (instance->file != nullptr) {
-      instance->os_readonly = true;
+      *out_os_readonly = true;
     } else {
       delete instance;
       return DISK_ERR_IO;
     }
   }
 
-  if (out_os_readonly != nullptr) {
-    *out_os_readonly = instance->os_readonly;
-  }
-
   if (fseek(instance->file, static_cast<long>(file_offset), SEEK_SET) != 0) {
-    fclose(instance->file);
-    instance->file = nullptr;
     delete instance;
     return DISK_ERR_IO;
   }
+
   if (fread(instance->header.data(), 1, WOZ2_HEADER_SIZE, instance->file) !=
       WOZ2_HEADER_SIZE) {
-    fclose(instance->file);
-    instance->file = nullptr;
     delete instance;
-    return DISK_ERR_CORRUPT;
+    return DISK_ERR_IO;
   }
 
   uint32_t info_ptr = FindChunk(instance->header.data(), "INFO");
@@ -104,16 +97,12 @@ static auto Woz2Open(const char* path, uint32_t file_offset,
   instance->trks_offset = FindChunk(instance->header.data(), "TRKS");
 
   if (!info_ptr || !instance->tmap_offset || !instance->trks_offset) {
-    fclose(instance->file);
-    instance->file = nullptr;
     delete instance;
     return DISK_ERR_CORRUPT;
   }
 
   // WOZ 2.0 INFO Data: offset 0=Version, 1=DiskType
   if (instance->header[info_ptr + 1] == 2) {
-    fclose(instance->file);
-    instance->file = nullptr;
     delete instance;
     return DISK_ERR_UNSUPPORTED_FORMAT;
   }
@@ -166,8 +155,7 @@ static void Woz2ReadTrack(void* instance, int track, int phase,
                        (static_cast<uint32_t>(trk[6]) << 16) |
                        (static_cast<uint32_t>(trk[7]) << 24);
 
-  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
-                                        WOZ2_DATA_BLOCK_SIZE * 8) {
+  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE * 8) {
     *nibbles_out = 0;
     return;
   }
@@ -227,5 +215,6 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     Woz2ReadTrack,
     nullptr,  // write_track
     nullptr,  // create
+    nullptr,  // command
     nullptr   // read_flux_bit
 };

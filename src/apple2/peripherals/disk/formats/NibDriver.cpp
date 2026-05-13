@@ -42,8 +42,9 @@ static DiskProbe_e NibProbe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static DiskError_e NibOpen(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) {
+static auto NibOpen(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
+                    bool* out_os_readonly, void** out_instance) -> DiskError_e {
+  (void)enhanced_speed;
   auto* instance = new NibInstance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -62,6 +63,7 @@ static DiskError_e NibOpen(const char* path, uint32_t file_offset,
     *out_os_readonly = instance->os_readonly;
   }
   instance->macbinary_offset = file_offset;
+
   *out_instance = reinterpret_cast<void*>(instance);
   return DISK_ERR_NONE;
 }
@@ -70,9 +72,8 @@ static void NibClose(void* instance) {
   delete reinterpret_cast<NibInstance*>(instance);
 }
 
-static bool NibIsWriteProtected(void* instance) {
-  (void)instance;
-  return false;
+static auto NibIsWriteProtected(void* instance) -> bool {
+  return reinterpret_cast<NibInstance*>(instance)->os_readonly;
 }
 
 static void NibReadTrack(void* instance, int track, int phase,
@@ -84,40 +85,43 @@ static void NibReadTrack(void* instance, int track, int phase,
     return;
   }
 
-  fseek(ni->file,
-        static_cast<long>(ni->macbinary_offset + (track * NIB_TRACK_SIZE)),
-        SEEK_SET);
-  *nibbles_out =
-      static_cast<int>(fread(trackImageBuffer, 1, NIB_TRACK_SIZE, ni->file));
+  if (fseek(ni->file,
+            static_cast<long>(ni->macbinary_offset + (track * NIB_TRACK_SIZE)),
+            SEEK_SET) != 0) {
+    *nibbles_out = 0;
+    return;
+  }
+
+  if (fread(trackImageBuffer, 1, NIB_TRACK_SIZE, ni->file) != NIB_TRACK_SIZE) {
+    *nibbles_out = 0;
+    return;
+  }
+
+  *nibbles_out = NIB_TRACK_SIZE;
 }
 
 static void NibWriteTrack(void* instance, int track, int phase,
                           const uint8_t* trackImage, int nibbles) {
   (void)phase;
+  (void)nibbles;
   auto* ni = reinterpret_cast<NibInstance*>(instance);
-  if (ni->os_readonly || track < 0 || track >= NIB_TRACKS) {
-    return;
-  }
+  if (ni->os_readonly || track < 0 || track >= NIB_TRACKS) return;
 
-  int to_write = std::min(nibbles, NIB_TRACK_SIZE);
-  fseek(ni->file,
-        static_cast<long>(ni->macbinary_offset + (track * NIB_TRACK_SIZE)),
-        SEEK_SET);
-  fwrite(trackImage, 1, static_cast<size_t>(to_write), ni->file);
+  if (fseek(ni->file,
+            static_cast<long>(ni->macbinary_offset + (track * NIB_TRACK_SIZE)),
+            SEEK_SET) == 0) {
+    (void)fwrite(trackImage, 1, NIB_TRACK_SIZE, ni->file);
+  }
 }
 
-static DiskError_e NibCreate(const char* path) {
+static auto NibCreate(const char* path) -> DiskError_e {
   FILE* f = fopen(path, "wb");
-  if (!f) {
-    return DISK_ERR_IO;
-  }
+  if (!f) return DISK_ERR_IO;
 
-  uint8_t zero[1024];
-  memset(zero, 0, sizeof(zero));
+  uint8_t zero[1024] = {0};
   for (int i = 0; i < NIB_DISK_SIZE / 1024; ++i) {
-    fwrite(zero, 1, 1024, f);
+    fwrite(zero, 1, sizeof(zero), f);
   }
-  // Handle remainder if any (though NIB_DISK_SIZE is a multiple of 1024)
   if (NIB_DISK_SIZE % 1024 != 0) {
     fwrite(zero, 1, NIB_DISK_SIZE % 1024, f);
   }
@@ -140,5 +144,6 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     NibReadTrack,
     NibWriteTrack,
     NibCreate,
-    nullptr  // read_flux_bit
+    nullptr,  // command
+    nullptr   // read_flux_bit
 };

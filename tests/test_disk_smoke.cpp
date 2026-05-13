@@ -21,7 +21,6 @@ static void setup_smoke_test(const char* imagePath) {
 }
 
 static void teardown_smoke_test() {
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }
 

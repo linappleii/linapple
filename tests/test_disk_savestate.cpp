@@ -58,7 +58,6 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
     CHECK(status.drive0_last_error == DISK_ERR_NONE);
     CHECK(strstr(status.drive0_full_path, "minimal.dsk") != nullptr);
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }
 
@@ -99,6 +98,5 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
     CHECK(status.drive0_loaded == false);
     CHECK(status.drive0_last_error == DISK_ERR_FILE_NOT_FOUND);
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

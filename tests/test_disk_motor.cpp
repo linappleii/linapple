@@ -60,6 +60,5 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
     run_cycles(MOTOR_SPIN_DURATION);
     CHECK(Peripheral_IsAnyActive() == false);
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

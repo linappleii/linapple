@@ -23,6 +23,5 @@ TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
     std::string saved = Configuration::Instance().GetString("Slots", REGVALUE_DISK_IMAGE1);
     CHECK(saved.empty());
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

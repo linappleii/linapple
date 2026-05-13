@@ -33,6 +33,5 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
     CHECK(status.drive0_loaded == true);
     CHECK(status.drive0_last_error == DISK_ERR_NONE);
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

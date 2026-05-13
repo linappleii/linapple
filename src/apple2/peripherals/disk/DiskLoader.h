@@ -38,7 +38,7 @@ void DiskLoader_Register(DiskFormatDriver_t* driver);
  * Returns DISK_ERR_NONE on success.
  */
 DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
-                            bool* pWriteProtected,
+                            uint8_t enhanced_speed, bool* pWriteProtected,
                             DiskFormatDriver_t** out_driver,
                             void** out_instance);
 

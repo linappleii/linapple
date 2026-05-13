@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "apple2/peripherals/disk/DiskError.h"
+#include "core/Peripheral_Types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,7 +65,8 @@ typedef struct DiskFormatDriver_t {
    * wrapper is present. out_os_readonly is set to true if the file was
    * opened read-only. Writes an opaque instance to *out_instance. */
   DiskError_e (*open)(const char* path, uint32_t file_offset,
-                      bool* out_os_readonly, void** out_instance);
+                      uint8_t enhanced_speed, bool* out_os_readonly,
+                      void** out_instance);
 
   /* Must not be NULL. */
   void (*close)(void* instance);
@@ -84,6 +86,10 @@ typedef struct DiskFormatDriver_t {
 
   /* NULL unless creatable_exts is non-empty. path is absolute. */
   DiskError_e (*create)(const char* path);
+
+  /* Optional runtime configuration. */
+  PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data,
+                              size_t size);
 
   /* Reserved. All drivers must set this to NULL.
    * Do not set DRIVER_CAP_FLUX until this interface is finalised. */

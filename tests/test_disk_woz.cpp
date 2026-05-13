@@ -32,6 +32,5 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
     CHECK(strstr(status.drive0_full_path, "minimal.woz") != nullptr);
     CHECK(status.drive0_write_protected == 0);
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

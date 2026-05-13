@@ -6,23 +6,79 @@
 #include <zlib.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
 #include "core/Common.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// For MacBinary
-const int MACBINARY_HEADER_SIZE = 128;
-const int MACBINARY_FILENAME_MAX = 120;
-const int MACBINARY_MAGIC_OFFSET1 = 0x7A;
-const int MACBINARY_MAGIC_OFFSET2 = 0x7B;
-const uint8_t MACBINARY_MAGIC_VALUE = 0x81;
-
+namespace {
 static std::vector<DiskFormatDriver_t*> g_drivers;
+
+constexpr size_t MACBINARY_HEADER_SIZE = 128;
+constexpr size_t MACBINARY_MAGIC_OFFSET1 = 0;
+constexpr size_t MACBINARY_MAGIC_OFFSET2 = 74;
+constexpr uint8_t MACBINARY_MAGIC_VALUE = 0;
+
+auto IsMacBinary(const uint8_t* header, size_t size) -> bool {
+  if (size < 128) return false;
+  return (header[MACBINARY_MAGIC_OFFSET1] == MACBINARY_MAGIC_VALUE &&
+          header[MACBINARY_MAGIC_OFFSET2] == MACBINARY_MAGIC_VALUE);
+}
+
+auto DiskUnGzip(const char* filename, FILE* out) -> bool {
+  gzFile f = gzopen(filename, "rb");
+  if (!f) return false;
+
+  std::array<uint8_t, 8192> buffer;
+  int bytes_read;
+  while ((bytes_read = gzread(f, buffer.data(), buffer.size())) > 0) {
+    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read), out) !=
+        static_cast<size_t>(bytes_read)) {
+      gzclose(f);
+      return false;
+    }
+  }
+  gzclose(f);
+  return true;
+}
+
+auto DiskUnZip(const char* filename, FILE* out) -> bool {
+  int err = 0;
+  zip* z = zip_open(filename, ZIP_RDONLY, &err);
+  if (!z) return false;
+
+  zip_int64_t num_entries = zip_get_num_entries(z, 0);
+  if (num_entries <= 0) {
+    zip_close(z);
+    return false;
+  }
+
+  // Just take the first entry for now
+  zip_file* f = zip_fopen_index(z, 0, 0);
+  if (!f) {
+    zip_close(z);
+    return false;
+  }
+
+  std::array<uint8_t, 8192> buffer;
+  zip_int64_t bytes_read;
+  while ((bytes_read = zip_fread(f, buffer.data(), buffer.size())) > 0) {
+    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read), out) !=
+        static_cast<size_t>(bytes_read)) {
+      zip_fclose(f);
+      zip_close(z);
+      return false;
+    }
+  }
+  zip_fclose(f);
+  zip_close(z);
+  return true;
+}
+}  // namespace
 
 void DiskLoader_Init() { g_drivers.clear(); }
 
@@ -34,51 +90,8 @@ void DiskLoader_Register(DiskFormatDriver_t* driver) {
   }
 }
 
-static bool DiskUnGzip(const char* gzname, FILE* dskF) {
-  if (!dskF) return false;
-  gzFile gzF = gzopen(gzname, "rb");
-  if (!gzF) return false;
-
-  char buffer[8192];
-  int len = 0;
-  while ((len = gzread(gzF, buffer, sizeof(buffer))) > 0) {
-    fwrite(buffer, 1, static_cast<size_t>(len), dskF);
-  }
-  gzclose(gzF);
-  return true;
-}
-
-static bool DiskUnZip(const char* zipname, FILE* dskF) {
-  if (!dskF) return false;
-  int err = 0;
-  zip* arch = zip_open(zipname, 0, &err);
-  if (!arch) return false;
-
-  zip_file* zf = zip_fopen_index(arch, 0, 0);
-  if (!zf) {
-    zip_close(arch);
-    return false;
-  }
-
-  char buffer[8192];
-  zip_int64_t len = 0;
-  while ((len = zip_fread(zf, buffer, sizeof(buffer))) > 0) {
-    fwrite(buffer, 1, static_cast<size_t>(len), dskF);
-  }
-  zip_fclose(zf);
-  zip_close(arch);
-  return true;
-}
-
-static bool IsMacBinary(const uint8_t* header, size_t size) {
-  return (size >= MACBINARY_HEADER_SIZE && header[0] == 0 && header[1] > 0 &&
-          header[1] <= MACBINARY_FILENAME_MAX && header[header[1] + 2] == 0 &&
-          header[MACBINARY_MAGIC_OFFSET1] == MACBINARY_MAGIC_VALUE &&
-          header[MACBINARY_MAGIC_OFFSET2] == MACBINARY_MAGIC_VALUE);
-}
-
 DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
-                            bool* pWriteProtected,
+                            uint8_t enhanced_speed, bool* pWriteProtected,
                             DiskFormatDriver_t** out_driver,
                             void** out_instance) {
   if (!filename || !out_driver || !out_instance) return DISK_ERR_IO;
@@ -179,8 +192,8 @@ DiskError_e DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
 
   if (best_driver) {
     bool os_readonly = false;
-    DiskError_e err =
-        best_driver->open(load_path, file_offset, &os_readonly, out_instance);
+    DiskError_e err = best_driver->open(load_path, file_offset, enhanced_speed,
+                                        &os_readonly, out_instance);
 
     // If it was a temporary file, we can unlink it now if the driver has its
     // own handle or if we just want to clean up. Most drivers in LinApple read

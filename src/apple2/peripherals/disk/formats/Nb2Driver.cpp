@@ -42,8 +42,9 @@ static DiskProbe_e Nb2Probe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static DiskError_e Nb2Open(const char* path, uint32_t file_offset,
-                           bool* out_os_readonly, void** out_instance) {
+static auto Nb2Open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
+                    bool* out_os_readonly, void** out_instance) -> DiskError_e {
+  (void)enhanced_speed;
   auto* instance = new Nb2Instance();
   instance->file = fopen(path, "r+b");
   if (instance->file != nullptr) {
@@ -62,6 +63,7 @@ static DiskError_e Nb2Open(const char* path, uint32_t file_offset,
     *out_os_readonly = instance->os_readonly;
   }
   instance->macbinary_offset = file_offset;
+
   *out_instance = reinterpret_cast<void*>(instance);
   return DISK_ERR_NONE;
 }
@@ -70,9 +72,8 @@ static void Nb2Close(void* instance) {
   delete reinterpret_cast<Nb2Instance*>(instance);
 }
 
-static bool Nb2IsWriteProtected(void* instance) {
-  (void)instance;
-  return false;
+static auto Nb2IsWriteProtected(void* instance) -> bool {
+  return reinterpret_cast<Nb2Instance*>(instance)->os_readonly;
 }
 
 static void Nb2ReadTrack(void* instance, int track, int phase,
@@ -84,38 +85,42 @@ static void Nb2ReadTrack(void* instance, int track, int phase,
     return;
   }
 
-  fseek(ni->file,
-        static_cast<long>(ni->macbinary_offset + (track * NB2_TRACK_SIZE)),
-        SEEK_SET);
-  *nibbles_out =
-      static_cast<int>(fread(trackImageBuffer, 1, NB2_TRACK_SIZE, ni->file));
+  if (fseek(ni->file,
+            static_cast<long>(ni->macbinary_offset + (track * NB2_TRACK_SIZE)),
+            SEEK_SET) != 0) {
+    *nibbles_out = 0;
+    return;
+  }
+
+  if (fread(trackImageBuffer, 1, NB2_TRACK_SIZE, ni->file) != NB2_TRACK_SIZE) {
+    *nibbles_out = 0;
+    return;
+  }
+
+  *nibbles_out = NB2_TRACK_SIZE;
 }
 
 static void Nb2WriteTrack(void* instance, int track, int phase,
                           const uint8_t* trackImage, int nibbles) {
   (void)phase;
+  (void)nibbles;
   auto* ni = reinterpret_cast<Nb2Instance*>(instance);
-  if (ni->os_readonly || track < 0 || track >= NB2_TRACKS) {
-    return;
-  }
+  if (ni->os_readonly || track < 0 || track >= NB2_TRACKS) return;
 
-  int to_write = std::min(nibbles, NB2_TRACK_SIZE);
-  fseek(ni->file,
-        static_cast<long>(ni->macbinary_offset + (track * NB2_TRACK_SIZE)),
-        SEEK_SET);
-  fwrite(trackImage, 1, static_cast<size_t>(to_write), ni->file);
+  if (fseek(ni->file,
+            static_cast<long>(ni->macbinary_offset + (track * NB2_TRACK_SIZE)),
+            SEEK_SET) == 0) {
+    (void)fwrite(trackImage, 1, NB2_TRACK_SIZE, ni->file);
+  }
 }
 
-static DiskError_e Nb2Create(const char* path) {
+static auto Nb2Create(const char* path) -> DiskError_e {
   FILE* f = fopen(path, "wb");
-  if (!f) {
-    return DISK_ERR_IO;
-  }
+  if (!f) return DISK_ERR_IO;
 
-  uint8_t zero[1024];
-  memset(zero, 0, sizeof(zero));
+  uint8_t zero[1024] = {0};
   for (int i = 0; i < NB2_DISK_SIZE / 1024; ++i) {
-    fwrite(zero, 1, 1024, f);
+    fwrite(zero, 1, sizeof(zero), f);
   }
   if (NB2_DISK_SIZE % 1024 != 0) {
     fwrite(zero, 1, NB2_DISK_SIZE % 1024, f);
@@ -139,5 +144,6 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     Nb2ReadTrack,
     Nb2WriteTrack,
     Nb2Create,
-    nullptr  // read_flux_bit
+    nullptr,  // command
+    nullptr   // read_flux_bit
 };

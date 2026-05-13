@@ -36,7 +36,6 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
     CHECK(status.drive0_loaded == 0);
     CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_FILE_NOT_FOUND));
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }
 
@@ -67,7 +66,6 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
     CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_UNSUPPORTED_FORMAT));
 
     remove(garbage);
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }
 
@@ -98,6 +96,5 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_NONE));
 
-    Peripheral_Manager_Shutdown();
     Linapple_Shutdown();
 }

@@ -94,6 +94,10 @@ typedef enum {
   DISK_CMD_BOOT = 0x0006         /* no payload */
 } DiskCmd_e;
 
+typedef enum {
+  DISK_DRIVER_CMD_SET_ENHANCED_SPEED = 0x1001 /* payload: uint8_t (0 or 1) */
+} DiskDriverCmd_e;
+
 #define DISK_INSERT_PATH_MAX 504
 
 #pragma pack(push, 1)

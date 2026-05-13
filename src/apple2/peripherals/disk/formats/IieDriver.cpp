@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "apple2/peripherals/disk/DiskGCR.h"
 
@@ -72,9 +73,10 @@ static auto IieProbe(const uint8_t* header, size_t header_size,
   return DISK_PROBE_NO;
 }
 
-static auto IieOpen(const char* path, uint32_t file_offset,
+static auto IieOpen(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
                     bool* out_os_readonly, void** out_instance) -> DiskError_e {
   (void)file_offset;
+  (void)enhanced_speed;
 
   auto* instance = new IieInstance();
   instance->file = fopen(path, "r+b");
@@ -200,5 +202,6 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     IieReadTrack,
     IieWriteTrack,
     nullptr,  // create
+    nullptr,  // command
     nullptr   // read_flux_bit
 };
