@@ -8,7 +8,7 @@
 #include "apple2/CPU.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/Mockingboard.h"
+#include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/SerialComms.h"
 #include "apple2/peripherals/Speaker.h"
 #include "apple2/Structs.h"

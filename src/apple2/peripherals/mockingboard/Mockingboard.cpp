@@ -43,7 +43,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * This module emulates the SY6522 VIA and AY-3-8910 PSG chips.
  */
 
-#include "apple2/peripherals/Mockingboard.h"
+#include "apple2/peripherals/mockingboard/Mockingboard.h"
 
 #include <cassert>
 #include <cmath>

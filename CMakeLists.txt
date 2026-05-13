@@ -236,7 +236,7 @@ add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskGCR.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/MouseInterface.cpp" "" TRUE)
-add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
+add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
 add_peripheral(ssc "Super Serial Card" "src/apple2/peripherals/SerialComms.cpp" "" TRUE)
 add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/ParallelPrinter.cpp" "" FALSE)
