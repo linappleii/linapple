@@ -15,6 +15,8 @@ The name is an array of fp.namelen characters stored in fp.name;
 fp.name points somewhere within buf.
 */
 #include <curl/curl.h>
+#include <cstdint>
+#include <ctime>
 
 struct ftpparse {
   char* name; /* not necessarily 0-terminated */
@@ -22,7 +24,7 @@ struct ftpparse {
   int flagtrycwd;  /* 0 if cwd is definitely pointless, 1 otherwise */
   int flagtryretr; /* 0 if retr is definitely pointless, 1 otherwise */
   int sizetype;
-  long size; /* number of octets */
+  int64_t size; /* number of octets */
   int mtimetype;
   time_t mtime; /* modification time */
   int idtype;

@@ -26,7 +26,9 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 
 #include <curl/curl.h>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <ctime>
 
@@ -34,13 +36,13 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include "core/Common_Globals.h"
 #include "core/Log.h"
 
-const long SECONDS_PER_DAY = 86400;
-const long SECONDS_PER_HOUR = 3600;
-const long SECONDS_PER_MINUTE = 60;
-const long DAYS_PER_400_YEARS = 146097;
-const long DAYS_PER_100_YEARS = 36524;
-const long DAYS_PER_4_YEARS = 1461;
-const long DAYS_PER_YEAR = 365;
+const int64_t SECONDS_PER_DAY = 86400;
+const int64_t SECONDS_PER_HOUR = 3600;
+const int64_t SECONDS_PER_MINUTE = 60;
+const int64_t DAYS_PER_400_YEARS = 146097;
+const int64_t DAYS_PER_100_YEARS = 36524;
+const int64_t DAYS_PER_4_YEARS = 1461;
+const int64_t DAYS_PER_YEAR = 365;
 const int BASE_YEAR_TM = 1900;
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): libcurl callback
@@ -56,9 +58,10 @@ static auto progress_callback(void* clientp, curl_off_t dltotal,
   return 0;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): public API
 auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
   // Download file from ftp_path to local_path
-  CURLcode res;
+  CURLcode res = CURLE_OK;
 
   FilePtr stream(fopen(local_path, "w"), fclose);
   if (!stream) {
@@ -68,6 +71,7 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
   curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream.get());
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): ABI
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
 
   curl_easy_setopt(g_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
@@ -86,42 +90,56 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
 }
 
 // FTP Parse
-static auto totai(long year, long month, long mday) -> long {
-  long result = 0;
-  if (month >= 2) {
-    month -= 2;
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): algorithm parameters
+static auto totai(int64_t year, int64_t month, int64_t mday) -> int64_t {
+  int64_t result = 0;
+  const int64_t MONTH_OFFSET = 2;
+  const int64_t MONTH_ADJUST = 10;
+  const int64_t DAY_MULTIPLIER = 10;
+  const int64_t DAY_ADJUST = 5;
+  const int64_t MONTH_MULTIPLIER = 306;
+  const int64_t LEAP_YEAR_ADJUST = 3;
+  const int64_t DAYS_PER_4_YEARS_MINUS_1 = 1460;
+  const int64_t FOUR_YEAR_CYCLE = 4;
+  const int64_t TWENTY_FIVE_YEAR_CYCLE = 25;
+  const int64_t DAYS_PER_400_YEARS_MINUS_1 = 146096;
+  const int64_t YEAR_OFFSET = 5;
+  const int64_t CONSTANT_OFFSET = 11017;
+
+  if (month >= MONTH_OFFSET) {
+    month -= MONTH_OFFSET;
   } else {
-    month += 10;
+    month += MONTH_ADJUST;
     --year;
   }
-  result = (mday - 1) * 10 + 5 + 306 * month;
-  result /= 10;
+  result = (mday - 1) * DAY_MULTIPLIER + DAY_ADJUST + MONTH_MULTIPLIER * month;
+  result /= DAY_MULTIPLIER;
   if (result == DAYS_PER_YEAR) {
-    year -= 3;
-    result = 1460;
+    year -= LEAP_YEAR_ADJUST;
+    result = DAYS_PER_4_YEARS_MINUS_1;
   } else {
-    result += DAYS_PER_YEAR * (year % 4);
+    result += DAYS_PER_YEAR * (year % FOUR_YEAR_CYCLE);
   }
-  year /= 4;
-  result += DAYS_PER_4_YEARS * (year % 25);
-  year /= 25;
+  year /= FOUR_YEAR_CYCLE;
+  result += DAYS_PER_4_YEARS * (year % TWENTY_FIVE_YEAR_CYCLE);
+  year /= TWENTY_FIVE_YEAR_CYCLE;
   if (result == DAYS_PER_100_YEARS) {
-    year -= 3;
-    result = 146096;
+    year -= LEAP_YEAR_ADJUST;
+    result = DAYS_PER_400_YEARS_MINUS_1;
   } else {
-    result += DAYS_PER_100_YEARS * (year % 4);
+    result += DAYS_PER_100_YEARS * (year % FOUR_YEAR_CYCLE);
   }
-  year /= 4;
-  result += DAYS_PER_400_YEARS * (year - 5);
-  result += 11017;
+  year /= FOUR_YEAR_CYCLE;
+  result += DAYS_PER_400_YEARS * (year - YEAR_OFFSET);
+  result += CONSTANT_OFFSET;
   return result * SECONDS_PER_DAY;
 }
 
 static int flagneedbase = 1;
-static time_t base; /* time() value on this OS at the beginning of 1970 TAI */
-static long now;    /* current time */
+static time_t base;    /* time() value on this OS at the beginning of 1970 TAI */
+static int64_t now;    /* current time */
 static int flagneedcurrentyear = 1;
-static long currentyear; /* approximation to current year */
+static int64_t currentyear; /* approximation to current year */
 
 static void initbase() {
   struct tm* t = nullptr;
@@ -131,47 +149,56 @@ static void initbase() {
 
   base = 0;
   t = gmtime(&base);
-  base = -(totai(t->tm_year + BASE_YEAR_TM, t->tm_mon, t->tm_mday) +
-           static_cast<long>(t->tm_hour * SECONDS_PER_HOUR) +
-           static_cast<long>(t->tm_min * SECONDS_PER_MINUTE) + t->tm_sec);
+  base = static_cast<time_t>(
+      -(totai(t->tm_year + BASE_YEAR_TM, t->tm_mon, t->tm_mday) +
+        static_cast<int64_t>(t->tm_hour * SECONDS_PER_HOUR) +
+        static_cast<int64_t>(t->tm_min * SECONDS_PER_MINUTE) + t->tm_sec));
   /* assumes the right time_t, counting seconds. */
   /* base may be slightly off if time_t counts non-leap seconds. */
   flagneedbase = 0;
 }
 
 static void initnow() {
-  long day = 0;
-  long year = 0;
+  int64_t day = 0;
+  int64_t year = 0;
 
   initbase();
-  now = time((time_t*)nullptr) - base;
+  now = time(nullptr) - base;
 
   if (flagneedcurrentyear) {
     day = now / SECONDS_PER_DAY;
     if ((now % SECONDS_PER_DAY) < 0) {
       --day;
     }
-    day -= 11017;
-    year = 5 + day / DAYS_PER_400_YEARS;
+    const int64_t CONSTANT_OFFSET = 11017;
+    const int64_t YEAR_OFFSET = 5;
+    const int64_t DAYS_PER_400_YEARS_MINUS_1 = 146096;
+    const int64_t DAYS_PER_4_YEARS_MINUS_1 = 1460;
+    const int64_t TWENTY_FIVE_YEAR_CYCLE = 25;
+    const int64_t FOUR_YEAR_CYCLE = 4;
+    const int64_t LEAP_YEAR_ADJUST = 3;
+
+    day -= CONSTANT_OFFSET;
+    year = YEAR_OFFSET + day / DAYS_PER_400_YEARS;
     day = day % DAYS_PER_400_YEARS;
     if (day < 0) {
       day += DAYS_PER_400_YEARS;
       --year;
     }
-    year *= 4;
-    if (day == 146096) {
-      year += 3;
+    year *= FOUR_YEAR_CYCLE;
+    if (day == DAYS_PER_400_YEARS_MINUS_1) {
+      year += LEAP_YEAR_ADJUST;
       day = DAYS_PER_100_YEARS;
     } else {
       year += day / DAYS_PER_100_YEARS;
       day %= DAYS_PER_100_YEARS;
     }
-    year *= 25;
+    year *= TWENTY_FIVE_YEAR_CYCLE;
     year += day / DAYS_PER_4_YEARS;
     day %= DAYS_PER_4_YEARS;
-    year *= 4;
-    if (day == 1460) {
-      year += 3;
+    year *= FOUR_YEAR_CYCLE;
+    if (day == DAYS_PER_4_YEARS_MINUS_1) {
+      year += LEAP_YEAR_ADJUST;
       day = DAYS_PER_YEAR;
     } else {
       year += day / DAYS_PER_YEAR;
@@ -182,53 +209,69 @@ static void initnow() {
   }
 }
 
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 static auto ftpparse_offsets(const char* month) -> int {
+  const int MONTH_JAN = 0;
+  const int MONTH_FEB = 1;
+  const int MONTH_MAR = 2;
+  const int MONTH_APR = 3;
+  const int MONTH_MAY = 4;
+  const int MONTH_JUN = 5;
+  const int MONTH_JUL = 6;
+  const int MONTH_AUG = 7;
+  const int MONTH_SEP = 8;
+  const int MONTH_OCT = 9;
+  const int MONTH_NOV = 10;
+  const int MONTH_DEC = 11;
+
   switch (*month) {
     case 'A':
       if (month[1] == 'p') {
-        return 3;
+        return MONTH_APR;
       }
       if (month[1] == 'u') {
-        return 7;
+        return MONTH_AUG;
       }
       break;
     case 'D':
-      return 11;
+      return MONTH_DEC;
     case 'F':
-      return 1;
+      return MONTH_FEB;
     case 'J':
       if (month[1] == 'a') {
-        return 0;
+        return MONTH_JAN;
       }
       if (month[2] == 'n') {
-        return 5;
+        return MONTH_JUN;
       }
-      return 6;
+      return MONTH_JUL;
     case 'M':
       if (month[2] == 'r') {
-        return 2;
+        return MONTH_MAR;
       }
-      return 4;
+      return MONTH_MAY;
     case 'N':
-      return 10;
+      return MONTH_NOV;
     case 'O':
-      return 9;
+      return MONTH_OCT;
     case 'S':
-      return 8;
+      return MONTH_SEP;
+    default:
+      break;
   }
   return -1;
 }
 
-static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
+static auto ftpparse_c(char* buf, int len, struct ftpparse* fp) -> int {
   int i = 0;
   int j = 0;
   int state = 0;
-  long size = 0;
-  long year = 0;
-  long month = 0;
-  long mday = 0;
+  int64_t size = 0;
+  int64_t year = 0;
+  int64_t month = 0;
+  int64_t mday = 0;
 
-  if (!len) {
+  if (len == 0) {
     return 0;
   }
   if (*buf == '+') {
@@ -236,7 +279,7 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
     for (j = 1; j < len; ++j) {
       if (buf[j] == ',') {
         if (state == 0) {
-          fp->id = const_cast<char*>(buf + i);
+          fp->id = (buf + i);
           fp->idlen = j - i;
           state = 1;
           i = j + 1;
@@ -246,7 +289,8 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
         } else if (state == 2) {
           size = 0;
           for (int k = i; k < j; ++k) {
-            size = size * 10 + (buf[k] - '0');
+            const int64_t BASE_10 = 10;
+            size = size * BASE_10 + (buf[k] - '0');
           }
           fp->size = size;
           fp->sizetype = FTPPARSE_SIZE_BINARY;
@@ -256,7 +300,8 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
           fp->mtime = 0;
           if (buf[i] == 'm') {
             for (int k = i + 1; k < j; ++k) {
-              fp->mtime = fp->mtime * 10 + (buf[k] - '0');
+              const int64_t BASE_10 = 10;
+              fp->mtime = fp->mtime * BASE_10 + (buf[k] - '0');
             }
             fp->mtimetype = FTPPARSE_MTIME_LOCAL;
           }
@@ -266,7 +311,8 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
           if (buf[i] == '/') {
             fp->flagtrycwd = 1;
           }
-          state = 5;
+          const int STATE_5 = 5;
+          state = STATE_5;
           i = j + 1;
         } else if (state == 5) {
           return 1;
@@ -291,21 +337,24 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
         state = 0;
         month = 0;
         while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-          month = month * 10 + (buf[i] - '0');
+          const int64_t BASE_10 = 10;
+          month = month * BASE_10 + (buf[i] - '0');
           ++i;
         }
         if (i < len && buf[i] == '-') {
           mday = 0;
           ++i;
           while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-            mday = mday * 10 + (buf[i] - '0');
+            const int64_t BASE_10 = 10;
+            mday = mday * BASE_10 + (buf[i] - '0');
             ++i;
           }
           if (i < len && buf[i] == '-') {
             year = 0;
             ++i;
             while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-              year = year * 10 + (buf[i] - '0');
+              const int64_t BASE_10 = 10;
+              year = year * BASE_10 + (buf[i] - '0');
               ++i;
             }
             const int YEAR_70_THRESHOLD = 70;
@@ -338,17 +387,18 @@ static auto ftpparse_c(const char* buf, int len, struct ftpparse* fp) -> int {
         }
         size = 0;
         while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-          size = size * 10 + (buf[i] - '0');
+          const int64_t BASE_10 = 10;
+          size = size * BASE_10 + (buf[i] - '0');
           ++i;
         }
-        fp->size = size;
+        fp->size = static_cast<long>(size);
         fp->sizetype = FTPPARSE_SIZE_BINARY;
         while (i < len && buf[i] == ' ') {
           ++i;
         }
-        fp->id = const_cast<char*>(buf + i);
+        fp->id = (buf + i);
         fp->idlen = len - i;
-        fp->mtime = totai(year, month - 1, mday);
+        fp->mtime = static_cast<time_t>(totai(year, month - 1, mday));
         fp->mtimetype = FTPPARSE_MTIME_REMOTEDAY;
         return 1;
       case 'd':
@@ -422,7 +472,8 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
 
   // Skip permissions, links, owner, group
   int spaces = 0;
-  while (i < len && spaces < 4) {
+  const int MAX_SPACES_TO_SKIP = 4;
+  while (i < len && spaces < MAX_SPACES_TO_SKIP) {
     if (buf[i] == ' ') {
       spaces++;
       while (i < len && buf[i] == ' ') {
@@ -434,12 +485,13 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
   }
 
   // Read size
-  long size = 0;
+  int64_t size = 0;
   while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-    size = size * 10 + (buf[i] - '0');
+    const int64_t BASE_10 = 10;
+    size = size * BASE_10 + (buf[i] - '0');
     i++;
   }
-  fp->size = size;
+  fp->size = static_cast<long>(size);
   fp->sizetype = FTPPARSE_SIZE_BINARY;
 
   // Skip space
@@ -448,13 +500,14 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
   }
 
   // Read month
-  if (i + 3 < len) {
-    char month_str[4];
+  const int MONTH_STR_LEN = 3;
+  if (i + MONTH_STR_LEN < len) {
+    std::array<char, 4> month_str{};
     month_str[0] = buf[i++];
     month_str[1] = buf[i++];
     month_str[2] = buf[i++];
-    month_str[3] = 0;
-    int month = ftpparse_offsets(month_str);
+    month_str[3] = '\0';
+    int month = ftpparse_offsets(month_str.data());
     if (month != -1) {
       // Skip space
       while (i < len && buf[i] == ' ') {
@@ -463,7 +516,8 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
       // Read day
       int mday = 0;
       while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-        mday = mday * 10 + (buf[i] - '0');
+        const int BASE_10 = 10;
+        mday = mday * BASE_10 + (buf[i] - '0');
         i++;
       }
       // Skip space
@@ -474,23 +528,30 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
       int year = 0;
       int hour = 0;
       int minute = 0;
-      if (i + 4 < len && buf[i + 2] == ':') {
-        hour = (buf[i] - '0') * 10 + (buf[i + 1] - '0');
-        minute = (buf[i + 3] - '0') * 10 + (buf[i + 4] - '0');
-        i += 5;
+      const int TIME_STR_LEN = 4;
+      const int TIME_COLON_OFFSET = 2;
+      const int TIME_TOTAL_LEN = 5;
+      if (i + TIME_STR_LEN < len && buf[i + TIME_COLON_OFFSET] == ':') {
+        const int BASE_10 = 10;
+        hour = (buf[i] - '0') * BASE_10 + (buf[i + 1] - '0');
+        minute = (buf[i + 3] - '0') * BASE_10 + (buf[i + 4] - '0');
+        i += TIME_TOTAL_LEN;
         initnow();
         year = static_cast<int>(currentyear);
         fp->mtimetype = FTPPARSE_MTIME_REMOTEMINUTE;
       } else {
         while (i < len && buf[i] >= '0' && buf[i] <= '9') {
-          year = year * 10 + (buf[i] - '0');
+          const int BASE_10 = 10;
+          year = year * BASE_10 + (buf[i] - '0');
           i++;
         }
         fp->mtimetype = FTPPARSE_MTIME_REMOTEDAY;
       }
 
-      fp->mtime = totai(year, month, mday) + hour * SECONDS_PER_HOUR +
-                  minute * SECONDS_PER_MINUTE;
+      fp->mtime = static_cast<time_t>(
+          totai(year, month, mday) +
+          static_cast<int64_t>(hour) * SECONDS_PER_HOUR +
+          static_cast<int64_t>(minute) * SECONDS_PER_MINUTE);
     }
   }
 
@@ -503,7 +564,8 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
 
   // Handle symbolic link suffix: "name -> target"
   if (buf[0] == 'l') {
-    for (int k = 0; k + 3 < fp->namelen; ++k) {
+    const int LINK_SUFFIX_LEN = 3;
+    for (int k = 0; k + LINK_SUFFIX_LEN < fp->namelen; ++k) {
       if (fp->name[k] == ' ' && fp->name[k + 1] == '-' &&
           fp->name[k + 2] == '>' && fp->name[k + 3] == ' ') {
         fp->namelen = k;
@@ -514,3 +576,4 @@ auto ftpparse(struct ftpparse* fp, char* buf, int len) -> int {
 
   return 1;
 }
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
