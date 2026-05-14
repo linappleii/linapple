@@ -52,29 +52,29 @@ typedef struct SSC_DIPSW_tag {
 
 // SuperSerialCard core state
 struct SuperSerialCard {
-  SSC_DIPSW m_DIPSWCurrent;
+  SSC_DIPSW m_DIPSWCurrent{};
 
   // Derived from DIPSWs
-  uint32_t m_uBaudRate;
-  SscStopBits m_eStopBits;
-  uint32_t m_uByteSize;
-  SscParity m_eParity;
+  uint32_t m_uBaudRate = 0;
+  SscStopBits m_eStopBits = SSC_STOP_BITS_1;
+  uint32_t m_uByteSize = 0;
+  SscParity m_eParity = SSC_PARITY_NONE;
 
   // SSC Registers
-  uint8_t m_uControlByte;
-  uint8_t m_uCommandByte;
+  uint8_t m_uControlByte = 0;
+  uint8_t m_uCommandByte = 0;
 
   // State
-  uint8_t m_RecvBuffer[uRecvBufferSize];
-  volatile uint32_t m_vRecvBytes;
+  uint8_t m_RecvBuffer[uRecvBufferSize] = {0};
+  volatile uint32_t m_vRecvBytes = 0;
 
-  bool m_bTxIrqEnabled;
-  bool m_bRxIrqEnabled;
+  bool m_bTxIrqEnabled = false;
+  bool m_bRxIrqEnabled = false;
 
-  bool m_bWrittenTx;
-  volatile bool m_vbCommIRQ;
+  bool m_bWrittenTx = false;
+  volatile bool m_vbCommIRQ = false;
 
-  uint8_t* m_pExpansionRom;
+  uint8_t* m_pExpansionRom = nullptr;
 };
 
 // Procedural functions for the core logic

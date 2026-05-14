@@ -269,11 +269,30 @@ const uint8_t COMMAND_PARITY_MODE_MASK = 0xC0;
 const uint8_t COMMAND_TX_CONTROL_MASK = 0x0C;
 const uint8_t COMMAND_RX_IRQ_DISABLED_BIT = 0x02;
 
+const uint8_t COMMAND_PARITY_ODD = 0x00;
+const uint8_t COMMAND_PARITY_EVEN = 0x40;
+const uint8_t COMMAND_PARITY_MARK = 0x80;
+const uint8_t COMMAND_PARITY_SPACE = 0xC0;
+
+const uint8_t COMMAND_TX_IRQ_DISABLED_CONT_OFF = 0x00;
+const uint8_t COMMAND_TX_IRQ_ENABLED_CONT_ON = 0x04;
+const uint8_t COMMAND_TX_IRQ_DISABLED_CONT_ON = 0x08;
+const uint8_t COMMAND_TX_IRQ_DISABLED_BREAK = 0x0C;
+
 const uint8_t CONTROL_BAUD_RATE_MASK = 0x0F;
 const uint8_t CONTROL_BYTE_SIZE_MASK = 0x60;
 const uint8_t CONTROL_STOP_BITS_BIT = 0x80;
 
+const uint8_t CONTROL_BYTE_SIZE_8 = 0x00;
+const uint8_t CONTROL_BYTE_SIZE_7 = 0x20;
+const uint8_t CONTROL_BYTE_SIZE_6 = 0x40;
+const uint8_t CONTROL_BYTE_SIZE_5 = 0x60;
+
 const uint16_t TIMER_LOW_BYTE_MAX = 0xFF;
+
+static constexpr uint32_t SSC_FW_SIZE = 2 * 1024;
+static constexpr uint32_t SSC_SLOT_FW_SIZE = 256;
+static constexpr uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
 
 static constexpr uint8_t ST_PARITY_ERR = 1 << 0;
 static constexpr uint8_t ST_FRAMING_ERR = 1 << 1;
@@ -287,9 +306,9 @@ static constexpr uint8_t ST_IRQ = 1 << 7;
 #include "core/Peripheral.h"
 
 struct SSCPeripheral_t {
-  SuperSerialCard logic;
-  HostInterface_t* host;
-  int slot;
+  SuperSerialCard logic{};
+  HostInterface_t* host = nullptr;
+  int slot = 0;
 };
 
 static void GetDIPSW(SSCPeripheral_t* mp);
@@ -325,16 +344,12 @@ auto SSC_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
 
 static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  auto* instance = new SSCPeripheral_t();
+  auto* instance = new SSCPeripheral_t{};
   instance->host = host;
   instance->slot = slot;
 
-  const uint32_t SSC_FW_SIZE = 2 * 1024;
-  const uint32_t SSC_SLOT_FW_SIZE = 256;
-  const uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
-
   // Copy the 256 byte portion to CxROM
-  uint8_t slot_rom[256];
+  uint8_t slot_rom[SSC_SLOT_FW_SIZE];
   memcpy(slot_rom, SSC_rom.data() + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
   if (host && host->RegisterCxROM) {
     host->RegisterCxROM(slot, slot_rom);
@@ -507,8 +522,8 @@ static auto GenerateControl(SSCPeripheral_t* mp) -> uint8_t {
     StopBit = 0;
   }
 
-  return (StopBit << 7) | (bmByteSize << 5) | (CLK << 4) |
-         BaudRateToIndex(pSSC->m_uBaudRate);
+  return static_cast<uint8_t>((StopBit << 7) | (bmByteSize << 5) | (CLK << 4) |
+                              BaudRateToIndex(pSSC->m_uBaudRate));
 }
 
 static auto BaudRateToIndex(uint32_t uBaudRate) -> uint32_t {
@@ -587,19 +602,21 @@ static auto CommCommand(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
   auto* pSSC = &mp->logic;
   if (write && (value != pSSC->m_uCommandByte)) {
     pSSC->m_uCommandByte = value;
-    if (pSSC->m_uCommandByte & COMMAND_PARITY_ENABLED_BIT) {
+    if ((pSSC->m_uCommandByte & COMMAND_PARITY_ENABLED_BIT) != 0) {
       switch (pSSC->m_uCommandByte & COMMAND_PARITY_MODE_MASK) {
-        case 0x00:
+        case COMMAND_PARITY_ODD:
           pSSC->m_eParity = SSC_PARITY_ODD;
           break;
-        case 0x40:
+        case COMMAND_PARITY_EVEN:
           pSSC->m_eParity = SSC_PARITY_EVEN;
           break;
-        case 0x80:
+        case COMMAND_PARITY_MARK:
           pSSC->m_eParity = SSC_PARITY_MARK;
           break;
-        case 0xC0:
+        case COMMAND_PARITY_SPACE:
           pSSC->m_eParity = SSC_PARITY_SPACE;
+          break;
+        default:
           break;
       }
     } else {
@@ -607,17 +624,19 @@ static auto CommCommand(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
     }
 
     switch (pSSC->m_uCommandByte & COMMAND_TX_CONTROL_MASK) {
-      case 0 << 2:
+      case COMMAND_TX_IRQ_DISABLED_CONT_OFF:
         pSSC->m_bTxIrqEnabled = false;
         break;
-      case 1 << 2:
+      case COMMAND_TX_IRQ_ENABLED_CONT_ON:
         pSSC->m_bTxIrqEnabled = true;
         break;
-      case 2 << 2:
+      case COMMAND_TX_IRQ_DISABLED_CONT_ON:
         pSSC->m_bTxIrqEnabled = false;
         break;
-      case 3 << 2:
+      case COMMAND_TX_IRQ_DISABLED_BREAK:
         pSSC->m_bTxIrqEnabled = false;
+        break;
+      default:
         break;
     }
     pSSC->m_bRxIrqEnabled =
@@ -665,24 +684,28 @@ static auto CommControl(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
       case BAUD_19200_INDEX:
         pSSC->m_uBaudRate = SSC_B19200;
         break;
+      default:
+        break;
     }
 
     switch (pSSC->m_uControlByte & CONTROL_BYTE_SIZE_MASK) {
-      case 0x00:
+      case CONTROL_BYTE_SIZE_8:
         pSSC->m_uByteSize = 8;
         break;
-      case 0x20:
+      case CONTROL_BYTE_SIZE_7:
         pSSC->m_uByteSize = 7;
         break;
-      case 0x40:
+      case CONTROL_BYTE_SIZE_6:
         pSSC->m_uByteSize = 6;
         break;
-      case 0x60:
+      case CONTROL_BYTE_SIZE_5:
         pSSC->m_uByteSize = 5;
+        break;
+      default:
         break;
     }
 
-    if (pSSC->m_uControlByte & CONTROL_STOP_BITS_BIT) {
+    if ((pSSC->m_uControlByte & CONTROL_STOP_BITS_BIT) != 0) {
       if ((pSSC->m_uByteSize == 8) && (pSSC->m_eParity != SSC_PARITY_NONE)) {
         pSSC->m_eStopBits = SSC_STOP_BITS_1;
       } else if ((pSSC->m_uByteSize == 5) &&
@@ -762,9 +785,10 @@ static auto CommStatus(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
   // Reading the Status Register clears the TDRE interrupt bit (m_bWrittenTx)
   pSSC->m_bWrittenTx = false;
 
-  uint8_t uStatus = ST_TX_EMPTY | (pSSC->m_vRecvBytes ? ST_RX_FULL : 0x00) |
-                    (bIRQ ? ST_IRQ : 0x00);
-  uStatus |= ST_DSR | ST_DCD;
+  uint8_t uStatus = static_cast<uint8_t>(
+      ST_TX_EMPTY | (pSSC->m_vRecvBytes != 0 ? ST_RX_FULL : 0x00) |
+      (bIRQ ? ST_IRQ : 0x00));
+  uStatus = static_cast<uint8_t>(uStatus | ST_DSR | ST_DCD);
 
   // Deassert IRQ only if no other interrupt sources are active
   if (!(pSSC->m_bRxIrqEnabled && pSSC->m_vRecvBytes)) {
@@ -781,31 +805,34 @@ static auto CommDipSw(SSCPeripheral_t* mp, uint16_t, uint16_t addr, uint8_t,
                       uint8_t, uint32_t) -> uint8_t {
   auto* pSSC = &mp->logic;
   uint8_t sw = 0;
-  if ((addr & ADDR_NIBBLE_MASK) == 1) {
-    sw = (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) |
-         pSSC->m_DIPSWCurrent.eFirmwareMode;
-  } else if ((addr & ADDR_NIBBLE_MASK) == 2) {
-    uint8_t INT = pSSC->m_DIPSWCurrent.eStopBits == SSC_STOP_BITS_2 ? 1 : 0;
-    uint8_t DCD = pSSC->m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;
-    uint8_t RDR = 0, OVR = 0;
+  if ((addr & ADDR_NIBBLE_MASK) == SSC_OFFSET_DIPSW1) {
+    sw = static_cast<uint8_t>(
+        (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) |
+        pSSC->m_DIPSWCurrent.eFirmwareMode);
+  } else if ((addr & ADDR_NIBBLE_MASK) == SSC_OFFSET_DIPSW2) {
+    uint8_t int_bit =
+        pSSC->m_DIPSWCurrent.eStopBits == SSC_STOP_BITS_2 ? 1 : 0;
+    uint8_t dcd_bit = pSSC->m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;
+    uint8_t rdr_bit = 0;
+    uint8_t ovr_bit = 0;
     switch (pSSC->m_DIPSWCurrent.eParity) {
       case SSC_PARITY_ODD:
-        RDR = 0;
-        OVR = 1;
+        rdr_bit = 0;
+        ovr_bit = 1;
         break;
       case SSC_PARITY_EVEN:
-        RDR = 1;
-        OVR = 1;
+        rdr_bit = 1;
+        ovr_bit = 1;
         break;
       default:
-        RDR = 0;
-        OVR = 0;
+        rdr_bit = 0;
+        ovr_bit = 0;
         break;
     }
-    uint8_t FE = pSSC->m_DIPSWCurrent.bLinefeed ? 1 : 0;
-    uint8_t PE = pSSC->m_DIPSWCurrent.bInterrupts ? 1 : 0;
-    sw = (INT << 7) | (DCD << 5) | (RDR << 3) | (OVR << 2) | (FE << 1) |
-         (PE << 0);
+    uint8_t fe_bit = pSSC->m_DIPSWCurrent.bLinefeed ? 1 : 0;
+    uint8_t pe_bit = pSSC->m_DIPSWCurrent.bInterrupts ? 1 : 0;
+    sw = static_cast<uint8_t>((int_bit << 7) | (dcd_bit << 5) | (rdr_bit << 3) |
+                              (ovr_bit << 2) | (fe_bit << 1) | (pe_bit << 0));
   }
   return sw;
 }
