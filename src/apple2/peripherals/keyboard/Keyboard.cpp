@@ -2,13 +2,6 @@
  * Keyboard.cpp - LinApple Keyboard Peripheral Implementation
  */
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
-// implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state, raw memory management, and instance state to bridge with
-// the core C interface
-
 #include <algorithm>
 
 #include "apple2/Memory.h"
@@ -18,6 +11,13 @@
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
+// implements the C11-compatible Peripheral ABI. It requires void* pointers for
+// instance state, raw memory management, and instance state to bridge with
+// the core C interface
+
 // --- Constants ---
 
 static constexpr uint8_t KEY_STROBE_BIT = 0x80;
@@ -26,6 +26,10 @@ static constexpr uint8_t KEY_CODE_MASK = 0x7F;
 // Standard Apple II repeat circuit delays (~0.5s initial, ~0.06s repeat)
 static constexpr uint32_t KEY_REPEAT_INITIAL_DELAY = 512000;
 static constexpr uint32_t KEY_REPEAT_RATE = 68000;
+
+// Peripheral Registration Constants
+static constexpr uint8_t SLOT_0_MASK = 0x01;
+static constexpr int8_t DEFAULT_SLOT_INTERNAL = 0;
 
 // --- I/O Address Constants ---
 
@@ -128,7 +132,7 @@ static auto Keyb_IO_ReadAppleKeys(void* instance, uint16_t pc, uint16_t addr,
 
 // --- ABI Implementation ---
 
-static void* Keyb_ABI_Init(int slot, HostInterface_t* host) {
+static auto Keyb_ABI_Init(int slot, HostInterface_t* host) -> void* {
   // Keyboard is a singleton; return existing instance if already initialized.
 
   auto* kp = new KeyboardPeripheral_t{};
@@ -160,7 +164,7 @@ static void* Keyb_ABI_Init(int slot, HostInterface_t* host) {
   return kp;
 }
 
-static void Keyb_ABI_Reset(void* instance) {
+static auto Keyb_ABI_Reset(void* instance) -> void {
   if (!instance) {
     return;
   }
@@ -173,7 +177,7 @@ static void Keyb_ABI_Reset(void* instance) {
   kp->logic.repeating = false;
 }
 
-static void Keyb_ABI_Shutdown(void* instance) {
+static auto Keyb_ABI_Shutdown(void* instance) -> void {
   if (!instance) {
     return;
   }
@@ -181,7 +185,7 @@ static void Keyb_ABI_Shutdown(void* instance) {
   delete kp;
 }
 
-static void Keyb_ABI_Think(void* instance, uint32_t cycles) {
+static auto Keyb_ABI_Think(void* instance, uint32_t cycles) -> void {
   if (!instance) {
     return;
   }
@@ -228,7 +232,7 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
       }
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
 
-      if (ev->is_down) {
+      if (ev->is_down != 0U) {
         if (ev->ascii > KEY_CODE_MASK) {
           // Positional mapping provided a non-ASCII code that the Apple II
           // cannot process.
@@ -364,8 +368,8 @@ Peripheral_t keyboard_peripheral = {LINAPPLE_ABI_VERSION,
                                     "Standard Apple II keyboard emulation",
                                     "LinApple Contributors",
                                     VERSIONSTRING,
-                                    0x01,  // Slot 0 (Internal)
-                                    0,     // Default Slot 0
+                                    SLOT_0_MASK,
+                                    DEFAULT_SLOT_INTERNAL,
                                     Keyb_ABI_Init,
                                     Keyb_ABI_Reset,
                                     Keyb_ABI_Shutdown,
