@@ -92,8 +92,9 @@ TEST_CASE("Mouse Peripheral ABI") {
 
   SUBCASE("Lifecycle") {
     g_mouse_peripheral.reset(instance);
-    g_mouse_peripheral.shutdown(instance);
   }
+
+  g_mouse_peripheral.shutdown(instance);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,

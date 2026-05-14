@@ -87,8 +87,9 @@ TEST_CASE("Joystick Peripheral ABI") {
 
   SUBCASE("Lifecycle") {
     g_joystick_peripheral.reset(instance);
-    g_joystick_peripheral.shutdown(instance);
   }
+
+  g_joystick_peripheral.shutdown(instance);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
