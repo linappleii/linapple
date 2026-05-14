@@ -14,7 +14,13 @@
 #include "core/Common.h"
 #include "core/Peripheral.h"
 
-static const std::array<uint8_t, 256> Parallel_bin = {
+static constexpr size_t SLOT_ROM_SIZE = 256;
+static constexpr uint8_t COMPATIBLE_SLOTS_MASK = 0xFE;  // Slots 1-7
+static constexpr int8_t DEFAULT_SLOT = 1;
+static constexpr uint8_t PRINTER_STATUS_OFFLINE = 0xFF;
+static constexpr uint8_t PRINTER_TRANSMIT_SUCCESS = 0;
+
+static const std::array<uint8_t, SLOT_ROM_SIZE> Parallel_bin = {
     {0x18, 0xB0, 0x38, 0x48, 0x8A, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
      0xFF, 0xBA, 0x68, 0x68, 0x68, 0x68, 0xA8, 0xCA, 0x9A, 0x68, 0x28, 0xAA,
      0x90, 0x38, 0xBD, 0xB8, 0x05, 0x10, 0x19, 0x98, 0x29, 0x7F, 0x49, 0x30,
@@ -53,9 +59,9 @@ static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
   pp->host = host;
   pp->slot = slot;
 
-  uint8_t slot_rom[256];
-  memcpy(slot_rom, Parallel_bin.data(), Parallel_bin.size());
-  host->RegisterCxROM(slot, slot_rom);
+  std::array<uint8_t, SLOT_ROM_SIZE> slot_rom{};
+  memcpy(slot_rom.data(), Parallel_bin.data(), Parallel_bin.size());
+  host->RegisterCxROM(slot, slot_rom.data());
   host->RegisterIO(slot, PrintStatus, PrintTransmit, nullptr, nullptr);
   return pp;
 }
@@ -79,8 +85,8 @@ Peripheral_t g_printer_peripheral = {
     "Standard parallel printer interface emulation",
     "LinApple Contributors",
     VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    1,     // Default Slot 1
+    COMPATIBLE_SLOTS_MASK,
+    DEFAULT_SLOT,
     Printer_ABI_Init,
     Printer_ABI_Reset,
     Printer_ABI_Shutdown,
@@ -97,7 +103,7 @@ static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   if (pp->host && pp->host->PrinterGetStatus) {
     return pp->host->PrinterGetStatus(pp);
   }
-  return 0xFF;
+  return PRINTER_STATUS_OFFLINE;
 }
 
 static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
@@ -106,7 +112,7 @@ static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
   if (pp->host && pp->host->PrinterPutChar) {
     pp->host->PrinterPutChar(pp, value);
   }
-  return 0;
+  return PRINTER_TRANSMIT_SUCCESS;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
