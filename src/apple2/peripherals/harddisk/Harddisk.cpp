@@ -82,69 +82,72 @@ static const char Hddrvr_dat[] =
     "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
     "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\x7F\xD7\x46";
 
-struct HarddiskDrive_t {
-  char hd_imagename[16];
-  char hd_fullname[128];
-  uint8_t hd_error;
-  uint16_t hd_memblock;
-  uint16_t hd_diskblock;
-  uint16_t hd_buf_ptr;
-  bool hd_imageloaded;
-  HarddiskFormatDriver_t* driver;
-  void* driver_instance;
-  bool os_readonly;
-  bool user_write_protected;
-  HarddiskError_e last_error;
-  uint8_t hd_buf[513];
+constexpr size_t HD_IMAGE_NAME_MAX = 16;
+constexpr size_t HD_FULL_NAME_MAX = 128;
+constexpr size_t HD_BUFFER_SIZE = 513;
 
-  HarddiskDrive_t()
-      : hd_error(0),
-        hd_memblock(0),
-        hd_diskblock(0),
-        hd_buf_ptr(0),
-        hd_imageloaded(false),
-        driver(nullptr),
-        driver_instance(nullptr),
-        os_readonly(false),
-        user_write_protected(false),
-        last_error(HARDDISK_ERR_NONE) {
-    memset(hd_imagename, 0, sizeof(hd_imagename));
-    memset(hd_fullname, 0, sizeof(hd_fullname));
-    memset(hd_buf, 0, sizeof(hd_buf));
-  }
+constexpr uint8_t HD_REG_CMD_EXEC = 0xF0;
+constexpr uint8_t HD_REG_ERROR = 0xF1;
+constexpr uint8_t HD_REG_COMMAND = 0xF2;
+constexpr uint8_t HD_REG_UNIT = 0xF3;
+constexpr uint8_t HD_REG_MEMBLOCK_LO = 0xF4;
+constexpr uint8_t HD_REG_MEMBLOCK_HI = 0xF5;
+constexpr uint8_t HD_REG_DISKBLOCK_LO = 0xF6;
+constexpr uint8_t HD_REG_DISKBLOCK_HI = 0xF7;
+constexpr uint8_t HD_REG_BUFFER = 0xF8;
+
+constexpr uint16_t HD_IO_BASE = 0xC0F0;
+constexpr uint16_t HD_IO_END = 0xC0F8;
+
+enum HarddiskIOCommand_e {
+  HD_IO_CMD_STATUS = 0x00,
+  HD_IO_CMD_READ = 0x01,
+  HD_IO_CMD_WRITE = 0x02,
+  HD_IO_CMD_FORMAT = 0x03
+};
+
+struct HarddiskDrive_t {
+  char hd_imagename[HD_IMAGE_NAME_MAX]{};
+  char hd_fullname[HD_FULL_NAME_MAX]{};
+  uint8_t hd_error = 0;
+  uint16_t hd_memblock = 0;
+  uint16_t hd_diskblock = 0;
+  uint16_t hd_buf_ptr = 0;
+  bool hd_imageloaded = false;
+  HarddiskFormatDriver_t* driver = nullptr;
+  void* driver_instance = nullptr;
+  bool os_readonly = false;
+  bool user_write_protected = false;
+  HarddiskError_e last_error = HARDDISK_ERR_NONE;
+  uint8_t hd_buf[HD_BUFFER_SIZE]{};
+
+  HarddiskDrive_t() = default;
 };
 
 struct HarddiskPeripheral_t {
   HarddiskDrive_t drives[2];
-  uint8_t unit_num;
-  uint8_t command;
-  bool rom_loaded;
-  bool enabled;
-  uint32_t slot;
-  int status;
-  HostInterface_t* host;
+  uint8_t unit_num = DRIVE_1;
+  uint8_t command = 0;
+  bool rom_loaded = false;
+  bool enabled = false;
+  uint32_t slot = 7;
+  int status = DISK_STATUS_OFF;
+  HostInterface_t* host = nullptr;
 
-  HarddiskPeripheral_t()
-      : unit_num(DRIVE_1),
-        command(0),
-        rom_loaded(false),
-        enabled(false),
-        slot(7),
-        status(DISK_STATUS_OFF),
-        host(nullptr) {}
+  HarddiskPeripheral_t() = default;
 };
 
 static void GetImageTitle(const char* imageFileName,
                           HarddiskDrive_t* pHardDrive) {
-  char imagetitle[128];
+  char imagetitle[HD_FULL_NAME_MAX];
   const char* startpos = imageFileName;
 
   const char* last_sep = strrchr(startpos, FILE_SEPARATOR);
   if (last_sep) {
     startpos = last_sep + 1;
   }
-  Util_SafeStrCpy(imagetitle, startpos, 127);
-  imagetitle[127] = 0;
+  Util_SafeStrCpy(imagetitle, startpos, HD_FULL_NAME_MAX - 1);
+  imagetitle[HD_FULL_NAME_MAX - 1] = 0;
 
   bool found = false;
   int loop = 0;
@@ -156,14 +159,14 @@ static void GetImageTitle(const char* imageFileName,
     }
   }
 
-  Util_SafeStrCpy(pHardDrive->hd_fullname, imagetitle, 127);
+  Util_SafeStrCpy(pHardDrive->hd_fullname, imagetitle, HD_FULL_NAME_MAX - 1);
 
   if (imagetitle[0]) {
     char* dot = strrchr(imagetitle, '.');
     if (dot && dot > imagetitle) *dot = 0;
   }
 
-  Util_SafeStrCpy(pHardDrive->hd_imagename, imagetitle, 15);
+  Util_SafeStrCpy(pHardDrive->hd_imagename, imagetitle, HD_IMAGE_NAME_MAX - 1);
 }
 
 static void NotifyInvalidImage(const char* filename) {
@@ -357,7 +360,9 @@ static void HD_ABI_Shutdown(void* instance) {
   delete hp;
 }
 
-enum { DEVICE_OK = 0x00, DEVICE_UNKNOWN_ERROR = 0x03, DEVICE_IO_ERROR = 0x08 };
+constexpr uint8_t DEVICE_OK = 0x00;
+constexpr uint8_t DEVICE_UNKNOWN_ERROR = 0x03;
+constexpr uint8_t DEVICE_IO_ERROR = 0x08;
 
 Peripheral_t g_harddisk_peripheral = {
     LINAPPLE_ABI_VERSION,
@@ -393,17 +398,17 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
 
   if (bWrite == 0) {  // read
     switch (addr) {
-      case 0xF0: {
+      case HD_REG_CMD_EXEC: {
         if (pHDD->hd_imageloaded) {
-          switch (hp->command) {
+          switch (static_cast<HarddiskIOCommand_e>(hp->command)) {
             default:
-            case 0x00:  // status
+            case HD_IO_CMD_STATUS:  // status
               if (pHDD->driver->get_total_blocks(pHDD->driver_instance) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
               break;
-            case 0x01:  // read
+            case HD_IO_CMD_READ:  // read
             {
               hp->status = DISK_STATUS_READ;
               if (pHDD->driver->read_block(pHDD->driver_instance,
@@ -417,7 +422,7 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
                 r = DEVICE_IO_ERROR;
               }
             } break;
-            case 0x02:  // write
+            case HD_IO_CMD_WRITE:  // write
             {
               hp->status = DISK_STATUS_WRITE;
               memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
@@ -431,7 +436,7 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
                 r = DEVICE_IO_ERROR;
               }
             } break;
-            case 0x03:  // format
+            case HD_IO_CMD_FORMAT:  // format
               hp->status = DISK_STATUS_WRITE;
               break;
           }
@@ -441,28 +446,28 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
           r = DEVICE_UNKNOWN_ERROR;
         }
       } break;
-      case 0xF1:
+      case HD_REG_ERROR:
         r = pHDD->hd_error;
         break;
-      case 0xF2:
+      case HD_REG_COMMAND:
         r = hp->command;
         break;
-      case 0xF3:
+      case HD_REG_UNIT:
         r = hp->unit_num;
         break;
-      case 0xF4:
+      case HD_REG_MEMBLOCK_LO:
         r = static_cast<uint8_t>(pHDD->hd_memblock & 0x00FF);
         break;
-      case 0xF5:
+      case HD_REG_MEMBLOCK_HI:
         r = static_cast<uint8_t>((pHDD->hd_memblock & 0xFF00) >> 8);
         break;
-      case 0xF6:
+      case HD_REG_DISKBLOCK_LO:
         r = static_cast<uint8_t>(pHDD->hd_diskblock & 0x00FF);
         break;
-      case 0xF7:
+      case HD_REG_DISKBLOCK_HI:
         r = static_cast<uint8_t>((pHDD->hd_diskblock & 0xFF00) >> 8);
         break;
-      case 0xF8:
+      case HD_REG_BUFFER:
         r = pHDD->hd_buf[pHDD->hd_buf_ptr];
         pHDD->hd_buf_ptr++;
         break;
@@ -471,23 +476,27 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
     }
   } else {  // write
     switch (addr) {
-      case 0xF2:
+      case HD_REG_COMMAND:
         hp->command = d;
         break;
-      case 0xF3:
+      case HD_REG_UNIT:
         hp->unit_num = d;
         break;
-      case 0xF4:
-        pHDD->hd_memblock = (pHDD->hd_memblock & 0xFF00) | d;
+      case HD_REG_MEMBLOCK_LO:
+        pHDD->hd_memblock =
+            static_cast<uint16_t>((pHDD->hd_memblock & 0xFF00) | d);
         break;
-      case 0xF5:
-        pHDD->hd_memblock = (pHDD->hd_memblock & 0x00FF) | (d << 8);
+      case HD_REG_MEMBLOCK_HI:
+        pHDD->hd_memblock =
+            static_cast<uint16_t>((pHDD->hd_memblock & 0x00FF) | (d << 8));
         break;
-      case 0xF6:
-        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0xFF00) | d;
+      case HD_REG_DISKBLOCK_LO:
+        pHDD->hd_diskblock =
+            static_cast<uint16_t>((pHDD->hd_diskblock & 0xFF00) | d);
         break;
-      case 0xF7:
-        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | (d << 8);
+      case HD_REG_DISKBLOCK_HI:
+        pHDD->hd_diskblock =
+            static_cast<uint16_t>((pHDD->hd_diskblock & 0x00FF) | (d << 8));
         break;
       default:
         return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
