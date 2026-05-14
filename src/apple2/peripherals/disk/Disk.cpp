@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -56,8 +57,19 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
+#include <array>
+
+namespace {
+constexpr uint32_t DISK_SPINUP_TICKS = 20000;
+constexpr uint8_t DISK_FLOATING_BUS = 0xFF;
+constexpr uint32_t DISK_SPIN_SHIFT = 6;
+constexpr uint32_t DISK_SPIN_MASK = 63;
+constexpr uint32_t DISK_ROTATION_SHIFT = 5;
+constexpr uint32_t DISK_ROTATION_MASK = 31;
+}  // namespace
+
 struct DiskPeripheral_t {
-  Disk_t drives[DRIVES];
+  std::array<Disk_t, DRIVES> drives{};
   uint16_t currdrive = 0;
   bool diskaccessed = false;
   uint8_t floppylatch = 0;
@@ -70,11 +82,7 @@ struct DiskPeripheral_t {
   int slot = 0;
   bool enhancedisk = true;
 
-  DiskPeripheral_t() {
-    for (int i = 0; i < DRIVES; ++i) {
-      memset(&drives[i], 0, sizeof(Disk_t));
-    }
-  }
+  DiskPeripheral_t() = default;
 };
 
 static void CheckSpinning(DiskPeripheral_t* dp);
@@ -186,7 +194,7 @@ static auto CheckSpinning(DiskPeripheral_t* dp) -> void {
   Disk_t* fptr = &dp->drives[dp->currdrive];
   bool was_spinning = (fptr->spinning > 0);
   if (dp->floppymotoron) {
-    fptr->spinning = 20000;
+    fptr->spinning = DISK_SPINUP_TICKS;
   }
   bool now_spinning = (fptr->spinning > 0);
 
