@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <array>
 #include <vector>
 
 #include "core/Util_Path.h"
@@ -32,32 +33,39 @@ void HarddiskLoader_Register(HarddiskFormatDriver_t* driver) {
   }
 }
 
-HarddiskError_e HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
-                                    HarddiskFormatDriver_t** out_driver,
-                                    void** out_instance) {
+auto HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
+                         HarddiskFormatDriver_t** out_driver,
+                         void** out_instance) -> HarddiskError_e {
   if (!filename || !out_driver || !out_instance) {
     return HARDDISK_ERR_IO;
   }
 
-  FILE* f = fopen(filename, "rb");
+  FILE* f = fopen(filename, "rb"); // NOLINT(cppcoreguidelines-owning-memory)
   if (!f) {
     return HARDDISK_ERR_NOT_FOUND;
   }
 
   fseek(f, 0, SEEK_END);
-  uint32_t file_size = static_cast<uint32_t>(ftell(f));
+  auto file_size = static_cast<uint32_t>(ftell(f));
   fseek(f, 0, SEEK_SET);
 
-  uint8_t header[4096];
-  size_t header_size = fread(header, 1, sizeof(header), f);
-  fclose(f);
+  constexpr size_t PROBE_HEADER_SIZE = 4096;
+  std::array<uint8_t, PROBE_HEADER_SIZE> header{};
+  size_t header_size = fread(header.data(), 1, header.size(), f);
+  fclose(f); // NOLINT(cppcoreguidelines-owning-memory)
 
   const char* ext = strrchr(filename, '.');
-  char ext_hint[16] = {0};
+  constexpr size_t EXT_HINT_SIZE = 16;
+  std::array<char, EXT_HINT_SIZE> ext_hint{};
+  ext_hint.fill(0);
+
   if (ext) {
-    Util_SafeStrCpy(ext_hint, ext, sizeof(ext_hint));
-    for (char* p = ext_hint; *p; ++p) {
-      *p = static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
+    Util_SafeStrCpy(ext_hint.data(), ext, ext_hint.size());
+    for (char& c : ext_hint) {
+      if (c == '\0') {
+        break;
+      }
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
   }
 
@@ -66,7 +74,7 @@ HarddiskError_e HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
 
   for (auto* driver : g_harddisk_drivers) {
     HarddiskProbe_e result =
-        driver->probe(header, header_size, file_size, ext_hint);
+        driver->probe(header.data(), header_size, file_size, ext_hint.data());
     if (result > best_probe) {
       best_probe = result;
       best_driver = driver;
