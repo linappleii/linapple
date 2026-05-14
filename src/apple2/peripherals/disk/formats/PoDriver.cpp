@@ -4,13 +4,26 @@
 #include <algorithm>
 #include <cstring>
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+
 namespace {
-constexpr int MIN_140K_DISK_SIZE = 143105;
-constexpr int MAX_140K_DISK_SIZE = 143364;
-constexpr int DISK_SIZE_140K_ALT2 = 143488;
-constexpr int VTOC_OFFSET = 0x11000;
-constexpr int PAGE_SIZE = 0x0100;
-constexpr int PRODOS_BLOCK_SIZE = 512;
+constexpr uint32_t MIN_140K_DISK_SIZE = 143105;
+constexpr uint32_t MAX_140K_DISK_SIZE = 143364;
+constexpr uint32_t DISK_SIZE_140K_ALT2 = 143488;
+constexpr size_t VTOC_OFFSET = 0x11000;
+constexpr size_t PAGE_SIZE = 0x0100;
+constexpr size_t PRODOS_BLOCK_SIZE = 512;
+
+constexpr size_t SECTORS_PER_TRACK = 16;
+constexpr size_t TRACK_COUNT = 35;
+constexpr size_t PRODOS_DIR_BLOCK = 2;
+constexpr uint16_t MAX_PRODOS_BLOCKS_140K =
+    static_cast<uint16_t>((TRACK_COUNT * SECTORS_PER_TRACK) / 2);
+
+constexpr size_t VTOC_LINK_OFFSET = 2;
+constexpr int MIN_VTOC_LOOP = 5;
+constexpr int MAX_VTOC_LOOP = 13;
+constexpr int VTOC_CHECK_BASE = 14;
 }  // namespace
 
 static auto PoProbe(const uint8_t* header, size_t header_size,
@@ -25,22 +38,32 @@ static auto PoProbe(const uint8_t* header, size_t header_size,
   // ProDOS directory chain check on track 0, starting at block 2 (Sectors 4,5
   // of Track 0). A typical ProDOS directory header at block 2, sector 4 (0x400)
   // has next/prev pointers.
-  if (header_size >=
-      static_cast<size_t>((2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2)) {
-    uint16_t prev = *reinterpret_cast<const uint16_t*>(
-        header + (2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE);
-    uint16_t next = *reinterpret_cast<const uint16_t*>(
-        header + (2 * PRODOS_BLOCK_SIZE) + PAGE_SIZE + 2);
+  const size_t min_header_size =
+      (PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) + PAGE_SIZE + VTOC_LINK_OFFSET;
+  if (header_size >= min_header_size) {
+    uint16_t prev = 0;
+    uint16_t next = 0;
+    std::memcpy(&prev, &header[(PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) + PAGE_SIZE],
+                sizeof(prev));
+    std::memcpy(&next,
+                &header[(PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) + PAGE_SIZE +
+                        VTOC_LINK_OFFSET],
+                sizeof(next));
+
     // In ProDOS directory block 2, prev is always 0.
-    if (prev == 0 && next > 2 && next < 35 * 16 / 2) {
+    if (prev == 0 && next > static_cast<uint16_t>(PRODOS_DIR_BLOCK) &&
+        next < MAX_PRODOS_BLOCKS_140K) {
       return DISK_PROBE_DEFINITE;
     }
   }
 
-  if (header_size >= static_cast<size_t>(VTOC_OFFSET + 2 + (13 * PAGE_SIZE))) {
+  const size_t vtoc_min_header_size =
+      VTOC_OFFSET + VTOC_LINK_OFFSET + (static_cast<size_t>(MAX_VTOC_LOOP) * PAGE_SIZE);
+  if (header_size >= vtoc_min_header_size) {
     bool mismatch = false;
-    for (int loop = 5; loop <= 13; ++loop) {
-      if (header[VTOC_OFFSET + 2 + (loop * PAGE_SIZE)] != 14 - loop) {
+    for (int loop = MIN_VTOC_LOOP; loop <= MAX_VTOC_LOOP; ++loop) {
+      if (header[VTOC_OFFSET + VTOC_LINK_OFFSET + (static_cast<size_t>(loop) * PAGE_SIZE)] !=
+          static_cast<uint8_t>(VTOC_CHECK_BASE - loop)) {
         mismatch = true;
         break;
       }
@@ -62,7 +85,7 @@ static auto PoOpen(const char* path, uint32_t file_offset, uint8_t enhanced_spee
   auto* image = SectorDiskImage_Open(path, file_offset, false, enhanced_speed,
                                      out_os_readonly);
   if (!image) return DISK_ERR_IO;
-  *out_instance = reinterpret_cast<void*>(image);
+  *out_instance = static_cast<void*>(image);
   return DISK_ERR_NONE;
 }
 
@@ -71,7 +94,8 @@ static void PoClose(void* instance) {
 }
 
 static auto PoIsWriteProtected(void* instance) -> bool {
-  return SectorDiskImage_IsWriteProtected(static_cast<SectorDiskImage_t*>(instance));
+  return SectorDiskImage_IsWriteProtected(
+      static_cast<SectorDiskImage_t*>(instance));
 }
 
 static void PoReadTrack(void* instance, int track, int phase,
@@ -93,11 +117,14 @@ static auto PoCreate(const char* path) -> DiskError_e {
 }
 
 static auto PoCommand(void* instance, uint32_t cmd_id, const void* data,
-                     size_t size) -> PeripheralStatus {
-  return SectorDiskImage_Command(static_cast<SectorDiskImage_t*>(instance), cmd_id, data, size);
+                      size_t size) -> PeripheralStatus {
+  return SectorDiskImage_Command(static_cast<SectorDiskImage_t*>(instance), cmd_id,
+                                 data, size);
 }
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
 static const char* const g_po_creatable_exts[] = {".po", nullptr};
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
 
 extern "C" const DiskFormatDriver_t g_po_driver = {
     LINAPPLE_DISK_ABI_VERSION,
@@ -114,3 +141,5 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     PoCommand,
     nullptr  // read_flux_bit
 };
+
+// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
