@@ -35,7 +35,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "apple2/peripherals/speaker/Speaker.h"
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstring>
 
 #include "apple2/CPU.h"
@@ -45,6 +47,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Peripheral.h"
 
 static constexpr int SPKR_QUIET_CYCLES_DIVISOR = 5;
+static constexpr float FILTER_COEFF_DC_BLOCKER = 0.999f;
+static constexpr float FILTER_COEFF_DECAY = 0.99f;
+static constexpr float FILTER_EPSILON = 0.001f;
 
 // Forward declaration of legacy callback for cases where the Peripheral ABI
 // host is not present (e.g. some standalone tests)
@@ -53,20 +58,19 @@ extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
 auto Speaker_Destroy(Speaker_t* instance) -> void { (void)instance; }
 
 auto Speaker_Initialize(Speaker_t* instance) -> void {
-  if (!instance) return;
-  instance->num_events = 0;
-  instance->state = false;
-  instance->last_cycle = g_nCumulativeCycles;
-  instance->quiet_cycle_count = 0;
-  instance->recently_active = false;
-  instance->toggle_flag = false;
-  instance->sound_type = 1;  // SOUND_WAVE
+  if (!instance) {
+    return;
+  }
+  const auto host = instance->host;
+  const auto slot = instance->slot;
 
-  instance->last_sample_state = false;
+  *instance = {};
+
+  instance->host = host;
+  instance->slot = slot;
+  instance->sound_type = static_cast<uint32_t>(SOUND_WAVE);
+  instance->last_cycle = g_nCumulativeCycles;
   instance->next_sample_cycle = static_cast<double>(g_nCumulativeCycles);
-  instance->filter_state = 0.0f;
-  instance->last_input = 0.0f;
-  instance->host = nullptr;
 }
 
 auto Speaker_Reset(Speaker_t* instance) -> void {
@@ -122,7 +126,7 @@ auto Speaker_Toggle(Speaker_t* instance, uint16_t pc, uint16_t addr,
   }
 
   // Record toggle event
-  if (instance->sound_type == 1 /* SOUND_WAVE */ &&
+  if (instance->sound_type == static_cast<uint32_t>(SOUND_WAVE) &&
       static_cast<size_t>(instance->num_events) < MAX_SPKR_EVENTS) {
     const auto idx = static_cast<size_t>(instance->num_events);
     instance->events.at(idx).cycle = g_nCumulativeCycles;
@@ -163,9 +167,9 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   } else {
     // Local event capture
     std::array<SpkrEvent, MAX_SPKR_EVENTS> events{};
-    uint32_t num_events =
+    const auto num_events =
         Speaker_GetEvents(instance, events.data(), MAX_SPKR_EVENTS);
-    uint32_t event_idx = 0;
+    auto event_idx = 0U;
 
     while (instance->next_sample_cycle <= static_cast<double>(endCycle) &&
            numSamples < (SPKR_BUFFER_SIZE - 2)) {
@@ -196,9 +200,9 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
       float average = static_cast<float>(sum / clksPerSample);
 
       // Simple High-Pass Filter (DC Blocker) to prevent popping from DC offset
-      // out = (in - last_in) + 0.999 * last_out
-      instance->filter_state =
-          (average - instance->last_input) + (0.999f * instance->filter_state);
+      // out = (in - last_in) + FILTER_COEFF_DC_BLOCKER * last_out
+      instance->filter_state = (average - instance->last_input) +
+                               (FILTER_COEFF_DC_BLOCKER * instance->filter_state);
       instance->last_input = average;
 
       const int16_t val =
@@ -214,14 +218,14 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
   // filter to let it decay to zero smoothly.
   if (!instance->recently_active && instance->filter_state != 0.0f) {
     while (numSamples < (SPKR_BUFFER_SIZE - 2) &&
-           std::abs(instance->filter_state) > 0.001f) {
-      instance->filter_state *= 0.99f;
+           std::abs(instance->filter_state) > FILTER_EPSILON) {
+      instance->filter_state *= FILTER_COEFF_DECAY;
       const int16_t val =
           static_cast<int16_t>(instance->filter_state * SPKR_SAMPLE_VOLUME);
       instance->sample_buffer.at(numSamples++) = val;
       instance->sample_buffer.at(numSamples++) = val;
     }
-    if (std::abs(instance->filter_state) <= 0.001f) {
+    if (std::abs(instance->filter_state) <= FILTER_EPSILON) {
       instance->filter_state = 0.0f;
     }
   }
@@ -242,12 +246,13 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
 
 auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events,
                        uint32_t max_events) -> uint32_t {
-  if (events == nullptr || !instance) return 0;
-  uint32_t count =
-      (instance->num_events < max_events) ? instance->num_events : max_events;
+  if (events == nullptr || !instance) {
+    return 0;
+  }
+  const auto count = std::min(instance->num_events, max_events);
   if (count > 0) {
-    memcpy(events, instance->events.data(),
-           static_cast<size_t>(count) * sizeof(SpkrEvent));
+    std::copy(instance->events.begin(),
+              instance->events.begin() + static_cast<ptrdiff_t>(count), events);
     instance->num_events = 0;
   }
   return count;
