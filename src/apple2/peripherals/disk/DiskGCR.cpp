@@ -1,11 +1,38 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, modernize-use-auto, cppcoreguidelines-pro-type-member-init, modernize-loop-convert, cppcoreguidelines-macro-usage)
 #include "apple2/peripherals/disk/DiskGCR.h"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 
 #include "apple2/Memory.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 
+// GCR constants
+static constexpr uint8_t GCR_PROLOGUE_1 = 0xD5;
+static constexpr uint8_t GCR_PROLOGUE_2 = 0xAA;
+static constexpr uint8_t GCR_ADDR_PROLOGUE_3 = 0x96;
+static constexpr uint8_t GCR_DATA_PROLOGUE_3 = 0xAD;
+static constexpr uint8_t GCR_EPILOGUE_1 = 0xDE;
+static constexpr uint8_t GCR_EPILOGUE_2 = 0xAA;
+static constexpr uint8_t GCR_EPILOGUE_3 = 0xEB;
+static constexpr uint8_t GCR_SYNC_BYTE = 0xFF;
+
+static constexpr uint8_t GCR_62_OFFSET_INIT = 0xAC;
+static constexpr uint8_t GCR_62_OFFSET_STEP_1 = 0x56;
+static constexpr uint8_t GCR_62_OFFSET_STEP_2 = 0x56;
+static constexpr uint8_t GCR_62_OFFSET_STEP_3 = 0x53;
+static constexpr int GCR_62_ITERATIONS = 86;
+
+static constexpr uint8_t GCR_MASK_6BIT = 0x3F;
+static constexpr uint8_t GCR_MASK_LOWBITS = 0xFC;
+
+static constexpr uint8_t GCR_DECODE_OFFSET = 0x80;
+static constexpr uint8_t GCR_DECODE_HIGH_BIT_MASK = 0x7F;
+
+static constexpr uint8_t GCR_VOLUME_DEFAULT = 0xFE;
+
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 static uint8_t diskbyte[GCR_ENCODE_TABLE_SIZE] = {
     0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
     0xAD, 0xAE, 0xAF, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA,
@@ -21,6 +48,7 @@ static uint8_t sectornumber[NUM_INTERLEAVE_MODES][SECTORS_PER_TRACK_16] = {
      0x09, 0x01, 0x08, 0x0F},
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00}};
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
 // Nibblization functions
 static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t* {
@@ -30,23 +58,23 @@ static auto Code62(uint8_t* workbuf, int sector_index) -> uint8_t* {
     uint8_t* sectorBase = &workbuf[sector_index * PAGE_SIZE];
     uint8_t* resultptr = &workbuf[GCR_WORK_BUFFER_OFFSET];
     int resIdx = 0;
-    uint8_t offset = 0xAC;
-    while (offset != 0x02) {
+    uint8_t offset = GCR_62_OFFSET_INIT;
+    for (int i = 0; i < GCR_62_ITERATIONS; ++i) {
       uint8_t value = 0;
 #define ADDVALUE(a) \
   value = (value << 2) | (((a) & 0x01) << 1) | (((a) & 0x02) >> 1)
       ADDVALUE(sectorBase[offset]);
-      offset -= 0x56;
+      offset -= GCR_62_OFFSET_STEP_1;
       ADDVALUE(sectorBase[offset]);
-      offset -= 0x56;
+      offset -= GCR_62_OFFSET_STEP_2;
       ADDVALUE(sectorBase[offset]);
-      offset -= 0x53;
+      offset -= GCR_62_OFFSET_STEP_3;
 #undef ADDVALUE
       resultptr[resIdx++] = value << 2;
     }
     if (resIdx >= 2) {
-      resultptr[resIdx - 2] &= 0x3F;
-      resultptr[resIdx - 1] &= 0x3F;
+      resultptr[resIdx - 2] &= GCR_MASK_6BIT;
+      resultptr[resIdx - 1] &= GCR_MASK_6BIT;
     }
     for (int loop = 0; loop < PAGE_SIZE; ++loop) {
       resultptr[resIdx++] = sectorBase[loop];
@@ -92,7 +120,7 @@ static void Decode62(uint8_t* workbuf, uint8_t* imageptr) {
     memset(sixbitbyte, 0, GCR_DECODE_TABLE_SIZE);
     int loop = 0;
     while (loop < GCR_ENCODE_TABLE_SIZE) {
-      sixbitbyte[diskbyte[loop] - 0x80] = loop << 2;
+      sixbitbyte[diskbyte[loop] - GCR_DECODE_OFFSET] = static_cast<uint8_t>(loop << 2);
       loop++;
     }
     tablegenerated = true;
@@ -103,7 +131,7 @@ static void Decode62(uint8_t* workbuf, uint8_t* imageptr) {
     uint8_t* sourceptr = &workbuf[GCR_WORK_BUFFER_OFFSET];
     uint8_t* resultptr = &workbuf[GCR_CHECKSUM_BUFFER_OFFSET];
     for (int loop = 0; loop < GCR_SECTOR_WITH_CHECKSUM_SIZE; ++loop) {
-      resultptr[loop] = sixbitbyte[sourceptr[loop] & 0x7F];
+      resultptr[loop] = sixbitbyte[sourceptr[loop] & GCR_DECODE_HIGH_BIT_MASK];
     }
   }
 
@@ -122,23 +150,23 @@ static void Decode62(uint8_t* workbuf, uint8_t* imageptr) {
   // Convert the 342 6-bit bytes into 256 8-bit bytes
   {
     uint8_t* lowbitsptr = &workbuf[GCR_WORK_BUFFER_OFFSET];
-    uint8_t* sectorBase = &workbuf[GCR_WORK_BUFFER_OFFSET + 0x56];
-    uint8_t offset = 0xAC;
-    while (offset != 0x02) {
-      if (offset >= 0xAC) {
-        imageptr[offset] = (sectorBase[offset] & 0xFC) |
+    uint8_t* sectorBase = &workbuf[GCR_WORK_BUFFER_OFFSET + GCR_62_OFFSET_STEP_1];
+    uint8_t offset = GCR_62_OFFSET_INIT;
+    for (int i = 0; i < GCR_62_ITERATIONS; ++i) {
+      if (offset >= GCR_62_OFFSET_INIT) {
+        imageptr[offset] = static_cast<uint8_t>((sectorBase[offset] & GCR_MASK_LOWBITS) |
                            ((lowbitsptr[0] & 0x80) >> 7) |
-                           ((lowbitsptr[0] & 0x40) >> 5);
+                           ((lowbitsptr[0] & 0x40) >> 5));
       }
-      offset -= 0x56;
-      imageptr[offset] = (sectorBase[offset] & 0xFC) |
+      offset -= GCR_62_OFFSET_STEP_1;
+      imageptr[offset] = static_cast<uint8_t>((sectorBase[offset] & GCR_MASK_LOWBITS) |
                          ((lowbitsptr[0] & 0x20) >> 5) |
-                         ((lowbitsptr[0] & 0x10) >> 3);
-      offset -= 0x56;
-      imageptr[offset] = (sectorBase[offset] & 0xFC) |
+                         ((lowbitsptr[0] & 0x10) >> 3));
+      offset -= GCR_62_OFFSET_STEP_2;
+      imageptr[offset] = static_cast<uint8_t>((sectorBase[offset] & GCR_MASK_LOWBITS) |
                          ((lowbitsptr[0] & 0x08) >> 3) |
-                         ((lowbitsptr[0] & 0x04) >> 1);
-      offset -= 0x53;
+                         ((lowbitsptr[0] & 0x04) >> 1));
+      offset -= GCR_62_OFFSET_STEP_3;
       lowbitsptr++;
     }
   }
@@ -155,38 +183,41 @@ void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder,
   // offset by the sector number.
   {
     int offset = 0;
-    int partsleft = 33;
+    static constexpr int GCR_DENIBBLIZE_MAX_PARTS = 33;
+    int partsleft = GCR_DENIBBLIZE_MAX_PARTS;
     int sector = 0;
-    while (partsleft--) {
-      uint8_t byteval[3] = {0, 0, 0};
+    while (partsleft-- > 0) {
+      std::array<uint8_t, 3> byteval = {{0, 0, 0}};
       int bytenum = 0;
       int loop = nibbles;
-      while ((loop--) && (bytenum < 3)) {
-        if (bytenum) {
-          byteval[bytenum++] = trackimage[offset++];
-        } else if (trackimage[offset++] == 0xD5) {
+      while ((loop--) > 0 && (bytenum < 3)) {
+        if (bytenum > 0) {
+          byteval[static_cast<size_t>(bytenum++)] = trackimage[offset++];
+        } else if (trackimage[offset++] == GCR_PROLOGUE_1) {
           bytenum = 1;
         }
         if (offset >= nibbles) {
           offset = 0;
         }
       }
-      if ((bytenum == 3) && (byteval[1] == 0xAA)) {
+      if ((bytenum == 3) && (byteval[1] == GCR_PROLOGUE_2)) {
         int tempoffset = offset;
-        const int SCAN_BUFFER_SIZE = 384;
-        for (int i = 0; i < SCAN_BUFFER_SIZE; ++i) {
+        static constexpr int GCR_SCAN_BUFFER_SIZE = 384;
+        for (int i = 0; i < GCR_SCAN_BUFFER_SIZE; ++i) {
           workbuf[GCR_WORK_BUFFER_OFFSET + i] = trackimage[tempoffset++];
           if (tempoffset >= nibbles) {
             tempoffset = 0;
           }
         }
-        if (byteval[2] == 0x96) {
-          sector = ((workbuf[GCR_WORK_BUFFER_OFFSET + 4] & 0x55) << 1) |
-                   (workbuf[GCR_WORK_BUFFER_OFFSET + 5] & 0x55);
-        } else if (byteval[2] == 0xAD) {
+        if (byteval[2] == GCR_ADDR_PROLOGUE_3) {
+          static constexpr uint8_t GCR_ADDR_4AND4_MASK = 0x55;
+          static constexpr int GCR_ADDR_SECTOR_OFFSET = 4;
+          sector = ((workbuf[GCR_WORK_BUFFER_OFFSET + GCR_ADDR_SECTOR_OFFSET] & GCR_ADDR_4AND4_MASK) << 1) |
+                   (workbuf[GCR_WORK_BUFFER_OFFSET + GCR_ADDR_SECTOR_OFFSET + 1] & GCR_ADDR_4AND4_MASK);
+        } else if (byteval[2] == GCR_DATA_PROLOGUE_3) {
           Decode62(
               workbuf,
-              &workbuf[sectornumber[dosorder ? 1 : 0][sector] * PAGE_SIZE]);
+              &workbuf[static_cast<size_t>(sectornumber[dosorder ? 1 : 0][sector]) * PAGE_SIZE]);
           sector = 0;
         }
       }
@@ -194,9 +225,17 @@ void GCR_DenibblizeTrack(uint8_t* workbuf, uint8_t* trackimage, bool dosorder,
   }
 }
 
-uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
+static constexpr uint8_t Code44A(uint8_t a) {
+  return static_cast<uint8_t>((((a) >> 1) & 0x55) | 0xAA);
+}
+
+static constexpr uint8_t Code44B(uint8_t a) {
+  return static_cast<uint8_t>(((a) & 0x55) | 0xAA);
+}
+
+auto GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
                                       uint8_t* trackImageBuffer,
-                                      uint8_t* sector_order, int track) {
+                                      uint8_t* sector_order, int track) -> uint32_t {
   // Note: we assume workbuf contains the track data in the first 4k
   // (DOS_TRACK_SIZE)
   uint32_t offset = 0;
@@ -205,7 +244,7 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
   // Write gap one, which contains 48 self-sync bytes
   const int gap1_size = 48;
   for (int loop = 0; loop < gap1_size; loop++) {
-    trackImageBuffer[offset++] = 0xFF;
+    trackImageBuffer[offset++] = GCR_SYNC_BYTE;
   }
 
   while (sector < SECTORS_PER_TRACK_16) {
@@ -216,49 +255,46 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
     //   - SECTOR NUMBER ("4 AND 4" ENCODED)
     //   - CHECKSUM ("4 AND 4" ENCODED)
     //   - EPILOGUE (DEAAEB)
-    trackImageBuffer[offset++] = 0xD5;
-    trackImageBuffer[offset++] = 0xAA;
-    trackImageBuffer[offset++] = 0x96;
-#define VOLUME 0xFE
-#define CODE44A(a) ((((a) >> 1) & 0x55) | 0xAA)
-#define CODE44B(a) (((a) & 0x55) | 0xAA)
-    trackImageBuffer[offset++] = CODE44A(VOLUME);
-    trackImageBuffer[offset++] = CODE44B(VOLUME);
-    trackImageBuffer[offset++] = CODE44A((uint8_t)track);
-    trackImageBuffer[offset++] = CODE44B((uint8_t)track);
-    trackImageBuffer[offset++] = CODE44A(sector);
-    trackImageBuffer[offset++] = CODE44B(sector);
-    trackImageBuffer[offset++] = CODE44A(VOLUME ^ ((uint8_t)track) ^ sector);
-    trackImageBuffer[offset++] = CODE44B(VOLUME ^ ((uint8_t)track) ^ sector);
-#undef CODE44A
-#undef CODE44B
-    trackImageBuffer[offset++] = 0xDE;
-    trackImageBuffer[offset++] = 0xAA;
-    trackImageBuffer[offset++] = 0xEB;
+    trackImageBuffer[offset++] = GCR_PROLOGUE_1;
+    trackImageBuffer[offset++] = GCR_PROLOGUE_2;
+    trackImageBuffer[offset++] = GCR_ADDR_PROLOGUE_3;
+
+    trackImageBuffer[offset++] = Code44A(GCR_VOLUME_DEFAULT);
+    trackImageBuffer[offset++] = Code44B(GCR_VOLUME_DEFAULT);
+    trackImageBuffer[offset++] = Code44A(static_cast<uint8_t>(track));
+    trackImageBuffer[offset++] = Code44B(static_cast<uint8_t>(track));
+    trackImageBuffer[offset++] = Code44A(sector);
+    trackImageBuffer[offset++] = Code44B(sector);
+    trackImageBuffer[offset++] = Code44A(static_cast<uint8_t>(GCR_VOLUME_DEFAULT ^ static_cast<uint8_t>(track) ^ sector));
+    trackImageBuffer[offset++] = Code44B(static_cast<uint8_t>(GCR_VOLUME_DEFAULT ^ static_cast<uint8_t>(track) ^ sector));
+
+    trackImageBuffer[offset++] = GCR_EPILOGUE_1;
+    trackImageBuffer[offset++] = GCR_EPILOGUE_2;
+    trackImageBuffer[offset++] = GCR_EPILOGUE_3;
 
     // Write gap two, which contains six self-sync bytes
     const int gap2_size = 6;
     for (int loop = 0; loop < gap2_size; loop++) {
-      trackImageBuffer[offset++] = 0xFF;
+      trackImageBuffer[offset++] = GCR_SYNC_BYTE;
     }
 
     // Write the data field, which contains:
     //   - PROLOGUE (D5AAAD)
     //   - 343 6-BIT BYTES OF NIBBLIZED DATA, INCLUDING A 6-BIT CHECKSUM
     //   - EPILOGUE (DEAAEB)
-    trackImageBuffer[offset++] = 0xD5;
-    trackImageBuffer[offset++] = 0xAA;
-    trackImageBuffer[offset++] = 0xAD;
+    trackImageBuffer[offset++] = GCR_PROLOGUE_1;
+    trackImageBuffer[offset++] = GCR_PROLOGUE_2;
+    trackImageBuffer[offset++] = GCR_DATA_PROLOGUE_3;
     memcpy(trackImageBuffer + offset, Code62(workbuf, sector_order[sector]),
            GCR_SECTOR_WITH_CHECKSUM_SIZE);
     offset += GCR_SECTOR_WITH_CHECKSUM_SIZE;
-    trackImageBuffer[offset++] = 0xDE;
-    trackImageBuffer[offset++] = 0xAA;
-    trackImageBuffer[offset++] = 0xEB;
+    trackImageBuffer[offset++] = GCR_EPILOGUE_1;
+    trackImageBuffer[offset++] = GCR_EPILOGUE_2;
+    trackImageBuffer[offset++] = GCR_EPILOGUE_3;
 
-    // Write gap three, which contains 27 self-sync bytes
+    // Write gap three, which contains gap bytes
     for (int loop = 0; loop < GCR_GAP3_SIZE; loop++) {
-      trackImageBuffer[offset++] = 0xFF;
+      trackImageBuffer[offset++] = GCR_SYNC_BYTE;
     }
 
     sector++;
@@ -267,19 +303,21 @@ uint32_t GCR_NibblizeTrackCustomOrder(uint8_t* workbuf,
   return offset;
 }
 
-uint32_t GCR_NibblizeTrack(uint8_t* workbuf, uint8_t* trackImageBuffer,
-                           bool dosorder, int track) {
+auto GCR_NibblizeTrack(uint8_t* workbuf, uint8_t* trackImageBuffer,
+                           bool dosorder, int track) -> uint32_t {
   return GCR_NibblizeTrackCustomOrder(workbuf, trackImageBuffer,
                                       sectornumber[dosorder ? 1 : 0], track);
 }
 
 void GCR_SkewTrack(uint8_t* workbuf, int track, int nibbles,
                    uint8_t* trackImageBuffer) {
-  const int SKEW_FACTOR = 768;
-  int skewbytes = (track * SKEW_FACTOR) % nibbles;
+  static constexpr int GCR_SKEW_FACTOR = 768;
+  int skewbytes = (track * GCR_SKEW_FACTOR) % nibbles;
   memcpy(workbuf, trackImageBuffer, static_cast<size_t>(nibbles));
   memcpy(trackImageBuffer, &workbuf[skewbytes],
          static_cast<size_t>(nibbles - skewbytes));
   memcpy(trackImageBuffer + static_cast<size_t>(nibbles - skewbytes), workbuf,
          static_cast<size_t>(skewbytes));
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, modernize-use-auto, cppcoreguidelines-pro-type-member-init, modernize-loop-convert, cppcoreguidelines-macro-usage)
