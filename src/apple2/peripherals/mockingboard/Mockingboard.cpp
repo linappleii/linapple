@@ -91,23 +91,40 @@ enum {
   VIA_REG_ORA_NO_HANDSHAKE = 0xF
 };
 
-static const int NUM_VOICES_PER_CHIP = 3;
-static const int CHIPS_PER_CARD = 2;
-static const int VOICES_PER_CARD = NUM_VOICES_PER_CHIP * CHIPS_PER_CARD;
+enum {
+  AY_PB_BC1 = 0x01,
+  AY_PB_BDIR = 0x02,
+  AY_PB_RESET_N = 0x04,
+  AY_FUNC_WRITE = 0x06,
+  AY_FUNC_LATCH = 0x07,
+  AY_REG_MASK = 0x0F
+};
 
-typedef struct {
-  SY6522 sy6522;
-  SSI263A SpeechChip;
-  AY8910 ay_chip;
-  uint16_t nAYCurrentRegister;
-  uint8_t nAY8910Number;
-  int nTimerStatus;
-} SY6522_AY8910;
+static constexpr int NUM_VOICES_PER_CHIP = 3;
+static constexpr int CHIPS_PER_CARD = 2;
+static constexpr int VOICES_PER_CARD = NUM_VOICES_PER_CHIP * CHIPS_PER_CARD;
+
+static constexpr int16_t AUDIO_CLAMP_MIN = -32768;
+static constexpr int16_t AUDIO_CLAMP_MAX = 32767;
+
+static constexpr double PHASOR_ATTENUATION = 2.0 / 3.0;
+static constexpr double DEFAULT_ATTENUATION = 1.0;
+static constexpr uint64_t INACTIVE_THRESHOLD_DIVISOR = 10;
+static constexpr uint64_t HZ_60_DIVISOR = 60;
+
+struct SY6522_AY8910 {
+  SY6522 sy6522 = {};
+  SSI263A SpeechChip = {};
+  AY8910 ay_chip = {};
+  uint16_t nAYCurrentRegister = 0;
+  uint8_t nAY8910Number = 0;
+  int nTimerStatus = 0;
+};
 
 struct MockingboardPeripheral_t {
-  std::array<SY6522_AY8910, CHIPS_PER_CARD> chips;
-  std::array<std::unique_ptr<short[]>, VOICES_PER_CARD> voice_buffers;
-  short mix_buffer[SAMPLE_RATE * 2];  // Stereo mix
+  std::array<SY6522_AY8910, CHIPS_PER_CARD> chips = {};
+  std::array<std::unique_ptr<short[]>, VOICES_PER_CARD> voice_buffers = {};
+  short mix_buffer[SAMPLE_RATE * 2] = {};  // Stereo mix
   uint32_t n6522TimerPeriod = 0;
   uint16_t nMBTimerDevice = 0;
   uint64_t uLastCumulativeCycles = 0;
@@ -127,8 +144,9 @@ struct MockingboardPeripheral_t {
       buf.reset(new short[SAMPLE_RATE]);
     }
     for (int i = 0; i < CHIPS_PER_CARD; ++i) {
-      chips.at(static_cast<size_t>(i)).nAY8910Number = static_cast<uint8_t>(i);
-      AY8910_reset_instance(&chips.at(static_cast<size_t>(i)).ay_chip);
+      const auto idx = static_cast<size_t>(i);
+      chips.at(idx).nAY8910Number = static_cast<uint8_t>(i);
+      AY8910_reset_instance(&chips.at(idx).ay_chip);
     }
   }
 };
@@ -191,20 +209,20 @@ static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   (void)nAYDevice;
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(nDevice));
 
-  if ((nValue & 4) == 0) {
+  if ((nValue & AY_PB_RESET_N) == 0) {
     AY8910_reset_instance(&pMB->ay_chip);
   } else {
-    int nBDIR = (nValue & 2) ? 1 : 0;
-    int nBC1 = nValue & 1;
+    int nBDIR = (nValue & AY_PB_BDIR) ? 1 : 0;
+    int nBC1 = (nValue & AY_PB_BC1) ? 1 : 0;
     int nAYFunc = (nBDIR << 2) | (1 << 1) | nBC1;
 
-    if (nAYFunc == 6) {  // AY_WRITE
+    if (nAYFunc == AY_FUNC_WRITE) {
       AY8910_write_instance(&pMB->ay_chip, pMB->nAYCurrentRegister,
                             pMB->sy6522.ORA,
                             static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
-    } else if (nAYFunc == 7) {  // AY_LATCH
-      if (pMB->sy6522.ORA <= 0x0F) {
-        pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
+    } else if (nAYFunc == AY_FUNC_LATCH) {
+      if (pMB->sy6522.ORA <= AY_REG_MASK) {
+        pMB->nAYCurrentRegister = static_cast<uint16_t>(pMB->sy6522.ORA & AY_REG_MASK);
       }
     }
   }
@@ -293,6 +311,8 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     case VIA_REG_ORA_NO_HANDSHAKE:
       pMB->sy6522.ORA = nValue & pMB->sy6522.DDRA;
       break;
+    default:
+      break;
   }
 }
 
@@ -336,9 +356,11 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     case VIA_REG_IFR:
       return pMB->sy6522.IFR;
     case VIA_REG_IER:
-      return pMB->sy6522.IER | 0x80;
+      return static_cast<uint8_t>(pMB->sy6522.IER | 0x80);
     case VIA_REG_ORA_NO_HANDSHAKE:
       return pMB->sy6522.ORA;
+    default:
+      break;
   }
   return 0;
 }
@@ -360,13 +382,12 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       nNumSamples = static_cast<int>(SAMPLE_RATE);
     }
 
-    for (int i = 0; i < CHIPS_PER_CARD; i++) {
+    for (size_t i = 0; i < CHIPS_PER_CARD; i++) {
       int16_t* voices[3];
-      const auto idx = static_cast<size_t>(i);
-      voices[0] = &mp->voice_buffers.at(idx * 3 + 0).get()[0];
-      voices[1] = &mp->voice_buffers.at(idx * 3 + 1).get()[0];
-      voices[2] = &mp->voice_buffers.at(idx * 3 + 2).get()[0];
-      AY8910_update_instance(&mp->chips.at(idx).ay_chip, voices, nNumSamples,
+      voices[0] = &mp->voice_buffers.at(i * 3 + 0).get()[0];
+      voices[1] = &mp->voice_buffers.at(i * 3 + 1).get()[0];
+      voices[2] = &mp->voice_buffers.at(i * 3 + 2).get()[0];
+      AY8910_update_instance(&mp->chips.at(i).ay_chip, voices, nNumSamples,
                              static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     }
 
@@ -386,14 +407,14 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
             fAttenuation);
       }
 
-      if (nDataL < -32768)
-        nDataL = -32768;
-      else if (nDataL > 32767)
-        nDataL = 32767;
-      if (nDataR < -32768)
-        nDataR = -32768;
-      else if (nDataR > 32767)
-        nDataR = 32767;
+      if (nDataL < AUDIO_CLAMP_MIN)
+        nDataL = AUDIO_CLAMP_MIN;
+      else if (nDataL > AUDIO_CLAMP_MAX)
+        nDataL = AUDIO_CLAMP_MAX;
+      if (nDataR < AUDIO_CLAMP_MIN)
+        nDataR = AUDIO_CLAMP_MIN;
+      else if (nDataR > AUDIO_CLAMP_MAX)
+        nDataR = AUDIO_CLAMP_MAX;
 
       mp->mix_buffer[i * 2] = static_cast<short>(nDataL);
       mp->mix_buffer[i * 2 + 1] = static_cast<short>(nDataR);
@@ -419,28 +440,28 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
 
   while (uCycles > 0) {
     uint16_t nClocks =
-        (uCycles > 0xFFFF) ? 0xFFFF : static_cast<uint16_t>(uCycles);
+        (uCycles > 0xFFFF) ? static_cast<uint16_t>(0xFFFF) : static_cast<uint16_t>(uCycles);
     uCycles -= nClocks;
 
-    for (int i = 0; i < CHIPS_PER_CARD; i++) {
-      SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(i));
+    for (size_t i = 0; i < CHIPS_PER_CARD; i++) {
+      SY6522_AY8910* pMB = &mp->chips.at(i);
       uint16_t OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
-      pMB->sy6522.TIMER1_COUNTER.w -= nClocks;
-      pMB->sy6522.TIMER2_COUNTER.w -= nClocks;
+      pMB->sy6522.TIMER1_COUNTER.w = static_cast<uint16_t>(pMB->sy6522.TIMER1_COUNTER.w - nClocks);
+      pMB->sy6522.TIMER2_COUNTER.w = static_cast<uint16_t>(pMB->sy6522.TIMER2_COUNTER.w - nClocks);
 
       bool bTimer1Underflow =
           (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
-      if (bTimer1Underflow && (mp->nMBTimerDevice == i) &&
+      if (bTimer1Underflow && (mp->nMBTimerDevice == static_cast<uint16_t>(i)) &&
           mp->bTimerIrqActive) {
         mp->uTimer1IrqCount++;
         pMB->sy6522.IFR |= IxR_TIMER1;
-        UpdateIFR(mp, i);
+        UpdateIFR(mp, static_cast<int>(i));
 
         if ((pMB->sy6522.ACR & RUNMODE) == RM_ONESHOT) {
-          StopTimer(mp, i);
+          StopTimer(mp, static_cast<int>(i));
         } else {
           pMB->sy6522.TIMER1_COUNTER.w = pMB->sy6522.TIMER1_LATCH.w;
-          StartTimer(mp, i);
+          StartTimer(mp, static_cast<int>(i));
         }
         MB_Update_Instance(mp);
       }
@@ -590,7 +611,7 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   if (!mp->bTimerIrqActive && !(mp->chips.at(0).sy6522.IFR & IxR_TIMER1)) {
     if (mp->last_60hz == 0) mp->last_60hz = g_nCumulativeCycles;
     if (g_nCumulativeCycles - mp->last_60hz >
-        static_cast<uint64_t>(g_fCurrentCLK6502) / 60) {
+        static_cast<uint64_t>(g_fCurrentCLK6502) / 60ULL) {
       mp->last_60hz = g_nCumulativeCycles;
       MB_Update_Instance(mp);
     }
