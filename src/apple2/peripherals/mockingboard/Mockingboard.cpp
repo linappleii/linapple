@@ -1,20 +1,9 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -65,6 +54,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
+// NOLINTBEGIN(cppcoreguidelines-use-enum-class)
 enum { SY6522_DEVICE_A = 0, SY6522_DEVICE_B = 1 };
 enum { SY6522A_Offset = 0x00, SY6522B_Offset = 0x80 };
 enum { IxR_TIMER1 = 0x40, IxR_TIMER2 = 0x20 };
@@ -99,6 +89,7 @@ enum {
   AY_FUNC_LATCH = 0x07,
   AY_REG_MASK = 0x0F
 };
+// NOLINTEND(cppcoreguidelines-use-enum-class)
 
 static constexpr int NUM_VOICES_PER_CHIP = 3;
 static constexpr int CHIPS_PER_CARD = 2;
@@ -112,6 +103,14 @@ static constexpr double DEFAULT_ATTENUATION = 1.0;
 static constexpr uint64_t INACTIVE_THRESHOLD_DIVISOR = 10;
 static constexpr uint64_t HZ_60_DIVISOR = 60;
 
+namespace {
+constexpr int MB_DEFAULT_SLOT = 4;
+constexpr int MB_TYPE_STR_MAX = 16;
+constexpr uint8_t MB_IO_ADDR_HI_MASK = 0xFF;
+constexpr uint8_t VIA_REG_MASK = 0x0F;
+constexpr size_t MB_MAX_SLOTS = 8;
+}  // namespace
+
 struct SY6522_AY8910 {
   SY6522 sy6522 = {};
   SSI263A SpeechChip = {};
@@ -123,8 +122,8 @@ struct SY6522_AY8910 {
 
 struct MockingboardPeripheral_t {
   std::array<SY6522_AY8910, CHIPS_PER_CARD> chips = {};
-  std::array<std::unique_ptr<short[]>, VOICES_PER_CARD> voice_buffers = {};
-  short mix_buffer[SAMPLE_RATE * 2] = {};  // Stereo mix
+  std::array<std::unique_ptr<int16_t[]>, VOICES_PER_CARD> voice_buffers = {};
+  int16_t mix_buffer[SAMPLE_RATE * 2] = {};  // Stereo mix
   uint32_t n6522TimerPeriod = 0;
   uint16_t nMBTimerDevice = 0;
   uint64_t uLastCumulativeCycles = 0;
@@ -141,7 +140,7 @@ struct MockingboardPeripheral_t {
 
   MockingboardPeripheral_t() {
     for (auto& buf : voice_buffers) {
-      buf.reset(new short[SAMPLE_RATE]);
+      buf.reset(new int16_t[SAMPLE_RATE]);
     }
     for (int i = 0; i < CHIPS_PER_CARD; ++i) {
       const auto idx = static_cast<size_t>(i);
@@ -151,7 +150,8 @@ struct MockingboardPeripheral_t {
   }
 };
 
-static std::array<MockingboardPeripheral_t*, 8> active_mb_instances = {nullptr};
+static std::array<MockingboardPeripheral_t*, MB_MAX_SLOTS> active_mb_instances =
+    {nullptr};
 
 static void StartTimer(MockingboardPeripheral_t* mp, int chip_idx) {
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(chip_idx));
@@ -222,7 +222,8 @@ static void AY8910_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
                             static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     } else if (nAYFunc == AY_FUNC_LATCH) {
       if (pMB->sy6522.ORA <= AY_REG_MASK) {
-        pMB->nAYCurrentRegister = static_cast<uint16_t>(pMB->sy6522.ORA & AY_REG_MASK);
+        pMB->nAYCurrentRegister =
+            static_cast<uint16_t>(pMB->sy6522.ORA & AY_REG_MASK);
       }
     }
   }
@@ -236,6 +237,7 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   }
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(nDevice));
 
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access)
   switch (nReg) {
     case VIA_REG_ORB:
       nValue &= pMB->sy6522.DDRB;
@@ -314,7 +316,12 @@ static void SY6522_Write_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     default:
       break;
   }
+  // NOLINTEND(cppcoreguidelines-pro-type-union-access)
 }
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
 
 static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
                                  uint8_t nReg) -> uint8_t {
@@ -324,6 +331,7 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
   }
   SY6522_AY8910* pMB = &mp->chips.at(static_cast<size_t>(nDevice));
 
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access)
   switch (nReg) {
     case VIA_REG_ORB:
       return pMB->sy6522.ORB;
@@ -356,12 +364,13 @@ static auto SY6522_Read_Instance(MockingboardPeripheral_t* mp, uint8_t nDevice,
     case VIA_REG_IFR:
       return pMB->sy6522.IFR;
     case VIA_REG_IER:
-      return static_cast<uint8_t>(pMB->sy6522.IER | 0x80);
+      return static_cast<uint8_t>(pMB->sy6522.IER | VIA_IFR_IRQ_FLAG);
     case VIA_REG_ORA_NO_HANDSHAKE:
       return pMB->sy6522.ORA;
     default:
       break;
   }
+  // NOLINTEND(cppcoreguidelines-pro-type-union-access)
   return 0;
 }
 
@@ -384,14 +393,20 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
 
     for (size_t i = 0; i < CHIPS_PER_CARD; i++) {
       int16_t* voices[3];
-      voices[0] = &mp->voice_buffers.at(i * 3 + 0).get()[0];
-      voices[1] = &mp->voice_buffers.at(i * 3 + 1).get()[0];
-      voices[2] = &mp->voice_buffers.at(i * 3 + 2).get()[0];
+      // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+      voices[0] =
+          &mp->voice_buffers.at(static_cast<size_t>(i) * 3 + 0).get()[0];
+      voices[1] =
+          &mp->voice_buffers.at(static_cast<size_t>(i) * 3 + 1).get()[0];
+      voices[2] =
+          &mp->voice_buffers.at(static_cast<size_t>(i) * 3 + 2).get()[0];
+      // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       AY8910_update_instance(&mp->chips.at(i).ay_chip, voices, nNumSamples,
                              static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     }
 
-    double fAttenuation = (mp->type == SC_PHASOR) ? 2.0 / 3.0 : 1.0;
+    const double fAttenuation =
+        (mp->type == SC_PHASOR) ? PHASOR_ATTENUATION : DEFAULT_ATTENUATION;
 
     // Mix to stereo
     for (int i = 0; i < nNumSamples; i++) {
@@ -407,17 +422,23 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
             fAttenuation);
       }
 
-      if (nDataL < AUDIO_CLAMP_MIN)
+      if (nDataL < AUDIO_CLAMP_MIN) {
         nDataL = AUDIO_CLAMP_MIN;
-      else if (nDataL > AUDIO_CLAMP_MAX)
+      } else if (nDataL > AUDIO_CLAMP_MAX) {
         nDataL = AUDIO_CLAMP_MAX;
-      if (nDataR < AUDIO_CLAMP_MIN)
+      }
+      if (nDataR < AUDIO_CLAMP_MIN) {
         nDataR = AUDIO_CLAMP_MIN;
-      else if (nDataR > AUDIO_CLAMP_MAX)
+      } else if (nDataR > AUDIO_CLAMP_MAX) {
         nDataR = AUDIO_CLAMP_MAX;
+      }
 
-      mp->mix_buffer[i * 2] = static_cast<short>(nDataL);
-      mp->mix_buffer[i * 2 + 1] = static_cast<short>(nDataR);
+      // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+      mp->mix_buffer[static_cast<ptrdiff_t>(i) * 2] =
+          static_cast<int16_t>(nDataL);
+      mp->mix_buffer[static_cast<ptrdiff_t>(i) * 2 + 1] =
+          static_cast<int16_t>(nDataR);
+      // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
 
     if (mp->host && mp->host->AudioPushSamples) {
@@ -439,19 +460,28 @@ static void MB_UpdateCycles_Instance(MockingboardPeripheral_t* mp,
   mp->uLastCumulativeCycles = g_nCumulativeCycles;
 
   while (uCycles > 0) {
-    uint16_t nClocks =
-        (uCycles > 0xFFFF) ? static_cast<uint16_t>(0xFFFF) : static_cast<uint16_t>(uCycles);
+    constexpr uint64_t MAX_CLOCKS_U16 = 0xFFFF;
+    constexpr uint16_t MAX_CLOCKS_U16_VAL = 0xFFFF;
+    uint16_t nClocks = (uCycles > MAX_CLOCKS_U16)
+                           ? MAX_CLOCKS_U16_VAL
+                           : static_cast<uint16_t>(uCycles);
     uCycles -= nClocks;
 
     for (size_t i = 0; i < CHIPS_PER_CARD; i++) {
       SY6522_AY8910* pMB = &mp->chips.at(i);
+      // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access)
       uint16_t OldTimer1 = pMB->sy6522.TIMER1_COUNTER.w;
-      pMB->sy6522.TIMER1_COUNTER.w = static_cast<uint16_t>(pMB->sy6522.TIMER1_COUNTER.w - nClocks);
-      pMB->sy6522.TIMER2_COUNTER.w = static_cast<uint16_t>(pMB->sy6522.TIMER2_COUNTER.w - nClocks);
+      pMB->sy6522.TIMER1_COUNTER.w =
+          static_cast<uint16_t>(pMB->sy6522.TIMER1_COUNTER.w - nClocks);
+      pMB->sy6522.TIMER2_COUNTER.w =
+          static_cast<uint16_t>(pMB->sy6522.TIMER2_COUNTER.w - nClocks);
 
-      bool bTimer1Underflow =
-          (!(OldTimer1 & 0x8000) && (pMB->sy6522.TIMER1_COUNTER.w & 0x8000));
-      if (bTimer1Underflow && (mp->nMBTimerDevice == static_cast<uint16_t>(i)) &&
+      constexpr uint16_t TIMER_MSB_BIT = 0x8000;
+      bool bTimer1Underflow = (!(OldTimer1 & TIMER_MSB_BIT) &&
+                               (pMB->sy6522.TIMER1_COUNTER.w & TIMER_MSB_BIT));
+      // NOLINTEND(cppcoreguidelines-pro-type-union-access)
+      if (bTimer1Underflow &&
+          (mp->nMBTimerDevice == static_cast<uint16_t>(i)) &&
           mp->bTimerIrqActive) {
         mp->uTimer1IrqCount++;
         pMB->sy6522.IFR |= IxR_TIMER1;
@@ -493,13 +523,13 @@ static auto MB_IO_Read(void* instance, uint16_t pc, uint16_t addr,
   if (!instance) return MemReadFloatingBus(cycles_left);
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles_left);
-
-  uint8_t nOffset = addr & 0xff;
-  if (nOffset <= (SY6522A_Offset + 0x0F)) {
-    return SY6522_Read_Instance(mp, SY6522_DEVICE_A, nOffset & 0x0F);
-  } else if ((nOffset >= SY6522B_Offset) &&
-             (nOffset <= (SY6522B_Offset + 0x0F))) {
-    return SY6522_Read_Instance(mp, SY6522_DEVICE_B, nOffset & 0x0F);
+  uint8_t nOffset = addr & MB_IO_ADDR_HI_MASK;
+  if (nOffset <= (SY6522A_Offset + VIA_REG_MASK)) {
+    return SY6522_Read_Instance(mp, SY6522_DEVICE_A, nOffset & VIA_REG_MASK);
+  }
+  if ((nOffset >= SY6522B_Offset) &&
+      (nOffset <= (SY6522B_Offset + VIA_REG_MASK))) {
+    return SY6522_Read_Instance(mp, SY6522_DEVICE_B, nOffset & VIA_REG_MASK);
   }
   return MemReadFloatingBus(cycles_left);
 }
@@ -513,12 +543,12 @@ static auto MB_IO_Write(void* instance, uint16_t pc, uint16_t addr,
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   MB_UpdateCycles_Instance(mp, cycles_left);
 
-  uint8_t nOffset = addr & 0xff;
-  if (nOffset <= (SY6522A_Offset + 0x0F)) {
-    SY6522_Write_Instance(mp, SY6522_DEVICE_A, nOffset & 0x0F, val);
+  uint8_t nOffset = addr & MB_IO_ADDR_HI_MASK;
+  if (nOffset <= (SY6522A_Offset + VIA_REG_MASK)) {
+    SY6522_Write_Instance(mp, SY6522_DEVICE_A, nOffset & VIA_REG_MASK, val);
   } else if ((nOffset >= SY6522B_Offset) &&
-             (nOffset <= (SY6522B_Offset + 0x0F))) {
-    SY6522_Write_Instance(mp, SY6522_DEVICE_B, nOffset & 0x0F, val);
+             (nOffset <= (SY6522B_Offset + VIA_REG_MASK))) {
+    SY6522_Write_Instance(mp, SY6522_DEVICE_B, nOffset & VIA_REG_MASK, val);
   }
   return 0;
 }
@@ -535,16 +565,21 @@ static auto PhasorIO(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   }
 
   uint8_t CS = 0;
-  if (!mp->phasor_native) {
-    CS = ((addr & 0x80) >> 6) | ((addr & 0x10) >> 4);  // 0, 1, 2 or 3
+  if (mp->phasor_native) {
+    constexpr int MSB_SHIFT_6 = 6;
+    constexpr int BIT_4_SHIFT_4 = 4;
+    constexpr uint8_t BIT_4_MASK = 0x10;
+    CS = ((addr & VIA_IFR_IRQ_FLAG) >> MSB_SHIFT_6) |
+         ((addr & BIT_4_MASK) >> BIT_4_SHIFT_4);  // 0, 1, 2 or 3
   } else {
-    CS = ((addr & 0x80) >> 7) + 1;  // 1 or 2
+    constexpr int MSB_SHIFT_7 = 7;
+    CS = ((addr & VIA_IFR_IRQ_FLAG) >> MSB_SHIFT_7) + 1;  // 1 or 2
   }
 
   if (CS == 1) {
-    SY6522_Write_Instance(mp, SY6522_DEVICE_A, addr & 0x0F, val);
+    SY6522_Write_Instance(mp, SY6522_DEVICE_A, addr & VIA_REG_MASK, val);
   } else if (CS == 2) {
-    SY6522_Write_Instance(mp, SY6522_DEVICE_B, addr & 0x0F, val);
+    SY6522_Write_Instance(mp, SY6522_DEVICE_B, addr & VIA_REG_MASK, val);
   }
   return 0;
 }
@@ -563,9 +598,11 @@ static auto MB_ABI_Init(int slot, HostInterface_t* host) -> void* {
   active_mb_instances.at(s_idx) = mp;
 
   // Use SC_PHASOR if configured
-  char type_str[16];
+  char type_str[MB_TYPE_STR_MAX];
   if (host->GetConfig("Mockingboard", "Type", type_str, sizeof(type_str))) {
-    if (strcmp(type_str, "Phasor") == 0) mp->type = SC_PHASOR;
+    if (strcmp(type_str, "Phasor") == 0) {
+      mp->type = SC_PHASOR;
+    }
   }
 
   if (mp->type == SC_PHASOR) {
@@ -609,9 +646,11 @@ static void MB_ABI_Think(void* instance, uint32_t cycles) {
   MB_UpdateCycles_Instance(mp, cycles);
 
   if (!mp->bTimerIrqActive && !(mp->chips.at(0).sy6522.IFR & IxR_TIMER1)) {
-    if (mp->last_60hz == 0) mp->last_60hz = g_nCumulativeCycles;
+    if (mp->last_60hz == 0) {
+      mp->last_60hz = g_nCumulativeCycles;
+    }
     if (g_nCumulativeCycles - mp->last_60hz >
-        static_cast<uint64_t>(g_fCurrentCLK6502) / 60ULL) {
+        static_cast<uint64_t>(g_fCurrentCLK6502) / HZ_60_DIVISOR) {
       mp->last_60hz = g_nCumulativeCycles;
       MB_Update_Instance(mp);
     }
@@ -623,42 +662,31 @@ static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   (void)instance;
   // End of frame logic
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 Peripheral_t g_mockingboard_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.mockingboard",
-    .name             = "Mockingboard",
-    .description      = "Dual AY-3-8910 sound card emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.mockingboard",
+    .name = "Mockingboard",
+    .description = "Dual AY-3-8910 sound card emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-    .default_slot     = 4,
-    .init             = MB_ABI_Init,
-    .reset            = MB_ABI_Reset,
-    .shutdown         = MB_ABI_Shutdown,
-    .think            = MB_ABI_Think,
-    .on_vblank        = MB_ABI_OnVBlank,
-    .save_state       = nullptr,
-    .load_state       = nullptr,
-    .command          = nullptr,
-    .query            = nullptr
-};
+    .default_slot = MB_DEFAULT_SLOT,
+    .init = MB_ABI_Init,
+    .reset = MB_ABI_Reset,
+    .shutdown = MB_ABI_Shutdown,
+    .think = MB_ABI_Think,
+    .on_vblank = MB_ABI_OnVBlank,
+    .save_state = nullptr,
+    .load_state = nullptr,
+    .command = nullptr,
+    .query = nullptr};
 
 PERIPHERAL_REGISTER(g_mockingboard_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
