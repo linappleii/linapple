@@ -1,18 +1,4 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -96,9 +82,22 @@ constexpr uint8_t HD_REG_DISKBLOCK_LO = 0xF6;
 constexpr uint8_t HD_REG_DISKBLOCK_HI = 0xF7;
 constexpr uint8_t HD_REG_BUFFER = 0xF8;
 
-constexpr uint16_t HD_IO_BASE = 0xC0F0;
-constexpr uint16_t HD_IO_END = 0xC0F8;
+namespace {
+constexpr uint16_t HD_IO_ADDR_BASE = 0xC0F0;
+constexpr uint16_t HD_IO_ADDR_END = 0xC0F8;
+constexpr uint8_t HD_IO_ADDR_HI_MASK = 0xFF;
+constexpr int HD_BLOCK_SIZE = 512;
+constexpr int HD_ROM_SIZE = 256;
+constexpr int HD_DEFAULT_SLOT = 7;
+constexpr int HD_PATH_MAX = 512;
 
+constexpr uint8_t HD_MASK_LO = 0xFF;
+constexpr uint16_t HD_MASK_HI = 0xFF00;
+constexpr int HD_SHIFT_8 = 8;
+constexpr int HD_UNIT_NUM_DRIVE_BIT = 7;
+}  // namespace
+
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
 enum HarddiskIOCommand_e {
   HD_IO_CMD_STATUS = 0x00,
   HD_IO_CMD_READ = 0x01,
@@ -130,7 +129,7 @@ struct HarddiskPeripheral_t {
   uint8_t command = 0;
   bool rom_loaded = false;
   bool enabled = false;
-  uint32_t slot = 7;
+  uint32_t slot = static_cast<uint32_t>(HD_DEFAULT_SLOT);
   int status = DISK_STATUS_OFF;
   HostInterface_t* host = nullptr;
 
@@ -143,7 +142,8 @@ static void GetImageTitle(const char* imageFileName,
   const char* startpos = imageFileName;
 
   const char* last_sep = strrchr(startpos, FILE_SEPARATOR);
-  if (last_sep) {
+  if (last_sep != nullptr) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     startpos = last_sep + 1;
   }
   Util_SafeStrCpy(imagetitle, startpos, HD_FULL_NAME_MAX - 1);
@@ -256,8 +256,9 @@ static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
       return PERIPHERAL_OK;
     }
     case HARDDISK_CMD_SET_PROTECT: {
-      if (!data || size < sizeof(HarddiskSetProtectCmd_t))
+      if (!data || size < sizeof(HarddiskSetProtectCmd_t)) {
         return PERIPHERAL_ERROR;
+      }
       auto* c = static_cast<const HarddiskSetProtectCmd_t*>(data);
       if (!IsDriveValid(c->drive)) return PERIPHERAL_ERROR;
       hp->drives[c->drive].user_write_protected = (c->write_protected != 0);
@@ -325,19 +326,19 @@ static auto HD_ABI_Init(int slot, HostInterface_t* host) -> void* {
   HarddiskLoader_Init();
 
   if (hp->enabled) {
-    uint8_t slot_rom[256];
-    memcpy(slot_rom, Hddrvr_dat, 256);
+    uint8_t slot_rom[HD_ROM_SIZE];
+    memcpy(slot_rom, Hddrvr_dat, HD_ROM_SIZE);
     host->RegisterCxROM(slot, slot_rom);
     hp->rom_loaded = true;
   }
 
   // Register surgical I/O for Slot 7 ($C0F0-$C0F8)
-  for (uint16_t addr = 0xC0F0; addr <= 0xC0F8; ++addr) {
+  for (uint16_t addr = HD_IO_ADDR_BASE; addr <= HD_IO_ADDR_END; ++addr) {
     host->RegisterDirectIO(hp, addr, HD_IO_EMUL, HD_IO_EMUL);
   }
 
   // Auto-load images from config if present
-  char path[512];
+  char path[HD_PATH_MAX];
   if (host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) &&
       path[0]) {
     HD_Insert_Internal(hp, 0, path, false);
@@ -355,7 +356,9 @@ static void HD_ABI_Reset(void* instance) { (void)instance; }
 static void HD_ABI_Shutdown(void* instance) {
   if (!instance) return;
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
-  for (int i = 0; i < 2; i++) HD_CleanupDrive(&hp->drives[i]);
+  for (auto& drive : hp->drives) {
+    HD_CleanupDrive(&drive);
+  }
   HarddiskLoader_Shutdown();
   delete hp;
 }
@@ -371,11 +374,12 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
   auto* hp = static_cast<HarddiskPeripheral_t*>(instance);
 
   uint8_t r = DEVICE_OK;
-  addr &= 0xFF;
-  if (!hp->rom_loaded || !hp->enabled)
+  addr &= HD_IO_ADDR_HI_MASK;
+  if (!hp->rom_loaded || !hp->enabled) {
     return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  }
 
-  HarddiskDrive_t* pHDD = &hp->drives[hp->unit_num >> 7];
+  HarddiskDrive_t* pHDD = &hp->drives[hp->unit_num >> HD_UNIT_NUM_DRIVE_BIT];
 
   if (bWrite == 0) {  // read
     switch (addr) {
@@ -406,7 +410,8 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
             case HD_IO_CMD_WRITE:  // write
             {
               hp->status = DISK_STATUS_WRITE;
-              memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
+              // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+              memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, HD_BLOCK_SIZE);
               if (pHDD->driver->write_block(pHDD->driver_instance,
                                             pHDD->hd_diskblock, pHDD->hd_buf) ==
                   HARDDISK_ERR_NONE) {
@@ -437,16 +442,16 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
         r = hp->unit_num;
         break;
       case HD_REG_MEMBLOCK_LO:
-        r = static_cast<uint8_t>(pHDD->hd_memblock & 0x00FF);
+        r = static_cast<uint8_t>(pHDD->hd_memblock & HD_MASK_LO);
         break;
       case HD_REG_MEMBLOCK_HI:
-        r = static_cast<uint8_t>((pHDD->hd_memblock & 0xFF00) >> 8);
+        r = static_cast<uint8_t>((pHDD->hd_memblock & HD_MASK_HI) >> HD_SHIFT_8);
         break;
       case HD_REG_DISKBLOCK_LO:
-        r = static_cast<uint8_t>(pHDD->hd_diskblock & 0x00FF);
+        r = static_cast<uint8_t>(pHDD->hd_diskblock & HD_MASK_LO);
         break;
       case HD_REG_DISKBLOCK_HI:
-        r = static_cast<uint8_t>((pHDD->hd_diskblock & 0xFF00) >> 8);
+        r = static_cast<uint8_t>((pHDD->hd_diskblock & HD_MASK_HI) >> HD_SHIFT_8);
         break;
       case HD_REG_BUFFER:
         r = pHDD->hd_buf[pHDD->hd_buf_ptr];
@@ -465,19 +470,19 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
         break;
       case HD_REG_MEMBLOCK_LO:
         pHDD->hd_memblock =
-            static_cast<uint16_t>((pHDD->hd_memblock & 0xFF00) | d);
+            static_cast<uint16_t>((pHDD->hd_memblock & HD_MASK_HI) | d);
         break;
       case HD_REG_MEMBLOCK_HI:
         pHDD->hd_memblock =
-            static_cast<uint16_t>((pHDD->hd_memblock & 0x00FF) | (d << 8));
+            static_cast<uint16_t>((pHDD->hd_memblock & HD_MASK_LO) | (d << HD_SHIFT_8));
         break;
       case HD_REG_DISKBLOCK_LO:
         pHDD->hd_diskblock =
-            static_cast<uint16_t>((pHDD->hd_diskblock & 0xFF00) | d);
+            static_cast<uint16_t>((pHDD->hd_diskblock & HD_MASK_HI) | d);
         break;
       case HD_REG_DISKBLOCK_HI:
         pHDD->hd_diskblock =
-            static_cast<uint16_t>((pHDD->hd_diskblock & 0x00FF) | (d << 8));
+            static_cast<uint16_t>((pHDD->hd_diskblock & HD_MASK_LO) | (d << HD_SHIFT_8));
         break;
       default:
         return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
@@ -495,7 +500,7 @@ Peripheral_t g_harddisk_peripheral = {
     .author           = "LinApple Contributors",
     .version          = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-    .default_slot     = 7,
+    .default_slot     = HD_DEFAULT_SLOT,
     .init             = HD_ABI_Init,
     .reset            = HD_ABI_Reset,
     .shutdown         = HD_ABI_Shutdown,
@@ -508,18 +513,4 @@ Peripheral_t g_harddisk_peripheral = {
 };
 
 PERIPHERAL_REGISTER(g_harddisk_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
