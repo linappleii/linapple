@@ -96,7 +96,30 @@ jobs:
       - name: Install
         run: cmake --install build
 
-  # 4. Headless Build (Minimal Deps)
+  # 4. SDL1 Build (Ubuntu 24.04)
+  sdl1-build:
+    name: SDL1 (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libsdl1.2-dev libsdl-image1.2-dev
+      - name: Configure
+        run: cmake -B build -DFRONTEND=sdl1 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Test
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: cd build && ctest --output-on-failure
+      - name: Install
+        run: sudo cmake --install build
+
+  # 5. Headless Build (Minimal Deps)
   headless-build:
     name: Headless (Ubuntu 24.04)
     runs-on: ubuntu-24.04
