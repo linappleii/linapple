@@ -1,19 +1,10 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// bugprone-easily-swappable-parameters)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -244,6 +235,7 @@ SSC_DIPSW g_DIPSWDefault = {
     false,
 };
 
+// NOLINTBEGIN(cppcoreguidelines-use-enum-class)
 enum BaudRateIndex_e {
   BAUD_110_INDEX = 0x05,
   BAUD_300_INDEX = 0x06,
@@ -263,6 +255,7 @@ enum SSC_Offset_e {
   SSC_OFFSET_COMMAND = 0x0A,
   SSC_OFFSET_CONTROL = 0x0B
 };
+// NOLINTEND(cppcoreguidelines-use-enum-class)
 
 const uint8_t COMMAND_PARITY_ENABLED_BIT = 0x20;
 const uint8_t COMMAND_PARITY_MODE_MASK = 0xC0;
@@ -288,20 +281,25 @@ const uint8_t CONTROL_BYTE_SIZE_7 = 0x20;
 const uint8_t CONTROL_BYTE_SIZE_6 = 0x40;
 const uint8_t CONTROL_BYTE_SIZE_5 = 0x60;
 
-const uint16_t TIMER_LOW_BYTE_MAX = 0xFF;
+namespace {
+constexpr int SSC_DEFAULT_SLOT = 2;
+constexpr uint32_t SSC_FW_SIZE = 2 * 1024;
+constexpr uint32_t SSC_SLOT_FW_SIZE = 256;
+constexpr uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
 
-static constexpr uint32_t SSC_FW_SIZE = 2 * 1024;
-static constexpr uint32_t SSC_SLOT_FW_SIZE = 256;
-static constexpr uint32_t SSC_SLOT_FW_OFFSET = 7 * 256;
+constexpr uint8_t ST_RX_FULL = 1 << 3;
+constexpr uint8_t ST_TX_EMPTY = 1 << 4;
+constexpr uint8_t ST_DCD = 1 << 5;
+constexpr uint8_t ST_DSR = 1 << 6;
+constexpr uint8_t ST_IRQ = 1 << 7;
 
-static constexpr uint8_t ST_PARITY_ERR = 1 << 0;
-static constexpr uint8_t ST_FRAMING_ERR = 1 << 1;
-static constexpr uint8_t ST_OVERRUN_ERR = 1 << 2;
-static constexpr uint8_t ST_RX_FULL = 1 << 3;
-static constexpr uint8_t ST_TX_EMPTY = 1 << 4;
-static constexpr uint8_t ST_DCD = 1 << 5;
-static constexpr uint8_t ST_DSR = 1 << 6;
-static constexpr uint8_t ST_IRQ = 1 << 7;
+constexpr uint8_t SSC_BYTE_SIZE_8 = 8;
+constexpr uint8_t SSC_BYTE_SIZE_7 = 7;
+constexpr uint8_t SSC_BYTE_SIZE_6 = 6;
+constexpr uint8_t SSC_BYTE_SIZE_5 = 5;
+constexpr uint8_t SSC_COMMAND_CLEAR_MASK = 0xE0;
+constexpr uint8_t SSC_BYTE_MASK = 0xFF;
+}  // namespace
 
 #include "core/Peripheral.h"
 
@@ -350,6 +348,7 @@ static auto SSC_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
   // Copy the 256 byte portion to CxROM
   uint8_t slot_rom[SSC_SLOT_FW_SIZE];
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   memcpy(slot_rom, SSC_rom.data() + SSC_SLOT_FW_OFFSET, SSC_SLOT_FW_SIZE);
   if (host && host->RegisterCxROM) {
     host->RegisterCxROM(slot, slot_rom);
@@ -463,7 +462,7 @@ void SSC_Reset(SuperSerialCard* pSSC) {
   pSSC->m_bRxIrqEnabled = false;
   pSSC->m_bWrittenTx = false;
   pSSC->m_vbCommIRQ = false;
-  pSSC->m_uCommandByte = 0xFF;
+  pSSC->m_uCommandByte = SSC_BYTE_MASK;
 }
 
 void SSC_Destroy(SuperSerialCard* pSSC) {
@@ -491,7 +490,7 @@ static void SetDIPSWDefaults(SSCPeripheral_t* mp) {
 static auto GenerateControl(SSCPeripheral_t* mp) -> uint8_t {
   auto* pSSC = &mp->logic;
   const uint32_t CLK = 1;  // Internal
-  uint32_t bmByteSize = (8 - pSSC->m_uByteSize);
+  uint32_t bmByteSize = (SSC_BYTE_SIZE_8 - pSSC->m_uByteSize);
   assert(bmByteSize <= 3);
 
   uint32_t StopBit = 0;
@@ -543,7 +542,6 @@ auto SSC_IORead(void* instance, uint16_t PC, uint16_t uAddr, uint8_t bWrite,
 
   switch (uAddr & ADDR_NIBBLE_MASK) {
     case SSC_OFFSET_DIPSW1:
-      return CommDipSw(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_DIPSW2:
       return CommDipSw(mp, PC, uAddr, bWrite, uValue, nCyclesLeft);
     case SSC_OFFSET_DATA:
@@ -611,8 +609,6 @@ static auto CommCommand(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
         pSSC->m_bTxIrqEnabled = true;
         break;
       case COMMAND_TX_IRQ_DISABLED_CONT_ON:
-        pSSC->m_bTxIrqEnabled = false;
-        break;
       case COMMAND_TX_IRQ_DISABLED_BREAK:
         pSSC->m_bTxIrqEnabled = false;
         break;
@@ -670,16 +666,16 @@ static auto CommControl(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
 
     switch (pSSC->m_uControlByte & CONTROL_BYTE_SIZE_MASK) {
       case CONTROL_BYTE_SIZE_8:
-        pSSC->m_uByteSize = 8;
+        pSSC->m_uByteSize = SSC_BYTE_SIZE_8;
         break;
       case CONTROL_BYTE_SIZE_7:
-        pSSC->m_uByteSize = 7;
+        pSSC->m_uByteSize = SSC_BYTE_SIZE_7;
         break;
       case CONTROL_BYTE_SIZE_6:
-        pSSC->m_uByteSize = 6;
+        pSSC->m_uByteSize = SSC_BYTE_SIZE_6;
         break;
       case CONTROL_BYTE_SIZE_5:
-        pSSC->m_uByteSize = 5;
+        pSSC->m_uByteSize = SSC_BYTE_SIZE_5;
         break;
       default:
         break;
@@ -744,7 +740,7 @@ static auto CommStatus(SSCPeripheral_t* mp, uint16_t, uint16_t, uint8_t write,
   if (write) {
     // Programmed Reset: Datasheet pg 6-8
     // Clears bits 0-4 of Command Register
-    pSSC->m_uCommandByte &= 0xE0;
+    pSSC->m_uCommandByte &= SSC_COMMAND_CLEAR_MASK;
     pSSC->m_bTxIrqEnabled = false;
     pSSC->m_bRxIrqEnabled = true;  // Bit 1 = 0 means enabled for 6551
 
@@ -790,9 +786,8 @@ static auto CommDipSw(SSCPeripheral_t* mp, uint16_t, uint16_t addr, uint8_t,
         (BaudRateToIndex(pSSC->m_DIPSWCurrent.uBaudRate) << 4) |
         pSSC->m_DIPSWCurrent.eFirmwareMode);
   } else if ((addr & ADDR_NIBBLE_MASK) == SSC_OFFSET_DIPSW2) {
-    uint8_t int_bit =
-        pSSC->m_DIPSWCurrent.eStopBits == SSC_STOP_BITS_2 ? 1 : 0;
-    uint8_t dcd_bit = pSSC->m_DIPSWCurrent.uByteSize == 7 ? 1 : 0;
+    uint8_t int_bit = pSSC->m_DIPSWCurrent.eStopBits == SSC_STOP_BITS_2 ? 1 : 0;
+    uint8_t dcd_bit = pSSC->m_DIPSWCurrent.uByteSize == SSC_BYTE_SIZE_7 ? 1 : 0;
     uint8_t rdr_bit = 0;
     uint8_t ovr_bit = 0;
     switch (pSSC->m_DIPSWCurrent.eParity) {
@@ -863,39 +858,29 @@ auto SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms* pSS) -> uint32_t {
 }
 
 Peripheral_t g_ssc_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.super_serial_card",
-    .name             = "Super Serial Card",
-    .description      = "Apple II Super Serial Card (6551 ACIA) emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.super_serial_card",
+    .name = "Super Serial Card",
+    .description = "Apple II Super Serial Card (6551 ACIA) emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-    .default_slot     = 2,
-    .init             = SSC_ABI_Init,
-    .reset            = SSC_ABI_Reset,
-    .shutdown         = SSC_ABI_Shutdown,
-    .think            = SSC_ABI_Think,
-    .on_vblank        = nullptr,
-    .save_state       = SSC_ABI_SaveState,
-    .load_state       = SSC_ABI_LoadState,
-    .command          = SSC_ABI_Command,
-    .query            = nullptr
-};
+    .default_slot = SSC_DEFAULT_SLOT,
+    .init = SSC_ABI_Init,
+    .reset = SSC_ABI_Reset,
+    .shutdown = SSC_ABI_Shutdown,
+    .think = SSC_ABI_Think,
+    .on_vblank = nullptr,
+    .save_state = SSC_ABI_SaveState,
+    .load_state = SSC_ABI_LoadState,
+    .command = SSC_ABI_Command,
+    .query = nullptr};
 
 PERIPHERAL_REGISTER(g_ssc_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// bugprone-easily-swappable-parameters)
