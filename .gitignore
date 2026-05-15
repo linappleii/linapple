@@ -28,3 +28,5 @@ gen/
 *.o
 gmon.out
 compile_commands.json
+
+.worktrees/

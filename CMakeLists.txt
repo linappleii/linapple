@@ -15,11 +15,11 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, or headless)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, or headless)")
 endif()
 
-if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "headless")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', or 'headless'.")
+if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "sdl1" AND NOT FRONTEND STREQUAL "headless")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', or 'headless'.")
 endif()
 
 option(PROFILING "Enable profiling" OFF)
@@ -46,6 +46,9 @@ if(FRONTEND STREQUAL "sdl3")
     find_package(SDL3_image REQUIRED)
 elseif(FRONTEND STREQUAL "sdl2")
     find_package(SDL2 REQUIRED)
+elseif(FRONTEND STREQUAL "sdl1")
+    find_package(SDL REQUIRED)
+    find_package(SDL_image REQUIRED)
 endif()
 
 find_package(PkgConfig REQUIRED)
@@ -215,6 +218,25 @@ elseif(FRONTEND STREQUAL "sdl2")
         src/frontends/sdl2/SDL_Video.cpp
         src/frontends/sdl2/SerialCommsFrontend.cpp
     )
+elseif(FRONTEND STREQUAL "sdl1")
+    set(SOURCES_FE
+        src/frontends/sdl1/DiskChoose.cpp
+        src/frontends/sdl1/DiskFTP.cpp
+        src/frontends/sdl1/DiskSelect.cpp
+        src/frontends/sdl1/DiskUI.cpp
+        src/frontends/sdl1/Frame.cpp
+        src/frontends/sdl1/Harddisk.cpp
+        src/frontends/sdl1/JoystickFrontend.cpp
+        src/frontends/sdl1/Keyboard.cpp
+        src/frontends/sdl1/Main.cpp
+        src/frontends/sdl1/MainSession.cpp
+        src/frontends/sdl1/PrinterFrontend.cpp
+        src/frontends/sdl1/SDL_Asset.cpp
+        src/frontends/sdl1/SDL_Input.cpp
+        src/frontends/sdl1/SDL_Path.cpp
+        src/frontends/sdl1/SDL_Video.cpp
+        src/frontends/sdl1/SerialCommsFrontend.cpp
+    )
 elseif(FRONTEND STREQUAL "headless")
     set(SOURCES_FE
         src/frontends/headless/Main.cpp
@@ -274,6 +296,9 @@ if(FRONTEND STREQUAL "sdl3")
     target_link_libraries(linapple PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 elseif(FRONTEND STREQUAL "sdl2")
     target_link_libraries(linapple PRIVATE SDL2::SDL2)
+elseif(FRONTEND STREQUAL "sdl1")
+    target_link_libraries(linapple PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
+    target_include_directories(linapple PRIVATE ${SDL_INCLUDE_DIR})
 endif()
 
 target_link_libraries(linapple PRIVATE
@@ -392,6 +417,11 @@ if(BUILD_TESTING)
     add_linapple_test(speaker tests/test_main.cpp;tests/test_speaker.cpp)
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
+    if(FRONTEND STREQUAL "sdl1")
+        add_linapple_test(frontend-sdl1 "tests/test_main.cpp;tests/test_frontend_sdl1.cpp")
+        target_include_directories(test-frontend-sdl1 PRIVATE src)
+        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
+    endif()
 endif()
 
 add_custom_target(linapple-core DEPENDS linapple)
