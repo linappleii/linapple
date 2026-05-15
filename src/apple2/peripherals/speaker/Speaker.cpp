@@ -402,7 +402,8 @@ Peripheral_t g_speaker_peripheral = {
     .save_state = Spkr_ABI_SaveState,
     .load_state = Spkr_ABI_LoadState,
     .command = nullptr,
-    .query = Spkr_ABI_Query};
+    .query = Spkr_ABI_Query
+};
 
 PERIPHERAL_REGISTER(g_speaker_peripheral)
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
