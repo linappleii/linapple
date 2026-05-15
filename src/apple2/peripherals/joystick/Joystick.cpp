@@ -43,9 +43,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
 namespace {
 constexpr double BUTTON_TIME_DIVISOR = 100.0;
@@ -84,6 +82,10 @@ struct JoystickPeripheral_t {
 
   JoystickPeripheral_t() = default;
 };
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
 
 static auto Joy_IO_ReadButton(void* instance, uint16_t pc, uint16_t addr,
                               uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
@@ -323,6 +325,7 @@ static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
 
   return PERIPHERAL_OK;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 Peripheral_t g_joystick_peripheral = {
     .abi_version      = LINAPPLE_ABI_VERSION,
@@ -345,6 +348,4 @@ Peripheral_t g_joystick_peripheral = {
 };
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
