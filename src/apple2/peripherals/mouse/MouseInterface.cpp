@@ -411,24 +411,6 @@ static auto Mouse_ABI_Query(void* instance, uint32_t query_id, void* out,
   return PERIPHERAL_ERROR;
 }
 
-Peripheral_t g_mouse_peripheral = {LINAPPLE_ABI_VERSION,
-                                   "linapple.mouse",
-                                   "Mouse Interface",
-                                   "Apple II Mouse Card emulation",
-                                   "LinApple Contributors",
-                                   VERSIONSTRING,
-                                   0xFE,  // Slots 1-7
-                                   4,     // Default Slot 4
-                                   Mouse_ABI_Init,
-                                   Mouse_ABI_Reset,
-                                   Mouse_ABI_Shutdown,
-                                   nullptr,  // think
-                                   Mouse_ABI_OnVBlank,
-                                   nullptr,  // save_state
-                                   nullptr,  // load_state
-                                   Mouse_ABI_Command,
-                                   Mouse_ABI_Query};
-
 static void Mouse_OnCommand(MousePeripheral_t* mp) {
   switch (mp->logic.m_byBuff[0] & MOUSE_CMD_MASK) {
     case MOUSE_SET:
@@ -622,8 +604,27 @@ static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
       (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
 }
 
-PERIPHERAL_REGISTER(g_mouse_peripheral)
+Peripheral_t g_mouse_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.mouse",
+    .name             = "Mouse Interface",
+    .description      = "Apple II Mouse Card emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 4,
+    .init             = Mouse_ABI_Init,
+    .reset            = Mouse_ABI_Reset,
+    .shutdown         = Mouse_ABI_Shutdown,
+    .think            = nullptr,
+    .on_vblank        = Mouse_ABI_OnVBlank,
+    .save_state       = nullptr,
+    .load_state       = nullptr,
+    .command          = Mouse_ABI_Command,
+    .query            = Mouse_ABI_Query
+};
 
+PERIPHERAL_REGISTER(g_mouse_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)

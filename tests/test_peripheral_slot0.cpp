@@ -78,8 +78,8 @@ static Peripheral_t g_mock2 = {
 TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     p1_resets = p2_resets = 0;
     p1_thinks = p2_thinks = 0;
-    g_mock1.compatible_slots = 0x01;
-    g_mock2.compatible_slots = 0x01;
+    g_mock1.compatible_slots = PERIPHERAL_MASK_INTERNAL;
+    g_mock2.compatible_slots = PERIPHERAL_MASK_INTERNAL;
 
     Peripheral_Manager_Init();
 
@@ -118,7 +118,7 @@ TEST_CASE("Peripheral ABI: Host_ResetSystem") {
     Peripheral_Manager_Init();
 
     Peripheral_t trigger_p = g_mock1;
-    trigger_p.compatible_slots = 0x01;
+    trigger_p.compatible_slots = PERIPHERAL_MASK_INTERNAL;
     trigger_p.init = [](int slot, HostInterface_t* host) -> void* {
         (void)slot;
         captured_host = host;

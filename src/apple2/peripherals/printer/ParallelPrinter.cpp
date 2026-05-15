@@ -15,8 +15,6 @@
 #include "core/Peripheral.h"
 
 static constexpr size_t SLOT_ROM_SIZE = 256;
-static constexpr uint8_t COMPATIBLE_SLOTS_MASK = 0xFE;  // Slots 1-7
-static constexpr int8_t DEFAULT_SLOT = 1;
 static constexpr uint8_t PRINTER_STATUS_OFFLINE = 0xFF;
 static constexpr uint8_t PRINTER_TRANSMIT_SUCCESS = 0;
 
@@ -78,25 +76,6 @@ static void Printer_ABI_Think(void* instance, uint32_t cycles) {
   (void)cycles;
 }
 
-Peripheral_t g_printer_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.printer",
-    "Parallel Printer",
-    "Standard parallel printer interface emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    COMPATIBLE_SLOTS_MASK,
-    DEFAULT_SLOT,
-    Printer_ABI_Init,
-    Printer_ABI_Reset,
-    Printer_ABI_Shutdown,
-    Printer_ABI_Think,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr};
-
 static auto PrintStatus(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {
   auto* pp = static_cast<PrinterPeripheral_t*>(instance);
@@ -114,10 +93,31 @@ static auto PrintTransmit(void* instance, uint16_t, uint16_t, uint8_t,
   }
   return PRINTER_TRANSMIT_SUCCESS;
 }
+
+Peripheral_t g_printer_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.printer",
+    .name             = "Parallel Printer",
+    .description      = "Standard parallel printer interface emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 1,
+    .init             = Printer_ABI_Init,
+    .reset            = Printer_ABI_Reset,
+    .shutdown         = Printer_ABI_Shutdown,
+    .think            = Printer_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = nullptr,
+    .load_state       = nullptr,
+    .command          = nullptr,
+    .query            = nullptr
+};
+
+PERIPHERAL_REGISTER(g_printer_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-PERIPHERAL_REGISTER(g_printer_peripheral)

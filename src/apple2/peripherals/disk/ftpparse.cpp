@@ -72,7 +72,7 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream.get());
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): ABI
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass.data());
 
   curl_easy_setopt(g_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
   curl_easy_setopt(g_curl, CURLOPT_NOPROGRESS, 0);

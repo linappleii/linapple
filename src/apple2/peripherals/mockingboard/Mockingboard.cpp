@@ -624,29 +624,27 @@ static void MB_ABI_OnVBlank(void* instance, bool vblank) {
   // End of frame logic
 }
 
-Peripheral_t g_mockingboard_peripheral = {LINAPPLE_ABI_VERSION,
-                                          "linapple.mockingboard",
-                                          "Mockingboard",
-                                          "Dual AY-3-8910 sound card emulation",
-                                          "LinApple Contributors",
-                                          VERSIONSTRING,
-                                          0xFE,  // Slots 1-7
-                                          4,     // Default Slot 4
-                                          MB_ABI_Init,
-                                          MB_ABI_Reset,
-                                          MB_ABI_Shutdown,
-                                          MB_ABI_Think,
-                                          MB_ABI_OnVBlank,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr};
+Peripheral_t g_mockingboard_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.mockingboard",
+    .name             = "Mockingboard",
+    .description      = "Dual AY-3-8910 sound card emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 4,
+    .init             = MB_ABI_Init,
+    .reset            = MB_ABI_Reset,
+    .shutdown         = MB_ABI_Shutdown,
+    .think            = MB_ABI_Think,
+    .on_vblank        = MB_ABI_OnVBlank,
+    .save_state       = nullptr,
+    .load_state       = nullptr,
+    .command          = nullptr,
+    .query            = nullptr
+};
 
-// --- Legacy Stubs for Build Compatibility ---
-void MB_Initialize() {}
-void MB_Reinitialize() {}
-void MB_Destroy() {}
-void MB_Reset() {}
+PERIPHERAL_REGISTER(g_mockingboard_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
@@ -664,4 +662,3 @@ void MB_Reset() {}
 // cppcoreguidelines-use-enum-class,
 // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
 // cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
-PERIPHERAL_REGISTER(g_mockingboard_peripheral)

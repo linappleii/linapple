@@ -324,26 +324,27 @@ static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_joystick_peripheral = {LINAPPLE_ABI_VERSION,
-                                      "linapple.joystick",
-                                      "Joystick",
-                                      "Analog joystick and paddle emulation",
-                                      "LinApple Contributors",
-                                      VERSIONSTRING,
-                                      0x01,  // Slot 0 (Internal)
-                                      0,     // Default Slot 0
-                                      Joystick_ABI_Init,
-                                      Joystick_ABI_Reset,
-                                      Joystick_ABI_Shutdown,
-                                      Joystick_ABI_Think,
-                                      nullptr,  // on_vblank
-                                      Joystick_ABI_SaveState,
-                                      Joystick_ABI_LoadState,
-                                      Joystick_ABI_Command,
-                                      Joystick_ABI_Query};
+Peripheral_t g_joystick_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.joystick",
+    .name             = "Joystick",
+    .description      = "Analog joystick and paddle emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_INTERNAL,
+    .default_slot     = 0,
+    .init             = Joystick_ABI_Init,
+    .reset            = Joystick_ABI_Reset,
+    .shutdown         = Joystick_ABI_Shutdown,
+    .think            = Joystick_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = Joystick_ABI_SaveState,
+    .load_state       = Joystick_ABI_LoadState,
+    .command          = Joystick_ABI_Command,
+    .query            = Joystick_ABI_Query
+};
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
-
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)

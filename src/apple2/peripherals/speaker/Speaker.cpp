@@ -378,25 +378,26 @@ static auto Spkr_ABI_Query(void* instance, uint32_t query_id, void* out,
 }
 
 Peripheral_t g_speaker_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.speaker",
-    "Speaker",
-    "Built-in Apple II speaker and cassette port emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0x01,  // Slot 0 (Internal)
-    0,     // Default Slot 0
-    Spkr_ABI_Init,
-    Spkr_ABI_Reset,
-    Spkr_ABI_Shutdown,
-    Spkr_ABI_Think,
-    nullptr,  // on_vblank
-    Spkr_ABI_SaveState,
-    Spkr_ABI_LoadState,
-    nullptr,  // command
-    Spkr_ABI_Query};
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.speaker",
+    .name             = "Speaker",
+    .description      = "Built-in Apple II speaker and cassette port emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_INTERNAL,
+    .default_slot     = 0,
+    .init             = Spkr_ABI_Init,
+    .reset            = Spkr_ABI_Reset,
+    .shutdown         = Spkr_ABI_Shutdown,
+    .think            = Spkr_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = Spkr_ABI_SaveState,
+    .load_state       = Spkr_ABI_LoadState,
+    .command          = nullptr,
+    .query            = Spkr_ABI_Query
+};
 
+PERIPHERAL_REGISTER(g_speaker_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
-PERIPHERAL_REGISTER(g_speaker_peripheral)

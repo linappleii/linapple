@@ -43,11 +43,11 @@ auto SysInit() -> int {
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
   g_curl = curl_easy_init();
-  if (!g_curl) {
+  if (g_curl == nullptr) {
     Error("Could not initialize CURL easy interface\n");
     return 1;
   }
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass);
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass.data());
 
   return 0;
 }

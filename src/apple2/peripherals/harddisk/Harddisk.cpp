@@ -364,25 +364,6 @@ constexpr uint8_t DEVICE_OK = 0x00;
 constexpr uint8_t DEVICE_UNKNOWN_ERROR = 0x03;
 constexpr uint8_t DEVICE_IO_ERROR = 0x08;
 
-Peripheral_t g_harddisk_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.harddisk",
-    "Harddisk",
-    "SmartPort hard disk controller emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    7,     // Default Slot 7
-    HD_ABI_Init,
-    HD_ABI_Reset,
-    HD_ABI_Shutdown,
-    nullptr,  // think
-    nullptr,  // on_vblank
-    nullptr,  // save_state
-    nullptr,  // load_state
-    HD_ABI_Command,
-    HD_ABI_Query};
-
 static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
                        uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
     -> uint8_t {
@@ -505,6 +486,28 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
   if (hp->host) hp->host->NotifyStatusChanged(static_cast<int>(hp->slot));
   return r;
 }
+
+Peripheral_t g_harddisk_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.harddisk",
+    .name             = "Harddisk",
+    .description      = "SmartPort hard disk controller emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 7,
+    .init             = HD_ABI_Init,
+    .reset            = HD_ABI_Reset,
+    .shutdown         = HD_ABI_Shutdown,
+    .think            = nullptr,
+    .on_vblank        = nullptr,
+    .save_state       = nullptr,
+    .load_state       = nullptr,
+    .command          = HD_ABI_Command,
+    .query            = HD_ABI_Query
+};
+
+PERIPHERAL_REGISTER(g_harddisk_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
@@ -520,4 +523,3 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
 // bugprone-switch-missing-default-case,
 // cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
 // cppcoreguidelines-use-enum-class)
-PERIPHERAL_REGISTER(g_harddisk_peripheral)

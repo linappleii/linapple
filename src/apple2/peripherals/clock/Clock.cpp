@@ -1,4 +1,17 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, modernize-use-auto, cppcoreguidelines-pro-type-member-init, modernize-loop-convert, cppcoreguidelines-macro-usage)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case, modernize-use-auto,
+// cppcoreguidelines-pro-type-member-init, modernize-loop-convert,
+// cppcoreguidelines-macro-usage)
 #include "apple2/peripherals/clock/Clock.h"
 
 #include <algorithm>
@@ -306,24 +319,36 @@ static auto Clock_ABI_LoadState(void* instance, const void* buffer, size_t size)
 }
 
 Peripheral_t g_clock_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.clock",
-    "Clock Card",
-    "Thunderclock and No-Slot Clock emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    LINAPPLE_ANY_SLOT_MASK,
-    -1,  // No fixed default slot
-    Clock_ABI_Init,
-    Clock_ABI_Reset,
-    Clock_ABI_Shutdown,
-    nullptr,  // think
-    nullptr,  // on_vblank
-    Clock_ABI_SaveState,
-    Clock_ABI_LoadState,
-    nullptr,  // command
-    nullptr   // query
-};
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.clock",
+    .name = "Clock Card",
+    .description = "Thunderclock and No-Slot Clock emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot = -1,
+    .init = Clock_ABI_Init,
+    .reset = Clock_ABI_Reset,
+    .shutdown = Clock_ABI_Shutdown,
+    .think = nullptr,
+    .on_vblank = nullptr,
+    .save_state = Clock_ABI_SaveState,
+    .load_state = Clock_ABI_LoadState,
+    .command = nullptr,
+    .query = nullptr};
 
 PERIPHERAL_REGISTER(g_clock_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, modernize-use-auto, cppcoreguidelines-pro-type-member-init, modernize-loop-convert, cppcoreguidelines-macro-usage)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
+// cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
+// cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast,
+// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions,
+// bugprone-switch-missing-default-case, modernize-use-auto,
+// cppcoreguidelines-pro-type-member-init, modernize-loop-convert,
+// cppcoreguidelines-macro-usage)

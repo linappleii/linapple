@@ -919,26 +919,6 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
   return PERIPHERAL_OK;
 }
 
-Peripheral_t g_disk_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.disk_ii",
-    "Disk II",
-    "Apple II floppy disk controller emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    6,     // Default Slot 6
-    Disk_ABI_Init,
-    Disk_ABI_Reset,
-    Disk_ABI_Shutdown,
-    Disk_ABI_Think,
-    nullptr,  // on_vblank
-    Disk_ABI_SaveState,
-    Disk_ABI_LoadState,
-    Disk_ABI_Command,
-    Disk_ABI_Query};
-
-
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   if (!instance) return 0xFF;
@@ -1006,5 +986,26 @@ auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
 
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+
+Peripheral_t g_disk_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.disk_ii",
+    .name             = "Disk II",
+    .description      = "Apple II floppy disk controller emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 6,
+    .init             = Disk_ABI_Init,
+    .reset            = Disk_ABI_Reset,
+    .shutdown         = Disk_ABI_Shutdown,
+    .think            = Disk_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = Disk_ABI_SaveState,
+    .load_state       = Disk_ABI_LoadState,
+    .command          = Disk_ABI_Command,
+    .query            = Disk_ABI_Query
+};
+
 PERIPHERAL_REGISTER(g_disk_peripheral)
+// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

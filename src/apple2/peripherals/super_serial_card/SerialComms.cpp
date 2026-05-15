@@ -455,26 +455,6 @@ static auto SSC_ABI_Command(void* instance, uint32_t cmd, const void* data,
   return PERIPHERAL_ERROR;
 }
 
-Peripheral_t g_ssc_peripheral = {
-    LINAPPLE_ABI_VERSION,
-    "linapple.ssc",
-    "Super Serial Card",
-    "Apple II Super Serial Card (6551 ACIA) emulation",
-    "LinApple Contributors",
-    VERSIONSTRING,
-    0xFE,  // Slots 1-7
-    2,     // Default Slot 2
-    SSC_ABI_Init,
-    SSC_ABI_Reset,
-    SSC_ABI_Shutdown,
-    SSC_ABI_Think,
-    nullptr,  // on_vblank
-    SSC_ABI_SaveState,
-    SSC_ABI_LoadState,
-    SSC_ABI_Command,
-    nullptr  // query
-};
-
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 void SSC_Reset(SuperSerialCard* pSSC) {
@@ -881,6 +861,28 @@ auto SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms* pSS) -> uint32_t {
   pSSC->m_eStopBits = static_cast<SscStopBits>(pSS->stopbits);
   return 0;
 }
+
+Peripheral_t g_ssc_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.super_serial_card",
+    .name             = "Super Serial Card",
+    .description      = "Apple II Super Serial Card (6551 ACIA) emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot     = 2,
+    .init             = SSC_ABI_Init,
+    .reset            = SSC_ABI_Reset,
+    .shutdown         = SSC_ABI_Shutdown,
+    .think            = SSC_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = SSC_ABI_SaveState,
+    .load_state       = SSC_ABI_LoadState,
+    .command          = SSC_ABI_Command,
+    .query            = nullptr
+};
+
+PERIPHERAL_REGISTER(g_ssc_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,
@@ -897,4 +899,3 @@ auto SSC_SetSnapshot(SuperSerialCard* pSSC, SS_IO_Comms* pSS) -> uint32_t {
 // cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
 // cppcoreguidelines-use-enum-class,
 // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-PERIPHERAL_REGISTER(g_ssc_peripheral)

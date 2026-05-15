@@ -362,25 +362,27 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
   }
 }
 
-Peripheral_t keyboard_peripheral = {LINAPPLE_ABI_VERSION,
-                                    "linapple.keyboard",
-                                    "Keyboard",
-                                    "Standard Apple II keyboard emulation",
-                                    "LinApple Contributors",
-                                    VERSIONSTRING,
-                                    SLOT_0_MASK,
-                                    DEFAULT_SLOT_INTERNAL,
-                                    Keyb_ABI_Init,
-                                    Keyb_ABI_Reset,
-                                    Keyb_ABI_Shutdown,
-                                    Keyb_ABI_Think,
-                                    nullptr,  // on_vblank
-                                    Keyb_ABI_SaveState,
-                                    Keyb_ABI_LoadState,
-                                    Keyb_ABI_Command,
-                                    Keyb_ABI_Query};
+Peripheral_t keyboard_peripheral = {
+    .abi_version      = LINAPPLE_ABI_VERSION,
+    .id               = "linapple.keyboard",
+    .name             = "Keyboard",
+    .description      = "Standard Apple II keyboard emulation",
+    .author           = "LinApple Contributors",
+    .version          = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_INTERNAL,
+    .default_slot     = DEFAULT_SLOT_INTERNAL,
+    .init             = Keyb_ABI_Init,
+    .reset            = Keyb_ABI_Reset,
+    .shutdown         = Keyb_ABI_Shutdown,
+    .think            = Keyb_ABI_Think,
+    .on_vblank        = nullptr,
+    .save_state       = Keyb_ABI_SaveState,
+    .load_state       = Keyb_ABI_LoadState,
+    .command          = Keyb_ABI_Command,
+    .query            = Keyb_ABI_Query
+};
 
+PERIPHERAL_REGISTER(keyboard_peripheral)
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables)
-PERIPHERAL_REGISTER(keyboard_peripheral)
