@@ -164,12 +164,16 @@ void SoundCore_Destroy() {
   g_mockMixBuffer = nullptr;
 }
 
-void DSUploadBuffer(short *buffer, unsigned len) {
-  if (g_spkrMixBuffer) g_spkrMixBuffer->upload(buffer, len);
+void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples) {
+  if (g_spkrMixBuffer) {
+    g_spkrMixBuffer->upload(buffer, num_samples);
+  }
 }
 
-void DSUploadMockBuffer(short *buffer, unsigned len) {
-  if (g_mockMixBuffer) g_mockMixBuffer->upload(buffer, len);
+void DSUploadMockBuffer(const int16_t* buffer, uint32_t num_samples) {
+  if (g_mockMixBuffer) {
+    g_mockMixBuffer->upload(buffer, num_samples);
+  }
 }
 
 void SoundCore_GetSamples(int16_t *out, size_t num_samples) {

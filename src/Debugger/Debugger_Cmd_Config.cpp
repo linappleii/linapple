@@ -197,7 +197,7 @@ auto ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
     pMode = sModeAppend;
 }
 
-  std::string sFileName = g_state.sCurrentDir;
+  std::string sFileName = g_state.sCurrentDir.data();
   sFileName += pFileName; // TODO: g_sDebugDir
 
   FILE *hFile = fopen( pFileName, pMode );
@@ -253,7 +253,7 @@ void ConfigSave_PrepareHeader ( const Parameters_e eCategory, const Commands_e e
 auto CmdConfigSave (int nArgs) -> Update_t
 {
   (void)nArgs;
-  const std::string sFilename = g_state.sProgramDir + g_sFileNameConfig;
+  const std::string sFilename = std::string(g_state.sProgramDir.data()) + g_sFileNameConfig;
 
     // Bookmarks
     CmdBookmarkSave( 0 );

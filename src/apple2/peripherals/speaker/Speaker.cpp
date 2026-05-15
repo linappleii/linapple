@@ -53,7 +53,7 @@ static constexpr float FILTER_EPSILON = 0.001f;
 
 // Forward declaration of legacy callback for cases where the Peripheral ABI
 // host is not present (e.g. some standalone tests)
-extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
+extern void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples);
 
 auto Speaker_Destroy(Speaker_t* instance) -> void { (void)instance; }
 

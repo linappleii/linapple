@@ -51,7 +51,7 @@ void DebuggerRunScript(const char* pFileName)
   }
   else
   {
-    sFileName = g_state.sCurrentDir;
+    sFileName = g_state.sCurrentDir.data();
     sFileName += "/";
     sFileName += pFileName;
   }

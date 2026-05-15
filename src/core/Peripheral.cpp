@@ -17,7 +17,7 @@
 #include "core/Util_Text.h"
 
 // Legacy audio callbacks
-extern void DSUploadBuffer(int16_t* buffer, uint32_t num_samples);
+extern void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples);
 
 // The frontend audio sink registered via Linapple_SetAudioCallback
 LinappleAudioCallback g_frontendAudioCB = nullptr;
@@ -306,7 +306,7 @@ static auto Host_AudioPushSamples(void* instance, const int16_t* buffer,
     // Justification: const_cast is required to bridge the modern const buffer
     // from peripherals to the legacy DSUploadBuffer signature.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    DSUploadBuffer(const_cast<int16_t*>(buffer),
+    DSUploadBuffer(buffer,
                    static_cast<uint32_t>(num_samples));
   }
 }

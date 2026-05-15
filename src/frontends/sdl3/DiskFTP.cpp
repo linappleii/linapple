@@ -18,9 +18,9 @@
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
-#include "frontends/common/Util_Hash.h"
 #include "core/Util_Text.h"
 #include "frontends/common/FileBrowser.h"
+#include "frontends/common/Util_Hash.h"
 #include "frontends/sdl3/DiskChoose.h"
 
 // how many file names we are able to see at once!
@@ -47,7 +47,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
 
   std::array<char, 1024> ftpdirpath;
   int l = snprintf(ftpdirpath.data(), ftpdirpath.size(), "%s/%s%s",
-                   g_state.sFTPLocalDir, g_sFTPDirListing.data(),
+                   g_state.sFTPLocalDir.data(), g_sFTPDirListing.data(),
                    md5str(ctx->directory.c_str()));
 
   if (l < 0 || static_cast<size_t>(l) >= ftpdirpath.size()) {

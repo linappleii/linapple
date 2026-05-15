@@ -1,20 +1,22 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
-#include "core/asset.h"
-#include "core/Util_Path.h"
 
+#include "core/Util_Path.h"
+#include "core/asset.h"
 #include "icon.xpm"
 
-auto Asset_LoadBMP(const char *filename) -> SDL_Surface * {
+auto Asset_LoadBMP(const char* filename) -> SDL_Surface* {
   std::string fullPath = Path::FindDataFile(filename);
   if (fullPath.empty()) {
-    fprintf(stderr, "Asset_LoadBMP: Couldn't find %s in any search path!\n", filename);
+    fprintf(stderr, "Asset_LoadBMP: Couldn't find %s in any search path!\n",
+            filename);
     return nullptr;
   }
 
-  SDL_Surface *surf = SDL_LoadBMP(fullPath.c_str());
+  SDL_Surface* surf = SDL_LoadBMP(fullPath.c_str());
   if (nullptr != surf) {
-    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename, fullPath.c_str());
+    fprintf(stderr, "Asset_LoadBMP: Loaded %s from %s\n", filename,
+            fullPath.c_str());
   }
 
   return surf;
@@ -22,7 +24,8 @@ auto Asset_LoadBMP(const char *filename) -> SDL_Surface * {
 
 void SDL_Asset_LoadIcon() {
   if (assets) {
-    assets->icon = reinterpret_cast<void*>(IMG_ReadXPMFromArray((char**)icon_xpm));
+    assets->icon =
+        reinterpret_cast<void*>(IMG_ReadXPMFromArray((char**)icon_xpm));
   }
 }
 

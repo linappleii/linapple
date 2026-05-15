@@ -1,14 +1,11 @@
 #include "frontends/common/FileBrowser.h"
 
-// Manual memory management and pointer decay checks are disabled here
-// as they are required for this specific C-compatible architectural boundary.
-// NOLINTBEGIN(cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
 #include <dirent.h>
 #include <strings.h>
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <new>
@@ -45,15 +42,16 @@ static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
     return 0;
   }
 
-  struct stat info {};
-  char tempname[PATH_MAX_LEN];
+  struct stat info{};
+  std::array<char, PATH_MAX_LEN> tempname = {};
 
-  int written = snprintf(tempname, PATH_MAX_LEN, "%s/%s", catalog, fname);
-  if (written < 0 || written >= PATH_MAX_LEN) {
+  int written =
+      snprintf(tempname.data(), tempname.size(), "%s/%s", catalog, fname);
+  if (written < 0 || static_cast<size_t>(written) >= tempname.size()) {
     return 0;
   }
 
-  if (stat(tempname, &info) == -1) {
+  if (stat(tempname.data(), &info) == -1) {
     return 0;
   }
   if (S_ISDIR(info.st_mode)) {
@@ -84,12 +82,18 @@ static auto get_sorted_directory(const char* incoming_dir,
   }
 
   struct dirent* entry = nullptr;
-  while ((entry = readdir(dp)) != nullptr) {
+  while (true) {
+    entry = readdir(dp);
+    if (entry == nullptr) {
+      break;
+    }
+
     if (file_list.size() >= MAX_DIRECTORY_ENTRIES) {
       break;
     }
 
     const char* file_name = entry->d_name;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     if (file_name == nullptr || strlen(file_name) < 1 || file_name[0] == '.') {
       continue;
     }
@@ -97,7 +101,7 @@ static auto get_sorted_directory(const char* incoming_dir,
     uintmax_t fsize = 0;
     const int what = getstat(incoming_dir, file_name, &fsize);
 
-    file_entry_t new_entry {};
+    file_entry_t new_entry = {};
     new_entry.name[0] = '\0';
     Util_SafeStrCpy(new_entry.name, file_name, sizeof(new_entry.name));
 
@@ -121,7 +125,7 @@ static auto get_sorted_directory(const char* incoming_dir,
               if (a.type > b.type) {
                 return false;
               }
-              return strcasecmp(a.name, b.name) < 0;
+              return strcasecmp(&a.name[0], &b.name[0]) < 0;
             });
   return true;
 }
@@ -138,7 +142,7 @@ static auto LocalGen_Generate(FileListGenerator_t* self) -> FileList_t* {
   }
 
   if (ctx->directory != "/") {
-    file_entry_t up_entry {};
+    file_entry_t up_entry = {};
     Util_SafeStrCpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
     up_entry.size = 0;
@@ -255,7 +259,7 @@ void FileBrowser_SortList(FileList_t* list) {
                 if (a.type > b.type) {
                   return false;
                 }
-                return strcasecmp(a.name, b.name) < 0;
+                return strcasecmp(&a.name[0], &b.name[0]) < 0;
               });
   }
 }
@@ -306,5 +310,3 @@ auto FileBrowser_CreateLocalGenerator(const char* directory)
 }
 
 }  // extern "C"
-
-// NOLINTEND(cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic)

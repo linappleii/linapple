@@ -1,14 +1,13 @@
-#include <cstdint>
 #include <SDL3/SDL.h>
+
+#include <cstdint>
 #pragma once
 
 // Frontend-specific keyboard helpers
 auto Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) -> uint8_t;
 auto Frontend_HandleKeyEvent(SDL_Keycode key, bool bDown) -> bool;
 
-enum {
-  NOT_ASCII = 0, ASCII
-};
+enum { NOT_ASCII = 0, ASCII };
 
 // Function Keys F1 - F12
 constexpr int BTN_HELP = 0;
@@ -26,13 +25,13 @@ constexpr int BTN_SAVEST = 10;
 constexpr int BTN_LOADST = 9;
 
 // if you gonna change these values, consider changing some values in Video.cpp
-#define SCREEN_BPP  8
-extern SDL_Surface *screen;
-extern SDL_Window *g_window;
-extern SDL_Renderer *g_renderer;
-extern SDL_Texture *g_texture;
+#define SCREEN_BPP 8
+extern SDL_Surface* screen;
+extern SDL_Window* g_window;
+extern SDL_Renderer* g_renderer;
+extern SDL_Texture* g_texture;
 
-#define SHOW_CYCLES  15
+#define SHOW_CYCLES 15
 
 extern bool g_WindowResized;
 
@@ -67,4 +66,3 @@ void HarddiskUI_FTPSelect(int nDrive);
 void HarddiskUI_Select(int nDrive);
 
 extern bool g_bScrollLock_FullSpeed;
-

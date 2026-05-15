@@ -29,7 +29,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
 
   fileIndex = backdx;
   isdir = true;
-  fullPath = g_state.sCurrentDir;
+  fullPath = g_state.sCurrentDir.data();
 
   while (isdir) {
     if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
@@ -59,9 +59,10 @@ void DiskSelectImage(int drive, char* pszFilename) {
       }
     }
   }
-  strcpy(g_state.sCurrentDir, fullPath.c_str());
+  Util_SafeStrCpy(g_state.sCurrentDir.data(), fullPath.c_str(),
+                  g_state.sCurrentDir.size());
   Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR,
-                                      g_state.sCurrentDir);
+                                      g_state.sCurrentDir.data());
   Configuration::Instance().Save();
 
   fullPath += "/" + filename;

@@ -3,8 +3,8 @@
 // This header defines a dual C99/C++11 ABI. Specific checks are disabled to
 // allow C-compatible patterns (plain enums, public POD members, manual memory
 // management handles) which are required for frontend portability.
-// NOLINTBEGIN(modernize-deprecated-headers, hicpp-deprecated-headers, modernize-use-using)
-// NOLINTBEGIN(cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(modernize-deprecated-headers, hicpp-deprecated-headers,
+// modernize-use-using) NOLINTBEGIN(cppcoreguidelines-use-enum-class)
 // NOLINTBEGIN(cppcoreguidelines-non-private-member-variables-in-classes)
 // NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // NOLINTBEGIN(modernize-use-auto, modernize-use-trailing-return-type)
@@ -17,10 +17,7 @@
 extern "C" {
 #endif
 
-enum {
-  FILE_BROWSER_PATH_MAX = 260,
-  FILE_BROWSER_CACHE_MAX = 32
-};
+enum { FILE_BROWSER_PATH_MAX = 260, FILE_BROWSER_CACHE_MAX = 32 };
 
 typedef enum {
   FILE_ENTRY_UP = 0,
@@ -85,4 +82,5 @@ auto FileBrowser_GetFailureMessage(const FileList_t* list) -> const char*;
 // NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // NOLINTEND(cppcoreguidelines-non-private-member-variables-in-classes)
 // NOLINTEND(cppcoreguidelines-use-enum-class)
-// NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers,
+// modernize-use-using)

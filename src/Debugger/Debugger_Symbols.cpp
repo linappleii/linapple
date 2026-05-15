@@ -87,7 +87,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //===========================================================================
 void PrintCurrentPath()
 {
-	ConsoleDisplayError( g_state.sProgramDir );
+	ConsoleDisplayError( g_state.sProgramDir.data() );
 }
 
 auto PrintSymbolInvalidTable() -> Update_t
@@ -756,7 +756,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 //===========================================================================
 auto CmdSymbolsLoad (int nArgs) -> Update_t
 {
-	std::string sFileName = g_state.sProgramDir;
+	std::string sFileName = g_state.sProgramDir.data();
 
 	int iSymbolTable = GetSymbolTableFromCommand();
 	if ((iSymbolTable < 0) || (iSymbolTable >= NUM_SYMBOL_TABLES))
@@ -782,7 +782,7 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 		{
 			pFileName = g_aArgs[ iArg ].sArg;
 
-			sFileName = g_state.sProgramDir + pFileName;
+			sFileName = std::string(g_state.sProgramDir.data()) + pFileName;
 
 			// Remember File Name of last symbols loaded
 			g_sFileNameSymbolsUser = pFileName;

@@ -40,19 +40,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/SaveState.h"
+#include "apple2/SoundCore.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/Memory.h"
 #include "apple2/peripherals/printer/ParallelPrinter.h"
-#include "apple2/SaveState.h"
 #include "apple2/peripherals/super_serial_card/SerialComms.h"
-#include "apple2/SoundCore.h"
-#include "apple2/Video.h"
 #include "apple2/stretch.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
+#include "core/Util_Text.h"
 #include "core/asset.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/DiskUI.h"
@@ -420,8 +421,8 @@ void FrameQuickState(int num, int mod) {
   // being saved, otherwise - being loaded
   std::array<char, PATH_MAX_LEN> fpath;
   snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
-           static_cast<int>(strlen(g_state.sSaveStateDir)),
-           g_state.sSaveStateDir, num);
+           static_cast<int>(strlen(g_state.sSaveStateDir.data())),
+           g_state.sSaveStateDir.data(), num);
   Snapshot_SetFilename(fpath.data());
   if (mod & SDL_KMOD_SHIFT) {
     Snapshot_SaveState();
@@ -511,7 +512,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   bool isDirectory = true;
 
   fileIndex = backdx;
-  fullPath = g_state.sSaveStateDir;
+  fullPath = g_state.sSaveStateDir.data();
 
   while (isDirectory) {
     if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
@@ -540,9 +541,10 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
       }
     }
   }
-  strcpy(g_state.sSaveStateDir, fullPath.c_str());
+  Util_SafeStrCpy(g_state.sSaveStateDir.data(), fullPath.c_str(),
+                  g_state.sSaveStateDir.size());
   Configuration::Instance().SetString("Preferences", "Save State Directory",
-                                      g_state.sSaveStateDir);
+                                      g_state.sSaveStateDir.data());
   Configuration::Instance().Save();
 
   backdx = fileIndex;

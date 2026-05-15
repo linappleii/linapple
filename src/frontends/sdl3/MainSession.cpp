@@ -15,9 +15,9 @@
 #include "core/Log.h"
 #include "core/ProgramLoader.h"
 #include "core/Registry.h"
+#include "frontends/common/AppController.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
-#include "frontends/common/AppController.h"
 
 using Logger::Error;
 using Logger::Info;
@@ -84,6 +84,4 @@ auto SessionInit(AppConfig* config) -> int {
   return 0;
 }
 
-void SessionShutdown() {
-  AppController_Shutdown();
-}
+void SessionShutdown() { AppController_Shutdown(); }

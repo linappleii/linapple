@@ -12,10 +12,10 @@
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/Frontend.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
+#include "frontends/sdl3/Frame.h"
+#include "frontends/sdl3/Frontend.h"
 
 // SDL Audio Stream for Frontend
 bool g_bDSAvailable = false;
@@ -68,8 +68,7 @@ auto DSInit() -> bool {
 
   Linapple_SetAudioCallback(
       [](const int16_t* samples, size_t num_samples) -> void {
-        DSUploadBuffer(const_cast<int16_t*>(samples),
-                       static_cast<unsigned>(num_samples));
+        DSUploadBuffer(samples, static_cast<uint32_t>(num_samples));
       });
 
   return true;
@@ -117,11 +116,12 @@ auto main(int argc, char* argv[]) -> int {
     return 0;
   }
 
-  // Store the audio dump file name explicitly since AppConfig only holds it in a buffer
-  // and DSInit needs it later. Alternatively we could access config.szAudioDumpPath directly
-  // but it's cleaner to keep the frontend's specific state separate if it uses a heap string.
-  if (config.szAudioDumpPath[0] != '\0') {
-    g_pszAudioDumpFile = SDL_strdup(config.szAudioDumpPath);
+  // Store the audio dump file name explicitly since AppConfig only holds it in
+  // a buffer and DSInit needs it later. Alternatively we could access
+  // config.szAudioDumpPath.data() directly but it's cleaner to keep the
+  // frontend's specific state separate if it uses a heap string.
+  if (config.szAudioDumpPath.data()[0] != '\0') {
+    g_pszAudioDumpFile = SDL_strdup(config.szAudioDumpPath.data());
   }
 
   if (SysInit() != 0) return 1;

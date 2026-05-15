@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -97,16 +98,16 @@ using SystemState_t = struct SystemState_tag {
   uint32_t ScreenHeight;
   bool bResetTiming;
   uint32_t needsprecision;
-  char sProgramDir[PATH_MAX_LEN];
-  char sCurrentDir[PATH_MAX_LEN];
-  char sHDDDir[PATH_MAX_LEN];
-  char sSaveStateDir[PATH_MAX_LEN];
-  char sParallelPrinterFile[PATH_MAX_LEN];
-  char sFTPLocalDir[PATH_MAX_LEN];
-  char sFTPServer[PATH_MAX_LEN];
-  char sFTPServerHDD[PATH_MAX_LEN];
-  char sFTPUserPass[512];
-  char sDebuggerScript[PATH_MAX_LEN];
+  std::array<char, PATH_MAX_LEN> sProgramDir;
+  std::array<char, PATH_MAX_LEN> sCurrentDir;
+  std::array<char, PATH_MAX_LEN> sHDDDir;
+  std::array<char, PATH_MAX_LEN> sSaveStateDir;
+  std::array<char, PATH_MAX_LEN> sParallelPrinterFile;
+  std::array<char, PATH_MAX_LEN> sFTPLocalDir;
+  std::array<char, PATH_MAX_LEN> sFTPServer;
+  std::array<char, PATH_MAX_LEN> sFTPServerHDD;
+  std::array<char, 512> sFTPUserPass;
+  std::array<char, PATH_MAX_LEN> sDebuggerScript;
   bool bVideoScannerNTSC;
   uint32_t dwClksPerFrame;
 };

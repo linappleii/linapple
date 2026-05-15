@@ -13,12 +13,12 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
     tmp_conf.close();
 
     AppConfig config = {};
-    Util_SafeStrCpy(config.szConfigPath, "test_resolve.conf", PATH_MAX_LEN);
+    Util_SafeStrCpy(config.szConfigPath.data(), "test_resolve.conf", PATH_MAX_LEN);
 
     AppEnv_ResolvePaths(&config);
 
     CHECK(Configuration::Instance().GetPath() == "test_resolve.conf");
-    CHECK(strcmp(config.szConfigPath, "test_resolve.conf") == 0);
+    CHECK(strcmp(config.szConfigPath.data(), "test_resolve.conf") == 0);
 
     remove("test_resolve.conf");
 }

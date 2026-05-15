@@ -9,7 +9,7 @@ TEST_CASE("AppArgs: Basic Parsing") {
     AppConfig config = {};
     AppArgs_Parse(argc, argv, &config);
 
-    CHECK(strcmp(config.szDiskPath[0], "disk1.dsk") == 0);
+    CHECK(strcmp(config.szDiskPath[0].data(), "disk1.dsk") == 0);
     CHECK(config.bBoot == true);
     CHECK(config.intent == INTENT_RUN);
 }

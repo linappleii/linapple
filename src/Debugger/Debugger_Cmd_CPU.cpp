@@ -306,7 +306,7 @@ auto CmdTraceFile (int nArgs) -> Update_t
 
     g_bTraceFileWithVideoScanner = (nArgs >= 2);
 
-    const std::string sFilePath = g_state.sCurrentDir + sFileName;
+    const std::string sFilePath = std::string(g_state.sCurrentDir.data()) + sFileName;
 
     g_hTraceFile = fopen( sFilePath.c_str(), "wt" );
 

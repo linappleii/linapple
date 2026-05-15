@@ -1029,7 +1029,7 @@ auto CmdSource (int nArgs) -> Update_t
       }
       else
       {
-        const std::string sFileName = std::string(g_state.sProgramDir) + pFileName;
+        const std::string sFileName = std::string(g_state.sProgramDir.data()) + pFileName;
 
         const int MAX_MINI_FILENAME = 20;
         const std::string sMiniFileName = sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));

@@ -1,7 +1,9 @@
-#include "core/Common.h"
-#include <cstdio>
-#include <cstdint>
 #include "frontends/sdl3/PrinterFrontend.h"
+
+#include <cstdint>
+#include <cstdio>
+
+#include "core/Common.h"
 #include "core/Common_Globals.h"
 
 static uint32_t inactivity = 0;
@@ -9,11 +11,11 @@ static uint32_t g_PrinterIdleLimit = 10;
 static FilePtr file(nullptr, fclose);
 bool g_bPrinterAppend = true;
 
-static auto CheckPrint() -> bool
-{
+static auto CheckPrint() -> bool {
   inactivity = 0;
   if (!file) {
-    file.reset(fopen(g_state.sParallelPrinterFile, (g_bPrinterAppend) ? "ab" : "wb"));
+    file.reset(fopen(g_state.sParallelPrinterFile.data(),
+                     (g_bPrinterAppend) ? "ab" : "wb"));
   }
   return (file != nullptr);
 }
@@ -27,20 +29,15 @@ void PrinterFrontend_Initialize() {
   // Initialization logic if any
 }
 
-void PrinterFrontend_Destroy() {
-  ClosePrint();
-}
+void PrinterFrontend_Destroy() { ClosePrint(); }
 
-void PrinterFrontend_Reset() {
-  ClosePrint();
-}
+void PrinterFrontend_Reset() { ClosePrint(); }
 
 void PrinterFrontend_Update(uint32_t totalcycles) {
   if (!file) {
     return;
   }
-  if ((inactivity += totalcycles) > (Printer_GetIdleLimit() * 1000 * 1000))
-  {
+  if ((inactivity += totalcycles) > (Printer_GetIdleLimit() * 1000 * 1000)) {
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
@@ -54,14 +51,8 @@ void PrinterFrontend_SendChar(uint8_t value) {
   fwrite(&c, 1, 1, file.get());
 }
 
-void PrinterFrontend_CheckStatus() {
-  CheckPrint();
-}
+void PrinterFrontend_CheckStatus() { CheckPrint(); }
 
-auto Printer_GetIdleLimit() -> uint32_t {
-  return g_PrinterIdleLimit;
-}
+auto Printer_GetIdleLimit() -> uint32_t { return g_PrinterIdleLimit; }
 
-void Printer_SetIdleLimit(uint32_t Duration) {
-  g_PrinterIdleLimit = Duration;
-}
+void Printer_SetIdleLimit(uint32_t Duration) { g_PrinterIdleLimit = Duration; }

@@ -15,11 +15,11 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3 or headless)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, or headless)")
 endif()
 
-if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "headless")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3' or 'headless'.")
+if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "headless")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', or 'headless'.")
 endif()
 
 option(PROFILING "Enable profiling" OFF)
@@ -44,6 +44,8 @@ find_package(CURL REQUIRED)
 if(FRONTEND STREQUAL "sdl3")
     find_package(SDL3 REQUIRED)
     find_package(SDL3_image REQUIRED)
+elseif(FRONTEND STREQUAL "sdl2")
+    find_package(SDL2 REQUIRED)
 endif()
 
 find_package(PkgConfig REQUIRED)
@@ -194,6 +196,25 @@ if(FRONTEND STREQUAL "sdl3")
         src/frontends/sdl3/SDL_Video.cpp
         src/frontends/sdl3/SerialCommsFrontend.cpp
     )
+elseif(FRONTEND STREQUAL "sdl2")
+    set(SOURCES_FE
+        src/frontends/sdl2/DiskChoose.cpp
+        src/frontends/sdl2/DiskFTP.cpp
+        src/frontends/sdl2/DiskSelect.cpp
+        src/frontends/sdl2/DiskUI.cpp
+        src/frontends/sdl2/Frame.cpp
+        src/frontends/sdl2/Harddisk.cpp
+        src/frontends/sdl2/JoystickFrontend.cpp
+        src/frontends/sdl2/Keyboard.cpp
+        src/frontends/sdl2/Main.cpp
+        src/frontends/sdl2/MainSession.cpp
+        src/frontends/sdl2/PrinterFrontend.cpp
+        src/frontends/sdl2/SDL_Asset.cpp
+        src/frontends/sdl2/SDL_Input.cpp
+        src/frontends/sdl2/SDL_Path.cpp
+        src/frontends/sdl2/SDL_Video.cpp
+        src/frontends/sdl2/SerialCommsFrontend.cpp
+    )
 elseif(FRONTEND STREQUAL "headless")
     set(SOURCES_FE
         src/frontends/headless/Main.cpp
@@ -251,6 +272,8 @@ target_include_directories(linapple PRIVATE ${LINAPPLE_INCLUDES})
 
 if(FRONTEND STREQUAL "sdl3")
     target_link_libraries(linapple PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
+elseif(FRONTEND STREQUAL "sdl2")
+    target_link_libraries(linapple PRIVATE SDL2::SDL2)
 endif()
 
 target_link_libraries(linapple PRIVATE

@@ -2,6 +2,7 @@
 #define SDL_VIDEO_FRONTEND_H
 
 #include <SDL3/SDL.h>
+
 #include "apple2/Video.h"
 
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;

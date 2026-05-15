@@ -1,6 +1,8 @@
 #include "frontends/sdl3/DiskUI.h"
-#include "apple2/peripherals/disk/DiskError.h"
+
 #include <cstring>
+
+#include "apple2/peripherals/disk/DiskError.h"
 
 extern "C" auto DiskUI_GetErrorMessage(int error_code) -> const char* {
   switch (static_cast<DiskError_e>(error_code)) {

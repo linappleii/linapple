@@ -1,15 +1,18 @@
 #include "SerialCommsFrontend.h"
+
+#include <fcntl.h>
+#include <pthread.h>
+#include <termios.h>
+#include <unistd.h>
+
+#include <array>
+#include <cstdio>
+#include <cstring>
+#include <string>
+
 #include "apple2/peripherals/super_serial_card/SerialCommsCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include <unistd.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <cstdio>
-#include <cstring>
-#include <pthread.h>
-#include <string>
-#include <array>
 
 static int g_hCommHandle = -1;
 static std::string g_sSerialPortPath = "";
@@ -20,7 +23,8 @@ static pthread_t g_CommThread;
 static volatile bool g_bThreadRunning = false;
 static volatile bool g_bThreadTerminate = false;
 
-void SSCFrontend_UpdateCommState(uint32_t baud, uint32_t bits, SscParity parity, SscStopBits stop) {
+void SSCFrontend_UpdateCommState(uint32_t baud, uint32_t bits, SscParity parity,
+                                 SscStopBits stop) {
   if (g_hCommHandle == -1) {
     return;
   }
@@ -64,10 +68,18 @@ void SSCFrontend_UpdateCommState(uint32_t baud, uint32_t bits, SscParity parity,
   }
 
   switch (bits) {
-    case 5: l_databits = CS5; break;
-    case 6: l_databits = CS6; break;
-    case 7: l_databits = CS7; break;
-    case 8: l_databits = CS8; break;
+    case 5:
+      l_databits = CS5;
+      break;
+    case 6:
+      l_databits = CS6;
+      break;
+    case 7:
+      l_databits = CS7;
+      break;
+    case 8:
+      l_databits = CS8;
+      break;
   }
   dcb.c_cflag &= ~CSIZE;
   dcb.c_cflag |= l_databits;
@@ -87,52 +99,58 @@ void SSCFrontend_UpdateCommState(uint32_t baud, uint32_t bits, SscParity parity,
 }
 
 static auto SerialPollingThread(void* arg) -> void* {
-    (void)arg;
-    std::array<uint8_t, 256> buffer;
+  (void)arg;
+  std::array<uint8_t, 256> buffer;
 
-    while (!g_bThreadTerminate) {
-        if (g_hCommHandle != -1) {
-            int n = static_cast<int>(read(g_hCommHandle, buffer.data(), buffer.size()));
-            if (n > 0) {
-                pthread_mutex_lock(&g_CriticalSection);
-                for (int i = 0; i < n; ++i) {
-                    Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE, &buffer[static_cast<size_t>(i)], 1);
-                }
-                pthread_mutex_unlock(&g_CriticalSection);
-            }
+  while (!g_bThreadTerminate) {
+    if (g_hCommHandle != -1) {
+      int n =
+          static_cast<int>(read(g_hCommHandle, buffer.data(), buffer.size()));
+      if (n > 0) {
+        pthread_mutex_lock(&g_CriticalSection);
+        for (int i = 0; i < n; ++i) {
+          Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE,
+                             &buffer[static_cast<size_t>(i)], 1);
         }
-        usleep(1000); // Poll every 1ms
+        pthread_mutex_unlock(&g_CriticalSection);
+      }
     }
-    return nullptr;
+    usleep(1000);  // Poll every 1ms
+  }
+  return nullptr;
 }
 
 auto SSCFrontend_IsActive() -> bool {
   if (g_bSerialLoopback) return true;
 
   if ((g_hCommHandle == -1) && !g_sSerialPortPath.empty()) {
-    g_hCommHandle = open(g_sSerialPortPath.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    g_hCommHandle =
+        open(g_sSerialPortPath.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
     if (g_hCommHandle != -1) {
-        // Start polling thread if not already running
-        if (!g_bThreadRunning) {
-            g_bThreadTerminate = false;
-            if (pthread_create(&g_CommThread, nullptr, SerialPollingThread, nullptr) == 0) {
-                g_bThreadRunning = true;
-            }
+      // Start polling thread if not already running
+      if (!g_bThreadRunning) {
+        g_bThreadTerminate = false;
+        if (pthread_create(&g_CommThread, nullptr, SerialPollingThread,
+                           nullptr) == 0) {
+          g_bThreadRunning = true;
         }
+      }
     }
   }
   return (g_hCommHandle != -1);
 }
 
-void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity, int stop) {
-  SSCFrontend_UpdateCommState(baud, bits, static_cast<SscParity>(parity), static_cast<SscStopBits>(stop));
+void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity,
+                             int stop) {
+  SSCFrontend_UpdateCommState(baud, bits, static_cast<SscParity>(parity),
+                              static_cast<SscStopBits>(stop));
 }
 
 void SSCFrontend_Close() {
   if (g_bThreadRunning) {
-      g_bThreadTerminate = true;
-      pthread_join(g_CommThread, nullptr);
-      g_bThreadRunning = false;
+    g_bThreadTerminate = true;
+    pthread_join(g_CommThread, nullptr);
+    g_bThreadRunning = false;
   }
 
   if (g_hCommHandle != -1) {
@@ -158,10 +176,10 @@ void SSCFrontend_Update(SuperSerialCard* pSSC, uint32_t totalcycles) {
 
 auto SSCFrontend_TransmitByte(uint8_t byte) -> bool {
   if (g_bSerialLoopback) {
-      pthread_mutex_lock(&g_CriticalSection);
-      Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE, &byte, 1);
-      pthread_mutex_unlock(&g_CriticalSection);
-      return true;
+    pthread_mutex_lock(&g_CriticalSection);
+    Peripheral_Command(2, SSC_CMD_PUSH_RX_BYTE, &byte, 1);
+    pthread_mutex_unlock(&g_CriticalSection);
+    return true;
   }
 
   if (!SSCFrontend_IsActive()) return false;
@@ -182,11 +200,7 @@ void SSCFrontend_SetSerialPortPath(const char* path) {
   }
 }
 
-void SSCFrontend_SetLoopback(bool enable) {
-    g_bSerialLoopback = enable;
-}
+void SSCFrontend_SetLoopback(bool enable) { g_bSerialLoopback = enable; }
 
 // These are called by core to send data out
-void SSCFrontend_SendByte(uint8_t byte) {
-    SSCFrontend_TransmitByte(byte);
-}
+void SSCFrontend_SendByte(uint8_t byte) { SSCFrontend_TransmitByte(byte); }

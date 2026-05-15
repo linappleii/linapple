@@ -1,5 +1,6 @@
-#include "core/Util_Path.h"
 #include <SDL3/SDL.h>
+
+#include "core/Util_Path.h"
 
 namespace Path {
 
@@ -19,4 +20,4 @@ auto GetUserDataDir() -> std::string {
   return std::string(pref);
 }
 
-} // namespace Path
+}  // namespace Path

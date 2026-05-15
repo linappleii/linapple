@@ -1,18 +1,19 @@
-#include "core/Common.h"
 #include <SDL3/SDL.h>
-#include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/Frontend.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
+
+#include "Debugger/Debug.h"
+#include "apple2/SoundCore.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#include "apple2/Video.h"
-#include "apple2/SoundCore.h"
-#include "frontends/sdl3/JoystickFrontend.h"
-#include "Debugger/Debug.h"
+#include "core/Common.h"
+#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Common_Globals.h"
+#include "frontends/sdl3/Frame.h"
+#include "frontends/sdl3/Frontend.h"
+#include "frontends/sdl3/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
 extern void ProcessButtonClick(int button, int mod);
@@ -24,7 +25,7 @@ extern int buttondown;
 extern bool usingcursor;
 extern int x, y;
 
-void SDL_HandleEvent(SDL_Event *e) {
+void SDL_HandleEvent(SDL_Event* e) {
   int x_local = 0, y_local = 0;
 
   switch (e->type) {
@@ -47,8 +48,7 @@ void SDL_HandleEvent(SDL_Event *e) {
       Frame_OnFocus(false);
       break;
 
-    case SDL_EVENT_KEY_DOWN:
-    {
+    case SDL_EVENT_KEY_DOWN: {
       SDL_Keycode mysym = e->key.key;
       SDL_Keymod mymod = e->key.mod;
       SDL_Scancode myscancode = e->key.scancode;
@@ -112,11 +112,14 @@ void SDL_HandleEvent(SDL_Event *e) {
           g_state.bResetTiming = true;
         } else if (mysym == SDLK_SCROLLLOCK) {
           g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
-        } else if ((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_LOGO) || (g_state.mode == MODE_STEPPING)) {
+        } else if ((g_state.mode == MODE_RUNNING) ||
+                   (g_state.mode == MODE_LOGO) ||
+                   (g_state.mode == MODE_STEPPING)) {
           g_bDebuggerEatKey = false;
-          bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
-          if (mymod & SDL_KMOD_RCTRL)
-          {
+          bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
+                           myscancode <= SDL_SCANCODE_UP) ||
+                          (myscancode == SDL_SCANCODE_DELETE);
+          if (mymod & SDL_KMOD_RCTRL) {
             JoyFrontend_UpdateTrimViaKey(mysym);
           } else {
             if (!JoyFrontend_ProcessKey(mysym, extended, true, false)) {
@@ -131,13 +134,13 @@ void SDL_HandleEvent(SDL_Event *e) {
       break;
     }
 
-    case SDL_EVENT_KEY_UP:
-    {
+    case SDL_EVENT_KEY_UP: {
       SDL_Keycode mysym = e->key.key;
       SDL_Keymod mymod = e->key.mod;
       SDL_Scancode myscancode = e->key.scancode;
 
-      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (static_cast<SDL_Keycode>(buttondown) == mysym - SDLK_F1)) {
+      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) &&
+          (static_cast<SDL_Keycode>(buttondown) == mysym - SDLK_F1)) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod);
       } else if (Frontend_HandleKeyEvent(mysym, false)) {
@@ -146,7 +149,9 @@ void SDL_HandleEvent(SDL_Event *e) {
         uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
         Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
       } else {
-        bool extended = (myscancode >= SDL_SCANCODE_INSERT && myscancode <= SDL_SCANCODE_UP) || (myscancode == SDL_SCANCODE_DELETE);
+        bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
+                         myscancode <= SDL_SCANCODE_UP) ||
+                        (myscancode == SDL_SCANCODE_DELETE);
         if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {
           Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
         }
@@ -154,8 +159,7 @@ void SDL_HandleEvent(SDL_Event *e) {
       break;
     }
 
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-    {
+    case SDL_EVENT_MOUSE_BUTTON_DOWN: {
       SDL_Keymod mymod = SDL_GetModState();
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (buttondown == -1) {
@@ -168,24 +172,25 @@ void SDL_HandleEvent(SDL_Event *e) {
               SetUsingCursor(false);
             } else {
               MouseButtonPayload_t payload = {0, true};
-              Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
+              Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+                                 sizeof(payload));
             }
-          }
-          else {
+          } else {
             uint8_t mouse_active = 0;
             size_t qsize = 1;
             Peripheral_Query(4, MOUSE_QUERY_IS_ACTIVE, &mouse_active, &qsize);
-            if ((((g_state.mode == MODE_RUNNING) || (g_state.mode == MODE_STEPPING))) ||
+            if ((((g_state.mode == MODE_RUNNING) ||
+                  (g_state.mode == MODE_STEPPING))) ||
                 (mouse_active != 0)) {
               SetUsingCursor(true);
             }
           }
         }
-      }
-      else if (e->button.button == SDL_BUTTON_RIGHT) {
+      } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, true};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+                             sizeof(payload));
         }
       }
 
@@ -196,12 +201,14 @@ void SDL_HandleEvent(SDL_Event *e) {
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {0, false};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+                             sizeof(payload));
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, false};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
+          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+                             sizeof(payload));
         }
       }
       break;
@@ -210,7 +217,8 @@ void SDL_HandleEvent(SDL_Event *e) {
       x_local = static_cast<int>(e->motion.x);
       y_local = static_cast<int>(e->motion.y);
       if (usingcursor) {
-        MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local, VIEWPORTCY - 4};
+        MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local,
+                                     VIEWPORTCY - 4};
         Peripheral_Command(0, MOUSE_CMD_SET_POS, &payload, sizeof(payload));
       }
       break;

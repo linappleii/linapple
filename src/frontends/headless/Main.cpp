@@ -1,23 +1,24 @@
 #include <iostream>
 
+#include "core/LinAppleCore.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
-#include "core/LinAppleCore.h"
 
-void VideoCallback(const uint32_t* pixels, int width, int height, int pitch) {
+auto VideoCallback(const uint32_t* pixels, int width, int height,
+                   int pitch) -> void {  // NOLINT
   (void)pixels;
   (void)width;
   (void)height;
   (void)pitch;
 }
 
-void AudioCallback(const int16_t* samples, size_t num_samples) {
+auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
   (void)samples;
   (void)num_samples;
 }
 
-void TitleCallback(const char* title) { (void)title; }
+auto TitleCallback(const char* title) -> void { (void)title; }
 
 auto main(int argc, char* argv[]) -> int {
   AppConfig config = {};

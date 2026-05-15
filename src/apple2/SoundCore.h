@@ -9,8 +9,8 @@ enum {
 void SoundCore_Initialize();
 void SoundCore_Destroy();
 
-void DSUploadBuffer(short *buffer, unsigned len);
-void DSUploadMockBuffer(short *buffer, unsigned len);
+void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples);
+void DSUploadMockBuffer(const int16_t* buffer, uint32_t num_samples);
 
 // Mixes all sound sources and returns samples
 void SoundCore_GetSamples(int16_t *out, size_t num_samples);

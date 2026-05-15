@@ -24,12 +24,12 @@ TEST_CASE("AppConfig: Manual Population") {
     AppConfig_Default(&config);
 
     config.intent = INTENT_DIAGNOSTIC;
-    Util_SafeStrCpy(config.szDiskPath[0], "test.dsk", PATH_MAX_LEN);
+    Util_SafeStrCpy(config.szDiskPath[0].data(), "test.dsk", PATH_MAX_LEN);
     config.apple2Type = A2TYPE_APPLE2PLUS;
     config.bPAL = true;
 
     CHECK(config.intent == INTENT_DIAGNOSTIC);
-    CHECK(strcmp(config.szDiskPath[0], "test.dsk") == 0);
+    CHECK(strcmp(config.szDiskPath[0].data(), "test.dsk") == 0);
     CHECK(config.apple2Type == A2TYPE_APPLE2PLUS);
     CHECK(config.bPAL == true);
 }
