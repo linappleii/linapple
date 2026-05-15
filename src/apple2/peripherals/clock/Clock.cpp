@@ -1,17 +1,7 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case, modernize-use-auto,
-// cppcoreguidelines-pro-type-member-init, modernize-loop-convert,
-// cppcoreguidelines-macro-usage)
+// cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/clock/Clock.h"
 
 #include <algorithm>
@@ -178,7 +168,6 @@ static const std::array<uint8_t, 95> Clock_ROM =
 constexpr size_t CLOCK_LATCHES_COUNT = 10;
 constexpr uint16_t IO_ADDR_MASK = 0x0F;
 constexpr uint8_t LATCH_UPDATE_REG = 0x0F;
-constexpr size_t SLOT_ROM_SIZE = 256;
 constexpr int MAX_SLOTS = 8;
 
 struct ClockPeripheral_t {
@@ -193,6 +182,7 @@ constexpr int LATCH_DAY = 4;
 constexpr int LATCH_HOUR = 6;
 constexpr int LATCH_MINUTE = 8;
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static void set_latch_pair(ClockPeripheral_t* cp, size_t index, int value) {
   constexpr int kValueMax = 100;
   constexpr int kDivisor = 10;
@@ -201,8 +191,14 @@ static void set_latch_pair(ClockPeripheral_t* cp, size_t index, int value) {
   const auto base_index = static_cast<size_t>(index & kIndexMask);
   if (base_index + 1 < CLOCK_LATCHES_COUNT) {
     int val = value % kValueMax;
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+    // Justification: base_index is bounds-checked above against
+    // CLOCK_LATCHES_COUNT.
     cp->latches[base_index] = static_cast<uint8_t>(val / kDivisor);
     cp->latches[base_index + 1] = static_cast<uint8_t>(val % kDivisor);
+    // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   }
 }
 
@@ -229,6 +225,9 @@ static auto Clock_IORead(void* instance, uint16_t pc, uint16_t addr,
 
   const uint16_t reg = addr & IO_ADDR_MASK;
   if (reg < CLOCK_LATCHES_COUNT) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+    // Justification: reg is explicitly checked against CLOCK_LATCHES_COUNT.
     return cp->latches[reg];
   }
 
@@ -276,6 +275,8 @@ static void Clock_ABI_Shutdown(void* instance) {
   // unique_ptr will delete it when it goes out of scope
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+// Justification: ABI-required function signature.
 static auto Clock_ABI_SaveState(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus {
   if (!instance || !size) {
@@ -314,6 +315,8 @@ static auto Clock_ABI_LoadState(void* instance, const void* buffer, size_t size)
   }
 
   const auto* src = static_cast<const uint8_t*>(buffer);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+  // Justification: Standard iterator pattern for std::copy.
   std::copy(src, src + state_size, cp->latches.begin());
   return PERIPHERAL_OK;
 }
@@ -338,17 +341,7 @@ Peripheral_t g_clock_peripheral = {
     .query = nullptr};
 
 PERIPHERAL_REGISTER(g_clock_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case, modernize-use-auto,
-// cppcoreguidelines-pro-type-member-init, modernize-loop-convert,
-// cppcoreguidelines-macro-usage)
+// cppcoreguidelines-owning-memory)
