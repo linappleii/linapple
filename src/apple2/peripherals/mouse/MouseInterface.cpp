@@ -1,9 +1,12 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
-// implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state, raw memory management, and instance state to bridge with
-// the core C interface
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
+// This file implements the C99-compatible Peripheral ABI. It requires void*
+// pointers for instance state, raw memory management, and instance state to
+// bridge with the core C interface.
 
 #include "apple2/peripherals/mouse/MouseInterface.h"
 
@@ -23,6 +26,7 @@
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
+// NOLINTBEGIN(cppcoreguidelines-use-enum-class)
 // Sets mouse mode
 enum {
   MOUSE_SET = 0x00,
@@ -63,9 +67,25 @@ enum MouseStatus_e {
   MOUSE_STAT_PREV_BTN0 = BIT6,
   MOUSE_STAT_CURR_BTN0 = BIT7
 };
+// NOLINTEND(cppcoreguidelines-use-enum-class)
 
 static constexpr size_t MOUSE_ROM_PAGE_SIZE = 256;
 static constexpr uint32_t MOUSE_DEFAULT_MAX_COORD = 1023;
+static constexpr int MOUSE_DEFAULT_SLOT = 4;
+
+namespace {
+constexpr uint32_t MOUSE_ROM_OFFSET_SHIFT = 7;
+constexpr uint32_t MOUSE_ROM_OFFSET_MASK = 0x0700;
+constexpr int MOUSE_DATA_LEN_6 = 6;
+constexpr int MOUSE_DATA_LEN_5 = 5;
+constexpr uint8_t MOUSE_BYTE_MASK = 0xFF;
+constexpr int MOUSE_COORD_SHIFT_8 = 8;
+constexpr uint8_t MOUSE_IO_MASK_3 = 3;
+constexpr uint8_t MOUSE_STATUS_INT_MASK = 0x0E;
+constexpr uint8_t MOUSE_STATUS_MODE_MASK = 0x0C;
+constexpr uint8_t MOUSE_STATUS_MODE_8 = 0x08;
+constexpr uint8_t MOUSE_STATUS_MODE_C = 0x0C;
+}  // namespace
 
 struct MousePeripheral_t {
   MouseInterface logic{};
@@ -216,11 +236,12 @@ static void Mouse_OnCommand(MousePeripheral_t* mp);
 static void Mouse_OnWrite(MousePeripheral_t* mp);
 
 static void Mouse_SetSlotRom_Instance(MousePeripheral_t* mp) {
-  if (!mp || !mp->host) return;
-
-  uint32_t uOffset = (static_cast<uint32_t>(mp->logic.m_by6821B) << 7) & 0x0700;
+  uint32_t uOffset =
+      (static_cast<uint32_t>(mp->logic.m_by6821B) << MOUSE_ROM_OFFSET_SHIFT) &
+      MOUSE_ROM_OFFSET_MASK;
   if (mp->logic.m_pSlotRom) {
     uint8_t slot_rom[MOUSE_ROM_PAGE_SIZE];
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     memcpy(slot_rom, mp->logic.m_pSlotRom + uOffset, MOUSE_ROM_PAGE_SIZE);
     mp->host->RegisterCxROM(mp->slot, slot_rom);
   }
@@ -260,8 +281,8 @@ static void M6821_Listener_B(void* objTo, uint8_t byData) {
       if ((byData & BIT4) != 0) {
         mp->logic.m_by6821B &= ~BIT6;  // OK, I'll prepare next value
       } else {                         // Clock Activate for write
-        if (mp->logic
-                .m_nBuffPos != 0) {  // if m_nBuffPos is 0, something goes wrong!
+        if (mp->logic.m_nBuffPos !=
+            0) {  // if m_nBuffPos is 0, something goes wrong!
           mp->logic.m_nBuffPos++;
         }
         if (mp->logic.m_nBuffPos == mp->logic.m_nDataLen ||
@@ -279,6 +300,10 @@ static void M6821_Listener_B(void* objTo, uint8_t byData) {
     Mouse_SetSlotRom_Instance(mp);  // Update Cn00 ROM page
   }
 }
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
 
 static auto Mouse_IORead(void* instance, uint16_t PC, uint16_t uAddr,
                          uint8_t bWrite, uint8_t uValue, uint32_t nCyclesLeft)
@@ -418,7 +443,7 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
       mp->logic.m_byMode = mp->logic.m_byBuff[0] & MOUSE_MODE_MASK;
       break;
     case MOUSE_READ:
-      mp->logic.m_nDataLen = 6;
+      mp->logic.m_nDataLen = MOUSE_DATA_LEN_6;
       mp->logic.m_byState &= MOUSE_STAT_MOVEMENT;
       mp->logic.m_nX = static_cast<int>(mp->logic.m_iX);
       mp->logic.m_nY = static_cast<int>(mp->logic.m_iY);
@@ -436,10 +461,14 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
       if (mp->logic.m_bBtn1) {
         mp->logic.m_byState |= MOUSE_STAT_CURR_BTN1;
       }
-      mp->logic.m_byBuff[1] = static_cast<uint8_t>(mp->logic.m_nX & 0xFF);
-      mp->logic.m_byBuff[2] = static_cast<uint8_t>((mp->logic.m_nX >> 8) & 0xFF);
-      mp->logic.m_byBuff[3] = static_cast<uint8_t>(mp->logic.m_nY & 0xFF);
-      mp->logic.m_byBuff[4] = static_cast<uint8_t>((mp->logic.m_nY >> 8) & 0xFF);
+      mp->logic.m_byBuff[1] =
+          static_cast<uint8_t>(mp->logic.m_nX & MOUSE_BYTE_MASK);
+      mp->logic.m_byBuff[2] = static_cast<uint8_t>(
+          (mp->logic.m_nX >> MOUSE_COORD_SHIFT_8) & MOUSE_BYTE_MASK);
+      mp->logic.m_byBuff[3] =
+          static_cast<uint8_t>(mp->logic.m_nY & MOUSE_BYTE_MASK);
+      mp->logic.m_byBuff[4] = static_cast<uint8_t>(
+          (mp->logic.m_nY >> MOUSE_COORD_SHIFT_8) & MOUSE_BYTE_MASK);
       mp->logic.m_byBuff[5] =
           mp->logic.m_byState;  // button 0/1 interrupt status
       mp->logic.m_byState &= ~MOUSE_STAT_MOVEMENT;
@@ -448,41 +477,42 @@ static void Mouse_OnCommand(MousePeripheral_t* mp) {
       mp->logic.m_nDataLen = 2;
       mp->logic.m_byBuff[1] =
           mp->logic.m_byState & ~MOUSE_STAT_MOVEMENT;  // reason of interrupt
-      if (mp->host && mp->host->AssertIrq)
+      if (mp->host && mp->host->AssertIrq) {
         mp->host->AssertIrq(mp->slot, false);
-      else
+      } else {
         CpuIrqDeassert(IS_MOUSE);
+      }
       break;
     case MOUSE_CLEAR:
       Mouse_Reset_Internal(mp);
       mp->logic.m_nDataLen = 1;
       break;
     case MOUSE_POS:
-      mp->logic.m_nDataLen = 5;
+      mp->logic.m_nDataLen = MOUSE_DATA_LEN_5;
       break;
     case MOUSE_INIT:
       mp->logic.m_nDataLen = 3;
-      mp->logic.m_byBuff[1] = 0xFF;
+      mp->logic.m_byBuff[1] = MOUSE_BYTE_MASK;
       break;
     case MOUSE_CLAMP:
-      mp->logic.m_nDataLen = 5;
+      mp->logic.m_nDataLen = MOUSE_DATA_LEN_5;
       break;
     case MOUSE_HOME:
       mp->logic.m_nDataLen = 1;
       Mouse_SetPositionInternal(mp, 0, 0);
       break;
     case MOUSE_TIME:  // 0x90
-      switch (mp->logic.m_byBuff[0] & 0x0C) {
+      switch (mp->logic.m_byBuff[0] & MOUSE_STATUS_MODE_MASK) {
         case 0x00:
           mp->logic.m_nDataLen = 1;
           break;
         case 0x04:
           mp->logic.m_nDataLen = 3;
           break;
-        case 0x08:
+        case MOUSE_STATUS_MODE_8:
           mp->logic.m_nDataLen = 2;
           break;
-        case 0x0C:
+        case MOUSE_STATUS_MODE_C:
           mp->logic.m_nDataLen = 4;
           break;
         default:
@@ -501,8 +531,10 @@ static void Mouse_OnWrite(MousePeripheral_t* mp) {
   int nMax = 0;
   switch (mp->logic.m_byBuff[0] & MOUSE_CMD_MASK) {
     case MOUSE_CLAMP:
-      nMin = (mp->logic.m_byBuff[3] << 8) | mp->logic.m_byBuff[1];
-      nMax = (mp->logic.m_byBuff[4] << 8) | mp->logic.m_byBuff[2];
+      nMin = (mp->logic.m_byBuff[3] << MOUSE_COORD_SHIFT_8) |
+             mp->logic.m_byBuff[1];
+      nMax = (mp->logic.m_byBuff[4] << MOUSE_COORD_SHIFT_8) |
+             mp->logic.m_byBuff[2];
       if ((mp->logic.m_byBuff[0] & 1) != 0) {  // Clamp Y
         Mouse_ClampY(mp, nMin, nMax);
       } else {  // Clamp X
@@ -510,8 +542,10 @@ static void Mouse_OnWrite(MousePeripheral_t* mp) {
       }
       break;
     case MOUSE_POS:
-      mp->logic.m_nX = (mp->logic.m_byBuff[2] << 8) | mp->logic.m_byBuff[1];
-      mp->logic.m_nY = (mp->logic.m_byBuff[4] << 8) | mp->logic.m_byBuff[3];
+      mp->logic.m_nX = (mp->logic.m_byBuff[2] << MOUSE_COORD_SHIFT_8) |
+                       mp->logic.m_byBuff[1];
+      mp->logic.m_nY = (mp->logic.m_byBuff[4] << MOUSE_COORD_SHIFT_8) |
+                       mp->logic.m_byBuff[3];
       Mouse_SetPositionInternal(mp, mp->logic.m_nX, mp->logic.m_nY);
       break;
     case MOUSE_INIT:
@@ -548,10 +582,11 @@ static void Mouse_OnMouseEvent(MousePeripheral_t* mp) {
 
   if ((byState & 0x0E) != 0) {
     mp->logic.m_byState |= byState;
-    if (mp->host && mp->host->AssertIrq)
+    if (mp->host && mp->host->AssertIrq) {
       mp->host->AssertIrq(mp->slot, true);
-    else
+    } else {
       CpuIrqAssert(IS_MOUSE);
+    }
   }
 }
 
@@ -574,20 +609,22 @@ static void Mouse_ClampX(MousePeripheral_t* mp, int iMinX, int iMaxX) {
   if (iMinX < 0 || iMinX > iMaxX) return;
   mp->logic.m_iMaxX = static_cast<uint32_t>(iMaxX);
   mp->logic.m_iMinX = static_cast<uint32_t>(iMinX);
-  if (mp->logic.m_iX > mp->logic.m_iMaxX)
+  if (mp->logic.m_iX > mp->logic.m_iMaxX) {
     mp->logic.m_iX = mp->logic.m_iMaxX;
-  else if (mp->logic.m_iX < mp->logic.m_iMinX)
+  } else if (mp->logic.m_iX < mp->logic.m_iMinX) {
     mp->logic.m_iX = mp->logic.m_iMinX;
+  }
 }
 
 static void Mouse_ClampY(MousePeripheral_t* mp, int iMinY, int iMaxY) {
   if (iMinY < 0 || iMinY > iMaxY) return;
   mp->logic.m_iMaxY = static_cast<uint32_t>(iMaxY);
   mp->logic.m_iMinY = static_cast<uint32_t>(iMinY);
-  if (mp->logic.m_iY > mp->logic.m_iMaxY)
+  if (mp->logic.m_iY > mp->logic.m_iMaxY) {
     mp->logic.m_iY = mp->logic.m_iMaxY;
-  else if (mp->logic.m_iY < mp->logic.m_iMinY)
+  } else if (mp->logic.m_iY < mp->logic.m_iMinY) {
     mp->logic.m_iY = mp->logic.m_iMinY;
+  }
 }
 
 static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
@@ -603,28 +640,31 @@ static void Mouse_SetPositionInternal(MousePeripheral_t* mp, int xvalue,
   mp->logic.m_iY =
       (static_cast<uint32_t>(yvalue) * mp->logic.m_iMaxY) / mp->logic.m_iRangeY;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 Peripheral_t g_mouse_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.mouse",
-    .name             = "Mouse Interface",
-    .description      = "Apple II Mouse Card emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.mouse",
+    .name = "Mouse Interface",
+    .description = "Apple II Mouse Card emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-    .default_slot     = 4,
-    .init             = Mouse_ABI_Init,
-    .reset            = Mouse_ABI_Reset,
-    .shutdown         = Mouse_ABI_Shutdown,
-    .think            = nullptr,
-    .on_vblank        = Mouse_ABI_OnVBlank,
-    .save_state       = nullptr,
-    .load_state       = nullptr,
-    .command          = Mouse_ABI_Command,
-    .query            = Mouse_ABI_Query
-};
+    .default_slot = MOUSE_DEFAULT_SLOT,
+    .init = Mouse_ABI_Init,
+    .reset = Mouse_ABI_Reset,
+    .shutdown = Mouse_ABI_Shutdown,
+    .think = nullptr,
+    .on_vblank = Mouse_ABI_OnVBlank,
+    .save_state = nullptr,
+    .load_state = nullptr,
+    .command = Mouse_ABI_Command,
+    .query = Mouse_ABI_Query};
 
 PERIPHERAL_REGISTER(g_mouse_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
