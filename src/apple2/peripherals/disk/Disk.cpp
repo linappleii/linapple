@@ -1,4 +1,9 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -27,6 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -34,13 +40,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/Structs.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/DiskGCR.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/Memory.h"
-#include "apple2/Structs.h"
-#include "apple2/Video.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -57,15 +63,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-#include <array>
-
 namespace {
 constexpr uint32_t DISK_SPINUP_TICKS = 20000;
+constexpr uint32_t DISK_WRITE_LIGHT_TICKS = 20000;
+constexpr uint8_t DISK_IO_ADDR_MASK = 0x0F;
+constexpr uint8_t DISK_IO_ADDR_HI_MASK = 0xFF;
+constexpr uint8_t DISK_LATCH_BIT = 0x80;
 constexpr uint8_t DISK_FLOATING_BUS = 0xFF;
-constexpr uint32_t DISK_SPIN_SHIFT = 6;
-constexpr uint32_t DISK_SPIN_MASK = 63;
-constexpr uint32_t DISK_ROTATION_SHIFT = 5;
-constexpr uint32_t DISK_ROTATION_MASK = 31;
+
+constexpr uint8_t DISK_IO_STEPPER_0 = 0x0;
+constexpr uint8_t DISK_IO_STEPPER_1 = 0x1;
+constexpr uint8_t DISK_IO_STEPPER_2 = 0x2;
+constexpr uint8_t DISK_IO_STEPPER_3 = 0x3;
+constexpr uint8_t DISK_IO_STEPPER_4 = 0x4;
+constexpr uint8_t DISK_IO_STEPPER_5 = 0x5;
+constexpr uint8_t DISK_IO_STEPPER_6 = 0x6;
+constexpr uint8_t DISK_IO_STEPPER_7 = 0x7;
+constexpr uint8_t DISK_IO_MOTOR_OFF = 0x8;
+constexpr uint8_t DISK_IO_MOTOR_ON = 0x9;
+constexpr uint8_t DISK_IO_DRIVE_1 = 0xA;
+constexpr uint8_t DISK_IO_DRIVE_2 = 0xB;
+constexpr uint8_t DISK_IO_READ_WRITE = 0xC;
+constexpr uint8_t DISK_IO_SHIFT_REG = 0xD;
+constexpr uint8_t DISK_IO_READ_MODE = 0xE;
+constexpr uint8_t DISK_IO_WRITE_MODE = 0xF;
+constexpr uint8_t DISK_IO_STEPPER_ALT = 0xE0;
 }  // namespace
 
 struct DiskPeripheral_t {
@@ -91,10 +113,9 @@ static void ReadTrack(DiskPeripheral_t* dp, int drive);
 static void RemoveDisk(DiskPeripheral_t* dp, int drive);
 static void WriteTrack(DiskPeripheral_t* dp, int drive);
 
-static DiskError_e DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
-                                       const char* imageFileName,
-                                       bool writeProtected,
-                                       bool createIfNecessary);
+static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
+                                const char* imageFileName, bool writeProtected,
+                                bool createIfNecessary) -> DiskError_e;
 
 static auto Disk_ABI_Command(void* instance, uint32_t cmd, const void* data,
                              size_t size) -> PeripheralStatus;
@@ -161,36 +182,43 @@ static const char Disk2_rom[] =
     "\x03\x2A\x5E\x00\x03\x2A\x91\x26\xC8\xD0\xEE\xE6\x27\xE6\x3D\xA5"
     "\x3D\xCD\x00\x08\xA6\x2B\x90\xDB\x4C\x01\x08\x00\x00\x00\x00\x00";
 
-static auto DiskControlMotor(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
-                             uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskControlMotor(void* instance, uint16_t pc, uint16_t addr,
+                             uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskControlStepper(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
-                               uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskControlStepper(void* instance, uint16_t pc, uint16_t addr,
+                               uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskEnable(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
-                       uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskEnable(void* instance, uint16_t pc, uint16_t addr,
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskReadWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
-                          uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskReadWrite(void* instance, uint16_t pc, uint16_t addr,
+                          uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskSetLatchValue(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
-                              uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetLatchValue(void* instance, uint16_t pc, uint16_t addr,
+                              uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskSetReadMode(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
-                            uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetReadMode(void* instance, uint16_t pc, uint16_t addr,
+                            uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-static auto DiskSetWriteMode(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
-                             uint8_t d, uint32_t nCyclesLeft) -> uint8_t;
+static auto DiskSetWriteMode(void* instance, uint16_t pc, uint16_t addr,
+                             uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t;
 
-#define LOG_DISK_ENABLED 0
-
-#if (LOG_DISK_ENABLED)
+#if (0)  // Set to 1 to enable disk logging
 #define LOG_DISK(format, ...) Logger::Info(format, __VA_ARGS__)
 #else
 #define LOG_DISK(...)
 #endif
 
 static auto CheckSpinning(DiskPeripheral_t* dp) -> void {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[dp->currdrive];
   bool was_spinning = (fptr->spinning > 0);
   if (dp->floppymotoron) {
@@ -206,18 +234,17 @@ static auto CheckSpinning(DiskPeripheral_t* dp) -> void {
   }
 }
 
-static auto DiskIsEffectivelyWriteProtected(DiskPeripheral_t* dp, const int iDrive) -> bool {
-  if (iDrive < 0 || iDrive >= 2) return false;
+static auto DiskIsEffectivelyWriteProtected(DiskPeripheral_t* dp,
+                                            const int iDrive) -> bool {
+  if (iDrive < 0 || iDrive >= DRIVES) return false;
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[iDrive];
 
   bool protected_result = false;
 
-  // Layer 3: User toggle
-  if (fptr->user_write_protected) {
-    protected_result = true;
-  }
-  // Layer 2: OS read-only
-  else if (fptr->os_readonly) {
+  // Layer 3: User toggle / Layer 2: OS read-only
+  if (fptr->user_write_protected || fptr->os_readonly) {
     protected_result = true;
   }
   // Layer 1: Driver/Format capability
@@ -239,14 +266,17 @@ static auto GetImageTitle(const char* imageFileName, Disk_t* fptr) -> char* {
   const char* startpos = imageFileName;
 
   const char* last_sep = strrchr(startpos, FILE_SEPARATOR);
-  if (last_sep) {
+  if (last_sep != nullptr) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     startpos = last_sep + 1;
   }
   Util_SafeStrCpy(imagetitle, startpos, MAX_DISK_FULL_NAME);
 
   bool found = false;
   int loop = 0;
-  while (imagetitle[loop] && !found) {
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+  while (imagetitle[loop] != '\0' && !found) {
     if (IsCharLower(imagetitle[loop])) {
       found = true;
     } else {
@@ -255,10 +285,14 @@ static auto GetImageTitle(const char* imageFileName, Disk_t* fptr) -> char* {
   }
 
   if ((!found) && (loop > 2)) {
-    for (char* p = imagetitle + 1; *p; ++p) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (char* p = imagetitle + 1; *p != '\0'; ++p) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
     }
   }
+  // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
   Util_SafeStrCpy(fptr->fullname, imageFileName, MAX_DISK_FULL_NAME);
 
@@ -278,10 +312,11 @@ static auto IsDriveValid(const int iDrive) -> bool {
 }
 
 static void AllocTrack(DiskPeripheral_t* dp, int drive) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[drive];
   const int NIBBLES_HARDWARE = 6656;
-  fptr->trackimage = static_cast<uint8_t*>(malloc(NIBBLES_HARDWARE));
-  if (fptr->trackimage) memset(fptr->trackimage, 0, NIBBLES_HARDWARE);
+  fptr->trackimage = new uint8_t[NIBBLES_HARDWARE]();
 }
 
 static void ReadTrack(DiskPeripheral_t* dp, int iDrive) {
@@ -289,6 +324,8 @@ static void ReadTrack(DiskPeripheral_t* dp, int iDrive) {
     return;
   }
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->track >= TRACKS) {
@@ -314,6 +351,8 @@ static void ReadTrack(DiskPeripheral_t* dp, int iDrive) {
 }
 
 static void RemoveDisk(DiskPeripheral_t* dp, int iDrive) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->driver) {
@@ -326,7 +365,7 @@ static void RemoveDisk(DiskPeripheral_t* dp, int iDrive) {
     pFloppy->driver_instance = nullptr;
 
     if (pFloppy->trackimage) {
-      free(pFloppy->trackimage);
+      delete[] pFloppy->trackimage;
       pFloppy->trackimage = nullptr;
     }
 
@@ -348,6 +387,8 @@ static void RemoveDisk(DiskPeripheral_t* dp, int iDrive) {
 }
 
 static void WriteTrack(DiskPeripheral_t* dp, int iDrive) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* pFloppy = &dp->drives[iDrive];
 
   if (pFloppy->track >= TRACKS) {
@@ -371,17 +412,23 @@ static void DiskBoot(DiskPeripheral_t* dp) {
   }
 }
 
-static auto DiskControlMotor(void* instance, uint16_t, uint16_t address, uint8_t, uint8_t,
-                             uint32_t) -> uint8_t {
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
+
+static auto DiskControlMotor(void* instance, uint16_t, uint16_t address,
+                             uint8_t, uint8_t, uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   dp->floppymotoron = (address & 1) != 0;
   CheckSpinning(dp);
   return MemReturnRandomData(1);
 }
 
-static auto DiskControlStepper(void* instance, uint16_t, uint16_t address, uint8_t, uint8_t,
-                               uint32_t) -> uint8_t {
+static auto DiskControlStepper(void* instance, uint16_t, uint16_t address,
+                               uint8_t, uint8_t, uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[dp->currdrive];
   int phase = (address >> 1) & 3;
   int phase_bit = (1 << phase);
@@ -412,7 +459,8 @@ static auto DiskControlStepper(void* instance, uint16_t, uint16_t address, uint8
       fptr->trackimagedata = false;
     }
   }
-  return (address == 0xE0) ? 0xFF : MemReturnRandomData(1);
+  return (address == DISK_IO_STEPPER_ALT) ? DISK_FLOATING_BUS
+                                          : MemReturnRandomData(1);
 }
 
 static void DiskDestroy(DiskPeripheral_t* dp) {
@@ -421,8 +469,9 @@ static void DiskDestroy(DiskPeripheral_t* dp) {
   RemoveDisk(dp, 1);
 }
 
-static auto DiskEnable(void* instance, uint16_t pc, uint16_t address, uint8_t bWrite, uint8_t d,
-                       uint32_t nCyclesLeft) -> uint8_t {
+static auto DiskEnable(void* instance, uint16_t pc, uint16_t address,
+                       uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+    -> uint8_t {
   (void)pc;
   (void)bWrite;
   (void)d;
@@ -446,9 +495,11 @@ static void DiskEject(DiskPeripheral_t* dp, const int iDrive) {
   }
 }
 
-static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive, const char* imageFileName,
-                                bool writeProtected, bool createIfNecessary)
-    -> DiskError_e {
+static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive,
+                                const char* imageFileName, bool writeProtected,
+                                bool createIfNecessary) -> DiskError_e {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[drive];
 
   if (fptr->driver != nullptr) {
@@ -467,7 +518,8 @@ static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive, const char* ima
 
   if (error == DISK_ERR_NONE) {
     char* tmp = GetImageTitle(imageFileName, fptr);
-    char s_title[MAX_DISK_IMAGE_NAME + 32];
+    constexpr size_t TITLE_BUF_LEN = MAX_DISK_IMAGE_NAME + 32;
+    char s_title[TITLE_BUF_LEN];
     snprintf(s_title, sizeof(s_title), "%.*s - %.*s",
              static_cast<int>(strlen(g_pAppTitle)), g_pAppTitle,
              static_cast<int>(strlen(tmp)), tmp);
@@ -487,7 +539,8 @@ static auto DiskInsert_Internal(DiskPeripheral_t* dp, int drive, const char* ima
   return error;
 }
 
-static void DiskSetProtect(DiskPeripheral_t* dp, const int iDrive, const bool bWriteProtect) {
+static void DiskSetProtect(DiskPeripheral_t* dp, const int iDrive,
+                           const bool bWriteProtect) {
   if (IsDriveValid(iDrive)) {
     dp->drives[iDrive].user_write_protected = bWriteProtect;
     if (dp->host) {
@@ -496,16 +549,18 @@ static void DiskSetProtect(DiskPeripheral_t* dp, const int iDrive, const bool bW
   }
 }
 
-static auto DiskReadWrite(void* instance, uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
+static auto DiskReadWrite(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
+                          uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* fptr = &dp->drives[dp->currdrive];
   dp->diskaccessed = true;
   if ((!fptr->trackimagedata) && fptr->driver) {
     ReadTrack(dp, dp->currdrive);
   }
   if (!fptr->trackimagedata) {
-    return 0xFF;
+    return DISK_FLOATING_BUS;
   }
   uint8_t result = 0;
 
@@ -513,13 +568,15 @@ static auto DiskReadWrite(void* instance, uint16_t, uint16_t, uint8_t, uint8_t, 
 
   if ((!dp->floppywritemode) || (!is_protected)) {
     if (dp->floppywritemode) {
-      if (dp->floppylatch & 0x80) {
+      if (dp->floppylatch & DISK_LATCH_BIT) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         *(fptr->trackimage + fptr->byte) = dp->floppylatch;
         fptr->trackimagedirty = true;
       } else {
         return 0;
       }
     } else {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       result = *(fptr->trackimage + fptr->byte);
     }
   }
@@ -534,8 +591,8 @@ static void DiskReset(DiskPeripheral_t* dp) {
   dp->phases = 0;
 }
 
-static auto DiskSetLatchValue(void* instance, uint16_t, uint16_t, uint8_t write, uint8_t value,
-                              uint32_t) -> uint8_t {
+static auto DiskSetLatchValue(void* instance, uint16_t, uint16_t, uint8_t write,
+                              uint8_t value, uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   if (write) {
     dp->floppylatch = value;
@@ -543,19 +600,20 @@ static auto DiskSetLatchValue(void* instance, uint16_t, uint16_t, uint8_t write,
   return dp->floppylatch;
 }
 
-static auto DiskSetReadMode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
+static auto DiskSetReadMode(void* instance, uint16_t, uint16_t, uint8_t,
+                            uint8_t, uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   dp->floppywritemode = false;
-  return MemReturnRandomData(DiskIsEffectivelyWriteProtected(dp, dp->currdrive));
+  return MemReturnRandomData(
+      DiskIsEffectivelyWriteProtected(dp, dp->currdrive));
 }
 
-static auto DiskSetWriteMode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t, uint32_t)
-    -> uint8_t {
+static auto DiskSetWriteMode(void* instance, uint16_t, uint16_t, uint8_t,
+                             uint8_t, uint32_t) -> uint8_t {
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   dp->floppywritemode = true;
   bool modechange = !dp->drives[dp->currdrive].writelight;
-  dp->drives[dp->currdrive].writelight = 20000;
+  dp->drives[dp->currdrive].writelight = DISK_WRITE_LIGHT_TICKS;
   if (modechange) {
     if (dp->host) dp->host->NotifyStatusChanged(dp->slot);
   }
@@ -564,15 +622,21 @@ static auto DiskSetWriteMode(void* instance, uint16_t, uint16_t, uint8_t, uint8_
 
 static auto DiskUpdatePosition(DiskPeripheral_t* dp, uint32_t cycles) -> void {
   dp->s_spin_accumulator += cycles;
-  uint32_t spin_ticks = dp->s_spin_accumulator >> 6;
-  dp->s_spin_accumulator &= 63;
+  constexpr uint32_t DISK_SPIN_SHIFT = 6;
+  constexpr uint32_t DISK_SPIN_MASK = 63;
+  uint32_t spin_ticks = dp->s_spin_accumulator >> DISK_SPIN_SHIFT;
+  dp->s_spin_accumulator &= DISK_SPIN_MASK;
 
   dp->s_rotation_accumulator += cycles;
-  uint32_t rotation_ticks = dp->s_rotation_accumulator >> 5;
-  dp->s_rotation_accumulator &= 31;
+  constexpr uint32_t DISK_ROTATION_SHIFT = 5;
+  constexpr uint32_t DISK_ROTATION_MASK = 31;
+  uint32_t rotation_ticks = dp->s_rotation_accumulator >> DISK_ROTATION_SHIFT;
+  dp->s_rotation_accumulator &= DISK_ROTATION_MASK;
 
-  int loop = 2;
+  int loop = DRIVES;
   while (loop--) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     Disk_t* fptr = &dp->drives[loop];
     if (fptr->spinning && !dp->floppymotoron) {
       if (spin_ticks >= fptr->spinning) {
@@ -585,8 +649,9 @@ static auto DiskUpdatePosition(DiskPeripheral_t* dp, uint32_t cycles) -> void {
         fptr->spinning -= spin_ticks;
       }
     }
-    if (dp->floppywritemode && (dp->currdrive == loop) && fptr->spinning) {
-      fptr->writelight = 20000;
+    if (dp->floppywritemode && (dp->currdrive == static_cast<uint16_t>(loop)) &&
+        fptr->spinning) {
+      fptr->writelight = DISK_WRITE_LIGHT_TICKS;
     } else if (fptr->writelight) {
       if (spin_ticks >= fptr->writelight) {
         fptr->writelight = 0;
@@ -619,8 +684,9 @@ static auto DiskDriveSwap(DiskPeripheral_t* dp) -> bool {
   memcpy(&dp->drives[0], &dp->drives[1], sizeof(Disk_t));
   memcpy(&dp->drives[1], &temp, sizeof(Disk_t));
 
-  char s_title[MAX_DISK_IMAGE_NAME + 32];
-  snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s",
+  constexpr size_t TITLE_BUF_LEN = MAX_DISK_IMAGE_NAME + 32;
+  char s_title[TITLE_BUF_LEN];
+  snprintf(s_title, TITLE_BUF_LEN, "%.*s - %.*s",
            static_cast<int>(strlen(g_pAppTitle)), g_pAppTitle,
            static_cast<int>(strlen(dp->drives[0].imagename)),
            dp->drives[0].imagename);
@@ -649,11 +715,13 @@ auto DiskInitialize(DiskPeripheral_t* dp) -> void {
 
 static void SyncDriverOptions(DiskPeripheral_t* dp) {
   for (int i = 0; i < DRIVES; ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     Disk_t* fptr = &dp->drives[i];
     if (fptr->driver && fptr->driver->command) {
       uint8_t enh = dp->enhancedisk ? 1 : 0;
       fptr->driver->command(fptr->driver_instance,
-                             DISK_DRIVER_CMD_SET_ENHANCED_SPEED, &enh, 1);
+                            DISK_DRIVER_CMD_SET_ENHANCED_SPEED, &enh, 1);
     }
   }
 }
@@ -664,12 +732,15 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
   dp->slot = slot;
 
   DiskLoader_Init();
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast)
+  // Justification: Driver registration requires non-const pointers to drivers.
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_woz2_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_iie_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_nib_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
   DiskLoader_Register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
+  // NOLINTEND(cppcoreguidelines-pro-type-const-cast)
 
   uint32_t enh_val = 1;
   LOAD("Enhance Disk Speed", &enh_val);
@@ -690,8 +761,13 @@ static auto Disk_ABI_Init(int slot, HostInterface_t* host) -> void* {
     DiskInsert_Internal(dp, 1, path2, false, false);
   }
 
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast,
+  // cppcoreguidelines-pro-type-const-cast) Justification: Hardware-level ROM
+  // registration requires cast to raw bytes.
   host->RegisterCxROM(slot,
                       reinterpret_cast<uint8_t*>(const_cast<char*>(Disk2_rom)));
+  // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast,
+  // cppcoreguidelines-pro-type-const-cast)
 
   host->RegisterIO(slot, Disk_IORead, Disk_IOWrite, nullptr, nullptr);
 
@@ -721,14 +797,19 @@ static auto Disk_ABI_Think(void* instance, uint32_t cycles) -> void {
 }
 
 static void PopulateDiskStatus(DiskPeripheral_t* dp, DiskStatus_t* status) {
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   Disk_t* d0 = &dp->drives[0];
   Disk_t* d1 = &dp->drives[1];
+  // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index,
+  // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
   status->drive0_last_error = static_cast<int32_t>(d0->last_error);
   status->drive0_loaded = (d0->driver != nullptr) ? 1 : 0;
   status->drive0_spinning = (d0->spinning > 0) ? 1 : 0;
   status->drive0_writing = (d0->writelight > 0) ? 1 : 0;
-  status->drive0_write_protected = DiskIsEffectivelyWriteProtected(dp, 0) ? 1 : 0;
+  status->drive0_write_protected =
+      DiskIsEffectivelyWriteProtected(dp, 0) ? 1 : 0;
   Util_SafeStrCpy(status->drive0_name, d0->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive0_full_path, d0->fullname, DISK_STATUS_PATH_MAX);
 
@@ -736,7 +817,8 @@ static void PopulateDiskStatus(DiskPeripheral_t* dp, DiskStatus_t* status) {
   status->drive1_loaded = (d1->driver != nullptr) ? 1 : 0;
   status->drive1_spinning = (d1->spinning > 0) ? 1 : 0;
   status->drive1_writing = (d1->writelight > 0) ? 1 : 0;
-  status->drive1_write_protected = DiskIsEffectivelyWriteProtected(dp, 1) ? 1 : 0;
+  status->drive1_write_protected =
+      DiskIsEffectivelyWriteProtected(dp, 1) ? 1 : 0;
   Util_SafeStrCpy(status->drive1_name, d1->imagename, DISK_STATUS_NAME_MAX);
   Util_SafeStrCpy(status->drive1_full_path, d1->fullname, DISK_STATUS_PATH_MAX);
 }
@@ -823,14 +905,16 @@ static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
   ds->header.version = DISK_STATE_VERSION;
   ds->header.size = sizeof(DiskSavedState_t);
 
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < DRIVES; ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     Disk_t* fptr = &dp->drives[i];
     DiskDriveState_t* dds = &ds->drives[i];
 
     Util_SafeStrCpy(dds->fullname, fptr->fullname, MAX_DISK_FULL_NAME + 1);
     dds->track = fptr->track;
     dds->phase = fptr->phase;
-    dds->byte_pos = fptr->byte;
+    dds->byte_pos = static_cast<int32_t>(fptr->byte);
     dds->user_write_protected = fptr->user_write_protected;
     dds->trackimagedata = fptr->trackimagedata;
     dds->trackimagedirty = fptr->trackimagedirty;
@@ -854,6 +938,7 @@ static auto Disk_ABI_SaveState(void* instance, void* buffer, size_t* size)
 
   return PERIPHERAL_OK;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus {
@@ -869,24 +954,28 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
   dp->phases = ds->phases;
   dp->currdrive = ds->currdrive;
-  dp->diskaccessed = ds->diskaccessed;
+  dp->diskaccessed = ds->diskaccessed != 0;
   dp->enhancedisk = (ds->enhancedisk != 0);
   dp->floppylatch = ds->floppylatch;
-  dp->floppymotoron = ds->floppymotoron;
-  dp->floppywritemode = ds->floppywritemode;
+  dp->floppymotoron = ds->floppymotoron != 0;
+  dp->floppywritemode = ds->floppywritemode != 0;
 
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < DRIVES; ++i) {
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index,
+    // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     const DiskDriveState_t* dds = &ds->drives[i];
 
     RemoveDisk(dp, i);
 
-    DiskError_e err =
-        DiskInsert_Internal(dp, i, dds->fullname, dds->user_write_protected, false);
+    DiskError_e err = DiskInsert_Internal(
+        dp, i, dds->fullname, dds->user_write_protected != 0, false);
     if (err == DISK_ERR_NONE) {
       Disk_t* fptr = &dp->drives[i];
+      // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index,
+      // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       fptr->track = dds->track;
       fptr->phase = dds->phase;
-      fptr->byte = dds->byte_pos;
+      fptr->byte = static_cast<uint32_t>(dds->byte_pos);
       fptr->trackimagedata = dds->trackimagedata != 0;
       fptr->trackimagedirty = dds->trackimagedirty != 0;
       fptr->spinning = dds->spinning;
@@ -895,7 +984,7 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
       if (fptr->trackimagedata) {
         if (fptr->trackimage == nullptr) {
-          fptr->trackimage = static_cast<uint8_t*>(malloc(NIBBLES_PER_TRACK));
+          fptr->trackimage = new uint8_t[NIBBLES_PER_TRACK]();
         }
         if (fptr->nibbles > 0) {
           memcpy(fptr->trackimage, dds->nTrack, NIBBLES_PER_TRACK);
@@ -904,9 +993,14 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
         }
       }
     } else {
-      DiskError_e saved_err =
-          static_cast<DiskError_e>(dp->drives[i].last_error);
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+      // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      auto saved_err = static_cast<DiskError_e>(dp->drives[i].last_error);
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+      // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       memset(&dp->drives[i], 0, sizeof(Disk_t));
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,
+      // cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       dp->drives[i].last_error = saved_err;
     }
   }
@@ -921,33 +1015,35 @@ static auto Disk_ABI_LoadState(void* instance, const void* buffer, size_t size)
 
 auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  if (!instance) return 0xFF;
-  addr &= 0xFF;
+  if (!instance) return DISK_FLOATING_BUS;
+  addr &= DISK_IO_ADDR_HI_MASK;
 
-  switch (addr & 0xf) {
-    case 0x0:
-    case 0x1:
-    case 0x2:
-    case 0x3:
-    case 0x4:
-    case 0x5:
-    case 0x6:
-    case 0x7:
+  switch (addr & DISK_IO_ADDR_MASK) {
+    case DISK_IO_STEPPER_0:
+    case DISK_IO_STEPPER_1:
+    case DISK_IO_STEPPER_2:
+    case DISK_IO_STEPPER_3:
+    case DISK_IO_STEPPER_4:
+    case DISK_IO_STEPPER_5:
+    case DISK_IO_STEPPER_6:
+    case DISK_IO_STEPPER_7:
       return DiskControlStepper(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0x8:
-    case 0x9:
+    case DISK_IO_MOTOR_OFF:
+    case DISK_IO_MOTOR_ON:
       return DiskControlMotor(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xA:
-    case 0xB:
+    case DISK_IO_DRIVE_1:
+    case DISK_IO_DRIVE_2:
       return DiskEnable(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xC:
+    case DISK_IO_READ_WRITE:
       return DiskReadWrite(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xD:
+    case DISK_IO_SHIFT_REG:
       return DiskSetLatchValue(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xE:
+    case DISK_IO_READ_MODE:
       return DiskSetReadMode(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xF:
+    case DISK_IO_WRITE_MODE:
       return DiskSetWriteMode(instance, pc, addr, bWrite, d, nCyclesLeft);
+    default:
+      break;
   }
 
   return 0;
@@ -956,56 +1052,62 @@ auto Disk_IORead(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
 auto Disk_IOWrite(void* instance, uint16_t pc, uint16_t addr, uint8_t bWrite,
                   uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   if (!instance) return 0;
-  addr &= 0xFF;
+  addr &= DISK_IO_ADDR_HI_MASK;
 
-  switch (addr & 0xf) {
-    case 0x0:
-    case 0x1:
-    case 0x2:
-    case 0x3:
-    case 0x4:
-    case 0x5:
-    case 0x6:
-    case 0x7:
+  switch (addr & DISK_IO_ADDR_MASK) {
+    case DISK_IO_STEPPER_0:
+    case DISK_IO_STEPPER_1:
+    case DISK_IO_STEPPER_2:
+    case DISK_IO_STEPPER_3:
+    case DISK_IO_STEPPER_4:
+    case DISK_IO_STEPPER_5:
+    case DISK_IO_STEPPER_6:
+    case DISK_IO_STEPPER_7:
       return DiskControlStepper(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0x8:
-    case 0x9:
+    case DISK_IO_MOTOR_OFF:
+    case DISK_IO_MOTOR_ON:
       return DiskControlMotor(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xA:
-    case 0xB:
+    case DISK_IO_DRIVE_1:
+    case DISK_IO_DRIVE_2:
       return DiskEnable(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xC:
+    case DISK_IO_READ_WRITE:
       return DiskReadWrite(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xD:
+    case DISK_IO_SHIFT_REG:
       return DiskSetLatchValue(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xE:
+    case DISK_IO_READ_MODE:
       return DiskSetReadMode(instance, pc, addr, bWrite, d, nCyclesLeft);
-    case 0xF:
+    case DISK_IO_WRITE_MODE:
       return DiskSetWriteMode(instance, pc, addr, bWrite, d, nCyclesLeft);
+    default:
+      break;
   }
 
   return 0;
 }
 
 Peripheral_t g_disk_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.disk_ii",
-    .name             = "Disk II",
-    .description      = "Apple II floppy disk controller emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.disk_ii",
+    .name = "Disk II",
+    .description = "Apple II floppy disk controller emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-    .default_slot     = 6,
-    .init             = Disk_ABI_Init,
-    .reset            = Disk_ABI_Reset,
-    .shutdown         = Disk_ABI_Shutdown,
-    .think            = Disk_ABI_Think,
-    .on_vblank        = nullptr,
-    .save_state       = Disk_ABI_SaveState,
-    .load_state       = Disk_ABI_LoadState,
-    .command          = Disk_ABI_Command,
-    .query            = Disk_ABI_Query
-};
+    .default_slot = DISK_DEFAULT_SLOT,
+    .init = Disk_ABI_Init,
+    .reset = Disk_ABI_Reset,
+    .shutdown = Disk_ABI_Shutdown,
+    .think = Disk_ABI_Think,
+    .on_vblank = nullptr,
+    .save_state = Disk_ABI_SaveState,
+    .load_state = Disk_ABI_LoadState,
+    .command = Disk_ABI_Command,
+    .query = Disk_ABI_Query};
 
 PERIPHERAL_REGISTER(g_disk_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
