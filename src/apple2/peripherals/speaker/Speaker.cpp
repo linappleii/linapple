@@ -27,11 +27,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Sample generation and audio routing are handled via Peripheral ABI.
  */
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
-// implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state and raw memory management to bridge with the core C interface.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
+// This file implements the C99-compatible Peripheral ABI. It requires void*
+// pointers for instance state and raw memory management to bridge with the core
+// C interface.
 
 #include "apple2/peripherals/speaker/Speaker.h"
 
@@ -197,15 +201,16 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
       sum += (sampleEnd - currentTime) *
              (instance->last_sample_state ? 1.0 : -1.0);
 
-      float average = static_cast<float>(sum / clksPerSample);
+      const auto average = static_cast<float>(sum / clksPerSample);
 
       // Simple High-Pass Filter (DC Blocker) to prevent popping from DC offset
       // out = (in - last_in) + FILTER_COEFF_DC_BLOCKER * last_out
-      instance->filter_state = (average - instance->last_input) +
-                               (FILTER_COEFF_DC_BLOCKER * instance->filter_state);
+      instance->filter_state =
+          (average - instance->last_input) +
+          (FILTER_COEFF_DC_BLOCKER * instance->filter_state);
       instance->last_input = average;
 
-      const int16_t val =
+      const auto val =
           static_cast<int16_t>(instance->filter_state * SPKR_SAMPLE_VOLUME);
 
       instance->sample_buffer.at(numSamples++) = val;  // Left
@@ -220,7 +225,7 @@ auto Speaker_GenerateSamples(Speaker_t* instance, uint32_t dwExecutedCycles)
     while (numSamples < (SPKR_BUFFER_SIZE - 2) &&
            std::abs(instance->filter_state) > FILTER_EPSILON) {
       instance->filter_state *= FILTER_COEFF_DECAY;
-      const int16_t val =
+      const auto val =
           static_cast<int16_t>(instance->filter_state * SPKR_SAMPLE_VOLUME);
       instance->sample_buffer.at(numSamples++) = val;
       instance->sample_buffer.at(numSamples++) = val;
@@ -251,6 +256,7 @@ auto Speaker_GetEvents(Speaker_t* instance, SpkrEvent* events,
   }
   const auto count = std::min(instance->num_events, max_events);
   if (count > 0) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::copy(instance->events.begin(),
               instance->events.begin() + static_cast<ptrdiff_t>(count), events);
     instance->num_events = 0;
@@ -270,11 +276,12 @@ auto Speaker_GetCurrentState(Speaker_t* instance) -> bool {
 
 static constexpr uint16_t ADDR_SPEAKER = 0xC030;
 
-// Justification: Signature is required for compatibility with the Core memory
-// map iofunction pointers.
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-static auto SpkrToggleBridge(void* instance, uint16_t pc, uint16_t addr,
-                             uint8_t write, uint8_t val, uint32_t cycles_left)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
+
+static auto Spkr_IO_Toggle(void* instance, uint16_t pc, uint16_t addr,
+                           uint8_t write, uint8_t val, uint32_t cycles_left)
     -> uint8_t {
   return Speaker_Toggle(static_cast<Speaker_t*>(instance), pc, addr, write, val,
                         cycles_left);
@@ -288,8 +295,8 @@ static auto Spkr_ABI_Init(int slot, HostInterface_t* host) -> void* {
 
   // Speaker is at $C030
   if (host && host->RegisterDirectIO) {
-    host->RegisterDirectIO(instance, ADDR_SPEAKER, SpkrToggleBridge,
-                           SpkrToggleBridge);
+    host->RegisterDirectIO(instance, ADDR_SPEAKER, Spkr_IO_Toggle,
+                           Spkr_IO_Toggle);
   }
 
   return instance;
@@ -376,28 +383,31 @@ static auto Spkr_ABI_Query(void* instance, uint32_t query_id, void* out,
       return PERIPHERAL_INCOMPATIBLE;
   }
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 Peripheral_t g_speaker_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.speaker",
-    .name             = "Speaker",
-    .description      = "Built-in Apple II speaker and cassette port emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.speaker",
+    .name = "Speaker",
+    .description = "Built-in Apple II speaker and cassette port emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
-    .default_slot     = 0,
-    .init             = Spkr_ABI_Init,
-    .reset            = Spkr_ABI_Reset,
-    .shutdown         = Spkr_ABI_Shutdown,
-    .think            = Spkr_ABI_Think,
-    .on_vblank        = nullptr,
-    .save_state       = Spkr_ABI_SaveState,
-    .load_state       = Spkr_ABI_LoadState,
-    .command          = nullptr,
-    .query            = Spkr_ABI_Query
-};
+    .default_slot = 0,
+    .init = Spkr_ABI_Init,
+    .reset = Spkr_ABI_Reset,
+    .shutdown = Spkr_ABI_Shutdown,
+    .think = Spkr_ABI_Think,
+    .on_vblank = nullptr,
+    .save_state = Spkr_ABI_SaveState,
+    .load_state = Spkr_ABI_LoadState,
+    .command = nullptr,
+    .query = Spkr_ABI_Query};
 
 PERIPHERAL_REGISTER(g_speaker_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
