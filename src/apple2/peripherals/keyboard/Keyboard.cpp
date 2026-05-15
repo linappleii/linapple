@@ -11,12 +11,15 @@
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables) Justification: This file
-// implements the C11-compatible Peripheral ABI. It requires void* pointers for
-// instance state, raw memory management, and instance state to bridge with
-// the core C interface
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
+// This file implements the C99-compatible Peripheral ABI. It requires void*
+// pointers for instance state, raw memory management, and instance state to
+// bridge with the core C interface.
 
 // --- Constants ---
 
@@ -28,7 +31,6 @@ static constexpr uint32_t KEY_REPEAT_INITIAL_DELAY = 512000;
 static constexpr uint32_t KEY_REPEAT_RATE = 68000;
 
 // Peripheral Registration Constants
-static constexpr uint8_t SLOT_0_MASK = 0x01;
 static constexpr int8_t DEFAULT_SLOT_INTERNAL = 0;
 
 // --- I/O Address Constants ---
@@ -52,7 +54,9 @@ struct KeyboardPeripheral_t {
   bool rocker_switch = false;  // Language rocker switch (US=false, Local=true)
 };
 
-// --- I/O Handlers ---
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Functions are part of the Peripheral ABI or internal
+// helpers that mimic it, where parameter order is fixed or follows convention.
 
 static auto Keyb_IO_ReadData(void* instance, uint16_t pc, uint16_t addr,
                              uint8_t write, uint8_t val, uint32_t cycles_left)
@@ -361,28 +365,31 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
       return PERIPHERAL_INCOMPATIBLE;
   }
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 Peripheral_t keyboard_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.keyboard",
-    .name             = "Keyboard",
-    .description      = "Standard Apple II keyboard emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.keyboard",
+    .name = "Keyboard",
+    .description = "Standard Apple II keyboard emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
-    .default_slot     = DEFAULT_SLOT_INTERNAL,
-    .init             = Keyb_ABI_Init,
-    .reset            = Keyb_ABI_Reset,
-    .shutdown         = Keyb_ABI_Shutdown,
-    .think            = Keyb_ABI_Think,
-    .on_vblank        = nullptr,
-    .save_state       = Keyb_ABI_SaveState,
-    .load_state       = Keyb_ABI_LoadState,
-    .command          = Keyb_ABI_Command,
-    .query            = Keyb_ABI_Query
-};
+    .default_slot = DEFAULT_SLOT_INTERNAL,
+    .init = Keyb_ABI_Init,
+    .reset = Keyb_ABI_Reset,
+    .shutdown = Keyb_ABI_Shutdown,
+    .think = Keyb_ABI_Think,
+    .on_vblank = nullptr,
+    .save_state = Keyb_ABI_SaveState,
+    .load_state = Keyb_ABI_LoadState,
+    .command = Keyb_ABI_Command,
+    .query = Keyb_ABI_Query};
 
 PERIPHERAL_REGISTER(keyboard_peripheral)
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
