@@ -414,7 +414,7 @@ if(BUILD_TESTING)
     add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
     set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:linapple>")
 
-    add_linapple_test(speaker tests/test_main.cpp;tests/test_speaker.cpp)
+    add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
     if(FRONTEND STREQUAL "sdl1")

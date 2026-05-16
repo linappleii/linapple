@@ -28,23 +28,23 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdio>
 #include <cstring>
 
+#include "Debugger/Debug.h"
 #include "apple2/CPU.h"
-#include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Memory.h"
 #include "apple2/SaveState.h"
-#include "apple2/peripherals/super_serial_card/SerialComms.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
-#include "core/Common.h"
-#include "core/ProgramLoader.h"
-#include "Debugger/Debug.h"
-#include "apple2/peripherals/printer/Printer.h"
+#include "apple2/peripherals/joystick/Joystick.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/printer/Printer.h"
+#include "apple2/peripherals/super_serial_card/SerialComms.h"
+#include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
+#include "core/ProgramLoader.h"
 #include "core/asset.h"
 
 using Logger::Error;
@@ -63,12 +63,18 @@ const int FULL_SPEED_DISK_ITERATIONS = 100;
 static LinappleVideoCallback g_videoCB = nullptr;
 static LinappleTitleCallback g_titleCB = nullptr;
 extern LinappleAudioCallback g_frontendAudioCB;
+extern LinappleAudioCallback g_frontendMockAudioCB;
 
 static uint32_t s_turboStartMs = 0;
 static bool s_wasTurbo = false;
 
 void Linapple_SetVideoCallback(LinappleVideoCallback cb) { g_videoCB = cb; }
-void Linapple_SetAudioCallback(LinappleAudioCallback cb) { g_frontendAudioCB = cb; }
+void Linapple_SetAudioCallback(LinappleAudioCallback cb) {
+  g_frontendAudioCB = cb;
+}
+void Linapple_SetMockAudioCallback(LinappleAudioCallback cb) {
+  g_frontendMockAudioCB = cb;
+}
 void Linapple_SetTitleCallback(LinappleTitleCallback cb) { g_titleCB = cb; }
 
 void Linapple_UpdateTitle(const char* title) {
@@ -116,9 +122,7 @@ void Linapple_Init() {
   Peripheral_Register_Internal();
 }
 
-void Linapple_RegisterPeripherals() {
-  Peripheral_Register_Internal();
-}
+void Linapple_RegisterPeripherals() { Peripheral_Register_Internal(); }
 
 void Linapple_Shutdown() {
   Peripheral_Manager_Shutdown();
@@ -159,9 +163,11 @@ int Linapple_LoadProgram(const char* path) {
   // Avoid trying to load known disk image formats as raw programs
   const char* ext = strrchr(path, '.');
   if (ext) {
-    static const char* disk_exts[] = {".woz", ".dsk", ".nib", ".2mg", ".po", ".do"};
+    static const char* disk_exts[] = {".woz", ".dsk", ".nib",
+                                      ".2mg", ".po",  ".do"};
     for (auto d_ext : disk_exts) {
-      if (strcasecmp(ext, d_ext) == 0) return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+      if (strcasecmp(ext, d_ext) == 0)
+        return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
     }
   }
 
@@ -180,7 +186,8 @@ int Linapple_LoadProgram(const char* path) {
 
   uint16_t load_addr = (size == 65536) ? 0x0000 : 0x800;
 
-  // Defensive check: ensure the file fits in the remaining memory buffer to prevent overflow.
+  // Defensive check: ensure the file fits in the remaining memory buffer to
+  // prevent overflow.
   if (static_cast<size_t>(load_addr) + static_cast<size_t>(size) > 65536) {
     fclose(f);
     return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
@@ -236,7 +243,7 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
 }
 
 void Linapple_SetKeyState(uint8_t apple_code, bool down) {
-  KeyboardEvent_t ev = { apple_code, (uint8_t)(down ? 1 : 0) };
+  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0)};
   Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
 }
 
@@ -250,8 +257,11 @@ void Linapple_SetAppleKey(int key, bool down) {
   KeyboardModifiers_t mods = {};
   size_t sz = sizeof(mods);
   Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &sz);
-  if (key == 0) { mods.gui = down ? 1U : 0U; }
-  else          { mods.alt = down ? 1U : 0U; }
+  if (key == 0) {
+    mods.gui = down ? 1U : 0U;
+  } else {
+    mods.alt = down ? 1U : 0U;
+  }
   Peripheral_Command(0, KEYB_CMD_SET_MODS, &mods, sizeof(mods));
 }
 

@@ -10,6 +10,7 @@
 #include "LinAppleCore.h"
 #include "apple2/Memory.h"
 #include "apple2/Riff.h"
+#include "apple2/SoundCore.h"
 #include "apple2/Structs.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
@@ -17,10 +18,10 @@
 #include "core/Util_Text.h"
 
 // Legacy audio callbacks
-extern void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples);
 
 // The frontend audio sink registered via Linapple_SetAudioCallback
 LinappleAudioCallback g_frontendAudioCB = nullptr;
+LinappleAudioCallback g_frontendMockAudioCB = nullptr;
 
 /**
  * Justification: Peripheral Manager requires a registry of built-in hardware
@@ -299,15 +300,36 @@ static auto Host_RequestPreciseTiming() -> void {
 
 static auto Host_AudioPushSamples(void* instance, const int16_t* buffer,
                                   size_t num_samples) -> void {
-  (void)instance;
-  if (g_frontendAudioCB) {
-    g_frontendAudioCB(buffer, num_samples);
+  // Determine if this is a Mockingboard or Speaker
+  bool is_mockingboard = false;
+  if (instance != nullptr) {
+    // We check the peripheral ID associated with this instance
+    for (size_t i = 0; i < NUM_SLOTS; ++i) {
+      for (const auto& ap : g_active_peripherals.at(i)) {
+        if (ap.instance == instance) {
+          if (strcmp(ap.api->id, "linapple.mockingboard") == 0) {
+            is_mockingboard = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (is_mockingboard) {
+    if (g_frontendMockAudioCB != nullptr) {
+      g_frontendMockAudioCB(buffer, num_samples);
+    } else {
+      SoundCore_UploadMockingboardSamples(buffer,
+                                          static_cast<uint32_t>(num_samples));
+    }
   } else {
-    // Justification: const_cast is required to bridge the modern const buffer
-    // from peripherals to the legacy DSUploadBuffer signature.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    DSUploadBuffer(buffer,
-                   static_cast<uint32_t>(num_samples));
+    if (g_frontendAudioCB != nullptr) {
+      g_frontendAudioCB(buffer, num_samples);
+    } else {
+      SoundCore_UploadSpeakerSamples(buffer,
+                                     static_cast<uint32_t>(num_samples));
+    }
   }
 }
 
@@ -334,8 +356,8 @@ static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
 
 extern void SSCFrontend_SendByte(uint8_t byte);
 extern auto SSCFrontend_IsActive() -> bool;
-extern void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits,
-                                    int parity, int stop);
+extern void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity,
+                                    int stop);
 
 static auto Host_SerialTransmitByte(void* instance, uint8_t byte) -> void {
   (void)instance;
@@ -420,7 +442,8 @@ static auto Peripheral_DrainCommandQueue() -> void {
 }
 
 static auto ClearAllPeripherals() -> void {
-  // Close the bridge window first — zero the dispatch table before freeing instances.
+  // Close the bridge window first — zero the dispatch table before freeing
+  // instances.
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
                             nullptr);
@@ -590,8 +613,9 @@ auto Peripheral_Unregister(int slot) -> int {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus {
-  // Reject payloads that exceed the fixed buffer capacity of QueuedCommand.data.
-  // size == PERIPHERAL_CMD_MAX_DATA is valid as it fills the buffer exactly.
+  // Reject payloads that exceed the fixed buffer capacity of
+  // QueuedCommand.data. size == PERIPHERAL_CMD_MAX_DATA is valid as it fills
+  // the buffer exactly.
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
       size > PERIPHERAL_CMD_MAX_DATA)
     return PERIPHERAL_ERROR;

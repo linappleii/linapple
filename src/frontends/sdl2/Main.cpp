@@ -22,7 +22,8 @@ bool g_bDSAvailable = false;
 SDL_AudioDeviceID g_audioDevice = 0;
 static char* g_pszAudioDumpFile = nullptr;
 
-static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len) -> void {
+static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
+    -> void {
   (void)userdata;
   if (len <= 0) {
     return;
@@ -66,9 +67,15 @@ auto DSInit() -> bool {
   SDL_PauseAudioDevice(g_audioDevice, 0);
   g_bDSAvailable = true;
 
-  Linapple_SetAudioCallback(
+  Linapple_SetAudioCallback([](const int16_t* samples,
+                               size_t num_samples) -> void {
+    SoundCore_UploadSpeakerSamples(samples, static_cast<uint32_t>(num_samples));
+  });
+
+  Linapple_SetMockAudioCallback(
       [](const int16_t* samples, size_t num_samples) -> void {
-        DSUploadBuffer(samples, static_cast<uint32_t>(num_samples));
+        SoundCore_UploadMockingboardSamples(samples,
+                                            static_cast<uint32_t>(num_samples));
       });
 
   return true;

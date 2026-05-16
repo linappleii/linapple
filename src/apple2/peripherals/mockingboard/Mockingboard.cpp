@@ -441,12 +441,9 @@ static void MB_Update_Instance(MockingboardPeripheral_t* mp) {
       // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
 
-    if (mp->host && mp->host->AudioPushSamples) {
+    if (mp->host != nullptr && mp->host->AudioPushSamples != nullptr) {
       mp->host->AudioPushSamples(mp, mp->mix_buffer,
                                  static_cast<uint32_t>(nNumSamples * 2));
-    } else {
-      DSUploadMockBuffer(mp->mix_buffer,
-                         static_cast<unsigned>(nNumSamples * 2));
     }
   }
 }

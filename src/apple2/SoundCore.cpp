@@ -1,53 +1,25 @@
-/*
-linapple : An Apple //e emulator for Linux
+// SPDX-License-Identifier: GPL-2.0-only
+#include "apple2/SoundCore.h"
 
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Core sound mixing functionality
- *
- * Author: Tom Charlesworth, modified for decoupling.
- */
-
-#include "core/Common.h"
-#include <vector>
 #include <algorithm>
 #include <atomic>
 #include <cstring>
-#include <cstdint>
-#include <cstdio>
+#include <vector>
 
-#include "apple2/SoundCore.h"
-#include "core/Log.h"
 #include "core/Common_Globals.h"
 
-// Core buffers for mixing
+namespace {
+
 struct sample_buffer {
   std::vector<int16_t> buffer;
   std::atomic<size_t> read_index;
   std::atomic<size_t> write_index;
   int16_t last_value{0};
 
-  sample_buffer(size_t size) : buffer(size), read_index(0), write_index(0) {}
+  explicit sample_buffer(size_t size)
+      : buffer(size), read_index(0), write_index(0) {}
 
-  void reinit() {
+  auto reinit() -> void {
     std::fill(buffer.begin(), buffer.end(), 0);
     read_index = 0;
     write_index = 0;
@@ -57,20 +29,26 @@ struct sample_buffer {
   auto get_filled() const -> size_t {
     size_t r = read_index.load(std::memory_order_relaxed);
     size_t w = write_index.load(std::memory_order_relaxed);
-    if (r <= w) return w - r;
+    if (r <= w) {
+      return w - r;
+    }
     return buffer.size() + w - r;
   }
 
   auto get_free() const -> size_t {
     size_t filled = get_filled();
-    if (filled >= buffer.size() - 1) return 0;
+    if (filled >= buffer.size() - 1) {
+      return 0;
+    }
     return buffer.size() - 1 - filled;
   }
 
-  void upload(const int16_t *src, size_t len) {
+  auto upload(const int16_t* src, size_t len) -> void {
     size_t free = get_free();
     size_t num = (len < free) ? len : free;
-    if (num == 0) return;
+    if (num == 0) {
+      return;
+    }
 
     size_t w = write_index.load(std::memory_order_relaxed);
     if (w + num < buffer.size()) {
@@ -85,18 +63,22 @@ struct sample_buffer {
     }
   }
 
-  void drain_to(int16_t *dest, size_t len, bool mix) {
+  auto drain_to(int16_t* dest, size_t len, bool mix) -> void {
     size_t available = get_filled();
     size_t num = (len < available) ? len : available;
 
     size_t r = read_index.load(std::memory_order_relaxed);
-    auto process = [&](const int16_t* src, size_t count, size_t offset) -> void {
+    auto process = [&](const int16_t* src, size_t count,
+                       size_t offset) -> void {
       if (mix) {
         for (size_t i = 0; i < count; ++i) {
-          int32_t val = static_cast<int32_t>(dest[offset + i]) + static_cast<int32_t>(src[i]);
-          if (val > 32767) { val = 32767;
-          } else if (val < -32768) { val = -32768;
-}
+          int32_t val = static_cast<int32_t>(dest[offset + i]) +
+                        static_cast<int32_t>(src[i]);
+          if (val > 32767) {
+            val = 32767;
+          } else if (val < -32768) {
+            val = -32768;
+          }
           dest[offset + i] = static_cast<int16_t>(val);
         }
       } else {
@@ -119,20 +101,22 @@ struct sample_buffer {
       last_value = (r > 0) ? buffer[r - 1] : buffer.back();
     }
 
-    // Fill remaining with last_value (fade out to 0)
     if (num < len) {
       for (size_t i = num; i < len; ++i) {
         if (last_value != 0) {
           const int16_t fade_step = 800;
           if (last_value > 0) {
-            last_value = (last_value > fade_step) ? (last_value - fade_step) : 0;
+            last_value =
+                (last_value > fade_step) ? (last_value - fade_step) : 0;
           } else {
-            last_value = (last_value < -fade_step) ? (last_value + fade_step) : 0;
+            last_value =
+                (last_value < -fade_step) ? (last_value + fade_step) : 0;
           }
         }
 
         if (mix) {
-          int32_t val = static_cast<int32_t>(dest[i]) + static_cast<int32_t>(last_value);
+          int32_t val =
+              static_cast<int32_t>(dest[i]) + static_cast<int32_t>(last_value);
           if (val > 32767) {
             val = 32767;
           } else if (val < -32768) {
@@ -147,12 +131,19 @@ struct sample_buffer {
   }
 };
 
-static sample_buffer *g_spkrMixBuffer = nullptr;
-static sample_buffer *g_mockMixBuffer = nullptr;
+static sample_buffer* g_spkrMixBuffer = nullptr;
+static sample_buffer* g_mockMixBuffer = nullptr;
+
+}  // namespace
 
 void SoundCore_Initialize() {
-  if (!g_spkrMixBuffer) g_spkrMixBuffer = new sample_buffer(65536);
-  if (!g_mockMixBuffer) g_mockMixBuffer = new sample_buffer(65536);
+  constexpr size_t buffer_size = 65536;
+  if (g_spkrMixBuffer == nullptr) {
+    g_spkrMixBuffer = new sample_buffer(buffer_size);
+  }
+  if (g_mockMixBuffer == nullptr) {
+    g_mockMixBuffer = new sample_buffer(buffer_size);
+  }
   g_spkrMixBuffer->reinit();
   g_mockMixBuffer->reinit();
 }
@@ -164,34 +155,34 @@ void SoundCore_Destroy() {
   g_mockMixBuffer = nullptr;
 }
 
-void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples) {
-  if (g_spkrMixBuffer) {
+void SoundCore_UploadSpeakerSamples(const int16_t* buffer,
+                                    uint32_t num_samples) {
+  if (g_spkrMixBuffer != nullptr) {
     g_spkrMixBuffer->upload(buffer, num_samples);
   }
 }
 
-void DSUploadMockBuffer(const int16_t* buffer, uint32_t num_samples) {
-  if (g_mockMixBuffer) {
+void SoundCore_UploadMockingboardSamples(const int16_t* buffer,
+                                         uint32_t num_samples) {
+  if (g_mockMixBuffer != nullptr) {
     g_mockMixBuffer->upload(buffer, num_samples);
   }
 }
 
-void SoundCore_GetSamples(int16_t *out, size_t num_samples) {
-  if (!g_spkrMixBuffer || !g_mockMixBuffer) {
+void SoundCore_GetSamples(int16_t* out, size_t num_samples) {
+  if (g_spkrMixBuffer == nullptr || g_mockMixBuffer == nullptr) {
     memset(out, 0, num_samples * sizeof(int16_t));
     return;
   }
 
-  // Requirement: if both buffers are empty, output is explicitly zeroed
-  if (g_spkrMixBuffer->get_filled() == 0 && g_mockMixBuffer->get_filled() == 0) {
+  if (g_spkrMixBuffer->get_filled() == 0 &&
+      g_mockMixBuffer->get_filled() == 0) {
     memset(out, 0, num_samples * sizeof(int16_t));
     g_spkrMixBuffer->last_value = 0;
     g_mockMixBuffer->last_value = 0;
     return;
   }
 
-  // Speaker is primary (not mixed yet)
   g_spkrMixBuffer->drain_to(out, num_samples, false);
-  // Mockingboard is mixed into Speaker
   g_mockMixBuffer->drain_to(out, num_samples, true);
 }

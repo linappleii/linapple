@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include "core/Common.h"
-#include "apple2/peripherals/speaker/Speaker_Structs.h"
+#include "apple2/peripherals/speaker/Speaker.h"
 
 // Structs used by save-state file
 

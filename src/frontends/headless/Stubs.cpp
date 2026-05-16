@@ -92,5 +92,3 @@ WEAK SystemState_t g_state = {};
 WEAK eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 WEAK uint32_t g_videotype = 0;
 WEAK void (*g_frontendAudioCB)(const int16_t*, size_t) = nullptr;
-WEAK void DSUploadBuffer(const int16_t*, uint32_t) {}
-WEAK void DSUploadMockBuffer(const int16_t*, uint32_t) {}

@@ -1,21 +1,36 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
-enum {
-  FADE_OUT, FADE_IN
-};
+/**
+ * @brief Manages audio mixing and sample buffering for the system.
+ */
+
+enum { FADE_OUT = 0, FADE_IN = 1 };
 
 void SoundCore_Initialize();
 void SoundCore_Destroy();
 
-void DSUploadBuffer(const int16_t* buffer, uint32_t num_samples);
-void DSUploadMockBuffer(const int16_t* buffer, uint32_t num_samples);
+/**
+ * @brief Uploads samples for the built-in Speaker channel.
+ */
+void SoundCore_UploadSpeakerSamples(const int16_t* buffer,
+                                    uint32_t num_samples);
 
-// Mixes all sound sources and returns samples
-void SoundCore_GetSamples(int16_t *out, size_t num_samples);
+/**
+ * @brief Uploads samples for the expansion Mockingboard channel.
+ */
+void SoundCore_UploadMockingboardSamples(const int16_t* buffer,
+                                         uint32_t num_samples);
 
-// These were used for fading, might need to be moved or implemented differently
-void SoundCore_SetFade(int how);
+/**
+ * @brief Retrieves mixed samples for the frontend to play.
+ */
+void SoundCore_GetSamples(int16_t* out, size_t num_samples);
 
-extern bool g_bDSAvailable;
+/**
+ * @brief Sets the audio fading state.
+ */
+void SoundCore_SetFade(int fade_type);

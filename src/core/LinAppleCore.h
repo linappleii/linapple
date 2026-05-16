@@ -305,6 +305,11 @@ void Linapple_SetVideoCallback(LinappleVideoCallback cb);
 void Linapple_SetAudioCallback(LinappleAudioCallback cb);
 
 /**
+ * @brief Register a callback for expansion audio (Mockingboard).
+ */
+void Linapple_SetMockAudioCallback(LinappleAudioCallback cb);
+
+/**
  * @brief Check if any peripheral is currently active (e.g. disk motor
  * spinning).
  */
