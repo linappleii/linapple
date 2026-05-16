@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "core/Common.h"
 #include "apple2/peripherals/speaker/Speaker.h"
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
 // Structs used by save-state file
 
@@ -47,8 +48,9 @@ typedef struct {
   uint32_t comminactivity;  // If non-zero then COM port open
   uint8_t controlbyte;
   uint8_t parity;
-  uint8_t recvbuffer[uRecvBufferSize];
+  uint8_t recvbuffer[SUPER_SERIAL_FIFO_SIZE];
   uint32_t recvbytes;
+
   uint8_t stopbits;
 } SS_IO_Comms;
 

@@ -116,7 +116,7 @@ extern SystemState_t g_state;
 
 constexpr int SPEED_MIN = 0;
 constexpr int SPEED_NORMAL = 10;
-constexpr int SPEED_MAX = 40;
+constexpr int emulation_speed_max = 40;
 
 constexpr uint32_t DRAW_BACKGROUND = 1;
 constexpr uint32_t DRAW_LEDS = 2;

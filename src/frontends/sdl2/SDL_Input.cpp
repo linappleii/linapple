@@ -75,8 +75,8 @@ void SDL_HandleEvent(SDL_Event* e) {
           buttondown = mysym - SDLK_F1;
         } else if (mysym == SDLK_KP_PLUS) {
           g_state.dwSpeed = g_state.dwSpeed + 2;
-          if (g_state.dwSpeed > SPEED_MAX) {
-            g_state.dwSpeed = SPEED_MAX;
+          if (g_state.dwSpeed > emulation_speed_max) {
+            g_state.dwSpeed = emulation_speed_max;
           }
           printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
           SetCurrentCLK6502();

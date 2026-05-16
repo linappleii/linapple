@@ -4,7 +4,8 @@
 
 #include <cstdio>
 
-#include "apple2/peripherals/super_serial_card/SerialComms.h"
+#include "apple2/peripherals/super_serial_card/SuperSerial.h"
+#include "apple2/Structs.h"
 
 static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
 static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
@@ -51,8 +52,6 @@ int g_nCpuCyclesFeedback = 0;
 uint32_t g_dwCyclesThisFrame = 0;
 
 bool g_bDisableDirectSound = false;
-
-SuperSerialCard sg_SSC;
 
 uint32_t g_Slot4 = CT_Mockingboard;
 CURL* g_curl = nullptr;

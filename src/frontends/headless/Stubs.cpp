@@ -2,7 +2,7 @@
 
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/super_serial_card/SerialComms.h"
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/sdl3/Frontend.h"
 
@@ -35,19 +35,22 @@ WEAK auto PrinterFrontend_CheckStatus() -> uint8_t { return 0; }
 WEAK auto PrinterFrontend_SendChar(uint8_t c) -> void { (void)c; }
 
 // SSC Stubs
-WEAK auto SSCFrontend_IsActive() -> bool { return false; }
-WEAK auto SSCFrontend_UpdateState(uint32_t b, uint32_t d, int p, int s)
+WEAK auto SuperSerialFrontend_Initialize(const char* p) -> bool {
+  (void)p;
+  return false;
+}
+WEAK auto SuperSerialFrontend_Close() -> void {}
+WEAK auto SuperSerialFrontend_IsActive() -> bool { return false; }
+WEAK auto SuperSerialFrontend_UpdateState(uint32_t b, uint32_t d, int p, int s)
     -> void {  // NOLINT
   (void)b;
   (void)d;
   (void)p;
   (void)s;
 }
-WEAK auto SSCFrontend_SendByte(uint8_t c) -> void { (void)c; }
-WEAK auto SSCFrontend_Update(struct SuperSerialCard* ssc, uint32_t c) -> void {
-  (void)ssc;
-  (void)c;
-}
+WEAK auto SuperSerialFrontend_SendByte(uint8_t c) -> void { (void)c; }
+WEAK auto SuperSerialFrontend_SetSerialPortPath(const char* p) -> void { (void)p; }
+WEAK auto SuperSerialFrontend_SetLoopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}

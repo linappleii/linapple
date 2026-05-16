@@ -197,7 +197,7 @@ if(FRONTEND STREQUAL "sdl3")
         src/frontends/sdl3/SDL_Input.cpp
         src/frontends/sdl3/SDL_Path.cpp
         src/frontends/sdl3/SDL_Video.cpp
-        src/frontends/sdl3/SerialCommsFrontend.cpp
+        src/frontends/sdl3/SuperSerialFrontend.cpp
     )
 elseif(FRONTEND STREQUAL "sdl2")
     set(SOURCES_FE
@@ -216,7 +216,7 @@ elseif(FRONTEND STREQUAL "sdl2")
         src/frontends/sdl2/SDL_Input.cpp
         src/frontends/sdl2/SDL_Path.cpp
         src/frontends/sdl2/SDL_Video.cpp
-        src/frontends/sdl2/SerialCommsFrontend.cpp
+        src/frontends/sdl2/SuperSerialFrontend.cpp
     )
 elseif(FRONTEND STREQUAL "sdl1")
     set(SOURCES_FE
@@ -235,7 +235,7 @@ elseif(FRONTEND STREQUAL "sdl1")
         src/frontends/sdl1/SDL_Input.cpp
         src/frontends/sdl1/SDL_Path.cpp
         src/frontends/sdl1/SDL_Video.cpp
-        src/frontends/sdl1/SerialCommsFrontend.cpp
+        src/frontends/sdl1/SuperSerialFrontend.cpp
     )
 elseif(FRONTEND STREQUAL "headless")
     set(SOURCES_FE
@@ -280,7 +280,7 @@ add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/p
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/MouseInterface.cpp" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
-add_peripheral(ssc "Super Serial Card" "src/apple2/peripherals/super_serial_card/SerialComms.cpp" "" TRUE)
+add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" TRUE)
 add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" FALSE)
 add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
@@ -354,12 +354,12 @@ if(BUILD_TESTING)
     add_linapple_test(app-controller tests/test_app_controller.cpp)
     add_linapple_test(integration tests/test_main.cpp)
     
-    # Custom test-ssc to avoid symbol conflict
-    add_executable(test-ssc tests/test_ssc.cpp src/apple2/peripherals/super_serial_card/SerialComms.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
-    target_include_directories(test-ssc PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
-    target_compile_definitions(test-ssc PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
-    target_link_libraries(test-ssc PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-    add_test(NAME test-ssc COMMAND test-ssc)
+    # Custom test-superserial-peripheral to avoid symbol conflict
+    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
+    target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
+    target_link_libraries(test-superserial-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+    add_test(NAME test-superserial-peripheral COMMAND test-superserial-peripheral)
 
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")

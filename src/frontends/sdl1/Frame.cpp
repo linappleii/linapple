@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/printer/Printer.h"
-#include "apple2/peripherals/super_serial_card/SerialComms.h"
+#include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "apple2/stretch.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"

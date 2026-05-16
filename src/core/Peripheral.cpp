@@ -354,21 +354,21 @@ static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
   return PrinterFrontend_CheckStatus();
 }
 
-extern void SSCFrontend_SendByte(uint8_t byte);
-extern auto SSCFrontend_IsActive() -> bool;
-extern void SSCFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity,
-                                    int stop);
+extern void SuperSerialFrontend_SendByte(uint8_t byte);
+extern auto SuperSerialFrontend_IsActive() -> bool;
+extern void SuperSerialFrontend_UpdateState(uint32_t baud, uint32_t bits,
+                                            int parity, int stop);
 
 static auto Host_SerialTransmitByte(void* instance, uint8_t byte) -> void {
   (void)instance;
-  SSCFrontend_SendByte(byte);
+  SuperSerialFrontend_SendByte(byte);
 }
 
 static auto Host_SerialUpdateState(void* instance, uint32_t baud, uint32_t bits,
                                    int parity, int stop) -> void {
   (void)instance;
-  if (SSCFrontend_IsActive()) {
-    SSCFrontend_UpdateState(baud, bits, parity, stop);
+  if (SuperSerialFrontend_IsActive()) {
+    SuperSerialFrontend_UpdateState(baud, bits, parity, stop);
   }
 }
 
