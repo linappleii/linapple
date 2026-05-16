@@ -1,22 +1,39 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-
+// SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <array>
-#include <cstring>
+#include <ctime>
 #include <map>
 #include <vector>
 
-#include "core/Common_Globals.h"
+#include "apple2/Memory.h"
+#include "apple2/peripherals/clock/Clock.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern Peripheral_t g_clock_peripheral;
+namespace {
 
-// Mock host interface for testing
+constexpr uint16_t IO_BASE_ADDRESS = 0xC080;
+constexpr int IO_SLOT_OFFSET = 4;
+constexpr int REGISTERS_PER_SLOT = 16;
+
+constexpr int TEST_SLOT_1 = 4;
+constexpr int TEST_SLOT_2 = 5;
+
+constexpr uint8_t LATCH_TRIGGER_OFFSET = 0x0F;
+
+constexpr size_t SIG_OFFSET_0 = 0x00;
+constexpr size_t SIG_OFFSET_2 = 0x02;
+constexpr size_t SIG_OFFSET_4 = 0x04;
+constexpr size_t SIG_OFFSET_6 = 0x06;
+
+constexpr uint8_t PRODOS_SIG_0 = 0x08;
+constexpr uint8_t PRODOS_SIG_2 = 0x28;
+constexpr uint8_t PRODOS_SIG_4 = 0x58;
+constexpr uint8_t PRODOS_SIG_6 = 0x70;
+
+constexpr size_t INVALID_STATE_SIZE = 5;
+constexpr size_t TINY_BUFFER_SIZE = 1;
+
 struct MockHandler {
   void* instance;
   PeripheralIOHandler read;
@@ -24,177 +41,231 @@ struct MockHandler {
 };
 
 static std::map<uint16_t, MockHandler> g_mock_handlers;
-static void* g_last_instance = nullptr;
+static std::map<int, std::vector<uint8_t>> g_mock_roms;
 
-static void Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt,
-                     ...) {
+auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+    -> void {
   (void)instance;
   (void)level;
   (void)fmt;
 }
 
-static void Mock_AssertIrq(int slot, bool assert) {
+auto Mock_AssertIrq(int slot, bool assert_irq) -> void {
   (void)slot;
-  (void)assert;
+  (void)assert_irq;
 }
 
-static void Mock_RegisterIO(int slot, PeripheralIOHandler readC0,
-                            PeripheralIOHandler writeC0,
-                            PeripheralIOHandler readCx,
-                            PeripheralIOHandler writeCx) {
-  (void)readCx;
-  (void)writeCx;
-  if (readC0 || writeC0) {
-    uint16_t base = 0xC080 + (slot << 4);
-    for (uint16_t i = 0; i < 16; ++i) {
-      g_mock_handlers[base + i] = {g_last_instance, readC0, writeC0};
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Signature is required by HostInterface_t ABI.
+auto Mock_RegisterIO(int slot, PeripheralIOHandler read_c0,
+                     PeripheralIOHandler write_c0, PeripheralIOHandler read_cx,
+                     PeripheralIOHandler write_cx) -> void {
+  (void)read_cx;
+  (void)write_cx;
+  if (read_c0 != nullptr || write_c0 != nullptr) {
+    const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+    for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
+      g_mock_handlers[base + i] = {nullptr, read_c0, write_c0};
     }
   }
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
-static void Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) {
+auto Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
+  if (rom_ptr != nullptr) {
+    std::vector<uint8_t> rom_data(CX_ROM_SIZE);
+    std::copy_n(rom_ptr, CX_ROM_SIZE, rom_data.begin());
+    g_mock_roms[slot] = rom_data;
+  }
+}
+
+auto Mock_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
   (void)slot;
   (void)rom_ptr;
 }
 
-static void Mock_RegisterExpansionROM(int slot, uint8_t* rom_ptr) {
-  (void)slot;
-  (void)rom_ptr;
-}
-
-static void Mock_RegisterDirectIO(void* instance, uint16_t addr,
-                                  PeripheralIOHandler read,
-                                  PeripheralIOHandler write) {
+auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
+                           PeripheralIOHandler read, PeripheralIOHandler write)
+    -> void {
   g_mock_handlers[addr] = {instance, read, write};
 }
 
 static HostInterface_t mock_host = {
-    /*.Log =*/Mock_Log,
-    /*.AssertIrq =*/Mock_AssertIrq,
-    /*.RegisterIO =*/Mock_RegisterIO,
-    /*.RegisterCxROM =*/Mock_RegisterCxROM,
-    /*.RegisterExpansionROM =*/Mock_RegisterExpansionROM,
-    /*.RegisterDirectIO =*/Mock_RegisterDirectIO,
-    /*.GetMemPtr =*/nullptr,
-    /*.GetCycles =*/nullptr,
-    /*.GetConfig =*/nullptr,
-    /*.SetConfig =*/nullptr,
-    /*.NotifyStatusChanged =*/nullptr,
-    /*.NotifyActivityChanged =*/nullptr,
-    /*.RequestPreciseTiming =*/nullptr,
-    /*.RiffInitWriteFile =*/nullptr,
-    /*.RiffFinishWriteFile =*/nullptr,
-    /*.RiffPutSamples =*/nullptr,
-    /*.AudioPushSamples =*/nullptr,
-    /*.ResetSystem =*/nullptr,
-    /*.PrinterPutChar =*/nullptr,
-    /*.PrinterGetStatus =*/nullptr,
-    /*.SerialTransmitByte =*/nullptr,
-    /*.SerialUpdateState =*/nullptr};
+    .Log = Mock_Log,
+    .AssertIrq = Mock_AssertIrq,
+    .RegisterIO = Mock_RegisterIO,
+    .RegisterCxROM = Mock_RegisterCxROM,
+    .RegisterExpansionROM = Mock_RegisterExpansionROM,
+    .RegisterDirectIO = Mock_RegisterDirectIO,
+    .GetMemPtr = nullptr,
+    .GetCycles = nullptr,
+    .GetConfig = nullptr,
+    .SetConfig = nullptr,
+    .NotifyStatusChanged = nullptr,
+    .NotifyActivityChanged = nullptr,
+    .RequestPreciseTiming = nullptr,
+    .RiffInitWriteFile = nullptr,
+    .RiffFinishWriteFile = nullptr,
+    .RiffPutSamples = nullptr,
+    .AudioPushSamples = nullptr,
+    .ResetSystem = nullptr,
+    .PrinterPutChar = nullptr,
+    .PrinterGetStatus = nullptr,
+    .SerialTransmitByte = nullptr,
+    .SerialUpdateState = nullptr};
 
-static void* Clock_Init_With_Mock(int slot) {
-  // Initialize the peripheral and associate the returned instance with the
-  // mocked I/O handlers for the assigned slot.
-  void* instance = g_clock_peripheral.init(slot, &mock_host);
-  // Update mock handlers with the real instance now that we have it
-  uint16_t base = 0xC080 + (slot << 4);
-  for (uint16_t i = 0; i < 16; ++i) {
+static auto Clock_Init_With_Mock(int slot) -> void* {
+  void* instance = Clock_GetDescriptor()->init(slot, &mock_host);
+  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+  for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
     if (g_mock_handlers.count(base + i)) {
-      g_mock_handlers[base + i].instance = instance;
+      g_mock_handlers.at(base + i).instance = instance;
     }
   }
   return instance;
 }
 
-TEST_CASE("Clock Peripheral: Lifecycle and I/O Registration") {
+TEST_CASE("Clock Peripheral: Lifecycle and Registration") {
   g_mock_handlers.clear();
-  int slot = 4;
+  g_mock_roms.clear();
+  const int slot = TEST_SLOT_1;
   void* instance = Clock_Init_With_Mock(slot);
   REQUIRE(instance != nullptr);
 
-  // Verify $C0C0-$C0CF are registered (Slot 4)
-  uint16_t base = 0xC080 + (slot << 4);
-  for (uint16_t addr = base; addr <= base + 0x0F; ++addr) {
+  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+  for (uint16_t addr = base; addr < base + REGISTERS_PER_SLOT; ++addr) {
     CHECK(g_mock_handlers.count(addr) > 0);
-    CHECK(g_mock_handlers[addr].read != nullptr);
+    CHECK(g_mock_handlers.at(addr).read != nullptr);
   }
 
-  g_clock_peripheral.shutdown(instance);
+  REQUIRE(g_mock_roms.count(slot) > 0);
+  const auto& rom = g_mock_roms.at(slot);
+  CHECK(rom.at(SIG_OFFSET_0) == PRODOS_SIG_0);
+  CHECK(rom.at(SIG_OFFSET_2) == PRODOS_SIG_2);
+  CHECK(rom.at(SIG_OFFSET_4) == PRODOS_SIG_4);
+  CHECK(rom.at(SIG_OFFSET_6) == PRODOS_SIG_6);
+
+  Clock_GetDescriptor()->shutdown(instance);
 }
 
-TEST_CASE("Clock Peripheral: Time Latching Behavior") {
+TEST_CASE("Clock Peripheral: Time Accuracy") {
   g_mock_handlers.clear();
-  int slot = 4;
+  const int slot = TEST_SLOT_1;
   void* instance = Clock_Init_With_Mock(slot);
-  uint16_t base = 0xC080 + (slot << 4);
+  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
 
-  // 1. Trigger latch update by reading $C0nF
-  g_mock_handlers[base + 0xF].read(instance, 0, base + 0xF, 0, 0, 0);
+  time_t now = time(nullptr);
+  struct tm local_time{};
+  localtime_r(&now, &local_time);
 
-  // 2. Read latches $C0n0-$C0n9
-  for (uint16_t i = 0; i <= 9; ++i) {
-    uint8_t val =
-        g_mock_handlers[base + i].read(instance, 0, base + i, 0, 0, 0);
-    CHECK(val <= 9);
+  g_mock_handlers.at(base + LATCH_TRIGGER_OFFSET)
+      .read(instance, 0, base + LATCH_TRIGGER_OFFSET, 0, 0, 0);
+
+  auto read_pair = [&](int offset) -> int {
+    const int radix = 10;
+    uint8_t tens = g_mock_handlers.at(base + offset)
+                       .read(instance, 0, base + offset, 0, 0, 0);
+    uint8_t units = g_mock_handlers.at(base + offset + 1)
+                        .read(instance, 0, base + offset + 1, 0, 0, 0);
+    return (tens * radix) + units;
+  };
+
+  CHECK(read_pair(LATCH_MONTH) == (local_time.tm_mon + 1));
+  CHECK(read_pair(LATCH_WEEKDAY) == local_time.tm_wday);
+  CHECK(read_pair(LATCH_DAY) == local_time.tm_mday);
+  CHECK(read_pair(LATCH_HOUR) == local_time.tm_hour);
+  CHECK(read_pair(LATCH_MINUTE) == local_time.tm_min);
+
+  Clock_GetDescriptor()->shutdown(instance);
+}
+
+TEST_CASE("Clock Peripheral: Reset Behavior") {
+  g_mock_handlers.clear();
+  const int slot = TEST_SLOT_1;
+  void* instance = Clock_Init_With_Mock(slot);
+  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+
+  g_mock_handlers.at(base + LATCH_TRIGGER_OFFSET)
+      .read(instance, 0, base + LATCH_TRIGGER_OFFSET, 0, 0, 0);
+  Clock_GetDescriptor()->reset(instance);
+
+  for (uint16_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
+    CHECK(g_mock_handlers.at(base + i).read(instance, 0, base + i, 0, 0, 0) ==
+          0);
   }
 
-  g_clock_peripheral.shutdown(instance);
+  Clock_GetDescriptor()->shutdown(instance);
 }
 
 TEST_CASE("Clock Peripheral: State Persistence") {
   g_mock_handlers.clear();
-  int slot1 = 4;
+  const int slot1 = TEST_SLOT_1;
   void* instance1 = Clock_Init_With_Mock(slot1);
-  uint16_t base1 = 0xC080 + (slot1 << 4);
+  const uint16_t base1 = IO_BASE_ADDRESS + (slot1 << IO_SLOT_OFFSET);
 
-  // 1. Latch a time
-  g_mock_handlers[base1 + 0xF].read(instance1, 0, base1 + 0xF, 0, 0, 0);
+  g_mock_handlers.at(base1 + LATCH_TRIGGER_OFFSET)
+      .read(instance1, 0, base1 + LATCH_TRIGGER_OFFSET, 0, 0, 0);
 
-  // 2. Capture latched values
-  std::array<uint8_t, 10> latched_values;
-  for (uint16_t i = 0; i < 10; ++i) {
-    latched_values[i] =
-        g_mock_handlers[base1 + i].read(instance1, 0, base1 + i, 0, 0, 0);
+  std::array<uint8_t, CLOCK_LATCHES_COUNT> original_latches{};
+  for (uint16_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
+    original_latches.at(i) =
+        g_mock_handlers.at(base1 + i).read(instance1, 0, base1 + i, 0, 0, 0);
   }
 
-  // 3. Save state
   size_t state_size = 0;
-  g_clock_peripheral.save_state(instance1, nullptr, &state_size);
-  REQUIRE(state_size > 0);
+  Clock_GetDescriptor()->save_state(instance1, nullptr, &state_size);
+  REQUIRE(state_size == CLOCK_LATCHES_COUNT);
 
   std::vector<uint8_t> buffer(state_size);
-  g_clock_peripheral.save_state(instance1, buffer.data(), &state_size);
+  Clock_GetDescriptor()->save_state(instance1, buffer.data(), &state_size);
 
-  // 4. Create a new instance and load state
-  int slot2 = 5;  // Different slot to test slot-independence of state
+  const int slot2 = TEST_SLOT_2;
   void* instance2 = Clock_Init_With_Mock(slot2);
-  uint16_t base2 = 0xC080 + (slot2 << 4);
+  const uint16_t base2 = IO_BASE_ADDRESS + (slot2 << IO_SLOT_OFFSET);
 
-  // Initially latches should be different or zeroed (Reset zeroes them)
-  g_clock_peripheral.reset(instance2);
-  for (uint16_t i = 0; i < 10; ++i) {
-    CHECK(g_mock_handlers[base2 + i].read(instance2, 0, base2 + i, 0, 0, 0) ==
-          0);
+  Clock_GetDescriptor()->load_state(instance2, buffer.data(), state_size);
+
+  for (uint16_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
+    CHECK(g_mock_handlers.at(base2 + i).read(instance2, 0, base2 + i, 0, 0,
+                                             0) == original_latches.at(i));
   }
 
-  // Load the saved state
-  PeripheralStatus status =
-      g_clock_peripheral.load_state(instance2, buffer.data(), state_size);
-  CHECK(status == PERIPHERAL_OK);
-
-  // 5. Verify restored values match original latched values
-  for (uint16_t i = 0; i < 10; ++i) {
-    uint8_t restored =
-        g_mock_handlers[base2 + i].read(instance2, 0, base2 + i, 0, 0, 0);
-    CHECK(restored == latched_values[i]);
-  }
-
-  g_clock_peripheral.shutdown(instance1);
-  g_clock_peripheral.shutdown(instance2);
+  Clock_GetDescriptor()->shutdown(instance1);
+  Clock_GetDescriptor()->shutdown(instance2);
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+
+TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
+  g_mock_handlers.clear();
+
+  CHECK(Clock_GetDescriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
+
+  const int slot = TEST_SLOT_1;
+  void* instance = Clock_Init_With_Mock(slot);
+  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+
+  size_t too_small = TINY_BUFFER_SIZE;
+  std::array<uint8_t, TINY_BUFFER_SIZE> small_buf{};
+  CHECK(Clock_GetDescriptor()->save_state(instance, small_buf.data(),
+                                          &too_small) == PERIPHERAL_ERROR);
+
+  std::array<uint8_t, INVALID_STATE_SIZE> wrong_buf{};
+  CHECK(Clock_GetDescriptor()->load_state(instance, wrong_buf.data(),
+                                          INVALID_STATE_SIZE) ==
+        PERIPHERAL_ERROR);
+
+  const int slot2 = TEST_SLOT_2;
+  void* instance2 = Clock_Init_With_Mock(slot2);
+  const uint16_t base2 = IO_BASE_ADDRESS + (slot2 << IO_SLOT_OFFSET);
+
+  g_mock_handlers.at(base + LATCH_TRIGGER_OFFSET)
+      .read(instance, 0, base + LATCH_TRIGGER_OFFSET, 0, 0, 0);
+
+  CHECK(g_mock_handlers.at(base + 1).read(instance, 0, base + 1, 0, 0, 0) > 0);
+  CHECK(g_mock_handlers.at(base2 + 1).read(instance2, 0, base2 + 1, 0, 0, 0) ==
+        0);
+
+  Clock_GetDescriptor()->shutdown(instance);
+  Clock_GetDescriptor()->shutdown(instance2);
+}
+
+}  // namespace
