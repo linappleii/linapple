@@ -1,52 +1,24 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Joystick and paddle emulation
- *
- * Author: Michael O'Brien, modified for decoupling.
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//             cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/joystick/Joystick.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
-#include <vector>
+#include <memory>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Structs.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "core/Common.h"
 #include "core/Common_Globals.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-
 namespace {
-constexpr double BUTTON_TIME_DIVISOR = 100.0;
+
+constexpr double LATCH_DURATION_SECONDS = 0.01;
 constexpr uint8_t JOY_DEFAULT_POS = 127;
 constexpr uint8_t JOY_BIT_MASK = 0x7F;
 constexpr uint8_t JOY_HIGH_BIT = 0x80;
@@ -59,23 +31,25 @@ constexpr uint16_t ADDR_PADDLE_RESET = 0xC070;
 
 constexpr uint32_t PADDLE_TIMING_MULTIPLIER = 11;
 constexpr uint32_t PADDLE_TIMING_OFFSET = 10;
-}  // namespace
 
-static inline auto GetButtonTime() -> uint64_t {
-  return static_cast<uint64_t>(g_fCurrentCLK6502 / BUTTON_TIME_DIVISOR);
+constexpr int JOYSTICK_COUNT = 2;
+constexpr int JOYSTICK_BUTTON_COUNT = 3;
+
+auto GetButtonLatchDuration() -> uint64_t {
+  return static_cast<uint64_t>(g_fCurrentCLK6502 * LATCH_DURATION_SECONDS);
 }
 
 struct JoystickPeripheral_t {
   uint64_t reset_cycle = 0;
-  uint8_t xpos[2]{JOY_DEFAULT_POS, JOY_DEFAULT_POS};
-  uint8_t ypos[2]{JOY_DEFAULT_POS, JOY_DEFAULT_POS};
-  bool joybutton[3]{false, false, false};
-  uint64_t buttonlatch[3]{0, 0, 0};
+  std::array<uint8_t, JOYSTICK_COUNT> x_pos{JOY_DEFAULT_POS, JOY_DEFAULT_POS};
+  std::array<uint8_t, JOYSTICK_COUNT> y_pos{JOY_DEFAULT_POS, JOY_DEFAULT_POS};
+  std::array<bool, JOYSTICK_BUTTON_COUNT> buttons{false, false, false};
+  std::array<uint64_t, JOYSTICK_BUTTON_COUNT> button_latches{0, 0, 0};
   int16_t trim_x = 0;
   int16_t trim_y = 0;
 
   JoystickConfig_t config{};
-  bool joyquitevent = false;
+  bool has_quit_event = false;
 
   HostInterface_t* host = nullptr;
   int slot = 0;
@@ -83,127 +57,164 @@ struct JoystickPeripheral_t {
   JoystickPeripheral_t() = default;
 };
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-// Justification: Functions are part of the Peripheral ABI or internal
-// helpers that mimic it, where parameter order is fixed or follows convention.
-
-static auto Joy_IO_ReadButton(void* instance, uint16_t pc, uint16_t addr,
-                              uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+auto Joy_IO_ReadButton(void* instance, uint16_t program_counter,
+                       uint16_t memory_address, uint8_t is_write,
+                       uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
-  (void)pc;
-  (void)bWrite;
-  (void)d;
-  (void)nCyclesLeft;
-  if (instance == nullptr) return MemReadFloatingBus(nCyclesLeft);
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  (void)program_counter;
+  (void)is_write;
+  (void)data_value;
 
-  auto res =
-      static_cast<uint8_t>(MemReadFloatingBus(nCyclesLeft) & JOY_BIT_MASK);
-  int button = static_cast<int>(addr - ADDR_BUTTON0);
-  if (button >= 0 && button < 3) {
-    if (jp->joybutton[button] || (jp->buttonlatch[button] > 0)) {
-      res |= JOY_HIGH_BIT;
+  if (instance == nullptr) {
+    return MemReadFloatingBus(remaining_cycles);
+  }
+
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
+
+  uint8_t result = MemReadFloatingBus(remaining_cycles) & JOY_BIT_MASK;
+  const int button_index = static_cast<int>(memory_address - ADDR_BUTTON0);
+
+  if (button_index >= 0 && button_index < JOYSTICK_BUTTON_COUNT) {
+    const bool is_pressed = joystick_peripheral->buttons.at(button_index);
+    const bool is_latched =
+        joystick_peripheral->button_latches.at(button_index) > 0;
+
+    if (is_pressed || is_latched) {
+      result |= JOY_HIGH_BIT;
     }
   }
-  return res;
+
+  return result;
 }
 
-static auto Joy_IO_ReadPosition(void* instance, uint16_t pc, uint16_t addr,
-                                uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft)
+auto Joy_IO_ReadPosition(void* instance, uint16_t program_counter,
+                         uint16_t memory_address, uint8_t is_write,
+                         uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
-  (void)pc;
-  (void)bWrite;
-  (void)d;
-  if (instance == nullptr) return MemReadFloatingBus(nCyclesLeft);
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  (void)program_counter;
+  (void)is_write;
+  (void)data_value;
 
-  auto res =
-      static_cast<uint8_t>(MemReadFloatingBus(nCyclesLeft) & JOY_BIT_MASK);
-  int pdl = addr & 0x03;
-
-  uint32_t val = (pdl & 1) ? jp->ypos[pdl >> 1] : jp->xpos[pdl >> 1];
-
-  // Apple II analog timing: high bit is set if (cycles - reset_cycle) <
-  // constant * position
-  uint64_t elapsed = g_nCumulativeCycles - jp->reset_cycle;
-  uint64_t limit = static_cast<uint64_t>(val) * PADDLE_TIMING_MULTIPLIER +
-                   PADDLE_TIMING_OFFSET;
-
-  if (elapsed < limit) {
-    res |= JOY_HIGH_BIT;
+  if (instance == nullptr) {
+    return MemReadFloatingBus(remaining_cycles);
   }
-  return res;
+
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
+  uint8_t result = MemReadFloatingBus(remaining_cycles) & JOY_BIT_MASK;
+
+  const int paddle_index = static_cast<int>(memory_address & 0x03);
+  const int joystick_index = paddle_index >> 1;
+  const bool is_y_axis = (paddle_index & 1) != 0;
+
+  const uint8_t raw_position =
+      is_y_axis ? joystick_peripheral->y_pos.at(joystick_index)
+                : joystick_peripheral->x_pos.at(joystick_index);
+
+  int16_t trimmed_position =
+      static_cast<int16_t>(raw_position) +
+      (is_y_axis ? joystick_peripheral->trim_y : joystick_peripheral->trim_x);
+
+  if (trimmed_position < 0) {
+    trimmed_position = 0;
+  } else if (trimmed_position > 255) {
+    trimmed_position = 255;
+  }
+
+  const uint64_t elapsed_cycles =
+      g_nCumulativeCycles - joystick_peripheral->reset_cycle;
+  const uint64_t charge_limit =
+      (static_cast<uint64_t>(trimmed_position) * PADDLE_TIMING_MULTIPLIER) +
+      PADDLE_TIMING_OFFSET;
+
+  if (elapsed_cycles < charge_limit) {
+    result |= JOY_HIGH_BIT;
+  }
+
+  return result;
 }
 
-static auto Joy_IO_ResetPosition(void* instance, uint16_t pc, uint16_t addr,
-                                 uint8_t bWrite, uint8_t d,
-                                 uint32_t cycles_left) -> uint8_t {
-  (void)pc;
-  (void)addr;
-  (void)bWrite;
-  (void)d;
-  if (instance == nullptr) return MemReadFloatingBus(cycles_left);
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+auto Joy_IO_ResetPosition(void* instance, uint16_t program_counter,
+                          uint16_t memory_address, uint8_t is_write,
+                          uint8_t data_value, uint32_t remaining_cycles)
+    -> uint8_t {
+  (void)program_counter;
+  (void)memory_address;
+  (void)is_write;
+  (void)data_value;
 
-  CpuCalcCycles(cycles_left);
-  jp->reset_cycle = g_nCumulativeCycles;
-  return MemReadFloatingBus(cycles_left);
+  if (instance == nullptr) {
+    return MemReadFloatingBus(remaining_cycles);
+  }
+
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
+
+  CpuCalcCycles(remaining_cycles);
+  joystick_peripheral->reset_cycle = g_nCumulativeCycles;
+
+  return MemReadFloatingBus(remaining_cycles);
 }
 
 static auto Joystick_ABI_Init(int slot, HostInterface_t* host) -> void* {
-  auto* jp = new JoystickPeripheral_t{};
-  jp->host = host;
-  jp->slot = slot;
+  if (host == nullptr) {
+    return nullptr;
+  }
+  auto joystick_peripheral =
+      std::unique_ptr<JoystickPeripheral_t>(new JoystickPeripheral_t());
+  joystick_peripheral->host = host;
+  joystick_peripheral->slot = slot;
 
-  // $C061-$C063: Buttons
   for (uint16_t addr = ADDR_BUTTON0; addr <= ADDR_BUTTON2; ++addr) {
-    host->RegisterDirectIO(jp, addr, Joy_IO_ReadButton, nullptr);
+    host->RegisterDirectIO(joystick_peripheral.get(), addr, Joy_IO_ReadButton,
+                           nullptr);
   }
 
-  // $C064-$C067: Paddles
   for (uint16_t addr = ADDR_PADDLE0; addr <= ADDR_PADDLE3; ++addr) {
-    host->RegisterDirectIO(jp, addr, Joy_IO_ReadPosition, nullptr);
+    host->RegisterDirectIO(joystick_peripheral.get(), addr, Joy_IO_ReadPosition,
+                           nullptr);
   }
 
-  // $C070: Paddle Reset
-  host->RegisterDirectIO(jp, ADDR_PADDLE_RESET, Joy_IO_ResetPosition,
-                         Joy_IO_ResetPosition);
+  host->RegisterDirectIO(joystick_peripheral.get(), ADDR_PADDLE_RESET,
+                         Joy_IO_ResetPosition, Joy_IO_ResetPosition);
 
-  return jp;
+  return joystick_peripheral.release();
 }
 
-static void Joystick_ABI_Reset(void* instance) {
+static auto Joystick_ABI_Reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
-  for (auto& latch : jp->buttonlatch) {
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
+
+  for (auto& latch : joystick_peripheral->button_latches) {
     latch = 0;
   }
-  for (auto& button : jp->joybutton) {
+  for (auto& button : joystick_peripheral->buttons) {
     button = false;
   }
-  for (auto& x : jp->xpos) {
+  for (auto& x : joystick_peripheral->x_pos) {
     x = JOY_DEFAULT_POS;
   }
-  for (auto& y : jp->ypos) {
+  for (auto& y : joystick_peripheral->y_pos) {
     y = JOY_DEFAULT_POS;
   }
-  jp->reset_cycle = 0;
+  joystick_peripheral->reset_cycle = 0;
 }
 
-static void Joystick_ABI_Shutdown(void* instance) {
+static auto Joystick_ABI_Shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
-  delete jp;
+  std::unique_ptr<JoystickPeripheral_t> joystick_peripheral(
+      static_cast<JoystickPeripheral_t*>(instance));
 }
 
-static void Joystick_ABI_Think(void* instance, uint32_t cycles) {
-  if (instance == nullptr) return;
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
-  for (auto& latch : jp->buttonlatch) {
+static auto Joystick_ABI_Think(void* instance, uint32_t cycles) -> void {
+  if (instance == nullptr) {
+    return;
+  }
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
+
+  for (auto& latch : joystick_peripheral->button_latches) {
     if (latch > cycles) {
       latch -= cycles;
     } else {
@@ -214,40 +225,50 @@ static void Joystick_ABI_Think(void* instance, uint32_t cycles) {
 
 static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
                                  size_t size) -> PeripheralStatus {
-  if (instance == nullptr) return PERIPHERAL_ERROR;
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  if (instance == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   switch (static_cast<JoystickCmd_e>(cmd)) {
     case JOY_CMD_SET_AXIS: {
-      if (size < sizeof(JoystickAxisPayload_t)) return PERIPHERAL_ERROR;
+      if (size < sizeof(JoystickAxisPayload_t)) {
+        return PERIPHERAL_ERROR;
+      }
       const auto* payload = static_cast<const JoystickAxisPayload_t*>(data);
-      if (payload->joystick < 2) {
+      if (payload->joystick < JOYSTICK_COUNT) {
         if (payload->axis == 0) {
-          jp->xpos[payload->joystick] = payload->value;
+          joystick_peripheral->x_pos.at(payload->joystick) = payload->value;
         } else {
-          jp->ypos[payload->joystick] = payload->value;
+          joystick_peripheral->y_pos.at(payload->joystick) = payload->value;
         }
       }
       return PERIPHERAL_OK;
     }
     case JOY_CMD_SET_BUTTON: {
-      if (size < sizeof(JoystickButtonPayload_t)) return PERIPHERAL_ERROR;
+      if (size < sizeof(JoystickButtonPayload_t)) {
+        return PERIPHERAL_ERROR;
+      }
       const auto* payload = static_cast<const JoystickButtonPayload_t*>(data);
-      if (payload->button < 3) {
-        if (payload->down && !jp->joybutton[payload->button]) {
-          jp->buttonlatch[payload->button] = GetButtonTime();
+      if (payload->button < JOYSTICK_BUTTON_COUNT) {
+        if (payload->down &&
+            !joystick_peripheral->buttons.at(payload->button)) {
+          joystick_peripheral->button_latches.at(payload->button) =
+              GetButtonLatchDuration();
         }
-        jp->joybutton[payload->button] = payload->down;
+        joystick_peripheral->buttons.at(payload->button) = payload->down;
       }
       return PERIPHERAL_OK;
     }
     case JOY_CMD_SET_TRIM: {
-      if (size < sizeof(JoystickTrimPayload_t)) return PERIPHERAL_ERROR;
+      if (size < sizeof(JoystickTrimPayload_t)) {
+        return PERIPHERAL_ERROR;
+      }
       const auto* payload = static_cast<const JoystickTrimPayload_t*>(data);
       if (payload->axis_x) {
-        jp->trim_x = payload->value;
+        joystick_peripheral->trim_x = payload->value;
       } else {
-        jp->trim_y = payload->value;
+        joystick_peripheral->trim_y = payload->value;
       }
       return PERIPHERAL_OK;
     }
@@ -256,8 +277,11 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
       return PERIPHERAL_OK;
     }
     case JOY_CMD_SET_CONFIG: {
-      if (size < sizeof(JoystickConfig_t)) return PERIPHERAL_ERROR;
-      memcpy(&jp->config, data, sizeof(JoystickConfig_t));
+      if (size < sizeof(JoystickConfig_t)) {
+        return PERIPHERAL_ERROR;
+      }
+      std::copy_n(static_cast<const uint8_t*>(data), sizeof(JoystickConfig_t),
+                  reinterpret_cast<uint8_t*>(&joystick_peripheral->config));
       return PERIPHERAL_OK;
     }
     default:
@@ -268,19 +292,27 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
 
 static auto Joystick_ABI_Query(void* instance, uint32_t cmd, void* out,
                                size_t* size) -> PeripheralStatus {
-  if (!instance || !out || !size) return PERIPHERAL_ERROR;
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  if (instance == nullptr || out == nullptr || size == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   switch (static_cast<JoystickQuery_e>(cmd)) {
     case JOY_QUERY_CONFIG: {
-      if (*size < sizeof(JoystickConfig_t)) return PERIPHERAL_ERROR;
-      memcpy(out, &jp->config, sizeof(JoystickConfig_t));
+      if (*size < sizeof(JoystickConfig_t)) {
+        return PERIPHERAL_ERROR;
+      }
+      std::copy_n(
+          reinterpret_cast<const uint8_t*>(&joystick_peripheral->config),
+          sizeof(JoystickConfig_t), static_cast<uint8_t*>(out));
       *size = sizeof(JoystickConfig_t);
       return PERIPHERAL_OK;
     }
     case JOY_QUERY_EXIT_EVENT: {
-      if (*size < 1) return PERIPHERAL_ERROR;
-      *static_cast<uint8_t*>(out) = jp->joyquitevent ? 1 : 0;
+      if (*size < 1) {
+        return PERIPHERAL_ERROR;
+      }
+      *static_cast<uint8_t*>(out) = joystick_peripheral->has_quit_event ? 1 : 0;
       *size = 1;
       return PERIPHERAL_OK;
     }
@@ -295,7 +327,7 @@ static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
   if (instance == nullptr || size == nullptr) {
     return PERIPHERAL_ERROR;
   }
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   if (buffer == nullptr) {
     *size = sizeof(SS_IO_Joystick);
@@ -307,7 +339,7 @@ static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
   }
 
   auto* ss = static_cast<SS_IO_Joystick*>(buffer);
-  ss->g_nJoyCntrResetCycle = jp->reset_cycle;
+  ss->g_nJoyCntrResetCycle = joystick_peripheral->reset_cycle;
 
   *size = sizeof(SS_IO_Joystick);
   return PERIPHERAL_OK;
@@ -315,37 +347,43 @@ static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
 
 static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
                                    size_t size) -> PeripheralStatus {
-  if (instance == nullptr || buffer == nullptr || size < sizeof(SS_IO_Joystick)) {
+  if (instance == nullptr || buffer == nullptr ||
+      size < sizeof(SS_IO_Joystick)) {
     return PERIPHERAL_ERROR;
   }
-  auto* jp = static_cast<JoystickPeripheral_t*>(instance);
+  auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
   const auto* ss = static_cast<const SS_IO_Joystick*>(buffer);
 
-  jp->reset_cycle = ss->g_nJoyCntrResetCycle;
+  joystick_peripheral->reset_cycle = ss->g_nJoyCntrResetCycle;
 
   return PERIPHERAL_OK;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
 
-Peripheral_t g_joystick_peripheral = {
-    .abi_version      = LINAPPLE_ABI_VERSION,
-    .id               = "linapple.joystick",
-    .name             = "Joystick",
-    .description      = "Analog joystick and paddle emulation",
-    .author           = "LinApple Contributors",
-    .version          = VERSIONSTRING,
+}  // namespace
+
+static Peripheral_t g_joystick_peripheral = {
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.joystick",
+    .name = "Joystick",
+    .description = "Analog joystick and paddle peripheral",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
-    .default_slot     = 0,
-    .init             = Joystick_ABI_Init,
-    .reset            = Joystick_ABI_Reset,
-    .shutdown         = Joystick_ABI_Shutdown,
-    .think            = Joystick_ABI_Think,
-    .on_vblank        = nullptr,
-    .save_state       = Joystick_ABI_SaveState,
-    .load_state       = Joystick_ABI_LoadState,
-    .command          = Joystick_ABI_Command,
-    .query            = Joystick_ABI_Query
-};
+    .default_slot = 0,
+    .init = Joystick_ABI_Init,
+    .reset = Joystick_ABI_Reset,
+    .shutdown = Joystick_ABI_Shutdown,
+    .think = Joystick_ABI_Think,
+    .on_vblank = nullptr,
+    .save_state = Joystick_ABI_SaveState,
+    .load_state = Joystick_ABI_LoadState,
+    .command = Joystick_ABI_Command,
+    .query = Joystick_ABI_Query};
+
+auto Joystick_GetDescriptor() -> Peripheral_t* {
+  return &g_joystick_peripheral;
+}
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//           cppcoreguidelines-owning-memory)
