@@ -23,15 +23,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "core/LinAppleCore.h"
 
-#include <array>
 #include <chrono>
 #include <cinttypes>
 #include <cstdio>
 #include <cstring>
-#include <vector>
 
 #include "apple2/CPU.h"
-#include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Memory.h"
