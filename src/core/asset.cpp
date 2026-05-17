@@ -84,12 +84,12 @@ auto Asset_InsertMasterDisk() -> int {
 
   // 2. Send immediate command for runtime effect if peripherals are already running
   DiskInsertCmd_t cmd{};
-  cmd.drive = DISK_DRIVE_0;
-  Util_SafeStrCpy(cmd.path, path.get(), DISK_INSERT_PATH_MAX);
+  cmd.drive = disk_drive_0;
+  Util_SafeStrCpy(cmd.path, path.get(), disk_insert_path_max);
   cmd.write_protected = 0;
   cmd.create_if_necessary = 0;
 
-  Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+  Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   return 0;
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // This sourse includes a FTPPARSE:
 
 /* ftpparse.c, ftpparse.h: library for parsing FTP LIST responses
@@ -136,8 +137,8 @@ static auto totai(int64_t year, int64_t month, int64_t mday) -> int64_t {
 }
 
 static int flagneedbase = 1;
-static time_t base;    /* time() value on this OS at the beginning of 1970 TAI */
-static int64_t now;    /* current time */
+static time_t base; /* time() value on this OS at the beginning of 1970 TAI */
+static int64_t now; /* current time */
 static int flagneedcurrentyear = 1;
 static int64_t currentyear; /* approximation to current year */
 

@@ -75,7 +75,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
 
-  Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+  Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   backdx = fileIndex;
   DrawFrameWindow();

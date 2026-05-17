@@ -316,16 +316,6 @@ void Linapple_SetMockAudioCallback(LinappleAudioCallback cb);
 bool Peripheral_IsAnyActive();
 
 /**
- * @brief Legacy disk status enum for LED display.
- */
-enum Disk_Status_e {
-  DISK_STATUS_OFF = 0x00,
-  DISK_STATUS_READ = 0x01,
-  DISK_STATUS_WRITE = 0x02,
-  DISK_STATUS_PROT = 0x03
-};
-
-/**
  * @brief Register a callback for window title updates.
  */
 void Linapple_SetTitleCallback(LinappleTitleCallback cb);

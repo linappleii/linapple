@@ -43,10 +43,10 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
     g_state.mode = MODE_RUNNING;
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
+    cmd.drive = disk_drive_0;
     cmd.write_protected = false;
-    Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz", DISK_INSERT_PATH_MAX);
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz", disk_insert_path_max);
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
     Peripheral_Manager_Think(0);
 

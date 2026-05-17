@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 
 #include <algorithm>
@@ -8,25 +9,26 @@
 #include <memory>
 #include <vector>
 
-#include "apple2/peripherals/disk/DiskGCR.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "core/Common.h"
 
-// This file implements a disk format driver that follows a specific C-style ABI.
-// We use special directives to suppress warnings that are inherent
-// to this architectural pattern or the underlying standard C library functions used.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, google-runtime-int, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay, google-runtime-int,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// cppcoreguidelines-pro-bounds-constant-array-index)
 
 namespace {
-// SIMSYSTEM_IIE signature: "SIMSYSTEM_IIE"
 static constexpr std::array<uint8_t, 13> IIE_SIGNATURE = {
     'S', 'I', 'M', 'S', 'Y', 'S', 'T', 'E', 'M', '_', 'I', 'I', 'E'};
 constexpr size_t IIE_SIGNATURE_LEN = 13;
 constexpr int IIE_HEADER_SIZE = 88;
 constexpr int IIE_TRACK_DATA_OFFSET = 30;
-constexpr int SECTORS_PER_TRACK_16 = 16;
 constexpr int DOS_TRACK_SIZE = 4096;
 constexpr int IIE_TRACKS = 35;
-constexpr int NIBBLES_PER_TRACK = 6656;
 
 constexpr int IIE_VARIANT_OFFSET = 13;
 constexpr int IIE_SECTOR_MAP_OFFSET = 14;
@@ -39,8 +41,8 @@ constexpr uint8_t SECTOR_NOT_FOUND = 0xFF;
 struct IieInstance {
   FilePtr file{nullptr, fclose};
   std::array<uint8_t, IIE_HEADER_SIZE> header{};
-  std::array<uint8_t, SECTORS_PER_TRACK_16> sector_order{};
-  std::array<uint8_t, GCR_WORKBUF_SIZE> work_buffer{};
+  std::array<uint8_t, sectors_per_track> sector_order{};
+  std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
   bool os_readonly = false;
 
   IieInstance() = default;
@@ -54,36 +56,36 @@ struct IieInstance {
 
 static void IieConvertSectorOrder(const uint8_t* sourceorder,
                                   uint8_t* sector_order) {
-  for (int loop = 0; loop < SECTORS_PER_TRACK_16; ++loop) {
+  for (int loop = 0; loop < sectors_per_track; ++loop) {
     uint8_t found = SECTOR_NOT_FOUND;
-    for (int loop2 = 0; loop2 < SECTORS_PER_TRACK_16; ++loop2) {
+    for (int loop2 = 0; loop2 < sectors_per_track; ++loop2) {
       if (sourceorder[loop2] == static_cast<uint8_t>(loop)) {
         found = static_cast<uint8_t>(loop2);
         break;
       }
     }
-    // Default to sector 0 if not found in map
     sector_order[loop] = (found == SECTOR_NOT_FOUND) ? 0 : found;
   }
 }
 
-static auto IieProbe(const uint8_t* header, size_t header_size,
+static auto IieProbe(const uint8_t* header_data, size_t header_size,
                      uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   (void)file_size;
   (void)ext_hint;
 
   if (header_size > static_cast<size_t>(IIE_VARIANT_OFFSET)) {
-    if (memcmp(header, IIE_SIGNATURE.data(), IIE_SIGNATURE_LEN) == 0 &&
-        header[IIE_VARIANT_OFFSET] <= IIE_VARIANT_MAX_TOTAL) {
-      return DISK_PROBE_DEFINITE;
+    if (memcmp(header_data, IIE_SIGNATURE.data(), IIE_SIGNATURE_LEN) == 0 &&
+        header_data[IIE_VARIANT_OFFSET] <= IIE_VARIANT_MAX_TOTAL) {
+      return disk_probe_definite;
     }
   }
 
-  return DISK_PROBE_NO;
+  return disk_probe_no;
 }
 
-static auto IieOpen(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
-                    bool* out_os_readonly, void** out_instance) -> DiskError_e {
+static auto IieOpen(const char* path, uint32_t file_offset,
+                    uint8_t enhanced_speed, bool* out_is_read_only,
+                    void** out_instance) -> DiskError_e {
   (void)file_offset;
   (void)enhanced_speed;
 
@@ -96,17 +98,17 @@ static auto IieOpen(const char* path, uint32_t file_offset, uint8_t enhanced_spe
     if (instance->file != nullptr) {
       instance->os_readonly = true;
     } else {
-      return DISK_ERR_IO;
+      return disk_err_io;
     }
   }
 
-  if (out_os_readonly != nullptr) {
-    *out_os_readonly = instance->os_readonly;
+  if (out_is_read_only != nullptr) {
+    *out_is_read_only = instance->os_readonly;
   }
 
-  if (fread(instance->header.data(), 1, IIE_HEADER_SIZE, instance->file.get()) !=
-      IIE_HEADER_SIZE) {
-    return DISK_ERR_IO;
+  if (fread(instance->header.data(), 1, IIE_HEADER_SIZE,
+            instance->file.get()) != IIE_HEADER_SIZE) {
+    return disk_err_io;
   }
 
   if (instance->header[IIE_VARIANT_OFFSET] <= IIE_VARIANT_MAX_LEGACY) {
@@ -115,7 +117,7 @@ static auto IieOpen(const char* path, uint32_t file_offset, uint8_t enhanced_spe
   }
 
   *out_instance = reinterpret_cast<void*>(instance.release());
-  return DISK_ERR_NONE;
+  return disk_err_none;
 }
 
 static void IieClose(void* instance) {
@@ -129,16 +131,17 @@ static auto IieIsWriteProtected(void* instance) -> bool {
 
 static inline auto ReadU16LE(const uint8_t* p) -> uint16_t {
   constexpr int BITS_PER_BYTE = 8;
-  return static_cast<uint16_t>(p[0] | (static_cast<uint16_t>(p[1]) << BITS_PER_BYTE));
+  return static_cast<uint16_t>(p[0] |
+                               (static_cast<uint16_t>(p[1]) << BITS_PER_BYTE));
 }
 
 static void IieReadTrack(void* instance, int track, int phase,
-                         uint8_t* trackImageBuffer, int* nibbles_out) {
+                         uint8_t* track_buffer, int* out_nibbles) {
   (void)phase;
   auto* ii = reinterpret_cast<IieInstance*>(instance);
 
   if (track < 0 || track >= IIE_TRACKS) {
-    *nibbles_out = 0;
+    *out_nibbles = 0;
     return;
   }
 
@@ -148,72 +151,73 @@ static void IieReadTrack(void* instance, int track, int phase,
               static_cast<long>(static_cast<size_t>(track) * DOS_TRACK_SIZE +
                                 IIE_TRACK_DATA_OFFSET),
               SEEK_SET) != 0) {
-      *nibbles_out = 0;
+      *out_nibbles = 0;
       return;
     }
     if (fread(ii->work_buffer.data(), 1, DOS_TRACK_SIZE, ii->file.get()) !=
         DOS_TRACK_SIZE) {
-      *nibbles_out = 0;
+      *out_nibbles = 0;
       return;
     }
-    *nibbles_out = static_cast<int>(
-        GCR_NibblizeTrackCustomOrder(ii->work_buffer.data(), trackImageBuffer,
-                                     ii->sector_order.data(), track));
+    *out_nibbles = static_cast<int>(disk_encoding_nibblize_track_custom_order(
+        ii->work_buffer.data(), track_buffer, ii->sector_order.data(), track));
   } else {
-    // Pre-nibblized variant
     uint16_t nib_count = ReadU16LE(
-        &ii->header[static_cast<size_t>(track << 1) + IIE_NIBBLE_MAP_OFFSET]);
+        &ii->header.at(static_cast<size_t>(track * phases_per_track) +
+                       IIE_NIBBLE_MAP_OFFSET));
 
-    if (nib_count > NIBBLES_PER_TRACK) {
-      nib_count = NIBBLES_PER_TRACK;
+    if (nib_count > nibbles_per_track) {
+      nib_count = static_cast<uint16_t>(nibbles_per_track);
     }
 
     uint32_t offset = IIE_HEADER_SIZE;
     for (int t = 0; t < track; ++t) {
       uint16_t prev_nib_count = ReadU16LE(
-          &ii->header[static_cast<size_t>(t << 1) + IIE_NIBBLE_MAP_OFFSET]);
-      // Use a reasonable upper bound for previous track sizes.
-      // SIMSYSTEM_IIE tracks should not exceed NIBBLES_PER_TRACK.
-      if (prev_nib_count > NIBBLES_PER_TRACK) {
-        prev_nib_count = NIBBLES_PER_TRACK;
+          &ii->header.at(static_cast<size_t>(t * phases_per_track) +
+                         IIE_NIBBLE_MAP_OFFSET));
+      if (prev_nib_count > nibbles_per_track) {
+        prev_nib_count = static_cast<uint16_t>(nibbles_per_track);
       }
       offset += prev_nib_count;
     }
     if (fseek(ii->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-      *nibbles_out = 0;
+      *out_nibbles = 0;
       return;
     }
-    *nibbles_out =
-        static_cast<int>(fread(trackImageBuffer, 1, nib_count, ii->file.get()));
+    *out_nibbles =
+        static_cast<int>(fread(track_buffer, 1, nib_count, ii->file.get()));
   }
 }
 
 static void IieWriteTrack(void* instance, int track, int phase,
-                          const uint8_t* trackImage, int nibbles) {
+                          const uint8_t* track_buffer, int nibbles) {
   (void)instance;
   (void)track;
   (void)phase;
-  (void)trackImage;
+  (void)track_buffer;
   (void)nibbles;
-  // Write is intentionally not implemented for IIE
 }
 
 }  // namespace
 
-extern "C" const DiskFormatDriver_t g_iie_driver = {
-    LINAPPLE_DISK_ABI_VERSION,
-    0,  // capabilities (no write)
-    "IIE",
-    nullptr,  // creatable_exts
-    IieProbe,
-    IieOpen,
-    IieClose,
-    IieIsWriteProtected,
-    IieReadTrack,
-    IieWriteTrack,
-    nullptr,  // create
-    nullptr,  // command
-    nullptr   // read_flux_bit
-};
+extern "C" const DiskFormatDriver_t g_iie_driver = {disk_format_abi_version,
+                                                    0,
+                                                    "IIE",
+                                                    nullptr,
+                                                    IieProbe,
+                                                    IieOpen,
+                                                    IieClose,
+                                                    IieIsWriteProtected,
+                                                    IieReadTrack,
+                                                    IieWriteTrack,
+                                                    nullptr,
+                                                    nullptr,
+                                                    nullptr};
 
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, google-runtime-int, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay, google-runtime-int,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+// cppcoreguidelines-pro-bounds-constant-array-index)

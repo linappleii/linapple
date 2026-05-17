@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 
 #include <algorithm>
@@ -6,11 +7,9 @@
 #include <cstring>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskGCR.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 
 // NOLINTBEGIN(cppcoreguidelines-pro-type-static-cast-downcast,google-runtime-int,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory)
-// Rationale: fseek requires 'long'. Array to pointer decay is common in C-like procedural code.
-// FILE* management is handled within the SectorDiskImage_t lifecycle.
 
 struct SectorDiskImage_t {
   FILE* file = nullptr;
@@ -18,7 +17,7 @@ struct SectorDiskImage_t {
   bool os_readonly = false;
   bool is_dos_order = false;
   bool is_enhanced = false;
-  std::array<uint8_t, GCR_WORKBUF_SIZE> work_buffer{};
+  std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
 
   SectorDiskImage_t() = default;
   ~SectorDiskImage_t() {
@@ -42,7 +41,7 @@ constexpr uint8_t SYNC_BYTE = 0xFF;
 
 auto SectorDiskImage_Open(const char* path, uint32_t file_offset,
                           bool is_dos_order, uint8_t enhanced_speed,
-                          bool* out_os_readonly) -> SectorDiskImage_t* {
+                          bool* out_is_read_only) -> SectorDiskImage_t* {
   auto* image = new SectorDiskImage_t();
 
   image->file = fopen(path, "r+b");
@@ -58,8 +57,8 @@ auto SectorDiskImage_Open(const char* path, uint32_t file_offset,
     }
   }
 
-  if (out_os_readonly != nullptr) {
-    *out_os_readonly = image->os_readonly;
+  if (out_is_read_only != nullptr) {
+    *out_is_read_only = image->os_readonly;
   }
   image->macbinary_offset = file_offset;
   image->is_dos_order = is_dos_order;
@@ -75,59 +74,59 @@ auto SectorDiskImage_IsWriteProtected(SectorDiskImage_t* image) -> bool {
 }
 
 void SectorDiskImage_ReadTrack(SectorDiskImage_t* image, int track,
-                               uint8_t* trackImageBuffer, int* nibbles_out) {
-  if (image == nullptr || track < 0 || track >= TRACKS) {
-    if (nibbles_out != nullptr) {
-      *nibbles_out = 0;
+                               uint8_t* track_buffer, int* out_nibbles) {
+  if (image == nullptr || track < 0 || track >= tracks_per_disk) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
     }
     return;
   }
 
-  // Pre-fill with sync bytes
-  memset(trackImageBuffer, SYNC_BYTE, NIBBLES_PER_TRACK);
+  memset(track_buffer, SYNC_BYTE, nibbles_per_track);
 
   image->work_buffer.fill(0);
   auto offset = static_cast<int64_t>(image->macbinary_offset) +
                 (static_cast<int64_t>(track) * DOS_TRACK_SIZE);
 
   if (fseek(image->file, static_cast<long>(offset), SEEK_SET) != 0) {
-    if (nibbles_out != nullptr) {
-      *nibbles_out = 0;
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
     }
     return;
   }
 
   if (fread(image->work_buffer.data(), 1, DOS_TRACK_SIZE, image->file) !=
       DOS_TRACK_SIZE) {
-    if (nibbles_out != nullptr) {
-      *nibbles_out = 0;
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
     }
     return;
   }
 
-  uint32_t nibbles = GCR_NibblizeTrack(image->work_buffer.data(),
-                                       trackImageBuffer, image->is_dos_order, track);
+  uint32_t nibbles = disk_encoding_nibblize_track(
+      image->work_buffer.data(), track_buffer, image->is_dos_order, track);
 
   if (!image->is_enhanced) {
-    GCR_SkewTrack(image->work_buffer.data(), track, static_cast<int>(nibbles),
-                  trackImageBuffer);
+    disk_encoding_skew_track(track_buffer, image->work_buffer.data(), track,
+                             static_cast<int>(nibbles));
   }
 
-  if (nibbles_out != nullptr) {
-    *nibbles_out = NIBBLES_PER_TRACK;
+  if (out_nibbles != nullptr) {
+    *out_nibbles = static_cast<int>(nibbles_per_track);
   }
 }
 
 void SectorDiskImage_WriteTrack(SectorDiskImage_t* image, int track,
-                                const uint8_t* trackImage, int nibbles) {
-  if (image == nullptr || image->os_readonly || track < 0 || track >= TRACKS) {
+                                const uint8_t* track_buffer, int nibbles) {
+  if (image == nullptr || image->os_readonly || track < 0 ||
+      track >= tracks_per_disk) {
     return;
   }
 
   image->work_buffer.fill(0);
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-  GCR_DenibblizeTrack(image->work_buffer.data(), const_cast<uint8_t*>(trackImage),
-                      image->is_dos_order, nibbles);
+  disk_encoding_denibblize_track(image->work_buffer.data(),
+                                 const_cast<uint8_t*>(track_buffer),
+                                 image->is_dos_order, nibbles);
 
   auto offset = static_cast<int64_t>(image->macbinary_offset) +
                 (static_cast<int64_t>(track) * DOS_TRACK_SIZE);
@@ -140,7 +139,7 @@ void SectorDiskImage_WriteTrack(SectorDiskImage_t* image, int track,
 auto SectorDiskImage_Create(const char* path) -> DiskError_e {
   FILE* f = fopen(path, "wb");
   if (f == nullptr) {
-    return DISK_ERR_IO;
+    return disk_err_io;
   }
 
   std::array<uint8_t, CREATE_BUFFER_SIZE> zero{};
@@ -149,16 +148,17 @@ auto SectorDiskImage_Create(const char* path) -> DiskError_e {
     (void)fwrite(zero.data(), 1, zero.size(), f);
   }
   (void)fclose(f);
-  return DISK_ERR_NONE;
+  return disk_err_none;
 }
 
 auto SectorDiskImage_Command(SectorDiskImage_t* image, uint32_t cmd_id,
-                             const void* data, size_t size) -> PeripheralStatus {
+                             const void* data, size_t size)
+    -> PeripheralStatus {
   if (image == nullptr) {
     return PERIPHERAL_ERROR;
   }
 
-  if (cmd_id == DISK_DRIVER_CMD_SET_ENHANCED_SPEED) {
+  if (cmd_id == disk_driver_cmd_set_enhanced_speed) {
     if (size < 1) {
       return PERIPHERAL_ERROR;
     }

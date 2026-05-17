@@ -1,11 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// Justification: This header defines a language-neutral C ABI. C system
+// headers, typedefs, and C-style arrays are required for compatibility with
+// C-based consumers.
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
-  DISK_ERR_NONE = 0,
-  DISK_ERR_FILE_NOT_FOUND = 1,
-  DISK_ERR_UNSUPPORTED_FORMAT = 2,
-  DISK_ERR_CORRUPT = 3,
-  DISK_ERR_WRITE_PROTECTED = 4,
-  DISK_ERR_OUT_OF_MEMORY = 5,
-  DISK_ERR_IO = 6
+  disk_err_none = 0,
+  disk_err_file_not_found = 1,
+  disk_err_unsupported_format = 2,
+  disk_err_corrupt = 3,
+  disk_err_write_protected = 4,
+  disk_err_out_of_memory = 5,
+  disk_err_io = 6
 } DiskError_e;
+
+#ifdef __cplusplus
+}
+#endif
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+//           cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

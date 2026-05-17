@@ -27,11 +27,11 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus ps =
-      Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
 
   REQUIRE(ps == PERIPHERAL_OK);
   CHECK(status.drive0_loaded == true);
-  CHECK(status.drive0_last_error == DISK_ERR_NONE);
+  CHECK(status.drive0_last_error == disk_err_none);
 
   Linapple_Shutdown();
 }
@@ -49,7 +49,7 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus ps =
-      Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
 
   REQUIRE(ps == PERIPHERAL_OK);
   CHECK(status.drive0_loaded == true);
@@ -70,7 +70,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus ps =
-      Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
 
   REQUIRE(ps == PERIPHERAL_OK);
   // It shouldn't be loaded, and error should be unsupported format (or file not
@@ -78,7 +78,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   // fixtures yet? I'll check. Assuming it's unsupported if it exists but isn't
   // a disk.
   CHECK(status.drive0_loaded == false);
-  CHECK(status.drive0_last_error == DISK_ERR_UNSUPPORTED_FORMAT);
+  CHECK(status.drive0_last_error == disk_err_unsupported_format);
 
   Linapple_Shutdown();
 }
@@ -92,7 +92,7 @@ TEST_CASE("Headless: [HL-04] Program loading") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+  Peripheral_Query(6, disk_cmd_get_status, &status, &size);
   CHECK(status.drive0_loaded == false);
 
   Linapple_Shutdown();

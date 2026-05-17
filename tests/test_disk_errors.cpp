@@ -21,20 +21,20 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
     Peripheral_Register_Internal();
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
-    Util_SafeStrCpy(cmd.path, "nonexistent_file.dsk", DISK_INSERT_PATH_MAX);
+    cmd.drive = disk_drive_0;
+    Util_SafeStrCpy(cmd.path, "nonexistent_file.dsk", disk_insert_path_max);
 
     // Command usually returns OK because it's queued, but here internal
     // synchronously executes for local tests.
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
 
     CHECK(status.drive0_loaded == 0);
-    CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_FILE_NOT_FOUND));
+    CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_file_not_found));
 
     Linapple_Shutdown();
 }
@@ -53,17 +53,17 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
     }
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
-    Util_SafeStrCpy(cmd.path, garbage, DISK_INSERT_PATH_MAX);
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    cmd.drive = disk_drive_0;
+    Util_SafeStrCpy(cmd.path, garbage, disk_insert_path_max);
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
 
     CHECK(status.drive0_loaded == 0);
-    CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_UNSUPPORTED_FORMAT));
+    CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_unsupported_format));
 
     remove(garbage);
     Linapple_Shutdown();
@@ -75,26 +75,26 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
     Peripheral_Register_Internal();
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
+    cmd.drive = disk_drive_0;
 
     // First, cause an error
-    Util_SafeStrCpy(cmd.path, "missing.dsk", DISK_INSERT_PATH_MAX);
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Util_SafeStrCpy(cmd.path, "missing.dsk", disk_insert_path_max);
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     // Now insert valid
     const char* fixture = "../tests/fixtures/minimal.dsk";
     if (access(fixture, F_OK) != 0) fixture = "tests/fixtures/minimal.dsk";
-    Util_SafeStrCpy(cmd.path, fixture, DISK_INSERT_PATH_MAX);
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Util_SafeStrCpy(cmd.path, fixture, disk_insert_path_max);
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
 
     CHECK(status.drive0_loaded != 0);
-    CHECK(status.drive0_last_error == static_cast<int32_t>(DISK_ERR_NONE));
+    CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_none));
 
     Linapple_Shutdown();
 }

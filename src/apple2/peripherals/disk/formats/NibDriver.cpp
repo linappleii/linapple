@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/NibDriver.h"
 
 #include <algorithm>
@@ -6,17 +7,13 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "apple2/peripherals/disk/DiskCommands.h"
+
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc,cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,google-runtime-int,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-// Rationale: These functions implement a C-compatible ABI defined in
-// DiskFormatDriver.h. Swappable parameters are mandated by that interface.
-// Manual memory management for NibInstance and FILE* is handled within the
-// procedural driver lifecycle. Creatable extensions array is part of the ABI.
-// fseek requires 'long'.
 
 namespace {
-constexpr int NIB_TRACK_SIZE = 6656;
 constexpr int NIB_TRACKS = 35;
-constexpr int NIB_DISK_SIZE = NIB_TRACKS * NIB_TRACK_SIZE;  // 232960
+constexpr int NIB_DISK_SIZE = NIB_TRACKS * static_cast<int>(nibbles_per_track);
 constexpr int CREATE_BUFFER_SIZE = 1024;
 
 struct NibInstance {
@@ -38,21 +35,22 @@ struct NibInstance {
 };
 }  // namespace
 
-static auto NibProbe(const uint8_t* header, size_t header_size,
+static auto NibProbe(const uint8_t* header_data, size_t header_size,
                      uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
-  (void)header;
+  (void)header_data;
   (void)header_size;
   (void)ext_hint;
 
   if (file_size == static_cast<uint32_t>(NIB_DISK_SIZE)) {
-    return DISK_PROBE_DEFINITE;
+    return disk_probe_definite;
   }
 
-  return DISK_PROBE_NO;
+  return disk_probe_no;
 }
 
-static auto NibOpen(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
-                    bool* out_os_readonly, void** out_instance) -> DiskError_e {
+static auto NibOpen(const char* path, uint32_t file_offset,
+                    uint8_t enhanced_speed, bool* out_is_read_only,
+                    void** out_instance) -> DiskError_e {
   (void)enhanced_speed;
   auto* instance = new NibInstance();
   instance->file = fopen(path, "r+b");
@@ -64,17 +62,17 @@ static auto NibOpen(const char* path, uint32_t file_offset, uint8_t enhanced_spe
       instance->os_readonly = true;
     } else {
       delete instance;
-      return DISK_ERR_IO;
+      return disk_err_io;
     }
   }
 
-  if (out_os_readonly != nullptr) {
-    *out_os_readonly = instance->os_readonly;
+  if (out_is_read_only != nullptr) {
+    *out_is_read_only = instance->os_readonly;
   }
   instance->macbinary_offset = file_offset;
 
   *out_instance = static_cast<void*>(instance);
-  return DISK_ERR_NONE;
+  return disk_err_none;
 }
 
 static void NibClose(void* instance) {
@@ -86,32 +84,34 @@ static auto NibIsWriteProtected(void* instance) -> bool {
 }
 
 static void NibReadTrack(void* instance, int track, int phase,
-                         uint8_t* trackImageBuffer, int* nibbles_out) {
+                         uint8_t* track_buffer, int* out_nibbles) {
   (void)phase;
   auto* ni = static_cast<NibInstance*>(instance);
   if (track < 0 || track >= NIB_TRACKS) {
-    *nibbles_out = 0;
+    *out_nibbles = 0;
     return;
   }
 
-  auto offset = static_cast<int64_t>(ni->macbinary_offset) +
-                (static_cast<int64_t>(track) * NIB_TRACK_SIZE);
+  auto offset =
+      static_cast<int64_t>(ni->macbinary_offset) +
+      (static_cast<int64_t>(track) * static_cast<int64_t>(nibbles_per_track));
 
   if (fseek(ni->file, static_cast<long>(offset), SEEK_SET) != 0) {
-    *nibbles_out = 0;
+    *out_nibbles = 0;
     return;
   }
 
-  if (fread(trackImageBuffer, 1, NIB_TRACK_SIZE, ni->file) != NIB_TRACK_SIZE) {
-    *nibbles_out = 0;
+  if (fread(track_buffer, 1, nibbles_per_track, ni->file) !=
+      nibbles_per_track) {
+    *out_nibbles = 0;
     return;
   }
 
-  *nibbles_out = NIB_TRACK_SIZE;
+  *out_nibbles = static_cast<int>(nibbles_per_track);
 }
 
 static void NibWriteTrack(void* instance, int track, int phase,
-                          const uint8_t* trackImage, int nibbles) {
+                          const uint8_t* track_buffer, int nibbles) {
   (void)phase;
   (void)nibbles;
   auto* ni = static_cast<NibInstance*>(instance);
@@ -119,18 +119,19 @@ static void NibWriteTrack(void* instance, int track, int phase,
     return;
   }
 
-  auto offset = static_cast<int64_t>(ni->macbinary_offset) +
-                (static_cast<int64_t>(track) * NIB_TRACK_SIZE);
+  auto offset =
+      static_cast<int64_t>(ni->macbinary_offset) +
+      (static_cast<int64_t>(track) * static_cast<int64_t>(nibbles_per_track));
 
   if (fseek(ni->file, static_cast<long>(offset), SEEK_SET) == 0) {
-    (void)fwrite(trackImage, 1, NIB_TRACK_SIZE, ni->file);
+    (void)fwrite(track_buffer, 1, nibbles_per_track, ni->file);
   }
 }
 
 static auto NibCreate(const char* path) -> DiskError_e {
   FILE* f = fopen(path, "wb");
   if (!f) {
-    return DISK_ERR_IO;
+    return disk_err_io;
   }
 
   std::array<uint8_t, CREATE_BUFFER_SIZE> zero{};
@@ -141,29 +142,28 @@ static auto NibCreate(const char* path) -> DiskError_e {
   }
 
   if (NIB_DISK_SIZE % CREATE_BUFFER_SIZE != 0) {
-    fwrite(zero.data(), 1, NIB_DISK_SIZE % CREATE_BUFFER_SIZE, f);
+    fwrite(zero.data(), 1,
+           static_cast<size_t>(NIB_DISK_SIZE % CREATE_BUFFER_SIZE), f);
   }
 
   fclose(f);
-  return DISK_ERR_NONE;
+  return disk_err_none;
 }
 
 static const char* const g_nib_creatable_exts[] = {".nib", nullptr};
 
-extern "C" const DiskFormatDriver_t g_nib_driver = {
-    LINAPPLE_DISK_ABI_VERSION,
-    DRIVER_CAP_WRITE,
-    "NIB (6656-nibble)",
-    g_nib_creatable_exts,
-    NibProbe,
-    NibOpen,
-    NibClose,
-    NibIsWriteProtected,
-    NibReadTrack,
-    NibWriteTrack,
-    NibCreate,
-    nullptr,  // command
-    nullptr   // read_flux_bit
-};
+extern "C" const DiskFormatDriver_t g_nib_driver = {disk_format_abi_version,
+                                                    disk_driver_cap_write,
+                                                    "NIB (6656-nibble)",
+                                                    g_nib_creatable_exts,
+                                                    NibProbe,
+                                                    NibOpen,
+                                                    NibClose,
+                                                    NibIsWriteProtected,
+                                                    NibReadTrack,
+                                                    NibWriteTrack,
+                                                    NibCreate,
+                                                    nullptr,
+                                                    nullptr};
 
 // NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc,cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,google-runtime-int,cppcoreguidelines-pro-bounds-array-to-pointer-decay)

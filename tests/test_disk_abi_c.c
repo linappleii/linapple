@@ -4,14 +4,14 @@
 
 void disk_abi_c_smoke(void) {
   DiskInsertCmd_t cmd;
-  cmd.drive = DISK_DRIVE_0;
+  cmd.drive = disk_drive_0;
   cmd.write_protected = 0;
   cmd.create_if_necessary = 0;
   cmd.path[0] = '\0';
 
   DiskFormatDriver_t driver;
-  driver.abi_version = LINAPPLE_DISK_ABI_VERSION;
-  driver.capabilities = DRIVER_CAP_WRITE;
+  driver.abi_version = disk_format_abi_version;
+  driver.capabilities = disk_driver_cap_write;
   driver.name = "smoke";
   driver.creatable_exts = 0;
   driver.probe = 0;

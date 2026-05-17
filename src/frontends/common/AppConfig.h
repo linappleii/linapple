@@ -13,7 +13,7 @@ enum { ARGV_EXTRA_MAX = 64 };
 
 struct AppConfig {
   AppIntent intent = INTENT_RUN;
-  std::array<std::array<char, PATH_MAX_LEN>, DISK_DRIVE_COUNT> szDiskPath = {};
+  std::array<std::array<char, PATH_MAX_LEN>, disk_drive_count> szDiskPath = {};
   std::array<char, PATH_MAX_LEN> szProgramPath = {};
   std::array<char, PATH_MAX_LEN> szConfigPath = {};
   std::array<char, PATH_MAX_LEN> szSnapshotPath = {};

@@ -1,18 +1,19 @@
-#ifndef DISK_H
-#define DISK_H
-
-#include <cstdint>
-
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "core/Common.h"
-#include "core/Peripheral.h"
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-auto DiskInitialize() -> void;
+#include "core/Peripheral.h"
 
-auto DiskUpdatePosition(uint32_t) -> void;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern Peripheral_t g_disk_peripheral;
+// NOLINTBEGIN(modernize-use-using)
+// Justification: Identity header for the Disk II module.
 
+auto Disk_GetDescriptor() -> Peripheral_t*;
+
+// NOLINTEND(modernize-use-using)
+
+#ifdef __cplusplus
+}
 #endif

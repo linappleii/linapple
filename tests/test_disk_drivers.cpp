@@ -3,7 +3,7 @@
 #include <cstring>
 #include <vector>
 
-#include "apple2/peripherals/disk/DiskGCR.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -25,7 +25,7 @@ TEST_CASE("DiskDrivers: [DRV-01] DO Driver Probing") {
   }
 
   CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
-        DISK_PROBE_DEFINITE);
+        disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
@@ -38,7 +38,7 @@ TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
   buffer[1282] = 3; buffer[1283] = 0; // next = 3
 
   CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
-        DISK_PROBE_DEFINITE);
+        disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
@@ -46,30 +46,30 @@ TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
   memcpy(header, "SIMSYSTEM_IIE", 13);
   header[13] = 2; // Variant
 
-  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == DISK_PROBE_DEFINITE);
+  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_definite);
   
   header[0] = 'X';
-  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == DISK_PROBE_NO);
+  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-04] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
 
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == DISK_PROBE_DEFINITE);
+  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
   
   header[0] = 'X';
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == DISK_PROBE_NO);
+  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-05] NIB Driver Probing") {
   std::vector<uint8_t> buffer(232960, 0);
-  CHECK(g_nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") == DISK_PROBE_DEFINITE);
+  CHECK(g_nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") == disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-06] NB2 Driver Probing") {
   std::vector<uint8_t> buffer(223440, 0);
-  CHECK(g_nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") == DISK_PROBE_DEFINITE);
+  CHECK(g_nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") == disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
@@ -78,7 +78,7 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nib_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_nib_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
 
   uint8_t original_track[6656];
   for (int i = 0; i < 6656; ++i) original_track[i] = (i + 1) & 0xFF;
@@ -112,7 +112,7 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nb2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_nb2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
 
   uint8_t original_track[6384];
   for (int i = 0; i < 6384; ++i) original_track[i] = (i + 1) & 0xFF;
@@ -134,9 +134,9 @@ TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
 
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == DISK_PROBE_DEFINITE);
+  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
   
-  CHECK(g_woz2_driver.probe(header, 1536, 1535, ".woz") == DISK_PROBE_NO);
+  CHECK(g_woz2_driver.probe(header, 1536, 1535, ".woz") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
@@ -154,7 +154,7 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  CHECK( g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_UNSUPPORTED_FORMAT );
+  CHECK( g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_unsupported_format );
   
   remove(tmp_file);
 }
@@ -178,12 +178,12 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   bool os_ro = false;
 
   create_woz_wp(tmp_file, 1);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == true);
   g_woz2_driver.close(instance);
 
   create_woz_wp(tmp_file, 0);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == false);
   g_woz2_driver.close(instance);
 
@@ -204,7 +204,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
 
   uint8_t buffer[6656];
   int count = 0;
@@ -224,7 +224,7 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip (Fast)") {
   void* inst = nullptr;
   bool ro = false;
   enhancedisk = true;
-  REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == DISK_ERR_NONE);
+  REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
 
   uint8_t buf[6656];
   int count = 0;
@@ -242,7 +242,7 @@ TEST_CASE("DiskDrivers: [DRV-14] DO Track Round-trip (Skewed)") {
   void* inst = nullptr;
   bool ro = false;
   enhancedisk = false;
-  REQUIRE(g_do_driver.open(tmp_do, 0, 0, &ro, &inst) == DISK_ERR_NONE);
+  REQUIRE(g_do_driver.open(tmp_do, 0, 0, &ro, &inst) == disk_err_none);
 
   uint8_t buf[6656];
   int count = 0;
@@ -268,7 +268,7 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
 
   uint8_t buffer[6656];
   int count = 123;
@@ -306,7 +306,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == DISK_ERR_NONE);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
 
   uint8_t buffer[6656];
   int count = 123;
@@ -324,7 +324,7 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
 
     void* inst = nullptr;
     bool ro = false;
-    REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == DISK_ERR_NONE);
+    REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
 
     uint8_t buf[6656];
     int count = 123;

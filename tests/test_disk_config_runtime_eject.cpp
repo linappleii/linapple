@@ -15,9 +15,9 @@ TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
     Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
     DiskEjectCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
+    cmd.drive = disk_drive_0;
 
-    Peripheral_Command(6, DISK_CMD_EJECT, &cmd, sizeof(cmd));
+    Peripheral_Command(6, disk_cmd_eject, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     std::string saved = Configuration::Instance().GetString("Slots", REGVALUE_DISK_IMAGE1);

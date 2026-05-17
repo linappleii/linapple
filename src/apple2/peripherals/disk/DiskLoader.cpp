@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//             cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//             cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/disk/DiskLoader.h"
 
 #include <strings.h>
@@ -5,7 +9,6 @@
 #include <zip.h>
 #include <zlib.h>
 
-#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -15,228 +18,268 @@
 #include "core/Common.h"
 #include "core/Util_Text.h"
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory)
-
 namespace {
+
 static std::vector<DiskFormatDriver_t*> g_drivers;
 
-constexpr size_t MACBINARY_HEADER_SIZE = 128;
-constexpr size_t MACBINARY_MAGIC_OFFSET1 = 0;
-constexpr size_t MACBINARY_MAGIC_OFFSET2 = 74;
-constexpr uint8_t MACBINARY_MAGIC_VALUE = 0;
+// MacBinary (Legacy Macintosh file wrapper) markers
+constexpr size_t macbinary_header_size = 128;
+constexpr size_t macbinary_magic_offset1 = 0;
+constexpr size_t macbinary_magic_offset2 = 74;
+constexpr uint8_t macbinary_magic_value = 0;
 
-constexpr size_t DECOMPRESSION_BUFFER_SIZE = 8192;
-constexpr size_t PROBE_HEADER_SIZE = 4096;
-constexpr size_t EXTENSION_HINT_SIZE = 16;
+// Disk Loading & Decompression parameters
+constexpr size_t decompression_buffer_size = 8192;
+constexpr size_t probe_header_size = 4096;
+constexpr size_t extension_hint_size = 16;
 
-auto IsMacBinary(const uint8_t* header, size_t size) -> bool {
-  if (size < MACBINARY_HEADER_SIZE) {
+/**
+ * @brief Ensures a temporary file is unlinked when it goes out of scope.
+ */
+struct TemporaryFileGuard {
+  char path[PATH_MAX_LEN];
+  explicit TemporaryFileGuard(const char* p) {
+    if (p != nullptr) {
+      Util_SafeStrCpy(path, p, PATH_MAX_LEN);
+    } else {
+      path[0] = '\0';
+    }
+  }
+  ~TemporaryFileGuard() {
+    if (path[0] != '\0') {
+      unlink(path);
+    }
+  }
+  // Not copyable or movable
+  TemporaryFileGuard(const TemporaryFileGuard&) = delete;
+  auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
+};
+
+// Why: Some legacy Apple II disk images are wrapped in a MacBinary header
+// (128 bytes) by Macintosh-based transfer utilities. This identifies them
+// so we can skip the wrapper and find the real disk image data.
+auto is_mac_binary(const uint8_t* header_data, size_t size) -> bool {
+  if (size < macbinary_header_size) {
     return false;
   }
-  return (header[MACBINARY_MAGIC_OFFSET1] == MACBINARY_MAGIC_VALUE &&
-          header[MACBINARY_MAGIC_OFFSET2] == MACBINARY_MAGIC_VALUE);
+  return (header_data[macbinary_magic_offset1] == macbinary_magic_value &&
+          header_data[macbinary_magic_offset2] == macbinary_magic_value);
 }
 
-auto DiskUnGzip(const char* filename, FILE* out) -> bool {
-  gzFile f = gzopen(filename, "rb");
-  if (!f) {
+auto decompress_gzip(const char* compressed_path, FILE* output_file) -> bool {
+  gzFile compressed_file = gzopen(compressed_path, "rb");
+  if (compressed_file == nullptr) {
     return false;
   }
 
-  std::array<uint8_t, DECOMPRESSION_BUFFER_SIZE> buffer{};
+  auto closer = [](void* f) {
+    if (f != nullptr) {
+      gzclose(static_cast<gzFile>(f));
+    }
+  };
+  std::unique_ptr<void, void (*)(void*)> guard(compressed_file, closer);
+
+  std::array<uint8_t, decompression_buffer_size> buffer{};
   int bytes_read = 0;
-  while ((bytes_read = gzread(f, buffer.data(), static_cast<unsigned int>(buffer.size()))) > 0) {
-    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read), out) !=
-        static_cast<size_t>(bytes_read)) {
-      gzclose(f);
+  while ((bytes_read = gzread(compressed_file, buffer.data(),
+                              static_cast<unsigned int>(buffer.size()))) > 0) {
+    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
+               output_file) != static_cast<size_t>(bytes_read)) {
       return false;
     }
   }
-  gzclose(f);
-  return true;
+
+  return bytes_read == 0;
 }
 
-auto DiskUnZip(const char* filename, FILE* out) -> bool {
+auto decompress_zip(const char* compressed_path, FILE* output_file) -> bool {
   int err = 0;
-  zip* z = zip_open(filename, ZIP_RDONLY, &err);
-  if (!z) {
+  zip* zip_archive = zip_open(compressed_path, ZIP_RDONLY, &err);
+  if (zip_archive == nullptr) {
+    return false;
+  }
+  std::unique_ptr<zip, int (*)(zip*)> zip_closer(zip_archive, zip_close);
+
+  if (zip_get_num_entries(zip_archive, 0) <= 0) {
     return false;
   }
 
-  zip_int64_t num_entries = zip_get_num_entries(z, 0);
-  if (num_entries <= 0) {
-    zip_close(z);
+  zip_file* file_in_zip = zip_fopen_index(zip_archive, 0, 0);
+  if (file_in_zip == nullptr) {
     return false;
   }
+  std::unique_ptr<zip_file, int (*)(zip_file*)> file_closer(file_in_zip,
+                                                            zip_fclose);
 
-  // Just take the first entry for now
-  zip_file* f = zip_fopen_index(z, 0, 0);
-  if (!f) {
-    zip_close(z);
-    return false;
-  }
-
-  std::array<uint8_t, DECOMPRESSION_BUFFER_SIZE> buffer{};
+  std::array<uint8_t, decompression_buffer_size> buffer{};
   zip_int64_t bytes_read = 0;
-  while ((bytes_read = zip_fread(f, buffer.data(), buffer.size())) > 0) {
-    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read), out) !=
-        static_cast<size_t>(bytes_read)) {
-      zip_fclose(f);
-      zip_close(z);
+  while ((bytes_read = zip_fread(file_in_zip, buffer.data(), buffer.size())) >
+         0) {
+    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
+               output_file) != static_cast<size_t>(bytes_read)) {
       return false;
     }
   }
-  zip_fclose(f);
-  zip_close(z);
-  return true;
-}
-}  // namespace
 
-void DiskLoader_Init() { g_drivers.clear(); }
-
-void DiskLoader_Shutdown() { g_drivers.clear(); }
-
-void DiskLoader_Register(DiskFormatDriver_t* driver) {
-  if (driver) {
-    g_drivers.push_back(driver);
-  }
+  return bytes_read == 0;
 }
 
-auto DiskLoader_Open(const char* filename, bool bCreateIfNecessary,
-                            uint8_t enhanced_speed, bool* pWriteProtected,
-                            DiskFormatDriver_t** out_driver,
-                            void** out_instance) -> DiskError_e {
-  if (!filename || !out_driver || !out_instance) {
-    return DISK_ERR_IO;
-  }
-
-  const char* load_path = filename;
-  char temp_path[PATH_MAX_LEN] = {0};
-  bool is_temporary = false;
-
+// Why: Extracts compressed images to a temporary path. Returns true if a
+// temporary file was created.
+auto prepare_compressed_path(const char* image_path, char* out_load_path,
+                             bool* out_is_temporary) -> bool {
+  const size_t name_len = strlen(image_path);
   constexpr size_t GZ_EXT_LEN = 3;
   constexpr size_t ZIP_EXT_LEN = 4;
 
-  size_t name_len = strlen(filename);
-  if ((name_len > GZ_EXT_LEN && strcasecmp(filename + name_len - GZ_EXT_LEN, ".gz") == 0) ||
-      (name_len > ZIP_EXT_LEN && strcasecmp(filename + name_len - ZIP_EXT_LEN, ".zip") == 0)) {
-    snprintf(temp_path, sizeof(temp_path), "/tmp/linapple_XXXXXX");
-    int fd = mkstemp(temp_path);
-    if (fd != -1) {
-      FILE* dskF = fdopen(fd, "wb");
-      if (dskF) {
-        bool success = false;
-        if (strcasecmp(filename + name_len - GZ_EXT_LEN, ".gz") == 0) {
-          success = DiskUnGzip(filename, dskF);
-        } else {
-          success = DiskUnZip(filename, dskF);
-        }
-        fclose(dskF);
+  const bool is_gz =
+      (name_len > GZ_EXT_LEN &&
+       strcasecmp(image_path + name_len - GZ_EXT_LEN, ".gz") == 0);
+  const bool is_zip =
+      (name_len > ZIP_EXT_LEN &&
+       strcasecmp(image_path + name_len - ZIP_EXT_LEN, ".zip") == 0);
 
-        if (success) {
-          load_path = temp_path;
-          is_temporary = true;
-        } else {
-          unlink(temp_path);
-          return DISK_ERR_IO;
-        }
-      } else {
-        close(fd);
-        unlink(temp_path);
-        return DISK_ERR_IO;
-      }
-    } else {
-      return DISK_ERR_IO;
-    }
+  if (!is_gz && !is_zip) {
+    Util_SafeStrCpy(out_load_path, image_path, PATH_MAX_LEN);
+    *out_is_temporary = false;
+    return true;
   }
 
-  FILE* f = fopen(load_path, "rb");
-  if (!f) {
-    if (bCreateIfNecessary && !is_temporary) {
-      f = fopen(load_path, "wb");
-      if (f) {
-        fclose(f);
-        f = fopen(load_path, "rb");
-      }
-    }
-    if (!f) {
-      if (is_temporary) {
-        unlink(temp_path);
-      }
-      return DISK_ERR_FILE_NOT_FOUND;
-    }
+  Util_SafeStrCpy(out_load_path, "/tmp/linapple_XXXXXX", PATH_MAX_LEN);
+  int fd = mkstemp(out_load_path);
+  if (fd == -1) {
+    return false;
   }
 
-  fseek(f, 0, SEEK_END);
-  auto file_size = static_cast<uint32_t>(ftell(f));
-  fseek(f, 0, SEEK_SET);
-
-  uint8_t header[PROBE_HEADER_SIZE];
-  size_t header_read = fread(header, 1, sizeof(header), f);
-  fclose(f);
-
-  uint32_t file_offset = 0;
-  if (IsMacBinary(header, header_read)) {
-    file_offset = static_cast<uint32_t>(MACBINARY_HEADER_SIZE);
+  FilePtr temp_stream(fdopen(fd, "wb"), fclose);
+  if (temp_stream == nullptr) {
+    close(fd);
+    unlink(out_load_path);
+    return false;
   }
 
-  char ext_hint[EXTENSION_HINT_SIZE] = {0};
-  const char* dot = strrchr(filename, '.');
-  if (dot) {
+  bool success = is_gz ? decompress_gzip(image_path, temp_stream.get())
+                       : decompress_zip(image_path, temp_stream.get());
+
+  if (!success) {
+    unlink(out_load_path);
+    return false;
+  }
+
+  *out_is_temporary = true;
+  return true;
+}
+
+// Why: Scans registered drivers to find the one that definitively or possibly
+// claims the disk image based on header content and extension.
+auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
+                      uint32_t file_size, const char* image_path)
+    -> DiskFormatDriver_t* {
+  char ext_hint[extension_hint_size] = {0};
+  const char* dot = strrchr(image_path, '.');
+  if (dot != nullptr) {
     Util_SafeStrCpy(ext_hint, dot, sizeof(ext_hint));
-    for (char* p = ext_hint; *p; ++p) {
+    for (char* p = ext_hint; *p != '\0'; ++p) {
       *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
     }
   }
 
-  DiskFormatDriver_t* best_driver = nullptr;
   DiskFormatDriver_t* possible_driver = nullptr;
-
-  const uint8_t* probe_ptr = header + file_offset;
-  size_t probe_size =
-      (header_read > file_offset) ? (header_read - file_offset) : 0;
-
   for (auto* driver : g_drivers) {
-    DiskProbe_e result =
-        driver->probe(probe_ptr, probe_size, file_size - file_offset, ext_hint);
-    if (result == DISK_PROBE_DEFINITE) {
-      best_driver = driver;
-      break;
-    } else if (result == DISK_PROBE_POSSIBLE && !possible_driver) {
+    const DiskProbe_e result =
+        driver->probe(header_ptr, header_size, file_size, ext_hint);
+    if (result == disk_probe_definite) {
+      return driver;
+    }
+    if (result == disk_probe_possible && possible_driver == nullptr) {
       possible_driver = driver;
     }
   }
-
-  if (!best_driver) {
-    best_driver = possible_driver;
-  }
-
-  if (best_driver) {
-    bool os_readonly = false;
-    DiskError_e err = best_driver->open(load_path, file_offset, enhanced_speed,
-                                        &os_readonly, out_instance);
-
-    // If it was a temporary file, we can unlink it now if the driver has its
-    // own handle or if we just want to clean up. Most drivers in LinApple read
-    // the whole thing anyway.
-    if (is_temporary) {
-      unlink(temp_path);
-    }
-
-    if (err == DISK_ERR_NONE) {
-      *out_driver = best_driver;
-      if (pWriteProtected != nullptr) {
-        *pWriteProtected = os_readonly;
-      }
-      return DISK_ERR_NONE;
-    }
-    return err;
-  }
-
-  if (is_temporary) {
-    unlink(temp_path);
-  }
-  return DISK_ERR_UNSUPPORTED_FORMAT;
+  return possible_driver;
 }
 
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory)
+}  // namespace
+
+auto disk_loader_init() -> void { g_drivers.clear(); }
+
+auto disk_loader_shutdown() -> void { g_drivers.clear(); }
+
+auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
+  if (driver != nullptr) {
+    g_drivers.push_back(driver);
+  }
+}
+
+auto disk_loader_open(const char* image_path, bool create_if_necessary,
+                      uint8_t enhanced_speed, bool* out_is_read_only,
+                      DiskFormatDriver_t** out_driver, void** out_instance)
+    -> DiskError_e {
+  if (image_path == nullptr || out_driver == nullptr ||
+      out_instance == nullptr) {
+    return disk_err_io;
+  }
+
+  char load_path[PATH_MAX_LEN] = {0};
+  bool is_temporary = false;
+  if (!prepare_compressed_path(image_path, load_path, &is_temporary)) {
+    return disk_err_io;
+  }
+
+  std::unique_ptr<TemporaryFileGuard> temp_guard;
+  if (is_temporary) {
+    temp_guard.reset(new TemporaryFileGuard(load_path));
+  }
+
+  FilePtr image_file(fopen(load_path, "rb"), fclose);
+  if (image_file == nullptr) {
+    if (!create_if_necessary || is_temporary) {
+      return disk_err_file_not_found;
+    }
+    FilePtr create_file(fopen(load_path, "wb"), fclose);
+    if (create_file == nullptr) {
+      return disk_err_file_not_found;
+    }
+    create_file.reset();
+    image_file.reset(fopen(load_path, "rb"));
+  }
+
+  if (image_file == nullptr) {
+    return disk_err_file_not_found;
+  }
+
+  fseek(image_file.get(), 0, SEEK_END);
+  const auto file_size = static_cast<uint32_t>(ftell(image_file.get()));
+  fseek(image_file.get(), 0, SEEK_SET);
+
+  uint8_t header[probe_header_size];
+  const size_t header_read = fread(header, 1, sizeof(header), image_file.get());
+  image_file.reset();
+
+  const uint32_t file_offset =
+      is_mac_binary(header, header_read) ? macbinary_header_size : 0;
+  const uint8_t* probe_ptr = header + file_offset;
+  const size_t probe_size =
+      (header_read > file_offset) ? (header_read - file_offset) : 0;
+
+  *out_driver = find_best_driver(probe_ptr, probe_size, file_size - file_offset,
+                                 image_path);
+
+  if (*out_driver == nullptr) {
+    return disk_err_unsupported_format;
+  }
+
+  bool os_readonly = false;
+  const DiskError_e err = (*out_driver)
+                              ->open(load_path, file_offset, enhanced_speed,
+                                     &os_readonly, out_instance);
+
+  if (err == disk_err_none && out_is_read_only != nullptr) {
+    *out_is_read_only = os_readonly;
+  }
+
+  return err;
+}
+
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//           cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//           cppcoreguidelines-owning-memory)

@@ -18,7 +18,7 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    PeripheralStatus ps = Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+    PeripheralStatus ps = Peripheral_Query(6, disk_cmd_get_status, &status, &size);
 
     REQUIRE(ps == PERIPHERAL_OK);
     CHECK(status.drive0_loaded == true);
@@ -35,11 +35,11 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    PeripheralStatus ps = Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+    PeripheralStatus ps = Peripheral_Query(6, disk_cmd_get_status, &status, &size);
 
     REQUIRE(ps == PERIPHERAL_OK);
     CHECK(status.drive0_loaded == false);
-    CHECK(status.drive0_last_error == DISK_ERR_FILE_NOT_FOUND);
+    CHECK(status.drive0_last_error == disk_err_file_not_found);
 
     Linapple_Shutdown();
 }

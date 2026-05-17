@@ -71,8 +71,8 @@ enum { BUTTONY = 0, BUTTONCX = 45, BUTTONCY = 45 };
 static bool g_bAppActive = false;
 
 static DiskStatus_t g_lastDiskStatus{};
-static int g_drive0_last_reported_error = DISK_ERR_NONE;
-static int g_drive1_last_reported_error = DISK_ERR_NONE;
+static int g_drive0_last_reported_error = disk_err_none;
+static int g_drive1_last_reported_error = disk_err_none;
 
 int buttondown = -1;
 
@@ -200,24 +200,24 @@ void DrawStatusArea(int drawflags) {
 
     std::array<char, 2> leds = {{"\x64"}};
     constexpr int LED_CHAR_BASE = 1;
-    int iDrive1Status = DISK_STATUS_OFF;
-    int iDrive2Status = DISK_STATUS_OFF;
-    int iHDDStatus = DISK_STATUS_OFF;
+    int iDrive1Status = disk_status_off;
+    int iDrive2Status = disk_status_off;
+    int iHDDStatus = disk_status_off;
 
     if (g_lastDiskStatus.drive0_spinning != 0) {
-      iDrive1Status = (g_lastDiskStatus.drive0_writing != 0) ? DISK_STATUS_WRITE
-                                                             : DISK_STATUS_READ;
+      iDrive1Status = (g_lastDiskStatus.drive0_writing != 0) ? disk_status_write
+                                                             : disk_status_read;
     } else if (g_lastDiskStatus.drive0_loaded != 0 &&
                g_lastDiskStatus.drive0_write_protected != 0) {
-      iDrive1Status = DISK_STATUS_PROT;
+      iDrive1Status = disk_status_prot;
     }
 
     if (g_lastDiskStatus.drive1_spinning != 0) {
-      iDrive2Status = (g_lastDiskStatus.drive1_writing != 0) ? DISK_STATUS_WRITE
-                                                             : DISK_STATUS_READ;
+      iDrive2Status = (g_lastDiskStatus.drive1_writing != 0) ? disk_status_write
+                                                             : disk_status_read;
     } else if (g_lastDiskStatus.drive1_loaded != 0 &&
                g_lastDiskStatus.drive1_write_protected != 0) {
-      iDrive2Status = DISK_STATUS_PROT;
+      iDrive2Status = disk_status_prot;
     }
 
     HarddiskStatus_t hstatus{};
@@ -581,7 +581,7 @@ void ProcessButtonClick(int button, int mod) {
       if ((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) ||
           (mod & (KMOD_RCTRL)) == (KMOD_RCTRL)) {
         if (g_state.mode == MODE_LOGO) {
-          Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_BOOT, nullptr, 0);
+          Peripheral_Command(disk_default_slot, disk_cmd_boot, nullptr, 0);
         } else if (g_state.mode == MODE_RUNNING) {
           ResetMachineState();
         }
@@ -611,7 +611,7 @@ void ProcessButtonClick(int button, int mod) {
           printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           DiskEjectCmd_t ecmd{};
           ecmd.drive = static_cast<uint8_t>(button - BTN_DRIVE1);
-          Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_EJECT, &ecmd,
+          Peripheral_Command(disk_default_slot, disk_cmd_eject, &ecmd,
                              sizeof(ecmd));
         }
         break;
@@ -635,7 +635,7 @@ void ProcessButtonClick(int button, int mod) {
       break;
 
     case BTN_DRIVESWAP:
-      Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_SWAP_DRIVES, nullptr, 0);
+      Peripheral_Command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
       break;
 
     case BTN_FULLSCR:
@@ -753,7 +753,7 @@ void ResetMachineState() {
 
   MemReset();
   Peripheral_Manager_Reset();
-  Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_BOOT, nullptr, 0);
+  Peripheral_Command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   VideoResetState();
   Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
 }
@@ -873,28 +873,28 @@ auto InitSDL() -> int {
 void FrameRefreshStatus(int drawflags) {
   if ((drawflags & DRAW_LEDS) != 0) {
     size_t size = sizeof(g_lastDiskStatus);
-    if (Peripheral_Query(DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS,
+    if (Peripheral_Query(disk_default_slot, disk_cmd_get_status,
                          &g_lastDiskStatus, &size) == PERIPHERAL_OK) {
-      if (g_lastDiskStatus.drive0_last_error != DISK_ERR_NONE &&
+      if (g_lastDiskStatus.drive0_last_error != disk_err_none &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 1 Error",
             DiskUI_GetErrorMessage(g_lastDiskStatus.drive0_last_error),
             g_window);
         g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
-      } else if (g_lastDiskStatus.drive0_last_error == DISK_ERR_NONE) {
-        g_drive0_last_reported_error = DISK_ERR_NONE;
+      } else if (g_lastDiskStatus.drive0_last_error == disk_err_none) {
+        g_drive0_last_reported_error = disk_err_none;
       }
 
-      if (g_lastDiskStatus.drive1_last_error != DISK_ERR_NONE &&
+      if (g_lastDiskStatus.drive1_last_error != disk_err_none &&
           g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 2 Error",
             DiskUI_GetErrorMessage(g_lastDiskStatus.drive1_last_error),
             g_window);
         g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
-      } else if (g_lastDiskStatus.drive1_last_error == DISK_ERR_NONE) {
-        g_drive1_last_reported_error = DISK_ERR_NONE;
+      } else if (g_lastDiskStatus.drive1_last_error == disk_err_none) {
+        g_drive1_last_reported_error = disk_err_none;
       }
 
       std::array<char, 512> s_title = {};

@@ -17,10 +17,10 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
     Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, "");
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
+    cmd.drive = disk_drive_0;
     strcpy(cmd.path, "../tests/fixtures/minimal.woz");
 
-    Peripheral_Command(6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Peripheral_Command(6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
 
     std::string saved = Configuration::Instance().GetString("Slots", REGVALUE_DISK_IMAGE1);
@@ -28,10 +28,10 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    PeripheralStatus ps = Peripheral_Query(6, DISK_CMD_GET_STATUS, &status, &size);
+    PeripheralStatus ps = Peripheral_Query(6, disk_cmd_get_status, &status, &size);
     REQUIRE(ps == PERIPHERAL_OK);
     CHECK(status.drive0_loaded == true);
-    CHECK(status.drive0_last_error == DISK_ERR_NONE);
+    CHECK(status.drive0_last_error == disk_err_none);
 
     Linapple_Shutdown();
 }

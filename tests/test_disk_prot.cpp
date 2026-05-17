@@ -76,46 +76,46 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     copy_fix(fixture_dsk, f_rw, 143360);
 
     DiskInsertCmd_t cmd{};
-    cmd.drive = DISK_DRIVE_0;
+    cmd.drive = disk_drive_0;
     DiskStatus_t status{};
     size_t size = sizeof(status);
 
     // Layer 3: User Toggle
-    Util_SafeStrCpy(cmd.path, f_user.c_str(), DISK_INSERT_PATH_MAX);
+    Util_SafeStrCpy(cmd.path, f_user.c_str(), disk_insert_path_max);
     cmd.write_protected = true;
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected != 0);
 
     // Layer 2: OS Read-Only
     if (getuid() != 0) {
         chmod(f_os.c_str(), 0444);
-        Util_SafeStrCpy(cmd.path, f_os.c_str(), DISK_INSERT_PATH_MAX);
+        Util_SafeStrCpy(cmd.path, f_os.c_str(), disk_insert_path_max);
         cmd.write_protected = false;
-        Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+        Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
         Peripheral_Manager_Think(0);
-        Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+        Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
         CHECK(status.drive0_loaded != 0);
         CHECK(status.drive0_write_protected != 0);
     }
 
     // Layer 1: Format/Driver Capability
-    Util_SafeStrCpy(cmd.path, f_format.c_str(), DISK_INSERT_PATH_MAX);
+    Util_SafeStrCpy(cmd.path, f_format.c_str(), disk_insert_path_max);
     cmd.write_protected = false;
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected == 0);
 
     // All clear: Writable
-    Util_SafeStrCpy(cmd.path, f_rw.c_str(), DISK_INSERT_PATH_MAX);
+    Util_SafeStrCpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
     cmd.write_protected = false;
-    Peripheral_Command(SL6, DISK_CMD_INSERT, &cmd, sizeof(cmd));
+    Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     Peripheral_Manager_Think(0);
-    Peripheral_Query(SL6, DISK_CMD_GET_STATUS, &status, &size);
+    Peripheral_Query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected == 0);
 

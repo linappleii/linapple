@@ -29,10 +29,10 @@ TEST_CASE("DiskABI: [DISK-02] DiskInsertCmd_t field offsets are stable") {
 }
 
 TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
-  CHECK(DISK_DRIVE_0 == 0);
-  CHECK(DISK_DRIVE_1 == 1);
-  CHECK(DISK_CMD_INSERT == 0x01);
-  CHECK(DISK_CMD_EJECT == 0x02);
+  CHECK(disk_drive_0 == 0);
+  CHECK(disk_drive_1 == 1);
+  CHECK(disk_cmd_insert == 0x01);
+  CHECK(disk_cmd_eject == 0x02);
 }
 
 TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (PACKED)") {

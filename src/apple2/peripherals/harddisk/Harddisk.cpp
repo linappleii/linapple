@@ -125,12 +125,12 @@ struct HarddiskDrive_t {
 
 struct HarddiskPeripheral_t {
   HarddiskDrive_t drives[2];
-  uint8_t unit_num = DRIVE_1;
+  uint8_t unit_num = disk_drive_0;
   uint8_t command = 0;
   bool rom_loaded = false;
   bool enabled = false;
   uint32_t slot = static_cast<uint32_t>(HD_DEFAULT_SLOT);
-  int status = DISK_STATUS_OFF;
+  int status = disk_status_off;
   HostInterface_t* host = nullptr;
 
   HarddiskPeripheral_t() = default;
@@ -268,7 +268,7 @@ static auto HD_ABI_Command(void* instance, uint32_t cmd, const void* data,
       return PERIPHERAL_OK;
     }
     case HARDDISK_CMD_RESET_STATUS: {
-      hp->status = DISK_STATUS_OFF;
+      hp->status = disk_status_off;
       return PERIPHERAL_OK;
     }
     default:
@@ -395,7 +395,7 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
               break;
             case HD_IO_CMD_READ:  // read
             {
-              hp->status = DISK_STATUS_READ;
+              hp->status = disk_status_read;
               if (pHDD->driver->read_block(pHDD->driver_instance,
                                            pHDD->hd_diskblock,
                                            pHDD->hd_buf) == HARDDISK_ERR_NONE) {
@@ -409,7 +409,7 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
             } break;
             case HD_IO_CMD_WRITE:  // write
             {
-              hp->status = DISK_STATUS_WRITE;
+              hp->status = disk_status_write;
               // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
               memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, HD_BLOCK_SIZE);
               if (pHDD->driver->write_block(pHDD->driver_instance,
@@ -423,11 +423,11 @@ static auto HD_IO_EMUL(void* instance, uint16_t pc, uint16_t addr,
               }
             } break;
             case HD_IO_CMD_FORMAT:  // format
-              hp->status = DISK_STATUS_WRITE;
+              hp->status = disk_status_write;
               break;
           }
         } else {
-          hp->status = DISK_STATUS_OFF;
+          hp->status = disk_status_off;
           pHDD->hd_error = 1;
           r = DEVICE_UNKNOWN_ERROR;
         }

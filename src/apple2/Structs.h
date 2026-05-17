@@ -39,7 +39,6 @@ typedef struct tagSS_CPU6502 {
   // IRQ = OR-sum of all interrupt sources
 } SS_CPU6502;
 
-const uint32_t uRecvBufferSize = 9;
 
 typedef struct {
   uint32_t baudrate;

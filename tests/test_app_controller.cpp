@@ -70,7 +70,7 @@ TEST_CASE("AppController: Media Loading") {
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
   PeripheralStatus res = Peripheral_Query(
-      DISK_DEFAULT_SLOT, DISK_CMD_GET_STATUS, &status, &status_size);
+      disk_default_slot, disk_cmd_get_status, &status, &status_size);
 
   CHECK(res == PERIPHERAL_OK);
   CHECK(status.drive0_loaded == 1);

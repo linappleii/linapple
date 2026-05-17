@@ -152,8 +152,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
         // It's a disk image (or at least not a program)
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
-        Util_SafeStrCpy(&cmd.path[0], path, DISK_INSERT_PATH_MAX);
-        Peripheral_Command(DISK_DEFAULT_SLOT, DISK_CMD_INSERT, &cmd,
+        Util_SafeStrCpy(&cmd.path[0], path, disk_insert_path_max);
+        Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd,
                            sizeof(cmd));
       }
     }
