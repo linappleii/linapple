@@ -44,6 +44,7 @@ cmake --build build -j$(nproc)
 #### Build Options
 You can pass various options to the `cmake` configuration step:
 - `-DFRONTEND=sdl3` : (Default) Build the emulator with the SDL3-based graphical frontend.
+- `-DFRONTEND=tui` : Build for the terminal using 24-bit color and Unicode characters (no GUI dependencies required).
 - `-DFRONTEND=headless` : Build the emulator without GUI or SDL dependencies (useful for automated testing or server environments).
 - `-DBUILD_TESTING=OFF` : Skip building the test suite (saves compilation time and dependency fetching).
 - `-DREGISTRY_WRITEABLE=ON` : Enable saving emulator configuration settings back to the config file.

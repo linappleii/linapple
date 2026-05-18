@@ -15,11 +15,11 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, or headless)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, tui, or headless)")
 endif()
 
-if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "sdl1" AND NOT FRONTEND STREQUAL "headless")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', or 'headless'.")
+if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "sdl1" AND NOT FRONTEND STREQUAL "tui" AND NOT FRONTEND STREQUAL "headless")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', or 'headless'.")
 endif()
 
 option(PROFILING "Enable profiling" OFF)
@@ -54,6 +54,11 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBZIP REQUIRED libzip)
 
+if(FRONTEND STREQUAL "tui")
+    pkg_check_modules(PULSE_SIMPLE libpulse-simple)
+    pkg_check_modules(ALSA alsa)
+endif()
+
 # --- Tools ---
 find_program(MAGICK_EXECUTABLE NAMES magick convert)
 if(NOT MAGICK_EXECUTABLE)
@@ -64,6 +69,15 @@ endif()
 add_definitions(-DVERSIONSTRING="${PROJECT_VERSION}")
 if(FRONTEND STREQUAL "headless")
     add_definitions(-DHEADLESS)
+endif()
+if(FRONTEND STREQUAL "tui")
+    add_definitions(-DTUI)
+    if(PULSE_SIMPLE_FOUND)
+        add_definitions(-DHAVE_PULSE_SIMPLE)
+    endif()
+    if(ALSA_FOUND)
+        add_definitions(-DHAVE_ALSA)
+    endif()
 endif()
 if(REGISTRY_WRITEABLE)
     add_definitions(-DREGISTRY_WRITEABLE=1)
@@ -118,6 +132,10 @@ set(LINAPPLE_INCLUDES
     ${LIBZIP_INCLUDE_DIRS}
 )
 
+if(FRONTEND STREQUAL "tui")
+    list(APPEND LINAPPLE_INCLUDES ${PULSE_SIMPLE_INCLUDE_DIRS} ${ALSA_INCLUDE_DIRS})
+endif()
+
 # --- Source Lists ---
 set(SOURCES_CORE
     src/core/Common.cpp
@@ -148,7 +166,7 @@ set(SOURCES_A2_MANDATORY
 )
 
 set(SOURCES_DBG "")
-if(NOT FRONTEND STREQUAL "headless")
+if(NOT FRONTEND STREQUAL "headless" AND NOT FRONTEND STREQUAL "tui")
     set(SOURCES_DBG
         src/Debugger/Debug.cpp
         src/Debugger/Debugger_Assembler.cpp
@@ -243,6 +261,16 @@ elseif(FRONTEND STREQUAL "headless")
         src/frontends/headless/Stubs.cpp
         src/frontends/headless/Headless_Path.cpp
     )
+elseif(FRONTEND STREQUAL "tui")
+    set(SOURCES_FE
+        src/frontends/tui/Main.cpp
+        src/frontends/tui/Stubs.cpp
+        src/frontends/tui/Tui_Path.cpp
+        src/frontends/tui/TuiTerminal.cpp
+        src/frontends/tui/TuiVideo.cpp
+        src/frontends/tui/TuiInput.cpp
+        src/frontends/tui/TuiAudio.cpp
+    )
 endif()
 
 # --- Peripheral Refinement ---
@@ -304,6 +332,10 @@ endif()
 target_link_libraries(linapple PRIVATE
     ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads
 )
+
+if(FRONTEND STREQUAL "tui")
+    target_link_libraries(linapple PRIVATE ${PULSE_SIMPLE_LIBRARIES} ${ALSA_LIBRARIES})
+endif()
 
 target_compile_definitions(linapple PRIVATE
     ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"

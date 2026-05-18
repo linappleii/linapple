@@ -152,8 +152,12 @@ character set (e.g., with accented characters).
 
 ### LinApple Driver Video
 
-LinApple uses SDL 3, which supports several video backends. You can
-select a specific driver by setting the `SDL_VIDEO_DRIVER` environment
+LinApple supports several frontends, selected during the build process
+(see [INSTALL.md](INSTALL.md)).
+
+#### SDL 3 Frontend
+Uses SDL 3, which supports several video backends. You can select a
+specific driver by setting the `SDL_VIDEO_DRIVER` environment
 variable.
 
 | driver name    | description                                                  |
@@ -162,6 +166,18 @@ variable.
 | x11            | Traditional X Window System                                  |
 | kmsdrm         | Kernel Mode Setting / DRM (console/embedded)                 |
 | dummy          | No video output (used for testing)                           |
+
+#### TUI Frontend
+Runs purely in a terminal using 24-bit Truecolor and Unicode block
+characters. This frontend has zero graphical dependencies and is
+ideal for SSH or minimal console-only environments.
+
+| Feature        | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| High Fidelity  | Automatically switches to 1:1 text mode for perfect clarity. |
+| Performance    | Optimized state-based rendering with dirty-cell tracking.   |
+| Modern Audio   | Multi-tiered audio (PipeWire/ALSA) on a background thread.   |
+| Mouse/Joystick | Supports terminal mouse tracking and local USB joysticks.    |
 
 **Note**: The debugger and other features are now integrated using
 the SDL 3 hardware accelerated renderer.
