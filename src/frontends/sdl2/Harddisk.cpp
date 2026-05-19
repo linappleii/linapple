@@ -83,7 +83,7 @@ void HarddiskUI_FTPSelect(int nDrive) {
     cmd.drive = static_cast<uint8_t>(nDrive);
     Util_SafeStrCpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
 
-    if (Peripheral_Command(7, HARDDISK_CMD_INSERT, &cmd, sizeof(cmd)) ==
+    if (Peripheral_Command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
         PERIPHERAL_OK) {
       // save file names for HDD disk 1 or 2
       if (nDrive != 0) {
@@ -159,7 +159,7 @@ void HarddiskUI_Select(int nDrive) {
   cmd.drive = static_cast<uint8_t>(nDrive);
   Util_SafeStrCpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
 
-  if (Peripheral_Command(7, HARDDISK_CMD_INSERT, &cmd, sizeof(cmd)) ==
+  if (Peripheral_Command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
       PERIPHERAL_OK) {
     // save file names for HDD disk 1 or 2
     if (nDrive != 0) {

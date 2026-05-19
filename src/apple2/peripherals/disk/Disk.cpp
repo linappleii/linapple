@@ -332,11 +332,9 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
 
   Util_SafeStrCpy(disk_ptr->full_path, image_path, max_disk_full_path_len);
 
-  if (image_title[0] != '\0') {
-    char* dot = strrchr(image_title, '.');
-    if (dot != nullptr && dot > image_title) {
-      *dot = '\0';
-    }
+  char* extension_dot = strrchr(image_title, '.');
+  if (extension_dot != nullptr && extension_dot > image_title) {
+    *extension_dot = '\0';
   }
 
   Util_SafeStrCpy(disk_ptr->image_name, image_title, max_disk_image_name_len);

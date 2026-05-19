@@ -1,5 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// Harddisk peripheral now uses the standardized Peripheral ABI.
-// All interactions should go through Peripheral_Command and Peripheral_Query
-// using the IDs defined in HarddiskCommands.h.
+#include "core/Peripheral.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+auto Harddisk_GetDescriptor() -> Peripheral_t*;
+
+#ifdef __cplusplus
+}
+#endif

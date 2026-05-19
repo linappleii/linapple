@@ -1771,7 +1771,7 @@ void VideoPerformRefresh() {
   if (g_iStatusCycle > 0) {
     g_iStatusCycle--;
     if (!g_iStatusCycle) {
-      Peripheral_Command(7, HARDDISK_CMD_RESET_STATUS, nullptr, 0);
+      Peripheral_Command(7, harddisk_cmd_reset_status, nullptr, 0);
     }
   }
 

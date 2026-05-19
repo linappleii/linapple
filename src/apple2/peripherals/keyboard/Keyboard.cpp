@@ -230,7 +230,7 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
   switch (static_cast<KeyboardCmd_e>(cmd_id)) {
-    case KEYB_CMD_EVENT: {
+    case keyb_cmd_event: {
       if (size < sizeof(KeyboardEvent_t)) {
         return PERIPHERAL_ERROR;
       }
@@ -264,14 +264,14 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
       }
       return PERIPHERAL_OK;
     }
-    case KEYB_CMD_SET_CAPS: {
+    case keyb_cmd_set_caps: {
       if (size < sizeof(uint8_t)) {
         return PERIPHERAL_ERROR;
       }
       kp->logic.caps_lock = (*static_cast<const uint8_t*>(data) != 0);
       return PERIPHERAL_OK;
     }
-    case KEYB_CMD_SET_ROCKER: {
+    case keyb_cmd_set_rocker: {
       if (size < sizeof(uint8_t)) {
         return PERIPHERAL_ERROR;
       }
@@ -279,7 +279,7 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
       language_rocker_switch = kp->rocker_switch;
       return PERIPHERAL_OK;
     }
-    case KEYB_CMD_SET_MODS: {
+    case keyb_cmd_set_mods: {
       if (size < sizeof(KeyboardModifiers_t)) {
         return PERIPHERAL_ERROR;
       }
@@ -332,7 +332,7 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   switch (static_cast<KeyboardQuery_e>(cmd_id)) {
-    case KEYB_QUERY_MODS: {
+    case keyb_query_mods: {
       if (!out) {
         *out_size = sizeof(KeyboardModifiers_t);
         return PERIPHERAL_OK;
@@ -349,7 +349,7 @@ static auto Keyb_ABI_Query(void* instance, uint32_t cmd_id, void* out,
       *out_size = sizeof(KeyboardModifiers_t);
       return PERIPHERAL_OK;
     }
-    case KEYB_QUERY_ROCKER: {
+    case keyb_query_rocker: {
       if (!out) {
         *out_size = sizeof(uint8_t);
         return PERIPHERAL_OK;

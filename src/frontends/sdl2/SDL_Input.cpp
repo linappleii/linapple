@@ -93,7 +93,7 @@ void SDL_HandleEvent(SDL_Event* e) {
           SetCurrentCLK6502();
         } else if (mysym == SDLK_CAPSLOCK) {
           uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
-          Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+          Peripheral_Command(0, keyb_cmd_set_caps, &caps, 1);
         } else if (mysym == SDLK_PAUSE) {
           SetUsingCursor(false);
           switch (g_state.mode) {
@@ -157,7 +157,7 @@ void SDL_HandleEvent(SDL_Event* e) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
         uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
-        Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+        Peripheral_Command(0, keyb_cmd_set_caps, &caps, 1);
       } else {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                          myscancode <= SDL_SCANCODE_UP) ||

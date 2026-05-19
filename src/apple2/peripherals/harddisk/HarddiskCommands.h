@@ -1,8 +1,11 @@
-/*
- * HarddiskCommands.h - LinApple Harddisk Peripheral Command Interface
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
+
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// Justification: This header defines the C99-compatible public ABI for the
+// Harddisk subsystem. C-style return types and typedefs are required for
+// cross-language compatibility with C-based consumers.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,26 +15,24 @@ extern "C" {
 #endif
 
 typedef enum {
-  HARDDISK_DRIVE_0 = 0,
-  HARDDISK_DRIVE_1 = 1,
-  HARDDISK_DRIVE_COUNT = 2
+  harddisk_drive_0 = 0,
+  harddisk_drive_1 = 1,
+  harddisk_drive_count = 2
 } HarddiskDrive_e;
 
 typedef enum {
-  HARDDISK_CMD_INSERT = 0x0001,      /* payload: HarddiskInsertCmd_t */
-  HARDDISK_CMD_EJECT = 0x0002,       /* payload: HarddiskEjectCmd_t */
-  HARDDISK_CMD_SET_PROTECT = 0x0004, /* payload: HarddiskSetProtectCmd_t */
-  HARDDISK_CMD_GET_STATUS =
-      0x0005, /* synchronous only; payload: HarddiskStatus_t* */
-  HARDDISK_CMD_RESET_STATUS = 0x0006 /* payload: none */
+  harddisk_cmd_insert = 0x0001,
+  harddisk_cmd_eject = 0x0002,
+  harddisk_cmd_set_protect = 0x0004,
+  harddisk_cmd_get_status = 0x0005,
+  harddisk_cmd_reset_status = 0x0006
 } HarddiskCmd_e;
 
-#define HARDDISK_INSERT_PATH_MAX 504
+enum { harddisk_insert_path_max = 504 };
 
-#pragma pack(push, 1)
 typedef struct {
+  char path[harddisk_insert_path_max];
   uint8_t drive;
-  char path[HARDDISK_INSERT_PATH_MAX];
   uint8_t write_protected;
   uint8_t create_if_necessary;
   uint8_t padding[5];
@@ -46,28 +47,36 @@ typedef struct {
   uint8_t write_protected;
 } HarddiskSetProtectCmd_t;
 
-#define HARDDISK_STATUS_NAME_MAX 32
-#define HARDDISK_STATUS_PATH_MAX 256
+enum { harddisk_status_name_max = 32, harddisk_status_path_max = 512 };
 
+typedef enum {
+  harddisk_status_off = 0x00,
+  harddisk_status_read = 0x01,
+  harddisk_status_write = 0x02,
+  harddisk_status_prot = 0x04
+} HarddiskStatus_e;
+
+// Why: Uses natural alignment to ensure a deterministic binary layout without
+// reliance on non-standard packing directives. Large types are placed at the
+// start of the structure.
 typedef struct {
   int32_t drive0_last_error;
+  int32_t drive1_last_error;
   uint8_t drive0_loaded;
   uint8_t drive0_write_protected;
-  char drive0_name[HARDDISK_STATUS_NAME_MAX];
-  char drive0_full_path[HARDDISK_STATUS_PATH_MAX];
-
-  int32_t drive1_last_error;
   uint8_t drive1_loaded;
   uint8_t drive1_write_protected;
-  char drive1_name[HARDDISK_STATUS_NAME_MAX];
-  char drive1_full_path[HARDDISK_STATUS_PATH_MAX];
-
-  uint8_t
-      activity_status;  // 0=Off, 1=Read, 2=Write, etc. (matches DISK_STATUS_*)
+  uint8_t activity_status;
+  uint8_t padding[3];
+  char drive0_name[harddisk_status_name_max];
+  char drive0_full_path[harddisk_status_path_max];
+  char drive1_name[harddisk_status_name_max];
+  char drive1_full_path[harddisk_status_path_max];
 } HarddiskStatus_t;
-
-#pragma pack(pop)
 
 #ifdef __cplusplus
 }
 #endif
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+//           cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

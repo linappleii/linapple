@@ -856,7 +856,7 @@ void DebuggerProcessKey( int keycode )
   {
     KeyboardModifiers_t mods = {};
     size_t mods_sz = sizeof(mods);
-    Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &mods_sz);
+    Peripheral_Query(0, keyb_query_mods, &mods, &mods_sz);
 
     switch (keycode)
     {
@@ -930,7 +930,7 @@ void DebuggerMouseClick( int /*x*/, int /*y*/ )
 
   KeyboardModifiers_t mods = {};
   size_t mods_sz = sizeof(mods);
-  Peripheral_Query(0, KEYB_QUERY_MODS, &mods, &mods_sz);
+  Peripheral_Query(0, keyb_query_mods, &mods, &mods_sz);
 
   int iAltCtrlShift  = 0;
   iAltCtrlShift |= mods.alt   ? 1<<0 : 0;

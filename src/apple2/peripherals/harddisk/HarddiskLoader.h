@@ -1,8 +1,11 @@
-/*
- * HarddiskLoader.h - Centralised harddisk image loading and format detection
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
+
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type, google-runtime-int) Justification: This
+// header defines a C99-compatible ABI for the harddisk loading subsystem.
+// C-style types and function signatures are required for cross-language
+// compatibility.
 
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 
@@ -10,15 +13,17 @@
 extern "C" {
 #endif
 
-void HarddiskLoader_Init(void);
-void HarddiskLoader_Shutdown(void);
+void harddisk_loader_init(void);
+void harddisk_loader_shutdown(void);
+auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void;
 
-void HarddiskLoader_Register(HarddiskFormatDriver_t* driver);
-
-HarddiskError_e HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
-                                    HarddiskFormatDriver_t** out_driver,
-                                    void** out_instance);
+HarddiskError_e harddisk_loader_open(const char* path, bool* out_os_readonly,
+                                     HarddiskFormatDriver_t** out_driver,
+                                     void** out_instance_handle);
 
 #ifdef __cplusplus
 }
 #endif
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type, google-runtime-int)

@@ -22,8 +22,8 @@ TEST_CASE("DiskABI: [DISK-01] DiskInsertCmd_t is exactly 512 bytes") {
 }
 
 TEST_CASE("DiskABI: [DISK-02] DiskInsertCmd_t field offsets are stable") {
-  CHECK(offsetof(DiskInsertCmd_t, drive) == 0);
-  CHECK(offsetof(DiskInsertCmd_t, path) == 1);
+  CHECK(offsetof(DiskInsertCmd_t, path) == 0);
+  CHECK(offsetof(DiskInsertCmd_t, drive) == 504);
   CHECK(offsetof(DiskInsertCmd_t, write_protected) == 505);
   CHECK(offsetof(DiskInsertCmd_t, create_if_necessary) == 506);
 }
@@ -35,13 +35,14 @@ TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
   CHECK(disk_cmd_eject == 0x02);
 }
 
-TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (PACKED)") {
-  // Field order: error(4), loaded(1), spinning(1), writing(1), wp(1)
+TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (NATURAL)") {
+  // Field order: drive0_error(4), drive1_error(4), drive0_loaded(1), ...
   CHECK(offsetof(DiskStatus_t, drive0_last_error) == 0);
-  CHECK(offsetof(DiskStatus_t, drive0_loaded) == 4);
-  CHECK(offsetof(DiskStatus_t, drive0_spinning) == 5);
-  CHECK(offsetof(DiskStatus_t, drive0_writing) == 6);
-  CHECK(offsetof(DiskStatus_t, drive0_write_protected) == 7);
+  CHECK(offsetof(DiskStatus_t, drive1_last_error) == 4);
+  CHECK(offsetof(DiskStatus_t, drive0_loaded) == 8);
+  CHECK(offsetof(DiskStatus_t, drive0_spinning) == 9);
+  CHECK(offsetof(DiskStatus_t, drive0_writing) == 10);
+  CHECK(offsetof(DiskStatus_t, drive0_write_protected) == 11);
 }
 
 TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {

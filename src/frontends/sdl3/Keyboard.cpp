@@ -185,7 +185,7 @@ auto Frontend_TranslateKey(SDL_Keycode key, SDL_Keymod mod) -> uint8_t {
   bool ctrl = (mod & SDL_KMOD_CTRL) != 0;
   KeyboardModifiers_t km = {};
   size_t km_sz = sizeof(km);
-  Peripheral_Query(0, KEYB_QUERY_MODS, &km, &km_sz);
+  Peripheral_Query(0, keyb_query_mods, &km, &km_sz);
   bool caps = (km.caps != 0);
 
   uint8_t apple_code = 0;
@@ -291,7 +291,7 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
       static_cast<uint8_t>((mod & SDL_KMOD_CTRL) ? 1 : 0),
       static_cast<uint8_t>((mod & SDL_KMOD_ALT) ? 1 : 0),
       static_cast<uint8_t>((mod & SDL_KMOD_GUI) ? 1 : 0), 0};
-  Peripheral_Command(0, KEYB_CMD_SET_MODS, &mods, sizeof(mods));
+  Peripheral_Command(0, keyb_cmd_set_mods, &mods, sizeof(mods));
 
   // 2. Dispatch the actual key event
   uint8_t apple_ascii = 0;
@@ -315,7 +315,7 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
   // The 'any-key-down' flag on the Apple II ($C010 bit 7) must be updated even
   // for unmapped keys.
   KeyboardEvent_t ev = {apple_ascii, static_cast<uint8_t>(is_down ? 1 : 0)};
-  Peripheral_Command(0, KEYB_CMD_EVENT, &ev, sizeof(ev));
+  Peripheral_Command(0, keyb_cmd_event, &ev, sizeof(ev));
 }
 
 // LinAppleKey encodes both named special keys (0x100+) and raw 7-bit ASCII
@@ -480,7 +480,7 @@ auto Frontend_HandleKeyEvent(SDL_Keycode key, bool is_down) -> bool {
           static_cast<uint8_t>((mod & SDL_KMOD_CTRL) ? 1 : 0),
           static_cast<uint8_t>((mod & SDL_KMOD_ALT) ? 1 : 0),
           static_cast<uint8_t>((mod & SDL_KMOD_GUI) ? 1 : 0), 0};
-      Peripheral_Command(0, KEYB_CMD_SET_MODS, &mods, sizeof(mods));
+      Peripheral_Command(0, keyb_cmd_set_mods, &mods, sizeof(mods));
       return true;
     }
 

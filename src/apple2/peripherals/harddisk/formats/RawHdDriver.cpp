@@ -1,161 +1,104 @@
-/*
- * RawHdDriver.cpp - LinApple Raw Harddisk Format Driver
- */
-
-#include <sys/stat.h>
-
-#include <array>
-#include <cstdio>
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstring>
 
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "apple2/peripherals/harddisk/formats/BlockDiskImage.h"
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast) Justification: Format
+// drivers utilize a procedural C-compatible handle system and standardized
+// probing signatures mandated by the Harddisk subsystem ABI.
 
 namespace {
-constexpr uint32_t kBlockSize = 512;
 
-struct RawHdInstance {
-  FILE* file{nullptr};
-  uint32_t total_blocks{0};
-  bool os_readonly{false};
+constexpr uint32_t block_size = 512;
 
-  RawHdInstance() = default;
-  ~RawHdInstance() {
-    if (file) {
-      fclose(file);
-    }
-  }
-
-  // Disable copying and moving
-  RawHdInstance(const RawHdInstance&) = delete;
-  RawHdInstance& operator=(const RawHdInstance&) = delete;
-  RawHdInstance(RawHdInstance&&) = delete;
-  RawHdInstance& operator=(RawHdInstance&&) = delete;
-};
-}  // namespace
-
-static auto RawHd_Probe(const uint8_t* header, size_t header_size,
-                        uint32_t file_size, const char* ext_hint)
-    -> HarddiskProbe_e {
-  (void)header;
+auto raw_hd_probe(const uint8_t* header_data, size_t header_size,
+                  uint32_t file_size, const char* ext_hint) -> HarddiskProbe_e {
+  (void)header_data;
   (void)header_size;
 
-  // Raw images should be a multiple of kBlockSize bytes
-  if (file_size > 0 && (file_size % kBlockSize) == 0) {
-    if (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0 ||
-        strcmp(ext_hint, ".2mg") != 0) {
-      // .2mg is handled by another driver (once implemented), so we avoid
-      // claiming it definitely
-      return HARDDISK_PROBE_POSSIBLE;
+  if (file_size > 0 && (file_size % block_size) == 0) {
+    if (ext_hint != nullptr &&
+        (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0)) {
+      return harddisk_probe_possible;
     }
   }
 
-  return HARDDISK_PROBE_NO;
+  return harddisk_probe_no;
 }
 
-static auto RawHd_Open(const char* path, bool* out_os_readonly,
-                       void** out_instance) -> HarddiskError_e {
-  auto* instance = new RawHdInstance();
-
-  instance->file = fopen(path, "r+b");
-  if (instance->file) {
-    instance->os_readonly = false;
-  } else {
-    instance->file = fopen(path, "rb");
-    if (instance->file) {
-      instance->os_readonly = true;
-    } else {
-      delete instance;
-      return HARDDISK_ERR_NOT_FOUND;
-    }
+auto raw_hd_open(const char* path, uint32_t file_offset, bool* out_os_readonly,
+                 void** out_instance_handle) -> HarddiskError_e {
+  if (path == nullptr || out_instance_handle == nullptr) {
+    return harddisk_err_io;
   }
 
-  fseek(instance->file, 0, SEEK_END);
-  instance->total_blocks =
-      static_cast<uint32_t>(ftell(instance->file) / kBlockSize);
-  fseek(instance->file, 0, SEEK_SET);
-
-  if (out_os_readonly) {
-    *out_os_readonly = instance->os_readonly;
+  auto* image_ptr = block_disk_image_open(path, file_offset, out_os_readonly);
+  if (image_ptr == nullptr) {
+    return harddisk_err_not_found;
   }
-  *out_instance = static_cast<void*>(instance);
-  return HARDDISK_ERR_NONE;
+
+  *out_instance_handle = static_cast<void*>(image_ptr);
+  return harddisk_err_none;
 }
 
-static auto RawHd_Close(void* instance) -> void {
-  delete static_cast<RawHdInstance*>(instance);
+auto raw_hd_close(void* instance_handle) -> void {
+  if (instance_handle == nullptr) {
+    return;
+  }
+  block_disk_image_close(static_cast<BlockDiskImage_t*>(instance_handle));
 }
 
-static auto RawHd_IsWriteProtected(void* instance) -> bool {
-  auto* ri = static_cast<RawHdInstance*>(instance);
-  return ri->os_readonly;
+auto raw_hd_is_write_protected(void* instance_handle) -> bool {
+  if (instance_handle == nullptr) {
+    return true;
+  }
+  return block_disk_image_is_write_protected(
+      static_cast<BlockDiskImage_t*>(instance_handle));
 }
 
-static auto RawHd_ReadBlock(void* instance, uint32_t block_num, uint8_t* buffer)
-    -> HarddiskError_e {
-  auto* ri = static_cast<RawHdInstance*>(instance);
-  if (block_num >= ri->total_blocks) {
-    return HARDDISK_ERR_IO;
+auto raw_hd_read_block(void* instance_handle, uint32_t block_num,
+                       uint8_t* buffer) -> HarddiskError_e {
+  if (instance_handle == nullptr) {
+    return harddisk_err_io;
   }
-
-  if (fseek(ri->file, static_cast<long>(block_num) * kBlockSize, SEEK_SET) !=
-      0) {
-    return HARDDISK_ERR_IO;
-  }
-
-  if (fread(buffer, 1, kBlockSize, ri->file) != kBlockSize) {
-    return HARDDISK_ERR_IO;
-  }
-
-  return HARDDISK_ERR_NONE;
+  return block_disk_image_read_block(
+      static_cast<BlockDiskImage_t*>(instance_handle), block_num, buffer);
 }
 
-static auto RawHd_WriteBlock(void* instance, uint32_t block_num,
-                             const uint8_t* buffer) -> HarddiskError_e {
-  auto* ri = static_cast<RawHdInstance*>(instance);
-  if (ri->os_readonly) {
-    return HARDDISK_ERR_READ_ONLY;
+auto raw_hd_write_block(void* instance_handle, uint32_t block_num,
+                        const uint8_t* buffer) -> HarddiskError_e {
+  if (instance_handle == nullptr) {
+    return harddisk_err_io;
   }
-
-  if (block_num >= ri->total_blocks) {
-    // Attempt to expand the file if writing beyond current end
-    fseek(ri->file, 0, SEEK_END);
-    auto current_blocks = static_cast<uint32_t>(ftell(ri->file) / kBlockSize);
-    if (block_num > current_blocks) {
-      // Fill gap with zeros
-      std::array<uint8_t, kBlockSize> zero{};
-      for (uint32_t i = current_blocks; i < block_num; ++i) {
-        fwrite(zero.data(), 1, kBlockSize, ri->file);
-      }
-    }
-    ri->total_blocks = block_num + 1;
-  }
-
-  if (fseek(ri->file, static_cast<long>(block_num) * kBlockSize, SEEK_SET) !=
-      0) {
-    return HARDDISK_ERR_IO;
-  }
-
-  if (fwrite(buffer, 1, kBlockSize, ri->file) != kBlockSize) {
-    return HARDDISK_ERR_IO;
-  }
-
-  return HARDDISK_ERR_NONE;
+  return block_disk_image_write_block(
+      static_cast<BlockDiskImage_t*>(instance_handle), block_num, buffer);
 }
 
-static auto RawHd_GetTotalBlocks(void* instance) -> uint32_t {
-  auto* ri = static_cast<RawHdInstance*>(instance);
-  return ri->total_blocks;
+auto raw_hd_get_total_blocks(void* instance_handle) -> uint32_t {
+  if (instance_handle == nullptr) {
+    return 0;
+  }
+  return block_disk_image_get_total_blocks(
+      static_cast<BlockDiskImage_t*>(instance_handle));
 }
 
-extern "C" {
-HarddiskFormatDriver_t g_raw_hd_driver = {LINAPPLE_HARDDISK_ABI_VERSION,
-                                          HARDDISK_DRIVER_CAP_WRITE,
-                                          "Raw",
-                                          RawHd_Probe,
-                                          RawHd_Open,
-                                          RawHd_Close,
-                                          RawHd_IsWriteProtected,
-                                          RawHd_ReadBlock,
-                                          RawHd_WriteBlock,
-                                          RawHd_GetTotalBlocks};
-}
+const char* const g_raw_hd_creatable_exts[] = {".hdv", ".po", nullptr};
+}  // namespace
+
+extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
+    .abi_version = harddisk_format_abi_version,
+    .capabilities = harddisk_driver_cap_write,
+    .name = "Raw",
+    .creatable_exts = g_raw_hd_creatable_exts,
+    .probe = raw_hd_probe,
+    .open = raw_hd_open,
+    .close = raw_hd_close,
+    .is_write_protected = raw_hd_is_write_protected,
+    .read_block = raw_hd_read_block,
+    .write_block = raw_hd_write_block,
+    .get_total_blocks = raw_hd_get_total_blocks};
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast)

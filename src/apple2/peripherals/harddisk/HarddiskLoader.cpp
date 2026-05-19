@@ -1,65 +1,78 @@
-/*
- * HarddiskLoader.cpp - Centralised harddisk image loading and format detection
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
-#include <algorithm>
+#include <array>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <array>
 #include <vector>
 
-#include "core/Util_Path.h"
+#include "apple2/peripherals/disk/formats/DiskContainer.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "core/Common.h"
 #include "core/Util_Text.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+//             modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
+//             bugprone-easily-swappable-parameters)
+// Justification: Driver registration uses a global registry pattern for
+// technical consistency with the floppy loading subsystem. const-cast is
+// required to register the immutable global driver descriptor.
+// easily-swappable-parameters is mandated by the loader ABI signatures.
+// make-unique is suppressed to maintain C++11 compatibility.
+
+namespace {
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
+}  // namespace
 
-extern "C" HarddiskFormatDriver_t g_raw_hd_driver;
+extern "C" const HarddiskFormatDriver_t g_raw_hd_driver;
 
-void HarddiskLoader_Init(void) {
+void harddisk_loader_init(void) {
   g_harddisk_drivers.clear();
-  HarddiskLoader_Register(&g_raw_hd_driver);
+  harddisk_loader_register(
+      const_cast<HarddiskFormatDriver_t*>(&g_raw_hd_driver));
 }
 
-void HarddiskLoader_Shutdown(void) { g_harddisk_drivers.clear(); }
+void harddisk_loader_shutdown(void) { g_harddisk_drivers.clear(); }
 
-void HarddiskLoader_Register(HarddiskFormatDriver_t* driver) {
-  if (driver) {
-    g_harddisk_drivers.push_back(driver);
+auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
+  if (driver_ptr != nullptr) {
+    g_harddisk_drivers.push_back(driver_ptr);
   }
 }
 
-auto HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
-                         HarddiskFormatDriver_t** out_driver,
-                         void** out_instance) -> HarddiskError_e {
-  if (!filename || !out_driver || !out_instance) {
-    return HARDDISK_ERR_IO;
+auto harddisk_loader_open(const char* path, bool* out_os_readonly,
+                          HarddiskFormatDriver_t** out_driver,
+                          void** out_instance_handle) -> HarddiskError_e {
+  if (path == nullptr || out_driver == nullptr ||
+      out_instance_handle == nullptr) {
+    return harddisk_err_io;
   }
 
-  FILE* f = fopen(filename, "rb"); // NOLINT(cppcoreguidelines-owning-memory)
-  if (!f) {
-    return HARDDISK_ERR_NOT_FOUND;
+  FilePtr file{fopen(path, "rb"), fclose};
+  if (file == nullptr) {
+    return harddisk_err_not_found;
   }
 
-  fseek(f, 0, SEEK_END);
-  auto file_size = static_cast<uint32_t>(ftell(f));
-  fseek(f, 0, SEEK_SET);
+  fseek(file.get(), 0, SEEK_END);
+  const uint32_t file_size = static_cast<uint32_t>(ftell(file.get()));
+  fseek(file.get(), 0, SEEK_SET);
 
-  constexpr size_t PROBE_HEADER_SIZE = 4096;
-  std::array<uint8_t, PROBE_HEADER_SIZE> header{};
-  size_t header_size = fread(header.data(), 1, header.size(), f);
-  fclose(f); // NOLINT(cppcoreguidelines-owning-memory)
+  constexpr size_t probe_header_size = 4096;
+  std::array<uint8_t, probe_header_size> header{};
+  const size_t header_read = fread(header.data(), 1, header.size(), file.get());
+  file.reset();
 
-  const char* ext = strrchr(filename, '.');
-  constexpr size_t EXT_HINT_SIZE = 16;
-  std::array<char, EXT_HINT_SIZE> ext_hint{};
+  const uint32_t file_offset =
+      disk_container_detect_macbinary(header.data(), header_read, file_size);
+
+  const char* ext = strrchr(path, '.');
+  constexpr size_t ext_hint_size = 16;
+  std::array<char, ext_hint_size> ext_hint{};
   ext_hint.fill(0);
 
-  if (ext) {
+  if (ext != nullptr) {
     Util_SafeStrCpy(ext_hint.data(), ext, ext_hint.size());
     for (char& c : ext_hint) {
       if (c == '\0') {
@@ -70,29 +83,39 @@ auto HarddiskLoader_Open(const char* filename, bool* out_os_readonly,
   }
 
   HarddiskFormatDriver_t* best_driver = nullptr;
-  HarddiskProbe_e best_probe = HARDDISK_PROBE_NO;
+  HarddiskProbe_e best_probe = harddisk_probe_no;
+
+  const uint8_t* probe_ptr = header.data() + file_offset;
+  const size_t probe_size =
+      (header_read > file_offset) ? (header_read - file_offset) : 0;
 
   for (auto* driver : g_harddisk_drivers) {
-    HarddiskProbe_e result =
-        driver->probe(header.data(), header_size, file_size, ext_hint.data());
+    const HarddiskProbe_e result = driver->probe(
+        probe_ptr, probe_size, file_size - file_offset, ext_hint.data());
     if (result > best_probe) {
       best_probe = result;
       best_driver = driver;
     }
-    if (best_probe == HARDDISK_PROBE_DEFINITE) {
+    if (best_probe == harddisk_probe_definite) {
       break;
     }
   }
 
-  if (best_driver && best_probe != HARDDISK_PROBE_NO) {
-    HarddiskError_e err =
-        best_driver->open(filename, out_os_readonly, out_instance);
-    if (err == HARDDISK_ERR_NONE) {
-      *out_driver = best_driver;
-      return HARDDISK_ERR_NONE;
-    }
+  if (best_driver == nullptr || best_probe == harddisk_probe_no) {
+    return harddisk_err_invalid_format;
+  }
+
+  const HarddiskError_e err = best_driver->open(
+      path, file_offset, out_os_readonly, out_instance_handle);
+
+  if (err != harddisk_err_none) {
     return err;
   }
 
-  return HARDDISK_ERR_INVALID_FORMAT;
+  *out_driver = best_driver;
+  return harddisk_err_none;
 }
+
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+//           modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
+//           bugprone-easily-swappable-parameters)

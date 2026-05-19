@@ -236,7 +236,7 @@ void DrawStatusArea(int drawflags) {
 
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (Peripheral_Query(7, HARDDISK_CMD_GET_STATUS, &hstatus, &hsize) ==
+    if (Peripheral_Query(7, harddisk_cmd_get_status, &hstatus, &hsize) ==
         PERIPHERAL_OK) {
       iHDDStatus = hstatus.activity_status;
     }
@@ -492,7 +492,7 @@ void Frame_OnFocus(bool gained) {
     // Re-sync Caps Lock state upon regaining focus
     SDL_Keymod mod = SDL_GetModState();
     uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
-    Peripheral_Command(0, KEYB_CMD_SET_CAPS, &caps, 1);
+    Peripheral_Command(0, keyb_cmd_set_caps, &caps, 1);
   }
 }
 
@@ -620,7 +620,7 @@ void ProcessButtonClick(int button, int mod) {
         if (mod & SDL_KMOD_SHIFT) {
           printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - BTN_DRIVE1)};
-          Peripheral_Command(7, HARDDISK_CMD_EJECT, &ecmd, sizeof(ecmd));
+          Peripheral_Command(7, harddisk_cmd_eject, &ecmd, sizeof(ecmd));
         } else {
           printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
           DiskEjectCmd_t ecmd{};
@@ -661,9 +661,9 @@ void ProcessButtonClick(int button, int mod) {
              (g_Apple2Type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
-          Peripheral_Query(0, KEYB_QUERY_ROCKER, &cur_rocker, &rocker_sz);
+          Peripheral_Query(0, keyb_query_rocker, &cur_rocker, &rocker_sz);
           uint8_t new_rocker = cur_rocker ? 0 : 1;
-          Peripheral_Command(0, KEYB_CMD_SET_ROCKER, &new_rocker, 1);
+          Peripheral_Command(0, keyb_cmd_set_rocker, &new_rocker, 1);
           printf(
               "Toggling keyboard rocker switch. Selected character set: "
               "%s...\n",

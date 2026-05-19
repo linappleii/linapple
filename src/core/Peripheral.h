@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#define LINAPPLE_ABI_VERSION 1
+#define LINAPPLE_ABI_VERSION 0
 
 enum {
   PERIPHERAL_CMD_MAX_DATA = 512,
