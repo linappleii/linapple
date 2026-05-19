@@ -34,6 +34,7 @@ namespace {
 
 namespace physical {
 constexpr size_t rom_size = 2048;
+constexpr uint32_t rom_page_size = 256;
 constexpr uint32_t default_max_coord = 1023;
 constexpr int default_slot = 4;
 }  // namespace physical
@@ -69,8 +70,9 @@ constexpr uint8_t cmd_mask = 0xF0;
 constexpr uint8_t mode_mask = 0x0F;
 constexpr uint8_t pb_data_mask = 0x3E;
 
-constexpr uint32_t rom_offset_shift = 7;
-constexpr uint32_t rom_offset_mask = 0x0700;
+constexpr uint8_t rom_bank_mask = 0x0E;
+constexpr uint8_t rom_bank_shift = 1;
+
 constexpr int data_len_6 = 6;
 constexpr int data_len_5 = 5;
 constexpr uint8_t byte_mask = 0xFF;
@@ -250,9 +252,22 @@ static void mouse_clamp_y(MousePeripheral_t* mp, int min_y, int max_y);
 
 // --- State Persistence ---
 
-#pragma pack(push, 1)
 struct MouseSaveState_t {
-  // --- Hardware Emulation (PIA & Registers) ---
+  // --- 32-bit types (4-byte alignment) ---
+  uint32_t internal_x;
+  uint32_t internal_y;
+  uint32_t min_x;
+  uint32_t max_x;
+  uint32_t min_y;
+  uint32_t max_y;
+  uint32_t range_x;
+  uint32_t range_y;
+  int32_t pos_x;
+  int32_t pos_y;
+  int32_t buffer_pos;
+  int32_t data_len;
+
+  // --- 8-bit types (1-byte alignment) ---
   uint8_t pia_ora;
   uint8_t pia_orb;
   uint8_t pia_ddra;
@@ -273,96 +288,134 @@ struct MouseSaveState_t {
   uint8_t pia_port_b_shadow;
   uint8_t mode;
   uint8_t vblank_rising;
-
-  // --- Protocol State ---
-  uint8_t buffer[8];
-  int32_t buffer_pos;
-  int32_t data_len;
   uint8_t status_state;
-
-  // --- Live Coordinate State (Internal) ---
-  uint32_t internal_x;
-  uint32_t internal_y;
-  uint32_t min_x;
-  uint32_t max_x;
-  uint32_t min_y;
-  uint32_t max_y;
-  uint32_t range_x;
-  uint32_t range_y;
-
-  // --- Last Reported State ---
-  int32_t pos_x;
-  int32_t pos_y;
   uint8_t btn0_prev;
   uint8_t btn1_prev;
   uint8_t buttons[2];
+  uint8_t buffer[8];
+
+  // --- Explicit Padding (maintain 4-byte boundary) ---
+  uint8_t padding[3];
 };
-#pragma pack(pop)
 
 // --- Helper Functions ---
 
 static void mouse_update_slot_rom(MousePeripheral_t* mp) {
-  if (!mp || !mp->host || !mp->host->RegisterCxROM) return;
+  if (mp == nullptr) {
+    return;
+  }
 
-  uint32_t offset =
-      (static_cast<uint32_t>(mp->pia_port_b) << regs::rom_offset_shift) &
-      regs::rom_offset_mask;
+  if (mp->host == nullptr) {
+    return;
+  }
+
+  if (mp->host->RegisterCxROM == nullptr) {
+    return;
+  }
+
+  // Bits 1-3 of Port B select the 256-byte ROM bank to map into $Cn00
+  uint32_t bank_index =
+      (static_cast<uint32_t>(mp->pia_port_b) & regs::rom_bank_mask) >>
+      regs::rom_bank_shift;
+  uint32_t offset = bank_index * physical::rom_page_size;
 
   // Modernized: Register ROM page from the encapsulated slot_rom
-  mp->host->RegisterCxROM(static_cast<int>(mp->slot),
-                          &mp->slot_rom.at(offset));
+  mp->host->RegisterCxROM(static_cast<int>(mp->slot), &mp->slot_rom.at(offset));
 }
 
 static void pia_listener_a(void* obj, uint8_t data) {
+  if (obj == nullptr) {
+    return;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(obj);
-  if (mp) mp->pia_port_a = data;
+  mp->pia_port_a = data;
+}
+
+static void mouse_on_clock_write(MousePeripheral_t* mp, uint8_t data) {
+  if (mp == nullptr) {
+    return;
+  }
+
+  if ((data & regs::bit5) != 0) {
+    // Rising edge: Signal ready to read from MC6821 (Port B bit 7)
+    mp->pia_port_b |= regs::bit7;
+    return;
+  }
+
+  // Falling edge: Clock active. Data from Port A is written into the buffer.
+  if (mp->buffer_pos >= 0 &&
+      static_cast<size_t>(mp->buffer_pos) < mp->buffer.size()) {
+    mp->buffer.at(static_cast<size_t>(mp->buffer_pos++)) = mp->pia_port_a;
+  }
+
+  if (mp->buffer_pos == 1) {
+    mouse_on_command(mp);
+  }
+
+  if (mp->buffer_pos == mp->data_len ||
+      static_cast<size_t>(mp->buffer_pos) >= mp->buffer.size()) {
+    mouse_on_write(mp);
+    mp->buffer_pos = 0;
+  }
+
+  // Signal completion by clearing Port B bit 7
+  mp->pia_port_b &= ~regs::bit7;
+  Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
+}
+
+static void mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) {
+  if (mp == nullptr) {
+    return;
+  }
+
+  if ((data & regs::bit4) != 0) {
+    // Rising edge: Prepare next value, clear acknowledge bit (Port B bit 6)
+    mp->pia_port_b &= ~regs::bit6;
+    return;
+  }
+
+  // Falling edge: Clock active. Step through response buffer.
+  if (mp->buffer_pos != 0) {
+    mp->buffer_pos++;
+  }
+
+  if (mp->buffer_pos == mp->data_len ||
+      static_cast<size_t>(mp->buffer_pos) >= mp->buffer.size()) {
+    mp->buffer_pos = 0;
+  } else {
+    uint8_t val = mp->buffer.at(static_cast<size_t>(mp->buffer_pos));
+    mp->pia.ora = val;
+    Pia6821_SetPortA(&mp->pia, val);
+  }
+
+  // Set acknowledge bit (Port B bit 6)
+  mp->pia_port_b |= regs::bit6;
 }
 
 static void pia_listener_b(void* obj, uint8_t data) {
+  if (obj == nullptr) {
+    return;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(obj);
-  if (!mp) return;
 
+  // Only respond to changes in bits 1-5 (Banking and Clocking)
   uint8_t diff = (mp->pia_port_b ^ data) & regs::pb_data_mask;
-  if (diff == 0) return;
+  if (diff == 0) {
+    return;
+  }
 
+  // Update internal shadow
   mp->pia_port_b &= ~regs::pb_data_mask;
   mp->pia_port_b |= (data & regs::pb_data_mask);
 
-  if ((diff & regs::bit5) != 0) {  // Write to mouse chip (0285)
-    if ((data & regs::bit5) != 0) {
-      mp->pia_port_b |= regs::bit7;  // Signal ready to read from MC6821
-    } else {                         // Clock active (falling edge)
-      if (mp->buffer_pos >= 0 && mp->buffer_pos < 8) {
-        mp->buffer.at(static_cast<size_t>(mp->buffer_pos++)) = mp->pia_port_a;
-      }
-      if (mp->buffer_pos == 1) {
-        mouse_on_command(mp);
-      }
-      if (mp->buffer_pos == mp->data_len || mp->buffer_pos >= 8) {
-        mouse_on_write(mp);
-        mp->buffer_pos = 0;
-      }
-      mp->pia_port_b &= ~regs::bit7;
-      Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
-    }
+  if ((diff & regs::bit5) != 0) {
+    mouse_on_clock_write(mp, data);
   }
 
-  if ((diff & regs::bit4) != 0) {  // Read from mouse chip
-    if ((data & regs::bit4) != 0) {
-      mp->pia_port_b &= ~regs::bit6;  // Prepare next value
-    } else {                         // Clock active (falling edge)
-      if (mp->buffer_pos != 0) {
-        mp->buffer_pos++;
-      }
-      if (mp->buffer_pos == mp->data_len || mp->buffer_pos >= 8) {
-        mp->buffer_pos = 0;
-      } else {
-        uint8_t val = mp->buffer.at(static_cast<size_t>(mp->buffer_pos));
-        mp->pia.ora = val;
-        Pia6821_SetPortA(&mp->pia, val);
-      }
-      mp->pia_port_b |= regs::bit6;
-    }
+  if ((diff & regs::bit4) != 0) {
+    mouse_on_clock_read(mp, data);
   }
 
   Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
@@ -370,6 +423,10 @@ static void pia_listener_b(void* obj, uint8_t data) {
 }
 
 static void mouse_on_command(MousePeripheral_t* mp) {
+  if (mp == nullptr) {
+    return;
+  }
+
   uint8_t cmd = mp->buffer.at(0) & regs::cmd_mask;
   switch (cmd) {
     case regs::mouse_set:
@@ -384,19 +441,29 @@ static void mouse_on_command(MousePeripheral_t* mp) {
       mp->pos_x = static_cast<int>(mp->internal_x);
       mp->pos_y = static_cast<int>(mp->internal_y);
 
-      if (mp->btn0_prev) mp->status_state |= regs::stat_prev_btn0;
-      if (mp->btn1_prev) mp->status_state |= regs::stat_prev_btn1;
+      if (mp->btn0_prev) {
+        mp->status_state |= regs::stat_prev_btn0;
+      }
+      if (mp->btn1_prev) {
+        mp->status_state |= regs::stat_prev_btn1;
+      }
 
       mp->btn0_prev = mp->buttons.at(0);
       mp->btn1_prev = mp->buttons.at(1);
 
-      if (mp->btn0_prev) mp->status_state |= regs::stat_curr_btn0;
-      if (mp->btn1_prev) mp->status_state |= regs::stat_curr_btn1;
+      if (mp->btn0_prev) {
+        mp->status_state |= regs::stat_curr_btn0;
+      }
+      if (mp->btn1_prev) {
+        mp->status_state |= regs::stat_curr_btn1;
+      }
 
       mp->buffer.at(1) = static_cast<uint8_t>(mp->pos_x & regs::byte_mask);
-      mp->buffer.at(2) = static_cast<uint8_t>((mp->pos_x >> regs::coord_shift_8) & regs::byte_mask);
+      mp->buffer.at(2) =
+          static_cast<uint8_t>((mp->pos_x >> regs::coord_shift_8) & regs::byte_mask);
       mp->buffer.at(3) = static_cast<uint8_t>(mp->pos_y & regs::byte_mask);
-      mp->buffer.at(4) = static_cast<uint8_t>((mp->pos_y >> regs::coord_shift_8) & regs::byte_mask);
+      mp->buffer.at(4) =
+          static_cast<uint8_t>((mp->pos_y >> regs::coord_shift_8) & regs::byte_mask);
       mp->buffer.at(5) = mp->status_state;
       mp->status_state &= ~regs::stat_movement;
       break;
@@ -404,8 +471,10 @@ static void mouse_on_command(MousePeripheral_t* mp) {
     case regs::mouse_serv:
       mp->data_len = 2;
       mp->buffer.at(1) = mp->status_state & ~regs::stat_movement;
-      if (mp->host && mp->host->AssertIrq) {
-        mp->host->AssertIrq(static_cast<int>(mp->slot), false);
+      if (mp->host != nullptr) {
+        if (mp->host->AssertIrq != nullptr) {
+          mp->host->AssertIrq(static_cast<int>(mp->slot), false);
+        }
       }
       break;
 
@@ -435,11 +504,21 @@ static void mouse_on_command(MousePeripheral_t* mp) {
 
     case regs::mouse_time:
       switch (mp->buffer.at(0) & regs::status_mode_mask) {
-        case 0x00: mp->data_len = 1; break;
-        case 0x04: mp->data_len = 3; break;
-        case regs::status_mode_8: mp->data_len = 2; break;
-        case regs::status_mode_c: mp->data_len = 4; break;
-        default: mp->data_len = 1; break;
+        case 0x00:
+          mp->data_len = 1;
+          break;
+        case 0x04:
+          mp->data_len = 3;
+          break;
+        case regs::status_mode_8:
+          mp->data_len = 2;
+          break;
+        case regs::status_mode_c:
+          mp->data_len = 4;
+          break;
+        default:
+          mp->data_len = 1;
+          break;
       }
       break;
 
@@ -453,6 +532,10 @@ static void mouse_on_command(MousePeripheral_t* mp) {
 }
 
 static void mouse_on_write(MousePeripheral_t* mp) {
+  if (mp == nullptr) {
+    return;
+  }
+
   int val_min = 0;
   int val_max = 0;
   switch (mp->buffer.at(0) & regs::cmd_mask) {
@@ -488,6 +571,10 @@ static void mouse_on_write(MousePeripheral_t* mp) {
 }
 
 static void mouse_on_mouse_event(MousePeripheral_t* mp) {
+  if (mp == nullptr) {
+    return;
+  }
+
   uint8_t state = 0;
   if (static_cast<uint32_t>(mp->pos_x) != mp->internal_x ||
       static_cast<uint32_t>(mp->pos_y) != mp->internal_y) {
@@ -499,25 +586,35 @@ static void mouse_on_mouse_event(MousePeripheral_t* mp) {
 
   if ((mp->mode & 1) != 0) {
     if (mp->btn0_prev != mp->buttons.at(0) || mp->btn1_prev != mp->buttons.at(1)) {
-      if ((mp->mode & 0x04) != 0) state |= regs::stat_btn_int;
+      if ((mp->mode & 0x04) != 0) {
+        state |= regs::stat_btn_int;
+      }
     }
 
     if (mp->vblank_rising) {
-      if ((mp->mode & 0x08) != 0) state |= regs::stat_vbl_int;
+      if ((mp->mode & 0x08) != 0) {
+        state |= regs::stat_vbl_int;
+      }
     }
   }
 
   if (state != 0) {
     mp->status_state |= state;
     if ((state & 0x0E) != 0) {
-      if (mp->host && mp->host->AssertIrq) {
-        mp->host->AssertIrq(static_cast<int>(mp->slot), true);
+      if (mp->host != nullptr) {
+        if (mp->host->AssertIrq != nullptr) {
+          mp->host->AssertIrq(static_cast<int>(mp->slot), true);
+        }
       }
     }
   }
 }
 
 static void mouse_reset_internal(MousePeripheral_t* mp) {
+  if (mp == nullptr) {
+    return;
+  }
+
   mp->buffer_pos = 0;
   mp->data_len = 1;
   mp->mode = 0;
@@ -532,31 +629,62 @@ static void mouse_reset_internal(MousePeripheral_t* mp) {
 }
 
 static void mouse_clamp_x(MousePeripheral_t* mp, int min_val, int max_val) {
-  if (min_val < 0 || min_val > max_val) return;
+  if (mp == nullptr) {
+    return;
+  }
+
+  if (min_val < 0 || min_val > max_val) {
+    return;
+  }
+
   mp->max_x = static_cast<uint32_t>(max_val);
   mp->min_x = static_cast<uint32_t>(min_val);
   mp->internal_x = std::min(std::max(mp->internal_x, mp->min_x), mp->max_x);
 }
 
 static void mouse_clamp_y(MousePeripheral_t* mp, int min_val, int max_val) {
-  if (min_val < 0 || min_val > max_val) return;
+  if (mp == nullptr) {
+    return;
+  }
+
+  if (min_val < 0 || min_val > max_val) {
+    return;
+  }
+
   mp->max_y = static_cast<uint32_t>(max_val);
   mp->min_y = static_cast<uint32_t>(min_val);
   mp->internal_y = std::min(std::max(mp->internal_y, mp->min_y), mp->max_y);
 }
 
 static void mouse_set_position_internal(MousePeripheral_t* mp, int x, int y) {
-  if (mp->range_x == 0 || mp->range_y == 0) return;
-  uint32_t scaled_x = (static_cast<uint32_t>(x) * physical::default_max_coord) / mp->range_x;
-  uint32_t scaled_y = (static_cast<uint32_t>(y) * physical::default_max_coord) / mp->range_y;
+  if (mp == nullptr) {
+    return;
+  }
+
+  if (mp->range_x == 0 || mp->range_y == 0) {
+    return;
+  }
+
+  // Scale host coordinates to internal 0..1023 range
+  uint32_t scaled_x =
+      (static_cast<uint32_t>(x) * physical::default_max_coord) / mp->range_x;
+  uint32_t scaled_y =
+      (static_cast<uint32_t>(y) * physical::default_max_coord) / mp->range_y;
+
   mp->internal_x = std::min(std::max(scaled_x, mp->min_x), mp->max_x);
   mp->internal_y = std::min(std::max(scaled_y, mp->min_y), mp->max_y);
 }
 
 // --- ABI Implementation ---
 
-static auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
-  if (!host) return nullptr;
+static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
+  if (host == nullptr) {
+    return nullptr;
+  }
+
+  if (host->RegisterIO == nullptr) {
+    return nullptr;
+  }
 
   auto* mp = new MousePeripheral_t();
   mp->host = host;
@@ -584,10 +712,13 @@ static auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   auto io_handler = [](void* instance, uint16_t pc, uint16_t addr, uint8_t write,
                        uint8_t val, uint32_t cycles) -> uint8_t {
     (void)pc;
-    if (!instance) return MemReadFloatingBus(cycles);
+    if (instance == nullptr) {
+      return MemReadFloatingBus(cycles);
+    }
+
     auto* mp_inner = static_cast<MousePeripheral_t*>(instance);
     uint8_t rs = static_cast<uint8_t>(addr & 3);
-    if (write) {
+    if (write != 0) {
       Pia6821_Write(&mp_inner->pia, rs, val);
       return 0;
     }
@@ -600,20 +731,29 @@ static auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   return mp;
 }
 
-static void mouse_abi_reset(void* instance) {
-  if (!instance) return;
+static void peripheral_abi_reset(void* instance) {
+  if (instance == nullptr) {
+    return;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   mouse_reset_internal(mp);
 }
 
-static void mouse_abi_shutdown(void* instance) {
-  if (!instance) return;
+static void peripheral_abi_shutdown(void* instance) {
+  if (instance == nullptr) {
+    return;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   delete mp;
 }
 
-static void mouse_abi_on_vblank(void* instance, bool vblank) {
-  if (!instance) return;
+static void peripheral_abi_on_vblank(void* instance, bool vblank) {
+  if (instance == nullptr) {
+    return;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   if (mp->vblank_rising != vblank) {
     mp->vblank_rising = vblank;
@@ -623,12 +763,19 @@ static void mouse_abi_on_vblank(void* instance, bool vblank) {
   }
 }
 
-static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
+static auto peripheral_abi_save_state(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus {
-  if (!instance || !size) return PERIPHERAL_ERROR;
+  if (instance == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
+  if (size == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
   constexpr size_t required = sizeof(MouseSaveState_t);
 
-  if (!buffer) {
+  if (buffer == nullptr) {
     *size = required;
     return PERIPHERAL_OK;
   }
@@ -692,10 +839,19 @@ static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   return PERIPHERAL_OK;
 }
 
-static auto mouse_abi_load_state(void* instance, const void* buffer,
-                                 size_t size) -> PeripheralStatus {
-  if (!instance || !buffer || size < sizeof(MouseSaveState_t))
+static auto peripheral_abi_load_state(void* instance, const void* buffer,
+                                      size_t size) -> PeripheralStatus {
+  if (instance == nullptr) {
     return PERIPHERAL_ERROR;
+  }
+
+  if (buffer == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
+  if (size < sizeof(MouseSaveState_t)) {
+    return PERIPHERAL_ERROR;
+  }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   const auto* ss = static_cast<const MouseSaveState_t*>(buffer);
@@ -755,14 +911,24 @@ static auto mouse_abi_load_state(void* instance, const void* buffer,
   return PERIPHERAL_OK;
 }
 
-static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                              size_t size) -> PeripheralStatus {
-  if (!instance || !data) return PERIPHERAL_ERROR;
+static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
+                                   const void* data, size_t size)
+    -> PeripheralStatus {
+  if (instance == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
+  if (data == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
 
   switch (static_cast<MouseCmd_e>(cmd_id)) {
     case mouse_cmd_set_pos: {
-      if (size < sizeof(MousePosPayload_t)) return PERIPHERAL_ERROR;
+      if (size < sizeof(MousePosPayload_t)) {
+        return PERIPHERAL_ERROR;
+      }
       const auto* p = static_cast<const MousePosPayload_t*>(data);
       mp->range_x = static_cast<uint32_t>(p->x_range);
       mp->range_y = static_cast<uint32_t>(p->y_range);
@@ -771,7 +937,9 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return PERIPHERAL_OK;
     }
     case mouse_cmd_set_button: {
-      if (size < sizeof(MouseButtonPayload_t)) return PERIPHERAL_ERROR;
+      if (size < sizeof(MouseButtonPayload_t)) {
+        return PERIPHERAL_ERROR;
+      }
       const auto* p = static_cast<const MouseButtonPayload_t*>(data);
       if (p->button < 2) {
         mp->buttons.at(p->button) = p->down;
@@ -783,14 +951,27 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
   return PERIPHERAL_ERROR;
 }
 
-static auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
-                            size_t* out_size) -> PeripheralStatus {
-  if (!instance || !out || !out_size) return PERIPHERAL_ERROR;
+static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
+                                 size_t* out_size) -> PeripheralStatus {
+  if (instance == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
+  if (out == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
+  if (out_size == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
 
   switch (static_cast<MouseQuery_e>(query_id)) {
     case mouse_query_is_active: {
-      if (*out_size < 1) return PERIPHERAL_ERROR;
+      if (*out_size < 1) {
+        return PERIPHERAL_ERROR;
+      }
       *static_cast<uint8_t*>(out) = mp->is_active ? 1 : 0;
       *out_size = 1;
       return PERIPHERAL_OK;
@@ -810,15 +991,15 @@ static Peripheral_t g_mouse_peripheral = {
     .version = "3.1.0",
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
     .default_slot = physical::default_slot,
-    .init = mouse_abi_init,
-    .reset = mouse_abi_reset,
-    .shutdown = mouse_abi_shutdown,
+    .init = peripheral_abi_init,
+    .reset = peripheral_abi_reset,
+    .shutdown = peripheral_abi_shutdown,
     .think = nullptr,
-    .on_vblank = mouse_abi_on_vblank,
-    .save_state = mouse_abi_save_state,
-    .load_state = mouse_abi_load_state,
-    .command = mouse_abi_command,
-    .query = mouse_abi_query};
+    .on_vblank = peripheral_abi_on_vblank,
+    .save_state = peripheral_abi_save_state,
+    .load_state = peripheral_abi_load_state,
+    .command = peripheral_abi_command,
+    .query = peripheral_abi_query};
 
 extern "C" auto Mouse_GetDescriptor() -> Peripheral_t* {
   return &g_mouse_peripheral;
