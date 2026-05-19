@@ -175,13 +175,13 @@ void SDL_HandleEvent(SDL_Event* e) {
               SetUsingCursor(false);
             } else {
               MouseButtonPayload_t payload = {0, true};
-              Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+              Peripheral_Command(0, mouse_cmd_set_button, &payload,
                                  sizeof(payload));
             }
           } else {
             uint8_t mouse_active = 0;
             size_t qsize = 1;
-            Peripheral_Query(4, MOUSE_QUERY_IS_ACTIVE, &mouse_active, &qsize);
+            Peripheral_Query(4, mouse_query_is_active, &mouse_active, &qsize);
             if ((((g_state.mode == MODE_RUNNING) ||
                   (g_state.mode == MODE_STEPPING))) ||
                 (mouse_active != 0)) {
@@ -192,7 +192,7 @@ void SDL_HandleEvent(SDL_Event* e) {
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, true};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+          Peripheral_Command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       }
@@ -204,13 +204,13 @@ void SDL_HandleEvent(SDL_Event* e) {
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {0, false};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+          Peripheral_Command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, false};
-          Peripheral_Command(0, MOUSE_CMD_SET_BUTTON, &payload,
+          Peripheral_Command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       }
@@ -222,7 +222,7 @@ void SDL_HandleEvent(SDL_Event* e) {
       if (usingcursor) {
         MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local,
                                      VIEWPORTCY - 4};
-        Peripheral_Command(0, MOUSE_CMD_SET_POS, &payload, sizeof(payload));
+        Peripheral_Command(0, mouse_cmd_set_pos, &payload, sizeof(payload));
       }
       break;
 

@@ -9,7 +9,7 @@
 #include <cstring>
 #include <vector>
 
-#include "apple2/peripherals/mouse/Mouse.h"
+#include "Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
 
@@ -78,14 +78,14 @@ TEST_CASE("Mouse Peripheral ABI") {
   SUBCASE("Commands - Pos") {
     MousePosPayload_t payload = {100, 1024, 200, 1024};
     PeripheralStatus status = descriptor->command(
-        instance, MOUSE_CMD_SET_POS, &payload, sizeof(payload));
+        instance, mouse_cmd_set_pos, &payload, sizeof(payload));
     CHECK(status == PERIPHERAL_OK);
   }
 
   SUBCASE("Commands - Button") {
     MouseButtonPayload_t payload = {0, true};
     PeripheralStatus status = descriptor->command(
-        instance, MOUSE_CMD_SET_BUTTON, &payload, sizeof(payload));
+        instance, mouse_cmd_set_button, &payload, sizeof(payload));
     CHECK(status == PERIPHERAL_OK);
   }
 

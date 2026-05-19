@@ -1,8 +1,11 @@
-/*
- * MouseCommands.h - Mouse Peripheral Command ABI
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
+
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+//             modernize-use-trailing-return-type)
+// Justification: This header defines the C99-compatible public ABI for the
+// Mouse subsystem. C system headers, typedefs, and C-style return types
+// are required for cross-language compatibility with C-based consumers.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,12 +15,12 @@ extern "C" {
 #endif
 
 typedef enum {
-  MOUSE_CMD_SET_POS = 0,    // data: MousePosPayload_t
-  MOUSE_CMD_SET_BUTTON = 1  // data: MouseButtonPayload_t
+  mouse_cmd_set_pos = 0,    // data: MousePosPayload_t
+  mouse_cmd_set_button = 1  // data: MouseButtonPayload_t
 } MouseCmd_e;
 
 typedef enum {
-  MOUSE_QUERY_IS_ACTIVE = 0x0001  // out: uint8_t (0=inactive, 1=active)
+  mouse_query_is_active = 0x0001  // out: uint8_t (0=inactive, 1=active)
 } MouseQuery_e;
 
 typedef struct {
@@ -35,3 +38,6 @@ typedef struct {
 #ifdef __cplusplus
 }
 #endif
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+//           modernize-use-trailing-return-type)

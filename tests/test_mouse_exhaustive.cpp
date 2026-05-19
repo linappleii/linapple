@@ -10,7 +10,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "apple2/peripherals/mouse/Mouse.h"
+#include "Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
 
@@ -116,13 +116,14 @@ static void drain_mouse_read(uint8_t* x_low, uint8_t* x_high, uint8_t* y_low, ui
     uint8_t b3 = recv_mouse_byte();
     uint8_t b4 = recv_mouse_byte();
     uint8_t b5 = recv_mouse_byte();
-    uint8_t b6 = recv_mouse_byte();
     if (x_low) *x_low = b1;
     if (x_high) *x_high = b2;
     if (y_low) *y_low = b3;
     if (y_high) *y_high = b4;
     if (status) *status = b5;
+    (void)recv_mouse_byte();
 }
+
 
 static void init_mouse_card() {
   write_mouse(0xC0C1, 0x00); // Access DDRA
@@ -144,7 +145,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     
     uint8_t is_active = 0;
     size_t out_size = 1;
-    PeripheralStatus status = descriptor->query(g_mouse_instance, MOUSE_QUERY_IS_ACTIVE, &is_active, &out_size);
+    PeripheralStatus status = descriptor->query(g_mouse_instance, mouse_query_is_active, &is_active, &out_size);
     CHECK(status == PERIPHERAL_OK);
     CHECK(is_active == 1);
     descriptor->shutdown(g_mouse_instance);
@@ -181,13 +182,13 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     init_mouse_card();
     g_irq_asserted = false;
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
 
     // Mode 1: Mouse On, No IRQs
     send_mouse_byte(regs::MOUSE_SET | 1);
     
     MousePosPayload_t pos = {100, 1023, 200, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     
     CHECK(g_irq_asserted == false);
     
@@ -195,7 +196,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     send_mouse_byte(regs::MOUSE_SET | 0x0F);
     
     pos.x = 110;
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     CHECK(g_irq_asserted == true);
     
     send_mouse_byte(regs::MOUSE_SERV);
@@ -210,7 +211,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t pos = {123, 1023, 456, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     
     send_mouse_byte(regs::MOUSE_READ);
     
@@ -230,7 +231,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
 
     send_mouse_byte(regs::MOUSE_POS);
     send_mouse_byte(0xAA); 
@@ -253,7 +254,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
 
     // Clamp X to 100-200
     send_mouse_byte(regs::MOUSE_CLAMP | 0); 
@@ -264,7 +265,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     
     // Try to set X to 50
     MousePosPayload_t pos = {50, 1023, 50, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     
     send_mouse_byte(regs::MOUSE_READ);
     uint8_t xl, xh, yl, yh, st;
@@ -273,7 +274,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
 
     // Try to set X to 250
     pos.x = 250;
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     send_mouse_byte(regs::MOUSE_READ);
     drain_mouse_read(&xl, &xh, &yl, &yh, &st);
     CHECK(xl == 200);
@@ -285,10 +286,10 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
 
     MousePosPayload_t pos = {500, 1023, 500, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     
     send_mouse_byte(regs::MOUSE_HOME);
     
@@ -307,9 +308,9 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t pos = {789, 1023, 321, 1023};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     MouseButtonPayload_t btn = {0, true};
-    descriptor->command(g_mouse_instance, MOUSE_CMD_SET_BUTTON, &btn, sizeof(btn));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_button, &btn, sizeof(btn));
     send_mouse_byte(regs::MOUSE_SET | 0x0F);
     
     size_t state_size = 0;
@@ -340,7 +341,7 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
       REQUIRE(g_mouse_instance != nullptr);
       init_mouse_card();
       MousePosPayload_t pos = {50, 100, 25, 100};
-      descriptor->command(g_mouse_instance, MOUSE_CMD_SET_POS, &pos, sizeof(pos));
+      descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
       
       send_mouse_byte(regs::MOUSE_READ);
       uint8_t xl, xh, yl, yh;
