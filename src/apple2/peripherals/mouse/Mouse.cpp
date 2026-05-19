@@ -14,7 +14,7 @@
 // manipulation and hardware state representation. swappable-parameters
 // is mandated by the project-wide Peripheral ABI signatures.
 
-#include "Mouse.h"
+#include "apple2/peripherals/mouse/Mouse.h"
 
 #include <algorithm>
 #include <array>
@@ -195,43 +195,44 @@ static const std::array<uint8_t, physical::rom_size> mouse_rom = {{
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 }};
 
-
-// --- Internal State ---
-
 struct MousePeripheral_t {
+  // --- Host Context ---
+  HostInterface_t* host = nullptr;
+  uint32_t slot = 0;
+  bool is_active = false;
+
+  // --- Hardware Emulation (PIA & Registers) ---
   Pia6821 pia{};
-
-  int data_len = 0;
-  uint8_t mode = 0;
-
-  uint8_t pia_port_b = 0;
   uint8_t pia_port_a = 0;
-  std::array<uint8_t, 8> buffer{};
-  int buffer_pos = 0;
-
-  uint8_t status_state = 0;
-  int pos_x = 0;
-  int pos_y = 0;
-  bool btn0_prev = false;
-  bool btn1_prev = false;
-
+  uint8_t pia_port_b = 0;
+  uint8_t mode = 0;
   bool vblank_rising = false;
 
+  // --- Protocol State ---
+  std::array<uint8_t, 8> buffer{};
+  int32_t buffer_pos = 0;
+  int32_t data_len = 0;
+  uint8_t status_state = 0;  // Latched status bits for firmware communication
+
+  // --- Live Coordinate State (Internal) ---
   uint32_t internal_x = 0;
-  uint32_t range_x = 0;
+  uint32_t internal_y = 0;
   uint32_t min_x = 0;
   uint32_t max_x = 0;
-  uint32_t internal_y = 0;
-  uint32_t range_y = 0;
   uint32_t min_y = 0;
   uint32_t max_y = 0;
+  uint32_t range_x = 0;
+  uint32_t range_y = 0;
 
+  // --- Last Reported State (Used for movement detection) ---
+  int32_t pos_x = 0;  // Coordinate at last MOUSE_READ
+  int32_t pos_y = 0;  // Coordinate at last MOUSE_READ
+  bool btn0_prev = false;
+  bool btn1_prev = false;
   std::array<bool, 2> buttons{false, false};
 
-  bool is_active = false;
+  // --- ROM Handling ---
   std::array<uint8_t, physical::rom_size> slot_rom{};
-  uint32_t slot = 0;
-  HostInterface_t* host = nullptr;
 
   MousePeripheral_t() = default;
 };
@@ -251,6 +252,7 @@ static void mouse_clamp_y(MousePeripheral_t* mp, int min_y, int max_y);
 
 #pragma pack(push, 1)
 struct MouseSaveState_t {
+  // --- Hardware Emulation (PIA & Registers) ---
   uint8_t pia_ora;
   uint8_t pia_orb;
   uint8_t pia_ddra;
@@ -267,26 +269,32 @@ struct MouseSaveState_t {
   uint8_t pia_ocb2;
   uint8_t pia_irqa;
   uint8_t pia_irqb;
-  int32_t data_len;
-  uint8_t mode;
-  uint8_t pia_port_b_shadow;
   uint8_t pia_port_a_shadow;
+  uint8_t pia_port_b_shadow;
+  uint8_t mode;
+  uint8_t vblank_rising;
+
+  // --- Protocol State ---
   uint8_t buffer[8];
   int32_t buffer_pos;
+  int32_t data_len;
   uint8_t status_state;
+
+  // --- Live Coordinate State (Internal) ---
+  uint32_t internal_x;
+  uint32_t internal_y;
+  uint32_t min_x;
+  uint32_t max_x;
+  uint32_t min_y;
+  uint32_t max_y;
+  uint32_t range_x;
+  uint32_t range_y;
+
+  // --- Last Reported State ---
   int32_t pos_x;
   int32_t pos_y;
   uint8_t btn0_prev;
   uint8_t btn1_prev;
-  uint8_t vblank_rising;
-  uint32_t internal_x;
-  uint32_t range_x;
-  uint32_t min_x;
-  uint32_t max_x;
-  uint32_t internal_y;
-  uint32_t range_y;
-  uint32_t min_y;
-  uint32_t max_y;
   uint8_t buttons[2];
 };
 #pragma pack(pop)
@@ -634,6 +642,7 @@ static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   auto* ss = static_cast<MouseSaveState_t*>(buffer);
 
   std::memset(ss, 0, required);
+  // --- Hardware Emulation (PIA & Registers) ---
   ss->pia_ora = mp->pia.ora;
   ss->pia_orb = mp->pia.orb;
   ss->pia_ddra = mp->pia.ddra;
@@ -650,29 +659,34 @@ static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->pia_ocb2 = mp->pia.ocb2;
   ss->pia_irqa = mp->pia.irq_a_state;
   ss->pia_irqb = mp->pia.irq_b_state;
-
-  ss->data_len = mp->data_len;
-  ss->mode = mp->mode;
-  ss->pia_port_b_shadow = mp->pia_port_b;
   ss->pia_port_a_shadow = mp->pia_port_a;
+  ss->pia_port_b_shadow = mp->pia_port_b;
+  ss->mode = mp->mode;
+  ss->vblank_rising = mp->vblank_rising ? 1 : 0;
+
+  // --- Protocol State ---
   std::copy(mp->buffer.begin(), mp->buffer.end(), ss->buffer);
   ss->buffer_pos = mp->buffer_pos;
+  ss->data_len = mp->data_len;
   ss->status_state = mp->status_state;
+
+  // --- Live Coordinate State (Internal) ---
+  ss->internal_x = mp->internal_x;
+  ss->internal_y = mp->internal_y;
+  ss->min_x = mp->min_x;
+  ss->max_x = mp->max_x;
+  ss->min_y = mp->min_y;
+  ss->max_y = mp->max_y;
+  ss->range_x = mp->range_x;
+  ss->range_y = mp->range_y;
+
+  // --- Last Reported State ---
   ss->pos_x = mp->pos_x;
   ss->pos_y = mp->pos_y;
   ss->btn0_prev = mp->btn0_prev ? 1 : 0;
   ss->btn1_prev = mp->btn1_prev ? 1 : 0;
-  ss->vblank_rising = mp->vblank_rising ? 1 : 0;
-  ss->internal_x = mp->internal_x;
-  ss->range_x = mp->range_x;
-  ss->min_x = mp->min_x;
-  ss->max_x = mp->max_x;
-  ss->internal_y = mp->internal_y;
-  ss->range_y = mp->range_y;
-  ss->min_y = mp->min_y;
-  ss->max_y = mp->max_y;
-  ss->buttons[0] = mp->buttons.at(0);
-  ss->buttons[1] = mp->buttons.at(1);
+  ss->buttons[0] = mp->buttons.at(0) ? 1 : 0;
+  ss->buttons[1] = mp->buttons.at(1) ? 1 : 0;
 
   *size = required;
   return PERIPHERAL_OK;
@@ -687,6 +701,7 @@ static auto mouse_abi_load_state(void* instance, const void* buffer,
   const auto* ss = static_cast<const MouseSaveState_t*>(buffer);
 
   Pia6821_Reset(&mp->pia);
+  // --- Hardware Emulation (PIA & Registers) ---
   mp->pia.ora = ss->pia_ora;
   mp->pia.orb = ss->pia_orb;
   mp->pia.ddra = ss->pia_ddra;
@@ -703,27 +718,32 @@ static auto mouse_abi_load_state(void* instance, const void* buffer,
   mp->pia.ocb2 = ss->pia_ocb2;
   mp->pia.irq_a_state = ss->pia_irqa;
   mp->pia.irq_b_state = ss->pia_irqb;
-
-  mp->data_len = ss->data_len;
-  mp->mode = ss->mode;
-  mp->pia_port_b = ss->pia_port_b_shadow;
   mp->pia_port_a = ss->pia_port_a_shadow;
+  mp->pia_port_b = ss->pia_port_b_shadow;
+  mp->mode = ss->mode;
+  mp->vblank_rising = ss->vblank_rising != 0;
+
+  // --- Protocol State ---
   std::copy(ss->buffer, ss->buffer + 8, mp->buffer.begin());
   mp->buffer_pos = ss->buffer_pos;
+  mp->data_len = ss->data_len;
   mp->status_state = ss->status_state;
+
+  // --- Live Coordinate State (Internal) ---
+  mp->internal_x = ss->internal_x;
+  mp->internal_y = ss->internal_y;
+  mp->min_x = ss->min_x;
+  mp->max_x = ss->max_x;
+  mp->min_y = ss->min_y;
+  mp->max_y = ss->max_y;
+  mp->range_x = ss->range_x;
+  mp->range_y = ss->range_y;
+
+  // --- Last Reported State ---
   mp->pos_x = ss->pos_x;
   mp->pos_y = ss->pos_y;
   mp->btn0_prev = ss->btn0_prev != 0;
   mp->btn1_prev = ss->btn1_prev != 0;
-  mp->vblank_rising = ss->vblank_rising != 0;
-  mp->internal_x = ss->internal_x;
-  mp->range_x = ss->range_x;
-  mp->min_x = ss->min_x;
-  mp->max_x = ss->max_x;
-  mp->internal_y = ss->internal_y;
-  mp->range_y = ss->range_y;
-  mp->min_y = ss->min_y;
-  mp->max_y = ss->max_y;
   mp->buttons.at(0) = ss->buttons[0] != 0;
   mp->buttons.at(1) = ss->buttons[1] != 0;
 
