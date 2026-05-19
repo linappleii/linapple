@@ -4,6 +4,7 @@
 
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"

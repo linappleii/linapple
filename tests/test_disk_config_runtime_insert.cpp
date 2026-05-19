@@ -6,6 +6,7 @@
 #include "core/Common_Globals.h"
 #include "core/Registry.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include <cstring>
 

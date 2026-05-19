@@ -726,6 +726,10 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
     return;
   }
 
+  for (int i = 0; i < disk_drive_count; ++i) {
+    eject_disk_from_drive(disk_peripheral, i);
+  }
+
   auto* host = disk_peripheral->host;
   const int slot = disk_peripheral->slot;
   const bool is_speed_enhanced = disk_peripheral->is_speed_enhanced;

@@ -2,6 +2,7 @@
 #include "doctest.h"
 #include "frontends/sdl3/DiskUI.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include <cstring>
 
 TEST_CASE("DiskUI: Error Message Mapping") {

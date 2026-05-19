@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskEncoding.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
