@@ -123,6 +123,7 @@ set(LINAPPLE_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/disk"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/harddisk"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/mouse"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Debugger"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/common"
     "${GEN_RES_DIR}"

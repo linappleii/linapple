@@ -10,7 +10,6 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/Memory.h"
 #include "core/Peripheral.h"
 
 namespace {

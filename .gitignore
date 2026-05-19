@@ -30,3 +30,5 @@ gmon.out
 compile_commands.json
 
 .worktrees/
+build-san/
+.antigravitycli/

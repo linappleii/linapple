@@ -25,7 +25,6 @@
 #include <memory>
 
 #include "apple2/Memory.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"

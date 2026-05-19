@@ -28,7 +28,6 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <curl/curl.h>
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <ctime>

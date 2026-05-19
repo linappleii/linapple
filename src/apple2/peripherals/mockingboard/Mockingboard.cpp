@@ -35,23 +35,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <vector>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
 #include "apple2/Structs.h"
-#include "apple2/Video.h"
 #include "apple2/chips/AY8910.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
 
 // NOLINTBEGIN(cppcoreguidelines-use-enum-class)

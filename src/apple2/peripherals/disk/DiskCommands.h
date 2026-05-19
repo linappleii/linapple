@@ -10,8 +10,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "apple2/peripherals/disk/DiskError.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

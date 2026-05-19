@@ -21,13 +21,9 @@
 #include <cstdint>
 #include <cstring>
 
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
 #include "apple2/chips/6821.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#include "core/Common.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
 
 namespace {

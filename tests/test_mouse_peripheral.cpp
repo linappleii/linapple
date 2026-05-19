@@ -9,7 +9,7 @@
 #include <cstring>
 #include <vector>
 
-#include "Mouse.h"
+#include "apple2/peripherals/mouse/Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
 
