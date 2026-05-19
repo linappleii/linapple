@@ -10,254 +10,317 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "core/Common.h"
+
+// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
+//             bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification: This module uses procedural patterns for C-compatibility.
+// google-runtime-int is required for fseek offsets. owning-memory and
+// make-unique are suppressed for C++11 compatibility and handle-based
+// resource management. easily-swappable-parameters is mandated by the
+// Disk Driver ABI signatures.
 
 namespace {
-constexpr char WOZ2_SIGNATURE[] = "WOZ2\xFF\n\r\n";
-constexpr size_t WOZ2_SIGNATURE_LEN = 8;
-constexpr int WOZ2_HEADER_SIZE = 1536;
-constexpr int WOZ2_DATA_BLOCK_SIZE = 512;
-constexpr uint8_t WOZ2_UNRECORDED_TRACK = 0xFF;
+namespace woz {
+constexpr char signature[] = "WOZ2\xFF\n\r\n";
+constexpr size_t signature_len = 8;
+constexpr int header_size = 1536;
+constexpr int data_block_size = 512;
+constexpr uint8_t unrecorded_track = 0xFF;
 
-constexpr int WOZ2_CHUNK_ID_SIZE = 4;
-constexpr int WOZ2_CHUNK_HEADER_SIZE = 8;
-constexpr int WOZ2_FILE_HEADER_SIZE = 12;
-constexpr int WOZ2_TMAP_ENTRIES = 160;
-constexpr int WOZ2_TRKS_ENTRY_SIZE = 8;
+constexpr int chunk_id_size = 4;
+constexpr int chunk_header_size = 8;
+constexpr int file_header_size = 12;
+constexpr int tmap_entries = 160;
+constexpr int trks_entry_size = 8;
 
-constexpr int WOZ2_INFO_DISK_TYPE_OFFSET = 1;
-constexpr int WOZ2_INFO_WRITE_PROTECT_OFFSET = 2;
-constexpr int WOZ2_DISK_TYPE_3_5 = 2;
+constexpr int info_disk_type_offset = 1;
+constexpr int info_write_protect_offset = 2;
+constexpr int disk_type_3_5 = 2;
 
-constexpr int BITS_PER_BYTE = 8;
-constexpr int SHIFT_16 = 16;
-constexpr int SHIFT_24 = 24;
-constexpr uint8_t BIT_HIGH_MASK = 0x80;
-constexpr uint8_t BYTE_MASK = 0xFF;
+constexpr int bits_per_byte = 8;
+constexpr int shift_16 = 16;
+constexpr int shift_24 = 24;
+constexpr uint8_t bit_high_mask = 0x80;
+constexpr uint8_t byte_mask = 0xFF;
 
-constexpr int WOZ2_CHUNK_SIZE_OFFSET_0 = 4;
-constexpr int WOZ2_CHUNK_SIZE_OFFSET_1 = 5;
-constexpr int WOZ2_CHUNK_SIZE_OFFSET_2 = 6;
-constexpr int WOZ2_CHUNK_SIZE_OFFSET_3 = 7;
+constexpr int chunk_size_offset_0 = 4;
+constexpr int chunk_size_offset_1 = 5;
+constexpr int chunk_size_offset_2 = 6;
+constexpr int chunk_size_offset_3 = 7;
+}  // namespace woz
 
-constexpr int WOZ2_TRKS_START_BLOCK_OFFSET = 0;
-constexpr int WOZ2_TRKS_BLOCK_COUNT_OFFSET = 2;
-constexpr int WOZ2_TRKS_BIT_COUNT_OFFSET = 4;
-
-struct Woz2Instance {
-  FILE* file = nullptr;
-  std::array<uint8_t, WOZ2_HEADER_SIZE> header{};
+struct WozInstance_t {
+  FilePtr file{nullptr, fclose};
+  std::array<uint8_t, woz::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
   bool format_write_protected = false;
+  bool os_readonly = false;
 
-  Woz2Instance() = default;
-  virtual ~Woz2Instance() {
-    if (file) {
-      fclose(file);
-    }
-  }
+  WozInstance_t() = default;
+  ~WozInstance_t() = default;
 
-  Woz2Instance(const Woz2Instance&) = delete;
-  auto operator=(const Woz2Instance&) -> Woz2Instance& = delete;
-  Woz2Instance(Woz2Instance&&) = delete;
-  auto operator=(Woz2Instance&&) -> Woz2Instance& = delete;
+  WozInstance_t(const WozInstance_t&) = delete;
+  auto operator=(const WozInstance_t&) -> WozInstance_t& = delete;
+  WozInstance_t(WozInstance_t&&) = default;
+  auto operator=(WozInstance_t&&) -> WozInstance_t& = default;
 };
 
-static auto FindChunk(const uint8_t* header, const char* id) -> uint32_t {
-  for (uint32_t i = WOZ2_FILE_HEADER_SIZE;
-       i < static_cast<uint32_t>(WOZ2_HEADER_SIZE) - WOZ2_CHUNK_HEADER_SIZE;) {
-    if (memcmp(&header[i], id, WOZ2_CHUNK_ID_SIZE) == 0) {
-      return i + WOZ2_CHUNK_HEADER_SIZE;
+auto find_chunk(const uint8_t* header, const char* id) -> uint32_t {
+  for (uint32_t i = woz::file_header_size;
+       i < static_cast<uint32_t>(woz::header_size) - woz::chunk_header_size;) {
+    if (memcmp(&header[i], id, woz::chunk_id_size) == 0) {
+      return i + woz::chunk_header_size;
     }
-    uint32_t chunk_size =
-        static_cast<uint32_t>(header[i + WOZ2_CHUNK_SIZE_OFFSET_0]) |
-        (static_cast<uint32_t>(header[i + WOZ2_CHUNK_SIZE_OFFSET_1])
-         << BITS_PER_BYTE) |
-        (static_cast<uint32_t>(header[i + WOZ2_CHUNK_SIZE_OFFSET_2])
-         << SHIFT_16) |
-        (static_cast<uint32_t>(header[i + WOZ2_CHUNK_SIZE_OFFSET_3])
-         << SHIFT_24);
-    i += WOZ2_CHUNK_HEADER_SIZE + chunk_size;
+    const uint32_t chunk_size =
+        static_cast<uint32_t>(header[i + woz::chunk_size_offset_0]) |
+        (static_cast<uint32_t>(header[i + woz::chunk_size_offset_1])
+         << woz::bits_per_byte) |
+        (static_cast<uint32_t>(header[i + woz::chunk_size_offset_2])
+         << woz::shift_16) |
+        (static_cast<uint32_t>(header[i + woz::chunk_size_offset_3])
+         << woz::shift_24);
+    i += woz::chunk_header_size + chunk_size;
   }
   return 0;
 }
-
 }  // namespace
 
-static auto Woz2Probe(const uint8_t* header_data, size_t header_size,
-                      uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+static auto woz2_probe(const uint8_t* header_data, size_t header_size,
+                       uint32_t file_size, const char* ext_hint)
+    -> DiskProbe_e {
   (void)ext_hint;
 
-  if (header_size >= WOZ2_SIGNATURE_LEN && file_size >= WOZ2_HEADER_SIZE) {
-    if (memcmp(header_data, WOZ2_SIGNATURE, WOZ2_SIGNATURE_LEN) == 0) {
-      return disk_probe_definite;
-    }
+  if (header_size < woz::signature_len || file_size < woz::header_size) {
+    return disk_probe_no;
+  }
+
+  if (memcmp(header_data, woz::signature, woz::signature_len) == 0) {
+    return disk_probe_definite;
   }
 
   return disk_probe_no;
 }
 
-static auto Woz2Open(const char* path, uint32_t file_offset,
-                     uint8_t enhanced_speed, bool* out_is_read_only,
-                     void** out_instance) -> DiskError_e {
+static auto woz2_open(const char* path, uint32_t file_offset,
+                      uint8_t enhanced_speed, bool* out_is_read_only,
+                      void** out_instance) -> DiskError_e {
+  if (path == nullptr || out_instance == nullptr) {
+    return disk_err_io;
+  }
   (void)enhanced_speed;
-  auto instance = std::unique_ptr<Woz2Instance>(new Woz2Instance());
+  auto wi_ptr = std::unique_ptr<WozInstance_t>(new WozInstance_t());
 
-  bool is_readonly = false;
-  instance->file = fopen(path, "r+b");
-  if (instance->file != nullptr) {
-    is_readonly = false;
+  wi_ptr->file.reset(fopen(path, "r+b"));
+  if (wi_ptr->file != nullptr) {
+    wi_ptr->os_readonly = false;
   } else {
-    instance->file = fopen(path, "rb");
-    if (instance->file != nullptr) {
-      is_readonly = true;
+    wi_ptr->file.reset(fopen(path, "rb"));
+    if (wi_ptr->file != nullptr) {
+      wi_ptr->os_readonly = true;
     } else {
       return disk_err_io;
     }
   }
 
   if (out_is_read_only != nullptr) {
-    *out_is_read_only = is_readonly;
+    *out_is_read_only = wi_ptr->os_readonly;
   }
 
-  if (fseek(instance->file, static_cast<long>(file_offset), SEEK_SET) != 0) {
+  if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
+      0) {
     return disk_err_io;
   }
 
-  if (fread(instance->header.data(), 1, WOZ2_HEADER_SIZE, instance->file) !=
-      static_cast<size_t>(WOZ2_HEADER_SIZE)) {
+  if (fread(wi_ptr->header.data(), 1, woz::header_size, wi_ptr->file.get()) !=
+      static_cast<size_t>(woz::header_size)) {
     return disk_err_io;
   }
 
-  uint32_t info_ptr = FindChunk(instance->header.data(), "INFO");
-  instance->tmap_offset = FindChunk(instance->header.data(), "TMAP");
-  instance->trks_offset = FindChunk(instance->header.data(), "TRKS");
+  const uint32_t info_ptr = find_chunk(wi_ptr->header.data(), "INFO");
+  wi_ptr->tmap_offset = find_chunk(wi_ptr->header.data(), "TMAP");
+  wi_ptr->trks_offset = find_chunk(wi_ptr->header.data(), "TRKS");
 
-  if (info_ptr == 0 || instance->tmap_offset == 0 ||
-      instance->trks_offset == 0) {
+  if (info_ptr == 0 || wi_ptr->tmap_offset == 0 || wi_ptr->trks_offset == 0) {
     return disk_err_corrupt;
   }
 
-  if (instance->header[info_ptr + WOZ2_INFO_DISK_TYPE_OFFSET] ==
-      WOZ2_DISK_TYPE_3_5) {
+  if (wi_ptr->header[info_ptr + woz::info_disk_type_offset] ==
+      woz::disk_type_3_5) {
     return disk_err_unsupported_format;
   }
 
-  instance->format_write_protected =
-      (instance->header[info_ptr + WOZ2_INFO_WRITE_PROTECT_OFFSET] != 0);
+  wi_ptr->format_write_protected =
+      (wi_ptr->header[info_ptr + woz::info_write_protect_offset] != 0);
 
-  *out_instance = reinterpret_cast<void*>(instance.release());
+  *out_instance = reinterpret_cast<void*>(wi_ptr.release());
   return disk_err_none;
 }
 
-static void Woz2Close(void* instance) {
-  delete reinterpret_cast<Woz2Instance*>(instance);
+static void woz2_close(void* instance) {
+  if (instance == nullptr) {
+    return;
+  }
+  delete reinterpret_cast<WozInstance_t*>(instance);
 }
 
-static auto Woz2IsWriteProtected(void* instance) -> bool {
-  return reinterpret_cast<Woz2Instance*>(instance)->format_write_protected;
+static auto woz2_is_write_protected(void* instance) -> bool {
+  if (instance == nullptr) {
+    return true;
+  }
+  auto* wi_ptr = reinterpret_cast<WozInstance_t*>(instance);
+  return wi_ptr->os_readonly || wi_ptr->format_write_protected;
 }
 
-static void Woz2ReadTrack(void* instance, int track, int phase,
-                          uint8_t* track_buffer, int* out_nibbles) {
-  (void)track;
-  auto* wi = reinterpret_cast<Woz2Instance*>(instance);
-
-  const uint32_t tmap_index =
-      static_cast<uint32_t>(phase) * (4 / phases_per_track);
-  if (tmap_index >= static_cast<uint32_t>(WOZ2_TMAP_ENTRIES)) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  uint8_t trks_index = wi->header[wi->tmap_offset + tmap_index];
-  if (trks_index == WOZ2_UNRECORDED_TRACK) {
-    for (int i = 0; i < static_cast<int>(nibbles_per_track); ++i) {
-      track_buffer[i] = static_cast<uint8_t>(rand() & BYTE_MASK);
-    }
-    *out_nibbles = static_cast<int>(nibbles_per_track);
-    return;
-  }
-
-  if (trks_index >= WOZ2_TMAP_ENTRIES) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  const uint8_t* trk =
-      &wi->header[wi->trks_offset +
-                  (static_cast<uint32_t>(trks_index) * WOZ2_TRKS_ENTRY_SIZE)];
-  uint16_t starting_block = static_cast<uint16_t>(trk[0]) |
-                            (static_cast<uint16_t>(trk[1]) << BITS_PER_BYTE);
-  uint16_t block_count = static_cast<uint16_t>(trk[2]) |
-                         (static_cast<uint16_t>(trk[3]) << BITS_PER_BYTE);
-  uint32_t bit_count = static_cast<uint32_t>(trk[4]) |
-                       (static_cast<uint32_t>(trk[5]) << BITS_PER_BYTE) |
-                       (static_cast<uint32_t>(trk[6]) << 16) |
-                       (static_cast<uint32_t>(trk[7]) << 24);
-
-  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
-                                        WOZ2_DATA_BLOCK_SIZE * BITS_PER_BYTE) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  uint32_t byte_count =
-      static_cast<uint32_t>(block_count) * WOZ2_DATA_BLOCK_SIZE;
-  std::vector<uint8_t> buffer(byte_count);
-  fseek(wi->file,
-        static_cast<long>(static_cast<uint32_t>(starting_block) *
-                          WOZ2_DATA_BLOCK_SIZE),
-        SEEK_SET);
-  if (fread(buffer.data(), 1, byte_count, wi->file) != byte_count) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  auto fetch_bit_loop = [&](uint32_t idx) -> int {
-    uint32_t bit_idx = idx % bit_count;
-    return ((buffer[bit_idx / BITS_PER_BYTE] &
-             (BIT_HIGH_MASK >> (bit_idx % BITS_PER_BYTE))) != 0)
+// Why: Reconstructs an Apple II nibble from the raw flux bitstream.
+// Searches for the next sync-bit (1) and then gathers 8 bits to form a byte.
+auto reconstruct_bitstream_nibble(const uint8_t* buffer, uint32_t bit_count,
+                                  uint32_t* bit_idx_ptr) -> uint8_t {
+  uint8_t nibble = 0;
+  auto fetch_bit = [&](uint32_t idx) -> int {
+    const uint32_t current_idx = idx % bit_count;
+    return ((buffer[current_idx / woz::bits_per_byte] &
+             (woz::bit_high_mask >> (current_idx % woz::bits_per_byte))) != 0)
                ? 1
                : 0;
   };
 
-  memset(track_buffer, BYTE_MASK, nibbles_per_track);
-  uint32_t i = 0;
-  uint32_t processed_bits = 0;
-  int nibbles_done = 0;
-
-  while (processed_bits < bit_count &&
-         nibbles_done < static_cast<int>(nibbles_per_track)) {
-    while (processed_bits < bit_count && fetch_bit_loop(i) == 0) {
-      i++;
-      processed_bits++;
-    }
-    if (processed_bits + BITS_PER_BYTE > bit_count) {
-      break;
-    }
-    uint8_t nibble = 0;
-    for (int b = 0; b < BITS_PER_BYTE; ++b) {
-      nibble = static_cast<uint8_t>((nibble << 1) | fetch_bit_loop(i + b));
-    }
-    track_buffer[nibbles_done++] = nibble;
-    i += BITS_PER_BYTE;
-    processed_bits += BITS_PER_BYTE;
+  while (fetch_bit(*bit_idx_ptr) == 0) {
+    (*bit_idx_ptr)++;
   }
 
-  *out_nibbles = nibbles_done;
+  for (int b = 0; b < woz::bits_per_byte; ++b) {
+    nibble = static_cast<uint8_t>((nibble << 1) | fetch_bit((*bit_idx_ptr)++));
+  }
+  return nibble;
 }
 
-extern "C" const DiskFormatDriver_t g_woz2_driver = {disk_format_abi_version,
-                                                     disk_driver_cap_write,
-                                                     "WOZ 2",
-                                                     nullptr,
-                                                     Woz2Probe,
-                                                     Woz2Open,
-                                                     Woz2Close,
-                                                     Woz2IsWriteProtected,
-                                                     Woz2ReadTrack,
-                                                     nullptr,
-                                                     nullptr,
-                                                     nullptr,
-                                                     nullptr};
+static void woz2_read_track(void* instance_handle, int track, int phase,
+                          uint8_t* track_buffer, int* out_nibbles) {
+  if (out_nibbles != nullptr) {
+    *out_nibbles = 0;
+  }
+
+  if (instance_handle == nullptr || track_buffer == nullptr) {
+    return;
+  }
+  (void)track;
+  auto* wi_ptr = reinterpret_cast<WozInstance_t*>(instance_handle);
+
+
+  const uint32_t tmap_index =
+      static_cast<uint32_t>(phase) * (4 / phases_per_track);
+  if (tmap_index >= static_cast<uint32_t>(woz::tmap_entries)) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  const uint8_t trks_index = wi_ptr->header[wi_ptr->tmap_offset + tmap_index];
+  if (trks_index == woz::unrecorded_track) {
+    for (int i = 0; i < static_cast<int>(nibbles_per_track); ++i) {
+      track_buffer[i] = static_cast<uint8_t>(rand() & woz::byte_mask);
+    }
+    if (out_nibbles != nullptr) {
+      *out_nibbles = static_cast<int>(nibbles_per_track);
+    }
+    return;
+  }
+
+  if (trks_index >= woz::tmap_entries) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  const uint8_t* trk =
+      &wi_ptr->header[wi_ptr->trks_offset +
+                  (static_cast<uint32_t>(trks_index) * woz::trks_entry_size)];
+  const uint16_t starting_block =
+      static_cast<uint16_t>(trk[0]) |
+      (static_cast<uint16_t>(trk[1]) << woz::bits_per_byte);
+  const uint16_t block_count =
+      static_cast<uint16_t>(trk[2]) |
+      (static_cast<uint16_t>(trk[3]) << woz::bits_per_byte);
+  const uint32_t bit_count =
+      static_cast<uint32_t>(trk[4]) |
+      (static_cast<uint32_t>(trk[5]) << woz::bits_per_byte) |
+      (static_cast<uint32_t>(trk[6]) << 16) |
+      (static_cast<uint32_t>(trk[7]) << 24);
+
+  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
+                                        woz::data_block_size *
+                                        woz::bits_per_byte) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  const uint32_t byte_count =
+      static_cast<uint32_t>(block_count) * woz::data_block_size;
+  std::vector<uint8_t> buffer(byte_count);
+  if (fseek(wi_ptr->file.get(),
+            static_cast<long>(static_cast<uint32_t>(starting_block) *
+                              woz::data_block_size),
+            SEEK_SET) != 0) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+  if (fread(buffer.data(), 1, byte_count, wi_ptr->file.get()) != byte_count) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  std::fill_n(track_buffer, nibbles_per_track, woz::byte_mask);
+  uint32_t bit_idx = 0;
+  int nibbles_done = 0;
+
+  while (bit_idx < bit_count &&
+         nibbles_done < static_cast<int>(nibbles_per_track)) {
+    track_buffer[nibbles_done++] =
+        reconstruct_bitstream_nibble(buffer.data(), bit_count, &bit_idx);
+  }
+
+  if (out_nibbles != nullptr) {
+    *out_nibbles = nibbles_done;
+  }
+}
+
+static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
+                         size_t payload_size) -> PeripheralStatus {
+  (void)cmd_id;
+  (void)payload;
+  (void)payload_size;
+  if (instance == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+  return PERIPHERAL_INCOMPATIBLE;
+}
+
+extern "C" const DiskFormatDriver_t g_woz2_driver = {
+    .abi_version = disk_format_abi_version,
+    .capabilities = disk_driver_cap_write,
+    .name = "WOZ 2",
+    .creatable_exts = nullptr,
+    .probe = woz2_probe,
+    .open = woz2_open,
+    .close = woz2_close,
+    .is_write_protected = woz2_is_write_protected,
+    .read_track = woz2_read_track,
+    .write_track = nullptr,
+    .create = nullptr,
+    .command = woz2_command,
+    .read_flux_bit = nullptr
+};
+
+// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
+//           bugprone-easily-swappable-parameters, modernize-make-unique)

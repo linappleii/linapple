@@ -1,142 +1,142 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 
-#include <algorithm>
+#include <cstdint>
 #include <cstring>
 
-#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
+#include "core/Peripheral_Types.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// Format drivers utilize a procedural C-compatible handle system and
+// standardized probing signatures mandated by the Disk subsystem ABI.
+// Array-to-pointer decay and C-style arrays are required for driver descriptor
+// registration.
 
 namespace {
-constexpr uint32_t MIN_140K_DISK_SIZE = 143105;
-constexpr uint32_t MAX_140K_DISK_SIZE = 143364;
-constexpr uint32_t DISK_SIZE_140K_ALT2 = 143488;
-constexpr size_t VTOC_OFFSET = 0x11000;
-constexpr size_t PAGE_SIZE = 0x0100;
-constexpr size_t PRODOS_BLOCK_SIZE = 512;
 
-constexpr size_t TRACK_COUNT = 35;
-constexpr size_t PRODOS_DIR_BLOCK = 2;
-constexpr uint16_t MAX_PRODOS_BLOCKS_140K =
-    static_cast<uint16_t>((TRACK_COUNT * sectors_per_track) / 2);
-
-constexpr size_t VTOC_LINK_OFFSET = 2;
-constexpr int MIN_VTOC_LOOP = 5;
-constexpr int MAX_VTOC_LOOP = 13;
-constexpr int VTOC_CHECK_BASE = 14;
-}  // namespace
-
-static auto PoProbe(const uint8_t* header_data, size_t header_size,
-                    uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
-  if (file_size < MIN_140K_DISK_SIZE || file_size > MAX_140K_DISK_SIZE) {
-    if (file_size != DISK_SIZE_140K_ALT2) {
-      return disk_probe_no;
-    }
+// Why: Probes for a ProDOS-ordered disk image by prioritizing physical data
+// patterns (Directory signatures) over file extensions.
+auto po_probe(const uint8_t* header_data, size_t header_size,
+              uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+  if (header_data == nullptr) {
+    return disk_probe_no;
   }
 
-  const size_t min_header_size =
-      (PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) + PAGE_SIZE + VTOC_LINK_OFFSET;
-  if (header_size >= min_header_size) {
-    uint16_t prev = 0;
-    uint16_t next = 0;
-    std::memcpy(
-        &prev, &header_data[(PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) + PAGE_SIZE],
-        sizeof(prev));
-    std::memcpy(&next,
-                &header_data[(PRODOS_DIR_BLOCK * PRODOS_BLOCK_SIZE) +
-                             PAGE_SIZE + VTOC_LINK_OFFSET],
-                sizeof(next));
+  const auto sig_probe = sector_disk_image_probe_signature(
+      header_data, header_size, file_size, false);
 
-    if (prev == 0 && next > static_cast<uint16_t>(PRODOS_DIR_BLOCK) &&
-        next < MAX_PRODOS_BLOCKS_140K) {
-      return disk_probe_definite;
-    }
+  if (sig_probe == disk_probe_definite) {
+    return disk_probe_definite;
   }
 
-  const size_t vtoc_min_header_size =
-      VTOC_OFFSET + VTOC_LINK_OFFSET +
-      (static_cast<size_t>(MAX_VTOC_LOOP) * PAGE_SIZE);
-  if (header_size >= vtoc_min_header_size) {
-    bool mismatch = false;
-    for (int loop = MIN_VTOC_LOOP; loop <= MAX_VTOC_LOOP; ++loop) {
-      if (header_data[VTOC_OFFSET + VTOC_LINK_OFFSET +
-                      (static_cast<size_t>(loop) * PAGE_SIZE)] !=
-          static_cast<uint8_t>(VTOC_CHECK_BASE - loop)) {
-        mismatch = true;
-        break;
-      }
-    }
-    if (!mismatch) {
-      return disk_probe_definite;
-    }
-  }
-
-  if (ext_hint && strcmp(ext_hint, ".po") == 0) {
+  if (ext_hint != nullptr && std::strcmp(ext_hint, ".po") == 0) {
     return disk_probe_possible;
   }
 
-  return disk_probe_possible;
+  return sig_probe;
 }
 
-static auto PoOpen(const char* path, uint32_t file_offset,
-                   uint8_t enhanced_speed, bool* out_is_read_only,
-                   void** out_instance) -> DiskError_e {
-  auto* image = SectorDiskImage_Open(path, file_offset, false, enhanced_speed,
-                                     out_is_read_only);
-  if (!image) return disk_err_io;
-  *out_instance = static_cast<void*>(image);
+auto po_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
+             bool* out_is_read_only, void** out_instance_handle)
+    -> DiskError_e {
+  if (path == nullptr || out_instance_handle == nullptr) {
+    return disk_err_io;
+  }
+
+  auto* image_ptr = sector_disk_image_open(path, file_offset, false,
+                                           enhanced_speed, out_is_read_only);
+  if (image_ptr == nullptr) {
+    return disk_err_io;
+  }
+  *out_instance_handle = static_cast<void*>(image_ptr);
   return disk_err_none;
 }
 
-static void PoClose(void* instance) {
-  SectorDiskImage_Close(static_cast<SectorDiskImage_t*>(instance));
+auto po_close(void* instance_handle) -> void {
+  if (instance_handle == nullptr) {
+    return;
+  }
+  sector_disk_image_close(static_cast<SectorDiskImage_t*>(instance_handle));
 }
 
-static auto PoIsWriteProtected(void* instance) -> bool {
-  return SectorDiskImage_IsWriteProtected(
-      static_cast<SectorDiskImage_t*>(instance));
+auto po_is_write_protected(void* instance_handle) -> bool {
+  if (instance_handle == nullptr) {
+    return true;
+  }
+  return sector_disk_image_is_write_protected(
+      static_cast<SectorDiskImage_t*>(instance_handle));
 }
 
-static void PoReadTrack(void* instance, int track, int phase,
-                        uint8_t* track_buffer, int* out_nibbles) {
+auto po_read_track(void* instance_handle, int track, int phase,
+                   uint8_t* track_buffer, int* out_nibbles) -> void {
+  if (out_nibbles != nullptr) {
+    *out_nibbles = 0;
+  }
+
+  if (instance_handle == nullptr) {
+    return;
+  }
+
   (void)phase;
-  SectorDiskImage_ReadTrack(static_cast<SectorDiskImage_t*>(instance), track,
-                            track_buffer, out_nibbles);
+  sector_disk_image_read_track(static_cast<SectorDiskImage_t*>(instance_handle),
+                               track, track_buffer, out_nibbles);
 }
 
-static void PoWriteTrack(void* instance, int track, int phase,
-                         const uint8_t* track_buffer, int nibbles) {
+auto po_write_track(void* instance_handle, int track, int phase,
+                    const uint8_t* track_buffer, int nibbles) -> void {
+  if (instance_handle == nullptr) {
+    return;
+  }
   (void)phase;
-  SectorDiskImage_WriteTrack(static_cast<SectorDiskImage_t*>(instance), track,
-                             track_buffer, nibbles);
+  sector_disk_image_write_track(
+      static_cast<SectorDiskImage_t*>(instance_handle), track, track_buffer,
+      nibbles);
 }
 
-static auto PoCreate(const char* path) -> DiskError_e {
-  return SectorDiskImage_Create(path);
+auto po_create(const char* path) -> DiskError_e {
+  if (path == nullptr) {
+    return disk_err_io;
+  }
+  return sector_disk_image_create(path);
 }
 
-static auto PoCommand(void* instance, uint32_t cmd_id, const void* data,
-                      size_t size) -> PeripheralStatus {
-  return SectorDiskImage_Command(static_cast<SectorDiskImage_t*>(instance),
-                                 cmd_id, data, size);
+auto po_command(void* instance_handle, uint32_t cmd_id, const void* payload,
+                size_t payload_size) -> PeripheralStatus {
+  if (instance_handle == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+  return sector_disk_image_command(
+      static_cast<SectorDiskImage_t*>(instance_handle), cmd_id, payload,
+      payload_size);
 }
 
-static const char* const g_po_creatable_exts[] = {".po", nullptr};
+const char* const g_po_creatable_exts[] = {".po", nullptr};
 
-extern "C" const DiskFormatDriver_t g_po_driver = {disk_format_abi_version,
-                                                   disk_driver_cap_write,
-                                                   "ProDOS Order",
-                                                   g_po_creatable_exts,
-                                                   PoProbe,
-                                                   PoOpen,
-                                                   PoClose,
-                                                   PoIsWriteProtected,
-                                                   PoReadTrack,
-                                                   PoWriteTrack,
-                                                   PoCreate,
-                                                   PoCommand,
-                                                   nullptr};
+}  // namespace
 
-// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+extern "C" const DiskFormatDriver_t g_po_driver = {
+    .abi_version = disk_format_abi_version,
+    .capabilities = disk_driver_cap_write,
+    .name = "ProDOS Order",
+    .creatable_exts = g_po_creatable_exts,
+    .probe = po_probe,
+    .open = po_open,
+    .close = po_close,
+    .is_write_protected = po_is_write_protected,
+    .read_track = po_read_track,
+    .write_track = po_write_track,
+    .create = po_create,
+    .command = po_command,
+    .read_flux_bit = nullptr
+};
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

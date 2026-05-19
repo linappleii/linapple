@@ -12,6 +12,6 @@
 #    Global hardware state (CPU, Memory, Registers) is a core design
 #    pattern in this emulator's procedural architecture.
 
-Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'
+Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,misc-include-cleaner,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

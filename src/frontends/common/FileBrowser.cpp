@@ -43,7 +43,7 @@ static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
   }
 
   struct stat info{};
-  std::array<char, PATH_MAX_LEN> tempname = {};
+  std::array<char, path_max_len> tempname = {};
 
   int written =
       snprintf(tempname.data(), tempname.size(), "%s/%s", catalog, fname);

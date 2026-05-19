@@ -66,13 +66,13 @@ auto Asset_FindMasterDisk(char *path_out) -> int {
     return 255;
   }
 
-  Util_SafeStrCpy(path_out, fullPath.c_str(), PATH_MAX_LEN);
+  Util_SafeStrCpy(path_out, fullPath.c_str(), path_max_len);
   printf("[info ] Master disk: %s\n", path_out);
   return 0;
 }
 
 auto Asset_InsertMasterDisk() -> int {
-  std::unique_ptr<char, void (*)(void *)> path(static_cast<char *>(malloc(PATH_MAX_LEN)), free);
+  std::unique_ptr<char, void (*)(void *)> path(static_cast<char *>(malloc(path_max_len)), free);
 
   int err = Asset_FindMasterDisk(path.get());
   if (err) {

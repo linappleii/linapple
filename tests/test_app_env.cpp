@@ -13,7 +13,7 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
     tmp_conf.close();
 
     AppConfig config = {};
-    Util_SafeStrCpy(config.szConfigPath.data(), "test_resolve.conf", PATH_MAX_LEN);
+    Util_SafeStrCpy(config.szConfigPath.data(), "test_resolve.conf", path_max_len);
 
     AppEnv_ResolvePaths(&config);
 

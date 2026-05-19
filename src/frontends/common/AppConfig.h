@@ -13,11 +13,11 @@ enum { ARGV_EXTRA_MAX = 64 };
 
 struct AppConfig {
   AppIntent intent = INTENT_RUN;
-  std::array<std::array<char, PATH_MAX_LEN>, disk_drive_count> szDiskPath = {};
-  std::array<char, PATH_MAX_LEN> szProgramPath = {};
-  std::array<char, PATH_MAX_LEN> szConfigPath = {};
-  std::array<char, PATH_MAX_LEN> szSnapshotPath = {};
-  std::array<char, PATH_MAX_LEN> szAudioDumpPath = {};
+  std::array<std::array<char, path_max_len>, disk_drive_count> szDiskPath = {};
+  std::array<char, path_max_len> szProgramPath = {};
+  std::array<char, path_max_len> szConfigPath = {};
+  std::array<char, path_max_len> szSnapshotPath = {};
+  std::array<char, path_max_len> szAudioDumpPath = {};
 
   eApple2Type apple2Type = A2TYPE_APPLE2EENHANCED;
   bool bPAL = false;
@@ -28,12 +28,12 @@ struct AppConfig {
   bool bVerbose = false;
 
   bool bListHardware = false;
-  std::array<char, PATH_MAX_LEN> szHardwareInfoName = {};
+  std::array<char, path_max_len> szHardwareInfoName = {};
 
   // Test/Diagnostic fields
-  std::array<char, PATH_MAX_LEN> szTestCpuFile = {};
+  std::array<char, path_max_len> szTestCpuFile = {};
   uint16_t uTestCpuTrap = TRAP_NMOS_DEFAULT;
-  std::array<char, PATH_MAX_LEN> szDebuggerScript = {};
+  std::array<char, path_max_len> szDebuggerScript = {};
 
   // Extra args for frontend pass-through
   int argc_extra = 0;

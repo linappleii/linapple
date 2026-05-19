@@ -78,7 +78,7 @@ auto AppController_Initialize(AppConfig* config) -> int {
 
   if (config->szDebuggerScript.at(0) != '\0') {
     Util_SafeStrCpy(&g_state.sDebuggerScript[0],
-                    config->szDebuggerScript.data(), PATH_MAX_LEN);
+                    config->szDebuggerScript.data(), path_max_len);
   }
 
   g_state.mode = MODE_RUNNING;

@@ -419,7 +419,7 @@ void FrameShowHelpScreen(int sx, int sy) {
 void FrameQuickState(int num, int mod) {
   // quick load or save state with number num, if Shift is pressed, state is
   // being saved, otherwise - being loaded
-  std::array<char, PATH_MAX_LEN> fpath;
+  std::array<char, path_max_len> fpath;
   snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
            static_cast<int>(strlen(g_state.sSaveStateDir.data())),
            g_state.sSaveStateDir.data(), num);

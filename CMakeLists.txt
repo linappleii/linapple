@@ -276,7 +276,7 @@ endmacro()
 # Define all peripherals
 add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" TRUE)
 add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" TRUE)
-add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
+add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp;src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/MouseInterface.cpp" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
@@ -381,7 +381,7 @@ if(BUILD_TESTING)
     target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
-    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/core/Peripheral.cpp)
+    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp src/apple2/peripherals/disk/formats/DiskContainer.cpp src/core/Peripheral.cpp)
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 

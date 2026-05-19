@@ -31,6 +31,7 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
@@ -943,8 +944,8 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
 
   initialize_peripheral(dp.get());
 
-  char p1[PATH_MAX_LEN] = {0};
-  char p2[PATH_MAX_LEN] = {0};
+  char p1[path_max_len] = {0};
+  char p2[path_max_len] = {0};
   host->GetConfig("Slots", REGVALUE_DISK_IMAGE1, p1, sizeof(p1));
   host->GetConfig("Slots", REGVALUE_DISK_IMAGE2, p2, sizeof(p2));
 

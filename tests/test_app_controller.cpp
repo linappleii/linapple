@@ -55,7 +55,7 @@ TEST_CASE("AppController: Media Loading") {
   const char* disk_path = access("../res/Master.dsk", R_OK) == 0
                               ? "../res/Master.dsk"
                               : "res/Master.dsk";
-  Util_SafeStrCpy(config.szDiskPath[0].data(), disk_path, PATH_MAX_LEN);
+  Util_SafeStrCpy(config.szDiskPath[0].data(), disk_path, path_max_len);
 
   AppEnv_ResolvePaths(&config);
   AppController_Initialize(&config);

@@ -15,18 +15,14 @@
 #include <cstring>
 #include <vector>
 
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "core/Common.h"
 #include "core/Util_Text.h"
 
 namespace {
 
 static std::vector<DiskFormatDriver_t*> g_drivers;
-
-// MacBinary (Legacy Macintosh file wrapper) markers
-constexpr size_t macbinary_header_size = 128;
-constexpr size_t macbinary_magic_offset1 = 0;
-constexpr size_t macbinary_magic_offset2 = 74;
-constexpr uint8_t macbinary_magic_value = 0;
 
 // Disk Loading & Decompression parameters
 constexpr size_t decompression_buffer_size = 8192;
@@ -37,10 +33,10 @@ constexpr size_t extension_hint_size = 16;
  * @brief Ensures a temporary file is unlinked when it goes out of scope.
  */
 struct TemporaryFileGuard {
-  char path[PATH_MAX_LEN];
+  char path[path_max_len];
   explicit TemporaryFileGuard(const char* p) {
     if (p != nullptr) {
-      Util_SafeStrCpy(path, p, PATH_MAX_LEN);
+      Util_SafeStrCpy(path, p, path_max_len);
     } else {
       path[0] = '\0';
     }
@@ -58,14 +54,6 @@ struct TemporaryFileGuard {
 // Why: Some legacy Apple II disk images are wrapped in a MacBinary header
 // (128 bytes) by Macintosh-based transfer utilities. This identifies them
 // so we can skip the wrapper and find the real disk image data.
-auto is_mac_binary(const uint8_t* header_data, size_t size) -> bool {
-  if (size < macbinary_header_size) {
-    return false;
-  }
-  return (header_data[macbinary_magic_offset1] == macbinary_magic_value &&
-          header_data[macbinary_magic_offset2] == macbinary_magic_value);
-}
-
 auto decompress_gzip(const char* compressed_path, FILE* output_file) -> bool {
   gzFile compressed_file = gzopen(compressed_path, "rb");
   if (compressed_file == nullptr) {
@@ -140,12 +128,12 @@ auto prepare_compressed_path(const char* image_path, char* out_load_path,
        strcasecmp(image_path + name_len - ZIP_EXT_LEN, ".zip") == 0);
 
   if (!is_gz && !is_zip) {
-    Util_SafeStrCpy(out_load_path, image_path, PATH_MAX_LEN);
+    Util_SafeStrCpy(out_load_path, image_path, path_max_len);
     *out_is_temporary = false;
     return true;
   }
 
-  Util_SafeStrCpy(out_load_path, "/tmp/linapple_XXXXXX", PATH_MAX_LEN);
+  Util_SafeStrCpy(out_load_path, "/tmp/linapple_XXXXXX", path_max_len);
   int fd = mkstemp(out_load_path);
   if (fd == -1) {
     return false;
@@ -219,7 +207,7 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
     return disk_err_io;
   }
 
-  char load_path[PATH_MAX_LEN] = {0};
+  char load_path[path_max_len] = {0};
   bool is_temporary = false;
   if (!prepare_compressed_path(image_path, load_path, &is_temporary)) {
     return disk_err_io;
@@ -256,7 +244,7 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
   image_file.reset();
 
   const uint32_t file_offset =
-      is_mac_binary(header, header_read) ? macbinary_header_size : 0;
+      disk_container_detect_macbinary(header, header_read, file_size);
   const uint8_t* probe_ptr = header + file_offset;
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;

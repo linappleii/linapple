@@ -47,7 +47,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 bool g_bSaveStateOnExit = false;
 
-static char g_szSaveStateFilename[PATH_MAX_LEN] = {0};
+static char g_szSaveStateFilename[path_max_len] = {0};
 
 auto Snapshot_GetFilename() -> char* { return g_szSaveStateFilename; }
 
@@ -60,7 +60,7 @@ void Snapshot_SetFilename(const char* pszFilename) {
 }
 
 void Snapshot_LoadState() {
-  char szMessage[32 + PATH_MAX_LEN];
+  char szMessage[32 + path_max_len];
   szMessage[0] = '\0';
 
   auto pSS = std::unique_ptr<APPLEWIN_SNAPSHOT>(new APPLEWIN_SNAPSHOT());

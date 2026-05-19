@@ -83,18 +83,18 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
     switch (opt) {
       case '1':
         Util_SafeStrCpy(outConfig->szDiskPath.at(0).data(), optarg,
-                        PATH_MAX_LEN);
+                        path_max_len);
         break;
       case '2':
         Util_SafeStrCpy(outConfig->szDiskPath.at(1).data(), optarg,
-                        PATH_MAX_LEN);
+                        path_max_len);
         break;
       case 'a':
       case 'b':
         outConfig->bBoot = true;
         break;
       case 'c':
-        Util_SafeStrCpy(outConfig->szConfigPath.data(), optarg, PATH_MAX_LEN);
+        Util_SafeStrCpy(outConfig->szConfigPath.data(), optarg, path_max_len);
         break;
       case 'f':
         outConfig->bFullscreen = true;
@@ -110,10 +110,10 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         outConfig->bPAL = true;
         break;
       case 'P':
-        Util_SafeStrCpy(outConfig->szProgramPath.data(), optarg, PATH_MAX_LEN);
+        Util_SafeStrCpy(outConfig->szProgramPath.data(), optarg, path_max_len);
         break;
       case 's':
-        Util_SafeStrCpy(outConfig->szSnapshotPath.data(), optarg, PATH_MAX_LEN);
+        Util_SafeStrCpy(outConfig->szSnapshotPath.data(), optarg, path_max_len);
         break;
       case 'v':
         outConfig->bVerbose = true;
@@ -121,10 +121,10 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         break;
       case 'x':
         Util_SafeStrCpy(outConfig->szDebuggerScript.data(), optarg,
-                        PATH_MAX_LEN);
+                        path_max_len);
         break;
       case 'T':
-        Util_SafeStrCpy(outConfig->szTestCpuFile.data(), optarg, PATH_MAX_LEN);
+        Util_SafeStrCpy(outConfig->szTestCpuFile.data(), optarg, path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case 'X':
@@ -139,7 +139,7 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         break;
       case 'A':
         Util_SafeStrCpy(outConfig->szAudioDumpPath.data(), optarg,
-                        PATH_MAX_LEN);
+                        path_max_len);
         break;
       case OPT_LIST_HARDWARE:
         outConfig->bListHardware = true;
@@ -147,7 +147,7 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         break;
       case OPT_HARDWARE_INFO:
         Util_SafeStrCpy(outConfig->szHardwareInfoName.data(), optarg,
-                        PATH_MAX_LEN);
+                        path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case 'h':

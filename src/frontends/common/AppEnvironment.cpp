@@ -56,7 +56,7 @@ void AppEnv_ResolvePaths(AppConfig* config) {
   }
 
   // Populate back to config
-  Util_SafeStrCpy(config->szConfigPath.data(), finalPath.c_str(), PATH_MAX_LEN);
+  Util_SafeStrCpy(config->szConfigPath.data(), finalPath.c_str(), path_max_len);
 
   // Consolidate Logger initialization
   Logger::Initialize();

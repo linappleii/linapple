@@ -79,7 +79,7 @@ enum AppMode_e {
   MODE_EXIT,         // Application is exiting
 };
 
-constexpr int PATH_MAX_LEN = 260;
+constexpr int path_max_len = 260;
 
 #define SCREEN_WIDTH 560
 #define SCREEN_HEIGHT 384
@@ -98,16 +98,16 @@ using SystemState_t = struct SystemState_tag {
   uint32_t ScreenHeight;
   bool bResetTiming;
   uint32_t needsprecision;
-  std::array<char, PATH_MAX_LEN> sProgramDir;
-  std::array<char, PATH_MAX_LEN> sCurrentDir;
-  std::array<char, PATH_MAX_LEN> sHDDDir;
-  std::array<char, PATH_MAX_LEN> sSaveStateDir;
-  std::array<char, PATH_MAX_LEN> sParallelPrinterFile;
-  std::array<char, PATH_MAX_LEN> sFTPLocalDir;
-  std::array<char, PATH_MAX_LEN> sFTPServer;
-  std::array<char, PATH_MAX_LEN> sFTPServerHDD;
+  std::array<char, path_max_len> sProgramDir;
+  std::array<char, path_max_len> sCurrentDir;
+  std::array<char, path_max_len> sHDDDir;
+  std::array<char, path_max_len> sSaveStateDir;
+  std::array<char, path_max_len> sParallelPrinterFile;
+  std::array<char, path_max_len> sFTPLocalDir;
+  std::array<char, path_max_len> sFTPServer;
+  std::array<char, path_max_len> sFTPServerHDD;
   std::array<char, 512> sFTPUserPass;
-  std::array<char, PATH_MAX_LEN> sDebuggerScript;
+  std::array<char, path_max_len> sDebuggerScript;
   bool bVideoScannerNTSC;
   uint32_t dwClksPerFrame;
 };

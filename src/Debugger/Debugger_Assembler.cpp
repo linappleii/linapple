@@ -1034,7 +1034,7 @@ auto CmdSource (int nArgs) -> Update_t
         const int MAX_MINI_FILENAME = 20;
         const std::string sMiniFileName = sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));
 
-        char buffer[PATH_MAX_LEN] = { 0 };
+        char buffer[path_max_len] = { 0 };
 
         if (BufferAssemblyListing( sFileName ))
         {

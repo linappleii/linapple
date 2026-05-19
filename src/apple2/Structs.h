@@ -97,7 +97,7 @@ typedef struct {
 } SS_AW_CFG;
 
 typedef struct {
-  char StartingDir[PATH_MAX_LEN];
+  char StartingDir[path_max_len];
   uint32_t dwWindowXpos;
   uint32_t dwWindowYpos;
 } SS_AW_PREFS;

@@ -1,159 +1,144 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
 
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <cstdlib>
+#include <cstdint>
 #include <cstring>
 
-#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
+#include "core/Peripheral_Types.h"
 
-// NOLINTBEGIN(cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-use-trailing-return-type)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// Format drivers utilize a procedural C-compatible handle system and
+// standardized probing signatures mandated by the Disk subsystem ABI.
+// Array-to-pointer decay and C-style arrays are required for driver descriptor
+// registration.
 
 namespace {
-constexpr int NB2_TRACK_SIZE = 6384;
-constexpr int NB2_TRACKS = 35;
-constexpr int NB2_DISK_SIZE = NB2_TRACKS * NB2_TRACK_SIZE;
-constexpr size_t NB2_CHUNK_SIZE = 1024;
+namespace physical {
+constexpr int track_size = 6384;
+constexpr int tracks = 35;
+constexpr int disk_size = tracks * track_size;
+}  // namespace physical
 
-struct Nb2Instance {
-  FILE* file = nullptr;
-  uint32_t macbinary_offset = 0;
-  bool os_readonly = false;
-
-  Nb2Instance() = default;
-  ~Nb2Instance() {
-    if (file != nullptr) {
-      fclose(file);
-    }
+// Why: Identifies NB2 images by physical file size. This format lacks a
+// unique data signature, so exact size matching is the definitive heuristic.
+auto nb2_probe(const uint8_t* header_data, size_t header_size,
+               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+  if (header_data == nullptr) {
+    return disk_probe_no;
   }
-
-  Nb2Instance(const Nb2Instance&) = delete;
-  auto operator=(const Nb2Instance&) -> Nb2Instance& = delete;
-  Nb2Instance(Nb2Instance&&) = delete;
-  auto operator=(Nb2Instance&&) -> Nb2Instance& = delete;
-};
-}  // namespace
-
-static auto Nb2Probe(const uint8_t* header_data, size_t header_size,
-                     uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
-  (void)header_data;
   (void)header_size;
   (void)ext_hint;
 
-  if (file_size == static_cast<uint32_t>(NB2_DISK_SIZE)) {
+  if (file_size == static_cast<uint32_t>(physical::disk_size)) {
     return disk_probe_definite;
   }
 
   return disk_probe_no;
 }
 
-static auto Nb2Open(const char* path, uint32_t file_offset,
-                    uint8_t enhanced_speed, bool* out_is_read_only,
-                    void** out_instance) -> DiskError_e {
+auto nb2_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
+              bool* out_is_read_only, void** out_instance) -> DiskError_e {
+  if (path == nullptr || out_instance == nullptr) {
+    return disk_err_io;
+  }
   (void)enhanced_speed;
-  auto* instance = new Nb2Instance();
-  instance->file = fopen(path, "r+b");
-  if (instance->file != nullptr) {
-    instance->os_readonly = false;
-  } else {
-    instance->file = fopen(path, "rb");
-    if (instance->file != nullptr) {
-      instance->os_readonly = true;
-    } else {
-      delete instance;
-      return disk_err_io;
-    }
+  auto* image_ptr = bitstream_disk_image_open(
+      path, file_offset, physical::track_size, out_is_read_only);
+  if (image_ptr == nullptr) {
+    return disk_err_io;
   }
-
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = instance->os_readonly;
-  }
-  instance->macbinary_offset = file_offset;
-
-  *out_instance = reinterpret_cast<void*>(instance);
+  *out_instance = static_cast<void*>(image_ptr);
   return disk_err_none;
 }
 
-static auto Nb2Close(void* instance) -> void {
-  delete reinterpret_cast<Nb2Instance*>(instance);
+auto nb2_close(void* instance_handle) -> void {
+  if (instance_handle == nullptr) {
+    return;
+  }
+  bitstream_disk_image_close(
+      static_cast<BitstreamDiskImage_t*>(instance_handle));
 }
 
-static auto Nb2IsWriteProtected(void* instance) -> bool {
-  return reinterpret_cast<Nb2Instance*>(instance)->os_readonly;
+auto nb2_is_write_protected(void* instance_handle) -> bool {
+  if (instance_handle == nullptr) {
+    return true;
+  }
+  return bitstream_disk_image_is_write_protected(
+      static_cast<BitstreamDiskImage_t*>(instance_handle));
 }
 
-static auto Nb2ReadTrack(void* instance, int track, int phase,
-                         uint8_t* track_buffer, int* out_nibbles) -> void {
+auto nb2_read_track(void* instance_handle, int track, int phase,
+                    uint8_t* track_buffer, int* out_nibbles) -> void {
+  if (out_nibbles != nullptr) {
+    *out_nibbles = 0;
+  }
+
+  if (instance_handle == nullptr) {
+    return;
+  }
+
   (void)phase;
-  auto* ni = reinterpret_cast<Nb2Instance*>(instance);
-  if (track < 0 || track >= NB2_TRACKS) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  auto offset = static_cast<long>(ni->macbinary_offset) +
-                static_cast<long>(track) * NB2_TRACK_SIZE;
-  if (fseek(ni->file, offset, SEEK_SET) != 0) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  if (fread(track_buffer, 1, NB2_TRACK_SIZE, ni->file) != NB2_TRACK_SIZE) {
-    *out_nibbles = 0;
-    return;
-  }
-
-  *out_nibbles = NB2_TRACK_SIZE;
+  bitstream_disk_image_read_track(
+      static_cast<BitstreamDiskImage_t*>(instance_handle), track, track_buffer,
+      out_nibbles);
 }
 
-static auto Nb2WriteTrack(void* instance, int track, int phase,
-                          const uint8_t* track_buffer, int nibbles) -> void {
+auto nb2_write_track(void* instance_handle, int track, int phase,
+                     const uint8_t* track_buffer, int nibbles) -> void {
+  if (instance_handle == nullptr) {
+    return;
+  }
   (void)phase;
-  (void)nibbles;
-  auto* ni = reinterpret_cast<Nb2Instance*>(instance);
-  if (ni->os_readonly || track < 0 || track >= NB2_TRACKS) return;
-
-  auto offset = static_cast<long>(ni->macbinary_offset) +
-                static_cast<long>(track) * NB2_TRACK_SIZE;
-  if (fseek(ni->file, offset, SEEK_SET) == 0) {
-    (void)fwrite(track_buffer, 1, NB2_TRACK_SIZE, ni->file);
-  }
+  bitstream_disk_image_write_track(
+      static_cast<BitstreamDiskImage_t*>(instance_handle), track, track_buffer,
+      nibbles);
 }
 
-static auto Nb2Create(const char* path) -> DiskError_e {
-  FILE* f = fopen(path, "wb");
-  if (f == nullptr) return disk_err_io;
-
-  std::array<uint8_t, NB2_CHUNK_SIZE> zero{};
-  zero.fill(0);
-  for (int i = 0; i < NB2_DISK_SIZE / static_cast<int>(NB2_CHUNK_SIZE); ++i) {
-    fwrite(zero.data(), 1, zero.size(), f);
+auto nb2_create(const char* path) -> DiskError_e {
+  if (path == nullptr) {
+    return disk_err_io;
   }
-  if (NB2_DISK_SIZE % static_cast<int>(NB2_CHUNK_SIZE) != 0) {
-    fwrite(zero.data(), 1, static_cast<size_t>(NB2_DISK_SIZE % NB2_CHUNK_SIZE),
-           f);
-  }
-
-  fclose(f);
-  return disk_err_none;
+  return bitstream_disk_image_create(
+      path, static_cast<uint32_t>(physical::disk_size));
 }
 
-static const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};
+auto nb2_command(void* instance_handle, uint32_t cmd_id, const void* payload,
+                 size_t payload_size) -> PeripheralStatus {
+  (void)cmd_id;
+  (void)payload;
+  (void)payload_size;
+  if (instance_handle == nullptr) {
+    return PERIPHERAL_ERROR;
+  }
+  return PERIPHERAL_INCOMPATIBLE;
+}
 
-extern "C" const DiskFormatDriver_t g_nb2_driver = {disk_format_abi_version,
-                                                    disk_driver_cap_write,
-                                                    "NB2 (6384-nibble)",
-                                                    g_nb2_creatable_exts,
-                                                    Nb2Probe,
-                                                    Nb2Open,
-                                                    Nb2Close,
-                                                    Nb2IsWriteProtected,
-                                                    Nb2ReadTrack,
-                                                    Nb2WriteTrack,
-                                                    Nb2Create,
-                                                    nullptr,
-                                                    nullptr};
+const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};
+}  // namespace
 
-// NOLINTEND(cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-use-trailing-return-type)
+extern "C" const DiskFormatDriver_t g_nb2_driver = {
+    .abi_version = disk_format_abi_version,
+    .capabilities = disk_driver_cap_write,
+    .name = "NB2 (6384-nibble)",
+    .creatable_exts = g_nb2_creatable_exts,
+    .probe = nb2_probe,
+    .open = nb2_open,
+    .close = nb2_close,
+    .is_write_protected = nb2_is_write_protected,
+    .read_track = nb2_read_track,
+    .write_track = nb2_write_track,
+    .create = nb2_create,
+    .command = nb2_command,
+    .read_flux_bit = nullptr
+};
+
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
