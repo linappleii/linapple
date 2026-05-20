@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)
 // Justification: This file implements the platform-agnostic keyboard translation
 // layer, mapping host scancodes and keycodes to LinApple internal keys.

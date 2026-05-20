@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,

@@ -243,26 +243,26 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
 }
 
 void Linapple_SetKeyState(uint8_t apple_code, bool down) {
-  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0), 0, 0, 0, 0};
-  Peripheral_Command(0, keyb_cmd_event, &ev, sizeof(ev));
+  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0), 0, 0, 0, 0, {0, 0, 0}};
+  Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
 void Linapple_SetCapsLockState(bool enabled) {
   uint8_t caps = enabled ? 1 : 0;
-  Peripheral_Command(0, keyb_cmd_set_caps, &caps, 1);
+  Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
 }
 
 void Linapple_SetAppleKey(int key, bool down) {
   // Read current modifier state first so we only toggle the one apple key.
   KeyboardModifiers_t mods = {};
   size_t sz = sizeof(mods);
-  Peripheral_Query(0, keyb_query_mods, &mods, &sz);
+  Peripheral_Query(0, keyboard_query_mods, &mods, &sz);
   if (key == 0) {
     mods.gui = down ? 1U : 0U;
   } else {
     mods.alt = down ? 1U : 0U;
   }
-  Peripheral_Command(0, keyb_cmd_set_mods, &mods, sizeof(mods));
+  Peripheral_Command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 }
 
 void Linapple_SetJoystickAxis(int axis, int value) {

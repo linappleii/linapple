@@ -14,6 +14,18 @@ void Frontend_UpdateKeyboardMapping() {
   if (ConfigLoadInt("Keyboard", "Mapping Mode", &mode)) {
     keyboard_mapping_mode = static_cast<int>(mode);
   }
+
+  uint32_t layout = 0;
+  if (ConfigLoadInt("Configuration", "Keyboard Type", &layout)) {
+    uint8_t layout_val = static_cast<uint8_t>(layout);
+    Peripheral_Command(0, keyboard_cmd_set_layout, &layout_val, sizeof(layout_val));
+  }
+
+  uint32_t rocker = 0;
+  if (ConfigLoadInt("Configuration", "Keyboard Rocker Switch", &rocker)) {
+    uint8_t rocker_val = static_cast<uint8_t>(rocker);
+    Peripheral_Command(0, keyboard_cmd_set_rocker, &rocker_val, sizeof(rocker_val));
+  }
 }
 
 auto Frontend_ToCoreKey(int key, uint32_t mod) -> LinAppleKey {
@@ -47,8 +59,8 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
                               static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
                               static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
                               static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0),
-                              0};
-  Peripheral_Command(0, keyb_cmd_set_mods, &mods, sizeof(mods));
+                              0, {0, 0, 0}};
+  Peripheral_Command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 
   LinAppleKey core_key = LINAPPLE_KEY_UNKNOWN;
 
@@ -58,10 +70,14 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
     core_key = Frontend_ToCoreKey(static_cast<int>(keycode), mod);
   }
 
+  if (core_key == LINAPPLE_KEY_UNKNOWN) {
+    return;
+  }
+
   KeyboardEvent_t ev = {static_cast<uint32_t>(core_key),
                         static_cast<uint8_t>(is_down ? 1 : 0),
-                        mods.shift, mods.ctrl, mods.alt, mods.gui};
-  Peripheral_Command(0, keyb_cmd_event, &ev, sizeof(ev));
+                        mods.shift, mods.ctrl, mods.alt, mods.gui, {0, 0, 0}};
+  Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
 bool Frontend_HandleKeyEvent(SDLKey key, bool is_down) {
@@ -85,8 +101,8 @@ bool Frontend_HandleKeyEvent(SDLKey key, bool is_down) {
           static_cast<uint8_t>((mod & KMOD_SHIFT) ? 1 : 0),
           static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
           static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
-          static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0), 0};
-      Peripheral_Command(0, keyb_cmd_set_mods, &mods, sizeof(mods));
+          static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0), 0, {0, 0, 0}};
+      Peripheral_Command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
       return true;
     }
 

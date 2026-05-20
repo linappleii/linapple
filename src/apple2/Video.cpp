@@ -48,9 +48,9 @@ static auto GetTickCount() -> uint32_t {
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Peripheral.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
 #include "core/Util_Text.h"
@@ -65,6 +65,7 @@ static auto GetTickCount() -> uint32_t {
 #include "charset40_german.xpm"
 
 static uint32_t g_pVideoOutput[VIDEO_WIDTH * VIDEO_HEIGHT];
+static bool s_language_rocker_switch = false;
 
 auto VideoGetOutputBuffer() -> uint32_t* {
   return g_pVideoOutput;
@@ -959,7 +960,7 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
     CopySource(xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
                SRCOFFS_40COL + ((ch & 0x0F) << 4),
                (ch & 0xF0) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-               ((language_rocker_switch && multi_language_charset) ? 512:0));
+               ((s_language_rocker_switch && multi_language_charset) ? 512:0));
     return true;
   }
   return false;
@@ -969,7 +970,7 @@ inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel, bo
   bool bInvert = bCharFlashing ? g_bTextFlashState : false;
   CopySource(xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT, SRCOFFS_80COL + ((c & 15) << 3),
              ((c >> 4) << 4) + g_nAltCharSetOffset + (bInvert ? 0x40 : 0x00) +
-             ((language_rocker_switch && multi_language_charset) ? 512:0));
+             ((s_language_rocker_switch && multi_language_charset) ? 512:0));
   return true;
 }
 
@@ -1682,6 +1683,12 @@ void VideoUpdateOutputBuffer() {
 
 void VideoPerformRefresh() {
   g_video_draw_mutex.lock();
+
+  uint8_t rocker = 0;
+  size_t rocker_sz = sizeof(rocker);
+  if (Peripheral_Query(0, keyboard_query_rocker, &rocker, &rocker_sz) == PERIPHERAL_OK) {
+    s_language_rocker_switch = (rocker != 0);
+  }
 
   displaypage2_latched = displaypage2;
   vidmode_latched = g_uVideoMode;

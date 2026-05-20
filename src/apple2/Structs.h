@@ -57,7 +57,27 @@ typedef struct tagSS_IO_Joystick {
   uint64_t g_nJoyCntrResetCycle;
 } SS_IO_Joystick;
 
-#include "apple2/peripherals/keyboard/Keyboard_Structs.h"
+/**
+ * @brief Snapshot of the keyboard state for save-files.
+ */
+struct KeyboardSaveState_t {
+  uint8_t current_latch = 0;
+  uint8_t strobe = 0;
+  uint8_t rocker_switch = 0;
+  uint8_t shift_key = 0;
+  uint8_t ctrl_key = 0;
+  uint8_t open_apple = 0;
+  uint8_t closed_apple = 0;
+  uint8_t caps_lock = 1;
+  uint32_t keys_down_count = 0;
+  uint8_t alternate_layout = 0;
+
+  // Auto-repeat state
+  uint32_t repeat_key = 0xFFFFFFFF;
+  uint32_t repeat_scancode = 0;
+  uint32_t repeat_delay_cycles = 0;
+  uint8_t repeating = 0;
+};
 
 typedef struct SS_IO_Video {
   bool bAltCharSet;  // charoffs
@@ -76,7 +96,7 @@ typedef struct {
   SS_CPU6502 CPU6502;
   SS_IO_Comms Comms;
   SS_IO_Joystick Joystick;
-  SS_IO_Keyboard Keyboard;
+  KeyboardSaveState_t Keyboard;
   //  SS_IO_Memory Memory;
   SS_IO_Speaker Speaker;
   SS_IO_Video Video;

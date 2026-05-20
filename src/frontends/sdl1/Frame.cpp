@@ -481,7 +481,7 @@ void Frame_OnFocus(bool gained) {
     // Re-sync Caps Lock state upon regaining focus
     SDLMod mod = SDL_GetModState();
     uint8_t caps = ((mod & KMOD_CAPS) != 0) ? 1 : 0;
-    Peripheral_Command(0, keyb_cmd_set_caps, &caps, 1);
+    Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
   }
 }
 
@@ -651,9 +651,9 @@ void ProcessButtonClick(int button, int mod) {
              (g_Apple2Type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
-          Peripheral_Query(0, keyb_query_rocker, &cur_rocker, &rocker_sz);
+          Peripheral_Query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
           uint8_t new_rocker = (cur_rocker != 0) ? 0 : 1;
-          Peripheral_Command(0, keyb_cmd_set_rocker, &new_rocker, 1);
+          Peripheral_Command(0, keyboard_cmd_set_rocker, &new_rocker, 1);
           printf(
               "Toggling keyboard rocker switch. Selected character set: "
               "%s...\n",

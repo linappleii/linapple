@@ -1,10 +1,4 @@
-/*
- * Keyboard_Maps.h - Shared Keyboard Mapping Data
- *
- * Defines hardware encoder layouts for various locales.
- * C-compatible for use in all LinApple frontends.
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
@@ -19,103 +13,108 @@ extern "C" {
 #endif
 
 enum {
-  KEYB_MAP_SIZE = 128,  // Covers the physical scancode range (max index 82)
-  KEYB_NAME_SIZE = 32
+  keyb_map_size = 128,  // Covers the physical scancode range (max index 82)
+  keyb_name_size = 32
 };
 
-/**
- * @brief Positional Indices for the hardware encoder maps.
- * These are physical locations on a standard 101/102-key keyboard.
- */
 typedef enum {
-  KEYB_IDX_UNKNOWN = 0,
-  KEYB_IDX_A = 4,
-  KEYB_IDX_B = 5,
-  KEYB_IDX_C = 6,
-  KEYB_IDX_D = 7,
-  KEYB_IDX_E = 8,
-  KEYB_IDX_F = 9,
-  KEYB_IDX_G = 10,
-  KEYB_IDX_H = 11,
-  KEYB_IDX_I = 12,
-  KEYB_IDX_J = 13,
-  KEYB_IDX_K = 14,
-  KEYB_IDX_L = 15,
-  KEYB_IDX_M = 16,
-  KEYB_IDX_N = 17,
-  KEYB_IDX_O = 18,
-  KEYB_IDX_P = 19,
-  KEYB_IDX_Q = 20,
-  KEYB_IDX_R = 21,
-  KEYB_IDX_S = 22,
-  KEYB_IDX_T = 23,
-  KEYB_IDX_U = 24,
-  KEYB_IDX_V = 25,
-  KEYB_IDX_W = 26,
-  KEYB_IDX_X = 27,
-  KEYB_IDX_Y = 28,
-  KEYB_IDX_Z = 29,
+  keyb_idx_unknown = 0,
+  keyb_idx_a = 4,
+  keyb_idx_b = 5,
+  keyb_idx_c = 6,
+  keyb_idx_d = 7,
+  keyb_idx_e = 8,
+  keyb_idx_f = 9,
+  keyb_idx_g = 10,
+  keyb_idx_h = 11,
+  keyb_idx_i = 12,
+  keyb_idx_j = 13,
+  keyb_idx_k = 14,
+  keyb_idx_l = 15,
+  keyb_idx_m = 16,
+  keyb_idx_n = 17,
+  keyb_idx_o = 18,
+  keyb_idx_p = 19,
+  keyb_idx_q = 20,
+  keyb_idx_r = 21,
+  keyb_idx_s = 22,
+  keyb_idx_t = 23,
+  keyb_idx_u = 24,
+  keyb_idx_v = 25,
+  keyb_idx_w = 26,
+  keyb_idx_x = 27,
+  keyb_idx_y = 28,
+  keyb_idx_z = 29,
 
-  KEYB_IDX_1 = 30,
-  KEYB_IDX_2 = 31,
-  KEYB_IDX_3 = 32,
-  KEYB_IDX_4 = 33,
-  KEYB_IDX_5 = 34,
-  KEYB_IDX_6 = 35,
-  KEYB_IDX_7 = 36,
-  KEYB_IDX_8 = 37,
-  KEYB_IDX_9 = 38,
-  KEYB_IDX_0 = 39,
+  keyb_idx_1 = 30,
+  keyb_idx_2 = 31,
+  keyb_idx_3 = 32,
+  keyb_idx_4 = 33,
+  keyb_idx_5 = 34,
+  keyb_idx_6 = 35,
+  keyb_idx_7 = 36,
+  keyb_idx_8 = 37,
+  keyb_idx_9 = 38,
+  keyb_idx_0 = 39,
 
-  KEYB_IDX_RETURN = 40,
-  KEYB_IDX_ESCAPE = 41,
-  KEYB_IDX_BACKSPACE = 42,
-  KEYB_IDX_TAB = 43,
-  KEYB_IDX_SPACE = 44,
+  keyb_idx_return = 40,
+  keyb_idx_escape = 41,
+  keyb_idx_backspace = 42,
+  keyb_idx_tab = 43,
+  keyb_idx_space = 44,
 
-  KEYB_IDX_MINUS = 45,
-  KEYB_IDX_EQUALS = 46,
-  KEYB_IDX_LEFTBRACKET = 47,
-  KEYB_IDX_RIGHTBRACKET = 48,
-  KEYB_IDX_BACKSLASH = 49,
-  KEYB_IDX_SEMICOLON = 51,
-  KEYB_IDX_APOSTROPHE = 52,
-  KEYB_IDX_GRAVE = 53,
-  KEYB_IDX_COMMA = 54,
-  KEYB_IDX_PERIOD = 55,
-  KEYB_IDX_SLASH = 56,
+  keyb_idx_minus = 45,
+  keyb_idx_equals = 46,
+  keyb_idx_leftbracket = 47,
+  keyb_idx_rightbracket = 48,
+  keyb_idx_backslash = 49,
+  keyb_idx_semicolon = 51,
+  keyb_idx_apostrophe = 52,
+  keyb_idx_grave = 53,
+  keyb_idx_comma = 54,
+  keyb_idx_period = 55,
+  keyb_idx_slash = 56,
 
-  KEYB_IDX_CAPSLOCK = 57,
+  keyb_idx_capslock = 57,
 
-  KEYB_IDX_F1 = 58,
-  KEYB_IDX_F2 = 59,
-  KEYB_IDX_F3 = 60,
-  KEYB_IDX_F4 = 61,
-  KEYB_IDX_F5 = 62,
-  KEYB_IDX_F6 = 63,
-  KEYB_IDX_F7 = 64,
-  KEYB_IDX_F8 = 65,
-  KEYB_IDX_F9 = 66,
-  KEYB_IDX_F10 = 67,
-  KEYB_IDX_F11 = 68,
-  KEYB_IDX_F12 = 69,
+  keyb_idx_f1 = 58,
+  keyb_idx_f2 = 59,
+  keyb_idx_f3 = 60,
+  keyb_idx_f4 = 61,
+  keyb_idx_f5 = 62,
+  keyb_idx_f6 = 63,
+  keyb_idx_f7 = 64,
+  keyb_idx_f8 = 65,
+  keyb_idx_f9 = 66,
+  keyb_idx_f10 = 67,
+  keyb_idx_f11 = 68,
+  keyb_idx_f12 = 69,
 
-  KEYB_IDX_RIGHT = 79,
-  KEYB_IDX_LEFT = 80,
-  KEYB_IDX_DOWN = 81,
-  KEYB_IDX_UP = 82
-} KeyboardIdx_e;
+  keyb_idx_right = 79,
+  keyb_idx_left = 80,
+  keyb_idx_down = 81,
+  keyb_idx_up = 82
+} KeyboardIdx_t;
 
 typedef struct {
-  char name[KEYB_NAME_SIZE];
-  uint8_t map[KEYB_MAP_SIZE];
+  char name[keyb_name_size];
+  uint8_t map[keyb_map_size];
+  uint8_t shift_map[keyb_map_size];
+  uint8_t ctrl_map[keyb_map_size];
 } Apple2KeyboardMap_t;
 
-extern const Apple2KeyboardMap_t Map_US;
-extern const Apple2KeyboardMap_t Map_FR;
-extern const Apple2KeyboardMap_t Map_DE;
-extern const Apple2KeyboardMap_t Map_JP_Roman;
-extern const Apple2KeyboardMap_t Map_JP_Kana;
+extern const Apple2KeyboardMap_t map_us;
+extern const Apple2KeyboardMap_t map_uk;
+extern const Apple2KeyboardMap_t map_fr;
+extern const Apple2KeyboardMap_t map_de;
+extern const Apple2KeyboardMap_t map_es;
+extern const Apple2KeyboardMap_t map_it;
+extern const Apple2KeyboardMap_t map_se;
+extern const Apple2KeyboardMap_t map_dk;
+extern const Apple2KeyboardMap_t map_ch;
+extern const Apple2KeyboardMap_t map_ca;
+extern const Apple2KeyboardMap_t map_jp_roman;
+extern const Apple2KeyboardMap_t map_jp_kana;
 
 #ifdef __cplusplus
 }
