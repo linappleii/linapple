@@ -26,6 +26,9 @@ extern "C" auto VideoGetScannerAddress(uint32_t*, uint32_t) -> uint16_t {
 
 auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
 
+// Stub for auto-registration
+extern "C" void Peripheral_Register_Builtin(Peripheral_t* p) { (void)p; }
+
 namespace {
 
 constexpr uint16_t ADDR_DATA = 0xC0A8;

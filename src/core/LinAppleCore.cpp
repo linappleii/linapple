@@ -243,7 +243,7 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
 }
 
 void Linapple_SetKeyState(uint8_t apple_code, bool down) {
-  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0)};
+  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0), 0, 0, 0, 0};
   Peripheral_Command(0, keyb_cmd_event, &ev, sizeof(ev));
 }
 

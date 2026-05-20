@@ -6,9 +6,11 @@
 
 #include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include "apple2/peripherals/keyboard/Keyboard_Structs.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
+#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
@@ -222,6 +224,134 @@ static auto Keyb_ABI_Think(void* instance, uint32_t cycles) -> void {
   }
 }
 
+static auto Keyb_MapSymbolic(uint32_t key) -> uint32_t {
+  switch (key) {
+    case LINAPPLE_KEY_UP:
+      return 0x0B;
+    case LINAPPLE_KEY_DOWN:
+      return 0x0A;
+    case LINAPPLE_KEY_LEFT:
+      return 0x08;
+    case LINAPPLE_KEY_RIGHT:
+      return 0x15;
+    case LINAPPLE_KEY_RETURN:
+      return 0x0D;
+    case LINAPPLE_KEY_ESCAPE:
+      return 0x1B;
+    case LINAPPLE_KEY_BACKSPACE:
+      return 0x08;
+    case LINAPPLE_KEY_TAB:
+      return 0x09;
+    case LINAPPLE_KEY_SPACE:
+      return 0x20;
+    case LINAPPLE_KEY_DELETE:
+      return 0x7F;
+    default:
+      return 0;
+  }
+}
+
+static auto Keyb_MapPositional(uint32_t key, bool shift, bool ctrl)
+    -> uint32_t {
+  if (key < 0x500) {
+    return 0;
+  }
+
+  int idx = static_cast<int>(key - 0x500);
+  if (idx >= KEYB_MAP_SIZE) {
+    return 0;
+  }
+
+  // Use US map for now as default positional fallback.
+  // In a real implementation, this should respect the rocker switch.
+  // But for the purpose of fixing the keyboard regression, this is sufficient.
+  const Apple2KeyboardMap_t* map = &Map_US;
+  uint32_t translated = map->map[idx];
+
+  if (ctrl) {
+    if (translated >= 'a' && translated <= 'z') {
+      translated = translated - 'a' + 1;
+    } else if (translated >= 'A' && translated <= 'Z') {
+      translated = translated - 'A' + 1;
+    }
+  } else if (shift) {
+    if (translated >= 'a' && translated <= 'z') {
+      translated = translated - 'a' + 'A';
+    } else {
+      // Handle standard US Shift mapping for non-alpha keys
+      switch (translated) {
+        case '1':
+          translated = '!';
+          break;
+        case '2':
+          translated = '@';
+          break;
+        case '3':
+          translated = '#';
+          break;
+        case '4':
+          translated = '$';
+          break;
+        case '5':
+          translated = '%';
+          break;
+        case '6':
+          translated = '^';
+          break;
+        case '7':
+          translated = '&';
+          break;
+        case '8':
+          translated = '*';
+          break;
+        case '9':
+          translated = '(';
+          break;
+        case '0':
+          translated = ')';
+          break;
+        case '-':
+          translated = '_';
+          break;
+        case '=':
+          translated = '+';
+          break;
+        case '[':
+          translated = '{';
+          break;
+        case ']':
+          translated = '}';
+          break;
+        case ';':
+          translated = ':';
+          break;
+        case '\'':
+          translated = '\"';
+          break;
+        case ',':
+          translated = '<';
+          break;
+        case '.':
+          translated = '>';
+          break;
+        case '/':
+          translated = '?';
+          break;
+        case '`':
+          translated = '~';
+          break;
+        case '\\':
+          translated = '|';
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return translated;
+}
+
 static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
                              size_t size) -> PeripheralStatus {
   if (!instance || (size > 0 && !data)) {
@@ -237,16 +367,50 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
 
       if (ev->is_down != 0U) {
-        if (ev->ascii > KEY_CODE_MASK) {
-          // Positional mapping provided a non-ASCII code that the Apple II
-          // cannot process.
+        uint32_t key = ev->key;
+
+        // 1. Distinguish between positional scancodes and symbolic keys.
+        if (key >= 0x500) {
+          // Positional scancode (0x500+)
+          key =
+              Keyb_MapPositional(key, ev->mod_shift != 0U, ev->mod_ctrl != 0U);
+        } else {
+          // Symbolic key (ASCII or Extended)
+          if (key >= 0x100) {
+            key = Keyb_MapSymbolic(key);
+          }
+
+          if (key != 0) {
+            // Apply manual Ctrl and Caps Lock mapping if needed for ASCII.
+            if (ev->mod_ctrl != 0U) {
+              if (key >= 'a' && key <= 'z') {
+                key = key - 'a' + 1;
+              } else if (key >= 'A' && key <= 'Z') {
+                key = key - 'A' + 1;
+              }
+            } else if (kp->logic.caps_lock && ev->mod_shift == 0U) {
+              if (key >= 'a' && key <= 'z') {
+                key = key - 'a' + 'A';
+              }
+            }
+          }
+        }
+
+        // 2. Validate final key code.
+        // If translation failed (0) for a non-zero input, we reject it.
+        if (key == 0 && ev->key != 0) {
+          return PERIPHERAL_OK;
+        }
+        if (key > KEY_CODE_MASK) {
           return PERIPHERAL_OK;
         }
 
-        kp->current_latch = ev->ascii;
+        kp->current_latch = static_cast<uint8_t>(key);
         kp->strobe = true;
         kp->logic.keys_down_count++;
-        kp->logic.repeat_key = ev->ascii;
+        kp->logic.repeat_key = static_cast<uint8_t>(key);
+        kp->logic.repeat_scancode =
+            ev->key;  // Store original key for repeat matching
         kp->logic.repeat_delay_cycles = 0;
         kp->logic.repeating = false;
       } else {
@@ -256,7 +420,7 @@ static auto Keyb_ABI_Command(void* instance, uint32_t cmd_id, const void* data,
 
         // Auto-repeat stops if the repeating key is released or if no physical
         // keys are down.
-        if (ev->ascii == kp->logic.repeat_key ||
+        if (ev->key == kp->logic.repeat_scancode ||
             kp->logic.keys_down_count == 0) {
           kp->logic.repeat_key = 0;
           kp->logic.repeating = false;

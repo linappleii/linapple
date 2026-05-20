@@ -33,7 +33,7 @@ add_compile_options(-O3 -Wall -Wextra)
 include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_supported OUTPUT error)
 if(lto_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 endif()
 
 # --- Dependencies ---
@@ -152,6 +152,7 @@ set(SOURCES_CORE
     src/frontends/common/AppController.cpp
     src/frontends/common/FileBrowser.cpp
     src/frontends/common/Util_Hash.cpp
+    src/frontends/common/KeyboardTranslator.cpp
 )
 
 set(SOURCES_A2_MANDATORY
@@ -375,11 +376,11 @@ if(BUILD_TESTING)
     endmacro()
 
     # Refactored tests
-    add_executable(test-app-config tests/test_app_config.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    add_executable(test-app-config tests/test_app_config.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-app-config PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppConfig COMMAND test-app-config)
 
-    add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppArgs COMMAND test-app-args)
 
@@ -388,7 +389,7 @@ if(BUILD_TESTING)
     add_linapple_test(integration tests/test_main.cpp)
     
     # Custom test-superserial-peripheral to avoid symbol conflict
-    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/core/Peripheral.cpp)
+    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
     target_link_libraries(test-superserial-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
@@ -397,7 +398,7 @@ if(BUILD_TESTING)
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
     
-    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/keyboard/Keyboard_Maps.c src/core/Peripheral.cpp)
+    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/keyboard/Keyboard_Maps.c)
     target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
 
@@ -411,11 +412,11 @@ if(BUILD_TESTING)
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
     add_linapple_test(disk-abi "tests/test_disk_abi.cpp;tests/test_disk_abi_c.c")
     
-    add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/core/Peripheral.cpp)
+    add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
     target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
-    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp src/apple2/peripherals/disk/formats/DiskContainer.cpp src/core/Peripheral.cpp)
+    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp src/apple2/peripherals/disk/formats/DiskContainer.cpp)
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
@@ -426,17 +427,17 @@ if(BUILD_TESTING)
     add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
     add_linapple_test(headless-boot tests/test_headless_boot.cpp)
 
-    add_executable(test-file-browser tests/test_file_browser.cpp src/frontends/common/FileBrowser.cpp src/core/Peripheral.cpp)
+    add_executable(test-file-browser tests/test_file_browser.cpp src/frontends/common/FileBrowser.cpp)
     target_include_directories(test-file-browser PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-file-browser COMMAND test-file-browser)
 
-    add_executable(test-util-hash tests/test_util_hash.cpp src/frontends/common/Util_Hash.cpp src/core/Peripheral.cpp)
+    add_executable(test-util-hash tests/test_util_hash.cpp src/frontends/common/Util_Hash.cpp)
     target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-hash COMMAND test-util-hash)
 
     add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
 
-    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp src/core/Peripheral.cpp)
+    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-ui COMMAND test-disk-ui)
 

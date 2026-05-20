@@ -34,8 +34,12 @@ typedef struct {
 } KeyboardModifiers_t;
 
 typedef struct {
-  uint8_t ascii;
+  uint32_t key;
   uint8_t is_down;
+  uint8_t mod_shift;
+  uint8_t mod_ctrl;
+  uint8_t mod_alt;
+  uint8_t mod_gui;
 } KeyboardEvent_t;
 
 #ifdef __cplusplus

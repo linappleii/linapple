@@ -49,7 +49,9 @@ WEAK auto SuperSerialFrontend_UpdateState(uint32_t b, uint32_t d, int p, int s)
   (void)s;
 }
 WEAK auto SuperSerialFrontend_SendByte(uint8_t c) -> void { (void)c; }
-WEAK auto SuperSerialFrontend_SetSerialPortPath(const char* p) -> void { (void)p; }
+WEAK auto SuperSerialFrontend_SetSerialPortPath(const char* p) -> void {
+  (void)p;
+}
 WEAK auto SuperSerialFrontend_SetLoopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage

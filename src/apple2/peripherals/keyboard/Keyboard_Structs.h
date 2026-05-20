@@ -25,7 +25,8 @@ struct Keyboard_t {
   bool gui_key = false;
 
   // --- Auto-repeat State ---
-  uint8_t repeat_key = 0;
+  uint32_t repeat_key = 0;
+  uint32_t repeat_scancode = 0;
   uint32_t repeat_delay_cycles = 0;
   bool repeating = false;
 };
