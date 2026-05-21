@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+trap 'ec=$?; echo 1>&2 "INTERNAL ERROR: ec=$ec line=$LINENO cmd=$BASH_COMMAND";
+    exit $ec;' ERR
+
+####################################################################
+
+error() { echo -e 1>&2 "● ($(elapsed)s) ERROR: $(basename "$0"):" "$@"; }
+die()   { local ec=$1; shift; error "$@"; exit $ec; }
+
+elapsed_start=$(date +%s)
+elapsed() {
+    echo $(($(date +%s) - $elapsed_start))
+    #   Note that BSD/MacOS `date` doesn't support subsecond resolution.
+}
+
+#   Given $1 as a {distro}-{release}-{frontend} string,
+#   set globals $distro $release $frontend to its components,
+#   and $platform to colon-separated $distro:$release.
+#   These are implicit parameters to many routines.
+parse_build_spec() {
+    declare -g distro release frontend platform
+    local spec="$1"; shift
+    [[ $spec =~ ^([^-]+)-([^-]+)-([^-]+)$ ]] || die 2 "Bad build spec: $spec"
+      distro="${BASH_REMATCH[1]}"
+     release="${BASH_REMATCH[2]}"
+    frontend="${BASH_REMATCH[3]}"
+    platform="$distro:$release"
+}
+
+docker_unavailable() {
+    die 3 'Cannot run $docker due to setup_docker() failure (see above).'
+}
+
+setup_docker() {
+    declare -g docker docker_chown=''
+    [[ -n ${docker:-} ]] && return  # already configured from command line opt
+
+    if   podman --version >/dev/null 2>&1;  then docker=podman
+    elif docker --version >/dev/null 2>&1;  then docker=docker
+    else { docker=docker_unavailable; return 0; }
+    fi
+
+    #   On properly secured systems you must sudo to run docker (since
+    #   rootful docker implicitly gives complete root access to anybody
+    #   who can use it). Check if we connect to the server without it.
+    if ! $docker info >/dev/null 2>&1; then
+        docker="sudo $docker"
+        if ! $docker info >/dev/null 2>&1; then
+            echo 1>&2 "WARNING: Cannot 'sudo $docker info'; start proxy?"
+            docker=docker_unavailable
+        fi
+    fi
+
+    #   With rootful docker our new files in the bind mount are owned
+    #   by root outside the container, and we much chown them.
+    [[ $docker == *docker ]] \
+        && docker_chown="--chown-to $(id -u):$(id -g)"
+
+    return 0
+}
+
+####################################################################
+
+build_image() {
+    #   XXX Actually, it would be nice to use a single image for all
+    #   frontends, but we'd have to figure out how we pre-install all
+    #   the frontend deps, rather than just one.
+    declare -g build_spec force_rebuild \
+               image_name="linapple-build" \
+               image_tag="$build_spec"
+    echo "───── ($(elapsed)s) Build image $image_name:$image_tag with $docker"
+    local nocache= ; $force_rebuild && {
+        nocache=--no-cache
+        echo "• Forcing rebuild with $nocache"
+    }
+    $docker build $nocache \
+        --tag "$image_name:$image_tag" \
+        --build-arg PLATFORM="$platform" \
+        --build-arg FRONTEND="$frontend" \
+        "$PROJDIR/btools"
+}
+
+run_container() {
+    echo "───── ($(elapsed)s) Run container"
+    $docker run --rm \
+            --volume "$PROJDIR:$PROJDIR" \
+            --workdir "$PROJDIR" \
+        "$image_name:$image_tag" \
+        btools/build $docker_chown "$frontend" "$@"
+}
+
+do_build_spec() {
+    echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "┃   $build_spec"
+    #   parse_build_spec sets $distro $release $frontend $platform
+    parse_build_spec "$build_spec"
+    build_image
+    run_container "$@" || die 1 "FAILED: $build_spec"
+}
+
+####################################################################
+#   Usage and argparse.
+
+#   Default list if no build specs given with -s.
+default_cont_build_specs=(
+    debian-13-sdl3      debian-12-sdl2      debian-12-sdl1
+    ubuntu-24.04-sdl2   ubuntu-24.04-sdl1
+   #ubuntu-26.04-sdl3   # XXX "Compatibility with CMake < 3.5 has been removed from CMake."
+    fedora-41-sdl2
+   #fedora-latest-sdl3  # 44 XXX "Compatibility with CMake < 3.5 has been removed from CMake."
+   #archlinux-latest-sdl3
+)
+
+usage() {
+    cat <<_____
+Usage: $(basename "$0") [-s BUILD_SPEC]… --local|--container [BUILD-ARGS]
+
+Do a local (i.e., curent host) build or container build(s) for Linux build
+specifications '{distro}-{release}-{frontend}', e.g. 'ubuntu-24.04-sdl2'.
+One or more -s options build specific specs; no -s options use the default
+build spec(s): --local '$( $(dirname "$0")/btools/prereq-inst --spec )', and --container:
+  ${default_cont_build_specs[@]}
+
+* 'btools/build BUILD-ARGS' does the actual build.
+* The output (whether local or via container) is placed under
+  'build/{distro}-{release}-{frontend}/'.
+* For more information, see INSTALL.md, and run
+  'btools/prereq-inst --help' and 'btools/build --help'.
+_____
+    exit 0
+}
+
+build_type=
+build_specs=()
+force_rebuild=false
+while [[ $# -gt 0 ]]; do case "$1" in
+    -h|--help)          usage;;
+    --local|--lo*)      shift; build_type=local;;
+    --container|--co*)  shift; build_type=container;;
+    -s|--spec)          shift; build_specs+=($1); shift;;
+    -f|--force-rebuild) shift; force_rebuild=true;;
+    -p)                 shift; docker="$1"; shift;;
+    -*)                 die 2 "Unknown option: '$1'; --help for help";;
+    --)                 break;;
+    *)                  break;;
+esac; done
+
+####################################################################
+#   Main
+
+PROJDIR=$(command cd $(dirname "$0") && pwd -P)
+case $build_type in
+
+    local)
+        #   Build on 'local' system, without containers.
+        if [[ ${#build_specs[@]} -eq 0 ]]; then
+            #   Current platform, default frontend.
+            "$PROJDIR/btools/prereq-inst"
+            "$PROJDIR/btools/build" "$@"
+        else
+            #   Platform(s) and frontend(s) specified.
+            #   The user is expected to provide specs compatible with the
+            #   local system (typically {distro}-{release} of exactly the
+            #   local system, plus an appropriate -{frontend}).
+            for build_spec in ${build_specs[@]}; do
+                echo "━━━━━ $build_spec"
+                distro=${build_spec%-*}     # strip shortest trailing -*
+                frontend=${build_spec##*-}  # strip longest leading  *-
+                D="${distro:+-D}"; Darg="${distro//-/:}"
+                echo "• distro='$distro' frontend='$frontend'"
+                "$PROJDIR/btools/prereq-inst" $D $Darg "$frontend"
+                "$PROJDIR/btools/build"       $D $Darg "$frontend" "$@"
+            done
+        fi
+        ;;
+
+    container)
+        setup_docker
+        [[ ${#build_specs[@]} -eq 0 ]] && build_specs=("${default_cont_build_specs[@]}")
+        echo '▶ Build specs:' "${build_specs[@]}"
+        mkdir -p "$PROJDIR/build/Testlog"
+        for build_spec in "${build_specs[@]}"; do
+            #   Ensure we can write the log before we start generating it.
+            > "$PROJDIR/build/Testlog/$build_spec"
+            do_build_spec 2>&1 | tee "$PROJDIR/build/Testlog/$build_spec"
+        done
+        ;;
+
+    *)
+        die 2 "Must specify --local or --container; see --help"
+        ;;
+
+esac
+echo "━━━━━ ($(elapsed)s) OK"
+
+#   XXX -d DISTRO -f FRONTEND   (either implies --current?)
+#               no, maybe better limits --all? patterns? `-d deb` for deb*?

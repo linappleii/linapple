@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+#
+#   prereq-inst - Install linapple build prerequisites for a distro/frontend
+#
+#   See usage() for details.
+#
+set -Eeuo pipefail
+trap 'ec=$?; echo 1>&2 "INTERNAL ERROR: ec=$ec line=$LINENO cmd=$BASH_COMMAND";
+    exit $ec;' ERR
+
+error() { echo -e 1>&2 "● ERROR: $(basename "$0"):" "$@"; }
+die()   { local ec=$1; shift; error "$@"; exit $ec; }
+
+#   $1 is a timestamp dir or file.
+#   If modified within the last hour, return 1, otherwise 0.
+#   This never touches the file; use set_update() to do that.
+needs_update() {
+    local timestamp="$1"; shift
+    [[ -e $timestamp ]] || return 0
+    local age=$(( $(date +%s) - $(stat -c %Y "$timestamp") ))
+    (( age <= ${1:-7200} )) || return 0
+    return 1
+}
+set_update() {
+    local timestamp="$1"; shift
+    touch "$timestamp"
+}
+
+sudo=
+set_sudo() {
+    declare -g sudo
+    [[ $(id -u) -eq 0 ]] || sudo=sudo
+}
+
+####################################################################
+
+install_prerequisites() {
+    echo '━━━━━ Install prerequisites'
+
+    #   This needs to be on a filesystem local to the container, if we're using
+    #   one, so that we don't honour a stale timestamp in a new container.
+    local tsfile="/tmp/linappleii-linapple/prereq-$ID-$VERSION_ID-$FRONTEND"
+    mkdir -p "$(dirname "$tsfile")"
+    #   Skip if not forced and we updated/installed in the last hour.
+    { $force_install || needs_update "$tsfile"; } \
+        || { echo 'updated recently; skipping'; return 0; }
+
+    local known_ids=(       # all these must be in the `case` below.
+        debian ubuntu fedora
+    )
+    local id k
+    for distro in "$ID" ${ID_LIKE:-}; do        # split $ID_LIKE
+        for k in "${known_ids[@]}"; do
+            #   Stop both loops at first one we know.
+            [[ $distro == "$k" ]] && break 2
+        done
+        die 4 "This system's IDs match no known distros" \
+            "\n• Known:" "${known_ids[@]}" \
+            "\n• ID=$ID ID_LIKE=${ID_LIKE:-}"
+    done
+
+    case "$distro" in
+        debian|ubuntu)  install_deps_debian;;
+        fedora)         install_deps_fedora;;
+                        #   $ID_LIKE grabs RHEL/CentOS/Rocky/Alma, too.
+        *)              die 10 "Internal error: set unknown distro '$distro'";;
+    esac
+    set_update "$tsfile"
+}
+
+#   For these distro-specific functions, you can compare/check against what
+#   .github/workflows/build.yaml installs.
+
+install_deps_debian() {
+    echo '───── apt update'
+    $sudo apt update && $sudo touch /var/lib/apt/lists
+    echo '───── apt dist-upgrade'
+    $sudo apt dist-upgrade -y
+    echo '───── apt install'
+    $sudo apt install -y -q \
+        git g++ cmake \
+        libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick
+    case "$FRONTEND" in
+        sdl1)   $sudo apt install -y -q libsdl1.2-dev libsdl-image1.2-dev;;
+        sdl2)   $sudo apt install -y -q libsdl2-dev libsdl2-image-dev;;
+        sdl3)   $sudo apt install -y -q libsdl3-dev libsdl3-image-dev;;
+        *)      die 4 "Unknown frontend: $FRONTEND";;
+    esac
+}
+
+install_deps_fedora() {
+    #   No apt-lists timestamp to refresh: dnf manages metadata expiry
+    #   itself, and --refresh forces it the way `apt update` does.
+    echo '───── dnf upgrade'
+    $sudo dnf upgrade -y --refresh
+    echo '───── dnf install'
+    $sudo dnf install -y \
+        git gcc-c++ cmake \
+        libzip-devel libcurl-devel zlib-devel ImageMagick
+    case "$FRONTEND" in
+        sdl1)   $sudo dnf install -y  SDL-devel  SDL_image-devel;;
+        sdl2)   $sudo dnf install -y SDL2-devel SDL2_image-devel;;
+        sdl3)   $sudo dnf install -y SDL3-devel SDL3_image-devel;;
+        *)      die 4 "Unknown frontend: $FRONTEND";;
+    esac
+}
+
+####################################################################
+#   Usage, argument parsing, main.
+
+usage() {
+    cat <<_____
+Usage: $(basename "$0") [OPTS] [-D DISTRO] [FRONTEND]
+  Install the linapple build prerequisites for the current distro and given
+  frontend, or the default frontend if not specified.
+Options:
+  -h,--help         Print this message.
+  -s,--spec         Print build spec instead of installing.
+  -f                Force package update and install, even if it's already
+                    been done in the last hour.
+  -D ID:VERSION_ID  Use given distro information instead of autodetecting
+                    from /etc/os-release. E.g. 'ubuntu:24.04'.
+                    You should never need this.
+_____
+    usage_frontends
+    exit 0
+}
+
+source $(dirname "$0")/common.bash
+
+force_distro=
+force_install=false
+print_build_spec=false
+FRONTEND=
+while [[ $# -gt 0 ]]; do case "$1" in
+    -h|--help)      usage;;
+    -D)             shift; force_distro="$1"; shift;;
+    -f)             shift; force_install=true;;
+    -s|--spec)      shift; print_build_spec=true;;
+    --)             shift; break;;
+    -*)             die 2 "Unknown option: '$1'; try --help.";;
+    *)              break;;
+esac; done
+[[ $# -gt 0 ]] && { FRONTEND="$1"; shift; }
+[[ $# -eq 0 ]] || die 2 "Too many arguments; see --help."
+
+set_distro
+check_frontend
+$print_build_spec &&  {
+    echo "$ID-$VERSION_ID-$FRONTEND"
+    exit 0
+}
+echo "▶ DISTRO=$ID:$VERSION_ID FRONTEND=$FRONTEND"
+set_sudo
+install_prerequisites

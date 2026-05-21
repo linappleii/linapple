@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#
+#   btools/build - Build linapple for a distro/frontend
+#
+#   See usage() for details.
+#
+
+chown_builddir() {          # Used by --chown-to.
+    local to="$1"; shift
+    #   In case we created the parent of $BUILDDIR_REL.
+    chown "$to" "$(dirname "$PROJDIR/$BUILDDIR_REL")" || true
+    chown -R "$to" "$PROJDIR/$BUILDDIR_REL" \
+        || echo 1>&2 "WARNING: chown -R '$to' '$BUILDDIR_REL' failed"
+}
+
+####################################################################
+#   Usage and argument parsing.
+
+usage() {
+    cat <<_____
+Usage: $(basename "$0") [OPTS] [-D DISTRO] [FRONTEND]
+For the current distro  and given (or default) frontend, builds linapple
+and runs tests. Assumes all prerequisites are intalled (see 'prereq-inst').
+The build is placed in build/{distro}-{release}-{frontend}/.
+
+Options:
+  -h,--help         Print this message.
+  --chown OWNER     On exit, chown -R the build dir to OWNER (UID:GID or
+                    user:group); failures warn but do not abort. You want
+                    this for rootful container builds writing to a bind-
+                    mounted host dir.
+  -D ID:VERSION_ID  Use given distro information instead of autodetecting
+                    from /etc/os-release. E.g. 'ubuntu:24.04'.
+                    You should never need this.
+_____
+    usage_frontends
+    exit 0
+}
+
+source $(dirname "$0")/common.bash
+
+chown_to=
+force_distro=
+FRONTEND=
+while [[ $# -gt 0 ]]; do case "$1" in
+    -h|--help)      usage;;
+    -D)             shift; force_distro="$1"; shift;;
+    --chown-to)     shift; chown_to="$1"; shift;;
+    -*)             die 2 "Unknown option: '$1'; see --help.";;
+    --)             shift; break;;
+    *)              break;;
+esac; done
+[[ $# -gt 0 ]] && { FRONTEND="$1"; shift; }
+[[ $# -eq 0 ]] || die 2 "Too many arguments; see --help."
+
+set_distro
+check_frontend
+
+####################################################################
+
+#   No colon in builddir path because even on Linux it makes Cmake upset.
+#   This is relative because we need to `cd` to `cmake` anyway, so why
+#   not keep it short for messages etc.
+echo "▶ DISTRO=$ID:$VERSION_ID FRONTEND=$FRONTEND"
+
+command cd "$PROJDIR"
+echo '━━━━━ Cmake setup'
+BUILDDIR_REL="build/$ID-$VERSION_ID-$FRONTEND"
+echo "▶ BUILDDIR=$BUILDDIR_REL"
+[[ -n $chown_to ]] && trap "chown_builddir $chown_to" EXIT
+cmake -B "$BUILDDIR_REL" -DFRONTEND=$FRONTEND
+echo '━━━━━ Cmake build'
+echo ● cmake --quiet --build "$BUILDDIR_REL" -j$(nproc)
+cmake --build "$BUILDDIR_REL" -j$(nproc)
+echo '━━━━━ Unit Tests'
+( cd "$BUILDDIR_REL" \
+  && SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+     ctest --output-on-failure
+) || true
