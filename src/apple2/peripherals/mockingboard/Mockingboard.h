@@ -1,14 +1,19 @@
-#include <cstdint>
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-typedef struct tagSS_CARD_MOCKINGBOARD SS_CARD_MOCKINGBOARD;
+#include "core/Peripheral.h"
 
-enum eSOUNDCARDTYPE {
-  SC_UNINIT = 0,
-  SC_NONE,
-  SC_MOCKINGBOARD,
-  SC_PHASOR
-};  // Apple soundcard type
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Mockingboard card now uses the Peripheral ABI - no direct procedural calls
-// required from core or frontends.
+// NOLINTBEGIN(modernize-use-using)
+// Justification: Identity header for the Mockingboard module.
+
+auto Mockingboard_GetDescriptor() -> Peripheral_t*;
+
+// NOLINTEND(modernize-use-using)
+
+#ifdef __cplusplus
+}
+#endif
