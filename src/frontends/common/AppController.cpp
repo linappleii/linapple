@@ -56,8 +56,12 @@ auto AppController_Initialize(AppConfig* config) -> int {
   g_Apple2Type = config->apple2Type;
   if (config->bPAL) {
     g_videotype = VT_COLOR_TVEMU;
+    g_state.bVideoScannerNTSC = false;
+    g_state.dwClksPerFrame = 20280;
   } else {
     g_videotype = VT_COLOR_STANDARD;
+    g_state.bVideoScannerNTSC = true;
+    g_state.dwClksPerFrame = 17030;
   }
 
   // 4. Init Snapshots

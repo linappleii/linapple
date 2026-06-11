@@ -560,6 +560,7 @@ static auto mb_io_read(void* instance, uint16_t pc, uint16_t addr,
     return MemReadFloatingBus(cycles_left);
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  CpuCalcCycles(cycles_left);
   mb_update_cycles_instance(mp, cycles_left);
   uint8_t offset = addr & mb_io_addr_hi_mask;
   if (offset <= (sy6522a_offset + via_reg_mask)) {
@@ -581,6 +582,7 @@ static auto mb_io_write(void* instance, uint16_t pc, uint16_t addr,
     return 0;
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  CpuCalcCycles(cycles_left);
   mb_update_cycles_instance(mp, cycles_left);
 
   uint8_t offset = addr & mb_io_addr_hi_mask;
@@ -601,6 +603,8 @@ static auto phasor_io(void* instance, uint16_t pc, uint16_t addr,
     return MemReadFloatingBus(cycles_left);
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  CpuCalcCycles(cycles_left);
+  mb_update_cycles_instance(mp, cycles_left);
 
   if (!mp->phasor_native) {
     mp->phasor_native = (addr & 1) != 0;

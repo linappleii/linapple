@@ -87,15 +87,20 @@ void Peripheral_Register_Internal() {
         continue;
       }
     } else {
-      // Look for a built-in peripheral that prefers this slot
-      for (auto* p : Peripheral_GetBuiltinRegistry()) {
-        if (p->default_slot == slot) {
-          if (slot == 7 && !hddenabled) continue;
-          name = p->id;
-          break;
-        }
+      if (slot == 1) {
+        name = "linapple.printer";
+      } else if (slot == 2) {
+        name = "linapple.ssc";
+      } else if (slot == 4) {
+        name = "linapple.mockingboard";
+      } else if (slot == 6) {
+        name = "linapple.disk_II";
+      } else if (slot == 7 && hddenabled) {
+        name = "linapple.harddisk";
       }
-      if (name.empty()) continue;
+      if (name.empty()) {
+        continue;
+      }
     }
 
     Peripheral_t* p = Peripheral_Find_Internal(name.c_str());

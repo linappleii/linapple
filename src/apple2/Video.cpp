@@ -1913,8 +1913,8 @@ auto VideoSetMode(uint16_t, uint16_t address, uint8_t write, uint8_t, uint32_t n
 static uint32_t g_dwVideoCyclesInFrame = 0;
 void VideoUpdateVbl(uint32_t dwCyclesThisFrame) {
   g_dwVideoCyclesInFrame += dwCyclesThisFrame;
-  while (g_dwVideoCyclesInFrame >= 17030) {
-    g_dwVideoCyclesInFrame -= 17030;
+  while (g_dwVideoCyclesInFrame >= g_state.dwClksPerFrame) {
+    g_dwVideoCyclesInFrame -= g_state.dwClksPerFrame;
     VideoRefreshScreen();
     VideoUpdateFlash();
   }
@@ -1994,7 +1994,7 @@ auto VideoSetSnapshot(SS_IO_Video *pSS) -> uint32_t {
 
 auto VideoGetScannerAddress(bool *pbVblBar_OUT, const uint32_t uExecutedCycles) -> uint16_t {
   // get video scanner position
-  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % 17030;
+  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;
 
   // machine state switches
   int nHires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
@@ -2079,7 +2079,7 @@ auto VideoGetScannerAddress(bool *pbVblBar_OUT, const uint32_t uExecutedCycles) 
 
 auto VideoGetVbl(const uint32_t uExecutedCycles) -> bool {
   // get cycles within current frame
-  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % 17030;
+  int nCycles = (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;
 
   // Apple II NTSC: 262 lines, 65 cycles per line.
   // Visible area: lines 0-191. VBL: lines 192-261.

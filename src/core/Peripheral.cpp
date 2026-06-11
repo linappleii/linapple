@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "LinAppleCore.h"
+#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Riff.h"
 #include "apple2/SoundCore.h"
@@ -185,8 +186,15 @@ static auto Host_Log(void* instance, PeripheralLogLevel level, const char* fmt,
 }
 
 static auto Host_AssertIrq(int slot, bool assert) -> void {
-  (void)slot;
-  (void)assert;
+  if (slot < 1 || slot > 7) {
+    return;
+  }
+  eIRQSRC src = static_cast<eIRQSRC>(IS_SLOT1 + slot - 1);
+  if (assert) {
+    CpuIrqAssert(src);
+  } else {
+    CpuIrqDeassert(src);
+  }
 }
 
 static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0,
