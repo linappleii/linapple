@@ -1,14 +1,15 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h"
-#include "core/ProgramLoader.h"
-#include "core/LinAppleCore.h"
-#include "core/Common.h"
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <vector>
-#include <array>
+
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "core/Common.h"
+#include "core/LinAppleCore.h"
+#include "core/ProgramLoader.h"
+#include "doctest.h"
 
 namespace {
 constexpr int DSK_BLOCK_SIZE = 1024;
@@ -24,9 +25,10 @@ constexpr uint32_t PRG_MAGIC_VAL = 0x214C470A;
 constexpr uint16_t PRG_WORD_LEN_8 = 8;
 constexpr int PRG_HEADER_PAD_SIZE = 128 - 9;
 constexpr uint8_t PRG_DATA_XOR_VAL = 0xAA;
-}
+}  // namespace
 
-TEST_CASE("ProgramLoader: [PRG-01] Detection Failure on DSK (Memory preserved)") {
+TEST_CASE(
+    "ProgramLoader: [PRG-01] Detection Failure on DSK (Memory preserved)") {
   const char* dsk_path = "test.dsk";
   {
     FilePtr f(fopen(dsk_path, "wb"), fclose);
@@ -96,7 +98,7 @@ TEST_CASE("ProgramLoader: [PRG-04] APL Loading") {
 
   MemInitialize();
   CHECK(ProgramLoader_TryLoad(test_apl) == PROGRAM_LOAD_OK);
-  CHECK(regs.pc == ADDR_0800);
+  CHECK(CpuGetRegisters()->pc == ADDR_0800);
   CHECK(memcmp(mem + ADDR_0800, data.data(), data.size()) == 0);
 
   remove(test_apl);
@@ -114,7 +116,7 @@ TEST_CASE("ProgramLoader: [PRG-05] PRG Loading (Word to Byte length)") {
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;
-    uint16_t word_len = PRG_WORD_LEN_8; // 16 bytes
+    uint16_t word_len = PRG_WORD_LEN_8;  // 16 bytes
     fwrite(&magic, 1, 4, f.get());
     fwrite(&pad1, 1, 1, f.get());
     fwrite(&addr, 1, 2, f.get());
@@ -127,7 +129,7 @@ TEST_CASE("ProgramLoader: [PRG-05] PRG Loading (Word to Byte length)") {
 
   MemInitialize();
   CHECK(ProgramLoader_TryLoad(test_prg) == PROGRAM_LOAD_OK);
-  CHECK(regs.pc == ADDR_1000);
+  CHECK(CpuGetRegisters()->pc == ADDR_1000);
   CHECK(memcmp(mem + ADDR_1000, data.data(), data.size()) == 0);
 
   remove(test_prg);

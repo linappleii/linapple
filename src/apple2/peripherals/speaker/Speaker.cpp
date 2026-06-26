@@ -44,6 +44,13 @@ struct SpeakerPeripheral_t {
   SpeakerPeripheral_t() = default;
 };
 
+static auto GetCycles(HostInterface_t* host) -> uint64_t {
+  if (host != nullptr && host->GetCycles != nullptr) {
+    return host->GetCycles();
+  }
+  return CpuGetCumulativeCycles();
+}
+
 // --- Internal Implementation ---
 
 auto Speaker_Initialize(void* instance) -> void {
@@ -59,9 +66,8 @@ auto Speaker_Initialize(void* instance) -> void {
 
   speaker_peripheral->host = host;
   speaker_peripheral->slot = slot;
-  speaker_peripheral->last_update_cycle = g_nCumulativeCycles;
-  speaker_peripheral->next_sample_cycle =
-      static_cast<double>(g_nCumulativeCycles);
+  speaker_peripheral->last_update_cycle = GetCycles(host);
+  speaker_peripheral->next_sample_cycle = static_cast<double>(GetCycles(host));
 }
 
 auto Speaker_Reset(void* instance) -> void {
@@ -91,7 +97,7 @@ auto Speaker_Update(void* instance, uint32_t elapsed_cycles) -> void {
       speaker_peripheral->is_active = false;
     }
   }
-  speaker_peripheral->last_update_cycle = g_nCumulativeCycles;
+  speaker_peripheral->last_update_cycle = GetCycles(speaker_peripheral->host);
 }
 
 auto Speaker_IsActive(void* instance) -> bool {
@@ -128,7 +134,8 @@ auto Speaker_Toggle(void* instance, uint16_t program_counter,
       const auto event_index =
           static_cast<size_t>(speaker_peripheral->event_count);
       speaker_peripheral->current_state = !speaker_peripheral->current_state;
-      speaker_peripheral->events.at(event_index).cycle = g_nCumulativeCycles;
+      speaker_peripheral->events.at(event_index).cycle =
+          GetCycles(speaker_peripheral->host);
       speaker_peripheral->events.at(event_index).state =
           speaker_peripheral->current_state;
       speaker_peripheral->event_count++;
@@ -289,8 +296,9 @@ auto Speaker_GenerateSamples(void* instance, uint32_t elapsed_cycles) -> void {
     return;
   }
 
-  const uint64_t start_cycle = g_nCumulativeCycles - elapsed_cycles;
-  const uint64_t end_cycle = g_nCumulativeCycles;
+  const uint64_t start_cycle =
+      GetCycles(speaker_peripheral->host) - elapsed_cycles;
+  const uint64_t end_cycle = GetCycles(speaker_peripheral->host);
 
   if (speaker_peripheral->next_sample_cycle <
       static_cast<double>(start_cycle)) {

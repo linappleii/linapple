@@ -387,6 +387,7 @@ if(BUILD_TESTING)
     add_linapple_test(app-env tests/test_app_env.cpp)
     add_linapple_test(app-controller tests/test_app_controller.cpp)
     add_linapple_test(integration tests/test_main.cpp)
+    add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     
     # Custom test-superserial-peripheral to avoid symbol conflict
     add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp src/core/Common.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)

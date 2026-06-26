@@ -17,7 +17,9 @@ auto GetUserDataDir() -> std::string {
   if (!pref) {
     return "./";
   }
-  return std::string(pref);
+  std::string path(pref);
+  SDL_free(const_cast<char*>(pref));
+  return path;
 }
 
 }  // namespace Path

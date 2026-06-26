@@ -140,16 +140,16 @@ void Linapple_CpuTest(const char* szTestFile, uint16_t trap_addr) {
     Error("Failed to load test file: %s\n", szTestFile);
     return;
   }
-  regs.pc = 0x0400;  // NMOS 6502 functional test entry
+  CpuGetRegisters()->pc = 0x0400;  // NMOS 6502 functional test entry
   uint64_t count = 0;
   while (count < CPU_TEST_MAX_CYCLES) {
     uint32_t executed = CpuExecute(1);
     cyclenum += executed;
     g_nCumulativeCycles += executed;
     count += executed;
-    if (regs.pc == trap_addr) {
-      printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n", regs.pc,
-             count);
+    if (CpuGetRegisters()->pc == trap_addr) {
+      printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n",
+             CpuGetRegisters()->pc, count);
       break;
     }
   }
@@ -201,7 +201,7 @@ int Linapple_LoadProgram(const char* path) {
   fclose(f);
 
   memset(memdirty, 0xFF, NUM_PAGES_48K);
-  regs.pc = load_addr;
+  CpuGetRegisters()->pc = load_addr;
   return static_cast<int>(PROGRAM_LOAD_OK);
 }
 

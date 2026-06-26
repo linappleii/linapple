@@ -45,47 +45,71 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // . opcodes, while working surprisingly well in practice, was IMHO
 // . ill-founded in theory and has thus been removed.
 
-
 /* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
 
-#include "core/Common.h"
-#include <cassert>
 #include <pthread.h>
+
+#include <cassert>
 #include <cstdint>
 
+#include "core/Common.h"
+
+#define CPU_CPP_IMPL
 #include "apple2/CPU.h"
-#include "apple2/Structs.h"
 #include "apple2/Memory.h"
+#include "apple2/Structs.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 
 enum {
-AF_SIGN =       0x80,
-AF_OVERFLOW =   0x40,
-AF_RESERVED =   0x20,
-AF_BREAK =      0x10,
-AF_DECIMAL =    0x08,
-AF_INTERRUPT =  0x04,
-AF_ZERO =       0x02,
-AF_CARRY =      0x01
+  AF_SIGN = 0x80,
+  AF_OVERFLOW = 0x40,
+  AF_RESERVED = 0x20,
+  AF_BREAK = 0x10,
+  AF_DECIMAL = 0x08,
+  AF_INTERRUPT = 0x04,
+  AF_ZERO = 0x02,
+  AF_CARRY = 0x01
 };
 
-enum {
-SHORTOPCODES =  22,
-BENCHOPCODES =  33
-};
+enum { SHORTOPCODES = 22, BENCHOPCODES = 33 };
 
 // What is this 6502 code?
-static uint8_t benchopcode[BENCHOPCODES] = {0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86, 0x91, 0x94,
-                                         0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6, 0x19, 0x6D, 0x8D, 0x99,
-                                         0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE};
+static uint8_t benchopcode[BENCHOPCODES] = {
+    0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86,
+    0x91, 0x94, 0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6,
+    0x19, 0x6D, 0x8D, 0x99, 0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE};
+
+static CpuInstance_t g_cpu_context{};
+CpuInstance_t* g_active_cpu = &g_cpu_context;
 
 regsrec regs;
-
 uint64_t g_nCumulativeCycles = 0;
-
-static uint32_t g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute()
+static uint32_t
+    g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute()
 static uint32_t g_nCyclesExecuted;
+static volatile uint32_t g_bmIRQ = 0;
+static volatile uint32_t g_bmNMI = 0;
+static volatile bool g_bNmiFlank = false;  // Positive going flank on NMI line
+
+auto CpuGetRegisters() -> CpuRegisters_t* { return &regs; }
+
+auto CpuGetCumulativeCycles() -> uint64_t { return g_nCumulativeCycles; }
+
+auto CpuGetActiveContext() -> CpuInstance_t* { return g_active_cpu; }
+
+auto CpuSetActiveContext(CpuInstance_t* context) -> void {
+  if (context == nullptr) {
+    return;
+  }
+  g_active_cpu->cpu_regs = regs;
+  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
+
+  g_active_cpu = context;
+
+  regs = g_active_cpu->cpu_regs;
+  g_nCumulativeCycles = g_active_cpu->cumulative_cycles;
+}
 
 static signed long g_uInternalExecutedCycles;
 static signed int g_nIrqCheckTimeout = 16;
@@ -95,554 +119,637 @@ static signed int g_nIrqCheckTimeout = 16;
 // Assume all interrupt sources assert until the device is told to stop:
 // - eg by r/w to device's register or a machine reset
 
-static bool g_bCritSectionValid = false;  // Deleting CritialSection when not valid causes crash on Win98
-//static CRITICAL_SECTION g_CriticalSection;  // To guard /g_bmIRQ/ & /g_bmNMI/
+static bool g_bCritSectionValid =
+    false;  // Deleting CritialSection when not valid causes crash on Win98
+// static CRITICAL_SECTION g_CriticalSection;  // To guard /g_bmIRQ/ & /g_bmNMI/
 pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
-static volatile uint32_t g_bmIRQ = 0;
-static volatile uint32_t g_bmNMI = 0;
-static volatile bool g_bNmiFlank = false; // Positive going flank on NMI line
 
 // General Purpose Macros
-#define AF_TO_EF  flagc = (regs.ps & AF_CARRY);            \
-      flagn = (regs.ps & AF_SIGN);            \
-      flagv = (regs.ps & AF_OVERFLOW);          \
-      flagz = (regs.ps & AF_ZERO);
-#define EF_TO_AF  regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN |        \
-           AF_OVERFLOW | AF_ZERO))      \
-            | flagc               \
-            | flagn              \
-            | (flagv ? AF_OVERFLOW : 0)        \
-            | (flagz ? AF_ZERO     : 0)        \
-            | AF_RESERVED | AF_BREAK;
-// CYC(a): This can be optimised, as only certain opcodes will affect uExtraCycles
-#define CYC(a)   uExecutedCycles += (a)+uExtraCycles; g_nIrqCheckTimeout -= (a)+uExtraCycles;
-#define POP   (*(mem+((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp)))
-#define PUSH(a)   *(mem+regs.sp--) = (a);            \
-     if (regs.sp < STACK_BEGIN)              \
-       regs.sp = STACK_END;
-extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles) -> uint8_t;
+#define AF_TO_EF                   \
+  flagc = (regs.ps & AF_CARRY);    \
+  flagn = (regs.ps & AF_SIGN);     \
+  flagv = (regs.ps & AF_OVERFLOW); \
+  flagz = (regs.ps & AF_ZERO);
+#define EF_TO_AF                                                        \
+  regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN | AF_OVERFLOW | AF_ZERO)) | \
+            flagc | flagn | (flagv ? AF_OVERFLOW : 0) |                 \
+            (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
+// CYC(a): This can be optimised, as only certain opcodes will affect
+// uExtraCycles
+#define CYC(a)                           \
+  uExecutedCycles += (a) + uExtraCycles; \
+  g_nIrqCheckTimeout -= (a) + uExtraCycles;
+#define POP \
+  (*(mem + ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp)))
+#define PUSH(a)             \
+  *(mem + regs.sp--) = (a); \
+  if (regs.sp < STACK_BEGIN) regs.sp = STACK_END;
+extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                           uint32_t cycles) -> uint8_t;
 
-#define READ   (                  \
-        ((addr & IO_REGION_MASK) == IO_REGION_START)            \
-        ? IOMap_Dispatch(regs.pc,addr,0,0,uExecutedCycles) \
-      : *(mem+addr)              \
-     )
-#define SETNZ(a) {                  \
-       flagn = ((a) & 0x80);            \
-       flagz = !((a) & 0xFF);              \
-     }
-#define SETZ(a)   flagz = !((a) & 0xFF);
-#define WRITE(a) {                  \
-       memdirty[addr >> 8] = 0xFF;            \
-       uint8_t* page = memwrite[addr >> 8];        \
-       if (page)                \
-         *(page+(addr & 0xFF)) = (uint8_t)(a);          \
-       else if ((addr & IO_REGION_MASK) == IO_REGION_START)          \
-         IOMap_Dispatch(regs.pc,addr,1,(uint8_t)(a),uExecutedCycles); \
-     }
+#define READ                                                  \
+  (((addr & IO_REGION_MASK) == IO_REGION_START)               \
+       ? IOMap_Dispatch(regs.pc, addr, 0, 0, uExecutedCycles) \
+       : *(mem + addr))
+#define SETNZ(a)           \
+  {                        \
+    flagn = ((a) & 0x80);  \
+    flagz = !((a) & 0xFF); \
+  }
+#define SETZ(a) flagz = !((a) & 0xFF);
+#define WRITE(a)                                                       \
+  {                                                                    \
+    memdirty[addr >> 8] = 0xFF;                                        \
+    uint8_t* page = memwrite[addr >> 8];                               \
+    if (page)                                                          \
+      *(page + (addr & 0xFF)) = (uint8_t)(a);                          \
+    else if ((addr & IO_REGION_MASK) == IO_REGION_START)               \
+      IOMap_Dispatch(regs.pc, addr, 1, (uint8_t)(a), uExecutedCycles); \
+  }
 
 // ExtraCycles:
 // +1 if branch taken
 // +1 if page boundary crossed
-#define BRANCH_TAKEN {          \
-       base = regs.pc;    \
-       regs.pc += addr;    \
-       if ((base ^ regs.pc) & 0xFF00) \
-           uExtraCycles=2;    \
-       else        \
-           uExtraCycles=1;    \
-         }
+#define BRANCH_TAKEN               \
+  {                                \
+    base = regs.pc;                \
+    regs.pc += addr;               \
+    if ((base ^ regs.pc) & 0xFF00) \
+      uExtraCycles = 2;            \
+    else                           \
+      uExtraCycles = 1;            \
+  }
 
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wsequence-point"
-#define CHECK_PAGE_CHANGE  if ((base ^ addr) & 0xFF00) uExtraCycles=1;
+#define CHECK_PAGE_CHANGE \
+  if ((base ^ addr) & 0xFF00) uExtraCycles = 1;
 
 // Addressing Mode Macros
 
-#define ABS   addr = *(uint16_t*)(mem+regs.pc);   regs.pc += 2;
-#define IABSX    addr = *(uint16_t*)(mem+(*(uint16_t*)(mem+regs.pc))+(uint16_t)regs.x); regs.pc += 2;
-#define ABSX   base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.x; regs.pc += 2; CHECK_PAGE_CHANGE;
-#define ABSX_NP base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.x; regs.pc += 2;
-#define ABSY   base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.y; regs.pc += 2; CHECK_PAGE_CHANGE;
-#define ABSY_NP base = *(uint16_t*)(mem+regs.pc); addr = base+(uint16_t)regs.y; regs.pc += 2;
-#define IABSCMOS base = *(uint16_t*)(mem+regs.pc);                            \
-     addr = *(uint16_t*)(mem+base);                      \
-     if ((base & 0xFF) == 0xFF) uExtraCycles=1;      \
-     regs.pc += 2;
-#define IABSNMOS base = *(uint16_t*)(mem+regs.pc);                            \
-     if ((base & 0xFF) == 0xFF)          \
-           addr = *(mem+base)+((uint16_t)*(mem+(base&0xFF00))<<8);\
-       else                                                   \
-           addr = *(uint16_t*)(mem+base);                        \
-     regs.pc += 2;
-#define IMM   addr = regs.pc++;
-#define INDX   base = ((*(mem+regs.pc++))+regs.x) & 0xFF;          \
-     if (base == 0xFF)                                   \
-         addr = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
-     else                                                \
-         addr = *(uint16_t*)(mem+base);
-#define INDY   if (*(mem+regs.pc) == 0xFF)                         \
-         base = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
-     else                                                \
-         base = *(uint16_t*)(mem+*(mem+regs.pc));           \
-     regs.pc++;                                          \
-     addr = base+(uint16_t)regs.y;                           \
-     CHECK_PAGE_CHANGE;
-#define IZPG   base = *(mem+regs.pc++);                            \
-     if (base == 0xFF)                                   \
-         addr = *(mem+0xFF)+(((uint16_t)*mem)<<8);           \
-     else                                                \
-         addr = *(uint16_t*)(mem+base);
-#define REL   addr = (signed char)*(mem+regs.pc++);
+#define ABS                           \
+  addr = *(uint16_t*)(mem + regs.pc); \
+  regs.pc += 2;
+#define IABSX                                                                  \
+  addr = *(uint16_t*)(mem + (*(uint16_t*)(mem + regs.pc)) + (uint16_t)regs.x); \
+  regs.pc += 2;
+#define ABSX                          \
+  base = *(uint16_t*)(mem + regs.pc); \
+  addr = base + (uint16_t)regs.x;     \
+  regs.pc += 2;                       \
+  CHECK_PAGE_CHANGE;
+#define ABSX_NP                       \
+  base = *(uint16_t*)(mem + regs.pc); \
+  addr = base + (uint16_t)regs.x;     \
+  regs.pc += 2;
+#define ABSY                          \
+  base = *(uint16_t*)(mem + regs.pc); \
+  addr = base + (uint16_t)regs.y;     \
+  regs.pc += 2;                       \
+  CHECK_PAGE_CHANGE;
+#define ABSY_NP                       \
+  base = *(uint16_t*)(mem + regs.pc); \
+  addr = base + (uint16_t)regs.y;     \
+  regs.pc += 2;
+#define IABSCMOS                               \
+  base = *(uint16_t*)(mem + regs.pc);          \
+  addr = *(uint16_t*)(mem + base);             \
+  if ((base & 0xFF) == 0xFF) uExtraCycles = 1; \
+  regs.pc += 2;
+#define IABSNMOS                                                      \
+  base = *(uint16_t*)(mem + regs.pc);                                 \
+  if ((base & 0xFF) == 0xFF)                                          \
+    addr = *(mem + base) + ((uint16_t)*(mem + (base & 0xFF00)) << 8); \
+  else                                                                \
+    addr = *(uint16_t*)(mem + base);                                  \
+  regs.pc += 2;
+#define IMM addr = regs.pc++;
+#define INDX                                        \
+  base = ((*(mem + regs.pc++)) + regs.x) & 0xFF;    \
+  if (base == 0xFF)                                 \
+    addr = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
+  else                                              \
+    addr = *(uint16_t*)(mem + base);
+#define INDY                                        \
+  if (*(mem + regs.pc) == 0xFF)                     \
+    base = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
+  else                                              \
+    base = *(uint16_t*)(mem + *(mem + regs.pc));    \
+  regs.pc++;                                        \
+  addr = base + (uint16_t)regs.y;                   \
+  CHECK_PAGE_CHANGE;
+#define IZPG                                        \
+  base = *(mem + regs.pc++);                        \
+  if (base == 0xFF)                                 \
+    addr = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
+  else                                              \
+    addr = *(uint16_t*)(mem + base);
+#define REL addr = (signed char)*(mem + regs.pc++);
 
 // Optimiation note:
 // . Opcodes that generate zero-page addresses can't be accessing $C000..$CFFF
-//   so they could be paired with special READZP/WRITEZP macros (instead of READ/WRITE)
-#define ZPG   addr = *(mem+regs.pc++);
-#define ZPGX   addr = ((*(mem+regs.pc++))+regs.x) & 0xFF;
-#define ZPGY   addr = ((*(mem+regs.pc++))+regs.y) & 0xFF;
+//   so they could be paired with special READZP/WRITEZP macros (instead of
+//   READ/WRITE)
+#define ZPG addr = *(mem + regs.pc++);
+#define ZPGX addr = ((*(mem + regs.pc++)) + regs.x) & 0xFF;
+#define ZPGY addr = ((*(mem + regs.pc++)) + regs.y) & 0xFF;
 
 // Instruction Macros
 
-#define ADC_NMOS temp = READ;                \
-     if (regs.ps & AF_DECIMAL) {            \
-       val = regs.a + temp + flagc;          \
-       flagz = !(val & 0xFF);            \
-       flagn = val & 0x80;            \
-       flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);\
-       low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
-       if (low > 0x09) low += 0x06;          \
-       high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);  \
-       if (high > 0x09) high += 0x06;          \
-       flagc = (high > 0x0F);            \
-       regs.a = (high << 4) | (low & 0x0F);        \
-      }                  \
-     else {                  \
-       val    = regs.a + temp + flagc;          \
-       flagc  = (val > 0xFF);            \
-       flagv  = (((regs.a & 0x80) == (temp & 0x80)) &&      \
-           ((regs.a & 0x80) != (val & 0x80)));      \
-       regs.a = val & 0xFF;              \
-       SETNZ(regs.a);              \
-     }
-#define ADC_CMOS temp = READ;                \
-                 flagv = !((regs.a ^ temp) & 0x80);          \
-     if (regs.ps & AF_DECIMAL) {            \
-        uExtraCycles++;              \
-        val = (regs.a & 0x0f) + (temp & 0x0f) + flagc;          \
-        if (val >= 0x0A)              \
-           val = 0x10 | ((val + 6) & 0x0f);          \
-        val += (regs.a & 0xf0) + (temp & 0xf0);        \
-        if (val >= 0xA0) {              \
-           flagc = 1;              \
-           if (val >= 0x180)            \
-        flagv = 0;              \
-           val += 0x60;              \
-        }                  \
-        else {                \
-           flagc = 0;              \
-           if (val < 0x80)              \
-              flagv = 0;              \
-        }                  \
-     }                  \
-     else {                  \
-        val = regs.a + temp + flagc;                            \
-        if (val >= 0x100) {              \
-           flagc = 1;              \
-           if (val >= 0x180) flagv = 0;          \
-        }                  \
-        else {                \
-           flagc = 0;              \
-           if (val < 0x80) flagv = 0;          \
-        }                  \
-     }                  \
-     regs.a = val & 0xFF;              \
-     SETNZ(regs.a)
-#define ALR   regs.a &= READ;              \
-     flagc = (regs.a & 1);              \
-     flagn = 0;                \
-     regs.a >>= 1;                \
-     SETZ(regs.a)
-#define AND   regs.a &= READ;              \
-     SETNZ(regs.a)
-#define ANC   regs.a &= READ;              \
-     SETNZ(regs.a)                \
-     flagc = !!flagn;
-#define ARR   temp = regs.a & READ; /* Yes, this is sick */        \
-     if (regs.ps & AF_DECIMAL) {            \
-       val = temp;                \
-       val |= (flagc ? 0x100 : 0);            \
-       val >>= 1;                \
-       flagn = (flagc ? 0x80 : 0);              \
-       SETZ(val)                \
-       flagv = ((val ^ temp) & 0x40);          \
-       if (((val & 0x0F) + (val & 0x01)) > 0x05)                \
-         val = (val & 0xF0) | ((val + 0x06) & 0x0F);      \
-       if (((val & 0xF0) + (val & 0x10)) > 0x50) {        \
-         val = (val & 0x0F) | ((val + 0x60) & 0xF0);      \
-         flagc = 1;                \
-       }                  \
-       else                  \
-         flagc = 0;                \
-       regs.a = (val & 0xFF);            \
-     }                  \
-     else {                  \
-       val = temp | (flagc ? 0x100 : 0);          \
-       val >>= 1;                \
-       SETNZ(val)                \
-       flagc = !!(val & 0x40);            \
-       flagv = ((val & 0x40) ^ ((val & 0x20) << 1));      \
-       regs.a = (val & 0xFF);            \
-     }
-#define ASL_NMOS val   = READ << 1;              \
-     flagc = (val > 0xFF);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define ASL_CMOS val   = READ << 1;              \
-     flagc = (val > 0xFF);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define ASLA   val   = regs.a << 1;              \
-     flagc = (val > 0xFF);              \
-     SETNZ(val)                \
-     regs.a = (uint8_t)val;
-#define ASO   val   = READ << 1;              \
-     flagc = (val > 0xFF);              \
-     WRITE(val)                \
-     regs.a |= val;                \
-     SETNZ(regs.a)
-#define AXA \
-     val = regs.a & regs.x & (((base >> 8) + 1) & 0xFF);      \
-     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
-     WRITE(val)
-#define AXS   WRITE(regs.a & regs.x)
-#define BCC   if (!flagc) BRANCH_TAKEN;
-#define BCS   if ( flagc) BRANCH_TAKEN;
-#define BEQ   if ( flagz) BRANCH_TAKEN;
-#define BIT   val   = READ;                \
-     flagz = !(regs.a & val);            \
-     flagn = val & 0x80;              \
-     flagv = val & 0x40;
-#define BITI   flagz = !(regs.a & READ);
-#define BMI   if ( flagn) BRANCH_TAKEN;
-#define BNE   if (!flagz) BRANCH_TAKEN;
-#define BPL   if (!flagn) BRANCH_TAKEN;
-#define BRA   BRANCH_TAKEN;
-#define BRK   regs.pc++;                \
-     PUSH(regs.pc >> 8)              \
-     PUSH(regs.pc & 0xFF)              \
-     EF_TO_AF                \
-     PUSH(regs.ps);                \
-     regs.ps |= AF_INTERRUPT;            \
-     regs.pc = *(uint16_t*)(mem+0xFFFE);
-#define BVC   if (!flagv) BRANCH_TAKEN;
-#define BVS   if ( flagv) BRANCH_TAKEN;
-#define CLC   flagc = 0;
-#define CLD   regs.ps &= ~AF_DECIMAL;
-#define CLI   regs.ps &= ~AF_INTERRUPT;
-#define CLV   flagv = 0;
-#define CMP   val   = READ;                \
-     flagc = (regs.a >= val);            \
-     val   = regs.a-val;              \
-     SETNZ(val)
-#define CPX   val   = READ;                \
-     flagc = (regs.x >= val);            \
-     val   = regs.x-val;              \
-     SETNZ(val)
-#define CPY   val   = READ;                \
-     flagc = (regs.y >= val);            \
-     val   = regs.y-val;              \
-     SETNZ(val)
-#define DCM   val = READ-1;                \
-     WRITE(val)                \
-     flagc = (regs.a >= val);            \
-     val   = regs.a-val;              \
-     SETNZ(val)
-#define DEA   --regs.a;                \
-     SETNZ(regs.a)
-#define DEC_NMOS val = READ-1;                \
-     SETNZ(val)                \
-     WRITE(val)
-#define DEC_CMOS val = READ-1;                \
-     SETNZ(val)                \
-     WRITE(val)
-#define DEX   --regs.x;                \
-     SETNZ(regs.x)
-#define DEY   --regs.y;                \
-     SETNZ(regs.y)
-#define EOR   regs.a ^= READ;              \
-     SETNZ(regs.a)
-#define HLT   regs.bJammed = 1;              \
-     --regs.pc;
-#define INA   ++regs.a;                \
-     SETNZ(regs.a)
-#define INC_NMOS val = READ+1;                \
-     SETNZ(val)                \
-     WRITE(val)
-#define INC_CMOS val = READ+1;                \
-     SETNZ(val)                \
-     WRITE(val)
-#define INS   val = READ+1;                \
-     WRITE(val)                \
-     temp = val;                                                \
-     if (regs.ps & AF_DECIMAL) {            \
-       val = regs.a - temp - !flagc;          \
-       flagn = val & 0x80;            \
-       flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);\
-       flagz = !(val & 0xFF);            \
-       low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
-       if (low & 0x10) low -= 0x06;          \
-       high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);  \
-       if (high & 0x10) high -= 0x06;          \
-       flagc = !(high & 0x10);            \
-       regs.a = (high << 4) | (low & 0x0F);        \
-     }                  \
-     else {                  \
-       val    = regs.a - temp - !flagc;          \
-       flagc  = (val < 0x100);            \
-       flagv  = (((regs.a & 0x80) != (temp & 0x80)) &&      \
-           ((regs.a & 0x80) != (val & 0x80)));      \
-       regs.a = val & 0xFF;              \
-       SETNZ(regs.a);              \
-     }
-#define INX   ++regs.x;                \
-     SETNZ(regs.x)
-#define INY   ++regs.y;                \
-     SETNZ(regs.y)
-#define JMP   regs.pc = addr;
-#define JSR   --regs.pc;                \
-     PUSH(regs.pc >> 8)              \
-     PUSH(regs.pc & 0xFF)              \
-     regs.pc = addr;
-#define LAS   val = (uint8_t)(READ & regs.sp);            \
-     regs.a = regs.x = (uint8_t) val;            \
-     regs.sp = val | 0x100;              \
-     SETNZ(val)
-#define LAX   regs.a = regs.x = READ;            \
-     SETNZ(regs.a)
-#define LDA   regs.a = READ;                \
-     SETNZ(regs.a)
-#define LDX   regs.x = READ;                \
-     SETNZ(regs.x)
-#define LDY   regs.y = READ;                \
-     SETNZ(regs.y)
-#define LSE   val   = READ;                \
-     flagc = (val & 1);              \
-     val >>= 1;                \
-     WRITE(val)                \
-     regs.a ^= val;                \
-     SETNZ(regs.a)
-#define LSR_NMOS val   = READ;                \
-     flagc = (val & 1);              \
-     flagn = 0;                \
-     val >>= 1;                \
-     SETZ(val)                \
-     WRITE(val)
-#define LSR_CMOS val   = READ;                \
-     flagc = (val & 1);              \
-     flagn = 0;                \
-     val >>= 1;                \
-     SETZ(val)                \
-     WRITE(val)
-#define LSRA   flagc = (regs.a & 1);              \
-     flagn = 0;                \
-     regs.a >>= 1;                \
-     SETZ(regs.a)
+#define ADC_NMOS                                                  \
+  temp = READ;                                                    \
+  if (regs.ps & AF_DECIMAL) {                                     \
+    val = regs.a + temp + flagc;                                  \
+    flagz = !(val & 0xFF);                                        \
+    flagn = val & 0x80;                                           \
+    flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80); \
+    low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;                \
+    if (low > 0x09) low += 0x06;                                  \
+    high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);    \
+    if (high > 0x09) high += 0x06;                                \
+    flagc = (high > 0x0F);                                        \
+    regs.a = (high << 4) | (low & 0x0F);                          \
+  } else {                                                        \
+    val = regs.a + temp + flagc;                                  \
+    flagc = (val > 0xFF);                                         \
+    flagv = (((regs.a & 0x80) == (temp & 0x80)) &&                \
+             ((regs.a & 0x80) != (val & 0x80)));                  \
+    regs.a = val & 0xFF;                                          \
+    SETNZ(regs.a);                                                \
+  }
+#define ADC_CMOS                                      \
+  temp = READ;                                        \
+  flagv = !((regs.a ^ temp) & 0x80);                  \
+  if (regs.ps & AF_DECIMAL) {                         \
+    uExtraCycles++;                                   \
+    val = (regs.a & 0x0f) + (temp & 0x0f) + flagc;    \
+    if (val >= 0x0A) val = 0x10 | ((val + 6) & 0x0f); \
+    val += (regs.a & 0xf0) + (temp & 0xf0);           \
+    if (val >= 0xA0) {                                \
+      flagc = 1;                                      \
+      if (val >= 0x180) flagv = 0;                    \
+      val += 0x60;                                    \
+    } else {                                          \
+      flagc = 0;                                      \
+      if (val < 0x80) flagv = 0;                      \
+    }                                                 \
+  } else {                                            \
+    val = regs.a + temp + flagc;                      \
+    if (val >= 0x100) {                               \
+      flagc = 1;                                      \
+      if (val >= 0x180) flagv = 0;                    \
+    } else {                                          \
+      flagc = 0;                                      \
+      if (val < 0x80) flagv = 0;                      \
+    }                                                 \
+  }                                                   \
+  regs.a = val & 0xFF;                                \
+  SETNZ(regs.a)
+#define ALR             \
+  regs.a &= READ;       \
+  flagc = (regs.a & 1); \
+  flagn = 0;            \
+  regs.a >>= 1;         \
+  SETZ(regs.a)
+#define AND       \
+  regs.a &= READ; \
+  SETNZ(regs.a)
+#define ANC       \
+  regs.a &= READ; \
+  SETNZ(regs.a)   \
+  flagc = !!flagn;
+#define ARR                                       \
+  temp = regs.a & READ; /* Yes, this is sick */   \
+  if (regs.ps & AF_DECIMAL) {                     \
+    val = temp;                                   \
+    val |= (flagc ? 0x100 : 0);                   \
+    val >>= 1;                                    \
+    flagn = (flagc ? 0x80 : 0);                   \
+    SETZ(val)                                     \
+    flagv = ((val ^ temp) & 0x40);                \
+    if (((val & 0x0F) + (val & 0x01)) > 0x05)     \
+      val = (val & 0xF0) | ((val + 0x06) & 0x0F); \
+    if (((val & 0xF0) + (val & 0x10)) > 0x50) {   \
+      val = (val & 0x0F) | ((val + 0x60) & 0xF0); \
+      flagc = 1;                                  \
+    } else                                        \
+      flagc = 0;                                  \
+    regs.a = (val & 0xFF);                        \
+  } else {                                        \
+    val = temp | (flagc ? 0x100 : 0);             \
+    val >>= 1;                                    \
+    SETNZ(val)                                    \
+    flagc = !!(val & 0x40);                       \
+    flagv = ((val & 0x40) ^ ((val & 0x20) << 1)); \
+    regs.a = (val & 0xFF);                        \
+  }
+#define ASL_NMOS        \
+  val = READ << 1;      \
+  flagc = (val > 0xFF); \
+  SETNZ(val)            \
+  WRITE(val)
+#define ASL_CMOS        \
+  val = READ << 1;      \
+  flagc = (val > 0xFF); \
+  SETNZ(val)            \
+  WRITE(val)
+#define ASLA            \
+  val = regs.a << 1;    \
+  flagc = (val > 0xFF); \
+  SETNZ(val)            \
+  regs.a = (uint8_t)val;
+#define ASO             \
+  val = READ << 1;      \
+  flagc = (val > 0xFF); \
+  WRITE(val)            \
+  regs.a |= val;        \
+  SETNZ(regs.a)
+#define AXA                                                   \
+  val = regs.a & regs.x & (((base >> 8) + 1) & 0xFF);         \
+  addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
+  WRITE(val)
+#define AXS WRITE(regs.a & regs.x)
+#define BCC \
+  if (!flagc) BRANCH_TAKEN;
+#define BCS \
+  if (flagc) BRANCH_TAKEN;
+#define BEQ \
+  if (flagz) BRANCH_TAKEN;
+#define BIT                \
+  val = READ;              \
+  flagz = !(regs.a & val); \
+  flagn = val & 0x80;      \
+  flagv = val & 0x40;
+#define BITI flagz = !(regs.a & READ);
+#define BMI \
+  if (flagn) BRANCH_TAKEN;
+#define BNE \
+  if (!flagz) BRANCH_TAKEN;
+#define BPL \
+  if (!flagn) BRANCH_TAKEN;
+#define BRA BRANCH_TAKEN;
+#define BRK                \
+  regs.pc++;               \
+  PUSH(regs.pc >> 8)       \
+  PUSH(regs.pc & 0xFF)     \
+  EF_TO_AF                 \
+  PUSH(regs.ps);           \
+  regs.ps |= AF_INTERRUPT; \
+  regs.pc = *(uint16_t*)(mem + 0xFFFE);
+#define BVC \
+  if (!flagv) BRANCH_TAKEN;
+#define BVS \
+  if (flagv) BRANCH_TAKEN;
+#define CLC flagc = 0;
+#define CLD regs.ps &= ~AF_DECIMAL;
+#define CLI regs.ps &= ~AF_INTERRUPT;
+#define CLV flagv = 0;
+#define CMP                \
+  val = READ;              \
+  flagc = (regs.a >= val); \
+  val = regs.a - val;      \
+  SETNZ(val)
+#define CPX                \
+  val = READ;              \
+  flagc = (regs.x >= val); \
+  val = regs.x - val;      \
+  SETNZ(val)
+#define CPY                \
+  val = READ;              \
+  flagc = (regs.y >= val); \
+  val = regs.y - val;      \
+  SETNZ(val)
+#define DCM                \
+  val = READ - 1;          \
+  WRITE(val)               \
+  flagc = (regs.a >= val); \
+  val = regs.a - val;      \
+  SETNZ(val)
+#define DEA \
+  --regs.a; \
+  SETNZ(regs.a)
+#define DEC_NMOS  \
+  val = READ - 1; \
+  SETNZ(val)      \
+  WRITE(val)
+#define DEC_CMOS  \
+  val = READ - 1; \
+  SETNZ(val)      \
+  WRITE(val)
+#define DEX \
+  --regs.x; \
+  SETNZ(regs.x)
+#define DEY \
+  --regs.y; \
+  SETNZ(regs.y)
+#define EOR       \
+  regs.a ^= READ; \
+  SETNZ(regs.a)
+#define HLT           \
+  regs.is_jammed = 1; \
+  --regs.pc;
+#define INA \
+  ++regs.a; \
+  SETNZ(regs.a)
+#define INC_NMOS  \
+  val = READ + 1; \
+  SETNZ(val)      \
+  WRITE(val)
+#define INC_CMOS  \
+  val = READ + 1; \
+  SETNZ(val)      \
+  WRITE(val)
+#define INS                                                      \
+  val = READ + 1;                                                \
+  WRITE(val)                                                     \
+  temp = val;                                                    \
+  if (regs.ps & AF_DECIMAL) {                                    \
+    val = regs.a - temp - !flagc;                                \
+    flagn = val & 0x80;                                          \
+    flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80); \
+    flagz = !(val & 0xFF);                                       \
+    low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;              \
+    if (low & 0x10) low -= 0x06;                                 \
+    high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);    \
+    if (high & 0x10) high -= 0x06;                               \
+    flagc = !(high & 0x10);                                      \
+    regs.a = (high << 4) | (low & 0x0F);                         \
+  } else {                                                       \
+    val = regs.a - temp - !flagc;                                \
+    flagc = (val < 0x100);                                       \
+    flagv = (((regs.a & 0x80) != (temp & 0x80)) &&               \
+             ((regs.a & 0x80) != (val & 0x80)));                 \
+    regs.a = val & 0xFF;                                         \
+    SETNZ(regs.a);                                               \
+  }
+#define INX \
+  ++regs.x; \
+  SETNZ(regs.x)
+#define INY \
+  ++regs.y; \
+  SETNZ(regs.y)
+#define JMP regs.pc = addr;
+#define JSR            \
+  --regs.pc;           \
+  PUSH(regs.pc >> 8)   \
+  PUSH(regs.pc & 0xFF) \
+  regs.pc = addr;
+#define LAS                        \
+  val = (uint8_t)(READ & regs.sp); \
+  regs.a = regs.x = (uint8_t)val;  \
+  regs.sp = val | 0x100;           \
+  SETNZ(val)
+#define LAX               \
+  regs.a = regs.x = READ; \
+  SETNZ(regs.a)
+#define LDA      \
+  regs.a = READ; \
+  SETNZ(regs.a)
+#define LDX      \
+  regs.x = READ; \
+  SETNZ(regs.x)
+#define LDY      \
+  regs.y = READ; \
+  SETNZ(regs.y)
+#define LSE          \
+  val = READ;        \
+  flagc = (val & 1); \
+  val >>= 1;         \
+  WRITE(val)         \
+  regs.a ^= val;     \
+  SETNZ(regs.a)
+#define LSR_NMOS     \
+  val = READ;        \
+  flagc = (val & 1); \
+  flagn = 0;         \
+  val >>= 1;         \
+  SETZ(val)          \
+  WRITE(val)
+#define LSR_CMOS     \
+  val = READ;        \
+  flagc = (val & 1); \
+  flagn = 0;         \
+  val >>= 1;         \
+  SETZ(val)          \
+  WRITE(val)
+#define LSRA            \
+  flagc = (regs.a & 1); \
+  flagn = 0;            \
+  regs.a >>= 1;         \
+  SETZ(regs.a)
 #define NOP
-#define OAL   regs.a |= 0xEE;              \
-     regs.a &= READ;              \
-     regs.x = regs.a;              \
-     SETNZ(regs.a)
-#define ORA   regs.a |= READ;              \
-     SETNZ(regs.a)
-#define PHA   PUSH(regs.a)
-#define PHP   EF_TO_AF                \
-     PUSH(regs.ps)
-#define PHX   PUSH(regs.x)
-#define PHY   PUSH(regs.y)
-#define PLA   regs.a = POP;                \
-     SETNZ(regs.a)
-#define PLP   regs.ps = POP | AF_RESERVED | AF_BREAK;        \
-     AF_TO_EF
-#define PLX   regs.x = POP;                \
-     SETNZ(regs.x)
-#define PLY   regs.y = POP;                \
-     SETNZ(regs.y)
-#define RLA   val   = (READ << 1) | flagc;            \
-     flagc = (val > 0xFF);              \
-     WRITE(val)                \
-     regs.a &= val;                \
-     SETNZ(regs.a)
-#define ROL_NMOS val   = (READ << 1) | flagc;            \
-     flagc = (val > 0xFF);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define ROL_CMOS val   = (READ << 1) | flagc;            \
-     flagc = (val > 0xFF);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define ROLA   val  = (((uint16_t)regs.a) << 1) | flagc;        \
-     flagc  = (val > 0xFF);              \
-     regs.a = val & 0xFF;              \
-     SETNZ(regs.a);
-#define ROR_NMOS temp  = READ;                \
-     val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
-     flagc = (temp & 1);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define ROR_CMOS temp  = READ;                \
-     val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
-     flagc = (temp & 1);              \
-     SETNZ(val)                \
-     WRITE(val)
-#define RORA   val  = (((uint16_t)regs.a) >> 1) | (flagc ? 0x80 : 0);      \
-     flagc  = (regs.a & 1);              \
-     regs.a = val & 0xFF;              \
-     SETNZ(regs.a)
-#define RRA   temp  = READ;                \
-     val   = (temp >> 1) | (flagc ? 0x80 : 0);        \
-     flagc = (temp & 1);              \
-     WRITE(val)                \
-     temp = val;                \
-     if (regs.ps & AF_DECIMAL) {            \
-       val = regs.a + temp + flagc;          \
-       flagz = !(val & 0xFF);            \
-       flagn = val & 0x80;            \
-       flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);\
-       low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;      \
-       if (low > 0x09) low += 0x06;          \
-       high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);  \
-       if (high > 0x09) high += 0x06;          \
-       flagc = (high > 0x0F);            \
-       regs.a = (high << 4) | (low & 0x0F);        \
-      }                  \
-     else {                  \
-       val    = regs.a + temp + flagc;          \
-       flagc  = (val > 0xFF);            \
-       flagv  = (((regs.a & 0x80) == (temp & 0x80)) &&      \
-           ((regs.a & 0x80) != (val & 0x80)));      \
-       regs.a = val & 0xFF;              \
-       SETNZ(regs.a);              \
-     }
-#define RTI   regs.ps = POP | AF_RESERVED | AF_BREAK;        \
-     AF_TO_EF                \
-     regs.pc = POP;                \
-     regs.pc |= (((uint16_t)POP) << 8);
-#define RTS   regs.pc = POP;                \
-     regs.pc |= (((uint16_t)POP) << 8);            \
-     ++regs.pc;
-#define SAX   temp  = regs.a & regs.x;            \
-     val  = READ;                \
-     flagc  = (temp >= val);            \
-     regs.x = temp-val;              \
-     SETNZ(regs.x)
-#define SAY \
-     val = regs.y & (((base >> 8) + 1) & 0xFF);      \
-     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
-     WRITE(val)
-#define SBC_NMOS temp = READ;                \
-     if (regs.ps & AF_DECIMAL) {            \
-       val = regs.a - temp - !flagc;          \
-       flagn = val & 0x80;            \
-       flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);\
-       flagz = !(val & 0xFF);            \
-       low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;      \
-       if (low & 0x10) low -= 0x06;          \
-       high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);  \
-       if (high & 0x10) high -= 0x06;          \
-       flagc = !(high & 0x10);            \
-       regs.a = (high << 4) | (low & 0x0F);        \
-     }                  \
-     else {                  \
-       val    = regs.a - temp - !flagc;          \
-       flagc  = (val < 0x100);            \
-       flagv  = (((regs.a & 0x80) != (temp & 0x80)) &&      \
-           ((regs.a & 0x80) != (val & 0x80)));      \
-       regs.a = val & 0xFF;              \
-       SETNZ(regs.a);              \
-     }
-#define SBC_CMOS temp = READ;                \
-     flagv = ((regs.a ^ temp) & 0x80);          \
-     if (regs.ps & AF_DECIMAL) {            \
-        uExtraCycles++;              \
-                    temp2 = 0x0F + (regs.a & 0x0F) - (temp & 0x0F) + flagc; \
-        if (temp2 < 0x10) {              \
-           val = 0;                \
-           temp2 -= 0x06;              \
-        }                  \
-        else {                \
-           val = 0x10;              \
-           temp2 -= 0x10;              \
-        }                  \
-        val += 0xF0 + (regs.a & 0xF0) - (temp & 0xF0);      \
-        if (val < 0x100) {              \
-           flagc = 0;              \
-           if (val < 0x80)              \
-        flagv = 0;              \
-           val -= 0x60;              \
-        }                  \
-        else {                \
-           flagc = 1;              \
-           if (val >= 0x180)            \
-        flagv = 0;              \
-        }                  \
-        val += temp2;              \
-     }                  \
-     else {                  \
-        val = 0xff + regs.a - temp + flagc;                     \
-        if (val < 0x100) {              \
-           flagc = 0;              \
-           if (val < 0x80)              \
-        flagv = 0;              \
-        }                  \
-        else {                \
-           flagc = 1;              \
-           if (val >= 0x180)            \
-              flagv = 0;              \
-        }                  \
-     }                  \
-     regs.a = val & 0xFF;              \
-                 SETNZ(regs.a)
-#define SEC   flagc = 1;
-#define SED   regs.ps |= AF_DECIMAL;
-#define SEI   regs.ps |= AF_INTERRUPT;
-#define STA   WRITE(regs.a)
-#define STX   WRITE(regs.x)
-#define STY   WRITE(regs.y)
-#define STZ   WRITE(0)
-#define TAS   val = regs.a & regs.x;              \
-     regs.sp = 0x100 | val;              \
-     val &= (((base >> 8) + 1) & 0xFF);          \
-     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
-     WRITE(val)
-#define TAX   regs.x = regs.a;              \
-     SETNZ(regs.x)
-#define TAY   regs.y = regs.a;              \
-     SETNZ(regs.y)
-#define TRB   val   = READ;                \
-     flagz = !(regs.a & val);            \
-     val  &= ~regs.a;              \
-     WRITE(val)
-#define TSB   val   = READ;                \
-     flagz = !(regs.a & val);            \
-     val   |= regs.a;              \
-     WRITE(val)
-#define TSX   regs.x = regs.sp & 0xFF;            \
-     SETNZ(regs.x)
-#define TXA   regs.a = regs.x;              \
-     SETNZ(regs.a)
-#define TXS   regs.sp = 0x100 | regs.x;
-#define TYA   regs.a = regs.y;              \
-     SETNZ(regs.a)
-#define XAA   regs.a = regs.x;              \
-     regs.a &= READ;              \
-     SETNZ(regs.a)
-#define XAS \
-     val = regs.x & (((base >> 8) + 1) & 0xFF);      \
-     addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
-     WRITE(val)
-void RequestDebugger()
-{
+#define OAL        \
+  regs.a |= 0xEE;  \
+  regs.a &= READ;  \
+  regs.x = regs.a; \
+  SETNZ(regs.a)
+#define ORA       \
+  regs.a |= READ; \
+  SETNZ(regs.a)
+#define PHA PUSH(regs.a)
+#define PHP \
+  EF_TO_AF  \
+  PUSH(regs.ps)
+#define PHX PUSH(regs.x)
+#define PHY PUSH(regs.y)
+#define PLA     \
+  regs.a = POP; \
+  SETNZ(regs.a)
+#define PLP                               \
+  regs.ps = POP | AF_RESERVED | AF_BREAK; \
+  AF_TO_EF
+#define PLX     \
+  regs.x = POP; \
+  SETNZ(regs.x)
+#define PLY     \
+  regs.y = POP; \
+  SETNZ(regs.y)
+#define RLA                  \
+  val = (READ << 1) | flagc; \
+  flagc = (val > 0xFF);      \
+  WRITE(val)                 \
+  regs.a &= val;             \
+  SETNZ(regs.a)
+#define ROL_NMOS             \
+  val = (READ << 1) | flagc; \
+  flagc = (val > 0xFF);      \
+  SETNZ(val)                 \
+  WRITE(val)
+#define ROL_CMOS             \
+  val = (READ << 1) | flagc; \
+  flagc = (val > 0xFF);      \
+  SETNZ(val)                 \
+  WRITE(val)
+#define ROLA                               \
+  val = (((uint16_t)regs.a) << 1) | flagc; \
+  flagc = (val > 0xFF);                    \
+  regs.a = val & 0xFF;                     \
+  SETNZ(regs.a);
+#define ROR_NMOS                          \
+  temp = READ;                            \
+  val = (temp >> 1) | (flagc ? 0x80 : 0); \
+  flagc = (temp & 1);                     \
+  SETNZ(val)                              \
+  WRITE(val)
+#define ROR_CMOS                          \
+  temp = READ;                            \
+  val = (temp >> 1) | (flagc ? 0x80 : 0); \
+  flagc = (temp & 1);                     \
+  SETNZ(val)                              \
+  WRITE(val)
+#define RORA                                            \
+  val = (((uint16_t)regs.a) >> 1) | (flagc ? 0x80 : 0); \
+  flagc = (regs.a & 1);                                 \
+  regs.a = val & 0xFF;                                  \
+  SETNZ(regs.a)
+#define RRA                                                       \
+  temp = READ;                                                    \
+  val = (temp >> 1) | (flagc ? 0x80 : 0);                         \
+  flagc = (temp & 1);                                             \
+  WRITE(val)                                                      \
+  temp = val;                                                     \
+  if (regs.ps & AF_DECIMAL) {                                     \
+    val = regs.a + temp + flagc;                                  \
+    flagz = !(val & 0xFF);                                        \
+    flagn = val & 0x80;                                           \
+    flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80); \
+    low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;                \
+    if (low > 0x09) low += 0x06;                                  \
+    high = (regs.a >> 4) + (temp >> 4) + (low > 0x0F ? 1 : 0);    \
+    if (high > 0x09) high += 0x06;                                \
+    flagc = (high > 0x0F);                                        \
+    regs.a = (high << 4) | (low & 0x0F);                          \
+  } else {                                                        \
+    val = regs.a + temp + flagc;                                  \
+    flagc = (val > 0xFF);                                         \
+    flagv = (((regs.a & 0x80) == (temp & 0x80)) &&                \
+             ((regs.a & 0x80) != (val & 0x80)));                  \
+    regs.a = val & 0xFF;                                          \
+    SETNZ(regs.a);                                                \
+  }
+#define RTI                               \
+  regs.ps = POP | AF_RESERVED | AF_BREAK; \
+  AF_TO_EF                                \
+  regs.pc = POP;                          \
+  regs.pc |= (((uint16_t)POP) << 8);
+#define RTS                          \
+  regs.pc = POP;                     \
+  regs.pc |= (((uint16_t)POP) << 8); \
+  ++regs.pc;
+#define SAX               \
+  temp = regs.a & regs.x; \
+  val = READ;             \
+  flagc = (temp >= val);  \
+  regs.x = temp - val;    \
+  SETNZ(regs.x)
+#define SAY                                                   \
+  val = regs.y & (((base >> 8) + 1) & 0xFF);                  \
+  addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
+  WRITE(val)
+#define SBC_NMOS                                                 \
+  temp = READ;                                                   \
+  if (regs.ps & AF_DECIMAL) {                                    \
+    val = regs.a - temp - !flagc;                                \
+    flagn = val & 0x80;                                          \
+    flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80); \
+    flagz = !(val & 0xFF);                                       \
+    low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;              \
+    if (low & 0x10) low -= 0x06;                                 \
+    high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);    \
+    if (high & 0x10) high -= 0x06;                               \
+    flagc = !(high & 0x10);                                      \
+    regs.a = (high << 4) | (low & 0x0F);                         \
+  } else {                                                       \
+    val = regs.a - temp - !flagc;                                \
+    flagc = (val < 0x100);                                       \
+    flagv = (((regs.a & 0x80) != (temp & 0x80)) &&               \
+             ((regs.a & 0x80) != (val & 0x80)));                 \
+    regs.a = val & 0xFF;                                         \
+    SETNZ(regs.a);                                               \
+  }
+#define SBC_CMOS                                            \
+  temp = READ;                                              \
+  flagv = ((regs.a ^ temp) & 0x80);                         \
+  if (regs.ps & AF_DECIMAL) {                               \
+    uExtraCycles++;                                         \
+    temp2 = 0x0F + (regs.a & 0x0F) - (temp & 0x0F) + flagc; \
+    if (temp2 < 0x10) {                                     \
+      val = 0;                                              \
+      temp2 -= 0x06;                                        \
+    } else {                                                \
+      val = 0x10;                                           \
+      temp2 -= 0x10;                                        \
+    }                                                       \
+    val += 0xF0 + (regs.a & 0xF0) - (temp & 0xF0);          \
+    if (val < 0x100) {                                      \
+      flagc = 0;                                            \
+      if (val < 0x80) flagv = 0;                            \
+      val -= 0x60;                                          \
+    } else {                                                \
+      flagc = 1;                                            \
+      if (val >= 0x180) flagv = 0;                          \
+    }                                                       \
+    val += temp2;                                           \
+  } else {                                                  \
+    val = 0xff + regs.a - temp + flagc;                     \
+    if (val < 0x100) {                                      \
+      flagc = 0;                                            \
+      if (val < 0x80) flagv = 0;                            \
+    } else {                                                \
+      flagc = 1;                                            \
+      if (val >= 0x180) flagv = 0;                          \
+    }                                                       \
+  }                                                         \
+  regs.a = val & 0xFF;                                      \
+  SETNZ(regs.a)
+#define SEC flagc = 1;
+#define SED regs.ps |= AF_DECIMAL;
+#define SEI regs.ps |= AF_INTERRUPT;
+#define STA WRITE(regs.a)
+#define STX WRITE(regs.x)
+#define STY WRITE(regs.y)
+#define STZ WRITE(0)
+#define TAS                                                   \
+  val = regs.a & regs.x;                                      \
+  regs.sp = 0x100 | val;                                      \
+  val &= (((base >> 8) + 1) & 0xFF);                          \
+  addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
+  WRITE(val)
+#define TAX        \
+  regs.x = regs.a; \
+  SETNZ(regs.x)
+#define TAY        \
+  regs.y = regs.a; \
+  SETNZ(regs.y)
+#define TRB                \
+  val = READ;              \
+  flagz = !(regs.a & val); \
+  val &= ~regs.a;          \
+  WRITE(val)
+#define TSB                \
+  val = READ;              \
+  flagz = !(regs.a & val); \
+  val |= regs.a;           \
+  WRITE(val)
+#define TSX                \
+  regs.x = regs.sp & 0xFF; \
+  SETNZ(regs.x)
+#define TXA        \
+  regs.a = regs.x; \
+  SETNZ(regs.a)
+#define TXS regs.sp = 0x100 | regs.x;
+#define TYA        \
+  regs.a = regs.y; \
+  SETNZ(regs.a)
+#define XAA        \
+  regs.a = regs.x; \
+  regs.a &= READ;  \
+  SETNZ(regs.a)
+#define XAS                                                   \
+  val = regs.x & (((base >> 8) + 1) & 0xFF);                  \
+  addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
+  WRITE(val)
+void RequestDebugger() {
   // BUG: This causes DebugBegin to constantly be called.
   // It's as if the WM_KEYUP are auto-repeating?
   //   FrameWndProc()
@@ -651,8 +758,9 @@ void RequestDebugger()
   //  PostMessage( g_hFrameWindow, WM_KEYDOWN, DEBUG_TOGGLE_KEY, 0 );
   //  PostMessage( g_hFrameWindow, WM_KEYUP  , DEBUG_TOGGLE_KEY, 0 );
 
-  // Not a valid solution, since hitting F7 (to exit) debugger gets the debugger out of sync
-  // due to EnterMessageLoop() calling ContinueExecution() after the mode has changed to DEBUG.
+  // Not a valid solution, since hitting F7 (to exit) debugger gets the debugger
+  // out of sync due to EnterMessageLoop() calling ContinueExecution() after the
+  // mode has changed to DEBUG.
   //  DebugBegin();
 
   // Yes, we do need some sort of debugger, don't we? 0_0  --bb
@@ -676,62 +784,61 @@ uint32_t g_nMean = 0;
 uint32_t g_nMin = UINT32_MAX_VAL;
 uint32_t g_nMax = 0;
 
-static inline void DoIrqProfiling(uint32_t uCycles)
-{
+static inline void DoIrqProfiling(uint32_t uCycles) {
   (void)uCycles;
-  #ifdef _DEBUG
-  if(regs.ps & AF_INTERRUPT)
-    return;    // Still in Apple's ROM
+#ifdef _DEBUG
+  if (regs.ps & AF_INTERRUPT) return;  // Still in Apple's ROM
 
   g_nCycleIrqEnd = g_nCumulativeCycles + uCycles;
-  g_nCycleIrqTime = (uint16_t) (g_nCycleIrqEnd - g_nCycleIrqStart);	// this *could* overflow, but it'd take a while
+  g_nCycleIrqTime =
+      (uint16_t)(g_nCycleIrqEnd - g_nCycleIrqStart);  // this *could* overflow,
+                                                      // but it'd take a while
 
-  if(g_nCycleIrqTime > g_nMax) g_nMax = g_nCycleIrqTime;
-  if(g_nCycleIrqTime < g_nMin) g_nMin = g_nCycleIrqTime;
+  if (g_nCycleIrqTime > g_nMax) g_nMax = g_nCycleIrqTime;
+  if (g_nCycleIrqTime < g_nMin) g_nMin = g_nCycleIrqTime;
 
-  if(g_nIdx == BUFFER_SIZE)
-    return;
+  if (g_nIdx == BUFFER_SIZE) return;
 
   g_nBuffer[g_nIdx] = g_nCycleIrqTime;
   g_nIdx++;
 
-  if(g_nIdx == BUFFER_SIZE)
-  {
+  if (g_nIdx == BUFFER_SIZE) {
     uint16_t nTotal = 0;
-    for(uint16_t i=0; i<BUFFER_SIZE; i++)
-      nTotal += g_nBuffer[i];
+    for (uint16_t i = 0; i < BUFFER_SIZE; i++) nTotal += g_nBuffer[i];
 
     g_nMean = nTotal / BUFFER_SIZE;
   }
-  #endif
+#endif
 }
 
 //===========================================================================
 
-static inline void Fetch(uint8_t &iOpcode, uint32_t uExecutedCycles)
-{
+static inline void Fetch(uint8_t& iOpcode, uint32_t uExecutedCycles) {
   const uint16_t PC = regs.pc;
   g_uInternalExecutedCycles = uExecutedCycles;
 
-  iOpcode = ((PC & IO_REGION_MASK) == IO_REGION_START) ? IOMap_Dispatch(PC, PC, 0, 0,
-                                                                 uExecutedCycles)  // Fetch opcode from I/O memory, but params are still from mem[]
-                                      : mem[PC];
+  iOpcode =
+      ((PC & IO_REGION_MASK) == IO_REGION_START)
+          ? IOMap_Dispatch(PC, PC, 0, 0,
+                           uExecutedCycles)  // Fetch opcode from I/O memory,
+                                             // but params are still from mem[]
+          : mem[PC];
 
   regs.pc++;
 }
 
-//#define ENABLE_NMI_SUPPORT  // Not used - so don't enable
-static inline void NMI(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
-{
+// #define ENABLE_NMI_SUPPORT  // Not used - so don't enable
+static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
+                       uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
+                       uint8_t& flagz) {
   (void)flagn;
   (void)flagv;
   (void)flagz;
   (void)uExecutedCycles;
   (void)uExtraCycles;
   (void)flagc;
-  #ifdef ENABLE_NMI_SUPPORT
-  if(g_bNmiFlank)
-  {
+#ifdef ENABLE_NMI_SUPPORT
+  if (g_bNmiFlank) {
     // NMI signals are only serviced once
     g_bNmiFlank = false;
     g_nCycleIrqStart = g_nCumulativeCycles + uExecutedCycles;
@@ -740,23 +847,25 @@ static inline void NMI(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = regs.ps | AF_INTERRUPT & ~AF_DECIMAL;
-    regs.pc = * (uint16_t*) (mem+NMI_VECTOR_ADDR);
+    regs.pc = *(uint16_t*)(mem + NMI_VECTOR_ADDR);
     CYC(7)
   }
-  #endif
+#endif
 }
 
-static inline void IRQ(uint32_t &uExecutedCycles, uint16_t &uExtraCycles, uint8_t &flagc, uint8_t &flagn, uint8_t &flagv, uint8_t &flagz)
-{
+static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
+                       uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
+                       uint8_t& flagz) {
   if (g_bmIRQ && !(regs.ps & AF_INTERRUPT)) {
-    // IRQ signals are deasserted when a specific r/w operation is done on device
+    // IRQ signals are deasserted when a specific r/w operation is done on
+    // device
     g_nCycleIrqStart = g_nCumulativeCycles + uExecutedCycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = (regs.ps | AF_INTERRUPT) & (~AF_DECIMAL);
-    regs.pc = *reinterpret_cast<uint16_t *>(mem + IRQ_VECTOR_ADDR);
+    regs.pc = *reinterpret_cast<uint16_t*>(mem + IRQ_VECTOR_ADDR);
     CYC(7)
   }
 }
@@ -768,16 +877,16 @@ static inline void CheckInterruptSources(uint32_t uExecutedCycles) {
   }
 }
 
-static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t
-{
+static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
   // Optimisation:
   // . Copy the global /regs/ vars to stack-based local vars
-  //   (Oliver Schmidt says this gives a performance gain, see email - The real deal: "1.10.5")
+  //   (Oliver Schmidt says this gives a performance gain, see email - The real
+  //   deal: "1.10.5")
   uint16_t addr = 0;
-  uint8_t flagc = 0; // must always be 0 or 1, no other values allowed
-  uint8_t flagn = 0; // must always be 0 or 0x80.
-  uint8_t flagv = 0; // any value allowed
-  uint8_t flagz = 0; // any value allowed
+  uint8_t flagc = 0;  // must always be 0 or 1, no other values allowed
+  uint8_t flagn = 0;  // must always be 0 or 0x80.
+  uint8_t flagv = 0;  // any value allowed
+  uint8_t flagz = 0;  // any value allowed
   uint16_t temp = 0;
   uint16_t temp2 = 0;
   uint16_t val = 0;
@@ -793,1265 +902,520 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t
 
     switch (iOpcode) {
       case 0x00:
-      BRK
-        CYC(7)
-        break;
+        BRK CYC(7) break;
       case 0x01:
-      INDX
-        ORA
-        CYC(6)
-        break;
+        INDX ORA CYC(6) break;
       case 0x02:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x03:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x04:
-        ZPG
-        TSB
-        CYC(5)
-        break;
+        ZPG TSB CYC(5) break;
       case 0x05:
-        ZPG
-        ORA
-        CYC(3)
-        break;
+        ZPG ORA CYC(3) break;
       case 0x06:
-        ZPG
-        ASL_CMOS
-        CYC(5)
-        break;
+        ZPG ASL_CMOS CYC(5) break;
       case 0x07:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x08:
-      PHP
-        CYC(3)
-        break;
+        PHP CYC(3) break;
       case 0x09:
-        IMM
-        ORA
-        CYC(2)
-        break;
+        IMM ORA CYC(2) break;
       case 0x0A:
-      ASLA
-        CYC(2)
-        break;
+        ASLA CYC(2) break;
       case 0x0B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x0C:
-      ABS
-        TSB
-        CYC(6)
-        break;
+        ABS TSB CYC(6) break;
       case 0x0D:
-      ABS
-        ORA
-        CYC(4)
-        break;
+        ABS ORA CYC(4) break;
       case 0x0E:
-      ABS
-        ASL_CMOS
-        CYC(6)
-        break;
+        ABS ASL_CMOS CYC(6) break;
       case 0x0F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x10:
-        REL
-        BPL
-        CYC(2)
-        break;
+        REL BPL CYC(2) break;
       case 0x11:
-      INDY
-        ORA
-        CYC(5)
-        break;
+        INDY ORA CYC(5) break;
       case 0x12:
-      IZPG
-        ORA
-        CYC(5)
-        break;
+        IZPG ORA CYC(5) break;
       case 0x13:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x14:
-        ZPG
-        TRB
-        CYC(5)
-        break;
+        ZPG TRB CYC(5) break;
       case 0x15:
-        ZPGX
-        ORA
-        CYC(4)
-        break;
+        ZPGX ORA CYC(4) break;
       case 0x16:
-        ZPGX
-        ASL_CMOS
-        CYC(6)
-        break;
+        ZPGX ASL_CMOS CYC(6) break;
       case 0x17:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x18:
-        CLC
-        CYC(2)
-        break;
+        CLC CYC(2) break;
       case 0x19:
-      ABSY
-        ORA
-        CYC(4)
-        break;
+        ABSY ORA CYC(4) break;
       case 0x1A:
-      INA
-        CYC(2)
-        break;
+        INA CYC(2) break;
       case 0x1B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x1C:
-      ABS
-        TRB
-        CYC(6)
-        break;
+        ABS TRB CYC(6) break;
       case 0x1D:
-      ABSX
-        ORA
-        CYC(4)
-        break;
+        ABSX ORA CYC(4) break;
       case 0x1E:
-      ABSX
-        ASL_CMOS
-        CYC(6)
-        break;
+        ABSX ASL_CMOS CYC(6) break;
       case 0x1F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x20:
-      ABS
-        JSR
-        CYC(6)
-        break;
+        ABS JSR CYC(6) break;
       case 0x21:
-      INDX
-        AND
-        CYC(6)
-        break;
+        INDX AND CYC(6) break;
       case 0x22:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x23:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x24:
-        ZPG
-        BIT
-        CYC(3)
-        break;
+        ZPG BIT CYC(3) break;
       case 0x25:
-        ZPG
-        AND
-        CYC(3)
-        break;
+        ZPG AND CYC(3) break;
       case 0x26:
-        ZPG
-        ROL_CMOS
-        CYC(5)
-        break;
+        ZPG ROL_CMOS CYC(5) break;
       case 0x27:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x28:
-      PLP
-        CYC(4)
-        break;
+        PLP CYC(4) break;
       case 0x29:
-        IMM
-        AND
-        CYC(2)
-        break;
+        IMM AND CYC(2) break;
       case 0x2A:
-      ROLA
-        CYC(2)
-        break;
+        ROLA CYC(2) break;
       case 0x2B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x2C:
-      ABS
-        BIT
-        CYC(4)
-        break;
+        ABS BIT CYC(4) break;
       case 0x2D:
-      ABS
-        AND
-        CYC(2)
-        break;
+        ABS AND CYC(2) break;
       case 0x2E:
-      ABS
-        ROL_CMOS
-        CYC(6)
-        break;
+        ABS ROL_CMOS CYC(6) break;
       case 0x2F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x30:
-        REL
-        BMI
-        CYC(2)
-        break;
+        REL BMI CYC(2) break;
       case 0x31:
-      INDY
-        AND
-        CYC(5)
-        break;
+        INDY AND CYC(5) break;
       case 0x32:
-      IZPG
-        AND
-        CYC(5)
-        break;
+        IZPG AND CYC(5) break;
       case 0x33:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x34:
-        ZPGX
-        BIT
-        CYC(4)
-        break;
+        ZPGX BIT CYC(4) break;
       case 0x35:
-        ZPGX
-        AND
-        CYC(4)
-        break;
+        ZPGX AND CYC(4) break;
       case 0x36:
-        ZPGX
-        ROL_CMOS
-        CYC(6)
-        break;
+        ZPGX ROL_CMOS CYC(6) break;
       case 0x37:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x38:
-        SEC
-        CYC(2)
-        break;
+        SEC CYC(2) break;
       case 0x39:
-      ABSY
-        AND
-        CYC(4)
-        break;
+        ABSY AND CYC(4) break;
       case 0x3A:
-      DEA
-        CYC(2)
-        break;
+        DEA CYC(2) break;
       case 0x3B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x3C:
-      ABSX
-        BIT
-        CYC(4)
-        break;
+        ABSX BIT CYC(4) break;
       case 0x3D:
-      ABSX
-        AND
-        CYC(4)
-        break;
+        ABSX AND CYC(4) break;
       case 0x3E:
-      ABSX
-        ROL_CMOS
-        CYC(6)
-        break;
+        ABSX ROL_CMOS CYC(6) break;
       case 0x3F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x40:
-      RTI
-        CYC(6)
-        DoIrqProfiling(uExecutedCycles);
+        RTI CYC(6) DoIrqProfiling(uExecutedCycles);
         break;
       case 0x41:
-      INDX
-        EOR
-        CYC(6)
-        break;
+        INDX EOR CYC(6) break;
       case 0x42:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x43:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x44:
-        INV
-        ZPG
-        NOP
-        CYC(3)
-        break;
+        INV ZPG NOP CYC(3) break;
       case 0x45:
-        ZPG
-        EOR
-        CYC(3)
-        break;
+        ZPG EOR CYC(3) break;
       case 0x46:
-        ZPG
-        LSR_CMOS
-        CYC(5)
-        break;
+        ZPG LSR_CMOS CYC(5) break;
       case 0x47:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x48:
-      PHA
-        CYC(3)
-        break;
+        PHA CYC(3) break;
       case 0x49:
-        IMM
-        EOR
-        CYC(2)
-        break;
+        IMM EOR CYC(2) break;
       case 0x4A:
-      LSRA
-        CYC(2)
-        break;
+        LSRA CYC(2) break;
       case 0x4B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x4C:
-      ABS
-        JMP
-        CYC(3)
-        break;
+        ABS JMP CYC(3) break;
       case 0x4D:
-      ABS
-        EOR
-        CYC(4)
-        break;
+        ABS EOR CYC(4) break;
       case 0x4E:
-      ABS
-        LSR_CMOS
-        CYC(6)
-        break;
+        ABS LSR_CMOS CYC(6) break;
       case 0x4F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x50:
-        REL
-        BVC
-        CYC(2)
-        break;
+        REL BVC CYC(2) break;
       case 0x51:
-      INDY
-        EOR
-        CYC(5)
-        break;
+        INDY EOR CYC(5) break;
       case 0x52:
-      IZPG
-        EOR
-        CYC(5)
-        break;
+        IZPG EOR CYC(5) break;
       case 0x53:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x54:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0x55:
-        ZPGX
-        EOR
-        CYC(4)
-        break;
+        ZPGX EOR CYC(4) break;
       case 0x56:
-        ZPGX
-        LSR_CMOS
-        CYC(6)
-        break;
+        ZPGX LSR_CMOS CYC(6) break;
       case 0x57:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x58:
-        CLI
-        CYC(2)
-        break;
+        CLI CYC(2) break;
       case 0x59:
-      ABSY
-        EOR
-        CYC(4)
-        break;
+        ABSY EOR CYC(4) break;
       case 0x5A:
-      PHY
-        CYC(3)
-        break;
+        PHY CYC(3) break;
       case 0x5B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x5C:
-        INV
-        ABSX
-        NOP
-        CYC(8)
-        break;
+        INV ABSX NOP CYC(8) break;
       case 0x5D:
-      ABSX
-        EOR
-        CYC(4)
-        break;
+        ABSX EOR CYC(4) break;
       case 0x5E:
-      ABSX
-        LSR_CMOS
-        CYC(6)
-        break;
+        ABSX LSR_CMOS CYC(6) break;
       case 0x5F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x60:
-      RTS
-        CYC(6)
-        break;
+        RTS CYC(6) break;
       case 0x61:
-      INDX
-        ADC_CMOS
-        CYC(6)
-        break;
+        INDX ADC_CMOS CYC(6) break;
       case 0x62:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x63:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x64:
-        ZPG
-        STZ
-        CYC(3)
-        break;
+        ZPG STZ CYC(3) break;
       case 0x65:
-        ZPG
-        ADC_CMOS
-        CYC(3)
-        break;
+        ZPG ADC_CMOS CYC(3) break;
       case 0x66:
-        ZPG
-        ROR_CMOS
-        CYC(5)
-        break;
+        ZPG ROR_CMOS CYC(5) break;
       case 0x67:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x68:
-      PLA
-        CYC(4)
-        break;
+        PLA CYC(4) break;
       case 0x69:
-        IMM
-        ADC_CMOS
-        CYC(2)
-        break;
+        IMM ADC_CMOS CYC(2) break;
       case 0x6A:
-      RORA
-        CYC(2)
-        break;
+        RORA CYC(2) break;
       case 0x6B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x6C:
-      IABSCMOS
-        JMP
-        CYC(6)
-        break;
+        IABSCMOS
+        JMP CYC(6) break;
       case 0x6D:
-      ABS
-        ADC_CMOS
-        CYC(4)
-        break;
+        ABS ADC_CMOS CYC(4) break;
       case 0x6E:
-      ABS
-        ROR_CMOS
-        CYC(6)
-        break;
+        ABS ROR_CMOS CYC(6) break;
       case 0x6F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x70:
-        REL
-        BVS
-        CYC(2)
-        break;
+        REL BVS CYC(2) break;
       case 0x71:
-      INDY
-        ADC_CMOS
-        CYC(5)
-        break;
+        INDY ADC_CMOS CYC(5) break;
       case 0x72:
-      IZPG
-        ADC_CMOS
-        CYC(5)
-        break;
+        IZPG ADC_CMOS CYC(5) break;
       case 0x73:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x74:
-        ZPGX
-        STZ
-        CYC(4)
-        break;
+        ZPGX STZ CYC(4) break;
       case 0x75:
-        ZPGX
-        ADC_CMOS
-        CYC(4)
-        break;
+        ZPGX ADC_CMOS CYC(4) break;
       case 0x76:
-        ZPGX
-        ROR_CMOS
-        CYC(6)
-        break;
+        ZPGX ROR_CMOS CYC(6) break;
       case 0x77:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x78:
-        SEI
-        CYC(2)
-        break;
+        SEI CYC(2) break;
       case 0x79:
-      ABSY
-        ADC_CMOS
-        CYC(4)
-        break;
+        ABSY ADC_CMOS CYC(4) break;
       case 0x7A:
-      PLY
-        CYC(4)
-        break;
+        PLY CYC(4) break;
       case 0x7B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x7C:
-      IABSX
-        JMP
-        CYC(6)
-        break;
+        IABSX
+        JMP CYC(6) break;
       case 0x7D:
-      ABSX
-        ADC_CMOS
-        CYC(4)
-        break;
+        ABSX ADC_CMOS CYC(4) break;
       case 0x7E:
-      ABSX
-        ROR_CMOS
-        CYC(6)
-        break;
+        ABSX ROR_CMOS CYC(6) break;
       case 0x7F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x80:
-        REL
-        BRA
-        CYC(2)
-        break;
+        REL BRA CYC(2) break;
       case 0x81:
-      INDX
-        STA
-        CYC(6)
-        break;
+        INDX STA CYC(6) break;
       case 0x82:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x83:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x84:
-        ZPG
-        STY
-        CYC(3)
-        break;
+        ZPG STY CYC(3) break;
       case 0x85:
-        ZPG
-        STA
-        CYC(3)
-        break;
+        ZPG STA CYC(3) break;
       case 0x86:
-        ZPG
-        STX
-        CYC(3)
-        break;
+        ZPG STX CYC(3) break;
       case 0x87:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x88:
-      DEY
-        CYC(2)
-        break;
+        DEY CYC(2) break;
       case 0x89:
-        IMM
-        BITI
-        CYC(2)
-        break;
+        IMM BITI CYC(2) break;
       case 0x8A:
-      TXA
-        CYC(2)
-        break;
+        TXA CYC(2) break;
       case 0x8B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x8C:
-      ABS
-        STY
-        CYC(4)
-        break;
+        ABS STY CYC(4) break;
       case 0x8D:
-      ABS
-        STA
-        CYC(4)
-        break;
+        ABS STA CYC(4) break;
       case 0x8E:
-      ABS
-        STX
-        CYC(4)
-        break;
+        ABS STX CYC(4) break;
       case 0x8F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x90:
-        REL
-        BCC
-        CYC(2)
-        break;
+        REL BCC CYC(2) break;
       case 0x91:
-      INDY
-        STA
-        CYC(6)
-        break;
+        INDY STA CYC(6) break;
       case 0x92:
-      IZPG
-        STA
-        CYC(5)
-        break;
+        IZPG STA CYC(5) break;
       case 0x93:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x94:
-        ZPGX
-        STY
-        CYC(4)
-        break;
+        ZPGX STY CYC(4) break;
       case 0x95:
-        ZPGX
-        STA
-        CYC(4)
-        break;
+        ZPGX STA CYC(4) break;
       case 0x96:
-        ZPGY
-        STX
-        CYC(4)
-        break;
+        ZPGY STX CYC(4) break;
       case 0x97:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x98:
-      TYA
-        CYC(2)
-        break;
+        TYA CYC(2) break;
       case 0x99:
-      ABSY
-        STA
-        CYC(5)
-        break;
+        ABSY STA CYC(5) break;
       case 0x9A:
-        TXS
-        CYC(2)
-        break;
+        TXS CYC(2) break;
       case 0x9B:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x9C:
-      ABS
-        STZ
-        CYC(4)
-        break;
+        ABS STZ CYC(4) break;
       case 0x9D:
-      ABSX
-        STA
-        CYC(5)
-        break;
+        ABSX STA CYC(5) break;
       case 0x9E:
-      ABSX
-        STZ
-        CYC(5)
-        break;
+        ABSX STZ CYC(5) break;
       case 0x9F:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xA0:
-        IMM
-        LDY
-        CYC(2)
-        break;
+        IMM LDY CYC(2) break;
       case 0xA1:
-      INDX
-        LDA
-        CYC(6)
-        break;
+        INDX LDA CYC(6) break;
       case 0xA2:
-        IMM
-        LDX
-        CYC(2)
-        break;
+        IMM LDX CYC(2) break;
       case 0xA3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xA4:
-        ZPG
-        LDY
-        CYC(3)
-        break;
+        ZPG LDY CYC(3) break;
       case 0xA5:
-        ZPG
-        LDA
-        CYC(3)
-        break;
+        ZPG LDA CYC(3) break;
       case 0xA6:
-        ZPG
-        LDX
-        CYC(3)
-        break;
+        ZPG LDX CYC(3) break;
       case 0xA7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xA8:
-      TAY
-        CYC(2)
-        break;
+        TAY CYC(2) break;
       case 0xA9:
-        IMM
-        LDA
-        CYC(2)
-        break;
+        IMM LDA CYC(2) break;
       case 0xAA:
-      TAX
-        CYC(2)
-        break;
+        TAX CYC(2) break;
       case 0xAB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xAC:
-      ABS
-        LDY
-        CYC(4)
-        break;
+        ABS LDY CYC(4) break;
       case 0xAD:
-      ABS
-        LDA
-        CYC(4)
-        break;
+        ABS LDA CYC(4) break;
       case 0xAE:
-      ABS
-        LDX
-        CYC(4)
-        break;
+        ABS LDX CYC(4) break;
       case 0xAF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xB0:
-        REL
-        BCS
-        CYC(2)
-        break;
+        REL BCS CYC(2) break;
       case 0xB1:
-      INDY
-        LDA
-        CYC(5)
-        break;
+        INDY LDA CYC(5) break;
       case 0xB2:
-      IZPG
-        LDA
-        CYC(5)
-        break;
+        IZPG LDA CYC(5) break;
       case 0xB3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xB4:
-        ZPGX
-        LDY
-        CYC(4)
-        break;
+        ZPGX LDY CYC(4) break;
       case 0xB5:
-        ZPGX
-        LDA
-        CYC(4)
-        break;
+        ZPGX LDA CYC(4) break;
       case 0xB6:
-        ZPGY
-        LDX
-        CYC(4)
-        break;
+        ZPGY LDX CYC(4) break;
       case 0xB7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xB8:
-        CLV
-        CYC(2)
-        break;
+        CLV CYC(2) break;
       case 0xB9:
-      ABSY
-        LDA
-        CYC(4)
-        break;
+        ABSY LDA CYC(4) break;
       case 0xBA:
-      TSX
-        CYC(2)
-        break;
+        TSX CYC(2) break;
       case 0xBB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xBC:
-      ABSX
-        LDY
-        CYC(4)
-        break;
+        ABSX LDY CYC(4) break;
       case 0xBD:
-      ABSX
-        LDA
-        CYC(4)
-        break;
+        ABSX LDA CYC(4) break;
       case 0xBE:
-      ABSY
-        LDX
-        CYC(4)
-        break;
+        ABSY LDX CYC(4) break;
       case 0xBF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xC0:
-        IMM
-        CPY
-        CYC(2)
-        break;
+        IMM CPY CYC(2) break;
       case 0xC1:
-      INDX
-        CMP
-        CYC(6)
-        break;
+        INDX CMP CYC(6) break;
       case 0xC2:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0xC3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xC4:
-        ZPG
-        CPY
-        CYC(3)
-        break;
+        ZPG CPY CYC(3) break;
       case 0xC5:
-        ZPG
-        CMP
-        CYC(3)
-        break;
+        ZPG CMP CYC(3) break;
       case 0xC6:
-        ZPG
-        DEC_CMOS
-        CYC(5)
-        break;
+        ZPG DEC_CMOS CYC(5) break;
       case 0xC7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xC8:
-      INY
-        CYC(2)
-        break;
+        INY CYC(2) break;
       case 0xC9:
-        IMM
-        CMP
-        CYC(2)
-        break;
+        IMM CMP CYC(2) break;
       case 0xCA:
-      DEX
-        CYC(2)
-        break;
+        DEX CYC(2) break;
       case 0xCB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xCC:
-      ABS
-        CPY
-        CYC(4)
-        break;
+        ABS CPY CYC(4) break;
       case 0xCD:
-      ABS
-        CMP
-        CYC(4)
-        break;
+        ABS CMP CYC(4) break;
       case 0xCE:
-      ABS
-        DEC_CMOS
-        CYC(5)
-        break;
+        ABS DEC_CMOS CYC(5) break;
       case 0xCF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xD0:
-        REL
-        BNE
-        CYC(2)
-        break;
+        REL BNE CYC(2) break;
       case 0xD1:
-      INDY
-        CMP
-        CYC(5)
-        break;
+        INDY CMP CYC(5) break;
       case 0xD2:
-      IZPG
-        CMP
-        CYC(5)
-        break;
+        IZPG CMP CYC(5) break;
       case 0xD3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xD4:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0xD5:
-        ZPGX
-        CMP
-        CYC(4)
-        break;
+        ZPGX CMP CYC(4) break;
       case 0xD6:
-        ZPGX
-        DEC_CMOS
-        CYC(6)
-        break;
+        ZPGX DEC_CMOS CYC(6) break;
       case 0xD7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xD8:
-        CLD
-        CYC(2)
-        break;
+        CLD CYC(2) break;
       case 0xD9:
-      ABSY
-        CMP
-        CYC(4)
-        break;
+        ABSY CMP CYC(4) break;
       case 0xDA:
-      PHX
-        CYC(3)
-        break;
+        PHX CYC(3) break;
       case 0xDB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xDC:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0xDD:
-      ABSX
-        CMP
-        CYC(4)
-        break;
+        ABSX CMP CYC(4) break;
       case 0xDE:
-      ABSX
-        DEC_CMOS
-        CYC(6)
-        break;
+        ABSX DEC_CMOS CYC(6) break;
       case 0xDF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xE0:
-        IMM
-        CPX
-        CYC(2)
-        break;
+        IMM CPX CYC(2) break;
       case 0xE1:
-      INDX
-        SBC_CMOS
-        CYC(6)
-        break;
+        INDX SBC_CMOS CYC(6) break;
       case 0xE2:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0xE3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xE4:
-        ZPG
-        CPX
-        CYC(3)
-        break;
+        ZPG CPX CYC(3) break;
       case 0xE5:
-        ZPG
-        SBC_CMOS
-        CYC(3)
-        break;
+        ZPG SBC_CMOS CYC(3) break;
       case 0xE6:
-        ZPG
-        INC_CMOS
-        CYC(5)
-        break;
+        ZPG INC_CMOS CYC(5) break;
       case 0xE7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xE8:
-      INX
-        CYC(2)
-        break;
+        INX CYC(2) break;
       case 0xE9:
-        IMM
-        SBC_CMOS
-        CYC(2)
-        break;
+        IMM SBC_CMOS CYC(2) break;
       case 0xEA:
-        NOP
-        CYC(2)
-        break;
+        NOP CYC(2) break;
       case 0xEB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xEC:
-      ABS
-        CPX
-        CYC(4)
-        break;
+        ABS CPX CYC(4) break;
       case 0xED:
-      ABS
-        SBC_CMOS
-        CYC(4)
-        break;
+        ABS SBC_CMOS CYC(4) break;
       case 0xEE:
-      ABS
-        INC_CMOS
-        CYC(6)
-        break;
+        ABS INC_CMOS CYC(6) break;
       case 0xEF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xF0:
-        REL
-        BEQ
-        CYC(2)
-        break;
+        REL BEQ CYC(2) break;
       case 0xF1:
-      INDY
-        SBC_CMOS
-        CYC(5)
-        break;
+        INDY SBC_CMOS CYC(5) break;
       case 0xF2:
-      IZPG
-        SBC_CMOS
-        CYC(5)
-        break;
+        IZPG SBC_CMOS CYC(5) break;
       case 0xF3:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xF4:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0xF5:
-        ZPGX
-        SBC_CMOS
-        CYC(4)
-        break;
+        ZPGX SBC_CMOS CYC(4) break;
       case 0xF6:
-        ZPGX
-        INC_CMOS
-        CYC(6)
-        break;
+        ZPGX INC_CMOS CYC(6) break;
       case 0xF7:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xF8:
-        SED
-        CYC(2)
-        break;
+        SED CYC(2) break;
       case 0xF9:
-      ABSY
-        SBC_CMOS
-        CYC(4)
-        break;
+        ABSY SBC_CMOS CYC(4) break;
       case 0xFA:
-      PLX
-        CYC(4)
-        break;
+        PLX CYC(4) break;
       case 0xFB:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xFC:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0xFD:
-      ABSX
-        SBC_CMOS
-        CYC(4)
-        break;
+        ABSX SBC_CMOS CYC(4) break;
       case 0xFE:
-      ABSX
-        INC_CMOS
-        CYC(6)
-        break;
+        ABSX INC_CMOS CYC(6) break;
       case 0xFF:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
     }
 
     CheckInterruptSources(uExecutedCycles);
@@ -2066,13 +1430,12 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t
 
 //===========================================================================
 
-static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t
-{
+static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
   uint16_t addr = 0;
-  uint8_t flagc = 0; // must always be 0 or 1, no other values allowed
-  uint8_t flagn = 0; // must always be 0 or 0x80.
-  uint8_t flagv = 0; // any value allowed
-  uint8_t flagz = 0; // any value allowed
+  uint8_t flagc = 0;  // must always be 0 or 1, no other values allowed
+  uint8_t flagn = 0;  // must always be 0 or 0x80.
+  uint8_t flagv = 0;  // any value allowed
+  uint8_t flagz = 0;  // any value allowed
   uint16_t temp = 0;
   uint16_t val = 0;
   uint16_t low = 0;
@@ -2089,1344 +1452,519 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t
 
     switch (iOpcode) {
       case 0x00:
-      BRK
-        CYC(7)
-        break;
+        BRK CYC(7) break;
       case 0x01:
-      INDX
-        ORA
-        CYC(6)
-        break;
+        INDX ORA CYC(6) break;
       case 0x02:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x03:
-        INV
-        INDX
-        ASO
-        CYC(8)
-        break;
+        INV INDX ASO CYC(8) break;
       case 0x04:
-        INV
-        ZPG
-        NOP
-        CYC(3)
-        break;
+        INV ZPG NOP CYC(3) break;
       case 0x05:
-        ZPG
-        ORA
-        CYC(3)
-        break;
+        ZPG ORA CYC(3) break;
       case 0x06:
-        ZPG
-        ASL_NMOS
-        CYC(5)
-        break;
+        ZPG ASL_NMOS CYC(5) break;
       case 0x07:
-        INV
-        ZPG
-        ASO
-        CYC(5)
-        break;
+        INV ZPG ASO CYC(5) break;
       case 0x08:
-      PHP
-        CYC(3)
-        break;
+        PHP CYC(3) break;
       case 0x09:
-        IMM
-        ORA
-        CYC(2)
-        break;
+        IMM ORA CYC(2) break;
       case 0x0A:
-      ASLA
-        CYC(2)
-        break;
+        ASLA CYC(2) break;
       case 0x0B:
-        INV
-        IMM
-        ANC
-        CYC(2)
-        break;
+        INV IMM ANC CYC(2) break;
       case 0x0C:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0x0D:
-      ABS
-        ORA
-        CYC(4)
-        break;
+        ABS ORA CYC(4) break;
       case 0x0E:
-      ABS
-        ASL_NMOS
-        CYC(6)
-        break;
+        ABS ASL_NMOS CYC(6) break;
       case 0x0F:
-        INV
-        ABS
-        ASO
-        CYC(6)
-        break;
+        INV ABS ASO CYC(6) break;
       case 0x10:
-        REL
-        BPL
-        CYC(2)
-        break;
+        REL BPL CYC(2) break;
       case 0x11:
-      INDY
-        ORA
-        CYC(5)
-        break;
+        INDY ORA CYC(5) break;
       case 0x12:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x13:
-        INV
-        INDY
-        ASO
-        CYC(8)
-        break;
+        INV INDY ASO CYC(8) break;
       case 0x14:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0x15:
-        ZPGX
-        ORA
-        CYC(4)
-        break;
+        ZPGX ORA CYC(4) break;
       case 0x16:
-        ZPGX
-        ASL_NMOS
-        CYC(6)
-        break;
+        ZPGX ASL_NMOS CYC(6) break;
       case 0x17:
-        INV
-        ZPGX
-        ASO
-        CYC(6)
-        break;
+        INV ZPGX ASO CYC(6) break;
       case 0x18:
-        CLC
-        CYC(2)
-        break;
+        CLC CYC(2) break;
       case 0x19:
-      ABSY
-        ORA
-        CYC(4)
-        break;
+        ABSY ORA CYC(4) break;
       case 0x1A:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x1B:
-        INV
-        ABSY
-        ASO
-        CYC(7)
-        break;
+        INV ABSY ASO CYC(7) break;
       case 0x1C:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0x1D:
-      ABSX
-        ORA
-        CYC(4)
-        break;
+        ABSX ORA CYC(4) break;
       case 0x1E:
-      ABSX
-        ASL_NMOS
-        CYC(6)
-        break;
+        ABSX ASL_NMOS CYC(6) break;
       case 0x1F:
-        INV
-        ABSX
-        ASO
-        CYC(7)
-        break;
+        INV ABSX ASO CYC(7) break;
       case 0x20:
-      ABS
-        JSR
-        CYC(6)
-        break;
+        ABS JSR CYC(6) break;
       case 0x21:
-      INDX
-        AND
-        CYC(6)
-        break;
+        INDX AND CYC(6) break;
       case 0x22:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x23:
-        INV
-        INDX
-        RLA
-        CYC(8)
-        break;
+        INV INDX RLA CYC(8) break;
       case 0x24:
-        ZPG
-        BIT
-        CYC(3)
-        break;
+        ZPG BIT CYC(3) break;
       case 0x25:
-        ZPG
-        AND
-        CYC(3)
-        break;
+        ZPG AND CYC(3) break;
       case 0x26:
-        ZPG
-        ROL_NMOS
-        CYC(5)
-        break;
+        ZPG ROL_NMOS CYC(5) break;
       case 0x27:
-        INV
-        ZPG
-        RLA
-        CYC(5)
-        break;
+        INV ZPG RLA CYC(5) break;
       case 0x28:
-      PLP
-        CYC(4)
-        break;
+        PLP CYC(4) break;
       case 0x29:
-        IMM
-        AND
-        CYC(2)
-        break;
+        IMM AND CYC(2) break;
       case 0x2A:
-      ROLA
-        CYC(2)
-        break;
+        ROLA CYC(2) break;
       case 0x2B:
-        INV
-        IMM
-        ANC
-        CYC(2)
-        break;
+        INV IMM ANC CYC(2) break;
       case 0x2C:
-      ABS
-        BIT
-        CYC(4)
-        break;
+        ABS BIT CYC(4) break;
       case 0x2D:
-      ABS
-        AND
-        CYC(2)
-        break;
+        ABS AND CYC(2) break;
       case 0x2E:
-      ABS
-        ROL_NMOS
-        CYC(6)
-        break;
+        ABS ROL_NMOS CYC(6) break;
       case 0x2F:
-        INV
-        ABS
-        RLA
-        CYC(6)
-        break;
+        INV ABS RLA CYC(6) break;
       case 0x30:
-        REL
-        BMI
-        CYC(2)
-        break;
+        REL BMI CYC(2) break;
       case 0x31:
-      INDY
-        AND
-        CYC(5)
-        break;
+        INDY AND CYC(5) break;
       case 0x32:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x33:
-        INV
-        INDY
-        RLA
-        CYC(8)
-        break;
+        INV INDY RLA CYC(8) break;
       case 0x34:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0x35:
-        ZPGX
-        AND
-        CYC(4)
-        break;
+        ZPGX AND CYC(4) break;
       case 0x36:
-        ZPGX
-        ROL_NMOS
-        CYC(6)
-        break;
+        ZPGX ROL_NMOS CYC(6) break;
       case 0x37:
-        INV
-        ZPGX
-        RLA
-        CYC(6)
-        break;
+        INV ZPGX RLA CYC(6) break;
       case 0x38:
-        SEC
-        CYC(2)
-        break;
+        SEC CYC(2) break;
       case 0x39:
-      ABSY
-        AND
-        CYC(4)
-        break;
+        ABSY AND CYC(4) break;
       case 0x3A:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x3B:
-        INV
-        ABSY
-        RLA
-        CYC(7)
-        break;
+        INV ABSY RLA CYC(7) break;
       case 0x3C:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0x3D:
-      ABSX
-        AND
-        CYC(4)
-        break;
+        ABSX AND CYC(4) break;
       case 0x3E:
-      ABSX
-        ROL_NMOS
-        CYC(6)
-        break;
+        ABSX ROL_NMOS CYC(6) break;
       case 0x3F:
-        INV
-        ABSX
-        RLA
-        CYC(7)
-        break;
+        INV ABSX RLA CYC(7) break;
       case 0x40:
-      RTI
-        CYC(6)
-        DoIrqProfiling(uExecutedCycles);
+        RTI CYC(6) DoIrqProfiling(uExecutedCycles);
         break;
       case 0x41:
-      INDX
-        EOR
-        CYC(6)
-        break;
+        INDX EOR CYC(6) break;
       case 0x42:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x43:
-        INV
-        INDX
-        LSE
-        CYC(8)
-        break;
+        INV INDX LSE CYC(8) break;
       case 0x44:
-        INV
-        ZPG
-        NOP
-        CYC(3)
-        break;
+        INV ZPG NOP CYC(3) break;
       case 0x45:
-        ZPG
-        EOR
-        CYC(3)
-        break;
+        ZPG EOR CYC(3) break;
       case 0x46:
-        ZPG
-        LSR_NMOS
-        CYC(5)
-        break;
+        ZPG LSR_NMOS CYC(5) break;
       case 0x47:
-        INV
-        ZPG
-        LSE
-        CYC(5)
-        break;
+        INV ZPG LSE CYC(5) break;
       case 0x48:
-      PHA
-        CYC(3)
-        break;
+        PHA CYC(3) break;
       case 0x49:
-        IMM
-        EOR
-        CYC(2)
-        break;
+        IMM EOR CYC(2) break;
       case 0x4A:
-      LSRA
-        CYC(2)
-        break;
+        LSRA CYC(2) break;
       case 0x4B:
-        INV
-        IMM
-        ALR
-        CYC(2)
-        break;
+        INV IMM ALR CYC(2) break;
       case 0x4C:
-      ABS
-        JMP
-        CYC(3)
-        break;
+        ABS JMP CYC(3) break;
       case 0x4D:
-      ABS
-        EOR
-        CYC(4)
-        break;
+        ABS EOR CYC(4) break;
       case 0x4E:
-      ABS
-        LSR_NMOS
-        CYC(6)
-        break;
+        ABS LSR_NMOS CYC(6) break;
       case 0x4F:
-        INV
-        ABS
-        LSE
-        CYC(6)
-        break;
+        INV ABS LSE CYC(6) break;
       case 0x50:
-        REL
-        BVC
-        CYC(2)
-        break;
+        REL BVC CYC(2) break;
       case 0x51:
-      INDY
-        EOR
-        CYC(5)
-        break;
+        INDY EOR CYC(5) break;
       case 0x52:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x53:
-        INV
-        INDY
-        LSE
-        CYC(8)
-        break;
+        INV INDY LSE CYC(8) break;
       case 0x54:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0x55:
-        ZPGX
-        EOR
-        CYC(4)
-        break;
+        ZPGX EOR CYC(4) break;
       case 0x56:
-        ZPGX
-        LSR_NMOS
-        CYC(6)
-        break;
+        ZPGX LSR_NMOS CYC(6) break;
       case 0x57:
-        INV
-        ZPGX
-        LSE
-        CYC(6)
-        break;
+        INV ZPGX LSE CYC(6) break;
       case 0x58:
-        CLI
-        CYC(2)
-        break;
+        CLI CYC(2) break;
       case 0x59:
-      ABSY
-        EOR
-        CYC(4)
-        break;
+        ABSY EOR CYC(4) break;
       case 0x5A:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x5B:
-        INV
-        ABSY
-        LSE
-        CYC(7)
-        break;
+        INV ABSY LSE CYC(7) break;
       case 0x5C:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0x5D:
-      ABSX
-        EOR
-        CYC(4)
-        break;
+        ABSX EOR CYC(4) break;
       case 0x5E:
-      ABSX
-        LSR_NMOS
-        CYC(6)
-        break;
+        ABSX LSR_NMOS CYC(6) break;
       case 0x5F:
-        INV
-        ABSX
-        LSE
-        CYC(7)
-        break;
+        INV ABSX LSE CYC(7) break;
       case 0x60:
-      RTS
-        CYC(6)
-        break;
+        RTS CYC(6) break;
       case 0x61:
-      INDX
-        ADC_NMOS
-        CYC(6)
-        break;
+        INDX ADC_NMOS CYC(6) break;
       case 0x62:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x63:
-        INV
-        INDX
-        RRA
-        CYC(8)
-        break;
+        INV INDX RRA CYC(8) break;
       case 0x64:
-        INV
-        ZPG
-        NOP
-        CYC(3)
-        break;
+        INV ZPG NOP CYC(3) break;
       case 0x65:
-        ZPG
-        ADC_NMOS
-        CYC(3)
-        break;
+        ZPG ADC_NMOS CYC(3) break;
       case 0x66:
-        ZPG
-        ROR_NMOS
-        CYC(5)
-        break;
+        ZPG ROR_NMOS CYC(5) break;
       case 0x67:
-        INV
-        ZPG
-        RRA
-        CYC(5)
-        break;
+        INV ZPG RRA CYC(5) break;
       case 0x68:
-      PLA
-        CYC(4)
-        break;
+        PLA CYC(4) break;
       case 0x69:
-        IMM
-        ADC_NMOS
-        CYC(2)
-        break;
+        IMM ADC_NMOS CYC(2) break;
       case 0x6A:
-      RORA
-        CYC(2)
-        break;
+        RORA CYC(2) break;
       case 0x6B:
-        INV
-        IMM
-        ARR
-        CYC(2)
-        break;
+        INV IMM ARR CYC(2) break;
       case 0x6C:
-      IABSNMOS
-        JMP
-        CYC(6)
-        break;
+        IABSNMOS
+        JMP CYC(6) break;
       case 0x6D:
-      ABS
-        ADC_NMOS
-        CYC(4)
-        break;
+        ABS ADC_NMOS CYC(4) break;
       case 0x6E:
-      ABS
-        ROR_NMOS
-        CYC(6)
-        break;
+        ABS ROR_NMOS CYC(6) break;
       case 0x6F:
-        INV
-        ABS
-        RRA
-        CYC(6)
-        break;
+        INV ABS RRA CYC(6) break;
       case 0x70:
-        REL
-        BVS
-        CYC(2)
-        break;
+        REL BVS CYC(2) break;
       case 0x71:
-      INDY
-        ADC_NMOS
-        CYC(5)
-        break;
+        INDY ADC_NMOS CYC(5) break;
       case 0x72:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x73:
-        INV
-        INDY
-        RRA
-        CYC(8)
-        break;
+        INV INDY RRA CYC(8) break;
       case 0x74:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0x75:
-        ZPGX
-        ADC_NMOS
-        CYC(4)
-        break;
+        ZPGX ADC_NMOS CYC(4) break;
       case 0x76:
-        ZPGX
-        ROR_NMOS
-        CYC(6)
-        break;
+        ZPGX ROR_NMOS CYC(6) break;
       case 0x77:
-        INV
-        ZPGX
-        RRA
-        CYC(6)
-        break;
+        INV ZPGX RRA CYC(6) break;
       case 0x78:
-        SEI
-        CYC(2)
-        break;
+        SEI CYC(2) break;
       case 0x79:
-      ABSY
-        ADC_NMOS
-        CYC(4)
-        break;
+        ABSY ADC_NMOS CYC(4) break;
       case 0x7A:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0x7B:
-        INV
-        ABSY
-        RRA
-        CYC(7)
-        break;
+        INV ABSY RRA CYC(7) break;
       case 0x7C:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0x7D:
-      ABSX
-        ADC_NMOS
-        CYC(4)
-        break;
+        ABSX ADC_NMOS CYC(4) break;
       case 0x7E:
-      ABSX
-        ROR_NMOS
-        CYC(6)
-        break;
+        ABSX ROR_NMOS CYC(6) break;
       case 0x7F:
-        INV
-        ABSX
-        RRA
-        CYC(7)
-        break;
+        INV ABSX RRA CYC(7) break;
       case 0x80:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x81:
-      INDX
-        STA
-        CYC(6)
-        break;
+        INDX STA CYC(6) break;
       case 0x82:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x83:
-        INV
-        INDX
-        AXS
-        CYC(6)
-        break;
+        INV INDX AXS CYC(6) break;
       case 0x84:
-        ZPG
-        STY
-        CYC(3)
-        break;
+        ZPG STY CYC(3) break;
       case 0x85:
-        ZPG
-        STA
-        CYC(3)
-        break;
+        ZPG STA CYC(3) break;
       case 0x86:
-        ZPG
-        STX
-        CYC(3)
-        break;
+        ZPG STX CYC(3) break;
       case 0x87:
-        INV
-        ZPG
-        AXS
-        CYC(3)
-        break;
+        INV ZPG AXS CYC(3) break;
       case 0x88:
-      DEY
-        CYC(2)
-        break;
+        DEY CYC(2) break;
       case 0x89:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0x8A:
-      TXA
-        CYC(2)
-        break;
+        TXA CYC(2) break;
       case 0x8B:
-        INV
-        IMM
-        XAA
-        CYC(2)
-        break;
+        INV IMM XAA CYC(2) break;
       case 0x8C:
-      ABS
-        STY
-        CYC(4)
-        break;
+        ABS STY CYC(4) break;
       case 0x8D:
-      ABS
-        STA
-        CYC(4)
-        break;
+        ABS STA CYC(4) break;
       case 0x8E:
-      ABS
-        STX
-        CYC(4)
-        break;
+        ABS STX CYC(4) break;
       case 0x8F:
-        INV
-        ABS
-        AXS
-        CYC(4)
-        break;
+        INV ABS AXS CYC(4) break;
       case 0x90:
-        REL
-        BCC
-        CYC(2)
-        break;
+        REL BCC CYC(2) break;
       case 0x91:
-      INDY
-        STA
-        CYC(6)
-        break;
+        INDY STA CYC(6) break;
       case 0x92:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0x93:
-        INV
-        INDY
-        AXA
-        CYC(6)
-        break;
+        INV INDY AXA CYC(6) break;
       case 0x94:
-        ZPGX
-        STY
-        CYC(4)
-        break;
+        ZPGX STY CYC(4) break;
       case 0x95:
-        ZPGX
-        STA
-        CYC(4)
-        break;
+        ZPGX STA CYC(4) break;
       case 0x96:
-        ZPGY
-        STX
-        CYC(4)
-        break;
+        ZPGY STX CYC(4) break;
       case 0x97:
-        INV
-        ZPGY
-        AXS
-        CYC(4)
-        break;
+        INV ZPGY AXS CYC(4) break;
       case 0x98:
-      TYA
-        CYC(2)
-        break;
+        TYA CYC(2) break;
       case 0x99:
-      ABSY
-        STA
-        CYC(5)
-        break;
+        ABSY STA CYC(5) break;
       case 0x9A:
-        TXS
-        CYC(2)
-        break;
+        TXS CYC(2) break;
       case 0x9B:
-        INV
-        ABSY
-        TAS
-        CYC(5)
-        break;
+        INV ABSY TAS CYC(5) break;
       case 0x9C:
-        INV
-        ABSX
-        SAY
-        CYC(5)
-        break;
+        INV ABSX SAY CYC(5) break;
       case 0x9D:
-      ABSX
-        STA
-        CYC(5)
-        break;
+        ABSX STA CYC(5) break;
       case 0x9E:
-        INV
-        ABSY
-        XAS
-        CYC(5)
-        break;
+        INV ABSY XAS CYC(5) break;
       case 0x9F:
-        INV
-        ABSY
-        AXA
-        CYC(5)
-        break;
+        INV ABSY AXA CYC(5) break;
       case 0xA0:
-        IMM
-        LDY
-        CYC(2)
-        break;
+        IMM LDY CYC(2) break;
       case 0xA1:
-      INDX
-        LDA
-        CYC(6)
-        break;
+        INDX LDA CYC(6) break;
       case 0xA2:
-        IMM
-        LDX
-        CYC(2)
-        break;
+        IMM LDX CYC(2) break;
       case 0xA3:
-        INV
-        INDX
-        LAX
-        CYC(6)
-        break;
+        INV INDX LAX CYC(6) break;
       case 0xA4:
-        ZPG
-        LDY
-        CYC(3)
-        break;
+        ZPG LDY CYC(3) break;
       case 0xA5:
-        ZPG
-        LDA
-        CYC(3)
-        break;
+        ZPG LDA CYC(3) break;
       case 0xA6:
-        ZPG
-        LDX
-        CYC(3)
-        break;
+        ZPG LDX CYC(3) break;
       case 0xA7:
-        INV
-        ZPG
-        LAX
-        CYC(3)
-        break;
+        INV ZPG LAX CYC(3) break;
       case 0xA8:
-      TAY
-        CYC(2)
-        break;
+        TAY CYC(2) break;
       case 0xA9:
-        IMM
-        LDA
-        CYC(2)
-        break;
+        IMM LDA CYC(2) break;
       case 0xAA:
-      TAX
-        CYC(2)
-        break;
+        TAX CYC(2) break;
       case 0xAB:
-        INV
-        IMM
-        OAL
-        CYC(2)
-        break;
+        INV IMM OAL CYC(2) break;
       case 0xAC:
-      ABS
-        LDY
-        CYC(4)
-        break;
+        ABS LDY CYC(4) break;
       case 0xAD:
-      ABS
-        LDA
-        CYC(4)
-        break;
+        ABS LDA CYC(4) break;
       case 0xAE:
-      ABS
-        LDX
-        CYC(4)
-        break;
+        ABS LDX CYC(4) break;
       case 0xAF:
-        INV
-        ABS
-        LAX
-        CYC(4)
-        break;
+        INV ABS LAX CYC(4) break;
       case 0xB0:
-        REL
-        BCS
-        CYC(2)
-        break;
+        REL BCS CYC(2) break;
       case 0xB1:
-      INDY
-        LDA
-        CYC(5)
-        break;
+        INDY LDA CYC(5) break;
       case 0xB2:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0xB3:
-        INV
-        INDY
-        LAX
-        CYC(5)
-        break;
+        INV INDY LAX CYC(5) break;
       case 0xB4:
-        ZPGX
-        LDY
-        CYC(4)
-        break;
+        ZPGX LDY CYC(4) break;
       case 0xB5:
-        ZPGX
-        LDA
-        CYC(4)
-        break;
+        ZPGX LDA CYC(4) break;
       case 0xB6:
-        ZPGY
-        LDX
-        CYC(4)
-        break;
+        ZPGY LDX CYC(4) break;
       case 0xB7:
-        INV
-        ZPGY
-        LAX
-        CYC(4)
-        break;
+        INV ZPGY LAX CYC(4) break;
       case 0xB8:
-        CLV
-        CYC(2)
-        break;
+        CLV CYC(2) break;
       case 0xB9:
-      ABSY
-        LDA
-        CYC(4)
-        break;
+        ABSY LDA CYC(4) break;
       case 0xBA:
-      TSX
-        CYC(2)
-        break;
+        TSX CYC(2) break;
       case 0xBB:
-        INV
-        ABSY
-        LAS
-        CYC(4)
-        break;
+        INV ABSY LAS CYC(4) break;
       case 0xBC:
-      ABSX
-        LDY
-        CYC(4)
-        break;
+        ABSX LDY CYC(4) break;
       case 0xBD:
-      ABSX
-        LDA
-        CYC(4)
-        break;
+        ABSX LDA CYC(4) break;
       case 0xBE:
-      ABSY
-        LDX
-        CYC(4)
-        break;
+        ABSY LDX CYC(4) break;
       case 0xBF:
-        INV
-        ABSY
-        LAX
-        CYC(4)
-        break;
+        INV ABSY LAX CYC(4) break;
       case 0xC0:
-        IMM
-        CPY
-        CYC(2)
-        break;
+        IMM CPY CYC(2) break;
       case 0xC1:
-      INDX
-        CMP
-        CYC(6)
-        break;
+        INDX CMP CYC(6) break;
       case 0xC2:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0xC3:
-        INV
-        INDX
-        DCM
-        CYC(8)
-        break;
+        INV INDX DCM CYC(8) break;
       case 0xC4:
-        ZPG
-        CPY
-        CYC(3)
-        break;
+        ZPG CPY CYC(3) break;
       case 0xC5:
-        ZPG
-        CMP
-        CYC(3)
-        break;
+        ZPG CMP CYC(3) break;
       case 0xC6:
-        ZPG
-        DEC_NMOS
-        CYC(5)
-        break;
+        ZPG DEC_NMOS CYC(5) break;
       case 0xC7:
-        INV
-        ZPG
-        DCM
-        CYC(5)
-        break;
+        INV ZPG DCM CYC(5) break;
       case 0xC8:
-      INY
-        CYC(2)
-        break;
+        INY CYC(2) break;
       case 0xC9:
-        IMM
-        CMP
-        CYC(2)
-        break;
+        IMM CMP CYC(2) break;
       case 0xCA:
-      DEX
-        CYC(2)
-        break;
+        DEX CYC(2) break;
       case 0xCB:
-        INV
-        IMM
-        SAX
-        CYC(2)
-        break;
+        INV IMM SAX CYC(2) break;
       case 0xCC:
-      ABS
-        CPY
-        CYC(4)
-        break;
+        ABS CPY CYC(4) break;
       case 0xCD:
-      ABS
-        CMP
-        CYC(4)
-        break;
+        ABS CMP CYC(4) break;
       case 0xCE:
-      ABS
-        DEC_NMOS
-        CYC(5)
-        break;
+        ABS DEC_NMOS CYC(5) break;
       case 0xCF:
-        INV
-        ABS
-        DCM
-        CYC(6)
-        break;
+        INV ABS DCM CYC(6) break;
       case 0xD0:
-        REL
-        BNE
-        CYC(2)
-        break;
+        REL BNE CYC(2) break;
       case 0xD1:
-      INDY
-        CMP
-        CYC(5)
-        break;
+        INDY CMP CYC(5) break;
       case 0xD2:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0xD3:
-        INV
-        INDY
-        DCM
-        CYC(8)
-        break;
+        INV INDY DCM CYC(8) break;
       case 0xD4:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0xD5:
-        ZPGX
-        CMP
-        CYC(4)
-        break;
+        ZPGX CMP CYC(4) break;
       case 0xD6:
-        ZPGX
-        DEC_NMOS
-        CYC(6)
-        break;
+        ZPGX DEC_NMOS CYC(6) break;
       case 0xD7:
-        INV
-        ZPGX
-        DCM
-        CYC(6)
-        break;
+        INV ZPGX DCM CYC(6) break;
       case 0xD8:
-        CLD
-        CYC(2)
-        break;
+        CLD CYC(2) break;
       case 0xD9:
-      ABSY
-        CMP
-        CYC(4)
-        break;
+        ABSY CMP CYC(4) break;
       case 0xDA:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xDB:
-        INV
-        ABSY
-        DCM
-        CYC(7)
-        break;
+        INV ABSY DCM CYC(7) break;
       case 0xDC:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0xDD:
-      ABSX
-        CMP
-        CYC(4)
-        break;
+        ABSX CMP CYC(4) break;
       case 0xDE:
-      ABSX
-        DEC_NMOS
-        CYC(6)
-        break;
+        ABSX DEC_NMOS CYC(6) break;
       case 0xDF:
-        INV
-        ABSX
-        DCM
-        CYC(7)
-        break;
+        INV ABSX DCM CYC(7) break;
       case 0xE0:
-        IMM
-        CPX
-        CYC(2)
-        break;
+        IMM CPX CYC(2) break;
       case 0xE1:
-      INDX
-        SBC_NMOS
-        CYC(6)
-        break;
+        INDX SBC_NMOS CYC(6) break;
       case 0xE2:
-        INV
-        IMM
-        NOP
-        CYC(2)
-        break;
+        INV IMM NOP CYC(2) break;
       case 0xE3:
-        INV
-        INDX
-        INS
-        CYC(8)
-        break;
+        INV INDX INS CYC(8) break;
       case 0xE4:
-        ZPG
-        CPX
-        CYC(3)
-        break;
+        ZPG CPX CYC(3) break;
       case 0xE5:
-        ZPG
-        SBC_NMOS
-        CYC(3)
-        break;
+        ZPG SBC_NMOS CYC(3) break;
       case 0xE6:
-        ZPG
-        INC_NMOS
-        CYC(5)
-        break;
+        ZPG INC_NMOS CYC(5) break;
       case 0xE7:
-        INV
-        ZPG
-        INS
-        CYC(5)
-        break;
+        INV ZPG INS CYC(5) break;
       case 0xE8:
-      INX
-        CYC(2)
-        break;
+        INX CYC(2) break;
       case 0xE9:
-        IMM
-        SBC_NMOS
-        CYC(2)
-        break;
+        IMM SBC_NMOS CYC(2) break;
       case 0xEA:
-        NOP
-        CYC(2)
-        break;
+        NOP CYC(2) break;
       case 0xEB:
-        INV
-        IMM
-        SBC_NMOS
-        CYC(2)
-        break;
+        INV IMM SBC_NMOS CYC(2) break;
       case 0xEC:
-      ABS
-        CPX
-        CYC(4)
-        break;
+        ABS CPX CYC(4) break;
       case 0xED:
-      ABS
-        SBC_NMOS
-        CYC(4)
-        break;
+        ABS SBC_NMOS CYC(4) break;
       case 0xEE:
-      ABS
-        INC_NMOS
-        CYC(6)
-        break;
+        ABS INC_NMOS CYC(6) break;
       case 0xEF:
-        INV
-        ABS
-        INS
-        CYC(6)
-        break;
+        INV ABS INS CYC(6) break;
       case 0xF0:
-        REL
-        BEQ
-        CYC(2)
-        break;
+        REL BEQ CYC(2) break;
       case 0xF1:
-      INDY
-        SBC_NMOS
-        CYC(5)
-        break;
+        INDY SBC_NMOS CYC(5) break;
       case 0xF2:
-        INV
-        HLT
-        CYC(2)
-        break;
+        INV HLT CYC(2) break;
       case 0xF3:
-        INV
-        INDY
-        INS
-        CYC(8)
-        break;
+        INV INDY INS CYC(8) break;
       case 0xF4:
-        INV
-        ZPGX
-        NOP
-        CYC(4)
-        break;
+        INV ZPGX NOP CYC(4) break;
       case 0xF5:
-        ZPGX
-        SBC_NMOS
-        CYC(4)
-        break;
+        ZPGX SBC_NMOS CYC(4) break;
       case 0xF6:
-        ZPGX
-        INC_NMOS
-        CYC(6)
-        break;
+        ZPGX INC_NMOS CYC(6) break;
       case 0xF7:
-        INV
-        ZPGX
-        INS
-        CYC(6)
-        break;
+        INV ZPGX INS CYC(6) break;
       case 0xF8:
-        SED
-        CYC(2)
-        break;
+        SED CYC(2) break;
       case 0xF9:
-      ABSY
-        SBC_NMOS
-        CYC(4)
-        break;
+        ABSY SBC_NMOS CYC(4) break;
       case 0xFA:
-        INV
-        NOP
-        CYC(2)
-        break;
+        INV NOP CYC(2) break;
       case 0xFB:
-        INV
-        ABSY
-        INS
-        CYC(7)
-        break;
+        INV ABSY INS CYC(7) break;
       case 0xFC:
-        INV
-        ABSX
-        NOP
-        CYC(4)
-        break;
+        INV ABSX NOP CYC(4) break;
       case 0xFD:
-      ABSX
-        SBC_NMOS
-        CYC(4)
-        break;
+        ABSX SBC_NMOS CYC(4) break;
       case 0xFE:
-      ABSX
-        INC_NMOS
-        CYC(6)
-        break;
+        ABSX INC_NMOS CYC(6) break;
       case 0xFF:
-        INV
-        ABSX
-        INS
-        CYC(7)
-        break;
+        INV ABSX INS CYC(7) break;
     }
 
     CheckInterruptSources(uExecutedCycles);
@@ -3439,10 +1977,9 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t
   return uExecutedCycles;
 }
 
-static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t
-{
-  #ifdef UPDATE_ALL_PER_CYCLE
-  #endif
+static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t {
+#ifdef UPDATE_ALL_PER_CYCLE
+#endif
   if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E)) {
     return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e
   } else {
@@ -3452,8 +1989,7 @@ static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t
 
 // All Globally Accessible FUnctions Are Below This Line
 
-void CpuDestroy()
-{
+void CpuDestroy() {
   if (g_bCritSectionValid) {
     g_bCritSectionValid = false;
   }
@@ -3465,13 +2001,12 @@ void CpuDestroy()
 //  g_nCyclesExecuted
 //  g_nCumulativeCycles
 //
-void CpuCalcCycles(uint32_t nExecutedCycles)
-{
+void CpuCalcCycles(uint32_t nExecutedCycles) {
   // Calc # of cycles executed since this func was last called
   uint32_t nCycles = nExecutedCycles - g_nCyclesExecuted;
-  #ifdef UPDATE_ALL_PER_CYCLE
-  assert( (int32_t)nCycles >= 0 );
-  #endif
+#ifdef UPDATE_ALL_PER_CYCLE
+  assert((int32_t)nCycles >= 0);
+#endif
   g_nCyclesExecuted += nCycles;
   g_nCumulativeCycles += nCycles;
 }
@@ -3481,10 +2016,12 @@ void CpuCalcCycles(uint32_t nExecutedCycles)
 // - 68.0,69.0MHz vs  66.7, 67.2MHz  (with check for VBL IRQ every opcode)
 // - 89.6,88.9MHz vs  87.2, 87.9MHz  (without check for VBL IRQ)
 // -                  75.9, 78.5MHz  (with check for VBL IRQ every 128 cycles)
-// -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every 128 cycles)
+// -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every
+// 128 cycles)
 
 #ifdef UPDATE_ALL_PER_CYCLE
-uint32_t CpuGetCyclesThisFrame(uint32_t)  // Old func using g_uInternalExecutedCycles
+uint32_t CpuGetCyclesThisFrame(
+    uint32_t)  // Old func using g_uInternalExecutedCycles
 {
   CpuCalcCycles(g_uInternalExecutedCycles);
   return g_dwCyclesThisFrame + g_nCyclesExecuted;
@@ -3506,7 +2043,7 @@ auto CpuExecute(uint32_t uCycles) -> uint32_t {
 
   if (uCycles == 0) {  // Do single step
     uExecutedCycles = InternalCpuExecute(0);
-  } else {        // Do multi-opcode emulation
+  } else {  // Do multi-opcode emulation
     uExecutedCycles = InternalCpuExecute(uCycles);
   }
 
@@ -3548,7 +2085,8 @@ void CpuSetupBenchmark() {
 
       if ((++opcode >= BENCHOPCODES) || ((addr & 0x0F) >= 0x0B)) {
         *(mem + addr++) = 0x4C;
-        *(mem + addr++) = (opcode >= BENCHOPCODES) ? 0x00 : ((addr >> 4) + 1) << 4;
+        *(mem + addr++) =
+            (opcode >= BENCHOPCODES) ? 0x00 : ((addr >> 4) + 1) << 4;
         *(mem + addr++) = 0x03;
         while (addr & 0x0F) {
           ++addr;
@@ -3608,7 +2146,7 @@ void CpuNmiAssert(eIRQSRC Device) {
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
-  if (g_bmNMI == 0) { // NMI line is just becoming active
+  if (g_bmNMI == 0) {  // NMI line is just becoming active
     g_bNmiFlank = true;
   }
   g_bmNMI |= 1 << Device;
@@ -3631,13 +2169,16 @@ void CpuNmiDeassert(eIRQSRC Device) {
 void CpuReset() {
   // 7 cycles
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
-  regs.pc = *reinterpret_cast<uint16_t *>(mem + 0xFFFC);
+  regs.pc = *reinterpret_cast<uint16_t*>(mem + 0xFFFC);
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
 
-  regs.bJammed = 0;
+  regs.is_jammed = 0;
 }
 
-auto CpuGetSnapshot(SS_CPU6502 *pSS) -> uint32_t {
+auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+  g_active_cpu->cpu_regs = regs;
+  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
+
   pSS->A = regs.a;
   pSS->X = regs.x;
   pSS->Y = regs.y;
@@ -3649,7 +2190,7 @@ auto CpuGetSnapshot(SS_CPU6502 *pSS) -> uint32_t {
   return 0;
 }
 
-auto CpuSetSnapshot(SS_CPU6502 *pSS) -> uint32_t {
+auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t {
   regs.a = pSS->A;
   regs.x = pSS->X;
   regs.y = pSS->Y;
@@ -3659,6 +2200,9 @@ auto CpuSetSnapshot(SS_CPU6502 *pSS) -> uint32_t {
   CpuIrqReset();
   CpuNmiReset();
   g_nCumulativeCycles = pSS->g_nCumulativeCycles;
+
+  g_active_cpu->cpu_regs = regs;
+  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
 
   return 0;
 }

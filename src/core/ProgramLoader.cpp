@@ -1,10 +1,12 @@
 #include "core/ProgramLoader.h"
+
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cstdint>
-#include "apple2/Memory.h"
+
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
 
 constexpr uint16_t IO_REGION_END = 0xCFFF;
 constexpr uint32_t PRG_HEADER_SIZE = 128;
@@ -14,11 +16,7 @@ constexpr uint8_t MEM_FILL_VALUE = 0xFF;
 namespace {
 constexpr uint32_t PRG_MAGIC = 0x214C470A;
 
-enum class ProgramType {
-  None,
-  Prg,
-  Apl
-};
+enum class ProgramType { None, Prg, Apl };
 
 struct ProgramHeader {
   ProgramType type;
@@ -84,10 +82,10 @@ static auto DetectProgram(const char* path, ProgramHeader* out_header)
 
   return PROGRAM_LOAD_NOT_A_PROGRAM;
 }
-} // namespace
+}  // namespace
 
 auto ProgramLoader_TryLoad(const char* path) -> ProgramLoadResult_e {
-  ProgramHeader header = { ProgramType::None, 0, 0, 0 };
+  ProgramHeader header = {ProgramType::None, 0, 0, 0};
   ProgramLoadResult_e res = DetectProgram(path, &header);
 
   if (res != PROGRAM_LOAD_OK) {
@@ -95,11 +93,13 @@ auto ProgramLoader_TryLoad(const char* path) -> ProgramLoadResult_e {
   }
 
   // Range check: reject I/O region $C000-$CFFF
-  if (header.load_addr >= IO_REGION_START && header.load_addr <= IO_REGION_END) {
+  if (header.load_addr >= IO_REGION_START &&
+      header.load_addr <= IO_REGION_END) {
     return PROGRAM_LOAD_INVALID;
   }
   // Reject if program ends in or past I/O region
-  if (static_cast<uint64_t>(header.load_addr) + header.length > IO_REGION_START) {
+  if (static_cast<uint64_t>(header.load_addr) + header.length >
+      IO_REGION_START) {
     return PROGRAM_LOAD_INVALID;
   }
 
@@ -119,7 +119,7 @@ auto ProgramLoader_TryLoad(const char* path) -> ProgramLoadResult_e {
   fclose(f);
 
   memset(memdirty, MEM_FILL_VALUE, NUM_PAGES_48K);
-  regs.pc = header.load_addr;
+  CpuGetRegisters()->pc = header.load_addr;
 
   return PROGRAM_LOAD_OK;
 }

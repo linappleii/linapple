@@ -270,7 +270,7 @@ static auto Host_GetMemPtr(uint16_t addr) -> uint8_t* {
   return GetMemPtr(addr);
 }
 
-static auto Host_GetCycles() -> uint64_t { return cumulativecycles; }
+static auto Host_GetCycles() -> uint64_t { return CpuGetCumulativeCycles(); }
 
 static auto Host_GetConfig(const char* section, const char* key, char* buffer,
                            size_t buffer_size) -> bool {

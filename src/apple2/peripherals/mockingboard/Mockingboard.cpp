@@ -54,12 +54,7 @@ constexpr uint8_t reg_mask = 0x0F;
 }  // namespace ay
 
 namespace {
-enum class SoundCardType_t {
-  uninit = 0,
-  none,
-  mockingboard,
-  phasor
-};
+enum class SoundCardType_t { uninit = 0, none, mockingboard, phasor };
 
 constexpr int16_t audio_clamp_min = -32768;
 constexpr int16_t audio_clamp_max = 32767;
@@ -101,7 +96,8 @@ struct Sy6522Ay8910_t {
 
 struct MockingboardPeripheral_t {
   std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
-  std::array<std::array<int16_t, SAMPLE_RATE>, voices_per_card> voice_buffers = {};
+  std::array<std::array<int16_t, SAMPLE_RATE>, voices_per_card> voice_buffers =
+      {};
   std::array<int16_t, SAMPLE_RATE * 2> mix_buffer = {};
   uint32_t timer_period_6522 = 0;
   uint16_t mb_timer_device = 0;
@@ -249,7 +245,8 @@ static auto sy6522_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
   auto* pmb = &mp->chips.at(static_cast<size_t>(device));
 
   // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access)
-  // Justification: Reg latch and counter require direct access to union components.
+  // Justification: Reg latch and counter require direct access to union
+  // components.
   switch (reg) {
     case via_reg::orb:
       value &= pmb->sy6522.DDRB;
@@ -432,8 +429,9 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
                            static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
   }
 
-  const double attenuation =
-      (mp->type == SoundCardType_t::phasor) ? phasor_attenuation : default_attenuation;
+  const double attenuation = (mp->type == SoundCardType_t::phasor)
+                                 ? phasor_attenuation
+                                 : default_attenuation;
 
   for (int i = 0; i < num_samples; i++) {
     int data_l = 0;
@@ -441,10 +439,12 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
 
     for (int j = 0; j < 3; j++) {
       data_l += static_cast<int>(
-          static_cast<double>(mp->voice_buffers.at(0 * 3 + j).at(static_cast<size_t>(i))) *
+          static_cast<double>(
+              mp->voice_buffers.at(0 * 3 + j).at(static_cast<size_t>(i))) *
           attenuation);
       data_r += static_cast<int>(
-          static_cast<double>(mp->voice_buffers.at(1 * 3 + j).at(static_cast<size_t>(i))) *
+          static_cast<double>(
+              mp->voice_buffers.at(1 * 3 + j).at(static_cast<size_t>(i))) *
           attenuation);
     }
 
@@ -471,6 +471,13 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
   }
 }
 
+static auto GetCycles(HostInterface_t* host) -> uint64_t {
+  if (host != nullptr && host->GetCycles != nullptr) {
+    return host->GetCycles();
+  }
+  return CpuGetCumulativeCycles();
+}
+
 static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
                                       uint32_t executed_cycles) -> void {
   (void)executed_cycles;
@@ -478,20 +485,19 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
     return;
   }
 
-  if (g_nCumulativeCycles < mp->last_cumulative_cycles) {
-    mp->last_cumulative_cycles = g_nCumulativeCycles;
+  if (GetCycles(mp->host) < mp->last_cumulative_cycles) {
+    mp->last_cumulative_cycles = GetCycles(mp->host);
     return;
   }
 
-  uint64_t cycles = g_nCumulativeCycles - mp->last_cumulative_cycles;
-  mp->last_cumulative_cycles = g_nCumulativeCycles;
+  uint64_t cycles = GetCycles(mp->host) - mp->last_cumulative_cycles;
+  mp->last_cumulative_cycles = GetCycles(mp->host);
 
   while (cycles > 0) {
     constexpr uint64_t max_clocks_u16 = 0xFFFF;
     constexpr uint16_t max_clocks_u16_val = 0xFFFF;
-    uint16_t clocks = (cycles > max_clocks_u16)
-                           ? max_clocks_u16_val
-                           : static_cast<uint16_t>(cycles);
+    uint16_t clocks = (cycles > max_clocks_u16) ? max_clocks_u16_val
+                                                : static_cast<uint16_t>(cycles);
     cycles -= clocks;
 
     for (size_t i = 0; i < chips_per_card; i++) {
@@ -540,11 +546,11 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
   }
 
   if (mp->mb_inactive_cycle_count == 0) {
-    mp->mb_inactive_cycle_count = g_nCumulativeCycles;
+    mp->mb_inactive_cycle_count = GetCycles(mp->host);
     return;
   }
 
-  if (g_nCumulativeCycles - mp->mb_inactive_cycle_count >
+  if (GetCycles(mp->host) - mp->mb_inactive_cycle_count >
       static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
     mp->mb_active = false;
   }
@@ -574,7 +580,7 @@ static auto mb_io_read(void* instance, uint16_t pc, uint16_t addr,
 }
 
 static auto mb_io_write(void* instance, uint16_t pc, uint16_t addr,
-                       uint8_t write, uint8_t val, uint32_t cycles_left)
+                        uint8_t write, uint8_t val, uint32_t cycles_left)
     -> uint8_t {
   (void)pc;
   (void)write;
@@ -595,9 +601,8 @@ static auto mb_io_write(void* instance, uint16_t pc, uint16_t addr,
   return 0;
 }
 
-static auto phasor_io(void* instance, uint16_t pc, uint16_t addr,
-                      uint8_t write, uint8_t val, uint32_t cycles_left)
-    -> uint8_t {
+static auto phasor_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
+                      uint8_t val, uint32_t cycles_left) -> uint8_t {
   (void)pc;
   if (instance == nullptr) {
     return MemReadFloatingBus(cycles_left);
@@ -672,11 +677,11 @@ static auto mb_abi_reset(void* instance) -> void {
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   mp->timer_period_6522 = 0;
   mp->mb_timer_device = 0;
-  mp->last_cumulative_cycles = g_nCumulativeCycles;
+  mp->last_cumulative_cycles = GetCycles(mp->host);
   mp->mb_reg_accessed_flag = false;
   mp->mb_active = false;
   mp->mb_inactive_cycle_count = 0;
-  mp->last_60hz = g_nCumulativeCycles;
+  mp->last_60hz = GetCycles(mp->host);
   mp->phasor_native = false;
 
   for (auto& chip : mp->chips) {
@@ -703,19 +708,20 @@ static auto mb_abi_think(void* instance, uint32_t cycles) -> void {
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   mb_update_cycles_instance(mp, cycles);
 
-  // If timers are inactive, force a 60Hz audio update to prevent buffer starvation.
+  // If timers are inactive, force a 60Hz audio update to prevent buffer
+  // starvation.
   const bool timers_active =
       mp->timer_irq_active || (mp->chips.at(0).sy6522.IFR & ixr_timer1);
   if (timers_active) {
     return;
   }
 
-  const uint64_t cycles_since_last_update = g_nCumulativeCycles - mp->last_60hz;
+  const uint64_t cycles_since_last_update = GetCycles(mp->host) - mp->last_60hz;
   const uint64_t cycles_per_frame =
       static_cast<uint64_t>(g_fCurrentCLK6502) / hz_60_divisor;
 
   if (cycles_since_last_update > cycles_per_frame) {
-    mp->last_60hz = g_nCumulativeCycles;
+    mp->last_60hz = GetCycles(mp->host);
     mb_update_instance(mp);
   }
 }

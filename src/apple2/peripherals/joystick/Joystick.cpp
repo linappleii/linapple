@@ -35,6 +35,13 @@ constexpr uint32_t PADDLE_TIMING_OFFSET = 10;
 constexpr int JOYSTICK_COUNT = 2;
 constexpr int JOYSTICK_BUTTON_COUNT = 3;
 
+static auto GetCycles(HostInterface_t* host) -> uint64_t {
+  if (host != nullptr && host->GetCycles != nullptr) {
+    return host->GetCycles();
+  }
+  return CpuGetCumulativeCycles();
+}
+
 auto GetButtonLatchDuration() -> uint64_t {
   return static_cast<uint64_t>(g_fCurrentCLK6502 * LATCH_DURATION_SECONDS);
 }
@@ -121,7 +128,7 @@ auto Joy_IO_ReadPosition(void* instance, uint16_t program_counter,
   }
 
   const uint64_t elapsed_cycles =
-      g_nCumulativeCycles - joystick_peripheral->reset_cycle;
+      GetCycles(joystick_peripheral->host) - joystick_peripheral->reset_cycle;
   const uint64_t charge_limit =
       (static_cast<uint64_t>(trimmed_position) * PADDLE_TIMING_MULTIPLIER) +
       PADDLE_TIMING_OFFSET;
@@ -149,7 +156,7 @@ auto Joy_IO_ResetPosition(void* instance, uint16_t program_counter,
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   CpuCalcCycles(remaining_cycles);
-  joystick_peripheral->reset_cycle = g_nCumulativeCycles;
+  joystick_peripheral->reset_cycle = GetCycles(joystick_peripheral->host);
 
   return MemReadFloatingBus(remaining_cycles);
 }
