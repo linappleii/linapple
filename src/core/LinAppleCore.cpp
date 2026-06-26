@@ -101,6 +101,7 @@ static auto ShouldRunFullSpeed() -> bool {
   } else if (!shouldTurbo && s_wasTurbo) {
     uint32_t elapsed = Linapple_GetTicks() - s_turboStartMs;
     Logger::Perf("Full-speed disk mode disengaged after %ums\n", elapsed);
+    SoundCore_ClearBuffers();
   }
 
   s_wasTurbo = shouldTurbo;
@@ -243,7 +244,8 @@ auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
 }
 
 void Linapple_SetKeyState(uint8_t apple_code, bool down) {
-  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0), 0, 0, 0, 0, {0, 0, 0}};
+  KeyboardEvent_t ev = {apple_code, (uint8_t)(down ? 1 : 0), 0, 0, 0, 0,
+                        {0, 0, 0}};
   Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 

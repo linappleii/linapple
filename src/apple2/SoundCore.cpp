@@ -26,6 +26,16 @@ struct sample_buffer {
     last_value = 0;
   }
 
+  auto skip(size_t len) -> void {
+    size_t filled = get_filled();
+    size_t num = (len < filled) ? len : filled;
+    if (num == 0) {
+      return;
+    }
+    size_t r = read_index.load(std::memory_order_relaxed);
+    read_index.store((r + num) % buffer.size(), std::memory_order_release);
+  }
+
   auto get_filled() const -> size_t {
     size_t r = read_index.load(std::memory_order_relaxed);
     size_t w = write_index.load(std::memory_order_relaxed);
@@ -137,7 +147,7 @@ static sample_buffer* g_mockMixBuffer = nullptr;
 }  // namespace
 
 void SoundCore_Initialize() {
-  constexpr size_t buffer_size = 65536;
+  constexpr size_t buffer_size = 16384;
   if (g_spkrMixBuffer == nullptr) {
     g_spkrMixBuffer = new sample_buffer(buffer_size);
   }
@@ -153,6 +163,15 @@ void SoundCore_Destroy() {
   delete g_mockMixBuffer;
   g_spkrMixBuffer = nullptr;
   g_mockMixBuffer = nullptr;
+}
+
+void SoundCore_ClearBuffers() {
+  if (g_spkrMixBuffer != nullptr) {
+    g_spkrMixBuffer->reinit();
+  }
+  if (g_mockMixBuffer != nullptr) {
+    g_mockMixBuffer->reinit();
+  }
 }
 
 void SoundCore_UploadSpeakerSamples(const int16_t* buffer,
@@ -173,6 +192,22 @@ void SoundCore_GetSamples(int16_t* out, size_t num_samples) {
   if (g_spkrMixBuffer == nullptr || g_mockMixBuffer == nullptr) {
     memset(out, 0, num_samples * sizeof(int16_t));
     return;
+  }
+
+  // Active Latency Recovery: skip oldest samples if the buffer backlog is too
+  // large. We allow a cushion of 1024 elements (~23 ms) above the requested
+  // block size to avoid underruns due to thread scheduling jitter.
+  const size_t target_backlog =
+      std::min(num_samples + 1024, static_cast<size_t>(16384 - 2));
+
+  size_t spkr_filled = g_spkrMixBuffer->get_filled();
+  if (spkr_filled > target_backlog) {
+    g_spkrMixBuffer->skip(spkr_filled - target_backlog);
+  }
+
+  size_t mock_filled = g_mockMixBuffer->get_filled();
+  if (mock_filled > target_backlog) {
+    g_mockMixBuffer->skip(mock_filled - target_backlog);
   }
 
   if (g_spkrMixBuffer->get_filled() == 0 &&

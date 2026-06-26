@@ -12,6 +12,7 @@ enum { FADE_OUT = 0, FADE_IN = 1 };
 
 void SoundCore_Initialize();
 void SoundCore_Destroy();
+void SoundCore_ClearBuffers();
 
 /**
  * @brief Uploads samples for the built-in Speaker channel.
