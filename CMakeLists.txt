@@ -163,7 +163,6 @@ set(SOURCES_A2_MANDATORY
     src/apple2/CPU.cpp
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
-    src/apple2/Timer.cpp
     src/apple2/Video.cpp
     src/apple2/stretch.cpp
 )
