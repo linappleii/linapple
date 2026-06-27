@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/keyboard/Keyboard.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"

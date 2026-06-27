@@ -12,7 +12,7 @@
 #include <memory>
 
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/Peripheral.h"
 

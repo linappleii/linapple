@@ -1,5 +1,5 @@
 #include "core/Common.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "Debug.h"
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Bookmarks.h"

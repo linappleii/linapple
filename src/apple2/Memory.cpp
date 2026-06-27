@@ -38,7 +38,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <memory>
 
 #include "apple2/CPU.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "core/Common.h"

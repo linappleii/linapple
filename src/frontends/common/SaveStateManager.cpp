@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "apple2/Snapshot.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "core/Common.h"
 #include "core/Log.h"
 

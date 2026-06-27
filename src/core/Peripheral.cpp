@@ -11,7 +11,7 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/AudioMixer.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Registry.h"
@@ -669,7 +669,7 @@ auto Peripheral_GetManifest(void* manifest_ptr) -> void {
       // Justification: manifest->Peripherals is a fixed-size legacy structure.
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
       Util_SafeStrCpy(manifest->Peripherals[i].szName,
-                      slot_peripherals.front().api->name, MAX_PERIPHERAL_NAME);
+                      slot_peripherals.front().api->name, max_peripheral_name);
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
       manifest->Peripherals[i].dwVersion =
           static_cast<uint32_t>(slot_peripherals.front().api->abi_version);

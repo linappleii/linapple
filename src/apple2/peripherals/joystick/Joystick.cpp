@@ -11,7 +11,7 @@
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Common_Globals.h"
 #include "core/Peripheral.h"

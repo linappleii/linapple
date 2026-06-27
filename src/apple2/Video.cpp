@@ -51,7 +51,7 @@ static auto GetTickCount() -> uint32_t {
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"

@@ -19,7 +19,9 @@
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
+#include "apple2/chips/6522.h"
+#include "apple2/chips/SSI263.h"
 #include "apple2/chips/AY8910.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
@@ -471,7 +473,7 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
   }
 }
 
-static auto GetCycles(HostInterface_t* host) -> uint64_t {
+static auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
@@ -485,13 +487,13 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
     return;
   }
 
-  if (GetCycles(mp->host) < mp->last_cumulative_cycles) {
-    mp->last_cumulative_cycles = GetCycles(mp->host);
+  if (get_cycles(mp->host) < mp->last_cumulative_cycles) {
+    mp->last_cumulative_cycles = get_cycles(mp->host);
     return;
   }
 
-  uint64_t cycles = GetCycles(mp->host) - mp->last_cumulative_cycles;
-  mp->last_cumulative_cycles = GetCycles(mp->host);
+  uint64_t cycles = get_cycles(mp->host) - mp->last_cumulative_cycles;
+  mp->last_cumulative_cycles = get_cycles(mp->host);
 
   while (cycles > 0) {
     constexpr uint64_t max_clocks_u16 = 0xFFFF;
@@ -546,11 +548,11 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
   }
 
   if (mp->mb_inactive_cycle_count == 0) {
-    mp->mb_inactive_cycle_count = GetCycles(mp->host);
+    mp->mb_inactive_cycle_count = get_cycles(mp->host);
     return;
   }
 
-  if (GetCycles(mp->host) - mp->mb_inactive_cycle_count >
+  if (get_cycles(mp->host) - mp->mb_inactive_cycle_count >
       static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
     mp->mb_active = false;
   }
@@ -677,11 +679,11 @@ static auto mb_abi_reset(void* instance) -> void {
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   mp->timer_period_6522 = 0;
   mp->mb_timer_device = 0;
-  mp->last_cumulative_cycles = GetCycles(mp->host);
+  mp->last_cumulative_cycles = get_cycles(mp->host);
   mp->mb_reg_accessed_flag = false;
   mp->mb_active = false;
   mp->mb_inactive_cycle_count = 0;
-  mp->last_60hz = GetCycles(mp->host);
+  mp->last_60hz = get_cycles(mp->host);
   mp->phasor_native = false;
 
   for (auto& chip : mp->chips) {
@@ -716,12 +718,12 @@ static auto mb_abi_think(void* instance, uint32_t cycles) -> void {
     return;
   }
 
-  const uint64_t cycles_since_last_update = GetCycles(mp->host) - mp->last_60hz;
+  const uint64_t cycles_since_last_update = get_cycles(mp->host) - mp->last_60hz;
   const uint64_t cycles_per_frame =
       static_cast<uint64_t>(g_fCurrentCLK6502) / hz_60_divisor;
 
   if (cycles_since_last_update > cycles_per_frame) {
-    mp->last_60hz = GetCycles(mp->host);
+    mp->last_60hz = get_cycles(mp->host);
     mb_update_instance(mp);
   }
 }

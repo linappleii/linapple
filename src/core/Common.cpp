@@ -5,7 +5,7 @@
 #include <cstdio>
 
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 
 static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
 static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";

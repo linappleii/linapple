@@ -13,7 +13,7 @@
 
 #ifdef __cplusplus
 #include "Peripheral.h"
-#include "apple2/Structs.h"
+#include "apple2/SnapshotTypes.h"
 #endif
 
 #ifdef __cplusplus
