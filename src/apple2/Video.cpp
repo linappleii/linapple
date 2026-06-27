@@ -1,30 +1,5 @@
-/*
-linapple : An Apple //e emulator for Linux
+// SPDX-License-Identifier: GPL-2.0-only
 
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski, Nick Westgate
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Emulation of video modes
- *
- * Author: Various
- */
 
 #include "apple2/Video.h"
 
@@ -70,81 +45,7 @@ static auto GetTickCount() -> uint32_t {
 static uint32_t g_pVideoOutput[VIDEO_WIDTH * VIDEO_HEIGHT];
 static bool s_language_rocker_switch = false;
 
-auto VideoGetOutputBuffer() -> uint32_t* { return g_pVideoOutput; }
-
-auto VideoCreateSurface(int w, int h, int bpp) -> VideoSurface* {
-  auto* s = static_cast<VideoSurface*>(calloc(1, sizeof(VideoSurface)));
-  s->w = w;
-  s->h = h;
-  s->bpp = bpp;
-  s->pitch = w * bpp;
-  s->pixels =
-      static_cast<uint8_t*>(calloc(1, static_cast<size_t>(s->pitch * h)));
-  return s;
-}
-
-void VideoDestroySurface(VideoSurface* s) {
-  if (s) {
-    free(s->pixels);
-    free(s);
-  }
-}
-
-static auto hex_to_int(char c) -> uint8_t {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-  return 0;
-}
-
-auto VideoLoadXPM(const char* const* xpm) -> VideoSurface* {
-  int w = 0, h = 0, colors = 0, cpp = 0;
-  if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) return nullptr;
-  if (cpp != 1) return nullptr;  // Only support 1 char per pixel for simplicity
-
-  VideoSurface* s = VideoCreateSurface(w, h, 1);
-  struct {
-    char c;
-    VideoColor color;
-  } palette_map[256];
-  for (int i = 0; i < colors; ++i) {
-    char c = 0;
-    char color_str[16];
-    if (sscanf(xpm[i + 1], "%c c %s", &c, color_str) == 2) {
-      palette_map[i].c = c;
-      if (color_str[0] == '#') {
-        palette_map[i].color.r =
-            (hex_to_int(color_str[1]) << 4) | hex_to_int(color_str[2]);
-        palette_map[i].color.g =
-            (hex_to_int(color_str[3]) << 4) | hex_to_int(color_str[4]);
-        palette_map[i].color.b =
-            (hex_to_int(color_str[5]) << 4) | hex_to_int(color_str[6]);
-        palette_map[i].color.a = 255;
-      } else if (strcmp(color_str, "None") == 0) {
-        palette_map[i].color = {0, 0, 0, 0};
-      } else if (strcmp(color_str, "black") == 0) {
-        palette_map[i].color = {0, 0, 0, 255};
-      } else {
-        palette_map[i].color = {255, 255, 255, 255};  // Default to white
-      }
-      s->palette[i] = palette_map[i].color;
-    }
-  }
-
-  for (int y = 0; y < h; ++y) {
-    const char* line = xpm[1 + colors + y];
-    for (int x = 0; x < w; ++x) {
-      char c = line[x];
-      for (int i = 0; i < colors; ++i) {
-        if (palette_map[i].c == c) {
-          s->pixels[y * s->pitch + x] = i;
-          break;
-        }
-      }
-    }
-  }
-  return s;
-}
+auto video_get_output_buffer() -> uint32_t* { return g_pVideoOutput; }
 
 #define GetRValue(rgb) ((uint8_t)(rgb))
 #define GetGValue(rgb) ((uint8_t)(((uint16_t)(rgb)) >> 8))
@@ -224,7 +125,7 @@ VideoSurface* g_hDeviceBitmap;
 static uint8_t* framebufferbits;
 VideoColor framebufferinfo[MAX_PALETTE_SIZE];
 
-auto VideoGetOutputPalette() -> VideoColor* { return framebufferinfo; }
+auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
 
 const int MAX_FRAME_Y = VIDEO_HEIGHT;
 static uint8_t* frameoffsettable[VIDEO_HEIGHT];
@@ -1157,7 +1058,7 @@ auto MixColors(uint8_t c1, uint8_t c2) -> uint8_t {
 #undef COMBINATION
 }
 
-void CreateColorMixMap() {
+auto video_create_color_mix_map() -> void {
   int t = 0, m = 0, b = 0;
   uint8_t cTop = 0, cMid = 0, cBot = 0;
   uint16_t mixTop = 0, mixBot = 0;
@@ -1374,7 +1275,7 @@ auto LoadCharset() -> VideoSurface* {
 
 // All globally accessible functions are below this line
 
-auto VideoApparentlyDirty() -> bool {
+auto video_apparently_dirty() -> bool {
   if (SW_MIXED || redrawfull || video_worker_active_) {
     return true;
   }
@@ -1412,7 +1313,7 @@ auto VideoApparentlyDirty() -> bool {
   return false;
 }
 
-void VideoBenchmark() {
+auto video_benchmark() -> void {
   // Benchmark needs SDL_GetTicks and SDL_Delay, so we keep those.
   // But we replace any VideoSurface related calls.
   std::this_thread::sleep_for(std::chrono::milliseconds(1500));
@@ -1548,7 +1449,7 @@ void VideoBenchmark() {
   std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 }
 
-auto VideoCheckMode(uint16_t, uint16_t address, uint8_t, uint8_t,
+auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
                     uint32_t nCyclesLeft) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
@@ -1579,26 +1480,26 @@ auto VideoCheckMode(uint16_t, uint16_t address, uint8_t, uint8_t,
   }
 }
 
-void VideoCheckPage(bool force) {
+auto video_check_page(bool force) -> void {
   if ((displaypage2 != (SW_PAGE2 != 0)) &&
       (force || (emulmsec - lastpageflip > 500))) {
     displaypage2 = (SW_PAGE2 != 0);
-    VideoRefreshScreen();
+    video_refresh_screen();
     lastpageflip = emulmsec;
   }
 }
 
-auto VideoCheckVbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft)
+auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft)
     -> uint8_t {
   bool bVblBar = false;
-  VideoGetScannerAddress(&bVblBar, nCyclesLeft);
+  video_get_scanner_address(&bVblBar, nCyclesLeft);
   uint8_t r = MemReadFloatingBus(nCyclesLeft);
   return static_cast<uint8_t>((r & ~0x80) | ((bVblBar) ? 0x80 : 0));
 }
 
-void VideoChooseColor() {}
+auto video_choose_color() -> void {}
 
-void VideoDestroy() {
+auto video_destroy() -> void {
   // GPH Multithreaded
   {
     video_worker_terminate_ = true;
@@ -1651,7 +1552,7 @@ void VideoDestroy() {
   font_sfc = nullptr;
 }
 
-void VideoDisplayLogo() {
+auto video_display_logo() -> void {
   VideoRect drect{}, srect{};
 
   if (!g_hLogoBitmap) {
@@ -1672,13 +1573,13 @@ void VideoDisplayLogo() {
   }
 }
 
-auto VideoHasRefreshed() -> bool {
+auto video_has_refreshed() -> bool {
   bool result = hasrefreshed;
   hasrefreshed = false;
   return result;
 }
 
-void VideoInitialize() {
+auto video_initialize() -> void {
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
     mutex_initialized = true;
@@ -1720,7 +1621,7 @@ void VideoInitialize() {
   CreateDIBSections();
 
   // RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
-  VideoResetState();
+  video_reset_state();
 
   // GPH Experiment with multicore video
   if (!g_singlethreaded) {
@@ -1728,10 +1629,10 @@ void VideoInitialize() {
   }
 }
 
-// VideoSetNextScheduledUpdate
+// video_set_next_scheduled_update
 // Sets
 auto video_next_scheduled_update_ = std::chrono::system_clock::now();
-void VideoSetNextScheduledUpdate() {
+auto video_set_next_scheduled_update() -> void {
   if (!g_singlethreaded) {
     // video_next_scheduled_update_ += std::chrono::microseconds(1000); //6666);
     video_next_scheduled_update_ = std::chrono::system_clock::now();
@@ -1750,7 +1651,7 @@ void VideoWorkerThread() {
     video_cv.wait_until(lck, video_next_scheduled_update_);
     {
       if (video_worker_refresh_) {
-        VideoPerformRefresh();
+        video_perform_refresh();
         video_worker_refresh_ = false;
         std::this_thread::yield();
       }
@@ -1775,11 +1676,11 @@ auto VideoInitWorker() -> bool {
   return true;
 }
 
-void VideoRealizePalette() {}
+auto video_realize_palette() -> void {}
 
-void VideoRedrawScreen() {
+auto video_redraw_screen() -> void {
   redrawfull = true;
-  VideoRefreshScreen();
+  video_refresh_screen();
 }
 
 void VideoUpdateOutputBuffer() {
@@ -1803,7 +1704,7 @@ void VideoUpdateOutputBuffer() {
   }
 }
 
-void VideoPerformRefresh() {
+auto video_perform_refresh() -> void {
   g_video_draw_mutex.lock();
 
   uint8_t rocker = 0;
@@ -1919,13 +1820,13 @@ void VideoPerformRefresh() {
   g_video_draw_mutex.unlock();
 }
 
-void VideoReinitialize() {
+auto video_reinitialize() -> void {
   CreateIdentityPalette();
   CreateDIBSections();
 }
 
-void VideoRefreshScreen(uint32_t uRedrawWholeScreenVideoMode /* =0*/,
-                        bool bRedrawWholeScreen /* =false*/) {
+auto video_refresh_screen(uint32_t uRedrawWholeScreenVideoMode /* =0*/,
+                        bool bRedrawWholeScreen /* =false*/) -> void {
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (bRedrawWholeScreen) {
     g_uDebugVideoMode = uRedrawWholeScreenVideoMode;
@@ -1935,19 +1836,19 @@ void VideoRefreshScreen(uint32_t uRedrawWholeScreenVideoMode /* =0*/,
     video_worker_refresh_ = true;
   } else {
     // If singlethreaded just call the refresh here.
-    VideoPerformRefresh();
+    video_perform_refresh();
     hasrefreshed = true;
   }
 }
 
-void VideoResetState() {
+auto video_reset_state() -> void {
   g_nAltCharSetOffset = 0;
   displaypage2 = false;
   g_uVideoMode = VF_TEXT;
   redrawfull = true;
 }
 
-auto VideoSetMode(uint16_t, uint16_t address, uint8_t write, uint8_t,
+auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
                   uint32_t nCyclesLeft) -> uint8_t {
   (void)write;
 
@@ -2026,30 +1927,30 @@ auto VideoSetMode(uint16_t, uint16_t address, uint8_t write, uint8_t,
                       static_cast<int>(g_uVideoMode & ~(VF_MASK2 | VF_PAGE2))) {
     graphicsmode = !SW_TEXT;
     redrawfull = true;
-    VideoRefreshScreen();
+    video_refresh_screen();
   }
 
   if (displaypage2 != (SW_PAGE2 != 0)) {
     displaypage2 = (SW_PAGE2 != 0);
     redrawfull = true;
-    VideoRefreshScreen();
+    video_refresh_screen();
   }
 
   return MemReadFloatingBus(nCyclesLeft);
 }
 
 static uint32_t g_dwVideoCyclesInFrame = 0;
-void VideoUpdateVbl(uint32_t dwCyclesThisFrame) {
+auto video_update_vbl(uint32_t dwCyclesThisFrame) -> void {
   g_dwVideoCyclesInFrame += dwCyclesThisFrame;
   while (g_dwVideoCyclesInFrame >= g_state.dwClksPerFrame) {
     g_dwVideoCyclesInFrame -= g_state.dwClksPerFrame;
-    VideoRefreshScreen();
-    VideoUpdateFlash();
+    video_refresh_screen();
+    video_update_flash();
   }
 }
 
 // Called at 60Hz (every 16.666ms)
-void VideoUpdateFlash() {
+auto video_update_flash() -> void {
   static uint32_t nTextFlashCnt = 0;
   nTextFlashCnt++;
   if (nTextFlashCnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
@@ -2064,30 +1965,30 @@ void VideoUpdateFlash() {
   }
 }
 
-auto VideoGetSW80COL() -> bool { return SW_80COL != 0; }
+auto video_get_sw_80col() -> bool { return SW_80COL != 0; }
 
-auto VideoGetSWDHIRES() -> bool { return SW_DHIRES != 0; }
+auto video_get_sw_dhires() -> bool { return SW_DHIRES != 0; }
 
-auto VideoGetSWHIRES() -> bool { return SW_HIRES != 0; }
+auto video_get_sw_hires() -> bool { return SW_HIRES != 0; }
 
-auto VideoGetSW80STORE() -> bool { return SW_MASK2 != 0; }
+auto video_get_sw_80store() -> bool { return SW_MASK2 != 0; }
 
-auto VideoGetSWMIXED() -> bool { return SW_MIXED != 0; }
+auto video_get_sw_mixed() -> bool { return SW_MIXED != 0; }
 
-auto VideoGetSWPAGE2() -> bool { return SW_PAGE2 != 0; }
+auto video_get_sw_page2() -> bool { return SW_PAGE2 != 0; }
 
-auto VideoGetSWTEXT() -> bool { return SW_TEXT != 0; }
+auto video_get_sw_text() -> bool { return SW_TEXT != 0; }
 
-auto VideoGetSWAltCharSet() -> bool { return g_nAltCharSetOffset != 0; }
+auto video_get_sw_alt_charset() -> bool { return g_nAltCharSetOffset != 0; }
 
 //===========================================================================
-auto VideoGetSnapshot(SS_IO_Video* pSS) -> uint32_t {
+auto video_get_snapshot(SS_IO_Video* pSS) -> uint32_t {
   pSS->bAltCharSet = g_nAltCharSetOffset != 0;
   pSS->dwVidMode = g_uVideoMode;
   return 0;
 }
 
-auto VideoSetSnapshot(SS_IO_Video* pSS) -> uint32_t {
+auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
   g_nAltCharSetOffset = !pSS->bAltCharSet ? 0 : 256;
   g_uVideoMode = pSS->dwVidMode;
 
@@ -2097,7 +1998,7 @@ auto VideoSetSnapshot(SS_IO_Video* pSS) -> uint32_t {
   return 0;
 }
 
-auto VideoGetScannerAddress(bool* pbVblBar_OUT, const uint32_t uExecutedCycles)
+auto video_get_scanner_address(bool* pbVblBar_OUT, const uint32_t uExecutedCycles)
     -> uint16_t {
   // get video scanner position
   int nCycles =
@@ -2186,7 +2087,7 @@ auto VideoGetScannerAddress(bool* pbVblBar_OUT, const uint32_t uExecutedCycles)
   return static_cast<uint16_t>(nAddress);
 }
 
-auto VideoGetVbl(const uint32_t uExecutedCycles) -> bool {
+auto video_get_vbl(const uint32_t uExecutedCycles) -> bool {
   // get cycles within current frame
   int nCycles =
       (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;
@@ -2197,3 +2098,41 @@ auto VideoGetVbl(const uint32_t uExecutedCycles) -> bool {
 
   return (nCycles >= 12480);
 }
+
+// Legacy Forwarding Functions
+auto VideoGetOutputBuffer() -> uint32_t* { return video_get_output_buffer(); }
+auto VideoGetOutputPalette() -> VideoColor_t* { return video_get_output_palette(); }
+auto CreateColorMixMap() -> void { video_create_color_mix_map(); }
+auto VideoApparentlyDirty() -> bool { return video_apparently_dirty(); }
+auto VideoBenchmark() -> void { video_benchmark(); }
+auto VideoCheckPage(bool b) -> void { video_check_page(b); }
+auto VideoChooseColor() -> void { video_choose_color(); }
+auto VideoDestroy() -> void { video_destroy(); }
+auto VideoDisplayLogo() -> void { video_display_logo(); }
+auto VideoHasRefreshed() -> bool { return video_has_refreshed(); }
+auto VideoInitialize() -> void { video_initialize(); }
+auto VideoRealizePalette() -> void { video_realize_palette(); }
+auto VideoSetNextScheduledUpdate() -> void { video_set_next_scheduled_update(); }
+auto VideoRedrawScreen() -> void { video_redraw_screen(); }
+auto VideoRefreshScreen(uint32_t m, bool r) -> void { video_refresh_screen(m, r); }
+auto VideoPerformRefresh() -> void { video_perform_refresh(); }
+auto VideoReinitialize() -> void { video_reinitialize(); }
+auto VideoResetState() -> void { video_reset_state(); }
+auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t { return video_get_scanner_address(out, cycles); }
+auto VideoGetVbl(uint32_t cycles) -> bool { return video_get_vbl(cycles); }
+auto VideoUpdateVbl(uint32_t cycles) -> void { video_update_vbl(cycles); }
+auto VideoUpdateFlash() -> void { video_update_flash(); }
+auto VideoGetSW80COL() -> bool { return video_get_sw_80col(); }
+auto VideoGetSWDHIRES() -> bool { return video_get_sw_dhires(); }
+auto VideoGetSWHIRES() -> bool { return video_get_sw_hires(); }
+auto VideoGetSW80STORE() -> bool { return video_get_sw_80store(); }
+auto VideoGetSWMIXED() -> bool { return video_get_sw_mixed(); }
+auto VideoGetSWPAGE2() -> bool { return video_get_sw_page2(); }
+auto VideoGetSWTEXT() -> bool { return video_get_sw_text(); }
+auto VideoGetSWAltCharSet() -> bool { return video_get_sw_alt_charset(); }
+auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t { return video_get_snapshot(ss); }
+auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t { return video_set_snapshot(ss); }
+auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_check_mode(pc, addr, w, d, c); }
+auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_check_vbl(pc, addr, w, d, c); }
+auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_set_mode(pc, addr, w, d, c); }
+

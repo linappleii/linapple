@@ -156,6 +156,7 @@ set(SOURCES_CORE
     src/frontends/common/KeyboardTranslator.cpp
     src/frontends/common/AudioDumper.cpp
     src/frontends/common/SaveStateManager.cpp
+    src/frontends/common/VideoSurface.cpp
 )
 
 set(SOURCES_A2_MANDATORY

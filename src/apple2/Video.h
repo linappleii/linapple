@@ -1,32 +1,41 @@
-#include <cstdint>
-#include <atomic>
-#include <mutex>
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-struct SS_IO_Video;
+#include <atomic>
+#include <cstdint>
+#include <mutex>
 
-// Types
-enum
-{
-  APPLE2_VISIBLE_WIDTH  = 280,
-  APPLE2_VISIBLE_HEIGHT = 192,
+#include "apple2/SnapshotTypes.h"
+#include "frontends/common/VideoSurface.h"
 
-  VIDEO_SCALE_FACTOR    = 2,
+// Types & Dimensions
+constexpr uint32_t apple2_visible_width = 280;
+constexpr uint32_t apple2_visible_height = 192;
+constexpr uint32_t video_scale_factor = 2;
+constexpr uint32_t video_width = apple2_visible_width * video_scale_factor;  // 560
+constexpr uint32_t video_height = apple2_visible_height * video_scale_factor;  // 384
 
-  VIDEO_WIDTH           = APPLE2_VISIBLE_WIDTH * VIDEO_SCALE_FACTOR, // 560
-  VIDEO_HEIGHT          = APPLE2_VISIBLE_HEIGHT * VIDEO_SCALE_FACTOR, // 384
+constexpr uint32_t text_columns = 40;
+constexpr uint32_t text_rows = 24;
+constexpr uint32_t dirty_cell_rows = 32;
+constexpr uint32_t max_palette_size = 256;
+constexpr uint8_t default_gray_component = 0xC0;
+constexpr uint32_t hgr_matrix_yoffset = 2;
 
-  TEXT_COLUMNS          = 40,
-  TEXT_ROWS             = 24,
-  DIRTY_CELL_ROWS       = 32,
+// Legacy macros for compatibility
+#define APPLE2_VISIBLE_WIDTH apple2_visible_width
+#define APPLE2_VISIBLE_HEIGHT apple2_visible_height
+#define VIDEO_SCALE_FACTOR video_scale_factor
+#define VIDEO_WIDTH video_width
+#define VIDEO_HEIGHT video_height
+#define TEXT_COLUMNS text_columns
+#define TEXT_ROWS text_rows
+#define DIRTY_CELL_ROWS dirty_cell_rows
+#define MAX_PALETTE_SIZE max_palette_size
+#define DEFAULT_GRAY_COMPONENT default_gray_component
+#define HGR_MATRIX_YOFFSET hgr_matrix_yoffset
 
-  MAX_PALETTE_SIZE      = 256,
-  DEFAULT_GRAY_COMPONENT = 0xC0,
-
-  HGR_MATRIX_YOFFSET    = 2
-};
-
-enum VIDEOTYPE {
+enum VideoType_t {
   VT_MONO_CUSTOM,
   VT_COLOR_STANDARD,
   VT_COLOR_TEXT_OPTIMIZED,
@@ -37,8 +46,9 @@ enum VIDEOTYPE {
   VT_MONO_WHITE,
   VT_NUM_MODES
 };
+using VIDEOTYPE = VideoType_t;
 
-enum VideoFlag_e {
+enum VideoFlag_t {
   VF_80COL = 0x00000001,
   VF_DHIRES = 0x00000002,
   VF_HIRES = 0x00000004,
@@ -47,67 +57,54 @@ enum VideoFlag_e {
   VF_PAGE2 = 0x00000020,
   VF_TEXT = 0x00000040
 };
+using VideoFlag_e = VideoFlag_t;
 
-/*long*/
-enum AppleFont_e {
-  // 40-Column mode is 1x Zoom (default)
-  // 80-Column mode is ~0.75x Zoom (7 x 16)
-  // Tiny mode is 0.5 zoom (7x8) for debugger
-  APPLE_FONT_WIDTH = 14, // in pixels
-  APPLE_FONT_HEIGHT = 16, // in pixels
-
-  // Each cell has a reserved aligned pixel area (grid spacing)
-  APPLE_FONT_CELL_WIDTH = 16, APPLE_FONT_CELL_HEIGHT = 16,
-
-  // The bitmap contains 3 regions
-  // Each region is 256x256 pixels = 16x16 chars
-  APPLE_FONT_X_REGIONSIZE = 256, // in pixelx
-  APPLE_FONT_Y_REGIONSIZE = 256, // in pixels
-
-  // Starting Y offsets (pixels) for the regions
-  APPLE_FONT_Y_APPLE_2PLUS = 0, // ][+
-  APPLE_FONT_Y_APPLE_80COL = 256, // //e (inc. Mouse Text)
-  APPLE_FONT_Y_APPLE_40COL = 512, // ][
+enum AppleFont_t {
+  APPLE_FONT_WIDTH = 14,
+  APPLE_FONT_HEIGHT = 16,
+  APPLE_FONT_CELL_WIDTH = 16,
+  APPLE_FONT_CELL_HEIGHT = 16,
+  APPLE_FONT_X_REGIONSIZE = 256,
+  APPLE_FONT_Y_REGIONSIZE = 256,
+  APPLE_FONT_Y_APPLE_2PLUS = 0,
+  APPLE_FONT_Y_APPLE_80COL = 256,
+  APPLE_FONT_Y_APPLE_40COL = 512
 };
+using AppleFont_e = AppleFont_t;
 
-// STANDARD LINUX COLORS
-constexpr uint8_t CREAM       = 0xF6;
+constexpr uint8_t CREAM = 0xF6;
 constexpr uint8_t MEDIUM_GRAY = 0xF7;
-constexpr uint8_t DARK_GRAY   = 0xF8;
-constexpr uint8_t RED         = 0xF9;
-constexpr uint8_t GREEN       = 0xFA;
-constexpr uint8_t YELLOW      = 0xFB;
-constexpr uint8_t BLUE        = 0xFC;
-constexpr uint8_t MAGENTA     = 0xFD;
-constexpr uint8_t CYAN        = 0xFE;
-constexpr uint8_t WHITE       = 0xFF;
+constexpr uint8_t DARK_GRAY = 0xF8;
+constexpr uint8_t RED = 0xF9;
+constexpr uint8_t GREEN = 0xFA;
+constexpr uint8_t YELLOW = 0xFB;
+constexpr uint8_t BLUE = 0xFC;
+constexpr uint8_t MAGENTA = 0xFD;
+constexpr uint8_t CYAN = 0xFE;
+constexpr uint8_t WHITE = 0xFF;
 
-inline uint32_t RGB(uint8_t r, uint8_t g, uint8_t b) {
-    return ((uint32_t)r) | ((uint32_t)g << 8) | ((uint32_t)b << 16);
+inline auto RGB(uint8_t r, uint8_t g, uint8_t b) -> uint32_t {
+  return (static_cast<uint32_t>(r)) | (static_cast<uint32_t>(g) << 8) |
+         (static_cast<uint32_t>(b) << 16);
 }
 
-enum Color_Palette_Index_e {
-  // Really need to have Quarter Green and Quarter Blue for Hi-Res
+enum ColorPaletteIndex_t {
   BLACK,
   DARK_RED,
-  DARK_GREEN,       // Half Green
+  DARK_GREEN,
   DARK_YELLOW,
-  DARK_BLUE,        // Half Blue
+  DARK_BLUE,
   DARK_MAGENTA,
   DARK_CYAN,
   LIGHT_GRAY,
   MONEY_GREEN,
   SKY_BLUE,
-
-  // OUR CUSTOM COLORS
   DEEP_RED,
   LIGHT_BLUE,
   BROWN,
   ORANGE,
   PINK,
   AQUA,
-
-  // CUSTOM HGR COLORS (don't change order) - For tv emulation mode
   HGR_BLACK,
   HGR_WHITE,
   HGR_BLUE,
@@ -120,15 +117,10 @@ enum Color_Palette_Index_e {
   HGR_AQUA,
   HGR_PURPLE,
   HGR_PINK,
-
-  // USER CUSTOMIZABLE COLOR
   MONOCHROME_CUSTOM,
-
-  // Pre-set "Monochromes"
   MONOCHROME_AMBER,
   MONOCHROME_GREEN,
   MONOCHROME_WHITE,
-
   DARKER_YELLOW,
   DARKEST_YELLOW,
   LIGHT_SKY_BLUE,
@@ -143,114 +135,108 @@ enum Color_Palette_Index_e {
   LIGHTEST_GRAY,
   NUM_COLOR_PALETTE
 };
+using Color_Palette_Index_e = ColorPaletteIndex_t;
 
 // Globals
-extern int g_iStatusCycle; // cycler for status panel showing
-
-extern bool g_ShowLeds; // if we should show drive leds
-
+extern int g_iStatusCycle;
+extern bool g_ShowLeds;
 extern bool graphicsmode;
 extern uint32_t monochrome;
 extern uint32_t g_videotype;
 extern uint32_t g_uVideoMode;
 extern uint32_t g_singlethreaded;
-extern std::recursive_mutex g_video_draw_mutex; // drawing mutex for writing to SDL surface
+extern std::recursive_mutex g_video_draw_mutex;
 extern std::atomic<bool> g_bFrameReady;
 
-// Surfaces for drawing
-struct VideoColor {
-  uint8_t r, g, b, a;
-};
+extern VideoSurface_t* g_hLogoBitmap;
+extern VideoSurface_t* g_hStatusSurface;
+extern VideoSurface_t* g_hSourceBitmap;
+extern VideoSurface_t* g_hDeviceBitmap;
+extern VideoSurface_t* g_origscreen;
 
-struct VideoRect {
-  int x, y, w, h;
-};
+auto video_get_output_buffer() -> uint32_t*;
+auto video_get_output_palette() -> VideoColor_t*;
 
-struct VideoSurface {
-  uint8_t* pixels;
-  int w, h, pitch;
-  int bpp; // bytes per pixel: 1 for INDEX8, 4 for RGB32
-  VideoColor palette[256];
-};
+auto video_set_budget(bool enable) -> void;
+auto video_get_budget() -> bool;
+auto video_set_current_clk6502() -> void;
 
-extern VideoSurface *g_hLogoBitmap;
-extern VideoSurface *g_hStatusSurface;  // status panel
+auto video_create_color_mix_map() -> void;
+auto video_apparently_dirty() -> bool;
+auto video_benchmark() -> void;
+auto video_check_page(bool page) -> void;
+auto video_choose_color() -> void;
+auto video_destroy() -> void;
+auto video_draw_logo_bitmap() -> void;
+auto video_display_logo() -> void;
+auto video_has_refreshed() -> bool;
+auto video_initialize() -> void;
+auto video_realize_palette() -> void;
+auto video_set_next_scheduled_update() -> void;
+auto video_redraw_screen() -> void;
+auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false) -> void;
+auto video_perform_refresh() -> void;
+auto video_reinitialize() -> void;
+auto video_reset_state() -> void;
 
-extern VideoSurface *g_hSourceBitmap;
-extern VideoSurface *g_hDeviceBitmap;
-extern VideoSurface *g_origscreen; // reserved for stretching
+auto video_get_scanner_address(bool* vbl_bar_out, uint32_t executed_cycles) -> uint16_t;
+auto video_get_vbl(uint32_t executed_cycles) -> bool;
+auto video_update_vbl(uint32_t cycles_this_frame) -> void;
+auto video_update_flash() -> void;
 
-VideoSurface* VideoCreateSurface(int w, int h, int bpp);
-void VideoDestroySurface(VideoSurface* s);
-VideoSurface* VideoLoadXPM(const char * const *xpm);
+auto video_get_sw_80col() -> bool;
+auto video_get_sw_dhires() -> bool;
+auto video_get_sw_hires() -> bool;
+auto video_get_sw_80store() -> bool;
+auto video_get_sw_mixed() -> bool;
+auto video_get_sw_page2() -> bool;
+auto video_get_sw_text() -> bool;
+auto video_get_sw_alt_charset() -> bool;
 
+auto video_get_snapshot(SS_IO_Video* ss) -> uint32_t;
+auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t;
 
-uint32_t* VideoGetOutputBuffer();
-VideoColor* VideoGetOutputPalette();
+auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
+auto video_check_vbl(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
+auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
 
-void SetBudgetVideo(bool);
-bool GetBudgetVideo();
-void SetCurrentCLK6502();
-
-// Prototypes
-
-void CreateColorMixMap();
-
-bool VideoApparentlyDirty();
-
-void VideoBenchmark();
-
-void VideoCheckPage(bool);
-
-void VideoChooseColor();
-
-void VideoDestroy();
-
-void VideoDrawLogoBitmap(/* HDC hDstDC */);
-
-void VideoDisplayLogo();
-
-bool VideoHasRefreshed();
-
-void VideoInitialize();
-
-void VideoRealizePalette(/*HDC*/);
-
-void VideoSetNextScheduledUpdate();
-
-void VideoRedrawScreen();
-
-void VideoRefreshScreen(uint32_t uRedrawWholeScreenVideoMode =0, bool bRedrawWholeScreen=false);
-
-void VideoPerformRefresh();
-
-void VideoReinitialize();
-
-void VideoResetState();
-
-uint16_t VideoGetScannerAddress(bool *pbVblBar_OUT, const uint32_t uExecutedCycles);
-
-bool VideoGetVbl(uint32_t uExecutedCycles);
-
-void VideoUpdateVbl(uint32_t dwCyclesThisFrame);
-
-void VideoUpdateFlash();
-
-bool VideoGetSW80COL(void);
-bool VideoGetSWDHIRES(void);
-bool VideoGetSWHIRES(void);
-bool VideoGetSW80STORE(void);
-bool VideoGetSWMIXED(void);
-bool VideoGetSWPAGE2(void);
-bool VideoGetSWTEXT(void);
-bool VideoGetSWAltCharSet(void);
-
-uint32_t VideoGetSnapshot(SS_IO_Video *pSS);
-
-uint32_t VideoSetSnapshot(SS_IO_Video *pSS);
-
-uint8_t VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
-
-uint8_t VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
-
-uint8_t VideoSetMode(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d, uint32_t nCyclesLeft);
+// Legacy C Declarations
+auto VideoGetOutputBuffer() -> uint32_t*;
+auto VideoGetOutputPalette() -> VideoColor_t*;
+auto SetBudgetVideo(bool b) -> void;
+auto GetBudgetVideo() -> bool;
+auto SetCurrentCLK6502() -> void;
+auto CreateColorMixMap() -> void;
+auto VideoApparentlyDirty() -> bool;
+auto VideoBenchmark() -> void;
+auto VideoCheckPage(bool b) -> void;
+auto VideoChooseColor() -> void;
+auto VideoDestroy() -> void;
+auto VideoDrawLogoBitmap() -> void;
+auto VideoDisplayLogo() -> void;
+auto VideoHasRefreshed() -> bool;
+auto VideoInitialize() -> void;
+auto VideoRealizePalette() -> void;
+auto VideoSetNextScheduledUpdate() -> void;
+auto VideoRedrawScreen() -> void;
+auto VideoRefreshScreen(uint32_t m = 0, bool r = false) -> void;
+auto VideoPerformRefresh() -> void;
+auto VideoReinitialize() -> void;
+auto VideoResetState() -> void;
+auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t;
+auto VideoGetVbl(uint32_t cycles) -> bool;
+auto VideoUpdateVbl(uint32_t cycles) -> void;
+auto VideoUpdateFlash() -> void;
+auto VideoGetSW80COL() -> bool;
+auto VideoGetSWDHIRES() -> bool;
+auto VideoGetSWHIRES() -> bool;
+auto VideoGetSW80STORE() -> bool;
+auto VideoGetSWMIXED() -> bool;
+auto VideoGetSWPAGE2() -> bool;
+auto VideoGetSWTEXT() -> bool;
+auto VideoGetSWAltCharSet() -> bool;
+auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t;
+auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t;
+auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
+auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
+auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
