@@ -114,6 +114,27 @@ auto MemSetActiveContext(MemoryInstance_t* context) -> void {
   memdirty = context->memdirty;
 }
 
+MemoryInstance_t::~MemoryInstance_t() {
+  if (memimage) {
+    munlock(memimage, MEMORY_64K);
+  }
+  free(memaux_allocated);
+  free(memmain);
+  free(memdirty);
+  free(memrom);
+  free(memimage);
+  free(pCxRomInternal);
+  free(pCxRomPeripheral);
+
+#ifdef RAMWORKS
+  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; ++i) {
+    if (rw_pages[i]) {
+      free(rw_pages[i]);
+    }
+  }
+#endif
+}
+
 auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                     uint32_t cycles) -> uint8_t {
   if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
@@ -963,6 +984,8 @@ void MemPreInitialize() {
 
 auto MemInitialize() -> int  // returns -1 if any error during initialization
 {
+  MemDestroy();
+
   const uint32_t CxRomSize = CX_ROM_SIZE;
   const uint32_t Apple2RomSize = APPLE2_ROM_SIZE;
   const uint32_t Apple2eRomSize = Apple2RomSize + CxRomSize;

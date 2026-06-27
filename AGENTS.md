@@ -45,6 +45,7 @@ More on building in <!-- Imported from: INSTALL.md -->
 - **Prerequisite:** CMake must be configured with testing enabled (`cmake -B build` or explicitly `-DBUILD_TESTING=ON`).
 - **Integration Tests:** `ctest --test-dir build` or run individual test binaries like `build/test-integration`.
 - **CPU Tests:** `scripts/run_cpu_tests.sh` (requires `EMULATOR` env var pointing to the binary).
+- **CI/CD Workflows:** Use `act` to run GitHub Actions locally. Run `act -l` to list jobs, and `act -j <job_id>` (e.g., `act -j headless-build`) to run a specific job using Docker.
 - **Visual Verification:**
   - Test "Number Munchers": `build/linapple -b --d1 "res/Master.dsk"` (or relevant .dsk) and verify startup.
   - Test PAL mode: `build/linapple -b --d1 res/Master.dsk --pal`.

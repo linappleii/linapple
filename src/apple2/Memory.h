@@ -184,6 +184,8 @@ struct MemoryInstance_t {
   uint8_t io_select = 0;
   uint8_t io_select_internal_rom = 0;
   uint8_t* expansion_rom[NUM_SLOTS]{};
+
+  ~MemoryInstance_t();
 };
 
 auto MemGetActiveContext() -> MemoryInstance_t*;
