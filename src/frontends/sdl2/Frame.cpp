@@ -34,7 +34,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SaveState.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
@@ -51,6 +50,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "core/asset.h"
+#include "frontends/common/SaveStateManager.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/DiskUI.h"
 #include "frontends/sdl2/Frame.h"
@@ -408,11 +408,11 @@ void FrameQuickState(int num, int mod) {
   snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
            static_cast<int>(strlen(g_state.sSaveStateDir.data())),
            g_state.sSaveStateDir.data(), num);
-  Snapshot_SetFilename(fpath.data());
+  save_state_set_filename(fpath.data());
   if ((mod & KMOD_SHIFT) != 0) {
-    Snapshot_SaveState();
+    save_state_save();
   } else {
-    Snapshot_LoadState();
+    save_state_load();
   }
 }
 
@@ -537,7 +537,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
 
   fullPath += "/" + filename;
 
-  Snapshot_SetFilename(fullPath.c_str());
+  save_state_set_filename(fullPath.c_str());
   Configuration::Instance().SetString(
       "Preferences", REGVALUE_SAVESTATE_FILENAME, fullPath.c_str());
   Configuration::Instance().Save();
@@ -718,9 +718,9 @@ void ProcessButtonClick(int button, int mod) {
       break;
     case BTN_SAVEST:
       if ((mod & KMOD_ALT) != 0) {
-        Snapshot_SaveState();
+        save_state_save();
       } else if (PSP_SaveStateSelectImage(true)) {
-        Snapshot_SaveState();
+        save_state_save();
       }
       break;
     case BTN_LOADST:
@@ -735,9 +735,9 @@ void ProcessButtonClick(int button, int mod) {
         }
         CpuReset();
       } else if ((mod & KMOD_ALT) != 0) {
-        Snapshot_LoadState();
+        save_state_load();
       } else if (PSP_SaveStateSelectImage(false)) {
-        Snapshot_LoadState();
+        save_state_load();
       }
       break;
   }

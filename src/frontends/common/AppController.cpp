@@ -3,7 +3,6 @@
 #include <cstdio>
 
 #include "apple2/CPU.h"
-#include "apple2/SaveState.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/Common_Globals.h"
@@ -17,6 +16,7 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppEnvironment.h"
+#include "frontends/common/SaveStateManager.h"
 #include "frontends/sdl3/Frontend.h"
 
 static bool s_initialized = false;
@@ -66,9 +66,9 @@ auto AppController_Initialize(AppConfig* config) -> int {
 
   // 4. Init Snapshots
   if (config->szSnapshotPath.at(0) != '\0') {
-    Snapshot_SetFilename(config->szSnapshotPath.data());
+    save_state_set_filename(config->szSnapshotPath.data());
   }
-  Snapshot_Startup();
+  save_state_startup();
 
   // 5. Initialize directories
   InitializeDirectory(REGVALUE_PREF_START_DIR, &g_state.sCurrentDir[0],
@@ -184,7 +184,7 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
 void AppController_Shutdown() {
   if (!s_initialized) return;
 
-  Snapshot_Shutdown();
+  save_state_shutdown();
   Linapple_Shutdown();
   Logger::Destroy();
 

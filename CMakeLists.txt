@@ -154,13 +154,14 @@ set(SOURCES_CORE
     src/frontends/common/Util_Hash.cpp
     src/frontends/common/KeyboardTranslator.cpp
     src/frontends/common/AudioDumper.cpp
+    src/frontends/common/SaveStateManager.cpp
 )
 
 set(SOURCES_A2_MANDATORY
     src/apple2/chips/6821.cpp
     src/apple2/CPU.cpp
     src/apple2/Memory.cpp
-    src/apple2/SaveState.cpp
+    src/apple2/Snapshot.cpp
     src/apple2/SoundCore.cpp
     src/apple2/Timer.cpp
     src/apple2/Video.cpp
@@ -455,6 +456,7 @@ if(BUILD_TESTING)
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
     add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
+    add_linapple_test(snapshot tests/test_snapshot.cpp)
     if(FRONTEND STREQUAL "sdl1")
         add_linapple_test(frontend-sdl1 "tests/test_main.cpp;tests/test_frontend_sdl1.cpp")
         target_include_directories(test-frontend-sdl1 PRIVATE src)

@@ -6,8 +6,6 @@
 #include <string>
 
 #include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "apple2/SaveState.h"
 #include "apple2/Video.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"

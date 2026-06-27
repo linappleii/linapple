@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "apple2/SaveState.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
 #include "core/Common.h"

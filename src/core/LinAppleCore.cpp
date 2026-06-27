@@ -31,7 +31,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SaveState.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
