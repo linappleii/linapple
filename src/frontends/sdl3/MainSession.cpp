@@ -27,7 +27,6 @@ auto GetBudgetVideo() -> bool { return g_bBudgetVideo; }
 
 void SetCurrentCLK6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
 
-void SoundCore_SetFade(int fade) { (void)fade; }
 
 void SingleStep(bool bReinit) {
   (void)bReinit;

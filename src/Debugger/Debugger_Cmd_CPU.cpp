@@ -19,7 +19,7 @@ extern void FrameRefreshStatus(int);
 #include "Debugger_Symbols.h"
 #include "Video.h"
 #include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
@@ -159,7 +159,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   g_state.mode = MODE_STEPPING;
   FrameRefreshStatus(DRAW_TITLE);
 
-  SoundCore_SetFade(FADE_IN);
+  audio_mixer_set_fade(fade_in);
 
   return UPDATE_CONSOLE_DISPLAY;
 }

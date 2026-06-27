@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
@@ -574,7 +574,7 @@ void FrameSaveBMP() {
 void ProcessButtonClick(int button, int mod) {
   SDL_Event qe;
 
-  SoundCore_SetFade(FADE_OUT);
+  audio_mixer_set_fade(fade_out);
 
   switch (button) {
     case BTN_HELP:
@@ -747,7 +747,7 @@ void ProcessButtonClick(int button, int mod) {
   }
 
   if ((g_state.mode != MODE_DEBUG) && (g_state.mode != MODE_PAUSED)) {
-    SoundCore_SetFade(FADE_IN);
+    audio_mixer_set_fade(fade_in);
   }
 }
 

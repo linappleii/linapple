@@ -12,7 +12,7 @@
 #include <thread>
 #include <vector>
 
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 
 #ifdef HAVE_PULSE_SIMPLE
 #include <pulse/error.h>
@@ -43,7 +43,7 @@ static void AudioThreadFunc() {
   std::array<int16_t, CHUNK_FRAMES * CHANNELS> stereo_buffer{};
 
   while (g_audio_running) {
-    SoundCore_GetSamples(mono_buffer.data(), CHUNK_FRAMES);
+    audio_mixer_get_samples(mono_buffer.data(), CHUNK_FRAMES);
 
     for (size_t i = 0; i < CHUNK_FRAMES; ++i) {
       stereo_buffer.at(i * 2) = mono_buffer.at(i);

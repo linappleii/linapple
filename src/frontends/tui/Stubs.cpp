@@ -56,7 +56,6 @@ WEAK auto SuperSerialFrontend_SetLoopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}
-WEAK auto SoundCore_SetFade(int) -> void {}
 WEAK auto JoySetTrim(int16_t, bool) -> void {}
 WEAK auto JoySetButton(eBUTTON, eBUTTONSTATE) -> void {}
 WEAK auto JoyUpdatePosition(uint32_t) -> void {}

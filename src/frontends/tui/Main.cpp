@@ -6,7 +6,7 @@
 #include "TuiInput.h"
 #include "TuiTerminal.h"
 #include "TuiVideo.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
@@ -18,12 +18,12 @@ auto VideoCallback(const uint32_t* pixels, int width, int height, int pitch)
 }
 
 auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
-  SoundCore_UploadSpeakerSamples(samples, static_cast<uint32_t>(num_samples));
+  audio_mixer_upload_speaker_samples(samples, static_cast<uint32_t>(num_samples));
 }
 
 auto MockAudioCallback(const int16_t* samples, size_t num_samples) -> void {
-  SoundCore_UploadMockingboardSamples(samples,
-                                      static_cast<uint32_t>(num_samples));
+  audio_mixer_upload_mockingboard_samples(samples,
+                                          static_cast<uint32_t>(num_samples));
 }
 
 auto TitleCallback(const char* title) -> void { (void)title; }

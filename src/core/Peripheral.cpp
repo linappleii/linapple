@@ -10,7 +10,7 @@
 #include "LinAppleCore.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "apple2/Structs.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
@@ -327,15 +327,15 @@ static auto Host_AudioPushSamples(void* instance, const int16_t* buffer,
     if (g_frontendMockAudioCB != nullptr) {
       g_frontendMockAudioCB(buffer, num_samples);
     } else {
-      SoundCore_UploadMockingboardSamples(buffer,
-                                          static_cast<uint32_t>(num_samples));
+      audio_mixer_upload_mockingboard_samples(
+          buffer, static_cast<uint32_t>(num_samples));
     }
   } else {
     if (g_frontendAudioCB != nullptr) {
       g_frontendAudioCB(buffer, num_samples);
     } else {
-      SoundCore_UploadSpeakerSamples(buffer,
-                                     static_cast<uint32_t>(num_samples));
+      audio_mixer_upload_speaker_samples(buffer,
+                                         static_cast<uint32_t>(num_samples));
     }
   }
 }

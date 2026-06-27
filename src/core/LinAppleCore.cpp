@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
@@ -100,7 +100,7 @@ static auto ShouldRunFullSpeed() -> bool {
   } else if (!shouldTurbo && s_wasTurbo) {
     uint32_t elapsed = Linapple_GetTicks() - s_turboStartMs;
     Logger::Perf("Full-speed disk mode disengaged after %ums\n", elapsed);
-    SoundCore_ClearBuffers();
+    audio_mixer_clear_buffers();
   }
 
   s_wasTurbo = shouldTurbo;
@@ -112,7 +112,7 @@ void Linapple_Init() {
   MemPreInitialize();
   Asset_Init();
   CreateColorMixMap();
-  SoundCore_Initialize();
+  audio_mixer_initialize();
 
   MemInitialize();
   CpuInitialize();
@@ -127,7 +127,7 @@ void Linapple_RegisterPeripherals() { Peripheral_Register_Internal(); }
 void Linapple_Shutdown() {
   Peripheral_Manager_Shutdown();
   Peripheral_Plugins_Shutdown();
-  SoundCore_Destroy();
+  audio_mixer_destroy();
   VideoDestroy();
   MemDestroy();
   Asset_Quit();

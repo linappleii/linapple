@@ -1,7 +1,7 @@
 #include <SDL2/SDL.h>
 
 #include "Debugger/Debug.h"
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
@@ -99,11 +99,11 @@ void SDL_HandleEvent(SDL_Event* e) {
           switch (g_state.mode) {
             case MODE_RUNNING:
               g_state.mode = MODE_PAUSED;
-              SoundCore_SetFade(FADE_OUT);
+              audio_mixer_set_fade(fade_out);
               break;
             case MODE_PAUSED:
               g_state.mode = MODE_RUNNING;
-              SoundCore_SetFade(FADE_IN);
+              audio_mixer_set_fade(fade_in);
               break;
             case MODE_STEPPING:
               DebuggerInputConsoleChar(DEBUG_EXIT_KEY);

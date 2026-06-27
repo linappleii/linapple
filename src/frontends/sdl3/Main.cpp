@@ -4,8 +4,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "apple2/SoundCore.h"
 #include "apple2/Video.h"
+#include "core/AudioMixer.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
@@ -33,7 +33,7 @@ static void SDLCALL sdl3AudioCallback(void* userdata, SDL_AudioStream* stream,
   if (!temp_buf) return;
 
   int num_samples = additional_amount / (static_cast<int>(sizeof(int16_t)));
-  SoundCore_GetSamples(temp_buf, static_cast<size_t>(num_samples));
+  audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
   if (g_audio_dumper.file) {
     audio_dumper_put_samples(&g_audio_dumper,
@@ -70,12 +70,12 @@ auto DSInit() -> bool {
 
   Linapple_SetAudioCallback([](const int16_t* samples,
                                size_t num_samples) -> void {
-    SoundCore_UploadSpeakerSamples(samples, static_cast<uint32_t>(num_samples));
+    audio_mixer_upload_speaker_samples(samples, static_cast<uint32_t>(num_samples));
   });
 
   Linapple_SetMockAudioCallback(
       [](const int16_t* samples, size_t num_samples) -> void {
-        SoundCore_UploadMockingboardSamples(samples,
+        audio_mixer_upload_mockingboard_samples(samples,
                                             static_cast<uint32_t>(num_samples));
       });
 

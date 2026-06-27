@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "apple2/SoundCore.h"
+#include "core/AudioMixer.h"
 
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <memory>
 #include <vector>
 
 #include "core/Common_Globals.h"
 
 namespace {
 
-struct sample_buffer {
+struct SampleBuffer_t {
   std::vector<int16_t> buffer;
   std::atomic<size_t> read_index;
   std::atomic<size_t> write_index;
   int16_t last_value{0};
 
-  explicit sample_buffer(size_t size)
+  explicit SampleBuffer_t(size_t size)
       : buffer(size), read_index(0), write_index(0) {}
 
   auto reinit() -> void {
@@ -141,83 +142,84 @@ struct sample_buffer {
   }
 };
 
-static sample_buffer* g_spkrMixBuffer = nullptr;
-static sample_buffer* g_mockMixBuffer = nullptr;
+static SampleBuffer_t* g_spkr_mix_buffer = nullptr;
+static SampleBuffer_t* g_mock_mix_buffer = nullptr;
 
 }  // namespace
 
-void SoundCore_Initialize() {
+auto audio_mixer_initialize() -> void {
   constexpr size_t buffer_size = 16384;
-  if (g_spkrMixBuffer == nullptr) {
-    g_spkrMixBuffer = new sample_buffer(buffer_size);
+  if (g_spkr_mix_buffer == nullptr) {
+    g_spkr_mix_buffer = new SampleBuffer_t(buffer_size);
   }
-  if (g_mockMixBuffer == nullptr) {
-    g_mockMixBuffer = new sample_buffer(buffer_size);
+  if (g_mock_mix_buffer == nullptr) {
+    g_mock_mix_buffer = new SampleBuffer_t(buffer_size);
   }
-  g_spkrMixBuffer->reinit();
-  g_mockMixBuffer->reinit();
+  g_spkr_mix_buffer->reinit();
+  g_mock_mix_buffer->reinit();
 }
 
-void SoundCore_Destroy() {
-  delete g_spkrMixBuffer;
-  delete g_mockMixBuffer;
-  g_spkrMixBuffer = nullptr;
-  g_mockMixBuffer = nullptr;
+auto audio_mixer_destroy() -> void {
+  delete g_spkr_mix_buffer;
+  delete g_mock_mix_buffer;
+  g_spkr_mix_buffer = nullptr;
+  g_mock_mix_buffer = nullptr;
 }
 
-void SoundCore_ClearBuffers() {
-  if (g_spkrMixBuffer != nullptr) {
-    g_spkrMixBuffer->reinit();
+auto audio_mixer_clear_buffers() -> void {
+  if (g_spkr_mix_buffer != nullptr) {
+    g_spkr_mix_buffer->reinit();
   }
-  if (g_mockMixBuffer != nullptr) {
-    g_mockMixBuffer->reinit();
-  }
-}
-
-void SoundCore_UploadSpeakerSamples(const int16_t* buffer,
-                                    uint32_t num_samples) {
-  if (g_spkrMixBuffer != nullptr) {
-    g_spkrMixBuffer->upload(buffer, num_samples);
+  if (g_mock_mix_buffer != nullptr) {
+    g_mock_mix_buffer->reinit();
   }
 }
 
-void SoundCore_UploadMockingboardSamples(const int16_t* buffer,
-                                         uint32_t num_samples) {
-  if (g_mockMixBuffer != nullptr) {
-    g_mockMixBuffer->upload(buffer, num_samples);
+auto audio_mixer_set_fade(FadeType_t fade_type) -> void {
+  (void)fade_type;
+}
+
+auto audio_mixer_upload_speaker_samples(const int16_t* buffer,
+                                        uint32_t num_samples) -> void {
+  if (g_spkr_mix_buffer != nullptr) {
+    g_spkr_mix_buffer->upload(buffer, num_samples);
   }
 }
 
-void SoundCore_GetSamples(int16_t* out, size_t num_samples) {
-  if (g_spkrMixBuffer == nullptr || g_mockMixBuffer == nullptr) {
+auto audio_mixer_upload_mockingboard_samples(const int16_t* buffer,
+                                             uint32_t num_samples) -> void {
+  if (g_mock_mix_buffer != nullptr) {
+    g_mock_mix_buffer->upload(buffer, num_samples);
+  }
+}
+
+auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
+  if (g_spkr_mix_buffer == nullptr || g_mock_mix_buffer == nullptr) {
     memset(out, 0, num_samples * sizeof(int16_t));
     return;
   }
 
-  // Active Latency Recovery: skip oldest samples if the buffer backlog is too
-  // large. We allow a cushion of 1024 elements (~23 ms) above the requested
-  // block size to avoid underruns due to thread scheduling jitter.
   const size_t target_backlog =
       std::min(num_samples + 1024, static_cast<size_t>(16384 - 2));
 
-  size_t spkr_filled = g_spkrMixBuffer->get_filled();
+  size_t spkr_filled = g_spkr_mix_buffer->get_filled();
   if (spkr_filled > target_backlog) {
-    g_spkrMixBuffer->skip(spkr_filled - target_backlog);
+    g_spkr_mix_buffer->skip(spkr_filled - target_backlog);
   }
 
-  size_t mock_filled = g_mockMixBuffer->get_filled();
+  size_t mock_filled = g_mock_mix_buffer->get_filled();
   if (mock_filled > target_backlog) {
-    g_mockMixBuffer->skip(mock_filled - target_backlog);
+    g_mock_mix_buffer->skip(mock_filled - target_backlog);
   }
 
-  if (g_spkrMixBuffer->get_filled() == 0 &&
-      g_mockMixBuffer->get_filled() == 0) {
+  if (g_spkr_mix_buffer->get_filled() == 0 &&
+      g_mock_mix_buffer->get_filled() == 0) {
     memset(out, 0, num_samples * sizeof(int16_t));
-    g_spkrMixBuffer->last_value = 0;
-    g_mockMixBuffer->last_value = 0;
+    g_spkr_mix_buffer->last_value = 0;
+    g_mock_mix_buffer->last_value = 0;
     return;
   }
 
-  g_spkrMixBuffer->drain_to(out, num_samples, false);
-  g_mockMixBuffer->drain_to(out, num_samples, true);
+  g_spkr_mix_buffer->drain_to(out, num_samples, false);
+  g_mock_mix_buffer->drain_to(out, num_samples, true);
 }

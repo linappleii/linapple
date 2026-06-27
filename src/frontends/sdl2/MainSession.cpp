@@ -31,7 +31,6 @@ void SetCurrentCLK6502() {
   g_fCurrentCLK6502 = APPLE2_CLOCK_MHZ * MHZ_TO_HZ;
 }
 
-void SoundCore_SetFade(int fade) { (void)fade; }
 
 void SingleStep(bool bReinit) {
   (void)bReinit;

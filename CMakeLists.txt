@@ -139,6 +139,7 @@ endif()
 
 # --- Source Lists ---
 set(SOURCES_CORE
+    src/core/AudioMixer.cpp
     src/core/Common.cpp
     src/core/LinAppleCore.cpp
     src/core/Log.cpp
@@ -162,7 +163,6 @@ set(SOURCES_A2_MANDATORY
     src/apple2/CPU.cpp
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
-    src/apple2/SoundCore.cpp
     src/apple2/Timer.cpp
     src/apple2/Video.cpp
     src/apple2/stretch.cpp
