@@ -153,6 +153,7 @@ set(SOURCES_CORE
     src/frontends/common/FileBrowser.cpp
     src/frontends/common/Util_Hash.cpp
     src/frontends/common/KeyboardTranslator.cpp
+    src/frontends/common/AudioDumper.cpp
 )
 
 set(SOURCES_A2_MANDATORY
@@ -164,7 +165,6 @@ set(SOURCES_A2_MANDATORY
     src/apple2/Timer.cpp
     src/apple2/Video.cpp
     src/apple2/stretch.cpp
-    src/apple2/Riff.cpp
 )
 
 set(SOURCES_DBG "")

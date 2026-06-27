@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "apple2/Riff.h"
 #include "apple2/SaveState.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
@@ -14,6 +13,7 @@
 #include "core/Log.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/AudioDumper.h"
 #include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/Frontend.h"
 
@@ -21,6 +21,7 @@
 bool g_bDSAvailable = false;
 SDL_AudioDeviceID g_audioDevice = 0;
 static char* g_pszAudioDumpFile = nullptr;
+static AudioDumper_t g_audio_dumper;
 
 static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
     -> void {
@@ -33,8 +34,9 @@ static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
   int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   SoundCore_GetSamples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_pszAudioDumpFile != nullptr) {
-    RiffPutSamples(temp_buf, static_cast<uint32_t>(num_samples));
+  if (g_audio_dumper.file != nullptr) {
+    audio_dumper_put_samples(&g_audio_dumper, temp_buf,
+                             static_cast<uint32_t>(num_samples));
   }
 }
 
@@ -55,7 +57,8 @@ auto DSInit() -> bool {
   desired.userdata = nullptr;
 
   if (g_pszAudioDumpFile != nullptr) {
-    RiffInitWriteFile(g_pszAudioDumpFile, SPKR_SAMPLE_RATE, 2);
+    audio_dumper_initialize(&g_audio_dumper, g_pszAudioDumpFile,
+                            SPKR_SAMPLE_RATE, 2);
   }
 
   g_audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
@@ -82,8 +85,8 @@ auto DSInit() -> bool {
 }
 
 auto DSShutdown() -> void {
-  if (g_pszAudioDumpFile != nullptr) {
-    RiffFinishWriteFile();
+  if (g_audio_dumper.file != nullptr) {
+    audio_dumper_finalize(&g_audio_dumper);
   }
 
   if (g_audioDevice != 0u) {

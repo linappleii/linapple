@@ -52,28 +52,9 @@ static auto Mock_RegisterIO(int slot, PeripheralIOHandler r,
 }
 
 static HostInterface_t g_mock_host = {
-    nullptr,          // Log
-    Mock_AssertIrq,   // AssertIrq
-    Mock_RegisterIO,  // RegisterIO
-    nullptr,          // RegisterCxROM
-    nullptr,          // RegisterExpansionROM
-    nullptr,          // RegisterDirectIO
-    nullptr,          // GetMemPtr
-    nullptr,          // GetCycles
-    Mock_GetConfig,   // GetConfig
-    nullptr,          // SetConfig
-    nullptr,          // NotifyStatusChanged
-    nullptr,          // NotifyActivityChanged
-    nullptr,          // RequestPreciseTiming
-    nullptr,          // RiffInitWriteFile
-    nullptr,          // RiffFinishWriteFile
-    nullptr,          // RiffPutSamples
-    nullptr,          // AudioPushSamples
-    nullptr,          // ResetSystem
-    nullptr,          // PrinterPutChar
-    nullptr,          // PrinterGetStatus
-    nullptr,          // SerialTransmitByte
-    nullptr           // SerialUpdateState
+    .AssertIrq = Mock_AssertIrq,
+    .RegisterIO = Mock_RegisterIO,
+    .GetConfig = Mock_GetConfig,
 };
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {

@@ -10,7 +10,6 @@
 #include "LinAppleCore.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Riff.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Structs.h"
 #include "core/Common_Globals.h"
@@ -396,9 +395,6 @@ static const HostInterface_t g_host_interface = {Host_Log,
                                                  Host_NotifyStatusChanged,
                                                  Host_NotifyActivityChanged,
                                                  Host_RequestPreciseTiming,
-                                                 RiffInitWriteFile,
-                                                 RiffFinishWriteFile,
-                                                 RiffPutSamples,
                                                  Host_AudioPushSamples,
                                                  Host_ResetSystem,
                                                  Host_PrinterPutChar,

@@ -27,10 +27,8 @@ static void Mock_RegisterDirectIO(void* instance, uint16_t addr,
 }
 
 static HostInterface_t mock_host = {
-    nullptr, nullptr, nullptr, nullptr, nullptr, Mock_RegisterDirectIO,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr};
+    .RegisterDirectIO = Mock_RegisterDirectIO,
+};
 
 TEST_CASE("Keyboard Peripheral: Lifecycle and I/O Registration") {
   g_mock_handlers.clear();

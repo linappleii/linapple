@@ -45,10 +45,6 @@ typedef struct {
   void (*NotifyStatusChanged)(int slot);
   void (*NotifyActivityChanged)(int slot, bool active);
   void (*RequestPreciseTiming)(void);
-  int (*RiffInitWriteFile)(char* pszFile, uint32_t sample_rate,
-                           uint32_t NumChannels);
-  int (*RiffFinishWriteFile)(void);
-  int (*RiffPutSamples)(short* buf, uint32_t uSamples);
   void (*AudioPushSamples)(void* instance, const int16_t* buffer,
                            size_t num_samples);
   void (*ResetSystem)(void* instance);
@@ -73,7 +69,7 @@ typedef struct Peripheral_t {
   const char* author;       // Implementation author
   const char* version;      // Implementation version
   uint8_t compatible_slots;
-  int8_t default_slot;      // Preferred slot (1-7), 0 for internal, or -1 for any
+  int8_t default_slot;  // Preferred slot (1-7), 0 for internal, or -1 for any
   void* (*init)(int slot, HostInterface_t* host);
   void (*reset)(void* instance);
   void (*shutdown)(void* instance);
@@ -95,23 +91,25 @@ typedef struct Peripheral_t {
   }
 #else
 #ifdef __cplusplus
-#define PERIPHERAL_REGISTER(peripheral_struct)                         \
-  namespace {                                                          \
-  struct PeripheralRegistration_ ## peripheral_struct {                \
-    PeripheralRegistration_ ## peripheral_struct() noexcept {                   \
-      Peripheral_Register_Builtin(const_cast<Peripheral_t*>(&(peripheral_struct))); \
-    }                                                                  \
-  } g_registration_ ## peripheral_struct;                              \
+#define PERIPHERAL_REGISTER(peripheral_struct)              \
+  namespace {                                               \
+  struct PeripheralRegistration_##peripheral_struct {       \
+    PeripheralRegistration_##peripheral_struct() noexcept { \
+      Peripheral_Register_Builtin(                          \
+          const_cast<Peripheral_t*>(&(peripheral_struct))); \
+    }                                                       \
+  } g_registration_##peripheral_struct;                     \
   }
 #else
-#define PERIPHERAL_REGISTER(peripheral_struct) \
-  __attribute__((constructor)) static void Register_ ## peripheral_struct() { \
-    Peripheral_Register_Builtin(&(peripheral_struct)); \
+#define PERIPHERAL_REGISTER(peripheral_struct)                              \
+  __attribute__((constructor)) static void Register_##peripheral_struct() { \
+    Peripheral_Register_Builtin(&(peripheral_struct));                      \
   }
 #endif
 #endif
 
-#define EXPORT_PERIPHERAL(peripheral_struct) PERIPHERAL_REGISTER(peripheral_struct)
+#define EXPORT_PERIPHERAL(peripheral_struct) \
+  PERIPHERAL_REGISTER(peripheral_struct)
 
 /**
  * @brief Public Peripheral Management API.

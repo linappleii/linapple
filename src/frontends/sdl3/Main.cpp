@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "apple2/Riff.h"
 #include "apple2/SaveState.h"
 #include "apple2/SoundCore.h"
 #include "apple2/Video.h"
@@ -14,6 +13,7 @@
 #include "core/Log.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/AudioDumper.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
 
@@ -21,6 +21,7 @@
 bool g_bDSAvailable = false;
 SDL_AudioStream* g_audioStream = nullptr;
 static char* g_pszAudioDumpFile = nullptr;
+static AudioDumper_t g_audio_dumper;
 
 static void SDLCALL sdl3AudioCallback(void* userdata, SDL_AudioStream* stream,
                                       int additional_amount, int total_amount) {
@@ -35,9 +36,10 @@ static void SDLCALL sdl3AudioCallback(void* userdata, SDL_AudioStream* stream,
   int num_samples = additional_amount / (static_cast<int>(sizeof(int16_t)));
   SoundCore_GetSamples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_pszAudioDumpFile) {
-    RiffPutSamples(reinterpret_cast<int16_t*>(temp_buf),
-                   static_cast<uint32_t>(num_samples));
+  if (g_audio_dumper.file) {
+    audio_dumper_put_samples(&g_audio_dumper,
+                             reinterpret_cast<int16_t*>(temp_buf),
+                             static_cast<uint32_t>(num_samples));
   }
 
   SDL_PutAudioStreamData(stream, temp_buf, additional_amount);
@@ -53,7 +55,8 @@ auto DSInit() -> bool {
   desired.format = SDL_AUDIO_S16;
 
   if (g_pszAudioDumpFile) {
-    RiffInitWriteFile(g_pszAudioDumpFile, SPKR_SAMPLE_RATE, 2);
+    audio_dumper_initialize(&g_audio_dumper, g_pszAudioDumpFile,
+                            SPKR_SAMPLE_RATE, 2);
   }
 
   g_audioStream = SDL_OpenAudioDeviceStream(
@@ -81,8 +84,8 @@ auto DSInit() -> bool {
 }
 
 void DSShutdown() {
-  if (g_pszAudioDumpFile) {
-    RiffFinishWriteFile();
+  if (g_audio_dumper.file) {
+    audio_dumper_finalize(&g_audio_dumper);
   }
 
   if (g_audioStream) {

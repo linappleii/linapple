@@ -45,28 +45,10 @@ static void Mock_RegisterCxROM(int slot, uint8_t* rom) {
 }
 
 static HostInterface_t mock_host = {
-    nullptr,             // Log
-    Mock_AssertIrq,      // AssertIrq
-    Mock_RegisterIO,     // RegisterIO
-    Mock_RegisterCxROM,  // RegisterCxROM
-    nullptr,             // RegisterExpansionROM
-    nullptr,             // RegisterDirectIO
-    nullptr,             // GetMemPtr
-    nullptr,             // GetCycles
-    Mock_GetConfig,      // GetConfig
-    nullptr,             // SetConfig
-    nullptr,             // NotifyStatusChanged
-    nullptr,             // NotifyActivityChanged
-    nullptr,             // RequestPreciseTiming
-    nullptr,             // RiffInitWriteFile
-    nullptr,             // RiffFinishWriteFile
-    nullptr,             // RiffPutSamples
-    nullptr,             // AudioPushSamples
-    nullptr,             // ResetSystem
-    nullptr,             // PrinterPutChar
-    nullptr,             // PrinterGetStatus
-    nullptr,             // SerialTransmitByte
-    nullptr              // SerialUpdateState
+    .AssertIrq = Mock_AssertIrq,
+    .RegisterIO = Mock_RegisterIO,
+    .RegisterCxROM = Mock_RegisterCxROM,
+    .GetConfig = Mock_GetConfig,
 };
 
 TEST_CASE("Mouse Peripheral ABI") {
