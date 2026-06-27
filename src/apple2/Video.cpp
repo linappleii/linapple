@@ -30,7 +30,7 @@ static auto GetTickCount() -> uint32_t {
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "apple2/stretch.h"
+#include "frontends/common/VideoStretch.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"

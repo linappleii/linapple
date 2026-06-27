@@ -2,8 +2,8 @@
 
 #include "frontends/common/VideoSurface.h"
 
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
@@ -41,7 +41,8 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
   if (!xpm || !xpm[0]) return nullptr;
   int w = 0, h = 0, colors = 0, cpp = 0;
   if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) return nullptr;
-  if (cpp != 1 || colors < 0 || colors > 256 || w <= 0 || h <= 0) return nullptr;
+  if (cpp != 1 || colors < 0 || colors > 256 || w <= 0 || h <= 0)
+    return nullptr;
 
   VideoSurface_t* s = video_create_surface(w, h, 1);
   if (!s) return nullptr;

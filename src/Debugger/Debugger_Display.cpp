@@ -20,7 +20,7 @@
 #include "apple2/CPU.h"
 #include "core/Log.h"
 #include "core/Common_Globals.h"
-#include "apple2/stretch.h"
+#include "frontends/common/VideoStretch.h"
 #include "core/asset.h"
 
 #include "charset40.xpm" // US/default

@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "apple2/Video.h"
-#include "apple2/stretch.h"
+#include "frontends/common/VideoStretch.h"
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "frontends/common/FileBrowser.h"

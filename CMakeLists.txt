@@ -157,6 +157,7 @@ set(SOURCES_CORE
     src/frontends/common/AudioDumper.cpp
     src/frontends/common/SaveStateManager.cpp
     src/frontends/common/VideoSurface.cpp
+    src/frontends/common/VideoStretch.cpp
 )
 
 set(SOURCES_A2_MANDATORY
@@ -165,7 +166,6 @@ set(SOURCES_A2_MANDATORY
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
     src/apple2/Video.cpp
-    src/apple2/stretch.cpp
 )
 
 set(SOURCES_DBG "")
