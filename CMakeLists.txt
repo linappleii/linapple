@@ -148,6 +148,7 @@ set(SOURCES_CORE
     src/core/Asset.cpp
     src/core/Peripheral.cpp
     src/core/Peripheral_Internal.cpp
+    src/core/Resource.cpp
     src/frontends/common/AppArgs.cpp
     src/frontends/common/AppEnvironment.cpp
     src/frontends/common/AppController.cpp

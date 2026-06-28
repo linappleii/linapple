@@ -16,7 +16,7 @@
 #include "core/Common.h"
 #include "core/Common_Globals.h"
 #include "core/Log.h"
-#include "core/resource.h"
+#include "core/Resource.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc,
@@ -1029,22 +1029,22 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
 #define IDR_APPLE2E_ENHANCED_ROM "Apple2e_Enhanced.rom"
 
   uint32_t ROM_SIZE = 0;
-  char* RomFileName = nullptr;
+  const char* RomFileName = nullptr;
   switch (g_Apple2Type) {
     case A2TYPE_APPLE2:
-      RomFileName = Apple2_rom;
+      RomFileName = apple2_rom;
       ROM_SIZE = Apple2RomSize;
       break;
     case A2TYPE_APPLE2PLUS:
-      RomFileName = Apple2plus_rom;
+      RomFileName = apple2_plus_rom;
       ROM_SIZE = Apple2RomSize;
       break;
     case A2TYPE_APPLE2E:
-      RomFileName = Apple2e_rom;
+      RomFileName = apple2e_rom;
       ROM_SIZE = Apple2eRomSize;
       break;
     case A2TYPE_APPLE2EENHANCED:
-      RomFileName = Apple2eEnhanced_rom;
+      RomFileName = apple2e_enhanced_rom;
       ROM_SIZE = Apple2eRomSize;
       break;
     default:
@@ -1057,7 +1057,7 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
   }
 
   auto* pData = reinterpret_cast<uint8_t*>(
-      RomFileName);  // NB. Don't need to unlock resource
+      const_cast<char*>(RomFileName));  // NB. Don't need to unlock resource
 
   memset(pCxRomInternal, 0, CxRomSize);
   memset(pCxRomPeripheral, 0, CxRomSize);
