@@ -1,4 +1,3 @@
-#include "core/Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -49,7 +48,6 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "frontends/common/VideoStretch.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"

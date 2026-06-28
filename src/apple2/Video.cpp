@@ -47,7 +47,6 @@ static auto GetTickCount() -> uint32_t {
 #include "charset40_british.xpm"
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"

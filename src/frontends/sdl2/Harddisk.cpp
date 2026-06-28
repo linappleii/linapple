@@ -9,7 +9,6 @@
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"

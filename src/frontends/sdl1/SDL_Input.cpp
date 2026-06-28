@@ -8,7 +8,6 @@
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "frontends/sdl1/Frame.h"

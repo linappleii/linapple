@@ -33,7 +33,6 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <ctime>
 
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 
 const int64_t SECONDS_PER_DAY = 86400;

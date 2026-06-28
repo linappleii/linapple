@@ -4,7 +4,6 @@
 #include <cstdio>
 
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 
 static uint32_t inactivity = 0;
 static uint32_t g_PrinterIdleLimit = 10;

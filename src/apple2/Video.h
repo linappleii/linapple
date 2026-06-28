@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <mutex>
 
-#include "apple2/SnapshotTypes.h"
+struct SsIoVideo_t;
+using SS_IO_Video = struct SsIoVideo_t;
 #include "frontends/common/VideoSurface.h"
 
 constexpr uint32_t apple2_visible_width = 280;
@@ -20,6 +21,31 @@ constexpr uint32_t dirty_cell_rows = 32;
 constexpr uint32_t max_palette_size = 256;
 constexpr uint8_t default_gray_component = 0xC0;
 constexpr uint32_t hgr_matrix_yoffset = 2;
+
+#define SCREEN_WIDTH 560
+#define SCREEN_HEIGHT 384
+
+#define VIEWPORTX 5
+#define VIEWPORTY 5
+#define VIEWPORTCX 560
+#define VIEWPORTCY 384
+
+constexpr int STATUS_PANEL_W = 100;
+constexpr int STATUS_PANEL_H = 48;
+
+using ColorRef_t = uint32_t;
+
+using Point_t = struct Point_tag {
+  int32_t x;
+  int32_t y;
+};
+
+using Rect_t = struct Rect_tag {
+  int32_t left;
+  int32_t top;
+  int32_t right;
+  int32_t bottom;
+};
 
 // Legacy macros for compatibility
 #define APPLE2_VISIBLE_WIDTH apple2_visible_width

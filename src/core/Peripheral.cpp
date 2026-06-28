@@ -16,7 +16,6 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/AudioMixer.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
@@ -171,7 +170,7 @@ static auto Host_AssertIrq(int slot, bool assert) -> void {
   if (slot < 1 || slot > 7) {
     return;
   }
-  eIRQSRC src = static_cast<eIRQSRC>(IS_SLOT1 + slot - 1);
+  auto src = static_cast<eIRQSRC>(IS_SLOT1 + slot - 1);
   if (assert) {
     CpuIrqAssert(src);
   } else {

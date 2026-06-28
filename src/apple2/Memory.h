@@ -9,6 +9,15 @@
 struct SsBaseMemory_t;
 using SS_BaseMemory = SsBaseMemory_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef uint8_t (*iofunction)(uint16_t nPC, uint16_t nAddr, uint8_t nWriteFlag,
+                              uint8_t nWriteValue, uint32_t nCyclesLeft);
+#ifdef __cplusplus
+}
+#endif
+
 #define MF_80STORE 0x00000001
 #define MF_ALTZP 0x00000002
 #define MF_AUXREAD 0x00000004

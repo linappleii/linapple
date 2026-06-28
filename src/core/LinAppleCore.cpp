@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/LinAppleCore.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,clang-diagnostic-missing-braces):
+// Core emulator lifecycle, cycle accounting, and binary program file loading
+
+#include <curl/curl.h>
 #include <strings.h>
 
 #include <chrono>
@@ -12,25 +16,78 @@
 #include "Debugger/Debug.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
+#include "core/Asset.h"
 #include "core/AudioMixer.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
 #include "core/ProgramLoader.h"
-#include "core/Asset.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables):
-// Core emulator lifecycle, cycle accounting, and binary program file loading
 using Logger::Error;
 using Logger::Info;
+
+static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
+static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
+static const char TITLE_APPLE_2E_[] = "Apple //e Emulator";
+static const char TITLE_APPLE_2E_ENHANCED_[] = "Enhanced Apple //e Emulator";
+
+const char* g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+char videoDriverName[100]{};
+
+eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+eApple2Language g_Language = A2LANG_US;
+
+uint64_t cumulativecycles = 0;
+uint64_t cyclenum = 0;
+uint32_t emulmsec = 0;
+bool g_bFullSpeed = false;
+bool hddenabled = false;
+
+SystemState_t g_state = {MODE_LOGO,
+                         false,
+                         false,
+                         SPEED_NORMAL,
+                         560,
+                         384,
+                         false,
+                         0,
+                         "",
+                         "",
+                         "",
+                         "",
+                         "Printer.txt",
+                         "",
+                         "",
+                         "",
+                         "anonymous:mymail@hotmail.com",
+                         "",
+                         true,
+                         17030};
+
+double g_fCurrentCLK6502 = CLOCK_6502;
+int g_nCpuCyclesFeedback = 0;
+uint32_t g_dwCyclesThisFrame = 0;
+
+bool g_bDisableDirectSound = false;
+
+uint32_t g_Slot4 = CT_Mockingboard;
+CURL* g_curl = nullptr;
+
+auto GetTitleApple2() -> const char* { return TITLE_APPLE_2_; }
+auto GetTitleApple2Plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
+auto GetTitleApple2e() -> const char* { return TITLE_APPLE_2E_; }
+auto GetTitleApple2eEnhanced() -> const char* {
+  return TITLE_APPLE_2E_ENHANCED_;
+}
 
 namespace {
 
@@ -282,4 +339,4 @@ auto linapple_set_joystick_button(int button, bool down) -> void {
   Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,clang-diagnostic-missing-braces)

@@ -24,7 +24,6 @@
 #include "apple2/chips/SSI263.h"
 #include "apple2/chips/AY8910.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Peripheral.h"
 
 namespace via_reg {

@@ -1,31 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
-#ifdef __cplusplus
-#include "Peripheral.h"
-#include "apple2/SnapshotTypes.h"
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Callback signatures for core outputs
-using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
-                                         int height, int pitch);
-using LinappleAudioCallback_t = void (*)(const int16_t* samples,
-                                         size_t num_samples);
-using LinappleTitleCallback_t = void (*)(const char* title);
-
-// Legacy callback aliases for backwards compatibility
-using LinappleVideoCallback = LinappleVideoCallback_t;
-using LinappleAudioCallback = LinappleAudioCallback_t;
-using LinappleTitleCallback = LinappleTitleCallback_t;
-
-// LinApple agnostic key codes
 enum LinAppleKey_t {
   linapple_key_unknown = 0,
   linapple_key_return = 0x0D,
@@ -92,7 +76,6 @@ enum LinAppleKey_t {
 
 using LinAppleKey = LinAppleKey_t;
 
-// Legacy enum aliases for backwards compatibility
 constexpr LinAppleKey_t LINAPPLE_KEY_UNKNOWN = linapple_key_unknown;
 constexpr LinAppleKey_t LINAPPLE_KEY_RETURN = linapple_key_return;
 constexpr LinAppleKey_t LINAPPLE_KEY_ESCAPE = linapple_key_escape;
@@ -151,7 +134,93 @@ constexpr LinAppleKey_t LINAPPLE_KEY_LGUI = linapple_key_lgui;
 constexpr LinAppleKey_t LINAPPLE_KEY_RGUI = linapple_key_rgui;
 constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
 
-// Core Lifecycle API
+#include "apple2/Apple2Types.h"
+#include "core/Peripheral.h"
+
+enum AppMode_e {
+  MODE_LOGO = 0,
+  MODE_PAUSED,
+  MODE_RUNNING,
+  MODE_DEBUG,
+  MODE_STEPPING,
+  MODE_DISK_CHOOSE,
+  MODE_EXIT,
+};
+
+constexpr int path_max_len = 260;
+
+using SystemState_t = struct SystemState_tag {
+  AppMode_e mode;
+  bool restart;
+  bool fullscreen;
+  uint32_t dwSpeed;
+  uint32_t ScreenWidth;
+  uint32_t ScreenHeight;
+  bool bResetTiming;
+  uint32_t needsprecision;
+  std::array<char, path_max_len> sProgramDir;
+  std::array<char, path_max_len> sCurrentDir;
+  std::array<char, path_max_len> sHDDDir;
+  std::array<char, path_max_len> sSaveStateDir;
+  std::array<char, path_max_len> sParallelPrinterFile;
+  std::array<char, path_max_len> sFTPLocalDir;
+  std::array<char, path_max_len> sFTPServer;
+  std::array<char, path_max_len> sFTPServerHDD;
+  std::array<char, 512> sFTPUserPass;
+  std::array<char, path_max_len> sDebuggerScript;
+  bool bVideoScannerNTSC;
+  uint32_t dwClksPerFrame;
+};
+
+extern SystemState_t g_state;
+
+constexpr int SPEED_MIN = 0;
+constexpr int SPEED_NORMAL = 10;
+constexpr int emulation_speed_max = 40;
+
+constexpr uint32_t DRAW_BACKGROUND = 1;
+constexpr uint32_t DRAW_LEDS = 2;
+constexpr uint32_t DRAW_TITLE = 4;
+constexpr uint32_t DRAW_BUTTON_DRIVES = 8;
+
+constexpr const char* TITLE_APPLE_2 = "Apple ][ Emulator";
+constexpr const char* TITLE_APPLE_2_PLUS = "Apple ][+ Emulator";
+constexpr const char* TITLE_APPLE_2E = "Apple //e Emulator";
+constexpr const char* TITLE_APPLE_2E_ENHANCED = "Enhanced Apple //e Emulator";
+
+constexpr const char* TITLE_PAUSED = " Paused ";
+constexpr const char* TITLE_STEPPING = "Stepping";
+
+extern const char* g_pAppTitle;
+extern char videoDriverName[100];
+extern uint64_t cumulativecycles;
+extern uint64_t cyclenum;
+extern uint32_t emulmsec;
+extern bool g_bFullSpeed;
+extern bool hddenabled;
+extern double g_fCurrentCLK6502;
+extern int g_nCpuCyclesFeedback;
+extern uint32_t g_dwCyclesThisFrame;
+extern bool g_bDisableDirectSound;
+extern uint32_t g_Slot4;
+
+typedef void CURL;
+extern CURL* g_curl;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
+                                         int height, int pitch);
+using LinappleAudioCallback_t = void (*)(const int16_t* samples,
+                                         size_t num_samples);
+using LinappleTitleCallback_t = void (*)(const char* title);
+
+using LinappleVideoCallback = LinappleVideoCallback_t;
+using LinappleAudioCallback = LinappleAudioCallback_t;
+using LinappleTitleCallback = LinappleTitleCallback_t;
+
 auto linapple_init() -> void;
 auto linapple_register_peripherals() -> void;
 auto linapple_shutdown() -> void;
@@ -161,8 +230,6 @@ auto linapple_load_program(const char* path) -> int;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 
-// Peripheral Management API (Implemented in Peripheral.cpp and
-// Peripheral_Internal.cpp)
 auto Peripheral_Manager_Init() -> void;
 auto Peripheral_Manager_Reset() -> void;
 auto Peripheral_Manager_Shutdown() -> void;
@@ -176,29 +243,23 @@ PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
 PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
                                   size_t* out_size);
 
-#ifdef __cplusplus
-auto Peripheral_Unregister(int slot) -> int;
-auto Peripheral_GetManifest(void* manifest) -> void;
-auto Peripheral_VerifyManifest(const void* manifest) -> bool;
-auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void;
-auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void;
-#endif
-
-// Input Handling API
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
 auto linapple_set_caps_lock_state(bool enabled) -> void;
 auto linapple_set_apple_key(int key, bool down) -> void;
 auto linapple_set_joystick_axis(int axis, int value) -> void;
 auto linapple_set_joystick_button(int button, bool down) -> void;
 
-// Output Callbacks API
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
 auto linapple_set_audio_callback(LinappleAudioCallback_t cb) -> void;
 auto linapple_set_mock_audio_callback(LinappleAudioCallback_t cb) -> void;
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 
-// Legacy C API forwarding inline functions for Linapple_* lifecycle routines
+auto GetTitleApple2() -> const char*;
+auto GetTitleApple2Plus() -> const char*;
+auto GetTitleApple2e() -> const char*;
+auto GetTitleApple2eEnhanced() -> const char*;
+
 static inline auto Linapple_Init() -> void { linapple_init(); }
 static inline auto Linapple_RegisterPeripherals() -> void {
   linapple_register_peripherals();

@@ -19,7 +19,6 @@
 #include "apple2/Memory.h"
 #include "apple2/CPU.h"
 #include "core/Log.h"
-#include "core/Common_Globals.h"
 #include "frontends/common/VideoStretch.h"
 #include "core/Asset.h"
 

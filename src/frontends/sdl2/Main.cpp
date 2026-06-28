@@ -7,7 +7,6 @@
 #include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "frontends/common/AppArgs.h"

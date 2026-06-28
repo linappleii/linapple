@@ -39,7 +39,6 @@
 #include "apple2/peripherals/disk/formats/NibDriver.h"
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Util_Text.h"

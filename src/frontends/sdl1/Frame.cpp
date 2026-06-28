@@ -1,4 +1,3 @@
-#include "core/Common_Globals.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -44,7 +43,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "frontends/common/VideoStretch.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"

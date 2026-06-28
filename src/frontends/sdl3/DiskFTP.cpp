@@ -16,7 +16,6 @@
 
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "frontends/common/FileBrowser.h"

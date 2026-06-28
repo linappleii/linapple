@@ -16,7 +16,6 @@
 #include "apple2/Video.h"
 #include "frontends/common/VideoStretch.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"

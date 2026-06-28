@@ -12,7 +12,6 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,

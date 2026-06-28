@@ -14,7 +14,6 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Resource.h"
 

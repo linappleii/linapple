@@ -13,7 +13,6 @@
 
 #include "LinAppleCore.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
 

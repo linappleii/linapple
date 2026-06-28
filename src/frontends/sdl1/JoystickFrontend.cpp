@@ -9,7 +9,6 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
