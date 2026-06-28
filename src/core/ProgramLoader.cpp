@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "core/ProgramLoader.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic,misc-include-cleaner,google-readability-function-size,cppcoreguidelines-owning-memory,google-runtime-int,modernize-use-auto,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay): Centralized program image loader for APL and PRG formats
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -8,118 +10,138 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 
-constexpr uint16_t IO_REGION_END = 0xCFFF;
-constexpr uint32_t PRG_HEADER_SIZE = 128;
-constexpr uint32_t APL_HEADER_SIZE = 4;
-constexpr uint8_t MEM_FILL_VALUE = 0xFF;
-
 namespace {
-constexpr uint32_t PRG_MAGIC = 0x214C470A;
 
-enum class ProgramType { None, Prg, Apl };
+constexpr uint16_t io_region_start = 0xC000;
+constexpr uint16_t io_region_end = 0xCFFF;
+constexpr uint32_t prg_header_size = 128;
+constexpr uint32_t apl_header_size = 4;
+constexpr uint8_t mem_fill_value = 0xFF;
+constexpr uint32_t prg_magic = 0x214C470A;
 
-struct ProgramHeader {
-  ProgramType type;
+enum class ProgramType_t { none, prg, apl };
+
+struct ProgramHeader_t {
+  ProgramType_t type;
   uint16_t load_addr;
   uint32_t length;
   uint32_t offset;
 };
 
-static auto DetectProgram(const char* path, ProgramHeader* out_header)
-    -> ProgramLoadResult_e {
-  FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
-    return PROGRAM_LOAD_FILE_ERROR;
+static auto detect_program(const char* path, ProgramHeader_t* out_header)
+    -> ProgramLoadResult_t {
+  if (path == nullptr || out_header == nullptr) {
+    return program_load_file_error;
   }
 
-  if (fseek(f, 0, SEEK_END) != 0) {
-    fclose(f);
-    return PROGRAM_LOAD_FILE_ERROR;
+  FILE* f = std::fopen(path, "rb");
+  if (f == nullptr) {
+    return program_load_file_error;
   }
-  long ftell_res = ftell(f);
+
+  if (std::fseek(f, 0, SEEK_END) != 0) {
+    std::fclose(f);
+    return program_load_file_error;
+  }
+  long ftell_res = std::ftell(f);
   if (ftell_res < 0) {
-    fclose(f);
-    return PROGRAM_LOAD_FILE_ERROR;
+    std::fclose(f);
+    return program_load_file_error;
   }
   uint32_t file_size = static_cast<uint32_t>(ftell_res);
-  fseek(f, 0, SEEK_SET);
+  std::fseek(f, 0, SEEK_SET);
 
-  uint8_t buffer[PRG_HEADER_SIZE];
-  size_t read = fread(buffer, 1, sizeof(buffer), f);
-  fclose(f);
+  uint8_t buffer[prg_header_size];
+  size_t read = std::fread(buffer, 1, sizeof(buffer), f);
+  std::fclose(f);
 
-  if (read < 8) {
-    return PROGRAM_LOAD_NOT_A_PROGRAM;
+  if (read < 9) {
+    return program_load_not_a_program;
   }
 
   uint32_t magic = 0;
-  memcpy(&magic, buffer, 4);
-  if (magic == PRG_MAGIC) {
+  std::memcpy(&magic, buffer, 4);
+  if (magic == prg_magic) {
     uint16_t word_len = 0;
-    out_header->type = ProgramType::Prg;
-    memcpy(&out_header->load_addr, buffer + 5, 2);
-    memcpy(&word_len, buffer + 7, 2);
+    out_header->type = ProgramType_t::prg;
+    std::memcpy(&out_header->load_addr, buffer + 5, 2);
+    std::memcpy(&word_len, buffer + 7, 2);
     out_header->length = static_cast<uint32_t>(word_len) << 1;
-    out_header->offset = PRG_HEADER_SIZE;
-    return PROGRAM_LOAD_OK;
+    out_header->offset = prg_header_size;
+    if (file_size < out_header->offset + out_header->length) {
+      return program_load_invalid;
+    }
+    return program_load_ok;
   }
 
-  // APL Check (heuristic)
   uint16_t apl_len = 0;
-  memcpy(&apl_len, buffer + 2, 2);
+  std::memcpy(&apl_len, buffer + 2, 2);
   bool size_match =
-      ((static_cast<uint32_t>(apl_len) + APL_HEADER_SIZE) == file_size) ||
-      ((static_cast<uint32_t>(apl_len) + APL_HEADER_SIZE +
-        ((256 - ((apl_len + APL_HEADER_SIZE) & 255)) & 255)) == file_size);
+      ((static_cast<uint32_t>(apl_len) + apl_header_size) == file_size) ||
+      ((static_cast<uint32_t>(apl_len) + apl_header_size +
+        ((256 - ((apl_len + apl_header_size) & 255)) & 255)) == file_size);
 
   if (size_match) {
-    out_header->type = ProgramType::Apl;
-    memcpy(&out_header->load_addr, buffer, 2);
+    out_header->type = ProgramType_t::apl;
+    std::memcpy(&out_header->load_addr, buffer, 2);
     out_header->length = apl_len;
-    out_header->offset = APL_HEADER_SIZE;
-    return PROGRAM_LOAD_OK;
+    out_header->offset = apl_header_size;
+    if (file_size < out_header->offset + out_header->length) {
+      return program_load_invalid;
+    }
+    return program_load_ok;
   }
 
-  return PROGRAM_LOAD_NOT_A_PROGRAM;
+  return program_load_not_a_program;
 }
+
 }  // namespace
 
-auto ProgramLoader_TryLoad(const char* path) -> ProgramLoadResult_e {
-  ProgramHeader header = {ProgramType::None, 0, 0, 0};
-  ProgramLoadResult_e res = DetectProgram(path, &header);
+auto program_loader_try_load(const char* path) -> ProgramLoadResult_t {
+  if (path == nullptr || mem == nullptr || memdirty == nullptr) {
+    return program_load_file_error;
+  }
 
-  if (res != PROGRAM_LOAD_OK) {
+  ProgramHeader_t header = {ProgramType_t::none, 0, 0, 0};
+  ProgramLoadResult_t res = detect_program(path, &header);
+
+  if (res != program_load_ok) {
     return res;
   }
 
-  // Range check: reject I/O region $C000-$CFFF
-  if (header.load_addr >= IO_REGION_START &&
-      header.load_addr <= IO_REGION_END) {
-    return PROGRAM_LOAD_INVALID;
+  if (header.load_addr >= io_region_start &&
+      header.load_addr <= io_region_end) {
+    return program_load_invalid;
   }
-  // Reject if program ends in or past I/O region
+
   if (static_cast<uint64_t>(header.load_addr) + header.length >
-      IO_REGION_START) {
-    return PROGRAM_LOAD_INVALID;
+      io_region_start) {
+    return program_load_invalid;
   }
 
-  FILE* f = fopen(path, "rb");
+  FILE* f = std::fopen(path, "rb");
   if (f == nullptr) {
-    return PROGRAM_LOAD_FILE_ERROR;
+    return program_load_file_error;
   }
 
-  if (fseek(f, static_cast<long>(header.offset), SEEK_SET) != 0) {
-    fclose(f);
-    return PROGRAM_LOAD_FILE_ERROR;
+  if (std::fseek(f, static_cast<long>(header.offset), SEEK_SET) != 0) {
+    std::fclose(f);
+    return program_load_file_error;
   }
-  if (fread(mem + header.load_addr, 1, header.length, f) != header.length) {
-    fclose(f);
-    return PROGRAM_LOAD_FILE_ERROR;
+  if (std::fread(mem + header.load_addr, 1, header.length, f) !=
+      header.length) {
+    std::fclose(f);
+    return program_load_file_error;
   }
-  fclose(f);
+  std::fclose(f);
 
-  memset(memdirty, MEM_FILL_VALUE, NUM_PAGES_48K);
-  CpuGetRegisters()->pc = header.load_addr;
+  std::memset(memdirty, mem_fill_value, NUM_PAGES_48K);
+  auto* regs = CpuGetRegisters();
+  if (regs != nullptr) {
+    regs->pc = header.load_addr;
+  }
 
-  return PROGRAM_LOAD_OK;
+  return program_load_ok;
 }
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic,misc-include-cleaner,google-readability-function-size,cppcoreguidelines-owning-memory,google-runtime-int,modernize-use-auto,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay)

@@ -1,28 +1,34 @@
-/*
- * ProgramLoader.h - Centralised program image loading (APL/PRG)
- */
-
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum ProgramLoadResult_e {
-  PROGRAM_LOAD_OK = 0,
-  PROGRAM_LOAD_NOT_A_PROGRAM = 1, /* file is not APL or PRG format */
-  PROGRAM_LOAD_FILE_ERROR = 2,    /* could not open or read file */
-  PROGRAM_LOAD_INVALID = 3        /* header valid but data out of range */
-};
+typedef enum {
+  program_load_ok = 0,
+  program_load_not_a_program = 1,
+  program_load_file_error = 2,
+  program_load_invalid = 3,
 
-/**
- * @brief Attempt to load the file as an APL or PRG image.
- *
- * Returns PROGRAM_LOAD_NOT_A_PROGRAM if the file is neither format,
- * allowing the caller to fall through to disk insertion.
- */
-enum ProgramLoadResult_e ProgramLoader_TryLoad(const char* path);
+  PROGRAM_LOAD_OK = program_load_ok,
+  PROGRAM_LOAD_NOT_A_PROGRAM = program_load_not_a_program,
+  PROGRAM_LOAD_FILE_ERROR = program_load_file_error,
+  PROGRAM_LOAD_INVALID = program_load_invalid
+} ProgramLoadResult_t;
+
+typedef ProgramLoadResult_t ProgramLoadResult_e;
+typedef ProgramLoadResult_t ProgramLoadResult;
+
+auto program_loader_try_load(const char* path) -> ProgramLoadResult_t;
 
 #ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+static inline auto ProgramLoader_TryLoad(const char* path)
+    -> ProgramLoadResult_t {
+  return program_loader_try_load(path);
 }
 #endif
