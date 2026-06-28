@@ -633,8 +633,8 @@ auto RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
   if (IOReadCx == nullptr) {
     IOReadCx = IORead_Cxxx;
   }
-  if (IOWriteCx == nullptr) IOWriteCx = {
-    IOWrite_Cxxx;
+  if (IOWriteCx == nullptr) {
+    IOWriteCx = IOWrite_Cxxx;
   }
 
   IORead[NUM_PAGES_64K + uSlot] = IOReadCx;
