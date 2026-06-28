@@ -145,7 +145,7 @@ set(SOURCES_CORE
     src/core/Log.cpp
     src/core/ProgramLoader.cpp
     src/core/Registry.cpp
-    src/core/asset.cpp
+    src/core/Asset.cpp
     src/core/Peripheral.cpp
     src/core/Peripheral_Internal.cpp
     src/frontends/common/AppArgs.cpp

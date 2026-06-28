@@ -21,7 +21,7 @@
 #include "core/Log.h"
 #include "core/Common_Globals.h"
 #include "frontends/common/VideoStretch.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 
 #include "charset40.xpm" // US/default
 

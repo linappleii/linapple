@@ -13,7 +13,7 @@
 #include <thread>
 
 #include "core/Common.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,

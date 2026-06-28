@@ -49,7 +49,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/DiskUI.h"

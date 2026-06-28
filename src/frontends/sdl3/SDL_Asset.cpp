@@ -2,7 +2,7 @@
 #include <SDL3_image/SDL_image.h>
 
 #include "core/Util_Path.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 #include "icon.xpm"
 
 auto Asset_LoadBMP(const char* filename) -> SDL_Surface* {

@@ -25,7 +25,7 @@
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
 #include "core/ProgramLoader.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables):
 // Core emulator lifecycle, cycle accounting, and binary program file loading

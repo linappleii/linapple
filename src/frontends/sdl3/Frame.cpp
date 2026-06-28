@@ -53,7 +53,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
-#include "core/asset.h"
+#include "core/Asset.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/DiskUI.h"
