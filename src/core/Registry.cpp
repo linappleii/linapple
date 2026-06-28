@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "core/Registry.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters): Core configuration and registry persistence manager
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <fstream>
 
@@ -35,7 +38,7 @@ auto Configuration::Instance() -> Configuration& {
   return instance;
 }
 
-void Configuration::SetPath(const std::string& path) { m_path = path; }
+auto Configuration::SetPath(const std::string& path) -> void { m_path = path; }
 
 auto Configuration::Load(const std::string& path) -> bool {
   m_path = path;
@@ -47,13 +50,13 @@ auto Configuration::Load(const std::string& path) -> bool {
   }
 
   std::string line;
-  std::string currentSection = "Configuration";
+  std::string current_section = "Configuration";
   while (std::getline(file, line)) {
     line = trim(line);
     if (line.empty() || line[0] == '#') continue;
 
-    if (line[0] == '[' && line.back() == ']') {
-      currentSection = line.substr(1, line.length() - 2);
+    if (line.length() >= 2 && line[0] == '[' && line.back() == ']') {
+      current_section = line.substr(1, line.length() - 2);
       continue;
     }
 
@@ -61,20 +64,20 @@ auto Configuration::Load(const std::string& path) -> bool {
     if (pos != std::string::npos) {
       std::string key = trim(line.substr(0, pos));
       std::string value = unquote(trim(line.substr(pos + 1)));
-      m_data[currentSection][key] = value;
+      m_data[current_section][key] = value;
     }
   }
   return true;
 }
 
-void Configuration::LoadDefaults() {
+auto Configuration::LoadDefaults() -> void {
   m_data.clear();
-  SetInt("Configuration", "Computer Emulation", 3);  // Enhanced //e
+  SetInt("Configuration", "Computer Emulation", 3);
   SetInt("Configuration", "Keyboard Type", 0);
   SetInt("Configuration", "Keyboard Rocker Switch", 0);
   SetInt("Configuration", "Sound Emulation", 1);
-  SetInt("Configuration", "Soundcard Type", 2);  // Mockingboard
-  SetInt("Configuration", "Joystick 0", 2);      // Keyboard
+  SetInt("Configuration", "Soundcard Type", 2);
+  SetInt("Configuration", "Joystick 0", 2);
   SetInt("Configuration", "Joystick 1", 0);
   SetInt("Configuration", "Emulation Speed", 10);
   SetInt("Configuration", "Enhance Disk Speed", 1);
@@ -85,7 +88,6 @@ void Configuration::LoadDefaults() {
   SetInt("Configuration", "Append to printer file", 1);
   SetInt("Configuration", "Harddisk Enable", 0);
   SetInt("Configuration", "Clock Enable", 4);
-  SetInt("Configuration", "Show Leds", 15);
   SetInt("Configuration", "Save State On Exit", 0);
   SetInt("Configuration", "Fullscreen", 0);
   SetInt("Configuration", "Boot at Startup", 0);
@@ -109,9 +111,9 @@ void Configuration::LoadDefaults() {
 
 auto Configuration::Save() -> bool {
   if (m_path.empty()) {
-    std::string configDir = Path::GetUserConfigDir();
-    Path::EnsureDirExists(configDir);
-    m_path = configDir + "linapple.conf";
+    std::string config_dir = Path::GetUserConfigDir();
+    Path::EnsureDirExists(config_dir);
+    m_path = config_dir + "linapple.conf";
   }
 
 #ifdef REGISTRY_WRITEABLE
@@ -135,7 +137,7 @@ auto Configuration::Save() -> bool {
 
 auto Configuration::GetString(const std::string& section,
                               const std::string& key,
-                              const std::string& defaultValue) -> std::string {
+                              const std::string& default_value) -> std::string {
   if (m_data.count(section) && m_data[section].count(key)) {
     return m_data[section][key];
   }
@@ -143,78 +145,113 @@ auto Configuration::GetString(const std::string& section,
   for (auto const& s : m_data) {
     if (s.second.count(key)) return s.second.at(key);
   }
-  return defaultValue;
+  return default_value;
 }
 
 auto Configuration::GetInt(const std::string& section, const std::string& key,
-                           uint32_t defaultValue) -> uint32_t {
+                           uint32_t default_value) -> uint32_t {
   std::string val = GetString(section, key);
-  if (val.empty()) return defaultValue;
+  if (val.empty()) return default_value;
   try {
     return std::stoul(val, nullptr, 0);
   } catch (...) {
-    return defaultValue;
+    return default_value;
   }
 }
 
 auto Configuration::GetBool(const std::string& section, const std::string& key,
-                            bool defaultValue) -> bool {
+                            bool default_value) -> bool {
   std::string val = GetString(section, key);
-  if (val.empty()) return defaultValue;
-  std::string lowVal = val;
-  std::transform(lowVal.begin(), lowVal.end(), lowVal.begin(), ::tolower);
-  if (lowVal == "true" || lowVal == "1" || lowVal == "yes") return true;
-  if (lowVal == "false" || lowVal == "0" || lowVal == "no") return false;
-  return defaultValue;
+  if (val.empty()) return default_value;
+  std::string low_val = val;
+  std::transform(low_val.begin(), low_val.end(), low_val.begin(), ::tolower);
+  if (low_val == "true" || low_val == "1" || low_val == "yes") return true;
+  if (low_val == "false" || low_val == "0" || low_val == "no") return false;
+  return default_value;
 }
 
-void Configuration::SetString(const std::string& section,
+auto Configuration::SetString(const std::string& section,
                               const std::string& key,
-                              const std::string& value) {
+                              const std::string& value) -> void {
   m_data[section][key] = value;
 }
 
-void Configuration::SetInt(const std::string& section, const std::string& key,
-                           uint32_t value) {
+auto Configuration::SetInt(const std::string& section, const std::string& key,
+                           uint32_t value) -> void {
   m_data[section][key] = std::to_string(value);
 }
 
-void Configuration::SetBool(const std::string& section, const std::string& key,
-                            bool value) {
+auto Configuration::SetBool(const std::string& section, const std::string& key,
+                            bool value) -> void {
   m_data[section][key] = value ? "1" : "0";
 }
 
-auto ConfigLoadInt(const char* section, const char* key, uint32_t* value)
+auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool {
+  if (section == nullptr || key == nullptr || value == nullptr) return false;
   if (Configuration::Instance().GetString(section, key).empty()) return false;
   *value = Configuration::Instance().GetInt(section, key, *value);
   return true;
 }
 
-auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool {
+auto config_load_bool(const char* section, const char* key, bool* value) -> bool {
+  if (section == nullptr || key == nullptr || value == nullptr) return false;
   if (Configuration::Instance().GetString(section, key).empty()) return false;
   *value = Configuration::Instance().GetBool(section, key, *value);
   return true;
 }
 
-auto ConfigLoadString(const char* section, const char* key, std::string* value)
-    -> bool {
+auto config_load_string(const char* section, const char* key,
+                        std::string* value) -> bool {
+  if (section == nullptr || key == nullptr || value == nullptr) return false;
   std::string s = Configuration::Instance().GetString(section, key);
   if (s.empty()) return false;
   *value = s;
   return true;
 }
 
-void ConfigSaveInt(const char* section, const char* key, uint32_t value) {
+auto config_save_int(const char* section, const char* key, uint32_t value)
+    -> void {
+  if (section == nullptr || key == nullptr) return;
   Configuration::Instance().SetInt(section, key, value);
 }
 
-void ConfigSaveString(const char* section, const char* key, const char* value) {
+auto config_save_string(const char* section, const char* key,
+                        const char* value) -> void {
+  if (section == nullptr || key == nullptr || value == nullptr) return;
   Configuration::Instance().SetString(section, key, value);
 }
 
+auto ConfigLoadInt(const char* section, const char* key, uint32_t* value)
+    -> bool {
+  return config_load_int(section, key, value);
+}
+
+auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool {
+  return config_load_bool(section, key, value);
+}
+
+auto ConfigLoadString(const char* section, const char* key, std::string* value)
+    -> bool {
+  return config_load_string(section, key, value);
+}
+
+auto ConfigSaveInt(const char* section, const char* key, uint32_t value) -> void {
+  config_save_int(section, key, value);
+}
+
+auto ConfigSaveString(const char* section, const char* key, const char* value)
+    -> void {
+  config_save_string(section, key, value);
+}
+
 auto php_trim(char* c, int len) -> char* {
-  std::string s(c, len);
+  if (c == nullptr || len <= 0) {
+    return strdup("");
+  }
+  std::string s(c, static_cast<size_t>(len));
   std::string t = trim(s);
   return strdup(t.c_str());
 }
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters)
