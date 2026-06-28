@@ -1,12 +1,5 @@
-/*
- * LinAppleCore.h - The public API for the LinApple Emulator Core.
- *
- * This header defines the contract between the platform-agnostic emulation
- * core and any frontend (SDL3, GTK4, Headless, etc.).
- */
-
-#ifndef LINAPPLE_CORE_H
-#define LINAPPLE_CORE_H
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -20,313 +13,245 @@
 extern "C" {
 #endif
 
-// --- Lifecycle Management ---
+// Callback signatures for core outputs
+using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
+                                         int height, int pitch);
+using LinappleAudioCallback_t = void (*)(const int16_t* samples,
+                                         size_t num_samples);
+using LinappleTitleCallback_t = void (*)(const char* title);
 
-/**
- * @brief Initialize the emulator core and its internal state.
- *
- * This must be called before any other Linapple_ function.
- * It sets up the virtual Apple II hardware, memory, and CPU.
- */
-void Linapple_Init();
+// Legacy callback aliases for backwards compatibility
+using LinappleVideoCallback = LinappleVideoCallback_t;
+using LinappleAudioCallback = LinappleAudioCallback_t;
+using LinappleTitleCallback = LinappleTitleCallback_t;
 
-/**
- * @brief Register standard peripherals in their slots.
- *
- * Peripherals will read their startup configuration from the registry
- * during this call.
- */
-void Linapple_RegisterPeripherals();
+// LinApple agnostic key codes
+enum LinAppleKey_t {
+  linapple_key_unknown = 0,
+  linapple_key_return = 0x0D,
+  linapple_key_escape = 0x1B,
+  linapple_key_backspace = 0x08,
+  linapple_key_tab = 0x09,
+  linapple_key_space = 0x20,
 
-/**
- * @brief Clean up resources and shut down the emulator core.
- */
-void Linapple_Shutdown();
+  linapple_key_up = 0x100,
+  linapple_key_down,
+  linapple_key_left,
+  linapple_key_right,
+  linapple_key_pageup,
+  linapple_key_pagedown,
+  linapple_key_home,
+  linapple_key_end,
+  linapple_key_insert,
+  linapple_key_delete,
+  linapple_key_pause,
+  linapple_key_scrolllock,
+  linapple_key_capslock,
+  linapple_key_print,
 
-/**
- * @brief Run a headless CPU test from a file.
- */
-void Linapple_CpuTest(const char* szTestFile, uint16_t trap_addr);
+  linapple_key_f1 = 0x200,
+  linapple_key_f2,
+  linapple_key_f3,
+  linapple_key_f4,
+  linapple_key_f5,
+  linapple_key_f6,
+  linapple_key_f7,
+  linapple_key_f8,
+  linapple_key_f9,
+  linapple_key_f10,
+  linapple_key_f11,
+  linapple_key_f12,
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-/**
- * @brief Get the number of milliseconds since the emulator started.
- */
-auto Linapple_GetTicks() -> uint32_t;
-#ifdef __cplusplus
-}
-#endif
+  linapple_key_kp_0 = 0x300,
+  linapple_key_kp_1,
+  linapple_key_kp_2,
+  linapple_key_kp_3,
+  linapple_key_kp_4,
+  linapple_key_kp_5,
+  linapple_key_kp_6,
+  linapple_key_kp_7,
+  linapple_key_kp_8,
+  linapple_key_kp_9,
+  linapple_key_kp_plus,
+  linapple_key_kp_minus,
+  linapple_key_kp_multiply,
+  linapple_key_kp_divide,
+  linapple_key_kp_enter,
+  linapple_key_kp_period,
 
-/**
- * @brief Attempt to load an APL or PRG program image directly into emulated
- * RAM.
- *
- * @param path Path to the program file.
- * @return 0 on success, non-zero if not a supported program or load failed.
- */
-int Linapple_LoadProgram(const char* path);
-
-// --- Peripheral Management ---
-
-/**
- * @brief Initialize the peripheral manager.
- */
-void Peripheral_Manager_Init();
-
-/**
- * @brief Reset all registered peripherals.
- */
-void Peripheral_Manager_Reset();
-
-/**
- * @brief Shutdown all registered peripherals.
- */
-void Peripheral_Manager_Shutdown();
-
-/**
- * @brief Process one frame of thinking for all peripherals.
- */
-void Peripheral_Manager_Think(uint32_t cycles);
-
-/**
- * @brief Notify all peripherals of a vertical blanking signal.
- */
-void Peripheral_Manager_OnVBlank(bool vblank);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-// Thread-safe; returns PERIPHERAL_ERROR if size > PERIPHERAL_CMD_MAX_DATA or
-// slot is invalid.
-PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
-                                    size_t size);
-
-// Must be called from the emulation thread. Returns PERIPHERAL_ERROR if slot is
-// invalid or has no query handler.
-PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
-                                  size_t* out_size);
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef __cplusplus
-/**
- * @brief Unregister the peripheral in a specific slot.
- */
-int Peripheral_Unregister(int slot);
-
-/**
- * @brief Get the current peripheral manifest.
- */
-void Peripheral_GetManifest(void* manifest);
-
-/**
- * @brief Verify a peripheral manifest from a save state.
- */
-bool Peripheral_VerifyManifest(const void* manifest);
-
-/**
- * @brief Save the state of the peripheral in a specific slot.
- */
-void Peripheral_SaveState(int slot, void* buffer, size_t* size);
-
-/**
- * @brief Load the state of the peripheral in a specific slot.
- */
-void Peripheral_LoadState(int slot, const void* buffer, size_t size);
-#endif
-
-void Linapple_RegisterPeripherals();
-
-/**
- * @brief Get information about built-in hardware.
- */
-void Linapple_ListHardware();
-
-// --- Execution Control ---
-
-/**
- * @brief Run the emulator for a specific number of cycles.
- *
- * Typically called once per frame (approx. 17,030 cycles for Apple II).
- *
- * @param cycles Requested number of cycles to execute.
- * @return uint32_t Actual number of cycles executed.
- */
-auto Linapple_RunFrame(uint32_t cycles) -> uint32_t;
-
-// --- Input Handling ---
-
-/**
- * @brief LinApple agnostic key codes.
- */
-enum LinAppleKey {
-  LINAPPLE_KEY_UNKNOWN = 0,
-  // ASCII range 0x01 - 0x7F used for standard characters
-  LINAPPLE_KEY_RETURN = 0x0D,
-  LINAPPLE_KEY_ESCAPE = 0x1B,
-  LINAPPLE_KEY_BACKSPACE = 0x08,
-  LINAPPLE_KEY_TAB = 0x09,
-  LINAPPLE_KEY_SPACE = 0x20,
-
-  // Extended keys start at 0x100
-  LINAPPLE_KEY_UP = 0x100,
-  LINAPPLE_KEY_DOWN,
-  LINAPPLE_KEY_LEFT,
-  LINAPPLE_KEY_RIGHT,
-  LINAPPLE_KEY_PAGEUP,
-  LINAPPLE_KEY_PAGEDOWN,
-  LINAPPLE_KEY_HOME,
-  LINAPPLE_KEY_END,
-  LINAPPLE_KEY_INSERT,
-  LINAPPLE_KEY_DELETE,
-  LINAPPLE_KEY_PAUSE,
-  LINAPPLE_KEY_SCROLLLOCK,
-  LINAPPLE_KEY_CAPSLOCK,
-  LINAPPLE_KEY_PRINT,
-
-  LINAPPLE_KEY_F1 = 0x200,
-  LINAPPLE_KEY_F2,
-  LINAPPLE_KEY_F3,
-  LINAPPLE_KEY_F4,
-  LINAPPLE_KEY_F5,
-  LINAPPLE_KEY_F6,
-  LINAPPLE_KEY_F7,
-  LINAPPLE_KEY_F8,
-  LINAPPLE_KEY_F9,
-  LINAPPLE_KEY_F10,
-  LINAPPLE_KEY_F11,
-  LINAPPLE_KEY_F12,
-
-  // Numpad
-  LINAPPLE_KEY_KP_0 = 0x300,
-  LINAPPLE_KEY_KP_1,
-  LINAPPLE_KEY_KP_2,
-  LINAPPLE_KEY_KP_3,
-  LINAPPLE_KEY_KP_4,
-  LINAPPLE_KEY_KP_5,
-  LINAPPLE_KEY_KP_6,
-  LINAPPLE_KEY_KP_7,
-  LINAPPLE_KEY_KP_8,
-  LINAPPLE_KEY_KP_9,
-  LINAPPLE_KEY_KP_PLUS,
-  LINAPPLE_KEY_KP_MINUS,
-  LINAPPLE_KEY_KP_MULTIPLY,
-  LINAPPLE_KEY_KP_DIVIDE,
-  LINAPPLE_KEY_KP_ENTER,
-  LINAPPLE_KEY_KP_PERIOD,
-
-  // Modifiers (when needed as individual keys)
-  LINAPPLE_KEY_LSHIFT = 0x400,
-  LINAPPLE_KEY_RSHIFT,
-  LINAPPLE_KEY_LCTRL,
-  LINAPPLE_KEY_RCTRL,
-  LINAPPLE_KEY_LALT,
-  LINAPPLE_KEY_RALT,
-  LINAPPLE_KEY_LGUI,
-  LINAPPLE_KEY_RGUI,
-  LINAPPLE_KEY_MENU
+  linapple_key_lshift = 0x400,
+  linapple_key_rshift,
+  linapple_key_lctrl,
+  linapple_key_rctrl,
+  linapple_key_lalt,
+  linapple_key_ralt,
+  linapple_key_lgui,
+  linapple_key_rgui,
+  linapple_key_menu
 };
 
-/**
- * @brief Set the state of a specific Apple II key code.
- *
- * @param apple_code The 7-bit Apple II keyboard code.
- * @param down True if the key is pressed, false if released.
- */
-void Linapple_SetKeyState(uint8_t apple_code, bool down);
+using LinAppleKey = LinAppleKey_t;
 
-/**
- * @brief Set the state of the Apple II Caps Lock.
- */
-void Linapple_SetCapsLockState(bool enabled);
+// Legacy enum aliases for backwards compatibility
+constexpr LinAppleKey_t LINAPPLE_KEY_UNKNOWN = linapple_key_unknown;
+constexpr LinAppleKey_t LINAPPLE_KEY_RETURN = linapple_key_return;
+constexpr LinAppleKey_t LINAPPLE_KEY_ESCAPE = linapple_key_escape;
+constexpr LinAppleKey_t LINAPPLE_KEY_BACKSPACE = linapple_key_backspace;
+constexpr LinAppleKey_t LINAPPLE_KEY_TAB = linapple_key_tab;
+constexpr LinAppleKey_t LINAPPLE_KEY_SPACE = linapple_key_space;
+constexpr LinAppleKey_t LINAPPLE_KEY_UP = linapple_key_up;
+constexpr LinAppleKey_t LINAPPLE_KEY_DOWN = linapple_key_down;
+constexpr LinAppleKey_t LINAPPLE_KEY_LEFT = linapple_key_left;
+constexpr LinAppleKey_t LINAPPLE_KEY_RIGHT = linapple_key_right;
+constexpr LinAppleKey_t LINAPPLE_KEY_PAGEUP = linapple_key_pageup;
+constexpr LinAppleKey_t LINAPPLE_KEY_PAGEDOWN = linapple_key_pagedown;
+constexpr LinAppleKey_t LINAPPLE_KEY_HOME = linapple_key_home;
+constexpr LinAppleKey_t LINAPPLE_KEY_END = linapple_key_end;
+constexpr LinAppleKey_t LINAPPLE_KEY_INSERT = linapple_key_insert;
+constexpr LinAppleKey_t LINAPPLE_KEY_DELETE = linapple_key_delete;
+constexpr LinAppleKey_t LINAPPLE_KEY_PAUSE = linapple_key_pause;
+constexpr LinAppleKey_t LINAPPLE_KEY_SCROLLLOCK = linapple_key_scrolllock;
+constexpr LinAppleKey_t LINAPPLE_KEY_CAPSLOCK = linapple_key_capslock;
+constexpr LinAppleKey_t LINAPPLE_KEY_PRINT = linapple_key_print;
+constexpr LinAppleKey_t LINAPPLE_KEY_F1 = linapple_key_f1;
+constexpr LinAppleKey_t LINAPPLE_KEY_F2 = linapple_key_f2;
+constexpr LinAppleKey_t LINAPPLE_KEY_F3 = linapple_key_f3;
+constexpr LinAppleKey_t LINAPPLE_KEY_F4 = linapple_key_f4;
+constexpr LinAppleKey_t LINAPPLE_KEY_F5 = linapple_key_f5;
+constexpr LinAppleKey_t LINAPPLE_KEY_F6 = linapple_key_f6;
+constexpr LinAppleKey_t LINAPPLE_KEY_F7 = linapple_key_f7;
+constexpr LinAppleKey_t LINAPPLE_KEY_F8 = linapple_key_f8;
+constexpr LinAppleKey_t LINAPPLE_KEY_F9 = linapple_key_f9;
+constexpr LinAppleKey_t LINAPPLE_KEY_F10 = linapple_key_f10;
+constexpr LinAppleKey_t LINAPPLE_KEY_F11 = linapple_key_f11;
+constexpr LinAppleKey_t LINAPPLE_KEY_F12 = linapple_key_f12;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_0 = linapple_key_kp_0;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_1 = linapple_key_kp_1;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_2 = linapple_key_kp_2;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_3 = linapple_key_kp_3;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_4 = linapple_key_kp_4;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_5 = linapple_key_kp_5;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_6 = linapple_key_kp_6;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_7 = linapple_key_kp_7;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_8 = linapple_key_kp_8;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_9 = linapple_key_kp_9;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_PLUS = linapple_key_kp_plus;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_MINUS = linapple_key_kp_minus;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_MULTIPLY = linapple_key_kp_multiply;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_DIVIDE = linapple_key_kp_divide;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_ENTER = linapple_key_kp_enter;
+constexpr LinAppleKey_t LINAPPLE_KEY_KP_PERIOD = linapple_key_kp_period;
+constexpr LinAppleKey_t LINAPPLE_KEY_LSHIFT = linapple_key_lshift;
+constexpr LinAppleKey_t LINAPPLE_KEY_RSHIFT = linapple_key_rshift;
+constexpr LinAppleKey_t LINAPPLE_KEY_LCTRL = linapple_key_lctrl;
+constexpr LinAppleKey_t LINAPPLE_KEY_RCTRL = linapple_key_rctrl;
+constexpr LinAppleKey_t LINAPPLE_KEY_LALT = linapple_key_lalt;
+constexpr LinAppleKey_t LINAPPLE_KEY_RALT = linapple_key_ralt;
+constexpr LinAppleKey_t LINAPPLE_KEY_LGUI = linapple_key_lgui;
+constexpr LinAppleKey_t LINAPPLE_KEY_RGUI = linapple_key_rgui;
+constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
 
-/**
- * @brief Set the state of a special Apple key (Open/Closed Apple).
- *
- * @param key Key identifier (e.g., 0 for Open Apple, 1 for Closed Apple).
- * @param down True if pressed, false if released.
- */
-void Linapple_SetAppleKey(int key, bool down);
+// Core Lifecycle API
+auto linapple_init() -> void;
+auto linapple_register_peripherals() -> void;
+auto linapple_shutdown() -> void;
+auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;
+auto linapple_get_ticks() -> uint32_t;
+auto linapple_load_program(const char* path) -> int;
+auto linapple_list_hardware() -> void;
+auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 
-/**
- * @brief Update joystick axis position.
- *
- * @param axis Axis index (0 for X, 1 for Y).
- * @param value Axis value, typically ranging from -32768 to 32767.
- */
-void Linapple_SetJoystickAxis(int axis, int value);
+// Peripheral Management API (Implemented in Peripheral.cpp and
+// Peripheral_Internal.cpp)
+auto Peripheral_Manager_Init() -> void;
+auto Peripheral_Manager_Reset() -> void;
+auto Peripheral_Manager_Shutdown() -> void;
+auto Peripheral_Manager_Think(uint32_t cycles) -> void;
+auto Peripheral_Manager_OnVBlank(bool vblank) -> void;
+auto Peripheral_IsAnyActive() -> bool;
+auto Linapple_ListHardware() -> void;
 
-/**
- * @brief Set the state of a joystick button.
- *
- * @param button Button index (0 or 1).
- * @param down True if pressed, false if released.
- */
-void Linapple_SetJoystickButton(int button, bool down);
+PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
+                                    size_t size);
+PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
+                                  size_t* out_size);
 
-// --- Output Callbacks ---
+#ifdef __cplusplus
+auto Peripheral_Unregister(int slot) -> int;
+auto Peripheral_GetManifest(void* manifest) -> void;
+auto Peripheral_VerifyManifest(const void* manifest) -> bool;
+auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void;
+auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void;
+#endif
 
-/**
- * @brief Callback signature for video frame updates.
- *
- * @param pixels Pointer to the 32-bit RGBA pixel data.
- * @param width Width of the frame in pixels.
- * @param height Height of the frame in pixels.
- * @param pitch Number of bytes per row of pixels.
- */
-using LinappleVideoCallback = void (*)(const uint32_t* pixels, int width,
-                                       int height, int pitch);
+// Input Handling API
+auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
+auto linapple_set_caps_lock_state(bool enabled) -> void;
+auto linapple_set_apple_key(int key, bool down) -> void;
+auto linapple_set_joystick_axis(int axis, int value) -> void;
+auto linapple_set_joystick_button(int button, bool down) -> void;
 
-/**
- * @brief Callback signature for audio sample updates.
- *
- * @param samples Pointer to interleaved 16-bit signed stereo samples.
- * @param num_samples Number of samples (frames * channels).
- */
-using LinappleAudioCallback = void (*)(const int16_t* samples,
-                                       size_t num_samples);
+// Output Callbacks API
+auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
+auto linapple_set_audio_callback(LinappleAudioCallback_t cb) -> void;
+auto linapple_set_mock_audio_callback(LinappleAudioCallback_t cb) -> void;
+auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
+auto linapple_update_title(const char* title) -> void;
 
-/**
- * @brief Callback signature for window title updates.
- */
-using LinappleTitleCallback = void (*)(const char* title);
-
-/**
- * @brief Register a callback for video frame rendering.
- */
-void Linapple_SetVideoCallback(LinappleVideoCallback cb);
-
-/**
- * @brief Register a callback for audio sample output.
- */
-void Linapple_SetAudioCallback(LinappleAudioCallback cb);
-
-/**
- * @brief Register a callback for expansion audio (Mockingboard).
- */
-void Linapple_SetMockAudioCallback(LinappleAudioCallback cb);
-
-/**
- * @brief Check if any peripheral is currently active (e.g. disk motor
- * spinning).
- */
-bool Peripheral_IsAnyActive();
-
-/**
- * @brief Register a callback for window title updates.
- */
-void Linapple_SetTitleCallback(LinappleTitleCallback cb);
-
-/**
- * @brief Update the window title through the registered callback.
- */
-void Linapple_UpdateTitle(const char* title);
+// Legacy C API forwarding inline functions for Linapple_* lifecycle routines
+static inline auto Linapple_Init() -> void { linapple_init(); }
+static inline auto Linapple_RegisterPeripherals() -> void {
+  linapple_register_peripherals();
+}
+static inline auto Linapple_Shutdown() -> void { linapple_shutdown(); }
+static inline auto Linapple_CpuTest(const char* test_file, uint16_t trap_addr)
+    -> void {
+  linapple_cpu_test(test_file, trap_addr);
+}
+static inline auto Linapple_GetTicks() -> uint32_t {
+  return linapple_get_ticks();
+}
+static inline auto Linapple_LoadProgram(const char* path) -> int {
+  return linapple_load_program(path);
+}
+static inline auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
+  return linapple_run_frame(cycles);
+}
+static inline auto Linapple_SetKeyState(uint8_t apple_code, bool down) -> void {
+  linapple_set_key_state(apple_code, down);
+}
+static inline auto Linapple_SetCapsLockState(bool enabled) -> void {
+  linapple_set_caps_lock_state(enabled);
+}
+static inline auto Linapple_SetAppleKey(int key, bool down) -> void {
+  linapple_set_apple_key(key, down);
+}
+static inline auto Linapple_SetJoystickAxis(int axis, int value) -> void {
+  linapple_set_joystick_axis(axis, value);
+}
+static inline auto Linapple_SetJoystickButton(int button, bool down) -> void {
+  linapple_set_joystick_button(button, down);
+}
+static inline auto Linapple_SetVideoCallback(LinappleVideoCallback_t cb)
+    -> void {
+  linapple_set_video_callback(cb);
+}
+static inline auto Linapple_SetAudioCallback(LinappleAudioCallback_t cb)
+    -> void {
+  linapple_set_audio_callback(cb);
+}
+static inline auto Linapple_SetMockAudioCallback(LinappleAudioCallback_t cb)
+    -> void {
+  linapple_set_mock_audio_callback(cb);
+}
+static inline auto Linapple_SetTitleCallback(LinappleTitleCallback_t cb)
+    -> void {
+  linapple_set_title_callback(cb);
+}
+static inline auto Linapple_UpdateTitle(const char* title) -> void {
+  linapple_update_title(title);
+}
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif  // LINAPPLE_CORE_H
