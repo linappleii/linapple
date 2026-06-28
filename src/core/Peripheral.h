@@ -1,9 +1,5 @@
-/*
- * Peripheral.h - The LinApple Peripheral ABI
- */
-
-#ifndef LINAPPLE_PERIPHERAL_H
-#define LINAPPLE_PERIPHERAL_H
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -23,9 +19,12 @@ enum {
   PERIPHERAL_MASK_INTERNAL = 0x01,
   PERIPHERAL_MASK_EXPANSION = 0xFE
 };
+
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
                                        uint8_t val, uint32_t cycles_left);
+
+typedef PeripheralIOHandler PeripheralIoHandler_t;
 
 typedef struct {
   void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
@@ -58,9 +57,6 @@ typedef struct {
 // Forward declaration
 struct Peripheral_t;
 
-/**
- * @brief The interface a peripheral must implement.
- */
 typedef struct Peripheral_t {
   int abi_version;
   const char* id;           // Namespaced ID (e.g. "linapple.disk_ii")
@@ -111,27 +107,22 @@ typedef struct Peripheral_t {
 #define EXPORT_PERIPHERAL(peripheral_struct) \
   PERIPHERAL_REGISTER(peripheral_struct)
 
-/**
- * @brief Public Peripheral Management API.
- */
-int Peripheral_Register(Peripheral_t* api, int slot);
-void Peripheral_Register_Builtin(Peripheral_t* api);
-int Peripheral_Unregister(int slot);
-PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
-                                    size_t size);
-PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
-                                  size_t* out_size);
-void Peripheral_SaveState(int slot, void* buffer, size_t* size);
-void Peripheral_LoadState(int slot, const void* buffer, size_t size);
-void Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
-                                size_t* size);
-void Peripheral_LoadStateByName(int slot, const char* name, const void* buffer,
-                                size_t size);
-void Peripheral_GetManifest(void* manifest);
-bool Peripheral_VerifyManifest(const void* manifest);
+auto Peripheral_Register(Peripheral_t* api, int slot) -> int;
+auto Peripheral_Register_Builtin(Peripheral_t* api) -> void;
+auto Peripheral_Unregister(int slot) -> int;
+auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
+                        size_t size) -> PeripheralStatus;
+auto Peripheral_Query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus;
+auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void;
+auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void;
+auto Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
+                                size_t* size) -> void;
+auto Peripheral_LoadStateByName(int slot, const char* name, const void* buffer,
+                                size_t size) -> void;
+auto Peripheral_GetManifest(void* manifest) -> void;
+auto Peripheral_VerifyManifest(const void* manifest) -> bool;
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif  // LINAPPLE_PERIPHERAL_H
