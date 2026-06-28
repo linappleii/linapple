@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+#pragma once
+
 #include <cstdint>
 
 #include "core/Common.h"
-#pragma once
 
-typedef struct tagSS_BaseMemory SS_BaseMemory;
+struct SsBaseMemory_t;
+using SS_BaseMemory = SsBaseMemory_t;
 
-// Memory Flag
 #define MF_80STORE 0x00000001
 #define MF_ALTZP 0x00000002
 #define MF_AUXREAD 0x00000004
@@ -20,7 +23,6 @@ typedef struct tagSS_BaseMemory SS_BaseMemory;
 #define MF_IMAGEMASK 0x000007F7
 
 enum {
-  // Note: All are in bytes!
   MEMORY_64K = 0x10000,
   PAGE_SIZE = 0x0100,
   NUM_PAGES_64K = MEMORY_64K / PAGE_SIZE,
@@ -33,7 +35,7 @@ enum {
 
   APPLE_SLOT_SIZE = 0x0100,   // 1 page  = $Cx00 .. $CxFF (slot 1 .. 7)
   APPLE_SLOT_BEGIN = 0xC100,  // each slot has 1 page reserved for it
-  APPLE_SLOT_END = 0xC7FF,    //
+  APPLE_SLOT_END = 0xC7FF,
 
   IO_RANGE_BEGIN = 0xC000,
   IO_RANGE_END = 0xCFFF,
@@ -42,7 +44,7 @@ enum {
 
   FIRMWARE_EXPANSION_SIZE = 0x0800,   // 8 pages = $C800 .. $CFFF
   FIRMWARE_EXPANSION_BEGIN = 0xC800,  // [C800,CFFF)
-  FIRMWARE_EXPANSION_END = 0xCFFF     //
+  FIRMWARE_EXPANSION_END = 0xCFFF
 };
 
 enum {
@@ -77,13 +79,13 @@ enum {
   PAGE_MAX = 0x100
 };
 
-const uint16_t STACK_BEGIN = 0x0100;
-const uint16_t STACK_END = 0x01FF;
-const uint16_t IO_REGION_START = 0xC000;
-const uint16_t IO_REGION_MASK = 0xF000;
+constexpr uint16_t STACK_BEGIN = 0x0100;
+constexpr uint16_t STACK_END = 0x01FF;
+constexpr uint16_t IO_REGION_START = 0xC000;
+constexpr uint16_t IO_REGION_MASK = 0xF000;
 
-const uint16_t PAGE_MASK = 0xFF00;
-const uint8_t ADDR_NIBBLE_MASK = 0x0F;
+constexpr uint16_t PAGE_MASK = 0xFF00;
+constexpr uint8_t ADDR_NIBBLE_MASK = 0x0F;
 
 enum SoftSwitch_e {
   SS_80STORE_OFF = 0x00,
@@ -144,7 +146,7 @@ enum SoftSwitch_e {
 };
 
 #ifdef RAMWORKS
-const uint32_t MAX_RAMWORKS_PAGES = 128;
+constexpr uint32_t MAX_RAMWORKS_PAGES = 128;
 #endif
 
 enum MemoryInitPattern_e { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
@@ -188,8 +190,8 @@ struct MemoryInstance_t {
   ~MemoryInstance_t();
 };
 
-auto MemGetActiveContext() -> MemoryInstance_t*;
-auto MemSetActiveContext(MemoryInstance_t* context) -> void;
+auto mem_get_active_context() -> MemoryInstance_t*;
+auto mem_set_active_context(MemoryInstance_t* context) -> void;
 
 extern iofunction* IORead;
 extern iofunction* IOWrite;
@@ -198,73 +200,94 @@ extern uint8_t* mem;
 extern uint8_t* memdirty;
 
 #ifdef RAMWORKS
-extern uint32_t g_uMaxExPages;  // user requested ram pages (from cmd line)
+extern uint32_t g_uMaxExPages;
 #endif
 
-void RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
+auto register_io_handler(uint32_t slot, iofunction io_read_c0,
+                         iofunction io_write_c0, iofunction io_read_cx,
+                         iofunction io_write_cx, void* slot_parameter,
+                         uint8_t* expansion_rom) -> void;
+
+auto register_direct_io_handler(uint16_t addr, iofunction read,
+                                iofunction write, void* instance) -> void;
+
+auto mem_destroy() -> void;
+auto mem_get_80store() -> bool;
+auto mem_check_slotcxrom() -> bool;
+auto mem_get_aux_ptr(uint16_t addr) -> uint8_t*;
+auto mem_get_main_ptr(uint16_t addr) -> uint8_t*;
+auto mem_get_cx_rom_peripheral() -> uint8_t*;
+auto get_mem_ptr(uint16_t addr) -> uint8_t*;
+auto mem_get_bank_ptr(const uint32_t bank) -> uint8_t*;
+auto get_mem_mode() -> uint32_t;
+auto set_mem_mode(uint32_t mode) -> void;
+auto mem_is_addr_code_memory(const uint16_t addr) -> bool;
+auto mem_pre_initialize() -> void;
+auto mem_initialize() -> int;
+auto mem_read_floating_bus(const uint32_t executed_cycles) -> uint8_t;
+auto mem_read_floating_bus(const uint8_t highbit,
+                           const uint32_t executed_cycles) -> uint8_t;
+auto mem_reset() -> void;
+auto mem_reset_paging() -> void;
+auto mem_return_random_data(uint8_t highbit) -> uint8_t;
+auto mem_set_fast_paging(bool enable) -> void;
+auto mem_set_80store(bool enable) -> void;
+auto mem_trim_images() -> void;
+auto mem_get_slot_parameters(uint32_t slot) -> void*;
+auto mem_get_snapshot(SS_BaseMemory* snapshot) -> uint32_t;
+auto mem_set_snapshot(SS_BaseMemory* snapshot) -> uint32_t;
+auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+             uint32_t cycles) -> uint8_t;
+auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;
+auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                     uint32_t cycles) -> uint8_t;
+auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                      uint32_t cycles) -> uint8_t;
+auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                    uint32_t cycles) -> uint8_t;
+auto get_ramworks_active_bank() -> uint32_t;
+
+// Legacy Forwarding Declarations
+auto MemGetActiveContext() -> MemoryInstance_t*;
+auto MemSetActiveContext(MemoryInstance_t* context) -> void;
+auto RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
                        iofunction IOWriteC0, iofunction IOReadCx,
                        iofunction IOWriteCx, void* lpSlotParameter,
-                       uint8_t* pExpansionRom);
-
-void RegisterDirectIoHandler(uint16_t addr, iofunction read, iofunction write,
-                             void* instance);
-
-void MemDestroy();
-
-bool MemGet80Store();
-
-bool MemCheckSLOTCXROM();
-
-uint8_t* MemGetAuxPtr(uint16_t);
-uint8_t* MemGetMainPtr(uint16_t);
-
-uint8_t* MemGetCxRomPeripheral();
-uint8_t* GetMemPtr(uint16_t addr);
-uint8_t* MemGetBankPtr(const uint32_t nBank);
-
-uint32_t GetMemMode(void);
-void SetMemMode(uint32_t memmode);
-bool MemIsAddrCodeMemory(const uint16_t addr);
-
-void MemPreInitialize();
-
-int MemInitialize();
-
-uint8_t MemReadFloatingBus(const uint32_t uExecutedCycles);
-
-uint8_t MemReadFloatingBus(const uint8_t highbit,
-                           const uint32_t uExecutedCycles);
-
-void MemReset();
-
-void MemResetPaging();
-
-uint8_t MemReturnRandomData(uint8_t highbit);
-
-void MemSetFastPaging(bool);
-
-void MemSet80Store(bool);
-
-void MemTrimImages();
-
-void* MemGetSlotParameters(uint32_t uSlot);
-
-uint32_t MemGetSnapshot(SS_BaseMemory* pSS);
-
-uint32_t MemSetSnapshot(SS_BaseMemory* pSS);
-
-uint8_t IO_Null(uint16_t programcounter, uint16_t address, uint8_t write,
-                uint8_t value, uint32_t nCycles);
-
-void MemUpdatePaging(bool initialize, bool updatewriteonly);
-
-uint8_t IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                       uint32_t cycles);
-
-uint8_t MemCheckPaging(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
-                       uint32_t nCyclesLeft);
-
-uint8_t MemSetPaging(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
-                     uint32_t nCyclesLeft);
-
-uint32_t GetRamWorksActiveBank(void);
+                       uint8_t* pExpansionRom) -> void;
+auto RegisterDirectIoHandler(uint16_t addr, iofunction read, iofunction write,
+                             void* instance) -> void;
+auto MemDestroy() -> void;
+auto MemGet80Store() -> bool;
+auto MemCheckSLOTCXROM() -> bool;
+auto MemGetAuxPtr(uint16_t addr) -> uint8_t*;
+auto MemGetMainPtr(uint16_t addr) -> uint8_t*;
+auto MemGetCxRomPeripheral() -> uint8_t*;
+auto GetMemPtr(uint16_t addr) -> uint8_t*;
+auto MemGetBankPtr(const uint32_t nBank) -> uint8_t*;
+auto GetMemMode() -> uint32_t;
+auto SetMemMode(uint32_t memmode) -> void;
+auto MemIsAddrCodeMemory(const uint16_t addr) -> bool;
+auto MemPreInitialize() -> void;
+auto MemInitialize() -> int;
+auto MemReadFloatingBus(const uint32_t uExecutedCycles) -> uint8_t;
+auto MemReadFloatingBus(const uint8_t highbit, const uint32_t uExecutedCycles)
+    -> uint8_t;
+auto MemReset() -> void;
+auto MemResetPaging() -> void;
+auto MemReturnRandomData(uint8_t highbit) -> uint8_t;
+auto MemSetFastPaging(bool enable) -> void;
+auto MemSet80Store(bool enable) -> void;
+auto MemTrimImages() -> void;
+auto MemGetSlotParameters(uint32_t uSlot) -> void*;
+auto MemGetSnapshot(SS_BaseMemory* pSS) -> uint32_t;
+auto MemSetSnapshot(SS_BaseMemory* pSS) -> uint32_t;
+auto IO_Null(uint16_t programcounter, uint16_t address, uint8_t write,
+             uint8_t value, uint32_t nCycles) -> uint8_t;
+auto MemUpdatePaging(bool initialize, bool updatewriteonly) -> void;
+auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                    uint32_t cycles) -> uint8_t;
+auto MemCheckPaging(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+                    uint32_t nCyclesLeft) -> uint8_t;
+auto MemSetPaging(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
+                  uint32_t nCyclesLeft) -> uint8_t;
+auto GetRamWorksActiveBank() -> uint32_t;

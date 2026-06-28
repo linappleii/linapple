@@ -8,12 +8,11 @@
 #include "apple2/SnapshotTypes.h"
 #include "frontends/common/VideoSurface.h"
 
-// Types & Dimensions
 constexpr uint32_t apple2_visible_width = 280;
 constexpr uint32_t apple2_visible_height = 192;
 constexpr uint32_t video_scale_factor = 2;
-constexpr uint32_t video_width = apple2_visible_width * video_scale_factor;  // 560
-constexpr uint32_t video_height = apple2_visible_height * video_scale_factor;  // 384
+constexpr uint32_t video_width = apple2_visible_width * video_scale_factor;
+constexpr uint32_t video_height = apple2_visible_height * video_scale_factor;
 
 constexpr uint32_t text_columns = 40;
 constexpr uint32_t text_rows = 24;
@@ -137,7 +136,6 @@ enum ColorPaletteIndex_t {
 };
 using Color_Palette_Index_e = ColorPaletteIndex_t;
 
-// Globals
 extern int g_iStatusCycle;
 extern bool g_ShowLeds;
 extern bool graphicsmode;
@@ -179,7 +177,8 @@ auto video_perform_refresh() -> void;
 auto video_reinitialize() -> void;
 auto video_reset_state() -> void;
 
-auto video_get_scanner_address(bool* vbl_bar_out, uint32_t executed_cycles) -> uint16_t;
+auto video_get_scanner_address(bool* vbl_bar_out, uint32_t executed_cycles)
+    -> uint16_t;
 auto video_get_vbl(uint32_t executed_cycles) -> bool;
 auto video_update_vbl(uint32_t cycles_this_frame) -> void;
 auto video_update_flash() -> void;
@@ -196,9 +195,12 @@ auto video_get_sw_alt_charset() -> bool;
 auto video_get_snapshot(SS_IO_Video* ss) -> uint32_t;
 auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t;
 
-auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
-auto video_check_vbl(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
-auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d, uint32_t cycles_left) -> uint8_t;
+auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                      uint32_t cycles_left) -> uint8_t;
+auto video_check_vbl(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                     uint32_t cycles_left) -> uint8_t;
+auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                    uint32_t cycles_left) -> uint8_t;
 
 // Legacy C Declarations
 auto VideoGetOutputBuffer() -> uint32_t*;
@@ -237,6 +239,9 @@ auto VideoGetSWTEXT() -> bool;
 auto VideoGetSWAltCharSet() -> bool;
 auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t;
 auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t;
-auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
-auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
-auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t;
+auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d,
+                    uint32_t c) -> uint8_t;
+auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
+    -> uint8_t;
+auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
+    -> uint8_t;

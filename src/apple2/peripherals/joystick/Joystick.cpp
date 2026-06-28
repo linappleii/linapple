@@ -346,7 +346,7 @@ static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
   }
 
   auto* ss = static_cast<SS_IO_Joystick*>(buffer);
-  ss->g_nJoyCntrResetCycle = joystick_peripheral->reset_cycle;
+  ss->joy_cntr_reset_cycle = joystick_peripheral->reset_cycle;
 
   *size = sizeof(SS_IO_Joystick);
   return PERIPHERAL_OK;
@@ -361,7 +361,7 @@ static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
   const auto* ss = static_cast<const SS_IO_Joystick*>(buffer);
 
-  joystick_peripheral->reset_cycle = ss->g_nJoyCntrResetCycle;
+  joystick_peripheral->reset_cycle = ss->joy_cntr_reset_cycle;
 
   return PERIPHERAL_OK;
 }

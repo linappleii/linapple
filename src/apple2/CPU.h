@@ -1,19 +1,30 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
 #pragma once
 
 #include <cstdint>
 
 #include "core/Common.h"
 
-using SS_CPU6502 = struct tagSS_CPU6502;
+struct SsCpu6502_t;
+using SS_CPU6502 = SsCpu6502_t;
 
-const uint16_t NMI_VECTOR_ADDR = 0xFFFA;
-const uint16_t RESET_VECTOR_ADDR = 0xFFFC;
-const uint16_t IRQ_VECTOR_ADDR = 0xFFFE;
+constexpr uint16_t nmi_vector_addr = 0xFFFA;
+constexpr uint16_t reset_vector_addr = 0xFFFC;
+constexpr uint16_t irq_vector_addr = 0xFFFE;
 
-const uint16_t TRAP_NMOS_DEFAULT = 0x336D;
-const uint16_t TRAP_CMOS_DEFAULT = 0x3469;
+constexpr uint16_t trap_nmos_default = 0x336D;
+constexpr uint16_t trap_cmos_default = 0x3469;
 
-const uint32_t UINT32_MAX_VAL = 0xFFFFFFFF;
+constexpr uint32_t uint32_max_val = 0xFFFFFFFF;
+
+// Legacy constant aliases for backwards compatibility
+constexpr uint16_t NMI_VECTOR_ADDR = nmi_vector_addr;
+constexpr uint16_t RESET_VECTOR_ADDR = reset_vector_addr;
+constexpr uint16_t IRQ_VECTOR_ADDR = irq_vector_addr;
+constexpr uint16_t TRAP_NMOS_DEFAULT = trap_nmos_default;
+constexpr uint16_t TRAP_CMOS_DEFAULT = trap_cmos_default;
+constexpr uint32_t UINT32_MAX_VAL = uint32_max_val;
 
 struct CpuRegisters_t {
   uint8_t a = 0;
@@ -38,38 +49,47 @@ struct CpuInstance_t {
   volatile bool nmi_flank = false;
 };
 
-auto CpuGetRegisters() -> CpuRegisters_t*;
-auto CpuGetCumulativeCycles() -> uint64_t;
+// Modern snake_case API
+auto cpu_get_registers() -> CpuRegisters_t*;
+auto cpu_get_cumulative_cycles() -> uint64_t;
 extern uint64_t g_nCumulativeCycles;
 
+auto cpu_get_active_context() -> CpuInstance_t*;
+auto cpu_set_active_context(CpuInstance_t* context) -> void;
+
+auto cpu_destroy() -> void;
+auto cpu_calc_cycles(uint32_t executed_cycles) -> void;
+auto cpu_execute(uint32_t total_cycles) -> uint32_t;
+auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t;
+auto cpu_initialize() -> void;
+auto cpu_setup_benchmark() -> void;
+auto cpu_irq_reset() -> void;
+auto cpu_irq_assert(eIRQSRC device) -> void;
+auto cpu_irq_deassert(eIRQSRC device) -> void;
+auto cpu_nmi_reset() -> void;
+auto cpu_nmi_assert(eIRQSRC device) -> void;
+auto cpu_nmi_deassert(eIRQSRC device) -> void;
+auto cpu_reset() -> void;
+auto cpu_get_snapshot(SS_CPU6502* snapshot) -> uint32_t;
+auto cpu_set_snapshot(SS_CPU6502* snapshot) -> uint32_t;
+
+// Legacy Forwarding Declarations
+auto CpuGetRegisters() -> CpuRegisters_t*;
+auto CpuGetCumulativeCycles() -> uint64_t;
 auto CpuGetActiveContext() -> CpuInstance_t*;
 auto CpuSetActiveContext(CpuInstance_t* context) -> void;
-
-void CpuDestroy();
-
-void CpuCalcCycles(uint32_t nExecutedCycles);
-
-auto CpuExecute(uint32_t) -> uint32_t;
-
+auto CpuDestroy() -> void;
+auto CpuCalcCycles(uint32_t nExecutedCycles) -> void;
+auto CpuExecute(uint32_t uCycles) -> uint32_t;
 auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t;
-
-void CpuInitialize();
-
-void CpuSetupBenchmark();
-
-void CpuIrqReset();
-
-void CpuIrqAssert(eIRQSRC Device);
-
-void CpuIrqDeassert(eIRQSRC Device);
-
-void CpuNmiReset();
-
-void CpuNmiAssert(eIRQSRC Device);
-
-void CpuNmiDeassert(eIRQSRC Device);
-
-void CpuReset();
-
+auto CpuInitialize() -> void;
+auto CpuSetupBenchmark() -> void;
+auto CpuIrqReset() -> void;
+auto CpuIrqAssert(eIRQSRC Device) -> void;
+auto CpuIrqDeassert(eIRQSRC Device) -> void;
+auto CpuNmiReset() -> void;
+auto CpuNmiAssert(eIRQSRC Device) -> void;
+auto CpuNmiDeassert(eIRQSRC Device) -> void;
+auto CpuReset() -> void;
 auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t;
 auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t;

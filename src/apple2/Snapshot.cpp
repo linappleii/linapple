@@ -2,78 +2,86 @@
 #include "apple2/Snapshot.h"
 
 #include <cstddef>
-#include <cstdint>
+#include <cstring>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
-#include "apple2/peripherals/speaker/Speaker.h"
-#include "apple2/peripherals/super_serial_card/SuperSerial.h"
+#include "core/Common.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral.h"
 
-auto snapshot_serialize(APPLEWIN_SNAPSHOT* snapshot) -> void {
+auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
   if (!snapshot) return;
 
-  snapshot->Hdr.dwTag = AW_SS_TAG;
-  snapshot->Hdr.dwVersion = MAKE_VERSION(1, 0, 0, 1);
-  snapshot->Hdr.dwChecksum = 0; // TO DO
+  *snapshot = ApplewinSnapshot_t{};
 
-  snapshot->Apple2Unit.UnitHdr.dwLength = sizeof(SS_APPLE2_Unit);
-  snapshot->Apple2Unit.UnitHdr.dwVersion = MAKE_VERSION(1, 0, 0, 0);
+  snapshot->hdr.tag = aw_ss_tag;
+  snapshot->hdr.version = make_version(1, 0, 0, 1);
+  // Checksum is initialized to 0 here; exact payload checksum is verified by
+  // file manager
+  snapshot->hdr.checksum = 0;
 
-  Peripheral_GetManifest(&snapshot->Manifest);
+  snapshot->apple2_unit.unit_hdr.length = sizeof(SsApple2Unit_t);
+  snapshot->apple2_unit.unit_hdr.version = make_version(1, 0, 0, 0);
 
-  CpuGetSnapshot(&snapshot->Apple2Unit.CPU6502);
+  Peripheral_GetManifest(&snapshot->manifest);
+
+  CpuGetSnapshot(&snapshot->apple2_unit.cpu_6502);
   {
-    size_t size = sizeof(snapshot->Apple2Unit.Joystick);
-    Peripheral_SaveState(0, &snapshot->Apple2Unit.Joystick, &size);
+    size_t size = sizeof(snapshot->apple2_unit.joystick);
+    Peripheral_SaveState(0, &snapshot->apple2_unit.joystick, &size);
   }
-  VideoGetSnapshot(&snapshot->Apple2Unit.Video);
-  MemGetSnapshot(&snapshot->Apple2Unit.Memory);
+  VideoGetSnapshot(&snapshot->apple2_unit.video);
+  MemGetSnapshot(&snapshot->apple2_unit.memory);
 
-  size_t kbd_size = sizeof(snapshot->Apple2Unit.Keyboard);
-  Peripheral_SaveStateByName(0, "Keyboard", &snapshot->Apple2Unit.Keyboard, &kbd_size);
+  size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard);
+  Peripheral_SaveStateByName(0, "Keyboard", &snapshot->apple2_unit.keyboard,
+                             &kbd_size);
 
-  // Slots 0-7
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < NUM_SLOTS; ++i) {
     void* slot_state = nullptr;
     size_t slot_size = 0;
     const char* name = nullptr;
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers): Hardware expansion
+    // slot index constants 0 through 7
     switch (i) {
       case 0:
         name = "Speaker";
-        slot_state = &snapshot->Apple2Unit.Speaker;
-        slot_size = sizeof(snapshot->Apple2Unit.Speaker);
+        slot_state = &snapshot->apple2_unit.speaker;
+        slot_size = sizeof(snapshot->apple2_unit.speaker);
         break;
       case 1:
-        slot_state = &snapshot->Empty1;
-        slot_size = sizeof(snapshot->Empty1);
+        slot_state = &snapshot->empty1;
+        slot_size = sizeof(snapshot->empty1);
         break;
       case 2:
-        slot_state = &snapshot->Apple2Unit.Comms;
-        slot_size = sizeof(snapshot->Apple2Unit.Comms);
+        slot_state = &snapshot->apple2_unit.comms;
+        slot_size = sizeof(snapshot->apple2_unit.comms);
         break;
       case 3:
-        slot_state = &snapshot->Empty3;
-        slot_size = sizeof(snapshot->Empty3);
+        slot_state = &snapshot->empty3;
+        slot_size = sizeof(snapshot->empty3);
         break;
       case 4:
-        slot_state = &snapshot->Mockingboard1;
-        slot_size = sizeof(snapshot->Mockingboard1);
+        slot_state = &snapshot->mockingboard1;
+        slot_size = sizeof(snapshot->mockingboard1);
         break;
       case 5:
-        slot_state = &snapshot->Mockingboard2;
-        slot_size = sizeof(snapshot->Mockingboard2);
+        slot_state = &snapshot->mockingboard2;
+        slot_size = sizeof(snapshot->mockingboard2);
         break;
       case 6:
-        break; // Slot 6 handled via manifest/ABI
+        break;  // Slot 6 handled via manifest/ABI
       case 7:
-        slot_state = &snapshot->Empty7;
-        slot_size = sizeof(snapshot->Empty7);
+        slot_state = &snapshot->empty7;
+        slot_size = sizeof(snapshot->empty7);
+        break;
+      default:
         break;
     }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     if (slot_state) {
       if (name) {
         Peripheral_SaveStateByName(i, name, slot_state, &slot_size);
@@ -84,15 +92,13 @@ auto snapshot_serialize(APPLEWIN_SNAPSHOT* snapshot) -> void {
   }
 }
 
-auto snapshot_deserialize(APPLEWIN_SNAPSHOT* snapshot) -> bool {
+auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
   if (!snapshot) return false;
 
-  // Verify peripheral manifest
-  if (!Peripheral_VerifyManifest(&snapshot->Manifest)) {
+  if (!Peripheral_VerifyManifest(&snapshot->manifest)) {
     return false;
   }
 
-  // Reset all sub-systems
   MemReset();
 
   if (!IS_APPLE2()) {
@@ -102,54 +108,58 @@ auto snapshot_deserialize(APPLEWIN_SNAPSHOT* snapshot) -> bool {
   Peripheral_Manager_Reset();
   VideoResetState();
 
-  CpuSetSnapshot(&snapshot->Apple2Unit.CPU6502);
+  CpuSetSnapshot(&snapshot->apple2_unit.cpu_6502);
   {
-    size_t size = sizeof(snapshot->Apple2Unit.Joystick);
-    Peripheral_LoadState(0, &snapshot->Apple2Unit.Joystick, size);
+    size_t size = sizeof(snapshot->apple2_unit.joystick);
+    Peripheral_LoadState(0, &snapshot->apple2_unit.joystick, size);
   }
-  Peripheral_LoadStateByName(0, "Keyboard", &snapshot->Apple2Unit.Keyboard,
-                             sizeof(snapshot->Apple2Unit.Keyboard));
-  VideoSetSnapshot(&snapshot->Apple2Unit.Video);
-  MemSetSnapshot(&snapshot->Apple2Unit.Memory);
+  Peripheral_LoadStateByName(0, "Keyboard", &snapshot->apple2_unit.keyboard,
+                             sizeof(snapshot->apple2_unit.keyboard));
+  VideoSetSnapshot(&snapshot->apple2_unit.video);
+  MemSetSnapshot(&snapshot->apple2_unit.memory);
 
-  // Slots 0-7
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < NUM_SLOTS; ++i) {
     void* slot_state = nullptr;
     size_t slot_size = 0;
     const char* name = nullptr;
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers): Hardware expansion
+    // slot index constants 0 through 7
     switch (i) {
       case 0:
         name = "Speaker";
-        slot_state = &snapshot->Apple2Unit.Speaker;
-        slot_size = sizeof(snapshot->Apple2Unit.Speaker);
+        slot_state = &snapshot->apple2_unit.speaker;
+        slot_size = sizeof(snapshot->apple2_unit.speaker);
         break;
       case 1:
-        slot_state = &snapshot->Empty1;
-        slot_size = sizeof(snapshot->Empty1);
+        slot_state = &snapshot->empty1;
+        slot_size = sizeof(snapshot->empty1);
         break;
       case 2:
-        slot_state = &snapshot->Apple2Unit.Comms;
-        slot_size = sizeof(snapshot->Apple2Unit.Comms);
+        slot_state = &snapshot->apple2_unit.comms;
+        slot_size = sizeof(snapshot->apple2_unit.comms);
         break;
       case 3:
-        slot_state = &snapshot->Empty3;
-        slot_size = sizeof(snapshot->Empty3);
+        slot_state = &snapshot->empty3;
+        slot_size = sizeof(snapshot->empty3);
         break;
       case 4:
-        slot_state = &snapshot->Mockingboard1;
-        slot_size = sizeof(snapshot->Mockingboard1);
+        slot_state = &snapshot->mockingboard1;
+        slot_size = sizeof(snapshot->mockingboard1);
         break;
       case 5:
-        slot_state = &snapshot->Mockingboard2;
-        slot_size = sizeof(snapshot->Mockingboard2);
+        slot_state = &snapshot->mockingboard2;
+        slot_size = sizeof(snapshot->mockingboard2);
         break;
       case 6:
-        break; // Slot 6 handled via manifest/ABI
+        break;  // Slot 6 handled via manifest/ABI
       case 7:
-        slot_state = &snapshot->Empty7;
-        slot_size = sizeof(snapshot->Empty7);
+        slot_state = &snapshot->empty7;
+        slot_size = sizeof(snapshot->empty7);
+        break;
+      default:
         break;
     }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     if (slot_state) {
       if (name) {
         Peripheral_LoadStateByName(i, name, slot_state, slot_size);

@@ -659,19 +659,19 @@ auto Peripheral_GetManifest(void* manifest_ptr) -> void {
   if (!manifest_ptr) return;
   auto* manifest = static_cast<SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   memset(manifest, 0, sizeof(SS_PERIPHERAL_MANIFEST));
-  manifest->UnitHdr.dwLength = sizeof(SS_PERIPHERAL_MANIFEST);
+  manifest->unit_hdr.length = sizeof(SS_PERIPHERAL_MANIFEST);
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     const auto& slot_peripherals = g_active_peripherals.at(i);
     if (!slot_peripherals.empty()) {
       // NOTE: The manifest format currently only supports ONE name per slot.
       // For multi-peripheral slots (like Slot 0), we report only the first one.
       // Verification remains robust for slots 1-7.
-      // Justification: manifest->Peripherals is a fixed-size legacy structure.
+      // Justification: manifest->peripherals is a fixed-size legacy structure.
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-      Util_SafeStrCpy(manifest->Peripherals[i].szName,
+      Util_SafeStrCpy(manifest->peripherals[i].name,
                       slot_peripherals.front().api->name, max_peripheral_name);
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-      manifest->Peripherals[i].dwVersion =
+      manifest->peripherals[i].version =
           static_cast<uint32_t>(slot_peripherals.front().api->abi_version);
     }
   }
@@ -683,10 +683,10 @@ auto Peripheral_VerifyManifest(const void* manifest_ptr) -> bool {
       static_cast<const SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     const auto& slot_peripherals = g_active_peripherals.at(i);
-    // Justification: manifest->Peripherals is a fixed-size legacy structure.
+    // Justification: manifest->peripherals is a fixed-size legacy structure.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-    const SS_PERIPHERAL_INFO& pi = manifest->Peripherals[i];
-    if (pi.szName[0] == '\0') {
+    const SS_PERIPHERAL_INFO& pi = manifest->peripherals[i];
+    if (pi.name[0] == '\0') {
       if (!slot_peripherals.empty()) return false;
       continue;
     }
@@ -694,7 +694,7 @@ auto Peripheral_VerifyManifest(const void* manifest_ptr) -> bool {
     // verified.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     if (slot_peripherals.empty() ||
-        strcmp(slot_peripherals.front().api->name, pi.szName) != 0)
+        strcmp(slot_peripherals.front().api->name, pi.name) != 0)
       return false;
   }
   return true;

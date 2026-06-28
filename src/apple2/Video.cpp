@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-
 #include "apple2/Video.h"
-
-#include <unistd.h>
 
 #include <atomic>
 #include <chrono>
@@ -18,6 +15,21 @@
 #include "core/Common.h"
 #include "core/asset.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// bugprone-easily-swappable-parameters, bugprone-branch-clone,
+// bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions,
+// bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables,
+// cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-use-enum-class, google-readability-casting,
+// modernize-avoid-c-style-cast): Unavoidable hardware architectural constraints
+// for Apple II CRT rendering, NTSC/PAL timing generator, and video memory
+// scanner
 static auto GetTickCount() -> uint32_t {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::steady_clock::now().time_since_epoch())
@@ -30,7 +42,6 @@ static auto GetTickCount() -> uint32_t {
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "frontends/common/VideoStretch.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"
@@ -41,6 +52,7 @@ static auto GetTickCount() -> uint32_t {
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Util_Text.h"
+#include "frontends/common/VideoStretch.h"
 
 static uint32_t g_pVideoOutput[VIDEO_WIDTH * VIDEO_HEIGHT];
 static bool s_language_rocker_switch = false;
@@ -181,32 +193,30 @@ bool g_ShowLeds = true;
 const uint32_t nVBlStop_NTSC = 21;
 const uint32_t nVBlStop_PAL = 29;
 
-void DrawDHiResSource();
-void DrawHiResSource();
-void DrawHiResSourceHalfShiftFull();
-void DrawHiResSourceHalfShiftDim();
-void DrawLoResSource();
-void DrawMonoDHiResSource();
-void DrawMonoHiResSource();
-void DrawMonoLoResSource();
-void DrawMonoTextSource(VideoSurface* dc);
-void DrawTextSource(VideoSurface* dc);
-
-// Multithreaded
+auto DrawDHiResSource() -> void;
+auto DrawHiResSource() -> void;
+auto DrawHiResSourceHalfShiftFull() -> void;
+auto DrawHiResSourceHalfShiftDim() -> void;
+auto DrawLoResSource() -> void;
+auto DrawMonoDHiResSource() -> void;
+auto DrawMonoHiResSource() -> void;
+auto DrawMonoLoResSource() -> void;
+auto DrawMonoTextSource(VideoSurface* dc) -> void;
+auto DrawTextSource(VideoSurface* dc) -> void;
 
 auto VideoInitWorker() -> bool;
 
 std::thread video_worker_thread_;
-static volatile bool video_worker_active_ = false;
-static volatile bool video_worker_terminate_ = false;
-static volatile bool video_worker_refresh_ = false;
+static std::atomic<bool> video_worker_active_{false};
+static std::atomic<bool> video_worker_terminate_{false};
+static std::atomic<bool> video_worker_refresh_{false};
 std::recursive_mutex g_video_draw_mutex;
 std::condition_variable video_cv;
 
 static char display_pipeline_[0x2000 * 4 + 0x400 * 4];
 
-void CopySource(int destx, int desty, int xsize, int ysize, int sourcex,
-                int sourcey) {
+auto CopySource(int destx, int desty, int xsize, int ysize, int sourcex,
+                int sourcey) -> void {
   uint8_t* currdestptr = frameoffsettable[desty] + destx;
   uint8_t* currsourceptr = g_aSourceStartofLine[sourcey] + sourcex;
   while (ysize--) {
@@ -227,8 +237,7 @@ void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
   framebufferaddr = addr;
   framebufferpitch = pitch;
 
-  // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE FRAME BUFFER
-  for (int loop = 0; loop < VIDEO_HEIGHT; loop++) {
+  for (uint32_t loop = 0; loop < VIDEO_HEIGHT; loop++) {
     frameoffsettable[loop] =
         framebufferaddr + static_cast<ptrdiff_t>(framebufferpitch * loop);
   }
@@ -236,7 +245,6 @@ void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
 
 void CreateIdentityPalette() {
   memset(framebufferinfo, 0, MAX_PALETTE_SIZE * sizeof(VideoColor));
-  // SET FRAME BUFFER TABLE ENTRIES TO CUSTOM COLORS
   SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
   SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
   SETFRAMECOLOR(BROWN, 0x80, 0x50, 0x00);
@@ -304,7 +312,6 @@ void CreateDIBSections() {
   memcpy(g_pSourceHeader, framebufferinfo,
          MAX_PALETTE_SIZE * sizeof(VideoColor));
 
-  // CREATE THE FRAME BUFFER DIB SECTION
   if (g_hDeviceBitmap) {
     VideoDestroySurface(g_hDeviceBitmap);
   }
@@ -340,7 +347,6 @@ void CreateDIBSections() {
   memcpy(g_hStatusSurface->palette, g_pSourceHeader,
          MAX_PALETTE_SIZE * sizeof(VideoColor));
 
-  /* Create status panel background */
   VideoRect srect{};
   uint8_t mybluez = DARK_BLUE;
   uint8_t myyell = YELLOW;
@@ -365,7 +371,6 @@ void CreateDIBSections() {
     font_print(40, text_y, "FDD2", g_hStatusSurface, scale_x, scale_y);
     font_print(74, text_y, "HDD", g_hStatusSurface, scale_x, scale_y);
   }
-  // CREATE THE SOURCE IMAGE DIB SECTION
   if (g_hSourceBitmap) {
     VideoDestroySurface(g_hSourceBitmap);
   }
@@ -379,13 +384,11 @@ void CreateDIBSections() {
   g_pSourcePixels = g_hSourceBitmap->pixels;
   memcpy(g_hSourceBitmap->palette, framebufferinfo, 256 * sizeof(VideoColor));
 
-  // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_aSourceStartofLine[y] =
         g_pSourcePixels + static_cast<ptrdiff_t>(SRCOFFS_TOTAL * y);
   }
 
-  // DRAW THE SOURCE IMAGE INTO THE SOURCE BIT BUFFER
   memset(g_pSourcePixels, 0, static_cast<size_t>(SRCOFFS_TOTAL * MAX_SOURCE_Y));
 
   if ((g_videotype != VT_MONO_CUSTOM) && (g_videotype != VT_MONO_AMBER) &&
@@ -559,10 +562,6 @@ void DrawHiResSourceHalfShiftDim() {
 2000:03 0---0011 -> 1 1 0 0  column 1 & 2
 2400:83 1---0011 ->  1 1 0 0 half-pixel shift right
 2800:06 1---0110 -> 0 1 1 0  column 2 & 3
-
-@reference: see Beagle Bro's Disk: "Silicon Salid", File: DOUBLE HI-RES
-Fortunately double-hires is supported via pixel doubling, so we can do
-half-pixel shifts ;-)
 */
           switch (color) {
             case CM_Magenta:
@@ -626,8 +625,8 @@ half-pixel shifts ;-)
                              HGR_BLACK);
               break;
             case CM_White:
-              // Don't dither / half-shift white, since DROL cutscene looks bad
-              // :(
+              // Maintain solid white pixel rendering without half-shift
+              // dithering
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE);
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
                              HGR_WHITE);
@@ -902,7 +901,7 @@ void SetLastDrawnImage() {
   if (SWL_DHIRES && SWL_HIRES) {
     memcpy(vidlastmem.get(), g_pHiresBank1, 0x2000);
   } else if (SWL_80COL) {  // Don't test for !SWL_HIRES, as some 80-col text
-                           // routines have SWL_HIRES set (Bug #8300)
+                           // routines have SWL_HIRES set
     memcpy(vidlastmem.get(), g_pTextBank1, 0x400);
   }
   int loop = 0;
@@ -911,13 +910,10 @@ void SetLastDrawnImage() {
   }
 }
 
-// GPH: These "Update" functions update the SDL graphics buffer to be
+// These "Update" functions update the SDL graphics buffer to be
 // displayed on the host with what the "Draw" functions have
 // drawn into the guest Apple graphics buffers.
 
-// Update40Col
-// This copies the literal Apple ROM font pixels
-// to the graphical display buffer.
 auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   (void)x;
   (void)y;
@@ -1450,7 +1446,7 @@ auto video_benchmark() -> void {
 }
 
 auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
-                    uint32_t nCyclesLeft) -> uint8_t {
+                      uint32_t nCyclesLeft) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
     return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
@@ -1500,7 +1496,6 @@ auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft)
 auto video_choose_color() -> void {}
 
 auto video_destroy() -> void {
-  // GPH Multithreaded
   {
     video_worker_terminate_ = true;
     if (video_worker_active_) {
@@ -1508,12 +1503,8 @@ auto video_destroy() -> void {
     }
     video_worker_active_ = false;
   }
-  // END GPH
 
-  // Just free our surfaces and free vidlastmem
-  // DESTROY BUFFERS
   vidlastmem.reset();
-  // DESTROY FRAME BUFFER
   if (g_hDeviceBitmap) {
     VideoDestroySurface(g_hDeviceBitmap);
   }
@@ -1529,13 +1520,11 @@ auto video_destroy() -> void {
   }
   g_hStatusSurface = nullptr;
 
-  // DESTROY SOURCE IMAGE
   if (g_hSourceBitmap) {
     VideoDestroySurface(g_hSourceBitmap);
   }
   g_hSourceBitmap = nullptr;
 
-  // DESTROY LOGO - ONLY IF IT WASN'T FROM ASSETS
   if (g_hLogoBitmap && (g_hLogoBitmap != assets->splash)) {
     VideoDestroySurface(g_hLogoBitmap);
   }
@@ -1585,64 +1574,45 @@ auto video_initialize() -> void {
     mutex_initialized = true;
   }
 
-  // CREATE A BUFFER FOR AN IMAGE OF THE LAST DRAWN MEMORY
   vidlastmem.reset(static_cast<uint8_t*>(malloc(0x10000)));
   if (vidlastmem) {
     memset(vidlastmem.get(), 0, 0x10000);
   }
 
-  // LOAD THE splash screen
   g_hLogoBitmap = assets->splash;
 
-  // LOAD APPLE CHARSET40
   if (!charset40) {
     charset40 = LoadCharset();
   }
 
-  // Load font_sfc for stretch.h
   if (font_sfc == nullptr) {
     font_sfc = assets->font;
   }
 
-  // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN THE
-  // BITMAPINFO STRUCTURE
   CreateIdentityPalette();
 
-  // PREFILL THE 16 CUSTOM COLORS AND MAKE SURE TO INCLUDE THE CURRENT
-  // MONOCHROME COLOR
-  for (int index = DARK_RED; index <= NUM_COLOR_PALETTE; index++) {
+  for (int index = DARK_RED; index < NUM_COLOR_PALETTE; index++) {
     customcolors[index - DARK_RED] =
         RGB(framebufferinfo[index].r, framebufferinfo[index].g,
             framebufferinfo[index].b);
   }
-  // bmiColors
-  // CREATE THE FRAME BUFFER DIB SECTION AND DEVICE CONTEXT,
-  // CREATE THE SOURCE IMAGE DIB SECTION AND DRAW INTO THE SOURCE BIT BUFFER
-  CreateDIBSections();
 
-  // RESET THE VIDEO MODE SWITCHES AND THE CHARACTER SET OFFSET
+  CreateDIBSections();
   video_reset_state();
 
-  // GPH Experiment with multicore video
   if (!g_singlethreaded) {
     VideoInitWorker();
   }
 }
 
-// video_set_next_scheduled_update
-// Sets
 auto video_next_scheduled_update_ = std::chrono::system_clock::now();
 auto video_set_next_scheduled_update() -> void {
   if (!g_singlethreaded) {
-    // video_next_scheduled_update_ += std::chrono::microseconds(1000); //6666);
     video_next_scheduled_update_ = std::chrono::system_clock::now();
     std::this_thread::yield();
   }
 }
 
-// VideoWorkerThread
-// Simple polling thread that calls the refresh function
-// when necessary.
 void VideoWorkerThread() {
   (void)nullptr;
   std::mutex mtx;
@@ -1659,8 +1629,6 @@ void VideoWorkerThread() {
   }
 }
 
-// VideoIniteWorker
-// Initializes worker thread for video updates
 auto VideoInitWorker() -> bool {
   video_worker_active_ = true;
   try {
@@ -1826,7 +1794,7 @@ auto video_reinitialize() -> void {
 }
 
 auto video_refresh_screen(uint32_t uRedrawWholeScreenVideoMode /* =0*/,
-                        bool bRedrawWholeScreen /* =false*/) -> void {
+                          bool bRedrawWholeScreen /* =false*/) -> void {
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (bRedrawWholeScreen) {
     g_uDebugVideoMode = uRedrawWholeScreenVideoMode;
@@ -1849,7 +1817,7 @@ auto video_reset_state() -> void {
 }
 
 auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
-                  uint32_t nCyclesLeft) -> uint8_t {
+                    uint32_t nCyclesLeft) -> uint8_t {
   (void)write;
 
   // Claim video mutex giving deference to any drawing operation
@@ -1957,9 +1925,7 @@ auto video_update_flash() -> void {
     nTextFlashCnt = 0;
     g_bTextFlashState = !g_bTextFlashState;
 
-    // Redraw any FLASHing chars if any text showing. NB. No FLASH mode for 80
-    // cols
-    if ((SW_TEXT || SW_MIXED)) {  // FIX: FLASH 80-Column
+    if ((SW_TEXT || SW_MIXED)) {
       g_bTextFlashFlag = true;
     }
   }
@@ -1983,14 +1949,16 @@ auto video_get_sw_alt_charset() -> bool { return g_nAltCharSetOffset != 0; }
 
 //===========================================================================
 auto video_get_snapshot(SS_IO_Video* pSS) -> uint32_t {
-  pSS->bAltCharSet = g_nAltCharSetOffset != 0;
-  pSS->dwVidMode = g_uVideoMode;
+  if (!pSS) return 1;
+  pSS->alt_char_set = g_nAltCharSetOffset != 0;
+  pSS->vid_mode = g_uVideoMode;
   return 0;
 }
 
 auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
-  g_nAltCharSetOffset = !pSS->bAltCharSet ? 0 : 256;
-  g_uVideoMode = pSS->dwVidMode;
+  if (!pSS) return 1;
+  g_nAltCharSetOffset = !pSS->alt_char_set ? 0 : 256;
+  g_uVideoMode = pSS->vid_mode;
 
   graphicsmode = !SW_TEXT;
   displaypage2 = (SW_PAGE2 != 0);
@@ -1998,8 +1966,8 @@ auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
   return 0;
 }
 
-auto video_get_scanner_address(bool* pbVblBar_OUT, const uint32_t uExecutedCycles)
-    -> uint16_t {
+auto video_get_scanner_address(bool* pbVblBar_OUT,
+                               const uint32_t uExecutedCycles) -> uint16_t {
   // get video scanner position
   int nCycles =
       (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;
@@ -2078,10 +2046,10 @@ auto video_get_scanner_address(bool* pbVblBar_OUT, const uint32_t uExecutedCycle
   }
 
   if (pbVblBar_OUT != nullptr) {
-    if (v_4 & v_3) {         // VBL?
-      *pbVblBar_OUT = true;  // Y: VBL is true
+    if (v_4 & v_3) {
+      *pbVblBar_OUT = true;
     } else {
-      *pbVblBar_OUT = false;  // N: VBL is false
+      *pbVblBar_OUT = false;
     }
   }
   return static_cast<uint16_t>(nAddress);
@@ -2099,9 +2067,25 @@ auto video_get_vbl(const uint32_t uExecutedCycles) -> bool {
   return (nCycles >= 12480);
 }
 
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// bugprone-easily-swappable-parameters, bugprone-branch-clone,
+// bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions,
+// bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables,
+// cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-use-enum-class, google-readability-casting,
+// modernize-avoid-c-style-cast)
+
 // Legacy Forwarding Functions
 auto VideoGetOutputBuffer() -> uint32_t* { return video_get_output_buffer(); }
-auto VideoGetOutputPalette() -> VideoColor_t* { return video_get_output_palette(); }
+auto VideoGetOutputPalette() -> VideoColor_t* {
+  return video_get_output_palette();
+}
 auto CreateColorMixMap() -> void { video_create_color_mix_map(); }
 auto VideoApparentlyDirty() -> bool { return video_apparently_dirty(); }
 auto VideoBenchmark() -> void { video_benchmark(); }
@@ -2112,13 +2096,19 @@ auto VideoDisplayLogo() -> void { video_display_logo(); }
 auto VideoHasRefreshed() -> bool { return video_has_refreshed(); }
 auto VideoInitialize() -> void { video_initialize(); }
 auto VideoRealizePalette() -> void { video_realize_palette(); }
-auto VideoSetNextScheduledUpdate() -> void { video_set_next_scheduled_update(); }
+auto VideoSetNextScheduledUpdate() -> void {
+  video_set_next_scheduled_update();
+}
 auto VideoRedrawScreen() -> void { video_redraw_screen(); }
-auto VideoRefreshScreen(uint32_t m, bool r) -> void { video_refresh_screen(m, r); }
+auto VideoRefreshScreen(uint32_t m, bool r) -> void {
+  video_refresh_screen(m, r);
+}
 auto VideoPerformRefresh() -> void { video_perform_refresh(); }
 auto VideoReinitialize() -> void { video_reinitialize(); }
 auto VideoResetState() -> void { video_reset_state(); }
-auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t { return video_get_scanner_address(out, cycles); }
+auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t {
+  return video_get_scanner_address(out, cycles);
+}
 auto VideoGetVbl(uint32_t cycles) -> bool { return video_get_vbl(cycles); }
 auto VideoUpdateVbl(uint32_t cycles) -> void { video_update_vbl(cycles); }
 auto VideoUpdateFlash() -> void { video_update_flash(); }
@@ -2130,9 +2120,21 @@ auto VideoGetSWMIXED() -> bool { return video_get_sw_mixed(); }
 auto VideoGetSWPAGE2() -> bool { return video_get_sw_page2(); }
 auto VideoGetSWTEXT() -> bool { return video_get_sw_text(); }
 auto VideoGetSWAltCharSet() -> bool { return video_get_sw_alt_charset(); }
-auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t { return video_get_snapshot(ss); }
-auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t { return video_set_snapshot(ss); }
-auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_check_mode(pc, addr, w, d, c); }
-auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_check_vbl(pc, addr, w, d, c); }
-auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c) -> uint8_t { return video_set_mode(pc, addr, w, d, c); }
-
+auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t {
+  return video_get_snapshot(ss);
+}
+auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t {
+  return video_set_snapshot(ss);
+}
+auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d,
+                    uint32_t c) -> uint8_t {
+  return video_check_mode(pc, addr, w, d, c);
+}
+auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
+    -> uint8_t {
+  return video_check_vbl(pc, addr, w, d, c);
+}
+auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
+    -> uint8_t {
+  return video_set_mode(pc, addr, w, d, c);
+}

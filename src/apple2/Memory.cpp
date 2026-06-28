@@ -1,41 +1,13 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-/* Description: Memory emulation
- *
- * Author: Various
- */
-
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
+// SPDX-License-Identifier: GPL-2.0-only
 
 #include "apple2/Memory.h"
 
+#include <sys/mman.h>
+
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 
 #include "apple2/CPU.h"
 #include "apple2/SnapshotTypes.h"
@@ -46,9 +18,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Log.h"
 #include "core/resource.h"
 
-// for mlock - munlock
-#include <sys/mman.h>
-
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast,
+// bugprone-easily-swappable-parameters, bugprone-branch-clone,
+// cppcoreguidelines-macro-usage, modernize-use-auto,
+// cppcoreguidelines-init-variables,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays): Unavoidable
+// hardware architectural constraints for Apple II memory management unit and
+// page table multiplexer
 #define SW_80STORE (memmode & MF_80STORE)
 #define SW_ALTZP (memmode & MF_ALTZP)
 #define SW_AUXREAD (memmode & MF_AUXREAD)
@@ -71,11 +50,11 @@ uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
 MemoryInitPattern_e g_eMemoryInitPattern = MIP_FF_FF_00_00;
 
-static void SetMem(uint8_t* val) {
+static auto SetMem(uint8_t* val) -> void {
   mem = val;
   if (g_active_memory) g_active_memory->mem = val;
 }
-static void SetMemDirty(uint8_t* val) {
+static auto SetMemDirty(uint8_t* val) -> void {
   memdirty = val;
   if (g_active_memory) g_active_memory->memdirty = val;
 }
@@ -155,7 +134,7 @@ auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 }
 
 #ifdef RAMWORKS
-uint32_t g_uMaxExPages = 1;  // user requested ram pages
+uint32_t g_uMaxExPages = 1;
 #endif
 
 auto GetRamWorksActiveBank() -> uint32_t { return g_uActiveBank; }
@@ -163,7 +142,7 @@ auto GetRamWorksActiveBank() -> uint32_t { return g_uActiveBank; }
 auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
                     uint8_t value, uint32_t nCycles) -> uint8_t;
 
-void MemUpdatePaging(bool initialize, bool updatewriteonly);
+auto MemUpdatePaging(bool initialize, bool updatewriteonly) -> void;
 
 static auto IORead_C00x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
                         uint32_t nCyclesLeft) -> uint8_t {
@@ -190,25 +169,25 @@ static auto IOWrite_C00x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
 static auto IORead_C01x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
                         uint32_t nCyclesLeft) -> uint8_t {
   switch (addr & ADDR_NIBBLE_MASK) {
-    case 0x1:  // RDLCRAM
-    case 0x2:  // RDRAMRD
-    case 0x3:  // RDRAMWRT
-    case 0x4:  // RDCXROM
-    case 0x5:  // RDALTZP
-    case 0x6:  // RD80STORE
-    case 0x7:  // RDVERTBL
-    case 0x8:  // RD80COL
+    case 0x1:
+    case 0x2:
+    case 0x3:
+    case 0x4:
+    case 0x5:
+    case 0x6:
+    case 0x7:
+    case 0x8:
       return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
-    case 0x9:  // RDVBLBAR
+    case 0x9:
       return VideoCheckVbl(pc, addr, bWrite, d, nCyclesLeft);
-    case 0xA:  // RDTEXT
-    case 0xB:  // RDMIXED
+    case 0xA:
+    case 0xB:
       return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
-    case 0xC:  // RDPAGE2
-    case 0xD:  // RDHIRES
+    case 0xC:
+    case 0xD:
       return MemCheckPaging(pc, addr, bWrite, d, nCyclesLeft);
-    case 0xE:  // RDALTCHAR
-    case 0xF:  // RD80VID
+    case 0xE:
+    case 0xF:
       return VideoCheckMode(pc, addr, bWrite, d, nCyclesLeft);
     default:
       break;
@@ -390,13 +369,11 @@ static auto IOWrite_C07x(uint16_t pc, uint16_t addr, uint8_t bWrite, uint8_t d,
       return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 #ifdef RAMWORKS
     case 0x1:
-      return MemSetPaging(pc, addr, bWrite, d,
-                          nCyclesLeft);  // extended memory card set page
+      return MemSetPaging(pc, addr, bWrite, d, nCyclesLeft);
     case 0x2:
       return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     case 0x3:
-      return MemSetPaging(pc, addr, bWrite, d,
-                          nCyclesLeft);  // Ramworks III set page
+      return MemSetPaging(pc, addr, bWrite, d, nCyclesLeft);
 #else
     case 0x1:
       return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
@@ -595,11 +572,10 @@ auto IOWrite_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
 
 static uint8_t g_bmSlotInit = 0;
 
-static void InitIoHandlers() {
+static auto InitIoHandlers() -> void {
   g_bmSlotInit = 0;
   uint32_t i = 0;
 
-  // Clear all handlers
   for (i = 0; i < 512; i++) {
     IORead[i] = IO_Null;
     IOWrite[i] = IO_Null;
@@ -628,10 +604,10 @@ static void InitIoHandlers() {
 }
 
 // All slots [0..7] must register their handlers
-void RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
+auto RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
                        iofunction IOWriteC0, iofunction IOReadCx,
                        iofunction IOWriteCx, void* lpSlotParameter,
-                       uint8_t* pExpansionRom) {
+                       uint8_t* pExpansionRom) -> void {
   assert(uSlot < NUM_SLOTS);
   g_bmSlotInit |= 1 << uSlot;
   SlotParameters[uSlot] = lpSlotParameter;
@@ -653,40 +629,34 @@ void RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
   ExpansionRom[uSlot] = pExpansionRom;
 }
 
-void RegisterDirectIoHandler(uint16_t addr, iofunction read, iofunction write,
-                             void* instance) {
+auto RegisterDirectIoHandler(uint16_t addr, iofunction read, iofunction write,
+                             void* instance) -> void {
   if ((addr & 0xFF00) != 0xC000) return;
   uint8_t index = static_cast<uint8_t>(addr & 0xFF);
 
   if (read) IORead[index] = read;
   if (write) IOWrite[index] = write;
 
-  // Note: we don't currently have a way to store the 'instance'
-  // for the generic iofunction signature without changing the core.
-  // Peripherals using this must handle their own instance (e.g. via default
-  // global).
   (void)instance;
 }
 //===========================================================================
 
 auto GetMemMode() -> uint32_t { return memmode; }
 
-void SetMemMode(uint32_t uNewMemMode) { memmode = uNewMemMode; }
+auto SetMemMode(uint32_t uNewMemMode) -> void { memmode = uNewMemMode; }
 
-void ResetPaging(bool initialize) {
+static auto ResetPaging(bool initialize) -> void {
   lastwriteram = false;
   memmode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   MemUpdatePaging(initialize, false);
 }
 
-void MemUpdatePaging(bool initialize, bool updatewriteonly) {
-  // Save the current paging shadow table
+auto MemUpdatePaging(bool initialize, bool updatewriteonly) -> void {
   uint8_t* oldshadow[PAGE_MAX];
-  if (!(initialize || updatewriteonly /*|| fastpaging*/)) {
+  if (!(initialize || updatewriteonly)) {
     memcpy(oldshadow, memshadow, PAGE_MAX * sizeof(uint8_t*));
   }
 
-  // Update the paging tables based on the new paging switch values
   uint32_t loop = 0;
   if (initialize) {
     for (loop = PAGE_ZERO; loop < PAGE_C0; loop++) {
@@ -840,9 +810,9 @@ auto MemCheckPaging(uint16_t programcounter, uint16_t address, uint8_t write,
   return (MemReadFloatingBus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0x00);
 }
 
-void MemDestroy() {
+auto MemDestroy() -> void {
 #ifdef RAMWORKS
-  for (uint32_t i = 0; i < g_uMaxExPages; i++) {
+  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; i++) {
     if (RWpages[i]) {
       free(RWpages[i]);
       RWpages[i] = nullptr;
@@ -850,8 +820,7 @@ void MemDestroy() {
   }
 #endif
 
-  if (memimage)
-    munlock(memimage, MEMORY_64K); /* POSIX: unlock memory from swapping */
+  if (memimage) munlock(memimage, MEMORY_64K);
 
   free(memaux_allocated);
   free(memmain);
@@ -892,9 +861,11 @@ auto MemGetAuxPtr(uint16_t offset) -> uint8_t* {
         ((offset & PAGE_MASK) <= TXT1_END_PAGE)) ||
        (SW_HIRES && ((offset & PAGE_MASK) >= HGR1_BEGIN) &&
         ((offset & PAGE_MASK) <= HGR1_END_PAGE)))) {
-    lpMem = (memshadow[(offset >> 8)] == (RWpages[0] + (offset & PAGE_MASK)))
-                ? mem + offset
-                : RWpages[0] + offset;
+    if (RWpages[0] != nullptr) {
+      lpMem = (memshadow[(offset >> 8)] == (RWpages[0] + (offset & PAGE_MASK)))
+                  ? mem + offset
+                  : RWpages[0] + offset;
+    }
   }
 #endif
 
@@ -909,14 +880,9 @@ auto MemGetMainPtr(uint16_t offset) -> uint8_t* {
 
 //===========================================================================
 
-// Used by:
-// . Savestate: MemSaveSnapshotMemory(), MemLoadSnapshotAux()
-// . Debugger : CmdMemorySave(), CmdMemoryLoad()
 auto MemGetBankPtr(const uint32_t nBank) -> uint8_t* {
-  //  BackMainImage();  // Flush any dirty pages to back-buffer
-
 #ifdef RAMWORKS
-  if (nBank > g_uMaxExPages) {
+  if (nBank > g_uMaxExPages || nBank >= MAX_RAMWORKS_PAGES) {
     return nullptr;
   }
 
@@ -977,26 +943,37 @@ auto MemIsAddrCodeMemory(const uint16_t addr) -> bool {
   return true;
 }
 
-void MemPreInitialize() {
-  // Init the I/O handlers
-  InitIoHandlers();
-}
+auto MemPreInitialize() -> void { InitIoHandlers(); }
 
 auto MemInitialize() -> int  // returns -1 if any error during initialization
 {
   MemDestroy();
 
+#ifdef RAMWORKS
+  if (g_uMaxExPages > MAX_RAMWORKS_PAGES) {
+    g_uMaxExPages = MAX_RAMWORKS_PAGES;
+  }
+#endif
+
   const uint32_t CxRomSize = CX_ROM_SIZE;
   const uint32_t Apple2RomSize = APPLE2_ROM_SIZE;
   const uint32_t Apple2eRomSize = Apple2RomSize + CxRomSize;
 
-  // Allocate memory for the active memory context
   memaux_allocated = static_cast<uint8_t*>(malloc(MEMORY_64K));
   memaux = memaux_allocated;
   memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
   SetMemDirty(static_cast<uint8_t*>(malloc(NUM_PAGES_64K)));
   memrom = static_cast<uint8_t*>(malloc(ROM_BUFFER_SIZE));
   memimage = static_cast<uint8_t*>(malloc(MEMORY_64K));
+  pCxRomInternal = static_cast<uint8_t*>(malloc(CxRomSize));
+  pCxRomPeripheral = static_cast<uint8_t*>(malloc(CxRomSize));
+
+  if (!memaux || !memdirty || !memimage || !memmain || !memrom ||
+      !pCxRomInternal || !pCxRomPeripheral) {
+    Logger::Error("Unable to allocate required memory buffers.");
+    MemDestroy();
+    return -1;
+  }
 
   if (memaux) memset(memaux, 0, MEMORY_64K);
   if (memmain) memset(memmain, 0, MEMORY_64K);
@@ -1005,30 +982,19 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
   if (memrom) memset(memrom, 0, ROM_BUFFER_SIZE);
   if (memimage) memset(memimage, 0, MEMORY_64K);
 
-  /* POSIX : lock memory from swapping */
   mlock(memimage, MEMORY_64K);
-
-  pCxRomInternal = static_cast<uint8_t*>(malloc(CxRomSize));
-  pCxRomPeripheral = static_cast<uint8_t*>(malloc(CxRomSize));
 
   if (pCxRomInternal) memset(pCxRomInternal, 0, CxRomSize);
   if (pCxRomPeripheral) memset(pCxRomPeripheral, 0, CxRomSize);
 
-  if (!memaux || !memdirty || !memimage || !memmain || !memrom ||
-      !pCxRomInternal || !pCxRomPeripheral) {
-    fprintf(stderr, "Unable to allocate required memory. Sorry.\n");
-    return -1;
-  }
-
 #ifdef RAMWORKS
-  // allocate memory for RAMWorks III - up to 8MB
   RWpages[0] = static_cast<uint8_t*>(malloc(MEMORY_64K));
   if (RWpages[0]) {
     memset(RWpages[0], 0, MEMORY_64K);
     memaux = RWpages[0];
   }
   uint32_t i = 1;
-  while (i < g_uMaxExPages) {
+  while (i < g_uMaxExPages && i < MAX_RAMWORKS_PAGES) {
     RWpages[i] = static_cast<uint8_t*>(malloc(MEMORY_64K));
     if (RWpages[i]) {
       memset(RWpages[i], 0, MEMORY_64K);
@@ -1041,7 +1007,6 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
 
   MemSetActiveContext(g_active_memory);
 
-// READ THE APPLE FIRMWARE ROMS INTO THE ROM IMAGE
 #define IDR_APPLE2_ROM "Apple2.rom"
 #define IDR_APPLE2_PLUS_ROM "Apple2_Plus.rom"
 #define IDR_APPLE2E_ROM "Apple2e.rom"
@@ -1095,15 +1060,13 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
                     nullptr, nullptr);
 
   MemReset();
-  return 0;  // all is OK??
+  return 0;
 }
 
-void MemReset() {
-  // Initialize the paging tables
+auto MemReset() -> void {
   memset(memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 
-  // Initialize the ram images
   memset(memaux, 0, MEMORY_64K);
   memset(memmain, 0, MEMORY_64K);
 
@@ -1118,10 +1081,7 @@ void MemReset() {
     }
   }
 
-  // Set up the memory image
   SetMem(memimage);
-
-  // Initialize paging, filling in the 64k memory image
   ResetPaging(true);
 
   // Initialize & reset the cpu
@@ -1133,7 +1093,7 @@ void MemReset() {
 // Call by:
 // . Soft-reset (Ctrl+Reset)
 // . Snapshot_LoadState()
-void MemResetPaging() { ResetPaging(false); }
+auto MemResetPaging() -> void { ResetPaging(false); }
 
 // Called by Disk][ I/O only
 auto MemReturnRandomData(uint8_t highbit) -> uint8_t {
@@ -1236,9 +1196,10 @@ auto MemSetPaging(uint16_t programcounter, uint16_t address, uint8_t write,
         memmode |= MF_HIRES;
         break;
 #ifdef RAMWORKS
-      case SS_RW_AUX_PAGE:  // extended memory aux page number
-      case SS_RW_III_PAGE:  // Ramworks III set aux page number
-        if ((value < g_uMaxExPages) && RWpages[value]) {
+      case SS_RW_AUX_PAGE:
+      case SS_RW_III_PAGE:
+        if ((value < g_uMaxExPages) && (value < MAX_RAMWORKS_PAGES) &&
+            RWpages[value]) {
           g_uActiveBank = value;
           memaux = RWpages[value];
           MemUpdatePaging(false, false);
@@ -1253,13 +1214,13 @@ auto MemSetPaging(uint16_t programcounter, uint16_t address, uint8_t write,
   // If the emulated program has just update the memory write mode and is
   // about to update the memory read mode, hold off on any processing until it
   // does so.
-  if ((address >= 4) && (address <= 5) &&
+  if ((address >= 4) && (address <= 5) && (programcounter <= 0xFFFC) &&
       ((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
        0x00C0028D)) {
     modechanging = true;
     return write ? 0 : MemReadFloatingBus(1, nCyclesLeft);
   }
-  if ((address >= 0x80) && (address <= 0x8F) && (programcounter < 0xC000) &&
+  if ((address >= 0x80) && (address <= 0x8F) && (programcounter <= 0xFFFC) &&
       (((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
         0x00C0048D) ||
        ((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
@@ -1310,14 +1271,14 @@ auto MemGetSlotParameters(uint32_t uSlot) -> void* {
 }
 
 auto MemGetSnapshot(SS_BaseMemory* pSS) -> uint32_t {
-  pSS->dwMemMode = memmode;
-  pSS->bLastWriteRam = lastwriteram;
+  pSS->mem_mode = memmode;
+  pSS->last_write_ram = lastwriteram;
 
   for (uint32_t dwOffset = 0x0000; dwOffset < MEMORY_64K;
        dwOffset += PAGE_SIZE) {
-    memcpy(pSS->nMemMain + dwOffset,
+    memcpy(pSS->mem_main + dwOffset,
            MemGetMainPtr(static_cast<uint16_t>(dwOffset)), PAGE_SIZE);
-    memcpy(pSS->nMemAux + dwOffset,
+    memcpy(pSS->mem_aux + dwOffset,
            MemGetAuxPtr(static_cast<uint16_t>(dwOffset)), PAGE_SIZE);
   }
 
@@ -1325,12 +1286,105 @@ auto MemGetSnapshot(SS_BaseMemory* pSS) -> uint32_t {
 }
 
 auto MemSetSnapshot(SS_BaseMemory* pSS) -> uint32_t {
-  memmode = pSS->dwMemMode;
-  lastwriteram = pSS->bLastWriteRam;
-  memcpy(memmain, pSS->nMemMain, nMemMainSize);
-  memcpy(memaux, pSS->nMemAux, nMemAuxSize);
+  memmode = pSS->mem_mode;
+  lastwriteram = pSS->last_write_ram;
+  memcpy(memmain, pSS->mem_main, mem_main_size);
+  memcpy(memaux, pSS->mem_aux, mem_aux_size);
   modechanging = false;
   MemUpdatePaging(true, false);  // Initialize=1, UpdateWriteOnly=0
 
   return 0;
 }
+
+// Modern snake_case aliases
+auto mem_get_active_context() -> MemoryInstance_t* {
+  return MemGetActiveContext();
+}
+auto mem_set_active_context(MemoryInstance_t* context) -> void {
+  MemSetActiveContext(context);
+}
+auto register_io_handler(uint32_t slot, iofunction io_read_c0,
+                         iofunction io_write_c0, iofunction io_read_cx,
+                         iofunction io_write_cx, void* slot_parameter,
+                         uint8_t* expansion_rom) -> void {
+  RegisterIoHandler(slot, io_read_c0, io_write_c0, io_read_cx, io_write_cx,
+                    slot_parameter, expansion_rom);
+}
+auto register_direct_io_handler(uint16_t addr, iofunction read,
+                                iofunction write, void* instance) -> void {
+  RegisterDirectIoHandler(addr, read, write, instance);
+}
+auto mem_destroy() -> void { MemDestroy(); }
+auto mem_get_80store() -> bool { return MemGet80Store(); }
+auto mem_check_slotcxrom() -> bool { return MemCheckSLOTCXROM(); }
+auto mem_get_aux_ptr(uint16_t addr) -> uint8_t* { return MemGetAuxPtr(addr); }
+auto mem_get_main_ptr(uint16_t addr) -> uint8_t* { return MemGetMainPtr(addr); }
+auto mem_get_cx_rom_peripheral() -> uint8_t* { return MemGetCxRomPeripheral(); }
+auto get_mem_ptr(uint16_t addr) -> uint8_t* { return GetMemPtr(addr); }
+auto mem_get_bank_ptr(const uint32_t bank) -> uint8_t* {
+  return MemGetBankPtr(bank);
+}
+auto get_mem_mode() -> uint32_t { return GetMemMode(); }
+auto set_mem_mode(uint32_t mode) -> void { SetMemMode(mode); }
+auto mem_is_addr_code_memory(const uint16_t addr) -> bool {
+  return MemIsAddrCodeMemory(addr);
+}
+auto mem_pre_initialize() -> void { MemPreInitialize(); }
+auto mem_initialize() -> int { return MemInitialize(); }
+auto mem_read_floating_bus(const uint32_t executed_cycles) -> uint8_t {
+  return MemReadFloatingBus(executed_cycles);
+}
+auto mem_read_floating_bus(const uint8_t highbit,
+                           const uint32_t executed_cycles) -> uint8_t {
+  return MemReadFloatingBus(highbit, executed_cycles);
+}
+auto mem_reset() -> void { MemReset(); }
+auto mem_reset_paging() -> void { MemResetPaging(); }
+auto mem_return_random_data(uint8_t highbit) -> uint8_t {
+  return MemReturnRandomData(highbit);
+}
+auto mem_set_fast_paging(bool enable) -> void { (void)enable; }
+auto mem_set_80store(bool enable) -> void { (void)enable; }
+auto mem_trim_images() -> void {}
+auto mem_get_slot_parameters(uint32_t slot) -> void* {
+  return MemGetSlotParameters(slot);
+}
+auto mem_get_snapshot(SS_BaseMemory* snapshot) -> uint32_t {
+  return MemGetSnapshot(snapshot);
+}
+auto mem_set_snapshot(SS_BaseMemory* snapshot) -> uint32_t {
+  return MemSetSnapshot(snapshot);
+}
+auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+             uint32_t cycles) -> uint8_t {
+  return IO_Null(pc, addr, write, val, cycles);
+}
+auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
+  MemUpdatePaging(initialize, updatewriteonly);
+}
+auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                     uint32_t cycles) -> uint8_t {
+  return IOMap_Dispatch(pc, addr, write, val, cycles);
+}
+auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                      uint32_t cycles) -> uint8_t {
+  return MemCheckPaging(pc, addr, write, val, cycles);
+}
+auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                    uint32_t cycles) -> uint8_t {
+  return MemSetPaging(pc, addr, write, val, cycles);
+}
+auto get_ramworks_active_bank() -> uint32_t { return GetRamWorksActiveBank(); }
+
+auto MemSetFastPaging(bool enable) -> void { mem_set_fast_paging(enable); }
+auto MemSet80Store(bool enable) -> void { mem_set_80store(enable); }
+auto MemTrimImages() -> void { mem_trim_images(); }
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc,
+// cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast,
+// bugprone-easily-swappable-parameters, bugprone-branch-clone,
+// cppcoreguidelines-macro-usage, modernize-use-auto,
+// cppcoreguidelines-init-variables,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

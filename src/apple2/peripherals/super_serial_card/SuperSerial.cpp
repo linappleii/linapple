@@ -266,11 +266,11 @@ auto SuperSerial_SaveState(void* instance, void* state_buffer,
   auto* super_serial = static_cast<SuperSerialCard_t*>(instance);
   auto* save_state_ptr = static_cast<SS_IO_Comms*>(state_buffer);
 
-  save_state_ptr->controlbyte = super_serial->control_byte;
-  save_state_ptr->commandbyte = super_serial->command_byte;
-  save_state_ptr->recvbytes = super_serial->rx_count;
+  save_state_ptr->control_byte = super_serial->control_byte;
+  save_state_ptr->command_byte = super_serial->command_byte;
+  save_state_ptr->recv_bytes = super_serial->rx_count;
   std::copy_n(super_serial->rx_buffer.begin(), SUPER_SERIAL_FIFO_SIZE,
-              save_state_ptr->recvbuffer);
+              save_state_ptr->recv_buffer);
 
   *buffer_size = required_size;
   return PERIPHERAL_OK;
@@ -286,10 +286,10 @@ auto SuperSerial_LoadState(void* instance, const void* state_buffer,
   auto* super_serial = static_cast<SuperSerialCard_t*>(instance);
   const auto* save_state_ptr = static_cast<const SS_IO_Comms*>(state_buffer);
 
-  super_serial->control_byte = save_state_ptr->controlbyte;
-  super_serial->command_byte = save_state_ptr->commandbyte;
-  super_serial->rx_count = save_state_ptr->recvbytes;
-  std::copy_n(save_state_ptr->recvbuffer, SUPER_SERIAL_FIFO_SIZE,
+  super_serial->control_byte = save_state_ptr->control_byte;
+  super_serial->command_byte = save_state_ptr->command_byte;
+  super_serial->rx_count = save_state_ptr->recv_bytes;
+  std::copy_n(save_state_ptr->recv_buffer, SUPER_SERIAL_FIFO_SIZE,
               super_serial->rx_buffer.begin());
 
   return PERIPHERAL_OK;

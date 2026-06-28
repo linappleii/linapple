@@ -1,51 +1,4 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-// #define UPDATE_ALL_PER_CYCLE
-
-/* Description: 6502/65C02 emulation
- *
- * Author: Various
- */
-
-// TO DO:
-// . All these CPP macros need to be converted to inline funcs
-
-// TeaRex's Note about illegal opcodes:
-// ------------------------------------
-// . I've followed the names and descriptions given in
-// . "Extra Instructions Of The 65XX Series CPU"
-// . by Adam Vardy, dated Sept 27, 1996.
-// . The exception is, what he calls "SKB" and "SKW" I call "NOP",
-// . for consistency's sake. Several other naming conventions exist.
-// . Of course, only the 6502 has illegal opcodes, the 65C02 doesn't.
-// . Thus they're not emulated in Enhanced //e mode. Games relying on them
-// . don't run on a real Enhanced //e either. The old mixture of 65C02
-// . emulation and skipping the right number of bytes for illegal 6502
-// . opcodes, while working surprisingly well in practice, was IMHO
-// . ill-founded in theory and has thus been removed.
-
-/* Adaptation for SDL and POSIX (l) by beom beotiger, Nov-Dec 2007 */
+// SPDX-License-Identifier: GPL-2.0-only
 
 #include <pthread.h>
 
@@ -61,6 +14,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-do-while, bugprone-switch-missing-default-case,
+// bugprone-branch-clone, cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-macro-usage, bugprone-easily-swappable-parameters,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// google-readability-function-size): Unavoidable hardware architectural
+// constraints for low-level 6502 CPU core
 enum {
   AF_SIGN = 0x80,
   AF_OVERFLOW = 0x40,
@@ -74,7 +35,6 @@ enum {
 
 enum { SHORTOPCODES = 22, BENCHOPCODES = 33 };
 
-// What is this 6502 code?
 static uint8_t benchopcode[BENCHOPCODES] = {
     0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86,
     0x91, 0x94, 0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6,
@@ -85,20 +45,16 @@ CpuInstance_t* g_active_cpu = &g_cpu_context;
 
 regsrec regs;
 uint64_t g_nCumulativeCycles = 0;
-static uint32_t
-    g_nCyclesSubmitted;  // Number of cycles submitted to CpuExecute()
+static uint32_t g_nCyclesSubmitted;
 static uint32_t g_nCyclesExecuted;
 static volatile uint32_t g_bmIRQ = 0;
 static volatile uint32_t g_bmNMI = 0;
 static volatile bool g_bNmiFlank = false;  // Positive going flank on NMI line
 
-auto CpuGetRegisters() -> CpuRegisters_t* { return &regs; }
-
-auto CpuGetCumulativeCycles() -> uint64_t { return g_nCumulativeCycles; }
-
-auto CpuGetActiveContext() -> CpuInstance_t* { return g_active_cpu; }
-
-auto CpuSetActiveContext(CpuInstance_t* context) -> void {
+auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
+auto cpu_get_cumulative_cycles() -> uint64_t { return g_nCumulativeCycles; }
+auto cpu_get_active_context() -> CpuInstance_t* { return g_active_cpu; }
+auto cpu_set_active_context(CpuInstance_t* context) -> void {
   if (context == nullptr) {
     return;
   }
@@ -111,17 +67,22 @@ auto CpuSetActiveContext(CpuInstance_t* context) -> void {
   g_nCumulativeCycles = g_active_cpu->cumulative_cycles;
 }
 
-static signed long g_uInternalExecutedCycles;
+auto CpuGetRegisters() -> CpuRegisters_t* { return cpu_get_registers(); }
+auto CpuGetCumulativeCycles() -> uint64_t {
+  return cpu_get_cumulative_cycles();
+}
+auto CpuGetActiveContext() -> CpuInstance_t* {
+  return cpu_get_active_context();
+}
+auto CpuSetActiveContext(CpuInstance_t* context) -> void {
+  cpu_set_active_context(context);
+}
+
+static uint32_t g_uInternalExecutedCycles;
 static signed int g_nIrqCheckTimeout = 16;
 
-//
-
-// Assume all interrupt sources assert until the device is told to stop:
-// - eg by r/w to device's register or a machine reset
-
-static bool g_bCritSectionValid =
-    false;  // Deleting CritialSection when not valid causes crash on Win98
-// static CRITICAL_SECTION g_CriticalSection;  // To guard /g_bmIRQ/ & /g_bmNMI/
+// Interrupt sources assert until the device is commanded to stop
+static bool g_bCritSectionValid = false;
 pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
 
 // General Purpose Macros
@@ -134,8 +95,6 @@ pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
   regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN | AF_OVERFLOW | AF_ZERO)) | \
             flagc | flagn | (flagv ? AF_OVERFLOW : 0) |                 \
             (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
-// CYC(a): This can be optimised, as only certain opcodes will affect
-// uExtraCycles
 #define CYC(a)                           \
   uExecutedCycles += (a) + uExtraCycles; \
   g_nIrqCheckTimeout -= (a) + uExtraCycles;
@@ -246,10 +205,6 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
     addr = *(uint16_t*)(mem + base);
 #define REL addr = (signed char)*(mem + regs.pc++);
 
-// Optimiation note:
-// . Opcodes that generate zero-page addresses can't be accessing $C000..$CFFF
-//   so they could be paired with special READZP/WRITEZP macros (instead of
-//   READ/WRITE)
 #define ZPG addr = *(mem + regs.pc++);
 #define ZPGX addr = ((*(mem + regs.pc++)) + regs.x) & 0xFF;
 #define ZPGY addr = ((*(mem + regs.pc++)) + regs.y) & 0xFF;
@@ -319,7 +274,7 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   SETNZ(regs.a)   \
   flagc = !!flagn;
 #define ARR                                       \
-  temp = regs.a & READ; /* Yes, this is sick */   \
+  temp = regs.a & READ;                           \
   if (regs.ps & AF_DECIMAL) {                     \
     val = temp;                                   \
     val |= (flagc ? 0x100 : 0);                   \
@@ -749,24 +704,7 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   val = regs.x & (((base >> 8) + 1) & 0xFF);                  \
   addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8); \
   WRITE(val)
-void RequestDebugger() {
-  // BUG: This causes DebugBegin to constantly be called.
-  // It's as if the WM_KEYUP are auto-repeating?
-  //   FrameWndProc()
-  //      ProcessButtonClick()
-  //         DebugBegin()
-  //  PostMessage( g_hFrameWindow, WM_KEYDOWN, DEBUG_TOGGLE_KEY, 0 );
-  //  PostMessage( g_hFrameWindow, WM_KEYUP  , DEBUG_TOGGLE_KEY, 0 );
-
-  // Not a valid solution, since hitting F7 (to exit) debugger gets the debugger
-  // out of sync due to EnterMessageLoop() calling ContinueExecution() after the
-  // mode has changed to DEBUG.
-  //  DebugBegin();
-
-  // Yes, we do need some sort of debugger, don't we? 0_0  --bb
-  //  FrameWndProc( g_hFrameWindow, WM_KEYDOWN, DEBUG_TOGGLE_KEY, 0 );
-  //  FrameWndProc( g_hFrameWindow, WM_KEYUP  , DEBUG_TOGGLE_KEY, 0 );
-}
+auto RequestDebugger() -> void {}
 
 // Break into debugger on invalid opcodes
 #define INV
@@ -789,10 +727,7 @@ static inline void DoIrqProfiling(uint32_t uCycles) {
 #ifdef _DEBUG
   if (regs.ps & AF_INTERRUPT) return;  // Still in Apple's ROM
 
-  g_nCycleIrqEnd = g_nCumulativeCycles + uCycles;
-  g_nCycleIrqTime =
-      (uint16_t)(g_nCycleIrqEnd - g_nCycleIrqStart);  // this *could* overflow,
-                                                      // but it'd take a while
+  g_nCycleIrqTime = static_cast<uint16_t>(g_nCycleIrqEnd - g_nCycleIrqStart);
 
   if (g_nCycleIrqTime > g_nMax) g_nMax = g_nCycleIrqTime;
   if (g_nCycleIrqTime < g_nMin) g_nMin = g_nCycleIrqTime;
@@ -827,7 +762,6 @@ static inline void Fetch(uint8_t& iOpcode, uint32_t uExecutedCycles) {
   regs.pc++;
 }
 
-// #define ENABLE_NMI_SUPPORT  // Not used - so don't enable
 static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
                        uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
                        uint8_t& flagz) {
@@ -878,15 +812,12 @@ static inline void CheckInterruptSources(uint32_t uExecutedCycles) {
 }
 
 static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
-  // Optimisation:
-  // . Copy the global /regs/ vars to stack-based local vars
-  //   (Oliver Schmidt says this gives a performance gain, see email - The real
-  //   deal: "1.10.5")
+  // Stack-local variables for register performance optimization
   uint16_t addr = 0;
-  uint8_t flagc = 0;  // must always be 0 or 1, no other values allowed
-  uint8_t flagn = 0;  // must always be 0 or 0x80.
-  uint8_t flagv = 0;  // any value allowed
-  uint8_t flagz = 0;  // any value allowed
+  uint8_t flagc = 0;
+  uint8_t flagn = 0;
+  uint8_t flagv = 0;
+  uint8_t flagz = 0;
   uint16_t temp = 0;
   uint16_t temp2 = 0;
   uint16_t val = 0;
@@ -1432,10 +1363,10 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
 
 static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
   uint16_t addr = 0;
-  uint8_t flagc = 0;  // must always be 0 or 1, no other values allowed
-  uint8_t flagn = 0;  // must always be 0 or 0x80.
-  uint8_t flagv = 0;  // any value allowed
-  uint8_t flagz = 0;  // any value allowed
+  uint8_t flagc = 0;
+  uint8_t flagn = 0;
+  uint8_t flagv = 0;
+  uint8_t flagz = 0;
   uint16_t temp = 0;
   uint16_t val = 0;
   uint16_t low = 0;
@@ -1987,23 +1918,16 @@ static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t {
   }  // Enhanced Apple //e
 }
 
-// All Globally Accessible FUnctions Are Below This Line
+// Modern API implementation
 
-void CpuDestroy() {
+auto cpu_destroy() -> void {
   if (g_bCritSectionValid) {
     g_bCritSectionValid = false;
   }
 }
 
-// Pre:
-//  Call this when an IO-reg is access & accurate cycle info is needed
-// Post:
-//  g_nCyclesExecuted
-//  g_nCumulativeCycles
-//
-void CpuCalcCycles(uint32_t nExecutedCycles) {
-  // Calc # of cycles executed since this func was last called
-  uint32_t nCycles = nExecutedCycles - g_nCyclesExecuted;
+auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
+  uint32_t nCycles = executed_cycles - g_nCyclesExecuted;
 #ifdef UPDATE_ALL_PER_CYCLE
   assert((int32_t)nCycles >= 0);
 #endif
@@ -2011,40 +1935,28 @@ void CpuCalcCycles(uint32_t nExecutedCycles) {
   g_nCumulativeCycles += nCycles;
 }
 
-// Old method with g_uInternalExecutedCycles runs faster!
-//        Old     vs    New
-// - 68.0,69.0MHz vs  66.7, 67.2MHz  (with check for VBL IRQ every opcode)
-// - 89.6,88.9MHz vs  87.2, 87.9MHz  (without check for VBL IRQ)
-// -                  75.9, 78.5MHz  (with check for VBL IRQ every 128 cycles)
-// -                 137.9,135.6MHz  (with check for VBL IRQ & MB_Update every
-// 128 cycles)
-
 #ifdef UPDATE_ALL_PER_CYCLE
-uint32_t CpuGetCyclesThisFrame(
-    uint32_t)  // Old func using g_uInternalExecutedCycles
-{
-  CpuCalcCycles(g_uInternalExecutedCycles);
+auto cpu_get_cycles_this_frame(uint32_t) -> uint32_t {
+  cpu_calc_cycles(g_uInternalExecutedCycles);
   return g_dwCyclesThisFrame + g_nCyclesExecuted;
 }
 #else
-
-auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
-  CpuCalcCycles(nExecutedCycles);
+auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
+  cpu_calc_cycles(executed_cycles);
   return g_dwCyclesThisFrame + g_nCyclesExecuted;
 }
-
 #endif
 
-auto CpuExecute(uint32_t uCycles) -> uint32_t {
+auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   uint32_t uExecutedCycles = 0;
 
-  g_nCyclesSubmitted = uCycles;
+  g_nCyclesSubmitted = total_cycles;
   g_nCyclesExecuted = 0;
 
-  if (uCycles == 0) {  // Do single step
+  if (total_cycles == 0) {  // Do single step
     uExecutedCycles = InternalCpuExecute(0);
   } else {  // Do multi-opcode emulation
-    uExecutedCycles = InternalCpuExecute(uCycles);
+    uExecutedCycles = InternalCpuExecute(total_cycles);
   }
 
   uint16_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
@@ -2053,25 +1965,24 @@ auto CpuExecute(uint32_t uCycles) -> uint32_t {
   return uExecutedCycles;
 }
 
-void CpuInitialize() {
-  CpuDestroy();
+auto cpu_initialize() -> void {
+  cpu_destroy();
   regs.a = regs.x = regs.y = regs.ps = 0xFF;
   regs.sp = 0x01FF;
-  CpuReset();  // Init's ps & pc. Updates sp
+  cpu_reset();
 
   g_bCritSectionValid = true;
-  CpuIrqReset();
-  CpuNmiReset();
+  cpu_irq_reset();
+  cpu_nmi_reset();
 }
 
-void CpuSetupBenchmark() {
+auto cpu_setup_benchmark() -> void {
   regs.a = 0;
   regs.x = 0;
   regs.y = 0;
   regs.pc = 0x300;
   regs.sp = 0x1FF;
 
-  // CREATE CODE SEGMENTS CONSISTING OF GROUPS OF COMMONLY-USED OPCODES
   {
     uint16_t addr = 0x300;
     uint8_t opcode = 0;
@@ -2096,7 +2007,7 @@ void CpuSetupBenchmark() {
   }
 }
 
-void CpuIrqReset() {
+auto cpu_irq_reset() -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2107,29 +2018,29 @@ void CpuIrqReset() {
   }
 }
 
-void CpuIrqAssert(eIRQSRC Device) {
+auto cpu_irq_assert(eIRQSRC device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
-  g_bmIRQ |= 1 << Device;
+  g_bmIRQ |= 1 << device;
   if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
   }
 }
 
-void CpuIrqDeassert(eIRQSRC Device) {
+auto cpu_irq_deassert(eIRQSRC device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
-  g_bmIRQ &= ~(1 << Device);
+  g_bmIRQ &= ~(1 << device);
   if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
   }
 }
 
-void CpuNmiReset() {
+auto cpu_nmi_reset() -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2141,7 +2052,7 @@ void CpuNmiReset() {
   }
 }
 
-void CpuNmiAssert(eIRQSRC Device) {
+auto cpu_nmi_assert(eIRQSRC device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2149,25 +2060,24 @@ void CpuNmiAssert(eIRQSRC Device) {
   if (g_bmNMI == 0) {  // NMI line is just becoming active
     g_bNmiFlank = true;
   }
-  g_bmNMI |= 1 << Device;
+  g_bmNMI |= 1 << device;
   if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
   }
 }
 
-void CpuNmiDeassert(eIRQSRC Device) {
+auto cpu_nmi_deassert(eIRQSRC device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
   }
-  g_bmNMI &= ~(1 << Device);
+  g_bmNMI &= ~(1 << device);
   if (g_bCritSectionValid) {
     pthread_mutex_unlock(&g_CriticalSection);
   }
 }
 
-void CpuReset() {
-  // 7 cycles
+auto cpu_reset() -> void {
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
   regs.pc = *reinterpret_cast<uint16_t*>(mem + 0xFFFC);
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
@@ -2175,34 +2085,73 @@ void CpuReset() {
   regs.is_jammed = 0;
 }
 
-auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+auto cpu_get_snapshot(SS_CPU6502* snapshot) -> uint32_t {
+  if (!snapshot) {
+    return 1;
+  }
   g_active_cpu->cpu_regs = regs;
   g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
 
-  pSS->A = regs.a;
-  pSS->X = regs.x;
-  pSS->Y = regs.y;
-  pSS->P = regs.ps | AF_RESERVED | AF_BREAK;
-  pSS->S = static_cast<uint8_t>(regs.sp & 0xff);
-  pSS->PC = regs.pc;
-  pSS->g_nCumulativeCycles = g_nCumulativeCycles;
+  snapshot->a = regs.a;
+  snapshot->x = regs.x;
+  snapshot->y = regs.y;
+  snapshot->p = regs.ps | AF_RESERVED | AF_BREAK;
+  snapshot->s = static_cast<uint8_t>(regs.sp & 0xff);
+  snapshot->pc = regs.pc;
+  snapshot->cumulative_cycles = g_nCumulativeCycles;
 
   return 0;
 }
 
-auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t {
-  regs.a = pSS->A;
-  regs.x = pSS->X;
-  regs.y = pSS->Y;
-  regs.ps = pSS->P | AF_RESERVED | AF_BREAK;
-  regs.sp = static_cast<uint16_t>(pSS->S) | 0x100;
-  regs.pc = pSS->PC;
-  CpuIrqReset();
-  CpuNmiReset();
-  g_nCumulativeCycles = pSS->g_nCumulativeCycles;
+auto cpu_set_snapshot(SS_CPU6502* snapshot) -> uint32_t {
+  if (!snapshot) {
+    return 1;
+  }
+  regs.a = snapshot->a;
+  regs.x = snapshot->x;
+  regs.y = snapshot->y;
+  regs.ps = snapshot->p | AF_RESERVED | AF_BREAK;
+  regs.sp = static_cast<uint16_t>(snapshot->s) | 0x100;
+  regs.pc = snapshot->pc;
+  cpu_irq_reset();
+  cpu_nmi_reset();
+  g_nCumulativeCycles = snapshot->cumulative_cycles;
 
   g_active_cpu->cpu_regs = regs;
   g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
 
   return 0;
+}
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-do-while, bugprone-switch-missing-default-case,
+// bugprone-branch-clone, cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-macro-usage, bugprone-easily-swappable-parameters,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// google-readability-function-size)
+
+// Legacy Forwarding Functions
+auto CpuDestroy() -> void { cpu_destroy(); }
+auto CpuCalcCycles(uint32_t nExecutedCycles) -> void {
+  cpu_calc_cycles(nExecutedCycles);
+}
+auto CpuExecute(uint32_t uCycles) -> uint32_t { return cpu_execute(uCycles); }
+auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
+  return cpu_get_cycles_this_frame(nExecutedCycles);
+}
+auto CpuInitialize() -> void { cpu_initialize(); }
+auto CpuSetupBenchmark() -> void { cpu_setup_benchmark(); }
+auto CpuIrqReset() -> void { cpu_irq_reset(); }
+auto CpuIrqAssert(eIRQSRC Device) -> void { cpu_irq_assert(Device); }
+auto CpuIrqDeassert(eIRQSRC Device) -> void { cpu_irq_deassert(Device); }
+auto CpuNmiReset() -> void { cpu_nmi_reset(); }
+auto CpuNmiAssert(eIRQSRC Device) -> void { cpu_nmi_assert(Device); }
+auto CpuNmiDeassert(eIRQSRC Device) -> void { cpu_nmi_deassert(Device); }
+auto CpuReset() -> void { cpu_reset(); }
+auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+  return cpu_get_snapshot(pSS);
+}
+auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+  return cpu_set_snapshot(pSS);
 }

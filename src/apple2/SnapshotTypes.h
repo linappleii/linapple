@@ -9,45 +9,56 @@
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/Common.h"
 
-#define MAKE_VERSION(a, b, c, d) (((a) << 24) | ((b) << 16) | ((c) << 8) | (d))
-#define AW_SS_TAG (('S' << 24) | ('S' << 16) | ('W' << 8) | 'A')
+constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+    -> uint32_t {
+  return ((a) << 24) | ((b) << 16) | ((c) << 8) | (d);
+}
+constexpr uint32_t aw_ss_tag = (('S' << 24) | ('S' << 16) | ('W' << 8) | 'A');
 
-typedef struct {
-  uint32_t dwTag;
-  uint32_t dwVersion;
-  uint32_t dwChecksum;
-} SS_FILE_HDR;
+#define MAKE_VERSION(a, b, c, d) make_version(a, b, c, d)
+#define AW_SS_TAG aw_ss_tag
 
-typedef struct {
-  uint32_t dwLength;
-  uint32_t dwVersion;
-} SS_UNIT_HDR;
+struct SsFileHdr_t {
+  uint32_t tag;
+  uint32_t version;
+  uint32_t checksum;
+};
+using SS_FILE_HDR = SsFileHdr_t;
 
-typedef struct tagSS_CPU6502 {
-  uint8_t A;
-  uint8_t X;
-  uint8_t Y;
-  uint8_t P;
-  uint8_t S;
-  uint16_t PC;
-  uint64_t g_nCumulativeCycles;
-} SS_CPU6502;
+struct SsUnitHdr_t {
+  uint32_t length;
+  uint32_t version;
+};
+using SS_UNIT_HDR = SsUnitHdr_t;
 
-typedef struct {
-  uint32_t baudrate;
-  uint8_t bytesize;
-  uint8_t commandbyte;
-  uint32_t comminactivity;
-  uint8_t controlbyte;
+struct SsCpu6502_t {
+  uint8_t a;
+  uint8_t x;
+  uint8_t y;
+  uint8_t p;
+  uint8_t s;
+  uint16_t pc;
+  uint64_t cumulative_cycles;
+};
+using SS_CPU6502 = SsCpu6502_t;
+
+struct SsIoComms_t {
+  uint32_t baud_rate;
+  uint8_t byte_size;
+  uint8_t command_byte;
+  uint32_t comm_inactivity;
+  uint8_t control_byte;
   uint8_t parity;
-  uint8_t recvbuffer[SUPER_SERIAL_FIFO_SIZE];
-  uint32_t recvbytes;
-  uint8_t stopbits;
-} SS_IO_Comms;
+  uint8_t recv_buffer[SUPER_SERIAL_FIFO_SIZE];
+  uint32_t recv_bytes;
+  uint8_t stop_bits;
+};
+using SS_IO_Comms = SsIoComms_t;
 
-typedef struct tagSS_IO_Joystick {
-  uint64_t g_nJoyCntrResetCycle;
-} SS_IO_Joystick;
+struct SsIoJoystick_t {
+  uint64_t joy_cntr_reset_cycle;
+};
+using SS_IO_Joystick = SsIoJoystick_t;
 
 struct KeyboardSaveState_t {
   uint8_t current_latch = 0;
@@ -67,117 +78,141 @@ struct KeyboardSaveState_t {
   uint8_t repeating = 0;
 };
 
-typedef struct SS_IO_Video {
-  bool bAltCharSet;
-  uint32_t dwVidMode;
-} SS_IO_Video;
+struct SsIoVideo_t {
+  bool alt_char_set;
+  uint32_t vid_mode;
+};
+using SS_IO_Video = SsIoVideo_t;
 
-constexpr uint32_t nMemMainSize = 64 * 1024;
-constexpr uint32_t nMemAuxSize = 64 * 1024;
+constexpr uint32_t mem_main_size = 64 * 1024;
+constexpr uint32_t mem_aux_size = 64 * 1024;
+constexpr uint32_t nMemMainSize = mem_main_size;
+constexpr uint32_t nMemAuxSize = mem_aux_size;
 
-typedef struct tagSS_BaseMemory {
-  uint32_t dwMemMode;
-  bool bLastWriteRam;
-  uint8_t nMemMain[nMemMainSize];
-  uint8_t nMemAux[nMemAuxSize];
-} SS_BaseMemory;
+struct SsBaseMemory_t {
+  uint32_t mem_mode;
+  bool last_write_ram;
+  uint8_t mem_main[mem_main_size];
+  uint8_t mem_aux[mem_aux_size];
+};
+using SS_BaseMemory = SsBaseMemory_t;
 
-typedef struct {
-  SS_UNIT_HDR UnitHdr;
-  SS_CPU6502 CPU6502;
-  SS_IO_Comms Comms;
-  SS_IO_Joystick Joystick;
-  KeyboardSaveState_t Keyboard;
-  SS_IO_Speaker Speaker;
-  SS_IO_Video Video;
-  SS_BaseMemory Memory;
-} SS_APPLE2_Unit;
+struct SsApple2Unit_t {
+  SsUnitHdr_t unit_hdr;
+  SsCpu6502_t cpu_6502;
+  SsIoComms_t comms;
+  SsIoJoystick_t joystick;
+  KeyboardSaveState_t keyboard;
+  SS_IO_Speaker speaker;
+  SsIoVideo_t video;
+  SsBaseMemory_t memory;
+};
+using SS_APPLE2_Unit = SsApple2Unit_t;
 
-typedef struct {
-  uint32_t dwComputerEmulation;
-  bool bCustomSpeed;
-  uint32_t dwEmulationSpeed;
-  bool bEnhancedDiskSpeed;
-  uint32_t dwJoystickType[2];
-  bool bMockingboardEnabled;
-  uint32_t dwMonochromeColor;
-  uint32_t dwSerialPort;
-  uint32_t dwSoundType;
-  uint32_t dwVideoType;
-} SS_AW_CFG;
+struct SsAwCfg_t {
+  uint32_t computer_emulation;
+  bool custom_speed;
+  uint32_t emulation_speed;
+  bool enhanced_disk_speed;
+  uint32_t joystick_type[2];
+  bool mockingboard_enabled;
+  uint32_t monochrome_color;
+  uint32_t serial_port;
+  uint32_t sound_type;
+  uint32_t video_type;
+};
+using SS_AW_CFG = SsAwCfg_t;
 
-typedef struct {
-  char StartingDir[path_max_len];
-  uint32_t dwWindowXpos;
-  uint32_t dwWindowYpos;
-} SS_AW_PREFS;
+struct SsAwPrefs_t {
+  char starting_dir[path_max_len];
+  uint32_t window_x_pos;
+  uint32_t window_y_pos;
+};
+using SS_AW_PREFS = SsAwPrefs_t;
 
-typedef struct {
-  SS_UNIT_HDR UnitHdr;
-  uint32_t dwAppleWinVersion;
-  SS_AW_PREFS Prefs;
-  SS_AW_CFG Cfg;
-} SS_APPLEWIN_CONFIG;
+struct SsApplewinConfig_t {
+  SsUnitHdr_t unit_hdr;
+  uint32_t applewin_version;
+  SsAwPrefs_t prefs;
+  SsAwCfg_t cfg;
+};
+using SS_APPLEWIN_CONFIG = SsApplewinConfig_t;
 
 constexpr uint32_t max_peripheral_name = 32;
 
-typedef struct {
-  char szName[max_peripheral_name];
-  uint32_t dwVersion;
-} SS_PERIPHERAL_INFO;
-
-typedef struct {
-  SS_UNIT_HDR UnitHdr;
-  SS_PERIPHERAL_INFO Peripherals[8];
-} SS_PERIPHERAL_MANIFEST;
-
-typedef struct {
-  SS_UNIT_HDR UnitHdr;
-  uint32_t dwType;
-  uint32_t dwSlot;
-} SS_CARD_HDR;
-
-enum SS_CARDTYPE {
-  CT_Empty = 0,
-  CT_Disk2,
-  CT_SSC,
-  CT_Mockingboard,
-  CT_GenericPrinter,
-  CT_GenericHDD,
-  CT_GenericClock,
-  CT_MouseInterface,
+struct SsPeripheralInfo_t {
+  char name[max_peripheral_name];
+  uint32_t version;
 };
+using SS_PERIPHERAL_INFO = SsPeripheralInfo_t;
 
-typedef struct {
-  SS_CARD_HDR Hdr;
-} SS_CARD_EMPTY;
+struct SsPeripheralManifest_t {
+  SsUnitHdr_t unit_hdr;
+  SsPeripheralInfo_t peripherals[8];
+};
+using SS_PERIPHERAL_MANIFEST = SsPeripheralManifest_t;
 
-typedef struct {
-  SY6522 RegsSY6522;
-  uint8_t RegsAY8910[16];
-  SSI263A RegsSSI263;
-  uint8_t nAYCurrentRegister;
-  bool bTimer1IrqPending;
-  bool bTimer2IrqPending;
-  bool bSpeechIrqPending;
-} MB_Unit;
+struct SsCardHdr_t {
+  SsUnitHdr_t unit_hdr;
+  uint32_t type;
+  uint32_t slot;
+};
+using SS_CARD_HDR = SsCardHdr_t;
+
+enum SsCardType_t {
+  ct_empty = 0,
+  ct_disk2,
+  ct_ssc,
+  ct_mockingboard,
+  ct_generic_printer,
+  ct_generic_hdd,
+  ct_generic_clock,
+  ct_mouse_interface,
+};
+using SS_CARDTYPE = SsCardType_t;
+constexpr SsCardType_t CT_Empty = ct_empty;
+constexpr SsCardType_t CT_Disk2 = ct_disk2;
+constexpr SsCardType_t CT_SSC = ct_ssc;
+constexpr SsCardType_t CT_Mockingboard = ct_mockingboard;
+constexpr SsCardType_t CT_GenericPrinter = ct_generic_printer;
+constexpr SsCardType_t CT_GenericHDD = ct_generic_hdd;
+constexpr SsCardType_t CT_GenericClock = ct_generic_clock;
+constexpr SsCardType_t CT_MouseInterface = ct_mouse_interface;
+
+struct SsCardEmpty_t {
+  SsCardHdr_t hdr;
+};
+using SS_CARD_EMPTY = SsCardEmpty_t;
+
+struct MbUnit_t {
+  SY6522 regs_sy6522;
+  uint8_t regs_ay8910[16];
+  SSI263A regs_ssi263;
+  uint8_t ay_current_register;
+  bool timer1_irq_pending;
+  bool timer2_irq_pending;
+  bool speech_irq_pending;
+};
+using MB_Unit = MbUnit_t;
 
 constexpr uint32_t mb_units_per_card = 2;
 
-typedef struct tagSS_CARD_MOCKINGBOARD {
-  SS_CARD_HDR Hdr;
-  MB_Unit Unit[mb_units_per_card];
-} SS_CARD_MOCKINGBOARD;
+struct SsCardMockingboard_t {
+  SsCardHdr_t hdr;
+  MbUnit_t unit[mb_units_per_card];
+};
+using SS_CARD_MOCKINGBOARD = SsCardMockingboard_t;
 
-typedef struct {
-  SS_FILE_HDR Hdr;
-  SS_APPLE2_Unit Apple2Unit;
-  SS_PERIPHERAL_MANIFEST Manifest;
-  SS_CARD_EMPTY Empty1;
-  SS_CARD_EMPTY Empty2;
-  SS_CARD_EMPTY Empty3;
-  SS_CARD_MOCKINGBOARD Mockingboard1;
-  SS_CARD_MOCKINGBOARD Mockingboard2;
-  SS_CARD_EMPTY Empty6;
-  SS_CARD_EMPTY Empty7;
-} APPLEWIN_SNAPSHOT;
+struct ApplewinSnapshot_t {
+  SsFileHdr_t hdr;
+  SsApple2Unit_t apple2_unit;
+  SsPeripheralManifest_t manifest;
+  SsCardEmpty_t empty1;
+  SsCardEmpty_t empty2;
+  SsCardEmpty_t empty3;
+  SsCardMockingboard_t mockingboard1;
+  SsCardMockingboard_t mockingboard2;
+  SsCardEmpty_t empty6;
+  SsCardEmpty_t empty7;
+};
+using APPLEWIN_SNAPSHOT = ApplewinSnapshot_t;

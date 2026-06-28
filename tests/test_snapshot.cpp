@@ -45,7 +45,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   MemGetActiveContext()->last_write_ram = true;
   *mem_2000 = 0x55;
 
-  auto snapshot = std::unique_ptr<APPLEWIN_SNAPSHOT>(new APPLEWIN_SNAPSHOT());
+  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
   snapshot_serialize(snapshot.get());
 
   CpuGetRegisters()->a = 0xFF;

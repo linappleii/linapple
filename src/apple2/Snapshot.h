@@ -3,5 +3,5 @@
 
 #include "apple2/SnapshotTypes.h"
 
-auto snapshot_serialize(APPLEWIN_SNAPSHOT* snapshot) -> void;
-auto snapshot_deserialize(APPLEWIN_SNAPSHOT* snapshot) -> bool;
+auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void;
+auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool;
