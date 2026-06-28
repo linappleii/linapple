@@ -915,6 +915,7 @@ void SetLastDrawnImage() {
 // drawn into the guest Apple graphics buffers.
 
 auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+  if (!vidlastmem) return false;
   (void)x;
   (void)y;
   uint8_t ch = *(g_pTextBank0 + offset);
@@ -952,6 +953,7 @@ inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel,
 }
 
 auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+  if (!vidlastmem) return false;
   (void)x;
   (void)y;
   bool bDirty = false;
@@ -982,6 +984,7 @@ auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
 
 auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
+  if (!vidlastmem) return false;
   (void)y;
   bool bDirty = false;
   int yoffset = 0;
@@ -1092,6 +1095,10 @@ auto video_create_color_mix_map() -> void {
   }
 }
 
+static inline auto clamp_mix(int idx) -> int {
+  return (idx >= 0 && idx < 6) ? idx : 0;
+}
+
 void MixColorsVertical(int matx, int maty) {
   uint16_t twoHalfPixel = 0;
   int bot1idx = 0, bot2idx = 0;
@@ -1108,19 +1115,20 @@ void MixColorsVertical(int matx, int maty) {
     bot2idx = hgrpixelmatrix[matx][maty + 2] & 0x0F;
   }
 
-  twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty - 2] & 0x0F]
-                            [hgrpixelmatrix[matx][maty - 1] & 0x0F]
-                            [hgrpixelmatrix[matx][maty] & 0x0F];
+  twoHalfPixel = colormixmap[clamp_mix(hgrpixelmatrix[matx][maty - 2] & 0x0F)]
+                            [clamp_mix(hgrpixelmatrix[matx][maty - 1] & 0x0F)]
+                            [clamp_mix(hgrpixelmatrix[matx][maty] & 0x0F)];
   colormixbuffer[0] = (twoHalfPixel & 0xFF00) >> 8;
   colormixbuffer[1] = twoHalfPixel & 0x00FF;
 
-  twoHalfPixel = colormixmap[hgrpixelmatrix[matx][maty - 1] & 0x0F]
-                            [hgrpixelmatrix[matx][maty] & 0x0F][bot1idx];
+  twoHalfPixel =
+      colormixmap[clamp_mix(hgrpixelmatrix[matx][maty - 1] & 0x0F)][clamp_mix(
+          hgrpixelmatrix[matx][maty] & 0x0F)][clamp_mix(bot1idx)];
   colormixbuffer[2] = (twoHalfPixel & 0xFF00) >> 8;
   colormixbuffer[3] = twoHalfPixel & 0x00FF;
 
-  twoHalfPixel =
-      colormixmap[hgrpixelmatrix[matx][maty] & 0x0F][bot1idx][bot2idx];
+  twoHalfPixel = colormixmap[clamp_mix(hgrpixelmatrix[matx][maty] & 0x0F)]
+                            [clamp_mix(bot1idx)][clamp_mix(bot2idx)];
   colormixbuffer[4] = (twoHalfPixel & 0xFF00) >> 8;
   colormixbuffer[5] = twoHalfPixel & 0x00FF;
 }
@@ -1158,6 +1166,7 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
 }
 
 auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+  if (!vidlastmem) return false;
   (void)y;
   bool bDirty = false;
   int yoffset = 0;
@@ -1193,6 +1202,7 @@ auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
 }
 
 auto UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+  if (!vidlastmem) return false;
   (void)y;
   uint8_t val = *(g_pTextBank0 + offset);
   if ((val != *(vidlastmem.get() + offset + 0x400)) || redrawfull ||
@@ -1208,6 +1218,7 @@ auto UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
 
 auto UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
+  if (!vidlastmem) return false;
   (void)y;
   uint8_t auxval = *(g_pTextBank1 + offset);
   uint8_t mainval = *(g_pTextBank0 + offset);
@@ -1310,8 +1321,6 @@ auto video_apparently_dirty() -> bool {
 }
 
 auto video_benchmark() -> void {
-  // Benchmark needs SDL_GetTicks and SDL_Delay, so we keep those.
-  // But we replace any VideoSurface related calls.
   std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
   int loop = 0;
@@ -1498,6 +1507,7 @@ auto video_choose_color() -> void {}
 auto video_destroy() -> void {
   {
     video_worker_terminate_ = true;
+    video_cv.notify_all();
     if (video_worker_active_) {
       if (video_worker_thread_.joinable()) video_worker_thread_.join();
     }
@@ -1545,7 +1555,7 @@ auto video_display_logo() -> void {
   VideoRect drect{}, srect{};
 
   if (!g_hLogoBitmap) {
-    return;  // nothing to display?
+    return;
   }
 
   // Clear logo destination if needed, but normally we just stretch to it
@@ -1659,6 +1669,8 @@ void VideoUpdateOutputBuffer() {
   dst.h = 384;
   dst.pitch = 560 * 4;
   dst.bpp = 4;
+
+  if (!g_hDeviceBitmap) return;
 
   // Convert internal INDEX8 bitmap to RGB32 output buffer
   VideoSoftStretch(g_hDeviceBitmap, &s, &dst, &s);
@@ -1820,9 +1832,6 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
                     uint32_t nCyclesLeft) -> uint8_t {
   (void)write;
 
-  // Claim video mutex giving deference to any drawing operation
-  // in progress in another thread
-
   address &= 0xFF;
   int oldvalue = g_nAltCharSetOffset +
                  static_cast<int>(g_uVideoMode & ~(VF_MASK2 | VF_PAGE2));
@@ -1847,12 +1856,12 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
       if (!IS_APPLE2()) {
         g_nAltCharSetOffset = 0;
       }
-      break;  // Alternate char set off
+      break;
     case 0x0F:
       if (!IS_APPLE2()) {
         g_nAltCharSetOffset = 256;
       }
-      break;  // Alternate char set on
+      break;
     case 0x50:
       g_uVideoMode &= ~VF_TEXT;
       break;
@@ -1968,6 +1977,7 @@ auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
 
 auto video_get_scanner_address(bool* pbVblBar_OUT,
                                const uint32_t uExecutedCycles) -> uint16_t {
+  if (g_state.dwClksPerFrame == 0) return 0;
   // get video scanner position
   int nCycles =
       (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;
@@ -1987,7 +1997,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   if (nHClock >= kHPresetClock) {         // check for horizontal preset
     nHState -= 1;  // correct for state preset (two 0 states)
   }
-  int h_0 = (nHState >> 0) & 1;  // get horizontal state bits
+  int h_0 = (nHState >> 0) & 1;
   int h_1 = (nHState >> 1) & 1;
   int h_2 = (nHState >> 2) & 1;
   int h_3 = (nHState >> 3) & 1;
@@ -2000,7 +2010,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   if ((nVLine >= kVPresetLine)) {  // check for previous vertical state preset
     nVState -= nScanLines;         // compensate for preset
   }
-  int v_A = (nVState >> 0) & 1;  // get vertical state bits
+  int v_A = (nVState >> 0) & 1;
   int v_B = (nVState >> 1) & 1;
   int v_C = (nVState >> 2) & 1;
   int v_0 = (nVState >> 3) & 1;
@@ -2056,6 +2066,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
 }
 
 auto video_get_vbl(const uint32_t uExecutedCycles) -> bool {
+  if (g_state.dwClksPerFrame == 0) return false;
   // get cycles within current frame
   int nCycles =
       (g_dwVideoCyclesInFrame + uExecutedCycles) % g_state.dwClksPerFrame;

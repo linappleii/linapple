@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 
+#include <atomic>
 #include <cassert>
 #include <cstdint>
 
@@ -47,9 +48,10 @@ regsrec regs;
 uint64_t g_nCumulativeCycles = 0;
 static uint32_t g_nCyclesSubmitted;
 static uint32_t g_nCyclesExecuted;
-static volatile uint32_t g_bmIRQ = 0;
-static volatile uint32_t g_bmNMI = 0;
-static volatile bool g_bNmiFlank = false;  // Positive going flank on NMI line
+static std::atomic<uint32_t> g_bmIRQ{0};
+static std::atomic<uint32_t> g_bmNMI{0};
+static std::atomic<bool> g_bNmiFlank{
+    false};  // Positive going flank on NMI line
 
 auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
 auto cpu_get_cumulative_cycles() -> uint64_t { return g_nCumulativeCycles; }
@@ -82,7 +84,7 @@ static uint32_t g_uInternalExecutedCycles;
 static signed int g_nIrqCheckTimeout = 16;
 
 // Interrupt sources assert until the device is commanded to stop
-static bool g_bCritSectionValid = false;
+static std::atomic<bool> g_bCritSectionValid{false};
 pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
 
 // General Purpose Macros
@@ -738,7 +740,7 @@ static inline void DoIrqProfiling(uint32_t uCycles) {
   g_nIdx++;
 
   if (g_nIdx == BUFFER_SIZE) {
-    uint16_t nTotal = 0;
+    uint32_t nTotal = 0;
     for (uint16_t i = 0; i < BUFFER_SIZE; i++) nTotal += g_nBuffer[i];
 
     g_nMean = nTotal / BUFFER_SIZE;
@@ -1959,7 +1961,7 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
     uExecutedCycles = InternalCpuExecute(total_cycles);
   }
 
-  uint16_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
+  uint32_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
   g_nCumulativeCycles += nRemainingCycles;
 
   return uExecutedCycles;

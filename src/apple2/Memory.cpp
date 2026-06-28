@@ -40,6 +40,12 @@
 #define SW_SLOTCXROM (memmode & MF_SLOTCXROM)
 #define SW_HRAM_WRITE (memmode & MF_HRAM_WRITE)
 
+static inline auto read_uint32_le(const uint8_t* ptr) -> uint32_t {
+  uint32_t val = 0;
+  std::memcpy(&val, ptr, sizeof(val));
+  return val;
+}
+
 static MemoryInstance_t g_default_memory_context;
 static MemoryInstance_t* g_active_memory = &g_default_memory_context;
 
@@ -608,8 +614,10 @@ auto RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
                        iofunction IOWriteC0, iofunction IOReadCx,
                        iofunction IOWriteCx, void* lpSlotParameter,
                        uint8_t* pExpansionRom) -> void {
-  assert(uSlot < NUM_SLOTS);
-  g_bmSlotInit |= 1 << uSlot;
+  if (uSlot >= NUM_SLOTS) {
+    return;
+  }
+  g_bmSlotInit |= 1U << uSlot;
   SlotParameters[uSlot] = lpSlotParameter;
 
   uint16_t index = static_cast<uint16_t>(0x80 + (uSlot << 4));
@@ -618,10 +626,16 @@ auto RegisterIoHandler(uint32_t uSlot, iofunction IOReadC0,
     IOWrite[index + i] = IOWriteC0;
   }
 
-  if (uSlot == 0) return;
+  if (uSlot == 0) {
+    return;
+  }
 
-  if (IOReadCx == nullptr) IOReadCx = IORead_Cxxx;
-  if (IOWriteCx == nullptr) IOWriteCx = IOWrite_Cxxx;
+  if (IOReadCx == nullptr) {
+    IOReadCx = IORead_Cxxx;
+  }
+  if (IOWriteCx == nullptr) IOWriteCx = {
+    IOWrite_Cxxx;
+  }
 
   IORead[NUM_PAGES_64K + uSlot] = IOReadCx;
   IOWrite[NUM_PAGES_64K + uSlot] = IOWriteCx;
@@ -652,7 +666,7 @@ static auto ResetPaging(bool initialize) -> void {
 }
 
 auto MemUpdatePaging(bool initialize, bool updatewriteonly) -> void {
-  uint8_t* oldshadow[PAGE_MAX];
+  uint8_t* oldshadow[PAGE_MAX]{};
   if (!(initialize || updatewriteonly)) {
     memcpy(oldshadow, memshadow, PAGE_MAX * sizeof(uint8_t*));
   }
@@ -982,7 +996,9 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
   if (memrom) memset(memrom, 0, ROM_BUFFER_SIZE);
   if (memimage) memset(memimage, 0, MEMORY_64K);
 
-  mlock(memimage, MEMORY_64K);
+  if (mlock(memimage, MEMORY_64K) != 0) {
+    Logger::Warning("Failed to lock memory image from swapping.");
+  }
 
   if (pCxRomInternal) memset(pCxRomInternal, 0, CxRomSize);
   if (pCxRomPeripheral) memset(pCxRomPeripheral, 0, CxRomSize);
@@ -1067,8 +1083,8 @@ auto MemReset() -> void {
   memset(memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 
-  memset(memaux, 0, MEMORY_64K);
-  memset(memmain, 0, MEMORY_64K);
+  if (memaux) memset(memaux, 0, MEMORY_64K);
+  if (memmain) memset(memmain, 0, MEMORY_64K);
 
   int iByte = 0;
 
@@ -1215,16 +1231,13 @@ auto MemSetPaging(uint16_t programcounter, uint16_t address, uint8_t write,
   // about to update the memory read mode, hold off on any processing until it
   // does so.
   if ((address >= 4) && (address <= 5) && (programcounter <= 0xFFFC) &&
-      ((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
-       0x00C0028D)) {
+      ((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D)) {
     modechanging = true;
     return write ? 0 : MemReadFloatingBus(1, nCyclesLeft);
   }
   if ((address >= 0x80) && (address <= 0x8F) && (programcounter <= 0xFFFC) &&
-      (((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
-        0x00C0048D) ||
-       ((*reinterpret_cast<uint32_t*>(mem + programcounter) & 0x00FFFEFF) ==
-        0x00C0028D))) {
+      (((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0048D) ||
+       ((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D))) {
     modechanging = true;
     return write ? 0 : MemReadFloatingBus(1, nCyclesLeft);
   }
@@ -1266,7 +1279,9 @@ auto MemSetPaging(uint16_t programcounter, uint16_t address, uint8_t write,
 }
 
 auto MemGetSlotParameters(uint32_t uSlot) -> void* {
-  assert(uSlot < NUM_SLOTS);
+  if (uSlot >= NUM_SLOTS) {
+    return nullptr;
+  }
   return SlotParameters[uSlot];
 }
 
