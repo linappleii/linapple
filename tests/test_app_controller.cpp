@@ -5,7 +5,6 @@
 
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/Video.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"

@@ -191,6 +191,12 @@ constexpr const char* TITLE_APPLE_2E_ENHANCED = "Enhanced Apple //e Emulator";
 constexpr const char* TITLE_PAUSED = " Paused ";
 constexpr const char* TITLE_STEPPING = "Stepping";
 
+typedef void CURL;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern const char* g_pAppTitle;
 extern char videoDriverName[100];
 extern uint64_t cumulativecycles;
@@ -203,13 +209,7 @@ extern int g_nCpuCyclesFeedback;
 extern uint32_t g_dwCyclesThisFrame;
 extern bool g_bDisableDirectSound;
 extern uint32_t g_Slot4;
-
-typedef void CURL;
 extern CURL* g_curl;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);

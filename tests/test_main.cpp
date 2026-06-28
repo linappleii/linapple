@@ -5,7 +5,6 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/Common.h"
-#include "core/Common_Globals.h"
 #include "doctest.h"
 
 // The emulator currently uses a global state.

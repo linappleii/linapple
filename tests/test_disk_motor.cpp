@@ -5,7 +5,6 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"

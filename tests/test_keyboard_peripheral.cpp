@@ -3,7 +3,6 @@
 
 #include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "core/Common_Globals.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "doctest.h"

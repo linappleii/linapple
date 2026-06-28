@@ -12,7 +12,6 @@
 
 #include "LinAppleCore.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
-#include "core/Common_Globals.h"
 #include "core/Peripheral.h"
 
 extern uint64_t g_nCumulativeCycles;

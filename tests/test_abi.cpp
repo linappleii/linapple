@@ -4,7 +4,6 @@
 #include "core/LinAppleCore.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/Common_Globals.h"
 #include <cstring>
 #include <thread>
 #include <atomic>

@@ -3,7 +3,6 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
-#include "core/Common_Globals.h"
 #include "core/Util_Text.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"

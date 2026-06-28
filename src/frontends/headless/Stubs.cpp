@@ -1,5 +1,6 @@
 #include <cstdint>
 
+#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
@@ -19,7 +20,7 @@ WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
   (void)mod;
   (void)bDown;
 }
-WEAK auto Frontend_ToCoreKey(int key, uint32_t mod) -> LinAppleKey {  // NOLINT
+WEAK auto Frontend_ToCoreKey(int key, uint32_t mod) -> LinAppleKey_t {  // NOLINT
   (void)key;
   (void)mod;
   return LINAPPLE_KEY_UNKNOWN;
@@ -57,7 +58,10 @@ WEAK auto SuperSerialFrontend_SetLoopback(bool e) -> void { (void)e; }
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}
 WEAK auto JoySetTrim(int16_t, bool) -> void {}
-WEAK auto JoySetButton(eBUTTON, eBUTTONSTATE) -> void {}
+WEAK auto JoySetButton(int button, bool down) -> void {
+  (void)button;
+  (void)down;
+}
 WEAK auto JoyUpdatePosition(uint32_t) -> void {}
 WEAK auto VideoUpdateVbl(uint32_t) -> void {}
 WEAK auto VideoRedrawScreen() -> void {}
@@ -65,12 +69,7 @@ WEAK auto VideoResetState() -> void {}
 WEAK auto VideoGetScannerAddress(bool*, uint32_t) -> uint16_t { return 0; }
 WEAK auto VideoChooseColor() -> void {}
 WEAK auto VideoSetBorderColor(uint8_t) -> void {}
-WEAK auto Linapple_UpdateTitle(const char*) -> void {}
 WEAK auto Linapple_ListHardware() -> void {}
-WEAK auto Linapple_CpuTest(const char*, uint16_t) -> void {}
-WEAK auto Linapple_LoadProgram(const char*) -> int { return 0; }
-WEAK auto Linapple_Shutdown() -> void {}
-WEAK auto Linapple_Init() -> void {}
 
 WEAK auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
 WEAK auto GetMemPtr(uint16_t) -> uint8_t* { return nullptr; }
@@ -83,13 +82,6 @@ WEAK auto RegisterDirectIoHandler(uint16_t, iofunction, iofunction, void*)
 #include <cstdarg>
 
 #include "core/Log.h"
-WEAK auto Logger::Perf(const char*, ...) -> void {}
-WEAK auto Logger::Info(const char*, ...) -> void {}
-WEAK auto Logger::Warning(const char*, ...) -> void {}
-WEAK auto Logger::Error(const char*, ...) -> void {}
-WEAK auto Logger::Initialize() -> void {}
-WEAK auto Logger::Destroy() -> void {}
-WEAK auto Logger::SetVerbosity(LogLevel) -> void {}
 
 WEAK uint64_t g_nCumulativeCycles = 0;
 WEAK SystemState_t g_state = {};
