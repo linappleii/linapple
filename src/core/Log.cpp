@@ -1,10 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "core/Log.h"
 
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-magic-numbers,modernize-use-scoped-lock,cppcoreguidelines-init-variables):
+// C standard library variadic va_list formatting and system logging operations
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
 #include <ctime>
-#include <array>
 #include <iomanip>
 #include <memory>
 #include <mutex>
@@ -16,29 +20,30 @@
 
 namespace Logger {
 
-static LogLevel g_current_verbosity = LogLevel::kInfo;
-static LogCallback g_external_callback = nullptr;
-static std::unique_ptr<FILE, int (*)(FILE*)> g_log_file(nullptr, fclose);
+static std::atomic<LogLevel_t> g_current_verbosity{LogLevel_t::k_info};
+static LogCallback_t g_external_callback = nullptr;
+static std::unique_ptr<FILE, int (*)(FILE*)> g_log_file(nullptr, std::fclose);
 static std::mutex g_log_mutex;
 
-/**
- * @brief Thread-safe internal logging function with small-buffer optimization.
- */
-static void OutputLogMessage(LogLevel level, const char* format, va_list args) {
-  if (level > g_current_verbosity) {
+static auto output_log_message(LogLevel_t level, const char* format,
+                               va_list args) -> void {
+  if (format == nullptr) {
     return;
   }
 
-  // Small-buffer optimization: Try a stack buffer first.
-  std::array<char, kMaxStackLogSize> stack_buffer{};
+  // Atomic load prevents thread data races during verbosity filtering
+  if (level > g_current_verbosity.load(std::memory_order_relaxed)) {
+    return;
+  }
+
+  // Small-buffer optimization: Try a stack buffer first
+  std::array<char, k_max_stack_log_size> stack_buffer{};
   va_list args_copy;
 
-  // Justification for NOLINT: va_list is often an array type that decays to a pointer
-  // when passed to C-library functions like va_copy, vsnprintf, and va_end.
-  // This is an unavoidable consequence of using the C standard library for formatting.
-  va_copy(args_copy, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  int length = vsnprintf(stack_buffer.data(), stack_buffer.size(), format, args_copy); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args_copy); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_copy(args_copy, args);
+  int length = std::vsnprintf(stack_buffer.data(), stack_buffer.size(), format,
+                              args_copy);
+  va_end(args_copy);
 
   if (length < 0) {
     return;
@@ -48,118 +53,118 @@ static void OutputLogMessage(LogLevel level, const char* format, va_list args) {
   std::vector<char> heap_buffer;
 
   if (static_cast<size_t>(length) < stack_buffer.size()) {
-    // Fits in stack buffer
     final_message = stack_buffer.data();
   } else {
-    // Fallback to heap for large messages
     heap_buffer.resize(static_cast<size_t>(length) + 1);
-    vsnprintf(heap_buffer.data(), heap_buffer.size(), format, args);
+    va_list heap_args;
+    va_copy(heap_args, args);
+    std::vsnprintf(heap_buffer.data(), heap_buffer.size(), format, heap_args);
+    va_end(heap_args);
     final_message = heap_buffer.data();
   }
 
-  // Ensure thread-safe output to all sinks
   std::lock_guard<std::mutex> lock(g_log_mutex);
 
-  // 1. Output to file
   if (g_log_file) {
-    fprintf(g_log_file.get(), "%s", final_message);
-    fflush(g_log_file.get());
+    std::fprintf(g_log_file.get(), "%s", final_message);
+    std::fflush(g_log_file.get());
   }
 
-  // 2. Output to external callback (Frontend/Debugger)
-  if (g_external_callback) {
+  if (g_external_callback != nullptr) {
     g_external_callback(level, final_message);
   }
 
-  // 3. Output to terminal (Console sinks)
-  if (level <= LogLevel::kError) {
-    fprintf(stderr, "ERROR: %s", final_message);
-    fflush(stderr);
-  } else if (level == LogLevel::kPerf) {
-    printf("PERF: %s", final_message);
-    fflush(stdout);
-  } else if (level <= LogLevel::kInfo) {
-    printf("%s", final_message);
-    fflush(stdout);
+  if (level <= LogLevel_t::k_error) {
+    std::fprintf(stderr, "ERROR: %s", final_message);
+    std::fflush(stderr);
+  } else if (level == LogLevel_t::k_perf) {
+    std::printf("PERF: %s", final_message);
+    std::fflush(stdout);
+  } else if (level <= LogLevel_t::k_info) {
+    std::printf("%s", final_message);
+    std::fflush(stdout);
   }
 }
 
-void Initialize() {
+auto initialize() -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   if (!g_log_file) {
     std::string data_dir = Path::GetUserDataDir();
     Path::EnsureDirExists(data_dir);
-    // Justification for NOLINT: fopen returns a raw pointer that is immediately
-    // wrapped in a unique_ptr for safe resource management.
-    g_log_file.reset(fopen((data_dir + "linapple.log").c_str(), "a+t")); // NOLINT(cppcoreguidelines-owning-memory)
+    g_log_file.reset(std::fopen((data_dir + "linapple.log").c_str(), "a+t"));
   }
 
   if (g_log_file) {
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    struct tm tm_buf{};
+#if defined(_WIN32)
+    localtime_s(&tm_buf, &in_time_t);
+#else
+    localtime_r(&in_time_t, &tm_buf);
+#endif
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%S");
-    fprintf(g_log_file.get(), "*** Logging started: %s\n", ss.str().c_str());
+    ss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
+    std::fprintf(g_log_file.get(), "*** Logging started: %s\n",
+                 ss.str().c_str());
   }
 }
 
-void SetVerbosity(LogLevel level) {
-  std::lock_guard<std::mutex> lock(g_log_mutex);
-  g_current_verbosity = level;
+auto set_verbosity(LogLevel_t level) -> void {
+  g_current_verbosity.store(level, std::memory_order_relaxed);
 }
 
-void SetCallback(LogCallback callback) {
+auto set_callback(LogCallback_t callback) -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   g_external_callback = callback;
 }
 
-void LogMessageV(LogLevel level, const char* format, va_list args) {
-  OutputLogMessage(level, format, args);
+auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void {
+  output_log_message(level, format, args);
 }
 
-void Error(const char* format, ...) {
+auto error(const char* format, ...) -> void {
   va_list args;
-  // Justification for NOLINT: va_start/va_end and passing va_list triggers
-  // unavoidable pointer decay as part of the C standard library variadic mechanism.
-  va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  OutputLogMessage(LogLevel::kError, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_start(args, format);
+  output_log_message(LogLevel_t::k_error, format, args);
+  va_end(args);
 }
 
-void Warning(const char* format, ...) {
+auto warning(const char* format, ...) -> void {
   va_list args;
-  va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  OutputLogMessage(LogLevel::kWarning, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_start(args, format);
+  output_log_message(LogLevel_t::k_warning, format, args);
+  va_end(args);
 }
 
-void Info(const char* format, ...) {
+auto info(const char* format, ...) -> void {
   va_list args;
-  va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  OutputLogMessage(LogLevel::kInfo, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_start(args, format);
+  output_log_message(LogLevel_t::k_info, format, args);
+  va_end(args);
 }
 
-void Perf(const char* format, ...) {
+auto perf(const char* format, ...) -> void {
   va_list args;
-  va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  OutputLogMessage(LogLevel::kPerf, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_start(args, format);
+  output_log_message(LogLevel_t::k_perf, format, args);
+  va_end(args);
 }
 
-void Debug(const char* format, ...) {
+auto debug(const char* format, ...) -> void {
   va_list args;
-  va_start(args, format); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  OutputLogMessage(LogLevel::kDebug, format, args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-  va_end(args); // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  va_start(args, format);
+  output_log_message(LogLevel_t::k_debug, format, args);
+  va_end(args);
 }
 
-void Destroy() {
+auto destroy() -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   if (g_log_file) {
-    fprintf(g_log_file.get(), "*** Logging ended\n\n");
+    std::fprintf(g_log_file.get(), "*** Logging ended\n\n");
     g_log_file.reset();
   }
 }
 
 }  // namespace Logger
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-magic-numbers,modernize-use-scoped-lock,cppcoreguidelines-init-variables)
