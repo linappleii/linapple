@@ -1,5 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Peripheral_Internal.h"
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-type-reinterpret-cast,misc-include-cleaner,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables):
+// Dynamic peripheral plugin loading and internal registry inspection
 #include <dirent.h>
 #include <dlfcn.h>
 
@@ -14,38 +17,39 @@
 #include "core/Log.h"
 #include "core/Util_Path.h"
 
-struct LoadedPlugin {
+struct LoadedPlugin_t {
   Peripheral_t* p;
   void* handle;
   std::string path;
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::vector<LoadedPlugin> g_loaded_plugins;
+static std::vector<LoadedPlugin_t> g_loaded_plugins;
+static bool g_plugins_initialized = false;
 
 extern auto Peripheral_GetBuiltinRegistry() -> std::vector<Peripheral_t*>&;
 
-static bool g_plugins_initialized = false;
-
 auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
-  if (!name) return nullptr;
+  if (name == nullptr) {
+    return nullptr;
+  }
 
   Peripheral_Plugins_Init();
 
   for (auto const& p : Peripheral_GetBuiltinRegistry()) {
-    if (p && (strcmp(p->name, name) == 0 || strcmp(p->id, name) == 0)) {
+    if (p != nullptr &&
+        (strcmp(p->name, name) == 0 || strcmp(p->id, name) == 0)) {
       return p;
     }
   }
 
   for (auto const& lp : g_loaded_plugins) {
-    if (lp.p && (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
+    if (lp.p != nullptr &&
+        (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.p;
     }
   }
 
-  // Support legacy configuration names to prevent breakage of existing user
-  // setups.
   if (strcmp(name, "No-Slot Clock") == 0 || strcmp(name, "Clock") == 0) {
     return Peripheral_Find_Internal("Clock Card");
   }
@@ -54,29 +58,31 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
 }
 
 auto Peripheral_GetPluginPath(const char* name) -> const char* {
-  if (!name) return nullptr;
+  if (name == nullptr) {
+    return nullptr;
+  }
 
   Peripheral_Plugins_Init();
 
   for (auto const& lp : g_loaded_plugins) {
-    if (lp.p && (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
+    if (lp.p != nullptr &&
+        (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.path.c_str();
     }
   }
   return nullptr;
 }
 
-void Peripheral_Register_Internal() {
-  // Internal peripherals (Slot 0)
+auto Peripheral_Register_Internal() -> void {
   for (auto* p : Peripheral_GetBuiltinRegistry()) {
-    if (p->default_slot == 0) {
+    if (p != nullptr && p->default_slot == 0) {
       Peripheral_Register(p, 0);
     }
   }
 
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
-    const size_t KEY_SIZE = 16;
-    char key[KEY_SIZE];
+    constexpr size_t key_size = 16;
+    char key[key_size];
     snprintf(key, sizeof(key), "Slot %d", slot);
 
     std::string name;
@@ -104,19 +110,19 @@ void Peripheral_Register_Internal() {
     }
 
     Peripheral_t* p = Peripheral_Find_Internal(name.c_str());
-    if (p) {
+    if (p != nullptr) {
       Peripheral_Register(p, slot);
     }
   }
 }
 
-void Linapple_ListHardware() {
+auto Linapple_ListHardware() -> void {
   Peripheral_Plugins_Init();
 
   printf("Built-in Peripherals:\n");
   printf("---------------------\n");
   for (auto const& p : Peripheral_GetBuiltinRegistry()) {
-    if (p) {
+    if (p != nullptr) {
       printf("- %-24s [%s] v%s\n", p->name, p->id, p->version);
       printf("  Author: %s\n", p->author);
       printf("  Desc:   %s\n", p->description);
@@ -156,7 +162,7 @@ void Linapple_ListHardware() {
   }
 }
 
-void Peripheral_Plugins_Init() {
+auto Peripheral_Plugins_Init() -> void {
   if (g_plugins_initialized) {
     return;
   }
@@ -165,7 +171,9 @@ void Peripheral_Plugins_Init() {
   auto paths = Path::GetPluginSearchPaths();
   for (const auto& path : paths) {
     DIR* dir = opendir(path.c_str());
-    if (!dir) continue;
+    if (dir == nullptr) {
+      continue;
+    }
 
     struct dirent* ent = nullptr;
     while ((ent = readdir(dir)) != nullptr) {
@@ -175,34 +183,30 @@ void Peripheral_Plugins_Init() {
         if (filename.find('/') != std::string::npos) {
           continue;
         }
-        std::string fullPath = Path::Join(path, filename);
-        void* handle = dlopen(fullPath.c_str(), RTLD_NOW | RTLD_LOCAL);
-        if (handle) {
+        std::string full_path = Path::Join(path, filename);
+        void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (handle != nullptr) {
           auto* p = reinterpret_cast<Peripheral_t*>(
               dlsym(handle, "linapple_peripheral_descriptor"));
-          if (p) {
+          if (p != nullptr) {
             if (p->abi_version == LINAPPLE_ABI_VERSION) {
-              // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
               Logger::Info("Loaded plugin: %s from %s\n", p->name,
-                           fullPath.c_str());
-              g_loaded_plugins.push_back({p, handle, fullPath});
+                           full_path.c_str());
+              g_loaded_plugins.push_back({p, handle, full_path});
             } else {
-              // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
               Logger::Warning("Plugin ABI mismatch: %s (expected %d, got %d)\n",
-                              fullPath.c_str(), LINAPPLE_ABI_VERSION,
+                              full_path.c_str(), LINAPPLE_ABI_VERSION,
                               p->abi_version);
               dlclose(handle);
             }
           } else {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             Logger::Warning(
                 "Invalid plugin (missing linapple_peripheral_descriptor): %s\n",
-                fullPath.c_str());
+                full_path.c_str());
             dlclose(handle);
           }
         } else {
-          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-          Logger::Warning("Failed to load plugin: %s (%s)\n", fullPath.c_str(),
+          Logger::Warning("Failed to load plugin: %s (%s)\n", full_path.c_str(),
                           dlerror());
         }
       }
@@ -211,12 +215,14 @@ void Peripheral_Plugins_Init() {
   }
 }
 
-void Peripheral_Plugins_Shutdown() {
+auto Peripheral_Plugins_Shutdown() -> void {
   for (auto& plugin : g_loaded_plugins) {
-    if (plugin.handle) {
+    if (plugin.handle != nullptr) {
       dlclose(plugin.handle);
     }
   }
   g_loaded_plugins.clear();
   g_plugins_initialized = false;
 }
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-type-reinterpret-cast,misc-include-cleaner,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables)
