@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 namespace keyboard_translator {
 

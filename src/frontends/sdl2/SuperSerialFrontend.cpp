@@ -13,6 +13,7 @@
 
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 
 namespace {

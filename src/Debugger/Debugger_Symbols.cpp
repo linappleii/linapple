@@ -26,7 +26,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"

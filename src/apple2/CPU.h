@@ -4,7 +4,9 @@
 
 #include <cstdint>
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 struct SsCpu6502_t;
 using SS_CPU6502 = SsCpu6502_t;

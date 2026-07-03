@@ -13,6 +13,7 @@
 #include "TuiTerminal.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 static int g_joy_fd = -1;
 static std::vector<uint8_t> g_input_queue;

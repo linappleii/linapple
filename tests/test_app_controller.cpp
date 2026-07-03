@@ -6,6 +6,7 @@
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "doctest.h"

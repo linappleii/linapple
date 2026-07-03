@@ -14,6 +14,7 @@
 #include "LinAppleCore.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/Log.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 
 struct LoadedPlugin_t {

@@ -7,6 +7,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
 

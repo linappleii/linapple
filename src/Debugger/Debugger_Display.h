@@ -1,7 +1,9 @@
 #include <cstdint>
 #pragma once
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
 

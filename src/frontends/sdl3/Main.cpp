@@ -6,8 +6,11 @@
 
 #include "apple2/Video.h"
 #include "core/AudioMixer.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"

@@ -32,7 +32,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
@@ -49,6 +51,7 @@ auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "frontends/common/VideoStretch.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "core/Asset.h"

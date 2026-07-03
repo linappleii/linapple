@@ -11,7 +11,9 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
 //             bugprone-easily-swappable-parameters, modernize-make-unique)

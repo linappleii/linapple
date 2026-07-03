@@ -2,6 +2,7 @@
 #include "SDL3/SDL.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "frontends/common/KeyboardTranslator.h"

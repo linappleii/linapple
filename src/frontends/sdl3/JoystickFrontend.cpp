@@ -7,8 +7,11 @@
 #include "SDL3/SDL.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "core/Common.h"
-#include "core/Log.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
+#include "core/Util_Path.h"
+#include "apple2/Video.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 

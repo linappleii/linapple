@@ -12,7 +12,9 @@
 #include <string>
 #include <vector>
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 static constexpr uint64_t SIZE_K = 1000U;

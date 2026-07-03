@@ -1,4 +1,6 @@
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include <algorithm>
 #include <vector>
 #include <string>

@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
 #include "core/Registry.h"

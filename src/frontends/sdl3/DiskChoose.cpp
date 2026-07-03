@@ -15,7 +15,9 @@
 
 #include "apple2/Video.h"
 #include "frontends/common/VideoStretch.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"

@@ -40,6 +40,8 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Util_Text.h"
 

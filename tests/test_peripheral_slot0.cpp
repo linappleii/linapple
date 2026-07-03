@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "core/Peripheral.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "apple2/Memory.h"
 #include <vector>
 #include <cstdio>

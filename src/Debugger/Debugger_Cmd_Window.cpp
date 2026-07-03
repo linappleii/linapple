@@ -12,7 +12,9 @@
 #include "Debugger_Parser.h"
 #include "Video.h"
 #include "apple2/CPU.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Util_Text.h"
 

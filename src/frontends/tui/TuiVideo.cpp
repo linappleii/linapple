@@ -13,6 +13,7 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 struct TuiPixel {
   uint8_t r, g, b;

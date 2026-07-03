@@ -7,7 +7,9 @@
 #include "apple2/chips/SSI263.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
     -> uint32_t {

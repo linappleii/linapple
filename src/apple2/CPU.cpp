@@ -6,13 +6,16 @@
 #include <cassert>
 #include <cstdint>
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 #define CPU_CPP_IMPL
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,

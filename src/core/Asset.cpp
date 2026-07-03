@@ -10,7 +10,8 @@
 
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"

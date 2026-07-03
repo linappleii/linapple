@@ -13,7 +13,9 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Resource.h"
 

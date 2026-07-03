@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,clang-diagnostic-missing-braces):
 // Core emulator lifecycle, cycle accounting, and binary program file loading
@@ -26,7 +27,9 @@
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
 #include "core/AudioMixer.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"

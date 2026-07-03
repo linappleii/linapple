@@ -11,6 +11,7 @@
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "core/AudioMixer.h"
 #include "core/Peripheral.h"
 
 namespace {

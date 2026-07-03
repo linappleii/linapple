@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "frontends/common/AppConfig.h"
 
 // Lifecycle

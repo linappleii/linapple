@@ -23,7 +23,10 @@
 #include "apple2/chips/6522.h"
 #include "apple2/chips/SSI263.h"
 #include "apple2/chips/AY8910.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/AudioMixer.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 
 namespace via_reg {

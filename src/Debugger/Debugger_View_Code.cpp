@@ -13,7 +13,9 @@
 #include "Debugger_Symbols.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // Externs for globals in Debugger_Display.cpp

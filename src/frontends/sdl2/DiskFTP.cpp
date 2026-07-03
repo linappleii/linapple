@@ -15,7 +15,9 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/ftpparse.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "frontends/common/FileBrowser.h"

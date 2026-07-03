@@ -12,7 +12,9 @@
 #include <mutex>
 #include <thread>
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Asset.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
@@ -48,6 +50,7 @@ static auto GetTickCount() -> uint32_t {
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Util_Text.h"

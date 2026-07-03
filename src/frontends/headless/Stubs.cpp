@@ -5,6 +5,7 @@
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "frontends/sdl3/Frontend.h"
 
 // Use weak symbols so that real implementations in unit tests take precedence

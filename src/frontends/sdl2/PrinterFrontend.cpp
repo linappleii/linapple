@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 static uint32_t inactivity = 0;
 static uint32_t g_PrinterIdleLimit = 10;

@@ -10,6 +10,7 @@ using namespace std;
 
 #include <cstring>
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "Debugger_Breakpoints.h"

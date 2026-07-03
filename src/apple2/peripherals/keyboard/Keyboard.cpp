@@ -12,7 +12,9 @@
 #include "apple2/peripherals/keyboard/Keyboard.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-#include "core/Common.h"
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
