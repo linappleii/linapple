@@ -46,7 +46,7 @@ install_prerequisites() {
         || { echo 'updated recently; skipping'; return 0; }
 
     local known_ids=(       # all these must be in the `case` below.
-        debian ubuntu fedora
+        debian ubuntu fedora arch
     )
     local id k
     for distro in "$ID" ${ID_LIKE:-}; do        # split $ID_LIKE
@@ -63,6 +63,7 @@ install_prerequisites() {
         debian|ubuntu)  install_deps_debian;;
         fedora)         install_deps_fedora;;
                         #   $ID_LIKE grabs RHEL/CentOS/Rocky/Alma, too.
+        arch)           install_deps_arch;;
         *)              die 10 "Internal error: set unknown distro '$distro'";;
     esac
     set_update "$tsfile"
@@ -103,6 +104,14 @@ install_deps_fedora() {
         sdl3)   $sudo dnf install -y SDL3-devel SDL3_image-devel;;
         *)      die 4 "Unknown frontend: $FRONTEND";;
     esac
+}
+
+install_deps_arch() {
+    #   Only the SDL3 frontend is supported on arch, at least for the moment.
+    $sudo pacman -Syu --noconfirm
+    $sudo pacman -S --noconfirm \
+        git base-devel cmake imagemagick libzip libcurl-gnutls zlib \
+        sdl3 sdl3_image
 }
 
 ####################################################################

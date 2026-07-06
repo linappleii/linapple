@@ -61,6 +61,7 @@ default_frontend() {
         #   SDL3 became available in Fedora 40, got stable in 41, and
         #   in 42 SDL2 was removed.
         fedora)     [[ $rel -ge 42 ]]       && echo sdl3 || echo sdl2;;
+        arch)                                  echo sdl3             ;;
         *)          die 4 "No default frontends known for distro $ID";;
     esac
 }

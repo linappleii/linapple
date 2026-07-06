@@ -109,7 +109,7 @@ default_cont_build_specs=(
    #ubuntu-26.04-sdl3   # XXX "Compatibility with CMake < 3.5 has been removed from CMake."
     fedora-41-sdl2
    #fedora-latest-sdl3  # 44 XXX "Compatibility with CMake < 3.5 has been removed from CMake."
-   #archlinux-latest-sdl3
+   #archlinux-latest-sdl3 # XXX "Compatibility with CMake < 3.5 has been removed from CMake."
 )
 
 usage() {
