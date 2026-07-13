@@ -2,6 +2,7 @@
 #include "frontends/sdl1/JoystickFrontend.h"
 
 #include <array>
+#include "apple2/Video.h"
 #include <cstring>
 #include <iostream>
 
@@ -62,15 +63,17 @@ const int PDL_SMAX = 127;
 const int PDL_SCENTRAL = 0;
 const int PDL_SMIN = -127;
 
-static std::array<Point_t, 9> keyvalue = {{{PDL_SMIN, PDL_SMAX},
-                                           {PDL_SCENTRAL, PDL_SMAX},
-                                           {PDL_SMAX, PDL_SMAX},
-                                           {PDL_SMIN, PDL_SCENTRAL},
-                                           {PDL_SCENTRAL, PDL_SCENTRAL},
-                                           {PDL_SMAX, PDL_SCENTRAL},
-                                           {PDL_SMIN, PDL_SMIN},
-                                           {PDL_SCENTRAL, PDL_SMIN},
-                                           {PDL_SMAX, PDL_SMIN}}};
+static std::array<Point_t, 9> keyvalue = {{
+    {PDL_SMIN, PDL_SMAX},
+    {PDL_SCENTRAL, PDL_SMAX},
+    {PDL_SMAX, PDL_SMAX},
+    {PDL_SMIN, PDL_SCENTRAL},
+    {PDL_SCENTRAL, PDL_SCENTRAL},
+    {PDL_SMAX, PDL_SCENTRAL},
+    {PDL_SMIN, PDL_SMIN},
+    {PDL_SCENTRAL, PDL_SMIN},
+    {PDL_SMAX, PDL_SMIN}
+}};
 
 static std::array<int, 2> joyshrx = {8, 8};
 static std::array<int, 2> joyshry = {8, 8};
