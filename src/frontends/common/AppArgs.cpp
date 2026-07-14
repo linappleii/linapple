@@ -11,8 +11,9 @@
 
 static constexpr int OPT_LIST_HARDWARE = 0x100;
 static constexpr int OPT_HARDWARE_INFO = 0x101;
+static constexpr int OPT_NO_DEBUGGER = 0x102;
 
-static const std::array<struct option, 22> OptionTable = {
+static const std::array<struct option, 23> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"autoboot", no_argument, nullptr, 'a'},
@@ -34,6 +35,7 @@ static const std::array<struct option, 22> OptionTable = {
      {"audio-dump", required_argument, nullptr, 'A'},
      {"list-hardware", no_argument, nullptr, OPT_LIST_HARDWARE},
      {"hardware-info", required_argument, nullptr, OPT_HARDWARE_INFO},
+     {"no-debugger", no_argument, nullptr, OPT_NO_DEBUGGER},
      {nullptr, 0, nullptr, 0}}};
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
@@ -65,6 +67,8 @@ void AppArgs_PrintHelp() {
   printf("  --list-hardware        List all emulated hardware components\n");
   printf(
       "  --hardware-info <name> Show detailed info for a hardware component\n");
+  printf(
+      "  --no-debugger          Disable the integrated debugger at runtime\n");
 }
 
 auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
@@ -149,6 +153,9 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         Util_SafeStrCpy(outConfig->szHardwareInfoName.data(), optarg,
                         path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
+        break;
+      case OPT_NO_DEBUGGER:
+        outConfig->bDisableDebugger = true;
         break;
       case 'h':
         outConfig->intent = INTENT_HELP;

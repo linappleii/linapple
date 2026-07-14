@@ -1,18 +1,18 @@
 #include <SDL3/SDL.h>
 
+#if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
-#include "core/AudioMixer.h"
+#endif
+#include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#include "apple2/Apple2Types.h"
+#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
 #include "frontends/sdl3/JoystickFrontend.h"
@@ -100,7 +100,9 @@ void SDL_HandleEvent(SDL_Event* e) {
               audio_mixer_set_fade(fade_in);
               break;
             case MODE_STEPPING:
+#if ENABLE_DEBUGGER
               DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
+#endif
               break;
             case MODE_LOGO:
             case MODE_DEBUG:
@@ -117,7 +119,9 @@ void SDL_HandleEvent(SDL_Event* e) {
         } else if ((g_state.mode == MODE_RUNNING) ||
                    (g_state.mode == MODE_LOGO) ||
                    (g_state.mode == MODE_STEPPING)) {
+#if ENABLE_DEBUGGER
           g_bDebuggerEatKey = false;
+#endif
           bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                            myscancode <= SDL_SCANCODE_UP) ||
                           (myscancode == SDL_SCANCODE_DELETE);
@@ -128,9 +132,13 @@ void SDL_HandleEvent(SDL_Event* e) {
               Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
             }
           }
+#if ENABLE_DEBUGGER
         } else if (g_state.mode == MODE_DEBUG) {
           LinAppleKey core_key = Frontend_ToCoreKey(mysym, mymod);
-          if (core_key != LINAPPLE_KEY_UNKNOWN) DebuggerProcessKey(core_key);
+          if (core_key != LINAPPLE_KEY_UNKNOWN) {
+            DebuggerProcessKey(core_key);
+          }
+#endif
         }
       }
       break;
@@ -167,9 +175,12 @@ void SDL_HandleEvent(SDL_Event* e) {
         if (buttondown == -1) {
           x_local = static_cast<int>(e->button.x);
           y_local = static_cast<int>(e->button.y);
+#if ENABLE_DEBUGGER
           if (g_state.mode == MODE_DEBUG) {
             DebuggerMouseClick(x_local, y_local);
-          } else if (usingcursor) {
+          } else
+#endif
+              if (usingcursor) {
             if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               SetUsingCursor(false);
             } else {

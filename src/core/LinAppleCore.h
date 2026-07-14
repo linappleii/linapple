@@ -170,6 +170,7 @@ using SystemState_t = struct SystemState_tag {
   std::array<char, path_max_len> sDebuggerScript;
   bool bVideoScannerNTSC;
   uint32_t dwClksPerFrame;
+  bool bDisableDebugger;
 };
 
 extern SystemState_t g_state;

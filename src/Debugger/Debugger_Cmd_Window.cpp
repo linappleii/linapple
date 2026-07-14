@@ -9,13 +9,14 @@
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
+#include "Debugger_Memory.h"
 #include "Debugger_Parser.h"
 #include "Video.h"
-#include "apple2/CPU.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
@@ -342,12 +343,25 @@ auto CmdWindowLast(int nArgs) -> Update_t {
 }
 
 void _CursorMoveDownAligned(int nDelta) {
-  g_nDisasmCurAddress = DisasmCalcAddressFromLines(g_nDisasmCurAddress, nDelta);
+  if (g_iWindowThis == WINDOW_DATA) {
+    g_nDisasmCurAddress = static_cast<uint16_t>(g_nDisasmCurAddress + nDelta);
+    g_aMemDump[0].nAddress = g_nDisasmCurAddress;
+  } else {
+    g_nDisasmCurAddress =
+        DisasmCalcAddressFromLines(g_nDisasmCurAddress, nDelta);
+    DisasmCalcTopFromCurAddress(true);
+  }
 }
 
 void _CursorMoveUpAligned(int nDelta) {
-  g_nDisasmCurAddress =
-      DisasmCalcAddressFromLines(g_nDisasmCurAddress, -nDelta);
+  if (g_iWindowThis == WINDOW_DATA) {
+    g_nDisasmCurAddress = static_cast<uint16_t>(g_nDisasmCurAddress - nDelta);
+    g_aMemDump[0].nAddress = g_nDisasmCurAddress;
+  } else {
+    g_nDisasmTopAddress = static_cast<uint16_t>(g_nDisasmTopAddress - nDelta);
+    DisasmCalcCurFromTopAddress();
+    DisasmCalcBotFromTopAddress();
+  }
 }
 
 //===========================================================================
@@ -369,7 +383,7 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
     int iOpmode = 0;
     int nOpbytes = 0;
 
-    for (int iLine = 0; iLine <= nLen; iLine++)  // min 1 opcode/instruction
+    for (int iLine = 0; iLine <= g_nDisasmCurLine; iLine++)
     {
       _6502_GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
 
@@ -379,6 +393,9 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
           bFound = true;
           break;
         }
+      }
+      if (iAddress >= g_nDisasmCurAddress) {
+        break;
       }
       iAddress += nOpbytes;
     }

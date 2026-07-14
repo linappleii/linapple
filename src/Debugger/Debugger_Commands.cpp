@@ -34,11 +34,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Assembler.h"
 #include "Debugger_Display.h"
 #include "Debugger_Cmd_Window.h"
+#include "Debugger_Memory.h"
 #include "Debugger_Help.h"
 #include "core/Log.h"
 #include <cstring>
 #include <vector>
-#include <algorithm>
 
 // Globals
 std::vector<Command_t> g_vSortedCommands;
@@ -72,6 +72,9 @@ auto ExecuteCommand(int nArgs) -> Update_t
       if (ArgsGetValue(&g_aArgs[0], &nAddress))
       {
         g_nDisasmCurAddress = nAddress;
+        if (g_iWindowThis == WINDOW_DATA) {
+          g_aMemDump[0].nAddress = nAddress;
+        }
         DisasmCalcTopBotAddress();
         bUpdateDisplay |= UPDATE_DISASM;
       }

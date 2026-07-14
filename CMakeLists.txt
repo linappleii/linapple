@@ -22,6 +22,13 @@ if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEN
     message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', or 'headless'.")
 endif()
 
+if(FRONTEND STREQUAL "tui" OR FRONTEND STREQUAL "headless")
+    set(DEFAULT_ENABLE_DEBUGGER OFF)
+else()
+    set(DEFAULT_ENABLE_DEBUGGER ON)
+endif()
+option(ENABLE_DEBUGGER "Enable integrated debugger" ${DEFAULT_ENABLE_DEBUGGER})
+
 option(PROFILING "Enable profiling" OFF)
 option(REGISTRY_WRITEABLE "Enable registry writing" OFF)
 option(BUILD_SHARED_PERIPHERALS "Build peripherals as shared libraries instead of built-in" OFF)
@@ -82,6 +89,9 @@ endif()
 if(REGISTRY_WRITEABLE)
     add_definitions(-DREGISTRY_WRITEABLE=1)
 endif()
+if(ENABLE_DEBUGGER)
+    add_definitions(-DENABLE_DEBUGGER=1)
+endif()
 
 # --- Asset Conversion (PNG to XPM) ---
 set(RES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/res")
@@ -124,7 +134,6 @@ set(LINAPPLE_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/disk"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/harddisk"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/mouse"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Debugger"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/common"
     "${GEN_RES_DIR}"
     "${RES_DIR}"
@@ -132,6 +141,10 @@ set(LINAPPLE_INCLUDES
     ${ZLIB_INCLUDE_DIRS}
     ${LIBZIP_INCLUDE_DIRS}
 )
+
+if(ENABLE_DEBUGGER)
+    list(APPEND LINAPPLE_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/src/Debugger")
+endif()
 
 if(FRONTEND STREQUAL "tui")
     list(APPEND LINAPPLE_INCLUDES ${PULSE_SIMPLE_INCLUDE_DIRS} ${ALSA_INCLUDE_DIRS})
@@ -169,7 +182,7 @@ set(SOURCES_A2_MANDATORY
 )
 
 set(SOURCES_DBG "")
-if(NOT FRONTEND STREQUAL "headless" AND NOT FRONTEND STREQUAL "tui")
+if(ENABLE_DEBUGGER)
     set(SOURCES_DBG
         src/Debugger/Debug.cpp
         src/Debugger/Debugger_Assembler.cpp
@@ -198,6 +211,10 @@ if(NOT FRONTEND STREQUAL "headless" AND NOT FRONTEND STREQUAL "tui")
         src/Debugger/Debugger_View_Console.cpp
         src/Debugger/Debugger_View_Memory.cpp
         src/Debugger/Util_MemoryTextFile.cpp
+    )
+else()
+    set(SOURCES_DBG
+        src/Debugger/Debugger_Stubs.cpp
     )
 endif()
 

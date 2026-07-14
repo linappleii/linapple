@@ -51,6 +51,7 @@ constexpr const char* REGVALUE_PREF_HDD_START_DIR = "HDV Starting Directory";
 constexpr const char* REGVALUE_PREF_SAVESTATE_DIR = "Save State Directory";
 
 constexpr const char* REGVALUE_SHOW_LEDS = "Show Leds";
+constexpr const char* REGVALUE_DISABLE_DEBUGGER = "Disable Debugger";
 
 constexpr const char* REGVALUE_FTP_DIR = "FTP Server";
 constexpr const char* REGVALUE_FTP_HDD_DIR = "FTP ServerHDD";

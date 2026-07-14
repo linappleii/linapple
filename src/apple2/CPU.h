@@ -64,6 +64,7 @@ auto cpu_calc_cycles(uint32_t executed_cycles) -> void;
 auto cpu_execute(uint32_t total_cycles) -> uint32_t;
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t;
 auto cpu_initialize() -> void;
+auto CPU_Step() -> void;
 auto cpu_setup_benchmark() -> void;
 auto cpu_irq_reset() -> void;
 auto cpu_irq_assert(eIRQSRC device) -> void;

@@ -3,9 +3,9 @@
 #include <array>
 #include <cstring>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -36,6 +36,7 @@ struct AppConfig {
   std::array<char, path_max_len> szTestCpuFile = {};
   uint16_t uTestCpuTrap = TRAP_NMOS_DEFAULT;
   std::array<char, path_max_len> szDebuggerScript = {};
+  bool bDisableDebugger = false;
 
   // Extra args for frontend pass-through
   int argc_extra = 0;

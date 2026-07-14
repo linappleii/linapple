@@ -21,6 +21,8 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include "frontends/sdl3/Frame.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <sys/stat.h>
@@ -31,31 +33,33 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdio>
 #include <cstring>
 
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
-#include "frontends/sdl3/Frame.h"
+#include "core/Util_Path.h"
 #include "frontends/sdl3/SDL_Video.h"
 auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
+#if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
+#include "Debugger_Display.h"
+#endif
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
-#include "frontends/common/VideoStretch.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/Registry.h"
-#include "core/Util_Text.h"
 #include "core/Asset.h"
+#include "core/AudioMixer.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
+#include "core/Util_Path.h"
+#include "core/Util_Text.h"
 #include "frontends/common/SaveStateManager.h"
+#include "frontends/common/VideoStretch.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/DiskUI.h"
 
@@ -123,7 +127,9 @@ void DrawAppleContent() {
     VideoDisplayLogo();
     g_bFrameReady = true;
   } else if (g_state.mode == MODE_DEBUG) {
+#if ENABLE_DEBUGGER
     DebugDisplay(true);
+#endif
     g_bFrameReady = true;
   } else {
     VideoRedrawScreen();
@@ -138,6 +144,28 @@ void FrameRefresh() {
     SDL_RenderPresent(g_renderer);
   }
 }
+
+#if ENABLE_DEBUGGER
+extern VideoSurface* g_hDebugScreen;
+
+static void DrawDebuggerTUI(VideoSurface* vs_screen, const SDL_Rect& r) {
+  if (!g_hDebugScreen) {
+    return;
+  }
+
+  SDL_Rect origRect = {0, 0, 560, 384};
+  SDL_Rect newRect = r;
+
+  if (!g_WindowResized) {
+    VideoSoftStretch(
+        g_hDebugScreen, reinterpret_cast<VideoRect*>(&const_cast<SDL_Rect&>(r)),
+        vs_screen, reinterpret_cast<VideoRect*>(&const_cast<SDL_Rect&>(r)));
+  } else {
+    VideoSoftStretch(g_hDebugScreen, reinterpret_cast<VideoRect*>(&origRect),
+                     vs_screen, reinterpret_cast<VideoRect*>(&newRect));
+  }
+}
+#endif
 
 void DrawFrameWindow() {
   if (!g_bFrameReady) return;
@@ -165,20 +193,10 @@ void DrawFrameWindow() {
                          &vs_screen, reinterpret_cast<VideoRect*>(&newRect));
       }
     } else {
-      // Debugger draws directly to g_hDebugScreen (INDEX8)
-      // We need to stretch/convert it to the RGB32 screen surface
-      extern VideoSurface* g_hDebugScreen;
-      if (g_hDebugScreen) {
-        VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
-        if (!g_WindowResized) {
-          VideoSoftStretch(g_hDebugScreen, reinterpret_cast<VideoRect*>(&r),
-                           &vs_screen, reinterpret_cast<VideoRect*>(&r));
-        } else {
-          VideoSoftStretch(g_hDebugScreen,
-                           reinterpret_cast<VideoRect*>(&origRect), &vs_screen,
-                           reinterpret_cast<VideoRect*>(&newRect));
-        }
-      }
+      VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+#if ENABLE_DEBUGGER
+      DrawDebuggerTUI(&vs_screen, r);
+#endif
     }
 
     FrameRefresh();
@@ -600,9 +618,11 @@ void ProcessButtonClick(int button, int mod) {
         } else if (g_state.mode == MODE_RUNNING) {
           ResetMachineState();
         }
+#if ENABLE_DEBUGGER
         if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING)) {
           DebugEnd();
         }
+#endif
         g_state.mode = MODE_RUNNING;
         DrawStatusArea(DRAW_TITLE);
         VideoRedrawScreen();
@@ -683,12 +703,16 @@ void ProcessButtonClick(int button, int mod) {
       break;
 
     case BTN_DEBUG:
-      if (g_state.mode != MODE_DEBUG) {
-        DebugBegin();
-        SetUsingCursor(false);
-      } else if (g_state.mode == MODE_DEBUG) {
-        g_state.mode = MODE_RUNNING;
+#if ENABLE_DEBUGGER
+      if (!g_state.bDisableDebugger) {
+        if (g_state.mode != MODE_DEBUG) {
+          DebugBegin();
+          SetUsingCursor(false);
+        } else if (g_state.mode == MODE_DEBUG) {
+          g_state.mode = MODE_RUNNING;
+        }
       }
+#endif
       break;
 
     case BTN_SETUP:
@@ -717,10 +741,12 @@ void ProcessButtonClick(int button, int mod) {
         VideoReinitialize();
         if (g_state.mode != MODE_LOGO) {
           if (g_state.mode == MODE_DEBUG) {
+#if ENABLE_DEBUGGER
             uint32_t debugVideoMode = 0;
             if (DebugGetVideoMode(&debugVideoMode)) {
               VideoRefreshScreen();
             }
+#endif
           } else {
             VideoRefreshScreen();
           }

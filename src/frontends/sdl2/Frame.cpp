@@ -21,6 +21,8 @@ along with AppleWin; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include "frontends/sdl2/Frame.h"
+
 #include <SDL2/SDL.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -31,9 +33,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 
 #include "Debugger/Debug.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/AudioMixer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
@@ -41,20 +43,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
-#include "frontends/common/VideoStretch.h"
-#include "apple2/Apple2Types.h"
+#include "core/Asset.h"
+#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "core/Asset.h"
 #include "frontends/common/SaveStateManager.h"
+#include "frontends/common/VideoStretch.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/DiskUI.h"
-#include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/SDL_Video.h"
 
 #define ENABLE_MENU 0
@@ -669,12 +668,16 @@ void ProcessButtonClick(int button, int mod) {
       break;
 
     case BTN_DEBUG:
-      if (g_state.mode != MODE_DEBUG) {
-        DebugBegin();
-        SetUsingCursor(false);
-      } else if (g_state.mode == MODE_DEBUG) {
-        g_state.mode = MODE_RUNNING;
+#if ENABLE_DEBUGGER
+      if (!g_state.bDisableDebugger) {
+        if (g_state.mode != MODE_DEBUG) {
+          DebugBegin();
+          SetUsingCursor(false);
+        } else if (g_state.mode == MODE_DEBUG) {
+          g_state.mode = MODE_RUNNING;
+        }
       }
+#endif
       break;
 
     case BTN_SETUP:

@@ -15,11 +15,11 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
 #include "Video.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -489,8 +489,10 @@ void DrawTargets(int line) {
       if (iAddress) {
         sprintf(sData, "%02X", *(mem + aTarget[iAddress]));
       } else {
-        sprintf(sData, "%04X",
-                *reinterpret_cast<uint16_t*>(mem + aTarget[iAddress]));
+        uint16_t val16 =
+            *(mem + aTarget[iAddress]) |
+            (*(mem + static_cast<uint16_t>(aTarget[iAddress] + 1)) << 8);
+        sprintf(sData, "%04X", val16);
       }
     }
 
@@ -552,8 +554,8 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
-      nTarget8 =
-          static_cast<unsigned>(*(mem + g_aWatches[iWatch].nAddress + 1));
+      nTarget8 = static_cast<unsigned>(
+          *(mem + static_cast<uint16_t>(g_aWatches[iWatch].nAddress + 1)));
       sprintf(sText, "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
@@ -562,8 +564,10 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPERATOR));
       PrintTextCursorX(sText, rect2);
 
-      uint16_t nTarget16 = static_cast<unsigned>(
-          *reinterpret_cast<uint16_t*>(mem + g_aWatches[iWatch].nAddress));
+      uint16_t nTarget16 =
+          *(mem + g_aWatches[iWatch].nAddress) |
+          (*(mem + static_cast<uint16_t>(g_aWatches[iWatch].nAddress + 1))
+           << 8);
       sprintf(sText, "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);
@@ -589,7 +593,8 @@ void DrawWatches(int line) {
           DebuggerSetColorBG(DebuggerGetColor(BG_DATA_2));
         }
 
-        uint8_t nValue8 = static_cast<unsigned>(*(mem + nTarget16 + iByte));
+        uint8_t nValue8 = static_cast<unsigned>(
+            *(mem + static_cast<uint16_t>(nTarget16 + iByte)));
         sprintf(sText, "%02X", nValue8);
         PrintTextCursorX(sText, rect2);
       }
@@ -723,7 +728,8 @@ void DrawSubWindow_Data(Update_t bUpdate) {
 
     sOpcodes[0] = 0;
     for (iByte = 0; iByte < nMaxOpcodes; iByte++) {
-      uint8_t nData = static_cast<unsigned>(*(mem + iAddress + iByte));
+      uint8_t nData = static_cast<unsigned>(
+          *(mem + static_cast<uint16_t>(iAddress + iByte)));
       sprintf(&sOpcodes[static_cast<ptrdiff_t>(iByte * 3)], "%02X ", nData);
     }
     sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;

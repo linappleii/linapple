@@ -1,8 +1,8 @@
 #include "Debugger_Cmd_CPU.h"
 
 #include "Debug.h"
-#include "apple2/CPU.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 extern void FrameRefreshStatus(int);
@@ -21,8 +21,8 @@ extern void FrameRefreshStatus(int);
 #include "Debugger_Symbols.h"
 #include "Video.h"
 #include "apple2/Memory.h"
-#include "core/AudioMixer.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "core/AudioMixer.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 
@@ -604,7 +604,7 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
         g_state.mode = MODE_STEPPING;
       }
 
-      // CPU_Step();
+      CPU_Step();
     }
   }
 

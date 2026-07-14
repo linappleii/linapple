@@ -13,12 +13,12 @@
 #include "Debugger_Range.h"
 #include "Debugger_Symbols.h"
 #include "Video.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
+#include "core/Util_Path.h"
 
 // Globals
 MemoryDump_t g_aMemDump[NUM_MEM_DUMPS] = {{true, 0, DEV_MEMORY, MEM_VIEW_HEX},
@@ -142,6 +142,10 @@ static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t {
   g_aMemDump[iWhich].eDevice = g_aArgs[1].eDevice;
   g_aMemDump[iWhich].bActive = true;
   g_aMemDump[iWhich].eView = static_cast<MemoryView_e>(iView);
+
+  if (iWhich == 0) {
+    g_nDisasmCurAddress = nAddress;
+  }
 
   // make sure data window is visible
   if (g_iWindowThis != WINDOW_DATA) {
@@ -627,7 +631,8 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     g_sMemoryLoadSaveFileName = pFileName;
   }
   const std::string sLoadSaveFilePath =
-      std::string(g_state.sCurrentDir.data()) + g_sMemoryLoadSaveFileName;  // TODO: g_sDebugDir
+      std::string(g_state.sCurrentDir.data()) +
+      g_sMemoryLoadSaveFileName;  // TODO: g_sDebugDir
 
   uint8_t* const pMemBankBase = bBankSpecified ? MemGetBankPtr(nBank) : mem;
   if (!pMemBankBase) {
@@ -648,7 +653,8 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
       nAddressLen = static_cast<int>(nFileBytes);
     }
 
-    size_t nRead = fread(pMemBankBase + nAddressStart, static_cast<size_t>(nAddressLen), 1, hFile.get());
+    size_t nRead = fread(pMemBankBase + nAddressStart,
+                         static_cast<size_t>(nAddressLen), 1, hFile.get());
     if (nRead == 1) {
       char text[128];
       ConsoleBufferPushFormat(text, "Loaded @ A$%04X,L$%04X", nAddressStart,
@@ -944,7 +950,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     //      (g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
     //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
-    std::string sLoadSaveFilePath = g_state.sCurrentDir.data();  // g_state.sProgramDir
+    std::string sLoadSaveFilePath =
+        g_state.sCurrentDir.data();  // g_state.sProgramDir
 
     RangeType_t eRange;
     eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
@@ -991,7 +998,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       hFile.reset(fopen(sLoadSaveFilePath.c_str(), "wb"));
       if (hFile) {
         size_t nWrote =
-            fwrite(pMemBankBase + nAddressStart, static_cast<size_t>(nAddressLen), 1, hFile.get());
+            fwrite(pMemBankBase + nAddressStart,
+                   static_cast<size_t>(nAddressLen), 1, hFile.get());
         if (nWrote == 1) {
           ConsoleBufferPush("Saved.");
         } else {
@@ -1724,7 +1732,8 @@ auto CmdTextSave(int nArgs) -> int {
   char* pText = nullptr;
   size_t nSize = Util_GetTextScreen(pText);
 
-  std::string sLoadSaveFilePath = g_state.sCurrentDir.data();  // g_state.sProgramDir
+  std::string sLoadSaveFilePath =
+      g_state.sCurrentDir.data();  // g_state.sProgramDir
 
   if (bHaveFileName) {
     g_sMemoryLoadSaveFileName = g_aArgs[1].sArg;

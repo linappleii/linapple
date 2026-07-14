@@ -88,6 +88,14 @@ auto AppController_Initialize(AppConfig* config) -> int {
   g_state.restart = false;
   g_state.fullscreen = config->bFullscreen;
 
+  bool disable_dbg_config = false;
+  if (ConfigLoadBool("Configuration", REGVALUE_DISABLE_DEBUGGER,
+                     &disable_dbg_config)) {
+    g_state.bDisableDebugger = config->bDisableDebugger || disable_dbg_config;
+  } else {
+    g_state.bDisableDebugger = config->bDisableDebugger;
+  }
+
   return 0;
 }
 

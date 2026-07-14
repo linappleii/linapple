@@ -2141,6 +2141,7 @@ auto CpuCalcCycles(uint32_t nExecutedCycles) -> void {
   cpu_calc_cycles(nExecutedCycles);
 }
 auto CpuExecute(uint32_t uCycles) -> uint32_t { return cpu_execute(uCycles); }
+auto CPU_Step() -> void { cpu_execute(0); }
 auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
   return cpu_get_cycles_this_frame(nExecutedCycles);
 }

@@ -38,14 +38,26 @@ static auto hex_to_int(char c) -> uint8_t {
 }
 
 auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
-  if (!xpm || !xpm[0]) return nullptr;
-  int w = 0, h = 0, colors = 0, cpp = 0;
-  if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) return nullptr;
-  if (cpp != 1 || colors < 0 || colors > 256 || w <= 0 || h <= 0)
+  if (!xpm || !xpm[0]) {
+    printf("DEBUG_XPM: xpm is null!\n");
     return nullptr;
+  }
+  int w = 0, h = 0, colors = 0, cpp = 0;
+  if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) {
+    printf("DEBUG_XPM: sscanf failed on first line!\n");
+    return nullptr;
+  }
+  if (cpp != 1 || colors < 0 || colors > 256 || w <= 0 || h <= 0) {
+    printf("DEBUG_XPM: validation failed: cpp=%d, colors=%d, w=%d, h=%d\n", cpp,
+           colors, w, h);
+    return nullptr;
+  }
 
   VideoSurface_t* s = video_create_surface(w, h, 1);
-  if (!s) return nullptr;
+  if (!s) {
+    printf("DEBUG_XPM: video_create_surface failed!\n");
+    return nullptr;
+  }
   struct {
     char c;
     VideoColor_t color;
