@@ -78,7 +78,7 @@ void DrawVideoScannerInfo(int line);
 extern void AllocateDebuggerMemDC(void);
 extern void ReleaseDebuggerMemDC(void);
 extern void StretchBltMemToFrameDC(void);
-bool CanDrawDebugger(void);
+bool can_draw_debugger(void);
 
 void InitDisasm(void);
 void UpdateDisplay(Update_t bUpdate);

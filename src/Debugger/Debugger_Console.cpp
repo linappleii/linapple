@@ -629,7 +629,7 @@ void DebuggerCursorNext() {
 
 void DebuggerUpdate() { DebuggerCursorUpdate(); }
 
-void DebuggerInputConsoleChar(char ch) {
+void debugger_input_console_char(char ch) {
   assert(g_state.mode == MODE_DEBUG);
 
   if (g_state.mode != MODE_DEBUG) {
@@ -690,7 +690,7 @@ extern auto CmdCursorPageDown256(int) -> Update_t;
 extern auto CmdCursorPageUp4K(int) -> Update_t;
 extern auto CmdCursorPageDown4K(int) -> Update_t;
 
-void DebuggerProcessKey(int keycode) {
+void debugger_process_key(int keycode) {
   if (g_state.mode != MODE_DEBUG) {
     return;
   }
@@ -748,11 +748,11 @@ void DebuggerProcessKey(int keycode) {
       bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
     } else {
       // Exit Debugger
-      DebugEnd();
+      debug_end();
       return;
     }
   } else if ((keycode >= ' ') && (keycode <= 127)) {
-    DebuggerInputConsoleChar(keycode);
+    debugger_input_console_char(keycode);
   } else {
     KeyboardModifiers_t mods = {};
     size_t mods_sz = sizeof(mods);
@@ -822,7 +822,7 @@ void DebuggerProcessKey(int keycode) {
   }
 }
 
-void DebuggerMouseClick(int /*x*/, int /*y*/) {
+void debugger_mouse_click(int /*x*/, int /*y*/) {
   if (g_state.mode != MODE_DEBUG) {
     return;
   }

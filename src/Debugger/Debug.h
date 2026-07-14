@@ -16,7 +16,7 @@ using namespace std;
 #include "Debugger_Breakpoints.h"
 
 // Globals
-extern bool g_bDebuggerEatKey;
+extern bool g_debugger_eat_key;
 extern uint16_t g_uBreakMemoryAddress;
 extern int g_iCommand;
 extern std::vector<Command_t> g_vSortedCommands;
@@ -283,7 +283,7 @@ Update_t CmdWatchList(int nArgs);
 Update_t CmdWatchLoad(int nArgs);
 Update_t CmdWatchSave(int nArgs);
 
-void DebugBegin();
+void debug_begin();
 
 bool IsDebugBreakOnInvalid(int iOpcodeType);
 void SetDebugBreakOnInvalid(int iOpcodeType, int nValue);
@@ -296,13 +296,13 @@ void DebuggerRunScript(const char* sFileName);
 
 void DebugContinueStepping(const bool bCallerWillUpdateDisplay=false);
 
-void DebugDestroy();
+void debug_destroy();
 
-void DebugDisplay(bool bInitDisasm=false);
+void debug_display(bool bInitDisasm=false);
 
-void DebugEnd();
+void debug_end();
 
-void DebugInitialize();
+void debug_initialize();
 
 // Cursor/Input
 extern bool g_bInputCursor;
@@ -315,14 +315,14 @@ extern bool g_bIgnoreNextKey;
 void DebuggerUpdate();
 void DebuggerCursorUpdate();
 void DebuggerCursorNext();
-void DebuggerProcessKey(int keycode);
-void DebuggerInputConsoleChar(char ch);
-void DebuggerMouseClick(int x, int y);
+void debugger_process_key(int keycode);
+void debugger_input_console_char(char ch);
+void debugger_mouse_click(int x, int y);
 void ToggleFullScreenConsole();
 
 void VerifyDebuggerCommandTable();
 
-bool IsDebugSteppingAtFullSpeed(void);
+bool is_debug_stepping_at_full_speed(void);
 
-bool DebugGetVideoMode(uint32_t* pVideoMode);
-bool CanDrawDebugger(void);
+bool debug_get_video_mode(uint32_t* pVideoMode);
+bool can_draw_debugger(void);

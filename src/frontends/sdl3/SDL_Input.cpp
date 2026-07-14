@@ -101,7 +101,7 @@ void SDL_HandleEvent(SDL_Event* e) {
               break;
             case MODE_STEPPING:
 #if ENABLE_DEBUGGER
-              DebuggerInputConsoleChar(DEBUG_EXIT_KEY);
+              debugger_input_console_char(DEBUG_EXIT_KEY);
 #endif
               break;
             case MODE_LOGO:
@@ -120,7 +120,7 @@ void SDL_HandleEvent(SDL_Event* e) {
                    (g_state.mode == MODE_LOGO) ||
                    (g_state.mode == MODE_STEPPING)) {
 #if ENABLE_DEBUGGER
-          g_bDebuggerEatKey = false;
+          g_debugger_eat_key = false;
 #endif
           bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                            myscancode <= SDL_SCANCODE_UP) ||
@@ -136,7 +136,7 @@ void SDL_HandleEvent(SDL_Event* e) {
         } else if (g_state.mode == MODE_DEBUG) {
           LinAppleKey core_key = Frontend_ToCoreKey(mysym, mymod);
           if (core_key != LINAPPLE_KEY_UNKNOWN) {
-            DebuggerProcessKey(core_key);
+            debugger_process_key(core_key);
           }
 #endif
         }
@@ -177,7 +177,7 @@ void SDL_HandleEvent(SDL_Event* e) {
           y_local = static_cast<int>(e->button.y);
 #if ENABLE_DEBUGGER
           if (g_state.mode == MODE_DEBUG) {
-            DebuggerMouseClick(x_local, y_local);
+            debugger_mouse_click(x_local, y_local);
           } else
 #endif
               if (usingcursor) {

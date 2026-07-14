@@ -84,4 +84,4 @@ void DisasmCalcBotFromTopAddress();
 void DisasmCalcTopBotAddress();
 uint16_t DisasmCalcAddressFromLines(uint16_t iAddress, int nLines);
 
-bool DebugGetVideoMode(uint32_t* pVideoMode);
+bool debug_get_video_mode(uint32_t* pVideoMode);

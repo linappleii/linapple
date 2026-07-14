@@ -152,7 +152,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   //  if (!g_nDebugStepUntil)
   //    g_nDebugStepUntil = GetAddress(g_aArgs[1].sArg);
 
-  g_bDebuggerEatKey = true;
+  g_debugger_eat_key = true;
 
   g_bDebugFullSpeed = bFullSpeed;
   g_bLastGoCmdWasFullSpeed = bFullSpeed;

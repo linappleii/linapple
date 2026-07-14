@@ -12,7 +12,7 @@ enum DebugVirtualTextScreen_e {
 };
 
 VideoSurface* g_hDebugScreen = nullptr;
-bool g_bDebuggerEatKey = false;
+bool g_debugger_eat_key = false;
 
 char g_aDebuggerVirtualTextScreen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                  [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
@@ -21,13 +21,13 @@ ColorRef_t g_aDebuggerVirtualTextScreenFG[DEBUG_VIRTUAL_TEXT_HEIGHT]
 ColorRef_t g_aDebuggerVirtualTextScreenBG[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                          [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
 
-void DebugBegin() {}
-void DebugEnd() {}
-void DebugDestroy() {}
-void DebugInitialize() {}
-void DebugDisplay(bool) {}
-void DebuggerProcessKey(int) {}
-void DebuggerInputConsoleChar(char) {}
-void DebuggerMouseClick(int, int) {}
-bool DebugGetVideoMode(uint32_t*) { return false; }
+void debug_begin() {}
+void debug_end() {}
+void debug_destroy() {}
+void debug_initialize() {}
+void debug_display(bool) {}
+void debugger_process_key(int) {}
+void debugger_input_console_char(char) {}
+void debugger_mouse_click(int, int) {}
+bool debug_get_video_mode(uint32_t*) { return false; }
 // NOLINTEND(cppcoreguidelines-use-enum-class,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,modernize-use-trailing-return-type)

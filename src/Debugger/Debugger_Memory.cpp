@@ -1088,7 +1088,7 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
   memset(pBeg, 0, sizeof(g_aTextScreen));
 
   memset(g_aDebuggerVirtualTextScreen, 0, sizeof(g_aDebuggerVirtualTextScreen));
-  DebugDisplay();
+  debug_display();
 
   for (auto& y : g_aDebuggerVirtualTextScreen) {
     for (int x = 0; x < DEBUG_VIRTUAL_TEXT_WIDTH; x++) {
@@ -1955,7 +1955,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
 
   ConsolePrint(sResult);
 
-  // g_vMemorySearchResults is cleared in DebugEnd()
+  // g_vMemorySearchResults is cleared in debug_end()
 
   //  return UPDATE_CONSOLE_DISPLAY;
   return ConsoleUpdate();

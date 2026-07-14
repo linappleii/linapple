@@ -22,7 +22,7 @@ const int DISPLAY_WIDTH = 560;
 
 void DrawSubWindow_Console(Update_t bUpdate)
 {
-  if (!CanDrawDebugger()) {
+  if (!can_draw_debugger()) {
     return;
 }
 

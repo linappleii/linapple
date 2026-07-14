@@ -33,7 +33,7 @@ enum {
 ALLOW_INPUT_LOWERCASE = 1
 };
 
-void DebugDisplay(bool bInitDisasm)
+void debug_display(bool bInitDisasm)
 {
   if (bInitDisasm) {
     InitDisasm();
@@ -50,7 +50,7 @@ void DebugDisplay(bool bInitDisasm)
   UpdateDisplay( UPDATE_ALL );
 }
 
-void DebugInitialize()
+void debug_initialize()
 {
     static bool bInitialized = false;
     if (bInitialized) return;
@@ -61,12 +61,12 @@ void DebugInitialize()
     bInitialized = true;
 }
 
-auto IsDebugSteppingAtFullSpeed() -> bool
+auto is_debug_stepping_at_full_speed() -> bool
 {
   return (g_state.mode == MODE_STEPPING) && g_bDebugFullSpeed;
 }
 
-bool g_bDebuggerEatKey = false;
+bool g_debugger_eat_key = false;
 
 uint16_t g_nDisasmTopAddress = 0;
 uint16_t g_nDisasmBotAddress = 0;

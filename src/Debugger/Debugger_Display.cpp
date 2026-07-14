@@ -244,7 +244,7 @@ void DebuggerPrintColor(int x, int y, const conchar_t* pText) {
   }
 }
 
-auto CanDrawDebugger() -> bool {
+auto can_draw_debugger() -> bool {
   return (g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING);
 }
 
@@ -930,14 +930,14 @@ void UpdateDisplay(Update_t bUpdate) {
   spDrawMutex = false;
 }
 
-void DebugBegin() {
+void debug_begin() {
   if (g_state.bDisableDebugger) {
     return;
   }
   // This is called every time the debugger is entered.
   g_state.mode = MODE_DEBUG;
 
-  DebugInitialize();
+  debug_initialize();
   AllocateDebuggerMemDC();
 
   g_state.mode = MODE_DEBUG;
@@ -946,15 +946,15 @@ void DebugBegin() {
   UpdateDisplay(UPDATE_ALL);
 }
 
-void DebugDestroy() {
-  DebugEnd();
+void debug_destroy() {
+  debug_end();
 
   for (int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++) {
     _CmdSymbolsClear(static_cast<SymbolTable_Index_e>(iTable));
   }
 }
 
-void DebugEnd() {
+void debug_end() {
   if (g_bProfiling) {
     ProfileFormat(true, PROFILE_FORMAT_TAB);
     ProfileSave();

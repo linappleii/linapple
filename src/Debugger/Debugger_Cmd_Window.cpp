@@ -440,7 +440,7 @@ void DisasmCalcTopBotAddress() {
   DisasmCalcBotFromTopAddress();
 }
 
-auto DebugGetVideoMode(uint32_t* pVideoMode) -> bool {
+auto debug_get_video_mode(uint32_t* pVideoMode) -> bool {
   return DebugVideoMode::Instance().Get(pVideoMode);
 }
 auto CmdCursorFollowTarget(int nArgs) -> Update_t {

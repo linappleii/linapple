@@ -108,7 +108,7 @@ void DrawAppleContent() {
     VideoDisplayLogo();
     g_bFrameReady = true;
   } else if (g_state.mode == MODE_DEBUG) {
-    DebugDisplay(true);
+    debug_display(true);
     g_bFrameReady = true;
   } else {
     VideoRedrawScreen();
@@ -586,7 +586,7 @@ void ProcessButtonClick(int button, int mod) {
           ResetMachineState();
         }
         if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING)) {
-          DebugEnd();
+          debug_end();
         }
         g_state.mode = MODE_RUNNING;
         DrawStatusArea(DRAW_TITLE);
@@ -671,7 +671,7 @@ void ProcessButtonClick(int button, int mod) {
 #if ENABLE_DEBUGGER
       if (!g_state.bDisableDebugger) {
         if (g_state.mode != MODE_DEBUG) {
-          DebugBegin();
+          debug_begin();
           SetUsingCursor(false);
         } else if (g_state.mode == MODE_DEBUG) {
           g_state.mode = MODE_RUNNING;
@@ -707,7 +707,7 @@ void ProcessButtonClick(int button, int mod) {
         if (g_state.mode != MODE_LOGO) {
           if (g_state.mode == MODE_DEBUG) {
             uint32_t debugVideoMode = 0;
-            if (DebugGetVideoMode(&debugVideoMode)) {
+            if (debug_get_video_mode(&debugVideoMode)) {
               VideoRefreshScreen();
             }
           } else {
