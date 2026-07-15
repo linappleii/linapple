@@ -24,7 +24,7 @@ SDL_AudioStream* g_audioStream = nullptr;
 static char* g_pszAudioDumpFile = nullptr;
 static AudioDumper_t g_audio_dumper;
 
-static void SDLCALL sdl3AudioCallback(void* userdata, SDL_AudioStream* stream,
+static void SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
                                       int additional_amount, int total_amount) {
   (void)userdata;
   (void)total_amount;
@@ -47,7 +47,7 @@ static void SDLCALL sdl3AudioCallback(void* userdata, SDL_AudioStream* stream,
   SDL_free(temp_buf);
 }
 
-auto DSInit() -> bool {
+auto ds_init() -> bool {
   if (g_audioStream) return true;
 
   SDL_AudioSpec desired;
@@ -61,7 +61,7 @@ auto DSInit() -> bool {
   }
 
   g_audioStream = SDL_OpenAudioDeviceStream(
-      SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, sdl3AudioCallback, nullptr);
+      SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, sdl3_audio_callback, nullptr);
   if (g_audioStream == nullptr) {
     printf("Unable to open SDL audio: %s\n", SDL_GetError());
     return false;
@@ -95,24 +95,24 @@ void DSShutdown() {
   }
 }
 
-extern void SDL_HandleEvent(SDL_Event* e);
+extern void sdl_handle_event(SDL_Event* e);
 
 void Sys_Input() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    SDL_HandleEvent(&event);
+    sdl_handle_event(&event);
   }
 }
 
 void EnterMessageLoop() {
-  constexpr int APPLE2_FRAME_CYCLES = 17030;
-  constexpr int TARGET_FRAME_MS = 16;
+  constexpr int apple2_frame_cycles = 17030;
+  constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
     Sys_Input();
 
-    Linapple_RunFrame(APPLE2_FRAME_CYCLES);
+    Linapple_RunFrame(apple2_frame_cycles);
     DrawFrameWindow();
-    SDL_Delay(TARGET_FRAME_MS);
+    SDL_Delay(target_frame_ms);
   }
 }
 
@@ -127,19 +127,19 @@ auto main(int argc, char* argv[]) -> int {
   }
 
   // Store the audio dump file name explicitly since AppConfig only holds it in
-  // a buffer and DSInit needs it later. Alternatively we could access
+  // a buffer and ds_init needs it later. Alternatively we could access
   // config.szAudioDumpPath.data() directly but it's cleaner to keep the
   // frontend's specific state separate if it uses a heap string.
   if (config.szAudioDumpPath.data()[0] != '\0') {
     g_pszAudioDumpFile = SDL_strdup(config.szAudioDumpPath.data());
   }
 
-  if (SysInit() != 0) return 1;
+  if (sys_init() != 0) return 1;
 
   do {
     AppController_SetRestart(false);
 
-    if (SessionInit(&config) != 0) {
+    if (session_init(&config) != 0) {
       break;
     }
 

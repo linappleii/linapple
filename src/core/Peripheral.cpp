@@ -270,8 +270,8 @@ static auto Host_SetConfig(const char* section, const char* key,
 
 static auto Host_NotifyStatusChanged(int slot) -> void {
   (void)slot;
-  extern void FrameRefreshStatus(int drawflags);
-  FrameRefreshStatus(static_cast<int>(DRAW_LEDS | DRAW_BUTTON_DRIVES));
+  extern void frame_refresh_status(int drawflags);
+  frame_refresh_status(static_cast<int>(DRAW_LEDS | DRAW_BUTTON_DRIVES));
 }
 
 static auto Host_NotifyActivityChanged(int slot, bool active) -> void {
@@ -342,21 +342,21 @@ static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
   return PrinterFrontend_CheckStatus();
 }
 
-extern void SuperSerialFrontend_SendByte(uint8_t byte);
-extern auto SuperSerialFrontend_IsActive() -> bool;
-extern void SuperSerialFrontend_UpdateState(uint32_t baud, uint32_t bits,
+extern void super_serial_frontend_send_byte(uint8_t byte);
+extern auto super_serial_frontend_is_active() -> bool;
+extern void super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
                                             int parity, int stop);
 
 static auto Host_SerialTransmitByte(void* instance, uint8_t byte) -> void {
   (void)instance;
-  SuperSerialFrontend_SendByte(byte);
+  super_serial_frontend_send_byte(byte);
 }
 
 static auto Host_SerialUpdateState(void* instance, uint32_t baud, uint32_t bits,
                                    int parity, int stop) -> void {
   (void)instance;
-  if (SuperSerialFrontend_IsActive()) {
-    SuperSerialFrontend_UpdateState(baud, bits, parity, stop);
+  if (super_serial_frontend_is_active()) {
+    super_serial_frontend_update_state(baud, bits, parity, stop);
   }
 }
 

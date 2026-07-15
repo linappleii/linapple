@@ -24,8 +24,8 @@ using Logger::Info;
 
 static bool g_bBudgetVideo = false;
 
-void SetBudgetVideo(bool b) { g_bBudgetVideo = b; }
-auto GetBudgetVideo() -> bool { return g_bBudgetVideo; }
+void set_budget_video(bool b) { g_bBudgetVideo = b; }
+auto get_budget_video() -> bool { return g_bBudgetVideo; }
 
 void SetCurrentCLK6502() {
   constexpr double APPLE2_CLOCK_MHZ = 1.023;
@@ -39,7 +39,7 @@ void SingleStep(bool bReinit) {
   Linapple_RunFrame(1);
 }
 
-auto SysInit() -> int {
+auto sys_init() -> int {
   if (InitSDL() != 0) {
     return 1;
   }
@@ -72,7 +72,7 @@ static void Frontend_SetWindowTitle(const char* title) {
   }
 }
 
-auto SessionInit(AppConfig* config) -> int {
+auto session_init(AppConfig* config) -> int {
   if (AppController_Initialize(config) != 0) {
     return 1;
   }
@@ -85,7 +85,7 @@ auto SessionInit(AppConfig* config) -> int {
 
   AppController_LoadInitialMedia(config);
 
-  DSInit();
+  ds_init();
   return 0;
 }
 

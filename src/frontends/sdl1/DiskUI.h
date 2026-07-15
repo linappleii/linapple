@@ -12,7 +12,7 @@ extern "C" {
  * @param error_code The DiskError_e code returned by commands or queries.
  * @return A static string describing the error.
  */
-const char* DiskUI_GetErrorMessage(int error_code);
+const char* disk_ui_get_error_message(int error_code);
 
 #ifdef __cplusplus
 }

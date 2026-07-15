@@ -24,8 +24,8 @@ using Logger::Info;
 
 static bool g_bBudgetVideo = false;
 
-void SetBudgetVideo(bool b) { g_bBudgetVideo = b; }
-auto GetBudgetVideo() -> bool { return g_bBudgetVideo; }
+void set_budget_video(bool b) { g_bBudgetVideo = b; }
+auto get_budget_video() -> bool { return g_bBudgetVideo; }
 
 void SetCurrentCLK6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
 
@@ -35,8 +35,8 @@ void SingleStep(bool bReinit) {
   Linapple_RunFrame(1);
 }
 
-auto SysInit() -> int {
-  if (InitSDL() != 0) {
+auto sys_init() -> int {
+  if (init_sdl() != 0) {
     return 1;
   }
 
@@ -68,18 +68,18 @@ static void Frontend_SetWindowTitle(const char* title) {
   }
 }
 
-auto SessionInit(AppConfig* config) -> int {
+auto session_init(AppConfig* config) -> int {
   if (AppController_Initialize(config) != 0) {
     return 1;
   }
 
   Linapple_SetTitleCallback(Frontend_SetWindowTitle);
 
-  if (FrameCreateWindow() != 0) return 1;
+  if (frame_create_window() != 0) return 1;
 
   AppController_LoadInitialMedia(config);
 
-  DSInit();
+  ds_init();
   return 0;
 }
 

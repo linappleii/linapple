@@ -8,7 +8,7 @@
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Assembler.h"
 #include "Debug.h"
-extern void FrameRefreshStatus(int);
+extern void frame_refresh_status(int);
 #include "Debugger_Parser.h"
 #include "Debugger_Help.h"
 #include "Debugger_Display.h"

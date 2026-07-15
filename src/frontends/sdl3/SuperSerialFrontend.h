@@ -4,12 +4,12 @@
 #include <cstdint>
 
 // Opaque host side interface for the Super Serial Card
-auto SuperSerialFrontend_Initialize(const char* serial_port_path) -> bool;
-auto SuperSerialFrontend_Close() -> void;
-auto SuperSerialFrontend_SendByte(uint8_t byte) -> void;
-auto SuperSerialFrontend_SetSerialPortPath(const char* serial_port_path)
+auto super_serial_frontend_initialize(const char* serial_port_path) -> bool;
+auto super_serial_frontend_close() -> void;
+auto super_serial_frontend_send_byte(uint8_t byte) -> void;
+auto super_serial_frontend_set_serial_port_path(const char* serial_port_path)
     -> void;
-auto SuperSerialFrontend_SetLoopback(bool enable) -> void;
-auto SuperSerialFrontend_IsActive() -> bool;
-auto SuperSerialFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity,
+auto super_serial_frontend_set_loopback(bool enable) -> void;
+auto super_serial_frontend_is_active() -> bool;
+auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits, int parity,
                                      int stop) -> void;

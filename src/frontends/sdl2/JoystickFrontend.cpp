@@ -350,7 +350,7 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
   }
 }
 
-auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down,
+auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
                             bool autorep) -> bool {
   int nJoyNum =
       (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==

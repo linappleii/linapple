@@ -25,7 +25,7 @@ extern int buttondown;
 extern bool usingcursor;
 extern int x, y;
 
-void SDL_HandleEvent(SDL_Event* e) {
+void sdl_handle_event(SDL_Event* e) {
   int x_local = 0;
   int y_local = 0;
 
@@ -134,7 +134,7 @@ void SDL_HandleEvent(SDL_Event* e) {
           if ((mymod & KMOD_RCTRL) != 0) {
             JoyFrontend_UpdateTrimViaKey(mysym);
           } else {
-            if (!JoyFrontend_ProcessKey(mysym, extended, true, false)) {
+            if (!joy_frontend_process_key(mysym, extended, true, false)) {
               Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
             }
           }
@@ -168,7 +168,7 @@ void SDL_HandleEvent(SDL_Event* e) {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                          myscancode <= SDL_SCANCODE_UP) ||
                         (myscancode == SDL_SCANCODE_DELETE);
-        if (!JoyFrontend_ProcessKey(mysym, extended, false, false)) {
+        if (!joy_frontend_process_key(mysym, extended, false, false)) {
           Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
         }
       }

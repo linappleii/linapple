@@ -89,7 +89,7 @@ static auto output_log_message(LogLevel_t level, const char* format,
 auto initialize() -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   if (!g_log_file) {
-    std::string data_dir = Path::GetUserDataDir();
+    std::string data_dir = Path::get_user_data_dir();
     Path::EnsureDirExists(data_dir);
     g_log_file.reset(std::fopen((data_dir + "linapple.log").c_str(), "a+t"));
   }

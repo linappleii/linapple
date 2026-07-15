@@ -7,9 +7,9 @@
 #include "frontends/common/AppConfig.h"
 
 // Lifecycle
-auto SysInit() -> int;
+auto sys_init() -> int;
 void SysShutdown();
-auto SessionInit(AppConfig* config) -> int;
+auto session_init(AppConfig* config) -> int;
 void SessionShutdown();
 
 void ContinueExecution(uint32_t dwCycles);
@@ -22,15 +22,15 @@ void Sys_Think();
 void Sys_Draw();
 
 // Public Frontend helpers (Keyboard translation, etc)
-auto DSInit() -> bool;
+auto ds_init() -> bool;
 void DSShutdown();
 void SingleStep(bool bReinit);
 void Linapple_KeyboardThink(uint32_t dwCycles);
 void Frontend_UpdateKeyboardMapping();
 void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
                                uint32_t mod, bool bDown);
-LinAppleKey Frontend_ToCoreKey(int key, uint32_t mod);
+LinAppleKey frontend_to_core_key(int key, uint32_t mod);
 
 // Constants
-constexpr int WINDOW_WIDTH = 560;
-constexpr int WINDOW_HEIGHT = 384;
+constexpr int window_width = 560;
+constexpr int window_height = 384;

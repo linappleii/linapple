@@ -24,12 +24,12 @@ enum {
 
 enum { MODE_NONE = 0, MODE_STANDARD = 1, MODE_CENTERING = 2, MODE_SMOOTH = 3 };
 
-using joyinforec = struct joyinforec {
+using JoyInfoRec_t = struct JoyInfoRec_t {
   int device;
   int mode;
 };
 
-static const std::array<joyinforec, 5> joyinfo = {
+static const std::array<JoyInfoRec_t, 5> joyinfo = {
     {{DEVICE_NONE, MODE_NONE},
      {DEVICE_JOYSTICK, MODE_STANDARD},
      {DEVICE_KEYBOARD, MODE_STANDARD},
@@ -37,7 +37,7 @@ static const std::array<joyinforec, 5> joyinfo = {
      {DEVICE_MOUSE, MODE_STANDARD}}};
 
 // Key pad [1..9]; Key pad 0,Key pad '.'; Left ALT,Right ALT
-enum JOYKEY {
+enum JoyKey_t {
   JK_DOWNLEFT = 0,
   JK_DOWN,
   JK_DOWNRIGHT,
@@ -344,7 +344,7 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
   }
 }
 
-auto JoyFrontend_ProcessKey(SDL_Keycode virtkey, bool extended, bool down,
+auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
                             bool autorep) -> bool {
   int nJoyNum =
       (joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_KEYBOARD) ? 0 : 1;

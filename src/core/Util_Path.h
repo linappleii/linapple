@@ -34,10 +34,10 @@ inline void EnsureDirExists(const std::string& path) {
 }
 
 // Returns the directory where the executable is located.
-auto GetExecutableDir() -> std::string;
+auto get_executable_dir() -> std::string;
 
 // Returns the user's data directory (~/.local/share/linapple/)
-auto GetUserDataDir() -> std::string;
+auto get_user_data_dir() -> std::string;
 
 // Returns the user's configuration directory (~/.config/linapple/)
 inline auto GetUserConfigDir() -> std::string {
@@ -49,14 +49,14 @@ inline auto GetUserConfigDir() -> std::string {
   if (home) {
     return std::string(home) + "/.config/linapple/";
   }
-  return GetUserDataDir();
+  return get_user_data_dir();
 }
 
 // Returns a list of directories to search for shared object plugins (.so files)
 inline auto GetPluginSearchPaths() -> std::vector<std::string> {
   std::vector<std::string> paths;
 
-  paths.push_back(GetUserDataDir() + "plugins/");
+  paths.push_back(get_user_data_dir() + "plugins/");
 
   const char* dataHome = getenv("XDG_DATA_HOME");
   if (dataHome) {
@@ -68,8 +68,8 @@ inline auto GetPluginSearchPaths() -> std::vector<std::string> {
     }
   }
 
-  paths.push_back(GetExecutableDir());
-  paths.push_back(GetExecutableDir() + "plugins/");
+  paths.push_back(get_executable_dir());
+  paths.push_back(get_executable_dir() + "plugins/");
 
   paths.push_back("/usr/local/lib/linapple/plugins/");
   paths.push_back("/usr/lib/linapple/plugins/");
@@ -82,14 +82,14 @@ inline auto GetPluginSearchPaths() -> std::vector<std::string> {
 inline auto GetDataSearchPaths() -> std::vector<std::string> {
   std::vector<std::string> paths;
 
-  paths.push_back(GetUserDataDir());
+  paths.push_back(get_user_data_dir());
   paths.push_back(GetUserConfigDir());
-  paths.push_back(GetExecutableDir());
-  paths.push_back(GetExecutableDir() + "res/");
-  paths.push_back(GetExecutableDir() + "../res/");
+  paths.push_back(get_executable_dir());
+  paths.push_back(get_executable_dir() + "res/");
+  paths.push_back(get_executable_dir() + "../res/");
 
-  paths.push_back(GetExecutableDir() + "../share/linapple/");
-  paths.push_back(GetExecutableDir() + "../etc/linapple/");
+  paths.push_back(get_executable_dir() + "../share/linapple/");
+  paths.push_back(get_executable_dir() + "../etc/linapple/");
 
 #ifdef ASSET_DIR
   paths.push_back(ASSET_DIR "/");

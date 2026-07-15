@@ -26,7 +26,7 @@ WEAK auto Frontend_ToCoreKey(int key, uint32_t mod) -> LinAppleKey {  // NOLINT
   return LINAPPLE_KEY_UNKNOWN;
 }
 
-WEAK auto FrameRefreshStatus(int drawflags) -> void { (void)drawflags; }
+WEAK auto frame_refresh_status(int drawflags) -> void { (void)drawflags; }
 
 // Printer Stubs
 WEAK auto PrinterFrontend_Reset() -> void {}
@@ -36,24 +36,24 @@ WEAK auto PrinterFrontend_CheckStatus() -> uint8_t { return 0; }
 WEAK auto PrinterFrontend_SendChar(uint8_t c) -> void { (void)c; }
 
 // SSC Stubs
-WEAK auto SuperSerialFrontend_Initialize(const char* p) -> bool {
+WEAK auto super_serial_frontend_initialize(const char* p) -> bool {
   (void)p;
   return false;
 }
-WEAK auto SuperSerialFrontend_Close() -> void {}
-WEAK auto SuperSerialFrontend_IsActive() -> bool { return false; }
-WEAK auto SuperSerialFrontend_UpdateState(uint32_t b, uint32_t d, int p, int s)
+WEAK auto super_serial_frontend_close() -> void {}
+WEAK auto super_serial_frontend_is_active() -> bool { return false; }
+WEAK auto super_serial_frontend_update_state(uint32_t b, uint32_t d, int p, int s)
     -> void {  // NOLINT
   (void)b;
   (void)d;
   (void)p;
   (void)s;
 }
-WEAK auto SuperSerialFrontend_SendByte(uint8_t c) -> void { (void)c; }
-WEAK auto SuperSerialFrontend_SetSerialPortPath(const char* p) -> void {
+WEAK auto super_serial_frontend_send_byte(uint8_t c) -> void { (void)c; }
+WEAK auto super_serial_frontend_set_serial_port_path(const char* p) -> void {
   (void)p;
 }
-WEAK auto SuperSerialFrontend_SetLoopback(bool e) -> void { (void)e; }
+WEAK auto super_serial_frontend_set_loopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}

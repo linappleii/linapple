@@ -165,7 +165,7 @@ void DiskChoose_Tick(SDL_Event* event) {
   }
 }
 
-extern void FrameRefresh();
+extern void frame_refresh();
 
 void DiskChoose_Draw() {
   if (g_diskChooseState.active == false) return;
@@ -179,8 +179,8 @@ void DiskChoose_Draw() {
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
-  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
-  VideoSurface vs_screen = SDLSurfaceToVideoSurface(g_screen);
+  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface vs_screen = sdl_surface_to_video_surface(g_screen);
 
   VideoSoftStretch(&vs_bg, nullptr, &vs_screen, nullptr);
 
@@ -269,10 +269,10 @@ void DiskChoose_Draw() {
             TOPX - RECT_MARGIN, 0, static_cast<int>(RECT_WIDTH * facy),
             RGB(255, 255, 255));
 
-  FrameRefresh();
+  frame_refresh();
 }
 
-auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
+auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
                        FileListGenerator_t* file_list_generator,
                        std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
@@ -304,7 +304,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
 
   static VideoSurface vs_screen;
   if (tempSurface == nullptr) {
-    vs_screen = SDLSurfaceToVideoSurface(g_screen);
+    vs_screen = sdl_surface_to_video_surface(g_screen);
     tempSurface = &vs_screen;
   }
 
@@ -312,8 +312,8 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
       SDL_CreateRGBSurface(SDL_HWSURFACE, tempSurface->w, tempSurface->h, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
 
-  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
-  VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(g_screen);
+  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
   // Capture original screen
   VideoSoftStretch(tempSurface, nullptr, &vs_bg, nullptr);
@@ -325,7 +325,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
       SDL_CreateRGBSurface(0, tempSurface->w / 16, tempSurface->h / 16, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
   if (blur_temp != nullptr) {
-    VideoSurface vs_blur = SDLSurfaceToVideoSurface(blur_temp);
+    VideoSurface vs_blur = sdl_surface_to_video_surface(blur_temp);
     VideoSoftStretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
     VideoSoftStretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
     SDL_FreeSurface(blur_temp);
@@ -352,7 +352,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
       sx / 2, static_cast<int>(20 * facy),
       file_list_generator->get_starting_message(file_list_generator),
       &vs_actual_screen, 1 * facx, 1 * facy);
-  FrameRefresh();
+  frame_refresh();
 
   g_diskChooseState.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
@@ -364,7 +364,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
     font_print_centered(sx / 2, static_cast<int>(30 * facy),
                         "Failure. Press any key!", &vs_actual_screen,
                         1.4 * facx, 1.1 * facy);
-    FrameRefresh();
+    frame_refresh();
 
     g_video_draw_mutex.unlock();
     SDL_Delay(KEY_DELAY);
@@ -443,14 +443,14 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
   return false;
 }
 
-auto ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
+auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                    std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
       FileBrowser_CreateLocalGenerator(incoming_dir.c_str());
   if (generator == nullptr) return false;
 
-  bool result = ChooseImageDialog(sx, sy, incoming_dir, slot, generator,
+  bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,
                                   filename, isdir, index_file);
   generator->destroy(generator);
   return result;

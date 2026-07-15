@@ -25,7 +25,7 @@ static void InitializeDirectory(const char* reg_key, char* target_buffer,
   std::string path =
       Configuration::Instance().GetString("Preferences", reg_key);
   if (path.empty()) {
-    path = Path::GetUserDataDir();
+    path = Path::get_user_data_dir();
   }
 
   if (!path.empty()) {

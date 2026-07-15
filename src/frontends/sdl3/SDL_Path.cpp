@@ -4,7 +4,7 @@
 
 namespace Path {
 
-auto GetExecutableDir() -> std::string {
+auto get_executable_dir() -> std::string {
   const char* base = SDL_GetBasePath();
   if (!base) {
     return "./";
@@ -12,7 +12,7 @@ auto GetExecutableDir() -> std::string {
   return std::string(base);
 }
 
-auto GetUserDataDir() -> std::string {
+auto get_user_data_dir() -> std::string {
   const char* pref = SDL_GetPrefPath(nullptr, "linapple");
   if (!pref) {
     return "./";

@@ -5,6 +5,6 @@
 
 #include "apple2/Video.h"
 
-auto SDLSurfaceToVideoSurface(SDL_Surface* s) -> VideoSurface;
+auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface;
 
 #endif

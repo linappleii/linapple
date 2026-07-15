@@ -10,13 +10,13 @@
 static uint32_t inactivity = 0;
 static uint32_t g_PrinterIdleLimit = 10;
 static FilePtr file(nullptr, fclose);
-bool g_bPrinterAppend = true;
+bool g_printer_append = true;
 
-static auto CheckPrint() -> bool {
+static auto check_print() -> bool {
   inactivity = 0;
   if (!file) {
     file.reset(fopen(g_state.sParallelPrinterFile.data(),
-                     (g_bPrinterAppend) ? "ab" : "wb"));
+                     (g_printer_append) ? "ab" : "wb"));
   }
   return (file != nullptr);
 }
@@ -40,14 +40,14 @@ void PrinterFrontend_Update(uint32_t totalcycles) {
   }
   inactivity += totalcycles;
   constexpr uint32_t IDLE_FACTOR = 1000 * 1000;
-  if (inactivity > (Printer_GetIdleLimit() * IDLE_FACTOR)) {
+  if (inactivity > (printer_get_idle_limit() * IDLE_FACTOR)) {
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
 }
 
 void PrinterFrontend_SendChar(uint8_t value) {
-  if (!CheckPrint()) {
+  if (!check_print()) {
     return;
   }
   constexpr uint8_t ASCII_MASK = 0x7F;
@@ -55,8 +55,8 @@ void PrinterFrontend_SendChar(uint8_t value) {
   fwrite(&c, 1, 1, file.get());
 }
 
-void PrinterFrontend_CheckStatus() { CheckPrint(); }
+void PrinterFrontend_CheckStatus() { check_print(); }
 
-auto Printer_GetIdleLimit() -> uint32_t { return g_PrinterIdleLimit; }
+auto printer_get_idle_limit() -> uint32_t { return g_PrinterIdleLimit; }
 
 void Printer_SetIdleLimit(uint32_t Duration) { g_PrinterIdleLimit = Duration; }

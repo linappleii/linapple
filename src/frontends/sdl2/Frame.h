@@ -42,7 +42,7 @@ auto InitSDL() -> int;
 
 auto FrameCreateWindow() -> int;
 
-void FrameRefreshStatus(int);
+void frame_refresh_status(int);
 
 void FrameRegisterClass();
 

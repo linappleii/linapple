@@ -112,7 +112,7 @@ void DrawAppleContent() {
   g_video_draw_mutex.unlock();
 }
 
-void FrameRefresh() {
+void frame_refresh() {
   if (g_texture != nullptr && g_screen != nullptr) {
     SDL_BlitSurface(g_texture, nullptr, g_screen, nullptr);
     SDL_Flip(g_screen);
@@ -134,7 +134,7 @@ void DrawFrameWindow() {
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
-      VideoSurface vs_texture = SDLSurfaceToVideoSurface(g_texture);
+      VideoSurface vs_texture = sdl_surface_to_video_surface(g_texture);
       VideoSurface vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
       vs_output.w = 560;
@@ -151,23 +151,23 @@ void DrawFrameWindow() {
         VideoSoftStretch(&vs_output, &vor, &vs_texture, &vnr);
       }
     } else {
-      // Debugger draws directly to g_hDebugScreen (INDEX8)
+      // Debugger draws directly to g_debug_screen (INDEX8)
       // We need to stretch/convert it to the RGB32 g_screen surface
-      extern VideoSurface* g_hDebugScreen;
-      if (g_hDebugScreen != nullptr) {
-        VideoSurface vs_texture = SDLSurfaceToVideoSurface(g_texture);
+      extern VideoSurface* g_debug_screen;
+      if (g_debug_screen != nullptr) {
+        VideoSurface vs_texture = sdl_surface_to_video_surface(g_texture);
         if (g_WindowResized == false) {
           VideoRect vr = ToVideoRect(r);
-          VideoSoftStretch(g_hDebugScreen, &vr, &vs_texture, &vr);
+          VideoSoftStretch(g_debug_screen, &vr, &vs_texture, &vr);
         } else {
           VideoRect vor = ToVideoRect(origRect);
           VideoRect vnr = ToVideoRect(newRect);
-          VideoSoftStretch(g_hDebugScreen, &vor, &vs_texture, &vnr);
+          VideoSoftStretch(g_debug_screen, &vor, &vs_texture, &vnr);
         }
       }
     }
 
-    FrameRefresh();
+    frame_refresh();
     g_bFrameReady = false;
   }
   g_video_draw_mutex.unlock();
@@ -294,11 +294,11 @@ void FrameShowHelpScreen(int sx, int sy) {
   if (tempSurface == nullptr) {
     // Wrap g_screen as fallback
     static VideoSurface vs_g_screen;
-    vs_g_screen = SDLSurfaceToVideoSurface(g_screen);
+    vs_g_screen = sdl_surface_to_video_surface(g_screen);
     tempSurface = &vs_g_screen;
   }
 
-  VideoSurface vs_actual_g_screen = SDLSurfaceToVideoSurface(g_screen);
+  VideoSurface vs_actual_g_screen = sdl_surface_to_video_surface(g_screen);
 
   // Capture original g_screen
   VideoSoftStretch(tempSurface, nullptr, &vs_actual_g_screen, nullptr);
@@ -310,7 +310,7 @@ void FrameShowHelpScreen(int sx, int sy) {
       SDL_CreateRGBSurface(0, g_screen->w / 16, g_screen->h / 16, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
   if (blur_temp != nullptr) {
-    VideoSurface vs_blur = SDLSurfaceToVideoSurface(blur_temp);
+    VideoSurface vs_blur = sdl_surface_to_video_surface(blur_temp);
     VideoSoftStretch(&vs_actual_g_screen, nullptr, &vs_blur,
                      nullptr);  // Downscale
     VideoSoftStretch(&vs_blur, nullptr, &vs_actual_g_screen,
@@ -389,7 +389,7 @@ void FrameShowHelpScreen(int sx, int sy) {
   scrr.h = static_cast<int16_t>(100.0f * facy_f);
   VideoSoftStretchOr(&vs_icon, &logo, &vs_actual_g_screen, &scrr);
 
-  FrameRefresh();
+  frame_refresh();
   SDL_Delay(1000);
 
   SDL_Event event;
@@ -504,7 +504,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   fullPath = g_state.sSaveStateDir.data();
 
   while (isDirectory) {
-    if (ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
+    if (choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
                       saveit ? 1 : 0, filename, isDirectory,
                       fileIndex) == false) {
       DrawFrameWindow();
@@ -701,7 +701,7 @@ void ProcessButtonClick(int button, int mod) {
 
     case BTN_CYCLE:
       if ((mod & KMOD_SHIFT) != 0) {
-        SetBudgetVideo(!GetBudgetVideo());
+        set_budget_video(!get_budget_video());
       } else {
         g_videotype++;
         if (g_videotype >= VT_NUM_MODES) {
@@ -865,7 +865,7 @@ auto InitSDL() -> int {
   return 0;
 }
 
-void FrameRefreshStatus(int drawflags) {
+void frame_refresh_status(int drawflags) {
   if ((drawflags & DRAW_LEDS) != 0) {
     size_t size = sizeof(g_lastDiskStatus);
     if (Peripheral_Query(disk_default_slot, disk_cmd_get_status,
@@ -873,7 +873,7 @@ void FrameRefreshStatus(int drawflags) {
       if (g_lastDiskStatus.drive0_last_error != disk_err_none &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
         fprintf(stderr, "Disk 1 Error: %s\n",
-                DiskUI_GetErrorMessage(g_lastDiskStatus.drive0_last_error));
+                disk_ui_get_error_message(g_lastDiskStatus.drive0_last_error));
         g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
       } else if (g_lastDiskStatus.drive0_last_error == disk_err_none) {
         g_drive0_last_reported_error = disk_err_none;
@@ -882,7 +882,7 @@ void FrameRefreshStatus(int drawflags) {
       if (g_lastDiskStatus.drive1_last_error != disk_err_none &&
           g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
         fprintf(stderr, "Disk 2 Error: %s\n",
-                DiskUI_GetErrorMessage(g_lastDiskStatus.drive1_last_error));
+                disk_ui_get_error_message(g_lastDiskStatus.drive1_last_error));
         g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
       } else if (g_lastDiskStatus.drive1_last_error == disk_err_none) {
         g_drive1_last_reported_error = disk_err_none;

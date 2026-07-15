@@ -34,7 +34,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
   fullPath = g_state.sCurrentDir.data();
 
   while (isdir) {
-    if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
+    if (!choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
                        filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;

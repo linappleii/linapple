@@ -40,7 +40,7 @@ static auto SDLCALL sdl1AudioCallback(void* userdata, Uint8* stream, int len)
   }
 }
 
-auto DSInit() -> bool {
+auto ds_init() -> bool {
   if (g_bDSAvailable) {
     return true;
   }
@@ -94,12 +94,12 @@ auto DSShutdown() -> void {
   }
 }
 
-extern void SDL_HandleEvent(SDL_Event* e);
+extern void sdl_handle_event(SDL_Event* e);
 
 auto Sys_Input() -> void {
   SDL_Event event;
   while (SDL_PollEvent(&event) != 0) {
-    SDL_HandleEvent(&event);
+    sdl_handle_event(&event);
   }
 }
 
@@ -126,21 +126,21 @@ auto main(int argc, char* argv[]) -> int {
   }
 
   // Store the audio dump file name explicitly since AppConfig only holds it in
-  // a buffer and DSInit needs it later. Alternatively we could access
+  // a buffer and ds_init needs it later. Alternatively we could access
   // config.szAudioDumpPath directly but it's cleaner to keep the frontend's
   // specific state separate if it uses a heap string.
   if (config.szAudioDumpPath.at(0) != '\0') {
     g_pszAudioDumpFile = SDL_strdup(config.szAudioDumpPath.data());
   }
 
-  if (SysInit() != 0) {
+  if (sys_init() != 0) {
     return 1;
   }
 
   while (true) {
     AppController_SetRestart(false);
 
-    if (SessionInit(&config) != 0) {
+    if (session_init(&config) != 0) {
       break;
     }
 

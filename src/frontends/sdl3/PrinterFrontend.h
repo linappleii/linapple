@@ -10,6 +10,6 @@ void PrinterFrontend_SendChar(uint8_t c);
 void PrinterFrontend_CheckStatus();
 
 void Printer_SetIdleLimit(uint32_t Duration);
-auto Printer_GetIdleLimit() -> uint32_t;
+auto printer_get_idle_limit() -> uint32_t;
 
-extern bool g_bPrinterAppend;
+extern bool g_printer_append;

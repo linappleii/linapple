@@ -35,7 +35,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
 
   while (isdir) {
     constexpr int DISK_CHOOSE_SLOT = 6;
-    if (!ChooseAnImage(static_cast<int>(g_state.ScreenWidth),
+    if (!choose_an_image(static_cast<int>(g_state.ScreenWidth),
                        static_cast<int>(g_state.ScreenHeight), fullPath,
                        DISK_CHOOSE_SLOT, filename, isdir, fileIndex)) {
       DrawFrameWindow();

@@ -25,12 +25,12 @@
 using std::string;
 using std::vector;
 
-static constexpr int FILES_IN_SCREEN = 21;
-static constexpr int KEY_DELAY = 25;
-static constexpr int MAX_FILENAME = 80;
-static constexpr int NORMAL_LENGTH = 60;
+static constexpr int files_in_screen = 21;
+static constexpr int key_delay = 25;
+static constexpr int max_filename = 80;
+static constexpr int normal_length = 60;
 
-DiskChooseState g_diskChooseState;
+DiskChooseState_t g_diskChooseState;
 
 void DiskChoose_Tick(SDL_Event* event) {
   if (!g_diskChooseState.active || !g_diskChooseState.list_handle) return;
@@ -54,17 +54,17 @@ void DiskChoose_Tick(SDL_Event* event) {
       g_diskChooseState.act_file++;
     }
     if (g_diskChooseState.act_file >=
-        (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
+        (g_diskChooseState.first_file + files_in_screen)) {
       g_diskChooseState.first_file =
-          g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+          g_diskChooseState.act_file - files_in_screen + 1;
     }
   }
 
   if (key == SDLK_PAGEUP) {
-    if (g_diskChooseState.act_file <= FILES_IN_SCREEN) {
+    if (g_diskChooseState.act_file <= files_in_screen) {
       g_diskChooseState.act_file = 0;
     } else {
-      g_diskChooseState.act_file -= FILES_IN_SCREEN;
+      g_diskChooseState.act_file -= files_in_screen;
     }
     if (g_diskChooseState.act_file < g_diskChooseState.first_file) {
       g_diskChooseState.first_file = g_diskChooseState.act_file;
@@ -72,14 +72,14 @@ void DiskChoose_Tick(SDL_Event* event) {
   }
 
   if (key == SDLK_PAGEDOWN) {
-    g_diskChooseState.act_file += FILES_IN_SCREEN;
+    g_diskChooseState.act_file += files_in_screen;
     if (g_diskChooseState.act_file >= list_count) {
       g_diskChooseState.act_file = (list_count - 1);
     }
     if (g_diskChooseState.act_file >=
-        (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
+        (g_diskChooseState.first_file + files_in_screen)) {
       g_diskChooseState.first_file =
-          g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+          g_diskChooseState.act_file - files_in_screen + 1;
     }
   }
 
@@ -109,11 +109,11 @@ void DiskChoose_Tick(SDL_Event* event) {
 
   if (key == SDLK_END) {
     g_diskChooseState.act_file = list_count - 1;
-    if (g_diskChooseState.act_file <= FILES_IN_SCREEN - 1) {
+    if (g_diskChooseState.act_file <= files_in_screen - 1) {
       g_diskChooseState.first_file = 0;
     } else {
       g_diskChooseState.first_file =
-          g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+          g_diskChooseState.act_file - files_in_screen + 1;
     }
   }
 
@@ -135,9 +135,9 @@ void DiskChoose_Tick(SDL_Event* event) {
               g_diskChooseState.first_file = g_diskChooseState.act_file;
             }
             if (g_diskChooseState.act_file >=
-                (g_diskChooseState.first_file + FILES_IN_SCREEN)) {
+                (g_diskChooseState.first_file + files_in_screen)) {
               g_diskChooseState.first_file =
-                  g_diskChooseState.act_file - FILES_IN_SCREEN + 1;
+                  g_diskChooseState.act_file - files_in_screen + 1;
             }
             break;
           }
@@ -147,7 +147,7 @@ void DiskChoose_Tick(SDL_Event* event) {
   }
 }
 
-extern void FrameRefresh();
+extern void frame_refresh();
 
 void DiskChoose_Draw() {
   if (!g_diskChooseState.active) return;
@@ -161,14 +161,14 @@ void DiskChoose_Draw() {
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
-  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
-  VideoSurface vs_screen = SDLSurfaceToVideoSurface(screen);
+  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface vs_screen = sdl_surface_to_video_surface(screen);
 
   VideoSoftStretch(&vs_bg, nullptr, &vs_screen, nullptr);
 
   font_print_centered(
       sx / 2, static_cast<int>(5 * facy),
-      g_diskChooseState.current_dir.substr(0, NORMAL_LENGTH).c_str(),
+      g_diskChooseState.current_dir.substr(0, normal_length).c_str(),
       &vs_screen, 1.5f * facx_f, 1.3f * facy_f);
 
   if (g_diskChooseState.slot == 6) {
@@ -201,7 +201,7 @@ void DiskChoose_Draw() {
                           ? FileBrowser_GetCount(g_diskChooseState.list_handle)
                           : 0;
 
-  for (size_t j = 0; j < FILES_IN_SCREEN; ++j) {
+  for (size_t j = 0; j < files_in_screen; ++j) {
     const size_t i = g_diskChooseState.first_file + j;
     if (i >= list_count) {
       break;
@@ -217,8 +217,8 @@ void DiskChoose_Draw() {
       r.x = 2;
       r.y = static_cast<int>(static_cast<double>(TOPX) +
                              static_cast<double>(j) * 15.0 * facy - 1.0);
-      if (file_name.size() > MAX_FILENAME) {
-        r.w = static_cast<int>(static_cast<double>(MAX_FILENAME) *
+      if (file_name.size() > max_filename) {
+        r.w = static_cast<int>(static_cast<double>(max_filename) *
                                static_cast<double>(FONT_SIZE_X) * 1.0 *
                                static_cast<double>(facx_f));
       } else {
@@ -240,7 +240,7 @@ void DiskChoose_Draw() {
     font_print(4,
                static_cast<int>(static_cast<double>(TOPX) +
                                 static_cast<double>(j) * 15.0 * facy),
-               file_name.substr(0, MAX_FILENAME).c_str(), &vs_screen,
+               file_name.substr(0, max_filename).c_str(), &vs_screen,
                1.0f * facx_f, 1.0f * facy_f);
     font_print(sx - static_cast<int>(70.0 * static_cast<double>(facx_f)),
                static_cast<int>(static_cast<double>(TOPX) +
@@ -253,10 +253,10 @@ void DiskChoose_Draw() {
   rectangle(&vs_screen, static_cast<int>(480.0 * static_cast<double>(facx_f)),
             TOPX - 5, 0, static_cast<int>(320.0 * facy), RGB(255, 255, 255));
 
-  FrameRefresh();
+  frame_refresh();
 }
 
-auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
+auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
                        FileListGenerator_t* file_list_generator,
                        std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
@@ -276,7 +276,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
   g_video_draw_mutex.lock();
 
   VideoSurface* tempSurface = nullptr;
-  if (!g_WindowResized) {
+  if (!g_window_resized) {
     if (g_state.mode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;
     } else {
@@ -288,15 +288,15 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
 
   static VideoSurface vs_screen;
   if (tempSurface == nullptr) {
-    vs_screen = SDLSurfaceToVideoSurface(screen);
+    vs_screen = sdl_surface_to_video_surface(screen);
     tempSurface = &vs_screen;
   }
 
   g_diskChooseState.bg_screen = SDL_CreateSurface(
       tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_ARGB8888);
 
-  VideoSurface vs_bg = SDLSurfaceToVideoSurface(g_diskChooseState.bg_screen);
-  VideoSurface vs_actual_screen = SDLSurfaceToVideoSurface(screen);
+  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface vs_actual_screen = sdl_surface_to_video_surface(screen);
 
   // Capture original screen
   VideoSoftStretch(tempSurface, nullptr, &vs_bg, nullptr);
@@ -307,7 +307,7 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
   SDL_Surface* blur_temp = SDL_CreateSurface(
       tempSurface->w / 16, tempSurface->h / 16, SDL_PIXELFORMAT_ARGB8888);
   if (blur_temp) {
-    VideoSurface vs_blur = SDLSurfaceToVideoSurface(blur_temp);
+    VideoSurface vs_blur = sdl_surface_to_video_surface(blur_temp);
     VideoSoftStretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
     VideoSoftStretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
     SDL_DestroySurface(blur_temp);
@@ -328,13 +328,13 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
 
   VideoSoftStretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
 
-  font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(),
+  font_print_centered(sx / 2, 5 * facy, dir.substr(0, normal_length).c_str(),
                       &vs_actual_screen, 1.5 * facx, 1.3 * facy);
   font_print_centered(
       sx / 2, 20 * facy,
       file_list_generator->get_starting_message(file_list_generator),
       &vs_actual_screen, 1 * facx, 1 * facy);
-  FrameRefresh();
+  frame_refresh();
 
   g_diskChooseState.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
@@ -345,10 +345,10 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!",
                         &vs_actual_screen, 1.4 * facx, 1.1 * facy);
-    FrameRefresh();
+    frame_refresh();
 
     g_video_draw_mutex.unlock();
-    SDL_Delay(KEY_DELAY);
+    SDL_Delay(key_delay);
     SDL_Event event;
 
     event.type = SDL_EVENT_QUIT;
@@ -372,11 +372,11 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
       FileBrowser_GetCount(g_diskChooseState.list_handle)) {
     g_diskChooseState.act_file = 0;
   }
-  if (g_diskChooseState.act_file <= FILES_IN_SCREEN / 2) {
+  if (g_diskChooseState.act_file <= files_in_screen / 2) {
     g_diskChooseState.first_file = 0;
   } else {
     g_diskChooseState.first_file =
-        g_diskChooseState.act_file - (FILES_IN_SCREEN / 2);
+        g_diskChooseState.act_file - (files_in_screen / 2);
   }
   g_diskChooseState.active = true;
   g_diskChooseState.finished = false;
@@ -424,14 +424,14 @@ auto ChooseImageDialog(int sx, int sy, const string& dir, int slot,
   return false;
 }
 
-auto ChooseAnImage(int sx, int sy, const std::string& incoming_dir, int slot,
+auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                    std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
       FileBrowser_CreateLocalGenerator(incoming_dir.c_str());
   if (!generator) return false;
 
-  bool result = ChooseImageDialog(sx, sy, incoming_dir, slot, generator,
+  bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,
                                   filename, isdir, index_file);
   generator->destroy(generator);
   return result;

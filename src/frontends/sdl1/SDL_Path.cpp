@@ -8,7 +8,7 @@
 
 namespace Path {
 
-auto GetExecutableDir() -> std::string {
+auto get_executable_dir() -> std::string {
   std::array<char, PATH_MAX> buf{};
   ssize_t len = ::readlink("/proc/self/exe", buf.data(), buf.size() - 1);
   if (len != -1) {
@@ -22,7 +22,7 @@ auto GetExecutableDir() -> std::string {
   return "./";
 }
 
-auto GetUserDataDir() -> std::string {
+auto get_user_data_dir() -> std::string {
   const char* dataHome = getenv("XDG_DATA_HOME");
   if (dataHome) {
     return std::string(dataHome) + "/linapple/";

@@ -27,7 +27,7 @@ static pthread_t g_CommThread;
 static volatile bool g_bThreadRunning = false;
 static volatile bool g_bThreadTerminate = false;
 
-auto SuperSerialFrontend_UpdateCommState(uint32_t baud, uint32_t bits,
+auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
                                          SuperSerialParity_e parity,
                                          SuperSerialStopBits_e stop) -> void {
   if (g_hCommHandle == -1) {
@@ -104,7 +104,7 @@ auto SuperSerialFrontend_UpdateCommState(uint32_t baud, uint32_t bits,
   tcsetattr(g_hCommHandle, TCSANOW, &dcb);
 }
 
-auto SerialPollingThread(void* arg) -> void* {
+auto serial_polling_thread(void* arg) -> void* {
   (void)arg;
   std::array<uint8_t, 256> buffer{};
 
@@ -126,7 +126,7 @@ auto SerialPollingThread(void* arg) -> void* {
   return nullptr;
 }
 
-auto SuperSerialFrontend_TransmitByte(uint8_t byte) -> bool {
+auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
   if (g_bSerialLoopback) {
     pthread_mutex_lock(&g_CriticalSection);
     Peripheral_Command(2, SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
@@ -135,7 +135,7 @@ auto SuperSerialFrontend_TransmitByte(uint8_t byte) -> bool {
     return true;
   }
 
-  if (!SuperSerialFrontend_IsActive()) {
+  if (!super_serial_frontend_is_active()) {
     return false;
   }
   return write(g_hCommHandle, &byte, 1) == 1;
@@ -143,7 +143,7 @@ auto SuperSerialFrontend_TransmitByte(uint8_t byte) -> bool {
 
 }  // namespace
 
-auto SuperSerialFrontend_IsActive() -> bool {
+auto super_serial_frontend_is_active() -> bool {
   if (g_bSerialLoopback) {
     return true;
   }
@@ -154,7 +154,7 @@ auto SuperSerialFrontend_IsActive() -> bool {
     if (g_hCommHandle != -1) {
       if (!g_bThreadRunning) {
         g_bThreadTerminate = false;
-        if (pthread_create(&g_CommThread, nullptr, SerialPollingThread,
+        if (pthread_create(&g_CommThread, nullptr, serial_polling_thread,
                            nullptr) == 0) {
           g_bThreadRunning = true;
         }
@@ -164,14 +164,14 @@ auto SuperSerialFrontend_IsActive() -> bool {
   return (g_hCommHandle != -1);
 }
 
-auto SuperSerialFrontend_UpdateState(uint32_t baud, uint32_t bits, int parity,
+auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits, int parity,
                                      int stop) -> void {
-  SuperSerialFrontend_UpdateCommState(baud, bits,
+  super_serial_frontend_update_comm_state(baud, bits,
                                       static_cast<SuperSerialParity_e>(parity),
                                       static_cast<SuperSerialStopBits_e>(stop));
 }
 
-auto SuperSerialFrontend_Close() -> void {
+auto super_serial_frontend_close() -> void {
   if (g_bThreadRunning) {
     g_bThreadTerminate = true;
     pthread_join(g_CommThread, nullptr);
@@ -185,7 +185,7 @@ auto SuperSerialFrontend_Close() -> void {
   g_dwCommInactivity = 0;
 }
 
-auto SuperSerialFrontend_SetSerialPortPath(const char* path) -> void {
+auto super_serial_frontend_set_serial_port_path(const char* path) -> void {
   if (g_hCommHandle == -1) {
     g_sSerialPortPath = path ? path : "";
   } else {
@@ -193,10 +193,10 @@ auto SuperSerialFrontend_SetSerialPortPath(const char* path) -> void {
   }
 }
 
-auto SuperSerialFrontend_SetLoopback(bool enable) -> void {
+auto super_serial_frontend_set_loopback(bool enable) -> void {
   g_bSerialLoopback = enable;
 }
 
-auto SuperSerialFrontend_SendByte(uint8_t byte) -> void {
-  SuperSerialFrontend_TransmitByte(byte);
+auto super_serial_frontend_send_byte(uint8_t byte) -> void {
+  super_serial_frontend_transmit_byte(byte);
 }

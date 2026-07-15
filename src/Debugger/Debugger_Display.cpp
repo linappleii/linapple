@@ -32,7 +32,7 @@ enum { DEBUG_FORCE_DISPLAY = 0 };
 
 // Globals __________________________________________________________________
 
-VideoSurface* g_hDebugScreen = nullptr;
+VideoSurface* g_debug_screen = nullptr;
 VideoSurface* g_hDebugCharset = nullptr;
 
 ColorRef_t g_hConsoleBrushFG = WHITE;
@@ -59,7 +59,7 @@ VideoScannerDisplayInfo g_videoScannerDisplayInfo;
 
 extern void DisasmInit();
 extern auto _CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
-extern void FrameRefreshStatus(int);
+extern void frame_refresh_status(int);
 
 extern void DrawSubWindow_Symbols(Update_t bUpdate);
 extern void DrawSubWindow_ZeroPage(Update_t bUpdate);
@@ -91,12 +91,12 @@ const int DISPLAY_DISASM_RIGHT = 353;
 //===========================================================================
 
 void AllocateDebuggerMemDC() {
-  if (!g_hDebugScreen) {
-    g_hDebugScreen = VideoCreateSurface(560, 384, 1);
-    if (g_hDebugScreen) {
+  if (!g_debug_screen) {
+    g_debug_screen = VideoCreateSurface(560, 384, 1);
+    if (g_debug_screen) {
       VideoColor* pal = VideoGetOutputPalette();
       if (pal) {
-        memcpy(g_hDebugScreen->palette, pal, 256 * sizeof(VideoColor));
+        memcpy(g_debug_screen->palette, pal, 256 * sizeof(VideoColor));
       }
     }
     g_hDebugCharset = VideoLoadXPM(charset40_xpm);
@@ -106,14 +106,14 @@ void AllocateDebuggerMemDC() {
 void ReleaseDebuggerMemDC() {}
 
 void GetDebugViewPortScale(float* x, float* y) {
-  if (!g_hDebugScreen) {
+  if (!g_debug_screen) {
     *x = 1.0f;
     *y = 1.0f;
     return;
   }
-  float f = (static_cast<float>(g_hDebugScreen->w)) / SCREEN_WIDTH;
+  float f = (static_cast<float>(g_debug_screen->w)) / SCREEN_WIDTH;
   *x = (f > 0.01) ? f : 0.01;
-  f = (static_cast<float>(g_hDebugScreen->h)) / SCREEN_HEIGHT;
+  f = (static_cast<float>(g_debug_screen->h)) / SCREEN_HEIGHT;
   *y = (f > 0.01) ? f : 0.01;
 }
 
@@ -144,8 +144,8 @@ void FillRect(const Rect_t* r, int Brush) {
       }
     }
   }
-  if (g_hDebugScreen) {
-    rectangle(g_hDebugScreen, r->left, r->top, r->right - r->left,
+  if (g_debug_screen) {
+    rectangle(g_debug_screen, r->left, r->top, r->right - r->left,
               r->bottom - r->top, Brush);
   }
 }
@@ -187,9 +187,9 @@ void PrintGlyph(const int x, const int y, const char glyph) {
 
   uint32_t hBrush = g_hConsoleBrushFG;
   uint32_t hBgBrush = g_hConsoleBrushBG;
-  if (g_hDebugScreen && g_hDebugCharset) {
+  if (g_debug_screen && g_hDebugCharset) {
     SOFTSTRECH_MONO(g_hDebugCharset, xSrc, ySrc, CONSOLE_FONT_WIDTH,
-                    CONSOLE_FONT_HEIGHT, g_hDebugScreen, x, y,
+                    CONSOLE_FONT_HEIGHT, g_debug_screen, x, y,
                     CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT);
   }
 }
@@ -385,8 +385,8 @@ void DrawConsoleInput() {
     }
   }
 
-  if (g_hDebugScreen) {
-    rectangle(g_hDebugScreen, r.x, r.y, r.w, r.h, BLACK);
+  if (g_debug_screen) {
+    rectangle(g_debug_screen, r.x, r.y, r.w, r.h, BLACK);
   }
 }
 
@@ -412,8 +412,8 @@ void DrawConsoleLine(const conchar_t* pText, int y_coord) {
       }
     }
 
-    if (g_hDebugScreen) {
-      rectangle(g_hDebugScreen, x, y, g_aWindowConfig[WINDOW_CONSOLE].right - x,
+    if (g_debug_screen) {
+      rectangle(g_debug_screen, x, y, g_aWindowConfig[WINDOW_CONSOLE].right - x,
                 APPLE_FONT_HEIGHT, BLACK);
     }
     return;
@@ -880,9 +880,9 @@ void UpdateDisplay(Update_t bUpdate) {
         g_aDebuggerVirtualTextScreenBG[y][x] = BLACK;
       }
     }
-    if (g_hDebugScreen) {
-      memset(g_hDebugScreen->pixels, 0,
-             static_cast<size_t>(g_hDebugScreen->pitch * g_hDebugScreen->h));
+    if (g_debug_screen) {
+      memset(g_debug_screen->pixels, 0,
+             static_cast<size_t>(g_debug_screen->pitch * g_debug_screen->h));
     }
   }
 
@@ -923,7 +923,7 @@ void UpdateDisplay(Update_t bUpdate) {
     DrawSubWindow_Console(bUpdate);
   }
 
-  if (g_hDebugScreen) {
+  if (g_debug_screen) {
     StretchBltMemToFrameDC();
   }
 
@@ -941,7 +941,7 @@ void debug_begin() {
   AllocateDebuggerMemDC();
 
   g_state.mode = MODE_DEBUG;
-  FrameRefreshStatus(DRAW_TITLE);
+  frame_refresh_status(DRAW_TITLE);
 
   UpdateDisplay(UPDATE_ALL);
 }

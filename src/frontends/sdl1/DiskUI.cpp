@@ -4,7 +4,7 @@
 
 #include "apple2/peripherals/disk/DiskError.h"
 
-extern "C" auto DiskUI_GetErrorMessage(int error_code) -> const char* {
+extern "C" auto disk_ui_get_error_message(int error_code) -> const char* {
   switch (static_cast<DiskError_e>(error_code)) {
     case disk_err_none:
       return "Success";

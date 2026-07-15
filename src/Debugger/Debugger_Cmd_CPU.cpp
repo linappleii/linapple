@@ -5,7 +5,7 @@
 #include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
-extern void FrameRefreshStatus(int);
+extern void frame_refresh_status(int);
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
@@ -159,7 +159,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   g_bGoCmd_ReinitFlag = true;
 
   g_state.mode = MODE_STEPPING;
-  FrameRefreshStatus(DRAW_TITLE);
+  frame_refresh_status(DRAW_TITLE);
 
   audio_mixer_set_fade(fade_in);
 
@@ -248,7 +248,7 @@ auto CmdTrace(int nArgs) -> Update_t {
   g_nDebugStepStart = CpuGetRegisters()->pc;
   g_nDebugStepUntil = -1;
   g_state.mode = MODE_STEPPING;
-  FrameRefreshStatus(DRAW_TITLE);
+  frame_refresh_status(DRAW_TITLE);
   DebugContinueStepping(true);
 
   return UPDATE_ALL;  // TODO: Verify // 0
@@ -303,7 +303,7 @@ auto CmdTraceLine(int nArgs) -> Update_t {
   g_nDebugStepUntil = -1;
 
   g_state.mode = MODE_STEPPING;
-  FrameRefreshStatus(DRAW_TITLE);
+  frame_refresh_status(DRAW_TITLE);
   DebugContinueStepping(true);
 
   return UPDATE_ALL;  // TODO: Verify // 0

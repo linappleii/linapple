@@ -231,8 +231,8 @@ auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 // Legacy C Declarations
 auto VideoGetOutputBuffer() -> uint32_t*;
 auto VideoGetOutputPalette() -> VideoColor_t*;
-auto SetBudgetVideo(bool b) -> void;
-auto GetBudgetVideo() -> bool;
+auto set_budget_video(bool b) -> void;
+auto get_budget_video() -> bool;
 auto SetCurrentCLK6502() -> void;
 auto CreateColorMixMap() -> void;
 auto VideoApparentlyDirty() -> bool;

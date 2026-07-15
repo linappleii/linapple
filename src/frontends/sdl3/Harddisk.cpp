@@ -34,7 +34,7 @@ void HarddiskUI_FTPSelect(int nDrive) {
   fullPath = g_state.sFTPServerHDD.data();  // global var for FTP path for HDD
 
   while (isDirectory) {
-    if (!ChooseAnImageFTP(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
+    if (!choose_an_image_ftp(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
                           7, filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return;
@@ -116,7 +116,7 @@ void HarddiskUI_Select(int nDrive) {
   fullPath = g_state.sHDDDir.data();  // global var for disk selecting directory
 
   while (isDirectory) {
-    if (!ChooseAnImage(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 7,
+    if (!choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 7,
                        filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave

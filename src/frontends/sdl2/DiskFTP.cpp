@@ -162,13 +162,13 @@ FileListGenerator_t* FileBrowser_CreateFTPGenerator(const char* directory) {
 }
 }
 
-auto ChooseAnImageFTP(int sx, int sy, const std::string& ftp_dir, int slot,
+auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                       std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
       FileBrowser_CreateFTPGenerator(ftp_dir.c_str());
   if (!generator) return false;
-  bool result = ChooseImageDialog(sx, sy, ftp_dir, slot, generator, filename,
+  bool result = choose_image_dialog(sx, sy, ftp_dir, slot, generator, filename,
                                   isdir, index_file);
   generator->destroy(generator);
   return result;
