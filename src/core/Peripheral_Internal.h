@@ -7,12 +7,12 @@
 extern "C" {
 #endif
 
-auto Peripheral_Register_Internal() -> void;
-auto Peripheral_Plugins_Init() -> void;
-auto Peripheral_Plugins_Shutdown() -> void;
-auto Peripheral_Find_Internal(const char* name) -> Peripheral_t*;
-auto Peripheral_GetPluginPath(const char* name) -> const char*;
-auto Peripheral_IsAnyActive() -> bool;
+auto peripheral_register_Internal() -> void;
+auto peripheral_plugins_init() -> void;
+auto peripheral_plugins_shutdown() -> void;
+auto peripheral_find_internal(const char* name) -> Peripheral_t*;
+auto peripheral_get_plugin_path(const char* name) -> const char*;
+auto peripheral_is_any_active() -> bool;
 
 #ifdef __cplusplus
 }

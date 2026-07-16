@@ -41,7 +41,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
     }
     if (isdir) {
       if (filename == "..") {
-        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        const auto last_sep_pos = fullPath.find_last_of(file_separator);
         if (last_sep_pos != std::string::npos) {
           fullPath = fullPath.substr(0, last_sep_pos);
         }
@@ -63,9 +63,9 @@ void DiskSelectImage(int drive, char* pszFilename) {
   }
   Util_SafeStrCpy(g_state.sCurrentDir.data(), fullPath.c_str(),
                   g_state.sCurrentDir.size());
-  Configuration::Instance().SetString("Preferences", REGVALUE_PREF_START_DIR,
+  Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
                                       g_state.sCurrentDir.data());
-  Configuration::Instance().Save();
+  Configuration_t::instance().save();
 
   fullPath += "/" + filename;
 
@@ -75,7 +75,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
 
-  Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   backdx = fileIndex;
   DrawFrameWindow();

@@ -160,7 +160,7 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
   char title[harddisk_status_path_max];
   const char* start_pos = path;
 
-  const char* last_sep = strrchr(start_pos, FILE_SEPARATOR);
+  const char* last_sep = strrchr(start_pos, file_separator);
   if (last_sep != nullptr) {
     start_pos = last_sep + 1;
   }
@@ -169,7 +169,7 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
   bool found_lower = false;
   int title_length = 0;
   while (title[title_length] != '\0' && !found_lower) {
-    if (IsCharLower(title[title_length])) {
+    if (is_char_lower(title[title_length])) {
       found_lower = true;
     } else {
       title_length++;
@@ -472,32 +472,32 @@ auto harddisk_abi_shutdown(void* instance_handle) -> void {
 
 auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
                           const void* payload, size_t payload_size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance_handle == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance_handle);
 
   switch (static_cast<HarddiskCmd_e>(cmd_id)) {
     case harddisk_cmd_insert: {
       if (payload == nullptr || payload_size < sizeof(HarddiskInsertCmd_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskInsertCmd_t*>(payload);
       if (!is_drive_valid(cmd_ptr->drive)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       insert_harddisk_into_drive(peripheral_ptr, cmd_ptr->drive, cmd_ptr->path,
                                  cmd_ptr->write_protected != 0);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case harddisk_cmd_eject: {
       if (payload == nullptr || payload_size < sizeof(HarddiskEjectCmd_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskEjectCmd_t*>(payload);
       if (!is_drive_valid(cmd_ptr->drive)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       eject_harddisk_from_drive(peripheral_ptr, cmd_ptr->drive);
       if (peripheral_ptr->host != nullptr) {
@@ -508,17 +508,17 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
         peripheral_ptr->host->NotifyStatusChanged(
             static_cast<int>(peripheral_ptr->slot));
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case harddisk_cmd_set_protect: {
       if (payload == nullptr ||
           payload_size < sizeof(HarddiskSetProtectCmd_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* cmd_ptr =
           static_cast<const HarddiskSetProtectCmd_t*>(payload);
       if (!is_drive_valid(cmd_ptr->drive)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       peripheral_ptr->drives.at(static_cast<size_t>(cmd_ptr->drive))
           .user_write_protected = (cmd_ptr->write_protected != 0);
@@ -526,32 +526,32 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
         peripheral_ptr->host->NotifyStatusChanged(
             static_cast<int>(peripheral_ptr->slot));
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case harddisk_cmd_reset_status: {
       peripheral_ptr->activity_status = harddisk_status_off;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
-                        size_t* size) -> PeripheralStatus {
+                        size_t* size) -> PeripheralStatus_t {
   if (instance_handle == nullptr || size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (static_cast<HarddiskCmd_e>(cmd_id) != harddisk_cmd_get_status) {
-    return PERIPHERAL_INCOMPATIBLE;
+    return peripheral_incompatible;
   }
 
   constexpr size_t required_size = sizeof(HarddiskStatus_t);
   if (data == nullptr || *size < required_size) {
     *size = required_size;
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance_handle);
@@ -585,7 +585,7 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
       static_cast<uint8_t>(peripheral_ptr->activity_status);
   *size = required_size;
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 }  // namespace
 

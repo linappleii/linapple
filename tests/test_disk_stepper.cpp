@@ -41,7 +41,7 @@ auto setup_disk_test() -> void {
 
   std::string fixture = repo_root + "/tests/fixtures/minimal.nib";
   Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
-  Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   Peripheral_Manager_Think(0);
 }
 }  // namespace

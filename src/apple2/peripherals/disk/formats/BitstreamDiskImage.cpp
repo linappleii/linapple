@@ -20,7 +20,7 @@
 // Disk Driver ABI signatures.
 
 struct BitstreamDiskImage_t {
-  FilePtr file{nullptr, fclose};
+  FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
   bool os_readonly = false;
@@ -71,7 +71,7 @@ extern "C" auto bitstream_disk_image_open(const char* path,
   return image_ptr.release();
 }
 
-// Why: Destroys the bitstream image instance. The RAII FilePtr member
+// Why: Destroys the bitstream image instance. The RAII FilePtr_t member
 // automatically ensures the physical file is closed during destruction.
 extern "C" auto bitstream_disk_image_close(BitstreamDiskImage_t* image_ptr)
     -> void {
@@ -144,7 +144,7 @@ extern "C" auto bitstream_disk_image_create(const char* path,
     return disk_err_io;
   }
 
-  FilePtr file{fopen(path, "wb"), fclose};
+  FilePtr_t file{fopen(path, "wb"), fclose};
   if (file == nullptr) {
     return disk_err_io;
   }

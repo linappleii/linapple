@@ -21,7 +21,7 @@
 // shared sector image ABI signatures.
 
 struct SectorDiskImage_t {
-  FilePtr file{nullptr, fclose};
+  FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   bool os_readonly = false;
   bool is_dos_order = false;
@@ -105,7 +105,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   return image_ptr;
 }
 
-// Why: Destroys the sector image instance. The RAII FilePtr member ensures the
+// Why: Destroys the sector image instance. The RAII FilePtr_t member ensures the
 // physical file is closed during destruction.
 auto sector_disk_image_close(SectorDiskImage_t* image_ptr) -> void {
   delete image_ptr;
@@ -192,7 +192,7 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
     return disk_err_io;
   }
 
-  FilePtr file{fopen(path, "wb"), fclose};
+  FilePtr_t file{fopen(path, "wb"), fclose};
   if (file == nullptr) {
     return disk_err_io;
   }
@@ -264,19 +264,19 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
 
 auto sector_disk_image_command(SectorDiskImage_t* image_ptr, uint32_t cmd_id,
                                const void* payload, size_t payload_size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (image_ptr == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (cmd_id == disk_driver_cmd_set_enhanced_speed) {
     if (payload_size < sizeof(uint8_t)) {
-      return PERIPHERAL_ERROR;
+      return peripheral_error;
     }
     image_ptr->is_enhanced = (*static_cast<const uint8_t*>(payload) != 0);
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,

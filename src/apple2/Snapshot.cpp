@@ -29,18 +29,18 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
   snapshot->apple2_unit.unit_hdr.length = sizeof(SsApple2Unit_t);
   snapshot->apple2_unit.unit_hdr.version = make_version(1, 0, 0, 0);
 
-  Peripheral_GetManifest(&snapshot->manifest);
+  peripheral_get_manifest(&snapshot->manifest);
 
   CpuGetSnapshot(&snapshot->apple2_unit.cpu_6502);
   {
     size_t size = sizeof(snapshot->apple2_unit.joystick);
-    Peripheral_SaveState(0, &snapshot->apple2_unit.joystick, &size);
+    peripheral_save_state(0, &snapshot->apple2_unit.joystick, &size);
   }
   VideoGetSnapshot(&snapshot->apple2_unit.video);
   MemGetSnapshot(&snapshot->apple2_unit.memory);
 
   size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard);
-  Peripheral_SaveStateByName(0, "Keyboard", &snapshot->apple2_unit.keyboard,
+  peripheral_save_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                              &kbd_size);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
@@ -87,9 +87,9 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
     // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     if (slot_state) {
       if (name) {
-        Peripheral_SaveStateByName(i, name, slot_state, &slot_size);
+        peripheral_save_state_by_name(i, name, slot_state, &slot_size);
       } else {
-        Peripheral_SaveState(i, slot_state, &slot_size);
+        peripheral_save_state(i, slot_state, &slot_size);
       }
     }
   }
@@ -98,7 +98,7 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
 auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
   if (!snapshot) return false;
 
-  if (!Peripheral_VerifyManifest(&snapshot->manifest)) {
+  if (!peripheral_verify_manifest(&snapshot->manifest)) {
     return false;
   }
 
@@ -114,9 +114,9 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
   CpuSetSnapshot(&snapshot->apple2_unit.cpu_6502);
   {
     size_t size = sizeof(snapshot->apple2_unit.joystick);
-    Peripheral_LoadState(0, &snapshot->apple2_unit.joystick, size);
+    peripheral_load_state(0, &snapshot->apple2_unit.joystick, size);
   }
-  Peripheral_LoadStateByName(0, "Keyboard", &snapshot->apple2_unit.keyboard,
+  peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                              sizeof(snapshot->apple2_unit.keyboard));
   VideoSetSnapshot(&snapshot->apple2_unit.video);
   MemSetSnapshot(&snapshot->apple2_unit.memory);
@@ -165,9 +165,9 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
     // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     if (slot_state) {
       if (name) {
-        Peripheral_LoadStateByName(i, name, slot_state, slot_size);
+        peripheral_load_state_by_name(i, name, slot_state, slot_size);
       } else {
-        Peripheral_LoadState(i, slot_state, slot_size);
+        peripheral_load_state(i, slot_state, slot_size);
       }
     }
   }

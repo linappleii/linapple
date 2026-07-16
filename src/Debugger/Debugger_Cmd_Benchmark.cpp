@@ -232,7 +232,7 @@ auto CmdProfileList (int nArgs) -> Update_t
 auto ProfileSave () -> bool
 {
   bool bStatus = false;
-  FilePtr hFile(fopen( g_FileNameProfile.c_str(), "w" ), fclose);
+  FilePtr_t hFile(fopen( g_FileNameProfile.c_str(), "w" ), fclose);
 
   if ( hFile )
   {

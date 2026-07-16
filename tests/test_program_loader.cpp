@@ -34,7 +34,7 @@ TEST_CASE(
     "ProgramLoader: [PRG-01] Detection Failure on DSK (Memory preserved)") {
   const char* dsk_path = "test.dsk";
   {
-    FilePtr f(fopen(dsk_path, "wb"), fclose);
+    FilePtr_t f(fopen(dsk_path, "wb"), fclose);
     std::array<uint8_t, DSK_BLOCK_SIZE> zero{};
     zero.fill(0);
     for (int i = 0; i < DSK_BLOCKS; ++i) {
@@ -56,7 +56,7 @@ TEST_CASE("ProgramLoader: [PRG-02] Missing File (FILE_ERROR)") {
 TEST_CASE("ProgramLoader: [PRG-03] Range Check Rejection") {
   const char* bad_apl = "bad.apl";
   {
-    FilePtr f(fopen(bad_apl, "wb"), fclose);
+    FilePtr_t f(fopen(bad_apl, "wb"), fclose);
     uint16_t addr = ADDR_C000;
     uint16_t len = LEN_0100;
     fwrite(&addr, 1, 2, f.get());
@@ -70,7 +70,7 @@ TEST_CASE("ProgramLoader: [PRG-03] Range Check Rejection") {
 
   // Also check overflow past $BFFF
   {
-    FilePtr f(fopen(bad_apl, "wb"), fclose);
+    FilePtr_t f(fopen(bad_apl, "wb"), fclose);
     uint16_t addr = ADDR_B000;
     uint16_t len = LEN_2000;  // Total end = $D000
     fwrite(&addr, 1, 2, f.get());
@@ -91,7 +91,7 @@ TEST_CASE("ProgramLoader: [PRG-04] APL Loading") {
   }
 
   {
-    FilePtr f(fopen(test_apl, "wb"), fclose);
+    FilePtr_t f(fopen(test_apl, "wb"), fclose);
     uint16_t addr = ADDR_0800;
     uint16_t len = static_cast<uint16_t>(data.size());
     fwrite(&addr, 1, 2, f.get());
@@ -115,7 +115,7 @@ TEST_CASE("ProgramLoader: [PRG-05] PRG Loading (Word to Byte length)") {
   }
 
   {
-    FilePtr f(fopen(test_prg, "wb"), fclose);
+    FilePtr_t f(fopen(test_prg, "wb"), fclose);
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;

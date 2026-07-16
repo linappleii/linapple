@@ -368,9 +368,9 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
 }
 
 static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                                 size_t size) -> PeripheralStatus {
+                                 size_t size) -> PeripheralStatus_t {
   if (!instance || (size > 0 && !data)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   namespace kp_const = kb;
@@ -378,7 +378,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
   switch (static_cast<KeyboardCmd_t>(cmd_id)) {
     case keyboard_cmd_event: {
       if (size < sizeof(KeyboardEvent_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
 
@@ -390,7 +390,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
           kp->logic.repeat_key = 0xFFFFFFFF;
           kp->logic.repeating = false;
         }
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
 
       uint32_t key = ev->key;
@@ -407,7 +407,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
       }
 
       if (key > kp_const::key_code_mask) {
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
 
       kp->logic.current_latch = static_cast<uint8_t>(key);
@@ -417,25 +417,25 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
       kp->logic.repeat_scancode = ev->key;
       kp->logic.repeat_delay_cycles = 0;
       kp->logic.repeating = false;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case keyboard_cmd_set_caps: {
       if (size < sizeof(uint8_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       kp->logic.caps_lock = (*static_cast<const uint8_t*>(data) != 0);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case keyboard_cmd_set_rocker: {
       if (size < sizeof(uint8_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       kp->logic.rocker_switch = (*static_cast<const uint8_t*>(data) != 0);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case keyboard_cmd_set_mods: {
       if (size < sizeof(KeyboardModifiers_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* mods = static_cast<const KeyboardModifiers_t*>(data);
       kp->logic.shift_key = (mods->shift != 0);
@@ -445,40 +445,40 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
       // Standard convention: GUI maps to Open Apple, Alt maps to BOTH Open and Closed Apple.
       kp->logic.open_apple = (mods->gui != 0) || (mods->alt != 0);
       kp->logic.closed_apple = (mods->alt != 0);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case keyboard_cmd_set_layout: {
       if (size < sizeof(uint8_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       kp->logic.alternate_layout = *static_cast<const uint8_t*>(data);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
-      return PERIPHERAL_INCOMPATIBLE;
+      return peripheral_incompatible;
   }
 }
 
 static auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (!size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   const size_t required = sizeof(KeyboardSaveState_t);
 
   if (!buffer) {
     *size = required;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
 
   if (*size < required) {
     *size = required;
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (!instance) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -501,13 +501,13 @@ static auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->repeating = kp->logic.repeating ? 1 : 0;
 
   *size = required;
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (!buffer || size < sizeof(KeyboardSaveState_t) || !instance) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   const auto* ss = static_cast<const KeyboardSaveState_t*>(buffer);
@@ -525,23 +525,23 @@ static auto keyboard_abi_load_state(void* instance, const void* buffer, size_t s
   kp->logic.repeat_scancode = ss->repeat_scancode;
   kp->logic.repeat_delay_cycles = ss->repeat_delay_cycles;
   kp->logic.repeating = (ss->repeating != 0);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
-                               size_t* out_size) -> PeripheralStatus {
+                               size_t* out_size) -> PeripheralStatus_t {
   if (!instance || !out_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   switch (static_cast<KeyboardQuery_t>(cmd_id)) {
     case keyboard_query_mods: {
       if (!out) {
         *out_size = sizeof(KeyboardModifiers_t);
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
       if (*out_size < sizeof(KeyboardModifiers_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       auto* mods = static_cast<KeyboardModifiers_t*>(out);
       mods->shift = kp->logic.shift_key ? 1U : 0U;
@@ -550,22 +550,22 @@ static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
       mods->gui = (kp->logic.open_apple && !kp->logic.closed_apple) ? 1U : 0U;
       mods->caps = kp->logic.caps_lock ? 1U : 0U;
       *out_size = sizeof(KeyboardModifiers_t);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case keyboard_query_rocker: {
       if (!out) {
         *out_size = sizeof(uint8_t);
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
       if (*out_size < sizeof(uint8_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       *static_cast<uint8_t*>(out) = kp->logic.rocker_switch ? 1U : 0U;
       *out_size = sizeof(uint8_t);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
-      return PERIPHERAL_INCOMPATIBLE;
+      return peripheral_incompatible;
   }
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)

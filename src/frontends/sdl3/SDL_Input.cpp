@@ -87,7 +87,7 @@ void sdl_handle_event(SDL_Event* e) {
           SetCurrentCLK6502();
         } else if (mysym == SDLK_CAPSLOCK) {
           uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
-          Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
+          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
         } else if (mysym == SDLK_PAUSE) {
           set_using_cursor(false);
           switch (g_state.mode) {
@@ -157,7 +157,7 @@ void sdl_handle_event(SDL_Event* e) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
         uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
-        Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
+        peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
       } else {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                          myscancode <= SDL_SCANCODE_UP) ||
@@ -185,13 +185,13 @@ void sdl_handle_event(SDL_Event* e) {
               set_using_cursor(false);
             } else {
               MouseButtonPayload_t payload = {0, true};
-              Peripheral_Command(0, mouse_cmd_set_button, &payload,
+              peripheral_command(0, mouse_cmd_set_button, &payload,
                                  sizeof(payload));
             }
           } else {
             uint8_t mouse_active = 0;
             size_t qsize = 1;
-            Peripheral_Query(4, mouse_query_is_active, &mouse_active, &qsize);
+            peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
             if ((((g_state.mode == MODE_RUNNING) ||
                   (g_state.mode == MODE_STEPPING))) ||
                 (mouse_active != 0)) {
@@ -202,7 +202,7 @@ void sdl_handle_event(SDL_Event* e) {
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, true};
-          Peripheral_Command(0, mouse_cmd_set_button, &payload,
+          peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       }
@@ -214,13 +214,13 @@ void sdl_handle_event(SDL_Event* e) {
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {0, false};
-          Peripheral_Command(0, mouse_cmd_set_button, &payload,
+          peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (usingcursor) {
           MouseButtonPayload_t payload = {1, false};
-          Peripheral_Command(0, mouse_cmd_set_button, &payload,
+          peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       }
@@ -232,7 +232,7 @@ void sdl_handle_event(SDL_Event* e) {
       if (usingcursor) {
         MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local,
                                      VIEWPORTCY - 4};
-        Peripheral_Command(0, mouse_cmd_set_pos, &payload, sizeof(payload));
+        peripheral_command(0, mouse_cmd_set_pos, &payload, sizeof(payload));
       }
       break;
 

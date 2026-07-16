@@ -60,7 +60,7 @@ struct MockHandler {
 static std::map<uint16_t, MockHandler> g_mock_handlers;
 static std::map<int, std::vector<uint8_t>> g_mock_roms;
 
-auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;

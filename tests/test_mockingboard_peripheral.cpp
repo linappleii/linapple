@@ -88,7 +88,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 
     std::vector<uint8_t> buffer(state_size);
     REQUIRE(descriptor->save_state(instance, buffer.data(),
-                                                &state_size) == PERIPHERAL_OK);
+                                                &state_size) == peripheral_ok);
 
     // Reset state and verify it's cleared
     descriptor->reset(instance);
@@ -96,7 +96,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 
     // Load state and verify it's restored
     REQUIRE(descriptor->load_state(instance, buffer.data(),
-                                                state_size) == PERIPHERAL_OK);
+                                                state_size) == peripheral_ok);
 
     CHECK(g_read_cx(instance, 0, 0xC002, 0, 0, 0) == 0x55);
   }
@@ -192,7 +192,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     descriptor->save_state(instance, buffer.data(), &state_size);
 
     descriptor->reset(instance);
-    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == PERIPHERAL_OK);
+    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == peripheral_ok);
   }
 
   descriptor->shutdown(instance);
@@ -246,7 +246,7 @@ TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
     // Write something else to Chip B (which C0C6 maps to when NOT in native mode)
     g_write_c0(instance, 0, 0xC0C6, 1, 0xEE, 0);
 
-    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == PERIPHERAL_OK);
+    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == peripheral_ok);
 
     // Verify native mode restored by checking chip selection
     // Reg 6 of Chip A should have what we wrote in native mode

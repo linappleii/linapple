@@ -184,17 +184,17 @@ auto Speaker_Think(void* instance, uint32_t elapsed_cycles) -> void {
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 // Justification: Peripheral ABI signature.
 auto Speaker_SaveState(void* instance, void* state_buffer, size_t* buffer_size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const size_t required_size = sizeof(SS_IO_Speaker);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
   if (instance == nullptr || *buffer_size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
@@ -209,15 +209,15 @@ auto Speaker_SaveState(void* instance, void* state_buffer, size_t* buffer_size)
   save_state_ptr->filter_state = speaker_peripheral->filter_state;
 
   *buffer_size = required_size;
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto Speaker_LoadState(void* instance, const void* state_buffer,
-                       size_t buffer_size) -> PeripheralStatus {
+                       size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SS_IO_Speaker);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
   const auto* save_state_ptr = static_cast<const SS_IO_Speaker*>(state_buffer);
@@ -230,13 +230,13 @@ auto Speaker_LoadState(void* instance, const void* state_buffer,
       (save_state_ptr->last_sample_state != 0);
   speaker_peripheral->filter_state = save_state_ptr->filter_state;
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto Speaker_Query(void* instance, uint32_t query_id, void* output_buffer,
-                   size_t* buffer_size) -> PeripheralStatus {
+                   size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   switch (query_id) {
@@ -245,19 +245,19 @@ auto Speaker_Query(void* instance, uint32_t query_id, void* output_buffer,
 
       if (output_buffer == nullptr) {
         *buffer_size = required_size;
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
 
       if (*buffer_size < required_size) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
 
       *static_cast<bool*>(output_buffer) = Speaker_IsActive(instance);
       *buffer_size = required_size;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
-      return PERIPHERAL_INCOMPATIBLE;
+      return peripheral_incompatible;
   }
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)

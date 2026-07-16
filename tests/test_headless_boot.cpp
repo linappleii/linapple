@@ -20,17 +20,17 @@
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
   Linapple_Init();
 
-  Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1,
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.woz");
 
   Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  PeripheralStatus ps =
-      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
+  PeripheralStatus_t ps =
+      peripheral_query(6, disk_cmd_get_status, &status, &size);
 
-  REQUIRE(ps == PERIPHERAL_OK);
+  REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -40,19 +40,19 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
   Linapple_Init();
 
-  Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1,
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.woz");
-  Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE2,
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
                                       "../tests/fixtures/minimal.dsk");
 
   Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  PeripheralStatus ps =
-      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
+  PeripheralStatus_t ps =
+      peripheral_query(6, disk_cmd_get_status, &status, &size);
 
-  REQUIRE(ps == PERIPHERAL_OK);
+  REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive1_loaded == true);
 
@@ -63,17 +63,17 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   Linapple_Init();
 
   // .txt is unsupported by disk drivers
-  Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1,
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.txt");
 
   Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  PeripheralStatus ps =
-      Peripheral_Query(6, disk_cmd_get_status, &status, &size);
+  PeripheralStatus_t ps =
+      peripheral_query(6, disk_cmd_get_status, &status, &size);
 
-  REQUIRE(ps == PERIPHERAL_OK);
+  REQUIRE(ps == peripheral_ok);
   // It shouldn't be loaded, and error should be unsupported format (or file not
   // found if it doesn't exist) Actually our minimal.txt doesn't exist in
   // fixtures yet? I'll check. Assuming it's unsupported if it exists but isn't
@@ -93,7 +93,7 @@ TEST_CASE("Headless: [HL-04] Program loading") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  Peripheral_Query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_cmd_get_status, &status, &size);
   CHECK(status.drive0_loaded == false);
 
   Linapple_Shutdown();

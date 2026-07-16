@@ -49,19 +49,19 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
   cmd.write_protected = false;
   Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz",
                   disk_insert_path_max);
-  Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
   Peripheral_Manager_Think(0);
 
-  CHECK(Peripheral_IsAnyActive() == false);
+  CHECK(peripheral_is_any_active() == false);
 
   IOMap_Dispatch(0, MOTOR_ON_SWITCH, 0, 0, 0);
   run_cycles(100000);
-  CHECK(Peripheral_IsAnyActive() == true);
+  CHECK(peripheral_is_any_active() == true);
 
   IOMap_Dispatch(0, MOTOR_OFF_SWITCH, 0, 0, 0);
   run_cycles(MOTOR_SPIN_DURATION);
-  CHECK(Peripheral_IsAnyActive() == false);
+  CHECK(peripheral_is_any_active() == false);
 
   Linapple_Shutdown();
 }

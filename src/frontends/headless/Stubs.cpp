@@ -70,7 +70,7 @@ WEAK auto VideoResetState() -> void {}
 WEAK auto VideoGetScannerAddress(bool*, uint32_t) -> uint16_t { return 0; }
 WEAK auto VideoChooseColor() -> void {}
 WEAK auto VideoSetBorderColor(uint8_t) -> void {}
-WEAK auto Linapple_ListHardware() -> void {}
+WEAK auto linapple_list_hardware() -> void {}
 
 WEAK auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
 WEAK auto GetMemPtr(uint16_t) -> uint8_t* { return nullptr; }

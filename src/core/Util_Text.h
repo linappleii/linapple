@@ -10,15 +10,15 @@
 #define CHAR_QUOTE_SINGLE '\''
 #define CHAR_ESCAPE '\x1B'
 
-static inline auto IsCharLower(char ch) -> bool {
+static inline auto is_char_lower(char ch) -> bool {
   return (ch >= 'a' && ch <= 'z');
 }
 
-static inline auto IsCharUpper(char ch) -> bool {
+static inline auto is_char_upper(char ch) -> bool {
   return (ch >= 'A' && ch <= 'Z');
 }
 
-inline auto EatEOL(const char* pSrc) -> const char* {
+inline auto eat_eol(const char* pSrc) -> const char* {
   if (pSrc) {
     if (*pSrc == CHAR_LF) {
       pSrc++;
@@ -31,14 +31,14 @@ inline auto EatEOL(const char* pSrc) -> const char* {
   return pSrc;
 }
 
-inline auto SkipWhiteSpace(const char* pSrc) -> const char* {
+inline auto skip_white_space(const char* pSrc) -> const char* {
   while (pSrc && ((*pSrc == CHAR_SPACE) || (*pSrc == CHAR_TAB))) {
     pSrc++;
   }
   return pSrc;
 }
 
-inline auto SkipWhiteSpaceReverse(const char* pSrc, const char* pStart) -> const
+inline auto skip_white_space_reverse(const char* pSrc, const char* pStart) -> const
     char* {
   while (pSrc && ((*pSrc == CHAR_SPACE) || (*pSrc == CHAR_TAB)) &&
          (pSrc > pStart)) {
@@ -47,7 +47,7 @@ inline auto SkipWhiteSpaceReverse(const char* pSrc, const char* pStart) -> const
   return pSrc;
 }
 
-inline auto SkipUntilChar(const char* pSrc, const char nDelim) -> const char* {
+inline auto skip_until_char(const char* pSrc, const char nDelim) -> const char* {
   while (pSrc && (*pSrc)) {
     if (*pSrc == nDelim) {
       break;
@@ -57,7 +57,7 @@ inline auto SkipUntilChar(const char* pSrc, const char nDelim) -> const char* {
   return pSrc;
 }
 
-inline auto SkipUntilEOL(const char* pSrc) -> const char* {
+inline auto skip_until_eol(const char* pSrc) -> const char* {
   // EOL delims: NULL, LF, CR
   while (pSrc && (*pSrc)) {
     if ((*pSrc == CHAR_LF) || (*pSrc == CHAR_CR)) {
@@ -68,7 +68,7 @@ inline auto SkipUntilEOL(const char* pSrc) -> const char* {
   return pSrc;
 }
 
-inline auto SkipUntilTab(const char* pSrc) -> const char* {
+inline auto skip_until_tab(const char* pSrc) -> const char* {
   while (pSrc && (*pSrc)) {
     if (*pSrc == CHAR_TAB) {
       break;
@@ -78,7 +78,7 @@ inline auto SkipUntilTab(const char* pSrc) -> const char* {
   return pSrc;
 }
 
-inline auto SkipUntilWhiteSpace(const char* pSrc) -> const char* {
+inline auto skip_until_white_space(const char* pSrc) -> const char* {
   while (pSrc && (*pSrc)) {
     if ((*pSrc == CHAR_SPACE) || (*pSrc == CHAR_TAB)) {
       break;
@@ -88,7 +88,7 @@ inline auto SkipUntilWhiteSpace(const char* pSrc) -> const char* {
   return pSrc;
 }
 
-inline auto SkipUntilWhiteSpaceReverse(const char* pSrc, const char* pStart)
+inline auto skip_until_white_space_reverse(const char* pSrc, const char* pStart)
     -> const char* {
   while (pSrc && (pSrc > pStart)) {
     if ((*pSrc == CHAR_SPACE) || (*pSrc == CHAR_TAB)) {
@@ -100,14 +100,14 @@ inline auto SkipUntilWhiteSpaceReverse(const char* pSrc, const char* pStart)
 }
 
 /** Assumes text are valid hex digits! */
-inline auto TextConvert2CharsToByte(char* pText) -> uint8_t {
+inline auto text_convert_2_chars_to_byte(char* pText) -> uint8_t {
   uint8_t n = ((pText[0] <= '@') ? (pText[0] - '0') : (pText[0] - 'A' + 10))
               << 4;
   n += ((pText[1] <= '@') ? (pText[1] - '0') : (pText[1] - 'A' + 10)) << 0;
   return n;
 }
 
-inline auto TextIsHexChar(char nChar) -> bool {
+inline auto text_is_hex_char(char nChar) -> bool {
   if ((nChar >= '0') && (nChar <= '9')) {
     return true;
   }
@@ -123,17 +123,17 @@ inline auto TextIsHexChar(char nChar) -> bool {
   return false;
 }
 
-inline auto TextIsHexByte(char* pText) -> bool {
-  if (TextIsHexChar(pText[0]) && TextIsHexChar(pText[1])) {
+inline auto text_is_hex_byte(char* pText) -> bool {
+  if (text_is_hex_char(pText[0]) && text_is_hex_char(pText[1])) {
     return true;
   }
 
   return false;
 }
 
-inline auto TextIsHexString(const char* pText) -> bool {
+inline auto text_is_hex_string(const char* pText) -> bool {
   while (*pText) {
-    if (!TextIsHexChar(*pText)) {
+    if (!text_is_hex_char(*pText)) {
       return false;
     }
 

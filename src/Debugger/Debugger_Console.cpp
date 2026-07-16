@@ -756,7 +756,7 @@ void debugger_process_key(int keycode) {
   } else {
     KeyboardModifiers_t mods = {};
     size_t mods_sz = sizeof(mods);
-    Peripheral_Query(0, keyboard_query_mods, &mods, &mods_sz);
+    peripheral_query(0, keyboard_query_mods, &mods, &mods_sz);
 
     switch (keycode) {
       case LINAPPLE_KEY_TAB: {
@@ -829,7 +829,7 @@ void debugger_mouse_click(int /*x*/, int /*y*/) {
 
   KeyboardModifiers_t mods = {};
   size_t mods_sz = sizeof(mods);
-  Peripheral_Query(0, keyboard_query_mods, &mods, &mods_sz);
+  peripheral_query(0, keyboard_query_mods, &mods, &mods_sz);
 
   int iAltCtrlShift = 0;
   iAltCtrlShift |= mods.alt ? 1 << 0 : 0;

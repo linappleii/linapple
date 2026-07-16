@@ -64,7 +64,7 @@ typedef struct DiskFormatDriver_t {
 
   DiskError_e (*create)(const char* path);
 
-  PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data,
+  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id, const void* data,
                               size_t size);
 
   void (*read_flux_bit)(void* instance, uint32_t elapsed_cycles,

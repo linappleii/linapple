@@ -760,25 +760,25 @@ static void peripheral_abi_on_vblank(void* instance, bool vblank) {
 }
 
 static auto peripheral_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   constexpr size_t required = sizeof(MouseSaveState_t);
 
   if (buffer == nullptr) {
     *size = required;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
 
   if (*size < required) {
     *size = required;
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
@@ -832,21 +832,21 @@ static auto peripheral_abi_save_state(void* instance, void* buffer, size_t* size
   ss->buttons[1] = mp->buttons.at(1) ? 1 : 0;
 
   *size = required;
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto peripheral_abi_load_state(void* instance, const void* buffer,
-                                      size_t size) -> PeripheralStatus {
+                                      size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (buffer == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (size < sizeof(MouseSaveState_t)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
@@ -904,18 +904,18 @@ static auto peripheral_abi_load_state(void* instance, const void* buffer,
 
   mouse_update_slot_rom(mp);
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
                                    const void* data, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (data == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
@@ -923,42 +923,42 @@ static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
   switch (static_cast<MouseCmd_e>(cmd_id)) {
     case mouse_cmd_set_pos: {
       if (size < sizeof(MousePosPayload_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* p = static_cast<const MousePosPayload_t*>(data);
       mp->range_x = static_cast<uint32_t>(p->x_range);
       mp->range_y = static_cast<uint32_t>(p->y_range);
       mouse_set_position_internal(mp, p->x, p->y);
       mouse_on_mouse_event(mp);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case mouse_cmd_set_button: {
       if (size < sizeof(MouseButtonPayload_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* p = static_cast<const MouseButtonPayload_t*>(data);
       if (p->button < 2) {
         mp->buttons.at(p->button) = p->down;
         mouse_on_mouse_event(mp);
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
   }
-  return PERIPHERAL_ERROR;
+  return peripheral_error;
 }
 
 static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
-                                 size_t* out_size) -> PeripheralStatus {
+                                 size_t* out_size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (out == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   if (out_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
@@ -966,14 +966,14 @@ static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
   switch (static_cast<MouseQuery_e>(query_id)) {
     case mouse_query_is_active: {
       if (*out_size < 1) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       *static_cast<uint8_t*>(out) = mp->is_active ? 1 : 0;
       *out_size = 1;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
   }
-  return PERIPHERAL_ERROR;
+  return peripheral_error;
 }
 
 }  // namespace

@@ -255,8 +255,8 @@ void draw_status_area(int drawflags) {
 
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (Peripheral_Query(7, harddisk_cmd_get_status, &hstatus, &hsize) ==
-        PERIPHERAL_OK) {
+    if (peripheral_query(7, harddisk_cmd_get_status, &hstatus, &hsize) ==
+        peripheral_ok) {
       iHDDStatus = hstatus.activity_status;
     }
 
@@ -511,7 +511,7 @@ void Frame_OnFocus(bool gained) {
     // Re-sync Caps Lock state upon regaining focus
     SDL_Keymod mod = SDL_GetModState();
     uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
-    Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
+    peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
   }
 }
 
@@ -541,7 +541,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
     }
     if (isDirectory) {
       if (filename == "..") {
-        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        const auto last_sep_pos = fullPath.find_last_of(file_separator);
         if (last_sep_pos == std::string::npos) {
           fullPath = fullPath.substr(0, last_sep_pos);
         }
@@ -562,18 +562,18 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   }
   Util_SafeStrCpy(g_state.sSaveStateDir.data(), fullPath.c_str(),
                   g_state.sSaveStateDir.size());
-  Configuration::Instance().SetString("Preferences", "Save State Directory",
+  Configuration_t::instance().set_string("Preferences", "Save State Directory",
                                       g_state.sSaveStateDir.data());
-  Configuration::Instance().Save();
+  Configuration_t::instance().save();
 
   backdx = fileIndex;
 
   fullPath += "/" + filename;
 
   save_state_set_filename(fullPath.c_str());
-  Configuration::Instance().SetString(
+  Configuration_t::instance().set_string(
       "Preferences", REGVALUE_SAVESTATE_FILENAME, fullPath.c_str());
-  Configuration::Instance().Save();
+  Configuration_t::instance().save();
   DrawFrameWindow();
   return true;
 }
@@ -614,7 +614,7 @@ void process_button_click(int button, int mod) {
       if ((mod & (SDL_KMOD_LCTRL)) == (SDL_KMOD_LCTRL) ||
           (mod & (SDL_KMOD_RCTRL)) == (SDL_KMOD_RCTRL)) {
         if (g_state.mode == MODE_LOGO) {
-          Peripheral_Command(disk_default_slot, disk_cmd_boot, nullptr, 0);
+          peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
         } else if (g_state.mode == MODE_RUNNING) {
           ResetMachineState();
         }
@@ -636,17 +636,17 @@ void process_button_click(int button, int mod) {
 
     case btn_drive1:
     case btn_drive2:
-      Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
+      peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
       if (mod & SDL_KMOD_CTRL) {
         if (mod & SDL_KMOD_SHIFT) {
           printf("HDD  Eject Drive #%d\n", (button - btn_drive1) + 1);
           HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - btn_drive1)};
-          Peripheral_Command(7, harddisk_cmd_eject, &ecmd, sizeof(ecmd));
+          peripheral_command(7, harddisk_cmd_eject, &ecmd, sizeof(ecmd));
         } else {
           printf("Disk Eject Drive #%d\n", (button - btn_drive1) + 1);
           DiskEjectCmd_t ecmd{};
           ecmd.drive = static_cast<uint8_t>(button - btn_drive1);
-          Peripheral_Command(disk_default_slot, disk_cmd_eject, &ecmd,
+          peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
                              sizeof(ecmd));
         }
         break;
@@ -670,7 +670,7 @@ void process_button_click(int button, int mod) {
       break;
 
     case btn_driveswap:
-      Peripheral_Command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
+      peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
       break;
 
     case btn_fullscr:
@@ -682,9 +682,9 @@ void process_button_click(int button, int mod) {
              (g_Apple2Type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
-          Peripheral_Query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
+          peripheral_query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
           uint8_t new_rocker = cur_rocker ? 0 : 1;
-          Peripheral_Command(0, keyboard_cmd_set_rocker, &new_rocker, 1);
+          peripheral_command(0, keyboard_cmd_set_rocker, &new_rocker, 1);
           printf(
               "Toggling keyboard rocker switch. Selected character set: "
               "%s...\n",
@@ -698,7 +698,7 @@ void process_button_click(int button, int mod) {
           g_state.fullscreen = true;
           SetFullScreenMode();
         }
-        Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
+        peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
       }
       break;
 
@@ -717,13 +717,13 @@ void process_button_click(int button, int mod) {
 
     case btn_setup:
       if (mod & SDL_KMOD_SHIFT) {
-        Configuration::Instance().SetInt("Configuration", "Video Emulation",
+        Configuration_t::instance().set_int("Configuration", "Video Emulation",
                                          g_videotype);
-        Configuration::Instance().SetInt("Configuration", "Emulation Speed",
+        Configuration_t::instance().set_int("Configuration", "Emulation Speed",
                                          g_state.dwSpeed);
-        Configuration::Instance().SetInt("Configuration", "Fullscreen",
+        Configuration_t::instance().set_int("Configuration", "Fullscreen",
                                          g_state.fullscreen ? 1 : 0);
-        Configuration::Instance().Save();
+        Configuration_t::instance().save();
 
       } else {
         FrameSaveBMP();
@@ -794,9 +794,9 @@ void ResetMachineState() {
 
   MemReset();
   Peripheral_Manager_Reset();
-  Peripheral_Command(disk_default_slot, disk_cmd_boot, nullptr, 0);
+  peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   VideoResetState();
-  Peripheral_Command(0, JOY_CMD_RESET, nullptr, 0);
+  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
 static bool bIamFullScreened;
@@ -915,8 +915,8 @@ auto init_sdl() -> int {
 void frame_refresh_status(int drawflags) {
   if (drawflags & DRAW_LEDS) {
     size_t size = sizeof(g_lastDiskStatus);
-    if (Peripheral_Query(disk_default_slot, disk_cmd_get_status,
-                         &g_lastDiskStatus, &size) == PERIPHERAL_OK) {
+    if (peripheral_query(disk_default_slot, disk_cmd_get_status,
+                         &g_lastDiskStatus, &size) == peripheral_ok) {
       if (g_lastDiskStatus.drive0_last_error != disk_err_none &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(

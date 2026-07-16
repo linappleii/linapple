@@ -23,7 +23,7 @@ static bool s_initialized = false;
 static void InitializeDirectory(const char* reg_key, char* target_buffer,
                                 size_t buffer_size) {
   std::string path =
-      Configuration::Instance().GetString("Preferences", reg_key);
+      Configuration_t::instance().get_string("Preferences", reg_key);
   if (path.empty()) {
     path = Path::get_user_data_dir();
   }
@@ -89,7 +89,7 @@ auto AppController_Initialize(AppConfig* config) -> int {
   g_state.fullscreen = config->bFullscreen;
 
   bool disable_dbg_config = false;
-  if (ConfigLoadBool("Configuration", REGVALUE_DISABLE_DEBUGGER,
+  if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
                      &disable_dbg_config)) {
     g_state.bDisableDebugger = config->bDisableDebugger || disable_dbg_config;
   } else {
@@ -111,12 +111,12 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
 
   if (config->intent == INTENT_DIAGNOSTIC) {
     if (config->bListHardware) {
-      Linapple_ListHardware();
+      linapple_list_hardware();
       return true;
     }
     if (config->szHardwareInfoName.at(0) != '\0') {
       Peripheral_t* p =
-          Peripheral_Find_Internal(config->szHardwareInfoName.data());
+          peripheral_find_internal(config->szHardwareInfoName.data());
       if (p != nullptr) {
         printf("Hardware Info: %s\n", p->name);
         printf("ABI Version: %d\n", p->abi_version);
@@ -131,7 +131,7 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
         }
         printf("\n");
         const char* path =
-            Peripheral_GetPluginPath(config->szHardwareInfoName.data());
+            peripheral_get_plugin_path(config->szHardwareInfoName.data());
         if (path != nullptr) {
           printf("Plugin Path: %s\n", path);
         }
@@ -164,7 +164,7 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
         Util_SafeStrCpy(&cmd.path[0], path, disk_insert_path_max);
-        Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd,
+        peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                            sizeof(cmd));
       }
     }

@@ -67,7 +67,7 @@ WEAK auto VideoGetScannerAddress(bool*, uint32_t) -> uint16_t { return 0; }
 WEAK auto VideoChooseColor() -> void {}
 WEAK auto VideoSetBorderColor(uint8_t) -> void {}
 WEAK auto Linapple_UpdateTitle(const char*) -> void {}
-WEAK auto Linapple_ListHardware() -> void {}
+WEAK auto linapple_list_hardware() -> void {}
 WEAK auto Linapple_CpuTest(const char*, uint16_t) -> void {}
 WEAK auto Linapple_LoadProgram(const char*) -> int { return 0; }
 WEAK auto Linapple_Shutdown() -> void {}

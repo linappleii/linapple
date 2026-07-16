@@ -230,16 +230,16 @@ static auto Joystick_ABI_Think(void* instance, uint32_t cycles) -> void {
 }
 
 static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
-                                 size_t size) -> PeripheralStatus {
+                                 size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   switch (static_cast<JoystickCmd_e>(cmd)) {
     case JOY_CMD_SET_AXIS: {
       if (size < sizeof(JoystickAxisPayload_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickAxisPayload_t*>(data);
       if (payload->joystick < JOYSTICK_COUNT) {
@@ -249,11 +249,11 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
           joystick_peripheral->y_pos.at(payload->joystick) = payload->value;
         }
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case JOY_CMD_SET_BUTTON: {
       if (size < sizeof(JoystickButtonPayload_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickButtonPayload_t*>(data);
       if (payload->button < JOYSTICK_BUTTON_COUNT) {
@@ -264,11 +264,11 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
         }
         joystick_peripheral->buttons.at(payload->button) = payload->down;
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case JOY_CMD_SET_TRIM: {
       if (size < sizeof(JoystickTrimPayload_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickTrimPayload_t*>(data);
       if (payload->axis_x) {
@@ -276,93 +276,93 @@ static auto Joystick_ABI_Command(void* instance, uint32_t cmd, const void* data,
       } else {
         joystick_peripheral->trim_y = payload->value;
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case JOY_CMD_RESET: {
       Joystick_ABI_Reset(instance);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case JOY_CMD_SET_CONFIG: {
       if (size < sizeof(JoystickConfig_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       std::copy_n(static_cast<const uint8_t*>(data), sizeof(JoystickConfig_t),
                   reinterpret_cast<uint8_t*>(&joystick_peripheral->config));
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_ERROR;
+  return peripheral_error;
 }
 
 static auto Joystick_ABI_Query(void* instance, uint32_t cmd, void* out,
-                               size_t* size) -> PeripheralStatus {
+                               size_t* size) -> PeripheralStatus_t {
   if (instance == nullptr || out == nullptr || size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   switch (static_cast<JoystickQuery_e>(cmd)) {
     case JOY_QUERY_CONFIG: {
       if (*size < sizeof(JoystickConfig_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       std::copy_n(
           reinterpret_cast<const uint8_t*>(&joystick_peripheral->config),
           sizeof(JoystickConfig_t), static_cast<uint8_t*>(out));
       *size = sizeof(JoystickConfig_t);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case JOY_QUERY_EXIT_EVENT: {
       if (*size < 1) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       *static_cast<uint8_t*>(out) = joystick_peripheral->has_quit_event ? 1 : 0;
       *size = 1;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_ERROR;
+  return peripheral_error;
 }
 
 static auto Joystick_ABI_SaveState(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance == nullptr || size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   if (buffer == nullptr) {
     *size = sizeof(SS_IO_Joystick);
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
 
   if (*size < sizeof(SS_IO_Joystick)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* ss = static_cast<SS_IO_Joystick*>(buffer);
   ss->joy_cntr_reset_cycle = joystick_peripheral->reset_cycle;
 
   *size = sizeof(SS_IO_Joystick);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto Joystick_ABI_LoadState(void* instance, const void* buffer,
-                                   size_t size) -> PeripheralStatus {
+                                   size_t size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
       size < sizeof(SS_IO_Joystick)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
   const auto* ss = static_cast<const SS_IO_Joystick*>(buffer);
 
   joystick_peripheral->reset_cycle = ss->joy_cntr_reset_cycle;
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 }  // namespace

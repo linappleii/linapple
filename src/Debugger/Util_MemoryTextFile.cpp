@@ -36,7 +36,7 @@ const int EOL_NULL = 0;
 auto MemoryTextFile_t::Read( const std::string & pFileName ) -> bool
 {
 	bool bStatus = false;
-	FilePtr hFile(fopen( pFileName.c_str(), "rb" ), fclose);
+	FilePtr_t hFile(fopen( pFileName.c_str(), "rb" ), fclose);
 
 	if (hFile)
 	{
@@ -93,7 +93,7 @@ void MemoryTextFile_t::GetLinePointers()
 			m_vLines.push_back( pBegin );
 }
 
-		pEnd = const_cast<char*>( SkipUntilEOL( pBegin ));
+		pEnd = const_cast<char*>( skip_until_eol( pBegin ));
 
 		if (*pEnd == EOL_NULL)
 		{
@@ -101,7 +101,7 @@ void MemoryTextFile_t::GetLinePointers()
 		}
 		else
 		{
-			pStartNextLine = const_cast<char*>( EatEOL( pEnd ));
+			pStartNextLine = const_cast<char*>( eat_eol( pEnd ));
 
 			// DOS/Win "Text" mode converts LF CR (0D 0A) to CR (0D) but just in case, the file is read in binary.
 			int nEOL = pStartNextLine - pEnd;

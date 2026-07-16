@@ -27,16 +27,16 @@ struct LoadedPlugin_t {
 static std::vector<LoadedPlugin_t> g_loaded_plugins;
 static bool g_plugins_initialized = false;
 
-extern auto Peripheral_GetBuiltinRegistry() -> std::vector<Peripheral_t*>&;
+extern auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>&;
 
-auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
+auto peripheral_find_internal(const char* name) -> Peripheral_t* {
   if (name == nullptr) {
     return nullptr;
   }
 
-  Peripheral_Plugins_Init();
+  peripheral_plugins_init();
 
-  for (auto const& p : Peripheral_GetBuiltinRegistry()) {
+  for (auto const& p : peripheral_get_builtin_registry()) {
     if (p != nullptr &&
         (strcmp(p->name, name) == 0 || strcmp(p->id, name) == 0)) {
       return p;
@@ -51,18 +51,18 @@ auto Peripheral_Find_Internal(const char* name) -> Peripheral_t* {
   }
 
   if (strcmp(name, "No-Slot Clock") == 0 || strcmp(name, "Clock") == 0) {
-    return Peripheral_Find_Internal("Clock Card");
+    return peripheral_find_internal("Clock Card");
   }
 
   return nullptr;
 }
 
-auto Peripheral_GetPluginPath(const char* name) -> const char* {
+auto peripheral_get_plugin_path(const char* name) -> const char* {
   if (name == nullptr) {
     return nullptr;
   }
 
-  Peripheral_Plugins_Init();
+  peripheral_plugins_init();
 
   for (auto const& lp : g_loaded_plugins) {
     if (lp.p != nullptr &&
@@ -73,10 +73,10 @@ auto Peripheral_GetPluginPath(const char* name) -> const char* {
   return nullptr;
 }
 
-auto Peripheral_Register_Internal() -> void {
-  for (auto* p : Peripheral_GetBuiltinRegistry()) {
+auto peripheral_register_Internal() -> void {
+  for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
-      Peripheral_Register(p, 0);
+      peripheral_register(p, 0);
     }
   }
 
@@ -86,7 +86,7 @@ auto Peripheral_Register_Internal() -> void {
     snprintf(key, sizeof(key), "Slot %d", slot);
 
     std::string name;
-    bool in_config = ConfigLoadString("Slots", key, &name);
+    bool in_config = config_load_string("Slots", key, &name);
 
     if (in_config) {
       if (name == "None" || name.empty()) {
@@ -109,19 +109,19 @@ auto Peripheral_Register_Internal() -> void {
       }
     }
 
-    Peripheral_t* p = Peripheral_Find_Internal(name.c_str());
+    Peripheral_t* p = peripheral_find_internal(name.c_str());
     if (p != nullptr) {
-      Peripheral_Register(p, slot);
+      peripheral_register(p, slot);
     }
   }
 }
 
-auto Linapple_ListHardware() -> void {
-  Peripheral_Plugins_Init();
+auto linapple_list_hardware() -> void {
+  peripheral_plugins_init();
 
   printf("Built-in Peripherals:\n");
   printf("---------------------\n");
-  for (auto const& p : Peripheral_GetBuiltinRegistry()) {
+  for (auto const& p : peripheral_get_builtin_registry()) {
     if (p != nullptr) {
       printf("- %-24s [%s] v%s\n", p->name, p->id, p->version);
       printf("  Author: %s\n", p->author);
@@ -162,13 +162,13 @@ auto Linapple_ListHardware() -> void {
   }
 }
 
-auto Peripheral_Plugins_Init() -> void {
+auto peripheral_plugins_init() -> void {
   if (g_plugins_initialized) {
     return;
   }
   g_plugins_initialized = true;
 
-  auto paths = Path::GetPluginSearchPaths();
+  auto paths = Path::get_plugin_search_paths();
   for (const auto& path : paths) {
     DIR* dir = opendir(path.c_str());
     if (dir == nullptr) {
@@ -183,7 +183,7 @@ auto Peripheral_Plugins_Init() -> void {
         if (filename.find('/') != std::string::npos) {
           continue;
         }
-        std::string full_path = Path::Join(path, filename);
+        std::string full_path = Path::join(path, filename);
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (handle != nullptr) {
           auto* p = reinterpret_cast<Peripheral_t*>(
@@ -215,7 +215,7 @@ auto Peripheral_Plugins_Init() -> void {
   }
 }
 
-auto Peripheral_Plugins_Shutdown() -> void {
+auto peripheral_plugins_shutdown() -> void {
   for (auto& plugin : g_loaded_plugins) {
     if (plugin.handle != nullptr) {
       dlclose(plugin.handle);

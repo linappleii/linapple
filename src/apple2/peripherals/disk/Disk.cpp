@@ -317,7 +317,7 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
   bool found_lower = false;
   int title_length = 0;
   while (image_title[title_length] != '\0' && !found_lower) {
-    if (IsCharLower(image_title[title_length])) {
+    if (is_char_lower(image_title[title_length])) {
       found_lower = true;
     } else {
       title_length++;
@@ -872,57 +872,57 @@ auto disk_io_write(void* instance, uint16_t program_counter,
 }
 
 auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (data == nullptr || size < sizeof(DiskInsertCmd_t)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const auto* c = static_cast<const DiskInsertCmd_t*>(data);
   if (!is_drive_valid(c->drive)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0,
                          c->create_if_necessary != 0);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (data == nullptr || size < sizeof(DiskEjectCmd_t)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const auto* c = static_cast<const DiskEjectCmd_t*>(data);
   if (!is_drive_valid(c->drive)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   eject_disk_from_drive(dp, c->drive);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (data == nullptr || size < sizeof(DiskSetProtectCmd_t)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const auto* c = static_cast<const DiskSetProtectCmd_t*>(data);
   if (!is_drive_valid(c->drive)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   dp->drives.at(static_cast<size_t>(c->drive)).user_write_protected =
       (c->write_protected != 0);
   if (dp->host != nullptr) {
     dp->host->NotifyStatusChanged(dp->slot);
   }
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto cmd_handle_set_speed(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (data == nullptr || size < sizeof(uint8_t)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   dp->is_speed_enhanced = (*static_cast<const uint8_t*>(data) != 0);
   sync_driver_options(dp);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
@@ -993,9 +993,9 @@ auto disk_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
 }
 
 auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
-                      size_t size) -> PeripheralStatus {
+                      size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   switch (static_cast<DiskCmd_e>(cmd)) {
@@ -1004,12 +1004,12 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
     case disk_cmd_eject:
       return cmd_handle_eject(dp, data, size);
     case disk_cmd_swap_drives:
-      return swap_drives(dp) ? PERIPHERAL_OK : PERIPHERAL_ERROR;
+      return swap_drives(dp) ? peripheral_ok : peripheral_error;
     case disk_cmd_boot:
       // Physical Reality: Booting starts the spindle.
       dp->is_motor_on = true;
       sync_drive_motor_state(dp);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     case disk_cmd_set_protect:
       return cmd_handle_set_protect(dp, data, size);
     case disk_driver_cmd_set_enhanced_speed:
@@ -1017,13 +1017,13 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
     default:
       break;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance == nullptr || size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
 
@@ -1032,34 +1032,34 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       const size_t required_size = sizeof(DiskStatus_t);
       if (data == nullptr) {
         *size = required_size;
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
       if (*size < required_size) {
         *size = required_size;
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       get_peripheral_status(dp, static_cast<DiskStatus_t*>(data));
       *size = required_size;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (instance == nullptr || size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const size_t required_size = sizeof(DiskSavedState_t);
   if (buffer == nullptr) {
     *size = required_size;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
   if (*size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
@@ -1096,20 +1096,20 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   s->is_motor_on = static_cast<uint8_t>(dp->is_motor_on ? 1 : 0);
   s->is_write_mode = static_cast<uint8_t>(dp->is_write_mode ? 1 : 0);
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   const size_t required_size = sizeof(DiskSavedState_t);
   if (instance == nullptr || buffer == nullptr || size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   const auto* s = static_cast<const DiskSavedState_t*>(buffer);
 
   if (s->header.version != static_cast<uint32_t>(disk_state_version)) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   dp->stepper_phase_mask = s->stepper_phase_mask;
@@ -1148,7 +1148,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     dp->host->NotifyStatusChanged(dp->slot);
   }
   sync_driver_options(dp);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 }  // namespace

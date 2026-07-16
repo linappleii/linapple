@@ -107,9 +107,9 @@ auto po_create(const char* path) -> DiskError_e {
 }
 
 auto po_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                size_t payload_size) -> PeripheralStatus {
+                size_t payload_size) -> PeripheralStatus_t {
   if (instance_handle == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   return sector_disk_image_command(
       static_cast<SectorDiskImage_t*>(instance_handle), cmd_id, payload,

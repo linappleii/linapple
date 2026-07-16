@@ -53,7 +53,7 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
 
     // 1. Initial setup
     Peripheral_Manager_Init();
-    Peripheral_Register(&g_mock_peripheral, 1);
+    peripheral_register(&g_mock_peripheral, 1);
 
     // Verify it works
     CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
@@ -84,11 +84,11 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
     Peripheral_Manager_Init();
 
     // 1. Register
-    Peripheral_Register(&g_mock_peripheral, 1);
+    peripheral_register(&g_mock_peripheral, 1);
     CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
     // 2. Unregister
-    Peripheral_Unregister(1);
+    peripheral_unregister(1);
 
     // After unregistering slot 1, the mock peripheral is gone.
     // Any direct IO handlers it registered should also be gone.
@@ -128,10 +128,10 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     };
 
     // Set some config values
-    ConfigSaveString("Peripheral", "TestKey1", "Value1");
-    ConfigSaveString("Peripheral", "TestKey2", "Value2");
+    config_save_string("Peripheral", "TestKey1", "Value1");
+    config_save_string("Peripheral", "TestKey2", "Value2");
 
-    Peripheral_Register(&test_api_config, 1);
+    peripheral_register(&test_api_config, 1);
 
     // Now they should both be correct because they have their own buffers.
     CHECK(std::string(captured_val2) == "Value2");
@@ -149,19 +149,19 @@ TEST_CASE("Peripheral Manager: Plugin path construction") {
     std::string dir = "/tmp/linapple-test";
     std::string file = "plugin.so";
 
-    std::string fullPath = Path::Join(dir, file);
+    std::string fullPath = Path::join(dir, file);
     CHECK(fullPath == "/tmp/linapple-test/plugin.so");
 
     // Test with trailing slash already present
     dir = "/tmp/linapple-test/";
-    fullPath = Path::Join(dir, file);
+    fullPath = Path::join(dir, file);
     CHECK(fullPath == "/tmp/linapple-test/plugin.so");
 
     // Test with empty dir
-    CHECK(Path::Join("", file) == file);
+    CHECK(Path::join("", file) == file);
 
     // Test with empty file
-    CHECK(Path::Join(dir, "") == dir);
+    CHECK(Path::join(dir, "") == dir);
 }
 
 TEST_CASE("Peripheral Manager: Command payload capacity") {
@@ -182,24 +182,24 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
         -1,
         [](int, HostInterface_t*) -> void* { return (void*)0x1; },
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus {
+        [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus_t {
             captured_size = size;
             if (size > 0) {
                 last_byte = static_cast<const uint8_t*>(data)[size-1];
             }
-            return PERIPHERAL_OK;
+            return peripheral_ok;
         },
         nullptr
     };
 
-    Peripheral_Register(&test_api, 1);
+    peripheral_register(&test_api, 1);
 
     // 1. Send exactly PERIPHERAL_CMD_MAX_DATA (512) bytes
     std::vector<uint8_t> payload(512, 0xAA);
     payload.back() = 0xBB;
 
-    PeripheralStatus status = Peripheral_Command(1, 0x123, payload.data(), payload.size());
-    CHECK(status == PERIPHERAL_OK);
+    PeripheralStatus_t status = peripheral_command(1, 0x123, payload.data(), payload.size());
+    CHECK(status == peripheral_ok);
 
     // Commands are queued and processed during Think(0)
     Peripheral_Manager_Think(0);
@@ -209,8 +209,8 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
     // 2. Send 513 bytes - should be rejected
     std::vector<uint8_t> huge_payload(513, 0xCC);
-    status = Peripheral_Command(1, 0x124, huge_payload.data(), huge_payload.size());
-    CHECK(status == PERIPHERAL_ERROR);
+    status = peripheral_command(1, 0x124, huge_payload.data(), huge_payload.size());
+    CHECK(status == peripheral_error);
 
     Linapple_Shutdown();
 }

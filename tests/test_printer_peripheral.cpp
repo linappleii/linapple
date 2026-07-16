@@ -34,7 +34,7 @@ static std::vector<uint8_t> g_printed_chars_1;
 static std::map<int, std::vector<uint8_t>> g_mock_roms;
 static uint8_t g_mock_status = STATUS_READY;
 
-auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;

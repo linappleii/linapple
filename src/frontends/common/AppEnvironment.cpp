@@ -25,7 +25,7 @@ void AppEnv_ResolvePaths(AppConfig* config) {
   }
 
   // 2. XDG Base Directory Specification (~/.config/linapple/)
-  searchPaths.emplace_back(Path::GetUserConfigDir() + CONFIG_FILE_NAME);
+  searchPaths.emplace_back(Path::get_user_config_dir() + CONFIG_FILE_NAME);
 
   // 3. Current Working Directory
   searchPaths.emplace_back(CONFIG_FILE_NAME);
@@ -33,14 +33,14 @@ void AppEnv_ResolvePaths(AppConfig* config) {
   // 4. System-wide installation paths
   // FindDataFile handles /etc/linapple/ and /usr/share/linapple/ via
   // GetDataSearchPaths
-  searchPaths.emplace_back(Path::FindDataFile(CONFIG_FILE_NAME));
+  searchPaths.emplace_back(Path::find_data_file(CONFIG_FILE_NAME));
 
   std::string finalPath;
   bool loaded = false;
 
   for (const auto& path : searchPaths) {
     if (path.empty()) continue;
-    if (Configuration::Instance().Load(path)) {
+    if (Configuration_t::instance().load(path)) {
       finalPath = path;
       loaded = true;
       break;
@@ -49,8 +49,8 @@ void AppEnv_ResolvePaths(AppConfig* config) {
 
   // Fallback: if nothing loaded, use XDG path even if it doesn't exist yet
   if (!loaded) {
-    finalPath = Path::GetUserConfigDir() + CONFIG_FILE_NAME;
-    Path::EnsureDirExists(Path::GetUserConfigDir());
+    finalPath = Path::get_user_config_dir() + CONFIG_FILE_NAME;
+    Path::EnsureDirExists(Path::get_user_config_dir());
     // We don't call Load() again here as we know it's not there or failed,
     // we just want to set the path where it *should* be saved later.
   }

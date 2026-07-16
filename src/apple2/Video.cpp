@@ -1691,8 +1691,8 @@ auto video_perform_refresh() -> void {
 
   uint8_t rocker = 0;
   size_t rocker_sz = sizeof(rocker);
-  if (Peripheral_Query(0, keyboard_query_rocker, &rocker, &rocker_sz) ==
-      PERIPHERAL_OK) {
+  if (peripheral_query(0, keyboard_query_rocker, &rocker, &rocker_sz) ==
+      peripheral_ok) {
     s_language_rocker_switch = (rocker != 0);
   }
 
@@ -1786,7 +1786,7 @@ auto video_perform_refresh() -> void {
   if (g_iStatusCycle > 0) {
     g_iStatusCycle--;
     if (!g_iStatusCycle) {
-      Peripheral_Command(7, harddisk_cmd_reset_status, nullptr, 0);
+      peripheral_command(7, harddisk_cmd_reset_status, nullptr, 0);
     }
   }
 

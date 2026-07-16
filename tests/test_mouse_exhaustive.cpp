@@ -125,8 +125,8 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     
     uint8_t is_active = 0;
     size_t out_size = 1;
-    PeripheralStatus status = descriptor->query(g_mouse_instance, mouse_query_is_active, &is_active, &out_size);
-    CHECK(status == PERIPHERAL_OK);
+    PeripheralStatus_t status = descriptor->query(g_mouse_instance, mouse_query_is_active, &is_active, &out_size);
+    CHECK(status == peripheral_ok);
     CHECK(is_active == 1);
     descriptor->shutdown(g_mouse_instance);
   }

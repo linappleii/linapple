@@ -236,12 +236,12 @@ auto Peripheral_Manager_Reset() -> void;
 auto Peripheral_Manager_Shutdown() -> void;
 auto Peripheral_Manager_Think(uint32_t cycles) -> void;
 auto Peripheral_Manager_OnVBlank(bool vblank) -> void;
-auto Peripheral_IsAnyActive() -> bool;
-auto Linapple_ListHardware() -> void;
+auto peripheral_is_any_active() -> bool;
+auto linapple_list_hardware() -> void;
 
-PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
+PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id, const void* data,
                                     size_t size);
-PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
+PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
                                   size_t* out_size);
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;

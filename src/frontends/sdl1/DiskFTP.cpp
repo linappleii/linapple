@@ -73,7 +73,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
     return list;
   }
 
-  FilePtr fdir(fopen(ftpdirpath.data(), "r"), fclose);
+  FilePtr_t fdir(fopen(ftpdirpath.data(), "r"), fclose);
   if (!fdir) {
     ctx->failure_message = "Failed to open FTP directory listing file: " +
                            std::string(ftpdirpath.data());

@@ -183,7 +183,7 @@ auto ArgsGet(char* pInput) -> int {
     // Technically, there shouldn't be any leading spaces,
     // since pressing the spacebar is an alias for TRACE.
     // However, there is spaces between arguments
-    pSrc = const_cast<char*>(SkipWhiteSpace(pSrc));
+    pSrc = const_cast<char*>(skip_white_space(pSrc));
 
     if (pSrc) {
       pEnd = FindTokenOrAlphaNumeric(pSrc, g_aTokens, NUM_TOKENS, &iTokenSrc);
@@ -207,10 +207,10 @@ auto ArgsGet(char* pInput) -> int {
 
       if (iTokenSrc == TOKEN_QUOTE_DOUBLE) {
         pSrc++;  // Don't store start of quote
-        pEnd = SkipUntilChar(pSrc, CHAR_QUOTE_DOUBLE);
+        pEnd = skip_until_char(pSrc, CHAR_QUOTE_DOUBLE);
       } else if (iTokenSrc == TOKEN_QUOTE_SINGLE) {
         pSrc++;  // Don't store start of quote
-        pEnd = SkipUntilChar(pSrc, CHAR_QUOTE_SINGLE);
+        pEnd = skip_until_char(pSrc, CHAR_QUOTE_SINGLE);
       }
 
       if (pEnd) {

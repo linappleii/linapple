@@ -42,7 +42,7 @@ DiskProbe_e sector_disk_image_probe_signature(const uint8_t* header_data,
                                               uint32_t file_size,
                                               bool is_dos_order);
 
-PeripheralStatus sector_disk_image_command(SectorDiskImage_t* image_ptr,
+PeripheralStatus_t sector_disk_image_command(SectorDiskImage_t* image_ptr,
                                            uint32_t cmd_id, const void* payload,
                                            size_t payload_size);
 

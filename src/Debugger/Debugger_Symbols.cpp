@@ -229,7 +229,7 @@ auto String2Address( const char* pText, uint16_t & nAddress_ ) -> bool
 
 	if (pText[0] == '$')
 	{
-		if (!TextIsHexString( pText+1)) {
+		if (!text_is_hex_string( pText+1)) {
 			return false;
 }
 
@@ -242,7 +242,7 @@ auto String2Address( const char* pText, uint16_t & nAddress_ ) -> bool
 	{
 		if ((pText[1] == 'X') || pText[1] == 'x')
 		{
-			if (!TextIsHexString( pText+2)) {
+			if (!text_is_hex_string( pText+2)) {
 				return false;
 }
 
@@ -250,7 +250,7 @@ auto String2Address( const char* pText, uint16_t & nAddress_ ) -> bool
 			nAddress_ = static_cast<uint16_t>(strtol( pText, &pEnd, 16 ));
 			return true;
 		}
-		if (TextIsHexString( pText ))
+		if (text_is_hex_string( pText ))
 		{
 			char *pEnd = nullptr;
 			nAddress_ = static_cast<uint16_t>(strtol( pText, &pEnd, 16 ));
@@ -581,7 +581,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 	sprintf( sFormat1, "%%x %%%ds", MAX_SYMBOLS_LEN ); // i.e. "%x %13s"
 	sprintf( sFormat2, "%%%ds %%x", MAX_SYMBOLS_LEN ); // i.e. "%13s %x"
 
-	FilePtr hFile(fopen( pPathFileName.c_str(), "rt" ), fclose);
+	FilePtr_t hFile(fopen( pPathFileName.c_str(), "rt" ), fclose);
 
 	if( !hFile && g_bSymbolsDisplayMissingFile )
 	{

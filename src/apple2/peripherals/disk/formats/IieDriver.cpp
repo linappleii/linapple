@@ -46,7 +46,7 @@ constexpr int track_size = 4096;
 }
 
 struct IieInstance_t {
-  FilePtr file{nullptr, fclose};
+  FilePtr_t file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
   std::array<uint8_t, sectors_per_track> sector_order{};
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
@@ -263,14 +263,14 @@ auto iie_write_track(void* instance_handle, int track, int phase,
 }
 
 auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                 size_t payload_size) -> PeripheralStatus {
+                 size_t payload_size) -> PeripheralStatus_t {
   (void)cmd_id;
   (void)payload;
   (void)payload_size;
   if (instance_handle == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 }  // namespace

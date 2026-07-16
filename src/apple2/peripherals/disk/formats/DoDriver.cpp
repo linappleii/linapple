@@ -99,9 +99,9 @@ auto do_create(const char* path) -> DiskError_e {
 }
 
 auto do_command(void* instance, uint32_t cmd_id, const void* payload,
-                size_t payload_size) -> PeripheralStatus {
+                size_t payload_size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   return sector_disk_image_command(static_cast<SectorDiskImage_t*>(instance),
                                    cmd_id, payload, payload_size);

@@ -27,7 +27,7 @@ typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
 typedef PeripheralIOHandler PeripheralIoHandler_t;
 
 typedef struct {
-  void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
+  void (*Log)(void* instance, PeripheralLogLevel_t level, const char* fmt, ...);
   void (*AssertIrq)(int slot, bool assert);
   void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
                      PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
@@ -71,12 +71,12 @@ typedef struct Peripheral_t {
   void (*shutdown)(void* instance);
   void (*think)(void* instance, uint32_t cycles);
   void (*on_vblank)(void* instance, bool vblank);
-  PeripheralStatus (*save_state)(void* instance, void* buffer, size_t* size);
-  PeripheralStatus (*load_state)(void* instance, const void* buffer,
+  PeripheralStatus_t (*save_state)(void* instance, void* buffer, size_t* size);
+  PeripheralStatus_t (*load_state)(void* instance, const void* buffer,
                                  size_t size);
-  PeripheralStatus (*command)(void* instance, uint32_t cmd_id, const void* data,
+  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id, const void* data,
                               size_t size);
-  PeripheralStatus (*query)(void* instance, uint32_t cmd_id, void* out,
+  PeripheralStatus_t (*query)(void* instance, uint32_t cmd_id, void* out,
                             size_t* out_size);
 } Peripheral_t;
 
@@ -91,7 +91,7 @@ typedef struct Peripheral_t {
   namespace {                                               \
   struct PeripheralRegistration_##peripheral_struct {       \
     PeripheralRegistration_##peripheral_struct() noexcept { \
-      Peripheral_Register_Builtin(                          \
+      peripheral_register_Builtin(                          \
           const_cast<Peripheral_t*>(&(peripheral_struct))); \
     }                                                       \
   } g_registration_##peripheral_struct;                     \
@@ -99,7 +99,7 @@ typedef struct Peripheral_t {
 #else
 #define PERIPHERAL_REGISTER(peripheral_struct)                              \
   __attribute__((constructor)) static void Register_##peripheral_struct() { \
-    Peripheral_Register_Builtin(&(peripheral_struct));                      \
+    peripheral_register_Builtin(&(peripheral_struct));                      \
   }
 #endif
 #endif
@@ -107,21 +107,21 @@ typedef struct Peripheral_t {
 #define EXPORT_PERIPHERAL(peripheral_struct) \
   PERIPHERAL_REGISTER(peripheral_struct)
 
-int Peripheral_Register(Peripheral_t* api, int slot);
-void Peripheral_Register_Builtin(Peripheral_t* api);
-int Peripheral_Unregister(int slot);
-PeripheralStatus Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
+int peripheral_register(Peripheral_t* api, int slot);
+void peripheral_register_Builtin(Peripheral_t* api);
+int peripheral_unregister(int slot);
+PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id, const void* data,
                                     size_t size);
-PeripheralStatus Peripheral_Query(int slot, uint32_t cmd_id, void* out,
+PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
                                   size_t* out_size);
-void Peripheral_SaveState(int slot, void* buffer, size_t* size);
-void Peripheral_LoadState(int slot, const void* buffer, size_t size);
-void Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
+void peripheral_save_state(int slot, void* buffer, size_t* size);
+void peripheral_load_state(int slot, const void* buffer, size_t size);
+void peripheral_save_state_by_name(int slot, const char* name, void* buffer,
                                 size_t* size);
-void Peripheral_LoadStateByName(int slot, const char* name, const void* buffer,
+void peripheral_load_state_by_name(int slot, const char* name, const void* buffer,
                                 size_t size);
-void Peripheral_GetManifest(void* manifest);
-bool Peripheral_VerifyManifest(const void* manifest);
+void peripheral_get_manifest(void* manifest);
+bool peripheral_verify_manifest(const void* manifest);
 
 #ifdef __cplusplus
 }

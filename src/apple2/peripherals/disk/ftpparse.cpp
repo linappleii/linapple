@@ -64,7 +64,7 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
   // Download file from ftp_path to local_path
   CURLcode res = CURLE_OK;
 
-  FilePtr stream(fopen(local_path, "w"), fclose);
+  FilePtr_t stream(fopen(local_path, "w"), fclose);
   if (!stream) {
     return CURLE_WRITE_ERROR;
   }

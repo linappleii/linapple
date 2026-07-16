@@ -44,9 +44,9 @@ void HarddiskUI_FTPSelect(int nDrive) {
     if (isDirectory) {
       if (filename == "..") {
         // go to the upper directory
-        auto r = fullPath.find_last_of(FTP_SEPARATOR);
+        auto r = fullPath.find_last_of(ftp_separator);
         if (r == fullPath.size() - 1) {
-          r = fullPath.find_last_of(FTP_SEPARATOR, r - 1);
+          r = fullPath.find_last_of(ftp_separator, r - 1);
         }
         if (r != std::string::npos) {
           fullPath = fullPath.substr(0, 1 + r);
@@ -69,9 +69,9 @@ void HarddiskUI_FTPSelect(int nDrive) {
   // we chose some file
   Util_SafeStrCpy(g_state.sFTPServerHDD.data(), fullPath.c_str(),
                   g_state.sFTPServerHDD.size());
-  Configuration::Instance().SetString("Preferences", REGVALUE_FTP_HDD_DIR,
+  Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
                                       g_state.sFTPServerHDD.data());
-  Configuration::Instance().Save();  // save it
+  Configuration_t::instance().save();  // save it
 
   fullPath += "/" + filename;
 
@@ -84,17 +84,17 @@ void HarddiskUI_FTPSelect(int nDrive) {
     cmd.drive = static_cast<uint8_t>(nDrive);
     Util_SafeStrCpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
 
-    if (Peripheral_Command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
-        PERIPHERAL_OK) {
+    if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
+        peripheral_ok) {
       // save file names for HDD disk 1 or 2
       if (nDrive != 0) {
-        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2,
+        Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
                                             localPath.c_str());
-        Configuration::Instance().Save();
+        Configuration_t::instance().save();
       } else {
-        Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1,
+        Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE1,
                                             localPath.c_str());
-        Configuration::Instance().Save();
+        Configuration_t::instance().save();
       }
     }
   }
@@ -125,7 +125,7 @@ void HarddiskUI_Select(int nDrive) {
     }
     if (isDirectory) {
       if (filename == "..") {
-        const auto last_sep_pos = fullPath.find_last_of(FILE_SEPARATOR);
+        const auto last_sep_pos = fullPath.find_last_of(file_separator);
 
         if (last_sep_pos != std::string::npos) {
           fullPath = fullPath.substr(0, last_sep_pos);
@@ -148,9 +148,9 @@ void HarddiskUI_Select(int nDrive) {
   // we chose some file
   Util_SafeStrCpy(g_state.sHDDDir.data(), fullPath.c_str(),
                   g_state.sHDDDir.size());
-  Configuration::Instance().SetString(
+  Configuration_t::instance().set_string(
       "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.sHDDDir.data());
-  Configuration::Instance().Save();  // Save it
+  Configuration_t::instance().save();  // Save it
 
   fullPath += "/" + filename;
 
@@ -160,17 +160,17 @@ void HarddiskUI_Select(int nDrive) {
   cmd.drive = static_cast<uint8_t>(nDrive);
   Util_SafeStrCpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
 
-  if (Peripheral_Command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
-      PERIPHERAL_OK) {
+  if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
+      peripheral_ok) {
     // save file names for HDD disk 1 or 2
     if (nDrive != 0) {
-      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE2,
+      Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
                                           fullPath.c_str());
-      Configuration::Instance().Save();
+      Configuration_t::instance().save();
     } else {
-      Configuration::Instance().SetString("Preferences", REGVALUE_HDD_IMAGE1,
+      Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE1,
                                           fullPath.c_str());
-      Configuration::Instance().Save();
+      Configuration_t::instance().save();
     }
     printf("HDD disk image %s inserted\n", fullPath.c_str());
   }

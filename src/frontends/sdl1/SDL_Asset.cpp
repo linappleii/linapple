@@ -4,7 +4,7 @@
 #include "core/Asset.h"
 
 auto Asset_LoadBMP(const char* filename) -> SDL_Surface* {
-  std::string fullPath = Path::FindDataFile(filename);
+  std::string fullPath = Path::find_data_file(filename);
   if (fullPath.empty()) {
     fprintf(stderr, "Asset_LoadBMP: Couldn't find %s in any search path!\n",
             filename);

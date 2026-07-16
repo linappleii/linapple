@@ -44,7 +44,7 @@ auto setup_disk_io_test(const char* fixture_name) -> void {
 
   std::string fixture = repo_root + "/tests/fixtures/" + fixture_name;
   Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
-  Peripheral_Command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
   // Turn on motor so rotation works
   IOMap_Dispatch(0, DISK_MOTOR_ON, 0, 0, 0);

@@ -109,14 +109,14 @@ auto nb2_create(const char* path) -> DiskError_e {
 }
 
 auto nb2_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                 size_t payload_size) -> PeripheralStatus {
+                 size_t payload_size) -> PeripheralStatus_t {
   (void)cmd_id;
   (void)payload;
   (void)payload_size;
   if (instance_handle == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};

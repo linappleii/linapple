@@ -20,7 +20,7 @@
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  Peripheral_Register_Internal();
+  peripheral_register_Internal();
 
   uint8_t orig_a = CpuGetRegisters()->a;
   uint8_t orig_x = CpuGetRegisters()->x;
@@ -91,7 +91,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
 TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  Peripheral_Register_Internal();
+  peripheral_register_Internal();
 
   save_state_set_filename("test_custom_snapshot.aws");
   CHECK(strcmp(save_state_get_filename(), "test_custom_snapshot.aws") == 0);

@@ -59,16 +59,16 @@ TEST_CASE("Mouse Peripheral ABI") {
 
   SUBCASE("Commands - Pos") {
     MousePosPayload_t payload = {100, 1024, 200, 1024};
-    PeripheralStatus status = descriptor->command(
+    PeripheralStatus_t status = descriptor->command(
         instance, mouse_cmd_set_pos, &payload, sizeof(payload));
-    CHECK(status == PERIPHERAL_OK);
+    CHECK(status == peripheral_ok);
   }
 
   SUBCASE("Commands - Button") {
     MouseButtonPayload_t payload = {0, true};
-    PeripheralStatus status = descriptor->command(
+    PeripheralStatus_t status = descriptor->command(
         instance, mouse_cmd_set_button, &payload, sizeof(payload));
-    CHECK(status == PERIPHERAL_OK);
+    CHECK(status == peripheral_ok);
   }
 
   SUBCASE("Lifecycle") {

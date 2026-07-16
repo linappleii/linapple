@@ -23,14 +23,14 @@
 LinappleAudioCallback g_frontendAudioCB = nullptr;
 LinappleAudioCallback g_frontendMockAudioCB = nullptr;
 
-auto Peripheral_GetBuiltinRegistry() -> std::vector<Peripheral_t*>& {
+auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   static std::vector<Peripheral_t*> registry;
   return registry;
 }
 
-auto Peripheral_Register_Builtin(Peripheral_t* p) -> void {
+auto peripheral_register_Builtin(Peripheral_t* p) -> void {
   if (p != nullptr) {
-    Peripheral_GetBuiltinRegistry().push_back(p);
+    peripheral_get_builtin_registry().push_back(p);
   }
 }
 
@@ -141,7 +141,7 @@ static auto DirectIO_Write_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
 
 // --- Host Interface Implementation ---
 
-static auto Host_Log(void* instance, PeripheralLogLevel level, const char* fmt,
+static auto Host_Log(void* instance, PeripheralLogLevel_t level, const char* fmt,
                      ...) -> void {
   (void)instance;
   if (fmt == nullptr) {
@@ -150,16 +150,16 @@ static auto Host_Log(void* instance, PeripheralLogLevel level, const char* fmt,
   va_list args;
   va_start(args, fmt);
   switch (level) {
-    case LOG_DEBUG:
+    case log_debug:
       Logger::Perf(fmt, args);
       break;
-    case LOG_INFO:
+    case log_info:
       Logger::Info(fmt, args);
       break;
-    case LOG_WARN:
+    case log_warn:
       Logger::Warning(fmt, args);
       break;
-    case LOG_ERROR:
+    case log_error:
       Logger::Error(fmt, args);
       break;
   }
@@ -170,7 +170,7 @@ static auto Host_AssertIrq(int slot, bool assert) -> void {
   if (slot < 1 || slot > 7) {
     return;
   }
-  auto src = static_cast<eIRQSRC>(IS_SLOT1 + slot - 1);
+  auto src = static_cast<IrqSrc_t>(is_slot1 + slot - 1);
   if (assert) {
     CpuIrqAssert(src);
   } else {
@@ -253,7 +253,7 @@ static auto Host_GetCycles() -> uint64_t { return CpuGetCumulativeCycles(); }
 static auto Host_GetConfig(const char* section, const char* key, char* buffer,
                            size_t buffer_size) -> bool {
   std::string val;
-  if (ConfigLoadString(section, key, &val)) {
+  if (config_load_string(section, key, &val)) {
     if (buffer != nullptr && buffer_size > 0) {
       strncpy(buffer, val.c_str(), buffer_size - 1);
       buffer[buffer_size - 1] = '\0';
@@ -265,7 +265,7 @@ static auto Host_GetConfig(const char* section, const char* key, char* buffer,
 
 static auto Host_SetConfig(const char* section, const char* key,
                            const char* value) -> void {
-  ConfigSaveString(section, key, value);
+  config_save_string(section, key, value);
 }
 
 static auto Host_NotifyStatusChanged(int slot) -> void {
@@ -382,27 +382,27 @@ static const HostInterface_t g_host_interface = {Host_Log,
 
 // --- Command Queue ---
 
-struct QueuedCommand {
+struct QueuedCommand_t {
   int slot;
   uint32_t cmd_id;
   size_t data_size;
   uint8_t data[PERIPHERAL_CMD_MAX_DATA];
 };
 
-static_assert(sizeof(((QueuedCommand*)0)->data) == PERIPHERAL_CMD_MAX_DATA,
-              "QueuedCommand::data size must match PERIPHERAL_CMD_MAX_DATA");
+static_assert(sizeof(((QueuedCommand_t*)0)->data) == PERIPHERAL_CMD_MAX_DATA,
+              "QueuedCommand_t::data size must match PERIPHERAL_CMD_MAX_DATA");
 
-static std::queue<QueuedCommand> g_command_queue;
+static std::queue<QueuedCommand_t> g_command_queue;
 static std::mutex g_command_queue_mutex;
 
 static auto Peripheral_DrainCommandQueue() -> void {
-  std::queue<QueuedCommand> local;
+  std::queue<QueuedCommand_t> local;
   {
     std::lock_guard<std::mutex> lock(g_command_queue_mutex);
     std::swap(local, g_command_queue);
   }
   while (!local.empty()) {
-    const QueuedCommand& cmd = local.front();
+    const QueuedCommand_t& cmd = local.front();
     if (cmd.slot >= 0 && cmd.slot < static_cast<int>(NUM_SLOTS)) {
       for (auto& ap : g_active_peripherals.at(static_cast<size_t>(cmd.slot))) {
         if (ap.api != nullptr && ap.api->command != nullptr) {
@@ -488,7 +488,7 @@ auto Peripheral_Manager_OnVBlank(bool vblank) -> void {
   }
 }
 
-auto Peripheral_IsAnyActive() -> bool {
+auto peripheral_is_any_active() -> bool {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     if (g_peripheral_activity_state.at(i)) {
       return true;
@@ -497,7 +497,7 @@ auto Peripheral_IsAnyActive() -> bool {
   return false;
 }
 
-auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
+auto peripheral_register(Peripheral_t* api, int slot) -> int {
   if (api == nullptr || slot < 0 || slot >= static_cast<int>(NUM_SLOTS))
     return -1;
   if (api->abi_version != LINAPPLE_ABI_VERSION) return -1;
@@ -532,7 +532,7 @@ auto Peripheral_Register(Peripheral_t* api, int slot) -> int {
   return 0;
 }
 
-static auto RemoveDirectIoHandlersForInstance(void* instance) -> void {
+static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
   if (instance == nullptr) return;
 
   size_t j = 0;
@@ -554,11 +554,11 @@ static auto RemoveDirectIoHandlersForInstance(void* instance) -> void {
   g_num_direct_handlers = j;
 }
 
-auto Peripheral_Unregister(int slot) -> int {
+auto peripheral_unregister(int slot) -> int {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {
-    RemoveDirectIoHandlersForInstance(ap.instance);
+    remove_direct_io_handlers_for_instance(ap.instance);
     if (ap.api != nullptr && ap.api->shutdown != nullptr) {
       ap.api->shutdown(ap.instance);
     }
@@ -569,40 +569,40 @@ auto Peripheral_Unregister(int slot) -> int {
   return 0;
 }
 
-auto Peripheral_Command(int slot, uint32_t cmd_id, const void* data,
-                        size_t size) -> PeripheralStatus {
+auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
+                        size_t size) -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
       size > PERIPHERAL_CMD_MAX_DATA)
-    return PERIPHERAL_ERROR;
-  QueuedCommand cmd{};
+    return peripheral_error;
+  QueuedCommand_t cmd{};
   cmd.slot = slot;
   cmd.cmd_id = cmd_id;
   cmd.data_size = size;
   if (size > 0 && data != nullptr) memcpy(cmd.data, data, size);
   std::lock_guard<std::mutex> lock(g_command_queue_mutex);
   g_command_queue.push(cmd);
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
-auto Peripheral_Query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus {
+auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || out == nullptr ||
       out_size == nullptr)
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return PERIPHERAL_ERROR;
+  if (slot_peripherals.empty()) return peripheral_error;
 
   for (auto& ap : slot_peripherals) {
     if (ap.api != nullptr && ap.api->query != nullptr) {
-      PeripheralStatus status =
+      PeripheralStatus_t status =
           ap.api->query(ap.instance, cmd_id, out, out_size);
-      if (status != PERIPHERAL_INCOMPATIBLE) return status;
+      if (status != peripheral_incompatible) return status;
     }
   }
-  return PERIPHERAL_ERROR;
+  return peripheral_error;
 }
 
-auto Peripheral_GetManifest(void* manifest_ptr) -> void {
+auto peripheral_get_manifest(void* manifest_ptr) -> void {
   if (manifest_ptr == nullptr) return;
   auto* manifest = static_cast<SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   memset(manifest, 0, sizeof(SS_PERIPHERAL_MANIFEST));
@@ -618,7 +618,7 @@ auto Peripheral_GetManifest(void* manifest_ptr) -> void {
   }
 }
 
-auto Peripheral_VerifyManifest(const void* manifest_ptr) -> bool {
+auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
   if (manifest_ptr == nullptr) return false;
   const auto* manifest =
       static_cast<const SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
@@ -636,7 +636,7 @@ auto Peripheral_VerifyManifest(const void* manifest_ptr) -> bool {
   return true;
 }
 
-auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void {
+auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
@@ -651,7 +651,7 @@ auto Peripheral_SaveState(int slot, void* buffer, size_t* size) -> void {
   }
 }
 
-auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void {
+auto peripheral_load_state(int slot, const void* buffer, size_t size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || buffer == nullptr)
     return;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
@@ -663,7 +663,7 @@ auto Peripheral_LoadState(int slot, const void* buffer, size_t size) -> void {
   }
 }
 
-auto Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
+auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,
                                 size_t* size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr)
     return;
@@ -679,7 +679,7 @@ auto Peripheral_SaveStateByName(int slot, const char* name, void* buffer,
   if (size != nullptr) *size = 0;
 }
 
-auto Peripheral_LoadStateByName(int slot, const char* name, const void* buffer,
+auto peripheral_load_state_by_name(int slot, const char* name, const void* buffer,
                                 size_t size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr ||
       buffer == nullptr)

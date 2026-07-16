@@ -174,16 +174,16 @@ auto SuperSerial_Shutdown(void* instance) -> void {
 }
 
 auto SuperSerial_ABI_Command(void* instance, uint32_t cmd, const void* data,
-                             size_t size) -> PeripheralStatus {
+                             size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
   switch (static_cast<SuperSerialCmd_e>(cmd)) {
     case SUPER_SERIAL_CMD_PUSH_RX_BYTE: {
       if (size < sizeof(uint8_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       uint8_t byte = *static_cast<const uint8_t*>(data);
       if (ssc->rx_count < SUPER_SERIAL_FIFO_SIZE) {
@@ -194,25 +194,25 @@ auto SuperSerial_ABI_Command(void* instance, uint32_t cmd, const void* data,
           ssc->host->AssertIrq(ssc->slot, true);
         }
       }
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case SUPER_SERIAL_CMD_SET_CONFIG: {
       if (size < sizeof(SuperSerialDipSwConfig_t)) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       ssc->config = *static_cast<const SuperSerialDipSwConfig_t*>(data);
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 auto SuperSerial_ABI_Query(void* instance, uint32_t cmd, void* output_buffer,
-                           size_t* buffer_size) -> PeripheralStatus {
+                           size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
@@ -221,46 +221,46 @@ auto SuperSerial_ABI_Query(void* instance, uint32_t cmd, void* output_buffer,
       const size_t req_size = sizeof(SuperSerialDipSwConfig_t);
       if (output_buffer == nullptr) {
         *buffer_size = req_size;
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
       if (*buffer_size < req_size) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       *static_cast<SuperSerialDipSwConfig_t*>(output_buffer) = ssc->config;
       *buffer_size = req_size;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     case SUPER_SERIAL_QUERY_RX_READY: {
       const size_t req_size = sizeof(bool);
       if (output_buffer == nullptr) {
         *buffer_size = req_size;
-        return PERIPHERAL_OK;
+        return peripheral_ok;
       }
       if (*buffer_size < req_size) {
-        return PERIPHERAL_ERROR;
+        return peripheral_error;
       }
       *static_cast<bool*>(output_buffer) = (ssc->rx_count > 0);
       *buffer_size = req_size;
-      return PERIPHERAL_OK;
+      return peripheral_ok;
     }
     default:
       break;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 auto SuperSerial_SaveState(void* instance, void* state_buffer,
-                           size_t* buffer_size) -> PeripheralStatus {
+                           size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   const size_t required_size = sizeof(SS_IO_Comms);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
   if (instance == nullptr || *buffer_size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* super_serial = static_cast<SuperSerialCard_t*>(instance);
@@ -273,15 +273,15 @@ auto SuperSerial_SaveState(void* instance, void* state_buffer,
               save_state_ptr->recv_buffer);
 
   *buffer_size = required_size;
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 auto SuperSerial_LoadState(void* instance, const void* state_buffer,
-                           size_t buffer_size) -> PeripheralStatus {
+                           size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SS_IO_Comms);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < required_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
   auto* super_serial = static_cast<SuperSerialCard_t*>(instance);
   const auto* save_state_ptr = static_cast<const SS_IO_Comms*>(state_buffer);
@@ -292,7 +292,7 @@ auto SuperSerial_LoadState(void* instance, const void* state_buffer,
   std::copy_n(save_state_ptr->recv_buffer, SUPER_SERIAL_FIFO_SIZE,
               super_serial->rx_buffer.begin());
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static Peripheral_t g_ssc_peripheral = {

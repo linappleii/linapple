@@ -141,7 +141,7 @@ auto prepare_compressed_path(const char* image_path, char* out_load_path,
     return false;
   }
 
-  FilePtr temp_stream(fdopen(fd, "wb"), fclose);
+  FilePtr_t temp_stream(fdopen(fd, "wb"), fclose);
   if (temp_stream == nullptr) {
     close(fd);
     unlink(out_load_path);
@@ -220,12 +220,12 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
     temp_guard.reset(new TemporaryFileGuard(load_path));
   }
 
-  FilePtr image_file(fopen(load_path, "rb"), fclose);
+  FilePtr_t image_file(fopen(load_path, "rb"), fclose);
   if (image_file == nullptr) {
     if (!create_if_necessary || is_temporary) {
       return disk_err_file_not_found;
     }
-    FilePtr create_file(fopen(load_path, "wb"), fclose);
+    FilePtr_t create_file(fopen(load_path, "wb"), fclose);
     if (create_file == nullptr) {
       return disk_err_file_not_found;
     }

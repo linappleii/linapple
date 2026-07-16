@@ -145,7 +145,7 @@ auto linapple_get_ticks() -> uint32_t {
 }
 
 static auto should_run_full_speed() -> bool {
-  bool peripheral_active = Peripheral_IsAnyActive();
+  bool peripheral_active = peripheral_is_any_active();
   bool should_turbo = peripheral_active && (g_state.needsprecision == 0);
 
   if (should_turbo && !s_was_turbo) {
@@ -173,14 +173,14 @@ auto linapple_init() -> void {
   VideoInitialize();
 
   Peripheral_Manager_Init();
-  Peripheral_Register_Internal();
+  peripheral_register_Internal();
 }
 
-auto linapple_register_peripherals() -> void { Peripheral_Register_Internal(); }
+auto linapple_register_peripherals() -> void { peripheral_register_Internal(); }
 
 auto linapple_shutdown() -> void {
   Peripheral_Manager_Shutdown();
-  Peripheral_Plugins_Shutdown();
+  peripheral_plugins_shutdown();
   audio_mixer_destroy();
   VideoDestroy();
   MemDestroy();
@@ -293,7 +293,7 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
     if (should_run_full_speed()) {
       for (int i = 0; i < full_speed_disk_iterations; i++) {
         executed += internal_run_cycles(cycles);
-        if (!Peripheral_IsAnyActive()) {
+        if (!peripheral_is_any_active()) {
           break;
         }
       }
@@ -316,34 +316,34 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {
   KeyboardEvent_t ev = {
       apple_code, static_cast<uint8_t>(down ? 1 : 0), 0, 0, 0, 0, {0, 0, 0}};
-  Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
 auto linapple_set_caps_lock_state(bool enabled) -> void {
   uint8_t caps = enabled ? 1 : 0;
-  Peripheral_Command(0, keyboard_cmd_set_caps, &caps, 1);
+  peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
 }
 
 auto linapple_set_apple_key(int key, bool down) -> void {
   KeyboardModifiers_t mods = {};
   size_t sz = sizeof(mods);
-  Peripheral_Query(0, keyboard_query_mods, &mods, &sz);
+  peripheral_query(0, keyboard_query_mods, &mods, &sz);
   if (key == 0) {
     mods.gui = down ? 1U : 0U;
   } else {
     mods.alt = down ? 1U : 0U;
   }
-  Peripheral_Command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
+  peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 }
 
 auto linapple_set_joystick_axis(int axis, int value) -> void {
   JoystickTrimPayload_t payload = {axis == 0, static_cast<int16_t>(value)};
-  Peripheral_Command(0, JOY_CMD_SET_TRIM, &payload, sizeof(payload));
+  peripheral_command(0, JOY_CMD_SET_TRIM, &payload, sizeof(payload));
 }
 
 auto linapple_set_joystick_button(int button, bool down) -> void {
   JoystickButtonPayload_t payload = {static_cast<uint8_t>(button), down};
-  Peripheral_Command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
+  peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,clang-diagnostic-missing-braces)

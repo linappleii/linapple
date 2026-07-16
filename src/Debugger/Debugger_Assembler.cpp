@@ -1383,14 +1383,14 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
         int iByte = 0;
         for (iByte = 0; iByte < 4; iByte++) {
           pStart = pEnd + 1;
-          pEnd = const_cast<char*>(SkipUntilWhiteSpace(pStart));
+          pEnd = const_cast<char*>(skip_until_white_space(pStart));
           int nLen = static_cast<int>(pEnd - pStart);
           if (nLen != 2) {
             break;
           }
           *pEnd = 0;
-          if (TextIsHexByte(pStart)) {
-            uint8_t nByte = TextConvert2CharsToByte(pStart);
+          if (text_is_hex_byte(pStart)) {
+            uint8_t nByte = text_convert_2_chars_to_byte(pStart);
             *(mem + (static_cast<uint16_t>(nAddress)) + iByte) = nByte;
           }
         }
@@ -1416,11 +1416,11 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
       if (pLabel) {
         char* pLabelEnd = pLabel - 1;
         pLabelEnd =
-            const_cast<char*>(SkipWhiteSpaceReverse(pLabelEnd, &sLine[0]));
+            const_cast<char*>(skip_white_space_reverse(pLabelEnd, &sLine[0]));
         char* pLabelStart = nullptr;
         if (pLabelEnd) {
           pLabelStart = const_cast<char*>(
-              SkipUntilWhiteSpaceReverse(pLabelEnd, &sLine[0]));
+              skip_until_white_space_reverse(pLabelEnd, &sLine[0]));
           pLabelEnd++;
           pLabelStart++;
 

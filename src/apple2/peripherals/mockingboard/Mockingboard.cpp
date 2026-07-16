@@ -203,9 +203,9 @@ static auto update_ifr(MockingboardPeripheral_t* mp, int chip_idx) -> void {
     mp->host->AssertIrq(mp->slot, irq_asserted);
   } else {
     if (irq_asserted) {
-      CpuIrqAssert(IS_6522);
+      CpuIrqAssert(is_6522);
     } else {
-      CpuIrqDeassert(IS_6522);
+      CpuIrqDeassert(is_6522);
     }
   }
 }
@@ -731,20 +731,20 @@ static auto mb_abi_think(void* instance, uint32_t cycles) -> void {
 }
 
 static auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (!instance || !size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   constexpr size_t required = sizeof(MockingboardSaveState_t);
   if (!buffer) {
     *size = required;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
 
   if (*size < required) {
     *size = required;
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
@@ -773,18 +773,18 @@ static auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->type = static_cast<int32_t>(mp->type);
   ss->phasor_native = mp->phasor_native ? 1 : 0;
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus {
+    -> PeripheralStatus_t {
   if (!instance || !buffer) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   constexpr size_t required = sizeof(MockingboardSaveState_t);
   if (size < required) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
@@ -812,7 +812,7 @@ static auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
   mp->type = static_cast<SoundCardType_t>(ss->type);
   mp->phasor_native = (ss->phasor_native != 0);
 
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 

@@ -444,7 +444,7 @@ Update_t CmdMemoryLoad (int nArgs)
     }
     strcat( sLoadSaveFilePath, g_sMemoryLoadSaveFileName );
 
-    FilePtr hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
+    FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
     if (hFile)
     {
       size_t nFileBytes = _GetFileSize( hFile.get() );
@@ -640,7 +640,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     return ConsoleUpdate();
   }
 
-  FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+  FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
     size_t nFileBytes = _GetFileSize(hFile.get());
 
@@ -835,7 +835,7 @@ Update_t CmdMemorySave (int nArgs)
           *pDst++ = *pSrc++;
         }
 
-        FilePtr hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
+        FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
         if (hFile)
         {
           ConsoleBufferPush(  "Warning: File already exists.  Overwriting."  );
@@ -987,7 +987,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
         return ConsoleUpdate();
       }
 
-      FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+      FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
       if (hFile) {
         ConsoleBufferPush("Warning: File already exists.  Overwriting.");
         hFile.reset();
@@ -1584,7 +1584,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
       NTSC_VideoInitChroma();
       ConsoleBufferPush(" Resetting NTSC palette.");
     } else if (iParam == PARAM_SAVE) {
-      FilePtr pFile(fopen(sPaletteFilePath.c_str(), "w+b"), fclose);
+      FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "w+b"), fclose);
       if (pFile) {
         size_t nWrote = 0;
         uint8_t* pSwizzled = new uint8_t[g_nChromaSize];
@@ -1616,7 +1616,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
         ConsoleBufferPush("Error couldn't open file for writing.");
       }
     } else if (iParam == PARAM_LOAD) {
-      FilePtr pFile(fopen(sPaletteFilePath.c_str(), "rb"), fclose);
+      FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "rb"), fclose);
       if (pFile) {
         strcpy(aStatusText, "Loaded");
 
@@ -1747,7 +1747,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   sLoadSaveFilePath += g_sMemoryLoadSaveFileName;
 
-  FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+  FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
     ConsoleBufferPush("Warning: File already exists.  Overwriting.");
     hFile.reset();

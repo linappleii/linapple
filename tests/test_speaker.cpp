@@ -48,7 +48,7 @@ struct MockHandler {
 static std::map<uint16_t, MockHandler> g_mock_handlers;
 static std::vector<int16_t> g_captured_samples;
 
-auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;
@@ -267,9 +267,9 @@ TEST_CASE("Speaker Peripheral: State Persistence Integrity") {
   void* instance2 = Speaker_Init_With_Mock(TEST_SLOT);
   CHECK(CheckIsActive(instance2) == false);
 
-  PeripheralStatus status =
+  PeripheralStatus_t status =
       Speaker_GetDescriptor()->load_state(instance2, buffer.data(), state_size);
-  CHECK(status == PERIPHERAL_OK);
+  CHECK(status == peripheral_ok);
 
   CHECK(CheckIsActive(instance2) == true);
 
@@ -305,12 +305,12 @@ TEST_CASE("Speaker Peripheral: Robustness and ABI") {
 
   size_t size = 0;
   CHECK(Speaker_GetDescriptor()->query(instance, speaker_query_is_active,
-                                       nullptr, &size) == PERIPHERAL_OK);
+                                       nullptr, &size) == peripheral_ok);
   CHECK(size == sizeof(bool));
 
   size = 0;
   CHECK(Speaker_GetDescriptor()->save_state(instance, nullptr, &size) ==
-        PERIPHERAL_OK);
+        peripheral_ok);
   CHECK(size == sizeof(SS_IO_Speaker));
 
   Speaker_GetDescriptor()->shutdown(instance);

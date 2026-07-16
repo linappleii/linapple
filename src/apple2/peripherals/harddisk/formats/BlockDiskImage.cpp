@@ -18,7 +18,7 @@
 // shared block image ABI signatures.
 
 struct BlockDiskImage_t {
-  FilePtr file{nullptr, fclose};
+  FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t total_blocks = 0;
   bool os_readonly = false;

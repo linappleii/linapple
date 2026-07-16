@@ -6,7 +6,7 @@
 #include "icon.xpm"
 
 auto asset_load_bmp(const char* filename) -> SDL_Surface* {
-  std::string fullPath = Path::FindDataFile(filename);
+  std::string fullPath = Path::find_data_file(filename);
   if (fullPath.empty()) {
     fprintf(stderr, "asset_load_bmp: Couldn't find %s in any search path!\n",
             filename);

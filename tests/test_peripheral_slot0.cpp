@@ -85,9 +85,9 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     Peripheral_Manager_Init();
 
     // Register first peripheral in Slot 0
-    CHECK(Peripheral_Register(&g_mock1, 0) == 0);
+    CHECK(peripheral_register(&g_mock1, 0) == 0);
     // Register second peripheral in Slot 0
-    CHECK(Peripheral_Register(&g_mock2, 0) == 0);
+    CHECK(peripheral_register(&g_mock2, 0) == 0);
 
     // Verify both receive Reset
     Peripheral_Manager_Reset();
@@ -105,8 +105,8 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     Peripheral_t local_mock2 = g_mock2;
     local_mock2.compatible_slots = 0x02; // Slot 1
 
-    CHECK(Peripheral_Register(&local_mock1, 1) == 0);
-    CHECK(Peripheral_Register(&local_mock2, 1) == -1); // Should fail
+    CHECK(peripheral_register(&local_mock1, 1) == 0);
+    CHECK(peripheral_register(&local_mock2, 1) == -1); // Should fail
 
     Peripheral_Manager_Shutdown();
 }
@@ -128,7 +128,7 @@ TEST_CASE("Peripheral ABI: Host_ResetSystem") {
     trigger_p.reset = Mock1_Reset;
     trigger_p.shutdown = nullptr;
 
-    CHECK(Peripheral_Register(&trigger_p, 0) == 0);
+    CHECK(peripheral_register(&trigger_p, 0) == 0);
 
     REQUIRE(captured_host != nullptr);
     REQUIRE(captured_host->ResetSystem != nullptr);

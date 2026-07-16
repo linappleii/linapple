@@ -334,11 +334,11 @@ auto CmdKey(int nArgs) -> Update_t {
 
   // Send key-down event
   KeyboardEvent_t ev = {code, 1U, 0, 0, 0, 0, {0, 0, 0}};
-  Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 
   // Send key-up event immediately to simulate a momentary press
   ev.is_down = 0U;
-  Peripheral_Command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 
   return UPDATE_CONSOLE_DISPLAY;
 }

@@ -11,10 +11,10 @@
 #include <vector>
 
 // RAII wrapper for FILE*
-using FilePtr = std::unique_ptr<FILE, int (*)(FILE*)>;
+using FilePtr_t = std::unique_ptr<FILE, int (*)(FILE*)>;
 
-constexpr char FILE_SEPARATOR = '/';
-constexpr char FTP_SEPARATOR = '/';
+constexpr char file_separator = '/';
+constexpr char ftp_separator = '/';
 
 namespace Path {
 
@@ -40,7 +40,7 @@ auto get_executable_dir() -> std::string;
 auto get_user_data_dir() -> std::string;
 
 // Returns the user's configuration directory (~/.config/linapple/)
-inline auto GetUserConfigDir() -> std::string {
+inline auto get_user_config_dir() -> std::string {
   const char* configHome = getenv("XDG_CONFIG_HOME");
   if (configHome) {
     return std::string(configHome) + "/linapple/";
@@ -53,7 +53,7 @@ inline auto GetUserConfigDir() -> std::string {
 }
 
 // Returns a list of directories to search for shared object plugins (.so files)
-inline auto GetPluginSearchPaths() -> std::vector<std::string> {
+inline auto get_plugin_search_paths() -> std::vector<std::string> {
   std::vector<std::string> paths;
 
   paths.push_back(get_user_data_dir() + "plugins/");
@@ -79,11 +79,11 @@ inline auto GetPluginSearchPaths() -> std::vector<std::string> {
 
 // Returns a list of directories to search for data assets (ROMs, disks,
 // config).
-inline auto GetDataSearchPaths() -> std::vector<std::string> {
+inline auto get_data_search_paths() -> std::vector<std::string> {
   std::vector<std::string> paths;
 
   paths.push_back(get_user_data_dir());
-  paths.push_back(GetUserConfigDir());
+  paths.push_back(get_user_config_dir());
   paths.push_back(get_executable_dir());
   paths.push_back(get_executable_dir() + "res/");
   paths.push_back(get_executable_dir() + "../res/");
@@ -101,7 +101,7 @@ inline auto GetDataSearchPaths() -> std::vector<std::string> {
   return paths;
 }
 
-inline auto Join(const std::string& dir, const std::string& filename)
+inline auto join(const std::string& dir, const std::string& filename)
     -> std::string {
   if (dir.empty()) {
     return filename;
@@ -115,9 +115,9 @@ inline auto Join(const std::string& dir, const std::string& filename)
   return dir + "/" + filename;
 }
 
-inline auto FindDataFile(const std::string& filename) -> std::string {
-  for (const auto& dir : GetDataSearchPaths()) {
-    std::string fullPath = Join(dir, filename);
+inline auto find_data_file(const std::string& filename) -> std::string {
+  for (const auto& dir : get_data_search_paths()) {
+    std::string fullPath = join(dir, filename);
     if (access(fullPath.c_str(), R_OK) == 0) {
       return fullPath;
     }
@@ -125,7 +125,7 @@ inline auto FindDataFile(const std::string& filename) -> std::string {
   return "";
 }
 
-inline auto CopyFile(const std::string& src, const std::string& dst) -> bool {
+inline auto copy_file(const std::string& src, const std::string& dst) -> bool {
   std::ifstream src_file(src, std::ios::binary);
   if (!src_file.is_open()) return false;
   std::ofstream dst_file(dst, std::ios::binary);

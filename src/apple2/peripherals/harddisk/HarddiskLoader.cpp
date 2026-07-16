@@ -52,7 +52,7 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     return harddisk_err_io;
   }
 
-  FilePtr file{fopen(path, "rb"), fclose};
+  FilePtr_t file{fopen(path, "rb"), fclose};
   if (file == nullptr) {
     return harddisk_err_not_found;
   }

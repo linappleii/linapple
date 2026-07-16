@@ -54,7 +54,7 @@ constexpr int chunk_size_offset_3 = 7;
 }  // namespace woz
 
 struct WozInstance_t {
-  FilePtr file{nullptr, fclose};
+  FilePtr_t file{nullptr, fclose};
   std::array<uint8_t, woz::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
@@ -298,14 +298,14 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
 }
 
 static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
-                         size_t payload_size) -> PeripheralStatus {
+                         size_t payload_size) -> PeripheralStatus_t {
   (void)cmd_id;
   (void)payload;
   (void)payload_size;
   if (instance == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
-  return PERIPHERAL_INCOMPATIBLE;
+  return peripheral_incompatible;
 }
 
 extern "C" const DiskFormatDriver_t g_woz2_driver = {

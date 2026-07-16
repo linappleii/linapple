@@ -9,7 +9,7 @@
 
 static uint32_t inactivity = 0;
 static uint32_t g_PrinterIdleLimit = 10;
-static FilePtr file(nullptr, fclose);
+static FilePtr_t file(nullptr, fclose);
 bool g_printer_append = true;
 
 static auto check_print() -> bool {

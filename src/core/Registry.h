@@ -59,37 +59,37 @@ constexpr const char* REGVALUE_FTP_HDD_DIR = "FTP ServerHDD";
 constexpr const char* REGVALUE_FTP_LOCAL_DIR = "FTP Local Dir";
 constexpr const char* REGVALUE_FTP_USERPASS = "FTP UserPass";
 
-class Configuration {
+class Configuration_t {
  public:
-  static auto Instance() -> Configuration&;
+  static auto instance() -> Configuration_t&;
 
-  auto Load(const std::string& path) -> bool;
-  auto LoadDefaults() -> void;
-  auto Save() -> bool;
-  auto SetPath(const std::string& path) -> void;
-  auto GetPath() const -> const std::string& { return m_path; }
+  auto load(const std::string& path) -> bool;
+  auto load_defaults() -> void;
+  auto save() -> bool;
+  auto set_path(const std::string& path) -> void;
+  auto get_path() const -> const std::string& { return m_path; }
 
-  auto GetString(const std::string& section, const std::string& key,
+  auto get_string(const std::string& section, const std::string& key,
                  const std::string& default_value = "") -> std::string;
-  auto GetInt(const std::string& section, const std::string& key,
+  auto get_int(const std::string& section, const std::string& key,
               uint32_t default_value = 0) -> uint32_t;
-  auto GetBool(const std::string& section, const std::string& key,
+  auto get_bool(const std::string& section, const std::string& key,
                bool default_value = false) -> bool;
 
-  auto SetString(const std::string& section, const std::string& key,
+  auto set_string(const std::string& section, const std::string& key,
                  const std::string& value) -> void;
-  auto SetInt(const std::string& section, const std::string& key,
+  auto set_int(const std::string& section, const std::string& key,
               uint32_t value) -> void;
-  auto SetBool(const std::string& section, const std::string& key, bool value)
+  auto set_bool(const std::string& section, const std::string& key, bool value)
       -> void;
 
  private:
-  Configuration() = default;
+  Configuration_t() = default;
   std::string m_path;
   std::map<std::string, std::map<std::string, std::string>> m_data;
 };
 
-using Configuration_t = Configuration;
+
 
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool;
@@ -102,30 +102,20 @@ auto config_save_int(const char* section, const char* key, uint32_t value)
 auto config_save_string(const char* section, const char* key, const char* value)
     -> void;
 
-auto ConfigLoadInt(const char* section, const char* key, uint32_t* value)
-    -> bool;
-auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool;
-auto ConfigLoadString(const char* section, const char* key, std::string* value)
-    -> bool;
-auto ConfigSaveInt(const char* section, const char* key, uint32_t value)
-    -> void;
-auto ConfigSaveString(const char* section, const char* key, const char* value)
-    -> void;
-
-inline auto LOAD(const char* key, uint32_t* value) -> bool {
-  return ConfigLoadInt("Configuration", key, value);
+inline auto load(const char* key, uint32_t* value) -> bool {
+  return config_load_int("Configuration", key, value);
 }
 
-inline auto LOAD(const char* key, bool* value) -> bool {
-  return ConfigLoadBool("Configuration", key, value);
+inline auto load(const char* key, bool* value) -> bool {
+  return config_load_bool("Configuration", key, value);
 }
 
-inline auto LOAD(const char* key, std::string* value) -> bool {
-  return ConfigLoadString("Configuration", key, value);
+inline auto load(const char* key, std::string* value) -> bool {
+  return config_load_string("Configuration", key, value);
 }
 
-inline void SAVE(const char* key, uint32_t value) {
-  ConfigSaveInt("Configuration", key, value);
+inline void save(const char* key, uint32_t value) {
+  config_save_int("Configuration", key, value);
 }
 
 #ifdef __cplusplus

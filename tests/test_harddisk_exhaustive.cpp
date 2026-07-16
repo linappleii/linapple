@@ -48,7 +48,7 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   REQUIRE(descriptor != nullptr);
 
   // Register Harddisk in Slot 7
-  int reg_result = Peripheral_Register(descriptor, 7);
+  int reg_result = peripheral_register(descriptor, 7);
   REQUIRE(reg_result == 0);
 
   // Create a mock 1MB HDV file (2048 blocks)
@@ -65,15 +65,15 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   insert.drive = harddisk_drive_0;
   strncpy(insert.path, mock_hdv.path, sizeof(insert.path) - 1);
   
-  PeripheralStatus pstatus = Peripheral_Command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  CHECK(pstatus == PERIPHERAL_OK);
+  PeripheralStatus_t pstatus = peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  CHECK(pstatus == peripheral_ok);
   Peripheral_Manager_Think(0);
 
   // 2. Verify Status
   HarddiskStatus_t status{};
   size_t status_size = sizeof(status);
-  pstatus = Peripheral_Query(7, harddisk_cmd_get_status, &status, &status_size);
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  CHECK(pstatus == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == 0);
   CHECK(strcmp(status.drive0_full_path, mock_hdv.path) == 0);
@@ -125,8 +125,8 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   HarddiskSetProtectCmd_t prot{};
   prot.drive = harddisk_drive_0;
   prot.write_protected = 1;
-  pstatus = Peripheral_Command(7, harddisk_cmd_set_protect, &prot, sizeof(prot));
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_command(7, harddisk_cmd_set_protect, &prot, sizeof(prot));
+  CHECK(pstatus == peripheral_ok);
   Peripheral_Manager_Think(0);
   
   // Try writing again - should fail (or at least status should be read-only)
@@ -138,8 +138,8 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   // 6. Eject and cleanup
   HarddiskEjectCmd_t eject{};
   eject.drive = harddisk_drive_0;
-  pstatus = Peripheral_Command(7, harddisk_cmd_eject, &eject, sizeof(eject));
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
+  CHECK(pstatus == peripheral_ok);
   Peripheral_Manager_Think(0);
   
   Linapple_Shutdown();
@@ -149,14 +149,14 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   Linapple_Init();
   Peripheral_Manager_Init();
   auto* descriptor = Harddisk_GetDescriptor();
-  Peripheral_Register(descriptor, 7);
+  peripheral_register(descriptor, 7);
 
   // 1. Invalid Drive Index in Command
   HarddiskEjectCmd_t eject{};
   eject.drive = 99;
   // Command returns OK because it's only queued.
-  PeripheralStatus pstatus = Peripheral_Command(7, harddisk_cmd_eject, &eject, sizeof(eject));
-  CHECK(pstatus == PERIPHERAL_OK);
+  PeripheralStatus_t pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
+  CHECK(pstatus == peripheral_ok);
 
   // Error would be reported in Status after Think
   Peripheral_Manager_Think(0);
@@ -178,7 +178,7 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
   strncpy(insert.path, dummy_file.path, sizeof(insert.path) - 1);
-  Peripheral_Command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
   Peripheral_Manager_Think(0);
   
   IOMap_Dispatch(0, 0xC0F4, 1, 0xF0, 0); // Lo
@@ -209,12 +209,12 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     Linapple_Init();
     Peripheral_Manager_Init();
     auto* descriptor = Harddisk_GetDescriptor();
-    Peripheral_Register(descriptor, 7);
+    peripheral_register(descriptor, 7);
     
     HarddiskInsertCmd_t insert{};
     insert.drive = harddisk_drive_0;
     strncpy(insert.path, macbin_file.path, sizeof(insert.path) - 1);
-    Peripheral_Command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+    peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
     Peripheral_Manager_Think(0);
     
     // Read block 0

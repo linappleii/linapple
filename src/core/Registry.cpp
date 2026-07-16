@@ -34,14 +34,14 @@ static auto unquote(const std::string& s) -> std::string {
   return s;
 }
 
-auto Configuration::Instance() -> Configuration& {
-  static Configuration instance;
+auto Configuration_t::instance() -> Configuration_t& {
+  static Configuration_t instance;
   return instance;
 }
 
-auto Configuration::SetPath(const std::string& path) -> void { m_path = path; }
+auto Configuration_t::set_path(const std::string& path) -> void { m_path = path; }
 
-auto Configuration::Load(const std::string& path) -> bool {
+auto Configuration_t::load(const std::string& path) -> bool {
   m_path = path;
   m_data.clear();
 
@@ -71,48 +71,48 @@ auto Configuration::Load(const std::string& path) -> bool {
   return true;
 }
 
-auto Configuration::LoadDefaults() -> void {
+auto Configuration_t::load_defaults() -> void {
   m_data.clear();
-  SetInt("Configuration", "Computer Emulation", 3);
-  SetInt("Configuration", "Keyboard Type", 0);
-  SetInt("Configuration", "Keyboard Rocker Switch", 0);
-  SetInt("Configuration", "Sound Emulation", 1);
-  SetInt("Configuration", "Soundcard Type", 2);
-  SetInt("Configuration", "Joystick 0", 2);
-  SetInt("Configuration", "Joystick 1", 0);
-  SetInt("Configuration", "Emulation Speed", 10);
-  SetInt("Configuration", "Enhance Disk Speed", 1);
-  SetInt("Configuration", "Video Emulation", 1);
-  SetString("Configuration", "Monochrome Color", "#C0C0C0");
-  SetInt("Configuration", "Mouse in slot 4", 0);
-  SetInt("Configuration", "Printer idle limit", 10);
-  SetInt("Configuration", "Append to printer file", 1);
-  SetInt("Configuration", "Harddisk Enable", 0);
-  SetInt("Configuration", "Clock Enable", 4);
-  SetInt("Configuration", "Save State On Exit", 0);
-  SetInt("Configuration", "Fullscreen", 0);
-  SetInt("Configuration", "Boot at Startup", 0);
-  SetInt("Configuration", "Show Leds", 1);
-  SetString("Configuration", "Screen factor", "1.0");
+  set_int("Configuration", "Computer Emulation", 3);
+  set_int("Configuration", "Keyboard Type", 0);
+  set_int("Configuration", "Keyboard Rocker Switch", 0);
+  set_int("Configuration", "Sound Emulation", 1);
+  set_int("Configuration", "Soundcard Type", 2);
+  set_int("Configuration", "Joystick 0", 2);
+  set_int("Configuration", "Joystick 1", 0);
+  set_int("Configuration", "Emulation Speed", 10);
+  set_int("Configuration", "Enhance Disk Speed", 1);
+  set_int("Configuration", "Video Emulation", 1);
+  set_string("Configuration", "Monochrome Color", "#C0C0C0");
+  set_int("Configuration", "Mouse in slot 4", 0);
+  set_int("Configuration", "Printer idle limit", 10);
+  set_int("Configuration", "Append to printer file", 1);
+  set_int("Configuration", "Harddisk Enable", 0);
+  set_int("Configuration", "Clock Enable", 4);
+  set_int("Configuration", "Save State On Exit", 0);
+  set_int("Configuration", "Fullscreen", 0);
+  set_int("Configuration", "Boot at Startup", 0);
+  set_int("Configuration", "Show Leds", 1);
+  set_string("Configuration", "Screen factor", "1.0");
 
-  SetString("Slots", "Slot 1", "Parallel Printer");
-  SetString("Slots", "Slot 2", "Super Serial Card");
-  SetString("Slots", "Slot 3", "None");
-  SetString("Slots", "Slot 4", "Mockingboard");
-  SetString("Slots", "Slot 5", "Mockingboard");
-  SetString("Slots", "Slot 6", "Disk II");
-  SetString("Slots", "Slot 7", "Harddisk");
+  set_string("Slots", "Slot 1", "Parallel Printer");
+  set_string("Slots", "Slot 2", "Super Serial Card");
+  set_string("Slots", "Slot 3", "None");
+  set_string("Slots", "Slot 4", "Mockingboard");
+  set_string("Slots", "Slot 5", "Mockingboard");
+  set_string("Slots", "Slot 6", "Disk II");
+  set_string("Slots", "Slot 7", "Harddisk");
 
-  SetString("Preferences", "FTP Server",
+  set_string("Preferences", "FTP Server",
             "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
-  SetString("Preferences", "FTP ServerHDD",
+  set_string("Preferences", "FTP ServerHDD",
             "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
-  SetString("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
+  set_string("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
 }
 
-auto Configuration::Save() -> bool {
+auto Configuration_t::save() -> bool {
   if (m_path.empty()) {
-    std::string config_dir = Path::GetUserConfigDir();
+    std::string config_dir = Path::get_user_config_dir();
     Path::EnsureDirExists(config_dir);
     m_path = config_dir + "linapple.conf";
   }
@@ -136,7 +136,7 @@ auto Configuration::Save() -> bool {
 #endif
 }
 
-auto Configuration::GetString(const std::string& section,
+auto Configuration_t::get_string(const std::string& section,
                               const std::string& key,
                               const std::string& default_value) -> std::string {
   if (m_data.count(section) && m_data[section].count(key)) {
@@ -149,9 +149,9 @@ auto Configuration::GetString(const std::string& section,
   return default_value;
 }
 
-auto Configuration::GetInt(const std::string& section, const std::string& key,
+auto Configuration_t::get_int(const std::string& section, const std::string& key,
                            uint32_t default_value) -> uint32_t {
-  std::string val = GetString(section, key);
+  std::string val = get_string(section, key);
   if (val.empty()) return default_value;
   try {
     return std::stoul(val, nullptr, 0);
@@ -160,9 +160,9 @@ auto Configuration::GetInt(const std::string& section, const std::string& key,
   }
 }
 
-auto Configuration::GetBool(const std::string& section, const std::string& key,
+auto Configuration_t::get_bool(const std::string& section, const std::string& key,
                             bool default_value) -> bool {
-  std::string val = GetString(section, key);
+  std::string val = get_string(section, key);
   if (val.empty()) return default_value;
   std::string low_val = val;
   std::transform(low_val.begin(), low_val.end(), low_val.begin(), ::tolower);
@@ -171,18 +171,18 @@ auto Configuration::GetBool(const std::string& section, const std::string& key,
   return default_value;
 }
 
-auto Configuration::SetString(const std::string& section,
+auto Configuration_t::set_string(const std::string& section,
                               const std::string& key,
                               const std::string& value) -> void {
   m_data[section][key] = value;
 }
 
-auto Configuration::SetInt(const std::string& section, const std::string& key,
+auto Configuration_t::set_int(const std::string& section, const std::string& key,
                            uint32_t value) -> void {
   m_data[section][key] = std::to_string(value);
 }
 
-auto Configuration::SetBool(const std::string& section, const std::string& key,
+auto Configuration_t::set_bool(const std::string& section, const std::string& key,
                             bool value) -> void {
   m_data[section][key] = value ? "1" : "0";
 }
@@ -190,22 +190,22 @@ auto Configuration::SetBool(const std::string& section, const std::string& key,
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration::Instance().GetString(section, key).empty()) return false;
-  *value = Configuration::Instance().GetInt(section, key, *value);
+  if (Configuration_t::instance().get_string(section, key).empty()) return false;
+  *value = Configuration_t::instance().get_int(section, key, *value);
   return true;
 }
 
 auto config_load_bool(const char* section, const char* key, bool* value) -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration::Instance().GetString(section, key).empty()) return false;
-  *value = Configuration::Instance().GetBool(section, key, *value);
+  if (Configuration_t::instance().get_string(section, key).empty()) return false;
+  *value = Configuration_t::instance().get_bool(section, key, *value);
   return true;
 }
 
 auto config_load_string(const char* section, const char* key,
                         std::string* value) -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  std::string s = Configuration::Instance().GetString(section, key);
+  std::string s = Configuration_t::instance().get_string(section, key);
   if (s.empty()) return false;
   *value = s;
   return true;
@@ -214,38 +214,14 @@ auto config_load_string(const char* section, const char* key,
 auto config_save_int(const char* section, const char* key, uint32_t value)
     -> void {
   if (section == nullptr || key == nullptr) return;
-  Configuration::Instance().SetInt(section, key, value);
+  Configuration_t::instance().set_int(section, key, value);
 }
 
 auto config_save_string(const char* section, const char* key,
                         const char* value) -> void {
   if (section == nullptr || key == nullptr || value == nullptr) return;
-  Configuration::Instance().SetString(section, key, value);
+  Configuration_t::instance().set_string(section, key, value);
 }
-
-auto ConfigLoadInt(const char* section, const char* key, uint32_t* value)
-    -> bool {
-  return config_load_int(section, key, value);
-}
-
-auto ConfigLoadBool(const char* section, const char* key, bool* value) -> bool {
-  return config_load_bool(section, key, value);
-}
-
-auto ConfigLoadString(const char* section, const char* key, std::string* value)
-    -> bool {
-  return config_load_string(section, key, value);
-}
-
-auto ConfigSaveInt(const char* section, const char* key, uint32_t value) -> void {
-  config_save_int(section, key, value);
-}
-
-auto ConfigSaveString(const char* section, const char* key, const char* value)
-    -> void {
-  config_save_string(section, key, value);
-}
-
 auto php_trim(char* c, int len) -> char* {
   if (c == nullptr || len <= 0) {
     return strdup("");

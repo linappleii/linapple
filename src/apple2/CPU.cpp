@@ -2022,7 +2022,7 @@ auto cpu_irq_reset() -> void {
   }
 }
 
-auto cpu_irq_assert(eIRQSRC device) -> void {
+auto cpu_irq_assert(IrqSrc_t device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2033,7 +2033,7 @@ auto cpu_irq_assert(eIRQSRC device) -> void {
   }
 }
 
-auto cpu_irq_deassert(eIRQSRC device) -> void {
+auto cpu_irq_deassert(IrqSrc_t device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2056,7 +2056,7 @@ auto cpu_nmi_reset() -> void {
   }
 }
 
-auto cpu_nmi_assert(eIRQSRC device) -> void {
+auto cpu_nmi_assert(IrqSrc_t device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2070,7 +2070,7 @@ auto cpu_nmi_assert(eIRQSRC device) -> void {
   }
 }
 
-auto cpu_nmi_deassert(eIRQSRC device) -> void {
+auto cpu_nmi_deassert(IrqSrc_t device) -> void {
   assert(g_bCritSectionValid);
   if (g_bCritSectionValid) {
     pthread_mutex_lock(&g_CriticalSection);
@@ -2148,11 +2148,11 @@ auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
 auto CpuInitialize() -> void { cpu_initialize(); }
 auto CpuSetupBenchmark() -> void { cpu_setup_benchmark(); }
 auto CpuIrqReset() -> void { cpu_irq_reset(); }
-auto CpuIrqAssert(eIRQSRC Device) -> void { cpu_irq_assert(Device); }
-auto CpuIrqDeassert(eIRQSRC Device) -> void { cpu_irq_deassert(Device); }
+auto CpuIrqAssert(IrqSrc_t Device) -> void { cpu_irq_assert(Device); }
+auto CpuIrqDeassert(IrqSrc_t Device) -> void { cpu_irq_deassert(Device); }
 auto CpuNmiReset() -> void { cpu_nmi_reset(); }
-auto CpuNmiAssert(eIRQSRC Device) -> void { cpu_nmi_assert(Device); }
-auto CpuNmiDeassert(eIRQSRC Device) -> void { cpu_nmi_deassert(Device); }
+auto CpuNmiAssert(IrqSrc_t Device) -> void { cpu_nmi_assert(Device); }
+auto CpuNmiDeassert(IrqSrc_t Device) -> void { cpu_nmi_deassert(Device); }
 auto CpuReset() -> void { cpu_reset(); }
 auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t {
   return cpu_get_snapshot(pSS);

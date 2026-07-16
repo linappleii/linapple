@@ -9,13 +9,13 @@ extern "C" Peripheral_t g_test_c_peripheral;
 
 TEST_CASE("Peripheral ABI: Registration and I/O") {
     // We need to initialize memory system for IOMap_Dispatch to work
-    // though for this specific test we might just want to test Peripheral_Register
+    // though for this specific test we might just want to test peripheral_register
     // and the proxies.
 
     Peripheral_Manager_Init();
 
     // Register the C peripheral in Slot 1
-    int result = Peripheral_Register(&g_test_c_peripheral, 1);
+    int result = peripheral_register(&g_test_c_peripheral, 1);
     CHECK(result == 0);
 
     // Verify I/O dispatch

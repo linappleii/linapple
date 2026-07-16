@@ -43,7 +43,7 @@ struct MockHandler {
 static std::map<uint16_t, MockHandler> g_mock_handlers;
 static std::map<int, std::vector<uint8_t>> g_mock_roms;
 
-auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;
@@ -243,12 +243,12 @@ TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
   size_t too_small = TINY_BUFFER_SIZE;
   std::array<uint8_t, TINY_BUFFER_SIZE> small_buf{};
   CHECK(Clock_GetDescriptor()->save_state(instance, small_buf.data(),
-                                          &too_small) == PERIPHERAL_ERROR);
+                                          &too_small) == peripheral_error);
 
   std::array<uint8_t, INVALID_STATE_SIZE> wrong_buf{};
   CHECK(Clock_GetDescriptor()->load_state(instance, wrong_buf.data(),
                                           INVALID_STATE_SIZE) ==
-        PERIPHERAL_ERROR);
+        peripheral_error);
 
   const int slot2 = TEST_SLOT_2;
   void* instance2 = Clock_Init_With_Mock(slot2);

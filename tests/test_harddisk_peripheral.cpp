@@ -18,7 +18,7 @@ TEST_CASE("Harddisk Peripheral: Lifecycle and Registration") {
   Peripheral_Manager_Init();
 
   // Register Harddisk in Slot 7
-  int result = Peripheral_Register(Harddisk_GetDescriptor(), 7);
+  int result = peripheral_register(Harddisk_GetDescriptor(), 7);
   CHECK(result == 0);
 
   // Verify I/O mapping for $C0F0
@@ -34,14 +34,14 @@ TEST_CASE("Harddisk Peripheral: Lifecycle and Registration") {
 TEST_CASE("Harddisk Peripheral: Commands and Queries") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  Peripheral_Register(Harddisk_GetDescriptor(), 7);
+  peripheral_register(Harddisk_GetDescriptor(), 7);
 
   // 1. Check initial status
   HarddiskStatus_t status;
   size_t size = sizeof(status);
-  PeripheralStatus pstatus =
-      Peripheral_Query(7, harddisk_cmd_get_status, &status, &size);
-  CHECK(pstatus == PERIPHERAL_OK);
+  PeripheralStatus_t pstatus =
+      peripheral_query(7, harddisk_cmd_get_status, &status, &size);
+  CHECK(pstatus == peripheral_ok);
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive1_loaded == 0);
 
@@ -51,28 +51,28 @@ TEST_CASE("Harddisk Peripheral: Commands and Queries") {
   insert.drive = 0;
   strncpy(insert.path, "non_existent_image.hdv", sizeof(insert.path) - 1);
 
-  pstatus = Peripheral_Command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  CHECK(pstatus == peripheral_ok);
 
   // Commands are processed during Think
   Peripheral_Manager_Think(0);
 
   // 3. Verify error in status
   size = sizeof(status);
-  pstatus = Peripheral_Query(7, harddisk_cmd_get_status, &status, &size);
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_query(7, harddisk_cmd_get_status, &status, &size);
+  CHECK(pstatus == peripheral_ok);
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive0_last_error != 0);  // harddisk_err_not_found
 
   // 4. Test EJECT command
   HarddiskEjectCmd_t eject;
   eject.drive = 0;
-  pstatus = Peripheral_Command(7, harddisk_cmd_eject, &eject, sizeof(eject));
-  CHECK(pstatus == PERIPHERAL_OK);
+  pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
+  CHECK(pstatus == peripheral_ok);
   Peripheral_Manager_Think(0);
 
   size = sizeof(status);
-  pstatus = Peripheral_Query(7, harddisk_cmd_get_status, &status, &size);
+  pstatus = peripheral_query(7, harddisk_cmd_get_status, &status, &size);
   CHECK(status.drive0_last_error == 0);  // Reset after eject/cleanup
 
   Linapple_Shutdown();
@@ -81,7 +81,7 @@ TEST_CASE("Harddisk Peripheral: Commands and Queries") {
 TEST_CASE("Harddisk Peripheral: Direct I/O Logic") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  Peripheral_Register(Harddisk_GetDescriptor(), 7);
+  peripheral_register(Harddisk_GetDescriptor(), 7);
 
   // Write Unit Number to $C0F3
   IOMap_Dispatch(0, 0xC0F3, 1, 0x80, 0);  // Drive 2

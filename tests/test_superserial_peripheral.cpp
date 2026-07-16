@@ -27,7 +27,7 @@ extern "C" auto VideoGetScannerAddress(uint32_t*, uint32_t) -> uint16_t {
 auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
 
 // Stub for auto-registration
-extern "C" void Peripheral_Register_Builtin(Peripheral_t* p) { (void)p; }
+extern "C" void peripheral_register_Builtin(Peripheral_t* p) { (void)p; }
 
 namespace {
 
@@ -59,7 +59,7 @@ static std::map<uint16_t, MockHandler> g_mock_handlers;
 static std::vector<uint8_t> g_sent_bytes;
 static bool g_irq_asserted = false;
 
-auto Mock_Log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;
@@ -217,7 +217,7 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
                                   .interrupts = false};
   CHECK(SuperSerial_GetDescriptor()->command(instance,
                                              SUPER_SERIAL_CMD_SET_CONFIG, &cfg,
-                                             sizeof(cfg)) == PERIPHERAL_OK);
+                                             sizeof(cfg)) == peripheral_ok);
 
   SuperSerialDipSwConfig_t queried = {
       .baud_rate = SUPER_SERIAL_BAUD_110,
@@ -229,7 +229,7 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
       .interrupts = false};
   size_t size = sizeof(queried);
   CHECK(SuperSerial_GetDescriptor()->query(instance, SUPER_SERIAL_QUERY_CONFIG,
-                                           &queried, &size) == PERIPHERAL_OK);
+                                           &queried, &size) == peripheral_ok);
   CHECK(queried.baud_rate == SUPER_SERIAL_BAUD_9600);
 
   SuperSerial_GetDescriptor()->shutdown(instance);

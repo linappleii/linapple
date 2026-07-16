@@ -274,9 +274,9 @@ static auto Clock_ABI_Shutdown(void* instance) -> void {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 // Justification: ABI-required function signature.
 static auto Clock_ABI_SaveState(void* instance, void* state_buffer,
-                                size_t* buffer_size) -> PeripheralStatus {
+                                size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
@@ -284,35 +284,35 @@ static auto Clock_ABI_SaveState(void* instance, void* state_buffer,
 
   if (state_buffer == nullptr) {
     *buffer_size = state_size;
-    return PERIPHERAL_OK;
+    return peripheral_ok;
   }
 
   if (*buffer_size < state_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   std::copy(clock_peripheral->latches.begin(), clock_peripheral->latches.end(),
             static_cast<uint8_t*>(state_buffer));
   *buffer_size = state_size;
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static auto Clock_ABI_LoadState(void* instance, const void* state_buffer,
-                                size_t buffer_size) -> PeripheralStatus {
+                                size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
   const size_t state_size = clock_peripheral->latches.size();
 
   if (buffer_size != state_size) {
-    return PERIPHERAL_ERROR;
+    return peripheral_error;
   }
 
   const auto* src = static_cast<const uint8_t*>(state_buffer);
   std::copy_n(src, state_size, clock_peripheral->latches.begin());
-  return PERIPHERAL_OK;
+  return peripheral_ok;
 }
 
 static Peripheral_t g_clock_peripheral = {

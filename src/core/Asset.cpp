@@ -73,7 +73,7 @@ static auto asset_find_master_disk(char* path_out, size_t max_len) -> int {
     return 255;
   }
 
-  std::string full_path = Path::FindDataFile(asset_master_dsk);
+  std::string full_path = Path::find_data_file(asset_master_dsk);
   if (full_path.empty()) {
     Logger::Warning("Could not find %s in any search path\n", asset_master_dsk);
     return 255;
@@ -92,7 +92,7 @@ auto asset_insert_master_disk() -> int {
     return 255;
   }
 
-  Configuration::Instance().SetString("Slots", REGVALUE_DISK_IMAGE1, path);
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, path);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
@@ -100,7 +100,7 @@ auto asset_insert_master_disk() -> int {
   cmd.write_protected = 0;
   cmd.create_if_necessary = 0;
 
-  Peripheral_Command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   return 0;
 }
