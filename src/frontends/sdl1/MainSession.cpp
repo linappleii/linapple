@@ -28,9 +28,9 @@ void set_budget_video(bool b) { g_bBudgetVideo = b; }
 auto get_budget_video() -> bool { return g_bBudgetVideo; }
 
 void SetCurrentCLK6502() {
-  constexpr double APPLE2_CLOCK_MHZ = 1.023;
-  constexpr double MHZ_TO_HZ = 1000000.0;
-  g_fCurrentCLK6502 = APPLE2_CLOCK_MHZ * MHZ_TO_HZ;
+  constexpr double apple2_clock_mhz = 1.023;
+  constexpr double mhz_to_hz = 1000000.0;
+  g_fCurrentCLK6502 = apple2_clock_mhz * mhz_to_hz;
 }
 
 
@@ -40,7 +40,7 @@ void SingleStep(bool bReinit) {
 }
 
 auto sys_init() -> int {
-  if (InitSDL() != 0) {
+  if (init_sdl() != 0) {
     return 1;
   }
 
@@ -56,7 +56,7 @@ auto sys_init() -> int {
 }
 
 void SysShutdown() {
-  DSShutdown();
+  ds_shutdown();
 
   SDL_Quit();
   if (g_curl != nullptr) {
@@ -76,7 +76,7 @@ auto session_init(AppConfig* config) -> int {
 
   Linapple_SetTitleCallback(Frontend_SetWindowTitle);
 
-  if (FrameCreateWindow() != 0) {
+  if (frame_create_window() != 0) {
     return 1;
   }
 

@@ -44,10 +44,10 @@ auto main(int argc, char* argv[]) -> int {
   AppController_LoadInitialMedia(&config);
 
   constexpr int HEADLESS_FRAMES = 60;
-  constexpr int APPLE2_FRAME_CYCLES = 17030;
+  constexpr int apple2_frame_cycles = 17030;
 
   for (int i = 0; i < HEADLESS_FRAMES; ++i) {
-    Linapple_RunFrame(APPLE2_FRAME_CYCLES);
+    Linapple_RunFrame(apple2_frame_cycles);
   }
 
   AppController_Shutdown();

@@ -39,8 +39,8 @@ void PrinterFrontend_Update(uint32_t totalcycles) {
     return;
   }
   inactivity += totalcycles;
-  constexpr uint32_t IDLE_FACTOR = 1000 * 1000;
-  if (inactivity > (printer_get_idle_limit() * IDLE_FACTOR)) {
+  constexpr uint32_t idle_factor = 1000 * 1000;
+  if (inactivity > (printer_get_idle_limit() * idle_factor)) {
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
@@ -50,8 +50,8 @@ void PrinterFrontend_SendChar(uint8_t value) {
   if (!check_print()) {
     return;
   }
-  constexpr uint8_t ASCII_MASK = 0x7F;
-  char c = static_cast<char>(value & ASCII_MASK);
+  constexpr uint8_t ascii_mask = 0x7F;
+  char c = static_cast<char>(value & ascii_mask);
   fwrite(&c, 1, 1, file.get());
 }
 

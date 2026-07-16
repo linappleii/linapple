@@ -21,7 +21,7 @@ WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
   (void)mod;
   (void)bDown;
 }
-WEAK auto Frontend_ToCoreKey(int key, uint32_t mod) -> LinAppleKey_t {  // NOLINT
+WEAK auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {  // NOLINT
   (void)key;
   (void)mod;
   return LINAPPLE_KEY_UNKNOWN;

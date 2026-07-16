@@ -59,8 +59,8 @@ auto main(int argc, char* argv[]) -> int {
 
   AppController_LoadInitialMedia(&config);
 
-  constexpr int APPLE2_FRAME_CYCLES = 17030;
-  constexpr int TARGET_FRAME_MS = 16;
+  constexpr int apple2_frame_cycles = 17030;
+  constexpr int target_frame_ms = 16;
   constexpr int MS_TO_US = 1000;
 
   // Run until interrupted
@@ -72,8 +72,8 @@ auto main(int argc, char* argv[]) -> int {
 
     TuiInput_Poll();
 
-    Linapple_RunFrame(APPLE2_FRAME_CYCLES);
-    usleep(TARGET_FRAME_MS * MS_TO_US);
+    Linapple_RunFrame(apple2_frame_cycles);
+    usleep(target_frame_ms * MS_TO_US);
   }
 
   AppController_Shutdown();

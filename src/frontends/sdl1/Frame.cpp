@@ -59,8 +59,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 SDL_Surface* apple_icon;
 SDL_Surface* g_screen = nullptr;
 SDL_Surface* g_texture = nullptr;
-SDL_Rect origRect;
-SDL_Rect newRect;
+SDL_Rect orig_rect;
+SDL_Rect new_rect;
 
 enum { BUTTONY = 0, BUTTONCX = 45, BUTTONCY = 45 };
 
@@ -72,15 +72,15 @@ static int g_drive1_last_reported_error = disk_err_none;
 
 int buttondown = -1;
 
-bool g_WindowResized;
+bool g_window_resized;
 
 bool usingcursor = false;
 
-void DrawStatusArea(int drawflags);
+void draw_status_area(int drawflags);
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
 // semantically distinct
-void ProcessButtonClick(int button, int mod);
+void process_button_click(int button, int mod);
 
 void ResetMachineState();
 
@@ -88,17 +88,17 @@ void SetFullScreenMode();
 
 void SetNormalMode();
 
-void SetUsingCursor(bool);
+void set_using_cursor(bool);
 
 void SetIcon();
 
-bool g_bScrollLock_FullSpeed = false;
+bool g_scroll_lock_full_speed = false;
 
 void DrawAppleContent() {
   g_video_draw_mutex.lock();
   VideoRealizePalette();
 
-  DrawStatusArea(DRAW_BACKGROUND | DRAW_LEDS);
+  draw_status_area(DRAW_BACKGROUND | DRAW_LEDS);
 
   if (g_state.mode == MODE_LOGO) {
     VideoDisplayLogo();
@@ -119,7 +119,7 @@ void frame_refresh() {
   }
 }
 
-static inline auto ToVideoRect(const SDL_Rect& r) -> VideoRect {
+static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect {
   return {static_cast<int>(r.x), static_cast<int>(r.y), static_cast<int>(r.w),
           static_cast<int>(r.h)};
 }
@@ -142,12 +142,12 @@ void DrawFrameWindow() {
       vs_output.pitch = 560 * 4;
       vs_output.bpp = 4;
 
-      if (g_WindowResized == false) {
-        VideoRect vr = ToVideoRect(r);
+      if (g_window_resized == false) {
+        VideoRect vr = to_video_rect(r);
         VideoSoftStretch(&vs_output, &vr, &vs_texture, &vr);
       } else {
-        VideoRect vor = ToVideoRect(origRect);
-        VideoRect vnr = ToVideoRect(newRect);
+        VideoRect vor = to_video_rect(orig_rect);
+        VideoRect vnr = to_video_rect(new_rect);
         VideoSoftStretch(&vs_output, &vor, &vs_texture, &vnr);
       }
     } else {
@@ -156,12 +156,12 @@ void DrawFrameWindow() {
       extern VideoSurface* g_debug_screen;
       if (g_debug_screen != nullptr) {
         VideoSurface vs_texture = sdl_surface_to_video_surface(g_texture);
-        if (g_WindowResized == false) {
-          VideoRect vr = ToVideoRect(r);
+        if (g_window_resized == false) {
+          VideoRect vr = to_video_rect(r);
           VideoSoftStretch(g_debug_screen, &vr, &vs_texture, &vr);
         } else {
-          VideoRect vor = ToVideoRect(origRect);
-          VideoRect vnr = ToVideoRect(newRect);
+          VideoRect vor = to_video_rect(orig_rect);
+          VideoRect vnr = to_video_rect(new_rect);
           VideoSoftStretch(g_debug_screen, &vor, &vs_texture, &vnr);
         }
       }
@@ -173,7 +173,7 @@ void DrawFrameWindow() {
   g_video_draw_mutex.unlock();
 }
 
-void DrawStatusArea(int drawflags) {
+void draw_status_area(int drawflags) {
   if (font_sfc == nullptr) {
     if (fonts_initialization() == false) {
       fprintf(stderr, "Font file was not loaded.\n");
@@ -200,7 +200,7 @@ void DrawStatusArea(int drawflags) {
     }
 
     std::array<char, 2> leds = {{"\x64"}};
-    constexpr int LED_CHAR_BASE = 1;
+    constexpr int led_char_base = 1;
     int iDrive1Status = disk_status_off;
     int iDrive2Status = disk_status_off;
     int iHDDStatus = disk_status_off;
@@ -228,13 +228,13 @@ void DrawStatusArea(int drawflags) {
       iHDDStatus = hstatus.activity_status;
     }
 
-    leds.at(0) = static_cast<char>(LED_CHAR_BASE + iDrive1Status);
+    leds.at(0) = static_cast<char>(led_char_base + iDrive1Status);
     font_print(8, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
 
-    leds.at(0) = static_cast<char>(LED_CHAR_BASE + iDrive2Status);
+    leds.at(0) = static_cast<char>(led_char_base + iDrive2Status);
     font_print(40, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
 
-    leds.at(0) = static_cast<char>(LED_CHAR_BASE + iHDDStatus);
+    leds.at(0) = static_cast<char>(led_char_base + iHDDStatus);
     font_print(71, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
 
     if ((iDrive1Status | iDrive2Status | iHDDStatus) != 0) {
@@ -245,8 +245,8 @@ void DrawStatusArea(int drawflags) {
 
 void FrameShowHelpScreen(int sx, int sy) {
   (void)sy;
-  constexpr int MAX_LINES = 25;
-  static const std::array<const char*, MAX_LINES> HelpStrings = {
+  constexpr int max_lines = 25;
+  static const std::array<const char*, max_lines> HelpStrings = {
       {"Welcome to LinApple - Apple][ emulator for Linux!",
        "Conf file is linapple.conf in current directory by default",
        "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
@@ -281,7 +281,7 @@ void FrameShowHelpScreen(int sx, int sy) {
       return;
     }
   }
-  if (g_WindowResized == false) {
+  if (g_window_resized == false) {
     if (g_state.mode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;
     } else {
@@ -346,7 +346,7 @@ void FrameShowHelpScreen(int sx, int sy) {
                       1.2f * facx_f, 1.0f * facy_f);
 
   int Help_TopX = static_cast<int>(45.0 * facy);
-  for (int i = 3; i < MAX_LINES; i++) {
+  for (int i = 3; i < max_lines; i++) {
     if (HelpStrings.at(i) != nullptr) {
       font_print(4,
                  static_cast<int>(static_cast<double>(Help_TopX) +
@@ -404,7 +404,7 @@ void FrameShowHelpScreen(int sx, int sy) {
 }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
 // semantically distinct
-void FrameQuickState(int num, int mod) {
+void frame_quick_state(int num, int mod) {
   // quick load or save state with number num, if Shift is pressed, state is
   // being saved, otherwise - being loaded
   std::array<char, path_max_len> fpath;
@@ -419,7 +419,7 @@ void FrameQuickState(int num, int mod) {
   }
 }
 
-auto IsModifierKey(SDLKey sym) -> bool {
+auto is_modifier_key(SDLKey sym) -> bool {
   switch (sym) {
     case SDLK_LSHIFT:
     case SDLK_RSHIFT:
@@ -460,14 +460,14 @@ void Frame_OnResize(int width, int height) {
     SDL_Quit();
     return;
   }
-  g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) |
+  g_window_resized = (g_state.ScreenWidth != SCREEN_WIDTH) |
                     (g_state.ScreenHeight != SCREEN_HEIGHT);
-  if (g_WindowResized) {
-    origRect.x = origRect.y = newRect.x = newRect.y = 0;
-    origRect.w = static_cast<int16_t>(SCREEN_WIDTH);
-    origRect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    newRect.w = static_cast<int16_t>(g_state.ScreenWidth);
-    newRect.h = static_cast<int16_t>(g_state.ScreenHeight);
+  if (g_window_resized) {
+    orig_rect.x = orig_rect.y = new_rect.x = new_rect.y = 0;
+    orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+    orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+    new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
+    new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
     if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
       VideoRedrawScreen();
     }
@@ -571,17 +571,17 @@ void FrameSaveBMP() {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
 // semantically distinct
-void ProcessButtonClick(int button, int mod) {
+void process_button_click(int button, int mod) {
   SDL_Event qe;
 
   audio_mixer_set_fade(fade_out);
 
   switch (button) {
-    case BTN_HELP:
+    case btn_help:
       FrameShowHelpScreen(g_screen->w, g_screen->h);
       break;
 
-    case BTN_RUN:
+    case btn_run:
       if ((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) ||
           (mod & (KMOD_RCTRL)) == (KMOD_RCTRL)) {
         if (g_state.mode == MODE_LOGO) {
@@ -593,7 +593,7 @@ void ProcessButtonClick(int button, int mod) {
           debug_end();
         }
         g_state.mode = MODE_RUNNING;
-        DrawStatusArea(DRAW_TITLE);
+        draw_status_area(DRAW_TITLE);
         VideoRedrawScreen();
         g_state.bResetTiming = true;
       } else if ((mod & KMOD_SHIFT) != 0) {
@@ -603,18 +603,18 @@ void ProcessButtonClick(int button, int mod) {
       }
       break;
 
-    case BTN_DRIVE1:
-    case BTN_DRIVE2:
+    case btn_drive1:
+    case btn_drive2:
       peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
       if ((mod & KMOD_CTRL) != 0) {
         if ((mod & KMOD_SHIFT) != 0) {
-          printf("HDD  Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
-          HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - BTN_DRIVE1)};
+          printf("HDD  Eject Drive #%d\n", (button - btn_drive1) + 1);
+          HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - btn_drive1)};
           peripheral_command(7, harddisk_cmd_eject, &ecmd, sizeof(ecmd));
         } else {
-          printf("Disk Eject Drive #%d\n", (button - BTN_DRIVE1) + 1);
+          printf("Disk Eject Drive #%d\n", (button - btn_drive1) + 1);
           DiskEjectCmd_t ecmd{};
-          ecmd.drive = static_cast<uint8_t>(button - BTN_DRIVE1);
+          ecmd.drive = static_cast<uint8_t>(button - btn_drive1);
           peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
                              sizeof(ecmd));
         }
@@ -623,26 +623,26 @@ void ProcessButtonClick(int button, int mod) {
 
       if ((mod & KMOD_SHIFT) != 0) {
         if ((mod & KMOD_ALT) != 0) {
-          HarddiskUI_FTPSelect(button - BTN_DRIVE1);
+          HarddiskUI_FTPSelect(button - btn_drive1);
         } else {
-          HarddiskUI_Select(button - BTN_DRIVE1);
+          HarddiskUI_Select(button - btn_drive1);
         }
       } else {
         extern void DiskSelect(int drive);
         extern void Disk_FTP_SelectImage(int drive);
         if ((mod & KMOD_ALT) != 0) {
-          Disk_FTP_SelectImage(button - BTN_DRIVE1);
+          Disk_FTP_SelectImage(button - btn_drive1);
         } else {
-          DiskSelect(button - BTN_DRIVE1);
+          DiskSelect(button - btn_drive1);
         }
       }
       break;
 
-    case BTN_DRIVESWAP:
+    case btn_driveswap:
       peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
       break;
 
-    case BTN_FULLSCR:
+    case btn_fullscr:
       if ((mod & KMOD_SHIFT) != 0) {
         // only IIe and enhanced have a keyboard rocker switch (and only non-US
         // keyboards)
@@ -671,12 +671,12 @@ void ProcessButtonClick(int button, int mod) {
       }
       break;
 
-    case BTN_DEBUG:
+    case btn_debug:
 #if ENABLE_DEBUGGER
       if (!g_state.bDisableDebugger) {
         if (g_state.mode != MODE_DEBUG) {
           debug_begin();
-          SetUsingCursor(false);
+          set_using_cursor(false);
         } else if (g_state.mode == MODE_DEBUG) {
           g_state.mode = MODE_RUNNING;
         }
@@ -684,7 +684,7 @@ void ProcessButtonClick(int button, int mod) {
 #endif
       break;
 
-    case BTN_SETUP:
+    case btn_setup:
       if ((mod & KMOD_SHIFT) != 0) {
         Configuration_t::instance().set_int("Configuration", "Video Emulation",
                                          static_cast<int>(g_videotype));
@@ -699,7 +699,7 @@ void ProcessButtonClick(int button, int mod) {
       }
       break;
 
-    case BTN_CYCLE:
+    case btn_cycle:
       if ((mod & KMOD_SHIFT) != 0) {
         set_budget_video(!get_budget_video());
       } else {
@@ -720,18 +720,18 @@ void ProcessButtonClick(int button, int mod) {
         }
       }
       break;
-    case BTN_QUIT:
+    case btn_quit:
       qe.type = SDL_QUIT;
       SDL_PushEvent(&qe);
       break;
-    case BTN_SAVEST:
+    case btn_savest:
       if ((mod & KMOD_ALT) != 0) {
         save_state_save();
       } else if (PSP_SaveStateSelectImage(true)) {
         save_state_save();
       }
       break;
-    case BTN_LOADST:
+    case btn_loadst:
       if ((mod & KMOD_CTRL) != 0) {
         if (IS_APPLE2() == false) {
           MemResetPaging();
@@ -791,7 +791,7 @@ void SetNormalMode() {
   }
 }
 
-void SetUsingCursor(bool newvalue) {
+void set_using_cursor(bool newvalue) {
   usingcursor = newvalue;
   if (usingcursor) {
     SDL_ShowCursor(SDL_DISABLE);
@@ -807,7 +807,7 @@ void SetUsingCursor(bool newvalue) {
 extern void SDL_Asset_LoadIcon();
 extern void SDL_Asset_FreeIcon();
 
-auto FrameCreateWindow() -> int {
+auto frame_create_window() -> int {
   SDL_Asset_LoadIcon();
   bIamFullScreened = false;
 
@@ -828,15 +828,15 @@ auto FrameCreateWindow() -> int {
   SDL_WM_SetCaption(g_pAppTitle, g_pAppTitle);
   SetIcon();
 
-  g_WindowResized = (g_state.ScreenWidth != SCREEN_WIDTH) |
+  g_window_resized = (g_state.ScreenWidth != SCREEN_WIDTH) |
                     (g_state.ScreenHeight != SCREEN_HEIGHT);
   printf("Screen size is %ux%u\n", g_state.ScreenWidth, g_state.ScreenHeight);
-  if (g_WindowResized) {
-    origRect.x = origRect.y = newRect.x = newRect.y = 0;
-    origRect.w = static_cast<int16_t>(SCREEN_WIDTH);
-    origRect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    newRect.w = static_cast<int16_t>(g_state.ScreenWidth);
-    newRect.h = static_cast<int16_t>(g_state.ScreenHeight);
+  if (g_window_resized) {
+    orig_rect.x = orig_rect.y = new_rect.x = new_rect.y = 0;
+    orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+    orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+    new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
+    new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
   }
   return 0;
 }
@@ -855,7 +855,7 @@ void SetIcon() {
   SDL_WM_SetIcon(icon, nullptr);
 }
 
-auto InitSDL() -> int {
+auto init_sdl() -> int {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK) < 0) {
     fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
     return 1;
@@ -898,5 +898,5 @@ void frame_refresh_status(int drawflags) {
       Linapple_UpdateTitle(s_title.data());
     }
   }
-  DrawStatusArea(drawflags);
+  draw_status_area(drawflags);
 }

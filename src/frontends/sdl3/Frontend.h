@@ -16,14 +16,14 @@ void ContinueExecution(uint32_t dwCycles);
 void CpuTestHeadless(const char* szTestFile);
 
 // Entry point helpers (implemented in Frontend)
-void EnterMessageLoop();
-void Sys_Input();
+void enter_message_loop();
+void sys_input();
 void Sys_Think();
 void Sys_Draw();
 
 // Public Frontend helpers (Keyboard translation, etc)
 auto ds_init() -> bool;
-void DSShutdown();
+void ds_shutdown();
 void SingleStep(bool bReinit);
 void Linapple_KeyboardThink(uint32_t dwCycles);
 void Frontend_UpdateKeyboardMapping();

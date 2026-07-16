@@ -277,8 +277,8 @@ void draw_status_area(int drawflags) {
 
 void FrameShowHelpScreen(int sx, int sy) {
   (void)sy;
-  const int MAX_LINES = 25;
-  const char* HelpStrings[MAX_LINES] = {
+  const int max_lines = 25;
+  const char* HelpStrings[max_lines] = {
       "Welcome to LinApple - Apple][ emulator for Linux!",
       "Conf file is linapple.conf in current directory by default",
       "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
@@ -379,7 +379,7 @@ void FrameShowHelpScreen(int sx, int sy) {
                       1.2f * facx_f, 1.0f * facy_f);
 
   int Help_TopX = static_cast<int>(45.0 * facy);
-  for (int i = 3; i < MAX_LINES; i++) {
+  for (int i = 3; i < max_lines; i++) {
     if (HelpStrings[i]) {
       font_print(4,
                  static_cast<int>(static_cast<double>(Help_TopX) +

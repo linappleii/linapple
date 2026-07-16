@@ -7,7 +7,7 @@
 
 #include "frontends/common/FileBrowser.h"
 
-struct DiskChooseState {
+struct DiskChooseState_t {
   int slot;
   std::string current_dir;
   FileList_t* list_handle;  // Opaque handle from C API

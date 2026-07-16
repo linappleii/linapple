@@ -24,12 +24,12 @@ enum {
 
 enum { MODE_NONE = 0, MODE_STANDARD = 1, MODE_CENTERING = 2, MODE_SMOOTH = 3 };
 
-using joyinforec = struct joyinforec {
+using JoyInfoRec_t = struct JoyInfoRec_t {
   int device;
   int mode;
 };
 
-static const std::array<joyinforec, 5> joyinfo = {
+static const std::array<JoyInfoRec_t, 5> joyinfo = {
     {{DEVICE_NONE, MODE_NONE},
      {DEVICE_JOYSTICK, MODE_STANDARD},
      {DEVICE_KEYBOARD, MODE_STANDARD},
@@ -37,7 +37,7 @@ static const std::array<joyinforec, 5> joyinfo = {
      {DEVICE_MOUSE, MODE_STANDARD}}};
 
 // Key pad [1..9]; Key pad 0,Key pad '.'; Left ALT,Right ALT
-enum JOYKEY {
+enum JoyKey_t {
   JK_DOWNLEFT = 0,
   JK_DOWN,
   JK_DOWNRIGHT,
@@ -86,8 +86,8 @@ static int g_frontend_pdl_trim_y = 0;
 static JoystickConfig_t g_joyConfig;
 
 void JoyFrontend_Initialize() {
-  constexpr int16_t AXIS_MIN = -32768; /* minimum value for axis coordinate */
-  constexpr int16_t AXIS_MAX = 32767;  /* maximum value for axis coordinate */
+  constexpr int16_t axis_min = -32768; /* minimum value for axis coordinate */
+  constexpr int16_t axis_max = 32767;  /* maximum value for axis coordinate */
 
   if (joy1 != nullptr) {
     SDL_JoystickClose(joy1);
@@ -130,10 +130,10 @@ void JoyFrontend_Initialize() {
       joy1 = SDL_JoystickOpen(static_cast<int>(g_joyConfig.joy_index[0]));
       joyshrx.at(0) = 0;
       joyshry.at(0) = 0;
-      joysubx.at(0) = AXIS_MIN;
-      joysuby.at(0) = AXIS_MIN;
-      auto xrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
-      auto yrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
+      joysubx.at(0) = axis_min;
+      joysuby.at(0) = axis_min;
+      auto xrange = static_cast<uint32_t>(axis_max - axis_min);
+      auto yrange = static_cast<uint32_t>(axis_max - axis_min);
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx.at(0);
@@ -154,10 +154,10 @@ void JoyFrontend_Initialize() {
       joy2 = SDL_JoystickOpen(static_cast<int>(g_joyConfig.joy_index[1]));
       joyshrx.at(1) = 0;
       joyshry.at(1) = 0;
-      joysubx.at(1) = AXIS_MIN;
-      joysuby.at(1) = AXIS_MIN;
-      auto xrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
-      auto yrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
+      joysubx.at(1) = axis_min;
+      joysuby.at(1) = axis_min;
+      auto xrange = static_cast<uint32_t>(axis_max - axis_min);
+      auto yrange = static_cast<uint32_t>(axis_max - axis_min);
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx.at(1);

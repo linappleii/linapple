@@ -52,8 +52,8 @@ auto ds_init() -> bool {
   desired.freq = SPKR_SAMPLE_RATE;
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
-  constexpr int AUDIO_SAMPLES = 1024;
-  desired.samples = AUDIO_SAMPLES;
+  constexpr int audio_samples = 1024;
+  desired.samples = audio_samples;
   desired.callback = sdl2AudioCallback;
   desired.userdata = nullptr;
 
@@ -85,7 +85,7 @@ auto ds_init() -> bool {
   return true;
 }
 
-auto DSShutdown() -> void {
+auto ds_shutdown() -> void {
   if (g_audio_dumper.file != nullptr) {
     audio_dumper_finalize(&g_audio_dumper);
   }
@@ -98,22 +98,22 @@ auto DSShutdown() -> void {
 
 extern void sdl_handle_event(SDL_Event* e);
 
-auto Sys_Input() -> void {
+auto sys_input() -> void {
   SDL_Event event;
   while (SDL_PollEvent(&event) != 0) {
     sdl_handle_event(&event);
   }
 }
 
-auto EnterMessageLoop() -> void {
-  constexpr int APPLE2_FRAME_CYCLES = 17030;
-  constexpr int TARGET_FRAME_MS = 16;
+auto enter_message_loop() -> void {
+  constexpr int apple2_frame_cycles = 17030;
+  constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
-    Sys_Input();
+    sys_input();
 
-    Linapple_RunFrame(APPLE2_FRAME_CYCLES);
+    Linapple_RunFrame(apple2_frame_cycles);
     DrawFrameWindow();
-    SDL_Delay(TARGET_FRAME_MS);
+    SDL_Delay(target_frame_ms);
   }
 }
 
@@ -153,7 +153,7 @@ auto main(int argc, char* argv[]) -> int {
     if (config.bBenchmark) {
       VideoBenchmark();
     } else {
-      EnterMessageLoop();
+      enter_message_loop();
     }
 
     SessionShutdown();

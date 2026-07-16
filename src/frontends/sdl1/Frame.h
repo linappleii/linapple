@@ -4,25 +4,25 @@
 #pragma once
 
 // Frontend-specific keyboard helpers
-auto Frontend_TranslateKey(SDLKey key, SDLMod mod) -> uint8_t;
-auto Frontend_HandleKeyEvent(SDLKey key, bool bDown) -> bool;
+auto frontend_translate_key(SDLKey key, SDLMod mod) -> uint8_t;
+auto frontend_handle_key_event(SDLKey key, bool bDown) -> bool;
 
 enum { NOT_ASCII = 0, ASCII };
 
 // Function Keys F1 - F12
-constexpr int BTN_HELP = 0;
-constexpr int BTN_RUN = 1;
-constexpr int BTN_DRIVE1 = 2;
-constexpr int BTN_DRIVE2 = 3;
-constexpr int BTN_DRIVESWAP = 4;
-constexpr int BTN_FULLSCR = 5;
-constexpr int BTN_DEBUG = 6;
-constexpr int BTN_SETUP = 7;
-constexpr int BTN_CYCLE = 8;
-constexpr int BTN_QUIT = 11;
-// BTN_SAVEST and BTN_LOADST
-constexpr int BTN_SAVEST = 10;
-constexpr int BTN_LOADST = 9;
+constexpr int btn_help = 0;
+constexpr int btn_run = 1;
+constexpr int btn_drive1 = 2;
+constexpr int btn_drive2 = 3;
+constexpr int btn_driveswap = 4;
+constexpr int btn_fullscr = 5;
+constexpr int btn_debug = 6;
+constexpr int btn_setup = 7;
+constexpr int btn_cycle = 8;
+constexpr int btn_quit = 11;
+// btn_savest and btn_loadst
+constexpr int btn_savest = 10;
+constexpr int btn_loadst = 9;
 
 // if you gonna change these values, consider changing some values in Video.cpp
 #define SCREEN_BPP 8
@@ -31,14 +31,14 @@ extern SDL_Surface* g_texture;
 
 #define SHOW_CYCLES 15
 
-extern bool g_WindowResized;
+extern bool g_window_resized;
 
-extern SDL_Rect origRect;
-extern SDL_Rect newRect;
+extern SDL_Rect orig_rect;
+extern SDL_Rect new_rect;
 
-auto InitSDL() -> int;
+auto init_sdl() -> int;
 
-auto FrameCreateWindow() -> int;
+auto frame_create_window() -> int;
 
 void frame_refresh_status(int);
 
@@ -54,7 +54,7 @@ void Frame_OnResize(int width, int height);
 void Frame_OnFocus(bool gained);
 void Frame_OnExpose();
 
-void SetUsingCursor(bool);
+void set_using_cursor(bool);
 
 void SetFullScreenMode();
 
@@ -63,4 +63,4 @@ void SetNormalMode();
 void HarddiskUI_FTPSelect(int nDrive);
 void HarddiskUI_Select(int nDrive);
 
-extern bool g_bScrollLock_FullSpeed;
+extern bool g_scroll_lock_full_speed;

@@ -29,19 +29,19 @@
 // delay after key pressed (in milliseconds??)
 
 // define time when cache ftp dir.listing must be refreshed
-static constexpr int RENEW_TIME = 24 * 3600;
+static constexpr int renew_time = 24 * 3600;
 
 static std::array<char, 512> g_sFTPDirListing = {
     {"cache/ftp."}};  // name for FTP-directory listing
 
-struct FTPGeneratorContext {
+struct FtpGeneratorContext_t {
   std::string directory;
   std::string failure_message;
 };
 
 static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   if (!self || !self->context) return nullptr;
-  auto* ctx = static_cast<FTPGeneratorContext*>(self->context);
+  auto* ctx = static_cast<FtpGeneratorContext_t*>(self->context);
 
   FileList_t* list = FileBrowser_CreateList();
   if (!list) return nullptr;
@@ -60,7 +60,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   bool OKI = false;
   struct stat info{};
   if (stat(ftpdirpath.data(), &info) == 0 &&
-      info.st_mtime > time(nullptr) - RENEW_TIME) {
+      info.st_mtime > time(nullptr) - renew_time) {
     OKI = false;
   } else {
     OKI = ftp_get(ctx->directory.c_str(), ftpdirpath.data());
@@ -124,13 +124,13 @@ static const char* FTPGen_GetStartMsg(FileListGenerator_t* self) {
 
 static const char* FTPGen_GetFailMsg(FileListGenerator_t* self) {
   if (!self || !self->context) return "(no info)";
-  auto* ctx = static_cast<FTPGeneratorContext*>(self->context);
+  auto* ctx = static_cast<FtpGeneratorContext_t*>(self->context);
   return ctx->failure_message.c_str();
 }
 
 static void FTPGen_Destroy(FileListGenerator_t* self) {
   if (self) {
-    delete static_cast<FTPGeneratorContext*>(self->context);
+    delete static_cast<FtpGeneratorContext_t*>(self->context);
     delete self;
   }
 }
@@ -143,7 +143,7 @@ FileListGenerator_t* FileBrowser_CreateFTPGenerator(const char* directory) {
   auto* gen = new (std::nothrow) FileListGenerator_t();
   if (!gen) return nullptr;
 
-  auto* ctx = new (std::nothrow) FTPGeneratorContext();
+  auto* ctx = new (std::nothrow) FtpGeneratorContext_t();
   if (!ctx) {
     delete gen;
     return nullptr;

@@ -16,11 +16,11 @@
 #include "frontends/sdl1/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
-extern void ProcessButtonClick(int button, int mod);
-extern void FrameQuickState(int state, int mod);
-extern auto IsModifierKey(SDLKey key) -> bool;
-extern void SetUsingCursor(bool);
-extern void DrawStatusArea(int);
+extern void process_button_click(int button, int mod);
+extern void frame_quick_state(int state, int mod);
+extern auto is_modifier_key(SDLKey key) -> bool;
+extern void set_using_cursor(bool);
+extern void draw_status_area(int);
 extern int buttondown;
 extern bool usingcursor;
 extern int x, y;
@@ -57,17 +57,17 @@ void sdl_handle_event(SDL_Event* e) {
       auto mymod = static_cast<SDLMod>(e->key.keysym.mod);
       uint8_t myscancode = e->key.keysym.scancode;
 
-      if (Frontend_HandleKeyEvent(mysym, true)) {
+      if (frontend_handle_key_event(mysym, true)) {
         break;
       }
 
       if (mysym >= SDLK_0 && mysym <= SDLK_9 && (mymod & KMOD_LCTRL) != 0) {
-        FrameQuickState(mysym - SDLK_0, mymod);
+        frame_quick_state(mysym - SDLK_0, mymod);
         break;
       }
 
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
-        SetUsingCursor(false);
+        set_using_cursor(false);
         buttondown = mysym - SDLK_F1;
       } else if (mysym == SDLK_KP_PLUS) {
         g_state.dwSpeed = g_state.dwSpeed + 2;
@@ -83,15 +83,15 @@ void sdl_handle_event(SDL_Event* e) {
         printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
         SetCurrentCLK6502();
       } else if (mysym == SDLK_KP_MULTIPLY) {
-        constexpr uint32_t DEFAULT_SPEED = 10;
-        g_state.dwSpeed = DEFAULT_SPEED;
+        constexpr uint32_t default_speed = 10;
+        g_state.dwSpeed = default_speed;
         printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
         SetCurrentCLK6502();
       } else if (mysym == SDLK_CAPSLOCK) {
         uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
         peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
       } else if (mysym == SDLK_PAUSE) {
-        SetUsingCursor(false);
+        set_using_cursor(false);
         switch (g_state.mode) {
           case MODE_RUNNING:
             g_state.mode = MODE_PAUSED;
@@ -111,13 +111,13 @@ void sdl_handle_event(SDL_Event* e) {
           default:
             break;
         }
-        DrawStatusArea(DRAW_TITLE);
+        draw_status_area(DRAW_TITLE);
         if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
           VideoRedrawScreen();
         }
         g_state.bResetTiming = true;
       } else if (mysym == SDLK_SCROLLOCK) {
-        g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed;
+        g_scroll_lock_full_speed = !g_scroll_lock_full_speed;
       } else if ((g_state.mode == MODE_RUNNING) ||
                  (g_state.mode == MODE_LOGO) ||
                  (g_state.mode == MODE_STEPPING)) {
@@ -135,7 +135,7 @@ void sdl_handle_event(SDL_Event* e) {
         }
 #if ENABLE_DEBUGGER
       } else if (g_state.mode == MODE_DEBUG) {
-        LinAppleKey core_key = Frontend_ToCoreKey(mysym, mymod);
+        LinAppleKey core_key = frontend_to_core_key(mysym, mymod);
         if (core_key != LINAPPLE_KEY_UNKNOWN) {
           debugger_process_key(core_key);
         }
@@ -152,8 +152,8 @@ void sdl_handle_event(SDL_Event* e) {
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) &&
           (static_cast<int>(buttondown) == mysym - SDLK_F1)) {
         buttondown = -1;
-        ProcessButtonClick(mysym - SDLK_F1, mymod);
-      } else if (Frontend_HandleKeyEvent(mysym, false)) {
+        process_button_click(mysym - SDLK_F1, mymod);
+      } else if (frontend_handle_key_event(mysym, false)) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
         uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
@@ -181,7 +181,7 @@ void sdl_handle_event(SDL_Event* e) {
 #endif
               if (usingcursor) {
             if ((mymod & (KMOD_SHIFT | KMOD_CTRL)) != 0) {
-              SetUsingCursor(false);
+              set_using_cursor(false);
             } else {
               MouseButtonPayload_t payload = {0, true};
               peripheral_command(0, mouse_cmd_set_button, &payload,
@@ -194,7 +194,7 @@ void sdl_handle_event(SDL_Event* e) {
             if ((((g_state.mode == MODE_RUNNING) ||
                   (g_state.mode == MODE_STEPPING))) ||
                 (mouse_active != 0)) {
-              SetUsingCursor(true);
+              set_using_cursor(true);
             }
           }
         }
@@ -237,7 +237,7 @@ void sdl_handle_event(SDL_Event* e) {
 
     case SDL_USEREVENT:
       if (e->user.code == 1) {
-        ProcessButtonClick(BTN_RUN, KMOD_LCTRL);
+        process_button_click(btn_run, KMOD_LCTRL);
       }
       break;
 

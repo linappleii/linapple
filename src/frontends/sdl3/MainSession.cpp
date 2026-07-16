@@ -52,7 +52,7 @@ auto sys_init() -> int {
 }
 
 void SysShutdown() {
-  DSShutdown();
+  ds_shutdown();
 
   SDL_Quit();
   if (g_curl) {

@@ -86,8 +86,8 @@ static int g_frontend_pdl_trim_y = 0;
 static JoystickConfig_t g_joyConfig;
 
 void JoyFrontend_Initialize() {
-#define AXIS_MIN -32768 /* minimum value for axis coordinate */
-#define AXIS_MAX 32767  /* maximum value for axis coordinate */
+#define axis_min -32768 /* minimum value for axis coordinate */
+#define axis_max 32767  /* maximum value for axis coordinate */
 
   if (joy1) {
     SDL_CloseJoystick(joy1);
@@ -130,10 +130,10 @@ void JoyFrontend_Initialize() {
       joy1 = SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[0]]);
       joyshrx[0] = 0;
       joyshry[0] = 0;
-      joysubx[0] = AXIS_MIN;
-      joysuby[0] = AXIS_MIN;
-      uint32_t xrange = AXIS_MAX - AXIS_MIN;
-      uint32_t yrange = AXIS_MAX - AXIS_MIN;
+      joysubx[0] = axis_min;
+      joysuby[0] = axis_min;
+      uint32_t xrange = axis_max - axis_min;
+      uint32_t yrange = axis_max - axis_min;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx[0];
@@ -153,10 +153,10 @@ void JoyFrontend_Initialize() {
       joy2 = SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[1]]);
       joyshrx[1] = 0;
       joyshry[1] = 0;
-      joysubx[1] = AXIS_MIN;
-      joysuby[1] = AXIS_MIN;
-      uint32_t xrange = AXIS_MAX - AXIS_MIN;
-      uint32_t yrange = AXIS_MAX - AXIS_MIN;
+      joysubx[1] = axis_min;
+      joysuby[1] = axis_min;
+      uint32_t xrange = axis_max - axis_min;
+      uint32_t yrange = axis_max - axis_min;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx[1];

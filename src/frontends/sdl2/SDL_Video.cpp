@@ -26,12 +26,12 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface {
   vs.h = s->h;
   vs.pitch = s->pitch;
 
-  constexpr int BPP_RGBA32 = 4;
-  constexpr int BPP_INDEX8 = 1;
+  constexpr int bpp_rgba32 = 4;
+  constexpr int bpp_index8 = 1;
 
-  vs.bpp = BPP_RGBA32;  // Assuming RGB32
+  vs.bpp = bpp_rgba32;  // Assuming RGB32
   if (s->format->format == SDL_PIXELFORMAT_INDEX8) {
-    vs.bpp = BPP_INDEX8;
+    vs.bpp = bpp_index8;
   }
   // Note: palette is not copied here, but VideoSurface has it
   return vs;

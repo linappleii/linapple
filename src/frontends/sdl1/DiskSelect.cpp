@@ -34,10 +34,10 @@ void DiskSelectImage(int drive, char* pszFilename) {
   fullPath = g_state.sCurrentDir.data();
 
   while (isdir) {
-    constexpr int DISK_CHOOSE_SLOT = 6;
+    constexpr int disk_choose_slot = 6;
     if (!choose_an_image(static_cast<int>(g_state.ScreenWidth),
                        static_cast<int>(g_state.ScreenHeight), fullPath,
-                       DISK_CHOOSE_SLOT, filename, isdir, fileIndex)) {
+                       disk_choose_slot, filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;
     }

@@ -84,7 +84,7 @@ auto ds_init() -> bool {
   return true;
 }
 
-void DSShutdown() {
+void ds_shutdown() {
   if (g_audio_dumper.file) {
     audio_dumper_finalize(&g_audio_dumper);
   }
@@ -97,18 +97,18 @@ void DSShutdown() {
 
 extern void sdl_handle_event(SDL_Event* e);
 
-void Sys_Input() {
+void sys_input() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     sdl_handle_event(&event);
   }
 }
 
-void EnterMessageLoop() {
+void enter_message_loop() {
   constexpr int apple2_frame_cycles = 17030;
   constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
-    Sys_Input();
+    sys_input();
 
     Linapple_RunFrame(apple2_frame_cycles);
     DrawFrameWindow();
@@ -150,7 +150,7 @@ auto main(int argc, char* argv[]) -> int {
     if (config.bBenchmark) {
       VideoBenchmark();
     } else {
-      EnterMessageLoop();
+      enter_message_loop();
     }
 
     SessionShutdown();
