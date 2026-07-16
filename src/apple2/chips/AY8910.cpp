@@ -49,13 +49,13 @@ static const std::array<uint16_t, 16> vol_table = {
     {0, 103, 150, 218, 316, 458, 665, 963, 1396, 2023, 2933, 4251, 6163, 8934,
      12952, 18776}};
 
-void AY8910_reset_instance(AY8910* p) {
+void ay8910_reset_instance(Ay8910_t* p) {
   if (!p) return;
-  memset(p, 0, sizeof(AY8910));
+  memset(p, 0, sizeof(Ay8910_t));
   p->rng = 1;
 }
 
-void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock,
+void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
                            int sample_rate) {
   (void)ay_clock;
   (void)sample_rate;
@@ -84,7 +84,7 @@ void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock,
   }
 }
 
-void AY8910_update_instance(AY8910* p, int16_t** buffer, int length,
+void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
                             int ay_clock, int sample_rate) {
   if (!p) return;
 
@@ -196,36 +196,36 @@ void AY8910_update_instance(AY8910* p, int16_t** buffer, int length,
 }
 
 // Legacy Global State for compatibility
-static std::array<AY8910, MAX_8910> ay_chips;
+static std::array<Ay8910_t, MAX_8910> ay_chips;
 static int ay_clock = 1000000;
 static int ay_sample_rate = 44100;
 
-void AY8910_InitAll(int clock_rate, int sample_rate) {
+void ay8910_init_all(int clock_rate, int sample_rate) {
   ay_clock = clock_rate;
   ay_sample_rate = sample_rate;
   for (int i = 0; i < MAX_8910; i++) {
-    AY8910_reset(i);
+    ay8910_reset(i);
   }
 }
-void AY8910_InitClock(int nClock) { ay_clock = nClock; }
-void AY8910_reset(int chip) {
-  if (chip >= 0 && chip < MAX_8910) AY8910_reset_instance(&ay_chips[chip]);
+void ay8910_init_clock(int nClock) { ay_clock = nClock; }
+void ay8910_reset(int chip) {
+  if (chip >= 0 && chip < MAX_8910) ay8910_reset_instance(&ay_chips[chip]);
 }
-void AY8910_write_ym(int chip, int addr, int data) {
+void ay8910_write_ym(int chip, int addr, int data) {
   if (chip >= 0 && chip < MAX_8910)
-    AY8910_write_instance(&ay_chips[chip], addr, data, ay_clock,
+    ay8910_write_instance(&ay_chips[chip], addr, data, ay_clock,
                           ay_sample_rate);
 }
-void _AYWriteReg(int n, int r, int v) {
+void _ay_write_reg(int n, int r, int v) {
   if (n >= 0 && n < MAX_8910)
-    AY8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate);
+    ay8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate);
 }
-void AY8910Update(int chip, int16_t** buffer, int length) {
+void ay8910_update(int chip, int16_t** buffer, int length) {
   if (chip >= 0 && chip < MAX_8910)
-    AY8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
+    ay8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
                            ay_sample_rate);
 }
-auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t* {
+auto ay8910_get_regs_ptr(uint32_t nAyNum) -> uint8_t* {
   if (nAyNum >= MAX_8910) return nullptr;
   return ay_chips[nAyNum].regs;
 }

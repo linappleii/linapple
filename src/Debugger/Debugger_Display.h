@@ -97,7 +97,7 @@ extern ColorRef_t g_aDebuggerVirtualTextScreenBG[DEBUG_VIRTUAL_TEXT_HEIGHT]
 extern size_t Util_GetDebuggerText(
     char*& pText_);  // Same API as Util_GetTextScreen()
 
-extern uint64_t g_nCumulativeCycles;
+extern uint64_t g_cumulative_cycles;
 
 void DrawWindow_Code(Update_t bUpdate);
 void DrawWindow_Console(Update_t bUpdate);

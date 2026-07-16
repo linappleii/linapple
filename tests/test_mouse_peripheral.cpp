@@ -53,7 +53,7 @@ static HostInterface_t mock_host = {
 
 TEST_CASE("Mouse Peripheral ABI") {
   irq_asserted = false;
-  auto* descriptor = Mouse_GetDescriptor();
+  auto* descriptor = mouse_get_descriptor();
   void* instance = descriptor->init(4, &mock_host);
   REQUIRE(instance != nullptr);
 

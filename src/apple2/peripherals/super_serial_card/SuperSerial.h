@@ -3,4 +3,4 @@
 
 #include "core/Peripheral.h"
 
-auto SuperSerial_GetDescriptor() -> Peripheral_t*;
+auto super_serial_get_descriptor() -> Peripheral_t*;

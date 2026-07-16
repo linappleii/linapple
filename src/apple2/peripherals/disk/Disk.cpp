@@ -1172,7 +1172,7 @@ static Peripheral_t g_disk_peripheral = {
     .command = disk_abi_command,
     .query = disk_abi_query};
 
-auto Disk_GetDescriptor() -> Peripheral_t* { return &g_disk_peripheral; }
+auto disk_get_descriptor() -> Peripheral_t* { return &g_disk_peripheral; }
 
 PERIPHERAL_REGISTER(g_disk_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

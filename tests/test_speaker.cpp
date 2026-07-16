@@ -10,7 +10,7 @@
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern "C" uint64_t g_nCumulativeCycles;
+extern "C" uint64_t g_cumulative_cycles;
 extern "C" double g_fCurrentCLK6502;
 extern "C" bool g_bFullSpeed;
 
@@ -24,7 +24,7 @@ extern "C" auto VideoGetScannerAddress(uint32_t*, uint32_t) -> uint16_t {
 
 namespace {
 
-constexpr uint16_t ADDR_SPEAKER = 0xC030;
+constexpr uint16_t addr_speaker = 0xC030;
 constexpr int TEST_SLOT = 0;
 
 constexpr uint16_t IO_BASE_ADDRESS = 0xC080;
@@ -130,18 +130,18 @@ static HostInterface_t mock_host = {
 
 static auto Speaker_Init_With_Mock(int slot) -> void* {
   mem = dummy_mem.data();
-  g_nCumulativeCycles = 0;
+  g_cumulative_cycles = 0;
   g_fCurrentCLK6502 = STANDARD_APPLE2_SPEED;
   g_bFullSpeed = false;
 
-  void* instance = Speaker_GetDescriptor()->init(slot, &mock_host);
+  void* instance = speaker_get_descriptor()->init(slot, &mock_host);
   return instance;
 }
 
 static auto CheckIsActive(void* instance) -> bool {
   bool active = false;
   size_t size = sizeof(active);
-  Speaker_GetDescriptor()->query(instance, speaker_query_is_active, &active,
+  speaker_get_descriptor()->query(instance, speaker_query_is_active, &active,
                                  &size);
   return active;
 }
@@ -153,47 +153,47 @@ TEST_CASE("Speaker Peripheral: Registration and Lifecycle") {
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  CHECK(g_mock_handlers.count(ADDR_SPEAKER) > 0);
-  CHECK(g_mock_handlers.at(ADDR_SPEAKER).read != nullptr);
-  CHECK(g_mock_handlers.at(ADDR_SPEAKER).write != nullptr);
+  CHECK(g_mock_handlers.count(addr_speaker) > 0);
+  CHECK(g_mock_handlers.at(addr_speaker).read != nullptr);
+  CHECK(g_mock_handlers.at(addr_speaker).write != nullptr);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: Toggle and Event Tracking") {
   g_mock_handlers.clear();
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = CYCLES_INITIAL;
+  g_cumulative_cycles = CYCLES_INITIAL;
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
+  g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
 
   std::array<SpeakerEvent_t, max_speaker_events> events{};
   uint32_t count =
-      Speaker_GetEvents(instance, events.data(), max_speaker_events);
+      speaker_get_events(instance, events.data(), max_speaker_events);
   CHECK(count == 1);
-  CHECK(events.at(0).cycle == g_nCumulativeCycles);
+  CHECK(events.at(0).cycle == g_cumulative_cycles);
   CHECK(events.at(0).state == true);
 
-  CHECK(Speaker_GetEvents(instance, events.data(), max_speaker_events) == 0);
+  CHECK(speaker_get_events(instance, events.data(), max_speaker_events) == 0);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: Audio Generation and Filtering") {
   g_mock_handlers.clear();
   g_captured_samples.clear();
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = CYCLES_INITIAL;
+  g_cumulative_cycles = CYCLES_INITIAL;
 
-  Speaker_GenerateSamples(instance, static_cast<uint32_t>(CYCLES_INITIAL));
+  speaker_generate_samples(instance, static_cast<uint32_t>(CYCLES_INITIAL));
   for (auto s : g_captured_samples) {
     CHECK(s == 0);
   }
   g_captured_samples.clear();
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
-  g_nCumulativeCycles += CYCLES_INITIAL;
-  Speaker_GenerateSamples(instance, static_cast<uint32_t>(CYCLES_INITIAL));
+  g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
+  g_cumulative_cycles += CYCLES_INITIAL;
+  speaker_generate_samples(instance, static_cast<uint32_t>(CYCLES_INITIAL));
 
   bool has_audio = false;
   for (auto s : g_captured_samples) {
@@ -205,34 +205,34 @@ TEST_CASE("Speaker Peripheral: Audio Generation and Filtering") {
   CHECK(has_audio == true);
 
   g_captured_samples.clear();
-  g_nCumulativeCycles += CYCLES_WAIT_LONG;
-  Speaker_GenerateSamples(instance, CYCLES_WAIT_LONG);
+  g_cumulative_cycles += CYCLES_WAIT_LONG;
+  speaker_generate_samples(instance, CYCLES_WAIT_LONG);
 
   int16_t last_sample = g_captured_samples.back();
   CHECK(std::abs(last_sample) < DC_BLOCK_THRESHOLD);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: Inactivity Tracking") {
   g_mock_handlers.clear();
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = CYCLES_INITIAL;
+  g_cumulative_cycles = CYCLES_INITIAL;
 
   CHECK(CheckIsActive(instance) == false);
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
-  Speaker_GetDescriptor()->think(instance, 0);
+  g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
+  speaker_get_descriptor()->think(instance, 0);
   CHECK(CheckIsActive(instance) == true);
 
   auto timeout_cycles =
       static_cast<uint32_t>(STANDARD_APPLE2_SPEED / TIMEOUT_DIVISOR_HALF);
-  g_nCumulativeCycles += timeout_cycles;
-  Speaker_GetDescriptor()->think(instance, timeout_cycles);
+  g_cumulative_cycles += timeout_cycles;
+  speaker_get_descriptor()->think(instance, timeout_cycles);
 
   CHECK(CheckIsActive(instance) == false);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: Full-Speed Suppression") {
@@ -240,41 +240,41 @@ TEST_CASE("Speaker Peripheral: Full-Speed Suppression") {
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
   g_bFullSpeed = true;
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
+  g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
 
   CHECK(CheckIsActive(instance) == false);
 
   std::array<SpeakerEvent_t, max_speaker_events> events{};
-  CHECK(Speaker_GetEvents(instance, events.data(), max_speaker_events) == 0);
+  CHECK(speaker_get_events(instance, events.data(), max_speaker_events) == 0);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: State Persistence Integrity") {
   g_mock_handlers.clear();
   void* instance1 = Speaker_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = CYCLES_INITIAL;
+  g_cumulative_cycles = CYCLES_INITIAL;
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance1, 0, ADDR_SPEAKER, 0, 0, 0);
-  Speaker_GetDescriptor()->think(instance1, 0);
+  g_mock_handlers.at(addr_speaker).read(instance1, 0, addr_speaker, 0, 0, 0);
+  speaker_get_descriptor()->think(instance1, 0);
   REQUIRE(CheckIsActive(instance1) == true);
 
   size_t state_size = 0;
-  Speaker_GetDescriptor()->save_state(instance1, nullptr, &state_size);
+  speaker_get_descriptor()->save_state(instance1, nullptr, &state_size);
   std::vector<uint8_t> buffer(state_size);
-  Speaker_GetDescriptor()->save_state(instance1, buffer.data(), &state_size);
+  speaker_get_descriptor()->save_state(instance1, buffer.data(), &state_size);
 
   void* instance2 = Speaker_Init_With_Mock(TEST_SLOT);
   CHECK(CheckIsActive(instance2) == false);
 
   PeripheralStatus_t status =
-      Speaker_GetDescriptor()->load_state(instance2, buffer.data(), state_size);
+      speaker_get_descriptor()->load_state(instance2, buffer.data(), state_size);
   CHECK(status == peripheral_ok);
 
   CHECK(CheckIsActive(instance2) == true);
 
-  Speaker_GetDescriptor()->shutdown(instance1);
-  Speaker_GetDescriptor()->shutdown(instance2);
+  speaker_get_descriptor()->shutdown(instance1);
+  speaker_get_descriptor()->shutdown(instance2);
 }
 
 TEST_CASE("Speaker Peripheral: Event Buffer Limits") {
@@ -282,36 +282,36 @@ TEST_CASE("Speaker Peripheral: Event Buffer Limits") {
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
 
   for (size_t i = 0; i < max_speaker_events; ++i) {
-    g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
-    g_nCumulativeCycles++;
+    g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
+    g_cumulative_cycles++;
   }
 
-  g_mock_handlers.at(ADDR_SPEAKER).read(instance, 0, ADDR_SPEAKER, 0, 0, 0);
+  g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
 
   std::array<SpeakerEvent_t, max_speaker_events> events{};
   uint32_t count =
-      Speaker_GetEvents(instance, events.data(), max_speaker_events);
+      speaker_get_events(instance, events.data(), max_speaker_events);
   CHECK(count == max_speaker_events);
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Speaker Peripheral: Robustness and ABI") {
   g_mock_handlers.clear();
 
-  CHECK(Speaker_GetDescriptor()->init(TEST_SLOT, nullptr) == nullptr);
+  CHECK(speaker_get_descriptor()->init(TEST_SLOT, nullptr) == nullptr);
 
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
 
   size_t size = 0;
-  CHECK(Speaker_GetDescriptor()->query(instance, speaker_query_is_active,
+  CHECK(speaker_get_descriptor()->query(instance, speaker_query_is_active,
                                        nullptr, &size) == peripheral_ok);
   CHECK(size == sizeof(bool));
 
   size = 0;
-  CHECK(Speaker_GetDescriptor()->save_state(instance, nullptr, &size) ==
+  CHECK(speaker_get_descriptor()->save_state(instance, nullptr, &size) ==
         peripheral_ok);
-  CHECK(size == sizeof(SS_IO_Speaker));
+  CHECK(size == sizeof(SsIoSpeaker_t));
 
-  Speaker_GetDescriptor()->shutdown(instance);
+  speaker_get_descriptor()->shutdown(instance);
 }

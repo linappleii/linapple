@@ -113,7 +113,7 @@ static HostInterface_t mock_host = {
     .SerialUpdateState = nullptr};
 
 auto Printer_Init_With_Mock(int slot) -> void* {
-  void* instance = Printer_GetDescriptor()->init(slot, &mock_host);
+  void* instance = printer_get_descriptor()->init(slot, &mock_host);
   const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
   for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
     if (g_mock_handlers.count(base + i) > 0) {
@@ -140,7 +140,7 @@ TEST_CASE("Printer Peripheral: Registration and Firmware") {
   CHECK(rom.at(0) == ROM_FIRST_BYTE);
   CHECK(rom.at(SLOT_ROM_PAGE_SIZE - 1) == ROM_LAST_BYTE);
 
-  Printer_GetDescriptor()->shutdown(instance);
+  printer_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Printer Peripheral: I/O Mirroring") {
@@ -158,7 +158,7 @@ TEST_CASE("Printer Peripheral: I/O Mirroring") {
     CHECK(g_mock_handlers.at(addr).read(instance, 0, addr, 0, 0, 0) == i);
   }
 
-  Printer_GetDescriptor()->shutdown(instance);
+  printer_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Printer Peripheral: Multi-Slot Independence") {
@@ -173,14 +173,14 @@ TEST_CASE("Printer Peripheral: Multi-Slot Independence") {
   CHECK(g_mock_handlers.at(base2).instance == instance2);
   CHECK(instance1 != instance2);
 
-  Printer_GetDescriptor()->shutdown(instance1);
-  Printer_GetDescriptor()->shutdown(instance2);
+  printer_get_descriptor()->shutdown(instance1);
+  printer_get_descriptor()->shutdown(instance2);
 }
 
 TEST_CASE("Printer Peripheral: Robustness") {
   g_mock_handlers.clear();
 
-  CHECK(Printer_GetDescriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
+  CHECK(printer_get_descriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
 
   void* instance = Printer_Init_With_Mock(TEST_SLOT_1);
   const uint16_t base = IO_BASE_ADDRESS + (TEST_SLOT_1 << IO_SLOT_OFFSET);
@@ -190,7 +190,7 @@ TEST_CASE("Printer Peripheral: Robustness") {
 
   CHECK(g_mock_handlers.at(base).read(instance, 0, base, 1, 0, 0) == 0xFF);
 
-  Printer_GetDescriptor()->shutdown(instance);
+  printer_get_descriptor()->shutdown(instance);
 }
 
 }  // namespace

@@ -10,7 +10,7 @@ extern "C" {
 // NOLINTBEGIN(modernize-use-using)
 // Justification: Identity header for the Mockingboard module.
 
-auto Mockingboard_GetDescriptor() -> Peripheral_t*;
+auto mockingboard_get_descriptor() -> Peripheral_t*;
 
 // NOLINTEND(modernize-use-using)
 

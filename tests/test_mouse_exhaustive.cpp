@@ -115,7 +115,7 @@ static void init_mouse_card() {
 }
 
 TEST_CASE("Mouse Exhaustive Functional Tests") {
-  auto* descriptor = Mouse_GetDescriptor();
+  auto* descriptor = mouse_get_descriptor();
   g_irq_asserted = false;
 
   SUBCASE("ABI Verification") {

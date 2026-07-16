@@ -10,7 +10,7 @@
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern "C" uint64_t g_nCumulativeCycles;
+extern "C" uint64_t g_cumulative_cycles;
 extern "C" double g_fCurrentCLK6502;
 
 constexpr size_t MEMORY_SIZE_64K = 65536;
@@ -25,13 +25,13 @@ namespace {
 constexpr int TEST_SLOT = 0;
 constexpr int TEST_SLOT_1 = 4;
 
-constexpr uint16_t ADDR_BUTTON0 = 0xC061;
-constexpr uint16_t ADDR_PADDLE0 = 0xC064;
-constexpr uint16_t ADDR_PADDLE_RESET = 0xC070;
+constexpr uint16_t addr_button0 = 0xC061;
+constexpr uint16_t addr_paddle0 = 0xC064;
+constexpr uint16_t addr_paddle_reset = 0xC070;
 
-constexpr int JOYSTICK_BUTTON_COUNT = 3;
+constexpr int joystick_button_count = 3;
 constexpr int PADDLES_PER_JOYSTICK = 2;
-constexpr int JOYSTICK_COUNT = 2;
+constexpr int joystick_count = 2;
 
 constexpr uint8_t HIGH_BIT = 0x80;
 constexpr uint8_t MAX_AXIS_VALUE = 255;
@@ -127,7 +127,7 @@ static HostInterface_t mock_host = {
 
 static auto Joystick_Init_With_Mock(int slot) -> void* {
   mem = dummy_mem.data();
-  void* instance = Joystick_GetDescriptor()->init(slot, &mock_host);
+  void* instance = joystick_get_descriptor()->init(slot, &mock_host);
   return instance;
 }
 
@@ -138,57 +138,57 @@ TEST_CASE("Joystick Peripheral: Lifecycle and Registration") {
   void* instance = Joystick_Init_With_Mock(slot);
   REQUIRE(instance != nullptr);
 
-  for (uint16_t addr = ADDR_BUTTON0;
-       addr < ADDR_BUTTON0 + JOYSTICK_BUTTON_COUNT; ++addr) {
+  for (uint16_t addr = addr_button0;
+       addr < addr_button0 + joystick_button_count; ++addr) {
     CHECK(g_mock_handlers.count(addr) > 0);
   }
 
-  for (int addr = static_cast<int>(ADDR_PADDLE0);
+  for (int addr = static_cast<int>(addr_paddle0);
        addr <
-       static_cast<int>(ADDR_PADDLE0) + (JOYSTICK_COUNT * PADDLES_PER_JOYSTICK);
+       static_cast<int>(addr_paddle0) + (joystick_count * PADDLES_PER_JOYSTICK);
        ++addr) {
     CHECK(g_mock_handlers.count(static_cast<uint16_t>(addr)) > 0);
   }
 
-  CHECK(g_mock_handlers.count(ADDR_PADDLE_RESET) > 0);
-  Joystick_GetDescriptor()->shutdown(instance);
+  CHECK(g_mock_handlers.count(addr_paddle_reset) > 0);
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Joystick Peripheral: Analog Timing Accuracy") {
   g_mock_handlers.clear();
   void* instance = Joystick_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = INITIAL_CYCLE_COUNT;
+  g_cumulative_cycles = INITIAL_CYCLE_COUNT;
 
   JoystickAxisPayload_t px0 = {0, 0, 0};
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_AXIS, &px0,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px0,
                                     sizeof(px0));
 
-  g_mock_handlers.at(ADDR_PADDLE_RESET)
-      .read(instance, 0, ADDR_PADDLE_RESET, 0, 0, 0);
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance, 0, addr_paddle_reset, 0, 0, 0);
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) != 0);
-  g_nCumulativeCycles += SMALL_WAIT_CYCLES;
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_cumulative_cycles += SMALL_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) == 0);
 
   JoystickAxisPayload_t px255 = {0, 0, MAX_AXIS_VALUE};
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_AXIS, &px255,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px255,
                                     sizeof(px255));
 
-  g_mock_handlers.at(ADDR_PADDLE_RESET)
-      .read(instance, 0, ADDR_PADDLE_RESET, 0, 0, 0);
-  g_nCumulativeCycles += LARGE_WAIT_CYCLES;
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance, 0, addr_paddle_reset, 0, 0, 0);
+  g_cumulative_cycles += LARGE_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) != 0);
-  g_nCumulativeCycles += FINAL_WAIT_CYCLES;
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_cumulative_cycles += FINAL_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) == 0);
 
-  Joystick_GetDescriptor()->shutdown(instance);
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Joystick Peripheral: Button Latching and Thinking") {
@@ -197,49 +197,49 @@ TEST_CASE("Joystick Peripheral: Button Latching and Thinking") {
 
   JoystickButtonPayload_t p_down = {0, true};
   JoystickButtonPayload_t p_up = {0, false};
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_down,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_down,
                                     sizeof(p_down));
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_up,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_up,
                                     sizeof(p_up));
 
-  CHECK((g_mock_handlers.at(ADDR_BUTTON0)
-             .read(instance, 0, ADDR_BUTTON0, 0, 0, 0) &
+  CHECK((g_mock_handlers.at(addr_button0)
+             .read(instance, 0, addr_button0, 0, 0, 0) &
          HIGH_BIT) != 0);
 
-  Joystick_GetDescriptor()->think(instance,
+  joystick_get_descriptor()->think(instance,
                                   static_cast<uint32_t>(THINK_LATCH_CYCLES));
-  CHECK((g_mock_handlers.at(ADDR_BUTTON0)
-             .read(instance, 0, ADDR_BUTTON0, 0, 0, 0) &
+  CHECK((g_mock_handlers.at(addr_button0)
+             .read(instance, 0, addr_button0, 0, 0, 0) &
          HIGH_BIT) == 0);
 
-  Joystick_GetDescriptor()->shutdown(instance);
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Joystick Peripheral: Trim Logic") {
   g_mock_handlers.clear();
   void* instance = Joystick_Init_With_Mock(TEST_SLOT);
-  g_nCumulativeCycles = INITIAL_CYCLE_COUNT;
+  g_cumulative_cycles = INITIAL_CYCLE_COUNT;
 
   JoystickAxisPayload_t px = {0, 0, TRIM_TEST_POS};
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_AXIS, &px,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px,
                                     sizeof(px));
 
   JoystickTrimPayload_t pt = {true, TRIM_TEST_OFFSET};
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_TRIM, &pt,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_TRIM, &pt,
                                     sizeof(pt));
 
-  g_mock_handlers.at(ADDR_PADDLE_RESET)
-      .read(instance, 0, ADDR_PADDLE_RESET, 0, 0, 0);
-  g_nCumulativeCycles += TRIM_WAIT_CYCLES;
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance, 0, addr_paddle_reset, 0, 0, 0);
+  g_cumulative_cycles += TRIM_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) != 0);
-  g_nCumulativeCycles += TRIM_FINAL_CYCLES;
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance, 0, ADDR_PADDLE0, 0, 0, 0) &
+  g_cumulative_cycles += TRIM_FINAL_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) == 0);
 
-  Joystick_GetDescriptor()->shutdown(instance);
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Joystick Peripheral: Config and Query") {
@@ -251,18 +251,18 @@ TEST_CASE("Joystick Peripheral: Config and Query") {
   cfg.joy_index[0] = TEST_JOY_INDEX;
   cfg.joy0_button_map[0] = TEST_BUTTON_MAPPING;
 
-  Joystick_GetDescriptor()->command(instance, JOY_CMD_SET_CONFIG, &cfg,
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_CONFIG, &cfg,
                                     sizeof(cfg));
 
   JoystickConfig_t queried{};
   size_t size = sizeof(queried);
-  Joystick_GetDescriptor()->query(instance, JOY_QUERY_CONFIG, &queried, &size);
+  joystick_get_descriptor()->query(instance, JOY_QUERY_CONFIG, &queried, &size);
 
   CHECK(queried.joy_type[0] == 1);
   CHECK(queried.joy_index[0] == TEST_JOY_INDEX);
   CHECK(queried.joy0_button_map[0] == TEST_BUTTON_MAPPING);
 
-  Joystick_GetDescriptor()->shutdown(instance);
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Joystick Peripheral: Robustness and Multiple Instances") {
@@ -271,18 +271,18 @@ TEST_CASE("Joystick Peripheral: Robustness and Multiple Instances") {
   void* instance1 = Joystick_Init_With_Mock(TEST_SLOT_1);
 
   JoystickAxisPayload_t px255 = {0, 0, MAX_AXIS_VALUE};
-  Joystick_GetDescriptor()->command(instance1, JOY_CMD_SET_AXIS, &px255,
+  joystick_get_descriptor()->command(instance1, JOY_CMD_SET_AXIS, &px255,
                                     sizeof(px255));
 
-  g_mock_handlers.at(ADDR_PADDLE_RESET)
-      .read(instance1, 0, ADDR_PADDLE_RESET, 0, 0, 0);
-  g_nCumulativeCycles += INITIAL_CYCLE_COUNT;
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance1, 0, addr_paddle_reset, 0, 0, 0);
+  g_cumulative_cycles += INITIAL_CYCLE_COUNT;
 
-  CHECK((g_mock_handlers.at(ADDR_PADDLE0)
-             .read(instance1, 0, ADDR_PADDLE0, 0, 0, 0) &
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance1, 0, addr_paddle0, 0, 0, 0) &
          HIGH_BIT) == 0);
 
-  Joystick_GetDescriptor()->shutdown(instance1);
+  joystick_get_descriptor()->shutdown(instance1);
 }
 
 }  // namespace

@@ -231,7 +231,7 @@ static auto Clock_IORead(void* instance, uint16_t program_counter,
                  remaining_cycles);
 }
 
-static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
+static auto clock_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -254,7 +254,7 @@ static auto Clock_ABI_Init(int slot, HostInterface_t* host) -> void* {
   return clock_peripheral.release();
 }
 
-static auto Clock_ABI_Reset(void* instance) -> void {
+static auto clock_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -262,7 +262,7 @@ static auto Clock_ABI_Reset(void* instance) -> void {
   clock_peripheral->latches.fill(0);
 }
 
-static auto Clock_ABI_Shutdown(void* instance) -> void {
+static auto clock_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -273,7 +273,7 @@ static auto Clock_ABI_Shutdown(void* instance) -> void {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 // Justification: ABI-required function signature.
-static auto Clock_ABI_SaveState(void* instance, void* state_buffer,
+static auto clock_abi_save_state(void* instance, void* state_buffer,
                                 size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
     return peripheral_error;
@@ -297,7 +297,7 @@ static auto Clock_ABI_SaveState(void* instance, void* state_buffer,
   return peripheral_ok;
 }
 
-static auto Clock_ABI_LoadState(void* instance, const void* state_buffer,
+static auto clock_abi_load_state(void* instance, const void* state_buffer,
                                 size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr) {
     return peripheral_error;
@@ -324,17 +324,17 @@ static Peripheral_t g_clock_peripheral = {
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
     .default_slot = -1,
-    .init = Clock_ABI_Init,
-    .reset = Clock_ABI_Reset,
-    .shutdown = Clock_ABI_Shutdown,
+    .init = clock_abi_init,
+    .reset = clock_abi_reset,
+    .shutdown = clock_abi_shutdown,
     .think = nullptr,
     .on_vblank = nullptr,
-    .save_state = Clock_ABI_SaveState,
-    .load_state = Clock_ABI_LoadState,
+    .save_state = clock_abi_save_state,
+    .load_state = clock_abi_load_state,
     .command = nullptr,
     .query = nullptr};
 
-auto Clock_GetDescriptor() -> Peripheral_t* { return &g_clock_peripheral; }
+auto clock_get_descriptor() -> Peripheral_t* { return &g_clock_peripheral; }
 
 PERIPHERAL_REGISTER(g_clock_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

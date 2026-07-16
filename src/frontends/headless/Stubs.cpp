@@ -84,7 +84,7 @@ WEAK auto RegisterDirectIoHandler(uint16_t, iofunction, iofunction, void*)
 
 #include "core/Log.h"
 
-WEAK uint64_t g_nCumulativeCycles = 0;
+WEAK uint64_t g_cumulative_cycles = 0;
 WEAK SystemState_t g_state = {};
 WEAK eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 WEAK uint32_t g_videotype = 0;

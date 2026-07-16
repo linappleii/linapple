@@ -9,7 +9,7 @@
 #include "doctest.h"
 
 #include "apple2/peripherals/keyboard/Keyboard.h"
-static auto& keyboard_peripheral = *Keyboard_GetDescriptor();
+static auto& keyboard_peripheral = *keyboard_get_descriptor();
 
 // Mock host interface for testing
 struct MockHandler {

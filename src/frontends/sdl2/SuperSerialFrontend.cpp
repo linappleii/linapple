@@ -28,8 +28,8 @@ static volatile bool g_bThreadRunning = false;
 static volatile bool g_bThreadTerminate = false;
 
 auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
-                                         SuperSerialParity_e parity,
-                                         SuperSerialStopBits_e stop) -> void {
+                                         SuperSerialParity_t parity,
+                                         SuperSerialStopBits_t stop) -> void {
   if (g_hCommHandle == -1) {
     return;
   }
@@ -167,8 +167,8 @@ auto super_serial_frontend_is_active() -> bool {
 auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits, int parity,
                                      int stop) -> void {
   super_serial_frontend_update_comm_state(baud, bits,
-                                      static_cast<SuperSerialParity_e>(parity),
-                                      static_cast<SuperSerialStopBits_e>(stop));
+                                      static_cast<SuperSerialParity_t>(parity),
+                                      static_cast<SuperSerialStopBits_t>(stop));
 }
 
 auto super_serial_frontend_close() -> void {

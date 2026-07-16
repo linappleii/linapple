@@ -18,7 +18,7 @@ struct SpeakerEvent_t {
 
 // NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.
-struct SS_IO_Speaker {
+struct SsIoSpeaker_t {
   uint64_t g_nSpkrLastCycle =
       0;  // Legacy AppleWin field; scheduled for removal
   uint64_t quiet_cycle_count = 0;
@@ -32,14 +32,14 @@ struct SS_IO_Speaker {
 
 static constexpr int16_t speaker_sample_volume = 0x4000;
 
-auto Speaker_GetDescriptor() -> Peripheral_t*;
+auto speaker_get_descriptor() -> Peripheral_t*;
 
 /**
  * @brief Sound Synthesis API
  */
-auto Speaker_GenerateSamples(void* instance, uint32_t elapsed_cycles) -> void;
-auto Speaker_GetEvents(void* instance, SpeakerEvent_t* event_buffer,
+auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void;
+auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
                        uint32_t buffer_capacity) -> uint32_t;
-auto Speaker_GetLastCycle(void* instance) -> uint64_t;
+auto speaker_get_last_cycle(void* instance) -> uint64_t;
 
 enum { speaker_query_is_active = 0x100 };

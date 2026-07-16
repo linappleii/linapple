@@ -200,7 +200,7 @@ struct MousePeripheral_t {
   bool is_active = false;
 
   // --- Hardware Emulation (PIA & Registers) ---
-  Pia6821 pia{};
+  Pia6821_t pia{};
   uint8_t pia_port_a = 0;
   uint8_t pia_port_b = 0;
   uint8_t mode = 0;
@@ -357,7 +357,7 @@ static void mouse_on_clock_write(MousePeripheral_t* mp, uint8_t data) {
 
   // Signal completion by clearing Port B bit 7
   mp->pia_port_b &= ~regs::bit7;
-  Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
+  pia_6821_set_port_b(&mp->pia, mp->pia_port_b);
 }
 
 static void mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) {
@@ -382,7 +382,7 @@ static void mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) {
   } else {
     uint8_t val = mp->buffer.at(static_cast<size_t>(mp->buffer_pos));
     mp->pia.ora = val;
-    Pia6821_SetPortA(&mp->pia, val);
+    pia_6821_set_port_a(&mp->pia, val);
   }
 
   // Set acknowledge bit (Port B bit 6)
@@ -414,7 +414,7 @@ static void pia_listener_b(void* obj, uint8_t data) {
     mouse_on_clock_read(mp, data);
   }
 
-  Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
+  pia_6821_set_port_b(&mp->pia, mp->pia_port_b);
   mouse_update_slot_rom(mp);
 }
 
@@ -524,7 +524,7 @@ static void mouse_on_command(MousePeripheral_t* mp) {
   }
   uint8_t val = mp->buffer.at(1);
   mp->pia.ora = val;
-  Pia6821_SetPortA(&mp->pia, val);
+  pia_6821_set_port_a(&mp->pia, val);
 }
 
 static void mouse_on_write(MousePeripheral_t* mp) {
@@ -686,13 +686,13 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
   mp->host = host;
   mp->slot = static_cast<uint32_t>(slot);
 
-  Pia6821_Reset(&mp->pia);
-  Pia6821_SetListenerA(&mp->pia, mp, pia_listener_a);
-  Pia6821_SetListenerB(&mp->pia, mp, pia_listener_b);
+  pia_6821_reset(&mp->pia);
+  pia_6821_set_listener_a(&mp->pia, mp, pia_listener_a);
+  pia_6821_set_listener_b(&mp->pia, mp, pia_listener_b);
 
   mp->pia_port_a = 0;
   mp->pia_port_b = regs::bit6;
-  Pia6821_SetPortB(&mp->pia, mp->pia_port_b);
+  pia_6821_set_port_b(&mp->pia, mp->pia_port_b);
 
   mp->min_x = 0;
   mp->max_x = physical::default_max_coord;
@@ -715,10 +715,10 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
     auto* mp_inner = static_cast<MousePeripheral_t*>(instance);
     uint8_t rs = static_cast<uint8_t>(addr & 3);
     if (write != 0) {
-      Pia6821_Write(&mp_inner->pia, rs, val);
+      pia_6821_write(&mp_inner->pia, rs, val);
       return 0;
     }
-    return Pia6821_Read(&mp_inner->pia, rs);
+    return pia_6821_read(&mp_inner->pia, rs);
   };
 
   host->RegisterIO(slot, io_handler, io_handler, nullptr, nullptr);
@@ -852,7 +852,7 @@ static auto peripheral_abi_load_state(void* instance, const void* buffer,
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   const auto* ss = static_cast<const MouseSaveState_t*>(buffer);
 
-  Pia6821_Reset(&mp->pia);
+  pia_6821_reset(&mp->pia);
   // --- Hardware Emulation (PIA & Registers) ---
   mp->pia.ora = ss->pia_ora;
   mp->pia.orb = ss->pia_orb;
@@ -899,8 +899,8 @@ static auto peripheral_abi_load_state(void* instance, const void* buffer,
   mp->buttons.at(0) = ss->buttons[0] != 0;
   mp->buttons.at(1) = ss->buttons[1] != 0;
 
-  Pia6821_SetListenerA(&mp->pia, mp, pia_listener_a);
-  Pia6821_SetListenerB(&mp->pia, mp, pia_listener_b);
+  pia_6821_set_listener_a(&mp->pia, mp, pia_listener_a);
+  pia_6821_set_listener_b(&mp->pia, mp, pia_listener_b);
 
   mouse_update_slot_rom(mp);
 
@@ -997,7 +997,7 @@ static Peripheral_t g_mouse_peripheral = {
     .command = peripheral_abi_command,
     .query = peripheral_abi_query};
 
-extern "C" auto Mouse_GetDescriptor() -> Peripheral_t* {
+extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
   return &g_mouse_peripheral;
 }
 

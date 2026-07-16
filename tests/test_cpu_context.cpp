@@ -13,7 +13,7 @@ TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
   CpuGetRegisters()->y = 0x33;
   CpuGetRegisters()->pc = 0x1000;
   CpuGetRegisters()->sp = 0x1FF;
-  g_nCumulativeCycles = 100;
+  g_cumulative_cycles = 100;
 
   // 2. Setup secondary context
   CpuInstance_t second_context{};
@@ -38,7 +38,7 @@ TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
 
   // Modify registers on active secondary context
   CpuGetRegisters()->x = 0x99;
-  g_nCumulativeCycles = 600;
+  g_cumulative_cycles = 600;
 
   // 4. Switch back to original context
   CpuSetActiveContext(original_context);

@@ -9,7 +9,7 @@
 #include "core/Util_Path.h"
 
 struct SsCpu6502_t;
-using SS_CPU6502 = SsCpu6502_t;
+using SsCpu6502_t = SsCpu6502_t;
 
 constexpr uint16_t nmi_vector_addr = 0xFFFA;
 constexpr uint16_t reset_vector_addr = 0xFFFC;
@@ -38,8 +38,8 @@ struct CpuRegisters_t {
   uint8_t is_jammed = 0;  // CPU has crashed (NMOS 6502 only)
 };
 
-using regsrec = CpuRegisters_t;
-using regsptr = CpuRegisters_t*;
+using RegsRec_t = CpuRegisters_t;
+using RegsPtr_t = CpuRegisters_t*;
 
 struct CpuInstance_t {
   CpuRegisters_t cpu_regs{};
@@ -54,7 +54,7 @@ struct CpuInstance_t {
 // Modern snake_case API
 auto cpu_get_registers() -> CpuRegisters_t*;
 auto cpu_get_cumulative_cycles() -> uint64_t;
-extern uint64_t g_nCumulativeCycles;
+extern uint64_t g_cumulative_cycles;
 
 auto cpu_get_active_context() -> CpuInstance_t*;
 auto cpu_set_active_context(CpuInstance_t* context) -> void;
@@ -64,7 +64,7 @@ auto cpu_calc_cycles(uint32_t executed_cycles) -> void;
 auto cpu_execute(uint32_t total_cycles) -> uint32_t;
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t;
 auto cpu_initialize() -> void;
-auto CPU_Step() -> void;
+auto cpu_step() -> void;
 auto cpu_setup_benchmark() -> void;
 auto cpu_irq_reset() -> void;
 auto cpu_irq_assert(IrqSrc_t device) -> void;
@@ -73,8 +73,8 @@ auto cpu_nmi_reset() -> void;
 auto cpu_nmi_assert(IrqSrc_t device) -> void;
 auto cpu_nmi_deassert(IrqSrc_t device) -> void;
 auto cpu_reset() -> void;
-auto cpu_get_snapshot(SS_CPU6502* snapshot) -> uint32_t;
-auto cpu_set_snapshot(SS_CPU6502* snapshot) -> uint32_t;
+auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
+auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
 
 // Legacy Forwarding Declarations
 auto CpuGetRegisters() -> CpuRegisters_t*;
@@ -94,5 +94,5 @@ auto CpuNmiReset() -> void;
 auto CpuNmiAssert(IrqSrc_t Device) -> void;
 auto CpuNmiDeassert(IrqSrc_t Device) -> void;
 auto CpuReset() -> void;
-auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t;
-auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t;
+auto CpuGetSnapshot(SsCpu6502_t* pSS) -> uint32_t;
+auto CpuSetSnapshot(SsCpu6502_t* pSS) -> uint32_t;

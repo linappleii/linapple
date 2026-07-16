@@ -44,7 +44,7 @@ struct SpeakerPeripheral_t {
   SpeakerPeripheral_t() = default;
 };
 
-static auto GetCycles(HostInterface_t* host) -> uint64_t {
+static auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
@@ -53,7 +53,7 @@ static auto GetCycles(HostInterface_t* host) -> uint64_t {
 
 // --- Internal Implementation ---
 
-auto Speaker_Initialize(void* instance) -> void {
+auto speaker_initialize(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -66,18 +66,18 @@ auto Speaker_Initialize(void* instance) -> void {
 
   speaker_peripheral->host = host;
   speaker_peripheral->slot = slot;
-  speaker_peripheral->last_update_cycle = GetCycles(host);
-  speaker_peripheral->next_sample_cycle = static_cast<double>(GetCycles(host));
+  speaker_peripheral->last_update_cycle = get_cycles(host);
+  speaker_peripheral->next_sample_cycle = static_cast<double>(get_cycles(host));
 }
 
-auto Speaker_Reset(void* instance) -> void {
+auto speaker_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  Speaker_Initialize(instance);
+  speaker_initialize(instance);
 }
 
-auto Speaker_Update(void* instance, uint32_t elapsed_cycles) -> void {
+auto speaker_update(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -97,10 +97,10 @@ auto Speaker_Update(void* instance, uint32_t elapsed_cycles) -> void {
       speaker_peripheral->is_active = false;
     }
   }
-  speaker_peripheral->last_update_cycle = GetCycles(speaker_peripheral->host);
+  speaker_peripheral->last_update_cycle = get_cycles(speaker_peripheral->host);
 }
 
-auto Speaker_IsActive(void* instance) -> bool {
+auto speaker_is_active(void* instance) -> bool {
   if (instance == nullptr) {
     return false;
   }
@@ -110,7 +110,7 @@ auto Speaker_IsActive(void* instance) -> bool {
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 // Justification: ABI signature required by Core.
-auto Speaker_Toggle(void* instance, uint16_t program_counter,
+auto speaker_toggle(void* instance, uint16_t program_counter,
                     uint16_t memory_address, uint8_t is_write,
                     uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
   (void)program_counter;
@@ -135,7 +135,7 @@ auto Speaker_Toggle(void* instance, uint16_t program_counter,
           static_cast<size_t>(speaker_peripheral->event_count);
       speaker_peripheral->current_state = !speaker_peripheral->current_state;
       speaker_peripheral->events.at(event_index).cycle =
-          GetCycles(speaker_peripheral->host);
+          get_cycles(speaker_peripheral->host);
       speaker_peripheral->events.at(event_index).state =
           speaker_peripheral->current_state;
       speaker_peripheral->event_count++;
@@ -148,9 +148,9 @@ auto Speaker_Toggle(void* instance, uint16_t program_counter,
 
 // --- ABI Implementation ---
 
-constexpr uint16_t ADDR_SPEAKER = 0xC030;
+constexpr uint16_t addr_speaker = 0xC030;
 
-auto Speaker_ABI_Init(int slot, HostInterface_t* host) -> void* {
+auto speaker_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -158,17 +158,17 @@ auto Speaker_ABI_Init(int slot, HostInterface_t* host) -> void* {
       std::unique_ptr<SpeakerPeripheral_t>(new SpeakerPeripheral_t());
   speaker_peripheral->host = host;
   speaker_peripheral->slot = slot;
-  Speaker_Initialize(speaker_peripheral.get());
+  speaker_initialize(speaker_peripheral.get());
 
   if (host->RegisterDirectIO != nullptr) {
-    host->RegisterDirectIO(speaker_peripheral.get(), ADDR_SPEAKER,
-                           Speaker_Toggle, Speaker_Toggle);
+    host->RegisterDirectIO(speaker_peripheral.get(), addr_speaker,
+                           speaker_toggle, speaker_toggle);
   }
 
   return speaker_peripheral.release();
 }
 
-auto Speaker_Shutdown(void* instance) -> void {
+auto speaker_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -176,19 +176,19 @@ auto Speaker_Shutdown(void* instance) -> void {
       static_cast<SpeakerPeripheral_t*>(instance));
 }
 
-auto Speaker_Think(void* instance, uint32_t elapsed_cycles) -> void {
-  Speaker_Update(instance, elapsed_cycles);
-  Speaker_GenerateSamples(instance, elapsed_cycles);
+auto speaker_think(void* instance, uint32_t elapsed_cycles) -> void {
+  speaker_update(instance, elapsed_cycles);
+  speaker_generate_samples(instance, elapsed_cycles);
 }
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 // Justification: Peripheral ABI signature.
-auto Speaker_SaveState(void* instance, void* state_buffer, size_t* buffer_size)
+auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
     -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
-  const size_t required_size = sizeof(SS_IO_Speaker);
+  const size_t required_size = sizeof(SsIoSpeaker_t);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -198,7 +198,7 @@ auto Speaker_SaveState(void* instance, void* state_buffer, size_t* buffer_size)
   }
 
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  auto* save_state_ptr = static_cast<SS_IO_Speaker*>(state_buffer);
+  auto* save_state_ptr = static_cast<SsIoSpeaker_t*>(state_buffer);
   save_state_ptr->g_nSpkrLastCycle = speaker_peripheral->last_update_cycle;
   save_state_ptr->quiet_cycle_count = speaker_peripheral->quiet_cycle_count;
   save_state_ptr->recently_active = speaker_peripheral->is_active ? 1 : 0;
@@ -212,15 +212,15 @@ auto Speaker_SaveState(void* instance, void* state_buffer, size_t* buffer_size)
   return peripheral_ok;
 }
 
-auto Speaker_LoadState(void* instance, const void* state_buffer,
+auto speaker_load_state(void* instance, const void* state_buffer,
                        size_t buffer_size) -> PeripheralStatus_t {
-  const size_t required_size = sizeof(SS_IO_Speaker);
+  const size_t required_size = sizeof(SsIoSpeaker_t);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < required_size) {
     return peripheral_error;
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  const auto* save_state_ptr = static_cast<const SS_IO_Speaker*>(state_buffer);
+  const auto* save_state_ptr = static_cast<const SsIoSpeaker_t*>(state_buffer);
   speaker_peripheral->last_update_cycle = save_state_ptr->g_nSpkrLastCycle;
   speaker_peripheral->quiet_cycle_count = save_state_ptr->quiet_cycle_count;
   speaker_peripheral->is_active = (save_state_ptr->recently_active != 0);
@@ -233,7 +233,7 @@ auto Speaker_LoadState(void* instance, const void* state_buffer,
   return peripheral_ok;
 }
 
-auto Speaker_Query(void* instance, uint32_t query_id, void* output_buffer,
+auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
                    size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
     return peripheral_error;
@@ -252,7 +252,7 @@ auto Speaker_Query(void* instance, uint32_t query_id, void* output_buffer,
         return peripheral_error;
       }
 
-      *static_cast<bool*>(output_buffer) = Speaker_IsActive(instance);
+      *static_cast<bool*>(output_buffer) = speaker_is_active(instance);
       *buffer_size = required_size;
       return peripheral_ok;
     }
@@ -271,21 +271,21 @@ static Peripheral_t g_speaker_peripheral = {
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
     .default_slot = 0,
-    .init = Speaker_ABI_Init,
-    .reset = Speaker_Reset,
-    .shutdown = Speaker_Shutdown,
-    .think = Speaker_Think,
+    .init = speaker_abi_init,
+    .reset = speaker_reset,
+    .shutdown = speaker_shutdown,
+    .think = speaker_think,
     .on_vblank = nullptr,
-    .save_state = Speaker_SaveState,
-    .load_state = Speaker_LoadState,
+    .save_state = speaker_save_state,
+    .load_state = speaker_load_state,
     .command = nullptr,
-    .query = Speaker_Query};
+    .query = speaker_query};
 
 }  // namespace
 
 // --- Public Synthesis API ---
 
-auto Speaker_GenerateSamples(void* instance, uint32_t elapsed_cycles) -> void {
+auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   if (elapsed_cycles == 0 || instance == nullptr) {
     return;
   }
@@ -297,8 +297,8 @@ auto Speaker_GenerateSamples(void* instance, uint32_t elapsed_cycles) -> void {
   }
 
   const uint64_t start_cycle =
-      GetCycles(speaker_peripheral->host) - elapsed_cycles;
-  const uint64_t end_cycle = GetCycles(speaker_peripheral->host);
+      get_cycles(speaker_peripheral->host) - elapsed_cycles;
+  const uint64_t end_cycle = get_cycles(speaker_peripheral->host);
 
   if (speaker_peripheral->next_sample_cycle <
       static_cast<double>(start_cycle)) {
@@ -392,7 +392,7 @@ auto Speaker_GenerateSamples(void* instance, uint32_t elapsed_cycles) -> void {
   }
 }
 
-auto Speaker_GetEvents(void* instance, SpeakerEvent_t* event_buffer,
+auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
                        uint32_t buffer_capacity) -> uint32_t {
   if (event_buffer == nullptr || instance == nullptr) {
     return 0;
@@ -406,7 +406,7 @@ auto Speaker_GetEvents(void* instance, SpeakerEvent_t* event_buffer,
   return count;
 }
 
-auto Speaker_GetLastCycle(void* instance) -> uint64_t {
+auto speaker_get_last_cycle(void* instance) -> uint64_t {
   if (instance == nullptr) {
     return 0;
   }
@@ -414,7 +414,7 @@ auto Speaker_GetLastCycle(void* instance) -> uint64_t {
   return speaker_peripheral->last_update_cycle;
 }
 
-auto Speaker_GetDescriptor() -> Peripheral_t* { return &g_speaker_peripheral; }
+auto speaker_get_descriptor() -> Peripheral_t* { return &g_speaker_peripheral; }
 
 PERIPHERAL_REGISTER(g_speaker_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

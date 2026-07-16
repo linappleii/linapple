@@ -608,7 +608,7 @@ static Peripheral_t g_harddisk_peripheral = {
     .command = harddisk_abi_command,
     .query = harddisk_abi_query};
 
-extern "C" auto Harddisk_GetDescriptor() -> Peripheral_t* {
+extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
   return &g_harddisk_peripheral;
 }
 

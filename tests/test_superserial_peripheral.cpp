@@ -12,7 +12,7 @@
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern "C" uint64_t g_nCumulativeCycles;
+extern "C" uint64_t g_cumulative_cycles;
 extern "C" double g_fCurrentCLK6502;
 
 extern uint8_t* mem;
@@ -130,7 +130,7 @@ static HostInterface_t mock_host = {
     .SerialUpdateState = nullptr};
 
 static auto SuperSerial_Init_With_Mock(int slot) -> void* {
-  void* instance = SuperSerial_GetDescriptor()->init(slot, &mock_host);
+  void* instance = super_serial_get_descriptor()->init(slot, &mock_host);
   const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
   for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
     if (g_mock_handlers.count(base + i) > 0) {
@@ -145,13 +145,13 @@ TEST_CASE("SuperSerial: Status Register Bit 4 (TDRE) Set On Reset") {
   void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  SuperSerial_GetDescriptor()->reset(instance);
+  super_serial_get_descriptor()->reset(instance);
 
   uint8_t status =
       g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
   CHECK((status & STATUS_TDRE_MASK) != 0);
 
-  SuperSerial_GetDescriptor()->shutdown(instance);
+  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: Transmit and Interrupt Behavior") {
@@ -169,7 +169,7 @@ TEST_CASE("SuperSerial: Transmit and Interrupt Behavior") {
   REQUIRE(g_sent_bytes.size() == 1);
   CHECK(g_sent_bytes.at(0) == TEST_BYTE_A);
 
-  SuperSerial_GetDescriptor()->shutdown(instance);
+  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: Receive Buffer and RX IRQ") {
@@ -181,7 +181,7 @@ TEST_CASE("SuperSerial: Receive Buffer and RX IRQ") {
       .write(instance, 0, ADDR_COMMAND, 1, CMD_ENABLE_RX_IRQ, 0);
 
   uint8_t rx_byte = TEST_BYTE_VAL;
-  SuperSerial_GetDescriptor()->command(instance, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
+  super_serial_get_descriptor()->command(instance, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
                                        &rx_byte, sizeof(uint8_t));
 
   CHECK(g_irq_asserted == true);
@@ -198,13 +198,13 @@ TEST_CASE("SuperSerial: Receive Buffer and RX IRQ") {
       g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
   CHECK((status & STATUS_RX_FULL_MASK) == 0);
 
-  SuperSerial_GetDescriptor()->shutdown(instance);
+  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: Robustness and ABI") {
   g_mock_handlers.clear();
 
-  CHECK(SuperSerial_GetDescriptor()->init(TEST_SLOT, nullptr) == nullptr);
+  CHECK(super_serial_get_descriptor()->init(TEST_SLOT, nullptr) == nullptr);
 
   void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
 
@@ -215,7 +215,7 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
                                   .parity = SUPER_SERIAL_PARITY_NONE,
                                   .linefeed = false,
                                   .interrupts = false};
-  CHECK(SuperSerial_GetDescriptor()->command(instance,
+  CHECK(super_serial_get_descriptor()->command(instance,
                                              SUPER_SERIAL_CMD_SET_CONFIG, &cfg,
                                              sizeof(cfg)) == peripheral_ok);
 
@@ -228,11 +228,11 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
       .linefeed = false,
       .interrupts = false};
   size_t size = sizeof(queried);
-  CHECK(SuperSerial_GetDescriptor()->query(instance, SUPER_SERIAL_QUERY_CONFIG,
+  CHECK(super_serial_get_descriptor()->query(instance, SUPER_SERIAL_QUERY_CONFIG,
                                            &queried, &size) == peripheral_ok);
   CHECK(queried.baud_rate == SUPER_SERIAL_BAUD_9600);
 
-  SuperSerial_GetDescriptor()->shutdown(instance);
+  super_serial_get_descriptor()->shutdown(instance);
 }
 
 }  // namespace

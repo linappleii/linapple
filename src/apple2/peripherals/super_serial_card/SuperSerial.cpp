@@ -49,14 +49,14 @@ struct SuperSerialCard_t {
   }
 };
 
-auto SuperSerial_Initialize(SuperSerialCard_t* ssc) -> void {
+auto super_serial_initialize(SuperSerialCard_t* ssc) -> void {
   if (ssc == nullptr) {
     return;
   }
   ssc->reset_hardware_state();
 }
 
-auto SuperSerial_IORead(void* instance, uint16_t program_counter,
+auto super_serial_io_read(void* instance, uint16_t program_counter,
                         uint16_t memory_address, uint8_t is_write,
                         uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
@@ -101,7 +101,7 @@ auto SuperSerial_IORead(void* instance, uint16_t program_counter,
   return MemReadFloatingBus(remaining_cycles);
 }
 
-auto SuperSerial_IOWrite(void* instance, uint16_t program_counter,
+auto super_serial_io_write(void* instance, uint16_t program_counter,
                          uint16_t memory_address, uint8_t is_write,
                          uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
@@ -123,7 +123,7 @@ auto SuperSerial_IOWrite(void* instance, uint16_t program_counter,
       return 0;
 
     case 9:
-      SuperSerial_Initialize(ssc);
+      super_serial_initialize(ssc);
       return 0;
 
     case 10:
@@ -143,29 +143,29 @@ auto SuperSerial_IOWrite(void* instance, uint16_t program_counter,
   return 0;
 }
 
-auto SuperSerial_ABI_Init(int slot, HostInterface_t* host) -> void* {
+auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
   auto ssc = std::unique_ptr<SuperSerialCard_t>(new SuperSerialCard_t());
   ssc->host = host;
   ssc->slot = slot;
-  SuperSerial_Initialize(ssc.get());
+  super_serial_initialize(ssc.get());
 
-  host->RegisterIO(slot, SuperSerial_IORead, SuperSerial_IOWrite, nullptr,
+  host->RegisterIO(slot, super_serial_io_read, super_serial_io_write, nullptr,
                    nullptr);
 
   return ssc.release();
 }
 
-auto SuperSerial_Reset(void* instance) -> void {
+auto super_serial_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  SuperSerial_Initialize(static_cast<SuperSerialCard_t*>(instance));
+  super_serial_initialize(static_cast<SuperSerialCard_t*>(instance));
 }
 
-auto SuperSerial_Shutdown(void* instance) -> void {
+auto super_serial_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -173,14 +173,14 @@ auto SuperSerial_Shutdown(void* instance) -> void {
       static_cast<SuperSerialCard_t*>(instance));
 }
 
-auto SuperSerial_ABI_Command(void* instance, uint32_t cmd, const void* data,
+auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
                              size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
-  switch (static_cast<SuperSerialCmd_e>(cmd)) {
+  switch (static_cast<SuperSerialCmd_t>(cmd)) {
     case SUPER_SERIAL_CMD_PUSH_RX_BYTE: {
       if (size < sizeof(uint8_t)) {
         return peripheral_error;
@@ -209,14 +209,14 @@ auto SuperSerial_ABI_Command(void* instance, uint32_t cmd, const void* data,
   return peripheral_incompatible;
 }
 
-auto SuperSerial_ABI_Query(void* instance, uint32_t cmd, void* output_buffer,
+auto super_serial_abi_query(void* instance, uint32_t cmd, void* output_buffer,
                            size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
     return peripheral_error;
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
-  switch (static_cast<SuperSerialQuery_e>(cmd)) {
+  switch (static_cast<SuperSerialQuery_t>(cmd)) {
     case SUPER_SERIAL_QUERY_CONFIG: {
       const size_t req_size = sizeof(SuperSerialDipSwConfig_t);
       if (output_buffer == nullptr) {
@@ -249,7 +249,7 @@ auto SuperSerial_ABI_Query(void* instance, uint32_t cmd, void* output_buffer,
   return peripheral_incompatible;
 }
 
-auto SuperSerial_SaveState(void* instance, void* state_buffer,
+auto super_serial_save_state(void* instance, void* state_buffer,
                            size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
     return peripheral_error;
@@ -276,7 +276,7 @@ auto SuperSerial_SaveState(void* instance, void* state_buffer,
   return peripheral_ok;
 }
 
-auto SuperSerial_LoadState(void* instance, const void* state_buffer,
+auto super_serial_load_state(void* instance, const void* state_buffer,
                            size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SS_IO_Comms);
   if (instance == nullptr || state_buffer == nullptr ||
@@ -304,19 +304,19 @@ static Peripheral_t g_ssc_peripheral = {
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
     .default_slot = 2,
-    .init = SuperSerial_ABI_Init,
-    .reset = SuperSerial_Reset,
-    .shutdown = SuperSerial_Shutdown,
+    .init = super_serial_abi_init,
+    .reset = super_serial_reset,
+    .shutdown = super_serial_shutdown,
     .think = nullptr,
     .on_vblank = nullptr,
-    .save_state = SuperSerial_SaveState,
-    .load_state = SuperSerial_LoadState,
-    .command = SuperSerial_ABI_Command,
-    .query = SuperSerial_ABI_Query};
+    .save_state = super_serial_save_state,
+    .load_state = super_serial_load_state,
+    .command = super_serial_abi_command,
+    .query = super_serial_abi_query};
 
 }  // namespace
 
-auto SuperSerial_GetDescriptor() -> Peripheral_t* { return &g_ssc_peripheral; }
+auto super_serial_get_descriptor() -> Peripheral_t* { return &g_ssc_peripheral; }
 
 PERIPHERAL_REGISTER(g_ssc_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

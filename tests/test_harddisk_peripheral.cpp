@@ -11,14 +11,14 @@
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern "C" auto Harddisk_GetDescriptor() -> Peripheral_t*;
+extern "C" auto harddisk_get_descriptor() -> Peripheral_t*;
 
 TEST_CASE("Harddisk Peripheral: Lifecycle and Registration") {
   Linapple_Init();
   Peripheral_Manager_Init();
 
   // Register Harddisk in Slot 7
-  int result = peripheral_register(Harddisk_GetDescriptor(), 7);
+  int result = peripheral_register(harddisk_get_descriptor(), 7);
   CHECK(result == 0);
 
   // Verify I/O mapping for $C0F0
@@ -34,7 +34,7 @@ TEST_CASE("Harddisk Peripheral: Lifecycle and Registration") {
 TEST_CASE("Harddisk Peripheral: Commands and Queries") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  peripheral_register(Harddisk_GetDescriptor(), 7);
+  peripheral_register(harddisk_get_descriptor(), 7);
 
   // 1. Check initial status
   HarddiskStatus_t status;
@@ -81,7 +81,7 @@ TEST_CASE("Harddisk Peripheral: Commands and Queries") {
 TEST_CASE("Harddisk Peripheral: Direct I/O Logic") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  peripheral_register(Harddisk_GetDescriptor(), 7);
+  peripheral_register(harddisk_get_descriptor(), 7);
 
   // Write Unit Number to $C0F3
   IOMap_Dispatch(0, 0xC0F3, 1, 0x80, 0);  // Drive 2

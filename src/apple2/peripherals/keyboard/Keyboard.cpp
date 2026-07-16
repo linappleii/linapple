@@ -589,7 +589,7 @@ static Peripheral_t g_keyboard_peripheral = {
     .command = keyboard_abi_command,
     .query = keyboard_abi_query};
 
-extern "C" auto Keyboard_GetDescriptor() -> Peripheral_t* {
+extern "C" auto keyboard_get_descriptor() -> Peripheral_t* {
   return &g_keyboard_peripheral;
 }
 

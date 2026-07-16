@@ -11,21 +11,21 @@ typedef struct {
     };
     uint16_t w;
   };
-} IWORD;
+} IWord_t;
 
 typedef struct {
   uint8_t ORB;
   uint8_t ORA;
   uint8_t DDRB;
   uint8_t DDRA;
-  IWORD TIMER1_COUNTER;
-  IWORD TIMER1_LATCH;
-  IWORD TIMER2_COUNTER;
-  IWORD TIMER2_LATCH;
+  IWord_t TIMER1_COUNTER;
+  IWord_t TIMER1_LATCH;
+  IWord_t TIMER2_COUNTER;
+  IWord_t TIMER2_LATCH;
   uint8_t SERIAL_SHIFT;
   uint8_t ACR;
   uint8_t PCR;
   uint8_t IFR;
   uint8_t IER;
   uint8_t ORA_NO_HS;
-} SY6522;
+} Sy6522_t;

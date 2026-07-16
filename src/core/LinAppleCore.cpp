@@ -204,7 +204,7 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
       break;
     }
     cyclenum += executed;
-    g_nCumulativeCycles += executed;
+    g_cumulative_cycles += executed;
     count += executed;
     if (CpuGetRegisters()->pc == trap_addr) {
       printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n",
@@ -279,7 +279,7 @@ static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
 
   uint32_t executed_cycles = CpuExecute(dw_cycles);
   cyclenum += executed_cycles;
-  cumulativecycles = g_nCumulativeCycles;
+  cumulativecycles = g_cumulative_cycles;
 
   Peripheral_Manager_Think(executed_cycles);
   VideoUpdateVbl(executed_cycles);

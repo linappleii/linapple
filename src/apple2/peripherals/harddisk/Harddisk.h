@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-auto Harddisk_GetDescriptor() -> Peripheral_t*;
+auto harddisk_get_descriptor() -> Peripheral_t*;
 
 #ifdef __cplusplus
 }

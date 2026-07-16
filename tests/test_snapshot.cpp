@@ -40,7 +40,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   CpuGetRegisters()->y = 0x33;
   CpuGetRegisters()->pc = 0x1000;
   CpuGetRegisters()->sp = 0x1FF;
-  g_nCumulativeCycles = 12345;
+  g_cumulative_cycles = 12345;
 
   MemGetActiveContext()->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   MemGetActiveContext()->last_write_ram = true;
@@ -54,7 +54,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   CpuGetRegisters()->y = 0xFF;
   CpuGetRegisters()->pc = 0x9999;
   CpuGetRegisters()->sp = 0x100;
-  g_nCumulativeCycles = 99999;
+  g_cumulative_cycles = 99999;
 
   MemGetActiveContext()->mem_mode = MF_80STORE | MF_ALTZP;
   MemGetActiveContext()->last_write_ram = false;
@@ -79,7 +79,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   CpuGetRegisters()->y = orig_y;
   CpuGetRegisters()->pc = orig_pc;
   CpuGetRegisters()->sp = orig_sp;
-  g_nCumulativeCycles = orig_cycles;
+  g_cumulative_cycles = orig_cycles;
 
   MemGetActiveContext()->mem_mode = orig_mem_mode;
   MemGetActiveContext()->last_write_ram = orig_last_write_ram;

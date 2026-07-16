@@ -112,7 +112,7 @@ static HostInterface_t mock_host = {
     .SerialUpdateState = nullptr};
 
 static auto Clock_Init_With_Mock(int slot) -> void* {
-  void* instance = Clock_GetDescriptor()->init(slot, &mock_host);
+  void* instance = clock_get_descriptor()->init(slot, &mock_host);
   const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
   for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
     if (g_mock_handlers.count(base + i)) {
@@ -142,7 +142,7 @@ TEST_CASE("Clock Peripheral: Lifecycle and Registration") {
   CHECK(rom.at(SIG_OFFSET_4) == PRODOS_SIG_4);
   CHECK(rom.at(SIG_OFFSET_6) == PRODOS_SIG_6);
 
-  Clock_GetDescriptor()->shutdown(instance);
+  clock_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Clock Peripheral: Time Accuracy") {
@@ -173,7 +173,7 @@ TEST_CASE("Clock Peripheral: Time Accuracy") {
   CHECK(read_pair(LATCH_HOUR) == local_time.tm_hour);
   CHECK(read_pair(LATCH_MINUTE) == local_time.tm_min);
 
-  Clock_GetDescriptor()->shutdown(instance);
+  clock_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Clock Peripheral: Reset Behavior") {
@@ -184,14 +184,14 @@ TEST_CASE("Clock Peripheral: Reset Behavior") {
 
   g_mock_handlers.at(base + LATCH_TRIGGER_OFFSET)
       .read(instance, 0, base + LATCH_TRIGGER_OFFSET, 0, 0, 0);
-  Clock_GetDescriptor()->reset(instance);
+  clock_get_descriptor()->reset(instance);
 
   for (uint16_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
     CHECK(g_mock_handlers.at(base + i).read(instance, 0, base + i, 0, 0, 0) ==
           0);
   }
 
-  Clock_GetDescriptor()->shutdown(instance);
+  clock_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("Clock Peripheral: State Persistence") {
@@ -210,31 +210,31 @@ TEST_CASE("Clock Peripheral: State Persistence") {
   }
 
   size_t state_size = 0;
-  Clock_GetDescriptor()->save_state(instance1, nullptr, &state_size);
+  clock_get_descriptor()->save_state(instance1, nullptr, &state_size);
   REQUIRE(state_size == CLOCK_LATCHES_COUNT);
 
   std::vector<uint8_t> buffer(state_size);
-  Clock_GetDescriptor()->save_state(instance1, buffer.data(), &state_size);
+  clock_get_descriptor()->save_state(instance1, buffer.data(), &state_size);
 
   const int slot2 = TEST_SLOT_2;
   void* instance2 = Clock_Init_With_Mock(slot2);
   const uint16_t base2 = IO_BASE_ADDRESS + (slot2 << IO_SLOT_OFFSET);
 
-  Clock_GetDescriptor()->load_state(instance2, buffer.data(), state_size);
+  clock_get_descriptor()->load_state(instance2, buffer.data(), state_size);
 
   for (uint16_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
     CHECK(g_mock_handlers.at(base2 + i).read(instance2, 0, base2 + i, 0, 0,
                                              0) == original_latches.at(i));
   }
 
-  Clock_GetDescriptor()->shutdown(instance1);
-  Clock_GetDescriptor()->shutdown(instance2);
+  clock_get_descriptor()->shutdown(instance1);
+  clock_get_descriptor()->shutdown(instance2);
 }
 
 TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
   g_mock_handlers.clear();
 
-  CHECK(Clock_GetDescriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
+  CHECK(clock_get_descriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
 
   const int slot = TEST_SLOT_1;
   void* instance = Clock_Init_With_Mock(slot);
@@ -242,11 +242,11 @@ TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
 
   size_t too_small = TINY_BUFFER_SIZE;
   std::array<uint8_t, TINY_BUFFER_SIZE> small_buf{};
-  CHECK(Clock_GetDescriptor()->save_state(instance, small_buf.data(),
+  CHECK(clock_get_descriptor()->save_state(instance, small_buf.data(),
                                           &too_small) == peripheral_error);
 
   std::array<uint8_t, INVALID_STATE_SIZE> wrong_buf{};
-  CHECK(Clock_GetDescriptor()->load_state(instance, wrong_buf.data(),
+  CHECK(clock_get_descriptor()->load_state(instance, wrong_buf.data(),
                                           INVALID_STATE_SIZE) ==
         peripheral_error);
 
@@ -261,8 +261,8 @@ TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
   CHECK(g_mock_handlers.at(base2 + 1).read(instance2, 0, base2 + 1, 0, 0, 0) ==
         0);
 
-  Clock_GetDescriptor()->shutdown(instance);
-  Clock_GetDescriptor()->shutdown(instance2);
+  clock_get_descriptor()->shutdown(instance);
+  clock_get_descriptor()->shutdown(instance2);
 }
 
 }  // namespace

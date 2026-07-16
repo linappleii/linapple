@@ -20,7 +20,7 @@
 #include "doctest.h"
 
 // Access internal descriptor for testing
-extern "C" auto Harddisk_GetDescriptor() -> Peripheral_t*;
+extern "C" auto harddisk_get_descriptor() -> Peripheral_t*;
 
 namespace {
 
@@ -44,7 +44,7 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   Linapple_Init();
   Peripheral_Manager_Init();
 
-  auto* descriptor = Harddisk_GetDescriptor();
+  auto* descriptor = harddisk_get_descriptor();
   REQUIRE(descriptor != nullptr);
 
   // Register Harddisk in Slot 7
@@ -148,7 +148,7 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
 TEST_CASE("Harddisk: Edge Cases and Safety") {
   Linapple_Init();
   Peripheral_Manager_Init();
-  auto* descriptor = Harddisk_GetDescriptor();
+  auto* descriptor = harddisk_get_descriptor();
   peripheral_register(descriptor, 7);
 
   // 1. Invalid Drive Index in Command
@@ -208,7 +208,7 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     
     Linapple_Init();
     Peripheral_Manager_Init();
-    auto* descriptor = Harddisk_GetDescriptor();
+    auto* descriptor = harddisk_get_descriptor();
     peripheral_register(descriptor, 7);
     
     HarddiskInsertCmd_t insert{};

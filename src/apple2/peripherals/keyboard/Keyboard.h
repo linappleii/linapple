@@ -10,7 +10,7 @@ extern "C" {
 // NOLINTBEGIN(modernize-use-using)
 // Justification: Identity header for the Keyboard module.
 
-auto Keyboard_GetDescriptor() -> Peripheral_t*;
+auto keyboard_get_descriptor() -> Peripheral_t*;
 
 // NOLINTEND(modernize-use-using)
 

@@ -14,7 +14,7 @@
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "core/Peripheral.h"
 
-extern uint64_t g_nCumulativeCycles;
+extern uint64_t g_cumulative_cycles;
 
 // Mock Host Interface
 static bool g_irq_asserted = false;
@@ -57,7 +57,7 @@ static HostInterface_t g_mock_host = {
 };
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {
-  g_nCumulativeCycles = 10000;
+  g_cumulative_cycles = 10000;
   g_fCurrentCLK6502 = 1022727.0;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
@@ -65,7 +65,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
   g_read_cx = nullptr;
   g_write_cx = nullptr;
   g_config_type[0] = '\0';
-  auto* descriptor = Mockingboard_GetDescriptor();
+  auto* descriptor = mockingboard_get_descriptor();
   void* instance = descriptor->init(4, &g_mock_host);
   REQUIRE(instance != nullptr);
   descriptor->reset(instance);
@@ -117,12 +117,12 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     CHECK(g_irq_asserted == false);
 
     // 3. Advance cycles partially
-    g_nCumulativeCycles += 500;
+    g_cumulative_cycles += 500;
     descriptor->think(instance, 0);
     CHECK(g_irq_asserted == false);
 
     // 4. Advance cycles beyond period
-    g_nCumulativeCycles += 600; // Total 1100 > 1000
+    g_cumulative_cycles += 600; // Total 1100 > 1000
     descriptor->think(instance, 0);
     CHECK(g_irq_asserted == true);
 
@@ -146,7 +146,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     g_write_cx(instance, 0, 0xC005, 1, 0x01, 0); // 500 >> 8 = 1
 
     // First underflow
-    g_nCumulativeCycles += 501;
+    g_cumulative_cycles += 501;
     descriptor->think(instance, 0);
     CHECK(g_irq_asserted == true);
 
@@ -156,7 +156,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     CHECK(g_irq_asserted == false);
 
     // Second underflow (continuous mode should reload)
-    g_nCumulativeCycles += 501;
+    g_cumulative_cycles += 501;
     descriptor->think(instance, 0);
     CHECK(g_irq_asserted == true);
   }
@@ -199,7 +199,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 }
 
 TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
-  g_nCumulativeCycles = 10000;
+  g_cumulative_cycles = 10000;
   g_fCurrentCLK6502 = 1022727.0;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
@@ -208,7 +208,7 @@ TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
   g_write_cx = nullptr;
   strcpy(g_config_type, "Phasor");
 
-  auto* descriptor = Mockingboard_GetDescriptor();
+  auto* descriptor = mockingboard_get_descriptor();
   void* instance = descriptor->init(4, &g_mock_host);
   REQUIRE(instance != nullptr);
   descriptor->reset(instance);

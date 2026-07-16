@@ -604,7 +604,7 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
         g_state.mode = MODE_STEPPING;
       }
 
-      CPU_Step();
+      cpu_step();
     }
   }
 

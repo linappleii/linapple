@@ -13,4 +13,4 @@ constexpr int LATCH_DAY = 4;
 constexpr int LATCH_HOUR = 6;
 constexpr int LATCH_MINUTE = 8;
 
-auto Clock_GetDescriptor() -> Peripheral_t*;
+auto clock_get_descriptor() -> Peripheral_t*;

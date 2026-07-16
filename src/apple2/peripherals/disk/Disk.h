@@ -10,7 +10,7 @@ extern "C" {
 // NOLINTBEGIN(modernize-use-using)
 // Justification: Identity header for the Disk II module.
 
-auto Disk_GetDescriptor() -> Peripheral_t*;
+auto disk_get_descriptor() -> Peripheral_t*;
 
 // NOLINTEND(modernize-use-using)
 

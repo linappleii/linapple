@@ -10,7 +10,7 @@ extern "C" {
 // NOLINTBEGIN(modernize-use-using)
 // Justification: Identity header for the Mouse module.
 
-auto Mouse_GetDescriptor() -> Peripheral_t*;
+auto mouse_get_descriptor() -> Peripheral_t*;
 
 // NOLINTEND(modernize-use-using)
 

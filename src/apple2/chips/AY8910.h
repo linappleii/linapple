@@ -24,21 +24,21 @@ typedef struct {
 
   double count_accum;
   uint32_t step;
-} AY8910;
+} Ay8910_t;
 
-void AY8910_reset_instance(AY8910* p);
-void AY8910_write_instance(AY8910* p, int r, int v, int ay_clock,
+void ay8910_reset_instance(Ay8910_t* p);
+void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
                            int sample_rate);
-void AY8910_update_instance(AY8910* p, int16_t** buffer, int length,
+void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
                             int ay_clock, int sample_rate);
 
 // Legacy stubs
-void AY8910_InitAll(int clock_rate, int sample_rate);
-void AY8910_InitClock(int nClock);
-void AY8910_reset(int chip);
-void AY8910_write_ym(int chip, int addr, int data);
-void _AYWriteReg(int n, int r, int v);
-void AY8910Update(int chip, int16_t** buffer, int length);
-auto AY8910_GetRegsPtr(uint32_t nAyNum) -> uint8_t*;
+void ay8910_init_all(int clock_rate, int sample_rate);
+void ay8910_init_clock(int nClock);
+void ay8910_reset(int chip);
+void ay8910_write_ym(int chip, int addr, int data);
+void _ay_write_reg(int n, int r, int v);
+void ay8910_update(int chip, int16_t** buffer, int length);
+auto ay8910_get_regs_ptr(uint32_t nAyNum) -> uint8_t*;
 
 #endif

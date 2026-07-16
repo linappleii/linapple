@@ -56,12 +56,12 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
 
   pArg->eDevice = DEV_MEMORY;  // Default
 
-  if (strncmp(g_aArgs[1].sArg, "SY", 2) == 0)  // SY6522
+  if (strncmp(g_aArgs[1].sArg, "SY", 2) == 0)  // Sy6522_t
   {
     nAddress = (g_aArgs[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_SY6522;
     bUpdate = true;
-  } else if (strncmp(g_aArgs[1].sArg, "AY", 2) == 0)  // AY8910
+  } else if (strncmp(g_aArgs[1].sArg, "AY", 2) == 0)  // Ay8910_t
   {
     nAddress = (g_aArgs[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_AY8910;

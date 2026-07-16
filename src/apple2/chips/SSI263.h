@@ -10,4 +10,4 @@ typedef struct {
   uint8_t CtrlArtAmp;
   uint8_t FilterFreq;
   uint8_t CurrentMode;
-} SSI263A;
+} Ssi263A_t;

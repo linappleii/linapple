@@ -91,8 +91,8 @@ constexpr uint8_t via_reg_mask = 0x0F;
 constexpr size_t mb_max_slots = 8;
 
 struct Sy6522Ay8910_t {
-  SY6522 sy6522 = {};
-  AY8910 ay_chip = {};
+  Sy6522_t sy6522 = {};
+  Ay8910_t ay_chip = {};
   uint16_t ay_current_register = 0;
   uint8_t ay_8910_number = 0;
   int timer_status = 0;
@@ -121,15 +121,15 @@ struct MockingboardPeripheral_t {
     for (int i = 0; i < chips_per_card; ++i) {
       const auto idx = static_cast<size_t>(i);
       chips.at(idx).ay_8910_number = static_cast<uint8_t>(i);
-      AY8910_reset_instance(&chips.at(idx).ay_chip);
+      ay8910_reset_instance(&chips.at(idx).ay_chip);
     }
   }
 };
 
 struct MockingboardSaveState_t {
   struct ChipState_t {
-    SY6522 sy6522;
-    AY8910 ay_chip;
+    Sy6522_t sy6522;
+    Ay8910_t ay_chip;
     uint16_t ay_current_register;
     uint8_t ay_8910_number;
     int32_t timer_status;
@@ -218,14 +218,14 @@ static auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
   auto* pmb = &mp->chips.at(static_cast<size_t>(device));
 
   if ((value & ay::pb_reset_n) == 0) {
-    AY8910_reset_instance(&pmb->ay_chip);
+    ay8910_reset_instance(&pmb->ay_chip);
   } else {
     int bdir = (value & ay::pb_bdir) ? 1 : 0;
     int bc1 = (value & ay::pb_bc1) ? 1 : 0;
     int ay_func = (bdir << 2) | (1 << 1) | bc1;
 
     if (ay_func == ay::func_write) {
-      AY8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
+      ay8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
                             pmb->sy6522.ORA,
                             static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
     } else if (ay_func == ay::func_latch) {
@@ -429,7 +429,7 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     voices[0] = mp->voice_buffers.at(i * 3 + 0).data();
     voices[1] = mp->voice_buffers.at(i * 3 + 1).data();
     voices[2] = mp->voice_buffers.at(i * 3 + 2).data();
-    AY8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
+    ay8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
                            static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
   }
 
@@ -689,8 +689,8 @@ static auto mb_abi_reset(void* instance) -> void {
   mp->phasor_native = false;
 
   for (auto& chip : mp->chips) {
-    memset(&chip.sy6522, 0, sizeof(SY6522));
-    AY8910_reset_instance(&chip.ay_chip);
+    memset(&chip.sy6522, 0, sizeof(Sy6522_t));
+    ay8910_reset_instance(&chip.ay_chip);
     chip.timer_status = 0;
     chip.ay_current_register = 0;
   }
@@ -835,7 +835,7 @@ static Peripheral_t g_mockingboard_peripheral = {
     .command = nullptr,
     .query = nullptr};
 
-auto Mockingboard_GetDescriptor() -> Peripheral_t* {
+auto mockingboard_get_descriptor() -> Peripheral_t* {
   return &g_mockingboard_peripheral;
 }
 

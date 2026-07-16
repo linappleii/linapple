@@ -22,7 +22,7 @@ bool g_bProfiling = false;
 
 ProfileOpcode_t g_aProfileOpcodes[ NUM_OPCODES ];
 ProfileOpmode_t g_aProfileOpmodes[ NUM_OPMODES ];
-uint64_t g_nProfileBeginCycles = 0; // g_nCumulativeCycles // PROFILE RESET
+uint64_t g_nProfileBeginCycles = 0; // g_cumulative_cycles // PROFILE RESET
 
 const std::string g_FileNameProfile = "Profile.txt";
 int   g_nProfileLine = 0;
@@ -98,7 +98,7 @@ auto CmdProfile (int nArgs) -> Update_t
     else
     {
       g_bProfiling = (iParam == PARAM_PROFILE_ON);
-      g_nProfileBeginCycles = g_nCumulativeCycles;
+      g_nProfileBeginCycles = g_cumulative_cycles;
     }
   }
   else
@@ -141,7 +141,7 @@ void ProfileReset()
   }
 
   g_nProfileLine = 0;
-  g_nProfileBeginCycles = g_nCumulativeCycles;
+  g_nProfileBeginCycles = g_cumulative_cycles;
 }
 
 void ProfileFormat( bool bSeperateColumns, int eFormatMode )
@@ -164,7 +164,7 @@ void ProfileFormat( bool bSeperateColumns, int eFormatMode )
   g_nProfileLine = 0;
   char *pText = & g_aProfileLine[ 0 ][ 0 ];
 
-  uint64_t nTotalCycles = g_nCumulativeCycles - g_nProfileBeginCycles;
+  uint64_t nTotalCycles = g_cumulative_cycles - g_nProfileBeginCycles;
   sprintf( pText, "Cycles: %llu\n", static_cast<unsigned long long>(nTotalCycles) );
   g_nProfileLine++;
 

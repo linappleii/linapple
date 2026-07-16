@@ -87,7 +87,7 @@ auto PrintTransmit(void* instance, uint16_t program_counter,
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
+static auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -108,7 +108,7 @@ static auto Printer_ABI_Init(int slot, HostInterface_t* host) -> void* {
   return printer_peripheral.release();
 }
 
-static auto Printer_ABI_Reset(void* instance) -> void {
+static auto printer_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -116,7 +116,7 @@ static auto Printer_ABI_Reset(void* instance) -> void {
   (void)printer_peripheral;
 }
 
-static auto Printer_ABI_Shutdown(void* instance) -> void {
+static auto printer_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -124,7 +124,7 @@ static auto Printer_ABI_Shutdown(void* instance) -> void {
       static_cast<PrinterPeripheral_t*>(instance));
 }
 
-static auto Printer_ABI_Think(void* instance, uint32_t elapsed_cycles) -> void {
+static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -144,17 +144,17 @@ static Peripheral_t g_printer_peripheral = {
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
     .default_slot = 1,
-    .init = Printer_ABI_Init,
-    .reset = Printer_ABI_Reset,
-    .shutdown = Printer_ABI_Shutdown,
-    .think = Printer_ABI_Think,
+    .init = printer_abi_init,
+    .reset = printer_abi_reset,
+    .shutdown = printer_abi_shutdown,
+    .think = printer_abi_think,
     .on_vblank = nullptr,
     .save_state = nullptr,
     .load_state = nullptr,
     .command = nullptr,
     .query = nullptr};
 
-auto Printer_GetDescriptor() -> Peripheral_t* { return &g_printer_peripheral; }
+auto printer_get_descriptor() -> Peripheral_t* { return &g_printer_peripheral; }
 
 PERIPHERAL_REGISTER(g_printer_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

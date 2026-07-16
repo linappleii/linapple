@@ -3,4 +3,4 @@
 
 #include "core/Peripheral.h"
 
-auto Joystick_GetDescriptor() -> Peripheral_t*;
+auto joystick_get_descriptor() -> Peripheral_t*;

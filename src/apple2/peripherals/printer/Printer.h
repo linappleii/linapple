@@ -3,4 +3,4 @@
 
 #include "core/Peripheral.h"
 
-auto Printer_GetDescriptor() -> Peripheral_t*;
+auto printer_get_descriptor() -> Peripheral_t*;

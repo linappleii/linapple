@@ -42,7 +42,7 @@ struct SsCpu6502_t {
   uint16_t pc;
   uint64_t cumulative_cycles;
 };
-using SS_CPU6502 = SsCpu6502_t;
+using SsCpu6502_t = SsCpu6502_t;
 
 struct SsIoComms_t {
   uint32_t baud_rate;
@@ -105,7 +105,7 @@ struct SsApple2Unit_t {
   SsIoComms_t comms;
   SsIoJoystick_t joystick;
   KeyboardSaveState_t keyboard;
-  SS_IO_Speaker speaker;
+  SsIoSpeaker_t speaker;
   SsIoVideo_t video;
   SsBaseMemory_t memory;
 };
@@ -187,9 +187,9 @@ struct SsCardEmpty_t {
 using SS_CARD_EMPTY = SsCardEmpty_t;
 
 struct MbUnit_t {
-  SY6522 regs_sy6522;
+  Sy6522_t regs_sy6522;
   uint8_t regs_ay8910[16];
-  SSI263A regs_ssi263;
+  Ssi263A_t regs_ssi263;
   uint8_t ay_current_register;
   bool timer1_irq_pending;
   bool timer2_irq_pending;

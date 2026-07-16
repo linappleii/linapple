@@ -67,7 +67,7 @@ enum {
 #define PIA_CALL(h, val) \
   if (h.func) h.func(h.objTo, val)
 
-static void UpdateInterrupts(Pia6821* p) {
+static void UpdateInterrupts(Pia6821_t* p) {
   uint8_t irq_a = 0;
   if (((p->cra & CRA_IRQ1) && (p->cra & CRA_CA1_EN)) ||
       ((p->cra & CRA_IRQ2) && (!(p->cra & CRA_CA2_OUT)) && (p->cra & 0x08))) {
@@ -91,14 +91,14 @@ static void UpdateInterrupts(Pia6821* p) {
   }
 }
 
-void Pia6821_Reset(Pia6821* p) {
-  memset(p, 0, sizeof(Pia6821));
+void pia_6821_reset(Pia6821_t* p) {
+  memset(p, 0, sizeof(Pia6821_t));
   // Port A has internal pull-up devices
   p->port_a_in = 0xFF;
   p->port_b_in = 0xFF;
 }
 
-auto Pia6821_Read(Pia6821* p, uint8_t addr) -> uint8_t {
+auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
   uint8_t val = 0;
   addr &= 0x03;
 
@@ -153,7 +153,7 @@ auto Pia6821_Read(Pia6821* p, uint8_t addr) -> uint8_t {
   return val;
 }
 
-void Pia6821_Write(Pia6821* p, uint8_t addr, uint8_t val) {
+void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
   addr &= 0x03;
 
   switch (addr) {
@@ -216,10 +216,10 @@ void Pia6821_Write(Pia6821* p, uint8_t addr, uint8_t val) {
   }
 }
 
-void Pia6821_SetPortA(Pia6821* p, uint8_t val) { p->port_a_in = val; }
-void Pia6821_SetPortB(Pia6821* p, uint8_t val) { p->port_b_in = val; }
+void pia_6821_set_port_a(Pia6821_t* p, uint8_t val) { p->port_a_in = val; }
+void pia_6821_set_port_b(Pia6821_t* p, uint8_t val) { p->port_b_in = val; }
 
-void Pia6821_SetCA1(Pia6821* p, bool level) {
+void pia_6821_set_ca1(Pia6821_t* p, bool level) {
   bool old = p->ca1_in;
   p->ca1_in = level;
   bool transition = false;
@@ -242,7 +242,7 @@ void Pia6821_SetCA1(Pia6821* p, bool level) {
   }
 }
 
-void Pia6821_SetCA2(Pia6821* p, bool level) {
+void pia_6821_set_ca2(Pia6821_t* p, bool level) {
   bool old = p->ca2_in;
   p->ca2_in = level;
   if (!(p->cra & CRA_CA2_OUT)) {  // Input mode
@@ -259,7 +259,7 @@ void Pia6821_SetCA2(Pia6821* p, bool level) {
   }
 }
 
-void Pia6821_SetCB1(Pia6821* p, bool level) {
+void pia_6821_set_cb1(Pia6821_t* p, bool level) {
   bool old = p->cb1_in;
   p->cb1_in = level;
   bool transition = false;
@@ -282,7 +282,7 @@ void Pia6821_SetCB1(Pia6821* p, bool level) {
   }
 }
 
-void Pia6821_SetCB2(Pia6821* p, bool level) {
+void pia_6821_set_cb2(Pia6821_t* p, bool level) {
   bool old = p->cb2_in;
   p->cb2_in = level;
   if (!(p->crb & CRB_CB2_OUT)) {  // Input mode
@@ -299,30 +299,30 @@ void Pia6821_SetCB2(Pia6821* p, bool level) {
   }
 }
 
-auto Pia6821_GetPortA(Pia6821* p) -> uint8_t { return p->ora & p->ddra; }
-auto Pia6821_GetPortB(Pia6821* p) -> uint8_t { return p->orb & p->ddrb; }
+auto pia_6821_get_port_a(Pia6821_t* p) -> uint8_t { return p->ora & p->ddra; }
+auto pia_6821_get_port_b(Pia6821_t* p) -> uint8_t { return p->orb & p->ddrb; }
 
-void Pia6821_SetListenerA(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_a(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_a.objTo = objTo;
   p->out_a.func = func;
 }
-void Pia6821_SetListenerB(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_b(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_b.objTo = objTo;
   p->out_b.func = func;
 }
-void Pia6821_SetListenerCA2(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_ca2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_ca2.objTo = objTo;
   p->out_ca2.func = func;
 }
-void Pia6821_SetListenerCB2(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_cb2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_cb2.objTo = objTo;
   p->out_cb2.func = func;
 }
-void Pia6821_SetListenerIRQA(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_irqa(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_irqa.objTo = objTo;
   p->out_irqa.func = func;
 }
-void Pia6821_SetListenerIRQB(Pia6821* p, void* objTo, PiaOutputCallback func) {
+void pia_6821_set_listener_irqb(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
   p->out_irqb.objTo = objTo;
   p->out_irqb.func = func;
 }

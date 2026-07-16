@@ -46,8 +46,8 @@ static uint8_t benchopcode[BENCHOPCODES] = {
 static CpuInstance_t g_cpu_context{};
 CpuInstance_t* g_active_cpu = &g_cpu_context;
 
-regsrec regs;
-uint64_t g_nCumulativeCycles = 0;
+RegsRec_t regs;
+uint64_t g_cumulative_cycles = 0;
 static uint32_t g_nCyclesSubmitted;
 static uint32_t g_nCyclesExecuted;
 static std::atomic<uint32_t> g_bmIRQ{0};
@@ -56,19 +56,19 @@ static std::atomic<bool> g_bNmiFlank{
     false};  // Positive going flank on NMI line
 
 auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
-auto cpu_get_cumulative_cycles() -> uint64_t { return g_nCumulativeCycles; }
+auto cpu_get_cumulative_cycles() -> uint64_t { return g_cumulative_cycles; }
 auto cpu_get_active_context() -> CpuInstance_t* { return g_active_cpu; }
 auto cpu_set_active_context(CpuInstance_t* context) -> void {
   if (context == nullptr) {
     return;
   }
   g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
+  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
 
   g_active_cpu = context;
 
   regs = g_active_cpu->cpu_regs;
-  g_nCumulativeCycles = g_active_cpu->cumulative_cycles;
+  g_cumulative_cycles = g_active_cpu->cumulative_cycles;
 }
 
 auto CpuGetRegisters() -> CpuRegisters_t* { return cpu_get_registers(); }
@@ -779,7 +779,7 @@ static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
   if (g_bNmiFlank) {
     // NMI signals are only serviced once
     g_bNmiFlank = false;
-    g_nCycleIrqStart = g_nCumulativeCycles + uExecutedCycles;
+    g_nCycleIrqStart = g_cumulative_cycles + uExecutedCycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -797,7 +797,7 @@ static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
   if (g_bmIRQ && !(regs.ps & AF_INTERRUPT)) {
     // IRQ signals are deasserted when a specific r/w operation is done on
     // device
-    g_nCycleIrqStart = g_nCumulativeCycles + uExecutedCycles;
+    g_nCycleIrqStart = g_cumulative_cycles + uExecutedCycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -1936,7 +1936,7 @@ auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
   assert((int32_t)nCycles >= 0);
 #endif
   g_nCyclesExecuted += nCycles;
-  g_nCumulativeCycles += nCycles;
+  g_cumulative_cycles += nCycles;
 }
 
 #ifdef UPDATE_ALL_PER_CYCLE
@@ -1964,7 +1964,7 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   }
 
   uint32_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
-  g_nCumulativeCycles += nRemainingCycles;
+  g_cumulative_cycles += nRemainingCycles;
 
   return uExecutedCycles;
 }
@@ -2089,12 +2089,12 @@ auto cpu_reset() -> void {
   regs.is_jammed = 0;
 }
 
-auto cpu_get_snapshot(SS_CPU6502* snapshot) -> uint32_t {
+auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   if (!snapshot) {
     return 1;
   }
   g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
+  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
 
   snapshot->a = regs.a;
   snapshot->x = regs.x;
@@ -2102,12 +2102,12 @@ auto cpu_get_snapshot(SS_CPU6502* snapshot) -> uint32_t {
   snapshot->p = regs.ps | AF_RESERVED | AF_BREAK;
   snapshot->s = static_cast<uint8_t>(regs.sp & 0xff);
   snapshot->pc = regs.pc;
-  snapshot->cumulative_cycles = g_nCumulativeCycles;
+  snapshot->cumulative_cycles = g_cumulative_cycles;
 
   return 0;
 }
 
-auto cpu_set_snapshot(SS_CPU6502* snapshot) -> uint32_t {
+auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   if (!snapshot) {
     return 1;
   }
@@ -2119,10 +2119,10 @@ auto cpu_set_snapshot(SS_CPU6502* snapshot) -> uint32_t {
   regs.pc = snapshot->pc;
   cpu_irq_reset();
   cpu_nmi_reset();
-  g_nCumulativeCycles = snapshot->cumulative_cycles;
+  g_cumulative_cycles = snapshot->cumulative_cycles;
 
   g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_nCumulativeCycles;
+  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
 
   return 0;
 }
@@ -2141,7 +2141,7 @@ auto CpuCalcCycles(uint32_t nExecutedCycles) -> void {
   cpu_calc_cycles(nExecutedCycles);
 }
 auto CpuExecute(uint32_t uCycles) -> uint32_t { return cpu_execute(uCycles); }
-auto CPU_Step() -> void { cpu_execute(0); }
+auto cpu_step() -> void { cpu_execute(0); }
 auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
   return cpu_get_cycles_this_frame(nExecutedCycles);
 }
@@ -2154,9 +2154,9 @@ auto CpuNmiReset() -> void { cpu_nmi_reset(); }
 auto CpuNmiAssert(IrqSrc_t Device) -> void { cpu_nmi_assert(Device); }
 auto CpuNmiDeassert(IrqSrc_t Device) -> void { cpu_nmi_deassert(Device); }
 auto CpuReset() -> void { cpu_reset(); }
-auto CpuGetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+auto CpuGetSnapshot(SsCpu6502_t* pSS) -> uint32_t {
   return cpu_get_snapshot(pSS);
 }
-auto CpuSetSnapshot(SS_CPU6502* pSS) -> uint32_t {
+auto CpuSetSnapshot(SsCpu6502_t* pSS) -> uint32_t {
   return cpu_set_snapshot(pSS);
 }
