@@ -7,17 +7,17 @@ extern "C" {
 /**
  * @brief Initialize the TUI input system.
  */
-auto TuiInput_Initialize() -> void;
+auto tui_input_initialize() -> void;
 
 /**
  * @brief Poll for terminal and joystick input.
  */
-auto TuiInput_Poll() -> void;
+auto tui_input_poll() -> void;
 
 /**
  * @brief Shutdown the TUI input system.
  */
-auto TuiInput_Shutdown() -> void;
+auto tui_input_shutdown() -> void;
 
 #ifdef __cplusplus
 }

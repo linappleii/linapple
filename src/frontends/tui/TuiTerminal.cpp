@@ -28,7 +28,7 @@ static void SignalHandler(int sig) {
   }
 }
 
-int TuiTerminal_Initialize() {
+int tui_terminal_initialize() {
   if (g_terminal_initialized) {
     return 0;
   }
@@ -71,7 +71,7 @@ int TuiTerminal_Initialize() {
   return 0;
 }
 
-void TuiTerminal_Shutdown() {
+void tui_terminal_shutdown() {
   if (!g_terminal_initialized) {
     return;
   }
@@ -86,8 +86,8 @@ void TuiTerminal_Shutdown() {
   g_terminal_initialized = false;
 }
 
-bool TuiTerminal_WasResized() { return g_resized.load(); }
+bool tui_terminal_was_resized() { return g_resized.load(); }
 
-void TuiTerminal_ClearResized() { g_resized = false; }
+void tui_terminal_clear_resized() { g_resized = false; }
 
-bool TuiTerminal_IsInterrupted() { return g_interrupted.load(); }
+bool tui_terminal_is_interrupted() { return g_interrupted.load(); }

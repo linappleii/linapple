@@ -10,18 +10,18 @@ extern "C" {
 /**
  * @brief Initialize the TUI audio system.
  */
-auto TuiAudio_Initialize() -> void;
+auto tui_audio_initialize() -> void;
 
 /**
  * @brief Process audio samples from core.
  */
-auto TuiAudio_ProcessSamples(const int16_t* samples, size_t num_samples)
+auto tui_audio_process_samples(const int16_t* samples, size_t num_samples)
     -> void;
 
 /**
  * @brief Shutdown the TUI audio system.
  */
-auto TuiAudio_Shutdown() -> void;
+auto tui_audio_shutdown() -> void;
 
 #ifdef __cplusplus
 }

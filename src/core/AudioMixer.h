@@ -5,7 +5,7 @@
 #include <cstdint>
 
 constexpr uint32_t SPKR_SAMPLE_RATE = 44100;
-constexpr uint32_t SAMPLE_RATE = 44100;
+constexpr uint32_t sample_rate = 44100;
 
 enum FadeType_t { fade_out = 0, fade_in = 1 };
 

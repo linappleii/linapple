@@ -9,7 +9,7 @@ extern "C" {
 /**
  * @brief Initialize the TUI video system.
  */
-auto TuiVideo_Initialize() -> void;
+auto tui_video_initialize() -> void;
 
 /**
  * @brief Render the current frame to the terminal.
@@ -19,13 +19,13 @@ auto TuiVideo_Initialize() -> void;
  * @param height Height of the pixel buffer.
  * @param pitch Pitch of the pixel buffer.
  */
-auto TuiVideo_RenderFrame(const uint32_t* pixels, int width, int height,
+auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
                           int pitch) -> void;
 
 /**
  * @brief Notify the video system of a terminal resize.
  */
-auto TuiVideo_OnResize() -> void;
+auto tui_video_on_resize() -> void;
 
 #ifdef __cplusplus
 }

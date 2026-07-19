@@ -15,7 +15,7 @@
 
 auto VideoCallback(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
-  TuiVideo_RenderFrame(pixels, width, height, pitch);
+  tui_video_render_frame(pixels, width, height, pitch);
 }
 
 auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
@@ -39,18 +39,18 @@ auto main(int argc, char* argv[]) -> int {
     return 0;
   }
 
-  if (TuiTerminal_Initialize() != 0) {
+  if (tui_terminal_initialize() != 0) {
     return 1;
   }
 
   if (AppController_Initialize(&config) != 0) {
-    TuiTerminal_Shutdown();
+    tui_terminal_shutdown();
     return 1;
   }
 
-  TuiVideo_Initialize();
-  TuiInput_Initialize();
-  TuiAudio_Initialize();
+  tui_video_initialize();
+  tui_input_initialize();
+  tui_audio_initialize();
 
   Linapple_SetVideoCallback(VideoCallback);
   Linapple_SetAudioCallback(AudioCallback);
@@ -64,22 +64,22 @@ auto main(int argc, char* argv[]) -> int {
   constexpr int MS_TO_US = 1000;
 
   // Run until interrupted
-  while (!TuiTerminal_IsInterrupted()) {
-    if (TuiTerminal_WasResized()) {
-      TuiTerminal_ClearResized();
-      TuiVideo_OnResize();
+  while (!tui_terminal_is_interrupted()) {
+    if (tui_terminal_was_resized()) {
+      tui_terminal_clear_resized();
+      tui_video_on_resize();
     }
 
-    TuiInput_Poll();
+    tui_input_poll();
 
     Linapple_RunFrame(apple2_frame_cycles);
     usleep(target_frame_ms * MS_TO_US);
   }
 
   AppController_Shutdown();
-  TuiAudio_Shutdown();
-  TuiInput_Shutdown();
-  TuiTerminal_Shutdown();
+  tui_audio_shutdown();
+  tui_input_shutdown();
+  tui_terminal_shutdown();
 
   return 0;
 }

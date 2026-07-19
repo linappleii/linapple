@@ -100,9 +100,9 @@ struct Sy6522Ay8910_t {
 
 struct MockingboardPeripheral_t {
   std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
-  std::array<std::array<int16_t, SAMPLE_RATE>, voices_per_card> voice_buffers =
+  std::array<std::array<int16_t, sample_rate>, voices_per_card> voice_buffers =
       {};
-  std::array<int16_t, SAMPLE_RATE * 2> mix_buffer = {};
+  std::array<int16_t, sample_rate * 2> mix_buffer = {};
   uint32_t timer_period_6522 = 0;
   uint16_t mb_timer_device = 0;
   uint64_t last_cumulative_cycles = 0;
@@ -227,7 +227,7 @@ static auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
     if (ay_func == ay::func_write) {
       ay8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
                             pmb->sy6522.ORA,
-                            static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
+                            static_cast<int>(g_fCurrentCLK6502), sample_rate);
     } else if (ay_func == ay::func_latch) {
       if (pmb->sy6522.ORA <= ay::reg_mask) {
         pmb->ay_current_register =
@@ -414,14 +414,14 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
 
   double irq_freq = g_fCurrentCLK6502 / timer_period_val;
   int num_samples =
-      static_cast<int>(static_cast<double>(SAMPLE_RATE) / irq_freq);
+      static_cast<int>(static_cast<double>(sample_rate) / irq_freq);
 
   if (num_samples <= 0) {
     return;
   }
 
-  if (static_cast<uint32_t>(num_samples) > SAMPLE_RATE) {
-    num_samples = static_cast<int>(SAMPLE_RATE);
+  if (static_cast<uint32_t>(num_samples) > sample_rate) {
+    num_samples = static_cast<int>(sample_rate);
   }
 
   for (size_t i = 0; i < chips_per_card; i++) {
@@ -430,7 +430,7 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     voices[1] = mp->voice_buffers.at(i * 3 + 1).data();
     voices[2] = mp->voice_buffers.at(i * 3 + 2).data();
     ay8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
-                           static_cast<int>(g_fCurrentCLK6502), SAMPLE_RATE);
+                           static_cast<int>(g_fCurrentCLK6502), sample_rate);
   }
 
   const double attenuation = (mp->type == SoundCardType_t::phasor)

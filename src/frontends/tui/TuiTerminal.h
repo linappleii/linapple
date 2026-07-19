@@ -14,27 +14,27 @@ extern "C" {
  *
  * @return 0 on success, non-zero on failure.
  */
-auto TuiTerminal_Initialize() -> int;
+auto tui_terminal_initialize() -> int;
 
 /**
  * @brief Restore the terminal to its original state.
  */
-auto TuiTerminal_Shutdown() -> void;
+auto tui_terminal_shutdown() -> void;
 
 /**
  * @brief Check if a resize event (SIGWINCH) occurred.
  */
-auto TuiTerminal_WasResized() -> bool;
+auto tui_terminal_was_resized() -> bool;
 
 /**
  * @brief Clear the resize flag.
  */
-auto TuiTerminal_ClearResized() -> void;
+auto tui_terminal_clear_resized() -> void;
 
 /**
  * @brief Check if an interrupt signal (SIGINT/SIGTERM) was received.
  */
-auto TuiTerminal_IsInterrupted() -> bool;
+auto tui_terminal_is_interrupted() -> bool;
 
 #ifdef __cplusplus
 }

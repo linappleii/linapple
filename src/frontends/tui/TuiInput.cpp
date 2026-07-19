@@ -18,26 +18,26 @@
 static int g_joy_fd = -1;
 static std::vector<uint8_t> g_input_queue;
 
-static constexpr uint8_t A2_KEY_UP = 0x0B;
-static constexpr uint8_t A2_KEY_DOWN = 0x0A;
-static constexpr uint8_t A2_KEY_LEFT = 0x08;
-static constexpr uint8_t A2_KEY_RIGHT = 0x15;
-static constexpr uint8_t A2_KEY_ESC = 0x1B;
-static constexpr uint8_t A2_KEY_ENTER = 0x0D;
-static constexpr uint8_t A2_KEY_BACKSPACE = 0x08;
-static constexpr uint8_t A2_KEY_DELETE = 0x7F;
-static constexpr uint8_t A2_KEY_CTRL_C = 0x03;
+static constexpr uint8_t a2_key_up = 0x0B;
+static constexpr uint8_t a2_key_down = 0x0A;
+static constexpr uint8_t a2_key_left = 0x08;
+static constexpr uint8_t a2_key_right = 0x15;
+static constexpr uint8_t a2_key_esc = 0x1B;
+static constexpr uint8_t a2_key_enter = 0x0D;
+static constexpr uint8_t a2_key_backspace = 0x08;
+static constexpr uint8_t a2_key_delete = 0x7F;
+static constexpr uint8_t a2_key_ctrl_c = 0x03;
 
-static constexpr int F12_CODE = 24;
+static constexpr int f12_code = 24;
 
-auto TuiInput_Initialize() -> void {
+auto tui_input_initialize() -> void {
   // Enable Mouse Tracking (Any Event + SGR)
   printf("\x1b[?1003h\x1b[?1006h");
   fflush(stdout);
   g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
 }
 
-auto TuiInput_Shutdown() -> void {
+auto tui_input_shutdown() -> void {
   // Disable Mouse Tracking
   printf("\x1b[?1006l\x1b[?1003l");
   fflush(stdout);
@@ -47,15 +47,15 @@ auto TuiInput_Shutdown() -> void {
   }
 }
 
-static auto MapKey(uint8_t a2_code) -> void {
+static auto map_key(uint8_t a2_code) -> void {
   Linapple_SetKeyState(a2_code, true);
   Linapple_SetKeyState(a2_code, false);
 }
 
-static auto ProcessSequences() -> void {
+static auto process_sequences() -> void {
   size_t i = 0;
   while (i < g_input_queue.size()) {
-    if (g_input_queue.at(i) == A2_KEY_ESC) {
+    if (g_input_queue.at(i) == a2_key_esc) {
       if (i + 1 >= g_input_queue.size()) {
         break;
       }
@@ -73,13 +73,13 @@ static auto ProcessSequences() -> void {
           if (g_input_queue.at(i + 2) == '<') {
             // Consume mouse, no action yet
           } else if (cmd == 'A') {
-            MapKey(A2_KEY_UP);
+            map_key(a2_key_up);
           } else if (cmd == 'B') {
-            MapKey(A2_KEY_DOWN);
+            map_key(a2_key_down);
           } else if (cmd == 'D') {
-            MapKey(A2_KEY_LEFT);
+            map_key(a2_key_left);
           } else if (cmd == 'C') {
-            MapKey(A2_KEY_RIGHT);
+            map_key(a2_key_right);
           } else if (cmd == '~') {
             if (end > i + 2) {
               size_t len = end - (i + 2);
@@ -87,7 +87,7 @@ static auto ProcessSequences() -> void {
               memcpy(buf.data(), &g_input_queue.at(i + 2), len);
               try {
                 int val = std::stoi(buf.data());
-                if (val == F12_CODE) {
+                if (val == f12_code) {
                   raise(SIGINT);
                 }
               } catch (...) {
@@ -102,19 +102,19 @@ static auto ProcessSequences() -> void {
         break;
       }
 
-      MapKey(A2_KEY_ESC);
+      map_key(a2_key_esc);
       i++;
       continue;
     }
 
     uint8_t b = g_input_queue.at(i);
     if (b >= 32 && b < 127) {
-      MapKey(b);
-    } else if (b == A2_KEY_ENTER) {
-      MapKey(A2_KEY_ENTER);
-    } else if (b == A2_KEY_BACKSPACE || b == A2_KEY_DELETE) {
-      MapKey(A2_KEY_BACKSPACE);
-    } else if (b == A2_KEY_CTRL_C) {
+      map_key(b);
+    } else if (b == a2_key_enter) {
+      map_key(a2_key_enter);
+    } else if (b == a2_key_backspace || b == a2_key_delete) {
+      map_key(a2_key_backspace);
+    } else if (b == a2_key_ctrl_c) {
       raise(SIGINT);
     }
 
@@ -123,18 +123,18 @@ static auto ProcessSequences() -> void {
   g_input_queue.erase(g_input_queue.begin(), g_input_queue.begin() + static_cast<long>(i));
 }
 
-auto TuiInput_Poll() -> void {
+auto tui_input_poll() -> void {
   std::array<uint8_t, 256> buf{};
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
     for (ssize_t j = 0; j < n; ++j) {
       g_input_queue.push_back(buf.at(static_cast<size_t>(j)));
     }
-    ProcessSequences();
+    process_sequences();
   }
 
   if (g_joy_fd != -1) {
-    struct js_event js {};
+    struct JsEvent_t js {};
     while (read(g_joy_fd, &js, sizeof(js)) > 0) {
       if ((js.type & JS_EVENT_AXIS) != 0) {
         Linapple_SetJoystickAxis(js.number, js.value);
