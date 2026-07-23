@@ -77,12 +77,12 @@ auto frontend_handle_event(SDL_Keycode key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
     case SDLK_LGUI:
-      Linapple_SetAppleKey(0, is_down);
+      linapple_set_apple_key(0, is_down);
       return true;
 
     case SDLK_RALT:
     case SDLK_RGUI:
-      Linapple_SetAppleKey(1, is_down);
+      linapple_set_apple_key(1, is_down);
       return true;
 
     case SDLK_LCTRL:

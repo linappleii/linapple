@@ -49,22 +49,22 @@ static Peripheral_t g_mock_peripheral = {
 };
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
-    Linapple_Init();
+    linapple_init();
 
     // 1. Initial setup
-    Peripheral_Manager_Init();
+    peripheral_manager_init();
     peripheral_register(&g_mock_peripheral, 1);
 
     // Verify it works
     CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
     // 2. Re-init
-    // The bug is that Peripheral_Manager_Init calls ClearAllPeripherals()
+    // The bug is that peripheral_manager_init calls clear_all_peripherals()
     // which frees instances, but hasn't yet zeroed g_num_direct_handlers.
-    // If we call IOMap_Dispatch after ClearAllPeripherals() but before
+    // If we call IOMap_Dispatch after clear_all_peripherals() but before
     // g_num_direct_handlers = 0, we get a UAF or access to stale instance.
 
-    Peripheral_Manager_Init();
+    peripheral_manager_init();
 
     // After Init, the old handler should be gone.
     // In the buggy version, if we hadn't called the second part of Init,
@@ -76,12 +76,12 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral is unregistered") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
+    linapple_init();
+    peripheral_manager_init();
 
     // 1. Register
     peripheral_register(&g_mock_peripheral, 1);
@@ -97,12 +97,12 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
-TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
+TEST_CASE("Peripheral Manager: host_get_config lifetime") {
+    linapple_init();
+    peripheral_manager_init();
 
     // We need a way to get the HostInterface_t.
     // We can use a dummy peripheral and register it.
@@ -137,7 +137,7 @@ TEST_CASE("Peripheral Manager: Host_GetConfig lifetime") {
     CHECK(std::string(captured_val2) == "Value2");
     CHECK(std::string(captured_val1) == "Value1");
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
 #include <dlfcn.h>
@@ -165,8 +165,8 @@ TEST_CASE("Peripheral Manager: Plugin path construction") {
 }
 
 TEST_CASE("Peripheral Manager: Command payload capacity") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
+    linapple_init();
+    peripheral_manager_init();
 
     static size_t captured_size = 0;
     static uint8_t last_byte = 0;
@@ -202,7 +202,7 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
     CHECK(status == peripheral_ok);
 
     // Commands are queued and processed during Think(0)
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     CHECK(captured_size == 512);
     CHECK(last_byte == 0xBB);
@@ -212,5 +212,5 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
     status = peripheral_command(1, 0x124, huge_payload.data(), huge_payload.size());
     CHECK(status == peripheral_error);
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

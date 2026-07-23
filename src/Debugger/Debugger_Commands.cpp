@@ -169,7 +169,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"JSR", CmdJSR, CMD_JSR, "Call sub-routine"},
 		{"NOP", CmdNOP, CMD_NOP, "Zap the current instruction with a NOP"},
 		{"OUT", CmdOut, CMD_OUT, "Output byte to IO $C0xx"},
-	// CPU - Meta Info
+	// CPU - Meta info
 		{"PROFILE", CmdProfile, CMD_PROFILE, "List/Save 6502 profiling"},
 		{"R", CmdRegisterSet, CMD_REGISTER_SET, "Set register"},
 	// CPU - Stack
@@ -179,7 +179,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 //		{"RTS", CmdStackReturn, CMD_STACK_RETURN, NULL},
 		{"P", CmdStepOver, CMD_STEP_OVER, "Step current instruction"},
 		{"RTS", CmdStepOut, CMD_STEP_OUT, "Step out of subroutine"},
-	// CPU - Meta Info
+	// CPU - Meta info
 		{"T", CmdTrace, CMD_TRACE, "Trace current instruction"},
 		{"TF", CmdTraceFile, CMD_TRACE_FILE, "Save trace to filename [with video scanner info]"},
 		{"TL", CmdTraceLine, CMD_TRACE_LINE, "Trace (with cycle counting)"},

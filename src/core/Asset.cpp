@@ -75,12 +75,12 @@ static auto asset_find_master_disk(char* path_out, size_t max_len) -> int {
 
   std::string full_path = Path::find_data_file(asset_master_dsk);
   if (full_path.empty()) {
-    Logger::Warning("Could not find %s in any search path\n", asset_master_dsk);
+    Logger::warning("Could not find %s in any search path\n", asset_master_dsk);
     return 255;
   }
 
   Util_SafeStrCpy(path_out, full_path.c_str(), max_len);
-  Logger::Info("Master disk: %s\n", path_out);
+  Logger::info("Master disk: %s\n", path_out);
   return 0;
 }
 

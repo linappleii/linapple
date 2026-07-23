@@ -133,7 +133,7 @@ extern int g_iConfigDisasmTargets;
 extern int g_iConfigDisasmBranchType;
 extern int g_bConfigDisasmImmediateChar;
 
-// Config - Info
+// Config - info
 extern bool g_bConfigInfoTargetPointer;
 
 // Font

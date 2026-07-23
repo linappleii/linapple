@@ -1489,10 +1489,10 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
 
 auto video_check_page(bool force) -> void {
   if ((displaypage2 != (SW_PAGE2 != 0)) &&
-      (force || (emulmsec - lastpageflip > 500))) {
+      (force || (emul_msec - lastpageflip > 500))) {
     displaypage2 = (SW_PAGE2 != 0);
     video_refresh_screen();
-    lastpageflip = emulmsec;
+    lastpageflip = emul_msec;
   }
 }
 

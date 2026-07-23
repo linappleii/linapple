@@ -309,7 +309,7 @@ static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
 }
 
 extern "C" const DiskFormatDriver_t g_woz2_driver = {
-    .abi_version = disk_format_abi_version,
+    .AbiVersion_t = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "WOZ 2",
     .creatable_exts = nullptr,

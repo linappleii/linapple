@@ -48,7 +48,7 @@ auto AppController_Initialize(AppConfig* config) -> int {
   AppEnv_ResolvePaths(config);
 
   // 2. Init Core
-  Linapple_Init();
+  linapple_init();
   s_initialized = true;
 
   // 3. Set Hardware Type and PAL
@@ -118,8 +118,8 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
       Peripheral_t* p =
           peripheral_find_internal(config->szHardwareInfoName.data());
       if (p != nullptr) {
-        printf("Hardware Info: %s\n", p->name);
-        printf("ABI Version: %d\n", p->abi_version);
+        printf("Hardware info: %s\n", p->name);
+        printf("ABI Version: %d\n", p->AbiVersion_t);
         printf("Compatible Slots: ");
         bool first = true;
         for (int i = 0; i < NUM_SLOTS; ++i) {
@@ -136,13 +136,13 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
           printf("Plugin Path: %s\n", path);
         }
       } else {
-        fprintf(stderr, "Error: Unknown hardware '%s'\n",
+        fprintf(stderr, "error: Unknown hardware '%s'\n",
                 config->szHardwareInfoName.data());
       }
       return true;
     }
     if (config->szTestCpuFile.at(0) != '\0') {
-      Linapple_CpuTest(config->szTestCpuFile.data(), config->uTestCpuTrap);
+      linapple_cpu_test(config->szTestCpuFile.data(), config->uTestCpuTrap);
       return true;
     }
   }
@@ -158,8 +158,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
     const char* path = (i == 0) ? config->szDiskPath.at(0).data()
                                 : config->szDiskPath.at(1).data();
     if (path != nullptr && *path != '\0') {
-      int res = Linapple_LoadProgram(path);
-      if (res == PROGRAM_LOAD_NOT_A_PROGRAM) {
+      int res = linapple_load_program(path);
+      if (res == program_load_not_a_program) {
         // It's a disk image (or at least not a program)
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
@@ -172,8 +172,8 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
 
   // 2. Load explicit program path
   if (config->szProgramPath.at(0) != '\0') {
-    if (Linapple_LoadProgram(config->szProgramPath.data()) != 0) {
-      fprintf(stderr, "Error: Could not load program '%s'\n",
+    if (linapple_load_program(config->szProgramPath.data()) != 0) {
+      fprintf(stderr, "error: Could not load program '%s'\n",
               config->szProgramPath.data());
     }
   }
@@ -182,7 +182,7 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
   if (config->bBoot) {
     // Reset the system to boot from disk
     CpuReset();
-    Peripheral_Manager_Reset();
+    peripheral_manager_reset();
     // Redraw to clear splash
     VideoRedrawScreen();
   }
@@ -192,8 +192,8 @@ void AppController_Shutdown() {
   if (!s_initialized) return;
 
   save_state_shutdown();
-  Linapple_Shutdown();
-  Logger::Destroy();
+  linapple_shutdown();
+  Logger::destroy();
 
   s_initialized = false;
 }

@@ -10,7 +10,7 @@ void disk_abi_c_smoke(void) {
   cmd.path[0] = '\0';
 
   DiskFormatDriver_t driver;
-  driver.abi_version = disk_format_abi_version;
+  driver.AbiVersion_t = disk_format_abi_version;
   driver.capabilities = disk_driver_cap_write;
   driver.name = "smoke";
   driver.creatable_exts = 0;

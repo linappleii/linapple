@@ -44,13 +44,13 @@ TEST_CASE(
 
   MemInitialize();
   uint8_t original_sample = mem[ADDR_1000];
-  CHECK(ProgramLoader_TryLoad(dsk_path) == PROGRAM_LOAD_NOT_A_PROGRAM);
+  CHECK(program_loader_try_load(dsk_path) == program_load_not_a_program);
   CHECK(mem[ADDR_1000] == original_sample);
   remove(dsk_path);
 }
 
 TEST_CASE("ProgramLoader: [PRG-02] Missing File (FILE_ERROR)") {
-  CHECK(ProgramLoader_TryLoad("nonexistent.apl") == PROGRAM_LOAD_FILE_ERROR);
+  CHECK(program_loader_try_load("nonexistent.apl") == program_load_file_error);
 }
 
 TEST_CASE("ProgramLoader: [PRG-03] Range Check Rejection") {
@@ -66,7 +66,7 @@ TEST_CASE("ProgramLoader: [PRG-03] Range Check Rejection") {
     fwrite(data.data(), 1, data.size(), f.get());
   }
 
-  CHECK(ProgramLoader_TryLoad(bad_apl) == PROGRAM_LOAD_INVALID);
+  CHECK(program_loader_try_load(bad_apl) == program_load_invalid);
 
   // Also check overflow past $BFFF
   {
@@ -78,7 +78,7 @@ TEST_CASE("ProgramLoader: [PRG-03] Range Check Rejection") {
     std::vector<uint8_t> dummy(LEN_2000, 0);
     fwrite(dummy.data(), 1, dummy.size(), f.get());
   }
-  CHECK(ProgramLoader_TryLoad(bad_apl) == PROGRAM_LOAD_INVALID);
+  CHECK(program_loader_try_load(bad_apl) == program_load_invalid);
 
   remove(bad_apl);
 }
@@ -100,7 +100,7 @@ TEST_CASE("ProgramLoader: [PRG-04] APL Loading") {
   }
 
   MemInitialize();
-  CHECK(ProgramLoader_TryLoad(test_apl) == PROGRAM_LOAD_OK);
+  CHECK(program_loader_try_load(test_apl) == program_load_ok);
   CHECK(CpuGetRegisters()->pc == ADDR_0800);
   CHECK(memcmp(mem + ADDR_0800, data.data(), data.size()) == 0);
 
@@ -131,7 +131,7 @@ TEST_CASE("ProgramLoader: [PRG-05] PRG Loading (Word to Byte length)") {
   }
 
   MemInitialize();
-  CHECK(ProgramLoader_TryLoad(test_prg) == PROGRAM_LOAD_OK);
+  CHECK(program_loader_try_load(test_prg) == program_load_ok);
   CHECK(CpuGetRegisters()->pc == ADDR_1000);
   CHECK(memcmp(mem + ADDR_1000, data.data(), data.size()) == 0);
 

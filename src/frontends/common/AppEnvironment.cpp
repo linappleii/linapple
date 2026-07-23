@@ -59,15 +59,15 @@ void AppEnv_ResolvePaths(AppConfig* config) {
   Util_SafeStrCpy(config->szConfigPath.data(), finalPath.c_str(), path_max_len);
 
   // Consolidate Logger initialization
-  Logger::Initialize();
+  Logger::initialize();
 
   // Set verbosity based on config
   if (config->bVerbose) {
-    Logger::SetVerbosity(LogLevel::kPerf);
+    Logger::set_verbosity(LogLevel_t::k_perf);
   } else if (config->bLog) {
-    Logger::SetVerbosity(LogLevel::kInfo);
+    Logger::set_verbosity(LogLevel_t::k_info);
   } else {
     // Default to errors and warnings only to keep console clean for normal use
-    Logger::SetVerbosity(LogLevel::kWarning);
+    Logger::set_verbosity(LogLevel_t::k_warning);
   }
 }

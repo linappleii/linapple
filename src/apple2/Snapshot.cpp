@@ -108,7 +108,7 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
     MemResetPaging();
   }
 
-  Peripheral_Manager_Reset();
+  peripheral_manager_reset();
   VideoResetState();
 
   CpuSetSnapshot(&snapshot->apple2_unit.cpu_6502);

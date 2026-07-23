@@ -28,7 +28,7 @@ auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   return registry;
 }
 
-auto peripheral_register_Builtin(Peripheral_t* p) -> void {
+auto peripheral_register_builtin(Peripheral_t* p) -> void {
   if (p != nullptr) {
     peripheral_get_builtin_registry().push_back(p);
   }
@@ -58,20 +58,20 @@ static std::array<std::vector<ActivePeripheral_t>, NUM_SLOTS>
     g_active_peripherals;
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
 
-static constexpr size_t IO_DIRECT_COUNT = 64;
-static std::array<DirectIoHandler_t, IO_DIRECT_COUNT> g_direct_io_handlers;
+static constexpr size_t io_direct_count = 64;
+static std::array<DirectIoHandler_t, io_direct_count> g_direct_io_handlers;
 static size_t g_num_direct_handlers = 0;
 
-static constexpr uint16_t ADDR_SLOT_IO_BASE = 0x70;
-static constexpr uint16_t ADDR_SLOT_SHIFT = 4;
-static constexpr uint16_t ADDR_SLOT_ROM_SHIFT = 8;
-static constexpr uint16_t ADDR_SLOT_ROM_MASK = 0x07;
+static constexpr uint16_t addr_slot_io_base = 0x70;
+static constexpr uint16_t addr_slot_shift = 4;
+static constexpr uint16_t addr_slot_rom_shift = 8;
+static constexpr uint16_t addr_slot_rom_mask = 0x07;
 
 // --- Bridge Functions ---
 
-static auto Slot_ReadC0_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  int slot = (addr & ADDR_SLOT_IO_BASE) >> ADDR_SLOT_SHIFT;
+  int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readC0 != nullptr) {
       return ap.readC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
@@ -80,9 +80,9 @@ static auto Slot_ReadC0_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
   return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
-static auto Slot_WriteC0_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                 uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  int slot = (addr & ADDR_SLOT_IO_BASE) >> ADDR_SLOT_SHIFT;
+  int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeC0 != nullptr) {
       return ap.writeC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
@@ -91,9 +91,9 @@ static auto Slot_WriteC0_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
   return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
-static auto Slot_ReadCx_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  int slot = (addr >> ADDR_SLOT_ROM_SHIFT) & ADDR_SLOT_ROM_MASK;
+  int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readCx != nullptr) {
       return ap.readCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
@@ -102,9 +102,9 @@ static auto Slot_ReadCx_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
   return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
-static auto Slot_WriteCx_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                 uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
-  int slot = (addr >> ADDR_SLOT_ROM_SHIFT) & ADDR_SLOT_ROM_MASK;
+  int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeCx != nullptr) {
       return ap.writeCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
@@ -113,7 +113,7 @@ static auto Slot_WriteCx_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
   return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
-static auto DirectIO_Read_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
@@ -126,7 +126,7 @@ static auto DirectIO_Read_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
   return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
-static auto DirectIO_Write_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
+static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
                                   uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
@@ -141,7 +141,7 @@ static auto DirectIO_Write_Bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
 
 // --- Host Interface Implementation ---
 
-static auto Host_Log(void* instance, PeripheralLogLevel_t level, const char* fmt,
+static auto host_log(void* instance, PeripheralLogLevel_t level, const char* fmt,
                      ...) -> void {
   (void)instance;
   if (fmt == nullptr) {
@@ -151,22 +151,22 @@ static auto Host_Log(void* instance, PeripheralLogLevel_t level, const char* fmt
   va_start(args, fmt);
   switch (level) {
     case log_debug:
-      Logger::Perf(fmt, args);
+      Logger::perf(fmt, args);
       break;
     case log_info:
-      Logger::Info(fmt, args);
+      Logger::info(fmt, args);
       break;
     case log_warn:
-      Logger::Warning(fmt, args);
+      Logger::warning(fmt, args);
       break;
     case log_error:
-      Logger::Error(fmt, args);
+      Logger::error(fmt, args);
       break;
   }
   va_end(args);
 }
 
-static auto Host_AssertIrq(int slot, bool assert) -> void {
+static auto host_assert_irq(int slot, bool assert) -> void {
   if (slot < 1 || slot > 7) {
     return;
   }
@@ -178,7 +178,7 @@ static auto Host_AssertIrq(int slot, bool assert) -> void {
   }
 }
 
-static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0,
+static auto host_register_io(int slot, PeripheralIOHandler readC0,
                             PeripheralIOHandler writeC0,
                             PeripheralIOHandler readCx,
                             PeripheralIOHandler writeCx) -> void {
@@ -193,28 +193,28 @@ static auto Host_RegisterIO(int slot, PeripheralIOHandler readC0,
   ap.writeCx = writeCx;
 
   RegisterIoHandler(
-      static_cast<uint32_t>(slot), readC0 ? Slot_ReadC0_Bridge : nullptr,
-      writeC0 ? Slot_WriteC0_Bridge : nullptr,
-      readCx ? Slot_ReadCx_Bridge : nullptr,
-      writeCx ? Slot_WriteCx_Bridge : nullptr, ap.instance, ap.expansionRom);
+      static_cast<uint32_t>(slot), readC0 ? slot_read_c0_bridge : nullptr,
+      writeC0 ? slot_write_c0_bridge : nullptr,
+      readCx ? slot_read_cx_bridge : nullptr,
+      writeCx ? slot_write_cx_bridge : nullptr, ap.instance, ap.expansionRom);
 }
 
-static constexpr int MIN_SLOT_WITH_ROM = 1;
-static constexpr int MAX_SLOT_WITH_ROM = 7;
-static constexpr size_t CXROM_SLOT_SIZE = 256;
+static constexpr int min_slot_with_rom = 1;
+static constexpr int max_slot_with_rom = 7;
+static constexpr size_t cxrom_slot_size = 256;
 
-static auto Host_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
-  if (slot < MIN_SLOT_WITH_ROM || slot > MAX_SLOT_WITH_ROM ||
+static auto host_register_cx_rom(int slot, uint8_t* rom_ptr) -> void {
+  if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
       rom_ptr == nullptr)
     return;
   uint8_t* cxrom = MemGetCxRomPeripheral();
   if (cxrom != nullptr) {
-    memcpy(cxrom + (static_cast<uint16_t>(slot) << ADDR_SLOT_ROM_SHIFT),
-           rom_ptr, CXROM_SLOT_SIZE);
+    memcpy(cxrom + (static_cast<uint16_t>(slot) << addr_slot_rom_shift),
+           rom_ptr, cxrom_slot_size);
   }
 }
 
-static auto Host_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
+static auto host_register_expansion_rom(int slot, uint8_t* rom_ptr) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) return;
@@ -222,17 +222,17 @@ static auto Host_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
   ActivePeripheral_t& ap = slot_peripherals.back();
   ap.expansionRom = rom_ptr;
   RegisterIoHandler(
-      static_cast<uint32_t>(slot), ap.readC0 ? Slot_ReadC0_Bridge : nullptr,
-      ap.writeC0 ? Slot_WriteC0_Bridge : nullptr,
-      ap.readCx ? Slot_ReadCx_Bridge : nullptr,
-      ap.writeCx ? Slot_WriteCx_Bridge : nullptr, ap.instance, ap.expansionRom);
+      static_cast<uint32_t>(slot), ap.readC0 ? slot_read_c0_bridge : nullptr,
+      ap.writeC0 ? slot_write_c0_bridge : nullptr,
+      ap.readCx ? slot_read_cx_bridge : nullptr,
+      ap.writeCx ? slot_write_cx_bridge : nullptr, ap.instance, ap.expansionRom);
 }
 
-static auto Host_RegisterDirectIO(void* instance, uint16_t addr,
+static auto host_register_direct_io(void* instance, uint16_t addr,
                                   PeripheralIOHandler read,
                                   PeripheralIOHandler write) -> void {
-  if (g_num_direct_handlers >= IO_DIRECT_COUNT) {
-    Logger::Error("Too many direct IO handlers registered!");
+  if (g_num_direct_handlers >= io_direct_count) {
+    Logger::error("Too many direct IO handlers registered!");
     return;
   }
 
@@ -240,17 +240,17 @@ static auto Host_RegisterDirectIO(void* instance, uint16_t addr,
                                                     instance};
   g_num_direct_handlers++;
 
-  RegisterDirectIoHandler(addr, read ? DirectIO_Read_Bridge : nullptr,
-                          write ? DirectIO_Write_Bridge : nullptr, instance);
+  RegisterDirectIoHandler(addr, read ? direct_io_read_bridge : nullptr,
+                          write ? direct_io_write_bridge : nullptr, instance);
 }
 
-static auto Host_GetMemPtr(uint16_t addr) -> uint8_t* {
+static auto host_get_mem_ptr(uint16_t addr) -> uint8_t* {
   return GetMemPtr(addr);
 }
 
-static auto Host_GetCycles() -> uint64_t { return CpuGetCumulativeCycles(); }
+static auto host_get_cycles() -> uint64_t { return CpuGetCumulativeCycles(); }
 
-static auto Host_GetConfig(const char* section, const char* key, char* buffer,
+static auto host_get_config(const char* section, const char* key, char* buffer,
                            size_t buffer_size) -> bool {
   std::string val;
   if (config_load_string(section, key, &val)) {
@@ -263,28 +263,28 @@ static auto Host_GetConfig(const char* section, const char* key, char* buffer,
   return false;
 }
 
-static auto Host_SetConfig(const char* section, const char* key,
+static auto host_set_config(const char* section, const char* key,
                            const char* value) -> void {
   config_save_string(section, key, value);
 }
 
-static auto Host_NotifyStatusChanged(int slot) -> void {
+static auto host_notify_status_changed(int slot) -> void {
   (void)slot;
   extern void frame_refresh_status(int drawflags);
   frame_refresh_status(static_cast<int>(DRAW_LEDS | DRAW_BUTTON_DRIVES));
 }
 
-static auto Host_NotifyActivityChanged(int slot, bool active) -> void {
+static auto host_notify_activity_changed(int slot, bool active) -> void {
   if (slot >= 0 && slot < static_cast<int>(NUM_SLOTS)) {
     g_peripheral_activity_state.at(static_cast<size_t>(slot)) = active;
   }
 }
 
-static auto Host_RequestPreciseTiming() -> void {
-  g_state.needsprecision = static_cast<uint32_t>(cumulativecycles);
+static auto host_request_precise_timing() -> void {
+  g_state.needsprecision = static_cast<uint32_t>(cumulative_cycles);
 }
 
-static auto Host_AudioPushSamples(void* instance, const int16_t* buffer,
+static auto host_audio_push_samples(void* instance, const int16_t* buffer,
                                   size_t num_samples) -> void {
   if (buffer == nullptr || num_samples == 0) {
     return;
@@ -323,21 +323,21 @@ static auto Host_AudioPushSamples(void* instance, const int16_t* buffer,
 
 extern void CpuReset();
 
-static auto Host_ResetSystem(void* instance) -> void {
+static auto host_reset_system(void* instance) -> void {
   (void)instance;
   CpuReset();
-  Peripheral_Manager_Reset();
+  peripheral_manager_reset();
 }
 
 extern void PrinterFrontend_SendChar(uint8_t c);
 extern auto PrinterFrontend_CheckStatus() -> uint8_t;
 
-static auto Host_PrinterPutChar(void* instance, uint8_t c) -> void {
+static auto host_printer_put_char(void* instance, uint8_t c) -> void {
   (void)instance;
   PrinterFrontend_SendChar(c);
 }
 
-static auto Host_PrinterGetStatus(void* instance) -> uint8_t {
+static auto host_printer_get_status(void* instance) -> uint8_t {
   (void)instance;
   return PrinterFrontend_CheckStatus();
 }
@@ -347,12 +347,12 @@ extern auto super_serial_frontend_is_active() -> bool;
 extern void super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
                                             int parity, int stop);
 
-static auto Host_SerialTransmitByte(void* instance, uint8_t byte) -> void {
+static auto host_serial_transmit_byte(void* instance, uint8_t byte) -> void {
   (void)instance;
   super_serial_frontend_send_byte(byte);
 }
 
-static auto Host_SerialUpdateState(void* instance, uint32_t baud, uint32_t bits,
+static auto host_serial_update_state(void* instance, uint32_t baud, uint32_t bits,
                                    int parity, int stop) -> void {
   (void)instance;
   if (super_serial_frontend_is_active()) {
@@ -360,25 +360,25 @@ static auto Host_SerialUpdateState(void* instance, uint32_t baud, uint32_t bits,
   }
 }
 
-static const HostInterface_t g_host_interface = {Host_Log,
-                                                 Host_AssertIrq,
-                                                 Host_RegisterIO,
-                                                 Host_RegisterCxROM,
-                                                 Host_RegisterExpansionROM,
-                                                 Host_RegisterDirectIO,
-                                                 Host_GetMemPtr,
-                                                 Host_GetCycles,
-                                                 Host_GetConfig,
-                                                 Host_SetConfig,
-                                                 Host_NotifyStatusChanged,
-                                                 Host_NotifyActivityChanged,
-                                                 Host_RequestPreciseTiming,
-                                                 Host_AudioPushSamples,
-                                                 Host_ResetSystem,
-                                                 Host_PrinterPutChar,
-                                                 Host_PrinterGetStatus,
-                                                 Host_SerialTransmitByte,
-                                                 Host_SerialUpdateState};
+static const HostInterface_t g_host_interface = {host_log,
+                                                 host_assert_irq,
+                                                 host_register_io,
+                                                 host_register_cx_rom,
+                                                 host_register_expansion_rom,
+                                                 host_register_direct_io,
+                                                 host_get_mem_ptr,
+                                                 host_get_cycles,
+                                                 host_get_config,
+                                                 host_set_config,
+                                                 host_notify_status_changed,
+                                                 host_notify_activity_changed,
+                                                 host_request_precise_timing,
+                                                 host_audio_push_samples,
+                                                 host_reset_system,
+                                                 host_printer_put_char,
+                                                 host_printer_get_status,
+                                                 host_serial_transmit_byte,
+                                                 host_serial_update_state};
 
 // --- Command Queue ---
 
@@ -395,7 +395,7 @@ static_assert(sizeof(((QueuedCommand_t*)0)->data) == PERIPHERAL_CMD_MAX_DATA,
 static std::queue<QueuedCommand_t> g_command_queue;
 static std::mutex g_command_queue_mutex;
 
-static auto Peripheral_DrainCommandQueue() -> void {
+static auto peripheral_drain_command_queue() -> void {
   std::queue<QueuedCommand_t> local;
   {
     std::lock_guard<std::mutex> lock(g_command_queue_mutex);
@@ -414,7 +414,7 @@ static auto Peripheral_DrainCommandQueue() -> void {
   }
 }
 
-static auto ClearAllPeripherals() -> void {
+static auto clear_all_peripherals() -> void {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
                             nullptr);
@@ -435,15 +435,15 @@ static auto ClearAllPeripherals() -> void {
 
 // --- Public Core API ---
 
-auto Peripheral_Manager_Init() -> void {
+auto peripheral_manager_init() -> void {
   {
     std::lock_guard<std::mutex> lock(g_command_queue_mutex);
     g_command_queue = {};
   }
-  ClearAllPeripherals();
+  clear_all_peripherals();
 }
 
-auto Peripheral_Manager_Reset() -> void {
+auto peripheral_manager_reset() -> void {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->reset != nullptr) {
@@ -453,8 +453,8 @@ auto Peripheral_Manager_Reset() -> void {
   }
 }
 
-auto Peripheral_Manager_Shutdown() -> void {
-  ClearAllPeripherals();
+auto peripheral_manager_shutdown() -> void {
+  clear_all_peripherals();
   memset(g_peripheral_activity_state.data(), 0,
          sizeof(g_peripheral_activity_state));
 
@@ -467,8 +467,8 @@ auto Peripheral_Manager_Shutdown() -> void {
   g_num_direct_handlers = 0;
 }
 
-auto Peripheral_Manager_Think(uint32_t cycles) -> void {
-  Peripheral_DrainCommandQueue();
+auto peripheral_manager_think(uint32_t cycles) -> void {
+  peripheral_drain_command_queue();
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->think != nullptr) {
@@ -478,7 +478,7 @@ auto Peripheral_Manager_Think(uint32_t cycles) -> void {
   }
 }
 
-auto Peripheral_Manager_OnVBlank(bool vblank) -> void {
+auto peripheral_manager_on_vblank(bool vblank) -> void {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->on_vblank != nullptr) {
@@ -500,7 +500,7 @@ auto peripheral_is_any_active() -> bool {
 auto peripheral_register(Peripheral_t* api, int slot) -> int {
   if (api == nullptr || slot < 0 || slot >= static_cast<int>(NUM_SLOTS))
     return -1;
-  if (api->abi_version != LINAPPLE_ABI_VERSION) return -1;
+  if (api->AbiVersion_t != LINAPPLE_ABI_VERSION) return -1;
 
   if (!(api->compatible_slots & (1u << static_cast<uint32_t>(slot)))) {
     return -1;
@@ -508,7 +508,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
 
   if (slot != 0 &&
       !g_active_peripherals.at(static_cast<size_t>(slot)).empty()) {
-    Logger::Warning(
+    Logger::warning(
         "Slot %d already has a peripheral registered. Overwriting is not "
         "permitted.\n",
         slot);
@@ -613,7 +613,7 @@ auto peripheral_get_manifest(void* manifest_ptr) -> void {
       Util_SafeStrCpy(manifest->peripherals[i].name,
                       slot_peripherals.front().api->name, max_peripheral_name);
       manifest->peripherals[i].version =
-          static_cast<uint32_t>(slot_peripherals.front().api->abi_version);
+          static_cast<uint32_t>(slot_peripherals.front().api->AbiVersion_t);
     }
   }
 }

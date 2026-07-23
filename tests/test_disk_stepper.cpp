@@ -23,9 +23,9 @@ constexpr int STEPPER_OFF = 0xC0E0;
 constexpr int STEPPER_ON = 0xC0E1;
 
 auto setup_disk_test() -> void {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  Linapple_RegisterPeripherals();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
@@ -42,7 +42,7 @@ auto setup_disk_test() -> void {
   std::string fixture = repo_root + "/tests/fixtures/minimal.nib";
   Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 }
 }  // namespace
 
@@ -55,7 +55,7 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
 
   // Step 1: Energize Phase 1
   IOMap_Dispatch(0, STEPPER_ON + 2, 0, 0, 0);  // $C082 (PH1 ON)
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   // We should be at phase 1 (half track 0.5)
   // Track = phase / 2 = 0.
@@ -64,12 +64,12 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
   // Step 2: Energize Phase 2, De-energize Phase 1
   IOMap_Dispatch(0, STEPPER_ON + 4, 0, 0, 0);   // $C084 (PH2 ON)
   IOMap_Dispatch(0, STEPPER_OFF + 2, 0, 0, 0);  // $C082 (PH1 OFF)
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   // Now at phase 2 (track 1.0).
   // Verify by reading $C08C and seeing track 1 data.
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
@@ -77,21 +77,21 @@ TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
 
   // Try to step backward from track 0
   IOMap_Dispatch(0, STEPPER_ON + 6, 0, 0, 0);  // $C086 (PH3 ON)
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   // Should still be at phase 0 or clamping at 0.
 
   // Step far forward (beyond track 35)
   for (int i = 0; i < 80; ++i) {
     IOMap_Dispatch(0, STEPPER_ON + ((i % 4) * 2) + 1, 0, 0, 0);
-    Peripheral_Manager_Think(100);
+    peripheral_manager_think(100);
     IOMap_Dispatch(0, STEPPER_OFF + ((i % 4) * 2), 0, 0, 0);
   }
 
   // Should be clamped at track 34 (phase 69 in 1/2 track model, or track 35
   // depending on resolution).
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
@@ -110,10 +110,10 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   IOMap_Dispatch(0, 0xC0E0, 0, 0, 0);  // PH0 OFF
   IOMap_Dispatch(0, 0xC0E5, 0, 0, 0);  // PH2 ON
   IOMap_Dispatch(0, 0xC0E2, 0, 0, 0);  // PH1 OFF
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   // The 'step_drive_head' function should have called 'write_track_to_driver'
   // for Track 0 because it was dirty.
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }

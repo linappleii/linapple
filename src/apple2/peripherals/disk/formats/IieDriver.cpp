@@ -276,7 +276,7 @@ auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_iie_driver = {
-    .abi_version = disk_format_abi_version,
+    .AbiVersion_t = disk_format_abi_version,
     .capabilities = 0,
     .name = "IIE",
     .creatable_exts = nullptr,

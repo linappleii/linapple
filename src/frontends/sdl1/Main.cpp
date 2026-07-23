@@ -69,12 +69,12 @@ auto ds_init() -> bool {
   SDL_PauseAudio(0);
   g_bDSAvailable = true;
 
-  Linapple_SetAudioCallback([](const int16_t* samples,
+  linapple_set_audio_callback([](const int16_t* samples,
                                size_t num_samples) -> void {
     audio_mixer_upload_speaker_samples(samples, static_cast<uint32_t>(num_samples));
   });
 
-  Linapple_SetMockAudioCallback(
+  linapple_set_mock_audio_callback(
       [](const int16_t* samples, size_t num_samples) -> void {
         audio_mixer_upload_mockingboard_samples(samples,
                                             static_cast<uint32_t>(num_samples));
@@ -109,7 +109,7 @@ auto enter_message_loop() -> void {
   while (g_state.mode != MODE_EXIT) {
     sys_input();
 
-    Linapple_RunFrame(apple2_frame_cycles);
+    linapple_run_frame(apple2_frame_cycles);
     DrawFrameWindow();
     SDL_Delay(target_frame_ms);
   }

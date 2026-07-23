@@ -121,7 +121,7 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         break;
       case 'v':
         outConfig->bVerbose = true;
-        Logger::SetVerbosity(LogLevel::kPerf);
+        Logger::set_verbosity(LogLevel_t::k_perf);
         break;
       case 'x':
         Util_SafeStrCpy(outConfig->szDebuggerScript.data(), optarg,
@@ -164,7 +164,7 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         // Pass-through: unknown option or missing argument
         // If optopt is set, it means a required argument was missing.
         if (optopt != 0) {
-          fprintf(stderr, "Error: Option -%c requires an argument.\n", optopt);
+          fprintf(stderr, "error: Option -%c requires an argument.\n", optopt);
           outConfig->intent = INTENT_ERROR;
           return -1;
         }

@@ -770,7 +770,7 @@ void process_button_click(int button, int mod) {
           MemResetPaging();
         }
 
-        Peripheral_Manager_Reset();
+        peripheral_manager_reset();
         if (!IS_APPLE2()) {
           VideoResetState();
         }
@@ -793,7 +793,7 @@ void ResetMachineState() {
                          // - so beep may get (partially) muted
 
   MemReset();
-  Peripheral_Manager_Reset();
+  peripheral_manager_reset();
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   VideoResetState();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
@@ -920,7 +920,7 @@ void frame_refresh_status(int drawflags) {
       if (g_lastDiskStatus.drive0_last_error != disk_err_none &&
           g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(
-            SDL_MESSAGEBOX_ERROR, "Disk 1 Error",
+            SDL_MESSAGEBOX_ERROR, "Disk 1 error",
             disk_ui_get_error_message(g_lastDiskStatus.drive0_last_error),
             g_window);
         g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
@@ -931,7 +931,7 @@ void frame_refresh_status(int drawflags) {
       if (g_lastDiskStatus.drive1_last_error != disk_err_none &&
           g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
         SDL_ShowSimpleMessageBox(
-            SDL_MESSAGEBOX_ERROR, "Disk 2 Error",
+            SDL_MESSAGEBOX_ERROR, "Disk 2 error",
             disk_ui_get_error_message(g_lastDiskStatus.drive1_last_error),
             g_window);
         g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
@@ -946,7 +946,7 @@ void frame_refresh_status(int drawflags) {
       } else {
         snprintf(s_title, sizeof(s_title), "%s", g_pAppTitle);
       }
-      Linapple_UpdateTitle(s_title);
+      linapple_update_title(s_title);
     }
   }
   draw_status_area(drawflags);

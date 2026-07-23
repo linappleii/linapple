@@ -817,7 +817,7 @@ static auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_mockingboard_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
     .name = "Mockingboard",
     .description = "Dual AY-3-8910 sound card emulation",

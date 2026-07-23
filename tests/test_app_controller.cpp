@@ -63,7 +63,7 @@ TEST_CASE("AppController: Media Loading") {
 
   // Explicitly think a bit to process commands from LoadInitialMedia
   for (int i = 0; i < 500; ++i) {
-    Peripheral_Manager_Think(100);
+    peripheral_manager_think(100);
   }
 
   // Check if disk was loaded

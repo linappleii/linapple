@@ -55,7 +55,7 @@ static auto progress_callback(void* clientp, curl_off_t dltotal,
   (void)dltotal;
   (void)ultotal;
   (void)ulnow;
-  Logger::Info("FTP: %lu bytes downloaded\n", dlnow);
+  Logger::info("FTP: %lu bytes downloaded\n", dlnow);
   return 0;
 }
 
@@ -82,9 +82,9 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
 
   if (res != CURLE_OK) {
     /* we failed */
-    Logger::Error("Curl error with errorcode = %d\n", res);
+    Logger::error("Curl error with errorcode = %d\n", res);
   } else {
-    Logger::Info("FTP: download completed\n");
+    Logger::info("FTP: download completed\n");
   }
 
   return res;

@@ -5,7 +5,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include <cstring>
 
-TEST_CASE("DiskUI: Error Message Mapping") {
+TEST_CASE("DiskUI: error Message Mapping") {
     CHECK(strcmp(disk_ui_get_error_message(disk_err_none), "Success") == 0);
     CHECK(strcmp(disk_ui_get_error_message(disk_err_file_not_found), "Disk image file not found.") == 0);
     CHECK(strcmp(disk_ui_get_error_message(disk_err_io), "I/O error reading the disk image.") == 0);

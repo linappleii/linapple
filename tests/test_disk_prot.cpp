@@ -23,12 +23,12 @@ namespace {
 constexpr int SL6 = 6;
 
 static void setup_smoke_test(const char* imagePath) {
-    Linapple_Init();
+    linapple_init();
     if (imagePath) {
         Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, imagePath);
     }
-    Peripheral_Manager_Init(); 
-    Linapple_RegisterPeripherals();
+    peripheral_manager_init(); 
+    linapple_register_peripherals();
 }
 }
 
@@ -83,7 +83,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     Util_SafeStrCpy(cmd.path, f_user.c_str(), disk_insert_path_max);
     cmd.write_protected = true;
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
     peripheral_query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected != 0);
@@ -94,7 +94,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
         Util_SafeStrCpy(cmd.path, f_os.c_str(), disk_insert_path_max);
         cmd.write_protected = false;
         peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-        Peripheral_Manager_Think(0);
+        peripheral_manager_think(0);
         peripheral_query(SL6, disk_cmd_get_status, &status, &size);
         CHECK(status.drive0_loaded != 0);
         CHECK(status.drive0_write_protected != 0);
@@ -104,7 +104,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     Util_SafeStrCpy(cmd.path, f_format.c_str(), disk_insert_path_max);
     cmd.write_protected = false;
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
     peripheral_query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected == 0);
@@ -113,7 +113,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     Util_SafeStrCpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
     cmd.write_protected = false;
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
     peripheral_query(SL6, disk_cmd_get_status, &status, &size);
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_write_protected == 0);
@@ -122,5 +122,5 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
     remove(f_os.c_str());
     remove(f_format.c_str());
     remove(f_rw.c_str());
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

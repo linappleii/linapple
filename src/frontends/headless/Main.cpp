@@ -37,9 +37,9 @@ auto main(int argc, char* argv[]) -> int {
 
   std::cout << "Starting LinApple Headless Frontend…" << std::endl;
 
-  Linapple_SetVideoCallback(VideoCallback);
-  Linapple_SetAudioCallback(AudioCallback);
-  Linapple_SetTitleCallback(TitleCallback);
+  linapple_set_video_callback(VideoCallback);
+  linapple_set_audio_callback(AudioCallback);
+  linapple_set_title_callback(TitleCallback);
 
   AppController_LoadInitialMedia(&config);
 
@@ -47,7 +47,7 @@ auto main(int argc, char* argv[]) -> int {
   constexpr int apple2_frame_cycles = 17030;
 
   for (int i = 0; i < HEADLESS_FRAMES; ++i) {
-    Linapple_RunFrame(apple2_frame_cycles);
+    linapple_run_frame(apple2_frame_cycles);
   }
 
   AppController_Shutdown();

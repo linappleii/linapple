@@ -11,11 +11,11 @@
 #include <cstring>
 
 TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
-    Linapple_Init();
+    linapple_init();
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "../tests/fixtures/minimal.woz");
 
-    Peripheral_Manager_Init();
-    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+    peripheral_manager_init();
+    peripheral_manager_init(); linapple_register_peripherals();
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -24,15 +24,15 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
     REQUIRE(ps == peripheral_ok);
     CHECK(status.drive0_loaded == true);
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
 TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
-    Linapple_Init();
+    linapple_init();
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "nonexistent.dsk");
 
-    Peripheral_Manager_Init();
-    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+    peripheral_manager_init();
+    peripheral_manager_init(); linapple_register_peripherals();
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -42,5 +42,5 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
     CHECK(status.drive0_loaded == false);
     CHECK(status.drive0_last_error == disk_err_file_not_found);
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

@@ -10,18 +10,18 @@
 #include <cstring>
 
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
-    Linapple_Init();
+    linapple_init();
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "../tests/fixtures/minimal.woz");
-    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+    peripheral_manager_init(); linapple_register_peripherals();
 
     DiskEjectCmd_t cmd{};
     cmd.drive = disk_drive_0;
 
     peripheral_command(6, disk_cmd_eject, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     std::string saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
     CHECK(saved.empty());
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

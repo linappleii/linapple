@@ -263,7 +263,7 @@ auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_speaker_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.speaker",
     .name = "Speaker",
     .description = "Built-in Apple II speaker and cassette port emulation",

@@ -14,14 +14,14 @@ constexpr int SL6 = 6;
 }
 
 TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
-    Linapple_Init();
-    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+    linapple_init();
+    peripheral_manager_init(); linapple_register_peripherals();
     DiskInsertCmd_t cmd{};
     cmd.drive = disk_drive_0;
     cmd.write_protected = false;
     Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz", disk_insert_path_max);
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -32,5 +32,5 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
     CHECK(strstr(status.drive0_full_path, "minimal.woz") != nullptr);
     CHECK(status.drive0_write_protected == 0);
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

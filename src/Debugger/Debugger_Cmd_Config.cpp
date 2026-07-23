@@ -396,7 +396,7 @@ auto CmdConfigDisasm( int nArgs ) -> Update_t
           else
           {
             int iState = g_bConfigInfoTargetPointer ? PARAM_ON : PARAM_OFF;
-            ConsoleBufferPushFormat( sText,  "Info Target Pointer: %s" , g_aParameters[ iState ].m_sName );
+            ConsoleBufferPushFormat( sText,  "info Target Pointer: %s" , g_aParameters[ iState ].m_sName );
             ConsoleBufferToDisplay();
           }
           break;

@@ -19,8 +19,8 @@
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
 
-using Logger::Error;
-using Logger::Info;
+using Logger::error;
+using Logger::info;
 
 static bool g_bBudgetVideo = false;
 
@@ -32,7 +32,7 @@ void SetCurrentCLK6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
 
 void SingleStep(bool bReinit) {
   (void)bReinit;
-  Linapple_RunFrame(1);
+  linapple_run_frame(1);
 }
 
 auto sys_init() -> int {
@@ -43,7 +43,7 @@ auto sys_init() -> int {
   curl_global_init(CURL_GLOBAL_DEFAULT);
   g_curl = curl_easy_init();
   if (g_curl == nullptr) {
-    Error("Could not initialize CURL easy interface\n");
+    error("Could not initialize CURL easy interface\n");
     return 1;
   }
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass.data());
@@ -73,7 +73,7 @@ auto session_init(AppConfig* config) -> int {
     return 1;
   }
 
-  Linapple_SetTitleCallback(Frontend_SetWindowTitle);
+  linapple_set_title_callback(Frontend_SetWindowTitle);
 
   if (frame_create_window() != 0) return 1;
 

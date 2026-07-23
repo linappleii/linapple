@@ -17,9 +17,9 @@ constexpr int SL6 = 6;
 }
 
 TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
-    peripheral_register_Internal();
+    linapple_init();
+    peripheral_manager_init();
+    peripheral_register_internal();
 
     DiskInsertCmd_t cmd{};
     cmd.drive = disk_drive_0;
@@ -28,7 +28,7 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
     // Command usually returns OK because it's queued, but here internal
     // synchronously executes for local tests.
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -37,13 +37,13 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
     CHECK(status.drive0_loaded == 0);
     CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_file_not_found));
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
 TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
-    peripheral_register_Internal();
+    linapple_init();
+    peripheral_manager_init();
+    peripheral_register_internal();
 
     // Create a garbage file that isn't a valid disk
     const char* garbage = "garbage.txt";
@@ -57,7 +57,7 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
     cmd.drive = disk_drive_0;
     Util_SafeStrCpy(cmd.path, garbage, disk_insert_path_max);
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -67,13 +67,13 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
     CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_unsupported_format));
 
     remove(garbage);
-    Linapple_Shutdown();
+    linapple_shutdown();
 }
 
 TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
-    Linapple_Init();
-    Peripheral_Manager_Init();
-    peripheral_register_Internal();
+    linapple_init();
+    peripheral_manager_init();
+    peripheral_register_internal();
 
     DiskInsertCmd_t cmd{};
     cmd.drive = disk_drive_0;
@@ -81,14 +81,14 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
     // First, cause an error
     Util_SafeStrCpy(cmd.path, "missing.dsk", disk_insert_path_max);
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     // Now insert valid
     const char* fixture = "../tests/fixtures/minimal.dsk";
     if (access(fixture, F_OK) != 0) fixture = "tests/fixtures/minimal.dsk";
     Util_SafeStrCpy(cmd.path, fixture, disk_insert_path_max);
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     DiskStatus_t status{};
     size_t size = sizeof(status);
@@ -97,5 +97,5 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
     CHECK(status.drive0_loaded != 0);
     CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_none));
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

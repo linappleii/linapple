@@ -383,7 +383,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.cancelled = false;
   g_diskChooseState.p_index_file = &index_file;
 
-  AppMode_e old_mode = g_state.mode;
+  AppMode_t old_mode = g_state.mode;
   g_state.mode = MODE_DISK_CHOOSE;
 
   g_video_draw_mutex.unlock();

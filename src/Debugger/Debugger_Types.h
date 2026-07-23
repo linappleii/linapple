@@ -268,7 +268,7 @@ enum Commands_e {
   CMD_JSR,
   CMD_NOP,
   CMD_OUT,
-  // CPU - Meta Info
+  // CPU - Meta info
   CMD_PROFILE,
   CMD_REGISTER_SET,
   // CPU - Stack

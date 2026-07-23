@@ -81,7 +81,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		R8, W8,              // BG_DISASM_BP_S_C    FG_DISASM_BP_S_C
 		R6, W5,              // BG_DISASM_BP_0_C    FG_DISASM_BP_0_C
 
-		R7,                  // FG_DISASM_BP_S_X    // Y8 lookes better on Info Cyan // R6
+		R7,                  // FG_DISASM_BP_S_X    // Y8 lookes better on info Cyan // R6
 		W5,                  // FG_DISASM_BP_0_X
 
 		W8, K0,              // BG_DISASM_C         FG_DISASM_C

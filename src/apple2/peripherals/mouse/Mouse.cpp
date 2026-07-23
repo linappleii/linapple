@@ -979,7 +979,7 @@ static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
 }  // namespace
 
 static Peripheral_t g_mouse_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.mouse",
     .name = "Mouse Interface",
     .description = "Apple II Mouse Card emulation",

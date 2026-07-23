@@ -137,7 +137,7 @@ constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
 #include "apple2/Apple2Types.h"
 #include "core/Peripheral.h"
 
-enum AppMode_e {
+enum AppMode_t {
   MODE_LOGO = 0,
   MODE_PAUSED,
   MODE_RUNNING,
@@ -150,7 +150,7 @@ enum AppMode_e {
 constexpr int path_max_len = 260;
 
 using SystemState_t = struct SystemState_tag {
-  AppMode_e mode;
+  AppMode_t mode;
   bool restart;
   bool fullscreen;
   uint32_t dwSpeed;
@@ -200,11 +200,11 @@ extern "C" {
 
 extern const char* g_pAppTitle;
 extern char videoDriverName[100];
-extern uint64_t cumulativecycles;
-extern uint64_t cyclenum;
-extern uint32_t emulmsec;
+extern uint64_t cumulative_cycles;
+extern uint64_t cycle_num;
+extern uint32_t emul_msec;
 extern bool g_bFullSpeed;
-extern bool hddenabled;
+extern bool hdd_enabled;
 extern double g_fCurrentCLK6502;
 extern int g_nCpuCyclesFeedback;
 extern uint32_t g_dwCyclesThisFrame;
@@ -231,11 +231,11 @@ auto linapple_load_program(const char* path) -> int;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 
-auto Peripheral_Manager_Init() -> void;
-auto Peripheral_Manager_Reset() -> void;
-auto Peripheral_Manager_Shutdown() -> void;
-auto Peripheral_Manager_Think(uint32_t cycles) -> void;
-auto Peripheral_Manager_OnVBlank(bool vblank) -> void;
+auto peripheral_manager_init() -> void;
+auto peripheral_manager_reset() -> void;
+auto peripheral_manager_shutdown() -> void;
+auto peripheral_manager_think(uint32_t cycles) -> void;
+auto peripheral_manager_on_vblank(bool vblank) -> void;
 auto peripheral_is_any_active() -> bool;
 auto linapple_list_hardware() -> void;
 
@@ -256,63 +256,12 @@ auto linapple_set_mock_audio_callback(LinappleAudioCallback_t cb) -> void;
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 
-auto GetTitleApple2() -> const char*;
-auto GetTitleApple2Plus() -> const char*;
-auto GetTitleApple2e() -> const char*;
-auto GetTitleApple2eEnhanced() -> const char*;
+auto get_title_apple_2() -> const char*;
+auto get_title_apple_2_plus() -> const char*;
+auto get_title_apple_2e() -> const char*;
+auto get_title_apple_2e_enhanced() -> const char*;
 
-static inline auto Linapple_Init() -> void { linapple_init(); }
-static inline auto Linapple_RegisterPeripherals() -> void {
-  linapple_register_peripherals();
-}
-static inline auto Linapple_Shutdown() -> void { linapple_shutdown(); }
-static inline auto Linapple_CpuTest(const char* test_file, uint16_t trap_addr)
-    -> void {
-  linapple_cpu_test(test_file, trap_addr);
-}
-static inline auto Linapple_GetTicks() -> uint32_t {
-  return linapple_get_ticks();
-}
-static inline auto Linapple_LoadProgram(const char* path) -> int {
-  return linapple_load_program(path);
-}
-static inline auto Linapple_RunFrame(uint32_t cycles) -> uint32_t {
-  return linapple_run_frame(cycles);
-}
-static inline auto Linapple_SetKeyState(uint8_t apple_code, bool down) -> void {
-  linapple_set_key_state(apple_code, down);
-}
-static inline auto Linapple_SetCapsLockState(bool enabled) -> void {
-  linapple_set_caps_lock_state(enabled);
-}
-static inline auto Linapple_SetAppleKey(int key, bool down) -> void {
-  linapple_set_apple_key(key, down);
-}
-static inline auto Linapple_SetJoystickAxis(int axis, int value) -> void {
-  linapple_set_joystick_axis(axis, value);
-}
-static inline auto Linapple_SetJoystickButton(int button, bool down) -> void {
-  linapple_set_joystick_button(button, down);
-}
-static inline auto Linapple_SetVideoCallback(LinappleVideoCallback_t cb)
-    -> void {
-  linapple_set_video_callback(cb);
-}
-static inline auto Linapple_SetAudioCallback(LinappleAudioCallback_t cb)
-    -> void {
-  linapple_set_audio_callback(cb);
-}
-static inline auto Linapple_SetMockAudioCallback(LinappleAudioCallback_t cb)
-    -> void {
-  linapple_set_mock_audio_callback(cb);
-}
-static inline auto Linapple_SetTitleCallback(LinappleTitleCallback_t cb)
-    -> void {
-  linapple_set_title_callback(cb);
-}
-static inline auto Linapple_UpdateTitle(const char* title) -> void {
-  linapple_update_title(title);
-}
+
 
 #ifdef __cplusplus
 }

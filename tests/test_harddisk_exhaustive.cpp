@@ -41,8 +41,8 @@ struct TempFileGuard {
 } // namespace
 
 TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
+  linapple_init();
+  peripheral_manager_init();
 
   auto* descriptor = harddisk_get_descriptor();
   REQUIRE(descriptor != nullptr);
@@ -67,7 +67,7 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   
   PeripheralStatus_t pstatus = peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
   CHECK(pstatus == peripheral_ok);
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   // 2. Verify Status
   HarddiskStatus_t status{};
@@ -127,7 +127,7 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   prot.write_protected = 1;
   pstatus = peripheral_command(7, harddisk_cmd_set_protect, &prot, sizeof(prot));
   CHECK(pstatus == peripheral_ok);
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
   
   // Try writing again - should fail (or at least status should be read-only)
   // Current driver implementation returns status::ok for format/write start, 
@@ -140,14 +140,14 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   eject.drive = harddisk_drive_0;
   pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
   CHECK(pstatus == peripheral_ok);
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
   
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("Harddisk: Edge Cases and Safety") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
+  linapple_init();
+  peripheral_manager_init();
   auto* descriptor = harddisk_get_descriptor();
   peripheral_register(descriptor, 7);
 
@@ -158,8 +158,8 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   PeripheralStatus_t pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
   CHECK(pstatus == peripheral_ok);
 
-  // Error would be reported in Status after Think
-  Peripheral_Manager_Think(0);
+  // error would be reported in Status after Think
+  peripheral_manager_think(0);
   
   // 2. Read from unloaded drive
   // Set Unit to Drive 1 (Unit 0x00), which we haven't loaded
@@ -179,7 +179,7 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   insert.drive = harddisk_drive_0;
   strncpy(insert.path, dummy_file.path, sizeof(insert.path) - 1);
   peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
   
   IOMap_Dispatch(0, 0xC0F4, 1, 0xF0, 0); // Lo
   IOMap_Dispatch(0, 0xC0F5, 1, 0xFF, 0); // Hi (0xFFF0)
@@ -188,7 +188,7 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   // It shouldn't crash, and might return ok but just not copy, or return error.
   // Current implementation just doesn't copy if it would overflow.
   
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("Harddisk: MacBinary Detection") {
@@ -206,8 +206,8 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     
     TempFileGuard macbin_file("test_macbin.hdv", macbin_data.data(), macbin_data.size());
     
-    Linapple_Init();
-    Peripheral_Manager_Init();
+    linapple_init();
+    peripheral_manager_init();
     auto* descriptor = harddisk_get_descriptor();
     peripheral_register(descriptor, 7);
     
@@ -215,7 +215,7 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     insert.drive = harddisk_drive_0;
     strncpy(insert.path, macbin_file.path, sizeof(insert.path) - 1);
     peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
     
     // Read block 0
     IOMap_Dispatch(0, 0xC0F3, 1, 0x00, 0); // Drive 0
@@ -227,5 +227,5 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     uint8_t b0 = IOMap_Dispatch(0, 0xC0F8, 0, 0, 0);
     CHECK(b0 == 0x55); // Should have skipped 128 byte header
     
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

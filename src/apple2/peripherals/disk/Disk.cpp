@@ -392,7 +392,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
     char full_title[max_disk_image_name_len + 64];
     snprintf(full_title, sizeof(full_title), "%s - %s", g_pAppTitle,
              disk_ptr->image_name);
-    Linapple_UpdateTitle(full_title);
+    linapple_update_title(full_title);
 
     if (disk_peripheral->host != nullptr) {
       const char* key =
@@ -713,7 +713,7 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
   char full_title[max_disk_image_name_len + 64];
   snprintf(full_title, sizeof(full_title), "%s - %s", g_pAppTitle,
            disk_peripheral->drives.at(0).image_name);
-  Linapple_UpdateTitle(full_title);
+  linapple_update_title(full_title);
 
   if (disk_peripheral->host != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
@@ -1154,7 +1154,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
 }  // namespace
 
 static Peripheral_t g_disk_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.disk_II",
     .name = "Disk II",
     .description = "Apple II floppy disk controller emulation",

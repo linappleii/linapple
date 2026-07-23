@@ -58,7 +58,7 @@ typedef struct {
 struct Peripheral_t;
 
 typedef struct Peripheral_t {
-  int abi_version;
+  int AbiVersion_t;
   const char* id;           // Namespaced ID (e.g. "linapple.disk_ii")
   const char* name;         // Human readable name
   const char* description;  // Short summary
@@ -89,9 +89,9 @@ typedef struct Peripheral_t {
 #ifdef __cplusplus
 #define PERIPHERAL_REGISTER(peripheral_struct)              \
   namespace {                                               \
-  struct PeripheralRegistration_##peripheral_struct {       \
-    PeripheralRegistration_##peripheral_struct() noexcept { \
-      peripheral_register_Builtin(                          \
+  struct PeripheralRegistration_t##peripheral_struct {       \
+    PeripheralRegistration_t##peripheral_struct() noexcept { \
+      peripheral_register_builtin(                          \
           const_cast<Peripheral_t*>(&(peripheral_struct))); \
     }                                                       \
   } g_registration_##peripheral_struct;                     \
@@ -99,7 +99,7 @@ typedef struct Peripheral_t {
 #else
 #define PERIPHERAL_REGISTER(peripheral_struct)                              \
   __attribute__((constructor)) static void Register_##peripheral_struct() { \
-    peripheral_register_Builtin(&(peripheral_struct));                      \
+    peripheral_register_builtin(&(peripheral_struct));                      \
   }
 #endif
 #endif
@@ -108,7 +108,7 @@ typedef struct Peripheral_t {
   PERIPHERAL_REGISTER(peripheral_struct)
 
 int peripheral_register(Peripheral_t* api, int slot);
-void peripheral_register_Builtin(Peripheral_t* api);
+void peripheral_register_builtin(Peripheral_t* api);
 int peripheral_unregister(int slot);
 PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id, const void* data,
                                     size_t size);

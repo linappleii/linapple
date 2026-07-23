@@ -1608,12 +1608,12 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
 
     if (iToken == TOKEN_HASH) {
       if (eNextState != AS_GET_MNEMONIC_PARM) {
-        ConsoleBufferPush(" Syntax Error: '#'");
+        ConsoleBufferPush(" Syntax error: '#'");
         return false;
       }
       if (TestFlag(AF_HaveHash)) {
         ConsoleBufferPush(
-            " Syntax Error: Extra '#'");  // No thanks, we already have one
+            " Syntax error: Extra '#'");  // No thanks, we already have one
         return false;
       }
       SetFlag(AF_HaveHash);
@@ -1624,7 +1624,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
     } else if (iToken == TOKEN_DOLLAR) {
       if (TestFlag(AF_HaveDollar)) {
         ConsoleBufferPush(
-            " Syntax Error: Extra '$'");  // No thanks, we already have one
+            " Syntax error: Extra '$'");  // No thanks, we already have one
         return false;
       }
 
@@ -1639,7 +1639,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
     } else if (iToken == TOKEN_PAREN_L) {
       if (TestFlag(AF_HaveLeftParen)) {
         ConsoleBufferPush(
-            " Syntax Error: Extra '('");  // No thanks, we already have one
+            " Syntax error: Extra '('");  // No thanks, we already have one
         return false;
       }
       SetFlag(AF_HaveLeftParen);
@@ -1649,7 +1649,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
     } else if (iToken == TOKEN_PAREN_R) {
       if (TestFlag(AF_HaveRightParen)) {
         ConsoleBufferPush(
-            " Syntax Error: Extra ''");  // No thanks, we already have one
+            " Syntax error: Extra ''");  // No thanks, we already have one
         return false;
       }
       SetFlag(AF_HaveRightParen);
@@ -1659,7 +1659,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
     } else if (iToken == TOKEN_COMMA) {
       if (TestFlag(AF_HaveComma)) {
         ConsoleBufferPush(
-            " Syntax Error: Extra ','");  // No thanks, we already have one
+            " Syntax error: Extra ','");  // No thanks, we already have one
         return false;
       }
       SetFlag(AF_HaveComma);
@@ -1727,14 +1727,14 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
         if (pArg->nArgLen == 1) {
           if (pArg->sArg[0] == 'X') {
             if (!TestFlag(AF_HaveComma)) {
-              ConsoleBufferPush(" Syntax Error: Missing ','");
+              ConsoleBufferPush(" Syntax error: Missing ','");
               return false;
             }
             SetFlag(AF_HaveRegisterX);
           }
           if (pArg->sArg[0] == 'Y') {
             if (!(TestFlag(AF_HaveComma))) {
-              ConsoleBufferPush(" Syntax Error: Missing ','");
+              ConsoleBufferPush(" Syntax error: Missing ','");
               return false;
             }
             SetFlag(AF_HaveRegisterY);
@@ -1758,18 +1758,18 @@ auto AssemblerUpdateAddressingMode() -> bool {
           TestFlag(AF_HaveLeftParen) && TestFlag(AF_HaveRightParen));
 
   if ((TestFlag(AF_HaveLeftParen)) && (!TestFlag(AF_HaveRightParen))) {
-    ConsoleBufferPush(" Syntax Error: Missing ''");
+    ConsoleBufferPush(" Syntax error: Missing ''");
     return false;
   }
 
   if ((!TestFlag(AF_HaveLeftParen)) && (TestFlag(AF_HaveRightParen))) {
-    ConsoleBufferPush(" Syntax Error: Missing '('");
+    ConsoleBufferPush(" Syntax error: Missing '('");
     return false;
   }
 
   if (TestFlag(AF_HaveComma)) {
     if ((!TestFlag(AF_HaveRegisterX)) && (!TestFlag(AF_HaveRegisterY))) {
-      ConsoleBufferPush(" Syntax Error: Index 'X' or 'Y'");
+      ConsoleBufferPush(" Syntax error: Index 'X' or 'Y'");
       return false;
     }
   }
@@ -1948,7 +1948,7 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
   if (!nOpcodes) {
     // Check for assembler directive
 
-    ConsoleBufferPush(" Syntax Error: Invalid mnemonic");
+    ConsoleBufferPush(" Syntax error: Invalid mnemonic");
     return false;
   } else {
     bGotArgs = AssemblerGetArgs(iArg, nArgs, nAddress);

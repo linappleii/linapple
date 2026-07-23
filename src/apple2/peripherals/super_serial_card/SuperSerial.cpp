@@ -296,7 +296,7 @@ auto super_serial_load_state(void* instance, const void* state_buffer,
 }
 
 static Peripheral_t g_ssc_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
     .name = "Super Serial Card",
     .description = "Apple II Super Serial Card (SSC) emulation",

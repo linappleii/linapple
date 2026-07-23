@@ -40,7 +40,7 @@ typedef struct DiskFluxBit_s DiskFluxBit_t;
  * probing, lifecycle management, and track-level I/O.
  */
 typedef struct DiskFormatDriver_t {
-  int abi_version;
+  int AbiVersion_t;
   uint32_t capabilities;
   const char* name;
   const char* const* creatable_exts;

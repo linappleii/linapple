@@ -88,7 +88,7 @@ const char* const g_raw_hd_creatable_exts[] = {".hdv", ".po", nullptr};
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
-    .abi_version = harddisk_format_abi_version,
+    .AbiVersion_t = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
     .name = "Raw",
     .creatable_exts = g_raw_hd_creatable_exts,

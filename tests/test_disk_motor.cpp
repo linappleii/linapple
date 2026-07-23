@@ -26,15 +26,15 @@ void run_cycles(uint64_t cycles) {
     uint32_t chunk = (cycles - count > static_cast<uint64_t>(CYCLES_PER_FRAME))
                          ? static_cast<uint32_t>(CYCLES_PER_FRAME)
                          : static_cast<uint32_t>(cycles - count);
-    Linapple_RunFrame(chunk);
+    linapple_run_frame(chunk);
     count += chunk;
   }
 }
 
 TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  Linapple_RegisterPeripherals();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   // Set PC to a safe loop: $0000: 4C 00 00 (JMP $0000)
   uint8_t* m = MemGetBankPtr(0);
@@ -51,7 +51,7 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
                   disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 
   CHECK(peripheral_is_any_active() == false);
 
@@ -63,5 +63,5 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
   run_cycles(MOTOR_SPIN_DURATION);
   CHECK(peripheral_is_any_active() == false);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }

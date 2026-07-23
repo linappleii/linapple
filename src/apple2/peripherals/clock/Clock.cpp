@@ -316,7 +316,7 @@ static auto clock_abi_load_state(void* instance, const void* state_buffer,
 }
 
 static Peripheral_t g_clock_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.clock",
     .name = "Clock Card",
     .description = "ProDOS compatible Clock",

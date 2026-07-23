@@ -26,9 +26,9 @@ constexpr int DISK_IO_WRITE_MODE = 0xC0EF;
 constexpr int DISK_MOTOR_ON = 0xC0E9;
 
 auto setup_disk_io_test(const char* fixture_name) -> void {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  Linapple_RegisterPeripherals();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
@@ -48,7 +48,7 @@ auto setup_disk_io_test(const char* fixture_name) -> void {
 
   // Turn on motor so rotation works
   IOMap_Dispatch(0, DISK_MOTOR_ON, 0, 0, 0);
-  Peripheral_Manager_Think(0);
+  peripheral_manager_think(0);
 }
 }  // namespace
 
@@ -68,7 +68,7 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
   CHECK(b2 != 0);
   CHECK(b3 != 0);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
@@ -81,7 +81,7 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
 
   // Spin the disk for a while (approx 1/10th of a rotation)
   // 1 rotation = 200ms = approx 200,000 cycles
-  Peripheral_Manager_Think(20000);
+  peripheral_manager_think(20000);
 
   // Read again
   uint8_t b_after = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
@@ -92,13 +92,13 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
   (void)b_start;
   (void)b_after;
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  Linapple_RegisterPeripherals();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   // No disk loaded. Accessing slot 6 I/O should return floating bus noise.
   // Physical reality: Bit 7 represents some hardware status or floating noise.
@@ -106,7 +106,7 @@ TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
   CHECK((noise & 0x80) !=
         0);  // Bit 7 should be set if we passed floating_bus (0xFF)
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
@@ -119,5 +119,5 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   uint8_t val = IOMap_Dispatch(0, DISK_IO_LATCH, 0, 0, 0);
   CHECK(val == 0x55);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }

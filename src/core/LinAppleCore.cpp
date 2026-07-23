@@ -38,8 +38,8 @@
 #include "core/ProgramLoader.h"
 #include "core/Util_Path.h"
 
-using Logger::Error;
-using Logger::Info;
+using Logger::error;
+using Logger::info;
 
 static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
 static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
@@ -52,11 +52,11 @@ char videoDriverName[100]{};
 eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
 eApple2Language g_Language = A2LANG_US;
 
-uint64_t cumulativecycles = 0;
-uint64_t cyclenum = 0;
-uint32_t emulmsec = 0;
+uint64_t cumulative_cycles = 0;
+uint64_t cycle_num = 0;
+uint32_t emul_msec = 0;
 bool g_bFullSpeed = false;
-bool hddenabled = false;
+bool hdd_enabled = false;
 
 SystemState_t g_state = {MODE_LOGO,
                          false,
@@ -89,10 +89,10 @@ bool g_bDisableDirectSound = false;
 uint32_t g_Slot4 = CT_Mockingboard;
 CURL* g_curl = nullptr;
 
-auto GetTitleApple2() -> const char* { return TITLE_APPLE_2_; }
-auto GetTitleApple2Plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
-auto GetTitleApple2e() -> const char* { return TITLE_APPLE_2E_; }
-auto GetTitleApple2eEnhanced() -> const char* {
+auto get_title_apple_2() -> const char* { return TITLE_APPLE_2_; }
+auto get_title_apple_2_plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
+auto get_title_apple_2e() -> const char* { return TITLE_APPLE_2E_; }
+auto get_title_apple_2e_enhanced() -> const char* {
   return TITLE_APPLE_2E_ENHANCED_;
 }
 
@@ -150,10 +150,10 @@ static auto should_run_full_speed() -> bool {
 
   if (should_turbo && !s_was_turbo) {
     s_turbo_start_ms = linapple_get_ticks();
-    Logger::Perf("Full-speed disk mode engaged\n");
+    Logger::perf("Full-speed disk mode engaged\n");
   } else if (!should_turbo && s_was_turbo) {
     uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
-    Logger::Perf("Full-speed disk mode disengaged after %ums\n", elapsed);
+    Logger::perf("Full-speed disk mode disengaged after %ums\n", elapsed);
     audio_mixer_clear_buffers();
   }
 
@@ -172,14 +172,14 @@ auto linapple_init() -> void {
   CpuInitialize();
   VideoInitialize();
 
-  Peripheral_Manager_Init();
-  peripheral_register_Internal();
+  peripheral_manager_init();
+  peripheral_register_internal();
 }
 
-auto linapple_register_peripherals() -> void { peripheral_register_Internal(); }
+auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
 
 auto linapple_shutdown() -> void {
-  Peripheral_Manager_Shutdown();
+  peripheral_manager_shutdown();
   peripheral_plugins_shutdown();
   audio_mixer_destroy();
   VideoDestroy();
@@ -193,7 +193,7 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
   }
   linapple_init();
   if (linapple_load_program(test_file) != 0) {
-    Error("Failed to load test file: %s\n", test_file);
+    error("Failed to load test file: %s\n", test_file);
     return;
   }
   CpuGetRegisters()->pc = 0x0400;  // NMOS 6502 functional test entry
@@ -203,7 +203,7 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
     if (executed == 0) {
       break;
     }
-    cyclenum += executed;
+    cycle_num += executed;
     g_cumulative_cycles += executed;
     count += executed;
     if (CpuGetRegisters()->pc == trap_addr) {
@@ -217,13 +217,13 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
 
 auto linapple_load_program(const char* path) -> int {
   if (path == nullptr) {
-    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+    return static_cast<int>(program_load_not_a_program);
   }
-  auto res = ProgramLoader_TryLoad(path);
-  if (res == PROGRAM_LOAD_OK) {
+  auto res = program_loader_try_load(path);
+  if (res == program_load_ok) {
     return 0;
   }
-  if (res != PROGRAM_LOAD_NOT_A_PROGRAM) {
+  if (res != program_load_not_a_program) {
     return static_cast<int>(res);
   }
 
@@ -234,7 +234,7 @@ auto linapple_load_program(const char* path) -> int {
                                       ".2mg", ".po",  ".do"};
     for (auto d_ext : disk_exts) {
       if (strcasecmp(ext, d_ext) == 0) {
-        return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+        return static_cast<int>(program_load_not_a_program);
       }
     }
   }
@@ -242,7 +242,7 @@ auto linapple_load_program(const char* path) -> int {
   // Raw binary fallback
   FILE* f = std::fopen(path, "rb");
   if (f == nullptr) {
-    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+    return static_cast<int>(program_load_not_a_program);
   }
 
   std::fseek(f, 0, SEEK_END);
@@ -251,25 +251,25 @@ auto linapple_load_program(const char* path) -> int {
 
   if (size <= 0 || size > 65536) {
     std::fclose(f);
-    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+    return static_cast<int>(program_load_not_a_program);
   }
 
   uint16_t load_addr = (size == 65536) ? 0x0000 : 0x0800;
 
   if (static_cast<size_t>(load_addr) + static_cast<size_t>(size) > 65536) {
     std::fclose(f);
-    return static_cast<int>(PROGRAM_LOAD_NOT_A_PROGRAM);
+    return static_cast<int>(program_load_not_a_program);
   }
 
   if (std::fread(mem + load_addr, 1, size, f) != static_cast<size_t>(size)) {
     std::fclose(f);
-    return static_cast<int>(PROGRAM_LOAD_FILE_ERROR);
+    return static_cast<int>(program_load_file_error);
   }
   std::fclose(f);
 
   memset(memdirty, 0xFF, NUM_PAGES_48K);
   CpuGetRegisters()->pc = load_addr;
-  return static_cast<int>(PROGRAM_LOAD_OK);
+  return static_cast<int>(program_load_ok);
 }
 
 static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
@@ -278,10 +278,10 @@ static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
   }
 
   uint32_t executed_cycles = CpuExecute(dw_cycles);
-  cyclenum += executed_cycles;
-  cumulativecycles = g_cumulative_cycles;
+  cycle_num += executed_cycles;
+  cumulative_cycles = g_cumulative_cycles;
 
-  Peripheral_Manager_Think(executed_cycles);
+  peripheral_manager_think(executed_cycles);
   VideoUpdateVbl(executed_cycles);
 
   return executed_cycles;
@@ -301,7 +301,7 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
       executed = internal_run_cycles(cycles);
     }
 
-    Peripheral_Manager_OnVBlank(true);
+    peripheral_manager_on_vblank(true);
 
     if (g_video_cb != nullptr && g_bFrameReady) {
       uint32_t* output = VideoGetOutputBuffer();

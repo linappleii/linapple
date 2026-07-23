@@ -12,7 +12,7 @@ TEST_CASE("Peripheral ABI: Registration and I/O") {
     // though for this specific test we might just want to test peripheral_register
     // and the proxies.
 
-    Peripheral_Manager_Init();
+    peripheral_manager_init();
 
     // Register the C peripheral in Slot 1
     int result = peripheral_register(&g_test_c_peripheral, 1);
@@ -30,9 +30,9 @@ TEST_CASE("Peripheral ABI: Registration and I/O") {
     CHECK(val == 0x42);
 
     // Reset and check it cleared
-    Peripheral_Manager_Reset();
+    peripheral_manager_reset();
     val = IOMap_Dispatch(0x0000, 0xC090, 0, 0, 0);
     CHECK(val == 0);
 
-    Peripheral_Manager_Shutdown();
+    peripheral_manager_shutdown();
 }

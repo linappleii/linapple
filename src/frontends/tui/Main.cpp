@@ -52,10 +52,10 @@ auto main(int argc, char* argv[]) -> int {
   tui_input_initialize();
   tui_audio_initialize();
 
-  Linapple_SetVideoCallback(VideoCallback);
-  Linapple_SetAudioCallback(AudioCallback);
-  Linapple_SetMockAudioCallback(MockAudioCallback);
-  Linapple_SetTitleCallback(TitleCallback);
+  linapple_set_video_callback(VideoCallback);
+  linapple_set_audio_callback(AudioCallback);
+  linapple_set_mock_audio_callback(MockAudioCallback);
+  linapple_set_title_callback(TitleCallback);
 
   AppController_LoadInitialMedia(&config);
 
@@ -72,7 +72,7 @@ auto main(int argc, char* argv[]) -> int {
 
     tui_input_poll();
 
-    Linapple_RunFrame(apple2_frame_cycles);
+    linapple_run_frame(apple2_frame_cycles);
     usleep(target_frame_ms * MS_TO_US);
   }
 

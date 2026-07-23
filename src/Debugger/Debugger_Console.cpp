@@ -602,8 +602,8 @@ void DebuggerCursorUpdate() {
 
   const int nUpdatesPerSecond = 4;
   const uint32_t nUpdateInternal_ms = 1000 / nUpdatesPerSecond;
-  static uint32_t nBeg = Linapple_GetTicks();  // timeGetTime();
-  uint32_t nNow = Linapple_GetTicks();         // timeGetTime();
+  static uint32_t nBeg = linapple_get_ticks();  // timeGetTime();
+  uint32_t nNow = linapple_get_ticks();         // timeGetTime();
 
   if (((nNow - nBeg) >= nUpdateInternal_ms) &&
       !DebugVideoMode::Instance().IsSet()) {

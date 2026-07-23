@@ -636,7 +636,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   uint8_t* const pMemBankBase = bBankSpecified ? MemGetBankPtr(nBank) : mem;
   if (!pMemBankBase) {
-    ConsoleBufferPush("Error: Bank out of range.");
+    ConsoleBufferPush("error: Bank out of range.");
     return ConsoleUpdate();
   }
 
@@ -660,7 +660,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
       ConsoleBufferPushFormat(text, "Loaded @ A$%04X,L$%04X", nAddressStart,
                               nAddressLen);
     } else {
-      ConsoleBufferPush("Error loading data.");
+      ConsoleBufferPush("error loading data.");
     }
 
     if (bBankSpecified) {
@@ -838,7 +838,7 @@ Update_t CmdMemorySave (int nArgs)
         FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
         if (hFile)
         {
-          ConsoleBufferPush(  "Warning: File already exists.  Overwriting."  );
+          ConsoleBufferPush(  "warning: File already exists.  Overwriting."  );
           hFile.reset();
         }
 
@@ -852,7 +852,7 @@ Update_t CmdMemorySave (int nArgs)
           }
           else
           {
-            ConsoleBufferPush(  "Error saving."  );
+            ConsoleBufferPush(  "error saving."  );
           }
         }
 
@@ -983,13 +983,13 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       const uint8_t* const pMemBankBase =
           bBankSpecified ? MemGetBankPtr(nBank) : mem;
       if (!pMemBankBase) {
-        ConsoleBufferPush("Error: Bank out of range.");
+        ConsoleBufferPush("error: Bank out of range.");
         return ConsoleUpdate();
       }
 
       FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
       if (hFile) {
-        ConsoleBufferPush("Warning: File already exists.  Overwriting.");
+        ConsoleBufferPush("warning: File already exists.  Overwriting.");
         hFile.reset();
         // TODO: BUG: Is this a bug/feature that we can over-write files and the
         // user has no control over that?
@@ -1003,10 +1003,10 @@ auto CmdMemorySave(int nArgs) -> Update_t {
         if (nWrote == 1) {
           ConsoleBufferPush("Saved.");
         } else {
-          ConsoleBufferPush("Error saving.");
+          ConsoleBufferPush("error saving.");
         }
       } else {
-        ConsoleBufferPush("Error opening file.");
+        ConsoleBufferPush("error opening file.");
       }
     }
   }
@@ -1610,10 +1610,10 @@ auto CmdNTSC(int nArgs) -> Update_t {
         if (nWrote == 1) {
           ConsoleFilename::update("Saved");
         } else
-          ConsoleBufferPush("Error saving.");
+          ConsoleBufferPush("error saving.");
       } else {
         ConsoleFilename::update("File");
-        ConsoleBufferPush("Error couldn't open file for writing.");
+        ConsoleBufferPush("error couldn't open file for writing.");
       }
     } else if (iParam == PARAM_LOAD) {
       FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "rb"), fclose);
@@ -1701,7 +1701,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
         delete[] pSwizzled;
       } else {
         strcpy(aStatusText, "File: ");
-        ConsoleBufferPush("Error couldn't open file for reading.");
+        ConsoleBufferPush("error couldn't open file for reading.");
       }
 
       ConsoleFilename::update(aStatusText);
@@ -1749,7 +1749,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
-    ConsoleBufferPush("Warning: File already exists.  Overwriting.");
+    ConsoleBufferPush("warning: File already exists.  Overwriting.");
     hFile.reset();
   }
 
@@ -1761,10 +1761,10 @@ auto CmdTextSave(int nArgs) -> int {
       ConsoleBufferPushFormat(text, "Saved: %s",
                               g_sMemoryLoadSaveFileName.c_str());
     } else {
-      ConsoleBufferPush("Error saving.");
+      ConsoleBufferPush("error saving.");
     }
   } else {
-    ConsoleBufferPush("Error opening file.");
+    ConsoleBufferPush("error opening file.");
   }
 
   return ConsoleUpdate();
@@ -1978,7 +1978,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
     nAddressEnd = tEndLen.nAddressEnd;
     nAddressLen = tEndLen.nAddressLen;
     return ConsoleDisplayError(
-        "Error: Missing address seperator (comma or colon");
+        "error: Missing address seperator (comma or colon");
   }
 
   int iArgFirstByte = 4;

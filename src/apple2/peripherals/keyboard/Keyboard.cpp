@@ -571,7 +571,7 @@ static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_keyboard_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.keyboard",
     .name = "Keyboard",
     .description = "Standard Apple II keyboard emulation",

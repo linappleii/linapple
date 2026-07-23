@@ -82,7 +82,7 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     g_mock1.compatible_slots = PERIPHERAL_MASK_INTERNAL;
     g_mock2.compatible_slots = PERIPHERAL_MASK_INTERNAL;
 
-    Peripheral_Manager_Init();
+    peripheral_manager_init();
 
     // Register first peripheral in Slot 0
     CHECK(peripheral_register(&g_mock1, 0) == 0);
@@ -90,12 +90,12 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     CHECK(peripheral_register(&g_mock2, 0) == 0);
 
     // Verify both receive Reset
-    Peripheral_Manager_Reset();
+    peripheral_manager_reset();
     CHECK(p1_resets == 1);
     CHECK(p2_resets == 1);
 
     // Verify both receive Think
-    Peripheral_Manager_Think(100);
+    peripheral_manager_think(100);
     CHECK(p1_thinks == 1);
     CHECK(p2_thinks == 1);
 
@@ -108,15 +108,15 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
     CHECK(peripheral_register(&local_mock1, 1) == 0);
     CHECK(peripheral_register(&local_mock2, 1) == -1); // Should fail
 
-    Peripheral_Manager_Shutdown();
+    peripheral_manager_shutdown();
 }
 
 static HostInterface_t* captured_host = nullptr;
 
-TEST_CASE("Peripheral ABI: Host_ResetSystem") {
+TEST_CASE("Peripheral ABI: host_reset_system") {
     p1_resets = 0;
     captured_host = nullptr;
-    Peripheral_Manager_Init();
+    peripheral_manager_init();
 
     Peripheral_t trigger_p = g_mock1;
     trigger_p.compatible_slots = PERIPHERAL_MASK_INTERNAL;
@@ -136,8 +136,8 @@ TEST_CASE("Peripheral ABI: Host_ResetSystem") {
     // Trigger reset via host interface
     captured_host->ResetSystem((void*)0x1111);
 
-    // ResetSystem calls Peripheral_Manager_Reset which calls our mock reset
+    // ResetSystem calls peripheral_manager_reset which calls our mock reset
     CHECK(p1_resets == 1);
 
-    Peripheral_Manager_Shutdown();
+    peripheral_manager_shutdown();
 }

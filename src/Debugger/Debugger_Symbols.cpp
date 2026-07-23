@@ -970,7 +970,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 				{
 					// Shouldn't have multiple symbol tables selected
 //					nArgs = _Arg_1( eSymbolsTable );
-					ConsoleBufferPush( " Error: Unknown Symbol Table Type" );
+					ConsoleBufferPush( " error: Unknown Symbol Table Type" );
 					return ConsoleUpdate();
 				}
 			}
@@ -996,7 +996,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 				}
 				else
 				{
-					ConsoleBufferPush( " Error: Unknown Symbol Table Type" );
+					ConsoleBufferPush( " error: Unknown Symbol Table Type" );
 				}
 				return ConsoleUpdate();
 			}

@@ -66,12 +66,12 @@ WEAK auto VideoResetState() -> void {}
 WEAK auto VideoGetScannerAddress(bool*, uint32_t) -> uint16_t { return 0; }
 WEAK auto VideoChooseColor() -> void {}
 WEAK auto VideoSetBorderColor(uint8_t) -> void {}
-WEAK auto Linapple_UpdateTitle(const char*) -> void {}
+WEAK auto linapple_update_title(const char*) -> void {}
 WEAK auto linapple_list_hardware() -> void {}
-WEAK auto Linapple_CpuTest(const char*, uint16_t) -> void {}
-WEAK auto Linapple_LoadProgram(const char*) -> int { return 0; }
-WEAK auto Linapple_Shutdown() -> void {}
-WEAK auto Linapple_Init() -> void {}
+WEAK auto linapple_cpu_test(const char*, uint16_t) -> void {}
+WEAK auto linapple_load_program(const char*) -> int { return 0; }
+WEAK auto linapple_shutdown() -> void {}
+WEAK auto linapple_init() -> void {}
 
 WEAK auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
 WEAK auto GetMemPtr(uint16_t) -> uint8_t* { return nullptr; }
@@ -84,13 +84,13 @@ WEAK auto RegisterDirectIoHandler(uint16_t, iofunction, iofunction, void*)
 #include <cstdarg>
 
 #include "core/Log.h"
-WEAK auto Logger::Perf(const char*, ...) -> void {}
-WEAK auto Logger::Info(const char*, ...) -> void {}
-WEAK auto Logger::Warning(const char*, ...) -> void {}
-WEAK auto Logger::Error(const char*, ...) -> void {}
-WEAK auto Logger::Initialize() -> void {}
-WEAK auto Logger::Destroy() -> void {}
-WEAK auto Logger::SetVerbosity(LogLevel) -> void {}
+WEAK auto Logger::perf(const char*, ...) -> void {}
+WEAK auto Logger::info(const char*, ...) -> void {}
+WEAK auto Logger::warning(const char*, ...) -> void {}
+WEAK auto Logger::error(const char*, ...) -> void {}
+WEAK auto Logger::initialize() -> void {}
+WEAK auto Logger::destroy() -> void {}
+WEAK auto Logger::set_verbosity(LogLevel_t) -> void {}
 
 WEAK uint64_t g_cumulative_cycles = 0;
 WEAK SystemState_t g_state = {};

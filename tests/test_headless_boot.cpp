@@ -18,12 +18,12 @@
 // the logic of Main.cpp but with assertions.
 
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
-  Linapple_Init();
+  linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.woz");
 
-  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+  peripheral_manager_init(); linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -34,18 +34,18 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
-  Linapple_Init();
+  linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.woz");
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
                                       "../tests/fixtures/minimal.dsk");
 
-  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+  peripheral_manager_init(); linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -56,17 +56,17 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive1_loaded == true);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("Headless: [HL-03] Unsupported file") {
-  Linapple_Init();
+  linapple_init();
 
   // .txt is unsupported by disk drivers
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
                                       "../tests/fixtures/minimal.txt");
 
-  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+  peripheral_manager_init(); linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -81,14 +81,14 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error == disk_err_unsupported_format);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("Headless: [HL-04] Program loading") {
-  Linapple_Init();
-  Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+  linapple_init();
+  peripheral_manager_init(); linapple_register_peripherals();
 
-  int err = Linapple_LoadProgram("../tests/fixtures/minimal.woz");
+  int err = linapple_load_program("../tests/fixtures/minimal.woz");
   CHECK(err != 0);
 
   DiskStatus_t status{};
@@ -96,5 +96,5 @@ TEST_CASE("Headless: [HL-04] Program loading") {
   peripheral_query(6, disk_cmd_get_status, &status, &size);
   CHECK(status.drive0_loaded == false);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }

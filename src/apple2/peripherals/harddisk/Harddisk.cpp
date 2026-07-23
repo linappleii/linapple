@@ -590,7 +590,7 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
 }  // namespace
 
 static Peripheral_t g_harddisk_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
+    .AbiVersion_t = LINAPPLE_ABI_VERSION,
     .id = "linapple.harddisk",
     .name = "Harddisk",
     .description = "SmartPort hard disk controller emulation",

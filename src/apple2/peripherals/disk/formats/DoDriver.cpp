@@ -112,7 +112,7 @@ const char* const g_do_creatable_exts[] = {".do", ".dsk", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_do_driver = {
-    .abi_version = disk_format_abi_version,
+    .AbiVersion_t = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "DOS Order",
     .creatable_exts = g_do_creatable_exts,

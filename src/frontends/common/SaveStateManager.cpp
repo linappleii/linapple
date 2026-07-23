@@ -36,7 +36,7 @@ auto save_state_load() -> void {
 
   FILE* file = fopen(g_save_state_filename, "rb");
   if (!file) {
-    Logger::Error("Failed to open save state file for reading: %s\n",
+    Logger::error("Failed to open save state file for reading: %s\n",
                   g_save_state_filename);
     return;
   }
@@ -45,7 +45,7 @@ auto save_state_load() -> void {
   fclose(file);
 
   if (bytes_read != sizeof(ApplewinSnapshot_t)) {
-    Logger::Error(
+    Logger::error(
         "Failed to read complete save state data from %s (read %zu of %zu "
         "bytes)\n",
         g_save_state_filename, bytes_read, sizeof(ApplewinSnapshot_t));
@@ -53,22 +53,22 @@ auto save_state_load() -> void {
   }
 
   if (snapshot->hdr.tag != static_cast<uint32_t>(aw_ss_tag)) {
-    Logger::Error("Invalid save state file format or tag mismatch in %s\n",
+    Logger::error("Invalid save state file format or tag mismatch in %s\n",
                   g_save_state_filename);
     return;
   }
 
   if (snapshot->hdr.version != make_version(1, 0, 0, 1)) {
-    Logger::Error("Version mismatch in save state file %s\n",
+    Logger::error("Version mismatch in save state file %s\n",
                   g_save_state_filename);
     return;
   }
 
   if (!snapshot_deserialize(snapshot.get())) {
-    Logger::Error("Failed to deserialize machine state from %s\n",
+    Logger::error("Failed to deserialize machine state from %s\n",
                   g_save_state_filename);
   } else {
-    Logger::Info("Loaded save state from: %s\n", g_save_state_filename);
+    Logger::info("Loaded save state from: %s\n", g_save_state_filename);
   }
 }
 
@@ -84,7 +84,7 @@ auto save_state_save() -> void {
 
   FILE* file = fopen(filename, "wb");
   if (!file) {
-    Logger::Error("Failed to open save state file for writing: %s\n", filename);
+    Logger::error("Failed to open save state file for writing: %s\n", filename);
     return;
   }
 
@@ -93,12 +93,12 @@ auto save_state_save() -> void {
   fclose(file);
 
   if (bytes_written != sizeof(ApplewinSnapshot_t)) {
-    Logger::Error(
+    Logger::error(
         "Failed to write complete save state data to %s (wrote %zu of %zu "
         "bytes)\n",
         filename, bytes_written, sizeof(ApplewinSnapshot_t));
   } else {
-    Logger::Info("Saved state to: %s\n", filename);
+    Logger::info("Saved state to: %s\n", filename);
   }
 }
 

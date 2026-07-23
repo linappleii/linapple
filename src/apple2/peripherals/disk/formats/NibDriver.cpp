@@ -121,7 +121,7 @@ const char* const g_nib_creatable_exts[] = {".nib", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nib_driver = {
-    .abi_version = disk_format_abi_version,
+    .AbiVersion_t = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "NIB (6656-nibble)",
     .creatable_exts = g_nib_creatable_exts,

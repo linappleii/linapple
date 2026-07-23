@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-auto peripheral_register_Internal() -> void;
+auto peripheral_register_internal() -> void;
 auto peripheral_plugins_init() -> void;
 auto peripheral_plugins_shutdown() -> void;
 auto peripheral_find_internal(const char* name) -> Peripheral_t*;

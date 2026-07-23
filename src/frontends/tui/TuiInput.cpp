@@ -48,8 +48,8 @@ auto tui_input_shutdown() -> void {
 }
 
 static auto map_key(uint8_t a2_code) -> void {
-  Linapple_SetKeyState(a2_code, true);
-  Linapple_SetKeyState(a2_code, false);
+  linapple_set_key_state(a2_code, true);
+  linapple_set_key_state(a2_code, false);
 }
 
 static auto process_sequences() -> void {
@@ -137,9 +137,9 @@ auto tui_input_poll() -> void {
     struct JsEvent_t js {};
     while (read(g_joy_fd, &js, sizeof(js)) > 0) {
       if ((js.type & JS_EVENT_AXIS) != 0) {
-        Linapple_SetJoystickAxis(js.number, js.value);
+        linapple_set_joystick_axis(js.number, js.value);
       } else if ((js.type & JS_EVENT_BUTTON) != 0) {
-        Linapple_SetJoystickButton(js.number, js.value);
+        linapple_set_joystick_button(js.number, js.value);
       }
     }
   }

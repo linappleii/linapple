@@ -11,8 +11,8 @@
 #include <cstring>
 
 TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
-    Linapple_Init();
-    Peripheral_Manager_Init(); Linapple_RegisterPeripherals();
+    linapple_init();
+    peripheral_manager_init(); linapple_register_peripherals();
 
     // Initial state: empty
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "");
@@ -22,7 +22,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
     strcpy(cmd.path, "../tests/fixtures/minimal.woz");
 
     peripheral_command(6, disk_cmd_insert, &cmd, sizeof(cmd));
-    Peripheral_Manager_Think(0);
+    peripheral_manager_think(0);
 
     std::string saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
     CHECK(saved == "../tests/fixtures/minimal.woz");
@@ -34,5 +34,5 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
     CHECK(status.drive0_loaded == true);
     CHECK(status.drive0_last_error == disk_err_none);
 
-    Linapple_Shutdown();
+    linapple_shutdown();
 }

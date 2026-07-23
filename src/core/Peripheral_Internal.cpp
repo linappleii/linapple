@@ -73,7 +73,7 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
   return nullptr;
 }
 
-auto peripheral_register_Internal() -> void {
+auto peripheral_register_internal() -> void {
   for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
       peripheral_register(p, 0);
@@ -101,7 +101,7 @@ auto peripheral_register_Internal() -> void {
         name = "linapple.mockingboard";
       } else if (slot == 6) {
         name = "linapple.disk_II";
-      } else if (slot == 7 && hddenabled) {
+      } else if (slot == 7 && hdd_enabled) {
         name = "linapple.harddisk";
       }
       if (name.empty()) {
@@ -189,24 +189,24 @@ auto peripheral_plugins_init() -> void {
           auto* p = reinterpret_cast<Peripheral_t*>(
               dlsym(handle, "linapple_peripheral_descriptor"));
           if (p != nullptr) {
-            if (p->abi_version == LINAPPLE_ABI_VERSION) {
-              Logger::Info("Loaded plugin: %s from %s\n", p->name,
+            if (p->AbiVersion_t == LINAPPLE_ABI_VERSION) {
+              Logger::info("Loaded plugin: %s from %s\n", p->name,
                            full_path.c_str());
               g_loaded_plugins.push_back({p, handle, full_path});
             } else {
-              Logger::Warning("Plugin ABI mismatch: %s (expected %d, got %d)\n",
+              Logger::warning("Plugin ABI mismatch: %s (expected %d, got %d)\n",
                               full_path.c_str(), LINAPPLE_ABI_VERSION,
-                              p->abi_version);
+                              p->AbiVersion_t);
               dlclose(handle);
             }
           } else {
-            Logger::Warning(
+            Logger::warning(
                 "Invalid plugin (missing linapple_peripheral_descriptor): %s\n",
                 full_path.c_str());
             dlclose(handle);
           }
         } else {
-          Logger::Warning("Failed to load plugin: %s (%s)\n", full_path.c_str(),
+          Logger::warning("Failed to load plugin: %s (%s)\n", full_path.c_str(),
                           dlerror());
         }
       }

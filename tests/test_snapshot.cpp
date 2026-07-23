@@ -18,9 +18,9 @@
 #include "frontends/common/SaveStateManager.h"
 
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  peripheral_register_Internal();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
 
   uint8_t orig_a = CpuGetRegisters()->a;
   uint8_t orig_x = CpuGetRegisters()->x;
@@ -85,13 +85,13 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   MemGetActiveContext()->last_write_ram = orig_last_write_ram;
   *mem_2000 = orig_byte_2000;
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }
 
 TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
-  Linapple_Init();
-  Peripheral_Manager_Init();
-  peripheral_register_Internal();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
 
   save_state_set_filename("test_custom_snapshot.aws");
   CHECK(strcmp(save_state_get_filename(), "test_custom_snapshot.aws") == 0);
@@ -109,5 +109,5 @@ TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
 
   unlink(test_file);
 
-  Linapple_Shutdown();
+  linapple_shutdown();
 }

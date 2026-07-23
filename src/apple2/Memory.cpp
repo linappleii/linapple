@@ -985,7 +985,7 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
 
   if (!memaux || !memdirty || !memimage || !memmain || !memrom ||
       !pCxRomInternal || !pCxRomPeripheral) {
-    Logger::Error("Unable to allocate required memory buffers.");
+    Logger::error("Unable to allocate required memory buffers.");
     MemDestroy();
     return -1;
   }
@@ -998,7 +998,7 @@ auto MemInitialize() -> int  // returns -1 if any error during initialization
   if (memimage) memset(memimage, 0, MEMORY_64K);
 
   if (mlock(memimage, MEMORY_64K) != 0) {
-    Logger::Warning("Failed to lock memory image from swapping.");
+    Logger::warning("Failed to lock memory image from swapping.");
   }
 
   if (pCxRomInternal) memset(pCxRomInternal, 0, CxRomSize);

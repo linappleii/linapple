@@ -121,7 +121,7 @@ const char* const g_po_creatable_exts[] = {".po", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_po_driver = {
-    .abi_version = disk_format_abi_version,
+    .AbiVersion_t = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "ProDOS Order",
     .creatable_exts = g_po_creatable_exts,
