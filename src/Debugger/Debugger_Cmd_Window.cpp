@@ -277,7 +277,7 @@ auto CmdWindowViewData(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowViewOutput(int nArgs) -> Update_t {
   (void)nArgs;
-  VideoRedrawScreen();
+  video_redraw_screen();
 
   DebugVideoMode::Instance().Set(g_uVideoMode);
 
@@ -556,10 +556,10 @@ auto CmdCursorJumpPC(int nArgs) -> Update_t {
 
   // if (UserPrefs.bNextInstructionCentered)
   if (CURSOR_ALIGN_CENTER == nArgs) {
-    g_nDisasmCurAddress = CpuGetRegisters()->pc;  // (2)
+    g_nDisasmCurAddress = cpu_get_registers()->pc;  // (2)
     WindowUpdateDisasmSize();                     // calc cur line
   } else if (CURSOR_ALIGN_TOP == nArgs) {
-    g_nDisasmCurAddress = CpuGetRegisters()->pc;  // (2)
+    g_nDisasmCurAddress = cpu_get_registers()->pc;  // (2)
     g_nDisasmCurLine = 0;
   }
 
@@ -683,7 +683,7 @@ auto CmdCursorPageUp4K(int nArgs) -> Update_t {
 auto CmdCursorSetPC(int nArgs) -> Update_t  // TODO rename
 {
   (void)nArgs;
-  CpuGetRegisters()->pc =
+  cpu_get_registers()->pc =
       g_nDisasmCurAddress;  // set PC to current cursor address
   return UPDATE_DISASM;
 }
@@ -775,8 +775,8 @@ auto CmdViewOutput_DHGR2(int nArgs) -> Update_t {
 auto _ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t {
   switch (iPage) {
     case VIEW_PAGE_X:
-      bVideoModeFlags |= !VideoGetSWPAGE2() ? 0 : VF_PAGE2;
-      bVideoModeFlags |= !VideoGetSWMIXED() ? 0 : VF_MIXED;
+      bVideoModeFlags |= !video_get_sw_page2() ? 0 : VF_PAGE2;
+      bVideoModeFlags |= !video_get_sw_mixed() ? 0 : VF_MIXED;
       break;  // Page Current & current MIXED state
     case VIEW_PAGE_1:
       bVideoModeFlags |= 0;
@@ -790,6 +790,6 @@ auto _ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t {
   }
 
   DebugVideoMode::Instance().Set(bVideoModeFlags);
-  VideoRefreshScreen(bVideoModeFlags, true);
+  video_refresh_screen(bVideoModeFlags, true);
   return UPDATE_NOTHING;  // intentional
 }

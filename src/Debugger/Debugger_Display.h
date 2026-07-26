@@ -140,4 +140,4 @@ void DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource);
 void GetTargets_IgnoreDirectJSRJMP(const uint8_t iOpcode, int& nTargetPointer);
 
-extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;

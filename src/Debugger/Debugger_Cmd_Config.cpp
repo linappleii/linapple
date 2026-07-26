@@ -52,7 +52,7 @@ extern int g_iColorScheme;
 // Local prototypes
 void WindowUpdateSizes();
 auto GetConsoleTopPixels(int nConsoleDisplayLines) -> int;
-void CpuSetupBenchmark();
+void cpu_setup_benchmark();
 void ProfileReset();
 void ProfileFormat( bool bExport, int iFormat );
 auto ProfileLinePeek( int iLine ) -> char*;

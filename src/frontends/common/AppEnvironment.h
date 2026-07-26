@@ -5,4 +5,4 @@
 /**
  * Resolve application paths and initialize core services (Logger, Registry).
  */
-void AppEnv_ResolvePaths(AppConfig* config);
+void AppEnv_ResolvePaths(AppConfig_t* config);

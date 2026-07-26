@@ -117,16 +117,16 @@ void enter_message_loop() {
 }
 
 auto main(int argc, char* argv[]) -> int {
-  AppConfig config = {};
-  if (AppArgs_Parse(argc, argv, &config) != 0) {
+  AppConfig_t config = {};
+  if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }
 
-  if (AppController_HandleDiagnosticCommands(&config)) {
+  if (app_controller_handle_diagnostic_commands(&config)) {
     return 0;
   }
 
-  // Store the audio dump file name explicitly since AppConfig only holds it in
+  // Store the audio dump file name explicitly since AppConfig_t only holds it in
   // a buffer and ds_init needs it later. Alternatively we could access
   // config.szAudioDumpPath.data() directly but it's cleaner to keep the
   // frontend's specific state separate if it uses a heap string.
@@ -144,17 +144,17 @@ auto main(int argc, char* argv[]) -> int {
     }
 
     if (config.bBoot) {
-      VideoRedrawScreen();
+      video_redraw_screen();
     }
 
     if (config.bBenchmark) {
-      VideoBenchmark();
+      video_benchmark();
     } else {
       enter_message_loop();
     }
 
     SessionShutdown();
-  } while (AppController_ShouldRestart());
+  } while (app_controller_should_restart());
 
   SysShutdown();
   return 0;

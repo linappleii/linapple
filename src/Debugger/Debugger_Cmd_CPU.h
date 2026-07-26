@@ -12,7 +12,7 @@ Update_t CmdOut(int nArgs);
 Update_t CmdRegisterSet(int nArgs);
 Update_t CmdJsr(int nArgs);
 
-void CpuSetupBenchmark();
+void cpu_setup_benchmark();
 
 void OutputTraceLine();
 void DebugContinueStepping(const bool bCallerWillUpdateDisplay);

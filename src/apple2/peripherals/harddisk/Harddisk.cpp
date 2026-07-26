@@ -332,7 +332,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
   const uint16_t addr = address & regs::io_addr_hi_mask;
 
   if (!peripheral_ptr->rom_active || !peripheral_ptr->is_enabled) {
-    return IO_Null(program_counter, addr, is_write, data_value,
+    return io_null(program_counter, addr, is_write, data_value,
                    remaining_cycles);
   }
 
@@ -371,7 +371,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
         active_drive.buffer_ptr++;
         break;
       default:
-        return IO_Null(program_counter, addr, is_write, data_value,
+        return io_null(program_counter, addr, is_write, data_value,
                        remaining_cycles);
     }
   } else {  // Write
@@ -399,7 +399,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
             (active_drive.disk_block & 0x00FF) | (data_value << 8));
         break;
       default:
-        return IO_Null(program_counter, addr, is_write, data_value,
+        return io_null(program_counter, addr, is_write, data_value,
                        remaining_cycles);
     }
   }

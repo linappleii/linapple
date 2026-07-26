@@ -284,23 +284,23 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
           (pArg->sArg[0] == g_aBreakpointSource[iReg][0])) {
         switch (iReg) {
           case BP_SRC_REG_A:
-            *pAddressValue_ = CpuGetRegisters()->a & 0xFF;
+            *pAddressValue_ = cpu_get_registers()->a & 0xFF;
             bStatus = true;
             break;
           case BP_SRC_REG_P:
-            *pAddressValue_ = CpuGetRegisters()->ps & 0xFF;
+            *pAddressValue_ = cpu_get_registers()->ps & 0xFF;
             bStatus = true;
             break;
           case BP_SRC_REG_X:
-            *pAddressValue_ = CpuGetRegisters()->x & 0xFF;
+            *pAddressValue_ = cpu_get_registers()->x & 0xFF;
             bStatus = true;
             break;
           case BP_SRC_REG_Y:
-            *pAddressValue_ = CpuGetRegisters()->y & 0xFF;
+            *pAddressValue_ = cpu_get_registers()->y & 0xFF;
             bStatus = true;
             break;
           case BP_SRC_REG_S:
-            *pAddressValue_ = CpuGetRegisters()->sp;
+            *pAddressValue_ = cpu_get_registers()->sp;
             bStatus = true;
             break;
           default:
@@ -309,7 +309,7 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
       } else if (iReg == BP_SRC_REG_PC) {
         if ((pArg->nArgLen == 2) &&
             (strcmp(pArg->sArg, g_aBreakpointSource[iReg]) == 0)) {
-          *pAddressValue_ = CpuGetRegisters()->pc;
+          *pAddressValue_ = cpu_get_registers()->pc;
           bStatus = true;
           break;
         }

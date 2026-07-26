@@ -8,7 +8,7 @@
 extern "C" Peripheral_t g_test_c_peripheral;
 
 TEST_CASE("Peripheral ABI: Registration and I/O") {
-    // We need to initialize memory system for IOMap_Dispatch to work
+    // We need to initialize memory system for io_map_dispatch to work
     // though for this specific test we might just want to test peripheral_register
     // and the proxies.
 
@@ -23,15 +23,15 @@ TEST_CASE("Peripheral ABI: Registration and I/O") {
     // We wrote a simple handler that returns what was written.
 
     // Write 0x42 to $C090
-    IOMap_Dispatch(0x0000, 0xC090, 1, 0x42, 0);
+    io_map_dispatch(0x0000, 0xC090, 1, 0x42, 0);
 
     // Read from $C090
-    uint8_t val = IOMap_Dispatch(0x0000, 0xC090, 0, 0, 0);
+    uint8_t val = io_map_dispatch(0x0000, 0xC090, 0, 0, 0);
     CHECK(val == 0x42);
 
     // Reset and check it cleared
     peripheral_manager_reset();
-    val = IOMap_Dispatch(0x0000, 0xC090, 0, 0, 0);
+    val = io_map_dispatch(0x0000, 0xC090, 0, 0, 0);
     CHECK(val == 0);
 
     peripheral_manager_shutdown();

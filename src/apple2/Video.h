@@ -228,46 +228,7 @@ auto video_check_vbl(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                     uint32_t cycles_left) -> uint8_t;
 
-// Legacy C Declarations
-auto VideoGetOutputBuffer() -> uint32_t*;
-auto VideoGetOutputPalette() -> VideoColor_t*;
 auto set_budget_video(bool b) -> void;
 auto get_budget_video() -> bool;
-auto SetCurrentCLK6502() -> void;
-auto CreateColorMixMap() -> void;
-auto VideoApparentlyDirty() -> bool;
-auto VideoBenchmark() -> void;
-auto VideoCheckPage(bool b) -> void;
-auto VideoChooseColor() -> void;
-auto VideoDestroy() -> void;
-auto VideoDrawLogoBitmap() -> void;
-auto VideoDisplayLogo() -> void;
-auto VideoHasRefreshed() -> bool;
-auto VideoInitialize() -> void;
-auto VideoRealizePalette() -> void;
-auto VideoSetNextScheduledUpdate() -> void;
-auto VideoRedrawScreen() -> void;
-auto VideoRefreshScreen(uint32_t m = 0, bool r = false) -> void;
-auto VideoPerformRefresh() -> void;
-auto VideoReinitialize() -> void;
-auto VideoResetState() -> void;
-auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t;
-auto VideoGetVbl(uint32_t cycles) -> bool;
-auto VideoUpdateVbl(uint32_t cycles) -> void;
-auto VideoUpdateFlash() -> void;
-auto VideoGetSW80COL() -> bool;
-auto VideoGetSWDHIRES() -> bool;
-auto VideoGetSWHIRES() -> bool;
-auto VideoGetSW80STORE() -> bool;
-auto VideoGetSWMIXED() -> bool;
-auto VideoGetSWPAGE2() -> bool;
-auto VideoGetSWTEXT() -> bool;
-auto VideoGetSWAltCharSet() -> bool;
-auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t;
-auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t;
-auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d,
-                    uint32_t c) -> uint8_t;
-auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
-    -> uint8_t;
-auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
-    -> uint8_t;
+auto set_current_clk_6502() -> void;
+

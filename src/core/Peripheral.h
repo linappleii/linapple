@@ -36,7 +36,7 @@ typedef struct {
   void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
                            PeripheralIOHandler read, PeripheralIOHandler write);
-  uint8_t* (*GetMemPtr)(uint16_t addr);
+  uint8_t* (*get_mem_ptr)(uint16_t addr);
   uint64_t (*GetCycles)(void);
   bool (*GetConfig)(const char* section, const char* key, char* buffer,
                     size_t buffer_size);

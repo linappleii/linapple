@@ -5,8 +5,8 @@
 
 using Assets_t = struct AssetsTag_t {
   void* icon;  // Platform-specific icon handle
-  VideoSurface* font;
-  VideoSurface* splash;
+  VideoSurface_t* font;
+  VideoSurface_t* splash;
 };
 
 using assets_t = Assets_t;

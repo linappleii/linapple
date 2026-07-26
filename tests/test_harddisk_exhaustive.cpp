@@ -82,43 +82,43 @@ TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
   // We want to read block 10 into emulator memory at $2000
   
   // Set Unit Number ($C0F3) - Drive 1 (Unit 0x00)
-  IOMap_Dispatch(0, 0xC0F3, 1, 0x00, 0);
+  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);
   
   // Set Command ($C0F2) - Read (0x01)
-  IOMap_Dispatch(0, 0xC0F2, 1, 0x01, 0);
+  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);
   
   // Set Memory Address ($C0F4, $C0F5) - 0x2000
-  IOMap_Dispatch(0, 0xC0F4, 1, 0x00, 0); // Lo
-  IOMap_Dispatch(0, 0xC0F5, 1, 0x20, 0); // Hi
+  io_map_dispatch(0, 0xC0F4, 1, 0x00, 0); // Lo
+  io_map_dispatch(0, 0xC0F5, 1, 0x20, 0); // Hi
   
   // Set Disk Block ($C0F6, $C0F7) - Block 10 (0x000A)
-  IOMap_Dispatch(0, 0xC0F6, 1, 0x0A, 0); // Lo
-  IOMap_Dispatch(0, 0xC0F7, 1, 0x00, 0); // Hi
+  io_map_dispatch(0, 0xC0F6, 1, 0x0A, 0); // Lo
+  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0); // Hi
   
   // Trigger Execution ($C0F0)
   // SmartPort ROM must be active for execution to work
   // In our init, we set rom_active = true and RegisterCxROM
-  uint8_t io_res = IOMap_Dispatch(0, 0xC0F0, 0, 0, 0); 
+  uint8_t io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0); 
   CHECK(io_res == 0); // status::ok
   
   // Verify data in buffer register ($C0F8)
   // The first byte of block 10 should be 0x00
-  uint8_t b0 = IOMap_Dispatch(0, 0xC0F8, 0, 0, 0);
+  uint8_t b0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
   CHECK(b0 == 0x00);
-  uint8_t b1 = IOMap_Dispatch(0, 0xC0F8, 0, 0, 0);
+  uint8_t b1 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
   CHECK(b1 == 0x01);
   
   // 4. Test SmartPort Write Protocol
   // Write some data to memory at $3000 and then to block 20
   memset(mem + 0x3000, 0xAA, 512);
   
-  IOMap_Dispatch(0, 0xC0F2, 1, 0x02, 0); // Write command
-  IOMap_Dispatch(0, 0xC0F4, 1, 0x00, 0); // Mem Lo
-  IOMap_Dispatch(0, 0xC0F5, 1, 0x30, 0); // Mem Hi
-  IOMap_Dispatch(0, 0xC0F6, 1, 0x14, 0); // Disk Lo (20 = 0x14)
-  IOMap_Dispatch(0, 0xC0F7, 1, 0x00, 0); // Disk Hi
+  io_map_dispatch(0, 0xC0F2, 1, 0x02, 0); // Write command
+  io_map_dispatch(0, 0xC0F4, 1, 0x00, 0); // Mem Lo
+  io_map_dispatch(0, 0xC0F5, 1, 0x30, 0); // Mem Hi
+  io_map_dispatch(0, 0xC0F6, 1, 0x14, 0); // Disk Lo (20 = 0x14)
+  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0); // Disk Hi
   
-  io_res = IOMap_Dispatch(0, 0xC0F0, 0, 0, 0);
+  io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
   CHECK(io_res == 0);
   
   // 5. Test Write Protection
@@ -163,9 +163,9 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   
   // 2. Read from unloaded drive
   // Set Unit to Drive 1 (Unit 0x00), which we haven't loaded
-  IOMap_Dispatch(0, 0xC0F3, 1, 0x00, 0);
-  IOMap_Dispatch(0, 0xC0F2, 1, 0x01, 0); // Read
-  uint8_t io_res = IOMap_Dispatch(0, 0xC0F0, 0, 0, 0);
+  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);
+  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0); // Read
+  uint8_t io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
   CHECK(io_res != 0); // Should be status::unknown_error or similar
 
   // 3. Memory Bounds Safety
@@ -181,10 +181,10 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
   peripheral_manager_think(0);
   
-  IOMap_Dispatch(0, 0xC0F4, 1, 0xF0, 0); // Lo
-  IOMap_Dispatch(0, 0xC0F5, 1, 0xFF, 0); // Hi (0xFFF0)
-  IOMap_Dispatch(0, 0xC0F2, 1, 0x02, 0); // Write command (pulls from mem)
-  io_res = IOMap_Dispatch(0, 0xC0F0, 0, 0, 0);
+  io_map_dispatch(0, 0xC0F4, 1, 0xF0, 0); // Lo
+  io_map_dispatch(0, 0xC0F5, 1, 0xFF, 0); // Hi (0xFFF0)
+  io_map_dispatch(0, 0xC0F2, 1, 0x02, 0); // Write command (pulls from mem)
+  io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
   // It shouldn't crash, and might return ok but just not copy, or return error.
   // Current implementation just doesn't copy if it would overflow.
   
@@ -218,13 +218,13 @@ TEST_CASE("Harddisk: MacBinary Detection") {
     peripheral_manager_think(0);
     
     // Read block 0
-    IOMap_Dispatch(0, 0xC0F3, 1, 0x00, 0); // Drive 0
-    IOMap_Dispatch(0, 0xC0F2, 1, 0x01, 0); // Read
-    IOMap_Dispatch(0, 0xC0F6, 1, 0x00, 0); // Block 0 Lo
-    IOMap_Dispatch(0, 0xC0F7, 1, 0x00, 0); // Block 0 Hi
-    IOMap_Dispatch(0, 0xC0F0, 0, 0, 0); // Exec
+    io_map_dispatch(0, 0xC0F3, 1, 0x00, 0); // Drive 0
+    io_map_dispatch(0, 0xC0F2, 1, 0x01, 0); // Read
+    io_map_dispatch(0, 0xC0F6, 1, 0x00, 0); // Block 0 Lo
+    io_map_dispatch(0, 0xC0F7, 1, 0x00, 0); // Block 0 Hi
+    io_map_dispatch(0, 0xC0F0, 0, 0, 0); // Exec
     
-    uint8_t b0 = IOMap_Dispatch(0, 0xC0F8, 0, 0, 0);
+    uint8_t b0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
     CHECK(b0 == 0x55); // Should have skipped 128 byte header
     
     linapple_shutdown();

@@ -4,15 +4,15 @@
 
 TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
   // 1. Get original context
-  CpuInstance_t* original_context = CpuGetActiveContext();
+  CpuInstance_t* original_context = cpu_get_active_context();
   REQUIRE(original_context != nullptr);
 
   // Set values on original context
-  CpuGetRegisters()->a = 0x11;
-  CpuGetRegisters()->x = 0x22;
-  CpuGetRegisters()->y = 0x33;
-  CpuGetRegisters()->pc = 0x1000;
-  CpuGetRegisters()->sp = 0x1FF;
+  cpu_get_registers()->a = 0x11;
+  cpu_get_registers()->x = 0x22;
+  cpu_get_registers()->y = 0x33;
+  cpu_get_registers()->pc = 0x1000;
+  cpu_get_registers()->sp = 0x1FF;
   g_cumulative_cycles = 100;
 
   // 2. Setup secondary context
@@ -25,32 +25,32 @@ TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
   second_context.cumulative_cycles = 500;
 
   // 3. Switch context
-  CpuSetActiveContext(&second_context);
-  CHECK(CpuGetActiveContext() == &second_context);
+  cpu_set_active_context(&second_context);
+  CHECK(cpu_get_active_context() == &second_context);
 
   // Verify secondary context values are active
-  CHECK(CpuGetRegisters()->a == 0xAA);
-  CHECK(CpuGetRegisters()->x == 0xBB);
-  CHECK(CpuGetRegisters()->y == 0xCC);
-  CHECK(CpuGetRegisters()->pc == 0x2000);
-  CHECK(CpuGetRegisters()->sp == 0x180);
-  CHECK(CpuGetCumulativeCycles() == 500);
+  CHECK(cpu_get_registers()->a == 0xAA);
+  CHECK(cpu_get_registers()->x == 0xBB);
+  CHECK(cpu_get_registers()->y == 0xCC);
+  CHECK(cpu_get_registers()->pc == 0x2000);
+  CHECK(cpu_get_registers()->sp == 0x180);
+  CHECK(cpu_get_cumulative_cycles() == 500);
 
   // Modify registers on active secondary context
-  CpuGetRegisters()->x = 0x99;
+  cpu_get_registers()->x = 0x99;
   g_cumulative_cycles = 600;
 
   // 4. Switch back to original context
-  CpuSetActiveContext(original_context);
-  CHECK(CpuGetActiveContext() == original_context);
+  cpu_set_active_context(original_context);
+  CHECK(cpu_get_active_context() == original_context);
 
   // Verify original context values are restored
-  CHECK(CpuGetRegisters()->a == 0x11);
-  CHECK(CpuGetRegisters()->x == 0x22);
-  CHECK(CpuGetRegisters()->y == 0x33);
-  CHECK(CpuGetRegisters()->pc == 0x1000);
-  CHECK(CpuGetRegisters()->sp == 0x1FF);
-  CHECK(CpuGetCumulativeCycles() == 100);
+  CHECK(cpu_get_registers()->a == 0x11);
+  CHECK(cpu_get_registers()->x == 0x22);
+  CHECK(cpu_get_registers()->y == 0x33);
+  CHECK(cpu_get_registers()->pc == 0x1000);
+  CHECK(cpu_get_registers()->sp == 0x1FF);
+  CHECK(cpu_get_cumulative_cycles() == 100);
 
   // Verify secondary context values were synced back correctly on switch-away
   CHECK(second_context.cpu_regs.x == 0x99);

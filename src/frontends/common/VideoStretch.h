@@ -38,18 +38,3 @@ auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void;
 auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
                uint32_t pixel) -> void;
 
-// Legacy wrappers for backward compatibility
-inline auto VideoSoftStretch(VideoSurface_t* src, VideoRect_t* srcrect,
-                             VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
-  return video_soft_stretch(src, srcrect, dst, dstrect);
-}
-inline auto VideoSoftStretchOr(VideoSurface_t* src, VideoRect_t* srcrect,
-                               VideoSurface_t* dst, VideoRect_t* dstrect)
-    -> int {
-  return video_soft_stretch_or(src, srcrect, dst, dstrect);
-}
-inline auto VideoSoftStretchMono8(VideoSurface_t* src, VideoRect_t* srcrect,
-                                  VideoSurface_t* dst, VideoRect_t* dstrect,
-                                  uint32_t fgbrush, uint32_t bgbrush) -> int {
-  return video_soft_stretch_mono8(src, srcrect, dst, dstrect, fgbrush, bgbrush);
-}

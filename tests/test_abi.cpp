@@ -108,8 +108,8 @@ static Peripheral_t g_dummy_peripheral = {
 
 TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
-    SetMemMode(GetMemMode() | MF_SLOTCXROM); // Enable slot ROM
+    mem_initialize();
+    set_mem_mode(get_mem_mode() | MF_SLOTCXROM); // Enable slot ROM
     peripheral_manager_init();
 
     g_dummy_reset_called = false;
@@ -120,13 +120,13 @@ TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
 
     // Verify I/O works
     // Slot 2 I/O is at $C0A0 - $C0AF
-    IOMap_Dispatch(0, 0xC0A0, 1, 0x42, 0); // Write $42
-    uint8_t val = IOMap_Dispatch(0, 0xC0A0, 0, 0, 0); // Read
+    io_map_dispatch(0, 0xC0A0, 1, 0x42, 0); // Write $42
+    uint8_t val = io_map_dispatch(0, 0xC0A0, 0, 0, 0); // Read
     CHECK(val == 0x42);
 
     // Verify Expansion ROM works
     // Slot 2 ROM is at $C200 - $C2FF.
-    uint8_t* pCxRom = MemGetCxRomPeripheral();
+    uint8_t* pCxRom = mem_get_cx_rom_peripheral();
     CHECK(pCxRom[0x200] == 0xA5);
 
     // Verify Reset propagation
@@ -166,7 +166,7 @@ TEST_CASE("ABI: [ABI-03] Slot Compatibility Validation") {
 
 TEST_CASE("ABI: [ABI-04] HostInterface GetConfig stub returns false") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&g_dummy_peripheral, 2);
 
@@ -180,7 +180,7 @@ TEST_CASE("ABI: [ABI-04] HostInterface GetConfig stub returns false") {
 
 TEST_CASE("ABI: [ABI-05] HostInterface new callbacks are callable without crashing") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&g_dummy_peripheral, 2);
 
@@ -196,7 +196,7 @@ TEST_CASE("ABI: [ABI-05] HostInterface new callbacks are callable without crashi
 
 TEST_CASE("ABI: [ABI-06] peripheral_command dispatches to peripheral on Think") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&g_dummy_peripheral, 2);
 
@@ -234,7 +234,7 @@ TEST_CASE("ABI: [ABI-08] peripheral_command silently skips peripheral with no co
     no_cmd.command = nullptr;
 
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&no_cmd, 2);
 
@@ -249,7 +249,7 @@ TEST_CASE("ABI: [ABI-08] peripheral_command silently skips peripheral with no co
 
 TEST_CASE("ABI: [ABI-09] peripheral_query returns peripheral data synchronously") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&g_dummy_peripheral, 2);
 
@@ -264,7 +264,7 @@ TEST_CASE("ABI: [ABI-09] peripheral_query returns peripheral data synchronously"
 
 TEST_CASE("ABI: [ABI-10] peripheral_command is thread-safe") {
     g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-    MemInitialize();
+    mem_initialize();
     peripheral_manager_init();
     peripheral_register(&g_dummy_peripheral, 2);
 

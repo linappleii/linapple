@@ -34,7 +34,7 @@ static void InitializeDirectory(const char* reg_key, char* target_buffer,
   }
 }
 
-auto AppController_Initialize(AppConfig* config) -> int {
+auto app_controller_initialize(AppConfig_t* config) -> int {
   if (config == nullptr) {
     return -1;
   }
@@ -99,7 +99,7 @@ auto AppController_Initialize(AppConfig* config) -> int {
   return 0;
 }
 
-auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
+auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> bool {
   if (config == nullptr) {
     return false;
   }
@@ -150,7 +150,7 @@ auto AppController_HandleDiagnosticCommands(const AppConfig* config) -> bool {
   return false;
 }
 
-void AppController_LoadInitialMedia(const AppConfig* config) {
+void AppController_LoadInitialMedia(const AppConfig_t* config) {
   if (config == nullptr) return;
 
   // 1. Load Disks or Programs via probing
@@ -181,10 +181,10 @@ void AppController_LoadInitialMedia(const AppConfig* config) {
   // 3. Handle Boot
   if (config->bBoot) {
     // Reset the system to boot from disk
-    CpuReset();
+    cpu_reset();
     peripheral_manager_reset();
     // Redraw to clear splash
-    VideoRedrawScreen();
+    video_redraw_screen();
   }
 }
 
@@ -198,6 +198,6 @@ void AppController_Shutdown() {
   s_initialized = false;
 }
 
-auto AppController_ShouldRestart() -> bool { return g_state.restart; }
+auto app_controller_should_restart() -> bool { return g_state.restart; }
 
 void AppController_SetRestart(bool restart) { g_state.restart = restart; }

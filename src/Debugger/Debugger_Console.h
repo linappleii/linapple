@@ -243,7 +243,7 @@ extern int g_nConsoleInputSkip;
 // Console
 
 // Buffered
-bool ConsolePrint(const char* pText);
+bool console_print(const char* pText);
 bool ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va);
 template <size_t _BufSz>
 inline bool ConsolePrintVa(char (&buf)[_BufSz], const char* pFormat,
@@ -300,7 +300,7 @@ inline bool ConsoleBufferPushFormat(char (&buf)[_BufSz], const char* pFormat,
 void ConsoleConvertFromText(conchar_t* sText, const char* pText);
 
 // Display
-Update_t ConsoleDisplayError(const char* pTextError);
+Update_t console_display_error(const char* pTextError);
 void ConsoleDisplayPause();
 void ConsoleDisplayPush(const char* pText);
 void ConsoleDisplayPush(const conchar_t* pText);

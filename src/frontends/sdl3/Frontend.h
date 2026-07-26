@@ -9,7 +9,7 @@
 // Lifecycle
 auto sys_init() -> int;
 void SysShutdown();
-auto session_init(AppConfig* config) -> int;
+auto session_init(AppConfig_t* config) -> int;
 void SessionShutdown();
 
 void ContinueExecution(uint32_t dwCycles);

@@ -27,7 +27,7 @@ static bool g_bBudgetVideo = false;
 void set_budget_video(bool b) { g_bBudgetVideo = b; }
 auto get_budget_video() -> bool { return g_bBudgetVideo; }
 
-void SetCurrentCLK6502() {
+void set_current_clk_6502() {
   constexpr double apple2_clock_mhz = 1.023;
   constexpr double mhz_to_hz = 1000000.0;
   g_fCurrentCLK6502 = apple2_clock_mhz * mhz_to_hz;
@@ -69,8 +69,8 @@ static void Frontend_SetWindowTitle(const char* title) {
   SDL_WM_SetCaption(title, title);
 }
 
-auto session_init(AppConfig* config) -> int {
-  if (AppController_Initialize(config) != 0) {
+auto session_init(AppConfig_t* config) -> int {
+  if (app_controller_initialize(config) != 0) {
     return 1;
   }
 

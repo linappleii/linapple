@@ -18,7 +18,7 @@ extern uint8_t* mem;
 constexpr size_t MEMORY_SIZE_64K = 65536;
 static std::array<uint8_t, MEMORY_SIZE_64K> dummy_mem{};
 
-extern "C" auto VideoGetScannerAddress(uint32_t*, uint32_t) -> uint16_t {
+extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {
   return 0;
 }
 
@@ -114,7 +114,7 @@ static HostInterface_t mock_host = {
     .RegisterCxROM = Mock_RegisterCxROM,
     .RegisterExpansionROM = Mock_RegisterExpansionROM,
     .RegisterDirectIO = Mock_RegisterDirectIO,
-    .GetMemPtr = nullptr,
+    .get_mem_ptr = nullptr,
     .GetCycles = nullptr,
     .GetConfig = nullptr,
     .SetConfig = nullptr,

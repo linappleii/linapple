@@ -12,7 +12,7 @@
 
 static constexpr const char* CONFIG_FILE_NAME = "linapple.conf";
 
-void AppEnv_ResolvePaths(AppConfig* config) {
+void AppEnv_ResolvePaths(AppConfig_t* config) {
   if (config == nullptr) {
     return;
   }

@@ -64,7 +64,7 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
   (void)data_value;
 
   if (instance == nullptr || is_write != 0) {
-    return MemReadFloatingBus(remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
@@ -98,7 +98,7 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
       break;
   }
 
-  return MemReadFloatingBus(remaining_cycles);
+  return mem_read_floating_bus(remaining_cycles);
 }
 
 auto super_serial_io_write(void* instance, uint16_t program_counter,

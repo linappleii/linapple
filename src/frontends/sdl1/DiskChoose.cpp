@@ -55,7 +55,7 @@ void DiskChoose_Tick(SDL_Event* event) {
   if (event->type != SDL_KEYDOWN) return;
 
   SDLKey key = event->key.keysym.sym;
-  size_t list_count = FileBrowser_GetCount(g_diskChooseState.list_handle);
+  size_t list_count = file_browser_get_count(g_diskChooseState.list_handle);
   if (list_count == 0) return;
 
   if (key == SDLK_UP || key == SDLK_LEFT) {
@@ -102,11 +102,11 @@ void DiskChoose_Tick(SDL_Event* event) {
   }
 
   if (key == SDLK_RETURN) {
-    const file_entry_t* file_entry = FileBrowser_GetEntry(
+    const FileEntry_t* file_entry = file_browser_get_entry(
         g_diskChooseState.list_handle, g_diskChooseState.act_file);
     if (file_entry != nullptr) {
       g_diskChooseState.result_filename = file_entry->name;
-      g_diskChooseState.result_isdir = FileEntry_IsDirType(file_entry);
+      g_diskChooseState.result_isdir = file_entry_is_dir_type(file_entry);
       if (g_diskChooseState.p_index_file != nullptr) {
         *g_diskChooseState.p_index_file = g_diskChooseState.act_file;
       }
@@ -144,8 +144,8 @@ void DiskChoose_Tick(SDL_Event* event) {
     }
     if (char_hit) {
       for (size_t i = 0; i < list_count; ++i) {
-        const file_entry_t* entry =
-            FileBrowser_GetEntry(g_diskChooseState.list_handle, i);
+        const FileEntry_t* entry =
+            file_browser_get_entry(g_diskChooseState.list_handle, i);
         if (entry != nullptr && strlen(entry->name) > 0) {
           if (toupper(entry->name[0]) == toupper(static_cast<char>(key))) {
             g_diskChooseState.act_file = i;
@@ -179,10 +179,10 @@ void DiskChoose_Draw() {
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
-  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface vs_screen = sdl_surface_to_video_surface(g_screen);
+  VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 
-  VideoSoftStretch(&vs_bg, nullptr, &vs_screen, nullptr);
+  video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
 
   font_print_centered(
       sx / 2, static_cast<int>(5 * facy),
@@ -216,7 +216,7 @@ void DiskChoose_Draw() {
 
   int TOPX = static_cast<int>(45 * facy);
   size_t list_count = g_diskChooseState.list_handle != nullptr
-                          ? FileBrowser_GetCount(g_diskChooseState.list_handle)
+                          ? file_browser_get_count(g_diskChooseState.list_handle)
                           : 0;
 
   for (size_t j = 0; j < files_in_screen; ++j) {
@@ -224,8 +224,8 @@ void DiskChoose_Draw() {
     if (i >= list_count) {
       break;
     }
-    const file_entry_t* file_entry =
-        FileBrowser_GetEntry(g_diskChooseState.list_handle, i);
+    const FileEntry_t* file_entry =
+        file_browser_get_entry(g_diskChooseState.list_handle, i);
     if (file_entry == nullptr) continue;
 
     const string file_name = file_entry->name;
@@ -291,7 +291,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   // Claim ownership of video buffer for modal rendering.
   g_video_draw_mutex.lock();
 
-  VideoSurface* tempSurface = nullptr;
+  VideoSurface_t* tempSurface = nullptr;
   if (g_window_resized == false) {
     if (g_state.mode == MODE_LOGO) {
       tempSurface = g_hLogoBitmap;
@@ -302,7 +302,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     tempSurface = g_origscreen;
   }
 
-  static VideoSurface vs_screen;
+  static VideoSurface_t vs_screen;
   if (tempSurface == nullptr) {
     vs_screen = sdl_surface_to_video_surface(g_screen);
     tempSurface = &vs_screen;
@@ -312,11 +312,11 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       SDL_CreateRGBSurface(SDL_HWSURFACE, tempSurface->w, tempSurface->h, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
 
-  VideoSurface vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface vs_actual_screen = sdl_surface_to_video_surface(g_screen);
+  VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
   // Capture original screen
-  VideoSoftStretch(tempSurface, nullptr, &vs_bg, nullptr);
+  video_soft_stretch(tempSurface, nullptr, &vs_bg, nullptr);
 
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
@@ -325,9 +325,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       SDL_CreateRGBSurface(0, tempSurface->w / 16, tempSurface->h / 16, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
   if (blur_temp != nullptr) {
-    VideoSurface vs_blur = sdl_surface_to_video_surface(blur_temp);
-    VideoSoftStretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
-    VideoSoftStretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    video_soft_stretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
+    video_soft_stretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
     SDL_FreeSurface(blur_temp);
   }
 
@@ -343,7 +343,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     SDL_FreeSurface(dim_surface);
   }
 
-  VideoSoftStretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
+  video_soft_stretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
 
   font_print_centered(sx / 2, static_cast<int>(5 * facy),
                       dir.substr(0, normal_length).c_str(), &vs_actual_screen,
@@ -357,7 +357,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
   if (g_diskChooseState.list_handle == nullptr ||
-      FileBrowser_GetCount(g_diskChooseState.list_handle) < 1) {
+      file_browser_get_count(g_diskChooseState.list_handle) < 1) {
     printf("%s\n",
            file_list_generator->get_failure_message(file_list_generator));
 
@@ -388,7 +388,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.current_dir = dir;
   g_diskChooseState.act_file = index_file;
   if (g_diskChooseState.act_file >=
-      FileBrowser_GetCount(g_diskChooseState.list_handle)) {
+      file_browser_get_count(g_diskChooseState.list_handle)) {
     g_diskChooseState.act_file = 0;
   }
   if (g_diskChooseState.act_file <= static_cast<size_t>(files_in_screen / 2)) {
@@ -447,7 +447,7 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                    std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
-      FileBrowser_CreateLocalGenerator(incoming_dir.c_str());
+      file_browser_create_local_generator(incoming_dir.c_str());
   if (generator == nullptr) return false;
 
   bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,

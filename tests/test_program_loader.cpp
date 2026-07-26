@@ -42,7 +42,7 @@ TEST_CASE(
     }
   }
 
-  MemInitialize();
+  mem_initialize();
   uint8_t original_sample = mem[ADDR_1000];
   CHECK(program_loader_try_load(dsk_path) == program_load_not_a_program);
   CHECK(mem[ADDR_1000] == original_sample);
@@ -99,9 +99,9 @@ TEST_CASE("ProgramLoader: [PRG-04] APL Loading") {
     fwrite(data.data(), 1, data.size(), f.get());
   }
 
-  MemInitialize();
+  mem_initialize();
   CHECK(program_loader_try_load(test_apl) == program_load_ok);
-  CHECK(CpuGetRegisters()->pc == ADDR_0800);
+  CHECK(cpu_get_registers()->pc == ADDR_0800);
   CHECK(memcmp(mem + ADDR_0800, data.data(), data.size()) == 0);
 
   remove(test_apl);
@@ -130,9 +130,9 @@ TEST_CASE("ProgramLoader: [PRG-05] PRG Loading (Word to Byte length)") {
     fwrite(data.data(), 1, data.size(), f.get());
   }
 
-  MemInitialize();
+  mem_initialize();
   CHECK(program_loader_try_load(test_prg) == program_load_ok);
-  CHECK(CpuGetRegisters()->pc == ADDR_1000);
+  CHECK(cpu_get_registers()->pc == ADDR_1000);
   CHECK(memcmp(mem + ADDR_1000, data.data(), data.size()) == 0);
 
   remove(test_prg);

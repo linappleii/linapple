@@ -163,14 +163,14 @@ static auto should_run_full_speed() -> bool {
 }
 
 auto linapple_init() -> void {
-  MemPreInitialize();
+  mem_pre_initialize();
   Asset_Init();
-  CreateColorMixMap();
+  video_create_color_mix_map();
   audio_mixer_initialize();
 
-  MemInitialize();
-  CpuInitialize();
-  VideoInitialize();
+  mem_initialize();
+  cpu_initialize();
+  video_initialize();
 
   peripheral_manager_init();
   peripheral_register_internal();
@@ -182,8 +182,8 @@ auto linapple_shutdown() -> void {
   peripheral_manager_shutdown();
   peripheral_plugins_shutdown();
   audio_mixer_destroy();
-  VideoDestroy();
-  MemDestroy();
+  video_destroy();
+  mem_destroy();
   Asset_Quit();
 }
 
@@ -196,19 +196,19 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
     error("Failed to load test file: %s\n", test_file);
     return;
   }
-  CpuGetRegisters()->pc = 0x0400;  // NMOS 6502 functional test entry
+  cpu_get_registers()->pc = 0x0400;  // NMOS 6502 functional test entry
   uint64_t count = 0;
   while (count < cpu_test_max_cycles) {
-    uint32_t executed = CpuExecute(1);
+    uint32_t executed = cpu_execute(1);
     if (executed == 0) {
       break;
     }
     cycle_num += executed;
     g_cumulative_cycles += executed;
     count += executed;
-    if (CpuGetRegisters()->pc == trap_addr) {
+    if (cpu_get_registers()->pc == trap_addr) {
       printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n",
-             CpuGetRegisters()->pc, count);
+             cpu_get_registers()->pc, count);
       break;
     }
   }
@@ -268,7 +268,7 @@ auto linapple_load_program(const char* path) -> int {
   std::fclose(f);
 
   memset(memdirty, 0xFF, NUM_PAGES_48K);
-  CpuGetRegisters()->pc = load_addr;
+  cpu_get_registers()->pc = load_addr;
   return static_cast<int>(program_load_ok);
 }
 
@@ -277,12 +277,12 @@ static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
     return 0;
   }
 
-  uint32_t executed_cycles = CpuExecute(dw_cycles);
+  uint32_t executed_cycles = cpu_execute(dw_cycles);
   cycle_num += executed_cycles;
   cumulative_cycles = g_cumulative_cycles;
 
   peripheral_manager_think(executed_cycles);
-  VideoUpdateVbl(executed_cycles);
+  video_update_vbl(executed_cycles);
 
   return executed_cycles;
 }
@@ -304,7 +304,7 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
     peripheral_manager_on_vblank(true);
 
     if (g_video_cb != nullptr && g_bFrameReady) {
-      uint32_t* output = VideoGetOutputBuffer();
+      uint32_t* output = video_get_output_buffer();
       g_video_cb(output, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_WIDTH * 4);
       g_bFrameReady = false;
     }

@@ -215,17 +215,17 @@ void DrawRegisters(int line) {
   const char** sReg = g_aBreakpointSource;
   printf("DrawRegisters: line=%d start\n", line);
 
-  DrawRegister(line++, sReg[BP_SRC_REG_A], 1, CpuGetRegisters()->a,
+  DrawRegister(line++, sReg[BP_SRC_REG_A], 1, cpu_get_registers()->a,
                PARAM_REG_A);
-  DrawRegister(line++, sReg[BP_SRC_REG_X], 1, CpuGetRegisters()->x,
+  DrawRegister(line++, sReg[BP_SRC_REG_X], 1, cpu_get_registers()->x,
                PARAM_REG_X);
-  DrawRegister(line++, sReg[BP_SRC_REG_Y], 1, CpuGetRegisters()->y,
+  DrawRegister(line++, sReg[BP_SRC_REG_Y], 1, cpu_get_registers()->y,
                PARAM_REG_Y);
-  DrawRegister(line++, sReg[BP_SRC_REG_PC], 2, CpuGetRegisters()->pc,
+  DrawRegister(line++, sReg[BP_SRC_REG_PC], 2, cpu_get_registers()->pc,
                PARAM_REG_PC);
-  DrawFlags(line, CpuGetRegisters()->ps, nullptr);
+  DrawFlags(line, cpu_get_registers()->ps, nullptr);
   line += 2;
-  DrawRegister(line++, sReg[BP_SRC_REG_S], 2, CpuGetRegisters()->sp,
+  DrawRegister(line++, sReg[BP_SRC_REG_S], 2, cpu_get_registers()->sp,
                PARAM_REG_SP);
   printf("DrawRegisters: end\n");
 }
@@ -292,7 +292,7 @@ void DrawTriStateSoftSwitch(Rect_t& rect, int nAddress, const int iBankDisplay,
     DrawSoftSwitch(rect, nAddress, bSet, nullptr, sOn, sOff, " ", bg_default);
   } else {
     Rect_t temp = rect;
-    int iBank = (GetMemMode() & MF_HRAM_BANK2) ? 2 : 1;
+    int iBank = (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1;
     bool bDisabled = ((iActive == 0) && (iBank == iBankDisplay));
 
     DrawSoftSwitchAddress(temp, nAddress, bg_default);
@@ -327,9 +327,9 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
   rect.right = rect.left + dx80;
 
-  bool bBankWritable = (GetMemMode() & MF_HRAM_WRITE) ? true : false;
+  bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) ? true : false;
   int iBankActive =
-      (GetMemMode() & MF_HIGHRAM) ? (GetMemMode() & MF_HRAM_BANK2) ? 2 : 1 : 0;
+      (get_mem_mode() & MF_HIGHRAM) ? (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1 : 0;
 
   char sOn[4] = "B#";
   char sOff[4] = "M";
@@ -348,7 +348,7 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BP_S_X));
     DebuggerSetColorBG(DebuggerGetColor(bg_default));
-    PrintTextCursorX((GetMemMode() & MF_ALTZP) ? "x" : " ", rect);
+    PrintTextCursorX((get_mem_mode() & MF_ALTZP) ? "x" : " ", rect);
 
     const char* pOn = "R";
     const char* pOff = "W";
@@ -366,7 +366,7 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 #ifdef RAMWORKS
     {
       sText[0] = 'r';
-      iActiveBank = GetRamWorksActiveBank();
+      iActiveBank = get_ramworks_active_bank();
     }
 #endif
 
@@ -395,7 +395,7 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   int dx = 7 * w;
 
   int nAddress = 0xC002;
-  bool bMainRead = (GetMemMode() & MF_AUXREAD) != 0;
+  bool bMainRead = (get_mem_mode() & MF_AUXREAD) != 0;
 
   temp.right = rect.left + dx;
   DrawSoftSwitch(temp, nAddress, !bMainRead, "R", "m", "x", nullptr, BG_DATA_2);
@@ -406,7 +406,7 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   temp.right += 3 * w;
 
   nAddress = 0xC004;
-  bool bAuxWrite = (GetMemMode() & MF_AUXWRITE) != 0;
+  bool bAuxWrite = (get_mem_mode() & MF_AUXWRITE) != 0;
   DrawSoftSwitch(temp, nAddress, bAuxWrite, "W", "x", "m", nullptr, BG_DATA_2);
 }
 
@@ -424,35 +424,35 @@ void DrawSoftSwitches(int iSoftSwitch) {
 
   bool bSet = false;
 
-  bSet = !VideoGetSWTEXT();
+  bSet = !video_get_sw_text();
   DrawSoftSwitch(rect, 0xC050, bSet, nullptr, "GR.", "TEXT");
 
-  bSet = !VideoGetSWMIXED();
+  bSet = !video_get_sw_mixed();
   DrawSoftSwitch(rect, 0xC052, bSet, nullptr, "FULL", "MIX");
 
-  bSet = !VideoGetSWPAGE2();
+  bSet = !video_get_sw_page2();
   DrawSoftSwitch(rect, 0xC054, bSet, "PAGE ", "1", "2");
 
-  bSet = !VideoGetSWHIRES();
+  bSet = !video_get_sw_hires();
   DrawSoftSwitch(rect, 0xC056, bSet, nullptr, "LO", "HI", "RES");
 
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
 
-  bSet = VideoGetSWDHIRES();
+  bSet = video_get_sw_dhires();
   DrawSoftSwitch(rect, 0xC05E, bSet, nullptr, "DHGR", "HGR");
 
   int bgMemory = BG_DATA_2;
 
-  bSet = !VideoGetSW80STORE();
+  bSet = !video_get_sw_80store();
   DrawSoftSwitch(rect, 0xC000, bSet, "80Sto", "0", "1", nullptr, bgMemory);
 
   DrawSoftSwitchMainAuxBanks(rect);
 
-  bSet = !VideoGetSW80COL();
+  bSet = !video_get_sw_80col();
   DrawSoftSwitch(rect, 0xC00C, bSet, "Col", "40", "80", nullptr, bgMemory);
 
-  bSet = !VideoGetSWAltCharSet();
+  bSet = !video_get_sw_alt_charset();
   DrawSoftSwitch(rect, 0xC00E, bSet, nullptr, "ASC", "MOUS", nullptr, bgMemory);
 
 #if SOFTSWITCH_LANGCARD
@@ -470,9 +470,9 @@ void DrawTargets(int line) {
   }
 
   int aTarget[3];
-  _6502_GetTargets(CpuGetRegisters()->pc, &aTarget[0], &aTarget[1], &aTarget[2],
+  _6502_GetTargets(cpu_get_registers()->pc, &aTarget[0], &aTarget[1], &aTarget[2],
                    nullptr);
-  GetTargets_IgnoreDirectJSRJMP(mem[CpuGetRegisters()->pc], aTarget[2]);
+  GetTargets_IgnoreDirectJSRJMP(mem[cpu_get_registers()->pc], aTarget[2]);
 
   aTarget[1] = aTarget[2];
 

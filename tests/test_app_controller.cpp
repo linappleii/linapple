@@ -15,12 +15,12 @@
 #include "frontends/common/AppEnvironment.h"
 
 TEST_CASE("AppController: Initialize and Shutdown") {
-  AppConfig config = {};
+  AppConfig_t config = {};
   AppConfig_Default(&config);
 
   AppEnv_ResolvePaths(&config);
   // Test initialization
-  int result = AppController_Initialize(&config);
+  int result = app_controller_initialize(&config);
   CHECK(result == 0);
   CHECK(g_state.mode == MODE_RUNNING);
 
@@ -33,24 +33,24 @@ TEST_CASE("AppController: Initialize and Shutdown") {
 }
 
 TEST_CASE("AppController: Video Mode Reset") {
-  AppConfig config = {};
+  AppConfig_t config = {};
   AppConfig_Default(&config);
 
   // 1. Init with PAL
   config.bPAL = true;
-  AppController_Initialize(&config);
+  app_controller_initialize(&config);
   CHECK(g_videotype == VT_COLOR_TVEMU);
 
   // 2. Re-init without PAL (should reset to standard)
   config.bPAL = false;
-  AppController_Initialize(&config);
+  app_controller_initialize(&config);
   CHECK(g_videotype == VT_COLOR_STANDARD);
 
   AppController_Shutdown();
 }
 
 TEST_CASE("AppController: Media Loading") {
-  AppConfig config = {};
+  AppConfig_t config = {};
   AppConfig_Default(&config);
   const char* disk_path = access("../res/Master.dsk", R_OK) == 0
                               ? "../res/Master.dsk"
@@ -58,7 +58,7 @@ TEST_CASE("AppController: Media Loading") {
   Util_SafeStrCpy(config.szDiskPath[0].data(), disk_path, path_max_len);
 
   AppEnv_ResolvePaths(&config);
-  AppController_Initialize(&config);
+  app_controller_initialize(&config);
   AppController_LoadInitialMedia(&config);
 
   // Explicitly think a bit to process commands from LoadInitialMedia
@@ -79,14 +79,14 @@ TEST_CASE("AppController: Media Loading") {
 }
 
 TEST_CASE("AppController: Diagnostic Commands") {
-  AppConfig config = {};
+  AppConfig_t config = {};
   AppConfig_Default(&config);
   config.intent = INTENT_HELP;
 
   // We don't want to actually print help to stdout during tests usually,
   // but here we just verify it returns true as expected.
-  CHECK(AppController_HandleDiagnosticCommands(&config) == true);
+  CHECK(app_controller_handle_diagnostic_commands(&config) == true);
 
   config.intent = INTENT_RUN;
-  CHECK(AppController_HandleDiagnosticCommands(&config) == false);
+  CHECK(app_controller_handle_diagnostic_commands(&config) == false);
 }

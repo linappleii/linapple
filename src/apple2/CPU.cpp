@@ -71,16 +71,6 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
   g_cumulative_cycles = g_active_cpu->cumulative_cycles;
 }
 
-auto CpuGetRegisters() -> CpuRegisters_t* { return cpu_get_registers(); }
-auto CpuGetCumulativeCycles() -> uint64_t {
-  return cpu_get_cumulative_cycles();
-}
-auto CpuGetActiveContext() -> CpuInstance_t* {
-  return cpu_get_active_context();
-}
-auto CpuSetActiveContext(CpuInstance_t* context) -> void {
-  cpu_set_active_context(context);
-}
 
 static uint32_t g_uInternalExecutedCycles;
 static signed int g_nIrqCheckTimeout = 16;
@@ -107,12 +97,12 @@ pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
 #define PUSH(a)             \
   *(mem + regs.sp--) = (a); \
   if (regs.sp < STACK_BEGIN) regs.sp = STACK_END;
-extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                            uint32_t cycles) -> uint8_t;
 
 #define READ                                                  \
   (((addr & IO_REGION_MASK) == IO_REGION_START)               \
-       ? IOMap_Dispatch(regs.pc, addr, 0, 0, uExecutedCycles) \
+       ? io_map_dispatch(regs.pc, addr, 0, 0, uExecutedCycles) \
        : *(mem + addr))
 #define SETNZ(a)           \
   {                        \
@@ -127,7 +117,7 @@ extern auto IOMap_Dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
     if (page)                                                          \
       *(page + (addr & 0xFF)) = (uint8_t)(a);                          \
     else if ((addr & IO_REGION_MASK) == IO_REGION_START)               \
-      IOMap_Dispatch(regs.pc, addr, 1, (uint8_t)(a), uExecutedCycles); \
+      io_map_dispatch(regs.pc, addr, 1, (uint8_t)(a), uExecutedCycles); \
   }
 
 // ExtraCycles:
@@ -758,7 +748,7 @@ static inline void Fetch(uint8_t& iOpcode, uint32_t uExecutedCycles) {
 
   iOpcode =
       ((PC & IO_REGION_MASK) == IO_REGION_START)
-          ? IOMap_Dispatch(PC, PC, 0, 0,
+          ? io_map_dispatch(PC, PC, 0, 0,
                            uExecutedCycles)  // Fetch opcode from I/O memory,
                                              // but params are still from mem[]
           : mem[PC];
@@ -2135,28 +2125,5 @@ auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // google-readability-function-size)
 
-// Legacy Forwarding Functions
-auto CpuDestroy() -> void { cpu_destroy(); }
-auto CpuCalcCycles(uint32_t nExecutedCycles) -> void {
-  cpu_calc_cycles(nExecutedCycles);
-}
-auto CpuExecute(uint32_t uCycles) -> uint32_t { return cpu_execute(uCycles); }
 auto cpu_step() -> void { cpu_execute(0); }
-auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t {
-  return cpu_get_cycles_this_frame(nExecutedCycles);
-}
-auto CpuInitialize() -> void { cpu_initialize(); }
-auto CpuSetupBenchmark() -> void { cpu_setup_benchmark(); }
-auto CpuIrqReset() -> void { cpu_irq_reset(); }
-auto CpuIrqAssert(IrqSrc_t Device) -> void { cpu_irq_assert(Device); }
-auto CpuIrqDeassert(IrqSrc_t Device) -> void { cpu_irq_deassert(Device); }
-auto CpuNmiReset() -> void { cpu_nmi_reset(); }
-auto CpuNmiAssert(IrqSrc_t Device) -> void { cpu_nmi_assert(Device); }
-auto CpuNmiDeassert(IrqSrc_t Device) -> void { cpu_nmi_deassert(Device); }
-auto CpuReset() -> void { cpu_reset(); }
-auto CpuGetSnapshot(SsCpu6502_t* pSS) -> uint32_t {
-  return cpu_get_snapshot(pSS);
-}
-auto CpuSetSnapshot(SsCpu6502_t* pSS) -> uint32_t {
-  return cpu_set_snapshot(pSS);
-}
+

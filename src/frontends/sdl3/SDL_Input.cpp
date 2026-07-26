@@ -74,17 +74,17 @@ void sdl_handle_event(SDL_Event* e) {
             g_state.dwSpeed = emulation_speed_max;
           }
           printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
-          SetCurrentCLK6502();
+          set_current_clk_6502();
         } else if (mysym == SDLK_KP_MINUS) {
           if (g_state.dwSpeed > SPEED_MIN) {
             g_state.dwSpeed = g_state.dwSpeed - 1;
           }
           printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
-          SetCurrentCLK6502();
+          set_current_clk_6502();
         } else if (mysym == SDLK_KP_MULTIPLY) {
           g_state.dwSpeed = 10;
           printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
-          SetCurrentCLK6502();
+          set_current_clk_6502();
         } else if (mysym == SDLK_CAPSLOCK) {
           uint8_t caps = (mymod & SDL_KMOD_CAPS) ? 1 : 0;
           peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
@@ -111,7 +111,7 @@ void sdl_handle_event(SDL_Event* e) {
           }
           draw_status_area(DRAW_TITLE);
           if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-            VideoRedrawScreen();
+            video_redraw_screen();
           }
           g_state.bResetTiming = true;
         } else if (mysym == SDLK_SCROLLLOCK) {

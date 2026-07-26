@@ -12,10 +12,10 @@
 #include "doctest.h"
 #include "frontends/common/FileBrowser.h"
 
-// Helper to construct a file_entry_t for testing
-static file_entry_t create_entry(const char* name, FileEntryType type,
+// Helper to construct a FileEntry_t for testing
+static FileEntry_t create_entry(const char* name, FileEntryType_t type,
                                  uint64_t size) {
-  file_entry_t entry{};
+  FileEntry_t entry{};
   entry.name[0] = '\0';
   if (name) Util_SafeStrCpy(entry.name, name, sizeof(entry.name));
   entry.type = type;
@@ -23,39 +23,39 @@ static file_entry_t create_entry(const char* name, FileEntryType type,
   return entry;
 }
 
-TEST_CASE("FileBrowser: file_entry_t Properties") {
-  file_entry_t entry = create_entry("test.dsk", FILE_ENTRY_FILE, 1024);
+TEST_CASE("FileBrowser: FileEntry_t Properties") {
+  FileEntry_t entry = create_entry("test.dsk", FILE_ENTRY_FILE, 1024);
   CHECK(strcmp(entry.name, "test.dsk") == 0);
   CHECK(entry.type == FILE_ENTRY_FILE);
   CHECK(entry.size == 1024);
-  CHECK(FileEntry_IsDirType(&entry) == false);
+  CHECK(file_entry_is_dir_type(&entry) == false);
 }
 
-TEST_CASE("FileBrowser: file_entry_t Size Formatting") {
+TEST_CASE("FileBrowser: FileEntry_t Size Formatting") {
   char buf[32];
 
-  file_entry_t f1 = create_entry("small", FILE_ENTRY_FILE, 500);
+  FileEntry_t f1 = create_entry("small", FILE_ENTRY_FILE, 500);
   FileEntry_FormatTypeOrSize(&f1, buf, sizeof(buf));
   CHECK(std::string(buf) == "500");
 
-  file_entry_t f2 = create_entry("kb", FILE_ENTRY_FILE, 1024 * 5);
+  FileEntry_t f2 = create_entry("kb", FILE_ENTRY_FILE, 1024 * 5);
   FileEntry_FormatTypeOrSize(&f2, buf, sizeof(buf));
   CHECK(std::string(buf) == "5K");
 
-  file_entry_t f3 = create_entry("mb", FILE_ENTRY_FILE, 1024 * 1024 * 2);
+  FileEntry_t f3 = create_entry("mb", FILE_ENTRY_FILE, 1024 * 1024 * 2);
   FileEntry_FormatTypeOrSize(&f3, buf, sizeof(buf));
   CHECK(std::string(buf) == "2M");
 
-  file_entry_t f4 =
+  FileEntry_t f4 =
       create_entry("gb", FILE_ENTRY_FILE, 1024ULL * 1024ULL * 1024ULL * 3ULL);
   FileEntry_FormatTypeOrSize(&f4, buf, sizeof(buf));
   CHECK(std::string(buf) == "3G");
 
-  file_entry_t d = create_entry("dir", FILE_ENTRY_DIR, 0);
+  FileEntry_t d = create_entry("dir", FILE_ENTRY_DIR, 0);
   FileEntry_FormatTypeOrSize(&d, buf, sizeof(buf));
   CHECK(std::string(buf) == "<DIR>");
 
-  file_entry_t u = create_entry("up", FILE_ENTRY_UP, 0);
+  FileEntry_t u = create_entry("up", FILE_ENTRY_UP, 0);
   FileEntry_FormatTypeOrSize(&u, buf, sizeof(buf));
   CHECK(std::string(buf) == "<UP>");
 }
@@ -79,19 +79,19 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
 
   SUBCASE("List Generation") {
     FileListGenerator_t* gen =
-        FileBrowser_CreateLocalGenerator(test_dir.c_str());
+        file_browser_create_local_generator(test_dir.c_str());
     REQUIRE(gen != nullptr);
 
     FileList_t* list = gen->generate_file_list(gen);
     REQUIRE(list != nullptr);
 
     // Should have: .. (UP), subdir (DIR), file1 (FILE), file2 (FILE)
-    REQUIRE(FileBrowser_GetCount(list) == 4);
+    REQUIRE(file_browser_get_count(list) == 4);
 
-    const file_entry_t* e0 = FileBrowser_GetEntry(list, 0);
-    const file_entry_t* e1 = FileBrowser_GetEntry(list, 1);
-    const file_entry_t* e2 = FileBrowser_GetEntry(list, 2);
-    const file_entry_t* e3 = FileBrowser_GetEntry(list, 3);
+    const FileEntry_t* e0 = file_browser_get_entry(list, 0);
+    const FileEntry_t* e1 = file_browser_get_entry(list, 1);
+    const FileEntry_t* e2 = file_browser_get_entry(list, 2);
+    const FileEntry_t* e3 = file_browser_get_entry(list, 3);
 
     REQUIRE(e0 != nullptr);
     CHECK(e0->type == FILE_ENTRY_UP);
@@ -114,14 +114,14 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
 
   SUBCASE("Failure Handling") {
     FileListGenerator_t* gen =
-        FileBrowser_CreateLocalGenerator("non_existent_directory_xyz");
+        file_browser_create_local_generator("non_existent_directory_xyz");
     REQUIRE(gen != nullptr);
 
     FileList_t* list = gen->generate_file_list(gen);
     REQUIRE(list != nullptr);
 
-    CHECK(FileBrowser_GetCount(list) == 0);
-    CHECK(strcmp(FileBrowser_GetFailureMessage(list), "(success)") != 0);
+    CHECK(file_browser_get_count(list) == 0);
+    CHECK(strcmp(file_browser_get_failure_message(list), "(success)") != 0);
 
     FileBrowser_FreeList(list);
     gen->destroy(gen);
@@ -135,14 +135,14 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
 }
 
 TEST_CASE("FileBrowser: C API Null Checks") {
-  CHECK(FileBrowser_CreateLocalGenerator(nullptr) == nullptr);
-  CHECK(FileBrowser_GetCount(nullptr) == 0);
-  CHECK(FileBrowser_GetEntry(nullptr, 0) == nullptr);
-  CHECK(strcmp(FileBrowser_GetFailureMessage(nullptr), "Null list handle") ==
+  CHECK(file_browser_create_local_generator(nullptr) == nullptr);
+  CHECK(file_browser_get_count(nullptr) == 0);
+  CHECK(file_browser_get_entry(nullptr, 0) == nullptr);
+  CHECK(strcmp(file_browser_get_failure_message(nullptr), "Null list handle") ==
         0);
 
   char buf[32];
   FileEntry_FormatTypeOrSize(nullptr, buf, sizeof(buf));  // Should not crash
 
-  CHECK(FileEntry_IsDirType(nullptr) == false);
+  CHECK(file_entry_is_dir_type(nullptr) == false);
 }

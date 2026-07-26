@@ -12,7 +12,7 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
     tmp_conf << "[Test]\nValue=1\n";
     tmp_conf.close();
 
-    AppConfig config = {};
+    AppConfig_t config = {};
     Util_SafeStrCpy(config.szConfigPath.data(), "test_resolve.conf", path_max_len);
 
     AppEnv_ResolvePaths(&config);
@@ -24,7 +24,7 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
 }
 
 TEST_CASE("AppEnvironment: Logger Verbosity") {
-    AppConfig config = {};
+    AppConfig_t config = {};
     config.bVerbose = true;
 
     AppEnv_ResolvePaths(&config);

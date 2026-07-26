@@ -218,7 +218,7 @@ const Opcodes_t
     g_aOpcodes6502[NUM_OPCODES] =
         {
             // Should match Cpu.cpp InternalCpuExecute() switch
-            // (*(mem+CpuGetRegisters()->pc++)) !!
+            // (*(mem+cpu_get_registers()->pc++)) !!
 
             /*
                     Based on: http://axis.llx.com/~nparker/a2/opcodes.html
@@ -718,12 +718,12 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
 
 //===========================================================================
 void _6502_GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) {
-  iOpcode_ = _6502_GetOpmodeOpbyte(CpuGetRegisters()->pc, iOpmode_, nOpbyte_);
+  iOpcode_ = _6502_GetOpmodeOpbyte(cpu_get_registers()->pc, iOpmode_, nOpbyte_);
 }
 
 //===========================================================================
 auto _6502_GetStackReturnAddress(uint16_t& nAddress_) -> bool {
-  unsigned nStack = CpuGetRegisters()->sp;
+  unsigned nStack = cpu_get_registers()->sp;
   nStack++;
 
   if (nStack <= (_6502_STACK_END - 1)) {
@@ -780,7 +780,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       {
         if (nOpcode == OPCODE_RTI || nOpcode == OPCODE_RTS)  // RTI or RTS?
         {
-          uint16_t sp = CpuGetRegisters()->sp;
+          uint16_t sp = cpu_get_registers()->sp;
 
           if (nOpcode == OPCODE_RTI) {
             //*pTargetPartial3_ = _6502_STACK_BEGIN + ((sp+1) & 0xFF);	// TODO:
@@ -801,10 +801,10 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
         } else if (nOpcode == OPCODE_BRK)  // BRK?
         {
           *pTargetPartial_ = static_cast<int>(
-              _6502_STACK_BEGIN + ((CpuGetRegisters()->sp + 0) & 0xFF));
+              _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           *pTargetPartial2_ = static_cast<int>(
-              _6502_STACK_BEGIN + ((CpuGetRegisters()->sp - 1) & 0xFF));
-          //*pTargetPartial3_ = _6502_STACK_BEGIN + ((CpuGetRegisters()->sp-2) &
+              _6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
+          //*pTargetPartial3_ = _6502_STACK_BEGIN + ((cpu_get_registers()->sp-2) &
           //0xFF);	// TODO: PHP *pTargetPartial4_ = _6502_BRK_VECTOR + 0;
           //// TODO *pTargetPartial5_ = _6502_BRK_VECTOR + 1;	// TODO
           nTarget16 = *reinterpret_cast<uint16_t*>(mem + _6502_BRK_VECTOR);
@@ -812,10 +812,10 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
         {
           if (g_aOpcodes[nOpcode].nMemoryAccess & MEM_WI) {
             nTarget16 = static_cast<uint16_t>(
-                _6502_STACK_BEGIN + ((CpuGetRegisters()->sp + 0) & 0xFF));
+                _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           } else {
             nTarget16 = static_cast<uint16_t>(
-                _6502_STACK_BEGIN + ((CpuGetRegisters()->sp + 1) & 0xFF));
+                _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 1) & 0xFF));
           }
         }
 
@@ -834,9 +834,9 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
     case AM_A:  // Absolute
       if (nOpcode == OPCODE_JSR) {
         *pTargetPartial_ = static_cast<int>(
-            _6502_STACK_BEGIN + ((CpuGetRegisters()->sp + 0) & 0xFF));
+            _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
         *pTargetPartial2_ = static_cast<int>(
-            _6502_STACK_BEGIN + ((CpuGetRegisters()->sp - 1) & 0xFF));
+            _6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
       }
 
       if (bIncludeNextOpcodeAddress ||
@@ -851,7 +851,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
 
     case AM_IAX:  // Indexed (Absolute) Indirect - ie. JMP (abs,x)
       assert(nOpcode == OPCODE_JMP_IAX);
-      nTarget16 += CpuGetRegisters()->x;
+      nTarget16 += cpu_get_registers()->x;
       *pTargetPartial_ = static_cast<int>(nTarget16);
       *pTargetPartial2_ = static_cast<int>(nTarget16 + 1);
       if (bIncludeNextOpcodeAddress) {
@@ -864,7 +864,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       break;
 
     case AM_AX:  // Absolute, X
-      nTarget16 += CpuGetRegisters()->x;
+      nTarget16 += cpu_get_registers()->x;
       *pTargetPointer_ = nTarget16;
       if (pTargetBytes_) {
         *pTargetBytes_ = 2;
@@ -872,7 +872,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       break;
 
     case AM_AY:  // Absolute, Y
-      nTarget16 += CpuGetRegisters()->y;
+      nTarget16 += cpu_get_registers()->y;
       *pTargetPointer_ = nTarget16;
       if (pTargetBytes_) {
         *pTargetBytes_ = 2;
@@ -892,7 +892,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       break;
 
     case AM_IZX:  // Indexed (Zeropage Indirect, X)
-      nTarget8 += CpuGetRegisters()->x;
+      nTarget8 += cpu_get_registers()->x;
       *pTargetPartial_ = static_cast<int>(nTarget8);
       *pTargetPointer_ =
           static_cast<int>(*reinterpret_cast<uint16_t*>(mem + nTarget8));
@@ -905,7 +905,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       *pTargetPartial_ = static_cast<int>(nTarget8);
       *pTargetPointer_ =
           static_cast<int>(((*reinterpret_cast<uint16_t*>(mem + nTarget8)) +
-                            CpuGetRegisters()->y) &
+                            cpu_get_registers()->y) &
                            _6502_MEM_END);  // Bugfix:
       if (pTargetBytes_) {
         *pTargetBytes_ = 1;
@@ -948,7 +948,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       break;
 
     case AM_ZX:  // Zeropage, X
-      *pTargetPointer_ = (nTarget8 + CpuGetRegisters()->x) &
+      *pTargetPointer_ = (nTarget8 + cpu_get_registers()->x) &
                          0xFF;  // .21 Bugfix: shouldn't this wrap around? Yes.
       if (pTargetBytes_) {
         *pTargetBytes_ = 1;
@@ -956,7 +956,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
       break;
 
     case AM_ZY:  // Zeropage, Y
-      *pTargetPointer_ = (nTarget8 + CpuGetRegisters()->y) &
+      *pTargetPointer_ = (nTarget8 + cpu_get_registers()->y) &
                          0xFF;  // .21 Bugfix: shouldn't this wrap around? Yes.
       if (pTargetBytes_) {
         *pTargetBytes_ = 1;
@@ -1515,7 +1515,7 @@ auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
   int nOpbytes = g_aOpmodes[nOpmode].m_nBytes;
 
   // if (nOpbytes != nBytes)
-  //	ConsoleDisplayError( " ERROR: Input Opcode bytes differs from actual!"
+  //	console_display_error( " ERROR: Input Opcode bytes differs from actual!"
   //);
 
   *(memdirty + (nBaseAddress >> 8)) |= 1;

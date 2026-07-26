@@ -48,7 +48,7 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
-  return CpuGetCumulativeCycles();
+  return cpu_get_cumulative_cycles();
 }
 
 // --- Internal Implementation ---
@@ -118,11 +118,11 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
   (void)is_write;
   (void)data_value;
   if (instance == nullptr) {
-    return MemReadFloatingBus(remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
 
-  CpuCalcCycles(remaining_cycles);
+  cpu_calc_cycles(remaining_cycles);
   speaker_peripheral->has_strobe = true;
 
   if (!g_bFullSpeed) {
@@ -142,7 +142,7 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
     }
   }
 
-  return MemReadFloatingBus(remaining_cycles);
+  return mem_read_floating_bus(remaining_cycles);
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 

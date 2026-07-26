@@ -22,67 +22,67 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   peripheral_manager_init();
   peripheral_register_internal();
 
-  uint8_t orig_a = CpuGetRegisters()->a;
-  uint8_t orig_x = CpuGetRegisters()->x;
-  uint8_t orig_y = CpuGetRegisters()->y;
-  uint16_t orig_pc = CpuGetRegisters()->pc;
-  uint16_t orig_sp = CpuGetRegisters()->sp;
-  uint64_t orig_cycles = CpuGetCumulativeCycles();
+  uint8_t orig_a = cpu_get_registers()->a;
+  uint8_t orig_x = cpu_get_registers()->x;
+  uint8_t orig_y = cpu_get_registers()->y;
+  uint16_t orig_pc = cpu_get_registers()->pc;
+  uint16_t orig_sp = cpu_get_registers()->sp;
+  uint64_t orig_cycles = cpu_get_cumulative_cycles();
 
-  uint32_t orig_mem_mode = MemGetActiveContext()->mem_mode;
-  bool orig_last_write_ram = MemGetActiveContext()->last_write_ram;
+  uint32_t orig_mem_mode = mem_get_active_context()->mem_mode;
+  bool orig_last_write_ram = mem_get_active_context()->last_write_ram;
 
-  uint8_t* mem_2000 = MemGetMainPtr(0x2000);
+  uint8_t* mem_2000 = mem_get_main_ptr(0x2000);
   uint8_t orig_byte_2000 = *mem_2000;
 
-  CpuGetRegisters()->a = 0x11;
-  CpuGetRegisters()->x = 0x22;
-  CpuGetRegisters()->y = 0x33;
-  CpuGetRegisters()->pc = 0x1000;
-  CpuGetRegisters()->sp = 0x1FF;
+  cpu_get_registers()->a = 0x11;
+  cpu_get_registers()->x = 0x22;
+  cpu_get_registers()->y = 0x33;
+  cpu_get_registers()->pc = 0x1000;
+  cpu_get_registers()->sp = 0x1FF;
   g_cumulative_cycles = 12345;
 
-  MemGetActiveContext()->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
-  MemGetActiveContext()->last_write_ram = true;
+  mem_get_active_context()->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
+  mem_get_active_context()->last_write_ram = true;
   *mem_2000 = 0x55;
 
   auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
   snapshot_serialize(snapshot.get());
 
-  CpuGetRegisters()->a = 0xFF;
-  CpuGetRegisters()->x = 0xFF;
-  CpuGetRegisters()->y = 0xFF;
-  CpuGetRegisters()->pc = 0x9999;
-  CpuGetRegisters()->sp = 0x100;
+  cpu_get_registers()->a = 0xFF;
+  cpu_get_registers()->x = 0xFF;
+  cpu_get_registers()->y = 0xFF;
+  cpu_get_registers()->pc = 0x9999;
+  cpu_get_registers()->sp = 0x100;
   g_cumulative_cycles = 99999;
 
-  MemGetActiveContext()->mem_mode = MF_80STORE | MF_ALTZP;
-  MemGetActiveContext()->last_write_ram = false;
+  mem_get_active_context()->mem_mode = MF_80STORE | MF_ALTZP;
+  mem_get_active_context()->last_write_ram = false;
   *mem_2000 = 0xAA;
 
   bool success = snapshot_deserialize(snapshot.get());
   REQUIRE(success);
 
-  CHECK(CpuGetRegisters()->a == 0x11);
-  CHECK(CpuGetRegisters()->x == 0x22);
-  CHECK(CpuGetRegisters()->y == 0x33);
-  CHECK(CpuGetRegisters()->pc == 0x1000);
-  CHECK(CpuGetRegisters()->sp == 0x1FF);
-  CHECK(CpuGetCumulativeCycles() == 12345);
+  CHECK(cpu_get_registers()->a == 0x11);
+  CHECK(cpu_get_registers()->x == 0x22);
+  CHECK(cpu_get_registers()->y == 0x33);
+  CHECK(cpu_get_registers()->pc == 0x1000);
+  CHECK(cpu_get_registers()->sp == 0x1FF);
+  CHECK(cpu_get_cumulative_cycles() == 12345);
 
-  CHECK(MemGetActiveContext()->mem_mode == (MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE));
-  CHECK(MemGetActiveContext()->last_write_ram == true);
+  CHECK(mem_get_active_context()->mem_mode == (MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE));
+  CHECK(mem_get_active_context()->last_write_ram == true);
   CHECK(*mem_2000 == 0x55);
 
-  CpuGetRegisters()->a = orig_a;
-  CpuGetRegisters()->x = orig_x;
-  CpuGetRegisters()->y = orig_y;
-  CpuGetRegisters()->pc = orig_pc;
-  CpuGetRegisters()->sp = orig_sp;
+  cpu_get_registers()->a = orig_a;
+  cpu_get_registers()->x = orig_x;
+  cpu_get_registers()->y = orig_y;
+  cpu_get_registers()->pc = orig_pc;
+  cpu_get_registers()->sp = orig_sp;
   g_cumulative_cycles = orig_cycles;
 
-  MemGetActiveContext()->mem_mode = orig_mem_mode;
-  MemGetActiveContext()->last_write_ram = orig_last_write_ram;
+  mem_get_active_context()->mem_mode = orig_mem_mode;
+  mem_get_active_context()->last_write_ram = orig_last_write_ram;
   *mem_2000 = orig_byte_2000;
 
   linapple_shutdown();

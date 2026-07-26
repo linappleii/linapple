@@ -3,8 +3,8 @@
 #include "frontends/common/AppConfig.h"
 #include "core/Util_Text.h"
 
-TEST_CASE("AppConfig: Initialization") {
-    AppConfig config = {};
+TEST_CASE("AppConfig_t: Initialization") {
+    AppConfig_t config = {};
     AppConfig_Default(&config);
 
     CHECK(config.intent == INTENT_RUN);
@@ -19,8 +19,8 @@ TEST_CASE("AppConfig: Initialization") {
     CHECK(config.szHardwareInfoName[0] == '\0');
 }
 
-TEST_CASE("AppConfig: Manual Population") {
-    AppConfig config = {};
+TEST_CASE("AppConfig_t: Manual Population") {
+    AppConfig_t config = {};
     AppConfig_Default(&config);
 
     config.intent = INTENT_DIAGNOSTIC;

@@ -22,7 +22,7 @@ auto _ZeroPage_Error() -> Update_t
 {
   char sText[ CONSOLE_WIDTH ];
   sprintf( sText, "  There are no current (ZP) pointers.  (Max: %d)", MAX_ZEROPAGE_POINTERS );
-  return ConsoleDisplayError( sText );
+  return console_display_error( sText );
 }
 
 //===========================================================================

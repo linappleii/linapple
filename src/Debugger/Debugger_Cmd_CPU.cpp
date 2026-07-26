@@ -59,14 +59,14 @@ extern uint16_t g_nDisasmBotAddress;
 extern uint32_t g_nVideoClockHorz;
 extern uint32_t g_nVideoClockVert;
 
-extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
 
 void DisasmCalcTopBotAddress();
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
 auto NTSC_VideoGetScannerAddressForDebugger() -> uint16_t;
-void VideoRefreshScreen(int bVideoModeFlags, bool bForceRedraw);
-auto VideoGetSWPAGE2() -> bool;
-auto VideoGetSWMIXED() -> bool;
+void video_refresh_screen(int bVideoModeFlags, bool bForceRedraw);
+auto video_get_sw_page2() -> bool;
+auto video_get_sw_mixed() -> bool;
 
 // Implementation
 // CPU
@@ -86,7 +86,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
 
   g_nDebugSteps = -1;
   g_nDebugStepCycles = 0;
-  g_nDebugStepStart = CpuGetRegisters()->pc;
+  g_nDebugStepStart = cpu_get_registers()->pc;
   g_nDebugStepUntil = nArgs ? g_aArgs[1].nValue : -1;
   g_nDebugSkipStart = -1;
   g_nDebugSkipLen = -1;
@@ -202,13 +202,13 @@ auto CmdStackPopPseudo(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdStepOver(int nArgs) -> Update_t {
-  // assert( g_nDisasmCurAddress == CpuGetRegisters()->pc );
+  // assert( g_nDisasmCurAddress == cpu_get_registers()->pc );
 
   //  g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
   uint16_t nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
 
   while (nDebugSteps-- > 0) {
-    int nOpcode = *(mem + CpuGetRegisters()->pc);  // g_nDisasmCurAddress
+    int nOpcode = *(mem + cpu_get_registers()->pc);  // g_nDisasmCurAddress
     //  int eMode = g_aOpcodes[ nOpcode ].addrmode;
     //  int nByte = g_aOpmodes[eMode]._nBytes;
     //  if ((eMode ==  AM_A) &&
@@ -245,7 +245,7 @@ auto CmdStepOut(int nArgs) -> Update_t {
 auto CmdTrace(int nArgs) -> Update_t {
   g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
   g_nDebugStepCycles = 0;
-  g_nDebugStepStart = CpuGetRegisters()->pc;
+  g_nDebugStepStart = cpu_get_registers()->pc;
   g_nDebugStepUntil = -1;
   g_state.mode = MODE_STEPPING;
   frame_refresh_status(DRAW_TITLE);
@@ -299,7 +299,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
 auto CmdTraceLine(int nArgs) -> Update_t {
   g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
   g_nDebugStepCycles = 1;
-  g_nDebugStepStart = CpuGetRegisters()->pc;
+  g_nDebugStepStart = cpu_get_registers()->pc;
   g_nDebugStepUntil = -1;
 
   g_state.mode = MODE_STEPPING;
@@ -351,7 +351,7 @@ auto CmdIn(int nArgs) -> Update_t {
 
   uint16_t nAddress = g_aArgs[1].nValue;
 
-  IOMap_Dispatch(CpuGetRegisters()->pc, nAddress & 0xFFFF, 0, 0, 0);
+  io_map_dispatch(cpu_get_registers()->pc, nAddress & 0xFFFF, 0, 0, 0);
 
   return UPDATE_CONSOLE_DISPLAY;  // TODO: Verify // 1
 }
@@ -365,17 +365,17 @@ auto CmdJSR(int nArgs) -> Update_t {
   uint16_t nAddress = g_aArgs[1].nValue & _6502_MEM_END;
 
   // Mark Stack Page as dirty
-  *(memdirty + (CpuGetRegisters()->sp >> 8)) = 1;
+  *(memdirty + (cpu_get_registers()->sp >> 8)) = 1;
 
   // Push PC onto stack
-  *(mem + CpuGetRegisters()->sp) = ((CpuGetRegisters()->pc >> 8) & 0xFF);
-  CpuGetRegisters()->sp--;
+  *(mem + cpu_get_registers()->sp) = ((cpu_get_registers()->pc >> 8) & 0xFF);
+  cpu_get_registers()->sp--;
 
-  *(mem + CpuGetRegisters()->sp) = ((CpuGetRegisters()->pc >> 0) - 1) & 0xFF;
-  CpuGetRegisters()->sp--;
+  *(mem + cpu_get_registers()->sp) = ((cpu_get_registers()->pc >> 0) - 1) & 0xFF;
+  cpu_get_registers()->sp--;
 
   // Jump to new address
-  CpuGetRegisters()->pc = nAddress;
+  cpu_get_registers()->pc = nAddress;
 
   return UPDATE_ALL;
 }
@@ -390,7 +390,7 @@ auto CmdNOP(int nArgs) -> Update_t {
   _6502_GetOpcodeOpmodeOpbyte(iOpcode, iOpmode, nOpbytes);
 
   while (nOpbytes--) {
-    *(mem + CpuGetRegisters()->pc + nOpbytes) = 0xEA;
+    *(mem + cpu_get_registers()->pc + nOpbytes) = 0xEA;
   }
 
   return UPDATE_ALL;
@@ -409,7 +409,7 @@ auto CmdOut(int nArgs) -> Update_t {
 
   uint16_t nAddress = g_aArgs[1].nValue;
 
-  IOWrite[(nAddress >> 4) & 0xF](CpuGetRegisters()->pc, nAddress & 0xFF, 1,
+  IOWrite[(nAddress >> 4) & 0xF](cpu_get_registers()->pc, nAddress & 0xFF, 1,
                                  g_aArgs[2].nValue & 0xFF, 0);
 
   return UPDATE_ALL;
@@ -438,21 +438,21 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
 
       switch (iParam) {
         case PARAM_REG_A:
-          CpuGetRegisters()->a = b;
+          cpu_get_registers()->a = b;
           break;
         case PARAM_REG_PC:
-          CpuGetRegisters()->pc = w;
-          g_nDisasmCurAddress = CpuGetRegisters()->pc;
+          cpu_get_registers()->pc = w;
+          g_nDisasmCurAddress = cpu_get_registers()->pc;
           DisasmCalcTopBotAddress();
           break;
         case PARAM_REG_SP:
-          CpuGetRegisters()->sp = b | 0x100;
+          cpu_get_registers()->sp = b | 0x100;
           break;
         case PARAM_REG_X:
-          CpuGetRegisters()->x = b;
+          cpu_get_registers()->x = b;
           break;
         case PARAM_REG_Y:
-          CpuGetRegisters()->y = b;
+          cpu_get_registers()->y = b;
           break;
         default:
           return Help_Arg_1(CMD_REGISTER_SET);
@@ -460,7 +460,7 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
     }
   }
 
-  //  g_nDisasmCurAddress = CpuGetRegisters()->pc;
+  //  g_nDisasmCurAddress = cpu_get_registers()->pc;
   //  DisasmCalcTopBotAddress();
 
   return UPDATE_ALL;  // 1
@@ -470,15 +470,15 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
 void OutputTraceLine() {
 #ifdef TODO  // Not supported for Linux yet
   DisasmLine_t line;
-  GetDisassemblyLine(CpuGetRegisters()->pc, line);
+  GetDisassemblyLine(cpu_get_registers()->pc, line);
 
   char sDisassembly[CONSOLE_WIDTH];  // DrawDisassemblyLine(
-                                     // 0,CpuGetRegisters()->pc, sDisassembly);
+                                     // 0,cpu_get_registers()->pc, sDisassembly);
                                      // // Get Disasm String
   FormatDisassemblyLine(line, sDisassembly, CONSOLE_WIDTH);
 
   char sFlags[_6502_NUM_FLAGS + 1];
-  DrawFlags(0, CpuGetRegisters()->ps, sFlags);  // Get Flags String
+  DrawFlags(0, cpu_get_registers()->ps, sFlags);  // Get Flags String
 
   if (!g_hTraceFile) return;
 
@@ -509,15 +509,15 @@ void OutputTraceLine() {
 
     fprintf(g_hTraceFile, "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
             g_nVideoClockVert, g_nVideoClockHorz, addr, data,
-            (unsigned)CpuGetRegisters()->a, (unsigned)CpuGetRegisters()->x,
-            (unsigned)CpuGetRegisters()->y, (unsigned)CpuGetRegisters()->sp,
+            (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
+            (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
             (char*)sFlags, sDisassembly
             //, sTarget // TODO: Show target?
     );
   } else {
     fprintf(g_hTraceFile, "%02X %02X %02X %04X %s  %s\n",
-            (unsigned)CpuGetRegisters()->a, (unsigned)CpuGetRegisters()->x,
-            (unsigned)CpuGetRegisters()->y, (unsigned)CpuGetRegisters()->sp,
+            (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
+            (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
             (char*)sFlags, sDisassembly
             //, sTarget // TODO: Show target?
     );
@@ -550,8 +550,8 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
               // on the same invalid opcode
 
   if (g_nDebugSkipLen > 0) {
-    if ((CpuGetRegisters()->pc >= g_nDebugSkipStart) &&
-        (CpuGetRegisters()->pc < (g_nDebugSkipStart + g_nDebugSkipLen))) {
+    if ((cpu_get_registers()->pc >= g_nDebugSkipStart) &&
+        (cpu_get_registers()->pc < (g_nDebugSkipStart + g_nDebugSkipLen))) {
       // Enter turbo debugger mode -- UI not updated, etc.
       g_nDebugSteps = -1;
       g_state.mode = MODE_STEPPING;
@@ -572,8 +572,8 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
 
       g_bDebugBreakpointHit = BP_HIT_NONE;
 
-      if (MemIsAddrCodeMemory(CpuGetRegisters()->pc)) {
-        uint8_t nOpcode = *(mem + CpuGetRegisters()->pc);
+      if (mem_is_addr_code_memory(cpu_get_registers()->pc)) {
+        uint8_t nOpcode = *(mem + cpu_get_registers()->pc);
 
         // Update profiling stats
         int nOpmode = g_aOpcodes[nOpcode].nAddressMode;

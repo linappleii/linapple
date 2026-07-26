@@ -82,7 +82,7 @@ auto ExecuteCommand(int nArgs) -> Update_t
       {
         char sText[CONSOLE_WIDTH];
         sprintf(sText, "Unknown command: %s", g_aArgs[0].sArg);
-        bUpdateDisplay |= ConsoleDisplayError(sText);
+        bUpdateDisplay |= console_display_error(sText);
       }
     }
   }
@@ -130,7 +130,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
     if (nArgs == ARG_SYNTAX_ERROR)
     {
       sprintf(sText, "Syntax error: %s", g_aArgs[0].sArg);
-      bUpdateDisplay |= ConsoleDisplayError(sText);
+      bUpdateDisplay |= console_display_error(sText);
     }
     else if (nArgs > 0)
     {
@@ -186,7 +186,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"U", CmdUnassemble, CMD_UNASSEMBLE, "Disassemble instructions"},
 //		{"WAIT"        , CmdWait              , CMD_WAIT                 , "Run until
 	// Bookmarks
-		{"BM", CmdBookmark, CMD_BOOKMARK, "Alias for BMA (Bookmark Add)"},
+		{"BM", CmdBookmark, CMD_BOOKMARK, "Alias for BMA (Bookmark_t Add)"},
 		{"BMA", CmdBookmarkAdd, CMD_BOOKMARK_ADD, "Add/Update addess to bookmark"},
 		{"BMC", CmdBookmarkClear, CMD_BOOKMARK_CLEAR, "Clear (remove) bookmark"},
 		{"BML", CmdBookmarkList, CMD_BOOKMARK_LIST, "List all bookmarks"},

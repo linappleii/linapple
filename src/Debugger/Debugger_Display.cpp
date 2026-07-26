@@ -32,8 +32,8 @@ enum { DEBUG_FORCE_DISPLAY = 0 };
 
 // Globals __________________________________________________________________
 
-VideoSurface* g_debug_screen = nullptr;
-VideoSurface* g_hDebugCharset = nullptr;
+VideoSurface_t* g_debug_screen = nullptr;
+VideoSurface_t* g_hDebugCharset = nullptr;
 
 ColorRef_t g_hConsoleBrushFG = WHITE;
 ColorRef_t g_hConsoleBrushBG = BLACK;
@@ -53,7 +53,7 @@ extern WindowSplit_t g_aWindowConfig[NUM_WINDOWS];
 extern int g_nDisasmWinHeight;
 extern int g_nConsoleDisplayLines;
 int g_nDisplayMemoryLines = 8;
-VideoScannerDisplayInfo g_videoScannerDisplayInfo;
+VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
 
 // Prototypes _______________________________________________________________
 
@@ -75,31 +75,31 @@ const int DISPLAY_DISASM_RIGHT = 353;
 #define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
                    DST_H)                                                     \
   {                                                                           \
-    VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
-    VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
-    VideoSoftStretch(SRC, &srcrect, DST, &dstrect);                           \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
+    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                           \
   }
 
 #define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
                         DST_W, DST_H)                                       \
   {                                                                         \
-    VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    VideoSoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);  \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
+    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);  \
   }
 
 //===========================================================================
 
 void AllocateDebuggerMemDC() {
   if (!g_debug_screen) {
-    g_debug_screen = VideoCreateSurface(560, 384, 1);
+    g_debug_screen = video_create_surface(560, 384, 1);
     if (g_debug_screen) {
-      VideoColor* pal = VideoGetOutputPalette();
+      VideoColor_t* pal = video_get_output_palette();
       if (pal) {
-        memcpy(g_debug_screen->palette, pal, 256 * sizeof(VideoColor));
+        memcpy(g_debug_screen->palette, pal, 256 * sizeof(VideoColor_t));
       }
     }
-    g_hDebugCharset = VideoLoadXPM(charset40_xpm);
+    g_hDebugCharset = video_load_xpm(charset40_xpm);
   }
 }
 
@@ -366,7 +366,7 @@ void DrawConsoleInput() {
 
   // Clear rest of line
   DebuggerSetColorFG(BLACK);
-  VideoRect r{};
+  VideoRect_t r{};
   r.x = g_aWindowConfig[WINDOW_CONSOLE].left +
         (g_nConsoleInputChars + g_nConsolePromptLen + 1) * APPLE_FONT_WIDTH;
   r.y = g_aWindowConfig[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT;

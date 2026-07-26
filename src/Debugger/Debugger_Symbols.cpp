@@ -89,7 +89,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //===========================================================================
 void PrintCurrentPath()
 {
-	ConsoleDisplayError( g_state.sProgramDir.data() );
+	console_display_error( g_state.sProgramDir.data() );
 }
 
 auto PrintSymbolInvalidTable() -> Update_t
@@ -119,8 +119,8 @@ auto PrintSymbolInvalidTable() -> Update_t
 		strcat( sText, sTemp );
 	}
 
-//	return ConsoleDisplayError( sText );
-	ConsolePrint( sText );
+//	return console_display_error( sText );
+	console_print( sText );
 	return ConsoleUpdate();
 }
 
@@ -349,13 +349,13 @@ auto CmdSymbolsInfo (int nArgs) -> Update_t
 			int nDst = ConsoleColor_StringLength( sText );
 			if((nDst + nLen) > CONSOLE_WIDTH )
 			{
-				ConsolePrint( sText );
+				console_print( sText );
 				strcpy( sText, sIndent ); // Indent new line
 			}
 			strcat( sText, sTemp );
 		}
 	}
-	ConsolePrint( sText );
+	console_print( sText );
 
 	return ConsoleUpdate();
 }
@@ -509,7 +509,7 @@ auto _CmdSymbolsListTables (int nArgs, int bSymbolTables ) -> Update_t
 						}
 					}
 					CmdSymbolsInfoHeader( iTable, sText );
-					ConsolePrint( sText );
+					console_print( sText );
 				}
 			}
 		}
@@ -586,7 +586,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 	if( !hFile && g_bSymbolsDisplayMissingFile )
 	{
 		// TODO: print filename! Bug #242 Help file (.chm) description for "Symbols" #242
-		ConsoleDisplayError( "Symbol File not found:" );
+		console_display_error( "Symbol File not found:" );
 		PrintCurrentPath();
 		nSymbolsLoaded = -1; // HACK: ERROR: FILE NOT EXIST
 	}
@@ -991,7 +991,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 						//	, CHC_NUM_DEC, g_nSymbolsLoaded
 						//);
 						CmdSymbolsInfoHeader( iTable, sText, g_nSymbolsLoaded );
-						ConsolePrint( sText );
+						console_print( sText );
 					}
 				}
 				else
@@ -1014,7 +1014,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 				if (iTable != NUM_SYMBOL_TABLES)
 				{
 					CmdSymbolsInfoHeader( iTable, sText );
-					ConsolePrint( sText );
+					console_print( sText );
 				}
 				return ConsoleUpdate() | UPDATE_DISASM;
 			}
@@ -1026,7 +1026,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 				if (iTable != NUM_SYMBOL_TABLES)
 				{
 					CmdSymbolsInfoHeader( iTable, sText );
-					ConsolePrint( sText );
+					console_print( sText );
 				}
 				return ConsoleUpdate() | UPDATE_DISASM;
 			}

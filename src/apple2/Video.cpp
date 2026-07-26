@@ -93,17 +93,17 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 #define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
                    DST_H)                                                     \
   {                                                                           \
-    VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
-    VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
-    VideoSoftStretch(SRC, &srcrect, DST, &dstrect);                           \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
+    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                           \
   }
 
 #define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
                         DST_W, DST_H)                                       \
   {                                                                         \
-    VideoRect srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    VideoSoftStretchMono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);         \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
+    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);         \
   }
 
 #define SETSOURCEPIXEL(x, y, c) g_aSourceStartofLine[(y)][(x)] = (c)
@@ -135,9 +135,9 @@ static uint8_t celldirty[TEXT_COLUMNS][DIRTY_CELL_ROWS];
 static uint32_t
     customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
-VideoSurface* g_hDeviceBitmap;
+VideoSurface_t* g_hDeviceBitmap;
 static uint8_t* framebufferbits;
-VideoColor framebufferinfo[MAX_PALETTE_SIZE];
+VideoColor_t framebufferinfo[MAX_PALETTE_SIZE];
 
 auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
 
@@ -146,18 +146,18 @@ static uint8_t* frameoffsettable[VIDEO_HEIGHT];
 static uint8_t* g_pHiresBank1;
 static uint8_t* g_pHiresBank0;
 
-VideoSurface* g_hLogoBitmap = nullptr;
-VideoSurface* charset40 = nullptr;
+VideoSurface_t* g_hLogoBitmap = nullptr;
+VideoSurface_t* charset40 = nullptr;
 int multi_language_charset = false;
 
-VideoSurface* g_hStatusSurface = nullptr;
+VideoSurface_t* g_hStatusSurface = nullptr;
 int g_iStatusCycle = 0;
 
-VideoSurface* g_origscreen = nullptr;
-VideoSurface* g_hSourceBitmap = nullptr;
+VideoSurface_t* g_origscreen = nullptr;
+VideoSurface_t* g_hSourceBitmap = nullptr;
 
 static uint8_t* g_pSourcePixels;
-VideoColor g_pSourceHeader[MAX_PALETTE_SIZE];
+VideoColor_t g_pSourceHeader[MAX_PALETTE_SIZE];
 const int MAX_SOURCE_Y = 512 * 2;
 static uint8_t* g_aSourceStartofLine[MAX_SOURCE_Y];
 static uint8_t* g_pTextBank1;
@@ -203,8 +203,8 @@ auto DrawLoResSource() -> void;
 auto DrawMonoDHiResSource() -> void;
 auto DrawMonoHiResSource() -> void;
 auto DrawMonoLoResSource() -> void;
-auto DrawMonoTextSource(VideoSurface* dc) -> void;
-auto DrawTextSource(VideoSurface* dc) -> void;
+auto DrawMonoTextSource(VideoSurface_t* dc) -> void;
+auto DrawTextSource(VideoSurface_t* dc) -> void;
 
 auto VideoInitWorker() -> bool;
 
@@ -246,7 +246,7 @@ void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
 }
 
 void CreateIdentityPalette() {
-  memset(framebufferinfo, 0, MAX_PALETTE_SIZE * sizeof(VideoColor));
+  memset(framebufferinfo, 0, MAX_PALETTE_SIZE * sizeof(VideoColor_t));
   SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
   SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
   SETFRAMECOLOR(BROWN, 0x80, 0x50, 0x00);
@@ -312,17 +312,17 @@ void CreateDIBSections() {
   g_video_draw_mutex.lock();
 
   memcpy(g_pSourceHeader, framebufferinfo,
-         MAX_PALETTE_SIZE * sizeof(VideoColor));
+         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
 
   if (g_hDeviceBitmap) {
-    VideoDestroySurface(g_hDeviceBitmap);
+    video_destroy_surface(g_hDeviceBitmap);
   }
-  g_hDeviceBitmap = VideoCreateSurface(VIDEO_WIDTH, VIDEO_HEIGHT, 1);
+  g_hDeviceBitmap = video_create_surface(VIDEO_WIDTH, VIDEO_HEIGHT, 1);
 
   if (g_origscreen) {
-    VideoDestroySurface(g_origscreen);
+    video_destroy_surface(g_origscreen);
   }
-  g_origscreen = VideoCreateSurface(static_cast<int>(g_state.ScreenWidth),
+  g_origscreen = video_create_surface(static_cast<int>(g_state.ScreenWidth),
                                     static_cast<int>(g_state.ScreenHeight), 1);
 
   if (g_hDeviceBitmap == nullptr || g_origscreen == nullptr) {
@@ -333,23 +333,23 @@ void CreateDIBSections() {
 
   framebufferbits = g_hDeviceBitmap->pixels;
   memcpy(g_hDeviceBitmap->palette, g_pSourceHeader,
-         MAX_PALETTE_SIZE * sizeof(VideoColor));
+         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
   memcpy(g_origscreen->palette, g_pSourceHeader,
-         MAX_PALETTE_SIZE * sizeof(VideoColor));
+         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
 
   if (g_hStatusSurface) {
-    VideoDestroySurface(g_hStatusSurface);
+    video_destroy_surface(g_hStatusSurface);
   }
-  g_hStatusSurface = VideoCreateSurface(STATUS_PANEL_W, STATUS_PANEL_H, 1);
+  g_hStatusSurface = video_create_surface(STATUS_PANEL_W, STATUS_PANEL_H, 1);
   if (g_hStatusSurface == nullptr) {
     fprintf(stderr, "g_hStatusSurface was not created\n");
     g_video_draw_mutex.unlock();
     return;
   }
   memcpy(g_hStatusSurface->palette, g_pSourceHeader,
-         MAX_PALETTE_SIZE * sizeof(VideoColor));
+         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
 
-  VideoRect srect{};
+  VideoRect_t srect{};
   uint8_t mybluez = DARK_BLUE;
   uint8_t myyell = YELLOW;
 
@@ -374,9 +374,9 @@ void CreateDIBSections() {
     font_print(74, text_y, "HDD", g_hStatusSurface, scale_x, scale_y);
   }
   if (g_hSourceBitmap) {
-    VideoDestroySurface(g_hSourceBitmap);
+    video_destroy_surface(g_hSourceBitmap);
   }
-  g_hSourceBitmap = VideoCreateSurface(SRCOFFS_TOTAL, MAX_SOURCE_Y, 1);
+  g_hSourceBitmap = video_create_surface(SRCOFFS_TOTAL, MAX_SOURCE_Y, 1);
   if (g_hSourceBitmap == nullptr) {
     fprintf(stderr, "g_hSourceBitmap was not created\n");
     g_video_draw_mutex.unlock();
@@ -384,7 +384,7 @@ void CreateDIBSections() {
   }
 
   g_pSourcePixels = g_hSourceBitmap->pixels;
-  memcpy(g_hSourceBitmap->palette, framebufferinfo, 256 * sizeof(VideoColor));
+  memcpy(g_hSourceBitmap->palette, framebufferinfo, 256 * sizeof(VideoColor_t));
 
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_aSourceStartofLine[y] =
@@ -807,7 +807,7 @@ void DrawMonoLoResSource() {
   }
 }
 
-void DrawMonoTextSource(VideoSurface* hDstDC) {
+void DrawMonoTextSource(VideoSurface_t* hDstDC) {
   if (charset40 == nullptr) {
     return;
   }
@@ -857,7 +857,7 @@ void DrawMonoTextSource(VideoSurface* hDstDC) {
   }
 }
 
-void DrawTextSource(VideoSurface* dc) {
+void DrawTextSource(VideoSurface_t* dc) {
   if (charset40 == nullptr) {
     return;
   }
@@ -1241,27 +1241,27 @@ auto UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset)
   return false;
 }
 
-auto LoadCharset() -> VideoSurface* {
-  VideoSurface* result = nullptr;
+auto LoadCharset() -> VideoSurface_t* {
+  VideoSurface_t* result = nullptr;
 
   if ((g_Apple2Type == A2TYPE_APPLE2) || (g_Apple2Type == A2TYPE_APPLE2PLUS)) {
     // character bitmap for II and IIplus
-    result = VideoLoadXPM(charset40_IIplus_xpm);
+    result = video_load_xpm(charset40_IIplus_xpm);
   } else {
     switch (g_Language) {
       case A2LANG_UK:
-        result = VideoLoadXPM(charset40_british_xpm);
+        result = video_load_xpm(charset40_british_xpm);
         break;
       case A2LANG_FR:
-        result = VideoLoadXPM(charset40_french_xpm);
+        result = video_load_xpm(charset40_french_xpm);
         break;
       case A2LANG_DE:
-        result = VideoLoadXPM(charset40_german_xpm);
+        result = video_load_xpm(charset40_german_xpm);
         break;
       case A2LANG_US:  // fall-through
       default:
         // character bitmap for IIe and enhanced
-        result = VideoLoadXPM(charset40_xpm);
+        result = video_load_xpm(charset40_xpm);
     }
   }
 
@@ -1301,7 +1301,7 @@ auto video_apparently_dirty() -> bool {
 
   // Scan visible text page for any flashing chars
   if ((SW_TEXT || SW_MIXED) && (g_nAltCharSetOffset == 0)) {
-    uint8_t* pnMemText = MemGetMainPtr(0x400 << displaypage2);
+    uint8_t* pnMemText = mem_get_main_ptr(0x400 << displaypage2);
 
     // Scan 8 long-lines of 120 chars (at 128 char offsets):
     // . Skip 8-char holes in TEXT
@@ -1339,7 +1339,7 @@ auto video_benchmark() -> void {
   uint32_t totaltextfps = 0;
   g_uVideoMode = VF_TEXT;
   memset(mem + 0x400, 0x14, 0x400);
-  VideoRedrawScreen();
+  video_redraw_screen();
   auto milliseconds = static_cast<uint32_t>(GetTickCount());
   while (GetTickCount() == milliseconds);
   milliseconds = static_cast<uint32_t>(GetTickCount());
@@ -1350,7 +1350,7 @@ auto video_benchmark() -> void {
     } else {
       memcpy(mem + 0x400, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x400);
     }
-    VideoRefreshScreen();
+    video_refresh_screen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
@@ -1360,7 +1360,7 @@ auto video_benchmark() -> void {
   uint32_t totalhiresfps = 0;
   g_uVideoMode = VF_HIRES;
   memset(mem + 0x2000, 0x14, 0x2000);
-  VideoRedrawScreen();
+  video_redraw_screen();
   milliseconds = static_cast<uint32_t>(GetTickCount());
   while (GetTickCount() == milliseconds);
   milliseconds = static_cast<uint32_t>(GetTickCount());
@@ -1371,25 +1371,25 @@ auto video_benchmark() -> void {
     } else {
       memcpy(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
     }
-    VideoRefreshScreen();
+    video_refresh_screen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
     totalhiresfps++;
   } while (GetTickCount() - milliseconds < 1000);
 
-  CpuSetupBenchmark();
+  cpu_setup_benchmark();
   uint32_t totalmhz10 = 0;
   milliseconds = static_cast<uint32_t>(GetTickCount());
   while (GetTickCount() == milliseconds);
   milliseconds = static_cast<uint32_t>(GetTickCount());
   cycle = 0;
   do {
-    CpuExecute(100000);
+    cpu_execute(100000);
     totalmhz10++;
   } while (GetTickCount() - milliseconds < 1000);
 
-  if ((CpuGetRegisters()->pc < 0x300) || (CpuGetRegisters()->pc > 0x400)) {
+  if ((cpu_get_registers()->pc < 0x300) || (cpu_get_registers()->pc > 0x400)) {
     printf(
         "The emulator has detected a problem while running the CPU "
         "benchmark.\n");
@@ -1398,12 +1398,12 @@ auto video_benchmark() -> void {
     uint16_t lastpc = 0x300;
     int loop = 0;
     while ((loop < 10000) && !error) {
-      CpuSetupBenchmark();
-      CpuExecute(loop);
-      if ((CpuGetRegisters()->pc < 0x300) || (CpuGetRegisters()->pc > 0x400)) {
+      cpu_setup_benchmark();
+      cpu_execute(loop);
+      if ((cpu_get_registers()->pc < 0x300) || (cpu_get_registers()->pc > 0x400)) {
         error = true;
       } else {
-        lastpc = CpuGetRegisters()->pc;
+        lastpc = cpu_get_registers()->pc;
         ++loop;
       }
     }
@@ -1415,7 +1415,7 @@ auto video_benchmark() -> void {
       printf("Prior to the error, the program counter was at $%04X.\n",
              static_cast<unsigned>(lastpc));
       printf(" After the error, it had jumped to $%04X.\n",
-             static_cast<unsigned>(CpuGetRegisters()->pc));
+             static_cast<unsigned>(cpu_get_registers()->pc));
     } else {
       printf(
           "The emulator was unable to locate the exact point of the error.\n");
@@ -1424,7 +1424,7 @@ auto video_benchmark() -> void {
 
   uint32_t realisticfps = 0;
   memset(mem + 0x2000, 0xAA, 0x2000);
-  VideoRedrawScreen();
+  video_redraw_screen();
   milliseconds = static_cast<uint32_t>(GetTickCount());
   while (GetTickCount() == milliseconds);
   milliseconds = static_cast<uint32_t>(GetTickCount());
@@ -1433,9 +1433,9 @@ auto video_benchmark() -> void {
     if (realisticfps < 10) {
       int cycles = 100000;
       while (cycles > 0) {
-        uint32_t executedcycles = CpuExecute(static_cast<uint32_t>(103));
+        uint32_t executedcycles = cpu_execute(static_cast<uint32_t>(103));
         cycles -= executedcycles;
-        VideoUpdateVbl(0);
+        video_update_vbl(0);
       }
     }
     if (cycle & 1) {
@@ -1443,7 +1443,7 @@ auto video_benchmark() -> void {
     } else {
       memcpy(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
     }
-    VideoRefreshScreen();
+    video_refresh_screen();
     if (cycle++ >= 3) {
       cycle = 0;
     }
@@ -1460,7 +1460,7 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
                       uint32_t nCyclesLeft) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
-    return MemReadFloatingBus(SW_DHIRES != 0, nCyclesLeft);
+    return mem_read_floating_bus(SW_DHIRES != 0, nCyclesLeft);
   } else {
     bool result = false;
     switch (address) {
@@ -1483,7 +1483,7 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
         result = SW_DHIRES;
         break;
     }
-    return (MemReadFloatingBus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0);
+    return (mem_read_floating_bus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0);
   }
 }
 
@@ -1500,7 +1500,7 @@ auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft)
     -> uint8_t {
   bool bVblBar = false;
   video_get_scanner_address(&bVblBar, nCyclesLeft);
-  uint8_t r = MemReadFloatingBus(nCyclesLeft);
+  uint8_t r = mem_read_floating_bus(nCyclesLeft);
   return static_cast<uint8_t>((r & ~0x80) | ((bVblBar) ? 0x80 : 0));
 }
 
@@ -1518,43 +1518,43 @@ auto video_destroy() -> void {
 
   vidlastmem.reset();
   if (g_hDeviceBitmap) {
-    VideoDestroySurface(g_hDeviceBitmap);
+    video_destroy_surface(g_hDeviceBitmap);
   }
   g_hDeviceBitmap = nullptr;
 
   if (g_origscreen) {
-    VideoDestroySurface(g_origscreen);
+    video_destroy_surface(g_origscreen);
   }
   g_origscreen = nullptr;
 
   if (g_hStatusSurface) {
-    VideoDestroySurface(g_hStatusSurface);
+    video_destroy_surface(g_hStatusSurface);
   }
   g_hStatusSurface = nullptr;
 
   if (g_hSourceBitmap) {
-    VideoDestroySurface(g_hSourceBitmap);
+    video_destroy_surface(g_hSourceBitmap);
   }
   g_hSourceBitmap = nullptr;
 
   if (g_hLogoBitmap && (g_hLogoBitmap != assets->splash)) {
-    VideoDestroySurface(g_hLogoBitmap);
+    video_destroy_surface(g_hLogoBitmap);
   }
   g_hLogoBitmap = nullptr;
 
   if (charset40) {
-    VideoDestroySurface(charset40);
+    video_destroy_surface(charset40);
   }
   charset40 = nullptr;
 
   if (font_sfc && (font_sfc != assets->font)) {
-    VideoDestroySurface(font_sfc);
+    video_destroy_surface(font_sfc);
   }
   font_sfc = nullptr;
 }
 
 auto video_display_logo() -> void {
-  VideoRect drect{}, srect{};
+  VideoRect_t drect{}, srect{};
 
   if (!g_hLogoBitmap) {
     return;
@@ -1570,7 +1570,7 @@ auto video_display_logo() -> void {
   drect.h = 384;  // Standard output height
 
   if (g_hDeviceBitmap) {
-    VideoSoftStretch(g_hLogoBitmap, &srect, g_hDeviceBitmap, &drect);
+    video_soft_stretch(g_hLogoBitmap, &srect, g_hDeviceBitmap, &drect);
   }
 }
 
@@ -1664,8 +1664,8 @@ auto video_redraw_screen() -> void {
 }
 
 void VideoUpdateOutputBuffer() {
-  VideoRect s = {0, 0, 560, 384};
-  VideoSurface dst{};
+  VideoRect_t s = {0, 0, 560, 384};
+  VideoSurface_t dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_pVideoOutput);
   dst.w = 560;
   dst.h = 384;
@@ -1675,14 +1675,14 @@ void VideoUpdateOutputBuffer() {
   if (!g_hDeviceBitmap) return;
 
   // Convert internal INDEX8 bitmap to RGB32 output buffer
-  VideoSoftStretch(g_hDeviceBitmap, &s, &dst, &s);
+  video_soft_stretch(g_hDeviceBitmap, &s, &dst, &s);
 
   // If status panel is visible, overlay it
   if (g_iStatusCycle > 0 && g_ShowLeds && g_hStatusSurface) {
-    VideoRect ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoRect ds = {560 - STATUS_PANEL_W - 5, 384 - STATUS_PANEL_H - 5,
+    VideoRect_t ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
+    VideoRect_t ds = {560 - STATUS_PANEL_W - 5, 384 - STATUS_PANEL_H - 5,
                     STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoSoftStretch(g_hStatusSurface, &ss, &dst, &ds);
+    video_soft_stretch(g_hStatusSurface, &ss, &dst, &ds);
   }
 }
 
@@ -1716,21 +1716,21 @@ auto video_perform_refresh() -> void {
   CreateFrameOffsetTable(addr, pitch);
 
   if (g_singlethreaded) {
-    g_pHiresBank1 = MemGetAuxPtr(0x2000 << displaypage2_latched);
-    g_pHiresBank0 = MemGetMainPtr(0x2000 << displaypage2_latched);
-    g_pTextBank1 = MemGetAuxPtr(0x0400 << displaypage2_latched);
-    g_pTextBank0 = MemGetMainPtr(0x0400 << displaypage2_latched);
+    g_pHiresBank1 = mem_get_aux_ptr(0x2000 << displaypage2_latched);
+    g_pHiresBank0 = mem_get_main_ptr(0x2000 << displaypage2_latched);
+    g_pTextBank1 = mem_get_aux_ptr(0x0400 << displaypage2_latched);
+    g_pTextBank0 = mem_get_main_ptr(0x0400 << displaypage2_latched);
   } else {
     // One-level pipelining to allow CPU emulation to run concurrently without
     // display glitches.
-    memcpy(display_pipeline_, MemGetAuxPtr(0x2000 << displaypage2_latched),
+    memcpy(display_pipeline_, mem_get_aux_ptr(0x2000 << displaypage2_latched),
            0x2000);
     memcpy(display_pipeline_ + 0x2000,
-           MemGetMainPtr(0x2000 << displaypage2_latched), 0x2000);
+           mem_get_main_ptr(0x2000 << displaypage2_latched), 0x2000);
     memcpy(display_pipeline_ + 0x4000,
-           MemGetAuxPtr(0x0400 << displaypage2_latched), 0x0400);
+           mem_get_aux_ptr(0x0400 << displaypage2_latched), 0x0400);
     memcpy(display_pipeline_ + 0x4400,
-           MemGetMainPtr(0x0400 << displaypage2_latched), 0x0400);
+           mem_get_main_ptr(0x0400 << displaypage2_latched), 0x0400);
 
     g_pHiresBank1 = reinterpret_cast<uint8_t*>(display_pipeline_);
     g_pHiresBank0 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x2000;
@@ -1915,7 +1915,7 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
     video_refresh_screen();
   }
 
-  return MemReadFloatingBus(nCyclesLeft);
+  return mem_read_floating_bus(nCyclesLeft);
 }
 
 static uint32_t g_dwVideoCyclesInFrame = 0;
@@ -1987,7 +1987,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   // machine state switches
   int nHires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
   int nPage2 = (SW_PAGE2) ? 1 : 0;
-  int n80Store = (MemGet80Store()) ? 1 : 0;
+  int n80Store = (mem_get_80store()) ? 1 : 0;
 
   // calculate video parameters according to display standard
   int nScanLines = g_state.bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
@@ -2094,60 +2094,3 @@ auto video_get_vbl(const uint32_t uExecutedCycles) -> bool {
 // cppcoreguidelines-use-enum-class, google-readability-casting,
 // modernize-avoid-c-style-cast)
 
-// Legacy Forwarding Functions
-auto VideoGetOutputBuffer() -> uint32_t* { return video_get_output_buffer(); }
-auto VideoGetOutputPalette() -> VideoColor_t* {
-  return video_get_output_palette();
-}
-auto CreateColorMixMap() -> void { video_create_color_mix_map(); }
-auto VideoApparentlyDirty() -> bool { return video_apparently_dirty(); }
-auto VideoBenchmark() -> void { video_benchmark(); }
-auto VideoCheckPage(bool b) -> void { video_check_page(b); }
-auto VideoChooseColor() -> void { video_choose_color(); }
-auto VideoDestroy() -> void { video_destroy(); }
-auto VideoDisplayLogo() -> void { video_display_logo(); }
-auto VideoHasRefreshed() -> bool { return video_has_refreshed(); }
-auto VideoInitialize() -> void { video_initialize(); }
-auto VideoRealizePalette() -> void { video_realize_palette(); }
-auto VideoSetNextScheduledUpdate() -> void {
-  video_set_next_scheduled_update();
-}
-auto VideoRedrawScreen() -> void { video_redraw_screen(); }
-auto VideoRefreshScreen(uint32_t m, bool r) -> void {
-  video_refresh_screen(m, r);
-}
-auto VideoPerformRefresh() -> void { video_perform_refresh(); }
-auto VideoReinitialize() -> void { video_reinitialize(); }
-auto VideoResetState() -> void { video_reset_state(); }
-auto VideoGetScannerAddress(bool* out, uint32_t cycles) -> uint16_t {
-  return video_get_scanner_address(out, cycles);
-}
-auto VideoGetVbl(uint32_t cycles) -> bool { return video_get_vbl(cycles); }
-auto VideoUpdateVbl(uint32_t cycles) -> void { video_update_vbl(cycles); }
-auto VideoUpdateFlash() -> void { video_update_flash(); }
-auto VideoGetSW80COL() -> bool { return video_get_sw_80col(); }
-auto VideoGetSWDHIRES() -> bool { return video_get_sw_dhires(); }
-auto VideoGetSWHIRES() -> bool { return video_get_sw_hires(); }
-auto VideoGetSW80STORE() -> bool { return video_get_sw_80store(); }
-auto VideoGetSWMIXED() -> bool { return video_get_sw_mixed(); }
-auto VideoGetSWPAGE2() -> bool { return video_get_sw_page2(); }
-auto VideoGetSWTEXT() -> bool { return video_get_sw_text(); }
-auto VideoGetSWAltCharSet() -> bool { return video_get_sw_alt_charset(); }
-auto VideoGetSnapshot(SS_IO_Video* ss) -> uint32_t {
-  return video_get_snapshot(ss);
-}
-auto VideoSetSnapshot(SS_IO_Video* ss) -> uint32_t {
-  return video_set_snapshot(ss);
-}
-auto VideoCheckMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d,
-                    uint32_t c) -> uint8_t {
-  return video_check_mode(pc, addr, w, d, c);
-}
-auto VideoCheckVbl(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
-    -> uint8_t {
-  return video_check_vbl(pc, addr, w, d, c);
-}
-auto VideoSetMode(uint16_t pc, uint16_t addr, uint8_t w, uint8_t d, uint32_t c)
-    -> uint8_t {
-  return video_set_mode(pc, addr, w, d, c);
-}

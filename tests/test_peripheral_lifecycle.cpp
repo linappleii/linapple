@@ -56,12 +56,12 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
     peripheral_register(&g_mock_peripheral, 1);
 
     // Verify it works
-    CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
+    CHECK(io_map_dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
     // 2. Re-init
     // The bug is that peripheral_manager_init calls clear_all_peripherals()
     // which frees instances, but hasn't yet zeroed g_num_direct_handlers.
-    // If we call IOMap_Dispatch after clear_all_peripherals() but before
+    // If we call io_map_dispatch after clear_all_peripherals() but before
     // g_num_direct_handlers = 0, we get a UAF or access to stale instance.
 
     peripheral_manager_init();
@@ -70,9 +70,9 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
     // In the buggy version, if we hadn't called the second part of Init,
     // this would hit the lambda with a stale instance or 0xDEADBEEF but g_mock_shutdown_called=true.
 
-    // Actually, IOMap_Dispatch should return floating bus (0) or default IO_Null if no handler is found.
-    // IO_Null returns MemReadFloatingBus which might be non-zero but usually predictable in tests.
-    uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
+    // Actually, io_map_dispatch should return floating bus (0) or default io_null if no handler is found.
+    // io_null returns mem_read_floating_bus which might be non-zero but usually predictable in tests.
+    uint8_t val = io_map_dispatch(0, 0xC000, 0, 0, 0);
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
 
@@ -85,7 +85,7 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
 
     // 1. Register
     peripheral_register(&g_mock_peripheral, 1);
-    CHECK(IOMap_Dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
+    CHECK(io_map_dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
     // 2. Unregister
     peripheral_unregister(1);
@@ -93,7 +93,7 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared when a peripheral 
     // After unregistering slot 1, the mock peripheral is gone.
     // Any direct IO handlers it registered should also be gone.
     // In the buggy version, the handler remains and will call the lambda with shutdown=true.
-    uint8_t val = IOMap_Dispatch(0, 0xC000, 0, 0, 0);
+    uint8_t val = io_map_dispatch(0, 0xC000, 0, 0, 0);
     CHECK(val != 0xAA);
     CHECK(val != 0xEE); // 0xEE would mean it called the old handler after shutdown
 

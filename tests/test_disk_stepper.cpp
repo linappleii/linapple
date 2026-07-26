@@ -54,7 +54,7 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
   // track model).
 
   // Step 1: Energize Phase 1
-  IOMap_Dispatch(0, STEPPER_ON + 2, 0, 0, 0);  // $C082 (PH1 ON)
+  io_map_dispatch(0, STEPPER_ON + 2, 0, 0, 0);  // $C082 (PH1 ON)
   peripheral_manager_think(0);
 
   // We should be at phase 1 (half track 0.5)
@@ -62,8 +62,8 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
   // Note: Internal track state isn't exposed in ABI, but we can verify via IO.
 
   // Step 2: Energize Phase 2, De-energize Phase 1
-  IOMap_Dispatch(0, STEPPER_ON + 4, 0, 0, 0);   // $C084 (PH2 ON)
-  IOMap_Dispatch(0, STEPPER_OFF + 2, 0, 0, 0);  // $C082 (PH1 OFF)
+  io_map_dispatch(0, STEPPER_ON + 4, 0, 0, 0);   // $C084 (PH2 ON)
+  io_map_dispatch(0, STEPPER_OFF + 2, 0, 0, 0);  // $C082 (PH1 OFF)
   peripheral_manager_think(0);
 
   // Now at phase 2 (track 1.0).
@@ -76,16 +76,16 @@ TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
   setup_disk_test();
 
   // Try to step backward from track 0
-  IOMap_Dispatch(0, STEPPER_ON + 6, 0, 0, 0);  // $C086 (PH3 ON)
+  io_map_dispatch(0, STEPPER_ON + 6, 0, 0, 0);  // $C086 (PH3 ON)
   peripheral_manager_think(0);
 
   // Should still be at phase 0 or clamping at 0.
 
   // Step far forward (beyond track 35)
   for (int i = 0; i < 80; ++i) {
-    IOMap_Dispatch(0, STEPPER_ON + ((i % 4) * 2) + 1, 0, 0, 0);
+    io_map_dispatch(0, STEPPER_ON + ((i % 4) * 2) + 1, 0, 0, 0);
     peripheral_manager_think(100);
-    IOMap_Dispatch(0, STEPPER_OFF + ((i % 4) * 2), 0, 0, 0);
+    io_map_dispatch(0, STEPPER_OFF + ((i % 4) * 2), 0, 0, 0);
   }
 
   // Should be clamped at track 34 (phase 69 in 1/2 track model, or track 35
@@ -98,18 +98,18 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   setup_disk_test();
 
   // 1. Enter Write Mode
-  IOMap_Dispatch(0, 0xC0EF, 0, 0, 0);  // $C08F (WRITE MODE)
+  io_map_dispatch(0, 0xC0EF, 0, 0, 0);  // $C08F (WRITE MODE)
 
   // 2. Write a unique byte to Track 0
-  IOMap_Dispatch(0, 0xC0ED, 1, 0xA5, 0);  // $C08D (LATCH = 0xA5)
-  IOMap_Dispatch(0, 0xC0EC, 0, 0, 0);     // $C08C (STROBE WRITE)
+  io_map_dispatch(0, 0xC0ED, 1, 0xA5, 0);  // $C08D (LATCH = 0xA5)
+  io_map_dispatch(0, 0xC0EC, 0, 0, 0);     // $C08C (STROBE WRITE)
 
   // 3. Step to Track 1
   // Sequence: PH1 ON, PH0 OFF, PH2 ON, PH1 OFF
-  IOMap_Dispatch(0, 0xC0E3, 0, 0, 0);  // PH1 ON
-  IOMap_Dispatch(0, 0xC0E0, 0, 0, 0);  // PH0 OFF
-  IOMap_Dispatch(0, 0xC0E5, 0, 0, 0);  // PH2 ON
-  IOMap_Dispatch(0, 0xC0E2, 0, 0, 0);  // PH1 OFF
+  io_map_dispatch(0, 0xC0E3, 0, 0, 0);  // PH1 ON
+  io_map_dispatch(0, 0xC0E0, 0, 0, 0);  // PH0 OFF
+  io_map_dispatch(0, 0xC0E5, 0, 0, 0);  // PH2 ON
+  io_map_dispatch(0, 0xC0E2, 0, 0, 0);  // PH1 OFF
   peripheral_manager_think(0);
 
   // The 'step_drive_head' function should have called 'write_track_to_driver'

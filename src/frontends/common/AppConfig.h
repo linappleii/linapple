@@ -9,12 +9,12 @@
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
-enum AppIntent { INTENT_RUN, INTENT_DIAGNOSTIC, INTENT_HELP, INTENT_ERROR };
+enum AppIntent_t { INTENT_RUN, INTENT_DIAGNOSTIC, INTENT_HELP, INTENT_ERROR };
 
 enum { ARGV_EXTRA_MAX = 64 };
 
-struct AppConfig {
-  AppIntent intent = INTENT_RUN;
+struct AppConfig_t {
+  AppIntent_t intent = INTENT_RUN;
   std::array<std::array<char, path_max_len>, disk_drive_count> szDiskPath = {};
   std::array<char, path_max_len> szProgramPath = {};
   std::array<char, path_max_len> szConfigPath = {};
@@ -44,12 +44,12 @@ struct AppConfig {
 };
 
 /**
- * Initialize AppConfig with default values.
+ * Initialize AppConfig_t with default values.
  * Note: Member initializers handle most defaults, this ensures parity for
  * existing calls.
  */
-inline void AppConfig_Default(AppConfig* pConfig) {
+inline void AppConfig_Default(AppConfig_t* pConfig) {
   if (pConfig) {
-    *pConfig = AppConfig{};
+    *pConfig = AppConfig_t{};
   }
 }

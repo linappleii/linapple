@@ -27,7 +27,7 @@ static bool g_bBudgetVideo = false;
 void set_budget_video(bool b) { g_bBudgetVideo = b; }
 auto get_budget_video() -> bool { return g_bBudgetVideo; }
 
-void SetCurrentCLK6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
+void set_current_clk_6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
 
 
 void SingleStep(bool bReinit) {
@@ -68,8 +68,8 @@ static void Frontend_SetWindowTitle(const char* title) {
   }
 }
 
-auto session_init(AppConfig* config) -> int {
-  if (AppController_Initialize(config) != 0) {
+auto session_init(AppConfig_t* config) -> int {
+  if (app_controller_initialize(config) != 0) {
     return 1;
   }
 

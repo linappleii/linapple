@@ -38,7 +38,7 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
-  return CpuGetCumulativeCycles();
+  return cpu_get_cumulative_cycles();
 }
 
 auto get_button_latch_duration() -> uint64_t {
@@ -72,12 +72,12 @@ auto joy_io_read_button(void* instance, uint16_t program_counter,
   (void)data_value;
 
   if (instance == nullptr) {
-    return MemReadFloatingBus(remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
 
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
-  uint8_t result = MemReadFloatingBus(remaining_cycles) & joy_bit_mask;
+  uint8_t result = mem_read_floating_bus(remaining_cycles) & joy_bit_mask;
   const int button_index = static_cast<int>(memory_address - addr_button0);
 
   if (button_index >= 0 && button_index < joystick_button_count) {
@@ -102,11 +102,11 @@ auto joy_io_read_position(void* instance, uint16_t program_counter,
   (void)data_value;
 
   if (instance == nullptr) {
-    return MemReadFloatingBus(remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
 
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
-  uint8_t result = MemReadFloatingBus(remaining_cycles) & joy_bit_mask;
+  uint8_t result = mem_read_floating_bus(remaining_cycles) & joy_bit_mask;
 
   const int paddle_index = static_cast<int>(memory_address & 0x03);
   const int joystick_index = paddle_index >> 1;
@@ -149,15 +149,15 @@ auto joy_io_reset_position(void* instance, uint16_t program_counter,
   (void)data_value;
 
   if (instance == nullptr) {
-    return MemReadFloatingBus(remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
 
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
-  CpuCalcCycles(remaining_cycles);
+  cpu_calc_cycles(remaining_cycles);
   joystick_peripheral->reset_cycle = get_cycles(joystick_peripheral->host);
 
-  return MemReadFloatingBus(remaining_cycles);
+  return mem_read_floating_bus(remaining_cycles);
 }
 
 static auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {

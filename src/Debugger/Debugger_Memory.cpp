@@ -162,7 +162,7 @@ auto _MemoryCheckMiniDump(int iWhich) -> bool {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText), "  Only %d memory mini dumps",
              NUM_MEM_MINI_DUMPS);
-    ConsoleDisplayError(sText);
+    console_display_error(sText);
     return true;
   }
   return false;
@@ -634,7 +634,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
       std::string(g_state.sCurrentDir.data()) +
       g_sMemoryLoadSaveFileName;  // TODO: g_sDebugDir
 
-  uint8_t* const pMemBankBase = bBankSpecified ? MemGetBankPtr(nBank) : mem;
+  uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
   if (!pMemBankBase) {
     ConsoleBufferPush("error: Bank out of range.");
     return ConsoleUpdate();
@@ -664,7 +664,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     }
 
     if (bBankSpecified) {
-      MemUpdatePaging(true, false);
+      mem_update_paging(true, false);
     } else {
       for (uint16_t i = (nAddressStart >> 8);
            i != ((nAddressStart + static_cast<uint16_t>(nAddressLen)) >> 8);
@@ -981,7 +981,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       sLoadSaveFilePath += g_sMemoryLoadSaveFileName;
 
       const uint8_t* const pMemBankBase =
-          bBankSpecified ? MemGetBankPtr(nBank) : mem;
+          bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
       if (!pMemBankBase) {
         ConsoleBufferPush("error: Bank out of range.");
         return ConsoleUpdate();
@@ -1117,9 +1117,9 @@ auto Util_GetTextScreen(char*& pText_) -> size_t {
   g_nTextScreen = 0;
   memset(pBeg, 0, sizeof(g_aTextScreen));
 
-  uint32_t uBank2 = VideoGetSWPAGE2() ? 1 : 0;
-  uint8_t* g_pTextBank1 = MemGetAuxPtr(0x400 << uBank2);
-  uint8_t* g_pTextBank0 = MemGetMainPtr(0x400 << uBank2);
+  uint32_t uBank2 = video_get_sw_page2() ? 1 : 0;
+  uint8_t* g_pTextBank1 = mem_get_aux_ptr(0x400 << uBank2);
+  uint8_t* g_pTextBank0 = mem_get_main_ptr(0x400 << uBank2);
 
   for (int y = 0; y < 24; y++) {
     // nAddressStart = 0x400 + (y%8)*0x80 + (y/8)*0x28;
@@ -1130,7 +1130,7 @@ auto Util_GetTextScreen(char*& pText_) -> size_t {
     {
       char c = 0;  // TODO: FormatCharTxtCtrl() ?
 
-      if (VideoGetSW80COL()) {  // AUX
+      if (video_get_sw_80col()) {  // AUX
         c = g_pTextBank1[nAddressStart] & 0x7F;
         c = RemapChar(c);
         *pEnd++ = c;
@@ -1738,7 +1738,7 @@ auto CmdTextSave(int nArgs) -> int {
   if (bHaveFileName) {
     g_sMemoryLoadSaveFileName = g_aArgs[1].sArg;
   } else {
-    if (VideoGetSW80COL()) {
+    if (video_get_sw_80col()) {
       g_sMemoryLoadSaveFileName = "AppleWin_Text80.txt";
     } else {
       g_sMemoryLoadSaveFileName = "AppleWin_Text40.txt";
@@ -1913,7 +1913,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
       if ((nLineLen + nLen) > (g_nConsoleDisplayWidth - 1))  // CONSOLE_WIDTH
       {
         // ConsoleDisplayPush( sMatches );
-        ConsolePrint(sMatches);
+        console_print(sMatches);
         strcpy(sMatches, sResult);
         nLineLen = nLen;
       } else {
@@ -1923,7 +1923,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
 
       iFound++;
     }
-    ConsolePrint(sMatches);
+    console_print(sMatches);
   }
 
   //  wsprintf( sMatches, "Total: %d  (#$%04X)", nFound, nFound );
@@ -1953,7 +1953,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   StringCat(sResult, CHC_ARG_SEP, nBuf);
   nLen += StringCat(sResult, ")", nBuf);
 
-  ConsolePrint(sResult);
+  console_print(sResult);
 
   // g_vMemorySearchResults is cleared in debug_end()
 
@@ -1977,7 +1977,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
   if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
     nAddressEnd = tEndLen.nAddressEnd;
     nAddressLen = tEndLen.nAddressLen;
-    return ConsoleDisplayError(
+    return console_display_error(
         "error: Missing address seperator (comma or colon");
   }
 

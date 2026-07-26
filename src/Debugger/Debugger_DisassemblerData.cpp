@@ -547,7 +547,7 @@ void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *pData, Dis
 	if( !pData )
 	{
 #if _DEBUG
-		ConsoleDisplayError( "Disassembly_GetData() but we don't have a valid DisasmData_t *" );
+		console_display_error( "Disassembly_GetData() but we don't have a valid DisasmData_t *" );
 #endif
 		return;
 	}

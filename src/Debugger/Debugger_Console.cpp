@@ -148,7 +148,7 @@ auto ConsoleLineLength(const conchar_t* pText) -> int {
 auto ConsoleBufferPeek() -> const conchar_t* { return g_aConsoleBuffer[0]; }
 
 //===========================================================================
-auto ConsolePrint(const char* pText) -> bool {
+auto console_print(const char* pText) -> bool {
   while (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
@@ -281,7 +281,7 @@ auto ConsolePrint(const char* pText) -> bool {
 auto ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va)
     -> bool {
   vsnprintf(buf, bufsz, pFormat, va);
-  return ConsolePrint(buf);
+  return console_print(buf);
 }
 
 auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
@@ -366,7 +366,7 @@ void ConsoleConvertFromText(conchar_t* sText, const char* pText) {
 }
 
 //===========================================================================
-auto ConsoleDisplayError(const char* pText) -> Update_t {
+auto console_display_error(const char* pText) -> Update_t {
   ConsoleBufferPush(pText);
   return ConsoleUpdate();
 }

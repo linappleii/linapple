@@ -1420,9 +1420,9 @@ struct WindowSplit_t {
 
 
 extern uint64_t g_cumulative_cycles;
-class VideoScannerDisplayInfo {
+class VideoScannerDisplayInfo_t {
 public:
-  VideoScannerDisplayInfo(void) : isDecimal(false), isHorzReal(false), isAbsCycle(false),
+  VideoScannerDisplayInfo_t(void) : isDecimal(false), isHorzReal(false), isAbsCycle(false),
                   lastCumulativeCycles(0), cycleDelta(0) {}
   void Reset(void) { lastCumulativeCycles = g_cumulative_cycles; cycleDelta = 0; }
 

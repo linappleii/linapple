@@ -47,7 +47,7 @@ auto setup_disk_io_test(const char* fixture_name) -> void {
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
   // Turn on motor so rotation works
-  IOMap_Dispatch(0, DISK_MOTOR_ON, 0, 0, 0);
+  io_map_dispatch(0, DISK_MOTOR_ON, 0, 0, 0);
   peripheral_manager_think(0);
 }
 }  // namespace
@@ -56,12 +56,12 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
   setup_disk_io_test("minimal.nib");
 
   // Ensure Read Mode
-  IOMap_Dispatch(0, DISK_IO_READ_MODE, 0, 0, 0);
+  io_map_dispatch(0, DISK_IO_READ_MODE, 0, 0, 0);
 
   // Read first few bytes of track 0
-  uint8_t b1 = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
-  uint8_t b2 = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
-  uint8_t b3 = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t b1 = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t b2 = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t b3 = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
 
   // Bytes should be different (or at least valid GCR)
   CHECK(b1 != 0);
@@ -74,17 +74,17 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
 TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
   setup_disk_io_test("minimal.nib");
 
-  IOMap_Dispatch(0, DISK_IO_READ_MODE, 0, 0, 0);
+  io_map_dispatch(0, DISK_IO_READ_MODE, 0, 0, 0);
 
   // Read current byte
-  uint8_t b_start = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t b_start = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
 
   // Spin the disk for a while (approx 1/10th of a rotation)
   // 1 rotation = 200ms = approx 200,000 cycles
   peripheral_manager_think(20000);
 
   // Read again
-  uint8_t b_after = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t b_after = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
 
   // Byte position should have advanced background-style
   // (Hard to verify exact byte without knowing fixture content perfectly,
@@ -102,7 +102,7 @@ TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
 
   // No disk loaded. Accessing slot 6 I/O should return floating bus noise.
   // Physical reality: Bit 7 represents some hardware status or floating noise.
-  uint8_t noise = IOMap_Dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
+  uint8_t noise = io_map_dispatch(0, DISK_IO_READ_WRITE, 0, 0, 0);
   CHECK((noise & 0x80) !=
         0);  // Bit 7 should be set if we passed floating_bus (0xFF)
 
@@ -113,10 +113,10 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   setup_disk_io_test("minimal.nib");
 
   // Write a value to the latch
-  IOMap_Dispatch(0, DISK_IO_LATCH, 1, 0x55, 0);
+  io_map_dispatch(0, DISK_IO_LATCH, 1, 0x55, 0);
 
   // Read it back (C08D returns latch in Read mode too)
-  uint8_t val = IOMap_Dispatch(0, DISK_IO_LATCH, 0, 0, 0);
+  uint8_t val = io_map_dispatch(0, DISK_IO_LATCH, 0, 0, 0);
   CHECK(val == 0x55);
 
   linapple_shutdown();

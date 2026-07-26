@@ -313,7 +313,7 @@ TEST_CASE("Keyboard Peripheral: Ctrl+@ (NUL) handling") {
 }
 
 TEST_CASE("Keyboard Peripheral: Apple Keys and Modifiers Hardware Read") {
-  // Ensure 'mem' is allocated so MemReadFloatingBus doesn't segfault
+  // Ensure 'mem' is allocated so mem_read_floating_bus doesn't segfault
   mem = new uint8_t[65536]();
 
   g_mock_handlers.clear();

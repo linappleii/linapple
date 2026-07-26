@@ -20,11 +20,11 @@ constexpr size_t MEMORY_SIZE_64K = 65536;
 static std::array<uint8_t, MEMORY_SIZE_64K> dummy_mem{};
 uint8_t* mem = dummy_mem.data();
 
-extern "C" auto VideoGetScannerAddress(uint32_t*, uint32_t) -> uint16_t {
+extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {
   return 0;
 }
 
-auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
+auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
 
 // Stub for auto-registration
 extern "C" void peripheral_register_builtin(Peripheral_t* p) { (void)p; }
@@ -115,7 +115,7 @@ static HostInterface_t mock_host = {
     .RegisterCxROM = Mock_RegisterCxROM,
     .RegisterExpansionROM = Mock_RegisterExpansionROM,
     .RegisterDirectIO = Mock_RegisterDirectIO,
-    .GetMemPtr = nullptr,
+    .get_mem_ptr = nullptr,
     .GetCycles = nullptr,
     .GetConfig = nullptr,
     .SetConfig = nullptr,

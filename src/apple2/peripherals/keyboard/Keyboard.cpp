@@ -105,7 +105,7 @@ static auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   namespace kp_const = kb;
 
   if (!instance) {
-    return MemReadFloatingBus(cycles_left);
+    return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -129,7 +129,7 @@ static auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr
   namespace kp_const = kb;
 
   if (!instance) {
-    return MemReadFloatingBus(cycles_left);
+    return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -155,7 +155,7 @@ static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t ad
   namespace kp_const = kb;
 
   if (!instance) {
-    return MemReadFloatingBus(cycles_left);
+    return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -173,7 +173,7 @@ static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t ad
     default:
       break;
   }
-  uint8_t bus = MemReadFloatingBus(cycles_left) & kp_const::key_code_mask;
+  uint8_t bus = mem_read_floating_bus(cycles_left) & kp_const::key_code_mask;
   if (pressed) {
     bus |= kp_const::key_strobe_bit;
   }

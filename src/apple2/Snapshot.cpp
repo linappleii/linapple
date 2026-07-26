@@ -31,13 +31,13 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
 
   peripheral_get_manifest(&snapshot->manifest);
 
-  CpuGetSnapshot(&snapshot->apple2_unit.cpu_6502);
+  cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502);
   {
     size_t size = sizeof(snapshot->apple2_unit.joystick);
     peripheral_save_state(0, &snapshot->apple2_unit.joystick, &size);
   }
-  VideoGetSnapshot(&snapshot->apple2_unit.video);
-  MemGetSnapshot(&snapshot->apple2_unit.memory);
+  video_get_snapshot(&snapshot->apple2_unit.video);
+  mem_get_snapshot(&snapshot->apple2_unit.memory);
 
   size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard);
   peripheral_save_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
@@ -102,24 +102,24 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
     return false;
   }
 
-  MemReset();
+  mem_reset();
 
   if (!IS_APPLE2()) {
-    MemResetPaging();
+    mem_reset_paging();
   }
 
   peripheral_manager_reset();
-  VideoResetState();
+  video_reset_state();
 
-  CpuSetSnapshot(&snapshot->apple2_unit.cpu_6502);
+  cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502);
   {
     size_t size = sizeof(snapshot->apple2_unit.joystick);
     peripheral_load_state(0, &snapshot->apple2_unit.joystick, size);
   }
   peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                              sizeof(snapshot->apple2_unit.keyboard));
-  VideoSetSnapshot(&snapshot->apple2_unit.video);
-  MemSetSnapshot(&snapshot->apple2_unit.memory);
+  video_set_snapshot(&snapshot->apple2_unit.video);
+  mem_set_snapshot(&snapshot->apple2_unit.memory);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
     void* slot_state = nullptr;

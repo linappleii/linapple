@@ -108,14 +108,14 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_frame_count++;
   bool flash_on = (g_frame_count / flash_divisor) % 2 == 0;
 
-  bool is_text_mode = VideoGetSWTEXT();
-  bool is_mixed_mode = VideoGetSWMIXED();
-  bool is_80col = VideoGetSW80COL();
-  bool is_page2 = VideoGetSWPAGE2();
-  bool alt_charset = VideoGetSWAltCharSet();
+  bool is_text_mode = video_get_sw_text();
+  bool is_mixed_mode = video_get_sw_mixed();
+  bool is_80col = video_get_sw_80col();
+  bool is_page2 = video_get_sw_page2();
+  bool alt_charset = video_get_sw_alt_charset();
   uint16_t page_offset = is_page2 ? a2_page2_offset : 0x000;
 
-  const uint8_t* zero_page = MemGetMainPtr(a2_zero_page_offset);
+  const uint8_t* zero_page = mem_get_main_ptr(a2_zero_page_offset);
   int hw_cursor_x = zero_page[a2_cursor_x_addr];
   int hw_cursor_y = zero_page[a2_cursor_y_addr];
 
@@ -181,14 +181,14 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         uint8_t code = 0;
         if (is_80col) {
           if (c % 2 == 0) {
-            code = *MemGetAuxPtr(static_cast<uint16_t>(a2_page1_addr + page_offset +
+            code = *mem_get_aux_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
                                                        get_text_addr(r, c / 2)));
           } else {
-            code = *MemGetMainPtr(static_cast<uint16_t>(a2_page1_addr + page_offset +
+            code = *mem_get_main_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
                                                         get_text_addr(r, c / 2)));
           }
         } else {
-          code = *MemGetMainPtr(
+          code = *mem_get_main_ptr(
               static_cast<uint16_t>(a2_page1_addr + page_offset + get_text_addr(r, c)));
         }
 

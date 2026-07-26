@@ -26,7 +26,7 @@ auto ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave )
 void ConfigSave_PrepareHeader ( const Parameters_e eCategory, const Commands_e eCommandClear );
 void DisasmCalcTopBotAddress ();
 
-// Bookmark Functions
+// Bookmark_t Functions
 auto _Bookmark_Add( const int iBookmark, const uint16_t nAddress ) -> bool
 {
   if (iBookmark < MAX_BOOKMARKS)

@@ -23,20 +23,20 @@ typedef enum {
   FILE_ENTRY_UP = 0,
   FILE_ENTRY_DIR,
   FILE_ENTRY_FILE
-} FileEntryType;
+} FileEntryType_t;
 
 /**
  * Pure C layout (POD) ensures stable ABI across different frontend languages.
  */
-typedef struct file_entry_t {
+typedef struct FileEntry_t {
   char name[FILE_BROWSER_PATH_MAX];
-  FileEntryType type;
+  FileEntryType_t type;
   uint64_t size;
-} file_entry_t;
+} FileEntry_t;
 
-auto FileEntry_IsDirType(const file_entry_t* entry) -> bool;
+auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool;
 
-void FileEntry_FormatTypeOrSize(const file_entry_t* entry, char* out_str,
+void FileEntry_FormatTypeOrSize(const FileEntry_t* entry, char* out_str,
                                 size_t max_len);
 
 /**
@@ -57,22 +57,22 @@ struct FileListGenerator_t {
   void (*destroy)(FileListGenerator_t* self);
 };
 
-auto FileBrowser_CreateLocalGenerator(const char* directory)
+auto file_browser_create_local_generator(const char* directory)
     -> FileListGenerator_t*;
 
-auto FileBrowser_CreateFTPGenerator(const char* directory)
+auto file_browser_create_ftp_generator(const char* directory)
     -> FileListGenerator_t*;
 
-auto FileBrowser_CreateList(void) -> FileList_t*;
+auto file_browser_create_list(void) -> FileList_t*;
 void FileBrowser_FreeList(FileList_t* list);
-void FileBrowser_AppendEntry(FileList_t* list, const file_entry_t* entry);
+void FileBrowser_AppendEntry(FileList_t* list, const FileEntry_t* entry);
 void FileBrowser_SetFailureMessage(FileList_t* list, const char* msg);
 void FileBrowser_SortList(FileList_t* list);
 
-auto FileBrowser_GetCount(const FileList_t* list) -> size_t;
-auto FileBrowser_GetEntry(const FileList_t* list, size_t index)
-    -> const file_entry_t*;
-auto FileBrowser_GetFailureMessage(const FileList_t* list) -> const char*;
+auto file_browser_get_count(const FileList_t* list) -> size_t;
+auto file_browser_get_entry(const FileList_t* list, size_t index)
+    -> const FileEntry_t*;
+auto file_browser_get_failure_message(const FileList_t* list) -> const char*;
 
 #ifdef __cplusplus
 }  // extern "C"

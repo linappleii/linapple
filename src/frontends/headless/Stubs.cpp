@@ -32,9 +32,9 @@ WEAK auto frame_refresh_status(int drawflags) -> void { (void)drawflags; }
 // Printer Stubs
 WEAK auto PrinterFrontend_Reset() -> void {}
 WEAK auto PrinterFrontend_Destroy() -> void {}
-WEAK auto PrinterFrontend_Update(uint32_t cycles) -> void { (void)cycles; }
-WEAK auto PrinterFrontend_CheckStatus() -> uint8_t { return 0; }
-WEAK auto PrinterFrontend_SendChar(uint8_t c) -> void { (void)c; }
+WEAK auto printer_frontend_update(uint32_t cycles) -> void { (void)cycles; }
+WEAK auto printer_frontend_check_status() -> uint8_t { return 0; }
+WEAK auto printer_frontend_send_char(uint8_t c) -> void { (void)c; }
 
 // SSC Stubs
 WEAK auto super_serial_frontend_initialize(const char* p) -> bool {
@@ -58,26 +58,26 @@ WEAK auto super_serial_frontend_set_loopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}
-WEAK auto JoySetTrim(int16_t, bool) -> void {}
-WEAK auto JoySetButton(int button, bool down) -> void {
+WEAK auto joy_set_trim(int16_t, bool) -> void {}
+WEAK auto joy_set_button(int button, bool down) -> void {
   (void)button;
   (void)down;
 }
-WEAK auto JoyUpdatePosition(uint32_t) -> void {}
-WEAK auto VideoUpdateVbl(uint32_t) -> void {}
-WEAK auto VideoRedrawScreen() -> void {}
-WEAK auto VideoResetState() -> void {}
-WEAK auto VideoGetScannerAddress(bool*, uint32_t) -> uint16_t { return 0; }
-WEAK auto VideoChooseColor() -> void {}
+WEAK auto joy_update_position(uint32_t) -> void {}
+WEAK auto video_update_vbl(uint32_t) -> void {}
+WEAK auto video_redraw_screen() -> void {}
+WEAK auto video_reset_state() -> void {}
+WEAK auto video_get_scanner_address(bool*, uint32_t) -> uint16_t { return 0; }
+WEAK auto video_choose_color() -> void {}
 WEAK auto VideoSetBorderColor(uint8_t) -> void {}
 WEAK auto linapple_list_hardware() -> void {}
 
-WEAK auto MemReadFloatingBus(uint32_t) -> uint8_t { return 0; }
-WEAK auto GetMemPtr(uint16_t) -> uint8_t* { return nullptr; }
-WEAK auto MemGetCxRomPeripheral() -> uint8_t* { return nullptr; }
-WEAK auto RegisterIoHandler(uint32_t, iofunction, iofunction, iofunction,
+WEAK auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
+WEAK auto get_mem_ptr(uint16_t) -> uint8_t* { return nullptr; }
+WEAK auto mem_get_cx_rom_peripheral() -> uint8_t* { return nullptr; }
+WEAK auto register_io_handler(uint32_t, iofunction, iofunction, iofunction,
                             iofunction, void*, uint8_t*) -> void {}
-WEAK auto RegisterDirectIoHandler(uint16_t, iofunction, iofunction, void*)
+WEAK auto register_direct_io_handler(uint16_t, iofunction, iofunction, void*)
     -> void {}
 
 #include <cstdarg>

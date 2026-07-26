@@ -22,16 +22,16 @@ auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
 auto TitleCallback(const char* title) -> void { (void)title; }
 
 auto main(int argc, char* argv[]) -> int {
-  AppConfig config = {};
-  if (AppArgs_Parse(argc, argv, &config) != 0) {
+  AppConfig_t config = {};
+  if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }
 
-  if (AppController_HandleDiagnosticCommands(&config)) {
+  if (app_controller_handle_diagnostic_commands(&config)) {
     return 0;
   }
 
-  if (AppController_Initialize(&config) != 0) {
+  if (app_controller_initialize(&config) != 0) {
     return 1;
   }
 

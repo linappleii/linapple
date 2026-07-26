@@ -244,7 +244,7 @@ void Help_Categories()
 
 			if (nLen + strlen( pName ) >= (CONSOLE_WIDTH - 1))
 			{
-				ConsolePrint( sText );
+				console_print( sText );
 				sText[ 0 ] = 0;
 				nLen = StringCat( sText, "    ", nBuf ); // indent
 			}
@@ -258,7 +258,7 @@ void Help_Categories()
 
 				if (nLen + strlen( sSep ) >= (CONSOLE_WIDTH - 1))
 				{
-					ConsolePrint( sText );
+					console_print( sText );
 					sText[ 0 ] = 0;
 					nLen = StringCat( sText, "    ", nBuf ); // indent
 				}
@@ -273,7 +273,7 @@ void Help_Categories()
 		StringCat( sText, " ]", nBuf);
 
 //		ConsoleBufferPush( sText );
-		ConsolePrint( sText );  // Transcode colored text to native console color text
+		console_print( sText );  // Transcode colored text to native console color text
 
 		ConsolePrintFormat( sText, "%sNotes%s: %s<>%s = mandatory, %s[]%s = optional, %s|%s argument option"
 			, CHC_USAGE
@@ -355,7 +355,7 @@ void Help_Operators()
 		}
 	}
 	strcat( sText, CHC_DEFAULT );
-	ConsolePrint( sText );
+	console_print( sText );
 }
 
 void Help_KeyboardShortcuts()
@@ -563,7 +563,7 @@ inline auto ConsoleColorizePrint( char* colorizeBuf, size_t /*colorizeBufSz*/,
                                   const char* pText ) -> bool
 {
    if (!Colorize(colorizeBuf, pText)) return false;
-   return ConsolePrint(colorizeBuf);
+   return console_print(colorizeBuf);
 }
 
 template<size_t ColorizeBufSz>
@@ -620,9 +620,9 @@ auto CmdMOTD( int nArgs ) -> Update_t	// Message Of The Day
 	char sTemp[ CONSOLE_WIDTH*2 ];
 
 #if DEBUG_COLOR_CONSOLE
-	ConsolePrint( "`" );
-	ConsolePrint( "`A" );
-	ConsolePrint( "`2`A" );
+	console_print( "`" );
+	console_print( "`A" );
+	console_print( "`2`A" );
 #endif
 
 	ConsolePrintFormat( sText, "`9`A`7 Apple `9][ ][+ //e `7Emulator for Linux `9`@" );
@@ -944,7 +944,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 //						ConsoleBufferPush( sText );
 //					}
 //				}
-				ConsolePrint( sText );
+				console_print( sText );
 			}
 			else
 			{
@@ -1063,7 +1063,7 @@ auto CmdHelpList (int nArgs) -> Update_t
 		}
 		else
 		{
-			ConsolePrint( sText );
+			console_print( sText );
 			nLen = 1;
 			strcpy( sText, " " );
 			        StringCat( sText, CHC_COMMAND, nBuf );
@@ -1075,7 +1075,7 @@ auto CmdHelpList (int nArgs) -> Update_t
 	}
 
 	//ConsoleBufferPush( sText );
-	ConsolePrint( sText );
+	console_print( sText );
 	ConsoleUpdate();
 
 	return UPDATE_CONSOLE_DISPLAY;

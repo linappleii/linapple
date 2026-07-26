@@ -709,7 +709,7 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
                        uint8_t val, uint32_t cycles) -> uint8_t {
     (void)pc;
     if (instance == nullptr) {
-      return MemReadFloatingBus(cycles);
+      return mem_read_floating_bus(cycles);
     }
 
     auto* mp_inner = static_cast<MousePeripheral_t*>(instance);

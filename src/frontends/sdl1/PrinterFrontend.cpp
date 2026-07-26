@@ -34,7 +34,7 @@ void PrinterFrontend_Destroy() { ClosePrint(); }
 
 void PrinterFrontend_Reset() { ClosePrint(); }
 
-void PrinterFrontend_Update(uint32_t totalcycles) {
+void printer_frontend_update(uint32_t totalcycles) {
   if (!file) {
     return;
   }
@@ -46,7 +46,7 @@ void PrinterFrontend_Update(uint32_t totalcycles) {
   }
 }
 
-void PrinterFrontend_SendChar(uint8_t value) {
+void printer_frontend_send_char(uint8_t value) {
   if (!check_print()) {
     return;
   }
@@ -55,7 +55,7 @@ void PrinterFrontend_SendChar(uint8_t value) {
   fwrite(&c, 1, 1, file.get());
 }
 
-void PrinterFrontend_CheckStatus() { check_print(); }
+void printer_frontend_check_status() { check_print(); }
 
 auto printer_get_idle_limit() -> uint32_t { return g_PrinterIdleLimit; }
 

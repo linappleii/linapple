@@ -136,7 +136,7 @@ auto program_loader_try_load(const char* path) -> ProgramLoadResult_t {
   std::fclose(f);
 
   std::memset(memdirty, mem_fill_value, NUM_PAGES_48K);
-  auto* regs = CpuGetRegisters();
+  auto* regs = cpu_get_registers();
   if (regs != nullptr) {
     regs->pc = header.load_addr;
   }

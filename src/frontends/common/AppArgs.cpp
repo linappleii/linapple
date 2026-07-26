@@ -9,9 +9,9 @@
 #include "core/Log.h"
 #include "core/Util_Text.h"
 
-static constexpr int OPT_LIST_HARDWARE = 0x100;
-static constexpr int OPT_HARDWARE_INFO = 0x101;
-static constexpr int OPT_NO_DEBUGGER = 0x102;
+static constexpr int opt_list_hardware = 0x100;
+static constexpr int opt_hardware_info = 0x101;
+static constexpr int opt_no_debugger = 0x102;
 
 static const std::array<struct option, 23> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
@@ -33,9 +33,9 @@ static const std::array<struct option, 23> OptionTable = {
      {"test-65c02", no_argument, nullptr, 'C'},
      {"verbose", no_argument, nullptr, 'v'},
      {"audio-dump", required_argument, nullptr, 'A'},
-     {"list-hardware", no_argument, nullptr, OPT_LIST_HARDWARE},
-     {"hardware-info", required_argument, nullptr, OPT_HARDWARE_INFO},
-     {"no-debugger", no_argument, nullptr, OPT_NO_DEBUGGER},
+     {"list-hardware", no_argument, nullptr, opt_list_hardware},
+     {"hardware-info", required_argument, nullptr, opt_hardware_info},
+     {"no-debugger", no_argument, nullptr, opt_no_debugger},
      {nullptr, 0, nullptr, 0}}};
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
@@ -71,7 +71,7 @@ void AppArgs_PrintHelp() {
       "  --no-debugger          Disable the integrated debugger at runtime\n");
 }
 
-auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
+auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
   if (outConfig == nullptr) {
     return -1;
   }
@@ -145,16 +145,16 @@ auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int {
         Util_SafeStrCpy(outConfig->szAudioDumpPath.data(), optarg,
                         path_max_len);
         break;
-      case OPT_LIST_HARDWARE:
+      case opt_list_hardware:
         outConfig->bListHardware = true;
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
-      case OPT_HARDWARE_INFO:
+      case opt_hardware_info:
         Util_SafeStrCpy(outConfig->szHardwareInfoName.data(), optarg,
                         path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
-      case OPT_NO_DEBUGGER:
+      case opt_no_debugger:
         outConfig->bDisableDebugger = true;
         break;
       case 'h':

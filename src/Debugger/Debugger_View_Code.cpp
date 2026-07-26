@@ -136,7 +136,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   bool bBreakpointActive = false;
   bool bBreakpointEnable = false;
   GetBreakpointInfo(nBaseAddress, bBreakpointActive, bBreakpointEnable);
-  bool bAddressAtPC = (nBaseAddress == CpuGetRegisters()->pc);
+  bool bAddressAtPC = (nBaseAddress == cpu_get_registers()->pc);
   bool bAddressIsBookmark = Bookmark_Find(nBaseAddress);
 
   DebugColors_e iBackground = BG_DISASM_1;
@@ -483,7 +483,7 @@ void DrawStack(int line) {
     return;
   }
 
-  unsigned nAddress = CpuGetRegisters()->sp;
+  unsigned nAddress = cpu_get_registers()->sp;
   int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
   DebuggerSetColorBG(DebuggerGetColor(BG_DATA_1));
 

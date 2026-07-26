@@ -37,11 +37,11 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
   linapple_register_peripherals();
 
   // Set PC to a safe loop: $0000: 4C 00 00 (JMP $0000)
-  uint8_t* m = MemGetBankPtr(0);
+  uint8_t* m = mem_get_bank_ptr(0);
   m[0] = 0x4C;
   m[1] = 0x00;
   m[2] = 0x00;
-  CpuGetRegisters()->pc = 0x0000;
+  cpu_get_registers()->pc = 0x0000;
   g_state.mode = MODE_RUNNING;
 
   DiskInsertCmd_t cmd{};
@@ -55,11 +55,11 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
 
   CHECK(peripheral_is_any_active() == false);
 
-  IOMap_Dispatch(0, MOTOR_ON_SWITCH, 0, 0, 0);
+  io_map_dispatch(0, MOTOR_ON_SWITCH, 0, 0, 0);
   run_cycles(100000);
   CHECK(peripheral_is_any_active() == true);
 
-  IOMap_Dispatch(0, MOTOR_OFF_SWITCH, 0, 0, 0);
+  io_map_dispatch(0, MOTOR_OFF_SWITCH, 0, 0, 0);
   run_cycles(MOTOR_SPIN_DURATION);
   CHECK(peripheral_is_any_active() == false);
 

@@ -10,7 +10,7 @@
  * @param outConfig Configuration struct to populate
  * @return 0 on success, non-zero on error
  */
-auto AppArgs_Parse(int argc, char* argv[], AppConfig* outConfig) -> int;
+auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int;
 
 /**
  * Print the unified help message for all LinApple frontends.

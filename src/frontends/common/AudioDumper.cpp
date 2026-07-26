@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <cstdio>
 
-constexpr uint32_t FMT_CHUNK_SIZE = 16;
-constexpr uint16_t BITS_PER_SAMPLE = 16;
+constexpr uint32_t fmt_chunk_size = 16;
+constexpr uint16_t bits_per_sample = 16;
 
 auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
                              uint32_t sample_rate, uint32_t num_channels)
@@ -32,7 +32,7 @@ auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
   fwrite("WAVE", 1, 4, dumper->file);
   fwrite("fmt ", 1, 4, dumper->file);
 
-  temp32 = FMT_CHUNK_SIZE;  // format chunk size
+  temp32 = fmt_chunk_size;  // format chunk size
   fwrite(&temp32, 1, 4, dumper->file);
 
   temp16 = 1;  // PCM format category
@@ -51,7 +51,7 @@ auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
   temp16 = static_cast<uint16_t>(2 * num_channels);  // block align
   fwrite(&temp16, 1, 2, dumper->file);
 
-  temp16 = BITS_PER_SAMPLE;  // bits per sample
+  temp16 = bits_per_sample;  // bits per sample
   fwrite(&temp16, 1, 2, dumper->file);
 
   fwrite("data", 1, 4, dumper->file);

@@ -256,7 +256,7 @@ int _CmdBreakpointAddCommonArg ( int iArg, int nArg, BreakpointSource_t iSrc, Br
 
   if (iBP >= MAX_BREAKPOINTS)
   {
-    ConsoleDisplayError( "All breakpoints are currently in use." );
+    console_display_error( "All breakpoints are currently in use." );
     return 0;
   }
 
@@ -307,7 +307,7 @@ auto CmdBreakpointEdit (int nArgs) -> Update_t
 auto CmdBreakpointClear(int nArgs) -> Update_t
 {
   if (! g_nBreakpoints) {
-    return ConsoleDisplayError("There are no breakpoints defined.");
+    return console_display_error("There are no breakpoints defined.");
 }
 
   if (!nArgs)
@@ -325,7 +325,7 @@ auto CmdBreakpointClear(int nArgs) -> Update_t
 auto CmdBreakpointDisable(int nArgs) -> Update_t
 {
   if (! g_nBreakpoints) {
-    return ConsoleDisplayError("There are no breakpoints defined.");
+    return console_display_error("There are no breakpoints defined.");
 }
 
   if (! nArgs) {
@@ -340,7 +340,7 @@ auto CmdBreakpointDisable(int nArgs) -> Update_t
 auto CmdBreakpointEnable(int nArgs) -> Update_t
 {
   if (! g_nBreakpoints) {
-    return ConsoleDisplayError("There are no breakpoints defined.");
+    return console_display_error("There are no breakpoints defined.");
 }
 
   if (! nArgs) {
@@ -441,7 +441,7 @@ auto CmdWatchAdd (int nArgs) -> Update_t
     uint16_t nAddress = g_aArgs[iArg].nValue;
 
     if ((nAddress >= _6502_IO_BEGIN) && (nAddress <= _6502_IO_END)) {
-      return ConsoleDisplayError("You may not watch an I/O location.");
+      return console_display_error("You may not watch an I/O location.");
 }
 
     if (iWatch == NO_6502_TARGET)
@@ -488,7 +488,7 @@ auto CmdWatchSave(int nArgs) -> Update_t
 auto CmdWatchClear(int nArgs) -> Update_t
 {
   if (! g_nWatches) {
-    return ConsoleDisplayError("There are no watches defined.");
+    return console_display_error("There are no watches defined.");
 }
 
   if (!nArgs)
@@ -506,7 +506,7 @@ auto CmdWatchClear(int nArgs) -> Update_t
 auto CmdWatchDisable(int nArgs) -> Update_t
 {
   if (! g_nWatches) {
-    return ConsoleDisplayError("There are no watches defined.");
+    return console_display_error("There are no watches defined.");
 }
 
   if (!nArgs) {
@@ -521,7 +521,7 @@ auto CmdWatchDisable(int nArgs) -> Update_t
 auto CmdWatchEnable(int nArgs) -> Update_t
 {
   if (! g_nWatches) {
-    return ConsoleDisplayError("There are no watches defined.");
+    return console_display_error("There are no watches defined.");
 }
 
   if (!nArgs) {

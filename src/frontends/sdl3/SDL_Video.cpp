@@ -8,7 +8,7 @@
 #include "apple2/Video.h"
 #include "frontends/sdl3/Frame.h"
 
-extern VideoSurface* g_debug_screen;
+extern VideoSurface_t* g_debug_screen;
 extern std::recursive_mutex g_video_draw_mutex;
 extern SDL_Surface* screen;
 
@@ -20,8 +20,8 @@ void StretchBltMemToFrameDC() {
   g_video_draw_mutex.unlock();
 }
 
-auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface {
-  VideoSurface vs{};
+auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
+  VideoSurface_t vs{};
   vs.pixels = static_cast<uint8_t*>(s->pixels);
   vs.w = s->w;
   vs.h = s->h;
@@ -30,6 +30,6 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface {
   if (s->format == SDL_PIXELFORMAT_INDEX8) {
     vs.bpp = 1;
   }
-  // Note: palette is not copied here, but VideoSurface has it
+  // Note: palette is not copied here, but VideoSurface_t has it
   return vs;
 }

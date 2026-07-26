@@ -36,13 +36,13 @@ auto asset_init() -> bool {
   assets = assets_ptr.get();
   assets->icon = nullptr;
 
-  assets->font = VideoLoadXPM(font_xpm);
+  assets->font = video_load_xpm(font_xpm);
   if (assets->font == nullptr) {
     asset_quit();
     return false;
   }
 
-  assets->splash = VideoLoadXPM(splash_xpm);
+  assets->splash = video_load_xpm(splash_xpm);
   if (assets->splash == nullptr) {
     asset_quit();
     return false;
@@ -54,12 +54,12 @@ auto asset_init() -> bool {
 auto asset_quit() -> void {
   if (assets != nullptr) {
     if (assets->font != nullptr) {
-      VideoDestroySurface(assets->font);
+      video_destroy_surface(assets->font);
       assets->font = nullptr;
     }
 
     if (assets->splash != nullptr) {
-      VideoDestroySurface(assets->splash);
+      video_destroy_surface(assets->splash);
       assets->splash = nullptr;
     }
 

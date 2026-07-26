@@ -214,7 +214,7 @@ static auto Clock_IORead(void* instance, uint16_t program_counter,
                          uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   if (instance == nullptr) {
-    return IO_Null(program_counter, memory_address, is_write, data_value,
+    return io_null(program_counter, memory_address, is_write, data_value,
                    remaining_cycles);
   }
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
@@ -227,7 +227,7 @@ static auto Clock_IORead(void* instance, uint16_t program_counter,
     return 0;
   }
 
-  return IO_Null(program_counter, memory_address, is_write, data_value,
+  return io_null(program_counter, memory_address, is_write, data_value,
                  remaining_cycles);
 }
 

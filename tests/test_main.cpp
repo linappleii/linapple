@@ -13,19 +13,19 @@
 // To make it testable, we provide a clean initialization for every test.
 void reset_machine() {
   g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-  MemInitialize();
-  CpuInitialize();
+  mem_initialize();
+  cpu_initialize();
 }
 
 // Helper to run a 6502 snippet
 void machine_execute(const uint8_t* code, size_t size,
                      uint32_t max_cycles = 1000) {
   memcpy(mem + 0x0300, code, size);
-  CpuGetRegisters()->pc = 0x0300;
+  cpu_get_registers()->pc = 0x0300;
 
   uint32_t cycles = 0;
-  while (mem[CpuGetRegisters()->pc] != 0x60 && cycles < max_cycles) {
-    CpuExecute(1);
+  while (mem[cpu_get_registers()->pc] != 0x60 && cycles < max_cycles) {
+    cpu_execute(1);
     cycles++;
   }
 }
@@ -49,7 +49,7 @@ TEST_CASE("Legacy: [MEM-01] Language Card RAM Banking") {
   };
 
   machine_execute(code, sizeof(code));
-  CHECK(CpuGetRegisters()->a == 0x55);
+  CHECK(cpu_get_registers()->a == 0x55);
 }
 
 TEST_CASE("Legacy: [ROM-01] Firmware Integrity (Autostart ROM)") {

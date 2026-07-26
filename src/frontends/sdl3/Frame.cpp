@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Peripheral.h"
 #include "core/Util_Path.h"
 #include "frontends/sdl3/SDL_Video.h"
-auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface;
+auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
 #include "Debugger_Display.h"
@@ -119,12 +119,12 @@ bool g_scroll_lock_full_speed = false;
 
 void DrawAppleContent() {
   g_video_draw_mutex.lock();
-  VideoRealizePalette();
+  video_realize_palette();
 
   draw_status_area(DRAW_BACKGROUND | DRAW_LEDS);
 
   if (g_state.mode == MODE_LOGO) {
-    VideoDisplayLogo();
+    video_display_logo();
     g_bFrameReady = true;
   } else if (g_state.mode == MODE_DEBUG) {
 #if ENABLE_DEBUGGER
@@ -132,7 +132,7 @@ void DrawAppleContent() {
 #endif
     g_bFrameReady = true;
   } else {
-    VideoRedrawScreen();
+    video_redraw_screen();
   }
   g_video_draw_mutex.unlock();
 }
@@ -146,9 +146,9 @@ void frame_refresh() {
 }
 
 #if ENABLE_DEBUGGER
-extern VideoSurface* g_debug_screen;
+extern VideoSurface_t* g_debug_screen;
 
-static void draw_debugger_tui(VideoSurface* vs_screen, const SDL_Rect& r) {
+static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
   if (!g_debug_screen) {
     return;
   }
@@ -157,12 +157,12 @@ static void draw_debugger_tui(VideoSurface* vs_screen, const SDL_Rect& r) {
   SDL_Rect new_rect = r;
 
   if (!g_window_resized) {
-    VideoSoftStretch(
-        g_debug_screen, reinterpret_cast<VideoRect*>(&const_cast<SDL_Rect&>(r)),
-        vs_screen, reinterpret_cast<VideoRect*>(&const_cast<SDL_Rect&>(r)));
+    video_soft_stretch(
+        g_debug_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)),
+        vs_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
   } else {
-    VideoSoftStretch(g_debug_screen, reinterpret_cast<VideoRect*>(&orig_rect),
-                     vs_screen, reinterpret_cast<VideoRect*>(&new_rect));
+    video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&orig_rect),
+                     vs_screen, reinterpret_cast<VideoRect_t*>(&new_rect));
   }
 }
 #endif
@@ -172,13 +172,13 @@ void DrawFrameWindow() {
 
   g_video_draw_mutex.lock();
   if (g_texture && screen) {
-    uint32_t* output = VideoGetOutputBuffer();
+    uint32_t* output = video_get_output_buffer();
     SDL_Rect r = {0, 0, 560, 384};
 
     // Fill screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
-      VideoSurface vs_screen = sdl_surface_to_video_surface(screen);
-      VideoSurface vs_output{};
+      VideoSurface_t vs_screen = sdl_surface_to_video_surface(screen);
+      VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
       vs_output.w = 560;
       vs_output.h = 384;
@@ -186,14 +186,14 @@ void DrawFrameWindow() {
       vs_output.bpp = 4;
 
       if (!g_window_resized) {
-        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&r),
-                         &vs_screen, reinterpret_cast<VideoRect*>(&r));
+        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
+                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
       } else {
-        VideoSoftStretch(&vs_output, reinterpret_cast<VideoRect*>(&orig_rect),
-                         &vs_screen, reinterpret_cast<VideoRect*>(&new_rect));
+        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&orig_rect),
+                         &vs_screen, reinterpret_cast<VideoRect_t*>(&new_rect));
       }
     } else {
-      VideoSurface vs_screen = sdl_surface_to_video_surface(screen);
+      VideoSurface_t vs_screen = sdl_surface_to_video_surface(screen);
 #if ENABLE_DEBUGGER
       draw_debugger_tui(&vs_screen, r);
 #endif
@@ -213,7 +213,7 @@ void draw_status_area(int drawflags) {
     }
   }
 
-  VideoRect srect{};
+  VideoRect_t srect{};
   uint8_t mybluez = DARK_BLUE;
 
   if (drawflags & DRAW_BACKGROUND) {
@@ -305,7 +305,7 @@ void FrameShowHelpScreen(int sx, int sy) {
       " Scroll Lock - Toggle full speed",
       "  Numpad +/-/* - Increase/Decrease/Normal speed"};
 
-  VideoSurface* tempSurface = nullptr;
+  VideoSurface_t* tempSurface = nullptr;
 
   if (font_sfc == nullptr) {
     if (!fonts_initialization()) {
@@ -325,15 +325,15 @@ void FrameShowHelpScreen(int sx, int sy) {
 
   if (tempSurface == nullptr) {
     // Wrap screen as fallback
-    static VideoSurface vs_screen;
+    static VideoSurface_t vs_screen;
     vs_screen = sdl_surface_to_video_surface(screen);
     tempSurface = &vs_screen;
   }
 
-  VideoSurface vs_actual_screen = sdl_surface_to_video_surface(screen);
+  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(screen);
 
   // Capture original screen
-  VideoSoftStretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
+  video_soft_stretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
 
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
@@ -341,10 +341,10 @@ void FrameShowHelpScreen(int sx, int sy) {
   SDL_Surface* blur_temp = SDL_CreateSurface(screen->w / 16, screen->h / 16,
                                              SDL_PIXELFORMAT_ARGB8888);
   if (blur_temp) {
-    VideoSurface vs_blur = sdl_surface_to_video_surface(blur_temp);
-    VideoSoftStretch(&vs_actual_screen, nullptr, &vs_blur,
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur,
                      nullptr);  // Downscale
-    VideoSoftStretch(&vs_blur, nullptr, &vs_actual_screen,
+    video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen,
                      nullptr);  // Upscale back
     SDL_DestroySurface(blur_temp);
   }
@@ -399,7 +399,7 @@ void FrameShowHelpScreen(int sx, int sy) {
             (Help_TopX - 8), 0xFFFF00);
 
   // Logo bit
-  VideoSurface vs_icon{};
+  VideoSurface_t vs_icon{};
   vs_icon.pixels =
       static_cast<uint8_t*>((static_cast<SDL_Surface*>(assets->icon))->pixels);
   vs_icon.w =
@@ -410,7 +410,7 @@ void FrameShowHelpScreen(int sx, int sy) {
       static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->pitch);
   vs_icon.bpp = 4;  // Assuming RGB32
 
-  VideoRect logo{}, scrr{};
+  VideoRect_t logo{}, scrr{};
   logo.x = logo.y = 0;
   logo.w = vs_icon.w;
   logo.h = vs_icon.h;
@@ -418,7 +418,7 @@ void FrameShowHelpScreen(int sx, int sy) {
   scrr.y = static_cast<int16_t>(270.0f * facy_f);
   scrr.w = static_cast<int16_t>(100.0f * facy_f);
   scrr.h = static_cast<int16_t>(100.0f * facy_f);
-  VideoSoftStretchOr(&vs_icon, &logo, &vs_actual_screen, &scrr);
+  video_soft_stretch_or(&vs_icon, &logo, &vs_actual_screen, &scrr);
 
   frame_refresh();
   SDL_Delay(1000);
@@ -498,7 +498,7 @@ void Frame_OnResize(int width, int height) {
       new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
       new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
       if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-        VideoRedrawScreen();
+        video_redraw_screen();
       }
     }
   }
@@ -517,7 +517,7 @@ void Frame_OnFocus(bool gained) {
 
 void Frame_OnExpose() {
   if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-    VideoRedrawScreen();
+    video_redraw_screen();
   }
 }
 
@@ -625,7 +625,7 @@ void process_button_click(int button, int mod) {
 #endif
         g_state.mode = MODE_RUNNING;
         draw_status_area(DRAW_TITLE);
-        VideoRedrawScreen();
+        video_redraw_screen();
         g_state.bResetTiming = true;
       } else if (mod & SDL_KMOD_SHIFT) {
         g_state.restart = true;
@@ -738,17 +738,17 @@ void process_button_click(int button, int mod) {
         if (g_videotype >= VT_NUM_MODES) {
           g_videotype = 0;
         }
-        VideoReinitialize();
+        video_reinitialize();
         if (g_state.mode != MODE_LOGO) {
           if (g_state.mode == MODE_DEBUG) {
 #if ENABLE_DEBUGGER
             uint32_t debugVideoMode = 0;
             if (debug_get_video_mode(&debugVideoMode)) {
-              VideoRefreshScreen();
+              video_refresh_screen();
             }
 #endif
           } else {
-            VideoRefreshScreen();
+            video_refresh_screen();
           }
         }
       }
@@ -767,14 +767,14 @@ void process_button_click(int button, int mod) {
     case btn_loadst:
       if (mod & SDL_KMOD_CTRL) {
         if (!IS_APPLE2()) {
-          MemResetPaging();
+          mem_reset_paging();
         }
 
         peripheral_manager_reset();
         if (!IS_APPLE2()) {
-          VideoResetState();
+          video_reset_state();
         }
-        CpuReset();
+        cpu_reset();
       } else if (mod & SDL_KMOD_ALT) {
         save_state_load();
       } else if (PSP_SaveStateSelectImage(false)) {
@@ -792,10 +792,10 @@ void ResetMachineState() {
   g_bFullSpeed = false;  // Might've hit reset in middle of InternalCpuExecute()
                          // - so beep may get (partially) muted
 
-  MemReset();
+  mem_reset();
   peripheral_manager_reset();
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
-  VideoResetState();
+  video_reset_state();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 

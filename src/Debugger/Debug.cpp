@@ -43,7 +43,7 @@ void debug_display(bool bInitDisasm)
   {
     uint32_t mode = 0;
     DebugVideoMode::Instance().Get(&mode);
-    VideoRefreshScreen(mode, true);
+    video_refresh_screen(mode, true);
     return;
   }
 

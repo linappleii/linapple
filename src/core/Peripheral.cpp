@@ -77,7 +77,7 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
       return ap.readC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
@@ -88,7 +88,7 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
       return ap.writeC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
@@ -99,7 +99,7 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
       return ap.readCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
@@ -110,7 +110,7 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
       return ap.writeCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
@@ -123,7 +123,7 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
           nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
@@ -136,7 +136,7 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
           nCyclesLeft);
     }
   }
-  return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, bWrite, d, nCyclesLeft);
 }
 
 // --- Host Interface Implementation ---
@@ -172,9 +172,9 @@ static auto host_assert_irq(int slot, bool assert) -> void {
   }
   auto src = static_cast<IrqSrc_t>(is_slot1 + slot - 1);
   if (assert) {
-    CpuIrqAssert(src);
+    cpu_irq_assert(src);
   } else {
-    CpuIrqDeassert(src);
+    cpu_irq_deassert(src);
   }
 }
 
@@ -192,7 +192,7 @@ static auto host_register_io(int slot, PeripheralIOHandler readC0,
   ap.readCx = readCx;
   ap.writeCx = writeCx;
 
-  RegisterIoHandler(
+  register_io_handler(
       static_cast<uint32_t>(slot), readC0 ? slot_read_c0_bridge : nullptr,
       writeC0 ? slot_write_c0_bridge : nullptr,
       readCx ? slot_read_cx_bridge : nullptr,
@@ -207,7 +207,7 @@ static auto host_register_cx_rom(int slot, uint8_t* rom_ptr) -> void {
   if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
       rom_ptr == nullptr)
     return;
-  uint8_t* cxrom = MemGetCxRomPeripheral();
+  uint8_t* cxrom = mem_get_cx_rom_peripheral();
   if (cxrom != nullptr) {
     memcpy(cxrom + (static_cast<uint16_t>(slot) << addr_slot_rom_shift),
            rom_ptr, cxrom_slot_size);
@@ -221,7 +221,7 @@ static auto host_register_expansion_rom(int slot, uint8_t* rom_ptr) -> void {
 
   ActivePeripheral_t& ap = slot_peripherals.back();
   ap.expansionRom = rom_ptr;
-  RegisterIoHandler(
+  register_io_handler(
       static_cast<uint32_t>(slot), ap.readC0 ? slot_read_c0_bridge : nullptr,
       ap.writeC0 ? slot_write_c0_bridge : nullptr,
       ap.readCx ? slot_read_cx_bridge : nullptr,
@@ -240,15 +240,15 @@ static auto host_register_direct_io(void* instance, uint16_t addr,
                                                     instance};
   g_num_direct_handlers++;
 
-  RegisterDirectIoHandler(addr, read ? direct_io_read_bridge : nullptr,
+  register_direct_io_handler(addr, read ? direct_io_read_bridge : nullptr,
                           write ? direct_io_write_bridge : nullptr, instance);
 }
 
 static auto host_get_mem_ptr(uint16_t addr) -> uint8_t* {
-  return GetMemPtr(addr);
+  return get_mem_ptr(addr);
 }
 
-static auto host_get_cycles() -> uint64_t { return CpuGetCumulativeCycles(); }
+static auto host_get_cycles() -> uint64_t { return cpu_get_cumulative_cycles(); }
 
 static auto host_get_config(const char* section, const char* key, char* buffer,
                            size_t buffer_size) -> bool {
@@ -321,25 +321,25 @@ static auto host_audio_push_samples(void* instance, const int16_t* buffer,
   }
 }
 
-extern void CpuReset();
+extern void cpu_reset();
 
 static auto host_reset_system(void* instance) -> void {
   (void)instance;
-  CpuReset();
+  cpu_reset();
   peripheral_manager_reset();
 }
 
-extern void PrinterFrontend_SendChar(uint8_t c);
-extern auto PrinterFrontend_CheckStatus() -> uint8_t;
+extern void printer_frontend_send_char(uint8_t c);
+extern auto printer_frontend_check_status() -> uint8_t;
 
 static auto host_printer_put_char(void* instance, uint8_t c) -> void {
   (void)instance;
-  PrinterFrontend_SendChar(c);
+  printer_frontend_send_char(c);
 }
 
 static auto host_printer_get_status(void* instance) -> uint8_t {
   (void)instance;
-  return PrinterFrontend_CheckStatus();
+  return printer_frontend_check_status();
 }
 
 extern void super_serial_frontend_send_byte(uint8_t byte);
@@ -416,7 +416,7 @@ static auto peripheral_drain_command_queue() -> void {
 
 static auto clear_all_peripherals() -> void {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
+    register_direct_io_handler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
                             nullptr);
   }
   g_num_direct_handlers = 0;
@@ -538,7 +538,7 @@ static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
   size_t j = 0;
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).instance == instance) {
-      RegisterDirectIoHandler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
+      register_direct_io_handler(g_direct_io_handlers.at(i).addr, nullptr, nullptr,
                               nullptr);
     } else {
       if (i != j) {
@@ -564,7 +564,7 @@ auto peripheral_unregister(int slot) -> int {
     }
   }
   slot_peripherals.clear();
-  RegisterIoHandler(static_cast<uint32_t>(slot), nullptr, nullptr, nullptr,
+  register_io_handler(static_cast<uint32_t>(slot), nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
   return 0;
 }

@@ -76,23 +76,3 @@ auto cpu_reset() -> void;
 auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
 auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
 
-// Legacy Forwarding Declarations
-auto CpuGetRegisters() -> CpuRegisters_t*;
-auto CpuGetCumulativeCycles() -> uint64_t;
-auto CpuGetActiveContext() -> CpuInstance_t*;
-auto CpuSetActiveContext(CpuInstance_t* context) -> void;
-auto CpuDestroy() -> void;
-auto CpuCalcCycles(uint32_t nExecutedCycles) -> void;
-auto CpuExecute(uint32_t uCycles) -> uint32_t;
-auto CpuGetCyclesThisFrame(uint32_t nExecutedCycles) -> uint32_t;
-auto CpuInitialize() -> void;
-auto CpuSetupBenchmark() -> void;
-auto CpuIrqReset() -> void;
-auto CpuIrqAssert(IrqSrc_t Device) -> void;
-auto CpuIrqDeassert(IrqSrc_t Device) -> void;
-auto CpuNmiReset() -> void;
-auto CpuNmiAssert(IrqSrc_t Device) -> void;
-auto CpuNmiDeassert(IrqSrc_t Device) -> void;
-auto CpuReset() -> void;
-auto CpuGetSnapshot(SsCpu6502_t* pSS) -> uint32_t;
-auto CpuSetSnapshot(SsCpu6502_t* pSS) -> uint32_t;

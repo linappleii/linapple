@@ -25,7 +25,7 @@ TEST_CASE("Harddisk Peripheral: Lifecycle and Registration") {
   // We expect some value from the harddisk IO handler.
   // By default, without an image, it should return DEVICE_OK (0x00) for most
   // reads.
-  uint8_t val = IOMap_Dispatch(0, 0xC0F2, 0, 0, 0);  // Read Command register
+  uint8_t val = io_map_dispatch(0, 0xC0F2, 0, 0, 0);  // Read Command register
   CHECK(val == 0);
 
   linapple_shutdown();
@@ -84,15 +84,15 @@ TEST_CASE("Harddisk Peripheral: Direct I/O Logic") {
   peripheral_register(harddisk_get_descriptor(), 7);
 
   // Write Unit Number to $C0F3
-  IOMap_Dispatch(0, 0xC0F3, 1, 0x80, 0);  // Drive 2
+  io_map_dispatch(0, 0xC0F3, 1, 0x80, 0);  // Drive 2
 
   // Read it back
-  uint8_t val = IOMap_Dispatch(0, 0xC0F3, 0, 0, 0);
+  uint8_t val = io_map_dispatch(0, 0xC0F3, 0, 0, 0);
   CHECK(val == 0x80);
 
   // Write Command to $C0F2
-  IOMap_Dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read command
-  val = IOMap_Dispatch(0, 0xC0F2, 0, 0, 0);
+  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read command
+  val = io_map_dispatch(0, 0xC0F2, 0, 0, 0);
   CHECK(val == 0x01);
 
   linapple_shutdown();

@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <array>
 
-extern VideoScannerDisplayInfo g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
 
 auto CmdVideoScannerInfo(int nArgs) -> Update_t
 {

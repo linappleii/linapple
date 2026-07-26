@@ -43,7 +43,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   if (!self || !self->context) return nullptr;
   auto* ctx = static_cast<FtpGeneratorContext_t*>(self->context);
 
-  FileList_t* list = FileBrowser_CreateList();
+  FileList_t* list = file_browser_create_list();
   if (!list) return nullptr;
 
   std::array<char, 1024> ftpdirpath;
@@ -82,7 +82,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   }
 
   if (ctx->directory != "ftp://") {
-    file_entry_t up_entry{};
+    FileEntry_t up_entry{};
     up_entry.name[0] = '\0';
     Util_SafeStrCpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
@@ -97,7 +97,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
       std::unique_ptr<char, void (*)(void*)> trimmed_name(
           php_trim(fp.name, fp.namelen), free);
 
-      file_entry_t entry{};
+      FileEntry_t entry{};
       entry.name[0] = '\0';
       Util_SafeStrCpy(entry.name, trimmed_name.get(), sizeof(entry.name));
 
@@ -137,7 +137,7 @@ static void FTPGen_Destroy(FileListGenerator_t* self) {
 
 extern "C" {
 
-FileListGenerator_t* FileBrowser_CreateFTPGenerator(const char* directory) {
+FileListGenerator_t* file_browser_create_ftp_generator(const char* directory) {
   if (!directory) return nullptr;
 
   auto* gen = new (std::nothrow) FileListGenerator_t();
@@ -166,7 +166,7 @@ auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                       std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
-      FileBrowser_CreateFTPGenerator(ftp_dir.c_str());
+      file_browser_create_ftp_generator(ftp_dir.c_str());
   if (!generator) return false;
   bool result = choose_image_dialog(sx, sy, ftp_dir, slot, generator, filename,
                                   isdir, index_file);

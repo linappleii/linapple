@@ -23,7 +23,7 @@ auto CmdFlagClear(int nArgs) -> Update_t {
       while (iFlag < _6502_NUM_FLAGS) {
         if (g_aBreakpointSource[BP_SRC_FLAG_N - iFlag][0] ==
             toupper(g_aArgs[iArg].sArg[0])) {
-          CpuGetRegisters()->ps &= ~(1 << (7 - iFlag));
+          cpu_get_registers()->ps &= ~(1 << (7 - iFlag));
           break;
         }
         iFlag++;
@@ -31,7 +31,7 @@ auto CmdFlagClear(int nArgs) -> Update_t {
       iArg--;
     }
   } else {
-    CpuGetRegisters()->ps &= ~(1 << iFlag);
+    cpu_get_registers()->ps &= ~(1 << iFlag);
   }
 
   return UPDATE_FLAGS;
@@ -47,7 +47,7 @@ auto CmdFlagSet(int nArgs) -> Update_t {
       while (iFlag < _6502_NUM_FLAGS) {
         if (g_aBreakpointSource[BP_SRC_FLAG_N - iFlag][0] ==
             toupper(g_aArgs[iArg].sArg[0])) {
-          CpuGetRegisters()->ps |= (1 << (7 - iFlag));
+          cpu_get_registers()->ps |= (1 << (7 - iFlag));
           break;
         }
         iFlag++;
@@ -55,7 +55,7 @@ auto CmdFlagSet(int nArgs) -> Update_t {
       iArg--;
     }
   } else {
-    CpuGetRegisters()->ps |= (1 << iFlag);
+    cpu_get_registers()->ps |= (1 << iFlag);
   }
   return UPDATE_FLAGS;
 }
