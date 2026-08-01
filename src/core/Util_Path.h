@@ -91,6 +91,9 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
   paths.push_back(get_executable_dir() + "../share/linapple/");
   paths.push_back(get_executable_dir() + "../etc/linapple/");
 
+#ifdef SOURCE_RES_DIR
+  paths.push_back(SOURCE_RES_DIR "/");
+#endif
 #ifdef ASSET_DIR
   paths.push_back(ASSET_DIR "/");
 #endif

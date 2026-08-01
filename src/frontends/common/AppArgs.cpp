@@ -41,7 +41,11 @@ static const std::array<struct option, 23> OptionTable = {
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
 
 void AppArgs_PrintHelp() {
+#ifdef LINAPPLE_FRONTEND_NAME
+  printf("LinApple Emulator (Frontend: %s)\n", LINAPPLE_FRONTEND_NAME);
+#else
   printf("LinApple Emulator\n");
+#endif
   printf("Usage: linapple [options]\n");
   printf("Options:\n");
   printf("  -1, --d1 <file>        Insert disk image in drive 1\n");

@@ -43,9 +43,14 @@ cmake --build build -j$(nproc)
 
 #### Build Options
 You can pass various options to the `cmake` configuration step:
-- `-DFRONTEND=sdl3` : (Default) Build the emulator with the SDL3-based graphical frontend.
-- `-DFRONTEND=tui` : Build for the terminal using 24-bit color and Unicode characters (no GUI dependencies required).
+- `-DFRONTEND=sdl3` : (Default) Build the emulator with the modern SDL3-based graphical frontend (recommended for Ubuntu 26.04+, Fedora 40+, Arch Linux).
+- `-DFRONTEND=sdl2` : Build with the legacy SDL2 graphical frontend (recommended for Debian 12, Ubuntu 22.04 LTS, or older distributions where SDL3 is not pre-packaged).
+- `-DFRONTEND=sdl1` : Build with the legacy SDL1.2 graphical frontend for vintage/embedded systems.
+- `-DFRONTEND=tui` : Build for the terminal using 24-bit color and Unicode characters (no GUI/SDL dependencies required).
 - `-DFRONTEND=headless` : Build the emulator without GUI or SDL dependencies (useful for automated testing or server environments).
+- `-DENABLE_ASAN=ON` : Enable AddressSanitizer for memory bug and leak detection.
+- `-DENABLE_UBSAN=ON` : Enable UndefinedBehaviorSanitizer for undefined behavior detection.
+- `-DENABLE_CLANG_TIDY=ON` : Enable `clang-tidy` static analysis during build.
 - `-DBUILD_TESTING=OFF` : Skip building the test suite (saves compilation time and dependency fetching).
 - `-DREGISTRY_WRITEABLE=ON` : Enable saving emulator configuration settings back to the config file.
 - `-DPROFILING=ON` : Enable `gprof` profiling output.
