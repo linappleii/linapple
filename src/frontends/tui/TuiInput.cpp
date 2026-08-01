@@ -134,7 +134,7 @@ auto tui_input_poll() -> void {
   }
 
   if (g_joy_fd != -1) {
-    struct JsEvent_t js {};
+    struct js_event js {};
     while (read(g_joy_fd, &js, sizeof(js)) > 0) {
       if ((js.type & JS_EVENT_AXIS) != 0) {
         linapple_set_joystick_axis(js.number, js.value);

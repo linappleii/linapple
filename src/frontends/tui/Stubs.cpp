@@ -1,7 +1,9 @@
 #include <cstdint>
 
+#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/Joystick.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
@@ -58,7 +60,10 @@ WEAK auto super_serial_frontend_set_loopback(bool e) -> void { (void)e; }
 // Video/Frontend Stubs needed for Debugger source linkage
 WEAK auto StretchBltMemToFrameDC() -> void {}
 WEAK auto joy_set_trim(int16_t, bool) -> void {}
-WEAK auto joy_set_button(eBUTTON, eBUTTONSTATE) -> void {}
+WEAK auto joy_set_button(int button, bool down) -> void {
+  (void)button;
+  (void)down;
+}
 WEAK auto joy_update_position(uint32_t) -> void {}
 WEAK auto video_update_vbl(uint32_t) -> void {}
 WEAK auto video_redraw_screen() -> void {}

@@ -388,6 +388,7 @@ endif()
 target_compile_definitions(linapple PRIVATE
     ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
     SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+    LINAPPLE_FRONTEND_NAME="${FRONTEND}"
     ${PERIPHERAL_DEFINITIONS}
 )
 target_compile_definitions(linapple PUBLIC ENABLE_RIFF)
@@ -400,6 +401,10 @@ if(PERIPHERAL_MODULES)
 endif()
 install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
+
+if(FRONTEND STREQUAL "sdl1" OR FRONTEND STREQUAL "sdl2")
+    install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
+endif()
 
 # --- Tests ---
 include(CTest)

@@ -33,7 +33,6 @@ static std::thread g_audio_thread;
 
 static constexpr size_t chunk_frames = 512;
 static constexpr size_t channels = 2;
-static constexpr int sample_rate = 44100;
 static constexpr int pace_sleep_ms = 10;
 static constexpr int buffer_ms = 40;
 static constexpr int req_ms = 10;
