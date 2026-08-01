@@ -21,15 +21,15 @@
 #include "core/Util_Path.h"
 
 // Globals
-MemoryDump_t g_aMemDump[NUM_MEM_DUMPS] = {{true, 0, DEV_MEMORY, MEM_VIEW_HEX},
+MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {{true, 0, DEV_MEMORY, MEM_VIEW_HEX},
                                           {false, 0, DEV_MEMORY, MEM_VIEW_HEX}};
 
 // Made global so operator @# can be used with other commands.
-MemorySearchResults_t g_vMemorySearchResults;
+MemorySearchResults_t g_memory_search_results;
 
-extern const Opcodes_t* g_aOpcodes;
-extern const Opcodes_t g_aOpcodes65C02[NUM_OPCODES];
-extern uint16_t g_uBreakMemoryAddress;
+extern const Opcodes_t* g_opcodes;
+extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
+extern uint16_t g_break_memory_address;
 
 auto _GetFileSize(FILE* hFile) -> size_t;
 auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
@@ -50,37 +50,37 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
     return false;
   }
 
-  Arg_t* pArg = &g_aArgs[1];
+  Arg_t* pArg = &g_args[1];
   uint16_t nAddress = pArg->nValue;
   bool bUpdate = false;
 
   pArg->eDevice = DEV_MEMORY;  // Default
 
-  if (strncmp(g_aArgs[1].sArg, "SY", 2) == 0)  // Sy6522_t
+  if (strncmp(g_args[1].sArg, "SY", 2) == 0)  // Sy6522_t
   {
-    nAddress = (g_aArgs[1].sArg[2] - '0') & 3;
+    nAddress = (g_args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_SY6522;
     bUpdate = true;
-  } else if (strncmp(g_aArgs[1].sArg, "AY", 2) == 0)  // Ay8910_t
+  } else if (strncmp(g_args[1].sArg, "AY", 2) == 0)  // Ay8910_t
   {
-    nAddress = (g_aArgs[1].sArg[2] - '0') & 3;
+    nAddress = (g_args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_AY8910;
     bUpdate = true;
   }
 #ifdef SUPPORT_Z80_EMU
-  else if (strcmp(g_aArgs[1].sArg, "*AF") == 0) {
+  else if (strcmp(g_args[1].sArg, "*AF") == 0) {
     nAddress = *(uint16_t*)(mem + REG_AF);
     bUpdate = true;
-  } else if (strcmp(g_aArgs[1].sArg, "*BC") == 0) {
+  } else if (strcmp(g_args[1].sArg, "*BC") == 0) {
     nAddress = *(uint16_t*)(mem + REG_BC);
     bUpdate = true;
-  } else if (strcmp(g_aArgs[1].sArg, "*DE") == 0) {
+  } else if (strcmp(g_args[1].sArg, "*DE") == 0) {
     nAddress = *(uint16_t*)(mem + REG_DE);
     bUpdate = true;
-  } else if (strcmp(g_aArgs[1].sArg, "*HL") == 0) {
+  } else if (strcmp(g_args[1].sArg, "*HL") == 0) {
     nAddress = *(uint16_t*)(mem + REG_HL);
     bUpdate = true;
-  } else if (strcmp(g_aArgs[1].sArg, "*IX") == 0) {
+  } else if (strcmp(g_args[1].sArg, "*IX") == 0) {
     nAddress = *(uint16_t*)(mem + REG_IX);
     bUpdate = true;
   }
@@ -104,21 +104,21 @@ auto CmdMemoryCompare(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_COMPARE);
   }
 
-  uint16_t nSrcAddr = g_aArgs[1].nValue;
-  uint16_t nDstAddr = g_aArgs[3].nValue;
+  uint16_t nSrcAddr = g_args[1].nValue;
+  uint16_t nDstAddr = g_args[3].nValue;
 
   uint16_t nSrcSymAddr = 0;
   uint16_t nDstSymAddr = 0;
 
   if (!nSrcAddr) {
-    nSrcSymAddr = GetAddressFromSymbol(g_aArgs[1].sArg);
+    nSrcSymAddr = GetAddressFromSymbol(g_args[1].sArg);
     if (nSrcAddr != nSrcSymAddr) {
       nSrcAddr = nSrcSymAddr;
     }
   }
 
   if (!nDstAddr) {
-    nDstSymAddr = GetAddressFromSymbol(g_aArgs[3].sArg);
+    nDstSymAddr = GetAddressFromSymbol(g_args[3].sArg);
     if (nDstAddr != nDstSymAddr) {
       nDstAddr = nDstSymAddr;
     }
@@ -135,20 +135,20 @@ static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t {
   uint16_t nAddress = 0;
 
   if (!MemoryDumpCheck(nArgs, &nAddress)) {
-    return Help_Arg_1(g_iCommand);
+    return Help_Arg_1(g_command);
   }
 
-  g_aMemDump[iWhich].nAddress = nAddress;
-  g_aMemDump[iWhich].eDevice = g_aArgs[1].eDevice;
-  g_aMemDump[iWhich].bActive = true;
-  g_aMemDump[iWhich].eView = static_cast<MemoryView_e>(iView);
+  g_mem_dump[iWhich].nAddress = nAddress;
+  g_mem_dump[iWhich].eDevice = g_args[1].eDevice;
+  g_mem_dump[iWhich].bActive = true;
+  g_mem_dump[iWhich].eView = static_cast<MemoryView_e>(iView);
 
   if (iWhich == 0) {
-    g_nDisasmCurAddress = nAddress;
+    g_disasm_cur_address = nAddress;
   }
 
   // make sure data window is visible
-  if (g_iWindowThis != WINDOW_DATA) {
+  if (g_window_this != WINDOW_DATA) {
     CmdWindowViewCommon(WINDOW_DATA);
   }
 
@@ -170,7 +170,7 @@ auto _MemoryCheckMiniDump(int iWhich) -> bool {
 
 //===========================================================================
 auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
-  int iWhich = g_iCommand - CMD_MEM_MINI_DUMP_HEX_1;
+  int iWhich = g_command - CMD_MEM_MINI_DUMP_HEX_1;
   if (_MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -180,7 +180,7 @@ auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
-  int iWhich = g_iCommand - CMD_MEM_MINI_DUMP_ASCII_1;
+  int iWhich = g_command - CMD_MEM_MINI_DUMP_ASCII_1;
   if (_MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -190,7 +190,7 @@ auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
-  int iWhich = g_iCommand - CMD_MEM_MINI_DUMP_APPLE_1;
+  int iWhich = g_command - CMD_MEM_MINI_DUMP_APPLE_1;
   if (_MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -201,7 +201,7 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 //===========================================================================
 // Update_t CmdMemoryMiniDumpLow (int nArgs)
 //{
-//  int iWhich = g_iCommand - CMD_MEM_MINI_DUMP_TXT_LO_1;
+//  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_LO_1;
 //  if (_MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
@@ -211,7 +211,7 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 //===========================================================================
 // Update_t CmdMemoryMiniDumpHigh (int nArgs)
 //{
-//  int iWhich = g_iCommand - CMD_MEM_MINI_DUMP_TXT_HI_1;
+//  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_HI_1;
 //  if (_MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
@@ -228,15 +228,15 @@ auto CmdMemoryEdit(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdMemoryEnterByte(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
-      ((g_aArgs[2].sArg[0] != '0') &&
-       (!g_aArgs[2].nValue)))  // arg2 not numeric or not specified
+      ((g_args[2].sArg[0] != '0') &&
+       (!g_args[2].nValue)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
+  uint16_t nAddress = g_args[1].nValue;
   while (nArgs >= 2) {
-    uint16_t nData = g_aArgs[nArgs].nValue;
+    uint16_t nData = g_args[nArgs].nValue;
     if (nData > 0xFF) {
       *(mem + nAddress + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
       *(mem + nAddress + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
@@ -254,15 +254,15 @@ auto CmdMemoryEnterByte(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdMemoryEnterWord(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
-      ((g_aArgs[2].sArg[0] != '0') &&
-       (!g_aArgs[2].nValue)))  // arg2 not numeric or not specified
+      ((g_args[2].sArg[0] != '0') &&
+       (!g_args[2].nValue)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
+  uint16_t nAddress = g_args[1].nValue;
   while (nArgs >= 2) {
-    uint16_t nData = g_aArgs[nArgs].nValue;
+    uint16_t nData = g_args[nArgs].nValue;
 
     // Little Endian
     *(mem + nAddress + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
@@ -298,8 +298,8 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   uint8_t nValue = 0;
 
   if (nArgs == 3) {
-    nAddressStart = g_aArgs[1].nValue;
-    nAddressEnd = g_aArgs[2].nValue;
+    nAddressStart = g_args[1].nValue;
+    nAddressEnd = g_args[2].nValue;
     nAddressLen = MIN((int)_6502_MEM_END, nAddressEnd - nAddressStart + 1);
   } else {
     RangeType_t eRange;
@@ -313,13 +313,13 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
     }
   }
 #if DEBUG_VAL_2
-  nBytes = MAX(1, g_aArgs[1].nVal2);  // TODO: This actually work??
+  nBytes = MAX(1, g_args[1].nVal2);  // TODO: This actually work??
 #endif
 
   if ((nAddressLen > 0) && (nAddressEnd <= _6502_MEM_END)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
-    nValue = g_aArgs[nArgs].nValue & 0xFF;
+    nValue = g_args[nArgs].nValue & 0xFF;
     while (nAddressLen--)  // v2.7.0.22
     {
       // TODO: Optimize - split into pre_io, and post_io
@@ -333,7 +333,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   return UPDATE_ALL;  // UPDATE_CONSOLE_DISPLAY;
 }
 
-static std::string g_sMemoryLoadSaveFileName;
+static std::string g_memory_load_save_file_name;
 
 // "PWD"
 //===========================================================================
@@ -378,15 +378,15 @@ Update_t CmdMemoryLoad (int nArgs)
   bool bHaveFileName = false;
   int iArgAddress = 3;
 
-  if (g_aArgs[1].bType & TYPE_QUOTED_2)
+  if (g_args[1].bType & TYPE_QUOTED_2)
     bHaveFileName = true;
 
-//  if (g_aArgs[2].bType & TOKEN_QUOTE_DOUBLE)
+//  if (g_args[2].bType & TOKEN_QUOTE_DOUBLE)
 //    bHaveFileName = true;
 
   if (nArgs > 1)
   {
-    if (g_aArgs[1].bType & TYPE_QUOTED_2)
+    if (g_args[1].bType & TYPE_QUOTED_2)
       bHaveFileName = true;
 
     int iArgComma1  = 2;
@@ -405,11 +405,11 @@ Update_t CmdMemoryLoad (int nArgs)
         return Help_Arg_1( CMD_MEMORY_LOAD );
     }
 
-    if (g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA)
+    if (g_args[ iArgComma1 ].eToken != TOKEN_COMMA)
       return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
-    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // TODO: g_sDebugDir
+    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // TODO: g_debug_dir
 
     uint16_t nAddressStart;
     uint16_t nAddress2   = 0;
@@ -440,9 +440,9 @@ Update_t CmdMemoryLoad (int nArgs)
 
     if (bHaveFileName)
     {
-      strcpy( g_sMemoryLoadSaveFileName, g_aArgs[ 1 ].sArg );
+      strcpy( g_memory_load_save_file_name, g_args[ 1 ].sArg );
     }
-    strcat( sLoadSaveFilePath, g_sMemoryLoadSaveFileName );
+    strcat( sLoadSaveFilePath, g_memory_load_save_file_name );
 
     FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
     if (hFile)
@@ -477,7 +477,7 @@ Update_t CmdMemoryLoad (int nArgs)
       CmdConfigGetDebugDir( 0 );
 
       char sFile[ path_max_len + 8 ];
-      ConsoleBufferPushFormat( sFile, "File: %s", g_sMemoryLoadSaveFileName );
+      ConsoleBufferPushFormat( sFile, "File: %s", g_memory_load_save_file_name );
     }
 
     delete [] pMemory;
@@ -507,11 +507,11 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   bool bHaveFileName = false;
 
-  if (g_aArgs[1].bType & TYPE_QUOTED_2) {
+  if (g_args[1].bType & TYPE_QUOTED_2) {
     bHaveFileName = true;
   }
 
-  //  if (g_aArgs[2].bType & TOKEN_QUOTE_DOUBLE)
+  //  if (g_args[2].bType & TOKEN_QUOTE_DOUBLE)
   //    bHaveFileName = true;
 
   int iArgComma1 = 2;
@@ -540,12 +540,12 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (nArgs >= 5) {
-    if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS) ||
-        g_aArgs[iArgColon].eToken != TOKEN_COLON) {
+    if (!(g_args[iArgBank].bType & TYPE_ADDRESS) ||
+        g_args[iArgColon].eToken != TOKEN_COLON) {
       return Help_Arg_1(CMD_MEMORY_LOAD);
     }
 
-    nBank = g_aArgs[iArgBank].nValue;
+    nBank = g_args[iArgBank].nValue;
     bBankSpecified = true;
 
     iArgAddress += 2;
@@ -570,7 +570,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   const int nFileTypes = sizeof(aFileTypes) / sizeof(KnownFileType_t);
   const KnownFileType_t* pFileType = nullptr;
 
-  char* pFileName = g_aArgs[1].sArg;
+  char* pFileName = g_args[1].sArg;
   int nLen = strlen(pFileName);
   char* pEnd = pFileName + nLen - 1;
   while (pEnd > pFileName) {
@@ -591,7 +591,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (!pFileType) {
-    if (g_aArgs[iArgComma1].eToken != TOKEN_COMMA) {
+    if (g_args[iArgComma1].eToken != TOKEN_COMMA) {
       return Help_Arg_1(CMD_MEMORY_LOAD);
     }
   }
@@ -609,7 +609,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   RangeType_t eRange = RANGE_MISSING_ARG_2;
 
-  if (g_aArgs[iArgComma1].eToken == TOKEN_COMMA) {
+  if (g_args[iArgComma1].eToken == TOKEN_COMMA) {
     eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
   }
 
@@ -628,11 +628,11 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (bHaveFileName) {
-    g_sMemoryLoadSaveFileName = pFileName;
+    g_memory_load_save_file_name = pFileName;
   }
   const std::string sLoadSaveFilePath =
       std::string(g_state.sCurrentDir.data()) +
-      g_sMemoryLoadSaveFileName;  // TODO: g_sDebugDir
+      g_memory_load_save_file_name;  // TODO: g_debug_dir
 
   uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
   if (!pMemBankBase) {
@@ -678,7 +678,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     CmdConfigGetDebugDir(0);
 
     char sFile[path_max_len + 8];
-    ConsoleBufferPushFormat(sFile, "File: ", g_sMemoryLoadSaveFileName.c_str());
+    ConsoleBufferPushFormat(sFile, "File: ", g_memory_load_save_file_name.c_str());
   }
 
   return ConsoleUpdate();
@@ -696,9 +696,9 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_MOVE);
   }
 
-  uint16_t nDst = g_aArgs[1].nValue;
-  //  uint16_t nSrc = g_aArgs[2].nValue;
-  //  uint16_t nLen = g_aArgs[3].nValue - nSrc;
+  uint16_t nDst = g_args[1].nValue;
+  //  uint16_t nSrc = g_args[2].nValue;
+  //  uint16_t nLen = g_args[3].nValue - nSrc;
   uint16_t nAddress2 = 0;
   uint16_t nAddressStart = 0;
   uint16_t nAddressEnd = 0;
@@ -770,10 +770,10 @@ Update_t CmdMemorySave (int nArgs)
   {
     bool bHaveFileName = false;
 
-    if (g_aArgs[1].bType & TYPE_QUOTED_2)
+    if (g_args[1].bType & TYPE_QUOTED_2)
       bHaveFileName = true;
 
-//    if (g_aArgs[1].bType & TOKEN_QUOTE_DOUBLE)
+//    if (g_args[1].bType & TOKEN_QUOTE_DOUBLE)
 //      bHaveFileName = true;
 
     int iArgComma1  = 2;
@@ -792,8 +792,8 @@ Update_t CmdMemorySave (int nArgs)
         return Help_Arg_1( CMD_MEMORY_SAVE );
     }
 
-//    if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) ||
-//      (g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
+//    if ((g_args[ iArgComma1 ].eToken != TOKEN_COMMA) ||
+//      (g_args[ iArgComma2 ].eToken != TOKEN_COLON))
 //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
@@ -814,13 +814,13 @@ Update_t CmdMemorySave (int nArgs)
     {
       if (! bHaveFileName)
       {
-        sprintf( g_sMemoryLoadSaveFileName, "%04X.%04X.bin", nAddressStart, nAddressLen ); // nAddressEnd );
+        sprintf( g_memory_load_save_file_name, "%04X.%04X.bin", nAddressStart, nAddressLen ); // nAddressEnd );
       }
       else
       {
-        strcpy( g_sMemoryLoadSaveFileName, g_aArgs[ 1 ].sArg );
+        strcpy( g_memory_load_save_file_name, g_args[ 1 ].sArg );
       }
-      strcat( sLoadSaveFilePath, g_sMemoryLoadSaveFileName );
+      strcat( sLoadSaveFilePath, g_memory_load_save_file_name );
 
 //        if (nArgs == 2)
       {
@@ -901,11 +901,11 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   } else {
     bool bHaveFileName = false;
 
-    if (g_aArgs[1].bType & TYPE_QUOTED_2) {
+    if (g_args[1].bType & TYPE_QUOTED_2) {
       bHaveFileName = true;
     }
 
-    //    if (g_aArgs[1].bType & TOKEN_QUOTE_DOUBLE)
+    //    if (g_args[1].bType & TOKEN_QUOTE_DOUBLE)
     //      bHaveFileName = true;
 
     //    int iArgComma1  = 2;
@@ -931,12 +931,12 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     }
 
     if (nArgs > 5) {
-      if (!(g_aArgs[iArgBank].bType & TYPE_ADDRESS) ||
-          g_aArgs[iArgColon].eToken != TOKEN_COLON) {
+      if (!(g_args[iArgBank].bType & TYPE_ADDRESS) ||
+          g_args[iArgColon].eToken != TOKEN_COLON) {
         return Help_Arg_1(CMD_MEMORY_SAVE);
       }
 
-      nBank = g_aArgs[iArgBank].nValue;
+      nBank = g_args[iArgBank].nValue;
       bBankSpecified = true;
 
       iArgAddress += 2;
@@ -946,8 +946,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       bBankSpecified = false;
     }
 
-    //    if ((g_aArgs[ iArgComma1 ].eToken != TOKEN_COMMA) ||
-    //      (g_aArgs[ iArgComma2 ].eToken != TOKEN_COLON))
+    //    if ((g_args[ iArgComma1 ].eToken != TOKEN_COMMA) ||
+    //      (g_args[ iArgComma2 ].eToken != TOKEN_COLON))
     //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     std::string sLoadSaveFilePath =
@@ -974,11 +974,11 @@ auto CmdMemorySave(int nArgs) -> Update_t {
           sprintf(sMemoryLoadSaveFileName, "%04X.%04X.bank%02X.bin",
                   nAddressStart, nAddressLen, nBank);
         }
-        g_sMemoryLoadSaveFileName = sMemoryLoadSaveFileName;
+        g_memory_load_save_file_name = sMemoryLoadSaveFileName;
       } else {
-        g_sMemoryLoadSaveFileName = g_aArgs[1].sArg;
+        g_memory_load_save_file_name = g_args[1].sArg;
       }
-      sLoadSaveFilePath += g_sMemoryLoadSaveFileName;
+      sLoadSaveFilePath += g_memory_load_save_file_name;
 
       const uint8_t* const pMemBankBase =
           bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
@@ -1015,10 +1015,10 @@ auto CmdMemorySave(int nArgs) -> Update_t {
 }
 #endif
 
-char g_aTextScreen[DEBUG_VIRTUAL_TEXT_HEIGHT *
+char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
                    (DEBUG_VIRTUAL_TEXT_WIDTH +
                     4)];  // (80 column + CR + LF) * 24 rows + NULL
-int g_nTextScreen = 0;
+int g_text_screen_count = 0;
 
 /*
   $FBC1 BASCALC  IN: A=row, OUT: $28=low, $29=hi
@@ -1081,16 +1081,16 @@ static auto RemapChar(const char c) -> char {
 }
 
 auto Util_GetDebuggerText(char*& pText_) -> size_t {
-  char* pBeg = &g_aTextScreen[0];
-  char* pEnd = &g_aTextScreen[0];
+  char* pBeg = &g_text_screen[0];
+  char* pEnd = &g_text_screen[0];
 
-  g_nTextScreen = 0;
-  memset(pBeg, 0, sizeof(g_aTextScreen));
+  g_text_screen_count = 0;
+  memset(pBeg, 0, sizeof(g_text_screen));
 
-  memset(g_aDebuggerVirtualTextScreen, 0, sizeof(g_aDebuggerVirtualTextScreen));
+  memset(g_debugger_virtual_text_screen, 0, sizeof(g_debugger_virtual_text_screen));
   debug_display();
 
-  for (auto& y : g_aDebuggerVirtualTextScreen) {
+  for (auto& y : g_debugger_virtual_text_screen) {
     for (int x = 0; x < DEBUG_VIRTUAL_TEXT_WIDTH; x++) {
       char c = y[x];
       if ((c < 0x20) || (c >= 0x7F)) {
@@ -1102,24 +1102,24 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
   }
 
   *pEnd = 0;
-  g_nTextScreen = pEnd - pBeg;
+  g_text_screen_count = pEnd - pBeg;
 
   pText_ = pBeg;
-  return g_nTextScreen;
+  return g_text_screen_count;
 }
 
 auto Util_GetTextScreen(char*& pText_) -> size_t {
   uint16_t nAddressStart = 0;
 
-  char* pBeg = &g_aTextScreen[0];
-  char* pEnd = &g_aTextScreen[0];
+  char* pBeg = &g_text_screen[0];
+  char* pEnd = &g_text_screen[0];
 
-  g_nTextScreen = 0;
-  memset(pBeg, 0, sizeof(g_aTextScreen));
+  g_text_screen_count = 0;
+  memset(pBeg, 0, sizeof(g_text_screen));
 
   uint32_t uBank2 = video_get_sw_page2() ? 1 : 0;
-  uint8_t* g_pTextBank1 = mem_get_aux_ptr(0x400 << uBank2);
-  uint8_t* g_pTextBank0 = mem_get_main_ptr(0x400 << uBank2);
+  uint8_t* g_text_bank1 = mem_get_aux_ptr(0x400 << uBank2);
+  uint8_t* g_text_bank0 = mem_get_main_ptr(0x400 << uBank2);
 
   for (int y = 0; y < 24; y++) {
     // nAddressStart = 0x400 + (y%8)*0x80 + (y/8)*0x28;
@@ -1131,12 +1131,12 @@ auto Util_GetTextScreen(char*& pText_) -> size_t {
       char c = 0;  // TODO: FormatCharTxtCtrl() ?
 
       if (video_get_sw_80col()) {  // AUX
-        c = g_pTextBank1[nAddressStart] & 0x7F;
+        c = g_text_bank1[nAddressStart] & 0x7F;
         c = RemapChar(c);
         *pEnd++ = c;
       }  // MAIN -- NOTE: intentional indent & outside if() !
 
-      c = g_pTextBank0[nAddressStart] & 0x7F;
+      c = g_text_bank0[nAddressStart] & 0x7F;
       c = RemapChar(c);
       *pEnd++ = c;
 
@@ -1148,10 +1148,10 @@ auto Util_GetTextScreen(char*& pText_) -> size_t {
   }
   *pEnd = 0;
 
-  g_nTextScreen = pEnd - pBeg;
+  g_text_screen_count = pEnd - pBeg;
 
   pText_ = pBeg;
-  return g_nTextScreen;
+  return g_text_screen_count;
 }
 
 //===========================================================================
@@ -1159,7 +1159,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
   (void)nArgs;
 #ifdef TODO  // Not supported for Linux yet
   int iParam;
-  int nFound = FindParam(g_aArgs[1].sArg, MATCH_EXACT, iParam,
+  int nFound = FindParam(g_args[1].sArg, MATCH_EXACT, iParam,
                          _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END);
 
   struct KnownFileType_t {
@@ -1183,7 +1183,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
   assert((nFileType == NUM_FILE_TYPES));
 #endif
 
-  char* pFileName = (nArgs > 1) ? g_aArgs[2].sArg : "";
+  char* pFileName = (nArgs > 1) ? g_args[2].sArg : "";
   int nLen = strlen(pFileName);
   char* pEnd = pFileName + nLen - 1;
   while (pEnd > pFileName) {
@@ -1587,7 +1587,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
       FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "w+b"), fclose);
       if (pFile) {
         size_t nWrote = 0;
-        uint8_t* pSwizzled = new uint8_t[g_nChromaSize];
+        uint8_t* pSwizzled = new uint8_t[g_chroma_size];
 
         if (iFileType == TYPE_BMP) {
           // need to save 32-bit bpp as 24-bit bpp
@@ -1600,11 +1600,11 @@ auto CmdNTSC(int nArgs) -> Update_t {
           fwrite(pBmp, sizeof(WinBmpHeader_t), 1, pFile.get());
         } else {
           // RAW has no header
-          Swizzle32::RGBAswapBGRA(g_nChromaSize, (uint8_t*)pChromaTable,
+          Swizzle32::RGBAswapBGRA(g_chroma_size, (uint8_t*)pChromaTable,
                                   pSwizzled);
         }
 
-        nWrote = fwrite(pSwizzled, g_nChromaSize, 1, pFile.get());
+        nWrote = fwrite(pSwizzled, g_chroma_size, 1, pFile.get());
         delete[] pSwizzled;
 
         if (nWrote == 1) {
@@ -1622,7 +1622,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
         // Get File Size
         size_t nFileSize = _GetFileSize(pFile.get());
-        uint8_t* pSwizzled = new uint8_t[g_nChromaSize];
+        uint8_t* pSwizzled = new uint8_t[g_chroma_size];
         bool bSwizzle = true;
 
         WinBmpHeader4_t bmp, *pBmp = &bmp;
@@ -1660,17 +1660,17 @@ auto CmdNTSC(int nArgs) -> Update_t {
                 bSwizzle = true;
             }
           }
-        } else if (nFileSize != g_nChromaSize) {
+        } else if (nFileSize != g_chroma_size) {
           sprintf(aStatusText, "Raw size != %d", 64 * 256 * 4);
           goto _error;
         }
 
-        size_t nRead = fread(pSwizzled, g_nChromaSize, 1, pFile.get());
+        size_t nRead = fread(pSwizzled, g_chroma_size, 1, pFile.get());
 
         if (iFileType == TYPE_BMP) {
           if (pBmp->nHeightPixels == 1) {
             uint8_t* pTemp64x256 = new uint8_t[64 * 256 * 4];
-            memset(pTemp64x256, 0, g_nChromaSize);
+            memset(pTemp64x256, 0, g_chroma_size);
 
             // Transpose16x1::transposeFrom16x1( pSwizzled, (uint8_t*)
             // pChromaTable );
@@ -1690,10 +1690,10 @@ auto CmdNTSC(int nArgs) -> Update_t {
                                                  (uint8_t*)pChromaTable);
 
           if (bSwizzle)
-            Swizzle32::ABGRswizzleBGRA(g_nChromaSize, (uint8_t*)pChromaTable,
+            Swizzle32::ABGRswizzleBGRA(g_chroma_size, (uint8_t*)pChromaTable,
                                        (uint8_t*)pChromaTable);
         } else
-          Swizzle32::RGBAswapBGRA(g_nChromaSize, pSwizzled,
+          Swizzle32::RGBAswapBGRA(g_chroma_size, pSwizzled,
                                   (uint8_t*)pChromaTable);
 
       _error:
@@ -1725,7 +1725,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   bool bHaveFileName = false;
 
-  if (g_aArgs[1].bType & TYPE_QUOTED_2) {
+  if (g_args[1].bType & TYPE_QUOTED_2) {
     bHaveFileName = true;
   }
 
@@ -1736,16 +1736,16 @@ auto CmdTextSave(int nArgs) -> int {
       g_state.sCurrentDir.data();  // g_state.sProgramDir
 
   if (bHaveFileName) {
-    g_sMemoryLoadSaveFileName = g_aArgs[1].sArg;
+    g_memory_load_save_file_name = g_args[1].sArg;
   } else {
     if (video_get_sw_80col()) {
-      g_sMemoryLoadSaveFileName = "AppleWin_Text80.txt";
+      g_memory_load_save_file_name = "AppleWin_Text80.txt";
     } else {
-      g_sMemoryLoadSaveFileName = "AppleWin_Text40.txt";
+      g_memory_load_save_file_name = "AppleWin_Text40.txt";
     }
   }
 
-  sLoadSaveFilePath += g_sMemoryLoadSaveFileName;
+  sLoadSaveFilePath += g_memory_load_save_file_name;
 
   FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
@@ -1759,7 +1759,7 @@ auto CmdTextSave(int nArgs) -> int {
     if (nWrote == 1) {
       char text[CONSOLE_WIDTH] = "";
       ConsoleBufferPushFormat(text, "Saved: %s",
-                              g_sMemoryLoadSaveFileName.c_str());
+                              g_memory_load_save_file_name.c_str());
     } else {
       ConsoleBufferPush("error saving.");
     }
@@ -1774,9 +1774,9 @@ auto CmdTextSave(int nArgs) -> int {
 auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
                       uint16_t nAddressStart, uint16_t nAddressEnd) -> int {
   int nFound = 0;
-  g_vMemorySearchResults.erase(g_vMemorySearchResults.begin(),
-                               g_vMemorySearchResults.end());
-  g_vMemorySearchResults.push_back(NO_6502_TARGET);
+  g_memory_search_results.erase(g_memory_search_results.begin(),
+                               g_memory_search_results.end());
+  g_memory_search_results.push_back(NO_6502_TARGET);
 
   uint16_t nAddress = 0;
   for (nAddress = nAddressStart; nAddress < nAddressEnd; nAddress++) {
@@ -1852,7 +1852,7 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
       nFound++;
 
       // Save the search result
-      g_vMemorySearchResults.push_back(nAddress);
+      g_memory_search_results.push_back(nAddress);
     }
   }
 
@@ -1863,7 +1863,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   (void)nArgs;
   const uint32_t nBuf = CONSOLE_WIDTH * 2;
 
-  int nFound = g_vMemorySearchResults.size() - 1;
+  int nFound = g_memory_search_results.size() - 1;
 
   int nLen = 0;      // temp
   int nLineLen = 0;  // string length of matches for this line, for word-wrap
@@ -1875,7 +1875,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   if (nFound > 0) {
     int iFound = 1;
     while (iFound <= nFound) {
-      uint16_t nAddress = g_vMemorySearchResults.at(iFound);
+      uint16_t nAddress = g_memory_search_results.at(iFound);
 
       //      sprintf( sText, "%2d:$%04X ", iFound, nAddress );
       //      int nLen = strlen( sText );
@@ -1910,7 +1910,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
       nLen += StringCat(sResult, sText, nBuf);
 
       // Fit on same line?
-      if ((nLineLen + nLen) > (g_nConsoleDisplayWidth - 1))  // CONSOLE_WIDTH
+      if ((nLineLen + nLen) > (g_console_display_width - 1))  // CONSOLE_WIDTH
       {
         // ConsoleDisplayPush( sMatches );
         console_print(sMatches);
@@ -1955,7 +1955,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
 
   console_print(sResult);
 
-  // g_vMemorySearchResults is cleared in debug_end()
+  // g_memory_search_results is cleared in debug_end()
 
   //  return UPDATE_CONSOLE_DISPLAY;
   return ConsoleUpdate();
@@ -1988,7 +1988,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
   MemorySearch_e tLastType = MEM_SEARCH_BYTE_N_WILD;
 
   // Get search "string"
-  Arg_t* pArg = &g_aArgs[iArgFirstByte];
+  Arg_t* pArg = &g_args[iArgFirstByte];
 
   uint16_t nTarget = 0;
   for (iArg = iArgFirstByte; iArg <= nArgs; iArg++, pArg++) {
@@ -2068,20 +2068,20 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
         }
 
         if (pArg->nArgLen == 1) {
-          if (pByte[0] == g_aParameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
                               .m_sName[0])  // Hack: hard-coded one char token
           {
             ms.m_iType = MEM_SEARCH_BYTE_1_WILD;
           }
         } else {
-          if (pByte[0] == g_aParameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
                               .m_sName[0])  // Hack: hard-coded one char token
           {
             ms.m_iType = MEM_SEARCH_NIB_LOW_EXACT;
             ms.m_nValue = pArg->nValue & 0x0F;
           }
 
-          if (pByte[1] == g_aParameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[1] == g_parameters[PARAM_MEM_SEARCH_WILD]
                               .m_sName[0])  // Hack: hard-coded one char token
           {
             if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT) {

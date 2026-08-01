@@ -121,7 +121,7 @@
 	,NUM_ASM_Z_DIRECTIVES
 	};
 
-	// NOTE: Keep in sync AsmDirectives_e g_aAssemblerDirectives !
+	// NOTE: Keep in sync AsmDirectives_e g_assembler_directives !
 	enum AsmDirectives_e
 	{
 		FIRST_A_DIRECTIVE = 1                                       , // Acme
@@ -150,12 +150,12 @@
 //			NUM_ASM_W_DIRECTIVES   // Weller
 	};
 
-extern	int g_iAssemblerSyntax;
-extern	int g_aAssemblerFirstDirective[ NUM_ASSEMBLERS ];
+extern	int g_assembler_syntax;
+extern	int g_assembler_first_directive[ NUM_ASSEMBLERS ];
 
 // Addressing _____________________________________________________________________________________
 
-	extern AddressingMode_t g_aOpmodes[ NUM_ADDRESSING_MODES ];
+	extern AddressingMode_t g_opmodes[ NUM_ADDRESSING_MODES ];
 
 // Assembler ______________________________________________________________________________________
 
@@ -181,17 +181,17 @@ extern	int g_aAssemblerFirstDirective[ NUM_ASSEMBLERS ];
 		Hash_t m_nHash;
 	};
 
-	extern int    g_bAssemblerOpcodesHashed; // = false;
-	extern Hash_t g_aOpcodesHash[ NUM_OPCODES ]; // for faster mnemonic lookup, for the assembler
-	extern bool   g_bAssemblerInput; // = false;
-	extern int    g_nAssemblerAddress; // = 0;
+	extern int    g_assembler_opcodes_hashed; // = false;
+	extern Hash_t g_opcodes_hash[ NUM_OPCODES ]; // for faster mnemonic lookup, for the assembler
+	extern bool   g_assembler_input; // = false;
+	extern int    g_assembler_address; // = 0;
 
-	extern const Opcodes_t *g_aOpcodes; // = NULL; // & g_aOpcodes65C02[ 0 ];
+	extern const Opcodes_t *g_opcodes; // = NULL; // & g_opcodes65_c02[ 0 ];
 
-	extern const Opcodes_t g_aOpcodes65C02[ NUM_OPCODES ];
-	extern const Opcodes_t g_aOpcodes6502 [ NUM_OPCODES ];
+	extern const Opcodes_t g_opcodes65_c02[ NUM_OPCODES ];
+	extern const Opcodes_t g_opcodes6502 [ NUM_OPCODES ];
 
-	extern AssemblerDirective_t g_aAssemblerDirectives[ NUM_ASM_DIRECTIVES ];
+	extern AssemblerDirective_t g_assembler_directives[ NUM_ASM_DIRECTIVES ];
 
 // Prototypes _______________________________________________________________
 
@@ -221,15 +221,15 @@ extern	int g_aAssemblerFirstDirective[ NUM_ASSEMBLERS ];
 	Update_t CmdSource(int nArgs);
 	Update_t CmdUnassemble(int nArgs);
 
-	extern bool  g_bSourceLevelDebugging;
-	extern bool  g_bSourceAddSymbols;
-	extern bool  g_bSourceAddMemory;
-	extern std::string g_aSourceFileName;
+	extern bool  g_source_level_debugging;
+	extern bool  g_source_add_symbols;
+	extern bool  g_source_add_memory;
+	extern std::string g_source_file_name;
 	extern MemoryTextFile_t g_AssemblerSourceBuffer;
-	extern int    g_iSourceDisplayStart;
-	extern int    g_nSourceAssembleBytes;
-	extern int    g_nSourceAssemblySymbols;
-	extern SourceAssembly_t g_aSourceDebug;
+	extern int    g_source_display_start;
+	extern int    g_source_assemble_bytes;
+	extern int    g_source_assembly_symbols;
+	extern SourceAssembly_t g_source_debug;
 
 	bool BufferAssemblyListing(const std::string& pFileName);
 	bool ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols);

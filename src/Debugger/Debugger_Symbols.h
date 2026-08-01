@@ -1,7 +1,7 @@
 #include <cstdint>
 #include "Debugger_Types.h"
 
-	extern 	SymbolTable_t g_aSymbols[ NUM_SYMBOL_TABLES ];
+	extern 	SymbolTable_t g_symbols[ NUM_SYMBOL_TABLES ];
 
 
 	Update_t _CmdSymbolsClear ( SymbolTable_Index_e eSymbolTable );

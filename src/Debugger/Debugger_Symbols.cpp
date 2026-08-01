@@ -41,12 +41,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	// Allow the user to disable/enable symbol tables
 	// xxx1xxx symbol table is active (are displayed in disassembly window, etc.)
 	// xxx1xxx symbol table is disabled (not displayed in disassembly window, etc.)
-	// See: CmdSymbolsListTable(), g_bDisplaySymbolTables
-	int g_bDisplaySymbolTables = ((1 << NUM_SYMBOL_TABLES) - 1) & (~static_cast<int>(SYMBOL_TABLE_PRODOS));// default to all symbol tables displayed/active
+	// See: CmdSymbolsListTable(), g_display_symbol_tables
+	int g_display_symbol_tables = ((1 << NUM_SYMBOL_TABLES) - 1) & (~static_cast<int>(SYMBOL_TABLE_PRODOS));// default to all symbol tables displayed/active
 
 // Symbols ________________________________________________________________________________________
 
-	const char*     g_sFileNameSymbols[ NUM_SYMBOL_TABLES ] = {
+	const char*     g_file_name_symbols[ NUM_SYMBOL_TABLES ] = {
 		 "APPLE2E.SYM"
 		,"A2_BASIC.SYM"
 		,"A2_ASM.SYM"
@@ -57,9 +57,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		,"A2_DOS33.SYM"
 		,"A2_PRODOS.SYM"
 	};
-	std::string  g_sFileNameSymbolsUser;
+	std::string  g_file_name_symbols_user;
 
-	const char * g_aSymbolTableNames[ NUM_SYMBOL_TABLES ] =
+	const char * g_symbol_table_names[ NUM_SYMBOL_TABLES ] =
 	{
 		 "Main"
 		,"Basic"
@@ -72,10 +72,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 		,"ProDOS"
 	};
 
-	bool g_bSymbolsDisplayMissingFile = true;
+	bool g_symbols_display_missing_file = true;
 
-	SymbolTable_t g_aSymbols[ NUM_SYMBOL_TABLES ];
-	int           g_nSymbolsLoaded = 0;  // on Last Load
+	SymbolTable_t g_symbols[ NUM_SYMBOL_TABLES ];
+	int           g_symbols_loaded = 0;  // on Last Load
 
 // Utils _ ________________________________________________________________________________________
 
@@ -110,7 +110,7 @@ auto PrintSymbolInvalidTable() -> Update_t
 	for( int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++ )
 	{
 		sprintf( sTemp, "%s%s%s%c " // %s"
-			, CHC_USAGE, g_aSymbolTableNames[ iTable ]
+			, CHC_USAGE, g_symbol_table_names[ iTable ]
 			, CHC_ARG_SEP
 			, (iTable != (NUM_SYMBOL_TABLES-1))
 				? ','
@@ -140,7 +140,7 @@ auto GetSymbol (uint16_t nAddress, int nBytes) -> const char*
 
 auto GetSymbolTableFromCommand() -> int
 {
-	return (g_iCommand - CMD_SYMBOLS_ROM);
+	return (g_command - CMD_SYMBOLS_ROM);
 }
 
 auto FindSymbolFromAddress (uint16_t nAddress, int * iTable_ ) -> const char*
@@ -149,16 +149,16 @@ auto FindSymbolFromAddress (uint16_t nAddress, int * iTable_ ) -> const char*
 	int iTable = NUM_SYMBOL_TABLES;
 	while (iTable-- > 0)
 	{
-		if (! g_aSymbols[iTable].size()) {
+		if (! g_symbols[iTable].size()) {
 			continue;
 }
 
-		if (! (g_bDisplaySymbolTables & (1 << iTable))) {
+		if (! (g_display_symbol_tables & (1 << iTable))) {
 			continue;
 }
 
-		auto iSymbols = g_aSymbols[iTable].find(nAddress);
-		if(g_aSymbols[iTable].find(nAddress) != g_aSymbols[iTable].end())
+		auto iSymbols = g_symbols[iTable].find(nAddress);
+		if(g_symbols[iTable].find(nAddress) != g_symbols[iTable].end())
 		{
 			if (iTable_)
 			{
@@ -176,16 +176,16 @@ auto FindAddressFromSymbol ( const char* pSymbol, uint16_t * pAddress_, int * iT
 	// Bugfix/User feature: User symbols should be searched first
 	for (int iTable = NUM_SYMBOL_TABLES; iTable-- > 0; )
 	{
-		if (! g_aSymbols[iTable].size()) {
+		if (! g_symbols[iTable].size()) {
 			continue;
 }
 
-		if (! (g_bDisplaySymbolTables & (1 << iTable))) {
+		if (! (g_display_symbol_tables & (1 << iTable))) {
 			continue;
 }
 
-		auto  iSymbol = g_aSymbols[iTable].begin();
-		while (iSymbol != g_aSymbols[iTable].end())
+		auto  iSymbol = g_symbols[iTable].begin();
+		while (iSymbol != g_symbols[iTable].end())
 		{
 			if (!strcasecmp( iSymbol->second.c_str(), pSymbol))
 			{
@@ -292,14 +292,14 @@ auto CmdSymbolsClear (int nArgs) -> Update_t
 void CmdSymbolsInfoHeader( int iTable, char * pText, int nDisplaySize /* = 0 */ )
 {
 	// Common case is to use/calc the table size
-	bool bActive = (g_bDisplaySymbolTables & (1 << iTable)) != 0;
-	int nSymbols  = nDisplaySize ? nDisplaySize : g_aSymbols[ iTable ].size();
+	bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
+	int nSymbols  = nDisplaySize ? nDisplaySize : g_symbols[ iTable ].size();
 
 	// Short Desc: `MAIN`: `1000`
 	// // 2.6.2.19 Color for name of symbol table: _CmdPrintSymbol() "SYM HOME" _CmdSymbolsInfoHeader "SYM"
 	// CHC_STRING and CHC_NUM_DEC are both cyan, using CHC_USAGE instead of CHC_STRING
 	sprintf( pText, "%s%s%s:%s%d " // %s"
-		, CHC_USAGE, g_aSymbolTableNames[ iTable ]
+		, CHC_USAGE, g_symbol_table_names[ iTable ]
 		, CHC_ARG_SEP
 		, bActive ? CHC_NUM_DEC : CHC_WARNING, nSymbols
 //		, CHC_DEFAULT
@@ -370,7 +370,7 @@ void CmdPrintSymbol( const char* pSymbol, uint16_t nAddress, int iTable )
 
 	// 2.6.2.20 Changed: Output of found symbol more table friendly.  Symbol table name displayed first.
 	ConsolePrintFormat( sText, "  %s%s%s: $%s%04X %s%s"
-		, CHC_USAGE, g_aSymbolTableNames[ iTable ]
+		, CHC_USAGE, g_symbol_table_names[ iTable ]
 		, CHC_ARG_SEP
 		, CHC_ADDRESS, nAddress
 		, CHC_SYMBOL, pSymbol );
@@ -481,13 +481,13 @@ auto _CmdSymbolsListTables (int nArgs, int bSymbolTables ) -> Update_t
 
 	for( int iArgs = 1; iArgs <= nArgs; iArgs++ )
 	{
-		uint16_t nAddress = g_aArgs[iArgs].nValue;
-		const char* pSymbol = g_aArgs[iArgs].sArg;
+		uint16_t nAddress = g_args[iArgs].nValue;
+		const char* pSymbol = g_args[iArgs].sArg;
 
 		// Dump all symbols for this table
-		if( g_aArgRaw[iArgs].eToken == TOKEN_STAR)
+		if( g_arg_raw[iArgs].eToken == TOKEN_STAR)
 		{
-	//		int iWhichTable = (g_iCommand - CMD_SYMBOLS_MAIN);
+	//		int iWhichTable = (g_command - CMD_SYMBOLS_MAIN);
 	//		bDisplaySymbolTables = (1 << iWhichTable);
 
 			int iTable = 0;
@@ -496,11 +496,11 @@ auto _CmdSymbolsListTables (int nArgs, int bSymbolTables ) -> Update_t
 			{
 				if( bTable & bSymbolTables )
 				{
-					int nSymbols = g_aSymbols[iTable].size();
+					int nSymbols = g_symbols[iTable].size();
 					if (nSymbols)
 					{
-						auto  iSymbol = g_aSymbols[iTable].begin();
-						while (iSymbol != g_aSymbols[iTable].end())
+						auto  iSymbol = g_symbols[iTable].begin();
+						while (iSymbol != g_symbols[iTable].end())
 						{
 							const char *pSymbol = iSymbol->second.c_str();
 							uint16_t nAddress = iSymbol->first;
@@ -583,7 +583,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 
 	FilePtr_t hFile(fopen( pPathFileName.c_str(), "rt" ), fclose);
 
-	if( !hFile && g_bSymbolsDisplayMissingFile )
+	if( !hFile && g_symbols_display_missing_file )
 	{
 		// TODO: print filename! Bug #242 Help file (.chm) description for "Symbols" #242
 		console_display_error( "Symbol File not found:" );
@@ -691,7 +691,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 					, pSymbolPrev
 					, CHC_DEFAULT
 					, CHC_STRING
-					, g_aSymbolTableNames[ iTable ]
+					, g_symbol_table_names[ iTable ]
 					, CHC_DEFAULT
 				);
 
@@ -702,7 +702,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 					, CHC_INFO
 					, CHC_ARG_SEP
 					, CHC_STRING
-					, g_aSymbolTableNames[ iTable ]
+					, g_symbol_table_names[ iTable ]
 					, CHC_DEFAULT
 					, CHC_SYMBOL
 					, pSymbolPrev
@@ -729,7 +729,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 						, CHC_ERROR
 						, CHC_DEFAULT
 						, CHC_STRING
-						, g_aSymbolTableNames[ iTable ]
+						, g_symbol_table_names[ iTable ]
 						, CHC_DEFAULT
 						, pPathFileName.c_str()
 					);
@@ -747,7 +747,7 @@ auto ParseSymbolTable(const std::string & pPathFileName, SymbolTable_Index_e eSy
 
 			// else // It is not a bug to have duplicate addresses by different names
 
-			g_aSymbols[ eSymbolTableWrite ] [ static_cast<uint16_t>(nAddress) ] = sName;
+			g_symbols[ eSymbolTableWrite ] [ static_cast<uint16_t>(nAddress) ] = sName;
 			nSymbolsLoaded++; // TODO: FIXME: BUG: This is the total symbols read, not added
 		}
 	}
@@ -771,7 +771,7 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 	// Debugger will call us with 0 args on startup as a way to pre-load symbol tables
 	if (! nArgs)
 	{
-		sFileName += g_sFileNameSymbols[ iSymbolTable ];
+		sFileName += g_file_name_symbols[ iSymbolTable ];
 		nSymbols = ParseSymbolTable( sFileName, static_cast<SymbolTable_Index_e>(iSymbolTable) );
 	}
 
@@ -780,14 +780,14 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 	{
 		std::string pFileName;
 
-		if( g_aArgs[ iArg ].bType & TYPE_QUOTED_2 )
+		if( g_args[ iArg ].bType & TYPE_QUOTED_2 )
 		{
-			pFileName = g_aArgs[ iArg ].sArg;
+			pFileName = g_args[ iArg ].sArg;
 
 			sFileName = std::string(g_state.sProgramDir.data()) + pFileName;
 
 			// Remember File Name of last symbols loaded
-			g_sFileNameSymbolsUser = pFileName;
+			g_file_name_symbols_user = pFileName;
 		}
 
 		// SymbolOffset
@@ -797,12 +797,12 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 		iArg++;
 		if( iArg <= nArgs)
 		{
-			if (g_aArgs[ iArg ].eToken == TOKEN_COMMA)
+			if (g_args[ iArg ].eToken == TOKEN_COMMA)
 			{
 				iArg++;
 				if( iArg <= nArgs )
 				{
-					nOffsetAddr = g_aArgs[ iArg ].nValue;
+					nOffsetAddr = g_args[ iArg ].nValue;
 					if( (nOffsetAddr < _6502_MEM_BEGIN) || (nOffsetAddr > _6502_MEM_END) )
 					{
 						nOffsetAddr = 0;
@@ -819,7 +819,7 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 
 	if( nSymbols > 0 )
 	{
-		g_nSymbolsLoaded = nSymbols;
+		g_symbols_loaded = nSymbols;
 	}
 
 	Update_t bUpdateDisplay = UPDATE_DISASM;
@@ -831,7 +831,7 @@ auto CmdSymbolsLoad (int nArgs) -> Update_t
 //===========================================================================
 auto _CmdSymbolsClear( SymbolTable_Index_e eSymbolTable ) -> Update_t
 {
-	g_aSymbols[ eSymbolTable ].clear();
+	g_symbols[ eSymbolTable ].clear();
 
 	return UPDATE_SYMBOLS;
 }
@@ -841,7 +841,7 @@ auto _CmdSymbolsClear( SymbolTable_Index_e eSymbolTable ) -> Update_t
 void SymbolUpdate( SymbolTable_Index_e eSymbolTable, const char *pSymbolName, uint16_t nAddress, bool bRemoveSymbol, bool bUpdateSymbol )
 {
 	if (bRemoveSymbol) {
-		pSymbolName = g_aArgs[2].sArg;
+		pSymbolName = g_args[2].sArg;
 }
 
 	if (strlen( pSymbolName ) < MAX_SYMBOLS_LEN)
@@ -859,7 +859,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, const char *pSymbolName, ui
 					ConsoleBufferPush( " Removing symbol."  );
 				}
 
-				g_aSymbols[ eSymbolTable ].erase( nAddressPrev );
+				g_symbols[ eSymbolTable ].erase( nAddressPrev );
 
 				if (bUpdateSymbol)
 				{
@@ -891,7 +891,7 @@ void SymbolUpdate( SymbolTable_Index_e eSymbolTable, const char *pSymbolName, ui
 				// TODO: Probably should check if same name?
 			}
 #endif
-			g_aSymbols[ eSymbolTable ][ nAddress ] = pSymbolName;
+			g_symbols[ eSymbolTable ][ nAddress ] = pSymbolName;
 
 			// Tell user symbol was added
 			char sText[ CONSOLE_WIDTH * 2 ];
@@ -912,18 +912,18 @@ auto _CmdSymbolsUpdate( int nArgs, int bSymbolTables ) -> Update_t
 	bool bUpdateSymbol = false;
 
 	if ((nArgs == 2) &&
-		((g_aArgs[ 1 ].eToken == TOKEN_EXCLAMATION) || (g_aArgs[1].eToken == TOKEN_TILDE)) ) {
+		((g_args[ 1 ].eToken == TOKEN_EXCLAMATION) || (g_args[1].eToken == TOKEN_TILDE)) ) {
 		bRemoveSymbol = true;
 }
 
-	if ((nArgs == 3) && (g_aArgs[ 2 ].eToken == TOKEN_EQUAL      )) {
+	if ((nArgs == 3) && (g_args[ 2 ].eToken == TOKEN_EQUAL      )) {
 		bUpdateSymbol = true;
 }
 
 	if (bRemoveSymbol || bUpdateSymbol)
 	{
-		char *pSymbolName = g_aArgs[1].sArg;
-		uint16_t   nAddress    = g_aArgs[3].nValue;
+		char *pSymbolName = g_args[1].sArg;
+		uint16_t   nAddress    = g_args[3].nValue;
 
 		int iTable = GetSymbolTableFromFlag( bSymbolTables );
 		SymbolUpdate( static_cast<SymbolTable_Index_e>(iTable), pSymbolName, nAddress, bRemoveSymbol, bUpdateSymbol );
@@ -937,7 +937,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 {
 	if (! nArgs)
 	{
-		return Help_Arg_1( g_iCommand );
+		return Help_Arg_1( g_command );
 	}
 
 	Update_t iUpdate = _CmdSymbolsUpdate( nArgs, bSymbolTables );
@@ -951,7 +951,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 	while (iArg++ <= nArgs)
 	{
 		int iParam = 0;
-		int nParams = FindParam( g_aArgs[iArg].sArg, MATCH_EXACT, iParam ); // MATCH_FUZZY
+		int nParams = FindParam( g_args[iArg].sArg, MATCH_EXACT, iParam ); // MATCH_FUZZY
 		if (nParams)
 		{
 			if (iParam == PARAM_CLEAR)
@@ -961,7 +961,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 				{
 					Update_t iUpdate = _CmdSymbolsClear( static_cast<SymbolTable_Index_e>(iTable) );
 					ConsolePrintFormat( sText, " Cleared symbol table: %s%s"
-						, CHC_STRING, g_aSymbolTableNames[ iTable ]
+						, CHC_STRING, g_symbol_table_names[ iTable ]
 					 );
 					iUpdate |= ConsoleUpdate();
 					return iUpdate;
@@ -986,11 +986,11 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 					if( bUpdate & UPDATE_SYMBOLS )
 					{
 						//sprintf( sText, "  Symbol Table: %s%s%s, %sloaded symbols: %s%d"
-						//	, CHC_STRING, g_aSymbolTableNames[ iTable ]
+						//	, CHC_STRING, g_symbol_table_names[ iTable ]
 						//	, CHC_DEFAULT, CHC_DEFAULT
-						//	, CHC_NUM_DEC, g_nSymbolsLoaded
+						//	, CHC_NUM_DEC, g_symbols_loaded
 						//);
-						CmdSymbolsInfoHeader( iTable, sText, g_nSymbolsLoaded );
+						CmdSymbolsInfoHeader( iTable, sText, g_symbols_loaded );
 						console_print( sText );
 					}
 				}
@@ -1009,7 +1009,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 			else
 			if (iParam == PARAM_ON)
 			{
-				g_bDisplaySymbolTables |= bSymbolTables;
+				g_display_symbol_tables |= bSymbolTables;
 				int iTable = GetSymbolTableFromFlag( bSymbolTables );
 				if (iTable != NUM_SYMBOL_TABLES)
 				{
@@ -1021,7 +1021,7 @@ auto CmdSymbolsCommon ( int nArgs, int bSymbolTables ) -> Update_t
 			else
 			if (iParam == PARAM_OFF)
 			{
-				g_bDisplaySymbolTables &= ~bSymbolTables;
+				g_display_symbol_tables &= ~bSymbolTables;
 				int iTable = GetSymbolTableFromFlag( bSymbolTables );
 				if (iTable != NUM_SYMBOL_TABLES)
 				{

@@ -11,8 +11,8 @@
 #include "doctest.h"
 
 extern "C" uint64_t g_cumulative_cycles;
-extern "C" double g_fCurrentCLK6502;
-extern "C" bool g_bFullSpeed;
+extern "C" double g_current_clk_6502;
+extern "C" bool g_full_speed;
 
 extern uint8_t* mem;
 constexpr size_t MEMORY_SIZE_64K = 65536;
@@ -131,8 +131,8 @@ static HostInterface_t mock_host = {
 static auto Speaker_Init_With_Mock(int slot) -> void* {
   mem = dummy_mem.data();
   g_cumulative_cycles = 0;
-  g_fCurrentCLK6502 = STANDARD_APPLE2_SPEED;
-  g_bFullSpeed = false;
+  g_current_clk_6502 = STANDARD_APPLE2_SPEED;
+  g_full_speed = false;
 
   void* instance = speaker_get_descriptor()->init(slot, &mock_host);
   return instance;
@@ -238,7 +238,7 @@ TEST_CASE("Speaker Peripheral: Inactivity Tracking") {
 TEST_CASE("Speaker Peripheral: Full-Speed Suppression") {
   g_mock_handlers.clear();
   void* instance = Speaker_Init_With_Mock(TEST_SLOT);
-  g_bFullSpeed = true;
+  g_full_speed = true;
 
   g_mock_handlers.at(addr_speaker).read(instance, 0, addr_speaker, 0, 0, 0);
 

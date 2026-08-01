@@ -55,7 +55,7 @@ iofunction* IOWrite = g_default_memory_context.io_write;
 uint8_t** memwrite = g_default_memory_context.memwrite;
 uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
-MemoryInitPattern_e g_eMemoryInitPattern = MIP_FF_FF_00_00;
+MemoryInitPattern_e g_memory_init_pattern = MIP_FF_FF_00_00;
 
 static auto SetMem(uint8_t* val) -> void {
   mem = val;
@@ -78,9 +78,9 @@ static auto SetMemDirty(uint8_t* val) -> void {
 #define lastwriteram (g_active_memory->last_write_ram)
 #define memmode (g_active_memory->mem_mode)
 #define modechanging (g_active_memory->mode_changing)
-#define g_uActiveBank (g_active_memory->active_bank)
-#define g_eExpansionRomType (g_active_memory->expansion_rom_type)
-#define g_uPeripheralRomSlot (g_active_memory->peripheral_rom_slot)
+#define g_active_bank (g_active_memory->active_bank)
+#define g_expansion_rom_type (g_active_memory->expansion_rom_type)
+#define g_peripheral_rom_slot (g_active_memory->peripheral_rom_slot)
 #define IO_SELECT (g_active_memory->io_select)
 #define IO_SELECT_InternalROM (g_active_memory->io_select_internal_rom)
 #define ExpansionRom (g_active_memory->expansion_rom)
@@ -141,10 +141,10 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 }
 
 #ifdef RAMWORKS
-uint32_t g_uMaxExPages = 1;
+uint32_t g_max_ex_pages = 1;
 #endif
 
-auto get_ramworks_active_bank() -> uint32_t { return g_uActiveBank; }
+auto get_ramworks_active_bank() -> uint32_t { return g_active_bank; }
 
 auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
                     uint8_t value, uint32_t nCycles) -> uint8_t;
@@ -481,14 +481,14 @@ auto IORead_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
     // so it doesn't matter
     IO_SELECT = 0;
     IO_SELECT_InternalROM = 0;
-    g_uPeripheralRomSlot = 0;
+    g_peripheral_rom_slot = 0;
 
     if (SW_SLOTCXROM) {
       // NB. SW_SLOTCXROM==0 ensures that internal rom stays switched in
       memset(pCxRomPeripheral + FIRMWARE_EXPANSION_SIZE, 0,
              FIRMWARE_EXPANSION_SIZE);
       memset(mem + FIRMWARE_EXPANSION_BEGIN, 0, FIRMWARE_EXPANSION_SIZE);
-      g_eExpansionRomType = eExpRomNull;
+      g_expansion_rom_type = eExpRomNull;
     }
     // NB. IO_SELECT won't get set, so ROM won't be switched back in...
   }
@@ -520,22 +520,22 @@ auto IORead_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
       }
 
       if ((uSlot < NUM_SLOTS) && ExpansionRom[uSlot] &&
-          (g_uPeripheralRomSlot != uSlot)) {
+          (g_peripheral_rom_slot != uSlot)) {
         memcpy(pCxRomPeripheral + FIRMWARE_EXPANSION_SIZE, ExpansionRom[uSlot],
                FIRMWARE_EXPANSION_SIZE);
         memcpy(mem + FIRMWARE_EXPANSION_BEGIN, ExpansionRom[uSlot],
                FIRMWARE_EXPANSION_SIZE);
-        g_eExpansionRomType = eExpRomPeripheral;
-        g_uPeripheralRomSlot = uSlot;
+        g_expansion_rom_type = eExpRomPeripheral;
+        g_peripheral_rom_slot = uSlot;
       }
     } else if (IO_SELECT_InternalROM && IO_STROBE &&
-               (g_eExpansionRomType != eExpRomInternal)) {
+               (g_expansion_rom_type != eExpRomInternal)) {
       // Enable Internal ROM
       // . Get this for PR#3
       memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
              pCxRomInternal + FIRMWARE_EXPANSION_SIZE, FIRMWARE_EXPANSION_SIZE);
-      g_eExpansionRomType = eExpRomInternal;
-      g_uPeripheralRomSlot = 0;
+      g_expansion_rom_type = eExpRomInternal;
+      g_peripheral_rom_slot = 0;
     }
   }
 
@@ -551,16 +551,16 @@ auto IORead_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
     }
 
     if (!SW_SLOTCXROM && IO_SELECT_InternalROM && IO_STROBE &&
-        (g_eExpansionRomType != eExpRomInternal)) {
+        (g_expansion_rom_type != eExpRomInternal)) {
       // Enable Internal ROM
       memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
              pCxRomInternal + FIRMWARE_EXPANSION_SIZE, FIRMWARE_EXPANSION_SIZE);
-      g_eExpansionRomType = eExpRomInternal;
-      g_uPeripheralRomSlot = 0;
+      g_expansion_rom_type = eExpRomInternal;
+      g_peripheral_rom_slot = 0;
     }
   }
 
-  if ((g_eExpansionRomType == eExpRomNull) && (address >= 0xC800)) {
+  if ((g_expansion_rom_type == eExpRomNull) && (address >= 0xC800)) {
     return io_null(programcounter, address, write, value, nCyclesLeft);
   } else {
     return mem[address];
@@ -577,10 +577,10 @@ auto IOWrite_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
   return 0;
 }
 
-static uint8_t g_bmSlotInit = 0;
+static uint8_t g_bm_slot_init = 0;
 
 static auto InitIoHandlers() -> void {
-  g_bmSlotInit = 0;
+  g_bm_slot_init = 0;
   uint32_t i = 0;
 
   for (i = 0; i < 512; i++) {
@@ -602,8 +602,8 @@ static auto InitIoHandlers() -> void {
 
   IO_SELECT = 0;
   IO_SELECT_InternalROM = 0;
-  g_eExpansionRomType = eExpRomNull;
-  g_uPeripheralRomSlot = 0;
+  g_expansion_rom_type = eExpRomNull;
+  g_peripheral_rom_slot = 0;
 
   for (i = 0; i < NUM_SLOTS; i++) {
     ExpansionRom[i] = nullptr;
@@ -618,7 +618,7 @@ auto register_io_handler(uint32_t uSlot, iofunction IOReadC0,
   if (uSlot >= NUM_SLOTS) {
     return;
   }
-  g_bmSlotInit |= 1U << uSlot;
+  g_bm_slot_init |= 1U << uSlot;
   SlotParameters[uSlot] = lpSlotParameter;
 
   uint16_t index = static_cast<uint16_t>(0x80 + (uSlot << 4));
@@ -897,7 +897,7 @@ auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
 
 auto mem_get_bank_ptr(const uint32_t nBank) -> uint8_t* {
 #ifdef RAMWORKS
-  if (nBank > g_uMaxExPages || nBank >= MAX_RAMWORKS_PAGES) {
+  if (nBank > g_max_ex_pages || nBank >= MAX_RAMWORKS_PAGES) {
     return nullptr;
   }
 
@@ -944,11 +944,11 @@ auto mem_is_addr_code_memory(const uint16_t addr) -> bool {
   if (addr <= APPLE_SLOT_END)  // [$C100..C7FF]
   {
     const uint32_t uSlot = (addr >> 8) & 0x7;
-    return (g_bmSlotInit & (1 << uSlot)) != 0;  // card present in this slot?
+    return (g_bm_slot_init & (1 << uSlot)) != 0;  // card present in this slot?
   }
 
   // [$C800..CFFF]
-  if (g_eExpansionRomType == eExpRomNull) {
+  if (g_expansion_rom_type == eExpRomNull) {
     if (IO_SELECT || IO_SELECT_InternalROM) {
       return true;
     }
@@ -965,8 +965,8 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   mem_destroy();
 
 #ifdef RAMWORKS
-  if (g_uMaxExPages > MAX_RAMWORKS_PAGES) {
-    g_uMaxExPages = MAX_RAMWORKS_PAGES;
+  if (g_max_ex_pages > MAX_RAMWORKS_PAGES) {
+    g_max_ex_pages = MAX_RAMWORKS_PAGES;
   }
 #endif
 
@@ -1011,7 +1011,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
     memaux = RWpages[0];
   }
   uint32_t i = 1;
-  while (i < g_uMaxExPages && i < MAX_RAMWORKS_PAGES) {
+  while (i < g_max_ex_pages && i < MAX_RAMWORKS_PAGES) {
     RWpages[i] = static_cast<uint8_t*>(malloc(MEMORY_64K));
     if (RWpages[i]) {
       memset(RWpages[i], 0, MEMORY_64K);
@@ -1031,7 +1031,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 
   uint32_t ROM_SIZE = 0;
   const char* RomFileName = nullptr;
-  switch (g_Apple2Type) {
+  switch (g_apple2_type) {
     case A2TYPE_APPLE2:
       RomFileName = apple2_rom;
       ROM_SIZE = Apple2RomSize;
@@ -1089,7 +1089,7 @@ auto mem_reset() -> void {
 
   int iByte = 0;
 
-  if (g_eMemoryInitPattern == MIP_FF_FF_00_00) {
+  if (g_memory_init_pattern == MIP_FF_FF_00_00) {
     for (iByte = 0x0000; iByte < IO_RANGE_BEGIN;) {
       memmain[iByte++] = 0xFF;
       memmain[iByte++] = 0xFF;
@@ -1215,9 +1215,9 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
 #ifdef RAMWORKS
       case SS_RW_AUX_PAGE:
       case SS_RW_III_PAGE:
-        if ((value < g_uMaxExPages) && (value < MAX_RAMWORKS_PAGES) &&
+        if ((value < g_max_ex_pages) && (value < MAX_RAMWORKS_PAGES) &&
             RWpages[value]) {
-          g_uActiveBank = value;
+          g_active_bank = value;
           memaux = RWpages[value];
           mem_update_paging(false, false);
         }
@@ -1257,15 +1257,15 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
         memset(pCxRomPeripheral + FIRMWARE_EXPANSION_SIZE, 0,
                FIRMWARE_EXPANSION_SIZE);
         memset(mem + FIRMWARE_EXPANSION_BEGIN, 0, FIRMWARE_EXPANSION_SIZE);
-        g_eExpansionRomType = eExpRomNull;
-        g_uPeripheralRomSlot = 0;
+        g_expansion_rom_type = eExpRomNull;
+        g_peripheral_rom_slot = 0;
       } else {
         // Enable Internal ROM
         memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
                pCxRomInternal + FIRMWARE_EXPANSION_SIZE,
                FIRMWARE_EXPANSION_SIZE);
-        g_eExpansionRomType = eExpRomInternal;
-        g_uPeripheralRomSlot = 0;
+        g_expansion_rom_type = eExpRomInternal;
+        g_peripheral_rom_slot = 0;
       }
     }
 

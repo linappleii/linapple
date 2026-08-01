@@ -58,7 +58,7 @@ static HostInterface_t g_mock_host = {
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {
   g_cumulative_cycles = 10000;
-  g_fCurrentCLK6502 = 1022727.0;
+  g_current_clk_6502 = 1022727.0;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
   g_write_c0 = nullptr;
@@ -200,7 +200,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 
 TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
   g_cumulative_cycles = 10000;
-  g_fCurrentCLK6502 = 1022727.0;
+  g_current_clk_6502 = 1022727.0;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
   g_write_c0 = nullptr;

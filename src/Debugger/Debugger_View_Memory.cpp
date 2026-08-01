@@ -24,14 +24,14 @@
 #include "core/Util_Path.h"
 
 // Externs for globals
-extern int g_iWindowThis;
-extern int g_nFontHeight;
-extern int g_nDisplayMemoryLines;
-extern bool g_bConfigDisasmAddressColon;
-extern bool g_bConfigInfoTargetPointer;
-extern int g_nConsoleDisplayWidth;
-extern std::string g_aSourceFileName;
-extern int g_nDisasmWinHeight;
+extern int g_window_this;
+extern int g_font_height;
+extern int g_display_memory_lines;
+extern bool g_config_disasm_address_colon;
+extern bool g_config_info_target_pointer;
+extern int g_console_display_width;
+extern std::string g_source_file_name;
+extern int g_disasm_win_height;
 
 // Constants from Debugger_Display.cpp
 const int DISPLAY_MINIMEM_COLUMN = 357;
@@ -54,11 +54,11 @@ extern void ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG);
 // --- Functions moved from Debugger_Display.cpp ---
 
 void DrawMemory(int line, int iMemDump) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
-  MemoryDump_t* pMD = &g_aMemDump[iMemDump];
+  MemoryDump_t* pMD = &g_mem_dump[iMemDump];
   bool bActive = pMD->bActive;
   if (!bActive) {
     return;
@@ -70,9 +70,9 @@ void DrawMemory(int line, int iMemDump) {
 
   Rect_t rect;
   rect.left = DISPLAY_MINIMEM_COLUMN;
-  rect.top = (line * g_nFontHeight);
+  rect.top = (line * g_font_height);
   rect.right = DISPLAY_WIDTH;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.bottom = rect.top + g_font_height;
 
   Rect_t rect2;
   rect2 = rect;
@@ -114,7 +114,7 @@ void DrawMemory(int line, int iMemDump) {
 
   uint16_t iAddress = nAddr;
 
-  int nLines = g_nDisplayMemoryLines;
+  int nLines = g_display_memory_lines;
   int nCols = 4;
 
   if (iView != MEM_VIEW_HEX) {
@@ -167,22 +167,22 @@ void DrawMemory(int line, int iMemDump) {
       iAddress++;
     }
 
-    rect.top += g_nFontHeight;
-    rect.bottom += g_nFontHeight;
+    rect.top += g_font_height;
+    rect.bottom += g_font_height;
   }
 }
 
 void DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
 
   Rect_t rect;
-  rect.top = line * g_nFontHeight;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.top = line * g_font_height;
+  rect.bottom = rect.top + g_font_height;
   rect.left = DISPLAY_REGS_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -212,7 +212,7 @@ void DrawRegister(int line, const char* name, const int nBytes,
 }
 
 void DrawRegisters(int line) {
-  const char** sReg = g_aBreakpointSource;
+  const char** sReg = g_breakpoint_source;
   printf("DrawRegisters: line=%d start\n", line);
 
   DrawRegister(line++, sReg[BP_SRC_REG_A], 1, cpu_get_registers()->a,
@@ -276,8 +276,8 @@ void DrawSoftSwitch(Rect_t& rect, int nAddress, bool bSet, const char* sPrefix,
     PrintTextCursorX(sSuffix, temp);
   }
 
-  rect.top += g_nFontHeight;
-  rect.bottom += g_nFontHeight;
+  rect.top += g_font_height;
+  rect.bottom += g_font_height;
 }
 
 void DrawTriStateSoftSwitch(Rect_t& rect, int nAddress, const int iBankDisplay,
@@ -314,14 +314,14 @@ void DrawTriStateSoftSwitch(Rect_t& rect, int nAddress, const int iBankDisplay,
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     PrintTextCursorX(" ", temp);
 
-    rect.top += g_nFontHeight;
-    rect.bottom += g_nFontHeight;
+    rect.top += g_font_height;
+    rect.bottom += g_font_height;
   }
 }
 
 void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
                                     int bg_default = BG_INFO) {
-  const int w = g_aFontConfig[FONT_DISASM_DEFAULT]._nFontWidthAvg;
+  const int w = g_font_config[FONT_DISASM_DEFAULT]._nFontWidthAvg;
   const int dx80 = 7 * w;
   const int dx88 = 8 * w;
 
@@ -339,8 +339,8 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   DrawTriStateSoftSwitch(rect, nAddress, iBankDisplay, iBankActive, nullptr,
                          sOn, sOff, " ", bg_default);
 
-  rect.top -= g_nFontHeight;
-  rect.bottom -= g_nFontHeight;
+  rect.top -= g_font_height;
+  rect.bottom -= g_font_height;
 
   if (iBankDisplay == 2) {
     rect.left += dx80;
@@ -382,16 +382,16 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
     }
   }
 
-  rect.top += g_nFontHeight;
-  rect.bottom += g_nFontHeight;
+  rect.top += g_font_height;
+  rect.bottom += g_font_height;
 }
 
 void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   Rect_t temp = rect;
-  rect.top += g_nFontHeight;
-  rect.bottom += g_nFontHeight;
+  rect.top += g_font_height;
+  rect.bottom += g_font_height;
 
-  int w = g_aFontConfig[FONT_DISASM_DEFAULT]._nFontWidthAvg;
+  int w = g_font_config[FONT_DISASM_DEFAULT]._nFontWidthAvg;
   int dx = 7 * w;
 
   int nAddress = 0xC002;
@@ -400,8 +400,8 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   temp.right = rect.left + dx;
   DrawSoftSwitch(temp, nAddress, !bMainRead, "R", "m", "x", nullptr, BG_DATA_2);
 
-  temp.top -= g_nFontHeight;
-  temp.bottom -= g_nFontHeight;
+  temp.top -= g_font_height;
+  temp.bottom -= g_font_height;
   temp.left += dx;
   temp.right += 3 * w;
 
@@ -412,12 +412,12 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
 
 void DrawSoftSwitches(int iSoftSwitch) {
   Rect_t rect;
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
 
   rect.left = DISPLAY_SOFTSWITCH_COLUMN;
-  rect.top = iSoftSwitch * g_nFontHeight;
+  rect.top = iSoftSwitch * g_font_height;
   rect.right = rect.left + (10 * nFontWidth) + 1;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.bottom = rect.top + g_font_height;
 
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
@@ -465,7 +465,7 @@ void DrawSoftSwitches(int iSoftSwitch) {
 }
 
 void DrawTargets(int line) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
@@ -477,7 +477,7 @@ void DrawTargets(int line) {
   aTarget[1] = aTarget[2];
 
   Rect_t rect;
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
 
   int iAddress = MAX_DISPLAY_TARGET_PTR_LINES;
   while (iAddress--) {
@@ -497,10 +497,10 @@ void DrawTargets(int line) {
     }
 
     rect.left = DISPLAY_TARGETS_COLUMN;
-    rect.top = (line + iAddress) * g_nFontHeight;
+    rect.top = (line + iAddress) * g_font_height;
     int nColumn = rect.left + (7 * nFontWidth);
     rect.right = nColumn;
-    rect.bottom = rect.top + g_nFontHeight;
+    rect.bottom = rect.top + g_font_height;
 
     if (iAddress == 0) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
@@ -513,15 +513,15 @@ void DrawTargets(int line) {
 }
 
 void DrawWatches(int line) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
   Rect_t rect;
   rect.left = DISPLAY_WATCHES_COLUMN;
-  rect.top = (line * g_nFontHeight);
+  rect.top = (line * g_font_height);
   rect.right = DISPLAY_WIDTH;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.bottom = rect.top + g_font_height;
 
   char sText[16] = "Watches";
 
@@ -529,7 +529,7 @@ void DrawWatches(int line) {
 
   int iWatch = 0;
   for (iWatch = 0; iWatch < MAX_WATCHES; iWatch++) {
-    if (g_aWatches[iWatch].bEnabled) {
+    if (g_watches[iWatch].bEnabled) {
       Rect_t rect2 = rect;
 
       DebuggerSetColorBG(DebuggerGetColor(BG_INFO_WATCH));
@@ -540,7 +540,7 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      sprintf(sText, "%04X", g_aWatches[iWatch].nAddress);
+      sprintf(sText, "%04X", g_watches[iWatch].nAddress);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -549,13 +549,13 @@ void DrawWatches(int line) {
 
       uint8_t nTarget8 = 0;
 
-      nTarget8 = static_cast<unsigned>(*(mem + g_aWatches[iWatch].nAddress));
+      nTarget8 = static_cast<unsigned>(*(mem + g_watches[iWatch].nAddress));
       sprintf(sText, "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
       nTarget8 = static_cast<unsigned>(
-          *(mem + static_cast<uint16_t>(g_aWatches[iWatch].nAddress + 1)));
+          *(mem + static_cast<uint16_t>(g_watches[iWatch].nAddress + 1)));
       sprintf(sText, "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
@@ -565,8 +565,8 @@ void DrawWatches(int line) {
       PrintTextCursorX(sText, rect2);
 
       uint16_t nTarget16 =
-          *(mem + g_aWatches[iWatch].nAddress) |
-          (*(mem + static_cast<uint16_t>(g_aWatches[iWatch].nAddress + 1))
+          *(mem + g_watches[iWatch].nAddress) |
+          (*(mem + static_cast<uint16_t>(g_watches[iWatch].nAddress + 1))
            << 8);
       sprintf(sText, "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
@@ -575,8 +575,8 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPERATOR));
       PrintTextCursorX(")", rect2);
 
-      rect.top += g_nFontHeight;
-      rect.bottom += g_nFontHeight;
+      rect.top += g_font_height;
+      rect.bottom += g_font_height;
 
       rect2 = rect;
 
@@ -599,21 +599,21 @@ void DrawWatches(int line) {
         PrintTextCursorX(sText, rect2);
       }
     }
-    rect.top += g_nFontHeight;
-    rect.bottom += g_nFontHeight;
+    rect.top += g_font_height;
+    rect.bottom += g_font_height;
   }
 }
 
 void DrawZeroPagePointers(int line) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
 
   Rect_t rect;
-  rect.top = line * g_nFontHeight;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.top = line * g_font_height;
+  rect.bottom = rect.top + g_font_height;
   rect.left = DISPLAY_ZEROPAGE_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -625,7 +625,7 @@ void DrawZeroPagePointers(int line) {
   for (int iZP = 0; iZP < MAX_ZEROPAGE_POINTERS; iZP++) {
     Rect_t rect2 = rect;
 
-    Breakpoint_t* pZP = &g_aZeroPagePointers[iZP];
+    Breakpoint_t* pZP = &g_zero_page_pointers[iZP];
     bool bEnabled = pZP->bEnabled;
 
     if (bEnabled) {
@@ -636,8 +636,8 @@ void DrawZeroPagePointers(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      uint8_t nZPAddr1 = (g_aZeroPagePointers[iZP].nAddress) & 0xFF;
-      uint8_t nZPAddr2 = (g_aZeroPagePointers[iZP].nAddress + 1) & 0xFF;
+      uint8_t nZPAddr1 = (g_zero_page_pointers[iZP].nAddress) & 0xFF;
+      uint8_t nZPAddr2 = (g_zero_page_pointers[iZP].nAddress + 1) & 0xFF;
 
       const char* pSymbol2 = GetSymbol(nZPAddr2, 2);
       const char* pSymbol1 = GetSymbol(nZPAddr1, 2);
@@ -664,8 +664,8 @@ void DrawZeroPagePointers(int line) {
       PrintText(sText, rect2);
 
       rect2.left = rect.left;
-      rect2.top += g_nFontHeight;
-      rect2.bottom += g_nFontHeight;
+      rect2.top += g_font_height;
+      rect2.bottom += g_font_height;
 
       sprintf(sText, "%02X", nZPAddr1);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
@@ -688,8 +688,8 @@ void DrawZeroPagePointers(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
     }
-    rect.top += (g_nFontHeight * 2);
-    rect.bottom += (g_nFontHeight * 2);
+    rect.top += (g_font_height * 2);
+    rect.bottom += (g_font_height * 2);
   }
 }
 
@@ -709,7 +709,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
 
   int iMemDump = 0;
 
-  MemoryDump_t* pMD = &g_aMemDump[iMemDump];
+  MemoryDump_t* pMD = &g_mem_dump[iMemDump];
   uint16_t nAddress = pMD->nAddress;
 
   Rect_t rect;
@@ -719,7 +719,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
   uint16_t iAddress = nAddress;
 
   int iLine = 0;
-  int nLines = g_nDisasmWinHeight;
+  int nLines = g_disasm_win_height;
 
   for (iLine = 0; iLine < nLines; iLine++) {
     iAddress = nAddress;
@@ -734,7 +734,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
     }
     sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;
 
-    int nFontHeight = g_aFontConfig[FONT_DISASM_DEFAULT]._nLineHeight;
+    int nFontHeight = g_font_config[FONT_DISASM_DEFAULT]._nLineHeight;
 
     rect.left = 0;
     const int DISPLAY_DISASM_RIGHT = 353;
@@ -752,7 +752,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
     PrintTextCursorX((const char*)sAddress, rect);
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
-    if (g_bConfigDisasmAddressColon) {
+    if (g_config_disasm_address_colon) {
       PrintTextCursorX(":", rect);
     }
 
@@ -799,31 +799,31 @@ void DrawSubWindow_Symbols(Update_t bUpdate) { (void)bUpdate; }
 void DrawSubWindow_ZeroPage(Update_t bUpdate) { (void)bUpdate; }
 
 void DrawWindow_Data(Update_t bUpdate) {
-  DrawSubWindow_Data(g_iWindowThis);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_Data(g_window_this);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
 void DrawWindow_IO(Update_t bUpdate) {
-  DrawSubWindow_IO(g_iWindowThis);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_IO(g_window_this);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
 void DrawWindow_Symbols(Update_t bUpdate) {
-  DrawSubWindow_Symbols(g_iWindowThis);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_Symbols(g_window_this);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
 void DrawWindow_ZeroPage(Update_t bUpdate) {
   DrawSubWindow_ZeroPage(bUpdate);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
 void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
-  const int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  const int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
 
   const int nameWidth = 2;    // 2 chars
   const int numberWidth = 3;  // 3 chars
@@ -831,8 +831,8 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
   const int totalWidth = (nameWidth + numberWidth) * 2 + gapWidth;
 
   Rect_t rect;
-  rect.top = line * g_nFontHeight;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.top = line * g_font_height;
+  rect.bottom = rect.top + g_font_height;
   rect.left = DISPLAY_VIDEO_SCANNER_COLUMN;
   rect.right = rect.left + (totalWidth * nFontWidth);
 
@@ -850,7 +850,7 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
     rect.left += nameWidth * nFontWidth;
 
     char sValue[8];
-    if (g_videoScannerDisplayInfo.isDecimal) {
+    if (g_video_scanner_display_info.isDecimal) {
       snprintf(sValue, sizeof(sValue), "%03u", nValue);
     } else {
       snprintf(sValue, sizeof(sValue), "%03X", nValue);
@@ -870,7 +870,7 @@ void DrawVideoScannerInfo(int line) {
   (void)line;
 #ifdef TODO  // Not supported for Linux yet
   // NTSC_VideoGetScannerAddressForDebugger();    // update
-  // g_nVideoClockHorz/g_nVideoClockVert
+  // g_video_clock_horz/g_video_clock_vert
   int v = 0;
   int h = 0;
   DrawVideoScannerValue(line, v, h, true);

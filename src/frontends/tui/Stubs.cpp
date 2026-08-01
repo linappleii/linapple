@@ -99,6 +99,6 @@ WEAK auto Logger::set_verbosity(LogLevel_t) -> void {}
 
 WEAK uint64_t g_cumulative_cycles = 0;
 WEAK SystemState_t g_state = {};
-WEAK eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+WEAK eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
 WEAK uint32_t g_videotype = 0;
 WEAK void (*g_frontendAudioCB)(const int16_t*, size_t) = nullptr;

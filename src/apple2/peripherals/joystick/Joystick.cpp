@@ -42,7 +42,7 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
 }
 
 auto get_button_latch_duration() -> uint64_t {
-  return static_cast<uint64_t>(g_fCurrentCLK6502 * latch_duration_seconds);
+  return static_cast<uint64_t>(g_current_clk_6502 * latch_duration_seconds);
 }
 
 struct JoystickPeripheral_t {

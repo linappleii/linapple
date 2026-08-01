@@ -14,11 +14,11 @@ enum DebugVirtualTextScreen_e {
 VideoSurface_t* g_debug_screen = nullptr;
 bool g_debugger_eat_key = false;
 
-char g_aDebuggerVirtualTextScreen[DEBUG_VIRTUAL_TEXT_HEIGHT]
+char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                  [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
-ColorRef_t g_aDebuggerVirtualTextScreenFG[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                          [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
-ColorRef_t g_aDebuggerVirtualTextScreenBG[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                          [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
 
 void debug_begin() {}

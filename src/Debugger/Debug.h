@@ -17,22 +17,22 @@ using namespace std;
 
 // Globals
 extern bool g_debugger_eat_key;
-extern uint16_t g_uBreakMemoryAddress;
-extern int g_iCommand;
-extern std::vector<Command_t> g_vSortedCommands;
+extern uint16_t g_break_memory_address;
+extern int g_command;
+extern std::vector<Command_t> g_sorted_commands;
 
 // Benchmarking
 extern uint32_t extbench;
-extern bool g_bBenchmarking;
+extern bool g_benchmarking;
 
 // Profile
-extern bool g_bProfiling;
-extern ProfileOpcode_t g_aProfileOpcodes[NUM_OPCODES];
-extern ProfileOpmode_t g_aProfileOpmodes[NUM_OPMODES];
-extern uint64_t g_nProfileBeginCycles;
+extern bool g_profiling;
+extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
+extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
+extern uint64_t g_profile_begin_cycles;
 extern const std::string g_FileNameProfile;
-extern int g_nProfileLine;
-extern char g_aProfileLine[NUM_PROFILE_LINES][CONSOLE_WIDTH];
+extern int g_profile_line_count;
+extern char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
 
 void ProfileReset();
 bool ProfileSave();
@@ -44,11 +44,11 @@ void ProfileLineReset();
 void DisasmCalcTopBotAddress();
 
 // Window
-extern int g_nConsoleDisplayLines;
-extern bool g_bConsoleFullWidth;
-extern int g_nConsoleDisplayWidth;
-extern int g_nDisasmWinHeight;
-extern int g_nDisasmCurLine;
+extern int g_console_display_lines;
+extern bool g_console_full_width;
+extern int g_console_display_width;
+extern int g_disasm_win_height;
+extern int g_disasm_cur_line;
 
 void WindowUpdateDisasmSize();
 void WindowUpdateConsoleDisplayedSize();
@@ -57,21 +57,21 @@ int  WindowGetHeight(int iWindow);
 
 char FormatChar4Font(const uint8_t b, bool *pWasHi_, bool *pWasLo_);
 
-extern int g_nDebugSteps;
-extern uint32_t g_nDebugStepCycles;
-extern int g_nDebugStepStart;
-extern int g_nDebugStepUntil;
-extern int g_nDebugSkipStart;
-extern int g_nDebugSkipLen;
+extern int g_debug_steps;
+extern uint32_t g_debug_step_cycles;
+extern int g_debug_step_start;
+extern int g_debug_step_until;
+extern int g_debug_skip_start;
+extern int g_debug_skip_len;
 
-extern bool g_bDebugFullSpeed;
-extern bool g_bLastGoCmdWasFullSpeed;
-extern bool g_bGoCmd_ReinitFlag;
+extern bool g_debug_full_speed;
+extern bool g_last_go_cmd_was_full_speed;
+extern bool g_go_cmd_reinit_flag;
 
-extern FILE *g_hTraceFile;
-extern bool g_bTraceHeader;
-extern bool g_bTraceFileWithVideoScanner;
-extern char g_sFileNameTrace[];
+extern FILE *g_trace_file;
+extern bool g_trace_header;
+extern bool g_trace_file_with_video_scanner;
+extern char g_file_name_trace[];
 
 // Bookmarks
 #include "Debugger_Bookmarks.h"
@@ -88,13 +88,13 @@ enum BreakpointHit_t
   BP_HIT_MEMW = (1 << 5),
   BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM = (1 << 6)
 };
-extern int g_iDebugBreakOnOpcode;
+extern int g_debug_break_on_opcode;
 
 // Commands
-extern int g_iCommand; // last command
+extern int g_command; // last command
 
-extern Command_t g_aCommands[];
-extern Command_t g_aParameters[];
+extern Command_t g_commands[];
+extern Command_t g_parameters[];
 extern const int NUM_COMMANDS_WITH_ALIASES;
 
 class commands_functor_compare
@@ -108,64 +108,64 @@ class commands_functor_compare
 };
 
 // Config - FileName
-extern std::string g_sFileNameConfig;
+extern std::string g_file_name_config;
 
 // Cursor
-extern uint16_t g_nDisasmTopAddress;
-extern uint16_t g_nDisasmBotAddress;
-extern uint16_t g_nDisasmCurAddress;
+extern uint16_t g_disasm_top_address;
+extern uint16_t g_disasm_bot_address;
+extern uint16_t g_disasm_cur_address;
 
-extern bool g_bDisasmCurBad;
-extern int g_nDisasmCurLine; // Aligned to Top or Center
-extern int g_iDisasmCurState;
+extern bool g_disasm_cur_bad;
+extern int g_disasm_cur_line; // Aligned to Top or Center
+extern int g_disasm_cur_state;
 
-extern int g_nDisasmWinHeight;
+extern int g_disasm_win_height;
 
 extern const int WINDOW_DATA_BYTES_PER_LINE;
 
 // Config - Disassembly
-extern bool g_bConfigDisasmAddressView;
-extern int  g_bConfigDisasmClick; // GH#462
-extern bool g_bConfigDisasmAddressColon;
-extern bool g_bConfigDisasmOpcodesView;
-extern bool g_bConfigDisasmOpcodeSpaces;
-extern int g_iConfigDisasmTargets;
-extern int g_iConfigDisasmBranchType;
-extern int g_bConfigDisasmImmediateChar;
+extern bool g_config_disasm_address_view;
+extern int  g_config_disasm_click; // GH#462
+extern bool g_config_disasm_address_colon;
+extern bool g_config_disasm_opcodes_view;
+extern bool g_config_disasm_opcode_spaces;
+extern int g_config_disasm_targets;
+extern int g_config_disasm_branch_type;
+extern int g_config_disasm_immediate_char;
 
 // Config - info
-extern bool g_bConfigInfoTargetPointer;
+extern bool g_config_info_target_pointer;
 
 // Font
-extern int g_nFontHeight;
-extern int g_iFontSpacing;
+extern int g_font_height;
+extern int g_font_spacing;
 
 // Memory
 #include "Debugger_Memory.h"
 
 // Source Level Debugging
-extern std::string g_aSourceFileName;
+extern std::string g_source_file_name;
 extern MemoryTextFile_t g_AssemblerSourceBuffer;
 
-extern int g_iSourceDisplayStart;
-extern int g_nSourceAssembleBytes;
-extern int g_nSourceAssemblySymbols;
+extern int g_source_display_start;
+extern int g_source_assemble_bytes;
+extern int g_source_assembly_symbols;
 
 // Version
 extern const int DEBUGGER_VERSION;
 
 // Watches
-extern int g_nWatches;
-extern Watches_t g_aWatches[MAX_WATCHES];
+extern int g_watches_count;
+extern Watches_t g_watches[MAX_WATCHES];
 
 // Window
-extern int g_iWindowLast;
-extern int g_iWindowThis;
-extern WindowSplit_t g_aWindowConfig[NUM_WINDOWS];
+extern int g_window_last;
+extern int g_window_this;
+extern WindowSplit_t g_window_config[NUM_WINDOWS];
 
 // Zero Page
-extern int g_nZeroPagePointers;
-extern ZeroPagePointers_t g_aZeroPagePointers[MAX_ZEROPAGE_POINTERS]; // TODO: use vector<> ?
+extern int g_zero_page_pointers_count;
+extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS]; // TODO: use vector<> ?
 
 // Prototypes
 
@@ -305,12 +305,12 @@ void debug_end();
 void debug_initialize();
 
 // Cursor/Input
-extern bool g_bInputCursor;
-extern int  g_iInputCursor;
-extern const char g_aInputCursor[];
-extern bool g_bConsoleInputQuoted;
-extern int  g_nConsoleInputSkip;
-extern bool g_bIgnoreNextKey;
+extern bool g_input_cursor_visible;
+extern int  g_input_cursor_index;
+extern const char g_input_cursor[];
+extern bool g_console_input_quoted;
+extern int  g_console_input_skip;
+extern bool g_ignore_next_key;
 
 void DebuggerUpdate();
 void DebuggerCursorUpdate();

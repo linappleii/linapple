@@ -49,11 +49,11 @@ CpuInstance_t* g_active_cpu = &g_cpu_context;
 
 RegsRec_t regs;
 uint64_t g_cumulative_cycles = 0;
-static uint32_t g_nCyclesSubmitted;
-static uint32_t g_nCyclesExecuted;
-static std::atomic<uint32_t> g_bmIRQ{0};
-static std::atomic<uint32_t> g_bmNMI{0};
-static std::atomic<bool> g_bNmiFlank{
+static uint32_t g_cycles_submitted;
+static uint32_t g_cycles_executed;
+static std::atomic<uint32_t> g_bm_irq{0};
+static std::atomic<uint32_t> g_bm_nmi{0};
+static std::atomic<bool> g_nmi_flank{
     false};  // Positive going flank on NMI line
 
 auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
@@ -73,12 +73,12 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
 }
 
 
-static uint32_t g_uInternalExecutedCycles;
-static signed int g_nIrqCheckTimeout = 16;
+static uint32_t g_internal_executed_cycles;
+static signed int g_irq_check_timeout = 16;
 
 // Interrupt sources assert until the device is commanded to stop
-static std::atomic<bool> g_bCritSectionValid{false};
-pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
+static std::atomic<bool> g_crit_section_valid{false};
+pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 
 // General Purpose Macros
 #define AF_TO_EF                   \
@@ -92,7 +92,7 @@ pthread_mutex_t g_CriticalSection = PTHREAD_MUTEX_INITIALIZER;
             (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
 #define CYC(a)                           \
   uExecutedCycles += (a) + uExtraCycles; \
-  g_nIrqCheckTimeout -= (a) + uExtraCycles;
+  g_irq_check_timeout -= (a) + uExtraCycles;
 #define POP \
   (*(mem + ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp)))
 #define PUSH(a)             \
@@ -712,37 +712,37 @@ auto RequestDebugger() -> void {}
 
 // Opcode Table
 
-uint64_t g_nCycleIrqStart;
-uint64_t g_nCycleIrqEnd;
-uint16_t g_nCycleIrqTime;
+uint64_t g_cycle_irq_start;
+uint64_t g_cycle_irq_end;
+uint16_t g_cycle_irq_time;
 
-uint16_t g_nIdx = 0;
+uint16_t g_idx = 0;
 const uint16_t BUFFER_SIZE = 4096;  // 80 secs
-uint16_t g_nBuffer[BUFFER_SIZE];
-uint32_t g_nMean = 0;
-uint32_t g_nMin = UINT32_MAX_VAL;
-uint32_t g_nMax = 0;
+uint16_t g_buffer[BUFFER_SIZE];
+uint32_t g_mean = 0;
+uint32_t g_min = UINT32_MAX_VAL;
+uint32_t g_max = 0;
 
 static inline void DoIrqProfiling(uint32_t uCycles) {
   (void)uCycles;
 #ifdef _DEBUG
   if (regs.ps & AF_INTERRUPT) return;  // Still in Apple's ROM
 
-  g_nCycleIrqTime = static_cast<uint16_t>(g_nCycleIrqEnd - g_nCycleIrqStart);
+  g_cycle_irq_time = static_cast<uint16_t>(g_cycle_irq_end - g_cycle_irq_start);
 
-  if (g_nCycleIrqTime > g_nMax) g_nMax = g_nCycleIrqTime;
-  if (g_nCycleIrqTime < g_nMin) g_nMin = g_nCycleIrqTime;
+  if (g_cycle_irq_time > g_max) g_max = g_cycle_irq_time;
+  if (g_cycle_irq_time < g_min) g_min = g_cycle_irq_time;
 
-  if (g_nIdx == BUFFER_SIZE) return;
+  if (g_idx == BUFFER_SIZE) return;
 
-  g_nBuffer[g_nIdx] = g_nCycleIrqTime;
-  g_nIdx++;
+  g_buffer[g_idx] = g_cycle_irq_time;
+  g_idx++;
 
-  if (g_nIdx == BUFFER_SIZE) {
+  if (g_idx == BUFFER_SIZE) {
     uint32_t nTotal = 0;
-    for (uint16_t i = 0; i < BUFFER_SIZE; i++) nTotal += g_nBuffer[i];
+    for (uint16_t i = 0; i < BUFFER_SIZE; i++) nTotal += g_buffer[i];
 
-    g_nMean = nTotal / BUFFER_SIZE;
+    g_mean = nTotal / BUFFER_SIZE;
   }
 #endif
 }
@@ -751,7 +751,7 @@ static inline void DoIrqProfiling(uint32_t uCycles) {
 
 static inline void Fetch(uint8_t& iOpcode, uint32_t uExecutedCycles) {
   const uint16_t PC = regs.pc;
-  g_uInternalExecutedCycles = uExecutedCycles;
+  g_internal_executed_cycles = uExecutedCycles;
 
   iOpcode =
       ((PC & IO_REGION_MASK) == IO_REGION_START)
@@ -773,10 +773,10 @@ static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
   (void)uExtraCycles;
   (void)flagc;
 #ifdef ENABLE_NMI_SUPPORT
-  if (g_bNmiFlank) {
+  if (g_nmi_flank) {
     // NMI signals are only serviced once
-    g_bNmiFlank = false;
-    g_nCycleIrqStart = g_cumulative_cycles + uExecutedCycles;
+    g_nmi_flank = false;
+    g_cycle_irq_start = g_cumulative_cycles + uExecutedCycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -791,10 +791,10 @@ static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
 static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
                        uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
                        uint8_t& flagz) {
-  if (g_bmIRQ && !(regs.ps & AF_INTERRUPT)) {
+  if (g_bm_irq && !(regs.ps & AF_INTERRUPT)) {
     // IRQ signals are deasserted when a specific r/w operation is done on
     // device
-    g_nCycleIrqStart = g_cumulative_cycles + uExecutedCycles;
+    g_cycle_irq_start = g_cumulative_cycles + uExecutedCycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -807,8 +807,8 @@ static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
 
 static inline void CheckInterruptSources(uint32_t uExecutedCycles) {
   (void)uExecutedCycles;
-  if (g_nIrqCheckTimeout <= 0) {
-    g_nIrqCheckTimeout = g_bFullSpeed ? 128 : 16;
+  if (g_irq_check_timeout <= 0) {
+    g_irq_check_timeout = g_full_speed ? 128 : 16;
   }
 }
 
@@ -1912,7 +1912,7 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
 static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t {
 #ifdef UPDATE_ALL_PER_CYCLE
 #endif
-  if (IS_APPLE2() || (g_Apple2Type == A2TYPE_APPLE2E)) {
+  if (IS_APPLE2() || (g_apple2_type == A2TYPE_APPLE2E)) {
     return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e
   } else {
     return Cpu65C02(uTotalCycles);
@@ -1922,37 +1922,37 @@ static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t {
 // Modern API implementation
 
 auto cpu_destroy() -> void {
-  if (g_bCritSectionValid) {
-    g_bCritSectionValid = false;
+  if (g_crit_section_valid) {
+    g_crit_section_valid = false;
   }
 }
 
 auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
-  uint32_t nCycles = executed_cycles - g_nCyclesExecuted;
+  uint32_t nCycles = executed_cycles - g_cycles_executed;
 #ifdef UPDATE_ALL_PER_CYCLE
   assert((int32_t)nCycles >= 0);
 #endif
-  g_nCyclesExecuted += nCycles;
+  g_cycles_executed += nCycles;
   g_cumulative_cycles += nCycles;
 }
 
 #ifdef UPDATE_ALL_PER_CYCLE
 auto cpu_get_cycles_this_frame(uint32_t) -> uint32_t {
-  cpu_calc_cycles(g_uInternalExecutedCycles);
-  return g_dwCyclesThisFrame + g_nCyclesExecuted;
+  cpu_calc_cycles(g_internal_executed_cycles);
+  return g_cycles_this_frame + g_cycles_executed;
 }
 #else
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
   cpu_calc_cycles(executed_cycles);
-  return g_dwCyclesThisFrame + g_nCyclesExecuted;
+  return g_cycles_this_frame + g_cycles_executed;
 }
 #endif
 
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   uint32_t uExecutedCycles = 0;
 
-  g_nCyclesSubmitted = total_cycles;
-  g_nCyclesExecuted = 0;
+  g_cycles_submitted = total_cycles;
+  g_cycles_executed = 0;
 
   if (total_cycles == 0) {  // Do single step
     uExecutedCycles = InternalCpuExecute(0);
@@ -1960,7 +1960,7 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
     uExecutedCycles = InternalCpuExecute(total_cycles);
   }
 
-  uint32_t nRemainingCycles = uExecutedCycles - g_nCyclesExecuted;
+  uint32_t nRemainingCycles = uExecutedCycles - g_cycles_executed;
   g_cumulative_cycles += nRemainingCycles;
 
   return uExecutedCycles;
@@ -1972,7 +1972,7 @@ auto cpu_initialize() -> void {
   regs.sp = 0x01FF;
   cpu_reset();
 
-  g_bCritSectionValid = true;
+  g_crit_section_valid = true;
   cpu_irq_reset();
   cpu_nmi_reset();
 }
@@ -2009,72 +2009,72 @@ auto cpu_setup_benchmark() -> void {
 }
 
 auto cpu_irq_reset() -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  g_bmIRQ = 0;
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_irq = 0;
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 
 auto cpu_irq_assert(IrqSrc_t device) -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  g_bmIRQ |= 1 << device;
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_irq |= 1 << device;
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 
 auto cpu_irq_deassert(IrqSrc_t device) -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  g_bmIRQ &= ~(1 << device);
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_irq &= ~(1 << device);
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 
 auto cpu_nmi_reset() -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  g_bmNMI = 0;
-  g_bNmiFlank = false;
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_nmi = 0;
+  g_nmi_flank = false;
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 
 auto cpu_nmi_assert(IrqSrc_t device) -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  if (g_bmNMI == 0) {  // NMI line is just becoming active
-    g_bNmiFlank = true;
+  if (g_bm_nmi == 0) {  // NMI line is just becoming active
+    g_nmi_flank = true;
   }
-  g_bmNMI |= 1 << device;
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_nmi |= 1 << device;
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 
 auto cpu_nmi_deassert(IrqSrc_t device) -> void {
-  assert(g_bCritSectionValid);
-  if (g_bCritSectionValid) {
-    pthread_mutex_lock(&g_CriticalSection);
+  assert(g_crit_section_valid);
+  if (g_crit_section_valid) {
+    pthread_mutex_lock(&g_critical_section);
   }
-  g_bmNMI &= ~(1 << device);
-  if (g_bCritSectionValid) {
-    pthread_mutex_unlock(&g_CriticalSection);
+  g_bm_nmi &= ~(1 << device);
+  if (g_crit_section_valid) {
+    pthread_mutex_unlock(&g_critical_section);
   }
 }
 

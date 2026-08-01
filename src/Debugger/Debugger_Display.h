@@ -27,8 +27,8 @@ enum ConsoleFontSize_e {
   CONSOLE_FONT_HEIGHT = 8,
 };
 
-extern ColorRef_t g_hConsoleBrushFG;
-extern ColorRef_t g_hConsoleBrushBG;
+extern ColorRef_t g_console_brush_fg;
+extern ColorRef_t g_console_brush_bg;
 
 enum {
   DISPLAY_HEIGHT = 384,
@@ -37,7 +37,7 @@ enum {
 
 int GetConsoleTopPixels(int y);
 
-extern FontConfig_t g_aFontConfig[NUM_FONTS];
+extern FontConfig_t g_font_config[NUM_FONTS];
 
 void DebuggerSetColorFG(ColorRef_t nRGB);
 void DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent = false);
@@ -88,11 +88,11 @@ enum DebugVirtualTextScreen_e {
   DEBUG_VIRTUAL_TEXT_HEIGHT = 48
 };
 
-extern char g_aDebuggerVirtualTextScreen[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                         [DEBUG_VIRTUAL_TEXT_WIDTH];
-extern ColorRef_t g_aDebuggerVirtualTextScreenFG[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                                 [DEBUG_VIRTUAL_TEXT_WIDTH];
-extern ColorRef_t g_aDebuggerVirtualTextScreenBG[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                                 [DEBUG_VIRTUAL_TEXT_WIDTH];
 extern size_t Util_GetDebuggerText(
     char*& pText_);  // Same API as Util_GetTextScreen()
@@ -140,4 +140,4 @@ void DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource);
 void GetTargets_IgnoreDirectJSRJMP(const uint8_t iOpcode, int& nTargetPointer);
 
-extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_video_scanner_display_info;

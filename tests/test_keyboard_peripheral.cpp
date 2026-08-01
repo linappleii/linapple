@@ -261,7 +261,7 @@ TEST_CASE("Keyboard Peripheral: International character safety") {
 TEST_CASE("Keyboard Peripheral: Repeat timer overflow and large batch safety") {
   g_mock_handlers.clear();
   // Ensure we are in a mode that supports auto-repeat
-  g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+  g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   void* instance = keyboard_peripheral.init(0, &mock_host);
 

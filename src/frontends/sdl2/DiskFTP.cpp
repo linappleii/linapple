@@ -31,7 +31,7 @@ static constexpr int key_delay = 25;
 // define time when cache ftp dir.listing must be refreshed
 static constexpr int renew_time = 24 * 3600;
 
-static std::array<char, 512> g_sFTPDirListing = {
+static std::array<char, 512> g_ftp_dir_listing = {
     {"cache/ftp."}};  // name for FTP-directory listing
 
 struct FtpGeneratorContext_t {
@@ -48,7 +48,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
 
   std::array<char, 1024> ftpdirpath;
   int l = snprintf(ftpdirpath.data(), ftpdirpath.size(), "%s/%s%s",
-                   g_state.sFTPLocalDir.data(), g_sFTPDirListing.data(),
+                   g_state.sFTPLocalDir.data(), g_ftp_dir_listing.data(),
                    md5str(ctx->directory.c_str()));
 
   if (l < 0 || static_cast<size_t>(l) >= ftpdirpath.size()) {

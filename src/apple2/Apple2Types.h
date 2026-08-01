@@ -36,11 +36,11 @@ enum eApple2Language {
   A2LANG_JP_KANA
 };
 
-extern eApple2Type g_Apple2Type;
-extern eApple2Language g_Language;
+extern eApple2Type g_apple2_type;
+extern eApple2Language g_language;
 
 inline auto IS_APPLE2() -> bool {
-  return (g_Apple2Type & (APPLE2E_MASK | APPLE2C_MASK)) == 0;
+  return (g_apple2_type & (APPLE2E_MASK | APPLE2C_MASK)) == 0;
 }
-inline auto IS_APPLE2E() -> bool { return (g_Apple2Type & APPLE2E_MASK) != 0; }
-inline auto IS_APPLE2C() -> bool { return (g_Apple2Type & APPLE2C_MASK) != 0; }
+inline auto IS_APPLE2E() -> bool { return (g_apple2_type & APPLE2E_MASK) != 0; }
+inline auto IS_APPLE2C() -> bool { return (g_apple2_type & APPLE2C_MASK) != 0; }

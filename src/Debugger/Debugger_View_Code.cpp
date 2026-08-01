@@ -19,22 +19,22 @@
 #include "core/Util_Text.h"
 
 // Externs for globals in Debugger_Display.cpp
-extern int g_iWindowThis;
-extern int g_nDisasmWinHeight;
-extern uint16_t g_nDisasmTopAddress;
-extern uint16_t g_nDisasmCurAddress;
-extern uint16_t g_nDisasmBotAddress;
-extern bool g_bDisasmCurBad;
-extern int g_nDisasmCurLine;
-extern int g_nFontHeight;
+extern int g_window_this;
+extern int g_disasm_win_height;
+extern uint16_t g_disasm_top_address;
+extern uint16_t g_disasm_cur_address;
+extern uint16_t g_disasm_bot_address;
+extern bool g_disasm_cur_bad;
+extern int g_disasm_cur_line;
+extern int g_font_height;
 extern MemoryTextFile_t g_AssemblerSourceBuffer;
-extern bool g_bConfigDisasmAddressView;
-extern bool g_bConfigDisasmAddressColon;
-extern bool g_bConfigDisasmOpcodesView;
-extern bool g_bConfigDisasmOpcodeSpaces;
-extern int g_iConfigDisasmBranchType;
-extern int g_iConfigDisasmTargets;
-extern bool g_bConfigInfoTargetPointer;
+extern bool g_config_disasm_address_view;
+extern bool g_config_disasm_address_colon;
+extern bool g_config_disasm_opcodes_view;
+extern bool g_config_disasm_opcode_spaces;
+extern int g_config_disasm_branch_type;
+extern int g_config_disasm_targets;
+extern bool g_config_info_target_pointer;
 
 // Constants from Debugger_Display.cpp
 const int DISPLAY_DISASM_RIGHT = 353;
@@ -61,7 +61,7 @@ extern void DrawSubWindow_Source(Update_t bUpdate);
 // --- Functions moved from Debugger_Display.cpp ---
 
 auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return 0;
   }
 
@@ -97,9 +97,9 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 #endif
 
 #if !USE_APPLE_FONT
-  if (!g_bConfigDisasmAddressColon) aTabs[TS_OPCODE] -= 1;
+  if (!g_config_disasm_address_colon) aTabs[TS_OPCODE] -= 1;
 
-  if ((g_bConfigDisasmOpcodesView) && (!g_bConfigDisasmOpcodeSpaces)) {
+  if ((g_config_disasm_opcodes_view) && (!g_config_disasm_opcode_spaces)) {
     aTabs[TS_LABEL] -= 3;
     aTabs[TS_INSTRUCTION] -= 2;
     aTabs[TS_IMMEDIATE] -= 1;
@@ -109,12 +109,12 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   int iTab = 0;
   int nSpacer = 11;
   for (iTab = 0; iTab < NUM_TAB_STOPS; iTab++) {
-    if (!g_bConfigDisasmAddressView) {
+    if (!g_config_disasm_address_view) {
       if (iTab < TS_IMMEDIATE) {
         aTabs[iTab] -= 4;
       }
     }
-    if (!g_bConfigDisasmOpcodesView) {
+    if (!g_config_disasm_opcodes_view) {
       if (iTab < TS_IMMEDIATE) {
         aTabs[iTab] -= nSpacer;
         if (nSpacer > 0) {
@@ -125,7 +125,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     aTabs[iTab] *= nDefaultFontWidth;
   }
 
-  int nFontHeight = g_aFontConfig[FONT_DISASM_DEFAULT]._nLineHeight;
+  int nFontHeight = g_font_config[FONT_DISASM_DEFAULT]._nLineHeight;
 
   Rect_t linerect;
   linerect.left = 0;
@@ -143,8 +143,8 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   DebugColors_e iForeground = FG_DISASM_MNEMONIC;
   bool bCursorLine = false;
 
-  if (((!g_bDisasmCurBad) && (iLine == g_nDisasmCurLine)) ||
-      (g_bDisasmCurBad && (iLine == 0))) {
+  if (((!g_disasm_cur_bad) && (iLine == g_disasm_cur_line)) ||
+      (g_disasm_cur_bad && (iLine == 0))) {
     bCursorLine = true;
 
     if (bBreakpointActive) {
@@ -161,7 +161,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     } else {
       iBackground = BG_DISASM_C;
       iForeground = FG_DISASM_C;
-      g_nDisasmCurAddress = nBaseAddress;
+      g_disasm_cur_address = nBaseAddress;
     }
   } else {
     if (iLine & 1) {
@@ -196,7 +196,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
   }
 
-  if (g_bConfigDisasmAddressView) {
+  if (g_config_disasm_address_view) {
     PrintTextCursorX((const char*)line.sAddress, linerect);
   }
 
@@ -209,7 +209,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
   }
 
-  if (g_bConfigDisasmAddressColon) {
+  if (g_config_disasm_address_colon) {
     PrintTextCursorX(":", linerect);
   } else {
     PrintTextCursorX(" ", linerect);
@@ -219,7 +219,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   if (!bCursorLine) {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
   }
-  if (g_bConfigDisasmOpcodesView) {
+  if (g_config_disasm_opcodes_view) {
     PrintTextCursorX((const char*)line.sOpCodes, linerect);
   }
 
@@ -276,8 +276,8 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   }
 
   int nMaxLen = MAX_TARGET_LEN;
-  if (!g_bConfigDisasmAddressView) nMaxLen += 4;
-  if (!g_bConfigDisasmOpcodesView) nMaxLen += (MAX_OPCODES * 3);
+  if (!g_config_disasm_address_view) nMaxLen += 4;
+  if (!g_config_disasm_opcodes_view) nMaxLen += (MAX_OPCODES * 3);
 
   int nOverflow = 0;
   if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET) {
@@ -361,7 +361,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     if (bDisasmFormatFlags & DISASM_FORMAT_TARGET_VALUE) {
       if (!bCursorLine)
         DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
-      if (g_iConfigDisasmTargets & DISASM_TARGET_BOTH)
+      if (g_config_disasm_targets & DISASM_TARGET_BOTH)
         PrintTextCursorX(":", linerect);
       if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
       PrintTextCursorX(line.sTargetValue, linerect);
@@ -384,15 +384,15 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     linerect.left = static_cast<int>(aTabs[TS_BRANCH]);
     if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BRANCH));
 #if !USE_APPLE_FONT
-    if (g_iConfigDisasmBranchType == DISASM_BRANCH_FANCY)
+    if (g_config_disasm_branch_type == DISASM_BRANCH_FANCY)
       SelectObject(GetDebuggerMemDC(),
-                   g_aFontConfig[FONT_DISASM_BRANCH]._hFont);
+                   g_font_config[FONT_DISASM_BRANCH]._hFont);
 #endif
     PrintText(line.sBranch, linerect);
 #if !USE_APPLE_FONT
-    if (g_iConfigDisasmBranchType)
+    if (g_config_disasm_branch_type)
       SelectObject(GetDebuggerMemDC(),
-                   g_aFontConfig[FONT_DISASM_DEFAULT]._hFont);
+                   g_font_config[FONT_DISASM_DEFAULT]._hFont);
 #endif
   }
 
@@ -400,7 +400,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 }
 
 void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
@@ -408,11 +408,11 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   char sText[8] = "?";
   Rect_t rect;
 
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
   int nSpacerWidth = nFontWidth;
 
-  rect.top = line * g_nFontHeight;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.top = line * g_font_height;
+  rect.bottom = rect.top + g_font_height;
   rect.left = DISPLAY_FLAG_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -420,8 +420,8 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
   PrintText("P ", rect);
 
-  rect.top += g_nFontHeight;
-  rect.bottom += g_nFontHeight;
+  rect.top += g_font_height;
+  rect.bottom += g_font_height;
 
   snprintf(sText, sizeof(sText), "%02X", nRegFlags);
 
@@ -429,8 +429,8 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
   PrintText(sText, rect);
 
-  rect.top -= g_nFontHeight;
-  rect.bottom -= g_nFontHeight;
+  rect.top -= g_font_height;
+  rect.bottom -= g_font_height;
   sText[1] = 0;
 
   rect.left += ((2 + _6502_NUM_FLAGS) * nSpacerWidth);
@@ -441,7 +441,7 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   while (nFlag--) {
     iFlag = (_6502_NUM_FLAGS - nFlag - 1);
     bool bSet = (nRegFlags & 1);
-    sText[0] = g_aBreakpointSource[BP_SRC_FLAG_C + iFlag][0];
+    sText[0] = g_breakpoint_source[BP_SRC_FLAG_C + iFlag][0];
 
     if (bSet) {
       DebuggerSetColorBG(DebuggerGetColor(BG_INFO_INVERSE));
@@ -455,21 +455,21 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
     rect.right -= nSpacerWidth;
     PrintText(sText, rect);
 
-    rect.top += g_nFontHeight;
-    rect.bottom += g_nFontHeight;
+    rect.top += g_font_height;
+    rect.bottom += g_font_height;
     DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
 
     sText[0] = '0' + static_cast<int>(bSet);
     PrintText(sText, rect);
-    rect.top -= g_nFontHeight;
-    rect.bottom -= g_nFontHeight;
+    rect.top -= g_font_height;
+    rect.bottom -= g_font_height;
 
     if (pFlagNames_) {
       if (!bSet) {
         sFlagNames[nFlag] = '.';
       } else {
-        sFlagNames[nFlag] = g_aBreakpointSource[BP_SRC_FLAG_C + iFlag][0];
+        sFlagNames[nFlag] = g_breakpoint_source[BP_SRC_FLAG_C + iFlag][0];
       }
     }
     nRegFlags >>= 1;
@@ -479,12 +479,12 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
 }
 
 void DrawStack(int line) {
-  if ((g_iWindowThis != WINDOW_CODE) && !((g_iWindowThis == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
 
   unsigned nAddress = cpu_get_registers()->sp;
-  int nFontWidth = g_aFontConfig[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
   DebuggerSetColorBG(DebuggerGetColor(BG_DATA_1));
 
   int iStack = 0;
@@ -492,9 +492,9 @@ void DrawStack(int line) {
     nAddress++;
     Rect_t rect;
     rect.left = DISPLAY_STACK_COLUMN;
-    rect.top = (iStack + line) * g_nFontHeight;
+    rect.top = (iStack + line) * g_font_height;
     rect.right = rect.left + (10 * nFontWidth) + 1;
-    rect.bottom = rect.top + g_nFontHeight;
+    rect.bottom = rect.top + g_font_height;
 
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     char sText[8] = "";
@@ -525,36 +525,36 @@ void DrawSourceLine(int iSourceLine, Rect_t& rect) {
   }
 
   PrintText(sLine, rect);
-  rect.top += g_nFontHeight;
+  rect.top += g_font_height;
 }
 
 void DrawSubWindow_Code(int iWindow) {
   (void)iWindow;
-  int nLines = g_nDisasmWinHeight;
+  int nLines = g_disasm_win_height;
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_aFontConfig[FONT_DISASM_DEFAULT]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_DISASM_DEFAULT]._hFont);
 #endif
 
-  uint16_t nAddress = g_nDisasmTopAddress;
+  uint16_t nAddress = g_disasm_top_address;
   for (int iLine = 0; iLine < nLines; iLine++) {
     nAddress += DrawDisassemblyLine(iLine, nAddress);
   }
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_aFontConfig[FONT_INFO]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_INFO]._hFont);
 #endif
 }
 
 void DrawSubWindow_Source(Update_t bUpdate) {
   (void)bUpdate;
-  int nLines = g_nDisasmWinHeight;
+  int nLines = g_disasm_win_height;
 
   Rect_t rect;
   rect.left = 0;
   rect.top = 0;
   rect.right = DISPLAY_DISASM_RIGHT;
-  rect.bottom = rect.top + g_nFontHeight;
+  rect.bottom = rect.top + g_font_height;
 
   int iSourceDisplayStart = 0;  // TODO: Extern
   int iSourceLine = iSourceDisplayStart;
@@ -566,13 +566,13 @@ void DrawSubWindow_Source(Update_t bUpdate) {
 }
 
 void DrawWindow_Code(Update_t bUpdate) {
-  DrawSubWindow_Code(g_iWindowThis);
-  DrawWindowBottom(bUpdate, g_iWindowThis);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_Code(g_window_this);
+  DrawWindowBottom(bUpdate, g_window_this);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
 void DrawWindow_Source(Update_t bUpdate) {
-  DrawSubWindow_Source(g_iWindowThis);
-  DrawWindowBottom(bUpdate, g_iWindowThis);
-  DrawSubWindow_Info(bUpdate, g_iWindowThis);
+  DrawSubWindow_Source(g_window_this);
+  DrawWindowBottom(bUpdate, g_window_this);
+  DrawSubWindow_Info(bUpdate, g_window_this);
 }

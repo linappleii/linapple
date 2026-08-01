@@ -16,7 +16,7 @@
 #include <cstddef>
 
 // Globals originally from Debug.cpp
-extern bool g_bReportMissingScripts;
+extern bool g_report_missing_scripts;
 
 // Types used by CmdOutputPrint and CmdOutputPrintf
 enum PrintState_e
@@ -58,7 +58,7 @@ void DebuggerRunScript(const char* pFileName)
     sFileName += pFileName;
   }
 
-  if (g_pConsoleInput == nullptr)
+  if (g_console_input_ptr == nullptr)
   {
     ConsoleInputReset();
   }
@@ -68,15 +68,15 @@ void DebuggerRunScript(const char* pFileName)
     int nLine = script.GetNumLines();
     for (int iLine = 0; iLine < nLine; iLine++)
     {
-      if (g_pConsoleInput == nullptr) {
+      if (g_console_input_ptr == nullptr) {
         break;
       }
-      script.GetLine(iLine, g_pConsoleInput, CONSOLE_WIDTH - 2);
-      g_nConsoleInputChars = static_cast<int>(strlen(g_pConsoleInput));
+      script.GetLine(iLine, g_console_input_ptr, CONSOLE_WIDTH - 2);
+      g_console_input_chars = static_cast<int>(strlen(g_console_input_ptr));
       DebuggerProcessCommand(false);
     }
   }
-  else if (g_bReportMissingScripts)
+  else if (g_report_missing_scripts)
   {
     char sText[CONSOLE_WIDTH];
     ConsolePrintFormat(sText, "%sCouldn't load filename:", CHC_ERROR);
@@ -91,7 +91,7 @@ auto CmdOutputCalc (int nArgs) -> Update_t
     return Help_Arg_1( CMD_OUTPUT_CALC );
 }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
+  uint16_t nAddress = g_args[1].nValue;
   char sText [ CONSOLE_WIDTH ];
 
   bool bHi = false;
@@ -142,13 +142,13 @@ auto CmdOutputCalc (int nArgs) -> Update_t
 auto CmdOutputEcho (int nArgs) -> Update_t
 {
   (void)nArgs;
-  if (g_aArgs[1].bType & TYPE_QUOTED_2)
+  if (g_args[1].bType & TYPE_QUOTED_2)
   {
-    ConsoleDisplayPush( g_aArgs[1].sArg );
+    ConsoleDisplayPush( g_args[1].sArg );
   }
   else
   {
-    const char *pText = g_pConsoleFirstArg; // ConsoleInputPeek();
+    const char *pText = g_console_first_arg; // ConsoleInputPeek();
     if (pText)
     {
       ConsoleDisplayPush( pText );
@@ -174,13 +174,13 @@ auto CmdOutputPrint (int nArgs) -> Update_t
 
   for (iArg = 1; iArg <= nArgs; iArg++ )
   {
-    if (g_aArgs[ iArg ].bType & TYPE_QUOTED_2)
+    if (g_args[ iArg ].bType & TYPE_QUOTED_2)
     {
-      nLen += StringCat( sText, g_aArgs[ iArg ].sArg, CONSOLE_WIDTH );
+      nLen += StringCat( sText, g_args[ iArg ].sArg, CONSOLE_WIDTH );
       continue;
     }
 
-    if (! ArgsGetValue( & g_aArgs[ iArg ], & nValue ))
+    if (! ArgsGetValue( & g_args[ iArg ], & nValue ))
     {
       goto _Help;
     }
@@ -220,7 +220,7 @@ auto CmdOutputPrintf (int nArgs) -> Update_t
     goto _Help;
 }
 
-  if (! (g_aArgs[ 1 ].bType & TYPE_QUOTED_2)) {
+  if (! (g_args[ 1 ].bType & TYPE_QUOTED_2)) {
     goto _Help;
 }
 
@@ -228,10 +228,10 @@ auto CmdOutputPrintf (int nArgs) -> Update_t
 
   for (iArg = 2; iArg <= nArgs; iArg++ )
   {
-    aValues.push_back( g_aArgs[ iArg ] );
+    aValues.push_back( g_args[ iArg ] );
   }
 
-  pFormat = g_aArgs[ 1 ].sArg;
+  pFormat = g_args[ 1 ].sArg;
 
   while (*pFormat)
   {
@@ -366,7 +366,7 @@ auto CmdOutputRun(int nArgs) -> Update_t
     return Help_Arg_1(CMD_OUTPUT_RUN);
 }
 
-  DebuggerRunScript(g_aArgs[1].sArg);
+  DebuggerRunScript(g_args[1].sArg);
 
   return ConsoleUpdate();
 }

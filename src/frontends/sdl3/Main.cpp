@@ -19,9 +19,9 @@
 #include "frontends/sdl3/Frontend.h"
 
 // SDL Audio Stream for Frontend
-bool g_bDSAvailable = false;
+bool g_ds_available = false;
 SDL_AudioStream* g_audioStream = nullptr;
-static char* g_pszAudioDumpFile = nullptr;
+static char* g_audio_dump_file = nullptr;
 static AudioDumper_t g_audio_dumper;
 
 static void SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
@@ -55,8 +55,8 @@ auto ds_init() -> bool {
   desired.channels = 2;
   desired.format = SDL_AUDIO_S16;
 
-  if (g_pszAudioDumpFile) {
-    audio_dumper_initialize(&g_audio_dumper, g_pszAudioDumpFile,
+  if (g_audio_dump_file) {
+    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file,
                             SPKR_SAMPLE_RATE, 2);
   }
 
@@ -68,7 +68,7 @@ auto ds_init() -> bool {
   }
 
   SDL_ResumeAudioStreamDevice(g_audioStream);
-  g_bDSAvailable = true;
+  g_ds_available = true;
 
   linapple_set_audio_callback([](const int16_t* samples,
                                size_t num_samples) -> void {
@@ -131,7 +131,7 @@ auto main(int argc, char* argv[]) -> int {
   // config.szAudioDumpPath.data() directly but it's cleaner to keep the
   // frontend's specific state separate if it uses a heap string.
   if (config.szAudioDumpPath.data()[0] != '\0') {
-    g_pszAudioDumpFile = SDL_strdup(config.szAudioDumpPath.data());
+    g_audio_dump_file = SDL_strdup(config.szAudioDumpPath.data());
   }
 
   if (sys_init() != 0) return 1;

@@ -52,7 +52,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   s_initialized = true;
 
   // 3. Set Hardware Type and PAL
-  g_Apple2Type = config->apple2Type;
+  g_apple2_type = config->apple2Type;
   if (config->bPAL) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.bVideoScannerNTSC = false;

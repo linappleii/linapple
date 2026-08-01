@@ -198,18 +198,18 @@ typedef void CURL;
 extern "C" {
 #endif
 
-extern const char* g_pAppTitle;
+extern const char* g_app_title;
 extern char videoDriverName[100];
 extern uint64_t cumulative_cycles;
 extern uint64_t cycle_num;
 extern uint32_t emul_msec;
-extern bool g_bFullSpeed;
+extern bool g_full_speed;
 extern bool hdd_enabled;
-extern double g_fCurrentCLK6502;
-extern int g_nCpuCyclesFeedback;
-extern uint32_t g_dwCyclesThisFrame;
-extern bool g_bDisableDirectSound;
-extern uint32_t g_Slot4;
+extern double g_current_clk_6502;
+extern int g_cpu_cycles_feedback;
+extern uint32_t g_cycles_this_frame;
+extern bool g_disable_direct_sound;
+extern uint32_t g_slot4;
 extern CURL* g_curl;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,

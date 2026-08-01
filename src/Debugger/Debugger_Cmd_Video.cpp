@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <array>
 
-extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
 
 auto CmdVideoScannerInfo(int nArgs) -> Update_t
 {
@@ -21,21 +21,21 @@ auto CmdVideoScannerInfo(int nArgs) -> Update_t
   }
   else
   {
-    if (strcmp(g_aArgs[1].sArg, "dec") == 0) {
-      g_videoScannerDisplayInfo.isDecimal = true;
-    } else if (strcmp(g_aArgs[1].sArg, "hex") == 0) {
-      g_videoScannerDisplayInfo.isDecimal = false;
-    } else if (strcmp(g_aArgs[1].sArg, "real") == 0) {
-      g_videoScannerDisplayInfo.isHorzReal = true;
-    } else if (strcmp(g_aArgs[1].sArg, "apple") == 0) {
-      g_videoScannerDisplayInfo.isHorzReal = false;
+    if (strcmp(g_args[1].sArg, "dec") == 0) {
+      g_video_scanner_display_info.isDecimal = true;
+    } else if (strcmp(g_args[1].sArg, "hex") == 0) {
+      g_video_scanner_display_info.isDecimal = false;
+    } else if (strcmp(g_args[1].sArg, "real") == 0) {
+      g_video_scanner_display_info.isHorzReal = true;
+    } else if (strcmp(g_args[1].sArg, "apple") == 0) {
+      g_video_scanner_display_info.isHorzReal = false;
     } else {
       return Help_Arg_1(CMD_VIDEO_SCANNER_INFO);
 }
   }
 
   char sText[CONSOLE_WIDTH];
-  ConsoleBufferPushFormat(sText, "Video-scanner display updated: %s", g_aArgs[1].sArg);
+  ConsoleBufferPushFormat(sText, "Video-scanner display updated: %s", g_args[1].sArg);
   ConsoleBufferToDisplay();
 
   return UPDATE_ALL;
@@ -49,17 +49,17 @@ auto CmdCyclesInfo(int nArgs) -> Update_t
   }
   else
   {
-    if (strcmp(g_aArgs[1].sArg, "abs") == 0) {
-      g_videoScannerDisplayInfo.isAbsCycle = true;
-    } else if (strcmp(g_aArgs[1].sArg, "rel") == 0) {
-      g_videoScannerDisplayInfo.isAbsCycle = false;
+    if (strcmp(g_args[1].sArg, "abs") == 0) {
+      g_video_scanner_display_info.isAbsCycle = true;
+    } else if (strcmp(g_args[1].sArg, "rel") == 0) {
+      g_video_scanner_display_info.isAbsCycle = false;
     } else {
       return Help_Arg_1(CMD_CYCLES_INFO);
 }
   }
 
   char sText[CONSOLE_WIDTH];
-  ConsoleBufferPushFormat(sText, "Cycles display updated: %s", g_aArgs[1].sArg);
+  ConsoleBufferPushFormat(sText, "Cycles display updated: %s", g_args[1].sArg);
   ConsoleBufferToDisplay();
 
   return UPDATE_ALL;

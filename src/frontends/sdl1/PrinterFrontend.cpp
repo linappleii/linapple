@@ -8,7 +8,7 @@
 #include "core/Util_Path.h"
 
 static uint32_t inactivity = 0;
-static uint32_t g_PrinterIdleLimit = 10;
+static uint32_t g_printer_idle_limit = 10;
 static FilePtr_t file(nullptr, fclose);
 bool g_printer_append = true;
 
@@ -57,6 +57,6 @@ void printer_frontend_send_char(uint8_t value) {
 
 void printer_frontend_check_status() { check_print(); }
 
-auto printer_get_idle_limit() -> uint32_t { return g_PrinterIdleLimit; }
+auto printer_get_idle_limit() -> uint32_t { return g_printer_idle_limit; }
 
-void Printer_SetIdleLimit(uint32_t Duration) { g_PrinterIdleLimit = Duration; }
+void Printer_SetIdleLimit(uint32_t Duration) { g_printer_idle_limit = Duration; }

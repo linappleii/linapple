@@ -23,8 +23,8 @@ extern void frame_quick_state(int state, int mod);
 extern auto is_modifier_key(SDL_Keycode key) -> bool;
 extern void set_using_cursor(bool);
 extern void draw_status_area(int);
-extern int buttondown;
-extern bool usingcursor;
+extern int g_buttondown;
+extern bool g_usingcursor;
 extern int x, y;
 
 void sdl_handle_event(SDL_Event* e) {
@@ -65,9 +65,9 @@ void sdl_handle_event(SDL_Event* e) {
           break;
         }
 
-        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == -1)) {
+        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (g_buttondown == -1)) {
           set_using_cursor(false);
-          buttondown = mysym - SDLK_F1;
+          g_buttondown = mysym - SDLK_F1;
         } else if (mysym == SDLK_KP_PLUS) {
           g_state.dwSpeed = g_state.dwSpeed + 2;
           if (g_state.dwSpeed > emulation_speed_max) {
@@ -150,8 +150,8 @@ void sdl_handle_event(SDL_Event* e) {
       SDL_Scancode myscancode = e->key.scancode;
 
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) &&
-          (static_cast<SDL_Keycode>(buttondown) == mysym - SDLK_F1)) {
-        buttondown = -1;
+          (static_cast<SDL_Keycode>(g_buttondown) == mysym - SDLK_F1)) {
+        g_buttondown = -1;
         process_button_click(mysym - SDLK_F1, mymod);
       } else if (frontend_handle_event(mysym, false)) {
         break;
@@ -172,7 +172,7 @@ void sdl_handle_event(SDL_Event* e) {
     case SDL_EVENT_MOUSE_BUTTON_DOWN: {
       SDL_Keymod mymod = SDL_GetModState();
       if (e->button.button == SDL_BUTTON_LEFT) {
-        if (buttondown == -1) {
+        if (g_buttondown == -1) {
           x_local = static_cast<int>(e->button.x);
           y_local = static_cast<int>(e->button.y);
 #if ENABLE_DEBUGGER
@@ -180,7 +180,7 @@ void sdl_handle_event(SDL_Event* e) {
             debugger_mouse_click(x_local, y_local);
           } else
 #endif
-              if (usingcursor) {
+              if (g_usingcursor) {
             if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               set_using_cursor(false);
             } else {
@@ -200,7 +200,7 @@ void sdl_handle_event(SDL_Event* e) {
           }
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
-        if (usingcursor) {
+        if (g_usingcursor) {
           MouseButtonPayload_t payload = {1, true};
           peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
@@ -212,13 +212,13 @@ void sdl_handle_event(SDL_Event* e) {
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
       if (e->button.button == SDL_BUTTON_LEFT) {
-        if (usingcursor) {
+        if (g_usingcursor) {
           MouseButtonPayload_t payload = {0, false};
           peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
-        if (usingcursor) {
+        if (g_usingcursor) {
           MouseButtonPayload_t payload = {1, false};
           peripheral_command(0, mouse_cmd_set_button, &payload,
                              sizeof(payload));
@@ -229,7 +229,7 @@ void sdl_handle_event(SDL_Event* e) {
     case SDL_EVENT_MOUSE_MOTION:
       x_local = static_cast<int>(e->motion.x);
       y_local = static_cast<int>(e->motion.y);
-      if (usingcursor) {
+      if (g_usingcursor) {
         MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local,
                                      VIEWPORTCY - 4};
         peripheral_command(0, mouse_cmd_set_pos, &payload, sizeof(payload));

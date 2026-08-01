@@ -53,7 +53,7 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 
 	if( nArgs < 1 )
 	{
-		nAddress = g_nDisasmCurAddress;
+		nAddress = g_disasm_cur_address;
 	}
 	else
 	{
@@ -69,16 +69,16 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 		else
 		{
 			if( nArgs > 1 ) {
-				nAddress = g_aArgs[ 2 ].nValue;
+				nAddress = g_args[ 2 ].nValue;
 			} else {
-				nAddress = g_aArgs[ 1 ].nValue;
+				nAddress = g_args[ 1 ].nValue;
 }
 		}
 	}
 
 	// 2.7.0.35 DW address -- round the length up to even number for convenience.
 	// Example: 'DW 6062' is equivalent to: 'DW 6062:6063'
-	if( g_iCommand == CMD_DEFINE_DATA_WORD1 )
+	if( g_command == CMD_DEFINE_DATA_WORD1 )
 	{
 		if( ~nLen & 1 ) {
 			nLen++;
@@ -96,13 +96,13 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 
 	if( nArgs > 1 )
 	{
-		if( g_aArgs[ 2 ].eToken == TOKEN_COLON ) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
+		if( g_args[ 2 ].eToken == TOKEN_COLON ) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
 		{
 			bAutoDefineName = true;
 		}
 		else
 		{
-			pSymbolName = g_aArgs[ 1 ].sArg;
+			pSymbolName = g_args[ 1 ].sArg;
 			strncpy(aSymbolName, pSymbolName, MAX_SYMBOLS_LEN);
 			aSymbolName[MAX_SYMBOLS_LEN] = 0;	// truncate to max symbol length
 			pSymbolName = aSymbolName;
@@ -119,10 +119,10 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 	//   DB 801
 	if( bAutoDefineName )
 	{
-		if( g_iCommand == CMD_DEFINE_DATA_STR ) {
+		if( g_command == CMD_DEFINE_DATA_STR ) {
 			snprintf( aSymbolName, sizeof(aSymbolName), "T_%04X", tData_.nStartAddress ); // ASC range
 		} else
-		if( g_iCommand == CMD_DEFINE_DATA_WORD1 ) {
+		if( g_command == CMD_DEFINE_DATA_WORD1 ) {
 			snprintf( aSymbolName, sizeof(aSymbolName), "W_%04X", tData_.nStartAddress ); // DW range
 		} else {
 			snprintf( aSymbolName, sizeof(aSymbolName), "B_%04X", tData_.nStartAddress ); // DB range
@@ -179,7 +179,7 @@ auto CmdDisasmDataDefCode (int nArgs) -> Update_t
 	return UPDATE_DISASM | ConsoleUpdate();
 }
 
-const char* g_aNopcodeTypes[ NUM_NOPCODE_TYPES ] =
+const char* g_nopcode_types[ NUM_NOPCODE_TYPES ] =
 {
 	 "-n/a-"
 	,"byte1"
@@ -221,7 +221,7 @@ auto CmdDisasmDataList (int nArgs) -> Update_t
 			// `TEST `300`:`320
 			ConsolePrintFormat( sText, "%s%s %s%*s %s%04X%s:%s%04X"
 				, CHC_CATEGORY
-				, g_aNopcodeTypes[ pData->eElementType ]
+				, g_nopcode_types[ pData->eElementType ]
 				, (nLen > 0) ? CHC_SYMBOL     : CHC_DEFAULT
 				, MAX_SYMBOLS_LEN
 				, (nLen > 0) ? pData->sSymbol : "???"
@@ -247,7 +247,7 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 	// DB symbol range:range
 	// DB address
 	// To "return to code" use ."X"
-	int iCmd = g_aArgs[0].nValue - NOP_BYTE_1;
+	int iCmd = g_args[0].nValue - NOP_BYTE_1;
 
 	if (nArgs > 4) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
 	{
@@ -259,7 +259,7 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 
 	if (nArgs == 3 ) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:175F
 	{
-		if ( g_aArgs[ 2 ].eToken == TOKEN_COLON ) {
+		if ( g_args[ 2 ].eToken == TOKEN_COLON ) {
 			iArg = 1;
 }
 	}
@@ -268,7 +268,7 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 
 	// TODO: Allow user to select which assembler to use for displaying directives!
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_BYTE;
-	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_BYTE;
+	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_BYTE;
 
 	tData.eElementType = static_cast<Nopcode_e>( NOP_BYTE_1 + iCmd );
 	tData.bSymbolLookup = false;
@@ -301,7 +301,7 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 //===========================================================================
 auto _CmdDisasmDataDefWordX (int nArgs) -> Update_t
 {
-	int iCmd = g_aArgs[0].nValue - NOP_WORD_1;
+	int iCmd = g_args[0].nValue - NOP_WORD_1;
 
 	if (nArgs > 4) // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
 	{
@@ -313,7 +313,7 @@ auto _CmdDisasmDataDefWordX (int nArgs) -> Update_t
 
 	if (nArgs == 3 ) // 2.7.0.33 Bug fix: DW range, i.e. DW 3F2:3F3
 	{
-		if ( g_aArgs[ 2 ].eToken == TOKEN_COLON ) {
+		if ( g_args[ 2 ].eToken == TOKEN_COLON ) {
 			iArg = 1;
 }
 	}
@@ -321,7 +321,7 @@ auto _CmdDisasmDataDefWordX (int nArgs) -> Update_t
 	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
-	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_WORD;
+	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_WORD;
 
 	tData.eElementType = static_cast<Nopcode_e>( NOP_WORD_1 + iCmd );
 	tData.bSymbolLookup = false;
@@ -357,7 +357,7 @@ auto CmdDisasmDataDefAddress8L (int nArgs) -> Update_t
 //===========================================================================
 auto CmdDisasmDataDefAddress16 (int nArgs) -> Update_t
 {
-	int iCmd = NOP_WORD_1 - g_aArgs[0].nValue;
+	int iCmd = NOP_WORD_1 - g_args[0].nValue;
 
 	if ((nArgs > 2) && (nArgs != 4))
 	{
@@ -369,7 +369,7 @@ auto CmdDisasmDataDefAddress16 (int nArgs) -> Update_t
 	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
-	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_ADDRESS_16;
+	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_ADDRESS_16;
 
 	tData.eElementType = NOP_ADDRESS;
 	tData.bSymbolLookup = true;
@@ -391,46 +391,46 @@ auto CmdDisasmDataDefAddress16 (int nArgs) -> Update_t
 // DB
 auto CmdDisasmDataDefByte1 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_BYTE_1;
+	g_args[0].nValue = NOP_BYTE_1;
 	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 // DB2
 auto CmdDisasmDataDefByte2 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_BYTE_2;
+	g_args[0].nValue = NOP_BYTE_2;
 	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 auto CmdDisasmDataDefByte4 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_BYTE_4;
+	g_args[0].nValue = NOP_BYTE_4;
 	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 auto CmdDisasmDataDefByte8 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_BYTE_8;
+	g_args[0].nValue = NOP_BYTE_8;
 	return _CmdDisasmDataDefByteX( nArgs );
 }
 
 // DW
 auto CmdDisasmDataDefWord1 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_WORD_1;
+	g_args[0].nValue = NOP_WORD_1;
 	return _CmdDisasmDataDefWordX( nArgs );
 }
 
 // DW2
 auto CmdDisasmDataDefWord2 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_WORD_2;
+	g_args[0].nValue = NOP_WORD_2;
 	return _CmdDisasmDataDefWordX( nArgs );
 }
 
 auto CmdDisasmDataDefWord4 ( int nArgs ) -> Update_t
 {
-	g_aArgs[0].nValue = NOP_WORD_4;
+	g_args[0].nValue = NOP_WORD_4;
 	return _CmdDisasmDataDefWordX( nArgs );
 }
 
@@ -450,14 +450,14 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 
 	if (nArgs == 3 ) // 2.7.0.32 Bug fix: ASC range, i.e. ASC 174E:175F
 	{
-		if ( g_aArgs[ 2 ].eToken == TOKEN_COLON ) {
+		if ( g_args[ 2 ].eToken == TOKEN_COLON ) {
 			iArg = 1;
 }
 	}
 
 	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
 
-//	tData.iDirective = g_aAssemblerFirstDirective[ g_iAssemblerSyntax ] + ASM_DEFINE_APPLE_TEXT;
+//	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_APPLE_TEXT;
 	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_ASCII; // ASM_MERLIN
 
 	tData.eElementType = static_cast<Nopcode_e>( NOP_STRING_APPLE + iCmd );
@@ -484,12 +484,12 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 {
 	DisasmData_t *pData = nullptr; // bIsNopcode = false
-	int nDataTargets = g_aDisassemblerData.size();
+	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
 	{
-		DisasmData_t *pBegin = & g_aDisassemblerData[ 0 ];
-		DisasmData_t *pEnd   = & g_aDisassemblerData[ nDataTargets - 1 ];
+		DisasmData_t *pBegin = & g_disassembler_data[ 0 ];
+		DisasmData_t *pEnd   = & g_disassembler_data[ nDataTargets - 1 ];
 
 		if( pCurrent )
 		{
@@ -509,12 +509,12 @@ auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 auto Disassembly_IsDataAddress ( uint16_t nAddress ) -> DisasmData_t*
 {
 	DisasmData_t *pData = nullptr; // bIsNopcode = false
-	int nDataTargets = g_aDisassemblerData.size();
+	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
 	{
 		// TODO: Replace with binary search -- should store data in sorted order, via start address
-		pData = & g_aDisassemblerData[ 0 ];
+		pData = & g_disassembler_data[ 0 ];
 		for( int iTarget = 0; iTarget < nDataTargets; iTarget++ )
 		{
 			if( pData->iDirective != _NOP_REMOVED )
@@ -535,7 +535,7 @@ auto Disassembly_IsDataAddress ( uint16_t nAddress ) -> DisasmData_t*
 //===========================================================================
 void Disassembly_AddData( DisasmData_t tData)
 {
-	g_aDisassemblerData.push_back( tData );
+	g_disassembler_data.push_back( tData );
 }
 
 // DEPRECATED ! Inlined in _6502_GetOpmodeOpbyte() !
@@ -556,16 +556,16 @@ void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *pData, Dis
 //===========================================================================
 void Disassembly_DelData( DisasmData_t tData)
 {
-	// g_aDisassemblerData.erase( );
+	// g_disassembler_data.erase( );
 	uint16_t nAddress = tData.nStartAddress;
 
 	DisasmData_t *pData = nullptr; // bIsNopcode = false
-	int nDataTargets = g_aDisassemblerData.size();
+	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
 	{
 		// TODO: Replace with binary search -- should store data in sorted order, via start address
-		pData = & g_aDisassemblerData[ 0 ];
+		pData = & g_disassembler_data[ 0 ];
 		for( int iTarget = 0; iTarget < nDataTargets; iTarget++ )
 		{
 			if (pData->iDirective != _NOP_REMOVED)

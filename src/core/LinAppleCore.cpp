@@ -46,16 +46,16 @@ static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
 static const char TITLE_APPLE_2E_[] = "Apple //e Emulator";
 static const char TITLE_APPLE_2E_ENHANCED_[] = "Enhanced Apple //e Emulator";
 
-const char* g_pAppTitle = TITLE_APPLE_2E_ENHANCED_;
+const char* g_app_title = TITLE_APPLE_2E_ENHANCED_;
 char videoDriverName[100]{};
 
-eApple2Type g_Apple2Type = A2TYPE_APPLE2EENHANCED;
-eApple2Language g_Language = A2LANG_US;
+eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
+eApple2Language g_language = A2LANG_US;
 
 uint64_t cumulative_cycles = 0;
 uint64_t cycle_num = 0;
 uint32_t emul_msec = 0;
-bool g_bFullSpeed = false;
+bool g_full_speed = false;
 bool hdd_enabled = false;
 
 SystemState_t g_state = {MODE_LOGO,
@@ -80,13 +80,13 @@ SystemState_t g_state = {MODE_LOGO,
                          17030,
                          false};
 
-double g_fCurrentCLK6502 = CLOCK_6502;
-int g_nCpuCyclesFeedback = 0;
-uint32_t g_dwCyclesThisFrame = 0;
+double g_current_clk_6502 = CLOCK_6502;
+int g_cpu_cycles_feedback = 0;
+uint32_t g_cycles_this_frame = 0;
 
-bool g_bDisableDirectSound = false;
+bool g_disable_direct_sound = false;
 
-uint32_t g_Slot4 = CT_Mockingboard;
+uint32_t g_slot4 = CT_Mockingboard;
 CURL* g_curl = nullptr;
 
 auto get_title_apple_2() -> const char* { return TITLE_APPLE_2_; }
@@ -158,7 +158,7 @@ static auto should_run_full_speed() -> bool {
   }
 
   s_was_turbo = should_turbo;
-  g_bFullSpeed = should_turbo;
+  g_full_speed = should_turbo;
   return should_turbo;
 }
 
@@ -303,10 +303,10 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
 
     peripheral_manager_on_vblank(true);
 
-    if (g_video_cb != nullptr && g_bFrameReady) {
+    if (g_video_cb != nullptr && g_frame_ready) {
       uint32_t* output = video_get_output_buffer();
       g_video_cb(output, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_WIDTH * 4);
-      g_bFrameReady = false;
+      g_frame_ready = false;
     }
     return executed;
   }

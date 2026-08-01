@@ -11,18 +11,18 @@
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
-extern int g_iCommand;
+extern int g_command;
 
 auto CmdFlagClear(int nArgs) -> Update_t {
-  int iFlag = (g_iCommand - CMD_FLAG_CLR_C);
+  int iFlag = (g_command - CMD_FLAG_CLR_C);
 
-  if (g_iCommand == CMD_FLAG_CLEAR) {
+  if (g_command == CMD_FLAG_CLEAR) {
     int iArg = nArgs;
     while (iArg) {
       iFlag = 0;
       while (iFlag < _6502_NUM_FLAGS) {
-        if (g_aBreakpointSource[BP_SRC_FLAG_N - iFlag][0] ==
-            toupper(g_aArgs[iArg].sArg[0])) {
+        if (g_breakpoint_source[BP_SRC_FLAG_N - iFlag][0] ==
+            toupper(g_args[iArg].sArg[0])) {
           cpu_get_registers()->ps &= ~(1 << (7 - iFlag));
           break;
         }
@@ -38,15 +38,15 @@ auto CmdFlagClear(int nArgs) -> Update_t {
 }
 
 auto CmdFlagSet(int nArgs) -> Update_t {
-  int iFlag = (g_iCommand - CMD_FLAG_SET_C);
+  int iFlag = (g_command - CMD_FLAG_SET_C);
 
-  if (g_iCommand == CMD_FLAG_SET) {
+  if (g_command == CMD_FLAG_SET) {
     int iArg = nArgs;
     while (iArg) {
       iFlag = 0;
       while (iFlag < _6502_NUM_FLAGS) {
-        if (g_aBreakpointSource[BP_SRC_FLAG_N - iFlag][0] ==
-            toupper(g_aArgs[iArg].sArg[0])) {
+        if (g_breakpoint_source[BP_SRC_FLAG_N - iFlag][0] ==
+            toupper(g_args[iArg].sArg[0])) {
           cpu_get_registers()->ps |= (1 << (7 - iFlag));
           break;
         }
@@ -61,9 +61,9 @@ auto CmdFlagSet(int nArgs) -> Update_t {
 }
 
 auto CmdFlag(int nArgs) -> Update_t {
-  if (g_iCommand == CMD_FLAG_CLEAR) {
+  if (g_command == CMD_FLAG_CLEAR) {
     return CmdFlagClear(nArgs);
-  } else if (g_iCommand == CMD_FLAG_SET) {
+  } else if (g_command == CMD_FLAG_SET) {
     return CmdFlagSet(nArgs);
   }
 

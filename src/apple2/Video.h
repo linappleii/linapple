@@ -22,13 +22,13 @@ constexpr uint32_t max_palette_size = 256;
 constexpr uint8_t default_gray_component = 0xC0;
 constexpr uint32_t hgr_matrix_yoffset = 2;
 
-#define SCREEN_WIDTH 560
-#define SCREEN_HEIGHT 384
+constexpr int SCREEN_WIDTH = 560; 
+constexpr int SCREEN_HEIGHT = 384; 
 
-#define VIEWPORTX 5
-#define VIEWPORTY 5
-#define VIEWPORTCX 560
-#define VIEWPORTCY 384
+constexpr int VIEWPORTX = 5; 
+constexpr int VIEWPORTY = 5; 
+constexpr int VIEWPORTCX = 560; 
+constexpr int VIEWPORTCY = 384; 
 
 constexpr int STATUS_PANEL_W = 100;
 constexpr int STATUS_PANEL_H = 48;
@@ -162,20 +162,20 @@ enum ColorPaletteIndex_t {
 };
 using Color_Palette_Index_e = ColorPaletteIndex_t;
 
-extern int g_iStatusCycle;
-extern bool g_ShowLeds;
+extern int g_status_cycle;
+extern bool g_show_leds;
 extern bool graphicsmode;
 extern uint32_t monochrome;
 extern uint32_t g_videotype;
-extern uint32_t g_uVideoMode;
+extern uint32_t g_video_mode;
 extern uint32_t g_singlethreaded;
 extern std::recursive_mutex g_video_draw_mutex;
-extern std::atomic<bool> g_bFrameReady;
+extern std::atomic<bool> g_frame_ready;
 
-extern VideoSurface_t* g_hLogoBitmap;
-extern VideoSurface_t* g_hStatusSurface;
-extern VideoSurface_t* g_hSourceBitmap;
-extern VideoSurface_t* g_hDeviceBitmap;
+extern VideoSurface_t* g_logo_bitmap;
+extern VideoSurface_t* g_status_surface;
+extern VideoSurface_t* g_source_bitmap;
+extern VideoSurface_t* g_device_bitmap;
 extern VideoSurface_t* g_origscreen;
 
 auto video_get_output_buffer() -> uint32_t*;

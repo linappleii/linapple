@@ -162,7 +162,7 @@ void DiskChoose_Draw() {
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
   VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface_t vs_screen = sdl_surface_to_video_surface(screen);
+  VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 
   video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
 
@@ -228,9 +228,9 @@ void DiskChoose_Draw() {
       }
       r.h = static_cast<int>(9.0 * 1.0 * facy);
       SDL_FillSurfaceRect(
-          screen, &r,
-          SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
-                     SDL_GetSurfacePalette(screen), 64, 128, 190));
+          g_screen, &r,
+          SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
+                     SDL_GetSurfacePalette(g_screen), 64, 128, 190));
     }
 
     char type_size_str[32];
@@ -278,9 +278,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   VideoSurface_t* tempSurface = nullptr;
   if (!g_window_resized) {
     if (g_state.mode == MODE_LOGO) {
-      tempSurface = g_hLogoBitmap;
+      tempSurface = g_logo_bitmap;
     } else {
-      tempSurface = g_hDeviceBitmap;
+      tempSurface = g_device_bitmap;
     }
   } else {
     tempSurface = g_origscreen;
@@ -288,7 +288,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
   static VideoSurface_t vs_screen;
   if (tempSurface == nullptr) {
-    vs_screen = sdl_surface_to_video_surface(screen);
+    vs_screen = sdl_surface_to_video_surface(g_screen);
     tempSurface = &vs_screen;
   }
 
@@ -296,9 +296,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_ARGB8888);
 
   VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(screen);
+  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
-  // Capture original screen
+  // Capture original g_screen
   video_soft_stretch(tempSurface, nullptr, &vs_bg, nullptr);
 
   // Blur the background by downscaling and upscaling

@@ -21,12 +21,12 @@
 // Args
 // ___________________________________________________________________________________________
 
-int g_nArgRaw;
-Arg_t g_aArgRaw[MAX_ARGS];  // pre-processing
-Arg_t g_aArgs[MAX_ARGS];    // post-processing (cooked)
+int g_arg_raw_count;
+Arg_t g_arg_raw[MAX_ARGS];  // pre-processing
+Arg_t g_args[MAX_ARGS];    // post-processing (cooked)
 
-int g_iCommand;
-std::vector<int> g_vPotentialCommands;
+int g_command;
+std::vector<int> g_potential_commands;
 
 const char TCHAR_LF = '\x0D';
 const char TCHAR_CR = '\x0A';
@@ -37,8 +37,8 @@ const char TCHAR_QUOTE_DOUBLE = '"';
 const char TCHAR_QUOTE_SINGLE = '\'';
 const char TCHAR_ESCAPE = '\x1B';
 
-// NOTE: ArgToken_e and g_aTokens must match!
-const TokenTable_t g_aTokens[NUM_TOKENS] = {
+// NOTE: ArgToken_e and g_tokens must match!
+const TokenTable_t g_tokens[NUM_TOKENS] = {
     // Input
     {TOKEN_ALPHANUMERIC,
      TYPE_STRING,
@@ -87,7 +87,7 @@ auto _Args_Insert(int iSrc, int iEnd, int nLen) -> int {
   }
 
   while (nLen--) {
-    g_aArgs[iDst] = g_aArgs[iSrc];
+    g_args[iDst] = g_args[iSrc];
     iSrc--;
     iDst--;
   }
@@ -110,8 +110,8 @@ static void ClearArg(Arg_t* pArg) {
 
 //===========================================================================
 void ArgsClear() {
-  Arg_t* pArg = &g_aArgs[0];
-  Arg_t* pRaw = &g_aArgRaw[0];
+  Arg_t* pArg = &g_args[0];
+  Arg_t* pRaw = &g_arg_raw[0];
 
   for (int iArg = 0; iArg < MAX_ARGS; iArg++) {
     ClearArg(pArg);
@@ -167,9 +167,9 @@ auto ArgsGet(char* pInput) -> int {
 
   int iArg = 0;
   int nArg = 0;
-  Arg_t* pArg = &g_aArgRaw[0];  // &g_aArgs[0];
+  Arg_t* pArg = &g_arg_raw[0];  // &g_args[0];
 
-  g_pConsoleFirstArg = nullptr;
+  g_console_first_arg = nullptr;
 
   // BP FAC8:FACA // Range=3
   // BP FAC8,2    // Length=2
@@ -186,9 +186,9 @@ auto ArgsGet(char* pInput) -> int {
     pSrc = const_cast<char*>(skip_white_space(pSrc));
 
     if (pSrc) {
-      pEnd = FindTokenOrAlphaNumeric(pSrc, g_aTokens, NUM_TOKENS, &iTokenSrc);
+      pEnd = FindTokenOrAlphaNumeric(pSrc, g_tokens, NUM_TOKENS, &iTokenSrc);
       if ((iTokenSrc == NO_TOKEN) || (iTokenSrc == TOKEN_ALPHANUMERIC)) {
-        pEnd = SkipUntilToken(pSrc + 1, g_aTokens, NUM_TOKENS, &iTokenEnd);
+        pEnd = SkipUntilToken(pSrc + 1, g_tokens, NUM_TOKENS, &iTokenEnd);
       }
 
       if (iTokenSrc == TOKEN_COMMENT_EOL) {
@@ -199,7 +199,7 @@ auto ArgsGet(char* pInput) -> int {
         iTokenSrc = TOKEN_ALPHANUMERIC;
       }
 
-      iType = g_aTokens[iTokenSrc].eType;
+      iType = g_tokens[iTokenSrc].eType;
 
       if (iTokenSrc == TOKEN_SEMI) {
         // TODO - command seperator, must handle non-quoted though!
@@ -219,8 +219,8 @@ auto ArgsGet(char* pInput) -> int {
 
       if (nBuf > 0) {
         // Does anyone actually "need" > 132 character output???
-        // Technically, we are capped via ParseInput(), g_aArgs[ iArg ] =
-        // g_aArgRaw[ iArg ];
+        // Technically, we are capped via ParseInput(), g_args[ iArg ] =
+        // g_arg_raw[ iArg ];
         // if (iTokenSrc == TOKEN_QUOTE_DOUBLE)
         //	nLen = nBuf;
         memset(pArg, 0, sizeof(Arg_t));
@@ -247,7 +247,7 @@ auto ArgsGet(char* pInput) -> int {
         pArg++;
 
         if (iArg == 1) {
-          g_pConsoleFirstArg = pSrc;
+          g_console_first_arg = pSrc;
         }
       }
     }
@@ -257,7 +257,7 @@ auto ArgsGet(char* pInput) -> int {
     nArg = iArg - 1;  // first arg is command
   }
 
-  g_nArgRaw = iArg;
+  g_arg_raw_count = iArg;
 
   return nArg;
 }
@@ -281,7 +281,7 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
 
       // Handle one char names
       if ((pArg->nArgLen == 1) &&
-          (pArg->sArg[0] == g_aBreakpointSource[iReg][0])) {
+          (pArg->sArg[0] == g_breakpoint_source[iReg][0])) {
         switch (iReg) {
           case BP_SRC_REG_A:
             *pAddressValue_ = cpu_get_registers()->a & 0xFF;
@@ -308,7 +308,7 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
         }
       } else if (iReg == BP_SRC_REG_PC) {
         if ((pArg->nArgLen == 2) &&
-            (strcmp(pArg->sArg, g_aBreakpointSource[iReg]) == 0)) {
+            (strcmp(pArg->sArg, g_breakpoint_source[iReg]) == 0)) {
           *pAddressValue_ = cpu_get_registers()->pc;
           bStatus = true;
           break;
@@ -326,8 +326,8 @@ void ArgsRawParse() {
   char* pEnd = nullptr;
 
   int iArg = 1;
-  Arg_t* pArg = &g_aArgRaw[iArg];
-  int nArg = g_nArgRaw;
+  Arg_t* pArg = &g_arg_raw[iArg];
+  int nArg = g_arg_raw_count;
 
   uint16_t nAddressArg = 0;
   uint16_t nAddressSymbol = 0;
@@ -392,7 +392,7 @@ auto ArgsCook(const int nArgs) -> int {
   int nParenR = 0;
 
   while (iArg <= nArg) {
-    pArg = &(g_aArgs[iArg]);
+    pArg = &(g_args[iArg]);
     pSrc = &(pArg->sArg[0]);
 
     if (pArg->eToken == TOKEN_DOLLAR)  // address
@@ -563,9 +563,9 @@ auto ArgsCook(const int nArgs) -> int {
           pArg->nValue = 0;  // nAddressRHS;
           pArg->bSymbol = false;
 
-          int nPointers = g_vMemorySearchResults.size();
+          int nPointers = g_memory_search_results.size();
           if ((nPointers) && (nAddressRHS < nPointers)) {
-            pArg->nValue = g_vMemorySearchResults.at(nAddressRHS);
+            pArg->nValue = g_memory_search_results.at(nAddressRHS);
             pArg->bType = TYPE_VALUE | TYPE_ADDRESS | TYPE_NO_REG | TYPE_NO_SYM;
           }
           nParamLen = 0;
@@ -608,7 +608,7 @@ auto ArgsCook(const int nArgs) -> int {
             nParamLen = 1;  // eat '('
             _Arg_Shift(iArg + nParamLen, nArgs, iArg);
 
-            pNext = &(g_aArgs[iArg + 1]);
+            pNext = &(g_args[iArg + 1]);
             if (pNext->eToken == TOKEN_PAREN_R) {
               nParenR++;
               pArg->bSymbol = false;
@@ -699,9 +699,9 @@ auto ParserFindToken(const char* pSrc, const TokenTable_t* aTokens,
   // Look-ahead for <=
   // Look-ahead for >=
   for (iToken = _TOKEN_FLAG_MULTI; iToken < NUM_TOKENS; iToken++) {
-    pName = &(g_aTokens[iToken].sToken[0]);
+    pName = &(g_tokens[iToken].sToken[0]);
     if ((pSrc[0] == pName[0]) && (pSrc[1] == pName[1])) {
-      *pToken_ = g_aTokens[iToken].eToken;
+      *pToken_ = g_tokens[iToken].eToken;
       return pSrc + 2;
     }
   }
@@ -831,12 +831,12 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   if (eMatch == MATCH_EXACT) {
     //    while (iParam < NUM_PARAMS )
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_aParameters[iParam].m_sName;
+      char* pParamName = g_parameters[iParam].m_sName;
       int eCompare = strcasecmp(pLookupName, pParamName);
       if (!eCompare)  // exact match?
       {
         nFound++;
-        iParam_ = g_aParameters[iParam].iCommand;
+        iParam_ = g_parameters[iParam].iCommand;
         break;
       }
     }
@@ -848,7 +848,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
     }
 #endif
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_aParameters[iParam].m_sName;
+      char* pParamName = g_parameters[iParam].m_sName;
       // _tcsnccmp
 
 #if ALLOW_INPUT_LOWERCASE
@@ -858,7 +858,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
 #endif
       {
         nFound++;
-        iParam_ = g_aParameters[iParam].iCommand;
+        iParam_ = g_parameters[iParam].iCommand;
 
         if (!strcasecmp(pLookupName, pParamName))  // exact match?
         {
@@ -883,8 +883,8 @@ void _strupr(char* s) {
 //===========================================================================
 auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
     -> int {
-  g_vPotentialCommands.erase(g_vPotentialCommands.begin(),
-                             g_vPotentialCommands.end());
+  g_potential_commands.erase(g_potential_commands.begin(),
+                             g_potential_commands.end());
 
   int nFound = 0;
   int nLen = strlen(pName);
@@ -900,20 +900,20 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
 
   while (
       (iCommand <
-       g_nNumCommandsWithAliases))  // && (name[0] >=
-                                    // g_aCommands[iCommand].aName[0])) Command
+       g_num_commands_with_aliases))  // && (name[0] >=
+                                    // g_commands[iCommand].aName[0])) Command
                                     // no longer in Alphabetical order
   {
-    char* pCommandName = g_aCommands[iCommand].m_sName;
+    char* pCommandName = g_commands[iCommand].m_sName;
 
     if (!strncmp(sCommand, pCommandName, nLen)) {
-      g_iCommand = g_aCommands[iCommand].iCommand;
+      g_command = g_commands[iCommand].iCommand;
 
       // Don't push the same comamnd/alias if already on the list
-      if (std::find(g_vPotentialCommands.begin(), g_vPotentialCommands.end(),
-                    g_iCommand) == g_vPotentialCommands.end()) {
+      if (std::find(g_potential_commands.begin(), g_potential_commands.end(),
+                    g_command) == g_potential_commands.end()) {
         nFound++;
-        g_vPotentialCommands.push_back(g_iCommand);
+        g_potential_commands.push_back(g_command);
 
         if (iCommand_) {
           *iCommand_ = iCommand;
@@ -925,8 +925,8 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
           //            *iCommand_ = iCommand;
 
           nFound = 1;  // Exact match takes precidence over fuzzy matches
-          g_vPotentialCommands.erase(g_vPotentialCommands.begin(),
-                                     g_vPotentialCommands.end());
+          g_potential_commands.erase(g_potential_commands.begin(),
+                                     g_potential_commands.end());
           break;
         }
       }
@@ -936,8 +936,8 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
 
   if (nFound == 1) {
     int nCommand =
-        g_vPotentialCommands.size() ? g_vPotentialCommands[0] : *iCommand_;
-    pFunction_ = g_aCommands[nCommand].pFunction;
+        g_potential_commands.size() ? g_potential_commands[0] : *iCommand_;
+    pFunction_ = g_commands[nCommand].pFunction;
   }
 
   return nFound;
@@ -946,7 +946,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
 void DisplayAmbigiousCommands(int nFound) {
   char sText[CONSOLE_WIDTH * 2];
   ConsolePrintFormat(sText, "Ambiguous %s%d%s Commands:", CHC_NUM_DEC,
-                     static_cast<int>(g_vPotentialCommands.size()),
+                     static_cast<int>(g_potential_commands.size()),
                      CHC_DEFAULT);
 
   int iCommand = 0;
@@ -955,9 +955,9 @@ void DisplayAmbigiousCommands(int nFound) {
     sprintf(sPotentialCommands, "%s ", CHC_COMMAND);
 
     int iWidth = strlen(sPotentialCommands);
-    while ((iCommand < nFound) && (iWidth < g_nConsoleDisplayWidth)) {
-      int nCommand = g_vPotentialCommands[iCommand];
-      char* pName = g_aCommands[nCommand].m_sName;
+    while ((iCommand < nFound) && (iWidth < g_console_display_width)) {
+      int nCommand = g_potential_commands[iCommand];
+      char* pName = g_commands[nCommand].m_sName;
       int nLen = static_cast<int>(strlen(pName));
 
       if ((iWidth + nLen) >= (CONSOLE_WIDTH - 1)) {
@@ -975,15 +975,15 @@ void DisplayAmbigiousCommands(int nFound) {
 
 auto _Arg_1(int nValue) -> int {
   ArgsClear();
-  g_aArgs[1].nValue = nValue;
-  g_aArgs[1].bType = TYPE_VALUE;
+  g_args[1].nValue = nValue;
+  g_args[1].bType = TYPE_VALUE;
   return 1;
 }
 
 auto _Arg_1(char* pName) -> int {
   ArgsClear();
-  Util_SafeStrCpy(g_aArgs[1].sArg, pName, MAX_ARG_LEN);
-  g_aArgs[1].bType = TYPE_STRING;
+  Util_SafeStrCpy(g_args[1].sArg, pName, MAX_ARG_LEN);
+  g_args[1].bType = TYPE_STRING;
   return 1;
 }
 
@@ -992,7 +992,7 @@ auto _Arg_Shift(int iSrc, int iEnd, int iDst) -> int {
   int iArg = 0;
 
   while (iArg <= nArgs) {
-    g_aArgs[iDst + iArg] = g_aArgs[iSrc + iArg];
+    g_args[iDst + iArg] = g_args[iSrc + iArg];
     iArg++;
   }
 
@@ -1011,7 +1011,7 @@ auto ParseInput(char* pConsoleInput, bool bCook) -> int {
 
   int iArg = 0;
   for (iArg = 0; iArg <= nArg; iArg++) {
-    g_aArgs[iArg] = g_aArgRaw[iArg];
+    g_args[iArg] = g_arg_raw[iArg];
   }
 
   return nArg;

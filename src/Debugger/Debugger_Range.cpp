@@ -79,7 +79,7 @@ auto Range_CalcEndLen(
 
 auto Range_Get( uint16_t & nAddress1_, uint16_t & nAddress2_, const int iArg ) -> RangeType_t
 {
-	nAddress1_ = static_cast<unsigned>(g_aArgs[ iArg ].nValue);
+	nAddress1_ = static_cast<unsigned>(g_args[ iArg ].nValue);
 	if (nAddress1_ > _6502_MEM_END) {
 		nAddress1_ = _6502_MEM_END;
 }
@@ -89,23 +89,23 @@ auto Range_Get( uint16_t & nAddress1_, uint16_t & nAddress2_, const int iArg ) -
 
 	RangeType_t eRange = RANGE_MISSING_ARG_2;
 
-	if (g_aArgs[ iArg + 1 ].eToken == TOKEN_COMMA)
+	if (g_args[ iArg + 1 ].eToken == TOKEN_COMMA)
 	{
 		// 0,FFFF [,) // Note the mathematical range
 		// End =  FFFE = Len-1
 		// Len =  FFFF
 		eRange = RANGE_HAS_LEN;
-		nTemp  = g_aArgs[ iArg + 2 ].nValue;
+		nTemp  = g_args[ iArg + 2 ].nValue;
 		nAddress2_ = nTemp;
 	}
 	else
-	if (g_aArgs[ iArg + 1 ].eToken == TOKEN_COLON)
+	if (g_args[ iArg + 1 ].eToken == TOKEN_COLON)
 	{
 		// 0:FFFF [,] // Note the mathematical range
 		// End =  FFFF
 		// Len = 10000 = End+1
 		eRange = RANGE_HAS_END;
-		nTemp  = g_aArgs[ iArg + 2 ].nValue;
+		nTemp  = g_args[ iArg + 2 ].nValue;
 
 		// i.e.
 		// FFFF:D000

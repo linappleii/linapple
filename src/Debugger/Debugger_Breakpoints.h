@@ -4,11 +4,11 @@
 #include "Debugger_Types.h"
 
 // Breakpoints
-	extern Breakpoint_t g_aBreakpoints[ MAX_BREAKPOINTS ];
-	extern int          g_nBreakpoints;
-	extern int          g_bDebugBreakpointHit;
-	extern const char *g_aBreakpointSource[ NUM_BREAKPOINT_SOURCES ];
-	extern const char *g_aBreakpointSymbols[ NUM_BREAKPOINT_OPERATORS ];
+	extern Breakpoint_t g_breakpoints[ MAX_BREAKPOINTS ];
+	extern int          g_breakpoints_count;
+	extern int          g_debug_breakpoint_hit;
+	extern const char *g_breakpoint_source[ NUM_BREAKPOINT_SOURCES ];
+	extern const char *g_breakpoint_symbols[ NUM_BREAKPOINT_OPERATORS ];
 
 // Prototypes _______________________________________________________________
 

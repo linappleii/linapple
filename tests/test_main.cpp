@@ -12,7 +12,7 @@
 // The emulator currently uses a global state.
 // To make it testable, we provide a clean initialization for every test.
 void reset_machine() {
-  g_Apple2Type = A2TYPE_APPLE2EENHANCED;
+  g_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   cpu_initialize();
 }

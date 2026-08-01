@@ -294,9 +294,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   VideoSurface_t* tempSurface = nullptr;
   if (g_window_resized == false) {
     if (g_state.mode == MODE_LOGO) {
-      tempSurface = g_hLogoBitmap;
+      tempSurface = g_logo_bitmap;
     } else {
-      tempSurface = g_hDeviceBitmap;
+      tempSurface = g_device_bitmap;
     }
   } else {
     tempSurface = g_origscreen;
@@ -315,7 +315,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
   VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
-  // Capture original screen
+  // Capture original g_screen
   video_soft_stretch(tempSurface, nullptr, &vs_bg, nullptr);
 
   // Blur the background by downscaling and upscaling

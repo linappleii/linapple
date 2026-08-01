@@ -41,8 +41,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <vector>
 
 // Globals
-std::vector<Command_t> g_vSortedCommands;
-int g_nNumCommandsWithAliases = 0;
+std::vector<Command_t> g_sorted_commands;
+int g_num_commands_with_aliases = 0;
 
 // Implementation
 auto ExecuteCommand(int nArgs) -> Update_t
@@ -53,7 +53,7 @@ auto ExecuteCommand(int nArgs) -> Update_t
   {
     CmdFuncPtr_t pFunction = nullptr;
     int iCommandAlias = -1;
-    int nFound = FindCommand(g_aArgs[0].sArg, pFunction, &iCommandAlias);
+    int nFound = FindCommand(g_args[0].sArg, pFunction, &iCommandAlias);
 
     if (nFound == 1)
     {
@@ -69,11 +69,11 @@ auto ExecuteCommand(int nArgs) -> Update_t
     else
     {
       uint16_t nAddress = 0;
-      if (ArgsGetValue(&g_aArgs[0], &nAddress))
+      if (ArgsGetValue(&g_args[0], &nAddress))
       {
-        g_nDisasmCurAddress = nAddress;
-        if (g_iWindowThis == WINDOW_DATA) {
-          g_aMemDump[0].nAddress = nAddress;
+        g_disasm_cur_address = nAddress;
+        if (g_window_this == WINDOW_DATA) {
+          g_mem_dump[0].nAddress = nAddress;
         }
         DisasmCalcTopBotAddress();
         bUpdateDisplay |= UPDATE_DISASM;
@@ -81,7 +81,7 @@ auto ExecuteCommand(int nArgs) -> Update_t
       else
       {
         char sText[CONSOLE_WIDTH];
-        sprintf(sText, "Unknown command: %s", g_aArgs[0].sArg);
+        sprintf(sText, "Unknown command: %s", g_args[0].sArg);
         bUpdateDisplay |= console_display_error(sText);
       }
     }
@@ -100,12 +100,12 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
     ConsoleDisplayPush(ConsoleInputPeek());
 }
 
-  if (g_bAssemblerInput)
+  if (g_assembler_input)
   {
-    if (g_nConsoleInputChars)
+    if (g_console_input_chars)
     {
-      ParseInput(g_pConsoleInput, false); // Don't cook the args
-      bUpdateDisplay |= _CmdAssemble(g_nAssemblerAddress, 0, g_nArgRaw);
+      ParseInput(g_console_input_ptr, false); // Don't cook the args
+      bUpdateDisplay |= _CmdAssemble(g_assembler_address, 0, g_arg_raw_count);
     }
     else
     {
@@ -124,12 +124,12 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
     ConsoleUpdate(); // udpate console, don't pause
   }
   else
-  if (g_nConsoleInputChars)
+  if (g_console_input_chars)
   {
-    int nArgs = ParseInput(g_pConsoleInput);
+    int nArgs = ParseInput(g_console_input_ptr);
     if (nArgs == ARG_SYNTAX_ERROR)
     {
-      sprintf(sText, "Syntax error: %s", g_aArgs[0].sArg);
+      sprintf(sText, "Syntax error: %s", g_args[0].sArg);
       bUpdateDisplay |= console_display_error(sText);
     }
     else if (nArgs > 0)
@@ -137,7 +137,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
       bUpdateDisplay |= ExecuteCommand(nArgs);
     }
 
-    if (!g_bConsoleBufferPaused)
+    if (!g_console_buffer_paused)
     {
       ConsoleInputReset();
     }
@@ -150,11 +150,11 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 
 	#define DEBUGGER__COMMANDS_VERIFY_TXT__ "\xDE\xAD\xC0\xDE"
 
-	// Setting function to NULL, allows g_aCommands arguments to be safely listed here
+	// Setting function to NULL, allows g_commands arguments to be safely listed here
 	// Commands should be listed alphabetically per category.
 	// For the list sorted by category, check Commands_e
-	// NOTE: Keep in sync Commands_e and g_aCommands[] ! Aliases are listed at the end.
-	Command_t g_aCommands[] =
+	// NOTE: Keep in sync Commands_e and g_commands[] ! Aliases are listed at the end.
+	Command_t g_commands[] =
 	{
 	// Assembler
 //		{"!", CmdAssemberMini, CMD_ASSEMBLER_MINI, "Mini assembler"},
@@ -498,7 +498,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 	#define DEBUGGER__PARAMS_VERIFY_TXT__   "\xDE\xAD\xDA\x1A"
 
 	// NOTE: Order MUST match Parameters_e[] !!!
-	Command_t g_aParameters[] =
+	Command_t g_parameters[] =
 	{
 // Breakpoint
 		{"<=", nullptr, PARAM_BP_LESS_EQUAL, nullptr},
@@ -621,22 +621,22 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 
 void VerifyDebuggerCommandTable()
 {
-	g_nNumCommandsWithAliases = sizeof(g_aCommands) / sizeof (Command_t);
+	g_num_commands_with_aliases = sizeof(g_commands) / sizeof (Command_t);
 
 	for (int iCmd = 0; iCmd < NUM_COMMANDS; iCmd++ )
 	{
-		if ( g_aCommands[ iCmd ].iCommand != iCmd)
+		if ( g_commands[ iCmd ].iCommand != iCmd)
 		{
-			fprintf( stderr, "*** ERROR *** Enumerated Commands mis-matched at #%d: %s!", iCmd, g_aCommands[ iCmd ].m_sName);
+			fprintf( stderr, "*** ERROR *** Enumerated Commands mis-matched at #%d: %s!", iCmd, g_commands[ iCmd ].m_sName);
 		}
 	}
 
-	if (strcmp( g_aCommands[ NUM_COMMANDS ].m_sName, DEBUGGER__COMMANDS_VERIFY_TXT__))
+	if (strcmp( g_commands[ NUM_COMMANDS ].m_sName, DEBUGGER__COMMANDS_VERIFY_TXT__))
 	{
 		fprintf( stderr, "*** ERROR *** Total Commands mis-matched!" );
 	}
 
-	if (strcmp( g_aParameters[ NUM_PARAMS ].m_sName, DEBUGGER__PARAMS_VERIFY_TXT__))
+	if (strcmp( g_parameters[ NUM_PARAMS ].m_sName, DEBUGGER__PARAMS_VERIFY_TXT__))
 	{
 		fprintf( stderr, "*** ERROR *** Total Parameters mis-matched!" );
 	}

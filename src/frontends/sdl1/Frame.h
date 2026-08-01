@@ -33,8 +33,8 @@ extern SDL_Surface* g_texture;
 
 extern bool g_window_resized;
 
-extern SDL_Rect orig_rect;
-extern SDL_Rect new_rect;
+extern SDL_Rect g_orig_rect;
+extern SDL_Rect g_new_rect;
 
 auto init_sdl() -> int;
 

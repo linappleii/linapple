@@ -24,7 +24,7 @@
 // Addressing
 // _____________________________________________________________________________________
 
-AddressingMode_t g_aOpmodes[NUM_ADDRESSING_MODES] = {
+AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
     // Output, but eventually used for Input when Assembler is working.
     {"", 1, "(implied)"},             // AM_IMPLIED
     {"", 1, "n/a 1"},                 // AM_1
@@ -49,18 +49,18 @@ AddressingMode_t g_aOpmodes[NUM_ADDRESSING_MODES] = {
 // Assembler
 // ______________________________________________________________________________________
 
-int g_bAssemblerOpcodesHashed = false;
-Hash_t g_aOpcodesHash[NUM_OPCODES];  // for faster mnemonic lookup, for the
+int g_assembler_opcodes_hashed = false;
+Hash_t g_opcodes_hash[NUM_OPCODES];  // for faster mnemonic lookup, for the
                                      // assembler
-bool g_bAssemblerInput = false;
-int g_nAssemblerAddress = 0;
+bool g_assembler_input = false;
+int g_assembler_address = 0;
 
-const Opcodes_t* g_aOpcodes = nullptr;  // & g_aOpcodes65C02[ 0 ];
+const Opcodes_t* g_opcodes = nullptr;  // & g_opcodes65_c02[ 0 ];
 
 // Disassembler Data
 // _____________________________________________________________________________
 
-std::vector<DisasmData_t> g_aDisassemblerData;
+std::vector<DisasmData_t> g_disassembler_data;
 
 // Instructions / Opcodes
 // _________________________________________________________________________
@@ -73,15 +73,15 @@ std::vector<DisasmData_t> g_aDisassemblerData;
 #define _W MEM_W
 #define RW MEM_R | MEM_W
 #define _S MEM_S
-#define im MEM_IM
+constexpr auto IM = MEM_IM;
 #define SW MEM_S | MEM_WI
 #define SR MEM_S | MEM_RI
-const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
+const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"BRK", 0, SW},      {"ORA", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // 00 .. 03
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // 00 .. 03
     {"TSB", AM_Z, _W},   {"ORA", AM_Z, R_},
     {"ASL", AM_Z, RW},   {"nop", 0, 0},  // 04 .. 07
-    {"PHP", 0, SW},      {"ORA", AM_M, im},
+    {"PHP", 0, SW},      {"ORA", AM_M, IM},
     {"ASL", 0, 0},       {"nop", 0, 0},  // 08 .. 0B
     {"TSB", AM_A, _W},   {"ORA", AM_A, R_},
     {"ASL", AM_A, RW},   {"nop", 0, 0},  // 0C .. 0F
@@ -95,10 +95,10 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"ASL", AM_AX, RW},  {"nop", 0, 0},  // 1C .. 1F
 
     {"JSR", AM_A, SW},   {"AND", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // 20 .. 23
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // 20 .. 23
     {"BIT", AM_Z, R_},   {"AND", AM_Z, R_},
     {"ROL", AM_Z, RW},   {"nop", 0, 0},  // 24 .. 27
-    {"PLP", 0, SR},      {"AND", AM_M, im},
+    {"PLP", 0, SR},      {"AND", AM_M, IM},
     {"ROL", 0, 0},       {"nop", 0, 0},  // 28 .. 2B
     {"BIT", AM_A, R_},   {"AND", AM_A, R_},
     {"ROL", AM_A, RW},   {"nop", 0, 0},  // 2C .. 2F
@@ -112,10 +112,10 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"ROL", AM_AX, RW},  {"nop", 0, 0},  // 3C .. 3F
 
     {"RTI", 0, SR},      {"EOR", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // 40 .. 43
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // 40 .. 43
     {"nop", AM_Z, 0},    {"EOR", AM_Z, R_},
     {"LSR", AM_Z, _W},   {"nop", 0, 0},  // 44 .. 47
-    {"PHA", 0, SW},      {"EOR", AM_M, im},
+    {"PHA", 0, SW},      {"EOR", AM_M, IM},
     {"LSR", 0, 0},       {"nop", 0, 0},  // 48 .. 4B
     {"JMP", AM_A, 0},    {"EOR", AM_A, R_},
     {"LSR", AM_A, _W},   {"nop", 0, 0},  // 4C .. 4F
@@ -129,10 +129,10 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"LSR", AM_AX, RW},  {"nop", 0, 0},  // 5C .. 5F
 
     {"RTS", 0, SR},      {"ADC", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // 60 .. 63
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // 60 .. 63
     {"STZ", AM_Z, _W},   {"ADC", AM_Z, R_},
     {"ROR", AM_Z, RW},   {"nop", 0, 0},  // 64 .. 67
-    {"PLA", 0, SR},      {"ADC", AM_M, im},
+    {"PLA", 0, SR},      {"ADC", AM_M, IM},
     {"ROR", 0, 0},       {"nop", 0, 0},  // 68 .. 6B
     {"JMP", AM_NA, R_},  {"ADC", AM_A, R_},
     {"ROR", AM_A, RW},   {"nop", 0, 0},  // 6C .. 6F
@@ -146,10 +146,10 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"ROR", AM_AX, RW},  {"nop", 0, 0},  // 7C .. 7F
 
     {"BRA", AM_R, 0},    {"STA", AM_IZX, _W},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // 80 .. 83
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // 80 .. 83
     {"STY", AM_Z, _W},   {"STA", AM_Z, _W},
     {"STX", AM_Z, _W},   {"nop", 0, 0},  // 84 .. 87
-    {"DEY", 0, 0},       {"BIT", AM_M, im},
+    {"DEY", 0, 0},       {"BIT", AM_M, IM},
     {"TXA", 0, 0},       {"nop", 0, 0},  // 88 .. 8B
     {"STY", AM_A, _W},   {"STA", AM_A, _W},
     {"STX", AM_A, _W},   {"nop", 0, 0},  // 8C .. 8F
@@ -162,11 +162,11 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"STZ", AM_A, _W},   {"STA", AM_AX, _W},
     {"STZ", AM_AX, _W},  {"nop", 0, 0},  // 9C .. 9F
 
-    {"LDY", AM_M, im},   {"LDA", AM_IZX, R_},
-    {"LDX", AM_M, im},   {"nop", 0, 0},  // A0 .. A3
+    {"LDY", AM_M, IM},   {"LDA", AM_IZX, R_},
+    {"LDX", AM_M, IM},   {"nop", 0, 0},  // A0 .. A3
     {"LDY", AM_Z, R_},   {"LDA", AM_Z, R_},
     {"LDX", AM_Z, R_},   {"nop", 0, 0},  // A4 .. A7
-    {"TAY", 0, 0},       {"LDA", AM_M, im},
+    {"TAY", 0, 0},       {"LDA", AM_M, IM},
     {"TAX", 0, 0},       {"nop", 0, 0},  // A8 .. AB
     {"LDY", AM_A, R_},   {"LDA", AM_A, R_},
     {"LDX", AM_A, R_},   {"nop", 0, 0},  // AC .. AF
@@ -179,11 +179,11 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"LDY", AM_AX, R_},  {"LDA", AM_AX, R_},
     {"LDX", AM_AY, R_},  {"nop", 0, 0},  // BC .. BF
 
-    {"CPY", AM_M, im},   {"CMP", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // C0 .. C3
+    {"CPY", AM_M, IM},   {"CMP", AM_IZX, R_},
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // C0 .. C3
     {"CPY", AM_Z, R_},   {"CMP", AM_Z, R_},
     {"DEC", AM_Z, RW},   {"nop", 0, 0},  // C4 .. C7
-    {"INY", 0, 0},       {"CMP", AM_M, im},
+    {"INY", 0, 0},       {"CMP", AM_M, IM},
     {"DEX", 0, 0},       {"nop", 0, 0},  // C8 .. CB
     {"CPY", AM_A, R_},   {"CMP", AM_A, R_},
     {"DEC", AM_A, RW},   {"nop", 0, 0},  // CC .. CF
@@ -196,8 +196,8 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
     {"nop", AM_AX, 0},   {"CMP", AM_AX, R_},
     {"DEC", AM_AX, RW},  {"nop", 0, 0},  // DC .. DF
 
-    {"CPX", AM_M, im},   {"SBC", AM_IZX, R_},
-    {"nop", AM_M, im},   {"nop", 0, 0},  // E0 .. E3
+    {"CPX", AM_M, IM},   {"SBC", AM_IZX, R_},
+    {"nop", AM_M, IM},   {"nop", 0, 0},  // E0 .. E3
     {"CPX", AM_Z, R_},   {"SBC", AM_Z, R_},
     {"INC", AM_Z, RW},   {"nop", 0, 0},  // E4 .. E7
     {"INX", 0, 0},       {"SBC", AM_M, R_},
@@ -215,7 +215,7 @@ const Opcodes_t g_aOpcodes65C02[NUM_OPCODES] = {
 };
 
 const Opcodes_t
-    g_aOpcodes6502[NUM_OPCODES] =
+    g_opcodes6502[NUM_OPCODES] =
         {
             // Should match Cpu.cpp InternalCpuExecute() switch
             // (*(mem+cpu_get_registers()->pc++)) !!
@@ -275,8 +275,8 @@ const Opcodes_t
             {"hlt", 0, 0},      {"aso", AM_IZX, RW},  // 00 .. 03
             {"nop", AM_Z, R_},  {"ORA", AM_Z, R_},
             {"ASL", AM_Z, RW},  {"aso", AM_Z, RW},  // 04 .. 07
-            {"PHP", 0, SW},     {"ORA", AM_M, im},
-            {"ASL", 0, 0},      {"anc", AM_M, im},  // 08 .. 0B
+            {"PHP", 0, SW},     {"ORA", AM_M, IM},
+            {"ASL", 0, 0},      {"anc", AM_M, IM},  // 08 .. 0B
             {"nop", AM_AX, 0},  {"ORA", AM_A, R_},
             {"ASL", AM_A, RW},  {"aso", AM_A, RW},  // 0C .. 0F
             {"BPL", AM_R, 0},   {"ORA", AM_NZY, R_},
@@ -292,8 +292,8 @@ const Opcodes_t
             {"hlt", 0, 0},      {"rla", AM_IZX, RW},  // 20 .. 23
             {"BIT", AM_Z, R_},  {"AND", AM_Z, R_},
             {"ROL", AM_Z, RW},  {"rla", AM_Z, RW},  // 24 .. 27
-            {"PLP", 0, SR},     {"AND", AM_M, im},
-            {"ROL", 0, 0},      {"anc", AM_M, im},  // 28 .. 2B
+            {"PLP", 0, SR},     {"AND", AM_M, IM},
+            {"ROL", 0, 0},      {"anc", AM_M, IM},  // 28 .. 2B
             {"BIT", AM_A, R_},  {"AND", AM_A, R_},
             {"ROL", AM_A, RW},  {"rla", AM_A, RW},  // 2C .. 2F
             {"BMI", AM_R, 0},   {"AND", AM_NZY, R_},
@@ -309,8 +309,8 @@ const Opcodes_t
             {"hlt", 0, 0},      {"lse", AM_IZX, RW},  // 40 .. 43
             {"nop", AM_Z, 0},   {"EOR", AM_Z, R_},
             {"LSR", AM_Z, RW},  {"lse", AM_Z, RW},  // 44 .. 47
-            {"PHA", 0, SW},     {"EOR", AM_M, im},
-            {"LSR", 0, 0},      {"alr", AM_M, im},  // 48 .. 4B
+            {"PHA", 0, SW},     {"EOR", AM_M, IM},
+            {"LSR", 0, 0},      {"alr", AM_M, IM},  // 48 .. 4B
             {"JMP", AM_A, 0},   {"EOR", AM_A, R_},
             {"LSR", AM_A, RW},  {"lse", AM_A, RW},  // 4C .. 4F
             {"BVC", AM_R, 0},   {"EOR", AM_NZY, R_},
@@ -326,8 +326,8 @@ const Opcodes_t
             {"hlt", 0, 0},      {"rra", AM_IZX, RW},  // 60 .. 63
             {"nop", AM_Z, 0},   {"ADC", AM_Z, R_},
             {"ROR", AM_Z, RW},  {"rra", AM_Z, RW},  // 64 .. 67
-            {"PLA", 0, SR},     {"ADC", AM_M, im},
-            {"ROR", 0, 0},      {"arr", AM_M, im},  // 68 .. 6B
+            {"PLA", 0, SR},     {"ADC", AM_M, IM},
+            {"ROR", 0, 0},      {"arr", AM_M, IM},  // 68 .. 6B
             {"JMP", AM_NA, R_}, {"ADC", AM_A, R_},
             {"ROR", AM_A, RW},  {"rra", AM_A, RW},  // 6C .. 6F
             {"BVS", AM_R, 0},   {"ADC", AM_NZY, R_},
@@ -339,12 +339,12 @@ const Opcodes_t
             {"nop", AM_AX, 0},  {"ADC", AM_AX, R_},
             {"ROR", AM_AX, RW}, {"rra", AM_AX, RW},  // 7C .. 7F
 
-            {"nop", AM_M, im},  {"STA", AM_IZX, _W},
-            {"nop", AM_M, im},  {"axs", AM_IZX, _W},  // 80 .. 83
+            {"nop", AM_M, IM},  {"STA", AM_IZX, _W},
+            {"nop", AM_M, IM},  {"axs", AM_IZX, _W},  // 80 .. 83
             {"STY", AM_Z, _W},  {"STA", AM_Z, _W},
             {"STX", AM_Z, _W},  {"axs", AM_Z, _W},  // 84 .. 87
-            {"DEY", 0, 0},      {"nop", AM_M, im},
-            {"TXA", 0, 0},      {"xaa", AM_M, im},  // 88 .. 8B
+            {"DEY", 0, 0},      {"nop", AM_M, IM},
+            {"TXA", 0, 0},      {"xaa", AM_M, IM},  // 88 .. 8B
             {"STY", AM_A, _W},  {"STA", AM_A, _W},
             {"STX", AM_A, _W},  {"axs", AM_A, _W},  // 8C .. 8F
             {"BCC", AM_R, 0},   {"STA", AM_NZY, _W},
@@ -356,12 +356,12 @@ const Opcodes_t
             {"say", AM_AX, _W}, {"STA", AM_AX, _W},
             {"xas", AM_AX, _W}, {"axa", AM_AY, _W},  // 9C .. 9F
 
-            {"LDY", AM_M, im},  {"LDA", AM_IZX, R_},
-            {"LDX", AM_M, im},  {"lax", AM_IZX, R_},  // A0 .. A3
+            {"LDY", AM_M, IM},  {"LDA", AM_IZX, R_},
+            {"LDX", AM_M, IM},  {"lax", AM_IZX, R_},  // A0 .. A3
             {"LDY", AM_Z, R_},  {"LDA", AM_Z, R_},
             {"LDX", AM_Z, R_},  {"lax", AM_Z, R_},  // A4 .. A7
-            {"TAY", 0, 0},      {"LDA", AM_M, im},
-            {"TAX", 0, 0},      {"oal", AM_M, im},  // A8 .. AB
+            {"TAY", 0, 0},      {"LDA", AM_M, IM},
+            {"TAX", 0, 0},      {"oal", AM_M, IM},  // A8 .. AB
             {"LDY", AM_A, R_},  {"LDA", AM_A, R_},
             {"LDX", AM_A, R_},  {"lax", AM_A, R_},  // AC .. AF
             {"BCS", AM_R, 0},   {"LDA", AM_NZY, R_},
@@ -373,12 +373,12 @@ const Opcodes_t
             {"LDY", AM_AX, R_}, {"LDA", AM_AX, R_},
             {"LDX", AM_AY, R_}, {"lax", AM_AY, R_},  // BC .. BF
 
-            {"CPY", AM_M, im},  {"CMP", AM_IZX, R_},
-            {"nop", AM_M, im},  {"dcm", AM_IZX, RW},  // C0 .. C3
+            {"CPY", AM_M, IM},  {"CMP", AM_IZX, R_},
+            {"nop", AM_M, IM},  {"dcm", AM_IZX, RW},  // C0 .. C3
             {"CPY", AM_Z, R_},  {"CMP", AM_Z, R_},
             {"DEC", AM_Z, RW},  {"dcm", AM_Z, RW},  // C4 .. C7
-            {"INY", 0, 0},      {"CMP", AM_M, im},
-            {"DEX", 0, 0},      {"sax", AM_M, im},  // C8 .. CB
+            {"INY", 0, 0},      {"CMP", AM_M, IM},
+            {"DEX", 0, 0},      {"sax", AM_M, IM},  // C8 .. CB
             {"CPY", AM_A, R_},  {"CMP", AM_A, R_},
             {"DEC", AM_A, RW},  {"dcm", AM_A, RW},  // CC .. CF
             {"BNE", AM_R, 0},   {"CMP", AM_NZY, R_},
@@ -390,12 +390,12 @@ const Opcodes_t
             {"nop", AM_AX, 0},  {"CMP", AM_AX, R_},
             {"DEC", AM_AX, RW}, {"dcm", AM_AX, RW},  // DC .. DF
 
-            {"CPX", AM_M, im},  {"SBC", AM_IZX, R_},
-            {"nop", AM_M, im},  {"ins", AM_IZX, RW},  // E0 .. E3
+            {"CPX", AM_M, IM},  {"SBC", AM_IZX, R_},
+            {"nop", AM_M, IM},  {"ins", AM_IZX, RW},  // E0 .. E3
             {"CPX", AM_Z, R_},  {"SBC", AM_Z, R_},
             {"INC", AM_Z, RW},  {"ins", AM_Z, RW},  // E4 .. E7
-            {"INX", 0, 0},      {"SBC", AM_M, im},
-            {"NOP", 0, 0},      {"sbc", AM_M, im},  // E8 .. EB
+            {"INX", 0, 0},      {"SBC", AM_M, IM},
+            {"NOP", 0, 0},      {"sbc", AM_M, IM},  // E8 .. EB
             {"CPX", AM_A, R_},  {"SBC", AM_A, R_},
             {"INC", AM_A, RW},  {"ins", AM_A, RW},  // EC .. EF
             {"BEQ", AM_R, 0},   {"SBC", AM_NZY, R_},
@@ -412,7 +412,7 @@ const Opcodes_t
 #undef _W
 #undef RW
 #undef _S
-#undef im
+#undef IM
 #undef SW
 #undef SR
 
@@ -420,8 +420,8 @@ const Opcodes_t
 
 // Private __________________________________________________________________
 
-// NOTE: Keep in sync AsmDirectives_e g_aAssemblerDirectives !
-AssemblerDirective_t g_aAssemblerDirectives[NUM_ASM_DIRECTIVES] = {
+// NOTE: Keep in sync AsmDirectives_e g_assembler_directives !
+AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
     // NULL n/a
     {"", 0},
     // Origin, Target Address, EndProg, Equate, Data, AsciiString,HexString
@@ -457,7 +457,7 @@ AssemblerDirective_t g_aAssemblerDirectives[NUM_ASM_DIRECTIVES] = {
     // Weller
     {"???", 0},
     // User-Defined
-    // NOTE: Keep in sync AsmCustomDirective_e g_aAssemblerDirectives !
+    // NOTE: Keep in sync AsmCustomDirective_e g_assembler_directives !
     {"db", 0},  // ASM_DEFINE_BYTE
     {"dw", 0},  // ASM_DEFINE_WORD
     {"da", 0},  // ASM_DEFINE_ADDRESS_16
@@ -474,8 +474,8 @@ AssemblerDirective_t g_aAssemblerDirectives[NUM_ASM_DIRECTIVES] = {
     {"dfx", 0},  // ASM_DEFINE_FLOAT_X
 };
 
-int g_iAssemblerSyntax = ASM_CUSTOM;  // Which assembler syntax to use
-int g_aAssemblerFirstDirective[NUM_ASSEMBLERS] = {
+int g_assembler_syntax = ASM_CUSTOM;  // Which assembler syntax to use
+int g_assembler_first_directive[NUM_ASSEMBLERS] = {
     FIRST_A_DIRECTIVE, FIRST_B_DIRECTIVE, FIRST_D_DIRECTIVE, FIRST_L_DIRECTIVE,
     FIRST_M_DIRECTIVE, FIRST_u_DIRECTIVE, FIRST_O_DIRECTIVE, FIRST_S_DIRECTIVE,
     FIRST_T_DIRECTIVE, FIRST_W_DIRECTIVE, FIRST_Z_DIRECTIVE};
@@ -574,16 +574,16 @@ auto _6502_CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
 auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                            const DisasmData_t** pData_) -> int {
 #if _DEBUG
-  if (!g_aOpcodes) {
+  if (!g_opcodes) {
     fprintf(stderr, "%s: %s\n", "ERROR", "Debugger not properly initialized");
 
-    g_aOpcodes = &g_aOpcodes65C02[0];  // Enhanced Apple //e
-    g_aOpmodes[AM_2].m_nBytes = 2;
-    g_aOpmodes[AM_3].m_nBytes = 3;
+    g_opcodes = &g_opcodes65_c02[0];  // Enhanced Apple //e
+    g_opmodes[AM_2].m_nBytes = 2;
+    g_opmodes[AM_3].m_nBytes = 3;
   }
 #endif
 
-  if (!g_aOpcodes) {
+  if (!g_opcodes) {
     iOpmode_ = 0;
     nOpbyte_ = 1;
     return 0;
@@ -601,13 +601,13 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
     nOpbyte_ = 1;
     return 0;
   }
-  iOpmode_ = g_aOpcodes[iOpcode_].nAddressMode;
+  iOpmode_ = g_opcodes[iOpcode_].nAddressMode;
   if (iOpmode_ >= NUM_ADDRESSING_MODES) {
     iOpmode_ = 0;
     nOpbyte_ = 1;
     return 0;
   }
-  nOpbyte_ = g_aOpmodes[iOpmode_].m_nBytes;
+  nOpbyte_ = g_opmodes[iOpmode_].m_nBytes;
 
   // 2.6.2.25 Fixed: DB DW custom data byte sizes weren't scrolling properly in
   // the disasm view.
@@ -769,14 +769,14 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
   uint8_t nTarget8 = mem[(nAddress + 1) & 0xFFFF];
   uint16_t nTarget16 = (mem[(nAddress + 2) & 0xFFFF] << 8) | nTarget8;
 
-  int eMode = g_aOpcodes[nOpcode].nAddressMode;
+  int eMode = g_opcodes[nOpcode].nAddressMode;
 
   // We really need to use the values that are code and data assembler
   // TODO: FIXME: _6502_GetOpmodeOpbyte( iAddress, iOpmode, nOpbytes );
 
   switch (eMode) {
     case AM_IMPLIED:
-      if (g_aOpcodes[nOpcode].nMemoryAccess & MEM_S)  // Stack R/W?
+      if (g_opcodes[nOpcode].nMemoryAccess & MEM_S)  // Stack R/W?
       {
         if (nOpcode == OPCODE_RTI || nOpcode == OPCODE_RTS)  // RTI or RTS?
         {
@@ -810,7 +810,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
           nTarget16 = *reinterpret_cast<uint16_t*>(mem + _6502_BRK_VECTOR);
         } else  // PHn/PLn
         {
-          if (g_aOpcodes[nOpcode].nMemoryAccess & MEM_WI) {
+          if (g_opcodes[nOpcode].nMemoryAccess & MEM_WI) {
             nTarget16 = static_cast<uint16_t>(
                 _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           } else {
@@ -1043,7 +1043,7 @@ auto _6502_IsOpcodeValid(int iOpcode) -> bool {
     return false;
   }
 
-  if (islower(g_aOpcodes6502[iOpcode].sMnemonic[0])) {
+  if (islower(g_opcodes6502[iOpcode].sMnemonic[0])) {
     return false;
   }
 
@@ -1096,9 +1096,9 @@ void AssemblerHashOpcodes() {
   int iOpcode = 0;
 
   for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    const char* pMnemonic = g_aOpcodes65C02[iOpcode].sMnemonic;
+    const char* pMnemonic = g_opcodes65_c02[iOpcode].sMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_aOpcodesHash[iOpcode] = nMnemonicHash;
+    g_opcodes_hash[iOpcode] = nMnemonicHash;
 #if DEBUG_ASSEMBLER
     // OutputDebugString( "" );
     char sText[128];
@@ -1111,9 +1111,9 @@ void AssemblerHashOpcodes() {
 
 //===========================================================================
 auto CmdAssemble(int nArgs) -> Update_t {
-  if (!g_bAssemblerOpcodesHashed) {
+  if (!g_assembler_opcodes_hashed) {
     AssemblerStartup();
-    g_bAssemblerOpcodesHashed = true;
+    g_assembler_opcodes_hashed = true;
   }
 
   // 0 : A
@@ -1128,15 +1128,15 @@ auto CmdAssemble(int nArgs) -> Update_t {
     return UPDATE_CONSOLE_DISPLAY;
   }
 
-  g_nAssemblerAddress = g_aArgs[1].nValue;
+  g_assembler_address = g_args[1].nValue;
 
   if (nArgs == 1) {
     int iArg = 1;
 
     // undocumented ASM *
-    if ((!strcmp(g_aArgs[iArg].sArg, g_aParameters[PARAM_WILDSTAR].m_sName)) ||
-        (!strcmp(g_aArgs[iArg].sArg,
-                 g_aParameters[PARAM_MEM_SEARCH_WILD].m_sName))) {
+    if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].m_sName)) ||
+        (!strcmp(g_args[iArg].sArg,
+                 g_parameters[PARAM_MEM_SEARCH_WILD].m_sName))) {
       _CmdAssembleHashDump();
     }
 
@@ -1147,12 +1147,12 @@ auto CmdAssemble(int nArgs) -> Update_t {
   }
 
   if (nArgs > 1) {
-    return _CmdAssemble(g_nAssemblerAddress, 2,
+    return _CmdAssemble(g_assembler_address, 2,
                         nArgs);  // disasm, memory, watches, zeropage
   }
 
   //    return Help_Arg_1( CMD_ASSEMBLE );
-  // g_nAssemblerAddress; // g_aArgs[1].nValue;
+  // g_assembler_address; // g_args[1].nValue;
   //  return ConsoleUpdate();
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -1161,21 +1161,21 @@ auto CmdAssemble(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdSource(int nArgs) -> Update_t {
   if (!nArgs) {
-    g_bSourceLevelDebugging = false;
+    g_source_level_debugging = false;
   } else {
-    g_bSourceAddMemory = false;
-    g_bSourceAddSymbols = false;
+    g_source_add_memory = false;
+    g_source_add_symbols = false;
 
     for (int iArg = 1; iArg <= nArgs; iArg++) {
-      const std::string pFileName = g_aArgs[iArg].sArg;
+      const std::string pFileName = g_args[iArg].sArg;
 
       int iParam = 0;
       bool bFound = FindParam(pFileName.c_str(), MATCH_EXACT, iParam,
                               _PARAM_SOURCE_BEGIN, _PARAM_SOURCE_END) > 0;
       if (bFound && (iParam == PARAM_SRC_SYMBOLS)) {
-        g_bSourceAddSymbols = true;
+        g_source_add_symbols = true;
       } else if (bFound && (iParam == PARAM_SRC_MEMORY)) {
-        g_bSourceAddMemory = true;
+        g_source_add_memory = true;
       } else {
         const std::string sFileName =
             std::string(g_state.sProgramDir.data()) + pFileName;
@@ -1187,13 +1187,13 @@ auto CmdSource(int nArgs) -> Update_t {
         char buffer[path_max_len] = {0};
 
         if (BufferAssemblyListing(sFileName)) {
-          g_aSourceFileName = pFileName;
+          g_source_file_name = pFileName;
 
-          if (!ParseAssemblyListing(g_bSourceAddMemory, g_bSourceAddSymbols)) {
+          if (!ParseAssemblyListing(g_source_add_memory, g_source_add_symbols)) {
             ConsoleBufferPushFormat(buffer, "Couldn't load filename: %s",
                                     sMiniFileName.c_str());
           } else {
-            g_bSourceLevelDebugging = true;
+            g_source_level_debugging = true;
             ConsoleBufferPushFormat(buffer, "Loaded filename: %s",
                                     sMiniFileName.c_str());
           }
@@ -1223,11 +1223,11 @@ void AssemblerHashDirectives() {
 
   for (iOpcode = 0; iOpcode < NUM_ASM_M_DIRECTIVES; iOpcode++) {
     int iNopcode = FIRST_M_DIRECTIVE + iOpcode;
-    //.		const char *pMnemonic = g_aAssemblerDirectivesMerlin[ iOpcode
+    //.		const char *pMnemonic = g_assembler_directives_merlin[ iOpcode
     //].m_pMnemonic;
-    const char* pMnemonic = g_aAssemblerDirectives[iNopcode].m_pMnemonic;
+    const char* pMnemonic = g_assembler_directives[iNopcode].m_pMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_aAssemblerDirectives[iNopcode].m_nHash = nMnemonicHash;
+    g_assembler_directives[iNopcode].m_nHash = nMnemonicHash;
   }
 }
 
@@ -1241,20 +1241,20 @@ void AssemblerHashDirectives() {
 #include "Debugger_Symbols.h"
 
 // Implementation helpers originally from Debug.cpp
-bool g_bSourceLevelDebugging = false;
-bool g_bSourceAddSymbols = false;
-bool g_bSourceAddMemory = false;
+bool g_source_level_debugging = false;
+bool g_source_add_symbols = false;
+bool g_source_add_memory = false;
 
-std::string g_aSourceFileName;
+std::string g_source_file_name;
 
 MemoryTextFile_t g_AssemblerSourceBuffer;
 
-int g_iSourceDisplayStart = 0;
-int g_nSourceAssembleBytes = 0;
-int g_nSourceAssemblySymbols = 0;
+int g_source_display_start = 0;
+int g_source_assemble_bytes = 0;
+int g_source_assembly_symbols = 0;
 
 // TODO: Support multiple source filenames
-SourceAssembly_t g_aSourceDebug;
+SourceAssembly_t g_source_debug;
 
 auto _GetFileSize(FILE* hFile) -> size_t {
   fseek(hFile, 0, SEEK_END);
@@ -1267,12 +1267,12 @@ auto _GetFileSize(FILE* hFile) -> size_t {
 auto _CmdAssemble(uint16_t nAddress, int iArg, int nArgs) -> Update_t {
   // if AlphaNumeric
   ArgToken_e iTokenSrc = NO_TOKEN;
-  ParserFindToken(g_pConsoleInput, g_aTokens, NUM_TOKENS, &iTokenSrc);
+  ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
 
   if (iTokenSrc == NO_TOKEN) {  // is TOKEN_ALPHANUMERIC
-    if (g_pConsoleInput[0] != CHAR_SPACE) {
+    if (g_console_input_ptr[0] != CHAR_SPACE) {
       // Symbol
-      char* pSymbolName = g_aArgs[iArg].sArg;  // pArg->sArg;
+      char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
       SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, nAddress, false,
                    true);  // bool bRemoveSymbol, bool bUpdateSymbol )
 
@@ -1300,7 +1300,7 @@ auto BufferAssemblyListing(const std::string& pFileName) -> bool {
   g_AssemblerSourceBuffer.Read(pFileName);
 
   if (g_AssemblerSourceBuffer.GetNumLines()) {
-    g_bSourceLevelDebugging = true;
+    g_source_level_debugging = true;
     bStatus = true;
   }
 
@@ -1313,8 +1313,8 @@ auto FindSourceLineFromAddress(uint16_t nAddress) -> int {
   int iLine = 0;
   int iSourceLine = NO_SOURCE_LINE;
 
-  auto iSource = g_aSourceDebug.begin();
-  while (iSource != g_aSourceDebug.end()) {
+  auto iSource = g_source_debug.begin();
+  while (iSource != g_source_debug.end()) {
     iAddress = iSource->first;
     iLine = iSource->second;
 
@@ -1333,8 +1333,8 @@ auto FindSourceLineFromAddress(uint16_t nAddress) -> int {
 auto FindAddressFromSourceLine(int nLine) -> int {
   int iAddress = NO_SOURCE_LINE;  // Reuse constant for "not found"
 
-  auto iSource = g_aSourceDebug.begin();
-  while (iSource != g_aSourceDebug.end()) {
+  auto iSource = g_source_debug.begin();
+  while (iSource != g_source_debug.end()) {
     if (iSource->second == nLine) {
       iAddress = iSource->first;
       break;
@@ -1355,8 +1355,8 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
   char sLine[MAX_LINE];
   char sText[MAX_LINE];
 
-  g_nSourceAssembleBytes = 0;
-  g_nSourceAssemblySymbols = 0;
+  g_source_assemble_bytes = 0;
+  g_source_assembly_symbols = 0;
 
   const uint32_t INVALID_ADDRESS = _6502_MEM_END + 1;
 
@@ -1394,10 +1394,10 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
             *(mem + (static_cast<uint16_t>(nAddress)) + iByte) = nByte;
           }
         }
-        g_nSourceAssembleBytes += iByte;
+        g_source_assemble_bytes += iByte;
       }
 
-      g_aSourceDebug[static_cast<uint16_t>(nAddress)] = iLine;
+      g_source_debug[static_cast<uint16_t>(nAddress)] = iLine;
     }
 
     strcpy(sLine, sText);
@@ -1444,8 +1444,8 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
             char* pAddressEnd = nullptr;
             nAddress =
                 static_cast<uint32_t>(strtol(pAddress, &pAddressEnd, 16));
-            g_aSymbols[SYMBOLS_SRC_2][static_cast<uint16_t>(nAddress)] = sName;
-            g_nSourceAssemblySymbols++;
+            g_symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(nAddress)] = sName;
+            g_source_assembly_symbols++;
           }
         }
       }
@@ -1461,7 +1461,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 void AssemblerStartup()
 
 {
-  g_aOpcodes = &g_aOpcodes65C02[0];
+  g_opcodes = &g_opcodes65_c02[0];
   AssemblerHashOpcodes();
   AssemblerHashDirectives();
 }
@@ -1476,7 +1476,7 @@ void _CmdAssembleHashDump() {
   int iOpcode = 0;
   for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
     tHash.m_iOpcode = iOpcode;
-    tHash.m_nValue = g_aOpcodesHash[iOpcode];
+    tHash.m_nValue = g_opcodes_hash[iOpcode];
     vHashes.push_back(tHash);
   }
 
@@ -1489,11 +1489,11 @@ void _CmdAssembleHashDump() {
 
     Hash_t iThisHash = tHash.m_nValue;
     int nOpcode = tHash.m_iOpcode;
-    int nOpmode = g_aOpcodes[nOpcode].nAddressMode;
+    int nOpmode = g_opcodes[nOpcode].nAddressMode;
 
     ConsoleBufferPushFormat(sText, "%08X %02X %s %s", iThisHash, nOpcode,
-                            g_aOpcodes65C02[nOpcode].sMnemonic,
-                            g_aOpmodes[nOpmode].m_sName);
+                            g_opcodes65_c02[nOpcode].sMnemonic,
+                            g_opmodes[nOpmode].m_sName);
 
     //		if (nPrevHash != iThisHash)
     //		{
@@ -1511,8 +1511,8 @@ auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
                           const uint16_t nBaseAddress,
                           const uint16_t nTargetOffset) -> int {
   (void)Opcode;
-  //	int nOpmode  = g_aOpcodes[ nOpcode ].nAddressMode;
-  int nOpbytes = g_aOpmodes[nOpmode].m_nBytes;
+  //	int nOpmode  = g_opcodes[ nOpcode ].nAddressMode;
+  int nOpbytes = g_opmodes[nOpmode].m_nBytes;
 
   // if (nOpbytes != nBytes)
   //	console_display_error( " ERROR: Input Opcode bytes differs from actual!"
@@ -1542,7 +1542,7 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
 
   for (iOpcode = 0; iOpcode < nOpcodes; iOpcode++) {
     int nOpcode = m_vAsmOpcodes.at(iOpcode);  // m_iOpcode;
-    int nOpmode = g_aOpcodes[nOpcode].nAddressMode;
+    int nOpmode = g_opcodes[nOpcode].nAddressMode;
 
     if (nOpmode == iAddressMode) {
       *(mem + nBaseAddress) = static_cast<uint8_t>(nOpcode);
@@ -1558,7 +1558,7 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
         pTarget->m_iOpmode = nOpmode;
       }
 
-      g_nAssemblerAddress += nOpbytes;
+      g_assembler_address += nOpbytes;
       return true;
     }
   }
@@ -1601,9 +1601,9 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
 
   // Sync up to Raw Args for matching mnemonic
   // Process them instead of the cooked args, since we need the orginal tokens
-  Arg_t* pArg = &g_aArgRaw[iArg];
+  Arg_t* pArg = &g_arg_raw[iArg];
 
-  while (iArg < g_nArgRaw) {
+  while (iArg < g_arg_raw_count) {
     int iToken = pArg->eToken;
 
     if (iToken == TOKEN_HASH) {
@@ -1874,8 +1874,8 @@ void AssemblerProcessDelayedSymols() {
         bModified = true;
 
         int nOpcode = pTarget->m_nOpcode;
-        int nOpmode = g_aOpcodes[nOpcode].nAddressMode;
-        //				int nOpbytes = g_aOpmodes[ nOpmode
+        int nOpmode = g_opcodes[nOpcode].nAddressMode;
+        //				int nOpbytes = g_opmodes[ nOpmode
         //].m_nBytes;
 
         // 300: D0 7E BNE $380
@@ -1924,7 +1924,7 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
 
   m_nAsmBaseAddress = nAddress;
 
-  char* pMnemonic = g_aArgs[iArg].sArg;
+  char* pMnemonic = g_args[iArg].sArg;
   uint32_t nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
 
 #if DEBUG_ASSEMBLER
@@ -1939,7 +1939,7 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
 
   // Ugh! Linear search.
   for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    if (nMnemonicHash == g_aOpcodesHash[iOpcode]) {
+    if (nMnemonicHash == g_opcodes_hash[iOpcode]) {
       m_vAsmOpcodes.push_back(iOpcode);
     }
   }
@@ -1966,23 +1966,23 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
 
 //===========================================================================
 void AssemblerOn() {
-  g_bAssemblerInput = true;
-  g_sConsolePrompt[0] = g_aConsolePrompt[PROMPT_ASSEMBLER];
+  g_assembler_input = true;
+  g_console_prompt_str[0] = g_console_prompt[PROMPT_ASSEMBLER];
 }
 
 //===========================================================================
 void AssemblerOff() {
-  g_bAssemblerInput = false;
-  g_sConsolePrompt[0] = g_aConsolePrompt[PROMPT_COMMAND];
+  g_assembler_input = false;
+  g_console_prompt_str[0] = g_console_prompt[PROMPT_COMMAND];
 }
 
 // Window
 // _________________________________________________________________________________________
-extern int g_iWindowLast;
-extern int g_iWindowThis;
-extern WindowSplit_t g_aWindowConfig[NUM_WINDOWS];
+extern int g_window_last;
+extern int g_window_this;
+extern WindowSplit_t g_window_config[NUM_WINDOWS];
 
 // Zero Page Pointers
 // _____________________________________________________________________________
-extern int g_nZeroPagePointers;
-extern ZeroPagePointers_t g_aZeroPagePointers[MAX_ZEROPAGE_POINTERS];
+extern int g_zero_page_pointers_count;
+extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];

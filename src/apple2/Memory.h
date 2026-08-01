@@ -20,18 +20,18 @@ typedef uint8_t (*iofunction)(uint16_t nPC, uint16_t nAddr, uint8_t nWriteFlag,
 }
 #endif
 
-#define MF_80STORE 0x00000001
-#define MF_ALTZP 0x00000002
-#define MF_AUXREAD 0x00000004
-#define MF_AUXWRITE 0x00000008
-#define MF_HRAM_BANK2 0x00000010
-#define MF_HIGHRAM 0x00000020
-#define MF_HIRES 0x00000040
-#define MF_PAGE2 0x00000080
-#define MF_SLOTC3ROM 0x00000100
-#define MF_SLOTCXROM 0x00000200
-#define MF_HRAM_WRITE 0x00000400
-#define MF_IMAGEMASK 0x000007F7
+constexpr uint32_t MF_80STORE = 0x00000001; 
+constexpr uint32_t MF_ALTZP = 0x00000002; 
+constexpr uint32_t MF_AUXREAD = 0x00000004; 
+constexpr uint32_t MF_AUXWRITE = 0x00000008; 
+constexpr uint32_t MF_HRAM_BANK2 = 0x00000010; 
+constexpr uint32_t MF_HIGHRAM = 0x00000020; 
+constexpr uint32_t MF_HIRES = 0x00000040; 
+constexpr uint32_t MF_PAGE2 = 0x00000080; 
+constexpr uint32_t MF_SLOTC3ROM = 0x00000100; 
+constexpr uint32_t MF_SLOTCXROM = 0x00000200; 
+constexpr uint32_t MF_HRAM_WRITE = 0x00000400; 
+constexpr uint32_t MF_IMAGEMASK = 0x000007F7; 
 
 enum {
   MEMORY_64K = 0x10000,
@@ -161,7 +161,7 @@ constexpr uint32_t MAX_RAMWORKS_PAGES = 128;
 #endif
 
 enum MemoryInitPattern_e { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
-extern MemoryInitPattern_e g_eMemoryInitPattern;
+extern MemoryInitPattern_e g_memory_init_pattern;
 
 enum eExpansionRomType { eExpRomNull = 0, eExpRomInternal, eExpRomPeripheral };
 
@@ -211,7 +211,7 @@ extern uint8_t* mem;
 extern uint8_t* memdirty;
 
 #ifdef RAMWORKS
-extern uint32_t g_uMaxExPages;
+extern uint32_t g_max_ex_pages;
 #endif
 
 auto register_io_handler(uint32_t slot, iofunction io_read_c0,

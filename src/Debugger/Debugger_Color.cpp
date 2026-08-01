@@ -35,9 +35,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // Color ______________________________________________________________________
 
-	int g_iColorScheme = SCHEME_COLOR;
+	int g_color_scheme = SCHEME_COLOR;
 
-	int g_aColorPalette[ NUM_PALETTE ] =
+	int g_color_palette[ NUM_PALETTE ] =
 	{
 		BLACK,
 		// NOTE: See _SetupColorRamp() if you want to programmatically set/change
@@ -70,7 +70,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	};
 
 	// Index into "Palette" of colors
-	int g_aColorIndex[ NUM_DEBUG_COLORS ] =
+	int g_color_index[ NUM_DEBUG_COLORS ] =
 	{
 		K0, W8,              // BG_CONSOLE_OUTPUT   FG_CONSOLE_OUTPUT (W8)
 		B2, COLOR_CUSTOM_01, // BG_CONSOLE_INPUT    FG_CONSOLE_INPUT (W8)
@@ -144,9 +144,9 @@ auto DebuggerGetColor( int iColor ) -> ColorRef_t
 {
 	ColorRef_t nColor = 1;// 0xFFFF00; // Hot Pink! -- so we notice errors. Not that there is anything wrong with pink...
 
-	if ((g_iColorScheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
+	if ((g_color_scheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS))
 	{
-		nColor = g_aColorPalette[g_aColorIndex[iColor]];
+		nColor = g_color_palette[g_color_index[iColor]];
 	}
 
 	return nColor;
@@ -183,7 +183,7 @@ static void _SetupColorRamp(const int iPrimary, int & iColor_)
 		int nG = bG ? nC : 0;
 		int nB = bB ? nC : 0;
 		ColorRef_t nColor = RGB(nR, nG, nB);
-		g_aColorPalette[iColor_] = nColor;
+		g_color_palette[iColor_] = nColor;
 #if DEBUG_COLOR_RAMP
 		wsprintf(sText, "RGB(%3d,%3d,%3d, ", nR, nG, nB);
 		strcat(sRamp, sText);
@@ -214,7 +214,7 @@ void ConfigColorsReset()
 	int iColor;
 	for (iColor = 0; iColor < NUM_DEBUG_COLORS; iColor++)
 	{
-		ColorRef_t nColor = g_aColorPalette[g_aColorIndex[iColor]];
+		ColorRef_t nColor = g_color_palette[g_color_index[iColor]];
 
 		int R = (nColor >> 0) & 0xFF;
 		int G = (nColor >> 8) & 0xFF;

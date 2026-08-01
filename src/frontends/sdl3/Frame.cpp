@@ -63,41 +63,37 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/DiskUI.h"
 
-#define ENABLE_MENU 0
+constexpr bool ENABLE_MENU = false;
 
-SDL_Surface* apple_icon;
-SDL_Surface* screen;
+SDL_Surface* g_apple_icon;
+SDL_Surface* g_screen;
 SDL_Window* g_window = nullptr;
 SDL_Renderer* g_renderer = nullptr;
 SDL_Texture* g_texture = nullptr;
-SDL_Rect orig_rect;
-SDL_Rect new_rect;
+SDL_Rect g_orig_rect;
+SDL_Rect g_new_rect;
 
-#define VIEWPORTCX 560
-#if ENABLE_MENU
-#define VIEWPORTCY 400
-#else
-#define VIEWPORTCY 384
-#endif
-#define button_x (VIEWPORTCX + (VIEWPORTX << 1))
+constexpr int VIEWPORTCX_LOCAL = 560;
+constexpr int VIEWPORTCY_LOCAL = ENABLE_MENU ? 400 : 384;
+constexpr int BUTTON_X = (VIEWPORTCX_LOCAL + (VIEWPORTX << 1));
 enum { BUTTONY = 0, BUTTONCX = 45, BUTTONCY = 45 };
-#define fs_viewport_x (640 - BUTTONCX - VIEWPORTX - VIEWPORTCX)
-#define fs_viewport_y ((480 - VIEWPORTCY) >> 1)
-#define fs_button_x (640 - BUTTONCX)
-#define fs_button_y (((480 - VIEWPORTCY) >> 1) - 1)
+constexpr int FS_VIEWPORT_X = (640 - BUTTONCX - VIEWPORTX - VIEWPORTCX_LOCAL);
+constexpr int FS_VIEWPORT_Y = ((480 - VIEWPORTCY_LOCAL) >> 1);
+constexpr int FS_BUTTON_X = (640 - BUTTONCX);
+constexpr int FS_BUTTON_Y = (((480 - VIEWPORTCY_LOCAL) >> 1) - 1);
 enum { BUTTONS = 8 };
 
-static bool g_bAppActive = false;
+static bool g_app_active = false;
 
-static DiskStatus_t g_lastDiskStatus{};
+static DiskStatus_t g_last_disk_status{};
 static int g_drive0_last_reported_error = disk_err_none;
 static int g_drive1_last_reported_error = disk_err_none;
 
-int buttondown = -1;
+int g_buttondown = -1;
 
 bool g_window_resized;
 
-bool usingcursor = false;
+bool g_usingcursor = false;
 
 void draw_status_area(int drawflags);
 
@@ -125,12 +121,12 @@ void DrawAppleContent() {
 
   if (g_state.mode == MODE_LOGO) {
     video_display_logo();
-    g_bFrameReady = true;
+    g_frame_ready = true;
   } else if (g_state.mode == MODE_DEBUG) {
 #if ENABLE_DEBUGGER
     debug_display(true);
 #endif
-    g_bFrameReady = true;
+    g_frame_ready = true;
   } else {
     video_redraw_screen();
   }
@@ -138,8 +134,8 @@ void DrawAppleContent() {
 }
 
 void frame_refresh() {
-  if (g_texture && screen) {
-    SDL_UpdateTexture(g_texture, nullptr, screen->pixels, screen->pitch);
+  if (g_texture && g_screen) {
+    SDL_UpdateTexture(g_texture, nullptr, g_screen->pixels, g_screen->pitch);
     SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
     SDL_RenderPresent(g_renderer);
   }
@@ -153,31 +149,31 @@ static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
     return;
   }
 
-  SDL_Rect orig_rect = {0, 0, 560, 384};
-  SDL_Rect new_rect = r;
+  SDL_Rect g_orig_rect = {0, 0, 560, 384};
+  SDL_Rect g_new_rect = r;
 
   if (!g_window_resized) {
     video_soft_stretch(
         g_debug_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)),
         vs_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
   } else {
-    video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&orig_rect),
-                     vs_screen, reinterpret_cast<VideoRect_t*>(&new_rect));
+    video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
+                     vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
   }
 }
 #endif
 
 void DrawFrameWindow() {
-  if (!g_bFrameReady) return;
+  if (!g_frame_ready) return;
 
   g_video_draw_mutex.lock();
-  if (g_texture && screen) {
+  if (g_texture && g_screen) {
     uint32_t* output = video_get_output_buffer();
     SDL_Rect r = {0, 0, 560, 384};
 
-    // Fill screen from RGB32 output buffer
+    // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
-      VideoSurface_t vs_screen = sdl_surface_to_video_surface(screen);
+      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
       vs_output.w = 560;
@@ -189,18 +185,18 @@ void DrawFrameWindow() {
         video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
                          &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
       } else {
-        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&orig_rect),
-                         &vs_screen, reinterpret_cast<VideoRect_t*>(&new_rect));
+        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
+                         &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
       }
     } else {
-      VideoSurface_t vs_screen = sdl_surface_to_video_surface(screen);
+      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 #if ENABLE_DEBUGGER
       draw_debugger_tui(&vs_screen, r);
 #endif
     }
 
     frame_refresh();
-    g_bFrameReady = false;
+    g_frame_ready = false;
   }
   g_video_draw_mutex.unlock();
 }
@@ -217,7 +213,7 @@ void draw_status_area(int drawflags) {
   uint8_t mybluez = DARK_BLUE;
 
   if (drawflags & DRAW_BACKGROUND) {
-    g_iStatusCycle = SHOW_CYCLES;
+    g_status_cycle = SHOW_CYCLES;
   }
   if (drawflags & DRAW_LEDS) {
     srect.x = 4;
@@ -226,8 +222,8 @@ void draw_status_area(int drawflags) {
     srect.h = static_cast<int16_t>(STATUS_PANEL_H - 25);
 
     for (int y = srect.y; y < srect.y + srect.h; ++y) {
-      memset(g_hStatusSurface->pixels +
-                 static_cast<ptrdiff_t>(y * g_hStatusSurface->pitch) + srect.x,
+      memset(g_status_surface->pixels +
+                 static_cast<ptrdiff_t>(y * g_status_surface->pitch) + srect.x,
              mybluez, static_cast<size_t>(srect.w));
     }
 
@@ -237,19 +233,19 @@ void draw_status_area(int drawflags) {
     int iDrive2Status = disk_status_off;
     int iHDDStatus = disk_status_off;
 
-    if (g_lastDiskStatus.drive0_spinning) {
-      iDrive1Status = g_lastDiskStatus.drive0_writing ? disk_status_write
+    if (g_last_disk_status.drive0_spinning) {
+      iDrive1Status = g_last_disk_status.drive0_writing ? disk_status_write
                                                       : disk_status_read;
-    } else if (g_lastDiskStatus.drive0_loaded &&
-               g_lastDiskStatus.drive0_write_protected) {
+    } else if (g_last_disk_status.drive0_loaded &&
+               g_last_disk_status.drive0_write_protected) {
       iDrive1Status = disk_status_prot;
     }
 
-    if (g_lastDiskStatus.drive1_spinning) {
-      iDrive2Status = g_lastDiskStatus.drive1_writing ? disk_status_write
+    if (g_last_disk_status.drive1_spinning) {
+      iDrive2Status = g_last_disk_status.drive1_writing ? disk_status_write
                                                       : disk_status_read;
-    } else if (g_lastDiskStatus.drive1_loaded &&
-               g_lastDiskStatus.drive1_write_protected) {
+    } else if (g_last_disk_status.drive1_loaded &&
+               g_last_disk_status.drive1_write_protected) {
       iDrive2Status = disk_status_prot;
     }
 
@@ -261,16 +257,16 @@ void draw_status_area(int drawflags) {
     }
 
     leds[0] = static_cast<char>(LEDS + iDrive1Status);
-    font_print(8, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
+    font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     leds[0] = static_cast<char>(LEDS + iDrive2Status);
-    font_print(40, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
+    font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     leds[0] = static_cast<char>(LEDS + iHDDStatus);
-    font_print(71, 23, leds.data(), g_hStatusSurface, 4.0f, 2.7f);
+    font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if (iDrive1Status | iDrive2Status | iHDDStatus) {
-      g_iStatusCycle = SHOW_CYCLES;
+      g_status_cycle = SHOW_CYCLES;
     }
   }
 }
@@ -282,7 +278,7 @@ void FrameShowHelpScreen(int sx, int sy) {
       "Welcome to LinApple - Apple][ emulator for Linux!",
       "Conf file is linapple.conf in current directory by default",
       "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
-      "       F1 - Show help screen",
+      "       F1 - Show help g_screen",
       "  Ctrl+F2 - Cold reboot (Power off and back on)",
       " Shift+F2 - Reload configuration file and cold reboot",
       " Ctrl+F10 - Hot Reset (Control+Reset)",
@@ -315,30 +311,30 @@ void FrameShowHelpScreen(int sx, int sy) {
   }
   if (!g_window_resized) {
     if (g_state.mode == MODE_LOGO) {
-      tempSurface = g_hLogoBitmap;
+      tempSurface = g_logo_bitmap;
     } else {
-      tempSurface = g_hDeviceBitmap;
+      tempSurface = g_device_bitmap;
     }
   } else {
     tempSurface = g_origscreen;
   }
 
   if (tempSurface == nullptr) {
-    // Wrap screen as fallback
+    // Wrap g_screen as fallback
     static VideoSurface_t vs_screen;
-    vs_screen = sdl_surface_to_video_surface(screen);
+    vs_screen = sdl_surface_to_video_surface(g_screen);
     tempSurface = &vs_screen;
   }
 
-  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(screen);
+  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
-  // Capture original screen
+  // Capture original g_screen
   video_soft_stretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
 
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp = SDL_CreateSurface(screen->w / 16, screen->h / 16,
+  SDL_Surface* blur_temp = SDL_CreateSurface(g_screen->w / 16, g_screen->h / 16,
                                              SDL_PIXELFORMAT_ARGB8888);
   if (blur_temp) {
     VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
@@ -351,14 +347,14 @@ void FrameShowHelpScreen(int sx, int sy) {
 
   // Dim the background using SDL blending for better text readability
   SDL_Surface* dim_surface =
-      SDL_CreateSurface(screen->w, screen->h, SDL_PIXELFORMAT_ARGB8888);
+      SDL_CreateSurface(g_screen->w, g_screen->h, SDL_PIXELFORMAT_ARGB8888);
   if (dim_surface) {
     Uint32 dim_color =
         SDL_MapRGBA(SDL_GetPixelFormatDetails(dim_surface->format),
                     SDL_GetSurfacePalette(dim_surface), 0, 0, 0, 200);
     SDL_FillSurfaceRect(dim_surface, nullptr, dim_color);
     SDL_SetSurfaceBlendMode(dim_surface, SDL_BLENDMODE_BLEND);
-    SDL_BlitSurface(dim_surface, nullptr, screen, nullptr);
+    SDL_BlitSurface(dim_surface, nullptr, g_screen, nullptr);
     SDL_DestroySurface(dim_surface);
   }
 
@@ -475,8 +471,8 @@ void Frame_OnResize(int width, int height) {
     g_state.ScreenHeight = 192;
   }
 
-  if (screen) SDL_DestroySurface(screen);
-  screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
+  if (g_screen) SDL_DestroySurface(g_screen);
+  g_screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
                              SDL_PIXELFORMAT_XRGB8888);
 
   if (g_texture) SDL_DestroyTexture(g_texture);
@@ -484,7 +480,7 @@ void Frame_OnResize(int width, int height) {
                                 SDL_TEXTUREACCESS_STREAMING,
                                 g_state.ScreenWidth, g_state.ScreenHeight);
 
-  if (screen == nullptr || g_texture == nullptr) {
+  if (g_screen == nullptr || g_texture == nullptr) {
     g_video_draw_mutex.unlock();
     SDL_Quit();
     return;
@@ -492,11 +488,11 @@ void Frame_OnResize(int width, int height) {
     g_window_resized = (g_state.ScreenWidth != SCREEN_WIDTH) |
                       (g_state.ScreenHeight != SCREEN_HEIGHT);
     if (g_window_resized) {
-      orig_rect.x = orig_rect.y = new_rect.x = new_rect.y = 0;
-      orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
-      orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-      new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
-      new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
+      g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+      g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+      g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+      g_new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
+      g_new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
       if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
         video_redraw_screen();
       }
@@ -506,8 +502,8 @@ void Frame_OnResize(int width, int height) {
 }
 
 void Frame_OnFocus(bool gained) {
-  g_bAppActive = gained;
-  if (g_bAppActive) {
+  g_app_active = gained;
+  if (g_app_active) {
     // Re-sync Caps Lock state upon regaining focus
     SDL_Keymod mod = SDL_GetModState();
     uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
@@ -579,7 +575,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
 }
 
 void FrameSaveBMP() {
-  // Save current screen as a .bmp file in current directory
+  // Save current g_screen as a .bmp file in current directory
   struct stat bufp{};
   static int i = 1;
   std::array<char, 20> bmpName;
@@ -593,7 +589,7 @@ void FrameSaveBMP() {
   }
 #pragma GCC diagnostic pop
 
-  SDL_SaveBMP(screen, bmpName.data());
+  SDL_SaveBMP(g_screen, bmpName.data());
   printf("File %s saved!\n", bmpName.data());
   i++;
 }
@@ -607,7 +603,7 @@ void process_button_click(int button, int mod) {
 
   switch (button) {
     case btn_help:
-      FrameShowHelpScreen(screen->w, screen->h);
+      FrameShowHelpScreen(g_screen->w, g_screen->h);
       break;
 
     case btn_run:
@@ -677,9 +673,9 @@ void process_button_click(int button, int mod) {
       if (mod & SDL_KMOD_SHIFT) {
         // only IIe and enhanced have a keyboard rocker switch (and only non-US
         // keyboards)
-        if ((g_Language != A2LANG_US) &&
-            ((g_Apple2Type == A2TYPE_APPLE2E) ||
-             (g_Apple2Type == A2TYPE_APPLE2EENHANCED))) {
+        if ((g_language != A2LANG_US) &&
+            ((g_apple2_type == A2TYPE_APPLE2E) ||
+             (g_apple2_type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
           peripheral_query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
@@ -789,7 +785,7 @@ void process_button_click(int button, int mod) {
 }
 
 void ResetMachineState() {
-  g_bFullSpeed = false;  // Might've hit reset in middle of InternalCpuExecute()
+  g_full_speed = false;  // Might've hit reset in middle of InternalCpuExecute()
                          // - so beep may get (partially) muted
 
   mem_reset();
@@ -815,7 +811,7 @@ void SetNormalMode() {
   if (bIamFullScreened) {
     bIamFullScreened = false;
     SDL_SetWindowFullscreen(g_window, false);
-    if (!usingcursor) {
+    if (!g_usingcursor) {
       SDL_ShowCursor();
     }
   } else if (g_state.mode == MODE_DEBUG) {
@@ -825,8 +821,8 @@ void SetNormalMode() {
 }
 
 void set_using_cursor(bool newvalue) {
-  usingcursor = newvalue;
-  if (usingcursor) {
+  g_usingcursor = newvalue;
+  if (g_usingcursor) {
     SDL_HideCursor();
     SDL_SetWindowMouseGrab(g_window, true);
   } else {
@@ -847,7 +843,7 @@ auto frame_create_window() -> int {
   Uint32 flags = 0;
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
-  g_window = SDL_CreateWindow(g_pAppTitle, g_state.ScreenWidth,
+  g_window = SDL_CreateWindow(g_app_title, g_state.ScreenWidth,
                               g_state.ScreenHeight, flags);
   if (!g_window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
@@ -860,9 +856,9 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
+  g_screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
                              SDL_PIXELFORMAT_XRGB8888);
-  if (screen == nullptr) {
+  if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
@@ -879,11 +875,11 @@ auto frame_create_window() -> int {
                     (g_state.ScreenHeight != SCREEN_HEIGHT);
   printf("Screen size is %dx%d\n", g_state.ScreenWidth, g_state.ScreenHeight);
   if (g_window_resized) {
-    orig_rect.x = orig_rect.y = new_rect.x = new_rect.y = 0;
-    orig_rect.w = SCREEN_WIDTH;
-    orig_rect.h = SCREEN_HEIGHT;
-    new_rect.w = g_state.ScreenWidth;
-    new_rect.h = g_state.ScreenHeight;
+    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+    g_orig_rect.w = SCREEN_WIDTH;
+    g_orig_rect.h = SCREEN_HEIGHT;
+    g_new_rect.w = g_state.ScreenWidth;
+    g_new_rect.h = g_state.ScreenHeight;
   }
   return 0;
 }
@@ -914,37 +910,37 @@ auto init_sdl() -> int {
 
 void frame_refresh_status(int drawflags) {
   if (drawflags & DRAW_LEDS) {
-    size_t size = sizeof(g_lastDiskStatus);
+    size_t size = sizeof(g_last_disk_status);
     if (peripheral_query(disk_default_slot, disk_cmd_get_status,
-                         &g_lastDiskStatus, &size) == peripheral_ok) {
-      if (g_lastDiskStatus.drive0_last_error != disk_err_none &&
-          g_lastDiskStatus.drive0_last_error != g_drive0_last_reported_error) {
+                         &g_last_disk_status, &size) == peripheral_ok) {
+      if (g_last_disk_status.drive0_last_error != disk_err_none &&
+          g_last_disk_status.drive0_last_error != g_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 1 error",
-            disk_ui_get_error_message(g_lastDiskStatus.drive0_last_error),
+            disk_ui_get_error_message(g_last_disk_status.drive0_last_error),
             g_window);
-        g_drive0_last_reported_error = g_lastDiskStatus.drive0_last_error;
-      } else if (g_lastDiskStatus.drive0_last_error == disk_err_none) {
+        g_drive0_last_reported_error = g_last_disk_status.drive0_last_error;
+      } else if (g_last_disk_status.drive0_last_error == disk_err_none) {
         g_drive0_last_reported_error = disk_err_none;
       }
 
-      if (g_lastDiskStatus.drive1_last_error != disk_err_none &&
-          g_lastDiskStatus.drive1_last_error != g_drive1_last_reported_error) {
+      if (g_last_disk_status.drive1_last_error != disk_err_none &&
+          g_last_disk_status.drive1_last_error != g_drive1_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 2 error",
-            disk_ui_get_error_message(g_lastDiskStatus.drive1_last_error),
+            disk_ui_get_error_message(g_last_disk_status.drive1_last_error),
             g_window);
-        g_drive1_last_reported_error = g_lastDiskStatus.drive1_last_error;
-      } else if (g_lastDiskStatus.drive1_last_error == disk_err_none) {
+        g_drive1_last_reported_error = g_last_disk_status.drive1_last_error;
+      } else if (g_last_disk_status.drive1_last_error == disk_err_none) {
         g_drive1_last_reported_error = disk_err_none;
       }
 
       char s_title[512];
-      if (g_lastDiskStatus.drive0_loaded) {
-        snprintf(s_title, sizeof(s_title), "%s - %s", g_pAppTitle,
-                 g_lastDiskStatus.drive0_name);
+      if (g_last_disk_status.drive0_loaded) {
+        snprintf(s_title, sizeof(s_title), "%s - %s", g_app_title,
+                 g_last_disk_status.drive0_name);
       } else {
-        snprintf(s_title, sizeof(s_title), "%s", g_pAppTitle);
+        snprintf(s_title, sizeof(s_title), "%s", g_app_title);
       }
       linapple_update_title(s_title);
     }

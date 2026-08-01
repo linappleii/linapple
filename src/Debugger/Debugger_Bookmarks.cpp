@@ -15,11 +15,11 @@
 #include <cstddef>
 
 // Globals
-int        g_nBookmarks = 0;
-Bookmark_t g_aBookmarks[ MAX_BOOKMARKS ];
+int        g_bookmarks_count = 0;
+Bookmark_t g_bookmarks[ MAX_BOOKMARKS ];
 
-extern uint16_t g_nDisasmCurAddress;
-extern int g_nDisasmCurLine;
+extern uint16_t g_disasm_cur_address;
+extern int g_disasm_cur_line;
 extern MemoryTextFile_t g_ConfigState;
 
 auto ConfigSave_BufferToDisk ( const char *pFileName, ConfigSave_t eConfigSave ) -> bool;
@@ -31,9 +31,9 @@ auto _Bookmark_Add( const int iBookmark, const uint16_t nAddress ) -> bool
 {
   if (iBookmark < MAX_BOOKMARKS)
   {
-    g_aBookmarks[ iBookmark ].nAddress = nAddress;
-    g_aBookmarks[ iBookmark ].bSet     = true;
-    g_nBookmarks++;
+    g_bookmarks[ iBookmark ].nAddress = nAddress;
+    g_bookmarks[ iBookmark ].bSet     = true;
+    g_bookmarks_count++;
     return true;
   }
 
@@ -44,11 +44,11 @@ auto _Bookmark_Add( const int iBookmark, const uint16_t nAddress ) -> bool
 auto _Bookmark_Del( const uint16_t nAddress ) -> bool
 {
   bool bDeleted = false;
-  for (auto & g_aBookmark : g_aBookmarks)
+  for (auto & g_bookmark : g_bookmarks)
   {
-    if (g_aBookmark.nAddress == nAddress)
+    if (g_bookmark.nAddress == nAddress)
     {
-      g_aBookmark.bSet = false;
+      g_bookmark.bSet = false;
       bDeleted = true;
     }
   }
@@ -61,9 +61,9 @@ auto Bookmark_Find( const uint16_t nAddress ) -> bool
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
   {
-    if (g_aBookmarks[ iBookmark ].nAddress == nAddress)
+    if (g_bookmarks[ iBookmark ].nAddress == nAddress)
     {
-      if (g_aBookmarks[ iBookmark ].bSet) {
+      if (g_bookmarks[ iBookmark ].bSet) {
         return true;
 }
     }
@@ -78,9 +78,9 @@ auto _Bookmark_Get( const int iBookmark, uint16_t & nAddress ) -> bool
     return false;
 }
 
-  if (g_aBookmarks[ iBookmark ].bSet)
+  if (g_bookmarks[ iBookmark ].bSet)
   {
-    nAddress = g_aBookmarks[ iBookmark ].nAddress;
+    nAddress = g_bookmarks[ iBookmark ].nAddress;
     return true;
   }
 
@@ -93,24 +93,24 @@ void _Bookmark_Reset()
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
   {
-    g_aBookmarks[ iBookmark ].bSet = false;
+    g_bookmarks[ iBookmark ].bSet = false;
   }
 }
 
 
 auto _Bookmark_Size() -> int
 {
-  g_nBookmarks = 0;
+  g_bookmarks_count = 0;
 
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
   {
-    if (g_aBookmarks[ iBookmark ].bSet) {
-      g_nBookmarks++;
+    if (g_bookmarks[ iBookmark ].bSet) {
+      g_bookmarks_count++;
 }
   }
 
-  return g_nBookmarks;
+  return g_bookmarks_count;
 }
 
 auto CmdBookmark (int nArgs) -> Update_t
@@ -132,19 +132,19 @@ auto CmdBookmarkAdd (int nArgs ) -> Update_t
 
   if (nArgs > 1)
   {
-    iBookmark = g_aArgs[ 1 ].nValue;
+    iBookmark = g_args[ 1 ].nValue;
     iArg++;
   }
 
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++ )
   {
-    uint16_t nAddress = g_aArgs[ iArg ].nValue;
+    uint16_t nAddress = g_args[ iArg ].nValue;
 
     if (iBookmark == NO_6502_TARGET)
     {
       iBookmark = 0;
-      while ((iBookmark < MAX_BOOKMARKS) && (g_aBookmarks[iBookmark].bSet))
+      while ((iBookmark < MAX_BOOKMARKS) && (g_bookmarks[iBookmark].bSet))
       {
         iBookmark++;
       }
@@ -158,12 +158,12 @@ auto CmdBookmarkAdd (int nArgs ) -> Update_t
       return ConsoleUpdate();
     }
 
-    if ((iBookmark < MAX_BOOKMARKS) && (g_nBookmarks < MAX_BOOKMARKS))
+    if ((iBookmark < MAX_BOOKMARKS) && (g_bookmarks_count < MAX_BOOKMARKS))
     {
-      g_aBookmarks[iBookmark].bSet = true;
-      g_aBookmarks[iBookmark].nAddress = nAddress;
+      g_bookmarks[iBookmark].bSet = true;
+      g_bookmarks[iBookmark].nAddress = nAddress;
       bAdded = true;
-      g_nBookmarks++;
+      g_bookmarks_count++;
       iBookmark++;
     }
   }
@@ -187,20 +187,20 @@ auto CmdBookmarkClear (int nArgs) -> Update_t
   int iArg = 0;
   for (iArg = 1; iArg <= nArgs; iArg++ )
   {
-    if (! strcmp(g_aArgs[nArgs].sArg, g_aParameters[ PARAM_WILDSTAR ].m_sName))
+    if (! strcmp(g_args[nArgs].sArg, g_parameters[ PARAM_WILDSTAR ].m_sName))
     {
       for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++ )
       {
-        if (g_aBookmarks[ iBookmark ].bSet) {
-          g_aBookmarks[ iBookmark ].bSet = false;
+        if (g_bookmarks[ iBookmark ].bSet) {
+          g_bookmarks[ iBookmark ].bSet = false;
 }
       }
       break;
     }
 
-    iBookmark = g_aArgs[ iArg ].nValue;
-    if (g_aBookmarks[ iBookmark ].bSet) {
-      g_aBookmarks[ iBookmark ].bSet = false;
+    iBookmark = g_args[ iArg ].nValue;
+    if (g_bookmarks[ iBookmark ].bSet) {
+      g_bookmarks[ iBookmark ].bSet = false;
 }
   }
 
@@ -214,13 +214,13 @@ auto CmdBookmarkGoto ( int nArgs ) -> Update_t
     return Help_Arg_1( CMD_BOOKMARK_GOTO );
 }
 
-  int iBookmark = g_aArgs[ 1 ].nValue;
+  int iBookmark = g_args[ 1 ].nValue;
 
   uint16_t nAddress = 0;
   if (_Bookmark_Get( iBookmark, nAddress ))
   {
-    g_nDisasmCurAddress = nAddress;
-    g_nDisasmCurLine = 0;
+    g_disasm_cur_address = nAddress;
+    g_disasm_cur_line = 0;
     DisasmCalcTopBotAddress();
   }
 
@@ -231,14 +231,14 @@ auto CmdBookmarkGoto ( int nArgs ) -> Update_t
 auto CmdBookmarkList (int nArgs) -> Update_t
 {
   (void)nArgs;
-  if (! g_nBookmarks)
+  if (! g_bookmarks_count)
   {
     char sText[ CONSOLE_WIDTH ];
     ConsoleBufferPushFormat( sText, "  There are no current bookmarks.  (Max: %d", MAX_BOOKMARKS );
   }
   else
   {
-    _BWZ_ListAll( g_aBookmarks, MAX_BOOKMARKS );
+    _BWZ_ListAll( g_bookmarks, MAX_BOOKMARKS );
   }
   return ConsoleUpdate();
 }
@@ -270,12 +270,12 @@ auto CmdBookmarkSave (int nArgs) -> Update_t
   int iBookmark = 0;
   while (iBookmark < MAX_BOOKMARKS)
   {
-    if (g_aBookmarks[ iBookmark ].bSet)
+    if (g_bookmarks[ iBookmark ].bSet)
     {
       sprintf( sText, "%s %x %04X\n"
-        , g_aCommands[ CMD_BOOKMARK_ADD ].m_sName
+        , g_commands[ CMD_BOOKMARK_ADD ].m_sName
         , iBookmark
-        , g_aBookmarks[ iBookmark ].nAddress
+        , g_bookmarks[ iBookmark ].nAddress
       );
       g_ConfigState.PushLine( sText );
     }
@@ -284,11 +284,11 @@ auto CmdBookmarkSave (int nArgs) -> Update_t
 
   if (nArgs)
   {
-    if (! (g_aArgs[ 1 ].bType & TYPE_QUOTED_2)) {
+    if (! (g_args[ 1 ].bType & TYPE_QUOTED_2)) {
       return Help_Arg_1( CMD_BOOKMARK_SAVE );
 }
 
-    if (ConfigSave_BufferToDisk( g_aArgs[ 1 ].sArg, CONFIG_SAVE_FILE_CREATE ))
+    if (ConfigSave_BufferToDisk( g_args[ 1 ].sArg, CONFIG_SAVE_FILE_CREATE ))
     {
       ConsoleBufferPush(  "Saved."  );
       return ConsoleUpdate();

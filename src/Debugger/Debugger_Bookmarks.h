@@ -3,8 +3,8 @@
 #include "Debugger_Types.h"
 
 // Globals
-extern int g_nBookmarks;
-extern Bookmark_t g_aBookmarks[MAX_BOOKMARKS];
+extern int g_bookmarks_count;
+extern Bookmark_t g_bookmarks[MAX_BOOKMARKS];
 
 // Bookmark_t Functions
 bool _Bookmark_Add(const int iBookmark, const uint16_t nAddress);

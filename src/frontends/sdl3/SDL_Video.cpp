@@ -10,13 +10,13 @@
 
 extern VideoSurface_t* g_debug_screen;
 extern std::recursive_mutex g_video_draw_mutex;
-extern SDL_Surface* screen;
+extern SDL_Surface* g_screen;
 
 void StretchBltMemToFrameDC() {
   g_video_draw_mutex.lock();
   // In our new architecture, we just set frame ready and let the main loop draw
   // it.
-  g_bFrameReady = true;
+  g_frame_ready = true;
   g_video_draw_mutex.unlock();
 }
 

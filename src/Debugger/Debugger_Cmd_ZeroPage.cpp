@@ -14,8 +14,8 @@
 #include <cstdio>
 
 // Globals originally from Debug.cpp
-extern ZeroPagePointers_t g_aZeroPagePointers[ MAX_ZEROPAGE_POINTERS ];
-extern int g_nZeroPagePointers;
+extern ZeroPagePointers_t g_zero_page_pointers[ MAX_ZEROPAGE_POINTERS ];
+extern int g_zero_page_pointers_count;
 
 // Implementation helpers
 auto _ZeroPage_Error() -> Update_t
@@ -48,19 +48,19 @@ auto CmdZeroPageAdd     (int nArgs) -> Update_t
 
   if (nArgs > 1)
   {
-    iZP = g_aArgs[ 1 ].nValue;
+    iZP = g_args[ 1 ].nValue;
     iArg++;
   }
 
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++ )
   {
-    uint16_t nAddress = g_aArgs[iArg].nValue;
+    uint16_t nAddress = g_args[iArg].nValue;
 
     if (iZP == NO_6502_TARGET)
     {
       iZP = 0;
-      while ((iZP < MAX_ZEROPAGE_POINTERS) && (g_aZeroPagePointers[iZP].bSet))
+      while ((iZP < MAX_ZEROPAGE_POINTERS) && (g_zero_page_pointers[iZP].bSet))
       {
         iZP++;
       }
@@ -74,13 +74,13 @@ auto CmdZeroPageAdd     (int nArgs) -> Update_t
       return ConsoleUpdate();
     }
 
-    if ((iZP < MAX_ZEROPAGE_POINTERS) && (g_nZeroPagePointers < MAX_ZEROPAGE_POINTERS))
+    if ((iZP < MAX_ZEROPAGE_POINTERS) && (g_zero_page_pointers_count < MAX_ZEROPAGE_POINTERS))
     {
-      g_aZeroPagePointers[iZP].bSet = true;
-      g_aZeroPagePointers[iZP].bEnabled = true;
-      g_aZeroPagePointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
+      g_zero_page_pointers[iZP].bSet = true;
+      g_zero_page_pointers[iZP].bEnabled = true;
+      g_zero_page_pointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
       bAdded = true;
-      g_nZeroPagePointers++;
+      g_zero_page_pointers_count++;
       iZP++;
     }
   }
@@ -98,7 +98,7 @@ _Help:
 //===========================================================================
 auto CmdZeroPageClear   (int nArgs) -> Update_t
 {
-  if (!g_nZeroPagePointers) {
+  if (!g_zero_page_pointers_count) {
     return _ZeroPage_Error();
 }
 
@@ -107,9 +107,9 @@ auto CmdZeroPageClear   (int nArgs) -> Update_t
     return Help_Arg_1( CMD_ZEROPAGE_POINTER_CLEAR );
 }
 
-  _BWZ_ClearViaArgs( nArgs, (Breakpoint_t*)g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS, g_nZeroPagePointers );
+  _BWZ_ClearViaArgs( nArgs, (Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS, g_zero_page_pointers_count );
 
-  if (! g_nZeroPagePointers)
+  if (! g_zero_page_pointers_count)
   {
     UpdateDisplay( UPDATE_BACKGROUND );
     return UPDATE_CONSOLE_DISPLAY;
@@ -124,11 +124,11 @@ auto CmdZeroPageDisable (int nArgs) -> Update_t
   if (!nArgs) {
     return Help_Arg_1( CMD_ZEROPAGE_POINTER_DISABLE );
 }
-  if (! g_nZeroPagePointers) {
+  if (! g_zero_page_pointers_count) {
     return _ZeroPage_Error();
 }
 
-  _BWZ_EnableDisableViaArgs( nArgs, (Breakpoint_t*)g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS, false );
+  _BWZ_EnableDisableViaArgs( nArgs, (Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS, false );
 
   return UPDATE_ZERO_PAGE;
 }
@@ -136,7 +136,7 @@ auto CmdZeroPageDisable (int nArgs) -> Update_t
 //===========================================================================
 auto CmdZeroPageEnable  (int nArgs) -> Update_t
 {
-  if (! g_nZeroPagePointers) {
+  if (! g_zero_page_pointers_count) {
     return _ZeroPage_Error();
 }
 
@@ -144,7 +144,7 @@ auto CmdZeroPageEnable  (int nArgs) -> Update_t
     return Help_Arg_1( CMD_ZEROPAGE_POINTER_ENABLE );
 }
 
-  _BWZ_EnableDisableViaArgs( nArgs, (Breakpoint_t*)g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS, true );
+  _BWZ_EnableDisableViaArgs( nArgs, (Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS, true );
 
   return UPDATE_ZERO_PAGE;
 }
@@ -153,13 +153,13 @@ auto CmdZeroPageEnable  (int nArgs) -> Update_t
 auto CmdZeroPageList    (int nArgs) -> Update_t
 {
   (void)nArgs;
-  if (! g_nZeroPagePointers)
+  if (! g_zero_page_pointers_count)
   {
     _ZeroPage_Error();
   }
   else
   {
-    _BWZ_ListAll( (Breakpoint_t*)g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS );
+    _BWZ_ListAll( (Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS );
   }
   return ConsoleUpdate();
 }
@@ -178,26 +178,26 @@ auto CmdZeroPagePointer (int nArgs) -> Update_t
   // p[0..4] <ZeroPageAddr> : enable
 
   if( (nArgs != 0) && (nArgs != 1) ) {
-    return Help_Arg_1( g_iCommand );
+    return Help_Arg_1( g_command );
 }
 
-  int iZP = g_iCommand - CMD_ZEROPAGE_POINTER_0;
+  int iZP = g_command - CMD_ZEROPAGE_POINTER_0;
 
   if( (iZP < 0) || (iZP >= MAX_ZEROPAGE_POINTERS) ) {
-    return Help_Arg_1( g_iCommand );
+    return Help_Arg_1( g_command );
 }
 
   if (nArgs == 0)
   {
-    g_aZeroPagePointers[iZP].bEnabled = false;
+    g_zero_page_pointers[iZP].bEnabled = false;
   }
   else
   {
-    g_aZeroPagePointers[iZP].bSet = true;
-    g_aZeroPagePointers[iZP].bEnabled = true;
+    g_zero_page_pointers[iZP].bSet = true;
+    g_zero_page_pointers[iZP].bEnabled = true;
 
-    uint16_t nAddress = g_aArgs[1].nValue;
-    g_aZeroPagePointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
+    uint16_t nAddress = g_args[1].nValue;
+    g_zero_page_pointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
   }
 
   return UPDATE_ZERO_PAGE;

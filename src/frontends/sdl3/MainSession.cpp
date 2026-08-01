@@ -22,12 +22,12 @@
 using Logger::error;
 using Logger::info;
 
-static bool g_bBudgetVideo = false;
+static bool g_budget_video = false;
 
-void set_budget_video(bool b) { g_bBudgetVideo = b; }
-auto get_budget_video() -> bool { return g_bBudgetVideo; }
+void set_budget_video(bool b) { g_budget_video = b; }
+auto get_budget_video() -> bool { return g_budget_video; }
 
-void set_current_clk_6502() { g_fCurrentCLK6502 = 1.023 * 1000000.0; }
+void set_current_clk_6502() { g_current_clk_6502 = 1.023 * 1000000.0; }
 
 
 void SingleStep(bool bReinit) {

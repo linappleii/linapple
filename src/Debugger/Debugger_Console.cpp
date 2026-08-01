@@ -51,14 +51,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
-const char g_aInputCursor[] = "_\x7F";  // insert over-write
-bool g_bInputCursor = false;
-int g_iInputCursor = CURSOR_OVERSTRIKE;  // which cursor to use
-const int g_nInputCursor = sizeof(g_aInputCursor);
+const char g_input_cursor[] = "_\x7F";  // insert over-write
+bool g_input_cursor_visible = false;
+int g_input_cursor_index = CURSOR_OVERSTRIKE;  // which cursor to use
+const int g_input_cursor_count = sizeof(g_input_cursor);
 
-bool g_bIgnoreNextKey = false;
+bool g_ignore_next_key = false;
 
-extern bool g_bDebugFullSpeed;
+extern bool g_debug_full_speed;
 
 auto ConsoleInputHistoryPrev() -> Update_t;
 auto ConsoleInputHistoryNext() -> Update_t;
@@ -67,63 +67,63 @@ auto ConsoleInputHistoryNext() -> Update_t;
 // ________________________________________________________________________________________
 
 // See ConsoleInputReset() for why the console input
-// is tied to the zero'th output of g_aConsoleDisplay
-// and not using a seperate var: g_aConsoleInput[ CONSOLE_WIDTH ];
+// is tied to the zero'th output of g_console_display
+// and not using a seperate var: g_console_input[ CONSOLE_WIDTH ];
 //
-//          :          g_aConsoleBuffer[4] |      ^ g_aConsoleDisplay[5] : :
-//          g_aConsoleBuffer[3] |      | g_aConsoleDisplay[4]  <-
-//          g_nConsoleDisplayTotal
-// g_nConsoleBuffer -> g_aConsoleBuffer[2] |      | g_aConsoleDisplay[3] :
-//          :          g_aConsoleBuffer[1] v      | g_aConsoleDisplay[2] : .
-//          g_aConsoleBuffer[0] -----> | g_aConsoleDisplay[1]        .
+//          :          g_console_buffer[4] |      ^ g_console_display[5] : :
+//          g_console_buffer[3] |      | g_console_display[4]  <-
+//          g_console_display_total
+// g_console_buffer_size -> g_console_buffer[2] |      | g_console_display[3] :
+//          :          g_console_buffer[1] v      | g_console_display[2] : .
+//          g_console_buffer[0] -----> | g_console_display[1]        .
 //                                                |
-// g_aBufferedInput[0] -----> ConsoleInput ---->  | g_aConsoleDisplay[0]
-// g_aBufferedInput[1] ^
-// g_aBufferedInput[2] |
-// g_aBufferedInput[3] |
+// g_buffered_input[0] -----> ConsoleInput ---->  | g_console_display[0]
+// g_buffered_input[1] ^
+// g_buffered_input[2] |
+// g_buffered_input[3] |
 
 // Buffer
-bool g_bConsoleBufferPaused =
+bool g_console_buffer_paused =
     false;  // buffered output is waiting for user to continue
-int g_nConsoleBuffer = 0;
-conchar_t g_aConsoleBuffer[CONSOLE_BUFFER_HEIGHT]
+int g_console_buffer_size = 0;
+conchar_t g_console_buffer[CONSOLE_BUFFER_HEIGHT]
                           [CONSOLE_WIDTH];  // TODO: std::vector< line_t >
 
 // Cursor
-char g_sConsoleCursor[] = "_";
+char g_console_cursor[] = "_";
 
 // Display
-char g_aConsolePrompt[] = ">!";  // input, assembler // NUM_PROMPTS
-char g_sConsolePrompt[] = ">";   // No, NOT Integer Basic!  The nostalgic '*'
+char g_console_prompt[] = ">!";  // input, assembler // NUM_PROMPTS
+char g_console_prompt_str[] = ">";   // No, NOT Integer Basic!  The nostalgic '*'
                                  // "Monitor" doesn't look as good, IMHO. :-(
-int g_nConsolePromptLen = 1;
+int g_console_prompt_len = 1;
 
-bool g_bConsoleFullWidth = true;  // false
+bool g_console_full_width = true;  // false
 
-int g_iConsoleDisplayStart = 0;  // to allow scrolling
-int g_nConsoleDisplayTotal = 0;  // number of lines added to console
-int g_nConsoleDisplayLines = 0;
-int g_nConsoleDisplayWidth = 0;
-conchar_t g_aConsoleDisplay[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+int g_console_display_start = 0;  // to allow scrolling
+int g_console_display_total = 0;  // number of lines added to console
+int g_console_display_lines = 0;
+int g_console_display_width = 0;
+conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
-int g_nHistoryLinesStart = 0;
-int g_nHistoryLinesTotal = 0;  // number of commands entered
-char g_aHistoryLines[HISTORY_HEIGHT][HISTORY_WIDTH] = {""};
+int g_history_lines_start = 0;
+int g_history_lines_total = 0;  // number of commands entered
+char g_history_lines[HISTORY_HEIGHT][HISTORY_WIDTH] = {""};
 
 // Input Line
 
 // Raw input Line (has prompt)
-char g_aConsoleInput[CONSOLE_WIDTH + 16];  // = g_aConsoleDisplay[0];
+char g_console_input[CONSOLE_WIDTH + 16];  // = g_console_display[0];
 
 // Cooked input line (no prompt)
-int g_nConsoleInputChars = 0;
-char* g_pConsoleInput = nullptr;           // points to past prompt
-const char* g_pConsoleFirstArg = nullptr;  // points to first arg
-bool g_bConsoleInputQuoted = false;        // Allows lower-case to be entered
-int g_nConsoleInputSkip = 0;
+int g_console_input_chars = 0;
+char* g_console_input_ptr = nullptr;           // points to past prompt
+const char* g_console_first_arg = nullptr;  // points to first arg
+bool g_console_input_quoted = false;        // Allows lower-case to be entered
+int g_console_input_skip = 0;
 
-int g_anConsoleColor[NUM_CONSOLE_COLORS] = {
+int g_console_color[NUM_CONSOLE_COLORS] = {
     WHITE, RED,   GREEN,  YELLOW,     BLUE,      MAGENTA,
     CYAN,  WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE};
 // Prototypes _______________________________________________________________
@@ -145,21 +145,21 @@ auto ConsoleLineLength(const conchar_t* pText) -> int {
 }
 
 //===========================================================================
-auto ConsoleBufferPeek() -> const conchar_t* { return g_aConsoleBuffer[0]; }
+auto ConsoleBufferPeek() -> const conchar_t* { return g_console_buffer[0]; }
 
 //===========================================================================
 auto console_print(const char* pText) -> bool {
-  while (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT) {
+  while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
 
   // Convert color string to native console color text
-  // Ignores g_nConsoleDisplayWidth
+  // Ignores g_console_display_width
   char c = 0;
 
   int x = 0;
   const char* pSrc = pText;
-  conchar_t* pDst = &g_aConsoleBuffer[g_nConsoleBuffer][0];
+  conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
   conchar_t g = 0;
   bool bHaveColor = false;
@@ -169,12 +169,12 @@ auto console_print(const char* pText) -> bool {
     if ((c == '\n') || (x >= (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
-      if (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT) {
+      if (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
         ConsoleBufferToDisplay();
       } else {
-        g_nConsoleBuffer++;
+        g_console_buffer_size++;
       }
-      pDst = &g_aConsoleBuffer[g_nConsoleBuffer][0];
+      pDst = &g_console_buffer[g_console_buffer_size][0];
     } else {
       g = (c & _CONSOLE_COLOR_MASK);
 
@@ -273,7 +273,7 @@ auto console_print(const char* pText) -> bool {
     */
   }
   *pDst = 0;
-  g_nConsoleBuffer++;
+  g_console_buffer_size++;
 
   return true;
 }
@@ -294,7 +294,7 @@ auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
 // Shifts the buffered console output lines "Up"
 //===========================================================================
 auto ConsoleBufferPush(const char* pText) -> bool {
-  while (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT) {
+  while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
 
@@ -302,20 +302,20 @@ auto ConsoleBufferPush(const char* pText) -> bool {
 
   int x = 0;
   const char* pSrc = pText;
-  conchar_t* pDst = &g_aConsoleBuffer[g_nConsoleBuffer][0];
+  conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
   while ((x < CONSOLE_WIDTH) && *pSrc) {
     c = *pSrc;
     if ((c == '\n') || (x == (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
-      if (g_nConsoleBuffer >= CONSOLE_BUFFER_HEIGHT) {
+      if (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
         ConsoleBufferToDisplay();
       } else {
-        g_nConsoleBuffer++;
+        g_console_buffer_size++;
       }
       pSrc++;
-      pDst = &g_aConsoleBuffer[g_nConsoleBuffer][0];
+      pDst = &g_console_buffer[g_console_buffer_size][0];
     } else {
       *pDst = (c & _CONSOLE_COLOR_MASK);
       x++;
@@ -324,7 +324,7 @@ auto ConsoleBufferPush(const char* pText) -> bool {
     }
   }
   *pDst = 0;
-  g_nConsoleBuffer++;
+  g_console_buffer_size++;
 
   return true;
 }
@@ -333,15 +333,15 @@ auto ConsoleBufferPush(const char* pText) -> bool {
 //===========================================================================
 void ConsoleBufferPop() {
   int y = 0;
-  while (y < g_nConsoleBuffer) {
-    memcpy(g_aConsoleBuffer[y], g_aConsoleBuffer[y + 1],
+  while (y < g_console_buffer_size) {
+    memcpy(g_console_buffer[y], g_console_buffer[y + 1],
            sizeof(conchar_t) * CONSOLE_WIDTH);
     y++;
   }
 
-  g_nConsoleBuffer--;
-  if (g_nConsoleBuffer < 0) {
-    g_nConsoleBuffer = 0;
+  g_console_buffer_size--;
+  if (g_console_buffer_size < 0) {
+    g_console_buffer_size = 0;
   }
 }
 
@@ -382,40 +382,40 @@ void ConsoleDisplayPush(const char* pText) {
 //===========================================================================
 void ConsoleDisplayPush(const conchar_t* pText) {
   int nLen =
-      MIN(g_nConsoleDisplayTotal, CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
+      MIN(g_console_display_total, CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while (nLen--) {
     memcpy(
         reinterpret_cast<char*>(
-            g_aConsoleDisplay[(nLen + 1 + CONSOLE_FIRST_LINE)]),
-        reinterpret_cast<char*>(g_aConsoleDisplay[nLen + CONSOLE_FIRST_LINE]),
+            g_console_display[(nLen + 1 + CONSOLE_FIRST_LINE)]),
+        reinterpret_cast<char*>(g_console_display[nLen + CONSOLE_FIRST_LINE]),
         sizeof(conchar_t) * CONSOLE_WIDTH);
   }
 
   if (pText) {
-    memcpy(reinterpret_cast<char*>(g_aConsoleDisplay[CONSOLE_FIRST_LINE]),
+    memcpy(reinterpret_cast<char*>(g_console_display[CONSOLE_FIRST_LINE]),
            pText, sizeof(conchar_t) * CONSOLE_WIDTH);
   }
 
-  g_nConsoleDisplayTotal++;
-  if (g_nConsoleDisplayTotal > (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE)) {
-    g_nConsoleDisplayTotal = (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE);
+  g_console_display_total++;
+  if (g_console_display_total > (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE)) {
+    g_console_display_total = (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE);
   }
 }
 
 //===========================================================================
 void ConsoleDisplayPause() {
-  if (g_nConsoleBuffer) {
+  if (g_console_buffer_size) {
 #if CONSOLE_INPUT_CHAR16
-    ConsoleConvertFromText(g_aConsoleInput,
+    ConsoleConvertFromText(g_console_input,
                            "...press SPACE continue, ESC skip...");
-    g_nConsolePromptLen = ConsoleLineLength(g_aConsoleInput);
+    g_console_prompt_len = ConsoleLineLength(g_console_input);
 #else
-    strcpy(g_aConsoleInput, "...press SPACE continue, ESC skip...");
-    g_nConsolePromptLen = static_cast<int>(strlen(g_aConsoleInput));
+    strcpy(g_console_input, "...press SPACE continue, ESC skip...");
+    g_console_prompt_len = static_cast<int>(strlen(g_console_input));
 #endif
-    g_pConsoleInput = &g_aConsoleInput[g_nConsolePromptLen];
-    g_nConsoleInputChars = 0;
-    g_bConsoleBufferPaused = true;
+    g_console_input_ptr = &g_console_input[g_console_prompt_len];
+    g_console_input_chars = 0;
+    g_console_buffer_paused = true;
   } else {
     ConsoleInputReset();
   }
@@ -423,17 +423,17 @@ void ConsoleDisplayPause() {
 
 //===========================================================================
 auto ConsoleInputBackSpace() -> bool {
-  if (g_nConsoleInputChars) {
-    g_pConsoleInput[g_nConsoleInputChars] = CHAR_SPACE;
+  if (g_console_input_chars) {
+    g_console_input_ptr[g_console_input_chars] = CHAR_SPACE;
 
-    g_nConsoleInputChars--;
+    g_console_input_chars--;
 
-    if ((g_pConsoleInput[g_nConsoleInputChars] == CHAR_QUOTE_DOUBLE) ||
-        (g_pConsoleInput[g_nConsoleInputChars] == CHAR_QUOTE_SINGLE)) {
-      g_bConsoleInputQuoted = !g_bConsoleInputQuoted;
+    if ((g_console_input_ptr[g_console_input_chars] == CHAR_QUOTE_DOUBLE) ||
+        (g_console_input_ptr[g_console_input_chars] == CHAR_QUOTE_SINGLE)) {
+      g_console_input_quoted = !g_console_input_quoted;
     }
 
-    g_pConsoleInput[g_nConsoleInputChars] = CHAR_SPACE;
+    g_console_input_ptr[g_console_input_chars] = CHAR_SPACE;
     return true;
   }
   return false;
@@ -442,10 +442,10 @@ auto ConsoleInputBackSpace() -> bool {
 // Clears prompt too
 //===========================================================================
 auto ConsoleInputClear() -> bool {
-  memset(g_aConsoleInput, 0, sizeof(g_aConsoleInput));
+  memset(g_console_input, 0, sizeof(g_console_input));
 
-  if (g_nConsoleInputChars) {
-    g_nConsoleInputChars = 0;
+  if (g_console_input_chars) {
+    g_console_input_chars = 0;
     return true;
   }
   return false;
@@ -453,11 +453,11 @@ auto ConsoleInputClear() -> bool {
 
 //===========================================================================
 auto ConsoleInputChar(const char ch) -> bool {
-  if (g_nConsoleInputChars < g_nConsoleDisplayWidth)  // bug? include prompt?
+  if (g_console_input_chars < g_console_display_width)  // bug? include prompt?
   {
-    g_pConsoleInput[g_nConsoleInputChars] = ch;
-    g_nConsoleInputChars++;
-    g_pConsoleInput[g_nConsoleInputChars] = '\0';
+    g_console_input_ptr[g_console_input_chars] = ch;
+    g_console_input_chars++;
+    g_console_input_ptr[g_console_input_chars] = '\0';
     return true;
   }
 
@@ -467,39 +467,39 @@ auto ConsoleInputChar(const char ch) -> bool {
 //===========================================================================
 void ConsoleUpdateCursor(char ch) {
   if (ch) {
-    g_sConsoleCursor[0] = ch;
+    g_console_cursor[0] = ch;
   } else {
-    ch = g_aConsoleInput[g_nConsoleInputChars + g_nConsolePromptLen];
+    ch = g_console_input[g_console_input_chars + g_console_prompt_len];
     if (!ch) {
       ch = CHAR_SPACE;
     }
-    g_sConsoleCursor[0] = ch;
+    g_console_cursor[0] = ch;
   }
 }
 
 //===========================================================================
 auto ConsoleInputPeek() -> const char* {
-  //	return g_aConsoleDisplay[0];
-  //	return g_pConsoleInput;
-  return g_aConsoleInput;
+  //	return g_console_display[0];
+  //	return g_console_input_ptr;
+  return g_console_input;
 }
 
 //===========================================================================
 void ConsoleInputReset() {
-  // Not using g_aConsoleInput since we get drawing of the input Line for "Free"
+  // Not using g_console_input since we get drawing of the input Line for "Free"
   // Even if we add console scrolling, we don't need any special logic to draw
   // the input line.
-  g_bConsoleInputQuoted = false;
+  g_console_input_quoted = false;
 
   ConsoleInputClear();
 
-  //	strcpy( g_aConsoleInput, g_sConsolePrompt ); // Assembler can change
+  //	strcpy( g_console_input, g_console_prompt_str ); // Assembler can change
   // prompt
-  g_aConsoleInput[0] = g_sConsolePrompt[0];
-  g_nConsolePromptLen = 1;
+  g_console_input[0] = g_console_prompt_str[0];
+  g_console_prompt_len = 1;
 
-  g_pConsoleInput = &g_aConsoleInput[g_nConsolePromptLen];
-  g_nConsoleInputChars = 0;
+  g_console_input_ptr = &g_console_input[g_console_prompt_len];
+  g_console_input_chars = 0;
 }
 
 //===========================================================================
@@ -507,9 +507,9 @@ auto ConsoleInputTabCompletion() -> int { return UPDATE_CONSOLE_INPUT; }
 
 //===========================================================================
 auto ConsoleScrollHome() -> Update_t {
-  g_iConsoleDisplayStart = g_nConsoleDisplayTotal - CONSOLE_FIRST_LINE;
-  if (g_iConsoleDisplayStart < 0) {
-    g_iConsoleDisplayStart = 0;
+  g_console_display_start = g_console_display_total - CONSOLE_FIRST_LINE;
+  if (g_console_display_start < 0) {
+    g_console_display_start = 0;
   }
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -517,21 +517,21 @@ auto ConsoleScrollHome() -> Update_t {
 
 //===========================================================================
 auto ConsoleScrollEnd() -> Update_t {
-  g_iConsoleDisplayStart = 0;
+  g_console_display_start = 0;
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 auto ConsoleScrollUp(int nLines) -> Update_t {
-  g_iConsoleDisplayStart += nLines;
+  g_console_display_start += nLines;
 
-  if (g_iConsoleDisplayStart > (g_nConsoleDisplayTotal - CONSOLE_FIRST_LINE)) {
-    g_iConsoleDisplayStart = (g_nConsoleDisplayTotal - CONSOLE_FIRST_LINE);
+  if (g_console_display_start > (g_console_display_total - CONSOLE_FIRST_LINE)) {
+    g_console_display_start = (g_console_display_total - CONSOLE_FIRST_LINE);
   }
 
-  if (g_iConsoleDisplayStart < 0) {
-    g_iConsoleDisplayStart = 0;
+  if (g_console_display_start < 0) {
+    g_console_display_start = 0;
   }
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -539,9 +539,9 @@ auto ConsoleScrollUp(int nLines) -> Update_t {
 
 //===========================================================================
 auto ConsoleScrollDn(int nLines) -> Update_t {
-  g_iConsoleDisplayStart -= nLines;
-  if (g_iConsoleDisplayStart < 0) {
-    g_iConsoleDisplayStart = 0;
+  g_console_display_start -= nLines;
+  if (g_console_display_start < 0) {
+    g_console_display_start = 0;
   }
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -549,14 +549,14 @@ auto ConsoleScrollDn(int nLines) -> Update_t {
 
 //===========================================================================
 auto ConsoleScrollPageUp() -> Update_t {
-  ConsoleScrollUp(g_nConsoleDisplayLines - CONSOLE_FIRST_LINE);
+  ConsoleScrollUp(g_console_display_lines - CONSOLE_FIRST_LINE);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
 auto ConsoleScrollPageDn() -> Update_t {
-  ConsoleScrollDn(g_nConsoleDisplayLines - CONSOLE_FIRST_LINE);
+  ConsoleScrollDn(g_console_display_lines - CONSOLE_FIRST_LINE);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -567,9 +567,9 @@ auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
     ConsoleBufferToDisplay();
   }
 
-  g_bConsoleBufferPaused = false;
-  if (g_nConsoleBuffer) {
-    g_bConsoleBufferPaused = true;
+  g_console_buffer_paused = false;
+  if (g_console_buffer_size) {
+    g_console_buffer_paused = true;
     ConsoleDisplayPause();
     return UPDATE_CONSOLE_INPUT | UPDATE_CONSOLE_DISPLAY;
   }
@@ -581,8 +581,8 @@ auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
 // Flush the console
 //===========================================================================
 auto ConsoleUpdate() -> Update_t {
-  if (!g_bConsoleBufferPaused) {
-    int nLines = MIN(g_nConsoleBuffer, g_nConsoleDisplayLines - 1);
+  if (!g_console_buffer_paused) {
+    int nLines = MIN(g_console_buffer_size, g_console_display_lines - 1);
     return ConsoleBufferTryUnpause(nLines);
   }
 
@@ -591,7 +591,7 @@ auto ConsoleUpdate() -> Update_t {
 
 //===========================================================================
 void ConsoleFlush() {
-  int nLines = g_nConsoleBuffer;
+  int nLines = g_console_buffer_size;
   ConsoleBufferTryUnpause(nLines);
 }
 
@@ -619,9 +619,9 @@ void DebuggerCursorUpdate() {
 }
 
 void DebuggerCursorNext() {
-  g_bInputCursor ^= true;
-  if (g_bInputCursor) {
-    ConsoleUpdateCursor(g_aInputCursor[g_iInputCursor]);
+  g_input_cursor_visible ^= true;
+  if (g_input_cursor_visible) {
+    ConsoleUpdateCursor(g_input_cursor[g_input_cursor_index]);
   } else {
     ConsoleUpdateCursor(0);  // show char under cursor
   }
@@ -636,22 +636,22 @@ void debugger_input_console_char(char ch) {
     return;
   }
 
-  if (g_bConsoleBufferPaused) {
+  if (g_console_buffer_paused) {
     return;
   }
 
-  if (g_bIgnoreNextKey) {
-    g_bIgnoreNextKey = false;
+  if (g_ignore_next_key) {
+    g_ignore_next_key = false;
     return;
   }
 
   if ((ch >= CHAR_SPACE) && (ch <= 126))  // HACK MAGIC # 32 -> ' ', # 126
   {
     if ((ch == TCHAR_QUOTE_DOUBLE) || (ch == TCHAR_QUOTE_SINGLE)) {
-      g_bConsoleInputQuoted = !g_bConsoleInputQuoted;
+      g_console_input_quoted = !g_console_input_quoted;
     }
 
-    if (!g_bConsoleInputQuoted) {
+    if (!g_console_input_quoted) {
       // TODO: must fix param matching to ignore case
 #if ALLOW_INPUT_LOWERCASE
 #else
@@ -669,7 +669,7 @@ void debugger_input_console_char(char ch) {
 
 void ToggleFullScreenConsole() {
   // Switch to Console Window
-  if (g_iWindowThis != WINDOW_CONSOLE) {
+  if (g_window_this != WINDOW_CONSOLE) {
     CmdWindowViewConsole(0);
   } else  // switch back to last window
   {
@@ -712,14 +712,14 @@ void debugger_process_key(int keycode) {
   Update_t bUpdateDisplay = UPDATE_NOTHING;
 
   // For long output, allow user to read it
-  if (g_nConsoleBuffer) {
+  if (g_console_buffer_size) {
     if ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
         (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode)) {
-      int nLines = MIN(g_nConsoleBuffer, g_nConsoleDisplayLines - 1);  // was -2
+      int nLines = MIN(g_console_buffer_size, g_console_display_lines - 1);  // was -2
       if (LINAPPLE_KEY_ESCAPE ==
           keycode)  // user doesn't want to read all this stu
       {
-        nLines = g_nConsoleBuffer;
+        nLines = g_console_buffer_size;
       }
       ConsoleBufferTryUnpause(nLines);
 
@@ -728,7 +728,7 @@ void debugger_process_key(int keycode) {
   }
 
   if (keycode == LINAPPLE_KEY_BACKSPACE) {
-    if (g_nConsoleInputChars) {
+    if (g_console_input_chars) {
       ConsoleInputBackSpace();
       DebuggerCursorNext();
       DrawConsoleInput();
@@ -736,14 +736,14 @@ void debugger_process_key(int keycode) {
     }
   } else if ((keycode == LINAPPLE_KEY_RETURN) ||
              (keycode == LINAPPLE_KEY_KP_ENTER)) {
-    if (g_nConsoleInputChars) {
+    if (g_console_input_chars) {
       bUpdateDisplay |=
           DebuggerProcessCommand(true);  // copy console input to console output
     } else {
       bUpdateDisplay |= CmdGoNormalSpeed(0);
     }
   } else if (keycode == LINAPPLE_KEY_ESCAPE) {
-    if (g_nConsoleInputChars) {
+    if (g_console_input_chars) {
       ConsoleInputReset();
       bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
     } else {
@@ -760,7 +760,7 @@ void debugger_process_key(int keycode) {
 
     switch (keycode) {
       case LINAPPLE_KEY_TAB: {
-        if (g_nConsoleInputChars) {
+        if (g_console_input_chars) {
           // TODO: TabCompletionCommand()
           // TODO: TabCompletionSymbol()
           bUpdateDisplay |= ConsoleInputTabCompletion();
@@ -837,7 +837,7 @@ void debugger_mouse_click(int /*x*/, int /*y*/) {
   iAltCtrlShift |= mods.shift ? 1 << 2 : 0;
 
   // GH#462 disasm click #
-  if (iAltCtrlShift != g_bConfigDisasmClick) {
+  if (iAltCtrlShift != g_config_disasm_click) {
     return;
   }
 
@@ -845,14 +845,14 @@ void debugger_mouse_click(int /*x*/, int /*y*/) {
 }
 
 auto ConsoleInputHistoryPrev() -> Update_t {
-  if (g_nHistoryLinesTotal) {
+  if (g_history_lines_total) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;
 }
 
 auto ConsoleInputHistoryNext() -> Update_t {
-  if (g_nHistoryLinesTotal) {
+  if (g_history_lines_total) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;

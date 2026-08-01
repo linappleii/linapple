@@ -20,54 +20,54 @@
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
-extern int g_iWindowLast;
-extern int g_iWindowThis;
-extern WindowSplit_t g_aWindowConfig[NUM_WINDOWS];
+extern int g_window_last;
+extern int g_window_this;
+extern WindowSplit_t g_window_config[NUM_WINDOWS];
 
-extern int g_nConsoleDisplayLines;
-extern bool g_bConsoleFullWidth;
-extern int g_nConsoleDisplayWidth;
-extern int g_nDisasmWinHeight;
-extern int g_nDisasmCurLine;
+extern int g_console_display_lines;
+extern bool g_console_full_width;
+extern int g_console_display_width;
+extern int g_disasm_win_height;
+extern int g_disasm_cur_line;
 
-extern uint16_t g_nDisasmTopAddress;
-extern uint16_t g_nDisasmBotAddress;
-extern uint16_t g_nDisasmCurAddress;
-extern bool g_bDisasmCurBad;
+extern uint16_t g_disasm_top_address;
+extern uint16_t g_disasm_bot_address;
+extern uint16_t g_disasm_cur_address;
+extern bool g_disasm_cur_bad;
 
-extern uint32_t g_uVideoMode;
+extern uint32_t g_video_mode;
 
 const int MIN_DISPLAY_CONSOLE_LINES = 5;
 
 // Implementation
 
 //===========================================================================
-void _WindowJoin() { g_aWindowConfig[g_iWindowThis].bSplit = false; }
+void _WindowJoin() { g_window_config[g_window_this].bSplit = false; }
 
 //===========================================================================
 void _WindowSplit(Window_e eNewBottomWindow) {
-  g_aWindowConfig[g_iWindowThis].bSplit = true;
-  g_aWindowConfig[g_iWindowThis].eBot = eNewBottomWindow;
+  g_window_config[g_window_this].bSplit = true;
+  g_window_config[g_window_this].eBot = eNewBottomWindow;
 }
 
 //===========================================================================
 void _WindowLast() {
-  int eNew = g_iWindowLast;
-  g_iWindowLast = g_iWindowThis;
-  g_iWindowThis = eNew;
+  int eNew = g_window_last;
+  g_window_last = g_window_this;
+  g_window_this = eNew;
 }
 
 //===========================================================================
 void _WindowSwitch(int eNewWindow) {
-  g_iWindowLast = g_iWindowThis;
-  g_iWindowThis = eNewWindow;
+  g_window_last = g_window_this;
+  g_window_this = eNewWindow;
 }
 
 //===========================================================================
 auto CmdWindowViewCommon(int iNewWindow) -> Update_t {
   // Switching to same window, remove split
-  if (g_iWindowThis == iNewWindow) {
-    g_aWindowConfig[iNewWindow].bSplit = false;
+  if (g_window_this == iNewWindow) {
+    g_window_config[iNewWindow].bSplit = false;
   } else {
     _WindowSwitch(iNewWindow);
   }
@@ -78,8 +78,8 @@ auto CmdWindowViewCommon(int iNewWindow) -> Update_t {
 
 //===========================================================================
 auto _CmdWindowViewFull(int iNewWindow) -> Update_t {
-  if (g_iWindowThis != iNewWindow) {
-    g_aWindowConfig[iNewWindow].bSplit = false;
+  if (g_window_this != iNewWindow) {
+    g_window_config[iNewWindow].bSplit = false;
     _WindowSwitch(iNewWindow);
     WindowUpdateConsoleDisplayedSize();
   }
@@ -88,24 +88,24 @@ auto _CmdWindowViewFull(int iNewWindow) -> Update_t {
 
 //===========================================================================
 void WindowUpdateConsoleDisplayedSize() {
-  g_nConsoleDisplayLines = MIN_DISPLAY_CONSOLE_LINES;
+  g_console_display_lines = MIN_DISPLAY_CONSOLE_LINES;
 #if USE_APPLE_FONT
-  g_bConsoleFullWidth = true;
-  g_nConsoleDisplayWidth = CONSOLE_WIDTH - 1;
+  g_console_full_width = true;
+  g_console_display_width = CONSOLE_WIDTH - 1;
 
-  if (g_iWindowThis == WINDOW_CONSOLE) {
-    g_nConsoleDisplayLines = MAX_DISPLAY_LINES;
-    g_nConsoleDisplayWidth = CONSOLE_WIDTH - 1;
-    g_bConsoleFullWidth = true;
+  if (g_window_this == WINDOW_CONSOLE) {
+    g_console_display_lines = MAX_DISPLAY_LINES;
+    g_console_display_width = CONSOLE_WIDTH - 1;
+    g_console_full_width = true;
   }
 #else
-  g_nConsoleDisplayWidth = (CONSOLE_WIDTH / 2) + 10;
-  g_bConsoleFullWidth = false;
+  g_console_display_width = (CONSOLE_WIDTH / 2) + 10;
+  g_console_full_width = false;
 
-  if (g_iWindowThis == WINDOW_CONSOLE) {
-    g_nConsoleDisplayLines = MAX_DISPLAY_LINES;
-    g_nConsoleDisplayWidth = CONSOLE_WIDTH - 1;
-    g_bConsoleFullWidth = true;
+  if (g_window_this == WINDOW_CONSOLE) {
+    g_console_display_lines = MAX_DISPLAY_LINES;
+    g_console_display_width = CONSOLE_WIDTH - 1;
+    g_console_full_width = true;
   }
 #endif
 }
@@ -113,17 +113,17 @@ void WindowUpdateConsoleDisplayedSize() {
 //===========================================================================
 auto WindowGetHeight(int iWindow) -> int {
   (void)iWindow;
-  return g_nDisasmWinHeight;
+  return g_disasm_win_height;
 }
 
 //===========================================================================
 void WindowUpdateDisasmSize() {
-  if (g_aWindowConfig[g_iWindowThis].bSplit) {
-    g_nDisasmWinHeight = (MAX_DISPLAY_LINES - g_nConsoleDisplayLines) / 2;
+  if (g_window_config[g_window_this].bSplit) {
+    g_disasm_win_height = (MAX_DISPLAY_LINES - g_console_display_lines) / 2;
   } else {
-    g_nDisasmWinHeight = MAX_DISPLAY_LINES - g_nConsoleDisplayLines;
+    g_disasm_win_height = MAX_DISPLAY_LINES - g_console_display_lines;
   }
-  g_nDisasmCurLine = MAX(0, (g_nDisasmWinHeight - 1) / 2);
+  g_disasm_cur_line = MAX(0, (g_disasm_win_height - 1) / 2);
 }
 
 //===========================================================================
@@ -135,9 +135,9 @@ void WindowUpdateSizes() {
 //===========================================================================
 auto CmdWindowCycleNext(int nArgs) -> Update_t {
   (void)nArgs;
-  g_iWindowThis++;
-  if (g_iWindowThis >= NUM_WINDOWS) {
-    g_iWindowThis = 0;
+  g_window_this++;
+  if (g_window_this >= NUM_WINDOWS) {
+    g_window_this = 0;
   }
 
   WindowUpdateSizes();
@@ -148,9 +148,9 @@ auto CmdWindowCycleNext(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowCyclePrev(int nArgs) -> Update_t {
   (void)nArgs;
-  g_iWindowThis--;
-  if (g_iWindowThis < 0) {
-    g_iWindowThis = NUM_WINDOWS - 1;
+  g_window_this--;
+  if (g_window_this < 0) {
+    g_window_this = NUM_WINDOWS - 1;
   }
 
   WindowUpdateSizes();
@@ -162,13 +162,13 @@ auto CmdWindowCyclePrev(int nArgs) -> Update_t {
 auto CmdWindowShowCode(int nArgs) -> Update_t {
   (void)nArgs;
 
-  if (g_iWindowThis == WINDOW_CODE) {
-    g_aWindowConfig[g_iWindowThis].bSplit = false;
-    g_aWindowConfig[g_iWindowThis].eBot =
+  if (g_window_this == WINDOW_CODE) {
+    g_window_config[g_window_this].bSplit = false;
+    g_window_config[g_window_this].eBot =
         WINDOW_CODE;  // not really needed, but SAFE HEX ;-)
-  } else if (g_iWindowThis == WINDOW_DATA) {
-    g_aWindowConfig[g_iWindowThis].bSplit = true;
-    g_aWindowConfig[g_iWindowThis].eBot = WINDOW_CODE;
+  } else if (g_window_this == WINDOW_DATA) {
+    g_window_config[g_window_this].bSplit = true;
+    g_window_config[g_window_this].eBot = WINDOW_CODE;
   }
 
   WindowUpdateSizes();
@@ -185,11 +185,11 @@ auto CmdWindowShowCode1(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowShowCode2(int nArgs) -> Update_t {
   (void)nArgs;
-  if ((g_iWindowThis == WINDOW_CODE) || (g_iWindowThis == WINDOW_DATA)) {
-    if (g_iWindowThis == WINDOW_CODE) {
+  if ((g_window_this == WINDOW_CODE) || (g_window_this == WINDOW_DATA)) {
+    if (g_window_this == WINDOW_CODE) {
       _WindowJoin();
       WindowUpdateDisasmSize();
-    } else if (g_iWindowThis == WINDOW_DATA) {
+    } else if (g_window_this == WINDOW_DATA) {
       _WindowSplit(WINDOW_CODE);
       WindowUpdateDisasmSize();
     }
@@ -201,13 +201,13 @@ auto CmdWindowShowCode2(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowShowData(int nArgs) -> Update_t {
   (void)nArgs;
-  if (g_iWindowThis == WINDOW_CODE) {
-    g_aWindowConfig[g_iWindowThis].bSplit = true;
-    g_aWindowConfig[g_iWindowThis].eBot = WINDOW_DATA;
+  if (g_window_this == WINDOW_CODE) {
+    g_window_config[g_window_this].bSplit = true;
+    g_window_config[g_window_this].eBot = WINDOW_DATA;
     return UPDATE_ALL;
-  } else if (g_iWindowThis == WINDOW_DATA) {
-    g_aWindowConfig[g_iWindowThis].bSplit = false;
-    g_aWindowConfig[g_iWindowThis].eBot =
+  } else if (g_window_this == WINDOW_DATA) {
+    g_window_config[g_window_this].bSplit = false;
+    g_window_config[g_window_this].eBot =
         WINDOW_DATA;  // not really needed, but SAFE HEX ;-)
     return UPDATE_ALL;
   }
@@ -224,10 +224,10 @@ auto CmdWindowShowData1(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowShowData2(int nArgs) -> Update_t {
   (void)nArgs;
-  if ((g_iWindowThis == WINDOW_CODE) || (g_iWindowThis == WINDOW_DATA)) {
-    if (g_iWindowThis == WINDOW_CODE) {
+  if ((g_window_this == WINDOW_CODE) || (g_window_this == WINDOW_DATA)) {
+    if (g_window_this == WINDOW_CODE) {
       _WindowSplit(WINDOW_DATA);
-    } else if (g_iWindowThis == WINDOW_DATA) {
+    } else if (g_window_this == WINDOW_DATA) {
       _WindowJoin();
     }
     return UPDATE_DISASM;
@@ -279,7 +279,7 @@ auto CmdWindowViewOutput(int nArgs) -> Update_t {
   (void)nArgs;
   video_redraw_screen();
 
-  DebugVideoMode::Instance().Set(g_uVideoMode);
+  DebugVideoMode::Instance().Set(g_video_mode);
 
   return UPDATE_NOTHING;  // intentional
 }
@@ -303,7 +303,7 @@ auto CmdWindow(int nArgs) -> Update_t {
   }
 
   int iParam = 0;
-  char* pName = g_aArgs[1].sArg;
+  char* pName = g_args[1].sArg;
   int nFound = FindParam(pName, MATCH_EXACT, iParam, _PARAM_WINDOW_BEGIN,
                          _PARAM_WINDOW_END);
   if (nFound) {
@@ -343,22 +343,22 @@ auto CmdWindowLast(int nArgs) -> Update_t {
 }
 
 void _CursorMoveDownAligned(int nDelta) {
-  if (g_iWindowThis == WINDOW_DATA) {
-    g_nDisasmCurAddress = static_cast<uint16_t>(g_nDisasmCurAddress + nDelta);
-    g_aMemDump[0].nAddress = g_nDisasmCurAddress;
+  if (g_window_this == WINDOW_DATA) {
+    g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address + nDelta);
+    g_mem_dump[0].nAddress = g_disasm_cur_address;
   } else {
-    g_nDisasmCurAddress =
-        DisasmCalcAddressFromLines(g_nDisasmCurAddress, nDelta);
+    g_disasm_cur_address =
+        DisasmCalcAddressFromLines(g_disasm_cur_address, nDelta);
     DisasmCalcTopFromCurAddress(true);
   }
 }
 
 void _CursorMoveUpAligned(int nDelta) {
-  if (g_iWindowThis == WINDOW_DATA) {
-    g_nDisasmCurAddress = static_cast<uint16_t>(g_nDisasmCurAddress - nDelta);
-    g_aMemDump[0].nAddress = g_nDisasmCurAddress;
+  if (g_window_this == WINDOW_DATA) {
+    g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address - nDelta);
+    g_mem_dump[0].nAddress = g_disasm_cur_address;
   } else {
-    g_nDisasmTopAddress = static_cast<uint16_t>(g_nDisasmTopAddress - nDelta);
+    g_disasm_top_address = static_cast<uint16_t>(g_disasm_top_address - nDelta);
     DisasmCalcCurFromTopAddress();
     DisasmCalcBotFromTopAddress();
   }
@@ -367,15 +367,15 @@ void _CursorMoveUpAligned(int nDelta) {
 //===========================================================================
 void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
   (void)bUpdateTop;
-  int nLen = ((g_nDisasmWinHeight - g_nDisasmCurLine) *
+  int nLen = ((g_disasm_win_height - g_disasm_cur_line) *
               3);  // max 3 opcodes/instruction, is our search window
 
   // Look for a start address that when disassembled,
   // will have the cursor on the specified line and address
-  int iTop = g_nDisasmCurAddress - nLen;
-  int iCur = g_nDisasmCurAddress;
+  int iTop = g_disasm_cur_address - nLen;
+  int iCur = g_disasm_cur_address;
 
-  g_bDisasmCurBad = false;
+  g_disasm_cur_bad = false;
 
   bool bFound = false;
   while (iTop <= iCur) {
@@ -383,18 +383,18 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
     int iOpmode = 0;
     int nOpbytes = 0;
 
-    for (int iLine = 0; iLine <= g_nDisasmCurLine; iLine++)
+    for (int iLine = 0; iLine <= g_disasm_cur_line; iLine++)
     {
       _6502_GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
 
-      if (iLine == g_nDisasmCurLine) {
-        if (iAddress == g_nDisasmCurAddress) {
-          g_nDisasmTopAddress = static_cast<uint16_t>(iTop);
+      if (iLine == g_disasm_cur_line) {
+        if (iAddress == g_disasm_cur_address) {
+          g_disasm_top_address = static_cast<uint16_t>(iTop);
           bFound = true;
           break;
         }
       }
-      if (iAddress >= g_nDisasmCurAddress) {
+      if (iAddress >= g_disasm_cur_address) {
         break;
       }
       iAddress += nOpbytes;
@@ -406,8 +406,8 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
   }
 
   if (!bFound) {
-    g_nDisasmTopAddress = g_nDisasmCurAddress;
-    g_bDisasmCurBad = true;
+    g_disasm_top_address = g_disasm_cur_address;
+    g_disasm_cur_bad = true;
   }
 }
 
@@ -424,14 +424,14 @@ auto DisasmCalcAddressFromLines(uint16_t iAddress, int nLines) -> uint16_t {
 
 //===========================================================================
 void DisasmCalcCurFromTopAddress() {
-  g_nDisasmCurAddress =
-      DisasmCalcAddressFromLines(g_nDisasmTopAddress, g_nDisasmCurLine);
+  g_disasm_cur_address =
+      DisasmCalcAddressFromLines(g_disasm_top_address, g_disasm_cur_line);
 }
 
 //===========================================================================
 void DisasmCalcBotFromTopAddress() {
-  g_nDisasmBotAddress =
-      DisasmCalcAddressFromLines(g_nDisasmTopAddress, g_nDisasmWinHeight);
+  g_disasm_bot_address =
+      DisasmCalcAddressFromLines(g_disasm_top_address, g_disasm_win_height);
 }
 
 //===========================================================================
@@ -445,13 +445,13 @@ auto debug_get_video_mode(uint32_t* pVideoMode) -> bool {
 }
 auto CmdCursorFollowTarget(int nArgs) -> Update_t {
   uint16_t nAddress = 0;
-  if (_6502_GetTargetAddress(g_nDisasmCurAddress, nAddress)) {
-    g_nDisasmCurAddress = nAddress;
+  if (_6502_GetTargetAddress(g_disasm_cur_address, nAddress)) {
+    g_disasm_cur_address = nAddress;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
       WindowUpdateDisasmSize();
     } else if (CURSOR_ALIGN_TOP == nArgs) {
-      g_nDisasmCurLine = 0;
+      g_disasm_cur_line = 0;
     }
     DisasmCalcTopBotAddress();
   }
@@ -460,15 +460,15 @@ auto CmdCursorFollowTarget(int nArgs) -> Update_t {
 }
 
 auto CmdCursorLineUp(int nArgs) -> Update_t {
-  if (g_iWindowThis == WINDOW_DATA) {
+  if (g_window_this == WINDOW_DATA) {
     _CursorMoveUpAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
   } else if (nArgs) {
-    g_nDisasmTopAddress--;
+    g_disasm_top_address--;
     DisasmCalcCurFromTopAddress();
     DisasmCalcBotFromTopAddress();
   } else {
-    g_nDisasmTopAddress--;
+    g_disasm_top_address--;
     DisasmCalcCurFromTopAddress();
     DisasmCalcBotFromTopAddress();
   }
@@ -479,60 +479,60 @@ auto CmdCursorLineUp(int nArgs) -> Update_t {
 auto CmdCursorLineDown(int nArgs) -> Update_t {
   int iOpmode = 0;
   int nOpbytes = 0;
-  _6502_GetOpmodeOpbyte(g_nDisasmCurAddress, iOpmode,
-                        nOpbytes);  // g_nDisasmTopAddress
+  _6502_GetOpmodeOpbyte(g_disasm_cur_address, iOpmode,
+                        nOpbytes);  // g_disasm_top_address
 
-  if (g_iWindowThis == WINDOW_DATA) {
+  if (g_window_this == WINDOW_DATA) {
     _CursorMoveDownAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
   } else if (nArgs)  // scroll down by 'n' bytes
   {
-    nOpbytes = nArgs;  // HACKL g_aArgs[1].val
+    nOpbytes = nArgs;  // HACKL g_args[1].val
 
-    g_nDisasmTopAddress += nOpbytes;
-    g_nDisasmCurAddress += nOpbytes;
-    g_nDisasmBotAddress += nOpbytes;
+    g_disasm_top_address += nOpbytes;
+    g_disasm_cur_address += nOpbytes;
+    g_disasm_bot_address += nOpbytes;
     DisasmCalcTopBotAddress();
   } else {
 #if DEBUG_SCROLL == 6
     // Works except on one case: G FB53, SPACE, DOWN
-    uint16_t nTop = g_nDisasmTopAddress;
-    uint16_t nCur = g_nDisasmCurAddress + nOpbytes;
-    if (g_bDisasmCurBad) {
-      g_nDisasmCurAddress = nCur;
-      g_bDisasmCurBad = false;
+    uint16_t nTop = g_disasm_top_address;
+    uint16_t nCur = g_disasm_cur_address + nOpbytes;
+    if (g_disasm_cur_bad) {
+      g_disasm_cur_address = nCur;
+      g_disasm_cur_bad = false;
       DisasmCalcTopFromCurAddress();
       return UPDATE_DISASM;
     }
 
     // Adjust Top until nNewCur is at > Cur
     do {
-      g_nDisasmTopAddress++;
+      g_disasm_top_address++;
       DisasmCalcCurFromTopAddress();
-    } while (g_nDisasmCurAddress < nCur);
+    } while (g_disasm_cur_address < nCur);
 
     DisasmCalcCurFromTopAddress();
     DisasmCalcBotFromTopAddress();
-    g_bDisasmCurBad = false;
+    g_disasm_cur_bad = false;
 #endif
-    g_nDisasmCurAddress += nOpbytes;
+    g_disasm_cur_address += nOpbytes;
 
-    _6502_GetOpmodeOpbyte(g_nDisasmTopAddress, iOpmode, nOpbytes);
-    g_nDisasmTopAddress += nOpbytes;
+    _6502_GetOpmodeOpbyte(g_disasm_top_address, iOpmode, nOpbytes);
+    g_disasm_top_address += nOpbytes;
 
-    _6502_GetOpmodeOpbyte(g_nDisasmBotAddress, iOpmode, nOpbytes);
-    g_nDisasmBotAddress += nOpbytes;
+    _6502_GetOpmodeOpbyte(g_disasm_bot_address, iOpmode, nOpbytes);
+    g_disasm_bot_address += nOpbytes;
 
-    if (g_bDisasmCurBad) {
+    if (g_disasm_cur_bad) {
       //  MessageBox( NULL, "Bad Disassembly of opcodes", "Debugger", MB_OK );
 
-      //      g_nDisasmCurAddress = nCur;
-      //      g_bDisasmCurBad = false;
+      //      g_disasm_cur_address = nCur;
+      //      g_disasm_cur_bad = false;
       //      DisasmCalcTopFromCurAddress();
       DisasmCalcTopBotAddress();
       //      return UPDATE_DISASM;
     }
-    g_bDisasmCurBad = false;
+    g_disasm_cur_bad = false;
   }
 
   // Can't use use + nBytes due to Disasm Singularity
@@ -550,17 +550,17 @@ struct LookAhead_t {
 };
 
 auto CmdCursorJumpPC(int nArgs) -> Update_t {
-  // TODO: Allow user to decide if they want next g_aOpcodes at
+  // TODO: Allow user to decide if they want next g_opcodes at
   // 1) Centered (traditionaly), or
   // 2) Top of the screen
 
   // if (UserPrefs.bNextInstructionCentered)
   if (CURSOR_ALIGN_CENTER == nArgs) {
-    g_nDisasmCurAddress = cpu_get_registers()->pc;  // (2)
+    g_disasm_cur_address = cpu_get_registers()->pc;  // (2)
     WindowUpdateDisasmSize();                     // calc cur line
   } else if (CURSOR_ALIGN_TOP == nArgs) {
-    g_nDisasmCurAddress = cpu_get_registers()->pc;  // (2)
-    g_nDisasmCurLine = 0;
+    g_disasm_cur_address = cpu_get_registers()->pc;  // (2)
+    g_disasm_cur_line = 0;
   }
 
   DisasmCalcTopBotAddress();
@@ -572,12 +572,12 @@ auto CmdCursorJumpPC(int nArgs) -> Update_t {
 auto CmdCursorJumpRetAddr(int nArgs) -> Update_t {
   uint16_t nAddress = 0;
   if (_6502_GetStackReturnAddress(nAddress)) {
-    g_nDisasmCurAddress = nAddress;
+    g_disasm_cur_address = nAddress;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
       WindowUpdateDisasmSize();
     } else if (CURSOR_ALIGN_TOP == nArgs) {
-      g_nDisasmCurLine = 0;
+      g_disasm_cur_line = 0;
     }
     DisasmCalcTopBotAddress();
   }
@@ -588,13 +588,13 @@ auto CmdCursorJumpRetAddr(int nArgs) -> Update_t {
 auto CmdCursorPageDown(int nArgs) -> Update_t {
   (void)nArgs;
   int iLines = 0;  // show at least 1 line from previous display
-  int nLines = WindowGetHeight(g_iWindowThis);
+  int nLines = WindowGetHeight(g_window_this);
 
   if (nLines < 2) {
     nLines = 2;
   }
 
-  if (g_iWindowThis == WINDOW_DATA) {
+  if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
     _CursorMoveDownAligned(nStep);
   } else {
@@ -603,7 +603,7 @@ auto CmdCursorPageDown(int nArgs) -> Update_t {
     //      CmdCursorLineDown(nArgs);
 
     // 5
-    nLines -= (g_nDisasmCurLine + 1);
+    nLines -= (g_disasm_cur_line + 1);
     if (nLines < 1) {
       nLines = 1;
     }
@@ -637,19 +637,19 @@ auto CmdCursorPageDown4K(int nArgs) -> Update_t {
 auto CmdCursorPageUp(int nArgs) -> Update_t {
   (void)nArgs;
   int iLines = 0;  // show at least 1 line from previous display
-  int nLines = WindowGetHeight(g_iWindowThis);
+  int nLines = WindowGetHeight(g_window_this);
 
   if (nLines < 2) {
     nLines = 2;
   }
 
-  if (g_iWindowThis == WINDOW_DATA) {
+  if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
     _CursorMoveUpAligned(nStep);
   } else {
     //    while (++iLines < nLines)
     //      CmdCursorLineUp(nArgs);
-    nLines -= (g_nDisasmCurLine + 1);
+    nLines -= (g_disasm_cur_line + 1);
     if (nLines < 1) {
       nLines = 1;
     }
@@ -684,7 +684,7 @@ auto CmdCursorSetPC(int nArgs) -> Update_t  // TODO rename
 {
   (void)nArgs;
   cpu_get_registers()->pc =
-      g_nDisasmCurAddress;  // set PC to current cursor address
+      g_disasm_cur_address;  // set PC to current cursor address
   return UPDATE_DISASM;
 }
 

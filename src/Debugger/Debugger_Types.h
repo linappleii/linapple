@@ -146,7 +146,7 @@ enum {
 */
 // NOTE: Order must match _PARAM_REGS_*
 // NOTE: Order must match Breakpoint_Source_t
-// NOTE: Order must match g_aBreakpointSource
+// NOTE: Order must match g_breakpoint_source
 enum BreakpointSource_t {
   BP_SRC_REG_A,
   BP_SRC_REG_X,
@@ -175,7 +175,7 @@ enum BreakpointSource_t {
 
 // Note: Order must match Breakpoint_Operator_t
 // Note: Order must much _PARAM_BREAKPOINT_*
-// Note: Order must match g_aBreakpointSymbols
+// Note: Order must match g_breakpoint_symbols
 enum BreakpointOperator_t {
   BP_OP_LESS_EQUAL, // <= REG
   BP_OP_LESS_THAN, // <  REG
@@ -254,7 +254,7 @@ struct Command_t {
 };
 
 // Commands sorted by Category
-// NOTE: Commands_e and g_aCommands[] order _MUST_ match !!! Aliases are listed at the end
+// NOTE: Commands_e and g_commands[] order _MUST_ match !!! Aliases are listed at the end
 enum Commands_e {
   // Assembler
   CMD_ASSEMBLE,
@@ -352,7 +352,7 @@ enum Commands_e {
   // Disk
   CMD_DISK,
   // Flags - CPU
-  CMD_FLAG_CLEAR, // Flag order must match g_aFlagNames CZIDBRVN
+  CMD_FLAG_CLEAR, // Flag order must match g_flag_names CZIDBRVN
   CMD_FLAG_CLR_C, // 8
   CMD_FLAG_CLR_Z, // 7
   CMD_FLAG_CLR_I, // 6
@@ -361,7 +361,7 @@ enum Commands_e {
   CMD_FLAG_CLR_R, // 3
   CMD_FLAG_CLR_V, // 2
   CMD_FLAG_CLR_N, // 1
-  CMD_FLAG_SET,   // Flag order must match g_aFlagNames CZIDBRVN
+  CMD_FLAG_SET,   // Flag order must match g_flag_names CZIDBRVN
   CMD_FLAG_SET_C, // 8
   CMD_FLAG_SET_Z, // 7
   CMD_FLAG_SET_I, // 6
@@ -988,11 +988,11 @@ struct FontConfig_t {
 // Instructions / Opcodes
 #ifdef SUPPORT_Z80_EMU
 #define OUTPUT_Z80_REGS
-#define REG_AF 0xF0
-#define REG_BC 0xF2
-#define REG_DE 0xF4
-#define REG_HL 0xF6
-#define REG_IX 0xF8
+constexpr auto REG_AF = 0xF0;
+constexpr auto REG_BC = 0xF2;
+constexpr auto REG_DE = 0xF4;
+constexpr auto REG_HL = 0xF6;
+constexpr auto REG_IX = 0xF8;
 #endif
 
 enum MemoryAccess_e {
@@ -1211,11 +1211,11 @@ struct Arg_t {
   bool bSymbol; // 1
 };
 
-// NOTE: Order MUST match g_aParameters[] !!!
+// NOTE: Order MUST match g_parameters[] !!!
 enum Parameters_e {
   // Note: Order must match Breakpoint_Operator_t
   // Note: Order must much _PARAM_BREAKPOINT_*
-  // Note: Order must match g_aBreakpointSymbols
+  // Note: Order must match g_breakpoint_symbols
   _PARAM_BREAKPOINT_BEGIN,
   PARAM_BP_LESS_EQUAL = _PARAM_BREAKPOINT_BEGIN,   // <=
   PARAM_BP_LESS_THAN,     // <
@@ -1255,13 +1255,13 @@ enum Parameters_e {
 
   // Disasm
   _PARAM_CONFIG_BEGIN = _PARAM_REGS_END, // Daisy Chain
-  PARAM_CONFIG_BRANCH = _PARAM_CONFIG_BEGIN, // g_iConfigDisasmBranchType   [0|1|2]
-  PARAM_CONFIG_CLICK,   // g_bConfigDisasmClick        [0..7] // GH#462
-  PARAM_CONFIG_COLON,   // g_bConfigDisasmAddressColon [0|1]
-  PARAM_CONFIG_OPCODE,  // g_bConfigDisasmOpcodesView  [0|1]
-  PARAM_CONFIG_POINTER, // g_bConfigInfoTargetPointer  [0|1]
-  PARAM_CONFIG_SPACES,  // g_bConfigDisasmOpcodeSpaces [0|1]
-  PARAM_CONFIG_TARGET,  // g_iConfigDisasmTargets      [0|1|2]
+  PARAM_CONFIG_BRANCH = _PARAM_CONFIG_BEGIN, // g_config_disasm_branch_type   [0|1|2]
+  PARAM_CONFIG_CLICK,   // g_config_disasm_click        [0..7] // GH#462
+  PARAM_CONFIG_COLON,   // g_config_disasm_address_colon [0|1]
+  PARAM_CONFIG_OPCODE,  // g_config_disasm_opcodes_view  [0|1]
+  PARAM_CONFIG_POINTER, // g_config_info_target_pointer  [0|1]
+  PARAM_CONFIG_SPACES,  // g_config_disasm_opcode_spaces [0|1]
+  PARAM_CONFIG_TARGET,  // g_config_disasm_targets      [0|1|2]
   _PARAM_CONFIG_END,
   PARAM_CONFIG_NUM = _PARAM_CONFIG_END - _PARAM_CONFIG_BEGIN,
 
@@ -1364,7 +1364,7 @@ typedef map<uint16_t, int> SourceAssembly_t; // Address -> Line #  &  FileName
 
 // ****************************************
 // WARNING: This is the simple enumeration.
-// See: g_aSymbols[]
+// See: g_symbols[]
 // ****************************************
 enum SymbolTable_Index_e // Symbols_e -> SymbolTable_Index_e
 {

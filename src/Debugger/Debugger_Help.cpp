@@ -112,7 +112,7 @@ auto StringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> int
 
 // Help Table ____________________________________________________________________________________
 
-static const HelpEntry_t g_aHelpTable[] =
+static const HelpEntry_t g_help_table[] =
 {
 	{ CMD_ASSEMBLE,        HELP_TYPE_NOTE,    "Built-in assember isn't functional yet." },
 	{ CMD_UNASSEMBLE,      HELP_TYPE_USAGE,   "[address | symbol]" },
@@ -199,7 +199,7 @@ static const HelpEntry_t g_aHelpTable[] =
 //===========================================================================
 auto HelpLastCommand() -> Update_t
 {
-	return Help_Arg_1( g_iCommand );
+	return Help_Arg_1( g_command );
 }
 
 
@@ -209,7 +209,7 @@ auto Help_Arg_1( int iCommandHelp ) -> Update_t
 {
 	_Arg_1( iCommandHelp );
 
-	sprintf( g_aArgs[ 1 ].sArg, "%s", g_aCommands[ iCommandHelp ].m_sName ); // .3 Fixed: Help_Arg_1() now copies command name into arg.name
+	sprintf( g_args[ 1 ].sArg, "%s", g_commands[ iCommandHelp ].m_sName ); // .3 Fixed: Help_Arg_1() now copies command name into arg.name
 
 	return CmdHelpSpecific( 1 );
 }
@@ -240,7 +240,7 @@ void Help_Categories()
 
 		for (int iCategory = _PARAM_HELPCATEGORIES_BEGIN ; iCategory < _PARAM_HELPCATEGORIES_END; iCategory++)
 		{
-			char *pName = g_aParameters[ iCategory ].m_sName;
+			char *pName = g_parameters[ iCategory ].m_sName;
 
 			if (nLen + strlen( pName ) >= (CONSOLE_WIDTH - 1))
 			{
@@ -350,7 +350,7 @@ void Help_Operators()
 		if ((iBreakOp >= PARAM_BP_LESS_EQUAL) &&
 			(iBreakOp <= PARAM_BP_GREATER_EQUAL))
 		{
-			strcat( sText, g_aBreakpointSymbols[ iBreakOp ] );
+			strcat( sText, g_breakpoint_symbols[ iBreakOp ] );
 			strcat( sText, " " );
 		}
 	}
@@ -633,13 +633,13 @@ auto CmdMOTD( int nArgs ) -> Update_t	// Message Of The Day
 		, CHC_KEY
 		, CHC_DEFAULT
 		, CHC_COMMAND
-		, g_aCommands[ CMD_HELP_SPECIFIC ].m_sName
+		, g_commands[ CMD_HELP_SPECIFIC ].m_sName
 		, CHC_DEFAULT
-//		, g_aCommands[ CMD_HELP_SPECIFIC ].pHelpSummary
+//		, g_commands[ CMD_HELP_SPECIFIC ].pHelpSummary
 		, CHC_COMMAND
-		, g_aCommands[ CMD_HELP_LIST     ].m_sName
+		, g_commands[ CMD_HELP_LIST     ].m_sName
 		, CHC_DEFAULT
-//		, g_aCommands[ CMD_HELP_LIST     ].pHelpSummary
+//		, g_commands[ CMD_HELP_LIST     ].pHelpSummary
 	);
 
 	ConsoleUpdate();
@@ -669,8 +669,8 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 	bool bCategory = false;
 	bool bDisplayCategory = true;
 
-	if ((! strcmp( g_aArgs[1].sArg, g_aParameters[ PARAM_WILDSTAR ].m_sName)) ||
-		(! strcmp( g_aArgs[1].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName)) )
+	if ((! strcmp( g_args[1].sArg, g_parameters[ PARAM_WILDSTAR ].m_sName)) ||
+		(! strcmp( g_args[1].sArg, g_parameters[ PARAM_MEM_SEARCH_WILD ].m_sName)) )
 	{
 		bAllCommands = true;
 		nArgs = NUM_COMMANDS;
@@ -691,8 +691,8 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 	{
 		for (iArg = 1; iArg <= nArgs; iArg++ )
 		{
-	//		int nFoundCategory = FindParam( g_aArgs[ iArg ].sArg, MATCH_EXACT, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
-			int nFoundCategory = FindParam( g_aArgs[ iArg ].sArg, MATCH_FUZZY, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
+	//		int nFoundCategory = FindParam( g_args[ iArg ].sArg, MATCH_EXACT, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
+			int nFoundCategory = FindParam( g_args[ iArg ].sArg, MATCH_FUZZY, iParam, _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END );
 			bCategory = nFoundCategory != 0;
 			switch( iParam )
 			{
@@ -701,7 +701,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 				case PARAM_CAT_CONFIG     : iCmdBegin = CMD_BENCHMARK       ; iCmdEnd = CMD_CONFIG_SET_DEBUG_DIR; break;
 				case PARAM_CAT_CPU        : iCmdBegin = CMD_ASSEMBLE        ; iCmdEnd = CMD_UNASSEMBLE           ; break;
 				case PARAM_CAT_FLAGS      :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand ); // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand ); // check if we have an exact command match first
 					if ( nFound ) { // && (iCommand != CMD_MEMORY_FILL))
 						bCategory = false;
 					} else if ( nFoundCategory )
@@ -711,7 +711,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					break;
 				case PARAM_CAT_HELP       : iCmdBegin = CMD_HELP_LIST       ; iCmdEnd = CMD_MOTD                 ; break;
 				case PARAM_CAT_KEYBOARD   :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand ); // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand ); // check if we have an exact command match first
 					if ((!nFound) || (iCommand != CMD_INPUT_KEY))
 					{
 						nArgs = 0;
@@ -720,7 +720,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					bCategory = false;
 					break;
 				case PARAM_CAT_MEMORY     :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if ( nFound ) {// && (iCommand != CMD_MEMORY_MOVE))
 						bCategory = false;
 					} else if ( nFoundCategory )
@@ -729,7 +729,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					}
 					break;
 				case PARAM_CAT_OUTPUT     :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if ( nFound ) { // && (iCommand != CMD_OUT))
 						bCategory = false;
 					} else if ( nFoundCategory )
@@ -738,7 +738,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					}
 					break;
 				case PARAM_CAT_SYMBOLS    :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if ( nFound ) { // && (iCommand != CMD_SYMBOLS_LOOKUP) && (iCommand != CMD_MEMORY_SEARCH))
 						bCategory = false;
 					} else if ( nFoundCategory )
@@ -752,7 +752,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					}
 					break;
 				case PARAM_CAT_WATCHES    :
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );  // check if we have an exact command match first
 					if (nFound) {
 						bCategory = false;
 					} else  // 2.7.0.17: HELP <category> wasn't displaying when category was one of: FLAGS, OUTPUT, WATCHES
@@ -767,7 +767,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 				case PARAM_CAT_OPERATORS  : nArgs = 0; Help_Operators(); break;
 				case PARAM_CAT_RANGE      :
 					// HACK: check if we have an exact command match first
-					nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );
+					nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );
 					if ((!nFound) || (iCommand != CMD_REGISTER_SET))
 					{
 						nArgs = 0;
@@ -795,9 +795,9 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 		for (iArg = 1; iArg <= nArgs; iArg++ )
 		{
 #if DEBUG_VAL_2
-			g_aArgs[ iArg ].nVal2 = iCmdBegin + iArg - 1;
+			g_args[ iArg ].nVal2 = iCmdBegin + iArg - 1;
 #endif
-			g_aArgs[ iArg ].nValue = iCmdBegin + iArg - 1;
+			g_args[ iArg ].nValue = iCmdBegin + iArg - 1;
 		}
 	}
 
@@ -809,9 +809,9 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 		if (bCategory)
 		{
 #if DEBUG_VAL_2
-			iCommand = g_aArgs[iArg].nVal2;
+			iCommand = g_args[iArg].nVal2;
 #endif
-			iCommand = g_aArgs[ iArg  ].nValue;
+			iCommand = g_args[ iArg  ].nValue;
 			nFound = 1;
 		}
 		else
@@ -824,7 +824,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 			nFound = 1;
 		}
 		else {
-			nFound = FindCommand( g_aArgs[iArg].sArg, pFunction, & iCommand );
+			nFound = FindCommand( g_args[iArg].sArg, pFunction, & iCommand );
 }
 
 		if (nFound > 1)
@@ -837,10 +837,10 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 }
 
 		if ((nArgs == 1) && (! nFound)) {
-			iCommand = g_aArgs[iArg].nValue;
+			iCommand = g_args[iArg].nValue;
 }
 
-		Command_t *pCommand = & g_aCommands[ iCommand ];
+		Command_t *pCommand = & g_commands[ iCommand ];
 
 		if (! nFound)
 		{
@@ -852,53 +852,53 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 		if (nFound && (! bAllCommands) && bDisplayCategory)
 		{
 			char sCategory[ CONSOLE_WIDTH ];
-			int iCmd = g_aCommands[ iCommand ].iCommand; // Unaliased command
+			int iCmd = g_commands[ iCommand ].iCommand; // Unaliased command
 
 			// HACK: Major kludge to display category!!!
 			if (iCmd <= CMD_UNASSEMBLE) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CPU ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_CPU ].m_sName );
 			} else
 			if (iCmd <= CMD_BOOKMARK_SAVE) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BOOKMARKS ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_BOOKMARKS ].m_sName );
 			} else
 			if (iCmd <= CMD_BREAKPOINT_SAVE) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_BREAKPOINTS ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_BREAKPOINTS ].m_sName );
 			} else
 			if (iCmd <= CMD_CONFIG_SET_DEBUG_DIR) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_CONFIG ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_CONFIG ].m_sName );
 			} else
 			if (iCmd <= CMD_CURSOR_PAGE_DOWN_4K) {
 				sprintf( sCategory, "Scrolling" );
 			} else
 			if (iCmd <= CMD_FLAG_SET_N) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_FLAGS ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_FLAGS ].m_sName );
 			} else
 			if (iCmd <= CMD_MOTD) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_HELP ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_HELP ].m_sName );
 			} else
 			if (iCmd <= CMD_MEMORY_FILL) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_MEMORY ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_MEMORY ].m_sName );
 			} else
 			if (iCmd <= CMD_OUTPUT_RUN) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_OUTPUT ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_OUTPUT ].m_sName );
 			} else
 			if (iCmd <= CMD_SYNC) {
 				sprintf( sCategory, "Source" );
 			} else
 			if (iCmd <= CMD_SYMBOLS_LIST) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_SYMBOLS ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_SYMBOLS ].m_sName );
 			} else
 			if (iCmd <= CMD_VIEW_DHGR2) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_VIEW ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_VIEW ].m_sName );
 			} else
 			if (iCmd <= CMD_WATCH_SAVE) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WATCHES ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_WATCHES ].m_sName );
 			} else
 			if (iCmd <= CMD_WINDOW_OUTPUT) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_WINDOW ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_WINDOW ].m_sName );
 			} else
 			if (iCmd <= CMD_ZEROPAGE_POINTER_SAVE) {
-				sprintf( sCategory, "%s", g_aParameters[ PARAM_CAT_ZEROPAGE ].m_sName );
+				sprintf( sCategory, "%s", g_parameters[ PARAM_CAT_ZEROPAGE ].m_sName );
 			} else {
 				sprintf( sCategory, "Unknown!" );
 }
@@ -935,7 +935,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 					);
 }
 
-//				if (! TryStringCat( sText, pHelp, g_nConsoleDisplayWidth ))
+//				if (! TryStringCat( sText, pHelp, g_console_display_width ))
 //				{
 //					if (! TryStringCat( sText, pHelp, CONSOLE_WIDTH-1 ))
 //					{
@@ -953,7 +953,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 	#if DEBUG_COMMAND_HELP
 				if (! bAllCommands) // Release version doesn't display message
 				{
-					ConsoleBufferPushFormat( sText, "Missing Summary Help: %s", g_aCommands[ iCommand ].aName );
+					ConsoleBufferPushFormat( sText, "Missing Summary Help: %s", g_commands[ iCommand ].aName );
 				}
 	#endif
 #endif
@@ -966,12 +966,12 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 
 		// MASTER HELP
 		bool bFoundAny = false;
-		for (int iHelp = 0; g_aHelpTable[iHelp].pText != nullptr; iHelp++)
+		for (int iHelp = 0; g_help_table[iHelp].pText != nullptr; iHelp++)
 		{
-			if (g_aHelpTable[iHelp].iCommand == iCommand)
+			if (g_help_table[iHelp].iCommand == iCommand)
 			{
 				bFoundAny = true;
-				const HelpEntry_t* pEntry = &g_aHelpTable[iHelp];
+				const HelpEntry_t* pEntry = &g_help_table[iHelp];
 				switch (pEntry->eType)
 				{
 				case HELP_TYPE_USAGE:
@@ -1005,7 +1005,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 			else
 			{
 #if _DEBUG
-				ConsoleBufferPushFormat(sText, "Command help not done yet!: %s", g_aCommands[iCommand].m_sName);
+				ConsoleBufferPushFormat(sText, "Command help not done yet!: %s", g_commands[iCommand].m_sName);
 #endif
 			}
 		}
@@ -1023,18 +1023,18 @@ auto CmdHelpList (int nArgs) -> Update_t
 
 	char sText[ nBuf ] = "";
 
-	int nMaxWidth = g_nConsoleDisplayWidth - 1;
+	int nMaxWidth = g_console_display_width - 1;
 	int iCommand = 0;
 
-	extern std::vector<Command_t> g_vSortedCommands;
+	extern std::vector<Command_t> g_sorted_commands;
 
-	if (! g_vSortedCommands.size())
+	if (! g_sorted_commands.size())
 	{
-		for (iCommand = 0; iCommand < g_nNumCommandsWithAliases; iCommand++ )
+		for (iCommand = 0; iCommand < g_num_commands_with_aliases; iCommand++ )
 		{
-			g_vSortedCommands.push_back( g_aCommands[ iCommand ] );
+			g_sorted_commands.push_back( g_commands[ iCommand ] );
 		}
-		std::sort( g_vSortedCommands.begin(), g_vSortedCommands.end(), commands_functor_compare() );
+		std::sort( g_sorted_commands.begin(), g_sorted_commands.end(), commands_functor_compare() );
 	}
 
 	int nLen = 0;
@@ -1045,10 +1045,10 @@ auto CmdHelpList (int nArgs) -> Update_t
 		        StringCat( sText, CHC_DEFAULT, nBuf );
 		nLen += StringCat( sText, ": " , nBuf );
 
-	for( iCommand = 0; iCommand < g_nNumCommandsWithAliases; iCommand++ ) // aliases are not printed
+	for( iCommand = 0; iCommand < g_num_commands_with_aliases; iCommand++ ) // aliases are not printed
 	{
-		Command_t *pCommand = & g_vSortedCommands.at( iCommand );
-//		Command_t *pCommand = & g_aCommands[ iCommand ];
+		Command_t *pCommand = & g_sorted_commands.at( iCommand );
+//		Command_t *pCommand = & g_commands[ iCommand ];
 		char      *pName = pCommand->m_sName;
 
 		if (! pCommand->pFunction) {
@@ -1104,25 +1104,25 @@ auto CmdVersion (int nArgs) -> Update_t
 
 	if (nArgs)
 	{
-		for (int iArg = 1; iArg <= g_nArgRaw; iArg++ )
+		for (int iArg = 1; iArg <= g_arg_raw_count; iArg++ )
 		{
 			// * PARAM_WILDSTAR -> ? PARAM_MEM_SEARCH_WILD
-			if ((! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_WILDSTAR        ].m_sName )) ||
-				(! strcmp( g_aArgs[ iArg ].sArg, g_aParameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
+			if ((! strcmp( g_args[ iArg ].sArg, g_parameters[ PARAM_WILDSTAR        ].m_sName )) ||
+				(! strcmp( g_args[ iArg ].sArg, g_parameters[ PARAM_MEM_SEARCH_WILD ].m_sName )) )
 			{
 				ConsoleBufferPushFormat( sText, "  Arg: %d bytes * %d = %d bytes",
-					sizeof(Arg_t), MAX_ARGS, sizeof(g_aArgs) );
+					sizeof(Arg_t), MAX_ARGS, sizeof(g_args) );
 
 				ConsoleBufferPushFormat( sText, "  Console: %d bytes * %d height = %d bytes",
-					sizeof( g_aConsoleDisplay[0] ), CONSOLE_HEIGHT, sizeof(g_aConsoleDisplay) );
+					sizeof( g_console_display[0] ), CONSOLE_HEIGHT, sizeof(g_console_display) );
 
 				ConsoleBufferPushFormat( sText, "  Commands: %d   (Aliased: %d)   Params: %d",
-					NUM_COMMANDS, g_nNumCommandsWithAliases, NUM_PARAMS );
+					NUM_COMMANDS, g_num_commands_with_aliases, NUM_PARAMS );
 
 				ConsoleBufferPushFormat( sText, "  Cursor(%d)  T: %04X  C: %04X  B: %04X %c D: %02X", // Top, Cur, Bot, Delta
-					g_nDisasmCurLine, g_nDisasmTopAddress, g_nDisasmCurAddress, g_nDisasmBotAddress,
-					g_bDisasmCurBad ? '*' : ' '
-					, g_nDisasmBotAddress - g_nDisasmTopAddress
+					g_disasm_cur_line, g_disasm_top_address, g_disasm_cur_address, g_disasm_bot_address,
+					g_disasm_cur_bad ? '*' : ' '
+					, g_disasm_bot_address - g_disasm_top_address
 				);
 
 				CmdConfigGetFont( 0 );

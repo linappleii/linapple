@@ -227,7 +227,7 @@ static auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
     if (ay_func == ay::func_write) {
       ay8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
                             pmb->sy6522.ORA,
-                            static_cast<int>(g_fCurrentCLK6502), sample_rate);
+                            static_cast<int>(g_current_clk_6502), sample_rate);
     } else if (ay_func == ay::func_latch) {
       if (pmb->sy6522.ORA <= ay::reg_mask) {
         pmb->ay_current_register =
@@ -240,7 +240,7 @@ static auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
 static auto sy6522_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
                                   uint8_t reg, uint8_t value) -> void {
   mp->mb_reg_accessed_flag = true;
-  if (!g_bFullSpeed) {
+  if (!g_full_speed) {
     mp->mb_active = true;
   }
   if (device >= static_cast<uint8_t>(chips_per_card)) {
@@ -344,7 +344,7 @@ static auto sy6522_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
 static auto sy6522_read_instance(MockingboardPeripheral_t* mp, uint8_t device,
                                  uint8_t reg) -> uint8_t {
   mp->mb_reg_accessed_flag = true;
-  if (!g_bFullSpeed) {
+  if (!g_full_speed) {
     mp->mb_active = true;
   }
   if (device >= static_cast<uint8_t>(chips_per_card)) {
@@ -412,7 +412,7 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     timer_period_val = CLOCK_6502 / 60.0;
   }
 
-  double irq_freq = g_fCurrentCLK6502 / timer_period_val;
+  double irq_freq = g_current_clk_6502 / timer_period_val;
   int num_samples =
       static_cast<int>(static_cast<double>(sample_rate) / irq_freq);
 
@@ -430,7 +430,7 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     voices[1] = mp->voice_buffers.at(i * 3 + 1).data();
     voices[2] = mp->voice_buffers.at(i * 3 + 2).data();
     ay8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
-                           static_cast<int>(g_fCurrentCLK6502), sample_rate);
+                           static_cast<int>(g_current_clk_6502), sample_rate);
   }
 
   const double attenuation = (mp->type == SoundCardType_t::phasor)
@@ -542,7 +542,7 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
   if (mp->mb_reg_accessed_flag) {
     mp->mb_inactive_cycle_count = 0;
     mp->mb_reg_accessed_flag = false;
-    if (!g_bFullSpeed) {
+    if (!g_full_speed) {
       mp->mb_active = true;
     }
     return;
@@ -554,7 +554,7 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
   }
 
   if (get_cycles(mp->host) - mp->mb_inactive_cycle_count >
-      static_cast<uint64_t>(g_fCurrentCLK6502) / 10) {
+      static_cast<uint64_t>(g_current_clk_6502) / 10) {
     mp->mb_active = false;
   }
 }
@@ -721,7 +721,7 @@ static auto mb_abi_think(void* instance, uint32_t cycles) -> void {
 
   const uint64_t cycles_since_last_update = get_cycles(mp->host) - mp->last_60hz;
   const uint64_t cycles_per_frame =
-      static_cast<uint64_t>(g_fCurrentCLK6502) / hz_60_divisor;
+      static_cast<uint64_t>(g_current_clk_6502) / hz_60_divisor;
 
   if (cycles_since_last_update > cycles_per_frame) {
     mp->last_60hz = get_cycles(mp->host);

@@ -27,39 +27,39 @@ extern void frame_refresh_status(int);
 #include "core/Peripheral.h"
 
 // Definitions
-int g_nDebugSteps = 0;
-uint32_t g_nDebugStepCycles = 0;
-int g_nDebugStepStart = 0;
-int g_nDebugStepUntil = -1;
-int g_nDebugSkipStart = 0;
-int g_nDebugSkipLen = 0;
+int g_debug_steps = 0;
+uint32_t g_debug_step_cycles = 0;
+int g_debug_step_start = 0;
+int g_debug_step_until = -1;
+int g_debug_skip_start = 0;
+int g_debug_skip_len = 0;
 
-bool g_bDebugFullSpeed = false;
-bool g_bLastGoCmdWasFullSpeed = false;
-bool g_bGoCmd_ReinitFlag = false;
+bool g_debug_full_speed = false;
+bool g_last_go_cmd_was_full_speed = false;
+bool g_go_cmd_reinit_flag = false;
 
-FILE* g_hTraceFile = nullptr;
-bool g_bTraceHeader = false;
-bool g_bTraceFileWithVideoScanner = false;
-char g_sFileNameTrace[] = "Trace.txt";
+FILE* g_trace_file = nullptr;
+bool g_trace_header = false;
+bool g_trace_file_with_video_scanner = false;
+char g_file_name_trace[] = "Trace.txt";
 
-extern uint16_t g_nDisasmCurAddress;
-extern int g_nDisasmCurLine;
+extern uint16_t g_disasm_cur_address;
+extern int g_disasm_cur_line;
 
-extern ProfileOpcode_t g_aProfileOpcodes[NUM_OPCODES];
-extern ProfileOpmode_t g_aProfileOpmodes[NUM_OPMODES];
+extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
+extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
 
-extern int g_iDebugBreakOnOpcode;
-extern int g_bDebugBreakpointHit;
-extern int g_nDebugBreakOnInvalid;
+extern int g_debug_break_on_opcode;
+extern int g_debug_breakpoint_hit;
+extern int g_debug_break_on_invalid;
 
-extern uint16_t g_nDisasmTopAddress;
-extern uint16_t g_nDisasmBotAddress;
+extern uint16_t g_disasm_top_address;
+extern uint16_t g_disasm_bot_address;
 
-extern uint32_t g_nVideoClockHorz;
-extern uint32_t g_nVideoClockVert;
+extern uint32_t g_video_clock_horz;
+extern uint32_t g_video_clock_vert;
 
-extern VideoScannerDisplayInfo_t g_videoScannerDisplayInfo;
+extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
 
 void DisasmCalcTopBotAddress();
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
@@ -84,12 +84,12 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
 
   const int kCmdGo = !bFullSpeed ? CMD_GO_NORMAL_SPEED : CMD_GO_FULL_SPEED;
 
-  g_nDebugSteps = -1;
-  g_nDebugStepCycles = 0;
-  g_nDebugStepStart = cpu_get_registers()->pc;
-  g_nDebugStepUntil = nArgs ? g_aArgs[1].nValue : -1;
-  g_nDebugSkipStart = -1;
-  g_nDebugSkipLen = -1;
+  g_debug_steps = -1;
+  g_debug_step_cycles = 0;
+  g_debug_step_start = cpu_get_registers()->pc;
+  g_debug_step_until = nArgs ? g_args[1].nValue : -1;
+  g_debug_skip_start = -1;
+  g_debug_skip_len = -1;
 
   if (nArgs > 4) {
     return Help_Arg_1(kCmdGo);
@@ -101,27 +101,27 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   // New   1    2     3 4
   if (nArgs > 1) {
     int iArg = 2;
-    g_nDebugSkipStart = g_aArgs[iArg].nValue;
+    g_debug_skip_start = g_args[iArg].nValue;
 
 #if DEBUG_VAL_2
-    uint16_t nAddress = g_aArgs[iArg].nVal2;
+    uint16_t nAddress = g_args[iArg].nVal2;
 #endif
     int nLen = 0;
     int nEnd = 0;
 
     if (nArgs > 2) {
-      if (g_aArgs[iArg + 1].eToken == TOKEN_COMMA) {
+      if (g_args[iArg + 1].eToken == TOKEN_COMMA) {
         if (nArgs > 3) {
-          nLen = g_aArgs[iArg + 2].nValue;
-          nEnd = g_nDebugSkipStart + nLen;
+          nLen = g_args[iArg + 2].nValue;
+          nEnd = g_debug_skip_start + nLen;
           if (nEnd > static_cast<int>(_6502_MEM_END)) {
             nEnd = _6502_MEM_END + 1;
           }
         } else {
           return Help_Arg_1(kCmdGo);
         }
-      } else if (g_aArgs[iArg + 1].eToken == TOKEN_COLON) {
-        nEnd = g_aArgs[iArg + 2].nValue + 1;
+      } else if (g_args[iArg + 1].eToken == TOKEN_COLON) {
+        nEnd = g_args[iArg + 2].nValue + 1;
       } else {
         return Help_Arg_1(kCmdGo);
       }
@@ -129,34 +129,34 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
       return Help_Arg_1(kCmdGo);
     }
 
-    nLen = nEnd - g_nDebugSkipStart;
+    nLen = nEnd - g_debug_skip_start;
     if (nLen < 0) {
       nLen = -nLen;
     }
-    g_nDebugSkipLen = nLen;
-    g_nDebugSkipLen &= _6502_MEM_END;
+    g_debug_skip_len = nLen;
+    g_debug_skip_len &= _6502_MEM_END;
 
 #if _DEBUG
     char sText[CONSOLE_WIDTH];
     ConsoleBufferPushFormat(sText, "Start: %04X,%04X  End: %04X  Len: %04X",
-                            g_nDebugSkipStart, g_nDebugSkipLen, nEnd, nLen);
+                            g_debug_skip_start, g_debug_skip_len, nEnd, nLen);
     ConsoleBufferToDisplay();
 #endif
   }
 
   //  uint16_t nAddressSymbol = 0;
-  //  bool bFoundSymbol = FindAddressFromSymbol( g_aArgs[1].sArg, &
+  //  bool bFoundSymbol = FindAddressFromSymbol( g_args[1].sArg, &
   //  nAddressSymbol ); if (bFoundSymbol)
-  //    g_nDebugStepUntil = nAddressSymbol;
+  //    g_debug_step_until = nAddressSymbol;
 
-  //  if (!g_nDebugStepUntil)
-  //    g_nDebugStepUntil = GetAddress(g_aArgs[1].sArg);
+  //  if (!g_debug_step_until)
+  //    g_debug_step_until = GetAddress(g_args[1].sArg);
 
   g_debugger_eat_key = true;
 
-  g_bDebugFullSpeed = bFullSpeed;
-  g_bLastGoCmdWasFullSpeed = bFullSpeed;
-  g_bGoCmd_ReinitFlag = true;
+  g_debug_full_speed = bFullSpeed;
+  g_last_go_cmd_was_full_speed = bFullSpeed;
+  g_go_cmd_reinit_flag = true;
 
   g_state.mode = MODE_STEPPING;
   frame_refresh_status(DRAW_TITLE);
@@ -172,18 +172,18 @@ auto CmdGoFullSpeed(int nArgs) -> Update_t { return CmdGo(nArgs, true); }
 
 auto CmdBreakInvalid(int nArgs) -> Update_t {
   if (nArgs == 0) {
-    g_nDebugBreakOnInvalid ^= 1;
+    g_debug_break_on_invalid ^= 1;
   } else {
-    g_nDebugBreakOnInvalid = g_aArgs[1].nValue != 0;
+    g_debug_break_on_invalid = g_args[1].nValue != 0;
   }
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 auto CmdBreakOpcode(int nArgs) -> Update_t {
   if (nArgs == 0) {
-    g_iDebugBreakOnOpcode = 0;
+    g_debug_break_on_opcode = 0;
   } else {
-    g_iDebugBreakOnOpcode = g_aArgs[1].nValue & 0xFF;
+    g_debug_break_on_opcode = g_args[1].nValue & 0xFF;
   }
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -202,22 +202,22 @@ auto CmdStackPopPseudo(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdStepOver(int nArgs) -> Update_t {
-  // assert( g_nDisasmCurAddress == cpu_get_registers()->pc );
+  // assert( g_disasm_cur_address == cpu_get_registers()->pc );
 
-  //  g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
-  uint16_t nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
+  //  g_debug_steps = nArgs ? g_args[1].nValue : 1;
+  uint16_t nDebugSteps = nArgs ? g_args[1].nValue : 1;
 
   while (nDebugSteps-- > 0) {
-    int nOpcode = *(mem + cpu_get_registers()->pc);  // g_nDisasmCurAddress
-    //  int eMode = g_aOpcodes[ nOpcode ].addrmode;
-    //  int nByte = g_aOpmodes[eMode]._nBytes;
+    int nOpcode = *(mem + cpu_get_registers()->pc);  // g_disasm_cur_address
+    //  int eMode = g_opcodes[ nOpcode ].addrmode;
+    //  int nByte = g_opmodes[eMode]._nBytes;
     //  if ((eMode ==  AM_A) &&
 
     CmdTrace(0);
     if (nOpcode == OPCODE_JSR) {
       CmdStepOut(0);
-      g_nDebugSteps = 0xFFFF;
-      while (g_nDebugSteps != 0) {
+      g_debug_steps = 0xFFFF;
+      while (g_debug_steps != 0) {
         DebugContinueStepping(true);
       }
     }
@@ -234,7 +234,7 @@ auto CmdStepOut(int nArgs) -> Update_t {
   uint16_t nAddress = 0;
   if (_6502_GetStackReturnAddress(nAddress)) {
     nArgs = _Arg_1(nAddress);
-    g_aArgs[1].sArg[0] = 0;
+    g_args[1].sArg[0] = 0;
     CmdGo(1, true);
   }
 
@@ -243,10 +243,10 @@ auto CmdStepOut(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdTrace(int nArgs) -> Update_t {
-  g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
-  g_nDebugStepCycles = 0;
-  g_nDebugStepStart = cpu_get_registers()->pc;
-  g_nDebugStepUntil = -1;
+  g_debug_steps = nArgs ? g_args[1].nValue : 1;
+  g_debug_step_cycles = 0;
+  g_debug_step_start = cpu_get_registers()->pc;
+  g_debug_step_until = -1;
   g_state.mode = MODE_STEPPING;
   frame_refresh_status(DRAW_TITLE);
   DebugContinueStepping(true);
@@ -258,33 +258,33 @@ auto CmdTrace(int nArgs) -> Update_t {
 auto CmdTraceFile(int nArgs) -> Update_t {
   char sText[CONSOLE_WIDTH] = "";
 
-  if (g_hTraceFile) {
-    fclose(g_hTraceFile);
-    g_hTraceFile = nullptr;
+  if (g_trace_file) {
+    fclose(g_trace_file);
+    g_trace_file = nullptr;
 
     ConsoleBufferPush("Trace stopped.");
   } else {
     std::string sFileName;
 
     if (nArgs) {
-      sFileName = g_aArgs[1].sArg;
+      sFileName = g_args[1].sArg;
     } else {
-      sFileName = g_sFileNameTrace;
+      sFileName = g_file_name_trace;
     }
 
-    g_bTraceFileWithVideoScanner = (nArgs >= 2);
+    g_trace_file_with_video_scanner = (nArgs >= 2);
 
     const std::string sFilePath =
         std::string(g_state.sCurrentDir.data()) + sFileName;
 
-    g_hTraceFile = fopen(sFilePath.c_str(), "wt");
+    g_trace_file = fopen(sFilePath.c_str(), "wt");
 
-    if (g_hTraceFile) {
-      const char* pTextHdr = g_bTraceFileWithVideoScanner
+    if (g_trace_file) {
+      const char* pTextHdr = g_trace_file_with_video_scanner
                                  ? "Trace (with video info) started: %s"
                                  : "Trace started: %s";
       ConsoleBufferPushFormat(sText, pTextHdr, sFilePath.c_str());
-      g_bTraceHeader = true;
+      g_trace_header = true;
     } else {
       ConsoleBufferPushFormat(sText, "Trace ERROR: %s", sFilePath.c_str());
     }
@@ -297,10 +297,10 @@ auto CmdTraceFile(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdTraceLine(int nArgs) -> Update_t {
-  g_nDebugSteps = nArgs ? g_aArgs[1].nValue : 1;
-  g_nDebugStepCycles = 1;
-  g_nDebugStepStart = cpu_get_registers()->pc;
-  g_nDebugStepUntil = -1;
+  g_debug_steps = nArgs ? g_args[1].nValue : 1;
+  g_debug_step_cycles = 1;
+  g_debug_step_start = cpu_get_registers()->pc;
+  g_debug_step_until = -1;
 
   g_state.mode = MODE_STEPPING;
   frame_refresh_status(DRAW_TITLE);
@@ -316,8 +316,8 @@ auto CmdUnassemble(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_UNASSEMBLE);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
-  g_nDisasmTopAddress = nAddress;
+  uint16_t nAddress = g_args[1].nValue;
+  g_disasm_top_address = nAddress;
 
   DisasmCalcCurFromTopAddress();
   DisasmCalcBotFromTopAddress();
@@ -328,8 +328,8 @@ auto CmdUnassemble(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdKey(int nArgs) -> Update_t {
   uint8_t code =
-      nArgs ? (g_aArgs[1].nValue ? static_cast<uint8_t>(g_aArgs[1].nValue)
-                                 : static_cast<uint8_t>(g_aArgs[1].sArg[0]))
+      nArgs ? (g_args[1].nValue ? static_cast<uint8_t>(g_args[1].nValue)
+                                 : static_cast<uint8_t>(g_args[1].sArg[0]))
             : static_cast<uint8_t>(' ');
 
   // Send key-down event
@@ -349,7 +349,7 @@ auto CmdIn(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_IN);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
+  uint16_t nAddress = g_args[1].nValue;
 
   io_map_dispatch(cpu_get_registers()->pc, nAddress & 0xFFFF, 0, 0, 0);
 
@@ -362,7 +362,7 @@ auto CmdJSR(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_JSR);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue & _6502_MEM_END;
+  uint16_t nAddress = g_args[1].nValue & _6502_MEM_END;
 
   // Mark Stack Page as dirty
   *(memdirty + (cpu_get_registers()->sp >> 8)) = 1;
@@ -399,33 +399,33 @@ auto CmdNOP(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdOut(int nArgs) -> Update_t {
   //  if ((!nArgs) ||
-  //      ((g_aArgs[1].sArg[0] != '0') && (!g_aArgs[1].nValue) &&
-  //      (!GetAddress(g_aArgs[1].sArg))))
+  //      ((g_args[1].sArg[0] != '0') && (!g_args[1].nValue) &&
+  //      (!GetAddress(g_args[1].sArg))))
   //     return DisplayHelp(CmdInput);
 
   if (!nArgs) {
     Help_Arg_1(CMD_OUT);
   }
 
-  uint16_t nAddress = g_aArgs[1].nValue;
+  uint16_t nAddress = g_args[1].nValue;
 
   IOWrite[(nAddress >> 4) & 0xF](cpu_get_registers()->pc, nAddress & 0xFF, 1,
-                                 g_aArgs[2].nValue & 0xFF, 0);
+                                 g_args[2].nValue & 0xFF, 0);
 
   return UPDATE_ALL;
 }
 
 auto CmdRegisterSet(int nArgs) -> Update_t {
-  if (nArgs < 2)  // || ((g_aArgs[2].sArg[0] != '0') && !g_aArgs[2].nValue))
+  if (nArgs < 2)  // || ((g_args[2].sArg[0] != '0') && !g_args[2].nValue))
   {
     return Help_Arg_1(CMD_REGISTER_SET);
   } else {
-    char* pName = g_aArgs[1].sArg;
+    char* pName = g_args[1].sArg;
     int iParam = 0;
     if (FindParam(pName, MATCH_EXACT, iParam, _PARAM_REGS_BEGIN,
                   _PARAM_REGS_END)) {
       int iArg = 2;
-      if (g_aArgs[iArg].eToken == TOKEN_EQUAL) {
+      if (g_args[iArg].eToken == TOKEN_EQUAL) {
         iArg++;
       }
 
@@ -433,8 +433,8 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
         return Help_Arg_1(CMD_REGISTER_SET);
       }
 
-      auto b = static_cast<uint8_t>(g_aArgs[iArg].nValue & 0xFF);
-      auto w = static_cast<uint16_t>(g_aArgs[iArg].nValue & 0xFFFF);
+      auto b = static_cast<uint8_t>(g_args[iArg].nValue & 0xFF);
+      auto w = static_cast<uint16_t>(g_args[iArg].nValue & 0xFFFF);
 
       switch (iParam) {
         case PARAM_REG_A:
@@ -442,7 +442,7 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
           break;
         case PARAM_REG_PC:
           cpu_get_registers()->pc = w;
-          g_nDisasmCurAddress = cpu_get_registers()->pc;
+          g_disasm_cur_address = cpu_get_registers()->pc;
           DisasmCalcTopBotAddress();
           break;
         case PARAM_REG_SP:
@@ -460,7 +460,7 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
     }
   }
 
-  //  g_nDisasmCurAddress = cpu_get_registers()->pc;
+  //  g_disasm_cur_address = cpu_get_registers()->pc;
   //  DisasmCalcTopBotAddress();
 
   return UPDATE_ALL;  // 1
@@ -480,19 +480,19 @@ void OutputTraceLine() {
   char sFlags[_6502_NUM_FLAGS + 1];
   DrawFlags(0, cpu_get_registers()->ps, sFlags);  // Get Flags String
 
-  if (!g_hTraceFile) return;
+  if (!g_trace_file) return;
 
-  if (g_bTraceHeader) {
-    g_bTraceHeader = false;
+  if (g_trace_header) {
+    g_trace_header = false;
 
-    if (g_bTraceFileWithVideoScanner) {
-      fprintf(g_hTraceFile,
+    if (g_trace_file_with_video_scanner) {
+      fprintf(g_trace_file,
               //        "0000 0000 0000 00   00 00 00 0000 --------  0000:90 90
               //        90  NOP"
               "Vert Horz Addr Data A: X: Y: SP:  Flags     Addr:Opcode    "
               "Mnemonic\n");
     } else {
-      fprintf(g_hTraceFile,
+      fprintf(g_trace_file,
               //        "00 00 00 0000 --------  0000:90 90 90  NOP"
               "A: X: Y: SP:  Flags     Addr:Opcode    Mnemonic\n");
     }
@@ -503,19 +503,19 @@ void OutputTraceLine() {
     sprintf(sTarget, "%s:%s", line.sTargetPointer, line.sTargetValue);
   }
 
-  if (g_bTraceFileWithVideoScanner) {
+  if (g_trace_file_with_video_scanner) {
     uint16_t addr = NTSC_VideoGetScannerAddressForDebugger();
     uint8_t data = mem[addr];
 
-    fprintf(g_hTraceFile, "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
-            g_nVideoClockVert, g_nVideoClockHorz, addr, data,
+    fprintf(g_trace_file, "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
+            g_video_clock_vert, g_video_clock_horz, addr, data,
             (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
             (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
             (char*)sFlags, sDisassembly
             //, sTarget // TODO: Show target?
     );
   } else {
-    fprintf(g_hTraceFile, "%02X %02X %02X %04X %s  %s\n",
+    fprintf(g_trace_file, "%02X %02X %02X %04X %s  %s\n",
             (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
             (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
             (char*)sFlags, sDisassembly
@@ -530,17 +530,17 @@ static void CheckBreakOpcode(int iOpcode) {
     IsDebugBreakOnInvalid(AM_IMPLIED);
   }
 
-  if (g_aOpcodes[iOpcode].sMnemonic[0] >=
+  if (g_opcodes[iOpcode].sMnemonic[0] >=
       'a')  // All 6502/65C02 undocumented opcodes mnemonics are lowercase
             // strings!
   {
-    // TODO: Translate g_aOpcodes[iOpcode].nAddressMode into {AM_1, AM_2, AM_3}
+    // TODO: Translate g_opcodes[iOpcode].nAddressMode into {AM_1, AM_2, AM_3}
     IsDebugBreakOnInvalid(AM_1);
   }
 
   // User wants to enter debugger on specific opcode? (NB. Can't be BRK)
-  if (g_iDebugBreakOnOpcode && g_iDebugBreakOnOpcode == iOpcode) {
-    g_bDebugBreakpointHit |= BP_HIT_OPCODE;
+  if (g_debug_break_on_opcode && g_debug_break_on_opcode == iOpcode) {
+    g_debug_breakpoint_hit |= BP_HIT_OPCODE;
   }
 }
 
@@ -549,43 +549,43 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
       false;  // Allow at least one instruction to execute so we don't trigger
               // on the same invalid opcode
 
-  if (g_nDebugSkipLen > 0) {
-    if ((cpu_get_registers()->pc >= g_nDebugSkipStart) &&
-        (cpu_get_registers()->pc < (g_nDebugSkipStart + g_nDebugSkipLen))) {
+  if (g_debug_skip_len > 0) {
+    if ((cpu_get_registers()->pc >= g_debug_skip_start) &&
+        (cpu_get_registers()->pc < (g_debug_skip_start + g_debug_skip_len))) {
       // Enter turbo debugger mode -- UI not updated, etc.
-      g_nDebugSteps = -1;
+      g_debug_steps = -1;
       g_state.mode = MODE_STEPPING;
     } else {
       // Enter normal debugger mode -- UI updated every instruction, etc.
-      g_nDebugSteps = 1;
+      g_debug_steps = 1;
       g_state.mode = MODE_STEPPING;
     }
   }
 
   bool bDoSingleStep = true;
 
-  if ((g_nDebugSteps != 0) || (bForceSingleStepNext)) {
+  if ((g_debug_steps != 0) || (bForceSingleStepNext)) {
     if (!bForceSingleStepNext) {
-      if (g_hTraceFile) {
+      if (g_trace_file) {
         OutputTraceLine();
       }
 
-      g_bDebugBreakpointHit = BP_HIT_NONE;
+      g_debug_breakpoint_hit = BP_HIT_NONE;
 
       if (mem_is_addr_code_memory(cpu_get_registers()->pc)) {
         uint8_t nOpcode = *(mem + cpu_get_registers()->pc);
 
         // Update profiling stats
-        int nOpmode = g_aOpcodes[nOpcode].nAddressMode;
-        g_aProfileOpcodes[nOpcode].m_nCount++;
-        g_aProfileOpmodes[nOpmode].m_nCount++;
+        int nOpmode = g_opcodes[nOpcode].nAddressMode;
+        g_profile_opcodes[nOpcode].m_nCount++;
+        g_profile_opmodes[nOpmode].m_nCount++;
 
-        CheckBreakOpcode(nOpcode);  // Can set g_bDebugBreakpointHit
+        CheckBreakOpcode(nOpcode);  // Can set g_debug_breakpoint_hit
       } else {
-        g_bDebugBreakpointHit = BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM;
+        g_debug_breakpoint_hit = BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM;
       }
 
-      if (g_bDebugBreakpointHit) {
+      if (g_debug_breakpoint_hit) {
         bDoSingleStep = false;
         bForceSingleStepNext =
             true;  // Allow next single-step (after this) to execute
@@ -593,8 +593,8 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
     }
 
     if (bDoSingleStep) {
-      if (g_nDebugSteps > 0) {
-        g_nDebugSteps--;
+      if (g_debug_steps > 0) {
+        g_debug_steps--;
       }
 
       bForceSingleStepNext = false;
@@ -608,9 +608,9 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
     }
   }
 
-  if ((g_nDebugSteps == 0) && (!bForceSingleStepNext)) {
+  if ((g_debug_steps == 0) && (!bForceSingleStepNext)) {
     g_state.mode = MODE_DEBUG;
-    g_nDebugSteps = 0;
+    g_debug_steps = 0;
 
     DisasmCalcTopBotAddress();
 
@@ -627,7 +627,7 @@ void DebugStopStepping() {
     return;
   }
 
-  g_nDebugSteps = 0;  // On next DebugContinueStepping(), stop single-stepping
+  g_debug_steps = 0;  // On next DebugContinueStepping(), stop single-stepping
                       // and transition to MODE_DEBUG
   ClearTempBreakpoints();
 }

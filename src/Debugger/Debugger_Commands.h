@@ -2,8 +2,8 @@
 
 #include "Debugger_Types.h"
 
-extern Command_t g_aCommands[];
-extern int g_nNumCommandsWithAliases;
+extern Command_t g_commands[];
+extern int g_num_commands_with_aliases;
 
 void VerifyDebuggerCommandTable();
 Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);

@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#define MAX_8910 4
+constexpr int MAX_8910 = 4; 
 
 // AY-3-8910 emulation
 // Based on General Instrument AY-3-8910 Datasheet

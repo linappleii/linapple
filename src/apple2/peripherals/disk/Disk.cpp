@@ -390,7 +390,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
     update_disk_metadata(disk_ptr, image_path);
 
     char full_title[max_disk_image_name_len + 64];
-    snprintf(full_title, sizeof(full_title), "%s - %s", g_pAppTitle,
+    snprintf(full_title, sizeof(full_title), "%s - %s", g_app_title,
              disk_ptr->image_name);
     linapple_update_title(full_title);
 
@@ -711,7 +711,7 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
   std::swap(disk_peripheral->drives.at(0), disk_peripheral->drives.at(1));
 
   char full_title[max_disk_image_name_len + 64];
-  snprintf(full_title, sizeof(full_title), "%s - %s", g_pAppTitle,
+  snprintf(full_title, sizeof(full_title), "%s - %s", g_app_title,
            disk_peripheral->drives.at(0).image_name);
   linapple_update_title(full_title);
 

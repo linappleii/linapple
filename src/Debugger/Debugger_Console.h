@@ -27,7 +27,7 @@ enum {
 // typedef uint8_t conchar_t;
 typedef short conchar_t;
 
-// NOTE: Keep in sync ConsoleColors_e g_anConsoleColor !
+// NOTE: Keep in sync ConsoleColors_e g_console_color !
 enum ConsoleColors_e {
   CONSOLE_COLOR_K,      // 0
   CONSOLE_COLOR_x = 0,  // default console foreground
@@ -43,7 +43,7 @@ enum ConsoleColors_e {
   CONSOLE_COLOR_b,      // : Light Blue
   NUM_CONSOLE_COLORS
 };
-extern int g_anConsoleColor[NUM_CONSOLE_COLORS];
+extern int g_console_color[NUM_CONSOLE_COLORS];
 
 // Note: THe ` ~ key should always display ~ to prevent rendering errors
 #define CONSOLE_COLOR_ESCAPE_CHAR '`'
@@ -52,7 +52,7 @@ extern int g_anConsoleColor[NUM_CONSOLE_COLORS];
 /* Help Colors
  */
 #if 1  // USE_APPLE_FONT
-       // TODO: char *g_aColorTextStrings[] = ""
+       // TODO: char *g_color_text_strings[] = ""
        // TODO: replace with CT_STRINGS[0]
        // TODO: CT_COMMA
        // TODO: CT_COLON
@@ -149,9 +149,9 @@ inline bool ConsoleColor_IsColor(conchar_t g) {
 
 inline uint32_t ConsoleColor_GetColor(conchar_t g) {
   const int iColor = (g >> 8) - '0';
-  if (iColor < NUM_CONSOLE_COLORS) return g_anConsoleColor[iColor];
+  if (iColor < NUM_CONSOLE_COLORS) return g_console_color[iColor];
 
-  return g_anConsoleColor[0];
+  return g_console_color[0];
 }
 
 inline char ConsoleColor_GetMeta(conchar_t g) {
@@ -197,46 +197,46 @@ inline int ConsoleColor_StringLength(const char* pText) {
 // Globals __________________________________________________________________
 
 // Buffer
-extern bool g_bConsoleBufferPaused;
-extern int g_nConsoleBuffer;
+extern bool g_console_buffer_paused;
+extern int g_console_buffer_size;
 extern conchar_t
-    g_aConsoleBuffer[CONSOLE_BUFFER_HEIGHT]
+    g_console_buffer[CONSOLE_BUFFER_HEIGHT]
                     [CONSOLE_WIDTH];  // TODO: std::vector< line_t >
 
 // Cursor
-extern char g_sConsoleCursor[];
+extern char g_console_cursor[];
 
 // Display
-extern char g_aConsolePrompt[];  // = ">!"; // input, assembler // NUM_PROMPTS
+extern char g_console_prompt[];  // = ">!"; // input, assembler // NUM_PROMPTS
 extern char
-    g_sConsolePrompt[];  // = ">"; // No, NOT Integer Basic!  The nostalgic '*'
+    g_console_prompt_str[];  // = ">"; // No, NOT Integer Basic!  The nostalgic '*'
                          // "Monitor" doesn't look as good, IMHO. :-(
-extern int g_nConsolePromptLen;
+extern int g_console_prompt_len;
 
-extern bool g_bConsoleFullWidth;  // = false;
+extern bool g_console_full_width;  // = false;
 
-extern int g_iConsoleDisplayStart;  // to allow scrolling
-extern int g_nConsoleDisplayTotal;  // number of lines added to console
-extern int g_nConsoleDisplayLines;
-extern int g_nConsoleDisplayWidth;
-extern conchar_t g_aConsoleDisplay[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+extern int g_console_display_start;  // to allow scrolling
+extern int g_console_display_total;  // number of lines added to console
+extern int g_console_display_lines;
+extern int g_console_display_width;
+extern conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
-extern int g_nHistoryLinesStart;  // = 0;
-extern int g_nHistoryLinesTotal;  // = 0; // number of commands entered
-extern char g_aHistoryLines[HISTORY_HEIGHT][HISTORY_WIDTH];  // = {""};
+extern int g_history_lines_start;  // = 0;
+extern int g_history_lines_total;  // = 0; // number of commands entered
+extern char g_history_lines[HISTORY_HEIGHT][HISTORY_WIDTH];  // = {""};
 
 // Input Line
 // Raw input Line (has prompt)
-extern char g_aConsoleInput[CONSOLE_WIDTH + 16];
+extern char g_console_input[CONSOLE_WIDTH + 16];
 
 // Cooked input line (no prompt)
-extern int g_nConsoleInputChars;
-extern char* g_pConsoleInput;           // points to past prompt
-extern const char* g_pConsoleFirstArg;  // points to first arg
-extern bool g_bConsoleInputQuoted;
+extern int g_console_input_chars;
+extern char* g_console_input_ptr;           // points to past prompt
+extern const char* g_console_first_arg;  // points to first arg
+extern bool g_console_input_quoted;
 
-extern int g_nConsoleInputSkip;
+extern int g_console_input_skip;
 
 // Prototypes _______________________________________________________________
 

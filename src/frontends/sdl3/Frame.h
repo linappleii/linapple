@@ -26,7 +26,7 @@ constexpr int btn_loadst = 9;
 
 // if you gonna change these values, consider changing some values in Video.cpp
 #define SCREEN_BPP 8
-extern SDL_Surface* screen;
+extern SDL_Surface* g_screen;
 extern SDL_Window* g_window;
 extern SDL_Renderer* g_renderer;
 extern SDL_Texture* g_texture;
@@ -35,8 +35,8 @@ extern SDL_Texture* g_texture;
 
 extern bool g_window_resized;
 
-extern SDL_Rect orig_rect;
-extern SDL_Rect new_rect;
+extern SDL_Rect g_orig_rect;
+extern SDL_Rect g_new_rect;
 
 auto init_sdl() -> int;
 

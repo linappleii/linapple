@@ -254,8 +254,8 @@ enum DebugColors_e {
   NUM_DEBUG_COLORS
 };
 
-extern int g_iColorScheme;
-extern int g_aColorIndex[NUM_DEBUG_COLORS];
+extern int g_color_scheme;
+extern int g_color_index[NUM_DEBUG_COLORS];
 
 // Color
 ColorRef_t DebuggerGetColor(int iColor);

@@ -91,7 +91,7 @@ auto speaker_update(void* instance, uint32_t elapsed_cycles) -> void {
     speaker_peripheral->quiet_cycle_count += elapsed_cycles;
 
     const uint64_t inactivity_threshold =
-        static_cast<uint64_t>(g_fCurrentCLK6502 / inactivity_divisor);
+        static_cast<uint64_t>(g_current_clk_6502 / inactivity_divisor);
 
     if (speaker_peripheral->quiet_cycle_count > inactivity_threshold) {
       speaker_peripheral->is_active = false;
@@ -125,7 +125,7 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
   cpu_calc_cycles(remaining_cycles);
   speaker_peripheral->has_strobe = true;
 
-  if (!g_bFullSpeed) {
+  if (!g_full_speed) {
     speaker_peripheral->is_active = true;
 
     if (speaker_peripheral->sound_mode == static_cast<uint32_t>(sound_wave) &&
@@ -199,7 +199,7 @@ auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
 
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
   auto* save_state_ptr = static_cast<SsIoSpeaker_t*>(state_buffer);
-  save_state_ptr->g_nSpkrLastCycle = speaker_peripheral->last_update_cycle;
+  save_state_ptr->g_spkr_last_cycle = speaker_peripheral->last_update_cycle;
   save_state_ptr->quiet_cycle_count = speaker_peripheral->quiet_cycle_count;
   save_state_ptr->recently_active = speaker_peripheral->is_active ? 1 : 0;
   save_state_ptr->state = speaker_peripheral->current_state ? 1 : 0;
@@ -221,7 +221,7 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
   const auto* save_state_ptr = static_cast<const SsIoSpeaker_t*>(state_buffer);
-  speaker_peripheral->last_update_cycle = save_state_ptr->g_nSpkrLastCycle;
+  speaker_peripheral->last_update_cycle = save_state_ptr->g_spkr_last_cycle;
   speaker_peripheral->quiet_cycle_count = save_state_ptr->quiet_cycle_count;
   speaker_peripheral->is_active = (save_state_ptr->recently_active != 0);
   speaker_peripheral->current_state = (save_state_ptr->state != 0);
@@ -291,7 +291,7 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
 
-  const double cycles_per_sample = g_fCurrentCLK6502 / SPKR_SAMPLE_RATE;
+  const double cycles_per_sample = g_current_clk_6502 / SPKR_SAMPLE_RATE;
   if (cycles_per_sample <= 0.0) {
     return;
   }

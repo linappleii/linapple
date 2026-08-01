@@ -7,12 +7,12 @@
 #include "Debugger_Color.h"
 
 // Externs for globals in Debugger_Display.cpp
-extern int g_iConsoleDisplayStart;
-extern int g_nConsoleDisplayLines;
-extern int g_nConsoleDisplayTotal;
-extern int g_nConsoleDisplayWidth;
-extern conchar_t g_aConsoleDisplay[CONSOLE_HEIGHT][CONSOLE_WIDTH];
-extern uint32_t g_hConsoleBrushBG;
+extern int g_console_display_start;
+extern int g_console_display_lines;
+extern int g_console_display_total;
+extern int g_console_display_width;
+extern conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+extern uint32_t g_console_brush_bg;
 
 // Constants
 const int DISPLAY_DISASM_RIGHT = 353;
@@ -27,20 +27,20 @@ void DrawSubWindow_Console(Update_t bUpdate)
 }
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_aFontConfig[FONT_CONSOLE]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_CONSOLE]._hFont);
 #endif
 
   if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT))
   {
     DebuggerSetColorBG(DebuggerGetColor(BG_CONSOLE_OUTPUT));
 
-    int iLine = g_iConsoleDisplayStart + CONSOLE_FIRST_LINE;
-    for (int y = 1; y < g_nConsoleDisplayLines; y++)
+    int iLine = g_console_display_start + CONSOLE_FIRST_LINE;
+    for (int y = 1; y < g_console_display_lines; y++)
     {
-      if (iLine <= (g_nConsoleDisplayTotal + CONSOLE_FIRST_LINE))
+      if (iLine <= (g_console_display_total + CONSOLE_FIRST_LINE))
       {
         DebuggerSetColorFG(DebuggerGetColor(FG_CONSOLE_OUTPUT));
-        DrawConsoleLine(g_aConsoleDisplay[iLine], y);
+        DrawConsoleLine(g_console_display[iLine], y);
       }
       else
       {
@@ -68,9 +68,9 @@ void DrawWindowBackground_Main(int iWindow)
   rect.left = 0;
   rect.top = 0;
   rect.right = DISPLAY_DISASM_RIGHT;
-  int nTop = GetConsoleTopPixels(g_nConsoleDisplayLines - 1);
+  int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
   rect.bottom = nTop;
-  FillRect(&rect, g_hConsoleBrushBG);
+  FillRect(&rect, g_console_brush_bg);
 #endif
 }
 
@@ -84,8 +84,8 @@ void DrawWindowBackground_Info(int iWindow)
   rect.top = 0;
   rect.left = DISPLAY_DISASM_RIGHT;
   rect.right = DISPLAY_WIDTH;
-  int nTop = GetConsoleTopPixels(g_nConsoleDisplayLines - 1);
+  int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
   rect.bottom = nTop;
-  FillRect(&rect, g_hConsoleBrushBG);
+  FillRect(&rect, g_console_brush_bg);
 #endif
 }
