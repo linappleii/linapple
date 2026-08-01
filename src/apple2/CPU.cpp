@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
@@ -133,6 +134,12 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
       uExtraCycles = 1;            \
   }
 
+static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
+  uint16_t val;
+  memcpy(&val, ptr, sizeof(val));
+  return val;
+}
+
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wsequence-point"
 #define CHECK_PAGE_CHANGE \
@@ -141,40 +148,40 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
 // Addressing Mode Macros
 
 #define ABS                           \
-  addr = *(uint16_t*)(mem + regs.pc); \
+  addr = read_u16_unaligned(mem + regs.pc); \
   regs.pc += 2;
 #define IABSX                                                                  \
-  addr = *(uint16_t*)(mem + (*(uint16_t*)(mem + regs.pc)) + (uint16_t)regs.x); \
+  addr = read_u16_unaligned(mem + (read_u16_unaligned(mem + regs.pc)) + (uint16_t)regs.x); \
   regs.pc += 2;
 #define ABSX                          \
-  base = *(uint16_t*)(mem + regs.pc); \
+  base = read_u16_unaligned(mem + regs.pc); \
   addr = base + (uint16_t)regs.x;     \
   regs.pc += 2;                       \
   CHECK_PAGE_CHANGE;
 #define ABSX_NP                       \
-  base = *(uint16_t*)(mem + regs.pc); \
+  base = read_u16_unaligned(mem + regs.pc); \
   addr = base + (uint16_t)regs.x;     \
   regs.pc += 2;
 #define ABSY                          \
-  base = *(uint16_t*)(mem + regs.pc); \
+  base = read_u16_unaligned(mem + regs.pc); \
   addr = base + (uint16_t)regs.y;     \
   regs.pc += 2;                       \
   CHECK_PAGE_CHANGE;
 #define ABSY_NP                       \
-  base = *(uint16_t*)(mem + regs.pc); \
+  base = read_u16_unaligned(mem + regs.pc); \
   addr = base + (uint16_t)regs.y;     \
   regs.pc += 2;
 #define IABSCMOS                               \
-  base = *(uint16_t*)(mem + regs.pc);          \
-  addr = *(uint16_t*)(mem + base);             \
+  base = read_u16_unaligned(mem + regs.pc);          \
+  addr = read_u16_unaligned(mem + base);             \
   if ((base & 0xFF) == 0xFF) uExtraCycles = 1; \
   regs.pc += 2;
 #define IABSNMOS                                                      \
-  base = *(uint16_t*)(mem + regs.pc);                                 \
+  base = read_u16_unaligned(mem + regs.pc);                           \
   if ((base & 0xFF) == 0xFF)                                          \
     addr = *(mem + base) + ((uint16_t)*(mem + (base & 0xFF00)) << 8); \
   else                                                                \
-    addr = *(uint16_t*)(mem + base);                                  \
+    addr = read_u16_unaligned(mem + base);                            \
   regs.pc += 2;
 #define IMM addr = regs.pc++;
 #define INDX                                        \
@@ -182,12 +189,12 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
   if (base == 0xFF)                                 \
     addr = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
   else                                              \
-    addr = *(uint16_t*)(mem + base);
+    addr = read_u16_unaligned(mem + base);
 #define INDY                                        \
   if (*(mem + regs.pc) == 0xFF)                     \
     base = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
   else                                              \
-    base = *(uint16_t*)(mem + *(mem + regs.pc));    \
+    base = read_u16_unaligned(mem + *(mem + regs.pc)); \
   regs.pc++;                                        \
   addr = base + (uint16_t)regs.y;                   \
   CHECK_PAGE_CHANGE;
@@ -196,7 +203,7 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
   if (base == 0xFF)                                 \
     addr = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
   else                                              \
-    addr = *(uint16_t*)(mem + base);
+    addr = read_u16_unaligned(mem + base);
 #define REL addr = (signed char)*(mem + regs.pc++);
 
 #define ZPG addr = *(mem + regs.pc++);
@@ -344,7 +351,7 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
   EF_TO_AF                 \
   PUSH(regs.ps);           \
   regs.ps |= AF_INTERRUPT; \
-  regs.pc = *(uint16_t*)(mem + 0xFFFE);
+  regs.pc = read_u16_unaligned(mem + 0xFFFE);
 #define BVC \
   if (!flagv) BRANCH_TAKEN;
 #define BVS \
@@ -775,7 +782,7 @@ static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = regs.ps | AF_INTERRUPT & ~AF_DECIMAL;
-    regs.pc = *(uint16_t*)(mem + NMI_VECTOR_ADDR);
+    regs.pc = read_u16_unaligned(mem + NMI_VECTOR_ADDR);
     CYC(7)
   }
 #endif
@@ -793,7 +800,7 @@ static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
     EF_TO_AF
     PUSH(regs.ps & ~AF_BREAK)
     regs.ps = (regs.ps | AF_INTERRUPT) & (~AF_DECIMAL);
-    regs.pc = *reinterpret_cast<uint16_t*>(mem + IRQ_VECTOR_ADDR);
+    regs.pc = read_u16_unaligned(mem + IRQ_VECTOR_ADDR);
     CYC(7)
   }
 }

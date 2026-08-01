@@ -33,8 +33,36 @@ option(PROFILING "Enable profiling" OFF)
 option(REGISTRY_WRITEABLE "Enable registry writing" OFF)
 option(BUILD_SHARED_PERIPHERALS "Build peripherals as shared libraries instead of built-in" OFF)
 
+option(ENABLE_ASAN "Enable AddressSanitizer (ASan)" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer (UBSan)" OFF)
+option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis" OFF)
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
+
+set(SANITIZER_FLAGS "")
+if(ENABLE_ASAN)
+    list(APPEND SANITIZER_FLAGS "-fsanitize=address" "-fno-omit-frame-pointer")
+endif()
+if(ENABLE_UBSAN)
+    list(APPEND SANITIZER_FLAGS "-fsanitize=undefined")
+endif()
+
+if(SANITIZER_FLAGS)
+    add_compile_options(${SANITIZER_FLAGS})
+    add_link_options(${SANITIZER_FLAGS})
+endif()
+
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+    if(CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        message(STATUS "clang-tidy static analysis enabled: ${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "ENABLE_CLANG_TIDY is ON, but clang-tidy executable was not found")
+    endif()
+endif()
 
 # Check for LTO support
 include(CheckIPOSupported)
@@ -391,6 +419,9 @@ if(BUILD_TESTING)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
+        if(ENABLE_ASAN OR ENABLE_UBSAN)
+            set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
+        endif()
     endmacro()
 
     # Refactored tests
