@@ -1312,3 +1312,5 @@ auto mem_set_snapshot(SS_BaseMemory* pSS) -> uint32_t {
   return 0;
 }
 
+// NOLINTEND
+

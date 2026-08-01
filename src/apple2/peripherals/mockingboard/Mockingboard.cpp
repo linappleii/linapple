@@ -521,7 +521,6 @@ static auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
       if (!timer1_underflow ||
           (mp->mb_timer_device != static_cast<uint16_t>(i)) ||
           !mp->timer_irq_active) {
-        // NOLINTEND(cppcoreguidelines-pro-type-union-access)
         continue;
       }
 
