@@ -159,7 +159,7 @@ auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case opt_no_debugger:
-        outConfig->bDisableDebugger = true;
+        outConfig->disable_debugger = true;
         break;
       case 'h':
         outConfig->intent = INTENT_HELP;

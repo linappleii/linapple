@@ -55,12 +55,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   g_apple2_type = config->apple2Type;
   if (config->bPAL) {
     g_videotype = VT_COLOR_TVEMU;
-    g_state.bVideoScannerNTSC = false;
-    g_state.dwClksPerFrame = 20280;
+    g_state.video_scanner_ntsc = false;
+    g_state.clks_per_frame = 20280;
   } else {
     g_videotype = VT_COLOR_STANDARD;
-    g_state.bVideoScannerNTSC = true;
-    g_state.dwClksPerFrame = 17030;
+    g_state.video_scanner_ntsc = true;
+    g_state.clks_per_frame = 17030;
   }
 
   // 4. Init Snapshots
@@ -70,17 +70,17 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   save_state_startup();
 
   // 5. Initialize directories
-  InitializeDirectory(REGVALUE_PREF_START_DIR, &g_state.sCurrentDir[0],
-                      sizeof(g_state.sCurrentDir));
-  InitializeDirectory(REGVALUE_PREF_HDD_START_DIR, &g_state.sHDDDir[0],
-                      sizeof(g_state.sHDDDir));
-  InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.sSaveStateDir[0],
-                      sizeof(g_state.sSaveStateDir));
+  InitializeDirectory(REGVALUE_PREF_START_DIR, &g_state.current_dir[0],
+                      sizeof(g_state.current_dir));
+  InitializeDirectory(REGVALUE_PREF_HDD_START_DIR, &g_state.hdd_dir[0],
+                      sizeof(g_state.hdd_dir));
+  InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
+                      sizeof(g_state.save_state_dir));
 
   Frontend_UpdateKeyboardMapping();
 
   if (config->szDebuggerScript.at(0) != '\0') {
-    Util_SafeStrCpy(&g_state.sDebuggerScript[0],
+    Util_SafeStrCpy(&g_state.debugger_script[0],
                     config->szDebuggerScript.data(), path_max_len);
   }
 
@@ -91,9 +91,9 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   bool disable_dbg_config = false;
   if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
                      &disable_dbg_config)) {
-    g_state.bDisableDebugger = config->bDisableDebugger || disable_dbg_config;
+    g_state.disable_debugger = config->disable_debugger || disable_dbg_config;
   } else {
-    g_state.bDisableDebugger = config->bDisableDebugger;
+    g_state.disable_debugger = config->disable_debugger;
   }
 
   return 0;

@@ -129,12 +129,12 @@ auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase)
     return false;
   }
 
-  char* pSrc = &(pArg->sArg[0]);
+  char* src_ptr = &(pArg->sArg[0]);
   char* pEnd = nullptr;
 
   if (pAddressValue_) {
     *pAddressValue_ =
-        static_cast<uint16_t>(strtoul(pSrc, &pEnd, nBase) & _6502_MEM_END);
+        static_cast<uint16_t>(strtoul(src_ptr, &pEnd, nBase) & _6502_MEM_END);
     return true;
   }
 
@@ -156,7 +156,7 @@ auto ArgsGetImmediateValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
 // Read console input, process the raw args, turning them into tokens and types.
 //===========================================================================
 auto ArgsGet(char* pInput) -> int {
-  const char* pSrc = pInput;
+  const char* src_ptr = pInput;
   const char* pEnd = nullptr;
   int nBuf = 0;
 
@@ -174,21 +174,21 @@ auto ArgsGet(char* pInput) -> int {
   // BP FAC8:FACA // Range=3
   // BP FAC8,2    // Length=2
   // ^ ^^   ^^
-  // | ||   |pSrc
-  // | ||   pSrc
-  // | |pSrc
+  // | ||   |src_ptr
+  // | ||   src_ptr
+  // | |src_ptr
   // | pEnd
-  // pSrc
-  while ((*pSrc) && (iArg < MAX_ARGS)) {
+  // src_ptr
+  while ((*src_ptr) && (iArg < MAX_ARGS)) {
     // Technically, there shouldn't be any leading spaces,
     // since pressing the spacebar is an alias for TRACE.
     // However, there is spaces between arguments
-    pSrc = const_cast<char*>(skip_white_space(pSrc));
+    src_ptr = const_cast<char*>(skip_white_space(src_ptr));
 
-    if (pSrc) {
-      pEnd = FindTokenOrAlphaNumeric(pSrc, g_tokens, NUM_TOKENS, &iTokenSrc);
+    if (src_ptr) {
+      pEnd = FindTokenOrAlphaNumeric(src_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
       if ((iTokenSrc == NO_TOKEN) || (iTokenSrc == TOKEN_ALPHANUMERIC)) {
-        pEnd = SkipUntilToken(pSrc + 1, g_tokens, NUM_TOKENS, &iTokenEnd);
+        pEnd = SkipUntilToken(src_ptr + 1, g_tokens, NUM_TOKENS, &iTokenEnd);
       }
 
       if (iTokenSrc == TOKEN_COMMENT_EOL) {
@@ -206,15 +206,15 @@ auto ArgsGet(char* pInput) -> int {
       }
 
       if (iTokenSrc == TOKEN_QUOTE_DOUBLE) {
-        pSrc++;  // Don't store start of quote
-        pEnd = skip_until_char(pSrc, CHAR_QUOTE_DOUBLE);
+        src_ptr++;  // Don't store start of quote
+        pEnd = skip_until_char(src_ptr, CHAR_QUOTE_DOUBLE);
       } else if (iTokenSrc == TOKEN_QUOTE_SINGLE) {
-        pSrc++;  // Don't store start of quote
-        pEnd = skip_until_char(pSrc, CHAR_QUOTE_SINGLE);
+        src_ptr++;  // Don't store start of quote
+        pEnd = skip_until_char(src_ptr, CHAR_QUOTE_SINGLE);
       }
 
       if (pEnd) {
-        nBuf = pEnd - pSrc;
+        nBuf = pEnd - src_ptr;
       }
 
       if (nBuf > 0) {
@@ -225,7 +225,7 @@ auto ArgsGet(char* pInput) -> int {
         //	nLen = nBuf;
         memset(pArg, 0, sizeof(Arg_t));
         nLen = MIN(nBuf, MAX_ARG_LEN - 1);  // NOTE: see Arg_t.sArg[] // GH#481
-        Util_SafeStrCpy(pArg->sArg, pSrc, nLen + 1);
+        Util_SafeStrCpy(pArg->sArg, src_ptr, nLen + 1);
         pArg->sArg[nLen] = 0;
         pArg->nArgLen = nLen;
         pArg->eToken = iTokenSrc;
@@ -242,12 +242,12 @@ auto ArgsGet(char* pInput) -> int {
           pEnd++;
         }
 
-        pSrc = pEnd;
+        src_ptr = pEnd;
         iArg++;
         pArg++;
 
         if (iArg == 1) {
-          g_console_first_arg = pSrc;
+          g_console_first_arg = src_ptr;
         }
       }
     }
@@ -322,7 +322,7 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
 //===========================================================================
 void ArgsRawParse() {
   const int BASE = 16;  // hex
-  char* pSrc = nullptr;
+  char* src_ptr = nullptr;
   char* pEnd = nullptr;
 
   int iArg = 1;
@@ -334,15 +334,15 @@ void ArgsRawParse() {
   uint16_t nAddressValue = 0;
 
   while (iArg <= nArg) {
-    pSrc = &(pArg->sArg[0]);
+    src_ptr = &(pArg->sArg[0]);
 
     nAddressArg =
-        static_cast<uint16_t>(strtoul(pSrc, &pEnd, BASE) & _6502_MEM_END);
+        static_cast<uint16_t>(strtoul(src_ptr, &pEnd, BASE) & _6502_MEM_END);
     nAddressValue = nAddressArg;
 
     bool bFound = false;
     if (!(pArg->bType & TYPE_NO_SYM)) {
-      bFound = FindAddressFromSymbol(pSrc, &nAddressSymbol);
+      bFound = FindAddressFromSymbol(src_ptr, &nAddressSymbol);
       if (bFound) {
         nAddressValue = nAddressSymbol;
         pArg->bSymbol = true;
@@ -372,7 +372,7 @@ void ArgsRawParse() {
 //=========================================================================== */
 auto ArgsCook(const int nArgs) -> int {
   const int BASE = 16;  // hex
-  char* pSrc = nullptr;
+  char* src_ptr = nullptr;
   char* pEnd2 = nullptr;
 
   int nArg = nArgs;
@@ -393,7 +393,7 @@ auto ArgsCook(const int nArgs) -> int {
 
   while (iArg <= nArg) {
     pArg = &(g_args[iArg]);
-    pSrc = &(pArg->sArg[0]);
+    src_ptr = &(pArg->sArg[0]);
 
     if (pArg->eToken == TOKEN_DOLLAR)  // address
     {
@@ -438,14 +438,14 @@ auto ArgsCook(const int nArgs) -> int {
       } else if (nArgsLeft > 0)  // These ops take at least 1 argument
       {
         pNext = pArg + 1;
-        pSrc = &pNext->sArg[0];
+        src_ptr = &pNext->sArg[0];
 
         nAddressVal = 0;
         if (ArgsGetValue(pNext, &nAddressRHS)) {
           nAddressVal = nAddressRHS;
         }
 
-        bool bFound = FindAddressFromSymbol(pSrc, &nAddressSym);
+        bool bFound = FindAddressFromSymbol(src_ptr, &nAddressSym);
         if (bFound) {
           nAddressVal = nAddressSym;
           pArg->bSymbol = true;
@@ -652,7 +652,7 @@ auto ArgsCook(const int nArgs) -> int {
     } else  // not an operator, try (1) address, (2) symbol lookup
     {
       nAddressArg =
-          static_cast<uint16_t>(strtoul(pSrc, &pEnd2, BASE) & _6502_MEM_END);
+          static_cast<uint16_t>(strtoul(src_ptr, &pEnd2, BASE) & _6502_MEM_END);
 
       if (!(pArg->bType & TYPE_NO_REG)) {
         ArgsGetRegisterValue(pArg, &nAddressArg);
@@ -662,7 +662,7 @@ auto ArgsCook(const int nArgs) -> int {
 
       bool bFound = false;
       if (!(pArg->bType & TYPE_NO_SYM)) {
-        bFound = FindAddressFromSymbol(pSrc, &nAddressSym);
+        bFound = FindAddressFromSymbol(src_ptr, &nAddressSym);
         if (bFound) {
           nAddressVal = nAddressSym;
           pArg->bSymbol = true;
@@ -686,10 +686,10 @@ auto ArgsCook(const int nArgs) -> int {
 // ______________________________________________________________________________________
 
 //===========================================================================
-auto ParserFindToken(const char* pSrc, const TokenTable_t* aTokens,
+auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
                      const int nTokens, ArgToken_e* pToken_) -> const char* {
   (void)nTokens;
-  if (!pSrc) {
+  if (!src_ptr) {
     return nullptr;
   }
 
@@ -700,9 +700,9 @@ auto ParserFindToken(const char* pSrc, const TokenTable_t* aTokens,
   // Look-ahead for >=
   for (iToken = _TOKEN_FLAG_MULTI; iToken < NUM_TOKENS; iToken++) {
     pName = &(g_tokens[iToken].sToken[0]);
-    if ((pSrc[0] == pName[0]) && (pSrc[1] == pName[1])) {
+    if ((src_ptr[0] == pName[0]) && (src_ptr[1] == pName[1])) {
       *pToken_ = g_tokens[iToken].eToken;
-      return pSrc + 2;
+      return src_ptr + 2;
     }
   }
 
@@ -710,11 +710,11 @@ auto ParserFindToken(const char* pSrc, const TokenTable_t* aTokens,
 
   for (iToken = 0; iToken < _TOKEN_FLAG_MULTI; iToken++) {
     pName = &(pToken->sToken[0]);
-    if (*pSrc == *pName) {
+    if (*src_ptr == *pName) {
       if (pToken_) {
         *pToken_ = static_cast<ArgToken_e>(iToken);
       }
-      return pSrc + 1;
+      return src_ptr + 1;
     }
     pToken++;
   }
@@ -722,31 +722,31 @@ auto ParserFindToken(const char* pSrc, const TokenTable_t* aTokens,
 }
 
 //===========================================================================
-auto FindTokenOrAlphaNumeric(const char* pSrc, const TokenTable_t* aTokens,
+auto FindTokenOrAlphaNumeric(const char* src_ptr, const TokenTable_t* aTokens,
                              const int nTokens, ArgToken_e* pToken_) -> const
     char* {
   if (pToken_) {
     *pToken_ = NO_TOKEN;
   }
 
-  const char* pEnd = pSrc;
+  const char* pEnd = src_ptr;
 
-  if (pSrc && (*pSrc)) {
-    if (isalnum(*pSrc)) {
+  if (src_ptr && (*src_ptr)) {
+    if (isalnum(*src_ptr)) {
       if (pToken_) {
         *pToken_ = TOKEN_ALPHANUMERIC;
       }
     } else {
-      pEnd = ParserFindToken(pSrc, aTokens, nTokens, pToken_);
+      pEnd = ParserFindToken(src_ptr, aTokens, nTokens, pToken_);
       if (!pEnd) {
-        pEnd = pSrc;
+        pEnd = src_ptr;
       }
     }
   }
   return pEnd;
 }
 
-void TextConvertTabsToSpaces(char* pDeTabified_, const char* pText,
+void TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
                              const int nDstSize, int nTabStop) {
   int TAB_SPACING = 8;
   int TAB_SPACING_1 = 16;
@@ -756,14 +756,14 @@ void TextConvertTabsToSpaces(char* pDeTabified_, const char* pText,
     TAB_SPACING = nTabStop;
   }
 
-  const char* pSrc = pText;
+  const char* src_ptr = text;
   char* pDst = pDeTabified_;
 
   int nTab = 0;  // gap left to next tab
   int nGap = 0;  // actual gap
   int nCur = 0;  // current cursor position
-  while (pSrc && *pSrc && (nCur < nDstSize)) {
-    if (*pSrc == CHAR_TAB) {
+  while (src_ptr && *src_ptr && (nCur < nDstSize)) {
+    if (*src_ptr == CHAR_TAB) {
       if (nTabStop) {
         nTab = nCur % TAB_SPACING;
         nGap = (TAB_SPACING - nTab);
@@ -786,22 +786,22 @@ void TextConvertTabsToSpaces(char* pDeTabified_, const char* pText,
         *pDst++ = CHAR_SPACE;
       }
       nCur += nGap;
-    } else if ((*pSrc == CHAR_LF) || (*pSrc == CHAR_CR)) {
-      *pDst++ = 0;  // *pSrc;
+    } else if ((*src_ptr == CHAR_LF) || (*src_ptr == CHAR_CR)) {
+      *pDst++ = 0;  // *src_ptr;
       nCur++;
     } else {
-      *pDst++ = *pSrc;
+      *pDst++ = *src_ptr;
       nCur++;
     }
-    pSrc++;
+    src_ptr++;
   }
   *pDst = 0;
 }
 
 // @return Length of new string
-auto RemoveWhiteSpaceReverse(char* pSrc) -> int {
-  int nLen = strlen(pSrc);
-  char* pDst = pSrc + nLen;
+auto RemoveWhiteSpaceReverse(char* src_ptr) -> int {
+  int nLen = strlen(src_ptr);
+  char* pDst = src_ptr + nLen;
   while (nLen--) {
     pDst--;
     if (*pDst == CHAR_SPACE) {

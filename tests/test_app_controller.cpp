@@ -25,9 +25,9 @@ TEST_CASE("AppController: Initialize and Shutdown") {
   CHECK(g_state.mode == MODE_RUNNING);
 
   // Check if default directories are initialized
-  CHECK(strlen(g_state.sCurrentDir.data()) > 0);
-  CHECK(strlen(g_state.sHDDDir.data()) > 0);
-  CHECK(strlen(g_state.sSaveStateDir.data()) > 0);
+  CHECK(strlen(g_state.current_dir.data()) > 0);
+  CHECK(strlen(g_state.hdd_dir.data()) > 0);
+  CHECK(strlen(g_state.save_state_dir.data()) > 0);
   // Test shutdown
   AppController_Shutdown();
 }

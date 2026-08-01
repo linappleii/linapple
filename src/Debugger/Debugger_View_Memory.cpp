@@ -64,7 +64,7 @@ void DrawMemory(int line, int iMemDump) {
     return;
   }
 
-  uint16_t nAddr = pMD->nAddress;
+  uint16_t addr = pMD->address;
   DEVICE_e eDevice = pMD->eDevice;
   MemoryView_e iView = pMD->eView;
 
@@ -87,7 +87,7 @@ void DrawMemory(int line, int iMemDump) {
   int iBackground = BG_INFO;
 
 #if DISPLAY_MEMORY_TITLE
-  snprintf(sAddress, sizeof(sAddress), "%04X", static_cast<unsigned>(nAddr));
+  snprintf(sAddress, sizeof(sAddress), "%04X", static_cast<unsigned>(addr));
 
   if (iView == MEM_VIEW_HEX) {
     snprintf(sType, sizeof(sType), "HEX");
@@ -112,7 +112,7 @@ void DrawMemory(int line, int iMemDump) {
   rect.top = rect2.top;
   rect.bottom = rect2.bottom;
 
-  uint16_t iAddress = nAddr;
+  uint16_t iAddress = addr;
 
   int nLines = g_display_memory_lines;
   int nCols = 4;
@@ -243,25 +243,25 @@ void DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
   PrintTextCursorX(sOff, temp);
 }
 
-void DrawSoftSwitchAddress(Rect_t& rect, int nAddress,
+void DrawSoftSwitchAddress(Rect_t& rect, int address,
                            int bg_default = BG_INFO) {
   char sText[4] = "";
 
   DebuggerSetColorBG(DebuggerGetColor(bg_default));
   DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_TARGET));
-  sprintf(sText, "%02X", (nAddress & 0xFF));
+  sprintf(sText, "%02X", (address & 0xFF));
   PrintTextCursorX(sText, rect);
 
   DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
   PrintTextCursorX(":", rect);
 }
 
-void DrawSoftSwitch(Rect_t& rect, int nAddress, bool bSet, const char* sPrefix,
+void DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
                     const char* sOn, const char* sOff,
                     const char* sSuffix = nullptr, int bg_default = BG_INFO) {
   Rect_t temp = rect;
 
-  DrawSoftSwitchAddress(temp, nAddress, bg_default);
+  DrawSoftSwitchAddress(temp, address, bg_default);
 
   if (sPrefix) {
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
@@ -280,7 +280,7 @@ void DrawSoftSwitch(Rect_t& rect, int nAddress, bool bSet, const char* sPrefix,
   rect.bottom += g_font_height;
 }
 
-void DrawTriStateSoftSwitch(Rect_t& rect, int nAddress, const int iBankDisplay,
+void DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
                             int iActive, char* sPrefix, char* sOn, char* sOff,
                             const char* sSuffix = nullptr,
                             int bg_default = BG_INFO) {
@@ -289,13 +289,13 @@ void DrawTriStateSoftSwitch(Rect_t& rect, int nAddress, const int iBankDisplay,
   bool bSet = (iBankDisplay == iActive);
 
   if (bSet) {
-    DrawSoftSwitch(rect, nAddress, bSet, nullptr, sOn, sOff, " ", bg_default);
+    DrawSoftSwitch(rect, address, bSet, nullptr, sOn, sOff, " ", bg_default);
   } else {
     Rect_t temp = rect;
     int iBank = (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1;
     bool bDisabled = ((iActive == 0) && (iBank == iBankDisplay));
 
-    DrawSoftSwitchAddress(temp, nAddress, bg_default);
+    DrawSoftSwitchAddress(temp, address, bg_default);
 
     DebuggerSetColorBG(DebuggerGetColor(bg_default));
     if (bDisabled) {
@@ -333,10 +333,10 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
   char sOn[4] = "B#";
   char sOff[4] = "M";
-  int nAddress = 0xC080 + (8 * (2 - iBankDisplay));
+  int address = 0xC080 + (8 * (2 - iBankDisplay));
   sOn[1] = '0' + iBankDisplay;
 
-  DrawTriStateSoftSwitch(rect, nAddress, iBankDisplay, iBankActive, nullptr,
+  DrawTriStateSoftSwitch(rect, address, iBankDisplay, iBankActive, nullptr,
                          sOn, sOff, " ", bg_default);
 
   rect.top -= g_font_height;
@@ -394,20 +394,20 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   int w = g_font_config[FONT_DISASM_DEFAULT]._nFontWidthAvg;
   int dx = 7 * w;
 
-  int nAddress = 0xC002;
+  int address = 0xC002;
   bool bMainRead = (get_mem_mode() & MF_AUXREAD) != 0;
 
   temp.right = rect.left + dx;
-  DrawSoftSwitch(temp, nAddress, !bMainRead, "R", "m", "x", nullptr, BG_DATA_2);
+  DrawSoftSwitch(temp, address, !bMainRead, "R", "m", "x", nullptr, BG_DATA_2);
 
   temp.top -= g_font_height;
   temp.bottom -= g_font_height;
   temp.left += dx;
   temp.right += 3 * w;
 
-  nAddress = 0xC004;
+  address = 0xC004;
   bool bAuxWrite = (get_mem_mode() & MF_AUXWRITE) != 0;
-  DrawSoftSwitch(temp, nAddress, bAuxWrite, "W", "x", "m", nullptr, BG_DATA_2);
+  DrawSoftSwitch(temp, address, bAuxWrite, "W", "x", "m", nullptr, BG_DATA_2);
 }
 
 void DrawSoftSwitches(int iSoftSwitch) {
@@ -540,7 +540,7 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      sprintf(sText, "%04X", g_watches[iWatch].nAddress);
+      sprintf(sText, "%04X", g_watches[iWatch].address);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -549,13 +549,13 @@ void DrawWatches(int line) {
 
       uint8_t nTarget8 = 0;
 
-      nTarget8 = static_cast<unsigned>(*(mem + g_watches[iWatch].nAddress));
+      nTarget8 = static_cast<unsigned>(*(mem + g_watches[iWatch].address));
       sprintf(sText, "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
       nTarget8 = static_cast<unsigned>(
-          *(mem + static_cast<uint16_t>(g_watches[iWatch].nAddress + 1)));
+          *(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)));
       sprintf(sText, "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
@@ -565,8 +565,8 @@ void DrawWatches(int line) {
       PrintTextCursorX(sText, rect2);
 
       uint16_t nTarget16 =
-          *(mem + g_watches[iWatch].nAddress) |
-          (*(mem + static_cast<uint16_t>(g_watches[iWatch].nAddress + 1))
+          *(mem + g_watches[iWatch].address) |
+          (*(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1))
            << 8);
       sprintf(sText, "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
@@ -581,20 +581,20 @@ void DrawWatches(int line) {
       rect2 = rect;
 
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
-      for (int iByte = 0; iByte < 8; iByte++) {
-        if ((iByte & 3) == 0) {
+      for (int byte = 0; byte < 8; byte++) {
+        if ((byte & 3) == 0) {
           DebuggerSetColorBG(DebuggerGetColor(BG_INFO_WATCH));
           PrintTextCursorX(" ", rect2);
         }
 
-        if ((iByte & 1) == 1) {
+        if ((byte & 1) == 1) {
           DebuggerSetColorBG(DebuggerGetColor(BG_INFO_WATCH));
         } else {
           DebuggerSetColorBG(DebuggerGetColor(BG_DATA_2));
         }
 
         uint8_t nValue8 = static_cast<unsigned>(
-            *(mem + static_cast<uint16_t>(nTarget16 + iByte)));
+            *(mem + static_cast<uint16_t>(nTarget16 + byte)));
         sprintf(sText, "%02X", nValue8);
         PrintTextCursorX(sText, rect2);
       }
@@ -636,8 +636,8 @@ void DrawZeroPagePointers(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      uint8_t nZPAddr1 = (g_zero_page_pointers[iZP].nAddress) & 0xFF;
-      uint8_t nZPAddr2 = (g_zero_page_pointers[iZP].nAddress + 1) & 0xFF;
+      uint8_t nZPAddr1 = (g_zero_page_pointers[iZP].address) & 0xFF;
+      uint8_t nZPAddr2 = (g_zero_page_pointers[iZP].address + 1) & 0xFF;
 
       const char* pSymbol2 = GetSymbol(nZPAddr2, 2);
       const char* pSymbol1 = GetSymbol(nZPAddr1, 2);
@@ -710,27 +710,27 @@ void DrawSubWindow_Data(Update_t bUpdate) {
   int iMemDump = 0;
 
   MemoryDump_t* pMD = &g_mem_dump[iMemDump];
-  uint16_t nAddress = pMD->nAddress;
+  uint16_t address = pMD->address;
 
   Rect_t rect;
   rect.top = 0 + 0;
 
-  int iByte = 0;
-  uint16_t iAddress = nAddress;
+  int byte = 0;
+  uint16_t iAddress = address;
 
   int iLine = 0;
   int nLines = g_disasm_win_height;
 
   for (iLine = 0; iLine < nLines; iLine++) {
-    iAddress = nAddress;
+    iAddress = address;
 
     sprintf(sAddress, "%04X", iAddress);
 
     sOpcodes[0] = 0;
-    for (iByte = 0; iByte < nMaxOpcodes; iByte++) {
+    for (byte = 0; byte < nMaxOpcodes; byte++) {
       uint8_t nData = static_cast<unsigned>(
-          *(mem + static_cast<uint16_t>(iAddress + iByte)));
-      sprintf(&sOpcodes[static_cast<ptrdiff_t>(iByte * 3)], "%02X ", nData);
+          *(mem + static_cast<uint16_t>(iAddress + byte)));
+      sprintf(&sOpcodes[static_cast<ptrdiff_t>(byte * 3)], "%02X ", nData);
     }
     sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;
 
@@ -773,8 +773,8 @@ void DrawSubWindow_Data(Update_t bUpdate) {
       eView = MEM_VIEW_ASCII;
     }
 
-    iAddress = nAddress;
-    for (iByte = 0; iByte < nMaxOpcodes; iByte++) {
+    iAddress = address;
+    for (byte = 0; byte < nMaxOpcodes; byte++) {
       uint8_t nImmediate = static_cast<unsigned>(*(mem + iAddress));
 
       ColorizeSpecialChar(sImmediate, static_cast<uint8_t>(nImmediate), eView,
@@ -788,7 +788,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
     PrintTextCursorX("  |  ", rect);
 
-    nAddress += nMaxOpcodes;
+    address += nMaxOpcodes;
 
     rect.top += nFontHeight;
   }

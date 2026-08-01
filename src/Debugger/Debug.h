@@ -170,7 +170,7 @@ extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS]; // TODO: 
 // Prototypes
 
 // Bookmarks
-bool Bookmark_Find(const uint16_t nAddress);
+bool Bookmark_Find(const uint16_t address);
 
 // Breakpoints
 bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
@@ -179,9 +179,9 @@ bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakp
 uint32_t DebuggerGetColor(int iColor);
 
 // Source Level Debugging
-int FindSourceLine(uint16_t nAddress);
+int FindSourceLine(uint16_t address);
 
-const char* FormatAddress(uint16_t nAddress, int nBytes);
+const char* FormatAddress(uint16_t address, int nBytes);
 
 // Symbol Table / Memory
 bool FindAddressFromSymbol(const char* pSymbol, uint16_t *pAddress_ = NULL, int *iTable_ = NULL);
@@ -191,7 +191,7 @@ void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char *pSymbolName, uin
 
 const char* FindSymbolFromAddress(uint16_t nAdress, int *iTable_ = NULL);
 
-const char* GetSymbol(uint16_t nAddress, int nBytes);
+const char* GetSymbol(uint16_t address, int nBytes);
 
 // DebugVideoMode _____________________________________________________________
 

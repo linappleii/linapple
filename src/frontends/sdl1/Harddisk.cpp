@@ -31,7 +31,7 @@ void HarddiskUI_FTPSelect(int nDrive) {
   bool isDirectory = true;  // if given filename is a directory?
 
   fileIndex = backdx;
-  fullPath = g_state.sFTPServerHDD.data();  // global var for FTP path for HDD
+  fullPath = g_state.ftp_server_hdd.data();  // global var for FTP path for HDD
 
   while (isDirectory) {
     if (choose_an_image_ftp(static_cast<int>(g_state.ScreenWidth),
@@ -67,15 +67,15 @@ void HarddiskUI_FTPSelect(int nDrive) {
     }
   }
   // we chose some file
-  Util_SafeStrCpy(g_state.sFTPServerHDD.data(), fullPath.c_str(),
-                  g_state.sFTPServerHDD.size());
+  Util_SafeStrCpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
+                  g_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
-                                      g_state.sFTPServerHDD.data());
+                                      g_state.ftp_server_hdd.data());
   Configuration_t::instance().save();  // save it
 
   fullPath += "/" + filename;
 
-  std::string localPath = std::string(g_state.sFTPLocalDir.data()) + "/" +
+  std::string localPath = std::string(g_state.ftp_local_dir.data()) + "/" +
                           filename;  // local path for file
 
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
@@ -114,7 +114,7 @@ void HarddiskUI_Select(int nDrive) {
 
   fileIndex = backdx;
   isDirectory = true;
-  fullPath = g_state.sHDDDir.data();  // global var for disk selecting directory
+  fullPath = g_state.hdd_dir.data();  // global var for disk selecting directory
 
   while (isDirectory) {
     if (choose_an_image(static_cast<int>(g_state.ScreenWidth),
@@ -146,10 +146,10 @@ void HarddiskUI_Select(int nDrive) {
     }
   }
   // we chose some file
-  Util_SafeStrCpy(g_state.sHDDDir.data(), fullPath.c_str(),
-                  g_state.sHDDDir.size());
+  Util_SafeStrCpy(g_state.hdd_dir.data(), fullPath.c_str(),
+                  g_state.hdd_dir.size());
   Configuration_t::instance().set_string(
-      "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.sHDDDir.data());
+      "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
   Configuration_t::instance().save();  // Save it
 
   fullPath += "/" + filename;

@@ -34,11 +34,11 @@ void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
 
 // Legacy stubs
 void ay8910_init_all(int clock_rate, int sample_rate);
-void ay8910_init_clock(int nClock);
+void ay8910_init_clock(int clock);
 void ay8910_reset(int chip);
 void ay8910_write_ym(int chip, int addr, int data);
 void _ay_write_reg(int n, int r, int v);
 void ay8910_update(int chip, int16_t** buffer, int length);
-auto ay8910_get_regs_ptr(uint32_t nAyNum) -> uint8_t*;
+auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t*;
 
 #endif

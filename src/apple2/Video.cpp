@@ -508,46 +508,46 @@ const uint8_t aColorDimmedIndex[NUM_COLOR_MAPPING] = {
 };
 
 void DrawHiResSourceHalfShiftDim() {
-  for (int iColumn = 0; iColumn < 16; iColumn++) {
-    int coloffs = iColumn << 5;
+  for (int column = 0; column < 16; column++) {
+    int coloffs = column << 5;
 
-    for (unsigned iByte = 0; iByte < 256; iByte++) {
+    for (unsigned byte = 0; byte < 256; byte++) {
       int aPixels[11];
 
-      aPixels[0] = iColumn & 4;
-      aPixels[1] = iColumn & 8;
-      aPixels[9] = iColumn & 1;
-      aPixels[10] = iColumn & 2;
+      aPixels[0] = column & 4;
+      aPixels[1] = column & 8;
+      aPixels[9] = column & 1;
+      aPixels[10] = column & 2;
 
-      int nBitMask = 1;
-      int iPixel = 0;
-      for (iPixel = 2; iPixel < 9; iPixel++) {
-        aPixels[iPixel] = ((iByte & nBitMask) != 0);
-        nBitMask <<= 1;
+      int bit_mask = 1;
+      int pixel = 0;
+      for (pixel = 2; pixel < 9; pixel++) {
+        aPixels[pixel] = ((byte & bit_mask) != 0);
+        bit_mask <<= 1;
       }
 
-      int hibit = ((iByte & 0x80) != 0);
+      int hibit = ((byte & 0x80) != 0);
       int x = 0;
-      int y = iByte << 1;
+      int y = byte << 1;
 
       while (x < 28) {
         int adj = (x >= 14) << 1;
         int odd = (x >= 14);
 
-        for (iPixel = 2; iPixel < 9; iPixel++) {
+        for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
-          if (aPixels[iPixel]) {
-            if (aPixels[iPixel - 1] || aPixels[iPixel + 1]) {
+          if (aPixels[pixel]) {
+            if (aPixels[pixel - 1] || aPixels[pixel + 1]) {
               color = CM_White;
             } else {
-              color = ((odd ^ (iPixel & 1)) << 1) | hibit;
+              color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if (aPixels[iPixel - 1] && aPixels[iPixel + 1]) {
+          } else if (aPixels[pixel - 1] && aPixels[pixel + 1]) {
             // Activate for fringe reduction on white hgr text -
             // drawback: loss of color mix patterns in hgr mode.
             // select g_videotype by index exclusion
-            if (!(aPixels[iPixel - 2] && aPixels[iPixel + 2])) {
-              color = ((odd ^ !(iPixel & 1)) << 1) | hibit;
+            if (!(aPixels[pixel - 2] && aPixels[pixel + 2])) {
+              color = ((odd ^ !(pixel & 1)) << 1) | hibit;
             }
           }
 
@@ -585,7 +585,7 @@ void DrawHiResSourceHalfShiftDim() {
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                              DARK_BLUE);
               if (hibit) {
-                if (iPixel <= 2) {
+                if (pixel <= 2) {
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  DARK_BLUE);
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
@@ -610,7 +610,7 @@ void DrawHiResSourceHalfShiftDim() {
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                              BROWN);
               if (hibit) {
-                if (iPixel <= 2) {
+                if (pixel <= 2) {
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
                                  BROWN);
@@ -637,7 +637,7 @@ void DrawHiResSourceHalfShiftDim() {
               SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
                              HGR_WHITE);
               if (hibit) {
-                if (iPixel <= 2) {
+                if (pixel <= 2) {
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  HGR_WHITE);
                   SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
@@ -656,45 +656,45 @@ void DrawHiResSourceHalfShiftDim() {
 }
 
 void DrawHiResSource() {
-  for (int iColumn = 0; iColumn < 16; iColumn++) {
-    int coloffs = iColumn << 5;
+  for (int column = 0; column < 16; column++) {
+    int coloffs = column << 5;
 
-    for (unsigned iByte = 0; iByte < 256; iByte++) {
+    for (unsigned byte = 0; byte < 256; byte++) {
       int aPixels[11];
 
-      aPixels[0] = iColumn & 4;
-      aPixels[1] = iColumn & 8;
-      aPixels[9] = iColumn & 1;
-      aPixels[10] = iColumn & 2;
+      aPixels[0] = column & 4;
+      aPixels[1] = column & 8;
+      aPixels[9] = column & 1;
+      aPixels[10] = column & 2;
 
-      int nBitMask = 1;
-      int iPixel = 0;
-      for (iPixel = 2; iPixel < 9; iPixel++) {
-        aPixels[iPixel] = ((iByte & nBitMask) != 0);
-        nBitMask <<= 1;
+      int bit_mask = 1;
+      int pixel = 0;
+      for (pixel = 2; pixel < 9; pixel++) {
+        aPixels[pixel] = ((byte & bit_mask) != 0);
+        bit_mask <<= 1;
       }
 
-      int hibit = ((iByte & 0x80) != 0);
+      int hibit = ((byte & 0x80) != 0);
       int x = 0;
-      int y = iByte << 1;
+      int y = byte << 1;
 
       while (x < 28) {
         int adj = (x >= 14) << 1;
         int odd = (x >= 14);
 
-        for (iPixel = 2; iPixel < 9; iPixel++) {
+        for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
-          if (aPixels[iPixel]) {
-            if (aPixels[iPixel - 1] || aPixels[iPixel + 1]) {
+          if (aPixels[pixel]) {
+            if (aPixels[pixel - 1] || aPixels[pixel + 1]) {
               color = CM_White;
             } else {
-              color = ((odd ^ (iPixel & 1)) << 1) | hibit;
+              color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if (aPixels[iPixel - 1] && aPixels[iPixel + 1]) {
+          } else if (aPixels[pixel - 1] && aPixels[pixel + 1]) {
             if ((g_videotype == VT_COLOR_STANDARD) ||
                 (g_videotype == VT_COLOR_TVEMU) ||
-                !(aPixels[iPixel - 2] && aPixels[iPixel + 2])) {
-              color = ((odd ^ !(iPixel & 1)) << 1) | hibit;
+                !(aPixels[pixel - 2] && aPixels[pixel + 2])) {
+              color = ((odd ^ !(pixel & 1)) << 1) | hibit;
             }
           }
 
@@ -921,22 +921,22 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   (void)x;
   (void)y;
   uint8_t ch = *(g_text_bank0 + offset);
-  bool bCharChanged = (ch != *(vidlastmem.get() + offset + 0x400) ||
+  bool char_changed = (ch != *(vidlastmem.get() + offset + 0x400) ||
                        redrawfull || video_worker_active_);
 
   // FLASHing chars:
   // - FLASHing if:Alt Char Set is OFF && 0x40<=char<=0x7F
   // - The inverse of this char is located at: char+0x40
-  bool bCharFlashing =
+  bool char_flashing =
       (g_alt_char_set_offset == 0) && (ch >= 0x40) && (ch <= 0x7F);
 
-  if (bCharChanged || (bCharFlashing && g_text_flash_flag)) {
-    bool bInvert = bCharFlashing ? g_text_flash_state : false;
+  if (char_changed || (char_flashing && g_text_flash_flag)) {
+    bool invert = char_flashing ? g_text_flash_state : false;
 
     CopySource(
         xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
         SRCOFFS_40COL + ((ch & 0x0F) << 4),
-        (ch & 0xF0) + g_alt_char_set_offset + (bInvert ? 0x40 : 0x00) +
+        (ch & 0xF0) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
             ((s_language_rocker_switch && multi_language_charset) ? 512 : 0));
     return true;
   }
@@ -944,12 +944,12 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
 }
 
 inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel,
-                               bool bCharFlashing) -> bool {
-  bool bInvert = bCharFlashing ? g_text_flash_state : false;
+                               bool char_flashing) -> bool {
+  bool invert = char_flashing ? g_text_flash_state : false;
   CopySource(
       xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
       SRCOFFS_80COL + ((c & 15) << 3),
-      ((c >> 4) << 4) + g_alt_char_set_offset + (bInvert ? 0x40 : 0x00) +
+      ((c >> 4) << 4) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
           ((s_language_rocker_switch && multi_language_charset) ? 512 : 0));
   return true;
 }
@@ -958,37 +958,37 @@ auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   if (!vidlastmem) return false;
   (void)x;
   (void)y;
-  bool bDirty = false;
+  bool dirty = false;
 
 #if FLASH_80_COL
   uint8_t c1 = *(g_text_bank1 + offset);
   uint8_t c0 = *(g_text_bank0 + offset);
 
-  bool bC1Changed = (c1 != *(vidlastmem.get() + offset + 0) || redrawfull ||
+  bool c1_changed = (c1 != *(vidlastmem.get() + offset + 0) || redrawfull ||
                      video_worker_active_);
-  bool bC0Changed = (c0 != *(vidlastmem.get() + offset + 0x400) || redrawfull ||
+  bool c0_changed = (c0 != *(vidlastmem.get() + offset + 0x400) || redrawfull ||
                      video_worker_active_);
 
-  bool bC1Flashing = (g_alt_char_set_offset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
-  bool bC0Flashing = (g_alt_char_set_offset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
+  bool c1_flashing = (g_alt_char_set_offset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
+  bool c0_flashing = (g_alt_char_set_offset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
-  if (bC1Changed || (bC1Flashing && g_text_flash_flag)) {
-    bDirty = Update80ColumnCell(c1, xpixel, ypixel, bC1Flashing);
+  if (c1_changed || (c1_flashing && g_text_flash_flag)) {
+    dirty = Update80ColumnCell(c1, xpixel, ypixel, c1_flashing);
   }
 
-  if (bC0Changed || (bC0Flashing && g_text_flash_flag)) {
-    bDirty |= Update80ColumnCell(c0, xpixel + 7, ypixel, bC0Flashing);
+  if (c0_changed || (c0_flashing && g_text_flash_flag)) {
+    dirty |= Update80ColumnCell(c0, xpixel + 7, ypixel, c0_flashing);
   }
 #endif
 
-  return bDirty;
+  return dirty;
 }
 
 auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) return false;
   (void)y;
-  bool bDirty = false;
+  bool dirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
     uint8_t byteval1 = (x > 0) ? *(g_hires_bank0 + offset + yoffset - 1) : 0;
@@ -1031,12 +1031,12 @@ auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
         #undef COLOR
         #undef VALUE
       }
-      bDirty = true;
+      dirty = true;
     }
     yoffset += 0x400;
   }
 
-  return bDirty;
+  return dirty;
 }
 
 auto MixColors(uint8_t c1, uint8_t c2) -> uint8_t {
@@ -1176,7 +1176,7 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
 auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   if (!vidlastmem) return false;
   (void)y;
-  bool bDirty = false;
+  bool dirty = false;
   int yoffset = 0;
   while (yoffset < 0x2000) {
     uint8_t byteval1 = (x > 0) ? *(g_hires_bank0 + offset + yoffset - 1) : 0;
@@ -1201,12 +1201,12 @@ auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
                    ((static_cast<int>(byteval2)) << 1));
       }
 #undef COLOFFS
-      bDirty = true;
+      dirty = true;
     }
     yoffset += 0x400;
   }
 
-  return bDirty;
+  return dirty;
 }
 
 auto UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
@@ -1303,7 +1303,7 @@ auto video_apparently_dirty() -> bool {
     }
   }
 
-  bool bCharFlashing = false;
+  bool char_flashing = false;
 
   // Scan visible text page for any flashing chars
   if ((SW_TEXT || SW_MIXED) && (g_alt_char_set_offset == 0)) {
@@ -1315,14 +1315,14 @@ auto video_apparently_dirty() -> bool {
       for (uint32_t x = 0; x < 40 * 3; x++) {
         uint8_t ch = pnMemText[y * 128 + x];
         if ((ch >= 0x40) && (ch <= 0x7F)) {
-          bCharFlashing = true;
+          char_flashing = true;
           break;
         }
       }
     }
   }
 
-  if (bCharFlashing) {
+  if (char_flashing) {
     return true;
   }
   return false;
@@ -1463,10 +1463,10 @@ auto video_benchmark() -> void {
 }
 
 auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
-                      uint32_t nCyclesLeft) -> uint8_t {
+                      uint32_t cycles_left) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
-    return mem_read_floating_bus(SW_DHIRES != 0, nCyclesLeft);
+    return mem_read_floating_bus(SW_DHIRES != 0, cycles_left);
   } else {
     bool result = false;
     switch (address) {
@@ -1489,7 +1489,7 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
         result = SW_DHIRES;
         break;
     }
-    return (mem_read_floating_bus(nCyclesLeft) & 0x7F) | (result ? 0x80 : 0);
+    return (mem_read_floating_bus(cycles_left) & 0x7F) | (result ? 0x80 : 0);
   }
 }
 
@@ -1502,12 +1502,12 @@ auto video_check_page(bool force) -> void {
   }
 }
 
-auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t nCyclesLeft)
+auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t cycles_left)
     -> uint8_t {
-  bool bVblBar = false;
-  video_get_scanner_address(&bVblBar, nCyclesLeft);
-  uint8_t r = mem_read_floating_bus(nCyclesLeft);
-  return static_cast<uint8_t>((r & ~0x80) | ((bVblBar) ? 0x80 : 0));
+  bool vbl_bar = false;
+  video_get_scanner_address(&vbl_bar, cycles_left);
+  uint8_t r = mem_read_floating_bus(cycles_left);
+  return static_cast<uint8_t>((r & ~0x80) | ((vbl_bar) ? 0x80 : 0));
 }
 
 auto video_choose_color() -> void {}
@@ -1813,11 +1813,11 @@ auto video_reinitialize() -> void {
   CreateDIBSections();
 }
 
-auto video_refresh_screen(uint32_t uRedrawWholeScreenVideoMode /* =0*/,
-                          bool bRedrawWholeScreen /* =false*/) -> void {
+auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
+                          bool redraw_whole_screen /* =false*/) -> void {
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
-  if (bRedrawWholeScreen) {
-    g_debug_video_mode = uRedrawWholeScreenVideoMode;
+  if (redraw_whole_screen) {
+    g_debug_video_mode = redraw_whole_screen_video_mode;
     redrawfull = true;
   }
   if (video_worker_active_) {
@@ -1837,7 +1837,7 @@ auto video_reset_state() -> void {
 }
 
 auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
-                    uint32_t nCyclesLeft) -> uint8_t {
+                    uint32_t cycles_left) -> uint8_t {
   (void)write;
 
   address &= 0xFF;
@@ -1921,14 +1921,14 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
     video_refresh_screen();
   }
 
-  return mem_read_floating_bus(nCyclesLeft);
+  return mem_read_floating_bus(cycles_left);
 }
 
 static uint32_t g_video_cycles_in_frame = 0;
-auto video_update_vbl(uint32_t dwCyclesThisFrame) -> void {
-  g_video_cycles_in_frame += dwCyclesThisFrame;
-  while (g_video_cycles_in_frame >= g_state.dwClksPerFrame) {
-    g_video_cycles_in_frame -= g_state.dwClksPerFrame;
+auto video_update_vbl(uint32_t cycles_this_frame) -> void {
+  g_video_cycles_in_frame += cycles_this_frame;
+  while (g_video_cycles_in_frame >= g_state.clks_per_frame) {
+    g_video_cycles_in_frame -= g_state.clks_per_frame;
     video_refresh_screen();
     video_update_flash();
   }
@@ -1936,10 +1936,10 @@ auto video_update_vbl(uint32_t dwCyclesThisFrame) -> void {
 
 // Called at 60Hz (every 16.666ms)
 auto video_update_flash() -> void {
-  static uint32_t nTextFlashCnt = 0;
-  nTextFlashCnt++;
-  if (nTextFlashCnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
-    nTextFlashCnt = 0;
+  static uint32_t text_flash_cnt = 0;
+  text_flash_cnt++;
+  if (text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
+    text_flash_cnt = 0;
     g_text_flash_state = !g_text_flash_state;
 
     if ((SW_TEXT || SW_MIXED)) {
@@ -1965,17 +1965,17 @@ auto video_get_sw_text() -> bool { return SW_TEXT != 0; }
 auto video_get_sw_alt_charset() -> bool { return g_alt_char_set_offset != 0; }
 
 //===========================================================================
-auto video_get_snapshot(SS_IO_Video* pSS) -> uint32_t {
-  if (!pSS) return 1;
-  pSS->alt_char_set = g_alt_char_set_offset != 0;
-  pSS->vid_mode = g_video_mode;
+auto video_get_snapshot(SS_IO_Video* ss) -> uint32_t {
+  if (!ss) return 1;
+  ss->alt_char_set = g_alt_char_set_offset != 0;
+  ss->vid_mode = g_video_mode;
   return 0;
 }
 
-auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
-  if (!pSS) return 1;
-  g_alt_char_set_offset = !pSS->alt_char_set ? 0 : 256;
-  g_video_mode = pSS->vid_mode;
+auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t {
+  if (!ss) return 1;
+  g_alt_char_set_offset = !ss->alt_char_set ? 0 : 256;
+  g_video_mode = ss->vid_mode;
 
   graphicsmode = !SW_TEXT;
   displaypage2 = (SW_PAGE2 != 0);
@@ -1984,82 +1984,82 @@ auto video_set_snapshot(SS_IO_Video* pSS) -> uint32_t {
 }
 
 auto video_get_scanner_address(bool* pbVblBar_OUT,
-                               const uint32_t uExecutedCycles) -> uint16_t {
-  if (g_state.dwClksPerFrame == 0) return 0;
+                               const uint32_t executed_cycles) -> uint16_t {
+  if (g_state.clks_per_frame == 0) return 0;
   // get video scanner position
-  int nCycles =
-      (g_video_cycles_in_frame + uExecutedCycles) % g_state.dwClksPerFrame;
+  int cycles =
+      (g_video_cycles_in_frame + executed_cycles) % g_state.clks_per_frame;
 
   // machine state switches
-  int nHires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
-  int nPage2 = (SW_PAGE2) ? 1 : 0;
+  int hires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
+  int page2 = (SW_PAGE2) ? 1 : 0;
   int n80Store = (mem_get_80store()) ? 1 : 0;
 
   // calculate video parameters according to display standard
-  int nScanLines = g_state.bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
+  int scan_lines = g_state.video_scanner_ntsc ? kNTSCScanLines : kPALScanLines;
 
   // calculate horizontal scanning state
-  int nHClock =
-      (nCycles + kHPEClock) % kHClocks;   // which horizontal scanning clock
-  int nHState = kHClock0State + nHClock;  // H state bits
-  if (nHClock >= kHPresetClock) {         // check for horizontal preset
-    nHState -= 1;  // correct for state preset (two 0 states)
+  int h_clock =
+      (cycles + kHPEClock) % kHClocks;   // which horizontal scanning clock
+  int h_state = kHClock0State + h_clock;  // H state bits
+  if (h_clock >= kHPresetClock) {         // check for horizontal preset
+    h_state -= 1;  // correct for state preset (two 0 states)
   }
-  int h_0 = (nHState >> 0) & 1;
-  int h_1 = (nHState >> 1) & 1;
-  int h_2 = (nHState >> 2) & 1;
-  int h_3 = (nHState >> 3) & 1;
-  int h_4 = (nHState >> 4) & 1;
-  int h_5 = (nHState >> 5) & 1;
+  int h_0 = (h_state >> 0) & 1;
+  int h_1 = (h_state >> 1) & 1;
+  int h_2 = (h_state >> 2) & 1;
+  int h_3 = (h_state >> 3) & 1;
+  int h_4 = (h_state >> 4) & 1;
+  int h_5 = (h_state >> 5) & 1;
 
   // calculate vertical scanning state
-  int nVLine = nCycles / kHClocks;      // which vertical scanning line
-  int nVState = kVLine0State + nVLine;  // V state bits
-  if ((nVLine >= kVPresetLine)) {  // check for previous vertical state preset
-    nVState -= nScanLines;         // compensate for preset
+  int v_line = cycles / kHClocks;      // which vertical scanning line
+  int v_state = kVLine0State + v_line;  // V state bits
+  if ((v_line >= kVPresetLine)) {  // check for previous vertical state preset
+    v_state -= scan_lines;         // compensate for preset
   }
-  int v_A = (nVState >> 0) & 1;
-  int v_B = (nVState >> 1) & 1;
-  int v_C = (nVState >> 2) & 1;
-  int v_0 = (nVState >> 3) & 1;
-  int v_1 = (nVState >> 4) & 1;
-  int v_2 = (nVState >> 5) & 1;
-  int v_3 = (nVState >> 6) & 1;
-  int v_4 = (nVState >> 7) & 1;
+  int v_A = (v_state >> 0) & 1;
+  int v_B = (v_state >> 1) & 1;
+  int v_C = (v_state >> 2) & 1;
+  int v_0 = (v_state >> 3) & 1;
+  int v_1 = (v_state >> 4) & 1;
+  int v_2 = (v_state >> 5) & 1;
+  int v_3 = (v_state >> 6) & 1;
+  int v_4 = (v_state >> 7) & 1;
 
   // calculate scanning memory address
   if (SW_HIRES && SW_MIXED && (v_4 & v_2)) {
     // The softswitch for this is $c053 for mixed, $c052 for fill (no text on
     // bottom).
-    nHires = 0;  // (address is in text memory)
+    hires = 0;  // (address is in text memory)
   }
 
-  int nAddend0 = 0x68;  // 1            1            0            1
-  int nAddend1 = (h_5 << 5) | (h_4 << 4) | (h_3 << 3);
-  int nAddend2 = (v_4 << 6) | (v_3 << 5) | (v_4 << 4) | (v_3 << 3);
-  int nSum = (nAddend0 + nAddend1 + nAddend2) & (0x0F << 3);
+  int addend0 = 0x68;  // 1            1            0            1
+  int addend1 = (h_5 << 5) | (h_4 << 4) | (h_3 << 3);
+  int addend2 = (v_4 << 6) | (v_3 << 5) | (v_4 << 4) | (v_3 << 3);
+  int sum = (addend0 + addend1 + addend2) & (0x0F << 3);
 
-  int nAddress = 0;
-  nAddress |= h_0 << 0;  // a0
-  nAddress |= h_1 << 1;  // a1
-  nAddress |= h_2 << 2;  // a2
-  nAddress |= nSum;      // a3 - aa6
-  nAddress |= v_0 << 7;  // a7
-  nAddress |= v_1 << 8;  // a8
-  nAddress |= v_2 << 9;  // a9
-  nAddress |= ((nHires) ? v_A : (1 ^ (nPage2 & (1 ^ n80Store)))) << 10;  // a10
-  nAddress |= ((nHires) ? v_B : (nPage2 & (1 ^ n80Store))) << 11;        // a11
-  if (nHires) {  // hires?
+  int address = 0;
+  address |= h_0 << 0;  // a0
+  address |= h_1 << 1;  // a1
+  address |= h_2 << 2;  // a2
+  address |= sum;      // a3 - aa6
+  address |= v_0 << 7;  // a7
+  address |= v_1 << 8;  // a8
+  address |= v_2 << 9;  // a9
+  address |= ((hires) ? v_A : (1 ^ (page2 & (1 ^ n80Store)))) << 10;  // a10
+  address |= ((hires) ? v_B : (page2 & (1 ^ n80Store))) << 11;        // a11
+  if (hires) {  // hires?
     // Y: insert hires only address bits
-    nAddress |= v_C << 12;                              // a12
-    nAddress |= (1 ^ (nPage2 & (1 ^ n80Store))) << 13;  // a13
-    nAddress |= (nPage2 & (1 ^ n80Store)) << 14;        // a14
+    address |= v_C << 12;                              // a12
+    address |= (1 ^ (page2 & (1 ^ n80Store))) << 13;  // a13
+    address |= (page2 & (1 ^ n80Store)) << 14;        // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
     if ((IS_APPLE2()) &&           // Apple ][?
-        (kHPEClock <= nHClock) &&  // Y: HBL?
-        (nHClock <= (kHClocks - 1))) {
-      nAddress |= 1 << 12;  // Y: a12 (add $1000 to address!)
+        (kHPEClock <= h_clock) &&  // Y: HBL?
+        (h_clock <= (kHClocks - 1))) {
+      address |= 1 << 12;  // Y: a12 (add $1000 to address!)
     }
   }
 
@@ -2070,20 +2070,20 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
       *pbVblBar_OUT = false;
     }
   }
-  return static_cast<uint16_t>(nAddress);
+  return static_cast<uint16_t>(address);
 }
 
-auto video_get_vbl(const uint32_t uExecutedCycles) -> bool {
-  if (g_state.dwClksPerFrame == 0) return false;
+auto video_get_vbl(const uint32_t executed_cycles) -> bool {
+  if (g_state.clks_per_frame == 0) return false;
   // get cycles within current frame
-  int nCycles =
-      (g_video_cycles_in_frame + uExecutedCycles) % g_state.dwClksPerFrame;
+  int cycles =
+      (g_video_cycles_in_frame + executed_cycles) % g_state.clks_per_frame;
 
   // Apple II NTSC: 262 lines, 65 cycles per line.
   // Visible area: lines 0-191. VBL: lines 192-261.
   // VBL starts at cycle 192 * 65 = 12480.
 
-  return (nCycles >= 12480);
+  return (cycles >= 12480);
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers,

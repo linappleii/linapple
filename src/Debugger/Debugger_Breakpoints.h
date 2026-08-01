@@ -39,14 +39,14 @@
 	Update_t CmdWatchLoad      (int nArgs);
 	Update_t CmdWatchSave      (int nArgs);
 
-	bool _CmdBreakpointAddReg( Breakpoint_t *pBP, BreakpointSource_t iSrc, BreakpointOperator_t iCmp, uint16_t nAddress, int nLen, bool bIsTempBreakpoint );
+	bool _CmdBreakpointAddReg( Breakpoint_t *pBP, BreakpointSource_t iSrc, BreakpointOperator_t iCmp, uint16_t address, int nLen, bool bIsTempBreakpoint );
 	int  _CmdBreakpointAddCommonArg ( int iArg, int nArg, BreakpointSource_t iSrc, BreakpointOperator_t iCmp, bool bIsTempBreakpoint = false );
 
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
 	void _BWZ_Clear( Breakpoint_t * aBreakWatchZero, int iSlot );
-	void _BWZ_RemoveOne( Breakpoint_t *aBreakWatchZero, const int iSlot, int & nTotal );
-	void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & nTotal );
-	void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, int & nTotal );
+	void _BWZ_RemoveOne( Breakpoint_t *aBreakWatchZero, const int iSlot, int & total );
+	void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & total );
+	void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, int & total );
 	void _BWZ_EnableDisableViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, const bool bEnabled );
 	void _BWZ_List( const Breakpoint_t * aBreakWatchZero, const int iBWZ );
 	void _BWZ_ListAll( const Breakpoint_t * aBreakWatchZero, const int nMax );

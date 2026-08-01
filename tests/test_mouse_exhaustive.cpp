@@ -60,10 +60,12 @@ static void Mock_RegisterIO(int slot, PeripheralIOHandler r,
   g_mouse_io = r; 
 }
 
-static HostInterface_t mock_host = {
-    .AssertIrq = Mock_AssertIrq,
-    .RegisterIO = Mock_RegisterIO,
-};
+static HostInterface_t mock_host = [] {
+    HostInterface_t h{};
+    h.AssertIrq = Mock_AssertIrq;
+    h.RegisterIO = Mock_RegisterIO;
+    return h;
+}();
 
 // --- Helpers ---
 

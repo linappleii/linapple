@@ -111,26 +111,26 @@ auto CmdProfile (int nArgs) -> Update_t
 
 auto ProfileLinePeek ( int iLine ) -> char *
 {
-  char *pText = nullptr;
+  char *text = nullptr;
 
   if (iLine < 0) {
     iLine = 0;
 }
 
   if (iLine <= g_profile_line_count) {
-    pText = & g_profile_line[ iLine ][ 0 ];
+    text = & g_profile_line[ iLine ][ 0 ];
 }
 
-  return pText;
+  return text;
 }
 
 void ProfileReset()
 {
-  int iOpcode = 0;
-  for( iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++ )
+  int opcode = 0;
+  for( opcode = 0; opcode < NUM_OPCODES; opcode++ )
   {
-    g_profile_opcodes[ iOpcode ].m_iOpcode = iOpcode;
-    g_profile_opcodes[ iOpcode ].m_nCount = 0;
+    g_profile_opcodes[ opcode ].m_iOpcode = opcode;
+    g_profile_opcodes[ opcode ].m_nCount = 0;
   }
 
   int iOpmode = 0;
@@ -148,7 +148,7 @@ void ProfileFormat( bool bSeperateColumns, int eFormatMode )
 {
   (void)bSeperateColumns;
   (void)eFormatMode;
-  int iOpcode = 0;
+  int opcode = 0;
   int iOpmode = 0;
 
   bool bOpcodeGood = true;
@@ -162,24 +162,24 @@ void ProfileFormat( bool bSeperateColumns, int eFormatMode )
   std::sort( vProfileOpmode.begin(), vProfileOpmode.end(), ProfileOpmode_t() );
 
   g_profile_line_count = 0;
-  char *pText = & g_profile_line[ 0 ][ 0 ];
+  char *text = & g_profile_line[ 0 ][ 0 ];
 
   uint64_t nTotalCycles = g_cumulative_cycles - g_profile_begin_cycles;
-  sprintf( pText, "Cycles: %llu\n", static_cast<unsigned long long>(nTotalCycles) );
+  sprintf( text, "Cycles: %llu\n", static_cast<unsigned long long>(nTotalCycles) );
   g_profile_line_count++;
 
   while (bOpcodeGood || bOpmodeGood)
   {
-    pText = & g_profile_line[ g_profile_line_count ][ 0 ];
-    pText[ 0 ] = 0;
+    text = & g_profile_line[ g_profile_line_count ][ 0 ];
+    text[ 0 ] = 0;
 
-    if (iOpcode < NUM_OPCODES)
+    if (opcode < NUM_OPCODES)
     {
-      if (vProfileOpcode.at( static_cast<size_t>(iOpcode) ).m_nCount > 0)
+      if (vProfileOpcode.at( static_cast<size_t>(opcode) ).m_nCount > 0)
       {
-        sprintf( pText, "%s: %llu",
-          g_opcodes65_c02[ vProfileOpcode.at( static_cast<size_t>(iOpcode) ).m_iOpcode ].sMnemonic,
-          static_cast<unsigned long long>(vProfileOpcode.at( static_cast<size_t>(iOpcode) ).m_nCount)
+        sprintf( text, "%s: %llu",
+          g_opcodes65_c02[ vProfileOpcode.at( static_cast<size_t>(opcode) ).m_iOpcode ].sMnemonic,
+          static_cast<unsigned long long>(vProfileOpcode.at( static_cast<size_t>(opcode) ).m_nCount)
         );
       }
       else
@@ -197,7 +197,7 @@ void ProfileFormat( bool bSeperateColumns, int eFormatMode )
           g_opmodes[ static_cast<size_t>(vProfileOpmode.at( static_cast<size_t>(iOpmode) ).m_iOpmode) ].m_sName,
           static_cast<unsigned long long>(vProfileOpmode.at( static_cast<size_t>(iOpmode) ).m_nCount)
         );
-        strcat( pText, sOpmode );
+        strcat( text, sOpmode );
       }
       else
       {
@@ -205,13 +205,13 @@ void ProfileFormat( bool bSeperateColumns, int eFormatMode )
       }
     }
 
-    if (pText[ 0 ])
+    if (text[ 0 ])
     {
-      strcat( pText, "\n" );
+      strcat( text, "\n" );
       g_profile_line_count++;
     }
 
-    iOpcode++;
+    opcode++;
     iOpmode++;
 
     if (g_profile_line_count >= (NUM_PROFILE_LINES - 1)) {
@@ -238,16 +238,16 @@ auto ProfileSave () -> bool
   {
     ProfileFormat( true, 0 );
 
-    char *pText = nullptr;
+    char *text = nullptr;
     int   nLine = g_profile_line_count;
     int   iLine = 0;
 
     for( iLine = 0; iLine < nLine; iLine++ )
     {
-      pText = ProfileLinePeek( iLine );
-      if ( pText )
+      text = ProfileLinePeek( iLine );
+      if ( text )
       {
-        fputs( pText, hFile.get() );
+        fputs( text, hFile.get() );
       }
     }
 

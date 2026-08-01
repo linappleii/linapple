@@ -53,7 +53,7 @@ void DebuggerRunScript(const char* pFileName)
   }
   else
   {
-    sFileName = g_state.sCurrentDir.data();
+    sFileName = g_state.current_dir.data();
     sFileName += "/";
     sFileName += pFileName;
   }
@@ -91,25 +91,25 @@ auto CmdOutputCalc (int nArgs) -> Update_t
     return Help_Arg_1( CMD_OUTPUT_CALC );
 }
 
-  uint16_t nAddress = g_args[1].nValue;
+  uint16_t address = g_args[1].nValue;
   char sText [ CONSOLE_WIDTH ];
 
   bool bHi = false;
   bool bLo = false;
-  char c = FormatChar4Font( static_cast<uint8_t>(nAddress), &bHi, &bLo );
+  char c = FormatChar4Font( static_cast<uint8_t>(address), &bHi, &bLo );
   bool bParen = bHi || bLo;
 
   int nBit = 0;
   int nWidth = 8;
-  nAddress &= 0xFF;
+  address &= 0xFF;
 
   char sBin[ 16 ] = "";
   for (nBit = 0; nBit < nWidth; nBit++ )
   {
-    sBin[ nWidth - 1 - nBit ] = (nAddress & (1 << nBit)) ? '1' : '0';
+    sBin[ nWidth - 1 - nBit ] = (address & (1 << nBit)) ? '1' : '0';
   }
 
-  sprintf( sText, "  $%02X = %3d = %%%s", nAddress, nAddress, sBin );
+  sprintf( sText, "  $%02X = %3d = %%%s", address, address, sBin );
 
   if (bParen) {
     strcat( sText, " (" );
@@ -148,10 +148,10 @@ auto CmdOutputEcho (int nArgs) -> Update_t
   }
   else
   {
-    const char *pText = g_console_first_arg; // ConsoleInputPeek();
-    if (pText)
+    const char *text = g_console_first_arg; // ConsoleInputPeek();
+    if (text)
     {
-      ConsoleDisplayPush( pText );
+      ConsoleDisplayPush( text );
     }
   }
 

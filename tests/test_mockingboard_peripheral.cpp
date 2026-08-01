@@ -50,11 +50,13 @@ static auto Mock_RegisterIO(int slot, PeripheralIOHandler r,
   g_write_cx = cw;
 }
 
-static HostInterface_t g_mock_host = {
-    .AssertIrq = Mock_AssertIrq,
-    .RegisterIO = Mock_RegisterIO,
-    .GetConfig = Mock_GetConfig,
-};
+static HostInterface_t g_mock_host = [] {
+    HostInterface_t h{};
+    h.AssertIrq = Mock_AssertIrq;
+    h.RegisterIO = Mock_RegisterIO;
+    h.GetConfig = Mock_GetConfig;
+    return h;
+}();
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {
   g_cumulative_cycles = 10000;

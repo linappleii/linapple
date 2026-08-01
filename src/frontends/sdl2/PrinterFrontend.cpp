@@ -15,7 +15,7 @@ bool g_printer_append = true;
 static auto check_print() -> bool {
   inactivity = 0;
   if (!file) {
-    file.reset(fopen(g_state.sParallelPrinterFile.data(),
+    file.reset(fopen(g_state.parallel_printer_file.data(),
                      (g_printer_append) ? "ab" : "wb"));
   }
   return (file != nullptr);

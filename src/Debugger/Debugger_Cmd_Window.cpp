@@ -345,7 +345,7 @@ auto CmdWindowLast(int nArgs) -> Update_t {
 void _CursorMoveDownAligned(int nDelta) {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address + nDelta);
-    g_mem_dump[0].nAddress = g_disasm_cur_address;
+    g_mem_dump[0].address = g_disasm_cur_address;
   } else {
     g_disasm_cur_address =
         DisasmCalcAddressFromLines(g_disasm_cur_address, nDelta);
@@ -356,7 +356,7 @@ void _CursorMoveDownAligned(int nDelta) {
 void _CursorMoveUpAligned(int nDelta) {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address - nDelta);
-    g_mem_dump[0].nAddress = g_disasm_cur_address;
+    g_mem_dump[0].address = g_disasm_cur_address;
   } else {
     g_disasm_top_address = static_cast<uint16_t>(g_disasm_top_address - nDelta);
     DisasmCalcCurFromTopAddress();
@@ -444,9 +444,9 @@ auto debug_get_video_mode(uint32_t* pVideoMode) -> bool {
   return DebugVideoMode::Instance().Get(pVideoMode);
 }
 auto CmdCursorFollowTarget(int nArgs) -> Update_t {
-  uint16_t nAddress = 0;
-  if (_6502_GetTargetAddress(g_disasm_cur_address, nAddress)) {
-    g_disasm_cur_address = nAddress;
+  uint16_t address = 0;
+  if (_6502_GetTargetAddress(g_disasm_cur_address, address)) {
+    g_disasm_cur_address = address;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
       WindowUpdateDisasmSize();
@@ -570,9 +570,9 @@ auto CmdCursorJumpPC(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdCursorJumpRetAddr(int nArgs) -> Update_t {
-  uint16_t nAddress = 0;
-  if (_6502_GetStackReturnAddress(nAddress)) {
-    g_disasm_cur_address = nAddress;
+  uint16_t address = 0;
+  if (_6502_GetStackReturnAddress(address)) {
+    g_disasm_cur_address = address;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
       WindowUpdateDisasmSize();

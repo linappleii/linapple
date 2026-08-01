@@ -98,7 +98,7 @@ bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakp
   bBreakpointEnable_ = false;
   for (int i = 0; i < g_breakpoints_count; i++)
   {
-    if (g_breakpoints[i].bSet && g_breakpoints[i].nAddress == nOffset)
+    if (g_breakpoints[i].bSet && g_breakpoints[i].address == nOffset)
     {
       bBreakpointActive_ = true;
       bBreakpointEnable_ = g_breakpoints[i].bEnabled;

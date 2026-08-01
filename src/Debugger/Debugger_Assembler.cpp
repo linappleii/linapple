@@ -623,21 +623,21 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
   // 2.7.0.0 TODO: FIXME: Opcode length that over-lap data, should be shortened
   // ... if (nOpbyte_ > 1) if Disassembly_IsDataAddress( nBaseAddress + 1 )
   // nOpbyte_ = 1;
-  DisasmData_t* pData = Disassembly_IsDataAddress(nBaseAddress);
-  if (pData) {
+  DisasmData_t* data = Disassembly_IsDataAddress(nBaseAddress);
+  if (data) {
     if (pData_) {
-      *pData_ = pData;
+      *pData_ = data;
     }
 
     nSlack =
-        pData->nEndAddress - pData->nStartAddress +
+        data->nEndAddress - data->nStartAddress +
         1;  // *inclusive* KEEP IN SYNC: _CmdDefineByteRange()
             // CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
 
     // Data Disassembler
     // Smart Disassembly - Data Section
     // Assemblyer Directives - Psuedo Mnemonics
-    switch (pData->eElementType) {
+    switch (data->eElementType) {
       case NOP_BYTE_1:
         nOpbyte_ = 1;
         iOpmode_ = AM_M;
@@ -672,7 +672,7 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                           // Absolute mode, not Indirect Absolute mode. DA
                           // BASIC.FPTR D000:D080 // was showing as "da (END-1)"
                           // now shows as "da END-1"
-        pData->nTargetAddress =
+        data->nTargetAddress =
             *reinterpret_cast<uint16_t*>(mem + nBaseAddress);
         break;
       case NOP_STRING_APPLE:
@@ -703,7 +703,7 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                     }
     */
     // iOpcode_ = NUM_OPCODES; // Don't have valid opcodes ... we have data !
-    //  iOpcode_ = (int)( pData ); // HACK: pass pData back to caller ...
+    //  iOpcode_ = (int)( data ); // HACK: pass data back to caller ...
     iOpcode_ = OPCODE_NOP;
   }
 
@@ -738,7 +738,7 @@ auto _6502_GetStackReturnAddress(uint16_t& nAddress_) -> bool {
 }
 
 //===========================================================================
-auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
+auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
                       int* pTargetPartial2_, int* pTargetPointer_,
                       int* pTargetBytes_, bool bIgnoreBranch /*= true*/,
                       bool bIncludeNextOpcodeAddress /*= true*/) -> bool {
@@ -765,9 +765,9 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
     *pTargetBytes_ = 0;
   }
 
-  uint8_t nOpcode = mem[nAddress];
-  uint8_t nTarget8 = mem[(nAddress + 1) & 0xFFFF];
-  uint16_t nTarget16 = (mem[(nAddress + 2) & 0xFFFF] << 8) | nTarget8;
+  uint8_t nOpcode = mem[address];
+  uint8_t nTarget8 = mem[(address + 1) & 0xFFFF];
+  uint16_t nTarget16 = (mem[(address + 2) & 0xFFFF] << 8) | nTarget8;
 
   int eMode = g_opcodes[nOpcode].nAddressMode;
 
@@ -924,7 +924,7 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
     case AM_R:
       if (!bIgnoreBranch) {
         *pTargetPartial_ = nTarget8;
-        *pTargetPointer_ = nAddress + 2;
+        *pTargetPointer_ = address + 2;
 
         if (nTarget8 <= _6502_BRANCH_POS) {
           *pTargetPointer_ += nTarget8;  // +
@@ -974,15 +974,15 @@ auto _6502_GetTargets(uint16_t nAddress, int* pTargetPartial_,
 }
 
 //===========================================================================
-auto _6502_GetTargetAddress(const uint16_t& nAddress, uint16_t& nTarget_)
+auto _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_)
     -> bool {
-  int iOpcode = 0;
+  int opcode = 0;
   int iOpmode = 0;
   int nOpbytes = 0;
-  iOpcode = _6502_GetOpmodeOpbyte(nAddress, iOpmode, nOpbytes);
-  (void)iOpcode;
+  opcode = _6502_GetOpmodeOpbyte(address, iOpmode, nOpbytes);
+  (void)opcode;
 
-  // Composite string that has the target nAddress
+  // Composite string that has the target address
 
   if ((iOpmode != AM_IMPLIED) && (iOpmode != AM_1) && (iOpmode != AM_2) &&
       (iOpmode != AM_3)) {
@@ -990,7 +990,7 @@ auto _6502_GetTargetAddress(const uint16_t& nAddress, uint16_t& nTarget_)
     int nTargetPartial2 = 0;
     int nTargetPointer = 0;
     int nTargetBytes = 0;
-    _6502_GetTargets(nAddress, &nTargetPartial, &nTargetPartial2,
+    _6502_GetTargets(address, &nTargetPartial, &nTargetPartial2,
                      &nTargetPointer, &nTargetBytes, false);
 
     //		if (nTargetPointer == NO_6502_TARGET)
@@ -1011,18 +1011,18 @@ auto _6502_GetTargetAddress(const uint16_t& nAddress, uint16_t& nTarget_)
 }
 
 //===========================================================================
-auto _6502_IsOpcodeBranch(int iOpcode) -> bool {
+auto _6502_IsOpcodeBranch(int opcode) -> bool {
   // 76543210 Bit
   // xxx10000 Branch
-  if (iOpcode == OPCODE_BRA) {
+  if (opcode == OPCODE_BRA) {
     return true;
   }
 
-  if ((iOpcode & 0x1F) != 0x10) {  // low nibble not zero?
+  if ((opcode & 0x1F) != 0x10) {  // low nibble not zero?
     return false;
   }
 
-  if ((iOpcode >> 4) & 1) {
+  if ((opcode >> 4) & 1) {
     return true;
   }
 
@@ -1038,12 +1038,12 @@ auto _6502_IsOpcodeBranch(int iOpcode) -> bool {
 }
 
 //===========================================================================
-auto _6502_IsOpcodeValid(int iOpcode) -> bool {
-  if ((iOpcode & 0x3) == 0x3) {
+auto _6502_IsOpcodeValid(int opcode) -> bool {
+  if ((opcode & 0x3) == 0x3) {
     return false;
   }
 
-  if (islower(g_opcodes6502[iOpcode].sMnemonic[0])) {
+  if (islower(g_opcodes6502[opcode].sMnemonic[0])) {
     return false;
   }
 
@@ -1053,7 +1053,7 @@ auto _6502_IsOpcodeValid(int iOpcode) -> bool {
 // Assembler ________________________________________________________________
 
 auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
-  const char* pText = pMnemonic;
+  const char* text = pMnemonic;
   int nMnemonicHash = 0;
   int iHighBits = 0;
 
@@ -1071,11 +1071,11 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
   }
 #endif
 
-  while (*pText)
+  while (*text)
   //	for( int iChar = 0; iChar < 4; iChar++ )
   {
     char c = static_cast<char>(tolower(static_cast<unsigned char>(
-        *pText)));  // TODO: based on ALLOW_INPUT_LOWERCASE ??
+        *text)));  // TODO: based on ALLOW_INPUT_LOWERCASE ??
 
     nMnemonicHash = (nMnemonicHash << NUM_MSK_BITS) +
                     static_cast<unsigned int>(static_cast<unsigned char>(c));
@@ -1084,7 +1084,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
       nMnemonicHash =
           (nMnemonicHash ^ (iHighBits >> NUM_LOW_BITS)) & ~BIT_MSK_HIGH;
     }
-    pText++;
+    text++;
   }
 
   return nMnemonicHash;
@@ -1093,12 +1093,12 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
 //===========================================================================
 void AssemblerHashOpcodes() {
   Hash_t nMnemonicHash = 0;
-  int iOpcode = 0;
+  int opcode = 0;
 
-  for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    const char* pMnemonic = g_opcodes65_c02[iOpcode].sMnemonic;
+  for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
+    const char* pMnemonic = g_opcodes65_c02[opcode].sMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_opcodes_hash[iOpcode] = nMnemonicHash;
+    g_opcodes_hash[opcode] = nMnemonicHash;
 #if DEBUG_ASSEMBLER
     // OutputDebugString( "" );
     char sText[128];
@@ -1178,7 +1178,7 @@ auto CmdSource(int nArgs) -> Update_t {
         g_source_add_memory = true;
       } else {
         const std::string sFileName =
-            std::string(g_state.sProgramDir.data()) + pFileName;
+            std::string(g_state.program_dir.data()) + pFileName;
 
         const int MAX_MINI_FILENAME = 20;
         const std::string sMiniFileName =
@@ -1219,11 +1219,11 @@ auto CmdSync(int nArgs) -> Update_t {
 //===========================================================================
 void AssemblerHashDirectives() {
   Hash_t nMnemonicHash = 0;
-  int iOpcode = 0;
+  int opcode = 0;
 
-  for (iOpcode = 0; iOpcode < NUM_ASM_M_DIRECTIVES; iOpcode++) {
-    int iNopcode = FIRST_M_DIRECTIVE + iOpcode;
-    //.		const char *pMnemonic = g_assembler_directives_merlin[ iOpcode
+  for (opcode = 0; opcode < NUM_ASM_M_DIRECTIVES; opcode++) {
+    int iNopcode = FIRST_M_DIRECTIVE + opcode;
+    //.		const char *pMnemonic = g_assembler_directives_merlin[ opcode
     //].m_pMnemonic;
     const char* pMnemonic = g_assembler_directives[iNopcode].m_pMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
@@ -1264,7 +1264,7 @@ auto _GetFileSize(FILE* hFile) -> size_t {
   return nFileBytes;
 }
 
-auto _CmdAssemble(uint16_t nAddress, int iArg, int nArgs) -> Update_t {
+auto _CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
   // if AlphaNumeric
   ArgToken_e iTokenSrc = NO_TOKEN;
   ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
@@ -1273,14 +1273,14 @@ auto _CmdAssemble(uint16_t nAddress, int iArg, int nArgs) -> Update_t {
     if (g_console_input_ptr[0] != CHAR_SPACE) {
       // Symbol
       char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
-      SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, nAddress, false,
+      SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, address, false,
                    true);  // bool bRemoveSymbol, bool bUpdateSymbol )
 
       iArg++;
     }
   }
 
-  bool bStatus = Assemble(iArg, nArgs, nAddress);
+  bool bStatus = Assemble(iArg, nArgs, address);
   if (bStatus) {
     return UPDATE_ALL;
   }
@@ -1308,7 +1308,7 @@ auto BufferAssemblyListing(const std::string& pFileName) -> bool {
 }
 
 //===========================================================================
-auto FindSourceLineFromAddress(uint16_t nAddress) -> int {
+auto FindSourceLineFromAddress(uint16_t address) -> int {
   int iAddress = 0;
   int iLine = 0;
   int iSourceLine = NO_SOURCE_LINE;
@@ -1318,7 +1318,7 @@ auto FindSourceLineFromAddress(uint16_t nAddress) -> int {
     iAddress = iSource->first;
     iLine = iSource->second;
 
-    if (iAddress == nAddress) {
+    if (iAddress == address) {
       iSourceLine = iLine;
       break;
     }
@@ -1364,40 +1364,40 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
   for (int iLine = 0; iLine < nLines; iLine++) {
     g_AssemblerSourceBuffer.GetLine(iLine, sText, MAX_LINE - 1);
 
-    uint32_t nAddress = INVALID_ADDRESS;
+    uint32_t address = INVALID_ADDRESS;
 
     strcpy(sLine, sText);
     char* p = sLine;
     p = strstr(sLine, ":");
     if (p) {
       *p = 0;
-      sscanf(sLine, "%X", &nAddress);
+      sscanf(sLine, "%X", &address);
 
-      if (nAddress >= INVALID_ADDRESS) {
+      if (address >= INVALID_ADDRESS) {
         continue;
       }
 
       if (bBytesToMemory) {
         char* pEnd = p + 1;
-        char* pStart = nullptr;
-        int iByte = 0;
-        for (iByte = 0; iByte < 4; iByte++) {
-          pStart = pEnd + 1;
-          pEnd = const_cast<char*>(skip_until_white_space(pStart));
-          int nLen = static_cast<int>(pEnd - pStart);
+        char* start = nullptr;
+        int byte = 0;
+        for (byte = 0; byte < 4; byte++) {
+          start = pEnd + 1;
+          pEnd = const_cast<char*>(skip_until_white_space(start));
+          int nLen = static_cast<int>(pEnd - start);
           if (nLen != 2) {
             break;
           }
           *pEnd = 0;
-          if (text_is_hex_byte(pStart)) {
-            uint8_t nByte = text_convert_2_chars_to_byte(pStart);
-            *(mem + (static_cast<uint16_t>(nAddress)) + iByte) = nByte;
+          if (text_is_hex_byte(start)) {
+            uint8_t nByte = text_convert_2_chars_to_byte(start);
+            *(mem + (static_cast<uint16_t>(address)) + byte) = nByte;
           }
         }
-        g_source_assemble_bytes += iByte;
+        g_source_assemble_bytes += byte;
       }
 
-      g_source_debug[static_cast<uint16_t>(nAddress)] = iLine;
+      g_source_debug[static_cast<uint16_t>(address)] = iLine;
     }
 
     strcpy(sLine, sText);
@@ -1442,9 +1442,9 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
           if (pAddress) {
             char* pAddressEnd = nullptr;
-            nAddress =
+            address =
                 static_cast<uint32_t>(strtol(pAddress, &pAddressEnd, 16));
-            g_symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(nAddress)] = sName;
+            g_symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(address)] = sName;
             g_source_assembly_symbols++;
           }
         }
@@ -1473,10 +1473,10 @@ void _CmdAssembleHashDump() {
   HashOpcode_t tHash{};
   char sText[CONSOLE_WIDTH];
 
-  int iOpcode = 0;
-  for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    tHash.m_iOpcode = iOpcode;
-    tHash.m_nValue = g_opcodes_hash[iOpcode];
+  int opcode = 0;
+  for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
+    tHash.m_iOpcode = opcode;
+    tHash.m_nValue = g_opcodes_hash[opcode];
     vHashes.push_back(tHash);
   }
 
@@ -1484,8 +1484,8 @@ void _CmdAssembleHashDump() {
 
   //	Hash_t nPrevHash = vHashes.at( 0 ).m_nValue;
 
-  for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    tHash = vHashes.at(iOpcode);
+  for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
+    tHash = vHashes.at(opcode);
 
     Hash_t iThisHash = tHash.m_nValue;
     int nOpcode = tHash.m_iOpcode;
@@ -1537,11 +1537,11 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
   int iAddressMode = m_iAsmAddressMode;  // opmode detected from input
   int nTargetValue = m_nAsmTargetValue;
 
-  int iOpcode = 0;
+  int opcode = 0;
   int nOpcodes = static_cast<int>(m_vAsmOpcodes.size());
 
-  for (iOpcode = 0; iOpcode < nOpcodes; iOpcode++) {
-    int nOpcode = m_vAsmOpcodes.at(iOpcode);  // m_iOpcode;
+  for (opcode = 0; opcode < nOpcodes; opcode++) {
+    int nOpcode = m_vAsmOpcodes.at(opcode);  // m_iOpcode;
     int nOpmode = g_opcodes[nOpcode].nAddressMode;
 
     if (nOpmode == iAddressMode) {
@@ -1913,7 +1913,7 @@ void AssemblerProcessDelayedSymols() {
   }
 }
 
-auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
+auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
   bool bGotArgs = false;
   bool bGotMode = false;
   bool bGotByte = false;
@@ -1922,25 +1922,25 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
   // we need to buffer the target address fix-ups.
   AssemblerProcessDelayedSymols();
 
-  m_nAsmBaseAddress = nAddress;
+  m_nAsmBaseAddress = address;
 
   char* pMnemonic = g_args[iArg].sArg;
   uint32_t nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
 
 #if DEBUG_ASSEMBLER
   char sText[CONSOLE_WIDTH * 2];
-  ConsolePrintFormat(sText, "%s%04X%s: %s%s%s -> %s%08X", CHC_ADDRESS, nAddress,
+  ConsolePrintFormat(sText, "%s%04X%s: %s%s%s -> %s%08X", CHC_ADDRESS, address,
                      CHC_DEFAULT, CHC_STRING, pMnemonic, CHC_DEFAULT,
                      CHC_NUM_HEX, nMnemonicHash);
 #endif
 
   m_vAsmOpcodes.clear();  // Candiate opcodes
-  int iOpcode = 0;
+  int opcode = 0;
 
   // Ugh! Linear search.
-  for (iOpcode = 0; iOpcode < NUM_OPCODES; iOpcode++) {
-    if (nMnemonicHash == g_opcodes_hash[iOpcode]) {
-      m_vAsmOpcodes.push_back(iOpcode);
+  for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
+    if (nMnemonicHash == g_opcodes_hash[opcode]) {
+      m_vAsmOpcodes.push_back(opcode);
     }
   }
 
@@ -1951,11 +1951,11 @@ auto Assemble(int iArg, int nArgs, uint16_t nAddress) -> bool {
     ConsoleBufferPush(" Syntax error: Invalid mnemonic");
     return false;
   } else {
-    bGotArgs = AssemblerGetArgs(iArg, nArgs, nAddress);
+    bGotArgs = AssemblerGetArgs(iArg, nArgs, address);
     if (bGotArgs) {
       bGotMode = AssemblerUpdateAddressingMode();
       if (bGotMode) {
-        bGotByte = AssemblerPokeOpcodeAddress(nAddress);
+        bGotByte = AssemblerPokeOpcodeAddress(address);
         (void)bGotByte;
       }
     }

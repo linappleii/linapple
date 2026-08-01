@@ -190,7 +190,7 @@ enum BreakpointOperator_t {
 };
 
 struct Breakpoint_t {
-  uint16_t nAddress; // for registers, functions as nValue
+  uint16_t address; // for registers, functions as nValue
   uint16_t nLength;
   BreakpointSource_t eSource;
   BreakpointOperator_t eOperator;
@@ -891,7 +891,7 @@ enum DisasmDisplay_e // TODO: Prefix enums with DISASM_DISPLAY_
 };
 
 struct DisasmLine_t {
-  int iOpcode;
+  int opcode;
   int iOpmode;
   int nOpbyte;
 
@@ -1099,7 +1099,7 @@ enum MemoryView_e {
 
 struct MemoryDump_t {
   bool bActive;
-  uint16_t nAddress;
+  uint16_t address;
   DEVICE_e eDevice;
   MemoryView_e eView;
 };

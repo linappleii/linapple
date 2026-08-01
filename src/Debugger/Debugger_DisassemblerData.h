@@ -9,8 +9,8 @@
 
 // Data Disassembler ______________________________________________________________________________
 
-	int Disassembly_FindOpcode( uint16_t nAddress );
-	DisasmData_t* Disassembly_IsDataAddress( uint16_t nAddress );
+	int Disassembly_FindOpcode( uint16_t address );
+	DisasmData_t* Disassembly_IsDataAddress( uint16_t address );
 
 	void Disassembly_AddData( DisasmData_t tData);
 	void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *pData_, DisasmLine_t & line_ );

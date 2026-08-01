@@ -50,7 +50,7 @@ auto sys_init() -> int {
     error("Could not initialize CURL easy interface\n");
     return 1;
   }
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.sFTPUserPass.data());
+  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.ftp_user_pass.data());
 
   return 0;
 }

@@ -207,7 +207,7 @@ void ay8910_init_all(int clock_rate, int sample_rate) {
     ay8910_reset(i);
   }
 }
-void ay8910_init_clock(int nClock) { ay_clock = nClock; }
+void ay8910_init_clock(int clock) { ay_clock = clock; }
 void ay8910_reset(int chip) {
   if (chip >= 0 && chip < MAX_8910) ay8910_reset_instance(&ay_chips[chip]);
 }
@@ -225,9 +225,9 @@ void ay8910_update(int chip, int16_t** buffer, int length) {
     ay8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
                            ay_sample_rate);
 }
-auto ay8910_get_regs_ptr(uint32_t nAyNum) -> uint8_t* {
-  if (nAyNum >= MAX_8910) return nullptr;
-  return ay_chips[nAyNum].regs;
+auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t* {
+  if (ay_num >= MAX_8910) return nullptr;
+  return ay_chips[ay_num].regs;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,

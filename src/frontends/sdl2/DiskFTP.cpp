@@ -48,7 +48,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
 
   std::array<char, 1024> ftpdirpath;
   int l = snprintf(ftpdirpath.data(), ftpdirpath.size(), "%s/%s%s",
-                   g_state.sFTPLocalDir.data(), g_ftp_dir_listing.data(),
+                   g_state.ftp_local_dir.data(), g_ftp_dir_listing.data(),
                    md5str(ctx->directory.c_str()));
 
   if (l < 0 || static_cast<size_t>(l) >= ftpdirpath.size()) {

@@ -51,48 +51,48 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
   }
 
   Arg_t* pArg = &g_args[1];
-  uint16_t nAddress = pArg->nValue;
+  uint16_t address = pArg->nValue;
   bool bUpdate = false;
 
   pArg->eDevice = DEV_MEMORY;  // Default
 
   if (strncmp(g_args[1].sArg, "SY", 2) == 0)  // Sy6522_t
   {
-    nAddress = (g_args[1].sArg[2] - '0') & 3;
+    address = (g_args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_SY6522;
     bUpdate = true;
   } else if (strncmp(g_args[1].sArg, "AY", 2) == 0)  // Ay8910_t
   {
-    nAddress = (g_args[1].sArg[2] - '0') & 3;
+    address = (g_args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_AY8910;
     bUpdate = true;
   }
 #ifdef SUPPORT_Z80_EMU
   else if (strcmp(g_args[1].sArg, "*AF") == 0) {
-    nAddress = *(uint16_t*)(mem + REG_AF);
+    address = *(uint16_t*)(mem + REG_AF);
     bUpdate = true;
   } else if (strcmp(g_args[1].sArg, "*BC") == 0) {
-    nAddress = *(uint16_t*)(mem + REG_BC);
+    address = *(uint16_t*)(mem + REG_BC);
     bUpdate = true;
   } else if (strcmp(g_args[1].sArg, "*DE") == 0) {
-    nAddress = *(uint16_t*)(mem + REG_DE);
+    address = *(uint16_t*)(mem + REG_DE);
     bUpdate = true;
   } else if (strcmp(g_args[1].sArg, "*HL") == 0) {
-    nAddress = *(uint16_t*)(mem + REG_HL);
+    address = *(uint16_t*)(mem + REG_HL);
     bUpdate = true;
   } else if (strcmp(g_args[1].sArg, "*IX") == 0) {
-    nAddress = *(uint16_t*)(mem + REG_IX);
+    address = *(uint16_t*)(mem + REG_IX);
     bUpdate = true;
   }
 #endif
 
   if (bUpdate) {
-    pArg->nValue = nAddress;
-    sprintf(pArg->sArg, "%04X", nAddress);
+    pArg->nValue = address;
+    sprintf(pArg->sArg, "%04X", address);
   }
 
   if (pAddress_) {
-    *pAddress_ = nAddress;
+    *pAddress_ = address;
   }
 
   return true;
@@ -132,19 +132,19 @@ auto CmdMemoryCompare(int nArgs) -> Update_t {
 
 //===========================================================================
 static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t {
-  uint16_t nAddress = 0;
+  uint16_t address = 0;
 
-  if (!MemoryDumpCheck(nArgs, &nAddress)) {
+  if (!MemoryDumpCheck(nArgs, &address)) {
     return Help_Arg_1(g_command);
   }
 
-  g_mem_dump[iWhich].nAddress = nAddress;
+  g_mem_dump[iWhich].address = address;
   g_mem_dump[iWhich].eDevice = g_args[1].eDevice;
   g_mem_dump[iWhich].bActive = true;
   g_mem_dump[iWhich].eView = static_cast<MemoryView_e>(iView);
 
   if (iWhich == 0) {
-    g_disasm_cur_address = nAddress;
+    g_disasm_cur_address = address;
   }
 
   // make sure data window is visible
@@ -234,16 +234,16 @@ auto CmdMemoryEnterByte(int nArgs) -> Update_t {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t nAddress = g_args[1].nValue;
+  uint16_t address = g_args[1].nValue;
   while (nArgs >= 2) {
     uint16_t nData = g_args[nArgs].nValue;
     if (nData > 0xFF) {
-      *(mem + nAddress + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
-      *(mem + nAddress + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
+      *(mem + address + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
+      *(mem + address + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
     } else {
-      *(mem + nAddress + nArgs - 2) = static_cast<uint8_t>(nData);
+      *(mem + address + nArgs - 2) = static_cast<uint8_t>(nData);
     }
-    *(memdirty + (nAddress >> 8)) = 1;
+    *(memdirty + (address >> 8)) = 1;
     nArgs--;
   }
 
@@ -260,15 +260,15 @@ auto CmdMemoryEnterWord(int nArgs) -> Update_t {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t nAddress = g_args[1].nValue;
+  uint16_t address = g_args[1].nValue;
   while (nArgs >= 2) {
     uint16_t nData = g_args[nArgs].nValue;
 
     // Little Endian
-    *(mem + nAddress + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
-    *(mem + nAddress + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
+    *(mem + address + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
+    *(mem + address + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
 
-    *(memdirty + (nAddress >> 8)) |= 1;
+    *(memdirty + (address >> 8)) |= 1;
     nArgs--;
   }
 
@@ -344,7 +344,7 @@ auto CmdConfigGetDebugDir(int nArgs) -> Update_t {
 
   char sPath[path_max_len + 8];
   // TODO: debugger dir has no ` CONSOLE_COLOR_ESCAPE_CHAR ?!?!
-  ConsoleBufferPushFormat(sPath, "Path: %s", g_state.sCurrentDir.data());
+  ConsoleBufferPushFormat(sPath, "Path: %s", g_state.current_dir.data());
 
   return ConsoleUpdate();
 }
@@ -409,7 +409,7 @@ Update_t CmdMemoryLoad (int nArgs)
       return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
-    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // TODO: g_debug_dir
+    strcpy( sLoadSaveFilePath, g_state.current_dir ); // TODO: g_debug_dir
 
     uint16_t nAddressStart;
     uint16_t nAddress2   = 0;
@@ -436,7 +436,7 @@ Update_t CmdMemoryLoad (int nArgs)
 
     uint8_t *pMemory = new uint8_t [ _6502_MEM_END + 1 ]; // default 64K buffer
     uint8_t *pDst = mem + nAddressStart;
-    uint8_t *pSrc = pMemory;
+    uint8_t *src_ptr = pMemory;
 
     if (bHaveFileName)
     {
@@ -462,10 +462,10 @@ Update_t CmdMemoryLoad (int nArgs)
       size_t nRead = fread( pMemory, static_cast<size_t>(nAddressLen), 1, hFile.get() );
       if (nRead == 1) // (size_t)nLen)
       {
-        int iByte;
-        for( iByte = 0; iByte < nAddressLen; iByte++ )
+        int byte;
+        for( byte = 0; byte < nAddressLen; byte++ )
         {
-          *pDst++ = *pSrc++;
+          *pDst++ = *src_ptr++;
         }
         ConsoleBufferPush(  "Loaded."  );
       }
@@ -523,7 +523,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   int iArgBank = 3;
   int iArgColon = 4;
 
-  int nBank = 0;
+  int bank = 0;
   bool bBankSpecified = false;
 
   if (!bHaveFileName) {
@@ -545,7 +545,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_LOAD);
     }
 
-    nBank = g_args[iArgBank].nValue;
+    bank = g_args[iArgBank].nValue;
     bBankSpecified = true;
 
     iArgAddress += 2;
@@ -557,7 +557,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   struct KnownFileType_t {
     const char* pExtension;
-    int nAddress;
+    int address;
     int nLength;
   };
 
@@ -602,7 +602,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   int nAddressLen = 0;
 
   if (pFileType) {
-    nAddressStart = pFileType->nAddress;
+    nAddressStart = pFileType->address;
     nAddressLen = pFileType->nLength;
     nAddressEnd = pFileType->nLength + nAddressLen;
   }
@@ -631,10 +631,10 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     g_memory_load_save_file_name = pFileName;
   }
   const std::string sLoadSaveFilePath =
-      std::string(g_state.sCurrentDir.data()) +
+      std::string(g_state.current_dir.data()) +
       g_memory_load_save_file_name;  // TODO: g_debug_dir
 
-  uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
+  uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(bank) : mem;
   if (!pMemBankBase) {
     ConsoleBufferPush("error: Bank out of range.");
     return ConsoleUpdate();
@@ -718,9 +718,9 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
   if ((nAddressLen > 0) && (nAddressEnd <= _6502_MEM_END)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
-    //      uint8_t *pSrc = mem + nAddressStart;
+    //      uint8_t *src_ptr = mem + nAddressStart;
     //      uint8_t *pDst = mem + nDst;
-    //      uint8_t *pEnd = pSrc + nAddressLen;
+    //      uint8_t *pEnd = src_ptr + nAddressLen;
 
     while (nAddressLen--)  // v2.7.0.23
     {
@@ -797,7 +797,7 @@ Update_t CmdMemorySave (int nArgs)
 //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
-    strcpy( sLoadSaveFilePath, g_state.sCurrentDir ); // g_state.sProgramDir
+    strcpy( sLoadSaveFilePath, g_state.current_dir ); // g_state.program_dir
 
     RangeType_t eRange;
     eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
@@ -826,13 +826,13 @@ Update_t CmdMemorySave (int nArgs)
       {
         uint8_t *pMemory = new uint8_t [ nAddressLen ];
         uint8_t *pDst = pMemory;
-        uint8_t *pSrc = mem + nAddressStart;
+        uint8_t *src_ptr = mem + nAddressStart;
 
         // memcpy -- copy out of active memory bank
-        int iByte;
-        for( iByte = 0; iByte < nAddressLen; iByte++ )
+        int byte;
+        for( byte = 0; byte < nAddressLen; byte++ )
         {
-          *pDst++ = *pSrc++;
+          *pDst++ = *src_ptr++;
         }
 
         FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
@@ -877,7 +877,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   uint16_t nAddress2 = 0;
   static uint16_t nAddressEnd = 0;
   static int nAddressLen = 0;
-  static int nBank = 0;
+  static int bank = 0;
   static bool bBankSpecified = false;
 
   if (nArgs > 7) {
@@ -893,7 +893,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       } else {
         ConsoleBufferPushFormat(sLast,
                                 "Last saved: Bank=%02X $%04X:$%04X, %04X",
-                                nBank, nAddressStart, nAddressEnd, nAddressLen);
+                                bank, nAddressStart, nAddressEnd, nAddressLen);
       }
     } else {
       ConsoleBufferPush("Last saved: none");
@@ -936,7 +936,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
         return Help_Arg_1(CMD_MEMORY_SAVE);
       }
 
-      nBank = g_args[iArgBank].nValue;
+      bank = g_args[iArgBank].nValue;
       bBankSpecified = true;
 
       iArgAddress += 2;
@@ -951,7 +951,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     std::string sLoadSaveFilePath =
-        g_state.sCurrentDir.data();  // g_state.sProgramDir
+        g_state.current_dir.data();  // g_state.program_dir
 
     RangeType_t eRange;
     eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
@@ -972,7 +972,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
                   nAddressLen);
         } else {
           sprintf(sMemoryLoadSaveFileName, "%04X.%04X.bank%02X.bin",
-                  nAddressStart, nAddressLen, nBank);
+                  nAddressStart, nAddressLen, bank);
         }
         g_memory_load_save_file_name = sMemoryLoadSaveFileName;
       } else {
@@ -981,7 +981,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       sLoadSaveFilePath += g_memory_load_save_file_name;
 
       const uint8_t* const pMemBankBase =
-          bBankSpecified ? mem_get_bank_ptr(nBank) : mem;
+          bBankSpecified ? mem_get_bank_ptr(bank) : mem;
       if (!pMemBankBase) {
         ConsoleBufferPush("error: Bank out of range.");
         return ConsoleUpdate();
@@ -1205,7 +1205,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
   if (nLen == 0) pFileName = "AppleWinNTSC4096x4@32.data";
 
   static std::string sPaletteFilePath;
-  sPaletteFilePath = g_state.sCurrentDir + pFileName;
+  sPaletteFilePath = g_state.current_dir + pFileName;
 
   class ConsoleFilename {
    public:
@@ -1240,62 +1240,62 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class Swizzle32 {
    public:
-    static void RGBAswapBGRA(size_t nSize, const uint8_t* pSrc,
-                             uint8_t* pDst)  // Note: pSrc and pDst _may_ alias;
+    static void RGBAswapBGRA(size_t nSize, const uint8_t* src_ptr,
+                             uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias;
                                              // code handles this properly
     {
-      const uint8_t* pEnd = pSrc + nSize;
-      while (pSrc < pEnd) {
-        const uint8_t r = pSrc[2];
-        const uint8_t g = pSrc[1];
-        const uint8_t b = pSrc[0];
+      const uint8_t* pEnd = src_ptr + nSize;
+      while (src_ptr < pEnd) {
+        const uint8_t r = src_ptr[2];
+        const uint8_t g = src_ptr[1];
+        const uint8_t b = src_ptr[0];
         const uint8_t a =
-            255;  // Force A=1, 100% opacity; as pSrc[3] might not be 255
+            255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
 
         *pDst++ = r;
         *pDst++ = g;
         *pDst++ = b;
         *pDst++ = a;
-        pSrc += 4;
+        src_ptr += 4;
       }
     }
 
     static void ABGRswizzleBGRA(
-        size_t nSize, const uint8_t* pSrc,
-        uint8_t* pDst)  // Note: pSrc and pDst _may_ alias; code handles this
+        size_t nSize, const uint8_t* src_ptr,
+        uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias; code handles this
                         // properly
     {
-      const uint8_t* pEnd = pSrc + nSize;
-      while (pSrc < pEnd) {
-        const uint8_t r = pSrc[3];
-        const uint8_t g = pSrc[2];
-        const uint8_t b = pSrc[1];
+      const uint8_t* pEnd = src_ptr + nSize;
+      while (src_ptr < pEnd) {
+        const uint8_t r = src_ptr[3];
+        const uint8_t g = src_ptr[2];
+        const uint8_t b = src_ptr[1];
         const uint8_t a =
-            255;  // Force A=1, 100% opacity; as pSrc[3] might not be 255
+            255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
 
         *pDst++ = b;
         *pDst++ = g;
         *pDst++ = r;
         *pDst++ = a;
-        pSrc += 4;
+        src_ptr += 4;
       }
     }
 #if 0
-      static void ABGRswizzleRGBA( size_t nSize, const uint8_t *pSrc, uint8_t *pDst ) // Note: pSrc and pDst _may_ alias; code handles this properly
+      static void ABGRswizzleRGBA( size_t nSize, const uint8_t *src_ptr, uint8_t *pDst ) // Note: src_ptr and pDst _may_ alias; code handles this properly
       {
-        const uint8_t* pEnd = pSrc + nSize;
-        while ( pSrc < pEnd )
+        const uint8_t* pEnd = src_ptr + nSize;
+        while ( src_ptr < pEnd )
         {
-          const uint8_t r = pSrc[3];
-          const uint8_t g = pSrc[2];
-          const uint8_t b = pSrc[1];
-          const uint8_t a = 255; // Force A=1, 100% opacity; as pSrc[3] might not be 255
+          const uint8_t r = src_ptr[3];
+          const uint8_t g = src_ptr[2];
+          const uint8_t b = src_ptr[1];
+          const uint8_t a = 255; // Force A=1, 100% opacity; as src_ptr[3] might not be 255
 
           *pDst++ = r;
           *pDst++ = g;
           *pDst++ = b;
           *pDst++ = a;
-           pSrc  += 4;
+           src_ptr  += 4;
         }
       }
 #endif
@@ -1303,13 +1303,13 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class Transpose64x1 {
    public:
-    static void transposeTo64x256(const uint8_t* pSrc, uint8_t* pDst) {
+    static void transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst) {
       const uint32_t nBPP = 4;  // bytes per pixel
 
       // Expand y from 1 to 256 rows
       const size_t nBytesPerScanLine = 16 * 4 * nBPP;  // 16 colors * 4 phases
       for (int y = 0; y < 256; y++)
-        memcpy(pDst + y * nBytesPerScanLine, pSrc, nBytesPerScanLine);
+        memcpy(pDst + y * nBytesPerScanLine, src_ptr, nBytesPerScanLine);
     }
   };
 
@@ -1339,8 +1339,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
         .
         .    1  2  4  8  Delta
     */
-    static void transposeTo64x1(const uint8_t* pSrc, uint8_t* pDst) {
-      const uint32_t* pPhase0 = (uint32_t*)pSrc;
+    static void transposeTo64x1(const uint8_t* src_ptr, uint8_t* pDst) {
+      const uint32_t* pPhase0 = (uint32_t*)src_ptr;
       /* */ uint32_t* pTmp = (uint32_t*)pDst;
 
 #if 1  // Loop
@@ -1367,7 +1367,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
       const uint32_t nBPP = 4;  // bytes per pixel
 
       const size_t nBytesPerScanLine = 16 * 4 * nBPP;  // 16 colors * 4 phases
-      memcpy(pDst, pSrc, nBytesPerScanLine);
+      memcpy(pDst, src_ptr, nBytesPerScanLine);
 
       int iPhase = 1;
       int iDstX = iPhase * 16;
@@ -1455,14 +1455,14 @@ auto CmdNTSC(int nArgs) -> Update_t {
     .    0    1    2         4095  column
     */
     /*
-          static void transposeFrom16x1( const uint8_t *pSrc, uint8_t *pDst )
+          static void transposeFrom16x1( const uint8_t *src_ptr, uint8_t *pDst )
           {
-            const uint8_t *pTmp = pSrc;
+            const uint8_t *pTmp = src_ptr;
             const uint32_t nBPP = 4; // bytes per pixel
 
             for( int x = 0; x < 16; x++ )
             {
-              pTmp = pSrc + (x * nBPP); // dst is 16-px column
+              pTmp = src_ptr + (x * nBPP); // dst is 16-px column
               for( int y = 0; y < 256; y++ )
               {
                   *pDst++ = pTmp[0];
@@ -1533,7 +1533,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
     */
 
    public:
-    static void transposeTo64x256(const uint8_t* pSrc, uint8_t* pDst) {
+    static void transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst) {
       /* */ uint8_t* pTmp = pDst;
       const uint32_t nBPP = 4;  // bytes per pixel
 
@@ -1543,7 +1543,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
         for (int x = 0; x < 4096 / 16; x++)  // 4096px/16 px = 256 columns
         {
           for (int i = 0; i < 16 * nBPP; i++)  // 16 px, 32-bit
-            *pDst++ = *pSrc++;
+            *pDst++ = *src_ptr++;
 
           pDst -= (16 * nBPP);
           pDst += (64 * nBPP);  // move to next scan line
@@ -1551,18 +1551,18 @@ auto CmdNTSC(int nArgs) -> Update_t {
       }
     }
 
-    static void transposeFrom64x256(const uint8_t* pSrc, uint8_t* pDst) {
-      const uint8_t* pTmp = pSrc;
+    static void transposeFrom64x256(const uint8_t* src_ptr, uint8_t* pDst) {
+      const uint8_t* pTmp = src_ptr;
       const uint32_t nBPP = 4;  // bytes per pixel
 
       for (int iPhase = 0; iPhase < 4; iPhase++) {
-        pSrc = pTmp + (iPhase * 16 * nBPP);  // src is 16-px column
+        src_ptr = pTmp + (iPhase * 16 * nBPP);  // src is 16-px column
         for (int y = 0; y < 256; y++) {
           for (int i = 0; i < 16 * nBPP; i++)  // 16 px, 32-bit
-            *pDst++ = *pSrc++;
+            *pDst++ = *src_ptr++;
 
-          pSrc -= (16 * nBPP);
-          pSrc += (64 * nBPP);  // move to next scan line
+          src_ptr -= (16 * nBPP);
+          src_ptr += (64 * nBPP);  // move to next scan line
         }
       }
     }
@@ -1729,11 +1729,11 @@ auto CmdTextSave(int nArgs) -> int {
     bHaveFileName = true;
   }
 
-  char* pText = nullptr;
-  size_t nSize = Util_GetTextScreen(pText);
+  char* text = nullptr;
+  size_t nSize = Util_GetTextScreen(text);
 
   std::string sLoadSaveFilePath =
-      g_state.sCurrentDir.data();  // g_state.sProgramDir
+      g_state.current_dir.data();  // g_state.program_dir
 
   if (bHaveFileName) {
     g_memory_load_save_file_name = g_args[1].sArg;
@@ -1755,7 +1755,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   hFile.reset(fopen(sLoadSaveFilePath.c_str(), "wb"));
   if (hFile) {
-    size_t nWrote = fwrite(pText, nSize, 1, hFile.get());
+    size_t nWrote = fwrite(text, nSize, 1, hFile.get());
     if (nWrote == 1) {
       char text[CONSOLE_WIDTH] = "";
       ConsoleBufferPushFormat(text, "Saved: %s",
@@ -1778,11 +1778,11 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
                                g_memory_search_results.end());
   g_memory_search_results.push_back(NO_6502_TARGET);
 
-  uint16_t nAddress = 0;
-  for (nAddress = nAddressStart; nAddress < nAddressEnd; nAddress++) {
+  uint16_t address = 0;
+  for (address = nAddressStart; address < nAddressEnd; address++) {
     bool bMatchAll = true;
 
-    uint16_t nAddress2 = nAddress;
+    uint16_t nAddress2 = address;
 
     int nMemBlocks = vMemorySearchValues.size();
     for (int iBlock = 0; iBlock < nMemBlocks; iBlock++, nAddress2++) {
@@ -1852,7 +1852,7 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
       nFound++;
 
       // Save the search result
-      g_memory_search_results.push_back(nAddress);
+      g_memory_search_results.push_back(address);
     }
   }
 
@@ -1875,9 +1875,9 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   if (nFound > 0) {
     int iFound = 1;
     while (iFound <= nFound) {
-      uint16_t nAddress = g_memory_search_results.at(iFound);
+      uint16_t address = g_memory_search_results.at(iFound);
 
-      //      sprintf( sText, "%2d:$%04X ", iFound, nAddress );
+      //      sprintf( sText, "%2d:$%04X ", iFound, address );
       //      int nLen = strlen( sText );
 
       sResult[0] = 0;
@@ -1905,7 +1905,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
 
       StringCat(sResult, CHC_ADDRESS, nBuf);
       sprintf(sText, "%04X ",
-              nAddress);  // 2.6.2.15 Fixed: Search Results: Added space between
+              address);  // 2.6.2.15 Fixed: Search Results: Added space between
                           // results for better readability
       nLen += StringCat(sResult, sText, nBuf);
 

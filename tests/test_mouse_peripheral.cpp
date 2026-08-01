@@ -44,12 +44,14 @@ static void Mock_RegisterCxROM(int slot, uint8_t* rom) {
   (void)rom;
 }
 
-static HostInterface_t mock_host = {
-    .AssertIrq = Mock_AssertIrq,
-    .RegisterIO = Mock_RegisterIO,
-    .RegisterCxROM = Mock_RegisterCxROM,
-    .GetConfig = Mock_GetConfig,
-};
+static HostInterface_t mock_host = [] {
+    HostInterface_t h{};
+    h.AssertIrq = Mock_AssertIrq;
+    h.RegisterIO = Mock_RegisterIO;
+    h.RegisterCxROM = Mock_RegisterCxROM;
+    h.GetConfig = Mock_GetConfig;
+    return h;
+}();
 
 TEST_CASE("Mouse Peripheral ABI") {
   irq_asserted = false;

@@ -21,7 +21,7 @@
 	{
 		int iCommand;
 		HelpType_e eType;
-		const char *pText;
+		const char *text;
 	};
 
 // Prototypes _______________________________________________________________
@@ -37,8 +37,8 @@ inline void  UnpackVersion( const uint32_t nVersion,
 		nFixMinor_ = (nVersion >>  0) & 0xFF;
 	}
 
-	bool  TestStringCat ( char * pDst, const char* pSrc, const int nDstSize );
-	bool  TryStringCat ( char * pDst, const char* pSrc, const int nDstSize );
-	int  StringCat( char * pDst, const char* pSrc, const int nDstSize );
+	bool  TestStringCat ( char * pDst, const char* src_ptr, const int nDstSize );
+	bool  TryStringCat ( char * pDst, const char* src_ptr, const int nDstSize );
+	int  StringCat( char * pDst, const char* src_ptr, const int nDstSize );
 
 #endif

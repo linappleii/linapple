@@ -91,8 +91,8 @@ pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
             flagc | flagn | (flagv ? AF_OVERFLOW : 0) |                 \
             (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
 #define CYC(a)                           \
-  uExecutedCycles += (a) + uExtraCycles; \
-  g_irq_check_timeout -= (a) + uExtraCycles;
+  executed_cycles += (a) + extra_cycles; \
+  g_irq_check_timeout -= (a) + extra_cycles;
 #define POP \
   (*(mem + ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp)))
 #define PUSH(a)             \
@@ -103,7 +103,7 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
 
 #define READ                                                  \
   (((addr & IO_REGION_MASK) == IO_REGION_START)               \
-       ? io_map_dispatch(regs.pc, addr, 0, 0, uExecutedCycles) \
+       ? io_map_dispatch(regs.pc, addr, 0, 0, executed_cycles) \
        : *(mem + addr))
 #define SETNZ(a)           \
   {                        \
@@ -118,7 +118,7 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
     if (page)                                                          \
       *(page + (addr & 0xFF)) = (uint8_t)(a);                          \
     else if ((addr & IO_REGION_MASK) == IO_REGION_START)               \
-      io_map_dispatch(regs.pc, addr, 1, (uint8_t)(a), uExecutedCycles); \
+      io_map_dispatch(regs.pc, addr, 1, (uint8_t)(a), executed_cycles); \
   }
 
 // ExtraCycles:
@@ -129,9 +129,9 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
     base = regs.pc;                \
     regs.pc += addr;               \
     if ((base ^ regs.pc) & 0xFF00) \
-      uExtraCycles = 2;            \
+      extra_cycles = 2;            \
     else                           \
-      uExtraCycles = 1;            \
+      extra_cycles = 1;            \
   }
 
 static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
@@ -143,7 +143,7 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wsequence-point"
 #define CHECK_PAGE_CHANGE \
-  if ((base ^ addr) & 0xFF00) uExtraCycles = 1;
+  if ((base ^ addr) & 0xFF00) extra_cycles = 1;
 
 // Addressing Mode Macros
 
@@ -174,7 +174,7 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
 #define IABSCMOS                               \
   base = read_u16_unaligned(mem + regs.pc);          \
   addr = read_u16_unaligned(mem + base);             \
-  if ((base & 0xFF) == 0xFF) uExtraCycles = 1; \
+  if ((base & 0xFF) == 0xFF) extra_cycles = 1; \
   regs.pc += 2;
 #define IABSNMOS                                                      \
   base = read_u16_unaligned(mem + regs.pc);                           \
@@ -237,7 +237,7 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
   temp = READ;                                        \
   flagv = !((regs.a ^ temp) & 0x80);                  \
   if (regs.ps & AF_DECIMAL) {                         \
-    uExtraCycles++;                                   \
+    extra_cycles++;                                   \
     val = (regs.a & 0x0f) + (temp & 0x0f) + flagc;    \
     if (val >= 0x0A) val = 0x10 | ((val + 6) & 0x0f); \
     val += (regs.a & 0xf0) + (temp & 0xf0);           \
@@ -627,7 +627,7 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
   temp = READ;                                              \
   flagv = ((regs.a ^ temp) & 0x80);                         \
   if (regs.ps & AF_DECIMAL) {                               \
-    uExtraCycles++;                                         \
+    extra_cycles++;                                         \
     temp2 = 0x0F + (regs.a & 0x0F) - (temp & 0x0F) + flagc; \
     if (temp2 < 0x10) {                                     \
       val = 0;                                              \
@@ -723,8 +723,8 @@ uint32_t g_mean = 0;
 uint32_t g_min = UINT32_MAX_VAL;
 uint32_t g_max = 0;
 
-static inline void DoIrqProfiling(uint32_t uCycles) {
-  (void)uCycles;
+static inline void DoIrqProfiling(uint32_t cycles) {
+  (void)cycles;
 #ifdef _DEBUG
   if (regs.ps & AF_INTERRUPT) return;  // Still in Apple's ROM
 
@@ -739,44 +739,44 @@ static inline void DoIrqProfiling(uint32_t uCycles) {
   g_idx++;
 
   if (g_idx == BUFFER_SIZE) {
-    uint32_t nTotal = 0;
-    for (uint16_t i = 0; i < BUFFER_SIZE; i++) nTotal += g_buffer[i];
+    uint32_t total = 0;
+    for (uint16_t i = 0; i < BUFFER_SIZE; i++) total += g_buffer[i];
 
-    g_mean = nTotal / BUFFER_SIZE;
+    g_mean = total / BUFFER_SIZE;
   }
 #endif
 }
 
 //===========================================================================
 
-static inline void Fetch(uint8_t& iOpcode, uint32_t uExecutedCycles) {
+static inline void Fetch(uint8_t& opcode, uint32_t executed_cycles) {
   const uint16_t PC = regs.pc;
-  g_internal_executed_cycles = uExecutedCycles;
+  g_internal_executed_cycles = executed_cycles;
 
-  iOpcode =
+  opcode =
       ((PC & IO_REGION_MASK) == IO_REGION_START)
           ? io_map_dispatch(PC, PC, 0, 0,
-                           uExecutedCycles)  // Fetch opcode from I/O memory,
+                           executed_cycles)  // Fetch opcode from I/O memory,
                                              // but params are still from mem[]
           : mem[PC];
 
   regs.pc++;
 }
 
-static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
+static inline void NMI(uint32_t& executed_cycles, uint16_t& extra_cycles,
                        uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
                        uint8_t& flagz) {
   (void)flagn;
   (void)flagv;
   (void)flagz;
-  (void)uExecutedCycles;
-  (void)uExtraCycles;
+  (void)executed_cycles;
+  (void)extra_cycles;
   (void)flagc;
 #ifdef ENABLE_NMI_SUPPORT
   if (g_nmi_flank) {
     // NMI signals are only serviced once
     g_nmi_flank = false;
-    g_cycle_irq_start = g_cumulative_cycles + uExecutedCycles;
+    g_cycle_irq_start = g_cumulative_cycles + executed_cycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -788,13 +788,13 @@ static inline void NMI(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
 #endif
 }
 
-static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
+static inline void IRQ(uint32_t& executed_cycles, uint16_t& extra_cycles,
                        uint8_t& flagc, uint8_t& flagn, uint8_t& flagv,
                        uint8_t& flagz) {
   if (g_bm_irq && !(regs.ps & AF_INTERRUPT)) {
     // IRQ signals are deasserted when a specific r/w operation is done on
     // device
-    g_cycle_irq_start = g_cumulative_cycles + uExecutedCycles;
+    g_cycle_irq_start = g_cumulative_cycles + executed_cycles;
     PUSH(regs.pc >> 8)
     PUSH(regs.pc & 0xFF)
     EF_TO_AF
@@ -805,14 +805,14 @@ static inline void IRQ(uint32_t& uExecutedCycles, uint16_t& uExtraCycles,
   }
 }
 
-static inline void CheckInterruptSources(uint32_t uExecutedCycles) {
-  (void)uExecutedCycles;
+static inline void CheckInterruptSources(uint32_t executed_cycles) {
+  (void)executed_cycles;
   if (g_irq_check_timeout <= 0) {
     g_irq_check_timeout = g_full_speed ? 128 : 16;
   }
 }
 
-static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
+static auto Cpu65C02(uint32_t total_cycles) -> uint32_t {
   // Stack-local variables for register performance optimization
   uint16_t addr = 0;
   uint8_t flagc = 0;
@@ -823,16 +823,16 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
   uint16_t temp2 = 0;
   uint16_t val = 0;
   AF_TO_EF
-  uint32_t uExecutedCycles = 0;
+  uint32_t executed_cycles = 0;
   uint16_t base = 0;
 
   do {
-    uint16_t uExtraCycles = 0;
-    uint8_t iOpcode = 0;
+    uint16_t extra_cycles = 0;
+    uint8_t opcode = 0;
 
-    Fetch(iOpcode, uExecutedCycles);
+    Fetch(opcode, executed_cycles);
 
-    switch (iOpcode) {
+    switch (opcode) {
       case 0x00:
         BRK CYC(7) break;
       case 0x01:
@@ -962,7 +962,7 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
       case 0x3F:
         INV NOP CYC(2) break;
       case 0x40:
-        RTI CYC(6) DoIrqProfiling(uExecutedCycles);
+        RTI CYC(6) DoIrqProfiling(executed_cycles);
         break;
       case 0x41:
         INDX EOR CYC(6) break;
@@ -1350,19 +1350,19 @@ static auto Cpu65C02(uint32_t uTotalCycles) -> uint32_t {
         INV NOP CYC(2) break;
     }
 
-    CheckInterruptSources(uExecutedCycles);
-    NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
-    IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
+    CheckInterruptSources(executed_cycles);
+    NMI(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
+    IRQ(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
 
-  } while (uExecutedCycles < uTotalCycles);
+  } while (executed_cycles < total_cycles);
 
   EF_TO_AF
-  return uExecutedCycles;
+  return executed_cycles;
 }
 
 //===========================================================================
 
-static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
+static auto Cpu6502(uint32_t total_cycles) -> uint32_t {
   uint16_t addr = 0;
   uint8_t flagc = 0;
   uint8_t flagn = 0;
@@ -1373,16 +1373,16 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
   uint16_t low = 0;
   uint16_t high = 0;
   AF_TO_EF
-  uint32_t uExecutedCycles = 0;
+  uint32_t executed_cycles = 0;
   uint16_t base = 0;
 
   do {
-    uint16_t uExtraCycles = 0;
-    uint8_t iOpcode = 0;
+    uint16_t extra_cycles = 0;
+    uint8_t opcode = 0;
 
-    Fetch(iOpcode, uExecutedCycles);
+    Fetch(opcode, executed_cycles);
 
-    switch (iOpcode) {
+    switch (opcode) {
       case 0x00:
         BRK CYC(7) break;
       case 0x01:
@@ -1512,7 +1512,7 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
       case 0x3F:
         INV ABSX RLA CYC(7) break;
       case 0x40:
-        RTI CYC(6) DoIrqProfiling(uExecutedCycles);
+        RTI CYC(6) DoIrqProfiling(executed_cycles);
         break;
       case 0x41:
         INDX EOR CYC(6) break;
@@ -1899,23 +1899,23 @@ static auto Cpu6502(uint32_t uTotalCycles) -> uint32_t {
         INV ABSX INS CYC(7) break;
     }
 
-    CheckInterruptSources(uExecutedCycles);
-    NMI(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
-    IRQ(uExecutedCycles, uExtraCycles, flagc, flagn, flagv, flagz);
+    CheckInterruptSources(executed_cycles);
+    NMI(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
+    IRQ(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
 
-  } while (uExecutedCycles < uTotalCycles);
+  } while (executed_cycles < total_cycles);
 
   EF_TO_AF
-  return uExecutedCycles;
+  return executed_cycles;
 }
 
-static auto InternalCpuExecute(uint32_t uTotalCycles) -> uint32_t {
+static auto InternalCpuExecute(uint32_t total_cycles) -> uint32_t {
 #ifdef UPDATE_ALL_PER_CYCLE
 #endif
   if (IS_APPLE2() || (g_apple2_type == A2TYPE_APPLE2E)) {
-    return Cpu6502(uTotalCycles);  // Apple ][, ][+, //e
+    return Cpu6502(total_cycles);  // Apple ][, ][+, //e
   } else {
-    return Cpu65C02(uTotalCycles);
+    return Cpu65C02(total_cycles);
   }  // Enhanced Apple //e
 }
 
@@ -1928,12 +1928,12 @@ auto cpu_destroy() -> void {
 }
 
 auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
-  uint32_t nCycles = executed_cycles - g_cycles_executed;
+  uint32_t cycles = executed_cycles - g_cycles_executed;
 #ifdef UPDATE_ALL_PER_CYCLE
-  assert((int32_t)nCycles >= 0);
+  assert((int32_t)cycles >= 0);
 #endif
-  g_cycles_executed += nCycles;
-  g_cumulative_cycles += nCycles;
+  g_cycles_executed += cycles;
+  g_cumulative_cycles += cycles;
 }
 
 #ifdef UPDATE_ALL_PER_CYCLE
@@ -1949,21 +1949,21 @@ auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
 #endif
 
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {
-  uint32_t uExecutedCycles = 0;
+  uint32_t executed_cycles = 0;
 
   g_cycles_submitted = total_cycles;
   g_cycles_executed = 0;
 
   if (total_cycles == 0) {  // Do single step
-    uExecutedCycles = InternalCpuExecute(0);
+    executed_cycles = InternalCpuExecute(0);
   } else {  // Do multi-opcode emulation
-    uExecutedCycles = InternalCpuExecute(total_cycles);
+    executed_cycles = InternalCpuExecute(total_cycles);
   }
 
-  uint32_t nRemainingCycles = uExecutedCycles - g_cycles_executed;
-  g_cumulative_cycles += nRemainingCycles;
+  uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
+  g_cumulative_cycles += remaining_cycles;
 
-  return uExecutedCycles;
+  return executed_cycles;
 }
 
 auto cpu_initialize() -> void {

@@ -14,8 +14,8 @@ using SS_BaseMemory = SsBaseMemory_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef uint8_t (*iofunction)(uint16_t nPC, uint16_t nAddr, uint8_t nWriteFlag,
-                              uint8_t nWriteValue, uint32_t nCyclesLeft);
+typedef uint8_t (*iofunction)(uint16_t pc, uint16_t addr, uint8_t write_flag,
+                              uint8_t write_value, uint32_t cycles_left);
 #ifdef __cplusplus
 }
 #endif
@@ -172,8 +172,8 @@ struct MemoryInstance_t {
   uint8_t* memdirty = nullptr;
   uint8_t* memrom = nullptr;
   uint8_t* memimage = nullptr;
-  uint8_t* pCxRomInternal = nullptr;
-  uint8_t* pCxRomPeripheral = nullptr;
+  uint8_t* cx_rom_internal = nullptr;
+  uint8_t* cx_rom_peripheral = nullptr;
   uint8_t* mem = nullptr;
 
   uint8_t* memshadow[NUM_PAGES_64K]{};

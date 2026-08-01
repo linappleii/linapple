@@ -177,17 +177,17 @@ inline conchar_t ConsoleColor_MakeColor(uint8_t color, uint8_t text) {
 }
 
 // Return the string length without the markup
-inline int ConsoleColor_StringLength(const char* pText) {
-  const char* pSrc = pText;
+inline int ConsoleColor_StringLength(const char* text) {
+  const char* src_ptr = text;
   /* */ int nLen = 0;
 
-  if (pText) {
-    while (*pSrc) {
-      if (ConsoleColor_IsCharMeta(*pSrc))
-        pSrc++;
+  if (text) {
+    while (*src_ptr) {
+      if (ConsoleColor_IsCharMeta(*src_ptr))
+        src_ptr++;
       else
         nLen++;
-      pSrc++;
+      src_ptr++;
     }
   }
 
@@ -243,7 +243,7 @@ extern int g_console_input_skip;
 // Console
 
 // Buffered
-bool console_print(const char* pText);
+bool console_print(const char* text);
 bool ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va);
 template <size_t _BufSz>
 inline bool ConsolePrintVa(char (&buf)[_BufSz], const char* pFormat,
@@ -297,13 +297,13 @@ inline bool ConsoleBufferPushFormat(char (&buf)[_BufSz], const char* pFormat,
   return r;
 }
 
-void ConsoleConvertFromText(conchar_t* sText, const char* pText);
+void ConsoleConvertFromText(conchar_t* sText, const char* text);
 
 // Display
 Update_t console_display_error(const char* pTextError);
 void ConsoleDisplayPause();
-void ConsoleDisplayPush(const char* pText);
-void ConsoleDisplayPush(const conchar_t* pText);
+void ConsoleDisplayPush(const char* text);
+void ConsoleDisplayPush(const conchar_t* text);
 Update_t ConsoleUpdate();
 void ConsoleFlush();
 

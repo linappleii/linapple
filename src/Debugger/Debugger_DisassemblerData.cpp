@@ -41,7 +41,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //===========================================================================
 auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 {
-	uint16_t nAddress  = 0;
+	uint16_t address  = 0;
 	uint16_t nAddress2 = 0;
 	int  nLen      = 0;
 
@@ -53,25 +53,25 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 
 	if( nArgs < 1 )
 	{
-		nAddress = g_disasm_cur_address;
+		address = g_disasm_cur_address;
 	}
 	else
 	{
-		RangeType_t eRange = Range_Get( nAddress, nAddress2, iArg);
+		RangeType_t eRange = Range_Get( address, nAddress2, iArg);
 		if ((eRange == RANGE_HAS_END) ||
 			(eRange == RANGE_HAS_LEN))
 		{
 			RangeEndLen_t tEndLen;
-			Range_CalcEndLen( eRange, nAddress, nAddress2, tEndLen );
+			Range_CalcEndLen( eRange, address, nAddress2, tEndLen );
 			nLen = tEndLen.nAddressLen;
 			nLen--; // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC: _CmdDefineByteRange() CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
 		}
 		else
 		{
 			if( nArgs > 1 ) {
-				nAddress = g_args[ 2 ].nValue;
+				address = g_args[ 2 ].nValue;
 			} else {
-				nAddress = g_args[ 1 ].nValue;
+				address = g_args[ 1 ].nValue;
 }
 		}
 	}
@@ -85,8 +85,8 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 }
 	}
 
-	tData_.nStartAddress = nAddress;
-	tData_.nEndAddress = nAddress + nLen;
+	tData_.nStartAddress = address;
+	tData_.nEndAddress = address + nLen;
 //	tData_.nArraySize = 0;
 
 	const char *pSymbolName = "";
@@ -133,13 +133,13 @@ auto _CmdDefineByteRange(int nArgs,int iArg,DisasmData_t & tData_) -> uint16_t
 
 	// bRemoveSymbol = false // use arg[2]
 	// bUpdateSymbol = true // add the symbol to the table
-	SymbolUpdate( eSymbolTable, pSymbolName, nAddress, false, true );
+	SymbolUpdate( eSymbolTable, pSymbolName, address, false, true );
 
 	// TODO: Note: need to call ConsoleUpdate(), as may print symbol has been updated
 
 	Util_SafeStrCpy( tData_.sSymbol, pSymbolName, sizeof(tData_.sSymbol));
 
-	return nAddress;
+	return address;
 }
 
 // Undefine Data
@@ -154,7 +154,7 @@ auto CmdDisasmDataDefCode (int nArgs) -> Update_t
 
 	DisasmData_t tData{};
 	int iArg = 2;
-	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	uint16_t address = _CmdDefineByteRange( nArgs, iArg, tData );
 
 	// Need to iterate through all blocks
 	// DB TEST1 300:320
@@ -162,12 +162,12 @@ auto CmdDisasmDataDefCode (int nArgs) -> Update_t
 	// DB TEST3 320:340
 	// X  TEST1
 
-	DisasmData_t *pData = Disassembly_IsDataAddress( nAddress );
-	if( pData )
+	DisasmData_t *data = Disassembly_IsDataAddress( address );
+	if( data )
 	{
 		// TODO: Do we need to split the data !?
 		//Disassembly_DelData( tData );
-		pData->iDirective = _NOP_REMOVED;
+		data->iDirective = _NOP_REMOVED;
 
 		// TODO: Remove symbol 'D_FA62' from symbol table!
 	}
@@ -208,28 +208,28 @@ auto CmdDisasmDataList (int nArgs) -> Update_t
   (void)nArgs;
 
 	// Need to iterate through all blocks
-	DisasmData_t* pData = nullptr;
+	DisasmData_t* data = nullptr;
 
-	while( (pData = Disassembly_Enumerate( pData )) )
+	while( (data = Disassembly_Enumerate( data )) )
 	{
-		if (pData->iDirective != _NOP_REMOVED)
+		if (data->iDirective != _NOP_REMOVED)
 		{
-			int nLen = strlen( pData->sSymbol );
+			int nLen = strlen( data->sSymbol );
 
 			char sText[CONSOLE_WIDTH * 2];
 			// <smbol> <type> <start>:<end>
 			// `TEST `300`:`320
 			ConsolePrintFormat( sText, "%s%s %s%*s %s%04X%s:%s%04X"
 				, CHC_CATEGORY
-				, g_nopcode_types[ pData->eElementType ]
+				, g_nopcode_types[ data->eElementType ]
 				, (nLen > 0) ? CHC_SYMBOL     : CHC_DEFAULT
 				, MAX_SYMBOLS_LEN
-				, (nLen > 0) ? pData->sSymbol : "???"
+				, (nLen > 0) ? data->sSymbol : "???"
 				, CHC_ADDRESS
-				, pData->nStartAddress
+				, data->nStartAddress
 				, CHC_ARG_SEP
 				, CHC_ADDRESS
-				, pData->nEndAddress // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC:  _CmdDefineByteRange() CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
+				, data->nEndAddress // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC:  _CmdDefineByteRange() CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
 			);
 		}
 	}
@@ -264,7 +264,7 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 }
 	}
 
-	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	uint16_t address = _CmdDefineByteRange( nArgs, iArg, tData );
 
 	// TODO: Allow user to select which assembler to use for displaying directives!
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_BYTE;
@@ -275,10 +275,10 @@ auto _CmdDisasmDataDefByteX (int nArgs) -> Update_t
 	tData.nTargetAddress = 0;
 
 	// Already exists, so update
-	DisasmData_t *pData = Disassembly_IsDataAddress( nAddress );
-	if( pData )
+	DisasmData_t *data = Disassembly_IsDataAddress( address );
+	if( data )
 	{
-		*pData = tData;
+		*data = tData;
 	}
 	else {
 		Disassembly_AddData( tData );
@@ -318,7 +318,7 @@ auto _CmdDisasmDataDefWordX (int nArgs) -> Update_t
 }
 	}
 
-	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	uint16_t address = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
 	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_WORD;
@@ -328,10 +328,10 @@ auto _CmdDisasmDataDefWordX (int nArgs) -> Update_t
 	tData.nTargetAddress = 0;
 
 	// Already exists, so update
-	DisasmData_t *pData = Disassembly_IsDataAddress( nAddress );
-	if( pData )
+	DisasmData_t *data = Disassembly_IsDataAddress( address );
+	if( data )
 	{
-		*pData = tData;
+		*data = tData;
 	}
 	else {
 		Disassembly_AddData( tData );
@@ -366,7 +366,7 @@ auto CmdDisasmDataDefAddress16 (int nArgs) -> Update_t
 
 	DisasmData_t tData{};
 	int iArg = 2;
-	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	uint16_t address = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
 	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_ADDRESS_16;
@@ -376,10 +376,10 @@ auto CmdDisasmDataDefAddress16 (int nArgs) -> Update_t
 	tData.nTargetAddress = 0; // dynamic -- will be filled in ...
 
 	// Already exists, so update
-	DisasmData_t *pData = Disassembly_IsDataAddress( nAddress );
-	if( pData )
+	DisasmData_t *data = Disassembly_IsDataAddress( address );
+	if( data )
 	{
-		*pData = tData;
+		*data = tData;
 	}
 	else {
 		Disassembly_AddData( tData );
@@ -455,7 +455,7 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 }
 	}
 
-	uint16_t nAddress = _CmdDefineByteRange( nArgs, iArg, tData );
+	uint16_t address = _CmdDefineByteRange( nArgs, iArg, tData );
 
 //	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] + ASM_DEFINE_APPLE_TEXT;
 	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_ASCII; // ASM_MERLIN
@@ -465,10 +465,10 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 	tData.nTargetAddress = 0;
 
 	// Already exists, so update
-	DisasmData_t *pData = Disassembly_IsDataAddress( nAddress );
-	if( pData )
+	DisasmData_t *data = Disassembly_IsDataAddress( address );
+	if( data )
 	{
-		*pData = tData;
+		*data = tData;
 	}
 	else {
 		Disassembly_AddData( tData );
@@ -483,7 +483,7 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 //===========================================================================
 auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 {
-	DisasmData_t *pData = nullptr; // bIsNopcode = false
+	DisasmData_t *data = nullptr; // bIsNopcode = false
 	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
@@ -495,40 +495,40 @@ auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 		{
 			pCurrent++;
 			if (pCurrent <= pEnd) {
-				pData = pCurrent;
+				data = pCurrent;
 }
 		} else {
-			pData = pBegin;
+			data = pBegin;
 		}
 	}
-	return pData;
+	return data;
 }
 
 // returns NULL if address has no data associated with it
 //===========================================================================
-auto Disassembly_IsDataAddress ( uint16_t nAddress ) -> DisasmData_t*
+auto Disassembly_IsDataAddress ( uint16_t address ) -> DisasmData_t*
 {
-	DisasmData_t *pData = nullptr; // bIsNopcode = false
+	DisasmData_t *data = nullptr; // bIsNopcode = false
 	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
 	{
 		// TODO: Replace with binary search -- should store data in sorted order, via start address
-		pData = & g_disassembler_data[ 0 ];
+		data = & g_disassembler_data[ 0 ];
 		for( int iTarget = 0; iTarget < nDataTargets; iTarget++ )
 		{
-			if( pData->iDirective != _NOP_REMOVED )
+			if( data->iDirective != _NOP_REMOVED )
 			{
-				if( (nAddress >= pData->nStartAddress) && (nAddress <= pData->nEndAddress) )
+				if( (address >= data->nStartAddress) && (address <= data->nEndAddress) )
 				{
-					return pData;
+					return data;
 				}
 			}
-			pData++;
+			data++;
 		}
-		pData = nullptr; // bIsNopCode = false
+		data = nullptr; // bIsNopCode = false
 	}
-	return pData;
+	return data;
 }
 
 // Notes: tData.iDirective should not be _NOP_REMOVED !
@@ -540,11 +540,11 @@ void Disassembly_AddData( DisasmData_t tData)
 
 // DEPRECATED ! Inlined in _6502_GetOpmodeOpbyte() !
 //===========================================================================
-void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *pData, DisasmLine_t & line_ )
+void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *data, DisasmLine_t & line_ )
 {
   (void)nBaseAddress;
   (void)line_;
-	if( !pData )
+	if( !data )
 	{
 #if _DEBUG
 		console_display_error( "Disassembly_GetData() but we don't have a valid DisasmData_t *" );
@@ -557,27 +557,27 @@ void Disassembly_GetData ( uint16_t nBaseAddress, const DisasmData_t *pData, Dis
 void Disassembly_DelData( DisasmData_t tData)
 {
 	// g_disassembler_data.erase( );
-	uint16_t nAddress = tData.nStartAddress;
+	uint16_t address = tData.nStartAddress;
 
-	DisasmData_t *pData = nullptr; // bIsNopcode = false
+	DisasmData_t *data = nullptr; // bIsNopcode = false
 	int nDataTargets = g_disassembler_data.size();
 
 	if( nDataTargets )
 	{
 		// TODO: Replace with binary search -- should store data in sorted order, via start address
-		pData = & g_disassembler_data[ 0 ];
+		data = & g_disassembler_data[ 0 ];
 		for( int iTarget = 0; iTarget < nDataTargets; iTarget++ )
 		{
-			if (pData->iDirective != _NOP_REMOVED)
+			if (data->iDirective != _NOP_REMOVED)
 			{
-				if ((nAddress >= pData->nStartAddress) && (nAddress < pData->nEndAddress))
+				if ((address >= data->nStartAddress) && (address < data->nEndAddress))
 				{
-					pData->iDirective = _NOP_REMOVED;
+					data->iDirective = _NOP_REMOVED;
 				}
 			}
-			pData++;
+			data++;
 		}
-		pData = nullptr; // bIsNopCode = false
+		data = nullptr; // bIsNopCode = false
 	}
 }
 

@@ -90,26 +90,29 @@ auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
   g_mock_handlers[addr] = {instance, read, write};
 }
 
-static HostInterface_t mock_host = {
-    .Log = Mock_Log,
-    .AssertIrq = Mock_AssertIrq,
-    .RegisterIO = Mock_RegisterIO,
-    .RegisterCxROM = Mock_RegisterCxROM,
-    .RegisterExpansionROM = Mock_RegisterExpansionROM,
-    .RegisterDirectIO = Mock_RegisterDirectIO,
-    .get_mem_ptr = nullptr,
-    .GetCycles = nullptr,
-    .GetConfig = nullptr,
-    .SetConfig = nullptr,
-    .NotifyStatusChanged = nullptr,
-    .NotifyActivityChanged = nullptr,
-    .RequestPreciseTiming = nullptr,
-    .AudioPushSamples = nullptr,
-    .ResetSystem = nullptr,
-    .PrinterPutChar = nullptr,
-    .PrinterGetStatus = nullptr,
-    .SerialTransmitByte = nullptr,
-    .SerialUpdateState = nullptr};
+static HostInterface_t mock_host = [] {
+    HostInterface_t h{};
+    h.Log = Mock_Log;
+    h.AssertIrq = Mock_AssertIrq;
+    h.RegisterIO = Mock_RegisterIO;
+    h.RegisterCxROM = Mock_RegisterCxROM;
+    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+    h.RegisterDirectIO = Mock_RegisterDirectIO;
+    h.get_mem_ptr = nullptr;
+    h.GetCycles = nullptr;
+    h.GetConfig = nullptr;
+    h.SetConfig = nullptr;
+    h.NotifyStatusChanged = nullptr;
+    h.NotifyActivityChanged = nullptr;
+    h.RequestPreciseTiming = nullptr;
+    h.AudioPushSamples = nullptr;
+    h.ResetSystem = nullptr;
+    h.PrinterPutChar = nullptr;
+    h.PrinterGetStatus = nullptr;
+    h.SerialTransmitByte = nullptr;
+    h.SerialUpdateState = nullptr;
+    return h;
+}();
 
 static auto Clock_Init_With_Mock(int slot) -> void* {
   void* instance = clock_get_descriptor()->init(slot, &mock_host);

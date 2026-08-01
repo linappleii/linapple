@@ -48,8 +48,8 @@ auto MemoryTextFile_t::Read( const std::string & pFileName ) -> bool
     // NOTE: Can NOT m_vBuffer.clear(); MUST insert() _before_ using at()
 		m_vBuffer.insert( m_vBuffer.begin(), static_cast<size_t>(nSize)+1, 0 );
 
-		char *pBuffer = & m_vBuffer.at(0);
-		bStatus=(fread(reinterpret_cast<void*>(pBuffer), static_cast<size_t>(nSize), 1, hFile.get())>0);
+		char *buffer = & m_vBuffer.at(0);
+		bStatus=(fread(reinterpret_cast<void*>(buffer), static_cast<size_t>(nSize), 1, hFile.get())>0);
 
 		m_bDirty = true;
 		GetLinePointers();
@@ -120,18 +120,18 @@ void MemoryTextFile_t::GetLinePointers()
 
 void MemoryTextFile_t::PushLine( char *pLine )
 {
-	char *pSrc = pLine;
-	while (pSrc && *pSrc)
+	char *src_ptr = pLine;
+	while (src_ptr && *src_ptr)
 	{
-		if (*pSrc == CHAR_CR) {
+		if (*src_ptr == CHAR_CR) {
 			m_vBuffer.push_back( EOL_NULL );
 		} else
-		if (*pSrc == CHAR_LF) {
+		if (*src_ptr == CHAR_LF) {
 			m_vBuffer.push_back( EOL_NULL );
 		} else {
-			m_vBuffer.push_back( *pSrc );
+			m_vBuffer.push_back( *src_ptr );
 }
-		pSrc++;
+		src_ptr++;
 	}
 	m_vBuffer.push_back( EOL_NULL );
 

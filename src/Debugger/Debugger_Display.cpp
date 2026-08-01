@@ -194,11 +194,11 @@ void PrintGlyph(const int x, const int y, const char glyph) {
   }
 }
 
-void DebuggerPrint(int x, int y, const char* pText) {
-  if (!pText) return;
+void DebuggerPrint(int x, int y, const char* text) {
+  if (!text) return;
   const int nLeft = x;
   char c = 0;
-  const char* p = pText;
+  const char* p = text;
 
   while ((c = *p)) {
     if (c == '\n') {
@@ -214,20 +214,20 @@ void DebuggerPrint(int x, int y, const char* pText) {
   }
 }
 
-void DebuggerPrintColor(int x, int y, const conchar_t* pText) {
+void DebuggerPrintColor(int x, int y, const conchar_t* text) {
   int nLeft = x;
   conchar_t g = 0;
-  const conchar_t* pSrc = pText;
+  const conchar_t* src_ptr = text;
 
-  if (!pText) {
+  if (!text) {
     return;
   }
 
-  while ((g = (*pSrc))) {
+  while ((g = (*src_ptr))) {
     if (g == '\n') {
       x = nLeft;
       y += CONSOLE_FONT_HEIGHT;
-      pSrc++;
+      src_ptr++;
       continue;
     }
 
@@ -240,7 +240,7 @@ void DebuggerPrintColor(int x, int y, const conchar_t* pText) {
 
     PrintGlyph(x, y, static_cast<char>(g & _CONSOLE_COLOR_MASK));
     x += CONSOLE_FONT_WIDTH;
-    pSrc++;
+    src_ptr++;
   }
 }
 
@@ -248,39 +248,39 @@ auto can_draw_debugger() -> bool {
   return (g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING);
 }
 
-auto PrintText(const char* pText, Rect_t& rRect) -> int {
-  if (!pText) return 0;
-  int nLen = strlen(pText);
+auto PrintText(const char* text, Rect_t& rRect) -> int {
+  if (!text) return 0;
+  int nLen = strlen(text);
 
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
   FillRect(&rRect, g_console_brush_bg);
 #endif
 
-  DebuggerPrint(rRect.left, rRect.top, pText);
+  DebuggerPrint(rRect.left, rRect.top, text);
   return nLen;
 }
 
-void PrintTextColor(const conchar_t* pText, Rect_t& rRect) {
-  if (!pText) return;
+void PrintTextColor(const conchar_t* text, Rect_t& rRect) {
+  if (!text) return;
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
   FillRect(&rRect, g_console_brush_bg);
 #endif
 
-  DebuggerPrintColor(rRect.left, rRect.top, pText);
+  DebuggerPrintColor(rRect.left, rRect.top, text);
 }
 
-auto PrintTextCursorX(const char* pText, Rect_t& rRect) -> int {
+auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int {
   int nChars = 0;
-  if (pText) {
-    nChars = PrintText(pText, rRect);
+  if (text) {
+    nChars = PrintText(text, rRect);
     int nFontWidth = CONSOLE_FONT_WIDTH;
     rRect.left += (nFontWidth * nChars);
   }
   return nChars;
 }
 
-auto PrintTextCursorY(const char* pText, Rect_t& rRect) -> int {
-  int nChars = PrintText(pText, rRect);
+auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int {
+  int nChars = PrintText(text, rRect);
   rRect.top += CONSOLE_FONT_HEIGHT;
   rRect.bottom += CONSOLE_FONT_HEIGHT;
   return nChars;
@@ -291,25 +291,25 @@ auto PrintTextCursorY(const char* pText, Rect_t& rRect) -> int {
 void ConsoleDrawChar(int x, int y, char ch) { PrintGlyph(x, y, ch); }
 
 // Font: GDI/Console
-void ConsoleDrawText(int x, int y, const char* pText) {
-  if (!pText) {
+void ConsoleDrawText(int x, int y, const char* text) {
+  if (!text) {
     return;
   }
 
-  const char* pSrc = pText;
+  const char* src_ptr = text;
   int xCur = x;
   char c = 0;
 
-  while (pSrc && (c = *pSrc)) {
+  while (src_ptr && (c = *src_ptr)) {
     if (ConsoleColor_IsCharMeta(c)) {
-      pSrc++;
-      if (!*pSrc) {
+      src_ptr++;
+      if (!*src_ptr) {
         break;
       }
 
-      if (ConsoleColor_IsCharColor(*pSrc)) {
-        DebuggerSetColorFG(g_console_color[*pSrc - '0']);
-      } else if (ConsoleColor_IsCharMeta(*pSrc))  // ``
+      if (ConsoleColor_IsCharColor(*src_ptr)) {
+        DebuggerSetColorFG(g_console_color[*src_ptr - '0']);
+      } else if (ConsoleColor_IsCharMeta(*src_ptr))  // ``
       {
         ConsoleDrawChar(xCur, y, c);
         xCur += CONSOLE_FONT_WIDTH;
@@ -319,7 +319,7 @@ void ConsoleDrawText(int x, int y, const char* pText) {
       ConsoleDrawChar(xCur, y, c);
       xCur += CONSOLE_FONT_WIDTH;
     }
-    pSrc++;
+    src_ptr++;
   }
 }
 
@@ -327,14 +327,14 @@ void ConsoleDrawText(int x, int y, const char* pText) {
 void DebuggerDrawChar(int x, int y, char ch) { PrintGlyph(x, y, ch); }
 
 // Font: Apple Text
-void DebuggerDrawText(int x, int y, const char* pText) {
-  if (!pText) return;
-  const char* pSrc = pText;
+void DebuggerDrawText(int x, int y, const char* text) {
+  if (!text) return;
+  const char* src_ptr = text;
   int xCur = x;
-  while (pSrc && *pSrc) {
-    DebuggerDrawChar(xCur, y, *pSrc);
+  while (src_ptr && *src_ptr) {
+    DebuggerDrawChar(xCur, y, *src_ptr);
     xCur += APPLE_FONT_WIDTH;
-    pSrc++;
+    src_ptr++;
   }
 }
 
@@ -391,14 +391,14 @@ void DrawConsoleInput() {
 }
 
 //===========================================================================
-void DrawConsoleLine(const conchar_t* pText, int y_coord) {
+void DrawConsoleLine(const conchar_t* text, int y_coord) {
   int x = g_window_config[WINDOW_CONSOLE].left;
   int y = g_window_config[WINDOW_CONSOLE].top + y_coord * APPLE_FONT_HEIGHT;
 
-  const conchar_t* pSrc = pText;
+  const conchar_t* src_ptr = text;
   conchar_t g = 0;
 
-  if (!pText) {
+  if (!text) {
     // Clear line
     int col_start = x / APPLE_FONT_WIDTH;
     int row = y / APPLE_FONT_HEIGHT;
@@ -419,11 +419,11 @@ void DrawConsoleLine(const conchar_t* pText, int y_coord) {
     return;
   }
 
-  while (pSrc && (g = *pSrc)) {
+  while (src_ptr && (g = *src_ptr)) {
     DebuggerSetColorFG(ConsoleColor_GetColor(g));
     DebuggerDrawChar(x, y, ConsoleChar_GetChar(g));
     x += APPLE_FONT_WIDTH;
-    pSrc++;
+    src_ptr++;
   }
 }
 
@@ -501,9 +501,9 @@ const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {" ", "="
 const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {" ", "v",
                                                                      "\x8A"};
 
-auto FormatCharCopy(char* pDst, const char* pSrc, const int nLen) -> char* {
+auto FormatCharCopy(char* pDst, const char* src_ptr, const int nLen) -> char* {
   for (int i = 0; i < nLen; i++) {
-    *pDst++ = FormatCharTxtCtrl(*pSrc++, nullptr);
+    *pDst++ = FormatCharTxtCtrl(*src_ptr++, nullptr);
   }
   return pDst;
 }
@@ -526,8 +526,8 @@ void FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
     nMaxOpBytes = MAX_OPCODES;
   }
 
-  for (int iByte = 0; iByte < nMaxOpBytes; iByte++) {
-    uint8_t nMem = *(mem + static_cast<uint16_t>(nBaseAddress + iByte));
+  for (int byte = 0; byte < nMaxOpBytes; byte++) {
+    uint8_t nMem = *(mem + static_cast<uint16_t>(nBaseAddress + byte));
     sprintf(pDst, "%02X", nMem);
     pDst += 2;
 
@@ -545,11 +545,11 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
   int nDisplayLen = nEndAddress - nBaseAddress + 1;
   int len = nDisplayLen;
 
-  for (int iByte = 0; iByte < line_.nOpbyte;) {
-    uint8_t nTarget8 = *(mem + static_cast<uint16_t>(nBaseAddress + iByte));
+  for (int byte = 0; byte < line_.nOpbyte;) {
+    uint8_t nTarget8 = *(mem + static_cast<uint16_t>(nBaseAddress + byte));
     uint16_t nTarget16 =
-        *(mem + static_cast<uint16_t>(nBaseAddress + iByte)) |
-        (*(mem + static_cast<uint16_t>(nBaseAddress + iByte + 1)) << 8);
+        *(mem + static_cast<uint16_t>(nBaseAddress + byte)) |
+        (*(mem + static_cast<uint16_t>(nBaseAddress + byte + 1)) << 8);
 
     switch (line_.iNoptype) {
       case NOP_BYTE_1:
@@ -558,9 +558,9 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
       case NOP_BYTE_8:
         sprintf(pDst, "%02X", nTarget8);
         pDst += 2;
-        iByte++;
+        byte++;
         if (line_.iNoptype == NOP_BYTE_1) {
-          if (iByte < line_.nOpbyte) {
+          if (byte < line_.nOpbyte) {
             *pDst++ = ',';
           }
         }
@@ -570,25 +570,25 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
       case NOP_WORD_4:
         sprintf(pDst, "%04X", nTarget16);
         pDst += 4;
-        iByte += 2;
-        if (iByte < line_.nOpbyte) {
+        byte += 2;
+        if (byte < line_.nOpbyte) {
           *pDst++ = ',';
         }
         break;
       case NOP_ADDRESS:
-        iByte += 2;
+        byte += 2;
         break;
       case NOP_STRING_APPLESOFT:
-        iByte = line_.nOpbyte;
-        for (int i = 0; i < iByte; i++) {
+        byte = line_.nOpbyte;
+        for (int i = 0; i < byte; i++) {
           pDst[i] =
               static_cast<char>(mem[static_cast<uint16_t>(nBaseAddress + i)]);
         }
-        pDst += iByte;
+        pDst += byte;
         *pDst = 0;
         break;
       case NOP_STRING_APPLE:
-        iByte = line_.nOpbyte;
+        byte = line_.nOpbyte;
 
         if (len > (MAX_IMMEDIATE_LEN - 2)) {
           if (len > MAX_IMMEDIATE_LEN) {
@@ -614,14 +614,14 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
         *pDst = 0;
         break;
       default:
-        iByte++;
+        byte++;
         break;
     }
   }
 }
 
-void GetTargets_IgnoreDirectJSRJMP(const uint8_t iOpcode, int& nTargetPointer) {
-  if (iOpcode == OPCODE_JSR || iOpcode == OPCODE_JMP_A) {
+void GetTargets_IgnoreDirectJSRJMP(const uint8_t opcode, int& nTargetPointer) {
+  if (opcode == OPCODE_JSR || opcode == OPCODE_JMP_A) {
     nTargetPointer = NO_6502_TARGET;
   }
 }
@@ -629,15 +629,15 @@ void GetTargets_IgnoreDirectJSRJMP(const uint8_t iOpcode, int& nTargetPointer) {
 auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   line_.Clear();
 
-  int iOpcode = 0;
+  int opcode = 0;
   int iOpmode = 0;
   int nOpbyte = 0;
 
-  iOpcode =
+  opcode =
       _6502_GetOpmodeOpbyte(nBaseAddress, iOpmode, nOpbyte, &line_.pDisasmData);
-  const DisasmData_t* pData = line_.pDisasmData;
+  const DisasmData_t* data = line_.pDisasmData;
 
-  line_.iOpcode = iOpcode;
+  line_.opcode = opcode;
   line_.iOpmode = iOpmode;
   line_.nOpbyte = nOpbyte;
 
@@ -673,8 +673,8 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
 
   if ((iOpmode != AM_IMPLIED) && (iOpmode != AM_1) && (iOpmode != AM_2) &&
       (iOpmode != AM_3)) {
-    if (pData) {
-      nTarget = pData->nTargetAddress;
+    if (data) {
+      nTarget = data->nTargetAddress;
     } else {
       nTarget = *(mem + static_cast<uint16_t>(nBaseAddress + 1)) |
                 (*(mem + static_cast<uint16_t>(nBaseAddress + 2)) << 8);
@@ -711,7 +711,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       const char* pTargetStr = nullptr;
       const char* pSymbol = FindSymbolFromAddress(nTarget);
 
-      if (pData && (!pData->bSymbolLookup)) {
+      if (data && (!data->bSymbolLookup)) {
         pSymbol = nullptr;
       }
 
@@ -730,7 +730,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         }
       }
 
-      if (!(bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) || pData) {
+      if (!(bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) || data) {
         pSymbol = FindSymbolFromAddress(nTarget + 1);
         if (pSymbol) {
           bDisasmFormatFlags |= DISASM_FORMAT_SYMBOL;
@@ -757,7 +757,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       uint16_t nTargetValue = 0;
       _6502_GetTargets(nBaseAddress, &nTargetPartial, &nTargetPartial2,
                        &nTargetPointer, nullptr);
-      GetTargets_IgnoreDirectJSRJMP(iOpcode, nTargetPointer);
+      GetTargets_IgnoreDirectJSRJMP(opcode, nTargetPointer);
 
       if (nTargetPointer != NO_6502_TARGET) {
         bDisasmFormatFlags |= DISASM_FORMAT_TARGET_POINTER;
@@ -768,7 +768,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
           sprintf(line_.sTargetPointer, "%04X", nTargetPointer & 0xFFFF);
         }
 
-        if (iOpcode != OPCODE_JMP_NA && iOpcode != OPCODE_JMP_IAX) {
+        if (opcode != OPCODE_JMP_NA && opcode != OPCODE_JMP_IAX) {
           bDisasmFormatFlags |= DISASM_FORMAT_TARGET_VALUE;
           if (g_config_disasm_targets & DISASM_TARGET_VAL) {
             sprintf(line_.sTargetValue, "%02X", nTargetValue & 0xFF);
@@ -797,13 +797,13 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   sprintf(line_.sAddress, "%04X", nBaseAddress);
   FormatOpcodeBytes(nBaseAddress, line_);
 
-  if (pData) {
-    line_.iNoptype = pData->eElementType;
-    line_.iNopcode = pData->iDirective;
+  if (data) {
+    line_.iNoptype = data->eElementType;
+    line_.iNopcode = data->iDirective;
     strcpy(line_.sMnemonic, g_assembler_directives[line_.iNopcode].m_pMnemonic);
     FormatNopcodeBytes(nBaseAddress, line_);
   } else {
-    strcpy(line_.sMnemonic, g_opcodes[line_.iOpcode].sMnemonic);
+    strcpy(line_.sMnemonic, g_opcodes[line_.opcode].sMnemonic);
   }
 
   int nSpaces = strlen(line_.sOpCodes);
@@ -815,16 +815,16 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   return bDisasmFormatFlags;
 }
 
-auto FormatAddress(uint16_t nAddress, int nBytes) -> const char* {
+auto FormatAddress(uint16_t address, int nBytes) -> const char* {
   static char sBuffers[4][16];
   static int iBuf = 0;
   char* sAddress = sBuffers[iBuf];
   iBuf = (iBuf + 1) % 4;
 
   if (nBytes == 1) {
-    sprintf(sAddress, "%02X", nAddress);
+    sprintf(sAddress, "%02X", address);
   } else {
-    sprintf(sAddress, "%04X", nAddress);
+    sprintf(sAddress, "%04X", address);
   }
   return sAddress;
 }
@@ -931,7 +931,7 @@ void UpdateDisplay(Update_t bUpdate) {
 }
 
 void debug_begin() {
-  if (g_state.bDisableDebugger) {
+  if (g_state.disable_debugger) {
     return;
   }
   // This is called every time the debugger is entered.

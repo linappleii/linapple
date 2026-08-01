@@ -69,74 +69,74 @@ static constexpr uint16_t addr_slot_rom_mask = 0x07;
 
 // --- Bridge Functions ---
 
-static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                               uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                               uint8_t d, uint32_t cycles_left) -> uint8_t {
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readC0 != nullptr) {
-      return ap.readC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
+      return ap.readC0(ap.instance, pc, addr, write, d, cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                                uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                                uint8_t d, uint32_t cycles_left) -> uint8_t {
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeC0 != nullptr) {
-      return ap.writeC0(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
+      return ap.writeC0(ap.instance, pc, addr, write, d, cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                               uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                               uint8_t d, uint32_t cycles_left) -> uint8_t {
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readCx != nullptr) {
-      return ap.readCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
+      return ap.readCx(ap.instance, pc, addr, write, d, cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                                uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                                uint8_t d, uint32_t cycles_left) -> uint8_t {
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeCx != nullptr) {
-      return ap.writeCx(ap.instance, pc, addr, bWrite, d, nCyclesLeft);
+      return ap.writeCx(ap.instance, pc, addr, write, d, cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                                 uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                                 uint8_t d, uint32_t cycles_left) -> uint8_t {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).read != nullptr) {
       return g_direct_io_handlers.at(i).read(
-          g_direct_io_handlers.at(i).instance, pc, addr, bWrite, d,
-          nCyclesLeft);
+          g_direct_io_handlers.at(i).instance, pc, addr, write, d,
+          cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t bWrite,
-                                  uint8_t d, uint32_t nCyclesLeft) -> uint8_t {
+static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
+                                  uint8_t d, uint32_t cycles_left) -> uint8_t {
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).write != nullptr) {
       return g_direct_io_handlers.at(i).write(
-          g_direct_io_handlers.at(i).instance, pc, addr, bWrite, d,
-          nCyclesLeft);
+          g_direct_io_handlers.at(i).instance, pc, addr, write, d,
+          cycles_left);
     }
   }
-  return io_null(pc, addr, bWrite, d, nCyclesLeft);
+  return io_null(pc, addr, write, d, cycles_left);
 }
 
 // --- Host Interface Implementation ---

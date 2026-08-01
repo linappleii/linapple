@@ -74,22 +74,22 @@ void sdl_handle_event(SDL_Event* e) {
           set_using_cursor(false);
           g_buttondown = mysym - SDLK_F1;
         } else if (mysym == SDLK_KP_PLUS) {
-          g_state.dwSpeed = g_state.dwSpeed + 2;
-          if (g_state.dwSpeed > emulation_speed_max) {
-            g_state.dwSpeed = emulation_speed_max;
+          g_state.speed = g_state.speed + 2;
+          if (g_state.speed > emulation_speed_max) {
+            g_state.speed = emulation_speed_max;
           }
-          printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
+          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_KP_MINUS) {
-          if (g_state.dwSpeed > SPEED_MIN) {
-            g_state.dwSpeed = g_state.dwSpeed - 1;
+          if (g_state.speed > SPEED_MIN) {
+            g_state.speed = g_state.speed - 1;
           }
-          printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
+          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_KP_MULTIPLY) {
           constexpr uint32_t default_speed = 10;
-          g_state.dwSpeed = default_speed;
-          printf("Now speed=%d\n", static_cast<int>(g_state.dwSpeed));
+          g_state.speed = default_speed;
+          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_CAPSLOCK) {
           uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
@@ -119,7 +119,7 @@ void sdl_handle_event(SDL_Event* e) {
           if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
             video_redraw_screen();
           }
-          g_state.bResetTiming = true;
+          g_state.reset_timing = true;
         } else if (mysym == SDLK_SCROLLLOCK) {
           g_scroll_lock_full_speed = !g_scroll_lock_full_speed;
         } else if ((g_state.mode == MODE_RUNNING) ||

@@ -36,7 +36,7 @@ struct AppConfig_t {
   std::array<char, path_max_len> szTestCpuFile = {};
   uint16_t uTestCpuTrap = TRAP_NMOS_DEFAULT;
   std::array<char, path_max_len> szDebuggerScript = {};
-  bool bDisableDebugger = false;
+  bool disable_debugger = false;
 
   // Extra args for frontend pass-through
   int argc_extra = 0;

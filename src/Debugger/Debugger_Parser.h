@@ -6,24 +6,24 @@
 #include "core/Util_Text.h"
 #include "Debugger_Types.h"
 
-const char * ParserFindToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
-const char * FindTokenOrAlphaNumeric ( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
-int RemoveWhiteSpaceReverse( char *pSrc );
-void TextConvertTabsToSpaces( char *pDeTabified_, const char* pText, const int nDstSize, int nTabStop = 0 );
+const char * ParserFindToken( const char *src_ptr, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
+const char * FindTokenOrAlphaNumeric ( const char *src_ptr, const TokenTable_t *aTokens, const int nTokens, ArgToken_e * pToken_ );
+int RemoveWhiteSpaceReverse( char *src_ptr );
+void TextConvertTabsToSpaces( char *pDeTabified_, const char* text, const int nDstSize, int nTabStop = 0 );
 
-inline const char* SkipUntilToken( const char *pSrc, const TokenTable_t *aTokens, const int nTokens, ArgToken_e *pToken_ )
+inline const char* SkipUntilToken( const char *src_ptr, const TokenTable_t *aTokens, const int nTokens, ArgToken_e *pToken_ )
 	{
 		if ( pToken_)
 			*pToken_ = NO_TOKEN;
 
-		while (pSrc && (*pSrc))
+		while (src_ptr && (*src_ptr))
 		{
-			if (ParserFindToken( pSrc, aTokens, nTokens, pToken_ ))
-				return pSrc;
+			if (ParserFindToken( src_ptr, aTokens, nTokens, pToken_ ))
+				return src_ptr;
 
-			pSrc++;
+			src_ptr++;
 		}
-		return pSrc;
+		return src_ptr;
 	}
 
 // Globals __________________________________________________________________

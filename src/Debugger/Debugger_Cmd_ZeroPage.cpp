@@ -55,7 +55,7 @@ auto CmdZeroPageAdd     (int nArgs) -> Update_t
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++ )
   {
-    uint16_t nAddress = g_args[iArg].nValue;
+    uint16_t address = g_args[iArg].nValue;
 
     if (iZP == NO_6502_TARGET)
     {
@@ -78,7 +78,7 @@ auto CmdZeroPageAdd     (int nArgs) -> Update_t
     {
       g_zero_page_pointers[iZP].bSet = true;
       g_zero_page_pointers[iZP].bEnabled = true;
-      g_zero_page_pointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
+      g_zero_page_pointers[iZP].address = static_cast<uint8_t>(address);
       bAdded = true;
       g_zero_page_pointers_count++;
       iZP++;
@@ -196,8 +196,8 @@ auto CmdZeroPagePointer (int nArgs) -> Update_t
     g_zero_page_pointers[iZP].bSet = true;
     g_zero_page_pointers[iZP].bEnabled = true;
 
-    uint16_t nAddress = g_args[1].nValue;
-    g_zero_page_pointers[iZP].nAddress = static_cast<uint8_t>(nAddress);
+    uint16_t address = g_args[1].nValue;
+    g_zero_page_pointers[iZP].address = static_cast<uint8_t>(address);
   }
 
   return UPDATE_ZERO_PAGE;

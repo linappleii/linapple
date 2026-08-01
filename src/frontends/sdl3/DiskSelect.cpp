@@ -31,7 +31,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
 
   fileIndex = backdx;
   isdir = true;
-  fullPath = g_state.sCurrentDir.data();
+  fullPath = g_state.current_dir.data();
 
   while (isdir) {
     if (!choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath, 6,
@@ -61,10 +61,10 @@ void DiskSelectImage(int drive, char* pszFilename) {
       }
     }
   }
-  Util_SafeStrCpy(g_state.sCurrentDir.data(), fullPath.c_str(),
-                  g_state.sCurrentDir.size());
+  Util_SafeStrCpy(g_state.current_dir.data(), fullPath.c_str(),
+                  g_state.current_dir.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
-                                      g_state.sCurrentDir.data());
+                                      g_state.current_dir.data());
   Configuration_t::instance().save();
 
   fullPath += "/" + filename;

@@ -131,15 +131,15 @@ int g_console_color[NUM_CONSOLE_COLORS] = {
 // Console
 // ________________________________________________________________________________________
 
-auto ConsoleLineLength(const conchar_t* pText) -> int {
+auto ConsoleLineLength(const conchar_t* text) -> int {
   int nLen = 0;
-  const conchar_t* pSrc = pText;
+  const conchar_t* src_ptr = text;
 
-  if (pText) {
-    while (*pSrc) {
-      pSrc++;
+  if (text) {
+    while (*src_ptr) {
+      src_ptr++;
     }
-    nLen = pSrc - pText;
+    nLen = src_ptr - text;
   }
   return nLen;
 }
@@ -148,7 +148,7 @@ auto ConsoleLineLength(const conchar_t* pText) -> int {
 auto ConsoleBufferPeek() -> const conchar_t* { return g_console_buffer[0]; }
 
 //===========================================================================
-auto console_print(const char* pText) -> bool {
+auto console_print(const char* text) -> bool {
   while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
@@ -158,14 +158,14 @@ auto console_print(const char* pText) -> bool {
   char c = 0;
 
   int x = 0;
-  const char* pSrc = pText;
+  const char* src_ptr = text;
   conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
   conchar_t g = 0;
   bool bHaveColor = false;
   char cColor = 0;
 
-  while ((x < CONSOLE_WIDTH) && (c = *pSrc)) {
+  while ((x < CONSOLE_WIDTH) && (c = *src_ptr)) {
     if ((c == '\n') || (x >= (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
@@ -180,11 +180,11 @@ auto console_print(const char* pText) -> bool {
 
       // `# `A  color encode mouse text
       if (ConsoleColor_IsCharMeta(c)) {
-        if (!pSrc[1]) {
+        if (!src_ptr[1]) {
           break;
         }
 
-        if (ConsoleColor_IsCharMeta(pSrc[1]))  // ` `
+        if (ConsoleColor_IsCharMeta(src_ptr[1]))  // ` `
         {
           bHaveColor = false;
           cColor = 0;
@@ -192,20 +192,20 @@ auto console_print(const char* pText) -> bool {
           *pDst = g;
           x++;
           pDst++;
-        } else if (ConsoleColor_IsCharColor(pSrc[1]))  // ` #
+        } else if (ConsoleColor_IsCharColor(src_ptr[1]))  // ` #
         {
-          cColor = pSrc[1];
+          cColor = src_ptr[1];
           bHaveColor = true;
         } else  // ` @
         {
-          c = ConsoleColor_MakeMouse(pSrc[1]);
+          c = ConsoleColor_MakeMouse(src_ptr[1]);
           g = ConsoleColor_MakeColor(cColor, c);
           *pDst = g;
           x++;
           pDst++;
         }
-        pSrc++;
-        pSrc++;
+        src_ptr++;
+        src_ptr++;
       } else {
         if (bHaveColor) {
           g = ConsoleColor_MakeColor(cColor, c);
@@ -214,7 +214,7 @@ auto console_print(const char* pText) -> bool {
         *pDst = g;
         x++;
         pDst++;
-        pSrc++;
+        src_ptr++;
       }
     }
     /*
@@ -233,23 +233,23 @@ auto console_print(const char* pText) -> bool {
                             //	~  Color escape
                             //  x  Any char
                             //  -  Null
-                            if (pSrc[1])
+                            if (src_ptr[1])
                             {
-                                    if (ConsoleColor_IsCharMeta( pSrc[1] )) // 6
+                                    if (ConsoleColor_IsCharMeta( src_ptr[1] )) // 6
                                     {
                                             *pDst = c;
                                             x++;
-                                            pSrc += 2;
+                                            src_ptr += 2;
                                             pDst++;
                                     }
                                     else
-                                    if (ConsoleColor_IsCharColor( pSrc[1] ))
+                                    if (ConsoleColor_IsCharColor( src_ptr[1] ))
                                     {
-                                            if (pSrc[2]) // 3
+                                            if (src_ptr[2]) // 3
                                             {
                                                     x++;
                                                     *pDst =
-       ConsoleColor_MakeColor( pSrc[1], pSrc[2] ); pSrc += 3; pDst++;
+       ConsoleColor_MakeColor( src_ptr[1], src_ptr[2] ); src_ptr += 3; pDst++;
                                             }
                                             else
                                                     break; // 2
@@ -257,7 +257,7 @@ auto console_print(const char* pText) -> bool {
                                     else // 4 or 5
                                     {
                                             *pDst = ConsoleColor_MakeMeta(
-       pSrc[1] ); x++; pSrc += 2; pDst++;
+       src_ptr[1] ); x++; src_ptr += 2; pDst++;
                                     }
                             }
                             else
@@ -267,7 +267,7 @@ auto console_print(const char* pText) -> bool {
                     {
                             *pDst = (c & _CONSOLE_COLOR_MASK);
                             x++;
-                            pSrc++;
+                            src_ptr++;
                             pDst++;
                     }
     */
@@ -293,7 +293,7 @@ auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
 // Add string to buffered output
 // Shifts the buffered console output lines "Up"
 //===========================================================================
-auto ConsoleBufferPush(const char* pText) -> bool {
+auto ConsoleBufferPush(const char* text) -> bool {
   while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
@@ -301,11 +301,11 @@ auto ConsoleBufferPush(const char* pText) -> bool {
   conchar_t c = 0;
 
   int x = 0;
-  const char* pSrc = pText;
+  const char* src_ptr = text;
   conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
-  while ((x < CONSOLE_WIDTH) && *pSrc) {
-    c = *pSrc;
+  while ((x < CONSOLE_WIDTH) && *src_ptr) {
+    c = *src_ptr;
     if ((c == '\n') || (x == (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
@@ -314,12 +314,12 @@ auto ConsoleBufferPush(const char* pText) -> bool {
       } else {
         g_console_buffer_size++;
       }
-      pSrc++;
+      src_ptr++;
       pDst = &g_console_buffer[g_console_buffer_size][0];
     } else {
       *pDst = (c & _CONSOLE_COLOR_MASK);
       x++;
-      pSrc++;
+      src_ptr++;
       pDst++;
     }
   }
@@ -354,33 +354,33 @@ void ConsoleBufferToDisplay() {
 
 // No mark-up. Straight ASCII conversion
 //===========================================================================
-void ConsoleConvertFromText(conchar_t* sText, const char* pText) {
-  const char* pSrc = pText;
+void ConsoleConvertFromText(conchar_t* sText, const char* text) {
+  const char* src_ptr = text;
   conchar_t* pDst = sText;
-  while (pSrc && *pSrc) {
-    *pDst = static_cast<conchar_t>(*pSrc & _CONSOLE_COLOR_MASK);
-    pSrc++;
+  while (src_ptr && *src_ptr) {
+    *pDst = static_cast<conchar_t>(*src_ptr & _CONSOLE_COLOR_MASK);
+    src_ptr++;
     pDst++;
   }
   *pDst = 0;
 }
 
 //===========================================================================
-auto console_display_error(const char* pText) -> Update_t {
-  ConsoleBufferPush(pText);
+auto console_display_error(const char* text) -> Update_t {
+  ConsoleBufferPush(text);
   return ConsoleUpdate();
 }
 
 //===========================================================================
-void ConsoleDisplayPush(const char* pText) {
+void ConsoleDisplayPush(const char* text) {
   conchar_t sText[CONSOLE_WIDTH * 2];
-  ConsoleConvertFromText(sText, pText);
+  ConsoleConvertFromText(sText, text);
   ConsoleDisplayPush(sText);
 }
 
 // Shifts the console display lines "up"
 //===========================================================================
-void ConsoleDisplayPush(const conchar_t* pText) {
+void ConsoleDisplayPush(const conchar_t* text) {
   int nLen =
       MIN(g_console_display_total, CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while (nLen--) {
@@ -391,9 +391,9 @@ void ConsoleDisplayPush(const conchar_t* pText) {
         sizeof(conchar_t) * CONSOLE_WIDTH);
   }
 
-  if (pText) {
+  if (text) {
     memcpy(reinterpret_cast<char*>(g_console_display[CONSOLE_FIRST_LINE]),
-           pText, sizeof(conchar_t) * CONSOLE_WIDTH);
+           text, sizeof(conchar_t) * CONSOLE_WIDTH);
   }
 
   g_console_display_total++;

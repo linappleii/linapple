@@ -43,11 +43,11 @@ void DebuggerSetColorFG(ColorRef_t nRGB);
 void DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent = false);
 
 void PrintGlyph(const int x, const int y, const int iChar);
-int PrintText(const char* pText, Rect_t& rRect);
-int PrintTextCursorX(const char* pText, Rect_t& rRect);
-int PrintTextCursorY(const char* pText, Rect_t& rRect);
+int PrintText(const char* text, Rect_t& rRect);
+int PrintTextCursorX(const char* text, Rect_t& rRect);
+int PrintTextCursorY(const char* text, Rect_t& rRect);
 
-void PrintTextColor(const conchar_t* pText, Rect_t& rRect);
+void PrintTextColor(const conchar_t* text, Rect_t& rRect);
 
 void GetDebugViewPortScale(float* x, float* y);
 
@@ -55,7 +55,7 @@ void DrawWindow_Source(Update_t bUpdate);
 
 void DrawBreakpoints(int line);
 void DrawConsoleInput();
-void DrawConsoleLine(const conchar_t* pText, int y);
+void DrawConsoleLine(const conchar_t* text, int y);
 void DrawConsoleCursor();
 
 int GetDisassemblyLine(const uint16_t nOffset, DisasmLine_t& line_);
@@ -138,6 +138,6 @@ void DrawWindowBackground_Main(int iWindow);
 void DrawWindowBackground_Info(int iWindow);
 void DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource);
-void GetTargets_IgnoreDirectJSRJMP(const uint8_t iOpcode, int& nTargetPointer);
+void GetTargets_IgnoreDirectJSRJMP(const uint8_t opcode, int& nTargetPointer);
 
 extern VideoScannerDisplayInfo_t g_video_scanner_display_info;

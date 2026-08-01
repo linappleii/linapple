@@ -68,12 +68,12 @@ auto ExecuteCommand(int nArgs) -> Update_t
     }
     else
     {
-      uint16_t nAddress = 0;
-      if (ArgsGetValue(&g_args[0], &nAddress))
+      uint16_t address = 0;
+      if (ArgsGetValue(&g_args[0], &address))
       {
-        g_disasm_cur_address = nAddress;
+        g_disasm_cur_address = address;
         if (g_window_this == WINDOW_DATA) {
-          g_mem_dump[0].nAddress = nAddress;
+          g_mem_dump[0].address = address;
         }
         DisasmCalcTopBotAddress();
         bUpdateDisplay |= UPDATE_DISASM;

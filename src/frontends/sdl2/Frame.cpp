@@ -406,8 +406,8 @@ void frame_quick_state(int num, int mod) {
   // being saved, otherwise - being loaded
   std::array<char, path_max_len> fpath;
   snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
-           static_cast<int>(strlen(g_state.sSaveStateDir.data())),
-           g_state.sSaveStateDir.data(), num);
+           static_cast<int>(strlen(g_state.save_state_dir.data())),
+           g_state.save_state_dir.data(), num);
   save_state_set_filename(fpath.data());
   if ((mod & KMOD_SHIFT) != 0) {
     save_state_save();
@@ -497,7 +497,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   bool isDirectory = true;
 
   fileIndex = static_cast<size_t>(backdx);
-  fullPath = g_state.sSaveStateDir.data();
+  fullPath = g_state.save_state_dir.data();
 
   while (isDirectory) {
     if (choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
@@ -527,10 +527,10 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
       }
     }
   }
-  Util_SafeStrCpy(g_state.sSaveStateDir.data(), fullPath.c_str(),
-                  g_state.sSaveStateDir.size());
+  Util_SafeStrCpy(g_state.save_state_dir.data(), fullPath.c_str(),
+                  g_state.save_state_dir.size());
   Configuration_t::instance().set_string("Preferences", "Save State Directory",
-                                      g_state.sSaveStateDir.data());
+                                      g_state.save_state_dir.data());
   Configuration_t::instance().save();
 
   backdx = static_cast<int>(fileIndex);
@@ -591,7 +591,7 @@ void process_button_click(int button, int mod) {
         g_state.mode = MODE_RUNNING;
         draw_status_area(DRAW_TITLE);
         video_redraw_screen();
-        g_state.bResetTiming = true;
+        g_state.reset_timing = true;
       } else if ((mod & KMOD_SHIFT) != 0) {
         g_state.restart = true;
         qe.type = SDL_QUIT;
@@ -669,7 +669,7 @@ void process_button_click(int button, int mod) {
 
     case btn_debug:
 #if ENABLE_DEBUGGER
-      if (!g_state.bDisableDebugger) {
+      if (!g_state.disable_debugger) {
         if (g_state.mode != MODE_DEBUG) {
           debug_begin();
           set_using_cursor(false);
@@ -685,7 +685,7 @@ void process_button_click(int button, int mod) {
         Configuration_t::instance().set_int("Configuration", "Video Emulation",
                                          static_cast<int>(g_videotype));
         Configuration_t::instance().set_int("Configuration", "Emulation Speed",
-                                         static_cast<int>(g_state.dwSpeed));
+                                         static_cast<int>(g_state.speed));
         Configuration_t::instance().set_int("Configuration", "Fullscreen",
                                          g_state.fullscreen ? 1 : 0);
         Configuration_t::instance().save();

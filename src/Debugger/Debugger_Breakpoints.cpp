@@ -77,26 +77,26 @@ void _BWZ_Clear( Breakpoint_t * aBreakWatchZero, int iSlot )
     aBreakWatchZero[ iSlot ].bSet = false;
     aBreakWatchZero[ iSlot ].bEnabled = false;
     aBreakWatchZero[ iSlot ].bTemp = false;
-    aBreakWatchZero[ iSlot ].nAddress = 0;
+    aBreakWatchZero[ iSlot ].address = 0;
     aBreakWatchZero[ iSlot ].nLength = 0;
     aBreakWatchZero[ iSlot ].eSource = static_cast<BreakpointSource_t>(0);
     aBreakWatchZero[ iSlot ].eOperator = static_cast<BreakpointOperator_t>(0);
   }
 }
 
-void _BWZ_RemoveOne( Breakpoint_t *aBreakWatchZero, const int iSlot, int & nTotal )
+void _BWZ_RemoveOne( Breakpoint_t *aBreakWatchZero, const int iSlot, int & total )
 {
   if (aBreakWatchZero)
   {
     if (aBreakWatchZero[ iSlot ].bSet)
     {
       _BWZ_Clear( aBreakWatchZero, iSlot );
-      nTotal--;
+      total--;
     }
   }
 }
 
-void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & nTotal )
+void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & total )
 {
   if (aBreakWatchZero)
   {
@@ -106,11 +106,11 @@ void _BWZ_RemoveAll( Breakpoint_t *aBreakWatchZero, const int nMax, int & nTotal
       _BWZ_Clear( aBreakWatchZero, i );
       i++;
     }
-    nTotal = 0;
+    total = 0;
   }
 }
 
-void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, int & nTotal )
+void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMax, int & total )
 {
   if (aBreakWatchZero)
   {
@@ -119,7 +119,7 @@ void _BWZ_ClearViaArgs( int nArgs, Breakpoint_t * aBreakWatchZero, const int nMa
       int iSlot = g_args[ iArg ].nValue;
       if (iSlot < nMax)
       {
-        _BWZ_RemoveOne( aBreakWatchZero, iSlot, nTotal );
+        _BWZ_RemoveOne( aBreakWatchZero, iSlot, total );
       }
     }
   }
@@ -147,10 +147,10 @@ void _BWZ_List( const Breakpoint_t * aBreakWatchZero, const int iBWZ )
     char sText[ CONSOLE_WIDTH ];
     const Breakpoint_t *pBWZ = & aBreakWatchZero[ iBWZ ];
 
-    const char *pSrc = g_breakpoint_source[ pBWZ->eSource ];
+    const char *src_ptr = g_breakpoint_source[ pBWZ->eSource ];
     const char *pCmp = g_breakpoint_symbols[ pBWZ->eOperator ];
 
-    sprintf( sText, "  %x: %s %s %04X", iBWZ, pSrc, pCmp, pBWZ->nAddress );
+    sprintf( sText, "  %x: %s %s %04X", iBWZ, src_ptr, pCmp, pBWZ->address );
     if (pBWZ->nLength > 1)
     {
       char sLen[ 32 ];
@@ -225,9 +225,9 @@ auto CmdBreakpointAddPC(int nArgs) -> Update_t
 
   for( int iArg = 1; iArg <= nArgs; iArg++ )
   {
-    uint16_t nAddress = g_args[ iArg ].nValue;
+    uint16_t address = g_args[ iArg ].nValue;
     _CmdBreakpointAddCommonArg( iArg, nArgs, BP_SRC_REG_PC, BP_OP_EQUAL );
-    (void)nAddress;
+    (void)address;
   }
 
   return UPDATE_BREAKPOINTS;
@@ -266,7 +266,7 @@ int _CmdBreakpointAddCommonArg ( int iArg, int nArg, BreakpointSource_t iSrc, Br
   pBP->bTemp = bIsTempBreakpoint;
   pBP->eSource = iSrc;
   pBP->eOperator = iCmp;
-  pBP->nAddress = g_args[ iArg ].nValue;
+  pBP->address = g_args[ iArg ].nValue;
   pBP->nLength = 1;
 
   g_breakpoints_count++;
@@ -382,7 +382,7 @@ auto CmdBreakpointSave(int nArgs) -> Update_t
       sprintf( sText, "%s %x %04X,%04X\n"
         , g_commands[ CMD_BREAKPOINT_ADD_REG ].m_sName
         , iBreakpoint
-        , g_breakpoints[ iBreakpoint ].nAddress
+        , g_breakpoints[ iBreakpoint ].address
         , g_breakpoints[ iBreakpoint ].nLength
       );
       g_ConfigState.PushLine( sText );
@@ -438,9 +438,9 @@ auto CmdWatchAdd (int nArgs) -> Update_t
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++ )
   {
-    uint16_t nAddress = g_args[iArg].nValue;
+    uint16_t address = g_args[iArg].nValue;
 
-    if ((nAddress >= _6502_IO_BEGIN) && (nAddress <= _6502_IO_END)) {
+    if ((address >= _6502_IO_BEGIN) && (address <= _6502_IO_END)) {
       return console_display_error("You may not watch an I/O location.");
 }
 
@@ -465,7 +465,7 @@ auto CmdWatchAdd (int nArgs) -> Update_t
     {
       g_watches[iWatch].bSet = true;
       g_watches[iWatch].bEnabled = true;
-      g_watches[iWatch].nAddress = nAddress;
+      g_watches[iWatch].address = address;
       bAdded = true;
       g_watches_count++;
       iWatch++;

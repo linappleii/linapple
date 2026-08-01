@@ -57,13 +57,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 */
 
-// tests if pSrc fits into pDst
-// returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
+// tests if src_ptr fits into pDst
+// returns true if src_ptr safely fits into pDst, else false (src_ptr would of overflowed pDst)
 //===========================================================================
-auto TestStringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> bool
+auto TestStringCat ( char * pDst, const char* src_ptr, const int nDstSize ) -> bool
 {
 	int nLenDst = strlen( pDst );
-	int nLenSrc = strlen( pSrc );
+	int nLenSrc = strlen( src_ptr );
 	int nSpcDst = nDstSize - nLenDst;
 
 	bool bOverflow = (nSpcDst <= nLenSrc); // 2.5.6.25 BUGFIX
@@ -71,27 +71,27 @@ auto TestStringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> bool
 }
 
 
-// tests if pSrc fits into pDst
-// returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
+// tests if src_ptr fits into pDst
+// returns true if src_ptr safely fits into pDst, else false (src_ptr would of overflowed pDst)
 //===========================================================================
-auto TryStringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> bool
+auto TryStringCat ( char * pDst, const char* src_ptr, const int nDstSize ) -> bool
 {
-	if (!TestStringCat( pDst, pSrc, nDstSize ))
+	if (!TestStringCat( pDst, src_ptr, nDstSize ))
 	{
 		return false;
 	}
 
-	strcat( pDst, pSrc );
+	strcat( pDst, src_ptr );
 	return true;
 }
 
 // cats string as much as possible
-// returns true if pSrc safely fits into pDst, else false (pSrc would of overflowed pDst)
+// returns true if src_ptr safely fits into pDst, else false (src_ptr would of overflowed pDst)
 //===========================================================================
-auto StringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> int
+auto StringCat ( char * pDst, const char* src_ptr, const int nDstSize ) -> int
 {
 	int nLenDst = static_cast<int>(strlen( pDst ));
-	int nLenSrc = static_cast<int>(strlen( pSrc ));
+	int nLenSrc = static_cast<int>(strlen( src_ptr ));
 	int nRemaining = nDstSize - nLenDst - 1;
 
 	if (nRemaining <= 0) {
@@ -100,12 +100,12 @@ auto StringCat ( char * pDst, const char* pSrc, const int nDstSize ) -> int
 
 	if (nLenSrc > nRemaining)
 	{
-		memcpy( pDst + nLenDst, pSrc, nRemaining );
+		memcpy( pDst + nLenDst, src_ptr, nRemaining );
 		pDst[nDstSize - 1] = '\0';
 		return 0;
 	}
 
-	strcat( pDst, pSrc );
+	strcat( pDst, src_ptr );
 	return nLenSrc;
 }
 
@@ -376,7 +376,7 @@ void Help_KeyboardShortcuts()
 }
 
 
-void ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, const int nHeaderLen )
+void ColorizeHeader( char * & pDst, const char * & src_ptr, const char * pHeader, const int nHeaderLen )
 {
 	int nLen = 0;
 
@@ -388,7 +388,7 @@ void ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, c
 	Util_SafeStrCpy( pDst, pHeader, nLen );
 	pDst += nLen;
 
-	pSrc += nHeaderLen;
+	src_ptr += nHeaderLen;
 
 	nLen = strlen( CHC_ARG_SEP );
 	strcpy( pDst, CHC_ARG_SEP );
@@ -405,16 +405,16 @@ void ColorizeHeader( char * & pDst, const char * & pSrc, const char * pHeader, c
 
 void ColorizeString(
 	char * & pDst,
-	const char *pSrc, const size_t nLen )
+	const char *src_ptr, const size_t nLen )
 {
-	strcpy( pDst, pSrc );
+	strcpy( pDst, src_ptr );
 	pDst += nLen;
 }
 
 
 // pOperator is one of CHC_*
 void ColorizeOperator(
-	char * & pDst, const char * & pSrc,
+	char * & pDst, const char * & src_ptr,
 	const char * pOperator )
 {
 	int nLen = 0;
@@ -423,14 +423,14 @@ void ColorizeOperator(
 	strcpy( pDst, pOperator );
 	pDst += nLen;
 
-	*pDst = *pSrc;
+	*pDst = *src_ptr;
 	pDst++;
 
 	nLen = strlen( CHC_DEFAULT );
 	strcpy( pDst, CHC_DEFAULT );
 	pDst += nLen;
 
-	pSrc++;
+	src_ptr++;
 }
 
 
@@ -446,9 +446,9 @@ auto isHexDigit( char c ) -> bool
 }
 
 
-auto Colorize( char * pDst, const char * pSrc ) -> bool
+auto Colorize( char * pDst, const char * src_ptr ) -> bool
 {
-	if (! pSrc) {
+	if (! src_ptr) {
 		return false;
 }
 
@@ -466,74 +466,74 @@ auto Colorize( char * pDst, const char * pSrc ) -> bool
 	const int  nUsage   = sizeof( sUsage ) - 1;
 
 	const char sTotal[] = "Total:";
-	const int  nTotal = sizeof( sTotal ) - 1;
+	const int  total = sizeof( sTotal ) - 1;
 
 	const char sExamples[] = "Examples:";
 	const int  nExamples = sizeof( sExamples ) - 1;
 
-	while (*pSrc)
+	while (*src_ptr)
 	{
-		if (strncmp( sUsage, pSrc, nUsage) == 0)
+		if (strncmp( sUsage, src_ptr, nUsage) == 0)
 		{
-			ColorizeHeader( pDst, pSrc, sUsage, nUsage );
+			ColorizeHeader( pDst, src_ptr, sUsage, nUsage );
 		}
 		else
-		if (strncmp( sSeeAlso, pSrc, nSeeAlso) == 0)
+		if (strncmp( sSeeAlso, src_ptr, nSeeAlso) == 0)
 		{
-			ColorizeHeader( pDst, pSrc, sSeeAlso, nSeeAlso );
+			ColorizeHeader( pDst, src_ptr, sSeeAlso, nSeeAlso );
 		}
 		else
-		if (strncmp( sNote, pSrc, nNote) == 0)
+		if (strncmp( sNote, src_ptr, nNote) == 0)
 		{
-			ColorizeHeader( pDst, pSrc, sNote, nNote );
+			ColorizeHeader( pDst, src_ptr, sNote, nNote );
 		}
 		else
-		if (strncmp( sTotal, pSrc, nNote) == 0)
+		if (strncmp( sTotal, src_ptr, nNote) == 0)
 		{
-			ColorizeHeader( pDst, pSrc, sTotal, nTotal );
+			ColorizeHeader( pDst, src_ptr, sTotal, total );
 		}
 		else
-		if (strncmp( sExamples, pSrc, nExamples) == 0)
+		if (strncmp( sExamples, src_ptr, nExamples) == 0)
 		{
-			ColorizeHeader( pDst, pSrc, sExamples, nExamples );
+			ColorizeHeader( pDst, src_ptr, sExamples, nExamples );
 		}
 		else
-		if (*pSrc == '[')
+		if (*src_ptr == '[')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_OPT );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_OPT );
 		}
 		else
-		if (*pSrc == ']')
+		if (*src_ptr == ']')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_OPT );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_OPT );
 		}
 		else
-		if (*pSrc == '<')
+		if (*src_ptr == '<')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_MAND );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_MAND );
 		}
 		else
-		if (*pSrc == '>')
+		if (*src_ptr == '>')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_MAND );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_MAND );
 		}
 		else
-		if (*pSrc == '|')
+		if (*src_ptr == '|')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_SEP );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_SEP );
 		}
 		else
-		if (*pSrc == '\'')
+		if (*src_ptr == '\'')
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_SEP );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_SEP );
 		}
 		else
-		if ((*pSrc == '$') && isHexDigit(pSrc[1])) // Hex Number
+		if ((*src_ptr == '$') && isHexDigit(src_ptr[1])) // Hex Number
 		{
-			ColorizeOperator( pDst, pSrc, CHC_ARG_SEP );
+			ColorizeOperator( pDst, src_ptr, CHC_ARG_SEP );
 
-			const char *start = pSrc;
-			const char *end   = pSrc;
+			const char *start = src_ptr;
+			const char *end   = src_ptr;
 
 			while( isHexDigit( *end ) ) {
 				end++;
@@ -545,13 +545,13 @@ auto Colorize( char * pDst, const char * pSrc ) -> bool
 			ColorizeString( pDst, start      , nDigits               );
 			ColorizeString( pDst, CHC_DEFAULT, strlen( CHC_DEFAULT ) );
 
-			pSrc += nDigits;
+			src_ptr += nDigits;
 		}
 		else
 		{
-			*pDst = *pSrc;
+			*pDst = *src_ptr;
 			pDst++;
-			pSrc++;
+			src_ptr++;
 		}
 	}
 	*pDst = 0;
@@ -560,17 +560,17 @@ auto Colorize( char * pDst, const char * pSrc ) -> bool
 
 // NOTE: This appends a new line
 inline auto ConsoleColorizePrint( char* colorizeBuf, size_t /*colorizeBufSz*/,
-                                  const char* pText ) -> bool
+                                  const char* text ) -> bool
 {
-   if (!Colorize(colorizeBuf, pText)) return false;
+   if (!Colorize(colorizeBuf, text)) return false;
    return console_print(colorizeBuf);
 }
 
 template<size_t ColorizeBufSz>
 inline auto ConsoleColorizePrint( char (&colorizeBuf)[ColorizeBufSz],
-                                  const char* pText ) -> bool
+                                  const char* text ) -> bool
 {
-   return ConsoleColorizePrint(colorizeBuf, ColorizeBufSz, pText);
+   return ConsoleColorizePrint(colorizeBuf, ColorizeBufSz, text);
 }
 
 inline auto ConsoleColorizePrintVa( char* colorizeBuf, size_t colorizeBufSz,
@@ -966,7 +966,7 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 
 		// MASTER HELP
 		bool bFoundAny = false;
-		for (int iHelp = 0; g_help_table[iHelp].pText != nullptr; iHelp++)
+		for (int iHelp = 0; g_help_table[iHelp].text != nullptr; iHelp++)
 		{
 			if (g_help_table[iHelp].iCommand == iCommand)
 			{
@@ -975,20 +975,20 @@ auto CmdHelpSpecific (int nArgs) -> Update_t
 				switch (pEntry->eType)
 				{
 				case HELP_TYPE_USAGE:
-					ConsoleColorizePrintFormat(sTemp, sText, " Usage: %s", pEntry->pText);
+					ConsoleColorizePrintFormat(sTemp, sText, " Usage: %s", pEntry->text);
 					break;
 				case HELP_TYPE_NOTE:
-					ConsoleBufferPushFormat(sText, "  %s", pEntry->pText);
+					ConsoleBufferPushFormat(sText, "  %s", pEntry->text);
 					break;
 				case HELP_TYPE_EXAMPLE:
 					Help_Examples();
-					ConsolePrintFormat(sText, "%s  %s", CHC_EXAMPLE, pEntry->pText);
+					ConsolePrintFormat(sText, "%s  %s", CHC_EXAMPLE, pEntry->text);
 					break;
 				case HELP_TYPE_RANGE:
 					Help_Range();
 					break;
 				case HELP_TYPE_SEE_ALSO:
-					ConsoleColorizePrintFormat(sTemp, sText, " See also: %s%s", CHC_CATEGORY, pEntry->pText);
+					ConsoleColorizePrintFormat(sTemp, sText, " See also: %s%s", CHC_CATEGORY, pEntry->text);
 					break;
 				default:
 					break;

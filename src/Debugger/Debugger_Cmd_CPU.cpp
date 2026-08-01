@@ -104,7 +104,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
     g_debug_skip_start = g_args[iArg].nValue;
 
 #if DEBUG_VAL_2
-    uint16_t nAddress = g_args[iArg].nVal2;
+    uint16_t address = g_args[iArg].nVal2;
 #endif
     int nLen = 0;
     int nEnd = 0;
@@ -231,9 +231,9 @@ auto CmdStepOut(int nArgs) -> Update_t {
   (void)nArgs;
   // TODO: "RET" should probably pop the Call stack
   // Also see: CmdCursorJumpRetAddr
-  uint16_t nAddress = 0;
-  if (_6502_GetStackReturnAddress(nAddress)) {
-    nArgs = _Arg_1(nAddress);
+  uint16_t address = 0;
+  if (_6502_GetStackReturnAddress(address)) {
+    nArgs = _Arg_1(address);
     g_args[1].sArg[0] = 0;
     CmdGo(1, true);
   }
@@ -275,7 +275,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
     g_trace_file_with_video_scanner = (nArgs >= 2);
 
     const std::string sFilePath =
-        std::string(g_state.sCurrentDir.data()) + sFileName;
+        std::string(g_state.current_dir.data()) + sFileName;
 
     g_trace_file = fopen(sFilePath.c_str(), "wt");
 
@@ -316,8 +316,8 @@ auto CmdUnassemble(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_UNASSEMBLE);
   }
 
-  uint16_t nAddress = g_args[1].nValue;
-  g_disasm_top_address = nAddress;
+  uint16_t address = g_args[1].nValue;
+  g_disasm_top_address = address;
 
   DisasmCalcCurFromTopAddress();
   DisasmCalcBotFromTopAddress();
@@ -349,9 +349,9 @@ auto CmdIn(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_IN);
   }
 
-  uint16_t nAddress = g_args[1].nValue;
+  uint16_t address = g_args[1].nValue;
 
-  io_map_dispatch(cpu_get_registers()->pc, nAddress & 0xFFFF, 0, 0, 0);
+  io_map_dispatch(cpu_get_registers()->pc, address & 0xFFFF, 0, 0, 0);
 
   return UPDATE_CONSOLE_DISPLAY;  // TODO: Verify // 1
 }
@@ -362,7 +362,7 @@ auto CmdJSR(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_JSR);
   }
 
-  uint16_t nAddress = g_args[1].nValue & _6502_MEM_END;
+  uint16_t address = g_args[1].nValue & _6502_MEM_END;
 
   // Mark Stack Page as dirty
   *(memdirty + (cpu_get_registers()->sp >> 8)) = 1;
@@ -375,7 +375,7 @@ auto CmdJSR(int nArgs) -> Update_t {
   cpu_get_registers()->sp--;
 
   // Jump to new address
-  cpu_get_registers()->pc = nAddress;
+  cpu_get_registers()->pc = address;
 
   return UPDATE_ALL;
 }
@@ -383,11 +383,11 @@ auto CmdJSR(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdNOP(int nArgs) -> Update_t {
   (void)nArgs;
-  int iOpcode = 0;
+  int opcode = 0;
   int iOpmode = 0;
   int nOpbytes = 0;
 
-  _6502_GetOpcodeOpmodeOpbyte(iOpcode, iOpmode, nOpbytes);
+  _6502_GetOpcodeOpmodeOpbyte(opcode, iOpmode, nOpbytes);
 
   while (nOpbytes--) {
     *(mem + cpu_get_registers()->pc + nOpbytes) = 0xEA;
@@ -407,9 +407,9 @@ auto CmdOut(int nArgs) -> Update_t {
     Help_Arg_1(CMD_OUT);
   }
 
-  uint16_t nAddress = g_args[1].nValue;
+  uint16_t address = g_args[1].nValue;
 
-  IOWrite[(nAddress >> 4) & 0xF](cpu_get_registers()->pc, nAddress & 0xFF, 1,
+  IOWrite[(address >> 4) & 0xF](cpu_get_registers()->pc, address & 0xFF, 1,
                                  g_args[2].nValue & 0xFF, 0);
 
   return UPDATE_ALL;
@@ -525,21 +525,21 @@ void OutputTraceLine() {
 #endif
 }
 
-static void CheckBreakOpcode(int iOpcode) {
-  if (iOpcode == 0x00) {  // BRK
+static void CheckBreakOpcode(int opcode) {
+  if (opcode == 0x00) {  // BRK
     IsDebugBreakOnInvalid(AM_IMPLIED);
   }
 
-  if (g_opcodes[iOpcode].sMnemonic[0] >=
+  if (g_opcodes[opcode].sMnemonic[0] >=
       'a')  // All 6502/65C02 undocumented opcodes mnemonics are lowercase
             // strings!
   {
-    // TODO: Translate g_opcodes[iOpcode].nAddressMode into {AM_1, AM_2, AM_3}
+    // TODO: Translate g_opcodes[opcode].nAddressMode into {AM_1, AM_2, AM_3}
     IsDebugBreakOnInvalid(AM_1);
   }
 
   // User wants to enter debugger on specific opcode? (NB. Can't be BRK)
-  if (g_debug_break_on_opcode && g_debug_break_on_opcode == iOpcode) {
+  if (g_debug_break_on_opcode && g_debug_break_on_opcode == opcode) {
     g_debug_breakpoint_hit |= BP_HIT_OPCODE;
   }
 }

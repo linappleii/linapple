@@ -72,7 +72,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   const char* pMnemonic = nullptr;
 
   int bDisasmFormatFlags = GetDisassemblyLine(nBaseAddress, line);
-  const DisasmData_t* pData = line.pDisasmData;
+  const DisasmData_t* data = line.pDisasmData;
 
   iOpmode = line.iOpmode;
   nOpbyte = line.nOpbyte;
@@ -233,7 +233,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 
   linerect.left = static_cast<int>(aTabs[TS_INSTRUCTION]);
   if (!bCursorLine) {
-    if (pData) {
+    if (data) {
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_DIRECTIVE));
     } else {
       DebuggerSetColorFG(DebuggerGetColor(iForeground));
@@ -352,7 +352,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     }
   }
 
-  if (pData) return nOpbyte;
+  if (data) return nOpbyte;
 
   if (bDisasmFormatFlags & DISASM_FORMAT_TARGET_POINTER) {
     linerect.left = static_cast<int>(aTabs[TS_IMMEDIATE]);
@@ -483,13 +483,13 @@ void DrawStack(int line) {
     return;
   }
 
-  unsigned nAddress = cpu_get_registers()->sp;
+  unsigned address = cpu_get_registers()->sp;
   int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
   DebuggerSetColorBG(DebuggerGetColor(BG_DATA_1));
 
   int iStack = 0;
   while (iStack < MAX_DISPLAY_STACK_LINES) {
-    nAddress++;
+    address++;
     Rect_t rect;
     rect.left = DISPLAY_STACK_COLUMN;
     rect.top = (iStack + line) * g_font_height;
@@ -498,14 +498,14 @@ void DrawStack(int line) {
 
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     char sText[8] = "";
-    if (nAddress <= _6502_STACK_END) {
-      sprintf(sText, "%04X: ", nAddress);
+    if (address <= _6502_STACK_END) {
+      sprintf(sText, "%04X: ", address);
       PrintTextCursorX(sText, rect);
     }
 
-    if (nAddress <= _6502_STACK_END) {
+    if (address <= _6502_STACK_END) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
-      sprintf(sText, "  %02X", static_cast<unsigned>(*(mem + nAddress)));
+      sprintf(sText, "  %02X", static_cast<unsigned>(*(mem + address)));
       PrintTextCursorX(sText, rect);
     }
     iStack++;
@@ -536,9 +536,9 @@ void DrawSubWindow_Code(int iWindow) {
   SelectObject(GetDebuggerMemDC(), g_font_config[FONT_DISASM_DEFAULT]._hFont);
 #endif
 
-  uint16_t nAddress = g_disasm_top_address;
+  uint16_t address = g_disasm_top_address;
   for (int iLine = 0; iLine < nLines; iLine++) {
-    nAddress += DrawDisassemblyLine(iLine, nAddress);
+    address += DrawDisassemblyLine(iLine, address);
   }
 
 #if !USE_APPLE_FONT
