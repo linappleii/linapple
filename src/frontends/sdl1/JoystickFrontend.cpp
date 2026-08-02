@@ -355,15 +355,15 @@ void JoyFrontend_UpdateTrimViaKey(SDLKey virtkey) {
 
 auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
                             bool autorep) -> bool {
-  int nJoyNum =
+  int joy_num =
       (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
        DEVICE_KEYBOARD)
           ? 0
           : 1;
-  int nCenteringType =
+  int centering_type =
       joyinfo
           .at(static_cast<size_t>(
-              g_joyConfig.joy_type[static_cast<size_t>(nJoyNum)]))
+              g_joyConfig.joy_type[static_cast<size_t>(joy_num)]))
           .mode;
 
   bool keychange = !extended;
@@ -464,7 +464,7 @@ auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       }
-    } else if ((down && !autorep) || (nCenteringType == MODE_CENTERING)) {
+    } else if ((down && !autorep) || (centering_type == MODE_CENTERING)) {
       int xsum = 0;
       int ysum = 0;
       int keydown_count = 0;
@@ -500,10 +500,10 @@ auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
         x = static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_x;
         y = static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_y;
       }
-      JoystickAxisPayload_t px = {static_cast<uint8_t>(nJoyNum), 0,
+      JoystickAxisPayload_t px = {static_cast<uint8_t>(joy_num), 0,
                                   static_cast<uint8_t>(x)};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {static_cast<uint8_t>(nJoyNum), 1,
+      JoystickAxisPayload_t py = {static_cast<uint8_t>(joy_num), 1,
                                   static_cast<uint8_t>(y)};
       peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }

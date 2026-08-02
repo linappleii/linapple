@@ -53,7 +53,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   // 3. Set Hardware Type and PAL
   g_apple2_type = config->apple2Type;
-  if (config->bPAL) {
+  if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
     g_state.clks_per_frame = 20280;
@@ -64,8 +64,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   // 4. Init Snapshots
-  if (config->szSnapshotPath.at(0) != '\0') {
-    save_state_set_filename(config->szSnapshotPath.data());
+  if (config->snapshot_path.at(0) != '\0') {
+    save_state_set_filename(config->snapshot_path.data());
   }
   save_state_startup();
 
@@ -79,14 +79,14 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   Frontend_UpdateKeyboardMapping();
 
-  if (config->szDebuggerScript.at(0) != '\0') {
+  if (config->debugger_script.at(0) != '\0') {
     Util_SafeStrCpy(&g_state.debugger_script[0],
-                    config->szDebuggerScript.data(), path_max_len);
+                    config->debugger_script.data(), path_max_len);
   }
 
   g_state.mode = MODE_RUNNING;
   g_state.restart = false;
-  g_state.fullscreen = config->bFullscreen;
+  g_state.fullscreen = config->is_fullscreen;
 
   bool disable_dbg_config = false;
   if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
@@ -110,13 +110,13 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> boo
   }
 
   if (config->intent == INTENT_DIAGNOSTIC) {
-    if (config->bListHardware) {
+    if (config->is_list_hardware) {
       linapple_list_hardware();
       return true;
     }
-    if (config->szHardwareInfoName.at(0) != '\0') {
+    if (config->hardware_info_name.at(0) != '\0') {
       Peripheral_t* p =
-          peripheral_find_internal(config->szHardwareInfoName.data());
+          peripheral_find_internal(config->hardware_info_name.data());
       if (p != nullptr) {
         printf("Hardware info: %s\n", p->name);
         printf("ABI Version: %d\n", p->AbiVersion_t);
@@ -131,18 +131,18 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> boo
         }
         printf("\n");
         const char* path =
-            peripheral_get_plugin_path(config->szHardwareInfoName.data());
+            peripheral_get_plugin_path(config->hardware_info_name.data());
         if (path != nullptr) {
           printf("Plugin Path: %s\n", path);
         }
       } else {
         fprintf(stderr, "error: Unknown hardware '%s'\n",
-                config->szHardwareInfoName.data());
+                config->hardware_info_name.data());
       }
       return true;
     }
-    if (config->szTestCpuFile.at(0) != '\0') {
-      linapple_cpu_test(config->szTestCpuFile.data(), config->uTestCpuTrap);
+    if (config->test_cpu_file.at(0) != '\0') {
+      linapple_cpu_test(config->test_cpu_file.data(), config->test_cpu_trap);
       return true;
     }
   }
@@ -155,8 +155,8 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
 
   // 1. Load Disks or Programs via probing
   for (int i = 0; i < 2; ++i) {
-    const char* path = (i == 0) ? config->szDiskPath.at(0).data()
-                                : config->szDiskPath.at(1).data();
+    const char* path = (i == 0) ? config->disk_path.at(0).data()
+                                : config->disk_path.at(1).data();
     if (path != nullptr && *path != '\0') {
       int res = linapple_load_program(path);
       if (res == program_load_not_a_program) {
@@ -171,15 +171,15 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
   }
 
   // 2. Load explicit program path
-  if (config->szProgramPath.at(0) != '\0') {
-    if (linapple_load_program(config->szProgramPath.data()) != 0) {
+  if (config->program_path.at(0) != '\0') {
+    if (linapple_load_program(config->program_path.data()) != 0) {
       fprintf(stderr, "error: Could not load program '%s'\n",
-              config->szProgramPath.data());
+              config->program_path.data());
     }
   }
 
   // 3. Handle Boot
-  if (config->bBoot) {
+  if (config->is_boot) {
     // Reset the system to boot from disk
     cpu_reset();
     peripheral_manager_reset();

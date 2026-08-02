@@ -20,8 +20,8 @@ void AppEnv_ResolvePaths(AppConfig_t* config) {
   std::vector<std::string> searchPaths;
 
   // 1. Explicit --config CLI override
-  if (config->szConfigPath.at(0) != '\0') {
-    searchPaths.emplace_back(config->szConfigPath.data());
+  if (config->config_path.at(0) != '\0') {
+    searchPaths.emplace_back(config->config_path.data());
   }
 
   // 2. XDG Base Directory Specification (~/.config/linapple/)
@@ -56,15 +56,15 @@ void AppEnv_ResolvePaths(AppConfig_t* config) {
   }
 
   // Populate back to config
-  Util_SafeStrCpy(config->szConfigPath.data(), finalPath.c_str(), path_max_len);
+  Util_SafeStrCpy(config->config_path.data(), finalPath.c_str(), path_max_len);
 
   // Consolidate Logger initialization
   Logger::initialize();
 
   // Set verbosity based on config
-  if (config->bVerbose) {
+  if (config->is_verbose) {
     Logger::set_verbosity(LogLevel_t::k_perf);
-  } else if (config->bLog) {
+  } else if (config->is_log) {
     Logger::set_verbosity(LogLevel_t::k_info);
   } else {
     // Default to errors and warnings only to keep console clean for normal use

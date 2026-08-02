@@ -12,8 +12,8 @@ void SysShutdown();
 auto session_init(AppConfig_t* config) -> int;
 void SessionShutdown();
 
-void ContinueExecution(uint32_t dwCycles);
-void CpuTestHeadless(const char* szTestFile);
+void ContinueExecution(uint32_t cycles);
+void CpuTestHeadless(const char* test_file);
 
 // Entry point helpers (implemented in Frontend)
 void enter_message_loop();
@@ -24,11 +24,11 @@ void Sys_Draw();
 // Public Frontend helpers (Keyboard translation, etc)
 auto ds_init() -> bool;
 void ds_shutdown();
-void SingleStep(bool bReinit);
-void Linapple_KeyboardThink(uint32_t dwCycles);
+void SingleStep(bool is_reinit);
+void Linapple_KeyboardThink(uint32_t cycles);
 void Frontend_UpdateKeyboardMapping();
 void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
-                               uint32_t mod, bool bDown);
+                               uint32_t mod, bool is_down);
 LinAppleKey frontend_to_core_key(int key, uint32_t mod);
 
 // Constants

@@ -20,7 +20,7 @@
 // Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
 // This file only contains frontend UI functions.
 
-void HarddiskUI_FTPSelect(int nDrive) {
+void HarddiskUI_FTPSelect(int drive) {
   // Selects HDrive from FTP directory
   static size_t fileIndex = 0;  // file index will be remembered for current dir
   static size_t backdx = 0;     // reserve
@@ -81,13 +81,13 @@ void HarddiskUI_FTPSelect(int nDrive) {
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (error == 0) {
     HarddiskInsertCmd_t cmd{};
-    cmd.drive = static_cast<uint8_t>(nDrive);
+    cmd.drive = static_cast<uint8_t>(drive);
     Util_SafeStrCpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
 
     if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
         peripheral_ok) {
       // save file names for HDD disk 1 or 2
-      if (nDrive != 0) {
+      if (drive != 0) {
         Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
                                             localPath.c_str());
         Configuration_t::instance().save();
@@ -102,7 +102,7 @@ void HarddiskUI_FTPSelect(int nDrive) {
   DrawFrameWindow();
 }
 
-void HarddiskUI_Select(int nDrive) {
+void HarddiskUI_Select(int drive) {
   // Selects HDrive from file list
   static size_t fileIndex = 0;  // file index will be remembered for current dir
   static size_t backdx = 0;     // reserve
@@ -157,13 +157,13 @@ void HarddiskUI_Select(int nDrive) {
   // in future: save file name in registry for future fetching
   // for one drive will be one reg parameter
   HarddiskInsertCmd_t cmd{};
-  cmd.drive = static_cast<uint8_t>(nDrive);
+  cmd.drive = static_cast<uint8_t>(drive);
   Util_SafeStrCpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
 
   if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
       peripheral_ok) {
     // save file names for HDD disk 1 or 2
-    if (nDrive != 0) {
+    if (drive != 0) {
       Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
                                           fullPath.c_str());
       Configuration_t::instance().save();

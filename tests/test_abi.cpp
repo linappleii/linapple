@@ -126,8 +126,8 @@ TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
 
     // Verify Expansion ROM works
     // Slot 2 ROM is at $C200 - $C2FF.
-    uint8_t* pCxRom = mem_get_cx_rom_peripheral();
-    CHECK(pCxRom[0x200] == 0xA5);
+    uint8_t* cx_rom = mem_get_cx_rom_peripheral();
+    CHECK(cx_rom[0x200] == 0xA5);
 
     // Verify Reset propagation
     peripheral_manager_reset();

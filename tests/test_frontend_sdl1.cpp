@@ -16,9 +16,9 @@ TEST_CASE("SDL1 Frontend Initialization") {
 
 TEST_CASE("SDL1 Config Validation") {
   AppConfig_t config;
-  config.bFullscreen = true;
-  config.bBenchmark = false;
+  config.is_fullscreen = true;
+  config.is_benchmark = false;
   
-  CHECK(config.bFullscreen == true);
-  CHECK(config.bBenchmark == false);
+  CHECK(config.is_fullscreen == true);
+  CHECK(config.is_benchmark == false);
 }

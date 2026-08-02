@@ -37,12 +37,12 @@ TEST_CASE("AppController: Video Mode Reset") {
   AppConfig_Default(&config);
 
   // 1. Init with PAL
-  config.bPAL = true;
+  config.is_pal = true;
   app_controller_initialize(&config);
   CHECK(g_videotype == VT_COLOR_TVEMU);
 
   // 2. Re-init without PAL (should reset to standard)
-  config.bPAL = false;
+  config.is_pal = false;
   app_controller_initialize(&config);
   CHECK(g_videotype == VT_COLOR_STANDARD);
 
@@ -55,7 +55,7 @@ TEST_CASE("AppController: Media Loading") {
   const char* disk_path = access("../res/Master.dsk", R_OK) == 0
                               ? "../res/Master.dsk"
                               : "res/Master.dsk";
-  Util_SafeStrCpy(config.szDiskPath[0].data(), disk_path, path_max_len);
+  Util_SafeStrCpy(config.disk_path[0].data(), disk_path, path_max_len);
 
   AppEnv_ResolvePaths(&config);
   app_controller_initialize(&config);

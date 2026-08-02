@@ -229,43 +229,43 @@ void draw_status_area(int drawflags) {
 
     std::array<char, 2> leds = {{"\x64"}};
 #define LEDS 1
-    int iDrive1Status = disk_status_off;
-    int iDrive2Status = disk_status_off;
-    int iHDDStatus = disk_status_off;
+    int drive1_status = disk_status_off;
+    int drive2_status = disk_status_off;
+    int hdd_status = disk_status_off;
 
     if (g_last_disk_status.drive0_spinning) {
-      iDrive1Status = g_last_disk_status.drive0_writing ? disk_status_write
+      drive1_status = g_last_disk_status.drive0_writing ? disk_status_write
                                                       : disk_status_read;
     } else if (g_last_disk_status.drive0_loaded &&
                g_last_disk_status.drive0_write_protected) {
-      iDrive1Status = disk_status_prot;
+      drive1_status = disk_status_prot;
     }
 
     if (g_last_disk_status.drive1_spinning) {
-      iDrive2Status = g_last_disk_status.drive1_writing ? disk_status_write
+      drive2_status = g_last_disk_status.drive1_writing ? disk_status_write
                                                       : disk_status_read;
     } else if (g_last_disk_status.drive1_loaded &&
                g_last_disk_status.drive1_write_protected) {
-      iDrive2Status = disk_status_prot;
+      drive2_status = disk_status_prot;
     }
 
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
     if (peripheral_query(7, harddisk_cmd_get_status, &hstatus, &hsize) ==
         peripheral_ok) {
-      iHDDStatus = hstatus.activity_status;
+      hdd_status = hstatus.activity_status;
     }
 
-    leds[0] = static_cast<char>(LEDS + iDrive1Status);
+    leds[0] = static_cast<char>(LEDS + drive1_status);
     font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(LEDS + iDrive2Status);
+    leds[0] = static_cast<char>(LEDS + drive2_status);
     font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(LEDS + iHDDStatus);
+    leds[0] = static_cast<char>(LEDS + hdd_status);
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    if (iDrive1Status | iDrive2Status | iHDDStatus) {
+    if (drive1_status | drive2_status | hdd_status) {
       g_status_cycle = SHOW_CYCLES;
     }
   }
@@ -795,11 +795,11 @@ void ResetMachineState() {
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
-static bool bIamFullScreened;
+static bool is_full_screened;
 
 void SetFullScreenMode() {
-  if (!bIamFullScreened) {
-    bIamFullScreened = true;
+  if (!is_full_screened) {
+    is_full_screened = true;
     SDL_SetWindowFullscreen(g_window, true);
     if (g_state.mode != MODE_DEBUG) {
       SDL_HideCursor();
@@ -808,8 +808,8 @@ void SetFullScreenMode() {
 }
 
 void SetNormalMode() {
-  if (bIamFullScreened) {
-    bIamFullScreened = false;
+  if (is_full_screened) {
+    is_full_screened = false;
     SDL_SetWindowFullscreen(g_window, false);
     if (!g_usingcursor) {
       SDL_ShowCursor();
@@ -826,7 +826,7 @@ void set_using_cursor(bool newvalue) {
     SDL_HideCursor();
     SDL_SetWindowMouseGrab(g_window, true);
   } else {
-    if ((!bIamFullScreened) || (g_state.mode == MODE_DEBUG)) {
+    if ((!is_full_screened) || (g_state.mode == MODE_DEBUG)) {
       SDL_ShowCursor();
     }
     SDL_SetWindowMouseGrab(g_window, false);
@@ -838,7 +838,7 @@ extern void SDL_Asset_FreeIcon();
 
 auto frame_create_window() -> int {
   SDL_Asset_LoadIcon();
-  bIamFullScreened = false;
+  is_full_screened = false;
 
   Uint32 flags = 0;
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;

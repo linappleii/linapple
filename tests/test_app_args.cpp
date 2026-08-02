@@ -9,8 +9,8 @@ TEST_CASE("AppArgs: Basic Parsing") {
     AppConfig_t config = {};
     app_args_parse(argc, argv, &config);
 
-    CHECK(strcmp(config.szDiskPath[0].data(), "disk1.dsk") == 0);
-    CHECK(config.bBoot == true);
+    CHECK(strcmp(config.disk_path[0].data(), "disk1.dsk") == 0);
+    CHECK(config.is_boot == true);
     CHECK(config.intent == INTENT_RUN);
 }
 
@@ -20,7 +20,7 @@ TEST_CASE("AppArgs: Diagnostic Intent") {
     AppConfig_t config = {};
     app_args_parse(argc, argv, &config);
 
-    CHECK(config.bListHardware == true);
+    CHECK(config.is_list_hardware == true);
     CHECK(config.intent == INTENT_DIAGNOSTIC);
 }
 
@@ -31,7 +31,7 @@ TEST_CASE("AppArgs: Frontend Pass-through") {
     AppConfig_t config = {};
     app_args_parse(argc, argv, &config);
 
-    CHECK(config.bBoot == true);
+    CHECK(config.is_boot == true);
     CHECK(config.argc_extra == 2);
 
     bool found_wayland = false;

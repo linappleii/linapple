@@ -127,10 +127,10 @@ auto main(int argc, char* argv[]) -> int {
 
   // Store the audio dump file name explicitly since AppConfig_t only holds it in
   // a buffer and ds_init needs it later. Alternatively we could access
-  // config.szAudioDumpPath directly but it's cleaner to keep the frontend's
+  // config.audio_dump_path directly but it's cleaner to keep the frontend's
   // specific state separate if it uses a heap string.
-  if (config.szAudioDumpPath.at(0) != '\0') {
-    g_audio_dump_file = SDL_strdup(config.szAudioDumpPath.data());
+  if (config.audio_dump_path.at(0) != '\0') {
+    g_audio_dump_file = SDL_strdup(config.audio_dump_path.data());
   }
 
   if (sys_init() != 0) {
@@ -144,11 +144,11 @@ auto main(int argc, char* argv[]) -> int {
       break;
     }
 
-    if (config.bBoot) {
+    if (config.is_boot) {
       video_redraw_screen();
     }
 
-    if (config.bBenchmark) {
+    if (config.is_benchmark) {
       video_benchmark();
     } else {
       enter_message_loop();

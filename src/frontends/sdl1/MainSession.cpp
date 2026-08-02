@@ -34,8 +34,8 @@ void set_current_clk_6502() {
 }
 
 
-void SingleStep(bool bReinit) {
-  (void)bReinit;
+void SingleStep(bool is_reinit) {
+  (void)is_reinit;
   linapple_run_frame(1);
 }
 

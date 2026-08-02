@@ -30,8 +30,8 @@ auto get_budget_video() -> bool { return g_budget_video; }
 void set_current_clk_6502() { g_current_clk_6502 = 1.023 * 1000000.0; }
 
 
-void SingleStep(bool bReinit) {
-  (void)bReinit;
+void SingleStep(bool is_reinit) {
+  (void)is_reinit;
   linapple_run_frame(1);
 }
 

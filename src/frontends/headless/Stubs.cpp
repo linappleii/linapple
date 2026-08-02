@@ -14,12 +14,12 @@
 // Stubs for headless/test environments
 WEAK auto Frontend_UpdateKeyboardMapping() -> void {}
 WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
-                                    uint32_t mod, bool bDown)
+                                    uint32_t mod, bool is_down)
     -> void {  // NOLINT
   (void)scancode;
   (void)keycode;
   (void)mod;
-  (void)bDown;
+  (void)is_down;
 }
 WEAK auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {  // NOLINT
   (void)key;

@@ -15,27 +15,27 @@ enum { ARGV_EXTRA_MAX = 64 };
 
 struct AppConfig_t {
   AppIntent_t intent = INTENT_RUN;
-  std::array<std::array<char, path_max_len>, disk_drive_count> szDiskPath = {};
-  std::array<char, path_max_len> szProgramPath = {};
-  std::array<char, path_max_len> szConfigPath = {};
-  std::array<char, path_max_len> szSnapshotPath = {};
-  std::array<char, path_max_len> szAudioDumpPath = {};
+  std::array<std::array<char, path_max_len>, disk_drive_count> disk_path = {};
+  std::array<char, path_max_len> program_path = {};
+  std::array<char, path_max_len> config_path = {};
+  std::array<char, path_max_len> snapshot_path = {};
+  std::array<char, path_max_len> audio_dump_path = {};
 
   eApple2Type apple2Type = A2TYPE_APPLE2EENHANCED;
-  bool bPAL = false;
-  bool bFullscreen = false;
-  bool bBoot = false;
-  bool bBenchmark = false;
-  bool bLog = false;
-  bool bVerbose = false;
+  bool is_pal = false;
+  bool is_fullscreen = false;
+  bool is_boot = false;
+  bool is_benchmark = false;
+  bool is_log = false;
+  bool is_verbose = false;
 
-  bool bListHardware = false;
-  std::array<char, path_max_len> szHardwareInfoName = {};
+  bool is_list_hardware = false;
+  std::array<char, path_max_len> hardware_info_name = {};
 
   // Test/Diagnostic fields
-  std::array<char, path_max_len> szTestCpuFile = {};
-  uint16_t uTestCpuTrap = TRAP_NMOS_DEFAULT;
-  std::array<char, path_max_len> szDebuggerScript = {};
+  std::array<char, path_max_len> test_cpu_file = {};
+  uint16_t test_cpu_trap = TRAP_NMOS_DEFAULT;
+  std::array<char, path_max_len> debugger_script = {};
   bool disable_debugger = false;
 
   // Extra args for frontend pass-through
@@ -48,8 +48,8 @@ struct AppConfig_t {
  * Note: Member initializers handle most defaults, this ensures parity for
  * existing calls.
  */
-inline void AppConfig_Default(AppConfig_t* pConfig) {
-  if (pConfig) {
-    *pConfig = AppConfig_t{};
+inline void AppConfig_Default(AppConfig_t* config) {
+  if (config) {
+    *config = AppConfig_t{};
   }
 }

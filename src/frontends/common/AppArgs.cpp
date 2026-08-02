@@ -90,53 +90,53 @@ auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
                             &opt_idx)) != -1) {
     switch (opt) {
       case '1':
-        Util_SafeStrCpy(outConfig->szDiskPath.at(0).data(), optarg,
+        Util_SafeStrCpy(outConfig->disk_path.at(0).data(), optarg,
                         path_max_len);
         break;
       case '2':
-        Util_SafeStrCpy(outConfig->szDiskPath.at(1).data(), optarg,
+        Util_SafeStrCpy(outConfig->disk_path.at(1).data(), optarg,
                         path_max_len);
         break;
       case 'a':
       case 'b':
-        outConfig->bBoot = true;
+        outConfig->is_boot = true;
         break;
       case 'c':
-        Util_SafeStrCpy(outConfig->szConfigPath.data(), optarg, path_max_len);
+        Util_SafeStrCpy(outConfig->config_path.data(), optarg, path_max_len);
         break;
       case 'f':
-        outConfig->bFullscreen = true;
+        outConfig->is_fullscreen = true;
         break;
       case 'l':
-        outConfig->bLog = true;
+        outConfig->is_log = true;
         break;
       case 'm':
-        outConfig->bBenchmark = true;
+        outConfig->is_benchmark = true;
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case 'p':
-        outConfig->bPAL = true;
+        outConfig->is_pal = true;
         break;
       case 'P':
-        Util_SafeStrCpy(outConfig->szProgramPath.data(), optarg, path_max_len);
+        Util_SafeStrCpy(outConfig->program_path.data(), optarg, path_max_len);
         break;
       case 's':
-        Util_SafeStrCpy(outConfig->szSnapshotPath.data(), optarg, path_max_len);
+        Util_SafeStrCpy(outConfig->snapshot_path.data(), optarg, path_max_len);
         break;
       case 'v':
-        outConfig->bVerbose = true;
+        outConfig->is_verbose = true;
         Logger::set_verbosity(LogLevel_t::k_perf);
         break;
       case 'x':
-        Util_SafeStrCpy(outConfig->szDebuggerScript.data(), optarg,
+        Util_SafeStrCpy(outConfig->debugger_script.data(), optarg,
                         path_max_len);
         break;
       case 'T':
-        Util_SafeStrCpy(outConfig->szTestCpuFile.data(), optarg, path_max_len);
+        Util_SafeStrCpy(outConfig->test_cpu_file.data(), optarg, path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case 'X':
-        outConfig->uTestCpuTrap =
+        outConfig->test_cpu_trap =
             static_cast<uint16_t>(strtol(optarg, nullptr, 0));
         break;
       case '6':
@@ -146,15 +146,15 @@ auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
         outConfig->apple2Type = A2TYPE_APPLE2EENHANCED;
         break;
       case 'A':
-        Util_SafeStrCpy(outConfig->szAudioDumpPath.data(), optarg,
+        Util_SafeStrCpy(outConfig->audio_dump_path.data(), optarg,
                         path_max_len);
         break;
       case opt_list_hardware:
-        outConfig->bListHardware = true;
+        outConfig->is_list_hardware = true;
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case opt_hardware_info:
-        Util_SafeStrCpy(outConfig->szHardwareInfoName.data(), optarg,
+        Util_SafeStrCpy(outConfig->hardware_info_name.data(), optarg,
                         path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;

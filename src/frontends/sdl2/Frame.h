@@ -5,7 +5,7 @@
 
 // Frontend-specific keyboard helpers
 auto frontend_translate_key(SDL_Keycode key, SDL_Keymod mod) -> uint8_t;
-auto frontend_handle_key_event(SDL_Keycode key, bool bDown) -> bool;
+auto frontend_handle_key_event(SDL_Keycode key, bool is_down) -> bool;
 
 enum { NOT_ASCII = 0, ASCII };
 
@@ -62,7 +62,7 @@ void SetFullScreenMode();
 
 void SetNormalMode();
 
-void HarddiskUI_FTPSelect(int nDrive);
-void HarddiskUI_Select(int nDrive);
+void HarddiskUI_FTPSelect(int drive);
+void HarddiskUI_Select(int drive);
 
 extern bool g_scroll_lock_full_speed;

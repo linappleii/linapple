@@ -84,8 +84,8 @@ void DiskSelectImage(int drive, char* pszFilename) {
 }
 
 void DiskSelect(int drive) {
-  std::array<char, 1> szSelect = {{'\0'}};
-  DiskSelectImage(drive, szSelect.data());  // drive is 0 for D1, 1 - for D2
+  std::array<char, 1> select = {{'\0'}};
+  DiskSelectImage(drive, select.data());  // drive is 0 for D1, 1 - for D2
 }
 
 void Disk_FTP_SelectImage(int drive) {

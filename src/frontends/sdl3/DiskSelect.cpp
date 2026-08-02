@@ -82,8 +82,8 @@ void DiskSelectImage(int drive, char* pszFilename) {
 }
 
 void DiskSelect(int drive) {
-  char szSelect[] = "";
-  DiskSelectImage(drive, szSelect);  // drive is 0 for D1, 1 - for D2
+  char select[] = "";
+  DiskSelectImage(drive, select);  // drive is 0 for D1, 1 - for D2
 }
 
 void Disk_FTP_SelectImage(int drive) {
