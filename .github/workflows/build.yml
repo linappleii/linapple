@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev gh
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl

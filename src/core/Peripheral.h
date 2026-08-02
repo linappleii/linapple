@@ -12,7 +12,11 @@
 extern "C" {
 #endif
 
-constexpr int LINAPPLE_ABI_VERSION = 0; 
+#ifdef __cplusplus
+constexpr int LINAPPLE_ABI_VERSION = 0;
+#else
+#define LINAPPLE_ABI_VERSION 0
+#endif
 
 enum {
   PERIPHERAL_CMD_MAX_DATA = 512,
