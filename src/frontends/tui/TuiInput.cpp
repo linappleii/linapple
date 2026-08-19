@@ -7,7 +7,7 @@
 #include <array>
 #include <csignal>
 #include <cstdio>
-#include <cstring>
+#include <string>
 #include <vector>
 
 #include "TuiTerminal.h"
@@ -82,11 +82,11 @@ static auto process_sequences() -> void {
             map_key(a2_key_right);
           } else if (cmd == '~') {
             if (end > i + 2) {
-              size_t len = end - (i + 2);
-              std::vector<char> buf(len + 1, 0);
-              memcpy(buf.data(), &g_input_queue.at(i + 2), len);
+              const std::string token(
+                  g_input_queue.begin() + static_cast<long>(i + 2),
+                  g_input_queue.begin() + static_cast<long>(end));
               try {
-                int val = std::stoi(buf.data());
+                int val = std::stoi(token);
                 if (val == f12_code) {
                   raise(SIGINT);
                 }

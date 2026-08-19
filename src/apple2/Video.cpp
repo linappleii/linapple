@@ -958,6 +958,9 @@ auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   if (!vidlastmem) return false;
   (void)x;
   (void)y;
+  (void)xpixel;
+  (void)ypixel;
+  (void)offset;
   bool dirty = false;
 
 #if FLASH_80_COL

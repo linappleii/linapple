@@ -97,7 +97,7 @@ static auto get_text_addr(int row, int col) -> uint16_t {
 
 static auto set_glyph(TuiState_t& state, const char* str) -> void {
   memset(state.glyph, 0, utf8_glyph_size);
-  strncpy(reinterpret_cast<char*>(state.glyph), str, utf8_glyph_size - 1);
+  memcpy(state.glyph, str, utf8_glyph_size - 1);
 }
 
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,

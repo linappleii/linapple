@@ -866,7 +866,7 @@ auto mem_get_80store() -> bool { return SW_80STORE != 0; }
 auto mem_check_slotcxrom() -> bool { return SW_SLOTCXROM != 0; }
 
 auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
-  uint8_t* mem = (memshadow[(offset >> 8)] == (memaux + (offset & PAGE_MASK)))
+  uint8_t* result = (memshadow[(offset >> 8)] == (memaux + (offset & PAGE_MASK)))
                        ? mem + offset
                        : memaux + offset;
 
@@ -877,14 +877,14 @@ auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
        (SW_HIRES && ((offset & PAGE_MASK) >= HGR1_BEGIN) &&
         ((offset & PAGE_MASK) <= HGR1_END_PAGE)))) {
     if (RWpages[0] != nullptr) {
-      mem = (memshadow[(offset >> 8)] == (RWpages[0] + (offset & PAGE_MASK)))
-                  ? mem + offset
-                  : RWpages[0] + offset;
+      result = (memshadow[(offset >> 8)] == (RWpages[0] + (offset & PAGE_MASK)))
+                    ? mem + offset
+                    : RWpages[0] + offset;
     }
   }
 #endif
 
-  return mem;
+  return result;
 }
 
 auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
