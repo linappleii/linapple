@@ -9,7 +9,7 @@ constexpr int MAX_8910 = 4;
 // Based on General Instrument AY-3-8910 Datasheet
 
 typedef struct {
-  uint8_t regs[16];
+  uint8_t regs[16] = {};
   uint16_t count_a, count_b, count_c;
   uint8_t out_a, out_b, out_c;
 

@@ -63,7 +63,7 @@ static auto copy_row_or4(uint32_t* src, int src_w, uint32_t* dst, int dst_w)
   copy_row_or(src, src_w, dst, dst_w);
 }
 
-static uint32_t g_palette_lut[256];
+static uint32_t g_palette_lut[256] = {};
 static VideoColor_t* g_last_palette = nullptr;
 
 static auto update_palette_lut(VideoColor_t* palette) -> void {

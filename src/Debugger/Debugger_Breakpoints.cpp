@@ -33,7 +33,7 @@ int  g_debug_break_on_opcode   = 0;
 int  g_debug_breakpoint_hit = 0;  // See: BreakpointHit_t
 
 int  g_breakpoints_count          = 0;
-Breakpoint_t g_breakpoints[ MAX_BREAKPOINTS ];
+Breakpoint_t g_breakpoints[ MAX_BREAKPOINTS ] = {};
 
 // NOTE: BreakpointSource_t and g_breakpoint_source must match!
 const char *g_breakpoint_source[ NUM_BREAKPOINT_SOURCES ] =

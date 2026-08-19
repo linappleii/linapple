@@ -935,7 +935,7 @@ void frame_refresh_status(int drawflags) {
         g_drive1_last_reported_error = disk_err_none;
       }
 
-      char s_title[512];
+      char s_title[512] = {};
       if (g_last_disk_status.drive0_loaded) {
         snprintf(s_title, sizeof(s_title), "%s - %s", g_app_title,
                  g_last_disk_status.drive0_name);

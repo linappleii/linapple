@@ -56,7 +56,7 @@ static auto GetTickCount() -> uint32_t {
 #include "core/Util_Text.h"
 #include "frontends/common/VideoStretch.h"
 
-static uint32_t g_video_output[VIDEO_WIDTH * VIDEO_HEIGHT];
+static uint32_t g_video_output[VIDEO_WIDTH * VIDEO_HEIGHT] = {};
 static bool s_language_rocker_switch = false;
 
 auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
@@ -131,18 +131,18 @@ int const kVSyncLines = 4;       // lines per VSync duration
 
 using UpdateFunc_t = bool (*)(int, int, int, int, int);
 
-static uint8_t celldirty[TEXT_COLUMNS][DIRTY_CELL_ROWS];
+static uint8_t celldirty[TEXT_COLUMNS][DIRTY_CELL_ROWS] = {};
 static uint32_t
-    customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
+    customcolors[NUM_COLOR_PALETTE] = {};  // MONOCHROME is last custom color
 
 VideoSurface_t* g_device_bitmap;
 static uint8_t* framebufferbits;
-VideoColor_t framebufferinfo[MAX_PALETTE_SIZE];
+VideoColor_t framebufferinfo[MAX_PALETTE_SIZE] = {};
 
 auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
 
 const int MAX_FRAME_Y = VIDEO_HEIGHT;
-static uint8_t* frameoffsettable[VIDEO_HEIGHT];
+static uint8_t* frameoffsettable[VIDEO_HEIGHT] = {};
 static uint8_t* g_hires_bank1;
 static uint8_t* g_hires_bank0;
 
@@ -157,16 +157,16 @@ VideoSurface_t* g_origscreen = nullptr;
 VideoSurface_t* g_source_bitmap = nullptr;
 
 static uint8_t* g_source_pixels;
-VideoColor_t g_source_header[MAX_PALETTE_SIZE];
+VideoColor_t g_source_header[MAX_PALETTE_SIZE] = {};
 const int MAX_SOURCE_Y = 512 * 2;
-static uint8_t* g_source_start_of_line[MAX_SOURCE_Y];
+static uint8_t* g_source_start_of_line[MAX_SOURCE_Y] = {};
 static uint8_t* g_text_bank1;
 static uint8_t* g_text_bank0;
 
 static uint8_t hgrpixelmatrix[APPLE2_VISIBLE_WIDTH]
-                             [APPLE2_VISIBLE_HEIGHT + 2 * HGR_MATRIX_YOFFSET];
-static uint8_t colormixbuffer[6];
-static uint16_t colormixmap[6][6][6];
+                             [APPLE2_VISIBLE_HEIGHT + 2 * HGR_MATRIX_YOFFSET] = {};
+static uint8_t colormixbuffer[6] = {};
+static uint16_t colormixmap[6][6][6] = {};
 
 static int g_alt_char_set_offset = 0;
 static bool displaypage2 = false;
@@ -215,7 +215,7 @@ static std::atomic<bool> video_worker_refresh_{false};
 std::recursive_mutex g_video_draw_mutex;
 std::condition_variable video_cv;
 
-static char display_pipeline_[0x2000 * 4 + 0x400 * 4];
+static char display_pipeline_[0x2000 * 4 + 0x400 * 4] = {};
 
 auto CopySource(int destx, int desty, int xsize, int ysize, int sourcex,
                 int sourcey) -> void {
@@ -426,7 +426,7 @@ constexpr int SIZE = 10;
   for (int column = 0; column < 256; column++) {
     int coloffs = SIZE * column;
     for (unsigned byteval = 0; byteval < 256; byteval++) {
-      int color[SIZE];
+      int color[SIZE] = {};
       memset(color, 0, sizeof(color));
       unsigned pattern = (static_cast<uint16_t>(
           (static_cast<uint8_t>(byteval)) |
@@ -512,7 +512,7 @@ void DrawHiResSourceHalfShiftDim() {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      int aPixels[11];
+      int aPixels[11] = {};
 
       aPixels[0] = column & 4;
       aPixels[1] = column & 8;
@@ -660,7 +660,7 @@ void DrawHiResSource() {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      int aPixels[11];
+      int aPixels[11] = {};
 
       aPixels[0] = column & 4;
       aPixels[1] = column & 8;

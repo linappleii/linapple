@@ -77,8 +77,8 @@ constexpr uint8_t io_stepper_alt = 0xE0;
 constexpr int disk_state_version = 1;
 
 struct Disk_t {
-  char full_path[max_disk_full_path_len + 1];
-  char image_name[max_disk_image_name_len + 1];
+  char full_path[max_disk_full_path_len + 1] = {};
+  char image_name[max_disk_image_name_len + 1] = {};
   int track = 0;
   int phase = 0;
   uint32_t current_byte_pos = 0;
@@ -305,7 +305,7 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
     return;
   }
 
-  char image_title[max_disk_full_path_len + 1];
+  char image_title[max_disk_full_path_len + 1] = {};
   const char* start_pos = image_path;
 
   const char* last_sep = strrchr(start_pos, '/');
@@ -389,7 +389,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   if (error == disk_err_none) {
     update_disk_metadata(disk_ptr, image_path);
 
-    char full_title[max_disk_image_name_len + 64];
+    char full_title[max_disk_image_name_len + 64] = {};
     snprintf(full_title, sizeof(full_title), "%s - %s", g_app_title,
              disk_ptr->image_name);
     linapple_update_title(full_title);

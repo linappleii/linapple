@@ -718,7 +718,7 @@ uint16_t g_cycle_irq_time;
 
 uint16_t g_idx = 0;
 const uint16_t BUFFER_SIZE = 4096;  // 80 secs
-uint16_t g_buffer[BUFFER_SIZE];
+uint16_t g_buffer[BUFFER_SIZE] = {};
 uint32_t g_mean = 0;
 uint32_t g_min = UINT32_MAX_VAL;
 uint32_t g_max = 0;

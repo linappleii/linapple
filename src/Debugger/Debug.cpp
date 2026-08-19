@@ -83,14 +83,14 @@ int       g_font_height = 8;
 int       g_disasm_display_lines  = 0;
 
 int       g_watches_count = 0;
-Watches_t g_watches[ MAX_WATCHES ];
+Watches_t g_watches[ MAX_WATCHES ] = {};
 
 int           g_window_last = WINDOW_CODE;
 int           g_window_this = WINDOW_CODE;
-WindowSplit_t g_window_config[ NUM_WINDOWS ];
+WindowSplit_t g_window_config[ NUM_WINDOWS ] = {};
 
 int                g_zero_page_pointers_count = 0;
-ZeroPagePointers_t g_zero_page_pointers[ MAX_ZEROPAGE_POINTERS ];
+ZeroPagePointers_t g_zero_page_pointers[ MAX_ZEROPAGE_POINTERS ] = {};
 
 bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_)
 {

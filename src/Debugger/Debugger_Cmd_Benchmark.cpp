@@ -26,7 +26,7 @@ uint64_t g_profile_begin_cycles = 0; // g_cumulative_cycles // PROFILE RESET
 
 const std::string g_FileNameProfile = "Profile.txt";
 int   g_profile_line_count = 0;
-char  g_profile_line[ NUM_PROFILE_LINES ][ CONSOLE_WIDTH ];
+char  g_profile_line[ NUM_PROFILE_LINES ][ CONSOLE_WIDTH ] = {};
 
 uint32_t extbench = 0;
 

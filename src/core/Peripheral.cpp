@@ -386,7 +386,7 @@ struct QueuedCommand_t {
   int slot;
   uint32_t cmd_id;
   size_t data_size;
-  uint8_t data[PERIPHERAL_CMD_MAX_DATA];
+  uint8_t data[PERIPHERAL_CMD_MAX_DATA] = {};
 };
 
 static_assert(sizeof(((QueuedCommand_t*)0)->data) == PERIPHERAL_CMD_MAX_DATA,

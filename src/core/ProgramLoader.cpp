@@ -51,7 +51,7 @@ static auto detect_program(const char* path, ProgramHeader_t* out_header)
   uint32_t file_size = static_cast<uint32_t>(ftell_res);
   std::fseek(f, 0, SEEK_SET);
 
-  uint8_t buffer[prg_header_size];
+  uint8_t buffer[prg_header_size] = {};
   size_t read = std::fread(buffer, 1, sizeof(buffer), f);
   std::fclose(f);
 

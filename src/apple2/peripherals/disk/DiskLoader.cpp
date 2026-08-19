@@ -241,7 +241,7 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
   const auto file_size = static_cast<uint32_t>(ftell(image_file.get()));
   fseek(image_file.get(), 0, SEEK_SET);
 
-  uint8_t header[probe_header_size];
+  uint8_t header[probe_header_size] = {};
   const size_t header_read = fread(header, 1, sizeof(header), image_file.get());
   image_file.reset();
 

@@ -233,7 +233,7 @@ void DiskChoose_Draw() {
                      SDL_GetSurfacePalette(g_screen), 64, 128, 190));
     }
 
-    char type_size_str[32];
+    char type_size_str[32] = {};
     FileEntry_FormatTypeOrSize(file_entry, type_size_str,
                                sizeof(type_size_str));
 

@@ -50,7 +50,7 @@ AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
 // ______________________________________________________________________________________
 
 int g_assembler_opcodes_hashed = false;
-Hash_t g_opcodes_hash[NUM_OPCODES];  // for faster mnemonic lookup, for the
+Hash_t g_opcodes_hash[NUM_OPCODES] = {};  // for faster mnemonic lookup, for the
                                      // assembler
 bool g_assembler_input = false;
 int g_assembler_address = 0;

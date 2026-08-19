@@ -16,7 +16,7 @@
 
 // Globals
 int        g_bookmarks_count = 0;
-Bookmark_t g_bookmarks[ MAX_BOOKMARKS ];
+Bookmark_t g_bookmarks[ MAX_BOOKMARKS ] = {};
 
 extern uint16_t g_disasm_cur_address;
 extern int g_disasm_cur_line;
