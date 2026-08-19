@@ -547,7 +547,7 @@ auto CmdConfigSetFont (int nArgs) -> Update_t
   (void)nArgs;
 #if OLD_FONT
   HFONT  hFont = (HFONT) 0;
-  char *pFontName = NULL;
+  char *pFontName = nullptr;
   int    nHeight = g_font_height;
   int    iFontTarget = FONT_DISASM_DEFAULT;
   int    iFontPitch  = FIXED_PITCH   | FF_MODERN;

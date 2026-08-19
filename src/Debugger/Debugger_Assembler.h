@@ -186,7 +186,7 @@ extern	int g_assembler_first_directive[ NUM_ASSEMBLERS ];
 	extern bool   g_assembler_input; // = false;
 	extern int    g_assembler_address; // = 0;
 
-	extern const Opcodes_t *g_opcodes; // = NULL; // & g_opcodes65_c02[ 0 ];
+	extern const Opcodes_t *g_opcodes; // = nullptr; // & g_opcodes65_c02[ 0 ];
 
 	extern const Opcodes_t g_opcodes65_c02[ NUM_OPCODES ];
 	extern const Opcodes_t g_opcodes6502 [ NUM_OPCODES ];
@@ -195,7 +195,7 @@ extern	int g_assembler_first_directive[ NUM_ASSEMBLERS ];
 
 // Prototypes _______________________________________________________________
 
-	int  _6502_GetOpmodeOpbyte( const int iAddress, int & iOpmode_, int & nOpbytes_, const DisasmData_t** data = NULL );
+	int  _6502_GetOpmodeOpbyte( const int iAddress, int & iOpmode_, int & nOpbytes_, const DisasmData_t** data = nullptr );
 	void _6502_GetOpcodeOpmodeOpbyte( int & iOpcode_, int & iOpmode_, int & nOpbytes_ );
 	bool _6502_GetStackReturnAddress( uint16_t & nAddress_ );
 	bool _6502_GetTargets( uint16_t address, int *pTargetPartial_, int *pTargetPartial2_, int *pTargetPointer_, int * pBytes_,

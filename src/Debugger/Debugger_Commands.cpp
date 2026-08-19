@@ -150,7 +150,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 
 	#define DEBUGGER__COMMANDS_VERIFY_TXT__ "\xDE\xAD\xC0\xDE"
 
-	// Setting function to NULL, allows g_commands arguments to be safely listed here
+	// Setting function to nullptr, allows g_commands arguments to be safely listed here
 	// Commands should be listed alphabetically per category.
 	// For the list sorted by category, check Commands_e
 	// NOTE: Keep in sync Commands_e and g_commands[] ! Aliases are listed at the end.
@@ -176,7 +176,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"POP", CmdStackPop, CMD_STACK_POP, nullptr},
 		{"PPOP", CmdStackPopPseudo, CMD_STACK_POP_PSEUDO, nullptr},
 		{"PUSH", CmdStackPop, CMD_STACK_PUSH, nullptr},
-//		{"RTS", CmdStackReturn, CMD_STACK_RETURN, NULL},
+//		{"RTS", CmdStackReturn, CMD_STACK_RETURN, nullptr},
 		{"P", CmdStepOver, CMD_STEP_OVER, "Step current instruction"},
 		{"RTS", CmdStepOut, CMD_STEP_OUT, "Step out of subroutine"},
 	// CPU - Meta info
@@ -394,9 +394,9 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"SOURCE2", CmdWindowShowSource2, CMD_WINDOW_SOURCE_2, "Show source on bottom split screen"},
 
 		{"\\", CmdWindowViewOutput, CMD_WINDOW_OUTPUT, "Display Apple output until key pressed"},
-//		{"INFO", CmdToggleInfoPanel, CMD_WINDOW_TOGGLE, NULL},
-//		{"WINSOURCE", CmdWindowShowSource, CMD_WINDOW_SOURCE, NULL},
-//		{"ZEROPAGE", CmdWindowShowZeropage, CMD_WINDOW_ZEROPAGE, NULL},
+//		{"INFO", CmdToggleInfoPanel, CMD_WINDOW_TOGGLE, nullptr},
+//		{"WINSOURCE", CmdWindowShowSource, CMD_WINDOW_SOURCE, nullptr},
+//		{"ZEROPAGE", CmdWindowShowZeropage, CMD_WINDOW_ZEROPAGE, nullptr},
 	// Zero Page
 		{"ZP", CmdZeroPage, CMD_ZEROPAGE_POINTER, "Alias for ZPA (Zero Page Add)"},
 		{"ZP0", CmdZeroPagePointer, CMD_ZEROPAGE_POINTER_0, "Set/Update/Remove ZP watch 0 "},
@@ -415,9 +415,9 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 //		{"ZPLOAD", CmdZeroPageLoad, CMD_ZEROPAGE_POINTER_LOAD, "Load zero page pointers"}, // Cant use as param to ZP
 		{"ZPSAVE", CmdZeroPageSave, CMD_ZEROPAGE_POINTER_SAVE, "Save zero page pointers"}, // due to symbol look-up
 
-//	{"TIMEDEMO", CmdTimeDemo, CMD_TIMEDEMO, NULL}, // CmdBenchmarkStart(), CmdBenchmarkStop()
-//	{"WC", CmdShowCodeWindow, NULL, NULL}, // Can't use since WatchClear
-//	{"WD", CmdShowDataWindow, NULL, NULL}, //
+//	{"TIMEDEMO", CmdTimeDemo, CMD_TIMEDEMO, nullptr}, // CmdBenchmarkStart(), CmdBenchmarkStop()
+//	{"WC", CmdShowCodeWindow, nullptr, nullptr}, // Can't use since WatchClear
+//	{"WD", CmdShowDataWindow, nullptr, nullptr}, //
 
 	// Internal Consistency Check
 		{DEBUGGER__COMMANDS_VERIFY_TXT__, nullptr, NUM_COMMANDS, nullptr},
@@ -461,19 +461,19 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"P3", CmdZeroPagePointer, CMD_ZEROPAGE_POINTER_3, nullptr},
 		{"P4", CmdZeroPagePointer, CMD_ZEROPAGE_POINTER_4, nullptr},
 		{"REGISTER", CmdRegisterSet, CMD_REGISTER_SET, nullptr},
-//		{"RET", CmdStackReturn, CMD_STACK_RETURN, NULL},
+//		{"RET", CmdStackReturn, CMD_STACK_RETURN, nullptr},
 		{"TRACE", CmdTrace, CMD_TRACE, nullptr},
 
 //		{"SYMBOLS", CmdSymbols, CMD_SYMBOLS_LOOKUP, "Return "},
-//		{"SYMBOLS1", CmdSymbolsInfo, CMD_SYMBOLS_1, NULL},
-//		{"SYMBOLS2", CmdSymbolsInfo, CMD_SYMBOLS_2, NULL},
-//		{"SYM0", CmdSymbolsInfo, CMD_SYMBOLS_ROM, NULL},
-//		{"SYM1", CmdSymbolsInfo, CMD_SYMBOLS_APPLESOFT, NULL},
-//		{"SYM2", CmdSymbolsInfo, CMD_SYMBOLS_ASSEMBLY, NULL},
-//		{"SYM3", CmdSymbolsInfo, CMD_SYMBOLS_USER_1, NULL},
-//		{"SYM4", CmdSymbolsInfo, CMD_SYMBOLS_USER_2, NULL},
-//		{"SYM5", CmdSymbolsInfo, CMD_SYMBOLS_SRC_1, NULL},
-//		{"SYM6", CmdSymbolsInfo, CMD_SYMBOLS_SRC_2, NULL},
+//		{"SYMBOLS1", CmdSymbolsInfo, CMD_SYMBOLS_1, nullptr},
+//		{"SYMBOLS2", CmdSymbolsInfo, CMD_SYMBOLS_2, nullptr},
+//		{"SYM0", CmdSymbolsInfo, CMD_SYMBOLS_ROM, nullptr},
+//		{"SYM1", CmdSymbolsInfo, CMD_SYMBOLS_APPLESOFT, nullptr},
+//		{"SYM2", CmdSymbolsInfo, CMD_SYMBOLS_ASSEMBLY, nullptr},
+//		{"SYM3", CmdSymbolsInfo, CMD_SYMBOLS_USER_1, nullptr},
+//		{"SYM4", CmdSymbolsInfo, CMD_SYMBOLS_USER_2, nullptr},
+//		{"SYM5", CmdSymbolsInfo, CMD_SYMBOLS_SRC_1, nullptr},
+//		{"SYM6", CmdSymbolsInfo, CMD_SYMBOLS_SRC_2, nullptr},
 		{"SYMDOS", CmdSymbolsCommand, CMD_SYMBOLS_DOS33, nullptr},
 		{"SYMPRO", CmdSymbolsCommand, CMD_SYMBOLS_PRODOS, nullptr},
 
@@ -481,16 +481,16 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"TEXT41", CmdViewOutput_Text41, CMD_VIEW_TEXT41, nullptr},
 		{"TEXT42", CmdViewOutput_Text42, CMD_VIEW_TEXT42, nullptr},
 
-//		{"WATCH", CmdWatchAdd, CMD_WATCH_ADD, NULL},
+//		{"WATCH", CmdWatchAdd, CMD_WATCH_ADD, nullptr},
 		{"WINDOW", CmdWindow, CMD_WINDOW, nullptr},
-//		{"W?", CmdWatchAdd, CMD_WATCH_ADD, NULL},
+//		{"W?", CmdWatchAdd, CMD_WATCH_ADD, nullptr},
 		{"ZAP", CmdNOP, CMD_NOP, nullptr},
 
 	// DEPRECATED  -- Probably should be removed in a future version
 		{"BENCH", CmdBenchmarkStart, CMD_BENCHMARK, nullptr},
 		{"EXITBENCH", nullptr, CMD_BENCHMARK, nullptr}, // 2.8.03 was incorrectly alias with 'E' Bug #246. // CmdBenchmarkStop
 		{"MDB", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, nullptr}, // MemoryDumpByte  // Did anyone actually use this??
-//		{"MEMORY", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, NULL}, // MemoryDumpByte  // Did anyone actually use this??
+//		{"MEMORY", CmdMemoryMiniDumpHex, CMD_MEM_MINI_DUMP_HEX_1, nullptr}, // MemoryDumpByte  // Did anyone actually use this??
 };
 
 // Parameters _____________________________________________________________________________________
@@ -571,7 +571,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"OUTPUT", nullptr, PARAM_CAT_OUTPUT, nullptr},
 		{"OPERATORS", nullptr, PARAM_CAT_OPERATORS, nullptr},
 		{"RANGE", nullptr, PARAM_CAT_RANGE, nullptr},
-//		{"REGISTERS", NULL, PARAM_CAT_REGISTERS, NULL},
+//		{"REGISTERS", nullptr, PARAM_CAT_REGISTERS, nullptr},
 		{"SYMBOLS", nullptr, PARAM_CAT_SYMBOLS, nullptr},
 		{"VIEW", nullptr, PARAM_CAT_VIEW, nullptr},
 		{"WATCHES", nullptr, PARAM_CAT_WATCHES, nullptr},
@@ -579,7 +579,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"ZEROPAGE", nullptr, PARAM_CAT_ZEROPAGE, nullptr},
 // Memory
 		{"?", nullptr, PARAM_MEM_SEARCH_WILD, nullptr},
-//		{"*", NULL, PARAM_MEM_SEARCH_BYTE, NULL},
+//		{"*", nullptr, PARAM_MEM_SEARCH_BYTE, nullptr},
 // Source level debugging
 		{"MEM", nullptr, PARAM_SRC_MEMORY, nullptr},
 		{"MEMORY", nullptr, PARAM_SRC_MEMORY, nullptr},
@@ -594,24 +594,24 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t
 		{"ON", nullptr, PARAM_PROFILE_ON, nullptr},
 		{"OFF", nullptr, PARAM_PROFILE_OFF, nullptr},
 // View
-//		{"VIEW", NULL, PARAM_SRC_???, NULL},
+//		{"VIEW", nullptr, PARAM_SRC_???, nullptr},
 // Window                                                       Win   Cmd   WinEffects      CmdEffects
 		{"CODE", nullptr, PARAM_CODE, nullptr}, //   x     x    code win only   switch to code window
-//		{"CODE1", NULL, PARAM_CODE_1, NULL}, //   -     x    code/data win
+//		{"CODE1", nullptr, PARAM_CODE_1, nullptr}, //   -     x    code/data win
 		{"CODE2", nullptr, PARAM_CODE_2, nullptr}, //   -     x    code/data win
 		{"CONSOLE", nullptr, PARAM_CONSOLE, nullptr}, //   x     -                    switch to console window
 		{"DATA", nullptr, PARAM_DATA, nullptr}, //   x     x    data win only   switch to data window
-//		{"DATA1", NULL, PARAM_DATA_1, NULL}, //   -     x    code/data win
+//		{"DATA1", nullptr, PARAM_DATA_1, nullptr}, //   -     x    code/data win
 		{"DATA2", nullptr, PARAM_DATA_2, nullptr}, //   -     x    code/data win
 		{"DISASM", nullptr, PARAM_DISASM, nullptr}, //
 		{"INFO", nullptr, PARAM_INFO, nullptr}, //   -     x    code/data       Toggles showing/hiding Regs/Stack/BP/Watches/ZP
 		{"SOURCE", nullptr, PARAM_SOURCE, nullptr}, //   x     x                    switch to source window
 		{"SRC", nullptr, PARAM_SOURCE, nullptr}, // alias
-//		{"SOURCE_1", NULL, PARAM_SOURCE_1, NULL}, //   -     x    code/data
+//		{"SOURCE_1", nullptr, PARAM_SOURCE_1, nullptr}, //   -     x    code/data
 		{"SOURCE2 ", nullptr, PARAM_SOURCE_2, nullptr}, //   -     x
 		{"SYMBOLS", nullptr, PARAM_SYMBOLS, nullptr}, //   x     x    code/data win   switch to symbols window
 		{"SYM", nullptr, PARAM_SYMBOLS, nullptr}, // alias   x                    SOURCE [SYM] [MEM] filename
-//		{"SYMBOL1", NULL, PARAM_SYMBOL_1, NULL}, //   -     x    code/data win
+//		{"SYMBOL1", nullptr, PARAM_SYMBOL_1, nullptr}, //   -     x    code/data win
 		{"SYMBOL2", nullptr, PARAM_SYMBOL_2, nullptr}, //   -     x    code/data win
 // Internal Consistency Check
 		{DEBUGGER__PARAMS_VERIFY_TXT__, nullptr, NUM_PARAMS, nullptr},

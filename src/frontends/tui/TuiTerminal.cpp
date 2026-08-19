@@ -63,9 +63,9 @@ int tui_terminal_initialize() {
   sa.sa_handler = SignalHandler;
   sigemptyset(&sa.sa_mask);
 
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGWINCH, &sa, NULL);
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
+  sigaction(SIGWINCH, &sa, nullptr);
 
   g_terminal_initialized = true;
   return 0;

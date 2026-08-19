@@ -524,7 +524,7 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
     g_disasm_bot_address += nOpbytes;
 
     if (g_disasm_cur_bad) {
-      //  MessageBox( NULL, "Bad Disassembly of opcodes", "Debugger", MB_OK );
+      //  MessageBox( nullptr, "Bad Disassembly of opcodes", "Debugger", MB_OK );
 
       //      g_disasm_cur_address = nCur;
       //      g_disasm_cur_bad = false;

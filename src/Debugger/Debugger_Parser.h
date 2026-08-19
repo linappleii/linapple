@@ -49,7 +49,7 @@ inline const char* SkipUntilToken( const char *src_ptr, const TokenTable_t *aTok
 
 	void _strupr(char* s);
 	int FindParam(const char* pLookupName, Match_e eMatch, int & iParam_, int iParamBegin = 0, int iParamEnd = NUM_PARAMS - 1);
-	int FindCommand(const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = NULL);
+	int FindCommand(const char* pName, CmdFuncPtr_t & pFunction_, int * iCommand_ = nullptr);
 	void DisplayAmbigiousCommands(int nFound);
 	int  ParseInput(char* pConsoleInput, bool bCook = true);
 

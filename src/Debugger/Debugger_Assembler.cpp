@@ -422,7 +422,7 @@ const Opcodes_t
 
 // NOTE: Keep in sync AsmDirectives_e g_assembler_directives !
 AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
-    // NULL n/a
+    // nullptr n/a
     {"", 0},
     // Origin, Target Address, EndProg, Equate, Data, AsciiString,HexString
     // Acme

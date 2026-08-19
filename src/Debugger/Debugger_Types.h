@@ -906,7 +906,7 @@ struct DisasmLine_t {
   int       nSlack  ;
 
   char sMnemonic [ MAX_SYMBOLS_LEN+1 ]; // either the real Mnemonic or the Assembler Directive
-  const   DisasmData_t* pDisasmData; // If != NULL then bytes are marked up as data not code
+  const   DisasmData_t* pDisasmData; // If != nullptr then bytes are marked up as data not code
   //
 
   int  nTarget; // address -> string
@@ -948,7 +948,7 @@ struct DisasmLine_t {
     nImmediate = 0;
 
     sBranch[0] = 0;
-    pDisasmData = NULL;
+    pDisasmData = nullptr;
 
     bTargetImmediate = false;
     bTargetIndexed = false;

@@ -1017,7 +1017,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
 
 char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
                    (DEBUG_VIRTUAL_TEXT_WIDTH +
-                    4)];  // (80 column + CR + LF) * 24 rows + NULL
+                    4)];  // (80 column + CR + LF) * 24 rows + NUL
 int g_text_screen_count = 0;
 
 /*
@@ -1176,7 +1176,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
                  //    ,{ ".ntsc" }
   };
   const int nFileType = sizeof(aFileTypes) / sizeof(KnownFileType_t);
-  const KnownFileType_t* pFileType = NULL;
+  const KnownFileType_t* pFileType = nullptr;
   /* */ KnownFileType_e iFileType = TYPE_UNKNOWN;
 
 #if _DEBUG

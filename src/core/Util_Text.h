@@ -58,7 +58,7 @@ inline auto skip_until_char(const char* src_ptr, const char delim) -> const char
 }
 
 inline auto skip_until_eol(const char* src_ptr) -> const char* {
-  // EOL delims: NULL, LF, CR
+  // EOL delims: NUL, LF, CR
   while (src_ptr && (*src_ptr)) {
     if ((*src_ptr == CHAR_LF) || (*src_ptr == CHAR_CR)) {
       break;

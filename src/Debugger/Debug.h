@@ -184,12 +184,12 @@ int FindSourceLine(uint16_t address);
 const char* FormatAddress(uint16_t address, int nBytes);
 
 // Symbol Table / Memory
-bool FindAddressFromSymbol(const char* pSymbol, uint16_t *pAddress_ = NULL, int *iTable_ = NULL);
+bool FindAddressFromSymbol(const char* pSymbol, uint16_t *pAddress_ = nullptr, int *iTable_ = nullptr);
 
 uint16_t GetAddressFromSymbol(const char* symbol); // HACK: returns 0 if symbol not found
 void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char *pSymbolName, uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
 
-const char* FindSymbolFromAddress(uint16_t nAdress, int *iTable_ = NULL);
+const char* FindSymbolFromAddress(uint16_t nAdress, int *iTable_ = nullptr);
 
 const char* GetSymbol(uint16_t address, int nBytes);
 

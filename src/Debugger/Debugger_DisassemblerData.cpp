@@ -479,7 +479,7 @@ auto CmdDisasmDataDefString ( int nArgs ) -> Update_t
 
 // __ Disassembler View Interface ____________________________________________________________________
 
-/// @param pCurrent NULL start a new serch, or continue enumerating
+/// @param pCurrent nullptr start a new search, or continue enumerating
 //===========================================================================
 auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 {
@@ -504,7 +504,7 @@ auto Disassembly_Enumerate( DisasmData_t *pCurrent ) -> DisasmData_t*
 	return data;
 }
 
-// returns NULL if address has no data associated with it
+// returns nullptr if address has no data associated with it
 //===========================================================================
 auto Disassembly_IsDataAddress ( uint16_t address ) -> DisasmData_t*
 {
