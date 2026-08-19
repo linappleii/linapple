@@ -162,6 +162,8 @@ static auto host_log(void* instance, PeripheralLogLevel_t level, const char* fmt
     case log_error:
       Logger::error(fmt, args);
       break;
+    default:
+      break;
   }
   va_end(args);
 }

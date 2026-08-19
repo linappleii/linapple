@@ -81,6 +81,8 @@ void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
       p->envelope_step = 0;
       p->env_holding = false;
       break;
+    default:
+      break;
   }
 }
 

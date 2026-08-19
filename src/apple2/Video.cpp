@@ -1491,6 +1491,8 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
       case 0x7F:
         result = SW_DHIRES;
         break;
+      default:
+        break;
     }
     return (mem_read_floating_bus(cycles_left) & 0x7F) | (result ? 0x80 : 0);
   }
@@ -1906,6 +1908,8 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
       if (!IS_APPLE2()) {
         g_video_mode &= ~VF_DHIRES;
       }
+      break;
+    default:
       break;
   }
   if (SW_MASK2) {

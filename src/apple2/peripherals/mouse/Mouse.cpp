@@ -943,6 +943,8 @@ static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
       }
       return peripheral_ok;
     }
+    default:
+      return peripheral_error;
   }
   return peripheral_error;
 }
@@ -972,6 +974,8 @@ static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
       *out_size = 1;
       return peripheral_ok;
     }
+    default:
+      return peripheral_error;
   }
   return peripheral_error;
 }

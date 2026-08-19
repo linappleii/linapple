@@ -70,6 +70,8 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
       dcb.c_cflag &= ~PARODD;
 #endif
       break;
+    default:
+      break;
   }
 
   switch (bits) {
@@ -97,6 +99,8 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
       break;
     case SUPER_SERIAL_STOP_BITS_2:
       dcb.c_cflag |= CSTOPB;
+      break;
+    default:
       break;
   }
   dcb.c_cflag &= ~CRTSCTS;

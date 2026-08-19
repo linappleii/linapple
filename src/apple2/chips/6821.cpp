@@ -149,6 +149,9 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
       // Datasheet Page 10: IRQB2=0 if CB2 is an output
       if (p->crb & CRB_CB2_OUT) val &= ~CRB_IRQ2;
       break;
+
+    default:
+      break;
   }
   return val;
 }
@@ -212,6 +215,9 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
         }
       }
       UpdateInterrupts(p);
+      break;
+
+    default:
       break;
   }
 }

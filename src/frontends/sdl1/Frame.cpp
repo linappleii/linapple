@@ -748,6 +748,8 @@ void process_button_click(int button, int mod) {
         save_state_load();
       }
       break;
+    default:
+      break;
   }
 
   if ((g_state.mode != MODE_DEBUG) && (g_state.mode != MODE_PAUSED)) {

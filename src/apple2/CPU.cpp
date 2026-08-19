@@ -1348,6 +1348,8 @@ static auto Cpu65C02(uint32_t total_cycles) -> uint32_t {
         ABSX INC_CMOS CYC(6) break;
       case 0xFF:
         INV NOP CYC(2) break;
+      default:
+        break;
     }
 
     CheckInterruptSources(executed_cycles);
@@ -1897,6 +1899,8 @@ static auto Cpu6502(uint32_t total_cycles) -> uint32_t {
         ABSX INC_NMOS CYC(6) break;
       case 0xFF:
         INV ABSX INS CYC(7) break;
+      default:
+        break;
     }
 
     CheckInterruptSources(executed_cycles);
