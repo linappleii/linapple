@@ -1622,8 +1622,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
         // Get File Size
         size_t nFileSize = _GetFileSize(pFile.get());
-        uint8_t* pSwizzled = new uint8_t[g_chroma_size];
         bool bSwizzle = true;
+        bool bValid = true;
 
         WinBmpHeader4_t bmp, *pBmp = &bmp;
         if (iFileType == TYPE_BMP) {
@@ -1632,26 +1632,19 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
           if (pBmp->nBitsPerPixel != 32) {
             strcpy(aStatusText, "Bitmap not 32-bit RGBA");
-            goto _error;
-          }
-
-          if (pBmp->nOffsetData > nFileSize) {
+            bValid = false;
+          } else if (pBmp->nOffsetData > nFileSize) {
             strcpy(aStatusText, "Bad BITMAP: Data > file size !?");
-            goto _error;
-          }
-
-          if (!(((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 256)) ||
-                ((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 1)) ||
-                ((pBmp->nWidthPixels == 16) && (pBmp->nHeightPixels == 1)))) {
+            bValid = false;
+          } else if (!(((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 256)) ||
+                       ((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 1)) ||
+                       ((pBmp->nWidthPixels == 16) && (pBmp->nHeightPixels == 1)))) {
             strcpy(aStatusText, "Bitmap not 64x256, 64x1, or 16x1");
-            goto _error;
-          }
-
-          if (pBmp->nStructSize == 0x28) {
+            bValid = false;
+          } else if (pBmp->nStructSize == 0x28) {
             if (pBmp->nCompression == 0)  // BI_RGB mode
               bSwizzle = false;
-          } else  // 0x7C version4 bitmap
-          {
+          } else {  // 0x7C version4 bitmap
             if (pBmp->nCompression == 3)  // BI_BITFIELDS
             {
               if ((pBmp->nRedMask == 0xFF000000)  // Gimp writes in ABGR order
@@ -1662,43 +1655,44 @@ auto CmdNTSC(int nArgs) -> Update_t {
           }
         } else if (nFileSize != g_chroma_size) {
           sprintf(aStatusText, "Raw size != %d", 64 * 256 * 4);
-          goto _error;
+          bValid = false;
         }
 
-        size_t nRead = fread(pSwizzled, g_chroma_size, 1, pFile.get());
+        if (bValid) {
+          std::vector<uint8_t> swizzled(g_chroma_size);
+          uint8_t* pSwizzled = swizzled.data();
+          size_t nRead = fread(pSwizzled, g_chroma_size, 1, pFile.get());
 
-        if (iFileType == TYPE_BMP) {
-          if (pBmp->nHeightPixels == 1) {
-            uint8_t* pTemp64x256 = new uint8_t[64 * 256 * 4];
-            memset(pTemp64x256, 0, g_chroma_size);
+          if (iFileType == TYPE_BMP) {
+            if (pBmp->nHeightPixels == 1) {
+              std::vector<uint8_t> temp64x256(64 * 256 * 4, 0);
+              uint8_t* pTemp64x256 = temp64x256.data();
 
-            // Transpose16x1::transposeFrom16x1( pSwizzled, (uint8_t*)
-            // pChromaTable );
+              if (pBmp->nWidthPixels == 16) {
+                Transpose16x1::transposeTo64x1(pSwizzled, pTemp64x256);
+                Transpose64x1::transposeTo64x256(pTemp64x256, pTemp64x256);
+              } else if (pBmp->nWidthPixels == 64) {
+                Transpose64x1::transposeTo64x256(pSwizzled, pTemp64x256);
+              }
 
-            if (pBmp->nWidthPixels == 16) {
-              Transpose16x1::transposeTo64x1(pSwizzled, pTemp64x256);
-              Transpose64x1::transposeTo64x256(pTemp64x256, pTemp64x256);
-            } else if (pBmp->nWidthPixels == 64)
-              Transpose64x1::transposeTo64x256(pSwizzled, pTemp64x256);
+              Transpose4096x4::transposeFrom64x256(pTemp64x256,
+                                                   (uint8_t*)pChromaTable);
+            } else {
+              Transpose4096x4::transposeFrom64x256(pSwizzled,
+                                                   (uint8_t*)pChromaTable);
+            }
 
-            Transpose4096x4::transposeFrom64x256(pTemp64x256,
-                                                 (uint8_t*)pChromaTable);
+            if (bSwizzle) {
+              Swizzle32::ABGRswizzleBGRA(g_chroma_size, (uint8_t*)pChromaTable,
+                                         (uint8_t*)pChromaTable);
+            }
+          } else {
+            Swizzle32::RGBAswapBGRA(g_chroma_size, pSwizzled,
+                                    (uint8_t*)pChromaTable);
+          }
+        }
 
-            delete[] pTemp64x256;
-          } else
-            Transpose4096x4::transposeFrom64x256(pSwizzled,
-                                                 (uint8_t*)pChromaTable);
-
-          if (bSwizzle)
-            Swizzle32::ABGRswizzleBGRA(g_chroma_size, (uint8_t*)pChromaTable,
-                                       (uint8_t*)pChromaTable);
-        } else
-          Swizzle32::RGBAswapBGRA(g_chroma_size, pSwizzled,
-                                  (uint8_t*)pChromaTable);
-
-      _error:
         pFile.reset();
-        delete[] pSwizzled;
       } else {
         strcpy(aStatusText, "File: ");
         ConsoleBufferPush("error couldn't open file for reading.");

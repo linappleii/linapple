@@ -169,8 +169,8 @@ auto CmdOutputPrint (int nArgs) -> Update_t
   int iArg = 0;
 
   if (! nArgs) {
-    goto _Help;
-}
+    return Help_Arg_1( CMD_OUTPUT_PRINT );
+  }
 
   for (iArg = 1; iArg <= nArgs; iArg++ )
   {
@@ -182,7 +182,7 @@ auto CmdOutputPrint (int nArgs) -> Update_t
 
     if (! ArgsGetValue( & g_args[ iArg ], & nValue ))
     {
-      goto _Help;
+      return Help_Arg_1( CMD_OUTPUT_PRINT );
     }
 
     nLen += sprintf( &sText[ nLen ], "%d", nValue );
@@ -190,12 +190,9 @@ auto CmdOutputPrint (int nArgs) -> Update_t
 
   if (nLen) {
     ConsoleBufferPush( sText );
-}
+  }
 
   return ConsoleUpdate();
-
-_Help:
-  return Help_Arg_1( CMD_OUTPUT_PRINT );
 }
 
 //===========================================================================
@@ -217,12 +214,12 @@ auto CmdOutputPrintf (int nArgs) -> Update_t
   const char *pFormat = nullptr;
 
   if (nArgs < 1) {
-    goto _Help;
-}
+    return Help_Arg_1( CMD_OUTPUT_PRINTF );
+  }
 
   if (! (g_args[ 1 ].bType & TYPE_QUOTED_2)) {
-    goto _Help;
-}
+    return Help_Arg_1( CMD_OUTPUT_PRINTF );
+  }
 
   nParamValues = nArgs - 1;
 
@@ -272,12 +269,12 @@ auto CmdOutputPrintf (int nArgs) -> Update_t
         {
           if (iValue >= nParamValues)
           {
-            goto _Help;
+            return Help_Arg_1( CMD_OUTPUT_PRINTF );
           }
 
           if (! ArgsGetValue( & aValues.at( iValue ), & nValue ))
           {
-            goto _Help;
+            return Help_Arg_1( CMD_OUTPUT_PRINTF );
           }
 
           char sFormat[ 16 ];
@@ -347,12 +344,9 @@ auto CmdOutputPrintf (int nArgs) -> Update_t
 
   if (nLen) {
     ConsoleBufferPush( sText );
-}
+  }
 
   return ConsoleUpdate();
-
-_Help:
-  return Help_Arg_1( CMD_OUTPUT_PRINTF );
 }
 
 //===========================================================================

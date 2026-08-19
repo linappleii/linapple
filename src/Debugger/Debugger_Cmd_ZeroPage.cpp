@@ -86,13 +86,10 @@ auto CmdZeroPageAdd     (int nArgs) -> Update_t
   }
 
   if (!bAdded) {
-    goto _Help;
-}
+    return Help_Arg_1( CMD_ZEROPAGE_POINTER_ADD );
+  }
 
   return UPDATE_ZERO_PAGE | ConsoleUpdate();
-
-_Help:
-  return Help_Arg_1( CMD_ZEROPAGE_POINTER_ADD );
 }
 
 //===========================================================================

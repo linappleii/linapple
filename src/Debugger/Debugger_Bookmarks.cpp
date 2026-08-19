@@ -169,14 +169,10 @@ auto CmdBookmarkAdd (int nArgs ) -> Update_t
   }
 
   if (!bAdded) {
-    goto _Help;
-}
+    return Help_Arg_1( CMD_BOOKMARK_ADD );
+  }
 
   return UPDATE_DISASM | ConsoleUpdate();
-
-_Help:
-  return Help_Arg_1( CMD_BOOKMARK_ADD );
-
 }
 
 
