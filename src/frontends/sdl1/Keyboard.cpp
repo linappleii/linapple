@@ -29,6 +29,8 @@ void Frontend_UpdateKeyboardMapping() {
     peripheral_command(0, keyboard_cmd_set_rocker, &rocker_val,
                        sizeof(rocker_val));
   }
+
+  keyboard_apply_custom_mappings();
 }
 
 auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
@@ -68,7 +70,8 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
 
   LinAppleKey core_key = LINAPPLE_KEY_UNKNOWN;
 
-  if (keyboard_mapping_mode == KBD_MODE_POSITIONAL) {
+  if (keyboard_mapping_mode == KBD_MODE_POSITIONAL ||
+      keyboard_has_custom_mappings()) {
     core_key = keyboard_scancode_to_positional(scancode);
   } else {
     core_key = frontend_to_core_key(static_cast<int>(keycode), mod);

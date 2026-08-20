@@ -24,6 +24,11 @@ typedef enum {
 LinAppleKey keyboard_symbolic_to_core(int key, uint32_t mod);
 LinAppleKey keyboard_scancode_to_positional(uint32_t scancode);
 
+uint32_t keyboard_parse_host_key(const char* name);
+uint8_t keyboard_parse_apple2_val(const char* name, uint8_t* out_flags);
+void keyboard_apply_custom_mappings();
+bool keyboard_has_custom_mappings();
+
 #ifdef __cplusplus
 }
 #endif

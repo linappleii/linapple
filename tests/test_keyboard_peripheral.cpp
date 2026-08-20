@@ -457,3 +457,109 @@ TEST_CASE("Keyboard Peripheral: Caps Lock Behavior") {
 
   keyboard_peripheral.shutdown(instance);
 }
+
+TEST_CASE(
+    "Keyboard Peripheral: Custom Key Mapping Overrides (e.g. WASD -> Arrows)") {
+  g_mock_handlers.clear();
+  void* instance = keyboard_peripheral.init(0, &mock_host);
+
+  // W key is scancode 26 (0x1A), LINAPPLE_KEY_POS_W = 0x51A
+  // Set custom override for W -> Up Arrow (0x0B)
+  KeyboardCustomKeyPayload_t payload = {};
+  payload.scancode = 26;      // keyb_idx_w
+  payload.normal_val = 0x0B;  // Up Arrow
+  payload.shift_val = 0x0B;
+  payload.flags = 1;  // Custom active
+
+  keyboard_peripheral.command(instance, keyboard_cmd_set_custom_key, &payload,
+                              sizeof(payload));
+
+  // Press W in positional mode (0x500 + 26 = 0x51A)
+  KeyboardEvent_t ev = {0x51A, 1, 0, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev, sizeof(ev));
+
+  uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == 0x0B);  // Verify Up Arrow was received
+
+  ev.is_down = 0;
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev, sizeof(ev));
+  g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
+
+  // Clear custom keys and verify W reverts to 'w' (with caps lock disabled)
+  keyboard_peripheral.command(instance, keyboard_cmd_clear_custom_keys, nullptr,
+                              0);
+  uint8_t caps = 0;
+  keyboard_peripheral.command(instance, keyboard_cmd_set_caps, &caps, 1);
+
+  ev.is_down = 1;
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev, sizeof(ev));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == 'w');
+
+  keyboard_peripheral.shutdown(instance);
+}
+
+TEST_CASE("Keyboard Peripheral: Custom Key Open/Closed Apple Modifiers") {
+  g_mock_handlers.clear();
+  void* instance = keyboard_peripheral.init(0, &mock_host);
+
+  // Tab key is scancode 43 (0x2B), LINAPPLE_KEY_POS_TAB = 0x52B
+  KeyboardCustomKeyPayload_t payload = {};
+  payload.scancode = 43;  // keyb_idx_tab
+  payload.flags = 1 | 2;  // Active + OpenApple
+
+  keyboard_peripheral.command(instance, keyboard_cmd_set_custom_key, &payload,
+                              sizeof(payload));
+
+  // Verify $C061 initial (open apple button up)
+  uint8_t oa_val = g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0);
+  CHECK((oa_val & 0x80) == 0);
+
+  // Press Tab
+  KeyboardEvent_t ev = {0x52B, 1, 0, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev, sizeof(ev));
+
+  oa_val = g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0);
+  CHECK((oa_val & 0x80) != 0);  // Open Apple is pressed!
+
+  // Release Tab
+  ev.is_down = 0;
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev, sizeof(ev));
+  oa_val = g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0);
+  CHECK((oa_val & 0x80) == 0);  // Open Apple released!
+
+  keyboard_peripheral.shutdown(instance);
+}
+
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
+#include "frontends/common/KeyboardTranslator.h"
+
+TEST_CASE("Keyboard Custom Mapping: Parsing Host Keys") {
+  CHECK(keyboard_parse_host_key("w") == keyb_idx_w);
+  CHECK(keyboard_parse_host_key("W") == keyb_idx_w);
+  CHECK(keyboard_parse_host_key("Up") == keyb_idx_up);
+  CHECK(keyboard_parse_host_key("Return") == keyb_idx_return);
+  CHECK(keyboard_parse_host_key("Space") == keyb_idx_space);
+  CHECK(keyboard_parse_host_key("Tab") == keyb_idx_tab);
+  CHECK(keyboard_parse_host_key("F5") == keyb_idx_f5);
+  CHECK(keyboard_parse_host_key("Minus") == keyb_idx_minus);
+  CHECK(keyboard_parse_host_key("InvalidKeyXYZ") == keyb_idx_unknown);
+}
+
+TEST_CASE("Keyboard Custom Mapping: Parsing Apple II Target Values") {
+  uint8_t flags = 0;
+  CHECK(keyboard_parse_apple2_val("Up", &flags) == 0x0B);
+  CHECK(flags == 0);
+
+  CHECK(keyboard_parse_apple2_val("Down", &flags) == 0x0A);
+  CHECK(keyboard_parse_apple2_val("Left", &flags) == 0x08);
+  CHECK(keyboard_parse_apple2_val("Right", &flags) == 0x15);
+  CHECK(keyboard_parse_apple2_val("0x0B", &flags) == 0x0B);
+  CHECK(keyboard_parse_apple2_val("$15", &flags) == 0x15);
+  CHECK(keyboard_parse_apple2_val("'a'", &flags) == 'a');
+  CHECK(keyboard_parse_apple2_val("OpenApple", &flags) == 0);
+  CHECK((flags & 2) != 0);
+
+  CHECK(keyboard_parse_apple2_val("ClosedApple", &flags) == 0);
+  CHECK((flags & 4) != 0);
+}

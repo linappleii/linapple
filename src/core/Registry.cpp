@@ -223,6 +223,15 @@ auto Configuration_t::get_bool(const std::string& section,
   return default_value;
 }
 
+auto Configuration_t::get_section(const std::string& section) const
+    -> const std::map<std::string, std::string>* {
+  auto it = data_.find(section);
+  if (it != data_.end()) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
 auto Configuration_t::set_string(const std::string& section,
                                  const std::string& key,
                                  const std::string& value) -> void {

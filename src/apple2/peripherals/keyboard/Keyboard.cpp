@@ -81,6 +81,13 @@ struct KeyboardHardware_t {
   uint32_t repeat_scancode = 0;
   uint32_t repeat_delay_cycles = 0;
   bool repeating = false;
+
+  // --- Custom Map Overrides ---
+  bool has_custom_keys = false;
+  uint8_t custom_map[keyb_map_size]{};
+  uint8_t custom_shift_map[keyb_map_size]{};
+  uint8_t custom_ctrl_map[keyb_map_size]{};
+  uint8_t custom_flags[keyb_map_size]{};
 };
 
 struct KeyboardPeripheral_t {
@@ -345,6 +352,12 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
     return 0xFFFFFFFF;
   }
 
+  if (kp->logic.has_custom_keys && (kp->logic.custom_flags[idx] & 1) != 0) {
+    base = kp->logic.custom_map[idx];
+    shift_val = kp->logic.custom_shift_map[idx];
+    ctrl_val = kp->logic.custom_ctrl_map[idx];
+  }
+
   if (shift) {
     if (shift_val != 0) {
       base = shift_val;
@@ -392,7 +405,36 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
           kp->logic.repeat_key = 0xFFFFFFFF;
           kp->logic.repeating = false;
         }
+        if (kp->logic.has_custom_keys &&
+            ev->key >= kp_const::positional_threshold) {
+          const int idx =
+              static_cast<int>(ev->key - kp_const::positional_threshold);
+          if (idx >= 0 && idx < keyb_map_size) {
+            if ((kp->logic.custom_flags[idx] & 2) != 0) {
+              kp->logic.open_apple = false;
+            }
+            if ((kp->logic.custom_flags[idx] & 4) != 0) {
+              kp->logic.closed_apple = false;
+            }
+          }
+        }
         return peripheral_ok;
+      }
+
+      if (kp->logic.has_custom_keys &&
+          ev->key >= kp_const::positional_threshold) {
+        const int idx =
+            static_cast<int>(ev->key - kp_const::positional_threshold);
+        if (idx >= 0 && idx < keyb_map_size) {
+          if ((kp->logic.custom_flags[idx] & 2) != 0) {
+            kp->logic.open_apple = true;
+            return peripheral_ok;
+          }
+          if ((kp->logic.custom_flags[idx] & 4) != 0) {
+            kp->logic.closed_apple = true;
+            return peripheral_ok;
+          }
+        }
       }
 
       uint32_t key = ev->key;
@@ -458,6 +500,30 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
         return peripheral_error;
       }
       kp->logic.alternate_layout = *static_cast<const uint8_t*>(data);
+      return peripheral_ok;
+    }
+    case keyboard_cmd_set_custom_key: {
+      if (size < sizeof(KeyboardCustomKeyPayload_t)) {
+        return peripheral_error;
+      }
+      const auto* payload =
+          static_cast<const KeyboardCustomKeyPayload_t*>(data);
+      if (payload->scancode >= keyb_map_size) {
+        return peripheral_error;
+      }
+      kp->logic.custom_map[payload->scancode] = payload->normal_val;
+      kp->logic.custom_shift_map[payload->scancode] = payload->shift_val;
+      kp->logic.custom_ctrl_map[payload->scancode] = payload->ctrl_val;
+      kp->logic.custom_flags[payload->scancode] = payload->flags;
+      kp->logic.has_custom_keys = true;
+      return peripheral_ok;
+    }
+    case keyboard_cmd_clear_custom_keys: {
+      kp->logic.has_custom_keys = false;
+      memset(kp->logic.custom_map, 0, sizeof(kp->logic.custom_map));
+      memset(kp->logic.custom_shift_map, 0, sizeof(kp->logic.custom_shift_map));
+      memset(kp->logic.custom_ctrl_map, 0, sizeof(kp->logic.custom_ctrl_map));
+      memset(kp->logic.custom_flags, 0, sizeof(kp->logic.custom_flags));
       return peripheral_ok;
     }
     default:

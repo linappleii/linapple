@@ -29,11 +29,13 @@ typedef enum {
 } KeyboardLayout_t;
 
 typedef enum {
-  keyboard_cmd_event = 0x0001,      /**< data: KeyboardEvent_t */
-  keyboard_cmd_set_caps = 0x0002,   /**< data: uint8_t (0=off, 1=on) */
-  keyboard_cmd_set_rocker = 0x0003, /**< data: uint8_t (0=off, 1=on) */
-  keyboard_cmd_set_mods = 0x0004,   /**< data: KeyboardModifiers_t */
-  keyboard_cmd_set_layout = 0x0005  /**< data: uint8_t (KeyboardLayout_t) */
+  keyboard_cmd_event = 0x0001,          /**< data: KeyboardEvent_t */
+  keyboard_cmd_set_caps = 0x0002,       /**< data: uint8_t (0=off, 1=on) */
+  keyboard_cmd_set_rocker = 0x0003,     /**< data: uint8_t (0=off, 1=on) */
+  keyboard_cmd_set_mods = 0x0004,       /**< data: KeyboardModifiers_t */
+  keyboard_cmd_set_layout = 0x0005,     /**< data: uint8_t (KeyboardLayout_t) */
+  keyboard_cmd_set_custom_key = 0x0006, /**< data: KeyboardCustomKeyPayload_t */
+  keyboard_cmd_clear_custom_keys = 0x0007 /**< data: none */
 } KeyboardCmd_t;
 
 typedef enum {
@@ -59,6 +61,14 @@ typedef struct {
   uint8_t mod_gui;
   uint8_t reserved[3]; /**< Padding for 12-byte ABI alignment */
 } KeyboardEvent_t;
+
+typedef struct {
+  uint32_t scancode;
+  uint8_t normal_val;
+  uint8_t shift_val;
+  uint8_t ctrl_val;
+  uint8_t flags; /**< 1 = active override, 2 = open_apple, 4 = closed_apple */
+} KeyboardCustomKeyPayload_t;
 
 #ifdef __cplusplus
 }

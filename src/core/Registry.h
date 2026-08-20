@@ -76,6 +76,8 @@ class Configuration_t {
                uint32_t default_value = 0) -> uint32_t;
   auto get_bool(const std::string& section, const std::string& key,
                 bool default_value = false) -> bool;
+  auto get_section(const std::string& section) const
+      -> const std::map<std::string, std::string>*;
 
   auto set_string(const std::string& section, const std::string& key,
                   const std::string& value) -> void;
