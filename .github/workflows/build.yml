@@ -3,28 +3,36 @@ name: Multi-Distro Build (CMake)
 
 on:
   push:
-    branches: [ main, sdl3 ]
+    branches: [main, sdl3]
+    paths-ignore:
+      - '**.md'
+      - '.markdownlint.json'
   pull_request:
-    branches: [ main, sdl3 ]
+    branches: [main, sdl3]
+    paths-ignore:
+      - '**.md'
+      - '.markdownlint.json'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # 1. Ubuntu LTS (x86_64)
-  ubuntu-build:
-    name: Ubuntu ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+  # 1. Ubuntu All Frontends (SDL3, SDL2, SDL1, TUI, Headless)
+  ubuntu-all-frontends:
+    name: Ubuntu 24.04 (All Frontends)
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-ubuntu-all
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev gh libz3-dev
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -33,165 +41,196 @@ jobs:
           version-sdl-image: 3-latest
           install-linux-dependencies: true
       - name: Configure
-        run: cmake -B build -DFRONTEND=sdl3 -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=all \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         run: cmake --build build -j$(nproc)
       - name: Test
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: cd build && ctest --output-on-failure
+        run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: sudo cmake --install build
 
-  # 2. Fedora (RPM-based)
-  rpm-build:
-    name: ${{ matrix.distro }}
+  # 2. Multi-Distro Matrix (Fedora, Arch Linux, Debian / Pi OS x86)
+  distro-matrix:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        distro: ["fedora:latest"]
+        include:
+          - name: Fedora Latest (SDL3)
+            image: fedora:latest
+            setup: |
+              dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
+                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel
+            frontend: sdl3
+
+          - name: Arch Linux Rolling (SDL3)
+            image: archlinux:latest
+            setup: |
+              pacman -Syu --noconfirm
+              pacman -S --noconfirm base-devel cmake ninja imagemagick libzip \
+                sdl3 sdl3_image libcurl-gnutls zlib git z3
+            frontend: sdl3
+
+          - name: Debian 12 / Pi OS x86 (SDL2)
+            image: debian:bookworm-slim
+            setup: |
+              apt-get update
+              apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+                libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+                libsdl2-dev
+            frontend: sdl2
+
     container:
-      image: ${{ matrix.distro }}
+      image: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependencies
-        run: |
-          dnf install -y gcc-c++ cmake ImageMagick libzip-devel SDL3-devel \
-            SDL3_image-devel libcurl-devel zlib-devel git z3-devel
+        run: ${{ matrix.setup }}
       - name: Configure
-        run: cmake -B build -DFRONTEND=sdl3 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: |
+          cmake -B build -G Ninja \
+            -DFRONTEND=${{ matrix.frontend }} \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         run: cmake --build build -j$(nproc)
       - name: Test
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: cd build && ctest --output-on-failure
+        run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: cmake --install build
 
-  # 3. Arch Linux
-  arch-build:
-    name: Arch Linux (Rolling)
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+  # 3. Native ARM64 (Ubuntu / Raspberry Pi OS 64-bit Compatible)
+  rpi-arm64:
+    name: Native ARM64 (Ubuntu / Pi OS 64-bit)
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - name: Install Dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel cmake imagemagick libzip sdl3 sdl3_image \
-            libcurl-gnutls zlib git z3
-      - name: Configure
-        run: cmake -B build -DFRONTEND=sdl3 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-      - name: Build
-        run: cmake --build build -j$(nproc)
-      - name: Test
-        env:
-          SDL_VIDEODRIVER: dummy
-          SDL_AUDIODRIVER: dummy
-        run: cd build && ctest --output-on-failure
-      - name: Install
-        run: cmake --install build
-
-  # 4. SDL1 Build (Ubuntu 24.04)
-  sdl1-build:
-    name: SDL1 (Ubuntu 24.04)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-arm64
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libsdl1.2-dev libsdl-image1.2-dev
-      - name: Configure
-        run: cmake -B build -DFRONTEND=sdl1 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-      - name: Build
-        run: cmake --build build -j$(nproc)
-      - name: Test
-        env:
-          SDL_VIDEODRIVER: dummy
-          SDL_AUDIODRIVER: dummy
-        run: cd build && ctest --output-on-failure
-      - name: Install
-        run: sudo cmake --install build
-
-  # 5. Headless Build (Minimal Deps)
-  headless-build:
-    name: Headless (Ubuntu 24.04)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
             libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
       - name: Configure
-        run: cmake -B build -DFRONTEND=headless -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=sdl3 \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         run: cmake --build build -j$(nproc)
       - name: Test
-        run: cd build && ctest --output-on-failure
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: sudo cmake --install build
 
-  # 5. Headless Build with Sanitizers (ASAN/UBSAN)
+  # 4. Headless Build with Sanitizers (ASAN/UBSAN)
   headless-sanitizers:
     name: Headless Sanitizers (ASAN/UBSAN)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-sanitizers
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
             libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
       - name: Configure
-        run: cmake -B build -DFRONTEND=headless -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=headless \
+            -DENABLE_ASAN=ON \
+            -DENABLE_UBSAN=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         run: cmake --build build -j$(nproc)
       - name: Test
         env:
           ASAN_OPTIONS: "detect_leaks=1"
           UBSAN_OPTIONS: "print_stacktrace=1"
-        run: cd build && ctest --output-on-failure
+        run: ctest --test-dir build -j$(nproc) --output-on-failure
 
-  # 6. Static Analysis (clang-tidy)
+  # 5. Static Analysis (clang-tidy)
   clang-tidy-check:
     name: Static Analysis (clang-tidy)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-clang-tidy
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake clang-tidy imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev
+          sudo apt-get install -y g++ cmake ninja-build clang-tidy imagemagick \
+            libzip-dev libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
       - name: Configure
-        run: cmake -B build -DFRONTEND=headless -DENABLE_CLANG_TIDY=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=headless \
+            -DENABLE_CLANG_TIDY=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build & Analyze
         run: cmake --build build -j$(nproc)
 
-  # 7. Fuzzing Smoke Test (libFuzzer + ASan/UBSan)
+  # 6. Fuzzing Smoke Test (libFuzzer + ASan/UBSan)
   fuzz-smoke:
     name: Fuzzing Smoke Test (Ubuntu 26.04 + Clang + libFuzzer)
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-fuzz
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev
+          sudo apt-get install -y clang cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
       - name: Configure & Build
         run: |
-          cmake -B build-fuzz \
+          cmake -B build-fuzz -G Ninja \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFRONTEND=headless \
             -DENABLE_FUZZING=ON \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -201,74 +240,3 @@ jobs:
           ./build-fuzz/fuzz-memory -max_total_time=10
           ./build-fuzz/fuzz-snapshot -max_total_time=10
           ./build-fuzz/fuzz-disk-loader -max_total_time=10
-
-  # 8. Raspberry Pi OS (64-bit) - Native
-  rpi-arm64:
-    name: Raspberry Pi OS (arm64)
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y g++ cmake imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev \
-            libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
-            libxcursor-dev libxi-dev libwayland-dev libasound2-dev \
-            libpulse-dev libxss-dev libxtst-dev libxv-dev
-      - name: Build SDL3 from source
-        run: |
-          git clone --depth 1 https://github.com/libsdl-org/SDL.git -b main
-          cmake -S SDL -B SDL/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build SDL/build -j$(nproc)
-          sudo cmake --install SDL/build
-
-          git clone --depth 1 https://github.com/libsdl-org/SDL_image.git -b main
-          cmake -S SDL_image -B SDL_image/build -DCMAKE_BUILD_TYPE=Release
-          cmake --build SDL_image/build -j$(nproc)
-          sudo cmake --install SDL_image/build
-      - name: Configure
-        run: cmake -B build -DFRONTEND=sdl3 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-      - name: Build
-        run: cmake --build build -j$(nproc)
-      - name: Test
-        env:
-          SDL_VIDEODRIVER: dummy
-          SDL_AUDIODRIVER: dummy
-        run: cd build && ctest --output-on-failure
-
-#  # 6. Raspberry Pi OS (32-bit) - QEMU
-#  rpi-armhf:
-#    name: Raspberry Pi OS (armhf)
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Build and Test
-#        uses: uraimo/run-on-arch-action@v3
-#        with:
-#          arch: armv7
-#          distro: ubuntu24.04
-#          githubToken: ${{ github.token }}
-#          install: |
-#            apt-get update
-#            apt-get install -y g++ cmake imagemagick libzip-dev \
-#              libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev curl \
-#              libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
-#              libxcursor-dev libxi-dev libwayland-dev libasound2-dev \
-#              libpulse-dev libxss-dev libxtst-dev libxv-dev
-#          run: |
-#            # Build SDL3 from source (not in repos for noble yet)
-#            git clone --depth 1 https://github.com/libsdl-org/SDL.git -b main
-#            cmake -S SDL -B SDL/build -DCMAKE_BUILD_TYPE=Release
-#            cmake --build SDL/build -j$(nproc)
-#            cmake --install SDL/build
-#
-#            git clone --depth 1 https://github.com/libsdl-org/SDL_image.git -b main
-#            cmake -S SDL_image -B SDL_image/build -DCMAKE_BUILD_TYPE=Release
-#            cmake --build SDL_image/build -j$(nproc)
-#            cmake --install SDL_image/build
-#
-#            # Build Project
-#            cmake -B build -DFRONTEND=sdl3 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-#            cmake --build build -j$(nproc)
-#            cd build && SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ctest --output-on-failure
