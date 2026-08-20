@@ -12,6 +12,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 // Since Main.cpp is already linked into 'linapple' (headless target),
 // we can't easily link it here. We'll implement a test that replicates
@@ -21,7 +22,7 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.woz");
+                                         TestFixtures::get_fixture_path("minimal.woz"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -42,9 +43,9 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.woz");
+                                         TestFixtures::get_fixture_path("minimal.woz"));
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                         "../tests/fixtures/minimal.dsk");
+                                         TestFixtures::get_fixture_path("minimal.dsk"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -66,7 +67,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 
   // .txt is unsupported by disk drivers
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.txt");
+                                         TestFixtures::get_fixture_path("minimal.txt"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -92,7 +93,7 @@ TEST_CASE("Headless: [HL-04] Program loading") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  int err = linapple_load_program("../tests/fixtures/minimal.woz");
+  int err = linapple_load_program(TestFixtures::get_fixture_path("minimal.woz").c_str());
   CHECK(err != 0);
 
   DiskStatus_t status{};

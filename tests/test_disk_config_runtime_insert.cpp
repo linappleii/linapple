@@ -10,6 +10,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
   linapple_init();
@@ -19,16 +20,17 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
   // Initial state: empty
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "");
 
+  std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  strcpy(cmd.path, "../tests/fixtures/minimal.woz");
+  strcpy(cmd.path, fixture.c_str());
 
   peripheral_command(6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
   std::string saved =
       Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
-  CHECK(saved == "../tests/fixtures/minimal.woz");
+  CHECK(saved == fixture);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);

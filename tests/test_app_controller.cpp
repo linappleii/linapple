@@ -52,10 +52,8 @@ TEST_CASE("AppController: Video Mode Reset") {
 TEST_CASE("AppController: Media Loading") {
   AppConfig_t config = {};
   AppConfig_Default(&config);
-  const char* disk_path = access("../res/Master.dsk", R_OK) == 0
-                              ? "../res/Master.dsk"
-                              : "res/Master.dsk";
-  Util_SafeStrCpy(config.disk_path[0].data(), disk_path, path_max_len);
+  std::string disk_path = Path::find_data_file("Master.dsk");
+  Util_SafeStrCpy(config.disk_path[0].data(), disk_path.c_str(), path_max_len);
 
   AppEnv_ResolvePaths(&config);
   app_controller_initialize(&config);

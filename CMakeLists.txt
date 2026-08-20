@@ -379,7 +379,7 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
-        SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+        SYSCONF_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
         SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
         LINAPPLE_FRONTEND_NAME="${FE_NAME}"
         ${PERIPHERAL_DEFINITIONS}
@@ -421,11 +421,8 @@ if(PERIPHERAL_MODULES)
     install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/linapple/plugins)
 endif()
 install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
+install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
-
-if(FRONTEND_LOWER STREQUAL "all" OR FRONTEND_LOWER STREQUAL "sdl1" OR FRONTEND_LOWER STREQUAL "sdl2")
-    install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
-endif()
 
 # --- Tests ---
 include(CTest)
@@ -433,6 +430,7 @@ if(BUILD_TESTING)
     find_path(DOCTEST_INCLUDE_DIR doctest.h PATH_SUFFIXES doctest)
     if(NOT DOCTEST_INCLUDE_DIR)
         include(FetchContent)
+        set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
         FetchContent_Declare(doctest GIT_REPOSITORY https://github.com/doctest/doctest.git GIT_TAG v2.4.11)
         FetchContent_MakeAvailable(doctest)
         set(DOCTEST_INCLUDE_DIR ${doctest_SOURCE_DIR}/doctest)
@@ -441,8 +439,8 @@ if(BUILD_TESTING)
     # Helper for adding tests
     macro(add_linapple_test name sources)
         add_executable(test-${name} ${sources} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-        target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
-        target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
+        target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
+        target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
         if(ENABLE_ASAN OR ENABLE_UBSAN)

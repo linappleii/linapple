@@ -87,9 +87,13 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
   paths.push_back(get_executable_dir());
   paths.push_back(get_executable_dir() + "res/");
   paths.push_back(get_executable_dir() + "../res/");
+  paths.push_back(get_executable_dir() + "../../res/");
+  paths.push_back(get_executable_dir() + "../../../res/");
 
   paths.push_back(get_executable_dir() + "../share/linapple/");
+  paths.push_back(get_executable_dir() + "../../share/linapple/");
   paths.push_back(get_executable_dir() + "../etc/linapple/");
+  paths.push_back(get_executable_dir() + "../../etc/linapple/");
 
 #ifdef SOURCE_RES_DIR
   paths.push_back(SOURCE_RES_DIR "/");
@@ -99,6 +103,9 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
 #endif
 #ifdef SYSCONF_DIR
   paths.push_back(SYSCONF_DIR "/");
+#endif
+#ifdef SYS_DIR
+  paths.push_back(SYS_DIR "/");
 #endif
 
   return paths;

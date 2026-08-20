@@ -20,6 +20,7 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 namespace {
 constexpr int SL6 = 6;
@@ -36,25 +37,13 @@ static void setup_smoke_test(const char* imagePath) {
 }  // namespace
 
 TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
-  // 1. Determine absolute paths for fixtures
-  char* cwd_raw = get_current_dir_name();
-  std::string repo_root = cwd_raw;
-  free(cwd_raw);
+  std::string fixture_woz = TestFixtures::get_fixture_path("minimal.woz");
+  std::string fixture_dsk = TestFixtures::get_fixture_path("minimal.dsk");
 
-  // If we are in a build directory, go up one level
-  size_t build_pos = repo_root.find("/build");
-  if (build_pos != std::string::npos) {
-    repo_root = repo_root.substr(0, build_pos);
-  }
-
-  std::string fixture_dir = repo_root + "/tests/fixtures";
-  std::string fixture_woz = fixture_dir + "/minimal.woz";
-  std::string fixture_dsk = fixture_dir + "/minimal.dsk";
-
-  std::string f_user = repo_root + "/user_prot.dsk";
-  std::string f_os = repo_root + "/os_prot.dsk";
-  std::string f_format = repo_root + "/format_prot.woz";
-  std::string f_rw = repo_root + "/rw.dsk";
+  std::string f_user = "user_prot.dsk";
+  std::string f_os = "os_prot.dsk";
+  std::string f_format = "format_prot.woz";
+  std::string f_rw = "rw.dsk";
 
   setup_smoke_test(fixture_woz.c_str());
 

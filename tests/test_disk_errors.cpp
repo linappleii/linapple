@@ -12,6 +12,7 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 namespace {
 constexpr int SL6 = 6;
@@ -87,9 +88,8 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
   peripheral_manager_think(0);
 
   // Now insert valid
-  const char* fixture = "../tests/fixtures/minimal.dsk";
-  if (access(fixture, F_OK) != 0) fixture = "tests/fixtures/minimal.dsk";
-  Util_SafeStrCpy(cmd.path, fixture, disk_insert_path_max);
+  std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
+  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 

@@ -9,6 +9,7 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 namespace {
 constexpr int SL6 = 6;
@@ -21,8 +22,8 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   cmd.write_protected = false;
-  Util_SafeStrCpy(cmd.path, "../tests/fixtures/minimal.woz",
-                  disk_insert_path_max);
+  std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
+  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 

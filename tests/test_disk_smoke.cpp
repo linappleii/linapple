@@ -11,13 +11,15 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 // Global helper for smoke tests
 static void setup_smoke_test(const char* imagePath) {
   linapple_init();
   if (imagePath) {
+    std::string path = TestFixtures::get_fixture_path(imagePath);
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                           imagePath);
+                                           path);
   }
   peripheral_manager_init();  // Clear auto-registered cards
   peripheral_manager_init();
@@ -27,9 +29,8 @@ static void setup_smoke_test(const char* imagePath) {
 static void teardown_smoke_test() { linapple_shutdown(); }
 
 TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
-  setup_smoke_test(
-      "../tests/fixtures/minimal.dsk");  // Actually our fixture is just a 140k
-                                         // blank but it has DSK structure
+  setup_smoke_test("minimal.dsk");  // Actually our fixture is just a 140k
+                                    // blank but it has DSK structure
   DiskStatus_t status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_cmd_get_status, &status, &size);
@@ -39,7 +40,7 @@ TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
 }
 
 TEST_CASE("DiskSmoke: [SMK-03] WOZ 2 Boot") {
-  setup_smoke_test("../tests/fixtures/minimal.woz");
+  setup_smoke_test("minimal.woz");
   DiskStatus_t status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_cmd_get_status, &status, &size);
@@ -75,7 +76,7 @@ TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
 }
 
 TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
-  setup_smoke_test("../tests/fixtures/minimal.txt");
+  setup_smoke_test("minimal.txt");
   DiskStatus_t status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_cmd_get_status, &status, &size);
@@ -87,7 +88,7 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
   linapple_init();
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.woz");
+                                         TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 
@@ -115,9 +116,9 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   linapple_init();
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.dsk");
+                                         TestFixtures::get_fixture_path("minimal.dsk"));
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                         "../tests/fixtures/minimal.woz");
+                                         TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 

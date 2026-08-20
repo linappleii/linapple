@@ -9,11 +9,12 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
   linapple_init();
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         "../tests/fixtures/minimal.woz");
+                                         TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 
