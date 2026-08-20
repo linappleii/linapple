@@ -176,7 +176,33 @@ jobs:
       - name: Build & Analyze
         run: cmake --build build -j$(nproc)
 
-  # 5. Raspberry Pi OS (64-bit) - Native
+  # 7. Fuzzing Smoke Test (libFuzzer + ASan/UBSan)
+  fuzz-smoke:
+    name: Fuzzing Smoke Test (Ubuntu 26.04 + Clang + libFuzzer)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev
+      - name: Configure & Build
+        run: |
+          cmake -B build-fuzz \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DFRONTEND=headless \
+            -DENABLE_FUZZING=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build-fuzz -j$(nproc)
+      - name: Run Fuzzers (10s each)
+        run: |
+          ./build-fuzz/fuzz-memory -max_total_time=10
+          ./build-fuzz/fuzz-snapshot -max_total_time=10
+          ./build-fuzz/fuzz-disk-loader -max_total_time=10
+
+  # 8. Raspberry Pi OS (64-bit) - Native
   rpi-arm64:
     name: Raspberry Pi OS (arm64)
     runs-on: ubuntu-24.04-arm

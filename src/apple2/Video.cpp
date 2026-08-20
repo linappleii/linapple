@@ -13,9 +13,9 @@
 #include <thread>
 
 #include "apple2/Apple2Types.h"
+#include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
-#include "core/Asset.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,
@@ -50,9 +50,9 @@ static auto GetTickCount() -> uint32_t {
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/VideoStretch.h"
 
@@ -64,8 +64,8 @@ auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
 #define GetRValue(rgb) ((uint8_t)(rgb))
 #define GetGValue(rgb) ((uint8_t)(((uint16_t)(rgb)) >> 8))
 #define GetBValue(rgb) ((uint8_t)((rgb) >> 16))
-constexpr int FLASH_80_COL = 1; 
-constexpr int HALF_SHIFT_DITHER = 0; 
+constexpr int FLASH_80_COL = 1;
+constexpr int HALF_SHIFT_DITHER = 0;
 
 const int SRCOFFS_40COL = 0;
 const int SRCOFFS_80COL = (SRCOFFS_40COL + 256);
@@ -93,17 +93,17 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 #define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
                    DST_H)                                                     \
   {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
-    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                           \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
+    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                         \
   }
 
 #define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
                         DST_W, DST_H)                                       \
   {                                                                         \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);         \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                     \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                     \
+    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);      \
   }
 
 #define SETSOURCEPIXEL(x, y, c) g_source_start_of_line[(y)][(x)] = (c)
@@ -132,8 +132,8 @@ int const kVSyncLines = 4;       // lines per VSync duration
 using UpdateFunc_t = bool (*)(int, int, int, int, int);
 
 static uint8_t celldirty[TEXT_COLUMNS][DIRTY_CELL_ROWS] = {};
-static uint32_t
-    customcolors[NUM_COLOR_PALETTE] = {};  // MONOCHROME is last custom color
+static uint32_t customcolors[NUM_COLOR_PALETTE] =
+    {};  // MONOCHROME is last custom color
 
 VideoSurface_t* g_device_bitmap;
 static uint8_t* framebufferbits;
@@ -164,7 +164,8 @@ static uint8_t* g_text_bank1;
 static uint8_t* g_text_bank0;
 
 static uint8_t hgrpixelmatrix[APPLE2_VISIBLE_WIDTH]
-                             [APPLE2_VISIBLE_HEIGHT + 2 * HGR_MATRIX_YOFFSET] = {};
+                             [APPLE2_VISIBLE_HEIGHT + 2 * HGR_MATRIX_YOFFSET] =
+                                 {};
 static uint8_t colormixbuffer[6] = {};
 static uint16_t colormixmap[6][6][6] = {};
 
@@ -322,8 +323,9 @@ void CreateDIBSections() {
   if (g_origscreen) {
     video_destroy_surface(g_origscreen);
   }
-  g_origscreen = video_create_surface(static_cast<int>(g_state.ScreenWidth),
-                                    static_cast<int>(g_state.ScreenHeight), 1);
+  g_origscreen =
+      video_create_surface(static_cast<int>(g_state.ScreenWidth),
+                           static_cast<int>(g_state.ScreenHeight), 1);
 
   if (g_device_bitmap == nullptr || g_origscreen == nullptr) {
     fprintf(stderr, "g_device_bitmap or g_origscreen was not created\n");
@@ -421,8 +423,8 @@ void DrawDHiResSource() {
                           DEEP_RED, MAGENTA,    DARK_GRAY,  LIGHT_BLUE,
                           ORANGE,   PINK,       YELLOW,     WHITE};
 
-constexpr int OFFSET = 3; 
-constexpr int SIZE = 10; 
+  constexpr int OFFSET = 3;
+  constexpr int SIZE = 10;
   for (int column = 0; column < 256; column++) {
     int coloffs = SIZE * column;
     for (unsigned byteval = 0; byteval < 256; byteval++) {
@@ -827,7 +829,8 @@ void DrawMonoTextSource(VideoSurface_t* hDstDC) {
       break;
   }
 
-  if ((g_apple2_type == A2TYPE_APPLE2) || (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+  if ((g_apple2_type == A2TYPE_APPLE2) ||
+      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
     SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
                     256);
   } else {
@@ -863,7 +866,8 @@ void DrawTextSource(VideoSurface_t* dc) {
   }
   uint8_t hBrush = GetMonochromeIndex();
 
-  if ((g_apple2_type == A2TYPE_APPLE2) || (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+  if ((g_apple2_type == A2TYPE_APPLE2) ||
+      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
     SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
   } else {
     int MaxLanguage = (multi_language_charset) ? 2 : 1;
@@ -972,8 +976,10 @@ auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   bool c0_changed = (c0 != *(vidlastmem.get() + offset + 0x400) || redrawfull ||
                      video_worker_active_);
 
-  bool c1_flashing = (g_alt_char_set_offset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
-  bool c0_flashing = (g_alt_char_set_offset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
+  bool c1_flashing =
+      (g_alt_char_set_offset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
+  bool c0_flashing =
+      (g_alt_char_set_offset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
   if (c1_changed || (c1_flashing && g_text_flash_flag)) {
     dirty = Update80ColumnCell(c1, xpixel, ypixel, c1_flashing);
@@ -1009,30 +1015,30 @@ auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
       uint32_t dwordval = (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) |
                           ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
       {
-        constexpr int PIXEL = 0; 
-        #define COLOR ((xpixel + PIXEL) & 3)
-        #define VALUE (dwordval >> (4 + PIXEL - COLOR))
+        constexpr int PIXEL = 0;
+#define COLOR ((xpixel + PIXEL) & 3)
+#define VALUE (dwordval >> (4 + PIXEL - COLOR))
         CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
                    SRCOFFS_DHIRES +
                        10 * (static_cast<uint8_t>(
                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
                        COLOR,
                    (static_cast<uint8_t>(VALUE)) << 1);
-        #undef COLOR
-        #undef VALUE
+#undef COLOR
+#undef VALUE
       }
       {
-        constexpr int PIXEL = 7; 
-        #define COLOR ((xpixel + PIXEL) & 3)
-        #define VALUE (dwordval >> (4 + PIXEL - COLOR))
+        constexpr int PIXEL = 7;
+#define COLOR ((xpixel + PIXEL) & 3)
+#define VALUE (dwordval >> (4 + PIXEL - COLOR))
         CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
                    SRCOFFS_DHIRES +
                        10 * (static_cast<uint8_t>(
                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
                        COLOR,
                    (static_cast<uint8_t>(VALUE)) << 1);
-        #undef COLOR
-        #undef VALUE
+#undef COLOR
+#undef VALUE
       }
       dirty = true;
     }
@@ -1253,7 +1259,8 @@ auto UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset)
 auto LoadCharset() -> VideoSurface_t* {
   VideoSurface_t* result = nullptr;
 
-  if ((g_apple2_type == A2TYPE_APPLE2) || (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+  if ((g_apple2_type == A2TYPE_APPLE2) ||
+      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
     // character bitmap for II and IIplus
     result = video_load_xpm(charset40_IIplus_xpm);
   } else {
@@ -1409,7 +1416,8 @@ auto video_benchmark() -> void {
     while ((loop < 10000) && !error) {
       cpu_setup_benchmark();
       cpu_execute(loop);
-      if ((cpu_get_registers()->pc < 0x300) || (cpu_get_registers()->pc > 0x400)) {
+      if ((cpu_get_registers()->pc < 0x300) ||
+          (cpu_get_registers()->pc > 0x400)) {
         error = true;
       } else {
         lastpc = cpu_get_registers()->pc;
@@ -1602,14 +1610,11 @@ auto video_initialize() -> void {
     memset(vidlastmem.get(), 0, 0x10000);
   }
 
-  g_logo_bitmap = assets->splash;
-
-  if (!charset40) {
-    charset40 = LoadCharset();
-  }
-
-  if (font_sfc == nullptr) {
-    font_sfc = assets->font;
+  if (assets != nullptr) {
+    g_logo_bitmap = assets->splash;
+    if (font_sfc == nullptr) {
+      font_sfc = assets->font;
+    }
   }
 
   CreateIdentityPalette();
@@ -1692,7 +1697,7 @@ void VideoUpdateOutputBuffer() {
   if (g_status_cycle > 0 && g_show_leds && g_status_surface) {
     VideoRect_t ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
     VideoRect_t ds = {560 - STATUS_PANEL_W - 5, 384 - STATUS_PANEL_H - 5,
-                    STATUS_PANEL_W, STATUS_PANEL_H};
+                      STATUS_PANEL_W, STATUS_PANEL_H};
     video_soft_stretch(g_status_surface, &ss, &dst, &ds);
   }
 }
@@ -2007,7 +2012,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
 
   // calculate horizontal scanning state
   int h_clock =
-      (cycles + kHPEClock) % kHClocks;   // which horizontal scanning clock
+      (cycles + kHPEClock) % kHClocks;    // which horizontal scanning clock
   int h_state = kHClock0State + h_clock;  // H state bits
   if (h_clock >= kHPresetClock) {         // check for horizontal preset
     h_state -= 1;  // correct for state preset (two 0 states)
@@ -2020,7 +2025,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   int h_5 = (h_state >> 5) & 1;
 
   // calculate vertical scanning state
-  int v_line = cycles / kHClocks;      // which vertical scanning line
+  int v_line = cycles / kHClocks;       // which vertical scanning line
   int v_state = kVLine0State + v_line;  // V state bits
   if ((v_line >= kVPresetLine)) {  // check for previous vertical state preset
     v_state -= scan_lines;         // compensate for preset
@@ -2050,15 +2055,15 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   address |= h_0 << 0;  // a0
   address |= h_1 << 1;  // a1
   address |= h_2 << 2;  // a2
-  address |= sum;      // a3 - aa6
+  address |= sum;       // a3 - aa6
   address |= v_0 << 7;  // a7
   address |= v_1 << 8;  // a8
   address |= v_2 << 9;  // a9
   address |= ((hires) ? v_A : (1 ^ (page2 & (1 ^ n80Store)))) << 10;  // a10
   address |= ((hires) ? v_B : (page2 & (1 ^ n80Store))) << 11;        // a11
-  if (hires) {  // hires?
+  if (hires) {                                                        // hires?
     // Y: insert hires only address bits
-    address |= v_C << 12;                              // a12
+    address |= v_C << 12;                             // a12
     address |= (1 ^ (page2 & (1 ^ n80Store))) << 13;  // a13
     address |= (page2 & (1 ^ n80Store)) << 14;        // a14
   } else {
@@ -2106,4 +2111,3 @@ auto video_get_vbl(const uint32_t executed_cycles) -> bool {
 // cppcoreguidelines-pro-type-reinterpret-cast,
 // cppcoreguidelines-use-enum-class, google-readability-casting,
 // modernize-avoid-c-style-cast)
-
