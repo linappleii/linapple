@@ -280,29 +280,29 @@ void FrameShowHelpScreen(int sx, int sy) {
   const char* HelpStrings[max_lines] = {
       "Welcome to LinApple - Apple][ emulator for Linux!",
       "Conf file is linapple.conf in current directory by default",
-      "Hugest archive of Apple][ stuff you can find at ftp.apple.asimov.net",
-      "       F1 - Show help g_screen",
-      "  Ctrl+F2 - Cold reboot (Power off and back on)",
-      " Shift+F2 - Reload configuration file and cold reboot",
-      " Ctrl+F10 - Hot Reset (Control+Reset)",
-      "      F12 - Quit",
+      "Archive of Apple ][ software: ftp.apple.asimov.net",
+      "          F1 - Show this help screen",
+      "     Ctrl+F2 - Cold reboot (Power cycle)",
+      "    Shift+F2 - Reload configuration file and cold reboot",
+      "    Ctrl+F10 - Hot Reset (Control+Reset)",
+      "         F12 - Quit LinApple",
       "",
-      "    F3/F4 - Load floppy disk 1/2 (Slot 6, Drive 1/2)",
-      "       F5 - Swap floppy disks",
+      "       F3/F4 - Load floppy disk 1/2 (Slot 6, Drive 1/2)",
+      "          F5 - Swap floppy disks",
       " Shift+F3/F4 - Attach hard drive 1/2 (Slot 7, Drive 1/2)",
       "",
-      "       F6 - Toggle g_state.fullscreen mode",
-      " Shift+F6 - Toggle character set (keyboard rocker switch)",
-      "       F7 - Toggle debugging view",
-      "       F8 - Take screenshot",
-      " Shift+F8 - Save runtime changes to configuration file",
-      "       F9 - Cycle through various video modes",
-      " Shift+F9 - Budget video, for smoother music/audio",
-      "  F10/F11 - Load/save snapshot file",
+      "          F6 - Toggle fullscreen mode",
+      "    Shift+F6 - Toggle character set (keyboard rocker switch)",
+      "          F7 - Toggle debugging view",
+      "          F8 - Take screenshot",
+      "    Shift+F8 - Save runtime changes to configuration file",
+      "          F9 - Cycle through various video modes",
+      "    Shift+F9 - Budget video, for smoother music/audio",
+      "     F10/F11 - Load/save snapshot file",
       "",
       "       Pause - Pause/resume emulator",
-      " Scroll Lock - Toggle full speed",
-      "  Numpad +/-/* - Increase/Decrease/Normal speed"};
+      "  ScrollLock - Toggle full speed (warp mode)",
+      "Numpad +/-/* - Increase/Decrease/Normal speed"};
 
   VideoSurface_t* tempSurface = nullptr;
 
@@ -365,37 +365,44 @@ void FrameShowHelpScreen(int sx, int sy) {
                        static_cast<float>(SCREEN_WIDTH);
   const float facy_f = static_cast<float>(g_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
-  const double facy = static_cast<double>(facy_f);
 
-  font_print_centered(sx / 2, static_cast<int>(5.0 * facy),
+  const int scale_factor =
+      (g_state.screen_width >= 1120 && g_state.screen_height >= 768) ? 2 : 1;
+  const float scale_x = static_cast<float>(scale_factor);
+  const float scale_y = static_cast<float>(scale_factor);
+
+  const int hdr_top = 4 * scale_factor;
+  const int hdr_height = 42 * scale_factor;
+  rectangle(&vs_actual_screen, 4 * scale_factor, hdr_top,
+            static_cast<int>(g_state.screen_width - (8 * scale_factor)),
+            hdr_height, 0xFFFF00);
+
+  font_print_centered(sx / 2, hdr_top + 4 * scale_factor,
                       const_cast<char*>(HelpStrings[0]), &vs_actual_screen,
-                      1.5f * facx_f, 1.3f * facy_f);
-  font_print_centered(sx / 2, static_cast<int>(20.0 * facy),
+                      scale_x, scale_y);
+  font_print_centered(sx / 2, hdr_top + 16 * scale_factor,
                       const_cast<char*>(HelpStrings[1]), &vs_actual_screen,
-                      1.3f * facx_f, 1.2f * facy_f);
-  font_print_centered(sx / 2, static_cast<int>(30.0 * facy),
+                      scale_x, scale_y);
+  font_print_centered(sx / 2, hdr_top + 28 * scale_factor,
                       const_cast<char*>(HelpStrings[2]), &vs_actual_screen,
-                      1.2f * facx_f, 1.0f * facy_f);
+                      scale_x, scale_y);
 
-  int Help_TopX = static_cast<int>(45.0 * facy);
+  const int body_top = hdr_top + hdr_height + 4 * scale_factor;
+  const int body_height =
+      static_cast<int>(g_state.screen_height - body_top - 4 * scale_factor);
+  rectangle(&vs_actual_screen, 4 * scale_factor, body_top,
+            static_cast<int>(g_state.screen_width - (8 * scale_factor)),
+            body_height, 0xFFFFFF);
+
+  const int line_spacing = 13 * scale_factor;
   for (int i = 3; i < max_lines; i++) {
-    if (HelpStrings[i]) {
-      font_print(4,
-                 static_cast<int>(static_cast<double>(Help_TopX) +
-                                  static_cast<double>(i - 3) * 15.0 * facy),
+    if (HelpStrings[i] && HelpStrings[i][0] != '\0') {
+      font_print(16 * scale_factor,
+                 body_top + 6 * scale_factor + (i - 3) * line_spacing,
                  const_cast<char*>(HelpStrings[i]), &vs_actual_screen,
-                 1.5f * facx_f, 1.5f * facy_f);
+                 scale_x, scale_y);
     }
   }
-
-  rectangle(&vs_actual_screen, 0, Help_TopX - 5,
-            static_cast<int>(g_state.screen_width - 1),
-            static_cast<int>(335.0 * facy), 0xFFFFFF);
-  rectangle(&vs_actual_screen, 1, Help_TopX - 4,
-            static_cast<int>(g_state.screen_width),
-            static_cast<int>(335.0 * facy), 0xFFFFFF);
-  rectangle(&vs_actual_screen, 1, 1, static_cast<int>(g_state.screen_width - 2),
-            (Help_TopX - 8), 0xFFFF00);
 
   // Logo bit
   VideoSurface_t vs_icon{};
@@ -708,7 +715,7 @@ void process_button_click(int button, int mod) {
           debug_begin();
           set_using_cursor(false);
         } else if (g_state.mode == MODE_DEBUG) {
-          g_state.mode = MODE_RUNNING;
+          debug_end();
         }
       }
 #endif
