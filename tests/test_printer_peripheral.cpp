@@ -92,27 +92,27 @@ auto Mock_PrinterGetStatus(void* instance) -> uint8_t {
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.Log = Mock_Log;
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    h.get_mem_ptr = nullptr;
-    h.GetCycles = nullptr;
-    h.GetConfig = nullptr;
-    h.SetConfig = nullptr;
-    h.NotifyStatusChanged = nullptr;
-    h.NotifyActivityChanged = nullptr;
-    h.RequestPreciseTiming = nullptr;
-    h.AudioPushSamples = nullptr;
-    h.ResetSystem = nullptr;
-    h.PrinterPutChar = Mock_PrinterPutChar;
-    h.PrinterGetStatus = Mock_PrinterGetStatus;
-    h.SerialTransmitByte = nullptr;
-    h.SerialUpdateState = nullptr;
-    return h;
+  HostInterface_t h{};
+  h.Log = Mock_Log;
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  h.get_mem_ptr = nullptr;
+  h.GetCycles = nullptr;
+  h.GetConfig = nullptr;
+  h.SetConfig = nullptr;
+  h.NotifyStatusChanged = nullptr;
+  h.NotifyActivityChanged = nullptr;
+  h.RequestPreciseTiming = nullptr;
+  h.AudioPushSamples = nullptr;
+  h.ResetSystem = nullptr;
+  h.PrinterPutChar = Mock_PrinterPutChar;
+  h.PrinterGetStatus = Mock_PrinterGetStatus;
+  h.SerialTransmitByte = nullptr;
+  h.SerialUpdateState = nullptr;
+  return h;
 }();
 
 auto Printer_Init_With_Mock(int slot) -> void* {

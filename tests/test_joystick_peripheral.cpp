@@ -105,27 +105,27 @@ auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.Log = Mock_Log;
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    h.get_mem_ptr = nullptr;
-    h.GetCycles = nullptr;
-    h.GetConfig = nullptr;
-    h.SetConfig = nullptr;
-    h.NotifyStatusChanged = nullptr;
-    h.NotifyActivityChanged = nullptr;
-    h.RequestPreciseTiming = nullptr;
-    h.AudioPushSamples = nullptr;
-    h.ResetSystem = nullptr;
-    h.PrinterPutChar = nullptr;
-    h.PrinterGetStatus = nullptr;
-    h.SerialTransmitByte = nullptr;
-    h.SerialUpdateState = nullptr;
-    return h;
+  HostInterface_t h{};
+  h.Log = Mock_Log;
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  h.get_mem_ptr = nullptr;
+  h.GetCycles = nullptr;
+  h.GetConfig = nullptr;
+  h.SetConfig = nullptr;
+  h.NotifyStatusChanged = nullptr;
+  h.NotifyActivityChanged = nullptr;
+  h.RequestPreciseTiming = nullptr;
+  h.AudioPushSamples = nullptr;
+  h.ResetSystem = nullptr;
+  h.PrinterPutChar = nullptr;
+  h.PrinterGetStatus = nullptr;
+  h.SerialTransmitByte = nullptr;
+  h.SerialUpdateState = nullptr;
+  return h;
 }();
 
 static auto Joystick_Init_With_Mock(int slot) -> void* {
@@ -164,7 +164,7 @@ TEST_CASE("Joystick Peripheral: Analog Timing Accuracy") {
 
   JoystickAxisPayload_t px0 = {0, 0, 0};
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px0,
-                                    sizeof(px0));
+                                     sizeof(px0));
 
   g_mock_handlers.at(addr_paddle_reset)
       .read(instance, 0, addr_paddle_reset, 0, 0, 0);
@@ -178,7 +178,7 @@ TEST_CASE("Joystick Peripheral: Analog Timing Accuracy") {
 
   JoystickAxisPayload_t px255 = {0, 0, MAX_AXIS_VALUE};
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px255,
-                                    sizeof(px255));
+                                     sizeof(px255));
 
   g_mock_handlers.at(addr_paddle_reset)
       .read(instance, 0, addr_paddle_reset, 0, 0, 0);
@@ -201,16 +201,16 @@ TEST_CASE("Joystick Peripheral: Button Latching and Thinking") {
   JoystickButtonPayload_t p_down = {0, true};
   JoystickButtonPayload_t p_up = {0, false};
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_down,
-                                    sizeof(p_down));
+                                     sizeof(p_down));
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON, &p_up,
-                                    sizeof(p_up));
+                                     sizeof(p_up));
 
   CHECK((g_mock_handlers.at(addr_button0)
              .read(instance, 0, addr_button0, 0, 0, 0) &
          HIGH_BIT) != 0);
 
   joystick_get_descriptor()->think(instance,
-                                  static_cast<uint32_t>(THINK_LATCH_CYCLES));
+                                   static_cast<uint32_t>(THINK_LATCH_CYCLES));
   CHECK((g_mock_handlers.at(addr_button0)
              .read(instance, 0, addr_button0, 0, 0, 0) &
          HIGH_BIT) == 0);
@@ -225,11 +225,11 @@ TEST_CASE("Joystick Peripheral: Trim Logic") {
 
   JoystickAxisPayload_t px = {0, 0, TRIM_TEST_POS};
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px,
-                                    sizeof(px));
+                                     sizeof(px));
 
   JoystickTrimPayload_t pt = {true, TRIM_TEST_OFFSET};
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_TRIM, &pt,
-                                    sizeof(pt));
+                                     sizeof(pt));
 
   g_mock_handlers.at(addr_paddle_reset)
       .read(instance, 0, addr_paddle_reset, 0, 0, 0);
@@ -255,7 +255,7 @@ TEST_CASE("Joystick Peripheral: Config and Query") {
   cfg.joy0_button_map[0] = TEST_BUTTON_MAPPING;
 
   joystick_get_descriptor()->command(instance, JOY_CMD_SET_CONFIG, &cfg,
-                                    sizeof(cfg));
+                                     sizeof(cfg));
 
   JoystickConfig_t queried{};
   size_t size = sizeof(queried);
@@ -275,7 +275,7 @@ TEST_CASE("Joystick Peripheral: Robustness and Multiple Instances") {
 
   JoystickAxisPayload_t px255 = {0, 0, MAX_AXIS_VALUE};
   joystick_get_descriptor()->command(instance1, JOY_CMD_SET_AXIS, &px255,
-                                    sizeof(px255));
+                                     sizeof(px255));
 
   g_mock_handlers.at(addr_paddle_reset)
       .read(instance1, 0, addr_paddle_reset, 0, 0, 0);

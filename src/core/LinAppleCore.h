@@ -154,8 +154,8 @@ using SystemState_t = struct SystemState_tag {
   bool restart;
   bool fullscreen;
   uint32_t speed;
-  uint32_t ScreenWidth;
-  uint32_t ScreenHeight;
+  uint32_t screen_width;
+  uint32_t screen_height;
   bool reset_timing;
   uint32_t needsprecision;
   std::array<char, path_max_len> program_dir;
@@ -239,10 +239,10 @@ auto peripheral_manager_on_vblank(bool vblank) -> void;
 auto peripheral_is_any_active() -> bool;
 auto linapple_list_hardware() -> void;
 
-PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id, const void* data,
-                                    size_t size);
+PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
+                                      const void* data, size_t size);
 PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
-                                  size_t* out_size);
+                                    size_t* out_size);
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
 auto linapple_set_caps_lock_state(bool enabled) -> void;
@@ -260,8 +260,6 @@ auto get_title_apple_2() -> const char*;
 auto get_title_apple_2_plus() -> const char*;
 auto get_title_apple_2e() -> const char*;
 auto get_title_apple_2e_enhanced() -> const char*;
-
-
 
 #ifdef __cplusplus
 }

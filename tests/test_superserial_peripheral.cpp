@@ -109,27 +109,27 @@ auto Mock_SerialTransmitByte(void* instance, uint8_t byte) -> void {
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.Log = Mock_Log;
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    h.get_mem_ptr = nullptr;
-    h.GetCycles = nullptr;
-    h.GetConfig = nullptr;
-    h.SetConfig = nullptr;
-    h.NotifyStatusChanged = nullptr;
-    h.NotifyActivityChanged = nullptr;
-    h.RequestPreciseTiming = nullptr;
-    h.AudioPushSamples = nullptr;
-    h.ResetSystem = nullptr;
-    h.PrinterPutChar = nullptr;
-    h.PrinterGetStatus = nullptr;
-    h.SerialTransmitByte = Mock_SerialTransmitByte;
-    h.SerialUpdateState = nullptr;
-    return h;
+  HostInterface_t h{};
+  h.Log = Mock_Log;
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  h.get_mem_ptr = nullptr;
+  h.GetCycles = nullptr;
+  h.GetConfig = nullptr;
+  h.SetConfig = nullptr;
+  h.NotifyStatusChanged = nullptr;
+  h.NotifyActivityChanged = nullptr;
+  h.RequestPreciseTiming = nullptr;
+  h.AudioPushSamples = nullptr;
+  h.ResetSystem = nullptr;
+  h.PrinterPutChar = nullptr;
+  h.PrinterGetStatus = nullptr;
+  h.SerialTransmitByte = Mock_SerialTransmitByte;
+  h.SerialUpdateState = nullptr;
+  return h;
 }();
 
 static auto SuperSerial_Init_With_Mock(int slot) -> void* {
@@ -184,8 +184,8 @@ TEST_CASE("SuperSerial: Receive Buffer and RX IRQ") {
       .write(instance, 0, ADDR_COMMAND, 1, CMD_ENABLE_RX_IRQ, 0);
 
   uint8_t rx_byte = TEST_BYTE_VAL;
-  super_serial_get_descriptor()->command(instance, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
-                                       &rx_byte, sizeof(uint8_t));
+  super_serial_get_descriptor()->command(
+      instance, SUPER_SERIAL_CMD_PUSH_RX_BYTE, &rx_byte, sizeof(uint8_t));
 
   CHECK(g_irq_asserted == true);
 
@@ -218,9 +218,9 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
                                   .parity = SUPER_SERIAL_PARITY_NONE,
                                   .linefeed = false,
                                   .interrupts = false};
-  CHECK(super_serial_get_descriptor()->command(instance,
-                                             SUPER_SERIAL_CMD_SET_CONFIG, &cfg,
-                                             sizeof(cfg)) == peripheral_ok);
+  CHECK(super_serial_get_descriptor()->command(
+            instance, SUPER_SERIAL_CMD_SET_CONFIG, &cfg, sizeof(cfg)) ==
+        peripheral_ok);
 
   SuperSerialDipSwConfig_t queried = {
       .baud_rate = SUPER_SERIAL_BAUD_110,
@@ -231,8 +231,9 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
       .linefeed = false,
       .interrupts = false};
   size_t size = sizeof(queried);
-  CHECK(super_serial_get_descriptor()->query(instance, SUPER_SERIAL_QUERY_CONFIG,
-                                           &queried, &size) == peripheral_ok);
+  CHECK(super_serial_get_descriptor()->query(instance,
+                                             SUPER_SERIAL_QUERY_CONFIG,
+                                             &queried, &size) == peripheral_ok);
   CHECK(queried.baud_rate == SUPER_SERIAL_BAUD_9600);
 
   super_serial_get_descriptor()->shutdown(instance);

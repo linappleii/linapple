@@ -6,8 +6,8 @@
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
-#include "apple2/CPU.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 

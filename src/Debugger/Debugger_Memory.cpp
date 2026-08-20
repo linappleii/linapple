@@ -678,7 +678,8 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     CmdConfigGetDebugDir(0);
 
     char sFile[path_max_len + 8];
-    ConsoleBufferPushFormat(sFile, "File: ", g_memory_load_save_file_name.c_str());
+    ConsoleBufferPushFormat(sFile,
+                            "File: ", g_memory_load_save_file_name.c_str());
   }
 
   return ConsoleUpdate();
@@ -892,8 +893,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
                                 nAddressStart, nAddressEnd, nAddressLen);
       } else {
         ConsoleBufferPushFormat(sLast,
-                                "Last saved: Bank=%02X $%04X:$%04X, %04X",
-                                bank, nAddressStart, nAddressEnd, nAddressLen);
+                                "Last saved: Bank=%02X $%04X:$%04X, %04X", bank,
+                                nAddressStart, nAddressEnd, nAddressLen);
       }
     } else {
       ConsoleBufferPush("Last saved: none");
@@ -1087,7 +1088,8 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
   g_text_screen_count = 0;
   memset(pBeg, 0, sizeof(g_text_screen));
 
-  memset(g_debugger_virtual_text_screen, 0, sizeof(g_debugger_virtual_text_screen));
+  memset(g_debugger_virtual_text_screen, 0,
+         sizeof(g_debugger_virtual_text_screen));
   debug_display();
 
   for (auto& y : g_debugger_virtual_text_screen) {
@@ -1240,9 +1242,10 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class Swizzle32 {
    public:
-    static void RGBAswapBGRA(size_t nSize, const uint8_t* src_ptr,
-                             uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias;
-                                             // code handles this properly
+    static void RGBAswapBGRA(
+        size_t nSize, const uint8_t* src_ptr,
+        uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias;
+                        // code handles this properly
     {
       const uint8_t* pEnd = src_ptr + nSize;
       while (src_ptr < pEnd) {
@@ -1636,15 +1639,18 @@ auto CmdNTSC(int nArgs) -> Update_t {
           } else if (pBmp->nOffsetData > nFileSize) {
             strcpy(aStatusText, "Bad BITMAP: Data > file size !?");
             bValid = false;
-          } else if (!(((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 256)) ||
-                       ((pBmp->nWidthPixels == 64) && (pBmp->nHeightPixels == 1)) ||
-                       ((pBmp->nWidthPixels == 16) && (pBmp->nHeightPixels == 1)))) {
+          } else if (!(((pBmp->nWidthPixels == 64) &&
+                        (pBmp->nHeightPixels == 256)) ||
+                       ((pBmp->nWidthPixels == 64) &&
+                        (pBmp->nHeightPixels == 1)) ||
+                       ((pBmp->nWidthPixels == 16) &&
+                        (pBmp->nHeightPixels == 1)))) {
             strcpy(aStatusText, "Bitmap not 64x256, 64x1, or 16x1");
             bValid = false;
           } else if (pBmp->nStructSize == 0x28) {
             if (pBmp->nCompression == 0)  // BI_RGB mode
               bSwizzle = false;
-          } else {  // 0x7C version4 bitmap
+          } else {                        // 0x7C version4 bitmap
             if (pBmp->nCompression == 3)  // BI_BITFIELDS
             {
               if ((pBmp->nRedMask == 0xFF000000)  // Gimp writes in ABGR order
@@ -1769,7 +1775,7 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
                       uint16_t nAddressStart, uint16_t nAddressEnd) -> int {
   int nFound = 0;
   g_memory_search_results.erase(g_memory_search_results.begin(),
-                               g_memory_search_results.end());
+                                g_memory_search_results.end());
   g_memory_search_results.push_back(NO_6502_TARGET);
 
   uint16_t address = 0;
@@ -1781,29 +1787,29 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
     int nMemBlocks = vMemorySearchValues.size();
     for (int iBlock = 0; iBlock < nMemBlocks; iBlock++, nAddress2++) {
       MemorySearch_t ms = vMemorySearchValues.at(iBlock);
-      ms.m_bFound = false;
+      ms.found = false;
 
-      if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT) ||
-          (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) ||
-          (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT)) {
+      if ((ms.type == MEM_SEARCH_BYTE_EXACT) ||
+          (ms.type == MEM_SEARCH_NIB_HIGH_EXACT) ||
+          (ms.type == MEM_SEARCH_NIB_LOW_EXACT)) {
         uint8_t nTarget = *(mem + nAddress2);
 
-        if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT) {
+        if (ms.type == MEM_SEARCH_NIB_LOW_EXACT) {
           nTarget &= 0x0F;
         }
 
-        if (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) {
+        if (ms.type == MEM_SEARCH_NIB_HIGH_EXACT) {
           nTarget &= 0xF0;
         }
 
-        if (ms.m_nValue == nTarget) {  // ms.m_nAddress = nAddress2;
-          ms.m_bFound = true;
+        if (ms.value == nTarget) {
+          ms.found = true;
           continue;
         } else {
           bMatchAll = false;
           break;
         }
-      } else if (ms.m_iType == MEM_SEARCH_BYTE_1_WILD) {
+      } else if (ms.type == MEM_SEARCH_BYTE_1_WILD) {
         // match by definition
       } else {
         // start 2ndary search
@@ -1817,20 +1823,20 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
 
         uint16_t nAddress3 = nAddress2;
         for (nAddress3 = nAddress2; nAddress3 < nAddressEnd; nAddress3++) {
-          if ((ms.m_iType == MEM_SEARCH_BYTE_EXACT) ||
-              (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) ||
-              (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT)) {
+          if ((ms.type == MEM_SEARCH_BYTE_EXACT) ||
+              (ms.type == MEM_SEARCH_NIB_HIGH_EXACT) ||
+              (ms.type == MEM_SEARCH_NIB_LOW_EXACT)) {
             uint8_t nTarget = *(mem + nAddress3);
 
-            if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT) {
+            if (ms.type == MEM_SEARCH_NIB_LOW_EXACT) {
               nTarget &= 0x0F;
             }
 
-            if (ms.m_iType == MEM_SEARCH_NIB_HIGH_EXACT) {
+            if (ms.type == MEM_SEARCH_NIB_HIGH_EXACT) {
               nTarget &= 0xF0;
             }
 
-            if (ms.m_nValue == nTarget) {
+            if (ms.value == nTarget) {
               nAddress2 = nAddress3;
               continue;
             } else {
@@ -1900,7 +1906,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
       StringCat(sResult, CHC_ADDRESS, nBuf);
       sprintf(sText, "%04X ",
               address);  // 2.6.2.15 Fixed: Search Results: Added space between
-                          // results for better readability
+                         // results for better readability
       nLen += StringCat(sResult, sText, nBuf);
 
       // Fit on same line?
@@ -1989,15 +1995,15 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
     MemorySearch_t ms{};
 
     nTarget = pArg->nValue;
-    ms.m_nValue = nTarget & 0xFF;
-    ms.m_iType = MEM_SEARCH_BYTE_EXACT;
+    ms.value = nTarget & 0xFF;
+    ms.type = MEM_SEARCH_BYTE_EXACT;
 
     if (nTarget > 0xFF)  // searching for 16-bit address
     {
       vMemorySearchValues.push_back(ms);
-      ms.m_nValue = (nTarget >> 8);
+      ms.value = (nTarget >> 8);
 
-      tLastType = ms.m_iType;
+      tLastType = ms.type;
     } else {
       char* pByte = pArg->sArg;
 
@@ -2007,19 +2013,12 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
         int nChars = pArg->nArgLen;
 
         if (nChars) {
-          ms.m_iType = MEM_SEARCH_BYTE_EXACT;
-          ms.m_bFound = false;
+          ms.type = MEM_SEARCH_BYTE_EXACT;
+          ms.found = false;
 
           while (iChar < nChars) {
-            ms.m_nValue = pArg->sArg[iChar];
-
-            // Ascii (Low-Bit)
-            // Apple (High-Bit)
-            //            if (! bTextIsAscii) // NOTE: Single quote chars is
-            //            opposite hi-bit !!!
-            //              ms.m_nValue &= 0x7F;
-            //            else
-            ms.m_nValue |= 0x80;
+            ms.value = pArg->sArg[iChar];
+            ms.value |= 0x80;
 
             // last char is handle in common case below
             iChar++;
@@ -2034,18 +2033,12 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
         int nChars = pArg->nArgLen;
 
         if (nChars) {
-          ms.m_iType = MEM_SEARCH_BYTE_EXACT;
-          ms.m_bFound = false;
+          ms.type = MEM_SEARCH_BYTE_EXACT;
+          ms.found = false;
 
           while (iChar < nChars) {
-            ms.m_nValue = pArg->sArg[iChar];
-
-            // Ascii (Low-Bit)
-            // Apple (High-Bit)
-            //            if (bTextIsAscii)
-            ms.m_nValue &= 0x7F;
-            //            else
-            //              ms.m_nValue |= 0x80;
+            ms.value = pArg->sArg[iChar];
+            ms.value &= 0x7F;
 
             iChar++;  // last char is handle in common case below
             if (iChar < nChars) {
@@ -2063,26 +2056,26 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
 
         if (pArg->nArgLen == 1) {
           if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
-                              .m_sName[0])  // Hack: hard-coded one char token
+                              .name[0])  // Hack: hard-coded one char token
           {
-            ms.m_iType = MEM_SEARCH_BYTE_1_WILD;
+            ms.type = MEM_SEARCH_BYTE_1_WILD;
           }
         } else {
           if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
-                              .m_sName[0])  // Hack: hard-coded one char token
+                              .name[0])  // Hack: hard-coded one char token
           {
-            ms.m_iType = MEM_SEARCH_NIB_LOW_EXACT;
-            ms.m_nValue = pArg->nValue & 0x0F;
+            ms.type = MEM_SEARCH_NIB_LOW_EXACT;
+            ms.value = pArg->nValue & 0x0F;
           }
 
           if (pByte[1] == g_parameters[PARAM_MEM_SEARCH_WILD]
-                              .m_sName[0])  // Hack: hard-coded one char token
+                              .name[0])  // Hack: hard-coded one char token
           {
-            if (ms.m_iType == MEM_SEARCH_NIB_LOW_EXACT) {
-              ms.m_iType = MEM_SEARCH_BYTE_N_WILD;
+            if (ms.type == MEM_SEARCH_NIB_LOW_EXACT) {
+              ms.type = MEM_SEARCH_BYTE_N_WILD;
             } else {
-              ms.m_iType = MEM_SEARCH_NIB_HIGH_EXACT;
-              ms.m_nValue = (pArg->nValue << 4) & 0xF0;
+              ms.type = MEM_SEARCH_NIB_HIGH_EXACT;
+              ms.value = (pArg->nValue << 4) & 0xF0;
             }
           }
         }
@@ -2094,12 +2087,12 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
     //       ^
     //       redundant
     if ((tLastType == MEM_SEARCH_BYTE_N_WILD) &&
-        (ms.m_iType == MEM_SEARCH_BYTE_N_WILD)) {
+        (ms.type == MEM_SEARCH_BYTE_N_WILD)) {
       continue;
     }
 
     vMemorySearchValues.push_back(ms);
-    tLastType = ms.m_iType;
+    tLastType = ms.type;
   }
 
   SearchMemoryFind(vMemorySearchValues, nAddressStart, nAddressEnd);

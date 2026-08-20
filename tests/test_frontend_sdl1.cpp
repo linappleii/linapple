@@ -1,7 +1,6 @@
-#include "doctest.h"
-
 #include <SDL/SDL.h>
 
+#include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 
@@ -18,7 +17,7 @@ TEST_CASE("SDL1 Config Validation") {
   AppConfig_t config;
   config.is_fullscreen = true;
   config.is_benchmark = false;
-  
+
   CHECK(config.is_fullscreen == true);
   CHECK(config.is_benchmark == false);
 }

@@ -4,14 +4,13 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-#include "doctest.h"
-
 #include <cstring>
 #include <vector>
 
 #include "apple2/peripherals/mouse/Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
+#include "doctest.h"
 
 // Mock Host Interface
 static bool irq_asserted = false;
@@ -45,12 +44,12 @@ static void Mock_RegisterCxROM(int slot, uint8_t* rom) {
 }
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.GetConfig = Mock_GetConfig;
-    return h;
+  HostInterface_t h{};
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.GetConfig = Mock_GetConfig;
+  return h;
 }();
 
 TEST_CASE("Mouse Peripheral ABI") {
@@ -61,8 +60,8 @@ TEST_CASE("Mouse Peripheral ABI") {
 
   SUBCASE("Commands - Pos") {
     MousePosPayload_t payload = {100, 1024, 200, 1024};
-    PeripheralStatus_t status = descriptor->command(
-        instance, mouse_cmd_set_pos, &payload, sizeof(payload));
+    PeripheralStatus_t status = descriptor->command(instance, mouse_cmd_set_pos,
+                                                    &payload, sizeof(payload));
     CHECK(status == peripheral_ok);
   }
 
@@ -73,9 +72,7 @@ TEST_CASE("Mouse Peripheral ABI") {
     CHECK(status == peripheral_ok);
   }
 
-  SUBCASE("Lifecycle") {
-    descriptor->reset(instance);
-  }
+  SUBCASE("Lifecycle") { descriptor->reset(instance); }
 
   descriptor->shutdown(instance);
 }

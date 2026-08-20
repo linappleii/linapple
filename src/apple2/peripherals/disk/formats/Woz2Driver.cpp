@@ -9,9 +9,9 @@
 #include <memory>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -200,7 +200,7 @@ auto reconstruct_bitstream_nibble(const uint8_t* buffer, uint32_t bit_count,
 }
 
 static void woz2_read_track(void* instance_handle, int track, int phase,
-                          uint8_t* track_buffer, int* out_nibbles) {
+                            uint8_t* track_buffer, int* out_nibbles) {
   if (out_nibbles != nullptr) {
     *out_nibbles = 0;
   }
@@ -210,7 +210,6 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
   }
   (void)track;
   auto* wi_ptr = reinterpret_cast<WozInstance_t*>(instance_handle);
-
 
   const uint32_t tmap_index =
       static_cast<uint32_t>(phase) * (4 / phases_per_track);
@@ -240,8 +239,8 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
   }
 
   const uint8_t* trk =
-      &wi_ptr->header[wi_ptr->trks_offset +
-                  (static_cast<uint32_t>(trks_index) * woz::trks_entry_size)];
+      &wi_ptr->header[wi_ptr->trks_offset + (static_cast<uint32_t>(trks_index) *
+                                             woz::trks_entry_size)];
   const uint16_t starting_block =
       static_cast<uint16_t>(trk[0]) |
       (static_cast<uint16_t>(trk[1]) << woz::bits_per_byte);
@@ -309,7 +308,7 @@ static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
 }
 
 extern "C" const DiskFormatDriver_t g_woz2_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "WOZ 2",
     .creatable_exts = nullptr,
@@ -321,8 +320,7 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .write_track = nullptr,
     .create = nullptr,
     .command = woz2_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
 //           bugprone-easily-swappable-parameters, modernize-make-unique)

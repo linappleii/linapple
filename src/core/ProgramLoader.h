@@ -13,10 +13,8 @@ typedef enum {
 
 } ProgramLoadResult_t;
 
-
 auto program_loader_try_load(const char* path) -> ProgramLoadResult_t;
 
 #ifdef __cplusplus
 }
 #endif
-

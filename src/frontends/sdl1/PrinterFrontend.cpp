@@ -59,4 +59,6 @@ void printer_frontend_check_status() { check_print(); }
 
 auto printer_get_idle_limit() -> uint32_t { return g_printer_idle_limit; }
 
-void Printer_SetIdleLimit(uint32_t Duration) { g_printer_idle_limit = Duration; }
+void Printer_SetIdleLimit(uint32_t Duration) {
+  g_printer_idle_limit = Duration;
+}

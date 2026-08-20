@@ -6,8 +6,8 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 

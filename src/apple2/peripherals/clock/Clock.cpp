@@ -274,7 +274,7 @@ static auto clock_abi_shutdown(void* instance) -> void {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 // Justification: ABI-required function signature.
 static auto clock_abi_save_state(void* instance, void* state_buffer,
-                                size_t* buffer_size) -> PeripheralStatus_t {
+                                 size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
     return peripheral_error;
   }
@@ -298,7 +298,7 @@ static auto clock_abi_save_state(void* instance, void* state_buffer,
 }
 
 static auto clock_abi_load_state(void* instance, const void* state_buffer,
-                                size_t buffer_size) -> PeripheralStatus_t {
+                                 size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr) {
     return peripheral_error;
   }
@@ -316,7 +316,7 @@ static auto clock_abi_load_state(void* instance, const void* state_buffer,
 }
 
 static Peripheral_t g_clock_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.clock",
     .name = "Clock Card",
     .description = "ProDOS compatible Clock",

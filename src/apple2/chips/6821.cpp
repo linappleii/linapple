@@ -65,7 +65,7 @@ enum {
 };
 
 #define PIA_CALL(h, val) \
-  if (h.func) h.func(h.objTo, val)
+  if (h.func) h.func(h.obj_to, val)
 
 static void UpdateInterrupts(Pia6821_t* p) {
   uint8_t irq_a = 0;
@@ -308,28 +308,34 @@ void pia_6821_set_cb2(Pia6821_t* p, bool level) {
 auto pia_6821_get_port_a(Pia6821_t* p) -> uint8_t { return p->ora & p->ddra; }
 auto pia_6821_get_port_b(Pia6821_t* p) -> uint8_t { return p->orb & p->ddrb; }
 
-void pia_6821_set_listener_a(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_a.objTo = objTo;
+void pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) {
+  p->out_a.obj_to = obj_to;
   p->out_a.func = func;
 }
-void pia_6821_set_listener_b(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_b.objTo = objTo;
+void pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) {
+  p->out_b.obj_to = obj_to;
   p->out_b.func = func;
 }
-void pia_6821_set_listener_ca2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_ca2.objTo = objTo;
+void pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) {
+  p->out_ca2.obj_to = obj_to;
   p->out_ca2.func = func;
 }
-void pia_6821_set_listener_cb2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_cb2.objTo = objTo;
+void pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) {
+  p->out_cb2.obj_to = obj_to;
   p->out_cb2.func = func;
 }
-void pia_6821_set_listener_irqa(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_irqa.objTo = objTo;
+void pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) {
+  p->out_irqa.obj_to = obj_to;
   p->out_irqa.func = func;
 }
-void pia_6821_set_listener_irqb(Pia6821_t* p, void* objTo, PiaOutputCallback_t func) {
-  p->out_irqb.objTo = objTo;
+void pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) {
+  p->out_irqb.obj_to = obj_to;
   p->out_irqb.func = func;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters,

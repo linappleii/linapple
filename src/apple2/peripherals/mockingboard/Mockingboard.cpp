@@ -17,17 +17,17 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/chips/6522.h"
-#include "apple2/chips/SSI263.h"
 #include "apple2/chips/AY8910.h"
-#include "apple2/Apple2Types.h"
+#include "apple2/chips/SSI263.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 
 namespace via_reg {
 constexpr uint8_t orb = 0x0;
@@ -719,7 +719,8 @@ static auto mb_abi_think(void* instance, uint32_t cycles) -> void {
     return;
   }
 
-  const uint64_t cycles_since_last_update = get_cycles(mp->host) - mp->last_60hz;
+  const uint64_t cycles_since_last_update =
+      get_cycles(mp->host) - mp->last_60hz;
   const uint64_t cycles_per_frame =
       static_cast<uint64_t>(g_current_clk_6502) / hz_60_divisor;
 
@@ -816,7 +817,7 @@ static auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_mockingboard_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
     .name = "Mockingboard",
     .description = "Dual AY-3-8910 sound card emulation",

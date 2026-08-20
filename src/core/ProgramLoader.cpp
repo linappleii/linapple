@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/ProgramLoader.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic,misc-include-cleaner,google-readability-function-size,cppcoreguidelines-owning-memory,google-runtime-int,modernize-use-auto,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay): Centralized program image loader for APL and PRG formats
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic,misc-include-cleaner,google-readability-function-size,cppcoreguidelines-owning-memory,google-runtime-int,modernize-use-auto,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay):
+// Centralized program image loader for APL and PRG formats
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

@@ -7,12 +7,12 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
+#include "core/Util_Path.h"
 
 constexpr const char* default_snapshot_name = "SaveState.aws";
 
@@ -41,7 +41,8 @@ auto save_state_load() -> void {
     return;
   }
 
-  size_t bytes_read = fread(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file);
+  size_t bytes_read =
+      fread(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file);
   fclose(file);
 
   if (bytes_read != sizeof(ApplewinSnapshot_t)) {

@@ -1,10 +1,10 @@
+#include "Debug.h"
+#include "Debugger_Color.h"
+#include "Debugger_Console.h"
+#include "Debugger_Display.h"
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
-#include "Debugger_Display.h"
-#include "Debug.h"
-#include "Debugger_Console.h"
-#include "Debugger_Color.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_console_display_start;
@@ -20,30 +20,24 @@ const int DISPLAY_WIDTH = 560;
 
 // Functions moved from Debugger_Display.cpp
 
-void DrawSubWindow_Console(Update_t bUpdate)
-{
+void DrawSubWindow_Console(Update_t bUpdate) {
   if (!can_draw_debugger()) {
     return;
-}
+  }
 
 #if !USE_APPLE_FONT
   SelectObject(GetDebuggerMemDC(), g_font_config[FONT_CONSOLE]._hFont);
 #endif
 
-  if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT))
-  {
+  if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT)) {
     DebuggerSetColorBG(DebuggerGetColor(BG_CONSOLE_OUTPUT));
 
     int iLine = g_console_display_start + CONSOLE_FIRST_LINE;
-    for (int y = 1; y < g_console_display_lines; y++)
-    {
-      if (iLine <= (g_console_display_total + CONSOLE_FIRST_LINE))
-      {
+    for (int y = 1; y < g_console_display_lines; y++) {
+      if (iLine <= (g_console_display_total + CONSOLE_FIRST_LINE)) {
         DebuggerSetColorFG(DebuggerGetColor(FG_CONSOLE_OUTPUT));
         DrawConsoleLine(g_console_display[iLine], y);
-      }
-      else
-      {
+      } else {
         DrawConsoleLine(nullptr, y);
       }
       iLine++;
@@ -53,13 +47,9 @@ void DrawSubWindow_Console(Update_t bUpdate)
   }
 }
 
-void DrawWindow_Console(Update_t bUpdate)
-{
-  (void)bUpdate;
-}
+void DrawWindow_Console(Update_t bUpdate) { (void)bUpdate; }
 
-void DrawWindowBackground_Main(int iWindow)
-{
+void DrawWindowBackground_Main(int iWindow) {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_DISASM_1));
 
@@ -74,8 +64,7 @@ void DrawWindowBackground_Main(int iWindow)
 #endif
 }
 
-void DrawWindowBackground_Info(int iWindow)
-{
+void DrawWindowBackground_Info(int iWindow) {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
 

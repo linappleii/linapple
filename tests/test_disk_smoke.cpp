@@ -7,9 +7,9 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 // Global helper for smoke tests
@@ -17,7 +17,7 @@ static void setup_smoke_test(const char* imagePath) {
   linapple_init();
   if (imagePath) {
     Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                        imagePath);
+                                           imagePath);
   }
   peripheral_manager_init();  // Clear auto-registered cards
   peripheral_manager_init();
@@ -87,7 +87,7 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
   linapple_init();
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                      "../tests/fixtures/minimal.woz");
+                                         "../tests/fixtures/minimal.woz");
   peripheral_manager_init();
   linapple_register_peripherals();
 
@@ -115,9 +115,9 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   linapple_init();
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                      "../tests/fixtures/minimal.dsk");
+                                         "../tests/fixtures/minimal.dsk");
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                      "../tests/fixtures/minimal.woz");
+                                         "../tests/fixtures/minimal.woz");
   peripheral_manager_init();
   linapple_register_peripherals();
 

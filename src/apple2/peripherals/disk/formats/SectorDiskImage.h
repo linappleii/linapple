@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
-// Justification: This header defines a C99-compatible ABI for sector-based
-// disk image backends, allowing them to be shared across multiple drivers.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type) Justification: This header defines a
+// C99-compatible ABI for sector-based disk image backends, allowing them to be
+// shared across multiple drivers.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,10 +31,10 @@ void sector_disk_image_close(SectorDiskImage_t* image_ptr);
 bool sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr);
 
 void sector_disk_image_read_track(SectorDiskImage_t* image_ptr, int track,
-                                 uint8_t* track_buffer, int* out_nibbles);
+                                  uint8_t* track_buffer, int* out_nibbles);
 
 void sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
-                                  const uint8_t* track_buffer, int nibbles);
+                                   const uint8_t* track_buffer, int nibbles);
 
 DiskError_e sector_disk_image_create(const char* path);
 
@@ -43,12 +44,13 @@ DiskProbe_e sector_disk_image_probe_signature(const uint8_t* header_data,
                                               bool is_dos_order);
 
 PeripheralStatus_t sector_disk_image_command(SectorDiskImage_t* image_ptr,
-                                           uint32_t cmd_id, const void* payload,
-                                           size_t payload_size);
-
+                                             uint32_t cmd_id,
+                                             const void* payload,
+                                             size_t payload_size);
 
 #ifdef __cplusplus
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type)

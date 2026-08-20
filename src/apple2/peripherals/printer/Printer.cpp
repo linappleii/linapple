@@ -136,7 +136,7 @@ static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
 }  // namespace
 
 static Peripheral_t g_printer_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.printer",
     .name = "Parallel Printer",
     .description = "Standard parallel printer interface emulation",

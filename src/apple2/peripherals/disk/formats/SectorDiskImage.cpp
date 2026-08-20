@@ -6,9 +6,9 @@
 #include <cstdio>
 #include <cstring>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -105,8 +105,8 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   return image_ptr;
 }
 
-// Why: Destroys the sector image instance. The RAII FilePtr_t member ensures the
-// physical file is closed during destruction.
+// Why: Destroys the sector image instance. The RAII FilePtr_t member ensures
+// the physical file is closed during destruction.
 auto sector_disk_image_close(SectorDiskImage_t* image_ptr) -> void {
   delete image_ptr;
 }

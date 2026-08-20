@@ -4,14 +4,12 @@
 #include <cstring>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/ProgramLoader.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 namespace {

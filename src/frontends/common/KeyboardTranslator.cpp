@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)
-// Justification: This file implements the platform-agnostic keyboard translation
-// layer, mapping host scancodes and keycodes to LinApple internal keys.
-// Functions in this file follow a C99-compatible ABI where parameter types are
-// fixed for interoperability.
+// NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,
+// bugprone-easily-swappable-parameters) Justification: This file implements the
+// platform-agnostic keyboard translation layer, mapping host scancodes and
+// keycodes to LinApple internal keys. Functions in this file follow a
+// C99-compatible ABI where parameter types are fixed for interoperability.
 
 #include "frontends/common/KeyboardTranslator.h"
 
@@ -67,4 +67,5 @@ auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey {
   return LINAPPLE_KEY_UNKNOWN;
 }
 
-// NOLINTEND(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-pro-type-union-access,
+// bugprone-easily-swappable-parameters)

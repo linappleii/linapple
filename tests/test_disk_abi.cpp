@@ -7,8 +7,8 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 namespace {
@@ -36,7 +36,8 @@ TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
   CHECK(disk_cmd_eject == 0x02);
 }
 
-TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (NATURAL)") {
+TEST_CASE(
+    "DiskABI: [DISK-04] DiskStatus_t field offsets are stable (NATURAL)") {
   // Field order: drive0_error(4), drive1_error(4), drive0_loaded(1), ...
   CHECK(offsetof(DiskStatus_t, drive0_last_error) == 0);
   CHECK(offsetof(DiskStatus_t, drive1_last_error) == 4);
@@ -48,7 +49,8 @@ TEST_CASE("DiskABI: [DISK-04] DiskStatus_t field offsets are stable (NATURAL)") 
 
 TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
   linapple_init();
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
   size_t size = 0;
   peripheral_save_state(SL6, nullptr, &size);
   CHECK(size > 0);
@@ -57,7 +59,8 @@ TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
 
 TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
   linapple_init();
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
   std::array<uint8_t, 4> buffer{};
   size_t size = buffer.size();
   buffer.fill(BUFFER_INIT_VAL);
@@ -68,7 +71,8 @@ TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
 
 TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
   linapple_init();
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
   size_t size = 0;
   peripheral_save_state(SL6, nullptr, &size);
   std::vector<uint8_t> buffer(size);

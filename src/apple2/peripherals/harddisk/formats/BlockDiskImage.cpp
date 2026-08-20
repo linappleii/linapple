@@ -4,8 +4,8 @@
 #include <cstdio>
 #include <memory>
 
-#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 

@@ -20,7 +20,7 @@ auto tui_video_initialize() -> void;
  * @param pitch Pitch of the pixel buffer.
  */
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
-                          int pitch) -> void;
+                            int pitch) -> void;
 
 /**
  * @brief Notify the video system of a terminal resize.

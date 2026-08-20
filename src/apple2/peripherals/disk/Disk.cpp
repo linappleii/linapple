@@ -40,9 +40,9 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
-#include "core/Peripheral.h"
 #include "core/Util_Text.h"
 
 namespace {
@@ -502,8 +502,9 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_drive_head(disk_peripheral, step_delta);
   }
 
-  return (memory_address == io_stepper_alt) ? floating_bus
-                                            : mem_return_random_data(floating_bus);
+  return (memory_address == io_stepper_alt)
+             ? floating_bus
+             : mem_return_random_data(floating_bus);
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
@@ -1154,7 +1155,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
 }  // namespace
 
 static Peripheral_t g_disk_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.disk_II",
     .name = "Disk II",
     .description = "Apple II floppy disk controller emulation",

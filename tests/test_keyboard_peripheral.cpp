@@ -2,13 +2,12 @@
 #include <map>
 
 #include "apple2/Memory.h"
+#include "apple2/peripherals/keyboard/Keyboard.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
-
-#include "apple2/peripherals/keyboard/Keyboard.h"
 static auto& keyboard_peripheral = *keyboard_get_descriptor();
 
 // Mock host interface for testing
@@ -27,9 +26,9 @@ static void Mock_RegisterDirectIO(void* instance, uint16_t addr,
 }
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    return h;
+  HostInterface_t h{};
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  return h;
 }();
 
 TEST_CASE("Keyboard Peripheral: Lifecycle and I/O Registration") {
@@ -324,31 +323,45 @@ TEST_CASE("Keyboard Peripheral: Apple Keys and Modifiers Hardware Read") {
   KeyboardModifiers_t mods = {0, 0, 0, 0, 0, {0, 0, 0}};
 
   // 1. Initially all should be clear
-  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods, sizeof(mods));
-  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) == 0);
-  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) == 0);
-  CHECK((g_mock_handlers[0xC063].read(instance, 0, 0xC063, 0, 0, 0) & 0x80) == 0);
+  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods,
+                              sizeof(mods));
+  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) ==
+        0);
+  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) ==
+        0);
+  CHECK((g_mock_handlers[0xC063].read(instance, 0, 0xC063, 0, 0, 0) & 0x80) ==
+        0);
 
   // 2. Set GUI -> Open Apple ($C061)
   mods.gui = 1;
-  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods, sizeof(mods));
-  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) != 0);
-  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) == 0);
+  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods,
+                              sizeof(mods));
+  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) !=
+        0);
+  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) ==
+        0);
 
   // 3. Set Alt -> Both Open and Closed Apple
   mods.gui = 0;
   mods.alt = 1;
-  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods, sizeof(mods));
-  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) != 0);
-  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) != 0);
+  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods,
+                              sizeof(mods));
+  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) !=
+        0);
+  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) !=
+        0);
 
   // 4. Set Shift -> $C063
   mods.alt = 0;
   mods.shift = 1;
-  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods, sizeof(mods));
-  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) == 0);
-  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) == 0);
-  CHECK((g_mock_handlers[0xC063].read(instance, 0, 0xC063, 0, 0, 0) & 0x80) != 0);
+  keyboard_peripheral.command(instance, keyboard_cmd_set_mods, &mods,
+                              sizeof(mods));
+  CHECK((g_mock_handlers[0xC061].read(instance, 0, 0xC061, 0, 0, 0) & 0x80) ==
+        0);
+  CHECK((g_mock_handlers[0xC062].read(instance, 0, 0xC062, 0, 0, 0) & 0x80) ==
+        0);
+  CHECK((g_mock_handlers[0xC063].read(instance, 0, 0xC063, 0, 0, 0) & 0x80) !=
+        0);
 
   keyboard_peripheral.shutdown(instance);
   delete[] mem;
@@ -409,22 +422,26 @@ TEST_CASE("Keyboard Peripheral: Caps Lock Behavior") {
 
   // Symbolic 'a'
   KeyboardEvent_t ev_sym = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
-  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_sym, sizeof(ev_sym));
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_sym,
+                              sizeof(ev_sym));
   uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
   CHECK((val & 0x7F) == 'A');
-  
+
   ev_sym.is_down = 0;
-  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_sym, sizeof(ev_sym));
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_sym,
+                              sizeof(ev_sym));
   g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
 
   // Positional 'a' (LINAPPLE_KEY_A = 0x504)
   KeyboardEvent_t ev_pos = {0x504, 1, 0, 0, 0, 0, {0, 0, 0}};
-  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos, sizeof(ev_pos));
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos,
+                              sizeof(ev_pos));
   val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
   CHECK((val & 0x7F) == 'A');
 
   ev_pos.is_down = 0;
-  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos, sizeof(ev_pos));
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos,
+                              sizeof(ev_pos));
   g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
 
   // 2. Disable Caps Lock
@@ -433,7 +450,8 @@ TEST_CASE("Keyboard Peripheral: Caps Lock Behavior") {
 
   // Positional 'a' again
   ev_pos.is_down = 1;
-  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos, sizeof(ev_pos));
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &ev_pos,
+                              sizeof(ev_pos));
   val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
   CHECK((val & 0x7F) == 'a');
 

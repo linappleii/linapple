@@ -1,19 +1,20 @@
 #include <cstdint>
 #pragma once
 
-#include <vector>
-#include <algorithm> // sort
+#include <algorithm>  // sort
 #include <map>
 #include <string>
+#include <vector>
 
 using namespace std;
 
 #include <cstring>
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
+
+#include "Debugger_Breakpoints.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "Debugger_Breakpoints.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 // Globals
 extern bool g_debugger_eat_key;
@@ -30,7 +31,7 @@ extern bool g_profiling;
 extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
 extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
 extern uint64_t g_profile_begin_cycles;
-extern const std::string g_FileNameProfile;
+extern const std::string g_file_name_profile;
 extern int g_profile_line_count;
 extern char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
 
@@ -53,9 +54,9 @@ extern int g_disasm_cur_line;
 void WindowUpdateDisasmSize();
 void WindowUpdateConsoleDisplayedSize();
 void WindowUpdateSizes();
-int  WindowGetHeight(int iWindow);
+int WindowGetHeight(int iWindow);
 
-char FormatChar4Font(const uint8_t b, bool *pWasHi_, bool *pWasLo_);
+char FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_);
 
 extern int g_debug_steps;
 extern uint32_t g_debug_step_cycles;
@@ -68,7 +69,7 @@ extern bool g_debug_full_speed;
 extern bool g_last_go_cmd_was_full_speed;
 extern bool g_go_cmd_reinit_flag;
 
-extern FILE *g_trace_file;
+extern FILE* g_trace_file;
 extern bool g_trace_header;
 extern bool g_trace_file_with_video_scanner;
 extern char g_file_name_trace[];
@@ -77,8 +78,7 @@ extern char g_file_name_trace[];
 #include "Debugger_Bookmarks.h"
 
 // Breakpoints
-enum BreakpointHit_t
-{
+enum BreakpointHit_t {
   BP_HIT_NONE = 0,
   BP_HIT_INVALID = (1 << 0),
   BP_HIT_OPCODE = (1 << 1),
@@ -91,20 +91,18 @@ enum BreakpointHit_t
 extern int g_debug_break_on_opcode;
 
 // Commands
-extern int g_command; // last command
+extern int g_command;  // last command
 
 extern Command_t g_commands[];
 extern Command_t g_parameters[];
 extern const int NUM_COMMANDS_WITH_ALIASES;
 
-class commands_functor_compare
-{
-  public:
-    bool operator() ( const Command_t & rLHS, const Command_t & rRHS ) const
-    {
-      // return true if lhs<rhs
-      return (strcmp( rLHS.m_sName, rRHS.m_sName ) <= 0);
-    }
+class commands_functor_compare {
+ public:
+  bool operator()(const Command_t& rLHS, const Command_t& rRHS) const {
+    // return true if lhs<rhs
+    return (strcmp(rLHS.name, rRHS.name) <= 0);
+  }
 };
 
 // Config - FileName
@@ -116,7 +114,7 @@ extern uint16_t g_disasm_bot_address;
 extern uint16_t g_disasm_cur_address;
 
 extern bool g_disasm_cur_bad;
-extern int g_disasm_cur_line; // Aligned to Top or Center
+extern int g_disasm_cur_line;  // Aligned to Top or Center
 extern int g_disasm_cur_state;
 
 extern int g_disasm_win_height;
@@ -125,7 +123,7 @@ extern const int WINDOW_DATA_BYTES_PER_LINE;
 
 // Config - Disassembly
 extern bool g_config_disasm_address_view;
-extern int  g_config_disasm_click; // GH#462
+extern int g_config_disasm_click;  // GH#462
 extern bool g_config_disasm_address_colon;
 extern bool g_config_disasm_opcodes_view;
 extern bool g_config_disasm_opcode_spaces;
@@ -145,7 +143,7 @@ extern int g_font_spacing;
 
 // Source Level Debugging
 extern std::string g_source_file_name;
-extern MemoryTextFile_t g_AssemblerSourceBuffer;
+extern MemoryTextFile_t g_assembler_source_buffer;
 
 extern int g_source_display_start;
 extern int g_source_assemble_bytes;
@@ -165,7 +163,8 @@ extern WindowSplit_t g_window_config[NUM_WINDOWS];
 
 // Zero Page
 extern int g_zero_page_pointers_count;
-extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS]; // TODO: use vector<> ?
+extern ZeroPagePointers_t
+    g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];  // TODO: use vector<> ?
 
 // Prototypes
 
@@ -173,7 +172,8 @@ extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS]; // TODO: 
 bool Bookmark_Find(const uint16_t address);
 
 // Breakpoints
-bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
+bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
+                       bool& bBreakpointEnable_);
 
 // Color
 uint32_t DebuggerGetColor(int iColor);
@@ -184,12 +184,15 @@ int FindSourceLine(uint16_t address);
 const char* FormatAddress(uint16_t address, int nBytes);
 
 // Symbol Table / Memory
-bool FindAddressFromSymbol(const char* pSymbol, uint16_t *pAddress_ = nullptr, int *iTable_ = nullptr);
+bool FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_ = nullptr,
+                           int* iTable_ = nullptr);
 
-uint16_t GetAddressFromSymbol(const char* symbol); // HACK: returns 0 if symbol not found
-void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char *pSymbolName, uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
+uint16_t GetAddressFromSymbol(
+    const char* symbol);  // HACK: returns 0 if symbol not found
+void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
+                  uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
 
-const char* FindSymbolFromAddress(uint16_t nAdress, int *iTable_ = nullptr);
+const char* FindSymbolFromAddress(uint16_t nAdress, int* iTable_ = nullptr);
 
 const char* GetSymbol(uint16_t address, int nBytes);
 
@@ -197,56 +200,46 @@ const char* GetSymbol(uint16_t address, int nBytes);
 
 // Fix for GH#345
 // Wrap & protect the debugger's video mode in its own class:
-// . This may seem like overkill but it stops the video mode being (erroneously) additionally used as a flag.
-// . VideoMode is a bitmap of video flags and a VideoMode value of zero is a valid video mode (GR,PAGE1,non-mixed).
+// . This may seem like overkill but it stops the video mode being (erroneously)
+// additionally used as a flag. . VideoMode is a bitmap of video flags and a
+// VideoMode value of zero is a valid video mode (GR,PAGE1,non-mixed).
 class DebugVideoMode  // NB. Implemented as a singleton
 {
-protected:
-  DebugVideoMode()
-  {
-    Reset();
+ protected:
+  DebugVideoMode() { Reset(); }
+
+ public:
+  ~DebugVideoMode() = default;
+
+  static auto Instance() -> DebugVideoMode& { return instance_; }
+
+  auto Reset() -> void {
+    is_video_mode_valid_ = false;
+    video_mode_ = 0;
   }
 
-public:
-  ~DebugVideoMode(){}
+  auto IsSet() const -> bool { return is_video_mode_valid_; }
 
-  static DebugVideoMode& Instance()
-  {
-    return m_Instance;
+  auto Get(uint32_t* video_mode_out) const -> bool {
+    if (video_mode_out != nullptr) {
+      *video_mode_out = is_video_mode_valid_ ? video_mode_ : 0;
+    }
+    return is_video_mode_valid_;
   }
 
-  void Reset(void)
-  {
-    m_bIsVideoModeValid = false;
-    m_uVideoMode = 0;
+  auto Set(uint32_t video_mode) -> void {
+    is_video_mode_valid_ = true;
+    video_mode_ = video_mode;
   }
 
-  bool IsSet(void)
-  {
-    return m_bIsVideoModeValid;
-  }
+ private:
+  bool is_video_mode_valid_{false};
+  uint32_t video_mode_{0};
 
-  bool Get(uint32_t* pVideoMode)
-  {
-    if (pVideoMode)
-      *pVideoMode = m_bIsVideoModeValid ? m_uVideoMode : 0;
-    return m_bIsVideoModeValid;
-  }
-
-  void Set(uint32_t videoMode)
-  {
-    m_bIsVideoModeValid = true;
-    m_uVideoMode = videoMode;
-  }
-
-private:
-  bool m_bIsVideoModeValid;
-  uint32_t m_uVideoMode;
-
-  static DebugVideoMode m_Instance;
+  static DebugVideoMode instance_;
 };
 
-Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
+auto DebuggerProcessCommand(bool echo_console_input) -> Update_t;
 
 void UpdateDisplay(Update_t bUpdate);
 
@@ -254,7 +247,7 @@ void UpdateDisplay(Update_t bUpdate);
 extern const int DEBUGGER_VERSION;
 
 enum {
-  DEBUG_EXIT_KEY = 0x1B, // Escape
+  DEBUG_EXIT_KEY = 0x1B,  // Escape
   DEBUG_TOGGLE_KEY = LINAPPLE_KEY_F1 + 6
 };
 
@@ -290,15 +283,16 @@ void SetDebugBreakOnInvalid(int iOpcodeType, int nValue);
 int CheckBreakpointsIO();
 int CheckBreakpointsReg();
 void ClearTempBreakpoints();
-bool GetBreakpointInfo(uint16_t nOffset, bool &bBreakpointActive_, bool &bBreakpointEnable_);
+bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
+                       bool& bBreakpointEnable_);
 
 void DebuggerRunScript(const char* sFileName);
 
-void DebugContinueStepping(const bool bCallerWillUpdateDisplay=false);
+void DebugContinueStepping(const bool bCallerWillUpdateDisplay = false);
 
 void debug_destroy();
 
-void debug_display(bool bInitDisasm=false);
+void debug_display(bool bInitDisasm = false);
 
 void debug_end();
 
@@ -306,10 +300,10 @@ void debug_initialize();
 
 // Cursor/Input
 extern bool g_input_cursor_visible;
-extern int  g_input_cursor_index;
+extern int g_input_cursor_index;
 extern const char g_input_cursor[];
 extern bool g_console_input_quoted;
-extern int  g_console_input_skip;
+extern int g_console_input_skip;
 extern bool g_ignore_next_key;
 
 void DebuggerUpdate();

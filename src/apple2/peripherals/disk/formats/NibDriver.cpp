@@ -121,7 +121,7 @@ const char* const g_nib_creatable_exts[] = {".nib", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nib_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "NIB (6656-nibble)",
     .creatable_exts = g_nib_creatable_exts,
@@ -133,8 +133,7 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .write_track = nib_write_track,
     .create = nib_create,
     .command = nib_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // cppcoreguidelines-pro-type-static-cast-downcast,

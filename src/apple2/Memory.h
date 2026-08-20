@@ -20,18 +20,18 @@ typedef uint8_t (*iofunction)(uint16_t pc, uint16_t addr, uint8_t write_flag,
 }
 #endif
 
-constexpr uint32_t MF_80STORE = 0x00000001; 
-constexpr uint32_t MF_ALTZP = 0x00000002; 
-constexpr uint32_t MF_AUXREAD = 0x00000004; 
-constexpr uint32_t MF_AUXWRITE = 0x00000008; 
-constexpr uint32_t MF_HRAM_BANK2 = 0x00000010; 
-constexpr uint32_t MF_HIGHRAM = 0x00000020; 
-constexpr uint32_t MF_HIRES = 0x00000040; 
-constexpr uint32_t MF_PAGE2 = 0x00000080; 
-constexpr uint32_t MF_SLOTC3ROM = 0x00000100; 
-constexpr uint32_t MF_SLOTCXROM = 0x00000200; 
-constexpr uint32_t MF_HRAM_WRITE = 0x00000400; 
-constexpr uint32_t MF_IMAGEMASK = 0x000007F7; 
+constexpr uint32_t MF_80STORE = 0x00000001;
+constexpr uint32_t MF_ALTZP = 0x00000002;
+constexpr uint32_t MF_AUXREAD = 0x00000004;
+constexpr uint32_t MF_AUXWRITE = 0x00000008;
+constexpr uint32_t MF_HRAM_BANK2 = 0x00000010;
+constexpr uint32_t MF_HIGHRAM = 0x00000020;
+constexpr uint32_t MF_HIRES = 0x00000040;
+constexpr uint32_t MF_PAGE2 = 0x00000080;
+constexpr uint32_t MF_SLOTC3ROM = 0x00000100;
+constexpr uint32_t MF_SLOTCXROM = 0x00000200;
+constexpr uint32_t MF_HRAM_WRITE = 0x00000400;
+constexpr uint32_t MF_IMAGEMASK = 0x000007F7;
 
 enum {
   MEMORY_64K = 0x10000,
@@ -257,4 +257,3 @@ auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
                     uint32_t cycles) -> uint8_t;
 auto get_ramworks_active_bank() -> uint32_t;
-

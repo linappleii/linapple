@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Asset.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables): Core asset and resource manager for font and splash surfaces
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables):
+// Core asset and resource manager for font and splash surfaces
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"

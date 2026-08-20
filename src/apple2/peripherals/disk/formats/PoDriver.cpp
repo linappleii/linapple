@@ -121,7 +121,7 @@ const char* const g_po_creatable_exts[] = {".po", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_po_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "ProDOS Order",
     .creatable_exts = g_po_creatable_exts,
@@ -133,8 +133,7 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .write_track = po_write_track,
     .create = po_create,
     .command = po_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // cppcoreguidelines-pro-type-static-cast-downcast,

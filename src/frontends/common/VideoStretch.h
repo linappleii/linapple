@@ -37,4 +37,3 @@ auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
 auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void;
 auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
                uint32_t pixel) -> void;
-

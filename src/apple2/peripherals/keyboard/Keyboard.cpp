@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+#include "apple2/peripherals/keyboard/Keyboard.h"
+
 #include <algorithm>
 #include <cstddef>
-#include <memory>
-#include <new>
 #include <cstdint>
 #include <cstring>
+#include <memory>
+#include <new>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/keyboard/Keyboard.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
+#include "core/Util_Path.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
@@ -37,7 +38,6 @@ static constexpr uint32_t key_repeat_initial_delay = 512000;
 static constexpr uint32_t key_repeat_rate = 68000;
 
 static constexpr int8_t default_slot_internal = 0;
-
 
 static constexpr uint16_t addr_keyboard_data_lo = 0xC000;
 static constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
@@ -63,9 +63,9 @@ static constexpr uint32_t positional_threshold = 0x500;
 
 struct KeyboardHardware_t {
   // --- Register State ---
-  uint8_t current_latch = 0;     // $C000 bits 0-6
-  bool strobe = false;           // $C000 bit 7
-  bool rocker_switch = false;    // Language rocker switch (US=false, Local=true)
+  uint8_t current_latch = 0;   // $C000 bits 0-6
+  bool strobe = false;         // $C000 bit 7
+  bool rocker_switch = false;  // Language rocker switch (US=false, Local=true)
   uint32_t keys_down_count = 0;  // Physical counter for Bit 7 of $C010
   bool caps_lock = true;
   uint8_t alternate_layout = 0;
@@ -94,8 +94,8 @@ struct KeyboardPeripheral_t {
 // helpers that mimic it, where parameter order is fixed or follows convention.
 
 static auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
-                                 uint8_t write, uint8_t val, uint32_t cycles_left)
-    -> uint8_t {
+                                  uint8_t write, uint8_t val,
+                                  uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -117,9 +117,9 @@ static auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   return data;
 }
 
-static auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
-                                     uint8_t write, uint8_t val,
-                                     uint32_t cycles_left) -> uint8_t {
+static auto keyboard_io_strobe_action(void* instance, uint16_t pc,
+                                      uint16_t addr, uint8_t write, uint8_t val,
+                                      uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -144,9 +144,10 @@ static auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr
   return data;
 }
 
-static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
-                                       uint8_t write, uint8_t val,
-                                       uint32_t cycles_left) -> uint8_t {
+static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc,
+                                        uint16_t addr, uint8_t write,
+                                        uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
@@ -181,11 +182,11 @@ static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t ad
   return bus;
 }
 
-
 static auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   namespace kp_const = kb;
 
-  std::unique_ptr<KeyboardPeripheral_t> kp_ptr(new (std::nothrow) KeyboardPeripheral_t{});
+  std::unique_ptr<KeyboardPeripheral_t> kp_ptr(new (std::nothrow)
+                                                   KeyboardPeripheral_t{});
   if (!kp_ptr) {
     return nullptr;
   }
@@ -204,7 +205,8 @@ static auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
     // $C011-$C01F: reads are soft-switch status (owned by Memory.cpp); writes
     // clear the strobe. Register write-only here so reads are unaffected.
     host->RegisterDirectIO(kp, kp_const::addr_keyboard_strobe,
-                           keyboard_io_strobe_action, keyboard_io_strobe_action);
+                           keyboard_io_strobe_action,
+                           keyboard_io_strobe_action);
     for (uint32_t addr = kp_const::addr_keyboard_strobe + 1;
          addr <= kp_const::addr_keyboard_strobe_hi; ++addr) {
       host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
@@ -243,7 +245,8 @@ static auto keyboard_abi_shutdown(void* instance) -> void {
   if (!instance) {
     return;
   }
-  std::unique_ptr<KeyboardPeripheral_t> kp(static_cast<KeyboardPeripheral_t*>(instance));
+  std::unique_ptr<KeyboardPeripheral_t> kp(
+      static_cast<KeyboardPeripheral_t*>(instance));
 }
 
 static auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
@@ -284,18 +287,16 @@ static auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
     return 0xFFFFFFFF;
   }
 
-  static constexpr uint8_t symbolic_map[] = {
-      kp_const::key_up,
-      kp_const::key_down,
-      kp_const::key_left,
-      kp_const::key_right,
-      0,
-      0,
-      0,
-      0,
-      0,
-      kp_const::key_delete
-  };
+  static constexpr uint8_t symbolic_map[] = {kp_const::key_up,
+                                             kp_const::key_down,
+                                             kp_const::key_left,
+                                             kp_const::key_right,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             kp_const::key_delete};
 
   const size_t idx = key - 0x100;
   if (idx < (sizeof(symbolic_map) / sizeof(symbolic_map[0]))) {
@@ -320,10 +321,8 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
 
   if (kp->logic.rocker_switch) {
     static const Apple2KeyboardMap_t* const layout_table[] = {
-        &map_us, &map_uk, &map_fr, &map_de,
-        &map_es, &map_it, &map_se, &map_dk,
-        &map_ch, &map_ca, &map_jp_roman, &map_jp_kana
-    };
+        &map_us, &map_uk, &map_fr, &map_de, &map_es,       &map_it,
+        &map_se, &map_dk, &map_ch, &map_ca, &map_jp_roman, &map_jp_kana};
 
     const uint8_t alt = kp->logic.alternate_layout;
     if (alt > 0 && alt < (sizeof(layout_table) / sizeof(layout_table[0]))) {
@@ -356,7 +355,8 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
     base = base - 'a' + 'A';
   }
 
-  // Then apply ctrl modifier (standard Apple II keyboard behavior is bit-masking)
+  // Then apply ctrl modifier (standard Apple II keyboard behavior is
+  // bit-masking)
   if (ctrl) {
     if (ctrl_val != 0) {
       return ctrl_val;
@@ -367,8 +367,9 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
   return base;
 }
 
-static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                                 size_t size) -> PeripheralStatus_t {
+static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
+                                 const void* data, size_t size)
+    -> PeripheralStatus_t {
   if (!instance || (size > 0 && !data)) {
     return peripheral_error;
   }
@@ -386,7 +387,8 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
         if (kp->logic.keys_down_count > 0) {
           kp->logic.keys_down_count--;
         }
-        if (ev->key == kp->logic.repeat_scancode || kp->logic.keys_down_count == 0) {
+        if (ev->key == kp->logic.repeat_scancode ||
+            kp->logic.keys_down_count == 0) {
           kp->logic.repeat_key = 0xFFFFFFFF;
           kp->logic.repeating = false;
         }
@@ -395,14 +397,17 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
 
       uint32_t key = ev->key;
       if (key >= kp_const::positional_threshold) {
-        key = keyboard_map_positional(kp, key, ev->mod_shift != 0U, ev->mod_ctrl != 0U);
+        key = keyboard_map_positional(kp, key, ev->mod_shift != 0U,
+                                      ev->mod_ctrl != 0U);
       } else if (key >= 0x100) {
         key = keyboard_map_symbolic(key);
       }
 
-      // Apply Caps Lock only for non-positional keys (positional mapping handles it internally)
-      if (key < kp_const::positional_threshold && key != 0 && kp->logic.caps_lock &&
-          ev->mod_shift == 0U && ev->mod_ctrl == 0U && key >= 'a' && key <= 'z') {
+      // Apply Caps Lock only for non-positional keys (positional mapping
+      // handles it internally)
+      if (key < kp_const::positional_threshold && key != 0 &&
+          kp->logic.caps_lock && ev->mod_shift == 0U && ev->mod_ctrl == 0U &&
+          key >= 'a' && key <= 'z') {
         key = key - 'a' + 'A';
       }
 
@@ -442,7 +447,8 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* da
       kp->logic.ctrl_key = (mods->ctrl != 0);
 
       // Map host modifiers to Apple II hardware keys.
-      // Standard convention: GUI maps to Open Apple, Alt maps to BOTH Open and Closed Apple.
+      // Standard convention: GUI maps to Open Apple, Alt maps to BOTH Open and
+      // Closed Apple.
       kp->logic.open_apple = (mods->gui != 0) || (mods->alt != 0);
       kp->logic.closed_apple = (mods->alt != 0);
       return peripheral_ok;
@@ -504,8 +510,8 @@ static auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
-static auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+static auto keyboard_abi_load_state(void* instance, const void* buffer,
+                                    size_t size) -> PeripheralStatus_t {
   if (!buffer || size < sizeof(KeyboardSaveState_t) || !instance) {
     return peripheral_error;
   }
@@ -571,7 +577,7 @@ static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_keyboard_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.keyboard",
     .name = "Keyboard",
     .description = "Standard Apple II keyboard emulation",

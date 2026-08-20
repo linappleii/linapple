@@ -64,8 +64,8 @@ struct JoystickPeripheral_t {
 };
 
 auto joy_io_read_button(void* instance, uint16_t program_counter,
-                       uint16_t memory_address, uint8_t is_write,
-                       uint8_t data_value, uint32_t remaining_cycles)
+                        uint16_t memory_address, uint8_t is_write,
+                        uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)is_write;
@@ -94,8 +94,8 @@ auto joy_io_read_button(void* instance, uint16_t program_counter,
 }
 
 auto joy_io_read_position(void* instance, uint16_t program_counter,
-                         uint16_t memory_address, uint8_t is_write,
-                         uint8_t data_value, uint32_t remaining_cycles)
+                          uint16_t memory_address, uint8_t is_write,
+                          uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)is_write;
@@ -140,8 +140,8 @@ auto joy_io_read_position(void* instance, uint16_t program_counter,
 }
 
 auto joy_io_reset_position(void* instance, uint16_t program_counter,
-                          uint16_t memory_address, uint8_t is_write,
-                          uint8_t data_value, uint32_t remaining_cycles)
+                           uint16_t memory_address, uint8_t is_write,
+                           uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)memory_address;
@@ -175,8 +175,8 @@ static auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
   for (uint16_t addr = addr_paddle0; addr <= addr_paddle3; ++addr) {
-    host->RegisterDirectIO(joystick_peripheral.get(), addr, joy_io_read_position,
-                           nullptr);
+    host->RegisterDirectIO(joystick_peripheral.get(), addr,
+                           joy_io_read_position, nullptr);
   }
 
   host->RegisterDirectIO(joystick_peripheral.get(), addr_paddle_reset,
@@ -352,7 +352,7 @@ static auto joystick_abi_save_state(void* instance, void* buffer, size_t* size)
 }
 
 static auto joystick_abi_load_state(void* instance, const void* buffer,
-                                   size_t size) -> PeripheralStatus_t {
+                                    size_t size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
       size < sizeof(SS_IO_Joystick)) {
     return peripheral_error;
@@ -368,7 +368,7 @@ static auto joystick_abi_load_state(void* instance, const void* buffer,
 }  // namespace
 
 static Peripheral_t g_joystick_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.joystick",
     .name = "Joystick",
     .description = "Analog joystick and paddle peripheral",

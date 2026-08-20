@@ -37,7 +37,7 @@ typedef enum {
 } HarddiskError_e;
 
 typedef struct HarddiskFormatDriver_t {
-  int AbiVersion_t;
+  int abi_version;
   uint32_t capabilities;
   const char* name;
   const char* const* creatable_exts;

@@ -22,13 +22,13 @@ constexpr uint32_t max_palette_size = 256;
 constexpr uint8_t default_gray_component = 0xC0;
 constexpr uint32_t hgr_matrix_yoffset = 2;
 
-constexpr int SCREEN_WIDTH = 560; 
-constexpr int SCREEN_HEIGHT = 384; 
+constexpr int SCREEN_WIDTH = 560;
+constexpr int SCREEN_HEIGHT = 384;
 
-constexpr int VIEWPORTX = 5; 
-constexpr int VIEWPORTY = 5; 
-constexpr int VIEWPORTCX = 560; 
-constexpr int VIEWPORTCY = 384; 
+constexpr int VIEWPORTX = 5;
+constexpr int VIEWPORTY = 5;
+constexpr int VIEWPORTCX = 560;
+constexpr int VIEWPORTCY = 384;
 
 constexpr int STATUS_PANEL_W = 100;
 constexpr int STATUS_PANEL_H = 48;
@@ -231,4 +231,3 @@ auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 auto set_budget_video(bool b) -> void;
 auto get_budget_video() -> bool;
 auto set_current_clk_6502() -> void;
-

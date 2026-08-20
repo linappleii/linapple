@@ -14,7 +14,7 @@
 
 // Helper to construct a FileEntry_t for testing
 static FileEntry_t create_entry(const char* name, FileEntryType_t type,
-                                 uint64_t size) {
+                                uint64_t size) {
   FileEntry_t entry{};
   entry.name[0] = '\0';
   if (name) Util_SafeStrCpy(entry.name, name, sizeof(entry.name));

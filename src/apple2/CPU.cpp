@@ -72,7 +72,6 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
   g_cumulative_cycles = g_active_cpu->cumulative_cycles;
 }
 
-
 static uint32_t g_internal_executed_cycles;
 static signed int g_irq_check_timeout = 16;
 
@@ -98,11 +97,11 @@ pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 #define PUSH(a)             \
   *(mem + regs.sp--) = (a); \
   if (regs.sp < STACK_BEGIN) regs.sp = STACK_END;
-extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                           uint32_t cycles) -> uint8_t;
+extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
+                            uint8_t d, uint32_t cycles) -> uint8_t;
 
-#define READ                                                  \
-  (((addr & IO_REGION_MASK) == IO_REGION_START)               \
+#define READ                                                   \
+  (((addr & IO_REGION_MASK) == IO_REGION_START)                \
        ? io_map_dispatch(regs.pc, addr, 0, 0, executed_cycles) \
        : *(mem + addr))
 #define SETNZ(a)           \
@@ -111,13 +110,13 @@ extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d
     flagz = !((a) & 0xFF); \
   }
 #define SETZ(a) flagz = !((a) & 0xFF);
-#define WRITE(a)                                                       \
-  {                                                                    \
-    memdirty[addr >> 8] = 0xFF;                                        \
-    uint8_t* page = memwrite[addr >> 8];                               \
-    if (page)                                                          \
-      *(page + (addr & 0xFF)) = (uint8_t)(a);                          \
-    else if ((addr & IO_REGION_MASK) == IO_REGION_START)               \
+#define WRITE(a)                                                        \
+  {                                                                     \
+    memdirty[addr >> 8] = 0xFF;                                         \
+    uint8_t* page = memwrite[addr >> 8];                                \
+    if (page)                                                           \
+      *(page + (addr & 0xFF)) = (uint8_t)(a);                           \
+    else if ((addr & IO_REGION_MASK) == IO_REGION_START)                \
       io_map_dispatch(regs.pc, addr, 1, (uint8_t)(a), executed_cycles); \
   }
 
@@ -147,33 +146,34 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
 
 // Addressing Mode Macros
 
-#define ABS                           \
+#define ABS                                 \
   addr = read_u16_unaligned(mem + regs.pc); \
   regs.pc += 2;
-#define IABSX                                                                  \
-  addr = read_u16_unaligned(mem + (read_u16_unaligned(mem + regs.pc)) + (uint16_t)regs.x); \
+#define IABSX                                                           \
+  addr = read_u16_unaligned(mem + (read_u16_unaligned(mem + regs.pc)) + \
+                            (uint16_t)regs.x);                          \
   regs.pc += 2;
-#define ABSX                          \
+#define ABSX                                \
   base = read_u16_unaligned(mem + regs.pc); \
-  addr = base + (uint16_t)regs.x;     \
-  regs.pc += 2;                       \
+  addr = base + (uint16_t)regs.x;           \
+  regs.pc += 2;                             \
   CHECK_PAGE_CHANGE;
-#define ABSX_NP                       \
+#define ABSX_NP                             \
   base = read_u16_unaligned(mem + regs.pc); \
-  addr = base + (uint16_t)regs.x;     \
+  addr = base + (uint16_t)regs.x;           \
   regs.pc += 2;
-#define ABSY                          \
+#define ABSY                                \
   base = read_u16_unaligned(mem + regs.pc); \
-  addr = base + (uint16_t)regs.y;     \
-  regs.pc += 2;                       \
+  addr = base + (uint16_t)regs.y;           \
+  regs.pc += 2;                             \
   CHECK_PAGE_CHANGE;
-#define ABSY_NP                       \
+#define ABSY_NP                             \
   base = read_u16_unaligned(mem + regs.pc); \
-  addr = base + (uint16_t)regs.y;     \
+  addr = base + (uint16_t)regs.y;           \
   regs.pc += 2;
 #define IABSCMOS                               \
-  base = read_u16_unaligned(mem + regs.pc);          \
-  addr = read_u16_unaligned(mem + base);             \
+  base = read_u16_unaligned(mem + regs.pc);    \
+  addr = read_u16_unaligned(mem + base);       \
   if ((base & 0xFF) == 0xFF) extra_cycles = 1; \
   regs.pc += 2;
 #define IABSNMOS                                                      \
@@ -190,13 +190,13 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
     addr = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
   else                                              \
     addr = read_u16_unaligned(mem + base);
-#define INDY                                        \
-  if (*(mem + regs.pc) == 0xFF)                     \
-    base = *(mem + 0xFF) + (((uint16_t)*mem) << 8); \
-  else                                              \
+#define INDY                                           \
+  if (*(mem + regs.pc) == 0xFF)                        \
+    base = *(mem + 0xFF) + (((uint16_t)*mem) << 8);    \
+  else                                                 \
     base = read_u16_unaligned(mem + *(mem + regs.pc)); \
-  regs.pc++;                                        \
-  addr = base + (uint16_t)regs.y;                   \
+  regs.pc++;                                           \
+  addr = base + (uint16_t)regs.y;                      \
   CHECK_PAGE_CHANGE;
 #define IZPG                                        \
   base = *(mem + regs.pc++);                        \
@@ -756,8 +756,8 @@ static inline void Fetch(uint8_t& opcode, uint32_t executed_cycles) {
   opcode =
       ((PC & IO_REGION_MASK) == IO_REGION_START)
           ? io_map_dispatch(PC, PC, 0, 0,
-                           executed_cycles)  // Fetch opcode from I/O memory,
-                                             // but params are still from mem[]
+                            executed_cycles)  // Fetch opcode from I/O memory,
+                                              // but params are still from mem[]
           : mem[PC];
 
   regs.pc++;
@@ -2137,4 +2137,3 @@ auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
 // google-readability-function-size)
 
 auto cpu_step() -> void { cpu_execute(0); }
-

@@ -40,11 +40,11 @@ ColorRef_t g_console_brush_bg = BLACK;
 
 FontConfig_t g_font_config[NUM_FONTS];
 char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                 [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                   [DEBUG_VIRTUAL_TEXT_WIDTH];
 ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                         [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                            [DEBUG_VIRTUAL_TEXT_WIDTH];
 ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                         [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                            [DEBUG_VIRTUAL_TEXT_WIDTH];
 
 extern int g_window_last;
 extern int g_window_this;
@@ -75,17 +75,17 @@ const int DISPLAY_DISASM_RIGHT = 353;
 #define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
                    DST_H)                                                     \
   {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                         \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                         \
-    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                           \
-  }
-
-#define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
-                        DST_W, DST_H)                                       \
-  {                                                                         \
     VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
     VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush);  \
+    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                         \
+  }
+
+#define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y,   \
+                        DST_W, DST_H)                                         \
+  {                                                                           \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
+    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush); \
   }
 
 //===========================================================================
@@ -495,11 +495,11 @@ auto FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
 }
 
 const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {" ", "^",
-                                                                   "\x8B"};
-const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {" ", "=",
-                                                                      "\x88"};
+                                                                     "\x8B"};
+const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
+    " ", "=", "\x88"};
 const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {" ", "v",
-                                                                     "\x8A"};
+                                                                       "\x8A"};
 
 auto FormatCharCopy(char* pDst, const char* src_ptr, const int nLen) -> char* {
   for (int i = 0; i < nLen; i++) {
@@ -666,7 +666,8 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
     line_.bTargetY = true;
   }
 
-  unsigned int nMinBytesLen = (MAX_OPCODES * (2 + g_config_disasm_opcode_spaces));
+  unsigned int nMinBytesLen =
+      (MAX_OPCODES * (2 + g_config_disasm_opcode_spaces));
 
   int bDisasmFormatFlags = 0;
   uint16_t nTarget = 0;
@@ -800,7 +801,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   if (data) {
     line_.iNoptype = data->eElementType;
     line_.iNopcode = data->iDirective;
-    strcpy(line_.sMnemonic, g_assembler_directives[line_.iNopcode].m_pMnemonic);
+    strcpy(line_.sMnemonic, g_assembler_directives[line_.iNopcode].mnemonic);
     FormatNopcodeBytes(nBaseAddress, line_);
   } else {
     strcpy(line_.sMnemonic, g_opcodes[line_.opcode].sMnemonic);
@@ -967,7 +968,7 @@ void debug_end() {
 
   extern std::vector<int> g_memory_search_results;
   g_memory_search_results.erase(g_memory_search_results.begin(),
-                               g_memory_search_results.end());
+                                g_memory_search_results.end());
 
   g_state.mode = MODE_RUNNING;
 

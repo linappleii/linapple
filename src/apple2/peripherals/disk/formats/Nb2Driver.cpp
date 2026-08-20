@@ -123,7 +123,7 @@ const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nb2_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "NB2 (6384-nibble)",
     .creatable_exts = g_nb2_creatable_exts,
@@ -135,8 +135,7 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .write_track = nb2_write_track,
     .create = nb2_create,
     .command = nb2_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // cppcoreguidelines-pro-type-static-cast-downcast,

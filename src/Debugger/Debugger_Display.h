@@ -89,11 +89,11 @@ enum DebugVirtualTextScreen_e {
 };
 
 extern char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                        [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                          [DEBUG_VIRTUAL_TEXT_WIDTH];
 extern ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                                [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                                   [DEBUG_VIRTUAL_TEXT_WIDTH];
 extern ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
-                                                [DEBUG_VIRTUAL_TEXT_WIDTH];
+                                                   [DEBUG_VIRTUAL_TEXT_WIDTH];
 extern size_t Util_GetDebuggerText(
     char*& pText_);  // Same API as Util_GetTextScreen()
 

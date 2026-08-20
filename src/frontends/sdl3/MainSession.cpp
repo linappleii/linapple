@@ -5,16 +5,14 @@
 #include <cstdio>
 #include <string>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/ProgramLoader.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "frontends/common/AppController.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
@@ -28,7 +26,6 @@ void set_budget_video(bool b) { g_budget_video = b; }
 auto get_budget_video() -> bool { return g_budget_video; }
 
 void set_current_clk_6502() { g_current_clk_6502 = 1.023 * 1000000.0; }
-
 
 void SingleStep(bool is_reinit) {
   (void)is_reinit;

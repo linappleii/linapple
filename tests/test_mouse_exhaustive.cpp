@@ -4,15 +4,14 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-#include "doctest.h"
-
+#include <algorithm>
 #include <cstring>
 #include <vector>
-#include <algorithm>
 
 #include "apple2/peripherals/mouse/Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
+#include "doctest.h"
 
 // --- Constants (Matching Mouse.cpp) ---
 namespace regs {
@@ -37,7 +36,7 @@ enum {
   STAT_PREV_BTN0 = 0x40,
   STAT_CURR_BTN0 = 0x80
 };
-}
+}  // namespace regs
 
 // --- Mock Host ---
 
@@ -57,14 +56,14 @@ static void Mock_RegisterIO(int slot, PeripheralIOHandler r,
   (void)w;
   (void)cr;
   (void)cw;
-  g_mouse_io = r; 
+  g_mouse_io = r;
 }
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    return h;
+  HostInterface_t h{};
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  return h;
 }();
 
 // --- Helpers ---
@@ -80,40 +79,40 @@ static void write_mouse(uint16_t addr, uint8_t val) {
 }
 
 static void send_mouse_byte(uint8_t val) {
-  write_mouse(0xC0C0, val); // Port A
-  write_mouse(0xC0C2, 0x20); // Bit 5 High
-  write_mouse(0xC0C2, 0x00); // Bit 5 Low
+  write_mouse(0xC0C0, val);   // Port A
+  write_mouse(0xC0C2, 0x20);  // Bit 5 High
+  write_mouse(0xC0C2, 0x00);  // Bit 5 Low
 }
 
 static uint8_t recv_mouse_byte() {
-  write_mouse(0xC0C2, 0x10); // Bit 4 High
-  write_mouse(0xC0C2, 0x00); // Bit 4 Low
+  write_mouse(0xC0C2, 0x10);  // Bit 4 High
+  write_mouse(0xC0C2, 0x00);  // Bit 4 Low
   return read_mouse(0xC0C0);
 }
 
 // Exactly match the firmware's 6-byte read sequence
-static void drain_mouse_read(uint8_t* x_low, uint8_t* x_high, uint8_t* y_low, uint8_t* y_high, uint8_t* status) {
-    uint8_t b1 = read_mouse(0xC0C0);
-    uint8_t b2 = recv_mouse_byte();
-    uint8_t b3 = recv_mouse_byte();
-    uint8_t b4 = recv_mouse_byte();
-    uint8_t b5 = recv_mouse_byte();
-    if (x_low) *x_low = b1;
-    if (x_high) *x_high = b2;
-    if (y_low) *y_low = b3;
-    if (y_high) *y_high = b4;
-    if (status) *status = b5;
-    (void)recv_mouse_byte();
+static void drain_mouse_read(uint8_t* x_low, uint8_t* x_high, uint8_t* y_low,
+                             uint8_t* y_high, uint8_t* status) {
+  uint8_t b1 = read_mouse(0xC0C0);
+  uint8_t b2 = recv_mouse_byte();
+  uint8_t b3 = recv_mouse_byte();
+  uint8_t b4 = recv_mouse_byte();
+  uint8_t b5 = recv_mouse_byte();
+  if (x_low) *x_low = b1;
+  if (x_high) *x_high = b2;
+  if (y_low) *y_low = b3;
+  if (y_high) *y_high = b4;
+  if (status) *status = b5;
+  (void)recv_mouse_byte();
 }
 
-
 static void init_mouse_card() {
-  write_mouse(0xC0C1, 0x00); // Access DDRA
-  write_mouse(0xC0C3, 0x00); // Access DDRB
-  write_mouse(0xC0C0, 0xFF); // DDRA = all outputs
-  write_mouse(0xC0C2, 0xFF); // DDRB = all outputs
-  write_mouse(0xC0C1, 0x04); // Access ORA
-  write_mouse(0xC0C3, 0x04); // Access ORB
+  write_mouse(0xC0C1, 0x00);  // Access DDRA
+  write_mouse(0xC0C3, 0x00);  // Access DDRB
+  write_mouse(0xC0C0, 0xFF);  // DDRA = all outputs
+  write_mouse(0xC0C2, 0xFF);  // DDRB = all outputs
+  write_mouse(0xC0C1, 0x04);  // Access ORA
+  write_mouse(0xC0C3, 0x04);  // Access ORB
 }
 
 TEST_CASE("Mouse Exhaustive Functional Tests") {
@@ -124,10 +123,11 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     g_mouse_instance = descriptor->init(4, &mock_host);
     REQUIRE(g_mouse_instance != nullptr);
     CHECK(strcmp(descriptor->id, "linapple.mouse") == 0);
-    
+
     uint8_t is_active = 0;
     size_t out_size = 1;
-    PeripheralStatus_t status = descriptor->query(g_mouse_instance, mouse_query_is_active, &is_active, &out_size);
+    PeripheralStatus_t status = descriptor->query(
+        g_mouse_instance, mouse_query_is_active, &is_active, &out_size);
     CHECK(status == peripheral_ok);
     CHECK(is_active == 1);
     descriptor->shutdown(g_mouse_instance);
@@ -150,11 +150,11 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     send_mouse_byte(regs::MOUSE_INIT);
-    uint8_t r1 = read_mouse(0xC0C0); 
+    uint8_t r1 = read_mouse(0xC0C0);
     CHECK(r1 == 0xFF);
-    
-    recv_mouse_byte(); // drain byte 2
-    recv_mouse_byte(); // drain byte 3
+
+    recv_mouse_byte();  // drain byte 2
+    recv_mouse_byte();  // drain byte 3
     descriptor->shutdown(g_mouse_instance);
   }
 
@@ -164,26 +164,27 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     init_mouse_card();
     g_irq_asserted = false;
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init,
+                        sizeof(range_init));
 
     // Mode 1: Mouse On, No IRQs
     send_mouse_byte(regs::MOUSE_SET | 1);
-    
+
     MousePosPayload_t pos = {100, 1023, 200, 1023};
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
-    
+
     CHECK(g_irq_asserted == false);
-    
+
     // Mode 0x0F: Mouse On, All IRQs enabled
     send_mouse_byte(regs::MOUSE_SET | 0x0F);
-    
+
     pos.x = 110;
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     CHECK(g_irq_asserted == true);
-    
+
     send_mouse_byte(regs::MOUSE_SERV);
-    read_mouse(0xC0C0); // status byte
-    recv_mouse_byte();  // dummy byte
+    read_mouse(0xC0C0);  // status byte
+    recv_mouse_byte();   // dummy byte
     CHECK(g_irq_asserted == false);
     descriptor->shutdown(g_mouse_instance);
   }
@@ -194,12 +195,12 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     init_mouse_card();
     MousePosPayload_t pos = {123, 1023, 456, 1023};
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
-    
+
     send_mouse_byte(regs::MOUSE_READ);
-    
+
     uint8_t x_low, x_high, y_low, y_high, status;
     drain_mouse_read(&x_low, &x_high, &y_low, &y_high, &status);
-    
+
     CHECK(x_low == 123);
     CHECK(x_high == 0);
     CHECK(y_low == (456 & 0xFF));
@@ -213,14 +214,15 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init,
+                        sizeof(range_init));
 
     send_mouse_byte(regs::MOUSE_POS);
-    send_mouse_byte(0xAA); 
-    send_mouse_byte(0x01); 
-    send_mouse_byte(0xBB); 
-    send_mouse_byte(0x02); 
-    
+    send_mouse_byte(0xAA);
+    send_mouse_byte(0x01);
+    send_mouse_byte(0xBB);
+    send_mouse_byte(0x02);
+
     send_mouse_byte(regs::MOUSE_READ);
     uint8_t xl, xh, yl, yh;
     drain_mouse_read(&xl, &xh, &yl, &yh, nullptr);
@@ -236,19 +238,20 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init,
+                        sizeof(range_init));
 
     // Clamp X to 100-200
-    send_mouse_byte(regs::MOUSE_CLAMP | 0); 
+    send_mouse_byte(regs::MOUSE_CLAMP | 0);
     send_mouse_byte(100 & 0xFF);
-    send_mouse_byte(0); 
+    send_mouse_byte(0);
     send_mouse_byte(200 & 0xFF);
-    send_mouse_byte(0); 
-    
+    send_mouse_byte(0);
+
     // Try to set X to 50
     MousePosPayload_t pos = {50, 1023, 50, 1023};
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
-    
+
     send_mouse_byte(regs::MOUSE_READ);
     uint8_t xl, xh, yl, yh, st;
     drain_mouse_read(&xl, &xh, &yl, &yh, &st);
@@ -268,13 +271,14 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
     MousePosPayload_t range_init = {0, 1023, 0, 1023};
-    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init, sizeof(range_init));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &range_init,
+                        sizeof(range_init));
 
     MousePosPayload_t pos = {500, 1023, 500, 1023};
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
-    
+
     send_mouse_byte(regs::MOUSE_HOME);
-    
+
     send_mouse_byte(regs::MOUSE_READ);
     uint8_t xl, xh, yl, yh;
     drain_mouse_read(&xl, &xh, &yl, &yh, nullptr);
@@ -292,21 +296,22 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
     MousePosPayload_t pos = {789, 1023, 321, 1023};
     descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
     MouseButtonPayload_t btn = {0, true};
-    descriptor->command(g_mouse_instance, mouse_cmd_set_button, &btn, sizeof(btn));
+    descriptor->command(g_mouse_instance, mouse_cmd_set_button, &btn,
+                        sizeof(btn));
     send_mouse_byte(regs::MOUSE_SET | 0x0F);
-    
+
     size_t state_size = 0;
     descriptor->save_state(g_mouse_instance, nullptr, &state_size);
     std::vector<uint8_t> buffer(state_size);
     descriptor->save_state(g_mouse_instance, buffer.data(), &state_size);
-    
+
     descriptor->shutdown(g_mouse_instance);
     g_mouse_instance = descriptor->init(4, &mock_host);
     REQUIRE(g_mouse_instance != nullptr);
     init_mouse_card();
-    
+
     descriptor->load_state(g_mouse_instance, buffer.data(), state_size);
-    
+
     send_mouse_byte(regs::MOUSE_READ);
     uint8_t xl, xh, yl, yh, status;
     drain_mouse_read(&xl, &xh, &yl, &yh, &status);
@@ -319,21 +324,21 @@ TEST_CASE("Mouse Exhaustive Functional Tests") {
   }
 
   SUBCASE("Clamping & Mapping") {
-      g_mouse_instance = descriptor->init(4, &mock_host);
-      REQUIRE(g_mouse_instance != nullptr);
-      init_mouse_card();
-      MousePosPayload_t pos = {50, 100, 25, 100};
-      descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
-      
-      send_mouse_byte(regs::MOUSE_READ);
-      uint8_t xl, xh, yl, yh;
-      drain_mouse_read(&xl, &xh, &yl, &yh, nullptr);
-      uint16_t x = xl | (xh << 8);
-      uint16_t y = yl | (yh << 8);
-      
-      CHECK(x == 511);
-      CHECK(y == 255);
-      descriptor->shutdown(g_mouse_instance);
+    g_mouse_instance = descriptor->init(4, &mock_host);
+    REQUIRE(g_mouse_instance != nullptr);
+    init_mouse_card();
+    MousePosPayload_t pos = {50, 100, 25, 100};
+    descriptor->command(g_mouse_instance, mouse_cmd_set_pos, &pos, sizeof(pos));
+
+    send_mouse_byte(regs::MOUSE_READ);
+    uint8_t xl, xh, yl, yh;
+    drain_mouse_read(&xl, &xh, &yl, &yh, nullptr);
+    uint16_t x = xl | (xh << 8);
+    uint16_t y = yl | (yh << 8);
+
+    CHECK(x == 511);
+    CHECK(y == 255);
+    descriptor->shutdown(g_mouse_instance);
   }
 
   g_mouse_instance = nullptr;

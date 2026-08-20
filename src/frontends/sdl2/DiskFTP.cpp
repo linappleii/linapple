@@ -14,11 +14,11 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/disk/ftpparse.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/Util_Hash.h"
@@ -163,13 +163,13 @@ FileListGenerator_t* file_browser_create_ftp_generator(const char* directory) {
 }
 
 auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
-                      std::string& filename, bool& isdir, size_t& index_file)
+                         std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
       file_browser_create_ftp_generator(ftp_dir.c_str());
   if (!generator) return false;
   bool result = choose_image_dialog(sx, sy, ftp_dir, slot, generator, filename,
-                                  isdir, index_file);
+                                    isdir, index_file);
   generator->destroy(generator);
   return result;
 }

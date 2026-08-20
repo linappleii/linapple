@@ -11,5 +11,5 @@ auto super_serial_frontend_set_serial_port_path(const char* serial_port_path)
     -> void;
 auto super_serial_frontend_set_loopback(bool enable) -> void;
 auto super_serial_frontend_is_active() -> bool;
-auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits, int parity,
-                                     int stop) -> void;
+auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
+                                        int parity, int stop) -> void;

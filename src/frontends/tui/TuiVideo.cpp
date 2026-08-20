@@ -83,8 +83,8 @@ auto tui_video_on_resize() -> void {
                        empty_cell);
   g_next_buffer.assign(static_cast<size_t>(g_term_width * g_term_height),
                        empty_cell);
-  g_output_buffer.reserve(
-      static_cast<size_t>(g_term_width * g_term_height * output_reserve_factor));
+  g_output_buffer.reserve(static_cast<size_t>(g_term_width * g_term_height *
+                                              output_reserve_factor));
 }
 
 static auto get_text_addr(int row, int col) -> uint16_t {
@@ -101,7 +101,7 @@ static auto set_glyph(TuiState_t& state, const char* str) -> void {
 }
 
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
-                          int pitch) -> void {
+                            int pitch) -> void {
   if (g_term_width <= 1 || g_term_height <= 1) {
     return;
   }
@@ -130,8 +130,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   TuiPixel_t bg_letterbox = {10, 10, 10};
 
   int display_h = is_text_mode ? a2_text_rows : (avail_rows);
-  int display_w =
-      is_text_mode ? (is_80col ? a2_cols_80 : a2_cols_40) : (avail_rows * 2 * 4 / 3);
+  int display_w = is_text_mode ? (is_80col ? a2_cols_80 : a2_cols_40)
+                               : (avail_rows * 2 * 4 / 3);
   if (display_w > g_term_width) {
     display_w = g_term_width;
     if (!is_text_mode) {
@@ -169,10 +169,15 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
       cell.bg = a2_black;
 
-      if (is_text_mode || (is_mixed_mode && y >= display_h * mixed_mode_text_start / a2_text_rows)) {
-        int r = is_text_mode ? y
-                             : mixed_mode_text_start + (y - display_h * mixed_mode_text_start / a2_text_rows) * 4 /
-                                        (display_h * 4 / a2_text_rows + 1);
+      if (is_text_mode ||
+          (is_mixed_mode &&
+           y >= display_h * mixed_mode_text_start / a2_text_rows)) {
+        int r =
+            is_text_mode
+                ? y
+                : mixed_mode_text_start +
+                      (y - display_h * mixed_mode_text_start / a2_text_rows) *
+                          4 / (display_h * 4 / a2_text_rows + 1);
         if (r > 23) {
           r = 23;
         }
@@ -181,15 +186,15 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         uint8_t code = 0;
         if (is_80col) {
           if (c % 2 == 0) {
-            code = *mem_get_aux_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
-                                                       get_text_addr(r, c / 2)));
+            code = *mem_get_aux_ptr(static_cast<uint16_t>(
+                a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
           } else {
-            code = *mem_get_main_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
-                                                        get_text_addr(r, c / 2)));
+            code = *mem_get_main_ptr(static_cast<uint16_t>(
+                a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
           }
         } else {
-          code = *mem_get_main_ptr(
-              static_cast<uint16_t>(a2_page1_addr + page_offset + get_text_addr(r, c)));
+          code = *mem_get_main_ptr(static_cast<uint16_t>(
+              a2_page1_addr + page_offset + get_text_addr(r, c)));
         }
 
         uint8_t ascii = 0, attr = 0;
@@ -223,7 +228,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
         if (r == hw_cursor_y && c == hw_cursor_x) {
           if (flash_on) {
-            set_glyph(cell, "\xe2\x96\x92"); // ▒ Checkerboard
+            set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
             cell.fg = a2_white;
             cell.bg = a2_black;
           }
@@ -232,11 +237,14 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         int sx = x * width / display_w;
         int sy = y * height / display_h;
         set_glyph(cell, "\xe2\x96\x80");
-        uint32_t p = pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) + static_cast<size_t>(sx)];
+        uint32_t p =
+            pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) +
+                   static_cast<size_t>(sx)];
         cell.fg = {static_cast<uint8_t>(p & 0xFF),
                    static_cast<uint8_t>((p >> 8) & 0xFF),
                    static_cast<uint8_t>((p >> 16) & 0xFF)};
-        // For simplicity, using same color for BG in half-block when sampling point
+        // For simplicity, using same color for BG in half-block when sampling
+        // point
         cell.bg = a2_black;
       }
     }
@@ -252,9 +260,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     if (y == g_term_height - 1 && show_status) {
       std::array<char, 128> status{};
       int slen = snprintf(status.data(), status.size(),
-                         "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
-                         "LinApple-TUI | F12: Quit ",
-                         g_term_height);
+                          "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
+                          "LinApple-TUI | F12: Quit ",
+                          g_term_height);
       for (int i = 0; i < slen; ++i) {
         g_output_buffer.push_back(status.at(static_cast<size_t>(i)));
       }
@@ -274,15 +282,17 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       if (y == g_term_height - 1 && x == g_term_width - 1) {
         break;
       }
-      TuiState_t& next = g_next_buffer.at(static_cast<size_t>(y * g_term_width + x));
-      TuiState_t& prev = g_back_buffer.at(static_cast<size_t>(y * g_term_width + x));
+      TuiState_t& next =
+          g_next_buffer.at(static_cast<size_t>(y * g_term_width + x));
+      TuiState_t& prev =
+          g_back_buffer.at(static_cast<size_t>(y * g_term_width + x));
 
       if (next != prev || g_frame_count % refresh_full_divisor == 0) {
         prev = next;
         if (next.fg != curr_fg) {
           std::array<char, 32> buf{};
-          int l = snprintf(buf.data(), buf.size(), "\x1b[38;2;%d;%d;%dm", next.fg.r, next.fg.g,
-                          next.fg.b);
+          int l = snprintf(buf.data(), buf.size(), "\x1b[38;2;%d;%d;%dm",
+                           next.fg.r, next.fg.g, next.fg.b);
           for (int i = 0; i < l; ++i) {
             g_output_buffer.push_back(buf.at(static_cast<size_t>(i)));
           }
@@ -290,8 +300,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         }
         if (next.bg != curr_bg) {
           std::array<char, 32> buf{};
-          int l = snprintf(buf.data(), buf.size(), "\x1b[48;2;%d;%d;%dm", next.bg.r, next.bg.g,
-                          next.bg.b);
+          int l = snprintf(buf.data(), buf.size(), "\x1b[48;2;%d;%d;%dm",
+                           next.bg.r, next.bg.g, next.bg.b);
           for (int i = 0; i < l; ++i) {
             g_output_buffer.push_back(buf.at(static_cast<size_t>(i)));
           }

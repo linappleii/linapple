@@ -13,8 +13,8 @@
 
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 
 namespace {
 
@@ -28,8 +28,9 @@ static volatile bool g_thread_running = false;
 static volatile bool g_thread_terminate = false;
 
 auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
-                                         SuperSerialParity_t parity,
-                                         SuperSerialStopBits_t stop) -> void {
+                                             SuperSerialParity_t parity,
+                                             SuperSerialStopBits_t stop)
+    -> void {
   if (g_comm_handle == -1) {
     return;
   }
@@ -168,11 +169,11 @@ auto super_serial_frontend_is_active() -> bool {
   return (g_comm_handle != -1);
 }
 
-auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits, int parity,
-                                     int stop) -> void {
-  super_serial_frontend_update_comm_state(baud, bits,
-                                      static_cast<SuperSerialParity_t>(parity),
-                                      static_cast<SuperSerialStopBits_t>(stop));
+auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
+                                        int parity, int stop) -> void {
+  super_serial_frontend_update_comm_state(
+      baud, bits, static_cast<SuperSerialParity_t>(parity),
+      static_cast<SuperSerialStopBits_t>(stop));
 }
 
 auto super_serial_frontend_close() -> void {

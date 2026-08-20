@@ -57,8 +57,8 @@ auto super_serial_initialize(SuperSerialCard_t* ssc) -> void {
 }
 
 auto super_serial_io_read(void* instance, uint16_t program_counter,
-                        uint16_t memory_address, uint8_t is_write,
-                        uint8_t data_value, uint32_t remaining_cycles)
+                          uint16_t memory_address, uint8_t is_write,
+                          uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)data_value;
@@ -102,8 +102,8 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
 }
 
 auto super_serial_io_write(void* instance, uint16_t program_counter,
-                         uint16_t memory_address, uint8_t is_write,
-                         uint8_t data_value, uint32_t remaining_cycles)
+                           uint16_t memory_address, uint8_t is_write,
+                           uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)remaining_cycles;
@@ -174,7 +174,7 @@ auto super_serial_shutdown(void* instance) -> void {
 }
 
 auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
-                             size_t size) -> PeripheralStatus_t {
+                              size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -210,7 +210,7 @@ auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
 }
 
 auto super_serial_abi_query(void* instance, uint32_t cmd, void* output_buffer,
-                           size_t* buffer_size) -> PeripheralStatus_t {
+                            size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
     return peripheral_error;
   }
@@ -250,7 +250,7 @@ auto super_serial_abi_query(void* instance, uint32_t cmd, void* output_buffer,
 }
 
 auto super_serial_save_state(void* instance, void* state_buffer,
-                           size_t* buffer_size) -> PeripheralStatus_t {
+                             size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
@@ -277,7 +277,7 @@ auto super_serial_save_state(void* instance, void* state_buffer,
 }
 
 auto super_serial_load_state(void* instance, const void* state_buffer,
-                           size_t buffer_size) -> PeripheralStatus_t {
+                             size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SS_IO_Comms);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < required_size) {
@@ -296,7 +296,7 @@ auto super_serial_load_state(void* instance, const void* state_buffer,
 }
 
 static Peripheral_t g_ssc_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
     .name = "Super Serial Card",
     .description = "Apple II Super Serial Card (SSC) emulation",
@@ -316,7 +316,9 @@ static Peripheral_t g_ssc_peripheral = {
 
 }  // namespace
 
-auto super_serial_get_descriptor() -> Peripheral_t* { return &g_ssc_peripheral; }
+auto super_serial_get_descriptor() -> Peripheral_t* {
+  return &g_ssc_peripheral;
+}
 
 PERIPHERAL_REGISTER(g_ssc_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,

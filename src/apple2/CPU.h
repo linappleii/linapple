@@ -75,4 +75,3 @@ auto cpu_nmi_deassert(IrqSrc_t device) -> void;
 auto cpu_reset() -> void;
 auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
 auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
-

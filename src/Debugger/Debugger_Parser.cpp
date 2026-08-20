@@ -10,10 +10,10 @@
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -23,7 +23,7 @@
 
 int g_arg_raw_count;
 Arg_t g_arg_raw[MAX_ARGS];  // pre-processing
-Arg_t g_args[MAX_ARGS];    // post-processing (cooked)
+Arg_t g_args[MAX_ARGS];     // post-processing (cooked)
 
 int g_command;
 std::vector<int> g_potential_commands;
@@ -831,12 +831,12 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   if (eMatch == MATCH_EXACT) {
     //    while (iParam < NUM_PARAMS )
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_parameters[iParam].m_sName;
+      char* pParamName = g_parameters[iParam].name;
       int eCompare = strcasecmp(pLookupName, pParamName);
       if (!eCompare)  // exact match?
       {
         nFound++;
-        iParam_ = g_parameters[iParam].iCommand;
+        iParam_ = g_parameters[iParam].command_id;
         break;
       }
     }
@@ -848,7 +848,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
     }
 #endif
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_parameters[iParam].m_sName;
+      char* pParamName = g_parameters[iParam].name;
       // _tcsnccmp
 
 #if ALLOW_INPUT_LOWERCASE
@@ -858,7 +858,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
 #endif
       {
         nFound++;
-        iParam_ = g_parameters[iParam].iCommand;
+        iParam_ = g_parameters[iParam].command_id;
 
         if (!strcasecmp(pLookupName, pParamName))  // exact match?
         {
@@ -901,13 +901,13 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   while (
       (iCommand <
        g_num_commands_with_aliases))  // && (name[0] >=
-                                    // g_commands[iCommand].aName[0])) Command
-                                    // no longer in Alphabetical order
+                                      // g_commands[iCommand].aName[0])) Command
+                                      // no longer in Alphabetical order
   {
-    char* pCommandName = g_commands[iCommand].m_sName;
+    char* pCommandName = g_commands[iCommand].name;
 
     if (!strncmp(sCommand, pCommandName, nLen)) {
-      g_command = g_commands[iCommand].iCommand;
+      g_command = g_commands[iCommand].command_id;
 
       // Don't push the same comamnd/alias if already on the list
       if (std::find(g_potential_commands.begin(), g_potential_commands.end(),
@@ -937,7 +937,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   if (nFound == 1) {
     int nCommand =
         g_potential_commands.size() ? g_potential_commands[0] : *iCommand_;
-    pFunction_ = g_commands[nCommand].pFunction;
+    pFunction_ = g_commands[nCommand].function;
   }
 
   return nFound;
@@ -957,7 +957,7 @@ void DisplayAmbigiousCommands(int nFound) {
     int iWidth = strlen(sPotentialCommands);
     while ((iCommand < nFound) && (iWidth < g_console_display_width)) {
       int nCommand = g_potential_commands[iCommand];
-      char* pName = g_commands[nCommand].m_sName;
+      char* pName = g_commands[nCommand].name;
       int nLen = static_cast<int>(strlen(pName));
 
       if ((iWidth + nLen) >= (CONSOLE_WIDTH - 1)) {

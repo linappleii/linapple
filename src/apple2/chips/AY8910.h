@@ -1,9 +1,8 @@
-#ifndef AY8910_H
-#define AY8910_H
+#pragma once
 
 #include <cstdint>
 
-constexpr int MAX_8910 = 4; 
+constexpr int MAX_8910 = 4;
 
 // AY-3-8910 emulation
 // Based on General Instrument AY-3-8910 Datasheet
@@ -40,5 +39,3 @@ void ay8910_write_ym(int chip, int addr, int data);
 void _ay_write_reg(int n, int r, int v);
 void ay8910_update(int chip, int16_t** buffer, int length);
 auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t*;
-
-#endif

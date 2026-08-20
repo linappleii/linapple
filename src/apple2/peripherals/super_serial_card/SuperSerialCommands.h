@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-constexpr int SUPER_SERIAL_FIFO_SIZE = 9; 
+constexpr int SUPER_SERIAL_FIFO_SIZE = 9;
 
 typedef enum {
   SUPER_SERIAL_BAUD_110 = 110,

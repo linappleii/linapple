@@ -35,8 +35,10 @@ TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
   // block 2 starts at 1024. PAGE_SIZE = 256.
   // header + (2 * 512) + 256 = 1024 + 256 = 1280.
   // prev = 1280, next = 1282.
-  buffer[1280] = 0; buffer[1281] = 0; // prev = 0
-  buffer[1282] = 3; buffer[1283] = 0; // next = 3
+  buffer[1280] = 0;
+  buffer[1281] = 0;  // prev = 0
+  buffer[1282] = 3;
+  buffer[1283] = 0;  // next = 3
 
   CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
         disk_probe_definite);
@@ -45,10 +47,10 @@ TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
 TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
   uint8_t header[88]{};
   memcpy(header, "SIMSYSTEM_IIE", 13);
-  header[13] = 2; // Variant
+  header[13] = 2;  // Variant
 
   CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_definite);
-  
+
   header[0] = 'X';
   CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_no);
 }
@@ -58,19 +60,21 @@ TEST_CASE("DiskDrivers: [DRV-04] WOZ 2 Driver Probing") {
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
 
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
-  
+
   header[0] = 'X';
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-05] NIB Driver Probing") {
   std::vector<uint8_t> buffer(232960, 0);
-  CHECK(g_nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") == disk_probe_definite);
+  CHECK(g_nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") ==
+        disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-06] NB2 Driver Probing") {
   std::vector<uint8_t> buffer(223440, 0);
-  CHECK(g_nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") == disk_probe_definite);
+  CHECK(g_nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") ==
+        disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
@@ -79,7 +83,8 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nib_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_nib_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
 
   uint8_t original_track[6656];
   for (int i = 0; i < 6656; ++i) original_track[i] = (i + 1) & 0xFF;
@@ -113,7 +118,8 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nb2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_nb2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
 
   uint8_t original_track[6384];
   for (int i = 0; i < 6384; ++i) original_track[i] = (i + 1) & 0xFF;
@@ -136,7 +142,7 @@ TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
 
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
-  
+
   CHECK(g_woz2_driver.probe(header, 1536, 1535, ".woz") == disk_probe_no);
 }
 
@@ -146,17 +152,20 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   uint8_t header[1536]{};
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
   memcpy(header + 12, "INFO", 4);
-  header[16] = 60; // INFO chunk size
-  memcpy(header + 80, "TMAP", 4); header[84] = 160;
-  memcpy(header + 248, "TRKS", 4); header[252] = 1;
+  header[16] = 60;  // INFO chunk size
+  memcpy(header + 80, "TMAP", 4);
+  header[84] = 160;
+  memcpy(header + 248, "TRKS", 4);
+  header[252] = 1;
   header[21] = 2;  // 3.5" disk type
   fwrite(header, 1, 1536, f);
   fclose(f);
 
   void* instance = nullptr;
   bool os_ro = false;
-  CHECK( g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_unsupported_format );
-  
+  CHECK(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+        disk_err_unsupported_format);
+
   remove(tmp_file);
 }
 
@@ -166,9 +175,12 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
     FILE* f = fopen(path, "wb");
     uint8_t h[1536]{};
     memcpy(h, "WOZ2\xFF\n\r\n", 8);
-    memcpy(h + 12, "INFO", 4); h[16] = 60;
-    memcpy(h + 80, "TMAP", 4); h[84] = 160;
-    memcpy(h + 248, "TRKS", 4); h[252] = 1;
+    memcpy(h + 12, "INFO", 4);
+    h[16] = 60;
+    memcpy(h + 80, "TMAP", 4);
+    h[84] = 160;
+    memcpy(h + 248, "TRKS", 4);
+    h[252] = 1;
     h[21] = 1;        // 5.25"
     h[22] = wp_byte;  // write protect
     fwrite(h, 1, 1536, f);
@@ -179,12 +191,14 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   bool os_ro = false;
 
   create_woz_wp(tmp_file, 1);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == true);
   g_woz2_driver.close(instance);
 
   create_woz_wp(tmp_file, 0);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == false);
   g_woz2_driver.close(instance);
 
@@ -196,8 +210,11 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
-  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 12, "INFO", 4);
+  h[16] = 60;
+  h[21] = 1;
+  memcpy(h + 80, "TMAP", 4);
+  h[84] = 160;
   memcpy(h + 248, "TRKS", 4);
   memset(h + 88, 0xFF, 160);  // TMAP: all unrecorded
   fwrite(h, 1, 1536, f);
@@ -205,7 +222,8 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
 
   uint8_t buffer[6656];
   int count = 0;
@@ -213,7 +231,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   CHECK(count == 6656);
   // Should be random/sync data, at least verify it didn't fail
-  
+
   g_woz2_driver.close(instance);
   remove(tmp_file);
 }
@@ -259,8 +277,11 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
-  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 12, "INFO", 4);
+  h[16] = 60;
+  h[21] = 1;
+  memcpy(h + 80, "TMAP", 4);
+  h[84] = 160;
   memcpy(h + 248, "TRKS", 4);
   // TMAP starts at offset 88. Set track 0 to use trks_index 160 (out of bounds)
   h[88] = 160;
@@ -269,13 +290,14 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
 
   uint8_t buffer[6656];
   int count = 123;
   g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
 
-  CHECK(count == 0); // Rejects out of bounds trks_index
+  CHECK(count == 0);  // Rejects out of bounds trks_index
 
   g_woz2_driver.close(instance);
   remove(tmp_file);
@@ -286,19 +308,24 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
   FILE* f = fopen(tmp_file, "wb");
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  memcpy(h + 12, "INFO", 4); h[16] = 60; h[21] = 1;
-  memcpy(h + 80, "TMAP", 4); h[84] = 160;
+  memcpy(h + 12, "INFO", 4);
+  h[16] = 60;
+  h[21] = 1;
+  memcpy(h + 80, "TMAP", 4);
+  h[84] = 160;
   memcpy(h + 248, "TRKS", 4);
-  h[88] = 0; // Track 0 uses trks_index 0
+  h[88] = 0;  // Track 0 uses trks_index 0
   // TRKS entry 0 starts at 256.
   // starting_block = 3 (offset 1536), block_count = 1 (512 bytes)
-  h[256] = 3; h[257] = 0;
-  h[258] = 1; h[259] = 0;
+  h[256] = 3;
+  h[257] = 0;
+  h[258] = 1;
+  h[259] = 0;
   // bit_count = 512*8 + 1 (too many for 1 block)
   uint32_t bad_bits = 512 * 8 + 1;
   memcpy(h + 260, &bad_bits, 4);
   fwrite(h, 1, 1536, f);
-  
+
   // Also need to provide at least some data in the file
   uint8_t zero[512] = {0};
   fseek(f, 1536 + 512, SEEK_SET);
@@ -307,34 +334,35 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) == disk_err_none);
+  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+          disk_err_none);
 
   uint8_t buffer[6656];
   int count = 123;
   g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
 
-  CHECK(count == 0); // Rejects bit_count > block_count capacity
+  CHECK(count == 0);  // Rejects bit_count > block_count capacity
 
   g_woz2_driver.close(instance);
   remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
-    const char* tmp_do = "test_oob.do";
-    g_do_driver.create(tmp_do);
+  const char* tmp_do = "test_oob.do";
+  g_do_driver.create(tmp_do);
 
-    void* inst = nullptr;
-    bool ro = false;
-    REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
+  void* inst = nullptr;
+  bool ro = false;
+  REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
 
-    uint8_t buf[6656];
-    int count = 123;
+  uint8_t buf[6656];
+  int count = 123;
 
-    g_do_driver.read_track(inst, -1, 0, buf, &count);
-    CHECK(count == 0);
-    g_do_driver.read_track(inst, 40, 0, buf, &count);
-    CHECK(count == 0);
+  g_do_driver.read_track(inst, -1, 0, buf, &count);
+  CHECK(count == 0);
+  g_do_driver.read_track(inst, 40, 0, buf, &count);
+  CHECK(count == 0);
 
-    g_do_driver.close(inst);
-    remove(tmp_do);
+  g_do_driver.close(inst);
+  remove(tmp_do);
 }

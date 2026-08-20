@@ -8,9 +8,9 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 // Since Main.cpp is already linked into 'linapple' (headless target),
@@ -21,9 +21,10 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                      "../tests/fixtures/minimal.woz");
+                                         "../tests/fixtures/minimal.woz");
 
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -41,11 +42,12 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   linapple_init();
 
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                      "../tests/fixtures/minimal.woz");
+                                         "../tests/fixtures/minimal.woz");
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                      "../tests/fixtures/minimal.dsk");
+                                         "../tests/fixtures/minimal.dsk");
 
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -64,9 +66,10 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 
   // .txt is unsupported by disk drivers
   Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                      "../tests/fixtures/minimal.txt");
+                                         "../tests/fixtures/minimal.txt");
 
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -86,7 +89,8 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 
 TEST_CASE("Headless: [HL-04] Program loading") {
   linapple_init();
-  peripheral_manager_init(); linapple_register_peripherals();
+  peripheral_manager_init();
+  linapple_register_peripherals();
 
   int err = linapple_load_program("../tests/fixtures/minimal.woz");
   CHECK(err != 0);

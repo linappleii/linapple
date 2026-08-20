@@ -1,5 +1,4 @@
-#ifndef DEBUGGER_CONSOLE_H
-#define DEBUGGER_CONSOLE_H
+#pragma once
 
 #include <cstdarg>
 #include <cstdint>
@@ -209,8 +208,8 @@ extern char g_console_cursor[];
 // Display
 extern char g_console_prompt[];  // = ">!"; // input, assembler // NUM_PROMPTS
 extern char
-    g_console_prompt_str[];  // = ">"; // No, NOT Integer Basic!  The nostalgic '*'
-                         // "Monitor" doesn't look as good, IMHO. :-(
+    g_console_prompt_str[];  // = ">"; // No, NOT Integer Basic!  The nostalgic
+                             // '*' "Monitor" doesn't look as good, IMHO. :-(
 extern int g_console_prompt_len;
 
 extern bool g_console_full_width;  // = false;
@@ -232,7 +231,7 @@ extern char g_console_input[CONSOLE_WIDTH + 16];
 
 // Cooked input line (no prompt)
 extern int g_console_input_chars;
-extern char* g_console_input_ptr;           // points to past prompt
+extern char* g_console_input_ptr;        // points to past prompt
 extern const char* g_console_first_arg;  // points to first arg
 extern bool g_console_input_quoted;
 
@@ -327,5 +326,3 @@ Update_t ConsoleScrollUp(int nLines);
 Update_t ConsoleScrollDn(int nLines);
 Update_t ConsoleScrollPageUp();
 Update_t ConsoleScrollPageDn();
-
-#endif

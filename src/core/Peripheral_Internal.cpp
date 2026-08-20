@@ -189,14 +189,14 @@ auto peripheral_plugins_init() -> void {
           auto* p = reinterpret_cast<Peripheral_t*>(
               dlsym(handle, "linapple_peripheral_descriptor"));
           if (p != nullptr) {
-            if (p->AbiVersion_t == LINAPPLE_ABI_VERSION) {
+            if (p->abi_version == LINAPPLE_ABI_VERSION) {
               Logger::info("Loaded plugin: %s from %s\n", p->name,
                            full_path.c_str());
               g_loaded_plugins.push_back({p, handle, full_path});
             } else {
               Logger::warning("Plugin ABI mismatch: %s (expected %d, got %d)\n",
                               full_path.c_str(), LINAPPLE_ABI_VERSION,
-                              p->AbiVersion_t);
+                              p->abi_version);
               dlclose(handle);
             }
           } else {

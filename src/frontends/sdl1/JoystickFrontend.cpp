@@ -2,19 +2,19 @@
 #include "frontends/sdl1/JoystickFrontend.h"
 
 #include <array>
-#include "apple2/Video.h"
 #include <cstring>
 #include <iostream>
 
 #include "SDL.h"
-#include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/SnapshotTypes.h"
+#include "apple2/Video.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -63,17 +63,15 @@ const int PDL_SMAX = 127;
 const int PDL_SCENTRAL = 0;
 const int PDL_SMIN = -127;
 
-static std::array<Point_t, 9> keyvalue = {{
-    {PDL_SMIN, PDL_SMAX},
-    {PDL_SCENTRAL, PDL_SMAX},
-    {PDL_SMAX, PDL_SMAX},
-    {PDL_SMIN, PDL_SCENTRAL},
-    {PDL_SCENTRAL, PDL_SCENTRAL},
-    {PDL_SMAX, PDL_SCENTRAL},
-    {PDL_SMIN, PDL_SMIN},
-    {PDL_SCENTRAL, PDL_SMIN},
-    {PDL_SMAX, PDL_SMIN}
-}};
+static std::array<Point_t, 9> keyvalue = {{{PDL_SMIN, PDL_SMAX},
+                                           {PDL_SCENTRAL, PDL_SMAX},
+                                           {PDL_SMAX, PDL_SMAX},
+                                           {PDL_SMIN, PDL_SCENTRAL},
+                                           {PDL_SCENTRAL, PDL_SCENTRAL},
+                                           {PDL_SMAX, PDL_SCENTRAL},
+                                           {PDL_SMIN, PDL_SMIN},
+                                           {PDL_SCENTRAL, PDL_SMIN},
+                                           {PDL_SMAX, PDL_SMIN}}};
 
 static std::array<int, 2> joyshrx = {8, 8};
 static std::array<int, 2> joyshry = {8, 8};
@@ -354,7 +352,7 @@ void JoyFrontend_UpdateTrimViaKey(SDLKey virtkey) {
 }
 
 auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
-                            bool autorep) -> bool {
+                              bool autorep) -> bool {
   int joy_num =
       (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
        DEVICE_KEYBOARD)

@@ -29,16 +29,16 @@ typedef enum {
 } KeyboardLayout_t;
 
 typedef enum {
-  keyboard_cmd_event = 0x0001,       /**< data: KeyboardEvent_t */
-  keyboard_cmd_set_caps = 0x0002,    /**< data: uint8_t (0=off, 1=on) */
-  keyboard_cmd_set_rocker = 0x0003,  /**< data: uint8_t (0=off, 1=on) */
-  keyboard_cmd_set_mods = 0x0004,    /**< data: KeyboardModifiers_t */
-  keyboard_cmd_set_layout = 0x0005   /**< data: uint8_t (KeyboardLayout_t) */
+  keyboard_cmd_event = 0x0001,      /**< data: KeyboardEvent_t */
+  keyboard_cmd_set_caps = 0x0002,   /**< data: uint8_t (0=off, 1=on) */
+  keyboard_cmd_set_rocker = 0x0003, /**< data: uint8_t (0=off, 1=on) */
+  keyboard_cmd_set_mods = 0x0004,   /**< data: KeyboardModifiers_t */
+  keyboard_cmd_set_layout = 0x0005  /**< data: uint8_t (KeyboardLayout_t) */
 } KeyboardCmd_t;
 
 typedef enum {
-  keyboard_query_mods = 0x0001,      /**< out: KeyboardModifiers_t */
-  keyboard_query_rocker = 0x0002     /**< out: uint8_t (0=off, 1=on) */
+  keyboard_query_mods = 0x0001,  /**< out: KeyboardModifiers_t */
+  keyboard_query_rocker = 0x0002 /**< out: uint8_t (0=off, 1=on) */
 } KeyboardQuery_t;
 
 typedef struct {
@@ -47,7 +47,7 @@ typedef struct {
   uint8_t alt;
   uint8_t gui;
   uint8_t caps;
-  uint8_t reserved[3];               /**< Padding for 8-byte ABI alignment */
+  uint8_t reserved[3]; /**< Padding for 8-byte ABI alignment */
 } KeyboardModifiers_t;
 
 typedef struct {
@@ -57,7 +57,7 @@ typedef struct {
   uint8_t mod_ctrl;
   uint8_t mod_alt;
   uint8_t mod_gui;
-  uint8_t reserved[3];               /**< Padding for 12-byte ABI alignment */
+  uint8_t reserved[3]; /**< Padding for 12-byte ABI alignment */
 } KeyboardEvent_t;
 
 #ifdef __cplusplus

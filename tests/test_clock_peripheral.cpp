@@ -91,27 +91,27 @@ auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
 }
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.Log = Mock_Log;
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    h.get_mem_ptr = nullptr;
-    h.GetCycles = nullptr;
-    h.GetConfig = nullptr;
-    h.SetConfig = nullptr;
-    h.NotifyStatusChanged = nullptr;
-    h.NotifyActivityChanged = nullptr;
-    h.RequestPreciseTiming = nullptr;
-    h.AudioPushSamples = nullptr;
-    h.ResetSystem = nullptr;
-    h.PrinterPutChar = nullptr;
-    h.PrinterGetStatus = nullptr;
-    h.SerialTransmitByte = nullptr;
-    h.SerialUpdateState = nullptr;
-    return h;
+  HostInterface_t h{};
+  h.Log = Mock_Log;
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  h.get_mem_ptr = nullptr;
+  h.GetCycles = nullptr;
+  h.GetConfig = nullptr;
+  h.SetConfig = nullptr;
+  h.NotifyStatusChanged = nullptr;
+  h.NotifyActivityChanged = nullptr;
+  h.RequestPreciseTiming = nullptr;
+  h.AudioPushSamples = nullptr;
+  h.ResetSystem = nullptr;
+  h.PrinterPutChar = nullptr;
+  h.PrinterGetStatus = nullptr;
+  h.SerialTransmitByte = nullptr;
+  h.SerialUpdateState = nullptr;
+  return h;
 }();
 
 static auto Clock_Init_With_Mock(int slot) -> void* {
@@ -246,11 +246,11 @@ TEST_CASE("Clock Peripheral: Robustness and Edge Cases") {
   size_t too_small = TINY_BUFFER_SIZE;
   std::array<uint8_t, TINY_BUFFER_SIZE> small_buf{};
   CHECK(clock_get_descriptor()->save_state(instance, small_buf.data(),
-                                          &too_small) == peripheral_error);
+                                           &too_small) == peripheral_error);
 
   std::array<uint8_t, INVALID_STATE_SIZE> wrong_buf{};
   CHECK(clock_get_descriptor()->load_state(instance, wrong_buf.data(),
-                                          INVALID_STATE_SIZE) ==
+                                           INVALID_STATE_SIZE) ==
         peripheral_error);
 
   const int slot2 = TEST_SLOT_2;

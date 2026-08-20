@@ -3,11 +3,11 @@
 
 #include <cstdint>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/chips/6522.h"
 #include "apple2/chips/SSI263.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 

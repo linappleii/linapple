@@ -213,7 +213,7 @@ auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
 }
 
 auto speaker_load_state(void* instance, const void* state_buffer,
-                       size_t buffer_size) -> PeripheralStatus_t {
+                        size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SsIoSpeaker_t);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < required_size) {
@@ -263,7 +263,7 @@ auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_speaker_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.speaker",
     .name = "Speaker",
     .description = "Built-in Apple II speaker and cassette port emulation",
@@ -393,7 +393,7 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
 }
 
 auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
-                       uint32_t buffer_capacity) -> uint32_t {
+                        uint32_t buffer_capacity) -> uint32_t {
   if (event_buffer == nullptr || instance == nullptr) {
     return 0;
   }

@@ -9,9 +9,12 @@
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 #include "core/Peripheral_Types.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// Justification: Format drivers utilize a procedural C-compatible handle system
-// and standardized probing signatures mandated by the Disk subsystem ABI.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// Format drivers utilize a procedural C-compatible handle system and
+// standardized probing signatures mandated by the Disk subsystem ABI.
 // Array-to-pointer decay and C-style arrays are required for driver descriptor
 // registration.
 
@@ -112,7 +115,7 @@ const char* const g_do_creatable_exts[] = {".do", ".dsk", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_do_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "DOS Order",
     .creatable_exts = g_do_creatable_exts,
@@ -124,7 +127,9 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .write_track = do_write_track,
     .create = do_create,
     .command = do_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

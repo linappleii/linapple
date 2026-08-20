@@ -52,7 +52,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   s_initialized = true;
 
   // 3. Set Hardware Type and PAL
-  g_apple2_type = config->apple2Type;
+  g_apple2_type = config->apple2_type;
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
@@ -80,8 +80,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   Frontend_UpdateKeyboardMapping();
 
   if (config->debugger_script.at(0) != '\0') {
-    Util_SafeStrCpy(&g_state.debugger_script[0],
-                    config->debugger_script.data(), path_max_len);
+    Util_SafeStrCpy(&g_state.debugger_script[0], config->debugger_script.data(),
+                    path_max_len);
   }
 
   g_state.mode = MODE_RUNNING;
@@ -90,7 +90,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   bool disable_dbg_config = false;
   if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
-                     &disable_dbg_config)) {
+                       &disable_dbg_config)) {
     g_state.disable_debugger = config->disable_debugger || disable_dbg_config;
   } else {
     g_state.disable_debugger = config->disable_debugger;
@@ -99,7 +99,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   return 0;
 }
 
-auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> bool {
+auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
+    -> bool {
   if (config == nullptr) {
     return false;
   }
@@ -119,7 +120,7 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> boo
           peripheral_find_internal(config->hardware_info_name.data());
       if (p != nullptr) {
         printf("Hardware info: %s\n", p->name);
-        printf("ABI Version: %d\n", p->AbiVersion_t);
+        printf("ABI Version: %d\n", p->abi_version);
         printf("Compatible Slots: ");
         bool first = true;
         for (int i = 0; i < NUM_SLOTS; ++i) {

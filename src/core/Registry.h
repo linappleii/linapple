@@ -67,29 +67,27 @@ class Configuration_t {
   auto load_defaults() -> void;
   auto save() -> bool;
   auto set_path(const std::string& path) -> void;
-  auto get_path() const -> const std::string& { return m_path; }
+  auto get_path() const -> const std::string& { return path_; }
 
   auto get_string(const std::string& section, const std::string& key,
-                 const std::string& default_value = "") -> std::string;
+                  const std::string& default_value = "") -> std::string;
   auto get_int(const std::string& section, const std::string& key,
-              uint32_t default_value = 0) -> uint32_t;
+               uint32_t default_value = 0) -> uint32_t;
   auto get_bool(const std::string& section, const std::string& key,
-               bool default_value = false) -> bool;
+                bool default_value = false) -> bool;
 
   auto set_string(const std::string& section, const std::string& key,
-                 const std::string& value) -> void;
+                  const std::string& value) -> void;
   auto set_int(const std::string& section, const std::string& key,
-              uint32_t value) -> void;
+               uint32_t value) -> void;
   auto set_bool(const std::string& section, const std::string& key, bool value)
       -> void;
 
  private:
   Configuration_t() = default;
-  std::string m_path;
-  std::map<std::string, std::map<std::string, std::string>> m_data;
+  std::string path_;
+  std::map<std::string, std::map<std::string, std::string>> data_;
 };
-
-
 
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool;

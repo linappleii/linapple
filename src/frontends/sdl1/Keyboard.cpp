@@ -2,9 +2,9 @@
 #include "SDL/SDL.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl1/Frontend.h"
 
@@ -19,13 +19,15 @@ void Frontend_UpdateKeyboardMapping() {
   uint32_t layout = 0;
   if (config_load_int("Configuration", "Keyboard Type", &layout)) {
     uint8_t layout_val = static_cast<uint8_t>(layout);
-    peripheral_command(0, keyboard_cmd_set_layout, &layout_val, sizeof(layout_val));
+    peripheral_command(0, keyboard_cmd_set_layout, &layout_val,
+                       sizeof(layout_val));
   }
 
   uint32_t rocker = 0;
   if (config_load_int("Configuration", "Keyboard Rocker Switch", &rocker)) {
     uint8_t rocker_val = static_cast<uint8_t>(rocker);
-    peripheral_command(0, keyboard_cmd_set_rocker, &rocker_val, sizeof(rocker_val));
+    peripheral_command(0, keyboard_cmd_set_rocker, &rocker_val,
+                       sizeof(rocker_val));
   }
 }
 
@@ -60,7 +62,8 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
                               static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
                               static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
                               static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0),
-                              0, {0, 0, 0}};
+                              0,
+                              {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 
   LinAppleKey core_key = LINAPPLE_KEY_UNKNOWN;
@@ -77,7 +80,11 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
 
   KeyboardEvent_t ev = {static_cast<uint32_t>(core_key),
                         static_cast<uint8_t>(is_down ? 1 : 0),
-                        mods.shift, mods.ctrl, mods.alt, mods.gui, {0, 0, 0}};
+                        mods.shift,
+                        mods.ctrl,
+                        mods.alt,
+                        mods.gui,
+                        {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
@@ -102,7 +109,9 @@ bool frontend_handle_key_event(SDLKey key, bool is_down) {
           static_cast<uint8_t>((mod & KMOD_SHIFT) ? 1 : 0),
           static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
           static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
-          static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0), 0, {0, 0, 0}};
+          static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0),
+          0,
+          {0, 0, 0}};
       peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
       return true;
     }

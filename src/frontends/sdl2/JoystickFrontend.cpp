@@ -6,15 +6,15 @@
 #include <iostream>
 
 #include "SDL2/SDL.h"
-#include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -352,7 +352,7 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
 }
 
 auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
-                            bool autorep) -> bool {
+                              bool autorep) -> bool {
   int joy_num =
       (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
        DEVICE_KEYBOARD)

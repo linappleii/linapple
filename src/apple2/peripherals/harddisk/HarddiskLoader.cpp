@@ -8,9 +8,9 @@
 #include <cstring>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"

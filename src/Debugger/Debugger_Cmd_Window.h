@@ -59,18 +59,17 @@ void _WindowJoin();
 void _WindowSplit(Window_e eNewBottomWindow);
 void _WindowLast();
 void _WindowSwitch(int eNewWindow);
-int  WindowGetHeight(int iWindow);
+int WindowGetHeight(int iWindow);
 void WindowUpdateDisasmSize();
 void WindowUpdateConsoleDisplayedSize();
 void WindowUpdateSizes();
 Update_t _CmdWindowViewFull(int iNewWindow);
 Update_t CmdWindowViewCommon(int iNewWindow);
 
-enum ViewVideoPage_t
-{
+enum ViewVideoPage_t {
   VIEW_PAGE_1 = (1 << 0),
   VIEW_PAGE_2 = (1 << 1),
-  VIEW_PAGE_X = (1 << 2) // XOR cycles Page 1 / Page 2
+  VIEW_PAGE_X = (1 << 2)  // XOR cycles Page 1 / Page 2
 };
 
 Update_t _ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags);

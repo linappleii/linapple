@@ -5,14 +5,14 @@
 #include <cstring>
 #include <string>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
@@ -34,9 +34,9 @@ void HarddiskUI_FTPSelect(int drive) {
   fullPath = g_state.ftp_server_hdd.data();  // global var for FTP path for HDD
 
   while (isDirectory) {
-    if (choose_an_image_ftp(static_cast<int>(g_state.ScreenWidth),
-                         static_cast<int>(g_state.ScreenHeight), fullPath, 7,
-                         filename, isDirectory, fileIndex) == false) {
+    if (choose_an_image_ftp(static_cast<int>(g_state.screen_width),
+                            static_cast<int>(g_state.screen_height), fullPath,
+                            7, filename, isDirectory, fileIndex) == false) {
       DrawFrameWindow();
       return;
     }
@@ -70,7 +70,7 @@ void HarddiskUI_FTPSelect(int drive) {
   Util_SafeStrCpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
                   g_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
-                                      g_state.ftp_server_hdd.data());
+                                         g_state.ftp_server_hdd.data());
   Configuration_t::instance().save();  // save it
 
   fullPath += "/" + filename;
@@ -88,12 +88,12 @@ void HarddiskUI_FTPSelect(int drive) {
         peripheral_ok) {
       // save file names for HDD disk 1 or 2
       if (drive != 0) {
-        Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
-                                            localPath.c_str());
+        Configuration_t::instance().set_string(
+            "Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str());
         Configuration_t::instance().save();
       } else {
-        Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE1,
-                                            localPath.c_str());
+        Configuration_t::instance().set_string(
+            "Preferences", REGVALUE_HDD_IMAGE1, localPath.c_str());
         Configuration_t::instance().save();
       }
     }
@@ -117,9 +117,9 @@ void HarddiskUI_Select(int drive) {
   fullPath = g_state.hdd_dir.data();  // global var for disk selecting directory
 
   while (isDirectory) {
-    if (choose_an_image(static_cast<int>(g_state.ScreenWidth),
-                      static_cast<int>(g_state.ScreenHeight), fullPath, 7,
-                      filename, isDirectory, fileIndex) == false) {
+    if (choose_an_image(static_cast<int>(g_state.screen_width),
+                        static_cast<int>(g_state.screen_height), fullPath, 7,
+                        filename, isDirectory, fileIndex) == false) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
@@ -165,11 +165,11 @@ void HarddiskUI_Select(int drive) {
     // save file names for HDD disk 1 or 2
     if (drive != 0) {
       Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
-                                          fullPath.c_str());
+                                             fullPath.c_str());
       Configuration_t::instance().save();
     } else {
       Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE1,
-                                          fullPath.c_str());
+                                             fullPath.c_str());
       Configuration_t::instance().save();
     }
     printf("HDD disk image %s inserted\n", fullPath.c_str());

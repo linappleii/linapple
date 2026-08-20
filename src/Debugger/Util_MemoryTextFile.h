@@ -1,43 +1,41 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <vector>
 #include <string>
-
-using std::vector;
+#include <vector>
 
 class MemoryTextFile_t {
-  vector<char> m_vBuffer;
-  vector<char *> m_vLines;
-  bool m_bDirty;
+  std::vector<char> buffer_;
+  std::vector<char*> lines_;
+  bool dirty_{false};
 
-  void GetLinePointers();
+  auto GetLinePointers() -> void;
 
-public:
-  MemoryTextFile_t()
-    : m_bDirty(false) {
-    m_vBuffer.reserve(2048);
-    m_vLines.reserve(128);
+ public:
+  MemoryTextFile_t() : dirty_(false) {
+    buffer_.reserve(2048);
+    lines_.reserve(128);
   }
 
-  bool Read( const std::string & pFileName );
+  auto Read(const std::string& filename) -> bool;
 
-  void Reset() {
-    m_vBuffer.erase(m_vBuffer.begin(), m_vBuffer.end());
-    m_vLines.erase(m_vLines.begin(), m_vLines.end());
+  auto Reset() -> void {
+    buffer_.clear();
+    lines_.clear();
   }
 
-  inline int GetNumLines() {
-    if (m_bDirty) {
+  auto GetNumLines() -> int {
+    if (dirty_) {
       GetLinePointers();
     }
-    return m_vLines.size();
+    return static_cast<int>(lines_.size());
   }
 
-  inline char *GetLine(const int iLine) const {
-    return m_vLines.at(iLine);
+  auto GetLine(int line_index) const -> char* {
+    return lines_.at(static_cast<size_t>(line_index));
   }
 
-  void GetLine(const int iLine, char *pLine, const int n);
+  auto GetLine(int line_index, char* line_out, int max_chars) -> void;
 
-  void PushLine(char *pLine);
+  auto PushLine(char* line) -> void;
 };

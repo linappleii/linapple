@@ -1,4 +1,5 @@
-/* C99 compilation smoke test — if this file compiles, the headers are C99-compatible. */
+/* C99 compilation smoke test — if this file compiles, the headers are
+ * C99-compatible. */
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 
@@ -10,7 +11,7 @@ void disk_abi_c_smoke(void) {
   cmd.path[0] = '\0';
 
   DiskFormatDriver_t driver;
-  driver.AbiVersion_t = disk_format_abi_version;
+  driver.abi_version = disk_format_abi_version;
   driver.capabilities = disk_driver_cap_write;
   driver.name = "smoke";
   driver.creatable_exts = 0;

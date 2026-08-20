@@ -1,7 +1,7 @@
 #include <SDL2/SDL.h>
 
-#include "core/Util_Path.h"
 #include "core/Asset.h"
+#include "core/Util_Path.h"
 
 auto asset_load_bmp(const char* filename) -> SDL_Surface* {
   std::string fullPath = Path::find_data_file(filename);

@@ -13,12 +13,12 @@
 #include <string>
 #include <vector>
 
-#include "apple2/Video.h"
-#include "frontends/common/VideoStretch.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
+#include "frontends/common/VideoStretch.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
 
@@ -89,8 +89,8 @@ void DiskChoose_Tick(SDL_Event* event) {
     if (file_entry) {
       g_diskChooseState.result_filename = file_entry->name;
       g_diskChooseState.result_isdir = file_entry_is_dir_type(file_entry);
-      if (g_diskChooseState.p_index_file) {
-        *g_diskChooseState.p_index_file = g_diskChooseState.act_file;
+      if (g_diskChooseState.index_file_out) {
+        *g_diskChooseState.index_file_out = g_diskChooseState.act_file;
       }
       g_diskChooseState.finished = true;
       g_diskChooseState.active = false;
@@ -152,16 +152,17 @@ extern void frame_refresh();
 void DiskChoose_Draw() {
   if (!g_diskChooseState.active) return;
 
-  const float facx_f = static_cast<float>(g_state.ScreenWidth) /
+  const float facx_f = static_cast<float>(g_state.screen_width) /
                        static_cast<float>(SCREEN_WIDTH);
-  const float facy_f = static_cast<float>(g_state.ScreenHeight) /
+  const float facy_f = static_cast<float>(g_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
   const double facy = static_cast<double>(facy_f);
-  const int sx = static_cast<int>(g_state.ScreenWidth);
+  const int sx = static_cast<int>(g_state.screen_width);
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
-  VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface_t vs_bg =
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
   VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 
   video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
@@ -197,9 +198,10 @@ void DiskChoose_Draw() {
                       1.0f * facx_f, 1.0f * facy_f);
 
   int TOPX = static_cast<int>(45 * facy);
-  size_t list_count = g_diskChooseState.list_handle
-                          ? file_browser_get_count(g_diskChooseState.list_handle)
-                          : 0;
+  size_t list_count =
+      g_diskChooseState.list_handle
+          ? file_browser_get_count(g_diskChooseState.list_handle)
+          : 0;
 
   for (size_t j = 0; j < files_in_screen; ++j) {
     const size_t i = g_diskChooseState.first_file + j;
@@ -257,13 +259,13 @@ void DiskChoose_Draw() {
 }
 
 auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
-                       FileListGenerator_t* file_list_generator,
-                       std::string& filename, bool& isdir, size_t& index_file)
+                         FileListGenerator_t* file_list_generator,
+                         std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   (void)sy;
-  const double facx = static_cast<double>(g_state.ScreenWidth) /
+  const double facx = static_cast<double>(g_state.screen_width) /
                       static_cast<double>(SCREEN_WIDTH);
-  const double facy = static_cast<double>(g_state.ScreenHeight) /
+  const double facy = static_cast<double>(g_state.screen_height) /
                       static_cast<double>(SCREEN_HEIGHT);
 
   if (font_sfc == nullptr) {
@@ -295,7 +297,8 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.bg_screen = SDL_CreateSurface(
       tempSurface->w, tempSurface->h, SDL_PIXELFORMAT_ARGB8888);
 
-  VideoSurface_t vs_bg = sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+  VideoSurface_t vs_bg =
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
   VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
   // Capture original g_screen
@@ -381,7 +384,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.active = true;
   g_diskChooseState.finished = false;
   g_diskChooseState.cancelled = false;
-  g_diskChooseState.p_index_file = &index_file;
+  g_diskChooseState.index_file_out = &index_file;
 
   AppMode_t old_mode = g_state.mode;
   g_state.mode = MODE_DISK_CHOOSE;
@@ -425,14 +428,14 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 }
 
 auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
-                   std::string& filename, bool& isdir, size_t& index_file)
+                     std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   FileListGenerator_t* generator =
       file_browser_create_local_generator(incoming_dir.c_str());
   if (!generator) return false;
 
   bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,
-                                  filename, isdir, index_file);
+                                    filename, isdir, index_file);
   generator->destroy(generator);
   return result;
 }

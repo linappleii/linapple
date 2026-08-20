@@ -154,11 +154,13 @@ static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
 
   if (!g_window_resized) {
     video_soft_stretch(
-        g_debug_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)),
-        vs_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
+        g_debug_screen,
+        reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)), vs_screen,
+        reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
   } else {
-    video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
-                     vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
+    video_soft_stretch(g_debug_screen,
+                       reinterpret_cast<VideoRect_t*>(&g_orig_rect), vs_screen,
+                       reinterpret_cast<VideoRect_t*>(&g_new_rect));
   }
 }
 #endif
@@ -183,10 +185,11 @@ void DrawFrameWindow() {
 
       if (!g_window_resized) {
         video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
-                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
+                           &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
       } else {
-        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
-                         &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
+        video_soft_stretch(
+            &vs_output, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
+            &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
       }
     } else {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
@@ -235,7 +238,7 @@ void draw_status_area(int drawflags) {
 
     if (g_last_disk_status.drive0_spinning) {
       drive1_status = g_last_disk_status.drive0_writing ? disk_status_write
-                                                      : disk_status_read;
+                                                        : disk_status_read;
     } else if (g_last_disk_status.drive0_loaded &&
                g_last_disk_status.drive0_write_protected) {
       drive1_status = disk_status_prot;
@@ -243,7 +246,7 @@ void draw_status_area(int drawflags) {
 
     if (g_last_disk_status.drive1_spinning) {
       drive2_status = g_last_disk_status.drive1_writing ? disk_status_write
-                                                      : disk_status_read;
+                                                        : disk_status_read;
     } else if (g_last_disk_status.drive1_loaded &&
                g_last_disk_status.drive1_write_protected) {
       drive2_status = disk_status_prot;
@@ -339,9 +342,9 @@ void FrameShowHelpScreen(int sx, int sy) {
   if (blur_temp) {
     VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
     video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur,
-                     nullptr);  // Downscale
+                       nullptr);  // Downscale
     video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen,
-                     nullptr);  // Upscale back
+                       nullptr);  // Upscale back
     SDL_DestroySurface(blur_temp);
   }
 
@@ -358,9 +361,9 @@ void FrameShowHelpScreen(int sx, int sy) {
     SDL_DestroySurface(dim_surface);
   }
 
-  const float facx_f = static_cast<float>(g_state.ScreenWidth) /
+  const float facx_f = static_cast<float>(g_state.screen_width) /
                        static_cast<float>(SCREEN_WIDTH);
-  const float facy_f = static_cast<float>(g_state.ScreenHeight) /
+  const float facy_f = static_cast<float>(g_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
   const double facy = static_cast<double>(facy_f);
 
@@ -386,12 +389,12 @@ void FrameShowHelpScreen(int sx, int sy) {
   }
 
   rectangle(&vs_actual_screen, 0, Help_TopX - 5,
-            static_cast<int>(g_state.ScreenWidth - 1),
+            static_cast<int>(g_state.screen_width - 1),
             static_cast<int>(335.0 * facy), 0xFFFFFF);
   rectangle(&vs_actual_screen, 1, Help_TopX - 4,
-            static_cast<int>(g_state.ScreenWidth),
+            static_cast<int>(g_state.screen_width),
             static_cast<int>(335.0 * facy), 0xFFFFFF);
-  rectangle(&vs_actual_screen, 1, 1, static_cast<int>(g_state.ScreenWidth - 2),
+  rectangle(&vs_actual_screen, 1, 1, static_cast<int>(g_state.screen_width - 2),
             (Help_TopX - 8), 0xFFFF00);
 
   // Logo bit
@@ -465,34 +468,34 @@ auto is_modifier_key(SDL_Keycode sym) -> bool {
 
 void Frame_OnResize(int width, int height) {
   g_video_draw_mutex.lock();
-  g_state.ScreenWidth = width;
-  g_state.ScreenHeight = (height / 96) * 96;
-  if (g_state.ScreenHeight < 192) {
-    g_state.ScreenHeight = 192;
+  g_state.screen_width = width;
+  g_state.screen_height = (height / 96) * 96;
+  if (g_state.screen_height < 192) {
+    g_state.screen_height = 192;
   }
 
   if (g_screen) SDL_DestroySurface(g_screen);
-  g_screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
-                             SDL_PIXELFORMAT_XRGB8888);
+  g_screen = SDL_CreateSurface(g_state.screen_width, g_state.screen_height,
+                               SDL_PIXELFORMAT_XRGB8888);
 
   if (g_texture) SDL_DestroyTexture(g_texture);
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888,
                                 SDL_TEXTUREACCESS_STREAMING,
-                                g_state.ScreenWidth, g_state.ScreenHeight);
+                                g_state.screen_width, g_state.screen_height);
 
   if (g_screen == nullptr || g_texture == nullptr) {
     g_video_draw_mutex.unlock();
     SDL_Quit();
     return;
   } else {
-    g_window_resized = (g_state.ScreenWidth != SCREEN_WIDTH) |
-                      (g_state.ScreenHeight != SCREEN_HEIGHT);
+    g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
+                       (g_state.screen_height != SCREEN_HEIGHT);
     if (g_window_resized) {
       g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
       g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
       g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-      g_new_rect.w = static_cast<int16_t>(g_state.ScreenWidth);
-      g_new_rect.h = static_cast<int16_t>(g_state.ScreenHeight);
+      g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
+      g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
       if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
         video_redraw_screen();
       }
@@ -530,8 +533,8 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   fullPath = g_state.save_state_dir.data();
 
   while (isDirectory) {
-    if (!choose_an_image(g_state.ScreenWidth, g_state.ScreenHeight, fullPath,
-                       saveit, filename, isDirectory, fileIndex)) {
+    if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
+                         saveit, filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
       return false;
     }
@@ -559,7 +562,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   Util_SafeStrCpy(g_state.save_state_dir.data(), fullPath.c_str(),
                   g_state.save_state_dir.size());
   Configuration_t::instance().set_string("Preferences", "Save State Directory",
-                                      g_state.save_state_dir.data());
+                                         g_state.save_state_dir.data());
   Configuration_t::instance().save();
 
   backdx = fileIndex;
@@ -714,11 +717,11 @@ void process_button_click(int button, int mod) {
     case btn_setup:
       if (mod & SDL_KMOD_SHIFT) {
         Configuration_t::instance().set_int("Configuration", "Video Emulation",
-                                         g_videotype);
+                                            g_videotype);
         Configuration_t::instance().set_int("Configuration", "Emulation Speed",
-                                         g_state.speed);
+                                            g_state.speed);
         Configuration_t::instance().set_int("Configuration", "Fullscreen",
-                                         g_state.fullscreen ? 1 : 0);
+                                            g_state.fullscreen ? 1 : 0);
         Configuration_t::instance().save();
 
       } else {
@@ -845,8 +848,8 @@ auto frame_create_window() -> int {
   Uint32 flags = 0;
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
-  g_window = SDL_CreateWindow(g_app_title, g_state.ScreenWidth,
-                              g_state.ScreenHeight, flags);
+  g_window = SDL_CreateWindow(g_app_title, g_state.screen_width,
+                              g_state.screen_height, flags);
   if (!g_window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
     return 1;
@@ -858,8 +861,8 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  g_screen = SDL_CreateSurface(g_state.ScreenWidth, g_state.ScreenHeight,
-                             SDL_PIXELFORMAT_XRGB8888);
+  g_screen = SDL_CreateSurface(g_state.screen_width, g_state.screen_height,
+                               SDL_PIXELFORMAT_XRGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
@@ -873,15 +876,15 @@ auto frame_create_window() -> int {
   SDL_ShowWindow(g_window);
   SetIcon();
 
-  g_window_resized = (g_state.ScreenWidth != SCREEN_WIDTH) |
-                    (g_state.ScreenHeight != SCREEN_HEIGHT);
-  printf("Screen size is %dx%d\n", g_state.ScreenWidth, g_state.ScreenHeight);
+  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
+                     (g_state.screen_height != SCREEN_HEIGHT);
+  printf("Screen size is %dx%d\n", g_state.screen_width, g_state.screen_height);
   if (g_window_resized) {
     g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
     g_orig_rect.w = SCREEN_WIDTH;
     g_orig_rect.h = SCREEN_HEIGHT;
-    g_new_rect.w = g_state.ScreenWidth;
-    g_new_rect.h = g_state.ScreenHeight;
+    g_new_rect.w = g_state.screen_width;
+    g_new_rect.h = g_state.screen_height;
   }
   return 0;
 }
@@ -916,7 +919,8 @@ void frame_refresh_status(int drawflags) {
     if (peripheral_query(disk_default_slot, disk_cmd_get_status,
                          &g_last_disk_status, &size) == peripheral_ok) {
       if (g_last_disk_status.drive0_last_error != disk_err_none &&
-          g_last_disk_status.drive0_last_error != g_drive0_last_reported_error) {
+          g_last_disk_status.drive0_last_error !=
+              g_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 1 error",
             disk_ui_get_error_message(g_last_disk_status.drive0_last_error),
@@ -927,7 +931,8 @@ void frame_refresh_status(int drawflags) {
       }
 
       if (g_last_disk_status.drive1_last_error != disk_err_none &&
-          g_last_disk_status.drive1_last_error != g_drive1_last_reported_error) {
+          g_last_disk_status.drive1_last_error !=
+              g_drive1_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 2 error",
             disk_ui_get_error_message(g_last_disk_status.drive1_last_error),
@@ -937,14 +942,14 @@ void frame_refresh_status(int drawflags) {
         g_drive1_last_reported_error = disk_err_none;
       }
 
-      char s_title[512] = {};
+      char title_buf[512] = {};
       if (g_last_disk_status.drive0_loaded) {
-        snprintf(s_title, sizeof(s_title), "%s - %s", g_app_title,
+        snprintf(title_buf, sizeof(title_buf), "%s - %s", g_app_title,
                  g_last_disk_status.drive0_name);
       } else {
-        snprintf(s_title, sizeof(s_title), "%s", g_app_title);
+        snprintf(title_buf, sizeof(title_buf), "%s", g_app_title);
       }
-      linapple_update_title(s_title);
+      linapple_update_title(title_buf);
     }
   }
   draw_status_area(drawflags);

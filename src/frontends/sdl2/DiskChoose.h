@@ -26,17 +26,17 @@ struct DiskChooseState_t {
 
   // For returning results to the original caller (which is still blocking for
   // now)
-  size_t* p_index_file;
+  size_t* index_file_out;
 };
 
 void DiskChoose_Tick(SDL_Event* event);
 void DiskChoose_Draw();
 
 auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
-                   std::string& filename, bool& isdir, size_t& index_file)
+                     std::string& filename, bool& isdir, size_t& index_file)
     -> bool;
 
 auto choose_image_dialog(int sx, int sy, const std::string& dir, int slot,
-                       FileListGenerator_t* file_list_generator,
-                       std::string& filename, bool& isdir, size_t& index_file)
+                         FileListGenerator_t* file_list_generator,
+                         std::string& filename, bool& isdir, size_t& index_file)
     -> bool;

@@ -16,7 +16,6 @@ enum class LogLevel_t {
 
 using LogCallback_t = void (*)(LogLevel_t level, const char* message);
 
-
 namespace Logger {
 
 constexpr size_t k_max_stack_log_size = 1024;

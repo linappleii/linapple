@@ -62,7 +62,7 @@ typedef struct {
 struct Peripheral_t;
 
 typedef struct Peripheral_t {
-  int AbiVersion_t;
+  int abi_version;
   const char* id;           // Namespaced ID (e.g. "linapple.disk_ii")
   const char* name;         // Human readable name
   const char* description;  // Short summary
@@ -77,11 +77,11 @@ typedef struct Peripheral_t {
   void (*on_vblank)(void* instance, bool vblank);
   PeripheralStatus_t (*save_state)(void* instance, void* buffer, size_t* size);
   PeripheralStatus_t (*load_state)(void* instance, const void* buffer,
-                                 size_t size);
-  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id, const void* data,
-                              size_t size);
+                                   size_t size);
+  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id,
+                                const void* data, size_t size);
   PeripheralStatus_t (*query)(void* instance, uint32_t cmd_id, void* out,
-                            size_t* out_size);
+                              size_t* out_size);
 } Peripheral_t;
 
 #ifdef BUILD_SHARED_PERIPHERAL
@@ -91,14 +91,14 @@ typedef struct Peripheral_t {
   }
 #else
 #ifdef __cplusplus
-#define PERIPHERAL_REGISTER(peripheral_struct)              \
-  namespace {                                               \
+#define PERIPHERAL_REGISTER(peripheral_struct)               \
+  namespace {                                                \
   struct PeripheralRegistration_t##peripheral_struct {       \
     PeripheralRegistration_t##peripheral_struct() noexcept { \
-      peripheral_register_builtin(                          \
-          const_cast<Peripheral_t*>(&(peripheral_struct))); \
-    }                                                       \
-  } g_registration_##peripheral_struct;                     \
+      peripheral_register_builtin(                           \
+          const_cast<Peripheral_t*>(&(peripheral_struct)));  \
+    }                                                        \
+  } g_registration_##peripheral_struct;                      \
   }
 #else
 #define PERIPHERAL_REGISTER(peripheral_struct)                              \
@@ -114,16 +114,16 @@ typedef struct Peripheral_t {
 int peripheral_register(Peripheral_t* api, int slot);
 void peripheral_register_builtin(Peripheral_t* api);
 int peripheral_unregister(int slot);
-PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id, const void* data,
-                                    size_t size);
+PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
+                                      const void* data, size_t size);
 PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
-                                  size_t* out_size);
+                                    size_t* out_size);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 void peripheral_load_state(int slot, const void* buffer, size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,
-                                size_t* size);
-void peripheral_load_state_by_name(int slot, const char* name, const void* buffer,
-                                size_t size);
+                                   size_t* size);
+void peripheral_load_state_by_name(int slot, const char* name,
+                                   const void* buffer, size_t size);
 void peripheral_get_manifest(void* manifest);
 bool peripheral_verify_manifest(const void* manifest);
 

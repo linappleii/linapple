@@ -21,7 +21,8 @@ WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
   (void)mod;
   (void)is_down;
 }
-WEAK auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {  // NOLINT
+WEAK auto frontend_to_core_key(int key, uint32_t mod)
+    -> LinAppleKey_t {  // NOLINT
   (void)key;
   (void)mod;
   return LINAPPLE_KEY_UNKNOWN;
@@ -43,8 +44,8 @@ WEAK auto super_serial_frontend_initialize(const char* p) -> bool {
 }
 WEAK auto super_serial_frontend_close() -> void {}
 WEAK auto super_serial_frontend_is_active() -> bool { return false; }
-WEAK auto super_serial_frontend_update_state(uint32_t b, uint32_t d, int p, int s)
-    -> void {  // NOLINT
+WEAK auto super_serial_frontend_update_state(uint32_t b, uint32_t d, int p,
+                                             int s) -> void {  // NOLINT
   (void)b;
   (void)d;
   (void)p;
@@ -76,7 +77,7 @@ WEAK auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
 WEAK auto get_mem_ptr(uint16_t) -> uint8_t* { return nullptr; }
 WEAK auto mem_get_cx_rom_peripheral() -> uint8_t* { return nullptr; }
 WEAK auto register_io_handler(uint32_t, iofunction, iofunction, iofunction,
-                            iofunction, void*, uint8_t*) -> void {}
+                              iofunction, void*, uint8_t*) -> void {}
 WEAK auto register_direct_io_handler(uint16_t, iofunction, iofunction, void*)
     -> void {}
 

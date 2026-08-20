@@ -4,14 +4,12 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "core/AudioMixer.h"
-#include "apple2/Video.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/Video.h"
+#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
+#include "core/Util_Path.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
@@ -71,15 +69,16 @@ auto ds_init() -> bool {
   SDL_PauseAudioDevice(g_audioDevice, 0);
   g_ds_available = true;
 
-  linapple_set_audio_callback([](const int16_t* samples,
-                               size_t num_samples) -> void {
-    audio_mixer_upload_speaker_samples(samples, static_cast<uint32_t>(num_samples));
-  });
+  linapple_set_audio_callback(
+      [](const int16_t* samples, size_t num_samples) -> void {
+        audio_mixer_upload_speaker_samples(samples,
+                                           static_cast<uint32_t>(num_samples));
+      });
 
   linapple_set_mock_audio_callback(
       [](const int16_t* samples, size_t num_samples) -> void {
-        audio_mixer_upload_mockingboard_samples(samples,
-                                            static_cast<uint32_t>(num_samples));
+        audio_mixer_upload_mockingboard_samples(
+            samples, static_cast<uint32_t>(num_samples));
       });
 
   return true;
@@ -127,8 +126,8 @@ auto main(int argc, char* argv[]) -> int {
     return 0;
   }
 
-  // Store the audio dump file name explicitly since AppConfig_t only holds it in
-  // a buffer and ds_init needs it later. Alternatively we could access
+  // Store the audio dump file name explicitly since AppConfig_t only holds it
+  // in a buffer and ds_init needs it later. Alternatively we could access
   // config.audio_dump_path directly but it's cleaner to keep the frontend's
   // specific state separate if it uses a heap string.
   if (config.audio_dump_path.at(0) != '\0') {

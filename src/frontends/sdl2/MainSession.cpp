@@ -5,16 +5,14 @@
 #include <cstdio>
 #include <string>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Log.h"
 #include "core/ProgramLoader.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 #include "frontends/common/AppController.h"
 #include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/Frontend.h"
@@ -32,7 +30,6 @@ void set_current_clk_6502() {
   constexpr double mhz_to_hz = 1000000.0;
   g_current_clk_6502 = apple2_clock_mhz * mhz_to_hz;
 }
-
 
 void SingleStep(bool is_reinit) {
   (void)is_reinit;

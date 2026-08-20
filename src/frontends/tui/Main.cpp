@@ -19,7 +19,8 @@ auto VideoCallback(const uint32_t* pixels, int width, int height, int pitch)
 }
 
 auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
-  audio_mixer_upload_speaker_samples(samples, static_cast<uint32_t>(num_samples));
+  audio_mixer_upload_speaker_samples(samples,
+                                     static_cast<uint32_t>(num_samples));
 }
 
 auto MockAudioCallback(const int16_t* samples, size_t num_samples) -> void {

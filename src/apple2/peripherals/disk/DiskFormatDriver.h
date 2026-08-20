@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
-// Justification: This header defines a language-neutral C ABI. C system
-// headers, typedefs, and C-style return types are required for compatibility
-// with C-based consumers.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type) Justification: This header defines a
+// language-neutral C ABI. C system headers, typedefs, and C-style return types
+// are required for compatibility with C-based consumers.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -40,7 +40,7 @@ typedef struct DiskFluxBit_s DiskFluxBit_t;
  * probing, lifecycle management, and track-level I/O.
  */
 typedef struct DiskFormatDriver_t {
-  int AbiVersion_t;
+  int abi_version;
   uint32_t capabilities;
   const char* name;
   const char* const* creatable_exts;
@@ -64,8 +64,8 @@ typedef struct DiskFormatDriver_t {
 
   DiskError_e (*create)(const char* path);
 
-  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id, const void* data,
-                              size_t size);
+  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id,
+                                const void* data, size_t size);
 
   void (*read_flux_bit)(void* instance, uint32_t elapsed_cycles,
                         DiskFluxBit_t* out_flux);
@@ -75,4 +75,5 @@ typedef struct DiskFormatDriver_t {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
+// modernize-use-trailing-return-type)

@@ -1,31 +1,34 @@
-#include <vector>
+#include <cstdint>
 #include <map>
 #include <string>
-#include <cstdint>
+#include <vector>
 
-using std::vector;
 using std::map;
 using std::string;
+using std::vector;
 
 #pragma once
 
 // Addressing
 
 enum {
-  MAX_OPMODE_FORMAT = 12, MAX_OPMODE_NAME = 32, NO_6502_TARGET = -1, _6502_NUM_FLAGS = 8,
+  MAX_OPMODE_FORMAT = 12,
+  MAX_OPMODE_NAME = 32,
+  NO_6502_TARGET = -1,
+  _6502_NUM_FLAGS = 8,
   CONSOLE_WIDTH = 80
 };
 
 enum RangeType_t {
-  RANGE_MISSING_ARG_2 = 0, // error
-  RANGE_HAS_LEN, // valid case 1
-  RANGE_HAS_END, // valid case 2
+  RANGE_MISSING_ARG_2 = 0,  // error
+  RANGE_HAS_LEN,            // valid case 1
+  RANGE_HAS_END,            // valid case 2
 };
 
 struct AddressingMode_t {
-  char m_sFormat[MAX_OPMODE_FORMAT];
-  int m_nBytes;
-  char m_sName[MAX_OPMODE_NAME];
+  char format[MAX_OPMODE_FORMAT];
+  int bytes;
+  char name[MAX_OPMODE_NAME];
 };
 
 /*
@@ -85,52 +88,62 @@ od = 10
     Y = Offset Y Register
     Z = Zeropage
 */
-enum AddressingMode_e { // ADDRESSING_MODES_e
-  AM_IMPLIED // Note: SetDebugBreakOnInvalid() assumes this order of first 4 entries
-  , AM_1    //    Invalid 1 Byte
-  , AM_2    //    Invalid 2 Bytes
-  , AM_3    //    Invalid 3 Bytes
-  , AM_M    //  4 #Immediate
-  , AM_A    //  5 $Absolute
-  , AM_Z    //  6 Zeropage
-  , AM_AX   //  7 Absolute, X
-  , AM_AY   //  8 Absolute, Y
-  , AM_ZX   //  9 Zeropage, X
-  , AM_ZY   // 10 Zeropage, Y
-  , AM_R    // 11 Relative
-  , AM_IZX  // 12 Indexed (Zeropage Indirect, X)
-  , AM_IAX  // 13 Indexed (Absolute Indirect, X)
-  , AM_NZY  // 14 Indirect (Zeropage) Indexed, Y
-  , AM_NZ   // 15 Indirect (Zeropage)
-  , AM_NA   // 16 Indirect (Absolute) i.e. JMP
-  , AM_DATA // Not an opcode! Markup as data
-  , NUM_ADDRESSING_MODES,
+enum AddressingMode_e {  // ADDRESSING_MODES_e
+  AM_IMPLIED  // Note: SetDebugBreakOnInvalid() assumes this order of first 4
+              // entries
+  ,
+  AM_1  //    Invalid 1 Byte
+  ,
+  AM_2  //    Invalid 2 Bytes
+  ,
+  AM_3  //    Invalid 3 Bytes
+  ,
+  AM_M  //  4 #Immediate
+  ,
+  AM_A  //  5 $Absolute
+  ,
+  AM_Z  //  6 Zeropage
+  ,
+  AM_AX  //  7 Absolute, X
+  ,
+  AM_AY  //  8 Absolute, Y
+  ,
+  AM_ZX  //  9 Zeropage, X
+  ,
+  AM_ZY  // 10 Zeropage, Y
+  ,
+  AM_R  // 11 Relative
+  ,
+  AM_IZX  // 12 Indexed (Zeropage Indirect, X)
+  ,
+  AM_IAX  // 13 Indexed (Absolute Indirect, X)
+  ,
+  AM_NZY  // 14 Indirect (Zeropage) Indexed, Y
+  ,
+  AM_NZ  // 15 Indirect (Zeropage)
+  ,
+  AM_NA  // 16 Indirect (Absolute) i.e. JMP
+  ,
+  AM_DATA  // Not an opcode! Markup as data
+  ,
+  NUM_ADDRESSING_MODES,
   NUM_OPMODES = NUM_ADDRESSING_MODES,
-  AM_I = NUM_ADDRESSING_MODES, // for assembler
+  AM_I = NUM_ADDRESSING_MODES,  // for assembler
 };
 
 // Assembler
-enum Prompt_e {
-  PROMPT_COMMAND,
-  PROMPT_ASSEMBLER,
-  NUM_PROMPTS
-};
+enum Prompt_e { PROMPT_COMMAND, PROMPT_ASSEMBLER, NUM_PROMPTS };
 
-enum
-{
-        // raised from 13 to 31 for Contiki
-        MAX_SYMBOLS_LEN = 31
+enum {
+  // raised from 13 to 31 for Contiki
+  MAX_SYMBOLS_LEN = 31
 };
 
 // Bookmarks
-enum {
-  MAX_BOOKMARKS = 10
-};
+enum { MAX_BOOKMARKS = 10 };
 
 // Breakpoints
-enum {
-  MAX_BREAKPOINTS = 16
-};
+enum { MAX_BREAKPOINTS = 16 };
 
 /*
   Breakpoints are now in a tri-state.
@@ -152,18 +165,18 @@ enum BreakpointSource_t {
   BP_SRC_REG_X,
   BP_SRC_REG_Y,
 
-  BP_SRC_REG_PC, // Program Counter
-  BP_SRC_REG_S, // Stack Counter
+  BP_SRC_REG_PC,  // Program Counter
+  BP_SRC_REG_S,   // Stack Counter
 
-  BP_SRC_REG_P, // Processor Status
-  BP_SRC_FLAG_C, // Carry
-  BP_SRC_FLAG_Z, // Zero
-  BP_SRC_FLAG_I, // Interrupt
-  BP_SRC_FLAG_D, // Decimal
-  BP_SRC_FLAG_B, // Break
-  BP_SRC_FLAG_R, // Reserved
-  BP_SRC_FLAG_V, // Overflow
-  BP_SRC_FLAG_N, // Sign
+  BP_SRC_REG_P,   // Processor Status
+  BP_SRC_FLAG_C,  // Carry
+  BP_SRC_FLAG_Z,  // Zero
+  BP_SRC_FLAG_I,  // Interrupt
+  BP_SRC_FLAG_D,  // Decimal
+  BP_SRC_FLAG_B,  // Break
+  BP_SRC_FLAG_R,  // Reserved
+  BP_SRC_FLAG_V,  // Overflow
+  BP_SRC_FLAG_N,  // Sign
 
   BP_SRC_OPCODE,
   BP_SRC_MEM_RW,
@@ -177,26 +190,27 @@ enum BreakpointSource_t {
 // Note: Order must much _PARAM_BREAKPOINT_*
 // Note: Order must match g_breakpoint_symbols
 enum BreakpointOperator_t {
-  BP_OP_LESS_EQUAL, // <= REG
-  BP_OP_LESS_THAN, // <  REG
-  BP_OP_EQUAL, // =  REG
-  BP_OP_NOT_EQUAL, // != REG
-  BP_OP_GREATER_THAN, // >  REG
-  BP_OP_GREATER_EQUAL, // >= REG
-  BP_OP_READ, // @  MEM @ ? *
-  BP_OP_WRITE, // *  MEM @ ? *
-  BP_OP_READ_WRITE, // ?  MEM @ ? *
+  BP_OP_LESS_EQUAL,     // <= REG
+  BP_OP_LESS_THAN,      // <  REG
+  BP_OP_EQUAL,          // =  REG
+  BP_OP_NOT_EQUAL,      // != REG
+  BP_OP_GREATER_THAN,   // >  REG
+  BP_OP_GREATER_EQUAL,  // >= REG
+  BP_OP_READ,           // @  MEM @ ? *
+  BP_OP_WRITE,          // *  MEM @ ? *
+  BP_OP_READ_WRITE,     // ?  MEM @ ? *
   NUM_BREAKPOINT_OPERATORS
 };
 
 struct Breakpoint_t {
-  uint16_t address; // for registers, functions as nValue
+  uint16_t address;  // for registers, functions as nValue
   uint16_t nLength;
   BreakpointSource_t eSource;
   BreakpointOperator_t eOperator;
-  bool bSet; // used to be called enabled pre 2.0
+  bool bSet;  // used to be called enabled pre 2.0
   bool bEnabled;
-  bool bTemp;    // If true then remove BP when hit or stepping cancelled (eg. G xxxx)
+  bool bTemp;  // If true then remove BP when hit or stepping cancelled (eg. G
+               // xxxx)
 };
 
 struct BreakpointInfo_t {
@@ -211,9 +225,7 @@ typedef Breakpoint_t ZeroPagePointers_t;
 
 // Config
 
-enum ConfigSave_t {
-  CONFIG_SAVE_FILE_CREATE, CONFIG_SAVE_FILE_APPEND
-};
+enum ConfigSave_t { CONFIG_SAVE_FILE_CREATE, CONFIG_SAVE_FILE_APPEND };
 
 // Commands
 
@@ -240,27 +252,31 @@ enum Update_e {
 typedef int Update_t;
 
 enum {
-  MAX_COMMAND_LEN = 12, MAX_ARGS = 32, ARG_SYNTAX_ERROR = -1, MAX_ARG_LEN = 56, // was 12, extended to allow font names
+  MAX_COMMAND_LEN = 12,
+  MAX_ARGS = 32,
+  ARG_SYNTAX_ERROR = -1,
+  MAX_ARG_LEN = 56,  // was 12, extended to allow font names
 };
 
 // NOTE: All Commands return flags of what needs to be redrawn
 typedef Update_t (*CmdFuncPtr_t)(int);
 
 struct Command_t {
-  char m_sName[MAX_COMMAND_LEN];
-  CmdFuncPtr_t pFunction;
-  int iCommand;     // offset (enum) for direct command name lookup
-  const char *pHelpSummary; // 1 line help summary
+  char name[MAX_COMMAND_LEN];
+  CmdFuncPtr_t function;
+  int command_id;            // offset (enum) for direct command name lookup
+  const char* help_summary;  // 1 line help summary
 };
 
 // Commands sorted by Category
-// NOTE: Commands_e and g_commands[] order _MUST_ match !!! Aliases are listed at the end
+// NOTE: Commands_e and g_commands[] order _MUST_ match !!! Aliases are listed
+// at the end
 enum Commands_e {
   // Assembler
   CMD_ASSEMBLE,
   // CPU
-  CMD_CURSOR_JUMP_PC, // Shift
-  CMD_CURSOR_SET_PC,  // Ctrl
+  CMD_CURSOR_JUMP_PC,  // Shift
+  CMD_CURSOR_SET_PC,   // Ctrl
   CMD_GO_NORMAL_SPEED,
   CMD_GO_FULL_SPEED,
   CMD_IN,
@@ -292,13 +308,13 @@ enum Commands_e {
   CMD_BREAK_INVALID,
   CMD_BREAK_OPCODE,
   CMD_BREAKPOINT,
-  CMD_BREAKPOINT_ADD_SMART, // smart breakpoint
-  CMD_BREAKPOINT_ADD_REG,   // break on: PC == Address (fetch/execute)
-  CMD_BREAKPOINT_ADD_PC,    // alias BPX = BA
-  CMD_BREAKPOINT_ADD_IO,  // break on: [$C000-$C7FF] Load/Store
-  CMD_BREAKPOINT_ADD_MEM, // break on: [$0000-$FFFF], excluding IO
-  CMD_BREAKPOINT_ADD_MEMR, // break on read on: [$0000-$FFFF], excluding IO
-  CMD_BREAKPOINT_ADD_MEMW, // break on write on: [$0000-$FFFF], excluding IO
+  CMD_BREAKPOINT_ADD_SMART,  // smart breakpoint
+  CMD_BREAKPOINT_ADD_REG,    // break on: PC == Address (fetch/execute)
+  CMD_BREAKPOINT_ADD_PC,     // alias BPX = BA
+  CMD_BREAKPOINT_ADD_IO,     // break on: [$C000-$C7FF] Load/Store
+  CMD_BREAKPOINT_ADD_MEM,    // break on: [$0000-$FFFF], excluding IO
+  CMD_BREAKPOINT_ADD_MEMR,   // break on read on: [$0000-$FFFF], excluding IO
+  CMD_BREAKPOINT_ADD_MEMW,   // break on write on: [$0000-$FFFF], excluding IO
   CMD_BREAKPOINT_CLEAR,
   CMD_BREAKPOINT_DISABLE,
   CMD_BREAKPOINT_EDIT,
@@ -307,40 +323,40 @@ enum Commands_e {
   CMD_BREAKPOINT_SAVE,
   // Config (debugger settings)
   CMD_BENCHMARK,
-  CMD_CONFIG_BW,         // BW    # rr gg bb
-  CMD_CONFIG_COLOR,      // COLOR # rr gg bb
+  CMD_CONFIG_BW,     // BW    # rr gg bb
+  CMD_CONFIG_COLOR,  // COLOR # rr gg bb
   CMD_CONFIG_DISASM,
   CMD_CONFIG_FONT,
-  CMD_CONFIG_HCOLOR,     // TODO Video :: SETFRAMECOLOR(#,R,G,B)
+  CMD_CONFIG_HCOLOR,  // TODO Video :: SETFRAMECOLOR(#,R,G,B)
   CMD_CONFIG_LOAD,
-  CMD_CONFIG_MONOCHROME, // MONO  # rr gg bb
+  CMD_CONFIG_MONOCHROME,  // MONO  # rr gg bb
   CMD_CONFIG_SAVE,
   CMD_CONFIG_GET_DEBUG_DIR,
   CMD_CONFIG_SET_DEBUG_DIR,
   // Cursor
   CMD_CURSOR_JUMP_RET_ADDR,
-  CMD_CURSOR_LINE_UP,   // Smart Line Up
-  CMD_CURSOR_LINE_UP_1, // Shift
-  CMD_CURSOR_LINE_DOWN, // Smart Line Down
-  CMD_CURSOR_LINE_DOWN_1, // Shift
+  CMD_CURSOR_LINE_UP,      // Smart Line Up
+  CMD_CURSOR_LINE_UP_1,    // Shift
+  CMD_CURSOR_LINE_DOWN,    // Smart Line Down
+  CMD_CURSOR_LINE_DOWN_1,  // Shift
   CMD_CURSOR_PAGE_UP,
-  CMD_CURSOR_PAGE_UP_256, // up to nearest page boundary
-  CMD_CURSOR_PAGE_UP_4K, // Up to nearest 4K boundary
+  CMD_CURSOR_PAGE_UP_256,  // up to nearest page boundary
+  CMD_CURSOR_PAGE_UP_4K,   // Up to nearest 4K boundary
   CMD_CURSOR_PAGE_DOWN,
-  CMD_CURSOR_PAGE_DOWN_256, // Down to nearest page boundary
-  CMD_CURSOR_PAGE_DOWN_4K, // Down to nearest 4K boundary
+  CMD_CURSOR_PAGE_DOWN_256,  // Down to nearest page boundary
+  CMD_CURSOR_PAGE_DOWN_4K,   // Down to nearest 4K boundary
   // Cycles info
   CMD_CYCLES_INFO,
   // Disassembler Data
   CMD_DISASM_DATA,
   CMD_DISASM_CODE,
   CMD_DISASM_LIST,
-  CMD_DEFINE_DATA_BYTE1,    // DB $00,$04,$08,$0C,$10,$14,$18,$1C
+  CMD_DEFINE_DATA_BYTE1,  // DB $00,$04,$08,$0C,$10,$14,$18,$1C
   CMD_DEFINE_DATA_BYTE2,
   CMD_DEFINE_DATA_BYTE4,
   CMD_DEFINE_DATA_BYTE8,
 
-  CMD_DEFINE_DATA_WORD1,    // DW $300
+  CMD_DEFINE_DATA_WORD1,  // DW $300
   CMD_DEFINE_DATA_WORD2,
   CMD_DEFINE_DATA_WORD4,
   CMD_DEFINE_DATA_STR,
@@ -348,40 +364,40 @@ enum Commands_e {
   //    , CMD_DEFINE_DATA_FACU // FAC Unpacked
   //    , CMD_DATA_DEFINE_ADDR_BYTE_L  // DB< address symbol
   //    , CMD_DATA_DEFINE_ADDR_BYTE_H  // DB> address symbol
-  CMD_DEFINE_ADDR_WORD,    // .DA address symbol
+  CMD_DEFINE_ADDR_WORD,  // .DA address symbol
   // Disk
   CMD_DISK,
   // Flags - CPU
-  CMD_FLAG_CLEAR, // Flag order must match g_flag_names CZIDBRVN
-  CMD_FLAG_CLR_C, // 8
-  CMD_FLAG_CLR_Z, // 7
-  CMD_FLAG_CLR_I, // 6
-  CMD_FLAG_CLR_D, // 5
-  CMD_FLAG_CLR_B, // 4
-  CMD_FLAG_CLR_R, // 3
-  CMD_FLAG_CLR_V, // 2
-  CMD_FLAG_CLR_N, // 1
-  CMD_FLAG_SET,   // Flag order must match g_flag_names CZIDBRVN
-  CMD_FLAG_SET_C, // 8
-  CMD_FLAG_SET_Z, // 7
-  CMD_FLAG_SET_I, // 6
-  CMD_FLAG_SET_D, // 5
-  CMD_FLAG_SET_B, // 4
-  CMD_FLAG_SET_R, // 3
-  CMD_FLAG_SET_V, // 2
-  CMD_FLAG_SET_N, // 1
+  CMD_FLAG_CLEAR,  // Flag order must match g_flag_names CZIDBRVN
+  CMD_FLAG_CLR_C,  // 8
+  CMD_FLAG_CLR_Z,  // 7
+  CMD_FLAG_CLR_I,  // 6
+  CMD_FLAG_CLR_D,  // 5
+  CMD_FLAG_CLR_B,  // 4
+  CMD_FLAG_CLR_R,  // 3
+  CMD_FLAG_CLR_V,  // 2
+  CMD_FLAG_CLR_N,  // 1
+  CMD_FLAG_SET,    // Flag order must match g_flag_names CZIDBRVN
+  CMD_FLAG_SET_C,  // 8
+  CMD_FLAG_SET_Z,  // 7
+  CMD_FLAG_SET_I,  // 6
+  CMD_FLAG_SET_D,  // 5
+  CMD_FLAG_SET_B,  // 4
+  CMD_FLAG_SET_R,  // 3
+  CMD_FLAG_SET_V,  // 2
+  CMD_FLAG_SET_N,  // 1
   // Help
   CMD_HELP_LIST,
   CMD_HELP_SPECIFIC,
   CMD_VERSION,
-  CMD_MOTD, // Message of the Day
+  CMD_MOTD,  // Message of the Day
   // Memory
   CMD_MEMORY_COMPARE,
-  CMD_MEM_MINI_DUMP_HEX_1, // Mini Memory Dump 1
-  CMD_MEM_MINI_DUMP_HEX_2, // Mini Memory Dump 2
-  CMD_MEM_MINI_DUMP_ASCII_1,    // ASCII
+  CMD_MEM_MINI_DUMP_HEX_1,    // Mini Memory Dump 1
+  CMD_MEM_MINI_DUMP_HEX_2,    // Mini Memory Dump 2
+  CMD_MEM_MINI_DUMP_ASCII_1,  // ASCII
   CMD_MEM_MINI_DUMP_ASCII_2,
-  CMD_MEM_MINI_DUMP_APPLE_1, // Low-Bit inverse, High-Bit normal
+  CMD_MEM_MINI_DUMP_APPLE_1,  // Low-Bit inverse, High-Bit normal
   CMD_MEM_MINI_DUMP_APPLE_2,
   CMD_MEMORY_EDIT,
   CMD_MEMORY_ENTER_BYTE,
@@ -484,19 +500,19 @@ enum Commands_e {
 Update_t CmdAssemble(int nArgs);
 
 // Disassembler Data
-Update_t CmdDisasmDataDefCode     (int nArgs);
-Update_t CmdDisasmDataList        (int nArgs);
+Update_t CmdDisasmDataDefCode(int nArgs);
+Update_t CmdDisasmDataList(int nArgs);
 
-Update_t CmdDisasmDataDefByte1    (int nArgs);
-Update_t CmdDisasmDataDefByte2    (int nArgs);
-Update_t CmdDisasmDataDefByte4    (int nArgs);
-Update_t CmdDisasmDataDefByte8    (int nArgs);
+Update_t CmdDisasmDataDefByte1(int nArgs);
+Update_t CmdDisasmDataDefByte2(int nArgs);
+Update_t CmdDisasmDataDefByte4(int nArgs);
+Update_t CmdDisasmDataDefByte8(int nArgs);
 
-Update_t CmdDisasmDataDefWord1    (int nArgs);
-Update_t CmdDisasmDataDefWord2    (int nArgs);
-Update_t CmdDisasmDataDefWord4    (int nArgs);
+Update_t CmdDisasmDataDefWord1(int nArgs);
+Update_t CmdDisasmDataDefWord2(int nArgs);
+Update_t CmdDisasmDataDefWord4(int nArgs);
 
-Update_t CmdDisasmDataDefString   (int nArgs);
+Update_t CmdDisasmDataDefString(int nArgs);
 
 Update_t CmdDisasmDataDefAddress8H(int nArgs);
 Update_t CmdDisasmDataDefAddress8L(int nArgs);
@@ -505,10 +521,10 @@ Update_t CmdDisasmDataDefAddress16(int nArgs);
 // CPU
 Update_t CmdCursorJumpPC(int nArgs);
 Update_t CmdCursorSetPC(int nArgs);
-Update_t CmdBreakInvalid(int nArgs); // Breakpoint IFF Full-speed!
-Update_t CmdBreakOpcode(int nArgs); // Breakpoint IFF Full-speed!
-Update_t CmdGoNormalSpeed      (int nArgs);
-Update_t CmdGoFullSpeed        (int nArgs);
+Update_t CmdBreakInvalid(int nArgs);  // Breakpoint IFF Full-speed!
+Update_t CmdBreakOpcode(int nArgs);   // Breakpoint IFF Full-speed!
+Update_t CmdGoNormalSpeed(int nArgs);
+Update_t CmdGoFullSpeed(int nArgs);
 
 Update_t CmdIn(int nArgs);
 
@@ -529,7 +545,7 @@ Update_t CmdTraceFile(int nArgs);
 
 Update_t CmdTraceLine(int nArgs);
 
-Update_t CmdUnassemble(int nArgs); // code dump, aka, Unassemble
+Update_t CmdUnassemble(int nArgs);  // code dump, aka, Unassemble
 // Bookmarks
 Update_t CmdBookmark(int nArgs);
 
@@ -554,13 +570,14 @@ Update_t CmdBreakpointAddPC(int nArgs);
 
 Update_t CmdBreakpointAddIO(int nArgs);
 
-Update_t CmdBreakpointAddMem(int nArgs, BreakpointSource_t bpSrc = BP_SRC_MEM_RW);
+Update_t CmdBreakpointAddMem(int nArgs,
+                             BreakpointSource_t bpSrc = BP_SRC_MEM_RW);
 
-Update_t CmdBreakpointAddMemA  (int nArgs);
+Update_t CmdBreakpointAddMemA(int nArgs);
 
-Update_t CmdBreakpointAddMemR  (int nArgs);
+Update_t CmdBreakpointAddMemR(int nArgs);
 
-Update_t CmdBreakpointAddMemW  (int nArgs);
+Update_t CmdBreakpointAddMemW(int nArgs);
 
 Update_t CmdBreakpointClear(int nArgs);
 
@@ -576,8 +593,9 @@ Update_t CmdBreakpointSave(int nArgs);
 
 // Benchmark
 Update_t CmdBenchmark(int nArgs);
-Update_t CmdBenchmarkStart(int nArgs); //Update_t CmdSetupBenchmark (int nArgs);
-Update_t CmdBenchmarkStop(int nArgs); //Update_t CmdExtBenchmark (int nArgs);
+Update_t CmdBenchmarkStart(
+    int nArgs);  // Update_t CmdSetupBenchmark (int nArgs);
+Update_t CmdBenchmarkStop(int nArgs);  // Update_t CmdExtBenchmark (int nArgs);
 Update_t CmdProfile(int nArgs);
 Update_t CmdProfileStart(int nArgs);
 Update_t CmdProfileStop(int nArgs);
@@ -591,8 +609,8 @@ Update_t CmdConfigLoad(int nArgs);
 Update_t CmdConfigSave(int nArgs);
 Update_t CmdConfigSetFont(int nArgs);
 Update_t CmdConfigGetFont(int nArgs);
-Update_t CmdConfigGetDebugDir  (int nArgs);
-Update_t CmdConfigSetDebugDir  (int nArgs);
+Update_t CmdConfigGetDebugDir(int nArgs);
+Update_t CmdConfigSetDebugDir(int nArgs);
 
 // Cursor
 Update_t CmdCursorFollowTarget(int nArgs);
@@ -644,7 +662,7 @@ Update_t CmdMemoryLoad(int nArgs);
 Update_t CmdMemoryMove(int nArgs);
 Update_t CmdMemorySave(int nArgs);
 Update_t CmdMemorySearch(int nArgs);
-Update_t _SearchMemoryDisplay  (int nArgs=0); // TODO: CLEANUP
+Update_t _SearchMemoryDisplay(int nArgs = 0);  // TODO: CLEANUP
 Update_t CmdMemorySearchAscii(int nArgs);
 Update_t CmdMemorySearchApple(int nArgs);
 Update_t CmdMemorySearchHex(int nArgs);
@@ -686,33 +704,33 @@ Update_t CmdSymbolsInfo(int nArgs);
 Update_t CmdSymbolsMain(int nArgs);
 Update_t CmdSymbolsUser(int nArgs);
 Update_t CmdSymbolsSave(int nArgs);
-Update_t CmdSymbolsCommand     (int nArgs);
-//Update_t CmdSymbolsSource(int nArgs);
+Update_t CmdSymbolsCommand(int nArgs);
+// Update_t CmdSymbolsSource(int nArgs);
 
 // Video-scanner info
-Update_t CmdVideoScannerInfo   (int nArgs);
+Update_t CmdVideoScannerInfo(int nArgs);
 
 // View
-Update_t CmdViewOutput_Text4X  (int nArgs);
-Update_t CmdViewOutput_Text41  (int nArgs);
-Update_t CmdViewOutput_Text42  (int nArgs);
-Update_t CmdViewOutput_Text8X  (int nArgs);
-Update_t CmdViewOutput_Text81  (int nArgs);
-Update_t CmdViewOutput_Text82  (int nArgs);
+Update_t CmdViewOutput_Text4X(int nArgs);
+Update_t CmdViewOutput_Text41(int nArgs);
+Update_t CmdViewOutput_Text42(int nArgs);
+Update_t CmdViewOutput_Text8X(int nArgs);
+Update_t CmdViewOutput_Text81(int nArgs);
+Update_t CmdViewOutput_Text82(int nArgs);
 
-Update_t CmdViewOutput_GRX     (int nArgs);
-Update_t CmdViewOutput_GR1     (int nArgs);
-Update_t CmdViewOutput_GR2     (int nArgs);
-Update_t CmdViewOutput_DGRX    (int nArgs);
-Update_t CmdViewOutput_DGR1    (int nArgs);
-Update_t CmdViewOutput_DGR2    (int nArgs);
+Update_t CmdViewOutput_GRX(int nArgs);
+Update_t CmdViewOutput_GR1(int nArgs);
+Update_t CmdViewOutput_GR2(int nArgs);
+Update_t CmdViewOutput_DGRX(int nArgs);
+Update_t CmdViewOutput_DGR1(int nArgs);
+Update_t CmdViewOutput_DGR2(int nArgs);
 
-Update_t CmdViewOutput_HGRX    (int nArgs);
-Update_t CmdViewOutput_HGR1    (int nArgs);
-Update_t CmdViewOutput_HGR2    (int nArgs);
-Update_t CmdViewOutput_DHGRX   (int nArgs);
-Update_t CmdViewOutput_DHGR1   (int nArgs);
-Update_t CmdViewOutput_DHGR2   (int nArgs);
+Update_t CmdViewOutput_HGRX(int nArgs);
+Update_t CmdViewOutput_HGR1(int nArgs);
+Update_t CmdViewOutput_HGR2(int nArgs);
+Update_t CmdViewOutput_DHGRX(int nArgs);
+Update_t CmdViewOutput_DHGR1(int nArgs);
+Update_t CmdViewOutput_DHGR2(int nArgs);
 // Watch
 Update_t CmdWatch(int nArgs);
 
@@ -792,57 +810,65 @@ Update_t CmdZeroPageSave(int nArgs);
 Update_t CmdZeroPagePointer(int nArgs);
 
 // Cursor
-enum Cursor_Align_e {
-  CURSOR_ALIGN_TOP, CURSOR_ALIGN_CENTER
-};
+enum Cursor_Align_e { CURSOR_ALIGN_TOP, CURSOR_ALIGN_CENTER };
 
 enum CursorHiLightState_e {
-  CURSOR_NORMAL, // White
-  CURSOR_CPU_PC, // Yellow
-  CURSOR_BREAKPOINT, // Red
+  CURSOR_NORMAL,      // White
+  CURSOR_CPU_PC,      // Yellow
+  CURSOR_BREAKPOINT,  // Red
 };
-
 
 // Disassembly
 
 // Data Disassembler
-enum Nopcode_e
-{
-  _NOP_REMOVED
-  ,NOP_BYTE_1 // 1 bytes/line
-  ,NOP_BYTE_2 // 2 bytes/line
-  ,NOP_BYTE_4 // 4 bytes/line
-  ,NOP_BYTE_8 // 8 bytes/line
-  ,NOP_WORD_1 // 1 words/line = 2 bytes (no symbol lookup)
-  ,NOP_WORD_2 // 2 words/line = 4 bytes
-  ,NOP_WORD_4 // 4 words/line = 8 bytes
-  ,NOP_ADDRESS// 1 word/line  = 2 bytes (with symbol lookup)
-  ,NOP_HEX    // hex string   =16 bytes
-  ,NOP_CHAR   // char string // TODO: FIXME: needed??
-  ,NOP_STRING_ASCII // Low Ascii
-  ,NOP_STRING_APPLE // High Ascii
-  ,NOP_STRING_APPLESOFT // Mixed Low/High
-  ,NOP_FAC
-  ,NOP_SPRITE
-  ,NUM_NOPCODE_TYPES
+enum Nopcode_e {
+  _NOP_REMOVED,
+  NOP_BYTE_1  // 1 bytes/line
+  ,
+  NOP_BYTE_2  // 2 bytes/line
+  ,
+  NOP_BYTE_4  // 4 bytes/line
+  ,
+  NOP_BYTE_8  // 8 bytes/line
+  ,
+  NOP_WORD_1  // 1 words/line = 2 bytes (no symbol lookup)
+  ,
+  NOP_WORD_2  // 2 words/line = 4 bytes
+  ,
+  NOP_WORD_4  // 4 words/line = 8 bytes
+  ,
+  NOP_ADDRESS  // 1 word/line  = 2 bytes (with symbol lookup)
+  ,
+  NOP_HEX  // hex string   =16 bytes
+  ,
+  NOP_CHAR  // char string // TODO: FIXME: needed??
+  ,
+  NOP_STRING_ASCII  // Low Ascii
+  ,
+  NOP_STRING_APPLE  // High Ascii
+  ,
+  NOP_STRING_APPLESOFT  // Mixed Low/High
+  ,
+  NOP_FAC,
+  NOP_SPRITE,
+  NUM_NOPCODE_TYPES
 };
 
 // Disassembler Data
 // type symbol[start:end]
-struct DisasmData_t
-{
-  char sSymbol[ MAX_SYMBOLS_LEN+1 ];
+struct DisasmData_t {
+  char sSymbol[MAX_SYMBOLS_LEN + 1];
 
-  Nopcode_e eElementType ; // eElementType -> iNoptype
-  int       iDirective   ; // iDirective   -> iNopcode
+  Nopcode_e eElementType;  // eElementType -> iNoptype
+  int iDirective;          // iDirective   -> iNopcode
 
-  uint16_t nStartAddress; // link to block [start,end)
-  uint16_t nEndAddress  ;
-  uint16_t nArraySize   ; // Total bytes
+  uint16_t nStartAddress;  // link to block [start,end)
+  uint16_t nEndAddress;
+  uint16_t nArraySize;  // Total bytes
   //  uint16_t nBytePerRow  ; // 1, 8
 
   // with symbol lookup
-  char bSymbolLookup ;
+  char bSymbolLookup;
   uint16_t nTargetAddress;
 
   uint16_t nSpriteW;
@@ -875,19 +901,21 @@ enum DisasmImmediate_e {
 
 enum DisasmTargets_e {
   DISASM_TARGET_OFF = 0,
-  DISASM_TARGET_VAL,  // Note: Also treated as bit flag !!
-  DISASM_TARGET_ADDR, // Note: Also treated as bit flag !!
-  DISASM_TARGET_BOTH,// Note: Also treated as bit flag !!
+  DISASM_TARGET_VAL,   // Note: Also treated as bit flag !!
+  DISASM_TARGET_ADDR,  // Note: Also treated as bit flag !!
+  DISASM_TARGET_BOTH,  // Note: Also treated as bit flag !!
   NUM_DISASM_TARGET_TYPES
 };
 
-enum DisasmDisplay_e // TODO: Prefix enums with DISASM_DISPLAY_
+enum DisasmDisplay_e  // TODO: Prefix enums with DISASM_DISPLAY_
 {
-  MAX_ADDRESS_LEN   = 40,
-  MAX_OPCODES       =  3, // only display 3 opcode bytes -- See FormatOpcodeBytes() // TODO: FIX when showing data hex
-  CHARS_FOR_ADDRESS =  8, // 4 digits + end-of-string + padding
-  MAX_IMMEDIATE_LEN = 20, // Data Disassembly
-  MAX_TARGET_LEN    = MAX_IMMEDIATE_LEN, // Debugger Display: pTarget = line.sTarget
+  MAX_ADDRESS_LEN = 40,
+  MAX_OPCODES = 3,  // only display 3 opcode bytes -- See FormatOpcodeBytes() //
+                    // TODO: FIX when showing data hex
+  CHARS_FOR_ADDRESS = 8,   // 4 digits + end-of-string + padding
+  MAX_IMMEDIATE_LEN = 20,  // Data Disassembly
+  MAX_TARGET_LEN =
+      MAX_IMMEDIATE_LEN,  // Debugger Display: pTarget = line.sTarget
 };
 
 struct DisasmLine_t {
@@ -899,29 +927,31 @@ struct DisasmLine_t {
   char sOpCodes[(MAX_OPCODES * 3) + 1];
 
   // Added for Data Disassembler
-  char sLabel    [ MAX_SYMBOLS_LEN+1 ]; // label is a symbol
+  char sLabel[MAX_SYMBOLS_LEN + 1];  // label is a symbol
 
-  Nopcode_e iNoptype; // basic element type
-  int       iNopcode; // assembler directive / pseudo opcode
-  int       nSlack  ;
+  Nopcode_e iNoptype;  // basic element type
+  int iNopcode;        // assembler directive / pseudo opcode
+  int nSlack;
 
-  char sMnemonic [ MAX_SYMBOLS_LEN+1 ]; // either the real Mnemonic or the Assembler Directive
-  const   DisasmData_t* pDisasmData; // If != nullptr then bytes are marked up as data not code
+  char sMnemonic[MAX_SYMBOLS_LEN +
+                 1];  // either the real Mnemonic or the Assembler Directive
+  const DisasmData_t*
+      pDisasmData;  // If != nullptr then bytes are marked up as data not code
   //
 
-  int  nTarget; // address -> string
-  char sTarget   [ MAX_ADDRESS_LEN ];
+  int nTarget;  // address -> string
+  char sTarget[MAX_ADDRESS_LEN];
 
-  char sTargetOffset[ CHARS_FOR_ADDRESS+3 ]; // +/- 255, realistically +/-1
-  int  nTargetOffset;
+  char sTargetOffset[CHARS_FOR_ADDRESS + 3];  // +/- 255, realistically +/-1
+  int nTargetOffset;
 
-  char sTargetPointer[ CHARS_FOR_ADDRESS ];
-  char sTargetValue  [ CHARS_FOR_ADDRESS ];
-//  char sTargetAddress[ CHARS_FOR_ADDRESS ];
+  char sTargetPointer[CHARS_FOR_ADDRESS];
+  char sTargetValue[CHARS_FOR_ADDRESS];
+  //  char sTargetAddress[ CHARS_FOR_ADDRESS ];
 
-  char sImmediate[4]; // 'c'
+  char sImmediate[4];  // 'c'
   char nImmediate;
-  char sBranch[4]; // ^
+  char sBranch[4];  // ^
 
   bool bTargetImmediate;
   bool bTargetIndirect;
@@ -955,24 +985,26 @@ struct DisasmLine_t {
     bTargetIndirect = false;
     bTargetRelative = false;
     bTargetX = false;
-    bTargetY = false; // need to dislay ",Y"
+    bTargetY = false;  // need to dislay ",Y"
     bTargetValue = false;
   }
 };
 
 // Font
 enum FontType_e {
-  FONT_INFO, FONT_CONSOLE, FONT_DISASM_DEFAULT, FONT_DISASM_BRANCH, NUM_FONTS
+  FONT_INFO,
+  FONT_CONSOLE,
+  FONT_DISASM_DEFAULT,
+  FONT_DISASM_BRANCH,
+  NUM_FONTS
 };
 
-enum {
-  MAX_FONT_NAME = MAX_ARG_LEN
-};
+enum { MAX_FONT_NAME = MAX_ARG_LEN };
 
 enum FontSpacing_e {
-  FONT_SPACING_CLASSIC, // least lines (most spacing)
-  FONT_SPACING_CLEAN, // more lines (minimal spacing)
-  FONT_SPACING_COMPRESSED, // max lines (least spacing)
+  FONT_SPACING_CLASSIC,     // least lines (most spacing)
+  FONT_SPACING_CLEAN,       // more lines (minimal spacing)
+  FONT_SPACING_COMPRESSED,  // max lines (least spacing)
   NUM_FONT_SPACING
 };
 
@@ -981,9 +1013,8 @@ struct FontConfig_t {
   int _nFontWidthAvg;
   int _nFontWidthMax;
   int _nFontHeight;
-  int _nLineHeight; // may or may not include spacer
+  int _nLineHeight;  // may or may not include spacer
 };
-
 
 // Instructions / Opcodes
 #ifdef SUPPORT_Z80_EMU
@@ -996,27 +1027,29 @@ constexpr auto REG_IX = 0xF8;
 #endif
 
 enum MemoryAccess_e {
-  MEM_R = (1 << 0), // Read
-  MEM_W = (1 << 1), // Write
-  MEM_RI = (1 << 2), // Read Implicit (Implied)
-  MEM_WI = (1 << 3), // Write Implicit (Implied)
-  MEM_S = (1 << 4), // Stack (Read/Write)
-  MEM_IM = (1 << 5), // Immediate - Technically reads target byte
+  MEM_R = (1 << 0),   // Read
+  MEM_W = (1 << 1),   // Write
+  MEM_RI = (1 << 2),  // Read Implicit (Implied)
+  MEM_WI = (1 << 3),  // Write Implicit (Implied)
+  MEM_S = (1 << 4),   // Stack (Read/Write)
+  MEM_IM = (1 << 5),  // Immediate - Technically reads target byte
 
   NUM_MEM_ACCESS,
 
   // Alias
-  MEM_READ = (1 << 0), MEM_WRITE = (1 << 1),
+  MEM_READ = (1 << 0),
+  MEM_WRITE = (1 << 1),
 };
 
 enum {
-  NUM_OPCODES = 256, MAX_MNEMONIC_LEN = 3,
+  NUM_OPCODES = 256,
+  MAX_MNEMONIC_LEN = 3,
 };
 
 struct Opcodes_t {
   char sMnemonic[MAX_MNEMONIC_LEN + 1];
   // int16 for structure 8-byte alignment
-  short nAddressMode; // TODO/FIX: nOpmode
+  short nAddressMode;  // TODO/FIX: nOpmode
   short nMemoryAccess;
 };
 
@@ -1027,64 +1060,66 @@ struct Instruction2_t {
 };
 
 enum Opcode_e {
-  OPCODE_BRA     = 0x80,
-  OPCODE_BRK     = 0x00,
-  OPCODE_JSR     = 0x20,
-  OPCODE_RTI     = 0x40,
-  OPCODE_JMP_A   = 0x4C, // Absolute
-  OPCODE_RTS     = 0x60,
-  OPCODE_JMP_NA  = 0x6C, // Indirect Absolute
-  OPCODE_JMP_IAX = 0x7C, // Indexed (Absolute Indirect, X)
-  OPCODE_LDA_A   = 0xAD, // Absolute
-  OPCODE_NOP     = 0xEA // No operation
+  OPCODE_BRA = 0x80,
+  OPCODE_BRK = 0x00,
+  OPCODE_JSR = 0x20,
+  OPCODE_RTI = 0x40,
+  OPCODE_JMP_A = 0x4C,  // Absolute
+  OPCODE_RTS = 0x60,
+  OPCODE_JMP_NA = 0x6C,   // Indirect Absolute
+  OPCODE_JMP_IAX = 0x7C,  // Indexed (Absolute Indirect, X)
+  OPCODE_LDA_A = 0xAD,    // Absolute
+  OPCODE_NOP = 0xEA       // No operation
 };
 
 // Note: "int" causes overflow when profiling for any amount of time.
 // typedef uint32_t Profile_t;
 // i.e.
-//  double nPercent = static_cast<double>(100 * tProfileOpcode.uProfile) / nOpcodeTotal; // overflow
+//  double nPercent = static_cast<double>(100 * tProfileOpcode.uProfile) /
+//  nOpcodeTotal; // overflow
 typedef double Profile_t;
 
 struct ProfileOpcode_t {
-  int m_iOpcode;
-  Profile_t m_nCount; // Histogram
+  int opcode;
+  Profile_t count;  // Histogram
 
   // functor
-  bool operator()(const ProfileOpcode_t &rLHS, const ProfileOpcode_t &rRHS) const {
-    return (rLHS.m_nCount > rRHS.m_nCount);
+  bool operator()(const ProfileOpcode_t& rLHS,
+                  const ProfileOpcode_t& rRHS) const {
+    return (rLHS.count > rRHS.count);
   }
 };
 
 struct ProfileOpmode_t {
-  int m_iOpmode;
-  Profile_t m_nCount; // Histogram
+  int opmode;
+  Profile_t count;  // Histogram
 
   // functor
-  bool operator()(const ProfileOpmode_t &rLHS, const ProfileOpmode_t &rRHS) const {
-    return rLHS.m_nCount > rRHS.m_nCount;
+  bool operator()(const ProfileOpmode_t& rLHS,
+                  const ProfileOpmode_t& rRHS) const {
+    return rLHS.count > rRHS.count;
   }
 };
 
 enum ProfileFormat_e {
-  PROFILE_FORMAT_SPACE, PROFILE_FORMAT_TAB, PROFILE_FORMAT_COMMA,
+  PROFILE_FORMAT_SPACE,
+  PROFILE_FORMAT_TAB,
+  PROFILE_FORMAT_COMMA,
 };
 
 // Memory
 
-const          int _6502_BRANCH_POS      = +127;
-const          int _6502_BRANCH_NEG      = -128;
-const uint32_t _6502_ZEROPAGE_END    = 0x00FF;
-const uint32_t _6502_STACK_BEGIN     = 0x0100;
-const uint32_t _6502_STACK_END       = 0x01FF;
-const uint32_t _6502_IO_BEGIN        = 0xC000;
-const uint32_t _6502_IO_END          = 0xC0FF;
-const uint32_t _6502_BRK_VECTOR      = 0xFFFE;
+const int _6502_BRANCH_POS = +127;
+const int _6502_BRANCH_NEG = -128;
+const uint32_t _6502_ZEROPAGE_END = 0x00FF;
+const uint32_t _6502_STACK_BEGIN = 0x0100;
+const uint32_t _6502_STACK_END = 0x01FF;
+const uint32_t _6502_IO_BEGIN = 0xC000;
+const uint32_t _6502_IO_END = 0xC0FF;
+const uint32_t _6502_BRK_VECTOR = 0xFFFE;
 const uint32_t _6502_MEM_BEGIN = 0x0000;
 
-
-enum DEVICE_e {
-  DEV_MEMORY, DEV_DISK2, DEV_SY6522, DEV_AY8910, NUM_DEVICES
-};
+enum DEVICE_e { DEV_MEMORY, DEV_DISK2, DEV_SY6522, DEV_AY8910, NUM_DEVICES };
 
 enum MemoryView_e {
   MEM_VIEW_HEX,
@@ -1093,7 +1128,8 @@ enum MemoryView_e {
   // 0x20 .. 0x7F Flash / MouseText (Cyan)
   // 0x80 .. 0x9F Hi-Bit Ctrl       (Yellow)
   // 0xA0 .. 0xFF Hi-Bit Normal     (White)
-  MEM_VIEW_ASCII, MEM_VIEW_APPLE, // Low-Bit ASCII (Colorized Background)
+  MEM_VIEW_ASCII,
+  MEM_VIEW_APPLE,  // Low-Bit ASCII (Colorized Background)
   NUM_MEM_VIEWS
 };
 
@@ -1104,94 +1140,91 @@ struct MemoryDump_t {
   MemoryView_e eView;
 };
 
-enum MemoryDump_e {
-  MEM_DUMP_1, MEM_DUMP_2, NUM_MEM_DUMPS
-};
+enum MemoryDump_e { MEM_DUMP_1, MEM_DUMP_2, NUM_MEM_DUMPS };
 
-enum MemoryMiniDump_e {
-  NUM_MEM_MINI_DUMPS = 2
-};
+enum MemoryMiniDump_e { NUM_MEM_MINI_DUMPS = 2 };
 
 enum MemorySearch_e {
-  MEM_SEARCH_BYTE_EXACT, // xx
-  MEM_SEARCH_NIB_LOW_EXACT, // ?x
-  MEM_SEARCH_NIB_HIGH_EXACT, // x?
-  MEM_SEARCH_BYTE_1_WILD, // ?
-  MEM_SEARCH_BYTE_N_WILD, // ??
+  MEM_SEARCH_BYTE_EXACT,      // xx
+  MEM_SEARCH_NIB_LOW_EXACT,   // ?x
+  MEM_SEARCH_NIB_HIGH_EXACT,  // x?
+  MEM_SEARCH_BYTE_1_WILD,     // ?
+  MEM_SEARCH_BYTE_N_WILD,     // ??
 
-  MEM_SEARCH_TYPE_MASK = (1 << 16) - 1, MEM_SEARCH_FOUND = (1 << 16)
+  MEM_SEARCH_TYPE_MASK = (1 << 16) - 1,
+  MEM_SEARCH_FOUND = (1 << 16)
 };
 
 struct MemorySearch_t {
-  uint8_t m_nValue; // search value
-  MemorySearch_e m_iType; //
-  bool m_bFound; //
+  uint8_t value;        // search value
+  MemorySearch_e type;  //
+  bool found;           //
 };
 
-typedef vector <MemorySearch_t> MemorySearchValues_t;
+typedef vector<MemorySearch_t> MemorySearchValues_t;
 typedef vector<int> MemorySearchResults_t;
 
 // Parameters
 
 /* i.e.
-    SYM LOAD = $C600   (1) type: string, nVal1 = symlookup; (2) type: operator, token: EQUAL; (3) type: address, token:DOLLAR
-    BP LOAD            type:
-    BP $LOAD           type: (1) = symbol, val=1adress
+    SYM LOAD = $C600   (1) type: string, nVal1 = symlookup; (2) type: operator,
+   token: EQUAL; (3) type: address, token:DOLLAR BP LOAD            type: BP
+   $LOAD           type: (1) = symbol, val=1adress
 */
-enum ArgToken_e { // Arg Token Type
+enum ArgToken_e {  // Arg Token Type
   // Single Char Tokens must come first
-  TOKEN_ALPHANUMERIC, //
-  TOKEN_AMPERSAND,    // &
-  TOKEN_AT,           // @  results dereference. i.e. S 0,FFFF C030; L @1
-  TOKEN_BRACE_L,      // {
-  TOKEN_BRACE_R,      // }
-  TOKEN_BRACKET_L,    // [
-  TOKEN_BRACKET_R,    // ]
-  TOKEN_BSLASH,       // \xx Hex Literal
-  TOKEN_CARET,        // ^
-  TOKEN_COLON,        // : Range
-  TOKEN_COMMA,        // , Length
-  TOKEN_DOLLAR,       // $ Address (symbol lookup forced)
-  TOKEN_EQUAL,        // = Assign Argment.n2 = Argument2
-  TOKEN_EXCLAMATION,  // !
-  TOKEN_FSLASH,       // /
-  TOKEN_GREATER_THAN, // >
-  TOKEN_HASH,         // # Value  no symbol lookup
-  TOKEN_LESS_THAN,    // <
-  TOKEN_MINUS,        // - Delta  Argument1 -= Argument2
-  TOKEN_PAREN_L,      // (
-  TOKEN_PAREN_R,      // )
-  TOKEN_PERCENT,      // %
-  TOKEN_PIPE,         // |
-  TOKEN_PLUS,         // + Delta  Argument1 += Argument2
-  TOKEN_QUOTE_SINGLE, // '
-  TOKEN_QUOTE_DOUBLE, // "
-  TOKEN_SEMI,         // ; Command Seperator
-  TOKEN_SPACE,        //   Token Delimiter
-  TOKEN_STAR,         // *
-  TOKEN_TILDE,        // ~
+  TOKEN_ALPHANUMERIC,  //
+  TOKEN_AMPERSAND,     // &
+  TOKEN_AT,            // @  results dereference. i.e. S 0,FFFF C030; L @1
+  TOKEN_BRACE_L,       // {
+  TOKEN_BRACE_R,       // }
+  TOKEN_BRACKET_L,     // [
+  TOKEN_BRACKET_R,     // ]
+  TOKEN_BSLASH,        // \xx Hex Literal
+  TOKEN_CARET,         // ^
+  TOKEN_COLON,         // : Range
+  TOKEN_COMMA,         // , Length
+  TOKEN_DOLLAR,        // $ Address (symbol lookup forced)
+  TOKEN_EQUAL,         // = Assign Argment.n2 = Argument2
+  TOKEN_EXCLAMATION,   // !
+  TOKEN_FSLASH,        // /
+  TOKEN_GREATER_THAN,  // >
+  TOKEN_HASH,          // # Value  no symbol lookup
+  TOKEN_LESS_THAN,     // <
+  TOKEN_MINUS,         // - Delta  Argument1 -= Argument2
+  TOKEN_PAREN_L,       // (
+  TOKEN_PAREN_R,       // )
+  TOKEN_PERCENT,       // %
+  TOKEN_PIPE,          // |
+  TOKEN_PLUS,          // + Delta  Argument1 += Argument2
+  TOKEN_QUOTE_SINGLE,  // '
+  TOKEN_QUOTE_DOUBLE,  // "
+  TOKEN_SEMI,          // ; Command Seperator
+  TOKEN_SPACE,         //   Token Delimiter
+  TOKEN_STAR,          // *
+  TOKEN_TILDE,         // ~
 
   // Multi char tokens come last
   TOKEN_COMMENT_EOL,  // //
   _TOKEN_FLAG_MULTI = TOKEN_COMMENT_EOL,
-  TOKEN_GREATER_EQUAL, // >=
-  TOKEN_LESS_EQUAL,   // <=
-  TOKEN_NOT_EQUAL,    // !=
-  NUM_TOKENS, // signal none, or bad
+  TOKEN_GREATER_EQUAL,  // >=
+  TOKEN_LESS_EQUAL,     // <=
+  TOKEN_NOT_EQUAL,      // !=
+  NUM_TOKENS,           // signal none, or bad
   NO_TOKEN = NUM_TOKENS
 };
 
 enum ArgType_e {
-  TYPE_ADDRESS = (1 << 0), // $#### or $symbolname
+  TYPE_ADDRESS = (1 << 0),  // $#### or $symbolname
   TYPE_OPERATOR = (1 << 1),
   TYPE_QUOTED_1 = (1 << 2),
-  TYPE_QUOTED_2 = (1 << 3), // "..."
-  TYPE_STRING = (1 << 4), // LOAD
+  TYPE_QUOTED_2 = (1 << 3),  // "..."
+  TYPE_STRING = (1 << 4),    // LOAD
   TYPE_RANGE = (1 << 5),
   TYPE_LENGTH = (1 << 6),
   TYPE_VALUE = (1 << 7),
-  TYPE_NO_REG = (1 << 8), // Don't do register value -> Argument.nValue
-  TYPE_NO_SYM = (1 << 9) // Don't do symbol lookup  -> Argument.nValue
+  TYPE_NO_REG = (1 << 8),  // Don't do register value -> Argument.nValue
+  TYPE_NO_SYM = (1 << 9)   // Don't do symbol lookup  -> Argument.nValue
 };
 
 struct TokenTable_t {
@@ -1201,14 +1234,14 @@ struct TokenTable_t {
 };
 
 struct Arg_t {
-  char sArg[MAX_ARG_LEN]; // Array chars comes first, for alignment
-  int nArgLen; // Needed for TextSearch "ABC\x00"
-  uint16_t nValue; // 2
+  char sArg[MAX_ARG_LEN];  // Array chars comes first, for alignment
+  int nArgLen;             // Needed for TextSearch "ABC\x00"
+  uint16_t nValue;         // 2
   // Enums and Bools should come last for alignment
-  ArgToken_e eToken; // 1/2/4
-  int bType; // 1/2/4 // Flags of ArgType_e
-  DEVICE_e eDevice; // 1/2/4
-  bool bSymbol; // 1
+  ArgToken_e eToken;  // 1/2/4
+  int bType;          // 1/2/4 // Flags of ArgType_e
+  DEVICE_e eDevice;   // 1/2/4
+  bool bSymbol;       // 1
 };
 
 // NOTE: Order MUST match g_parameters[] !!!
@@ -1217,67 +1250,68 @@ enum Parameters_e {
   // Note: Order must much _PARAM_BREAKPOINT_*
   // Note: Order must match g_breakpoint_symbols
   _PARAM_BREAKPOINT_BEGIN,
-  PARAM_BP_LESS_EQUAL = _PARAM_BREAKPOINT_BEGIN,   // <=
-  PARAM_BP_LESS_THAN,     // <
-  PARAM_BP_EQUAL,         // =
-  PARAM_BP_NOT_EQUAL,     // !=
-  PARAM_BP_NOT_EQUAL_1,   // !
-  PARAM_BP_GREATER_THAN,  // >
-  PARAM_BP_GREATER_EQUAL, // >=
-  PARAM_BP_READ,          // R
-  _PARAM_BP_READ,          // ? alias READ
-  PARAM_BP_WRITE,         // W
-  _PARAM_BP_WRITE,         // @ alias write
-  PARAM_BP_READ_WRITE,    // * alias READ WRITE
+  PARAM_BP_LESS_EQUAL = _PARAM_BREAKPOINT_BEGIN,  // <=
+  PARAM_BP_LESS_THAN,                             // <
+  PARAM_BP_EQUAL,                                 // =
+  PARAM_BP_NOT_EQUAL,                             // !=
+  PARAM_BP_NOT_EQUAL_1,                           // !
+  PARAM_BP_GREATER_THAN,                          // >
+  PARAM_BP_GREATER_EQUAL,                         // >=
+  PARAM_BP_READ,                                  // R
+  _PARAM_BP_READ,                                 // ? alias READ
+  PARAM_BP_WRITE,                                 // W
+  _PARAM_BP_WRITE,                                // @ alias write
+  PARAM_BP_READ_WRITE,                            // * alias READ WRITE
   _PARAM_BREAKPOINT_END,
   PARAM_BREAKPOINT_NUM = _PARAM_BREAKPOINT_END - _PARAM_BREAKPOINT_BEGIN,
 
   // Note: Order must match Breakpoint_Source_t
-  _PARAM_REGS_BEGIN = _PARAM_BREAKPOINT_END, // Daisy Chain
+  _PARAM_REGS_BEGIN = _PARAM_BREAKPOINT_END,  // Daisy Chain
   // Regs
   PARAM_REG_A = _PARAM_REGS_BEGIN,
   PARAM_REG_X,
   PARAM_REG_Y,
-  PARAM_REG_PC, // Program Counter
-  PARAM_REG_SP, // Stack Pointer
+  PARAM_REG_PC,  // Program Counter
+  PARAM_REG_SP,  // Stack Pointer
   // Flags
-  PARAM_FLAGS,  // Processor Status
-  PARAM_FLAG_C, // Carry
-  PARAM_FLAG_Z, // Zero
-  PARAM_FLAG_I, // Interrupt
-  PARAM_FLAG_D, // Decimal
-  PARAM_FLAG_B, // Break
-  PARAM_FLAG_R, // Reserved
-  PARAM_FLAG_V, // Overflow
-  PARAM_FLAG_N, // Sign
+  PARAM_FLAGS,   // Processor Status
+  PARAM_FLAG_C,  // Carry
+  PARAM_FLAG_Z,  // Zero
+  PARAM_FLAG_I,  // Interrupt
+  PARAM_FLAG_D,  // Decimal
+  PARAM_FLAG_B,  // Break
+  PARAM_FLAG_R,  // Reserved
+  PARAM_FLAG_V,  // Overflow
+  PARAM_FLAG_N,  // Sign
   _PARAM_REGS_END,
   PARAM_REGS_NUM = _PARAM_REGS_END - _PARAM_REGS_BEGIN,
 
   // Disasm
-  _PARAM_CONFIG_BEGIN = _PARAM_REGS_END, // Daisy Chain
-  PARAM_CONFIG_BRANCH = _PARAM_CONFIG_BEGIN, // g_config_disasm_branch_type   [0|1|2]
-  PARAM_CONFIG_CLICK,   // g_config_disasm_click        [0..7] // GH#462
-  PARAM_CONFIG_COLON,   // g_config_disasm_address_colon [0|1]
-  PARAM_CONFIG_OPCODE,  // g_config_disasm_opcodes_view  [0|1]
-  PARAM_CONFIG_POINTER, // g_config_info_target_pointer  [0|1]
-  PARAM_CONFIG_SPACES,  // g_config_disasm_opcode_spaces [0|1]
-  PARAM_CONFIG_TARGET,  // g_config_disasm_targets      [0|1|2]
+  _PARAM_CONFIG_BEGIN = _PARAM_REGS_END,  // Daisy Chain
+  PARAM_CONFIG_BRANCH =
+      _PARAM_CONFIG_BEGIN,  // g_config_disasm_branch_type   [0|1|2]
+  PARAM_CONFIG_CLICK,       // g_config_disasm_click        [0..7] // GH#462
+  PARAM_CONFIG_COLON,       // g_config_disasm_address_colon [0|1]
+  PARAM_CONFIG_OPCODE,      // g_config_disasm_opcodes_view  [0|1]
+  PARAM_CONFIG_POINTER,     // g_config_info_target_pointer  [0|1]
+  PARAM_CONFIG_SPACES,      // g_config_disasm_opcode_spaces [0|1]
+  PARAM_CONFIG_TARGET,      // g_config_disasm_targets      [0|1|2]
   _PARAM_CONFIG_END,
   PARAM_CONFIG_NUM = _PARAM_CONFIG_END - _PARAM_CONFIG_BEGIN,
 
   // Disk
-  _PARAM_DISK_BEGIN = _PARAM_CONFIG_END, // Daisy Chain
-  PARAM_DISK_EJECT = _PARAM_DISK_BEGIN, // DISK 1 EJECT
-  PARAM_DISK_INFO,                      // DISK 1 INFO
-  PARAM_DISK_PROTECT,                   // DISK 1 PROTECT
-  PARAM_DISK_READ,                      // DISK 1 READ Track Sector NumSectors MemAddress
+  _PARAM_DISK_BEGIN = _PARAM_CONFIG_END,  // Daisy Chain
+  PARAM_DISK_EJECT = _PARAM_DISK_BEGIN,   // DISK 1 EJECT
+  PARAM_DISK_INFO,                        // DISK 1 INFO
+  PARAM_DISK_PROTECT,                     // DISK 1 PROTECT
+  PARAM_DISK_READ,  // DISK 1 READ Track Sector NumSectors MemAddress
   _PARAM_DISK_END,
   PARAM_DISK_NUM = _PARAM_DISK_END - _PARAM_DISK_BEGIN,
-  _PARAM_FONT_BEGIN = _PARAM_DISK_END, // Daisy Chain
+  _PARAM_FONT_BEGIN = _PARAM_DISK_END,  // Daisy Chain
   PARAM_FONT_MODE = _PARAM_FONT_BEGIN,
   _PARAM_FONT_END,
   PARAM_FONT_NUM = _PARAM_FONT_END - _PARAM_FONT_BEGIN,
-  _PARAM_GENERAL_BEGIN = _PARAM_FONT_END, // Daisy Chain
+  _PARAM_GENERAL_BEGIN = _PARAM_FONT_END,  // Daisy Chain
   PARAM_FIND = _PARAM_GENERAL_BEGIN,
   PARAM_BRANCH,
   PARAM_CATEGORY,
@@ -1292,7 +1326,7 @@ enum Parameters_e {
   PARAM_STOP,
   _PARAM_GENERAL_END,
   PARAM_GENERAL_NUM = _PARAM_GENERAL_END - _PARAM_GENERAL_BEGIN,
-  _PARAM_HELPCATEGORIES_BEGIN = _PARAM_GENERAL_END, // Daisy Chain
+  _PARAM_HELPCATEGORIES_BEGIN = _PARAM_GENERAL_END,  // Daisy Chain
   PARAM_WILDSTAR = _PARAM_HELPCATEGORIES_BEGIN,
   PARAM_CAT_BOOKMARKS,
   PARAM_CAT_BREAKPOINTS,
@@ -1311,21 +1345,22 @@ enum Parameters_e {
   PARAM_CAT_WINDOW,
   PARAM_CAT_ZEROPAGE,
   _PARAM_HELPCATEGORIES_END,
-  PARAM_HELPCATEGORIES_NUM = _PARAM_HELPCATEGORIES_END - _PARAM_HELPCATEGORIES_BEGIN,
+  PARAM_HELPCATEGORIES_NUM =
+      _PARAM_HELPCATEGORIES_END - _PARAM_HELPCATEGORIES_BEGIN,
   _PARAM_MEM_SEARCH_BEGIN = _PARAM_HELPCATEGORIES_END,  // Daisy Chain
   PARAM_MEM_SEARCH_WILD = _PARAM_MEM_SEARCH_BEGIN,
   _PARAM_MEM_SEARCH_END,
   PARAM_MEM_SEARCH_NUM = _PARAM_MEM_SEARCH_END - _PARAM_MEM_SEARCH_BEGIN,
-  _PARAM_SOURCE_BEGIN = _PARAM_MEM_SEARCH_END, // Daisy Chain
+  _PARAM_SOURCE_BEGIN = _PARAM_MEM_SEARCH_END,  // Daisy Chain
   PARAM_SRC_MEMORY = _PARAM_SOURCE_BEGIN,
   _PARAM_SRC_MEMORY,  // alias MEM = MEMORY
   PARAM_SRC_SYMBOLS,
-  _PARAM_SRC_SYMBOLS, // alias SYM = SYMBOLS
+  _PARAM_SRC_SYMBOLS,  // alias SYM = SYMBOLS
   PARAM_SRC_MERLIN,
   PARAM_SRC_ORCA,
   _PARAM_SOURCE_END,
   PARAM_SOURCE_NUM = _PARAM_SOURCE_END - _PARAM_SOURCE_BEGIN,
-  _PARAM_PROFILE_BEGIN = _PARAM_SOURCE_END, // Daisy Chain
+  _PARAM_PROFILE_BEGIN = _PARAM_SOURCE_END,  // Daisy Chain
   PARAM_PROFILE_RESET = _PARAM_PROFILE_BEGIN,
   PARAM_PROFILE_SAVE,
   PARAM_PROFILE_LIST,
@@ -1335,30 +1370,28 @@ enum Parameters_e {
   PARAM_PROFILE_NUM = _PARAM_PROFILE_END - _PARAM_PROFILE_BEGIN,
   _PARAM_WINDOW_BEGIN = _PARAM_PROFILE_END,  // Daisy Chain
   // These are the "full screen" "windows" / Panels / Tab sheets
-  PARAM_CODE = _PARAM_WINDOW_BEGIN, // disasm
-  PARAM_CODE_2,  // disasm bot
+  PARAM_CODE = _PARAM_WINDOW_BEGIN,  // disasm
+  PARAM_CODE_2,                      // disasm bot
   PARAM_CONSOLE,
   PARAM_DATA,    // data all
   PARAM_DATA_2,  // data bot
   PARAM_DISASM,
-  PARAM_INFO,    // Togle INFO on/off
+  PARAM_INFO,  // Togle INFO on/off
   PARAM_SOURCE,
-  _PARAM_SRC,     // alias SRC = SOURCE
-  PARAM_SOURCE_2, // source bot
+  _PARAM_SRC,      // alias SRC = SOURCE
+  PARAM_SOURCE_2,  // source bot
   PARAM_SYMBOLS,
-  _PARAM_SYM,     // alias SYM = SYMBOLS
-  PARAM_SYMBOL_2, // symbols bot
+  _PARAM_SYM,      // alias SYM = SYMBOLS
+  PARAM_SYMBOL_2,  // symbols bot
   _PARAM_WINDOW_END,
   PARAM_WINDOW_NUM = _PARAM_WINDOW_END - _PARAM_WINDOW_BEGIN,
-  NUM_PARAMS = _PARAM_WINDOW_END // Daisy Chain
+  NUM_PARAMS = _PARAM_WINDOW_END  // Daisy Chain
 };
 
 // Source Level Debugging
-enum {
-  NO_SOURCE_LINE = -1
-};
+enum { NO_SOURCE_LINE = -1 };
 
-typedef map<uint16_t, int> SourceAssembly_t; // Address -> Line #  &  FileName
+typedef map<uint16_t, int> SourceAssembly_t;  // Address -> Line #  &  FileName
 
 // Symbols
 
@@ -1366,7 +1399,7 @@ typedef map<uint16_t, int> SourceAssembly_t; // Address -> Line #  &  FileName
 // WARNING: This is the simple enumeration.
 // See: g_symbols[]
 // ****************************************
-enum SymbolTable_Index_e // Symbols_e -> SymbolTable_Index_e
+enum SymbolTable_Index_e  // Symbols_e -> SymbolTable_Index_e
 {
   SYMBOLS_MAIN,
   SYMBOLS_APPLESOFT,
@@ -1384,31 +1417,34 @@ enum SymbolTable_Index_e // Symbols_e -> SymbolTable_Index_e
 // WARNING: This is the bit-flags to select which table.
 // See: CmdSymbolsListTable()
 // ****************************************
-enum SymbolTable_Masks_e // SymbolTable_e ->
+enum SymbolTable_Masks_e  // SymbolTable_e ->
 {
-  SYMBOL_TABLE_MAIN      = (1 << 0),
+  SYMBOL_TABLE_MAIN = (1 << 0),
   SYMBOL_TABLE_APPLESOFT = (1 << 1),
-  SYMBOL_TABLE_ASSEMBLY  = (1 << 2),
-  SYMBOL_TABLE_USER_1    = (1 << 3),
-  SYMBOL_TABLE_USER_2    = (1 << 4),
-  SYMBOL_TABLE_SRC_1     = (1 << 5),
-  SYMBOL_TABLE_SRC_2     = (1 << 6),
-  SYMBOL_TABLE_DOS33     = (1 << 7),
-  SYMBOL_TABLE_PRODOS    = (1 << 8),
+  SYMBOL_TABLE_ASSEMBLY = (1 << 2),
+  SYMBOL_TABLE_USER_1 = (1 << 3),
+  SYMBOL_TABLE_USER_2 = (1 << 4),
+  SYMBOL_TABLE_SRC_1 = (1 << 5),
+  SYMBOL_TABLE_SRC_2 = (1 << 6),
+  SYMBOL_TABLE_DOS33 = (1 << 7),
+  SYMBOL_TABLE_PRODOS = (1 << 8),
 };
 
-typedef map <uint16_t, string> SymbolTable_t;
+typedef map<uint16_t, string> SymbolTable_t;
 
 // Watches
-enum {
-  MAX_WATCHES = 16
-};
+enum { MAX_WATCHES = 16 };
 
 // Window
 enum Window_e {
-  WINDOW_CODE, WINDOW_DATA, WINDOW_CONSOLE, NUM_WINDOWS, // Not implemented yet
-  WINDOW_IO, // soft switches   $addr  name   state
-  WINDOW_SYMBOLS, WINDOW_ZEROPAGE, WINDOW_SOURCE,
+  WINDOW_CODE,
+  WINDOW_DATA,
+  WINDOW_CONSOLE,
+  NUM_WINDOWS,  // Not implemented yet
+  WINDOW_IO,    // soft switches   $addr  name   state
+  WINDOW_SYMBOLS,
+  WINDOW_ZEROPAGE,
+  WINDOW_SOURCE,
 };
 
 struct WindowSplit_t {
@@ -1418,13 +1454,19 @@ struct WindowSplit_t {
   int left, top, right, bottom;
 };
 
-
 extern uint64_t g_cumulative_cycles;
 class VideoScannerDisplayInfo_t {
-public:
-  VideoScannerDisplayInfo_t(void) : isDecimal(false), isHorzReal(false), isAbsCycle(false),
-                  lastCumulativeCycles(0), cycleDelta(0) {}
-  void Reset(void) { lastCumulativeCycles = g_cumulative_cycles; cycleDelta = 0; }
+ public:
+  VideoScannerDisplayInfo_t(void)
+      : isDecimal(false),
+        isHorzReal(false),
+        isAbsCycle(false),
+        lastCumulativeCycles(0),
+        cycleDelta(0) {}
+  void Reset(void) {
+    lastCumulativeCycles = g_cumulative_cycles;
+    cycleDelta = 0;
+  }
 
   bool isDecimal;
   bool isHorzReal;
@@ -1435,22 +1477,10 @@ public:
 };
 
 // Zero Page
-enum {
-  MAX_ZEROPAGE_POINTERS = 8
-};
+enum { MAX_ZEROPAGE_POINTERS = 8 };
 
-enum Match_e {
-  MATCH_EXACT,
-  MATCH_FUZZY
-};
+enum Match_e { MATCH_EXACT, MATCH_FUZZY };
 
-enum InputCursor
-{
-  CURSOR_INSERT,
-  CURSOR_OVERSTRIKE,
-  NUM_INPUT_CURSORS
-};
+enum InputCursor { CURSOR_INSERT, CURSOR_OVERSTRIKE, NUM_INPUT_CURSORS };
 
-enum {
-  NUM_PROFILE_LINES = NUM_OPCODES + NUM_OPMODES + 16
-};
+enum { NUM_PROFILE_LINES = NUM_OPCODES + NUM_OPMODES + 16 };

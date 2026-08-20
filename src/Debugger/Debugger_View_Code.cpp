@@ -11,9 +11,9 @@
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -27,7 +27,7 @@ extern uint16_t g_disasm_bot_address;
 extern bool g_disasm_cur_bad;
 extern int g_disasm_cur_line;
 extern int g_font_height;
-extern MemoryTextFile_t g_AssemblerSourceBuffer;
+extern MemoryTextFile_t g_assembler_source_buffer;
 extern bool g_config_disasm_address_view;
 extern bool g_config_disasm_address_colon;
 extern bool g_config_disasm_opcodes_view;
@@ -517,8 +517,8 @@ void DrawSourceLine(int iSourceLine, Rect_t& rect) {
   memset(sLine, 0, CONSOLE_WIDTH);
 
   if ((iSourceLine >= 0) &&
-      (iSourceLine < g_AssemblerSourceBuffer.GetNumLines())) {
-    char* pSource = g_AssemblerSourceBuffer.GetLine(iSourceLine);
+      (iSourceLine < g_assembler_source_buffer.GetNumLines())) {
+    char* pSource = g_assembler_source_buffer.GetLine(iSourceLine);
     TextConvertTabsToSpaces(sLine, pSource, CONSOLE_WIDTH - 1);
   } else {
     strcpy(sLine, " ");

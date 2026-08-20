@@ -24,15 +24,15 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 #ifndef VERSIONSTRING
@@ -590,7 +590,7 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
 }  // namespace
 
 static Peripheral_t g_harddisk_peripheral = {
-    .AbiVersion_t = LINAPPLE_ABI_VERSION,
+    .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.harddisk",
     .name = "Harddisk",
     .description = "SmartPort hard disk controller emulation",

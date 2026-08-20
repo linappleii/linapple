@@ -16,5 +16,6 @@ Update_t CmdConfigGetFont(int nArgs);
 Update_t CmdConfigSetDebugDir(int nArgs);
 
 bool ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave);
-void ConfigSave_PrepareHeader(const Parameters_e eCategory, const Commands_e eCommandClear);
+void ConfigSave_PrepareHeader(const Parameters_e eCategory,
+                              const Commands_e eCommandClear);
 void _UpdateWindowFontHeights(int nFontHeight);

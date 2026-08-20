@@ -324,8 +324,8 @@ void CreateDIBSections() {
     video_destroy_surface(g_origscreen);
   }
   g_origscreen =
-      video_create_surface(static_cast<int>(g_state.ScreenWidth),
-                           static_cast<int>(g_state.ScreenHeight), 1);
+      video_create_surface(static_cast<int>(g_state.screen_width),
+                           static_cast<int>(g_state.screen_height), 1);
 
   if (g_device_bitmap == nullptr || g_origscreen == nullptr) {
     fprintf(stderr, "g_device_bitmap or g_origscreen was not created\n");

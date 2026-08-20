@@ -383,8 +383,7 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
     int iOpmode = 0;
     int nOpbytes = 0;
 
-    for (int iLine = 0; iLine <= g_disasm_cur_line; iLine++)
-    {
+    for (int iLine = 0; iLine <= g_disasm_cur_line; iLine++) {
       _6502_GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
 
       if (iLine == g_disasm_cur_line) {
@@ -524,7 +523,8 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
     g_disasm_bot_address += nOpbytes;
 
     if (g_disasm_cur_bad) {
-      //  MessageBox( nullptr, "Bad Disassembly of opcodes", "Debugger", MB_OK );
+      //  MessageBox( nullptr, "Bad Disassembly of opcodes", "Debugger", MB_OK
+      //  );
 
       //      g_disasm_cur_address = nCur;
       //      g_disasm_cur_bad = false;
@@ -557,7 +557,7 @@ auto CmdCursorJumpPC(int nArgs) -> Update_t {
   // if (UserPrefs.bNextInstructionCentered)
   if (CURSOR_ALIGN_CENTER == nArgs) {
     g_disasm_cur_address = cpu_get_registers()->pc;  // (2)
-    WindowUpdateDisasmSize();                     // calc cur line
+    WindowUpdateDisasmSize();                        // calc cur line
   } else if (CURSOR_ALIGN_TOP == nArgs) {
     g_disasm_cur_address = cpu_get_registers()->pc;  // (2)
     g_disasm_cur_line = 0;

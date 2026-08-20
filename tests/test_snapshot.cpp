@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h"
+#include <unistd.h>
 
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <unistd.h>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
+#include "core/Util_Path.h"
+#include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
 
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
@@ -42,7 +42,8 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   cpu_get_registers()->sp = 0x1FF;
   g_cumulative_cycles = 12345;
 
-  mem_get_active_context()->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
+  mem_get_active_context()->mem_mode =
+      MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   mem_get_active_context()->last_write_ram = true;
   *mem_2000 = 0x55;
 
@@ -70,7 +71,8 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   CHECK(cpu_get_registers()->sp == 0x1FF);
   CHECK(cpu_get_cumulative_cycles() == 12345);
 
-  CHECK(mem_get_active_context()->mem_mode == (MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE));
+  CHECK(mem_get_active_context()->mem_mode ==
+        (MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE));
   CHECK(mem_get_active_context()->last_write_ram == true);
   CHECK(*mem_2000 == 0x55);
 

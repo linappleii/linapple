@@ -5,15 +5,14 @@
 #include <iostream>
 
 #include "SDL3/SDL.h"
-#include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Registry.h"
-#include "core/Util_Path.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
+#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "core/Util_Path.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -86,8 +85,8 @@ static int g_frontend_pdl_trim_y = 0;
 static JoystickConfig_t g_joyConfig;
 
 void JoyFrontend_Initialize() {
-constexpr int16_t AXIS_MIN = -32768; /* minimum value for axis coordinate */
-constexpr int16_t AXIS_MAX = 32767;  /* maximum value for axis coordinate */
+  constexpr int16_t AXIS_MIN = -32768; /* minimum value for axis coordinate */
+  constexpr int16_t AXIS_MAX = 32767;  /* maximum value for axis coordinate */
 
   if (joy1) {
     SDL_CloseJoystick(joy1);
@@ -345,7 +344,7 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
 }
 
 auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
-                            bool autorep) -> bool {
+                              bool autorep) -> bool {
   int joy_num =
       (joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
   int centering_type =

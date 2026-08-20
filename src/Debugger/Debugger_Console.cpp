@@ -93,9 +93,9 @@ conchar_t g_console_buffer[CONSOLE_BUFFER_HEIGHT]
 char g_console_cursor[] = "_";
 
 // Display
-char g_console_prompt[] = ">!";  // input, assembler // NUM_PROMPTS
-char g_console_prompt_str[] = ">";   // No, NOT Integer Basic!  The nostalgic '*'
-                                 // "Monitor" doesn't look as good, IMHO. :-(
+char g_console_prompt[] = ">!";     // input, assembler // NUM_PROMPTS
+char g_console_prompt_str[] = ">";  // No, NOT Integer Basic!  The nostalgic '*'
+                                    // "Monitor" doesn't look as good, IMHO. :-(
 int g_console_prompt_len = 1;
 
 bool g_console_full_width = true;  // false
@@ -118,7 +118,7 @@ char g_console_input[CONSOLE_WIDTH + 16];  // = g_console_display[0];
 
 // Cooked input line (no prompt)
 int g_console_input_chars = 0;
-char* g_console_input_ptr = nullptr;           // points to past prompt
+char* g_console_input_ptr = nullptr;        // points to past prompt
 const char* g_console_first_arg = nullptr;  // points to first arg
 bool g_console_input_quoted = false;        // Allows lower-case to be entered
 int g_console_input_skip = 0;
@@ -235,7 +235,8 @@ auto console_print(const char* text) -> bool {
                             //  -  Null
                             if (src_ptr[1])
                             {
-                                    if (ConsoleColor_IsCharMeta( src_ptr[1] )) // 6
+                                    if (ConsoleColor_IsCharMeta( src_ptr[1] ))
+       // 6
                                     {
                                             *pDst = c;
                                             x++;
@@ -392,8 +393,8 @@ void ConsoleDisplayPush(const conchar_t* text) {
   }
 
   if (text) {
-    memcpy(reinterpret_cast<char*>(g_console_display[CONSOLE_FIRST_LINE]),
-           text, sizeof(conchar_t) * CONSOLE_WIDTH);
+    memcpy(reinterpret_cast<char*>(g_console_display[CONSOLE_FIRST_LINE]), text,
+           sizeof(conchar_t) * CONSOLE_WIDTH);
   }
 
   g_console_display_total++;
@@ -526,7 +527,8 @@ auto ConsoleScrollEnd() -> Update_t {
 auto ConsoleScrollUp(int nLines) -> Update_t {
   g_console_display_start += nLines;
 
-  if (g_console_display_start > (g_console_display_total - CONSOLE_FIRST_LINE)) {
+  if (g_console_display_start >
+      (g_console_display_total - CONSOLE_FIRST_LINE)) {
     g_console_display_start = (g_console_display_total - CONSOLE_FIRST_LINE);
   }
 
@@ -715,7 +717,8 @@ void debugger_process_key(int keycode) {
   if (g_console_buffer_size) {
     if ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
         (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode)) {
-      int nLines = MIN(g_console_buffer_size, g_console_display_lines - 1);  // was -2
+      int nLines =
+          MIN(g_console_buffer_size, g_console_display_lines - 1);  // was -2
       if (LINAPPLE_KEY_ESCAPE ==
           keycode)  // user doesn't want to read all this stu
       {

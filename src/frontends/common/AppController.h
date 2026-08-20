@@ -34,7 +34,8 @@ void AppController_SetRestart(bool restart);
  * Handle diagnostic and help commands that should execute before UI init.
  * @return true if a command was handled and the application should exit.
  */
-auto app_controller_handle_diagnostic_commands(const AppConfig_t* config) -> bool;
+auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
+    -> bool;
 
 /**
  * Perform initial media loading and optionally boot the machine.

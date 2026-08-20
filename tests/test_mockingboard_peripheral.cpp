@@ -5,14 +5,13 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-#include "doctest.h"
-
 #include <cstring>
 #include <vector>
 
 #include "LinAppleCore.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "core/Peripheral.h"
+#include "doctest.h"
 
 extern uint64_t g_cumulative_cycles;
 
@@ -51,11 +50,11 @@ static auto Mock_RegisterIO(int slot, PeripheralIOHandler r,
 }
 
 static HostInterface_t g_mock_host = [] {
-    HostInterface_t h{};
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.GetConfig = Mock_GetConfig;
-    return h;
+  HostInterface_t h{};
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.GetConfig = Mock_GetConfig;
+  return h;
 }();
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {
@@ -89,16 +88,16 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     REQUIRE(state_size > 0);
 
     std::vector<uint8_t> buffer(state_size);
-    REQUIRE(descriptor->save_state(instance, buffer.data(),
-                                                &state_size) == peripheral_ok);
+    REQUIRE(descriptor->save_state(instance, buffer.data(), &state_size) ==
+            peripheral_ok);
 
     // Reset state and verify it's cleared
     descriptor->reset(instance);
     CHECK(g_read_cx(instance, 0, 0xC002, 0, 0, 0) == 0);
 
     // Load state and verify it's restored
-    REQUIRE(descriptor->load_state(instance, buffer.data(),
-                                                state_size) == peripheral_ok);
+    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) ==
+            peripheral_ok);
 
     CHECK(g_read_cx(instance, 0, 0xC002, 0, 0, 0) == 0x55);
   }
@@ -124,7 +123,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     CHECK(g_irq_asserted == false);
 
     // 4. Advance cycles beyond period
-    g_cumulative_cycles += 600; // Total 1100 > 1000
+    g_cumulative_cycles += 600;  // Total 1100 > 1000
     descriptor->think(instance, 0);
     CHECK(g_irq_asserted == true);
 
@@ -144,8 +143,8 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     g_write_cx(instance, 0, 0xC00E, 1, 0xC0, 0);
 
     // Set period to 500 cycles (> 255 limitation)
-    g_write_cx(instance, 0, 0xC004, 1, 0xF4, 0); // 500 & 0xFF = 0xF4
-    g_write_cx(instance, 0, 0xC005, 1, 0x01, 0); // 500 >> 8 = 1
+    g_write_cx(instance, 0, 0xC004, 1, 0xF4, 0);  // 500 & 0xFF = 0xF4
+    g_write_cx(instance, 0, 0xC005, 1, 0x01, 0);  // 500 >> 8 = 1
 
     // First underflow
     g_cumulative_cycles += 501;
@@ -165,8 +164,8 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 
   SUBCASE("AY-3-8910: Complex interaction via VIA registers") {
     // Set DDRs to output
-    g_write_cx(instance, 0, 0xC002, 1, 0xFF, 0); // DDRB
-    g_write_cx(instance, 0, 0xC003, 1, 0xFF, 0); // DDRA
+    g_write_cx(instance, 0, 0xC002, 1, 0xFF, 0);  // DDRB
+    g_write_cx(instance, 0, 0xC003, 1, 0xFF, 0);  // DDRA
 
     // Reset chips (Bit 2 of ORB high)
     g_write_cx(instance, 0, 0xC000, 1, 0x04, 0);
@@ -194,7 +193,8 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     descriptor->save_state(instance, buffer.data(), &state_size);
 
     descriptor->reset(instance);
-    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == peripheral_ok);
+    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) ==
+            peripheral_ok);
   }
 
   descriptor->shutdown(instance);
@@ -245,10 +245,12 @@ TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
 
     descriptor->reset(instance);
     // After reset, native mode should be false
-    // Write something else to Chip B (which C0C6 maps to when NOT in native mode)
+    // Write something else to Chip B (which C0C6 maps to when NOT in native
+    // mode)
     g_write_c0(instance, 0, 0xC0C6, 1, 0xEE, 0);
 
-    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) == peripheral_ok);
+    REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) ==
+            peripheral_ok);
 
     // Verify native mode restored by checking chip selection
     // Reg 6 of Chip A should have what we wrote in native mode

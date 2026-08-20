@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Registry.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters): Core configuration and registry persistence manager
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters):
+// Core configuration and registry persistence manager
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -39,11 +40,13 @@ auto Configuration_t::instance() -> Configuration_t& {
   return instance;
 }
 
-auto Configuration_t::set_path(const std::string& path) -> void { m_path = path; }
+auto Configuration_t::set_path(const std::string& path) -> void {
+  path_ = path;
+}
 
 auto Configuration_t::load(const std::string& path) -> bool {
-  m_path = path;
-  m_data.clear();
+  path_ = path;
+  data_.clear();
 
   std::ifstream file(path);
   if (!file.is_open()) {
@@ -65,14 +68,14 @@ auto Configuration_t::load(const std::string& path) -> bool {
     if (pos != std::string::npos) {
       std::string key = trim(line.substr(0, pos));
       std::string value = unquote(trim(line.substr(pos + 1)));
-      m_data[current_section][key] = value;
+      data_[current_section][key] = value;
     }
   }
   return true;
 }
 
 auto Configuration_t::load_defaults() -> void {
-  m_data.clear();
+  data_.clear();
   set_int("Configuration", "Computer Emulation", 3);
   set_int("Configuration", "Keyboard Type", 0);
   set_int("Configuration", "Keyboard Rocker Switch", 0);
@@ -104,24 +107,24 @@ auto Configuration_t::load_defaults() -> void {
   set_string("Slots", "Slot 7", "Harddisk");
 
   set_string("Preferences", "FTP Server",
-            "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
+             "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
   set_string("Preferences", "FTP ServerHDD",
-            "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
+             "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
   set_string("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
 }
 
 auto Configuration_t::save() -> bool {
-  if (m_path.empty()) {
+  if (path_.empty()) {
     std::string config_dir = Path::get_user_config_dir();
     Path::EnsureDirExists(config_dir);
-    m_path = config_dir + "linapple.conf";
+    path_ = config_dir + "linapple.conf";
   }
 
 #ifdef REGISTRY_WRITEABLE
-  std::ofstream file(m_path);
+  std::ofstream file(path_);
   if (!file.is_open()) return false;
 
-  for (auto const& section : m_data) {
+  for (auto const& section : data_) {
     if (section.first != "Default") {
       file << "[" << section.first << "]" << std::endl;
     }
@@ -137,20 +140,22 @@ auto Configuration_t::save() -> bool {
 }
 
 auto Configuration_t::get_string(const std::string& section,
-                              const std::string& key,
-                              const std::string& default_value) -> std::string {
-  if (m_data.count(section) && m_data[section].count(key)) {
-    return m_data[section][key];
+                                 const std::string& key,
+                                 const std::string& default_value)
+    -> std::string {
+  if (data_.count(section) && data_[section].count(key)) {
+    return data_[section][key];
   }
 
-  for (auto const& s : m_data) {
+  for (auto const& s : data_) {
     if (s.second.count(key)) return s.second.at(key);
   }
   return default_value;
 }
 
-auto Configuration_t::get_int(const std::string& section, const std::string& key,
-                           uint32_t default_value) -> uint32_t {
+auto Configuration_t::get_int(const std::string& section,
+                              const std::string& key, uint32_t default_value)
+    -> uint32_t {
   std::string val = get_string(section, key);
   if (val.empty()) return default_value;
   try {
@@ -160,8 +165,9 @@ auto Configuration_t::get_int(const std::string& section, const std::string& key
   }
 }
 
-auto Configuration_t::get_bool(const std::string& section, const std::string& key,
-                            bool default_value) -> bool {
+auto Configuration_t::get_bool(const std::string& section,
+                               const std::string& key, bool default_value)
+    -> bool {
   std::string val = get_string(section, key);
   if (val.empty()) return default_value;
   std::string low_val = val;
@@ -172,32 +178,35 @@ auto Configuration_t::get_bool(const std::string& section, const std::string& ke
 }
 
 auto Configuration_t::set_string(const std::string& section,
-                              const std::string& key,
-                              const std::string& value) -> void {
-  m_data[section][key] = value;
+                                 const std::string& key,
+                                 const std::string& value) -> void {
+  data_[section][key] = value;
 }
 
-auto Configuration_t::set_int(const std::string& section, const std::string& key,
-                           uint32_t value) -> void {
-  m_data[section][key] = std::to_string(value);
+auto Configuration_t::set_int(const std::string& section,
+                              const std::string& key, uint32_t value) -> void {
+  data_[section][key] = std::to_string(value);
 }
 
-auto Configuration_t::set_bool(const std::string& section, const std::string& key,
-                            bool value) -> void {
-  m_data[section][key] = value ? "1" : "0";
+auto Configuration_t::set_bool(const std::string& section,
+                               const std::string& key, bool value) -> void {
+  data_[section][key] = value ? "1" : "0";
 }
 
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration_t::instance().get_string(section, key).empty()) return false;
+  if (Configuration_t::instance().get_string(section, key).empty())
+    return false;
   *value = Configuration_t::instance().get_int(section, key, *value);
   return true;
 }
 
-auto config_load_bool(const char* section, const char* key, bool* value) -> bool {
+auto config_load_bool(const char* section, const char* key, bool* value)
+    -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration_t::instance().get_string(section, key).empty()) return false;
+  if (Configuration_t::instance().get_string(section, key).empty())
+    return false;
   *value = Configuration_t::instance().get_bool(section, key, *value);
   return true;
 }
@@ -217,8 +226,8 @@ auto config_save_int(const char* section, const char* key, uint32_t value)
   Configuration_t::instance().set_int(section, key, value);
 }
 
-auto config_save_string(const char* section, const char* key,
-                        const char* value) -> void {
+auto config_save_string(const char* section, const char* key, const char* value)
+    -> void {
   if (section == nullptr || key == nullptr || value == nullptr) return;
   Configuration_t::instance().set_string(section, key, value);
 }

@@ -1,15 +1,14 @@
-#ifndef PIA6821_H
-#define PIA6821_H
+#pragma once
 
 #include <cstdint>
 
 // Motorola MC6821 Peripheral Interface Adapter (PIA)
 // Implementation based on official MC6821 datasheet.
 
-using PiaOutputCallback_t = void (*)(void* objTo, uint8_t data);
+using PiaOutputCallback_t = void (*)(void* obj_to, uint8_t data);
 
 typedef struct PiaWriteHandlerTag_t {
-  void* objTo;
+  void* obj_to;
   PiaOutputCallback_t func;
 } PiaWriteHandler_t;
 
@@ -63,11 +62,15 @@ auto pia_6821_get_port_a(Pia6821_t* p) -> uint8_t;
 auto pia_6821_get_port_b(Pia6821_t* p) -> uint8_t;
 
 // Configuration
-void pia_6821_set_listener_a(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-void pia_6821_set_listener_b(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-void pia_6821_set_listener_ca2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-void pia_6821_set_listener_cb2(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-void pia_6821_set_listener_irqa(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-void pia_6821_set_listener_irqb(Pia6821_t* p, void* objTo, PiaOutputCallback_t func);
-
-#endif  // PIA6821_H
+void pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func);
+void pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func);
+void pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func);
+void pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func);
+void pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func);
+void pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func);

@@ -8,10 +8,10 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -276,7 +276,7 @@ auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_iie_driver = {
-    .AbiVersion_t = disk_format_abi_version,
+    .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "IIE",
     .creatable_exts = nullptr,
@@ -288,8 +288,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .write_track = iie_write_track,
     .create = nullptr,
     .command = iie_command,
-    .read_flux_bit = nullptr
-};
+    .read_flux_bit = nullptr};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
 //           bugprone-easily-swappable-parameters, modernize-make-unique)

@@ -85,9 +85,9 @@ auto tui_audio_initialize() -> void {
   attr.fragsize = static_cast<uint32_t>(-1);
 
   int error = 0;
-  g_pa_handle = pa_simple_new(nullptr, "LinApple-TUI", PA_STREAM_PLAYBACK,
-                              nullptr, "emulation", &ss, nullptr, &attr,
-                              &error);
+  g_pa_handle =
+      pa_simple_new(nullptr, "LinApple-TUI", PA_STREAM_PLAYBACK, nullptr,
+                    "emulation", &ss, nullptr, &attr, &error);
   if (g_pa_handle) {
     g_driver = AudioDriver::Pulse;
   }

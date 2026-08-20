@@ -39,7 +39,7 @@ auto speaker_get_descriptor() -> Peripheral_t*;
  */
 auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void;
 auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
-                       uint32_t buffer_capacity) -> uint32_t;
+                        uint32_t buffer_capacity) -> uint32_t;
 auto speaker_get_last_cycle(void* instance) -> uint64_t;
 
 enum { speaker_query_is_active = 0x100 };

@@ -38,8 +38,8 @@ inline auto skip_white_space(const char* src_ptr) -> const char* {
   return src_ptr;
 }
 
-inline auto skip_white_space_reverse(const char* src_ptr, const char* start) -> const
-    char* {
+inline auto skip_white_space_reverse(const char* src_ptr, const char* start)
+    -> const char* {
   while (src_ptr && ((*src_ptr == CHAR_SPACE) || (*src_ptr == CHAR_TAB)) &&
          (src_ptr > start)) {
     src_ptr--;
@@ -47,7 +47,8 @@ inline auto skip_white_space_reverse(const char* src_ptr, const char* start) -> 
   return src_ptr;
 }
 
-inline auto skip_until_char(const char* src_ptr, const char delim) -> const char* {
+inline auto skip_until_char(const char* src_ptr, const char delim) -> const
+    char* {
   while (src_ptr && (*src_ptr)) {
     if (*src_ptr == delim) {
       break;
@@ -88,8 +89,8 @@ inline auto skip_until_white_space(const char* src_ptr) -> const char* {
   return src_ptr;
 }
 
-inline auto skip_until_white_space_reverse(const char* src_ptr, const char* start)
-    -> const char* {
+inline auto skip_until_white_space_reverse(const char* src_ptr,
+                                           const char* start) -> const char* {
   while (src_ptr && (src_ptr > start)) {
     if ((*src_ptr == CHAR_SPACE) || (*src_ptr == CHAR_TAB)) {
       break;
@@ -101,22 +102,21 @@ inline auto skip_until_white_space_reverse(const char* src_ptr, const char* star
 
 /** Assumes text are valid hex digits! */
 inline auto text_convert_2_chars_to_byte(char* text) -> uint8_t {
-  uint8_t n = ((text[0] <= '@') ? (text[0] - '0') : (text[0] - 'A' + 10))
-              << 4;
+  uint8_t n = ((text[0] <= '@') ? (text[0] - '0') : (text[0] - 'A' + 10)) << 4;
   n += ((text[1] <= '@') ? (text[1] - '0') : (text[1] - 'A' + 10)) << 0;
   return n;
 }
 
-inline auto text_is_hex_char(char nChar) -> bool {
-  if ((nChar >= '0') && (nChar <= '9')) {
+inline auto text_is_hex_char(char ch) -> bool {
+  if ((ch >= '0') && (ch <= '9')) {
     return true;
   }
 
-  if ((nChar >= 'A') && (nChar <= 'F')) {
+  if ((ch >= 'A') && (ch <= 'F')) {
     return true;
   }
 
-  if ((nChar >= 'a') && (nChar <= 'f')) {
+  if ((ch >= 'a') && (ch <= 'f')) {
     return true;
   }
 

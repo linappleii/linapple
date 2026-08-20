@@ -328,16 +328,17 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   rect.right = rect.left + dx80;
 
   bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) ? true : false;
-  int iBankActive =
-      (get_mem_mode() & MF_HIGHRAM) ? (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1 : 0;
+  int iBankActive = (get_mem_mode() & MF_HIGHRAM)
+                        ? (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1
+                        : 0;
 
   char sOn[4] = "B#";
   char sOff[4] = "M";
   int address = 0xC080 + (8 * (2 - iBankDisplay));
   sOn[1] = '0' + iBankDisplay;
 
-  DrawTriStateSoftSwitch(rect, address, iBankDisplay, iBankActive, nullptr,
-                         sOn, sOff, " ", bg_default);
+  DrawTriStateSoftSwitch(rect, address, iBankDisplay, iBankActive, nullptr, sOn,
+                         sOff, " ", bg_default);
 
   rect.top -= g_font_height;
   rect.bottom -= g_font_height;
@@ -470,8 +471,8 @@ void DrawTargets(int line) {
   }
 
   int aTarget[3];
-  _6502_GetTargets(cpu_get_registers()->pc, &aTarget[0], &aTarget[1], &aTarget[2],
-                   nullptr);
+  _6502_GetTargets(cpu_get_registers()->pc, &aTarget[0], &aTarget[1],
+                   &aTarget[2], nullptr);
   GetTargets_IgnoreDirectJSRJMP(mem[cpu_get_registers()->pc], aTarget[2]);
 
   aTarget[1] = aTarget[2];
@@ -566,8 +567,7 @@ void DrawWatches(int line) {
 
       uint16_t nTarget16 =
           *(mem + g_watches[iWatch].address) |
-          (*(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1))
-           << 8);
+          (*(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)) << 8);
       sprintf(sText, "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);

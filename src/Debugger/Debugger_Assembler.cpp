@@ -11,9 +11,9 @@
 #include "Debugger_Console.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Parser.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
@@ -51,7 +51,7 @@ AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
 
 int g_assembler_opcodes_hashed = false;
 Hash_t g_opcodes_hash[NUM_OPCODES] = {};  // for faster mnemonic lookup, for the
-                                     // assembler
+                                          // assembler
 bool g_assembler_input = false;
 int g_assembler_address = 0;
 
@@ -214,198 +214,205 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"INC", AM_AX, RW},  {"nop", 0, 0}  // FF .. FF
 };
 
-const Opcodes_t
-    g_opcodes6502[NUM_OPCODES] =
-        {
-            // Should match Cpu.cpp InternalCpuExecute() switch
-            // (*(mem+cpu_get_registers()->pc++)) !!
+const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
+    // Should match Cpu.cpp InternalCpuExecute() switch
+    // (*(mem+cpu_get_registers()->pc++)) !!
 
-            /*
-                    Based on: http://axis.llx.com/~nparker/a2/opcodes.html
+    /*
+            Based on: http://axis.llx.com/~nparker/a2/opcodes.html
 
-                    If you really want to know what the undocumented --- (n/a)
-            opcodes do, see CPU.cpp
+            If you really want to know what the undocumented --- (n/a)
+    opcodes do, see CPU.cpp
 
-                    x0     x1         x2       x3   x4       x5       x6 x7   x8
-            x9       xA      xB   xC        xD       xE      	xF 0x	BRK ORA
-            (d,X)  ---      ---  tsb z    ORA d    ASL z    ---  PHP  ORA # ASL A  ---  tsb a      ORA a    ASL a   	--- 1x	BPL r  ORA (d),Y
-            ora (z)  ---  trb d    ORA d,X  ASL z,X  ---  CLC  ORA a,Y  ina A
-            ---  trb a      ORA a,X  ASL a,X 	--- 2x	JSR a  AND (d,X)  ---
-            ---  BIT d    AND d    ROL z    ---  PLP  AND #    ROL A  ---  BIT a
-            AND a    ROL a   	--- 3x	BMI r  AND (d),Y  and (z)  ---  bit d,X
-            AND d,X  ROL z,X  ---  SEC  AND a,Y  dea A  ---  bit a,X    AND a,X
-            ROL a,X 	--- 4x	RTI    EOR (d,X)  ---      ---  ---      EOR d
-            LSR z    ---  PHA  EOR #    LSR A  ---  JMP a      EOR a    LSR a
-            --- 5x	BVC r  EOR (d),Y  eor (z)  ---  ---      EOR d,X  LSR
-            z,X  ---  CLI  EOR a,Y  phy    ---  ---        EOR a,X  LSR a,X
-            --- 6x	RTS    ADC (d,X)  ---      ---  stz d    ADC d    ROR z
-            ---  PLA  ADC #    ROR A  ---  JMP (a)    ADC a    ROR a   	--- 7x	BVS r  ADC (d),Y  adc (z)  ---  stz d,X  ADC d,X  ROR z,X  ---  SEI  ADC a,Y  ply    ---  jmp (a,X)  ADC a,X  ROR a,X 	---
-            8x	bra r  STA (d,X)  ---      ---  STY d    STA d    STX z    ---
-            DEY  bit #    TXA    ---  STY a      STA a    STX a   	--- 9x	BCC r  STA (d),Y  sta (z)  ---  STY d,X  STA d,X  STX z,Y  ---  TYA  STA a,Y  TXS    ---  Stz a      STA a,X  stz a,X 	---
-            Ax	LDY #  LDA (d,X)  LDX #    ---  LDY d    LDA d    LDX z    ---
-            TAY  LDA #    TAX    ---  LDY a      LDA a    LDX a   	--- Bx	BCS r  LDA (d),Y  lda (z)  ---  LDY d,X  LDA d,X  LDX z,Y  ---  CLV  LDA a,Y  TSX    ---  LDY a,X    LDA a,X  LDX a,Y 	---
-            Cx	CPY #  CMP (d,X)  ---      ---  CPY d    CMP d    DEC z    ---
-            INY  CMP #    DEX    ---  CPY a      CMP a    DEC a   	--- Dx	BNE r  CMP (d),Y  cmp (z)  ---  ---      CMP d,X  DEC z,X  ---  CLD  CMP a,Y  phx    ---  ---        CMP a,X  DEC a,X 	---
-            Ex	CPX #  SBC (d,X)  ---      ---  CPX d    SBC d    INC z    ---
-            INX  SBC #    NOP    ---  CPX a      SBC a    INC a   	--- Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X  INC z,X  ---  SED  SBC a,Y  plx    ---  ---        SBC a,X  INC a,X 	---
+            x0     x1         x2       x3   x4       x5       x6 x7   x8
+    x9       xA      xB   xC        xD       xE      	xF 0x	BRK ORA
+    (d,X)  ---      ---  tsb z    ORA d    ASL z    ---  PHP  ORA # ASL A  ---
+    tsb a      ORA a    ASL a   	--- 1x	BPL r  ORA (d),Y ora (z)  ---
+    trb d    ORA d,X  ASL z,X  ---  CLC  ORA a,Y  ina A
+    ---  trb a      ORA a,X  ASL a,X 	--- 2x	JSR a  AND (d,X)  ---
+    ---  BIT d    AND d    ROL z    ---  PLP  AND #    ROL A  ---  BIT a
+    AND a    ROL a   	--- 3x	BMI r  AND (d),Y  and (z)  ---  bit d,X
+    AND d,X  ROL z,X  ---  SEC  AND a,Y  dea A  ---  bit a,X    AND a,X
+    ROL a,X 	--- 4x	RTI    EOR (d,X)  ---      ---  ---      EOR d
+    LSR z    ---  PHA  EOR #    LSR A  ---  JMP a      EOR a    LSR a
+    --- 5x	BVC r  EOR (d),Y  eor (z)  ---  ---      EOR d,X  LSR
+    z,X  ---  CLI  EOR a,Y  phy    ---  ---        EOR a,X  LSR a,X
+    --- 6x	RTS    ADC (d,X)  ---      ---  stz d    ADC d    ROR z
+    ---  PLA  ADC #    ROR A  ---  JMP (a)    ADC a    ROR a   	--- 7x	BVS r
+    ADC (d),Y  adc (z)  ---  stz d,X  ADC d,X  ROR z,X  ---  SEI  ADC a,Y  ply
+    ---  jmp (a,X)  ADC a,X  ROR a,X 	--- 8x	bra r  STA (d,X)  ---      ---
+    STY d    STA d    STX z    --- DEY  bit #    TXA    ---  STY a      STA a
+    STX a   	--- 9x	BCC r  STA (d),Y  sta (z)  ---  STY d,X  STA d,X  STX
+    z,Y  ---  TYA  STA a,Y  TXS    ---  Stz a      STA a,X  stz a,X 	--- Ax
+    LDY #  LDA (d,X)  LDX #    ---  LDY d    LDA d    LDX z    --- TAY  LDA #
+    TAX    ---  LDY a      LDA a    LDX a   	--- Bx	BCS r  LDA (d),Y  lda
+    (z)  ---  LDY d,X  LDA d,X  LDX z,Y  ---  CLV  LDA a,Y  TSX    ---  LDY a,X
+    LDA a,X  LDX a,Y 	--- Cx	CPY #  CMP (d,X)  ---      ---  CPY d    CMP d
+    DEC z    --- INY  CMP #    DEX    ---  CPY a      CMP a    DEC a   	--- Dx
+    BNE r  CMP (d),Y  cmp (z)  ---  ---      CMP d,X  DEC z,X  ---  CLD  CMP a,Y
+    phx    ---  ---        CMP a,X  DEC a,X 	--- Ex	CPX #  SBC (d,X)  ---
+    ---  CPX d    SBC d    INC z    --- INX  SBC #    NOP    ---  CPX a      SBC
+    a    INC a   	--- Fx	BEQ r  SBC (d),Y  sbc (z)  ---  ---      SBC d,X
+    INC z,X  ---  SED  SBC a,Y  plx    ---  ---        SBC a,X  INC a,X
+    ---
 
-                    Legend:
-                    --- illegal instruction
-                            UPPERCASE 6502
-                            lowercase 65C02
-                                    80
-                                    12, 32, 52, 72, 92, B2, D2, F2
-                                    04, 14, 34, 64, 74
-                                    89
-                                    1A, 3A, 5A, 7A, DA, FA
-                                    0C, 1C, 3C, 7C, 9C;
-                            # Immediate
-                            A Accumulator (implicit for mnemonic)
-                            a absolute
-                            r Relative
-                            d Destination 16-bit Address
-                            z Destination Zero Page Address
-                            z,x Base=Zero-Page, Offset=X
-                            d,x
-                            (d,X)
-                            (d),Y
+            Legend:
+            --- illegal instruction
+                    UPPERCASE 6502
+                    lowercase 65C02
+                            80
+                            12, 32, 52, 72, 92, B2, D2, F2
+                            04, 14, 34, 64, 74
+                            89
+                            1A, 3A, 5A, 7A, DA, FA
+                            0C, 1C, 3C, 7C, 9C;
+                    # Immediate
+                    A Accumulator (implicit for mnemonic)
+                    a absolute
+                    r Relative
+                    d Destination 16-bit Address
+                    z Destination Zero Page Address
+                    z,x Base=Zero-Page, Offset=X
+                    d,x
+                    (d,X)
+                    (d),Y
 
-            */
-            {"BRK", 0, SW},     {"ORA", AM_IZX, R_},
-            {"hlt", 0, 0},      {"aso", AM_IZX, RW},  // 00 .. 03
-            {"nop", AM_Z, R_},  {"ORA", AM_Z, R_},
-            {"ASL", AM_Z, RW},  {"aso", AM_Z, RW},  // 04 .. 07
-            {"PHP", 0, SW},     {"ORA", AM_M, IM},
-            {"ASL", 0, 0},      {"anc", AM_M, IM},  // 08 .. 0B
-            {"nop", AM_AX, 0},  {"ORA", AM_A, R_},
-            {"ASL", AM_A, RW},  {"aso", AM_A, RW},  // 0C .. 0F
-            {"BPL", AM_R, 0},   {"ORA", AM_NZY, R_},
-            {"hlt", 0, 0},      {"aso", AM_NZY, RW},  // 10 .. 13
-            {"nop", AM_ZX, 0},  {"ORA", AM_ZX, R_},
-            {"ASL", AM_ZX, RW}, {"aso", AM_ZX, RW},  // 14 .. 17
-            {"CLC", 0, 0},      {"ORA", AM_AY, R_},
-            {"nop", 0, 0},      {"aso", AM_AY, RW},  // 18 .. 1B
-            {"nop", AM_AX, 0},  {"ORA", AM_AX, R_},
-            {"ASL", AM_AX, RW}, {"aso", AM_AX, RW},  // 1C .. 1F
+    */
+    {"BRK", 0, SW},     {"ORA", AM_IZX, R_},
+    {"hlt", 0, 0},      {"aso", AM_IZX, RW},  // 00 .. 03
+    {"nop", AM_Z, R_},  {"ORA", AM_Z, R_},
+    {"ASL", AM_Z, RW},  {"aso", AM_Z, RW},  // 04 .. 07
+    {"PHP", 0, SW},     {"ORA", AM_M, IM},
+    {"ASL", 0, 0},      {"anc", AM_M, IM},  // 08 .. 0B
+    {"nop", AM_AX, 0},  {"ORA", AM_A, R_},
+    {"ASL", AM_A, RW},  {"aso", AM_A, RW},  // 0C .. 0F
+    {"BPL", AM_R, 0},   {"ORA", AM_NZY, R_},
+    {"hlt", 0, 0},      {"aso", AM_NZY, RW},  // 10 .. 13
+    {"nop", AM_ZX, 0},  {"ORA", AM_ZX, R_},
+    {"ASL", AM_ZX, RW}, {"aso", AM_ZX, RW},  // 14 .. 17
+    {"CLC", 0, 0},      {"ORA", AM_AY, R_},
+    {"nop", 0, 0},      {"aso", AM_AY, RW},  // 18 .. 1B
+    {"nop", AM_AX, 0},  {"ORA", AM_AX, R_},
+    {"ASL", AM_AX, RW}, {"aso", AM_AX, RW},  // 1C .. 1F
 
-            {"JSR", AM_A, SW},  {"AND", AM_IZX, R_},
-            {"hlt", 0, 0},      {"rla", AM_IZX, RW},  // 20 .. 23
-            {"BIT", AM_Z, R_},  {"AND", AM_Z, R_},
-            {"ROL", AM_Z, RW},  {"rla", AM_Z, RW},  // 24 .. 27
-            {"PLP", 0, SR},     {"AND", AM_M, IM},
-            {"ROL", 0, 0},      {"anc", AM_M, IM},  // 28 .. 2B
-            {"BIT", AM_A, R_},  {"AND", AM_A, R_},
-            {"ROL", AM_A, RW},  {"rla", AM_A, RW},  // 2C .. 2F
-            {"BMI", AM_R, 0},   {"AND", AM_NZY, R_},
-            {"hlt", 0, 0},      {"rla", AM_NZY, RW},  // 30 .. 33
-            {"nop", AM_ZX, 0},  {"AND", AM_ZX, R_},
-            {"ROL", AM_ZX, RW}, {"rla", AM_ZX, RW},  // 34 .. 37
-            {"SEC", 0, 0},      {"AND", AM_AY, R_},
-            {"nop", 0, 0},      {"rla", AM_AY, RW},  // 38 .. 3B
-            {"nop", AM_AX, 0},  {"AND", AM_AX, R_},
-            {"ROL", AM_AX, RW}, {"rla", AM_AX, RW},  // 3C .. 3F
+    {"JSR", AM_A, SW},  {"AND", AM_IZX, R_},
+    {"hlt", 0, 0},      {"rla", AM_IZX, RW},  // 20 .. 23
+    {"BIT", AM_Z, R_},  {"AND", AM_Z, R_},
+    {"ROL", AM_Z, RW},  {"rla", AM_Z, RW},  // 24 .. 27
+    {"PLP", 0, SR},     {"AND", AM_M, IM},
+    {"ROL", 0, 0},      {"anc", AM_M, IM},  // 28 .. 2B
+    {"BIT", AM_A, R_},  {"AND", AM_A, R_},
+    {"ROL", AM_A, RW},  {"rla", AM_A, RW},  // 2C .. 2F
+    {"BMI", AM_R, 0},   {"AND", AM_NZY, R_},
+    {"hlt", 0, 0},      {"rla", AM_NZY, RW},  // 30 .. 33
+    {"nop", AM_ZX, 0},  {"AND", AM_ZX, R_},
+    {"ROL", AM_ZX, RW}, {"rla", AM_ZX, RW},  // 34 .. 37
+    {"SEC", 0, 0},      {"AND", AM_AY, R_},
+    {"nop", 0, 0},      {"rla", AM_AY, RW},  // 38 .. 3B
+    {"nop", AM_AX, 0},  {"AND", AM_AX, R_},
+    {"ROL", AM_AX, RW}, {"rla", AM_AX, RW},  // 3C .. 3F
 
-            {"RTI", 0, SR},     {"EOR", AM_IZX, R_},
-            {"hlt", 0, 0},      {"lse", AM_IZX, RW},  // 40 .. 43
-            {"nop", AM_Z, 0},   {"EOR", AM_Z, R_},
-            {"LSR", AM_Z, RW},  {"lse", AM_Z, RW},  // 44 .. 47
-            {"PHA", 0, SW},     {"EOR", AM_M, IM},
-            {"LSR", 0, 0},      {"alr", AM_M, IM},  // 48 .. 4B
-            {"JMP", AM_A, 0},   {"EOR", AM_A, R_},
-            {"LSR", AM_A, RW},  {"lse", AM_A, RW},  // 4C .. 4F
-            {"BVC", AM_R, 0},   {"EOR", AM_NZY, R_},
-            {"hlt", 0, 0},      {"lse", AM_NZY, RW},  // 50 .. 53
-            {"nop", AM_ZX, 0},  {"EOR", AM_ZX, R_},
-            {"LSR", AM_ZX, RW}, {"lse", AM_ZX, RW},  // 54 .. 57
-            {"CLI", 0, 0},      {"EOR", AM_AY, R_},
-            {"nop", 0, 0},      {"lse", AM_AY, RW},  // 58 .. 5B
-            {"nop", AM_AX, 0},  {"EOR", AM_AX, R_},
-            {"LSR", AM_AX, RW}, {"lse", AM_AX, RW},  // 5C .. 5F
+    {"RTI", 0, SR},     {"EOR", AM_IZX, R_},
+    {"hlt", 0, 0},      {"lse", AM_IZX, RW},  // 40 .. 43
+    {"nop", AM_Z, 0},   {"EOR", AM_Z, R_},
+    {"LSR", AM_Z, RW},  {"lse", AM_Z, RW},  // 44 .. 47
+    {"PHA", 0, SW},     {"EOR", AM_M, IM},
+    {"LSR", 0, 0},      {"alr", AM_M, IM},  // 48 .. 4B
+    {"JMP", AM_A, 0},   {"EOR", AM_A, R_},
+    {"LSR", AM_A, RW},  {"lse", AM_A, RW},  // 4C .. 4F
+    {"BVC", AM_R, 0},   {"EOR", AM_NZY, R_},
+    {"hlt", 0, 0},      {"lse", AM_NZY, RW},  // 50 .. 53
+    {"nop", AM_ZX, 0},  {"EOR", AM_ZX, R_},
+    {"LSR", AM_ZX, RW}, {"lse", AM_ZX, RW},  // 54 .. 57
+    {"CLI", 0, 0},      {"EOR", AM_AY, R_},
+    {"nop", 0, 0},      {"lse", AM_AY, RW},  // 58 .. 5B
+    {"nop", AM_AX, 0},  {"EOR", AM_AX, R_},
+    {"LSR", AM_AX, RW}, {"lse", AM_AX, RW},  // 5C .. 5F
 
-            {"RTS", 0, SR},     {"ADC", AM_IZX, R_},
-            {"hlt", 0, 0},      {"rra", AM_IZX, RW},  // 60 .. 63
-            {"nop", AM_Z, 0},   {"ADC", AM_Z, R_},
-            {"ROR", AM_Z, RW},  {"rra", AM_Z, RW},  // 64 .. 67
-            {"PLA", 0, SR},     {"ADC", AM_M, IM},
-            {"ROR", 0, 0},      {"arr", AM_M, IM},  // 68 .. 6B
-            {"JMP", AM_NA, R_}, {"ADC", AM_A, R_},
-            {"ROR", AM_A, RW},  {"rra", AM_A, RW},  // 6C .. 6F
-            {"BVS", AM_R, 0},   {"ADC", AM_NZY, R_},
-            {"hlt", 0, 0},      {"rra", AM_NZY, RW},  // 70 .. 73
-            {"nop", AM_ZX, 0},  {"ADC", AM_ZX, R_},
-            {"ROR", AM_ZX, RW}, {"rra", AM_ZX, RW},  // 74 .. 77
-            {"SEI", 0, 0},      {"ADC", AM_AY, R_},
-            {"nop", 0, 0},      {"rra", AM_AY, RW},  // 78 .. 7B
-            {"nop", AM_AX, 0},  {"ADC", AM_AX, R_},
-            {"ROR", AM_AX, RW}, {"rra", AM_AX, RW},  // 7C .. 7F
+    {"RTS", 0, SR},     {"ADC", AM_IZX, R_},
+    {"hlt", 0, 0},      {"rra", AM_IZX, RW},  // 60 .. 63
+    {"nop", AM_Z, 0},   {"ADC", AM_Z, R_},
+    {"ROR", AM_Z, RW},  {"rra", AM_Z, RW},  // 64 .. 67
+    {"PLA", 0, SR},     {"ADC", AM_M, IM},
+    {"ROR", 0, 0},      {"arr", AM_M, IM},  // 68 .. 6B
+    {"JMP", AM_NA, R_}, {"ADC", AM_A, R_},
+    {"ROR", AM_A, RW},  {"rra", AM_A, RW},  // 6C .. 6F
+    {"BVS", AM_R, 0},   {"ADC", AM_NZY, R_},
+    {"hlt", 0, 0},      {"rra", AM_NZY, RW},  // 70 .. 73
+    {"nop", AM_ZX, 0},  {"ADC", AM_ZX, R_},
+    {"ROR", AM_ZX, RW}, {"rra", AM_ZX, RW},  // 74 .. 77
+    {"SEI", 0, 0},      {"ADC", AM_AY, R_},
+    {"nop", 0, 0},      {"rra", AM_AY, RW},  // 78 .. 7B
+    {"nop", AM_AX, 0},  {"ADC", AM_AX, R_},
+    {"ROR", AM_AX, RW}, {"rra", AM_AX, RW},  // 7C .. 7F
 
-            {"nop", AM_M, IM},  {"STA", AM_IZX, _W},
-            {"nop", AM_M, IM},  {"axs", AM_IZX, _W},  // 80 .. 83
-            {"STY", AM_Z, _W},  {"STA", AM_Z, _W},
-            {"STX", AM_Z, _W},  {"axs", AM_Z, _W},  // 84 .. 87
-            {"DEY", 0, 0},      {"nop", AM_M, IM},
-            {"TXA", 0, 0},      {"xaa", AM_M, IM},  // 88 .. 8B
-            {"STY", AM_A, _W},  {"STA", AM_A, _W},
-            {"STX", AM_A, _W},  {"axs", AM_A, _W},  // 8C .. 8F
-            {"BCC", AM_R, 0},   {"STA", AM_NZY, _W},
-            {"hlt", 0, 0},      {"axa", AM_NZY, _W},  // 90 .. 93
-            {"STY", AM_ZX, _W}, {"STA", AM_ZX, _W},
-            {"STX", AM_ZY, _W}, {"axs", AM_ZY, _W},  // 94 .. 97
-            {"TYA", 0, 0},      {"STA", AM_AY, _W},
-            {"TXS", 0, 0},      {"tas", AM_AY, _W},  // 98 .. 9B
-            {"say", AM_AX, _W}, {"STA", AM_AX, _W},
-            {"xas", AM_AX, _W}, {"axa", AM_AY, _W},  // 9C .. 9F
+    {"nop", AM_M, IM},  {"STA", AM_IZX, _W},
+    {"nop", AM_M, IM},  {"axs", AM_IZX, _W},  // 80 .. 83
+    {"STY", AM_Z, _W},  {"STA", AM_Z, _W},
+    {"STX", AM_Z, _W},  {"axs", AM_Z, _W},  // 84 .. 87
+    {"DEY", 0, 0},      {"nop", AM_M, IM},
+    {"TXA", 0, 0},      {"xaa", AM_M, IM},  // 88 .. 8B
+    {"STY", AM_A, _W},  {"STA", AM_A, _W},
+    {"STX", AM_A, _W},  {"axs", AM_A, _W},  // 8C .. 8F
+    {"BCC", AM_R, 0},   {"STA", AM_NZY, _W},
+    {"hlt", 0, 0},      {"axa", AM_NZY, _W},  // 90 .. 93
+    {"STY", AM_ZX, _W}, {"STA", AM_ZX, _W},
+    {"STX", AM_ZY, _W}, {"axs", AM_ZY, _W},  // 94 .. 97
+    {"TYA", 0, 0},      {"STA", AM_AY, _W},
+    {"TXS", 0, 0},      {"tas", AM_AY, _W},  // 98 .. 9B
+    {"say", AM_AX, _W}, {"STA", AM_AX, _W},
+    {"xas", AM_AX, _W}, {"axa", AM_AY, _W},  // 9C .. 9F
 
-            {"LDY", AM_M, IM},  {"LDA", AM_IZX, R_},
-            {"LDX", AM_M, IM},  {"lax", AM_IZX, R_},  // A0 .. A3
-            {"LDY", AM_Z, R_},  {"LDA", AM_Z, R_},
-            {"LDX", AM_Z, R_},  {"lax", AM_Z, R_},  // A4 .. A7
-            {"TAY", 0, 0},      {"LDA", AM_M, IM},
-            {"TAX", 0, 0},      {"oal", AM_M, IM},  // A8 .. AB
-            {"LDY", AM_A, R_},  {"LDA", AM_A, R_},
-            {"LDX", AM_A, R_},  {"lax", AM_A, R_},  // AC .. AF
-            {"BCS", AM_R, 0},   {"LDA", AM_NZY, R_},
-            {"hlt", 0, 0},      {"lax", AM_NZY, R_},  // B0 .. B3
-            {"LDY", AM_ZX, R_}, {"LDA", AM_ZX, R_},
-            {"LDX", AM_ZY, R_}, {"lax", AM_ZY, 0},  // B4 .. B7
-            {"CLV", 0, 0},      {"LDA", AM_AY, R_},
-            {"TSX", 0, 0},      {"las", AM_AY, R_},  // B8 .. BB
-            {"LDY", AM_AX, R_}, {"LDA", AM_AX, R_},
-            {"LDX", AM_AY, R_}, {"lax", AM_AY, R_},  // BC .. BF
+    {"LDY", AM_M, IM},  {"LDA", AM_IZX, R_},
+    {"LDX", AM_M, IM},  {"lax", AM_IZX, R_},  // A0 .. A3
+    {"LDY", AM_Z, R_},  {"LDA", AM_Z, R_},
+    {"LDX", AM_Z, R_},  {"lax", AM_Z, R_},  // A4 .. A7
+    {"TAY", 0, 0},      {"LDA", AM_M, IM},
+    {"TAX", 0, 0},      {"oal", AM_M, IM},  // A8 .. AB
+    {"LDY", AM_A, R_},  {"LDA", AM_A, R_},
+    {"LDX", AM_A, R_},  {"lax", AM_A, R_},  // AC .. AF
+    {"BCS", AM_R, 0},   {"LDA", AM_NZY, R_},
+    {"hlt", 0, 0},      {"lax", AM_NZY, R_},  // B0 .. B3
+    {"LDY", AM_ZX, R_}, {"LDA", AM_ZX, R_},
+    {"LDX", AM_ZY, R_}, {"lax", AM_ZY, 0},  // B4 .. B7
+    {"CLV", 0, 0},      {"LDA", AM_AY, R_},
+    {"TSX", 0, 0},      {"las", AM_AY, R_},  // B8 .. BB
+    {"LDY", AM_AX, R_}, {"LDA", AM_AX, R_},
+    {"LDX", AM_AY, R_}, {"lax", AM_AY, R_},  // BC .. BF
 
-            {"CPY", AM_M, IM},  {"CMP", AM_IZX, R_},
-            {"nop", AM_M, IM},  {"dcm", AM_IZX, RW},  // C0 .. C3
-            {"CPY", AM_Z, R_},  {"CMP", AM_Z, R_},
-            {"DEC", AM_Z, RW},  {"dcm", AM_Z, RW},  // C4 .. C7
-            {"INY", 0, 0},      {"CMP", AM_M, IM},
-            {"DEX", 0, 0},      {"sax", AM_M, IM},  // C8 .. CB
-            {"CPY", AM_A, R_},  {"CMP", AM_A, R_},
-            {"DEC", AM_A, RW},  {"dcm", AM_A, RW},  // CC .. CF
-            {"BNE", AM_R, 0},   {"CMP", AM_NZY, R_},
-            {"hlt", 0, 0},      {"dcm", AM_NZY, RW},  // D0 .. D3
-            {"nop", AM_ZX, 0},  {"CMP", AM_ZX, R_},
-            {"DEC", AM_ZX, RW}, {"dcm", AM_ZX, RW},  // D4 .. D7
-            {"CLD", 0, 0},      {"CMP", AM_AY, R_},
-            {"nop", 0, 0},      {"dcm", AM_AY, RW},  // D8 .. DB
-            {"nop", AM_AX, 0},  {"CMP", AM_AX, R_},
-            {"DEC", AM_AX, RW}, {"dcm", AM_AX, RW},  // DC .. DF
+    {"CPY", AM_M, IM},  {"CMP", AM_IZX, R_},
+    {"nop", AM_M, IM},  {"dcm", AM_IZX, RW},  // C0 .. C3
+    {"CPY", AM_Z, R_},  {"CMP", AM_Z, R_},
+    {"DEC", AM_Z, RW},  {"dcm", AM_Z, RW},  // C4 .. C7
+    {"INY", 0, 0},      {"CMP", AM_M, IM},
+    {"DEX", 0, 0},      {"sax", AM_M, IM},  // C8 .. CB
+    {"CPY", AM_A, R_},  {"CMP", AM_A, R_},
+    {"DEC", AM_A, RW},  {"dcm", AM_A, RW},  // CC .. CF
+    {"BNE", AM_R, 0},   {"CMP", AM_NZY, R_},
+    {"hlt", 0, 0},      {"dcm", AM_NZY, RW},  // D0 .. D3
+    {"nop", AM_ZX, 0},  {"CMP", AM_ZX, R_},
+    {"DEC", AM_ZX, RW}, {"dcm", AM_ZX, RW},  // D4 .. D7
+    {"CLD", 0, 0},      {"CMP", AM_AY, R_},
+    {"nop", 0, 0},      {"dcm", AM_AY, RW},  // D8 .. DB
+    {"nop", AM_AX, 0},  {"CMP", AM_AX, R_},
+    {"DEC", AM_AX, RW}, {"dcm", AM_AX, RW},  // DC .. DF
 
-            {"CPX", AM_M, IM},  {"SBC", AM_IZX, R_},
-            {"nop", AM_M, IM},  {"ins", AM_IZX, RW},  // E0 .. E3
-            {"CPX", AM_Z, R_},  {"SBC", AM_Z, R_},
-            {"INC", AM_Z, RW},  {"ins", AM_Z, RW},  // E4 .. E7
-            {"INX", 0, 0},      {"SBC", AM_M, IM},
-            {"NOP", 0, 0},      {"sbc", AM_M, IM},  // E8 .. EB
-            {"CPX", AM_A, R_},  {"SBC", AM_A, R_},
-            {"INC", AM_A, RW},  {"ins", AM_A, RW},  // EC .. EF
-            {"BEQ", AM_R, 0},   {"SBC", AM_NZY, R_},
-            {"hlt", 0, 0},      {"ins", AM_NZY, RW},  // F0 .. F3
-            {"nop", AM_ZX, 0},  {"SBC", AM_ZX, R_},
-            {"INC", AM_ZX, RW}, {"ins", AM_ZX, RW},  // F4 .. F7
-            {"SED", 0, 0},      {"SBC", AM_AY, R_},
-            {"nop", 0, 0},      {"ins", AM_AY, RW},  // F8 .. FB
-            {"nop", AM_AX, 0},  {"SBC", AM_AX, R_},
-            {"INC", AM_AX, RW}, {"ins", AM_AX, RW}  // FF .. FF
+    {"CPX", AM_M, IM},  {"SBC", AM_IZX, R_},
+    {"nop", AM_M, IM},  {"ins", AM_IZX, RW},  // E0 .. E3
+    {"CPX", AM_Z, R_},  {"SBC", AM_Z, R_},
+    {"INC", AM_Z, RW},  {"ins", AM_Z, RW},  // E4 .. E7
+    {"INX", 0, 0},      {"SBC", AM_M, IM},
+    {"NOP", 0, 0},      {"sbc", AM_M, IM},  // E8 .. EB
+    {"CPX", AM_A, R_},  {"SBC", AM_A, R_},
+    {"INC", AM_A, RW},  {"ins", AM_A, RW},  // EC .. EF
+    {"BEQ", AM_R, 0},   {"SBC", AM_NZY, R_},
+    {"hlt", 0, 0},      {"ins", AM_NZY, RW},  // F0 .. F3
+    {"nop", AM_ZX, 0},  {"SBC", AM_ZX, R_},
+    {"INC", AM_ZX, RW}, {"ins", AM_ZX, RW},  // F4 .. F7
+    {"SED", 0, 0},      {"SBC", AM_AY, R_},
+    {"nop", 0, 0},      {"ins", AM_AY, RW},  // F8 .. FB
+    {"nop", AM_AX, 0},  {"SBC", AM_AX, R_},
+    {"INC", AM_AX, RW}, {"ins", AM_AX, RW}  // FF .. FF
 };
 
 #undef R_
@@ -508,24 +515,24 @@ enum AssemblerState_e {
   AS_DONE
 };
 
-int m_bAsmFlags;
-std::vector<int> m_vAsmOpcodes;
-int m_iAsmAddressMode = AM_IMPLIED;
+int g_asm_flags;
+std::vector<int> g_asm_opcodes;
+int g_asm_address_mode = AM_IMPLIED;
 
 struct DelayedTarget_t {
-  char m_sAddress[MAX_SYMBOLS_LEN + 1];
-  uint16_t m_nBaseAddress;  // mem address to store symbol at
-  int m_nOpcode;
-  int m_iOpmode;  // AddressingMode_e
+  char address_str[MAX_SYMBOLS_LEN + 1];
+  uint16_t base_address;  // mem address to store symbol at
+  int opcode;
+  int opmode;  // AddressingMode_e
 };
 
-std::vector<DelayedTarget_t> m_vDelayedTargets;
-bool m_bDelayedTargetsDirty = false;
+std::vector<DelayedTarget_t> g_delayed_targets;
+bool g_delayed_targets_dirty = false;
 
-int m_nAsmBytes = 0;
-uint16_t m_nAsmBaseAddress = 0;
-uint16_t m_nAsmTargetAddress = 0;
-uint16_t m_nAsmTargetValue = 0;
+int g_asm_bytes = 0;
+uint16_t g_asm_base_address = 0;
+uint16_t g_asm_target_address = 0;
+uint16_t g_asm_target_value = 0;
 
 // Private
 void AssemblerHashOpcodes();
@@ -557,11 +564,11 @@ auto _6502_CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
     }
 
     if ((nDistance - 2) > _6502_BRANCH_POS) {
-      m_iAsmAddressMode = NUM_OPMODES;  // signal bad
+      g_asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
     if ((nDistance - 2) < _6502_BRANCH_NEG) {
-      m_iAsmAddressMode = NUM_OPMODES;  // signal bad
+      g_asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
     return true;
@@ -578,8 +585,8 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
     fprintf(stderr, "%s: %s\n", "ERROR", "Debugger not properly initialized");
 
     g_opcodes = &g_opcodes65_c02[0];  // Enhanced Apple //e
-    g_opmodes[AM_2].m_nBytes = 2;
-    g_opmodes[AM_3].m_nBytes = 3;
+    g_opmodes[AM_2].bytes = 2;
+    g_opmodes[AM_3].bytes = 3;
   }
 #endif
 
@@ -607,7 +614,7 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
     nOpbyte_ = 1;
     return 0;
   }
-  nOpbyte_ = g_opmodes[iOpmode_].m_nBytes;
+  nOpbyte_ = g_opmodes[iOpmode_].bytes;
 
   // 2.6.2.25 Fixed: DB DW custom data byte sizes weren't scrolling properly in
   // the disasm view.
@@ -672,8 +679,7 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                           // Absolute mode, not Indirect Absolute mode. DA
                           // BASIC.FPTR D000:D080 // was showing as "da (END-1)"
                           // now shows as "da END-1"
-        data->nTargetAddress =
-            *reinterpret_cast<uint16_t*>(mem + nBaseAddress);
+        data->nTargetAddress = *reinterpret_cast<uint16_t*>(mem + nBaseAddress);
         break;
       case NOP_STRING_APPLE:
         iOpmode_ = AM_DATA;
@@ -784,7 +790,7 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
 
           if (nOpcode == OPCODE_RTI) {
             //*pTargetPartial3_ = _6502_STACK_BEGIN + ((sp+1) & 0xFF);	// TODO:
-            //PLP
+            // PLP
             ++sp;
           }
 
@@ -804,8 +810,8 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
               _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           *pTargetPartial2_ = static_cast<int>(
               _6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
-          //*pTargetPartial3_ = _6502_STACK_BEGIN + ((cpu_get_registers()->sp-2) &
-          //0xFF);	// TODO: PHP *pTargetPartial4_ = _6502_BRK_VECTOR + 0;
+          //*pTargetPartial3_ = _6502_STACK_BEGIN + ((cpu_get_registers()->sp-2)
+          //& 0xFF);	// TODO: PHP *pTargetPartial4_ = _6502_BRK_VECTOR + 0;
           //// TODO *pTargetPartial5_ = _6502_BRK_VECTOR + 1;	// TODO
           nTarget16 = *reinterpret_cast<uint16_t*>(mem + _6502_BRK_VECTOR);
         } else  // PHn/PLn
@@ -1134,9 +1140,9 @@ auto CmdAssemble(int nArgs) -> Update_t {
     int iArg = 1;
 
     // undocumented ASM *
-    if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].m_sName)) ||
+    if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
         (!strcmp(g_args[iArg].sArg,
-                 g_parameters[PARAM_MEM_SEARCH_WILD].m_sName))) {
+                 g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
       _CmdAssembleHashDump();
     }
 
@@ -1150,10 +1156,6 @@ auto CmdAssemble(int nArgs) -> Update_t {
     return _CmdAssemble(g_assembler_address, 2,
                         nArgs);  // disasm, memory, watches, zeropage
   }
-
-  //    return Help_Arg_1( CMD_ASSEMBLE );
-  // g_assembler_address; // g_args[1].nValue;
-  //  return ConsoleUpdate();
 
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -1189,7 +1191,8 @@ auto CmdSource(int nArgs) -> Update_t {
         if (BufferAssemblyListing(sFileName)) {
           g_source_file_name = pFileName;
 
-          if (!ParseAssemblyListing(g_source_add_memory, g_source_add_symbols)) {
+          if (!ParseAssemblyListing(g_source_add_memory,
+                                    g_source_add_symbols)) {
             ConsoleBufferPushFormat(buffer, "Couldn't load filename: %s",
                                     sMiniFileName.c_str());
           } else {
@@ -1223,11 +1226,9 @@ void AssemblerHashDirectives() {
 
   for (opcode = 0; opcode < NUM_ASM_M_DIRECTIVES; opcode++) {
     int iNopcode = FIRST_M_DIRECTIVE + opcode;
-    //.		const char *pMnemonic = g_assembler_directives_merlin[ opcode
-    //].m_pMnemonic;
-    const char* pMnemonic = g_assembler_directives[iNopcode].m_pMnemonic;
+    const char* pMnemonic = g_assembler_directives[iNopcode].mnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_assembler_directives[iNopcode].m_nHash = nMnemonicHash;
+    g_assembler_directives[iNopcode].hash = nMnemonicHash;
   }
 }
 
@@ -1247,7 +1248,7 @@ bool g_source_add_memory = false;
 
 std::string g_source_file_name;
 
-MemoryTextFile_t g_AssemblerSourceBuffer;
+MemoryTextFile_t g_assembler_source_buffer;
 
 int g_source_display_start = 0;
 int g_source_assemble_bytes = 0;
@@ -1296,10 +1297,10 @@ auto BufferAssemblyListing(const std::string& pFileName) -> bool {
     return bStatus;
   }
 
-  g_AssemblerSourceBuffer.Reset();
-  g_AssemblerSourceBuffer.Read(pFileName);
+  g_assembler_source_buffer.Reset();
+  g_assembler_source_buffer.Read(pFileName);
 
-  if (g_AssemblerSourceBuffer.GetNumLines()) {
+  if (g_assembler_source_buffer.GetNumLines()) {
     g_source_level_debugging = true;
     bStatus = true;
   }
@@ -1360,9 +1361,9 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
   const uint32_t INVALID_ADDRESS = _6502_MEM_END + 1;
 
-  int nLines = g_AssemblerSourceBuffer.GetNumLines();
+  int nLines = g_assembler_source_buffer.GetNumLines();
   for (int iLine = 0; iLine < nLines; iLine++) {
-    g_AssemblerSourceBuffer.GetLine(iLine, sText, MAX_LINE - 1);
+    g_assembler_source_buffer.GetLine(iLine, sText, MAX_LINE - 1);
 
     uint32_t address = INVALID_ADDRESS;
 
@@ -1442,8 +1443,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
           if (pAddress) {
             char* pAddressEnd = nullptr;
-            address =
-                static_cast<uint32_t>(strtol(pAddress, &pAddressEnd, 16));
+            address = static_cast<uint32_t>(strtol(pAddress, &pAddressEnd, 16));
             g_symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(address)] = sName;
             g_source_assembly_symbols++;
           }
@@ -1475,35 +1475,26 @@ void _CmdAssembleHashDump() {
 
   int opcode = 0;
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
-    tHash.m_iOpcode = opcode;
-    tHash.m_nValue = g_opcodes_hash[opcode];
+    tHash.opcode = opcode;
+    tHash.value = g_opcodes_hash[opcode];
     vHashes.push_back(tHash);
   }
 
   std::sort(vHashes.begin(), vHashes.end(), HashOpcode_t());
 
-  //	Hash_t nPrevHash = vHashes.at( 0 ).m_nValue;
-
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
     tHash = vHashes.at(opcode);
 
-    Hash_t iThisHash = tHash.m_nValue;
-    int nOpcode = tHash.m_iOpcode;
+    Hash_t iThisHash = tHash.value;
+    int nOpcode = tHash.opcode;
     int nOpmode = g_opcodes[nOpcode].nAddressMode;
 
     ConsoleBufferPushFormat(sText, "%08X %02X %s %s", iThisHash, nOpcode,
                             g_opcodes65_c02[nOpcode].sMnemonic,
-                            g_opmodes[nOpmode].m_sName);
-
-    //		if (nPrevHash != iThisHash)
-    //		{
-    //			ConsoleBufferPushFormat( sText, "Total: %d", nThisHash
-    //); 			nThisHash = 0;
-    //		}
+                            g_opmodes[nOpmode].name);
   }
 
   ConsoleUpdate();
-  // #endif
 }
 
 //===========================================================================
@@ -1511,15 +1502,9 @@ auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
                           const uint16_t nBaseAddress,
                           const uint16_t nTargetOffset) -> int {
   (void)Opcode;
-  //	int nOpmode  = g_opcodes[ nOpcode ].nAddressMode;
-  int nOpbytes = g_opmodes[nOpmode].m_nBytes;
-
-  // if (nOpbytes != nBytes)
-  //	console_display_error( " ERROR: Input Opcode bytes differs from actual!"
-  //);
+  int nOpbytes = g_opmodes[nOpmode].bytes;
 
   *(memdirty + (nBaseAddress >> 8)) |= 1;
-  //	*(mem + nBaseAddress) = (uint8_t) nOpcode;
 
   if (nOpbytes > 1) {
     *(mem + nBaseAddress + 1) = static_cast<uint8_t>(nTargetOffset >> 0);
@@ -1534,14 +1519,14 @@ auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
 
 //===========================================================================
 auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
-  int iAddressMode = m_iAsmAddressMode;  // opmode detected from input
-  int nTargetValue = m_nAsmTargetValue;
+  int iAddressMode = g_asm_address_mode;  // opmode detected from input
+  int nTargetValue = g_asm_target_value;
 
   int opcode = 0;
-  int nOpcodes = static_cast<int>(m_vAsmOpcodes.size());
+  int nOpcodes = static_cast<int>(g_asm_opcodes.size());
 
   for (opcode = 0; opcode < nOpcodes; opcode++) {
-    int nOpcode = m_vAsmOpcodes.at(opcode);  // m_iOpcode;
+    int nOpcode = g_asm_opcodes.at(opcode);
     int nOpmode = g_opcodes[nOpcode].nAddressMode;
 
     if (nOpmode == iAddressMode) {
@@ -1549,13 +1534,13 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
       int nOpbytes =
           AssemblerPokeAddress(nOpcode, nOpmode, nBaseAddress, nTargetValue);
 
-      if (m_bDelayedTargetsDirty) {
-        int nDelayedTargets = static_cast<int>(m_vDelayedTargets.size());
+      if (g_delayed_targets_dirty) {
+        int nDelayedTargets = static_cast<int>(g_delayed_targets.size());
         DelayedTarget_t* pTarget =
-            &m_vDelayedTargets.at(static_cast<size_t>(nDelayedTargets - 1));
+            &g_delayed_targets.at(static_cast<size_t>(nDelayedTargets - 1));
 
-        pTarget->m_nOpcode = nOpcode;
-        pTarget->m_iOpmode = nOpmode;
+        pTarget->opcode = nOpcode;
+        pTarget->opmode = nOpmode;
       }
 
       g_assembler_address += nOpbytes;
@@ -1568,15 +1553,15 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
 
 //===========================================================================
 auto TestFlag(AssemblerFlags_e eFlag) -> bool {
-  return (m_bAsmFlags & eFlag) != 0;
+  return (g_asm_flags & eFlag) != 0;
 }
 
 //===========================================================================
 void SetFlag(AssemblerFlags_e eFlag, bool bValue = true) {
   if (bValue) {
-    m_bAsmFlags |= eFlag;
+    g_asm_flags |= eFlag;
   } else {
-    m_bAsmFlags &= ~eFlag;
+    g_asm_flags &= ~eFlag;
   }
 }
 
@@ -1591,11 +1576,11 @@ void SetFlag(AssemblerFlags_e eFlag, bool bValue = true) {
 //===========================================================================
 auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
   (void)nArgs;
-  m_iAsmAddressMode = AM_IMPLIED;
+  g_asm_address_mode = AM_IMPLIED;
   AssemblerState_e eNextState = AS_GET_MNEMONIC;
 
-  m_bAsmFlags = 0;
-  m_nAsmTargetAddress = 0;
+  g_asm_flags = 0;
+  g_asm_target_address = 0;
 
   int nBase = 10;
 
@@ -1618,9 +1603,9 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       }
       SetFlag(AF_HaveHash);
 
-      m_iAsmAddressMode = AM_M;  // Immediate
+      g_asm_address_mode = AM_M;  // Immediate
       eNextState = AS_GET_TARGET;
-      m_nAsmBytes = 1;
+      g_asm_bytes = 1;
     } else if (iToken == TOKEN_DOLLAR) {
       if (TestFlag(AF_HaveDollar)) {
         ConsoleBufferPush(
@@ -1632,10 +1617,10 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
 
       if (!TestFlag(AF_HaveHash)) {
         SetFlag(AF_HaveDollar);
-        m_iAsmAddressMode = AM_A;  // Absolute
+        g_asm_address_mode = AM_A;  // Absolute
       }
       eNextState = AS_GET_TARGET;
-      m_nAsmBytes = 2;
+      g_asm_bytes = 2;
     } else if (iToken == TOKEN_PAREN_L) {
       if (TestFlag(AF_HaveLeftParen)) {
         ConsoleBufferPush(
@@ -1645,7 +1630,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       SetFlag(AF_HaveLeftParen);
 
       // Indexed or Indirect
-      m_iAsmAddressMode = AM_I;
+      g_asm_address_mode = AM_I;
     } else if (iToken == TOKEN_PAREN_R) {
       if (TestFlag(AF_HaveRightParen)) {
         ConsoleBufferPush(
@@ -1655,7 +1640,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       SetFlag(AF_HaveRightParen);
 
       // Indexed or Indirect
-      m_iAsmAddressMode = AM_I;
+      g_asm_address_mode = AM_I;
     } else if (iToken == TOKEN_COMMA) {
       if (TestFlag(AF_HaveComma)) {
         ConsoleBufferPush(
@@ -1680,46 +1665,46 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       if (eNextState == AS_GET_TARGET) {
         SetFlag(AF_HaveTarget);
 
-        ArgsGetValue(pArg, &m_nAsmTargetAddress, nBase);
+        ArgsGetValue(pArg, &g_asm_target_address, nBase);
 
         // Do Symbol Lookup
         uint16_t nSymbolAddress = 0;
         bool bExists = FindAddressFromSymbol(pArg->sArg, &nSymbolAddress);
         if (bExists) {
-          m_nAsmTargetAddress = nSymbolAddress;
+          g_asm_target_address = nSymbolAddress;
 
-          if (m_iAsmAddressMode == AM_IMPLIED) {
-            m_iAsmAddressMode = AM_A;
+          if (g_asm_address_mode == AM_IMPLIED) {
+            g_asm_address_mode = AM_A;
           }
         } else {
           // if valid hex address, don't have delayed target
           char sAddress[32];
-          snprintf(sAddress, sizeof(sAddress), "%X", m_nAsmTargetAddress);
+          snprintf(sAddress, sizeof(sAddress), "%X", g_asm_target_address);
           if (strcmp(sAddress, pArg->sArg)) {
             DelayedTarget_t tDelayedTarget{};
 
-            tDelayedTarget.m_nBaseAddress = nBaseAddress;
-            Util_SafeStrCpy(tDelayedTarget.m_sAddress, pArg->sArg,
+            tDelayedTarget.base_address = nBaseAddress;
+            Util_SafeStrCpy(tDelayedTarget.address_str, pArg->sArg,
                             MAX_SYMBOLS_LEN);
 
             // Flag this target that we need to update it when we have the
             // relevent info
-            m_bDelayedTargetsDirty = true;
+            g_delayed_targets_dirty = true;
 
-            tDelayedTarget.m_nOpcode = 0;
-            tDelayedTarget.m_iOpmode = m_iAsmAddressMode;
+            tDelayedTarget.opcode = 0;
+            tDelayedTarget.opmode = g_asm_address_mode;
 
-            m_vDelayedTargets.push_back(tDelayedTarget);
+            g_delayed_targets.push_back(tDelayedTarget);
 
-            m_nAsmTargetAddress = 0;
+            g_asm_target_address = 0;
           }
         }
 
-        if ((m_iAsmAddressMode != AM_M) && (m_iAsmAddressMode != AM_IMPLIED) &&
-            (!m_bDelayedTargetsDirty)) {
-          if (m_nAsmTargetAddress <= _6502_ZEROPAGE_END) {
-            m_iAsmAddressMode = AM_Z;
-            m_nAsmBytes = 1;
+        if ((g_asm_address_mode != AM_M) &&
+            (g_asm_address_mode != AM_IMPLIED) && (!g_delayed_targets_dirty)) {
+          if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+            g_asm_address_mode = AM_Z;
+            g_asm_bytes = 1;
           }
         }
       }
@@ -1777,45 +1762,45 @@ auto AssemblerUpdateAddressingMode() -> bool {
   if (TestFlag(AF_HaveBothParen)) {
     if (TestFlag(AF_HaveComma)) {
       if (TestFlag(AF_HaveRegisterX)) {
-        m_iAsmAddressMode = AM_AX;
-        m_nAsmBytes = 2;
-        if (m_nAsmTargetAddress <= _6502_ZEROPAGE_END) {
-          m_iAsmAddressMode = AM_ZX;
-          m_nAsmBytes = 1;
+        g_asm_address_mode = AM_AX;
+        g_asm_bytes = 2;
+        if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+          g_asm_address_mode = AM_ZX;
+          g_asm_bytes = 1;
         }
       }
       if (TestFlag(AF_HaveRegisterY)) {
-        m_iAsmAddressMode = AM_AY;
-        m_nAsmBytes = 2;
-        if (m_nAsmTargetAddress <= _6502_ZEROPAGE_END) {
-          m_iAsmAddressMode = AM_ZY;
-          m_nAsmBytes = 1;
+        g_asm_address_mode = AM_AY;
+        g_asm_bytes = 2;
+        if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+          g_asm_address_mode = AM_ZY;
+          g_asm_bytes = 1;
         }
       }
     }
   }
 
-  if ((m_iAsmAddressMode == AM_A) || (m_iAsmAddressMode == AM_Z)) {
+  if ((g_asm_address_mode == AM_A) || (g_asm_address_mode == AM_Z)) {
     if (!TestFlag(AF_HaveEitherParen))  // if no paren
     {
       if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterX)) {
-        if (m_iAsmAddressMode == AM_Z) {
-          m_iAsmAddressMode = AM_ZX;
+        if (g_asm_address_mode == AM_Z) {
+          g_asm_address_mode = AM_ZX;
         } else {
-          m_iAsmAddressMode = AM_AX;
+          g_asm_address_mode = AM_AX;
         }
       }
       if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterY)) {
-        if (m_iAsmAddressMode == AM_Z) {
-          m_iAsmAddressMode = AM_ZY;
+        if (g_asm_address_mode == AM_Z) {
+          g_asm_address_mode = AM_ZY;
         } else {
-          m_iAsmAddressMode = AM_AY;
+          g_asm_address_mode = AM_AY;
         }
       }
     }
   }
 
-  if (m_iAsmAddressMode == AM_I) {
+  if (g_asm_address_mode == AM_I) {
     if (!TestFlag(AF_HaveEitherParen))  // if no paren
     {
       // Indirect Zero Page
@@ -1823,17 +1808,17 @@ auto AssemblerUpdateAddressingMode() -> bool {
     }
   }
 
-  m_nAsmTargetValue = m_nAsmTargetAddress;
+  g_asm_target_value = g_asm_target_address;
 
-  int nOpcode = m_vAsmOpcodes.at(
+  int nOpcode = g_asm_opcodes.at(
       0);  // branch opcodes don't vary (only 1 Addressing Mode)
-  if (_6502_CalcRelativeOffset(nOpcode, m_nAsmBaseAddress, m_nAsmTargetAddress,
-                               &m_nAsmTargetValue)) {
-    if (m_iAsmAddressMode == NUM_OPMODES) {
+  if (_6502_CalcRelativeOffset(nOpcode, g_asm_base_address,
+                               g_asm_target_address, &g_asm_target_value)) {
+    if (g_asm_address_mode == NUM_OPMODES) {
       return false;
     }
 
-    m_iAsmAddressMode = AM_R;
+    g_asm_address_mode = AM_R;
   }
 
   return true;
@@ -1841,7 +1826,7 @@ auto AssemblerUpdateAddressingMode() -> bool {
 
 //===========================================================================
 auto AssemblerDelayedTargetsSize() -> int {
-  int nSize = static_cast<int>(m_vDelayedTargets.size());
+  int nSize = static_cast<int>(g_delayed_targets.size());
   return nSize;
 }
 
@@ -1852,7 +1837,7 @@ auto AssemblerDelayedTargetsSize() -> int {
 // <enter>
 //===========================================================================
 void AssemblerProcessDelayedSymols() {
-  m_bDelayedTargetsDirty =
+  g_delayed_targets_dirty =
       false;  // assembler set signal if new symbol was added
 
   bool bModified = false;
@@ -1860,23 +1845,20 @@ void AssemblerProcessDelayedSymols() {
     bModified = false;
 
     std::vector<DelayedTarget_t>::iterator iSymbol;
-    for (iSymbol = m_vDelayedTargets.begin();
-         iSymbol != m_vDelayedTargets.end(); ++iSymbol) {
-      DelayedTarget_t* pTarget =
-          &(*iSymbol);  // m_vDelayedTargets.at( iSymbol );
+    for (iSymbol = g_delayed_targets.begin();
+         iSymbol != g_delayed_targets.end(); ++iSymbol) {
+      DelayedTarget_t* pTarget = &(*iSymbol);
 
       uint16_t nTargetAddress = 0;
       bool bExists =
-          FindAddressFromSymbol(pTarget->m_sAddress, &nTargetAddress);
+          FindAddressFromSymbol(pTarget->address_str, &nTargetAddress);
       if (bExists) {
         // TODO: need to handle #<symbol, #>symbol, symbol+n, symbol-n
 
         bModified = true;
 
-        int nOpcode = pTarget->m_nOpcode;
+        int nOpcode = pTarget->opcode;
         int nOpmode = g_opcodes[nOpcode].nAddressMode;
-        //				int nOpbytes = g_opmodes[ nOpmode
-        //].m_nBytes;
 
         // 300: D0 7E BNE $380
         // ^       ^      ^
@@ -1885,20 +1867,20 @@ void AssemblerProcessDelayedSymols() {
         // BaseAddress
         uint16_t nTargetValue = nTargetAddress;
 
-        if (_6502_CalcRelativeOffset(nOpcode, pTarget->m_nBaseAddress,
+        if (_6502_CalcRelativeOffset(nOpcode, pTarget->base_address,
                                      nTargetAddress, &nTargetValue)) {
-          if (m_iAsmAddressMode == NUM_OPMODES) {
+          if (g_asm_address_mode == NUM_OPMODES) {
             nTargetValue = 0;
             bModified = false;
           }
         }
 
         if (bModified) {
-          AssemblerPokeAddress(nOpcode, nOpmode, pTarget->m_nBaseAddress,
+          AssemblerPokeAddress(nOpcode, nOpmode, pTarget->base_address,
                                nTargetValue);
-          *(memdirty + (pTarget->m_nBaseAddress >> 8)) |= 1;
+          *(memdirty + (pTarget->base_address >> 8)) |= 1;
 
-          m_vDelayedTargets.erase(iSymbol);
+          g_delayed_targets.erase(iSymbol);
 
           // iterators are invalid after the point of deletion
           // need to restart enumeration
@@ -1922,7 +1904,7 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
   // we need to buffer the target address fix-ups.
   AssemblerProcessDelayedSymols();
 
-  m_nAsmBaseAddress = address;
+  g_asm_base_address = address;
 
   char* pMnemonic = g_args[iArg].sArg;
   uint32_t nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
@@ -1934,17 +1916,17 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
                      CHC_NUM_HEX, nMnemonicHash);
 #endif
 
-  m_vAsmOpcodes.clear();  // Candiate opcodes
+  g_asm_opcodes.clear();  // Candiate opcodes
   int opcode = 0;
 
   // Ugh! Linear search.
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
     if (nMnemonicHash == g_opcodes_hash[opcode]) {
-      m_vAsmOpcodes.push_back(opcode);
+      g_asm_opcodes.push_back(opcode);
     }
   }
 
-  int nOpcodes = static_cast<int>(m_vAsmOpcodes.size());
+  int nOpcodes = static_cast<int>(g_asm_opcodes.size());
   if (!nOpcodes) {
     // Check for assembler directive
 

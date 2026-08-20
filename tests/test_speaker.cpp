@@ -108,27 +108,27 @@ auto Mock_AudioPushSamples(void* instance, const int16_t* buffer,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 static HostInterface_t mock_host = [] {
-    HostInterface_t h{};
-    h.Log = Mock_Log;
-    h.AssertIrq = Mock_AssertIrq;
-    h.RegisterIO = Mock_RegisterIO;
-    h.RegisterCxROM = Mock_RegisterCxROM;
-    h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-    h.RegisterDirectIO = Mock_RegisterDirectIO;
-    h.get_mem_ptr = nullptr;
-    h.GetCycles = nullptr;
-    h.GetConfig = nullptr;
-    h.SetConfig = nullptr;
-    h.NotifyStatusChanged = nullptr;
-    h.NotifyActivityChanged = nullptr;
-    h.RequestPreciseTiming = nullptr;
-    h.AudioPushSamples = Mock_AudioPushSamples;
-    h.ResetSystem = nullptr;
-    h.PrinterPutChar = nullptr;
-    h.PrinterGetStatus = nullptr;
-    h.SerialTransmitByte = nullptr;
-    h.SerialUpdateState = nullptr;
-    return h;
+  HostInterface_t h{};
+  h.Log = Mock_Log;
+  h.AssertIrq = Mock_AssertIrq;
+  h.RegisterIO = Mock_RegisterIO;
+  h.RegisterCxROM = Mock_RegisterCxROM;
+  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
+  h.RegisterDirectIO = Mock_RegisterDirectIO;
+  h.get_mem_ptr = nullptr;
+  h.GetCycles = nullptr;
+  h.GetConfig = nullptr;
+  h.SetConfig = nullptr;
+  h.NotifyStatusChanged = nullptr;
+  h.NotifyActivityChanged = nullptr;
+  h.RequestPreciseTiming = nullptr;
+  h.AudioPushSamples = Mock_AudioPushSamples;
+  h.ResetSystem = nullptr;
+  h.PrinterPutChar = nullptr;
+  h.PrinterGetStatus = nullptr;
+  h.SerialTransmitByte = nullptr;
+  h.SerialUpdateState = nullptr;
+  return h;
 }();
 
 static auto Speaker_Init_With_Mock(int slot) -> void* {
@@ -145,7 +145,7 @@ static auto CheckIsActive(void* instance) -> bool {
   bool active = false;
   size_t size = sizeof(active);
   speaker_get_descriptor()->query(instance, speaker_query_is_active, &active,
-                                 &size);
+                                  &size);
   return active;
 }
 
@@ -270,8 +270,8 @@ TEST_CASE("Speaker Peripheral: State Persistence Integrity") {
   void* instance2 = Speaker_Init_With_Mock(TEST_SLOT);
   CHECK(CheckIsActive(instance2) == false);
 
-  PeripheralStatus_t status =
-      speaker_get_descriptor()->load_state(instance2, buffer.data(), state_size);
+  PeripheralStatus_t status = speaker_get_descriptor()->load_state(
+      instance2, buffer.data(), state_size);
   CHECK(status == peripheral_ok);
 
   CHECK(CheckIsActive(instance2) == true);
@@ -308,7 +308,7 @@ TEST_CASE("Speaker Peripheral: Robustness and ABI") {
 
   size_t size = 0;
   CHECK(speaker_get_descriptor()->query(instance, speaker_query_is_active,
-                                       nullptr, &size) == peripheral_ok);
+                                        nullptr, &size) == peripheral_ok);
   CHECK(size == sizeof(bool));
 
   size = 0;

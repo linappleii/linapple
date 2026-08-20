@@ -329,7 +329,7 @@ auto CmdUnassemble(int nArgs) -> Update_t {
 auto CmdKey(int nArgs) -> Update_t {
   uint8_t code =
       nArgs ? (g_args[1].nValue ? static_cast<uint8_t>(g_args[1].nValue)
-                                 : static_cast<uint8_t>(g_args[1].sArg[0]))
+                                : static_cast<uint8_t>(g_args[1].sArg[0]))
             : static_cast<uint8_t>(' ');
 
   // Send key-down event
@@ -371,7 +371,8 @@ auto CmdJSR(int nArgs) -> Update_t {
   *(mem + cpu_get_registers()->sp) = ((cpu_get_registers()->pc >> 8) & 0xFF);
   cpu_get_registers()->sp--;
 
-  *(mem + cpu_get_registers()->sp) = ((cpu_get_registers()->pc >> 0) - 1) & 0xFF;
+  *(mem + cpu_get_registers()->sp) =
+      ((cpu_get_registers()->pc >> 0) - 1) & 0xFF;
   cpu_get_registers()->sp--;
 
   // Jump to new address
@@ -410,7 +411,7 @@ auto CmdOut(int nArgs) -> Update_t {
   uint16_t address = g_args[1].nValue;
 
   IOWrite[(address >> 4) & 0xF](cpu_get_registers()->pc, address & 0xFF, 1,
-                                 g_args[2].nValue & 0xFF, 0);
+                                g_args[2].nValue & 0xFF, 0);
 
   return UPDATE_ALL;
 }
@@ -472,9 +473,10 @@ void OutputTraceLine() {
   DisasmLine_t line;
   GetDisassemblyLine(cpu_get_registers()->pc, line);
 
-  char sDisassembly[CONSOLE_WIDTH];  // DrawDisassemblyLine(
-                                     // 0,cpu_get_registers()->pc, sDisassembly);
-                                     // // Get Disasm String
+  char
+      sDisassembly[CONSOLE_WIDTH];  // DrawDisassemblyLine(
+                                    // 0,cpu_get_registers()->pc, sDisassembly);
+                                    // // Get Disasm String
   FormatDisassemblyLine(line, sDisassembly, CONSOLE_WIDTH);
 
   char sFlags[_6502_NUM_FLAGS + 1];
@@ -577,8 +579,8 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
 
         // Update profiling stats
         int nOpmode = g_opcodes[nOpcode].nAddressMode;
-        g_profile_opcodes[nOpcode].m_nCount++;
-        g_profile_opmodes[nOpmode].m_nCount++;
+        g_profile_opcodes[nOpcode].count++;
+        g_profile_opmodes[nOpmode].count++;
 
         CheckBreakOpcode(nOpcode);  // Can set g_debug_breakpoint_hit
       } else {
