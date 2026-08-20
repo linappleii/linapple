@@ -699,7 +699,7 @@ void process_button_click(int button, int mod) {
                                             static_cast<int>(g_videotype));
         Configuration_t::instance().set_int("Configuration", "Emulation Speed",
                                             static_cast<int>(g_state.speed));
-        Configuration_t::instance().set_int("Configuration", "Fullg_screen",
+        Configuration_t::instance().set_int("Configuration", "Fullscreen",
                                             g_state.fullscreen ? 1 : 0);
         Configuration_t::instance().save();
 
