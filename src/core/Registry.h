@@ -45,6 +45,7 @@ constexpr const char* REGVALUE_PDL_XTRIM = "PDL X-Trim";
 constexpr const char* REGVALUE_PDL_YTRIM = "PDL Y-Trim";
 constexpr const char* REGVALUE_SCROLLLOCK_TOGGLE = "ScrollLock Toggle";
 constexpr const char* REGVALUE_MOUSE_IN_SLOT4 = "Mouse in slot 4";
+constexpr const char* REGVALUE_MOUSE_CAPTURE = "Mouse Capture";
 
 constexpr const char* REGVALUE_PREF_START_DIR = "Slot 6 Directory";
 constexpr const char* REGVALUE_PREF_HDD_START_DIR = "HDV Starting Directory";

@@ -10,6 +10,7 @@
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/Frontend.h"
@@ -177,6 +178,10 @@ void sdl_handle_event(SDL_Event* e) {
 
     case SDL_MOUSEBUTTONDOWN: {
       SDL_Keymod mymod = SDL_GetModState();
+      if (e->button.button == SDL_BUTTON_MIDDLE) {
+        set_using_cursor(!g_usingcursor);
+        break;
+      }
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (g_buttondown == -1) {
           x_local = static_cast<int>(e->button.x);
@@ -195,13 +200,19 @@ void sdl_handle_event(SDL_Event* e) {
                                  sizeof(payload));
             }
           } else {
-            uint8_t mouse_active = 0;
-            size_t qsize = 1;
-            peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
-            if ((((g_state.mode == MODE_RUNNING) ||
-                  (g_state.mode == MODE_STEPPING))) ||
-                (mouse_active != 0)) {
-              set_using_cursor(true);
+            bool mouse_capture_cfg = true;
+            config_load_bool("Configuration", REGVALUE_MOUSE_CAPTURE,
+                             &mouse_capture_cfg);
+            if (mouse_capture_cfg) {
+              uint8_t mouse_active = 0;
+              size_t qsize = 1;
+              peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+              bool mouse_in_use =
+                  (mouse_active != 0) || JoyFrontend_IsMouseEmulationActive();
+              if (mouse_in_use && ((g_state.mode == MODE_RUNNING) ||
+                                   (g_state.mode == MODE_STEPPING))) {
+                set_using_cursor(true);
+              }
             }
           }
         }

@@ -508,3 +508,15 @@ auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
   }
   return keychange;
 }
+
+auto JoyFrontend_IsMouseEmulationActive() -> bool {
+  if (g_joyConfig.joy_type[0] < joyinfo.size() &&
+      joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_MOUSE) {
+    return true;
+  }
+  if (g_joyConfig.joy_type[1] < joyinfo.size() &&
+      joyinfo[g_joyConfig.joy_type[1]].device == DEVICE_MOUSE) {
+    return true;
+  }
+  return false;
+}

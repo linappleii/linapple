@@ -1,4 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
@@ -32,4 +33,9 @@ TEST_CASE("AppConfig_t: Manual Population") {
   CHECK(strcmp(config.disk_path[0].data(), "test.dsk") == 0);
   CHECK(config.apple2_type == A2TYPE_APPLE2PLUS);
   CHECK(config.is_pal == true);
+}
+
+TEST_CASE("Registry: Mouse Capture Key Definition") {
+  CHECK(strcmp(REGVALUE_MOUSE_CAPTURE, "Mouse Capture") == 0);
+  CHECK(strcmp(REGVALUE_MOUSE_IN_SLOT4, "Mouse in slot 4") == 0);
 }
