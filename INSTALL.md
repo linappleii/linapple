@@ -88,6 +88,10 @@ cmake --build build -j$(nproc)
 ### Additional Build Flags
 
 * **`-DBUILD_TESTING=ON`** : Build unit and integration tests (uses `doctest`).
+* **`-DBUILD_SHARED_PERIPHERALS=ON`** : Build expansion cards as dynamic `.so`
+  plugins installed to `lib/linapple/plugins/` rather than built-in.
+* **`-DENABLE_PERIPHERAL_<NAME>=OFF`** : Disable specific peripheral cards at
+  compile time (e.g. `-DENABLE_PERIPHERAL_PRINTER=OFF`).
 * **`-DENABLE_DEBUGGER=OFF`** : Disable the assembly debugger to minimize binary
   size.
 * **`-DREGISTRY_WRITEABLE=ON`** : Enable persisting runtime settings directly
