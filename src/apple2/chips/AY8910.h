@@ -7,23 +7,23 @@ constexpr int MAX_8910 = 4;
 // AY-3-8910 emulation
 // Based on General Instrument AY-3-8910 Datasheet
 
-typedef struct {
+struct Ay8910_t {
   uint8_t regs[16] = {};
-  uint16_t count_a, count_b, count_c;
-  uint8_t out_a, out_b, out_c;
+  uint16_t count_a = 0, count_b = 0, count_c = 0;
+  uint8_t out_a = 0, out_b = 0, out_c = 0;
 
-  uint32_t count_n;
-  uint32_t rng;
-  uint8_t out_n;
+  uint32_t count_n = 0;
+  uint32_t rng = 0;
+  uint8_t out_n = 0;
 
-  uint32_t count_e;
-  uint8_t envelope_vol;
-  uint32_t envelope_step;
-  bool env_holding;
+  uint32_t count_e = 0;
+  uint8_t envelope_vol = 0;
+  uint32_t envelope_step = 0;
+  bool env_holding = false;
 
-  double count_accum;
-  uint32_t step;
-} Ay8910_t;
+  double count_accum = 0.0;
+  uint32_t step = 0;
+};
 
 void ay8910_reset_instance(Ay8910_t* p);
 void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,

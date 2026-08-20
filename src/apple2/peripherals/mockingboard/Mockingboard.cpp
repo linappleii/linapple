@@ -750,7 +750,7 @@ static auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
   auto* ss = static_cast<MockingboardSaveState_t*>(buffer);
 
-  memset(ss, 0, required);
+  *ss = MockingboardSaveState_t{};
   for (int i = 0; i < chips_per_card; ++i) {
     const auto& src = mp->chips.at(static_cast<size_t>(i));
     auto& dst = ss->chips.at(static_cast<size_t>(i));

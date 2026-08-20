@@ -51,7 +51,7 @@ static const std::array<uint16_t, 16> vol_table = {
 
 void ay8910_reset_instance(Ay8910_t* p) {
   if (!p) return;
-  memset(p, 0, sizeof(Ay8910_t));
+  *p = Ay8910_t{};
   p->rng = 1;
 }
 
