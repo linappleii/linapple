@@ -1,19 +1,25 @@
 #ifndef DEBUGGER_DISASSEMBLERDATA_H
 #define DEBUGGER_DISASSEMBLERDATA_H
 
-	Update_t _CmdDisasmDataDefByteX    (int nArgs);
-	Update_t _CmdDisasmDataDefWordX    (int nArgs);
+#include <vector>
 
-// Data Disassembler ______________________________________________________________________________
+#include "Debugger_Types.h"
 
-	int Disassembly_FindOpcode( unsigned short nAddress );
-	DisasmData_t* Disassembly_IsDataAddress( unsigned short nAddress );
+Update_t _CmdDisasmDataDefByteX(int nArgs);
+Update_t _CmdDisasmDataDefWordX(int nArgs);
 
-	void Disassembly_AddData( DisasmData_t tData);
-	void Disassembly_GetData ( unsigned short nBaseAddress, const DisasmData_t *pData_, DisasmLine_t & line_ );
-	void Disassembly_DelData( DisasmData_t tData);
-	DisasmData_t* Disassembly_Enumerate( DisasmData_t *pCurrent = NULL );
+// Data Disassembler
+// ______________________________________________________________________________
 
-	extern std::vector<DisasmData_t> g_aDisassemblerData;
+int Disassembly_FindOpcode(uint16_t address);
+DisasmData_t* Disassembly_IsDataAddress(uint16_t address);
+
+void Disassembly_AddData(DisasmData_t tData);
+void Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* pData_,
+                         DisasmLine_t& line_);
+void Disassembly_DelData(DisasmData_t tData);
+DisasmData_t* Disassembly_Enumerate(DisasmData_t* pCurrent = nullptr);
+
+extern std::vector<DisasmData_t> g_disassembler_data;
 
 #endif

@@ -1,5 +1,5 @@
 /* XPM */
-static char * font_xpm[] = {
+static const char * const font_xpm[] = {
 "320 200 6 1",
 " 	c None",
 ".	c #FF0000",

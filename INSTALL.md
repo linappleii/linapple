@@ -1,140 +1,163 @@
-# Installation
+# Building and Installing LinApple
 
-### Prerequisites
+LinApple uses modern **CMake** (3.12+) as its build system.
 
-#### Debian / Ubuntu / RetroPie
+## 1. Prerequisites & Dependencies
+
+Install the required compiler, build tools, and development libraries for your
+distribution:
+
+### Debian / Ubuntu / Linux Mint / Pop!_OS
 
 ```bash
-sudo apt-get install git libzip-dev libsdl1.2-dev libsdl-image1.2-dev libcurl4-openssl-dev zlib1g-dev imagemagick
+sudo apt-get update
+sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev \
+                        imagemagick libsdl3-dev libsdl3-image-dev
 ```
 
-#### Fedora / RHEL / CentOS
+*(For older distributions like Ubuntu 22.04 LTS or Debian 12 where SDL3 is not
+pre-packaged, install `libsdl2-dev` and build with `-DFRONTEND=sdl2`.)*
+
+### Fedora / RHEL / CentOS / AlmaLinux
 
 ```bash
-sudo dnf install git SDL-devel SDL_image-devel libcurl-devel libzip-devel ImageMagick
+sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel \
+                    ImageMagick SDL3-devel SDL3_image-devel
 ```
 
-### Clone
+### Arch Linux / Manjaro
+
+```bash
+sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib \
+                          imagemagick sdl3 sdl3_image
+```
+
+### openSUSE (Tumbleweed / Leap)
+
+```bash
+sudo zypper install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel \
+                       ImageMagick SDL3-devel SDL3_image-devel
+```
+
+### Alpine Linux
+
+```bash
+sudo apk add git g++ cmake make libzip-dev curl-dev zlib-dev imagemagick \
+             sdl3-dev sdl3_image-dev
+```
+
+## 2. Clone the Repository
 
 ```bash
 git clone https://github.com/linappleii/linapple.git
-```
-
-### Compile
-
-```bash
 cd linapple
-make help    # View all available build options and targets
-make         # Build the application (default)
 ```
 
-To enable rewrite user settings:
-```bash
-make REGISTRY_WRITEABLE=1
-```
+## 3. Configure and Build
 
-For a faster compilation, you can add an option "-jX", where "X" is the number of threads of your CPU. For example, *AMD Ryzen 5 2600* has 6 cores, but 12 threads:
-```bash
-make -j12
-```
-
-#### Troubleshooting
-If the build fails or you want to see the exact commands being executed, use the verbosity flag:
-```bash
-make V=1
-```
-
-Don't worry about spurious warning messages, which can look like errors; chances are that the program will build successfully even with these warnings.
-
-### Run
+### Quick Build (Default SDL3 Frontend)
 
 ```bash
-cd build/bin
-./linapple
+# Configure build directory (skipping tests for fastest build time)
+cmake -B build -DBUILD_TESTING=OFF
+
+# Compile using all available CPU cores
+cmake --build build -j$(nproc)
 ```
 
-Or, to boot automatically into a standard Apple floppy disk provided by LinApple:
+### Frontend Options
+
+LinApple supports several dedicated frontends via `-DFRONTEND=<name>`:
+
+| Option                    | Description                                  | Target Use Case                                                                                 |
+| :------------------------ | :------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| **`-DFRONTEND=sdl3`**     | *(Default)* Modern SDL3 graphical frontend   | Modern Linux desktops (Wayland / X11 / KMSDRM)                                                  |
+| **`-DFRONTEND=all`**      | Build separate binaries for all frontends    | Produces `linapple-sdl3`, `linapple-sdl2`, `linapple-sdl1`, `linapple-tui`, `linapple-headless` |
+| **`-DFRONTEND=tui`**      | Terminal UI using 24-bit Truecolor & Unicode | SSH sessions, headless servers, lightweight consoles                                            |
+| **`-DFRONTEND=headless`** | Minimal CLI build with no video/audio        | Automated CI test runners and batch scripts                                                     |
+| **`-DFRONTEND=sdl2`**     | Legacy SDL2 graphical frontend               | Older Linux distributions without native SDL3                                                   |
+| **`-DFRONTEND=sdl1`**     | Legacy SDL1.2 graphical frontend             | Embedded/retro Linux devices and vintage systems                                                |
+
+#### Example: Building All Frontends
 
 ```bash
-./linapple --autoboot --d1 ../share/linapple/Master.dsk
+cmake -B build -DFRONTEND=all -DBUILD_TESTING=OFF
+cmake --build build -j$(nproc)
 ```
 
-### Configuration file
+### Additional Build Flags
 
-A configuration file can be found at `build/etc/linapple/linapple.conf`. It is highly recommended to read this file and edit it to your liking. File is self-explanatory.
+* **`-DBUILD_TESTING=ON`** : Build unit and integration tests (uses `doctest`).
+* **`-DBUILD_SHARED_PERIPHERALS=ON`** : Build expansion cards as dynamic `.so`
+  plugins installed to `lib/linapple/plugins/` rather than built-in.
+* **`-DENABLE_PERIPHERAL_<NAME>=OFF`** : Disable specific peripheral cards at
+  compile time (e.g. `-DENABLE_PERIPHERAL_PRINTER=OFF`).
+* **`-DENABLE_DEBUGGER=OFF`** : Disable the assembly debugger to minimize binary
+  size.
+* **`-DREGISTRY_WRITEABLE=ON`** : Enable persisting runtime settings directly
+  to `linapple.conf`.
+* **`-DENABLE_ASAN=ON`** : Enable AddressSanitizer for memory bug diagnostics.
+* **`-DCMAKE_BUILD_TYPE=Debug`** : Build with debug symbols and without
+  optimizations.
 
-Once configured, you can load the configuration file and automatically boot to floppy:
+## 4. Running LinApple
+
+### Running from the Build Directory
+
+You can run the compiled binary immediately without installing:
 
 ```bash
-./linapple --conf ../etc/linapple/linapple.conf --autoboot --d1 ../share/linapple/Master.dsk
+# Launch with splash screen
+./build/linapple
+
+# Boot directly into the included Apple II Master disk
+./build/linapple --autoboot --d1 res/Master.dsk
+
+# Boot a hard disk image (2MG / HDV)
+./build/linapple --autoboot --hd1 /path/to/disk.2mg
 ```
 
-### Global Install
+## 5. Installation (XDG Compliant)
 
-Optional step. Some contents of the recently created "build" folder will be installed on your system. The advantage of this step is that you will be capable to access LinApple from any directory, just typing "linapple", like any other program on the system.
-
-```shell
-make install
-```
-
-#### Custom Installation Path
-To install to a different location (e.g., your home directory), you can override the `prefix` variable:
-```bash
-make install prefix=$HOME/.local
-```
-
-Now copy both configuration file `linapple.conf` and floppy disk `Master.dsk` to user's folder:
+To install LinApple so that the `linapple` command and desktop assets are
+available system-wide:
 
 ```bash
-cp /usr/local/etc/linapple/linapple.conf ~/.config/linapple/
-cp /usr/local/share/linapple/Master.dsk ~/.linapple/disks/
+cmake --install build
 ```
 
-> NOTE: by default they will be in `/usr/local`, otherwise copy them from the `build` folder just mentioned.
+### Installation Modes
 
+* **User-Local Install (Default / Non-Root):**
+  Running `cmake --install build` as a standard user installs without `sudo`
+  directly to:
+  * Binaries: `~/.local/bin/`
+  * Assets & ROMs: `~/.local/share/linapple/`
+  * Configuration: `~/.config/linapple/linapple.conf`
 
-In a global install, LinApple will load `~/.config/linapple/linapple.conf` automatically. You can set LinApple to load `Master.dsk` and boot it at startup in `linapple.conf`.
+* **System-Wide Install (Root):**
+  Running `sudo cmake --install build` installs system-wide to:
+  * Binaries: `/usr/local/bin/`
+  * Assets & ROMs: `/usr/local/share/linapple/`
+  * Configuration: `/usr/local/etc/linapple/`
 
-To run LinApple after a global installation, type anywhere, in any folder you are in:
+* **Custom Prefix (e.g. Package Maintainers):**
 
-```bash
-linapple
-```
+  ```bash
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
+  sudo cmake --install build
+  ```
 
-Take a look at [README.md](README.md) for more detailed information.
+## 6. Running Tests
 
-### Uninstall
-
-To uninstall a global install:
-
-```bash
-make uninstall
-```
-
-### Creating a debian package
-
-To create a debian package installable with `dpkg`:
-
-```bash
-make
-make deb
-sudo dpkg -i linapple_VERSION_all.deb
-```
-
-Where "VERSION" is the LinApple version. See the created package and enter the correct name.
-
-### Debugging and Profiling
-
-By default, the `make` command will compile an optimized version of `linapple`.
-
-It is possible to compile a version with debugging symbols:
+To build and execute the automated test suite (including CPU verification and
+peripheral tests):
 
 ```bash
-make DEBUG=1
-```
+# Configure with testing enabled
+cmake -B build -DBUILD_TESTING=ON
 
-If you would like to also include extra code that writes profile information suitable for the analysis program `gprof`:
-
-```bash
-make PROFILING=1
+# Build and execute all test suites
+cmake --build build -j$(nproc)
+ctest --test-dir build --output-on-failure
 ```

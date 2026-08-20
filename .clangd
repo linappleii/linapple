@@ -1,0 +1,17 @@
+CompileFlags:
+  Add: [-Isrc/core, -Isrc/apple2, -Isrc/frontends, -Iinc, -DSDL_MAIN_HANDLED]
+  CompilationDatabase: build
+---
+Index:
+  Background: Build
+---
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+---
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  Designators: Yes
+

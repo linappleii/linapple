@@ -1,13 +1,34 @@
-# Omit text editor backup files;
-# put those in your personal ignore configuration.
+# CMake
+build*/
+build_cmake/
+build_headless/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Makefile
+_deps/
 
-build/**
-bin/**
-res/splash.xpm
-res/charset*.xpm
+# Binaries
+linapple
+test-integration
+test-ssc
+test-keyboard
+
+# Assets (Generated)
+gen/
+*.xpm
+!res/*.xpm
+
+# Logs and temp files
+*.log
 *.pcm
 *.d
 *.o
-*.swp
-*.swo
-*.orig
+gmon.out
+compile_commands.json
+
+.worktrees/
+build-san/
+.antigravitycli/

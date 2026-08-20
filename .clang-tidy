@@ -1,0 +1,17 @@
+---
+# LinApple .clang-tidy configuration
+#
+# This project favors a procedural, C-like C++11 style as mandated in AGENTS.md.
+# We utilize the following exclusions from standard C++ Core Guidelines:
+#
+# 1. pro-type-vararg & avoid-variadic-functions:
+#    Favoring printf-style formatting over iostream for performance,
+#    conciseness in hex-formatting, and C99 ABI compatibility.
+#
+# 2. avoid-non-const-global-variables:
+#    Global hardware state (CPU, Memory, Registers) is a core design
+#    pattern in this emulator's procedural architecture.
+
+Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,misc-include-cleaner,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'
+WarningsAsErrors: ''
+HeaderFilterRegex: ''

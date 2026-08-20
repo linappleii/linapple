@@ -1,134 +1,114 @@
-/*
-linapple : An Apple //e emulator for Linux
-
-Copyright (C) 1994-1996, Michael O'Brien
-Copyright (C) 1999-2001, Oliver Schmidt
-Copyright (C) 2002-2005, Tom Charlesworth
-Copyright (C) 2006-2014, Tom Charlesworth, Michael Pohoreski
-
-AppleWin is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-AppleWin is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with AppleWin; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-#include "stdafx.h"
-#include "Util_Text.h"
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Util_MemoryTextFile.h"
 
-const int EOL_NULL = 0;
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
-bool MemoryTextFile_t::Read( const std::string & pFileName )
-{
-	bool bStatus = false;
-	FILE *hFile = fopen( pFileName.c_str(), "rb" );
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
+#include "core/Util_Text.h"
 
-	if (hFile)
-	{
-		fseek( hFile, 0, SEEK_END );
-		long nSize = ftell( hFile );
-		fseek( hFile, 0, SEEK_SET );
-
-		m_vBuffer.reserve( nSize + 1 );
-    // NOTE: Can NOT m_vBuffer.clear(); MUST insert() _before_ using at()
-		m_vBuffer.insert( m_vBuffer.begin(), nSize+1, 0 );
-
-		char *pBuffer = & m_vBuffer.at(0);
-		bStatus=(fread((void*)pBuffer, nSize, 1, hFile)>0?true:false);
-		fclose(hFile);
-
-		m_bDirty = true;
-		GetLinePointers();
-
-		bStatus = true;
-	}
-
-	return bStatus;
+namespace {
+constexpr int eol_null = 0;
 }
 
+auto MemoryTextFile_t::Read(const std::string& filename) -> bool {
+  FilePtr_t file_handle(fopen(filename.c_str(), "rb"), fclose);
+  if (!file_handle) {
+    return false;
+  }
 
-void MemoryTextFile_t::GetLine( const int iLine, char *pLine, const int nMaxLineChars )
-{
-	if (m_bDirty)
-	{
-		GetLinePointers();
-	}
+  fseek(file_handle.get(), 0, SEEK_END);
+  long file_size = ftell(file_handle.get());
+  fseek(file_handle.get(), 0, SEEK_SET);
 
-	memset( pLine, 0, nMaxLineChars );
-	Util_SafeStrCpy( pLine, m_vLines[ iLine ], nMaxLineChars-1 );
+  if (file_size < 0) {
+    return false;
+  }
+
+  buffer_.reserve(static_cast<size_t>(file_size) + 1);
+  buffer_.insert(buffer_.begin(), static_cast<size_t>(file_size) + 1, 0);
+
+  char* buf_ptr = &buffer_.at(0);
+  size_t read_bytes =
+      fread(reinterpret_cast<void*>(buf_ptr), static_cast<size_t>(file_size), 1,
+            file_handle.get());
+  if (read_bytes == 0 && file_size > 0) {
+    return false;
+  }
+
+  dirty_ = true;
+  GetLinePointers();
+  return true;
 }
 
+auto MemoryTextFile_t::GetLine(const int line_index, char* line_out,
+                               const int max_chars) -> void {
+  if (dirty_) {
+    GetLinePointers();
+  }
+
+  if (line_out == nullptr || max_chars <= 0) {
+    return;
+  }
+
+  memset(line_out, 0, static_cast<size_t>(max_chars));
+  Util_SafeStrCpy(line_out, lines_[static_cast<size_t>(line_index)],
+                  max_chars - 1);
+}
 
 // cr/new lines are converted into null, string terminators
-void MemoryTextFile_t::GetLinePointers()
-{
-	if (! m_bDirty)
-		return;
+auto MemoryTextFile_t::GetLinePointers() -> void {
+  if (!dirty_) {
+    return;
+  }
 
-	m_vLines.erase( m_vLines.begin(), m_vLines.end() );
-	char *pBegin = & m_vBuffer[ 0 ];
-	char *pLast  = & m_vBuffer[ m_vBuffer.size()-1 ];
+  lines_.clear();
+  if (buffer_.empty()) {
+    dirty_ = false;
+    return;
+  }
 
-	char *pEnd = NULL;
-	char *pStartNextLine;
+  char* begin_ptr = &buffer_[0];
+  char* last_ptr = &buffer_[buffer_.size() - 1];
 
-	while (pBegin <= pLast)
-	{
-		if ( *pBegin )	// Only keep non-empty lines
-			m_vLines.push_back( pBegin );
+  while (begin_ptr <= last_ptr) {
+    if (*begin_ptr != 0) {  // Only keep non-empty lines
+      lines_.push_back(begin_ptr);
+    }
 
-		pEnd = const_cast<char*>( SkipUntilEOL( pBegin ));
+    char* end_ptr = const_cast<char*>(skip_until_eol(begin_ptr));
+    char* start_next_line = nullptr;
 
-		if (*pEnd == EOL_NULL)
-		{
-			// Found EOL via null
-			pStartNextLine = pEnd + 1;
-		}
-		else
-		{
-			pStartNextLine = const_cast<char*>( EatEOL( pEnd ));
+    if (*end_ptr == eol_null) {
+      start_next_line = end_ptr + 1;
+    } else {
+      start_next_line = const_cast<char*>(eat_eol(end_ptr));
+      int eol_len = static_cast<int>(start_next_line - end_ptr);
+      while (eol_len-- > 1) {
+        *end_ptr++ = ' ';
+      }
+      *end_ptr = eol_null;
+    }
+    begin_ptr = start_next_line;
+  }
 
-			// DOS/Win "Text" mode converts LF CR (0D 0A) to CR (0D) but just in case, the file is read in binary.
-			int nEOL = pStartNextLine - pEnd;
-			while (nEOL-- > 1)
-			{
-				*pEnd++ = ' ';
-			}
-
-			*pEnd = EOL_NULL;
-		}
-		pBegin = pStartNextLine;
-	}
-
-	m_bDirty = false;
+  dirty_ = false;
 }
 
-void MemoryTextFile_t::PushLine( char *pLine )
-{
-	char *pSrc = pLine;
-	while (pSrc && *pSrc)
-	{
-		if (*pSrc == CHAR_CR)
-			m_vBuffer.push_back( EOL_NULL );
-		else
-		if (*pSrc == CHAR_LF)
-			m_vBuffer.push_back( EOL_NULL );
-		else
-			m_vBuffer.push_back( *pSrc );
-		pSrc++;
-	}
-	m_vBuffer.push_back( EOL_NULL );
-
-	m_bDirty = true;
+auto MemoryTextFile_t::PushLine(char* line) -> void {
+  char* src_ptr = line;
+  while (src_ptr != nullptr && *src_ptr != 0) {
+    if (*src_ptr == CHAR_CR || *src_ptr == CHAR_LF) {
+      buffer_.push_back(eol_null);
+    } else {
+      buffer_.push_back(*src_ptr);
+    }
+    src_ptr++;
+  }
+  buffer_.push_back(eol_null);
+  dirty_ = true;
 }
-
-
