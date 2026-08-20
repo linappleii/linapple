@@ -285,5 +285,60 @@ bool keyboard_has_custom_mappings() {
   return (custom_section != nullptr && !custom_section->empty());
 }
 
+static QuickSaveMode_t g_quicksave_mode = QUICKSAVE_MODE_ALT;
+static bool g_hotkeys_enabled = true;
+
+QuickSaveMode_t keyboard_get_quicksave_mode(void) { return g_quicksave_mode; }
+
+void keyboard_set_quicksave_mode(QuickSaveMode_t mode) {
+  g_quicksave_mode = mode;
+}
+
+bool keyboard_get_hotkeys_enabled(void) { return g_hotkeys_enabled; }
+
+void keyboard_set_hotkeys_enabled(bool enabled) { g_hotkeys_enabled = enabled; }
+
+bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
+                                 bool* out_is_save) {
+  if (sym < '0' || sym > '9') {
+    return false;
+  }
+
+  constexpr uint32_t kmod_shift = 0x0003;
+  constexpr uint32_t kmod_ctrl = 0x00C0;
+  constexpr uint32_t kmod_alt = 0x0300;
+
+  const bool has_ctrl = (mod & kmod_ctrl) != 0;
+  const bool has_alt = (mod & kmod_alt) != 0;
+  const bool has_shift = (mod & kmod_shift) != 0;
+
+  bool triggered = false;
+  switch (g_quicksave_mode) {
+    case QUICKSAVE_MODE_ALT:
+      triggered = has_alt && !has_ctrl;
+      break;
+    case QUICKSAVE_MODE_CTRL:
+      triggered = has_ctrl && !has_alt;
+      break;
+    case QUICKSAVE_MODE_ALT_CTRL:
+      triggered = has_alt && has_ctrl;
+      break;
+    case QUICKSAVE_MODE_DISABLED:
+      triggered = false;
+      break;
+  }
+
+  if (triggered) {
+    if (out_slot != nullptr) {
+      *out_slot = static_cast<int>(sym - '0');
+    }
+    if (out_is_save != nullptr) {
+      *out_is_save = has_shift;
+    }
+    return true;
+  }
+  return false;
+}
+
 // NOLINTEND(cppcoreguidelines-pro-type-union-access,
 // bugprone-easily-swappable-parameters)

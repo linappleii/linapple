@@ -30,6 +30,30 @@ void Frontend_UpdateKeyboardMapping() {
                        sizeof(rocker_val));
   }
 
+  std::string qs_mod;
+  if (config_load_string("Keyboard", "Quick Save Modifier", &qs_mod)) {
+    for (char& c : qs_mod) {
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    if (qs_mod == "ctrl" || qs_mod == "control") {
+      keyboard_set_quicksave_mode(QUICKSAVE_MODE_CTRL);
+    } else if (qs_mod == "altctrl" || qs_mod == "ctrlalt" ||
+               qs_mod == "alt+ctrl" || qs_mod == "ctrl+alt") {
+      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT_CTRL);
+    } else if (qs_mod == "none" || qs_mod == "disabled" || qs_mod == "0" ||
+               qs_mod == "off") {
+      keyboard_set_quicksave_mode(QUICKSAVE_MODE_DISABLED);
+    } else {
+      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
+    }
+  }
+
+  uint32_t hotkeys_val = 1;
+  if (config_load_int("Keyboard", "Enable Hotkeys", &hotkeys_val) ||
+      config_load_int("Keyboard", "Function Keys Enable", &hotkeys_val)) {
+    keyboard_set_hotkeys_enabled(hotkeys_val != 0);
+  }
+
   keyboard_apply_custom_mappings();
 }
 

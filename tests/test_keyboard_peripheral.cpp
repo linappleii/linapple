@@ -563,3 +563,49 @@ TEST_CASE("Keyboard Custom Mapping: Parsing Apple II Target Values") {
   CHECK(keyboard_parse_apple2_val("ClosedApple", &flags) == 0);
   CHECK((flags & 4) != 0);
 }
+
+TEST_CASE("Keyboard: QuickSave Key Combos and Hotkey Modes") {
+  int slot = -1;
+  bool is_save = false;
+
+  // 1. Default Mode (QUICKSAVE_MODE_ALT)
+  keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
+
+  // Alt+2 (Load slot 2)
+  CHECK(keyboard_is_quicksave_combo('2', 0x0100 /* ALT */, &slot, &is_save));
+  CHECK(slot == 2);
+  CHECK(is_save == false);
+
+  // Alt+Shift+6 (Save slot 6)
+  CHECK(keyboard_is_quicksave_combo('6', 0x0101 /* ALT | SHIFT */, &slot,
+                                    &is_save));
+  CHECK(slot == 6);
+  CHECK(is_save == true);
+
+  // Ctrl+Shift+2 (Lode Runner combo) - must NOT trigger quicksave!
+  CHECK_FALSE(keyboard_is_quicksave_combo('2', 0x0041 /* CTRL | SHIFT */, &slot,
+                                          &is_save));
+
+  // Ctrl+Shift+6 (Lode Runner combo) - must NOT trigger quicksave!
+  CHECK_FALSE(keyboard_is_quicksave_combo('6', 0x0041 /* CTRL | SHIFT */, &slot,
+                                          &is_save));
+
+  // 2. Legacy Mode (QUICKSAVE_MODE_CTRL)
+  keyboard_set_quicksave_mode(QUICKSAVE_MODE_CTRL);
+  CHECK(keyboard_is_quicksave_combo('2', 0x0040 /* CTRL */, &slot, &is_save));
+  CHECK(slot == 2);
+  CHECK(is_save == false);
+
+  // 3. Disabled Mode
+  keyboard_set_quicksave_mode(QUICKSAVE_MODE_DISABLED);
+  CHECK_FALSE(
+      keyboard_is_quicksave_combo('2', 0x0100 /* ALT */, &slot, &is_save));
+  CHECK_FALSE(
+      keyboard_is_quicksave_combo('2', 0x0040 /* CTRL */, &slot, &is_save));
+
+  // 4. Hotkey Enable / Disable
+  keyboard_set_hotkeys_enabled(true);
+  CHECK(keyboard_get_hotkeys_enabled() == true);
+  keyboard_set_hotkeys_enabled(false);
+  CHECK(keyboard_get_hotkeys_enabled() == false);
+}

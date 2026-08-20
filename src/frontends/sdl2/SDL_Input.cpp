@@ -12,6 +12,7 @@
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/Frontend.h"
 #include "frontends/sdl2/JoystickFrontend.h"
@@ -66,12 +67,15 @@ void sdl_handle_event(SDL_Event* e) {
           break;
         }
 
-        if (mysym >= SDLK_0 && mysym <= SDLK_9 && (mymod & KMOD_LCTRL) != 0) {
-          frame_quick_state(mysym - SDLK_0, mymod);
+        int qs_slot = 0;
+        bool qs_is_save = false;
+        if (keyboard_is_quicksave_combo(mysym, mymod, &qs_slot, &qs_is_save)) {
+          frame_quick_state(qs_slot, qs_is_save ? KMOD_SHIFT : 0);
           break;
         }
 
-        if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (g_buttondown == -1)) {
+        if (keyboard_get_hotkeys_enabled() && (mysym >= SDLK_F1) &&
+            (mysym <= SDLK_F12) && (g_buttondown == -1)) {
           set_using_cursor(false);
           g_buttondown = mysym - SDLK_F1;
         } else if (mysym == SDLK_KP_PLUS) {
