@@ -15,14 +15,15 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, tui, or headless)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, tui, headless, or all)")
 endif()
 
-if(NOT FRONTEND STREQUAL "sdl3" AND NOT FRONTEND STREQUAL "sdl2" AND NOT FRONTEND STREQUAL "sdl1" AND NOT FRONTEND STREQUAL "tui" AND NOT FRONTEND STREQUAL "headless")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', or 'headless'.")
+string(TOLOWER "${FRONTEND}" FRONTEND_LOWER)
+if(NOT FRONTEND_LOWER STREQUAL "sdl3" AND NOT FRONTEND_LOWER STREQUAL "sdl2" AND NOT FRONTEND_LOWER STREQUAL "sdl1" AND NOT FRONTEND_LOWER STREQUAL "tui" AND NOT FRONTEND_LOWER STREQUAL "headless" AND NOT FRONTEND_LOWER STREQUAL "all")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', 'headless', or 'all'.")
 endif()
 
-if(FRONTEND STREQUAL "tui" OR FRONTEND STREQUAL "headless")
+if(FRONTEND_LOWER STREQUAL "tui" OR FRONTEND_LOWER STREQUAL "headless")
     set(DEFAULT_ENABLE_DEBUGGER OFF)
 else()
     set(DEFAULT_ENABLE_DEBUGGER ON)
@@ -76,21 +77,26 @@ endif()
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(CURL REQUIRED)
-
-if(FRONTEND STREQUAL "sdl3")
-    find_package(SDL3 REQUIRED)
-    find_package(SDL3_image REQUIRED)
-elseif(FRONTEND STREQUAL "sdl2")
-    find_package(SDL2 REQUIRED)
-elseif(FRONTEND STREQUAL "sdl1")
-    find_package(SDL REQUIRED)
-    find_package(SDL_image REQUIRED)
-endif()
-
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBZIP REQUIRED libzip)
 
-if(FRONTEND STREQUAL "tui")
+if(FRONTEND_LOWER STREQUAL "all")
+    find_package(SDL3 REQUIRED)
+    find_package(SDL3_image REQUIRED)
+    find_package(SDL2 REQUIRED)
+    find_package(SDL REQUIRED)
+    find_package(SDL_image REQUIRED)
+    pkg_check_modules(PULSE_SIMPLE libpulse-simple)
+    pkg_check_modules(ALSA alsa)
+elseif(FRONTEND_LOWER STREQUAL "sdl3")
+    find_package(SDL3 REQUIRED)
+    find_package(SDL3_image REQUIRED)
+elseif(FRONTEND_LOWER STREQUAL "sdl2")
+    find_package(SDL2 REQUIRED)
+elseif(FRONTEND_LOWER STREQUAL "sdl1")
+    find_package(SDL REQUIRED)
+    find_package(SDL_image REQUIRED)
+elseif(FRONTEND_LOWER STREQUAL "tui")
     pkg_check_modules(PULSE_SIMPLE libpulse-simple)
     pkg_check_modules(ALSA alsa)
 endif()
@@ -103,10 +109,10 @@ endif()
 
 # --- Preprocessor Definitions ---
 add_definitions(-DVERSIONSTRING="${PROJECT_VERSION}")
-if(FRONTEND STREQUAL "headless")
+if(FRONTEND_LOWER STREQUAL "headless")
     add_definitions(-DHEADLESS)
 endif()
-if(FRONTEND STREQUAL "tui")
+if(FRONTEND_LOWER STREQUAL "tui")
     add_definitions(-DTUI)
     if(PULSE_SIMPLE_FOUND)
         add_definitions(-DHAVE_PULSE_SIMPLE)
@@ -210,117 +216,117 @@ set(SOURCES_A2_MANDATORY
     src/apple2/Video.cpp
 )
 
-set(SOURCES_DBG "")
+set(SOURCES_DBG_FULL
+    src/Debugger/Debug.cpp
+    src/Debugger/Debugger_Assembler.cpp
+    src/Debugger/Debugger_Bookmarks.cpp
+    src/Debugger/Debugger_Breakpoints.cpp
+    src/Debugger/Debugger_Cmd_Benchmark.cpp
+    src/Debugger/Debugger_Cmd_CPU.cpp
+    src/Debugger/Debugger_Cmd_Config.cpp
+    src/Debugger/Debugger_Cmd_Disk.cpp
+    src/Debugger/Debugger_Cmd_Flags.cpp
+    src/Debugger/Debugger_Cmd_Output.cpp
+    src/Debugger/Debugger_Cmd_Video.cpp
+    src/Debugger/Debugger_Cmd_Window.cpp
+    src/Debugger/Debugger_Cmd_ZeroPage.cpp
+    src/Debugger/Debugger_Color.cpp
+    src/Debugger/Debugger_Commands.cpp
+    src/Debugger/Debugger_Console.cpp
+    src/Debugger/Debugger_DisassemblerData.cpp
+    src/Debugger/Debugger_Display.cpp
+    src/Debugger/Debugger_Help.cpp
+    src/Debugger/Debugger_Memory.cpp
+    src/Debugger/Debugger_Parser.cpp
+    src/Debugger/Debugger_Range.cpp
+    src/Debugger/Debugger_Symbols.cpp
+    src/Debugger/Debugger_View_Code.cpp
+    src/Debugger/Debugger_View_Console.cpp
+    src/Debugger/Debugger_View_Memory.cpp
+    src/Debugger/Util_MemoryTextFile.cpp
+)
+set(SOURCES_DBG_STUBS
+    src/Debugger/Debugger_Stubs.cpp
+)
+
 if(ENABLE_DEBUGGER)
-    set(SOURCES_DBG
-        src/Debugger/Debug.cpp
-        src/Debugger/Debugger_Assembler.cpp
-        src/Debugger/Debugger_Bookmarks.cpp
-        src/Debugger/Debugger_Breakpoints.cpp
-        src/Debugger/Debugger_Cmd_Benchmark.cpp
-        src/Debugger/Debugger_Cmd_CPU.cpp
-        src/Debugger/Debugger_Cmd_Config.cpp
-        src/Debugger/Debugger_Cmd_Disk.cpp
-        src/Debugger/Debugger_Cmd_Flags.cpp
-        src/Debugger/Debugger_Cmd_Output.cpp
-        src/Debugger/Debugger_Cmd_Video.cpp
-        src/Debugger/Debugger_Cmd_Window.cpp
-        src/Debugger/Debugger_Cmd_ZeroPage.cpp
-        src/Debugger/Debugger_Color.cpp
-        src/Debugger/Debugger_Commands.cpp
-        src/Debugger/Debugger_Console.cpp
-        src/Debugger/Debugger_DisassemblerData.cpp
-        src/Debugger/Debugger_Display.cpp
-        src/Debugger/Debugger_Help.cpp
-        src/Debugger/Debugger_Memory.cpp
-        src/Debugger/Debugger_Parser.cpp
-        src/Debugger/Debugger_Range.cpp
-        src/Debugger/Debugger_Symbols.cpp
-        src/Debugger/Debugger_View_Code.cpp
-        src/Debugger/Debugger_View_Console.cpp
-        src/Debugger/Debugger_View_Memory.cpp
-        src/Debugger/Util_MemoryTextFile.cpp
-    )
+    set(SOURCES_DBG ${SOURCES_DBG_FULL})
 else()
-    set(SOURCES_DBG
-        src/Debugger/Debugger_Stubs.cpp
-    )
+    set(SOURCES_DBG ${SOURCES_DBG_STUBS})
 endif()
 
-if(FRONTEND STREQUAL "sdl3")
-    set(SOURCES_FE
-        src/frontends/sdl3/DiskChoose.cpp
-        src/frontends/sdl3/DiskFTP.cpp
-        src/frontends/sdl3/DiskSelect.cpp
-        src/frontends/sdl3/DiskUI.cpp
-        src/frontends/sdl3/Frame.cpp
-        src/frontends/sdl3/Harddisk.cpp
-        src/frontends/sdl3/JoystickFrontend.cpp
-        src/frontends/sdl3/Keyboard.cpp
-        src/frontends/sdl3/Main.cpp
-        src/frontends/sdl3/MainSession.cpp
-        src/frontends/sdl3/PrinterFrontend.cpp
-        src/frontends/sdl3/SDL_Asset.cpp
-        src/frontends/sdl3/SDL_Input.cpp
-        src/frontends/sdl3/SDL_Path.cpp
-        src/frontends/sdl3/SDL_Video.cpp
-        src/frontends/sdl3/SuperSerialFrontend.cpp
-    )
-elseif(FRONTEND STREQUAL "sdl2")
-    set(SOURCES_FE
-        src/frontends/sdl2/DiskChoose.cpp
-        src/frontends/sdl2/DiskFTP.cpp
-        src/frontends/sdl2/DiskSelect.cpp
-        src/frontends/sdl2/DiskUI.cpp
-        src/frontends/sdl2/Frame.cpp
-        src/frontends/sdl2/Harddisk.cpp
-        src/frontends/sdl2/JoystickFrontend.cpp
-        src/frontends/sdl2/Keyboard.cpp
-        src/frontends/sdl2/Main.cpp
-        src/frontends/sdl2/MainSession.cpp
-        src/frontends/sdl2/PrinterFrontend.cpp
-        src/frontends/sdl2/SDL_Asset.cpp
-        src/frontends/sdl2/SDL_Input.cpp
-        src/frontends/sdl2/SDL_Path.cpp
-        src/frontends/sdl2/SDL_Video.cpp
-        src/frontends/sdl2/SuperSerialFrontend.cpp
-    )
-elseif(FRONTEND STREQUAL "sdl1")
-    set(SOURCES_FE
-        src/frontends/sdl1/DiskChoose.cpp
-        src/frontends/sdl1/DiskFTP.cpp
-        src/frontends/sdl1/DiskSelect.cpp
-        src/frontends/sdl1/DiskUI.cpp
-        src/frontends/sdl1/Frame.cpp
-        src/frontends/sdl1/Harddisk.cpp
-        src/frontends/sdl1/JoystickFrontend.cpp
-        src/frontends/sdl1/Keyboard.cpp
-        src/frontends/sdl1/Main.cpp
-        src/frontends/sdl1/MainSession.cpp
-        src/frontends/sdl1/PrinterFrontend.cpp
-        src/frontends/sdl1/SDL_Asset.cpp
-        src/frontends/sdl1/SDL_Input.cpp
-        src/frontends/sdl1/SDL_Path.cpp
-        src/frontends/sdl1/SDL_Video.cpp
-        src/frontends/sdl1/SuperSerialFrontend.cpp
-    )
-elseif(FRONTEND STREQUAL "headless")
-    set(SOURCES_FE
-        src/frontends/headless/Main.cpp
-        src/frontends/headless/Stubs.cpp
-        src/frontends/headless/Headless_Path.cpp
-    )
-elseif(FRONTEND STREQUAL "tui")
-    set(SOURCES_FE
-        src/frontends/tui/Main.cpp
-        src/frontends/tui/Stubs.cpp
-        src/frontends/tui/Tui_Path.cpp
-        src/frontends/tui/TuiTerminal.cpp
-        src/frontends/tui/TuiVideo.cpp
-        src/frontends/tui/TuiInput.cpp
-        src/frontends/tui/TuiAudio.cpp
-    )
-endif()
+set(SOURCES_FE_SDL3
+    src/frontends/sdl3/DiskChoose.cpp
+    src/frontends/sdl3/DiskFTP.cpp
+    src/frontends/sdl3/DiskSelect.cpp
+    src/frontends/sdl3/DiskUI.cpp
+    src/frontends/sdl3/Frame.cpp
+    src/frontends/sdl3/Harddisk.cpp
+    src/frontends/sdl3/JoystickFrontend.cpp
+    src/frontends/sdl3/Keyboard.cpp
+    src/frontends/sdl3/Main.cpp
+    src/frontends/sdl3/MainSession.cpp
+    src/frontends/sdl3/PrinterFrontend.cpp
+    src/frontends/sdl3/SDL_Asset.cpp
+    src/frontends/sdl3/SDL_Input.cpp
+    src/frontends/sdl3/SDL_Path.cpp
+    src/frontends/sdl3/SDL_Video.cpp
+    src/frontends/sdl3/SuperSerialFrontend.cpp
+)
+
+set(SOURCES_FE_SDL2
+    src/frontends/sdl2/DiskChoose.cpp
+    src/frontends/sdl2/DiskFTP.cpp
+    src/frontends/sdl2/DiskSelect.cpp
+    src/frontends/sdl2/DiskUI.cpp
+    src/frontends/sdl2/Frame.cpp
+    src/frontends/sdl2/Harddisk.cpp
+    src/frontends/sdl2/JoystickFrontend.cpp
+    src/frontends/sdl2/Keyboard.cpp
+    src/frontends/sdl2/Main.cpp
+    src/frontends/sdl2/MainSession.cpp
+    src/frontends/sdl2/PrinterFrontend.cpp
+    src/frontends/sdl2/SDL_Asset.cpp
+    src/frontends/sdl2/SDL_Input.cpp
+    src/frontends/sdl2/SDL_Path.cpp
+    src/frontends/sdl2/SDL_Video.cpp
+    src/frontends/sdl2/SuperSerialFrontend.cpp
+)
+
+set(SOURCES_FE_SDL1
+    src/frontends/sdl1/DiskChoose.cpp
+    src/frontends/sdl1/DiskFTP.cpp
+    src/frontends/sdl1/DiskSelect.cpp
+    src/frontends/sdl1/DiskUI.cpp
+    src/frontends/sdl1/Frame.cpp
+    src/frontends/sdl1/Harddisk.cpp
+    src/frontends/sdl1/JoystickFrontend.cpp
+    src/frontends/sdl1/Keyboard.cpp
+    src/frontends/sdl1/Main.cpp
+    src/frontends/sdl1/MainSession.cpp
+    src/frontends/sdl1/PrinterFrontend.cpp
+    src/frontends/sdl1/SDL_Asset.cpp
+    src/frontends/sdl1/SDL_Input.cpp
+    src/frontends/sdl1/SDL_Path.cpp
+    src/frontends/sdl1/SDL_Video.cpp
+    src/frontends/sdl1/SuperSerialFrontend.cpp
+)
+
+set(SOURCES_FE_HEADLESS
+    src/frontends/headless/Main.cpp
+    src/frontends/headless/Stubs.cpp
+    src/frontends/headless/Headless_Path.cpp
+)
+
+set(SOURCES_FE_TUI
+    src/frontends/tui/Main.cpp
+    src/frontends/tui/Stubs.cpp
+    src/frontends/tui/Tui_Path.cpp
+    src/frontends/tui/TuiTerminal.cpp
+    src/frontends/tui/TuiVideo.cpp
+    src/frontends/tui/TuiInput.cpp
+    src/frontends/tui/TuiAudio.cpp
+)
 
 # --- Peripheral Refinement ---
 set(PERIPHERAL_DEFINITIONS "")
@@ -362,49 +368,62 @@ add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" FALSE)
 add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
 
-# --- Main Target ---
-add_executable(linapple ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_FE} ${SOURCES_A2_OPTIONAL})
-add_dependencies(linapple generate_xpms)
-set_target_properties(linapple PROPERTIES ENABLE_EXPORTS TRUE)
+# --- Executable Targets ---
+set(COMMON_LIBS ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 
-target_include_directories(linapple PRIVATE ${LINAPPLE_INCLUDES})
+function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTRA_LIBS EXTRA_INCLUDES EXTRA_DEFS)
+    add_executable(${TARGET_NAME} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${DBG_SOURCES} ${FE_SOURCES} ${SOURCES_A2_OPTIONAL})
+    add_dependencies(${TARGET_NAME} generate_xpms)
+    set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS TRUE)
+    target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
+    target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+        ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
+        SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+        SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
+        LINAPPLE_FRONTEND_NAME="${FE_NAME}"
+        ${PERIPHERAL_DEFINITIONS}
+        ${EXTRA_DEFS}
+    )
+    target_compile_definitions(${TARGET_NAME} PUBLIC ENABLE_RIFF)
+    install(TARGETS ${TARGET_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+endfunction()
 
-if(FRONTEND STREQUAL "sdl3")
-    target_link_libraries(linapple PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
-elseif(FRONTEND STREQUAL "sdl2")
-    target_link_libraries(linapple PRIVATE SDL2::SDL2)
-elseif(FRONTEND STREQUAL "sdl1")
-    target_link_libraries(linapple PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
-    target_include_directories(linapple PRIVATE ${SDL_INCLUDE_DIR})
+set(TUI_EXTRA_DEFS -DTUI)
+if(PULSE_SIMPLE_FOUND)
+    list(APPEND TUI_EXTRA_DEFS -DHAVE_PULSE_SIMPLE)
+endif()
+if(ALSA_FOUND)
+    list(APPEND TUI_EXTRA_DEFS -DHAVE_ALSA)
 endif()
 
-target_link_libraries(linapple PRIVATE
-    ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads
-)
-
-if(FRONTEND STREQUAL "tui")
-    target_link_libraries(linapple PRIVATE ${PULSE_SIMPLE_LIBRARIES} ${ALSA_LIBRARIES})
+if(FRONTEND_LOWER STREQUAL "all")
+    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
+    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2" "" "")
+    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple-headless "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG_STUBS}" "" "" "-DHEADLESS")
+    add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_STUBS}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
+elseif(FRONTEND_LOWER STREQUAL "sdl3")
+    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
+elseif(FRONTEND_LOWER STREQUAL "sdl2")
+    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2" "" "")
+elseif(FRONTEND_LOWER STREQUAL "sdl1")
+    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+elseif(FRONTEND_LOWER STREQUAL "headless")
+    add_linapple_executable(linapple "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG}" "" "" "-DHEADLESS")
+elseif(FRONTEND_LOWER STREQUAL "tui")
+    add_linapple_executable(linapple "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 endif()
-
-target_compile_definitions(linapple PRIVATE
-    ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
-    SYS_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
-    SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
-    LINAPPLE_FRONTEND_NAME="${FRONTEND}"
-    ${PERIPHERAL_DEFINITIONS}
-)
-target_compile_definitions(linapple PUBLIC ENABLE_RIFF)
 
 # --- Installation ---
 include(GNUInstallDirs)
-install(TARGETS linapple DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(PERIPHERAL_MODULES)
     install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/linapple/plugins)
 endif()
 install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
 
-if(FRONTEND STREQUAL "sdl1" OR FRONTEND STREQUAL "sdl2")
+if(FRONTEND_LOWER STREQUAL "all" OR FRONTEND_LOWER STREQUAL "sdl1" OR FRONTEND_LOWER STREQUAL "sdl2")
     install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 endif()
 
@@ -504,8 +523,13 @@ if(BUILD_TESTING)
         add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
     endforeach()
 
+    if(FRONTEND_LOWER STREQUAL "all")
+        set(CPU_TEST_TARGET linapple-sdl3)
+    else()
+        set(CPU_TEST_TARGET linapple)
+    endif()
     add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
-    set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:linapple>")
+    set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
 
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
@@ -537,7 +561,7 @@ if(BUILD_TESTING)
         endif()
     endif()
 
-    if(FRONTEND STREQUAL "sdl1")
+    if(FRONTEND_LOWER STREQUAL "sdl1" OR FRONTEND_LOWER STREQUAL "all")
         add_linapple_test(frontend-sdl1 "tests/test_main.cpp;tests/test_frontend_sdl1.cpp")
         target_include_directories(test-frontend-sdl1 PRIVATE src)
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
@@ -564,7 +588,11 @@ if(ENABLE_FUZZING)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
 endif()
 
-add_custom_target(linapple-core DEPENDS linapple)
+if(TARGET linapple)
+    add_custom_target(linapple-core DEPENDS linapple)
+else()
+    add_custom_target(linapple-core DEPENDS linapple-sdl3)
+endif()
 if(PERIPHERAL_MODULES)
     add_custom_target(linapple-peripherals-standard DEPENDS ${PERIPHERAL_MODULES})
 endif()

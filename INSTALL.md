@@ -48,6 +48,7 @@ You can pass various options to the `cmake` configuration step:
 - `-DFRONTEND=sdl1` : Build with the legacy SDL1.2 graphical frontend for vintage/embedded systems.
 - `-DFRONTEND=tui` : Build for the terminal using 24-bit color and Unicode characters (no GUI/SDL dependencies required).
 - `-DFRONTEND=headless` : Build the emulator without GUI or SDL dependencies (useful for automated testing or server environments).
+- `-DFRONTEND=all` : Build separate binaries for all supported frontends (`linapple-sdl3`, `linapple-sdl2`, `linapple-sdl1`, `linapple-tui`, `linapple-headless`).
 - `-DENABLE_ASAN=ON` : Enable AddressSanitizer for memory bug and leak detection.
 - `-DENABLE_UBSAN=ON` : Enable UndefinedBehaviorSanitizer for undefined behavior detection.
 - `-DENABLE_CLANG_TIDY=ON` : Enable `clang-tidy` static analysis during build.
