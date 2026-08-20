@@ -11,7 +11,18 @@ mkdir -p "$TEST_DIR"
 # Download test binary if not exists
 if [ ! -f "$TEST_DIR/6502_functional_test.bin" ]; then
     echo "Downloading 6502 functional test..."
-    curl -L "$BIN_URL_6502" -o "$TEST_DIR/6502_functional_test.bin"
+    if command -v curl &>/dev/null; then
+        curl -sL "$BIN_URL_6502" -o "$TEST_DIR/6502_functional_test.bin"
+    elif command -v wget &>/dev/null; then
+        wget -q -O "$TEST_DIR/6502_functional_test.bin" "$BIN_URL_6502"
+    elif command -v python3 &>/dev/null; then
+        python3 -c "import urllib.request; urllib.request.urlretrieve('$BIN_URL_6502', '$TEST_DIR/6502_functional_test.bin')"
+    elif command -v python &>/dev/null; then
+        python -c "import urllib.request; urllib.request.urlretrieve('$BIN_URL_6502', '$TEST_DIR/6502_functional_test.bin')"
+    else
+        echo "Error: Neither curl, wget, nor python available to download test binary."
+        exit 1
+    fi
 fi
 
 # Run 6502 Test
