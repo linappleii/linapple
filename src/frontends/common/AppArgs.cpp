@@ -12,10 +12,14 @@
 static constexpr int opt_list_hardware = 0x100;
 static constexpr int opt_hardware_info = 0x101;
 static constexpr int opt_no_debugger = 0x102;
+static constexpr int opt_hd1 = 0x103;
+static constexpr int opt_hd2 = 0x104;
 
-static const std::array<struct option, 23> OptionTable = {
+static const std::array<struct option, 25> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
+     {"hd1", required_argument, nullptr, opt_hd1},
+     {"hd2", required_argument, nullptr, opt_hd2},
      {"autoboot", no_argument, nullptr, 'a'},
      {"boot", no_argument, nullptr, 'b'},
      {"config", required_argument, nullptr, 'c'},
@@ -50,6 +54,10 @@ void AppArgs_PrintHelp() {
   printf("Options:\n");
   printf("  -1, --d1 <file>        Insert disk image in drive 1\n");
   printf("  -2, --d2 <file>        Insert disk image in drive 2\n");
+  printf(
+      "  --hd1 <file>           Insert hard disk image in drive 1 (Slot 7)\n");
+  printf(
+      "  --hd2 <file>           Insert hard disk image in drive 2 (Slot 7)\n");
   printf("  -a, --autoboot         Boot the computer immediately\n");
   printf("  -b, --boot             Synonym for --autoboot\n");
   printf("  -c, --config <file>    Use specified configuration file\n");
@@ -160,6 +168,14 @@ auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
         break;
       case opt_no_debugger:
         outConfig->disable_debugger = true;
+        break;
+      case opt_hd1:
+        Util_SafeStrCpy(outConfig->harddisk_path.at(0).data(), optarg,
+                        path_max_len);
+        break;
+      case opt_hd2:
+        Util_SafeStrCpy(outConfig->harddisk_path.at(1).data(), optarg,
+                        path_max_len);
         break;
       case 'h':
         outConfig->intent = INTENT_HELP;

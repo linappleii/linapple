@@ -5,6 +5,7 @@
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
@@ -96,6 +97,26 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_state.disable_debugger = config->disable_debugger;
   }
 
+  if (config->harddisk_path.at(0).at(0) != '\0' ||
+      config->harddisk_path.at(1).at(0) != '\0') {
+    hdd_enabled = true;
+    Configuration_t::instance().set_int("Preferences", "Harddisk Enable", 1);
+    if (config->harddisk_path.at(0).at(0) != '\0') {
+      Configuration_t::instance().set_string(
+          "Preferences", "Harddisk Image 1",
+          config->harddisk_path.at(0).data());
+    }
+    if (config->harddisk_path.at(1).at(0) != '\0') {
+      Configuration_t::instance().set_string(
+          "Preferences", "Harddisk Image 2",
+          config->harddisk_path.at(1).data());
+    }
+    Peripheral_t* p = peripheral_find_internal("linapple.harddisk");
+    if (p != nullptr) {
+      peripheral_register(p, 7);
+    }
+  }
+
   return 0;
 }
 
@@ -179,7 +200,18 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
     }
   }
 
-  // 3. Handle Boot
+  // 3. Load Hard Disks
+  for (int i = 0; i < 2; ++i) {
+    const char* path = config->harddisk_path.at(static_cast<size_t>(i)).data();
+    if (path != nullptr && *path != '\0') {
+      HarddiskInsertCmd_t hcmd{};
+      hcmd.drive = static_cast<uint8_t>(i);
+      Util_SafeStrCpy(&hcmd.path[0], path, sizeof(hcmd.path));
+      peripheral_command(7, harddisk_cmd_insert, &hcmd, sizeof(hcmd));
+    }
+  }
+
+  // 4. Handle Boot
   if (config->is_boot) {
     // Reset the system to boot from disk
     cpu_reset();

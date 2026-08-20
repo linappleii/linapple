@@ -20,9 +20,12 @@ auto raw_hd_probe(const uint8_t* header_data, size_t header_size,
 
   if (file_size > 0 && (file_size % block_size) == 0) {
     if (ext_hint != nullptr &&
-        (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0)) {
+        (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0 ||
+         strcmp(ext_hint, ".2meg") == 0 || strcmp(ext_hint, ".2mg") == 0 ||
+         strcmp(ext_hint, ".img") == 0 || strcmp(ext_hint, ".bin") == 0)) {
       return harddisk_probe_possible;
     }
+    return harddisk_probe_possible;
   }
 
   return harddisk_probe_no;

@@ -101,8 +101,15 @@ auto peripheral_register_internal() -> void {
         name = "linapple.mockingboard";
       } else if (slot == 6) {
         name = "linapple.disk_II";
-      } else if (slot == 7 && hdd_enabled) {
-        name = "linapple.harddisk";
+      } else if (slot == 7) {
+        uint32_t hdd_val = 0;
+        if (config_load_int("Preferences", "Harddisk Enable", &hdd_val) ||
+            config_load_int("Configuration", "Harddisk Enable", &hdd_val)) {
+          hdd_enabled = (hdd_val != 0);
+        }
+        if (hdd_enabled) {
+          name = "linapple.harddisk";
+        }
       }
       if (name.empty()) {
         continue;

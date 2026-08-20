@@ -232,3 +232,80 @@ TEST_CASE("Harddisk: MacBinary Detection") {
 
   linapple_shutdown();
 }
+
+TEST_CASE("Harddisk: Native 2MG Container Support") {
+  // Create a 2MG image (64-byte header + 2 blocks of 512 bytes = 1088 bytes)
+  std::vector<uint8_t> two_mg_data(64 + 2 * 512, 0);
+
+  // 2IMG Magic
+  memcpy(&two_mg_data[0], "2IMG", 4);
+  // Creator
+  memcpy(&two_mg_data[4], "2mgx", 4);
+  // Header len (64 bytes = 0x0040)
+  uint16_t header_len = 64;
+  memcpy(&two_mg_data[8], &header_len, 2);
+  // Version 1
+  uint16_t version = 1;
+  memcpy(&two_mg_data[10], &version, 2);
+  // Format 1 (ProDOS)
+  uint32_t image_format = 1;
+  memcpy(&two_mg_data[12], &image_format, 4);
+  // Flags (0 = read/write)
+  uint32_t flags = 0;
+  memcpy(&two_mg_data[16], &flags, 4);
+  // Blocks = 2
+  uint32_t blocks = 2;
+  memcpy(&two_mg_data[20], &blocks, 4);
+  // Data offset = 64
+  uint32_t data_offset = 64;
+  memcpy(&two_mg_data[24], &data_offset, 4);
+  // Data len = 1024
+  uint32_t data_len = 1024;
+  memcpy(&two_mg_data[28], &data_len, 4);
+
+  // Write identifiable pattern to Block 0 (offset 64) and Block 1 (offset 64 +
+  // 512)
+  two_mg_data[64] = 0xAA;
+  two_mg_data[64 + 512] = 0xBB;
+
+  TempFileGuard two_mg_file("total_replay.2mg", two_mg_data.data(),
+                            two_mg_data.size());
+
+  linapple_init();
+  peripheral_manager_init();
+  auto* descriptor = harddisk_get_descriptor();
+  peripheral_register(descriptor, 7);
+
+  HarddiskInsertCmd_t insert{};
+  insert.drive = harddisk_drive_0;
+  strncpy(insert.path, two_mg_file.path, sizeof(insert.path) - 1);
+  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  peripheral_manager_think(0);
+
+  // Verify status indicates loaded
+  HarddiskStatus_t status{};
+  size_t status_size = sizeof(status);
+  peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_last_error == 0);
+
+  // Read Block 0
+  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);  // Drive 0
+  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read
+  io_map_dispatch(0, 0xC0F6, 1, 0x00, 0);  // Block 0 Lo
+  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 0 Hi
+  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Exec
+
+  uint8_t byte0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+  CHECK(byte0 == 0xAA);  // Correctly skips the 64-byte 2MG header
+
+  // Read Block 1
+  io_map_dispatch(0, 0xC0F6, 1, 0x01, 0);  // Block 1 Lo
+  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 1 Hi
+  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Exec
+
+  uint8_t byte1 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+  CHECK(byte1 == 0xBB);
+
+  linapple_shutdown();
+}

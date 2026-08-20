@@ -28,10 +28,13 @@ namespace {
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
 }  // namespace
 
+extern "C" const HarddiskFormatDriver_t g_two_img_driver;
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver;
 
 void harddisk_loader_init(void) {
   g_harddisk_drivers.clear();
+  harddisk_loader_register(
+      const_cast<HarddiskFormatDriver_t*>(&g_two_img_driver));
   harddisk_loader_register(
       const_cast<HarddiskFormatDriver_t*>(&g_raw_hd_driver));
 }

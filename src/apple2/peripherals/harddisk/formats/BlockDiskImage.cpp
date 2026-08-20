@@ -22,6 +22,7 @@ struct BlockDiskImage_t {
   uint32_t data_offset = 0;
   uint32_t total_blocks = 0;
   bool os_readonly = false;
+  bool write_protected = false;
 
   BlockDiskImage_t() = default;
   ~BlockDiskImage_t() = default;
@@ -86,7 +87,15 @@ extern "C" auto block_disk_image_is_write_protected(BlockDiskImage_t* image_ptr)
   if (image_ptr == nullptr) {
     return true;
   }
-  return image_ptr->os_readonly;
+  return image_ptr->os_readonly || image_ptr->write_protected;
+}
+
+extern "C" auto block_disk_image_set_write_protected(
+    BlockDiskImage_t* image_ptr, bool write_protected) -> void {
+  if (image_ptr == nullptr) {
+    return;
+  }
+  image_ptr->write_protected = write_protected;
 }
 
 extern "C" auto block_disk_image_read_block(BlockDiskImage_t* image_ptr,
@@ -115,7 +124,8 @@ extern "C" auto block_disk_image_write_block(BlockDiskImage_t* image_ptr,
                                              uint32_t block_num,
                                              const uint8_t* buffer)
     -> HarddiskError_e {
-  if (image_ptr == nullptr || buffer == nullptr || image_ptr->os_readonly) {
+  if (image_ptr == nullptr || buffer == nullptr || image_ptr->os_readonly ||
+      image_ptr->write_protected) {
     return harddisk_err_read_only;
   }
 

@@ -25,6 +25,9 @@ void block_disk_image_close(BlockDiskImage_t* image_ptr);
 
 bool block_disk_image_is_write_protected(BlockDiskImage_t* image_ptr);
 
+void block_disk_image_set_write_protected(BlockDiskImage_t* image_ptr,
+                                          bool write_protected);
+
 HarddiskError_e block_disk_image_read_block(BlockDiskImage_t* image_ptr,
                                             uint32_t block_num,
                                             uint8_t* buffer);

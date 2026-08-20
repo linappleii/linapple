@@ -16,6 +16,7 @@ enum { ARGV_EXTRA_MAX = 64 };
 struct AppConfig_t {
   AppIntent_t intent = INTENT_RUN;
   std::array<std::array<char, path_max_len>, disk_drive_count> disk_path = {};
+  std::array<std::array<char, path_max_len>, 2> harddisk_path = {};
   std::array<char, path_max_len> program_path = {};
   std::array<char, path_max_len> config_path = {};
   std::array<char, path_max_len> snapshot_path = {};
