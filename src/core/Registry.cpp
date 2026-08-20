@@ -139,6 +139,40 @@ auto Configuration_t::save() -> bool {
 #endif
 }
 
+struct ConfigAlias_t {
+  const char* canonical;
+  const char* legacy;
+};
+
+static constexpr ConfigAlias_t k_config_aliases[] = {
+    {"Joystick 0 Index", "Joy0Index"},
+    {"Joystick 1 Index", "Joy1Index"},
+    {"Joystick 0 Button 1", "Joy0Button1"},
+    {"Joystick 0 Button 2", "Joy0Button2"},
+    {"Joystick 1 Button 1", "Joy1Button1"},
+    {"Joystick 0 Axis 0", "Joy0Axis0"},
+    {"Joystick 0 Axis 1", "Joy0Axis1"},
+    {"Joystick 1 Axis 0", "Joy1Axis0"},
+    {"Joystick 1 Axis 1", "Joy1Axis1"},
+    {"Joystick Exit Enable", "JoyExitEnable"},
+    {"Joystick Exit Button 0", "JoyExitButton0"},
+    {"Joystick Exit Button 1", "JoyExitButton1"},
+    {"Mouse in slot 4", "Mouse in slot4"},
+    {"Mouse Capture", "MouseCapture"},
+};
+
+static auto find_alias(const std::string& key) -> const char* {
+  for (const auto& entry : k_config_aliases) {
+    if (key == entry.canonical) {
+      return entry.legacy;
+    }
+    if (key == entry.legacy) {
+      return entry.canonical;
+    }
+  }
+  return nullptr;
+}
+
 auto Configuration_t::get_string(const std::string& section,
                                  const std::string& key,
                                  const std::string& default_value)
@@ -150,6 +184,18 @@ auto Configuration_t::get_string(const std::string& section,
   for (auto const& s : data_) {
     if (s.second.count(key)) return s.second.at(key);
   }
+
+  const char* alias = find_alias(key);
+  if (alias != nullptr) {
+    std::string alias_str(alias);
+    if (data_.count(section) && data_[section].count(alias_str)) {
+      return data_[section][alias_str];
+    }
+    for (auto const& s : data_) {
+      if (s.second.count(alias_str)) return s.second.at(alias_str);
+    }
+  }
+
   return default_value;
 }
 

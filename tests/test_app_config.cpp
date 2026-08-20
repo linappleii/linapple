@@ -39,3 +39,26 @@ TEST_CASE("Registry: Mouse Capture Key Definition") {
   CHECK(strcmp(REGVALUE_MOUSE_CAPTURE, "Mouse Capture") == 0);
   CHECK(strcmp(REGVALUE_MOUSE_IN_SLOT4, "Mouse in slot 4") == 0);
 }
+
+TEST_CASE("Registry: Joystick Config Aliases") {
+  auto& reg = Configuration_t::instance();
+  reg.set_int("Configuration", "Joy0Axis0", 4);
+  reg.set_int("Configuration", "Joy0Axis1", 5);
+  reg.set_int("Configuration", "Joy0Button1", 3);
+
+  // Canonical queries should transparently resolve legacy alias keys
+  uint32_t val = 0;
+  CHECK(config_load_int("Configuration", REGVALUE_JOY_AXIS1_0, &val));
+  CHECK(val == 4);
+
+  CHECK(config_load_int("Configuration", REGVALUE_JOY_AXIS1_1, &val));
+  CHECK(val == 5);
+
+  CHECK(config_load_int("Configuration", REGVALUE_JOY_BUTTON1_1, &val));
+  CHECK(val == 3);
+
+  // Setting canonical key should resolve when queried with legacy alias
+  reg.set_int("Configuration", "Joystick 1 Axis 0", 2);
+  CHECK(config_load_int("Configuration", "Joy1Axis0", &val));
+  CHECK(val == 2);
+}
