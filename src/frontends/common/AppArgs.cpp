@@ -86,7 +86,7 @@ void AppArgs_PrintHelp() {
       "  --no-debugger          Disable the integrated debugger at runtime\n");
 }
 
-auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
+auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
   if (outConfig == nullptr) {
     return -1;
   }

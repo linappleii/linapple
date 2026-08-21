@@ -117,7 +117,7 @@ void enter_message_loop() {
   }
 }
 
-auto main(int argc, char* argv[]) -> int {
+auto main(int argc, char** argv) -> int {
   AppConfig_t config = {};
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
