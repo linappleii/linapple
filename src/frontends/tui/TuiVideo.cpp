@@ -100,6 +100,64 @@ static auto set_glyph(TuiState_t& state, const char* str) -> void {
   memcpy(state.glyph, str, utf8_glyph_size - 1);
 }
 
+static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
+                             bool alt_charset, bool flash_on, int hw_cursor_x,
+                             int hw_cursor_y, TuiState_t& cell) -> void {
+  uint8_t code = 0;
+  if (is_80col) {
+    if (c % 2 == 0) {
+      code = *mem_get_aux_ptr(static_cast<uint16_t>(
+          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+    } else {
+      code = *mem_get_main_ptr(static_cast<uint16_t>(
+          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+    }
+  } else {
+    code = *mem_get_main_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
+                                                   get_text_addr(r, c)));
+  }
+
+  uint8_t ascii = 0;
+  uint8_t attr = 0;
+  if (code >= 0x80) {
+    attr = 1;
+    ascii = code & 0x7F;
+  } else if (code >= 0x40) {
+    if (alt_charset) {
+      attr = 1;
+      ascii = code;
+    } else {
+      attr = 3;
+      ascii = code - 0x40;
+    }
+  } else {
+    attr = 2;
+    ascii = code;
+  }
+  if (ascii < 0x20) {
+    ascii += 0x40;
+  }
+
+  cell.glyph[0] = (ascii < 32 || ascii > 126) ? ' ' : static_cast<char>(ascii);
+  cell.glyph[1] = 0;
+  TuiPixel_t a2_white = {255, 255, 255};
+  TuiPixel_t a2_black = {0, 0, 0};
+  cell.fg = a2_white;
+  cell.bg = a2_black;
+  if (attr == 2 || (attr == 3 && !flash_on)) {
+    cell.fg = a2_black;
+    cell.bg = a2_white;
+  }
+
+  if (r == hw_cursor_y && c == hw_cursor_x) {
+    if (flash_on) {
+      set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
+      cell.fg = a2_white;
+      cell.bg = a2_black;
+    }
+  }
+}
+
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
                             int pitch) -> void {
   if (g_term_width <= 1 || g_term_height <= 1) {
@@ -125,24 +183,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     avail_rows = g_term_height - 1;
   }
 
-  TuiPixel_t a2_white = {255, 255, 255}, a2_black = {0, 0, 0};
+  TuiPixel_t a2_black = {0, 0, 0};
   TuiPixel_t bg_letterbox = {10, 10, 10};
-
-  int display_h = is_text_mode ? a2_text_rows : (avail_rows);
-  int display_w = is_text_mode ? (is_80col ? a2_cols_80 : a2_cols_40)
-                               : (avail_rows * 2 * 4 / 3);
-  if (display_w > g_term_width) {
-    display_w = g_term_width;
-    if (!is_text_mode) {
-      display_h = display_w * 3 / 8;
-    }
-  }
-
-  int off_x = (g_term_width - display_w) / 2;
-  int off_y = (avail_rows - display_h) / 2;
-  if (off_y < 0) {
-    off_y = 0;
-  }
 
   // Reset next buffer with letterbox color
   for (auto& cell : g_next_buffer) {
@@ -152,89 +194,58 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     cell.bg = bg_letterbox;
   }
 
-  for (int y = 0; y < display_h; ++y) {
-    int ty = y + off_y;
-    if (ty >= avail_rows) {
-      break;
+  if (is_text_mode) {
+    int display_h = a2_text_rows;
+    int display_w = a2_w_cols;
+    int off_x = (g_term_width - display_w) / 2;
+    int off_y = (avail_rows - display_h) / 2;
+    if (off_x < 0) off_x = 0;
+    if (off_y < 0) off_y = 0;
+
+    for (int r = 0; r < display_h; ++r) {
+      int ty = off_y + r;
+      if (ty >= avail_rows) break;
+      for (int c = 0; c < display_w; ++c) {
+        int tx = off_x + c;
+        if (tx >= g_term_width) break;
+        TuiState_t& cell =
+            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
+                         hw_cursor_x, hw_cursor_y, cell);
+      }
+    }
+  } else if (is_mixed_mode) {
+    constexpr int mixed_text_lines = 4;
+    int gfx_h =
+        (avail_rows > mixed_text_lines) ? (avail_rows - mixed_text_lines) : 0;
+    int gfx_w = gfx_h * 2 * 4 / 3;
+    if (gfx_w > g_term_width) {
+      gfx_w = g_term_width;
+      gfx_h = gfx_w * 3 / 8;
     }
 
-    for (int x = 0; x < display_w; ++x) {
-      int tx = x + off_x;
-      if (tx >= g_term_width) {
-        break;
-      }
+    int total_display_h = gfx_h + mixed_text_lines;
+    int off_y = (avail_rows - total_display_h) / 2;
+    if (off_y < 0) off_y = 0;
 
-      TuiState_t& cell =
-          g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
-      cell.bg = a2_black;
+    int gfx_off_x = (g_term_width - gfx_w) / 2;
+    if (gfx_off_x < 0) gfx_off_x = 0;
 
-      if (is_text_mode ||
-          (is_mixed_mode &&
-           y >= display_h * mixed_mode_text_start / a2_text_rows)) {
-        int r =
-            is_text_mode
-                ? y
-                : mixed_mode_text_start +
-                      (y - display_h * mixed_mode_text_start / a2_text_rows) *
-                          4 / (display_h * 4 / a2_text_rows + 1);
-        if (r > 23) {
-          r = 23;
-        }
-        int c = x * a2_w_cols / display_w;
+    int text_off_x = (g_term_width - a2_w_cols) / 2;
+    if (text_off_x < 0) text_off_x = 0;
 
-        uint8_t code = 0;
-        if (is_80col) {
-          if (c % 2 == 0) {
-            code = *mem_get_aux_ptr(static_cast<uint16_t>(
-                a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
-          } else {
-            code = *mem_get_main_ptr(static_cast<uint16_t>(
-                a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
-          }
-        } else {
-          code = *mem_get_main_ptr(static_cast<uint16_t>(
-              a2_page1_addr + page_offset + get_text_addr(r, c)));
-        }
+    int gfx_sample_height = height * 20 / 24;
+    for (int y = 0; y < gfx_h; ++y) {
+      int ty = off_y + y;
+      if (ty >= avail_rows) break;
+      for (int x = 0; x < gfx_w; ++x) {
+        int tx = gfx_off_x + x;
+        if (tx >= g_term_width) break;
 
-        uint8_t ascii = 0, attr = 0;
-        if (code >= 0x80) {
-          attr = 1;
-          ascii = code & 0x7F;
-        } else if (code >= 0x40) {
-          if (alt_charset) {
-            attr = 1;
-            ascii = code;
-          } else {
-            attr = 3;
-            ascii = code - 0x40;
-          }
-        } else {
-          attr = 2;
-          ascii = code;
-        }
-        if (ascii < 0x20) {
-          ascii += 0x40;
-        }
-
-        cell.glyph[0] = (ascii < 32 || ascii > 126) ? ' ' : ascii;
-        cell.glyph[1] = 0;
-        cell.fg = a2_white;
-        cell.bg = a2_black;
-        if (attr == 2 || (attr == 3 && !flash_on)) {
-          cell.fg = a2_black;
-          cell.bg = a2_white;
-        }
-
-        if (r == hw_cursor_y && c == hw_cursor_x) {
-          if (flash_on) {
-            set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
-            cell.fg = a2_white;
-            cell.bg = a2_black;
-          }
-        }
-      } else {
-        int sx = x * width / display_w;
-        int sy = y * height / display_h;
+        TuiState_t& cell =
+            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
+        int sy = (gfx_h > 0) ? (y * gfx_sample_height / gfx_h) : 0;
         set_glyph(cell, "\xe2\x96\x80");
         uint32_t p =
             pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) +
@@ -242,8 +253,53 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         cell.fg = {static_cast<uint8_t>(p & 0xFF),
                    static_cast<uint8_t>((p >> 8) & 0xFF),
                    static_cast<uint8_t>((p >> 16) & 0xFF)};
-        // For simplicity, using same color for BG in half-block when sampling
-        // point
+        cell.bg = a2_black;
+      }
+    }
+
+    for (int i = 0; i < mixed_text_lines; ++i) {
+      int r = mixed_mode_text_start + i;
+      int ty = off_y + gfx_h + i;
+      if (ty >= avail_rows) break;
+      for (int c = 0; c < a2_w_cols; ++c) {
+        int tx = text_off_x + c;
+        if (tx >= g_term_width) break;
+        TuiState_t& cell =
+            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
+                         hw_cursor_x, hw_cursor_y, cell);
+      }
+    }
+  } else {
+    int gfx_h = avail_rows;
+    int gfx_w = gfx_h * 2 * 4 / 3;
+    if (gfx_w > g_term_width) {
+      gfx_w = g_term_width;
+      gfx_h = gfx_w * 3 / 8;
+    }
+    int off_y = (avail_rows - gfx_h) / 2;
+    if (off_y < 0) off_y = 0;
+    int gfx_off_x = (g_term_width - gfx_w) / 2;
+    if (gfx_off_x < 0) gfx_off_x = 0;
+
+    for (int y = 0; y < gfx_h; ++y) {
+      int ty = off_y + y;
+      if (ty >= avail_rows) break;
+      for (int x = 0; x < gfx_w; ++x) {
+        int tx = gfx_off_x + x;
+        if (tx >= g_term_width) break;
+
+        TuiState_t& cell =
+            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
+        int sy = (gfx_h > 0) ? (y * height / gfx_h) : 0;
+        set_glyph(cell, "\xe2\x96\x80");
+        uint32_t p =
+            pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) +
+                   static_cast<size_t>(sx)];
+        cell.fg = {static_cast<uint8_t>(p & 0xFF),
+                   static_cast<uint8_t>((p >> 8) & 0xFF),
+                   static_cast<uint8_t>((p >> 16) & 0xFF)};
         cell.bg = a2_black;
       }
     }
