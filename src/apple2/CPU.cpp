@@ -139,8 +139,6 @@ static inline uint16_t read_u16_unaligned(const uint8_t* ptr) {
   return val;
 }
 
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#pragma GCC diagnostic ignored "-Wsequence-point"
 #define CHECK_PAGE_CHANGE \
   if ((base ^ addr) & 0xFF00) extra_cycles = 1;
 
@@ -2000,9 +1998,11 @@ auto cpu_setup_benchmark() -> void {
       }
 
       if ((++opcode >= BENCHOPCODES) || ((addr & 0x0F) >= 0x0B)) {
+        uint8_t jump_low = (opcode >= BENCHOPCODES)
+                               ? 0x00
+                               : static_cast<uint8_t>(((addr >> 4) + 1) << 4);
         *(mem + addr++) = 0x4C;
-        *(mem + addr++) =
-            (opcode >= BENCHOPCODES) ? 0x00 : ((addr >> 4) + 1) << 4;
+        *(mem + addr++) = jump_low;
         *(mem + addr++) = 0x03;
         while (addr & 0x0F) {
           ++addr;

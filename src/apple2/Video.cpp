@@ -64,8 +64,7 @@ auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
 #define GetRValue(rgb) ((uint8_t)(rgb))
 #define GetGValue(rgb) ((uint8_t)(((uint16_t)(rgb)) >> 8))
 #define GetBValue(rgb) ((uint8_t)((rgb) >> 16))
-constexpr int FLASH_80_COL = 1;
-constexpr int HALF_SHIFT_DITHER = 0;
+#define FLASH_80_COL 1
 
 const int SRCOFFS_40COL = 0;
 const int SRCOFFS_80COL = (SRCOFFS_40COL + 256);
@@ -113,21 +112,14 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
   framebufferinfo[i].b = b1;
 
 // video scanner constants
-int const kHBurstClock = 53;     // clock when Color Burst starts
-int const kHBurstClocks = 4;     // clocks per Color Burst duration
 int const kHClock0State = 0x18;  // H[543210] = 011000
 int const kHClocks = 65;         // clocks per horizontal scan (including HBL)
 int const kHPEClock = 40;  // clock when HPE (horizontal preset enable) goes low
 int const kHPresetClock = 41;    // clock when H state presets
-int const kHSyncClock = 49;      // clock when HSync starts
-int const kHSyncClocks = 4;      // clocks per HSync duration
 int const kNTSCScanLines = 262;  // total scan lines including VBL (NTSC)
-int const kNTSCVSyncLine = 224;  // line when VSync starts (NTSC)
 int const kPALScanLines = 312;   // total scan lines including VBL (PAL)
-int const kPALVSyncLine = 264;   // line when VSync starts (PAL)
 int const kVLine0State = 0x100;  // V[543210CBA] = 100000000
 int const kVPresetLine = 256;    // line when V state presets
-int const kVSyncLines = 4;       // lines per VSync duration
 
 using UpdateFunc_t = bool (*)(int, int, int, int, int);
 
@@ -141,7 +133,6 @@ VideoColor_t framebufferinfo[MAX_PALETTE_SIZE] = {};
 
 auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
 
-const int MAX_FRAME_Y = VIDEO_HEIGHT;
 static uint8_t* frameoffsettable[VIDEO_HEIGHT] = {};
 static uint8_t* g_hires_bank1;
 static uint8_t* g_hires_bank0;
@@ -192,9 +183,6 @@ static bool g_text_flash_state = false;
 static bool g_text_flash_flag = false;
 
 bool g_show_leds = true;
-
-const uint32_t nVBlStop_NTSC = 21;
-const uint32_t nVBlStop_PAL = 29;
 
 auto DrawDHiResSource() -> void;
 auto DrawHiResSource() -> void;
@@ -505,15 +493,6 @@ enum ColorMapping {
 
 const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
     HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
-
-const uint8_t aColorDimmedIndex[NUM_COLOR_MAPPING] = {
-    DARK_MAGENTA,  // <- HGR_MAGENTA
-    DARK_BLUE,     // <- HGR_BLUE
-    DARK_GREEN,    // <- HGR_GREEN
-    DEEP_RED,      // <- HGR_RED
-    HGR_BLACK,     // no change
-    LIGHT_GRAY     // HGR_WHITE
-};
 
 void DrawHiResSourceHalfShiftDim() {
   for (int column = 0; column < 16; column++) {
