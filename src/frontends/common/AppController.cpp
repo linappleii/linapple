@@ -1,8 +1,9 @@
 #include "frontends/common/AppController.h"
 
-#include <cstdio>
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
-#include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
@@ -15,9 +16,11 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/AppArgs.h"
+#include "frontends/common/AppConfig.h"
 #include "frontends/common/AppEnvironment.h"
 #include "frontends/common/SaveStateManager.h"
-#include "frontends/sdl3/Frontend.h"
+
+void Frontend_UpdateKeyboardMapping();
 
 static bool s_initialized = false;
 
@@ -219,9 +222,11 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
     if (path != nullptr && *path != '\0') {
       std::string actual_path = path;
       if (access(actual_path.c_str(), R_OK) != 0) {
-        const char* base = strrchr(path, '/');
-        const char* filename = (base != nullptr) ? (base + 1) : path;
-        std::string found = Path::find_data_file(filename);
+        size_t pos = actual_path.find_last_of('/');
+        std::string filename = (pos != std::string::npos)
+                                   ? actual_path.substr(pos + 1)
+                                   : actual_path;
+        std::string found = Path::find_data_file(filename.c_str());
         if (!found.empty()) {
           actual_path = found;
         }

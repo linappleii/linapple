@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 
+#include <string>
+
 #include "core/Util_Path.h"
 
 namespace Path {

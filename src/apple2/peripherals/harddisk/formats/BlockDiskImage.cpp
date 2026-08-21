@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/harddisk/formats/BlockDiskImage.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <memory>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,

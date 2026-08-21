@@ -5,10 +5,8 @@
 #include <cstdio>
 #include <cstring>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/formats/BlockDiskImage.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,

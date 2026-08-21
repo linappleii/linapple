@@ -1,34 +1,17 @@
 #include "Debug.h"
 
-#include "Debugger_Assembler.h"
-#include "Debugger_Bookmarks.h"
-#include "Debugger_Breakpoints.h"
-#include "Debugger_Cmd_Benchmark.h"
-#include "Debugger_Cmd_CPU.h"
-#include "Debugger_Cmd_Config.h"
-#include "Debugger_Cmd_Output.h"
-#include "Debugger_Cmd_Window.h"
-#include "Debugger_Cmd_ZeroPage.h"
-#include "Debugger_Color.h"
-#include "Debugger_Commands.h"
-#include "Debugger_Console.h"
-#include "Debugger_Display.h"
-#include "Debugger_Help.h"
-#include "Debugger_Memory.h"
-#include "Debugger_Parser.h"
-#include "Debugger_Range.h"
-#include "Debugger_Symbols.h"
-#include "Video.h"
-#include "apple2/Apple2Types.h"
-#include "apple2/SnapshotTypes.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-
-// for usleep
 #include <unistd.h>
 
-#include <cassert>
-#include <cstddef>
+#include <cstdint>
+
+#include "Debugger_Assembler.h"
+#include "Debugger_Breakpoints.h"
+#include "Debugger_Display.h"
+#include "Debugger_Parser.h"
+#include "Debugger_Types.h"
+#include "apple2/SnapshotTypes.h"
+#include "apple2/Video.h"
+#include "core/LinAppleCore.h"
 
 enum { ALLOW_INPUT_LOWERCASE = 1 };
 

@@ -6,13 +6,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <new>
 #include <string>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"

@@ -21,8 +21,8 @@ auto CmdFlagClear(int nArgs) -> Update_t {
     while (iArg) {
       iFlag = 0;
       while (iFlag < _6502_NUM_FLAGS) {
-        if (g_breakpoint_source[BP_SRC_FLAG_N - iFlag][0] ==
-            toupper(g_args[iArg].sArg[0])) {
+        if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==
+            toupper(static_cast<unsigned char>(*g_args[iArg].sArg))) {
           cpu_get_registers()->ps &= ~(1 << (7 - iFlag));
           break;
         }
@@ -45,8 +45,8 @@ auto CmdFlagSet(int nArgs) -> Update_t {
     while (iArg) {
       iFlag = 0;
       while (iFlag < _6502_NUM_FLAGS) {
-        if (g_breakpoint_source[BP_SRC_FLAG_N - iFlag][0] ==
-            toupper(g_args[iArg].sArg[0])) {
+        if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==
+            toupper(static_cast<unsigned char>(*g_args[iArg].sArg))) {
           cpu_get_registers()->ps |= (1 << (7 - iFlag));
           break;
         }

@@ -1,5 +1,7 @@
 #include <SDL3/SDL.h>
 
+#include <string>
+
 #include "core/Util_Path.h"
 
 namespace Path {
@@ -9,7 +11,7 @@ auto get_executable_dir() -> std::string {
   if (!base) {
     return "./";
   }
-  return std::string(base);
+  return {base};
 }
 
 auto get_user_data_dir() -> std::string {

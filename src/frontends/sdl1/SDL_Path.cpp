@@ -3,6 +3,7 @@
 #include <array>
 #include <climits>
 #include <cstdlib>
+#include <string>
 
 #include "core/Util_Path.h"
 

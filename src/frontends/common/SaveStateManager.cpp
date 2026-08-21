@@ -7,10 +7,8 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
 
@@ -79,7 +77,7 @@ auto save_state_save() -> void {
   snapshot_serialize(snapshot.get());
 
   const char* filename = g_save_state_filename;
-  if (filename[0] == '\0') {
+  if (*filename == '\0') {
     filename = default_snapshot_name;
   }
 

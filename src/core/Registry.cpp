@@ -7,8 +7,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <string>
 
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
@@ -25,7 +27,7 @@ static auto trim(const std::string& s) -> std::string {
     end--;
   } while (std::distance(start, end) > 0 &&
            std::isspace(static_cast<uint8_t>(*end)));
-  return std::string(start, end + 1);
+  return {start, end + 1};
 }
 
 static auto unquote(const std::string& s) -> std::string {

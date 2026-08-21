@@ -1,10 +1,10 @@
+#include <cstdint>
+
 #include "Debug.h"
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
+#include "Debugger_Types.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_console_display_start;

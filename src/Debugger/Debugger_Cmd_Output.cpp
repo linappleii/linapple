@@ -46,7 +46,7 @@ void DebuggerRunScript(const char* pFileName) {
   MemoryTextFile_t script;
   std::string sFileName;
 
-  if (pFileName[0] == '/') {
+  if (*pFileName == '/') {
     sFileName = pFileName;
   } else {
     sFileName = g_state.current_dir.data();

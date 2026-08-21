@@ -1,25 +1,19 @@
 #include "Debugger_Breakpoints.h"
 
 #include <cassert>
-#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
 #include "Debug.h"
-#include "Debugger_Assembler.h"
-#include "Debugger_Color.h"
 #include "Debugger_Console.h"
-#include "Debugger_DisassemblerData.h"
-#include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Range.h"
-#include "apple2/Apple2Types.h"
+#include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
 #include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "core/Util_Path.h"
 
 extern uint16_t g_break_memory_address;
 extern MemoryTextFile_t g_config_state;

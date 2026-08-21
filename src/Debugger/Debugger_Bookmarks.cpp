@@ -1,20 +1,18 @@
 #include "Debugger_Bookmarks.h"
 
 #include <cassert>
-#include <cstddef>
+#include <cstdint>
+#include <cstring>
 
 #include "Debug.h"
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Console.h"
-#include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
-#include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
-#include "core/LinAppleCore.h"
+#include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
 #include "core/Log.h"
-#include "core/Util_Path.h"
 
 // Globals
 int g_bookmarks_count = 0;

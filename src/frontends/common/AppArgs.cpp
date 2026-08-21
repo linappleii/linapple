@@ -3,11 +3,14 @@
 #include <getopt.h>
 
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 
+#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Text.h"
+#include "frontends/common/AppConfig.h"
 
 static constexpr int opt_list_hardware = 0x100;
 static constexpr int opt_hardware_info = 0x101;

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/LinAppleCore.h"
 
-#include "core/Util_Path.h"
-
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-owning-memory,google-runtime-int,cppcoreguidelines-init-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,clang-diagnostic-missing-braces):
 // Core emulator lifecycle, cycle accounting, and binary program file loading
 

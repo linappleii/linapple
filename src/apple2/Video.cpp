@@ -15,7 +15,6 @@
 #include "apple2/Apple2Types.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,

@@ -153,7 +153,7 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
 
   while (bOpcodeGood || bOpmodeGood) {
     text = &g_profile_line[g_profile_line_count][0];
-    text[0] = 0;
+    *text = '\0';
 
     if (opcode < NUM_OPCODES) {
       if (vProfileOpcode.at(static_cast<size_t>(opcode)).count > 0) {
@@ -184,7 +184,7 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
       }
     }
 
-    if (text[0]) {
+    if (*text != '\0') {
       strcat(text, "\n");
       g_profile_line_count++;
     }

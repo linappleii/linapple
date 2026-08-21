@@ -131,7 +131,7 @@ auto main(int argc, char* argv[]) -> int {
   // in a buffer and ds_init needs it later. Alternatively we could access
   // config.audio_dump_path.data() directly but it's cleaner to keep the
   // frontend's specific state separate if it uses a heap string.
-  if (config.audio_dump_path.data()[0] != '\0') {
+  if (config.audio_dump_path.at(0) != '\0') {
     g_audio_dump_file = SDL_strdup(config.audio_dump_path.data());
   }
 

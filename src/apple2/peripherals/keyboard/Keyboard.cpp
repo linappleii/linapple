@@ -9,7 +9,6 @@
 #include <memory>
 #include <new>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
@@ -17,7 +16,6 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
-#include "core/Util_Path.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,

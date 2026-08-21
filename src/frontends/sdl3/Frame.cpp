@@ -380,7 +380,7 @@ void FrameShowHelpScreen(int sx, int sy) {
 
   const int line_spacing = 13 * scale_factor;
   for (int i = 3; i < max_lines; i++) {
-    if (HelpStrings[i] && HelpStrings[i][0] != '\0') {
+    if (HelpStrings[i] != nullptr && *HelpStrings[i] != '\0') {
       font_print(16 * scale_factor,
                  body_top + 6 * scale_factor + (i - 3) * line_spacing,
                  const_cast<char*>(HelpStrings[i]), &vs_actual_screen, scale_x,

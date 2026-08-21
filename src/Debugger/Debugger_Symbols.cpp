@@ -28,15 +28,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debugger_Symbols.h"
 
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // 2.6.2.13 Added: Can now enable/disable selected symbol table(s) !
@@ -612,7 +617,8 @@ auto ParseSymbolTable(const std::string& pPathFileName,
                              %sAddress already has symbol Name%s (%s%s%s): %s%s"                   , CHC_WARNING                   ,
                              CHC_INFO                   , CHC_ARG_SEP                   ,
                              CHC_STRING                   , g_symbol_table_names[ iTable ]                   ,
-                             CHC_DEFAULT                   , CHC_SYMBOL                   , pSymbolPrev
+                             CHC_DEFAULT                   , CHC_SYMBOL                   ,
+                             pSymbolPrev
                                                           );
                   
                                                           ConsolePrintFormat( sText, "  %s$%s%04X

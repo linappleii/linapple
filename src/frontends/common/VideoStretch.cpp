@@ -3,8 +3,13 @@
 #include "frontends/common/VideoStretch.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+// Low-level pixel stretching and scanline blitting routines operating on raw
+// framebuffers.
 
 template <typename T>
 static auto copy_row(T* src, int src_w, T* dst, int dst_w) -> void {
@@ -588,3 +593,5 @@ auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
     putpixel(surface, x + w, y + i, pixel);
   }
 }
+
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)

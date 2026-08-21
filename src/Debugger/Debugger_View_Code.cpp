@@ -441,7 +441,7 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   while (nFlag--) {
     iFlag = (_6502_NUM_FLAGS - nFlag - 1);
     bool bSet = (nRegFlags & 1);
-    sText[0] = g_breakpoint_source[BP_SRC_FLAG_C + iFlag][0];
+    sText[0] = *g_breakpoint_source[BP_SRC_FLAG_C + iFlag];
 
     if (bSet) {
       DebuggerSetColorBG(DebuggerGetColor(BG_INFO_INVERSE));
@@ -469,7 +469,7 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
       if (!bSet) {
         sFlagNames[nFlag] = '.';
       } else {
-        sFlagNames[nFlag] = g_breakpoint_source[BP_SRC_FLAG_C + iFlag][0];
+        sFlagNames[nFlag] = *g_breakpoint_source[BP_SRC_FLAG_C + iFlag];
       }
     }
     nRegFlags >>= 1;
@@ -505,7 +505,9 @@ void DrawStack(int line) {
 
     if (address <= _6502_STACK_END) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
-      sprintf(sText, "  %02X", static_cast<unsigned>(*(mem + address)));
+      sprintf(sText, "  %02X",
+              static_cast<unsigned>(
+                  *mem_get_main_ptr(static_cast<uint16_t>(address))));
       PrintTextCursorX(sText, rect);
     }
     iStack++;

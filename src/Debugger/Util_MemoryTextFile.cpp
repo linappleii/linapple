@@ -56,7 +56,7 @@ auto MemoryTextFile_t::GetLine(const int line_index, char* line_out,
   }
 
   memset(line_out, 0, static_cast<size_t>(max_chars));
-  Util_SafeStrCpy(line_out, lines_[static_cast<size_t>(line_index)],
+  Util_SafeStrCpy(line_out, lines_.at(static_cast<size_t>(line_index)),
                   max_chars - 1);
 }
 
@@ -72,8 +72,8 @@ auto MemoryTextFile_t::GetLinePointers() -> void {
     return;
   }
 
-  char* begin_ptr = &buffer_[0];
-  char* last_ptr = &buffer_[buffer_.size() - 1];
+  char* begin_ptr = buffer_.data();
+  char* last_ptr = buffer_.data() + buffer_.size() - 1;
 
   while (begin_ptr <= last_ptr) {
     if (*begin_ptr != 0) {  // Only keep non-empty lines

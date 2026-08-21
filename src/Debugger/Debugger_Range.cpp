@@ -28,13 +28,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debugger_Range.h"
 
-#include <cstring>
+#include <cstdint>
 
-#include "Debug.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 // Util - Range _______________________________________________________________
 

@@ -115,9 +115,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   bool alt_charset = video_get_sw_alt_charset();
   uint16_t page_offset = is_page2 ? a2_page2_offset : 0x000;
 
-  const uint8_t* zero_page = mem_get_main_ptr(a2_zero_page_offset);
-  int hw_cursor_x = zero_page[a2_cursor_x_addr];
-  int hw_cursor_y = zero_page[a2_cursor_y_addr];
+  int hw_cursor_x = *mem_get_main_ptr(a2_cursor_x_addr);
+  int hw_cursor_y = *mem_get_main_ptr(a2_cursor_y_addr);
 
   int a2_w_cols = is_80col ? a2_cols_80 : a2_cols_40;
   int avail_rows = g_term_height;

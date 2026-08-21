@@ -26,14 +26,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debugger_Color.h"
 
-#include <cstring>
-
 #include "Debug.h"
 #include "Debugger_Console.h"
-#include "Video.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
+#include "Debugger_Types.h"
+#include "apple2/Video.h"
 
 // Color ______________________________________________________________________
 

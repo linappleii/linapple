@@ -1,6 +1,7 @@
 #include "Debugger_Cmd_Config.h"
 
-#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <string>
 
 #include "Debug.h"
@@ -10,14 +11,9 @@
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
-#include "Debugger_Memory.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "Video.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp

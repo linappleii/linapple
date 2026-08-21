@@ -11,7 +11,6 @@
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 
 auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
   if (!snapshot) return;

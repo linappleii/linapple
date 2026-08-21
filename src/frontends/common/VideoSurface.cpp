@@ -6,6 +6,9 @@
 #include <cstdlib>
 #include <cstring>
 
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+// Low-level pixel buffer manipulation and XPM pixel layout parser.
+
 auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
   if (w <= 0 || h <= 0 || bpp <= 0) return nullptr;
   auto* s = static_cast<VideoSurface_t*>(calloc(1, sizeof(VideoSurface_t)));
@@ -106,3 +109,5 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
 
   return s;
 }
+
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)

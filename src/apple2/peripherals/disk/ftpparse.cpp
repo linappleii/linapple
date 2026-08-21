@@ -30,9 +30,9 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
