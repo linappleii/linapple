@@ -88,3 +88,27 @@ TEST_CASE("AppController: Diagnostic Commands") {
   config.intent = INTENT_RUN;
   CHECK(app_controller_handle_diagnostic_commands(&config) == false);
 }
+
+TEST_CASE(
+    "AppController: Computer Emulation and Screen Factor from Configuration") {
+  const char* conf_path = "/tmp/test_custom_linapple.conf";
+  {
+    std::ofstream out(conf_path);
+    out << "[Configuration]\n";
+    out << "Computer Emulation = 1\n";
+    out << "Screen factor = 2.0\n";
+  }
+
+  AppConfig_t config = {};
+  AppConfig_Default(&config);
+  Util_SafeStrCpy(config.config_path.data(), conf_path, path_max_len);
+
+  app_controller_initialize(&config);
+
+  CHECK(g_apple2_type == A2TYPE_APPLE2PLUS);
+  CHECK(g_state.screen_width == 1120);
+  CHECK(g_state.screen_height == 768);
+
+  AppController_Shutdown();
+  unlink(conf_path);
+}

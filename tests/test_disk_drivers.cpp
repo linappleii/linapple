@@ -44,6 +44,23 @@ TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
         disk_probe_definite);
 }
 
+TEST_CASE("DiskDrivers: [DRV-02B] Extension Hint Discrimination") {
+  std::vector<uint8_t> blank_buffer(143360, 0);
+
+  // When given .po hint on an unindexed/raw 140k image:
+  // PO driver should claim 'possible', but DO driver must NOT claim 'possible'
+  CHECK(g_po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+                          ".po") == disk_probe_possible);
+  CHECK(g_do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+                          ".po") == disk_probe_no);
+
+  // When given .do / .dsk hint on an unindexed/raw 140k image:
+  CHECK(g_do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+                          ".dsk") == disk_probe_possible);
+  CHECK(g_po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+                          ".dsk") == disk_probe_no);
+}
+
 TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
   uint8_t header[88]{};
   memcpy(header, "SIMSYSTEM_IIE", 13);

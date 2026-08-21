@@ -77,6 +77,9 @@ inline auto get_plugin_search_paths() -> std::vector<std::string> {
   return paths;
 }
 
+inline auto join(const std::string& dir, const std::string& filename)
+    -> std::string;
+
 // Returns a list of directories to search for data assets (ROMs, disks,
 // config).
 inline auto get_data_search_paths() -> std::vector<std::string> {
@@ -107,6 +110,24 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
 #ifdef SYS_DIR
   paths.push_back(SYS_DIR "/");
 #endif
+
+  const char* configDirs = getenv("XDG_CONFIG_DIRS");
+  if (configDirs != nullptr) {
+    std::string cd(configDirs);
+    size_t start = 0;
+    while (start < cd.length()) {
+      size_t end = cd.find(':', start);
+      if (end == std::string::npos) end = cd.length();
+      std::string dir = cd.substr(start, end - start);
+      if (!dir.empty()) {
+        paths.push_back(join(dir, "linapple/"));
+      }
+      start = end + 1;
+    }
+  } else {
+    paths.push_back("/etc/xdg/linapple/");
+  }
+  paths.push_back("/etc/linapple/");
 
   return paths;
 }

@@ -1,8 +1,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
@@ -21,8 +23,9 @@
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
   linapple_init();
 
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.woz"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.woz"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -42,10 +45,12 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
   linapple_init();
 
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.woz"));
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                         TestFixtures::get_fixture_path("minimal.dsk"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.woz"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE2,
+      TestFixtures::get_fixture_path("minimal.dsk"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -66,8 +71,9 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   linapple_init();
 
   // .txt is unsupported by disk drivers
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.txt"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.txt"));
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -93,13 +99,76 @@ TEST_CASE("Headless: [HL-04] Program loading") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  int err = linapple_load_program(TestFixtures::get_fixture_path("minimal.woz").c_str());
+  int err = linapple_load_program(
+      TestFixtures::get_fixture_path("minimal.woz").c_str());
   CHECK(err != 0);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_cmd_get_status, &status, &size);
   CHECK(status.drive0_loaded == false);
+
+  linapple_shutdown();
+}
+
+TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
+  extern auto VideoInitWorker() -> bool;
+  extern auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false)
+      -> void;
+  extern std::atomic<bool> g_frame_ready;
+
+  linapple_init();
+  VideoInitWorker();
+
+  g_frame_ready = false;
+  video_refresh_screen(0, true);
+
+  // Give worker thread a moment to wake up and process the refresh
+  for (int i = 0; i < 50 && !g_frame_ready; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+
+  CHECK(g_frame_ready == true);
+
+  linapple_shutdown();
+}
+
+TEST_CASE(
+    "Headless: [HL-06] Text screen rendering produces non-black character "
+    "pixels") {
+  extern auto video_redraw_screen() -> void;
+  extern auto video_get_output_buffer() -> uint32_t*;
+  extern uint8_t* mem;
+
+  linapple_init();
+  g_state.mode = MODE_RUNNING;
+
+  // 1. Write "APPLE" in text screen memory (Row 0: 0x0400) with flashing/normal
+  // characters
+  mem[0x0400] = 0xC1;  // 'A' | 0x80
+  mem[0x0401] = 0xD0;  // 'P' | 0x80
+  mem[0x0402] = 0xD0;  // 'P' | 0x80
+  mem[0x0403] = 0xCC;  // 'L' | 0x80
+  mem[0x0404] = 0xC5;  // 'E' | 0x80
+
+  // 2. Trigger full video redraw
+  video_redraw_screen();
+
+  // 3. Inspect output buffer
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+
+  size_t non_black_pixels = 0;
+  for (size_t i = 0; i < 560 * 384; ++i) {
+    if ((output[i] & 0x00FFFFFF) != 0) {
+      non_black_pixels++;
+    }
+  }
+
+  // Without charset40 loaded, DrawTextSource early-returns and non_black_pixels
+  // is exactly 0. With font glyphs properly loaded, the letters "APPLE" render
+  // non-zero pixels.
+  CHECK(non_black_pixels > 0);
 
   linapple_shutdown();
 }

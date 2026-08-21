@@ -206,6 +206,7 @@ auto DrawMonoHiResSource() -> void;
 auto DrawMonoLoResSource() -> void;
 auto DrawMonoTextSource(VideoSurface_t* dc) -> void;
 auto DrawTextSource(VideoSurface_t* dc) -> void;
+auto LoadCharset() -> VideoSurface_t*;
 
 auto VideoInitWorker() -> bool;
 
@@ -213,6 +214,7 @@ std::thread video_worker_thread_;
 static std::atomic<bool> video_worker_active_{false};
 static std::atomic<bool> video_worker_terminate_{false};
 static std::atomic<bool> video_worker_refresh_{false};
+static std::mutex s_video_worker_mutex;
 std::recursive_mutex g_video_draw_mutex;
 std::condition_variable video_cv;
 
@@ -394,6 +396,10 @@ void CreateDIBSections() {
   }
 
   memset(g_source_pixels, 0, static_cast<size_t>(SRCOFFS_TOTAL * MAX_SOURCE_Y));
+
+  if (charset40 == nullptr) {
+    charset40 = LoadCharset();
+  }
 
   if ((g_videotype != VT_MONO_CUSTOM) && (g_videotype != VT_MONO_AMBER) &&
       (g_videotype != VT_MONO_GREEN) && (g_videotype != VT_MONO_WHITE)) {
@@ -1642,22 +1648,25 @@ auto video_set_next_scheduled_update() -> void {
 }
 
 void VideoWorkerThread() {
-  (void)nullptr;
-  std::mutex mtx;
-  std::unique_lock<std::mutex> lck(mtx);
   while (!video_worker_terminate_) {
-    video_cv.wait_until(lck, video_next_scheduled_update_);
-    {
-      if (video_worker_refresh_) {
-        video_perform_refresh();
-        video_worker_refresh_ = false;
-        std::this_thread::yield();
-      }
+    std::unique_lock<std::mutex> lck(s_video_worker_mutex);
+    video_cv.wait_until(lck, video_next_scheduled_update_, [] {
+      return video_worker_refresh_.load() || video_worker_terminate_.load();
+    });
+    if (video_worker_terminate_) break;
+    if (video_worker_refresh_) {
+      video_perform_refresh();
+      video_worker_refresh_ = false;
+      std::this_thread::yield();
     }
   }
 }
 
 auto VideoInitWorker() -> bool {
+  if (video_worker_active_ && video_worker_thread_.joinable()) {
+    return true;
+  }
+  video_worker_terminate_ = false;
   video_worker_active_ = true;
   try {
     video_worker_thread_ = std::thread(VideoWorkerThread);
@@ -1831,7 +1840,11 @@ auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
     redrawfull = true;
   }
   if (video_worker_active_) {
-    video_worker_refresh_ = true;
+    {
+      std::lock_guard<std::mutex> lock(s_video_worker_mutex);
+      video_worker_refresh_ = true;
+    }
+    video_cv.notify_one();
   } else {
     // If singlethreaded just call the refresh here.
     video_perform_refresh();

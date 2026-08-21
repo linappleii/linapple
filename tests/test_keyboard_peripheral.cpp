@@ -609,3 +609,53 @@ TEST_CASE("Keyboard: QuickSave Key Combos and Hotkey Modes") {
   keyboard_set_hotkeys_enabled(false);
   CHECK(keyboard_get_hotkeys_enabled() == false);
 }
+
+TEST_CASE("Keyboard: Symbolic Shift and Punctuation Mapping") {
+  g_mock_handlers.clear();
+  void* instance = keyboard_peripheral.init(0, &mock_host);
+  REQUIRE(instance != nullptr);
+
+  // 1. Shift + '/' should produce '?' (0x3F | 0x80 = 0xBF)
+  KeyboardEvent_t evSlash = {'/', 1, 1, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evSlash,
+                              sizeof(evSlash));
+  uint8_t val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == '?');
+
+  // 2. Shift + '1' should produce '!' (0x21)
+  KeyboardEvent_t evOne = {'1', 1, 1, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evOne,
+                              sizeof(evOne));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == '!');
+
+  // 3. Shift + ';' should produce ':' (0x3A)
+  KeyboardEvent_t evSemi = {';', 1, 1, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evSemi,
+                              sizeof(evSemi));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == ':');
+
+  // 4. Shift + '=' should produce '+' (0x2B)
+  KeyboardEvent_t evEqual = {'=', 1, 1, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evEqual,
+                              sizeof(evEqual));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == '+');
+
+  // 5. Shift + '-' should produce '_' (0x5F)
+  KeyboardEvent_t evMinus = {'-', 1, 1, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evMinus,
+                              sizeof(evMinus));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == '_');
+
+  // 6. Unshifted '/' should produce '/' (0x2F)
+  KeyboardEvent_t evSlashUnshifted = {'/', 1, 0, 0, 0, 0, {0, 0, 0}};
+  keyboard_peripheral.command(instance, keyboard_cmd_event, &evSlashUnshifted,
+                              sizeof(evSlashUnshifted));
+  val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
+  CHECK((val & 0x7F) == '/');
+
+  keyboard_peripheral.shutdown(instance);
+}

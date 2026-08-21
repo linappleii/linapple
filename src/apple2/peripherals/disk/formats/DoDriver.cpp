@@ -20,10 +20,12 @@
 
 namespace {
 
-// Why: Probes for a DOS-ordered disk image by prioritizing physical data
-// patterns (VTOC signatures) over file extensions.
 auto do_probe(const uint8_t* header_data, size_t header_size,
               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+  if (header_data == nullptr) {
+    return disk_probe_no;
+  }
+
   const auto sig_probe = sector_disk_image_probe_signature(
       header_data, header_size, file_size, true);
 
@@ -31,9 +33,13 @@ auto do_probe(const uint8_t* header_data, size_t header_size,
     return disk_probe_definite;
   }
 
-  if (ext_hint != nullptr && (std::strcmp(ext_hint, ".do") == 0 ||
-                              std::strcmp(ext_hint, ".dsk") == 0)) {
-    return disk_probe_possible;
+  if (ext_hint != nullptr) {
+    if (strcasecmp(ext_hint, ".do") == 0 || strcasecmp(ext_hint, ".dsk") == 0) {
+      return (sig_probe != disk_probe_no) ? disk_probe_possible : disk_probe_no;
+    }
+    if (strcasecmp(ext_hint, ".po") == 0) {
+      return disk_probe_no;
+    }
   }
 
   return sig_probe;

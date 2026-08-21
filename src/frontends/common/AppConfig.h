@@ -23,6 +23,7 @@ struct AppConfig_t {
   std::array<char, path_max_len> audio_dump_path = {};
 
   eApple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
+  bool apple2_type_explicit = false;
   bool is_pal = false;
   bool is_fullscreen = false;
   bool is_boot = false;

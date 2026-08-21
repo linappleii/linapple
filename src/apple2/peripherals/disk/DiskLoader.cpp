@@ -222,6 +222,14 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
 
   FilePtr_t image_file(fopen(load_path, "rb"), fclose);
   if (image_file == nullptr) {
+    const char* base = strrchr(load_path, '/');
+    const char* filename = (base != nullptr) ? (base + 1) : load_path;
+    std::string found = Path::find_data_file(filename);
+    if (!found.empty()) {
+      image_file.reset(fopen(found.c_str(), "rb"));
+    }
+  }
+  if (image_file == nullptr) {
     if (!create_if_necessary || is_temporary) {
       return disk_err_file_not_found;
     }

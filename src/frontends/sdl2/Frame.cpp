@@ -142,28 +142,16 @@ void DrawFrameWindow() {
       vs_output.pitch = 560 * 4;
       vs_output.bpp = 4;
 
-      if (g_window_resized == false) {
-        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
-                           &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
-      } else {
-        video_soft_stretch(
-            &vs_output, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
-            &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
-      }
+      video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
+                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
     } else {
       // Debugger draws directly to g_debug_screen (INDEX8)
       // We need to stretch/convert it to the RGB32 g_screen surface
       extern VideoSurface_t* g_debug_screen;
       if (g_debug_screen != nullptr) {
         VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
-        if (g_window_resized == false) {
-          video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&r),
-                             &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
-        } else {
-          video_soft_stretch(
-              g_debug_screen, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
-              &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
-        }
+        video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&r),
+                           &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
       }
     }
 
@@ -837,9 +825,8 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  g_screen = SDL_CreateRGBSurfaceWithFormat(0, g_state.screen_width,
-                                            g_state.screen_height, 32,
-                                            SDL_PIXELFORMAT_ARGB8888);
+  g_screen =
+      SDL_CreateRGBSurfaceWithFormat(0, 560, 384, 32, SDL_PIXELFORMAT_ARGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
@@ -852,16 +839,7 @@ auto frame_create_window() -> int {
   SDL_ShowWindow(g_window);
   SetIcon();
 
-  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
-                     (g_state.screen_height != SCREEN_HEIGHT);
   printf("Screen size is %ux%u\n", g_state.screen_width, g_state.screen_height);
-  if (g_window_resized) {
-    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
-    g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
-    g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
-    g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
-  }
   return 0;
 }
 

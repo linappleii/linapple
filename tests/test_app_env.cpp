@@ -32,3 +32,15 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
   // Since we can't easily query Logger verbosity without adding a getter,
   // we just ensure it doesn't crash and follows the logic.
 }
+
+TEST_CASE("AppEnvironment: XDG Config Dirs Data Paths") {
+  auto paths = Path::get_data_search_paths();
+  bool has_etc_linapple = false;
+  bool has_etc_xdg = false;
+  for (const auto& p : paths) {
+    if (p == "/etc/linapple/") has_etc_linapple = true;
+    if (p == "/etc/xdg/linapple/") has_etc_xdg = true;
+  }
+  CHECK(has_etc_linapple);
+  CHECK(has_etc_xdg);
+}

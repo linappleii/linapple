@@ -149,9 +149,11 @@ auto app_args_parse(int argc, char* argv[], AppConfig_t* outConfig) -> int {
         break;
       case '6':
         outConfig->apple2_type = A2TYPE_APPLE2PLUS;
+        outConfig->apple2_type_explicit = true;
         break;
       case 'C':
         outConfig->apple2_type = A2TYPE_APPLE2EENHANCED;
+        outConfig->apple2_type_explicit = true;
         break;
       case 'A':
         Util_SafeStrCpy(outConfig->audio_dump_path.data(), optarg,

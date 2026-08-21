@@ -20,8 +20,6 @@
 
 namespace {
 
-// Why: Probes for a ProDOS-ordered disk image by prioritizing physical data
-// patterns (Directory signatures) over file extensions.
 auto po_probe(const uint8_t* header_data, size_t header_size,
               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   if (header_data == nullptr) {
@@ -35,8 +33,13 @@ auto po_probe(const uint8_t* header_data, size_t header_size,
     return disk_probe_definite;
   }
 
-  if (ext_hint != nullptr && std::strcmp(ext_hint, ".po") == 0) {
-    return disk_probe_possible;
+  if (ext_hint != nullptr) {
+    if (strcasecmp(ext_hint, ".po") == 0) {
+      return (sig_probe != disk_probe_no) ? disk_probe_possible : disk_probe_no;
+    }
+    if (strcasecmp(ext_hint, ".do") == 0 || strcasecmp(ext_hint, ".dsk") == 0) {
+      return disk_probe_no;
+    }
   }
 
   return sig_probe;

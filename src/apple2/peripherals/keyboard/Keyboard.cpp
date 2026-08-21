@@ -380,6 +380,75 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
   return base;
 }
 
+static auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
+                                          bool caps_lock) -> uint32_t {
+  if (shift) {
+    switch (key) {
+      case '1':
+        return '!';
+      case '2':
+        return '@';
+      case '3':
+        return '#';
+      case '4':
+        return '$';
+      case '5':
+        return '%';
+      case '6':
+        return '^';
+      case '7':
+        return '&';
+      case '8':
+        return '*';
+      case '9':
+        return '(';
+      case '0':
+        return ')';
+      case '-':
+        return '_';
+      case '=':
+        return '+';
+      case '[':
+        return '{';
+      case ']':
+        return '}';
+      case '\\':
+        return '|';
+      case ';':
+        return ':';
+      case '\'':
+        return '"';
+      case '`':
+        return '~';
+      case ',':
+        return '<';
+      case '.':
+        return '>';
+      case '/':
+        return '?';
+      default:
+        if (key >= 'a' && key <= 'z') {
+          return key - 'a' + 'A';
+        }
+        break;
+    }
+  } else if (caps_lock && key >= 'a' && key <= 'z') {
+    return key - 'a' + 'A';
+  }
+
+  if (ctrl) {
+    if (key >= 'a' && key <= 'z') {
+      return (key - 'a' + 1);
+    }
+    if (key >= 'A' && key <= 'Z') {
+      return (key - 'A' + 1);
+    }
+    return key & 0x1F;
+  }
+
+  return key;
+}
+
 static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
                                  const void* data, size_t size)
     -> PeripheralStatus_t {
@@ -443,14 +512,9 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
                                       ev->mod_ctrl != 0U);
       } else if (key >= 0x100) {
         key = keyboard_map_symbolic(key);
-      }
-
-      // Apply Caps Lock only for non-positional keys (positional mapping
-      // handles it internally)
-      if (key < kp_const::positional_threshold && key != 0 &&
-          kp->logic.caps_lock && ev->mod_shift == 0U && ev->mod_ctrl == 0U &&
-          key >= 'a' && key <= 'z') {
-        key = key - 'a' + 'A';
+      } else if (key != 0) {
+        key = keyboard_apply_symbolic_shift(
+            key, ev->mod_shift != 0U, ev->mod_ctrl != 0U, kp->logic.caps_lock);
       }
 
       if (key > kp_const::key_code_mask) {

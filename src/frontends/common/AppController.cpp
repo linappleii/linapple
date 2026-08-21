@@ -53,7 +53,44 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   s_initialized = true;
 
   // 3. Set Hardware Type and PAL
-  g_apple2_type = config->apple2_type;
+  uint32_t emul_type = 0;
+  if (!config->apple2_type_explicit &&
+      (config_load_int("Configuration", "Computer Emulation", &emul_type) ||
+       config_load_int("Preferences", "Computer Emulation", &emul_type))) {
+    switch (emul_type) {
+      case 0:
+        g_apple2_type = A2TYPE_APPLE2;
+        break;
+      case 1:
+        g_apple2_type = A2TYPE_APPLE2PLUS;
+        break;
+      case 2:
+        g_apple2_type = A2TYPE_APPLE2E;
+        break;
+      case 3:
+      default:
+        g_apple2_type = A2TYPE_APPLE2EENHANCED;
+        break;
+    }
+  } else {
+    g_apple2_type = config->apple2_type;
+  }
+
+  std::string factor_str;
+  if (config_load_string("Configuration", "Screen factor", &factor_str) ||
+      config_load_string("Configuration", "Screen Factor", &factor_str) ||
+      config_load_string("Preferences", "Screen factor", &factor_str) ||
+      config_load_string("Preferences", "Screen Factor", &factor_str)) {
+    try {
+      float factor = std::stof(factor_str);
+      if (factor >= 0.25f && factor <= 8.0f) {
+        g_state.screen_width = static_cast<int>(560.0f * factor);
+        g_state.screen_height = static_cast<int>(384.0f * factor);
+      }
+    } catch (...) {
+    }
+  }
+
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
@@ -180,12 +217,22 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
     const char* path = (i == 0) ? config->disk_path.at(0).data()
                                 : config->disk_path.at(1).data();
     if (path != nullptr && *path != '\0') {
-      int res = linapple_load_program(path);
+      std::string actual_path = path;
+      if (access(actual_path.c_str(), R_OK) != 0) {
+        const char* base = strrchr(path, '/');
+        const char* filename = (base != nullptr) ? (base + 1) : path;
+        std::string found = Path::find_data_file(filename);
+        if (!found.empty()) {
+          actual_path = found;
+        }
+      }
+      int res = linapple_load_program(actual_path.c_str());
       if (res == program_load_not_a_program) {
         // It's a disk image (or at least not a program)
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
-        Util_SafeStrCpy(&cmd.path[0], path, disk_insert_path_max);
+        Util_SafeStrCpy(&cmd.path[0], actual_path.c_str(),
+                        disk_insert_path_max);
         peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                            sizeof(cmd));
       }

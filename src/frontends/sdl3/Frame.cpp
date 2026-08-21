@@ -149,19 +149,9 @@ static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
     return;
   }
 
-  SDL_Rect g_orig_rect = {0, 0, 560, 384};
-  SDL_Rect g_new_rect = r;
-
-  if (!g_window_resized) {
-    video_soft_stretch(
-        g_debug_screen,
-        reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)), vs_screen,
-        reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
-  } else {
-    video_soft_stretch(g_debug_screen,
-                       reinterpret_cast<VideoRect_t*>(&g_orig_rect), vs_screen,
-                       reinterpret_cast<VideoRect_t*>(&g_new_rect));
-  }
+  video_soft_stretch(
+      g_debug_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)),
+      vs_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
 }
 #endif
 
@@ -183,14 +173,8 @@ void DrawFrameWindow() {
       vs_output.pitch = 560 * 4;
       vs_output.bpp = 4;
 
-      if (!g_window_resized) {
-        video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
-                           &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
-      } else {
-        video_soft_stretch(
-            &vs_output, reinterpret_cast<VideoRect_t*>(&g_orig_rect),
-            &vs_screen, reinterpret_cast<VideoRect_t*>(&g_new_rect));
-      }
+      video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
+                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
     } else {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 #if ENABLE_DEBUGGER
@@ -399,8 +383,8 @@ void FrameShowHelpScreen(int sx, int sy) {
     if (HelpStrings[i] && HelpStrings[i][0] != '\0') {
       font_print(16 * scale_factor,
                  body_top + 6 * scale_factor + (i - 3) * line_spacing,
-                 const_cast<char*>(HelpStrings[i]), &vs_actual_screen,
-                 scale_x, scale_y);
+                 const_cast<char*>(HelpStrings[i]), &vs_actual_screen, scale_x,
+                 scale_y);
     }
   }
 
@@ -868,8 +852,7 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  g_screen = SDL_CreateSurface(g_state.screen_width, g_state.screen_height,
-                               SDL_PIXELFORMAT_XRGB8888);
+  g_screen = SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_XRGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
@@ -882,17 +865,7 @@ auto frame_create_window() -> int {
                                    SDL_LOGICAL_PRESENTATION_LETTERBOX);
   SDL_ShowWindow(g_window);
   SetIcon();
-
-  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
-                     (g_state.screen_height != SCREEN_HEIGHT);
   printf("Screen size is %dx%d\n", g_state.screen_width, g_state.screen_height);
-  if (g_window_resized) {
-    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
-    g_orig_rect.w = SCREEN_WIDTH;
-    g_orig_rect.h = SCREEN_HEIGHT;
-    g_new_rect.w = g_state.screen_width;
-    g_new_rect.h = g_state.screen_height;
-  }
   return 0;
 }
 
