@@ -3,7 +3,7 @@ name: Multi-Distro Build (CMake)
 
 on:
   push:
-    branches: [main, sdl3]
+    branches: [master]
     paths-ignore:
       - '**.md'
       - '.markdownlint.json'
