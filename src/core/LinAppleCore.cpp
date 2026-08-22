@@ -29,6 +29,7 @@
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
 #include "core/AudioMixer.h"
+#include "core/BasicLiveSync.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
@@ -300,6 +301,7 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
     }
 
     peripheral_manager_on_vblank(true);
+    basic_sync_update();
 
     if (g_video_cb != nullptr && g_frame_ready) {
       uint32_t* output = video_get_output_buffer();

@@ -193,6 +193,7 @@ set(SOURCES_CORE
     src/core/ProgramLoader.cpp
     src/core/Registry.cpp
     src/core/Asset.cpp
+    src/core/BasicLiveSync.cpp
     src/core/Peripheral.cpp
     src/core/Peripheral_Internal.cpp
     src/core/Resource.cpp
@@ -497,6 +498,7 @@ if(BUILD_TESTING)
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
+    add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
     add_linapple_test(disk-smoke tests/test_disk_smoke.cpp)
     add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
     add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)

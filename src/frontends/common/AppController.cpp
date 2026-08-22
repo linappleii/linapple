@@ -7,6 +7,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "core/BasicLiveSync.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
@@ -157,6 +158,25 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     }
   }
 
+  std::string sync_file = config->basic_sync_file.data();
+  if (sync_file.empty()) {
+    config_load_string("Configuration", REGVALUE_BASIC_SYNC_FILE, &sync_file);
+  }
+  int line_mode = config->basic_line_mode;
+  if (line_mode < 0) {
+    uint32_t mode_cfg = 0;
+    if (config_load_int("Configuration", REGVALUE_BASIC_LINE_MODE, &mode_cfg)) {
+      line_mode = static_cast<int>(mode_cfg);
+    } else {
+      line_mode = 0;
+    }
+  }
+  if (!sync_file.empty()) {
+    basic_sync_init(sync_file.c_str(), line_mode == 1
+                                           ? basic_line_mode_positional
+                                           : basic_line_mode_explicit);
+  }
+
   return 0;
 }
 
@@ -276,6 +296,7 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
 void AppController_Shutdown() {
   if (!s_initialized) return;
 
+  basic_sync_shutdown();
   save_state_shutdown();
   linapple_shutdown();
   Logger::destroy();

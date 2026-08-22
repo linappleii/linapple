@@ -99,6 +99,8 @@ auto Configuration_t::load_defaults() -> void {
   set_int("Configuration", "Boot at Startup", 0);
   set_int("Configuration", "Show Leds", 1);
   set_string("Configuration", "Screen factor", "1.0");
+  set_string("Configuration", "Basic Live Sync File", "");
+  set_int("Configuration", "Basic Line Numbering", 0);
 
   set_string("Slots", "Slot 1", "Parallel Printer");
   set_string("Slots", "Slot 2", "Super Serial Card");
@@ -161,6 +163,8 @@ static constexpr ConfigAlias_t k_config_aliases[] = {
     {"Joystick Exit Button 1", "JoyExitButton1"},
     {"Mouse in slot 4", "Mouse in slot4"},
     {"Mouse Capture", "MouseCapture"},
+    {"Basic Live Sync File", "BasicLiveSyncFile"},
+    {"Basic Line Numbering", "BasicLineNumbering"},
 };
 
 static auto find_alias(const std::string& key) -> const char* {

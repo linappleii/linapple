@@ -17,8 +17,10 @@ static constexpr int opt_hardware_info = 0x101;
 static constexpr int opt_no_debugger = 0x102;
 static constexpr int opt_hd1 = 0x103;
 static constexpr int opt_hd2 = 0x104;
+static constexpr int opt_basic_sync = 0x105;
+static constexpr int opt_basic_line_mode = 0x106;
 
-static const std::array<struct option, 25> OptionTable = {
+static const std::array<struct option, 27> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
@@ -43,6 +45,8 @@ static const std::array<struct option, 25> OptionTable = {
      {"list-hardware", no_argument, nullptr, opt_list_hardware},
      {"hardware-info", required_argument, nullptr, opt_hardware_info},
      {"no-debugger", no_argument, nullptr, opt_no_debugger},
+     {"basic-sync", required_argument, nullptr, opt_basic_sync},
+     {"basic-line-mode", required_argument, nullptr, opt_basic_line_mode},
      {nullptr, 0, nullptr, 0}}};
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
@@ -84,6 +88,11 @@ void AppArgs_PrintHelp() {
       "  --hardware-info <name> Show detailed info for a hardware component\n");
   printf(
       "  --no-debugger          Disable the integrated debugger at runtime\n");
+  printf(
+      "  --basic-sync <file>    Enable bidirectional host BASIC live-sync\n");
+  printf(
+      "  --basic-line-mode <m>  Set line numbering mode "
+      "(explicit/positional)\n");
 }
 
 auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
@@ -181,6 +190,18 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
       case opt_hd2:
         Util_SafeStrCpy(outConfig->harddisk_path.at(1).data(), optarg,
                         path_max_len);
+        break;
+      case opt_basic_sync:
+        Util_SafeStrCpy(outConfig->basic_sync_file.data(), optarg,
+                        path_max_len);
+        break;
+      case opt_basic_line_mode:
+        if (std::strcmp(optarg, "positional") == 0 ||
+            std::strcmp(optarg, "1") == 0) {
+          outConfig->basic_line_mode = 1;
+        } else {
+          outConfig->basic_line_mode = 0;
+        }
         break;
       case 'h':
         outConfig->intent = INTENT_HELP;

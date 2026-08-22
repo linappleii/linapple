@@ -26,6 +26,7 @@ gen/
 *.pcm
 *.d
 *.o
+*.bas
 gmon.out
 compile_commands.json
 

@@ -52,6 +52,10 @@ More on building in <!-- Imported from: INSTALL.md -->
 
 ## Development Conventions
 - **Coding Style:** Favor a **procedural C-like coding style** for all new development. Use `structs` and plain functions instead of `classes` and methods where possible to improve simplicity and portability.
+- **Naming Conventions:** Use strict `snake_case` for functions, variables, and constants. Use `PascalCase_t` for types and structs.
+- **Function Syntax:** Use trailing return types (`auto func() -> type`) for all new and modernized functions.
+- **Resource Safety & RAII:** Ensure 100% RAII compliance. Avoid raw `new`/`delete` and manual file handles; use `std::unique_ptr` and `FilePtr`.
+- **Code Structure:** Prefer guard clauses (flattening) over deeply nested conditionals. Maintain defensive null and bounds checks.
 - **Pre-processor:** Avoid pre-processor meta-programming except where it is strictly necessary. Prefer type-safe C++ alternatives like `constexpr` and `enums` for constants.
 - **Header Guards:** Use `#pragma once` for all new header files instead of traditional `#ifndef` guards.
 - **Static Analysis:** Avoid `NOLINT` markers except where they are absolutely necessary to suppress false positives or unavoidable architectural constraints. When `NOLINT` is used, it must be accompanied by a comment explaining the justification.

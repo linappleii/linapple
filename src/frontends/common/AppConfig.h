@@ -40,6 +40,9 @@ struct AppConfig_t {
   std::array<char, path_max_len> debugger_script = {};
   bool disable_debugger = false;
 
+  std::array<char, path_max_len> basic_sync_file = {};
+  int basic_line_mode = -1;
+
   // Extra args for frontend pass-through
   int argc_extra = 0;
   std::array<const char*, ARGV_EXTRA_MAX> argv_extra = {};
