@@ -16,6 +16,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
+#include "frontends/sdl3/JoystickFrontend.h"
 
 using Logger::error;
 using Logger::info;
@@ -77,7 +78,11 @@ auto session_init(AppConfig_t* config) -> int {
   AppController_LoadInitialMedia(config);
 
   ds_init();
+  JoyFrontend_Initialize();
   return 0;
 }
 
-void SessionShutdown() { AppController_Shutdown(); }
+void SessionShutdown() {
+  JoyFrontend_ShutDown();
+  AppController_Shutdown();
+}

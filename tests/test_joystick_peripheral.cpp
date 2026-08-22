@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <vector>
 
@@ -286,6 +288,65 @@ TEST_CASE("Joystick Peripheral: Robustness and Multiple Instances") {
          HIGH_BIT) == 0);
 
   joystick_get_descriptor()->shutdown(instance1);
+}
+
+TEST_CASE("Joystick Peripheral: Full Paddle 0 and 1 Dynamic Range") {
+  g_mock_handlers.clear();
+  void* instance = Joystick_Init_With_Mock(TEST_SLOT);
+  g_cumulative_cycles = INITIAL_CYCLE_COUNT;
+
+  JoystickAxisPayload_t px_min = {0, 0, 0};
+  JoystickAxisPayload_t py_min = {0, 1, 0};
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px_min,
+                                     sizeof(px_min));
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &py_min,
+                                     sizeof(py_min));
+
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance, 0, addr_paddle_reset, 0, 0, 0);
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
+         HIGH_BIT) != 0);
+  CHECK((g_mock_handlers.at(static_cast<uint16_t>(addr_paddle0 + 1))
+             .read(instance, 0, static_cast<uint16_t>(addr_paddle0 + 1), 0, 0,
+                   0) &
+         HIGH_BIT) != 0);
+  g_cumulative_cycles += SMALL_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
+         HIGH_BIT) == 0);
+  CHECK((g_mock_handlers.at(static_cast<uint16_t>(addr_paddle0 + 1))
+             .read(instance, 0, static_cast<uint16_t>(addr_paddle0 + 1), 0, 0,
+                   0) &
+         HIGH_BIT) == 0);
+
+  JoystickAxisPayload_t px_max = {0, 0, MAX_AXIS_VALUE};
+  JoystickAxisPayload_t py_max = {0, 1, MAX_AXIS_VALUE};
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &px_max,
+                                     sizeof(px_max));
+  joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS, &py_max,
+                                     sizeof(py_max));
+
+  g_mock_handlers.at(addr_paddle_reset)
+      .read(instance, 0, addr_paddle_reset, 0, 0, 0);
+  g_cumulative_cycles += LARGE_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
+         HIGH_BIT) != 0);
+  CHECK((g_mock_handlers.at(static_cast<uint16_t>(addr_paddle0 + 1))
+             .read(instance, 0, static_cast<uint16_t>(addr_paddle0 + 1), 0, 0,
+                   0) &
+         HIGH_BIT) != 0);
+  g_cumulative_cycles += FINAL_WAIT_CYCLES;
+  CHECK((g_mock_handlers.at(addr_paddle0)
+             .read(instance, 0, addr_paddle0, 0, 0, 0) &
+         HIGH_BIT) == 0);
+  CHECK((g_mock_handlers.at(static_cast<uint16_t>(addr_paddle0 + 1))
+             .read(instance, 0, static_cast<uint16_t>(addr_paddle0 + 1), 0, 0,
+                   0) &
+         HIGH_BIT) == 0);
+
+  joystick_get_descriptor()->shutdown(instance);
 }
 
 }  // namespace

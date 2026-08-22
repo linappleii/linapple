@@ -193,9 +193,17 @@ void sdl_handle_event(SDL_Event* e) {
             if (mymod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) {
               set_using_cursor(false);
             } else {
-              MouseButtonPayload_t payload = {0, true};
-              peripheral_command(0, mouse_cmd_set_button, &payload,
-                                 sizeof(payload));
+              uint8_t mouse_active = 0;
+              size_t qsize = 1;
+              peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+              if (mouse_active != 0) {
+                MouseButtonPayload_t payload = {0, true};
+                peripheral_command(4, mouse_cmd_set_button, &payload,
+                                   sizeof(payload));
+              }
+              if (JoyFrontend_IsMouseEmulationActive()) {
+                JoyFrontend_ProcessMouseButton(0, true);
+              }
             }
           } else {
             bool mouse_capture_cfg = true;
@@ -216,9 +224,17 @@ void sdl_handle_event(SDL_Event* e) {
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (g_usingcursor) {
-          MouseButtonPayload_t payload = {1, true};
-          peripheral_command(0, mouse_cmd_set_button, &payload,
-                             sizeof(payload));
+          uint8_t mouse_active = 0;
+          size_t qsize = 1;
+          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          if (mouse_active != 0) {
+            MouseButtonPayload_t payload = {1, true};
+            peripheral_command(4, mouse_cmd_set_button, &payload,
+                               sizeof(payload));
+          }
+          if (JoyFrontend_IsMouseEmulationActive()) {
+            JoyFrontend_ProcessMouseButton(1, true);
+          }
         }
       }
 
@@ -228,15 +244,31 @@ void sdl_handle_event(SDL_Event* e) {
     case SDL_EVENT_MOUSE_BUTTON_UP:
       if (e->button.button == SDL_BUTTON_LEFT) {
         if (g_usingcursor) {
-          MouseButtonPayload_t payload = {0, false};
-          peripheral_command(0, mouse_cmd_set_button, &payload,
-                             sizeof(payload));
+          uint8_t mouse_active = 0;
+          size_t qsize = 1;
+          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          if (mouse_active != 0) {
+            MouseButtonPayload_t payload = {0, false};
+            peripheral_command(4, mouse_cmd_set_button, &payload,
+                               sizeof(payload));
+          }
+          if (JoyFrontend_IsMouseEmulationActive()) {
+            JoyFrontend_ProcessMouseButton(0, false);
+          }
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
         if (g_usingcursor) {
-          MouseButtonPayload_t payload = {1, false};
-          peripheral_command(0, mouse_cmd_set_button, &payload,
-                             sizeof(payload));
+          uint8_t mouse_active = 0;
+          size_t qsize = 1;
+          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          if (mouse_active != 0) {
+            MouseButtonPayload_t payload = {1, false};
+            peripheral_command(4, mouse_cmd_set_button, &payload,
+                               sizeof(payload));
+          }
+          if (JoyFrontend_IsMouseEmulationActive()) {
+            JoyFrontend_ProcessMouseButton(1, false);
+          }
         }
       }
       break;
@@ -245,9 +277,18 @@ void sdl_handle_event(SDL_Event* e) {
       x_local = static_cast<int>(e->motion.x);
       y_local = static_cast<int>(e->motion.y);
       if (g_usingcursor) {
-        MousePosPayload_t payload = {x_local, VIEWPORTCX - 4, y_local,
-                                     VIEWPORTCY - 4};
-        peripheral_command(0, mouse_cmd_set_pos, &payload, sizeof(payload));
+        uint8_t mouse_active = 0;
+        size_t qsize = 1;
+        peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+        if (mouse_active != 0) {
+          MousePosPayload_t payload = {x_local, VIEWPORTCX, y_local,
+                                       VIEWPORTCY};
+          peripheral_command(4, mouse_cmd_set_pos, &payload, sizeof(payload));
+        }
+        if (JoyFrontend_IsMouseEmulationActive()) {
+          JoyFrontend_ProcessMouseMotion(x_local, VIEWPORTCX, y_local,
+                                         VIEWPORTCY);
+        }
       }
       break;
 

@@ -75,6 +75,7 @@ auto joy_io_read_button(void* instance, uint16_t program_counter,
     return mem_read_floating_bus(remaining_cycles);
   }
 
+  cpu_calc_cycles(remaining_cycles);
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
   uint8_t result = mem_read_floating_bus(remaining_cycles) & joy_bit_mask;
@@ -105,6 +106,7 @@ auto joy_io_read_position(void* instance, uint16_t program_counter,
     return mem_read_floating_bus(remaining_cycles);
   }
 
+  cpu_calc_cycles(remaining_cycles);
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
   uint8_t result = mem_read_floating_bus(remaining_cycles) & joy_bit_mask;
 

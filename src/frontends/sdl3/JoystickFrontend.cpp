@@ -142,7 +142,7 @@ void JoyFrontend_Initialize() {
         ++joyshry[0];
       }
     } else {
-      g_joyConfig.joy_type[0] = DEVICE_MOUSE;
+      g_joyConfig.joy_type[0] = 4;
     }
   }
 
@@ -345,8 +345,17 @@ void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
 
 auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
                               bool autorep) -> bool {
-  int joy_num =
-      (joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_KEYBOARD) ? 0 : 1;
+  int joy_num = -1;
+  if (g_joyConfig.joy_type[0] < joyinfo.size() &&
+      joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_KEYBOARD) {
+    joy_num = 0;
+  } else if (g_joyConfig.joy_type[1] < joyinfo.size() &&
+             joyinfo[g_joyConfig.joy_type[1]].device == DEVICE_KEYBOARD) {
+    joy_num = 1;
+  }
+  if (joy_num == -1) {
+    return false;
+  }
   int centering_type =
       joyinfo[g_joyConfig.joy_type[static_cast<size_t>(joy_num)]].mode;
 
@@ -487,13 +496,62 @@ auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
 }
 
 auto JoyFrontend_IsMouseEmulationActive() -> bool {
-  if (g_joyConfig.joy_type[0] < joyinfo.size() &&
-      joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_MOUSE) {
+  if (g_joyConfig.joy_type[0] == 4 ||
+      (g_joyConfig.joy_type[0] < joyinfo.size() &&
+       joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_MOUSE)) {
     return true;
   }
-  if (g_joyConfig.joy_type[1] < joyinfo.size() &&
-      joyinfo[g_joyConfig.joy_type[1]].device == DEVICE_MOUSE) {
+  if (g_joyConfig.joy_type[1] == 4 ||
+      (g_joyConfig.joy_type[1] < joyinfo.size() &&
+       joyinfo[g_joyConfig.joy_type[1]].device == DEVICE_MOUSE)) {
     return true;
   }
   return false;
+}
+
+auto JoyFrontend_ProcessMouseMotion(int x, int max_x, int y, int max_y)
+    -> void {
+  int range_x = (max_x > 1) ? (max_x - 1) : 1;
+  int range_y = (max_y > 1) ? (max_y - 1) : 1;
+  int joy_x = ((x * 255) + (range_x / 2)) / range_x;
+  int joy_y = ((y * 255) + (range_y / 2)) / range_y;
+  if (joy_x < 0) {
+    joy_x = 0;
+  }
+  if (joy_x > 255) {
+    joy_x = 255;
+  }
+  if (joy_y < 0) {
+    joy_y = 0;
+  }
+  if (joy_y > 255) {
+    joy_y = 255;
+  }
+
+  for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
+    if (g_joyConfig.joy_type[joy_num] == 4 ||
+        (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
+         joyinfo[g_joyConfig.joy_type[joy_num]].device == DEVICE_MOUSE)) {
+      JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x)};
+      peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y)};
+      peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
+    }
+  }
+}
+
+auto JoyFrontend_ProcessMouseButton(int button, bool down) -> void {
+  for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
+    if (g_joyConfig.joy_type[joy_num] == 4 ||
+        (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
+         joyinfo[g_joyConfig.joy_type[joy_num]].device == DEVICE_MOUSE)) {
+      if (button == 0) {
+        JoystickButtonPayload_t pb0 = {0, down};
+        peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
+      } else if (button == 1) {
+        JoystickButtonPayload_t pb1 = {1, down};
+        peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
+      }
+    }
+  }
 }
