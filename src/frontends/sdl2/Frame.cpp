@@ -825,20 +825,34 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  g_screen =
-      SDL_CreateRGBSurfaceWithFormat(0, 560, 384, 32, SDL_PIXELFORMAT_ARGB8888);
+  g_screen = SDL_CreateRGBSurfaceWithFormat(0, g_state.screen_width,
+                                            g_state.screen_height, 32,
+                                            SDL_PIXELFORMAT_ARGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING, 560, 384);
+                                SDL_TEXTUREACCESS_STREAMING,
+                                g_state.screen_width, g_state.screen_height);
+  if (g_texture == nullptr) {
+    fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
+    return 1;
+  }
 
-  SDL_RenderSetLogicalSize(g_renderer, 560, 384);
   SDL_ShowWindow(g_window);
   SetIcon();
 
+  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
+                     (g_state.screen_height != SCREEN_HEIGHT);
+  if (g_window_resized) {
+    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+    g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+    g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+    g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
+    g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+  }
   printf("Screen size is %ux%u\n", g_state.screen_width, g_state.screen_height);
   return 0;
 }

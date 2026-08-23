@@ -513,6 +513,8 @@ if(BUILD_TESTING)
     target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-hash COMMAND test-util-hash)
 
+    add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
+
     add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
 
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp)
@@ -566,6 +568,68 @@ if(BUILD_TESTING)
         add_linapple_test(frontend-sdl1 "tests/test_main.cpp;tests/test_frontend_sdl1.cpp")
         target_include_directories(test-frontend-sdl1 PRIVATE src)
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES})
+    endif()
+
+    if(FRONTEND_LOWER STREQUAL "sdl2" OR FRONTEND_LOWER STREQUAL "all")
+        add_executable(test-frontend-sdl2
+            tests/test_main.cpp
+            tests/test_frontend_sdl2.cpp
+            src/frontends/sdl2/Frame.cpp
+            src/frontends/sdl2/SDL_Asset.cpp
+            src/frontends/sdl2/SDL_Video.cpp
+            src/frontends/sdl2/SDL_Input.cpp
+            src/frontends/sdl2/SDL_Path.cpp
+            src/frontends/sdl2/DiskChoose.cpp
+            src/frontends/sdl2/DiskUI.cpp
+            src/frontends/sdl2/DiskSelect.cpp
+            src/frontends/sdl2/DiskFTP.cpp
+            src/frontends/sdl2/Harddisk.cpp
+            src/frontends/sdl2/JoystickFrontend.cpp
+            src/frontends/sdl2/Keyboard.cpp
+            src/frontends/sdl2/MainSession.cpp
+            src/frontends/sdl2/PrinterFrontend.cpp
+            src/frontends/sdl2/SuperSerialFrontend.cpp
+            ${SOURCES_CORE}
+            ${SOURCES_A2_MANDATORY}
+            ${SOURCES_DBG}
+            ${SOURCES_A2_OPTIONAL}
+        )
+        add_dependencies(test-frontend-sdl2 generate_xpms)
+        target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src/frontends/sdl2)
+        target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
+    endif()
+
+    if(FRONTEND_LOWER STREQUAL "sdl3" OR FRONTEND_LOWER STREQUAL "all")
+        add_executable(test-frontend-sdl3
+            tests/test_main.cpp
+            tests/test_frontend_sdl3.cpp
+            src/frontends/sdl3/Frame.cpp
+            src/frontends/sdl3/SDL_Asset.cpp
+            src/frontends/sdl3/SDL_Video.cpp
+            src/frontends/sdl3/SDL_Input.cpp
+            src/frontends/sdl3/SDL_Path.cpp
+            src/frontends/sdl3/DiskChoose.cpp
+            src/frontends/sdl3/DiskUI.cpp
+            src/frontends/sdl3/DiskSelect.cpp
+            src/frontends/sdl3/DiskFTP.cpp
+            src/frontends/sdl3/Harddisk.cpp
+            src/frontends/sdl3/JoystickFrontend.cpp
+            src/frontends/sdl3/Keyboard.cpp
+            src/frontends/sdl3/MainSession.cpp
+            src/frontends/sdl3/PrinterFrontend.cpp
+            src/frontends/sdl3/SuperSerialFrontend.cpp
+            ${SOURCES_CORE}
+            ${SOURCES_A2_MANDATORY}
+            ${SOURCES_DBG}
+            ${SOURCES_A2_OPTIONAL}
+        )
+        add_dependencies(test-frontend-sdl3 generate_xpms)
+        target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src/frontends/sdl3)
+        target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
     endif()
 endif()
 
