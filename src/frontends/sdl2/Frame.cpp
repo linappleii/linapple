@@ -810,21 +810,32 @@ auto frame_create_window() -> int {
   Uint32 flags = 0;
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
-  g_window = SDL_CreateWindow(g_app_title, SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              static_cast<int>(g_state.screen_width),
-                              static_cast<int>(g_state.screen_height), flags);
   if (g_window == nullptr) {
-    fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
-    return 1;
+    g_window = SDL_CreateWindow(g_app_title, SDL_WINDOWPOS_UNDEFINED,
+                                SDL_WINDOWPOS_UNDEFINED,
+                                static_cast<int>(g_state.screen_width),
+                                static_cast<int>(g_state.screen_height), flags);
+    if (g_window == nullptr) {
+      fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
+      return 1;
+    }
+  } else {
+    SDL_SetWindowSize(g_window, static_cast<int>(g_state.screen_width),
+                      static_cast<int>(g_state.screen_height));
   }
 
-  g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_ACCELERATED);
   if (g_renderer == nullptr) {
-    fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
-    return 1;
+    g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_ACCELERATED);
+    if (g_renderer == nullptr) {
+      fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
+      return 1;
+    }
   }
 
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
   g_screen =
       SDL_CreateRGBSurfaceWithFormat(0, 560, 384, 32, SDL_PIXELFORMAT_ARGB8888);
   if (g_screen == nullptr) {
@@ -832,6 +843,10 @@ auto frame_create_window() -> int {
     return 1;
   }
 
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
                                 SDL_TEXTUREACCESS_STREAMING, 560, 384);
 
@@ -841,6 +856,26 @@ auto frame_create_window() -> int {
 
   printf("Screen size is %ux%u\n", g_state.screen_width, g_state.screen_height);
   return 0;
+}
+
+void frame_destroy_window() {
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  SDL_Asset_FreeIcon();
 }
 
 void SetIcon() {

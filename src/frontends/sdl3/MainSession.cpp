@@ -51,7 +51,7 @@ auto sys_init() -> int {
 
 void SysShutdown() {
   ds_shutdown();
-
+  frame_destroy_window();
   SDL_Quit();
   if (g_curl) {
     curl_easy_cleanup(g_curl);

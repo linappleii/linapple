@@ -853,6 +853,15 @@ auto frame_create_window() -> int {
   return 0;
 }
 
+void frame_destroy_window() {
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  SDL_Asset_FreeIcon();
+}
+
 void SetIcon() {
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
