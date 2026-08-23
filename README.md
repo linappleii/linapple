@@ -168,6 +168,7 @@ linapple [options]
 | **`-x`, `--script <file>`**   | Run debugger batch script on startup                            |
 | **`--list-hardware`**         | Print all emulated hardware modules and exits                   |
 | **`--no-debugger`**           | Disable debugger shortcuts and memory overhead                  |
+| **`--caps-mode <mode>`**      | Caps Lock mode: `host` (default) or `emulated`                  |
 | **`-h`, `--help`**            | Show full command-line help and target frontend                 |
 
 ## Configuration

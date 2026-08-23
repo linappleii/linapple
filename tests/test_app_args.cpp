@@ -68,3 +68,20 @@ TEST_CASE("AppArgs: Missing Argument error") {
   CHECK(result != 0);
   CHECK(config.intent == INTENT_ERROR);
 }
+
+TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
+  SUBCASE("--caps-mode=emulated") {
+    char* argv[] = {(char*)"linapple", (char*)"--caps-mode=emulated"};
+    AppConfig_t config = {};
+    app_args_parse(2, argv, &config);
+    CHECK(config.caps_lock_mode == CAPS_MODE_EMULATED);
+  }
+
+  SUBCASE("--caps-mode host") {
+    char* argv[] = {(char*)"linapple", (char*)"--caps-mode", (char*)"host"};
+    AppConfig_t config = {};
+    app_args_parse(3, argv, &config);
+    CHECK(config.caps_lock_mode == CAPS_MODE_HOST);
+  }
+}
+

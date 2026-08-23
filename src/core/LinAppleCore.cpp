@@ -322,6 +322,20 @@ auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {
 auto linapple_set_caps_lock_state(bool enabled) -> void {
   uint8_t caps = enabled ? 1 : 0;
   peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+  peripheral_manager_think(0);
+}
+
+auto linapple_get_caps_lock_state() -> bool {
+  KeyboardModifiers_t mods = {};
+  size_t sz = sizeof(mods);
+  peripheral_query(0, keyboard_query_mods, &mods, &sz);
+  return mods.caps != 0;
+}
+
+auto linapple_toggle_caps_lock_state() -> bool {
+  bool new_state = !linapple_get_caps_lock_state();
+  linapple_set_caps_lock_state(new_state);
+  return new_state;
 }
 
 auto linapple_set_apple_key(int key, bool down) -> void {

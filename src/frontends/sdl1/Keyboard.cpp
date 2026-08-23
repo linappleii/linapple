@@ -9,11 +9,20 @@
 #include "frontends/sdl1/Frontend.h"
 
 static int keyboard_mapping_mode = 0;
+static int keyboard_caps_mode = CAPS_MODE_HOST;
+
+auto keyboard_get_caps_mode() -> int { return keyboard_caps_mode; }
+auto keyboard_set_caps_mode(int mode) -> void { keyboard_caps_mode = mode; }
 
 void Frontend_UpdateKeyboardMapping() {
   uint32_t mode = 0;
   if (config_load_int("Keyboard", "Mapping Mode", &mode)) {
     keyboard_mapping_mode = static_cast<int>(mode);
+  }
+
+  uint32_t caps_mode = 0;
+  if (config_load_int("Keyboard", "Caps Lock Mode", &caps_mode)) {
+    keyboard_caps_mode = static_cast<int>(caps_mode);
   }
 
   uint32_t layout = 0;

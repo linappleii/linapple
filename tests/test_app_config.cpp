@@ -62,3 +62,12 @@ TEST_CASE("Registry: Joystick Config Aliases") {
   CHECK(config_load_int("Configuration", "Joy1Axis0", &val));
   CHECK(val == 2);
 }
+
+TEST_CASE("Registry: Caps Lock Mode Config") {
+  auto& reg = Configuration_t::instance();
+  reg.set_int("Keyboard", "Caps Lock Mode", 1);
+  uint32_t val = 0;
+  CHECK(config_load_int("Keyboard", "Caps Lock Mode", &val));
+  CHECK(val == 1);
+}
+

@@ -27,6 +27,8 @@ void ds_shutdown();
 void SingleStep(bool is_reinit);
 void Linapple_KeyboardThink(uint32_t cycles);
 void Frontend_UpdateKeyboardMapping();
+auto keyboard_get_caps_mode() -> int;
+auto keyboard_set_caps_mode(int mode) -> void;
 void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
                                uint32_t mod, bool is_down);
 LinAppleKey frontend_to_core_key(int key, uint32_t mod);

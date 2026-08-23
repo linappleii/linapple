@@ -19,8 +19,9 @@ static constexpr int opt_hd1 = 0x103;
 static constexpr int opt_hd2 = 0x104;
 static constexpr int opt_basic_sync = 0x105;
 static constexpr int opt_basic_line_mode = 0x106;
+static constexpr int opt_caps_mode = 0x107;
 
-static const std::array<struct option, 27> OptionTable = {
+static const std::array<struct option, 28> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
@@ -47,6 +48,7 @@ static const std::array<struct option, 27> OptionTable = {
      {"no-debugger", no_argument, nullptr, opt_no_debugger},
      {"basic-sync", required_argument, nullptr, opt_basic_sync},
      {"basic-line-mode", required_argument, nullptr, opt_basic_line_mode},
+     {"caps-mode", required_argument, nullptr, opt_caps_mode},
      {nullptr, 0, nullptr, 0}}};
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
@@ -93,6 +95,9 @@ void AppArgs_PrintHelp() {
   printf(
       "  --basic-line-mode <m>  Set line numbering mode "
       "(explicit/positional)\n");
+  printf(
+      "  --caps-mode <mode>     Set Caps Lock mode: host or emulated (default: "
+      "host)\n");
 }
 
 auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
@@ -201,6 +206,14 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
           outConfig->basic_line_mode = 1;
         } else {
           outConfig->basic_line_mode = 0;
+        }
+        break;
+      case opt_caps_mode:
+        if (std::strcmp(optarg, "emulated") == 0 ||
+            std::strcmp(optarg, "1") == 0) {
+          outConfig->caps_lock_mode = CAPS_MODE_EMULATED;
+        } else {
+          outConfig->caps_lock_mode = CAPS_MODE_HOST;
         }
         break;
       case 'h':

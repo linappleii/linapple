@@ -14,6 +14,8 @@
 
 // Stubs for headless/test environments
 WEAK auto Frontend_UpdateKeyboardMapping() -> void {}
+WEAK auto keyboard_get_caps_mode() -> int { return 0; }
+WEAK auto keyboard_set_caps_mode(int mode) -> void { (void)mode; }
 WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
                                     uint32_t mod, bool is_down)
     -> void {  // NOLINT

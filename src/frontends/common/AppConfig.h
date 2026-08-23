@@ -30,6 +30,7 @@ struct AppConfig_t {
   bool is_benchmark = false;
   bool is_log = false;
   bool is_verbose = false;
+  int caps_lock_mode = -1;
 
   bool is_list_hardware = false;
   std::array<char, path_max_len> hardware_info_name = {};

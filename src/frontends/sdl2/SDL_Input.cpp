@@ -97,8 +97,12 @@ void sdl_handle_event(SDL_Event* e) {
           printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_CAPSLOCK) {
-          uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
-          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+          if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
+            uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
+            peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+          } else {
+            linapple_toggle_caps_lock_state();
+          }
         } else if (mysym == SDLK_PAUSE) {
           set_using_cursor(false);
           switch (g_state.mode) {
@@ -167,8 +171,10 @@ void sdl_handle_event(SDL_Event* e) {
       } else if (frontend_handle_key_event(mysym, false)) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
-        uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
-        peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+        if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
+          uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
+          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+        }
       } else {
         bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
                          myscancode <= SDL_SCANCODE_UP) ||

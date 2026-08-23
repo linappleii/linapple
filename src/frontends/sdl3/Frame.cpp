@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 #include "frontends/sdl3/Frame.h"
+#include "frontends/sdl3/Frontend.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -497,7 +498,7 @@ void Frame_OnResize(int width, int height) {
 
 void Frame_OnFocus(bool gained) {
   g_app_active = gained;
-  if (g_app_active) {
+  if (g_app_active && keyboard_get_caps_mode() == CAPS_MODE_HOST) {
     // Re-sync Caps Lock state upon regaining focus
     SDL_Keymod mod = SDL_GetModState();
     uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;

@@ -659,3 +659,27 @@ TEST_CASE("Keyboard: Symbolic Shift and Punctuation Mapping") {
 
   keyboard_peripheral.shutdown(instance);
 }
+
+TEST_CASE("Keyboard: Caps Lock Bridge API (Get, Set, Toggle)") {
+  // peripheral slot 0 is keyboard in LinAppleCore
+  peripheral_register(keyboard_get_descriptor(), 0);
+
+  // Default on reset is true (Caps Lock ON)
+  CHECK(linapple_get_caps_lock_state() == true);
+
+  // Set to false
+  linapple_set_caps_lock_state(false);
+  CHECK(linapple_get_caps_lock_state() == false);
+
+  // Toggle
+  bool toggled = linapple_toggle_caps_lock_state();
+  CHECK(toggled == true);
+  CHECK(linapple_get_caps_lock_state() == true);
+
+  toggled = linapple_toggle_caps_lock_state();
+  CHECK(toggled == false);
+  CHECK(linapple_get_caps_lock_state() == false);
+
+  peripheral_unregister(0);
+}
+
