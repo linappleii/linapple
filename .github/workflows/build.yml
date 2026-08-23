@@ -53,7 +53,9 @@ jobs:
       - name: Test
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_VIDEO_DRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: sudo cmake --install build
@@ -106,7 +108,9 @@ jobs:
       - name: Test
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_VIDEO_DRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: cmake --install build
@@ -146,7 +150,9 @@ jobs:
       - name: Test
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_VIDEO_DRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: sudo cmake --install build

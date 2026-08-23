@@ -6,7 +6,8 @@
 
 TEST_CASE("SDL1 Frontend Initialization") {
   // Test that SDL 1.2 initialization completes successfully with dummy video
-  int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
   CHECK(init_result == 0);
 
   // Clean up

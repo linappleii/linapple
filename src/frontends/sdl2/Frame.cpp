@@ -849,6 +849,9 @@ auto frame_create_window() -> int {
   if (g_renderer == nullptr) {
     g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_ACCELERATED);
     if (g_renderer == nullptr) {
+      g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_SOFTWARE);
+    }
+    if (g_renderer == nullptr) {
       fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
       return 1;
     }
