@@ -131,16 +131,16 @@ void DrawFrameWindow() {
   g_video_draw_mutex.lock();
   if (g_texture != nullptr && g_screen != nullptr) {
     uint32_t* output = video_get_output_buffer();
-    SDL_Rect r = {0, 0, 560, 384};
+    SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
       VideoSurface_t vs_texture = sdl_surface_to_video_surface(g_texture);
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
-      vs_output.w = 560;
-      vs_output.h = 384;
-      vs_output.pitch = 560 * 4;
+      vs_output.w = SCREEN_WIDTH;
+      vs_output.h = SCREEN_HEIGHT;
+      vs_output.pitch = SCREEN_WIDTH * 4;
       vs_output.bpp = 4;
 
       if (g_window_resized == false) {

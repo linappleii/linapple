@@ -1569,8 +1569,8 @@ auto video_display_logo() -> void {
   srect.h = g_logo_bitmap->h;
 
   drect.x = drect.y = 0;
-  drect.w = 560;  // Standard output width
-  drect.h = 384;  // Standard output height
+  drect.w = SCREEN_WIDTH;   // Standard output width
+  drect.h = SCREEN_HEIGHT;  // Standard output height
 
   if (g_device_bitmap) {
     video_soft_stretch(g_logo_bitmap, &srect, g_device_bitmap, &drect);
@@ -1667,12 +1667,12 @@ auto video_redraw_screen() -> void {
 }
 
 void VideoUpdateOutputBuffer() {
-  VideoRect_t s = {0, 0, 560, 384};
+  VideoRect_t s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   VideoSurface_t dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_video_output);
-  dst.w = 560;
-  dst.h = 384;
-  dst.pitch = 560 * 4;
+  dst.w = SCREEN_WIDTH;
+  dst.h = SCREEN_HEIGHT;
+  dst.pitch = SCREEN_WIDTH * 4;
   dst.bpp = 4;
 
   if (!g_device_bitmap) return;
@@ -1683,8 +1683,9 @@ void VideoUpdateOutputBuffer() {
   // If status panel is visible, overlay it
   if (g_status_cycle > 0 && g_show_leds && g_status_surface) {
     VideoRect_t ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoRect_t ds = {560 - STATUS_PANEL_W - 5, 384 - STATUS_PANEL_H - 5,
-                      STATUS_PANEL_W, STATUS_PANEL_H};
+    VideoRect_t ds = {SCREEN_WIDTH - STATUS_PANEL_W - 5,
+                      SCREEN_HEIGHT - STATUS_PANEL_H - 5, STATUS_PANEL_W,
+                      STATUS_PANEL_H};
     video_soft_stretch(g_status_surface, &ss, &dst, &ds);
   }
 }
@@ -1715,7 +1716,7 @@ auto video_perform_refresh() -> void {
   }
 
   uint8_t* addr = framebufferbits;
-  int pitch = 560;
+  int pitch = SCREEN_WIDTH;
   CreateFrameOffsetTable(addr, pitch);
 
   if (g_singlethreaded) {

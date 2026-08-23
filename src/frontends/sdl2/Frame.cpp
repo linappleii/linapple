@@ -125,34 +125,55 @@ void frame_refresh() {
   }
 }
 
+static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect_t {
+  VideoRect_t vr{};
+  vr.x = static_cast<int16_t>(r.x);
+  vr.y = static_cast<int16_t>(r.y);
+  vr.w = static_cast<uint16_t>(r.w);
+  vr.h = static_cast<uint16_t>(r.h);
+  return vr;
+}
+
 void DrawFrameWindow() {
   if (g_frame_ready == false) return;
 
   g_video_draw_mutex.lock();
   if (g_texture != nullptr && g_screen != nullptr) {
     uint32_t* output = video_get_output_buffer();
-    SDL_Rect r = {0, 0, 560, 384};
+    SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
-      vs_output.w = 560;
-      vs_output.h = 384;
-      vs_output.pitch = 560 * 4;
+      vs_output.w = SCREEN_WIDTH;
+      vs_output.h = SCREEN_HEIGHT;
+      vs_output.pitch = SCREEN_WIDTH * 4;
       vs_output.bpp = 4;
 
-      video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
-                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
+      if (!g_window_resized) {
+        VideoRect_t vr = to_video_rect(r);
+        video_soft_stretch(&vs_output, &vr, &vs_screen, &vr);
+      } else {
+        VideoRect_t vor = to_video_rect(g_orig_rect);
+        VideoRect_t vnr = to_video_rect(g_new_rect);
+        video_soft_stretch(&vs_output, &vor, &vs_screen, &vnr);
+      }
     } else {
       // Debugger draws directly to g_debug_screen (INDEX8)
       // We need to stretch/convert it to the RGB32 g_screen surface
       extern VideoSurface_t* g_debug_screen;
       if (g_debug_screen != nullptr) {
         VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
-        video_soft_stretch(g_debug_screen, reinterpret_cast<VideoRect_t*>(&r),
-                           &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
+        if (!g_window_resized) {
+          VideoRect_t vr = to_video_rect(r);
+          video_soft_stretch(g_debug_screen, &vr, &vs_screen, &vr);
+        } else {
+          VideoRect_t vor = to_video_rect(g_orig_rect);
+          VideoRect_t vnr = to_video_rect(g_new_rect);
+          video_soft_stretch(g_debug_screen, &vor, &vs_screen, &vnr);
+        }
       }
     }
 
@@ -837,8 +858,9 @@ auto frame_create_window() -> int {
     SDL_FreeSurface(g_screen);
     g_screen = nullptr;
   }
-  g_screen =
-      SDL_CreateRGBSurfaceWithFormat(0, 560, 384, 32, SDL_PIXELFORMAT_ARGB8888);
+  g_screen = SDL_CreateRGBSurfaceWithFormat(0, static_cast<int>(g_state.screen_width),
+                                            static_cast<int>(g_state.screen_height), 32,
+                                            SDL_PIXELFORMAT_ARGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
@@ -849,12 +871,25 @@ auto frame_create_window() -> int {
     g_texture = nullptr;
   }
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING, 560, 384);
+                                SDL_TEXTUREACCESS_STREAMING,
+                                g_state.screen_width, g_state.screen_height);
+  if (g_texture == nullptr) {
+    fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
+    return 1;
+  }
 
-  SDL_RenderSetLogicalSize(g_renderer, 560, 384);
   SDL_ShowWindow(g_window);
   SetIcon();
 
+  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
+                     (g_state.screen_height != SCREEN_HEIGHT);
+  if (g_window_resized) {
+    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+    g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+    g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+    g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
+    g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+  }
   printf("Screen size is %ux%u\n", g_state.screen_width, g_state.screen_height);
   return 0;
 }
