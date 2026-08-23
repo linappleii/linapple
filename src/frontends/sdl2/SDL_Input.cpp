@@ -38,6 +38,9 @@ void sdl_handle_event(SDL_Event* e) {
 
     case SDL_WINDOWEVENT:
       switch (e->window.event) {
+        case SDL_WINDOWEVENT_CLOSE:
+          g_state.mode = MODE_EXIT;
+          break;
         case SDL_WINDOWEVENT_RESIZED:
           Frame_OnResize(e->window.data1, e->window.data2);
           break;

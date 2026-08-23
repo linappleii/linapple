@@ -401,7 +401,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   while (g_diskChooseState.active) {
     SDL_Event event = {};
     while (SDL_PollEvent(&event) != 0) {
-      if (event.type == SDL_QUIT) {
+      if (event.type == SDL_QUIT ||
+          (event.type == SDL_WINDOWEVENT &&
+           event.window.event == SDL_WINDOWEVENT_CLOSE)) {
         g_state.mode = MODE_EXIT;
         g_diskChooseState.active = false;
         break;

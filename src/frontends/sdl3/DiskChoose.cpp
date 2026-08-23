@@ -396,7 +396,8 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   while (g_diskChooseState.active) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_EVENT_QUIT) {
+      if (event.type == SDL_EVENT_QUIT ||
+          event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         g_state.mode = MODE_EXIT;
         g_diskChooseState.active = false;
         break;

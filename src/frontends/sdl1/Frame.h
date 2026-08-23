@@ -54,6 +54,7 @@ void DrawFrameWindow();
 void Frame_OnResize(int width, int height);
 void Frame_OnFocus(bool gained);
 void Frame_OnExpose();
+void FrameShowHelpScreen(int sx, int sy);
 
 void set_using_cursor(bool);
 

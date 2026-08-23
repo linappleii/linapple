@@ -34,6 +34,7 @@ void sdl_handle_event(SDL_Event* e) {
 
   switch (e->type) {
     case SDL_EVENT_QUIT:
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
       g_state.mode = MODE_EXIT;
       break;
 
