@@ -399,14 +399,24 @@ void FrameShowHelpScreen(int sx, int sy) {
   video_soft_stretch_or(&vs_icon, &logo, &vs_actual_g_screen, &scrr);
 
   frame_refresh();
-  SDL_Delay(1000);
 
   SDL_Event event;
-
-  event.type = SDL_QUIT;
-  while (event.type != SDL_KEYDOWN) {
-    usleep(100);
-    SDL_PollEvent(&event);
+  bool waiting = true;
+  while (waiting) {
+    while (SDL_PollEvent(&event) != 0) {
+      if (event.type == SDL_KEYDOWN) {
+        waiting = false;
+        break;
+      }
+      if (event.type == SDL_QUIT) {
+        SDL_PushEvent(&event);
+        waiting = false;
+        break;
+      }
+    }
+    if (waiting) {
+      SDL_Delay(10);
+    }
   }
 
   DrawFrameWindow();
