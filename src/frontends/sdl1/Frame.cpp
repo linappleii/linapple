@@ -22,7 +22,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 #include "frontends/sdl1/Frame.h"
-#include "frontends/sdl1/Frontend.h"
 
 #include <SDL/SDL.h>
 #include <sys/stat.h>
@@ -55,6 +54,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/common/VideoStretch.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/DiskUI.h"
+#include "frontends/sdl1/Frontend.h"
 #include "frontends/sdl1/SDL_Video.h"
 
 SDL_Surface* g_apple_icon;
@@ -337,41 +337,40 @@ void FrameShowHelpScreen(int sx, int sy) {
   const float facy_f = static_cast<float>(g_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
 
-  const int scale_factor =
-      (g_state.screen_width >= 1120 && g_state.screen_height >= 768) ? 2 : 1;
-  const float scale_x = static_cast<float>(scale_factor);
-  const float scale_y = static_cast<float>(scale_factor);
+  const float scale_x = facx_f;
+  const float scale_y = facy_f;
 
-  const int hdr_top = 4 * scale_factor;
-  const int hdr_height = 42 * scale_factor;
-  rectangle(&vs_actual_g_screen, 4 * scale_factor, hdr_top,
-            static_cast<int>(g_state.screen_width - (8 * scale_factor)),
+  const int hdr_top = static_cast<int>(4.0f * facy_f);
+  const int hdr_height = static_cast<int>(42.0f * facy_f);
+  rectangle(&vs_actual_g_screen, static_cast<int>(4.0f * facx_f), hdr_top,
+            static_cast<int>(g_state.screen_width - (8.0f * facx_f)),
             hdr_height, 0xFFFF00);
 
-  font_print_centered(sx / 2, hdr_top + 4 * scale_factor,
+  font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
                       const_cast<char*>(HelpStrings.at(0)), &vs_actual_g_screen,
                       scale_x, scale_y);
-  font_print_centered(sx / 2, hdr_top + 16 * scale_factor,
+  font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
                       const_cast<char*>(HelpStrings.at(1)), &vs_actual_g_screen,
                       scale_x, scale_y);
-  font_print_centered(sx / 2, hdr_top + 28 * scale_factor,
+  font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
                       const_cast<char*>(HelpStrings.at(2)), &vs_actual_g_screen,
                       scale_x, scale_y);
 
-  const int body_top = hdr_top + hdr_height + 4 * scale_factor;
+  const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
   const int body_height =
-      static_cast<int>(g_state.screen_height - body_top - 4 * scale_factor);
-  rectangle(&vs_actual_g_screen, 4 * scale_factor, body_top,
-            static_cast<int>(g_state.screen_width - (8 * scale_factor)),
+      static_cast<int>(g_state.screen_height - body_top - (4.0f * facy_f));
+  rectangle(&vs_actual_g_screen, static_cast<int>(4.0f * facx_f), body_top,
+            static_cast<int>(g_state.screen_width - (8.0f * facx_f)),
             body_height, 0xFFFFFF);
 
-  const int line_spacing = 13 * scale_factor;
+  const float line_spacing = 13.0f * facy_f;
   for (int i = 3; i < max_lines; i++) {
     if (HelpStrings.at(i) != nullptr && HelpStrings.at(i)[0] != '\0') {
-      font_print(16 * scale_factor,
-                 body_top + 6 * scale_factor + (i - 3) * line_spacing,
-                 const_cast<char*>(HelpStrings.at(i)), &vs_actual_g_screen,
-                 scale_x, scale_y);
+      font_print(
+          static_cast<int>(16.0f * facx_f),
+          body_top + static_cast<int>(6.0f * facy_f + (i - 3) * line_spacing),
+          const_cast<char*>(HelpStrings.at(i)), &vs_actual_g_screen, scale_x,
+          scale_y);
     }
   }
 

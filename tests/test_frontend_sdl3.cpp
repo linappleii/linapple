@@ -109,10 +109,10 @@ TEST_CASE("SDL3 Frontend DrawFrameWindow Scaled Stretching") {
   // Set distinct test pixels in video output buffer
   uint32_t* output = video_get_output_buffer();
   REQUIRE(output != nullptr);
-  output[0] = 0x00FF0000;                     // Top-left: Red
-  output[559] = 0x0000FF00;                   // Top-right: Green
-  output[383 * 560] = 0x000000FF;             // Bottom-left: Blue
-  output[383 * 560 + 559] = 0x00FFFFFF;       // Bottom-right: White
+  output[0] = 0x00FF0000;                // Top-left: Red
+  output[559] = 0x0000FF00;              // Top-right: Green
+  output[383 * 560] = 0x000000FF;        // Bottom-left: Blue
+  output[383 * 560 + 559] = 0x00FFFFFF;  // Bottom-right: White
 
   g_frame_ready = true;
   DrawFrameWindow();
@@ -310,3 +310,53 @@ TEST_CASE("SDL3 Frontend Main Event Handler Window Close Request") {
   CHECK(g_state.mode == MODE_EXIT);
 }
 
+TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  bool init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+  REQUIRE(init_result);
+  REQUIRE(asset_init());
+
+  // Screen Factor = 3 => 1680x1152
+  g_state.screen_width = 1680;
+  g_state.screen_height = 1152;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  // Queue a keydown event so FrameShowHelpScreen exits immediately after
+  // rendering
+  SDL_Event key_event{};
+  key_event.type = SDL_EVENT_KEY_DOWN;
+  key_event.key.key = SDLK_ESCAPE;
+  REQUIRE(SDL_PushEvent(&key_event));
+
+  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+                      static_cast<int>(g_state.screen_height));
+
+  // Verify that the yellow header border scaled to 3x exists at (12, 12)
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+  int pitch_pixels = g_screen->pitch / 4;
+  CHECK(screen_pixels[12 * pitch_pixels + 12] == 0x00FFFF00);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_DestroySurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  asset_quit();
+  SDL_Quit();
+}

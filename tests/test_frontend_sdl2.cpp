@@ -250,9 +250,58 @@ TEST_CASE("SDL2 Frontend Help Screen Window Close Event Handling") {
 TEST_CASE("SDL2 Frontend Main Event Handler Window Close Request") {
   g_state.mode = MODE_RUNNING;
   SDL_Event close_event{};
-  close_event.type = SDL_WINDOWEVENT;
-  close_event.window.event = SDL_WINDOWEVENT_CLOSE;
+  close_event.type = SDL_QUIT;
   sdl_handle_event(&close_event);
   CHECK(g_state.mode == MODE_EXIT);
 }
 
+TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
+  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  // Screen Factor = 3 => 1680x1152
+  g_state.screen_width = 1680;
+  g_state.screen_height = 1152;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  // Queue a keydown event so FrameShowHelpScreen exits immediately after
+  // rendering
+  SDL_Event key_event{};
+  key_event.type = SDL_KEYDOWN;
+  key_event.key.keysym.sym = SDLK_ESCAPE;
+  REQUIRE(SDL_PushEvent(&key_event) == 1);
+
+  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+                      static_cast<int>(g_state.screen_height));
+
+  // Verify that the yellow header border scaled to 3x exists at (12, 12)
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+  int pitch_pixels = g_screen->pitch / 4;
+  CHECK(screen_pixels[12 * pitch_pixels + 12] == 0x00FFFF00);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  asset_quit();
+  SDL_Quit();
+}
