@@ -237,6 +237,30 @@ static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
+static inline auto clip_source_rect(const VideoSurface_t* src,
+                                    VideoRect_t* rect) -> bool {
+  if (rect->x < 0) {
+    if (rect->w <= -rect->x) return false;
+    rect->w += rect->x;
+    rect->x = 0;
+  }
+  if (rect->y < 0) {
+    if (rect->h <= -rect->y) return false;
+    rect->h += rect->y;
+    rect->y = 0;
+  }
+  if (rect->x >= src->w || rect->y >= src->h) {
+    return false;
+  }
+  if (rect->x + rect->w > src->w) {
+    rect->w = static_cast<uint16_t>(src->w - rect->x);
+  }
+  if (rect->y + rect->h > src->h) {
+    rect->h = static_cast<uint16_t>(src->h - rect->y);
+  }
+  return (rect->w > 0 && rect->h > 0);
+}
+
 auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
                         VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
   int pos = 0, inc = 0;
@@ -271,6 +295,12 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
       srcrect->w <= 0) {
     return -1;
   }
+
+  VideoRect_t clipped_src = *srcrect;
+  if (!clip_source_rect(src, &clipped_src)) {
+    return 0;
+  }
+  srcrect = &clipped_src;
 
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
@@ -361,6 +391,12 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
     return -1;
   }
 
+  VideoRect_t clipped_src_mono = *srcrect;
+  if (!clip_source_rect(src, &clipped_src_mono)) {
+    return 0;
+  }
+  srcrect = &clipped_src_mono;
+
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
   src_row = srcrect->y;
@@ -386,8 +422,8 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
         switch (dbpp) {
           case 1:
             copy8mono(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                      dst->w, static_cast<uint8_t>(fgbrush),
-                      static_cast<uint8_t>(bgbrush));
+                       dst->w, static_cast<uint8_t>(fgbrush),
+                       static_cast<uint8_t>(bgbrush));
             break;
           default:
             break;
@@ -434,6 +470,12 @@ auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
       srcrect->w <= 0) {
     return -1;
   }
+
+  VideoRect_t clipped_src_or = *srcrect;
+  if (!clip_source_rect(src, &clipped_src_or)) {
+    return 0;
+  }
+  srcrect = &clipped_src_or;
 
   pos = 0x10000;
   inc = (srcrect->h << 16) / dstrect->h;
