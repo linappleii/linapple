@@ -255,7 +255,7 @@ static auto keyboard_abi_shutdown(void* instance) -> void {
 }
 
 static auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
-  if (!instance) {
+  if (!instance || g_full_speed) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
