@@ -840,25 +840,39 @@ auto frame_create_window() -> int {
   Uint32 flags = 0;
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
-  g_window = SDL_CreateWindow(g_app_title, g_state.screen_width,
-                              g_state.screen_height, flags);
-  if (!g_window) {
-    fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
-    return 1;
+  if (g_window == nullptr) {
+    g_window = SDL_CreateWindow(g_app_title, g_state.screen_width,
+                                g_state.screen_height, flags);
+    if (!g_window) {
+      fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
+      return 1;
+    }
+  } else {
+    SDL_SetWindowSize(g_window, g_state.screen_width, g_state.screen_height);
   }
 
-  g_renderer = SDL_CreateRenderer(g_window, nullptr);
-  if (!g_renderer) {
-    fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
-    return 1;
+  if (g_renderer == nullptr) {
+    g_renderer = SDL_CreateRenderer(g_window, nullptr);
+    if (!g_renderer) {
+      fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
+      return 1;
+    }
   }
 
+  if (g_screen != nullptr) {
+    SDL_DestroySurface(g_screen);
+    g_screen = nullptr;
+  }
   g_screen = SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_XRGB8888);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888,
                                 SDL_TEXTUREACCESS_STREAMING, 560, 384);
 
@@ -868,6 +882,26 @@ auto frame_create_window() -> int {
   SetIcon();
   printf("Screen size is %dx%d\n", g_state.screen_width, g_state.screen_height);
   return 0;
+}
+
+void frame_destroy_window() {
+  if (g_texture) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen) {
+    SDL_DestroySurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  SDL_Asset_FreeIcon();
 }
 
 void SetIcon() {

@@ -41,6 +41,7 @@ extern SDL_Rect g_new_rect;
 auto init_sdl() -> int;
 
 auto frame_create_window() -> int;
+void frame_destroy_window();
 
 void frame_refresh_status(int);
 
