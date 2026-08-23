@@ -141,6 +141,15 @@ void frame_refresh() {
   }
 }
 
+static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect_t {
+  VideoRect_t vr{};
+  vr.x = static_cast<int16_t>(r.x);
+  vr.y = static_cast<int16_t>(r.y);
+  vr.w = static_cast<uint16_t>(r.w);
+  vr.h = static_cast<uint16_t>(r.h);
+  return vr;
+}
+
 #if ENABLE_DEBUGGER
 extern VideoSurface_t* g_debug_screen;
 
@@ -149,9 +158,14 @@ static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
     return;
   }
 
-  video_soft_stretch(
-      g_debug_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)),
-      vs_screen, reinterpret_cast<VideoRect_t*>(&const_cast<SDL_Rect&>(r)));
+  if (!g_window_resized) {
+    VideoRect_t vr = to_video_rect(r);
+    video_soft_stretch(g_debug_screen, &vr, vs_screen, &vr);
+  } else {
+    VideoRect_t vor = to_video_rect(g_orig_rect);
+    VideoRect_t vnr = to_video_rect(g_new_rect);
+    video_soft_stretch(g_debug_screen, &vor, vs_screen, &vnr);
+  }
 }
 #endif
 
@@ -161,20 +175,26 @@ void DrawFrameWindow() {
   g_video_draw_mutex.lock();
   if (g_texture && g_screen) {
     uint32_t* output = video_get_output_buffer();
-    SDL_Rect r = {0, 0, 560, 384};
+    SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
-      vs_output.w = 560;
-      vs_output.h = 384;
-      vs_output.pitch = 560 * 4;
+      vs_output.w = SCREEN_WIDTH;
+      vs_output.h = SCREEN_HEIGHT;
+      vs_output.pitch = SCREEN_WIDTH * 4;
       vs_output.bpp = 4;
 
-      video_soft_stretch(&vs_output, reinterpret_cast<VideoRect_t*>(&r),
-                         &vs_screen, reinterpret_cast<VideoRect_t*>(&r));
+      if (!g_window_resized) {
+        VideoRect_t vr = to_video_rect(r);
+        video_soft_stretch(&vs_output, &vr, &vs_screen, &vr);
+      } else {
+        VideoRect_t vor = to_video_rect(g_orig_rect);
+        VideoRect_t vnr = to_video_rect(g_new_rect);
+        video_soft_stretch(&vs_output, &vor, &vs_screen, &vnr);
+      }
     } else {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 #if ENABLE_DEBUGGER

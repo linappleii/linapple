@@ -88,8 +88,10 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     try {
       float factor = std::stof(factor_str);
       if (factor >= 0.25f && factor <= 8.0f) {
-        g_state.screen_width = static_cast<int>(560.0f * factor);
-        g_state.screen_height = static_cast<int>(384.0f * factor);
+        g_state.screen_width =
+            static_cast<int>(static_cast<float>(SCREEN_WIDTH) * factor);
+        g_state.screen_height =
+            static_cast<int>(static_cast<float>(SCREEN_HEIGHT) * factor);
       }
     } catch (...) {
     }

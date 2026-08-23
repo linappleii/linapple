@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "frontends/common/AppConfig.h"
@@ -32,5 +33,5 @@ void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
 LinAppleKey frontend_to_core_key(int key, uint32_t mod);
 
 // Constants
-constexpr int window_width = 560;
-constexpr int window_height = 384;
+constexpr int window_width = SCREEN_WIDTH;
+constexpr int window_height = SCREEN_HEIGHT;
