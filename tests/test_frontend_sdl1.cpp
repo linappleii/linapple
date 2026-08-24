@@ -7,11 +7,13 @@
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
+#include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
 #include "frontends/sdl1/Frontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
+extern DiskChooseState_t g_diskChooseState;
 
 TEST_CASE("SDL1 Frontend Initialization") {
   // Test that SDL 1.2 initialization completes successfully with dummy video
@@ -298,4 +300,68 @@ TEST_CASE(
   asset_quit();
   SDL_Quit();
 }
+
+TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  g_state.screen_width = 560;
+  g_state.screen_height = 384;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  // Set up disk choose state
+  g_diskChooseState.active = true;
+  g_diskChooseState.slot = 6;
+  g_diskChooseState.bg_screen =
+      SDL_CreateRGBSurface(0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_diskChooseState.list_handle = nullptr;
+
+  DiskChoose_Draw();
+
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+  int pitch_pixels = g_screen->pitch / 4;
+
+  const int sx = 560;
+  const int sy = 384;
+  const double facy = static_cast<double>(sy) / static_cast<double>(SCREEN_HEIGHT);
+  const int topx = static_cast<int>(45 * facy);
+  const int box_y = topx - 5;
+  const int box_h = static_cast<int>(320.0 * facy);
+
+  // 1. Left border at x = 0
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 0] == 0x00FFFFFF);
+
+  // 2. Top border at y = box_y
+  CHECK(screen_pixels[box_y * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+
+  // 3. Bottom border at y = box_y + box_h
+  CHECK(screen_pixels[(box_y + box_h) * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+
+  // 4. Right border at x = sx - 1
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + (sx - 1)] == 0x00FFFFFF);
+
+  // 5. Vertical column separator at x = 480
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
+
+  // Teardown
+  g_diskChooseState.active = false;
+  if (g_diskChooseState.bg_screen != nullptr) {
+    SDL_FreeSurface(g_diskChooseState.bg_screen);
+    g_diskChooseState.bg_screen = nullptr;
+  }
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  asset_quit();
+  SDL_Quit();
+}
+
 

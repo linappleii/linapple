@@ -8,12 +8,14 @@
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
+#include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Frontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
 extern void sdl_handle_event(SDL_Event* e);
+extern DiskChooseState_t g_diskChooseState;
 
 TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
@@ -505,4 +507,79 @@ TEST_CASE(
   asset_quit();
   SDL_Quit();
 }
+
+TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  bool init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result);
+  REQUIRE(asset_init());
+
+  g_state.screen_width = 560;
+  g_state.screen_height = 384;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  // Set up disk choose state
+  g_diskChooseState.active = true;
+  g_diskChooseState.slot = 6;
+  g_diskChooseState.bg_screen =
+      SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_ARGB8888);
+  g_diskChooseState.list_handle = nullptr;
+
+  DiskChoose_Draw();
+
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+  int pitch_pixels = g_screen->pitch / 4;
+
+  const int sx = 560;
+  const int sy = 384;
+  const double facy = static_cast<double>(sy) / static_cast<double>(SCREEN_HEIGHT);
+  const int topx = static_cast<int>(45 * facy);
+  const int box_y = topx - 5;
+  const int box_h = static_cast<int>(320.0 * facy);
+
+  // 1. Left border at x = 0
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 0] == 0x00FFFFFF);
+
+  // 2. Top border at y = box_y
+  CHECK(screen_pixels[box_y * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+
+  // 3. Bottom border at y = box_y + box_h
+  CHECK(screen_pixels[(box_y + box_h) * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+
+  // 4. Right border at x = sx - 1
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + (sx - 1)] == 0x00FFFFFF);
+
+  // 5. Vertical column separator at x = 480
+  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
+
+  // Teardown
+  g_diskChooseState.active = false;
+  if (g_diskChooseState.bg_screen != nullptr) {
+    SDL_DestroySurface(g_diskChooseState.bg_screen);
+    g_diskChooseState.bg_screen = nullptr;
+  }
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_DestroySurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  asset_quit();
+  SDL_Quit();
+}
+
 

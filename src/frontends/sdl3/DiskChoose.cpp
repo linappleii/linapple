@@ -250,7 +250,7 @@ void DiskChoose_Draw() {
                type_size_str, &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
   }
 
-  rectangle(&vs_screen, 0, TOPX - 5, sx, static_cast<int>(320.0 * facy),
+  rectangle(&vs_screen, 0, TOPX - 5, sx - 1, static_cast<int>(320.0 * facy),
             RGB(255, 255, 255));
   rectangle(&vs_screen, static_cast<int>(480.0 * static_cast<double>(facx_f)),
             TOPX - 5, 0, static_cast<int>(320.0 * facy), RGB(255, 255, 255));
