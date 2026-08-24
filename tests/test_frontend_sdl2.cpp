@@ -91,6 +91,69 @@ TEST_CASE("SDL2 Frontend Initialization and Screen Scaling") {
   SDL_Quit();
 }
 
+TEST_CASE("SDL2 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
+  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  // 1. Configure scaled resolution (Screen Factor = 2 => 1120x768)
+  g_state.screen_width = 1120;
+  g_state.screen_height = 768;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+  CHECK(g_screen->w == 1120);
+  CHECK(g_screen->h == 768);
+
+  // 2. Toggle into fullscreen mode
+  SetFullScreenMode();
+  // Simulate monitor resolution delivered via SDL resize event in fullscreen
+  Frame_OnResize(1920, 1080);
+  CHECK(g_screen->w == 1920);
+  CHECK(g_screen->h == 1080);
+
+  // In 1920x1080 fullscreen, 4:3 / 560x384 aspect ratio should be preserved
+  // target_w = 1575, target_h = 1080, offset_x = (1920 - 1575) / 2 = 172
+  CHECK(g_new_rect.w == 1575);
+  CHECK(g_new_rect.h == 1080);
+  CHECK(g_new_rect.x == 172);
+  CHECK(g_new_rect.y == 0);
+
+  // 3. Return to windowed mode (F6)
+  SetNormalMode();
+
+  // Windowed mode must restore original configured dimensions and full rect
+  CHECK(g_state.screen_width == 1120);
+  CHECK(g_state.screen_height == 768);
+  CHECK(g_screen->w == 1120);
+  CHECK(g_screen->h == 768);
+  CHECK(g_new_rect.w == 1120);
+  CHECK(g_new_rect.h == 768);
+  CHECK(g_new_rect.x == 0);
+  CHECK(g_new_rect.y == 0);
+
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  asset_quit();
+  SDL_Quit();
+}
+
 TEST_CASE("SDL2 Frontend Help Screen Quit Event Handling") {
   SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
