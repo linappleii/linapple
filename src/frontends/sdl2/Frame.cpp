@@ -419,6 +419,12 @@ void FrameShowHelpScreen(int sx, int sy) {
   while (waiting) {
     while (SDL_PollEvent(&event) != 0) {
       if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_F12) {
+          g_state.mode = MODE_EXIT;
+          SDL_Event qe = {};
+          qe.type = SDL_QUIT;
+          SDL_PushEvent(&qe);
+        }
         waiting = false;
         break;
       }
@@ -426,6 +432,7 @@ void FrameShowHelpScreen(int sx, int sy) {
           (event.type == SDL_WINDOWEVENT &&
            event.window.event == SDL_WINDOWEVENT_CLOSE)) {
         SDL_PushEvent(&event);
+        g_state.mode = MODE_EXIT;
         waiting = false;
         break;
       }

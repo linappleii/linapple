@@ -317,8 +317,8 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
   // Set up disk choose state
   g_diskChooseState.active = true;
   g_diskChooseState.slot = 6;
-  g_diskChooseState.bg_screen =
-      SDL_CreateRGBSurface(0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_diskChooseState.bg_screen = SDL_CreateRGBSurface(
+      0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
   g_diskChooseState.list_handle = nullptr;
 
   DiskChoose_Draw();
@@ -329,7 +329,8 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
 
   const int sx = 560;
   const int sy = 384;
-  const double facy = static_cast<double>(sy) / static_cast<double>(SCREEN_HEIGHT);
+  const double facy =
+      static_cast<double>(sy) / static_cast<double>(SCREEN_HEIGHT);
   const int topx = static_cast<int>(45 * facy);
   const int box_y = topx - 5;
   const int box_h = static_cast<int>(320.0 * facy);
@@ -364,4 +365,183 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
   SDL_Quit();
 }
 
+TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
 
+  AppConfig_t config{};
+  AppConfig_Default(&config);
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  g_state.mode = MODE_RUNNING;
+
+  SDL_Event key_event{};
+  key_event.type = SDL_KEYDOWN;
+  key_event.key.keysym.sym = SDLK_F12;
+  key_event.key.state = SDL_PRESSED;
+  int push_result = SDL_PushEvent(&key_event);
+  REQUIRE(push_result == 1);
+
+  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+                      static_cast<int>(g_state.screen_height));
+
+  CHECK(g_state.mode == MODE_EXIT);
+
+  SDL_Event polled_event{};
+  int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
+  CHECK(count == 1);
+  CHECK(polled_event.type == SDL_QUIT);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  asset_quit();
+  SDL_Quit();
+}
+
+TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  AppConfig_t config{};
+  AppConfig_Default(&config);
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  g_state.mode = MODE_RUNNING;
+
+  // Push an SDL_QUIT event into the event queue
+  SDL_Event quit_event{};
+  quit_event.type = SDL_QUIT;
+  int push_result = SDL_PushEvent(&quit_event);
+  REQUIRE(push_result == 1);
+
+  std::string filename;
+  bool isdir = false;
+  size_t index_file = 0;
+  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
+                                static_cast<int>(g_state.screen_height), ".", 6,
+                                filename, isdir, index_file);
+  CHECK(!chosen);
+  CHECK(g_state.mode == MODE_EXIT);
+
+  // Verify that SDL_QUIT was re-pushed and is available in the event queue
+  SDL_Event polled_event{};
+  int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
+  CHECK(count == 1);
+  CHECK(polled_event.type == SDL_QUIT);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  asset_quit();
+  SDL_Quit();
+}
+
+TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  AppConfig_t config{};
+  AppConfig_Default(&config);
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  g_state.mode = MODE_RUNNING;
+
+  // Push an ESCAPE key down event into the event queue
+  SDL_Event key_event{};
+  key_event.type = SDL_KEYDOWN;
+  key_event.key.keysym.sym = SDLK_ESCAPE;
+  key_event.key.state = SDL_PRESSED;
+  int push_result = SDL_PushEvent(&key_event);
+  REQUIRE(push_result == 1);
+
+  std::string filename;
+  bool isdir = false;
+  size_t index_file = 0;
+  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
+                                static_cast<int>(g_state.screen_height), ".", 6,
+                                filename, isdir, index_file);
+  CHECK(!chosen);
+  CHECK(g_state.mode == MODE_RUNNING);
+
+  // Verify that the event queue is drained
+  SDL_Event polled_event{};
+  int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
+  CHECK(count == 0);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  asset_quit();
+  SDL_Quit();
+}
+
+TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  AppConfig_t config{};
+  AppConfig_Default(&config);
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  g_state.mode = MODE_RUNNING;
+
+  SDL_Event key_event{};
+  key_event.type = SDL_KEYDOWN;
+  key_event.key.keysym.sym = SDLK_F12;
+  key_event.key.state = SDL_PRESSED;
+  int push_result = SDL_PushEvent(&key_event);
+  REQUIRE(push_result == 1);
+
+  std::string filename;
+  bool isdir = false;
+  size_t index_file = 0;
+  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
+                                static_cast<int>(g_state.screen_height), ".", 6,
+                                filename, isdir, index_file);
+  CHECK(!chosen);
+  CHECK(g_state.mode == MODE_EXIT);
+
+  SDL_Event polled_event{};
+  int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
+  CHECK(count == 1);
+  CHECK(polled_event.type == SDL_QUIT);
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
+  g_screen = nullptr;
+  asset_quit();
+  SDL_Quit();
+}

@@ -443,12 +443,19 @@ void FrameShowHelpScreen(int sx, int sy) {
   while (waiting) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_EVENT_KEY_DOWN) {
+        if (event.key.key == SDLK_F12) {
+          g_state.mode = MODE_EXIT;
+          SDL_Event qe{};
+          qe.type = SDL_EVENT_QUIT;
+          SDL_PushEvent(&qe);
+        }
         waiting = false;
         break;
       }
       if (event.type == SDL_EVENT_QUIT ||
           event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         SDL_PushEvent(&event);
+        g_state.mode = MODE_EXIT;
         waiting = false;
         break;
       }
@@ -459,10 +466,9 @@ void FrameShowHelpScreen(int sx, int sy) {
   }
 
   if (g_screen != nullptr) {
-    SDL_FillSurfaceRect(
-        g_screen, nullptr,
-        SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
-                   SDL_GetSurfacePalette(g_screen), 0, 0, 0));
+    SDL_FillSurfaceRect(g_screen, nullptr,
+                        SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
+                                   SDL_GetSurfacePalette(g_screen), 0, 0, 0));
   }
   g_frame_ready = true;
   DrawFrameWindow();

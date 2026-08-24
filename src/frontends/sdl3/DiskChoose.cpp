@@ -104,6 +104,16 @@ void DiskChoose_Tick(SDL_Event* event) {
     g_diskChooseState.cancelled = true;
   }
 
+  if (key == SDLK_F12) {
+    g_diskChooseState.active = false;
+    g_diskChooseState.cancelled = true;
+    g_state.mode = MODE_EXIT;
+    SDL_Event qe{};
+    qe.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&qe);
+    return;
+  }
+
   if (key == SDLK_HOME) {
     g_diskChooseState.act_file = 0;
     g_diskChooseState.first_file = 0;
@@ -357,11 +367,30 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
     SDL_Delay(key_delay);
     SDL_Event event;
-
-    event.type = SDL_EVENT_QUIT;
-    while (event.type != SDL_EVENT_KEY_DOWN) {
-      SDL_Delay(100);
-      SDL_PollEvent(&event);
+    bool waiting = true;
+    while (waiting) {
+      while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_EVENT_KEY_DOWN) {
+          if (event.key.key == SDLK_F12) {
+            g_state.mode = MODE_EXIT;
+            SDL_Event qe{};
+            qe.type = SDL_EVENT_QUIT;
+            SDL_PushEvent(&qe);
+          }
+          waiting = false;
+          break;
+        }
+        if (event.type == SDL_EVENT_QUIT ||
+            event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+          SDL_PushEvent(&event);
+          g_state.mode = MODE_EXIT;
+          waiting = false;
+          break;
+        }
+      }
+      if (waiting) {
+        SDL_Delay(10);
+      }
     }
     SDL_DestroySurface(g_diskChooseState.bg_screen);
     g_diskChooseState.bg_screen = nullptr;
@@ -400,8 +429,19 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_EVENT_QUIT ||
           event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+        SDL_PushEvent(&event);
         g_state.mode = MODE_EXIT;
         g_diskChooseState.active = false;
+        g_diskChooseState.cancelled = true;
+        break;
+      }
+      if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F12) {
+        g_state.mode = MODE_EXIT;
+        g_diskChooseState.active = false;
+        g_diskChooseState.cancelled = true;
+        SDL_Event qe{};
+        qe.type = SDL_EVENT_QUIT;
+        SDL_PushEvent(&qe);
         break;
       }
       DiskChoose_Tick(&event);
@@ -412,7 +452,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     SDL_Delay(10);
   }
 
-  g_state.mode = old_mode;
+  if (g_state.mode != MODE_EXIT) {
+    g_state.mode = old_mode;
+  }
   SDL_DestroySurface(g_diskChooseState.bg_screen);
   g_diskChooseState.bg_screen = nullptr;
 
