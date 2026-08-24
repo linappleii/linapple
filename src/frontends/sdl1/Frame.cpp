@@ -418,6 +418,10 @@ void FrameShowHelpScreen(int sx, int sy) {
     }
   }
 
+  if (g_screen != nullptr) {
+    SDL_FillRect(g_screen, nullptr, 0);
+  }
+  g_frame_ready = true;
   DrawFrameWindow();
 }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
@@ -454,12 +458,18 @@ auto is_modifier_key(SDLKey sym) -> bool {
   }
 }
 
+static bool is_full_screened = false;
+static uint32_t s_windowed_width = 0;
+static uint32_t s_windowed_height = 0;
+
 void Frame_OnResize(int width, int height) {
   g_video_draw_mutex.lock();
   g_state.screen_width = static_cast<uint32_t>(width);
-  g_state.screen_height = static_cast<uint32_t>((height / 96) * 96);
-  if (g_state.screen_height < 192) {
-    g_state.screen_height = 192;
+  g_state.screen_height = static_cast<uint32_t>(height);
+
+  if (!is_full_screened) {
+    s_windowed_width = static_cast<uint32_t>(width);
+    s_windowed_height = static_cast<uint32_t>(height);
   }
 
   Uint32 flags = SDL_SWSURFACE | SDL_RESIZABLE;
@@ -482,11 +492,28 @@ void Frame_OnResize(int width, int height) {
   g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
                      (g_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
-    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+    g_orig_rect.x = g_orig_rect.y = 0;
     g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
     g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
-    g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+    if (is_full_screened) {
+      int target_w = width;
+      int target_h = (target_w * SCREEN_HEIGHT) / SCREEN_WIDTH;
+      if (target_h > height) {
+        target_h = height;
+        target_w = (target_h * SCREEN_WIDTH) / SCREEN_HEIGHT;
+      }
+      int offset_x = (width - target_w) / 2;
+      int offset_y = (height - target_h) / 2;
+      g_new_rect.x = static_cast<int16_t>(offset_x);
+      g_new_rect.y = static_cast<int16_t>(offset_y);
+      g_new_rect.w = static_cast<int16_t>(target_w);
+      g_new_rect.h = static_cast<int16_t>(target_h);
+    } else {
+      g_new_rect.x = 0;
+      g_new_rect.y = 0;
+      g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
+      g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+    }
     if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
       video_redraw_screen();
     }
@@ -787,11 +814,13 @@ void ResetMachineState() {
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
-static bool is_full_screened;
-
 void SetFullScreenMode() {
-  if (is_full_screened == false) {
+  if (!is_full_screened) {
     is_full_screened = true;
+    if (s_windowed_width == 0 || s_windowed_height == 0) {
+      s_windowed_width = g_state.screen_width;
+      s_windowed_height = g_state.screen_height;
+    }
     SDL_WM_ToggleFullScreen(g_screen);
     if (g_state.mode != MODE_DEBUG) {
       SDL_ShowCursor(SDL_DISABLE);
@@ -803,7 +832,11 @@ void SetNormalMode() {
   if (is_full_screened) {
     is_full_screened = false;
     SDL_WM_ToggleFullScreen(g_screen);
-    if (g_usingcursor == false) {
+    if (s_windowed_width > 0 && s_windowed_height > 0) {
+      Frame_OnResize(static_cast<int>(s_windowed_width),
+                     static_cast<int>(s_windowed_height));
+    }
+    if (!g_usingcursor) {
       SDL_ShowCursor(SDL_ENABLE);
     }
   } else if (g_state.mode == MODE_DEBUG) {
@@ -818,7 +851,7 @@ void set_using_cursor(bool newvalue) {
     SDL_ShowCursor(SDL_DISABLE);
     SDL_WM_GrabInput(SDL_GRAB_ON);
   } else {
-    if ((is_full_screened == false) || (g_state.mode == MODE_DEBUG)) {
+    if (!is_full_screened || (g_state.mode == MODE_DEBUG)) {
       SDL_ShowCursor(SDL_ENABLE);
     }
     SDL_WM_GrabInput(SDL_GRAB_OFF);
@@ -831,6 +864,10 @@ extern void SDL_Asset_FreeIcon();
 auto frame_create_window() -> int {
   SDL_Asset_LoadIcon();
   is_full_screened = false;
+  if (!g_state.fullscreen) {
+    s_windowed_width = g_state.screen_width;
+    s_windowed_height = g_state.screen_height;
+  }
 
   Uint32 flags = SDL_SWSURFACE;
   if (g_state.fullscreen) flags |= SDL_FULLSCREEN;

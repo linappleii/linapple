@@ -330,7 +330,10 @@ TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  // Set distinct test pixel in video output buffer
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  output[0] = 0x00FF0000;  // Red
 
   // Queue a keydown event so FrameShowHelpScreen exits immediately after
   // rendering
@@ -342,11 +345,11 @@ TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
   FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
-  // Verify that the yellow header border scaled to 3x exists at (12, 12)
+  // Verify that after dismissal, g_screen is properly restored with the
+  // emulator frame
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
-  int pitch_pixels = g_screen->pitch / 4;
-  CHECK(screen_pixels[12 * pitch_pixels + 12] == 0x00FFFF00);
+  CHECK(screen_pixels[0] == 0x00FF0000);
 
   // Teardown
   if (g_texture != nullptr) {
@@ -368,3 +371,83 @@ TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
   asset_quit();
   SDL_Quit();
 }
+
+TEST_CASE(
+    "SDL2 Frontend Help Screen Dismissal Clears Fullscreen Pillarbox Margins") {
+  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+  REQUIRE(init_result == 0);
+  REQUIRE(asset_init());
+
+  g_state.screen_width = 1120;
+  g_state.screen_height = 768;
+
+  int win_result = frame_create_window();
+  REQUIRE(win_result == 0);
+  REQUIRE(g_screen != nullptr);
+
+  // Switch to Fullscreen and simulate 1920x1080 resolution
+  SetFullScreenMode();
+  Frame_OnResize(1920, 1080);
+  REQUIRE(g_screen->w == 1920);
+  REQUIRE(g_screen->h == 1080);
+
+  // g_new_rect in 1920x1080: x = 172, w = 1575
+  // The pillarbox margins are x < 172 and x >= 1747
+
+  // Queue key event so FrameShowHelpScreen dismisses immediately
+  SDL_Event key_event{};
+  key_event.type = SDL_KEYDOWN;
+  key_event.key.keysym.sym = SDLK_SPACE;
+  REQUIRE(SDL_PushEvent(&key_event) == 1);
+
+  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+                      static_cast<int>(g_state.screen_height));
+
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+  int pitch_pixels = g_screen->pitch / 4;
+
+  // Simulate next emulator frame rendering after help screen was dismissed
+  g_frame_ready = true;
+  DrawFrameWindow();
+
+  int nonzero_left_margin = 0;
+  for (int y = 0; y < 1080; ++y) {
+    for (int x = 0; x < 172; ++x) {
+      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_left_margin++;
+    }
+  }
+  CHECK(nonzero_left_margin == 0);
+
+  int nonzero_right_margin = 0;
+  for (int y = 0; y < 1080; ++y) {
+    for (int x = 1747; x < 1920; ++x) {
+      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_right_margin++;
+    }
+  }
+  CHECK(nonzero_right_margin == 0);
+
+  SetNormalMode();
+
+  // Teardown
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
+  if (g_renderer != nullptr) {
+    SDL_DestroyRenderer(g_renderer);
+    g_renderer = nullptr;
+  }
+  if (g_window != nullptr) {
+    SDL_DestroyWindow(g_window);
+    g_window = nullptr;
+  }
+  asset_quit();
+  SDL_Quit();
+}
+

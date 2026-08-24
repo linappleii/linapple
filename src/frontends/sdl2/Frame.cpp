@@ -432,6 +432,10 @@ void FrameShowHelpScreen(int sx, int sy) {
     }
   }
 
+  if (g_screen != nullptr) {
+    SDL_FillRect(g_screen, nullptr, 0);
+  }
+  g_frame_ready = true;
   DrawFrameWindow();
 }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
