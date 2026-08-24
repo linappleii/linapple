@@ -188,6 +188,9 @@ void DrawFrameWindow() {
 }
 
 void draw_status_area(int drawflags) {
+  if (g_status_surface == nullptr || g_status_surface->pixels == nullptr) {
+    return;
+  }
   if (font_sfc == nullptr) {
     if (fonts_initialization() == false) {
       fprintf(stderr, "Font file was not loaded.\n");

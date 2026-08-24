@@ -21,6 +21,9 @@ void StretchBltMemToFrameDC() {
 
 auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
   VideoSurface_t vs{};
+  if (s == nullptr) {
+    return vs;
+  }
   vs.pixels = static_cast<uint8_t*>(s->pixels);
   vs.w = s->w;
   vs.h = s->h;
