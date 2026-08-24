@@ -8,9 +8,59 @@
 **LinApple** is a high-fidelity Apple ][, Apple ][+, Apple //e, and
 Enhanced Apple //e emulator for modern Linux and POSIX systems.
 
-## Quick Start
+## Installation & Quick Start
 
-### 1. Install Prerequisites
+### Pre-built Packages & Binaries (Recommended)
+
+Pre-compiled packages and portable binaries for Linux **x86_64** and **ARM64** (Raspberry Pi OS 64-bit / Ubuntu ARM) are available on the [Releases](https://github.com/linappleii/linapple/releases) page.
+
+#### Native Packages (SDL3 Default)
+
+* **Debian / Ubuntu / Raspberry Pi OS (`.deb`):**
+  ```bash
+  sudo apt-get install ./linapple-<tag>-linux-x86_64.deb   # on x86_64
+  sudo apt-get install ./linapple-<tag>-linux-arm64.deb    # on ARM64
+  ```
+
+* **Fedora / RHEL (`.rpm`):**
+  ```bash
+  sudo dnf install ./linapple-<tag>-linux-x86_64.rpm
+  ```
+
+* **Arch Linux (`.pkg.tar.zst`):**
+  ```bash
+  sudo pacman -U ./linapple-<tag>-1-x86_64.pkg.tar.zst
+  ```
+
+#### Portable Release (No Installation Required)
+
+Download and extract the portable archive:
+
+```bash
+tar -xvf linapple-<tag>-linux-x86_64.tar.gz
+cd linapple-<tag>-linux-x86_64
+./bin/linapple --autoboot --d1 share/linapple/Master.dsk
+```
+
+#### Standalone Binaries & Assets Archive
+
+If using a standalone frontend binary (such as `linapple-sdl2`, `linapple-sdl1`, `linapple-headless`, or `linapple-tui`), download the corresponding binary archive alongside `linapple-<tag>-assets.tar.gz`:
+
+1. **Extract assets to the standard user data directory:**
+   ```bash
+   mkdir -p ~/.local/share/linapple
+   tar -xvf linapple-<tag>-assets.tar.gz -C ~/.local/share/linapple/
+   ```
+2. **Run your standalone binary:**
+   ```bash
+   ./bin/linapple-sdl2 --autoboot --d1 ~/.local/share/linapple/Master.dsk
+   ```
+
+---
+
+### Building from Source
+
+#### 1. Install Prerequisites
 
 Choose your distribution family:
 
@@ -31,7 +81,7 @@ sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel \
 *(For openSUSE, Alpine, or older distributions without SDL3, see
 [INSTALL.md](INSTALL.md).)*
 
-### 2. Clone & Build
+#### 2. Clone & Build
 
 ```bash
 git clone https://github.com/linappleii/linapple.git
@@ -40,7 +90,7 @@ cmake -B build -DBUILD_TESTING=OFF
 cmake --build build -j$(nproc)
 ```
 
-### 3. Run
+#### 3. Run
 
 ```bash
 # Boot the bundled Apple II Master floppy disk

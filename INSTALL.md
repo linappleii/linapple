@@ -1,8 +1,54 @@
-# Building and Installing LinApple
+# Installing and Building LinApple
+
+## 1. Pre-built Packages & Binaries (Recommended)
+
+Pre-built packages and portable binary archives for **x86_64** and **ARM64** (Raspberry Pi OS 64-bit / Ubuntu ARM) are available on the [Releases](https://github.com/linappleii/linapple/releases) page.
+
+### Native Packages (SDL3 Default)
+
+* **Debian / Ubuntu / Raspberry Pi OS (`.deb`):**
+  ```bash
+  sudo apt-get install ./linapple-<tag>-linux-x86_64.deb   # on x86_64
+  sudo apt-get install ./linapple-<tag>-linux-arm64.deb    # on ARM64
+  ```
+
+* **Fedora / RHEL (`.rpm`):**
+  ```bash
+  sudo dnf install ./linapple-<tag>-linux-x86_64.rpm
+  ```
+
+* **Arch Linux (`.pkg.tar.zst`):**
+  ```bash
+  sudo pacman -U ./linapple-<tag>-1-x86_64.pkg.tar.zst
+  ```
+
+### Portable Tarballs
+
+Download and extract the portable archive without needing root:
+
+```bash
+tar -xvf linapple-<tag>-linux-x86_64.tar.gz
+cd linapple-<tag>-linux-x86_64
+./bin/linapple --autoboot --d1 share/linapple/Master.dsk
+```
+
+### Standalone Legacy Binaries & Assets Archive
+
+If you downloaded a standalone frontend binary (such as `linapple-sdl2`, `linapple-sdl1`, `linapple-headless`, or `linapple-tui`), download `linapple-<tag>-assets.tar.gz` and extract it to the standard XDG data directory:
+
+```bash
+mkdir -p ~/.local/share/linapple
+tar -xvf linapple-<tag>-assets.tar.gz -C ~/.local/share/linapple/
+./bin/linapple-sdl2 --autoboot --d1 ~/.local/share/linapple/Master.dsk
+```
+
+---
+
+## 2. Building from Source
 
 LinApple uses modern **CMake** (3.12+) as its build system.
 
-## 1. Prerequisites & Dependencies
+### Prerequisites & Dependencies
 
 Install the required compiler, build tools, and development libraries for your
 distribution:

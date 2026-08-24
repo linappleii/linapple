@@ -1,0 +1,387 @@
+---
+name: Release Automation
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for manual release (e.g. v3.0.0)'
+        required: false
+        default: 'v3.0.0'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # 1. Linux x86_64: Main SDL3 (.deb, .tar.gz), standalone legacy frontends, and assets
+  build-ubuntu-x86_64:
+    name: Ubuntu x86_64 (Debian, Frontends, Assets)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag_name || 'v3.0.0' }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-release-x86_64
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev dpkg-dev
+
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
+
+      - name: Configure CMake (All Frontends)
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=all \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Package Primary Debian Package (.deb)
+        run: |
+          mkdir -p pkg-deb/usr/bin pkg-deb/usr/share/linapple pkg-deb/etc/linapple pkg-deb/DEBIAN
+          cp build/linapple-sdl3 pkg-deb/usr/bin/linapple
+          cp res/Master.dsk res/icon.bmp pkg-deb/usr/share/linapple/
+          cp res/linapple.conf pkg-deb/etc/linapple/
+          
+          INSTALLED_SIZE=$(du -sk pkg-deb | cut -f1)
+          cat <<EOF > pkg-deb/DEBIAN/control
+          Package: linapple
+          Version: ${{ steps.vars.outputs.version }}
+          Section: emulators
+          Priority: optional
+          Architecture: amd64
+          Maintainer: David Baucum <david@baucum.me>
+          Installed-Size: ${INSTALLED_SIZE}
+          Depends: libzip4 (>= 1.7.0) | libzip-dev, zlib1g (>= 1:1.2.0), libcurl4, imagemagick
+          Description: LinApple Apple II / II+ / //e Emulator
+           LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e
+           computers for Linux.
+          EOF
+
+          mkdir -p artifacts
+          dpkg-deb --build --root-owner-group pkg-deb "artifacts/linapple-${{ steps.vars.outputs.tag }}-linux-x86_64.deb"
+
+      - name: Package Primary Portable Tarball (SDL3)
+        run: |
+          mkdir -p dist-main/bin dist-main/share/linapple dist-main/etc/linapple
+          cp build/linapple-sdl3 dist-main/bin/linapple
+          cp res/Master.dsk res/icon.bmp dist-main/share/linapple/
+          cp res/linapple.conf dist-main/etc/linapple/
+          cp COPYING.txt README.md dist-main/
+          tar -czvf "artifacts/linapple-${{ steps.vars.outputs.tag }}-linux-x86_64.tar.gz" -C dist-main .
+
+      - name: Package Standalone Legacy Frontends (SDL2, SDL1, Headless, TUI)
+        run: |
+          for fe in sdl2 sdl1 headless tui; do
+            mkdir -p "dist-${fe}/bin" "dist-${fe}/share/linapple" "dist-${fe}/etc/linapple"
+            cp "build/linapple-${fe}" "dist-${fe}/bin/linapple-${fe}"
+            cp res/Master.dsk res/icon.bmp "dist-${fe}/share/linapple/"
+            cp res/linapple.conf "dist-${fe}/etc/linapple/"
+            cp COPYING.txt README.md "dist-${fe}/"
+            tar -czvf "artifacts/linapple-${fe}-${{ steps.vars.outputs.tag }}-linux-x86_64.tar.gz" -C "dist-${fe}" .
+          done
+
+      - name: Package Standalone Assets
+        run: |
+          mkdir -p dist-assets
+          cp res/Master.dsk res/icon.bmp res/linapple.conf dist-assets/
+          cp COPYING.txt README.md dist-assets/
+          tar -czvf "artifacts/linapple-${{ steps.vars.outputs.tag }}-assets.tar.gz" -C dist-assets .
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-x86_64
+          path: artifacts/*
+
+  # 2. Linux ARM64: Main SDL3 (.deb, .tar.gz) and standalone legacy frontends
+  build-ubuntu-arm64:
+    name: Ubuntu ARM64 (Debian & Frontends)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag_name || 'v3.0.0' }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-release-arm64
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev dpkg-dev
+
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
+
+      - name: Configure CMake (All Frontends)
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=all \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Package Primary Debian Package (.deb)
+        run: |
+          mkdir -p pkg-deb/usr/bin pkg-deb/usr/share/linapple pkg-deb/etc/linapple pkg-deb/DEBIAN
+          cp build/linapple-sdl3 pkg-deb/usr/bin/linapple
+          cp res/Master.dsk res/icon.bmp pkg-deb/usr/share/linapple/
+          cp res/linapple.conf pkg-deb/etc/linapple/
+          
+          INSTALLED_SIZE=$(du -sk pkg-deb | cut -f1)
+          cat <<EOF > pkg-deb/DEBIAN/control
+          Package: linapple
+          Version: ${{ steps.vars.outputs.version }}
+          Section: emulators
+          Priority: optional
+          Architecture: arm64
+          Maintainer: David Baucum <david@baucum.me>
+          Installed-Size: ${INSTALLED_SIZE}
+          Depends: libzip4 (>= 1.7.0) | libzip-dev, zlib1g (>= 1:1.2.0), libcurl4, imagemagick
+          Description: LinApple Apple II / II+ / //e Emulator
+           LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e
+           computers for Linux.
+          EOF
+
+          mkdir -p artifacts
+          dpkg-deb --build --root-owner-group pkg-deb "artifacts/linapple-${{ steps.vars.outputs.tag }}-linux-arm64.deb"
+
+      - name: Package Primary Portable Tarball (SDL3)
+        run: |
+          mkdir -p dist-main/bin dist-main/share/linapple dist-main/etc/linapple
+          cp build/linapple-sdl3 dist-main/bin/linapple
+          cp res/Master.dsk res/icon.bmp dist-main/share/linapple/
+          cp res/linapple.conf dist-main/etc/linapple/
+          cp COPYING.txt README.md dist-main/
+          tar -czvf "artifacts/linapple-${{ steps.vars.outputs.tag }}-linux-arm64.tar.gz" -C dist-main .
+
+      - name: Package Standalone Legacy Frontends (SDL2, SDL1, Headless, TUI)
+        run: |
+          for fe in sdl2 sdl1 headless tui; do
+            mkdir -p "dist-${fe}/bin" "dist-${fe}/share/linapple" "dist-${fe}/etc/linapple"
+            cp "build/linapple-${fe}" "dist-${fe}/bin/linapple-${fe}"
+            cp res/Master.dsk res/icon.bmp "dist-${fe}/share/linapple/"
+            cp res/linapple.conf "dist-${fe}/etc/linapple/"
+            cp COPYING.txt README.md "dist-${fe}/"
+            tar -czvf "artifacts/linapple-${fe}-${{ steps.vars.outputs.tag }}-linux-arm64.tar.gz" -C "dist-${fe}" .
+          done
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-arm64
+          path: artifacts/*
+
+  # 3. Fedora RPM Build Container (Primary SDL3)
+  build-fedora-rpm:
+    name: Fedora RPM (x86_64)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag_name || 'v3.0.0' }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Dependencies
+        run: |
+          dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
+            SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git rpm-build
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DFRONTEND=sdl3 \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Package RPM
+        run: |
+          cd build
+          cpack -G RPM
+          mkdir -p ../artifacts
+          cp linapple-*.rpm "../artifacts/linapple-${{ steps.vars.outputs.tag }}-linux-x86_64.rpm"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-rpm
+          path: artifacts/*
+
+  # 4. Arch Linux Package Build Container (Primary SDL3)
+  build-archlinux:
+    name: Arch Linux (.pkg.tar.zst)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag_name || 'v3.0.0' }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel cmake ninja imagemagick libzip \
+            sdl3 sdl3_image libcurl-gnutls zlib git zstd tar
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DFRONTEND=sdl3 \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build & Stage
+        run: |
+          cmake --build build -j$(nproc)
+          DESTDIR="$(pwd)/pkg" cmake --install build
+
+      - name: Generate Arch Linux Package (.pkg.tar.zst)
+        run: |
+          cd pkg
+          cat <<EOF > .PKGINFO
+          pkgname = linapple
+          pkgver = ${{ steps.vars.outputs.version }}-1
+          pkgdesc = LinApple Apple II / II+ / //e Emulator
+          url = https://github.com/linapple/linapple
+          builddate = $(date +%s)
+          packager = LinApple Team <david@baucum.me>
+          size = $(du -sb . | awk '{print $1}')
+          arch = x86_64
+          license = GPL2
+          depend = sdl3
+          depend = sdl3_image
+          depend = libzip
+          depend = curl
+          depend = zlib
+          depend = imagemagick
+          EOF
+
+          mkdir -p ../artifacts
+          tar --zstd -cf "../artifacts/linapple-${{ steps.vars.outputs.tag }}-1-x86_64.pkg.tar.zst" .PKGINFO *
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-arch
+          path: artifacts/*
+
+  # 5. Collate all packages, generate SHA256 checksums, and publish GitHub Release
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - build-ubuntu-x86_64
+      - build-ubuntu-arm64
+      - build-fedora-rpm
+      - build-archlinux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine Version Tag
+        id: vars
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag_name || 'v3.0.0' }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-downloads
+
+      - name: Collate Release Files and Generate Checksums
+        run: |
+          mkdir -p release-files
+          find release-downloads -type f -exec cp {} release-files/ \;
+          cd release-files
+          sha256sum * > SHA256SUMS.txt
+          echo "### Generated Release Artifacts:"
+          ls -la
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: LinApple ${{ steps.vars.outputs.tag }}
+          files: release-files/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
