@@ -244,10 +244,10 @@ void DiskChoose_Draw() {
                                 static_cast<double>(j) * 15.0 * facy),
                file_name.substr(0, max_filename).c_str(), &vs_screen,
                1.0f * facx_f, 1.0f * facy_f);
-    font_print(sx - static_cast<int>(70.0 * static_cast<double>(facx_f)),
-               static_cast<int>(static_cast<double>(TOPX) +
-                                static_cast<double>(j) * 15.0 * facy),
-               type_size_str, &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
+    font_print_right(sx - static_cast<int>(8.0 * static_cast<double>(facx_f)),
+                     static_cast<int>(static_cast<double>(TOPX) +
+                                      static_cast<double>(j) * 15.0 * facy),
+                     type_size_str, &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
   }
 
   rectangle(&vs_screen, 0, TOPX - 5, sx - 1, static_cast<int>(320.0 * facy),
