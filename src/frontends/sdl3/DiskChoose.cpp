@@ -338,6 +338,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       file_list_generator->get_starting_message(file_list_generator),
       &vs_actual_screen, 1 * facx, 1 * facy);
   frame_refresh();
+  g_video_draw_mutex.unlock();
 
   g_diskChooseState.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
@@ -346,11 +347,12 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     printf("%s\n",
            file_list_generator->get_failure_message(file_list_generator));
 
+    g_video_draw_mutex.lock();
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!",
                         &vs_actual_screen, 1.4 * facx, 1.1 * facy);
     frame_refresh();
-
     g_video_draw_mutex.unlock();
+
     SDL_Delay(key_delay);
     SDL_Event event;
 
@@ -388,8 +390,6 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
   AppMode_t old_mode = g_state.mode;
   g_state.mode = MODE_DISK_CHOOSE;
-
-  g_video_draw_mutex.unlock();
 
   // Run a blocking input/render loop to simplify state management for modal
   // dialogs.
