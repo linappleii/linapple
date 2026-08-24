@@ -203,14 +203,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build clang-tidy imagemagick \
-            libzip-dev libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
+            libzip-dev libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
       - name: Configure
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -DFRONTEND=headless \
+            -DFRONTEND=all \
+            -DBUILD_TESTING=OFF \
             -DENABLE_CLANG_TIDY=ON \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build & Analyze
         run: cmake --build build -j$(nproc)
