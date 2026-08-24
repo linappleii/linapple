@@ -1,9 +1,10 @@
 # LinApple
 
 [![Build & Tests](https://github.com/linappleii/linapple/actions/workflows/build.yml/badge.svg)](https://github.com/linappleii/linapple/actions/workflows/build.yml)
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](COPYING.txt)
 [![Language](https://img.shields.io/badge/C%2B%2B-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
-[![Frontend](https://img.shields.io/badge/Frontend-SDL3%20%7C%20SDL2%20%7C%20SDL1%20%7C%20TUI%20%7C%20Headless-brightgreen.svg)](INSTALL.md)
+[![Language](https://img.shields.io/badge/C-99-blue.svg)](https://en.cppreference.com/w/c/99)
+[![Frontend](https://img.shields.io/badge/Frontend-SDL3%20%7C%20SDL2%20%7C%20SDL1%20%7C%20TUI%20%7C%20Headless-brightgreen.svg)](BUILD.md)
 
 **LinApple** is a high-fidelity Apple ][, Apple ][+, Apple //e, and
 Enhanced Apple //e emulator for modern Linux and POSIX systems.
@@ -12,22 +13,27 @@ Enhanced Apple //e emulator for modern Linux and POSIX systems.
 
 ### Pre-built Packages & Binaries (Recommended)
 
-Pre-compiled packages and portable binaries for Linux **x86_64** and **ARM64** (Raspberry Pi OS 64-bit / Ubuntu ARM) are available on the [Releases](https://github.com/linappleii/linapple/releases) page.
+Pre-compiled packages and portable binaries for Linux **x86_64** and **ARM64**
+(Raspberry Pi OS 64-bit / Ubuntu ARM) are available on the
+[Releases](https://github.com/linappleii/linapple/releases) page.
 
 #### Native Packages (SDL3 Default)
 
 * **Debian / Ubuntu / Raspberry Pi OS (`.deb`):**
+
   ```bash
   sudo apt-get install ./linapple-<tag>-linux-x86_64.deb   # on x86_64
   sudo apt-get install ./linapple-<tag>-linux-arm64.deb    # on ARM64
   ```
 
 * **Fedora / RHEL (`.rpm`):**
+
   ```bash
   sudo dnf install ./linapple-<tag>-linux-x86_64.rpm
   ```
 
 * **Arch Linux (`.pkg.tar.zst`):**
+
   ```bash
   sudo pacman -U ./linapple-<tag>-1-x86_64.pkg.tar.zst
   ```
@@ -44,19 +50,22 @@ cd linapple-<tag>-linux-x86_64
 
 #### Standalone Binaries & Assets Archive
 
-If using a standalone frontend binary (such as `linapple-sdl2`, `linapple-sdl1`, `linapple-headless`, or `linapple-tui`), download the corresponding binary archive alongside `linapple-<tag>-assets.tar.gz`:
+If using a standalone frontend binary (such as `linapple-sdl2`, `linapple-sdl1`,
+`linapple-headless`, or `linapple-tui`), download the corresponding binary
+archive alongside `linapple-<tag>-assets.tar.gz`:
 
 1. **Extract assets to the standard user data directory:**
+
    ```bash
    mkdir -p ~/.local/share/linapple
    tar -xvf linapple-<tag>-assets.tar.gz -C ~/.local/share/linapple/
    ```
+
 2. **Run your standalone binary:**
+
    ```bash
    ./bin/linapple-sdl2 --autoboot --d1 ~/.local/share/linapple/Master.dsk
    ```
-
----
 
 ### Building from Source
 
@@ -79,7 +88,7 @@ sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel \
 ```
 
 *(For openSUSE, Alpine, or older distributions without SDL3, see
-[INSTALL.md](INSTALL.md).)*
+[BUILD.md](BUILD.md).)*
 
 #### 2. Clone & Build
 
@@ -123,8 +132,13 @@ cmake --build build -j$(nproc)
   * Full read/write support for standard floppy images (`.dsk`, `.do`, `.po`,
     `.nib`, `.woz` v2).
   * Native SmartPort hard disk emulation with `.2mg` container parsing and raw
-    `.hdv` block images.
+    `.hdv` / `.po` block images.
   * Built-in direct FTP disk image streaming.
+
+* **Bidirectional Applesoft BASIC Live-Sync:**
+  * Write and edit Applesoft BASIC code in any host text editor (VS Code,
+    Vim) with real-time automatic synchronization into emulated memory
+    (`--basic-sync <file>`).
 
 * **Configurable Keyboard System:**
   * **Symbolic & Positional** keyboard mapping modes.
@@ -176,8 +190,10 @@ disk support, XDG compliance, and comprehensive automated test suites.
 | **`F2`** / **`Ctrl + F2`**      | Restart emulator / Cold reboot                                  |
 | **`F3` / `F4`**                 | Insert disk into Floppy Drive 1 / Drive 2                       |
 | **`Shift + F3` / `Shift + F4`** | Insert hard disk into Drive 1 / Drive 2 (Slot 7)                |
+| **`Alt + F3` / `Alt + F4`**     | Browse and insert floppy disk image via FTP                     |
+| **`Shift + Alt + F3 / F4`**     | Browse and insert hard disk image via FTP (Slot 7)              |
 | **`Ctrl + F3` / `Ctrl + F4`**   | Eject floppy disk from Drive 1 / Drive 2                        |
-| **`Ctrl + Shift + F3` / `F4`**  | Eject hard disk from Drive 1 / Drive 2                          |
+| **`Ctrl + Shift + F3 / F4`**    | Eject hard disk from Drive 1 / Drive 2                          |
 | **`F5`**                        | Swap Drive 1 and Drive 2 floppy disks                           |
 | **`F6`**                        | Toggle Fullscreen mode                                          |
 | **`Shift + F6`**                | Toggle international keyboard/video Rocker Switch               |
@@ -216,7 +232,12 @@ linapple [options]
 | **`-P`, `--program <file>`**  | Load and execute raw `.apl` / `.prg` program image              |
 | **`-s`, `--snapshot <file>`** | Restore emulator state from snapshot file                       |
 | **`-x`, `--script <file>`**   | Run debugger batch script on startup                            |
-| **`--list-hardware`**         | Print all emulated hardware modules and exits                   |
+| **`-m`, `--benchmark`**       | Run automated 1,000-frame video benchmark and exit              |
+| **`-A`, `--audio-dump <f>`**  | Dump audio output to a RIFF WAV file                            |
+| **`--basic-sync <file>`**     | Enable real-time bidirectional host Applesoft BASIC sync        |
+| **`--basic-line-mode <m>`**   | Set BASIC sync line numbering (`explicit` or `positional`)      |
+| **`--list-hardware`**         | Print all emulated hardware modules and exit                    |
+| **`--hardware-info <name>`**  | Show detailed configuration for a specific hardware component   |
 | **`--no-debugger`**           | Disable debugger shortcuts and memory overhead                  |
 | **`--caps-mode <mode>`**      | Caps Lock mode: `host` (default) or `emulated`                  |
 | **`-h`, `--help`**            | Show full command-line help and target frontend                 |
@@ -239,4 +260,4 @@ A fully commented reference configuration template is available in
 ## License
 
 LinApple is distributed under the **GNU General Public License v2.0 (GPL-2.0)**.
-See [LICENSE](LICENSE) for details.
+See [COPYING.txt](COPYING.txt) for details.
