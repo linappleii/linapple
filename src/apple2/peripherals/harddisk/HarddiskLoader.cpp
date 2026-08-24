@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
@@ -117,6 +119,43 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
 
   *out_driver = best_driver;
   return harddisk_err_none;
+}
+
+void harddisk_loader_get_supported_extensions(char* out_buffer,
+                                              size_t buffer_size) {
+  if (out_buffer == nullptr || buffer_size == 0) {
+    return;
+  }
+  out_buffer[0] = '\0';
+
+  std::vector<std::string> exts;
+  for (const auto* driver : g_harddisk_drivers) {
+    if (driver != nullptr && driver->supported_exts != nullptr) {
+      for (const char* const* ext = driver->supported_exts; *ext != nullptr;
+           ++ext) {
+        if (std::find(exts.begin(), exts.end(), *ext) == exts.end()) {
+          exts.emplace_back(*ext);
+        }
+      }
+    }
+  }
+
+  if (std::find(exts.begin(), exts.end(), "zip") == exts.end()) {
+    exts.emplace_back("zip");
+  }
+  if (std::find(exts.begin(), exts.end(), "gz") == exts.end()) {
+    exts.emplace_back("gz");
+  }
+
+  std::string result;
+  for (size_t i = 0; i < exts.size(); ++i) {
+    if (i > 0) {
+      result += ";";
+    }
+    result += exts[i];
+  }
+
+  Util_SafeStrCpy(out_buffer, result.c_str(), buffer_size);
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,

@@ -544,6 +544,17 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
     return peripheral_error;
   }
 
+  if (static_cast<HarddiskCmd_e>(cmd_id) ==
+      harddisk_cmd_get_supported_extensions) {
+    if (data == nullptr || *size == 0) {
+      *size = 256;
+      return peripheral_ok;
+    }
+    harddisk_loader_get_supported_extensions(static_cast<char*>(data), *size);
+    *size = strlen(static_cast<const char*>(data)) + 1;
+    return peripheral_ok;
+  }
+
   if (static_cast<HarddiskCmd_e>(cmd_id) != harddisk_cmd_get_status) {
     return peripheral_incompatible;
   }

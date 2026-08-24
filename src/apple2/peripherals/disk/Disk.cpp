@@ -1043,6 +1043,15 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       *size = required_size;
       return peripheral_ok;
     }
+    case disk_cmd_get_supported_extensions: {
+      if (data == nullptr || *size == 0) {
+        *size = 256;
+        return peripheral_ok;
+      }
+      disk_loader_get_supported_extensions(static_cast<char*>(data), *size);
+      *size = strlen(static_cast<const char*>(data)) + 1;
+      return peripheral_ok;
+    }
     default:
       break;
   }

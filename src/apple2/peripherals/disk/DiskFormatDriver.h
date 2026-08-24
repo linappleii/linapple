@@ -44,6 +44,7 @@ typedef struct DiskFormatDriver_t {
   uint32_t capabilities;
   const char* name;
   const char* const* creatable_exts;
+  const char* const* supported_exts;
 
   DiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
                        uint32_t file_size, const char* ext_hint);

@@ -120,6 +120,7 @@ auto po_command(void* instance_handle, uint32_t cmd_id, const void* payload,
 }
 
 const char* const g_po_creatable_exts[] = {".po", nullptr};
+const char* const g_po_supported_exts[] = {"po", nullptr};
 
 }  // namespace
 
@@ -128,6 +129,7 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .capabilities = disk_driver_cap_write,
     .name = "ProDOS Order",
     .creatable_exts = g_po_creatable_exts,
+    .supported_exts = g_po_supported_exts,
     .probe = po_probe,
     .open = po_open,
     .close = po_close,

@@ -306,11 +306,14 @@ static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
   return peripheral_incompatible;
 }
 
+const char* const g_woz2_supported_exts[] = {"woz", nullptr};
+
 extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "WOZ 2",
     .creatable_exts = nullptr,
+    .supported_exts = g_woz2_supported_exts,
     .probe = woz2_probe,
     .open = woz2_open,
     .close = woz2_close,

@@ -383,3 +383,30 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
   g_do_driver.close(inst);
   remove(tmp_do);
 }
+
+TEST_CASE("DiskDrivers: [DRV-08] Driver Supported Extensions") {
+  REQUIRE(g_do_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_do_driver.supported_exts[0], "do") == 0);
+  CHECK(strcmp(g_do_driver.supported_exts[1], "dsk") == 0);
+  CHECK(g_do_driver.supported_exts[2] == nullptr);
+
+  REQUIRE(g_po_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_po_driver.supported_exts[0], "po") == 0);
+  CHECK(g_po_driver.supported_exts[1] == nullptr);
+
+  REQUIRE(g_nib_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_nib_driver.supported_exts[0], "nib") == 0);
+  CHECK(g_nib_driver.supported_exts[1] == nullptr);
+
+  REQUIRE(g_nb2_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_nb2_driver.supported_exts[0], "nb2") == 0);
+  CHECK(g_nb2_driver.supported_exts[1] == nullptr);
+
+  REQUIRE(g_woz2_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_woz2_driver.supported_exts[0], "woz") == 0);
+  CHECK(g_woz2_driver.supported_exts[1] == nullptr);
+
+  REQUIRE(g_iie_driver.supported_exts != nullptr);
+  CHECK(strcmp(g_iie_driver.supported_exts[0], "iie") == 0);
+  CHECK(g_iie_driver.supported_exts[1] == nullptr);
+}

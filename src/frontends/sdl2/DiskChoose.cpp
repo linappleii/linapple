@@ -16,6 +16,8 @@
 
 #include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
@@ -438,8 +440,18 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                      std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
+  char supported_exts[256] = {};
+  size_t exts_size = sizeof(supported_exts);
+  if (slot == 7) {
+    (void)peripheral_query(7, harddisk_cmd_get_supported_extensions,
+                           supported_exts, &exts_size);
+  } else {
+    (void)peripheral_query(slot, disk_cmd_get_supported_extensions,
+                           supported_exts, &exts_size);
+  }
+
   FileListGenerator_t* generator =
-      file_browser_create_local_generator(incoming_dir.c_str());
+      file_browser_create_local_generator(incoming_dir.c_str(), supported_exts);
   if (generator == nullptr) return false;
 
   bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,

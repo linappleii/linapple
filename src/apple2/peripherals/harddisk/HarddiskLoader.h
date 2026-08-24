@@ -21,6 +21,9 @@ HarddiskError_e harddisk_loader_open(const char* path, bool* out_os_readonly,
                                      HarddiskFormatDriver_t** out_driver,
                                      void** out_instance_handle);
 
+void harddisk_loader_get_supported_extensions(char* out_buffer,
+                                              size_t buffer_size);
+
 #ifdef __cplusplus
 }
 #endif

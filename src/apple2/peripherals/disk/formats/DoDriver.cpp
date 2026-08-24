@@ -117,6 +117,7 @@ auto do_command(void* instance, uint32_t cmd_id, const void* payload,
 }
 
 const char* const g_do_creatable_exts[] = {".do", ".dsk", nullptr};
+const char* const g_do_supported_exts[] = {"do", "dsk", nullptr};
 
 }  // namespace
 
@@ -125,6 +126,7 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .capabilities = disk_driver_cap_write,
     .name = "DOS Order",
     .creatable_exts = g_do_creatable_exts,
+    .supported_exts = g_do_supported_exts,
     .probe = do_probe,
     .open = do_open,
     .close = do_close,

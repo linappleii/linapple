@@ -25,7 +25,8 @@ typedef enum {
   harddisk_cmd_eject = 0x0002,
   harddisk_cmd_set_protect = 0x0004,
   harddisk_cmd_get_status = 0x0005,
-  harddisk_cmd_reset_status = 0x0006
+  harddisk_cmd_reset_status = 0x0006,
+  harddisk_cmd_get_supported_extensions = 0x0007
 } HarddiskCmd_e;
 
 enum { harddisk_insert_path_max = 504 };

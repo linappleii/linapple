@@ -118,6 +118,7 @@ auto nib_command(void* instance_handle, uint32_t cmd_id, const void* payload,
 }
 
 const char* const g_nib_creatable_exts[] = {".nib", nullptr};
+const char* const g_nib_supported_exts[] = {"nib", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nib_driver = {
@@ -125,6 +126,7 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .capabilities = disk_driver_cap_write,
     .name = "NIB (6656-nibble)",
     .creatable_exts = g_nib_creatable_exts,
+    .supported_exts = g_nib_supported_exts,
     .probe = nib_probe,
     .open = nib_open,
     .close = nib_close,

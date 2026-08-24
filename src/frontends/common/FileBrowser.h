@@ -57,10 +57,16 @@ struct FileListGenerator_t {
   void (*destroy)(FileListGenerator_t* self);
 };
 
-auto file_browser_create_local_generator(const char* directory)
+auto file_browser_is_extension_supported(const char* filename,
+                                         const char* allowed_extensions)
+    -> bool;
+
+auto file_browser_create_local_generator(const char* directory,
+                                         const char* filter_extensions)
     -> FileListGenerator_t*;
 
-auto file_browser_create_ftp_generator(const char* directory)
+auto file_browser_create_ftp_generator(const char* directory,
+                                       const char* filter_extensions)
     -> FileListGenerator_t*;
 
 auto file_browser_create_list(void) -> FileList_t*;

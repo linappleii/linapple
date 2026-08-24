@@ -33,6 +33,7 @@ struct FileList_t {
 
 struct LocalGeneratorContext_t {
   std::string directory;
+  std::string filter_extensions;
   std::string failure_message;
 };
 
@@ -73,6 +74,7 @@ static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
 }
 
 static auto get_sorted_directory(const char* incoming_dir,
+                                 const char* filter_extensions,
                                  std::vector<FileEntry_t>& file_list) -> bool {
   if (incoming_dir == nullptr) {
     return false;
@@ -112,9 +114,11 @@ static auto get_sorted_directory(const char* incoming_dir,
       new_entry.size = 0;
       file_list.push_back(new_entry);
     } else if (what == 2) {
-      new_entry.type = FILE_ENTRY_FILE;
-      new_entry.size = static_cast<uint64_t>(fsize) * size_block;
-      file_list.push_back(new_entry);
+      if (file_browser_is_extension_supported(file_name, filter_extensions)) {
+        new_entry.type = FILE_ENTRY_FILE;
+        new_entry.size = static_cast<uint64_t>(fsize) * size_block;
+        file_list.push_back(new_entry);
+      }
     }
   }
   closedir(dp);
@@ -151,7 +155,8 @@ static auto local_gen_generate(FileListGenerator_t* self) -> FileList_t* {
     list->entries.push_back(up_entry);
   }
 
-  if (get_sorted_directory(ctx->directory.c_str(), list->entries)) {
+  if (get_sorted_directory(ctx->directory.c_str(),
+                           ctx->filter_extensions.c_str(), list->entries)) {
     if (list->entries.size() >= max_directory_entries) {
       ctx->failure_message = "Directory too large, listing truncated.";
     }
@@ -282,7 +287,44 @@ auto file_browser_get_failure_message(const FileList_t* list) -> const char* {
   return list != nullptr ? list->failure_message.c_str() : "Null list handle";
 }
 
-auto file_browser_create_local_generator(const char* directory)
+auto file_browser_is_extension_supported(const char* filename,
+                                         const char* allowed_extensions)
+    -> bool {
+  if (filename == nullptr) {
+    return false;
+  }
+  if (allowed_extensions == nullptr || allowed_extensions[0] == '\0') {
+    return true;
+  }
+
+  const char* dot = strrchr(filename, '.');
+  if (dot == nullptr || dot[1] == '\0') {
+    return false;
+  }
+  const char* ext = dot + 1;
+
+  const char* p = allowed_extensions;
+  while (*p != '\0') {
+    while (*p == ';' || *p == ' ' || *p == ',') {
+      ++p;
+    }
+    if (*p == '\0') {
+      break;
+    }
+    const char* start = p;
+    while (*p != '\0' && *p != ';' && *p != ' ' && *p != ',') {
+      ++p;
+    }
+    const size_t len = static_cast<size_t>(p - start);
+    if (len > 0 && strncasecmp(ext, start, len) == 0 && ext[len] == '\0') {
+      return true;
+    }
+  }
+  return false;
+}
+
+auto file_browser_create_local_generator(const char* directory,
+                                         const char* filter_extensions)
     -> FileListGenerator_t* {
   if (directory == nullptr) {
     return nullptr;
@@ -300,6 +342,9 @@ auto file_browser_create_local_generator(const char* directory)
   }
 
   ctx->directory = directory;
+  if (filter_extensions != nullptr) {
+    ctx->filter_extensions = filter_extensions;
+  }
   ctx->failure_message = "(success)";
 
   gen->context = ctx;

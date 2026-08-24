@@ -86,3 +86,26 @@ TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
   peripheral_load_state(SL6, buffer.data(), size);
   linapple_shutdown();
 }
+
+TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
+
+  char exts[256] = {};
+  size_t size = sizeof(exts);
+  PeripheralStatus_t status =
+      peripheral_query(SL6, disk_cmd_get_supported_extensions, exts, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(strstr(exts, "do") != nullptr);
+  CHECK(strstr(exts, "dsk") != nullptr);
+  CHECK(strstr(exts, "po") != nullptr);
+  CHECK(strstr(exts, "nib") != nullptr);
+  CHECK(strstr(exts, "nb2") != nullptr);
+  CHECK(strstr(exts, "woz") != nullptr);
+  CHECK(strstr(exts, "iie") != nullptr);
+  CHECK(strstr(exts, "zip") != nullptr);
+  CHECK(strstr(exts, "gz") != nullptr);
+
+  linapple_shutdown();
+}

@@ -20,6 +20,9 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
                       DiskFormatDriver_t** out_driver, void** out_instance)
     -> DiskError_e;
 
+auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
+    -> void;
+
 // NOLINTEND(modernize-use-using)
 
 #ifdef __cplusplus

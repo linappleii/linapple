@@ -272,6 +272,8 @@ auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
   return peripheral_incompatible;
 }
 
+const char* const g_iie_supported_exts[] = {"iie", nullptr};
+
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_iie_driver = {
@@ -279,6 +281,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .capabilities = 0,
     .name = "IIE",
     .creatable_exts = nullptr,
+    .supported_exts = g_iie_supported_exts,
     .probe = iie_probe,
     .open = iie_open,
     .close = iie_close,

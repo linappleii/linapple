@@ -66,6 +66,7 @@ typedef enum {
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
   disk_cmd_get_status = 0x0005,
+  disk_cmd_get_supported_extensions = 0x0007,
   disk_cmd_boot = 0x0006,
   disk_driver_cmd_set_enhanced_speed = 0x1001
 } DiskCmd_e;

@@ -155,6 +155,7 @@ auto two_img_get_total_blocks(void* instance_handle) -> uint32_t {
 
 const char* const g_two_img_creatable_exts[] = {".2mg", ".2img", ".2meg",
                                                 nullptr};
+const char* const g_two_img_supported_exts[] = {"2mg", "2img", "2meg", nullptr};
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
@@ -162,6 +163,7 @@ extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
     .capabilities = harddisk_driver_cap_write,
     .name = "2MG",
     .creatable_exts = g_two_img_creatable_exts,
+    .supported_exts = g_two_img_supported_exts,
     .probe = two_img_probe,
     .open = two_img_open,
     .close = two_img_close,

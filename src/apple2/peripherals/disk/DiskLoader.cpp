@@ -9,10 +9,12 @@
 #include <zip.h>
 #include <zlib.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "apple2/Apple2Types.h"
@@ -276,6 +278,43 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
   }
 
   return err;
+}
+
+auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
+    -> void {
+  if (out_buffer == nullptr || buffer_size == 0) {
+    return;
+  }
+  out_buffer[0] = '\0';
+
+  std::vector<std::string> exts;
+  for (const auto* driver : g_drivers) {
+    if (driver != nullptr && driver->supported_exts != nullptr) {
+      for (const char* const* ext = driver->supported_exts; *ext != nullptr;
+           ++ext) {
+        if (std::find(exts.begin(), exts.end(), *ext) == exts.end()) {
+          exts.emplace_back(*ext);
+        }
+      }
+    }
+  }
+
+  if (std::find(exts.begin(), exts.end(), "zip") == exts.end()) {
+    exts.emplace_back("zip");
+  }
+  if (std::find(exts.begin(), exts.end(), "gz") == exts.end()) {
+    exts.emplace_back("gz");
+  }
+
+  std::string result;
+  for (size_t i = 0; i < exts.size(); ++i) {
+    if (i > 0) {
+      result += ";";
+    }
+    result += exts[i];
+  }
+
+  Util_SafeStrCpy(out_buffer, result.c_str(), buffer_size);
 }
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,

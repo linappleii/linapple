@@ -15,7 +15,9 @@
 #include <vector>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/ftpparse.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
@@ -36,6 +38,7 @@ static std::array<char, 512> g_ftp_dir_listing = {
 
 struct FtpGeneratorContext_t {
   std::string directory;
+  std::string filter_extensions;
   std::string failure_message;
 };
 
@@ -106,9 +109,12 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
         entry.size = 0;
         FileBrowser_AppendEntry(list, &entry);
       } else if (fp.flagtryretr) {
-        entry.type = FILE_ENTRY_FILE;
-        entry.size = static_cast<std::uintmax_t>(fp.size);
-        FileBrowser_AppendEntry(list, &entry);
+        if (file_browser_is_extension_supported(
+                trimmed_name.get(), ctx->filter_extensions.c_str())) {
+          entry.type = FILE_ENTRY_FILE;
+          entry.size = static_cast<std::uintmax_t>(fp.size);
+          FileBrowser_AppendEntry(list, &entry);
+        }
       }
     }
   }
@@ -137,7 +143,8 @@ static void FTPGen_Destroy(FileListGenerator_t* self) {
 
 extern "C" {
 
-FileListGenerator_t* file_browser_create_ftp_generator(const char* directory) {
+FileListGenerator_t* file_browser_create_ftp_generator(
+    const char* directory, const char* filter_extensions) {
   if (!directory) return nullptr;
 
   auto* gen = new (std::nothrow) FileListGenerator_t();
@@ -150,6 +157,9 @@ FileListGenerator_t* file_browser_create_ftp_generator(const char* directory) {
   }
 
   ctx->directory = directory;
+  if (filter_extensions != nullptr) {
+    ctx->filter_extensions = filter_extensions;
+  }
   ctx->failure_message = "(success)";
 
   gen->context = ctx;
@@ -165,8 +175,18 @@ FileListGenerator_t* file_browser_create_ftp_generator(const char* directory) {
 auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
+  char supported_exts[256] = {};
+  size_t exts_size = sizeof(supported_exts);
+  if (slot == 7) {
+    (void)peripheral_query(7, harddisk_cmd_get_supported_extensions,
+                           supported_exts, &exts_size);
+  } else {
+    (void)peripheral_query(slot, disk_cmd_get_supported_extensions,
+                           supported_exts, &exts_size);
+  }
+
   FileListGenerator_t* generator =
-      file_browser_create_ftp_generator(ftp_dir.c_str());
+      file_browser_create_ftp_generator(ftp_dir.c_str(), supported_exts);
   if (!generator) return false;
   bool result = choose_image_dialog(sx, sy, ftp_dir, slot, generator, filename,
                                     isdir, index_file);

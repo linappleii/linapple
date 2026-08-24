@@ -79,7 +79,7 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
 
   SUBCASE("List Generation") {
     FileListGenerator_t* gen =
-        file_browser_create_local_generator(test_dir.c_str());
+        file_browser_create_local_generator(test_dir.c_str(), nullptr);
     REQUIRE(gen != nullptr);
 
     FileList_t* list = gen->generate_file_list(gen);
@@ -112,9 +112,39 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
     gen->destroy(gen);
   }
 
-  SUBCASE("Failure Handling") {
+  SUBCASE("List Generation with Filter") {
     FileListGenerator_t* gen =
-        file_browser_create_local_generator("non_existent_directory_xyz");
+        file_browser_create_local_generator(test_dir.c_str(), "dsk");
+    REQUIRE(gen != nullptr);
+
+    FileList_t* list = gen->generate_file_list(gen);
+    REQUIRE(list != nullptr);
+
+    // Should have: .. (UP), subdir (DIR), file1 (FILE). file2.po filtered out.
+    REQUIRE(file_browser_get_count(list) == 3);
+
+    const FileEntry_t* e0 = file_browser_get_entry(list, 0);
+    const FileEntry_t* e1 = file_browser_get_entry(list, 1);
+    const FileEntry_t* e2 = file_browser_get_entry(list, 2);
+
+    REQUIRE(e0 != nullptr);
+    CHECK(e0->type == FILE_ENTRY_UP);
+
+    REQUIRE(e1 != nullptr);
+    CHECK(e1->type == FILE_ENTRY_DIR);
+    CHECK(strcmp(e1->name, "subdir") == 0);
+
+    REQUIRE(e2 != nullptr);
+    CHECK(e2->type == FILE_ENTRY_FILE);
+    CHECK(strcmp(e2->name, "file1.dsk") == 0);
+
+    FileBrowser_FreeList(list);
+    gen->destroy(gen);
+  }
+
+  SUBCASE("Failure Handling") {
+    FileListGenerator_t* gen = file_browser_create_local_generator(
+        "non_existent_directory_xyz", nullptr);
     REQUIRE(gen != nullptr);
 
     FileList_t* list = gen->generate_file_list(gen);
@@ -134,8 +164,20 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
   rmdir(test_dir.c_str());
 }
 
+TEST_CASE("FileBrowser: Extension Matching") {
+  CHECK(file_browser_is_extension_supported("image.dsk", "dsk;po;woz") == true);
+  CHECK(file_browser_is_extension_supported("image.DSK", "dsk;po;woz") == true);
+  CHECK(file_browser_is_extension_supported("image.PO", "dsk;po;woz") == true);
+  CHECK(file_browser_is_extension_supported("image.txt", "dsk;po;woz") ==
+        false);
+  CHECK(file_browser_is_extension_supported("image", "dsk;po;woz") == false);
+  CHECK(file_browser_is_extension_supported("image.dsk", nullptr) == true);
+  CHECK(file_browser_is_extension_supported("image.dsk", "") == true);
+  CHECK(file_browser_is_extension_supported(nullptr, "dsk") == false);
+}
+
 TEST_CASE("FileBrowser: C API Null Checks") {
-  CHECK(file_browser_create_local_generator(nullptr) == nullptr);
+  CHECK(file_browser_create_local_generator(nullptr, nullptr) == nullptr);
   CHECK(file_browser_get_count(nullptr) == 0);
   CHECK(file_browser_get_entry(nullptr, 0) == nullptr);
   CHECK(strcmp(file_browser_get_failure_message(nullptr), "Null list handle") ==

@@ -97,3 +97,26 @@ TEST_CASE("Harddisk Peripheral: Direct I/O Logic") {
 
   linapple_shutdown();
 }
+
+TEST_CASE("Harddisk Peripheral: Get Supported Extensions Query") {
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register(harddisk_get_descriptor(), 7);
+
+  char exts[256] = {};
+  size_t size = sizeof(exts);
+  PeripheralStatus_t pstatus =
+      peripheral_query(7, harddisk_cmd_get_supported_extensions, exts, &size);
+  CHECK(pstatus == peripheral_ok);
+  CHECK(strstr(exts, "hdv") != nullptr);
+  CHECK(strstr(exts, "po") != nullptr);
+  CHECK(strstr(exts, "2mg") != nullptr);
+  CHECK(strstr(exts, "2img") != nullptr);
+  CHECK(strstr(exts, "2meg") != nullptr);
+  CHECK(strstr(exts, "img") != nullptr);
+  CHECK(strstr(exts, "bin") != nullptr);
+  CHECK(strstr(exts, "zip") != nullptr);
+  CHECK(strstr(exts, "gz") != nullptr);
+
+  linapple_shutdown();
+}

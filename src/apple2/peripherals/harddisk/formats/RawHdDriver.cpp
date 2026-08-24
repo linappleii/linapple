@@ -88,6 +88,8 @@ auto raw_hd_get_total_blocks(void* instance_handle) -> uint32_t {
 }
 
 const char* const g_raw_hd_creatable_exts[] = {".hdv", ".po", nullptr};
+const char* const g_raw_hd_supported_exts[] = {"hdv", "po",  "2meg", "2mg",
+                                               "img", "bin", nullptr};
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
@@ -95,6 +97,7 @@ extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
     .capabilities = harddisk_driver_cap_write,
     .name = "Raw",
     .creatable_exts = g_raw_hd_creatable_exts,
+    .supported_exts = g_raw_hd_supported_exts,
     .probe = raw_hd_probe,
     .open = raw_hd_open,
     .close = raw_hd_close,

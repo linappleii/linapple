@@ -120,6 +120,7 @@ auto nb2_command(void* instance_handle, uint32_t cmd_id, const void* payload,
 }
 
 const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};
+const char* const g_nb2_supported_exts[] = {"nb2", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nb2_driver = {
@@ -127,6 +128,7 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .capabilities = disk_driver_cap_write,
     .name = "NB2 (6384-nibble)",
     .creatable_exts = g_nb2_creatable_exts,
+    .supported_exts = g_nb2_supported_exts,
     .probe = nb2_probe,
     .open = nb2_open,
     .close = nb2_close,
