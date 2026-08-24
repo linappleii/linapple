@@ -114,8 +114,7 @@ void DrawAppleContent() {
 }
 
 void frame_refresh() {
-  if (g_texture != nullptr && g_screen != nullptr) {
-    SDL_BlitSurface(g_texture, nullptr, g_screen, nullptr);
+  if (g_screen != nullptr) {
     SDL_Flip(g_screen);
   }
 }
@@ -168,6 +167,7 @@ void DrawFrameWindow() {
       }
     }
 
+    SDL_BlitSurface(g_texture, nullptr, g_screen, nullptr);
     frame_refresh();
     g_frame_ready = false;
   }

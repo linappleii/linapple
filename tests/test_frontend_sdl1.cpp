@@ -385,7 +385,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   key_event.key.keysym.sym = SDLK_F12;
   key_event.key.state = SDL_PRESSED;
   int push_result = SDL_PushEvent(&key_event);
-  REQUIRE(push_result == 1);
+  REQUIRE(push_result == 0);
 
   FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
@@ -426,7 +426,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
   SDL_Event quit_event{};
   quit_event.type = SDL_QUIT;
   int push_result = SDL_PushEvent(&quit_event);
-  REQUIRE(push_result == 1);
+  REQUIRE(push_result == 0);
 
   std::string filename;
   bool isdir = false;
@@ -474,7 +474,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
   key_event.key.keysym.sym = SDLK_ESCAPE;
   key_event.key.state = SDL_PRESSED;
   int push_result = SDL_PushEvent(&key_event);
-  REQUIRE(push_result == 1);
+  REQUIRE(push_result == 0);
 
   std::string filename;
   bool isdir = false;
@@ -520,7 +520,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   key_event.key.keysym.sym = SDLK_F12;
   key_event.key.state = SDL_PRESSED;
   int push_result = SDL_PushEvent(&key_event);
-  REQUIRE(push_result == 1);
+  REQUIRE(push_result == 0);
 
   std::string filename;
   bool isdir = false;
