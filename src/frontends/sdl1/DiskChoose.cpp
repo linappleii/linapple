@@ -512,3 +512,5 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
   generator->destroy(generator);
   return result;
 }
+
+// NOLINTEND
