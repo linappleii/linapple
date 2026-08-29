@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <SDL2/SDL.h>
+#include <SDL_events.h>
+#include <SDL_stdinc.h>
+#include <SDL_video.h>
+#include <SDL_render.h>
+#include <SDL_surface.h>
+#include <SDL_keycode.h>
+#include <cstdint>
+#include <string>
+#include <cstddef>
 
-#include "apple2/Apple2Types.h"
+#include "Video.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"

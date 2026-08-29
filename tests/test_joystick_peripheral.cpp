@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 
+#include "Peripheral_Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"

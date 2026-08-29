@@ -1,12 +1,6 @@
 #include "frontends/sdl1/DiskChoose.h"
 
-#include <dirent.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <cstdio>
@@ -14,12 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/sdl1/Frame.h"

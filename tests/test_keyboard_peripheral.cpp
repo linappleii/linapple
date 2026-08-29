@@ -1,12 +1,12 @@
-#include <cstring>
+#include <cstdint>
 #include <map>
 
+#include "Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/Keyboard.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 static auto& keyboard_peripheral = *keyboard_get_descriptor();
 

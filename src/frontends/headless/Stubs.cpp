@@ -1,11 +1,10 @@
+#include <cstddef>
 #include <cstdint>
 
+#include "Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "frontends/sdl3/Frontend.h"
 
 // Use weak symbols so that real implementations in unit tests take precedence
@@ -83,9 +82,7 @@ WEAK auto register_io_handler(uint32_t, iofunction, iofunction, iofunction,
 WEAK auto register_direct_io_handler(uint16_t, iofunction, iofunction, void*)
     -> void {}
 
-#include <cstdarg>
 
-#include "core/Log.h"
 
 WEAK uint64_t g_cumulative_cycles = 0;
 WEAK SystemState_t g_state = {};

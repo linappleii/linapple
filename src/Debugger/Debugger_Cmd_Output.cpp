@@ -1,21 +1,19 @@
 #include "Debugger_Cmd_Output.h"
 
-#include <cstddef>
+#include <cctype>
+#include <cstring>
+#include <cstdint>
+#include <cstdio>
 #include <string>
 #include <vector>
 
 #include "Debug.h"
 #include "Debugger_Console.h"
-#include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "Video.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
 extern bool g_report_missing_scripts;

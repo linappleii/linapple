@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// NOLINTBEGIN(misc-include-cleaner) - POSIX pthread types defined in glibc internal headers
 #include "SuperSerialFrontend.h"
 
 #include <fcntl.h>
@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -14,7 +15,6 @@
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 
 namespace {
 
@@ -205,3 +205,6 @@ auto super_serial_frontend_set_loopback(bool enable) -> void {
 auto super_serial_frontend_send_byte(uint8_t byte) -> void {
   super_serial_frontend_transmit_byte(byte);
 }
+
+// NOLINTEND(misc-include-cleaner)
+

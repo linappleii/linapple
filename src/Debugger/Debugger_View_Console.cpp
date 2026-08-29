@@ -5,6 +5,7 @@
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Types.h"
+#include "Video.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_console_display_start;

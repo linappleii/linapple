@@ -1,3 +1,5 @@
+#include <cstdint>
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstddef>
@@ -5,10 +7,8 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 
 namespace {

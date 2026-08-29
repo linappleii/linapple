@@ -1,4 +1,6 @@
-#include "apple2/Video.h"
+#include "Debugger_Types.h"
+#include "Debugger_Breakpoints.h"
+#include "Util_Text.h"
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -27,18 +29,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * Author: Copyright (C) 2006-2010 Michael Pohoreski
  */
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <vector>
 
 #include "Debug.h"
+#include "Debugger_Cmd_Config.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 #define DEBUG_COLOR_CONSOLE 0
 

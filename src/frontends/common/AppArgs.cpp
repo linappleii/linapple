@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-include-cleaner) - glibc internal getopt headers
 #include "frontends/common/AppArgs.h"
 
 #include <getopt.h>
@@ -6,7 +7,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
+#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Text.h"
@@ -251,3 +254,5 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
 
   return 0;
 }
+
+// NOLINTEND(misc-include-cleaner)

@@ -1,12 +1,12 @@
 #include "TuiTerminal.h"
 
+#include <signal.h>
 #include <termios.h>
 #include <unistd.h>
 
 #include <atomic>
 #include <csignal>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 
 static struct termios g_orig_termios;

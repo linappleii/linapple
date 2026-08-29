@@ -1,12 +1,12 @@
 #include "frontends/sdl1/SDL_Video.h"
 
-#include <SDL/SDL.h>
 
-#include <cstdio>
+#include <cstdint>
 #include <mutex>
 
+#include "VideoSurface.h"
+#include "SDL_video.h"
 #include "apple2/Video.h"
-#include "frontends/sdl1/Frame.h"
 
 extern VideoSurface_t* g_debug_screen;
 extern std::recursive_mutex g_video_draw_mutex;

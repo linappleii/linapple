@@ -12,8 +12,6 @@
 #include "Debugger_Range.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "apple2/CPU.h"
-#include "core/Log.h"
 
 extern uint16_t g_break_memory_address;
 extern MemoryTextFile_t g_config_state;

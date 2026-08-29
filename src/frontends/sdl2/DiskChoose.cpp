@@ -1,12 +1,16 @@
 #include "frontends/sdl2/DiskChoose.h"
 
-#include <dirent.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <SDL_events.h>
+#include <SDL_keycode.h>
+#include <SDL_rect.h>
+#include <SDL_surface.h>
+#include <SDL_pixels.h>
+#include <SDL_stdinc.h>
+#include <SDL_blendmode.h>
+#include <SDL_timer.h>
+#include <SDL_video.h>
 
-#include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <cstdio>
@@ -14,12 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
+#include "VideoSurface.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/sdl2/Frame.h"

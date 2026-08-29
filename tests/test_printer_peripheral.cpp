@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
+#include <cstdint>
+#include <cstddef>
 #include <map>
 #include <vector>
 
+#include "Peripheral_Types.h"
 #include "apple2/peripherals/printer/Printer.h"
 #include "core/Peripheral.h"
 #include "doctest.h"

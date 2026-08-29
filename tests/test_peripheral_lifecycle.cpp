@@ -1,3 +1,8 @@
+#include <cstdint>
+#include <string>
+#include <cstddef>
+#include "Peripheral_Types.h"
+#include <vector>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
@@ -158,7 +163,6 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
   linapple_shutdown();
 }
 
-#include <dlfcn.h>
 
 #include "core/Util_Path.h"
 

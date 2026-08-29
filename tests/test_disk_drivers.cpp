@@ -1,9 +1,11 @@
+#include <cstdint>
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include <stdio.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdio>
 #include <cstring>
 #include <vector>
 
-#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"

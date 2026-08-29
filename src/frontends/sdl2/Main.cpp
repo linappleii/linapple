@@ -1,15 +1,19 @@
-#include <SDL2/SDL.h>
+#include <SDL_audio.h>
+#include <SDL_platform.h>
+#include <SDL_stdinc.h>
+#include <SDL_error.h>
+#include <SDL_events.h>
+#include <SDL_timer.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 
-#include "apple2/Apple2Types.h"
+#include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"

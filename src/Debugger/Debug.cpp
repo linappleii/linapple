@@ -1,13 +1,10 @@
 #include "Debug.h"
 
-#include <unistd.h>
-
 #include <cstdint>
 
 #include "Debugger_Assembler.h"
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Display.h"
-#include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"

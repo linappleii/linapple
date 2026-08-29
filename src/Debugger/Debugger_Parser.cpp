@@ -1,21 +1,26 @@
 #include "Debugger_Parser.h"
+#include <strings.h>
 
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <vector>
 
 #include "Debug.h"
+#include "Debugger_Breakpoints.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
+#include "Debugger_Types.h"
+#include "Debugger_Memory.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // Args

@@ -1,3 +1,4 @@
+#include "Debugger_Types.h"
 #include "apple2/Video.h"
 /*
 linapple : An Apple //e emulator for Linux
@@ -31,23 +32,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <unistd.h>
 
 #include <cassert>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdint>
+#include <cctype>
 #include <cstring>
 
 #include "Debug.h"
-#include "Debugger_Assembler.h"
 #include "Debugger_Cmd_CPU.h"
-#include "Debugger_Cmd_Output.h"
 #include "Debugger_Cmd_Window.h"
-#include "Debugger_Color.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "Video.h"
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp

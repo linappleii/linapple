@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cstring>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"

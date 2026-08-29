@@ -1,20 +1,17 @@
+#include <cstdint>
+#include <stdio.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstdio>
 #include <cstring>
-#include <memory>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "apple2/peripherals/harddisk/HarddiskLoader.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 
 // Access internal descriptor for testing

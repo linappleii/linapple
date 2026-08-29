@@ -1,13 +1,13 @@
 #include "Debugger_Cmd_Benchmark.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
-#include "Debugger_Cmd_CPU.h"
-#include "apple2/Apple2Types.h"
+#include "Debugger_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 extern void frame_refresh_status(int);

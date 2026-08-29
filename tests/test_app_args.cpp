@@ -1,3 +1,5 @@
+#include "frontends/common/AppConfig.h"
+#include "LinAppleCore.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstring>
 

@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -11,11 +14,13 @@
 #include "Debugger_Console.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
+#include "Util_Text.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 #define DEBUG_ASSEMBLER 0
 

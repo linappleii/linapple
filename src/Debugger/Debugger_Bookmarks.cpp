@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 #include "Debug.h"
@@ -12,7 +13,6 @@
 #include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "core/Log.h"
 
 // Globals
 int g_bookmarks_count = 0;

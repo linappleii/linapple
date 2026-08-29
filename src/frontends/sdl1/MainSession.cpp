@@ -1,18 +1,13 @@
 #include <SDL/SDL.h>
 #include <curl/curl.h>
+#include <curl/easy.h>
 
-#include <cinttypes>
-#include <cstdio>
-#include <string>
 
-#include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
+#include "SDL_video.h"
+#include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "core/ProgramLoader.h"
-#include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "frontends/common/AppController.h"
 #include "frontends/sdl1/Frame.h"
 #include "frontends/sdl1/Frontend.h"

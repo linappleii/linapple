@@ -2,9 +2,12 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
+#include <cstddef>
 #include <map>
 #include <vector>
 
+#include "Peripheral_Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/Peripheral.h"

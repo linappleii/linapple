@@ -1,7 +1,7 @@
+#include <cstdint>
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 
 // Define the global peripheral provided by the C file

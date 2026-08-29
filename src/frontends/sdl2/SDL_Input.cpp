@@ -1,17 +1,21 @@
-#include <SDL2/SDL.h>
+#include <SDL_keycode.h>
+#include <SDL_events.h>
+#include <SDL_video.h>
+#include <SDL_scancode.h>
+#include <cstdio>
+#include <cstdint>
+#include <SDL_keyboard.h>
+#include <SDL_mouse.h>
+#include <cstddef>
 
 #include "Debugger/Debug.h"
-#include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/joystick/Joystick.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/Frontend.h"

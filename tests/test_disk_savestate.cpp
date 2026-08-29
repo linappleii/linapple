@@ -1,3 +1,5 @@
+#include <string>
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
@@ -5,8 +7,6 @@
 #include <cstring>
 #include <vector>
 
-#include "apple2/Memory.h"
-#include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"

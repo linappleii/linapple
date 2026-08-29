@@ -1,3 +1,6 @@
+#include "Peripheral_Types.h"
+#include <cstdint>
+#include <atomic>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <chrono>
 #include <cstdio>
@@ -5,14 +8,12 @@
 #include <cstring>
 #include <string>
 #include <thread>
-#include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

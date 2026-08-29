@@ -1,16 +1,10 @@
-#include <array>
-#include <cstddef>
 #include <cstring>
 
-#include "Debugger_Commands.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
 

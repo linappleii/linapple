@@ -1,6 +1,7 @@
 #include <unistd.h>
 
-#include <iostream>
+#include <cstdint>
+#include <cstddef>
 
 #include "TuiAudio.h"
 #include "TuiInput.h"
@@ -8,7 +9,6 @@
 #include "TuiVideo.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"

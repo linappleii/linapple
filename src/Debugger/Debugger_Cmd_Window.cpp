@@ -1,23 +1,19 @@
 #include "Debugger_Cmd_Window.h"
 
 #include <cassert>
-#include <cstddef>
+#include <cstdint>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
-#include "Debugger_Color.h"
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Memory.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "Video.h"
-#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
 extern int g_window_last;

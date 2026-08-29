@@ -1,21 +1,19 @@
 #include "TuiAudio.h"
 
-#include <unistd.h>
+#include <pulse/sample.h>
+#include <pulse/def.h>
 
 #include <array>
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <mutex>
 #include <thread>
-#include <vector>
 
 #include "core/AudioMixer.h"
 
 #ifdef HAVE_PULSE_SIMPLE
-#include <pulse/error.h>
 #include <pulse/simple.h>
 static pa_simple* g_pa_handle = nullptr;
 #endif

@@ -1,19 +1,17 @@
 #include "TuiVideo.h"
 
+#include <asm-generic/ioctls.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
-#include <string>
 #include <vector>
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 struct TuiPixel_t {
   uint8_t r, g, b;

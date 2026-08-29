@@ -1,16 +1,20 @@
+#include "AppConfig.h"
+#include <cstring>
+#include <string>
+#include "DiskCommands.h"
+#include <cstddef>
+#include "Peripheral_Types.h"
+#include "Apple2Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
 #include <fstream>
 
 #include "apple2/Video.h"
-#include "apple2/peripherals/disk/Disk.h"
 #include "core/LinAppleCore.h"
-#include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
-#include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
 

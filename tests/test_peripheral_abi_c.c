@@ -1,4 +1,4 @@
-#include <string.h>
+#include <stdint.h>
 
 #include "core/Peripheral.h"
 

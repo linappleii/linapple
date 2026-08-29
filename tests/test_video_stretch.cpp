@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <cstdint>
-#include <vector>
 
 #include "doctest.h"
 #include "frontends/common/VideoStretch.h"

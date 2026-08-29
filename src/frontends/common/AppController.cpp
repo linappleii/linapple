@@ -2,8 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <string>
+#include <unistd.h>
 
+#include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"

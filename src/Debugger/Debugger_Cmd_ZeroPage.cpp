@@ -1,6 +1,6 @@
 #include "Debugger_Cmd_ZeroPage.h"
 
-#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 
 #include "Debug.h"
@@ -9,11 +9,7 @@
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
+#include "Debugger_Types.h"
 
 // Globals originally from Debug.cpp
 extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];

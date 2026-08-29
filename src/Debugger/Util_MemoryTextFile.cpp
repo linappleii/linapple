@@ -6,8 +6,6 @@
 #include <cstring>
 #include <string>
 
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 

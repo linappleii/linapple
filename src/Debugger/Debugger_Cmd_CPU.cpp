@@ -1,29 +1,26 @@
 #include "Debugger_Cmd_CPU.h"
+#include <cstdint>
+#include <string>
 
 #include "Debug.h"
+#include "Debugger_Types.h"
+#include "Debugger_Console.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 extern void frame_refresh_status(int);
 #include <cassert>
-#include <cstddef>
 #include <cstdio>
 
 #include "Debugger_Assembler.h"
-#include "Debugger_Cmd_Benchmark.h"
-#include "Debugger_Cmd_Config.h"
-#include "Debugger_Cmd_Output.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
-#include "Video.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/AudioMixer.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
 
 // Definitions

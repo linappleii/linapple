@@ -1,13 +1,15 @@
+#include <cstdint>
+#include "Peripheral_Types.h"
+#include "Apple2Types.h"
+#include <vector>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <atomic>
 #include <cstring>
 #include <thread>
 
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 
 // --- Dummy Peripheral Implementation ---

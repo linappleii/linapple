@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 

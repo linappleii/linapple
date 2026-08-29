@@ -1,20 +1,16 @@
-#include <SDL2/SDL.h>
-#include <sys/stat.h>
 
+#include <cstdint>
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <string>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskFTP.h"
-#include "apple2/peripherals/disk/ftpparse.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/sdl2/DiskChoose.h"
-#include "frontends/sdl2/DiskUI.h"
 #include "frontends/sdl2/Frame.h"
 
 void DiskSelectImage(int drive, char* pszFilename) {

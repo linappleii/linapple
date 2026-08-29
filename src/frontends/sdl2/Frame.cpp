@@ -24,15 +24,33 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/sdl2/Frame.h"
 
 #include <SDL2/SDL.h>
+#include <SDL_surface.h>
+#include <SDL_video.h>
+#include <SDL_render.h>
+#include <SDL_rect.h>
+#include <SDL_pixels.h>
+#include <SDL_stdinc.h>
+#include <SDL_blendmode.h>
+#include <SDL_events.h>
+#include <SDL_keycode.h>
+#include <SDL_timer.h>
+#include <SDL_keyboard.h>
+#include <SDL_mouse.h>
+#include <SDL_error.h>
+#include <SDL_messagebox.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 #include "Debugger/Debug.h"
+#include "DiskError.h"
+#include "VideoSurface.h"
+#include "Peripheral_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -41,8 +59,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "apple2/peripherals/printer/Printer.h"
-#include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"

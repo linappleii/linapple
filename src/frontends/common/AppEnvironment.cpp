@@ -1,14 +1,14 @@
 #include "frontends/common/AppEnvironment.h"
 
-#include <unistd.h>
-
 #include <string>
 #include <vector>
 
+#include "LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/AppConfig.h"
 
 static constexpr const char* CONFIG_FILE_NAME = "linapple.conf";
 

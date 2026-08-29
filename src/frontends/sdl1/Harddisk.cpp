@@ -1,11 +1,10 @@
-#include <sys/stat.h>
 
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
 
-#include "apple2/Apple2Types.h"
+#include "Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"

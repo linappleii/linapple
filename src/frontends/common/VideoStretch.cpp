@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include "VideoSurface.h"
 
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic):
 // Low-level pixel stretching and scanline blitting routines operating on raw

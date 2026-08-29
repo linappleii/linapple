@@ -1,5 +1,7 @@
-#include <SDL/SDL.h>
+#include <string>
+#include <cstdio>
 
+#include "SDL_video.h"
 #include "core/Asset.h"
 #include "core/Util_Path.h"
 

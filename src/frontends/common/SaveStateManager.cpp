@@ -3,14 +3,15 @@
 
 #include <unistd.h>
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 
+#include "LinAppleCore.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/Log.h"
-#include "core/Util_Path.h"
 
 constexpr const char* default_snapshot_name = "SaveState.aws";
 

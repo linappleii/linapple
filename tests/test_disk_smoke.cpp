@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <vector>
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdio>
 #include <cstdlib>
@@ -9,7 +12,6 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

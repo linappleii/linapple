@@ -13,5 +13,5 @@
 #    pattern in this emulator's procedural architecture.
 
 Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,misc-include-cleaner,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'
-WarningsAsErrors: ''
-HeaderFilterRegex: ''
+WarningsAsErrors: 'misc-include-cleaner'
+HeaderFilterRegex: 'src/.*'

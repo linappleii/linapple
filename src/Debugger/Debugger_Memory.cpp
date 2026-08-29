@@ -2,7 +2,10 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <string>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
@@ -12,12 +15,11 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Range.h"
 #include "Debugger_Symbols.h"
+#include "Debugger_Types.h"
 #include "Video.h"
 #include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "core/Util_Path.h"
 
 // Globals

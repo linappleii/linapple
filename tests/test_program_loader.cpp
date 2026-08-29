@@ -1,13 +1,13 @@
+#include <cstdint>
+#include <stdio.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstdio>
 #include <cstring>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "core/ProgramLoader.h"
 #include "core/Util_Path.h"
 #include "doctest.h"

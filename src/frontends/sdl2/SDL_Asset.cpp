@@ -1,4 +1,6 @@
-#include <SDL2/SDL.h>
+#include <SDL_surface.h>
+#include <string>
+#include <cstdio>
 
 #include "core/Asset.h"
 #include "core/Util_Path.h"

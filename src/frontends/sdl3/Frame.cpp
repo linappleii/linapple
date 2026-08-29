@@ -23,16 +23,33 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "frontends/sdl3/Frame.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_blendmode.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_keycode.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_messagebox.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
+#include "VideoSurface.h"
+#include "DiskError.h"
+#include "Peripheral_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
@@ -43,7 +60,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
-#include "Debugger_Display.h"
 #endif
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -51,8 +67,6 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/peripherals/printer/Printer.h"
-#include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"

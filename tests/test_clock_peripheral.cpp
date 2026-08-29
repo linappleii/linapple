@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <ctime>
 #include <map>
 #include <vector>
 
+#include "Peripheral_Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/clock/Clock.h"
 #include "core/Peripheral.h"

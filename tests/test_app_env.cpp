@@ -1,5 +1,9 @@
+#include "AppConfig.h"
+#include "LinAppleCore.h"
+#include <cstring>
+#include <stdio.h>
+#include "Util_Path.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <cstdlib>
 #include <fstream>
 
 #include "core/Registry.h"

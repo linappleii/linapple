@@ -1,23 +1,17 @@
+#include <cstdint>
+#include <stdio.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <chrono>
-#include <climits>
 #include <cstdio>
 #include <cstring>
-#include <thread>
 #include <vector>
 
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Peripheral_Internal.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"

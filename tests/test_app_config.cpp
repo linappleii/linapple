@@ -1,3 +1,7 @@
+#include "apple2/Apple2Types.h"
+#include "LinAppleCore.h"
+#include <cstring>
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "core/Registry.h"
 #include "core/Util_Text.h"

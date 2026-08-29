@@ -2,6 +2,7 @@
 
 #include "frontends/common/VideoSurface.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

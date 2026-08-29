@@ -1,6 +1,7 @@
 #include "Debugger_Cmd_Config.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -13,8 +14,9 @@
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
+#include "LinAppleCore.h"
 #include "Util_MemoryTextFile.h"
-#include "core/Util_Text.h"
+#include "Video.h"
 
 // Globals originally from Debug.cpp
 bool g_config_disasm_address_view = true;

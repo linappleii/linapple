@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <algorithm>
 #include <array>
 #include <cstring>
 #include <map>

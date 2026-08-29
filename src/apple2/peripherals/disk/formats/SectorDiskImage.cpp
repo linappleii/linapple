@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <memory>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"

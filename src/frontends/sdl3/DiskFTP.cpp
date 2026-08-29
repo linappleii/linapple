@@ -2,9 +2,9 @@
 
 #include <sys/stat.h>
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -12,9 +12,7 @@
 #include <memory>
 #include <new>
 #include <string>
-#include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"

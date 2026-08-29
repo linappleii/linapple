@@ -27,20 +27,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "Debugger_Symbols.h"
+#include <strings.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
-#include <vector>
 
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
+#include "LinAppleCore.h"
+#include "Util_Path.h"
 #include "apple2/Apple2Types.h"
 #include "core/Util_Text.h"
 

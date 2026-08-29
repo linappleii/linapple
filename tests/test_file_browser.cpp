@@ -1,6 +1,7 @@
+#include <cstdint>
+#include <ios>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <cstring>

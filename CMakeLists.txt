@@ -7,6 +7,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-ffunction-sections -fdata-sections)

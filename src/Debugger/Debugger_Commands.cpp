@@ -26,21 +26,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debugger_Commands.h"
 
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <vector>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
+#include "Debugger_Bookmarks.h"
+#include "Debugger_Breakpoints.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Console.h"
-#include "Debugger_Display.h"
 #include "Debugger_Help.h"
 #include "Debugger_Memory.h"
 #include "Debugger_Parser.h"
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Log.h"
-#include "core/Util_Path.h"
+#include "Debugger_Types.h"
 
 // Globals
 std::vector<Command_t> g_sorted_commands;

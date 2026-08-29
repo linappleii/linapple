@@ -1,12 +1,18 @@
 #include <SDL/SDL.h>
+#include <cstdint>
+#include <stdlib.h>
+#include <string>
+#include <cstddef>
 
-#include "apple2/Apple2Types.h"
+#include "SDL_stdinc.h"
+#include "SDL_video.h"
+#include "SDL_events.h"
+#include "SDL_keysym.h"
 #include "apple2/Video.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
-#include "frontends/common/AppController.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
 #include "frontends/sdl1/Frontend.h"

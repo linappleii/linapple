@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/sdl2/JoystickFrontend.h"
+#include <SDL_joystick.h>
+#include <SDL_timer.h>
+#include <SDL_keycode.h>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
-#include <iostream>
 
-#include "SDL2/SDL.h"
-#include "apple2/Apple2Types.h"
-#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 
 enum {
   DEVICE_NONE = 0,

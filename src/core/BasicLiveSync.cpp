@@ -2,6 +2,7 @@
 #include "core/BasicLiveSync.h"
 
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <algorithm>
 #include <array>
@@ -10,19 +11,21 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <fstream>
+#include <ios>
+#include <iterator>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #if defined(__linux__)
-#include <fcntl.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 #endif
 
 #include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/Log.h"
 

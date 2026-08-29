@@ -1,22 +1,20 @@
-#include <algorithm>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
-#include <string>
-#include <vector>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_Bookmarks.h"
 #include "Debugger_Breakpoints.h"
-#include "Debugger_DisassemblerData.h"
+#include "Debugger_Color.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
-#include "apple2/Apple2Types.h"
+#include "Util_MemoryTextFile.h"
+#include "Debugger_Types.h"
+#include "Video.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_window_this;

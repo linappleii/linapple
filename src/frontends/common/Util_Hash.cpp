@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <new>
 
 using Uint4_t = uint32_t;
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
-#include <cstdio>
 #include <cstring>
 #include <memory>
 
@@ -11,9 +11,7 @@
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
 #include "core/Peripheral_Internal.h"
-#include "core/Util_Path.h"
 #include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
 

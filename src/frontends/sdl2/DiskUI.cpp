@@ -1,6 +1,5 @@
 #include "frontends/sdl2/DiskUI.h"
 
-#include <cstring>
 
 #include "apple2/peripherals/disk/DiskError.h"
 

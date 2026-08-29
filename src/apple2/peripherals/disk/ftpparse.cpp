@@ -26,11 +26,12 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include "apple2/peripherals/disk/ftpparse.h"
 
 #include <curl/curl.h>
+#include <curl/system.h>
+#include <curl/easy.h>
 
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <ctime>
 
 #include "core/LinAppleCore.h"
