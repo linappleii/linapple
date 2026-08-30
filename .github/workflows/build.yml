@@ -226,15 +226,16 @@ jobs:
       - name: Configure
         run: |
           cmake -B build -G Ninja \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DFRONTEND=all \
             -DBUILD_TESTING=OFF \
-            -DENABLE_CLANG_TIDY=ON \
             -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build --target generate_xpms
+
       - name: Build & Analyze
-        run: cmake --build build -j$(nproc)
+        run: |
+          run-clang-tidy -p build -j$(nproc) -quiet "src/.*"
 
   # 6. Fuzzing Smoke Test (libFuzzer + ASan/UBSan)
   fuzz-smoke:
