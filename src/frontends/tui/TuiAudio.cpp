@@ -37,16 +37,10 @@ static constexpr int buffer_ms = 40;
 static constexpr int req_ms = 10;
 
 static void AudioThreadFunc() {
-  std::array<int16_t, chunk_frames> mono_buffer{};
   std::array<int16_t, chunk_frames * channels> stereo_buffer{};
 
   while (g_audio_running) {
-    audio_mixer_get_samples(mono_buffer.data(), chunk_frames);
-
-    for (size_t i = 0; i < chunk_frames; ++i) {
-      stereo_buffer.at(i * 2) = mono_buffer.at(i);
-      stereo_buffer.at(i * 2 + 1) = mono_buffer.at(i);
-    }
+    audio_mixer_get_samples(stereo_buffer.data(), stereo_buffer.size());
 
     if (g_driver == AudioDriver::Pulse) {
 #ifdef HAVE_PULSE_SIMPLE
@@ -60,7 +54,7 @@ static void AudioThreadFunc() {
       snd_pcm_sframes_t frames =
           snd_pcm_writei(g_alsa_handle, stereo_buffer.data(), chunk_frames);
       if (frames < 0) {
-        snd_pcm_prepare(g_alsa_handle);
+        snd_pcm_recover(g_alsa_handle, static_cast<int>(frames), 1);
       }
 #endif
     } else {

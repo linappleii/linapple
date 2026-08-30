@@ -1,7 +1,7 @@
-#include <unistd.h>
-
-#include <cstdint>
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
+#include <thread>
 
 #include "TuiAudio.h"
 #include "TuiInput.h"
@@ -61,8 +61,9 @@ auto main(int argc, char** argv) -> int {
   AppController_LoadInitialMedia(&config);
 
   constexpr int apple2_frame_cycles = 17030;
-  constexpr int target_frame_ms = 16;
-  constexpr int MS_TO_US = 1000;
+  constexpr auto frame_duration = std::chrono::microseconds(16650);
+
+  auto next_frame = std::chrono::steady_clock::now();
 
   // Run until interrupted
   while (!tui_terminal_is_interrupted()) {
@@ -74,7 +75,14 @@ auto main(int argc, char** argv) -> int {
     tui_input_poll();
 
     linapple_run_frame(apple2_frame_cycles);
-    usleep(target_frame_ms * MS_TO_US);
+
+    next_frame += frame_duration;
+    auto now = std::chrono::steady_clock::now();
+    if (now < next_frame) {
+      std::this_thread::sleep_until(next_frame);
+    } else {
+      next_frame = now;
+    }
   }
 
   AppController_Shutdown();
