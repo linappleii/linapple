@@ -232,6 +232,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build --target generate_xpms
+          python3 -c "import json; f=open('build/compile_commands.json', 'r+'); cmds=json.load(f); seen=set(); unique=[c for c in cmds if not (c['file'] in seen or seen.add(c['file']))]; f.seek(0); f.truncate(); json.dump(unique, f, indent=2); f.close()"
 
       - name: Build & Analyze
         run: |
