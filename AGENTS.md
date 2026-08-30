@@ -43,6 +43,8 @@ More on building in <!-- Imported from: INSTALL.md -->
 
 ## Testing
 - **Prerequisite:** CMake must be configured with testing enabled (`cmake -B build` or explicitly `-DBUILD_TESTING=ON`).
+- **Iterative Testing & Verification:** During normal development, ALWAYS favor targeted testing and building specific targets (e.g. `cmake --build build --target test-integration`, `ctest --test-dir build -R <pattern>`, or running `clang-tidy` on individual modified files).
+- **Full End-to-End Build Rule:** Never run a full, global project rebuild with `CMAKE_CXX_CLANG_TIDY` enabled across all targets willy-nilly. Full end-to-end static analysis builds across all 53+ test targets take hours and must ONLY be run when explicitly requested by the user.
 - **Integration Tests:** `ctest --test-dir build` or run individual test binaries like `build/test-integration`.
 - **CPU Tests:** `scripts/run_cpu_tests.sh` (requires `EMULATOR` env var pointing to the binary).
 - **CI/CD Workflows:** Use `act` to run GitHub Actions locally. Run `act -l` to list jobs, and `act -j <job_id>` (e.g., `act -j headless-build`) to run a specific job using Docker.
