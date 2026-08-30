@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/sdl2/JoystickFrontend.h"
+
 #include <SDL_joystick.h>
-#include <SDL_timer.h>
 #include <SDL_keycode.h>
+#include <SDL_timer.h>
 
 #include <array>
 #include <cstdint>

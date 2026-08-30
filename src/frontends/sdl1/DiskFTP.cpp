@@ -29,9 +29,14 @@
 // delay after key pressed (in milliseconds??)
 
 // define time when cache ftp dir.listing must be refreshed
-static constexpr int renew_time = 24 * 3600;
+static constexpr int renew_time = 86400;
 
-static std::array<char, 512> g_ftp_dir_listing = {
+static constexpr size_t FTP_DIR_LISTING_CAP = 512;
+static constexpr size_t FTP_DIR_PATH_CAP = 1024;
+static constexpr size_t EXT_LIST_CAP = 256;
+static constexpr int HARDDISK_SLOT = 7;
+
+static std::array<char, FTP_DIR_LISTING_CAP> g_ftp_dir_listing = {
     {"cache/ftp."}};  // name for FTP-directory listing
 
 struct FtpGeneratorContext_t {
@@ -47,7 +52,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   FileList_t* list = file_browser_create_list();
   if (!list) return nullptr;
 
-  std::array<char, 1024> ftpdirpath;
+  std::array<char, FTP_DIR_PATH_CAP> ftpdirpath;
   int l = snprintf(ftpdirpath.data(), ftpdirpath.size(), "%s/%s%s",
                    g_state.ftp_local_dir.data(), g_ftp_dir_listing.data(),
                    md5str(ctx->directory.c_str()));
@@ -91,7 +96,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
     FileBrowser_AppendEntry(list, &up_entry);
   }
 
-  std::array<char, 1024> line;
+  std::array<char, FTP_DIR_PATH_CAP> line;
   while (fgets(line.data(), line.size(), fdir.get())) {
     struct ftpparse fp;
     if (ftpparse(&fp, line.data(), strlen(line.data()))) {
@@ -173,10 +178,10 @@ FileListGenerator_t* file_browser_create_ftp_generator(
 auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
-  char supported_exts[256] = {};
+  char supported_exts[EXT_LIST_CAP] = {};
   size_t exts_size = sizeof(supported_exts);
-  if (slot == 7) {
-    (void)peripheral_query(7, harddisk_cmd_get_supported_extensions,
+  if (slot == HARDDISK_SLOT) {
+    (void)peripheral_query(HARDDISK_SLOT, harddisk_cmd_get_supported_extensions,
                            supported_exts, &exts_size);
   } else {
     (void)peripheral_query(slot, disk_cmd_get_supported_extensions,

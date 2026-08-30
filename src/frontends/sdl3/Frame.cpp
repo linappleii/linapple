@@ -23,21 +23,21 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "frontends/sdl3/Frame.h"
 
-#include <SDL3/SDL_surface.h>
-#include <SDL3/SDL_video.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_rect.h>
-#include <SDL3/SDL_pixels.h>
-#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_blendmode.h>
+#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
-#include <SDL3/SDL_timer.h>
-#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keyboard.h>
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_messagebox.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_video.h>
 #include <sys/stat.h>
 
 #include <array>
@@ -47,14 +47,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstring>
 #include <string>
 
-#include "VideoSurface.h"
-#include "DiskError.h"
-#include "Peripheral_Types.h"
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Util_Path.h"
+#include "frontends/common/VideoSurface.h"
 #include "frontends/sdl3/Frontend.h"
 #include "frontends/sdl3/SDL_Video.h"
 auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "LinAppleCore.h"
+#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"

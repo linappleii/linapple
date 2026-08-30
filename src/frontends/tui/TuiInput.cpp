@@ -51,6 +51,12 @@ static auto map_key(uint8_t a2_code) -> void {
   linapple_set_key_state(a2_code, false);
 }
 
+constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
+constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
+constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
+constexpr uint8_t ASCII_PRINTABLE_MAX = 127;
+constexpr size_t INPUT_BUFFER_SIZE = 256;
+
 static auto process_sequences() -> void {
   size_t i = 0;
   while (i < g_input_queue.size()) {
@@ -62,7 +68,8 @@ static auto process_sequences() -> void {
       if (g_input_queue.at(i + 1) == '[') {
         size_t end = i + 2;
         while (end < g_input_queue.size() &&
-               (g_input_queue.at(end) < 0x40 || g_input_queue.at(end) > 0x7E)) {
+               (g_input_queue.at(end) < ANSI_FINAL_BYTE_MIN ||
+                g_input_queue.at(end) > ANSI_FINAL_BYTE_MAX)) {
           end++;
         }
 
@@ -107,7 +114,7 @@ static auto process_sequences() -> void {
     }
 
     uint8_t b = g_input_queue.at(i);
-    if (b >= 32 && b < 127) {
+    if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
       map_key(b);
     } else if (b == a2_key_enter) {
       map_key(a2_key_enter);
@@ -124,7 +131,7 @@ static auto process_sequences() -> void {
 }
 
 auto tui_input_poll() -> void {
-  std::array<uint8_t, 256> buf{};
+  std::array<uint8_t, INPUT_BUFFER_SIZE> buf{};
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
     for (ssize_t j = 0; j < n; ++j) {

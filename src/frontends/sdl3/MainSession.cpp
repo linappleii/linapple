@@ -3,7 +3,6 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
-
 #include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
@@ -21,7 +20,12 @@ static bool g_budget_video = false;
 void set_budget_video(bool b) { g_budget_video = b; }
 auto get_budget_video() -> bool { return g_budget_video; }
 
-void set_current_clk_6502() { g_current_clk_6502 = 1.023 * 1000000.0; }
+constexpr double CPU_CLOCK_MHZ = 1.023;
+constexpr double CLOCK_HZ_PER_MHZ = 1000000.0;
+
+void set_current_clk_6502() {
+  g_current_clk_6502 = CPU_CLOCK_MHZ * CLOCK_HZ_PER_MHZ;
+}
 
 void SingleStep(bool is_reinit) {
   (void)is_reinit;

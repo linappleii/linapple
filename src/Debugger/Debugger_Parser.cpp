@@ -1,12 +1,13 @@
 #include "Debugger_Parser.h"
+
 #include <strings.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <cstdint>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -15,8 +16,8 @@
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
-#include "Debugger_Types.h"
 #include "Debugger_Memory.h"
+#include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"

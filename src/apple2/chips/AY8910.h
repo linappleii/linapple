@@ -1,14 +1,16 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 constexpr int MAX_8910 = 4;
+constexpr size_t AY8910_NUM_REGISTERS = 16;
 
 // AY-3-8910 emulation
 // Based on General Instrument AY-3-8910 Datasheet
 
 struct Ay8910_t {
-  uint8_t regs[16] = {};
+  uint8_t regs[AY8910_NUM_REGISTERS] = {};
   uint16_t count_a = 0, count_b = 0, count_c = 0;
   uint8_t out_a = 0, out_b = 0, out_c = 0;
 

@@ -6,8 +6,8 @@
 #include <cstring>
 
 #include "SDL_joystick.h"
-#include "SDL_timer.h"
 #include "SDL_keysym.h"
+#include "SDL_timer.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"

@@ -26,12 +26,17 @@ struct HelpEntry_t {
 
 Update_t HelpLastCommand();
 
+constexpr uint32_t BYTE3_SHIFT = 24;
+constexpr uint32_t BYTE2_SHIFT = 16;
+constexpr uint32_t BYTE1_SHIFT = 8;
+constexpr uint32_t BYTE_MASK = 0xFF;
+
 inline void UnpackVersion(const uint32_t nVersion, int& nMajor_, int& nMinor_,
                           int& nFixMajor_, int& nFixMinor_) {
-  nMajor_ = (nVersion >> 24) & 0xFF;
-  nMinor_ = (nVersion >> 16) & 0xFF;
-  nFixMajor_ = (nVersion >> 8) & 0xFF;
-  nFixMinor_ = (nVersion >> 0) & 0xFF;
+  nMajor_ = static_cast<int>((nVersion >> BYTE3_SHIFT) & BYTE_MASK);
+  nMinor_ = static_cast<int>((nVersion >> BYTE2_SHIFT) & BYTE_MASK);
+  nFixMajor_ = static_cast<int>((nVersion >> BYTE1_SHIFT) & BYTE_MASK);
+  nFixMinor_ = static_cast<int>(nVersion & BYTE_MASK);
 }
 
 bool TestStringCat(char* pDst, const char* src_ptr, const int nDstSize);

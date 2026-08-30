@@ -28,7 +28,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
 
   while (isdir) {
     if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
-                         6, filename, isdir, fileIndex)) {
+                         disk_default_slot, filename, isdir, fileIndex)) {
       DrawFrameWindow();
       return;
     }

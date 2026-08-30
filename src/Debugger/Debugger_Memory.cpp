@@ -16,9 +16,9 @@
 #include "Debugger_Range.h"
 #include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
-#include "Video.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
+#include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 

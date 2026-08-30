@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debugger_Color.h"
 
+#include <cstdint>
 #include <cstdio>
 
 #include "Debug.h"
@@ -242,10 +243,12 @@ void ConfigColorsReset() {
 #endif
 }
 
+constexpr uint8_t BYTE_MASK = 0xFF;
+
 void _ColorPrint(int iColor, ColorRef_t nColor) {
-  int R = (nColor >> 0) & 0xFF;
-  int G = (nColor >> 8) & 0xFF;
-  int B = (nColor >> 16) & 0xFF;
+  int R = static_cast<int>(nColor & BYTE_MASK);
+  int G = static_cast<int>((nColor >> GREEN_SHIFT) & BYTE_MASK);
+  int B = static_cast<int>((nColor >> BLUE_SHIFT) & BYTE_MASK);
 
   char sText[CONSOLE_WIDTH];
   ConsoleBufferPushFormat(sText, " Color %01X: %02X %02X %02X", iColor, R, G,

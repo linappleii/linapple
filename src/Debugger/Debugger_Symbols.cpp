@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "Debugger_Symbols.h"
+
 #include <strings.h>
 
 #include <cassert>
@@ -41,9 +42,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
-#include "LinAppleCore.h"
-#include "Util_Path.h"
 #include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 // 2.6.2.13 Added: Can now enable/disable selected symbol table(s) !

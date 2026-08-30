@@ -18,6 +18,8 @@ constexpr char ftp_separator = '/';
 
 namespace Path {
 
+constexpr mode_t DEFAULT_MKDIR_MODE = 0755;
+
 // Ensure directory exists (creates it recursively if it doesn't)
 inline void EnsureDirExists(const std::string& path) {
   size_t pos = 0;
@@ -27,7 +29,7 @@ inline void EnsureDirExists(const std::string& path) {
     if (!subdir.empty() && subdir != "/") {
       struct stat st;
       if (stat(subdir.c_str(), &st) != 0) {
-        mkdir(subdir.c_str(), 0755);
+        mkdir(subdir.c_str(), DEFAULT_MKDIR_MODE);
       }
     }
   } while (pos != std::string::npos);

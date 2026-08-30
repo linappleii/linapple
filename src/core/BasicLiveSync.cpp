@@ -51,6 +51,15 @@ constexpr uint16_t max_line_number = 63999;
 constexpr size_t max_input_line_len = 255;
 constexpr size_t inotify_event_buf_size = 4096;
 constexpr int frame_check_interval = 15;
+constexpr uint8_t BYTE_SHIFT = 8;
+constexpr uint8_t BYTE_MASK = 0xFF;
+constexpr uint32_t DJB2_INIT = 5381;
+constexpr uint32_t DJB2_SHIFT = 5;
+constexpr unsigned char ASCII_PRINTABLE_MIN = 32;
+constexpr unsigned char ASCII_PRINTABLE_MAX = 126;
+constexpr uint8_t TOKEN_REM = 0xB2;
+constexpr uint8_t HIGH_BIT_MASK = 0x80;
+constexpr uint8_t ASCII_7BIT_MASK = 0x7F;
 
 struct TokenDef_t {
   uint8_t token;
@@ -231,22 +240,22 @@ static auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
   if (m_high == nullptr) {
     return fallback;
   }
-  return static_cast<uint16_t>(*m | (*m_high << 8));
+  return static_cast<uint16_t>(*m | (*m_high << BYTE_SHIFT));
 }
 
 static auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
   uint8_t* m = get_ram_byte_ptr(addr);
   uint8_t* m_high = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
   if (m != nullptr && m_high != nullptr) {
-    *m = static_cast<uint8_t>(val & 0xFF);
-    *m_high = static_cast<uint8_t>((val >> 8) & 0xFF);
+    *m = static_cast<uint8_t>(val & BYTE_MASK);
+    *m_high = static_cast<uint8_t>((val >> BYTE_SHIFT) & BYTE_MASK);
   }
 }
 
 static auto compute_string_hash(const std::string& str) -> uint32_t {
-  uint32_t hash = 5381;
+  uint32_t hash = DJB2_INIT;
   for (char ch : str) {
-    hash = ((hash << 5) + hash) + static_cast<unsigned char>(ch);
+    hash = ((hash << DJB2_SHIFT) + hash) + static_cast<unsigned char>(ch);
   }
   return hash;
 }
@@ -260,13 +269,13 @@ static auto compute_program_hash() -> uint32_t {
     return 0;
   }
 
-  uint32_t hash = 5381;
+  uint32_t hash = DJB2_INIT;
   for (uint32_t addr = txttab; addr < end_addr; ++addr) {
     uint8_t* ptr = get_ram_byte_ptr(static_cast<uint16_t>(addr));
     if (ptr == nullptr) {
       break;
     }
-    hash = ((hash << 5) + hash) + *ptr;
+    hash = ((hash << DJB2_SHIFT) + hash) + *ptr;
   }
   return hash;
 }
@@ -282,7 +291,7 @@ static auto sanitize_and_truncate_line(const std::string& input,
 
   for (char ch : input) {
     auto uch = static_cast<unsigned char>(ch);
-    if (uch >= 32 && uch <= 126) {
+    if (uch >= ASCII_PRINTABLE_MIN && uch <= ASCII_PRINTABLE_MAX) {
       if (force_uppercase && uch >= 'a' && uch <= 'z') {
         result.push_back(static_cast<char>(uch - ('a' - 'A')));
       } else {
@@ -345,7 +354,7 @@ static auto tokenize_line_content(const std::string& content,
       const auto& t = k_applesoft_tokens.at(k);
       if (iequals_prefix(content, i, t.name, t.length)) {
         tokens.push_back(t.token);
-        if (t.token == 0xB2) {  // REM
+        if (t.token == TOKEN_REM) {
           in_rem = true;
         }
         i += t.length;
@@ -465,13 +474,13 @@ auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
       break;
     }
 
-    uint16_t next_line = static_cast<uint16_t>(ptr[0] | (ptr[1] << 8));
+    uint16_t next_line = static_cast<uint16_t>(ptr[0] | (ptr[1] << BYTE_SHIFT));
     if (next_line == 0 || next_line <= current_addr + 4 ||
         next_line > program_end) {
       break;
     }
 
-    uint16_t line_num = static_cast<uint16_t>(ptr[2] | (ptr[3] << 8));
+    uint16_t line_num = static_cast<uint16_t>(ptr[2] | (ptr[3] << BYTE_SHIFT));
     if (line_num > max_line_number) {
       break;
     }
@@ -504,15 +513,15 @@ auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
       if (b == '"') {
         in_quotes = !in_quotes;
         ss << '"';
-      } else if (in_quotes || in_rem || b < 0x80) {
-        ss << static_cast<char>(b & 0x7F);
+      } else if (in_quotes || in_rem || b < HIGH_BIT_MASK) {
+        ss << static_cast<char>(b & ASCII_7BIT_MASK);
       } else {
         // Token lookup
         bool found = false;
         for (const auto& t : k_applesoft_tokens) {
           if (t.token == b) {
             ss << t.name;
-            if (b == 0xB2) {  // REM
+            if (b == TOKEN_REM) {
               in_rem = true;
             }
             found = true;
@@ -660,10 +669,10 @@ auto basic_sync_import_from_string(const std::string& text,
       break;
     }
 
-    ptr[0] = static_cast<uint8_t>(next_line_addr & 0xFF);
-    ptr[1] = static_cast<uint8_t>((next_line_addr >> 8) & 0xFF);
-    ptr[2] = static_cast<uint8_t>(line.line_number & 0xFF);
-    ptr[3] = static_cast<uint8_t>((line.line_number >> 8) & 0xFF);
+    ptr[0] = static_cast<uint8_t>(next_line_addr & BYTE_MASK);
+    ptr[1] = static_cast<uint8_t>((next_line_addr >> BYTE_SHIFT) & BYTE_MASK);
+    ptr[2] = static_cast<uint8_t>(line.line_number & BYTE_MASK);
+    ptr[3] = static_cast<uint8_t>((line.line_number >> BYTE_SHIFT) & BYTE_MASK);
 
     for (size_t k = 0; k < line.token_bytes.size(); ++k) {
       ptr[4 + k] = line.token_bytes.at(k);

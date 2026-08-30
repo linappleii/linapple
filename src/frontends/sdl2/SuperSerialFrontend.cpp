@@ -1,4 +1,5 @@
-// NOLINTBEGIN(misc-include-cleaner) - POSIX pthread types defined in glibc internal headers
+// NOLINTBEGIN(misc-include-cleaner) - POSIX pthread types defined in glibc
+// internal headers
 #include "SuperSerialFrontend.h"
 
 #include <fcntl.h>
@@ -26,6 +27,13 @@ static pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t g_comm_thread;
 static volatile bool g_thread_running = false;
 static volatile bool g_thread_terminate = false;
+
+constexpr uint32_t DATA_BITS_5 = 5;
+constexpr uint32_t DATA_BITS_6 = 6;
+constexpr uint32_t DATA_BITS_7 = 7;
+constexpr uint32_t DATA_BITS_8 = 8;
+constexpr size_t SERIAL_RX_BUFFER_SIZE = 256;
+constexpr useconds_t SERIAL_POLL_INTERVAL_US = 1000;
 
 auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
                                              SuperSerialParity_t parity,
@@ -76,16 +84,16 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
   }
 
   switch (bits) {
-    case 5:
+    case DATA_BITS_5:
       l_databits = CS5;
       break;
-    case 6:
+    case DATA_BITS_6:
       l_databits = CS6;
       break;
-    case 7:
+    case DATA_BITS_7:
       l_databits = CS7;
       break;
-    case 8:
+    case DATA_BITS_8:
     default:
       l_databits = CS8;
       break;
@@ -111,7 +119,7 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
 
 auto serial_polling_thread(void* arg) -> void* {
   (void)arg;
-  std::array<uint8_t, 256> buffer{};
+  std::array<uint8_t, SERIAL_RX_BUFFER_SIZE> buffer{};
 
   while (!g_thread_terminate) {
     if (g_comm_handle != -1) {
@@ -126,7 +134,7 @@ auto serial_polling_thread(void* arg) -> void* {
         pthread_mutex_unlock(&g_critical_section);
       }
     }
-    usleep(1000);  // Poll every 1ms
+    usleep(SERIAL_POLL_INTERVAL_US);  // Poll every 1ms
   }
   return nullptr;
 }
@@ -207,4 +215,3 @@ auto super_serial_frontend_send_byte(uint8_t byte) -> void {
 }
 
 // NOLINTEND(misc-include-cleaner)
-

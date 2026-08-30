@@ -1,8 +1,9 @@
 #include "frontends/sdl3/JoystickFrontend.h"
+
 #include <SDL3/SDL_joystick.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_timer.h>
-#include <SDL3/SDL_keycode.h>
 
 #include <array>
 #include <cstdint>

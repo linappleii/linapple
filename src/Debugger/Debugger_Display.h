@@ -31,7 +31,9 @@ extern ColorRef_t g_console_brush_fg;
 extern ColorRef_t g_console_brush_bg;
 
 enum {
+  DISPLAY_WIDTH = 560,
   DISPLAY_HEIGHT = 384,
+  DISPLAY_DISASM_RIGHT = 353,
   MAX_DISPLAY_LINES = DISPLAY_HEIGHT / CONSOLE_FONT_HEIGHT,
 };
 

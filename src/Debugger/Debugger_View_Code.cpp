@@ -10,11 +10,11 @@
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
-#include "Util_MemoryTextFile.h"
 #include "Debugger_Types.h"
-#include "Video.h"
+#include "Util_MemoryTextFile.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/Video.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_window_this;
@@ -35,8 +35,6 @@ extern int g_config_disasm_targets;
 extern bool g_config_info_target_pointer;
 
 // Constants from Debugger_Display.cpp
-const int DISPLAY_DISASM_RIGHT = 353;
-const int DISPLAY_WIDTH = 560;
 const int DISPLAY_FLAG_COLUMN = 357;   // SCREENSPLIT1
 const int DISPLAY_STACK_COLUMN = 357;  // SCREENSPLIT1
 const int MAX_DISPLAY_STACK_LINES = 8;

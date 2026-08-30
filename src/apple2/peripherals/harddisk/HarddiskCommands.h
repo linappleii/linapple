@@ -29,7 +29,7 @@ typedef enum {
   harddisk_cmd_get_supported_extensions = 0x0007
 } HarddiskCmd_e;
 
-enum { harddisk_insert_path_max = 504 };
+enum { harddisk_insert_path_max = 504, harddisk_default_slot = 7 };
 
 typedef struct {
   char path[harddisk_insert_path_max];

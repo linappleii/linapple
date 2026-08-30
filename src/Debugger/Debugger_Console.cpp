@@ -32,10 +32,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <unistd.h>
 
 #include <cassert>
-#include <cstdarg>
-#include <cstdio>
-#include <cstdint>
 #include <cctype>
+#include <cstdarg>
+#include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 #include "Debug.h"
@@ -44,7 +44,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
-#include "Video.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"

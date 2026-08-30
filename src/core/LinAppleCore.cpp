@@ -46,7 +46,7 @@ static const char TITLE_APPLE_2E_[] = "Apple //e Emulator";
 static const char TITLE_APPLE_2E_ENHANCED_[] = "Enhanced Apple //e Emulator";
 
 const char* g_app_title = TITLE_APPLE_2E_ENHANCED_;
-char videoDriverName[100]{};
+char videoDriverName[video_driver_name_max_len]{};
 
 eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
 eApple2Language g_language = A2LANG_US;

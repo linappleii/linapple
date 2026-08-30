@@ -1,12 +1,11 @@
 #include "frontends/sdl1/SDL_Video.h"
 
-
 #include <cstdint>
 #include <mutex>
 
-#include "VideoSurface.h"
 #include "SDL_video.h"
 #include "apple2/Video.h"
+#include "frontends/common/VideoSurface.h"
 
 extern VideoSurface_t* g_debug_screen;
 extern std::recursive_mutex g_video_draw_mutex;
@@ -31,9 +30,10 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
 
   constexpr int bpp_rgba32 = 4;
   constexpr int bpp_index8 = 1;
+  constexpr int BITS_PER_PIXEL_8 = 8;
 
   vs.bpp = bpp_rgba32;  // Assuming RGB32
-  if (s->format->BitsPerPixel == 8) {
+  if (s->format->BitsPerPixel == BITS_PER_PIXEL_8) {
     vs.bpp = bpp_index8;
   }
   // Note: palette is not copied here, but VideoSurface_t has it

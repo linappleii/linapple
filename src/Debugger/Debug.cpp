@@ -54,7 +54,7 @@ int g_disasm_cur_state = CURSOR_NORMAL;
 int g_disasm_win_height = 0;
 
 int g_font_spacing = FONT_SPACING_CLEAN;
-int g_font_height = 8;
+int g_font_height = CONSOLE_FONT_HEIGHT;
 int g_disasm_display_lines = 0;
 
 int g_watches_count = 0;
@@ -81,8 +81,8 @@ bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
   return false;
 }
 
-const int DEBUGGER_VERSION = MAKE_VERSION(2, 9, 0, 15);
+constexpr int DEBUGGER_VERSION = MAKE_VERSION(2, 9, 0, 15);
 
-const int WINDOW_DATA_BYTES_PER_LINE = 8;
+constexpr int WINDOW_DATA_BYTES_PER_LINE = 8;
 
 DebugVideoMode DebugVideoMode::instance_;

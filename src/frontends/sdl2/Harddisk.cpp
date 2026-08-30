@@ -4,12 +4,12 @@
 #include <cstring>
 #include <string>
 
-#include "Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskFTP.h"
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -18,6 +18,8 @@
 
 // Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
 // This file only contains frontend UI functions.
+
+constexpr uint8_t HARDDISK_SLOT = 7;
 
 void HarddiskUI_FTPSelect(int drive) {
   // Selects HDrive from FTP directory
@@ -35,7 +37,8 @@ void HarddiskUI_FTPSelect(int drive) {
   while (isDirectory) {
     if (choose_an_image_ftp(static_cast<int>(g_state.screen_width),
                             static_cast<int>(g_state.screen_height), fullPath,
-                            7, filename, isDirectory, fileIndex) == false) {
+                            HARDDISK_SLOT, filename, isDirectory,
+                            fileIndex) == false) {
       DrawFrameWindow();
       return;
     }
@@ -83,8 +86,8 @@ void HarddiskUI_FTPSelect(int drive) {
     cmd.drive = static_cast<uint8_t>(drive);
     Util_SafeStrCpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
 
-    if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
-        peripheral_ok) {
+    if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
+                           sizeof(cmd)) == peripheral_ok) {
       // save file names for HDD disk 1 or 2
       if (drive != 0) {
         Configuration_t::instance().set_string(
@@ -117,8 +120,9 @@ void HarddiskUI_Select(int drive) {
 
   while (isDirectory) {
     if (choose_an_image(static_cast<int>(g_state.screen_width),
-                        static_cast<int>(g_state.screen_height), fullPath, 7,
-                        filename, isDirectory, fileIndex) == false) {
+                        static_cast<int>(g_state.screen_height), fullPath,
+                        HARDDISK_SLOT, filename, isDirectory,
+                        fileIndex) == false) {
       DrawFrameWindow();
       return;  // if ESC was pressed, just leave
     }
@@ -159,8 +163,8 @@ void HarddiskUI_Select(int drive) {
   cmd.drive = static_cast<uint8_t>(drive);
   Util_SafeStrCpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
 
-  if (peripheral_command(7, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
-      peripheral_ok) {
+  if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
+                         sizeof(cmd)) == peripheral_ok) {
     // save file names for HDD disk 1 or 2
     if (drive != 0) {
       Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,

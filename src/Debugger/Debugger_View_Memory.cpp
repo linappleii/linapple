@@ -14,9 +14,9 @@
 #include "Debugger_Memory.h"
 #include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
-#include "Video.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/Video.h"
 
 // Externs for globals
 extern int g_window_this;
@@ -30,7 +30,6 @@ extern int g_disasm_win_height;
 
 // Constants from Debugger_Display.cpp
 const int DISPLAY_MINIMEM_COLUMN = 357;
-const int DISPLAY_WIDTH = 560;
 const int DISPLAY_REGS_COLUMN = 357;
 const int DISPLAY_SOFTSWITCH_COLUMN = 357;
 const int DISPLAY_TARGETS_COLUMN = 357;

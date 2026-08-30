@@ -1,12 +1,12 @@
 #include "frontends/sdl3/DiskChoose.h"
 
+#include <SDL3/SDL_blendmode.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
-#include <SDL3/SDL_rect.h>
-#include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_blendmode.h>
+#include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_timer.h>
 
 #include <cctype>
@@ -16,13 +16,13 @@
 #include <string>
 #include <vector>
 
-#include "VideoSurface.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/VideoStretch.h"
+#include "frontends/common/VideoSurface.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/SDL_Video.h"
 

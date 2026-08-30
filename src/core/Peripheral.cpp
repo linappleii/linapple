@@ -11,11 +11,11 @@
 #include <queue>
 #include <vector>
 
-#include "LinAppleCore.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/AudioMixer.h"
+#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"

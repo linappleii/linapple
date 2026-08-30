@@ -1,9 +1,9 @@
 #include "Debugger_Cmd_Output.h"
 
 #include <cctype>
-#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 

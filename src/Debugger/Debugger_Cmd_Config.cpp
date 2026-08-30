@@ -14,9 +14,9 @@
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
-#include "LinAppleCore.h"
 #include "Util_MemoryTextFile.h"
-#include "Video.h"
+#include "apple2/Video.h"
+#include "core/LinAppleCore.h"
 
 // Globals originally from Debug.cpp
 bool g_config_disasm_address_view = true;

@@ -1,10 +1,11 @@
 #include "frontends/common/AppController.h"
 
+#include <unistd.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
-#include <unistd.h>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -85,6 +86,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_apple2_type = config->apple2_type;
   }
 
+  constexpr float MIN_SCREEN_FACTOR = 0.25f;
+  constexpr float MAX_SCREEN_FACTOR = 8.0f;
+  constexpr uint32_t CLKS_PER_FRAME_PAL = 20280;
+  constexpr uint32_t CLKS_PER_FRAME_NTSC = 17030;
+  constexpr uint8_t HARDDISK_DEFAULT_SLOT = 7;
+
   std::string factor_str;
   if (config_load_string("Configuration", "Screen factor", &factor_str) ||
       config_load_string("Configuration", "Screen Factor", &factor_str) ||
@@ -92,7 +99,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
       config_load_string("Preferences", "Screen Factor", &factor_str)) {
     try {
       float factor = std::stof(factor_str);
-      if (factor >= 0.25f && factor <= 8.0f) {
+      if (factor >= MIN_SCREEN_FACTOR && factor <= MAX_SCREEN_FACTOR) {
         g_state.screen_width =
             static_cast<int>(static_cast<float>(SCREEN_WIDTH) * factor);
         g_state.screen_height =
@@ -105,11 +112,11 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
-    g_state.clks_per_frame = 20280;
+    g_state.clks_per_frame = CLKS_PER_FRAME_PAL;
   } else {
     g_videotype = VT_COLOR_STANDARD;
     g_state.video_scanner_ntsc = true;
-    g_state.clks_per_frame = 17030;
+    g_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
   }
 
   // 4. Init Snapshots
@@ -164,7 +171,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     }
     Peripheral_t* p = peripheral_find_internal("linapple.harddisk");
     if (p != nullptr) {
-      peripheral_register(p, 7);
+      peripheral_register(p, HARDDISK_DEFAULT_SLOT);
     }
   }
 
@@ -289,7 +296,8 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
       HarddiskInsertCmd_t hcmd{};
       hcmd.drive = static_cast<uint8_t>(i);
       Util_SafeStrCpy(&hcmd.path[0], path, sizeof(hcmd.path));
-      peripheral_command(7, harddisk_cmd_insert, &hcmd, sizeof(hcmd));
+      peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
+                         sizeof(hcmd));
     }
   }
 

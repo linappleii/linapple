@@ -26,8 +26,8 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include "apple2/peripherals/disk/ftpparse.h"
 
 #include <curl/curl.h>
-#include <curl/system.h>
 #include <curl/easy.h>
+#include <curl/system.h>
 
 #include <array>
 #include <cstdint>
@@ -277,6 +277,7 @@ static auto ftpparse_c(char* buf, int len, struct ftpparse* fp) -> int {
     return 0;
   }
   if (*buf == '+') {
+    constexpr int STATE_5 = 5;
     i = 1;
     for (j = 1; j < len; ++j) {
       if (buf[j] == ',') {
@@ -313,10 +314,9 @@ static auto ftpparse_c(char* buf, int len, struct ftpparse* fp) -> int {
           if (buf[i] == '/') {
             fp->flagtrycwd = 1;
           }
-          const int STATE_5 = 5;
           state = STATE_5;
           i = j + 1;
-        } else if (state == 5) {
+        } else if (state == STATE_5) {
           return 1;
         }
       }

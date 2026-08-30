@@ -1,10 +1,11 @@
 #include "Debugger_Cmd_CPU.h"
+
 #include <cstdint>
 #include <string>
 
 #include "Debug.h"
-#include "Debugger_Types.h"
 #include "Debugger_Console.h"
+#include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "core/LinAppleCore.h"

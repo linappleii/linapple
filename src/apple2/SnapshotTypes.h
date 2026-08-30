@@ -5,17 +5,26 @@
 
 #include "apple2/Apple2Types.h"
 #include "apple2/chips/6522.h"
+#include "apple2/chips/AY8910.h"
 #include "apple2/chips/SSI263.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
+constexpr uint32_t NO_REPEAT_KEY = 0xFFFFFFFF;
+
+constexpr uint32_t BYTE3_SHIFT = 24;
+constexpr uint32_t BYTE2_SHIFT = 16;
+constexpr uint32_t BYTE1_SHIFT = 8;
+
 constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
     -> uint32_t {
-  return ((a) << 24) | ((b) << 16) | ((c) << 8) | (d);
+  return ((a) << BYTE3_SHIFT) | ((b) << BYTE2_SHIFT) | ((c) << BYTE1_SHIFT) |
+         (d);
 }
-constexpr uint32_t aw_ss_tag = (('S' << 24) | ('S' << 16) | ('W' << 8) | 'A');
+constexpr uint32_t aw_ss_tag =
+    (('S' << BYTE3_SHIFT) | ('S' << BYTE2_SHIFT) | ('W' << BYTE1_SHIFT) | 'A');
 
 #define MAKE_VERSION(a, b, c, d) make_version(a, b, c, d)
 #define AW_SS_TAG aw_ss_tag
@@ -74,7 +83,7 @@ struct KeyboardSaveState_t {
   uint32_t keys_down_count = 0;
   uint8_t alternate_layout = 0;
 
-  uint32_t repeat_key = 0xFFFFFFFF;
+  uint32_t repeat_key = NO_REPEAT_KEY;
   uint32_t repeat_scancode = 0;
   uint32_t repeat_delay_cycles = 0;
   uint8_t repeating = 0;
@@ -86,8 +95,9 @@ struct SsIoVideo_t {
 };
 using SS_IO_Video = SsIoVideo_t;
 
-constexpr uint32_t mem_main_size = 64 * 1024;
-constexpr uint32_t mem_aux_size = 64 * 1024;
+constexpr uint32_t MEM_64K = 65536;
+constexpr uint32_t mem_main_size = MEM_64K;
+constexpr uint32_t mem_aux_size = MEM_64K;
 constexpr uint32_t nMemMainSize = mem_main_size;
 constexpr uint32_t nMemAuxSize = mem_aux_size;
 
@@ -150,7 +160,7 @@ using SS_PERIPHERAL_INFO = SsPeripheralInfo_t;
 
 struct SsPeripheralManifest_t {
   SsUnitHdr_t unit_hdr;
-  SsPeripheralInfo_t peripherals[8];
+  SsPeripheralInfo_t peripherals[NUM_SLOTS];
 };
 using SS_PERIPHERAL_MANIFEST = SsPeripheralManifest_t;
 
@@ -188,7 +198,7 @@ using SS_CARD_EMPTY = SsCardEmpty_t;
 
 struct MbUnit_t {
   Sy6522_t regs_sy6522;
-  uint8_t regs_ay8910[16];
+  uint8_t regs_ay8910[AY8910_NUM_REGISTERS];
   Ssi263A_t regs_ssi263;
   uint8_t ay_current_register;
   bool timer1_irq_pending;

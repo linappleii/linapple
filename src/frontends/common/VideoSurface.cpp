@@ -34,10 +34,16 @@ auto video_destroy_surface(VideoSurface_t* s) -> void {
   }
 }
 
+constexpr uint8_t HEX_ALPHA_OFFSET = 10;
+constexpr size_t COLOR_STR_SIZE = 32;
+constexpr size_t HEX_COLOR_MIN_LEN = 7;
+constexpr uint8_t OPAQUE_ALPHA = 255;
+constexpr uint8_t NIBBLE_SHIFT = 4;
+
 static auto hex_to_int(char c) -> uint8_t {
   if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + HEX_ALPHA_OFFSET;
+  if (c >= 'a' && c <= 'f') return c - 'a' + HEX_ALPHA_OFFSET;
   return 0;
 }
 
@@ -51,7 +57,8 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
     printf("DEBUG_XPM: sscanf failed on first line!\n");
     return nullptr;
   }
-  if (cpp != 1 || colors < 0 || colors > 256 || w <= 0 || h <= 0) {
+  if (cpp != 1 || colors < 0 || colors > static_cast<int>(VIDEO_PALETTE_SIZE) ||
+      w <= 0 || h <= 0) {
     printf("DEBUG_XPM: validation failed: cpp=%d, colors=%d, w=%d, h=%d\n", cpp,
            colors, w, h);
     return nullptr;
@@ -65,28 +72,31 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
   struct {
     char c;
     VideoColor_t color;
-  } palette_map[256];
+  } palette_map[VIDEO_PALETTE_SIZE];
   for (int i = 0; i < colors; ++i) {
     if (!xpm[1 + i]) {
       video_destroy_surface(s);
       return nullptr;
     }
     char c = 0;
-    char color_str[32] = {0};
+    char color_str[COLOR_STR_SIZE] = {0};
     if (sscanf(xpm[1 + i], "%c c %31s", &c, color_str) != 2) {
       video_destroy_surface(s);
       return nullptr;
     }
     palette_map[i].c = c;
-    if (color_str[0] == '#' && strlen(color_str) >= 7) {
-      uint8_t r = (hex_to_int(color_str[1]) << 4) | hex_to_int(color_str[2]);
-      uint8_t g = (hex_to_int(color_str[3]) << 4) | hex_to_int(color_str[4]);
-      uint8_t b = (hex_to_int(color_str[5]) << 4) | hex_to_int(color_str[6]);
-      palette_map[i].color = {r, g, b, 255};
+    if (color_str[0] == '#' && strlen(color_str) >= HEX_COLOR_MIN_LEN) {
+      uint8_t r =
+          (hex_to_int(color_str[1]) << NIBBLE_SHIFT) | hex_to_int(color_str[2]);
+      uint8_t g =
+          (hex_to_int(color_str[3]) << NIBBLE_SHIFT) | hex_to_int(color_str[4]);
+      uint8_t b =
+          (hex_to_int(color_str[5]) << NIBBLE_SHIFT) | hex_to_int(color_str[6]);
+      palette_map[i].color = {r, g, b, OPAQUE_ALPHA};
     } else if (strcmp(color_str, "None") == 0) {
       palette_map[i].color = {0, 0, 0, 0};
     } else {
-      palette_map[i].color = {0, 0, 0, 255};
+      palette_map[i].color = {0, 0, 0, OPAQUE_ALPHA};
     }
     s->palette[i] = palette_map[i].color;
   }

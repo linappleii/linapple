@@ -11,10 +11,13 @@ class MemoryTextFile_t {
 
   auto GetLinePointers() -> void;
 
+  static constexpr size_t INITIAL_BUFFER_CAPACITY = 2048;
+  static constexpr size_t INITIAL_LINES_CAPACITY = 128;
+
  public:
   MemoryTextFile_t() : dirty_(false) {
-    buffer_.reserve(2048);
-    lines_.reserve(128);
+    buffer_.reserve(INITIAL_BUFFER_CAPACITY);
+    lines_.reserve(INITIAL_LINES_CAPACITY);
   }
 
   auto Read(const std::string& filename) -> bool;

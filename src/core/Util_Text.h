@@ -100,10 +100,16 @@ inline auto skip_until_white_space_reverse(const char* src_ptr,
   return src_ptr;
 }
 
+constexpr uint8_t HEX_ALPHA_OFFSET = 10;
+constexpr uint8_t NIBBLE_SHIFT = 4;
+
 /** Assumes text are valid hex digits! */
 inline auto text_convert_2_chars_to_byte(char* text) -> uint8_t {
-  uint8_t n = ((text[0] <= '@') ? (text[0] - '0') : (text[0] - 'A' + 10)) << 4;
-  n += ((text[1] <= '@') ? (text[1] - '0') : (text[1] - 'A' + 10)) << 0;
+  uint8_t n =
+      ((text[0] <= '@') ? (text[0] - '0') : (text[0] - 'A' + HEX_ALPHA_OFFSET))
+      << NIBBLE_SHIFT;
+  n +=
+      ((text[1] <= '@') ? (text[1] - '0') : (text[1] - 'A' + HEX_ALPHA_OFFSET));
   return n;
 }
 

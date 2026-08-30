@@ -108,9 +108,13 @@ constexpr uint8_t MAGENTA = 0xFD;
 constexpr uint8_t CYAN = 0xFE;
 constexpr uint8_t WHITE = 0xFF;
 
+constexpr uint32_t GREEN_SHIFT = 8;
+constexpr uint32_t BLUE_SHIFT = 16;
+
 inline auto RGB(uint8_t r, uint8_t g, uint8_t b) -> uint32_t {
-  return (static_cast<uint32_t>(r)) | (static_cast<uint32_t>(g) << 8) |
-         (static_cast<uint32_t>(b) << 16);
+  return (static_cast<uint32_t>(r)) |
+         (static_cast<uint32_t>(g) << GREEN_SHIFT) |
+         (static_cast<uint32_t>(b) << BLUE_SHIFT);
 }
 
 enum ColorPaletteIndex_t {

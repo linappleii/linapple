@@ -1,11 +1,10 @@
 #include "Debugger_Display.h"
 
-
 #include <cassert>
 #include <cstddef>
-#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 
 #include "Debug.h"
@@ -15,13 +14,13 @@
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
 #include "Debugger_Memory.h"
-#include "VideoSurface.h"
 #include "Debugger_Types.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "charset40.xpm"  // US/default
 #include "core/LinAppleCore.h"
 #include "frontends/common/VideoStretch.h"
+#include "frontends/common/VideoSurface.h"
 
 enum { DEBUG_FORCE_DISPLAY = 0 };
 
@@ -62,9 +61,6 @@ extern void DrawSubWindow_Source(Update_t bUpdate);
 
 void DrawSubWindow_IO(Update_t) {}
 
-const int DISPLAY_WIDTH = 560;
-const int DISPLAY_DISASM_RIGHT = 353;
-
 // Implementation ___________________________________________________________
 
 #define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
@@ -85,13 +81,16 @@ const int DISPLAY_DISASM_RIGHT = 353;
 
 //===========================================================================
 
+constexpr float MIN_VIEWPORT_SCALE = 0.01f;
+
 void AllocateDebuggerMemDC() {
   if (!g_debug_screen) {
-    g_debug_screen = video_create_surface(560, 384, 1);
+    g_debug_screen = video_create_surface(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1);
     if (g_debug_screen) {
       VideoColor_t* pal = video_get_output_palette();
       if (pal) {
-        memcpy(g_debug_screen->palette, pal, 256 * sizeof(VideoColor_t));
+        memcpy(g_debug_screen->palette, pal,
+               VIDEO_PALETTE_SIZE * sizeof(VideoColor_t));
       }
     }
     g_debug_charset = video_load_xpm(charset40_xpm);
@@ -107,9 +106,9 @@ void GetDebugViewPortScale(float* x, float* y) {
     return;
   }
   float f = (static_cast<float>(g_debug_screen->w)) / SCREEN_WIDTH;
-  *x = (f > 0.01) ? f : 0.01;
+  *x = (f > MIN_VIEWPORT_SCALE) ? f : MIN_VIEWPORT_SCALE;
   f = (static_cast<float>(g_debug_screen->h)) / SCREEN_HEIGHT;
-  *y = (f > 0.01) ? f : 0.01;
+  *y = (f > MIN_VIEWPORT_SCALE) ? f : MIN_VIEWPORT_SCALE;
 }
 
 // Font: Apple Text
@@ -825,26 +824,30 @@ auto FormatAddress(uint16_t address, int nBytes) -> const char* {
   return sAddress;
 }
 
+constexpr int CONSOLE_WINDOW_TOP = 300;
+constexpr int DEFAULT_DISPLAY_MEMORY_LINES = 8;
+
 void InitDisasm() {
   for (int i = 0; i < NUM_FONTS; i++) {
-    g_font_config[i]._nFontWidthAvg = 7;
-    g_font_config[i]._nFontWidthMax = 7;
-    g_font_config[i]._nFontHeight = 8;
-    g_font_config[i]._nLineHeight = 8;
+    g_font_config[i]._nFontWidthAvg = CONSOLE_FONT_WIDTH;
+    g_font_config[i]._nFontWidthMax = CONSOLE_FONT_WIDTH;
+    g_font_config[i]._nFontHeight = CONSOLE_FONT_HEIGHT;
+    g_font_config[i]._nLineHeight = CONSOLE_FONT_HEIGHT;
   }
 
   for (auto& i : g_window_config) {
     i.bSplit = false;
     i.left = 0;
     i.top = 0;
-    i.right = 560;
-    i.bottom = 384;
+    i.right = DISPLAY_WIDTH;
+    i.bottom = DISPLAY_HEIGHT;
   }
   // Hardcoded layout for now, originally loaded from config
-  g_window_config[WINDOW_CONSOLE].top = 300;
-  g_console_display_lines = (384 - 300) / 8;
-  g_disasm_win_height = 300 / 8;
-  g_display_memory_lines = 8;
+  g_window_config[WINDOW_CONSOLE].top = CONSOLE_WINDOW_TOP;
+  g_console_display_lines =
+      (DISPLAY_HEIGHT - CONSOLE_WINDOW_TOP) / CONSOLE_FONT_HEIGHT;
+  g_disasm_win_height = CONSOLE_WINDOW_TOP / CONSOLE_FONT_HEIGHT;
+  g_display_memory_lines = DEFAULT_DISPLAY_MEMORY_LINES;
 
   ConsoleInputReset();
   WindowUpdateConsoleDisplayedSize();

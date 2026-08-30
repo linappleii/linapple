@@ -24,20 +24,20 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/sdl2/Frame.h"
 
 #include <SDL2/SDL.h>
-#include <SDL_surface.h>
-#include <SDL_video.h>
-#include <SDL_render.h>
-#include <SDL_rect.h>
-#include <SDL_pixels.h>
-#include <SDL_stdinc.h>
 #include <SDL_blendmode.h>
-#include <SDL_events.h>
-#include <SDL_keycode.h>
-#include <SDL_timer.h>
-#include <SDL_keyboard.h>
-#include <SDL_mouse.h>
 #include <SDL_error.h>
+#include <SDL_events.h>
+#include <SDL_keyboard.h>
+#include <SDL_keycode.h>
 #include <SDL_messagebox.h>
+#include <SDL_mouse.h>
+#include <SDL_pixels.h>
+#include <SDL_rect.h>
+#include <SDL_render.h>
+#include <SDL_stdinc.h>
+#include <SDL_surface.h>
+#include <SDL_timer.h>
+#include <SDL_video.h>
 #include <sys/stat.h>
 
 #include <array>
@@ -48,14 +48,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 
 #include "Debugger/Debug.h"
-#include "DiskError.h"
-#include "VideoSurface.h"
-#include "Peripheral_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
@@ -63,11 +61,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
+#include "frontends/common/VideoSurface.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/DiskUI.h"
 #include "frontends/sdl2/Frontend.h"

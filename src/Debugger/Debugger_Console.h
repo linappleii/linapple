@@ -47,6 +47,8 @@ extern int g_console_color[NUM_CONSOLE_COLORS];
 // Note: THe ` ~ key should always display ~ to prevent rendering errors
 #define CONSOLE_COLOR_ESCAPE_CHAR '`'
 #define _CONSOLE_COLOR_MASK 0x7F
+constexpr uint8_t CONSOLE_COLOR_SHIFT = 8;
+constexpr size_t CONSOLE_INPUT_EXTRA = 16;
 
 /* Help Colors
  */
@@ -143,18 +145,18 @@ inline bool ConsoleColor_IsColorOrMouse(conchar_t g) {
 }
 
 inline bool ConsoleColor_IsColor(conchar_t g) {
-  return ConsoleColor_IsCharColor(g >> 8);
+  return ConsoleColor_IsCharColor(g >> CONSOLE_COLOR_SHIFT);
 }
 
 inline uint32_t ConsoleColor_GetColor(conchar_t g) {
-  const int iColor = (g >> 8) - '0';
+  const int iColor = (g >> CONSOLE_COLOR_SHIFT) - '0';
   if (iColor < NUM_CONSOLE_COLORS) return g_console_color[iColor];
 
   return g_console_color[0];
 }
 
 inline char ConsoleColor_GetMeta(conchar_t g) {
-  return ((g >> 8) & _CONSOLE_COLOR_MASK);
+  return ((g >> CONSOLE_COLOR_SHIFT) & _CONSOLE_COLOR_MASK);
 }
 
 inline char ConsoleChar_GetChar(conchar_t g) {
@@ -166,31 +168,31 @@ inline char ConsoleColor_MakeMouse(uint8_t c) {
 }
 
 inline conchar_t ConsoleColor_MakeMeta(uint8_t c) {
-  conchar_t g = (ConsoleColor_MakeMouse(c) << 8);
+  conchar_t g = (ConsoleColor_MakeMouse(c) << CONSOLE_COLOR_SHIFT);
   return g;
 }
 
 inline conchar_t ConsoleColor_MakeColor(uint8_t color, uint8_t text) {
-  conchar_t g = (color << 8) | text;
+  conchar_t g = (color << CONSOLE_COLOR_SHIFT) | text;
   return g;
 }
 
 // Return the string length without the markup
 inline int ConsoleColor_StringLength(const char* text) {
   const char* src_ptr = text;
-  /* */ int nLen = 0;
-
-  if (text) {
-    while (*src_ptr) {
-      if (ConsoleColor_IsCharMeta(*src_ptr))
-        src_ptr++;
-      else
-        nLen++;
+  int length = 0;
+  while (*src_ptr) {
+    if (ConsoleColor_IsCharMeta(*src_ptr)) {
+      src_ptr++;  // Skip meta character
+      if (*src_ptr) {
+        src_ptr++;  // Skip color code
+      }
+    } else {
+      length++;
       src_ptr++;
     }
   }
-
-  return nLen;
+  return length;
 }
 
 // Globals __________________________________________________________________
@@ -227,7 +229,7 @@ extern char g_history_lines[HISTORY_HEIGHT][HISTORY_WIDTH];  // = {""};
 
 // Input Line
 // Raw input Line (has prompt)
-extern char g_console_input[CONSOLE_WIDTH + 16];
+extern char g_console_input[CONSOLE_WIDTH + CONSOLE_INPUT_EXTRA];
 
 // Cooked input line (no prompt)
 extern int g_console_input_chars;

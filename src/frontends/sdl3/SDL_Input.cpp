@@ -1,11 +1,12 @@
-#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_events.h>
-#include <SDL3/SDL_scancode.h>
-#include <cstdio>
-#include <cstdint>
 #include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_scancode.h>
+
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
@@ -91,7 +92,7 @@ void sdl_handle_event(SDL_Event* e) {
           printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_KP_MULTIPLY) {
-          g_state.speed = 10;
+          g_state.speed = SPEED_NORMAL;
           printf("Now speed=%d\n", static_cast<int>(g_state.speed));
           set_current_clk_6502();
         } else if (mysym == SDLK_CAPSLOCK) {

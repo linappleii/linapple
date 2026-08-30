@@ -6,7 +6,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include "VideoSurface.h"
+
+#include "frontends/common/VideoSurface.h"
 
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic):
 // Low-level pixel stretching and scanline blitting routines operating on raw
@@ -423,8 +424,8 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
         switch (dbpp) {
           case 1:
             copy8mono(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                       dst->w, static_cast<uint8_t>(fgbrush),
-                       static_cast<uint8_t>(bgbrush));
+                      dst->w, static_cast<uint8_t>(fgbrush),
+                      static_cast<uint8_t>(bgbrush));
             break;
           default:
             break;

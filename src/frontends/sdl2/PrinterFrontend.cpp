@@ -6,8 +6,10 @@
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
+constexpr uint32_t DEFAULT_PRINTER_IDLE_LIMIT = 10;
+
 static uint32_t inactivity = 0;
-static uint32_t g_printer_idle_limit = 10;
+static uint32_t g_printer_idle_limit = DEFAULT_PRINTER_IDLE_LIMIT;
 static FilePtr_t file(nullptr, fclose);
 bool g_printer_append = true;
 

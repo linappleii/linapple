@@ -1,7 +1,7 @@
 #include "TuiAudio.h"
 
-#include <pulse/sample.h>
 #include <pulse/def.h>
+#include <pulse/sample.h>
 
 #include <array>
 #include <atomic>
@@ -75,11 +75,15 @@ auto tui_audio_initialize() -> void {
   ss.channels = channels;
   ss.rate = sample_rate;
 
+  constexpr uint32_t USEC_PER_MSEC = 1000;
+
   pa_buffer_attr attr;
   attr.maxlength = static_cast<uint32_t>(-1);
-  attr.tlength = static_cast<uint32_t>(pa_usec_to_bytes(buffer_ms * 1000, &ss));
+  attr.tlength =
+      static_cast<uint32_t>(pa_usec_to_bytes(buffer_ms * USEC_PER_MSEC, &ss));
   attr.prebuf = static_cast<uint32_t>(-1);
-  attr.minreq = static_cast<uint32_t>(pa_usec_to_bytes(req_ms * 1000, &ss));
+  attr.minreq =
+      static_cast<uint32_t>(pa_usec_to_bytes(req_ms * USEC_PER_MSEC, &ss));
   attr.fragsize = static_cast<uint32_t>(-1);
 
   int error = 0;
@@ -97,7 +101,7 @@ auto tui_audio_initialize() -> void {
         0) {
       snd_pcm_set_params(g_alsa_handle, SND_PCM_FORMAT_S16_LE,
                          SND_PCM_ACCESS_RW_INTERLEAVED, channels, sample_rate,
-                         1, buffer_ms * 1000);
+                         1, buffer_ms * USEC_PER_MSEC);
       g_driver = AudioDriver::Alsa;
     }
   }

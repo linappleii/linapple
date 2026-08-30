@@ -148,6 +148,8 @@ enum AppMode_t {
 };
 
 constexpr int path_max_len = 260;
+constexpr size_t ftp_user_pass_max_len = 512;
+constexpr size_t video_driver_name_max_len = 100;
 
 using SystemState_t = struct SystemState_tag {
   AppMode_t mode;
@@ -166,7 +168,7 @@ using SystemState_t = struct SystemState_tag {
   std::array<char, path_max_len> ftp_local_dir;
   std::array<char, path_max_len> ftp_server;
   std::array<char, path_max_len> ftp_server_hdd;
-  std::array<char, 512> ftp_user_pass;
+  std::array<char, ftp_user_pass_max_len> ftp_user_pass;
   std::array<char, path_max_len> debugger_script;
   bool video_scanner_ntsc;
   uint32_t clks_per_frame;
@@ -199,7 +201,7 @@ extern "C" {
 #endif
 
 extern const char* g_app_title;
-extern char videoDriverName[100];
+extern char videoDriverName[video_driver_name_max_len];
 extern uint64_t cumulative_cycles;
 extern uint64_t cycle_num;
 extern uint32_t emul_msec;
