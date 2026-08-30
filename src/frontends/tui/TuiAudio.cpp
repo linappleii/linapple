@@ -19,7 +19,8 @@ static pa_simple* g_pa_handle = nullptr;
 #endif
 
 #ifdef HAVE_ALSA
-#include <alsa/asoundlib.h>
+#include <alsa/asoundlib.h>  // IWYU pragma: keep
+#include <alsa/pcm.h>
 static snd_pcm_t* g_alsa_handle = nullptr;
 #endif
 
@@ -75,15 +76,15 @@ auto tui_audio_initialize() -> void {
   ss.channels = channels;
   ss.rate = sample_rate;
 
-  constexpr uint32_t USEC_PER_MSEC = 1000;
+  constexpr pa_usec_t USEC_PER_MSEC = 1000;
 
   pa_buffer_attr attr;
   attr.maxlength = static_cast<uint32_t>(-1);
-  attr.tlength =
-      static_cast<uint32_t>(pa_usec_to_bytes(buffer_ms * USEC_PER_MSEC, &ss));
+  attr.tlength = static_cast<uint32_t>(
+      pa_usec_to_bytes(static_cast<pa_usec_t>(buffer_ms) * USEC_PER_MSEC, &ss));
   attr.prebuf = static_cast<uint32_t>(-1);
-  attr.minreq =
-      static_cast<uint32_t>(pa_usec_to_bytes(req_ms * USEC_PER_MSEC, &ss));
+  attr.minreq = static_cast<uint32_t>(
+      pa_usec_to_bytes(static_cast<pa_usec_t>(req_ms) * USEC_PER_MSEC, &ss));
   attr.fragsize = static_cast<uint32_t>(-1);
 
   int error = 0;
