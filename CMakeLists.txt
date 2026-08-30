@@ -326,6 +326,7 @@ set(SOURCES_FE_TUI
     src/frontends/tui/Tui_Path.cpp
     src/frontends/tui/TuiTerminal.cpp
     src/frontends/tui/TuiVideo.cpp
+    src/frontends/tui/TuiShapeDetector.cpp
     src/frontends/tui/TuiInput.cpp
     src/frontends/tui/TuiAudio.cpp
 )
@@ -521,6 +522,10 @@ if(BUILD_TESTING)
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-ui COMMAND test-disk-ui)
+
+    add_executable(test-tui-shape-detector tests/test_tui_shape_detector.cpp src/frontends/tui/TuiShapeDetector.cpp)
+    target_include_directories(test-tui-shape-detector PRIVATE src src/core src/frontends/tui ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-tui-shape-detector COMMAND test-tui-shape-detector)
 
     foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors;disk_stepper;disk_io)
         string(REPLACE "_" "-" TEST_NAME ${T})

@@ -55,6 +55,7 @@ constexpr const char* REGVALUE_PREF_SAVESTATE_DIR = "Save State Directory";
 
 constexpr const char* REGVALUE_SHOW_LEDS = "Show Leds";
 constexpr const char* REGVALUE_DISABLE_DEBUGGER = "Disable Debugger";
+constexpr const char* REGVALUE_TUI_RENDER_MODE = "TUI Render Mode";
 
 constexpr const char* REGVALUE_FTP_DIR = "FTP Server";
 constexpr const char* REGVALUE_FTP_HDD_DIR = "FTP ServerHDD";

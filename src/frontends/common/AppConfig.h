@@ -10,6 +10,11 @@
 
 enum AppIntent_t { INTENT_RUN, INTENT_DIAGNOSTIC, INTENT_HELP, INTENT_ERROR };
 
+enum TuiRenderMode_t {
+  TUI_RENDER_SMART = 0,
+  TUI_RENDER_BLOCK = 1,
+};
+
 enum { ARGV_EXTRA_MAX = 64 };
 
 struct AppConfig_t {
@@ -42,6 +47,9 @@ struct AppConfig_t {
 
   std::array<char, path_max_len> basic_sync_file = {};
   int basic_line_mode = -1;
+
+  TuiRenderMode_t tui_render_mode = TUI_RENDER_SMART;
+  bool tui_render_mode_explicit = false;
 
   // Extra args for frontend pass-through
   int argc_extra = 0;

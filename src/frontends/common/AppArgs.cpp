@@ -23,8 +23,9 @@ static constexpr int opt_hd2 = 0x104;
 static constexpr int opt_basic_sync = 0x105;
 static constexpr int opt_basic_line_mode = 0x106;
 static constexpr int opt_caps_mode = 0x107;
+static constexpr int opt_tui_render = 0x108;
 
-static const std::array<struct option, 28> OptionTable = {
+static const std::array<struct option, 29> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
@@ -52,6 +53,7 @@ static const std::array<struct option, 28> OptionTable = {
      {"basic-sync", required_argument, nullptr, opt_basic_sync},
      {"basic-line-mode", required_argument, nullptr, opt_basic_line_mode},
      {"caps-mode", required_argument, nullptr, opt_caps_mode},
+     {"tui-render", required_argument, nullptr, opt_tui_render},
      {nullptr, 0, nullptr, 0}}};
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
@@ -101,6 +103,10 @@ void AppArgs_PrintHelp() {
   printf(
       "  --caps-mode <mode>     Set Caps Lock mode: host or emulated (default: "
       "host)\n");
+  printf(
+      "  --tui-render <mode>    Set TUI graphics render mode: smart (default) "
+      "or "
+      "block\n");
 }
 
 auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
@@ -217,6 +223,27 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
           outConfig->caps_lock_mode = CAPS_MODE_EMULATED;
         } else {
           outConfig->caps_lock_mode = CAPS_MODE_HOST;
+        }
+        break;
+      case opt_tui_render:
+        if (optarg != nullptr) {
+          if (std::strcmp(optarg, "block") == 0 ||
+              std::strcmp(optarg, "simple") == 0) {
+            outConfig->tui_render_mode = TUI_RENDER_BLOCK;
+            outConfig->tui_render_mode_explicit = true;
+          } else if (std::strcmp(optarg, "smart") == 0 ||
+                     std::strcmp(optarg, "shape") == 0) {
+            outConfig->tui_render_mode = TUI_RENDER_SMART;
+            outConfig->tui_render_mode_explicit = true;
+          } else {
+            fprintf(
+                stderr,
+                "error: Invalid --tui-render mode '%s'. Expected 'smart' or "
+                "'block'.\n",
+                optarg);
+            outConfig->intent = INTENT_ERROR;
+            return -1;
+          }
         }
         break;
       case 'h':

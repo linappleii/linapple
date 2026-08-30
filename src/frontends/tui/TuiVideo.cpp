@@ -10,27 +10,10 @@
 #include <cstring>
 #include <vector>
 
+#include "TuiShapeDetector.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
-
-struct TuiPixel_t {
-  uint8_t r, g, b;
-  bool operator==(const TuiPixel_t& other) const {
-    return r == other.r && g == other.g && b == other.b;
-  }
-  bool operator!=(const TuiPixel_t& other) const { return !(*this == other); }
-};
-
-struct TuiState_t {
-  uint8_t glyph[4];  // UTF-8 up to 4 bytes
-  TuiPixel_t fg;
-  TuiPixel_t bg;
-  bool operator==(const TuiState_t& other) const {
-    return memcmp(glyph, other.glyph, 4) == 0 && fg == other.fg &&
-           bg == other.bg;
-  }
-  bool operator!=(const TuiState_t& other) const { return !(*this == other); }
-};
+#include "frontends/common/AppConfig.h"
 
 static int g_term_width = 0;
 static int g_term_height = 0;
@@ -56,7 +39,14 @@ static constexpr int a2_text_rows = 24;
 static constexpr int mixed_mode_text_start = 20;
 static constexpr int refresh_full_divisor = 60;
 
+static TuiRenderMode_t g_render_mode = TUI_RENDER_SMART;
+
+auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
+  g_render_mode = mode;
+}
+
 auto tui_video_initialize() -> void {
+  tui_shape_detector_initialize();
   printf("\x1b[?7l\x1b[?25l");
   fflush(stdout);
   tui_video_on_resize();
@@ -72,8 +62,8 @@ auto tui_video_on_resize() -> void {
     g_term_height = default_term_height;
   }
   TuiState_t empty_cell{};
-  memset(empty_cell.glyph, 0, utf8_glyph_size);
-  empty_cell.glyph[0] = ' ';
+  empty_cell.glyph.fill(0);
+  empty_cell.glyph.at(0) = ' ';
   empty_cell.fg = {0, 0, 0};
   empty_cell.bg = {0, 0, 0};
 
@@ -94,8 +84,11 @@ static auto get_text_addr(int row, int col) -> uint16_t {
 }
 
 static auto set_glyph(TuiState_t& state, const char* str) -> void {
-  memset(state.glyph, 0, utf8_glyph_size);
-  memcpy(state.glyph, str, utf8_glyph_size - 1);
+  state.glyph.fill(0);
+  if (str == nullptr) return;
+  for (size_t i = 0; i < state.glyph.size() - 1 && str[i] != '\0'; ++i) {
+    state.glyph.at(i) = static_cast<uint8_t>(str[i]);
+  }
 }
 
 static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
@@ -136,8 +129,9 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
     ascii += 0x40;
   }
 
-  cell.glyph[0] = (ascii < 32 || ascii > 126) ? ' ' : static_cast<char>(ascii);
-  cell.glyph[1] = 0;
+  cell.glyph.fill(0);
+  cell.glyph.at(0) =
+      (ascii < 32 || ascii > 126) ? ' ' : static_cast<uint8_t>(ascii);
   TuiPixel_t a2_white = {255, 255, 255};
   TuiPixel_t a2_black = {0, 0, 0};
   cell.fg = a2_white;
@@ -153,6 +147,28 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
       cell.fg = a2_white;
       cell.bg = a2_black;
     }
+  }
+}
+
+static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
+                            int sample_height, int x, int y, int gfx_w,
+                            int gfx_h, TuiState_t& cell) -> void {
+  if (g_render_mode == TUI_RENDER_SMART) {
+    int x_start = (gfx_w > 0) ? (x * width / gfx_w) : 0;
+    int x_end = (gfx_w > 0) ? ((x + 1) * width / gfx_w) : width;
+    int y_start = (gfx_h > 0) ? (y * sample_height / gfx_h) : 0;
+    int y_end = (gfx_h > 0) ? ((y + 1) * sample_height / gfx_h) : sample_height;
+    tui_shape_detect_cell(pixels, pitch, x_start, y_start, x_end, y_end, &cell);
+  } else {
+    int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
+    int sy = (gfx_h > 0) ? (y * sample_height / gfx_h) : 0;
+    set_glyph(cell, "\xe2\x96\x80");
+    const int stride = pitch / static_cast<int>(sizeof(uint32_t));
+    uint32_t p = pixels[static_cast<size_t>(sy * stride + sx)];
+    cell.fg = {static_cast<uint8_t>(p & 0xFF),
+               static_cast<uint8_t>((p >> 8) & 0xFF),
+               static_cast<uint8_t>((p >> 16) & 0xFF)};
+    cell.bg = {0, 0, 0};
   }
 }
 
@@ -181,13 +197,12 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     avail_rows = g_term_height - 1;
   }
 
-  TuiPixel_t a2_black = {0, 0, 0};
   TuiPixel_t bg_letterbox = {10, 10, 10};
 
   // Reset next buffer with letterbox color
   for (auto& cell : g_next_buffer) {
-    cell.glyph[0] = ' ';
-    cell.glyph[1] = 0;
+    cell.glyph.fill(0);
+    cell.glyph.at(0) = ' ';
     cell.fg = {40, 40, 40};
     cell.bg = bg_letterbox;
   }
@@ -242,16 +257,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
         TuiState_t& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
-        int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
-        int sy = (gfx_h > 0) ? (y * gfx_sample_height / gfx_h) : 0;
-        set_glyph(cell, "\xe2\x96\x80");
-        uint32_t p =
-            pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) +
-                   static_cast<size_t>(sx)];
-        cell.fg = {static_cast<uint8_t>(p & 0xFF),
-                   static_cast<uint8_t>((p >> 8) & 0xFF),
-                   static_cast<uint8_t>((p >> 16) & 0xFF)};
-        cell.bg = a2_black;
+        render_gfx_cell(pixels, pitch, width, gfx_sample_height, x, y, gfx_w,
+                        gfx_h, cell);
       }
     }
 
@@ -289,16 +296,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
         TuiState_t& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
-        int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
-        int sy = (gfx_h > 0) ? (y * height / gfx_h) : 0;
-        set_glyph(cell, "\xe2\x96\x80");
-        uint32_t p =
-            pixels[static_cast<size_t>(sy) * (static_cast<size_t>(pitch) / 4) +
-                   static_cast<size_t>(sx)];
-        cell.fg = {static_cast<uint8_t>(p & 0xFF),
-                   static_cast<uint8_t>((p >> 8) & 0xFF),
-                   static_cast<uint8_t>((p >> 16) & 0xFF)};
-        cell.bg = a2_black;
+        render_gfx_cell(pixels, pitch, width, height, x, y, gfx_w, gfx_h, cell);
       }
     }
   }
@@ -360,8 +358,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           }
           curr_bg = next.bg;
         }
-        for (int i = 0; i < utf8_glyph_size && next.glyph[i]; ++i) {
-          g_output_buffer.push_back(static_cast<char>(next.glyph[i]));
+        for (size_t i = 0; i < next.glyph.size() && next.glyph.at(i) != 0;
+             ++i) {
+          g_output_buffer.push_back(static_cast<char>(next.glyph.at(i)));
         }
       } else {
         g_output_buffer.push_back('\x1b');

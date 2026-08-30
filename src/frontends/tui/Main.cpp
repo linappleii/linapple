@@ -50,6 +50,7 @@ auto main(int argc, char** argv) -> int {
   }
 
   tui_video_initialize();
+  tui_video_set_render_mode(config.tui_render_mode);
   tui_input_initialize();
   tui_audio_initialize();
 

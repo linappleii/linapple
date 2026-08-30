@@ -155,6 +155,18 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_state.disable_debugger = config->disable_debugger;
   }
 
+  if (!config->tui_render_mode_explicit) {
+    std::string render_mode_str;
+    if (config_load_string("Configuration", REGVALUE_TUI_RENDER_MODE,
+                           &render_mode_str)) {
+      if (render_mode_str == "block" || render_mode_str == "simple") {
+        config->tui_render_mode = TUI_RENDER_BLOCK;
+      } else if (render_mode_str == "smart" || render_mode_str == "shape") {
+        config->tui_render_mode = TUI_RENDER_SMART;
+      }
+    }
+  }
+
   if (config->harddisk_path.at(0).at(0) != '\0' ||
       config->harddisk_path.at(1).at(0) != '\0') {
     hdd_enabled = true;

@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "frontends/common/AppConfig.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -10,6 +12,12 @@ extern "C" {
  * @brief Initialize the TUI video system.
  */
 auto tui_video_initialize() -> void;
+
+/**
+ * @brief Set the TUI graphics rendering mode (smart shape detector vs classic
+ * block).
+ */
+auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void;
 
 /**
  * @brief Render the current frame to the terminal.
