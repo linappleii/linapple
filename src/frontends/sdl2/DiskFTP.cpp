@@ -103,9 +103,15 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
       std::unique_ptr<char, void (*)(void*)> trimmed_name(
           php_trim(fp.name, fp.namelen), free);
 
+      std::string safe_name = Path::sanitize_filename(
+          trimmed_name.get() ? trimmed_name.get() : "");
+      if (safe_name.empty()) {
+        continue;
+      }
+
       FileEntry_t entry{};
       entry.name[0] = '\0';
-      Util_SafeStrCpy(entry.name, trimmed_name.get(), sizeof(entry.name));
+      Util_SafeStrCpy(entry.name, safe_name.c_str(), sizeof(entry.name));
 
       if (fp.flagtrycwd) {
         entry.type = FILE_ENTRY_DIR;
@@ -113,7 +119,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
         FileBrowser_AppendEntry(list, &entry);
       } else if (fp.flagtryretr) {
         if (file_browser_is_extension_supported(
-                trimmed_name.get(), ctx->filter_extensions.c_str())) {
+                safe_name.c_str(), ctx->filter_extensions.c_str())) {
           entry.type = FILE_ENTRY_FILE;
           entry.size = static_cast<std::uintmax_t>(fp.size);
           FileBrowser_AppendEntry(list, &entry);

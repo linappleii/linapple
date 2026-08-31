@@ -167,4 +167,22 @@ inline auto copy_file(const std::string& src, const std::string& dst) -> bool {
   return true;
 }
 
+inline auto sanitize_filename(const std::string& name) -> std::string {
+  if (name.empty()) {
+    return "";
+  }
+  // Strip any leading path separators or directory components
+  size_t last_slash = name.find_last_of("/\\");
+  std::string clean = (last_slash != std::string::npos) ? name.substr(last_slash + 1) : name;
+  if (clean == "." || clean == ".." || clean.empty()) {
+    return "";
+  }
+  for (char c : clean) {
+    if (static_cast<unsigned char>(c) < 32 || c == 127) {
+      return "";
+    }
+  }
+  return clean;
+}
+
 }  // namespace Path

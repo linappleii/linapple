@@ -75,10 +75,18 @@ void HarddiskUI_FTPSelect(int drive) {
                                          g_state.ftp_server_hdd.data());
   Configuration_t::instance().save();  // save it
 
-  fullPath += "/" + filename;
+  std::string safe_filename = Path::sanitize_filename(filename);
+  if (safe_filename.empty()) {
+    Logger::error("FTP: Rejected unsafe filename\n");
+    backdx = fileIndex;
+    DrawFrameWindow();
+    return;
+  }
+
+  fullPath += "/" + safe_filename;
 
   std::string localPath = std::string(g_state.ftp_local_dir.data()) + "/" +
-                          filename;  // local path for file
+                          safe_filename;  // local path for file
 
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (error == 0) {

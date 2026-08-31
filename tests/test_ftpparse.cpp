@@ -3,6 +3,7 @@
 #include <string>
 
 #include "apple2/peripherals/disk/ftpparse.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 TEST_CASE("FTPParse: UNIX Directory") {
@@ -51,4 +52,15 @@ TEST_CASE("FTPParse: UNIX Symbolic Link to File") {
   CHECK(fp.flagtrycwd == 1);
   CHECK(fp.flagtryretr == 1);
   CHECK(std::string(fp.name, fp.namelen) == "linked_disk.dsk");
+}
+
+TEST_CASE("FTP: Path traversal sanitization (FTP-1)") {
+  CHECK(Path::sanitize_filename("valid_disk.dsk") == "valid_disk.dsk");
+  CHECK(Path::sanitize_filename("../../../etc/passwd") == "passwd");
+  CHECK(Path::sanitize_filename("..\\..\\windows\\system32\\calc.exe") == "calc.exe");
+  CHECK(Path::sanitize_filename("..") == "");
+  CHECK(Path::sanitize_filename(".") == "");
+  CHECK(Path::sanitize_filename("") == "");
+  CHECK(Path::sanitize_filename("dir/subdir/disk.po") == "disk.po");
+  CHECK(Path::sanitize_filename("in\x01valid.dsk") == "");
 }
