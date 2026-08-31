@@ -1,11 +1,16 @@
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <string>
 
 #include "doctest.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/tui/TuiDiskSelect.h"
+#include "frontends/tui/TuiVideo.h"
 
 TEST_CASE("TuiDiskSelect: Open and Close Lifecycle") {
   CHECK_FALSE(tui_disk_select_is_active());
@@ -51,4 +56,28 @@ TEST_CASE("TuiDiskSelect: Navigation and Paging") {
   }
 
   tui_disk_select_close();
+}
+
+TEST_CASE("TuiVideo: Screenshot Generation") {
+  tui_video_initialize();
+  tui_video_on_resize();
+  tui_video_render_frame(nullptr, 0, 0, 0);
+
+  tui_video_save_screenshot();
+
+  struct stat st_ans{};
+  struct stat st_txt{};
+  bool ans_exists = (stat("linapple0000001.ans", &st_ans) == 0);
+  bool txt_exists = (stat("linapple0000001.txt", &st_txt) == 0);
+
+  CHECK(ans_exists);
+  CHECK(txt_exists);
+  if (ans_exists) {
+    CHECK(st_ans.st_size > 0);
+    unlink("linapple0000001.ans");
+  }
+  if (txt_exists) {
+    CHECK(st_txt.st_size > 0);
+    unlink("linapple0000001.txt");
+  }
 }

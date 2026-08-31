@@ -2,6 +2,7 @@
 
 #include <asm-generic/ioctls.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <array>
@@ -983,5 +984,108 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_output_buffer.push_back('[');
   g_output_buffer.push_back('0');
   g_output_buffer.push_back('m');
-  write(STDOUT_FILENO, g_output_buffer.data(), g_output_buffer.size());
+  if (isatty(STDOUT_FILENO) != 0) {
+    write(STDOUT_FILENO, g_output_buffer.data(), g_output_buffer.size());
+  }
+}
+
+auto tui_video_save_screenshot() -> void {
+  if (g_term_width <= 0 || g_term_height <= 0 || g_next_buffer.empty()) {
+    return;
+  }
+
+  bool show_status = (g_term_height > min_term_height_status && !g_fullscreen);
+
+  // Find next available sequence number
+  struct stat st{};
+  static int seq = 1;
+  std::array<char, 64> ans_name{};
+  std::array<char, 64> txt_name{};
+
+  while (true) {
+    snprintf(ans_name.data(), ans_name.size(), "linapple%07d.ans", seq);
+    snprintf(txt_name.data(), txt_name.size(), "linapple%07d.txt", seq);
+    if (stat(ans_name.data(), &st) != 0 && stat(txt_name.data(), &st) != 0) {
+      break;
+    }
+    seq++;
+  }
+
+  // Create copy of full screen buffer
+  std::vector<TuiState_t> screen_buf = g_next_buffer;
+  if (show_status && g_term_height > 0) {
+    int status_y = g_term_height - 1;
+    const std::string status_text =
+        " LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F5: Swap | F6: Full | "
+        "F12: Quit ";
+    for (int x = 0; x < g_term_width; ++x) {
+      size_t idx = static_cast<size_t>(status_y * g_term_width + x);
+      if (idx >= screen_buf.size()) break;
+      screen_buf.at(idx).glyph.fill(0);
+      screen_buf.at(idx).glyph.at(0) =
+          (static_cast<size_t>(x) < status_text.size())
+              ? static_cast<uint8_t>(status_text.at(static_cast<size_t>(x)))
+              : static_cast<uint8_t>(' ');
+      screen_buf.at(idx).fg = {255, 255, 255};
+      screen_buf.at(idx).bg = {70, 70, 70};
+    }
+  }
+
+  // 1. Write ANSI (.ans) file
+  FILE* fp_ans = fopen(ans_name.data(), "wb");
+  if (fp_ans != nullptr) {
+    TuiPixel_t curr_fg = {1, 1, 1};
+    TuiPixel_t curr_bg = {1, 1, 1};
+
+    for (int y = 0; y < g_term_height; ++y) {
+      for (int x = 0; x < g_term_width; ++x) {
+        const TuiState_t& cell =
+            screen_buf.at(static_cast<size_t>(y * g_term_width + x));
+
+        if (cell.fg != curr_fg) {
+          fprintf(fp_ans, "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
+                  cell.fg.b);
+          curr_fg = cell.fg;
+        }
+        if (cell.bg != curr_bg) {
+          fprintf(fp_ans, "\x1b[48;2;%d;%d;%dm", cell.bg.r, cell.bg.g,
+                  cell.bg.b);
+          curr_bg = cell.bg;
+        }
+
+        for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
+             ++i) {
+          fputc(static_cast<int>(cell.glyph.at(i)), fp_ans);
+        }
+      }
+      fprintf(fp_ans, "\x1b[0m\n");
+      curr_fg = {1, 1, 1};
+      curr_bg = {1, 1, 1};
+    }
+    fclose(fp_ans);
+  }
+
+  // 2. Write Plain Text (.txt) file
+  FILE* fp_txt = fopen(txt_name.data(), "wb");
+  if (fp_txt != nullptr) {
+    for (int y = 0; y < g_term_height; ++y) {
+      std::string line_str;
+      for (int x = 0; x < g_term_width; ++x) {
+        const TuiState_t& cell =
+            screen_buf.at(static_cast<size_t>(y * g_term_width + x));
+        for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
+             ++i) {
+          line_str.push_back(static_cast<char>(cell.glyph.at(i)));
+        }
+      }
+      while (!line_str.empty() && line_str.back() == ' ') {
+        line_str.pop_back();
+      }
+      line_str.push_back('\n');
+      fwrite(line_str.data(), 1, line_str.size(), fp_txt);
+    }
+    fclose(fp_txt);
+  }
+
+  seq++;
 }
