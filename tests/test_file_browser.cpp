@@ -189,3 +189,34 @@ TEST_CASE("FileBrowser: C API Null Checks") {
 
   CHECK(file_entry_is_dir_type(nullptr) == false);
 }
+
+TEST_CASE("DiskBrowser: Title Formatting") {
+  CHECK(strcmp(disk_browser_get_title(6),
+               "Choose image for floppy 140KB drive") == 0);
+  CHECK(strcmp(disk_browser_get_title(7), "Choose image for Hard Disk") == 0);
+  CHECK(strcmp(disk_browser_get_title(5),
+               "Choose image for floppy 800KB drive") == 0);
+  CHECK(strcmp(disk_browser_get_title(1),
+               "Select file name for saving snapshot") == 0);
+  CHECK(strcmp(disk_browser_get_title(0),
+               "Select snapshot file name for loading") == 0);
+}
+
+TEST_CASE("DiskBrowser: Navigation Operations") {
+  DiskBrowser_t browser{};
+  CHECK(disk_browser_open(&browser, 6, 0, ".") == true);
+  CHECK(browser.is_active == true);
+  CHECK(browser.drive == 0);
+  CHECK(browser.slot == 6);
+
+  disk_browser_move(&browser, 1, 14);
+  disk_browser_home(&browser);
+  CHECK(browser.selected_index == 0);
+
+  disk_browser_end(&browser, 14);
+  disk_browser_page(&browser, -1, 14);
+  disk_browser_page(&browser, 1, 14);
+
+  disk_browser_close(&browser);
+  CHECK(browser.is_active == false);
+}

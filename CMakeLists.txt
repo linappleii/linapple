@@ -329,6 +329,7 @@ set(SOURCES_FE_TUI
     src/frontends/tui/TuiShapeDetector.cpp
     src/frontends/tui/TuiInput.cpp
     src/frontends/tui/TuiAudio.cpp
+    src/frontends/tui/TuiDiskSelect.cpp
 )
 
 # --- Peripheral Refinement ---
@@ -507,9 +508,7 @@ if(BUILD_TESTING)
     add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
     add_linapple_test(headless-boot tests/test_headless_boot.cpp)
 
-    add_executable(test-file-browser tests/test_file_browser.cpp src/frontends/common/FileBrowser.cpp)
-    target_include_directories(test-file-browser PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME test-file-browser COMMAND test-file-browser)
+    add_linapple_test(file-browser tests/test_file_browser.cpp)
 
     add_executable(test-util-hash tests/test_util_hash.cpp src/frontends/common/Util_Hash.cpp)
     target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
@@ -526,6 +525,8 @@ if(BUILD_TESTING)
     add_executable(test-tui-shape-detector tests/test_tui_shape_detector.cpp src/frontends/tui/TuiShapeDetector.cpp)
     target_include_directories(test-tui-shape-detector PRIVATE src src/core src/frontends/tui ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-tui-shape-detector COMMAND test-tui-shape-detector)
+
+    add_linapple_test(tui-disk-select "tests/test_main.cpp;tests/test_tui_disk_select.cpp;src/frontends/tui/TuiDiskSelect.cpp")
 
     foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors;disk_stepper;disk_io)
         string(REPLACE "_" "-" TEST_NAME ${T})

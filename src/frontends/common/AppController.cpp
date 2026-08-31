@@ -40,6 +40,9 @@ static void InitializeDirectory(const char* reg_key, char* target_buffer,
   }
 
   if (!path.empty()) {
+    while (path.size() > 1 && path.back() == '/') {
+      path.pop_back();
+    }
     Util_SafeStrCpy(target_buffer, path.c_str(), buffer_size);
     Path::EnsureDirExists(path);
   }

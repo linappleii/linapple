@@ -8,12 +8,15 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
+#include "TuiDiskSelect.h"
 #include "TuiShapeDetector.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "frontends/common/AppConfig.h"
+#include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
 
 static int g_term_width = 0;
@@ -235,6 +238,315 @@ static auto render_help_overlay() -> void {
           static_cast<size_t>(bot_y * g_term_width + start_x + box_w - 1));
       set_glyph(br, "\xe2\x94\x98");  // ┘
       br.fg = body_border;
+      br.bg = modal_bg;
+    }
+  }
+}
+
+static auto render_disk_select_overlay() -> void {
+  if (!tui_disk_select_is_active()) return;
+
+  const FileList_t* list = tui_disk_select_get_file_list();
+  const size_t total_count = list ? file_browser_get_count(list) : 0;
+  const size_t selected_idx = tui_disk_select_get_selected_index();
+  const size_t first_vis = tui_disk_select_get_first_visible_index();
+  const int drive = tui_disk_select_get_drive();
+  const char* cur_dir = tui_disk_select_get_current_dir();
+
+  int box_inner_w = 66;
+  if (box_inner_w > g_term_width - 4) {
+    box_inner_w = g_term_width - 4;
+  }
+  if (box_inner_w < 40) return;
+
+  const int box_w = box_inner_w + 2;
+
+  int max_visible_rows = 14;
+  if (g_term_height < 24) {
+    max_visible_rows = g_term_height - 10;
+    if (max_visible_rows < 4) max_visible_rows = 4;
+  } else if (g_term_height > 30) {
+    max_visible_rows = g_term_height - 12;
+  }
+
+  const int box_h = max_visible_rows + 8;
+  if (g_term_height < box_h) return;
+
+  const int start_x = (g_term_width - box_w) / 2;
+  const int start_y =
+      (g_term_height > box_h) ? (g_term_height - 1 - box_h) / 2 : 0;
+
+  const TuiPixel_t border_color = {255, 255, 0};  // Yellow border (SDL parity)
+  const TuiPixel_t header_fg = {255, 255, 100};   // Bright Yellow text
+  const TuiPixel_t hint_fg = {200, 200, 200};     // Soft white hint
+  const TuiPixel_t item_fg = {230, 230, 230};     // White item text
+  const TuiPixel_t dir_fg = {100, 220, 255};      // Cyan directory text
+  const TuiPixel_t sel_bg = {50, 90, 170};        // Blue selection background
+  const TuiPixel_t sel_fg = {255, 255, 255};      // Bright white selected text
+  const TuiPixel_t modal_bg = {10, 15, 25};       // Dimmed dark background
+  const TuiPixel_t size_fg = {180, 180, 180};     // Gray size info
+
+  // 1. Draw Top Border: ┌───┐
+  {
+    auto& tl =
+        g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
+    set_glyph(tl, "\xe2\x94\x8c");
+    tl.fg = border_color;
+    tl.bg = modal_bg;
+
+    for (int x = 1; x <= box_inner_w; ++x) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(start_y * g_term_width + start_x + x));
+      set_glyph(cell, "\xe2\x94\x80");
+      cell.fg = border_color;
+      cell.bg = modal_bg;
+    }
+
+    auto& tr = g_next_buffer.at(
+        static_cast<size_t>(start_y * g_term_width + start_x + box_w - 1));
+    set_glyph(tr, "\xe2\x94\x90");
+    tr.fg = border_color;
+    tr.bg = modal_bg;
+  }
+
+  // 2. Draw Header Lines
+  std::array<std::string, 3> header_lines;
+  header_lines[0] = cur_dir;
+  header_lines[1] = std::string(disk_browser_get_title(6)) +
+                    (drive == 0 ? " [Drive 1]" : " [Drive 2]");
+  header_lines[2] = "Press ENTER to choose, or ESC to cancel";
+
+  for (size_t row_idx = 0; row_idx < 3; ++row_idx) {
+    int cur_y = start_y + 1 + static_cast<int>(row_idx);
+    if (cur_y >= g_term_height) break;
+
+    auto& lb =
+        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    set_glyph(lb, "\xe2\x94\x82");
+    lb.fg = border_color;
+    lb.bg = modal_bg;
+
+    const std::string& text = header_lines.at(row_idx);
+    int line_len = static_cast<int>(text.size());
+    int pad = (box_inner_w > line_len) ? (box_inner_w - line_len) : 0;
+    int l_pad = pad / 2;
+
+    for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      cell.glyph.fill(0);
+      if (col_idx >= l_pad && col_idx < l_pad + line_len) {
+        cell.glyph.at(0) =
+            static_cast<uint8_t>(text[static_cast<size_t>(col_idx - l_pad)]);
+      } else {
+        cell.glyph.at(0) = ' ';
+      }
+      cell.fg = (row_idx < 2) ? header_fg : hint_fg;
+      cell.bg = modal_bg;
+    }
+
+    auto& rb = g_next_buffer.at(
+        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    set_glyph(rb, "\xe2\x94\x82");
+    rb.fg = border_color;
+    rb.bg = modal_bg;
+  }
+
+  // 3. Top Divider: ├───┤
+  {
+    int div_y = start_y + 4;
+    auto& div_l =
+        g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+    set_glyph(div_l, "\xe2\x94\x9c");
+    div_l.fg = border_color;
+    div_l.bg = modal_bg;
+
+    for (int x = 1; x <= box_inner_w; ++x) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(div_y * g_term_width + start_x + x));
+      set_glyph(cell, "\xe2\x94\x80");
+      cell.fg = border_color;
+      cell.bg = modal_bg;
+    }
+
+    if (first_vis > 0 && box_inner_w >= 10) {
+      auto& cell = g_next_buffer.at(static_cast<size_t>(
+          div_y * g_term_width + start_x + (box_inner_w / 2)));
+      set_glyph(cell, "\xe2\x96\xb2");  // ▲
+      cell.fg = header_fg;
+    }
+
+    auto& div_r = g_next_buffer.at(
+        static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+    set_glyph(div_r, "\xe2\x94\xa4");
+    div_r.fg = border_color;
+    div_r.bg = modal_bg;
+  }
+
+  // 4. Draw File List Rows
+  for (int row = 0; row < max_visible_rows; ++row) {
+    int cur_y = start_y + 5 + row;
+    if (cur_y >= g_term_height) break;
+
+    auto& lb =
+        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    set_glyph(lb, "\xe2\x94\x82");
+    lb.fg = border_color;
+    lb.bg = modal_bg;
+
+    size_t item_idx = first_vis + static_cast<size_t>(row);
+    const FileEntry_t* entry = (item_idx < total_count)
+                                   ? file_browser_get_entry(list, item_idx)
+                                   : nullptr;
+    const bool is_selected = (entry != nullptr && item_idx == selected_idx);
+
+    char size_str[32] = {};
+    if (entry != nullptr) {
+      FileEntry_FormatTypeOrSize(entry, size_str, sizeof(size_str));
+    }
+
+    std::string name_str = entry ? entry->name : "";
+    int name_max_w = box_inner_w - 14;
+    if (static_cast<int>(name_str.size()) > name_max_w) {
+      name_str =
+          name_str.substr(0, static_cast<size_t>(name_max_w - 3)) + "...";
+    }
+
+    TuiPixel_t row_bg = is_selected ? sel_bg : modal_bg;
+    TuiPixel_t row_fg =
+        is_selected
+            ? sel_fg
+            : (entry && file_entry_is_dir_type(entry) ? dir_fg : item_fg);
+
+    for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      cell.glyph.fill(0);
+      cell.bg = row_bg;
+      cell.fg = row_fg;
+
+      if (entry == nullptr) {
+        cell.glyph.at(0) = ' ';
+      } else if (col_idx == 1 && is_selected) {
+        set_glyph(cell, "\xe2\x96\xb6");  // ▶ cursor
+        cell.fg = {255, 255, 100};
+      } else if (col_idx >= 3 &&
+                 col_idx < 3 + static_cast<int>(name_str.size())) {
+        cell.glyph.at(0) =
+            static_cast<uint8_t>(name_str.at(static_cast<size_t>(col_idx - 3)));
+      } else {
+        int right_pos = box_inner_w - 2 - static_cast<int>(strlen(size_str));
+        if (col_idx >= right_pos &&
+            col_idx < right_pos + static_cast<int>(strlen(size_str))) {
+          cell.glyph.at(0) =
+              static_cast<uint8_t>(size_str[col_idx - right_pos]);
+          if (!is_selected) cell.fg = size_fg;
+        } else {
+          cell.glyph.at(0) = ' ';
+        }
+      }
+    }
+
+    auto& rb = g_next_buffer.at(
+        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    set_glyph(rb, "\xe2\x94\x82");
+    rb.fg = border_color;
+    rb.bg = modal_bg;
+  }
+
+  // 5. Bottom Divider: ├───┤
+  {
+    int div_y = start_y + 5 + max_visible_rows;
+    auto& div_l =
+        g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+    set_glyph(div_l, "\xe2\x94\x9c");
+    div_l.fg = border_color;
+    div_l.bg = modal_bg;
+
+    for (int x = 1; x <= box_inner_w; ++x) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(div_y * g_term_width + start_x + x));
+      set_glyph(cell, "\xe2\x94\x80");
+      cell.fg = border_color;
+      cell.bg = modal_bg;
+    }
+
+    if (first_vis + static_cast<size_t>(max_visible_rows) < total_count &&
+        box_inner_w >= 10) {
+      auto& cell = g_next_buffer.at(static_cast<size_t>(
+          div_y * g_term_width + start_x + (box_inner_w / 2)));
+      set_glyph(cell, "\xe2\x96\xbc");  // ▼
+      cell.fg = header_fg;
+    }
+
+    auto& div_r = g_next_buffer.at(
+        static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+    set_glyph(div_r, "\xe2\x94\xa4");
+    div_r.fg = border_color;
+    div_r.bg = modal_bg;
+  }
+
+  // 6. Footer Line
+  {
+    int cur_y = start_y + 6 + max_visible_rows;
+    if (cur_y < g_term_height) {
+      auto& lb =
+          g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+      set_glyph(lb, "\xe2\x94\x82");
+      lb.fg = border_color;
+      lb.bg = modal_bg;
+
+      const std::string footer_text =
+          "\xe2\x86\x91/\xe2\x86\x93: Select | Enter: Open | Esc: Cancel | "
+          "A-Z: Jump";
+      int line_len = static_cast<int>(footer_text.size());
+      int pad = (box_inner_w > line_len) ? (box_inner_w - line_len) : 0;
+      int l_pad = pad / 2;
+
+      for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
+        auto& cell = g_next_buffer.at(
+            static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+        cell.glyph.fill(0);
+        if (col_idx >= l_pad && col_idx < l_pad + line_len) {
+          cell.glyph.at(0) = static_cast<uint8_t>(
+              footer_text[static_cast<size_t>(col_idx - l_pad)]);
+        } else {
+          cell.glyph.at(0) = ' ';
+        }
+        cell.fg = hint_fg;
+        cell.bg = modal_bg;
+      }
+
+      auto& rb = g_next_buffer.at(
+          static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+      set_glyph(rb, "\xe2\x94\x82");
+      rb.fg = border_color;
+      rb.bg = modal_bg;
+    }
+  }
+
+  // 7. Bottom Border: └───┘
+  {
+    int bot_y = start_y + box_h - 1;
+    if (bot_y < g_term_height) {
+      auto& bl =
+          g_next_buffer.at(static_cast<size_t>(bot_y * g_term_width + start_x));
+      set_glyph(bl, "\xe2\x94\x94");
+      bl.fg = border_color;
+      bl.bg = modal_bg;
+
+      for (int x = 1; x <= box_inner_w; ++x) {
+        auto& cell = g_next_buffer.at(
+            static_cast<size_t>(bot_y * g_term_width + start_x + x));
+        set_glyph(cell, "\xe2\x94\x80");
+        cell.fg = border_color;
+        cell.bg = modal_bg;
+      }
+
+      auto& br = g_next_buffer.at(
+          static_cast<size_t>(bot_y * g_term_width + start_x + box_w - 1));
+      set_glyph(br, "\xe2\x94\x98");
+      br.fg = border_color;
       br.bg = modal_bg;
     }
   }
@@ -490,6 +802,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
   if (g_show_help) {
     render_help_overlay();
+  } else if (tui_disk_select_is_active()) {
+    render_disk_select_overlay();
   }
 
   g_output_buffer.clear();
@@ -501,10 +815,11 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   for (int y = 0; y < g_term_height; ++y) {
     if (y == g_term_height - 1 && show_status) {
       std::array<char, 128> status{};
-      int slen = snprintf(status.data(), status.size(),
-                          "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
-                          "LinApple-TUI | F1: Help | F12: Quit ",
-                          g_term_height);
+      int slen =
+          snprintf(status.data(), status.size(),
+                   "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
+                   "LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F12: Quit ",
+                   g_term_height);
       for (int i = 0; i < slen; ++i) {
         g_output_buffer.push_back(status.at(static_cast<size_t>(i)));
       }

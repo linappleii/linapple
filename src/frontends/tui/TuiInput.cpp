@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <linux/joystick.h>
+#include <sys/poll.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -13,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "TuiDiskSelect.h"
 #include "TuiVideo.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -38,8 +40,11 @@ static constexpr uint8_t a2_key_ctrl_c = 0x03;
 
 static constexpr int f1_vt_code = 11;
 static constexpr int f2_vt_code = 12;
+static constexpr int f3_vt_code = 13;
+static constexpr int f4_vt_code = 14;
 static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
+static constexpr int disk_select_page_size = 14;
 
 auto tui_input_initialize() -> void {
   // Enable Mouse Tracking (Any Event + SGR)
@@ -100,7 +105,32 @@ static auto process_sequences() -> void {
   while (i < g_input_queue.size()) {
     if (g_input_queue.at(i) == a2_key_esc) {
       if (i + 1 >= g_input_queue.size()) {
-        break;
+        struct pollfd pfd{};
+        pfd.fd = STDIN_FILENO;
+        pfd.events = POLLIN;
+        int pr = poll(&pfd, 1, 25);
+        if (pr > 0 && (pfd.revents & POLLIN) != 0) {
+          std::array<uint8_t, INPUT_BUFFER_SIZE> extra_buf{};
+          ssize_t extra_n =
+              read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
+          if (extra_n > 0) {
+            for (ssize_t j = 0; j < extra_n; ++j) {
+              g_input_queue.push_back(extra_buf.at(static_cast<size_t>(j)));
+            }
+          }
+        }
+      }
+
+      if (i + 1 >= g_input_queue.size()) {
+        if (tui_disk_select_is_active()) {
+          tui_disk_select_close();
+        } else if (tui_video_is_help_visible()) {
+          tui_video_close_help();
+        } else {
+          map_key(a2_key_esc);
+        }
+        i++;
+        continue;
       }
 
       if (g_input_queue.at(i + 1) == 'O') {
@@ -112,6 +142,17 @@ static auto process_sequences() -> void {
           tui_video_toggle_help();
         } else if (ss3_cmd == 'Q') {  // F2
           reset_machine();
+        } else if (ss3_cmd == 'R') {  // F3
+          tui_video_close_help();
+          tui_disk_select_open(0);
+        } else if (ss3_cmd == 'S') {  // F4
+          tui_video_close_help();
+          tui_disk_select_open(1);
+        } else if (ss3_cmd == 'H') {  // Home
+          if (tui_disk_select_is_active()) tui_disk_select_home();
+        } else if (ss3_cmd == 'F') {  // End
+          if (tui_disk_select_is_active())
+            tui_disk_select_end(disk_select_page_size);
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         }
@@ -126,6 +167,12 @@ static auto process_sequences() -> void {
               tui_video_toggle_help();
             } else if (g_input_queue.at(i + 3) == 'B') {  // Linux Console F2
               reset_machine();
+            } else if (g_input_queue.at(i + 3) == 'C') {  // Linux Console F3
+              tui_video_close_help();
+              tui_disk_select_open(0);
+            } else if (g_input_queue.at(i + 3) == 'D') {  // Linux Console F4
+              tui_video_close_help();
+              tui_disk_select_open(1);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -158,6 +205,17 @@ static auto process_sequences() -> void {
             } else {
               reset_machine();
             }
+          } else if (cmd == 'R') {  // xterm F3 (\x1b[R)
+            tui_video_close_help();
+            tui_disk_select_open(0);
+          } else if (cmd == 'S') {  // xterm F4 (\x1b[S)
+            tui_video_close_help();
+            tui_disk_select_open(1);
+          } else if (cmd == 'H') {  // Home (\x1b[H)
+            if (tui_disk_select_is_active()) tui_disk_select_home();
+          } else if (cmd == 'F') {  // End (\x1b[F)
+            if (tui_disk_select_is_active())
+              tui_disk_select_end(disk_select_page_size);
           } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
@@ -185,6 +243,17 @@ static auto process_sequences() -> void {
                          token ==
                              "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
                 soft_reset_machine();
+              } else if (token == "5") {  // Page Up (\x1b[5~)
+                if (tui_disk_select_is_active())
+                  tui_disk_select_page(-1, disk_select_page_size);
+              } else if (token == "6") {  // Page Down (\x1b[6~)
+                if (tui_disk_select_is_active())
+                  tui_disk_select_page(1, disk_select_page_size);
+              } else if (token == "1" || token == "7") {  // Home (\x1b[1~)
+                if (tui_disk_select_is_active()) tui_disk_select_home();
+              } else if (token == "4" || token == "8") {  // End (\x1b[4~)
+                if (tui_disk_select_is_active())
+                  tui_disk_select_end(disk_select_page_size);
               } else {
                 try {
                   int val = std::stoi(token);
@@ -192,6 +261,12 @@ static auto process_sequences() -> void {
                     tui_video_toggle_help();
                   } else if (val == f2_vt_code) {
                     reset_machine();
+                  } else if (val == f3_vt_code) {
+                    tui_video_close_help();
+                    tui_disk_select_open(0);
+                  } else if (val == f4_vt_code) {
+                    tui_video_close_help();
+                    tui_disk_select_open(1);
                   } else if (val == f10_vt_code) {
                     soft_reset_machine();
                   } else if (val == f12_code) {
@@ -203,16 +278,38 @@ static auto process_sequences() -> void {
                 }
               }
             }
-          } else if (tui_video_is_help_visible()) {
-            tui_video_close_help();
           } else if (cmd == 'A') {
-            map_key(a2_key_up);
+            if (tui_disk_select_is_active()) {
+              tui_disk_select_move(-1, disk_select_page_size);
+            } else if (tui_video_is_help_visible()) {
+              tui_video_close_help();
+            } else {
+              map_key(a2_key_up);
+            }
           } else if (cmd == 'B') {
-            map_key(a2_key_down);
+            if (tui_disk_select_is_active()) {
+              tui_disk_select_move(1, disk_select_page_size);
+            } else if (tui_video_is_help_visible()) {
+              tui_video_close_help();
+            } else {
+              map_key(a2_key_down);
+            }
           } else if (cmd == 'D') {
-            map_key(a2_key_left);
+            if (tui_disk_select_is_active()) {
+              tui_disk_select_move(-1, disk_select_page_size);
+            } else if (tui_video_is_help_visible()) {
+              tui_video_close_help();
+            } else {
+              map_key(a2_key_left);
+            }
           } else if (cmd == 'C') {
-            map_key(a2_key_right);
+            if (tui_disk_select_is_active()) {
+              tui_disk_select_move(1, disk_select_page_size);
+            } else if (tui_video_is_help_visible()) {
+              tui_video_close_help();
+            } else {
+              map_key(a2_key_right);
+            }
           }
 
           i = end + 1;
@@ -222,7 +319,9 @@ static auto process_sequences() -> void {
         break;
       }
 
-      if (tui_video_is_help_visible()) {
+      if (tui_disk_select_is_active()) {
+        tui_disk_select_close();
+      } else if (tui_video_is_help_visible()) {
         tui_video_close_help();
       } else {
         map_key(a2_key_esc);
@@ -234,6 +333,14 @@ static auto process_sequences() -> void {
     uint8_t b = g_input_queue.at(i);
     if (b == a2_key_ctrl_c) {
       raise(SIGINT);
+    } else if (tui_disk_select_is_active()) {
+      if (b == a2_key_enter || b == '\n') {
+        tui_disk_select_confirm();
+      } else if (b == a2_key_esc) {
+        tui_disk_select_close();
+      } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
+        tui_disk_select_jump_char(static_cast<char>(b), disk_select_page_size);
+      }
     } else if (tui_video_is_help_visible()) {
       tui_video_close_help();
     } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
