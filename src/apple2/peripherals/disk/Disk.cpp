@@ -553,6 +553,13 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
+  if (disk_ptr->current_byte_pos >=
+          static_cast<uint32_t>(disk_ptr->nibble_count) ||
+      disk_ptr->current_byte_pos >=
+          static_cast<uint32_t>(nibbles_per_track)) {
+    disk_ptr->current_byte_pos = 0;
+  }
+
   if (disk_peripheral->is_write_mode) {
     if (!is_protected && (disk_peripheral->io_latch & latch_bit) != 0) {
       disk_ptr->track_buffer[disk_ptr->current_byte_pos] =
@@ -1127,8 +1134,10 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  dp->stepper_phase_mask = s->stepper_phase_mask;
-  dp->active_drive_index = s->active_drive_index;
+  dp->stepper_phase_mask = s->stepper_phase_mask & 0x0F;
+  dp->active_drive_index = (s->active_drive_index < disk_drive_count)
+                               ? s->active_drive_index
+                               : 0;
   dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
   dp->is_speed_enhanced = (s->is_speed_enhanced != 0);
   dp->io_latch = s->io_latch;
@@ -1142,15 +1151,24 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
                                ds.user_write_protected != 0,
                                false) == disk_err_none) {
       auto& d = dp->drives.at(static_cast<size_t>(i));
-      d.track = ds.track;
-      d.phase = ds.phase;
-      d.current_byte_pos = static_cast<uint32_t>(ds.current_byte_pos);
+      d.track = (ds.track < tracks_per_disk) ? ds.track : 0;
+      d.phase = (ds.phase < max_disk_phases) ? ds.phase : 0;
+      d.nibble_count =
+          (ds.nibble_count > 0 &&
+           ds.nibble_count <= static_cast<int>(nibbles_per_track))
+              ? ds.nibble_count
+              : static_cast<int>(nibbles_per_track);
+      d.current_byte_pos =
+          (ds.current_byte_pos >= 0 &&
+           static_cast<uint32_t>(ds.current_byte_pos) <
+               static_cast<uint32_t>(d.nibble_count))
+              ? static_cast<uint32_t>(ds.current_byte_pos)
+              : 0;
       d.is_os_read_only = (ds.is_os_read_only != 0);
       d.is_data_loaded = (ds.is_data_loaded != 0);
       d.is_dirty = (ds.is_dirty != 0);
       d.spinning_ticks = ds.spinning_ticks;
       d.write_light_ticks = ds.write_light_ticks;
-      d.nibble_count = ds.nibble_count;
       if (d.is_data_loaded) {
         if (!d.track_buffer) {
           d.track_buffer.reset(new uint8_t[nibbles_per_track]());
