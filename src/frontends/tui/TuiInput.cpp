@@ -177,6 +177,8 @@ static auto toggle_pause() -> void {
   g_state.reset_timing = true;
 }
 
+static auto toggle_scroll_lock() -> void { g_full_speed = !g_full_speed; }
+
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
 constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
@@ -350,6 +352,8 @@ static auto process_sequences() -> void {
             } else {
               cycle_video_mode();
             }
+          } else if (cmd == 'N') {  // Scroll Lock (\x1b[N)
+            toggle_scroll_lock();
           } else if (cmd == 'H') {  // Home (\x1b[H)
             if (tui_disk_select_is_active()) tui_disk_select_home();
           } else if (cmd == 'F') {  // End (\x1b[F)
