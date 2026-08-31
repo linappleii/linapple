@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "core/Log.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
@@ -129,8 +130,11 @@ extern "C" auto bitstream_disk_image_write_track(
                        static_cast<int64_t>(image_ptr->track_size));
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
-    (void)fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
-                 image_ptr->file.get());
+    const size_t written = fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
+                                  image_ptr->file.get());
+    if (written != static_cast<size_t>(nibbles)) {
+      Logger::error("BitstreamDiskImage: Failed to write track %d\n", track);
+    }
   }
 }
 

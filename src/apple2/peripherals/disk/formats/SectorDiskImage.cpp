@@ -9,6 +9,7 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
+#include "core/Log.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
@@ -197,8 +198,11 @@ auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
                       (static_cast<int64_t>(track) * dos::track_size);
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
-    (void)fwrite(image_ptr->work_buffer.data(), 1, dos::track_size,
-                 image_ptr->file.get());
+    const size_t written = fwrite(image_ptr->work_buffer.data(), 1,
+                                  dos::track_size, image_ptr->file.get());
+    if (written != static_cast<size_t>(dos::track_size)) {
+      Logger::error("SectorDiskImage: Failed to write track %d\n", track);
+    }
   }
 }
 
