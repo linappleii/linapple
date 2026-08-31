@@ -1030,7 +1030,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_output_buffer.push_back('0');
   g_output_buffer.push_back('m');
   if (isatty(STDOUT_FILENO) != 0) {
-    write(STDOUT_FILENO, g_output_buffer.data(), g_output_buffer.size());
+    const ssize_t written =
+        write(STDOUT_FILENO, g_output_buffer.data(), g_output_buffer.size());
+    (void)written;
   }
 }
 

@@ -7,6 +7,7 @@
 #include <atomic>
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 static struct termios g_orig_termios;
