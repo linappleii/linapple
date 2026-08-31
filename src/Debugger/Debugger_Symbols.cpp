@@ -597,8 +597,6 @@ auto ParseSymbolTable(const std::string& pPathFileName,
       if (pSymbolPrev) {
         if (!bFileDisplayed) {
           bFileDisplayed = true;
-
-          // TODO: Must check for buffer overflow !
           ConsolePrintFormat(sText, "%s%s", CHC_PATH, pPathFileName.c_str());
         }
 
