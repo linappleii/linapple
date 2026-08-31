@@ -63,6 +63,35 @@ static auto SetMemDirty(uint8_t* val) -> void {
   if (g_active_memory) g_active_memory->memdirty = val;
 }
 
+MemoryInstance_t::~MemoryInstance_t() {
+  if (this->memimage != nullptr) {
+    munlock(this->memimage, MEMORY_64K);
+  }
+  free(this->memaux_allocated);
+  this->memaux_allocated = nullptr;
+  free(this->memmain);
+  this->memmain = nullptr;
+  free(this->memdirty);
+  this->memdirty = nullptr;
+  free(this->memrom);
+  this->memrom = nullptr;
+  free(this->memimage);
+  this->memimage = nullptr;
+  free(this->cx_rom_internal);
+  this->cx_rom_internal = nullptr;
+  free(this->cx_rom_peripheral);
+  this->cx_rom_peripheral = nullptr;
+
+#ifdef RAMWORKS
+  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; ++i) {
+    if (this->rw_pages[i] != nullptr) {
+      free(this->rw_pages[i]);
+      this->rw_pages[i] = nullptr;
+    }
+  }
+#endif
+}
+
 #define memaux (g_active_memory->memaux)
 #define memaux_allocated (g_active_memory->memaux_allocated)
 #define memmain (g_active_memory->memmain)
@@ -95,27 +124,6 @@ auto mem_set_active_context(MemoryInstance_t* context) -> void {
   memwrite = context->memwrite;
   mem = context->mem;
   memdirty = context->memdirty;
-}
-
-MemoryInstance_t::~MemoryInstance_t() {
-  if (memimage) {
-    munlock(memimage, MEMORY_64K);
-  }
-  free(memaux_allocated);
-  free(memmain);
-  free(memdirty);
-  free(memrom);
-  free(memimage);
-  free(cx_rom_internal);
-  free(cx_rom_peripheral);
-
-#ifdef RAMWORKS
-  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; ++i) {
-    if (rw_pages[i]) {
-      free(rw_pages[i]);
-    }
-  }
-#endif
 }
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
@@ -1324,7 +1332,7 @@ auto mem_get_slot_parameters(uint32_t slot) -> void* {
 
 auto mem_get_snapshot(SS_BaseMemory* ss) -> uint32_t {
   ss->mem_mode = memmode;
-  ss->last_write_ram = lastwriteram;
+  ss->last_write_ram = lastwriteram ? 1 : 0;
 
   for (uint32_t offset = 0x0000; offset < MEMORY_64K; offset += PAGE_SIZE) {
     memcpy(ss->mem_main + offset,
@@ -1338,7 +1346,7 @@ auto mem_get_snapshot(SS_BaseMemory* ss) -> uint32_t {
 
 auto mem_set_snapshot(SS_BaseMemory* ss) -> uint32_t {
   memmode = ss->mem_mode;
-  lastwriteram = ss->last_write_ram;
+  lastwriteram = (ss->last_write_ram != 0);
   memcpy(memmain, ss->mem_main, mem_main_size);
   memcpy(memaux, ss->mem_aux, mem_aux_size);
   modechanging = false;

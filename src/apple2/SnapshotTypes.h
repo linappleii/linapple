@@ -90,7 +90,7 @@ struct KeyboardSaveState_t {
 };
 
 struct SsIoVideo_t {
-  bool alt_char_set;
+  uint8_t alt_char_set;
   uint32_t vid_mode;
 };
 using SS_IO_Video = SsIoVideo_t;
@@ -103,7 +103,7 @@ constexpr uint32_t nMemAuxSize = mem_aux_size;
 
 struct SsBaseMemory_t {
   uint32_t mem_mode;
-  bool last_write_ram;
+  uint8_t last_write_ram;
   uint8_t mem_main[mem_main_size];
   uint8_t mem_aux[mem_aux_size];
 };
@@ -123,11 +123,11 @@ using SS_APPLE2_Unit = SsApple2Unit_t;
 
 struct SsAwCfg_t {
   uint32_t computer_emulation;
-  bool custom_speed;
+  uint8_t custom_speed;
   uint32_t emulation_speed;
-  bool enhanced_disk_speed;
+  uint8_t enhanced_disk_speed;
   uint32_t joystick_type[2];
-  bool mockingboard_enabled;
+  uint8_t mockingboard_enabled;
   uint32_t monochrome_color;
   uint32_t serial_port;
   uint32_t sound_type;

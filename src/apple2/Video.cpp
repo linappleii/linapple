@@ -1972,14 +1972,14 @@ auto video_get_sw_alt_charset() -> bool { return g_alt_char_set_offset != 0; }
 //===========================================================================
 auto video_get_snapshot(SS_IO_Video* ss) -> uint32_t {
   if (!ss) return 1;
-  ss->alt_char_set = g_alt_char_set_offset != 0;
+  ss->alt_char_set = (g_alt_char_set_offset != 0) ? 1 : 0;
   ss->vid_mode = g_video_mode;
   return 0;
 }
 
 auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t {
   if (!ss) return 1;
-  g_alt_char_set_offset = !ss->alt_char_set ? 0 : 256;
+  g_alt_char_set_offset = (ss->alt_char_set == 0) ? 0 : 256;
   g_video_mode = ss->vid_mode;
 
   graphicsmode = !SW_TEXT;
