@@ -26,7 +26,13 @@ auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
   fwrite("RIFF", 1, 4, dumper->file);
 
   temp32 = 0;  // total size placeholder
-  dumper->total_offset = static_cast<uint32_t>(ftell(dumper->file));
+  long total_pos = ftell(dumper->file);
+  if (total_pos < 0) {
+    fclose(dumper->file);
+    dumper->file = nullptr;
+    return 1;
+  }
+  dumper->total_offset = static_cast<uint32_t>(total_pos);
   fwrite(&temp32, 1, 4, dumper->file);
 
   fwrite("WAVE", 1, 4, dumper->file);
@@ -57,10 +63,18 @@ auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
   fwrite("data", 1, 4, dumper->file);
 
   temp32 = 0;  // data size placeholder
-  dumper->data_offset = static_cast<uint32_t>(ftell(dumper->file));
+  long data_pos = ftell(dumper->file);
+  if (data_pos < 0) {
+    fclose(dumper->file);
+    dumper->file = nullptr;
+    return 1;
+  }
+  dumper->data_offset = static_cast<uint32_t>(data_pos);
   fwrite(&temp32, 1, 4, dumper->file);
 
-  dumper->total_bytes_written = static_cast<uint32_t>(ftell(dumper->file));
+  long total_written_pos = ftell(dumper->file);
+  dumper->total_bytes_written =
+      (total_written_pos >= 0) ? static_cast<uint32_t>(total_written_pos) : 0;
 
   return 0;
 }

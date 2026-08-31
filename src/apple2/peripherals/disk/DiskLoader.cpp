@@ -259,9 +259,17 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
     return disk_err_file_not_found;
   }
 
-  fseek(image_file.get(), 0, SEEK_END);
-  const auto file_size = static_cast<uint32_t>(ftell(image_file.get()));
-  fseek(image_file.get(), 0, SEEK_SET);
+  if (fseek(image_file.get(), 0, SEEK_END) != 0) {
+    return disk_err_io;
+  }
+  const long raw_file_size = ftell(image_file.get());
+  if (raw_file_size < 0) {
+    return disk_err_io;
+  }
+  const auto file_size = static_cast<uint32_t>(raw_file_size);
+  if (fseek(image_file.get(), 0, SEEK_SET) != 0) {
+    return disk_err_io;
+  }
 
   uint8_t header[probe_header_size] = {};
   const size_t header_read = fread(header, 1, sizeof(header), image_file.get());

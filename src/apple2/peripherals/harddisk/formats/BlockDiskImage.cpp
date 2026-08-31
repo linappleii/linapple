@@ -64,9 +64,14 @@ extern "C" auto block_disk_image_open(const char* path, uint32_t file_offset,
     *out_is_read_only = image_ptr->os_readonly;
   }
 
-  fseek(image_ptr->file.get(), 0, SEEK_END);
-  const uint32_t file_size =
-      static_cast<uint32_t>(ftell(image_ptr->file.get()));
+  if (fseek(image_ptr->file.get(), 0, SEEK_END) != 0) {
+    return nullptr;
+  }
+  const long raw_file_size = ftell(image_ptr->file.get());
+  if (raw_file_size < 0 || static_cast<size_t>(raw_file_size) < file_offset) {
+    return nullptr;
+  }
+  const uint32_t file_size = static_cast<uint32_t>(raw_file_size);
 
   image_ptr->data_offset = file_offset;
   image_ptr->total_blocks = (file_size - file_offset) / block_size;
