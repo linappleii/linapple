@@ -16,7 +16,6 @@
 
 namespace {
 
-constexpr uint32_t block_size = 512;
 constexpr uint32_t two_img_header_size = 64;
 constexpr uint32_t two_img_format_prodos = 1;
 constexpr uint32_t two_img_flag_locked = 0x80000000;

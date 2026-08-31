@@ -496,8 +496,9 @@ if(BUILD_TESTING)
     target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
-    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp src/apple2/peripherals/disk/formats/DiskContainer.cpp)
+    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/formats/DoDriver.cpp src/apple2/peripherals/disk/formats/IieDriver.cpp src/apple2/peripherals/disk/formats/Nb2Driver.cpp src/apple2/peripherals/disk/formats/NibDriver.cpp src/apple2/peripherals/disk/formats/PoDriver.cpp src/apple2/peripherals/disk/formats/Woz2Driver.cpp src/apple2/peripherals/disk/DiskEncoding.cpp src/apple2/peripherals/disk/formats/SectorDiskImage.cpp src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp src/apple2/peripherals/disk/formats/DiskContainer.cpp)
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS})
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
