@@ -412,3 +412,21 @@ TEST_CASE("DiskDrivers: [DRV-08] Driver Supported Extensions") {
   CHECK(strcmp(g_iie_driver.supported_exts[0], "iie") == 0);
   CHECK(g_iie_driver.supported_exts[1] == nullptr);
 }
+
+TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
+  const char* tmp_iie = "truncated.iie";
+  {
+    FILE* f = fopen(tmp_iie, "wb");
+    REQUIRE(f != nullptr);
+    uint8_t short_hdr[10] = {0};
+    fwrite(short_hdr, 1, sizeof(short_hdr), f);
+    fclose(f);
+  }
+
+  void* inst = nullptr;
+  bool ro = false;
+  CHECK(g_iie_driver.open(tmp_iie, 0, 0, &ro, &inst) != disk_err_none);
+  CHECK(inst == nullptr);
+
+  remove(tmp_iie);
+}

@@ -147,6 +147,17 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
     *out_is_read_only = instance_ptr->os_readonly;
   }
 
+  if (fseek(instance_ptr->file.get(), 0, SEEK_END) != 0) {
+    return disk_err_io;
+  }
+  const long total_file_size = ftell(instance_ptr->file.get());
+  if (total_file_size < static_cast<long>(iie::header_size)) {
+    return disk_err_corrupt;
+  }
+  if (fseek(instance_ptr->file.get(), 0, SEEK_SET) != 0) {
+    return disk_err_io;
+  }
+
   if (fread(instance_ptr->header.data(), 1, iie::header_size,
             instance_ptr->file.get()) != iie::header_size) {
     return disk_err_io;
@@ -166,6 +177,9 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
     for (int t = 0; t < iie::tracks; ++t) {
       const size_t map_offset =
           static_cast<size_t>(t * phases_per_track) + iie::nibble_map_offset;
+      if (map_offset + sizeof(uint16_t) > iie::header_size) {
+        return disk_err_corrupt;
+      }
       uint16_t nib_count = read_u16_le(&instance_ptr->header.at(map_offset));
       if (nib_count > nibbles_per_track) {
         nib_count = static_cast<uint16_t>(nibbles_per_track);
@@ -240,6 +254,7 @@ auto iie_read_track(void* instance_handle, int track, int phase,
       *out_nibbles = static_cast<int>(nibbles);
     }
   } else {
+    std::fill_n(track_buffer, nibbles_per_track, 0xFF);
     const size_t read_count =
         fread(track_buffer, 1, nib_count, ii_ptr->file.get());
     if (out_nibbles != nullptr) {
