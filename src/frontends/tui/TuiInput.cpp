@@ -27,6 +27,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/SaveStateManager.h"
 
 static int g_joy_fd = -1;
 static std::vector<uint8_t> g_input_queue;
@@ -51,6 +52,7 @@ static constexpr int f7_vt_code = 18;
 static constexpr int f8_vt_code = 19;
 static constexpr int f9_vt_code = 20;
 static constexpr int f10_vt_code = 21;
+static constexpr int f11_vt_code = 23;
 static constexpr int f12_code = 24;
 static constexpr int disk_select_page_size = 14;
 
@@ -257,6 +259,10 @@ static auto process_sequences() -> void {
               tui_video_save_screenshot();
             } else if (g_input_queue.at(i + 3) == 'I') {  // Linux Console F9
               cycle_video_mode();
+            } else if (g_input_queue.at(i + 3) == 'J') {  // Linux Console F10
+              save_state_load();
+            } else if (g_input_queue.at(i + 3) == 'K') {  // Linux Console F11
+              save_state_save();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -359,6 +365,8 @@ static auto process_sequences() -> void {
               save_configuration();
             } else if (token == "20" || token == "33") {
               tui_video_toggle_render_mode();
+            } else if (token == "23" || token == "34") {
+              save_state_save();
             }
           } else if (cmd == '~') {
             if (end > i + 2) {
@@ -379,10 +387,10 @@ static auto process_sequences() -> void {
                 save_configuration();
               } else if (token == "20;2" || token == "33" || token == "33;2") {
                 tui_video_toggle_render_mode();
-              } else if (token == "21;5" ||
-                         token ==
-                             "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
+              } else if (token == "21;5") {  // Ctrl+F10 (\x1b[21;5~)
                 soft_reset_machine();
+              } else if (token == "23;2" || token == "34" || token == "34;2") {
+                save_state_save();
               } else if (token == "5") {  // Page Up (\x1b[5~)
                 if (tui_disk_select_is_active())
                   tui_disk_select_page(-1, disk_select_page_size);
@@ -418,7 +426,9 @@ static auto process_sequences() -> void {
                   } else if (val == f9_vt_code) {
                     cycle_video_mode();
                   } else if (val == f10_vt_code) {
-                    soft_reset_machine();
+                    save_state_load();
+                  } else if (val == f11_vt_code) {
+                    save_state_save();
                   } else if (val == f12_code) {
                     raise(SIGINT);
                   } else if (tui_video_is_help_visible()) {

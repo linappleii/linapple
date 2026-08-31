@@ -33,10 +33,14 @@ auto save_state_set_filename(const char* filename) -> void {
 auto save_state_load() -> void {
   auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
 
-  FILE* file = fopen(g_save_state_filename, "rb");
+  const char* filename = g_save_state_filename;
+  if (*filename == '\0') {
+    filename = default_snapshot_name;
+  }
+
+  FILE* file = fopen(filename, "rb");
   if (!file) {
-    Logger::error("Failed to open save state file for reading: %s\n",
-                  g_save_state_filename);
+    Logger::error("Failed to open save state file for reading: %s\n", filename);
     return;
   }
 
