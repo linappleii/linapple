@@ -306,3 +306,32 @@ TEST_CASE("Harddisk: Native 2MG Container Support") {
 
   linapple_shutdown();
 }
+
+TEST_CASE("Harddisk: [2MG-1] Reject corrupted 2MG data offset beyond file bounds") {
+  linapple_init();
+  peripheral_manager_init();
+  auto* descriptor = harddisk_get_descriptor();
+  peripheral_register(descriptor, 7);
+
+  std::vector<uint8_t> corrupted_2mg(128, 0);
+  corrupted_2mg[0] = '2'; corrupted_2mg[1] = 'I'; corrupted_2mg[2] = 'M'; corrupted_2mg[3] = 'G';
+  corrupted_2mg[12] = 1; // ProDOS
+  // Put data_offset at offset 24 (4 bytes) pointing way beyond file size (e.g. 0x100000)
+  uint32_t bad_offset = 0x100000;
+  memcpy(&corrupted_2mg[24], &bad_offset, sizeof(bad_offset));
+
+  TempFileGuard bad_file("corrupt_offset.2mg", corrupted_2mg.data(), corrupted_2mg.size());
+
+  HarddiskInsertCmd_t insert{};
+  insert.drive = harddisk_drive_0;
+  strncpy(insert.path, bad_file.path, sizeof(insert.path) - 1);
+  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  peripheral_manager_think(0);
+
+  HarddiskStatus_t status{};
+  size_t status_size = sizeof(status);
+  peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  CHECK(status.drive0_loaded == 0);
+
+  linapple_shutdown();
+}
