@@ -793,11 +793,11 @@ void process_button_click(int button, int mod) {
 #if ENABLE_DEBUGGER
             uint32_t debugVideoMode = 0;
             if (debug_get_video_mode(&debugVideoMode)) {
-              video_refresh_screen();
+              video_redraw_screen();
             }
 #endif
           } else {
-            video_refresh_screen();
+            video_redraw_screen();
           }
         }
       }

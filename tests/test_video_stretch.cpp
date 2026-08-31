@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+#include <cstddef>
 #include <cstdint>
 
+#include "apple2/Memory.h"
+#include "apple2/Video.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
@@ -102,7 +106,8 @@ TEST_CASE("VideoStretch - Sub-Rectangle and Viewport Positioning") {
 
   set_pixel32(src, 0, 0, 0x00123456);
 
-  // Target a centered letterbox viewport in the destination: (100, 50, 800, 600)
+  // Target a centered letterbox viewport in the destination: (100, 50, 800,
+  // 600)
   VideoRect_t src_rect = {0, 0, 560, 384};
   VideoRect_t dst_rect = {100, 50, 800, 600};
   int ret = video_soft_stretch(src, &src_rect, dst, &dst_rect);
@@ -143,4 +148,45 @@ TEST_CASE("VideoStretch - Boundary and Null Safety Checks") {
 
   video_destroy_surface(src);
   video_destroy_surface(dst);
+}
+
+TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
+  linapple_init();
+  video_initialize();
+
+  // Write character 'A' (0xC1 in Apple II text memory) at (0,0) -> 0x400
+  *mem_get_main_ptr(0x0400) = 0xC1;
+
+  // Refresh screen to render 'A' into output buffer
+  video_refresh_screen();
+
+  const uint32_t* buf = video_get_output_buffer();
+  REQUIRE(buf != nullptr);
+
+  // Verify that the screen actually rendered non-zero pixels for 'A'
+  bool has_non_zero = false;
+  for (size_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i) {
+    if (buf[i] != 0) {
+      has_non_zero = true;
+      break;
+    }
+  }
+  REQUIRE(has_non_zero == true);
+
+  // Switch video mode (F9 behavior)
+  g_videotype = VT_COLOR_TEXT_OPTIMIZED;
+  video_reinitialize();
+  video_refresh_screen();
+
+  // Verify that the screen is NOT blanked out after switching video modes
+  bool has_non_zero_after_switch = false;
+  for (size_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i) {
+    if (buf[i] != 0) {
+      has_non_zero_after_switch = true;
+      break;
+    }
+  }
+  CHECK(has_non_zero_after_switch == true);
+
+  linapple_shutdown();
 }

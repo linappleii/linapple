@@ -1809,6 +1809,7 @@ auto video_perform_refresh() -> void {
 auto video_reinitialize() -> void {
   CreateIdentityPalette();
   CreateDIBSections();
+  redrawfull = true;
 }
 
 auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,

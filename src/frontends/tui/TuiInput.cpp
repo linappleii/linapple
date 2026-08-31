@@ -152,11 +152,11 @@ static auto cycle_video_mode() -> void {
 #if ENABLE_DEBUGGER
       uint32_t debug_video_mode = 0;
       if (debug_get_video_mode(&debug_video_mode)) {
-        video_refresh_screen();
+        video_redraw_screen();
       }
 #endif
     } else {
-      video_refresh_screen();
+      video_redraw_screen();
     }
   }
 }

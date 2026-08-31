@@ -755,10 +755,10 @@ void process_button_click(int button, int mod) {
           if (g_state.mode == MODE_DEBUG) {
             uint32_t debugVideoMode = 0;
             if (debug_get_video_mode(&debugVideoMode)) {
-              video_refresh_screen();
+              video_redraw_screen();
             }
           } else {
-            video_refresh_screen();
+            video_redraw_screen();
           }
         }
       }
