@@ -55,6 +55,8 @@ struct TemporaryFileGuard {
   auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
 };
 
+constexpr size_t max_decompressed_size = 64 * 1024 * 1024;
+
 // Why: Some legacy Apple II disk images are wrapped in a MacBinary header
 // (128 bytes) by Macintosh-based transfer utilities. This identifies them
 // so we can skip the wrapper and find the real disk image data.
@@ -72,9 +74,14 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file) -> bool {
   std::unique_ptr<void, void (*)(void*)> guard(compressed_file, closer);
 
   std::array<uint8_t, decompression_buffer_size> buffer{};
+  size_t total_written = 0;
   int bytes_read = 0;
   while ((bytes_read = gzread(compressed_file, buffer.data(),
                               static_cast<unsigned int>(buffer.size()))) > 0) {
+    total_written += static_cast<size_t>(bytes_read);
+    if (total_written > max_decompressed_size) {
+      return false;
+    }
     if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
                output_file) != static_cast<size_t>(bytes_read)) {
       return false;
@@ -104,9 +111,14 @@ auto decompress_zip(const char* compressed_path, FILE* output_file) -> bool {
                                                             zip_fclose);
 
   std::array<uint8_t, decompression_buffer_size> buffer{};
+  size_t total_written = 0;
   zip_int64_t bytes_read = 0;
   while ((bytes_read = zip_fread(file_in_zip, buffer.data(), buffer.size())) >
          0) {
+    total_written += static_cast<size_t>(bytes_read);
+    if (total_written > max_decompressed_size) {
+      return false;
+    }
     if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
                output_file) != static_cast<size_t>(bytes_read)) {
       return false;
@@ -274,7 +286,7 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
                                      &os_readonly, out_instance);
 
   if (err == disk_err_none && out_is_read_only != nullptr) {
-    *out_is_read_only = os_readonly;
+    *out_is_read_only = os_readonly || is_temporary;
   }
 
   return err;
