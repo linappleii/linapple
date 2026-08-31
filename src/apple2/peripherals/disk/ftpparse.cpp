@@ -56,7 +56,7 @@ static auto progress_callback(void* clientp, curl_off_t dltotal,
   (void)dltotal;
   (void)ultotal;
   (void)ulnow;
-  Logger::info("FTP: %lu bytes downloaded\n", dlnow);
+  Logger::info("FTP: %lld bytes downloaded\n", static_cast<long long>(dlnow));
   return 0;
 }
 
@@ -72,6 +72,7 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
 
   curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
+  curl_easy_setopt(g_curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream.get());
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): ABI
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.ftp_user_pass.data());
