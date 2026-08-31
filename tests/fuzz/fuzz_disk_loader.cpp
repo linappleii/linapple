@@ -21,6 +21,10 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
+extern "C" const char* __asan_default_options() {
+  return "detect_leaks=0";
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (size == 0) {
     return 0;

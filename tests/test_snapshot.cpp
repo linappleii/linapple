@@ -107,6 +107,13 @@ TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
 
   CHECK(access(test_file, F_OK) == 0);
 
+  // If minimal.aws fixture does not exist, save a copy for fuzzer seed
+  const char* fixture_path = "tests/fixtures/minimal.aws";
+  if (access(fixture_path, F_OK) != 0) {
+    save_state_set_filename(fixture_path);
+    save_state_save();
+  }
+
   unlink(test_file);
 
   linapple_shutdown();

@@ -266,6 +266,10 @@ jobs:
           cmake --build build-fuzz -j$(nproc)
       - name: Run Fuzzers (10s each)
         run: |
-          ./build-fuzz/fuzz-memory -max_total_time=10
-          ./build-fuzz/fuzz-snapshot -max_total_time=10
-          ./build-fuzz/fuzz-disk-loader -max_total_time=10
+          mkdir -p fuzz-corpus/memory fuzz-corpus/snapshot fuzz-corpus/disk-loader
+          cp tests/fixtures/minimal.txt fuzz-corpus/memory/ 2>/dev/null || true
+          cp tests/fixtures/minimal.aws fuzz-corpus/snapshot/ 2>/dev/null || true
+          cp tests/fixtures/minimal.dsk tests/fixtures/minimal.woz fuzz-corpus/disk-loader/ 2>/dev/null || true
+          ./build-fuzz/fuzz-memory fuzz-corpus/memory -max_total_time=10
+          ./build-fuzz/fuzz-snapshot fuzz-corpus/snapshot -max_len=131824 -max_total_time=10
+          ./build-fuzz/fuzz-disk-loader fuzz-corpus/disk-loader -max_total_time=10

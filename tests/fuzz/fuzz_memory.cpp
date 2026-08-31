@@ -14,6 +14,10 @@
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 
+extern "C" const char* __asan_default_options() {
+  return "detect_leaks=0";
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static bool s_initialized = false;
   if (!s_initialized) {

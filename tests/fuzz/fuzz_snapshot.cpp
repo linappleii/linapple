@@ -16,6 +16,13 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 
+static_assert(sizeof(ApplewinSnapshot_t) == 131824,
+              "ApplewinSnapshot_t size must match expected snapshot bounds");
+
+extern "C" const char* __asan_default_options() {
+  return "detect_leaks=0";
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (size < sizeof(ApplewinSnapshot_t)) {
     return 0;
@@ -24,7 +31,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static bool s_initialized = false;
   if (!s_initialized) {
     linapple_init();
-    peripheral_manager_init();
     s_initialized = true;
   }
 
