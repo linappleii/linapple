@@ -69,7 +69,6 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
 }
 
 static uint32_t g_internal_executed_cycles;
-static signed int g_irq_check_timeout = 16;
 
 // Interrupt sources assert until the device is commanded to stop
 static std::atomic<bool> g_crit_section_valid{false};
@@ -86,8 +85,7 @@ pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
             flagc | flagn | (flagv ? AF_OVERFLOW : 0) |                 \
             (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
 #define CYC(a)                           \
-  executed_cycles += (a) + extra_cycles; \
-  g_irq_check_timeout -= (a) + extra_cycles;
+  executed_cycles += (a) + extra_cycles;
 #define POP \
   (*(mem + ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp)))
 #define PUSH(a)             \
@@ -799,13 +797,6 @@ static inline void IRQ(uint32_t& executed_cycles, uint16_t& extra_cycles,
   }
 }
 
-static inline void CheckInterruptSources(uint32_t executed_cycles) {
-  (void)executed_cycles;
-  if (g_irq_check_timeout <= 0) {
-    g_irq_check_timeout = g_full_speed ? 128 : 16;
-  }
-}
-
 static auto Cpu65C02(uint32_t total_cycles) -> uint32_t {
   // Stack-local variables for register performance optimization
   uint16_t addr = 0;
@@ -1346,7 +1337,6 @@ static auto Cpu65C02(uint32_t total_cycles) -> uint32_t {
         break;
     }
 
-    CheckInterruptSources(executed_cycles);
     NMI(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
     IRQ(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
 
@@ -1897,7 +1887,6 @@ static auto Cpu6502(uint32_t total_cycles) -> uint32_t {
         break;
     }
 
-    CheckInterruptSources(executed_cycles);
     NMI(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
     IRQ(executed_cycles, extra_cycles, flagc, flagn, flagv, flagz);
 
