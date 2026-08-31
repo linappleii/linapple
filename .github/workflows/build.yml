@@ -23,16 +23,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-ubuntu-all
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
             libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
-            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-ubuntu-all
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -132,15 +132,15 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-arm64
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-arm64
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -174,15 +174,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-sanitizers
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-sanitizers
       - name: Configure
         run: |
           cmake -B build -G Ninja \
@@ -206,16 +206,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-clang-tidy
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build clang-tidy imagemagick \
             libzip-dev libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
-            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-clang-tidy
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -244,15 +244,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-fuzz
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-fuzz
       - name: Configure & Build
         run: |
           cmake -B build-fuzz -G Ninja \
