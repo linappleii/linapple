@@ -28,7 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
             libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
-            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache gh
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -136,7 +136,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache gh
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -211,7 +211,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build clang-tidy imagemagick \
             libzip-dev libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
-            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache gh
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
