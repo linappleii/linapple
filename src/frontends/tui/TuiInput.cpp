@@ -24,6 +24,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
@@ -160,6 +161,22 @@ static auto cycle_video_mode() -> void {
   }
 }
 
+static auto toggle_pause() -> void {
+  switch (g_state.mode) {
+    case MODE_RUNNING:
+      g_state.mode = MODE_PAUSED;
+      audio_mixer_set_fade(fade_out);
+      break;
+    case MODE_PAUSED:
+      g_state.mode = MODE_RUNNING;
+      audio_mixer_set_fade(fade_in);
+      break;
+    default:
+      break;
+  }
+  g_state.reset_timing = true;
+}
+
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
 constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
@@ -284,8 +301,8 @@ static auto process_sequences() -> void {
 
           if (g_input_queue.at(i + 2) == '<') {
             // Consume mouse, no action yet
-          } else if (cmd == 'P') {  // xterm F1 (\x1b[P)
-            tui_video_toggle_help();
+          } else if (cmd == 'P') {  // Pause key (\x1b[P); F1 is \x1bOP (SS3)
+            toggle_pause();
           } else if (cmd == 'Q') {  // xterm F2 / Shift+F2 / Ctrl+F2
             const std::string token(
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
