@@ -8,6 +8,7 @@
 #include "apple2/peripherals/disk/ftpparse.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "core/Registry.h"
