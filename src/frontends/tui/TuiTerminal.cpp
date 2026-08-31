@@ -28,6 +28,16 @@ static void SignalHandler(int sig) {
   }
 }
 
+static void FatalSignalHandler(int sig) {
+  tui_terminal_shutdown();
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_DFL;
+  sigemptyset(&sa.sa_mask);
+  sigaction(sig, &sa, nullptr);
+  raise(sig);
+}
+
 int tui_terminal_initialize() {
   if (g_terminal_initialized) {
     return 0;
@@ -66,6 +76,19 @@ int tui_terminal_initialize() {
   sigaction(SIGINT, &sa, nullptr);
   sigaction(SIGTERM, &sa, nullptr);
   sigaction(SIGWINCH, &sa, nullptr);
+
+  struct sigaction sa_fatal;
+  memset(&sa_fatal, 0, sizeof(sa_fatal));
+  sa_fatal.sa_handler = FatalSignalHandler;
+  sigemptyset(&sa_fatal.sa_mask);
+
+  sigaction(SIGSEGV, &sa_fatal, nullptr);
+  sigaction(SIGABRT, &sa_fatal, nullptr);
+  sigaction(SIGBUS, &sa_fatal, nullptr);
+  sigaction(SIGFPE, &sa_fatal, nullptr);
+  sigaction(SIGILL, &sa_fatal, nullptr);
+
+  atexit(tui_terminal_shutdown);
 
   g_terminal_initialized = true;
   return 0;
