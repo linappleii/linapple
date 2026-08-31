@@ -7,8 +7,9 @@
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): video callback signature
 auto VideoCallback(const uint32_t* pixels, int width, int height,
-                   int pitch) -> void {  // NOLINT
+                   int pitch) -> void {
   (void)pixels;
   (void)width;
   (void)height;

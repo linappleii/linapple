@@ -14,16 +14,16 @@
 WEAK auto Frontend_UpdateKeyboardMapping() -> void {}
 WEAK auto keyboard_get_caps_mode() -> int { return 0; }
 WEAK auto keyboard_set_caps_mode(int mode) -> void { (void)mode; }
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
 WEAK auto Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
-                                    uint32_t mod, bool is_down)
-    -> void {  // NOLINT
+                                    uint32_t mod, bool is_down) -> void {
   (void)scancode;
   (void)keycode;
   (void)mod;
   (void)is_down;
 }
-WEAK auto frontend_to_core_key(int key, uint32_t mod)
-    -> LinAppleKey {  // NOLINT
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
+WEAK auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
   (void)key;
   (void)mod;
   return LINAPPLE_KEY_UNKNOWN;
@@ -45,8 +45,9 @@ WEAK auto super_serial_frontend_initialize(const char* p) -> bool {
 }
 WEAK auto super_serial_frontend_close() -> void {}
 WEAK auto super_serial_frontend_is_active() -> bool { return false; }
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
 WEAK auto super_serial_frontend_update_state(uint32_t b, uint32_t d, int p,
-                                             int s) -> void {  // NOLINT
+                                             int s) -> void {
   (void)b;
   (void)d;
   (void)p;
