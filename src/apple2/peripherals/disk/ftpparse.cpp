@@ -72,7 +72,13 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
 
   curl_easy_reset(g_curl);
   curl_easy_setopt(g_curl, CURLOPT_URL, ftp_path);
+#if defined(CURLOPT_PROTOCOLS_STR)
   curl_easy_setopt(g_curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
+#elif defined(CURLOPT_PROTOCOLS)
+  // NOLINTNEXTLINE(clang-diagnostic-deprecated-declarations)
+  curl_easy_setopt(g_curl, CURLOPT_PROTOCOLS,
+                   static_cast<long>(CURLPROTO_FTP | CURLPROTO_FTPS));
+#endif
   curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, stream.get());
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): ABI
   curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.ftp_user_pass.data());
