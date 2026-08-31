@@ -47,6 +47,22 @@ auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
   }
 }
 
+struct TemporaryFileGuard {
+  char path[512]{};
+  explicit TemporaryFileGuard(const char* p) {
+    if (p != nullptr) {
+      Util_SafeStrCpy(path, p, sizeof(path));
+    }
+  }
+  ~TemporaryFileGuard() {
+    if (path[0] != '\0') {
+      unlink(path);
+    }
+  }
+  TemporaryFileGuard(const TemporaryFileGuard&) = delete;
+  auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
+};
+
 auto harddisk_loader_open(const char* path, bool* out_os_readonly,
                           HarddiskFormatDriver_t** out_driver,
                           void** out_instance_handle) -> HarddiskError_e {
@@ -55,7 +71,20 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     return harddisk_err_io;
   }
 
-  FilePtr_t file{fopen(path, "rb"), fclose};
+  char load_path[512] = {0};
+  bool is_temporary = false;
+  if (!disk_container_prepare_compressed_path(
+          path, load_path, sizeof(load_path),
+          disk_container::harddisk_decompression_threshold, &is_temporary)) {
+    return harddisk_err_io;
+  }
+
+  std::unique_ptr<TemporaryFileGuard> temp_guard;
+  if (is_temporary) {
+    temp_guard.reset(new TemporaryFileGuard(load_path));
+  }
+
+  FilePtr_t file{fopen(load_path, "rb"), fclose};
   if (file == nullptr) {
     return harddisk_err_not_found;
   }
@@ -80,7 +109,7 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
   const uint32_t file_offset =
       disk_container_detect_macbinary(header.data(), header_read, file_size);
 
-  const char* ext = strrchr(path, '.');
+  const char* ext = strrchr(load_path, '.');
   constexpr size_t ext_hint_size = 16;
   std::array<char, ext_hint_size> ext_hint{};
   ext_hint.fill(0);
@@ -118,11 +147,16 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     return harddisk_err_invalid_format;
   }
 
+  bool os_readonly = false;
   const HarddiskError_e err = best_driver->open(
-      path, file_offset, out_os_readonly, out_instance_handle);
+      load_path, file_offset, &os_readonly, out_instance_handle);
 
   if (err != harddisk_err_none) {
     return err;
+  }
+
+  if (out_os_readonly != nullptr) {
+    *out_os_readonly = os_readonly || is_temporary;
   }
 
   *out_driver = best_driver;

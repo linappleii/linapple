@@ -55,125 +55,6 @@ struct TemporaryFileGuard {
   auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
 };
 
-constexpr size_t max_decompressed_size = 64 * 1024 * 1024;
-
-// Why: Some legacy Apple II disk images are wrapped in a MacBinary header
-// (128 bytes) by Macintosh-based transfer utilities. This identifies them
-// so we can skip the wrapper and find the real disk image data.
-auto decompress_gzip(const char* compressed_path, FILE* output_file) -> bool {
-  gzFile compressed_file = gzopen(compressed_path, "rb");
-  if (compressed_file == nullptr) {
-    return false;
-  }
-
-  auto closer = [](void* f) {
-    if (f != nullptr) {
-      gzclose(static_cast<gzFile>(f));
-    }
-  };
-  std::unique_ptr<void, void (*)(void*)> guard(compressed_file, closer);
-
-  std::array<uint8_t, decompression_buffer_size> buffer{};
-  size_t total_written = 0;
-  int bytes_read = 0;
-  while ((bytes_read = gzread(compressed_file, buffer.data(),
-                              static_cast<unsigned int>(buffer.size()))) > 0) {
-    total_written += static_cast<size_t>(bytes_read);
-    if (total_written > max_decompressed_size) {
-      return false;
-    }
-    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
-               output_file) != static_cast<size_t>(bytes_read)) {
-      return false;
-    }
-  }
-
-  return bytes_read == 0;
-}
-
-auto decompress_zip(const char* compressed_path, FILE* output_file) -> bool {
-  int err = 0;
-  zip* zip_archive = zip_open(compressed_path, ZIP_RDONLY, &err);
-  if (zip_archive == nullptr) {
-    return false;
-  }
-  std::unique_ptr<zip, int (*)(zip*)> zip_closer(zip_archive, zip_close);
-
-  if (zip_get_num_entries(zip_archive, 0) <= 0) {
-    return false;
-  }
-
-  zip_file* file_in_zip = zip_fopen_index(zip_archive, 0, 0);
-  if (file_in_zip == nullptr) {
-    return false;
-  }
-  std::unique_ptr<zip_file, int (*)(zip_file*)> file_closer(file_in_zip,
-                                                            zip_fclose);
-
-  std::array<uint8_t, decompression_buffer_size> buffer{};
-  size_t total_written = 0;
-  zip_int64_t bytes_read = 0;
-  while ((bytes_read = zip_fread(file_in_zip, buffer.data(), buffer.size())) >
-         0) {
-    total_written += static_cast<size_t>(bytes_read);
-    if (total_written > max_decompressed_size) {
-      return false;
-    }
-    if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
-               output_file) != static_cast<size_t>(bytes_read)) {
-      return false;
-    }
-  }
-
-  return bytes_read == 0;
-}
-
-// Why: Extracts compressed images to a temporary path. Returns true if a
-// temporary file was created.
-auto prepare_compressed_path(const char* image_path, char* out_load_path,
-                             bool* out_is_temporary) -> bool {
-  const size_t name_len = strlen(image_path);
-  constexpr size_t GZ_EXT_LEN = 3;
-  constexpr size_t ZIP_EXT_LEN = 4;
-
-  const bool is_gz =
-      (name_len > GZ_EXT_LEN &&
-       strcasecmp(image_path + name_len - GZ_EXT_LEN, ".gz") == 0);
-  const bool is_zip =
-      (name_len > ZIP_EXT_LEN &&
-       strcasecmp(image_path + name_len - ZIP_EXT_LEN, ".zip") == 0);
-
-  if (!is_gz && !is_zip) {
-    Util_SafeStrCpy(out_load_path, image_path, path_max_len);
-    *out_is_temporary = false;
-    return true;
-  }
-
-  Util_SafeStrCpy(out_load_path, "/tmp/linapple_XXXXXX", path_max_len);
-  int fd = mkstemp(out_load_path);
-  if (fd == -1) {
-    return false;
-  }
-
-  FilePtr_t temp_stream(fdopen(fd, "wb"), fclose);
-  if (temp_stream == nullptr) {
-    close(fd);
-    unlink(out_load_path);
-    return false;
-  }
-
-  bool success = is_gz ? decompress_gzip(image_path, temp_stream.get())
-                       : decompress_zip(image_path, temp_stream.get());
-
-  if (!success) {
-    unlink(out_load_path);
-    return false;
-  }
-
-  *out_is_temporary = true;
-  return true;
-}
-
 // Why: Scans registered drivers to find the one that definitively or possibly
 // claims the disk image based on header content and extension.
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
@@ -225,7 +106,9 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
 
   char load_path[path_max_len] = {0};
   bool is_temporary = false;
-  if (!prepare_compressed_path(image_path, load_path, &is_temporary)) {
+  if (!disk_container_prepare_compressed_path(
+          image_path, load_path, sizeof(load_path),
+          disk_container::floppy_decompression_threshold, &is_temporary)) {
     return disk_err_io;
   }
 
