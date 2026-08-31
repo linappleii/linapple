@@ -54,6 +54,13 @@ auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
   g_render_mode = mode;
 }
 
+auto tui_video_toggle_render_mode() -> void {
+  g_render_mode =
+      (g_render_mode == TUI_RENDER_SMART) ? TUI_RENDER_BLOCK : TUI_RENDER_SMART;
+}
+
+auto tui_video_get_render_mode() -> TuiRenderMode_t { return g_render_mode; }
+
 static bool g_fullscreen = false;
 
 auto tui_video_toggle_help() -> void { g_show_help = !g_show_help; }

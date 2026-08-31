@@ -20,6 +20,16 @@ auto tui_video_initialize() -> void;
 auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void;
 
 /**
+ * @brief Toggle the TUI graphics rendering mode (smart shape vs classic block).
+ */
+auto tui_video_toggle_render_mode() -> void;
+
+/**
+ * @brief Get current TUI graphics rendering mode.
+ */
+auto tui_video_get_render_mode() -> TuiRenderMode_t;
+
+/**
  * @brief Render the current frame to the terminal.
  *
  * @param pixels Pointer to the current 32-bit RGBA pixel buffer from core.

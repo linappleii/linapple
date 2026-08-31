@@ -98,3 +98,14 @@ TEST_CASE("Configuration: Save and Load Runtime Settings") {
 
   unlink(test_conf.c_str());
 }
+
+TEST_CASE("TuiVideo: Render Mode Toggle") {
+  tui_video_set_render_mode(TUI_RENDER_SMART);
+  CHECK(tui_video_get_render_mode() == TUI_RENDER_SMART);
+
+  tui_video_toggle_render_mode();
+  CHECK(tui_video_get_render_mode() == TUI_RENDER_BLOCK);
+
+  tui_video_toggle_render_mode();
+  CHECK(tui_video_get_render_mode() == TUI_RENDER_SMART);
+}

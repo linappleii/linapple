@@ -318,6 +318,15 @@ static auto process_sequences() -> void {
             } else {
               tui_video_save_screenshot();
             }
+          } else if (cmd == 'X') {  // xterm F9 / Shift+F9 (\x1b[X / \x1b[1;2X)
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token.find(";2") != std::string::npos || token == "1;2") {
+              tui_video_toggle_render_mode();
+            } else {
+              cycle_video_mode();
+            }
           } else if (cmd == 'H') {  // Home (\x1b[H)
             if (tui_disk_select_is_active()) tui_disk_select_home();
           } else if (cmd == 'F') {  // End (\x1b[F)
@@ -348,6 +357,8 @@ static auto process_sequences() -> void {
               toggle_keyboard_rocker();
             } else if (token == "19" || token == "32") {
               save_configuration();
+            } else if (token == "20" || token == "33") {
+              tui_video_toggle_render_mode();
             }
           } else if (cmd == '~') {
             if (end > i + 2) {
@@ -366,6 +377,8 @@ static auto process_sequences() -> void {
                 toggle_keyboard_rocker();
               } else if (token == "19;2" || token == "32" || token == "32;2") {
                 save_configuration();
+              } else if (token == "20;2" || token == "33" || token == "33;2") {
+                tui_video_toggle_render_mode();
               } else if (token == "21;5" ||
                          token ==
                              "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
