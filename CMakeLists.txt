@@ -32,7 +32,7 @@ endif()
 option(ENABLE_DEBUGGER "Enable integrated debugger" ${DEFAULT_ENABLE_DEBUGGER})
 
 option(PROFILING "Enable profiling" OFF)
-option(REGISTRY_WRITEABLE "Enable registry writing" OFF)
+option(REGISTRY_WRITEABLE "Enable registry writing" ON)
 option(BUILD_SHARED_PERIPHERALS "Build peripherals as shared libraries instead of built-in" OFF)
 
 option(ENABLE_ASAN "Enable AddressSanitizer (ASan)" OFF)

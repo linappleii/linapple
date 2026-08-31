@@ -25,6 +25,7 @@
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "frontends/common/AppController.h"
 
 static int g_joy_fd = -1;
@@ -124,6 +125,16 @@ static auto toggle_debugger() -> void {
   } else {
     debug_end();
   }
+}
+
+static auto save_configuration() -> void {
+  Configuration_t::instance().set_int("Configuration", "Video Emulation",
+                                      static_cast<int>(g_videotype));
+  Configuration_t::instance().set_int("Configuration", "Emulation Speed",
+                                      g_state.speed);
+  Configuration_t::instance().set_int("Configuration", "Fullscreen",
+                                      g_state.fullscreen ? 1 : 0);
+  Configuration_t::instance().save();
 }
 
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
@@ -273,6 +284,15 @@ static auto process_sequences() -> void {
             } else {
               tui_disk_select_open(6, 1);
             }
+          } else if (cmd == 'W') {  // xterm F8 / Shift+F8 (\x1b[W / \x1b[1;2W)
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token.find(";2") != std::string::npos || token == "1;2") {
+              save_configuration();
+            } else {
+              tui_video_save_screenshot();
+            }
           } else if (cmd == 'H') {  // Home (\x1b[H)
             if (tui_disk_select_is_active()) tui_disk_select_home();
           } else if (cmd == 'F') {  // End (\x1b[F)
@@ -301,6 +321,8 @@ static auto process_sequences() -> void {
               tui_disk_select_open(7, 1);
             } else if (token == "17" || token == "28") {
               toggle_keyboard_rocker();
+            } else if (token == "19" || token == "32") {
+              save_configuration();
             }
           } else if (cmd == '~') {
             if (end > i + 2) {
@@ -317,6 +339,8 @@ static auto process_sequences() -> void {
                 tui_disk_select_open(7, 1);
               } else if (token == "17;2" || token == "28" || token == "28;2") {
                 toggle_keyboard_rocker();
+              } else if (token == "19;2" || token == "32" || token == "32;2") {
+                save_configuration();
               } else if (token == "21;5" ||
                          token ==
                              "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)

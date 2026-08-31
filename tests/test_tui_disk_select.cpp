@@ -7,6 +7,7 @@
 #include <cstring>
 #include <string>
 
+#include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/tui/TuiDiskSelect.h"
@@ -80,4 +81,20 @@ TEST_CASE("TuiVideo: Screenshot Generation") {
     CHECK(st_txt.st_size > 0);
     unlink("linapple0000001.txt");
   }
+}
+
+TEST_CASE("Configuration: Save and Load Runtime Settings") {
+  std::string test_conf = "test_runtime_save.conf";
+  Configuration_t::instance().set_path(test_conf);
+  Configuration_t::instance().set_int("Configuration", "Fullscreen", 1);
+  Configuration_t::instance().set_int("Configuration", "Emulation Speed", 20);
+
+  bool saved = Configuration_t::instance().save();
+  CHECK(saved);
+
+  struct stat st{};
+  CHECK(stat(test_conf.c_str(), &st) == 0);
+  CHECK(st.st_size > 0);
+
+  unlink(test_conf.c_str());
 }
