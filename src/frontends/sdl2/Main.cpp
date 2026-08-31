@@ -1,8 +1,8 @@
 #include <SDL_audio.h>
-#include <SDL_platform.h>
-#include <SDL_stdinc.h>
 #include <SDL_error.h>
 #include <SDL_events.h>
+#include <SDL_platform.h>
+#include <SDL_stdinc.h>
 #include <SDL_timer.h>
 
 #include <cstddef>
@@ -38,7 +38,7 @@ static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
   int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_audio_dumper.file != nullptr) {
+  if (g_audio_dumper.is_active()) {
     audio_dumper_put_samples(&g_audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
@@ -90,13 +90,13 @@ auto ds_init() -> bool {
 }
 
 auto ds_shutdown() -> void {
-  if (g_audio_dumper.file != nullptr) {
-    audio_dumper_finalize(&g_audio_dumper);
-  }
-
   if (g_audioDevice != 0u) {
     SDL_CloseAudioDevice(g_audioDevice);
     g_audioDevice = 0;
+  }
+
+  if (g_audio_dumper.is_active()) {
+    audio_dumper_finalize(&g_audio_dumper);
   }
 }
 

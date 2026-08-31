@@ -1,7 +1,7 @@
 #include <SDL3/SDL_audio.h>
-#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_timer.h>
 
 #include <cstddef>
@@ -40,7 +40,7 @@ static void SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
   int num_samples = additional_amount / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_audio_dumper.file) {
+  if (g_audio_dumper.is_active()) {
     audio_dumper_put_samples(&g_audio_dumper,
                              reinterpret_cast<int16_t*>(temp_buf),
                              static_cast<uint32_t>(num_samples));
@@ -66,8 +66,7 @@ auto ds_init() -> bool {
   g_audioStream =
       SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired,
                                 sdl3_audio_callback, nullptr);
-  if (g_audioStream == nullptr) {
-    printf("Unable to open SDL audio: %s\n", SDL_GetError());
+  if (!g_audioStream) {
     return false;
   }
 
@@ -90,13 +89,13 @@ auto ds_init() -> bool {
 }
 
 void ds_shutdown() {
-  if (g_audio_dumper.file) {
-    audio_dumper_finalize(&g_audio_dumper);
-  }
-
   if (g_audioStream) {
     SDL_DestroyAudioStream(g_audioStream);
     g_audioStream = nullptr;
+  }
+
+  if (g_audio_dumper.is_active()) {
+    audio_dumper_finalize(&g_audio_dumper);
   }
 }
 

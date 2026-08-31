@@ -4,12 +4,12 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "SDL_stdinc.h"
+#include "AppConfig.h"
 #include "SDL_audio.h"
 #include "SDL_error.h"
 #include "SDL_events.h"
+#include "SDL_stdinc.h"
 #include "SDL_timer.h"
-#include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
@@ -36,7 +36,7 @@ static auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
   int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_audio_dumper.file != nullptr) {
+  if (g_audio_dumper.is_active()) {
     audio_dumper_put_samples(&g_audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
@@ -87,13 +87,13 @@ auto ds_init() -> bool {
 }
 
 auto ds_shutdown() -> void {
-  if (g_audio_dumper.file != nullptr) {
-    audio_dumper_finalize(&g_audio_dumper);
-  }
-
   if (g_ds_available) {
     SDL_CloseAudio();
     g_ds_available = false;
+  }
+
+  if (g_audio_dumper.is_active()) {
+    audio_dumper_finalize(&g_audio_dumper);
   }
 }
 

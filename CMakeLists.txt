@@ -523,6 +523,11 @@ if(BUILD_TESTING)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-ui COMMAND test-disk-ui)
 
+    add_executable(test-audio-dumper tests/test_audio_dumper.cpp src/frontends/common/AudioDumper.cpp)
+    target_include_directories(test-audio-dumper PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
+    target_link_libraries(test-audio-dumper PRIVATE Threads::Threads)
+    add_test(NAME test-audio-dumper COMMAND test-audio-dumper)
+
     add_executable(test-tui-shape-detector tests/test_tui_shape_detector.cpp src/frontends/tui/TuiShapeDetector.cpp)
     target_include_directories(test-tui-shape-detector PRIVATE src src/core src/frontends/tui ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-tui-shape-detector COMMAND test-tui-shape-detector)
