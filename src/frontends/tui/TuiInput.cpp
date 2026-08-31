@@ -49,6 +49,7 @@ static constexpr int f5_vt_code = 15;
 static constexpr int f6_vt_code = 17;
 static constexpr int f7_vt_code = 18;
 static constexpr int f8_vt_code = 19;
+static constexpr int f9_vt_code = 20;
 static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
 static constexpr int disk_select_page_size = 14;
@@ -137,6 +138,26 @@ static auto save_configuration() -> void {
   Configuration_t::instance().save();
 }
 
+static auto cycle_video_mode() -> void {
+  g_videotype++;
+  if (g_videotype >= VT_NUM_MODES) {
+    g_videotype = 0;
+  }
+  video_reinitialize();
+  if (g_state.mode != MODE_LOGO) {
+    if (g_state.mode == MODE_DEBUG) {
+#if ENABLE_DEBUGGER
+      uint32_t debug_video_mode = 0;
+      if (debug_get_video_mode(&debug_video_mode)) {
+        video_refresh_screen();
+      }
+#endif
+    } else {
+      video_refresh_screen();
+    }
+  }
+}
+
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
 constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
@@ -199,6 +220,8 @@ static auto process_sequences() -> void {
           toggle_debugger();
         } else if (ss3_cmd == 'W') {  // F8
           tui_video_save_screenshot();
+        } else if (ss3_cmd == 'X') {  // F9
+          cycle_video_mode();
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) tui_disk_select_home();
         } else if (ss3_cmd == 'F') {  // End
@@ -232,6 +255,8 @@ static auto process_sequences() -> void {
               toggle_debugger();
             } else if (g_input_queue.at(i + 3) == 'H') {  // Linux Console F8
               tui_video_save_screenshot();
+            } else if (g_input_queue.at(i + 3) == 'I') {  // Linux Console F9
+              cycle_video_mode();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -377,6 +402,8 @@ static auto process_sequences() -> void {
                     toggle_debugger();
                   } else if (val == f8_vt_code) {
                     tui_video_save_screenshot();
+                  } else if (val == f9_vt_code) {
+                    cycle_video_mode();
                   } else if (val == f10_vt_code) {
                     soft_reset_machine();
                   } else if (val == f12_code) {

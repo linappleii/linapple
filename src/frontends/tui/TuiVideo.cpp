@@ -604,6 +604,29 @@ static auto get_text_addr(int row, int col) -> uint16_t {
   return row_offsets.at(static_cast<size_t>(row)) + static_cast<uint16_t>(col);
 }
 
+static auto get_text_fg_color() -> TuiPixel_t {
+  const VideoColor_t* pal = video_get_output_palette();
+  if (pal != nullptr) {
+    switch (g_videotype) {
+      case VT_MONO_AMBER:
+        return {pal[MONOCHROME_AMBER].r, pal[MONOCHROME_AMBER].g,
+                pal[MONOCHROME_AMBER].b};
+      case VT_MONO_GREEN:
+        return {pal[MONOCHROME_GREEN].r, pal[MONOCHROME_GREEN].g,
+                pal[MONOCHROME_GREEN].b};
+      case VT_MONO_WHITE:
+        return {pal[MONOCHROME_WHITE].r, pal[MONOCHROME_WHITE].g,
+                pal[MONOCHROME_WHITE].b};
+      case VT_MONO_CUSTOM:
+        return {pal[MONOCHROME_CUSTOM].r, pal[MONOCHROME_CUSTOM].g,
+                pal[MONOCHROME_CUSTOM].b};
+      default:
+        break;
+    }
+  }
+  return {255, 255, 255};
+}
+
 static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
                              bool alt_charset, bool flash_on, int hw_cursor_x,
                              int hw_cursor_y, TuiState_t& cell) -> void {
@@ -645,19 +668,19 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
   cell.glyph.fill(0);
   cell.glyph.at(0) =
       (ascii < 32 || ascii > 126) ? ' ' : static_cast<uint8_t>(ascii);
-  TuiPixel_t a2_white = {255, 255, 255};
+  TuiPixel_t text_color = get_text_fg_color();
   TuiPixel_t a2_black = {0, 0, 0};
-  cell.fg = a2_white;
+  cell.fg = text_color;
   cell.bg = a2_black;
   if (attr == 2 || (attr == 3 && !flash_on)) {
     cell.fg = a2_black;
-    cell.bg = a2_white;
+    cell.bg = text_color;
   }
 
   if (r == hw_cursor_y && c == hw_cursor_x) {
     if (flash_on) {
       set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
-      cell.fg = a2_white;
+      cell.fg = text_color;
       cell.bg = a2_black;
     }
   }
