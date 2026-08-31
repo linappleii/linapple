@@ -79,7 +79,8 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return nullptr;
   }
 
-  auto* image_ptr = new SectorDiskImage_t();
+  auto image_ptr =
+      std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
 
   image_ptr->file.reset(fopen(path, "r+b"));
   image_ptr->os_readonly = false;
@@ -90,23 +91,19 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   if (image_ptr->file == nullptr) {
-    delete image_ptr;
     return nullptr;
   }
 
   if (fseek(image_ptr->file.get(), 0, SEEK_END) != 0) {
-    delete image_ptr;
     return nullptr;
   }
   const long total_size = ftell(image_ptr->file.get());
   if (total_size < 0 || static_cast<size_t>(total_size) < file_offset) {
-    delete image_ptr;
     return nullptr;
   }
   const size_t effective_size = static_cast<size_t>(total_size) - file_offset;
   if (effective_size < static_cast<size_t>(dos::track_size) ||
       (effective_size % dos::page_size != 0)) {
-    delete image_ptr;
     return nullptr;
   }
 
@@ -118,7 +115,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   image_ptr->is_dos_order = is_dos_order;
   image_ptr->is_enhanced = (enhanced_speed != 0);
 
-  return image_ptr;
+  return image_ptr.release();
 }
 
 // Why: Destroys the sector image instance. The RAII FilePtr_t member ensures

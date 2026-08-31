@@ -18,6 +18,7 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
@@ -1076,7 +1077,7 @@ auto tui_video_save_screenshot() -> void {
   }
 
   // 1. Write ANSI (.ans) file
-  FILE* fp_ans = fopen(ans_name.data(), "wb");
+  FilePtr_t fp_ans{fopen(ans_name.data(), "wb"), fclose};
   if (fp_ans != nullptr) {
     TuiPixel_t curr_fg = {1, 1, 1};
     TuiPixel_t curr_bg = {1, 1, 1};
@@ -1087,30 +1088,29 @@ auto tui_video_save_screenshot() -> void {
             screen_buf.at(static_cast<size_t>(y * g_term_width + x));
 
         if (cell.fg != curr_fg) {
-          fprintf(fp_ans, "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
+          fprintf(fp_ans.get(), "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
                   cell.fg.b);
           curr_fg = cell.fg;
         }
         if (cell.bg != curr_bg) {
-          fprintf(fp_ans, "\x1b[48;2;%d;%d;%dm", cell.bg.r, cell.bg.g,
+          fprintf(fp_ans.get(), "\x1b[48;2;%d;%d;%dm", cell.bg.r, cell.bg.g,
                   cell.bg.b);
           curr_bg = cell.bg;
         }
 
         for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
              ++i) {
-          fputc(static_cast<int>(cell.glyph.at(i)), fp_ans);
+          fputc(static_cast<int>(cell.glyph.at(i)), fp_ans.get());
         }
       }
-      fprintf(fp_ans, "\x1b[0m\n");
+      fprintf(fp_ans.get(), "\x1b[0m\n");
       curr_fg = {1, 1, 1};
       curr_bg = {1, 1, 1};
     }
-    fclose(fp_ans);
   }
 
   // 2. Write Plain Text (.txt) file
-  FILE* fp_txt = fopen(txt_name.data(), "wb");
+  FilePtr_t fp_txt{fopen(txt_name.data(), "wb"), fclose};
   if (fp_txt != nullptr) {
     for (int y = 0; y < g_term_height; ++y) {
       std::string line_str;
@@ -1126,9 +1126,8 @@ auto tui_video_save_screenshot() -> void {
         line_str.pop_back();
       }
       line_str.push_back('\n');
-      fwrite(line_str.data(), 1, line_str.size(), fp_txt);
+      fwrite(line_str.data(), 1, line_str.size(), fp_txt.get());
     }
-    fclose(fp_txt);
   }
 
   seq++;

@@ -12,6 +12,7 @@
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
+#include "core/Util_Path.h"
 
 constexpr const char* default_snapshot_name = "SaveState.aws";
 
@@ -38,15 +39,15 @@ auto save_state_load() -> void {
     filename = default_snapshot_name;
   }
 
-  FILE* file = fopen(filename, "rb");
+  FilePtr_t file{fopen(filename, "rb"), fclose};
   if (!file) {
     Logger::error("Failed to open save state file for reading: %s\n", filename);
     return;
   }
 
   size_t bytes_read =
-      fread(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file);
-  fclose(file);
+      fread(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file.get());
+  file.reset();
 
   if (bytes_read != sizeof(ApplewinSnapshot_t)) {
     Logger::error(
@@ -86,15 +87,15 @@ auto save_state_save() -> void {
     filename = default_snapshot_name;
   }
 
-  FILE* file = fopen(filename, "wb");
+  FilePtr_t file{fopen(filename, "wb"), fclose};
   if (!file) {
     Logger::error("Failed to open save state file for writing: %s\n", filename);
     return;
   }
 
   size_t bytes_written =
-      fwrite(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file);
-  fclose(file);
+      fwrite(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file.get());
+  file.reset();
 
   if (bytes_written != sizeof(ApplewinSnapshot_t)) {
     Logger::error(
