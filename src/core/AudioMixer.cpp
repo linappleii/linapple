@@ -20,6 +20,8 @@ struct SampleBuffer_t {
   std::array<int16_t, AUDIO_BUFFER_SIZE> buffer{};
   std::atomic<size_t> read_index{0};
   std::atomic<size_t> write_index{0};
+  std::atomic<uint32_t> flush_gen{0};
+  uint32_t acked_flush_gen{0};
   int16_t last_value{0};
 };
 
@@ -27,7 +29,28 @@ static auto sample_buffer_reinit(SampleBuffer_t* sb) -> void {
   sb->buffer.fill(0);
   sb->read_index.store(0, std::memory_order_relaxed);
   sb->write_index.store(0, std::memory_order_relaxed);
+  sb->flush_gen.store(0, std::memory_order_relaxed);
+  sb->acked_flush_gen = 0;
   sb->last_value = 0;
+}
+
+static auto sample_buffer_request_flush(SampleBuffer_t* sb) -> void {
+  if (sb != nullptr) {
+    sb->flush_gen.fetch_add(1, std::memory_order_release);
+  }
+}
+
+static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
+  if (sb == nullptr) {
+    return;
+  }
+  const uint32_t gen = sb->flush_gen.load(std::memory_order_acquire);
+  if (sb->acked_flush_gen != gen) {
+    sb->acked_flush_gen = gen;
+    const size_t w = sb->write_index.load(std::memory_order_acquire);
+    sb->read_index.store(w, std::memory_order_release);
+    sb->last_value = 0;
+  }
 }
 
 static auto sample_buffer_get_filled(const SampleBuffer_t* sb) -> size_t {
@@ -178,10 +201,10 @@ auto audio_mixer_destroy() -> void {
 
 auto audio_mixer_clear_buffers() -> void {
   if (g_spkr_mix_buffer) {
-    sample_buffer_reinit(g_spkr_mix_buffer.get());
+    sample_buffer_request_flush(g_spkr_mix_buffer.get());
   }
   if (g_mock_mix_buffer) {
-    sample_buffer_reinit(g_mock_mix_buffer.get());
+    sample_buffer_request_flush(g_mock_mix_buffer.get());
   }
 }
 
@@ -209,6 +232,9 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
     std::memset(out, 0, num_samples * sizeof(int16_t));
     return;
   }
+
+  sample_buffer_check_flush(g_spkr_mix_buffer.get());
+  sample_buffer_check_flush(g_mock_mix_buffer.get());
 
   // Throttle backlog to target capacity to maintain low latency during bursts
   const size_t target_backlog =
