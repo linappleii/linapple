@@ -81,6 +81,7 @@ auto session_init(AppConfig_t* config) -> int {
 }
 
 void SessionShutdown() {
+  ds_shutdown();
   JoyFrontend_ShutDown();
   AppController_Shutdown();
 }
