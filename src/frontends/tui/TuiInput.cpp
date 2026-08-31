@@ -7,12 +7,17 @@
 
 #include <array>
 #include <csignal>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
 
 #include "TuiVideo.h"
+#include "apple2/Memory.h"
+#include "apple2/Video.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 
 static int g_joy_fd = -1;
@@ -29,6 +34,7 @@ static constexpr uint8_t a2_key_delete = 0x7F;
 static constexpr uint8_t a2_key_ctrl_c = 0x03;
 
 static constexpr int f1_vt_code = 11;
+static constexpr int f2_vt_code = 12;
 static constexpr int f12_code = 24;
 
 auto tui_input_initialize() -> void {
@@ -53,6 +59,17 @@ static auto map_key(uint8_t a2_code) -> void {
   linapple_set_key_state(a2_code, false);
 }
 
+static auto reset_machine() -> void {
+  g_full_speed = false;
+  mem_reset();
+  peripheral_manager_reset();
+  peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
+  video_reset_state();
+  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
+  g_state.mode = MODE_RUNNING;
+  g_state.reset_timing = true;
+}
+
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
 constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
@@ -74,6 +91,8 @@ static auto process_sequences() -> void {
         uint8_t ss3_cmd = g_input_queue.at(i + 2);
         if (ss3_cmd == 'P') {  // F1
           tui_video_toggle_help();
+        } else if (ss3_cmd == 'Q') {  // F2
+          reset_machine();
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         }
@@ -86,6 +105,8 @@ static auto process_sequences() -> void {
           if (i + 3 < g_input_queue.size()) {
             if (g_input_queue.at(i + 3) == 'A') {  // Linux Console F1
               tui_video_toggle_help();
+            } else if (g_input_queue.at(i + 3) == 'B') {  // Linux Console F2
+              reset_machine();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -109,15 +130,26 @@ static auto process_sequences() -> void {
             // Consume mouse, no action yet
           } else if (cmd == 'P') {  // xterm F1 (\x1b[P)
             tui_video_toggle_help();
+          } else if (cmd == 'Q') {  // xterm F2 / Ctrl+F2 (\x1b[1;5Q)
+            reset_machine();
+          } else if (cmd == '^') {  // rxvt modifier
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token == "12") {  // rxvt Ctrl+F2 (\x1b[12^)
+              reset_machine();
+            }
           } else if (cmd == '~') {
             if (end > i + 2) {
               const std::string token(
-                  g_input_queue.begin() + static_cast<long>(i + 2),
-                  g_input_queue.begin() + static_cast<long>(end));
+                  g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                  g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
               try {
                 int val = std::stoi(token);
                 if (val == f1_vt_code) {
                   tui_video_toggle_help();
+                } else if (val == f2_vt_code) {
+                  reset_machine();
                 } else if (val == f12_code) {
                   raise(SIGINT);
                 } else if (tui_video_is_help_visible()) {
@@ -170,7 +202,7 @@ static auto process_sequences() -> void {
     i++;
   }
   g_input_queue.erase(g_input_queue.begin(),
-                      g_input_queue.begin() + static_cast<long>(i));
+                      g_input_queue.begin() + static_cast<std::ptrdiff_t>(i));
 }
 
 auto tui_input_poll() -> void {

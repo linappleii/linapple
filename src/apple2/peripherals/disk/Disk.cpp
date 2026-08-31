@@ -728,19 +728,24 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
     return;
   }
 
-  for (int i = 0; i < disk_drive_count; ++i) {
-    eject_disk_from_drive(disk_peripheral, i);
+  disk_peripheral->active_drive_index = 0;
+  disk_peripheral->io_latch = 0;
+  disk_peripheral->stepper_phase_mask = 0;
+  disk_peripheral->is_motor_on = false;
+  disk_peripheral->is_write_mode = false;
+  disk_peripheral->was_accessed_this_tick = false;
+  disk_peripheral->spin_cycle_accumulator = 0;
+  disk_peripheral->rotation_cycle_accumulator = 0;
+
+  for (auto& drive : disk_peripheral->drives) {
+    drive.spinning_ticks = 0;
+    drive.write_light_ticks = 0;
+    drive.last_error = disk_err_none;
   }
 
-  auto* host = disk_peripheral->host;
-  const int slot = disk_peripheral->slot;
-  const bool is_speed_enhanced = disk_peripheral->is_speed_enhanced;
-
-  *disk_peripheral = DiskPeripheral_t();
-
-  disk_peripheral->host = host;
-  disk_peripheral->slot = slot;
-  disk_peripheral->is_speed_enhanced = is_speed_enhanced;
+  if (disk_peripheral->host != nullptr) {
+    disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+  }
 }
 
 auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
