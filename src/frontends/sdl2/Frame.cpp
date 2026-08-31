@@ -65,6 +65,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/HelpText.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
@@ -280,33 +281,6 @@ void draw_status_area(int drawflags) {
 
 void FrameShowHelpScreen(int sx, int sy) {
   (void)sy;
-  constexpr int max_lines = 25;
-  static const std::array<const char*, max_lines> HelpStrings = {
-      {"Welcome to LinApple - Apple][ emulator for Linux!",
-       "Conf file is linapple.conf in current directory by default",
-       "Archive of Apple ][ software: ftp.apple.asimov.net",
-       "          F1 - Show this help screen",
-       "     Ctrl+F2 - Cold reboot (Power cycle)",
-       "    Shift+F2 - Reload configuration file and cold reboot",
-       "    Ctrl+F10 - Hot Reset (Control+Reset)",
-       "         F12 - Quit LinApple",
-       "",
-       "       F3/F4 - Load floppy disk 1/2 (Slot 6, Drive 1/2)",
-       "          F5 - Swap floppy disks",
-       " Shift+F3/F4 - Attach hard drive 1/2 (Slot 7, Drive 1/2)",
-       "",
-       "          F6 - Toggle fullscreen mode",
-       "    Shift+F6 - Toggle character set (keyboard rocker switch)",
-       "          F7 - Toggle debugging view",
-       "          F8 - Take screenshot",
-       "    Shift+F8 - Save runtime changes to configuration file",
-       "          F9 - Cycle through various video modes",
-       "    Shift+F9 - Budget video, for smoother music/audio",
-       "     F10/F11 - Load/save snapshot file",
-       "",
-       "       Pause - Pause/resume emulator",
-       "  ScrollLock - Toggle full speed (warp mode)",
-       "Numpad +/-/* - Increase/Decrease/Normal speed"}};
 
   VideoSurface_t* tempSurface = nullptr;
 
@@ -341,8 +315,9 @@ void FrameShowHelpScreen(int sx, int sy) {
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp = SDL_CreateRGBSurfaceWithFormat(
-      0, g_screen->w / 16, g_screen->h / 16, 32, SDL_PIXELFORMAT_ARGB8888);
+  SDL_Surface* blur_temp =
+      SDL_CreateRGBSurface(0, g_screen->w / 16, g_screen->h / 16, 32,
+                           0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
   if (blur_temp != nullptr) {
     VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
     video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur,
@@ -353,8 +328,9 @@ void FrameShowHelpScreen(int sx, int sy) {
   }
 
   // Dim the background using SDL blending for better text readability
-  SDL_Surface* dim_surface = SDL_CreateRGBSurfaceWithFormat(
-      0, g_screen->w, g_screen->h, 32, SDL_PIXELFORMAT_ARGB8888);
+  SDL_Surface* dim_surface =
+      SDL_CreateRGBSurface(0, g_screen->w, g_screen->h, 32, 0x00FF0000,
+                           0x0000FF00, 0x000000FF, 0xFF000000);
   if (dim_surface != nullptr) {
     Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 200);
     SDL_FillRect(dim_surface, nullptr, dim_color);
@@ -378,14 +354,14 @@ void FrameShowHelpScreen(int sx, int sy) {
             hdr_height, 0xFFFF00);
 
   font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
-                      const_cast<char*>(HelpStrings.at(0)), &vs_actual_screen,
-                      scale_x, scale_y);
+                      const_cast<char*>(HELP_HEADER_STRINGS.at(0)),
+                      &vs_actual_screen, scale_x, scale_y);
   font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
-                      const_cast<char*>(HelpStrings.at(1)), &vs_actual_screen,
-                      scale_x, scale_y);
+                      const_cast<char*>(HELP_HEADER_STRINGS.at(1)),
+                      &vs_actual_screen, scale_x, scale_y);
   font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
-                      const_cast<char*>(HelpStrings.at(2)), &vs_actual_screen,
-                      scale_x, scale_y);
+                      const_cast<char*>(HELP_HEADER_STRINGS.at(2)),
+                      &vs_actual_screen, scale_x, scale_y);
 
   const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
   const int body_height =
@@ -395,13 +371,15 @@ void FrameShowHelpScreen(int sx, int sy) {
             body_height, 0xFFFFFF);
 
   const float line_spacing = 13.0f * facy_f;
-  for (int i = 3; i < max_lines; i++) {
-    if (HelpStrings.at(i) != nullptr && HelpStrings.at(i)[0] != '\0') {
+  for (size_t i = 0; i < HELP_BODY_STRINGS.size(); i++) {
+    if (HELP_BODY_STRINGS.at(i) != nullptr &&
+        HELP_BODY_STRINGS.at(i)[0] != '\0') {
       font_print(
           static_cast<int>(16.0f * facx_f),
-          body_top + static_cast<int>(6.0f * facy_f + (i - 3) * line_spacing),
-          const_cast<char*>(HelpStrings.at(i)), &vs_actual_screen, scale_x,
-          scale_y);
+          body_top + static_cast<int>(6.0f * facy_f +
+                                      static_cast<float>(i) * line_spacing),
+          const_cast<char*>(HELP_BODY_STRINGS.at(i)), &vs_actual_screen,
+          scale_x, scale_y);
     }
   }
 

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "TuiVideo.h"
 #include "core/LinAppleCore.h"
 
 static int g_joy_fd = -1;
@@ -27,6 +28,7 @@ static constexpr uint8_t a2_key_backspace = 0x08;
 static constexpr uint8_t a2_key_delete = 0x7F;
 static constexpr uint8_t a2_key_ctrl_c = 0x03;
 
+static constexpr int f1_vt_code = 11;
 static constexpr int f12_code = 24;
 
 auto tui_input_initialize() -> void {
@@ -65,7 +67,34 @@ static auto process_sequences() -> void {
         break;
       }
 
+      if (g_input_queue.at(i + 1) == 'O') {
+        if (i + 2 >= g_input_queue.size()) {
+          break;
+        }
+        uint8_t ss3_cmd = g_input_queue.at(i + 2);
+        if (ss3_cmd == 'P') {  // F1
+          tui_video_toggle_help();
+        } else if (tui_video_is_help_visible()) {
+          tui_video_close_help();
+        }
+        i += 3;
+        continue;
+      }
+
       if (g_input_queue.at(i + 1) == '[') {
+        if (i + 2 < g_input_queue.size() && g_input_queue.at(i + 2) == '[') {
+          if (i + 3 < g_input_queue.size()) {
+            if (g_input_queue.at(i + 3) == 'A') {  // Linux Console F1
+              tui_video_toggle_help();
+            } else if (tui_video_is_help_visible()) {
+              tui_video_close_help();
+            }
+            i += 4;
+            continue;
+          }
+          break;
+        }
+
         size_t end = i + 2;
         while (end < g_input_queue.size() &&
                (g_input_queue.at(end) < ANSI_FINAL_BYTE_MIN ||
@@ -78,6 +107,27 @@ static auto process_sequences() -> void {
 
           if (g_input_queue.at(i + 2) == '<') {
             // Consume mouse, no action yet
+          } else if (cmd == 'P') {  // xterm F1 (\x1b[P)
+            tui_video_toggle_help();
+          } else if (cmd == '~') {
+            if (end > i + 2) {
+              const std::string token(
+                  g_input_queue.begin() + static_cast<long>(i + 2),
+                  g_input_queue.begin() + static_cast<long>(end));
+              try {
+                int val = std::stoi(token);
+                if (val == f1_vt_code) {
+                  tui_video_toggle_help();
+                } else if (val == f12_code) {
+                  raise(SIGINT);
+                } else if (tui_video_is_help_visible()) {
+                  tui_video_close_help();
+                }
+              } catch (...) {
+              }
+            }
+          } else if (tui_video_is_help_visible()) {
+            tui_video_close_help();
           } else if (cmd == 'A') {
             map_key(a2_key_up);
           } else if (cmd == 'B') {
@@ -86,19 +136,6 @@ static auto process_sequences() -> void {
             map_key(a2_key_left);
           } else if (cmd == 'C') {
             map_key(a2_key_right);
-          } else if (cmd == '~') {
-            if (end > i + 2) {
-              const std::string token(
-                  g_input_queue.begin() + static_cast<long>(i + 2),
-                  g_input_queue.begin() + static_cast<long>(end));
-              try {
-                int val = std::stoi(token);
-                if (val == f12_code) {
-                  raise(SIGINT);
-                }
-              } catch (...) {
-              }
-            }
           }
 
           i = end + 1;
@@ -108,20 +145,26 @@ static auto process_sequences() -> void {
         break;
       }
 
-      map_key(a2_key_esc);
+      if (tui_video_is_help_visible()) {
+        tui_video_close_help();
+      } else {
+        map_key(a2_key_esc);
+      }
       i++;
       continue;
     }
 
     uint8_t b = g_input_queue.at(i);
-    if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
+    if (b == a2_key_ctrl_c) {
+      raise(SIGINT);
+    } else if (tui_video_is_help_visible()) {
+      tui_video_close_help();
+    } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
       map_key(b);
     } else if (b == a2_key_enter) {
       map_key(a2_key_enter);
     } else if (b == a2_key_backspace || b == a2_key_delete) {
       map_key(a2_key_backspace);
-    } else if (b == a2_key_ctrl_c) {
-      raise(SIGINT);
     }
 
     i++;

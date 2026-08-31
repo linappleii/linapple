@@ -14,6 +14,7 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "frontends/common/AppConfig.h"
+#include "frontends/common/HelpText.h"
 
 static int g_term_width = 0;
 static int g_term_height = 0;
@@ -40,9 +41,203 @@ static constexpr int mixed_mode_text_start = 20;
 static constexpr int refresh_full_divisor = 60;
 
 static TuiRenderMode_t g_render_mode = TUI_RENDER_SMART;
+static bool g_show_help = false;
 
 auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
   g_render_mode = mode;
+}
+
+auto tui_video_toggle_help() -> void { g_show_help = !g_show_help; }
+
+auto tui_video_is_help_visible() -> bool { return g_show_help; }
+
+auto tui_video_close_help() -> void { g_show_help = false; }
+
+static auto set_glyph(TuiState_t& state, const char* str) -> void {
+  state.glyph.fill(0);
+  if (str == nullptr) return;
+  for (size_t i = 0; i < state.glyph.size() - 1 && str[i] != '\0'; ++i) {
+    state.glyph.at(i) = static_cast<uint8_t>(str[i]);
+  }
+}
+
+static auto render_help_overlay() -> void {
+  constexpr int box_inner_w = 64;
+  constexpr int box_w = box_inner_w + 2;
+
+  const bool compact = (g_term_height < 28);
+  std::vector<const char*> visible_body_lines;
+  visible_body_lines.reserve(HELP_BODY_STRINGS.size());
+  for (const char* line : HELP_BODY_STRINGS) {
+    if (compact && line[0] == '\0') {
+      continue;
+    }
+    visible_body_lines.push_back(line);
+  }
+
+  const int box_h =
+      static_cast<int>(HELP_HEADER_STRINGS.size() + visible_body_lines.size()) +
+      3;
+
+  if (g_term_width < box_w || g_term_height < 20) {
+    return;
+  }
+
+  const int start_x = (g_term_width - box_w) / 2;
+  const int start_y =
+      (g_term_height > box_h) ? (g_term_height - 1 - box_h) / 2 : 0;
+
+  const TuiPixel_t header_border = {255, 255, 0};  // Yellow header box
+  const TuiPixel_t header_fg = {255, 255, 100};    // Bright Yellow text
+  const TuiPixel_t body_border = {255, 255, 255};  // White body box
+  const TuiPixel_t body_fg = {240, 240, 240};      // Soft White text
+  const TuiPixel_t modal_bg = {10, 15, 25};  // Dimmed Blue-Black background
+
+  // Draw Header Box (Top Border)
+  {
+    auto& tl =
+        g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
+    set_glyph(tl, "\xe2\x94\x8c");  // ┌
+    tl.fg = header_border;
+    tl.bg = modal_bg;
+
+    for (int x = 1; x <= box_inner_w; ++x) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(start_y * g_term_width + start_x + x));
+      set_glyph(cell, "\xe2\x94\x80");  // ─
+      cell.fg = header_border;
+      cell.bg = modal_bg;
+    }
+
+    auto& tr = g_next_buffer.at(
+        static_cast<size_t>(start_y * g_term_width + start_x + box_w - 1));
+    set_glyph(tr, "\xe2\x94\x90");  // ┐
+    tr.fg = header_border;
+    tr.bg = modal_bg;
+  }
+
+  // Draw Header Lines (centered, Yellow)
+  for (size_t row_idx = 0; row_idx < HELP_HEADER_STRINGS.size(); ++row_idx) {
+    int cur_y = start_y + 1 + static_cast<int>(row_idx);
+    if (cur_y >= g_term_height) break;
+
+    auto& left_border =
+        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    set_glyph(left_border, "\xe2\x94\x82");  // │
+    left_border.fg = header_border;
+    left_border.bg = modal_bg;
+
+    const char* line = HELP_HEADER_STRINGS.at(row_idx);
+    int line_len = static_cast<int>(strlen(line));
+    int pad = (box_inner_w > line_len) ? (box_inner_w - line_len) : 0;
+    int l_pad = pad / 2;
+
+    for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      cell.glyph.fill(0);
+      if (col_idx >= l_pad && col_idx < l_pad + line_len) {
+        cell.glyph.at(0) = static_cast<uint8_t>(line[col_idx - l_pad]);
+      } else {
+        cell.glyph.at(0) = ' ';
+      }
+      cell.fg = header_fg;
+      cell.bg = modal_bg;
+    }
+
+    auto& right_border = g_next_buffer.at(
+        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    set_glyph(right_border, "\xe2\x94\x82");  // │
+    right_border.fg = header_border;
+    right_border.bg = modal_bg;
+  }
+
+  // Draw Divider (between Header and Body)
+  {
+    int div_y = start_y + 1 + static_cast<int>(HELP_HEADER_STRINGS.size());
+    if (div_y < g_term_height) {
+      auto& div_l =
+          g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+      set_glyph(div_l, "\xe2\x94\x9c");  // ├
+      div_l.fg = body_border;
+      div_l.bg = modal_bg;
+
+      for (int x = 1; x <= box_inner_w; ++x) {
+        auto& cell = g_next_buffer.at(
+            static_cast<size_t>(div_y * g_term_width + start_x + x));
+        set_glyph(cell, "\xe2\x94\x80");  // ─
+        cell.fg = body_border;
+        cell.bg = modal_bg;
+      }
+
+      auto& div_r = g_next_buffer.at(
+          static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+      set_glyph(div_r, "\xe2\x94\xa4");  // ┤
+      div_r.fg = body_border;
+      div_r.bg = modal_bg;
+    }
+  }
+
+  // Draw Body Lines (White text, left aligned with margin)
+  for (size_t row_idx = 0; row_idx < visible_body_lines.size(); ++row_idx) {
+    int cur_y =
+        start_y + 2 + static_cast<int>(HELP_HEADER_STRINGS.size() + row_idx);
+    if (cur_y >= g_term_height) break;
+
+    auto& left_border =
+        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    set_glyph(left_border, "\xe2\x94\x82");  // │
+    left_border.fg = body_border;
+    left_border.bg = modal_bg;
+
+    const char* line = visible_body_lines.at(row_idx);
+    size_t line_len = strlen(line);
+
+    for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
+      auto& cell = g_next_buffer.at(
+          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      cell.glyph.fill(0);
+      if (col_idx >= 2 && static_cast<size_t>(col_idx - 2) < line_len) {
+        cell.glyph.at(0) = static_cast<uint8_t>(line[col_idx - 2]);
+      } else {
+        cell.glyph.at(0) = ' ';
+      }
+      cell.fg = body_fg;
+      cell.bg = modal_bg;
+    }
+
+    auto& right_border = g_next_buffer.at(
+        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    set_glyph(right_border, "\xe2\x94\x82");  // │
+    right_border.fg = body_border;
+    right_border.bg = modal_bg;
+  }
+
+  // Draw Bottom Border
+  {
+    int bot_y = start_y + box_h - 1;
+    if (bot_y < g_term_height) {
+      auto& bl =
+          g_next_buffer.at(static_cast<size_t>(bot_y * g_term_width + start_x));
+      set_glyph(bl, "\xe2\x94\x94");  // └
+      bl.fg = body_border;
+      bl.bg = modal_bg;
+
+      for (int x = 1; x <= box_inner_w; ++x) {
+        auto& cell = g_next_buffer.at(
+            static_cast<size_t>(bot_y * g_term_width + start_x + x));
+        set_glyph(cell, "\xe2\x94\x80");  // ─
+        cell.fg = body_border;
+        cell.bg = modal_bg;
+      }
+
+      auto& br = g_next_buffer.at(
+          static_cast<size_t>(bot_y * g_term_width + start_x + box_w - 1));
+      set_glyph(br, "\xe2\x94\x98");  // ┘
+      br.fg = body_border;
+      br.bg = modal_bg;
+    }
+  }
 }
 
 auto tui_video_initialize() -> void {
@@ -81,14 +276,6 @@ static auto get_text_addr(int row, int col) -> uint16_t {
       0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
       0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0};
   return row_offsets.at(static_cast<size_t>(row)) + static_cast<uint16_t>(col);
-}
-
-static auto set_glyph(TuiState_t& state, const char* str) -> void {
-  state.glyph.fill(0);
-  if (str == nullptr) return;
-  for (size_t i = 0; i < state.glyph.size() - 1 && str[i] != '\0'; ++i) {
-    state.glyph.at(i) = static_cast<uint8_t>(str[i]);
-  }
 }
 
 static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
@@ -301,6 +488,10 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     }
   }
 
+  if (g_show_help) {
+    render_help_overlay();
+  }
+
   g_output_buffer.clear();
   g_output_buffer.push_back('\x1b');
   g_output_buffer.push_back('[');
@@ -312,7 +503,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       std::array<char, 128> status{};
       int slen = snprintf(status.data(), status.size(),
                           "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
-                          "LinApple-TUI | F12: Quit ",
+                          "LinApple-TUI | F1: Help | F12: Quit ",
                           g_term_height);
       for (int i = 0; i < slen; ++i) {
         g_output_buffer.push_back(status.at(static_cast<size_t>(i)));

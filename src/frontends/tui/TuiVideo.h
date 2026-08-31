@@ -35,6 +35,21 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
  */
 auto tui_video_on_resize() -> void;
 
+/**
+ * @brief Toggle the TUI help screen overlay.
+ */
+auto tui_video_toggle_help() -> void;
+
+/**
+ * @brief Check if the TUI help screen is currently visible.
+ */
+auto tui_video_is_help_visible() -> bool;
+
+/**
+ * @brief Close the TUI help screen overlay.
+ */
+auto tui_video_close_help() -> void;
+
 #ifdef __cplusplus
 }
 #endif
