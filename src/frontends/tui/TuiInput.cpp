@@ -22,6 +22,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AppController.h"
 
@@ -43,6 +44,7 @@ static constexpr int f2_vt_code = 12;
 static constexpr int f3_vt_code = 13;
 static constexpr int f4_vt_code = 14;
 static constexpr int f5_vt_code = 15;
+static constexpr int f6_vt_code = 17;
 static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
 static constexpr int disk_select_page_size = 14;
@@ -97,6 +99,17 @@ static auto restart_machine() -> void { AppController_SetRestart(true); }
 
 static auto swap_drives() -> void {
   peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
+}
+
+static auto toggle_keyboard_rocker() -> void {
+  if ((g_apple2_type == A2TYPE_APPLE2E) ||
+      (g_apple2_type == A2TYPE_APPLE2EENHANCED)) {
+    uint8_t cur_rocker = 0;
+    size_t rocker_sz = sizeof(cur_rocker);
+    peripheral_query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
+    uint8_t new_rocker = (cur_rocker != 0) ? 0 : 1;
+    peripheral_command(0, keyboard_cmd_set_rocker, &new_rocker, 1);
+  }
 }
 
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
@@ -155,6 +168,8 @@ static auto process_sequences() -> void {
           tui_disk_select_open(6, 1);
         } else if (ss3_cmd == 'T') {  // F5
           swap_drives();
+        } else if (ss3_cmd == 'U') {  // F6
+          tui_video_toggle_fullscreen();
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) tui_disk_select_home();
         } else if (ss3_cmd == 'F') {  // End
@@ -182,6 +197,8 @@ static auto process_sequences() -> void {
               tui_disk_select_open(6, 1);
             } else if (g_input_queue.at(i + 3) == 'E') {  // Linux Console F5
               swap_drives();
+            } else if (g_input_queue.at(i + 3) == 'F') {  // Linux Console F6
+              tui_video_toggle_fullscreen();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -260,6 +277,8 @@ static auto process_sequences() -> void {
             } else if (token == "14" || token == "26") {
               tui_video_close_help();
               tui_disk_select_open(7, 1);
+            } else if (token == "17" || token == "28") {
+              toggle_keyboard_rocker();
             }
           } else if (cmd == '~') {
             if (end > i + 2) {
@@ -274,6 +293,8 @@ static auto process_sequences() -> void {
               } else if (token == "14;2" || token == "26" || token == "26;2") {
                 tui_video_close_help();
                 tui_disk_select_open(7, 1);
+              } else if (token == "17;2" || token == "28" || token == "28;2") {
+                toggle_keyboard_rocker();
               } else if (token == "21;5" ||
                          token ==
                              "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
@@ -304,6 +325,8 @@ static auto process_sequences() -> void {
                     tui_disk_select_open(6, 1);
                   } else if (val == f5_vt_code) {
                     swap_drives();
+                  } else if (val == f6_vt_code) {
+                    tui_video_toggle_fullscreen();
                   } else if (val == f10_vt_code) {
                     soft_reset_machine();
                   } else if (val == f12_code) {

@@ -15,6 +15,7 @@
 #include "TuiShapeDetector.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "core/LinAppleCore.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
@@ -50,11 +51,20 @@ auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
   g_render_mode = mode;
 }
 
+static bool g_fullscreen = false;
+
 auto tui_video_toggle_help() -> void { g_show_help = !g_show_help; }
 
 auto tui_video_is_help_visible() -> bool { return g_show_help; }
 
 auto tui_video_close_help() -> void { g_show_help = false; }
+
+auto tui_video_toggle_fullscreen() -> void {
+  g_fullscreen = !g_fullscreen;
+  g_state.fullscreen = g_fullscreen;
+}
+
+auto tui_video_is_fullscreen() -> bool { return g_fullscreen; }
 
 static auto set_glyph(TuiState_t& state, const char* str) -> void {
   state.glyph.fill(0);
@@ -692,7 +702,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
   int a2_w_cols = is_80col ? a2_cols_80 : a2_cols_40;
   int avail_rows = g_term_height;
-  bool show_status = (g_term_height > min_term_height_status);
+  bool show_status = (g_term_height > min_term_height_status && !g_fullscreen);
   if (show_status) {
     avail_rows = g_term_height - 1;
   }
@@ -820,7 +830,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           snprintf(status.data(), status.size(),
                    "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
                    "LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F5: Swap | "
-                   "F12: Quit ",
+                   "F6: Full | F12: Quit ",
                    g_term_height);
       for (int i = 0; i < slen; ++i) {
         g_output_buffer.push_back(status.at(static_cast<size_t>(i)));

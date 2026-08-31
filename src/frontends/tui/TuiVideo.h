@@ -50,6 +50,16 @@ auto tui_video_is_help_visible() -> bool;
  */
 auto tui_video_close_help() -> void;
 
+/**
+ * @brief Toggle TUI fullscreen mode (hides/shows bottom status bar).
+ */
+auto tui_video_toggle_fullscreen() -> void;
+
+/**
+ * @brief Check if TUI fullscreen mode is active.
+ */
+auto tui_video_is_fullscreen() -> bool;
+
 #ifdef __cplusplus
 }
 #endif
