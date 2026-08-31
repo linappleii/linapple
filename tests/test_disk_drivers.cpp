@@ -430,3 +430,21 @@ TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
 
   remove(tmp_iie);
 }
+
+TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
+  const char* tmp_unaligned = "unaligned.dsk";
+  {
+    FILE* f = fopen(tmp_unaligned, "wb");
+    REQUIRE(f != nullptr);
+    uint8_t unaligned_data[5000] = {0}; // Not a multiple of 256
+    fwrite(unaligned_data, 1, sizeof(unaligned_data), f);
+    fclose(f);
+  }
+
+  void* inst = nullptr;
+  bool ro = false;
+  CHECK(g_do_driver.open(tmp_unaligned, 0, 0, &ro, &inst) != disk_err_none);
+  CHECK(inst == nullptr);
+
+  remove(tmp_unaligned);
+}

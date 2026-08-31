@@ -93,6 +93,22 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return nullptr;
   }
 
+  if (fseek(image_ptr->file.get(), 0, SEEK_END) != 0) {
+    delete image_ptr;
+    return nullptr;
+  }
+  const long total_size = ftell(image_ptr->file.get());
+  if (total_size < 0 || static_cast<size_t>(total_size) < file_offset) {
+    delete image_ptr;
+    return nullptr;
+  }
+  const size_t effective_size = static_cast<size_t>(total_size) - file_offset;
+  if (effective_size < static_cast<size_t>(dos::track_size) ||
+      (effective_size % dos::page_size != 0)) {
+    delete image_ptr;
+    return nullptr;
+  }
+
   if (out_is_read_only != nullptr) {
     *out_is_read_only = image_ptr->os_readonly;
   }
