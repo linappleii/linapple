@@ -94,7 +94,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   peripheral_manager_think(0);
   peripheral_query(SL6, disk_cmd_get_status, &status, &size);
   CHECK(status.drive0_loaded != 0);
-  CHECK(status.drive0_write_protected == 0);
+  CHECK(status.drive0_write_protected != 0);
 
   // All clear: Writable
   Util_SafeStrCpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
