@@ -10,16 +10,18 @@
 TEST_CASE("TuiDiskSelect: Open and Close Lifecycle") {
   CHECK_FALSE(tui_disk_select_is_active());
 
-  tui_disk_select_open(0);
+  tui_disk_select_open(6, 0);
   CHECK(tui_disk_select_is_active());
+  CHECK(tui_disk_select_get_slot() == 6);
   CHECK(tui_disk_select_get_drive() == 0);
   CHECK(tui_disk_select_get_current_dir() != nullptr);
 
   tui_disk_select_close();
   CHECK_FALSE(tui_disk_select_is_active());
 
-  tui_disk_select_open(1);
+  tui_disk_select_open(7, 1);
   CHECK(tui_disk_select_is_active());
+  CHECK(tui_disk_select_get_slot() == 7);
   CHECK(tui_disk_select_get_drive() == 1);
 
   tui_disk_select_close();
@@ -27,7 +29,7 @@ TEST_CASE("TuiDiskSelect: Open and Close Lifecycle") {
 }
 
 TEST_CASE("TuiDiskSelect: Navigation and Paging") {
-  tui_disk_select_open(0);
+  tui_disk_select_open(6, 0);
   REQUIRE(tui_disk_select_is_active());
 
   const FileList_t* list = tui_disk_select_get_file_list();

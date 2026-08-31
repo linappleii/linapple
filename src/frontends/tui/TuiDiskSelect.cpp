@@ -8,13 +8,15 @@ namespace {
 static DiskBrowser_t s_browser{};
 }
 
-auto tui_disk_select_open(int drive) -> void {
-  disk_browser_open(&s_browser, 6, drive, nullptr);
+auto tui_disk_select_open(int slot, int drive) -> void {
+  disk_browser_open(&s_browser, slot, drive, nullptr);
 }
 
 auto tui_disk_select_close() -> void { disk_browser_close(&s_browser); }
 
 auto tui_disk_select_is_active() -> bool { return s_browser.is_active; }
+
+auto tui_disk_select_get_slot() -> int { return s_browser.slot; }
 
 auto tui_disk_select_get_drive() -> int { return s_browser.drive; }
 

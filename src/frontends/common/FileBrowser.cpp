@@ -17,6 +17,8 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -373,6 +375,9 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
 
   if (start_dir != nullptr && start_dir[0] != '\0') {
     Util_SafeStrCpy(b->current_dir, start_dir, sizeof(b->current_dir));
+  } else if (b->slot == 7 && g_state.hdd_dir.at(0) != '\0') {
+    Util_SafeStrCpy(b->current_dir, g_state.hdd_dir.data(),
+                    sizeof(b->current_dir));
   } else if (g_state.current_dir.at(0) != '\0') {
     Util_SafeStrCpy(b->current_dir, g_state.current_dir.data(),
                     sizeof(b->current_dir));
@@ -568,6 +573,32 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     full_path += "/" + std::string(entry->name);
   } else {
     full_path = "/" + std::string(entry->name);
+  }
+
+  if (b->slot == 7) {
+    Util_SafeStrCpy(g_state.hdd_dir.data(), b->current_dir,
+                    g_state.hdd_dir.size());
+    Configuration_t::instance().set_string(
+        "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
+    Configuration_t::instance().save();
+
+    HarddiskInsertCmd_t hcmd{};
+    hcmd.drive = static_cast<uint8_t>(b->drive);
+    Util_SafeStrCpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
+    if (peripheral_command(7, harddisk_cmd_insert, &hcmd, sizeof(hcmd)) ==
+        peripheral_ok) {
+      if (b->drive != 0) {
+        Configuration_t::instance().set_string(
+            "Preferences", REGVALUE_HDD_IMAGE2, full_path.c_str());
+      } else {
+        Configuration_t::instance().set_string(
+            "Preferences", REGVALUE_HDD_IMAGE1, full_path.c_str());
+      }
+      Configuration_t::instance().save();
+    }
+
+    disk_browser_close(b);
+    return true;
   }
 
   // Update current_dir and save to Preferences

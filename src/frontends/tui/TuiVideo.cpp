@@ -250,6 +250,7 @@ static auto render_disk_select_overlay() -> void {
   const size_t total_count = list ? file_browser_get_count(list) : 0;
   const size_t selected_idx = tui_disk_select_get_selected_index();
   const size_t first_vis = tui_disk_select_get_first_visible_index();
+  const int slot = tui_disk_select_get_slot();
   const int drive = tui_disk_select_get_drive();
   const char* cur_dir = tui_disk_select_get_current_dir();
 
@@ -312,7 +313,7 @@ static auto render_disk_select_overlay() -> void {
   // 2. Draw Header Lines
   std::array<std::string, 3> header_lines;
   header_lines[0] = cur_dir;
-  header_lines[1] = std::string(disk_browser_get_title(6)) +
+  header_lines[1] = std::string(disk_browser_get_title(slot)) +
                     (drive == 0 ? " [Drive 1]" : " [Drive 2]");
   header_lines[2] = "Press ENTER to choose, or ESC to cancel";
 

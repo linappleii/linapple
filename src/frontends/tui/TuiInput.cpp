@@ -149,10 +149,10 @@ static auto process_sequences() -> void {
           reset_machine();
         } else if (ss3_cmd == 'R') {  // F3
           tui_video_close_help();
-          tui_disk_select_open(0);
+          tui_disk_select_open(6, 0);
         } else if (ss3_cmd == 'S') {  // F4
           tui_video_close_help();
-          tui_disk_select_open(1);
+          tui_disk_select_open(6, 1);
         } else if (ss3_cmd == 'T') {  // F5
           swap_drives();
         } else if (ss3_cmd == 'H') {  // Home
@@ -176,10 +176,10 @@ static auto process_sequences() -> void {
               reset_machine();
             } else if (g_input_queue.at(i + 3) == 'C') {  // Linux Console F3
               tui_video_close_help();
-              tui_disk_select_open(0);
+              tui_disk_select_open(6, 0);
             } else if (g_input_queue.at(i + 3) == 'D') {  // Linux Console F4
               tui_video_close_help();
-              tui_disk_select_open(1);
+              tui_disk_select_open(6, 1);
             } else if (g_input_queue.at(i + 3) == 'E') {  // Linux Console F5
               swap_drives();
             } else if (tui_video_is_help_visible()) {
@@ -214,12 +214,26 @@ static auto process_sequences() -> void {
             } else {
               reset_machine();
             }
-          } else if (cmd == 'R') {  // xterm F3 (\x1b[R)
+          } else if (cmd == 'R') {  // xterm F3 / Shift+F3 (\x1b[R / \x1b[1;2R)
             tui_video_close_help();
-            tui_disk_select_open(0);
-          } else if (cmd == 'S') {  // xterm F4 (\x1b[S)
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token.find(";2") != std::string::npos || token == "1;2") {
+              tui_disk_select_open(7, 0);
+            } else {
+              tui_disk_select_open(6, 0);
+            }
+          } else if (cmd == 'S') {  // xterm F4 / Shift+F4 (\x1b[S / \x1b[1;2S)
             tui_video_close_help();
-            tui_disk_select_open(1);
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token.find(";2") != std::string::npos || token == "1;2") {
+              tui_disk_select_open(7, 1);
+            } else {
+              tui_disk_select_open(6, 1);
+            }
           } else if (cmd == 'H') {  // Home (\x1b[H)
             if (tui_disk_select_is_active()) tui_disk_select_home();
           } else if (cmd == 'F') {  // End (\x1b[F)
@@ -240,6 +254,12 @@ static auto process_sequences() -> void {
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token == "12") {  // rxvt Shift+F2 (\x1b[12$)
               restart_machine();
+            } else if (token == "13" || token == "25") {
+              tui_video_close_help();
+              tui_disk_select_open(7, 0);
+            } else if (token == "14" || token == "26") {
+              tui_video_close_help();
+              tui_disk_select_open(7, 1);
             }
           } else if (cmd == '~') {
             if (end > i + 2) {
@@ -248,6 +268,12 @@ static auto process_sequences() -> void {
                   g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
               if (token == "12;2") {  // VT Shift+F2 (\x1b[12;2~)
                 restart_machine();
+              } else if (token == "13;2" || token == "25" || token == "25;2") {
+                tui_video_close_help();
+                tui_disk_select_open(7, 0);
+              } else if (token == "14;2" || token == "26" || token == "26;2") {
+                tui_video_close_help();
+                tui_disk_select_open(7, 1);
               } else if (token == "21;5" ||
                          token ==
                              "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
@@ -272,10 +298,10 @@ static auto process_sequences() -> void {
                     reset_machine();
                   } else if (val == f3_vt_code) {
                     tui_video_close_help();
-                    tui_disk_select_open(0);
+                    tui_disk_select_open(6, 0);
                   } else if (val == f4_vt_code) {
                     tui_video_close_help();
-                    tui_disk_select_open(1);
+                    tui_disk_select_open(6, 1);
                   } else if (val == f5_vt_code) {
                     swap_drives();
                   } else if (val == f10_vt_code) {
