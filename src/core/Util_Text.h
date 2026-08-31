@@ -2,13 +2,13 @@
 
 #include <cstddef>
 #include <cstdint>
-#define CHAR_LF '\x0D'
-#define CHAR_CR '\x0A'
-#define CHAR_SPACE ' '
-#define CHAR_TAB '\t'
-#define CHAR_QUOTE_DOUBLE '"'
-#define CHAR_QUOTE_SINGLE '\''
-#define CHAR_ESCAPE '\x1B'
+constexpr char CHAR_CR = '\r';   // 0x0D
+constexpr char CHAR_LF = '\n';   // 0x0A
+constexpr char CHAR_SPACE = ' ';
+constexpr char CHAR_TAB = '\t';
+constexpr char CHAR_QUOTE_DOUBLE = '"';
+constexpr char CHAR_QUOTE_SINGLE = '\'';
+constexpr char CHAR_ESCAPE = '\x1B';
 
 static inline auto is_char_lower(char ch) -> bool {
   return (ch >= 'a' && ch <= 'z');
@@ -20,11 +20,10 @@ static inline auto is_char_upper(char ch) -> bool {
 
 inline auto eat_eol(const char* src_ptr) -> const char* {
   if (src_ptr) {
-    if (*src_ptr == CHAR_LF) {
+    if (*src_ptr == CHAR_CR) {
       src_ptr++;
     }
-
-    if (*src_ptr == CHAR_CR) {
+    if (*src_ptr == CHAR_LF) {
       src_ptr++;
     }
   }
@@ -103,14 +102,23 @@ inline auto skip_until_white_space_reverse(const char* src_ptr,
 constexpr uint8_t HEX_ALPHA_OFFSET = 10;
 constexpr uint8_t NIBBLE_SHIFT = 4;
 
+inline auto hex_char_to_val(char c) -> uint8_t {
+  if (c >= '0' && c <= '9') {
+    return static_cast<uint8_t>(c - '0');
+  }
+  if (c >= 'A' && c <= 'F') {
+    return static_cast<uint8_t>(c - 'A' + HEX_ALPHA_OFFSET);
+  }
+  if (c >= 'a' && c <= 'f') {
+    return static_cast<uint8_t>(c - 'a' + HEX_ALPHA_OFFSET);
+  }
+  return 0;
+}
+
 /** Assumes text are valid hex digits! */
-inline auto text_convert_2_chars_to_byte(char* text) -> uint8_t {
-  uint8_t n =
-      ((text[0] <= '@') ? (text[0] - '0') : (text[0] - 'A' + HEX_ALPHA_OFFSET))
-      << NIBBLE_SHIFT;
-  n +=
-      ((text[1] <= '@') ? (text[1] - '0') : (text[1] - 'A' + HEX_ALPHA_OFFSET));
-  return n;
+inline auto text_convert_2_chars_to_byte(const char* text) -> uint8_t {
+  return static_cast<uint8_t>((hex_char_to_val(text[0]) << NIBBLE_SHIFT) |
+                              hex_char_to_val(text[1]));
 }
 
 inline auto text_is_hex_char(char ch) -> bool {

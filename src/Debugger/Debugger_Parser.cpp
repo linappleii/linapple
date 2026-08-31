@@ -34,8 +34,8 @@ Arg_t g_args[MAX_ARGS];     // post-processing (cooked)
 int g_command;
 std::vector<int> g_potential_commands;
 
-const char TCHAR_LF = '\x0D';
-const char TCHAR_CR = '\x0A';
+const char TCHAR_LF = '\x0A';
+const char TCHAR_CR = '\x0D';
 const char TCHAR_SPACE = ' ';
 const char TCHAR_TAB = '\t';
 //	const char TCHAR_QUOTED = '"';
