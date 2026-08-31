@@ -207,7 +207,6 @@ void DrawRegister(int line, const char* name, const int nBytes,
 
 void DrawRegisters(int line) {
   const char** sReg = g_breakpoint_source;
-  printf("DrawRegisters: line=%d start\n", line);
 
   DrawRegister(line++, sReg[BP_SRC_REG_A], 1, cpu_get_registers()->a,
                PARAM_REG_A);
@@ -221,7 +220,6 @@ void DrawRegisters(int line) {
   line += 2;
   DrawRegister(line++, sReg[BP_SRC_REG_S], 2, cpu_get_registers()->sp,
                PARAM_REG_SP);
-  printf("DrawRegisters: end\n");
 }
 
 void DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,

@@ -124,10 +124,28 @@ void FillRect(const Rect_t* r, int Brush) {
   if (!r) {
     return;
   }
-  int col_start = r->left / CONSOLE_FONT_WIDTH;
-  int row_start = r->top / CONSOLE_FONT_HEIGHT;
-  int col_end = r->right / CONSOLE_FONT_WIDTH;
-  int row_end = r->bottom / CONSOLE_FONT_HEIGHT;
+  int col_start = 0;
+  int col_end = 0;
+  int row_start = 0;
+  int row_end = 0;
+
+  if (r->top >= g_window_config[WINDOW_CONSOLE].top) {
+    col_start = r->left / APPLE_FONT_WIDTH;
+    col_end = (r->right + APPLE_FONT_WIDTH - 1) / APPLE_FONT_WIDTH;
+    row_start =
+        g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT +
+        (r->top - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT;
+    row_end = g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT +
+              (r->bottom - g_window_config[WINDOW_CONSOLE].top +
+               APPLE_FONT_HEIGHT - 1) /
+                  APPLE_FONT_HEIGHT;
+  } else {
+    col_start = r->left / CONSOLE_FONT_WIDTH;
+    col_end = (r->right + CONSOLE_FONT_WIDTH - 1) / CONSOLE_FONT_WIDTH;
+    row_start = r->top / CONSOLE_FONT_HEIGHT;
+    row_end = (r->bottom + CONSOLE_FONT_HEIGHT - 1) / CONSOLE_FONT_HEIGHT;
+  }
+
   for (int y = row_start; y < row_end; ++y) {
     for (int x = col_start; x < col_end; ++x) {
       if (x >= 0 && x < DEBUG_VIRTUAL_TEXT_WIDTH && y >= 0 &&
@@ -167,8 +185,10 @@ void PrintGlyph(const int x, const int y, const char glyph) {
     int col = x / CONSOLE_FONT_WIDTH;
     int row = y / CONSOLE_FONT_HEIGHT;
 
-    if (x > DISPLAY_DISASM_RIGHT) {
-      col++;
+    if (y >= g_window_config[WINDOW_CONSOLE].top) {
+      col = x / APPLE_FONT_WIDTH;
+      row = g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT +
+            (y - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT;
     }
 
     if ((col >= 0) && (col < DEBUG_VIRTUAL_TEXT_WIDTH) && (row >= 0) &&
@@ -244,10 +264,16 @@ auto can_draw_debugger() -> bool {
 
 auto PrintText(const char* text, Rect_t& rRect) -> int {
   if (!text) return 0;
-  int nLen = strlen(text);
+  int nLen = static_cast<int>(strlen(text));
 
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
-  FillRect(&rRect, g_console_brush_bg);
+  if (g_debug_screen) {
+    Rect_t textRect = rRect;
+    textRect.right = textRect.left + (nLen * CONSOLE_FONT_WIDTH);
+    rectangle(g_debug_screen, textRect.left, textRect.top,
+              textRect.right - textRect.left, textRect.bottom - textRect.top,
+              g_console_brush_bg);
+  }
 #endif
 
   DebuggerPrint(rRect.left, rRect.top, text);
@@ -257,7 +283,21 @@ auto PrintText(const char* text, Rect_t& rRect) -> int {
 void PrintTextColor(const conchar_t* text, Rect_t& rRect) {
   if (!text) return;
 #if !DEBUG_FONT_NO_BACKGROUND_TEXT
-  FillRect(&rRect, g_console_brush_bg);
+  if (g_debug_screen) {
+    int nLen = 0;
+    const conchar_t* p = text;
+    while (*p) {
+      if (!ConsoleColor_IsColorOrMouse(*p) && *p != '\n') {
+        nLen++;
+      }
+      p++;
+    }
+    Rect_t textRect = rRect;
+    textRect.right = textRect.left + (nLen * CONSOLE_FONT_WIDTH);
+    rectangle(g_debug_screen, textRect.left, textRect.top,
+              textRect.right - textRect.left, textRect.bottom - textRect.top,
+              g_console_brush_bg);
+  }
 #endif
 
   DebuggerPrintColor(rRect.left, rRect.top, text);
@@ -358,8 +398,15 @@ void DrawConsoleInput() {
                    g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
                    g_console_input);
 
+  // Draw cursor right after input text
+  DebuggerDrawCursor(
+      g_window_config[WINDOW_CONSOLE].left +
+          (g_console_input_chars + g_console_prompt_len) * APPLE_FONT_WIDTH,
+      g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
+      g_console_cursor[0]);
+
   // Clear rest of line
-  DebuggerSetColorFG(BLACK);
+  DebuggerSetColorFG(WHITE);
   VideoRect_t r{};
   r.x = g_window_config[WINDOW_CONSOLE].left +
         (g_console_input_chars + g_console_prompt_len + 1) * APPLE_FONT_WIDTH;
@@ -368,13 +415,13 @@ void DrawConsoleInput() {
   r.h = APPLE_FONT_HEIGHT;
 
   int col_start = r.x / APPLE_FONT_WIDTH;
-  int row = r.y / APPLE_FONT_HEIGHT;
-  int col_end = (r.x + r.w) / APPLE_FONT_WIDTH;
-  for (int col = col_start; col < col_end; ++col) {
+  int row = g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT +
+            (r.y - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT;
+  for (int col = col_start; col < DEBUG_VIRTUAL_TEXT_WIDTH; ++col) {
     if (col >= 0 && col < DEBUG_VIRTUAL_TEXT_WIDTH && row >= 0 &&
         row < DEBUG_VIRTUAL_TEXT_HEIGHT) {
       g_debugger_virtual_text_screen[row][col] = ' ';
-      g_debugger_virtual_text_screen_fg[row][col] = g_console_brush_fg;
+      g_debugger_virtual_text_screen_fg[row][col] = WHITE;
       g_debugger_virtual_text_screen_bg[row][col] = BLACK;
     }
   }
@@ -395,9 +442,9 @@ void DrawConsoleLine(const conchar_t* text, int y_coord) {
   if (!text) {
     // Clear line
     int col_start = x / APPLE_FONT_WIDTH;
-    int row = y / APPLE_FONT_HEIGHT;
-    int col_end = g_window_config[WINDOW_CONSOLE].right / APPLE_FONT_WIDTH;
-    for (int col = col_start; col < col_end; ++col) {
+    int row =
+        g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT + y_coord;
+    for (int col = col_start; col < DEBUG_VIRTUAL_TEXT_WIDTH; ++col) {
       if (col >= 0 && col < DEBUG_VIRTUAL_TEXT_WIDTH && row >= 0 &&
           row < DEBUG_VIRTUAL_TEXT_HEIGHT) {
         g_debugger_virtual_text_screen[row][col] = ' ';
@@ -824,7 +871,7 @@ auto FormatAddress(uint16_t address, int nBytes) -> const char* {
   return sAddress;
 }
 
-constexpr int CONSOLE_WINDOW_TOP = 300;
+constexpr int CONSOLE_WINDOW_TOP = 256;
 constexpr int DEFAULT_DISPLAY_MEMORY_LINES = 8;
 
 void InitDisasm() {

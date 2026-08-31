@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "Debugger/Debug.h"
 #include "TuiDiskSelect.h"
 #include "TuiVideo.h"
 #include "apple2/Apple2Types.h"
@@ -45,6 +46,7 @@ static constexpr int f3_vt_code = 13;
 static constexpr int f4_vt_code = 14;
 static constexpr int f5_vt_code = 15;
 static constexpr int f6_vt_code = 17;
+static constexpr int f7_vt_code = 18;
 static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
 static constexpr int disk_select_page_size = 14;
@@ -112,6 +114,17 @@ static auto toggle_keyboard_rocker() -> void {
   }
 }
 
+static auto toggle_debugger() -> void {
+  if (g_state.disable_debugger) {
+    return;
+  }
+  if (g_state.mode != MODE_DEBUG) {
+    debug_begin();
+  } else {
+    debug_end();
+  }
+}
+
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
 constexpr uint8_t ASCII_PRINTABLE_MIN = 32;
@@ -170,6 +183,8 @@ static auto process_sequences() -> void {
           swap_drives();
         } else if (ss3_cmd == 'U') {  // F6
           tui_video_toggle_fullscreen();
+        } else if (ss3_cmd == 'V') {  // F7
+          toggle_debugger();
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) tui_disk_select_home();
         } else if (ss3_cmd == 'F') {  // End
@@ -199,6 +214,8 @@ static auto process_sequences() -> void {
               swap_drives();
             } else if (g_input_queue.at(i + 3) == 'F') {  // Linux Console F6
               tui_video_toggle_fullscreen();
+            } else if (g_input_queue.at(i + 3) == 'G') {  // Linux Console F7
+              toggle_debugger();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -327,6 +344,8 @@ static auto process_sequences() -> void {
                     swap_drives();
                   } else if (val == f6_vt_code) {
                     tui_video_toggle_fullscreen();
+                  } else if (val == f7_vt_code) {
+                    toggle_debugger();
                   } else if (val == f10_vt_code) {
                     soft_reset_machine();
                   } else if (val == f12_code) {
@@ -343,6 +362,8 @@ static auto process_sequences() -> void {
               tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+            } else if (g_state.mode == MODE_DEBUG) {
+              debugger_process_key(LINAPPLE_KEY_UP);
             } else {
               map_key(a2_key_up);
             }
@@ -351,6 +372,8 @@ static auto process_sequences() -> void {
               tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+            } else if (g_state.mode == MODE_DEBUG) {
+              debugger_process_key(LINAPPLE_KEY_DOWN);
             } else {
               map_key(a2_key_down);
             }
@@ -359,6 +382,8 @@ static auto process_sequences() -> void {
               tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+            } else if (g_state.mode == MODE_DEBUG) {
+              debugger_process_key(LINAPPLE_KEY_LEFT);
             } else {
               map_key(a2_key_left);
             }
@@ -367,6 +392,8 @@ static auto process_sequences() -> void {
               tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+            } else if (g_state.mode == MODE_DEBUG) {
+              debugger_process_key(LINAPPLE_KEY_RIGHT);
             } else {
               map_key(a2_key_right);
             }
@@ -383,6 +410,8 @@ static auto process_sequences() -> void {
         tui_disk_select_close();
       } else if (tui_video_is_help_visible()) {
         tui_video_close_help();
+      } else if (g_state.mode == MODE_DEBUG) {
+        debugger_process_key(LINAPPLE_KEY_ESCAPE);
       } else {
         map_key(a2_key_esc);
       }
@@ -403,6 +432,16 @@ static auto process_sequences() -> void {
       }
     } else if (tui_video_is_help_visible()) {
       tui_video_close_help();
+    } else if (g_state.mode == MODE_DEBUG) {
+      if (b == a2_key_enter || b == '\n') {
+        debugger_process_key(LINAPPLE_KEY_RETURN);
+      } else if (b == a2_key_backspace || b == a2_key_delete) {
+        debugger_process_key(LINAPPLE_KEY_BACKSPACE);
+      } else if (b == a2_key_esc) {
+        debugger_process_key(LINAPPLE_KEY_ESCAPE);
+      } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
+        debugger_process_key(static_cast<int>(b));
+      }
     } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
       map_key(b);
     } else if (b == a2_key_enter) {

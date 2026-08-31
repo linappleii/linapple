@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "Debugger/Debugger_Display.h"
 #include "TuiDiskSelect.h"
 #include "TuiShapeDetector.h"
 #include "apple2/Memory.h"
@@ -19,6 +20,7 @@
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
+#include "frontends/common/VideoSurface.h"
 
 static int g_term_width = 0;
 static int g_term_height = 0;
@@ -682,6 +684,91 @@ static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
   }
 }
 
+#if ENABLE_DEBUGGER
+static auto render_debugger_text_screen() -> void {
+  const VideoColor_t* pal = video_get_output_palette();
+
+  constexpr int target_w = DEBUG_VIRTUAL_TEXT_WIDTH;
+  constexpr int disasm_max_rows = 32;
+  constexpr int prompt_row = 39;
+
+  int avail_rows = g_term_height;
+  if (avail_rows > min_term_height_status && !g_fullscreen) {
+    avail_rows = g_term_height - 1;
+  }
+
+  int off_x = (g_term_width - target_w) / 2;
+  if (off_x < 0) off_x = 0;
+
+  int console_rows = 4;
+  if (avail_rows < 16) {
+    console_rows = 2;
+  } else if (avail_rows >= 40) {
+    console_rows = avail_rows - disasm_max_rows;
+  }
+
+  int top_rows = avail_rows - console_rows;
+  if (top_rows > disasm_max_rows) {
+    top_rows = disasm_max_rows;
+  }
+  if (top_rows < 0) {
+    top_rows = 0;
+  }
+
+  for (int ty = 0; ty < avail_rows; ++ty) {
+    int src_r = 0;
+    if (ty < top_rows) {
+      src_r = ty;
+    } else if (ty == avail_rows - 1) {
+      src_r = prompt_row;
+    } else {
+      int dist_from_bottom = (avail_rows - 1) - ty;
+      src_r = prompt_row - dist_from_bottom;
+      if (src_r < disasm_max_rows) {
+        src_r = -1;
+      }
+    }
+
+    for (int c = 0; c < target_w; ++c) {
+      int tx = off_x + c;
+      if (tx >= g_term_width) break;
+
+      char ch = ' ';
+      ColorRef_t fg_raw = WHITE;
+      ColorRef_t bg_raw = BLACK;
+
+      if (src_r >= 0 && src_r < DEBUG_VIRTUAL_TEXT_HEIGHT) {
+        ch = g_debugger_virtual_text_screen[src_r][c];
+        fg_raw = g_debugger_virtual_text_screen_fg[src_r][c];
+        bg_raw = g_debugger_virtual_text_screen_bg[src_r][c];
+      }
+
+      TuiState_t& cell =
+          g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+      cell.glyph.fill(0);
+      cell.glyph.at(0) =
+          (ch != 0) ? static_cast<uint8_t>(ch) : static_cast<uint8_t>(' ');
+
+      if (pal != nullptr && fg_raw < max_palette_size) {
+        cell.fg = {pal[fg_raw].r, pal[fg_raw].g, pal[fg_raw].b};
+      } else {
+        cell.fg = {static_cast<uint8_t>(fg_raw & 0xFF),
+                   static_cast<uint8_t>((fg_raw >> 8) & 0xFF),
+                   static_cast<uint8_t>((fg_raw >> 16) & 0xFF)};
+      }
+
+      if (pal != nullptr && bg_raw < max_palette_size) {
+        cell.bg = {pal[bg_raw].r, pal[bg_raw].g, pal[bg_raw].b};
+      } else {
+        cell.bg = {static_cast<uint8_t>(bg_raw & 0xFF),
+                   static_cast<uint8_t>((bg_raw >> 8) & 0xFF),
+                   static_cast<uint8_t>((bg_raw >> 16) & 0xFF)};
+      }
+    }
+  }
+}
+#endif
+
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
                             int pitch) -> void {
   if (g_term_width <= 1 || g_term_height <= 1) {
@@ -690,8 +777,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_frame_count++;
   bool flash_on = (g_frame_count / flash_divisor) % 2 == 0;
 
-  bool is_text_mode = video_get_sw_text();
-  bool is_mixed_mode = video_get_sw_mixed();
+  bool is_debug_mode = (g_state.mode == MODE_DEBUG);
+  bool is_text_mode = !is_debug_mode && video_get_sw_text();
+  bool is_mixed_mode = !is_debug_mode && video_get_sw_mixed();
   bool is_80col = video_get_sw_80col();
   bool is_page2 = video_get_sw_page2();
   bool alt_charset = video_get_sw_alt_charset();
@@ -717,7 +805,11 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     cell.bg = bg_letterbox;
   }
 
-  if (is_text_mode) {
+  if (is_debug_mode) {
+#if ENABLE_DEBUGGER
+    render_debugger_text_screen();
+#endif
+  } else if (is_text_mode) {
     int display_h = a2_text_rows;
     int display_w = a2_w_cols;
     int off_x = (g_term_width - display_w) / 2;

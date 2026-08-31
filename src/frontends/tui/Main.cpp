@@ -77,7 +77,11 @@ auto main(int argc, char** argv) -> int {
 
       tui_input_poll();
 
-      linapple_run_frame(apple2_frame_cycles);
+      if (g_state.mode == MODE_DEBUG) {
+        tui_video_render_frame(nullptr, 0, 0, 0);
+      } else {
+        linapple_run_frame(apple2_frame_cycles);
+      }
 
       next_frame += frame_duration;
       auto now = std::chrono::steady_clock::now();
