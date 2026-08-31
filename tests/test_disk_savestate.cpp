@@ -1,5 +1,5 @@
-#include <string>
 #include <cstdint>
+#include <string>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
@@ -48,8 +48,12 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
   std::vector<uint8_t> buffer(state_size);
   peripheral_save_state(SL6, buffer.data(), &state_size);
 
-  // Reset peripheral state
+  // Reset peripheral state and eject disk
   peripheral_manager_reset();
+  DiskEjectCmd_t eject_cmd{};
+  eject_cmd.drive = disk_drive_0;
+  peripheral_command(SL6, disk_cmd_eject, &eject_cmd, sizeof(eject_cmd));
+  peripheral_manager_think(0);
   peripheral_query(SL6, disk_cmd_get_status, &status, &s_size);
   CHECK(status.drive0_loaded == false);
 
