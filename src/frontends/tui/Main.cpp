@@ -44,51 +44,55 @@ auto main(int argc, char** argv) -> int {
     return 1;
   }
 
-  if (app_controller_initialize(&config) != 0) {
-    tui_terminal_shutdown();
-    return 1;
-  }
+  do {
+    AppController_SetRestart(false);
 
-  tui_video_initialize();
-  tui_video_set_render_mode(config.tui_render_mode);
-  tui_input_initialize();
-  tui_audio_initialize();
-
-  linapple_set_video_callback(VideoCallback);
-  linapple_set_audio_callback(AudioCallback);
-  linapple_set_mock_audio_callback(MockAudioCallback);
-  linapple_set_title_callback(TitleCallback);
-
-  AppController_LoadInitialMedia(&config);
-
-  constexpr int apple2_frame_cycles = 17030;
-  constexpr auto frame_duration = std::chrono::microseconds(16650);
-
-  auto next_frame = std::chrono::steady_clock::now();
-
-  // Run until interrupted
-  while (!tui_terminal_is_interrupted()) {
-    if (tui_terminal_was_resized()) {
-      tui_terminal_clear_resized();
-      tui_video_on_resize();
+    if (app_controller_initialize(&config) != 0) {
+      break;
     }
 
-    tui_input_poll();
+    tui_video_initialize();
+    tui_video_set_render_mode(config.tui_render_mode);
+    tui_input_initialize();
+    tui_audio_initialize();
 
-    linapple_run_frame(apple2_frame_cycles);
+    linapple_set_video_callback(VideoCallback);
+    linapple_set_audio_callback(AudioCallback);
+    linapple_set_mock_audio_callback(MockAudioCallback);
+    linapple_set_title_callback(TitleCallback);
 
-    next_frame += frame_duration;
-    auto now = std::chrono::steady_clock::now();
-    if (now < next_frame) {
-      std::this_thread::sleep_until(next_frame);
-    } else {
-      next_frame = now;
+    AppController_LoadInitialMedia(&config);
+
+    constexpr int apple2_frame_cycles = 17030;
+    constexpr auto frame_duration = std::chrono::microseconds(16650);
+
+    auto next_frame = std::chrono::steady_clock::now();
+
+    // Run until interrupted or restart requested
+    while (!tui_terminal_is_interrupted() && !app_controller_should_restart()) {
+      if (tui_terminal_was_resized()) {
+        tui_terminal_clear_resized();
+        tui_video_on_resize();
+      }
+
+      tui_input_poll();
+
+      linapple_run_frame(apple2_frame_cycles);
+
+      next_frame += frame_duration;
+      auto now = std::chrono::steady_clock::now();
+      if (now < next_frame) {
+        std::this_thread::sleep_until(next_frame);
+      } else {
+        next_frame = now;
+      }
     }
-  }
 
-  AppController_Shutdown();
-  tui_audio_shutdown();
-  tui_input_shutdown();
+    AppController_Shutdown();
+    tui_audio_shutdown();
+    tui_input_shutdown();
+  } while (app_controller_should_restart() && !tui_terminal_is_interrupted());
+
   tui_terminal_shutdown();
 
   return 0;

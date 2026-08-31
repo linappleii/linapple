@@ -19,6 +19,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
+#include "frontends/common/AppController.h"
 
 static int g_joy_fd = -1;
 static std::vector<uint8_t> g_input_queue;
@@ -69,6 +70,8 @@ static auto reset_machine() -> void {
   g_state.mode = MODE_RUNNING;
   g_state.reset_timing = true;
 }
+
+static auto restart_machine() -> void { AppController_SetRestart(true); }
 
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
@@ -130,32 +133,50 @@ static auto process_sequences() -> void {
             // Consume mouse, no action yet
           } else if (cmd == 'P') {  // xterm F1 (\x1b[P)
             tui_video_toggle_help();
-          } else if (cmd == 'Q') {  // xterm F2 / Ctrl+F2 (\x1b[1;5Q)
-            reset_machine();
-          } else if (cmd == '^') {  // rxvt modifier
+          } else if (cmd == 'Q') {  // xterm F2 / Shift+F2 / Ctrl+F2
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token.find(";2") != std::string::npos || token == "1;2") {
+              restart_machine();
+            } else {
+              reset_machine();
+            }
+          } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token == "12") {  // rxvt Ctrl+F2 (\x1b[12^)
               reset_machine();
             }
+          } else if (cmd == '$' || cmd == '@') {  // rxvt Shift modifier
+            const std::string token(
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+            if (token == "12") {  // rxvt Shift+F2 (\x1b[12$)
+              restart_machine();
+            }
           } else if (cmd == '~') {
             if (end > i + 2) {
               const std::string token(
                   g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
                   g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
-              try {
-                int val = std::stoi(token);
-                if (val == f1_vt_code) {
-                  tui_video_toggle_help();
-                } else if (val == f2_vt_code) {
-                  reset_machine();
-                } else if (val == f12_code) {
-                  raise(SIGINT);
-                } else if (tui_video_is_help_visible()) {
-                  tui_video_close_help();
+              if (token == "12;2") {  // VT Shift+F2 (\x1b[12;2~)
+                restart_machine();
+              } else {
+                try {
+                  int val = std::stoi(token);
+                  if (val == f1_vt_code) {
+                    tui_video_toggle_help();
+                  } else if (val == f2_vt_code) {
+                    reset_machine();
+                  } else if (val == f12_code) {
+                    raise(SIGINT);
+                  } else if (tui_video_is_help_visible()) {
+                    tui_video_close_help();
+                  }
+                } catch (...) {
                 }
-              } catch (...) {
               }
             }
           } else if (tui_video_is_help_visible()) {
