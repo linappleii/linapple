@@ -14,6 +14,8 @@
 #include <vector>
 
 #include "TuiVideo.h"
+#include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
@@ -36,6 +38,7 @@ static constexpr uint8_t a2_key_ctrl_c = 0x03;
 
 static constexpr int f1_vt_code = 11;
 static constexpr int f2_vt_code = 12;
+static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
 
 auto tui_input_initialize() -> void {
@@ -67,6 +70,19 @@ static auto reset_machine() -> void {
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   video_reset_state();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
+  g_state.mode = MODE_RUNNING;
+  g_state.reset_timing = true;
+}
+
+static auto soft_reset_machine() -> void {
+  if (!IS_APPLE2()) {
+    mem_reset_paging();
+  }
+  peripheral_manager_reset();
+  if (!IS_APPLE2()) {
+    video_reset_state();
+  }
+  cpu_reset();
   g_state.mode = MODE_RUNNING;
   g_state.reset_timing = true;
 }
@@ -148,6 +164,8 @@ static auto process_sequences() -> void {
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token == "12") {  // rxvt Ctrl+F2 (\x1b[12^)
               reset_machine();
+            } else if (token == "21") {  // rxvt Ctrl+F10 (\x1b[21^)
+              soft_reset_machine();
             }
           } else if (cmd == '$' || cmd == '@') {  // rxvt Shift modifier
             const std::string token(
@@ -163,6 +181,10 @@ static auto process_sequences() -> void {
                   g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
               if (token == "12;2") {  // VT Shift+F2 (\x1b[12;2~)
                 restart_machine();
+              } else if (token == "21;5" ||
+                         token ==
+                             "21") {  // F10 / Ctrl+F10 (\x1b[21;5~ / \x1b[21~)
+                soft_reset_machine();
               } else {
                 try {
                   int val = std::stoi(token);
@@ -170,6 +192,8 @@ static auto process_sequences() -> void {
                     tui_video_toggle_help();
                   } else if (val == f2_vt_code) {
                     reset_machine();
+                  } else if (val == f10_vt_code) {
+                    soft_reset_machine();
                   } else if (val == f12_code) {
                     raise(SIGINT);
                   } else if (tui_video_is_help_visible()) {
