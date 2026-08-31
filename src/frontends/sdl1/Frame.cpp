@@ -352,14 +352,14 @@ void FrameShowHelpScreen(int sx, int sy) {
             body_height, 0xFFFFFF);
 
   const float line_spacing = 13.0f * facy_f;
-  for (size_t i = 0; i < HELP_BODY_STRINGS.size(); i++) {
-    if (HELP_BODY_STRINGS.at(i) != nullptr &&
-        HELP_BODY_STRINGS.at(i)[0] != '\0') {
+  for (size_t i = 0; i < HELP_BODY_LINES.size(); i++) {
+    if (HELP_BODY_LINES.at(i).text != nullptr &&
+        HELP_BODY_LINES.at(i).text[0] != '\0') {
       font_print(
           static_cast<int>(16.0f * facx_f),
           body_top + static_cast<int>(6.0f * facy_f +
                                       static_cast<float>(i) * line_spacing),
-          const_cast<char*>(HELP_BODY_STRINGS.at(i)), &vs_actual_g_screen,
+          const_cast<char*>(HELP_BODY_LINES.at(i).text), &vs_actual_g_screen,
           scale_x, scale_y);
     }
   }

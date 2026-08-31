@@ -88,14 +88,28 @@ static auto render_help_overlay() -> void {
   constexpr int box_inner_w = 64;
   constexpr int box_w = box_inner_w + 2;
 
+  // Features not supported in the TUI are excluded from the help overlay.
+  constexpr std::array<HelpFeature_t, 1> excluded = {
+      {HelpFeature_t::numpad_speed}};
+
   const bool compact = (g_term_height < 28);
   std::vector<const char*> visible_body_lines;
-  visible_body_lines.reserve(HELP_BODY_STRINGS.size());
-  for (const char* line : HELP_BODY_STRINGS) {
-    if (compact && line[0] == '\0') {
+  visible_body_lines.reserve(HELP_BODY_LINES.size());
+  for (const HelpLine_t& line : HELP_BODY_LINES) {
+    if (compact && line.feature == HelpFeature_t::separator) {
       continue;
     }
-    visible_body_lines.push_back(line);
+    bool skip = false;
+    for (HelpFeature_t ex : excluded) {
+      if (line.feature == ex) {
+        skip = true;
+        break;
+      }
+    }
+    if (skip) {
+      continue;
+    }
+    visible_body_lines.push_back(line.text);
   }
 
   const int box_h =
