@@ -72,7 +72,7 @@ jobs:
             image: fedora:latest
             setup: |
               dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
-                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel curl ccache
+                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel curl ccache nodejs
             frontend: sdl3
 
           - name: Arch Linux Rolling (SDL3)
@@ -80,7 +80,7 @@ jobs:
             setup: |
               pacman -Syu --noconfirm
               pacman -S --noconfirm base-devel cmake ninja imagemagick libzip \
-                sdl3 sdl3_image libcurl-gnutls zlib git z3 curl ccache
+                sdl3 sdl3_image libcurl-gnutls zlib git z3 curl ccache nodejs
             frontend: sdl3
 
           - name: Debian 12 / Pi OS x86 (SDL2)
@@ -89,7 +89,7 @@ jobs:
               apt-get update
               apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
                 libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
-                libsdl2-dev curl ccache
+                libsdl2-dev curl ccache nodejs
             frontend: sdl2
 
     container:
