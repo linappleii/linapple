@@ -818,7 +818,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       int slen =
           snprintf(status.data(), status.size(),
                    "\x1b[%d;1H\x1b[0m\x1b[48;5;240m\x1b[38;5;255m "
-                   "LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F12: Quit ",
+                   "LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F5: Swap | "
+                   "F12: Quit ",
                    g_term_height);
       for (int i = 0; i < slen; ++i) {
         g_output_buffer.push_back(status.at(static_cast<size_t>(i)));

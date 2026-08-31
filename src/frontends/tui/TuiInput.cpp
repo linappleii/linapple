@@ -42,6 +42,7 @@ static constexpr int f1_vt_code = 11;
 static constexpr int f2_vt_code = 12;
 static constexpr int f3_vt_code = 13;
 static constexpr int f4_vt_code = 14;
+static constexpr int f5_vt_code = 15;
 static constexpr int f10_vt_code = 21;
 static constexpr int f12_code = 24;
 static constexpr int disk_select_page_size = 14;
@@ -93,6 +94,10 @@ static auto soft_reset_machine() -> void {
 }
 
 static auto restart_machine() -> void { AppController_SetRestart(true); }
+
+static auto swap_drives() -> void {
+  peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
+}
 
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
@@ -148,6 +153,8 @@ static auto process_sequences() -> void {
         } else if (ss3_cmd == 'S') {  // F4
           tui_video_close_help();
           tui_disk_select_open(1);
+        } else if (ss3_cmd == 'T') {  // F5
+          swap_drives();
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) tui_disk_select_home();
         } else if (ss3_cmd == 'F') {  // End
@@ -173,6 +180,8 @@ static auto process_sequences() -> void {
             } else if (g_input_queue.at(i + 3) == 'D') {  // Linux Console F4
               tui_video_close_help();
               tui_disk_select_open(1);
+            } else if (g_input_queue.at(i + 3) == 'E') {  // Linux Console F5
+              swap_drives();
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -267,6 +276,8 @@ static auto process_sequences() -> void {
                   } else if (val == f4_vt_code) {
                     tui_video_close_help();
                     tui_disk_select_open(1);
+                  } else if (val == f5_vt_code) {
+                    swap_drives();
                   } else if (val == f10_vt_code) {
                     soft_reset_machine();
                   } else if (val == f12_code) {
