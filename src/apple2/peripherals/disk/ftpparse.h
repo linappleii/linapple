@@ -1,5 +1,5 @@
-#ifndef FTPPARSE_H
-#define FTPPARSE_H
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
 /*
 ftpparse(&fp,buf,len) tries to parse one line of LIST output.
@@ -55,5 +55,3 @@ constexpr int FTPPARSE_ID_UNKNOWN = 0;
 extern int ftpparse(struct ftpparse*, char*, int);  // parse ftp dir listing
 extern CURLcode ftp_get(const char*,
                         const char*);  // get remote file from ftp server
-
-#endif

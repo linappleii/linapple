@@ -1,5 +1,5 @@
-#ifndef DEBUGGER_ASSEMBLER_H
-#define DEBUGGER_ASSEMBLER_H
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
 #include <string>
 #include <vector>
@@ -207,5 +207,3 @@ bool BufferAssemblyListing(const std::string& pFileName);
 bool ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols);
 int FindAddressFromSourceLine(int nLine);
 int FindSourceLineFromAddress(uint16_t address);
-
-#endif

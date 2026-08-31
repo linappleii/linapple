@@ -1,5 +1,5 @@
-#ifndef DEBUGGER_DISASSEMBLERDATA_H
-#define DEBUGGER_DISASSEMBLERDATA_H
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
 #include <vector>
 
@@ -21,5 +21,3 @@ void Disassembly_DelData(DisasmData_t tData);
 DisasmData_t* Disassembly_Enumerate(DisasmData_t* pCurrent = nullptr);
 
 extern std::vector<DisasmData_t> g_disassembler_data;
-
-#endif

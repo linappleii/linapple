@@ -1,7 +1,7 @@
-#include <cstdint>
+// SPDX-License-Identifier: GPL-2.0-only
+#pragma once
 
-#ifndef DEBUGGER_HELP_H
-#define DEBUGGER_HELP_H
+#include <cstdint>
 
 #include "Debugger_Types.h"
 
@@ -42,5 +42,3 @@ inline void UnpackVersion(const uint32_t nVersion, int& nMajor_, int& nMinor_,
 bool TestStringCat(char* pDst, const char* src_ptr, const int nDstSize);
 bool TryStringCat(char* pDst, const char* src_ptr, const int nDstSize);
 int StringCat(char* pDst, const char* src_ptr, const int nDstSize);
-
-#endif
