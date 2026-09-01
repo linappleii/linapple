@@ -256,8 +256,9 @@ auto Configuration_t::set_bool(const std::string& section,
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration_t::instance().get_string(section, key).empty())
+  if (Configuration_t::instance().get_string(section, key).empty()) {
     return false;
+  }
   *value = Configuration_t::instance().get_int(section, key, *value);
   return true;
 }
@@ -265,8 +266,9 @@ auto config_load_int(const char* section, const char* key, uint32_t* value)
 auto config_load_bool(const char* section, const char* key, bool* value)
     -> bool {
   if (section == nullptr || key == nullptr || value == nullptr) return false;
-  if (Configuration_t::instance().get_string(section, key).empty())
+  if (Configuration_t::instance().get_string(section, key).empty()) {
     return false;
+  }
   *value = Configuration_t::instance().get_bool(section, key, *value);
   return true;
 }
