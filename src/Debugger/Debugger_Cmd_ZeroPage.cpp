@@ -94,8 +94,8 @@ auto CmdZeroPageClear(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_CLEAR);
   }
 
-  _BWZ_ClearViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
-                    MAX_ZEROPAGE_POINTERS, g_zero_page_pointers_count);
+  bwz_ClearViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
+                   MAX_ZEROPAGE_POINTERS, g_zero_page_pointers_count);
 
   if (!g_zero_page_pointers_count) {
     UpdateDisplay(UPDATE_BACKGROUND);
@@ -114,8 +114,8 @@ auto CmdZeroPageDisable(int nArgs) -> Update_t {
     return _ZeroPage_Error();
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
-                            MAX_ZEROPAGE_POINTERS, false);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
+                           MAX_ZEROPAGE_POINTERS, false);
 
   return UPDATE_ZERO_PAGE;
 }
@@ -130,8 +130,8 @@ auto CmdZeroPageEnable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_ENABLE);
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
-                            MAX_ZEROPAGE_POINTERS, true);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
+                           MAX_ZEROPAGE_POINTERS, true);
 
   return UPDATE_ZERO_PAGE;
 }
@@ -142,7 +142,7 @@ auto CmdZeroPageList(int nArgs) -> Update_t {
   if (!g_zero_page_pointers_count) {
     _ZeroPage_Error();
   } else {
-    _BWZ_ListAll((Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS);
+    bwz_ListAll((Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS);
   }
   return ConsoleUpdate();
 }

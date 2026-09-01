@@ -186,7 +186,7 @@ bool Assemble(int iArg, int nArgs, uint16_t address);
 void AssemblerOn();
 void AssemblerOff();
 
-size_t _GetFileSize(FILE* hFile);
+auto debugger_get_file_size(FILE* file) -> size_t;
 Update_t _CmdAssemble(uint16_t address, int iArg, int nArgs);
 
 Update_t CmdAssemble(int nArgs);

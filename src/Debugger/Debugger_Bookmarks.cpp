@@ -195,7 +195,7 @@ auto CmdBookmarkList(int nArgs) -> Update_t {
     ConsoleBufferPushFormat(
         sText, "  There are no current bookmarks.  (Max: %d", MAX_BOOKMARKS);
   } else {
-    _BWZ_ListAll(g_bookmarks, MAX_BOOKMARKS);
+    bwz_ListAll(g_bookmarks, MAX_BOOKMARKS);
   }
   return ConsoleUpdate();
 }

@@ -246,10 +246,10 @@ extern int g_console_input_skip;
 // Buffered
 bool console_print(const char* text);
 bool ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va);
-template <size_t _BufSz>
-inline bool ConsolePrintVa(char (&buf)[_BufSz], const char* pFormat,
+template <size_t BufSize>
+inline bool ConsolePrintVa(char (&buf)[BufSize], const char* pFormat,
                            va_list va) {
-  return ConsolePrintVa(buf, _BufSz, pFormat, va);
+  return ConsolePrintVa(buf, BufSize, pFormat, va);
 }
 inline bool ConsolePrintFormat(char* buf, size_t bufsz, const char* pFormat,
                                ...) {
@@ -259,8 +259,8 @@ inline bool ConsolePrintFormat(char* buf, size_t bufsz, const char* pFormat,
   va_end(va);
   return r;
 }
-template <size_t _BufSz>
-inline bool ConsolePrintFormat(char (&buf)[_BufSz], const char* pFormat, ...) {
+template <size_t BufSize>
+inline bool ConsolePrintFormat(char (&buf)[BufSize], const char* pFormat, ...) {
   va_list va;
   va_start(va, pFormat);
   bool const r = ConsolePrintVa(buf, pFormat, va);
@@ -275,10 +275,10 @@ void ConsoleBufferPop();
 bool ConsoleBufferPush(const char* pString);
 bool ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
                          va_list va);
-template <size_t _BufSz>
-inline bool ConsoleBufferPushVa(char (&buf)[_BufSz], const char* pFormat,
+template <size_t BufSize>
+inline bool ConsoleBufferPushVa(char (&buf)[BufSize], const char* pFormat,
                                 va_list va) {
-  return ConsoleBufferPushVa(buf, _BufSz, pFormat, va);
+  return ConsoleBufferPushVa(buf, BufSize, pFormat, va);
 }
 inline bool ConsoleBufferPushFormat(char* buf, size_t bufsz,
                                     const char* pFormat, ...) {
@@ -288,8 +288,8 @@ inline bool ConsoleBufferPushFormat(char* buf, size_t bufsz,
   va_end(va);
   return r;
 }
-template <size_t _BufSz>
-inline bool ConsoleBufferPushFormat(char (&buf)[_BufSz], const char* pFormat,
+template <size_t BufSize>
+inline bool ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
                                     ...) {
   va_list va;
   va_start(va, pFormat);

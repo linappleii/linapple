@@ -49,7 +49,7 @@ void ClearTempBreakpoints() {
   int iBP = 0;
   while (iBP < MAX_BREAKPOINTS) {
     if (g_breakpoints[iBP].bSet && g_breakpoints[iBP].bTemp) {
-      _BWZ_Clear(g_breakpoints, iBP);
+      bwz_Clear(g_breakpoints, iBP);
       g_breakpoints_count--;
     }
     iBP++;
@@ -59,7 +59,7 @@ void ClearTempBreakpoints() {
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
 // _______________________________________________
 
-void _BWZ_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) {
+void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) {
   if (aBreakWatchZero) {
     aBreakWatchZero[iSlot].bSet = false;
     aBreakWatchZero[iSlot].bEnabled = false;
@@ -71,41 +71,40 @@ void _BWZ_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) {
   }
 }
 
-void _BWZ_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot,
-                    int& total) {
+void bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total) {
   if (aBreakWatchZero) {
     if (aBreakWatchZero[iSlot].bSet) {
-      _BWZ_Clear(aBreakWatchZero, iSlot);
+      bwz_Clear(aBreakWatchZero, iSlot);
       total--;
     }
   }
 }
 
-void _BWZ_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total) {
+void bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total) {
   if (aBreakWatchZero) {
     int i = 0;
     while (i < nMax) {
-      _BWZ_Clear(aBreakWatchZero, i);
+      bwz_Clear(aBreakWatchZero, i);
       i++;
     }
     total = 0;
   }
 }
 
-void _BWZ_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
-                       int& total) {
+void bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
+                      int& total) {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
       int iSlot = g_args[iArg].nValue;
       if (iSlot < nMax) {
-        _BWZ_RemoveOne(aBreakWatchZero, iSlot, total);
+        bwz_RemoveOne(aBreakWatchZero, iSlot, total);
       }
     }
   }
 }
 
-void _BWZ_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
-                               const int nMax, const bool bEnabled) {
+void bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
+                              const int nMax, const bool bEnabled) {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
       int iSlot = g_args[iArg].nValue;
@@ -116,7 +115,7 @@ void _BWZ_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
   }
 }
 
-void _BWZ_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
+void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
   if (aBreakWatchZero) {
     char sText[CONSOLE_WIDTH];
     const Breakpoint_t* pBWZ = &aBreakWatchZero[iBWZ];
@@ -139,12 +138,12 @@ void _BWZ_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
   }
 }
 
-void _BWZ_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) {
+void bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) {
   if (aBreakWatchZero) {
     int i = 0;
     while (i < nMax) {
       if (aBreakWatchZero[i].bSet) {
-        _BWZ_List(aBreakWatchZero, i);
+        bwz_List(aBreakWatchZero, i);
       }
       i++;
     }
@@ -264,10 +263,10 @@ auto CmdBreakpointClear(int nArgs) -> Update_t {
   }
 
   if (!nArgs) {
-    _BWZ_RemoveAll(g_breakpoints, MAX_BREAKPOINTS, g_breakpoints_count);
+    bwz_RemoveAll(g_breakpoints, MAX_BREAKPOINTS, g_breakpoints_count);
   } else {
-    _BWZ_ClearViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS,
-                      g_breakpoints_count);
+    bwz_ClearViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS,
+                     g_breakpoints_count);
   }
 
   return UPDATE_DISASM | UPDATE_BREAKPOINTS | UPDATE_CONSOLE_DISPLAY;
@@ -282,7 +281,7 @@ auto CmdBreakpointDisable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_BREAKPOINT_DISABLE);
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, false);
+  bwz_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, false);
 
   return UPDATE_BREAKPOINTS;
 }
@@ -296,7 +295,7 @@ auto CmdBreakpointEnable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_BREAKPOINT_ENABLE);
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, true);
+  bwz_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, true);
 
   return UPDATE_BREAKPOINTS;
 }
@@ -309,7 +308,7 @@ auto CmdBreakpointList(int nArgs) -> Update_t {
             MAX_BREAKPOINTS);
     ConsoleBufferPush(sText);
   } else {
-    _BWZ_ListAll(g_breakpoints, MAX_BREAKPOINTS);
+    bwz_ListAll(g_breakpoints, MAX_BREAKPOINTS);
   }
   return ConsoleUpdate();
 }
@@ -417,10 +416,10 @@ auto CmdWatchClear(int nArgs) -> Update_t {
   }
 
   if (!nArgs) {
-    _BWZ_RemoveAll((Breakpoint_t*)g_watches, MAX_WATCHES, g_watches_count);
+    bwz_RemoveAll((Breakpoint_t*)g_watches, MAX_WATCHES, g_watches_count);
   } else {
-    _BWZ_ClearViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES,
-                      g_watches_count);
+    bwz_ClearViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES,
+                     g_watches_count);
   }
 
   return UPDATE_WATCH | UPDATE_CONSOLE_DISPLAY;
@@ -435,8 +434,7 @@ auto CmdWatchDisable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_WATCH_DISABLE);
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES,
-                            false);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES, false);
 
   return UPDATE_WATCH;
 }
@@ -450,7 +448,7 @@ auto CmdWatchEnable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_WATCH_ENABLE);
   }
 
-  _BWZ_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES, true);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES, true);
 
   return UPDATE_WATCH;
 }
@@ -462,7 +460,7 @@ auto CmdWatchList(int nArgs) -> Update_t {
     sprintf(sText, "  There are no current watches.  (Max: %d)", MAX_WATCHES);
     ConsoleBufferPush(sText);
   } else {
-    _BWZ_ListAll((Breakpoint_t*)g_watches, MAX_WATCHES);
+    bwz_ListAll((Breakpoint_t*)g_watches, MAX_WATCHES);
   }
   return ConsoleUpdate();
 }

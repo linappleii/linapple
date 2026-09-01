@@ -46,12 +46,12 @@ int _CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
                                bool bIsTempBreakpoint = false);
 
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
-void _BWZ_Clear(Breakpoint_t* aBreakWatchZero, int iSlot);
-void _BWZ_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total);
-void _BWZ_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total);
-void _BWZ_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
-                       int& total);
-void _BWZ_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
-                               const int nMax, const bool bEnabled);
-void _BWZ_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ);
-void _BWZ_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax);
+void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot);
+void bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total);
+void bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total);
+void bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
+                      int& total);
+void bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
+                              const int nMax, const bool bEnabled);
+void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ);
+void bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax);

@@ -33,7 +33,7 @@ extern const Opcodes_t* g_opcodes;
 extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
 extern uint16_t g_break_memory_address;
 
-auto _GetFileSize(FILE* hFile) -> size_t;
+auto debugger_get_file_size(FILE* hFile) -> size_t;
 auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 
 // Internal helpers
@@ -449,7 +449,7 @@ Update_t CmdMemoryLoad (int nArgs)
     FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
     if (hFile)
     {
-      size_t nFileBytes = _GetFileSize( hFile.get() );
+      size_t nFileBytes = debugger_get_file_size( hFile.get() );
 
       if (nFileBytes > _6502_MEM_END) {
         nFileBytes = _6502_MEM_END + 1; // Bank-switched RAMR/ROM is only 16-bit
@@ -644,7 +644,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
-    size_t nFileBytes = _GetFileSize(hFile.get());
+    size_t nFileBytes = debugger_get_file_size(hFile.get());
 
     if (nFileBytes > _6502_MEM_END) {
       nFileBytes = _6502_MEM_END + 1;  // Bank-switched RAM/ROM is only 16-bit
@@ -1626,7 +1626,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
         strcpy(aStatusText, "Loaded");
 
         // Get File Size
-        size_t nFileSize = _GetFileSize(pFile.get());
+        size_t nFileSize = debugger_get_file_size(pFile.get());
         bool bSwizzle = true;
         bool bValid = true;
 

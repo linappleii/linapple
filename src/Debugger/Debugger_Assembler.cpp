@@ -1261,12 +1261,21 @@ int g_source_assembly_symbols = 0;
 // TODO: Support multiple source filenames
 SourceAssembly_t g_source_debug;
 
-auto _GetFileSize(FILE* hFile) -> size_t {
-  fseek(hFile, 0, SEEK_END);
-  size_t nFileBytes = ftell(hFile);
-  fseek(hFile, 0, SEEK_SET);
-
-  return nFileBytes;
+auto debugger_get_file_size(FILE* file) -> size_t {
+  if (file == nullptr) {
+    return 0;
+  }
+  if (fseek(file, 0, SEEK_END) != 0) {
+    return 0;
+  }
+  long pos = ftell(file);
+  if (fseek(file, 0, SEEK_SET) != 0) {
+    return 0;
+  }
+  if (pos < 0) {
+    return 0;
+  }
+  return static_cast<size_t>(pos);
 }
 
 auto _CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
