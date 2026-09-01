@@ -208,6 +208,8 @@ set(SOURCES_CORE
     src/frontends/common/SaveStateManager.cpp
     src/frontends/common/VideoSurface.cpp
     src/frontends/common/VideoStretch.cpp
+    src/frontends/common/SuperSerialFrontend.cpp
+    src/frontends/common/PrinterFrontend.cpp
 )
 
 set(SOURCES_A2_MANDATORY
@@ -257,61 +259,53 @@ else()
     set(SOURCES_DBG ${SOURCES_DBG_STUBS})
 endif()
 
+set(SOURCES_FE_COMMON_SDL
+    src/frontends/common/sdl/DiskUI.cpp
+    src/frontends/common/sdl/DiskFTP.cpp
+    src/frontends/common/sdl/DiskSelect.cpp
+    src/frontends/common/sdl/Harddisk.cpp
+)
+
 set(SOURCES_FE_SDL3
+    ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
-    src/frontends/sdl3/DiskFTP.cpp
-    src/frontends/sdl3/DiskSelect.cpp
-    src/frontends/sdl3/DiskUI.cpp
     src/frontends/sdl3/Frame.cpp
-    src/frontends/sdl3/Harddisk.cpp
     src/frontends/sdl3/JoystickFrontend.cpp
     src/frontends/sdl3/Keyboard.cpp
     src/frontends/sdl3/Main.cpp
     src/frontends/sdl3/MainSession.cpp
-    src/frontends/sdl3/PrinterFrontend.cpp
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
     src/frontends/sdl3/SDL_Path.cpp
     src/frontends/sdl3/SDL_Video.cpp
-    src/frontends/sdl3/SuperSerialFrontend.cpp
 )
 
 set(SOURCES_FE_SDL2
+    ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl2/DiskChoose.cpp
-    src/frontends/sdl2/DiskFTP.cpp
-    src/frontends/sdl2/DiskSelect.cpp
-    src/frontends/sdl2/DiskUI.cpp
     src/frontends/sdl2/Frame.cpp
-    src/frontends/sdl2/Harddisk.cpp
     src/frontends/sdl2/JoystickFrontend.cpp
     src/frontends/sdl2/Keyboard.cpp
     src/frontends/sdl2/Main.cpp
     src/frontends/sdl2/MainSession.cpp
-    src/frontends/sdl2/PrinterFrontend.cpp
     src/frontends/sdl2/SDL_Asset.cpp
     src/frontends/sdl2/SDL_Input.cpp
     src/frontends/sdl2/SDL_Path.cpp
     src/frontends/sdl2/SDL_Video.cpp
-    src/frontends/sdl2/SuperSerialFrontend.cpp
 )
 
 set(SOURCES_FE_SDL1
+    ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl1/DiskChoose.cpp
-    src/frontends/sdl1/DiskFTP.cpp
-    src/frontends/sdl1/DiskSelect.cpp
-    src/frontends/sdl1/DiskUI.cpp
     src/frontends/sdl1/Frame.cpp
-    src/frontends/sdl1/Harddisk.cpp
     src/frontends/sdl1/JoystickFrontend.cpp
     src/frontends/sdl1/Keyboard.cpp
     src/frontends/sdl1/Main.cpp
     src/frontends/sdl1/MainSession.cpp
-    src/frontends/sdl1/PrinterFrontend.cpp
     src/frontends/sdl1/SDL_Asset.cpp
     src/frontends/sdl1/SDL_Input.cpp
     src/frontends/sdl1/SDL_Path.cpp
     src/frontends/sdl1/SDL_Video.cpp
-    src/frontends/sdl1/SuperSerialFrontend.cpp
 )
 
 set(SOURCES_FE_HEADLESS
@@ -519,7 +513,7 @@ if(BUILD_TESTING)
 
     add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
 
-    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/sdl3/DiskUI.cpp)
+    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-ui COMMAND test-disk-ui)
 

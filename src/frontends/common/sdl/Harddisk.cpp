@@ -1,4 +1,4 @@
-
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -14,8 +14,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/Frame.h"
+#include "frontends/common/sdl/DiskChoose_Decl.h"
 
 // Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
 // This file only contains frontend UI functions.
@@ -23,17 +22,16 @@
 constexpr uint8_t HARDDISK_SLOT = 7;
 
 void HarddiskUI_FTPSelect(int drive) {
-  // Selects HDrive from FTP directory
-  static size_t fileIndex = 0;  // file index will be remembered for current dir
-  static size_t backdx = 0;     // reserve
-  static size_t dirdx = 0;      // reserve for dirs
+  static size_t fileIndex = 0;
+  static size_t backdx = 0;
+  static size_t dirdx = 0;
 
-  std::string filename;     // given filename
-  std::string fullPath;     // full path for it
-  bool isDirectory = true;  // if given filename is a directory?
+  std::string filename;
+  std::string fullPath;
+  bool isDirectory = true;
 
   fileIndex = backdx;
-  fullPath = g_state.ftp_server_hdd.data();  // global var for FTP path for HDD
+  fullPath = g_state.ftp_server_hdd.data();
 
   while (isDirectory) {
     if (!choose_an_image_ftp(g_state.screen_width, g_state.screen_height,
@@ -42,10 +40,8 @@ void HarddiskUI_FTPSelect(int drive) {
       DrawFrameWindow();
       return;
     }
-    // --
     if (isDirectory) {
       if (filename == "..") {
-        // go to the upper directory
         auto r = fullPath.find_last_of(ftp_separator);
         if (r == fullPath.size() - 1) {
           r = fullPath.find_last_of(ftp_separator, r - 1);
@@ -54,26 +50,26 @@ void HarddiskUI_FTPSelect(int drive) {
           fullPath = fullPath.substr(0, 1 + r);
         }
         if (fullPath == "") {
-          fullPath = "/";  // we don't want fullPath to be empty
+          fullPath = "/";
         }
-        fileIndex = dirdx;  // restore
+        fileIndex = dirdx;
       } else {
         if (fullPath != "/") {
           fullPath += filename + "/";
         } else {
           fullPath = "/" + filename + "/";
         }
-        dirdx = fileIndex;  // store it
-        fileIndex = 0;      // start with beginning of dir
+        dirdx = fileIndex;
+        fileIndex = 0;
       }
     }
   }
-  // we chose some file
+
   Util_SafeStrCpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
                   g_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
                                          g_state.ftp_server_hdd.data());
-  Configuration_t::instance().save();  // save it
+  Configuration_t::instance().save();
 
   std::string safe_filename = Path::sanitize_filename(filename);
   if (safe_filename.empty()) {
@@ -85,8 +81,8 @@ void HarddiskUI_FTPSelect(int drive) {
 
   fullPath += "/" + safe_filename;
 
-  std::string localPath = std::string(g_state.ftp_local_dir.data()) + "/" +
-                          safe_filename;  // local path for file
+  std::string localPath =
+      std::string(g_state.ftp_local_dir.data()) + "/" + safe_filename;
 
   int error = ftp_get(fullPath.c_str(), localPath.c_str());
   if (!error) {
@@ -96,7 +92,6 @@ void HarddiskUI_FTPSelect(int drive) {
 
     if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
                            sizeof(cmd)) == peripheral_ok) {
-      // save file names for HDD disk 1 or 2
       if (drive) {
         Configuration_t::instance().set_string(
             "Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str());
@@ -108,29 +103,28 @@ void HarddiskUI_FTPSelect(int drive) {
       }
     }
   }
-  backdx = fileIndex;  // store cursor position
+  backdx = fileIndex;
   DrawFrameWindow();
 }
 
 void HarddiskUI_Select(int drive) {
-  // Selects HDrive from file list
-  static size_t fileIndex = 0;  // file index will be remembered for current dir
-  static size_t backdx = 0;     // reserve
-  static size_t dirdx = 0;      // reserve for dirs
+  static size_t fileIndex = 0;
+  static size_t backdx = 0;
+  static size_t dirdx = 0;
 
-  std::string filename;      // given filename
-  std::string fullPath;      // full path for it
-  bool isDirectory = false;  // if given filename is a directory?
+  std::string filename;
+  std::string fullPath;
+  bool isDirectory = false;
 
   fileIndex = backdx;
   isDirectory = true;
-  fullPath = g_state.hdd_dir.data();  // global var for disk selecting directory
+  fullPath = g_state.hdd_dir.data();
 
   while (isDirectory) {
     if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
                          HARDDISK_SLOT, filename, isDirectory, fileIndex)) {
       DrawFrameWindow();
-      return;  // if ESC was pressed, just leave
+      return;
     }
     if (isDirectory) {
       if (filename == "..") {
@@ -140,38 +134,35 @@ void HarddiskUI_Select(int drive) {
           fullPath = fullPath.substr(0, last_sep_pos);
         }
         if (fullPath == "") {
-          fullPath = "/";  // we don't want fullPath to be empty
+          fullPath = "/";
         }
-        fileIndex = dirdx;  // restore
+        fileIndex = dirdx;
       } else {
         if (fullPath != "/") {
           fullPath += "/" + filename;
         } else {
           fullPath = "/" + filename;
         }
-        dirdx = fileIndex;  // store it
-        fileIndex = 0;      // start with beginning of dir
+        dirdx = fileIndex;
+        fileIndex = 0;
       }
     }
   }
-  // we chose some file
+
   Util_SafeStrCpy(g_state.hdd_dir.data(), fullPath.c_str(),
                   g_state.hdd_dir.size());
   Configuration_t::instance().set_string(
       "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
-  Configuration_t::instance().save();  // Save it
+  Configuration_t::instance().save();
 
   fullPath += "/" + filename;
 
-  // in future: save file name in registry for future fetching
-  // for one drive will be one reg parameter
   HarddiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   strncpy(cmd.path, fullPath.c_str(), sizeof(cmd.path) - 1);
 
   if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
-    // save file names for HDD disk 1 or 2
     if (drive) {
       Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
                                              fullPath.c_str());
@@ -183,6 +174,6 @@ void HarddiskUI_Select(int drive) {
     }
     printf("HDD disk image %s inserted\n", fullPath.c_str());
   }
-  backdx = fileIndex;  // Store cursor position
+  backdx = fileIndex;
   DrawFrameWindow();
 }

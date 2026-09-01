@@ -1,4 +1,4 @@
-
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -9,8 +9,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/Frame.h"
+#include "frontends/common/sdl/DiskChoose_Decl.h"
 
 void DiskSelectImage(int drive, char* pszFilename) {
   (void)pszFilename;
@@ -79,8 +78,4 @@ void DiskSelect(int drive) {
   DiskSelectImage(drive, select);  // drive is 0 for D1, 1 - for D2
 }
 
-void Disk_FTP_SelectImage(int drive) {
-  // FTP selection logic...
-  // For now, this is a placeholder/stub to be refined in later milestones.
-  (void)drive;
-}
+void Disk_FTP_SelectImage(int drive) { (void)drive; }

@@ -1,5 +1,5 @@
-#include "frontends/sdl3/DiskUI.h"
-
+// SPDX-License-Identifier: GPL-2.0-only
+#include "frontends/common/sdl/DiskUI.h"
 
 #include "apple2/peripherals/disk/DiskError.h"
 

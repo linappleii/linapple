@@ -64,8 +64,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 #include "frontends/sdl1/DiskChoose.h"
-#include "frontends/sdl1/DiskUI.h"
-#include "frontends/sdl1/Frontend.h"
+#include "frontends/common/sdl/DiskUI.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl1/SDL_Video.h"
 
 SDL_Surface* g_apple_icon;

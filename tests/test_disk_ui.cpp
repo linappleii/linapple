@@ -3,7 +3,7 @@
 
 #include "apple2/peripherals/disk/DiskError.h"
 #include "doctest.h"
-#include "frontends/sdl3/DiskUI.h"
+#include "frontends/common/sdl/DiskUI.h"
 
 TEST_CASE("DiskUI: error Message Mapping") {
   CHECK(strcmp(disk_ui_get_error_message(disk_err_none), "Success") == 0);

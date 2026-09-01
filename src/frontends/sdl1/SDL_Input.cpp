@@ -17,7 +17,7 @@
 #include "core/Registry.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl1/Frame.h"
-#include "frontends/sdl1/Frontend.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl1/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp

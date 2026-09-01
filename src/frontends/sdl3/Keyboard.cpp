@@ -6,7 +6,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "frontends/sdl3/Frontend.h"
+#include "frontends/common/Frontend.h"
 
 static int keyboard_mapping_mode = 0;
 static int keyboard_caps_mode = CAPS_MODE_HOST;

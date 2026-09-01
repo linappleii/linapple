@@ -1,4 +1,5 @@
-#include "frontends/sdl1/PrinterFrontend.h"
+// SPDX-License-Identifier: GPL-2.0-only
+#include "frontends/common/PrinterFrontend.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -7,6 +8,8 @@
 #include "core/Util_Path.h"
 
 constexpr uint32_t DEFAULT_PRINTER_IDLE_LIMIT = 10;
+constexpr uint32_t CYCLES_PER_SEC = 1000000;
+constexpr uint8_t ASCII_7BIT_MASK = 0x7F;
 
 static uint32_t inactivity = 0;
 static uint32_t g_printer_idle_limit = DEFAULT_PRINTER_IDLE_LIMIT;
@@ -39,9 +42,8 @@ void printer_frontend_update(uint32_t totalcycles) {
   if (!file) {
     return;
   }
-  inactivity += totalcycles;
-  constexpr uint32_t idle_factor = 1000 * 1000;
-  if (inactivity > (printer_get_idle_limit() * idle_factor)) {
+  if ((inactivity += totalcycles) >
+      (printer_get_idle_limit() * CYCLES_PER_SEC)) {
     // inactive, so close the file (next print will overwrite it)
     ClosePrint();
   }
@@ -51,8 +53,7 @@ void printer_frontend_send_char(uint8_t value) {
   if (!check_print()) {
     return;
   }
-  constexpr uint8_t ascii_mask = 0x7F;
-  char c = static_cast<char>(value & ascii_mask);
+  char c = static_cast<char>(value & ASCII_7BIT_MASK);
   fwrite(&c, 1, 1, file.get());
 }
 

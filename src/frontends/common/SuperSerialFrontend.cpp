@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(misc-include-cleaner) - POSIX pthread types defined in glibc
 // internal headers
-#include "SuperSerialFrontend.h"
+#include "frontends/common/SuperSerialFrontend.h"
 
 #include <fcntl.h>
 #include <pthread.h>
@@ -61,7 +62,7 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
       break;
     case SUPER_SERIAL_PARITY_ODD:
       dcb.c_cflag |= PARENB;
-      dcb.c_cflag |= PARODD;
+      dcb.c_cflag &= ~PARODD;
       break;
     case SUPER_SERIAL_PARITY_MARK:
 #ifdef CMSPAR
@@ -155,6 +156,11 @@ auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
 }
 
 }  // namespace
+
+auto super_serial_frontend_initialize(const char* serial_port_path) -> bool {
+  super_serial_frontend_set_serial_port_path(serial_port_path);
+  return super_serial_frontend_is_active();
+}
 
 auto super_serial_frontend_is_active() -> bool {
   if (g_serial_loopback) {

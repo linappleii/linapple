@@ -10,7 +10,7 @@
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
 #include "frontends/sdl2/Frame.h"
-#include "frontends/sdl2/Frontend.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl2/JoystickFrontend.h"
 
 using Logger::error;

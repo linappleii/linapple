@@ -17,7 +17,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
 #include "frontends/sdl1/Frame.h"
-#include "frontends/sdl1/Frontend.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl1/JoystickFrontend.h"
 
 // SDL Audio Device for Frontend

@@ -3,23 +3,24 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_init.h>
-#include <SDL3/SDL_video.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_surface.h>
-#include <cstdint>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_pixels.h>
-#include <string>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
+
 #include <cstddef>
+#include <cstdint>
+#include <string>
 
 #include "apple2/Video.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/Frontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}

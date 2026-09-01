@@ -5,7 +5,7 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "frontends/sdl3/Frontend.h"
+#include "frontends/common/Frontend.h"
 
 // Use weak symbols so that real implementations in unit tests take precedence
 #define WEAK __attribute__((weak))
@@ -87,7 +87,6 @@ WEAK auto register_io_handler(uint32_t, iofunction, iofunction, iofunction,
                               iofunction, void*, uint8_t*) -> void {}
 WEAK auto register_direct_io_handler(uint16_t, iofunction, iofunction, void*)
     -> void {}
-
 
 #include "core/Log.h"
 WEAK auto Logger::perf(const char*, ...) -> void {}

@@ -70,8 +70,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 #include "frontends/sdl2/DiskChoose.h"
-#include "frontends/sdl2/DiskUI.h"
-#include "frontends/sdl2/Frontend.h"
+#include "frontends/common/sdl/DiskUI.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl2/SDL_Video.h"
 
 constexpr bool ENABLE_MENU = false;

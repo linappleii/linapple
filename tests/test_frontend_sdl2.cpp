@@ -2,23 +2,24 @@
 
 #include <SDL2/SDL.h>
 #include <SDL_events.h>
-#include <SDL_stdinc.h>
-#include <SDL_video.h>
-#include <SDL_render.h>
-#include <SDL_surface.h>
 #include <SDL_keycode.h>
+#include <SDL_render.h>
+#include <SDL_stdinc.h>
+#include <SDL_surface.h>
+#include <SDL_video.h>
+
+#include <cstddef>
 #include <cstdint>
 #include <string>
-#include <cstddef>
 
 #include "Video.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/Frame.h"
-#include "frontends/sdl2/Frontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}

@@ -56,7 +56,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Path.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/VideoSurface.h"
-#include "frontends/sdl3/Frontend.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/sdl3/SDL_Video.h"
 auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #if ENABLE_DEBUGGER
@@ -77,7 +77,7 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/DiskUI.h"
+#include "frontends/common/sdl/DiskUI.h"
 
 constexpr bool ENABLE_MENU = false;
 

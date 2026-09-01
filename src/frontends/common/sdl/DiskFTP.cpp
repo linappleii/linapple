@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/DiskFTP.h"
 
 #include <sys/stat.h>
@@ -22,13 +23,8 @@
 #include "core/Util_Text.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/Util_Hash.h"
-#include "frontends/sdl1/DiskChoose.h"
+#include "frontends/common/sdl/DiskChoose_Decl.h"
 
-// how many file names we are able to see at once!
-
-// delay after key pressed (in milliseconds??)
-
-// define time when cache ftp dir.listing must be refreshed
 static constexpr int renew_time = 86400;
 
 static constexpr size_t FTP_DIR_LISTING_CAP = 512;
@@ -103,8 +99,8 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
       std::unique_ptr<char, void (*)(void*)> trimmed_name(
           php_trim(fp.name, fp.namelen), free);
 
-      std::string safe_name = Path::sanitize_filename(
-          trimmed_name.get() ? trimmed_name.get() : "");
+      std::string safe_name =
+          Path::sanitize_filename(trimmed_name.get() ? trimmed_name.get() : "");
       if (safe_name.empty()) {
         continue;
       }
