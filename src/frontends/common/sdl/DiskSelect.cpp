@@ -11,7 +11,7 @@
 #include "core/Util_Text.h"
 #include "frontends/common/sdl/DiskChoose_Decl.h"
 
-void DiskSelectImage(int drive, char* pszFilename) {
+void disk_select_image(int drive, char* pszFilename) {
   (void)pszFilename;
   static size_t fileIndex = 0;
   static size_t backdx = 0;
@@ -28,7 +28,7 @@ void DiskSelectImage(int drive, char* pszFilename) {
   while (isdir) {
     if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
                          disk_default_slot, filename, isdir, fileIndex)) {
-      DrawFrameWindow();
+      draw_frame_window();
       return;
     }
     if (isdir) {
@@ -70,12 +70,12 @@ void DiskSelectImage(int drive, char* pszFilename) {
   peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   backdx = fileIndex;
-  DrawFrameWindow();
+  draw_frame_window();
 }
 
-void DiskSelect(int drive) {
+void disk_select(int drive) {
   char select[] = "";
-  DiskSelectImage(drive, select);  // drive is 0 for D1, 1 - for D2
+  disk_select_image(drive, select);  // drive is 0 for D1, 1 - for D2
 }
 
-void Disk_FTP_SelectImage(int drive) { (void)drive; }
+void disk_ftp_select_image(int drive) { (void)drive; }

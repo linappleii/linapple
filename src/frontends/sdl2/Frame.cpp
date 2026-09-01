@@ -65,13 +65,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
-#include "frontends/sdl2/DiskChoose.h"
 #include "frontends/common/sdl/DiskUI.h"
-#include "frontends/common/Frontend.h"
+#include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/SDL_Video.h"
 
 constexpr bool ENABLE_MENU = false;
@@ -110,9 +110,9 @@ void process_button_click(int button, int mod);
 
 void ResetMachineState();
 
-void SetFullScreenMode();
+void set_fullscreen_mode();
 
-void SetNormalMode();
+void set_normal_mode();
 
 void set_using_cursor(bool);
 
@@ -120,7 +120,7 @@ void SetIcon();
 
 bool g_scroll_lock_full_speed = false;
 
-void DrawAppleContent() {
+void draw_apple_content() {
   g_video_draw_mutex.lock();
   video_realize_palette();
 
@@ -155,7 +155,7 @@ static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect_t {
   return vr;
 }
 
-void DrawFrameWindow() {
+void draw_frame_window() {
   if (g_frame_ready == false) return;
 
   g_video_draw_mutex.lock();
@@ -279,7 +279,7 @@ void draw_status_area(int drawflags) {
   }
 }
 
-void FrameShowHelpScreen(int sx, int sy) {
+void frame_show_help_screen(int sx, int sy) {
   (void)sy;
 
   VideoSurface_t* tempSurface = nullptr;
@@ -440,7 +440,7 @@ void FrameShowHelpScreen(int sx, int sy) {
     SDL_FillRect(g_screen, nullptr, 0);
   }
   g_frame_ready = true;
-  DrawFrameWindow();
+  draw_frame_window();
 }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
 // semantically distinct
@@ -476,7 +476,7 @@ auto is_modifier_key(SDL_Keycode sym) -> bool {
   }
 }
 
-void Frame_OnResize(int width, int height) {
+void frame_on_resize(int width, int height) {
   g_video_draw_mutex.lock();
   g_state.screen_width = static_cast<uint32_t>(width);
   g_state.screen_height = static_cast<uint32_t>(height);
@@ -533,7 +533,7 @@ void Frame_OnResize(int width, int height) {
   g_video_draw_mutex.unlock();
 }
 
-void Frame_OnFocus(bool gained) {
+void frame_on_focus(bool gained) {
   g_app_active = gained;
   if (g_app_active && keyboard_get_caps_mode() == CAPS_MODE_HOST) {
     // Re-sync Caps Lock state upon regaining focus
@@ -543,7 +543,7 @@ void Frame_OnFocus(bool gained) {
   }
 }
 
-void Frame_OnExpose() {
+void frame_on_expose() {
   if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
     video_redraw_screen();
   }
@@ -565,7 +565,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
     if (choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
                         saveit ? 1 : 0, filename, isDirectory,
                         fileIndex) == false) {
-      DrawFrameWindow();
+      draw_frame_window();
       return false;
     }
     if (isDirectory) {
@@ -603,7 +603,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   Configuration_t::instance().set_string(
       "Preferences", REGVALUE_SAVESTATE_FILENAME, fullPath.c_str());
   Configuration_t::instance().save();
-  DrawFrameWindow();
+  draw_frame_window();
   return true;
 }
 
@@ -636,7 +636,7 @@ void process_button_click(int button, int mod) {
 
   switch (button) {
     case btn_help:
-      FrameShowHelpScreen(g_screen->w, g_screen->h);
+      frame_show_help_screen(g_screen->w, g_screen->h);
       break;
 
     case btn_run:
@@ -681,17 +681,17 @@ void process_button_click(int button, int mod) {
 
       if ((mod & KMOD_SHIFT) != 0) {
         if ((mod & KMOD_ALT) != 0) {
-          HarddiskUI_FTPSelect(button - btn_drive1);
+          harddisk_ui_ftp_select(button - btn_drive1);
         } else {
-          HarddiskUI_Select(button - btn_drive1);
+          harddisk_ui_select(button - btn_drive1);
         }
       } else {
-        extern void DiskSelect(int drive);
-        extern void Disk_FTP_SelectImage(int drive);
+        extern void disk_select(int drive);
+        extern void disk_ftp_select_image(int drive);
         if ((mod & KMOD_ALT) != 0) {
-          Disk_FTP_SelectImage(button - btn_drive1);
+          disk_ftp_select_image(button - btn_drive1);
         } else {
-          DiskSelect(button - btn_drive1);
+          disk_select(button - btn_drive1);
         }
       }
       break;
@@ -720,10 +720,10 @@ void process_button_click(int button, int mod) {
       } else {
         if (g_state.fullscreen) {
           g_state.fullscreen = false;
-          SetNormalMode();
+          set_normal_mode();
         } else {
           g_state.fullscreen = true;
-          SetFullScreenMode();
+          set_fullscreen_mode();
         }
         peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
       }
@@ -826,7 +826,7 @@ void ResetMachineState() {
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
-void SetFullScreenMode() {
+void set_fullscreen_mode() {
   if (!is_full_screened) {
     is_full_screened = true;
     if (s_windowed_width == 0 || s_windowed_height == 0) {
@@ -840,15 +840,15 @@ void SetFullScreenMode() {
   }
 }
 
-void SetNormalMode() {
+void set_normal_mode() {
   if (is_full_screened) {
     is_full_screened = false;
     SDL_SetWindowFullscreen(g_window, 0);
     if (s_windowed_width > 0 && s_windowed_height > 0) {
       SDL_SetWindowSize(g_window, static_cast<int>(s_windowed_width),
                         static_cast<int>(s_windowed_height));
-      Frame_OnResize(static_cast<int>(s_windowed_width),
-                     static_cast<int>(s_windowed_height));
+      frame_on_resize(static_cast<int>(s_windowed_width),
+                      static_cast<int>(s_windowed_height));
     }
     if (!g_usingcursor) {
       SDL_ShowCursor(SDL_ENABLE);

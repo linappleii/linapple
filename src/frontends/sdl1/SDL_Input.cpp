@@ -1,12 +1,12 @@
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstddef>
 
 #include "Debugger/Debug.h"
-#include "SDL_keysym.h"
-#include "SDL_events.h"
 #include "SDL_active.h"
+#include "SDL_events.h"
 #include "SDL_keyboard.h"
+#include "SDL_keysym.h"
 #include "SDL_mouse.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
@@ -15,9 +15,9 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl1/Frame.h"
-#include "frontends/common/Frontend.h"
 #include "frontends/sdl1/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
@@ -40,19 +40,19 @@ void sdl_handle_event(SDL_Event* e) {
       break;
 
     case SDL_VIDEORESIZE:
-      Frame_OnResize(e->resize.w, e->resize.h);
+      frame_on_resize(e->resize.w, e->resize.h);
       break;
 
     case SDL_VIDEOEXPOSE:
-      Frame_OnExpose();
+      frame_on_expose();
       break;
 
     case SDL_ACTIVEEVENT:
       if (e->active.state & SDL_APPINPUTFOCUS) {
         if (e->active.gain) {
-          Frame_OnFocus(true);
+          frame_on_focus(true);
         } else {
-          Frame_OnFocus(false);
+          frame_on_focus(false);
         }
       }
       break;
@@ -142,7 +142,7 @@ void sdl_handle_event(SDL_Event* e) {
           JoyFrontend_UpdateTrimViaKey(mysym);
         } else {
           if (!joy_frontend_process_key(mysym, extended, true, false)) {
-            Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
+            frontend_dispatch_key_event(myscancode, mysym, mymod, true);
           }
         }
 #if ENABLE_DEBUGGER
@@ -176,7 +176,7 @@ void sdl_handle_event(SDL_Event* e) {
         bool extended = (mysym >= SDLK_UP && mysym <= SDLK_INSERT) ||
                         (mysym == SDLK_DELETE);
         if (!joy_frontend_process_key(mysym, extended, false, false)) {
-          Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
+          frontend_dispatch_key_event(myscancode, mysym, mymod, false);
         }
       }
       break;

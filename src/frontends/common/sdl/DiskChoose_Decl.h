@@ -6,7 +6,7 @@
 
 #include "frontends/common/FileBrowser.h"
 
-void DrawFrameWindow();
+auto draw_frame_window() -> void;
 
 auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                      std::string& filename, bool& isdir, size_t& index_file)

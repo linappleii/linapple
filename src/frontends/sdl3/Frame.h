@@ -51,20 +51,20 @@ void FrameReleaseDC();
 
 void FrameReleaseVideoDC();
 
-void DrawAppleContent();
-void DrawFrameWindow();
-void Frame_OnResize(int width, int height);
-void Frame_OnFocus(bool gained);
-void Frame_OnExpose();
-void FrameShowHelpScreen(int sx, int sy);
+void draw_apple_content();
+void draw_frame_window();
+void frame_on_resize(int width, int height);
+void frame_on_focus(bool gained);
+void frame_on_expose();
+void frame_show_help_screen(int sx, int sy);
 
 void set_using_cursor(bool);
 
-void SetFullScreenMode();
+void set_fullscreen_mode();
 
-void SetNormalMode();
+void set_normal_mode();
 
-void HarddiskUI_FTPSelect(int drive);
-void HarddiskUI_Select(int drive);
+void harddisk_ui_ftp_select(int drive);
+void harddisk_ui_select(int drive);
 
 extern bool g_scroll_lock_full_speed;

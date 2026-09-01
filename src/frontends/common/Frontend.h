@@ -10,30 +10,24 @@
 
 // Lifecycle
 auto sys_init() -> int;
-void SysShutdown();
+auto sys_shutdown() -> void;
 auto session_init(AppConfig_t* config) -> int;
-void SessionShutdown();
-
-void ContinueExecution(uint32_t cycles);
-void CpuTestHeadless(const char* test_file);
+auto session_shutdown() -> void;
 
 // Entry point helpers (implemented in Frontend)
-void enter_message_loop();
-void sys_input();
-void Sys_Think();
-void Sys_Draw();
+auto enter_message_loop() -> void;
+auto sys_input() -> void;
 
 // Public Frontend helpers (Keyboard translation, etc)
 auto ds_init() -> bool;
-void ds_shutdown();
-void SingleStep(bool is_reinit);
-void Linapple_KeyboardThink(uint32_t cycles);
-void Frontend_UpdateKeyboardMapping();
+auto ds_shutdown() -> void;
+auto single_step(bool is_reinit) -> void;
+auto frontend_update_keyboard_mapping() -> void;
 auto keyboard_get_caps_mode() -> int;
 auto keyboard_set_caps_mode(int mode) -> void;
-void Frontend_DispatchKeyEvent(uint32_t scancode, uint32_t keycode,
-                               uint32_t mod, bool is_down);
-LinAppleKey frontend_to_core_key(int key, uint32_t mod);
+auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
+                                 uint32_t mod, bool is_down) -> void;
+auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey;
 
 // Constants
 constexpr int window_width = SCREEN_WIDTH;

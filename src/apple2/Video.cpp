@@ -31,7 +31,7 @@
 // modernize-avoid-c-style-cast): Unavoidable hardware architectural constraints
 // for Apple II CRT rendering, NTSC/PAL timing generator, and video memory
 // scanner
-static auto GetTickCount() -> uint32_t {
+static auto get_tick_count_ms() -> uint32_t {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::steady_clock::now().time_since_epoch())
       .count();
@@ -195,7 +195,7 @@ auto DrawMonoTextSource(VideoSurface_t* dc) -> void;
 auto DrawTextSource(VideoSurface_t* dc) -> void;
 auto LoadCharset() -> VideoSurface_t*;
 
-auto VideoInitWorker() -> bool;
+auto video_init_worker() -> bool;
 
 std::thread video_worker_thread_;
 static std::atomic<bool> video_worker_active_{false};
@@ -298,7 +298,7 @@ void CreateIdentityPalette() {
   SETFRAMECOLOR(DARKEST_GREEN, 0x00, 31, 0x00);
 }
 
-void CreateDIBSections() {
+void video_init_buffers() {
   g_video_draw_mutex.lock();
 
   memcpy(g_source_header, framebufferinfo,
@@ -1340,9 +1340,9 @@ auto video_benchmark() -> void {
   g_video_mode = VF_TEXT;
   memset(mem + 0x400, 0x14, 0x400);
   video_redraw_screen();
-  auto milliseconds = static_cast<uint32_t>(GetTickCount());
-  while (GetTickCount() == milliseconds);
-  milliseconds = static_cast<uint32_t>(GetTickCount());
+  auto milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  while (get_tick_count_ms() == milliseconds);
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   uint32_t cycle = 0;
   do {
     if (cycle & 1) {
@@ -1355,15 +1355,15 @@ auto video_benchmark() -> void {
       cycle = 0;
     }
     totaltextfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (get_tick_count_ms() - milliseconds < 1000);
 
   uint32_t totalhiresfps = 0;
   g_video_mode = VF_HIRES;
   memset(mem + 0x2000, 0x14, 0x2000);
   video_redraw_screen();
-  milliseconds = static_cast<uint32_t>(GetTickCount());
-  while (GetTickCount() == milliseconds);
-  milliseconds = static_cast<uint32_t>(GetTickCount());
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  while (get_tick_count_ms() == milliseconds);
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
     if (cycle & 1) {
@@ -1376,18 +1376,18 @@ auto video_benchmark() -> void {
       cycle = 0;
     }
     totalhiresfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (get_tick_count_ms() - milliseconds < 1000);
 
   cpu_setup_benchmark();
   uint32_t totalmhz10 = 0;
-  milliseconds = static_cast<uint32_t>(GetTickCount());
-  while (GetTickCount() == milliseconds);
-  milliseconds = static_cast<uint32_t>(GetTickCount());
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  while (get_tick_count_ms() == milliseconds);
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
     cpu_execute(100000);
     totalmhz10++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (get_tick_count_ms() - milliseconds < 1000);
 
   if ((cpu_get_registers()->pc < 0x300) || (cpu_get_registers()->pc > 0x400)) {
     printf(
@@ -1426,9 +1426,9 @@ auto video_benchmark() -> void {
   uint32_t realisticfps = 0;
   memset(mem + 0x2000, 0xAA, 0x2000);
   video_redraw_screen();
-  milliseconds = static_cast<uint32_t>(GetTickCount());
-  while (GetTickCount() == milliseconds);
-  milliseconds = static_cast<uint32_t>(GetTickCount());
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  while (get_tick_count_ms() == milliseconds);
+  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
     if (realisticfps < 10) {
@@ -1449,7 +1449,7 @@ auto video_benchmark() -> void {
       cycle = 0;
     }
     realisticfps++;
-  } while (GetTickCount() - milliseconds < 1000);
+  } while (get_tick_count_ms() - milliseconds < 1000);
   printf("Pure Video FPS:\t%u hires, %u text\n", totalhiresfps, totaltextfps);
   printf("Pure CPU MHz:\t%u.%u%s\n\n", (totalmhz10 / 10), (totalmhz10 % 10),
          (IS_APPLE2() ? " (6502" : ""));
@@ -1609,11 +1609,11 @@ auto video_initialize() -> void {
             framebufferinfo[index].b);
   }
 
-  CreateDIBSections();
+  video_init_buffers();
   video_reset_state();
 
   if (!g_singlethreaded) {
-    VideoInitWorker();
+    video_init_worker();
   }
 }
 
@@ -1640,7 +1640,7 @@ void VideoWorkerThread() {
   }
 }
 
-auto VideoInitWorker() -> bool {
+auto video_init_worker() -> bool {
   if (video_worker_active_ && video_worker_thread_.joinable()) {
     return true;
   }
@@ -1808,7 +1808,7 @@ auto video_perform_refresh() -> void {
 
 auto video_reinitialize() -> void {
   CreateIdentityPalette();
-  CreateDIBSections();
+  video_init_buffers();
   redrawfull = true;
 }
 

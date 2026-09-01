@@ -21,7 +21,7 @@
 
 constexpr uint8_t HARDDISK_SLOT = 7;
 
-void HarddiskUI_FTPSelect(int drive) {
+void harddisk_ui_ftp_select(int drive) {
   static size_t fileIndex = 0;
   static size_t backdx = 0;
   static size_t dirdx = 0;
@@ -37,7 +37,7 @@ void HarddiskUI_FTPSelect(int drive) {
     if (!choose_an_image_ftp(g_state.screen_width, g_state.screen_height,
                              fullPath, HARDDISK_SLOT, filename, isDirectory,
                              fileIndex)) {
-      DrawFrameWindow();
+      draw_frame_window();
       return;
     }
     if (isDirectory) {
@@ -75,7 +75,7 @@ void HarddiskUI_FTPSelect(int drive) {
   if (safe_filename.empty()) {
     Logger::error("FTP: Rejected unsafe filename\n");
     backdx = fileIndex;
-    DrawFrameWindow();
+    draw_frame_window();
     return;
   }
 
@@ -104,10 +104,10 @@ void HarddiskUI_FTPSelect(int drive) {
     }
   }
   backdx = fileIndex;
-  DrawFrameWindow();
+  draw_frame_window();
 }
 
-void HarddiskUI_Select(int drive) {
+void harddisk_ui_select(int drive) {
   static size_t fileIndex = 0;
   static size_t backdx = 0;
   static size_t dirdx = 0;
@@ -123,7 +123,7 @@ void HarddiskUI_Select(int drive) {
   while (isDirectory) {
     if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
                          HARDDISK_SLOT, filename, isDirectory, fileIndex)) {
-      DrawFrameWindow();
+      draw_frame_window();
       return;
     }
     if (isDirectory) {
@@ -175,5 +175,5 @@ void HarddiskUI_Select(int drive) {
     printf("HDD disk image %s inserted\n", fullPath.c_str());
   }
   backdx = fileIndex;
-  DrawFrameWindow();
+  draw_frame_window();
 }

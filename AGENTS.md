@@ -54,7 +54,7 @@ More on building in <!-- Imported from: INSTALL.md -->
 
 ## Development Conventions
 - **Coding Style:** Favor a **procedural C-like coding style** for all new development. Use `structs` and plain functions instead of `classes` and methods where possible to improve simplicity and portability.
-- **Naming Conventions:** Use strict `snake_case` for functions, variables, and constants. Use `PascalCase_t` for types and structs.
+- **Naming Conventions:** Use strict `snake_case` for functions, variables, and constants. Use `PascalCase_t` for types and structs. (Exception: hardware register bitmasks, 6502 CPU status flags, and Apple II architecture vector definitions in hardware emulation layers may use `SCREAMING_SNAKE_CASE` to maintain 1:1 fidelity with hardware technical references).
 - **Function Syntax:** Use trailing return types (`auto func() -> type`) for all new and modernized functions.
 - **Resource Safety & RAII:** Ensure 100% RAII compliance. Avoid raw `new`/`delete` and manual file handles; use `std::unique_ptr` and `FilePtr`.
 - **Code Structure:** Prefer guard clauses (flattening) over deeply nested conditionals. Maintain defensive null and bounds checks.

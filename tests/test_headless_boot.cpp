@@ -113,13 +113,13 @@ TEST_CASE("Headless: [HL-04] Program loading") {
 }
 
 TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
-  extern auto VideoInitWorker() -> bool;
+  extern auto video_init_worker() -> bool;
   extern auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false)
       -> void;
   extern std::atomic<bool> g_frame_ready;
 
   linapple_init();
-  VideoInitWorker();
+  video_init_worker();
 
   g_frame_ready = false;
   video_refresh_screen(0, true);

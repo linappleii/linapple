@@ -26,7 +26,7 @@
 #include "frontends/common/AppEnvironment.h"
 #include "frontends/common/SaveStateManager.h"
 
-void Frontend_UpdateKeyboardMapping();
+void frontend_update_keyboard_mapping();
 void keyboard_set_caps_mode(int mode);
 
 static bool s_initialized = false;
@@ -136,7 +136,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
                       sizeof(g_state.save_state_dir));
 
-  Frontend_UpdateKeyboardMapping();
+  frontend_update_keyboard_mapping();
   if (config->caps_lock_mode >= 0) {
     keyboard_set_caps_mode(config->caps_lock_mode);
   }

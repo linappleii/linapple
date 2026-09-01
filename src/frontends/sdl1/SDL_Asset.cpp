@@ -1,5 +1,5 @@
-#include <string>
 #include <cstdio>
+#include <string>
 
 #include "SDL_video.h"
 #include "core/Asset.h"

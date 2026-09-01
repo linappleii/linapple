@@ -3,14 +3,13 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
-
 #include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
-#include "frontends/sdl2/Frame.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/sdl2/Frame.h"
 #include "frontends/sdl2/JoystickFrontend.h"
 
 using Logger::error;
@@ -27,7 +26,7 @@ void set_current_clk_6502() {
   g_current_clk_6502 = apple2_clock_mhz * mhz_to_hz;
 }
 
-void SingleStep(bool is_reinit) {
+void single_step(bool is_reinit) {
   (void)is_reinit;
   linapple_run_frame(1);
 }
@@ -48,7 +47,7 @@ auto sys_init() -> int {
   return 0;
 }
 
-void SysShutdown() {
+void sys_shutdown() {
   ds_shutdown();
   frame_destroy_window();
   SDL_Quit();
@@ -83,7 +82,7 @@ auto session_init(AppConfig_t* config) -> int {
   return 0;
 }
 
-void SessionShutdown() {
+void session_shutdown() {
   ds_shutdown();
   JoyFrontend_ShutDown();
   AppController_Shutdown();

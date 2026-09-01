@@ -1,7 +1,8 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3_image/SDL_image.h>
-#include <string>
+
 #include <cstdio>
+#include <string>
 
 #include "core/Asset.h"
 #include "core/Util_Path.h"

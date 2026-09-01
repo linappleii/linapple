@@ -1,12 +1,13 @@
-#include <SDL_keycode.h>
 #include <SDL_events.h>
-#include <SDL_video.h>
-#include <SDL_scancode.h>
-#include <cstdio>
-#include <cstdint>
 #include <SDL_keyboard.h>
+#include <SDL_keycode.h>
 #include <SDL_mouse.h>
+#include <SDL_scancode.h>
+#include <SDL_video.h>
+
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include "Debugger/Debug.h"
 #include "apple2/Video.h"
@@ -16,9 +17,9 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl2/Frame.h"
-#include "frontends/common/Frontend.h"
 #include "frontends/sdl2/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
@@ -46,18 +47,18 @@ void sdl_handle_event(SDL_Event* e) {
           g_state.mode = MODE_EXIT;
           break;
         case SDL_WINDOWEVENT_RESIZED:
-          Frame_OnResize(e->window.data1, e->window.data2);
+          frame_on_resize(e->window.data1, e->window.data2);
           break;
 
         case SDL_WINDOWEVENT_EXPOSED:
-          Frame_OnExpose();
+          frame_on_expose();
           break;
 
         case SDL_WINDOWEVENT_FOCUS_GAINED:
-          Frame_OnFocus(true);
+          frame_on_focus(true);
           break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
-          Frame_OnFocus(false);
+          frame_on_focus(false);
           break;
         default:
           break;
@@ -151,7 +152,7 @@ void sdl_handle_event(SDL_Event* e) {
             JoyFrontend_UpdateTrimViaKey(mysym);
           } else {
             if (!joy_frontend_process_key(mysym, extended, true, false)) {
-              Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
+              frontend_dispatch_key_event(myscancode, mysym, mymod, true);
             }
           }
 #if ENABLE_DEBUGGER
@@ -187,7 +188,7 @@ void sdl_handle_event(SDL_Event* e) {
                          myscancode <= SDL_SCANCODE_UP) ||
                         (myscancode == SDL_SCANCODE_DELETE);
         if (!joy_frontend_process_key(mysym, extended, false, false)) {
-          Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
+          frontend_dispatch_key_event(myscancode, mysym, mymod, false);
         }
       }
       break;

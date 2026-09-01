@@ -18,9 +18,9 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/common/Frontend.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
@@ -43,18 +43,18 @@ void sdl_handle_event(SDL_Event* e) {
       break;
 
     case SDL_EVENT_WINDOW_RESIZED:
-      Frame_OnResize(e->window.data1, e->window.data2);
+      frame_on_resize(e->window.data1, e->window.data2);
       break;
 
     case SDL_EVENT_WINDOW_EXPOSED:
-      Frame_OnExpose();
+      frame_on_expose();
       break;
 
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
-      Frame_OnFocus(true);
+      frame_on_focus(true);
       break;
     case SDL_EVENT_WINDOW_FOCUS_LOST:
-      Frame_OnFocus(false);
+      frame_on_focus(false);
       break;
 
     case SDL_EVENT_KEY_DOWN: {
@@ -143,7 +143,7 @@ void sdl_handle_event(SDL_Event* e) {
             JoyFrontend_UpdateTrimViaKey(mysym);
           } else {
             if (!joy_frontend_process_key(mysym, extended, true, false)) {
-              Frontend_DispatchKeyEvent(myscancode, mysym, mymod, true);
+              frontend_dispatch_key_event(myscancode, mysym, mymod, true);
             }
           }
 #if ENABLE_DEBUGGER
@@ -179,7 +179,7 @@ void sdl_handle_event(SDL_Event* e) {
                          myscancode <= SDL_SCANCODE_UP) ||
                         (myscancode == SDL_SCANCODE_DELETE);
         if (!joy_frontend_process_key(mysym, extended, false, false)) {
-          Frontend_DispatchKeyEvent(myscancode, mysym, mymod, false);
+          frontend_dispatch_key_event(myscancode, mysym, mymod, false);
         }
       }
       break;

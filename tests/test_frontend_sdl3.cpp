@@ -43,7 +43,7 @@ TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   SDL_Renderer* orig_renderer = g_renderer;
 
   // Session shutdown on restart preserves the window for in-window reboot
-  SessionShutdown();
+  session_shutdown();
   CHECK(g_window == orig_window);
   CHECK(g_renderer == orig_renderer);
 
@@ -54,8 +54,8 @@ TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   CHECK(g_window == orig_window);
   CHECK(g_renderer == orig_renderer);
 
-  SessionShutdown();
-  SysShutdown();
+  session_shutdown();
+  sys_shutdown();
 
   // Complete system shutdown destroys all window and rendering resources
   CHECK(g_window == nullptr);
@@ -104,7 +104,7 @@ TEST_CASE("SDL3 Frontend Initialization and Screen Scaling") {
   SDL_Quit();
 }
 
-TEST_CASE("SDL3 Frontend DrawFrameWindow Scaled Stretching") {
+TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
   bool init_result = SDL_Init(SDL_INIT_VIDEO);
   REQUIRE(init_result);
@@ -127,7 +127,7 @@ TEST_CASE("SDL3 Frontend DrawFrameWindow Scaled Stretching") {
   output[383 * 560 + 559] = 0x00FFFFFF;  // Bottom-right: White
 
   g_frame_ready = true;
-  DrawFrameWindow();
+  draw_frame_window();
 
   // Inspect scaled g_screen pixels (1120x768)
   const auto* screen_pixels =
@@ -176,9 +176,9 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_screen->h == 768);
 
   // 2. Toggle into fullscreen mode
-  SetFullScreenMode();
+  set_fullscreen_mode();
   // Simulate monitor resolution delivered via SDL resize event in fullscreen
-  Frame_OnResize(1920, 1080);
+  frame_on_resize(1920, 1080);
   CHECK(g_screen->w == 1920);
   CHECK(g_screen->h == 1080);
 
@@ -190,7 +190,7 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.y == 0);
 
   // 3. Return to windowed mode (F6)
-  SetNormalMode();
+  set_normal_mode();
 
   // Windowed mode must restore original configured dimensions and full rect
   CHECK(g_state.screen_width == 1120);
@@ -241,8 +241,8 @@ TEST_CASE("SDL3 Frontend Help Screen Quit Event Handling") {
   bool push_result = SDL_PushEvent(&quit_event);
   REQUIRE(push_result);
 
-  // FrameShowHelpScreen should not hang or discard the quit event
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  // frame_show_help_screen should not hang or discard the quit event
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_EVENT_QUIT was re-pushed and is available in the event
@@ -295,8 +295,8 @@ TEST_CASE("SDL3 Frontend Help Screen Key Down Dismissal") {
   bool push_result = SDL_PushEvent(&key_event);
   REQUIRE(push_result);
 
-  // FrameShowHelpScreen should immediately consume the key event and dismiss
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  // frame_show_help_screen should immediately consume the key event and dismiss
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   // Verify that the event queue is drained
@@ -345,8 +345,8 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
   bool push_result = SDL_PushEvent(&close_event);
   REQUIRE(push_result);
 
-  // FrameShowHelpScreen should not hang or discard the window close event
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  // frame_show_help_screen should not hang or discard the window close event
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_EVENT_WINDOW_CLOSE_REQUESTED was re-pushed and is available
@@ -402,14 +402,14 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
   REQUIRE(output != nullptr);
   output[0] = 0x00FF0000;  // Red
 
-  // Queue a keydown event so FrameShowHelpScreen exits immediately after
+  // Queue a keydown event so frame_show_help_screen exits immediately after
   // rendering
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
   key_event.key.key = SDLK_ESCAPE;
   REQUIRE(SDL_PushEvent(&key_event));
 
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   // Verify that after dismissal, g_screen is properly restored with the
@@ -454,21 +454,21 @@ TEST_CASE(
   REQUIRE(g_screen != nullptr);
 
   // Switch to Fullscreen and simulate 1920x1080 resolution
-  SetFullScreenMode();
-  Frame_OnResize(1920, 1080);
+  set_fullscreen_mode();
+  frame_on_resize(1920, 1080);
   REQUIRE(g_screen->w == 1920);
   REQUIRE(g_screen->h == 1080);
 
   // g_new_rect in 1920x1080: x = 172, w = 1575
   // The pillarbox margins are x < 172 and x >= 1747
 
-  // Queue key event so FrameShowHelpScreen dismisses immediately
+  // Queue key event so frame_show_help_screen dismisses immediately
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
   key_event.key.key = SDLK_SPACE;
   REQUIRE(SDL_PushEvent(&key_event));
 
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   const auto* screen_pixels =
@@ -477,7 +477,7 @@ TEST_CASE(
 
   // Simulate next emulator frame rendering after help screen was dismissed
   g_frame_ready = true;
-  DrawFrameWindow();
+  draw_frame_window();
 
   int nonzero_left_margin = 0;
   for (int y = 0; y < 1080; ++y) {
@@ -495,7 +495,7 @@ TEST_CASE(
   }
   CHECK(nonzero_right_margin == 0);
 
-  SetNormalMode();
+  set_normal_mode();
 
   // Teardown
   if (g_texture != nullptr) {
@@ -615,7 +615,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   bool push_result = SDL_PushEvent(&key_event);
   REQUIRE(push_result);
 
-  FrameShowHelpScreen(static_cast<int>(g_state.screen_width),
+  frame_show_help_screen(static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
 
   CHECK(g_state.mode == MODE_EXIT);

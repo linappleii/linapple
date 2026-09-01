@@ -1,6 +1,5 @@
 #include "frontends/sdl1/DiskChoose.h"
 
-
 #include <cctype>
 #include <cstddef>
 #include <cstdio>

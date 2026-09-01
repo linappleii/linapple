@@ -15,8 +15,8 @@
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
-#include "frontends/sdl3/Frame.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/JoystickFrontend.h"
 
 // SDL Audio Stream for Frontend
@@ -115,7 +115,7 @@ void enter_message_loop() {
     JoyFrontend_Update();
 
     linapple_run_frame(apple2_frame_cycles);
-    DrawFrameWindow();
+    draw_frame_window();
     SDL_Delay(target_frame_ms);
   }
 }
@@ -157,9 +157,9 @@ auto main(int argc, char** argv) -> int {
       enter_message_loop();
     }
 
-    SessionShutdown();
+    session_shutdown();
   } while (app_controller_should_restart());
 
-  SysShutdown();
+  sys_shutdown();
   return 0;
 }
