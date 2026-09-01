@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -20,7 +21,7 @@ struct VideoSurface_t {
   uint8_t* pixels;
   int w, h, pitch;
   int bpp;
-  VideoColor_t palette[VIDEO_PALETTE_SIZE];
+  std::array<VideoColor_t, VIDEO_PALETTE_SIZE> palette;
 };
 using VideoSurface_t = VideoSurface_t;
 

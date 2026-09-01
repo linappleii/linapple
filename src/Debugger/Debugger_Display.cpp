@@ -88,7 +88,7 @@ void AllocateDebuggerMemDC() {
     if (g_debug_screen) {
       VideoColor_t* pal = video_get_output_palette();
       if (pal) {
-        memcpy(g_debug_screen->palette, pal,
+        memcpy(g_debug_screen->palette.data(), pal,
                VIDEO_PALETTE_SIZE * sizeof(VideoColor_t));
       }
     }

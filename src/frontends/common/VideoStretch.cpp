@@ -87,9 +87,9 @@ static auto copy_row_or4(uint32_t* src, int src_w, uint32_t* dst, int dst_x,
 }
 
 static uint32_t g_palette_lut[256] = {};
-static VideoColor_t* g_last_palette = nullptr;
+static const VideoColor_t* g_last_palette = nullptr;
 
-static auto update_palette_lut(VideoColor_t* palette) -> void {
+static auto update_palette_lut(const VideoColor_t* palette) -> void {
   if (!palette) return;
   if (palette == g_last_palette) return;
 
@@ -101,7 +101,8 @@ static auto update_palette_lut(VideoColor_t* palette) -> void {
 }
 
 static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                         int dst_w, int max_w, VideoColor_t* palette) -> void {
+                         int dst_w, int max_w, const VideoColor_t* palette)
+    -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
   if (dst_x >= max_w || dst_x + dst_w <= 0) return;
   update_palette_lut(palette);
@@ -125,7 +126,7 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 }
 
 static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                            int dst_w, int max_w, VideoColor_t* palette)
+                            int dst_w, int max_w, const VideoColor_t* palette)
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
   if (dst_x >= max_w || dst_x + dst_w <= 0) return;
@@ -309,7 +310,7 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
       auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
       if (sbpp == 1) {
         copy_row1to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w,
-                     src->palette);
+                     src->palette.data());
       } else if (sbpp == 3) {
         copy_row3to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w);
       } else if (sbpp == 4) {
@@ -468,7 +469,7 @@ auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
       auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
       if (sbpp == 1) {
         copy_row_or1to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w,
-                        src->palette);
+                        src->palette.data());
       } else if (sbpp == 3) {
         copy_row_or3to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w,
                         dst->w);
@@ -626,7 +627,7 @@ auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
     return;
   }
 
-  colors = surface->palette;
+  colors = surface->palette.data();
   for (i = 0; i < 256; i++) {
     colors[i].r = static_cast<uint8_t>(colors[i].r * r_factor);
     colors[i].g = static_cast<uint8_t>(colors[i].g * g_factor);

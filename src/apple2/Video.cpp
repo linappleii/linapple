@@ -323,9 +323,9 @@ void video_init_buffers() {
   }
 
   framebufferbits = g_device_bitmap->pixels;
-  memcpy(g_device_bitmap->palette, g_source_header,
+  memcpy(g_device_bitmap->palette.data(), g_source_header,
          MAX_PALETTE_SIZE * sizeof(VideoColor_t));
-  memcpy(g_origscreen->palette, g_source_header,
+  memcpy(g_origscreen->palette.data(), g_source_header,
          MAX_PALETTE_SIZE * sizeof(VideoColor_t));
 
   if (g_status_surface) {
@@ -337,7 +337,7 @@ void video_init_buffers() {
     g_video_draw_mutex.unlock();
     return;
   }
-  memcpy(g_status_surface->palette, g_source_header,
+  memcpy(g_status_surface->palette.data(), g_source_header,
          MAX_PALETTE_SIZE * sizeof(VideoColor_t));
 
   VideoRect_t srect{};
@@ -375,7 +375,8 @@ void video_init_buffers() {
   }
 
   g_source_pixels = g_source_bitmap->pixels;
-  memcpy(g_source_bitmap->palette, framebufferinfo, 256 * sizeof(VideoColor_t));
+  memcpy(g_source_bitmap->palette.data(), framebufferinfo,
+         256 * sizeof(VideoColor_t));
 
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_source_start_of_line[y] =
