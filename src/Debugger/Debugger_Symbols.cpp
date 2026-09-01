@@ -39,7 +39,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Debug.h"
 #include "Debugger_Console.h"
-#include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"

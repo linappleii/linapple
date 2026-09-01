@@ -16,7 +16,6 @@ extern void frame_refresh_status(int);
 
 #include "Debugger_Console.h"
 #include "Debugger_Display.h"
-#include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 
 // Globals originally from Debug.cpp

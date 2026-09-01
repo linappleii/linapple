@@ -1242,7 +1242,6 @@ void AssemblerHashDirectives() {
 #include <string>
 
 #include "Debugger_Console.h"
-#include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Symbols.h"
 

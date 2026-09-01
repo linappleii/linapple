@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <string>
 
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"

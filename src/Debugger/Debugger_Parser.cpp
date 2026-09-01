@@ -15,7 +15,6 @@
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
-#include "Debugger_Help.h"
 #include "Debugger_Memory.h"
 #include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
