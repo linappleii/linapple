@@ -17,6 +17,7 @@
 #include "Util_MemoryTextFile.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Path.h"
 
 // Globals originally from Debug.cpp
 bool g_config_disasm_address_view = true;
@@ -178,23 +179,19 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
   std::string sFileName = g_state.current_dir.data();
   sFileName += pFileName;  // TODO: g_debug_dir
 
-  FILE* hFile = fopen(pFileName, pMode);
+  FilePtr_t h_file{fopen(pFileName, pMode), fclose};
 
-  if (hFile) {
+  if (h_file) {
     char* text = nullptr;
-    int nLine = g_config_state.GetNumLines();
-    int iLine = 0;
+    int n_line = g_config_state.GetNumLines();
 
-    for (iLine = 0; iLine < nLine; iLine++) {
-      text = g_config_state.GetLine(iLine);
-      if (text) {
-        fputs(text, hFile);
+    for (int i_line = 0; i_line < n_line; i_line++) {
+      text = g_config_state.GetLine(i_line);
+      if (text != nullptr) {
+        fputs(text, h_file.get());
       }
     }
-
-    fclose(hFile);
     bStatus = true;
-  } else {
   }
 
   return bStatus;

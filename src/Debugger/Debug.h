@@ -67,7 +67,7 @@ extern bool g_debug_full_speed;
 extern bool g_last_go_cmd_was_full_speed;
 extern bool g_go_cmd_reinit_flag;
 
-extern FILE* g_trace_file;
+extern FilePtr_t g_trace_file;
 extern bool g_trace_header;
 extern bool g_trace_file_with_video_scanner;
 extern char g_file_name_trace[];

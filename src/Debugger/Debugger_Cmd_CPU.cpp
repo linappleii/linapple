@@ -35,7 +35,7 @@ bool g_debug_full_speed = false;
 bool g_last_go_cmd_was_full_speed = false;
 bool g_go_cmd_reinit_flag = false;
 
-FILE* g_trace_file = nullptr;
+FilePtr_t g_trace_file{nullptr, fclose};
 bool g_trace_header = false;
 bool g_trace_file_with_video_scanner = false;
 char g_file_name_trace[] = "Trace.txt";
@@ -256,8 +256,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
   char sText[CONSOLE_WIDTH] = "";
 
   if (g_trace_file) {
-    fclose(g_trace_file);
-    g_trace_file = nullptr;
+    g_trace_file.reset();
 
     ConsoleBufferPush("Trace stopped.");
   } else {
@@ -274,7 +273,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
     const std::string sFilePath =
         std::string(g_state.current_dir.data()) + sFileName;
 
-    g_trace_file = fopen(sFilePath.c_str(), "wt");
+    g_trace_file.reset(fopen(sFilePath.c_str(), "wt"));
 
     if (g_trace_file) {
       const char* pTextHdr = g_trace_file_with_video_scanner
@@ -485,13 +484,13 @@ void OutputTraceLine() {
     g_trace_header = false;
 
     if (g_trace_file_with_video_scanner) {
-      fprintf(g_trace_file,
+      fprintf(g_trace_file.get(),
               //        "0000 0000 0000 00   00 00 00 0000 --------  0000:90 90
               //        90  NOP"
               "Vert Horz Addr Data A: X: Y: SP:  Flags     Addr:Opcode    "
               "Mnemonic\n");
     } else {
-      fprintf(g_trace_file,
+      fprintf(g_trace_file.get(),
               //        "00 00 00 0000 --------  0000:90 90 90  NOP"
               "A: X: Y: SP:  Flags     Addr:Opcode    Mnemonic\n");
     }
@@ -506,7 +505,8 @@ void OutputTraceLine() {
     uint16_t addr = NTSC_VideoGetScannerAddressForDebugger();
     uint8_t data = mem[addr];
 
-    fprintf(g_trace_file, "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
+    fprintf(g_trace_file.get(),
+            "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
             g_video_clock_vert, g_video_clock_horz, addr, data,
             (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
             (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
@@ -514,7 +514,7 @@ void OutputTraceLine() {
             //, sTarget // TODO: Show target?
     );
   } else {
-    fprintf(g_trace_file, "%02X %02X %02X %04X %s  %s\n",
+    fprintf(g_trace_file.get(), "%02X %02X %02X %04X %s  %s\n",
             (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
             (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
             (char*)sFlags, sDisassembly

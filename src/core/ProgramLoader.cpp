@@ -10,6 +10,7 @@
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "core/Util_Path.h"
 
 namespace {
 
@@ -35,26 +36,25 @@ static auto detect_program(const char* path, ProgramHeader_t* out_header)
     return program_load_file_error;
   }
 
-  FILE* f = std::fopen(path, "rb");
-  if (f == nullptr) {
+  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  if (!f) {
     return program_load_file_error;
   }
 
-  if (std::fseek(f, 0, SEEK_END) != 0) {
-    std::fclose(f);
+  if (std::fseek(f.get(), 0, SEEK_END) != 0) {
     return program_load_file_error;
   }
-  long ftell_res = std::ftell(f);
+  long ftell_res = std::ftell(f.get());
   if (ftell_res < 0) {
-    std::fclose(f);
     return program_load_file_error;
   }
   uint32_t file_size = static_cast<uint32_t>(ftell_res);
-  std::fseek(f, 0, SEEK_SET);
+  if (std::fseek(f.get(), 0, SEEK_SET) != 0) {
+    return program_load_file_error;
+  }
 
   uint8_t buffer[prg_header_size] = {};
-  size_t read = std::fread(buffer, 1, sizeof(buffer), f);
-  std::fclose(f);
+  size_t read = std::fread(buffer, 1, sizeof(buffer), f.get());
 
   if (read < 9) {
     return program_load_not_a_program;
@@ -120,21 +120,18 @@ auto program_loader_try_load(const char* path) -> ProgramLoadResult_t {
     return program_load_invalid;
   }
 
-  FILE* f = std::fopen(path, "rb");
-  if (f == nullptr) {
+  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  if (!f) {
     return program_load_file_error;
   }
 
-  if (std::fseek(f, static_cast<long>(header.offset), SEEK_SET) != 0) {
-    std::fclose(f);
+  if (std::fseek(f.get(), static_cast<long>(header.offset), SEEK_SET) != 0) {
     return program_load_file_error;
   }
-  if (std::fread(mem + header.load_addr, 1, header.length, f) !=
+  if (std::fread(mem + header.load_addr, 1, header.length, f.get()) !=
       header.length) {
-    std::fclose(f);
     return program_load_file_error;
   }
-  std::fclose(f);
 
   std::memset(memdirty, mem_fill_value, NUM_PAGES_48K);
   auto* regs = cpu_get_registers();

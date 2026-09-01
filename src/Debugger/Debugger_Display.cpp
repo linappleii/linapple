@@ -1005,10 +1005,7 @@ void debug_end() {
     ProfileSave();
   }
 
-  if (g_trace_file) {
-    fclose(g_trace_file);
-    g_trace_file = nullptr;
-  }
+  g_trace_file.reset();
 
   extern std::vector<int> g_memory_search_results;
   g_memory_search_results.erase(g_memory_search_results.begin(),

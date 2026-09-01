@@ -239,32 +239,32 @@ auto linapple_load_program(const char* path) -> int {
   }
 
   // Raw binary fallback
-  FILE* f = std::fopen(path, "rb");
-  if (f == nullptr) {
+  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  if (!f) {
     return static_cast<int>(program_load_not_a_program);
   }
 
-  std::fseek(f, 0, SEEK_END);
-  long size = std::ftell(f);
-  std::fseek(f, 0, SEEK_SET);
-
+  if (std::fseek(f.get(), 0, SEEK_END) != 0) {
+    return static_cast<int>(program_load_not_a_program);
+  }
+  long size = std::ftell(f.get());
   if (size <= 0 || size > 65536) {
-    std::fclose(f);
+    return static_cast<int>(program_load_not_a_program);
+  }
+  if (std::fseek(f.get(), 0, SEEK_SET) != 0) {
     return static_cast<int>(program_load_not_a_program);
   }
 
   uint16_t load_addr = (size == 65536) ? 0x0000 : 0x0800;
 
   if (static_cast<size_t>(load_addr) + static_cast<size_t>(size) > 65536) {
-    std::fclose(f);
     return static_cast<int>(program_load_not_a_program);
   }
 
-  if (std::fread(mem + load_addr, 1, size, f) != static_cast<size_t>(size)) {
-    std::fclose(f);
+  if (std::fread(mem + load_addr, 1, static_cast<size_t>(size), f.get()) !=
+      static_cast<size_t>(size)) {
     return static_cast<int>(program_load_file_error);
   }
-  std::fclose(f);
 
   memset(memdirty, 0xFF, NUM_PAGES_48K);
   cpu_get_registers()->pc = load_addr;
