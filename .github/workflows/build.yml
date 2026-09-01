@@ -168,9 +168,9 @@ jobs:
       - name: Install
         run: sudo cmake --install build
 
-  # 4. Headless Build with Sanitizers (ASAN/UBSAN)
-  headless-sanitizers:
-    name: Headless Sanitizers (ASAN/UBSAN)
+  # 4. Sanitizers (ASAN/UBSAN - All Frontends)
+  sanitizers-build:
+    name: Sanitizers (All Frontends + ASAN/UBSAN)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -178,19 +178,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
-            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev \
+            libsdl2-dev libsdl1.2-dev libsdl-image1.2-dev libpulse-dev libasound2-dev ccache gh
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-sanitizers
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
       - name: Configure
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -DFRONTEND=headless \
+            -DFRONTEND=all \
             -DENABLE_ASAN=ON \
             -DENABLE_UBSAN=ON \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         run: cmake --build build -j$(nproc)
@@ -198,6 +207,10 @@ jobs:
         env:
           ASAN_OPTIONS: "detect_leaks=1"
           UBSAN_OPTIONS: "print_stacktrace=1"
+          SDL_VIDEODRIVER: dummy
+          SDL_VIDEO_DRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+          SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
 
   # 5. Static Analysis (clang-tidy)
