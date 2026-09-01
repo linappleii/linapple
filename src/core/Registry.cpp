@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Registry.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters):
 // Core configuration and registry persistence manager
 #include <sys/stat.h>
 
@@ -300,5 +299,3 @@ auto php_trim(char* c, int len) -> char* {
   std::string t = trim(s);
   return strdup(t.c_str());
 }
-
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-owning-memory,google-runtime-int,google-readability-braces-around-statements,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-do-while,cppcoreguidelines-init-variables,bugprone-easily-swappable-parameters)

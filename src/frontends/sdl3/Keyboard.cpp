@@ -1,4 +1,3 @@
-// NOLINTBEGIN
 #include "SDL3/SDL.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
@@ -14,7 +13,7 @@ static int keyboard_caps_mode = CAPS_MODE_HOST;
 auto keyboard_get_caps_mode() -> int { return keyboard_caps_mode; }
 auto keyboard_set_caps_mode(int mode) -> void { keyboard_caps_mode = mode; }
 
-void frontend_update_keyboard_mapping() {
+auto frontend_update_keyboard_mapping() -> void {
   uint32_t mode = 0;
   if (config_load_int("Keyboard", "Mapping Mode", &mode)) {
     keyboard_mapping_mode = static_cast<int>(mode);
@@ -83,8 +82,8 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
   return keyboard_symbolic_to_core(key, mod);
 }
 
-void frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
-                                 uint32_t mod, bool is_down) {
+auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
+                                 uint32_t mod, bool is_down) -> void {
   KeyboardModifiers_t mods = {
       static_cast<uint8_t>((mod & SDL_KMOD_SHIFT) ? 1 : 0),
       static_cast<uint8_t>((mod & SDL_KMOD_CTRL) ? 1 : 0),
@@ -149,4 +148,3 @@ auto frontend_handle_event(SDL_Keycode key, bool is_down) -> bool {
       return false;
   }
 }
-// NOLINTEND
