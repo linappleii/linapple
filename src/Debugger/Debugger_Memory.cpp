@@ -14,7 +14,6 @@
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Range.h"
-#include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"

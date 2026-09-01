@@ -32,6 +32,7 @@ NCSA Telnet FTP server. Has LIST = NLST (and bad NLST for directories).
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 
 #include "core/LinAppleCore.h"
@@ -63,6 +64,17 @@ static auto progress_callback(void* clientp, curl_off_t dltotal,
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): public API
 auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
   // Download file from ftp_path to local_path
+  if (ftp_path == nullptr || local_path == nullptr || local_path[0] == '\0') {
+    return CURLE_BAD_FUNCTION_ARGUMENT;
+  }
+
+  if (strstr(local_path, "..") != nullptr) {
+    Logger::error(
+        "FTP: Rejected destination path with traversal sequence: %s\n",
+        local_path);
+    return CURLE_WRITE_ERROR;
+  }
+
   CURLcode res = CURLE_OK;
 
   FilePtr_t stream(fopen(local_path, "w"), fclose);

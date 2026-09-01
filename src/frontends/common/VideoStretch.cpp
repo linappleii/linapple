@@ -27,19 +27,13 @@ static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
     }
     return;
   }
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  T pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = *src++;
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = pixel;
+      dst[cur_x] = src[src_x];
     }
-    pos += inc;
   }
 }
 
@@ -57,19 +51,13 @@ static auto copy_row_or(T* src, int src_w, T* dst, int dst_x, int dst_w,
     }
     return;
   }
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  T pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = *src++;
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] |= pixel;
+      dst[cur_x] |= src[src_x];
     }
-    pos += inc;
   }
 }
 
@@ -126,19 +114,13 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
     }
     return;
   }
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  uint32_t pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = g_palette_lut[*src++];
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = pixel;
+      dst[cur_x] = g_palette_lut[src[src_x]];
     }
-    pos += inc;
   }
 }
 
@@ -157,19 +139,13 @@ static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
     }
     return;
   }
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  uint32_t pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = g_palette_lut[*src++];
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] |= pixel;
+      dst[cur_x] |= g_palette_lut[src[src_x]];
     }
-    pos += inc;
   }
 }
 
@@ -177,23 +153,15 @@ static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
   if (dst_x >= max_w || dst_x + dst_w <= 0) return;
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  uint8_t pixel[3] = {0, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel[0] = *src++;
-      pixel[1] = *src++;
-      pixel[2] = *src++;
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x * 3] = pixel[0];
-      dst[cur_x * 3 + 1] = pixel[1];
-      dst[cur_x * 3 + 2] = pixel[2];
+      dst[cur_x * 3] = src[src_x * 3];
+      dst[cur_x * 3 + 1] = src[src_x * 3 + 1];
+      dst[cur_x * 3 + 2] = src[src_x * 3 + 2];
     }
-    pos += inc;
   }
 }
 
@@ -202,19 +170,13 @@ static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
   if (dst_x >= max_w || dst_x + dst_w <= 0) return;
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  uint8_t pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = *src++;
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = pixel ? fgbrush : bgbrush;
+      dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
     }
-    pos += inc;
   }
 }
 
@@ -223,19 +185,13 @@ static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
   if (dst_x >= max_w || dst_x + dst_w <= 0) return;
-  int pos = 0x10000;
-  int inc = (src_w << 16) / dst_w;
-  uint8_t pixel = 0;
   for (int i = 0; i < dst_w; ++i) {
-    while (pos >= 0x10000L) {
-      pixel = *src++;
-      pos -= 0x10000L;
-    }
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = pixel ? fgbrush : bgbrush;
+      dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
     }
-    pos += inc;
   }
 }
 

@@ -171,18 +171,23 @@ inline auto sanitize_filename(const std::string& name) -> std::string {
   if (name.empty()) {
     return "";
   }
-  // Strip any leading path separators or directory components
-  size_t last_slash = name.find_last_of("/\\");
-  std::string clean = (last_slash != std::string::npos) ? name.substr(last_slash + 1) : name;
-  if (clean == "." || clean == ".." || clean.empty()) {
+  // Strictly reject any filename containing path separators or directory
+  // components
+  if (name.find('/') != std::string::npos ||
+      name.find('\\') != std::string::npos) {
     return "";
   }
-  for (char c : clean) {
-    if (static_cast<unsigned char>(c) < 32 || c == 127) {
+  // Reject relative navigation and hidden dotfiles
+  if (name == "." || name == ".." || name.front() == '.') {
+    return "";
+  }
+  for (char c : name) {
+    auto uc = static_cast<unsigned char>(c);
+    if (std::iscntrl(uc) || uc == 127) {
       return "";
     }
   }
-  return clean;
+  return name;
 }
 
 }  // namespace Path

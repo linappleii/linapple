@@ -2,17 +2,16 @@
 #include "core/Registry.h"
 
 // Core configuration and registry persistence manager
-#include <sys/stat.h>
-
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <iterator>
+#include <map>
+#include <ostream>
 #include <string>
 
-#include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 
 static auto trim(const std::string& s) -> std::string {

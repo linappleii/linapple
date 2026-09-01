@@ -9,7 +9,6 @@
 #include "Debugger_Color.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
-#include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "apple2/CPU.h"

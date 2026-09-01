@@ -56,11 +56,15 @@ TEST_CASE("FTPParse: UNIX Symbolic Link to File") {
 
 TEST_CASE("FTP: Path traversal sanitization (FTP-1)") {
   CHECK(Path::sanitize_filename("valid_disk.dsk") == "valid_disk.dsk");
-  CHECK(Path::sanitize_filename("../../../etc/passwd") == "passwd");
-  CHECK(Path::sanitize_filename("..\\..\\windows\\system32\\calc.exe") == "calc.exe");
+  CHECK(Path::sanitize_filename("My Game (1983).po") == "My Game (1983).po");
+  CHECK(Path::sanitize_filename("../../../etc/passwd") == "");
+  CHECK(Path::sanitize_filename("..\\..\\windows\\system32\\calc.exe") == "");
   CHECK(Path::sanitize_filename("..") == "");
   CHECK(Path::sanitize_filename(".") == "");
+  CHECK(Path::sanitize_filename(".bashrc") == "");
+  CHECK(Path::sanitize_filename(".profile") == "");
   CHECK(Path::sanitize_filename("") == "");
-  CHECK(Path::sanitize_filename("dir/subdir/disk.po") == "disk.po");
+  CHECK(Path::sanitize_filename("dir/subdir/disk.po") == "");
   CHECK(Path::sanitize_filename("in\x01valid.dsk") == "");
+  CHECK(Path::sanitize_filename("in\x7Fvalid.dsk") == "");
 }

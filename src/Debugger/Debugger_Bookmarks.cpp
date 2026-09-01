@@ -9,7 +9,6 @@
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
-#include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 

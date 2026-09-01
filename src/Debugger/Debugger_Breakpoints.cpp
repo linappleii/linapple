@@ -8,7 +8,6 @@
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
-#include "Debugger_Range.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 
