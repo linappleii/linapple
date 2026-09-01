@@ -17,11 +17,11 @@ extern void frame_refresh_status(int);
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
-#include "Debugger_Symbols.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/AudioMixer.h"
 #include "core/Peripheral.h"
+#include "core/Util_Path.h"
 
 // Definitions
 int g_debug_steps = 0;

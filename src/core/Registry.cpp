@@ -2,6 +2,8 @@
 #include "core/Registry.h"
 
 // Core configuration and registry persistence manager
+#include <string.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstdint>

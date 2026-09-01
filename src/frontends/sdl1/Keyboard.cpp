@@ -1,9 +1,15 @@
-#include "SDL/SDL.h"
+#include <SDL/SDL_events.h>
+#include <SDL/SDL_keyboard.h>
+#include <SDL/SDL_keysym.h>
+
+#include <cctype>
+#include <cstdint>
+#include <string>
+
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 
