@@ -1,0 +1,48 @@
+# AFL / libFuzzer dictionary for Apple II memory dump and disassembler text formats
+
+# Section and Format Markers
+colon_space=": "
+colon_newline=":\x0a"
+space=" "
+newline="\x0a"
+crlf="\x0d\x0a"
+tab="\x09"
+
+# Apple II Monitor / Debugger Commands
+cmd_read="R\x0a"
+cmd_write="W\x0a"
+cmd_load="L\x0a"
+cmd_go="G\x0a"
+cmd_disasm="L "
+
+# Hex Address Prefixes
+addr_zero="0000:"
+addr_page1="0100:"
+addr_page2="0200:"
+addr_text="0400:"
+addr_hires="2000:"
+addr_hires2="4000:"
+addr_rom="D000:"
+addr_top="FFFF:"
+
+# Assembly Directives
+dir_org="ORG "
+dir_equ="EQU "
+dir_byte="DFB "
+dir_word="DW "
+dir_asc="ASC "
+dir_hex="HEX "
+
+# 6502 Opcode Mnemonics
+op_lda="LDA "
+op_sta="STA "
+op_ldx="LDX "
+op_stx="STX "
+op_ldy="LDY "
+op_sty="STY "
+op_jmp="JMP "
+op_jsr="JSR "
+op_rts="RTS\x0a"
+op_nop="NOP\x0a"
+op_brk="BRK\x0a"
+op_rts2="RTS"

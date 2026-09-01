@@ -1,0 +1,42 @@
+# AFL / libFuzzer dictionary for Apple II disk formats (WOZ, 2MG, DSK, PO, NIB, NB2, IIE)
+
+# Magic headers
+header_woz1="WOZ1"
+header_woz2="WOZ2"
+header_woz2_full="WOZ2\xff\x0a\x0d\x0a"
+header_2mg="2IMG"
+header_iie="SIMSYSTEM_IIE"
+
+# WOZ Chunks
+chunk_info="INFO"
+chunk_tmap="TMAP"
+chunk_trks="TRKS"
+chunk_writ="WRIT"
+chunk_flux="FLUX"
+
+# Apple II GCR Disk Nibble Sequences
+gcr_addr_prologue="\xd5\xaa\x96"
+gcr_addr_epilogue="\xde\xaa\xeb"
+gcr_data_prologue="\xd5\xaa\xad"
+gcr_data_epilogue="\xde\xaa\xeb"
+gcr_sync="\xff"
+
+# Common File Extensions in Metadata
+ext_woz=".woz"
+ext_dsk=".dsk"
+ext_do=".do"
+ext_po=".po"
+ext_nib=".nib"
+ext_nb2=".nb2"
+ext_iie=".iie"
+ext_2mg=".2mg"
+
+# Integer and Boundary Words (Little Endian)
+word_zero="\x00\x00\x00\x00"
+word_ffff="\xff\xff\xff\xff"
+val_256="\x00\x01\x00\x00"
+val_512="\x00\x02\x00\x00"
+val_4096="\x00\x10\x00\x00"
+val_140k="\x00\x30\x02\x00"
+val_800k="\x00\x60\x0c\x00"
+val_32mb="\x00\x00\x00\x02"

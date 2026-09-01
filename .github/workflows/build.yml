@@ -253,6 +253,13 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-fuzz
+      - name: Restore Fuzzing Corpus Cache
+        uses: actions/cache@v4
+        with:
+          path: tests/fuzz/corpus
+          key: ${{ runner.os }}-fuzz-corpus-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-corpus-
       - name: Configure & Build
         run: |
           cmake -B build-fuzz -G Ninja \
@@ -262,14 +269,20 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFRONTEND=headless \
             -DENABLE_FUZZING=ON \
+            -DBUILD_TESTING=ON \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build-fuzz -j$(nproc)
-      - name: Run Fuzzers (10s each)
+      - name: Run Fuzz Tests
         run: |
-          mkdir -p fuzz-corpus/memory fuzz-corpus/snapshot fuzz-corpus/disk-loader
-          cp tests/fixtures/minimal.txt fuzz-corpus/memory/ 2>/dev/null || true
-          cp tests/fixtures/minimal.aws fuzz-corpus/snapshot/ 2>/dev/null || true
-          cp tests/fixtures/minimal.dsk tests/fixtures/minimal.woz fuzz-corpus/disk-loader/ 2>/dev/null || true
-          ./build-fuzz/fuzz-memory fuzz-corpus/memory -max_total_time=10
-          ./build-fuzz/fuzz-snapshot fuzz-corpus/snapshot -max_len=131824 -max_total_time=10
-          ./build-fuzz/fuzz-disk-loader fuzz-corpus/disk-loader -max_total_time=10
+          ctest --test-dir build-fuzz -L fuzz --output-on-failure
+      - name: Minimize Corpus
+        if: always()
+        run: |
+          for target in memory snapshot disk-loader; do
+            if [ -d "tests/fuzz/corpus/${target}" ]; then
+              mkdir -p "tests/fuzz/corpus/${target}-min"
+              ./build-fuzz/fuzz-${target} -merge=1 "tests/fuzz/corpus/${target}-min" "tests/fuzz/corpus/${target}" || true
+              rm -rf "tests/fuzz/corpus/${target}"
+              mv "tests/fuzz/corpus/${target}-min" "tests/fuzz/corpus/${target}"
+            fi
+          done

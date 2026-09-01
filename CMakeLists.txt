@@ -630,6 +630,29 @@ if(ENABLE_FUZZING)
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
     add_linapple_fuzzer(fuzz-snapshot tests/fuzz/fuzz_snapshot.cpp)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
+
+    if(BUILD_TESTING)
+        add_test(NAME fuzz-disk-loader
+                 COMMAND fuzz-disk-loader
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
+                         -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
+                         -max_total_time=10)
+        set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz")
+
+        add_test(NAME fuzz-snapshot
+                 COMMAND fuzz-snapshot
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/snapshot
+                         -max_len=131824
+                         -max_total_time=10)
+        set_tests_properties(fuzz-snapshot PROPERTIES LABELS "fuzz")
+
+        add_test(NAME fuzz-memory
+                 COMMAND fuzz-memory
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/memory
+                         -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/memory_text.dict
+                         -max_total_time=10)
+        set_tests_properties(fuzz-memory PROPERTIES LABELS "fuzz")
+    endif()
 endif()
 
 if(TARGET linapple)
