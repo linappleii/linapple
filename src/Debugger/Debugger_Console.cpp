@@ -649,7 +649,7 @@ void debugger_input_console_char(char ch) {
 
   if ((ch >= CHAR_SPACE) && (ch <= 126))  // HACK MAGIC # 32 -> ' ', # 126
   {
-    if ((ch == TCHAR_QUOTE_DOUBLE) || (ch == TCHAR_QUOTE_SINGLE)) {
+    if ((ch == CHAR_QUOTE_DOUBLE) || (ch == CHAR_QUOTE_SINGLE)) {
       g_console_input_quoted = !g_console_input_quoted;
     }
 

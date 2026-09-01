@@ -38,13 +38,6 @@ extern const char* g_console_first_arg;  // points to first arg
 
 extern const TokenTable_t g_tokens[NUM_TOKENS];
 
-extern const char TCHAR_LF;
-extern const char TCHAR_CR;
-extern const char TCHAR_SPACE;
-extern const char TCHAR_TAB;
-extern const char TCHAR_QUOTE_DOUBLE;
-extern const char TCHAR_QUOTE_SINGLE;
-
 extern std::vector<int> g_potential_commands;
 
 // Prototypes _______________________________________________________________
