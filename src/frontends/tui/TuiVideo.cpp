@@ -1081,6 +1081,7 @@ auto tui_video_save_screenshot() -> void {
   // 1. Write ANSI (.ans) file
   FilePtr_t fp_ans{fopen(ans_name.data(), "wb"), fclose};
   if (fp_ans != nullptr) {
+    bool ans_ok = true;
     TuiPixel_t curr_fg = {1, 1, 1};
     TuiPixel_t curr_bg = {1, 1, 1};
 
@@ -1090,30 +1091,43 @@ auto tui_video_save_screenshot() -> void {
             screen_buf.at(static_cast<size_t>(y * g_term_width + x));
 
         if (cell.fg != curr_fg) {
-          fprintf(fp_ans.get(), "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
-                  cell.fg.b);
+          if (fprintf(fp_ans.get(), "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
+                      cell.fg.b) < 0) {
+            ans_ok = false;
+          }
           curr_fg = cell.fg;
         }
         if (cell.bg != curr_bg) {
-          fprintf(fp_ans.get(), "\x1b[48;2;%d;%d;%dm", cell.bg.r, cell.bg.g,
-                  cell.bg.b);
+          if (fprintf(fp_ans.get(), "\x1b[48;2;%d;%d;%dm", cell.bg.r, cell.bg.g,
+                      cell.bg.b) < 0) {
+            ans_ok = false;
+          }
           curr_bg = cell.bg;
         }
 
         for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
              ++i) {
-          fputc(static_cast<int>(cell.glyph.at(i)), fp_ans.get());
+          if (fputc(static_cast<int>(cell.glyph.at(i)), fp_ans.get()) == EOF) {
+            ans_ok = false;
+          }
         }
       }
-      fprintf(fp_ans.get(), "\x1b[0m\n");
+      if (fprintf(fp_ans.get(), "\x1b[0m\n") < 0) {
+        ans_ok = false;
+      }
       curr_fg = {1, 1, 1};
       curr_bg = {1, 1, 1};
+    }
+    if (fflush(fp_ans.get()) != 0 || !ans_ok || ferror(fp_ans.get()) != 0) {
+      fp_ans.reset();
+      unlink(ans_name.data());
     }
   }
 
   // 2. Write Plain Text (.txt) file
   FilePtr_t fp_txt{fopen(txt_name.data(), "wb"), fclose};
   if (fp_txt != nullptr) {
+    bool txt_ok = true;
     for (int y = 0; y < g_term_height; ++y) {
       std::string line_str;
       for (int x = 0; x < g_term_width; ++x) {
@@ -1128,7 +1142,14 @@ auto tui_video_save_screenshot() -> void {
         line_str.pop_back();
       }
       line_str.push_back('\n');
-      fwrite(line_str.data(), 1, line_str.size(), fp_txt.get());
+      if (fwrite(line_str.data(), 1, line_str.size(), fp_txt.get()) !=
+          line_str.size()) {
+        txt_ok = false;
+      }
+    }
+    if (fflush(fp_txt.get()) != 0 || !txt_ok || ferror(fp_txt.get()) != 0) {
+      fp_txt.reset();
+      unlink(txt_name.data());
     }
   }
 

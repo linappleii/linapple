@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
 
+#include <unistd.h>
+
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -133,8 +135,17 @@ extern "C" auto bitstream_disk_image_write_track(
     const size_t written = fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
                                   image_ptr->file.get());
     if (written != static_cast<size_t>(nibbles)) {
-      Logger::error("BitstreamDiskImage: Failed to write track %d\n", track);
+      Logger::error(
+          "BitstreamDiskImage: Failed to write track %d (wrote %zu of %d "
+          "bytes)\n",
+          track, written, nibbles);
+    } else {
+      fflush(image_ptr->file.get());
     }
+  } else {
+    Logger::error(
+        "BitstreamDiskImage: Failed to seek to track %d (offset %ld)\n", track,
+        static_cast<long>(offset));
   }
 }
 
@@ -158,12 +169,31 @@ extern "C" auto bitstream_disk_image_create(const char* path,
 
   const uint32_t full_chunks = total_size / static_cast<uint32_t>(chunk_size);
   for (uint32_t i = 0; i < full_chunks; ++i) {
-    (void)fwrite(zero.data(), 1, zero.size(), file.get());
+    if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
+      file.reset();
+      unlink(path);
+      Logger::error("BitstreamDiskImage: Failed to write disk image '%s'\n",
+                    path);
+      return disk_err_io;
+    }
   }
 
   const size_t remaining_bytes = total_size % chunk_size;
   if (remaining_bytes != 0) {
-    (void)fwrite(zero.data(), 1, remaining_bytes, file.get());
+    if (fwrite(zero.data(), 1, remaining_bytes, file.get()) !=
+        remaining_bytes) {
+      file.reset();
+      unlink(path);
+      Logger::error("BitstreamDiskImage: Failed to write disk image '%s'\n",
+                    path);
+      return disk_err_io;
+    }
+  }
+
+  if (fflush(file.get()) != 0) {
+    file.reset();
+    unlink(path);
+    return disk_err_io;
   }
 
   return disk_err_none;

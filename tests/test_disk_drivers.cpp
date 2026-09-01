@@ -1,6 +1,8 @@
-#include <cstdint>
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include <stdio.h>
+
+#include <cstdint>
+
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdio>
 #include <cstring>
@@ -436,7 +438,7 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
   {
     FILE* f = fopen(tmp_unaligned, "wb");
     REQUIRE(f != nullptr);
-    uint8_t unaligned_data[5000] = {0}; // Not a multiple of 256
+    uint8_t unaligned_data[5000] = {0};  // Not a multiple of 256
     fwrite(unaligned_data, 1, sizeof(unaligned_data), f);
     fclose(f);
   }
@@ -447,4 +449,44 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
   CHECK(inst == nullptr);
 
   remove(tmp_unaligned);
+}
+
+TEST_CASE(
+    "DiskDrivers: [RET-1] Create valid sector disk and propagate creation "
+    "failure") {
+  const char* tmp_new = "test_create.dsk";
+  remove(tmp_new);
+
+  REQUIRE(g_do_driver.create != nullptr);
+  CHECK(g_do_driver.create(tmp_new) == disk_err_none);
+
+  FILE* f = fopen(tmp_new, "rb");
+  REQUIRE(f != nullptr);
+  fseek(f, 0, SEEK_END);
+  CHECK(ftell(f) == 143360);
+  fclose(f);
+  remove(tmp_new);
+
+  // Unwritable / invalid path fails cleanly and returns error
+  CHECK(g_do_driver.create("/nonexistent_dir_12345/test.dsk") == disk_err_io);
+}
+
+TEST_CASE(
+    "DiskDrivers: [RET-2] Create valid bitstream disk and propagate creation "
+    "failure") {
+  const char* tmp_nib = "test_create.nib";
+  remove(tmp_nib);
+
+  REQUIRE(g_nib_driver.create != nullptr);
+  CHECK(g_nib_driver.create(tmp_nib) == disk_err_none);
+
+  FILE* f = fopen(tmp_nib, "rb");
+  REQUIRE(f != nullptr);
+  fseek(f, 0, SEEK_END);
+  CHECK(ftell(f) == 232960);
+  fclose(f);
+  remove(tmp_nib);
+
+  // Unwritable / invalid path fails cleanly and returns error
+  CHECK(g_nib_driver.create("/nonexistent_dir_12345/test.nib") == disk_err_io);
 }

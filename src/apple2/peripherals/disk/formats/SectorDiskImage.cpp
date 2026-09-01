@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -79,8 +81,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return nullptr;
   }
 
-  auto image_ptr =
-      std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
+  auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
 
   image_ptr->file.reset(fopen(path, "r+b"));
   image_ptr->os_readonly = false;
@@ -198,8 +199,15 @@ auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
     const size_t written = fwrite(image_ptr->work_buffer.data(), 1,
                                   dos::track_size, image_ptr->file.get());
     if (written != static_cast<size_t>(dos::track_size)) {
-      Logger::error("SectorDiskImage: Failed to write track %d\n", track);
+      Logger::error(
+          "SectorDiskImage: Failed to write track %d (wrote %zu of %d bytes)\n",
+          track, written, dos::track_size);
+    } else {
+      fflush(image_ptr->file.get());
     }
+  } else {
+    Logger::error("SectorDiskImage: Failed to seek to track %d (offset %ld)\n",
+                  track, static_cast<long>(offset));
   }
 }
 
@@ -216,7 +224,17 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
   std::array<uint8_t, create_buffer_size> zero{};
   zero.fill(0);
   for (int i = 0; i < disk::size_140k / create_buffer_size; ++i) {
-    (void)fwrite(zero.data(), 1, zero.size(), file.get());
+    if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
+      file.reset();
+      unlink(path);
+      Logger::error("SectorDiskImage: Failed to write disk image '%s'\n", path);
+      return disk_err_io;
+    }
+  }
+  if (fflush(file.get()) != 0) {
+    file.reset();
+    unlink(path);
+    return disk_err_io;
   }
   return disk_err_none;
 }

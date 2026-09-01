@@ -87,24 +87,36 @@ auto save_state_save() -> void {
     filename = default_snapshot_name;
   }
 
-  FilePtr_t file{fopen(filename, "wb"), fclose};
+  const std::string temp_filename = std::string(filename) + ".tmp";
+
+  FilePtr_t file{fopen(temp_filename.c_str(), "wb"), fclose};
   if (!file) {
-    Logger::error("Failed to open save state file for writing: %s\n", filename);
+    Logger::error("Failed to open save state file for writing: %s\n",
+                  temp_filename.c_str());
     return;
   }
 
-  size_t bytes_written =
+  const size_t bytes_written =
       fwrite(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file.get());
+  const bool flush_ok = (fflush(file.get()) == 0);
   file.reset();
 
-  if (bytes_written != sizeof(ApplewinSnapshot_t)) {
+  if (bytes_written != sizeof(ApplewinSnapshot_t) || !flush_ok) {
+    unlink(temp_filename.c_str());
     Logger::error(
         "Failed to write complete save state data to %s (wrote %zu of %zu "
         "bytes)\n",
         filename, bytes_written, sizeof(ApplewinSnapshot_t));
-  } else {
-    Logger::info("Saved state to: %s\n", filename);
+    return;
   }
+
+  if (std::rename(temp_filename.c_str(), filename) != 0) {
+    unlink(temp_filename.c_str());
+    Logger::error("Failed to commit save state file to: %s\n", filename);
+    return;
+  }
+
+  Logger::info("Saved state to: %s\n", filename);
 }
 
 auto save_state_startup() -> void {
