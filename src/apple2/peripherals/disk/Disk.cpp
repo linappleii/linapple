@@ -33,6 +33,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
+#include "core/Log.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -555,8 +556,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 
   if (disk_ptr->current_byte_pos >=
           static_cast<uint32_t>(disk_ptr->nibble_count) ||
-      disk_ptr->current_byte_pos >=
-          static_cast<uint32_t>(nibbles_per_track)) {
+      disk_ptr->current_byte_pos >= static_cast<uint32_t>(nibbles_per_track)) {
     disk_ptr->current_byte_pos = 0;
   }
 
@@ -1135,9 +1135,8 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   }
 
   dp->stepper_phase_mask = s->stepper_phase_mask & 0x0F;
-  dp->active_drive_index = (s->active_drive_index < disk_drive_count)
-                               ? s->active_drive_index
-                               : 0;
+  dp->active_drive_index =
+      (s->active_drive_index < disk_drive_count) ? s->active_drive_index : 0;
   dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
   dp->is_speed_enhanced = (s->is_speed_enhanced != 0);
   dp->io_latch = s->io_latch;
@@ -1147,23 +1146,34 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   for (int i = 0; i < disk_drive_count; ++i) {
     const auto& ds = s->drives[i];
     eject_disk_from_drive(dp, i);
-    if (insert_disk_into_drive(dp, i, ds.full_path,
-                               ds.user_write_protected != 0,
+    char safe_path[max_disk_full_path_len + 1] = {0};
+    Util_SafeStrCpy(safe_path, ds.full_path, sizeof(safe_path));
+
+    if (insert_disk_into_drive(dp, i, safe_path, ds.user_write_protected != 0,
                                false) == disk_err_none) {
       auto& d = dp->drives.at(static_cast<size_t>(i));
+      if (ds.track >= tracks_per_disk || ds.phase >= max_disk_phases ||
+          ds.nibble_count <= 0 ||
+          ds.nibble_count > static_cast<int>(nibbles_per_track) ||
+          ds.current_byte_pos < 0 ||
+          static_cast<uint32_t>(ds.current_byte_pos) >=
+              static_cast<uint32_t>(ds.nibble_count)) {
+        Logger::warning(
+            "DiskSaveState: Clamped out-of-bounds drive %d state (track: %d, "
+            "phase: %d, nibble_count: %d, pos: %d)",
+            i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
+      }
       d.track = (ds.track < tracks_per_disk) ? ds.track : 0;
       d.phase = (ds.phase < max_disk_phases) ? ds.phase : 0;
-      d.nibble_count =
-          (ds.nibble_count > 0 &&
-           ds.nibble_count <= static_cast<int>(nibbles_per_track))
-              ? ds.nibble_count
-              : static_cast<int>(nibbles_per_track);
-      d.current_byte_pos =
-          (ds.current_byte_pos >= 0 &&
-           static_cast<uint32_t>(ds.current_byte_pos) <
-               static_cast<uint32_t>(d.nibble_count))
-              ? static_cast<uint32_t>(ds.current_byte_pos)
-              : 0;
+      d.nibble_count = (ds.nibble_count > 0 &&
+                        ds.nibble_count <= static_cast<int>(nibbles_per_track))
+                           ? ds.nibble_count
+                           : static_cast<int>(nibbles_per_track);
+      d.current_byte_pos = (ds.current_byte_pos >= 0 &&
+                            static_cast<uint32_t>(ds.current_byte_pos) <
+                                static_cast<uint32_t>(d.nibble_count))
+                               ? static_cast<uint32_t>(ds.current_byte_pos)
+                               : 0;
       d.is_os_read_only = (ds.is_os_read_only != 0);
       d.is_data_loaded = (ds.is_data_loaded != 0);
       d.is_dirty = (ds.is_dirty != 0);

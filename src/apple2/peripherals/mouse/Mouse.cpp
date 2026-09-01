@@ -915,8 +915,14 @@ static auto peripheral_abi_load_state(void* instance, const void* buffer,
 
   // --- Protocol State ---
   std::copy(ss->buffer, ss->buffer + 8, mp->buffer.begin());
-  mp->buffer_pos = ss->buffer_pos;
-  mp->data_len = ss->data_len;
+  mp->buffer_pos = (ss->buffer_pos >= 0 &&
+                    static_cast<size_t>(ss->buffer_pos) < mp->buffer.size())
+                       ? ss->buffer_pos
+                       : 0;
+  mp->data_len = (ss->data_len >= 0 &&
+                  static_cast<size_t>(ss->data_len) <= mp->buffer.size())
+                     ? ss->data_len
+                     : static_cast<int32_t>(mp->buffer.size());
   mp->status_state = ss->status_state;
 
   // --- Live Coordinate State (Internal) ---
