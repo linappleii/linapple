@@ -2,8 +2,11 @@
 
 #include <cstddef>
 #include <cstdint>
-constexpr char CHAR_CR = '\r';   // 0x0D
-constexpr char CHAR_LF = '\n';   // 0x0A
+
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-type-member-init)
+
+constexpr char CHAR_CR = '\r';  // 0x0D
+constexpr char CHAR_LF = '\n';  // 0x0A
 constexpr char CHAR_SPACE = ' ';
 constexpr char CHAR_TAB = '\t';
 constexpr char CHAR_QUOTE_DOUBLE = '"';
@@ -166,3 +169,5 @@ inline void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
   }
   dest[i] = '\0';
 }
+
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-type-member-init)
