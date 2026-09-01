@@ -165,6 +165,40 @@ static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
   }
 }
 
+static auto copy_row3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
+                         int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
+  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
+    int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      uint32_t r = src[src_x * 3];
+      uint32_t g = src[src_x * 3 + 1];
+      uint32_t b = src[src_x * 3 + 2];
+      dst[cur_x] = (r << 16) | (g << 8) | b;
+    }
+  }
+}
+
+static auto copy_row_or3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
+                            int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
+  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    if (src_x >= src_w) src_x = src_w - 1;
+    int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      uint32_t r = src[src_x * 3];
+      uint32_t g = src[src_x * 3 + 1];
+      uint32_t b = src[src_x * 3 + 2];
+      dst[cur_x] |= (r << 16) | (g << 8) | b;
+    }
+  }
+}
+
 static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w, uint8_t fgbrush, uint8_t bgbrush)
     -> void {
@@ -221,9 +255,6 @@ static inline auto clip_source_rect(const VideoSurface_t* src,
 
 auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
                         VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
-  int pos = 0, inc = 0;
-  int dst_maxrow = 0;
-  int src_row = 0, dst_row = 0;
   uint8_t* srcp = nullptr;
   VideoRect_t full_src{};
   VideoRect_t full_dst{};
@@ -260,54 +291,50 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
   }
   srcrect = &clipped_src;
 
-  pos = 0x10000;
-  inc = (srcrect->h << 16) / dstrect->h;
-  src_row = srcrect->y;
-  dst_row = dstrect->y;
+  for (int row_idx = 0; row_idx < dstrect->h; ++row_idx) {
+    int cur_dst_row = dstrect->y + row_idx;
+    if (cur_dst_row < 0 || cur_dst_row >= dst->h) continue;
 
-  for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    while (pos >= 0x10000L) {
-      if (src_row >= 0 && src_row < src->h) {
-        srcp = src->pixels + (src_row * src->pitch) +
-               (static_cast<ptrdiff_t>(srcrect->x * sbpp));
-      } else {
-        srcp = nullptr;
+    int cur_src_row =
+        srcrect->y +
+        static_cast<int>((static_cast<int64_t>(row_idx) * srcrect->h) /
+                         dstrect->h);
+    if (cur_src_row < 0 || cur_src_row >= src->h) continue;
+
+    srcp = src->pixels + (cur_src_row * src->pitch) +
+           (static_cast<ptrdiff_t>(srcrect->x * sbpp));
+    uint8_t* dst_row_base = dst->pixels + (cur_dst_row * dst->pitch);
+
+    if (dbpp == 4) {
+      auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
+      if (sbpp == 1) {
+        copy_row1to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w,
+                     src->palette);
+      } else if (sbpp == 3) {
+        copy_row3to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w);
+      } else if (sbpp == 4) {
+        copy_row4(reinterpret_cast<uint32_t*>(srcp), srcrect->w, dst32,
+                  dstrect->x, dstrect->w, dst->w);
       }
-      ++src_row;
-      pos -= 0x10000L;
-    }
-    if (dst_row >= 0 && dst_row < dst->h && srcp != nullptr) {
-      uint8_t* dst_row_base = dst->pixels + (dst_row * dst->pitch);
-      if (sbpp == 1 && dbpp == 4) {
-        copy_row1to4(srcp, srcrect->w,
-                     reinterpret_cast<uint32_t*>(dst_row_base), dstrect->x,
-                     dstrect->w, dst->w, src->palette);
-      } else {
-        switch (dbpp) {
-          case 1:
-            copy_row1(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                      dst->w);
-            break;
-          case 2:
-            copy_row2(reinterpret_cast<uint16_t*>(srcp), srcrect->w,
-                      reinterpret_cast<uint16_t*>(dst_row_base), dstrect->x,
-                      dstrect->w, dst->w);
-            break;
-          case 3:
-            copy_row3(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                      dst->w);
-            break;
-          case 4:
-            copy_row4(reinterpret_cast<uint32_t*>(srcp), srcrect->w,
-                      reinterpret_cast<uint32_t*>(dst_row_base), dstrect->x,
-                      dstrect->w, dst->w);
-            break;
-          default:
-            break;
-        }
+    } else {
+      switch (dbpp) {
+        case 1:
+          copy_row1(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
+                    dst->w);
+          break;
+        case 2:
+          copy_row2(reinterpret_cast<uint16_t*>(srcp), srcrect->w,
+                    reinterpret_cast<uint16_t*>(dst_row_base), dstrect->x,
+                    dstrect->w, dst->w);
+          break;
+        case 3:
+          copy_row3(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
+                    dst->w);
+          break;
+        default:
+          break;
       }
     }
-    pos += inc;
   }
 
   return 0;
@@ -316,9 +343,6 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
 auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
                               VideoSurface_t* dst, VideoRect_t* dstrect,
                               uint32_t fgbrush, uint32_t bgbrush) -> int {
-  int pos = 0, inc = 0;
-  int dst_maxrow = 0;
-  int src_row = 0, dst_row = 0;
   uint8_t* srcp = nullptr;
   VideoRect_t full_src{};
   VideoRect_t full_dst{};
@@ -355,40 +379,34 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
   }
   srcrect = &clipped_src_mono;
 
-  pos = 0x10000;
-  inc = (srcrect->h << 16) / dstrect->h;
-  src_row = srcrect->y;
-  dst_row = dstrect->y;
+  for (int row_idx = 0; row_idx < dstrect->h; ++row_idx) {
+    int cur_dst_row = dstrect->y + row_idx;
+    if (cur_dst_row < 0 || cur_dst_row >= dst->h) continue;
 
-  for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    while (pos >= 0x10000L) {
-      if (src_row >= 0 && src_row < src->h) {
-        srcp = src->pixels + (src_row * src->pitch) +
-               (static_cast<ptrdiff_t>(srcrect->x * sbpp));
-      } else {
-        srcp = nullptr;
-      }
-      ++src_row;
-      pos -= 0x10000L;
-    }
-    if (dst_row >= 0 && dst_row < dst->h && srcp != nullptr) {
-      uint8_t* dst_row_base = dst->pixels + (dst_row * dst->pitch);
-      if (sbpp == 1 && dbpp == 4) {
-        copy8mono4(srcp, srcrect->w, reinterpret_cast<uint32_t*>(dst_row_base),
-                   dstrect->x, dstrect->w, dst->w, fgbrush, bgbrush);
-      } else {
-        switch (dbpp) {
-          case 1:
-            copy8mono(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                      dst->w, static_cast<uint8_t>(fgbrush),
-                      static_cast<uint8_t>(bgbrush));
-            break;
-          default:
-            break;
-        }
+    int cur_src_row =
+        srcrect->y +
+        static_cast<int>((static_cast<int64_t>(row_idx) * srcrect->h) /
+                         dstrect->h);
+    if (cur_src_row < 0 || cur_src_row >= src->h) continue;
+
+    srcp = src->pixels + (cur_src_row * src->pitch) +
+           (static_cast<ptrdiff_t>(srcrect->x * sbpp));
+    uint8_t* dst_row_base = dst->pixels + (cur_dst_row * dst->pitch);
+
+    if (sbpp == 1 && dbpp == 4) {
+      copy8mono4(srcp, srcrect->w, reinterpret_cast<uint32_t*>(dst_row_base),
+                 dstrect->x, dstrect->w, dst->w, fgbrush, bgbrush);
+    } else {
+      switch (dbpp) {
+        case 1:
+          copy8mono(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
+                    dst->w, static_cast<uint8_t>(fgbrush),
+                    static_cast<uint8_t>(bgbrush));
+          break;
+        default:
+          break;
       }
     }
-    pos += inc;
   }
 
   return 0;
@@ -396,9 +414,6 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
 
 auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
                            VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
-  int pos = 0, inc = 0;
-  int dst_maxrow = 0;
-  int src_row = 0, dst_row = 0;
   uint8_t* srcp = nullptr;
   VideoRect_t full_src{};
   VideoRect_t full_dst{};
@@ -435,54 +450,51 @@ auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
   }
   srcrect = &clipped_src_or;
 
-  pos = 0x10000;
-  inc = (srcrect->h << 16) / dstrect->h;
-  src_row = srcrect->y;
-  dst_row = dstrect->y;
+  for (int row_idx = 0; row_idx < dstrect->h; ++row_idx) {
+    int cur_dst_row = dstrect->y + row_idx;
+    if (cur_dst_row < 0 || cur_dst_row >= dst->h) continue;
 
-  for (dst_maxrow = dst_row + dstrect->h; dst_row < dst_maxrow; ++dst_row) {
-    while (pos >= 0x10000L) {
-      if (src_row >= 0 && src_row < src->h) {
-        srcp = src->pixels + (src_row * src->pitch) +
-               (static_cast<ptrdiff_t>(srcrect->x * sbpp));
-      } else {
-        srcp = nullptr;
+    int cur_src_row =
+        srcrect->y +
+        static_cast<int>((static_cast<int64_t>(row_idx) * srcrect->h) /
+                         dstrect->h);
+    if (cur_src_row < 0 || cur_src_row >= src->h) continue;
+
+    srcp = src->pixels + (cur_src_row * src->pitch) +
+           (static_cast<ptrdiff_t>(srcrect->x * sbpp));
+    uint8_t* dst_row_base = dst->pixels + (cur_dst_row * dst->pitch);
+
+    if (dbpp == 4) {
+      auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
+      if (sbpp == 1) {
+        copy_row_or1to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w, dst->w,
+                        src->palette);
+      } else if (sbpp == 3) {
+        copy_row_or3to4(srcp, srcrect->w, dst32, dstrect->x, dstrect->w,
+                        dst->w);
+      } else if (sbpp == 4) {
+        copy_row_or4(reinterpret_cast<uint32_t*>(srcp), srcrect->w, dst32,
+                     dstrect->x, dstrect->w, dst->w);
       }
-      ++src_row;
-      pos -= 0x10000L;
-    }
-    if (dst_row >= 0 && dst_row < dst->h && srcp != nullptr) {
-      uint8_t* dst_row_base = dst->pixels + (dst_row * dst->pitch);
-      if (sbpp == 1 && dbpp == 4) {
-        copy_row_or1to4(srcp, srcrect->w,
-                        reinterpret_cast<uint32_t*>(dst_row_base), dstrect->x,
-                        dstrect->w, dst->w, src->palette);
-      } else {
-        switch (dbpp) {
-          case 1:
-            copy_row_or1(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                         dst->w);
-            break;
-          case 2:
-            copy_row_or2(reinterpret_cast<uint16_t*>(srcp), srcrect->w,
-                         reinterpret_cast<uint16_t*>(dst_row_base), dstrect->x,
-                         dstrect->w, dst->w);
-            break;
-          case 3:
-            copy_row3(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
-                      dst->w);
-            break;
-          case 4:
-            copy_row_or4(reinterpret_cast<uint32_t*>(srcp), srcrect->w,
-                         reinterpret_cast<uint32_t*>(dst_row_base), dstrect->x,
-                         dstrect->w, dst->w);
-            break;
-          default:
-            break;
-        }
+    } else {
+      switch (dbpp) {
+        case 1:
+          copy_row_or1(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
+                       dst->w);
+          break;
+        case 2:
+          copy_row_or2(reinterpret_cast<uint16_t*>(srcp), srcrect->w,
+                       reinterpret_cast<uint16_t*>(dst_row_base), dstrect->x,
+                       dstrect->w, dst->w);
+          break;
+        case 3:
+          copy_row3(srcp, srcrect->w, dst_row_base, dstrect->x, dstrect->w,
+                    dst->w);
+          break;
+        default:
+          break;
       }
     }
-    pos += inc;
   }
 
   return 0;

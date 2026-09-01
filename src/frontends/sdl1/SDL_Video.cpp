@@ -27,15 +27,16 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
   vs.w = s->w;
   vs.h = s->h;
   vs.pitch = s->pitch;
-
-  constexpr int bpp_rgba32 = 4;
-  constexpr int bpp_index8 = 1;
-  constexpr int BITS_PER_PIXEL_8 = 8;
-
-  vs.bpp = bpp_rgba32;  // Assuming RGB32
-  if (s->format->BitsPerPixel == BITS_PER_PIXEL_8) {
-    vs.bpp = bpp_index8;
+  vs.bpp = (s->format != nullptr) ? s->format->BytesPerPixel : 4;
+  if (s->format != nullptr && s->format->palette != nullptr) {
+    int ncolors =
+        (s->format->palette->ncolors < 256) ? s->format->palette->ncolors : 256;
+    for (int i = 0; i < ncolors; ++i) {
+      vs.palette[i].r = s->format->palette->colors[i].r;
+      vs.palette[i].g = s->format->palette->colors[i].g;
+      vs.palette[i].b = s->format->palette->colors[i].b;
+      vs.palette[i].a = 255;
+    }
   }
-  // Note: palette is not copied here, but VideoSurface_t has it
   return vs;
 }

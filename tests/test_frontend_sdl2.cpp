@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL_events.h>
+#include <SDL_hints.h>
 #include <SDL_keycode.h>
 #include <SDL_render.h>
 #include <SDL_stdinc.h>
@@ -10,6 +11,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <string>
 
 #include "Video.h"
@@ -26,8 +28,12 @@ auto ds_shutdown() -> void {}
 extern void sdl_handle_event(SDL_Event* e);
 extern DiskChooseState_t g_diskChooseState;
 
+extern "C" const char* __lsan_default_suppressions() {
+  return "leak:libSDL2\n";
+}
+
 TEST_CASE("SDL2 Frontend In-Window Session Restart") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO);
   REQUIRE(init_result == 0);
 
@@ -55,6 +61,7 @@ TEST_CASE("SDL2 Frontend In-Window Session Restart") {
 
   session_shutdown();
   sys_shutdown();
+  asset_quit();
 
   // Complete system shutdown destroys all window and rendering resources
   CHECK(g_window == nullptr);
@@ -64,7 +71,7 @@ TEST_CASE("SDL2 Frontend In-Window Session Restart") {
 }
 
 TEST_CASE("SDL2 Frontend Initialization and Screen Scaling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -83,28 +90,14 @@ TEST_CASE("SDL2 Frontend Initialization and Screen Scaling") {
   CHECK(g_window_resized == true);
 
   // Cleanup
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -146,28 +139,14 @@ TEST_CASE("SDL2 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 0);
   CHECK(g_new_rect.y == 0);
 
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Help Screen Quit Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -187,7 +166,7 @@ TEST_CASE("SDL2 Frontend Help Screen Quit Event Handling") {
 
   // frame_show_help_screen should not hang or discard the quit event
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_QUIT was re-pushed and is available in the event queue
   SDL_Event polled_event{};
@@ -197,28 +176,14 @@ TEST_CASE("SDL2 Frontend Help Screen Quit Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Help Screen Key Down Dismissal") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -240,7 +205,7 @@ TEST_CASE("SDL2 Frontend Help Screen Key Down Dismissal") {
 
   // frame_show_help_screen should immediately consume the key event and dismiss
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -249,28 +214,14 @@ TEST_CASE("SDL2 Frontend Help Screen Key Down Dismissal") {
   CHECK(count == 0);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Help Screen Window Close Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -291,7 +242,7 @@ TEST_CASE("SDL2 Frontend Help Screen Window Close Event Handling") {
 
   // frame_show_help_screen should not hang or discard the window close event
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_WINDOWEVENT_CLOSE was re-pushed and is available
   SDL_Event polled_event{};
@@ -302,24 +253,10 @@ TEST_CASE("SDL2 Frontend Help Screen Window Close Event Handling") {
   CHECK(polled_event.window.event == SDL_WINDOWEVENT_CLOSE);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Main Event Handler Window Close Request") {
@@ -331,7 +268,7 @@ TEST_CASE("SDL2 Frontend Main Event Handler Window Close Request") {
 }
 
 TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -355,7 +292,7 @@ TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
   REQUIRE(SDL_PushEvent(&key_event) == 1);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that after dismissal, g_screen is properly restored with the
   // emulator frame
@@ -364,29 +301,15 @@ TEST_CASE("SDL2 Frontend Help Screen Scaling at High Screen Factors") {
   CHECK(screen_pixels[0] == 0x00FF0000);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE(
     "SDL2 Frontend Help Screen Dismissal Clears Fullscreen Pillarbox Margins") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -414,7 +337,7 @@ TEST_CASE(
   REQUIRE(SDL_PushEvent(&key_event) == 1);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -443,28 +366,14 @@ TEST_CASE(
   set_normal_mode();
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -518,28 +427,14 @@ TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
     SDL_FreeSurface(g_diskChooseState.bg_screen);
     g_diskChooseState.bg_screen = nullptr;
   }
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Help Screen F12 Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -561,7 +456,7 @@ TEST_CASE("SDL2 Frontend Help Screen F12 Event Handling") {
   REQUIRE(push_result == 1);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   CHECK(g_state.mode == MODE_EXIT);
 
@@ -572,28 +467,14 @@ TEST_CASE("SDL2 Frontend Help Screen F12 Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Disk Choose Quit Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -630,28 +511,14 @@ TEST_CASE("SDL2 Frontend Disk Choose Quit Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Disk Choose Key Down Dismissal") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -689,28 +556,14 @@ TEST_CASE("SDL2 Frontend Disk Choose Key Down Dismissal") {
   CHECK(count == 0);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Disk Choose Window Close Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -749,28 +602,14 @@ TEST_CASE("SDL2 Frontend Disk Choose Window Close Event Handling") {
   CHECK(polled_event.window.event == SDL_WINDOWEVENT_CLOSE);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }
 
 TEST_CASE("SDL2 Frontend Disk Choose F12 Event Handling") {
-  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
   int init_result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
@@ -807,22 +646,8 @@ TEST_CASE("SDL2 Frontend Disk Choose F12 Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
+  SDL_ClearHints();
 }

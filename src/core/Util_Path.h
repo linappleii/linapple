@@ -181,9 +181,10 @@ inline auto sanitize_filename(const std::string& name) -> std::string {
   if (name == "." || name == ".." || name.front() == '.') {
     return "";
   }
+  constexpr unsigned char ascii_del = 0x7F;
   for (char c : name) {
     auto uc = static_cast<unsigned char>(c);
-    if (std::iscntrl(uc) || uc == 127) {
+    if (std::iscntrl(uc) || uc == ascii_del) {
       return "";
     }
   }

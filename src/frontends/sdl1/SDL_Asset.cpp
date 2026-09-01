@@ -22,15 +22,17 @@ auto asset_load_bmp(const char* filename) -> SDL_Surface* {
   return surf;
 }
 
-void SDL_Asset_LoadIcon() {
-  if (assets != nullptr) {
-    assets->icon = static_cast<void*>(asset_load_bmp("icon.bmp"));
-  }
-}
-
 void SDL_Asset_FreeIcon() {
   if (assets != nullptr && assets->icon != nullptr) {
     SDL_FreeSurface(static_cast<SDL_Surface*>(assets->icon));
     assets->icon = nullptr;
+  }
+}
+
+void SDL_Asset_LoadIcon() {
+  if (assets != nullptr) {
+    SDL_Asset_FreeIcon();
+    asset_set_free_icon_callback(SDL_Asset_FreeIcon);
+    assets->icon = static_cast<void*>(asset_load_bmp("icon.bmp"));
   }
 }

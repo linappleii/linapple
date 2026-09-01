@@ -26,6 +26,11 @@ static constexpr const char* asset_master_dsk = "Master.dsk";
 
 static std::unique_ptr<Assets_t> assets_ptr;
 Assets_t* assets = nullptr;
+static AssetFreeIconFn_t s_free_icon_cb = nullptr;
+
+auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) -> void {
+  s_free_icon_cb = cb;
+}
 
 auto asset_init() -> bool {
   if (assets_ptr != nullptr) {
@@ -53,6 +58,10 @@ auto asset_init() -> bool {
 
 auto asset_quit() -> void {
   if (assets != nullptr) {
+    if (s_free_icon_cb != nullptr) {
+      s_free_icon_cb();
+    }
+
     if (assets->font != nullptr) {
       video_destroy_surface(assets->font);
       assets->font = nullptr;

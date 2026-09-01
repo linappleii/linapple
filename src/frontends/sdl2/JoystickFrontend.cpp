@@ -181,6 +181,9 @@ void JoyFrontend_ShutDown() {
     SDL_JoystickClose(joy2);
     joy2 = nullptr;
   }
+  if (SDL_WasInit(SDL_INIT_JOYSTICK) != 0) {
+    SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+  }
 }
 
 void JoyFrontend_CheckExit() {

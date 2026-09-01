@@ -59,11 +59,7 @@ TEST_CASE("SDL1 Frontend Initialization and Screen Scaling") {
   CHECK(g_screen->h == 768);
   CHECK(g_window_resized == true);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -111,11 +107,7 @@ TEST_CASE("SDL1 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 0);
   CHECK(g_new_rect.y == 0);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -141,7 +133,7 @@ TEST_CASE("SDL1 Frontend Help Screen Quit Event Handling") {
 
   // frame_show_help_screen should not hang or discard the quit event
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_QUIT was re-pushed and is available in the event queue
   SDL_Event polled_event{};
@@ -149,11 +141,7 @@ TEST_CASE("SDL1 Frontend Help Screen Quit Event Handling") {
   CHECK(count == 1);
   CHECK(polled_event.type == SDL_QUIT);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -181,18 +169,14 @@ TEST_CASE("SDL1 Frontend Help Screen Key Down Dismissal") {
 
   // frame_show_help_screen should immediately consume the key event and dismiss
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
   CHECK(count == 0);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -224,7 +208,7 @@ TEST_CASE("SDL1 Frontend Help Screen Scaling at High Screen Factors") {
   REQUIRE(SDL_PushEvent(&key_event) == 0);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that after dismissal, g_screen is properly restored with the
   // emulator frame
@@ -232,11 +216,7 @@ TEST_CASE("SDL1 Frontend Help Screen Scaling at High Screen Factors") {
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
   CHECK(screen_pixels[0] == 0x00FF0000);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -271,7 +251,7 @@ TEST_CASE(
   REQUIRE(SDL_PushEvent(&key_event) == 0);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -299,11 +279,7 @@ TEST_CASE(
 
   set_normal_mode();
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -363,11 +339,7 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
     SDL_FreeSurface(g_diskChooseState.bg_screen);
     g_diskChooseState.bg_screen = nullptr;
   }
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -395,7 +367,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   REQUIRE(push_result == 0);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   CHECK(g_state.mode == MODE_EXIT);
 
@@ -405,11 +377,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -451,11 +419,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -498,11 +462,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
   CHECK(count == 0);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -544,11 +504,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   CHECK(polled_event.type == SDL_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_screen = nullptr;
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }

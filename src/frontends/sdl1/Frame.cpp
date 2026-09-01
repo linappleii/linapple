@@ -365,16 +365,8 @@ void frame_show_help_screen(int sx, int sy) {
   }
 
   // Logo bit
-  VideoSurface_t vs_icon{};
-  vs_icon.pixels =
-      static_cast<uint8_t*>((static_cast<SDL_Surface*>(assets->icon))->pixels);
-  vs_icon.w =
-      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->w);
-  vs_icon.h =
-      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->h);
-  vs_icon.pitch =
-      static_cast<uint16_t>((static_cast<SDL_Surface*>(assets->icon))->pitch);
-  vs_icon.bpp = 4;  // Assuming RGB32
+  VideoSurface_t vs_icon =
+      sdl_surface_to_video_surface(static_cast<SDL_Surface*>(assets->icon));
 
   VideoRect_t logo{};
   VideoRect_t scrr{};

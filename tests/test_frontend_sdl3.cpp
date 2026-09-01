@@ -56,6 +56,7 @@ TEST_CASE("SDL3 Frontend In-Window Session Restart") {
 
   session_shutdown();
   sys_shutdown();
+  asset_quit();
 
   // Complete system shutdown destroys all window and rendering resources
   CHECK(g_window == nullptr);
@@ -84,22 +85,7 @@ TEST_CASE("SDL3 Frontend Initialization and Screen Scaling") {
   CHECK(g_window_resized == true);
 
   // Cleanup
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -139,22 +125,7 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   CHECK(screen_pixels[767 * pitch_pixels] == 0x000000FF);
   CHECK(screen_pixels[767 * pitch_pixels + 1119] == 0x00FFFFFF);
 
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -202,22 +173,7 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 0);
   CHECK(g_new_rect.y == 0);
 
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -243,7 +199,7 @@ TEST_CASE("SDL3 Frontend Help Screen Quit Event Handling") {
 
   // frame_show_help_screen should not hang or discard the quit event
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_EVENT_QUIT was re-pushed and is available in the event
   // queue
@@ -254,22 +210,7 @@ TEST_CASE("SDL3 Frontend Help Screen Quit Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -297,7 +238,7 @@ TEST_CASE("SDL3 Frontend Help Screen Key Down Dismissal") {
 
   // frame_show_help_screen should immediately consume the key event and dismiss
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -306,22 +247,7 @@ TEST_CASE("SDL3 Frontend Help Screen Key Down Dismissal") {
   CHECK(count == 0);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -347,7 +273,7 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
 
   // frame_show_help_screen should not hang or discard the window close event
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that SDL_EVENT_WINDOW_CLOSE_REQUESTED was re-pushed and is available
   SDL_Event polled_event{};
@@ -357,22 +283,7 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -410,7 +321,7 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
   REQUIRE(SDL_PushEvent(&key_event));
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   // Verify that after dismissal, g_screen is properly restored with the
   // emulator frame
@@ -419,22 +330,7 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
   CHECK(screen_pixels[0] == 0x00FF0000);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -469,7 +365,7 @@ TEST_CASE(
   REQUIRE(SDL_PushEvent(&key_event));
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -498,22 +394,7 @@ TEST_CASE(
   set_normal_mode();
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -573,22 +454,7 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
     SDL_DestroySurface(g_diskChooseState.bg_screen);
     g_diskChooseState.bg_screen = nullptr;
   }
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -616,7 +482,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   REQUIRE(push_result);
 
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                      static_cast<int>(g_state.screen_height));
+                         static_cast<int>(g_state.screen_height));
 
   CHECK(g_state.mode == MODE_EXIT);
 
@@ -627,22 +493,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -686,22 +537,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -745,22 +581,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
   CHECK(count == 0);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -803,22 +624,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
@@ -861,22 +667,7 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
   CHECK(polled_event.type == SDL_EVENT_QUIT);
 
   // Teardown
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_DestroySurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  frame_destroy_window();
   asset_quit();
   SDL_Quit();
 }
