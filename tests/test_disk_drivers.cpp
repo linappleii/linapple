@@ -490,3 +490,25 @@ TEST_CASE(
   // Unwritable / invalid path fails cleanly and returns error
   CHECK(g_nib_driver.create("/nonexistent_dir_12345/test.nib") == disk_err_io);
 }
+
+TEST_CASE(
+    "DiskDrivers: [DSK-2] DOS 3.3 VTOC signature probe within 80KB probe "
+    "window") {
+  std::vector<uint8_t> buffer(80 * 1024, 0);
+  // Construct valid DOS 3.3 catalog chain on Track 17 (0x11000)
+  for (int loop = 1; loop <= 15; ++loop) {
+    buffer[0x11000 + 2 + (loop * 0x100)] = static_cast<uint8_t>(loop - 1);
+  }
+
+  // Definitively recognized as DOS order even with ambiguous or missing
+  // extension hint
+  CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
+        disk_probe_definite);
+  CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, ".dsk") ==
+        disk_probe_definite);
+  // PO driver only sees possible based on size, but not definite
+  CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
+        disk_probe_possible);
+  CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
+        disk_probe_no);
+}

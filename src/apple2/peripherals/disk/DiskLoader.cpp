@@ -30,7 +30,10 @@ static std::vector<DiskFormatDriver_t*> g_drivers;
 
 // Disk Loading & Decompression parameters
 constexpr size_t decompression_buffer_size = 8192;
-constexpr size_t probe_header_size = 4096;
+// Why: 80 KB covers the DOS 3.3 Track 17 VTOC/catalog chain (73.5 KB) +
+// optional MacBinary header (128 bytes) so sector image probing can inspect
+// filesystem signatures definitively.
+constexpr size_t probe_header_size = 80 * 1024;
 constexpr size_t extension_hint_size = 16;
 
 /**
@@ -154,13 +157,14 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
     return disk_err_io;
   }
 
-  uint8_t header[probe_header_size] = {};
-  const size_t header_read = fread(header, 1, sizeof(header), image_file.get());
+  std::vector<uint8_t> header(probe_header_size, 0);
+  const size_t header_read =
+      fread(header.data(), 1, header.size(), image_file.get());
   image_file.reset();
 
   const uint32_t file_offset =
-      disk_container_detect_macbinary(header, header_read, file_size);
-  const uint8_t* probe_ptr = header + file_offset;
+      disk_container_detect_macbinary(header.data(), header_read, file_size);
+  const uint8_t* probe_ptr = header.data() + file_offset;
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;
 
