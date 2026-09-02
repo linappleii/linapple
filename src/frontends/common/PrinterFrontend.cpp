@@ -25,18 +25,18 @@ static auto check_print() -> bool {
   return (file != nullptr);
 }
 
-static void ClosePrint() {
+static void close_print() {
   file.reset();
   inactivity = 0;
 }
 
-void PrinterFrontend_Initialize() {
+void printer_frontend_initialize() {
   // Initialization logic if any
 }
 
-void PrinterFrontend_Destroy() { ClosePrint(); }
+void printer_frontend_destroy() { close_print(); }
 
-void PrinterFrontend_Reset() { ClosePrint(); }
+void printer_frontend_reset() { close_print(); }
 
 void printer_frontend_update(uint32_t totalcycles) {
   if (!file) {
@@ -45,7 +45,7 @@ void printer_frontend_update(uint32_t totalcycles) {
   if ((inactivity += totalcycles) >
       (printer_get_idle_limit() * CYCLES_PER_SEC)) {
     // inactive, so close the file (next print will overwrite it)
-    ClosePrint();
+    close_print();
   }
 }
 
@@ -61,6 +61,6 @@ void printer_frontend_check_status() { check_print(); }
 
 auto printer_get_idle_limit() -> uint32_t { return g_printer_idle_limit; }
 
-void Printer_SetIdleLimit(uint32_t Duration) {
+void printer_set_idle_limit(uint32_t Duration) {
   g_printer_idle_limit = Duration;
 }

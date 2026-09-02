@@ -39,7 +39,7 @@ static constexpr int rect_margin = 5;
 
 DiskChooseState_t g_diskChooseState;
 
-void DiskChoose_Tick(SDL_Event* event) {
+void disk_choose_tick(SDL_Event* event) {
   if (g_diskChooseState.active == false ||
       g_diskChooseState.list_handle == nullptr)
     return;
@@ -168,7 +168,7 @@ void DiskChoose_Tick(SDL_Event* event) {
 
 extern void frame_refresh();
 
-void DiskChoose_Draw() {
+void disk_choose_draw() {
   if (g_diskChooseState.active == false) return;
 
   const float facx_f = static_cast<float>(g_state.screen_width) /
@@ -252,8 +252,8 @@ void DiskChoose_Draw() {
     }
 
     std::array<char, 32> type_size_str = {};
-    FileEntry_FormatTypeOrSize(file_entry, type_size_str.data(),
-                               type_size_str.size());
+    file_entry_format_type_or_size(file_entry, type_size_str.data(),
+                                   type_size_str.size());
 
     font_print(4,
                static_cast<int>(static_cast<double>(TOPX) +
@@ -403,7 +403,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     SDL_FreeSurface(g_diskChooseState.bg_screen);
     g_diskChooseState.bg_screen = nullptr;
     if (g_diskChooseState.list_handle != nullptr) {
-      FileBrowser_FreeList(g_diskChooseState.list_handle);
+      file_browser_free_list(g_diskChooseState.list_handle);
       g_diskChooseState.list_handle = nullptr;
     }
     return false;
@@ -451,10 +451,10 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
         SDL_PushEvent(&qe);
         break;
       }
-      DiskChoose_Tick(&event);
+      disk_choose_tick(&event);
     }
     g_video_draw_mutex.lock();
-    DiskChoose_Draw();
+    disk_choose_draw();
     g_video_draw_mutex.unlock();
     SDL_Delay(10);
   }
@@ -466,7 +466,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.bg_screen = nullptr;
 
   if (g_diskChooseState.list_handle != nullptr) {
-    FileBrowser_FreeList(g_diskChooseState.list_handle);
+    file_browser_free_list(g_diskChooseState.list_handle);
     g_diskChooseState.list_handle = nullptr;
   }
 

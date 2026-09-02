@@ -621,8 +621,8 @@ auto peripheral_get_manifest(void* manifest_ptr) -> void {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     const auto& slot_peripherals = g_active_peripherals.at(i);
     if (!slot_peripherals.empty() && slot_peripherals.front().api != nullptr) {
-      Util_SafeStrCpy(manifest->peripherals[i].name,
-                      slot_peripherals.front().api->name, max_peripheral_name);
+      util_safe_strcpy(manifest->peripherals[i].name,
+                       slot_peripherals.front().api->name, max_peripheral_name);
       manifest->peripherals[i].version =
           static_cast<uint32_t>(slot_peripherals.front().api->abi_version);
     }

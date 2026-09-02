@@ -57,7 +57,7 @@ void sys_shutdown() {
   }
 }
 
-static void Frontend_SetWindowTitle(const char* title) {
+static void frontend_set_window_title(const char* title) {
   extern SDL_Window* g_window;
   if (g_window != nullptr) {
     SDL_SetWindowTitle(g_window, title);
@@ -69,21 +69,21 @@ auto session_init(AppConfig_t* config) -> int {
     return 1;
   }
 
-  linapple_set_title_callback(Frontend_SetWindowTitle);
+  linapple_set_title_callback(frontend_set_window_title);
 
   if (frame_create_window() != 0) {
     return 1;
   }
 
-  AppController_LoadInitialMedia(config);
+  app_controller_load_initial_media(config);
 
   ds_init();
-  JoyFrontend_Initialize();
+  joy_frontend_initialize();
   return 0;
 }
 
 void session_shutdown() {
   ds_shutdown();
-  JoyFrontend_ShutDown();
-  AppController_Shutdown();
+  joy_frontend_shutdown();
+  app_controller_shutdown();
 }

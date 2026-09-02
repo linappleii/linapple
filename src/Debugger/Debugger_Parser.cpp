@@ -221,7 +221,7 @@ auto ArgsGet(char* pInput) -> int {
         //	nLen = nBuf;
         memset(pArg, 0, sizeof(Arg_t));
         nLen = MIN(nBuf, MAX_ARG_LEN - 1);  // NOTE: see Arg_t.sArg[] // GH#481
-        Util_SafeStrCpy(pArg->sArg, src_ptr, nLen + 1);
+        util_safe_strcpy(pArg->sArg, src_ptr, nLen + 1);
         pArg->sArg[nLen] = 0;
         pArg->nArgLen = nLen;
         pArg->eToken = iTokenSrc;
@@ -978,7 +978,7 @@ auto _Arg_1(int nValue) -> int {
 
 auto _Arg_1(char* pName) -> int {
   ArgsClear();
-  Util_SafeStrCpy(g_args[1].sArg, pName, MAX_ARG_LEN);
+  util_safe_strcpy(g_args[1].sArg, pName, MAX_ARG_LEN);
   g_args[1].bType = TYPE_STRING;
   return 1;
 }

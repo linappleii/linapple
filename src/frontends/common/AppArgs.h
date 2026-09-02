@@ -15,4 +15,4 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int;
 /**
  * Print the unified help message for all LinApple frontends.
  */
-void AppArgs_PrintHelp();
+void app_args_print_help();

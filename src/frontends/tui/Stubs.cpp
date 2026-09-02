@@ -32,8 +32,8 @@ WEAK auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
 WEAK auto frame_refresh_status(int drawflags) -> void { (void)drawflags; }
 
 // Printer Stubs
-WEAK auto PrinterFrontend_Reset() -> void {}
-WEAK auto PrinterFrontend_Destroy() -> void {}
+WEAK auto printer_frontend_reset() -> void {}
+WEAK auto printer_frontend_destroy() -> void {}
 WEAK auto printer_frontend_update(uint32_t cycles) -> void { (void)cycles; }
 WEAK auto printer_frontend_check_status() -> uint8_t { return 0; }
 WEAK auto printer_frontend_send_char(uint8_t c) -> void { (void)c; }
@@ -60,7 +60,7 @@ WEAK auto super_serial_frontend_set_serial_port_path(const char* p) -> void {
 WEAK auto super_serial_frontend_set_loopback(bool e) -> void { (void)e; }
 
 // Video/Frontend Stubs needed for Debugger source linkage
-WEAK auto StretchBltMemToFrameDC() -> void {}
+WEAK auto stretch_blt_mem_to_frame_dc() -> void {}
 WEAK auto joy_set_trim(int16_t, bool) -> void {}
 WEAK auto joy_set_button(int button, bool down) -> void {
   (void)button;
@@ -72,7 +72,7 @@ WEAK auto video_redraw_screen() -> void {}
 WEAK auto video_reset_state() -> void {}
 WEAK auto video_get_scanner_address(bool*, uint32_t) -> uint16_t { return 0; }
 WEAK auto video_choose_color() -> void {}
-WEAK auto VideoSetBorderColor(uint8_t) -> void {}
+WEAK auto video_set_border_color(uint8_t) -> void {}
 WEAK auto linapple_update_title(const char*) -> void {}
 WEAK auto linapple_list_hardware() -> void {}
 WEAK auto linapple_cpu_test(const char*, uint16_t) -> void {}

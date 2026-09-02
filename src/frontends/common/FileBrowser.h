@@ -36,8 +36,8 @@ typedef struct FileEntry_t {
 
 auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool;
 
-void FileEntry_FormatTypeOrSize(const FileEntry_t* entry, char* out_str,
-                                size_t max_len);
+void file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
+                                    size_t max_len);
 
 /**
  * Opaque handle hides internal implementation details (std::vector).
@@ -70,10 +70,10 @@ auto file_browser_create_ftp_generator(const char* directory,
     -> FileListGenerator_t*;
 
 auto file_browser_create_list(void) -> FileList_t*;
-void FileBrowser_FreeList(FileList_t* list);
-void FileBrowser_AppendEntry(FileList_t* list, const FileEntry_t* entry);
-void FileBrowser_SetFailureMessage(FileList_t* list, const char* msg);
-void FileBrowser_SortList(FileList_t* list);
+void file_browser_free_list(FileList_t* list);
+void file_browser_append_entry(FileList_t* list, const FileEntry_t* entry);
+void file_browser_set_failure_message(FileList_t* list, const char* msg);
+void file_browser_sort_list(FileList_t* list);
 
 auto file_browser_get_count(const FileList_t* list) -> size_t;
 auto file_browser_get_entry(const FileList_t* list, size_t index)

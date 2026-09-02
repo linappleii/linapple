@@ -212,7 +212,7 @@ extern "C" auto disk_container_prepare_compressed_path(
        strcasecmp(image_path + name_len - zip_ext_len, ".zip") == 0);
 
   if (!is_gz && !is_zip) {
-    Util_SafeStrCpy(out_load_path, image_path, max_path_len);
+    util_safe_strcpy(out_load_path, image_path, max_path_len);
     *out_is_temporary = false;
     return true;
   }
@@ -226,7 +226,7 @@ extern "C" auto disk_container_prepare_compressed_path(
   if (temp_template.size() >= max_path_len) {
     return false;
   }
-  Util_SafeStrCpy(out_load_path, temp_template.c_str(), max_path_len);
+  util_safe_strcpy(out_load_path, temp_template.c_str(), max_path_len);
 
   int fd = mkstemp(out_load_path);
   if (fd == -1) {

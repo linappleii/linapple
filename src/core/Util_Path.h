@@ -21,7 +21,7 @@ namespace Path {
 constexpr mode_t DEFAULT_MKDIR_MODE = 0755;
 
 // Ensure directory exists (creates it recursively if it doesn't)
-inline void EnsureDirExists(const std::string& path) {
+inline void ensure_dir_exists(const std::string& path) {
   size_t pos = path.find_first_of('/');
   while (pos != std::string::npos) {
     std::string subdir = path.substr(0, pos);

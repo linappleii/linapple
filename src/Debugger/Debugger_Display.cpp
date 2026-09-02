@@ -969,7 +969,7 @@ void UpdateDisplay(Update_t bUpdate) {
   }
 
   if (g_debug_screen) {
-    StretchBltMemToFrameDC();
+    stretch_blt_mem_to_frame_dc();
   }
 
   spDrawMutex = false;

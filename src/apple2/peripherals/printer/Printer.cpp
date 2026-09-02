@@ -49,9 +49,9 @@ struct PrinterPeripheral_t {
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 // Justification: Parameters are part of the PeripheralIOHandler ABI.
-auto PrintStatus(void* instance, uint16_t program_counter,
-                 uint16_t memory_address, uint8_t is_write, uint8_t data_value,
-                 uint32_t remaining_cycles) -> uint8_t {
+auto print_status(void* instance, uint16_t program_counter,
+                  uint16_t memory_address, uint8_t is_write, uint8_t data_value,
+                  uint32_t remaining_cycles) -> uint8_t {
   (void)program_counter;
   (void)memory_address;
   (void)data_value;
@@ -68,9 +68,9 @@ auto PrintStatus(void* instance, uint16_t program_counter,
   return status_offline;
 }
 
-auto PrintTransmit(void* instance, uint16_t program_counter,
-                   uint16_t memory_address, uint8_t is_write,
-                   uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
+auto print_transmit(void* instance, uint16_t program_counter,
+                    uint16_t memory_address, uint8_t is_write,
+                    uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
   (void)program_counter;
   (void)memory_address;
   (void)remaining_cycles;
@@ -103,7 +103,7 @@ static auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   std::copy_n(Parallel_bin.begin(), bytes_to_copy, slot_rom_data.begin());
 
   host->RegisterCxROM(slot, slot_rom_data.data());
-  host->RegisterIO(slot, PrintStatus, PrintTransmit, nullptr, nullptr);
+  host->RegisterIO(slot, print_status, print_transmit, nullptr, nullptr);
 
   return printer_peripheral.release();
 }

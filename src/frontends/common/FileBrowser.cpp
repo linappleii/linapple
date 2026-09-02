@@ -113,7 +113,7 @@ static auto get_sorted_directory(const char* incoming_dir,
 
     FileEntry_t new_entry = {};
     new_entry.name[0] = '\0';
-    Util_SafeStrCpy(new_entry.name, file_name, sizeof(new_entry.name));
+    util_safe_strcpy(new_entry.name, file_name, sizeof(new_entry.name));
 
     if (what == 1) {
       new_entry.type = FILE_ENTRY_DIR;
@@ -155,7 +155,7 @@ static auto local_gen_generate(FileListGenerator_t* self) -> FileList_t* {
 
   if (ctx->directory != "/") {
     FileEntry_t up_entry = {};
-    Util_SafeStrCpy(up_entry.name, "..", sizeof(up_entry.name));
+    util_safe_strcpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
     up_entry.size = 0;
     list->entries.push_back(up_entry);
@@ -189,7 +189,7 @@ static auto local_gen_get_fail_msg(FileListGenerator_t* self) -> const char* {
   return ctx->failure_message.c_str();
 }
 
-static void LocalGen_Destroy(FileListGenerator_t* self) {
+static void local_gen_destroy(FileListGenerator_t* self) {
   if (self != nullptr) {
     delete static_cast<LocalGeneratorContext_t*>(self->context);
     delete self;
@@ -207,18 +207,18 @@ auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
   return entry->type == FILE_ENTRY_UP || entry->type == FILE_ENTRY_DIR;
 }
 
-void FileEntry_FormatTypeOrSize(const FileEntry_t* entry, char* out_str,
-                                size_t max_len) {
+void file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
+                                    size_t max_len) {
   if (entry == nullptr || out_str == nullptr || max_len == 0) {
     return;
   }
 
   switch (entry->type) {
     case FILE_ENTRY_UP:
-      Util_SafeStrCpy(out_str, "<UP>", max_len);
+      util_safe_strcpy(out_str, "<UP>", max_len);
       break;
     case FILE_ENTRY_DIR:
-      Util_SafeStrCpy(out_str, "<DIR>", max_len);
+      util_safe_strcpy(out_str, "<DIR>", max_len);
       break;
     case FILE_ENTRY_FILE: {
       uint64_t s = entry->size;
@@ -239,30 +239,30 @@ void FileEntry_FormatTypeOrSize(const FileEntry_t* entry, char* out_str,
       break;
     }
     default:
-      Util_SafeStrCpy(out_str, "???", max_len);
+      util_safe_strcpy(out_str, "???", max_len);
       break;
   }
 }
 
-void FileBrowser_FreeList(FileList_t* list) { delete list; }
+void file_browser_free_list(FileList_t* list) { delete list; }
 
 auto file_browser_create_list(void) -> FileList_t* {
   return new (std::nothrow) FileList_t();
 }
 
-void FileBrowser_AppendEntry(FileList_t* list, const FileEntry_t* entry) {
+void file_browser_append_entry(FileList_t* list, const FileEntry_t* entry) {
   if (list != nullptr && entry != nullptr) {
     list->entries.push_back(*entry);
   }
 }
 
-void FileBrowser_SetFailureMessage(FileList_t* list, const char* msg) {
+void file_browser_set_failure_message(FileList_t* list, const char* msg) {
   if (list != nullptr && msg != nullptr) {
     list->failure_message = msg;
   }
 }
 
-void FileBrowser_SortList(FileList_t* list) {
+void file_browser_sort_list(FileList_t* list) {
   if (list != nullptr) {
     std::sort(list->entries.begin(), list->entries.end(),
               [](const FileEntry_t& a, const FileEntry_t& b) -> bool {
@@ -357,7 +357,7 @@ auto file_browser_create_local_generator(const char* directory,
   gen->generate_file_list = local_gen_generate;
   gen->get_starting_message = local_gen_get_start_msg;
   gen->get_failure_message = local_gen_get_fail_msg;
-  gen->destroy = LocalGen_Destroy;
+  gen->destroy = local_gen_destroy;
 
   return gen;
 }
@@ -374,15 +374,15 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
   b->generator = nullptr;
 
   if (start_dir != nullptr && start_dir[0] != '\0') {
-    Util_SafeStrCpy(b->current_dir, start_dir, sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, start_dir, sizeof(b->current_dir));
   } else if (b->slot == 7 && g_state.hdd_dir.at(0) != '\0') {
-    Util_SafeStrCpy(b->current_dir, g_state.hdd_dir.data(),
-                    sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, g_state.hdd_dir.data(),
+                     sizeof(b->current_dir));
   } else if (g_state.current_dir.at(0) != '\0') {
-    Util_SafeStrCpy(b->current_dir, g_state.current_dir.data(),
-                    sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, g_state.current_dir.data(),
+                     sizeof(b->current_dir));
   } else {
-    Util_SafeStrCpy(b->current_dir, ".", sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, ".", sizeof(b->current_dir));
   }
 
   // Strip trailing slashes (except root "/")
@@ -400,7 +400,7 @@ void disk_browser_close(DiskBrowser_t* b) {
   if (b == nullptr) return;
   b->is_active = false;
   if (b->list_handle != nullptr) {
-    FileBrowser_FreeList(b->list_handle);
+    file_browser_free_list(b->list_handle);
     b->list_handle = nullptr;
   }
   if (b->generator != nullptr) {
@@ -412,7 +412,7 @@ void disk_browser_close(DiskBrowser_t* b) {
 void disk_browser_refresh(DiskBrowser_t* b) {
   if (b == nullptr) return;
   if (b->list_handle != nullptr) {
-    FileBrowser_FreeList(b->list_handle);
+    file_browser_free_list(b->list_handle);
     b->list_handle = nullptr;
   }
   if (b->generator != nullptr) {
@@ -550,7 +550,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
       dir = dir.substr(0, last_sep);
     }
     if (dir.empty()) dir = "/";
-    Util_SafeStrCpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
     disk_browser_refresh(b);
     return false;
   }
@@ -562,7 +562,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     } else {
       dir = "/" + std::string(entry->name);
     }
-    Util_SafeStrCpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
+    util_safe_strcpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
     disk_browser_refresh(b);
     return false;
   }
@@ -576,15 +576,15 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   }
 
   if (b->slot == 7) {
-    Util_SafeStrCpy(g_state.hdd_dir.data(), b->current_dir,
-                    g_state.hdd_dir.size());
+    util_safe_strcpy(g_state.hdd_dir.data(), b->current_dir,
+                     g_state.hdd_dir.size());
     Configuration_t::instance().set_string(
         "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
     Configuration_t::instance().save();
 
     HarddiskInsertCmd_t hcmd{};
     hcmd.drive = static_cast<uint8_t>(b->drive);
-    Util_SafeStrCpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
+    util_safe_strcpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
     if (peripheral_command(7, harddisk_cmd_insert, &hcmd, sizeof(hcmd)) ==
         peripheral_ok) {
       if (b->drive != 0) {
@@ -602,8 +602,8 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   }
 
   // Update current_dir and save to Preferences
-  Util_SafeStrCpy(g_state.current_dir.data(), b->current_dir,
-                  g_state.current_dir.size());
+  util_safe_strcpy(g_state.current_dir.data(), b->current_dir,
+                   g_state.current_dir.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
                                          g_state.current_dir.data());
   Configuration_t::instance().save();
@@ -611,7 +611,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   // Mount image into hardware
   DiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(b->drive);
-  Util_SafeStrCpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
+  util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
   peripheral_command(b->slot != 0 ? b->slot : disk_default_slot,

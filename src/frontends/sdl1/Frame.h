@@ -43,11 +43,11 @@ void frame_destroy_window();
 
 void frame_refresh_status(int);
 
-void FrameRegisterClass();
+void frame_register_class();
 
-void FrameReleaseDC();
+void frame_release_dc();
 
-void FrameReleaseVideoDC();
+void frame_release_video_dc();
 
 void draw_apple_content();
 void draw_frame_window();

@@ -1,7 +1,9 @@
+#include <stdio.h>
+
+#include <cstring>
+
 #include "AppConfig.h"
 #include "LinAppleCore.h"
-#include <cstring>
-#include <stdio.h>
 #include "Util_Path.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <fstream>
@@ -18,9 +20,10 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
   tmp_conf.close();
 
   AppConfig_t config = {};
-  Util_SafeStrCpy(config.config_path.data(), "test_resolve.conf", path_max_len);
+  util_safe_strcpy(config.config_path.data(), "test_resolve.conf",
+                   path_max_len);
 
-  AppEnv_ResolvePaths(&config);
+  app_env_resolve_paths(&config);
 
   CHECK(Configuration_t::instance().get_path() == "test_resolve.conf");
   CHECK(strcmp(config.config_path.data(), "test_resolve.conf") == 0);
@@ -32,7 +35,7 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
   AppConfig_t config = {};
   config.is_verbose = true;
 
-  AppEnv_ResolvePaths(&config);
+  app_env_resolve_paths(&config);
   // Since we can't easily query Logger verbosity without adding a getter,
   // we just ensure it doesn't crash and follows the logic.
 }

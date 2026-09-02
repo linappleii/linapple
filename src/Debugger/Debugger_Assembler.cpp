@@ -220,7 +220,7 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
 };
 
 const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
-    // Should match Cpu.cpp InternalCpuExecute() switch
+    // Should match Cpu.cpp internal_cpu_execute() switch
     // (*(mem+cpu_get_registers()->pc++)) !!
 
     /*
@@ -1440,7 +1440,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
           int nLen = static_cast<int>(pLabelEnd - pLabelStart);
           nLen = MIN(nLen, MAX_SYMBOLS_LEN);
-          Util_SafeStrCpy(sName, pLabelStart, nLen);
+          util_safe_strcpy(sName, pLabelStart, nLen);
 
           char* pAddressEQU = strstr(pLabel, "$");
           char* pAddressDFB = strstr(sLine, ":");
@@ -1697,8 +1697,8 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
             DelayedTarget_t tDelayedTarget{};
 
             tDelayedTarget.base_address = nBaseAddress;
-            Util_SafeStrCpy(tDelayedTarget.address_str, pArg->sArg,
-                            MAX_SYMBOLS_LEN);
+            util_safe_strcpy(tDelayedTarget.address_str, pArg->sArg,
+                             MAX_SYMBOLS_LEN);
 
             // Flag this target that we need to update it when we have the
             // relevent info

@@ -15,7 +15,7 @@ static bool g_terminal_initialized = false;
 static std::atomic<bool> g_resized(false);
 static std::atomic<bool> g_interrupted(false);
 
-static void SignalHandler(int sig) {
+static void signal_handler(int sig) {
   switch (sig) {
     case SIGINT:
     case SIGTERM:
@@ -29,7 +29,7 @@ static void SignalHandler(int sig) {
   }
 }
 
-static void FatalSignalHandler(int sig) {
+static void fatal_signal_handler(int sig) {
   tui_terminal_shutdown();
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
@@ -71,7 +71,7 @@ int tui_terminal_initialize() {
   // Set up signal handlers
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = SignalHandler;
+  sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
 
   sigaction(SIGINT, &sa, nullptr);
@@ -80,7 +80,7 @@ int tui_terminal_initialize() {
 
   struct sigaction sa_fatal;
   memset(&sa_fatal, 0, sizeof(sa_fatal));
-  sa_fatal.sa_handler = FatalSignalHandler;
+  sa_fatal.sa_handler = fatal_signal_handler;
   sigemptyset(&sa_fatal.sa_mask);
 
   sigaction(SIGSEGV, &sa_fatal, nullptr);

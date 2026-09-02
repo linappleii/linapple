@@ -170,7 +170,7 @@ static auto should_run_full_speed() -> bool {
 
 auto linapple_init() -> void {
   mem_pre_initialize();
-  Asset_Init();
+  asset_init();
   video_create_color_mix_map();
   audio_mixer_initialize();
 
@@ -190,7 +190,7 @@ auto linapple_shutdown() -> void {
   audio_mixer_destroy();
   video_destroy();
   mem_destroy();
-  Asset_Quit();
+  asset_quit();
 }
 
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
@@ -312,7 +312,7 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
 
     if (g_video_cb != nullptr && g_frame_ready) {
       uint32_t* output = video_get_output_buffer();
-      g_video_cb(output, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_WIDTH * 4);
+      g_video_cb(output, video_width, video_height, video_width * 4);
       g_frame_ready = false;
     }
     return executed;

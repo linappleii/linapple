@@ -614,7 +614,7 @@ void DebuggerCursorUpdate() {
     DebuggerCursorNext();
 
     DrawConsoleCursor();
-    StretchBltMemToFrameDC();
+    stretch_blt_mem_to_frame_dc();
   } else {
     usleep(1000);  // Stop process hogging CPU
   }
@@ -665,7 +665,7 @@ void debugger_input_console_char(char ch) {
     DebuggerCursorNext();
 
     DrawConsoleInput();
-    StretchBltMemToFrameDC();
+    stretch_blt_mem_to_frame_dc();
   }
 }
 
@@ -735,7 +735,7 @@ void debugger_process_key(int keycode) {
       ConsoleInputBackSpace();
       DebuggerCursorNext();
       DrawConsoleInput();
-      StretchBltMemToFrameDC();
+      stretch_blt_mem_to_frame_dc();
     }
   } else if ((keycode == LINAPPLE_KEY_RETURN) ||
              (keycode == LINAPPLE_KEY_KP_ENTER)) {

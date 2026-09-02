@@ -12,7 +12,7 @@
 
 static constexpr const char* CONFIG_FILE_NAME = "linapple.conf";
 
-void AppEnv_ResolvePaths(AppConfig_t* config) {
+void app_env_resolve_paths(AppConfig_t* config) {
   if (config == nullptr) {
     return;
   }
@@ -50,13 +50,13 @@ void AppEnv_ResolvePaths(AppConfig_t* config) {
   // Fallback: if nothing loaded, use XDG path even if it doesn't exist yet
   if (!loaded) {
     finalPath = Path::get_user_config_dir() + CONFIG_FILE_NAME;
-    Path::EnsureDirExists(Path::get_user_config_dir());
+    Path::ensure_dir_exists(Path::get_user_config_dir());
     // We don't call Load() again here as we know it's not there or failed,
     // we just want to set the path where it *should* be saved later.
   }
 
   // Populate back to config
-  Util_SafeStrCpy(config->config_path.data(), finalPath.c_str(), path_max_len);
+  util_safe_strcpy(config->config_path.data(), finalPath.c_str(), path_max_len);
 
   // Consolidate Logger initialization
   Logger::initialize();

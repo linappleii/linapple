@@ -1,5 +1,6 @@
-#include <cstdint>
 #include <stdio.h>
+
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 #include <unistd.h>
@@ -67,7 +68,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   size_t size = sizeof(status);
 
   // Layer 3: User Toggle
-  Util_SafeStrCpy(cmd.path, f_user.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, f_user.c_str(), disk_insert_path_max);
   cmd.write_protected = true;
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
@@ -78,7 +79,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   // Layer 2: OS Read-Only
   if (getuid() != 0) {
     chmod(f_os.c_str(), 0444);
-    Util_SafeStrCpy(cmd.path, f_os.c_str(), disk_insert_path_max);
+    util_safe_strcpy(cmd.path, f_os.c_str(), disk_insert_path_max);
     cmd.write_protected = false;
     peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
     peripheral_manager_think(0);
@@ -88,7 +89,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   }
 
   // Layer 1: Format/Driver Capability
-  Util_SafeStrCpy(cmd.path, f_format.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, f_format.c_str(), disk_insert_path_max);
   cmd.write_protected = false;
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
@@ -97,7 +98,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   CHECK(status.drive0_write_protected != 0);
 
   // All clear: Writable
-  Util_SafeStrCpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
   cmd.write_protected = false;
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);

@@ -1,10 +1,11 @@
-#include "AppConfig.h"
+#include <cstddef>
 #include <cstring>
 #include <string>
-#include "DiskCommands.h"
-#include <cstddef>
-#include "Peripheral_Types.h"
+
+#include "AppConfig.h"
 #include "Apple2Types.h"
+#include "DiskCommands.h"
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
@@ -20,9 +21,9 @@
 
 TEST_CASE("AppController: Initialize and Shutdown") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
-  AppEnv_ResolvePaths(&config);
+  app_env_resolve_paths(&config);
   // Test initialization
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
@@ -33,12 +34,12 @@ TEST_CASE("AppController: Initialize and Shutdown") {
   CHECK(strlen(g_state.hdd_dir.data()) > 0);
   CHECK(strlen(g_state.save_state_dir.data()) > 0);
   // Test shutdown
-  AppController_Shutdown();
+  app_controller_shutdown();
 }
 
 TEST_CASE("AppController: Video Mode Reset") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   // 1. Init with PAL
   config.is_pal = true;
@@ -50,18 +51,18 @@ TEST_CASE("AppController: Video Mode Reset") {
   app_controller_initialize(&config);
   CHECK(g_videotype == VT_COLOR_STANDARD);
 
-  AppController_Shutdown();
+  app_controller_shutdown();
 }
 
 TEST_CASE("AppController: Media Loading") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
   std::string disk_path = Path::find_data_file("Master.dsk");
-  Util_SafeStrCpy(config.disk_path[0].data(), disk_path.c_str(), path_max_len);
+  util_safe_strcpy(config.disk_path[0].data(), disk_path.c_str(), path_max_len);
 
-  AppEnv_ResolvePaths(&config);
+  app_env_resolve_paths(&config);
   app_controller_initialize(&config);
-  AppController_LoadInitialMedia(&config);
+  app_controller_load_initial_media(&config);
 
   // Explicitly think a bit to process commands from LoadInitialMedia
   for (int i = 0; i < 500; ++i) {
@@ -77,12 +78,12 @@ TEST_CASE("AppController: Media Loading") {
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
 
-  AppController_Shutdown();
+  app_controller_shutdown();
 }
 
 TEST_CASE("AppController: Diagnostic Commands") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
   config.intent = INTENT_HELP;
 
   // We don't want to actually print help to stdout during tests usually,
@@ -104,8 +105,8 @@ TEST_CASE(
   }
 
   AppConfig_t config = {};
-  AppConfig_Default(&config);
-  Util_SafeStrCpy(config.config_path.data(), conf_path, path_max_len);
+  app_config_default(&config);
+  util_safe_strcpy(config.config_path.data(), conf_path, path_max_len);
 
   app_controller_initialize(&config);
 
@@ -113,6 +114,6 @@ TEST_CASE(
   CHECK(g_state.screen_width == 1120);
   CHECK(g_state.screen_height == 768);
 
-  AppController_Shutdown();
+  app_controller_shutdown();
   unlink(conf_path);
 }

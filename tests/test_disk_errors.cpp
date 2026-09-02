@@ -1,5 +1,6 @@
-#include <cstdint>
 #include <stdio.h>
+
+#include <cstdint>
 #include <string>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdio>
@@ -25,7 +26,7 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  Util_SafeStrCpy(cmd.path, "nonexistent_file.dsk", disk_insert_path_max);
+  util_safe_strcpy(cmd.path, "nonexistent_file.dsk", disk_insert_path_max);
 
   // Command usually returns OK because it's queued, but here internal
   // synchronously executes for local tests.
@@ -58,7 +59,7 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  Util_SafeStrCpy(cmd.path, garbage, disk_insert_path_max);
+  util_safe_strcpy(cmd.path, garbage, disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
@@ -83,13 +84,13 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
   cmd.drive = disk_drive_0;
 
   // First, cause an error
-  Util_SafeStrCpy(cmd.path, "missing.dsk", disk_insert_path_max);
+  util_safe_strcpy(cmd.path, "missing.dsk", disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
   // Now insert valid
   std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 

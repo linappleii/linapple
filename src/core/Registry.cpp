@@ -120,7 +120,7 @@ auto Configuration_t::load_defaults() -> void {
 auto Configuration_t::save() -> bool {
   if (path_.empty()) {
     std::string config_dir = Path::get_user_config_dir();
-    Path::EnsureDirExists(config_dir);
+    Path::ensure_dir_exists(config_dir);
     path_ = config_dir + "linapple.conf";
   }
 

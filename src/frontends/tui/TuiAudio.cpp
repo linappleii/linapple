@@ -36,7 +36,7 @@ static constexpr int pace_sleep_ms = 10;
 static constexpr int buffer_ms = 40;
 static constexpr int req_ms = 10;
 
-static void AudioThreadFunc() {
+static void audio_thread_func() {
   std::array<int16_t, chunk_frames * channels> stereo_buffer{};
 
   while (g_audio_running) {
@@ -107,7 +107,7 @@ auto tui_audio_initialize() -> void {
   }
 
   g_audio_running = true;
-  g_audio_thread = std::thread(AudioThreadFunc);
+  g_audio_thread = std::thread(audio_thread_func);
 }
 
 auto tui_audio_process_samples(const int16_t* samples, size_t num_samples)

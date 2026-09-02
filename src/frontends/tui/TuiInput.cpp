@@ -103,7 +103,7 @@ static auto soft_reset_machine() -> void {
   g_state.reset_timing = true;
 }
 
-static auto restart_machine() -> void { AppController_SetRestart(true); }
+static auto restart_machine() -> void { app_controller_set_restart(true); }
 
 static auto swap_drives() -> void {
   peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);

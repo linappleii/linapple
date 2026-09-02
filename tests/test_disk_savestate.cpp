@@ -31,7 +31,7 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
@@ -82,7 +82,7 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  Util_SafeStrCpy(cmd.path, temp_img, disk_insert_path_max);
+  util_safe_strcpy(cmd.path, temp_img, disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
@@ -118,7 +118,7 @@ TEST_CASE(
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
@@ -187,7 +187,7 @@ TEST_CASE(
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 

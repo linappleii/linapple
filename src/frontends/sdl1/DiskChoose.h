@@ -29,8 +29,8 @@ struct DiskChooseState_t {
   size_t* index_file_out;
 };
 
-void DiskChoose_Tick(SDL_Event* event);
-void DiskChoose_Draw();
+void disk_choose_tick(SDL_Event* event);
+void disk_choose_draw();
 
 auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                      std::string& filename, bool& isdir, size_t& index_file)

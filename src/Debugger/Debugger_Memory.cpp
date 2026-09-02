@@ -1231,7 +1231,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
 #endif
         // File path is too long
         // TODO: Need to split very long path names
-        Util_SafeStrCpy(text, sPaletteFilePath.c_str(), CONSOLE_WIDTH);
+        util_safe_strcpy(text, sPaletteFilePath.c_str(), CONSOLE_WIDTH);
         ConsoleBufferPush(text);  // TODO: Switch ConsoleBufferPush() to
                                   // ConsoleBufferPushFormat()
       } else {

@@ -85,7 +85,7 @@ static int g_frontend_pdl_trim_y = 0;
 
 static JoystickConfig_t g_joyConfig;
 
-void JoyFrontend_Initialize() {
+void joy_frontend_initialize() {
   constexpr int16_t AXIS_MIN = -32768; /* minimum value for axis coordinate */
   constexpr int16_t AXIS_MAX = 32767;  /* maximum value for axis coordinate */
 
@@ -174,7 +174,7 @@ void JoyFrontend_Initialize() {
   }
 }
 
-void JoyFrontend_ShutDown() {
+void joy_frontend_shutdown() {
   if (joy1) {
     SDL_CloseJoystick(joy1);
     joy1 = nullptr;
@@ -185,7 +185,7 @@ void JoyFrontend_ShutDown() {
   }
 }
 
-void JoyFrontend_CheckExit() {
+void joy_frontend_check_exit() {
   if (!joy1 || !g_joyConfig.joy_exit_enable) return;
   SDL_UpdateJoysticks();
   bool quit = SDL_GetJoystickButton(
@@ -201,7 +201,7 @@ void JoyFrontend_CheckExit() {
   }
 }
 
-void JoyFrontend_Update() {
+void joy_frontend_update() {
   // Joystick 0
   if (joy1 && joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
@@ -317,7 +317,7 @@ void JoyFrontend_Update() {
   }
 }
 
-void JoyFrontend_UpdateTrimViaKey(SDL_Keycode virtkey) {
+void joy_frontend_update_trim_via_key(SDL_Keycode virtkey) {
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP_2:
@@ -496,7 +496,7 @@ auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
   return keychange;
 }
 
-auto JoyFrontend_IsMouseEmulationActive() -> bool {
+auto joy_frontend_is_mouse_emulation_active() -> bool {
   if (g_joyConfig.joy_type[0] == 4 ||
       (g_joyConfig.joy_type[0] < joyinfo.size() &&
        joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_MOUSE)) {
@@ -510,7 +510,7 @@ auto JoyFrontend_IsMouseEmulationActive() -> bool {
   return false;
 }
 
-auto JoyFrontend_ProcessMouseMotion(int x, int max_x, int y, int max_y)
+auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
     -> void {
   int range_x = (max_x > 1) ? (max_x - 1) : 1;
   int range_y = (max_y > 1) ? (max_y - 1) : 1;
@@ -541,7 +541,7 @@ auto JoyFrontend_ProcessMouseMotion(int x, int max_x, int y, int max_y)
   }
 }
 
-auto JoyFrontend_ProcessMouseButton(int button, bool down) -> void {
+auto joy_frontend_process_mouse_button(int button, bool down) -> void {
   for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
     if (g_joyConfig.joy_type[joy_num] == 4 ||
         (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&

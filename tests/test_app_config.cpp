@@ -1,7 +1,8 @@
-#include "apple2/Apple2Types.h"
-#include "LinAppleCore.h"
-#include <cstring>
 #include <cstdint>
+#include <cstring>
+
+#include "LinAppleCore.h"
+#include "apple2/Apple2Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "core/Registry.h"
 #include "core/Util_Text.h"
@@ -10,7 +11,7 @@
 
 TEST_CASE("AppConfig_t: Initialization") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   CHECK(config.intent == INTENT_RUN);
   CHECK(config.apple2_type == A2TYPE_APPLE2EENHANCED);
@@ -26,10 +27,10 @@ TEST_CASE("AppConfig_t: Initialization") {
 
 TEST_CASE("AppConfig_t: Manual Population") {
   AppConfig_t config = {};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   config.intent = INTENT_DIAGNOSTIC;
-  Util_SafeStrCpy(config.disk_path[0].data(), "test.dsk", path_max_len);
+  util_safe_strcpy(config.disk_path[0].data(), "test.dsk", path_max_len);
   config.apple2_type = A2TYPE_APPLE2PLUS;
   config.is_pal = true;
 
@@ -74,4 +75,3 @@ TEST_CASE("Registry: Caps Lock Mode Config") {
   CHECK(config_load_int("Keyboard", "Caps Lock Mode", &val));
   CHECK(val == 1);
 }
-

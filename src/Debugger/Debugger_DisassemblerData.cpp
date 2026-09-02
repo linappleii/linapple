@@ -134,7 +134,7 @@ auto _CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
   // TODO: Note: need to call ConsoleUpdate(), as may print symbol has been
   // updated
 
-  Util_SafeStrCpy(tData_.sSymbol, pSymbolName, sizeof(tData_.sSymbol));
+  util_safe_strcpy(tData_.sSymbol, pSymbolName, sizeof(tData_.sSymbol));
 
   return address;
 }

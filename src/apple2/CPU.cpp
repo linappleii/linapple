@@ -91,9 +91,9 @@ uint32_t g_mean = 0;
 uint32_t g_min = UINT32_MAX_VAL;
 uint32_t g_max = 0;
 
-static inline void DoIrqProfiling(uint32_t cycles) { (void)cycles; }
+static inline void do_irq_profiling(uint32_t cycles) { (void)cycles; }
 
-static inline void Fetch(uint8_t& opcode, uint32_t executed_cycles) {
+static inline void fetch_opcode(uint8_t& opcode, uint32_t executed_cycles) {
   const uint16_t PC = regs.pc;
   g_internal_executed_cycles = executed_cycles;
 
@@ -105,7 +105,7 @@ static inline void Fetch(uint8_t& opcode, uint32_t executed_cycles) {
 }
 
 template <bool is_cmos>
-static auto CpuExecuteLoop(uint32_t total_cycles) -> uint32_t {
+static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
   uint16_t addr = 0;
   uint8_t flagc = (regs.ps & AF_CARRY);
   uint8_t flagn = (regs.ps & AF_SIGN);
@@ -786,7 +786,7 @@ static auto CpuExecuteLoop(uint32_t total_cycles) -> uint32_t {
     uint16_t extra_cycles = 0;
     uint8_t opcode = 0;
 
-    Fetch(opcode, executed_cycles);
+    fetch_opcode(opcode, executed_cycles);
 
     switch (opcode) {
       case 0x00:
@@ -1222,7 +1222,7 @@ static auto CpuExecuteLoop(uint32_t total_cycles) -> uint32_t {
         break;
       case 0x40:
         op_rti();
-        DoIrqProfiling(executed_cycles);
+        do_irq_profiling(executed_cycles);
         executed_cycles += 6 + extra_cycles;
         break;
       case 0x41:
@@ -2546,12 +2546,12 @@ static auto CpuExecuteLoop(uint32_t total_cycles) -> uint32_t {
   return executed_cycles;
 }
 
-static auto InternalCpuExecute(uint32_t total_cycles) -> uint32_t {
+static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
   if (IS_APPLE2() || (g_apple2_type == A2TYPE_APPLE2E)) {
-    return CpuExecuteLoop<false>(
+    return cpu_execute_loop<false>(
         total_cycles);  // Apple ][, ][+, //e (NMOS 6502)
   } else {
-    return CpuExecuteLoop<true>(
+    return cpu_execute_loop<true>(
         total_cycles);  // Enhanced Apple //e (CMOS 65C02)
   }
 }
@@ -2592,9 +2592,9 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   g_cycles_executed = 0;
 
   if (total_cycles == 0) {  // Do single step
-    executed_cycles = InternalCpuExecute(0);
+    executed_cycles = internal_cpu_execute(0);
   } else {  // Do multi-opcode emulation
-    executed_cycles = InternalCpuExecute(total_cycles);
+    executed_cycles = internal_cpu_execute(total_cycles);
   }
 
   uint32_t remaining_cycles = executed_cycles - g_cycles_executed;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
@@ -40,7 +40,7 @@ auto setup_disk_io_test(const char* fixture_name) -> void {
   }
 
   std::string fixture = repo_root + "/tests/fixtures/" + fixture_name;
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
   // Turn on motor so rotation works

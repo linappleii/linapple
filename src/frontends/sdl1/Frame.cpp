@@ -94,7 +94,7 @@ void draw_status_area(int drawflags);
 // semantically distinct
 void process_button_click(int button, int mod);
 
-void ResetMachineState();
+void reset_machine_state();
 
 void set_fullscreen_mode();
 
@@ -102,7 +102,7 @@ void set_normal_mode();
 
 void set_using_cursor(bool);
 
-void SetIcon();
+void set_icon();
 
 bool g_scroll_lock_full_speed = false;
 
@@ -526,7 +526,7 @@ void frame_on_expose() {
   }
 }
 
-auto PSP_SaveStateSelectImage(bool saveit) -> bool {
+auto psp_save_state_select_image(bool saveit) -> bool {
   static size_t fileIndex = 0;
   static int backdx = 0;
   static int dirdx = 0;
@@ -566,8 +566,8 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
       }
     }
   }
-  Util_SafeStrCpy(g_state.save_state_dir.data(), fullPath.c_str(),
-                  g_state.save_state_dir.size());
+  util_safe_strcpy(g_state.save_state_dir.data(), fullPath.c_str(),
+                   g_state.save_state_dir.size());
   Configuration_t::instance().set_string("Preferences", "Save State Directory",
                                          g_state.save_state_dir.data());
   Configuration_t::instance().save();
@@ -584,7 +584,7 @@ auto PSP_SaveStateSelectImage(bool saveit) -> bool {
   return true;
 }
 
-void FrameSaveBMP() {
+void frame_save_bmp() {
   // Save current g_screen as a .bmp file in current directory
   struct stat bufp{};
   static int i = 1;
@@ -622,7 +622,7 @@ void process_button_click(int button, int mod) {
         if (g_state.mode == MODE_LOGO) {
           peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
         } else if (g_state.mode == MODE_RUNNING) {
-          ResetMachineState();
+          reset_machine_state();
         }
         if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING)) {
           debug_end();
@@ -730,7 +730,7 @@ void process_button_click(int button, int mod) {
         Configuration_t::instance().save();
 
       } else {
-        FrameSaveBMP();
+        frame_save_bmp();
       }
       break;
 
@@ -762,7 +762,7 @@ void process_button_click(int button, int mod) {
     case btn_savest:
       if ((mod & KMOD_ALT) != 0) {
         save_state_save();
-      } else if (PSP_SaveStateSelectImage(true)) {
+      } else if (psp_save_state_select_image(true)) {
         save_state_save();
       }
       break;
@@ -779,7 +779,7 @@ void process_button_click(int button, int mod) {
         cpu_reset();
       } else if ((mod & KMOD_ALT) != 0) {
         save_state_load();
-      } else if (PSP_SaveStateSelectImage(false)) {
+      } else if (psp_save_state_select_image(false)) {
         save_state_load();
       }
       break;
@@ -792,9 +792,10 @@ void process_button_click(int button, int mod) {
   }
 }
 
-void ResetMachineState() {
-  g_full_speed = false;  // Might've hit reset in middle of InternalCpuExecute()
-                         // - so beep may get (partially) muted
+void reset_machine_state() {
+  g_full_speed =
+      false;  // Might've hit reset in middle of internal_cpu_execute()
+              // - so beep may get (partially) muted
 
   mem_reset();
   peripheral_manager_reset();
@@ -847,11 +848,11 @@ void set_using_cursor(bool newvalue) {
   }
 }
 
-extern void SDL_Asset_LoadIcon();
-extern void SDL_Asset_FreeIcon();
+extern void sdl_asset_load_icon();
+extern void sdl_asset_free_icon();
 
 auto frame_create_window() -> int {
-  SDL_Asset_LoadIcon();
+  sdl_asset_load_icon();
   is_full_screened = false;
   if (!g_state.fullscreen) {
     s_windowed_width = g_state.screen_width;
@@ -874,7 +875,7 @@ auto frame_create_window() -> int {
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
 
   SDL_WM_SetCaption(g_app_title, g_app_title);
-  SetIcon();
+  set_icon();
 
   g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
                      (g_state.screen_height != SCREEN_HEIGHT);
@@ -895,10 +896,10 @@ void frame_destroy_window() {
     g_texture = nullptr;
   }
   g_screen = nullptr;
-  SDL_Asset_FreeIcon();
+  sdl_asset_free_icon();
 }
 
-void SetIcon() {
+void set_icon() {
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
   auto* icon = static_cast<SDL_Surface*>(assets->icon);

@@ -48,7 +48,7 @@ TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
   cmd.drive = disk_drive_0;
   cmd.write_protected = false;
   std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
-  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
 
   peripheral_manager_think(0);

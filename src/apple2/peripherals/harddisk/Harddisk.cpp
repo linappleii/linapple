@@ -162,7 +162,7 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
   if (last_sep != nullptr) {
     start_pos = last_sep + 1;
   }
-  Util_SafeStrCpy(title, start_pos, harddisk_status_path_max);
+  util_safe_strcpy(title, start_pos, harddisk_status_path_max);
 
   bool found_lower = false;
   int title_length = 0;
@@ -181,14 +181,14 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
     }
   }
 
-  Util_SafeStrCpy(drive_ptr->full_path, path, harddisk_status_path_max);
+  util_safe_strcpy(drive_ptr->full_path, path, harddisk_status_path_max);
 
   char* extension_dot = strrchr(title, '.');
   if (extension_dot != nullptr && extension_dot > title) {
     *extension_dot = '\0';
   }
 
-  Util_SafeStrCpy(drive_ptr->image_name, title, harddisk_status_name_max);
+  util_safe_strcpy(drive_ptr->image_name, title, harddisk_status_name_max);
 }
 
 // Why: Orchestrates the safe ejection of a hard disk image.
@@ -575,18 +575,18 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
       status_ptr->drive0_last_error = static_cast<int32_t>(d.last_error);
       status_ptr->drive0_loaded = d.is_loaded ? 1 : 0;
       status_ptr->drive0_write_protected = is_protected ? 1 : 0;
-      Util_SafeStrCpy(status_ptr->drive0_name, d.image_name,
-                      harddisk_status_name_max);
-      Util_SafeStrCpy(status_ptr->drive0_full_path, d.full_path,
-                      harddisk_status_path_max);
+      util_safe_strcpy(status_ptr->drive0_name, d.image_name,
+                       harddisk_status_name_max);
+      util_safe_strcpy(status_ptr->drive0_full_path, d.full_path,
+                       harddisk_status_path_max);
     } else {
       status_ptr->drive1_last_error = static_cast<int32_t>(d.last_error);
       status_ptr->drive1_loaded = d.is_loaded ? 1 : 0;
       status_ptr->drive1_write_protected = is_protected ? 1 : 0;
-      Util_SafeStrCpy(status_ptr->drive1_name, d.image_name,
-                      harddisk_status_name_max);
-      Util_SafeStrCpy(status_ptr->drive1_full_path, d.full_path,
-                      harddisk_status_path_max);
+      util_safe_strcpy(status_ptr->drive1_name, d.image_name,
+                       harddisk_status_name_max);
+      util_safe_strcpy(status_ptr->drive1_full_path, d.full_path,
+                       harddisk_status_path_max);
     }
   }
 

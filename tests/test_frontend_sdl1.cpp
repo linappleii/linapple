@@ -119,7 +119,7 @@ TEST_CASE("SDL1 Frontend Help Screen Quit Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -153,7 +153,7 @@ TEST_CASE("SDL1 Frontend Help Screen Key Down Dismissal") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -304,7 +304,7 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
       0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
   g_diskChooseState.list_handle = nullptr;
 
-  DiskChoose_Draw();
+  disk_choose_draw();
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -351,7 +351,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -389,7 +389,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -431,7 +431,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -474,7 +474,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);

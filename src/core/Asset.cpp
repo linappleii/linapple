@@ -91,7 +91,7 @@ static auto asset_find_master_disk(char* path_out, size_t max_len) -> int {
     return 255;
   }
 
-  Util_SafeStrCpy(path_out, full_path.c_str(), max_len);
+  util_safe_strcpy(path_out, full_path.c_str(), max_len);
   Logger::info("Master disk: %s\n", path_out);
   return 0;
 }
@@ -108,7 +108,7 @@ auto asset_insert_master_disk() -> int {
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  Util_SafeStrCpy(cmd.path, path, disk_insert_path_max);
+  util_safe_strcpy(cmd.path, path, disk_insert_path_max);
   cmd.write_protected = 0;
   cmd.create_if_necessary = 0;
 

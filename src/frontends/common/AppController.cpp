@@ -31,8 +31,8 @@ void keyboard_set_caps_mode(int mode);
 
 static bool s_initialized = false;
 
-static void InitializeDirectory(const char* reg_key, char* target_buffer,
-                                size_t buffer_size) {
+static void initialize_directory(const char* reg_key, char* target_buffer,
+                                 size_t buffer_size) {
   std::string path =
       Configuration_t::instance().get_string("Preferences", reg_key);
   if (path.empty()) {
@@ -43,8 +43,8 @@ static void InitializeDirectory(const char* reg_key, char* target_buffer,
     while (path.size() > 1 && path.back() == '/') {
       path.pop_back();
     }
-    Util_SafeStrCpy(target_buffer, path.c_str(), buffer_size);
-    Path::EnsureDirExists(path);
+    util_safe_strcpy(target_buffer, path.c_str(), buffer_size);
+    Path::ensure_dir_exists(path);
   }
 }
 
@@ -55,11 +55,11 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   // Idempotency: ensure we start from a clean state if called multiple times
   if (s_initialized) {
-    AppController_Shutdown();
+    app_controller_shutdown();
   }
 
   // 1. Resolve paths and init Registry/Logger
-  AppEnv_ResolvePaths(config);
+  app_env_resolve_paths(config);
 
   // 2. Init Core
   linapple_init();
@@ -129,12 +129,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   save_state_startup();
 
   // 5. Initialize directories
-  InitializeDirectory(REGVALUE_PREF_START_DIR, &g_state.current_dir[0],
-                      sizeof(g_state.current_dir));
-  InitializeDirectory(REGVALUE_PREF_HDD_START_DIR, &g_state.hdd_dir[0],
-                      sizeof(g_state.hdd_dir));
-  InitializeDirectory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
-                      sizeof(g_state.save_state_dir));
+  initialize_directory(REGVALUE_PREF_START_DIR, &g_state.current_dir[0],
+                       sizeof(g_state.current_dir));
+  initialize_directory(REGVALUE_PREF_HDD_START_DIR, &g_state.hdd_dir[0],
+                       sizeof(g_state.hdd_dir));
+  initialize_directory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
+                       sizeof(g_state.save_state_dir));
 
   frontend_update_keyboard_mapping();
   if (config->caps_lock_mode >= 0) {
@@ -142,8 +142,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   if (config->debugger_script.at(0) != '\0') {
-    Util_SafeStrCpy(&g_state.debugger_script[0], config->debugger_script.data(),
-                    path_max_len);
+    util_safe_strcpy(&g_state.debugger_script[0],
+                     config->debugger_script.data(), path_max_len);
   }
 
   g_state.mode = MODE_RUNNING;
@@ -219,7 +219,7 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
   }
 
   if (config->intent == INTENT_HELP) {
-    AppArgs_PrintHelp();
+    app_args_print_help();
     return true;
   }
 
@@ -264,7 +264,7 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
   return false;
 }
 
-void AppController_LoadInitialMedia(const AppConfig_t* config) {
+void app_controller_load_initial_media(const AppConfig_t* config) {
   if (config == nullptr) return;
 
   // 1. Load Disks or Programs via probing
@@ -288,8 +288,8 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
         // It's a disk image (or at least not a program)
         DiskInsertCmd_t cmd = {};
         cmd.drive = static_cast<uint8_t>(i);
-        Util_SafeStrCpy(&cmd.path[0], actual_path.c_str(),
-                        disk_insert_path_max);
+        util_safe_strcpy(&cmd.path[0], actual_path.c_str(),
+                         disk_insert_path_max);
         peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                            sizeof(cmd));
       }
@@ -310,7 +310,7 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
     if (path != nullptr && *path != '\0') {
       HarddiskInsertCmd_t hcmd{};
       hcmd.drive = static_cast<uint8_t>(i);
-      Util_SafeStrCpy(&hcmd.path[0], path, sizeof(hcmd.path));
+      util_safe_strcpy(&hcmd.path[0], path, sizeof(hcmd.path));
       peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
                          sizeof(hcmd));
     }
@@ -326,7 +326,7 @@ void AppController_LoadInitialMedia(const AppConfig_t* config) {
   }
 }
 
-void AppController_Shutdown() {
+void app_controller_shutdown() {
   if (!s_initialized) return;
 
   basic_sync_shutdown();
@@ -339,4 +339,4 @@ void AppController_Shutdown() {
 
 auto app_controller_should_restart() -> bool { return g_state.restart; }
 
-void AppController_SetRestart(bool restart) { g_state.restart = restart; }
+void app_controller_set_restart(bool restart) { g_state.restart = restart; }

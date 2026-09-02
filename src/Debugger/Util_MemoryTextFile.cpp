@@ -54,8 +54,8 @@ auto MemoryTextFile_t::GetLine(const int line_index, char* line_out,
   }
 
   memset(line_out, 0, static_cast<size_t>(max_chars));
-  Util_SafeStrCpy(line_out, lines_.at(static_cast<size_t>(line_index)),
-                  max_chars - 1);
+  util_safe_strcpy(line_out, lines_.at(static_cast<size_t>(line_index)),
+                   max_chars - 1);
 }
 
 // cr/new lines are converted into null, string terminators

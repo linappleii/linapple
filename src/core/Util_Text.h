@@ -161,7 +161,7 @@ inline auto text_is_hex_string(const char* text) -> bool {
   return true;
 }
 
-inline void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
+inline void util_safe_strcpy(char* dest, const char* src, size_t size) {
   if (size == 0) {
     return;
   }

@@ -59,7 +59,7 @@ static const std::array<struct option, 29> OptionTable = {
 
 static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
 
-void AppArgs_PrintHelp() {
+void app_args_print_help() {
 #ifdef LINAPPLE_FRONTEND_NAME
   printf("LinApple Emulator (Frontend: %s)\n", LINAPPLE_FRONTEND_NAME);
 #else
@@ -114,7 +114,7 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
   if (outConfig == nullptr) {
     return -1;
   }
-  AppConfig_Default(outConfig);
+  app_config_default(outConfig);
 
   int opt = -1;
   int opt_idx = -1;
@@ -125,19 +125,19 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
                             &opt_idx)) != -1) {
     switch (opt) {
       case '1':
-        Util_SafeStrCpy(outConfig->disk_path.at(0).data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->disk_path.at(0).data(), optarg,
+                         path_max_len);
         break;
       case '2':
-        Util_SafeStrCpy(outConfig->disk_path.at(1).data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->disk_path.at(1).data(), optarg,
+                         path_max_len);
         break;
       case 'a':
       case 'b':
         outConfig->is_boot = true;
         break;
       case 'c':
-        Util_SafeStrCpy(outConfig->config_path.data(), optarg, path_max_len);
+        util_safe_strcpy(outConfig->config_path.data(), optarg, path_max_len);
         break;
       case 'f':
         outConfig->is_fullscreen = true;
@@ -153,21 +153,21 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         outConfig->is_pal = true;
         break;
       case 'P':
-        Util_SafeStrCpy(outConfig->program_path.data(), optarg, path_max_len);
+        util_safe_strcpy(outConfig->program_path.data(), optarg, path_max_len);
         break;
       case 's':
-        Util_SafeStrCpy(outConfig->snapshot_path.data(), optarg, path_max_len);
+        util_safe_strcpy(outConfig->snapshot_path.data(), optarg, path_max_len);
         break;
       case 'v':
         outConfig->is_verbose = true;
         Logger::set_verbosity(LogLevel_t::k_perf);
         break;
       case 'x':
-        Util_SafeStrCpy(outConfig->debugger_script.data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->debugger_script.data(), optarg,
+                         path_max_len);
         break;
       case 'T':
-        Util_SafeStrCpy(outConfig->test_cpu_file.data(), optarg, path_max_len);
+        util_safe_strcpy(outConfig->test_cpu_file.data(), optarg, path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case 'X':
@@ -183,32 +183,32 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         outConfig->apple2_type_explicit = true;
         break;
       case 'A':
-        Util_SafeStrCpy(outConfig->audio_dump_path.data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->audio_dump_path.data(), optarg,
+                         path_max_len);
         break;
       case opt_list_hardware:
         outConfig->is_list_hardware = true;
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case opt_hardware_info:
-        Util_SafeStrCpy(outConfig->hardware_info_name.data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->hardware_info_name.data(), optarg,
+                         path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
       case opt_no_debugger:
         outConfig->disable_debugger = true;
         break;
       case opt_hd1:
-        Util_SafeStrCpy(outConfig->harddisk_path.at(0).data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->harddisk_path.at(0).data(), optarg,
+                         path_max_len);
         break;
       case opt_hd2:
-        Util_SafeStrCpy(outConfig->harddisk_path.at(1).data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->harddisk_path.at(1).data(), optarg,
+                         path_max_len);
         break;
       case opt_basic_sync:
-        Util_SafeStrCpy(outConfig->basic_sync_file.data(), optarg,
-                        path_max_len);
+        util_safe_strcpy(outConfig->basic_sync_file.data(), optarg,
+                         path_max_len);
         break;
       case opt_basic_line_mode:
         if (std::strcmp(optarg, "positional") == 0 ||

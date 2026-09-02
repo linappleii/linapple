@@ -53,8 +53,8 @@ void disk_select_image(int drive, char* pszFilename) {
       }
     }
   }
-  Util_SafeStrCpy(g_state.current_dir.data(), fullPath.c_str(),
-                  g_state.current_dir.size());
+  util_safe_strcpy(g_state.current_dir.data(), fullPath.c_str(),
+                   g_state.current_dir.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
                                          g_state.current_dir.data());
   Configuration_t::instance().save();
@@ -63,7 +63,7 @@ void disk_select_image(int drive, char* pszFilename) {
 
   DiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  Util_SafeStrCpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
+  util_safe_strcpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
 

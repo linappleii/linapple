@@ -35,30 +35,17 @@ constexpr int STATUS_PANEL_H = 48;
 
 using ColorRef_t = uint32_t;
 
-using Point_t = struct Point_tag {
+struct Point_t {
   int32_t x;
   int32_t y;
 };
 
-using Rect_t = struct Rect_tag {
+struct Rect_t {
   int32_t left;
   int32_t top;
   int32_t right;
   int32_t bottom;
 };
-
-// Legacy macros for compatibility
-#define APPLE2_VISIBLE_WIDTH apple2_visible_width
-#define APPLE2_VISIBLE_HEIGHT apple2_visible_height
-#define VIDEO_SCALE_FACTOR video_scale_factor
-#define VIDEO_WIDTH video_width
-#define VIDEO_HEIGHT video_height
-#define TEXT_COLUMNS text_columns
-#define TEXT_ROWS text_rows
-#define DIRTY_CELL_ROWS dirty_cell_rows
-#define MAX_PALETTE_SIZE max_palette_size
-#define DEFAULT_GRAY_COMPONENT default_gray_component
-#define HGR_MATRIX_YOFFSET hgr_matrix_yoffset
 
 enum VideoType_t {
   VT_MONO_CUSTOM,

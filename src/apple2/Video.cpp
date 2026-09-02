@@ -55,14 +55,20 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "core/Util_Text.h"
 #include "frontends/common/VideoStretch.h"
 
-static uint32_t g_video_output[VIDEO_WIDTH * VIDEO_HEIGHT] = {};
+static uint32_t g_video_output[video_width * video_height] = {};
 static bool s_language_rocker_switch = false;
 
 auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
 
-#define GetRValue(rgb) ((uint8_t)(rgb))
-#define GetGValue(rgb) ((uint8_t)(((uint16_t)(rgb)) >> 8))
-#define GetBValue(rgb) ((uint8_t)((rgb) >> 16))
+static inline auto get_r_value(uint32_t rgb) -> uint8_t {
+  return static_cast<uint8_t>(rgb & 0xFF);
+}
+static inline auto get_g_value(uint32_t rgb) -> uint8_t {
+  return static_cast<uint8_t>((rgb >> 8) & 0xFF);
+}
+static inline auto get_b_value(uint32_t rgb) -> uint8_t {
+  return static_cast<uint8_t>((rgb >> 16) & 0xFF);
+}
 #define FLASH_80_COL 1
 
 const int SRCOFFS_40COL = 0;
@@ -96,18 +102,18 @@ const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
     video_soft_stretch(SRC, &srcrect, DST, &dstrect);                         \
   }
 
-#define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
-                        DST_W, DST_H)                                       \
-  {                                                                         \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                     \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                     \
-    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);      \
+#define soft_stretch_mono(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
+                          DST_W, DST_H, hBrush)                               \
+  {                                                                           \
+    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
+    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
+    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);        \
   }
 
-#define SETSOURCEPIXEL(x, y, c) g_source_start_of_line[(y)][(x)] = (c)
-#define SETFRAMECOLOR(i, r1, g1, b1) \
-  framebufferinfo[i].r = r1;         \
-  framebufferinfo[i].g = g1;         \
+#define set_source_pixel(x, y, c) g_source_start_of_line[(y)][(x)] = (c)
+#define set_frame_color(i, r1, g1, b1) \
+  framebufferinfo[i].r = r1;           \
+  framebufferinfo[i].g = g1;           \
   framebufferinfo[i].b = b1;
 
 // video scanner constants
@@ -122,17 +128,17 @@ int const kVPresetLine = 256;    // line when V state presets
 
 using UpdateFunc_t = bool (*)(int, int, int, int, int);
 
-static uint8_t celldirty[TEXT_COLUMNS][DIRTY_CELL_ROWS] = {};
+static uint8_t celldirty[text_columns][dirty_cell_rows] = {};
 static uint32_t customcolors[NUM_COLOR_PALETTE] =
     {};  // MONOCHROME is last custom color
 
 VideoSurface_t* g_device_bitmap;
 static uint8_t* framebufferbits;
-VideoColor_t framebufferinfo[MAX_PALETTE_SIZE] = {};
+VideoColor_t framebufferinfo[max_palette_size] = {};
 
 auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
 
-static uint8_t* frameoffsettable[VIDEO_HEIGHT] = {};
+static uint8_t* frameoffsettable[video_height] = {};
 static uint8_t* g_hires_bank1;
 static uint8_t* g_hires_bank0;
 
@@ -147,14 +153,14 @@ VideoSurface_t* g_origscreen = nullptr;
 VideoSurface_t* g_source_bitmap = nullptr;
 
 static uint8_t* g_source_pixels;
-VideoColor_t g_source_header[MAX_PALETTE_SIZE] = {};
+VideoColor_t g_source_header[max_palette_size] = {};
 const int MAX_SOURCE_Y = 512 * 2;
 static uint8_t* g_source_start_of_line[MAX_SOURCE_Y] = {};
 static uint8_t* g_text_bank1;
 static uint8_t* g_text_bank0;
 
-static uint8_t hgrpixelmatrix[APPLE2_VISIBLE_WIDTH]
-                             [APPLE2_VISIBLE_HEIGHT + 2 * HGR_MATRIX_YOFFSET] =
+static uint8_t hgrpixelmatrix[apple2_visible_width]
+                             [apple2_visible_height + 2 * hgr_matrix_yoffset] =
                                  {};
 static uint8_t colormixbuffer[6] = {};
 static uint16_t colormixmap[6][6][6] = {};
@@ -168,7 +174,7 @@ bool graphicsmode = false;
 static volatile bool hasrefreshed = false;
 static uint32_t lastpageflip = 0;
 uint32_t monochrome =
-    RGB(DEFAULT_GRAY_COMPONENT, DEFAULT_GRAY_COMPONENT, DEFAULT_GRAY_COMPONENT);
+    RGB(default_gray_component, default_gray_component, default_gray_component);
 static bool redrawfull = true;
 static std::unique_ptr<uint8_t[], void (*)(void*)> vidlastmem(nullptr, free);
 uint32_t g_video_mode = VF_TEXT;
@@ -183,17 +189,17 @@ static bool g_text_flash_flag = false;
 
 bool g_show_leds = true;
 
-auto DrawDHiResSource() -> void;
-auto DrawHiResSource() -> void;
-auto DrawHiResSourceHalfShiftFull() -> void;
-auto DrawHiResSourceHalfShiftDim() -> void;
-auto DrawLoResSource() -> void;
-auto DrawMonoDHiResSource() -> void;
-auto DrawMonoHiResSource() -> void;
-auto DrawMonoLoResSource() -> void;
-auto DrawMonoTextSource(VideoSurface_t* dc) -> void;
-auto DrawTextSource(VideoSurface_t* dc) -> void;
-auto LoadCharset() -> VideoSurface_t*;
+auto draw_dhires_source() -> void;
+auto draw_hires_source() -> void;
+auto draw_hires_source_half_shift_full() -> void;
+auto draw_hires_source_half_shift_dim() -> void;
+auto draw_lores_source() -> void;
+auto draw_mono_dhires_source() -> void;
+auto draw_mono_hires_source() -> void;
+auto draw_mono_lores_source() -> void;
+auto draw_mono_text_source(VideoSurface_t* dc) -> void;
+auto draw_text_source(VideoSurface_t* dc) -> void;
+auto load_charset() -> VideoSurface_t*;
 
 auto video_init_worker() -> bool;
 
@@ -207,8 +213,8 @@ std::condition_variable video_cv;
 
 static char display_pipeline_[0x2000 * 4 + 0x400 * 4] = {};
 
-auto CopySource(int destx, int desty, int xsize, int ysize, int sourcex,
-                int sourcey) -> void {
+auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
+                 int sourcey) -> void {
   uint8_t* currdestptr = frameoffsettable[desty] + destx;
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
   while (ysize--) {
@@ -222,92 +228,92 @@ auto CopySource(int destx, int desty, int xsize, int ysize, int sourcex,
   }
 }
 
-void CreateFrameOffsetTable(uint8_t* addr, int pitch) {
+void create_frame_offset_table(uint8_t* addr, int pitch) {
   if (framebufferaddr == addr && framebufferpitch == pitch) {
     return;
   }
   framebufferaddr = addr;
   framebufferpitch = pitch;
 
-  for (uint32_t loop = 0; loop < VIDEO_HEIGHT; loop++) {
+  for (uint32_t loop = 0; loop < video_height; loop++) {
     frameoffsettable[loop] =
         framebufferaddr + static_cast<ptrdiff_t>(framebufferpitch * loop);
   }
 }
 
-void CreateIdentityPalette() {
-  memset(framebufferinfo, 0, MAX_PALETTE_SIZE * sizeof(VideoColor_t));
-  SETFRAMECOLOR(DEEP_RED, 0xD0, 0x00, 0x30);
-  SETFRAMECOLOR(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
-  SETFRAMECOLOR(BROWN, 0x80, 0x50, 0x00);
-  SETFRAMECOLOR(ORANGE, 0xFF, 0x80, 0x00);
-  SETFRAMECOLOR(PINK, 0xFF, 0x90, 0x80);
-  SETFRAMECOLOR(AQUA, 0x40, 0xFF, 0x90);
+void create_identity_palette() {
+  memset(framebufferinfo, 0, max_palette_size * sizeof(VideoColor_t));
+  set_frame_color(DEEP_RED, 0xD0, 0x00, 0x30);
+  set_frame_color(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
+  set_frame_color(BROWN, 0x80, 0x50, 0x00);
+  set_frame_color(ORANGE, 0xFF, 0x80, 0x00);
+  set_frame_color(PINK, 0xFF, 0x90, 0x80);
+  set_frame_color(AQUA, 0x40, 0xFF, 0x90);
 
-  SETFRAMECOLOR(HGR_BLACK, 0x00, 0x00, 0x00);
-  SETFRAMECOLOR(HGR_WHITE, 0xFF, 0xFF, 0xFE);
-  SETFRAMECOLOR(HGR_BLUE, 0x00, 0x80, 0xFF);
-  SETFRAMECOLOR(HGR_RED, 0xF0, 0x50, 0x00);
-  SETFRAMECOLOR(HGR_GREEN, 0x20, 0xC0, 0x00);
-  SETFRAMECOLOR(HGR_MAGENTA, 0xA0, 0x00, 0xFF);
-  SETFRAMECOLOR(HGR_GREY1, 0x80, 0x80, 0x80);
-  SETFRAMECOLOR(HGR_GREY2, 0x80, 0x80, 0x80);
-  SETFRAMECOLOR(HGR_YELLOW, 0xD0, 0xB0, 0x10);
-  SETFRAMECOLOR(HGR_AQUA, 0x20, 0xB0, 0xB0);
-  SETFRAMECOLOR(HGR_PURPLE, 0x60, 0x50, 0xE0);
-  SETFRAMECOLOR(HGR_PINK, 0xD0, 0x40, 0xA0);
+  set_frame_color(HGR_BLACK, 0x00, 0x00, 0x00);
+  set_frame_color(HGR_WHITE, 0xFF, 0xFF, 0xFE);
+  set_frame_color(HGR_BLUE, 0x00, 0x80, 0xFF);
+  set_frame_color(HGR_RED, 0xF0, 0x50, 0x00);
+  set_frame_color(HGR_GREEN, 0x20, 0xC0, 0x00);
+  set_frame_color(HGR_MAGENTA, 0xA0, 0x00, 0xFF);
+  set_frame_color(HGR_GREY1, 0x80, 0x80, 0x80);
+  set_frame_color(HGR_GREY2, 0x80, 0x80, 0x80);
+  set_frame_color(HGR_YELLOW, 0xD0, 0xB0, 0x10);
+  set_frame_color(HGR_AQUA, 0x20, 0xB0, 0xB0);
+  set_frame_color(HGR_PURPLE, 0x60, 0x50, 0xE0);
+  set_frame_color(HGR_PINK, 0xD0, 0x40, 0xA0);
 
-  SETFRAMECOLOR(MONOCHROME_CUSTOM, GetRValue(monochrome), GetGValue(monochrome),
-                GetBValue(monochrome));
+  set_frame_color(MONOCHROME_CUSTOM, get_r_value(monochrome),
+                  get_g_value(monochrome), get_b_value(monochrome));
 
-  SETFRAMECOLOR(MONOCHROME_AMBER, 0xFF, 0x80, 0x00);
-  SETFRAMECOLOR(MONOCHROME_GREEN, 0x00, 0xC0, 0x00);
-  SETFRAMECOLOR(MONOCHROME_WHITE, 0xFF, 0xFF, 0xFF);
-  SETFRAMECOLOR(BLACK, 0x00, 0x00, 0x00);
-  SETFRAMECOLOR(DARK_RED, 0x80, 0x00, 0x00);
-  SETFRAMECOLOR(DARK_GREEN, 0x00, 0x80, 0x00);
-  SETFRAMECOLOR(DARK_YELLOW, 0x80, 0x80, 0x00);
-  SETFRAMECOLOR(DARK_BLUE, 0x00, 0x00, 0x80);
-  SETFRAMECOLOR(DARK_MAGENTA, 0x80, 0x00, 0x80);
-  SETFRAMECOLOR(DARK_CYAN, 0x00, 0x80, 0x80);
-  SETFRAMECOLOR(LIGHT_GRAY, 0xC0, 0xC0, 0xC0);
-  SETFRAMECOLOR(MONEY_GREEN, 0xC0, 0xDC, 0xC0);
-  SETFRAMECOLOR(SKY_BLUE, 0xA6, 0xCA, 0xF0);
-  SETFRAMECOLOR(CREAM, 0xFF, 0xFB, 0xF0);
-  SETFRAMECOLOR(MEDIUM_GRAY, 0xA0, 0xA0, 0xA4);
-  SETFRAMECOLOR(DARK_GRAY, 0x80, 0x80, 0x80);
-  SETFRAMECOLOR(RED, 0xFF, 0x00, 0x00);
-  SETFRAMECOLOR(GREEN, 0x00, 0xFF, 0x00);
-  SETFRAMECOLOR(YELLOW, 0xFF, 0xFF, 0x00);
-  SETFRAMECOLOR(BLUE, 0x00, 0x00, 0xFF);
-  SETFRAMECOLOR(MAGENTA, 0xFF, 0x00, 0xFF);
-  SETFRAMECOLOR(CYAN, 0x00, 0xFF, 0xFF);
-  SETFRAMECOLOR(WHITE, 0xFF, 0xFF, 0xFF);
+  set_frame_color(MONOCHROME_AMBER, 0xFF, 0x80, 0x00);
+  set_frame_color(MONOCHROME_GREEN, 0x00, 0xC0, 0x00);
+  set_frame_color(MONOCHROME_WHITE, 0xFF, 0xFF, 0xFF);
+  set_frame_color(BLACK, 0x00, 0x00, 0x00);
+  set_frame_color(DARK_RED, 0x80, 0x00, 0x00);
+  set_frame_color(DARK_GREEN, 0x00, 0x80, 0x00);
+  set_frame_color(DARK_YELLOW, 0x80, 0x80, 0x00);
+  set_frame_color(DARK_BLUE, 0x00, 0x00, 0x80);
+  set_frame_color(DARK_MAGENTA, 0x80, 0x00, 0x80);
+  set_frame_color(DARK_CYAN, 0x00, 0x80, 0x80);
+  set_frame_color(LIGHT_GRAY, 0xC0, 0xC0, 0xC0);
+  set_frame_color(MONEY_GREEN, 0xC0, 0xDC, 0xC0);
+  set_frame_color(SKY_BLUE, 0xA6, 0xCA, 0xF0);
+  set_frame_color(CREAM, 0xFF, 0xFB, 0xF0);
+  set_frame_color(MEDIUM_GRAY, 0xA0, 0xA0, 0xA4);
+  set_frame_color(DARK_GRAY, 0x80, 0x80, 0x80);
+  set_frame_color(RED, 0xFF, 0x00, 0x00);
+  set_frame_color(GREEN, 0x00, 0xFF, 0x00);
+  set_frame_color(YELLOW, 0xFF, 0xFF, 0x00);
+  set_frame_color(BLUE, 0x00, 0x00, 0xFF);
+  set_frame_color(MAGENTA, 0xFF, 0x00, 0xFF);
+  set_frame_color(CYAN, 0x00, 0xFF, 0xFF);
+  set_frame_color(WHITE, 0xFF, 0xFF, 0xFF);
 
-  SETFRAMECOLOR(LIGHT_SKY_BLUE, 80, 192, 255);
-  SETFRAMECOLOR(DARKER_SKY_BLUE, 0, 128, 192);
-  SETFRAMECOLOR(DEEP_SKY_BLUE, 0, 64, 128);
-  SETFRAMECOLOR(DARKER_CYAN, 0, 63, 63);
-  SETFRAMECOLOR(DARKEST_CYAN, 0, 31, 31);
-  SETFRAMECOLOR(HALF_ORANGE, 128, 64, 0);
-  SETFRAMECOLOR(DARKER_BLUE, 0x00, 0x00, 63);
-  SETFRAMECOLOR(DARKER_YELLOW, 0x00, 63, 63);
-  SETFRAMECOLOR(DARKEST_YELLOW, 0x00, 31, 31);
-  SETFRAMECOLOR(LIGHTEST_GRAY, 223, 223, 223);
-  SETFRAMECOLOR(DARKER_GREEN, 0x00, 63, 0x00);
-  SETFRAMECOLOR(DARKEST_GREEN, 0x00, 31, 0x00);
+  set_frame_color(LIGHT_SKY_BLUE, 80, 192, 255);
+  set_frame_color(DARKER_SKY_BLUE, 0, 128, 192);
+  set_frame_color(DEEP_SKY_BLUE, 0, 64, 128);
+  set_frame_color(DARKER_CYAN, 0, 63, 63);
+  set_frame_color(DARKEST_CYAN, 0, 31, 31);
+  set_frame_color(HALF_ORANGE, 128, 64, 0);
+  set_frame_color(DARKER_BLUE, 0x00, 0x00, 63);
+  set_frame_color(DARKER_YELLOW, 0x00, 63, 63);
+  set_frame_color(DARKEST_YELLOW, 0x00, 31, 31);
+  set_frame_color(LIGHTEST_GRAY, 223, 223, 223);
+  set_frame_color(DARKER_GREEN, 0x00, 63, 0x00);
+  set_frame_color(DARKEST_GREEN, 0x00, 31, 0x00);
 }
 
 void video_init_buffers() {
   g_video_draw_mutex.lock();
 
   memcpy(g_source_header, framebufferinfo,
-         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor_t));
 
   if (g_device_bitmap) {
     video_destroy_surface(g_device_bitmap);
   }
-  g_device_bitmap = video_create_surface(VIDEO_WIDTH, VIDEO_HEIGHT, 1);
+  g_device_bitmap = video_create_surface(video_width, video_height, 1);
 
   if (g_origscreen) {
     video_destroy_surface(g_origscreen);
@@ -324,9 +330,9 @@ void video_init_buffers() {
 
   framebufferbits = g_device_bitmap->pixels;
   memcpy(g_device_bitmap->palette.data(), g_source_header,
-         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor_t));
   memcpy(g_origscreen->palette.data(), g_source_header,
-         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor_t));
 
   if (g_status_surface) {
     video_destroy_surface(g_status_surface);
@@ -338,7 +344,7 @@ void video_init_buffers() {
     return;
   }
   memcpy(g_status_surface->palette.data(), g_source_header,
-         MAX_PALETTE_SIZE * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor_t));
 
   VideoRect_t srect{};
   uint8_t mybluez = DARK_BLUE;
@@ -386,32 +392,32 @@ void video_init_buffers() {
   memset(g_source_pixels, 0, static_cast<size_t>(SRCOFFS_TOTAL * MAX_SOURCE_Y));
 
   if (charset40 == nullptr) {
-    charset40 = LoadCharset();
+    charset40 = load_charset();
   }
 
   if ((g_videotype != VT_MONO_CUSTOM) && (g_videotype != VT_MONO_AMBER) &&
       (g_videotype != VT_MONO_GREEN) && (g_videotype != VT_MONO_WHITE)) {
-    DrawTextSource(g_source_bitmap);
+    draw_text_source(g_source_bitmap);
 
-    DrawLoResSource();
+    draw_lores_source();
     if (g_videotype == VT_COLOR_HALF_SHIFT_DIM) {
-      DrawHiResSourceHalfShiftDim();
+      draw_hires_source_half_shift_dim();
     } else {
-      DrawHiResSource();
+      draw_hires_source();
     }
-    DrawDHiResSource();
+    draw_dhires_source();
   } else {
-    DrawMonoTextSource(g_source_bitmap);
+    draw_mono_text_source(g_source_bitmap);
 
-    DrawMonoLoResSource();
-    DrawMonoHiResSource();
-    DrawMonoDHiResSource();
+    draw_mono_lores_source();
+    draw_mono_hires_source();
+    draw_mono_dhires_source();
   }
 
   g_video_draw_mutex.unlock();
 }
 
-void DrawDHiResSource() {
+void draw_dhires_source() {
   uint8_t colorval[16] = {BLACK,    DARK_BLUE,  DARK_GREEN, BLUE,
                           BROWN,    LIGHT_GRAY, GREEN,      AQUA,
                           DEEP_RED, MAGENTA,    DARK_GRAY,  LIGHT_BLUE,
@@ -472,8 +478,9 @@ void DrawDHiResSource() {
 
       int y = byteval << 1;
       for (int x = 0; x < SIZE; x++) {
-        SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y, colorval[color[x]]);
-        SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval[color[x]]);
+        set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y, colorval[color[x]]);
+        set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y + 1,
+                         colorval[color[x]]);
       }
     }
   }
@@ -494,7 +501,7 @@ enum ColorMapping {
 const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
     HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
 
-void DrawHiResSourceHalfShiftDim() {
+void draw_hires_source_half_shift_dim() {
   for (int column = 0; column < 16; column++) {
     int coloffs = column << 5;
 
@@ -554,81 +561,83 @@ void DrawHiResSourceHalfShiftDim() {
 */
           switch (color) {
             case CM_Magenta:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_MAGENTA);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                             DARK_MAGENTA);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             HGR_MAGENTA);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             DARK_MAGENTA);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                               HGR_MAGENTA);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               DARK_MAGENTA);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                               HGR_MAGENTA);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               DARK_MAGENTA);
               break;
             case CM_Blue:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                             HGR_BLUE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y,
-                             DARK_BLUE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             HGR_BLUE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
-                             DARK_BLUE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               HGR_BLUE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y,
+                               DARK_BLUE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               HGR_BLUE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
+                               DARK_BLUE);
               if (hibit) {
                 if (pixel <= 2) {
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y,
-                                 DARK_BLUE);
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                 DARK_BLUE);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                                   DARK_BLUE);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                   DARK_BLUE);
                 }
               }
               break;
             case CM_Green:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_GREEN);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                             DARK_GREEN);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             HGR_GREEN);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             DARK_GREEN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_GREEN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               DARK_GREEN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                               HGR_GREEN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               DARK_GREEN);
               break;
             case CM_Orange:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y, HGR_RED);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y, BROWN);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             HGR_RED);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
-                             BROWN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               HGR_RED);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y, BROWN);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               HGR_RED);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
+                               BROWN);
               if (hibit) {
                 if (pixel <= 2) {
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                 BROWN);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                   BROWN);
                 }
               }
               break;
             case CM_Black:
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_BLACK);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                             HGR_BLACK);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             HGR_BLACK);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             HGR_BLACK);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_BLACK);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               HGR_BLACK);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                               HGR_BLACK);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               HGR_BLACK);
               break;
             case CM_White:
               // Maintain solid white pixel rendering without half-shift
               // dithering
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                             HGR_WHITE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             HGR_WHITE);
-              SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             HGR_WHITE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_WHITE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                               HGR_WHITE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                               HGR_WHITE);
+              set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                               HGR_WHITE);
               if (hibit) {
                 if (pixel <= 2) {
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y,
-                                 HGR_WHITE);
-                  SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                 HGR_WHITE);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                                   HGR_WHITE);
+                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                   HGR_WHITE);
                 }
               }
               break;
@@ -642,7 +651,7 @@ void DrawHiResSourceHalfShiftDim() {
   }
 }
 
-void DrawHiResSource() {
+void draw_hires_source() {
   for (int column = 0; column < 16; column++) {
     int coloffs = column << 5;
 
@@ -685,21 +694,21 @@ void DrawHiResSource() {
             }
           }
 
-          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y,
-                         aColorIndex[color]);
-          SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                         aColorIndex[color]);
+          set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                           aColorIndex[color]);
+          set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
+                           aColorIndex[color]);
 
           if (VT_COLOR_TVEMU > g_videotype) {
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                           aColorIndex[color]);
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                           aColorIndex[color]);
+            set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                             aColorIndex[color]);
+            set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                             aColorIndex[color]);
           } else {
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                           aColorIndex[0]);
-            SETSOURCEPIXEL(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                           aColorIndex[0]);
+            set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                             aColorIndex[0]);
+            set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
+                             aColorIndex[0]);
           }
 
           x += 2;
@@ -709,7 +718,7 @@ void DrawHiResSource() {
   }
 }
 
-void DrawLoResSource() {
+void draw_lores_source() {
   uint8_t colorval[16] = {BLACK,      DEEP_RED,  DARK_BLUE,  MAGENTA,
                           DARK_GREEN, DARK_GRAY, BLUE,       LIGHT_BLUE,
                           BROWN,      ORANGE,    LIGHT_GRAY, PINK,
@@ -717,13 +726,13 @@ void DrawLoResSource() {
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
-        SETSOURCEPIXEL(SRCOFFS_LORES + x, (color << 4) + y, colorval[color]);
+        set_source_pixel(SRCOFFS_LORES + x, (color << 4) + y, colorval[color]);
       }
     }
   }
 }
 
-auto GetMonochromeIndex() -> int {
+auto get_monochrome_index() -> int {
   int iMonochrome = 0;
 
   switch (g_videotype) {
@@ -744,8 +753,8 @@ auto GetMonochromeIndex() -> int {
   return iMonochrome;
 }
 
-void DrawMonoDHiResSource() {
-  int iMonochrome = GetMonochromeIndex();
+void draw_mono_dhires_source() {
+  int iMonochrome = get_monochrome_index();
 
   for (int column = 0; column < 256; column++) {
     int coloffs = 10 * column;
@@ -757,15 +766,15 @@ void DrawMonoDHiResSource() {
       for (int x = 0; x < 10; x++) {
         uint8_t colorval = pattern & (1 << (x + 3)) ? iMonochrome : BLACK;
 
-        SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y, colorval);
-        SETSOURCEPIXEL(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
+        set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y, colorval);
+        set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
       }
     }
   }
 }
 
-void DrawMonoHiResSource() {
-  int iMonochrome = GetMonochromeIndex();
+void draw_mono_hires_source() {
+  int iMonochrome = get_monochrome_index();
 
   for (int column = 0; column < 512; column += 16) {
     for (int y = 0; y < 512; y += 2) {
@@ -773,28 +782,28 @@ void DrawMonoHiResSource() {
       for (int x = 0; x < 16; x += 2) {
         uint8_t colorval = (val & 1) ? iMonochrome : BLACK;
         val >>= 1;
-        SETSOURCEPIXEL(SRCOFFS_HIRES + column + x, y, colorval);
-        SETSOURCEPIXEL(SRCOFFS_HIRES + column + x + 1, y, colorval);
-        SETSOURCEPIXEL(SRCOFFS_HIRES + column + x, y + 1, colorval);
-        SETSOURCEPIXEL(SRCOFFS_HIRES + column + x + 1, y + 1, colorval);
+        set_source_pixel(SRCOFFS_HIRES + column + x, y, colorval);
+        set_source_pixel(SRCOFFS_HIRES + column + x + 1, y, colorval);
+        set_source_pixel(SRCOFFS_HIRES + column + x, y + 1, colorval);
+        set_source_pixel(SRCOFFS_HIRES + column + x + 1, y + 1, colorval);
       }
     }
   }
 }
 
-void DrawMonoLoResSource() {
-  int iMonochrome = GetMonochromeIndex();
+void draw_mono_lores_source() {
+  int iMonochrome = get_monochrome_index();
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
         uint8_t colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
-        SETSOURCEPIXEL(SRCOFFS_LORES + x, (color << 4) + y, colorval);
+        set_source_pixel(SRCOFFS_LORES + x, (color << 4) + y, colorval);
       }
     }
   }
 }
 
-void DrawMonoTextSource(VideoSurface_t* hDstDC) {
+void draw_mono_text_source(VideoSurface_t* hDstDC) {
   if (charset40 == nullptr) {
     return;
   }
@@ -816,8 +825,8 @@ void DrawMonoTextSource(VideoSurface_t* hDstDC) {
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
       (g_apple2_type == A2TYPE_APPLE2PLUS)) {
-    SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
-                    256);
+    soft_stretch_mono(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
+                      256, hBrush);
   } else {
     int MaxLanguage = (multi_language_charset) ? 2 : 1;
     for (int Language = 0; Language < MaxLanguage; Language++) {
@@ -827,33 +836,34 @@ void DrawMonoTextSource(VideoSurface_t* hDstDC) {
       int srcYofs = ((Language == 0) && (multi_language_charset)) ? 128 : 0;
       int dstYofs = Language * (MAX_SOURCE_Y / 2);
 
-      SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL,
-                      dstYofs, 256, 256);
-      SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 256, hDstDC, SRCOFFS_40COL,
-                      256 + dstYofs, 256, 256);
-      SOFTSTRECH_MONO(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL,
-                      64 + dstYofs, 256, 64);
+      soft_stretch_mono(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL,
+                        dstYofs, 256, 256, hBrush);
+      soft_stretch_mono(hDstDC, 0, dstYofs, 256, 256, hDstDC, SRCOFFS_40COL,
+                        256 + dstYofs, 256, 256, hBrush);
+      soft_stretch_mono(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL,
+                        64 + dstYofs, 256, 64, hBrush);
 
       if (g_apple2_type == A2TYPE_APPLE2E) {
-        SOFTSTRECH_MONO(hDstDC, 0, 256 + dstYofs, 256, 32, hDstDC,
-                        SRCOFFS_40COL, 256 + 64 + dstYofs, 256, 32);
+        soft_stretch_mono(hDstDC, 0, 256 + dstYofs, 256, 32, hDstDC,
+                          SRCOFFS_40COL, 256 + 64 + dstYofs, 256, 32, hBrush);
       }
     }
 
-    SOFTSTRECH_MONO(hDstDC, 0, 0, 256, MAX_SOURCE_Y, hDstDC, SRCOFFS_80COL, 0,
-                    128, MAX_SOURCE_Y);
+    soft_stretch_mono(hDstDC, 0, 0, 256, MAX_SOURCE_Y, hDstDC, SRCOFFS_80COL, 0,
+                      128, MAX_SOURCE_Y, hBrush);
   }
 }
 
-void DrawTextSource(VideoSurface_t* dc) {
+void draw_text_source(VideoSurface_t* dc) {
   if (charset40 == nullptr) {
     return;
   }
-  uint8_t hBrush = GetMonochromeIndex();
+  uint8_t hBrush = get_monochrome_index();
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
       (g_apple2_type == A2TYPE_APPLE2PLUS)) {
-    SOFTSTRECH_MONO(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256);
+    soft_stretch_mono(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256,
+                      hBrush);
   } else {
     int MaxLanguage = (multi_language_charset) ? 2 : 1;
     for (int Language = 0; Language < MaxLanguage; Language++) {
@@ -863,25 +873,25 @@ void DrawTextSource(VideoSurface_t* dc) {
       int srcYofs = ((Language == 0) && (multi_language_charset)) ? 128 : 0;
       int dstYofs = Language * (MAX_SOURCE_Y / 2);
 
-      SOFTSTRECH_MONO(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL,
-                      dstYofs, 256, 256);
-      SOFTSTRECH_MONO(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL,
-                      256 + dstYofs, 256, 256);
-      SOFTSTRECH_MONO(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL, 64 + dstYofs,
-                      256, 64);
+      soft_stretch_mono(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL,
+                        dstYofs, 256, 256, hBrush);
+      soft_stretch_mono(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL,
+                        256 + dstYofs, 256, 256, hBrush);
+      soft_stretch_mono(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL,
+                        64 + dstYofs, 256, 64, hBrush);
 
       if (g_apple2_type == A2TYPE_APPLE2E) {
-        SOFTSTRECH_MONO(dc, 0, 256 + dstYofs, 256, 32, dc, SRCOFFS_40COL,
-                        256 + 64 + dstYofs, 256, 32);
+        soft_stretch_mono(dc, 0, 256 + dstYofs, 256, 32, dc, SRCOFFS_40COL,
+                          256 + 64 + dstYofs, 256, 32, hBrush);
       }
     }
 
-    SOFTSTRECH_MONO(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128,
-                    MAX_SOURCE_Y);
+    soft_stretch_mono(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128,
+                      MAX_SOURCE_Y, hBrush);
   }
 }
 
-void SetLastDrawnImage() {
+void set_last_drawn_image() {
   if (vidlastmem == nullptr) {
     return;
   }
@@ -905,7 +915,8 @@ void SetLastDrawnImage() {
 // displayed on the host with what the "Draw" functions have
 // drawn into the guest Apple graphics buffers.
 
-auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
+    -> bool {
   if (!vidlastmem) return false;
   (void)x;
   (void)y;
@@ -922,7 +933,7 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   if (char_changed || (char_flashing && g_text_flash_flag)) {
     bool invert = char_flashing ? g_text_flash_state : false;
 
-    CopySource(
+    copy_source(
         xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
         SRCOFFS_40COL + ((ch & 0x0F) << 4),
         (ch & 0xF0) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
@@ -932,10 +943,10 @@ auto Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   return false;
 }
 
-inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel,
-                               bool char_flashing) -> bool {
+inline auto update_80column_cell(uint8_t c, const int xPixel, const int yPixel,
+                                 bool char_flashing) -> bool {
   bool invert = char_flashing ? g_text_flash_state : false;
-  CopySource(
+  copy_source(
       xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
       SRCOFFS_80COL + ((c & 15) << 3),
       ((c >> 4) << 4) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
@@ -943,7 +954,8 @@ inline auto Update80ColumnCell(uint8_t c, const int xPixel, const int yPixel,
   return true;
 }
 
-auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
+    -> bool {
   if (!vidlastmem) return false;
   (void)x;
   (void)y;
@@ -967,18 +979,18 @@ auto Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
       (g_alt_char_set_offset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
 
   if (c1_changed || (c1_flashing && g_text_flash_flag)) {
-    dirty = Update80ColumnCell(c1, xpixel, ypixel, c1_flashing);
+    dirty = update_80column_cell(c1, xpixel, ypixel, c1_flashing);
   }
 
   if (c0_changed || (c0_flashing && g_text_flash_flag)) {
-    dirty |= Update80ColumnCell(c0, xpixel + 7, ypixel, c0_flashing);
+    dirty |= update_80column_cell(c0, xpixel + 7, ypixel, c0_flashing);
   }
 #endif
 
   return dirty;
 }
 
-auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
+auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) return false;
   (void)y;
@@ -1003,12 +1015,12 @@ auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
         constexpr int PIXEL = 0;
 #define COLOR ((xpixel + PIXEL) & 3)
 #define VALUE (dwordval >> (4 + PIXEL - COLOR))
-        CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
-                   SRCOFFS_DHIRES +
-                       10 * (static_cast<uint8_t>(
-                                (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
-                       COLOR,
-                   (static_cast<uint8_t>(VALUE)) << 1);
+        copy_source(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
+                    SRCOFFS_DHIRES +
+                        10 * (static_cast<uint8_t>(
+                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
+                        COLOR,
+                    (static_cast<uint8_t>(VALUE)) << 1);
 #undef COLOR
 #undef VALUE
       }
@@ -1016,12 +1028,12 @@ auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
         constexpr int PIXEL = 7;
 #define COLOR ((xpixel + PIXEL) & 3)
 #define VALUE (dwordval >> (4 + PIXEL - COLOR))
-        CopySource(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
-                   SRCOFFS_DHIRES +
-                       10 * (static_cast<uint8_t>(
-                                (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
-                       COLOR,
-                   (static_cast<uint8_t>(VALUE)) << 1);
+        copy_source(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
+                    SRCOFFS_DHIRES +
+                        10 * (static_cast<uint8_t>(
+                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
+                        COLOR,
+                    (static_cast<uint8_t>(VALUE)) << 1);
 #undef COLOR
 #undef VALUE
       }
@@ -1033,7 +1045,7 @@ auto UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset)
   return dirty;
 }
 
-auto MixColors(uint8_t c1, uint8_t c2) -> uint8_t {
+auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
 #define COMBINATION(c1, c2, ref1, ref2) \
   (((c1) == (ref1) && (c2) == (ref2)) || ((c1) == (ref2) && (c2) == (ref1)))
 
@@ -1076,12 +1088,12 @@ auto video_create_color_mix_map() -> void {
           if (cTop < HGR_BLUE) {
             mixTop = 0x00;
           } else {
-            mixTop = MixColors(cMid, cTop);
+            mixTop = mix_colors(cMid, cTop);
           }
           if (cBot < HGR_BLUE) {
             mixBot = 0x00;
           } else {
-            mixBot = MixColors(cMid, cBot);
+            mixBot = mix_colors(cMid, cBot);
           }
           if (mixTop == 0x00 && mixBot != 0x00) {
             mixTop = mixBot;
@@ -1101,7 +1113,7 @@ static inline auto clamp_mix(int idx) -> int {
   return (idx >= 0 && idx < 6) ? idx : 0;
 }
 
-void MixColorsVertical(int matx, int maty) {
+void mix_colors_vertical(int matx, int maty) {
   uint16_t twoHalfPixel = 0;
   int bot1idx = 0, bot2idx = 0;
 
@@ -1135,13 +1147,13 @@ void MixColorsVertical(int matx, int maty) {
   colormixbuffer[5] = twoHalfPixel & 0x00FF;
 }
 
-void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
+void copy_mixed_source(int x, int y, int sourcex, int sourcey) {
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
   uint8_t* currdestptr = frameoffsettable[y << 1] + (x << 1);
   uint8_t* currptr = nullptr;
 
   int matx = x;
-  int maty = HGR_MATRIX_YOFFSET + y;
+  int maty = hgr_matrix_yoffset + y;
   int count = 0;
   int bufxoffset = 0;
   int hgrlinesabove = (y > 0) ? 1 : 0;
@@ -1152,7 +1164,7 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
 
   for (count = 0, bufxoffset = 0; count < 7; count++, bufxoffset += 2) {
     hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
-    MixColorsVertical(matx + count, maty);
+    mix_colors_vertical(matx + count, maty);
     currptr = currdestptr + bufxoffset;
     if (hgrlinesabove) {
       currptr -= framebufferpitch << 1;
@@ -1167,7 +1179,8 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
   }
 }
 
-auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
+    -> bool {
   if (!vidlastmem) return false;
   (void)y;
   bool dirty = false;
@@ -1186,13 +1199,13 @@ auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
         redrawfull || video_worker_active_) {
 #define COLOFFS (((byteval1 & 0x60) << 2) | ((byteval3 & 0x03) << 5))
       if (g_videotype == VT_COLOR_TVEMU) {
-        CopyMixedSource(xpixel >> 1, (ypixel + (yoffset >> 9)) >> 1,
-                        SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
-                        ((static_cast<int>(byteval2)) << 1));
+        copy_mixed_source(xpixel >> 1, (ypixel + (yoffset >> 9)) >> 1,
+                          SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
+                          ((static_cast<int>(byteval2)) << 1));
       } else {
-        CopySource(xpixel, ypixel + (yoffset >> 9), 14, 2,
-                   SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
-                   ((static_cast<int>(byteval2)) << 1));
+        copy_source(xpixel, ypixel + (yoffset >> 9), 14, 2,
+                    SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
+                    ((static_cast<int>(byteval2)) << 1));
       }
 #undef COLOFFS
       dirty = true;
@@ -1203,22 +1216,23 @@ auto UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
   return dirty;
 }
 
-auto UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) -> bool {
+auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
+    -> bool {
   if (!vidlastmem) return false;
   (void)y;
   uint8_t val = *(g_text_bank0 + offset);
   if ((val != *(vidlastmem.get() + offset + 0x400)) || redrawfull ||
       video_worker_active_) {
-    CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               ((val & 0xF) << 4));
-    CopySource(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               (val & 0xF0));
+    copy_source(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                ((val & 0xF) << 4));
+    copy_source(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                (val & 0xF0));
     return true;
   }
   return false;
 }
 
-auto UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset)
+auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) return false;
   (void)y;
@@ -1228,20 +1242,20 @@ auto UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset)
   if ((auxval != *(vidlastmem.get() + offset)) ||
       (mainval != *(vidlastmem.get() + offset + 0x400)) || redrawfull ||
       video_worker_active_) {
-    CopySource(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               ((auxval & 0xF) << 4));
-    CopySource(xpixel, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               (auxval & 0xF0));
-    CopySource(xpixel + 7, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               ((mainval & 0xF) << 4));
-    CopySource(xpixel + 7, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
-               (mainval & 0xF0));
+    copy_source(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                ((auxval & 0xF) << 4));
+    copy_source(xpixel, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                (auxval & 0xF0));
+    copy_source(xpixel + 7, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                ((mainval & 0xF) << 4));
+    copy_source(xpixel + 7, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1),
+                (mainval & 0xF0));
     return true;
   }
   return false;
 }
 
-auto LoadCharset() -> VideoSurface_t* {
+auto load_charset() -> VideoSurface_t* {
   VideoSurface_t* result = nullptr;
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
@@ -1602,7 +1616,7 @@ auto video_initialize() -> void {
     }
   }
 
-  CreateIdentityPalette();
+  create_identity_palette();
 
   for (int index = DARK_RED; index < NUM_COLOR_PALETTE; index++) {
     customcolors[index - DARK_RED] =
@@ -1626,7 +1640,7 @@ auto video_set_next_scheduled_update() -> void {
   }
 }
 
-void VideoWorkerThread() {
+void video_worker_thread_func() {
   while (!video_worker_terminate_) {
     std::unique_lock<std::mutex> lck(s_video_worker_mutex);
     video_cv.wait_until(lck, video_next_scheduled_update_, [] {
@@ -1648,7 +1662,7 @@ auto video_init_worker() -> bool {
   video_worker_terminate_ = false;
   video_worker_active_ = true;
   try {
-    video_worker_thread_ = std::thread(VideoWorkerThread);
+    video_worker_thread_ = std::thread(video_worker_thread_func);
   } catch (...) {
     // If failed to start, revert to singlethreaded
     std::cerr << "FAILED to start video worker; reverting to single-threaded "
@@ -1667,7 +1681,7 @@ auto video_redraw_screen() -> void {
   video_refresh_screen();
 }
 
-void VideoUpdateOutputBuffer() {
+void video_update_output_buffer() {
   VideoRect_t s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   VideoSurface_t dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_video_output);
@@ -1718,7 +1732,7 @@ auto video_perform_refresh() -> void {
 
   uint8_t* addr = framebufferbits;
   int pitch = SCREEN_WIDTH;
-  CreateFrameOffsetTable(addr, pitch);
+  create_frame_offset_table(addr, pitch);
 
   if (g_singlethreaded) {
     g_hires_bank1 = mem_get_aux_ptr(0x2000 << displaypage2_latched);
@@ -1744,11 +1758,11 @@ auto video_perform_refresh() -> void {
   }
   memset(celldirty, 0, static_cast<size_t>(40 * 32));
   UpdateFunc_t update =
-      SWL_TEXT ? SWL_80COL ? Update80ColCell : Update40ColCell
+      SWL_TEXT ? SWL_80COL ? update_80col_cell : update_40col_cell
       : SWL_HIRES
-          ? (SWL_DHIRES && SWL_80COL) ? UpdateDHiResCell : UpdateHiResCell
-      : (SWL_DHIRES && SWL_80COL) ? UpdateDLoResCell
-                                  : UpdateLoResCell;
+          ? (SWL_DHIRES && SWL_80COL) ? update_dhires_cell : update_hires_cell
+      : (SWL_DHIRES && SWL_80COL) ? update_dlores_cell
+                                  : update_lores_cell;
 
   bool anydirty = redrawfull | g_text_flash_flag;
 
@@ -1768,7 +1782,7 @@ auto video_perform_refresh() -> void {
   }
 
   if (SWL_MIXED) {
-    update = SWL_80COL ? Update80ColCell : Update40ColCell;
+    update = SWL_80COL ? update_80col_cell : update_40col_cell;
   }
 
   while (y < 24) {
@@ -1796,11 +1810,11 @@ auto video_perform_refresh() -> void {
   }
 
   // Update final output buffer
-  VideoUpdateOutputBuffer();
+  video_update_output_buffer();
 
   g_frame_ready = true;
 
-  SetLastDrawnImage();
+  set_last_drawn_image();
   redrawfull = false;
   hasrefreshed = true;
 
@@ -1808,7 +1822,7 @@ auto video_perform_refresh() -> void {
 }
 
 auto video_reinitialize() -> void {
-  CreateIdentityPalette();
+  create_identity_palette();
   video_init_buffers();
   redrawfull = true;
 }

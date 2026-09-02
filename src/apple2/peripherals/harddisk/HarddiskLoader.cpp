@@ -60,7 +60,7 @@ struct TemporaryFileGuard {
   char path[512]{};
   explicit TemporaryFileGuard(const char* p) {
     if (p != nullptr) {
-      Util_SafeStrCpy(path, p, sizeof(path));
+      util_safe_strcpy(path, p, sizeof(path));
     }
   }
   ~TemporaryFileGuard() {
@@ -124,7 +124,7 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
   ext_hint.fill(0);
 
   if (ext != nullptr) {
-    Util_SafeStrCpy(ext_hint.data(), ext, ext_hint.size());
+    util_safe_strcpy(ext_hint.data(), ext, ext_hint.size());
     for (char& c : ext_hint) {
       if (c == '\0') {
         break;
@@ -206,7 +206,7 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
     result += exts[i];
   }
 
-  Util_SafeStrCpy(out_buffer, result.c_str(), buffer_size);
+  util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,

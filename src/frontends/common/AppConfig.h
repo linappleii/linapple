@@ -61,7 +61,7 @@ struct AppConfig_t {
  * Note: Member initializers handle most defaults, this ensures parity for
  * existing calls.
  */
-inline void AppConfig_Default(AppConfig_t* config) {
+inline void app_config_default(AppConfig_t* config) {
   if (config) {
     *config = AppConfig_t{};
   }

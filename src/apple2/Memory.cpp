@@ -76,11 +76,11 @@ uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
 MemoryInitPattern_e g_memory_init_pattern = MIP_FF_FF_00_00;
 
-static auto SetMem(uint8_t* val) -> void {
+static auto set_mem(uint8_t* val) -> void {
   mem = val;
   if (g_active_memory) g_active_memory->mem = val;
 }
-static auto SetMemDirty(uint8_t* val) -> void {
+static auto set_mem_dirty(uint8_t* val) -> void {
   memdirty = val;
   if (g_active_memory) g_active_memory->memdirty = val;
 }
@@ -165,13 +165,13 @@ auto get_ramworks_active_bank() -> uint32_t {
   return g_active_memory->active_bank;
 }
 
-auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
+auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
                     uint8_t value, uint32_t cycles) -> uint8_t;
 
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;
 
-static auto IORead_C00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
+static auto io_read_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                         uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -183,8 +183,8 @@ static auto IORead_C00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 
 static const uint8_t LAST_MEM_SOFT_SWITCH_OFFSET = 0x0B;
 
-static auto IOWrite_C00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                         uint32_t cycles_left) -> uint8_t {
+static auto io_write_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
   if ((addr & ADDR_NIBBLE_MASK) <= LAST_MEM_SOFT_SWITCH_OFFSET) {
     return mem_set_paging(pc, addr, write, d, cycles_left);
   } else {
@@ -192,8 +192,8 @@ static auto IOWrite_C00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   }
 }
 
-static auto IORead_C01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
+static auto io_read_c01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                         uint32_t cycles_left) -> uint8_t {
   switch (addr & ADDR_NIBBLE_MASK) {
     case 0x1:
     case 0x2:
@@ -221,7 +221,16 @@ static auto IORead_C01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return 0;
 }
 
-static auto IOWrite_C01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+static auto io_write_c01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)write;
+  (void)d;
+  return mem_read_floating_bus(cycles_left);
+}
+
+static auto io_read_c02x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
@@ -230,17 +239,8 @@ static auto IOWrite_C01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return mem_read_floating_bus(cycles_left);
 }
 
-static auto IORead_C02x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
-  (void)pc;
-  (void)addr;
-  (void)write;
-  (void)d;
-  return mem_read_floating_bus(cycles_left);
-}
-
-static auto IOWrite_C02x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                         uint32_t cycles_left) -> uint8_t {
+static auto io_write_c02x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -249,16 +249,7 @@ static auto IOWrite_C02x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return 0;
 }
 
-static auto IORead_C03x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
-  (void)pc;
-  (void)addr;
-  (void)write;
-  (void)d;
-  return mem_read_floating_bus(cycles_left);
-}
-
-static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+static auto io_read_c03x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
@@ -267,8 +258,8 @@ static auto IOWrite_C03x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return mem_read_floating_bus(cycles_left);
 }
 
-static auto IORead_C04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
+static auto io_write_c03x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -276,8 +267,17 @@ static auto IORead_C04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return mem_read_floating_bus(cycles_left);
 }
 
-static auto IOWrite_C04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+static auto io_read_c04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t cycles_left) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)write;
+  (void)d;
+  return mem_read_floating_bus(cycles_left);
+}
+
+static auto io_write_c04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -286,49 +286,7 @@ static auto IOWrite_C04x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return 0;
 }
 
-static auto IORead_C05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
-  switch (addr & ADDR_NIBBLE_MASK) {
-    case SS_TEXT_OFF& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    case SS_TEXT_ON& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    case SS_MIXED_OFF& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    case SS_MIXED_ON& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    case SS_PAGE2_OFF& ADDR_NIBBLE_MASK:
-      return mem_set_paging(pc, addr, write, d, cycles_left);
-    case SS_PAGE2_ON& ADDR_NIBBLE_MASK:
-      return mem_set_paging(pc, addr, write, d, cycles_left);
-    case SS_HIRES_OFF& ADDR_NIBBLE_MASK:
-      return mem_set_paging(pc, addr, write, d, cycles_left);
-    case SS_HIRES_ON& ADDR_NIBBLE_MASK:
-      return mem_set_paging(pc, addr, write, d, cycles_left);
-    case SS_AN0_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN0_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN1_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN1_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN2_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN2_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
-    case SS_AN3_OFF& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    case SS_AN3_ON& ADDR_NIBBLE_MASK:
-      return video_set_mode(pc, addr, write, d, cycles_left);
-    default:
-      break;
-  }
-
-  return 0;
-}
-
-static auto IOWrite_C05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+static auto io_read_c05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t cycles_left) -> uint8_t {
   switch (addr & ADDR_NIBBLE_MASK) {
     case SS_TEXT_OFF& ADDR_NIBBLE_MASK:
@@ -348,17 +306,17 @@ static auto IOWrite_C05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
     case SS_HIRES_ON& ADDR_NIBBLE_MASK:
       return mem_set_paging(pc, addr, write, d, cycles_left);
     case SS_AN0_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN0_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN1_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN1_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN2_OFF& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN2_ON& ADDR_NIBBLE_MASK:
-      return IO_Annunciator(pc, addr, write, d, cycles_left);
+      return io_annunciator(pc, addr, write, d, cycles_left);
     case SS_AN3_OFF& ADDR_NIBBLE_MASK:
       return video_set_mode(pc, addr, write, d, cycles_left);
     case SS_AN3_ON& ADDR_NIBBLE_MASK:
@@ -370,26 +328,68 @@ static auto IOWrite_C05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return 0;
 }
 
-static auto IORead_C06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
-  return io_null(pc, addr, write, d, cycles_left);
+static auto io_write_c05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
+  switch (addr & ADDR_NIBBLE_MASK) {
+    case SS_TEXT_OFF& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    case SS_TEXT_ON& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    case SS_MIXED_OFF& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    case SS_MIXED_ON& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    case SS_PAGE2_OFF& ADDR_NIBBLE_MASK:
+      return mem_set_paging(pc, addr, write, d, cycles_left);
+    case SS_PAGE2_ON& ADDR_NIBBLE_MASK:
+      return mem_set_paging(pc, addr, write, d, cycles_left);
+    case SS_HIRES_OFF& ADDR_NIBBLE_MASK:
+      return mem_set_paging(pc, addr, write, d, cycles_left);
+    case SS_HIRES_ON& ADDR_NIBBLE_MASK:
+      return mem_set_paging(pc, addr, write, d, cycles_left);
+    case SS_AN0_OFF& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN0_ON& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN1_OFF& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN1_ON& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN2_OFF& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN2_ON& ADDR_NIBBLE_MASK:
+      return io_annunciator(pc, addr, write, d, cycles_left);
+    case SS_AN3_OFF& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    case SS_AN3_ON& ADDR_NIBBLE_MASK:
+      return video_set_mode(pc, addr, write, d, cycles_left);
+    default:
+      break;
+  }
+
+  return 0;
 }
 
-static auto IOWrite_C06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+static auto io_read_c06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t cycles_left) -> uint8_t {
   return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto IORead_C07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                        uint32_t cycles_left) -> uint8_t {
+static auto io_write_c06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
+  return io_null(pc, addr, write, d, cycles_left);
+}
+
+static auto io_read_c07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                         uint32_t cycles_left) -> uint8_t {
   if ((addr & 0xF) == 0xF) {
     return video_check_mode(pc, addr, write, d, cycles_left);
   }
   return io_null(pc, addr, write, d, cycles_left);
 }
 
-static auto IOWrite_C07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
-                         uint32_t cycles_left) -> uint8_t {
+static auto io_write_c07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+                          uint32_t cycles_left) -> uint8_t {
   switch (addr & 0xf) {
     case 0x0:
       return io_null(pc, addr, write, d, cycles_left);
@@ -440,22 +440,22 @@ static auto IOWrite_C07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 }
 
 static iofunction IORead_C0xx[8] = {
-    IORead_C00x,               // Keyboard
-    IORead_C01x,               // Memory/Video
-    IORead_C02x,               // Cassette
-    IORead_C03x,               // Speaker
-    IORead_C04x, IORead_C05x,  // Video
-    IORead_C06x,               // Joystick
-    IORead_C07x,               // Joystick/Video
+    io_read_c00x,                // Keyboard
+    io_read_c01x,                // Memory/Video
+    io_read_c02x,                // Cassette
+    io_read_c03x,                // Speaker
+    io_read_c04x, io_read_c05x,  // Video
+    io_read_c06x,                // Joystick
+    io_read_c07x,                // Joystick/Video
 };
 
 static iofunction IOWrite_C0xx[8] = {
-    IOWrite_C00x,                // Memory/Video
-    IOWrite_C01x,                // Keyboard
-    IOWrite_C02x,                // Cassette
-    IOWrite_C03x,                // Speaker
-    IOWrite_C04x, IOWrite_C05x,  // Video/Memory
-    IOWrite_C06x, IOWrite_C07x,  // Joystick/Ramworks
+    io_write_c00x,                 // Memory/Video
+    io_write_c01x,                 // Keyboard
+    io_write_c02x,                 // Cassette
+    io_write_c03x,                 // Speaker
+    io_write_c04x, io_write_c05x,  // Video/Memory
+    io_write_c06x, io_write_c07x,  // Joystick/Ramworks
 };
 
 auto io_null(uint16_t programcounter, uint16_t address, uint8_t write,
@@ -469,7 +469,7 @@ auto io_null(uint16_t programcounter, uint16_t address, uint8_t write,
   return 0;
 }
 
-auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
+auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
                     uint8_t value, uint32_t cycles_left) -> uint8_t {
   (void)value;
   (void)cycles_left;
@@ -492,8 +492,8 @@ auto IO_Annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
 //   - Reset when 6502 accesses $CFFF
 // . Enable2 = I/O STROBE' (6502 accesses [$C800..$CFFF])
 
-auto IORead_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                 uint8_t value, uint32_t cycles_left) -> uint8_t {
+auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
+                  uint8_t value, uint32_t cycles_left) -> uint8_t {
   if (address == 0xCFFF) {
     // Disable expansion ROM at [$C800..$CFFF]
     // . SSC will disable on an access to $CFxx - but ROM only writes to $CFFF,
@@ -603,8 +603,8 @@ auto IORead_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
   }
 }
 
-auto IOWrite_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                  uint8_t value, uint32_t cycles_left) -> uint8_t {
+auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
+                   uint8_t value, uint32_t cycles_left) -> uint8_t {
   (void)value;
   (void)cycles_left;
   (void)programcounter;
@@ -615,7 +615,7 @@ auto IOWrite_Cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
 
 static uint8_t g_bm_slot_init = 0;
 
-static auto InitIoHandlers() -> void {
+static auto init_io_handlers() -> void {
   g_bm_slot_init = 0;
   uint32_t i = 0;
 
@@ -632,8 +632,8 @@ static auto InitIoHandlers() -> void {
 
   // $C1..$CF: Page-based multiplexer
   for (i = 0; i < 16; i++) {
-    IORead[NUM_PAGES_64K + i] = IORead_Cxxx;
-    IOWrite[NUM_PAGES_64K + i] = IOWrite_Cxxx;
+    IORead[NUM_PAGES_64K + i] = io_read_cxxx;
+    IOWrite[NUM_PAGES_64K + i] = io_write_cxxx;
   }
 
   g_active_memory->io_select = 0;
@@ -668,10 +668,10 @@ auto register_io_handler(uint32_t slot, iofunction IOReadC0,
   }
 
   if (IOReadCx == nullptr) {
-    IOReadCx = IORead_Cxxx;
+    IOReadCx = io_read_cxxx;
   }
   if (IOWriteCx == nullptr) {
-    IOWriteCx = IOWrite_Cxxx;
+    IOWriteCx = io_write_cxxx;
   }
 
   IORead[NUM_PAGES_64K + slot] = IOReadCx;
@@ -698,7 +698,7 @@ auto set_mem_mode(uint32_t new_mem_mode) -> void {
   g_active_memory->mem_mode = new_mem_mode;
 }
 
-static auto ResetPaging(bool initialize) -> void {
+static auto reset_paging(bool initialize) -> void {
   g_active_memory->last_write_ram = false;
   g_active_memory->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   mem_update_paging(initialize, false);
@@ -926,14 +926,14 @@ auto mem_destroy() -> void {
   g_active_memory->memaux = nullptr;
   g_active_memory->memaux_allocated = nullptr;
   g_active_memory->memmain = nullptr;
-  SetMemDirty(nullptr);
+  set_mem_dirty(nullptr);
   g_active_memory->memrom = nullptr;
   g_active_memory->memimage = nullptr;
 
   g_active_memory->cx_rom_internal = nullptr;
   g_active_memory->cx_rom_peripheral = nullptr;
 
-  SetMem(nullptr);
+  set_mem(nullptr);
 
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
@@ -1047,7 +1047,7 @@ auto mem_is_addr_code_memory(const uint16_t addr) -> bool {
   return true;
 }
 
-auto mem_pre_initialize() -> void { InitIoHandlers(); }
+auto mem_pre_initialize() -> void { init_io_handlers(); }
 
 auto mem_initialize() -> int  // returns -1 if any error during initialization
 {
@@ -1066,7 +1066,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   g_active_memory->memaux_allocated = static_cast<uint8_t*>(malloc(MEMORY_64K));
   g_active_memory->memaux = g_active_memory->memaux_allocated;
   g_active_memory->memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  SetMemDirty(static_cast<uint8_t*>(malloc(NUM_PAGES_64K)));
+  set_mem_dirty(static_cast<uint8_t*>(malloc(NUM_PAGES_64K)));
   g_active_memory->memrom = static_cast<uint8_t*>(malloc(ROM_BUFFER_SIZE));
   g_active_memory->memimage = static_cast<uint8_t*>(malloc(MEMORY_64K));
   g_active_memory->cx_rom_internal = static_cast<uint8_t*>(malloc(CxRomSize));
@@ -1083,7 +1083,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 
   if (g_active_memory->memaux) memset(g_active_memory->memaux, 0, MEMORY_64K);
   if (g_active_memory->memmain) memset(g_active_memory->memmain, 0, MEMORY_64K);
-  SetMem(g_active_memory->memmain);
+  set_mem(g_active_memory->memmain);
   if (memdirty) memset(memdirty, 0, NUM_PAGES_64K);
   if (g_active_memory->memrom)
     memset(g_active_memory->memrom, 0, ROM_BUFFER_SIZE);
@@ -1193,8 +1193,8 @@ auto mem_reset() -> void {
     }
   }
 
-  SetMem(g_active_memory->memimage);
-  ResetPaging(true);
+  set_mem(g_active_memory->memimage);
+  reset_paging(true);
 
   // Initialize & reset the cpu
   // . Do this after ROM has been copied back to mem[], so that PC is correctly
@@ -1205,7 +1205,7 @@ auto mem_reset() -> void {
 // Call by:
 // . Soft-reset (Ctrl+Reset)
 // . Snapshot_LoadState()
-auto mem_reset_paging() -> void { ResetPaging(false); }
+auto mem_reset_paging() -> void { reset_paging(false); }
 
 // Called by Disk][ I/O only
 auto mem_return_random_data(uint8_t highbit) -> uint8_t {

@@ -1,5 +1,5 @@
-#include "Debugger_Types.h"
 #include "Debugger_Breakpoints.h"
+#include "Debugger_Types.h"
 #include "Util_Text.h"
 /*
 linapple : An Apple //e emulator for Linux
@@ -402,7 +402,7 @@ void ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
   pDst += nLen;
 
   nLen = nHeaderLen - 1;
-  Util_SafeStrCpy(pDst, pHeader, nLen);
+  util_safe_strcpy(pDst, pHeader, nLen);
   pDst += nLen;
 
   src_ptr += nHeaderLen;

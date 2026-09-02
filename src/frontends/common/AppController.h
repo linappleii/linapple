@@ -18,7 +18,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int;
 /**
  * Shut down all core subsystems in the correct order.
  */
-void AppController_Shutdown();
+void app_controller_shutdown();
 
 /**
  * Check if the application has been marked for restart.
@@ -28,7 +28,7 @@ auto app_controller_should_restart() -> bool;
 /**
  * Set or clear the restart flag.
  */
-void AppController_SetRestart(bool restart);
+void app_controller_set_restart(bool restart);
 
 /**
  * Handle diagnostic and help commands that should execute before UI init.
@@ -41,4 +41,4 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
  * Perform initial media loading and optionally boot the machine.
  * Should be called after Initialize but before the main loop.
  */
-void AppController_LoadInitialMedia(const AppConfig_t* config);
+void app_controller_load_initial_media(const AppConfig_t* config);

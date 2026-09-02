@@ -43,7 +43,7 @@ struct TemporaryFileGuard {
   char path[path_max_len];
   explicit TemporaryFileGuard(const char* p) {
     if (p != nullptr) {
-      Util_SafeStrCpy(path, p, path_max_len);
+      util_safe_strcpy(path, p, path_max_len);
     } else {
       path[0] = '\0';
     }
@@ -66,7 +66,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
   char ext_hint[extension_hint_size] = {0};
   const char* dot = strrchr(image_path, '.');
   if (dot != nullptr) {
-    Util_SafeStrCpy(ext_hint, dot, sizeof(ext_hint));
+    util_safe_strcpy(ext_hint, dot, sizeof(ext_hint));
     for (char* p = ext_hint; *p != '\0'; ++p) {
       *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
     }
@@ -228,7 +228,7 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
     result += exts[i];
   }
 
-  Util_SafeStrCpy(out_buffer, result.c_str(), buffer_size);
+  util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
 }
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,

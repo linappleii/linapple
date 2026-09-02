@@ -438,7 +438,7 @@ static auto render_disk_select_overlay() -> void {
 
     char size_str[32] = {};
     if (entry != nullptr) {
-      FileEntry_FormatTypeOrSize(entry, size_str, sizeof(size_str));
+      file_entry_format_type_or_size(entry, size_str, sizeof(size_str));
     }
 
     std::string name_str = entry ? entry->name : "";

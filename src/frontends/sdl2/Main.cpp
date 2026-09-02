@@ -114,7 +114,7 @@ auto enter_message_loop() -> void {
   constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
     sys_input();
-    JoyFrontend_Update();
+    joy_frontend_update();
 
     linapple_run_frame(apple2_frame_cycles);
     draw_frame_window();
@@ -145,7 +145,7 @@ auto main(int argc, char** argv) -> int {
   }
 
   while (true) {
-    AppController_SetRestart(false);
+    app_controller_set_restart(false);
 
     if (session_init(&config) != 0) {
       break;

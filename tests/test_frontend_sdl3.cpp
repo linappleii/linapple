@@ -33,7 +33,7 @@ TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   REQUIRE(init_result);
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   // Initial session startup creates the window
   int res1 = session_init(&config);
@@ -185,7 +185,7 @@ TEST_CASE("SDL3 Frontend Help Screen Quit Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -222,7 +222,7 @@ TEST_CASE("SDL3 Frontend Help Screen Key Down Dismissal") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -259,7 +259,7 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -419,7 +419,7 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
       SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_ARGB8888);
   g_diskChooseState.list_handle = nullptr;
 
-  DiskChoose_Draw();
+  disk_choose_draw();
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -466,7 +466,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -505,7 +505,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -549,7 +549,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -593,7 +593,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -636,7 +636,7 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(asset_init());
 
   AppConfig_t config{};
-  AppConfig_Default(&config);
+  app_config_default(&config);
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);

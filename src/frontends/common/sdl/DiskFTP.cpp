@@ -55,7 +55,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
 
   if (l < 0 || static_cast<size_t>(l) >= ftpdirpath.size()) {
     ctx->failure_message = "Failed get path for FTP dir listing";
-    FileBrowser_SetFailureMessage(list, ctx->failure_message.c_str());
+    file_browser_set_failure_message(list, ctx->failure_message.c_str());
     return list;
   }
 
@@ -71,7 +71,7 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   if (OKI) {
     ctx->failure_message = "Failed getting FTP directory " + ctx->directory +
                            " to " + std::string(ftpdirpath.data());
-    FileBrowser_SetFailureMessage(list, ctx->failure_message.c_str());
+    file_browser_set_failure_message(list, ctx->failure_message.c_str());
     return list;
   }
 
@@ -79,17 +79,17 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
   if (!fdir) {
     ctx->failure_message = "Failed to open FTP directory listing file: " +
                            std::string(ftpdirpath.data());
-    FileBrowser_SetFailureMessage(list, ctx->failure_message.c_str());
+    file_browser_set_failure_message(list, ctx->failure_message.c_str());
     return list;
   }
 
   if (ctx->directory != "ftp://") {
     FileEntry_t up_entry{};
     up_entry.name[0] = '\0';
-    Util_SafeStrCpy(up_entry.name, "..", sizeof(up_entry.name));
+    util_safe_strcpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
     up_entry.size = 0;
-    FileBrowser_AppendEntry(list, &up_entry);
+    file_browser_append_entry(list, &up_entry);
   }
 
   std::array<char, FTP_DIR_PATH_CAP> line;
@@ -107,24 +107,24 @@ static FileList_t* FTPGen_Generate(FileListGenerator_t* self) {
 
       FileEntry_t entry{};
       entry.name[0] = '\0';
-      Util_SafeStrCpy(entry.name, safe_name.c_str(), sizeof(entry.name));
+      util_safe_strcpy(entry.name, safe_name.c_str(), sizeof(entry.name));
 
       if (fp.flagtrycwd) {
         entry.type = FILE_ENTRY_DIR;
         entry.size = 0;
-        FileBrowser_AppendEntry(list, &entry);
+        file_browser_append_entry(list, &entry);
       } else if (fp.flagtryretr) {
         if (file_browser_is_extension_supported(
                 safe_name.c_str(), ctx->filter_extensions.c_str())) {
           entry.type = FILE_ENTRY_FILE;
           entry.size = static_cast<std::uintmax_t>(fp.size);
-          FileBrowser_AppendEntry(list, &entry);
+          file_browser_append_entry(list, &entry);
         }
       }
     }
   }
 
-  FileBrowser_SortList(list);
+  file_browser_sort_list(list);
   return list;
 }
 
@@ -139,7 +139,7 @@ static const char* FTPGen_GetFailMsg(FileListGenerator_t* self) {
   return ctx->failure_message.c_str();
 }
 
-static void FTPGen_Destroy(FileListGenerator_t* self) {
+static void ftp_gen_destroy(FileListGenerator_t* self) {
   if (self) {
     delete static_cast<FtpGeneratorContext_t*>(self->context);
     delete self;
@@ -171,7 +171,7 @@ FileListGenerator_t* file_browser_create_ftp_generator(
   gen->generate_file_list = FTPGen_Generate;
   gen->get_starting_message = FTPGen_GetStartMsg;
   gen->get_failure_message = FTPGen_GetFailMsg;
-  gen->destroy = FTPGen_Destroy;
+  gen->destroy = ftp_gen_destroy;
 
   return gen;
 }

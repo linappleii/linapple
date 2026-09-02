@@ -140,7 +140,7 @@ void sdl_handle_event(SDL_Event* e) {
                            myscancode <= SDL_SCANCODE_UP) ||
                           (myscancode == SDL_SCANCODE_DELETE);
           if (mymod & SDL_KMOD_RCTRL) {
-            JoyFrontend_UpdateTrimViaKey(mysym);
+            joy_frontend_update_trim_via_key(mysym);
           } else {
             if (!joy_frontend_process_key(mysym, extended, true, false)) {
               frontend_dispatch_key_event(myscancode, mysym, mymod, true);
@@ -212,8 +212,8 @@ void sdl_handle_event(SDL_Event* e) {
                 peripheral_command(4, mouse_cmd_set_button, &payload,
                                    sizeof(payload));
               }
-              if (JoyFrontend_IsMouseEmulationActive()) {
-                JoyFrontend_ProcessMouseButton(0, true);
+              if (joy_frontend_is_mouse_emulation_active()) {
+                joy_frontend_process_mouse_button(0, true);
               }
             }
           } else {
@@ -224,8 +224,8 @@ void sdl_handle_event(SDL_Event* e) {
               uint8_t mouse_active = 0;
               size_t qsize = 1;
               peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
-              bool mouse_in_use =
-                  (mouse_active != 0) || JoyFrontend_IsMouseEmulationActive();
+              bool mouse_in_use = (mouse_active != 0) ||
+                                  joy_frontend_is_mouse_emulation_active();
               if (mouse_in_use && ((g_state.mode == MODE_RUNNING) ||
                                    (g_state.mode == MODE_STEPPING))) {
                 set_using_cursor(true);
@@ -243,8 +243,8 @@ void sdl_handle_event(SDL_Event* e) {
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
-          if (JoyFrontend_IsMouseEmulationActive()) {
-            JoyFrontend_ProcessMouseButton(1, true);
+          if (joy_frontend_is_mouse_emulation_active()) {
+            joy_frontend_process_mouse_button(1, true);
           }
         }
       }
@@ -263,8 +263,8 @@ void sdl_handle_event(SDL_Event* e) {
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
-          if (JoyFrontend_IsMouseEmulationActive()) {
-            JoyFrontend_ProcessMouseButton(0, false);
+          if (joy_frontend_is_mouse_emulation_active()) {
+            joy_frontend_process_mouse_button(0, false);
           }
         }
       } else if (e->button.button == SDL_BUTTON_RIGHT) {
@@ -277,8 +277,8 @@ void sdl_handle_event(SDL_Event* e) {
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
-          if (JoyFrontend_IsMouseEmulationActive()) {
-            JoyFrontend_ProcessMouseButton(1, false);
+          if (joy_frontend_is_mouse_emulation_active()) {
+            joy_frontend_process_mouse_button(1, false);
           }
         }
       }
@@ -296,9 +296,9 @@ void sdl_handle_event(SDL_Event* e) {
                                        VIEWPORTCY};
           peripheral_command(4, mouse_cmd_set_pos, &payload, sizeof(payload));
         }
-        if (JoyFrontend_IsMouseEmulationActive()) {
-          JoyFrontend_ProcessMouseMotion(x_local, VIEWPORTCX, y_local,
-                                         VIEWPORTCY);
+        if (joy_frontend_is_mouse_emulation_active()) {
+          joy_frontend_process_mouse_motion(x_local, VIEWPORTCX, y_local,
+                                            VIEWPORTCY);
         }
       }
       break;

@@ -67,7 +67,7 @@ enum {
 #define PIA_CALL(h, val) \
   if (h.func) h.func(h.obj_to, val)
 
-static void UpdateInterrupts(Pia6821_t* p) {
+static void update_interrupts(Pia6821_t* p) {
   uint8_t irq_a = 0;
   if (((p->cra & CRA_IRQ1) && (p->cra & CRA_CA1_EN)) ||
       ((p->cra & CRA_IRQ2) && (!(p->cra & CRA_CA2_OUT)) && (p->cra & 0x08))) {
@@ -108,7 +108,7 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
         // Datasheet Page 8: "When reading Port A, the actual pin is read"
         val = p->port_a_in;
         p->cra &= ~(CRA_IRQ1 | CRA_IRQ2);
-        UpdateInterrupts(p);
+        update_interrupts(p);
 
         if (p->cra & CRA_CA2_OUT) {
           if (!(p->cra & CRA_CA2_SEL)) {  // Read Strobe Mode
@@ -138,7 +138,7 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
         // Datasheet Page 8: "the B side read comes from an output latch"
         val = (p->orb & p->ddrb) | (p->port_b_in & ~p->ddrb);
         p->crb &= ~(CRB_IRQ1 | CRB_IRQ2);
-        UpdateInterrupts(p);
+        update_interrupts(p);
       } else {
         val = p->ddrb;
       }
@@ -179,7 +179,7 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
           PIA_CALL(p->out_ca2, p->oca2);
         }
       }
-      UpdateInterrupts(p);
+      update_interrupts(p);
       break;
 
     case 2:  // Port B or DDRB
@@ -214,7 +214,7 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
           PIA_CALL(p->out_cb2, p->ocb2);
         }
       }
-      UpdateInterrupts(p);
+      update_interrupts(p);
       break;
 
     default:
@@ -244,7 +244,7 @@ void pia_6821_set_ca1(Pia6821_t* p, bool level) {
         PIA_CALL(p->out_ca2, 1);
       }
     }
-    UpdateInterrupts(p);
+    update_interrupts(p);
   }
 }
 
@@ -260,7 +260,7 @@ void pia_6821_set_ca2(Pia6821_t* p, bool level) {
     }
     if (transition) {
       p->cra |= CRA_IRQ2;
-      UpdateInterrupts(p);
+      update_interrupts(p);
     }
   }
 }
@@ -284,7 +284,7 @@ void pia_6821_set_cb1(Pia6821_t* p, bool level) {
         PIA_CALL(p->out_cb2, 1);
       }
     }
-    UpdateInterrupts(p);
+    update_interrupts(p);
   }
 }
 
@@ -300,7 +300,7 @@ void pia_6821_set_cb2(Pia6821_t* p, bool level) {
     }
     if (transition) {
       p->crb |= CRB_IRQ2;
-      UpdateInterrupts(p);
+      update_interrupts(p);
     }
   }
 }

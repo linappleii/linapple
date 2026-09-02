@@ -19,11 +19,3 @@ auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) -> void;
 auto asset_init() -> bool;
 auto asset_quit() -> void;
 auto asset_insert_master_disk() -> int;
-
-#ifdef __cplusplus
-static inline auto Asset_Init() -> bool { return asset_init(); }
-static inline auto Asset_Quit() -> void { asset_quit(); }
-static inline auto Asset_InsertMasterDisk() -> int {
-  return asset_insert_master_disk();
-}
-#endif

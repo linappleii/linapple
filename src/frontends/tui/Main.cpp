@@ -13,22 +13,22 @@
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 
-auto VideoCallback(const uint32_t* pixels, int width, int height, int pitch)
+auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
   tui_video_render_frame(pixels, width, height, pitch);
 }
 
-auto AudioCallback(const int16_t* samples, size_t num_samples) -> void {
+auto audio_callback(const int16_t* samples, size_t num_samples) -> void {
   audio_mixer_upload_speaker_samples(samples,
                                      static_cast<uint32_t>(num_samples));
 }
 
-auto MockAudioCallback(const int16_t* samples, size_t num_samples) -> void {
+auto mock_audio_callback(const int16_t* samples, size_t num_samples) -> void {
   audio_mixer_upload_mockingboard_samples(samples,
                                           static_cast<uint32_t>(num_samples));
 }
 
-auto TitleCallback(const char* title) -> void { (void)title; }
+auto title_callback(const char* title) -> void { (void)title; }
 
 auto main(int argc, char** argv) -> int {
   AppConfig_t config = {};
@@ -45,7 +45,7 @@ auto main(int argc, char** argv) -> int {
   }
 
   do {
-    AppController_SetRestart(false);
+    app_controller_set_restart(false);
 
     if (app_controller_initialize(&config) != 0) {
       break;
@@ -56,12 +56,12 @@ auto main(int argc, char** argv) -> int {
     tui_input_initialize();
     tui_audio_initialize();
 
-    linapple_set_video_callback(VideoCallback);
-    linapple_set_audio_callback(AudioCallback);
-    linapple_set_mock_audio_callback(MockAudioCallback);
-    linapple_set_title_callback(TitleCallback);
+    linapple_set_video_callback(video_callback);
+    linapple_set_audio_callback(audio_callback);
+    linapple_set_mock_audio_callback(mock_audio_callback);
+    linapple_set_title_callback(title_callback);
 
-    AppController_LoadInitialMedia(&config);
+    app_controller_load_initial_media(&config);
 
     constexpr int apple2_frame_cycles = 17030;
     constexpr auto frame_duration = std::chrono::microseconds(16650);
@@ -92,7 +92,7 @@ auto main(int argc, char** argv) -> int {
       }
     }
 
-    AppController_Shutdown();
+    app_controller_shutdown();
     tui_audio_shutdown();
     tui_input_shutdown();
   } while (app_controller_should_restart() && !tui_terminal_is_interrupted());

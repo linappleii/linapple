@@ -220,7 +220,7 @@ auto String2Address(const char* text, uint16_t& nAddress_) -> bool {
     }
 
     strcpy(sHexApple, "0x");
-    Util_SafeStrCpy(sHexApple + 2, text + 1, MAX_SYMBOLS_LEN - 3);
+    util_safe_strcpy(sHexApple + 2, text + 1, MAX_SYMBOLS_LEN - 3);
     text = sHexApple;
   }
 

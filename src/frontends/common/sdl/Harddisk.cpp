@@ -65,8 +65,8 @@ void harddisk_ui_ftp_select(int drive) {
     }
   }
 
-  Util_SafeStrCpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
-                  g_state.ftp_server_hdd.size());
+  util_safe_strcpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
+                   g_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
                                          g_state.ftp_server_hdd.data());
   Configuration_t::instance().save();
@@ -149,8 +149,8 @@ void harddisk_ui_select(int drive) {
     }
   }
 
-  Util_SafeStrCpy(g_state.hdd_dir.data(), fullPath.c_str(),
-                  g_state.hdd_dir.size());
+  util_safe_strcpy(g_state.hdd_dir.data(), fullPath.c_str(),
+                   g_state.hdd_dir.size());
   Configuration_t::instance().set_string(
       "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
   Configuration_t::instance().save();

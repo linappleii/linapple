@@ -209,9 +209,9 @@ static auto update_latches(ClockPeripheral_t* clock_peripheral) -> void {
   set_latch_pair(clock_peripheral, LATCH_MINUTE, minute);
 }
 
-static auto Clock_IORead(void* instance, uint16_t program_counter,
-                         uint16_t memory_address, uint8_t is_write,
-                         uint8_t data_value, uint32_t remaining_cycles)
+static auto clock_io_read(void* instance, uint16_t program_counter,
+                          uint16_t memory_address, uint8_t is_write,
+                          uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
   if (instance == nullptr) {
     return io_null(program_counter, memory_address, is_write, data_value,
@@ -249,7 +249,7 @@ static auto clock_abi_init(int slot, HostInterface_t* host) -> void* {
             cx_rom_data.begin());
 
   host->RegisterCxROM(slot, cx_rom_data.data());
-  host->RegisterIO(slot, Clock_IORead, nullptr, nullptr, nullptr);
+  host->RegisterIO(slot, clock_io_read, nullptr, nullptr, nullptr);
 
   return clock_peripheral.release();
 }
