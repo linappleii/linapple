@@ -125,8 +125,8 @@ auto CmdBookmarkAdd(int nArgs) -> Update_t {
 
     if ((iBookmark >= MAX_BOOKMARKS) && !bAdded) {
       char sText[CONSOLE_WIDTH];
-      sprintf(sText, "All bookmarks are currently in use.  (Max: %d)",
-              MAX_BOOKMARKS);
+      snprintf(sText, sizeof(sText),
+               "All bookmarks are currently in use.  (Max: %d)", MAX_BOOKMARKS);
       ConsoleDisplayPush(sText);
       return ConsoleUpdate();
     }
@@ -221,8 +221,9 @@ auto CmdBookmarkSave(int nArgs) -> Update_t {
   int iBookmark = 0;
   while (iBookmark < MAX_BOOKMARKS) {
     if (g_bookmarks[iBookmark].bSet) {
-      sprintf(sText, "%s %x %04X\n", g_commands[CMD_BOOKMARK_ADD].name,
-              iBookmark, g_bookmarks[iBookmark].address);
+      snprintf(sText, sizeof(sText), "%s %x %04X\n",
+               g_commands[CMD_BOOKMARK_ADD].name, iBookmark,
+               g_bookmarks[iBookmark].address);
       g_config_state.PushLine(sText);
     }
     iBookmark++;

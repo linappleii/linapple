@@ -498,7 +498,8 @@ void OutputTraceLine() {
 
   char sTarget[16];
   if (line.bTargetValue) {
-    sprintf(sTarget, "%s:%s", line.sTargetPointer, line.sTargetValue);
+    snprintf(sTarget, sizeof(sTarget), "%s:%s", line.sTargetPointer,
+             line.sTargetValue);
   }
 
   if (g_trace_file_with_video_scanner) {

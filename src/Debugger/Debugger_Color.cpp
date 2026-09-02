@@ -189,13 +189,13 @@ static void _SetupColorRamp(const int iPrimary, int& iColor_) {
     g_color_palette[iColor_] = nColor;
 #if DEBUG_COLOR_RAMP
     wsprintf(sText, "RGB(%3d,%3d,%3d, ", nR, nG, nB);
-    strcat(sRamp, sText);
+    strncat(sRamp, sText, sizeof(sRamp) - strlen(sRamp) - 1);
 #endif
     iColor_++;
   }
 #if DEBUG_COLOR_RAMP
   wsprintf(sText, " // %d%d%d\n", bB, bG, bR);
-  strcat(sRamp, sText);
+  strncat(sRamp, sText, sizeof(sRamp) - strlen(sRamp) - 1);
   OutputDebugString(sRamp);
   sRamp[0] = 0;
 #endif

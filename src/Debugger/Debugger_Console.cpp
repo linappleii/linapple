@@ -411,7 +411,8 @@ void ConsoleDisplayPause() {
                            "...press SPACE continue, ESC skip...");
     g_console_prompt_len = ConsoleLineLength(g_console_input);
 #else
-    strcpy(g_console_input, "...press SPACE continue, ESC skip...");
+    util_safe_strcpy(g_console_input, "...press SPACE continue, ESC skip...",
+                     sizeof(g_console_input));
     g_console_prompt_len = static_cast<int>(strlen(g_console_input));
 #endif
     g_console_input_ptr = &g_console_input[g_console_prompt_len];

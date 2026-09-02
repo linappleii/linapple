@@ -210,7 +210,7 @@ auto md5str(const char* input) -> char* {
   }
 
   for (size_t i = 0; i < md5_digest_size; i++) {
-    sprintf(result.data() + (2 * i), "%02X", digest[i]);
+    snprintf(result.data() + (2 * i), 3, "%02X", digest[i]);
   }
   result.at(md5_hex_buffer_size - 1) = '\0';
   return result.data();

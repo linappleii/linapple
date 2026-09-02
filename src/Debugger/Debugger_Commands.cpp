@@ -71,7 +71,7 @@ auto ExecuteCommand(int nArgs) -> Update_t {
         bUpdateDisplay |= UPDATE_DISASM;
       } else {
         char sText[CONSOLE_WIDTH];
-        sprintf(sText, "Unknown command: %s", g_args[0].sArg);
+        snprintf(sText, sizeof(sText), "Unknown command: %s", g_args[0].sArg);
         bUpdateDisplay |= console_display_error(sText);
       }
     }
@@ -98,7 +98,8 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
 
       int nDelayedTargets = AssemblerDelayedTargetsSize();
       if (nDelayedTargets) {
-        sprintf(sText, " Asm: %d sym declared, not defined", nDelayedTargets);
+        snprintf(sText, sizeof(sText), " Asm: %d sym declared, not defined",
+                 nDelayedTargets);
         ConsoleDisplayPush(sText);
         bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY;
       }
@@ -109,7 +110,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
   } else if (g_console_input_chars) {
     int nArgs = ParseInput(g_console_input_ptr);
     if (nArgs == ARG_SYNTAX_ERROR) {
-      sprintf(sText, "Syntax error: %s", g_args[0].sArg);
+      snprintf(sText, sizeof(sText), "Syntax error: %s", g_args[0].sArg);
       bUpdateDisplay |= console_display_error(sText);
     } else if (nArgs > 0) {
       bUpdateDisplay |= ExecuteCommand(nArgs);

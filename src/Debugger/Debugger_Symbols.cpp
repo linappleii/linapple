@@ -117,11 +117,11 @@ auto PrintSymbolInvalidTable() -> Update_t {
   // Similar to _CmdSymbolsInfoHeader()
   sText[0] = 0;
   for (int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++) {
-    sprintf(sTemp, "%s%s%s%c "  // %s"
-            ,
-            CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
-            (iTable != (NUM_SYMBOL_TABLES - 1)) ? ',' : '.');
-    strcat(sText, sTemp);
+    snprintf(sTemp, sizeof(sTemp), "%s%s%s%c "  // %s"
+             ,
+             CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
+             (iTable != (NUM_SYMBOL_TABLES - 1)) ? ',' : '.');
+    strncat(sText, sTemp, sizeof(sText) - strlen(sText) - 1);
   }
 
   //	return console_display_error( sText );
@@ -219,7 +219,7 @@ auto String2Address(const char* text, uint16_t& nAddress_) -> bool {
       return false;
     }
 
-    strcpy(sHexApple, "0x");
+    util_safe_strcpy(sHexApple, "0x", sizeof(sHexApple));
     util_safe_strcpy(sHexApple + 2, text + 1, MAX_SYMBOLS_LEN - 3);
     text = sHexApple;
   }
@@ -278,11 +278,11 @@ void CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */) {
   // // 2.6.2.19 Color for name of symbol table: _CmdPrintSymbol() "SYM HOME"
   // _CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
   // CHC_USAGE instead of CHC_STRING
-  sprintf(text, "%s%s%s:%s%d "  // %s"
-          ,
-          CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
-          bActive ? CHC_NUM_DEC : CHC_WARNING, nSymbols
-          //		, CHC_DEFAULT
+  snprintf(text, CONSOLE_WIDTH * 2, "%s%s%s:%s%d "  // %s"
+           ,
+           CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
+           bActive ? CHC_NUM_DEC : CHC_WARNING, nSymbols
+           //		, CHC_DEFAULT
   );
 }
 
@@ -294,7 +294,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
 
   int bDisplaySymbolTables = 0;
 
-  strcpy(sText, sIndent);  // Indent new line
+  util_safe_strcpy(sText, sIndent, sizeof(sText));  // Indent new line
 
   if (!nArgs) {
     // default to all tables
@@ -322,9 +322,9 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
       int nDst = ConsoleColor_StringLength(sText);
       if ((nDst + nLen) > CONSOLE_WIDTH) {
         console_print(sText);
-        strcpy(sText, sIndent);  // Indent new line
+        util_safe_strcpy(sText, sIndent, sizeof(sText));  // Indent new line
       }
-      strcat(sText, sTemp);
+      strncat(sText, sTemp, sizeof(sText) - strlen(sText) - 1);
     }
   }
   console_print(sText);
@@ -512,8 +512,8 @@ auto ParseSymbolTable(const std::string& pPathFileName,
   //  ascii
   char sFormat1[MAX_SYMBOLS_LEN];
   char sFormat2[MAX_SYMBOLS_LEN];
-  sprintf(sFormat1, "%%x %%%ds", MAX_SYMBOLS_LEN);  // i.e. "%x %13s"
-  sprintf(sFormat2, "%%%ds %%x", MAX_SYMBOLS_LEN);  // i.e. "%13s %x"
+  snprintf(sFormat1, sizeof(sFormat1), "%%x %%%ds", MAX_SYMBOLS_LEN);
+  snprintf(sFormat2, sizeof(sFormat2), "%%%ds %%x", MAX_SYMBOLS_LEN);
 
   FilePtr_t hFile(fopen(pPathFileName.c_str(), "rt"), fclose);
 

@@ -122,15 +122,16 @@ void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
     const char* src_ptr = g_breakpoint_source[pBWZ->eSource];
     const char* pCmp = g_breakpoint_symbols[pBWZ->eOperator];
 
-    sprintf(sText, "  %x: %s %s %04X", iBWZ, src_ptr, pCmp, pBWZ->address);
+    snprintf(sText, sizeof(sText), "  %x: %s %s %04X", iBWZ, src_ptr, pCmp,
+             pBWZ->address);
     if (pBWZ->nLength > 1) {
       char sLen[32];
-      sprintf(sLen, ",%04X", pBWZ->nLength);
-      strcat(sText, sLen);
+      snprintf(sLen, sizeof(sLen), ",%04X", pBWZ->nLength);
+      strncat(sText, sLen, sizeof(sText) - strlen(sText) - 1);
     }
 
     if (!pBWZ->bEnabled) {
-      strcat(sText, " (Disabled)");
+      strncat(sText, " (Disabled)", sizeof(sText) - strlen(sText) - 1);
     }
 
     ConsoleBufferPush(sText);
@@ -303,8 +304,8 @@ auto CmdBreakpointList(int nArgs) -> Update_t {
   (void)nArgs;
   if (!g_breakpoints_count) {
     char sText[CONSOLE_WIDTH];
-    sprintf(sText, "  There are no current breakpoints.  (Max: %d)",
-            MAX_BREAKPOINTS);
+    snprintf(sText, sizeof(sText),
+             "  There are no current breakpoints.  (Max: %d)", MAX_BREAKPOINTS);
     ConsoleBufferPush(sText);
   } else {
     bwz_ListAll(g_breakpoints, MAX_BREAKPOINTS);
@@ -320,15 +321,15 @@ auto CmdBreakpointSave(int nArgs) -> Update_t {
   int iBreakpoint = 0;
   while (iBreakpoint < MAX_BREAKPOINTS) {
     if (g_breakpoints[iBreakpoint].bSet) {
-      sprintf(sText, "%s %x %04X,%04X\n",
-              g_commands[CMD_BREAKPOINT_ADD_REG].name, iBreakpoint,
-              g_breakpoints[iBreakpoint].address,
-              g_breakpoints[iBreakpoint].nLength);
+      snprintf(sText, sizeof(sText), "%s %x %04X,%04X\n",
+               g_commands[CMD_BREAKPOINT_ADD_REG].name, iBreakpoint,
+               g_breakpoints[iBreakpoint].address,
+               g_breakpoints[iBreakpoint].nLength);
       g_config_state.PushLine(sText);
     }
     if (!g_breakpoints[iBreakpoint].bEnabled) {
-      sprintf(sText, "%s %x\n", g_commands[CMD_BREAKPOINT_DISABLE].name,
-              iBreakpoint);
+      snprintf(sText, sizeof(sText), "%s %x\n",
+               g_commands[CMD_BREAKPOINT_DISABLE].name, iBreakpoint);
       g_config_state.PushLine(sText);
     }
 
@@ -381,8 +382,8 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
 
     if ((iWatch >= MAX_WATCHES) && !bAdded) {
       char sText[CONSOLE_WIDTH];
-      sprintf(sText, "All watches are currently in use.  (Max: %d)",
-              MAX_WATCHES);
+      snprintf(sText, sizeof(sText),
+               "All watches are currently in use.  (Max: %d)", MAX_WATCHES);
       ConsoleDisplayPush(sText);
       return ConsoleUpdate();
     }
@@ -456,7 +457,8 @@ auto CmdWatchList(int nArgs) -> Update_t {
   (void)nArgs;
   if (!g_watches_count) {
     char sText[CONSOLE_WIDTH];
-    sprintf(sText, "  There are no current watches.  (Max: %d)", MAX_WATCHES);
+    snprintf(sText, sizeof(sText), "  There are no current watches.  (Max: %d)",
+             MAX_WATCHES);
     ConsoleBufferPush(sText);
   } else {
     bwz_ListAll((Breakpoint_t*)g_watches, MAX_WATCHES);

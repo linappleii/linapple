@@ -146,8 +146,8 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
   char* text = &g_profile_line[0][0];
 
   uint64_t nTotalCycles = g_cumulative_cycles - g_profile_begin_cycles;
-  sprintf(text, "Cycles: %llu\n",
-          static_cast<unsigned long long>(nTotalCycles));
+  snprintf(text, sizeof(g_profile_line[0]), "Cycles: %llu\n",
+           static_cast<unsigned long long>(nTotalCycles));
   g_profile_line_count++;
 
   while (bOpcodeGood || bOpmodeGood) {
@@ -156,12 +156,12 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
 
     if (opcode < NUM_OPCODES) {
       if (vProfileOpcode.at(static_cast<size_t>(opcode)).count > 0) {
-        sprintf(text, "%s: %llu",
-                g_opcodes65_c02[vProfileOpcode.at(static_cast<size_t>(opcode))
-                                    .opcode]
-                    .sMnemonic,
-                static_cast<unsigned long long>(
-                    vProfileOpcode.at(static_cast<size_t>(opcode)).count));
+        snprintf(text, sizeof(g_profile_line[0]), "%s: %llu",
+                 g_opcodes65_c02[vProfileOpcode.at(static_cast<size_t>(opcode))
+                                     .opcode]
+                     .sMnemonic,
+                 static_cast<unsigned long long>(
+                     vProfileOpcode.at(static_cast<size_t>(opcode)).count));
       } else {
         bOpcodeGood = false;
       }
@@ -170,21 +170,21 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
     if (iOpmode < NUM_OPMODES) {
       if (vProfileOpmode.at(static_cast<size_t>(iOpmode)).count > 0) {
         char sOpmode[CONSOLE_WIDTH];
-        sprintf(sOpmode, "  %s: %llu",
-                g_opmodes[static_cast<size_t>(
-                              vProfileOpmode.at(static_cast<size_t>(iOpmode))
-                                  .opmode)]
-                    .name,
-                static_cast<unsigned long long>(
-                    vProfileOpmode.at(static_cast<size_t>(iOpmode)).count));
-        strcat(text, sOpmode);
+        snprintf(sOpmode, sizeof(sOpmode), "  %s: %llu",
+                 g_opmodes[static_cast<size_t>(
+                               vProfileOpmode.at(static_cast<size_t>(iOpmode))
+                                   .opmode)]
+                     .name,
+                 static_cast<unsigned long long>(
+                     vProfileOpmode.at(static_cast<size_t>(iOpmode)).count));
+        strncat(text, sOpmode, sizeof(g_profile_line[0]) - strlen(text) - 1);
       } else {
         bOpmodeGood = false;
       }
     }
 
     if (*text != '\0') {
-      strcat(text, "\n");
+      strncat(text, "\n", sizeof(g_profile_line[0]) - strlen(text) - 1);
       g_profile_line_count++;
     }
 

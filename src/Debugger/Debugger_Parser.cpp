@@ -891,7 +891,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   }
 
   char sCommand[CONSOLE_WIDTH];
-  strcpy(sCommand, pName);
+  util_safe_strcpy(sCommand, pName, sizeof(sCommand));
   _strupr(sCommand);
 
   while (
@@ -948,7 +948,8 @@ void DisplayAmbigiousCommands(int nFound) {
   int iCommand = 0;
   while (iCommand < nFound) {
     char sPotentialCommands[CONSOLE_WIDTH] = "";
-    sprintf(sPotentialCommands, "%s ", CHC_COMMAND);
+    snprintf(sPotentialCommands, sizeof(sPotentialCommands), "%s ",
+             CHC_COMMAND);
 
     int iWidth = strlen(sPotentialCommands);
     while ((iCommand < nFound) && (iWidth < g_console_display_width)) {
@@ -960,8 +961,10 @@ void DisplayAmbigiousCommands(int nFound) {
         break;
       }
 
-      strcat(sPotentialCommands, pName);
-      strcat(sPotentialCommands, " ");
+      strncat(sPotentialCommands, pName,
+              sizeof(sPotentialCommands) - strlen(sPotentialCommands) - 1);
+      strncat(sPotentialCommands, " ",
+              sizeof(sPotentialCommands) - strlen(sPotentialCommands) - 1);
       iWidth += nLen + 1;
       iCommand++;
     }

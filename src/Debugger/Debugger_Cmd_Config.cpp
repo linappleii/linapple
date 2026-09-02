@@ -202,12 +202,13 @@ void ConfigSave_PrepareHeader(const Parameters_e eCategory,
                               const Commands_e eCommandClear) {
   char sText[CONSOLE_WIDTH];
 
-  sprintf(sText, "%s %s = %s\n", g_tokens[TOKEN_COMMENT_EOL].sToken,
-          g_parameters[PARAM_CATEGORY].name, g_parameters[eCategory].name);
+  snprintf(sText, sizeof(sText), "%s %s = %s\n",
+           g_tokens[TOKEN_COMMENT_EOL].sToken,
+           g_parameters[PARAM_CATEGORY].name, g_parameters[eCategory].name);
   g_config_state.PushLine(sText);
 
-  sprintf(sText, "%s %s\n", g_commands[eCommandClear].name,
-          g_parameters[PARAM_WILDSTAR].name);
+  snprintf(sText, sizeof(sText), "%s %s\n", g_commands[eCommandClear].name,
+           g_parameters[PARAM_WILDSTAR].name);
   g_config_state.PushLine(sText);
 }
 

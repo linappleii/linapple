@@ -17,8 +17,9 @@ extern int g_zero_page_pointers_count;
 // Implementation helpers
 auto _ZeroPage_Error() -> Update_t {
   char sText[CONSOLE_WIDTH];
-  sprintf(sText, "  There are no current (ZP) pointers.  (Max: %d)",
-          MAX_ZEROPAGE_POINTERS);
+  snprintf(sText, sizeof(sText),
+           "  There are no current (ZP) pointers.  (Max: %d)",
+           MAX_ZEROPAGE_POINTERS);
   return console_display_error(sText);
 }
 
@@ -59,8 +60,9 @@ auto CmdZeroPageAdd(int nArgs) -> Update_t {
 
     if ((iZP >= MAX_ZEROPAGE_POINTERS) && !bAdded) {
       char sText[CONSOLE_WIDTH];
-      sprintf(sText, "All zero page pointers are currently in use.  (Max: %d)",
-              MAX_ZEROPAGE_POINTERS);
+      snprintf(sText, sizeof(sText),
+               "All zero page pointers are currently in use.  (Max: %d)",
+               MAX_ZEROPAGE_POINTERS);
       ConsoleDisplayPush(sText);
       return ConsoleUpdate();
     }

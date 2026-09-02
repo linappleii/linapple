@@ -18,6 +18,7 @@
 #include "apple2/Video.h"
 #include "charset40.xpm"  // US/default
 #include "core/LinAppleCore.h"
+#include "core/Util_Text.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 
@@ -515,7 +516,7 @@ auto ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView_e iView,
   char nChar = static_cast<char>(nByte);
   if (bCtrlBit) nChar += '@';
 
-  if (sText) sprintf(sText, "%c", nChar);
+  if (sText) snprintf(sText, 2, "%c", nChar);
   return nChar;
 }
 
@@ -568,11 +569,12 @@ void FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
 
   for (int byte = 0; byte < nMaxOpBytes; byte++) {
     uint8_t nMem = *(mem + static_cast<uint16_t>(nBaseAddress + byte));
-    sprintf(pDst, "%02X", nMem);
+    snprintf(pDst, 3, "%02X", nMem);
     pDst += 2;
 
     if (g_config_disasm_opcode_spaces) {
-      strcat(pDst, " ");
+      *pDst = ' ';
+      *(pDst + 1) = ' ';
       pDst++;
     }
   }
@@ -596,7 +598,7 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
       case NOP_BYTE_2:
       case NOP_BYTE_4:
       case NOP_BYTE_8:
-        sprintf(pDst, "%02X", nTarget8);
+        snprintf(pDst, 3, "%02X", nTarget8);
         pDst += 2;
         byte++;
         if (line_.iNoptype == NOP_BYTE_1) {
@@ -608,7 +610,7 @@ void FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
       case NOP_WORD_1:
       case NOP_WORD_2:
       case NOP_WORD_4:
-        sprintf(pDst, "%04X", nTarget16);
+        snprintf(pDst, 5, "%04X", nTarget16);
         pDst += 4;
         byte += 2;
         if (byte < line_.nOpbyte) {
@@ -729,18 +731,19 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       nTarget = nBaseAddress + 2 +
                 static_cast<int>(static_cast<signed char>(nTarget));
       line_.nTarget = nTarget;
-      sprintf(line_.sTargetValue, "%04X", nTarget & 0xFFFF);
+      snprintf(line_.sTargetValue, sizeof(line_.sTargetValue), "%04X",
+               nTarget & 0xFFFF);
       bDisasmFormatFlags |= DISASM_FORMAT_BRANCH;
 
       if (nTarget < nBaseAddress) {
-        sprintf(line_.sBranch, "%s",
-                g_config_branch_indicator_up[g_config_disasm_branch_type]);
+        snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
+                 g_config_branch_indicator_up[g_config_disasm_branch_type]);
       } else if (nTarget > nBaseAddress) {
-        sprintf(line_.sBranch, "%s",
-                g_config_branch_indicator_down[g_config_disasm_branch_type]);
+        snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
+                 g_config_branch_indicator_down[g_config_disasm_branch_type]);
       } else {
-        sprintf(line_.sBranch, "%s",
-                g_config_branch_indicator_equal[g_config_disasm_branch_type]);
+        snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
+                 g_config_branch_indicator_equal[g_config_disasm_branch_type]);
       }
     }
 
@@ -788,9 +791,10 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET) {
         int nAbsTargetOffset = (line_.nTargetOffset > 0) ? line_.nTargetOffset
                                                          : -line_.nTargetOffset;
-        sprintf(line_.sTargetOffset, "%d", nAbsTargetOffset);
+        snprintf(line_.sTargetOffset, sizeof(line_.sTargetOffset), "%d",
+                 nAbsTargetOffset);
       }
-      sprintf(line_.sTarget, "%s", pTargetStr);
+      snprintf(line_.sTarget, sizeof(line_.sTarget), "%s", pTargetStr);
 
       int nTargetPartial = 0;
       int nTargetPartial2 = 0;
@@ -806,13 +810,15 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
                        (*(mem + ((nTargetPointer + 1) & 0xffff)) << 8);
 
         if (g_config_disasm_targets & DISASM_TARGET_ADDR) {
-          sprintf(line_.sTargetPointer, "%04X", nTargetPointer & 0xFFFF);
+          snprintf(line_.sTargetPointer, sizeof(line_.sTargetPointer), "%04X",
+                   nTargetPointer & 0xFFFF);
         }
 
         if (opcode != OPCODE_JMP_NA && opcode != OPCODE_JMP_IAX) {
           bDisasmFormatFlags |= DISASM_FORMAT_TARGET_VALUE;
           if (g_config_disasm_targets & DISASM_TARGET_VAL) {
-            sprintf(line_.sTargetValue, "%02X", nTargetValue & 0xFF);
+            snprintf(line_.sTargetValue, sizeof(line_.sTargetValue), "%02X",
+                     nTargetValue & 0xFF);
           }
 
           bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
@@ -820,36 +826,41 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
 
           char _char = FormatCharTxtCtrl(
               FormatCharTxtHigh(line_.nImmediate, nullptr), nullptr);
-          sprintf(line_.sImmediate, "%c", _char);
+          snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", _char);
         }
       }
     } else if (iOpmode == AM_M) {
-      sprintf(line_.sTarget, "%02X", static_cast<unsigned>(nTarget));
+      snprintf(line_.sTarget, sizeof(line_.sTarget), "%02X",
+               static_cast<unsigned>(nTarget));
       if (iOpmode == AM_M) {
         bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
         line_.nImmediate = static_cast<uint8_t>(nTarget);
         char _char = FormatCharTxtCtrl(
             FormatCharTxtHigh(line_.nImmediate, nullptr), nullptr);
-        sprintf(line_.sImmediate, "%c", _char);
+        snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", _char);
       }
     }
   }
 
-  sprintf(line_.sAddress, "%04X", nBaseAddress);
+  snprintf(line_.sAddress, sizeof(line_.sAddress), "%04X", nBaseAddress);
   FormatOpcodeBytes(nBaseAddress, line_);
 
   if (data) {
     line_.iNoptype = data->eElementType;
     line_.iNopcode = data->iDirective;
-    strcpy(line_.sMnemonic, g_assembler_directives[line_.iNopcode].mnemonic);
+    util_safe_strcpy(line_.sMnemonic,
+                     g_assembler_directives[line_.iNopcode].mnemonic,
+                     sizeof(line_.sMnemonic));
     FormatNopcodeBytes(nBaseAddress, line_);
   } else {
-    strcpy(line_.sMnemonic, g_opcodes[line_.opcode].sMnemonic);
+    util_safe_strcpy(line_.sMnemonic, g_opcodes[line_.opcode].sMnemonic,
+                     sizeof(line_.sMnemonic));
   }
 
   int nSpaces = strlen(line_.sOpCodes);
   while (nSpaces < static_cast<int>(nMinBytesLen)) {
-    strcat(line_.sOpCodes, " ");
+    strncat(line_.sOpCodes, " ",
+            sizeof(line_.sOpCodes) - strlen(line_.sOpCodes) - 1);
     nSpaces++;
   }
 
@@ -863,9 +874,9 @@ auto FormatAddress(uint16_t address, int nBytes) -> const char* {
   iBuf = (iBuf + 1) % 4;
 
   if (nBytes == 1) {
-    sprintf(sAddress, "%02X", address);
+    snprintf(sAddress, sizeof(sBuffers[0]), "%02X", address);
   } else {
-    sprintf(sAddress, "%04X", address);
+    snprintf(sAddress, sizeof(sBuffers[0]), "%04X", address);
   }
   return sAddress;
 }

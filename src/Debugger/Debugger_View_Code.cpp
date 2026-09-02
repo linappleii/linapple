@@ -14,6 +14,7 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "core/Util_Text.h"
 
 // Externs for globals in Debugger_Display.cpp
 extern int g_window_this;
@@ -470,7 +471,7 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
     nRegFlags >>= 1;
   }
 
-  if (pFlagNames_) strcpy(pFlagNames_, sFlagNames);
+  if (pFlagNames_) util_safe_strcpy(pFlagNames_, sFlagNames, 64);
 }
 
 void DrawStack(int line) {
@@ -494,15 +495,15 @@ void DrawStack(int line) {
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     char sText[8] = "";
     if (address <= _6502_STACK_END) {
-      sprintf(sText, "%04X: ", address);
+      snprintf(sText, sizeof(sText), "%04X: ", address);
       PrintTextCursorX(sText, rect);
     }
 
     if (address <= _6502_STACK_END) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
-      sprintf(sText, "  %02X",
-              static_cast<unsigned>(
-                  *mem_get_main_ptr(static_cast<uint16_t>(address))));
+      snprintf(sText, sizeof(sText), "  %02X",
+               static_cast<unsigned>(
+                   *mem_get_main_ptr(static_cast<uint16_t>(address))));
       PrintTextCursorX(sText, rect);
     }
     iStack++;
@@ -518,7 +519,7 @@ void DrawSourceLine(int iSourceLine, Rect_t& rect) {
     char* pSource = g_assembler_source_buffer.GetLine(iSourceLine);
     TextConvertTabsToSpaces(sLine, pSource, CONSOLE_WIDTH - 1);
   } else {
-    strcpy(sLine, " ");
+    util_safe_strcpy(sLine, " ", sizeof(sLine));
   }
 
   PrintText(sLine, rect);

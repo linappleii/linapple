@@ -84,7 +84,7 @@ auto TryStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool {
     return false;
   }
 
-  strcat(pDst, src_ptr);
+  strncat(pDst, src_ptr, static_cast<size_t>(nDstSize) - strlen(pDst) - 1);
   return true;
 }
 
@@ -107,7 +107,7 @@ auto StringCat(char* pDst, const char* src_ptr, const int nDstSize) -> int {
     return 0;
   }
 
-  strcat(pDst, src_ptr);
+  strncat(pDst, src_ptr, static_cast<size_t>(nRemaining));
   return nLenSrc;
 }
 
@@ -226,9 +226,9 @@ auto HelpLastCommand() -> Update_t { return Help_Arg_1(g_command); }
 auto Help_Arg_1(int iCommandHelp) -> Update_t {
   _Arg_1(iCommandHelp);
 
-  sprintf(g_args[1].sArg, "%s",
-          g_commands[iCommandHelp].name);  // .3 Fixed: Help_Arg_1() now copies
-                                           // command name into arg.name
+  snprintf(g_args[1].sArg, sizeof(g_args[1].sArg), "%s",
+           g_commands[iCommandHelp].name);  // .3 Fixed: Help_Arg_1() now copies
+                                            // command name into arg.name
 
   return CmdHelpSpecific(1);
 }
@@ -363,17 +363,18 @@ void Help_Operators() {
   ConsolePrintFormat(sText, "  Operators: (%sBreakpoint%s)", CHC_USAGE,
                      CHC_DEFAULT);
 
-  strcpy(sText, "    ");
-  strcat(sText, CHC_USAGE);
+  util_safe_strcpy(sText, "    ", sizeof(sText));
+  strncat(sText, CHC_USAGE, sizeof(sText) - strlen(sText) - 1);
   int iBreakOp = 0;
   for (iBreakOp = 0; iBreakOp < NUM_BREAKPOINT_OPERATORS; iBreakOp++) {
     if ((iBreakOp >= PARAM_BP_LESS_EQUAL) &&
         (iBreakOp <= PARAM_BP_GREATER_EQUAL)) {
-      strcat(sText, g_breakpoint_symbols[iBreakOp]);
-      strcat(sText, " ");
+      strncat(sText, g_breakpoint_symbols[iBreakOp],
+              sizeof(sText) - strlen(sText) - 1);
+      strncat(sText, " ", sizeof(sText) - strlen(sText) - 1);
     }
   }
-  strcat(sText, CHC_DEFAULT);
+  strncat(sText, CHC_DEFAULT, sizeof(sText) - strlen(sText) - 1);
   console_print(sText);
 }
 
@@ -398,7 +399,7 @@ void ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
   int nLen = 0;
 
   nLen = strlen(CHC_USAGE);
-  strcpy(pDst, CHC_USAGE);
+  util_safe_strcpy(pDst, CHC_USAGE, nLen + 1);
   pDst += nLen;
 
   nLen = nHeaderLen - 1;
@@ -408,19 +409,19 @@ void ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
   src_ptr += nHeaderLen;
 
   nLen = strlen(CHC_ARG_SEP);
-  strcpy(pDst, CHC_ARG_SEP);
+  util_safe_strcpy(pDst, CHC_ARG_SEP, nLen + 1);
   pDst += nLen;
 
   *pDst = ':';
   pDst++;
 
   nLen = strlen(CHC_DEFAULT);
-  strcpy(pDst, CHC_DEFAULT);
+  util_safe_strcpy(pDst, CHC_DEFAULT, nLen + 1);
   pDst += nLen;
 }
 
 void ColorizeString(char*& pDst, const char* src_ptr, const size_t nLen) {
-  strcpy(pDst, src_ptr);
+  util_safe_strcpy(pDst, src_ptr, nLen + 1);
   pDst += nLen;
 }
 
@@ -430,14 +431,14 @@ void ColorizeOperator(char*& pDst, const char*& src_ptr,
   int nLen = 0;
 
   nLen = strlen(pOperator);
-  strcpy(pDst, pOperator);
+  util_safe_strcpy(pDst, pOperator, nLen + 1);
   pDst += nLen;
 
   *pDst = *src_ptr;
   pDst++;
 
   nLen = strlen(CHC_DEFAULT);
-  strcpy(pDst, CHC_DEFAULT);
+  util_safe_strcpy(pDst, CHC_DEFAULT, nLen + 1);
   pDst += nLen;
 
   src_ptr++;
@@ -842,39 +843,39 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       int iCmd = g_commands[iCommand].command_id;  // Unaliased command
 
       // HACK: Major kludge to display category!!!
+      const char* pCatName = "Unknown!";
       if (iCmd <= CMD_UNASSEMBLE) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_CPU].name);
+        pCatName = g_parameters[PARAM_CAT_CPU].name;
       } else if (iCmd <= CMD_BOOKMARK_SAVE) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_BOOKMARKS].name);
+        pCatName = g_parameters[PARAM_CAT_BOOKMARKS].name;
       } else if (iCmd <= CMD_BREAKPOINT_SAVE) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_BREAKPOINTS].name);
+        pCatName = g_parameters[PARAM_CAT_BREAKPOINTS].name;
       } else if (iCmd <= CMD_CONFIG_SET_DEBUG_DIR) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_CONFIG].name);
+        pCatName = g_parameters[PARAM_CAT_CONFIG].name;
       } else if (iCmd <= CMD_CURSOR_PAGE_DOWN_4K) {
-        sprintf(sCategory, "Scrolling");
+        pCatName = "Scrolling";
       } else if (iCmd <= CMD_FLAG_SET_N) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_FLAGS].name);
+        pCatName = g_parameters[PARAM_CAT_FLAGS].name;
       } else if (iCmd <= CMD_MOTD) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_HELP].name);
+        pCatName = g_parameters[PARAM_CAT_HELP].name;
       } else if (iCmd <= CMD_MEMORY_FILL) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_MEMORY].name);
+        pCatName = g_parameters[PARAM_CAT_MEMORY].name;
       } else if (iCmd <= CMD_OUTPUT_RUN) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_OUTPUT].name);
+        pCatName = g_parameters[PARAM_CAT_OUTPUT].name;
       } else if (iCmd <= CMD_SYNC) {
-        sprintf(sCategory, "Source");
+        pCatName = "Source";
       } else if (iCmd <= CMD_SYMBOLS_LIST) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_SYMBOLS].name);
+        pCatName = g_parameters[PARAM_CAT_SYMBOLS].name;
       } else if (iCmd <= CMD_VIEW_DHGR2) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_VIEW].name);
+        pCatName = g_parameters[PARAM_CAT_VIEW].name;
       } else if (iCmd <= CMD_WATCH_SAVE) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_WATCHES].name);
+        pCatName = g_parameters[PARAM_CAT_WATCHES].name;
       } else if (iCmd <= CMD_WINDOW_OUTPUT) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_WINDOW].name);
+        pCatName = g_parameters[PARAM_CAT_WINDOW].name;
       } else if (iCmd <= CMD_ZEROPAGE_POINTER_SAVE) {
-        sprintf(sCategory, "%s", g_parameters[PARAM_CAT_ZEROPAGE].name);
-      } else {
-        sprintf(sCategory, "Unknown!");
+        pCatName = g_parameters[PARAM_CAT_ZEROPAGE].name;
       }
+      util_safe_strcpy(sCategory, pCatName, sizeof(sCategory));
 
       ConsolePrintFormat(sText, "%sCategory%s: %s%s", CHC_USAGE, CHC_DEFAULT,
                          CHC_CATEGORY, sCategory);
@@ -890,9 +891,11 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       const char* pHelp = pCommand->help_summary;
       if (pHelp) {
         if (bCategory) {
-          sprintf(sText, "%s%8s%s, ", CHC_COMMAND, pCommand->name, CHC_ARG_SEP);
+          snprintf(sText, sizeof(sText), "%s%8s%s, ", CHC_COMMAND,
+                   pCommand->name, CHC_ARG_SEP);
         } else {
-          sprintf(sText, "%s%s%s, ", CHC_COMMAND, pCommand->name, CHC_ARG_SEP);
+          snprintf(sText, sizeof(sText), "%s%s%s, ", CHC_COMMAND,
+                   pCommand->name, CHC_ARG_SEP);
         }
 
         //				if (! TryStringCat( sText, pHelp,
@@ -1018,12 +1021,12 @@ auto CmdHelpList(int nArgs) -> Update_t {
     } else {
       console_print(sText);
       nLen = 1;
-      strcpy(sText, " ");
+      util_safe_strcpy(sText, " ", sizeof(sText));
       StringCat(sText, CHC_COMMAND, nBuf);
       nLen += StringCat(sText, pName, nBuf);
     }
 
-    strcat(sText, " ");
+    strncat(sText, " ", sizeof(sText) - strlen(sText) - 1);
     nLen++;
   }
 

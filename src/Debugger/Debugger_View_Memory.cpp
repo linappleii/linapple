@@ -127,7 +127,7 @@ void DrawMemory(int line, int iMemDump) {
     rect2 = rect;
 
     if (iView == MEM_VIEW_HEX) {
-      sprintf(sText, "%04X", iAddress);
+      snprintf(sText, sizeof(sText), "%04X", iAddress);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -146,7 +146,7 @@ void DrawMemory(int line, int iMemDump) {
           DebuggerSetColorFG(DebuggerGetColor(FG_INFO_IO_BYTE));
         }
 
-        sprintf(sText, "%02X ", nData);
+        snprintf(sText, sizeof(sText), "%02X ", nData);
       } else {
         if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END)) {
           iBackground = BG_INFO_IO_BYTE;
@@ -197,9 +197,9 @@ void DrawRegister(int line, const char* name, const int nBytes,
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
   char sValue[8];
   if (nBytes == 1) {
-    sprintf(sValue, "%02X", nValue & 0xFF);
+    snprintf(sValue, sizeof(sValue), "%02X", nValue & 0xFF);
   } else {
-    sprintf(sValue, "%04X", nValue);
+    snprintf(sValue, sizeof(sValue), "%04X", nValue);
   }
   PrintTextCursorX(sValue, rect);
 }
@@ -240,7 +240,7 @@ void DrawSoftSwitchAddress(Rect_t& rect, int address,
 
   DebuggerSetColorBG(DebuggerGetColor(bg_default));
   DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_TARGET));
-  sprintf(sText, "%02X", (address & 0xFF));
+  snprintf(sText, sizeof(sText), "%02X", (address & 0xFF));
   PrintTextCursorX(sText, rect);
 
   DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
@@ -366,7 +366,7 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
       PrintTextCursorX(sText, rect);
 
-      sprintf(sText, "%02X", (iActiveBank & 0x7F));
+      snprintf(sText, sizeof(sText), "%02X", (iActiveBank & 0x7F));
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect);
     } else {
@@ -477,14 +477,14 @@ void DrawTargets(int line) {
     char sData[8] = "";
 
     if (aTarget[iAddress] != NO_6502_TARGET) {
-      sprintf(sAddress, "%04X", aTarget[iAddress]);
+      snprintf(sAddress, sizeof(sAddress), "%04X", aTarget[iAddress]);
       if (iAddress) {
-        sprintf(sData, "%02X", *(mem + aTarget[iAddress]));
+        snprintf(sData, sizeof(sData), "%02X", *(mem + aTarget[iAddress]));
       } else {
         uint16_t val16 =
             *(mem + aTarget[iAddress]) |
             (*(mem + static_cast<uint16_t>(aTarget[iAddress] + 1)) << 8);
-        sprintf(sData, "%04X", val16);
+        snprintf(sData, sizeof(sData), "%04X", val16);
       }
     }
 
@@ -528,11 +528,11 @@ void DrawWatches(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
       PrintTextCursorX("W", rect2);
 
-      sprintf(sText, "%X ", iWatch);
+      snprintf(sText, sizeof(sText), "%X ", iWatch);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      sprintf(sText, "%04X", g_watches[iWatch].address);
+      snprintf(sText, sizeof(sText), "%04X", g_watches[iWatch].address);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -542,24 +542,24 @@ void DrawWatches(int line) {
       uint8_t nTarget8 = 0;
 
       nTarget8 = static_cast<unsigned>(*(mem + g_watches[iWatch].address));
-      sprintf(sText, "%02X", nTarget8);
+      snprintf(sText, sizeof(sText), "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
       nTarget8 = static_cast<unsigned>(
           *(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)));
-      sprintf(sText, "%02X", nTarget8);
+      snprintf(sText, sizeof(sText), "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
-      sprintf(sText, "(");
+      snprintf(sText, sizeof(sText), "(");
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPERATOR));
       PrintTextCursorX(sText, rect2);
 
       uint16_t nTarget16 =
           *(mem + g_watches[iWatch].address) |
           (*(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)) << 8);
-      sprintf(sText, "%04X", nTarget16);
+      snprintf(sText, sizeof(sText), "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -586,7 +586,7 @@ void DrawWatches(int line) {
 
         uint8_t nValue8 = static_cast<unsigned>(
             *(mem + static_cast<uint16_t>(nTarget16 + byte)));
-        sprintf(sText, "%02X", nValue8);
+        snprintf(sText, sizeof(sText), "%02X", nValue8);
         PrintTextCursorX(sText, rect2);
       }
     }
@@ -623,7 +623,7 @@ void DrawZeroPagePointers(int line) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
       PrintTextCursorX("Z", rect2);
 
-      sprintf(sText, "%X ", iZP);
+      snprintf(sText, sizeof(sText), "%X ", iZP);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
@@ -658,7 +658,7 @@ void DrawZeroPagePointers(int line) {
       rect2.top += g_font_height;
       rect2.bottom += g_font_height;
 
-      sprintf(sText, "%02X", nZPAddr1);
+      snprintf(sText, sizeof(sText), "%02X", nZPAddr1);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -667,7 +667,7 @@ void DrawZeroPagePointers(int line) {
 
       uint16_t nTarget16 = static_cast<uint16_t>(mem[nZPAddr1]) |
                            (static_cast<uint16_t>(mem[nZPAddr2]) << 8);
-      sprintf(sText, "%04X", nTarget16);
+      snprintf(sText, sizeof(sText), "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -675,7 +675,7 @@ void DrawZeroPagePointers(int line) {
       PrintTextCursorX(":", rect2);
 
       uint8_t nValue8 = static_cast<unsigned>(*(mem + nTarget16));
-      sprintf(sText, "%02X", nValue8);
+      snprintf(sText, sizeof(sText), "%02X", nValue8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
     }
@@ -715,13 +715,14 @@ void DrawSubWindow_Data(Update_t bUpdate) {
   for (iLine = 0; iLine < nLines; iLine++) {
     iAddress = address;
 
-    sprintf(sAddress, "%04X", iAddress);
+    snprintf(sAddress, sizeof(sAddress), "%04X", iAddress);
 
     sOpcodes[0] = 0;
     for (byte = 0; byte < nMaxOpcodes; byte++) {
       uint8_t nData = static_cast<unsigned>(
           *(mem + static_cast<uint16_t>(iAddress + byte)));
-      sprintf(&sOpcodes[static_cast<ptrdiff_t>(byte * 3)], "%02X ", nData);
+      snprintf(&sOpcodes[static_cast<ptrdiff_t>(byte * 3)],
+               sizeof(sOpcodes) - (byte * 3), "%02X ", nData);
     }
     sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;
 

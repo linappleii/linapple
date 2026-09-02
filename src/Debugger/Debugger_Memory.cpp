@@ -20,6 +20,7 @@
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
+#include "core/Util_Text.h"
 
 // Globals
 MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {{true, 0, DEV_MEMORY, MEM_VIEW_HEX},
@@ -89,7 +90,7 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
 
   if (bUpdate) {
     pArg->nValue = address;
-    sprintf(pArg->sArg, "%04X", address);
+    snprintf(pArg->sArg, sizeof(pArg->sArg), "%04X", address);
   }
 
   if (pAddress_) {
@@ -410,7 +411,7 @@ Update_t CmdMemoryLoad (int nArgs)
       return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
-    strcpy( sLoadSaveFilePath, g_state.current_dir ); // TODO: g_debug_dir
+    util_safe_strcpy(sLoadSaveFilePath, g_state.current_dir, sizeof(sLoadSaveFilePath));
 
     uint16_t nAddressStart;
     uint16_t nAddress2   = 0;
@@ -441,9 +442,9 @@ Update_t CmdMemoryLoad (int nArgs)
 
     if (bHaveFileName)
     {
-      strcpy( g_memory_load_save_file_name, g_args[ 1 ].sArg );
+      util_safe_strcpy(g_memory_load_save_file_name, g_args[1].sArg, sizeof(g_memory_load_save_file_name));
     }
-    strcat( sLoadSaveFilePath, g_memory_load_save_file_name );
+    strncat(sLoadSaveFilePath, g_memory_load_save_file_name, sizeof(sLoadSaveFilePath) - strlen(sLoadSaveFilePath) - 1);
 
     FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
     if (hFile)
@@ -799,7 +800,7 @@ Update_t CmdMemorySave (int nArgs)
 //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     char sLoadSaveFilePath[ path_max_len ];
-    strcpy( sLoadSaveFilePath, g_state.current_dir ); // g_state.program_dir
+    util_safe_strcpy(sLoadSaveFilePath, g_state.current_dir, sizeof(sLoadSaveFilePath));
 
     RangeType_t eRange;
     eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
@@ -816,13 +817,13 @@ Update_t CmdMemorySave (int nArgs)
     {
       if (! bHaveFileName)
       {
-        sprintf( g_memory_load_save_file_name, "%04X.%04X.bin", nAddressStart, nAddressLen ); // nAddressEnd );
+        snprintf(g_memory_load_save_file_name, sizeof(g_memory_load_save_file_name), "%04X.%04X.bin", nAddressStart, nAddressLen);
       }
       else
       {
-        strcpy( g_memory_load_save_file_name, g_args[ 1 ].sArg );
+        util_safe_strcpy(g_memory_load_save_file_name, g_args[1].sArg, sizeof(g_memory_load_save_file_name));
       }
-      strcat( sLoadSaveFilePath, g_memory_load_save_file_name );
+      strncat(sLoadSaveFilePath, g_memory_load_save_file_name, sizeof(sLoadSaveFilePath) - strlen(sLoadSaveFilePath) - 1);
 
 //        if (nArgs == 2)
       {
@@ -970,11 +971,11 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       if (!bHaveFileName) {
         char sMemoryLoadSaveFileName[path_max_len];
         if (!bBankSpecified) {
-          sprintf(sMemoryLoadSaveFileName, "%04X.%04X.bin", nAddressStart,
-                  nAddressLen);
+          snprintf(sMemoryLoadSaveFileName, sizeof(sMemoryLoadSaveFileName),
+                   "%04X.%04X.bin", nAddressStart, nAddressLen);
         } else {
-          sprintf(sMemoryLoadSaveFileName, "%04X.%04X.bank%02X.bin",
-                  nAddressStart, nAddressLen, bank);
+          snprintf(sMemoryLoadSaveFileName, sizeof(sMemoryLoadSaveFileName),
+                   "%04X.%04X.bank%02X.bin", nAddressStart, nAddressLen, bank);
         }
         g_memory_load_save_file_name = sMemoryLoadSaveFileName;
       } else {
@@ -1223,9 +1224,9 @@ auto CmdNTSC(int nArgs) -> Update_t {
         ConsoleBufferPush(pPrefixText);  // TODO: Add a ": " separator
 
 #if _DEBUG
-        sprintf(text, "Filename.length.1: %d\n", len1);
+        snprintf(text, sizeof(text), "Filename.length.1: %d\n", len1);
         OutputDebugString(text);
-        sprintf(text, "Filename.length.2: %d\n", len2);
+        snprintf(text, sizeof(text), "Filename.length.2: %d\n", len2);
         OutputDebugString(text);
         OutputDebugString(sPaletteFilePath.c_str());
 #endif
@@ -1361,7 +1362,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
           if (iDstX == 15) iSrcX = 15;
 #if 0  // _DEBUG
   char text[ 128 ];
-  sprintf( text, "[ %X ] = [ %X ]\n", iDstX, iSrcX );
+  snprintf( text, sizeof(text), "[ %X ] = [ %X ]\n", iDstX, iSrcX );
   OutputDebugStringA( text );
 #endif
           pTmp[iDstX + 16 * iPhase] = pPhase0[iSrcX];
@@ -1622,7 +1623,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
     } else if (iParam == PARAM_LOAD) {
       FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "rb"), fclose);
       if (pFile) {
-        strcpy(aStatusText, "Loaded");
+        util_safe_strcpy(aStatusText, "Loaded", sizeof(aStatusText));
 
         // Get File Size
         size_t nFileSize = debugger_get_file_size(pFile.get());
@@ -1635,10 +1636,12 @@ auto CmdNTSC(int nArgs) -> Update_t {
           fseek(pFile.get(), pBmp->nOffsetData, SEEK_SET);
 
           if (pBmp->nBitsPerPixel != 32) {
-            strcpy(aStatusText, "Bitmap not 32-bit RGBA");
+            util_safe_strcpy(aStatusText, "Bitmap not 32-bit RGBA",
+                             sizeof(aStatusText));
             bValid = false;
           } else if (pBmp->nOffsetData > nFileSize) {
-            strcpy(aStatusText, "Bad BITMAP: Data > file size !?");
+            util_safe_strcpy(aStatusText, "Bad BITMAP: Data > file size !?",
+                             sizeof(aStatusText));
             bValid = false;
           } else if (!(((pBmp->nWidthPixels == 64) &&
                         (pBmp->nHeightPixels == 256)) ||
@@ -1646,7 +1649,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
                         (pBmp->nHeightPixels == 1)) ||
                        ((pBmp->nWidthPixels == 16) &&
                         (pBmp->nHeightPixels == 1)))) {
-            strcpy(aStatusText, "Bitmap not 64x256, 64x1, or 16x1");
+            util_safe_strcpy(aStatusText, "Bitmap not 64x256, 64x1, or 16x1",
+                             sizeof(aStatusText));
             bValid = false;
           } else if (pBmp->nStructSize == 0x28) {
             if (pBmp->nCompression == 0)  // BI_RGB mode
@@ -1661,7 +1665,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
             }
           }
         } else if (nFileSize != g_chroma_size) {
-          sprintf(aStatusText, "Raw size != %d", 64 * 256 * 4);
+          snprintf(aStatusText, sizeof(aStatusText), "Raw size != %d",
+                   64 * 256 * 4);
           bValid = false;
         }
 
@@ -1701,7 +1706,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
         pFile.reset();
       } else {
-        strcpy(aStatusText, "File: ");
+        util_safe_strcpy(aStatusText, "File: ", sizeof(aStatusText));
         ConsoleBufferPush("error couldn't open file for reading.");
       }
 
@@ -1887,10 +1892,10 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
       StringCat(sResult, CHC_NUM_DEC,
                 nBuf);  // 2.6.2.17 Search Results: The n'th result now using
                         // correct color (was command, now number decimal)
-      sprintf(sText, "%02X",
-              iFound);  // BUGFIX: 2.6.2.32 n'th Search results were being
-                        // displayed in dec, yet parser takes hex numbers. i.e.
-                        // SH D000:FFFF A9 00
+      snprintf(sText, sizeof(sText), "%02X",
+               iFound);  // BUGFIX: 2.6.2.32 n'th Search results were being
+                         // displayed in dec, yet parser takes hex numbers. i.e.
+                         // SH D000:FFFF A9 00
       nLen += StringCat(sResult, sText, nBuf);
 
       StringCat(sResult, CHC_DEFAULT,
@@ -1905,9 +1910,9 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
                             // for target address results now colorized properly
 
       StringCat(sResult, CHC_ADDRESS, nBuf);
-      sprintf(sText, "%04X ",
-              address);  // 2.6.2.15 Fixed: Search Results: Added space between
-                         // results for better readability
+      snprintf(sText, sizeof(sText), "%04X ",
+               address);  // 2.6.2.15 Fixed: Search Results: Added space between
+                          // results for better readability
       nLen += StringCat(sResult, sText, nBuf);
 
       // Fit on same line?
@@ -1915,7 +1920,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
       {
         // ConsoleDisplayPush( sMatches );
         console_print(sMatches);
-        strcpy(sMatches, sResult);
+        util_safe_strcpy(sMatches, sResult, sizeof(sMatches));
         nLineLen = nLen;
       } else {
         StringCat(sMatches, sResult, nBuf);
@@ -1938,7 +1943,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   nLen += StringCat(sResult, ": ", nBuf);
 
   StringCat(sResult, CHC_NUM_DEC, nBuf);  // intentional CHC_DEFAULT instead of
-  sprintf(sText, "%d  ", nFound);
+  snprintf(sText, sizeof(sText), "%d  ", nFound);
   nLen += StringCat(sResult, sText, nBuf);
 
   StringCat(sResult, CHC_ARG_SEP, nBuf);  // CHC_ARC_OPT -> CHC_ARG_SEP
@@ -1948,7 +1953,7 @@ auto _SearchMemoryDisplay(int nArgs) -> Update_t {
   nLen += StringCat(sResult, "#$", nBuf);
 
   StringCat(sResult, CHC_NUM_HEX, nBuf);
-  sprintf(sText, "%04X", nFound);
+  snprintf(sText, sizeof(sText), "%04X", nFound);
   nLen += StringCat(sResult, sText, nBuf);
 
   StringCat(sResult, CHC_ARG_SEP, nBuf);

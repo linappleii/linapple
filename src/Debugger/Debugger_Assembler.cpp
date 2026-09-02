@@ -1380,7 +1380,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
     uint32_t address = INVALID_ADDRESS;
 
-    strcpy(sLine, sText);
+    util_safe_strcpy(sLine, sText, sizeof(sLine));
     char* p = sLine;
     p = strstr(sLine, ":");
     if (p) {
@@ -1414,7 +1414,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
       g_source_debug[static_cast<uint16_t>(address)] = iLine;
     }
 
-    strcpy(sLine, sText);
+    util_safe_strcpy(sLine, sText, sizeof(sLine));
     if (bAddSymbols) {
       char* pEQU = strstr(sLine, "EQU");
       char* pDFB = strstr(sLine, "DFB");

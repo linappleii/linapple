@@ -96,10 +96,11 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
     sBin[nWidth - 1 - nBit] = (address & (1 << nBit)) ? '1' : '0';
   }
 
-  sprintf(sText, "  $%02X = %3d = %%%s", address, address, sBin);
+  snprintf(sText, sizeof(sText), "  $%02X = %3d = %%%s", address, address,
+           sBin);
 
   if (bParen) {
-    strcat(sText, " (");
+    strncat(sText, " (", sizeof(sText) - strlen(sText) - 1);
   }
 
   if (bParen) {
@@ -109,13 +110,13 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
   }
 
   if (bHi) {
-    strcat(sText, "High");
+    strncat(sText, "High", sizeof(sText) - strlen(sText) - 1);
   } else if (bLo) {
-    strcat(sText, "Ctrl");
+    strncat(sText, "Ctrl", sizeof(sText) - strlen(sText) - 1);
   }
 
   if (bParen) {
-    strcat(sText, ")");
+    strncat(sText, ")", sizeof(sText) - strlen(sText) - 1);
   }
 
   ConsoleBufferPush(sText);
@@ -161,7 +162,7 @@ auto CmdOutputPrint(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_OUTPUT_PRINT);
     }
 
-    nLen += sprintf(&sText[nLen], "%d", nValue);
+    nLen += snprintf(&sText[nLen], sizeof(sText) - nLen, "%d", nValue);
   }
 
   if (nLen) {
@@ -257,22 +258,22 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
           switch (eThis) {
             case PS_NEXT_ARG_HEX:
               if (nWidth) {
-                sprintf(sFormat, "%%0%dX", nWidth);
+                snprintf(sFormat, sizeof(sFormat), "%%0%dX", nWidth);
               } else {
-                sprintf(sFormat, "%%X");
+                snprintf(sFormat, sizeof(sFormat), "%%X");
               }
 
-              sprintf(sValue, sFormat, nValue);
+              snprintf(sValue, sizeof(sValue), sFormat, nValue);
               break;
 
             case PS_NEXT_ARG_DEC:
               if (nWidth) {
-                sprintf(sFormat, "%%%dd", nWidth);
+                snprintf(sFormat, sizeof(sFormat), "%%%dd", nWidth);
               } else {
-                sprintf(sFormat, "%%d");
+                snprintf(sFormat, sizeof(sFormat), "%%d");
               }
 
-              sprintf(sValue, sFormat, nValue);
+              snprintf(sValue, sizeof(sValue), sFormat, nValue);
               break;
 
             case PS_NEXT_ARG_BIN: {
