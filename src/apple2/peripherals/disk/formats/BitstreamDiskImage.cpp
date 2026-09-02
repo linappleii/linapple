@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -110,6 +111,7 @@ extern "C" auto bitstream_disk_image_read_track(BitstreamDiskImage_t* image_ptr,
     return;
   }
 
+  std::fill_n(track_buffer, nibbles_per_track, 0xFF);
   const size_t read_count =
       fread(track_buffer, 1, image_ptr->track_size, image_ptr->file.get());
 

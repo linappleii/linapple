@@ -8,6 +8,7 @@
 #include <cstring>
 #include <vector>
 
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
@@ -511,4 +512,38 @@ TEST_CASE(
         disk_probe_possible);
   CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
         disk_probe_no);
+}
+
+TEST_CASE(
+    "DiskDrivers: [NIB-3] Truncated bitstream track pre-fills buffer with "
+    "0xFF") {
+  const char* tmp_nib = "test_truncated.nib";
+  remove(tmp_nib);
+
+  FILE* f = fopen(tmp_nib, "wb");
+  REQUIRE(f != nullptr);
+  std::vector<uint8_t> short_track(100, 0xAA);
+  fwrite(short_track.data(), 1, short_track.size(), f);
+  fclose(f);
+
+  bool is_readonly = false;
+  void* instance = nullptr;
+  CHECK(g_nib_driver.open(tmp_nib, 0, 0, &is_readonly, &instance) ==
+        disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  std::vector<uint8_t> track_buf(nibbles_per_track, 0x55);
+  int out_nibbles = 0;
+  g_nib_driver.read_track(instance, 0, 0, track_buf.data(), &out_nibbles);
+
+  CHECK(out_nibbles == 100);
+  for (size_t i = 0; i < 100; ++i) {
+    CHECK(track_buf[i] == 0xAA);
+  }
+  for (size_t i = 100; i < nibbles_per_track; ++i) {
+    CHECK(track_buf[i] == 0xFF);
+  }
+
+  g_nib_driver.close(instance);
+  remove(tmp_nib);
 }
