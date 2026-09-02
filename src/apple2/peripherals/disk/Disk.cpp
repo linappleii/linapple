@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory,
-//             cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-//             cppcoreguidelines-pro-bounds-constant-array-index,
-//             cppcoreguidelines-pro-type-reinterpret-cast,
-//             cppcoreguidelines-pro-type-const-cast,
-//             bugprone-easily-swappable-parameters,
-//             modernize-make-unique)
-// Justification: This module implements low-level Disk II hardware emulation
-// using procedural C-style patterns for performance and ABI compatibility.
-// Pointer arithmetic and C-style arrays are required for bitstream manipulation
-// and save-state structure stability. easily-swappable-parameters is mandated
-// by the project-wide Peripheral ABI signatures. modernize-make-unique is
-// suppressed to maintain C++11 compatibility.
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique) Justification: This module implements low-level Disk
+// II hardware emulation using procedural C-style patterns for performance and
+// ABI compatibility. Pointer arithmetic and C-style arrays are required for
+// bitstream manipulation and save-state structure stability.
+// easily-swappable-parameters is mandated by the project-wide Peripheral ABI
+// signatures. modernize-make-unique is suppressed to maintain C++11
+// compatibility.
 
 #include "apple2/peripherals/disk/Disk.h"
 
@@ -33,7 +32,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "core/Log.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -41,6 +39,7 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
@@ -1219,12 +1218,10 @@ auto disk_get_descriptor() -> Peripheral_t* { return &g_disk_peripheral; }
 
 PERIPHERAL_REGISTER(g_disk_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory,
-//           cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//           cppcoreguidelines-avoid-c-arrays,
-//           modernize-avoid-c-arrays,
-//           cppcoreguidelines-pro-bounds-constant-array-index,
-//           cppcoreguidelines-pro-type-reinterpret-cast,
-//           cppcoreguidelines-pro-type-const-cast,
-//           bugprone-easily-swappable-parameters,
-//           modernize-make-unique)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique)

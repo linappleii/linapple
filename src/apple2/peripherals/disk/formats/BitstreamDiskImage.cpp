@@ -14,12 +14,11 @@
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-//             bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module uses procedural patterns for C-compatibility.
-// google-runtime-int is required for fseek offsets. owning-memory and
-// make-unique are suppressed for C++11 compatibility and handle-based
-// resource management. easily-swappable-parameters is mandated by the
-// Disk Driver ABI signatures.
+// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// This module uses procedural patterns for C-compatibility. google-runtime-int
+// is required for fseek offsets. owning-memory and make-unique are suppressed
+// for C++11 compatibility and handle-based resource management.
+// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
 struct BitstreamDiskImage_t {
   FilePtr_t file{nullptr, fclose};
@@ -200,4 +199,4 @@ extern "C" auto bitstream_disk_image_create(const char* path,
 }
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-//           bugprone-easily-swappable-parameters, modernize-make-unique)
+// bugprone-easily-swappable-parameters, modernize-make-unique)

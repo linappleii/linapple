@@ -4,8 +4,8 @@
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-owning-memory,
 // cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-// Justification: This file implements the host-independent peripheral ABI.
+// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
+// This file implements the host-independent peripheral ABI.
 
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 
@@ -20,14 +20,12 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SnapshotTypes.h"
 #include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
-#include "apple2/chips/SSI263.h"
 #include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
+#include "core/Peripheral_Types.h"
 
 namespace via_reg {
 constexpr uint8_t orb = 0x0;

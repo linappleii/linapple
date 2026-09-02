@@ -10,14 +10,13 @@
 #include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
 #include "core/Peripheral_Types.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
 // Format drivers utilize a procedural C-compatible handle system and
 // standardized probing signatures mandated by the Disk subsystem ABI.
 // Array-to-pointer decay and C-style arrays are required for driver descriptor
-// registration.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-type-static-cast-downcast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay, registration.)
 
 namespace {
 namespace physical {
@@ -139,5 +138,4 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // cppcoreguidelines-pro-type-static-cast-downcast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay, registration.)

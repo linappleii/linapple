@@ -15,12 +15,12 @@
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-//             bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module uses procedural patterns for C-compatibility.
-// google-runtime-int is required for fseek offsets. owning-memory and
-// make-unique are suppressed for C++11 compatibility and handle-based
-// resource management. easily-swappable-parameters is mandated by the
-// shared sector image ABI signatures.
+// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// This module uses procedural patterns for C-compatibility. google-runtime-int
+// is required for fseek offsets. owning-memory and make-unique are suppressed
+// for C++11 compatibility and handle-based resource management.
+// easily-swappable-parameters is mandated by the shared sector image ABI
+// signatures.
 
 struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
@@ -314,4 +314,4 @@ auto sector_disk_image_command(SectorDiskImage_t* image_ptr, uint32_t cmd_id,
 }
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-//           bugprone-easily-swappable-parameters, modernize-make-unique)
+// bugprone-easily-swappable-parameters, modernize-make-unique)

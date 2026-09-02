@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,13 +19,12 @@
 #include "core/Util_Text.h"
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
-//             modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
-//             bugprone-easily-swappable-parameters)
-// Justification: Driver registration uses a global registry pattern for
-// technical consistency with the floppy loading subsystem. const-cast is
-// required to register the immutable global driver descriptor.
-// easily-swappable-parameters is mandated by the loader ABI signatures.
-// make-unique is suppressed to maintain C++11 compatibility.
+// modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
+// bugprone-easily-swappable-parameters) Justification: Driver registration uses
+// a global registry pattern for technical consistency with the floppy loading
+// subsystem. const-cast is required to register the immutable global driver
+// descriptor. easily-swappable-parameters is mandated by the loader ABI
+// signatures. make-unique is suppressed to maintain C++11 compatibility.
 
 namespace {
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
@@ -201,5 +203,5 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
-//           modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
-//           bugprone-easily-swappable-parameters)
+// modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
+// bugprone-easily-swappable-parameters)

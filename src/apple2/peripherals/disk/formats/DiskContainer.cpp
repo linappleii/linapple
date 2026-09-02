@@ -18,12 +18,12 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay) Justification:
 // Domain-specific container detection requires parameters mandated by the
 // shared format probing signatures. Pointer arithmetic and array decay are
 // required for physical bitstream inspection and decompression library ABIs.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 namespace macbinary {
 namespace {
@@ -256,5 +256,4 @@ extern "C" auto disk_container_prepare_compressed_path(
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// cppcoreguidelines-pro-bounds-pointer-arithmetic)

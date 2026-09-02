@@ -3,8 +3,10 @@
 
 #include "frontends/common/VideoSurface.h"
 
-// NOLINTBEGIN(cppcoreguidelines-use-enum-class,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,modernize-use-trailing-return-type)
-// Dummy coordinates and configurations for linkers
+// NOLINTBEGIN(cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// modernize-use-trailing-return-type) Dummy coordinates and configurations for
+// linkers
 using ColorRef_t = uint32_t;
 enum DebugVirtualTextScreen_e {
   DEBUG_VIRTUAL_TEXT_WIDTH = 80,
@@ -30,4 +32,5 @@ void debugger_process_key(int) {}
 void debugger_input_console_char(char) {}
 void debugger_mouse_click(int, int) {}
 bool debug_get_video_mode(uint32_t*) { return false; }
-// NOLINTEND(cppcoreguidelines-use-enum-class,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,modernize-use-trailing-return-type)
+// NOLINTEND(cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays, modernize-use-trailing-return-type)

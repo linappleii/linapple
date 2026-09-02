@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory)
+// cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/joystick/Joystick.h"
 
 #include <algorithm>
@@ -9,11 +9,13 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 
 namespace {
 
@@ -394,4 +396,4 @@ auto joystick_get_descriptor() -> Peripheral_t* {
 
 PERIPHERAL_REGISTER(g_joystick_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory)
+// cppcoreguidelines-owning-memory)

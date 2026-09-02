@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Peripheral_Internal.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-type-reinterpret-cast,misc-include-cleaner,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables):
 // Dynamic peripheral plugin loading and internal registry inspection
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-type-vararg,
+// cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-init-variables)
 #include <dirent.h>
 #include <dlfcn.h>
 
@@ -232,4 +236,8 @@ auto peripheral_plugins_shutdown() -> void {
   g_plugins_initialized = false;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-type-vararg,cppcoreguidelines-pro-type-reinterpret-cast,misc-include-cleaner,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
+// cppcoreguidelines-pro-type-vararg,
+// cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-init-variables)

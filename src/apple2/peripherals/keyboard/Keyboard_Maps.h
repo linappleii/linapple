@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
 // cppcoreguidelines-use-enum-class) Justification: This header defines
 // C-compatible structures and types for the keyboard mapping system to ensure
 // interoperability across different frontends.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 
 #include <stdint.h>
 
@@ -120,5 +120,4 @@ extern const Apple2KeyboardMap_t map_jp_kana;
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using)

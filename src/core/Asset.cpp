@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Asset.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables):
 // Core asset and resource manager for font and splash surfaces
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner,
+// cppcoreguidelines-pro-type-cstyle-cast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-init-variables)
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -114,4 +117,7 @@ auto asset_insert_master_disk() -> int {
   return 0;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-init-variables)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner,
+// cppcoreguidelines-pro-type-cstyle-cast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-init-variables)

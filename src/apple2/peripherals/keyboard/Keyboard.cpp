@@ -9,6 +9,7 @@
 #include <memory>
 #include <new>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
@@ -17,15 +18,14 @@
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
+// Justification: This file implements the C99-compatible Peripheral ABI. It
+// requires void* pointers for instance state, raw memory management, and
+// instance state to bridge with the core C interface.
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
-// This file implements the C99-compatible Peripheral ABI. It requires void*
-// pointers for instance state, raw memory management, and instance state to
-// bridge with the core C interface.
+// cppcoreguidelines-pro-bounds-constant-array-index)
 
 namespace kb {
 static constexpr uint8_t key_strobe_bit = 0x80;
@@ -732,5 +732,4 @@ PERIPHERAL_REGISTER(g_keyboard_peripheral)
 // cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// cppcoreguidelines-pro-bounds-constant-array-index)

@@ -44,8 +44,8 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
     void* slot_state = nullptr;
     size_t slot_size = 0;
     const char* name = nullptr;
-    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers): Hardware expansion
-    // slot index constants 0 through 7
+    // Hardware expansion slot index constants 0 through 7
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
     switch (i) {
       case 0:
         name = "Speaker";
@@ -122,8 +122,8 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
     void* slot_state = nullptr;
     size_t slot_size = 0;
     const char* name = nullptr;
-    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers): Hardware expansion
-    // slot index constants 0 through 7
+    // Hardware expansion slot index constants 0 through 7
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
     switch (i) {
       case 0:
         name = "Speaker";

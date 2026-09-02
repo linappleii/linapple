@@ -16,17 +16,15 @@
 #include "frontends/sdl1/Frame.h"
 #include "frontends/sdl1/SDL_Video.h"
 
+// Justification: Immediate mode GUI layout code relies heavily on numeric
+// literals for pixel coordinates, colors, and scaling factors.
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // bugprone-easily-swappable-parameters,
 // cppcoreguidelines-narrowing-conversions,
 // cppcoreguidelines-pro-type-const-cast,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-pro-type-member-init, modernize-use-auto,
-// bugprone-switch-missing-default-case, bugprone-branch-clone) Justification:
-// Immediate mode GUI layout code relies heavily on numeric literals for pixel
-// coordinates, colors, and scaling factors. Extracting all to constants reduces
-// readability. API signatures dictate parameter types causing swappable
-// warnings.
+// bugprone-switch-missing-default-case, bugprone-branch-clone)
 
 using std::string;
 using std::vector;
@@ -504,4 +502,10 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
   return result;
 }
 
-// NOLINTEND
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
+// bugprone-easily-swappable-parameters,
+// cppcoreguidelines-narrowing-conversions,
+// cppcoreguidelines-pro-type-const-cast,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-type-member-init, modernize-use-auto,
+// bugprone-switch-missing-default-case, bugprone-branch-clone)

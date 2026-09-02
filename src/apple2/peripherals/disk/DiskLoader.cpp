@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//             cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory)
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/disk/DiskLoader.h"
 
 #include <strings.h>
@@ -225,5 +225,5 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
 }
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//           cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory)
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory)

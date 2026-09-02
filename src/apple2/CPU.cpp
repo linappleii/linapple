@@ -14,10 +14,10 @@
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
 
+// Unavoidable hardware architectural constraints for low-level 6502 CPU core
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// bugprone-easily-swappable-parameters, google-readability-function-size):
-// Unavoidable hardware architectural constraints for low-level 6502 CPU core
+// bugprone-easily-swappable-parameters, google-readability-function-size)
 
 enum {
   AF_SIGN = 0x80,

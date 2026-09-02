@@ -1,4 +1,5 @@
-// NOLINTBEGIN(misc-include-cleaner) - glibc internal getopt headers
+// - glibc internal getopt headers
+// NOLINTBEGIN(misc-include-cleaner)
 #include "frontends/common/AppArgs.h"
 
 #include <getopt.h>

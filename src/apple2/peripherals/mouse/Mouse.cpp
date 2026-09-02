@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory,
-//             cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-//             cppcoreguidelines-pro-bounds-constant-array-index,
-//             cppcoreguidelines-pro-type-reinterpret-cast,
-//             cppcoreguidelines-pro-type-const-cast,
-//             bugprone-easily-swappable-parameters,
-//             modernize-make-unique)
-// Justification: This module implements low-level hardware emulation
-// using procedural C-style patterns for performance and ABI compatibility.
-// Pointer arithmetic and C-style arrays are required for ROM data
-// manipulation and hardware state representation. swappable-parameters
-// is mandated by the project-wide Peripheral ABI signatures.
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique) Justification: This module implements low-level
+// hardware emulation using procedural C-style patterns for performance and ABI
+// compatibility. Pointer arithmetic and C-style arrays are required for ROM
+// data manipulation and hardware state representation. swappable-parameters is
+// mandated by the project-wide Peripheral ABI signatures.
 
 #include "apple2/peripherals/mouse/Mouse.h"
 
@@ -25,6 +23,7 @@
 #include "apple2/chips/6821.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 
 namespace {
 
@@ -1052,11 +1051,10 @@ extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
 PERIPHERAL_REGISTER(g_mouse_peripheral)
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory,
-//           cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//           cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-//           cppcoreguidelines-pro-bounds-constant-array-index,
-//           cppcoreguidelines-pro-type-reinterpret-cast,
-//           cppcoreguidelines-pro-type-const-cast,
-//           bugprone-easily-swappable-parameters,
-//           modernize-make-unique)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique)

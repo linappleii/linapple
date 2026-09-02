@@ -9,12 +9,12 @@
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-//             bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module uses procedural patterns for C-compatibility.
-// google-runtime-int is required for fseek offsets. owning-memory and
-// make-unique are suppressed for C++11 compatibility and handle-based
-// resource management. easily-swappable-parameters is mandated by the
-// shared block image ABI signatures.
+// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// This module uses procedural patterns for C-compatibility. google-runtime-int
+// is required for fseek offsets. owning-memory and make-unique are suppressed
+// for C++11 compatibility and handle-based resource management.
+// easily-swappable-parameters is mandated by the shared block image ABI
+// signatures.
 
 struct BlockDiskImage_t {
   FilePtr_t file{nullptr, fclose};
@@ -160,4 +160,4 @@ extern "C" auto block_disk_image_get_total_blocks(BlockDiskImage_t* image_ptr)
 }
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-//           bugprone-easily-swappable-parameters, modernize-make-unique)
+// bugprone-easily-swappable-parameters, modernize-make-unique)

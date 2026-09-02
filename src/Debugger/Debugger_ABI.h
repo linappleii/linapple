@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-use-using,cppcoreguidelines-use-enum-class,modernize-use-trailing-return-type,modernize-deprecated-headers,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class,
+// modernize-use-trailing-return-type, modernize-deprecated-headers,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays)
 #include <stddef.h>
 #include <stdint.h>
 
@@ -62,4 +65,7 @@ void dbg_clear_console_logs(void);
 }
 #endif
 
-// NOLINTEND(modernize-use-using,cppcoreguidelines-use-enum-class,modernize-use-trailing-return-type,modernize-deprecated-headers,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class,
+// modernize-use-trailing-return-type, modernize-deprecated-headers,
+// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays)

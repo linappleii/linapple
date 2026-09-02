@@ -2,10 +2,10 @@
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-//             modernize-use-trailing-return-type)
-// Justification: This header defines the C99-compatible public ABI for the
-// Mouse subsystem. C system headers, typedefs, and C-style return types
-// are required for cross-language compatibility with C-based consumers.
+// modernize-use-trailing-return-type) Justification: This header defines the
+// C99-compatible public ABI for the Mouse subsystem. C system headers,
+// typedefs, and C-style return types are required for cross-language
+// compatibility with C-based consumers.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -40,4 +40,4 @@ typedef struct {
 #endif
 
 // NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-//           modernize-use-trailing-return-type)
+// modernize-use-trailing-return-type)

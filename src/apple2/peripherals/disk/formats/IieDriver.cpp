@@ -15,12 +15,11 @@
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-//             bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module uses procedural patterns for C-compatibility.
-// google-runtime-int is required for fseek offsets. owning-memory and
-// make-unique are suppressed for C++11 compatibility and handle-based
-// resource management. easily-swappable-parameters is mandated by the
-// Disk Driver ABI signatures.
+// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// This module uses procedural patterns for C-compatibility. google-runtime-int
+// is required for fseek offsets. owning-memory and make-unique are suppressed
+// for C++11 compatibility and handle-based resource management.
+// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
 namespace {
 namespace iie {
@@ -308,4 +307,4 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .read_flux_bit = nullptr};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-//           bugprone-easily-swappable-parameters, modernize-make-unique)
+// bugprone-easily-swappable-parameters, modernize-make-unique)

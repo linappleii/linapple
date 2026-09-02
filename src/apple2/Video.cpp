@@ -16,6 +16,8 @@
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 
+// Unavoidable hardware architectural constraints for Apple II CRT rendering,
+// NTSC/PAL timing generator, and video memory scanner
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
 // cppcoreguidelines-pro-bounds-pointer-arithmetic,
 // cppcoreguidelines-pro-bounds-constant-array-index,
@@ -28,9 +30,7 @@
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 // cppcoreguidelines-pro-type-reinterpret-cast,
 // cppcoreguidelines-use-enum-class, google-readability-casting,
-// modernize-avoid-c-style-cast): Unavoidable hardware architectural constraints
-// for Apple II CRT rendering, NTSC/PAL timing generator, and video memory
-// scanner
+// modernize-avoid-c-style-cast)
 static auto get_tick_count_ms() -> uint32_t {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::steady_clock::now().time_since_epoch())

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type, google-runtime-int) Justification: This
-// header defines a C99-compatible ABI for the harddisk loading subsystem.
-// C-style types and function signatures are required for cross-language
-// compatibility.
+// Justification: This header defines a C99-compatible ABI for the harddisk loading subsystem. C-style types and function signatures are required for cross-language compatibility.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, google-runtime-int)
 
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 
@@ -28,5 +25,4 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type, google-runtime-int)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, google-runtime-int)

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type) Justification: This header defines a
-// C99-compatible ABI for block-based disk image backends, allowing shared I/O
-// and container handling.
+// Justification: This header defines a C99-compatible ABI for block-based disk image backends, allowing shared I/O and container handling.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -42,5 +40,4 @@ uint32_t block_disk_image_get_total_blocks(BlockDiskImage_t* image_ptr);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)

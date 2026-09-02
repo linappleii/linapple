@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Log.h"
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-magic-numbers,modernize-use-scoped-lock,cppcoreguidelines-init-variables):
 // C standard library variadic va_list formatting and system logging operations
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner,
+// cppcoreguidelines-avoid-magic-numbers, modernize-use-scoped-lock,
+// cppcoreguidelines-init-variables)
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -167,4 +172,9 @@ auto destroy() -> void {
 }
 
 }  // namespace Logger
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-owning-memory,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast,misc-include-cleaner,cppcoreguidelines-avoid-magic-numbers,modernize-use-scoped-lock,cppcoreguidelines-init-variables)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner,
+// cppcoreguidelines-avoid-magic-numbers, modernize-use-scoped-lock,
+// cppcoreguidelines-init-variables)

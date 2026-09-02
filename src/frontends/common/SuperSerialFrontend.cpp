@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(misc-include-cleaner) - POSIX pthread types defined in glibc
+// - POSIX pthread types defined in glibc
+// NOLINTBEGIN(misc-include-cleaner)
 // internal headers
 #include "frontends/common/SuperSerialFrontend.h"
 

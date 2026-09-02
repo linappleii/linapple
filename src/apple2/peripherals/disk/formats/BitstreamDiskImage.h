@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
 // modernize-use-trailing-return-type) Justification: This header defines a
 // C99-compatible ABI for bitstream-based disk image backends (NIB, NB2),
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 // allowing shared I/O and container handling.
 
 #include <stdbool.h>
@@ -40,5 +40,4 @@ DiskError_e bitstream_disk_image_create(const char* path, uint32_t total_size);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using)

@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Peripheral.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,google-readability-braces-around-statements,bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,modernize-use-scoped-lock):
 // Central peripheral dispatch manager, slot memory map bridging, and C variadic
 // host callbacks
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner,
+// google-readability-braces-around-statements,
+// bugprone-easily-swappable-parameters, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays, modernize-use-scoped-lock)
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -700,4 +706,10 @@ auto peripheral_load_state_by_name(int slot, const char* name,
   }
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers,misc-include-cleaner,google-readability-braces-around-statements,bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,modernize-use-scoped-lock)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner,
+// google-readability-braces-around-statements,
+// bugprone-easily-swappable-parameters, cppcoreguidelines-avoid-c-arrays,
+// modernize-avoid-c-arrays, modernize-use-scoped-lock)

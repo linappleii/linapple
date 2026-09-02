@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/formats/BlockDiskImage.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast) Justification: Format
-// drivers utilize a procedural C-compatible handle system and standardized
-// probing signatures mandated by the Harddisk subsystem ABI.
+// Justification: Format drivers utilize a procedural C-compatible handle system
+// and standardized probing signatures mandated by the Harddisk subsystem ABI.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 
 namespace {
 
@@ -106,5 +107,4 @@ extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
     .write_block = raw_hd_write_block,
     .get_total_blocks = raw_hd_get_total_blocks};
 
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast)
+// NOLINTEND(bugprone-easily-swappable-parameters)

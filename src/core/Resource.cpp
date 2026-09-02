@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Resource.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-non-const-global-variables,cert-err58-cpp):
 // Embedded fallback ROM tables for Apple II systems
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-avoid-non-const-global-variables, cert-err58-cpp)
 
 const char apple2_rom[] =
     "\xA9\x20\x8D\x26\x03\xAD\x57\xC0\xAD\x53\xC0\xAD\x50\xC0\xA9\x00"
@@ -3599,4 +3600,5 @@ const char apple2e_enhanced_rom[] =
     "\xA7\xC6\x99\xB2\xC9\xBE\xF0\x35\x8C\xD6\x96\xAF\x17\x17\x2B\x1F"
     "\x83\x7F\x5D\xCC\xB5\xFC\x17\x17\xF5\x03\xFB\x03\x62\xFA\xFA\xC3";
 
-// NOLINTEND(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-non-const-global-variables,cert-err58-cpp)
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-avoid-non-const-global-variables, cert-err58-cpp)

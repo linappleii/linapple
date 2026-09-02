@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type) Justification: This header defines a
-// C99-compatible ABI for sector-based disk image backends, allowing them to be
-// shared across multiple drivers.
+// Justification: This header defines a C99-compatible ABI for sector-based disk image backends, allowing them to be shared across multiple drivers.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -52,5 +50,4 @@ PeripheralStatus_t sector_disk_image_command(SectorDiskImage_t* image_ptr,
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)

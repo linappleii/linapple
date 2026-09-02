@@ -30,10 +30,11 @@ auto two_img_probe(const uint8_t* header_data, size_t header_size,
   }
 
   if (memcmp(header_data, "2IMG", 4) == 0) {
-    const uint32_t image_format = static_cast<uint32_t>(header_data[12]) |
-                                  (static_cast<uint32_t>(header_data[13]) << 8) |
-                                  (static_cast<uint32_t>(header_data[14]) << 16) |
-                                  (static_cast<uint32_t>(header_data[15]) << 24);
+    const uint32_t image_format =
+        static_cast<uint32_t>(header_data[12]) |
+        (static_cast<uint32_t>(header_data[13]) << 8) |
+        (static_cast<uint32_t>(header_data[14]) << 16) |
+        (static_cast<uint32_t>(header_data[15]) << 24);
     if (image_format == two_img_format_prodos) {
       return harddisk_probe_definite;
     }

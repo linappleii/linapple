@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
 // modernize-use-trailing-return-type, google-runtime-int) Justification: This
 // header defines the C99-compatible public ABI for Harddisk format drivers.
 // C-style return types, typedefs, and integer types are required for
 // cross-language compatibility with C-based consumers.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -66,5 +66,4 @@ typedef struct HarddiskFormatDriver_t {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type, google-runtime-int)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using)

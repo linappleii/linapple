@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory)
+// cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/printer/Printer.h"
 
 #include <algorithm>
@@ -158,4 +158,4 @@ auto printer_get_descriptor() -> Peripheral_t* { return &g_printer_peripheral; }
 
 PERIPHERAL_REGISTER(g_printer_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory)
+// cppcoreguidelines-owning-memory)

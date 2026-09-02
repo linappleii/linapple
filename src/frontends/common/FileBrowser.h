@@ -4,10 +4,10 @@
 // allow C-compatible patterns (plain enums, public POD members, manual memory
 // management handles) which are required for frontend portability.
 // NOLINTBEGIN(modernize-deprecated-headers, hicpp-deprecated-headers,
-// modernize-use-using) NOLINTBEGIN(cppcoreguidelines-use-enum-class)
-// NOLINTBEGIN(cppcoreguidelines-non-private-member-variables-in-classes)
-// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// NOLINTBEGIN(modernize-use-auto, modernize-use-trailing-return-type)
+// modernize-use-using, cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-non-private-member-variables-in-classes,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// modernize-use-auto, modernize-use-trailing-return-type)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -111,9 +111,8 @@ auto disk_browser_get_title(int slot) -> const char*;
 }  // extern "C"
 #endif
 
-// NOLINTEND(modernize-use-auto, modernize-use-trailing-return-type)
-// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// NOLINTEND(cppcoreguidelines-non-private-member-variables-in-classes)
-// NOLINTEND(cppcoreguidelines-use-enum-class)
 // NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers,
-// modernize-use-using)
+// modernize-use-using, cppcoreguidelines-use-enum-class,
+// cppcoreguidelines-non-private-member-variables-in-classes,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// modernize-use-auto, modernize-use-trailing-return-type)

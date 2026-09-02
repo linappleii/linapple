@@ -1,25 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//             cppcoreguidelines-owning-memory,
-//             cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-//             cppcoreguidelines-pro-bounds-constant-array-index,
-//             cppcoreguidelines-pro-type-reinterpret-cast,
-//             cppcoreguidelines-pro-type-const-cast,
-//             bugprone-easily-swappable-parameters,
-//             modernize-make-unique, google-runtime-int)
-// Justification: This module implements low-level hardware emulation
-// using procedural C-style patterns for performance and ABI compatibility.
-// Pointer arithmetic and C-style arrays are required for block buffer
-// manipulation and ROM data. easily-swappable-parameters is mandated by
-// the project-wide Peripheral ABI signatures. modernize-make-unique is
-// suppressed to maintain C++11 compatibility. google-runtime-int is
-// required for fseek offsets.
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique, google-runtime-int) Justification: This module
+// implements low-level hardware emulation using procedural C-style patterns for
+// performance and ABI compatibility. Pointer arithmetic and C-style arrays are
+// required for block buffer manipulation and ROM data.
+// easily-swappable-parameters is mandated by the project-wide Peripheral ABI
+// signatures. modernize-make-unique is suppressed to maintain C++11
+// compatibility. google-runtime-int is required for fseek offsets.
 
 #include "apple2/peripherals/harddisk/Harddisk.h"
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -29,7 +28,6 @@
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "core/Util_Path.h"
@@ -625,12 +623,10 @@ extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
 
 PERIPHERAL_REGISTER(g_harddisk_peripheral)
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-//           cppcoreguidelines-owning-memory,
-//           cppcoreguidelines-pro-bounds-pointer-arithmetic,
-//           cppcoreguidelines-avoid-c-arrays,
-//           modernize-avoid-c-arrays,
-//           cppcoreguidelines-pro-bounds-constant-array-index,
-//           cppcoreguidelines-pro-type-reinterpret-cast,
-//           cppcoreguidelines-pro-type-const-cast,
-//           bugprone-easily-swappable-parameters,
-//           modernize-make-unique, google-runtime-int)
+// cppcoreguidelines-owning-memory,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
+// cppcoreguidelines-pro-bounds-constant-array-index,
+// cppcoreguidelines-pro-type-reinterpret-cast,
+// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
+// modernize-make-unique, google-runtime-int)

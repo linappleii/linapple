@@ -2,10 +2,10 @@
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-//             cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// Justification: This header defines a language-neutral C ABI for the GCR
-// nibblization engine. C system headers, typedefs, and C-style arrays are
-// required for compatibility with C-based consumers.
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// This header defines a language-neutral C ABI for the GCR nibblization engine.
+// C system headers, typedefs, and C-style arrays are required for compatibility
+// with C-based consumers.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -36,4 +36,4 @@ auto disk_encoding_skew_track(uint8_t* track_image_buffer, uint8_t* work_buffer,
 #endif
 
 // NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-//           cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
 // modernize-use-trailing-return-type) Justification: This header defines a
 // language-neutral C ABI. C system headers, typedefs, and C-style return types
 // are required for compatibility with C-based consumers.
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -113,5 +113,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using)

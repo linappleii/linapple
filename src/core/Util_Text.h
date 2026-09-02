@@ -3,7 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-type-member-init)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-type-member-init)
 
 constexpr char CHAR_CR = '\r';  // 0x0D
 constexpr char CHAR_LF = '\n';  // 0x0A
@@ -170,4 +172,6 @@ inline void Util_SafeStrCpy(char* dest, const char* src, size_t size) {
   dest[i] = '\0';
 }
 
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-type-member-init)
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-type-member-init)

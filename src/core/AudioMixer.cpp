@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/AudioMixer.h"
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers,bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions,misc-include-cleaner):
 // PCM audio sample mixing, buffer pointer arithmetic, and 16-bit integer
 // saturation thresholds
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-magic-numbers, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions, misc-include-cleaner)
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -261,4 +263,6 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
   sample_buffer_drain_to(g_spkr_mix_buffer.get(), out, num_samples, false);
   sample_buffer_drain_to(g_mock_mix_buffer.get(), out, num_samples, true);
 }
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers,bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions,misc-include-cleaner)
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,
+// cppcoreguidelines-avoid-magic-numbers, bugprone-narrowing-conversions,
+// cppcoreguidelines-narrowing-conversions, misc-include-cleaner)
