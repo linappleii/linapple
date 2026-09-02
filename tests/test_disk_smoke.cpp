@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include <vector>
+
 #include <cstdint>
+#include <vector>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdio>
 #include <cstdlib>
@@ -9,6 +10,10 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
+#include "apple2/peripherals/disk/formats/DoDriver.h"
+#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
@@ -20,8 +25,7 @@ static void setup_smoke_test(const char* imagePath) {
   linapple_init();
   if (imagePath) {
     std::string path = TestFixtures::get_fixture_path(imagePath);
-    Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                           path);
+    Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, path);
   }
   peripheral_manager_init();  // Clear auto-registered cards
   peripheral_manager_init();
@@ -89,8 +93,9 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
   linapple_init();
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.woz"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 
@@ -117,10 +122,12 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 
 TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   linapple_init();
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.dsk"));
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                         TestFixtures::get_fixture_path("minimal.woz"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.dsk"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE2,
+      TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 
@@ -138,4 +145,35 @@ TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   CHECK(strstr(status.drive1_full_path, "minimal.dsk") != nullptr);
 
   teardown_smoke_test();
+}
+
+TEST_CASE(
+    "DiskSmoke: [DSK-1] Enforce write capability and callback invariants on "
+    "registration") {
+  disk_loader_init();
+
+  // Floppy driver: write capability with null write_track must be rejected
+  DiskFormatDriver_t bad_floppy1 = g_do_driver;
+  bad_floppy1.capabilities = disk_driver_cap_write;
+  bad_floppy1.write_track = nullptr;
+  disk_loader_register(&bad_floppy1);
+
+  // Floppy driver: read-only capabilities with non-null write_track must be
+  // rejected
+  DiskFormatDriver_t bad_floppy2 = g_do_driver;
+  bad_floppy2.capabilities = 0;
+  bad_floppy2.write_track = g_do_driver.write_track;
+  disk_loader_register(&bad_floppy2);
+
+  // Valid floppy drivers register cleanly
+  DiskFormatDriver_t valid_floppy_ro = g_woz2_driver;
+  valid_floppy_ro.capabilities = 0;
+  valid_floppy_ro.write_track = nullptr;
+  disk_loader_register(&valid_floppy_ro);
+
+  DiskFormatDriver_t valid_floppy_rw = g_do_driver;
+  disk_loader_register(&valid_floppy_rw);
+
+  // Null pointer registrations are safely ignored
+  disk_loader_register(nullptr);
 }

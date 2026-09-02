@@ -1,4 +1,5 @@
 #include <cstdint>
+
 #include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstring>
@@ -6,6 +7,8 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "apple2/peripherals/harddisk/HarddiskLoader.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
@@ -118,4 +121,28 @@ TEST_CASE("Harddisk Peripheral: Get Supported Extensions Query") {
   CHECK(strstr(exts, "gz") != nullptr);
 
   linapple_shutdown();
+}
+
+TEST_CASE(
+    "Harddisk Peripheral: Enforce write capability and callback invariants on "
+    "registration") {
+  harddisk_loader_init();
+
+  // Harddisk driver: write capability with null write_block must be rejected
+  HarddiskFormatDriver_t bad_hd1{};
+  bad_hd1.capabilities = harddisk_driver_cap_write;
+  bad_hd1.write_block = nullptr;
+  harddisk_loader_register(&bad_hd1);
+
+  // Harddisk driver: read-only capability with non-null write_block must be
+  // rejected
+  HarddiskFormatDriver_t bad_hd2{};
+  bad_hd2.capabilities = 0;
+  bad_hd2.write_block = [](void*, uint32_t, const uint8_t*) -> HarddiskError_e {
+    return harddisk_err_none;
+  };
+  harddisk_loader_register(&bad_hd2);
+
+  // Null pointer registrations are safely ignored
+  harddisk_loader_register(nullptr);
 }

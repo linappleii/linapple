@@ -238,9 +238,8 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     disk_ptr->driver->write_track(disk_ptr->driver_instance, disk_ptr->track,
                                   disk_ptr->phase, disk_ptr->track_buffer.get(),
                                   disk_ptr->nibble_count);
+    disk_ptr->is_dirty = false;
   }
-
-  disk_ptr->is_dirty = false;
 }
 
 auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)

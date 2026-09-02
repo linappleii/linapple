@@ -44,9 +44,16 @@ void harddisk_loader_init(void) {
 void harddisk_loader_shutdown(void) { g_harddisk_drivers.clear(); }
 
 auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
-  if (driver_ptr != nullptr) {
-    g_harddisk_drivers.push_back(driver_ptr);
+  if (driver_ptr == nullptr) {
+    return;
   }
+  const bool has_write_cap =
+      (driver_ptr->capabilities & harddisk_driver_cap_write) != 0;
+  const bool has_write_fn = driver_ptr->write_block != nullptr;
+  if (has_write_cap != has_write_fn) {
+    return;
+  }
+  g_harddisk_drivers.push_back(driver_ptr);
 }
 
 struct TemporaryFileGuard {

@@ -93,9 +93,16 @@ auto disk_loader_init() -> void { g_drivers.clear(); }
 auto disk_loader_shutdown() -> void { g_drivers.clear(); }
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
-  if (driver != nullptr) {
-    g_drivers.push_back(driver);
+  if (driver == nullptr) {
+    return;
   }
+  const bool has_write_cap =
+      (driver->capabilities & disk_driver_cap_write) != 0;
+  const bool has_write_fn = driver->write_track != nullptr;
+  if (has_write_cap != has_write_fn) {
+    return;
+  }
+  g_drivers.push_back(driver);
 }
 
 auto disk_loader_open(const char* image_path, bool create_if_necessary,

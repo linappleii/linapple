@@ -262,19 +262,6 @@ auto iie_read_track(void* instance_handle, int track, int phase,
   }
 }
 
-// Why: Writing back to IIE images is not yet supported due to the complexity
-// of the variable-length bitstream variant.
-auto iie_write_track(void* instance_handle, int track, int phase,
-                     const uint8_t* track_buffer, int nibbles) -> void {
-  if (instance_handle == nullptr) {
-    return;
-  }
-  (void)track;
-  (void)phase;
-  (void)track_buffer;
-  (void)nibbles;
-}
-
 auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
                  size_t payload_size) -> PeripheralStatus_t {
   (void)cmd_id;
@@ -301,7 +288,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .close = iie_close,
     .is_write_protected = iie_is_write_protected,
     .read_track = iie_read_track,
-    .write_track = iie_write_track,
+    .write_track = nullptr,
     .create = nullptr,
     .command = iie_command,
     .read_flux_bit = nullptr};
