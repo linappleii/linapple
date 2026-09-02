@@ -225,7 +225,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   auto* disk_ptr =
       &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk_ptr->track >= tracks_per_disk) {
+  if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
     return;
   }
 
@@ -251,7 +251,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   auto* disk_ptr =
       &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk_ptr->track >= tracks_per_disk) {
+  if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
     disk_ptr->is_data_loaded = false;
     return;
   }
@@ -1150,8 +1150,8 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     if (insert_disk_into_drive(dp, i, safe_path, ds.user_write_protected != 0,
                                false) == disk_err_none) {
       auto& d = dp->drives.at(static_cast<size_t>(i));
-      if (ds.track >= tracks_per_disk || ds.phase >= max_disk_phases ||
-          ds.nibble_count <= 0 ||
+      if (ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
+          ds.phase >= max_disk_phases || ds.nibble_count <= 0 ||
           ds.nibble_count > static_cast<int>(nibbles_per_track) ||
           ds.current_byte_pos < 0 ||
           static_cast<uint32_t>(ds.current_byte_pos) >=
@@ -1161,8 +1161,8 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
             "phase: %d, nibble_count: %d, pos: %d)",
             i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
       }
-      d.track = (ds.track < tracks_per_disk) ? ds.track : 0;
-      d.phase = (ds.phase < max_disk_phases) ? ds.phase : 0;
+      d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
+      d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
       d.nibble_count = (ds.nibble_count > 0 &&
                         ds.nibble_count <= static_cast<int>(nibbles_per_track))
                            ? ds.nibble_count

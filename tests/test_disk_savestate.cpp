@@ -108,7 +108,9 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
   linapple_shutdown();
 }
 
-TEST_CASE("DiskSaveState: [SNAP-1] Out-of-bounds snapshot indices are safely clamped") {
+TEST_CASE(
+    "DiskSaveState: [SNAP-1] Out-of-bounds snapshot indices are safely "
+    "clamped") {
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -158,10 +160,81 @@ TEST_CASE("DiskSaveState: [SNAP-1] Out-of-bounds snapshot indices are safely cla
   int32_t restored_phase = 0;
   int32_t restored_byte_pos = 0;
   int32_t restored_nibble_count = 0;
-  std::memcpy(&restored_track, &saved_buffer[track_pos_offset], sizeof(int32_t));
-  std::memcpy(&restored_phase, &saved_buffer[phase_pos_offset], sizeof(int32_t));
-  std::memcpy(&restored_byte_pos, &saved_buffer[byte_pos_offset], sizeof(int32_t));
-  std::memcpy(&restored_nibble_count, &saved_buffer[nibble_count_offset], sizeof(int32_t));
+  std::memcpy(&restored_track, &saved_buffer[track_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_phase, &saved_buffer[phase_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_byte_pos, &saved_buffer[byte_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_nibble_count, &saved_buffer[nibble_count_offset],
+              sizeof(int32_t));
+
+  CHECK(restored_track == 0);
+  CHECK(restored_phase == 0);
+  CHECK(restored_byte_pos == 0);
+  CHECK(restored_nibble_count == static_cast<int32_t>(nibbles_per_track));
+
+  linapple_shutdown();
+}
+
+TEST_CASE(
+    "DiskSaveState: [SNAP-2] Negative snapshot indices are safely clamped to "
+    "0") {
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
+
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  std::string fixture = TestFixtures::get_fixture_path("minimal.dsk");
+  Util_SafeStrCpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(0);
+
+  size_t state_size = 0;
+  peripheral_save_state(SL6, nullptr, &state_size);
+  REQUIRE(state_size > 0);
+
+  std::vector<uint8_t> buffer(state_size);
+  peripheral_save_state(SL6, buffer.data(), &state_size);
+
+  // Corrupt the snapshot indices to negative values
+  constexpr size_t track_pos_offset = 8 + 256;
+  constexpr size_t phase_pos_offset = track_pos_offset + 4;
+  constexpr size_t byte_pos_offset = phase_pos_offset + 4;
+  constexpr size_t nibble_count_offset = byte_pos_offset + 16;
+
+  int32_t neg_val = -1;
+  std::memcpy(&buffer[track_pos_offset], &neg_val, sizeof(int32_t));
+  std::memcpy(&buffer[phase_pos_offset], &neg_val, sizeof(int32_t));
+  std::memcpy(&buffer[byte_pos_offset], &neg_val, sizeof(int32_t));
+  std::memcpy(&buffer[nibble_count_offset], &neg_val, sizeof(int32_t));
+
+  // Loading corrupted state must clamp negative values
+  peripheral_load_state(SL6, buffer.data(), state_size);
+
+  DiskStatus_t status{};
+  size_t s_size = sizeof(status);
+  peripheral_query(SL6, disk_cmd_get_status, &status, &s_size);
+  CHECK(status.drive0_loaded == true);
+  CHECK(status.drive0_last_error == disk_err_none);
+
+  // Save state again to verify clamped values
+  std::vector<uint8_t> saved_buffer(state_size);
+  peripheral_save_state(SL6, saved_buffer.data(), &state_size);
+
+  int32_t restored_track = -1;
+  int32_t restored_phase = -1;
+  int32_t restored_byte_pos = -1;
+  int32_t restored_nibble_count = -1;
+  std::memcpy(&restored_track, &saved_buffer[track_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_phase, &saved_buffer[phase_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_byte_pos, &saved_buffer[byte_pos_offset],
+              sizeof(int32_t));
+  std::memcpy(&restored_nibble_count, &saved_buffer[nibble_count_offset],
+              sizeof(int32_t));
 
   CHECK(restored_track == 0);
   CHECK(restored_phase == 0);
