@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <doctest/doctest.h>
+#include "doctest.h"
 
 #include <cstdint>
 

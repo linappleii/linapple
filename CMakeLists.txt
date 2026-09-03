@@ -196,6 +196,11 @@ set(EMBEDDED_ROMS_H "${GEN_ROMS_DIR}/EmbeddedRoms.h")
 set(EMBEDDED_ROMS_CPP "${GEN_ROMS_DIR}/EmbeddedRoms.cpp")
 file(MAKE_DIRECTORY "${GEN_ROMS_DIR}")
 
+# Generate at configure time so headers exist for IDE and clang-tidy
+execute_process(
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh" "${GEN_ROMS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/res/roms"
+)
+
 add_custom_command(
     OUTPUT ${EMBEDDED_ROMS_H} ${EMBEDDED_ROMS_CPP}
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh" "${GEN_ROMS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/res/roms"
