@@ -98,17 +98,11 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     return harddisk_err_not_found;
   }
 
-  if (fseek(file.get(), 0, SEEK_END) != 0) {
-    return harddisk_err_io;
-  }
-  const long raw_file_size = ftell(file.get());
+  const int64_t raw_file_size = Path::file_size(file.get());
   if (raw_file_size < 0) {
     return harddisk_err_io;
   }
   const uint32_t file_size = static_cast<uint32_t>(raw_file_size);
-  if (fseek(file.get(), 0, SEEK_SET) != 0) {
-    return harddisk_err_io;
-  }
 
   constexpr size_t probe_header_size = 4096;
   std::array<uint8_t, probe_header_size> header{};

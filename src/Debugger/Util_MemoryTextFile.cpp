@@ -2,6 +2,7 @@
 #include "Util_MemoryTextFile.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -19,10 +20,7 @@ auto MemoryTextFile_t::Read(const std::string& filename) -> bool {
     return false;
   }
 
-  fseek(file_handle.get(), 0, SEEK_END);
-  long file_size = ftell(file_handle.get());
-  fseek(file_handle.get(), 0, SEEK_SET);
-
+  int64_t file_size = Path::file_size(file_handle.get());
   if (file_size < 0) {
     return false;
   }

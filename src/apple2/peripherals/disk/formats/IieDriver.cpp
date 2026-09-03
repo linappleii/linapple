@@ -135,15 +135,9 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
     *out_is_read_only = instance_ptr->os_readonly;
   }
 
-  if (fseek(instance_ptr->file.get(), 0, SEEK_END) != 0) {
-    return disk_err_io;
-  }
-  const long total_file_size = ftell(instance_ptr->file.get());
-  if (total_file_size < static_cast<long>(iie::header_size)) {
+  const int64_t total_file_size = Path::file_size(instance_ptr->file.get());
+  if (total_file_size < static_cast<int64_t>(iie::header_size)) {
     return disk_err_corrupt;
-  }
-  if (fseek(instance_ptr->file.get(), 0, SEEK_SET) != 0) {
-    return disk_err_io;
   }
 
   if (fread(instance_ptr->header.data(), 1, iie::header_size,

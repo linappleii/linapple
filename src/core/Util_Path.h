@@ -191,4 +191,26 @@ inline auto sanitize_filename(const std::string& name) -> std::string {
   return name;
 }
 
+// Why: Centralizes bounds-checked file stream size validation and guarantees
+// that original stream seek position is preserved across querying.
+inline auto file_size(FILE* file) -> int64_t {
+  if (file == nullptr) {
+    return -1;
+  }
+  // NOLINTNEXTLINE(google-runtime-int) Justification: C stdio ftell return type is long
+  const long original_pos = ftell(file);
+  if (original_pos < 0) {
+    return -1;
+  }
+  if (fseek(file, 0, SEEK_END) != 0) {
+    return -1;
+  }
+  // NOLINTNEXTLINE(google-runtime-int) Justification: C stdio ftell return type is long
+  const long end_pos = ftell(file);
+  if (fseek(file, original_pos, SEEK_SET) != 0 || end_pos < 0) {
+    return -1;
+  }
+  return static_cast<int64_t>(end_pos);
+}
+
 }  // namespace Path

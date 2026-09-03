@@ -251,14 +251,8 @@ auto linapple_load_program(const char* path) -> int {
     return static_cast<int>(program_load_not_a_program);
   }
 
-  if (std::fseek(f.get(), 0, SEEK_END) != 0) {
-    return static_cast<int>(program_load_not_a_program);
-  }
-  long size = std::ftell(f.get());
+  int64_t size = Path::file_size(f.get());
   if (size <= 0 || size > 65536) {
-    return static_cast<int>(program_load_not_a_program);
-  }
-  if (std::fseek(f.get(), 0, SEEK_SET) != 0) {
     return static_cast<int>(program_load_not_a_program);
   }
 

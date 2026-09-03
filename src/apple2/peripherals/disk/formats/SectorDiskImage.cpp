@@ -91,10 +91,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return nullptr;
   }
 
-  if (fseek(image_ptr->file.get(), 0, SEEK_END) != 0) {
-    return nullptr;
-  }
-  const long total_size = ftell(image_ptr->file.get());
+  const int64_t total_size = Path::file_size(image_ptr->file.get());
   if (total_size < 0 || static_cast<size_t>(total_size) < file_offset) {
     return nullptr;
   }

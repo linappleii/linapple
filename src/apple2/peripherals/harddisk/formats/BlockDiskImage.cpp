@@ -64,10 +64,7 @@ extern "C" auto block_disk_image_open(const char* path, uint32_t file_offset,
     *out_is_read_only = image_ptr->os_readonly;
   }
 
-  if (fseek(image_ptr->file.get(), 0, SEEK_END) != 0) {
-    return nullptr;
-  }
-  const long raw_file_size = ftell(image_ptr->file.get());
+  const int64_t raw_file_size = Path::file_size(image_ptr->file.get());
   if (raw_file_size < 0 || static_cast<size_t>(raw_file_size) < file_offset) {
     return nullptr;
   }

@@ -152,17 +152,11 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
     return disk_err_file_not_found;
   }
 
-  if (fseek(image_file.get(), 0, SEEK_END) != 0) {
-    return disk_err_io;
-  }
-  const long raw_file_size = ftell(image_file.get());
+  const int64_t raw_file_size = Path::file_size(image_file.get());
   if (raw_file_size < 0) {
     return disk_err_io;
   }
   const auto file_size = static_cast<uint32_t>(raw_file_size);
-  if (fseek(image_file.get(), 0, SEEK_SET) != 0) {
-    return disk_err_io;
-  }
 
   std::vector<uint8_t> header(probe_header_size, 0);
   const size_t header_read =

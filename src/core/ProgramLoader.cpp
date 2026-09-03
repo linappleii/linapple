@@ -47,17 +47,11 @@ static auto detect_program(const char* path, ProgramHeader_t* out_header)
     return program_load_file_error;
   }
 
-  if (std::fseek(f.get(), 0, SEEK_END) != 0) {
-    return program_load_file_error;
-  }
-  long ftell_res = std::ftell(f.get());
+  int64_t ftell_res = Path::file_size(f.get());
   if (ftell_res < 0) {
     return program_load_file_error;
   }
   uint32_t file_size = static_cast<uint32_t>(ftell_res);
-  if (std::fseek(f.get(), 0, SEEK_SET) != 0) {
-    return program_load_file_error;
-  }
 
   uint8_t buffer[prg_header_size] = {};
   size_t read = std::fread(buffer, 1, sizeof(buffer), f.get());

@@ -52,12 +52,9 @@ auto two_img_open(const char* path, uint32_t file_offset, bool* out_os_readonly,
     return harddisk_err_not_found;
   }
 
-  if (fseek(file.get(), 0, SEEK_END) != 0) {
-    return harddisk_err_io;
-  }
-  const long total_file_size = ftell(file.get());
-  if (total_file_size < static_cast<long>(two_img_header_size) ||
-      static_cast<long>(file_offset) >= total_file_size) {
+  const int64_t total_file_size = Path::file_size(file.get());
+  if (total_file_size < static_cast<int64_t>(two_img_header_size) ||
+      static_cast<int64_t>(file_offset) >= total_file_size) {
     return harddisk_err_invalid_format;
   }
 
