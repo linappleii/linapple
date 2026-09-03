@@ -40,6 +40,36 @@ option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer (UBSan)" OFF)
 option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis" OFF)
 option(ENABLE_FUZZING "Enable libFuzzer targets" OFF)
 
+# --- ROM Options ---
+option(ENABLE_ROM_APPLE2 "Include Apple ][ ROM" ON)
+option(ENABLE_ROM_APPLE2PLUS "Include Apple ][+ ROM" ON)
+option(ENABLE_ROM_APPLE2E "Include Apple //e Unenhanced ROM" ON)
+option(ENABLE_ROM_APPLE2ENHANCED "Include Apple //e Enhanced ROM" ON)
+
+if(ENABLE_ROM_APPLE2)
+    add_compile_definitions(ENABLE_ROM_APPLE2=1)
+else()
+    add_compile_definitions(ENABLE_ROM_APPLE2=0)
+endif()
+
+if(ENABLE_ROM_APPLE2PLUS)
+    add_compile_definitions(ENABLE_ROM_APPLE2PLUS=1)
+else()
+    add_compile_definitions(ENABLE_ROM_APPLE2PLUS=0)
+endif()
+
+if(ENABLE_ROM_APPLE2E)
+    add_compile_definitions(ENABLE_ROM_APPLE2E=1)
+else()
+    add_compile_definitions(ENABLE_ROM_APPLE2E=0)
+endif()
+
+if(ENABLE_ROM_APPLE2ENHANCED)
+    add_compile_definitions(ENABLE_ROM_APPLE2ENHANCED=1)
+else()
+    add_compile_definitions(ENABLE_ROM_APPLE2ENHANCED=0)
+endif()
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -160,6 +190,27 @@ endforeach()
 
 add_custom_target(generate_xpms DEPENDS ${XPM_HEADERS})
 
+# --- Embedded ROMs Generation ---
+set(GEN_ROMS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/roms")
+set(EMBEDDED_ROMS_H "${GEN_ROMS_DIR}/EmbeddedRoms.h")
+set(EMBEDDED_ROMS_CPP "${GEN_ROMS_DIR}/EmbeddedRoms.cpp")
+file(MAKE_DIRECTORY "${GEN_ROMS_DIR}")
+
+add_custom_command(
+    OUTPUT ${EMBEDDED_ROMS_H} ${EMBEDDED_ROMS_CPP}
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh" "${GEN_ROMS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/res/roms"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2_Plus.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced_Video.rom"
+    COMMENT "Generating EmbeddedRoms source from res/roms"
+    VERBATIM
+)
+
+add_custom_target(generate_embedded_roms DEPENDS ${EMBEDDED_ROMS_H} ${EMBEDDED_ROMS_CPP})
+
 # --- Include Paths ---
 set(LINAPPLE_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -172,6 +223,7 @@ set(LINAPPLE_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/mouse"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/common"
     "${GEN_RES_DIR}"
+    "${GEN_ROMS_DIR}"
     "${RES_DIR}"
     ${CURL_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
@@ -198,6 +250,7 @@ set(SOURCES_CORE
     src/core/Peripheral.cpp
     src/core/Peripheral_Internal.cpp
     src/core/Resource.cpp
+    "${EMBEDDED_ROMS_CPP}"
     src/frontends/common/AppArgs.cpp
     src/frontends/common/AppEnvironment.cpp
     src/frontends/common/AppController.cpp
@@ -371,7 +424,7 @@ set(COMMON_LIBS ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_
 
 function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTRA_LIBS EXTRA_INCLUDES EXTRA_DEFS)
     add_executable(${TARGET_NAME} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${DBG_SOURCES} ${FE_SOURCES} ${SOURCES_A2_OPTIONAL})
-    add_dependencies(${TARGET_NAME} generate_xpms)
+    add_dependencies(${TARGET_NAME} generate_xpms generate_embedded_roms)
     set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS TRUE)
     target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
     target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
@@ -437,7 +490,7 @@ if(BUILD_TESTING)
     # Helper for adding tests
     macro(add_linapple_test name sources)
         add_executable(test-${name} ${sources} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-        add_dependencies(test-${name} generate_xpms)
+        add_dependencies(test-${name} generate_xpms generate_embedded_roms)
         target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
@@ -496,6 +549,7 @@ if(BUILD_TESTING)
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
+    add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
     add_linapple_test(disk-smoke tests/test_disk_smoke.cpp)
     add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
@@ -575,7 +629,7 @@ if(BUILD_TESTING)
         set(TEST_SOURCES_FE_SDL1 ${SOURCES_FE_SDL1})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL1 src/frontends/sdl1/Main.cpp)
         add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
-        add_dependencies(test-frontend-sdl1 generate_xpms)
+        add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl1 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
@@ -586,7 +640,7 @@ if(BUILD_TESTING)
         set(TEST_SOURCES_FE_SDL2 ${SOURCES_FE_SDL2})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL2 src/frontends/sdl2/Main.cpp)
         add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
-        add_dependencies(test-frontend-sdl2 generate_xpms)
+        add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
@@ -597,7 +651,7 @@ if(BUILD_TESTING)
         set(TEST_SOURCES_FE_SDL3 ${SOURCES_FE_SDL3})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL3 src/frontends/sdl3/Main.cpp)
         add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
-        add_dependencies(test-frontend-sdl3 generate_xpms)
+        add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)

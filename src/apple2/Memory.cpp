@@ -9,12 +9,12 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "core/Log.h"
-#include "core/Resource.h"
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for Apple II memory management
@@ -1111,44 +1111,45 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
     }
   }
 #endif
-
   mem_set_active_context(g_active_memory);
 
-#define IDR_APPLE2_ROM "Apple2.rom"
-#define IDR_APPLE2_PLUS_ROM "Apple2_Plus.rom"
-#define IDR_APPLE2E_ROM "Apple2e.rom"
-#define IDR_APPLE2E_ENHANCED_ROM "Apple2e_Enhanced.rom"
-
   uint32_t ROM_SIZE = 0;
-  const char* RomFileName = nullptr;
+  const uint8_t* rom_data = nullptr;
   switch (g_apple2_type) {
+#if ENABLE_ROM_APPLE2
     case A2TYPE_APPLE2:
-      RomFileName = apple2_rom;
+      rom_data = g_rom_apple2;
       ROM_SIZE = Apple2RomSize;
       break;
+#endif
+#if ENABLE_ROM_APPLE2PLUS
     case A2TYPE_APPLE2PLUS:
-      RomFileName = apple2_plus_rom;
+      rom_data = g_rom_apple2_plus;
       ROM_SIZE = Apple2RomSize;
       break;
+#endif
+#if ENABLE_ROM_APPLE2E
     case A2TYPE_APPLE2E:
-      RomFileName = apple2e_rom;
+      rom_data = g_rom_apple2e;
       ROM_SIZE = Apple2eRomSize;
       break;
+#endif
+#if ENABLE_ROM_APPLE2ENHANCED
     case A2TYPE_APPLE2EENHANCED:
-      RomFileName = apple2e_enhanced_rom;
+      rom_data = g_rom_apple2e_enhanced;
       ROM_SIZE = Apple2eRomSize;
       break;
+#endif
     default:
       break;
   }
 
-  if (RomFileName == nullptr) {
+  if (rom_data == nullptr) {
     fprintf(stderr, "Unable to find rom for specified computer type! Sorry\n");
     return -1;
   }
 
-  auto* data = reinterpret_cast<uint8_t*>(
-      const_cast<char*>(RomFileName));  // NB. Don't need to unlock resource
+  const uint8_t* data = rom_data;
 
   memset(g_active_memory->cx_rom_internal, 0, CxRomSize);
   memset(g_active_memory->cx_rom_peripheral, 0, CxRomSize);

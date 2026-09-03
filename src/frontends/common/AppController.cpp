@@ -61,11 +61,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   // 1. Resolve paths and init Registry/Logger
   app_env_resolve_paths(config);
 
-  // 2. Init Core
-  linapple_init();
-  s_initialized = true;
-
-  // 3. Set Hardware Type and PAL
+  // 2. Set Hardware Type before initializing core memory
   uint32_t emul_type = 0;
   if (!config->apple2_type_explicit &&
       (config_load_int("Configuration", "Computer Emulation", &emul_type) ||
@@ -88,6 +84,10 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   } else {
     g_apple2_type = config->apple2_type;
   }
+
+  // 3. Init Core
+  linapple_init();
+  s_initialized = true;
 
   constexpr float MIN_SCREEN_FACTOR = 0.25f;
   constexpr float MAX_SCREEN_FACTOR = 8.0f;
