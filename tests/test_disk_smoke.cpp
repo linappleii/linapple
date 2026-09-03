@@ -177,3 +177,34 @@ TEST_CASE(
   // Null pointer registrations are safely ignored
   disk_loader_register(nullptr);
 }
+
+TEST_CASE(
+    "DiskSmoke: [DSK-2] DOS 3.3 VTOC signature detection via "
+    "disk_loader_open") {
+  const char* tmp_dos = "test_smoke_dos_vtoc.dsk";
+  remove(tmp_dos);
+  std::vector<uint8_t> disk_image(143360, 0);
+  for (int loop = 1; loop <= 15; ++loop) {
+    disk_image[0x11000 + 2 + (loop * 0x100)] = static_cast<uint8_t>(loop - 1);
+  }
+  FILE* fp = fopen(tmp_dos, "wb");
+  REQUIRE(fp != nullptr);
+  fwrite(disk_image.data(), 1, disk_image.size(), fp);
+  fclose(fp);
+
+  disk_loader_init();
+  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
+
+  DiskFormatDriver_t* selected_driver = nullptr;
+  void* disk_instance = nullptr;
+  bool is_ro = false;
+  CHECK(disk_loader_open(tmp_dos, false, 0, &is_ro, &selected_driver,
+                         &disk_instance) == disk_err_none);
+  CHECK(selected_driver == &g_do_driver);
+  if (selected_driver != nullptr && disk_instance != nullptr &&
+      selected_driver->close != nullptr) {
+    selected_driver->close(disk_instance);
+  }
+  disk_loader_shutdown();
+  remove(tmp_dos);
+}
