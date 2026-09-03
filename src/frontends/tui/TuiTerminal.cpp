@@ -11,7 +11,7 @@
 #include <cstring>
 
 static struct termios g_orig_termios;
-static bool g_terminal_initialized = false;
+static volatile sig_atomic_t g_terminal_initialized = 0;
 static std::atomic<bool> g_resized(false);
 static std::atomic<bool> g_interrupted(false);
 
@@ -29,8 +29,19 @@ static void signal_handler(int sig) {
   }
 }
 
+static void restore_terminal_signal_safe() {
+  if (!g_terminal_initialized) {
+    return;
+  }
+  static const char seq[] = "\x1b[?25h\x1b[?1049l";
+  ssize_t n = write(STDOUT_FILENO, seq, sizeof(seq) - 1);
+  (void)n;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
+  g_terminal_initialized = 0;
+}
+
 static void fatal_signal_handler(int sig) {
-  tui_terminal_shutdown();
+  restore_terminal_signal_safe();
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = SIG_DFL;
@@ -91,7 +102,7 @@ int tui_terminal_initialize() {
 
   atexit(tui_terminal_shutdown);
 
-  g_terminal_initialized = true;
+  g_terminal_initialized = 1;
   return 0;
 }
 
@@ -107,7 +118,7 @@ void tui_terminal_shutdown() {
   // Restore original terminal state
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
 
-  g_terminal_initialized = false;
+  g_terminal_initialized = 0;
 }
 
 bool tui_terminal_was_resized() { return g_resized.load(); }
