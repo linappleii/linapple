@@ -17,6 +17,7 @@
 #include <cstring>
 #include <memory>
 
+#include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -666,6 +667,11 @@ static auto mb_abi_init(int slot, HostInterface_t* host) -> void* {
   mp->slot = slot;
 
   auto* handler = (mp->type == SoundCardType_t::phasor) ? phasor_io : nullptr;
+#if ENABLE_ROM_MOCKINGBOARD
+  if (host->RegisterCxROM != nullptr) {
+    host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_mockingboard_d));
+  }
+#endif
   host->RegisterIO(slot, handler, handler, mb_io_read, mb_io_write);
 
   return mp;

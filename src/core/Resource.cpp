@@ -55,5 +55,13 @@ const uint8_t* const disk2_13sector_rom = g_rom_disk2_13sector;
 const uint8_t* const ssc_rom = g_rom_ssc;
 #endif
 
+#if ENABLE_ROM_MOUSE
+const uint8_t* const mouse_interface_rom = g_rom_mouse_interface;
+#endif
+
+#if ENABLE_ROM_MOCKINGBOARD
+const uint8_t* const mockingboard_d_rom = g_rom_mockingboard_d;
+#endif
+
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)

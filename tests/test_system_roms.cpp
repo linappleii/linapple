@@ -54,6 +54,18 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_ssc[0x00] == 0x20);
     CHECK(g_rom_ssc[0x05] == 0x48);
 #endif
+#if ENABLE_ROM_MOUSE
+    CHECK(g_rom_mouse_interface_size == 2048);
+    CHECK(g_rom_mouse_interface[0] == 0x2C);
+    CHECK(g_rom_mouse_interface[5] == 0x38);
+    CHECK(g_rom_mouse_interface[7] == 0x18);
+#endif
+#if ENABLE_ROM_MOCKINGBOARD
+    CHECK(g_rom_mockingboard_d_size == 2048);
+    CHECK(g_rom_mockingboard_d[0] == 0x28);  // '('
+    CHECK(g_rom_mockingboard_d[1] == 0x43);  // 'C'
+    CHECK(g_rom_mockingboard_d[2] == 0x29);  // ')'
+#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {

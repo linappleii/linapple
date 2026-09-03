@@ -108,6 +108,8 @@ generate_rom "g_rom_clone_tk3000e" "$ROMS_DIR/TK3000e.rom" "ENABLE_ROM_CLONE_TK3
 generate_rom "g_rom_disk2" "$ROMS_DIR/DISK2.rom" "ENABLE_ROM_DISK2"
 generate_rom "g_rom_disk2_13sector" "$ROMS_DIR/DISK2-13sector.rom" "ENABLE_ROM_DISK2"
 generate_rom "g_rom_ssc" "$ROMS_DIR/SSC.rom" "ENABLE_ROM_SSC"
+generate_rom "g_rom_mouse_interface" "$ROMS_DIR/MouseInterface.rom" "ENABLE_ROM_MOUSE"
+generate_rom "g_rom_mockingboard_d" "$ROMS_DIR/Mockingboard-D.rom" "ENABLE_ROM_MOCKINGBOARD"
 
 cat <<'EOF' >> "$HEADER_FILE"
 #ifdef __cplusplus

@@ -116,6 +116,21 @@ else()
     add_compile_definitions(ENABLE_ROM_SSC=0)
 endif()
 
+option(ENABLE_ROM_MOUSE "Include Mouse Interface Card ROM" ON)
+option(ENABLE_ROM_MOCKINGBOARD "Include Mockingboard-D ROM" ON)
+
+if(ENABLE_ROM_MOUSE)
+    add_compile_definitions(ENABLE_ROM_MOUSE=1)
+else()
+    add_compile_definitions(ENABLE_ROM_MOUSE=0)
+endif()
+
+if(ENABLE_ROM_MOCKINGBOARD)
+    add_compile_definitions(ENABLE_ROM_MOCKINGBOARD=1)
+else()
+    add_compile_definitions(ENABLE_ROM_MOCKINGBOARD=0)
+endif()
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -268,6 +283,8 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-13sector.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Mockingboard-D.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )

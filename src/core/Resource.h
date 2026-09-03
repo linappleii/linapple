@@ -60,6 +60,14 @@ extern const uint8_t* const disk2_13sector_rom;
 extern const uint8_t* const ssc_rom;
 #endif
 
+#if ENABLE_ROM_MOUSE
+extern const uint8_t* const mouse_interface_rom;
+#endif
+
+#if ENABLE_ROM_MOCKINGBOARD
+extern const uint8_t* const mockingboard_d_rom;
+#endif
+
 #ifdef __cplusplus
 }
 #endif
