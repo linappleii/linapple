@@ -12,6 +12,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
@@ -60,18 +61,6 @@ struct IieInstance_t {
   IieInstance_t(IieInstance_t&&) = default;
   auto operator=(IieInstance_t&&) -> IieInstance_t& = default;
 };
-
-inline auto read_u16_le(const uint8_t* data_ptr) -> uint16_t {
-  if (data_ptr == nullptr) {
-    return 0;
-  }
-
-  constexpr int bits_per_byte = 8;
-  const uint16_t low_byte = static_cast<uint16_t>(data_ptr[0]);
-  const uint16_t high_byte = static_cast<uint16_t>(data_ptr[1]);
-
-  return static_cast<uint16_t>(low_byte | (high_byte << bits_per_byte));
-}
 
 // Why: Reverses a sector mapping. SimSystem //e images store custom sector
 // ordering that must be inverted into a standard lookup table for the

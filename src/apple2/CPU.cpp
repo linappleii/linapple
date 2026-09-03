@@ -5,7 +5,6 @@
 #include <atomic>
 #include <cassert>
 #include <cstdint>
-#include <cstring>
 
 #include "apple2/Apple2Types.h"
 #define CPU_CPP_IMPL
@@ -13,6 +12,7 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
@@ -73,12 +73,6 @@ pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 
 extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
                             uint8_t d, uint32_t cycles) -> uint8_t;
-
-static inline auto read_u16_unaligned(const uint8_t* ptr) -> uint16_t {
-  uint16_t val = 0;
-  std::memcpy(&val, ptr, sizeof(val));
-  return val;
-}
 
 uint64_t g_cycle_irq_start;
 uint64_t g_cycle_irq_end;

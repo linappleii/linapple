@@ -7,6 +7,7 @@
 
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/formats/BlockDiskImage.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,
@@ -30,11 +31,7 @@ auto two_img_probe(const uint8_t* header_data, size_t header_size,
   }
 
   if (memcmp(header_data, "2IMG", 4) == 0) {
-    const uint32_t image_format =
-        static_cast<uint32_t>(header_data[12]) |
-        (static_cast<uint32_t>(header_data[13]) << 8) |
-        (static_cast<uint32_t>(header_data[14]) << 16) |
-        (static_cast<uint32_t>(header_data[15]) << 24);
+    const uint32_t image_format = read_u32_le(&header_data[12]);
     if (image_format == two_img_format_prodos) {
       return harddisk_probe_definite;
     }
@@ -78,15 +75,8 @@ auto two_img_open(const char* path, uint32_t file_offset, bool* out_os_readonly,
     return harddisk_err_invalid_format;
   }
 
-  const uint32_t flags = static_cast<uint32_t>(hdr[16]) |
-                         (static_cast<uint32_t>(hdr[17]) << 8) |
-                         (static_cast<uint32_t>(hdr[18]) << 16) |
-                         (static_cast<uint32_t>(hdr[19]) << 24);
-
-  uint32_t data_offset = static_cast<uint32_t>(hdr[24]) |
-                         (static_cast<uint32_t>(hdr[25]) << 8) |
-                         (static_cast<uint32_t>(hdr[26]) << 16) |
-                         (static_cast<uint32_t>(hdr[27]) << 24);
+  const uint32_t flags = read_u32_le(&hdr[16]);
+  uint32_t data_offset = read_u32_le(&hdr[24]);
   if (data_offset == 0) {
     data_offset = two_img_header_size;
   }

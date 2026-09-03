@@ -12,6 +12,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "core/Log.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
@@ -67,11 +68,6 @@ constexpr uint16_t max_blocks_140k = 280;
 }  // namespace prodos
 
 constexpr int create_buffer_size = 1024;
-
-inline auto read_u16_le(const uint8_t* p) -> uint16_t {
-  return static_cast<uint16_t>(p[0]) |
-         static_cast<uint16_t>(static_cast<uint16_t>(p[1]) << 8);
-}
 }  // namespace
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,

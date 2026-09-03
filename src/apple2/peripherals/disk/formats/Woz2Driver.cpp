@@ -12,6 +12,7 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
@@ -93,13 +94,7 @@ auto find_chunk(const uint8_t* header, size_t header_len, const char* id)
       return i + woz::chunk_header_size;
     }
     const uint32_t chunk_size =
-        static_cast<uint32_t>(chunk_hdr[woz::chunk_size_offset_0]) |
-        (static_cast<uint32_t>(chunk_hdr[woz::chunk_size_offset_1])
-         << woz::bits_per_byte) |
-        (static_cast<uint32_t>(chunk_hdr[woz::chunk_size_offset_2])
-         << woz::shift_16) |
-        (static_cast<uint32_t>(chunk_hdr[woz::chunk_size_offset_3])
-         << woz::shift_24);
+        read_u32_le(&chunk_hdr[woz::chunk_size_offset_0]);
     const uint64_t next_i =
         static_cast<uint64_t>(i) + woz::chunk_header_size + chunk_size;
     if (next_i <= i || header_at(header, header_len, next_i, 0) == nullptr) {
@@ -294,17 +289,9 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
     }
     return;
   }
-  const uint16_t starting_block =
-      static_cast<uint16_t>(trk[0]) |
-      (static_cast<uint16_t>(trk[1]) << woz::bits_per_byte);
-  const uint16_t block_count =
-      static_cast<uint16_t>(trk[2]) |
-      (static_cast<uint16_t>(trk[3]) << woz::bits_per_byte);
-  const uint32_t bit_count =
-      static_cast<uint32_t>(trk[4]) |
-      (static_cast<uint32_t>(trk[5]) << woz::bits_per_byte) |
-      (static_cast<uint32_t>(trk[6]) << 16) |
-      (static_cast<uint32_t>(trk[7]) << 24);
+  const uint16_t starting_block = read_u16_le(&trk[0]);
+  const uint16_t block_count = read_u16_le(&trk[2]);
+  const uint32_t bit_count = read_u32_le(&trk[4]);
 
   if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
                                         woz::data_block_size *

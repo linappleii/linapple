@@ -15,6 +15,7 @@
 #include "apple2/Video.h"
 #include "core/Log.h"
 #include "core/Resource.h"
+#include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for Apple II memory management
 // unit and page table multiplexer
@@ -58,12 +59,6 @@ static inline auto sw_slotcxrom(const MemoryInstance_t* ctx) -> bool {
 }
 static inline auto sw_hram_write(const MemoryInstance_t* ctx) -> bool {
   return (ctx->mem_mode & MF_HRAM_WRITE) != 0;
-}
-
-static inline auto read_uint32_le(const uint8_t* ptr) -> uint32_t {
-  uint32_t val = 0;
-  std::memcpy(&val, ptr, sizeof(val));
-  return val;
 }
 
 static MemoryInstance_t g_default_memory_context;
@@ -1332,13 +1327,13 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
   // about to update the memory read mode, hold off on any processing until it
   // does so.
   if ((address >= 4) && (address <= 5) && (programcounter <= 0xFFFC) &&
-      ((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D)) {
+      ((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D)) {
     g_active_memory->mode_changing = true;
     return write ? 0 : mem_read_floating_bus(1, cycles_left);
   }
   if ((address >= 0x80) && (address <= 0x8F) && (programcounter <= 0xFFFC) &&
-      (((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0048D) ||
-       ((read_uint32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D))) {
+      (((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0048D) ||
+       ((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D))) {
     g_active_memory->mode_changing = true;
     return write ? 0 : mem_read_floating_bus(1, cycles_left);
   }
