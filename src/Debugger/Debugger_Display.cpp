@@ -574,7 +574,7 @@ void FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) {
 
     if (g_config_disasm_opcode_spaces) {
       *pDst = ' ';
-      *(pDst + 1) = ' ';
+      *(pDst + 1) = '\0';
       pDst++;
     }
   }

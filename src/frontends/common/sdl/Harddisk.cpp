@@ -88,7 +88,7 @@ void harddisk_ui_ftp_select(int drive) {
   if (!error) {
     HarddiskInsertCmd_t cmd{};
     cmd.drive = static_cast<uint8_t>(drive);
-    strncpy(cmd.path, localPath.c_str(), sizeof(cmd.path) - 1);
+    util_safe_strcpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
 
     if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
                            sizeof(cmd)) == peripheral_ok) {
@@ -159,7 +159,7 @@ void harddisk_ui_select(int drive) {
 
   HarddiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  strncpy(cmd.path, fullPath.c_str(), sizeof(cmd.path) - 1);
+  util_safe_strcpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
 
   if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {

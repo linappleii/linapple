@@ -265,8 +265,7 @@ static auto host_get_config(const char* section, const char* key, char* buffer,
   std::string val;
   if (config_load_string(section, key, &val)) {
     if (buffer != nullptr && buffer_size > 0) {
-      strncpy(buffer, val.c_str(), buffer_size - 1);
-      buffer[buffer_size - 1] = '\0';
+      snprintf(buffer, buffer_size, "%s", val.c_str());
     }
     return true;
   }

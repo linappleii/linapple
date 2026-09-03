@@ -100,8 +100,7 @@ auto _CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
       bAutoDefineName = true;
     } else {
       pSymbolName = g_args[1].sArg;
-      strncpy(aSymbolName, pSymbolName, MAX_SYMBOLS_LEN);
-      aSymbolName[MAX_SYMBOLS_LEN] = 0;  // truncate to max symbol length
+      util_safe_strcpy(aSymbolName, pSymbolName, sizeof(aSymbolName));
       pSymbolName = aSymbolName;
     }
   } else {

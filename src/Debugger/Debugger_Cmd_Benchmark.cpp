@@ -152,11 +152,12 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
 
   while (bOpcodeGood || bOpmodeGood) {
     text = &g_profile_line[g_profile_line_count][0];
-    *text = '\0';
+    char op_text[CONSOLE_WIDTH] = "";
+    char mode_text[CONSOLE_WIDTH] = "";
 
     if (opcode < NUM_OPCODES) {
       if (vProfileOpcode.at(static_cast<size_t>(opcode)).count > 0) {
-        snprintf(text, sizeof(g_profile_line[0]), "%s: %llu",
+        snprintf(op_text, sizeof(op_text), "%s: %llu",
                  g_opcodes65_c02[vProfileOpcode.at(static_cast<size_t>(opcode))
                                      .opcode]
                      .sMnemonic,
@@ -169,22 +170,20 @@ void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
 
     if (iOpmode < NUM_OPMODES) {
       if (vProfileOpmode.at(static_cast<size_t>(iOpmode)).count > 0) {
-        char sOpmode[CONSOLE_WIDTH];
-        snprintf(sOpmode, sizeof(sOpmode), "  %s: %llu",
+        snprintf(mode_text, sizeof(mode_text), "  %s: %llu",
                  g_opmodes[static_cast<size_t>(
                                vProfileOpmode.at(static_cast<size_t>(iOpmode))
                                    .opmode)]
                      .name,
                  static_cast<unsigned long long>(
                      vProfileOpmode.at(static_cast<size_t>(iOpmode)).count));
-        strncat(text, sOpmode, sizeof(g_profile_line[0]) - strlen(text) - 1);
       } else {
         bOpmodeGood = false;
       }
     }
 
-    if (*text != '\0') {
-      strncat(text, "\n", sizeof(g_profile_line[0]) - strlen(text) - 1);
+    if (op_text[0] != '\0' || mode_text[0] != '\0') {
+      snprintf(text, sizeof(g_profile_line[0]), "%s%s\n", op_text, mode_text);
       g_profile_line_count++;
     }
 
