@@ -110,6 +110,52 @@ void app_args_print_help() {
       "  --tui-render <mode>    Set TUI graphics render mode: smart (default) "
       "or "
       "block\n");
+
+  printf("\nBuilt-in System ROMs:\n");
+#if ENABLE_ROM_APPLE2
+  printf("  - Apple ][\n");
+#endif
+#if ENABLE_ROM_APPLE2PLUS
+  printf("  - Apple ][+\n");
+#endif
+#if ENABLE_ROM_APPLE2_JPLUS
+  printf("  - Apple ][ J-Plus\n");
+#endif
+#if ENABLE_ROM_APPLE2E
+  printf("  - Apple //e (Unenhanced)\n");
+#endif
+#if ENABLE_ROM_APPLE2ENHANCED
+  printf("  - Apple //e (Enhanced)\n");
+#endif
+#if ENABLE_ROM_CLONE_BASE64A
+  printf("  - Base64A (Clone)\n");
+#endif
+#if ENABLE_ROM_CLONE_PRAVETS
+  printf("  - Pravets 82 / 8M / 8C (Clones)\n");
+#endif
+#if ENABLE_ROM_CLONE_TK3000E
+  printf("  - TK3000 //e (Clone)\n");
+#endif
+
+  printf("\nBuilt-in Peripheral ROMs:\n");
+#if ENABLE_ROM_DISK2
+  printf("  - Disk II (16-sector & 13-sector)\n");
+#endif
+#if ENABLE_ROM_SSC
+  printf("  - Super Serial Card (SSC)\n");
+#endif
+#if ENABLE_ROM_MOUSE
+  printf("  - Apple II Mouse Interface\n");
+#endif
+#if ENABLE_ROM_MOCKINGBOARD
+  printf("  - Mockingboard-D Sound Card\n");
+#endif
+#if ENABLE_ROM_PRINTER
+  printf("  - Parallel Printer Interface\n");
+#endif
+#if ENABLE_ROM_CLOCK
+  printf("  - ThunderClock Plus & TKClock Real-Time Clock\n");
+#endif
 }
 
 auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
