@@ -19,9 +19,8 @@
 static_assert(sizeof(ApplewinSnapshot_t) == 131824,
               "ApplewinSnapshot_t size must match expected snapshot bounds");
 
-extern "C" const char* __asan_default_options() {
-  return "detect_leaks=0";
-}
+// Persistent full-emulator singleton state lives across iterations
+extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (size < sizeof(ApplewinSnapshot_t)) {

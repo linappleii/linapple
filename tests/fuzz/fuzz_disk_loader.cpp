@@ -21,7 +21,7 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
-extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
+extern "C" const char* __asan_default_options() { return "detect_leaks=1"; }
 
 extern "C" int LLVMFuzzerInitialize(int* /*argc*/, char*** /*argv*/) {
   disk_loader_init();
@@ -31,6 +31,7 @@ extern "C" int LLVMFuzzerInitialize(int* /*argc*/, char*** /*argv*/) {
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
+  atexit(disk_loader_shutdown);
   return 0;
 }
 
