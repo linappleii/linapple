@@ -46,5 +46,14 @@ const uint8_t* const clone_pravets8m_rom = g_rom_clone_pravets8m;
 const uint8_t* const clone_tk3000e_rom = g_rom_clone_tk3000e;
 #endif
 
+#if ENABLE_ROM_DISK2
+const uint8_t* const disk2_rom = g_rom_disk2;
+const uint8_t* const disk2_13sector_rom = g_rom_disk2_13sector;
+#endif
+
+#if ENABLE_ROM_SSC
+const uint8_t* const ssc_rom = g_rom_ssc;
+#endif
+
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)

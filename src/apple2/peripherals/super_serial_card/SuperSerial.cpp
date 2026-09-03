@@ -11,6 +11,7 @@
 #include <cstring>
 #include <memory>
 
+#include "EmbeddedRoms.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
@@ -153,6 +154,9 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   ssc->slot = slot;
   super_serial_initialize(ssc.get());
 
+#if ENABLE_ROM_SSC
+  host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_ssc));
+#endif
   host->RegisterIO(slot, super_serial_io_read, super_serial_io_write, nullptr,
                    nullptr);
 

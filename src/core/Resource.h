@@ -51,6 +51,15 @@ extern const uint8_t* const clone_pravets8m_rom;
 extern const uint8_t* const clone_tk3000e_rom;
 #endif
 
+#if ENABLE_ROM_DISK2
+extern const uint8_t* const disk2_rom;
+extern const uint8_t* const disk2_13sector_rom;
+#endif
+
+#if ENABLE_ROM_SSC
+extern const uint8_t* const ssc_rom;
+#endif
+
 #ifdef __cplusplus
 }
 #endif

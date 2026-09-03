@@ -43,6 +43,17 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 #if ENABLE_ROM_CLONE_TK3000E
     CHECK(g_rom_clone_tk3000e_size == 16384);
 #endif
+#if ENABLE_ROM_DISK2
+    CHECK(g_rom_disk2_size == 256);
+    CHECK(g_rom_disk2_13sector_size == 256);
+    CHECK(g_rom_disk2[0] == 0xA2);
+    CHECK(g_rom_disk2[1] == 0x20);
+#endif
+#if ENABLE_ROM_SSC
+    CHECK(g_rom_ssc_size == 2048);
+    CHECK(g_rom_ssc[0x00] == 0x20);
+    CHECK(g_rom_ssc[0x05] == 0x48);
+#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {

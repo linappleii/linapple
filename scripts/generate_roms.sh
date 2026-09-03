@@ -104,6 +104,11 @@ generate_rom "g_rom_clone_pravets8c" "$ROMS_DIR/PRAVETS8C.ROM" "ENABLE_ROM_CLONE
 generate_rom "g_rom_clone_pravets8m" "$ROMS_DIR/PRAVETS8M.ROM" "ENABLE_ROM_CLONE_PRAVETS"
 generate_rom "g_rom_clone_tk3000e" "$ROMS_DIR/TK3000e.rom" "ENABLE_ROM_CLONE_TK3000E"
 
+# Peripheral ROMs
+generate_rom "g_rom_disk2" "$ROMS_DIR/DISK2.rom" "ENABLE_ROM_DISK2"
+generate_rom "g_rom_disk2_13sector" "$ROMS_DIR/DISK2-13sector.rom" "ENABLE_ROM_DISK2"
+generate_rom "g_rom_ssc" "$ROMS_DIR/SSC.rom" "ENABLE_ROM_SSC"
+
 cat <<'EOF' >> "$HEADER_FILE"
 #ifdef __cplusplus
 }

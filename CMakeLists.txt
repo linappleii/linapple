@@ -100,6 +100,22 @@ else()
     add_compile_definitions(ENABLE_ROM_CLONE_TK3000E=0)
 endif()
 
+# --- Peripheral ROM Options ---
+option(ENABLE_ROM_DISK2 "Include Disk II Interface Card ROM" ON)
+option(ENABLE_ROM_SSC "Include Super Serial Card (SSC) ROM" ON)
+
+if(ENABLE_ROM_DISK2)
+    add_compile_definitions(ENABLE_ROM_DISK2=1)
+else()
+    add_compile_definitions(ENABLE_ROM_DISK2=0)
+endif()
+
+if(ENABLE_ROM_SSC)
+    add_compile_definitions(ENABLE_ROM_SSC=1)
+else()
+    add_compile_definitions(ENABLE_ROM_SSC=0)
+endif()
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -249,6 +265,9 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/PRAVETS8C.ROM"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/PRAVETS8M.ROM"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TK3000e.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-13sector.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )
@@ -560,7 +579,7 @@ if(BUILD_TESTING)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
     
     # Custom test-superserial-peripheral to avoid symbol conflict
-    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp ${EMBEDDED_ROMS_CPP} src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
     target_link_libraries(test-superserial-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
