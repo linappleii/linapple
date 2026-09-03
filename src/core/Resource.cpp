@@ -30,5 +30,21 @@ const uint8_t* const apple2e_enhanced_rom = g_rom_apple2e_enhanced;
 const uint8_t* const apple2e_enhanced_video_rom = g_rom_apple2e_enhanced_video;
 #endif
 
+#if ENABLE_ROM_CLONE_BASE64A
+const uint8_t* const clone_base64a_rom = g_rom_clone_base64a;
+const uint8_t* const clone_base64a_german_video_rom =
+    g_rom_clone_base64a_german_video;
+#endif
+
+#if ENABLE_ROM_CLONE_PRAVETS
+const uint8_t* const clone_pravets82_rom = g_rom_clone_pravets82;
+const uint8_t* const clone_pravets8c_rom = g_rom_clone_pravets8c;
+const uint8_t* const clone_pravets8m_rom = g_rom_clone_pravets8m;
+#endif
+
+#if ENABLE_ROM_CLONE_TK3000E
+const uint8_t* const clone_tk3000e_rom = g_rom_clone_tk3000e;
+#endif
+
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)

@@ -77,6 +77,29 @@ else()
     add_compile_definitions(ENABLE_ROM_APPLE2ENHANCED=0)
 endif()
 
+# --- Third-Party Clone ROM Options ---
+option(ENABLE_ROM_CLONE_BASE64A "Include Copam Base 64A Clone ROM" OFF)
+option(ENABLE_ROM_CLONE_PRAVETS "Include Pravets 82/8C/8M Clone ROMs" OFF)
+option(ENABLE_ROM_CLONE_TK3000E "Include Microdigital TK-3000 //e Clone ROM" OFF)
+
+if(ENABLE_ROM_CLONE_BASE64A)
+    add_compile_definitions(ENABLE_ROM_CLONE_BASE64A=1)
+else()
+    add_compile_definitions(ENABLE_ROM_CLONE_BASE64A=0)
+endif()
+
+if(ENABLE_ROM_CLONE_PRAVETS)
+    add_compile_definitions(ENABLE_ROM_CLONE_PRAVETS=1)
+else()
+    add_compile_definitions(ENABLE_ROM_CLONE_PRAVETS=0)
+endif()
+
+if(ENABLE_ROM_CLONE_TK3000E)
+    add_compile_definitions(ENABLE_ROM_CLONE_TK3000E=1)
+else()
+    add_compile_definitions(ENABLE_ROM_CLONE_TK3000E=0)
+endif()
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -220,6 +243,12 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced_Video.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Base64A.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Base64A_German_Video.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/PRAVETS82.ROM"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/PRAVETS8C.ROM"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/PRAVETS8M.ROM"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TK3000e.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )

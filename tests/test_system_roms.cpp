@@ -31,6 +31,18 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_apple2e_enhanced_size == 16384);
     CHECK(g_rom_apple2e_enhanced_video_size == 4096);
 #endif
+#if ENABLE_ROM_CLONE_BASE64A
+    CHECK(g_rom_clone_base64a_size == 49152);
+    CHECK(g_rom_clone_base64a_german_video_size == 4096);
+#endif
+#if ENABLE_ROM_CLONE_PRAVETS
+    CHECK(g_rom_clone_pravets82_size == 12288);
+    CHECK(g_rom_clone_pravets8c_size == 16384);
+    CHECK(g_rom_clone_pravets8m_size == 12288);
+#endif
+#if ENABLE_ROM_CLONE_TK3000E
+    CHECK(g_rom_clone_tk3000e_size == 16384);
+#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {
@@ -102,6 +114,25 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(a2ee_nmi == 0x03FB);
     CHECK(a2ee_reset == 0xFA62);
     CHECK(a2ee_irq == 0xC3FA);
+#endif
+
+#if ENABLE_ROM_CLONE_PRAVETS
+    uint16_t p82_reset =
+        static_cast<uint16_t>(g_rom_clone_pravets82[0x2FFC]) |
+        (static_cast<uint16_t>(g_rom_clone_pravets82[0x2FFD]) << 8);
+    CHECK(p82_reset == 0xFA62);
+
+    uint16_t p8c_reset =
+        static_cast<uint16_t>(g_rom_clone_pravets8c[0x3FFC]) |
+        (static_cast<uint16_t>(g_rom_clone_pravets8c[0x3FFD]) << 8);
+    CHECK(p8c_reset == 0xFA62);
+#endif
+
+#if ENABLE_ROM_CLONE_TK3000E
+    uint16_t tk_reset =
+        static_cast<uint16_t>(g_rom_clone_tk3000e[0x3FFC]) |
+        (static_cast<uint16_t>(g_rom_clone_tk3000e[0x3FFD]) << 8);
+    CHECK(tk_reset == 0xFA62);
 #endif
   }
 
@@ -251,6 +282,45 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
       AppConfig_t config = {};
       app_config_default(&config);
       config.apple2_type = A2TYPE_APPLE2EENHANCED;
+      config.apple2_type_explicit = true;
+      app_env_resolve_paths(&config);
+
+      REQUIRE(app_controller_initialize(&config) == 0);
+      CHECK(cpu_get_registers()->pc == 0xFA62);
+      app_controller_shutdown();
+    }
+#endif
+
+#if ENABLE_ROM_CLONE_PRAVETS
+    {
+      AppConfig_t config = {};
+      app_config_default(&config);
+      config.apple2_type = A2TYPE_CLONE_PRAVETS82;
+      config.apple2_type_explicit = true;
+      app_env_resolve_paths(&config);
+
+      REQUIRE(app_controller_initialize(&config) == 0);
+      CHECK(cpu_get_registers()->pc == 0xFA62);
+      app_controller_shutdown();
+    }
+    {
+      AppConfig_t config = {};
+      app_config_default(&config);
+      config.apple2_type = A2TYPE_CLONE_PRAVETS8C;
+      config.apple2_type_explicit = true;
+      app_env_resolve_paths(&config);
+
+      REQUIRE(app_controller_initialize(&config) == 0);
+      CHECK(cpu_get_registers()->pc == 0xFA62);
+      app_controller_shutdown();
+    }
+#endif
+
+#if ENABLE_ROM_CLONE_TK3000E
+    {
+      AppConfig_t config = {};
+      app_config_default(&config);
+      config.apple2_type = A2TYPE_CLONE_TK3000E;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
 

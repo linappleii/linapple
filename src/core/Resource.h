@@ -36,6 +36,21 @@ extern const uint8_t* const apple2e_enhanced_rom;
 extern const uint8_t* const apple2e_enhanced_video_rom;
 #endif
 
+#if ENABLE_ROM_CLONE_BASE64A
+extern const uint8_t* const clone_base64a_rom;
+extern const uint8_t* const clone_base64a_german_video_rom;
+#endif
+
+#if ENABLE_ROM_CLONE_PRAVETS
+extern const uint8_t* const clone_pravets82_rom;
+extern const uint8_t* const clone_pravets8c_rom;
+extern const uint8_t* const clone_pravets8m_rom;
+#endif
+
+#if ENABLE_ROM_CLONE_TK3000E
+extern const uint8_t* const clone_tk3000e_rom;
+#endif
+
 #ifdef __cplusplus
 }
 #endif

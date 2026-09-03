@@ -86,6 +86,7 @@ EOF
   fi
 }
 
+# Official System ROMs
 generate_rom "g_rom_apple2" "$ROMS_DIR/Apple2.rom" "ENABLE_ROM_APPLE2"
 generate_rom "g_rom_apple2_video" "$ROMS_DIR/Apple2_Video.rom" "ENABLE_ROM_APPLE2"
 generate_rom "g_rom_apple2_plus" "$ROMS_DIR/Apple2_Plus.rom" "ENABLE_ROM_APPLE2PLUS"
@@ -94,6 +95,14 @@ generate_rom "g_rom_apple2_jplus_video" "$ROMS_DIR/Apple2_JPlus_Video.rom" "ENAB
 generate_rom "g_rom_apple2e" "$ROMS_DIR/Apple2e.rom" "ENABLE_ROM_APPLE2E"
 generate_rom "g_rom_apple2e_enhanced" "$ROMS_DIR/Apple2e_Enhanced.rom" "ENABLE_ROM_APPLE2ENHANCED"
 generate_rom "g_rom_apple2e_enhanced_video" "$ROMS_DIR/Apple2e_Enhanced_Video.rom" "ENABLE_ROM_APPLE2ENHANCED"
+
+# Third-Party Clones
+generate_rom "g_rom_clone_base64a" "$ROMS_DIR/Base64A.rom" "ENABLE_ROM_CLONE_BASE64A"
+generate_rom "g_rom_clone_base64a_german_video" "$ROMS_DIR/Base64A_German_Video.rom" "ENABLE_ROM_CLONE_BASE64A"
+generate_rom "g_rom_clone_pravets82" "$ROMS_DIR/PRAVETS82.ROM" "ENABLE_ROM_CLONE_PRAVETS"
+generate_rom "g_rom_clone_pravets8c" "$ROMS_DIR/PRAVETS8C.ROM" "ENABLE_ROM_CLONE_PRAVETS"
+generate_rom "g_rom_clone_pravets8m" "$ROMS_DIR/PRAVETS8M.ROM" "ENABLE_ROM_CLONE_PRAVETS"
+generate_rom "g_rom_clone_tk3000e" "$ROMS_DIR/TK3000e.rom" "ENABLE_ROM_CLONE_TK3000E"
 
 cat <<'EOF' >> "$HEADER_FILE"
 #ifdef __cplusplus

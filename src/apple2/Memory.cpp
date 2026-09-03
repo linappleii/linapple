@@ -1146,6 +1146,33 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
       ROM_SIZE = Apple2eRomSize;
       break;
 #endif
+#if ENABLE_ROM_CLONE_BASE64A
+    case A2TYPE_CLONE_BASE64A:
+      rom_data =
+          g_rom_clone_base64a + (g_rom_clone_base64a_size - Apple2RomSize);
+      ROM_SIZE = Apple2RomSize;
+      break;
+#endif
+#if ENABLE_ROM_CLONE_PRAVETS
+    case A2TYPE_CLONE_PRAVETS82:
+      rom_data = g_rom_clone_pravets82;
+      ROM_SIZE = Apple2RomSize;
+      break;
+    case A2TYPE_CLONE_PRAVETS8M:
+      rom_data = g_rom_clone_pravets8m;
+      ROM_SIZE = Apple2RomSize;
+      break;
+    case A2TYPE_CLONE_PRAVETS8C:
+      rom_data = g_rom_clone_pravets8c;
+      ROM_SIZE = Apple2eRomSize;
+      break;
+#endif
+#if ENABLE_ROM_CLONE_TK3000E
+    case A2TYPE_CLONE_TK3000E:
+      rom_data = g_rom_clone_tk3000e;
+      ROM_SIZE = Apple2eRomSize;
+      break;
+#endif
     default:
       break;
   }
