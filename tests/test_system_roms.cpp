@@ -66,6 +66,24 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_mockingboard_d[1] == 0x43);  // 'C'
     CHECK(g_rom_mockingboard_d[2] == 0x29);  // ')'
 #endif
+#if ENABLE_ROM_PRINTER
+    CHECK(g_rom_parallel_size == 256);
+    CHECK(g_rom_parallel[0] == 0x18);
+    CHECK(g_rom_parallel[1] == 0xB0);
+#endif
+#if ENABLE_ROM_CLOCK
+    CHECK(g_rom_thunderclock_plus_size == 2048);
+    CHECK(g_rom_thunderclock_plus[0] == 0x08);
+    CHECK(g_rom_thunderclock_plus[2] == 0x28);
+    CHECK(g_rom_thunderclock_plus[4] == 0x58);
+    CHECK(g_rom_thunderclock_plus[6] == 0x70);
+
+    CHECK(g_rom_tkclock_size == 2304);
+    CHECK(g_rom_tkclock[0] == 0x08);
+    CHECK(g_rom_tkclock[2] == 0x28);
+    CHECK(g_rom_tkclock[4] == 0x58);
+    CHECK(g_rom_tkclock[6] == 0x70);
+#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {

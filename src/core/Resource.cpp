@@ -63,5 +63,14 @@ const uint8_t* const mouse_interface_rom = g_rom_mouse_interface;
 const uint8_t* const mockingboard_d_rom = g_rom_mockingboard_d;
 #endif
 
+#if ENABLE_ROM_PRINTER
+const uint8_t* const parallel_rom = g_rom_parallel;
+#endif
+
+#if ENABLE_ROM_CLOCK
+const uint8_t* const thunderclock_plus_rom = g_rom_thunderclock_plus;
+const uint8_t* const tkclock_rom = g_rom_tkclock;
+#endif
+
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)

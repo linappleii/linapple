@@ -110,6 +110,9 @@ generate_rom "g_rom_disk2_13sector" "$ROMS_DIR/DISK2-13sector.rom" "ENABLE_ROM_D
 generate_rom "g_rom_ssc" "$ROMS_DIR/SSC.rom" "ENABLE_ROM_SSC"
 generate_rom "g_rom_mouse_interface" "$ROMS_DIR/MouseInterface.rom" "ENABLE_ROM_MOUSE"
 generate_rom "g_rom_mockingboard_d" "$ROMS_DIR/Mockingboard-D.rom" "ENABLE_ROM_MOCKINGBOARD"
+generate_rom "g_rom_parallel" "$ROMS_DIR/Parallel.rom" "ENABLE_ROM_PRINTER"
+generate_rom "g_rom_thunderclock_plus" "$ROMS_DIR/ThunderClockPlus.rom" "ENABLE_ROM_CLOCK"
+generate_rom "g_rom_tkclock" "$ROMS_DIR/TKClock.rom" "ENABLE_ROM_CLOCK"
 
 cat <<'EOF' >> "$HEADER_FILE"
 #ifdef __cplusplus

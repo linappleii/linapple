@@ -68,6 +68,15 @@ extern const uint8_t* const mouse_interface_rom;
 extern const uint8_t* const mockingboard_d_rom;
 #endif
 
+#if ENABLE_ROM_PRINTER
+extern const uint8_t* const parallel_rom;
+#endif
+
+#if ENABLE_ROM_CLOCK
+extern const uint8_t* const thunderclock_plus_rom;
+extern const uint8_t* const tkclock_rom;
+#endif
+
 #ifdef __cplusplus
 }
 #endif

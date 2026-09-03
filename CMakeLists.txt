@@ -131,6 +131,21 @@ else()
     add_compile_definitions(ENABLE_ROM_MOCKINGBOARD=0)
 endif()
 
+option(ENABLE_ROM_PRINTER "Include Parallel Printer Interface Card ROM" ON)
+option(ENABLE_ROM_CLOCK "Include Real-Time Clock Card ROMs" ON)
+
+if(ENABLE_ROM_PRINTER)
+    add_compile_definitions(ENABLE_ROM_PRINTER=1)
+else()
+    add_compile_definitions(ENABLE_ROM_PRINTER=0)
+endif()
+
+if(ENABLE_ROM_CLOCK)
+    add_compile_definitions(ENABLE_ROM_CLOCK=1)
+else()
+    add_compile_definitions(ENABLE_ROM_CLOCK=0)
+endif()
+
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -285,6 +300,9 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Mockingboard-D.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Parallel.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/ThunderClockPlus.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TKClock.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )
