@@ -48,7 +48,8 @@ auto main(int argc, char** argv) -> int {
     app_controller_set_restart(false);
 
     if (app_controller_initialize(&config) != 0) {
-      break;
+      tui_terminal_shutdown();
+      return 1;
     }
 
     tui_video_initialize();

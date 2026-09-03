@@ -78,7 +78,7 @@ WEAK auto linapple_list_hardware() -> void {}
 WEAK auto linapple_cpu_test(const char*, uint16_t) -> void {}
 WEAK auto linapple_load_program(const char*) -> int { return 0; }
 WEAK auto linapple_shutdown() -> void {}
-WEAK auto linapple_init() -> void {}
+WEAK auto linapple_init() -> int { return 0; }
 
 WEAK auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
 WEAK auto get_mem_ptr(uint16_t) -> uint8_t* { return nullptr; }

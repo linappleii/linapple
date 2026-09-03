@@ -168,18 +168,23 @@ static auto should_run_full_speed() -> bool {
   return should_turbo;
 }
 
-auto linapple_init() -> void {
+auto linapple_init() -> int {
   mem_pre_initialize();
-  asset_init();
+  if (!asset_init()) {
+    return -1;
+  }
   video_create_color_mix_map();
   audio_mixer_initialize();
 
-  mem_initialize();
+  if (mem_initialize() != 0) {
+    return -1;
+  }
   cpu_initialize();
   video_initialize();
 
   peripheral_manager_init();
   peripheral_register_internal();
+  return 0;
 }
 
 auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
@@ -197,7 +202,10 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
   if (test_file == nullptr) {
     return;
   }
-  linapple_init();
+  if (linapple_init() != 0) {
+    error("Failed to initialize core for CPU test\n");
+    return;
+  }
   if (linapple_load_program(test_file) != 0) {
     error("Failed to load test file: %s\n", test_file);
     return;

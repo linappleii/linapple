@@ -117,3 +117,16 @@ TEST_CASE(
   app_controller_shutdown();
   unlink(conf_path);
 }
+
+TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
+  AppConfig_t config = {};
+  app_config_default(&config);
+  util_safe_strcpy(config.rom_path.data(), "/nonexistent/nope.rom",
+                   config.rom_path.size());
+  app_env_resolve_paths(&config);
+
+  int result = app_controller_initialize(&config);
+  CHECK(result != 0);
+
+  app_controller_shutdown();
+}

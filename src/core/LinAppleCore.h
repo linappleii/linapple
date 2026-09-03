@@ -224,7 +224,7 @@ using LinappleVideoCallback = LinappleVideoCallback_t;
 using LinappleAudioCallback = LinappleAudioCallback_t;
 using LinappleTitleCallback = LinappleTitleCallback_t;
 
-auto linapple_init() -> void;
+auto linapple_init() -> int;
 auto linapple_register_peripherals() -> void;
 auto linapple_shutdown() -> void;
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;

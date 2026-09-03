@@ -91,7 +91,9 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   // 3. Init Core
-  linapple_init();
+  if (linapple_init() != 0) {
+    return -1;
+  }
   s_initialized = true;
 
   constexpr float MIN_SCREEN_FACTOR = 0.25f;

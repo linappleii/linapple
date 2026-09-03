@@ -144,7 +144,8 @@ auto main(int argc, char** argv) -> int {
     app_controller_set_restart(false);
 
     if (session_init(&config) != 0) {
-      break;
+      sys_shutdown();
+      return 1;
     }
 
     if (config.is_boot) {
