@@ -22,6 +22,11 @@ extern const uint8_t* const apple2_rom;
 extern const uint8_t* const apple2_plus_rom;
 #endif
 
+#if ENABLE_ROM_APPLE2_JPLUS
+extern const uint8_t* const apple2_jplus_rom;
+extern const uint8_t* const apple2_jplus_video_rom;
+#endif
+
 #if ENABLE_ROM_APPLE2E
 extern const uint8_t* const apple2e_rom;
 #endif

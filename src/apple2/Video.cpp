@@ -824,7 +824,8 @@ void draw_mono_text_source(VideoSurface_t* hDstDC) {
   }
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
     soft_stretch_mono(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
                       256, hBrush);
   } else {
@@ -861,7 +862,8 @@ void draw_text_source(VideoSurface_t* dc) {
   uint8_t hBrush = get_monochrome_index();
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
     soft_stretch_mono(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256,
                       hBrush);
   } else {
@@ -1259,7 +1261,8 @@ auto load_charset() -> VideoSurface_t* {
   VideoSurface_t* result = nullptr;
 
   if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS)) {
+      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
     // character bitmap for II and IIplus
     result = video_load_xpm(charset40_IIplus_xpm);
   } else {

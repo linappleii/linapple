@@ -1128,6 +1128,12 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
       ROM_SIZE = Apple2RomSize;
       break;
 #endif
+#if ENABLE_ROM_APPLE2_JPLUS
+    case A2TYPE_APPLE2JPLUS:
+      rom_data = g_rom_apple2_jplus;
+      ROM_SIZE = Apple2RomSize;
+      break;
+#endif
 #if ENABLE_ROM_APPLE2E
     case A2TYPE_APPLE2E:
       rom_data = g_rom_apple2e;

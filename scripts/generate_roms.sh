@@ -87,7 +87,10 @@ EOF
 }
 
 generate_rom "g_rom_apple2" "$ROMS_DIR/Apple2.rom" "ENABLE_ROM_APPLE2"
+generate_rom "g_rom_apple2_video" "$ROMS_DIR/Apple2_Video.rom" "ENABLE_ROM_APPLE2"
 generate_rom "g_rom_apple2_plus" "$ROMS_DIR/Apple2_Plus.rom" "ENABLE_ROM_APPLE2PLUS"
+generate_rom "g_rom_apple2_jplus" "$ROMS_DIR/Apple2_JPlus.rom" "ENABLE_ROM_APPLE2_JPLUS"
+generate_rom "g_rom_apple2_jplus_video" "$ROMS_DIR/Apple2_JPlus_Video.rom" "ENABLE_ROM_APPLE2_JPLUS"
 generate_rom "g_rom_apple2e" "$ROMS_DIR/Apple2e.rom" "ENABLE_ROM_APPLE2E"
 generate_rom "g_rom_apple2e_enhanced" "$ROMS_DIR/Apple2e_Enhanced.rom" "ENABLE_ROM_APPLE2ENHANCED"
 generate_rom "g_rom_apple2e_enhanced_video" "$ROMS_DIR/Apple2e_Enhanced_Video.rom" "ENABLE_ROM_APPLE2ENHANCED"

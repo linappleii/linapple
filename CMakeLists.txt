@@ -43,6 +43,7 @@ option(ENABLE_FUZZING "Enable libFuzzer targets" OFF)
 # --- ROM Options ---
 option(ENABLE_ROM_APPLE2 "Include Apple ][ ROM" ON)
 option(ENABLE_ROM_APPLE2PLUS "Include Apple ][+ ROM" ON)
+option(ENABLE_ROM_APPLE2_JPLUS "Include Apple ][ J-Plus (Japanese) ROM" ON)
 option(ENABLE_ROM_APPLE2E "Include Apple //e Unenhanced ROM" ON)
 option(ENABLE_ROM_APPLE2ENHANCED "Include Apple //e Enhanced ROM" ON)
 
@@ -56,6 +57,12 @@ if(ENABLE_ROM_APPLE2PLUS)
     add_compile_definitions(ENABLE_ROM_APPLE2PLUS=1)
 else()
     add_compile_definitions(ENABLE_ROM_APPLE2PLUS=0)
+endif()
+
+if(ENABLE_ROM_APPLE2_JPLUS)
+    add_compile_definitions(ENABLE_ROM_APPLE2_JPLUS=1)
+else()
+    add_compile_definitions(ENABLE_ROM_APPLE2_JPLUS=0)
 endif()
 
 if(ENABLE_ROM_APPLE2E)
@@ -206,7 +213,10 @@ add_custom_command(
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh" "${GEN_ROMS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/res/roms"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_roms.sh"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2_Video.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2_Plus.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2_JPlus.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2_JPlus_Video.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Apple2e_Enhanced_Video.rom"

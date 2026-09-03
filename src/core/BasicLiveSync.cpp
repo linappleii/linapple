@@ -281,7 +281,9 @@ static auto compute_program_hash() -> uint32_t {
 }
 
 static auto is_uppercase_only_machine() -> bool {
-  return (g_apple2_type == A2TYPE_APPLE2 || g_apple2_type == A2TYPE_APPLE2PLUS);
+  return (g_apple2_type == A2TYPE_APPLE2 ||
+          g_apple2_type == A2TYPE_APPLE2PLUS ||
+          g_apple2_type == A2TYPE_APPLE2JPLUS);
 }
 
 static auto sanitize_and_truncate_line(const std::string& input,

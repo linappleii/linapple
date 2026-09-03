@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "doctest.h"
-
 #include <cstdint>
 
 #include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
+#include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
@@ -16,9 +15,14 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
   TEST_CASE("ROM Byte Sizes and Memory Layout") {
 #if ENABLE_ROM_APPLE2
     CHECK(g_rom_apple2_size == 12288);
+    CHECK(g_rom_apple2_video_size == 2048);
 #endif
 #if ENABLE_ROM_APPLE2PLUS
     CHECK(g_rom_apple2_plus_size == 12288);
+#endif
+#if ENABLE_ROM_APPLE2_JPLUS
+    CHECK(g_rom_apple2_jplus_size == 12288);
+    CHECK(g_rom_apple2_jplus_video_size == 2048);
 #endif
 #if ENABLE_ROM_APPLE2E
     CHECK(g_rom_apple2e_size == 16384);
@@ -55,6 +59,20 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(a2p_nmi == 0x03FB);
     CHECK(a2p_reset == 0xFA62);  // Autostart Monitor reset
     CHECK(a2p_irq == 0xFA40);
+#endif
+
+#if ENABLE_ROM_APPLE2_JPLUS
+    // Apple ][ J-Plus Katakana Monitor ($D000-$FFFF)
+    uint16_t a2j_nmi = static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFA]) |
+                       (static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFB]) << 8);
+    uint16_t a2j_reset =
+        static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFC]) |
+        (static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFD]) << 8);
+    uint16_t a2j_irq = static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFE]) |
+                       (static_cast<uint16_t>(g_rom_apple2_jplus[0x2FFF]) << 8);
+    CHECK(a2j_nmi == 0x03FB);
+    CHECK(a2j_reset == 0xFA62);  // Autostart Monitor reset
+    CHECK(a2j_irq == 0xFA40);
 #endif
 
 #if ENABLE_ROM_APPLE2E
@@ -96,6 +114,12 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 #if ENABLE_ROM_APPLE2PLUS
     // Apple ][+ model byte at $FBB3
     CHECK(g_rom_apple2_plus[0x2BB3] == 0xEA);
+#endif
+
+#if ENABLE_ROM_APPLE2_JPLUS
+    // Apple ][ J-Plus Japanese model byte at $FBB3
+    CHECK(g_rom_apple2_jplus[0x2BB3] == 0xC9);
+    CHECK(g_rom_apple2_jplus[0x2BC0] == 0xEA);
 #endif
 
 #if ENABLE_ROM_APPLE2E
@@ -141,9 +165,16 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_apple2_plus[0x1002] == 0xF1);  // $F128
 #endif
 
+#if ENABLE_ROM_APPLE2_JPLUS
+    // Apple ][ J-Plus Applesoft BASIC cold entry at $E000: JMP $F128
+    CHECK(g_rom_apple2_jplus[0x1000] == 0x4C);  // JMP
+    CHECK(g_rom_apple2_jplus[0x1001] == 0x28);
+    CHECK(g_rom_apple2_jplus[0x1002] == 0xF1);  // $F128
+#endif
+
 #if ENABLE_ROM_APPLE2E
-    // Apple //e Unenhanced Applesoft BASIC cold entry at $E000 ($C000 + 0x2000):
-    // JMP $F128
+    // Apple //e Unenhanced Applesoft BASIC cold entry at $E000 ($C000 +
+    // 0x2000): JMP $F128
     CHECK(g_rom_apple2e[0x2000] == 0x4C);  // JMP
     CHECK(g_rom_apple2e[0x2001] == 0x28);
     CHECK(g_rom_apple2e[0x2002] == 0xF1);  // $F128
@@ -178,6 +209,20 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
       AppConfig_t config = {};
       app_config_default(&config);
       config.apple2_type = A2TYPE_APPLE2PLUS;
+      config.apple2_type_explicit = true;
+      app_env_resolve_paths(&config);
+
+      REQUIRE(app_controller_initialize(&config) == 0);
+      CHECK(cpu_get_registers()->pc == 0xFA62);
+      app_controller_shutdown();
+    }
+#endif
+
+#if ENABLE_ROM_APPLE2_JPLUS
+    {
+      AppConfig_t config = {};
+      app_config_default(&config);
+      config.apple2_type = A2TYPE_APPLE2JPLUS;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
 
