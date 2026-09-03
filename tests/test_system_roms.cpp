@@ -4,6 +4,7 @@
 #include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
+#include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
@@ -370,6 +371,21 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
       app_controller_shutdown();
     }
 #endif
+  }
+
+  TEST_CASE("Custom Runtime ROM File Override") {
+    AppConfig_t config = {};
+    app_config_default(&config);
+    config.apple2_type = A2TYPE_APPLE2PLUS;
+    config.apple2_type_explicit = true;
+    util_safe_strcpy(config.rom_path.data(),
+                     SOURCE_RES_DIR "/roms/Apple2_Plus.rom",
+                     config.rom_path.size());
+    app_env_resolve_paths(&config);
+
+    REQUIRE(app_controller_initialize(&config) == 0);
+    CHECK(cpu_get_registers()->pc == 0xFA62);
+    app_controller_shutdown();
   }
 }
 

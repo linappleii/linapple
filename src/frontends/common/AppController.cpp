@@ -9,6 +9,7 @@
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
@@ -83,6 +84,10 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     }
   } else {
     g_apple2_type = config->apple2_type;
+  }
+
+  if (config->rom_path.at(0) != '\0') {
+    mem_set_custom_rom_path(config->rom_path.data());
   }
 
   // 3. Init Core

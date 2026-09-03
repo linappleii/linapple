@@ -6,8 +6,11 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
@@ -70,6 +73,51 @@ uint8_t** memwrite = g_default_memory_context.memwrite;
 uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
 MemoryInitPattern_e g_memory_init_pattern = MIP_FF_FF_00_00;
+static std::string g_custom_rom_path;
+
+auto mem_set_custom_rom_path(const char* path) -> void {
+  if (path != nullptr) {
+    g_custom_rom_path = path;
+  } else {
+    g_custom_rom_path.clear();
+  }
+}
+
+auto mem_get_custom_rom_path() -> const char* {
+  return g_custom_rom_path.c_str();
+}
+
+struct MachineRomInfo_t {
+  const char* name;
+  const char* cmake_flag;
+};
+
+static auto get_machine_rom_info(eApple2Type type) -> MachineRomInfo_t {
+  switch (type) {
+    case A2TYPE_APPLE2:
+      return {"Apple ][", "-DENABLE_ROM_APPLE2=ON"};
+    case A2TYPE_APPLE2PLUS:
+      return {"Apple ][+", "-DENABLE_ROM_APPLE2PLUS=ON"};
+    case A2TYPE_APPLE2JPLUS:
+      return {"Apple ][ J-Plus", "-DENABLE_ROM_APPLE2_JPLUS=ON"};
+    case A2TYPE_APPLE2E:
+      return {"Apple //e Unenhanced", "-DENABLE_ROM_APPLE2E=ON"};
+    case A2TYPE_APPLE2EENHANCED:
+      return {"Apple //e Enhanced", "-DENABLE_ROM_APPLE2ENHANCED=ON"};
+    case A2TYPE_CLONE_BASE64A:
+      return {"Base64A", "-DENABLE_ROM_CLONE_BASE64A=ON"};
+    case A2TYPE_CLONE_PRAVETS82:
+      return {"Pravets 82", "-DENABLE_ROM_CLONE_PRAVETS=ON"};
+    case A2TYPE_CLONE_PRAVETS8M:
+      return {"Pravets 8M", "-DENABLE_ROM_CLONE_PRAVETS=ON"};
+    case A2TYPE_CLONE_PRAVETS8C:
+      return {"Pravets 8C", "-DENABLE_ROM_CLONE_PRAVETS=ON"};
+    case A2TYPE_CLONE_TK3000E:
+      return {"TK3000 //e", "-DENABLE_ROM_CLONE_TK3000E=ON"};
+    default:
+      return {"Unknown Apple II model", "-DENABLE_ROM_ALL_SYSTEM=ON"};
+  }
+}
 
 static auto set_mem(uint8_t* val) -> void {
   mem = val;
@@ -1115,70 +1163,142 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 
   uint32_t ROM_SIZE = 0;
   const uint8_t* rom_data = nullptr;
-  switch (g_apple2_type) {
-#if ENABLE_ROM_APPLE2
-    case A2TYPE_APPLE2:
-      rom_data = g_rom_apple2;
+  std::vector<uint8_t> custom_rom_buffer;
+
+  if (!g_custom_rom_path.empty()) {
+    std::string path_to_open = g_custom_rom_path;
+    FILE* f = fopen(path_to_open.c_str(), "rb");
+    if (f == nullptr) {
+      std::string resolved = Path::find_data_file(g_custom_rom_path);
+      if (!resolved.empty()) {
+        path_to_open = resolved;
+        f = fopen(path_to_open.c_str(), "rb");
+      }
+    }
+    if (f == nullptr) {
+      fprintf(stderr, "\nError: Unable to open custom ROM file: %s\n\n",
+              g_custom_rom_path.c_str());
+      mem_destroy();
+      return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (fsize < static_cast<long>(Apple2RomSize) || fsize > 65536) {
+      fprintf(stderr,
+              "\nError: Invalid custom ROM file size (%ld bytes, expected at "
+              "least %u bytes): %s\n\n",
+              fsize, Apple2RomSize, g_custom_rom_path.c_str());
+      fclose(f);
+      mem_destroy();
+      return -1;
+    }
+    custom_rom_buffer.resize(static_cast<size_t>(fsize));
+    if (fread(custom_rom_buffer.data(), 1, custom_rom_buffer.size(), f) !=
+        custom_rom_buffer.size()) {
+      fprintf(stderr, "\nError: Failed to read custom ROM file: %s\n\n",
+              g_custom_rom_path.c_str());
+      fclose(f);
+      mem_destroy();
+      return -1;
+    }
+    fclose(f);
+
+    if (custom_rom_buffer.size() == Apple2eRomSize) {
+      rom_data = custom_rom_buffer.data();
+      ROM_SIZE = Apple2eRomSize;
+    } else if (custom_rom_buffer.size() == Apple2RomSize) {
+      rom_data = custom_rom_buffer.data();
       ROM_SIZE = Apple2RomSize;
-      break;
+    } else if (custom_rom_buffer.size() > Apple2RomSize) {
+      if (custom_rom_buffer.size() >= Apple2eRomSize &&
+          (g_apple2_type == A2TYPE_APPLE2E ||
+           g_apple2_type == A2TYPE_APPLE2EENHANCED ||
+           g_apple2_type == A2TYPE_CLONE_PRAVETS8C ||
+           g_apple2_type == A2TYPE_CLONE_TK3000E)) {
+        rom_data = custom_rom_buffer.data() +
+                   (custom_rom_buffer.size() - Apple2eRomSize);
+        ROM_SIZE = Apple2eRomSize;
+      } else {
+        rom_data = custom_rom_buffer.data() +
+                   (custom_rom_buffer.size() - Apple2RomSize);
+        ROM_SIZE = Apple2RomSize;
+      }
+    }
+  } else {
+    switch (g_apple2_type) {
+#if ENABLE_ROM_APPLE2
+      case A2TYPE_APPLE2:
+        rom_data = g_rom_apple2;
+        ROM_SIZE = Apple2RomSize;
+        break;
 #endif
 #if ENABLE_ROM_APPLE2PLUS
-    case A2TYPE_APPLE2PLUS:
-      rom_data = g_rom_apple2_plus;
-      ROM_SIZE = Apple2RomSize;
-      break;
+      case A2TYPE_APPLE2PLUS:
+        rom_data = g_rom_apple2_plus;
+        ROM_SIZE = Apple2RomSize;
+        break;
 #endif
 #if ENABLE_ROM_APPLE2_JPLUS
-    case A2TYPE_APPLE2JPLUS:
-      rom_data = g_rom_apple2_jplus;
-      ROM_SIZE = Apple2RomSize;
-      break;
+      case A2TYPE_APPLE2JPLUS:
+        rom_data = g_rom_apple2_jplus;
+        ROM_SIZE = Apple2RomSize;
+        break;
 #endif
 #if ENABLE_ROM_APPLE2E
-    case A2TYPE_APPLE2E:
-      rom_data = g_rom_apple2e;
-      ROM_SIZE = Apple2eRomSize;
-      break;
+      case A2TYPE_APPLE2E:
+        rom_data = g_rom_apple2e;
+        ROM_SIZE = Apple2eRomSize;
+        break;
 #endif
 #if ENABLE_ROM_APPLE2ENHANCED
-    case A2TYPE_APPLE2EENHANCED:
-      rom_data = g_rom_apple2e_enhanced;
-      ROM_SIZE = Apple2eRomSize;
-      break;
+      case A2TYPE_APPLE2EENHANCED:
+        rom_data = g_rom_apple2e_enhanced;
+        ROM_SIZE = Apple2eRomSize;
+        break;
 #endif
 #if ENABLE_ROM_CLONE_BASE64A
-    case A2TYPE_CLONE_BASE64A:
-      rom_data =
-          g_rom_clone_base64a + (g_rom_clone_base64a_size - Apple2RomSize);
-      ROM_SIZE = Apple2RomSize;
-      break;
+      case A2TYPE_CLONE_BASE64A:
+        rom_data =
+            g_rom_clone_base64a + (g_rom_clone_base64a_size - Apple2RomSize);
+        ROM_SIZE = Apple2RomSize;
+        break;
 #endif
 #if ENABLE_ROM_CLONE_PRAVETS
-    case A2TYPE_CLONE_PRAVETS82:
-      rom_data = g_rom_clone_pravets82;
-      ROM_SIZE = Apple2RomSize;
-      break;
-    case A2TYPE_CLONE_PRAVETS8M:
-      rom_data = g_rom_clone_pravets8m;
-      ROM_SIZE = Apple2RomSize;
-      break;
-    case A2TYPE_CLONE_PRAVETS8C:
-      rom_data = g_rom_clone_pravets8c;
-      ROM_SIZE = Apple2eRomSize;
-      break;
+      case A2TYPE_CLONE_PRAVETS82:
+        rom_data = g_rom_clone_pravets82;
+        ROM_SIZE = Apple2RomSize;
+        break;
+      case A2TYPE_CLONE_PRAVETS8M:
+        rom_data = g_rom_clone_pravets8m;
+        ROM_SIZE = Apple2RomSize;
+        break;
+      case A2TYPE_CLONE_PRAVETS8C:
+        rom_data = g_rom_clone_pravets8c;
+        ROM_SIZE = Apple2eRomSize;
+        break;
 #endif
 #if ENABLE_ROM_CLONE_TK3000E
-    case A2TYPE_CLONE_TK3000E:
-      rom_data = g_rom_clone_tk3000e;
-      ROM_SIZE = Apple2eRomSize;
-      break;
+      case A2TYPE_CLONE_TK3000E:
+        rom_data = g_rom_clone_tk3000e;
+        ROM_SIZE = Apple2eRomSize;
+        break;
 #endif
-    default:
-      break;
+      default:
+        break;
+    }
   }
 
   if (rom_data == nullptr) {
-    fprintf(stderr, "Unable to find rom for specified computer type! Sorry\n");
+    auto info = get_machine_rom_info(g_apple2_type);
+    fprintf(
+        stderr,
+        "\nError: The ROM for %s is not available in this build.\n"
+        "To run this machine model, you can either:\n"
+        "  1. Rebuild LinApple with %s, or\n"
+        "  2. Provide a compatible ROM file at runtime using --rom <path>\n\n",
+        info.name, info.cmake_flag);
+    mem_destroy();
     return -1;
   }
 

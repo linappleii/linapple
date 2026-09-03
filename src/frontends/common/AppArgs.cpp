@@ -26,7 +26,7 @@ static constexpr int opt_basic_line_mode = 0x106;
 static constexpr int opt_caps_mode = 0x107;
 static constexpr int opt_tui_render = 0x108;
 
-static const std::array<struct option, 29> OptionTable = {
+static const std::array<struct option, 30> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
@@ -40,6 +40,7 @@ static const std::array<struct option, 29> OptionTable = {
      {"benchmark", no_argument, nullptr, 'm'},
      {"pal", no_argument, nullptr, 'p'},
      {"program", required_argument, nullptr, 'P'},
+     {"rom", required_argument, nullptr, 'R'},
      {"snapshot", required_argument, nullptr, 's'},
      {"script", required_argument, nullptr, 'x'},
      {"test-cpu", required_argument, nullptr, 'T'},
@@ -57,7 +58,7 @@ static const std::array<struct option, 29> OptionTable = {
      {"tui-render", required_argument, nullptr, opt_tui_render},
      {nullptr, 0, nullptr, 0}}};
 
-static const char* OptString = "1:2:abc:fhlmpP:s:vx:T:X:6CA:";
+static const char* OptString = "1:2:abc:fhlmpP:R:s:vx:T:X:6CA:";
 
 void app_args_print_help() {
 #ifdef LINAPPLE_FRONTEND_NAME
@@ -82,6 +83,7 @@ void app_args_print_help() {
   printf("  -m, --benchmark        Run a video benchmark and exit\n");
   printf("  -p, --pal              Enable PAL video mode\n");
   printf("  -P, --program <file>   Load APL/PRG program file\n");
+  printf("  -R, --rom <file>       Load custom system ROM file at runtime\n");
   printf("  -s, --snapshot <f>     Load state from snapshot file\n");
   printf("  -v, --verbose          Enable verbose performance logging\n");
   printf("  -x, --script <file>    Execute debugger script on startup\n");
@@ -154,6 +156,9 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         break;
       case 'P':
         util_safe_strcpy(outConfig->program_path.data(), optarg, path_max_len);
+        break;
+      case 'R':
+        util_safe_strcpy(outConfig->rom_path.data(), optarg, path_max_len);
         break;
       case 's':
         util_safe_strcpy(outConfig->snapshot_path.data(), optarg, path_max_len);

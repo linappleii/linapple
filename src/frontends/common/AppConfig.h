@@ -25,6 +25,7 @@ struct AppConfig_t {
   std::array<char, path_max_len> config_path = {};
   std::array<char, path_max_len> snapshot_path = {};
   std::array<char, path_max_len> audio_dump_path = {};
+  std::array<char, path_max_len> rom_path = {};
 
   eApple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
   bool apple2_type_explicit = false;
