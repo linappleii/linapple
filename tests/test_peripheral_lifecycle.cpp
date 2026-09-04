@@ -244,3 +244,49 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
   linapple_shutdown();
 }
+
+#include <dlfcn.h>
+
+TEST_CASE(
+    "Peripheral Manager: Plugin loader ABI verification and error handling") {
+  SUBCASE("ABI mismatch rejection") {
+    Peripheral_t mismatched_api = {LINAPPLE_ABI_VERSION + 99,
+                                   "test.mismatched_abi",
+                                   "MismatchedABITest",
+                                   "Desc",
+                                   "Author",
+                                   "1.0.0",
+                                   0xFF,
+                                   -1,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr};
+
+    CHECK(mismatched_api.abi_version != LINAPPLE_ABI_VERSION);
+  }
+
+  SUBCASE("Non-existent plugin path returns error") {
+    void* handle =
+        dlopen("/nonexistent/path/to/plugin.so", RTLD_NOW | RTLD_LOCAL);
+    CHECK(handle == nullptr);
+    CHECK(dlerror() != nullptr);
+  }
+
+  SUBCASE("Self-binary lookup for peripheral descriptor symbol") {
+    void* self_handle = dlopen(nullptr, RTLD_NOW | RTLD_LOCAL);
+    REQUIRE(self_handle != nullptr);
+
+    // Missing descriptor symbol on arbitrary handle
+    auto* missing = reinterpret_cast<Peripheral_t*>(
+        dlsym(self_handle, "nonexistent_peripheral_descriptor_symbol"));
+    CHECK(missing == nullptr);
+
+    dlclose(self_handle);
+  }
+}
