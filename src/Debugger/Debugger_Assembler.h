@@ -138,7 +138,8 @@ struct HashOpcode_t {
   Hash_t value;
 
   // functor
-  bool operator()(const HashOpcode_t& rLHS, const HashOpcode_t& rRHS) const {
+  auto operator()(const HashOpcode_t& rLHS, const HashOpcode_t& rRHS) const
+      -> bool {
     bool bLessThan = (rLHS.value < rRHS.value);
     return bLessThan;
   }
@@ -164,33 +165,34 @@ extern AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES];
 
 // Prototypes _______________________________________________________________
 
-int GetOpmodeOpbyte(const int iAddress, int& iOpmode_, int& nOpbytes_,
-                    const DisasmData_t** data = nullptr);
-void GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbytes_);
-bool GetStackReturnAddress(uint16_t& nAddress_);
-bool GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
+auto GetOpmodeOpbyte(const int iAddress, int& iOpmode_, int& nOpbytes_,
+                     const DisasmData_t** data = nullptr) -> int;
+auto GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbytes_)
+    -> void;
+auto GetStackReturnAddress(uint16_t& nAddress_) -> bool;
+auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
                 int* pTargetPointer_, int* pBytes_, bool bIgnoreBranch = true,
-                bool bIncludeNextOpcodeAddress = true);
-bool GetTargetAddress(const uint16_t& address, uint16_t& nTarget_);
-bool IsOpcodeBranch(int nOpcode);
-bool IsOpcodeValid(int nOpcode);
+                bool bIncludeNextOpcodeAddress = true) -> bool;
+auto GetTargetAddress(const uint16_t& address, uint16_t& nTarget_) -> bool;
+auto IsOpcodeBranch(int nOpcode) -> bool;
+auto IsOpcodeValid(int nOpcode) -> bool;
 
-uint32_t AssemblerHashMnemonic(const char* pMnemonic);
-void CmdAssembleHashDump();
+auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t;
+auto CmdAssembleHashDump() -> void;
 
-int AssemblerDelayedTargetsSize();
-void AssemblerStartup();
-bool Assemble(int iArg, int nArgs, uint16_t address);
+auto AssemblerDelayedTargetsSize() -> int;
+auto AssemblerStartup() -> void;
+auto Assemble(int iArg, int nArgs, uint16_t address) -> bool;
 
-void AssemblerOn();
-void AssemblerOff();
+auto AssemblerOn() -> void;
+auto AssemblerOff() -> void;
 
 auto debugger_get_file_size(FILE* file) -> size_t;
-Update_t CmdAssemble(uint16_t address, int iArg, int nArgs);
+auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t;
 
-Update_t CmdAssemble(int nArgs);
-Update_t CmdSource(int nArgs);
-Update_t CmdUnassemble(int nArgs);
+auto CmdAssemble(int nArgs) -> Update_t;
+auto CmdSource(int nArgs) -> Update_t;
+auto CmdUnassemble(int nArgs) -> Update_t;
 
 extern bool g_source_level_debugging;
 extern bool g_source_add_symbols;
@@ -202,7 +204,7 @@ extern int g_source_assemble_bytes;
 extern int g_source_assembly_symbols;
 extern SourceAssembly_t g_source_debug;
 
-bool BufferAssemblyListing(const std::string& pFileName);
-bool ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols);
-int FindAddressFromSourceLine(int nLine);
-int FindSourceLineFromAddress(uint16_t address);
+auto BufferAssemblyListing(const std::string& pFileName) -> bool;
+auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool;
+auto FindAddressFromSourceLine(int nLine) -> int;
+auto FindSourceLineFromAddress(uint16_t address) -> int;

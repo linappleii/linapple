@@ -3,11 +3,11 @@
 
 #include "Debugger_Types.h"
 
-Update_t CmdZeroPage(int nArgs);
-Update_t CmdZeroPageAdd(int nArgs);
-Update_t CmdZeroPageClear(int nArgs);
-Update_t CmdZeroPageDisable(int nArgs);
-Update_t CmdZeroPageEnable(int nArgs);
-Update_t CmdZeroPageList(int nArgs);
-Update_t CmdZeroPageSave(int nArgs);
-Update_t CmdZeroPagePointer(int nArgs);
+auto CmdZeroPage(int nArgs) -> Update_t;
+auto CmdZeroPageAdd(int nArgs) -> Update_t;
+auto CmdZeroPageClear(int nArgs) -> Update_t;
+auto CmdZeroPageDisable(int nArgs) -> Update_t;
+auto CmdZeroPageEnable(int nArgs) -> Update_t;
+auto CmdZeroPageList(int nArgs) -> Update_t;
+auto CmdZeroPageSave(int nArgs) -> Update_t;
+auto CmdZeroPagePointer(int nArgs) -> Update_t;

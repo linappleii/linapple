@@ -53,11 +53,11 @@ extern const std::string g_file_name_profile;
 extern int g_color_scheme;
 
 // Local prototypes
-void WindowUpdateSizes();
+auto WindowUpdateSizes() -> void;
 auto GetConsoleTopPixels(int nConsoleDisplayLines) -> int;
-void cpu_setup_benchmark();
-void ProfileReset();
-void ProfileFormat(bool bExport, int iFormat);
+auto cpu_setup_benchmark() -> void;
+auto ProfileReset() -> void;
+auto ProfileFormat(bool bExport, int iFormat) -> void;
 auto ProfileLinePeek(int iLine) -> char*;
 auto ProfileSave() -> bool;
 
@@ -199,8 +199,8 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
 }
 
 //===========================================================================
-void ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear) {
+auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
+                              const Commands_e eCommandClear) -> void {
   char sText[CONSOLE_WIDTH];
 
   snprintf(sText, sizeof(sText), "%s %s = %s\n",
@@ -573,7 +573,7 @@ auto CmdConfigGetFont(int nArgs) -> Update_t {
 
 // Only for FONT_DISASM_DEFAULT !
 //===========================================================================
-void UpdateWindowFontHeights(int nFontHeight) {
+auto UpdateWindowFontHeights(int nFontHeight) -> void {
   if (nFontHeight) {
     int nConsoleTopY = GetConsoleTopPixels(g_console_display_lines);
 

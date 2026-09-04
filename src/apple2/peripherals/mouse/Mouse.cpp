@@ -116,14 +116,15 @@ struct MousePeripheral_t {
 
 // --- Forward Declarations ---
 
-static void mouse_update_slot_rom(MousePeripheral_t* mp);
-static void mouse_on_mouse_event(MousePeripheral_t* mp);
-static void mouse_on_command(MousePeripheral_t* mp);
-static void mouse_on_write(MousePeripheral_t* mp);
-static void mouse_reset_internal(MousePeripheral_t* mp);
-static void mouse_set_position_internal(MousePeripheral_t* mp, int x, int y);
-static void mouse_clamp_x(MousePeripheral_t* mp, int min_x, int max_x);
-static void mouse_clamp_y(MousePeripheral_t* mp, int min_y, int max_y);
+static auto mouse_update_slot_rom(MousePeripheral_t* mp) -> void;
+static auto mouse_on_mouse_event(MousePeripheral_t* mp) -> void;
+static auto mouse_on_command(MousePeripheral_t* mp) -> void;
+static auto mouse_on_write(MousePeripheral_t* mp) -> void;
+static auto mouse_reset_internal(MousePeripheral_t* mp) -> void;
+static auto mouse_set_position_internal(MousePeripheral_t* mp, int x, int y)
+    -> void;
+static auto mouse_clamp_x(MousePeripheral_t* mp, int min_x, int max_x) -> void;
+static auto mouse_clamp_y(MousePeripheral_t* mp, int min_y, int max_y) -> void;
 
 // --- State Persistence ---
 
@@ -175,7 +176,7 @@ struct MouseSaveState_t {
 
 // --- Helper Functions ---
 
-static void mouse_update_slot_rom(MousePeripheral_t* mp) {
+static auto mouse_update_slot_rom(MousePeripheral_t* mp) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -198,7 +199,7 @@ static void mouse_update_slot_rom(MousePeripheral_t* mp) {
   mp->host->RegisterCxROM(static_cast<int>(mp->slot), &mp->slot_rom.at(offset));
 }
 
-static void pia_listener_a(void* obj, uint8_t data) {
+static auto pia_listener_a(void* obj, uint8_t data) -> void {
   if (obj == nullptr) {
     return;
   }
@@ -207,7 +208,7 @@ static void pia_listener_a(void* obj, uint8_t data) {
   mp->pia_port_a = data;
 }
 
-static void mouse_on_clock_write(MousePeripheral_t* mp, uint8_t data) {
+static auto mouse_on_clock_write(MousePeripheral_t* mp, uint8_t data) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -239,7 +240,7 @@ static void mouse_on_clock_write(MousePeripheral_t* mp, uint8_t data) {
   pia_6821_set_port_b(&mp->pia, mp->pia_port_b);
 }
 
-static void mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) {
+static auto mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -268,7 +269,7 @@ static void mouse_on_clock_read(MousePeripheral_t* mp, uint8_t data) {
   mp->pia_port_b |= regs::bit6;
 }
 
-static void pia_listener_b(void* obj, uint8_t data) {
+static auto pia_listener_b(void* obj, uint8_t data) -> void {
   if (obj == nullptr) {
     return;
   }
@@ -297,7 +298,7 @@ static void pia_listener_b(void* obj, uint8_t data) {
   mouse_update_slot_rom(mp);
 }
 
-static void mouse_on_command(MousePeripheral_t* mp) {
+static auto mouse_on_command(MousePeripheral_t* mp) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -406,7 +407,7 @@ static void mouse_on_command(MousePeripheral_t* mp) {
   pia_6821_set_port_a(&mp->pia, val);
 }
 
-static void mouse_on_write(MousePeripheral_t* mp) {
+static auto mouse_on_write(MousePeripheral_t* mp) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -445,7 +446,7 @@ static void mouse_on_write(MousePeripheral_t* mp) {
   }
 }
 
-static void mouse_on_mouse_event(MousePeripheral_t* mp) {
+static auto mouse_on_mouse_event(MousePeripheral_t* mp) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -486,7 +487,7 @@ static void mouse_on_mouse_event(MousePeripheral_t* mp) {
   }
 }
 
-static void mouse_reset_internal(MousePeripheral_t* mp) {
+static auto mouse_reset_internal(MousePeripheral_t* mp) -> void {
   if (mp == nullptr) {
     return;
   }
@@ -504,7 +505,8 @@ static void mouse_reset_internal(MousePeripheral_t* mp) {
   mouse_set_position_internal(mp, 0, 0);
 }
 
-static void mouse_clamp_x(MousePeripheral_t* mp, int min_val, int max_val) {
+static auto mouse_clamp_x(MousePeripheral_t* mp, int min_val, int max_val)
+    -> void {
   if (mp == nullptr) {
     return;
   }
@@ -518,7 +520,8 @@ static void mouse_clamp_x(MousePeripheral_t* mp, int min_val, int max_val) {
   mp->internal_x = std::min(std::max(mp->internal_x, mp->min_x), mp->max_x);
 }
 
-static void mouse_clamp_y(MousePeripheral_t* mp, int min_val, int max_val) {
+static auto mouse_clamp_y(MousePeripheral_t* mp, int min_val, int max_val)
+    -> void {
   if (mp == nullptr) {
     return;
   }
@@ -532,7 +535,8 @@ static void mouse_clamp_y(MousePeripheral_t* mp, int min_val, int max_val) {
   mp->internal_y = std::min(std::max(mp->internal_y, mp->min_y), mp->max_y);
 }
 
-static void mouse_set_position_internal(MousePeripheral_t* mp, int x, int y) {
+static auto mouse_set_position_internal(MousePeripheral_t* mp, int x, int y)
+    -> void {
   if (mp == nullptr) {
     return;
   }
@@ -562,13 +566,13 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto* mp = new MousePeripheral_t();
+  auto mp = std::unique_ptr<MousePeripheral_t>(new MousePeripheral_t{});
   mp->host = host;
   mp->slot = static_cast<uint32_t>(slot);
 
   pia_6821_reset(&mp->pia);
-  pia_6821_set_listener_a(&mp->pia, mp, pia_listener_a);
-  pia_6821_set_listener_b(&mp->pia, mp, pia_listener_b);
+  pia_6821_set_listener_a(&mp->pia, mp.get(), pia_listener_a);
+  pia_6821_set_listener_b(&mp->pia, mp.get(), pia_listener_b);
 
   mp->pia_port_a = 0;
   mp->pia_port_b = regs::bit6;
@@ -579,7 +583,7 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
   mp->min_y = 0;
   mp->max_y = physical::default_max_coord;
 
-  mouse_reset_internal(mp);
+  mouse_reset_internal(mp.get());
 
 #if ENABLE_ROM_MOUSE
   std::copy(g_rom_mouse_interface,
@@ -587,7 +591,7 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
             mp->slot_rom.begin());
 #endif
 
-  mouse_update_slot_rom(mp);
+  mouse_update_slot_rom(mp.get());
 
   auto io_handler = [](void* instance, uint16_t pc, uint16_t addr,
                        uint8_t write, uint8_t val, uint32_t cycles) -> uint8_t {
@@ -608,10 +612,10 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
   host->RegisterIO(slot, io_handler, io_handler, nullptr, nullptr);
   mp->is_active = true;
 
-  return mp;
+  return mp.release();
 }
 
-static void peripheral_abi_reset(void* instance) {
+static auto peripheral_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -620,7 +624,7 @@ static void peripheral_abi_reset(void* instance) {
   mouse_reset_internal(mp);
 }
 
-static void peripheral_abi_shutdown(void* instance) {
+static auto peripheral_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -629,7 +633,7 @@ static void peripheral_abi_shutdown(void* instance) {
   delete mp;
 }
 
-static void peripheral_abi_on_vblank(void* instance, bool vblank) {
+static auto peripheral_abi_on_vblank(void* instance, bool vblank) -> void {
   if (instance == nullptr) {
     return;
   }

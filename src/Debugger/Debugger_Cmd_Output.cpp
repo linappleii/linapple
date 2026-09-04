@@ -37,7 +37,7 @@ struct PrintFormat_t {
 // Implementation
 
 //===========================================================================
-void DebuggerRunScript(const char* pFileName) {
+auto DebuggerRunScript(const char* pFileName) -> void {
   if (!pFileName || !*pFileName) {
     return;
   }

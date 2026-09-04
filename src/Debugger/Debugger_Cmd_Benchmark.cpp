@@ -11,7 +11,7 @@
 #include "Debugger_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
-extern void frame_refresh_status(int);
+extern auto frame_refresh_status(int) -> void;
 #include <cstdio>
 #include <cstring>
 
@@ -108,7 +108,7 @@ auto ProfileLinePeek(int iLine) -> char* {
   return text;
 }
 
-void ProfileReset() {
+auto ProfileReset() -> void {
   int opcode = 0;
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
     g_profile_opcodes[opcode].opcode = opcode;
@@ -125,7 +125,7 @@ void ProfileReset() {
   g_profile_begin_cycles = g_cumulative_cycles;
 }
 
-void ProfileFormat(bool bSeperateColumns, int eFormatMode) {
+auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
   (void)bSeperateColumns;
   (void)eFormatMode;
   int opcode = 0;

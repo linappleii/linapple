@@ -99,12 +99,12 @@ constexpr size_t CONSOLE_INPUT_EXTRA = 16;
 #endif
 
 // ascii markup
-inline bool ConsoleColor_IsCharMeta(uint8_t c) {
+inline auto ConsoleColor_IsCharMeta(uint8_t c) -> bool {
   if (CONSOLE_COLOR_ESCAPE_CHAR == c) return true;
   return false;
 }
 
-inline bool ConsoleColor_IsCharColor(uint8_t c) {
+inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
   if ((c >= '0') && ((c - '0') < NUM_CONSOLE_COLORS)) return true;
   return false;
 }
@@ -140,16 +140,16 @@ inline bool ConsoleColor_IsCharColor(uint8_t c) {
 //      ea Extended ASCII with High-Bit representing Mouse Text
 //      cc Encoded Color / Mouse Text
 //
-inline bool ConsoleColor_IsColorOrMouse(conchar_t g) {
+inline auto ConsoleColor_IsColorOrMouse(conchar_t g) -> bool {
   if (g > CONSOLE_COLOR_MASK) return true;
   return false;
 }
 
-inline bool ConsoleColor_IsColor(conchar_t g) {
+inline auto ConsoleColor_IsColor(conchar_t g) -> bool {
   return ConsoleColor_IsCharColor(g >> CONSOLE_COLOR_SHIFT);
 }
 
-inline uint32_t ConsoleColor_GetColor(conchar_t g) {
+inline auto ConsoleColor_GetColor(conchar_t g) -> uint32_t {
   const int iColor = (g >> CONSOLE_COLOR_SHIFT) - '0';
   if (iColor < NUM_CONSOLE_COLORS) return g_console_color[iColor];
 
@@ -179,7 +179,7 @@ inline conchar_t ConsoleColor_MakeColor(uint8_t color, uint8_t text) {
 }
 
 // Return the string length without the markup
-inline int ConsoleColor_StringLength(const char* text) {
+inline auto ConsoleColor_StringLength(const char* text) -> int {
   const char* src_ptr = text;
   int length = 0;
   while (*src_ptr) {
@@ -245,15 +245,16 @@ extern int g_console_input_skip;
 // Console
 
 // Buffered
-bool console_print(const char* text);
-bool ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va);
+auto console_print(const char* text) -> bool;
+auto ConsolePrintVa(char* buf, size_t bufsz, const char* pFormat, va_list va)
+    -> bool;
 template <size_t BufSize>
-inline bool ConsolePrintVa(char (&buf)[BufSize], const char* pFormat,
-                           va_list va) {
+inline auto ConsolePrintVa(char (&buf)[BufSize], const char* pFormat,
+                           va_list va) -> bool {
   return ConsolePrintVa(buf, BufSize, pFormat, va);
 }
-inline bool ConsolePrintFormat(char* buf, size_t bufsz, const char* pFormat,
-                               ...) {
+inline auto ConsolePrintFormat(char* buf, size_t bufsz, const char* pFormat,
+                               ...) -> bool {
   va_list va;
   va_start(va, pFormat);
   bool const r = ConsolePrintVa(buf, bufsz, pFormat, va);
@@ -261,7 +262,8 @@ inline bool ConsolePrintFormat(char* buf, size_t bufsz, const char* pFormat,
   return r;
 }
 template <size_t BufSize>
-inline bool ConsolePrintFormat(char (&buf)[BufSize], const char* pFormat, ...) {
+inline auto ConsolePrintFormat(char (&buf)[BufSize], const char* pFormat, ...)
+    -> bool {
   va_list va;
   va_start(va, pFormat);
   bool const r = ConsolePrintVa(buf, pFormat, va);
@@ -269,20 +271,20 @@ inline bool ConsolePrintFormat(char (&buf)[BufSize], const char* pFormat, ...) {
   return r;
 }
 
-void ConsoleBufferToDisplay();
-const conchar_t* ConsoleBufferPeek();
-void ConsoleBufferPop();
+auto ConsoleBufferToDisplay() -> void;
+auto ConsoleBufferPeek() -> const conchar_t*;
+auto ConsoleBufferPop() -> void;
 
-bool ConsoleBufferPush(const char* pString);
-bool ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
-                         va_list va);
+auto ConsoleBufferPush(const char* pString) -> bool;
+auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
+                         va_list va) -> bool;
 template <size_t BufSize>
-inline bool ConsoleBufferPushVa(char (&buf)[BufSize], const char* pFormat,
-                                va_list va) {
+inline auto ConsoleBufferPushVa(char (&buf)[BufSize], const char* pFormat,
+                                va_list va) -> bool {
   return ConsoleBufferPushVa(buf, BufSize, pFormat, va);
 }
-inline bool ConsoleBufferPushFormat(char* buf, size_t bufsz,
-                                    const char* pFormat, ...) {
+inline auto ConsoleBufferPushFormat(char* buf, size_t bufsz,
+                                    const char* pFormat, ...) -> bool {
   va_list va;
   va_start(va, pFormat);
   bool const r = ConsoleBufferPushVa(buf, bufsz, pFormat, va);
@@ -290,8 +292,8 @@ inline bool ConsoleBufferPushFormat(char* buf, size_t bufsz,
   return r;
 }
 template <size_t BufSize>
-inline bool ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
-                                    ...) {
+inline auto ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
+                                    ...) -> bool {
   va_list va;
   va_start(va, pFormat);
   bool const r = ConsoleBufferPushVa(buf, pFormat, va);
@@ -299,33 +301,33 @@ inline bool ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
   return r;
 }
 
-void ConsoleConvertFromText(conchar_t* sText, const char* text);
+auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void;
 
 // Display
-Update_t console_display_error(const char* pTextError);
-void ConsoleDisplayPause();
-void ConsoleDisplayPush(const char* text);
-void ConsoleDisplayPush(const conchar_t* text);
-Update_t ConsoleUpdate();
-void ConsoleFlush();
+auto console_display_error(const char* pTextError) -> Update_t;
+auto ConsoleDisplayPause() -> void;
+auto ConsoleDisplayPush(const char* text) -> void;
+auto ConsoleDisplayPush(const conchar_t* text) -> void;
+auto ConsoleUpdate() -> Update_t;
+auto ConsoleFlush() -> void;
 
 // Input
-void ConsoleInputToDisplay();
-const char* ConsoleInputPeek();
-bool ConsoleInputClear();
-bool ConsoleInputBackSpace();
-bool ConsoleInputChar(char ch);
-void ConsoleInputReset();
-int ConsoleInputTabCompletion();
+auto ConsoleInputToDisplay() -> void;
+auto ConsoleInputPeek() -> const char*;
+auto ConsoleInputClear() -> bool;
+auto ConsoleInputBackSpace() -> bool;
+auto ConsoleInputChar(char ch) -> bool;
+auto ConsoleInputReset() -> void;
+auto ConsoleInputTabCompletion() -> int;
 
-void ConsoleUpdateCursor(char ch);
+auto ConsoleUpdateCursor(char ch) -> void;
 
-Update_t ConsoleBufferTryUnpause(int nLines);
+auto ConsoleBufferTryUnpause(int nLines) -> Update_t;
 
 // Scrolling
-Update_t ConsoleScrollHome();
-Update_t ConsoleScrollEnd();
-Update_t ConsoleScrollUp(int nLines);
-Update_t ConsoleScrollDn(int nLines);
-Update_t ConsoleScrollPageUp();
-Update_t ConsoleScrollPageDn();
+auto ConsoleScrollHome() -> Update_t;
+auto ConsoleScrollEnd() -> Update_t;
+auto ConsoleScrollUp(int nLines) -> Update_t;
+auto ConsoleScrollDn(int nLines) -> Update_t;
+auto ConsoleScrollPageUp() -> Update_t;
+auto ConsoleScrollPageDn() -> Update_t;

@@ -3,14 +3,14 @@
 
 #include "Debugger_Types.h"
 
-Update_t CmdBenchmark(int nArgs);
-Update_t CmdBenchmarkStart(int nArgs);
-Update_t CmdBenchmarkStop(int nArgs);
-Update_t CmdProfile(int nArgs);
+auto CmdBenchmark(int nArgs) -> Update_t;
+auto CmdBenchmarkStart(int nArgs) -> Update_t;
+auto CmdBenchmarkStop(int nArgs) -> Update_t;
+auto CmdProfile(int nArgs) -> Update_t;
 
-void ProfileReset();
-bool ProfileSave();
-void ProfileFormat(bool bSeperateColumns, int eFormatMode);
-char* ProfileLinePeek(int iLine);
-char* ProfileLinePush();
-void ProfileLineReset();
+auto ProfileReset() -> void;
+auto ProfileSave() -> bool;
+auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void;
+auto ProfileLinePeek(int iLine) -> char*;
+auto ProfileLinePush() -> char*;
+auto ProfileLineReset() -> void;

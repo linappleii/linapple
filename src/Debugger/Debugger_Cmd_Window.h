@@ -3,69 +3,69 @@
 
 #include "Debugger_Types.h"
 
-Update_t CmdWindowCycleNext(int nArgs);
-Update_t CmdWindowCyclePrev(int nArgs);
-Update_t CmdWindowShowCode(int nArgs);
-Update_t CmdWindowShowCode1(int nArgs);
-Update_t CmdWindowShowCode2(int nArgs);
-Update_t CmdWindowShowData(int nArgs);
-Update_t CmdWindowShowData1(int nArgs);
-Update_t CmdWindowShowData2(int nArgs);
-Update_t CmdWindowShowSource(int nArgs);
-Update_t CmdWindowShowSource1(int nArgs);
-Update_t CmdWindowShowSource2(int nArgs);
-Update_t CmdWindowViewCode(int nArgs);
-Update_t CmdWindowViewConsole(int nArgs);
-Update_t CmdWindowViewData(int nArgs);
-Update_t CmdWindowViewOutput(int nArgs);
-Update_t CmdWindowViewSource(int nArgs);
-Update_t CmdWindowViewSymbols(int nArgs);
-Update_t CmdWindow(int nArgs);
-Update_t CmdWindowLast(int nArgs);
+auto CmdWindowCycleNext(int nArgs) -> Update_t;
+auto CmdWindowCyclePrev(int nArgs) -> Update_t;
+auto CmdWindowShowCode(int nArgs) -> Update_t;
+auto CmdWindowShowCode1(int nArgs) -> Update_t;
+auto CmdWindowShowCode2(int nArgs) -> Update_t;
+auto CmdWindowShowData(int nArgs) -> Update_t;
+auto CmdWindowShowData1(int nArgs) -> Update_t;
+auto CmdWindowShowData2(int nArgs) -> Update_t;
+auto CmdWindowShowSource(int nArgs) -> Update_t;
+auto CmdWindowShowSource1(int nArgs) -> Update_t;
+auto CmdWindowShowSource2(int nArgs) -> Update_t;
+auto CmdWindowViewCode(int nArgs) -> Update_t;
+auto CmdWindowViewConsole(int nArgs) -> Update_t;
+auto CmdWindowViewData(int nArgs) -> Update_t;
+auto CmdWindowViewOutput(int nArgs) -> Update_t;
+auto CmdWindowViewSource(int nArgs) -> Update_t;
+auto CmdWindowViewSymbols(int nArgs) -> Update_t;
+auto CmdWindow(int nArgs) -> Update_t;
+auto CmdWindowLast(int nArgs) -> Update_t;
 
-Update_t CmdCursorFollowTarget(int nArgs);
-Update_t CmdCursorLineDown(int nArgs);
-Update_t CmdCursorLineUp(int nArgs);
-Update_t CmdCursorJumpPC(int nArgs);
-Update_t CmdCursorJumpRetAddr(int nArgs);
-Update_t CmdCursorRunUntil(int nArgs);
-Update_t CmdCursorPageDown(int nArgs);
-Update_t CmdCursorPageDown256(int nArgs);
-Update_t CmdCursorPageDown4K(int nArgs);
-Update_t CmdCursorPageUp(int nArgs);
-Update_t CmdCursorPageUp256(int nArgs);
-Update_t CmdCursorPageUp4K(int nArgs);
-Update_t CmdCursorSetPC(int nArgs);
+auto CmdCursorFollowTarget(int nArgs) -> Update_t;
+auto CmdCursorLineDown(int nArgs) -> Update_t;
+auto CmdCursorLineUp(int nArgs) -> Update_t;
+auto CmdCursorJumpPC(int nArgs) -> Update_t;
+auto CmdCursorJumpRetAddr(int nArgs) -> Update_t;
+auto CmdCursorRunUntil(int nArgs) -> Update_t;
+auto CmdCursorPageDown(int nArgs) -> Update_t;
+auto CmdCursorPageDown256(int nArgs) -> Update_t;
+auto CmdCursorPageDown4K(int nArgs) -> Update_t;
+auto CmdCursorPageUp(int nArgs) -> Update_t;
+auto CmdCursorPageUp256(int nArgs) -> Update_t;
+auto CmdCursorPageUp4K(int nArgs) -> Update_t;
+auto CmdCursorSetPC(int nArgs) -> Update_t;
 
-Update_t CmdViewOutput_Text4X(int nArgs);
-Update_t CmdViewOutput_Text41(int nArgs);
-Update_t CmdViewOutput_Text42(int nArgs);
-Update_t CmdViewOutput_Text8X(int nArgs);
-Update_t CmdViewOutput_Text81(int nArgs);
-Update_t CmdViewOutput_Text82(int nArgs);
-Update_t CmdViewOutput_GRX(int nArgs);
-Update_t CmdViewOutput_GR1(int nArgs);
-Update_t CmdViewOutput_GR2(int nArgs);
-Update_t CmdViewOutput_DGRX(int nArgs);
-Update_t CmdViewOutput_DGR1(int nArgs);
-Update_t CmdViewOutput_DGR2(int nArgs);
-Update_t CmdViewOutput_HGRX(int nArgs);
-Update_t CmdViewOutput_HGR1(int nArgs);
-Update_t CmdViewOutput_HGR2(int nArgs);
-Update_t CmdViewOutput_DHGRX(int nArgs);
-Update_t CmdViewOutput_DHGR1(int nArgs);
-Update_t CmdViewOutput_DHGR2(int nArgs);
+auto CmdViewOutput_Text4X(int nArgs) -> Update_t;
+auto CmdViewOutput_Text41(int nArgs) -> Update_t;
+auto CmdViewOutput_Text42(int nArgs) -> Update_t;
+auto CmdViewOutput_Text8X(int nArgs) -> Update_t;
+auto CmdViewOutput_Text81(int nArgs) -> Update_t;
+auto CmdViewOutput_Text82(int nArgs) -> Update_t;
+auto CmdViewOutput_GRX(int nArgs) -> Update_t;
+auto CmdViewOutput_GR1(int nArgs) -> Update_t;
+auto CmdViewOutput_GR2(int nArgs) -> Update_t;
+auto CmdViewOutput_DGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_DGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_DGR2(int nArgs) -> Update_t;
+auto CmdViewOutput_HGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_HGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_HGR2(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGR2(int nArgs) -> Update_t;
 
-void WindowJoin();
-void WindowSplit(Window_e eNewBottomWindow);
-void WindowLast();
-void WindowSwitch(int eNewWindow);
-int WindowGetHeight(int iWindow);
-void WindowUpdateDisasmSize();
-void WindowUpdateConsoleDisplayedSize();
-void WindowUpdateSizes();
-Update_t CmdWindowViewFull(int iNewWindow);
-Update_t CmdWindowViewCommon(int iNewWindow);
+auto WindowJoin() -> void;
+auto WindowSplit(Window_e eNewBottomWindow) -> void;
+auto WindowLast() -> void;
+auto WindowSwitch(int eNewWindow) -> void;
+auto WindowGetHeight(int iWindow) -> int;
+auto WindowUpdateDisasmSize() -> void;
+auto WindowUpdateConsoleDisplayedSize() -> void;
+auto WindowUpdateSizes() -> void;
+auto CmdWindowViewFull(int iNewWindow) -> Update_t;
+auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 
 enum ViewVideoPage_t {
   VIEW_PAGE_1 = (1 << 0),
@@ -73,15 +73,15 @@ enum ViewVideoPage_t {
   VIEW_PAGE_X = (1 << 2)  // XOR cycles Page 1 / Page 2
 };
 
-Update_t ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags);
+auto ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t;
 
-void CursorMoveDownAligned(int nDelta);
-void CursorMoveUpAligned(int nDelta);
+auto CursorMoveDownAligned(int nDelta) -> void;
+auto CursorMoveUpAligned(int nDelta) -> void;
 
-void DisasmCalcTopFromCurAddress(bool bUpdateTop = true);
-void DisasmCalcCurFromTopAddress();
-void DisasmCalcBotFromTopAddress();
-void DisasmCalcTopBotAddress();
-uint16_t DisasmCalcAddressFromLines(uint16_t iAddress, int nLines);
+auto DisasmCalcTopFromCurAddress(bool bUpdateTop = true) -> void;
+auto DisasmCalcCurFromTopAddress() -> void;
+auto DisasmCalcBotFromTopAddress() -> void;
+auto DisasmCalcTopBotAddress() -> void;
+auto DisasmCalcAddressFromLines(uint16_t iAddress, int nLines) -> uint16_t;
 
-bool debug_get_video_mode(uint32_t* pVideoMode);
+auto debug_get_video_mode(uint32_t* pVideoMode) -> bool;

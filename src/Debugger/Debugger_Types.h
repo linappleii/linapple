@@ -498,317 +498,318 @@ enum Commands_e {
 };
 
 // Assembler
-Update_t CmdAssemble(int nArgs);
+auto CmdAssemble(int nArgs) -> Update_t;
 
 // Disassembler Data
-Update_t CmdDisasmDataDefCode(int nArgs);
-Update_t CmdDisasmDataList(int nArgs);
+auto CmdDisasmDataDefCode(int nArgs) -> Update_t;
+auto CmdDisasmDataList(int nArgs) -> Update_t;
 
-Update_t CmdDisasmDataDefByte1(int nArgs);
-Update_t CmdDisasmDataDefByte2(int nArgs);
-Update_t CmdDisasmDataDefByte4(int nArgs);
-Update_t CmdDisasmDataDefByte8(int nArgs);
+auto CmdDisasmDataDefByte1(int nArgs) -> Update_t;
+auto CmdDisasmDataDefByte2(int nArgs) -> Update_t;
+auto CmdDisasmDataDefByte4(int nArgs) -> Update_t;
+auto CmdDisasmDataDefByte8(int nArgs) -> Update_t;
 
-Update_t CmdDisasmDataDefWord1(int nArgs);
-Update_t CmdDisasmDataDefWord2(int nArgs);
-Update_t CmdDisasmDataDefWord4(int nArgs);
+auto CmdDisasmDataDefWord1(int nArgs) -> Update_t;
+auto CmdDisasmDataDefWord2(int nArgs) -> Update_t;
+auto CmdDisasmDataDefWord4(int nArgs) -> Update_t;
 
-Update_t CmdDisasmDataDefString(int nArgs);
+auto CmdDisasmDataDefString(int nArgs) -> Update_t;
 
-Update_t CmdDisasmDataDefAddress8H(int nArgs);
-Update_t CmdDisasmDataDefAddress8L(int nArgs);
-Update_t CmdDisasmDataDefAddress16(int nArgs);
+auto CmdDisasmDataDefAddress8H(int nArgs) -> Update_t;
+auto CmdDisasmDataDefAddress8L(int nArgs) -> Update_t;
+auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t;
 
 // CPU
-Update_t CmdCursorJumpPC(int nArgs);
-Update_t CmdCursorSetPC(int nArgs);
-Update_t CmdBreakInvalid(int nArgs);  // Breakpoint IFF Full-speed!
-Update_t CmdBreakOpcode(int nArgs);   // Breakpoint IFF Full-speed!
-Update_t CmdGoNormalSpeed(int nArgs);
-Update_t CmdGoFullSpeed(int nArgs);
+auto CmdCursorJumpPC(int nArgs) -> Update_t;
+auto CmdCursorSetPC(int nArgs) -> Update_t;
+auto CmdBreakInvalid(int nArgs) -> Update_t;  // Breakpoint IFF Full-speed!
+auto CmdBreakOpcode(int nArgs) -> Update_t;   // Breakpoint IFF Full-speed!
+auto CmdGoNormalSpeed(int nArgs) -> Update_t;
+auto CmdGoFullSpeed(int nArgs) -> Update_t;
 
-Update_t CmdIn(int nArgs);
+auto CmdIn(int nArgs) -> Update_t;
 
-Update_t CmdKey(int nArgs);
+auto CmdKey(int nArgs) -> Update_t;
 
-Update_t CmdJSR(int nArgs);
+auto CmdJSR(int nArgs) -> Update_t;
 
-Update_t CmdNOP(int nArgs);
+auto CmdNOP(int nArgs) -> Update_t;
 
-Update_t CmdOut(int nArgs);
+auto CmdOut(int nArgs) -> Update_t;
 
-Update_t CmdStepOver(int nArgs);
+auto CmdStepOver(int nArgs) -> Update_t;
 
-Update_t CmdStepOut(int nArgs);
+auto CmdStepOut(int nArgs) -> Update_t;
 
-Update_t CmdTrace(int nArgs);  // alias for CmdStepIn
-Update_t CmdTraceFile(int nArgs);
+auto CmdTrace(int nArgs) -> Update_t;  // alias for CmdStepIn
+auto CmdTraceFile(int nArgs) -> Update_t;
 
-Update_t CmdTraceLine(int nArgs);
+auto CmdTraceLine(int nArgs) -> Update_t;
 
-Update_t CmdUnassemble(int nArgs);  // code dump, aka, Unassemble
+auto CmdUnassemble(int nArgs) -> Update_t;  // code dump, aka, Unassemble
 // Bookmarks
-Update_t CmdBookmark(int nArgs);
+auto CmdBookmark(int nArgs) -> Update_t;
 
-Update_t CmdBookmarkAdd(int nArgs);
+auto CmdBookmarkAdd(int nArgs) -> Update_t;
 
-Update_t CmdBookmarkClear(int nArgs);
+auto CmdBookmarkClear(int nArgs) -> Update_t;
 
-Update_t CmdBookmarkList(int nArgs);
+auto CmdBookmarkList(int nArgs) -> Update_t;
 
-Update_t CmdBookmarkGoto(int nArgs);
+auto CmdBookmarkGoto(int nArgs) -> Update_t;
 
-Update_t CmdBookmarkSave(int nArgs);
+auto CmdBookmarkSave(int nArgs) -> Update_t;
 
 // Breakpoints
-Update_t CmdBreakpoint(int nArgs);
+auto CmdBreakpoint(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddSmart(int nArgs);
+auto CmdBreakpointAddSmart(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddReg(int nArgs);
+auto CmdBreakpointAddReg(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddPC(int nArgs);
+auto CmdBreakpointAddPC(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddIO(int nArgs);
+auto CmdBreakpointAddIO(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddMem(int nArgs,
-                             BreakpointSource_t bpSrc = BP_SRC_MEM_RW);
+auto CmdBreakpointAddMem(int nArgs, BreakpointSource_t bpSrc = BP_SRC_MEM_RW)
+    -> Update_t;
 
-Update_t CmdBreakpointAddMemA(int nArgs);
+auto CmdBreakpointAddMemA(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddMemR(int nArgs);
+auto CmdBreakpointAddMemR(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointAddMemW(int nArgs);
+auto CmdBreakpointAddMemW(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointClear(int nArgs);
+auto CmdBreakpointClear(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointDisable(int nArgs);
+auto CmdBreakpointDisable(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointEdit(int nArgs);
+auto CmdBreakpointEdit(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointEnable(int nArgs);
+auto CmdBreakpointEnable(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointList(int nArgs);
+auto CmdBreakpointList(int nArgs) -> Update_t;
 
-Update_t CmdBreakpointSave(int nArgs);
+auto CmdBreakpointSave(int nArgs) -> Update_t;
 
 // Benchmark
-Update_t CmdBenchmark(int nArgs);
-Update_t CmdBenchmarkStart(
-    int nArgs);  // Update_t CmdSetupBenchmark (int nArgs);
-Update_t CmdBenchmarkStop(int nArgs);  // Update_t CmdExtBenchmark (int nArgs);
-Update_t CmdProfile(int nArgs);
-Update_t CmdProfileStart(int nArgs);
-Update_t CmdProfileStop(int nArgs);
+auto CmdBenchmark(int nArgs) -> Update_t;
+auto CmdBenchmarkStart(int nArgs)
+    -> Update_t;  // Update_t CmdSetupBenchmark (int nArgs);
+auto CmdBenchmarkStop(int nArgs)
+    -> Update_t;  // Update_t CmdExtBenchmark (int nArgs);
+auto CmdProfile(int nArgs) -> Update_t;
+auto CmdProfileStart(int nArgs) -> Update_t;
+auto CmdProfileStop(int nArgs) -> Update_t;
 
 // Config
-Update_t CmdConfigColorMono(int nArgs);
-Update_t CmdConfigDisasm(int nArgs);
-Update_t CmdConfigFont(int nArgs);
-Update_t CmdConfigHColor(int nArgs);
-Update_t CmdConfigLoad(int nArgs);
-Update_t CmdConfigSave(int nArgs);
-Update_t CmdConfigSetFont(int nArgs);
-Update_t CmdConfigGetFont(int nArgs);
-Update_t CmdConfigGetDebugDir(int nArgs);
-Update_t CmdConfigSetDebugDir(int nArgs);
+auto CmdConfigColorMono(int nArgs) -> Update_t;
+auto CmdConfigDisasm(int nArgs) -> Update_t;
+auto CmdConfigFont(int nArgs) -> Update_t;
+auto CmdConfigHColor(int nArgs) -> Update_t;
+auto CmdConfigLoad(int nArgs) -> Update_t;
+auto CmdConfigSave(int nArgs) -> Update_t;
+auto CmdConfigSetFont(int nArgs) -> Update_t;
+auto CmdConfigGetFont(int nArgs) -> Update_t;
+auto CmdConfigGetDebugDir(int nArgs) -> Update_t;
+auto CmdConfigSetDebugDir(int nArgs) -> Update_t;
 
 // Cursor
-Update_t CmdCursorFollowTarget(int nArgs);
-Update_t CmdCursorLineDown(int nArgs);
-Update_t CmdCursorLineUp(int nArgs);
-Update_t CmdCursorJumpRetAddr(int nArgs);
-Update_t CmdCursorRunUntil(int nArgs);
-Update_t CmdCursorPageDown(int nArgs);
-Update_t CmdCursorPageDown256(int nArgs);
-Update_t CmdCursorPageDown4K(int nArgs);
-Update_t CmdCursorPageUp(int nArgs);
-Update_t CmdCursorPageUp256(int nArgs);
-Update_t CmdCursorPageUp4K(int nArgs);
+auto CmdCursorFollowTarget(int nArgs) -> Update_t;
+auto CmdCursorLineDown(int nArgs) -> Update_t;
+auto CmdCursorLineUp(int nArgs) -> Update_t;
+auto CmdCursorJumpRetAddr(int nArgs) -> Update_t;
+auto CmdCursorRunUntil(int nArgs) -> Update_t;
+auto CmdCursorPageDown(int nArgs) -> Update_t;
+auto CmdCursorPageDown256(int nArgs) -> Update_t;
+auto CmdCursorPageDown4K(int nArgs) -> Update_t;
+auto CmdCursorPageUp(int nArgs) -> Update_t;
+auto CmdCursorPageUp256(int nArgs) -> Update_t;
+auto CmdCursorPageUp4K(int nArgs) -> Update_t;
 
 // Cycles info
-Update_t CmdCyclesInfo(int nArgs);
+auto CmdCyclesInfo(int nArgs) -> Update_t;
 
 // Disk
-Update_t CmdDisk(int nArgs);
+auto CmdDisk(int nArgs) -> Update_t;
 
 // Help
-Update_t CmdHelpList(int nArgs);
+auto CmdHelpList(int nArgs) -> Update_t;
 
-Update_t CmdHelpSpecific(int Argss);
+auto CmdHelpSpecific(int Argss) -> Update_t;
 
-Update_t CmdVersion(int nArgs);
+auto CmdVersion(int nArgs) -> Update_t;
 
-Update_t CmdMOTD(int nArgs);
+auto CmdMOTD(int nArgs) -> Update_t;
 
 // Flags
-Update_t CmdFlag(int nArgs);
+auto CmdFlag(int nArgs) -> Update_t;
 
-Update_t CmdFlagClear(int nArgs);
+auto CmdFlagClear(int nArgs) -> Update_t;
 
-Update_t CmdFlagSet(int nArgs);
+auto CmdFlagSet(int nArgs) -> Update_t;
 
 // Memory (Data)
-Update_t CmdMemoryCompare(int nArgs);
-Update_t CmdMemoryMiniDumpHex(int nArgs);
-Update_t CmdMemoryMiniDumpAscii(int nArgs);
-Update_t CmdMemoryMiniDumpApple(int nArgs);
-Update_t CmdMemoryEdit(int nArgs);
-Update_t CmdMemoryEnterByte(int nArgs);
-Update_t CmdMemoryEnterWord(int nArgs);
-Update_t CmdMemoryFill(int nArgs);
-Update_t CmdNTSC(int nArgs);
-Update_t CmdTextSave(int nArgs);
-Update_t CmdMemoryLoad(int nArgs);
-Update_t CmdMemoryMove(int nArgs);
-Update_t CmdMemorySave(int nArgs);
-Update_t CmdMemorySearch(int nArgs);
-Update_t SearchMemoryDisplay(int nArgs = 0);  // TODO: CLEANUP
-Update_t CmdMemorySearchAscii(int nArgs);
-Update_t CmdMemorySearchApple(int nArgs);
-Update_t CmdMemorySearchHex(int nArgs);
+auto CmdMemoryCompare(int nArgs) -> Update_t;
+auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t;
+auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t;
+auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t;
+auto CmdMemoryEdit(int nArgs) -> Update_t;
+auto CmdMemoryEnterByte(int nArgs) -> Update_t;
+auto CmdMemoryEnterWord(int nArgs) -> Update_t;
+auto CmdMemoryFill(int nArgs) -> Update_t;
+auto CmdNTSC(int nArgs) -> Update_t;
+auto CmdTextSave(int nArgs) -> Update_t;
+auto CmdMemoryLoad(int nArgs) -> Update_t;
+auto CmdMemoryMove(int nArgs) -> Update_t;
+auto CmdMemorySave(int nArgs) -> Update_t;
+auto CmdMemorySearch(int nArgs) -> Update_t;
+auto SearchMemoryDisplay(int nArgs = 0) -> Update_t;  // TODO: CLEANUP
+auto CmdMemorySearchAscii(int nArgs) -> Update_t;
+auto CmdMemorySearchApple(int nArgs) -> Update_t;
+auto CmdMemorySearchHex(int nArgs) -> Update_t;
 
 // Output/Scripts
-Update_t CmdOutputCalc(int nArgs);
+auto CmdOutputCalc(int nArgs) -> Update_t;
 
-Update_t CmdOutputEcho(int nArgs);
+auto CmdOutputEcho(int nArgs) -> Update_t;
 
-Update_t CmdOutputPrint(int nArgs);
+auto CmdOutputPrint(int nArgs) -> Update_t;
 
-Update_t CmdOutputPrintf(int nArgs);
+auto CmdOutputPrintf(int nArgs) -> Update_t;
 
-Update_t CmdOutputRun(int nArgs);
+auto CmdOutputRun(int nArgs) -> Update_t;
 
 // Registers
-Update_t CmdRegisterSet(int nArgs);
+auto CmdRegisterSet(int nArgs) -> Update_t;
 
 // Source Level Debugging
-Update_t CmdSource(int nArgs);
+auto CmdSource(int nArgs) -> Update_t;
 
-Update_t CmdSync(int nArgs);
+auto CmdSync(int nArgs) -> Update_t;
 
 // Stack
-Update_t CmdStackPush(int nArgs);
+auto CmdStackPush(int nArgs) -> Update_t;
 
-Update_t CmdStackPop(int nArgs);
+auto CmdStackPop(int nArgs) -> Update_t;
 
-Update_t CmdStackPopPseudo(int nArgs);
+auto CmdStackPopPseudo(int nArgs) -> Update_t;
 
-Update_t CmdStackReturn(int nArgs);
+auto CmdStackReturn(int nArgs) -> Update_t;
 
 // Symbols
-Update_t CmdSymbols(int nArgs);
-Update_t CmdSymbolsClear(int nArgs);
-Update_t CmdSymbolsList(int nArgs);
-Update_t CmdSymbolsLoad(int nArgs);
-Update_t CmdSymbolsInfo(int nArgs);
-Update_t CmdSymbolsMain(int nArgs);
-Update_t CmdSymbolsUser(int nArgs);
-Update_t CmdSymbolsSave(int nArgs);
-Update_t CmdSymbolsCommand(int nArgs);
+auto CmdSymbols(int nArgs) -> Update_t;
+auto CmdSymbolsClear(int nArgs) -> Update_t;
+auto CmdSymbolsList(int nArgs) -> Update_t;
+auto CmdSymbolsLoad(int nArgs) -> Update_t;
+auto CmdSymbolsInfo(int nArgs) -> Update_t;
+auto CmdSymbolsMain(int nArgs) -> Update_t;
+auto CmdSymbolsUser(int nArgs) -> Update_t;
+auto CmdSymbolsSave(int nArgs) -> Update_t;
+auto CmdSymbolsCommand(int nArgs) -> Update_t;
 // Update_t CmdSymbolsSource(int nArgs);
 
 // Video-scanner info
-Update_t CmdVideoScannerInfo(int nArgs);
+auto CmdVideoScannerInfo(int nArgs) -> Update_t;
 
 // View
-Update_t CmdViewOutput_Text4X(int nArgs);
-Update_t CmdViewOutput_Text41(int nArgs);
-Update_t CmdViewOutput_Text42(int nArgs);
-Update_t CmdViewOutput_Text8X(int nArgs);
-Update_t CmdViewOutput_Text81(int nArgs);
-Update_t CmdViewOutput_Text82(int nArgs);
+auto CmdViewOutput_Text4X(int nArgs) -> Update_t;
+auto CmdViewOutput_Text41(int nArgs) -> Update_t;
+auto CmdViewOutput_Text42(int nArgs) -> Update_t;
+auto CmdViewOutput_Text8X(int nArgs) -> Update_t;
+auto CmdViewOutput_Text81(int nArgs) -> Update_t;
+auto CmdViewOutput_Text82(int nArgs) -> Update_t;
 
-Update_t CmdViewOutput_GRX(int nArgs);
-Update_t CmdViewOutput_GR1(int nArgs);
-Update_t CmdViewOutput_GR2(int nArgs);
-Update_t CmdViewOutput_DGRX(int nArgs);
-Update_t CmdViewOutput_DGR1(int nArgs);
-Update_t CmdViewOutput_DGR2(int nArgs);
+auto CmdViewOutput_GRX(int nArgs) -> Update_t;
+auto CmdViewOutput_GR1(int nArgs) -> Update_t;
+auto CmdViewOutput_GR2(int nArgs) -> Update_t;
+auto CmdViewOutput_DGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_DGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_DGR2(int nArgs) -> Update_t;
 
-Update_t CmdViewOutput_HGRX(int nArgs);
-Update_t CmdViewOutput_HGR1(int nArgs);
-Update_t CmdViewOutput_HGR2(int nArgs);
-Update_t CmdViewOutput_DHGRX(int nArgs);
-Update_t CmdViewOutput_DHGR1(int nArgs);
-Update_t CmdViewOutput_DHGR2(int nArgs);
+auto CmdViewOutput_HGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_HGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_HGR2(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGRX(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGR1(int nArgs) -> Update_t;
+auto CmdViewOutput_DHGR2(int nArgs) -> Update_t;
 // Watch
-Update_t CmdWatch(int nArgs);
+auto CmdWatch(int nArgs) -> Update_t;
 
-Update_t CmdWatchAdd(int nArgs);
+auto CmdWatchAdd(int nArgs) -> Update_t;
 
-Update_t CmdWatchClear(int nArgs);
+auto CmdWatchClear(int nArgs) -> Update_t;
 
-Update_t CmdWatchDisable(int nArgs);
+auto CmdWatchDisable(int nArgs) -> Update_t;
 
-Update_t CmdWatchEnable(int nArgs);
+auto CmdWatchEnable(int nArgs) -> Update_t;
 
-Update_t CmdWatchList(int nArgs);
+auto CmdWatchList(int nArgs) -> Update_t;
 
 //  Update_t CmdWatchLoad    (int nArgs);
-Update_t CmdWatchSave(int nArgs);
+auto CmdWatchSave(int nArgs) -> Update_t;
 
 // Window
-Update_t CmdWindow(int nArgs);
+auto CmdWindow(int nArgs) -> Update_t;
 
-Update_t CmdWindowCycleNext(int nArgs);
+auto CmdWindowCycleNext(int nArgs) -> Update_t;
 
-Update_t CmdWindowCyclePrev(int nArgs);
+auto CmdWindowCyclePrev(int nArgs) -> Update_t;
 
-Update_t CmdWindowLast(int nArgs);
+auto CmdWindowLast(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowCode(int nArgs);
+auto CmdWindowShowCode(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowCode1(int nArgs);
+auto CmdWindowShowCode1(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowCode2(int nArgs);
+auto CmdWindowShowCode2(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowData(int nArgs);
+auto CmdWindowShowData(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowData1(int nArgs);
+auto CmdWindowShowData1(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowData2(int nArgs);
+auto CmdWindowShowData2(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowSymbols1(int nArgs);
+auto CmdWindowShowSymbols1(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowSymbols2(int nArgs);
+auto CmdWindowShowSymbols2(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowSource(int nArgs);
+auto CmdWindowShowSource(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowSource1(int nArgs);
+auto CmdWindowShowSource1(int nArgs) -> Update_t;
 
-Update_t CmdWindowShowSource2(int nArgs);
+auto CmdWindowShowSource2(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewCode(int nArgs);
+auto CmdWindowViewCode(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewConsole(int nArgs);
+auto CmdWindowViewConsole(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewData(int nArgs);
+auto CmdWindowViewData(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewOutput(int nArgs);
+auto CmdWindowViewOutput(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewSource(int nArgs);
+auto CmdWindowViewSource(int nArgs) -> Update_t;
 
-Update_t CmdWindowViewSymbols(int nArgs);
+auto CmdWindowViewSymbols(int nArgs) -> Update_t;
 
-Update_t CmdWindowWidthToggle(int nArgs);
+auto CmdWindowWidthToggle(int nArgs) -> Update_t;
 
 // ZeroPage
-Update_t CmdZeroPage(int nArgs);
+auto CmdZeroPage(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageAdd(int nArgs);
+auto CmdZeroPageAdd(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageClear(int nArgs);
+auto CmdZeroPageClear(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageDisable(int nArgs);
+auto CmdZeroPageDisable(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageEnable(int nArgs);
+auto CmdZeroPageEnable(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageList(int nArgs);
+auto CmdZeroPageList(int nArgs) -> Update_t;
 
-Update_t CmdZeroPageSave(int nArgs);
+auto CmdZeroPageSave(int nArgs) -> Update_t;
 
-Update_t CmdZeroPagePointer(int nArgs);
+auto CmdZeroPagePointer(int nArgs) -> Update_t;
 
 // Cursor
 enum Cursor_Align_e { CURSOR_ALIGN_TOP, CURSOR_ALIGN_CENTER };
@@ -962,7 +963,7 @@ struct DisasmLine_t {
   bool bTargetY;
   bool bTargetValue;
 
-  void Clear() {
+  auto Clear() -> void {
     sAddress[0] = 0;
     sOpCodes[0] = 0;
 
@@ -1085,8 +1086,8 @@ struct ProfileOpcode_t {
   Profile_t count;  // Histogram
 
   // functor
-  bool operator()(const ProfileOpcode_t& rLHS,
-                  const ProfileOpcode_t& rRHS) const {
+  auto operator()(const ProfileOpcode_t& rLHS,
+                  const ProfileOpcode_t& rRHS) const -> bool {
     return (rLHS.count > rRHS.count);
   }
 };
@@ -1096,8 +1097,8 @@ struct ProfileOpmode_t {
   Profile_t count;  // Histogram
 
   // functor
-  bool operator()(const ProfileOpmode_t& rLHS,
-                  const ProfileOpmode_t& rRHS) const {
+  auto operator()(const ProfileOpmode_t& rLHS,
+                  const ProfileOpmode_t& rRHS) const -> bool {
     return rLHS.count > rRHS.count;
   }
 };
@@ -1464,7 +1465,7 @@ class VideoScannerDisplayInfo_t {
         isAbsCycle(false),
         lastCumulativeCycles(0),
         cycleDelta(0) {}
-  void Reset(void) {
+  auto Reset(void) -> void {
     lastCumulativeCycles = g_cumulative_cycles;
     cycleDelta = 0;
   }

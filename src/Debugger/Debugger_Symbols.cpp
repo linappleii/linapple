@@ -94,15 +94,17 @@ int g_symbols_loaded = 0;  // on Last Load
 // Utils _
 // ________________________________________________________________________________________
 
-void CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize = 0);
-void PrintCurrentPath();
+auto CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize = 0) -> void;
+auto PrintCurrentPath() -> void;
 auto PrintSymbolInvalidTable() -> Update_t;
 
 // Private
 // ________________________________________________________________________________________
 
 //===========================================================================
-void PrintCurrentPath() { console_display_error(g_state.program_dir.data()); }
+auto PrintCurrentPath() -> void {
+  console_display_error(g_state.program_dir.data());
+}
 
 auto PrintSymbolInvalidTable() -> Update_t {
   char sText[CONSOLE_WIDTH * 2];
@@ -270,7 +272,8 @@ auto CmdSymbolsClear(int nArgs) -> Update_t {
 
 // Format the summary of the specified symbol table
 //===========================================================================
-void CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */) {
+auto CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */)
+    -> void {
   // Common case is to use/calc the table size
   bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
   int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
@@ -334,7 +337,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-void CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable) {
+auto CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable) -> void {
   char sText[CONSOLE_WIDTH * 2];
 
   // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
@@ -731,8 +734,9 @@ auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t {
 }
 
 //===========================================================================
-void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
-                  uint16_t address, bool bRemoveSymbol, bool bUpdateSymbol) {
+auto SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
+                  uint16_t address, bool bRemoveSymbol, bool bUpdateSymbol)
+    -> void {
   if (bRemoveSymbol) {
     pSymbolName = g_args[2].sArg;
   }

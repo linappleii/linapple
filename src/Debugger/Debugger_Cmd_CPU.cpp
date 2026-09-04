@@ -10,7 +10,7 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "core/LinAppleCore.h"
-extern void frame_refresh_status(int);
+extern auto frame_refresh_status(int) -> void;
 #include <cassert>
 #include <cstdio>
 
@@ -59,10 +59,10 @@ extern uint32_t g_video_clock_vert;
 
 extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
 
-void DisasmCalcTopBotAddress();
+auto DisasmCalcTopBotAddress() -> void;
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
 auto NTSC_VideoGetScannerAddressForDebugger() -> uint16_t;
-void video_refresh_screen(int bVideoModeFlags, bool bForceRedraw);
+auto video_refresh_screen(int bVideoModeFlags, bool bForceRedraw) -> void;
 auto video_get_sw_page2() -> bool;
 auto video_get_sw_mixed() -> bool;
 
@@ -465,7 +465,7 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-void OutputTraceLine() {
+auto OutputTraceLine() -> void {
 #ifdef TODO  // Not supported for Linux yet
   DisasmLine_t line;
   GetDisassemblyLine(cpu_get_registers()->pc, line);
@@ -526,7 +526,7 @@ void OutputTraceLine() {
 #endif
 }
 
-static void CheckBreakOpcode(int opcode) {
+static auto CheckBreakOpcode(int opcode) -> void {
   if (opcode == 0x00) {  // BRK
     IsDebugBreakOnInvalid(AM_IMPLIED);
   }
@@ -545,7 +545,7 @@ static void CheckBreakOpcode(int opcode) {
   }
 }
 
-void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
+auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
   static bool bForceSingleStepNext =
       false;  // Allow at least one instruction to execute so we don't trigger
               // on the same invalid opcode
@@ -621,7 +621,7 @@ void DebugContinueStepping(const bool bCallerWillUpdateDisplay) {
   }
 }
 
-void DebugStopStepping() {
+auto DebugStopStepping() -> void {
   assert(g_state.mode == MODE_STEPPING);
 
   if (g_state.mode != MODE_STEPPING) {

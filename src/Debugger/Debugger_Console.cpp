@@ -176,103 +176,46 @@ auto console_print(const char* text) -> bool {
         g_console_buffer_size++;
       }
       pDst = &g_console_buffer[g_console_buffer_size][0];
-    } else {
-      g = (c & CONSOLE_COLOR_MASK);
-
-      // `# `A  color encode mouse text
-      if (ConsoleColor_IsCharMeta(c)) {
-        if (!src_ptr[1]) {
-          break;
-        }
-
-        if (ConsoleColor_IsCharMeta(src_ptr[1]))  // ` `
-        {
-          bHaveColor = false;
-          cColor = 0;
-          g = ConsoleColor_MakeColor(cColor, c);
-          *pDst = g;
-          x++;
-          pDst++;
-        } else if (ConsoleColor_IsCharColor(src_ptr[1]))  // ` #
-        {
-          cColor = src_ptr[1];
-          bHaveColor = true;
-        } else  // ` @
-        {
-          c = ConsoleColor_MakeMouse(src_ptr[1]);
-          g = ConsoleColor_MakeColor(cColor, c);
-          *pDst = g;
-          x++;
-          pDst++;
-        }
-        src_ptr++;
-        src_ptr++;
-      } else {
-        if (bHaveColor) {
-          g = ConsoleColor_MakeColor(cColor, c);
-          bHaveColor = false;
-        }
-        *pDst = g;
-        x++;
-        pDst++;
-        src_ptr++;
-      }
+      continue;
     }
-    /*
-                    if (ConsoleColor_IsCharMeta( c ))
-                    {
-                            // Convert mult-byte to packed char
-                            //    0 1 2 Offset
-                            //    =====
-                            // 1  ~ -   null
-                            // 2  ~ 0 - null - exit
-                            // 3  ~ 0 x color (3 bytes packed into char16
-                            // 4  ~ @ - mouse text
-                            // 5  ~ @ x mouse Text
-                            // 6  ~ ~   ~
-                            // Legend:
-                            //	~  Color escape
-                            //  x  Any char
-                            //  -  Null
-                            if (src_ptr[1])
-                            {
-                                    if (ConsoleColor_IsCharMeta( src_ptr[1] ))
-       // 6
-                                    {
-                                            *pDst = c;
-                                            x++;
-                                            src_ptr += 2;
-                                            pDst++;
-                                    }
-                                    else
-                                    if (ConsoleColor_IsCharColor( src_ptr[1] ))
-                                    {
-                                            if (src_ptr[2]) // 3
-                                            {
-                                                    x++;
-                                                    *pDst =
-       ConsoleColor_MakeColor( src_ptr[1], src_ptr[2] ); src_ptr += 3; pDst++;
-                                            }
-                                            else
-                                                    break; // 2
-                                    }
-                                    else // 4 or 5
-                                    {
-                                            *pDst = ConsoleColor_MakeMeta(
-       src_ptr[1] ); x++; src_ptr += 2; pDst++;
-                                    }
-                            }
-                            else
-                                    break; // 1
-                    }
-                    else
-                    {
-                            *pDst = (c & CONSOLE_COLOR_MASK);
-                            x++;
-                            src_ptr++;
-                            pDst++;
-                    }
-    */
+
+    g = (c & CONSOLE_COLOR_MASK);
+
+    // `# `A  color encode mouse text
+    if (!ConsoleColor_IsCharMeta(c)) {
+      if (bHaveColor) {
+        g = ConsoleColor_MakeColor(cColor, c);
+        bHaveColor = false;
+      }
+      *pDst = g;
+      x++;
+      pDst++;
+      src_ptr++;
+      continue;
+    }
+
+    if (!src_ptr[1]) {
+      break;
+    }
+
+    if (ConsoleColor_IsCharMeta(src_ptr[1])) {  // ` `
+      bHaveColor = false;
+      cColor = 0;
+      g = ConsoleColor_MakeColor(cColor, c);
+      *pDst = g;
+      x++;
+      pDst++;
+    } else if (ConsoleColor_IsCharColor(src_ptr[1])) {  // ` #
+      cColor = src_ptr[1];
+      bHaveColor = true;
+    } else {  // ` @
+      c = ConsoleColor_MakeMouse(src_ptr[1]);
+      g = ConsoleColor_MakeColor(cColor, c);
+      *pDst = g;
+      x++;
+      pDst++;
+    }
+    src_ptr += 2;
   }
   *pDst = 0;
   g_console_buffer_size++;
@@ -318,12 +261,13 @@ auto ConsoleBufferPush(const char* text) -> bool {
       }
       src_ptr++;
       pDst = &g_console_buffer[g_console_buffer_size][0];
-    } else {
-      *pDst = (c & CONSOLE_COLOR_MASK);
-      x++;
-      src_ptr++;
-      pDst++;
+      continue;
     }
+
+    *pDst = (c & CONSOLE_COLOR_MASK);
+    x++;
+    src_ptr++;
+    pDst++;
   }
   *pDst = 0;
   g_console_buffer_size++;
@@ -333,7 +277,7 @@ auto ConsoleBufferPush(const char* text) -> bool {
 
 // Shifts the buffered console output "down"
 //===========================================================================
-void ConsoleBufferPop() {
+auto ConsoleBufferPop() -> void {
   int y = 0;
   while (y < g_console_buffer_size) {
     memcpy(g_console_buffer[y], g_console_buffer[y + 1],
@@ -349,14 +293,14 @@ void ConsoleBufferPop() {
 
 // Remove string from buffered output
 //===========================================================================
-void ConsoleBufferToDisplay() {
+auto ConsoleBufferToDisplay() -> void {
   ConsoleDisplayPush(ConsoleBufferPeek());
   ConsoleBufferPop();
 }
 
 // No mark-up. Straight ASCII conversion
 //===========================================================================
-void ConsoleConvertFromText(conchar_t* sText, const char* text) {
+auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void {
   const char* src_ptr = text;
   conchar_t* pDst = sText;
   while (src_ptr && *src_ptr) {
@@ -374,7 +318,7 @@ auto console_display_error(const char* text) -> Update_t {
 }
 
 //===========================================================================
-void ConsoleDisplayPush(const char* text) {
+auto ConsoleDisplayPush(const char* text) -> void {
   conchar_t sText[CONSOLE_WIDTH * 2];
   ConsoleConvertFromText(sText, text);
   ConsoleDisplayPush(sText);
@@ -382,7 +326,7 @@ void ConsoleDisplayPush(const char* text) {
 
 // Shifts the console display lines "up"
 //===========================================================================
-void ConsoleDisplayPush(const conchar_t* text) {
+auto ConsoleDisplayPush(const conchar_t* text) -> void {
   int nLen =
       MIN(g_console_display_total, CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while (nLen--) {
@@ -405,7 +349,7 @@ void ConsoleDisplayPush(const conchar_t* text) {
 }
 
 //===========================================================================
-void ConsoleDisplayPause() {
+auto ConsoleDisplayPause() -> void {
   if (g_console_buffer_size) {
 #if CONSOLE_INPUT_CHAR16
     ConsoleConvertFromText(g_console_input,
@@ -468,7 +412,7 @@ auto ConsoleInputChar(const char ch) -> bool {
 }
 
 //===========================================================================
-void ConsoleUpdateCursor(char ch) {
+auto ConsoleUpdateCursor(char ch) -> void {
   if (ch) {
     g_console_cursor[0] = ch;
   } else {
@@ -488,7 +432,7 @@ auto ConsoleInputPeek() -> const char* {
 }
 
 //===========================================================================
-void ConsoleInputReset() {
+auto ConsoleInputReset() -> void {
   // Not using g_console_input since we get drawing of the input Line for "Free"
   // Even if we add console scrolling, we don't need any special logic to draw
   // the input line.
@@ -594,35 +538,34 @@ auto ConsoleUpdate() -> Update_t {
 }
 
 //===========================================================================
-void ConsoleFlush() {
+auto ConsoleFlush() -> void {
   int nLines = g_console_buffer_size;
   ConsoleBufferTryUnpause(nLines);
 }
 
-void DebuggerCursorUpdate() {
+auto DebuggerCursorUpdate() -> void {
   if (g_state.mode != MODE_DEBUG) {
     return;
   }
 
   const int nUpdatesPerSecond = 4;
   const uint32_t nUpdateInternal_ms = 1000 / nUpdatesPerSecond;
-  static uint32_t nBeg = linapple_get_ticks();  // timeGetTime();
-  uint32_t nNow = linapple_get_ticks();         // timeGetTime();
+  static uint32_t nBeg = linapple_get_ticks();
+  uint32_t nNow = linapple_get_ticks();
 
-  if (((nNow - nBeg) >= nUpdateInternal_ms) &&
-      !DebugVideoMode::Instance().IsSet()) {
-    nBeg = nNow;
-
-    DebuggerCursorNext();
-
-    DrawConsoleCursor();
-    stretch_blt_mem_to_frame_dc();
-  } else {
+  if (((nNow - nBeg) < nUpdateInternal_ms) ||
+      DebugVideoMode::Instance().IsSet()) {
     usleep(1000);  // Stop process hogging CPU
+    return;
   }
+
+  nBeg = nNow;
+  DebuggerCursorNext();
+  DrawConsoleCursor();
+  stretch_blt_mem_to_frame_dc();
 }
 
-void DebuggerCursorNext() {
+auto DebuggerCursorNext() -> void {
   g_input_cursor_visible ^= true;
   if (g_input_cursor_visible) {
     ConsoleUpdateCursor(g_input_cursor[g_input_cursor_index]);
@@ -631,9 +574,9 @@ void DebuggerCursorNext() {
   }
 }
 
-void DebuggerUpdate() { DebuggerCursorUpdate(); }
+auto DebuggerUpdate() -> void { DebuggerCursorUpdate(); }
 
-void debugger_input_console_char(char ch) {
+auto debugger_input_console_char(char ch) -> void {
   assert(g_state.mode == MODE_DEBUG);
 
   if (g_state.mode != MODE_DEBUG) {
@@ -649,43 +592,41 @@ void debugger_input_console_char(char ch) {
     return;
   }
 
-  if ((ch >= CHAR_SPACE) && (ch <= 126))  // HACK MAGIC # 32 -> ' ', # 126
-  {
-    if ((ch == CHAR_QUOTE_DOUBLE) || (ch == CHAR_QUOTE_SINGLE)) {
-      g_console_input_quoted = !g_console_input_quoted;
-    }
+  if ((ch < CHAR_SPACE) || (ch > 126)) {
+    return;
+  }
 
-    if (!g_console_input_quoted) {
-      // TODO: must fix param matching to ignore case
+  if ((ch == CHAR_QUOTE_DOUBLE) || (ch == CHAR_QUOTE_SINGLE)) {
+    g_console_input_quoted = !g_console_input_quoted;
+  }
+
+  if (!g_console_input_quoted) {
 #if ALLOW_INPUT_LOWERCASE
 #else
-      ch = toupper(ch);
+    ch = static_cast<char>(toupper(ch));
 #endif
-    }
-    ConsoleInputChar(ch);
-
-    DebuggerCursorNext();
-
-    DrawConsoleInput();
-    stretch_blt_mem_to_frame_dc();
   }
+  ConsoleInputChar(ch);
+
+  DebuggerCursorNext();
+
+  DrawConsoleInput();
+  stretch_blt_mem_to_frame_dc();
 }
 
-void ToggleFullScreenConsole() {
-  // Switch to Console Window
+auto ToggleFullScreenConsole() -> void {
   if (g_window_this != WINDOW_CONSOLE) {
     CmdWindowViewConsole(0);
-  } else  // switch back to last window
-  {
-    CmdWindowLast(0);
+    return;
   }
+  CmdWindowLast(0);
 }
 
 extern auto CmdWindowViewConsole(int) -> Update_t;
 extern auto CmdWindowLast(int) -> Update_t;
 extern auto CmdGoNormalSpeed(int) -> Update_t;
-extern void CursorMoveUpAligned(int);
-extern void CursorMoveDownAligned(int);
+extern auto CursorMoveUpAligned(int) -> void;
+extern auto CursorMoveDownAligned(int) -> void;
 extern auto WindowGetHeight(int) -> int;
 extern auto CmdCursorPageUp(int) -> Update_t;
 extern auto CmdCursorPageDown(int) -> Update_t;
@@ -694,7 +635,7 @@ extern auto CmdCursorPageDown256(int) -> Update_t;
 extern auto CmdCursorPageUp4K(int) -> Update_t;
 extern auto CmdCursorPageDown4K(int) -> Update_t;
 
-void debugger_process_key(int keycode) {
+auto debugger_process_key(int keycode) -> void {
   if (g_state.mode != MODE_DEBUG) {
     return;
   }
@@ -707,29 +648,22 @@ void debugger_process_key(int keycode) {
     }
 
     // Normally any key press takes us out of "Viewing Apple Output" mode
-    //  if ((mode != MODE_LOGO) && (mode != MODE_DEBUG))
     DebugVideoMode::Instance().Reset();
-    UpdateDisplay(UPDATE_ALL);  // 1
+    UpdateDisplay(UPDATE_ALL);
     return;
   }
 
   Update_t bUpdateDisplay = UPDATE_NOTHING;
 
   // For long output, allow user to read it
-  if (g_console_buffer_size) {
-    if ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
-        (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode)) {
-      int nLines =
-          MIN(g_console_buffer_size, g_console_display_lines - 1);  // was -2
-      if (LINAPPLE_KEY_ESCAPE ==
-          keycode)  // user doesn't want to read all this stu
-      {
-        nLines = g_console_buffer_size;
-      }
-      ConsoleBufferTryUnpause(nLines);
-
-      keycode = 0;  // don't single-step
-    }
+  if (g_console_buffer_size != 0 &&
+      ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
+       (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode))) {
+    int nLines = (LINAPPLE_KEY_ESCAPE == keycode)
+                     ? g_console_buffer_size
+                     : MIN(g_console_buffer_size, g_console_display_lines - 1);
+    ConsoleBufferTryUnpause(nLines);
+    keycode = 0;  // don't single-step
   }
 
   if (keycode == LINAPPLE_KEY_BACKSPACE) {
@@ -766,8 +700,6 @@ void debugger_process_key(int keycode) {
     switch (keycode) {
       case LINAPPLE_KEY_TAB: {
         if (g_console_input_chars) {
-          // TODO: TabCompletionCommand()
-          // TODO: TabCompletionSymbol()
           bUpdateDisplay |= ConsoleInputTabCompletion();
         } else {
           ToggleFullScreenConsole();
@@ -827,7 +759,7 @@ void debugger_process_key(int keycode) {
   }
 }
 
-void debugger_mouse_click(int /*x*/, int /*y*/) {
+auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
   if (g_state.mode != MODE_DEBUG) {
     return;
   }

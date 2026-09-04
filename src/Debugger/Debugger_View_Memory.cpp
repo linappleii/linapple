@@ -43,11 +43,12 @@ const int MAX_DISPLAY_TARGET_PTR_LINES = 3;
 #define SOFTSWITCH_LANGCARD 1
 
 // Function prototypes for helpers in other files
-extern void ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG);
+extern auto ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG)
+    -> void;
 
 // --- Functions moved from Debugger_Display.cpp ---
 
-void DrawMemory(int line, int iMemDump) {
+auto DrawMemory(int line, int iMemDump) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -166,8 +167,8 @@ void DrawMemory(int line, int iMemDump) {
   }
 }
 
-void DrawRegister(int line, const char* name, const int nBytes,
-                  const uint16_t nValue, int iSource) {
+auto DrawRegister(int line, const char* name, const int nBytes,
+                  const uint16_t nValue, int iSource) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -205,7 +206,7 @@ void DrawRegister(int line, const char* name, const int nBytes,
   PrintTextCursorX(sValue, rect);
 }
 
-void DrawRegisters(int line) {
+auto DrawRegisters(int line) -> void {
   const char** sReg = g_breakpoint_source;
 
   DrawRegister(line++, sReg[BP_SRC_REG_A], 1, cpu_get_registers()->a,
@@ -222,8 +223,8 @@ void DrawRegisters(int line) {
                PARAM_REG_SP);
 }
 
-void DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
-                             const char* sOff, int bg = BG_INFO) {
+auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
+                             const char* sOff, int bg = BG_INFO) -> void {
   ColorizeFlags(bSet, bg);
   PrintTextCursorX(sOn, temp);
 
@@ -235,8 +236,8 @@ void DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
   PrintTextCursorX(sOff, temp);
 }
 
-void DrawSoftSwitchAddress(Rect_t& rect, int address,
-                           int bg_default = BG_INFO) {
+auto DrawSoftSwitchAddress(Rect_t& rect, int address, int bg_default = BG_INFO)
+    -> void {
   char sText[4] = "";
 
   DebuggerSetColorBG(DebuggerGetColor(bg_default));
@@ -248,9 +249,10 @@ void DrawSoftSwitchAddress(Rect_t& rect, int address,
   PrintTextCursorX(":", rect);
 }
 
-void DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
+auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
                     const char* sOn, const char* sOff,
-                    const char* sSuffix = nullptr, int bg_default = BG_INFO) {
+                    const char* sSuffix = nullptr, int bg_default = BG_INFO)
+    -> void {
   Rect_t temp = rect;
 
   DrawSoftSwitchAddress(temp, address, bg_default);
@@ -272,10 +274,10 @@ void DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
   rect.bottom += g_font_height;
 }
 
-void DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
+auto DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
                             int iActive, char* sPrefix, char* sOn, char* sOff,
                             const char* sSuffix = nullptr,
-                            int bg_default = BG_INFO) {
+                            int bg_default = BG_INFO) -> void {
   (void)sPrefix;
   (void)sSuffix;
   bool bSet = (iBankDisplay == iActive);
@@ -311,8 +313,8 @@ void DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
   }
 }
 
-void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
-                                    int bg_default = BG_INFO) {
+auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
+                                    int bg_default = BG_INFO) -> void {
   const int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
   const int dx80 = 7 * w;
   const int dx88 = 8 * w;
@@ -379,7 +381,7 @@ void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   rect.bottom += g_font_height;
 }
 
-void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
+auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
   Rect_t temp = rect;
   rect.top += g_font_height;
   rect.bottom += g_font_height;
@@ -403,7 +405,7 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   DrawSoftSwitch(temp, address, bAuxWrite, "W", "x", "m", nullptr, BG_DATA_2);
 }
 
-void DrawSoftSwitches(int iSoftSwitch) {
+auto DrawSoftSwitches(int iSoftSwitch) -> void {
   Rect_t rect;
   int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
@@ -457,7 +459,7 @@ void DrawSoftSwitches(int iSoftSwitch) {
 #endif
 }
 
-void DrawTargets(int line) {
+auto DrawTargets(int line) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -505,7 +507,7 @@ void DrawTargets(int line) {
   }
 }
 
-void DrawWatches(int line) {
+auto DrawWatches(int line) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -596,7 +598,7 @@ void DrawWatches(int line) {
   }
 }
 
-void DrawZeroPagePointers(int line) {
+auto DrawZeroPagePointers(int line) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -685,7 +687,7 @@ void DrawZeroPagePointers(int line) {
   }
 }
 
-void DrawSubWindow_Data(Update_t bUpdate) {
+auto DrawSubWindow_Data(Update_t bUpdate) -> void {
   (void)bUpdate;
   int iBackground = 0;
 
@@ -787,31 +789,32 @@ void DrawSubWindow_Data(Update_t bUpdate) {
   }
 }
 
-void DrawSubWindow_Symbols(Update_t bUpdate) { (void)bUpdate; }
+auto DrawSubWindow_Symbols(Update_t bUpdate) -> void { (void)bUpdate; }
 
-void DrawSubWindow_ZeroPage(Update_t bUpdate) { (void)bUpdate; }
+auto DrawSubWindow_ZeroPage(Update_t bUpdate) -> void { (void)bUpdate; }
 
-void DrawWindow_Data(Update_t bUpdate) {
+auto DrawWindow_Data(Update_t bUpdate) -> void {
   DrawSubWindow_Data(g_window_this);
   DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
-void DrawWindow_IO(Update_t bUpdate) {
+auto DrawWindow_IO(Update_t bUpdate) -> void {
   DrawSubWindow_IO(g_window_this);
   DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
-void DrawWindow_Symbols(Update_t bUpdate) {
+auto DrawWindow_Symbols(Update_t bUpdate) -> void {
   DrawSubWindow_Symbols(g_window_this);
   DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
-void DrawWindow_ZeroPage(Update_t bUpdate) {
+auto DrawWindow_ZeroPage(Update_t bUpdate) -> void {
   DrawSubWindow_ZeroPage(bUpdate);
   DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
-void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
+auto DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
+    -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -859,7 +862,7 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
   }
 }
 
-void DrawVideoScannerInfo(int line) {
+auto DrawVideoScannerInfo(int line) -> void {
   (void)line;
 #ifdef TODO  // Not supported for Linux yet
   // NTSC_VideoGetScannerAddressForDebugger();    // update

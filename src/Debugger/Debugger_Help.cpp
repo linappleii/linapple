@@ -235,7 +235,7 @@ auto Help_Arg_1(int iCommandHelp) -> Update_t {
 }
 
 //===========================================================================
-void Help_Categories() {
+auto Help_Categories() -> void {
   const int nBuf = CONSOLE_WIDTH * 2;
 
   char sText[nBuf] = "";
@@ -297,21 +297,21 @@ void Help_Categories() {
   //		ConsoleBufferPush( sText );
 }
 
-void Help_Examples() {
+auto Help_Examples() -> void {
   char sText[CONSOLE_WIDTH];
   ConsolePrintFormat(sText, " %sExamples%s:%s", CHC_USAGE, CHC_ARG_SEP,
                      CHC_DEFAULT);
 }
 
 //===========================================================================
-void Help_Range() {
+auto Help_Range() -> void {
   ConsoleBufferPush("  Where <range> is of the form:");
   ConsoleBufferPush("    address , length   [address,address+length)");
   ConsoleBufferPush("    address : end      [address,end]");
 }
 
 //===========================================================================
-void Help_Operators() {
+auto Help_Operators() -> void {
   char sText[CONSOLE_WIDTH];
 
   //	ConsolePrintFormat( sText," %sOperators%s:" , CHC_USAGE, CHC_DEFAULT );
@@ -378,7 +378,7 @@ void Help_Operators() {
   console_print(sText);
 }
 
-void Help_KeyboardShortcuts() {
+auto Help_KeyboardShortcuts() -> void {
   ConsoleBufferPush("  Scrolling:");
   ConsoleBufferPush("    Up Arrow");
   ConsoleBufferPush("    Down Arrow");
@@ -394,8 +394,8 @@ void Help_KeyboardShortcuts() {
   ConsoleBufferPush("    Ctrl-#      ");
 }
 
-void ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
-                    const int nHeaderLen) {
+auto ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
+                    const int nHeaderLen) -> void {
   int nLen = 0;
 
   nLen = strlen(CHC_USAGE);
@@ -420,14 +420,15 @@ void ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
   pDst += nLen;
 }
 
-void ColorizeString(char*& pDst, const char* src_ptr, const size_t nLen) {
+auto ColorizeString(char*& pDst, const char* src_ptr, const size_t nLen)
+    -> void {
   util_safe_strcpy(pDst, src_ptr, nLen + 1);
   pDst += nLen;
 }
 
 // pOperator is one of CHC_*
-void ColorizeOperator(char*& pDst, const char*& src_ptr,
-                      const char* pOperator) {
+auto ColorizeOperator(char*& pDst, const char*& src_ptr, const char* pOperator)
+    -> void {
   int nLen = 0;
 
   nLen = strlen(pOperator);

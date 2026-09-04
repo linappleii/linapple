@@ -261,7 +261,7 @@ auto CmdMemoryEnterWord(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-void MemMarkDirty(uint16_t nAddressStart, uint16_t nAddressEnd) {
+auto MemMarkDirty(uint16_t nAddressStart, uint16_t nAddressEnd) -> void {
   for (int iPage = (nAddressStart >> 8); iPage <= (nAddressEnd >> 8); iPage++) {
     *(memdirty + iPage) = 1;
   }
@@ -945,7 +945,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class ConsoleFilename {
    public:
-    static void update(const char* pPrefixText) {
+    static auto update(const char* pPrefixText) -> void {
       char text[CONSOLE_WIDTH * 2] = "";
 
       size_t len1 = strlen(pPrefixText);
@@ -976,52 +976,52 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class Swizzle32 {
    public:
-    static void RGBAswapBGRA(
+    static auto RGBAswapBGRA(
         size_t nSize, const uint8_t* src_ptr,
         uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias;
                         // code handles this properly
     {
       const uint8_t* pEnd = src_ptr + nSize;
-      while (src_ptr < pEnd) {
-        const uint8_t r = src_ptr[2];
-        const uint8_t g = src_ptr[1];
-        const uint8_t b = src_ptr[0];
-        const uint8_t a =
-            255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
+      while (src_ptr < pEnd) ->void {
+          const uint8_t r = src_ptr[2];
+          const uint8_t g = src_ptr[1];
+          const uint8_t b = src_ptr[0];
+          const uint8_t a =
+              255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
 
-        *pDst++ = r;
-        *pDst++ = g;
-        *pDst++ = b;
-        *pDst++ = a;
-        src_ptr += 4;
-      }
+          *pDst++ = r;
+          *pDst++ = g;
+          *pDst++ = b;
+          *pDst++ = a;
+          src_ptr += 4;
+        }
     }
 
-    static void ABGRswizzleBGRA(
+    static auto ABGRswizzleBGRA(
         size_t nSize, const uint8_t* src_ptr,
         uint8_t* pDst)  // Note: src_ptr and pDst _may_ alias; code handles this
                         // properly
     {
       const uint8_t* pEnd = src_ptr + nSize;
-      while (src_ptr < pEnd) {
-        const uint8_t r = src_ptr[3];
-        const uint8_t g = src_ptr[2];
-        const uint8_t b = src_ptr[1];
-        const uint8_t a =
-            255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
+      while (src_ptr < pEnd) ->void {
+          const uint8_t r = src_ptr[3];
+          const uint8_t g = src_ptr[2];
+          const uint8_t b = src_ptr[1];
+          const uint8_t a =
+              255;  // Force A=1, 100% opacity; as src_ptr[3] might not be 255
 
-        *pDst++ = b;
-        *pDst++ = g;
-        *pDst++ = r;
-        *pDst++ = a;
-        src_ptr += 4;
-      }
+          *pDst++ = b;
+          *pDst++ = g;
+          *pDst++ = r;
+          *pDst++ = a;
+          src_ptr += 4;
+        }
     }
 #if 0
-      static void ABGRswizzleRGBA( size_t nSize, const uint8_t *src_ptr, uint8_t *pDst ) // Note: src_ptr and pDst _may_ alias; code handles this properly
+      static auto ABGRswizzleRGBA( size_t nSize, const uint8_t *src_ptr, uint8_t *pDst ) // Note: src_ptr and pDst _may_ alias; code handles this properly
       {
         const uint8_t* pEnd = src_ptr + nSize;
-        while ( src_ptr < pEnd )
+        while ( src_ptr < pEnd ) -> void
         {
           const uint8_t r = src_ptr[3];
           const uint8_t g = src_ptr[2];
@@ -1040,7 +1040,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
 
   class Transpose64x1 {
    public:
-    static void transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst) {
+    static auto transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst)
+        -> void {
       const uint32_t nBPP = 4;  // bytes per pixel
 
       // Expand y from 1 to 256 rows
@@ -1076,7 +1077,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
         .
         .    1  2  4  8  Delta
     */
-    static void transposeTo64x1(const uint8_t* src_ptr, uint8_t* pDst) {
+    static auto transposeTo64x1(const uint8_t* src_ptr, uint8_t* pDst) -> void {
       const uint32_t* pPhase0 = (uint32_t*)src_ptr;
       /* */ uint32_t* pTmp = (uint32_t*)pDst;
 
@@ -1192,7 +1193,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
     .    0    1    2         4095  column
     */
     /*
-          static void transposeFrom16x1( const uint8_t *src_ptr, uint8_t *pDst )
+          static auto transposeFrom16x1( const uint8_t *src_ptr, uint8_t *pDst )
+       -> void
           {
             const uint8_t *pTmp = src_ptr;
             const uint32_t nBPP = 4; // bytes per pixel
@@ -1270,7 +1272,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
     */
 
    public:
-    static void transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst) {
+    static auto transposeTo64x256(const uint8_t* src_ptr, uint8_t* pDst)
+        -> void {
       /* */ uint8_t* pTmp = pDst;
       const uint32_t nBPP = 4;  // bytes per pixel
 
@@ -1288,7 +1291,8 @@ auto CmdNTSC(int nArgs) -> Update_t {
       }
     }
 
-    static void transposeFrom64x256(const uint8_t* src_ptr, uint8_t* pDst) {
+    static auto transposeFrom64x256(const uint8_t* src_ptr, uint8_t* pDst)
+        -> void {
       const uint8_t* pTmp = src_ptr;
       const uint32_t nBPP = 4;  // bytes per pixel
 

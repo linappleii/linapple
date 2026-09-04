@@ -482,14 +482,14 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
 
 // Notes: tData.iDirective should not be NOP_REMOVED !
 //===========================================================================
-void Disassembly_AddData(DisasmData_t tData) {
+auto Disassembly_AddData(DisasmData_t tData) -> void {
   g_disassembler_data.push_back(tData);
 }
 
 // DEPRECATED ! Inlined in GetOpmodeOpbyte() !
 //===========================================================================
-void Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
-                         DisasmLine_t& line_) {
+auto Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
+                         DisasmLine_t& line_) -> void {
   (void)nBaseAddress;
   (void)line_;
   if (!data) {
@@ -502,7 +502,7 @@ void Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
 }
 
 //===========================================================================
-void Disassembly_DelData(DisasmData_t tData) {
+auto Disassembly_DelData(DisasmData_t tData) -> void {
   // g_disassembler_data.erase( );
   uint16_t address = tData.nStartAddress;
 

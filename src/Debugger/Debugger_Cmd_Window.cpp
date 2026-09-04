@@ -38,23 +38,23 @@ const int MIN_DISPLAY_CONSOLE_LINES = 5;
 // Implementation
 
 //===========================================================================
-void WindowJoin() { g_window_config[g_window_this].bSplit = false; }
+auto WindowJoin() -> void { g_window_config[g_window_this].bSplit = false; }
 
 //===========================================================================
-void WindowSplit(Window_e eNewBottomWindow) {
+auto WindowSplit(Window_e eNewBottomWindow) -> void {
   g_window_config[g_window_this].bSplit = true;
   g_window_config[g_window_this].eBot = eNewBottomWindow;
 }
 
 //===========================================================================
-void WindowLast() {
+auto WindowLast() -> void {
   int eNew = g_window_last;
   g_window_last = g_window_this;
   g_window_this = eNew;
 }
 
 //===========================================================================
-void WindowSwitch(int eNewWindow) {
+auto WindowSwitch(int eNewWindow) -> void {
   g_window_last = g_window_this;
   g_window_this = eNewWindow;
 }
@@ -83,7 +83,7 @@ auto CmdWindowViewFull(int iNewWindow) -> Update_t {
 }
 
 //===========================================================================
-void WindowUpdateConsoleDisplayedSize() {
+auto WindowUpdateConsoleDisplayedSize() -> void {
   g_console_display_lines = MIN_DISPLAY_CONSOLE_LINES;
 #if USE_APPLE_FONT
   g_console_full_width = true;
@@ -113,7 +113,7 @@ auto WindowGetHeight(int iWindow) -> int {
 }
 
 //===========================================================================
-void WindowUpdateDisasmSize() {
+auto WindowUpdateDisasmSize() -> void {
   if (g_window_config[g_window_this].bSplit) {
     g_disasm_win_height = (MAX_DISPLAY_LINES - g_console_display_lines) / 2;
   } else {
@@ -123,7 +123,7 @@ void WindowUpdateDisasmSize() {
 }
 
 //===========================================================================
-void WindowUpdateSizes() {
+auto WindowUpdateSizes() -> void {
   WindowUpdateDisasmSize();
   WindowUpdateConsoleDisplayedSize();
 }
@@ -338,7 +338,7 @@ auto CmdWindowLast(int nArgs) -> Update_t {
   return UPDATE_ALL;
 }
 
-void CursorMoveDownAligned(int nDelta) {
+auto CursorMoveDownAligned(int nDelta) -> void {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address + nDelta);
     g_mem_dump[0].address = g_disasm_cur_address;
@@ -349,7 +349,7 @@ void CursorMoveDownAligned(int nDelta) {
   }
 }
 
-void CursorMoveUpAligned(int nDelta) {
+auto CursorMoveUpAligned(int nDelta) -> void {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address - nDelta);
     g_mem_dump[0].address = g_disasm_cur_address;
@@ -361,7 +361,7 @@ void CursorMoveUpAligned(int nDelta) {
 }
 
 //===========================================================================
-void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
+auto DisasmCalcTopFromCurAddress(bool bUpdateTop) -> void {
   (void)bUpdateTop;
   int nLen = ((g_disasm_win_height - g_disasm_cur_line) *
               3);  // max 3 opcodes/instruction, is our search window
@@ -418,19 +418,19 @@ auto DisasmCalcAddressFromLines(uint16_t iAddress, int nLines) -> uint16_t {
 }
 
 //===========================================================================
-void DisasmCalcCurFromTopAddress() {
+auto DisasmCalcCurFromTopAddress() -> void {
   g_disasm_cur_address =
       DisasmCalcAddressFromLines(g_disasm_top_address, g_disasm_cur_line);
 }
 
 //===========================================================================
-void DisasmCalcBotFromTopAddress() {
+auto DisasmCalcBotFromTopAddress() -> void {
   g_disasm_bot_address =
       DisasmCalcAddressFromLines(g_disasm_top_address, g_disasm_win_height);
 }
 
 //===========================================================================
-void DisasmCalcTopBotAddress() {
+auto DisasmCalcTopBotAddress() -> void {
   DisasmCalcTopFromCurAddress();
   DisasmCalcBotFromTopAddress();
 }

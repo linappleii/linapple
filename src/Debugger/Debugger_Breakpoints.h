@@ -12,47 +12,49 @@ extern const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS];
 
 // Prototypes _______________________________________________________________
 
-int CheckBreakpointsIO();
-int CheckBreakpointsReg();
-void ClearTempBreakpoints();
+auto CheckBreakpointsIO() -> int;
+auto CheckBreakpointsReg() -> int;
+auto ClearTempBreakpoints() -> void;
 
-Update_t CmdBreakpoint(int nArgs);
-Update_t CmdBreakpointAddPC(int nArgs);
-Update_t CmdBreakpointAddSmart(int nArgs);
-Update_t CmdBreakpointAddReg(int nArgs);
-Update_t CmdBreakpointAddIO(int nArgs);
-Update_t CmdBreakpointAddMem(int nArgs, BreakpointSource_t bpSrc);
-Update_t CmdBreakpointClear(int nArgs);
-Update_t CmdBreakpointDisable(int nArgs);
-Update_t CmdBreakpointEdit(int nArgs);
-Update_t CmdBreakpointEnable(int nArgs);
-Update_t CmdBreakpointList(int nArgs);
-Update_t CmdBreakpointLoad(int nArgs);
-Update_t CmdBreakpointSave(int nArgs);
+auto CmdBreakpoint(int nArgs) -> Update_t;
+auto CmdBreakpointAddPC(int nArgs) -> Update_t;
+auto CmdBreakpointAddSmart(int nArgs) -> Update_t;
+auto CmdBreakpointAddReg(int nArgs) -> Update_t;
+auto CmdBreakpointAddIO(int nArgs) -> Update_t;
+auto CmdBreakpointAddMem(int nArgs, BreakpointSource_t bpSrc) -> Update_t;
+auto CmdBreakpointClear(int nArgs) -> Update_t;
+auto CmdBreakpointDisable(int nArgs) -> Update_t;
+auto CmdBreakpointEdit(int nArgs) -> Update_t;
+auto CmdBreakpointEnable(int nArgs) -> Update_t;
+auto CmdBreakpointList(int nArgs) -> Update_t;
+auto CmdBreakpointLoad(int nArgs) -> Update_t;
+auto CmdBreakpointSave(int nArgs) -> Update_t;
 
-Update_t CmdWatch(int nArgs);
-Update_t CmdWatchAdd(int nArgs);
-Update_t CmdWatchClear(int nArgs);
-Update_t CmdWatchDisable(int nArgs);
-Update_t CmdWatchEnable(int nArgs);
-Update_t CmdWatchList(int nArgs);
-Update_t CmdWatchLoad(int nArgs);
-Update_t CmdWatchSave(int nArgs);
+auto CmdWatch(int nArgs) -> Update_t;
+auto CmdWatchAdd(int nArgs) -> Update_t;
+auto CmdWatchClear(int nArgs) -> Update_t;
+auto CmdWatchDisable(int nArgs) -> Update_t;
+auto CmdWatchEnable(int nArgs) -> Update_t;
+auto CmdWatchList(int nArgs) -> Update_t;
+auto CmdWatchLoad(int nArgs) -> Update_t;
+auto CmdWatchSave(int nArgs) -> Update_t;
 
-bool CmdBreakpointAddReg(Breakpoint_t* pBP, BreakpointSource_t iSrc,
+auto CmdBreakpointAddReg(Breakpoint_t* pBP, BreakpointSource_t iSrc,
                          BreakpointOperator_t iCmp, uint16_t address, int nLen,
-                         bool bIsTempBreakpoint);
-int CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
-                              BreakpointOperator_t iCmp,
-                              bool bIsTempBreakpoint = false);
+                         bool bIsTempBreakpoint) -> bool;
+auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
+                               BreakpointOperator_t iCmp,
+                               bool bIsTempBreakpoint = false) -> int;
 
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
-void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot);
-void bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total);
-void bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total);
-void bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
-                      int& total);
-void bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
-                              const int nMax, const bool bEnabled);
-void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ);
-void bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax);
+auto bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) -> void;
+auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
+    -> void;
+auto bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total)
+    -> void;
+auto bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
+                      int& total) -> void;
+auto bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
+                              const int nMax, const bool bEnabled) -> void;
+auto bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) -> void;
+auto bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) -> void;

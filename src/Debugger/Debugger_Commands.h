@@ -6,6 +6,6 @@
 extern Command_t g_commands[];
 extern int g_num_commands_with_aliases;
 
-void VerifyDebuggerCommandTable();
-Update_t DebuggerProcessCommand(const bool bEchoConsoleInput);
-Update_t ExecuteCommand(int nArgs);
+auto VerifyDebuggerCommandTable() -> void;
+auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t;
+auto ExecuteCommand(int nArgs) -> Update_t;

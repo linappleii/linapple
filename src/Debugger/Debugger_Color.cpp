@@ -170,7 +170,7 @@ auto DebuggerSetColor(const int iScheme, const int iColor,
 #if _DEBUG
 #define DEBUG_COLOR_RAMP 0
 //===========================================================================
-static void SetupColorRamp(const int iPrimary, int& iColor_) {
+static auto SetupColorRamp(const int iPrimary, int& iColor_) -> void {
   char sRamp[CONSOLE_WIDTH * 2] = "";
 #if DEBUG_COLOR_RAMP
   char sText[CONSOLE_WIDTH];
@@ -204,7 +204,7 @@ static void SetupColorRamp(const int iPrimary, int& iColor_) {
 #endif  // _DEBUG
 
 //===========================================================================
-void ConfigColorsReset() {
+auto ConfigColorsReset() -> void {
   //	int iColor = 1; // black only has one level, skip it, since black levels
   // same as white levels 	for (int iPrimary = 1; iPrimary < 8; iPrimary++
   // )
@@ -246,7 +246,7 @@ void ConfigColorsReset() {
 
 constexpr uint8_t BYTE_MASK = 0xFF;
 
-void ColorPrint(int iColor, ColorRef_t nColor) {
+auto ColorPrint(int iColor, ColorRef_t nColor) -> void {
   int R = static_cast<int>(nColor & BYTE_MASK);
   int G = static_cast<int>((nColor >> GREEN_SHIFT) & BYTE_MASK);
   int B = static_cast<int>((nColor >> BLUE_SHIFT) & BYTE_MASK);
@@ -256,7 +256,7 @@ void ColorPrint(int iColor, ColorRef_t nColor) {
                           B);  // TODO: print name of colors!
 }
 
-void CmdColorGet(const int iScheme, const int iColor) {
+auto CmdColorGet(const int iScheme, const int iColor) -> void {
   (void)iScheme;
   if (iColor < NUM_DEBUG_COLORS) {
     auto eColor = static_cast<DebugColors_e>(iColor);

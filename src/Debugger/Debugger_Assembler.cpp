@@ -541,8 +541,8 @@ uint16_t g_asm_target_address = 0;
 uint16_t g_asm_target_value = 0;
 
 // Private
-void AssemblerHashOpcodes();
-void AssemblerHashDirectives();
+auto AssemblerHashOpcodes() -> void;
+auto AssemblerHashDirectives() -> void;
 
 // Implementation ___________________________________________________________
 
@@ -728,7 +728,8 @@ auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
 }
 
 //===========================================================================
-void GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) {
+auto GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_)
+    -> void {
   iOpcode_ = GetOpmodeOpbyte(cpu_get_registers()->pc, iOpmode_, nOpbyte_);
 }
 
@@ -1103,7 +1104,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
 }
 
 //===========================================================================
-void AssemblerHashOpcodes() {
+auto AssemblerHashOpcodes() -> void {
   Hash_t nMnemonicHash = 0;
   int opcode = 0;
 
@@ -1226,7 +1227,7 @@ auto CmdSync(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-void AssemblerHashDirectives() {
+auto AssemblerHashDirectives() -> void {
   Hash_t nMnemonicHash = 0;
   int opcode = 0;
 
@@ -1472,7 +1473,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 }
 
 //===========================================================================
-void AssemblerStartup()
+auto AssemblerStartup() -> void
 
 {
   g_opcodes = &g_opcodes65_c02[0];
@@ -1481,7 +1482,7 @@ void AssemblerStartup()
 }
 
 //===========================================================================
-void CmdAssembleHashDump() {
+auto CmdAssembleHashDump() -> void {
   // #if DEBUG_ASM_HASH
   std::vector<HashOpcode_t> vHashes;
   HashOpcode_t tHash{};
@@ -1571,7 +1572,7 @@ auto TestFlag(AssemblerFlags_e eFlag) -> bool {
 }
 
 //===========================================================================
-void SetFlag(AssemblerFlags_e eFlag, bool bValue = true) {
+auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
   if (bValue) {
     g_asm_flags |= eFlag;
   } else {
@@ -1850,7 +1851,7 @@ auto AssemblerDelayedTargetsSize() -> int {
 //     BNE $DONE
 // <enter>
 //===========================================================================
-void AssemblerProcessDelayedSymols() {
+auto AssemblerProcessDelayedSymols() -> void {
   g_delayed_targets_dirty =
       false;  // assembler set signal if new symbol was added
 
@@ -1961,13 +1962,13 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
 }
 
 //===========================================================================
-void AssemblerOn() {
+auto AssemblerOn() -> void {
   g_assembler_input = true;
   g_console_prompt_str[0] = g_console_prompt[PROMPT_ASSEMBLER];
 }
 
 //===========================================================================
-void AssemblerOff() {
+auto AssemblerOff() -> void {
   g_assembler_input = false;
   g_console_prompt_str[0] = g_console_prompt[PROMPT_COMMAND];
 }

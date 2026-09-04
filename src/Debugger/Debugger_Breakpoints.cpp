@@ -45,7 +45,7 @@ auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool {
   return g_debug_breakpoint_hit != 0;
 }
 
-void ClearTempBreakpoints() {
+auto ClearTempBreakpoints() -> void {
   int iBP = 0;
   while (iBP < MAX_BREAKPOINTS) {
     if (g_breakpoints[iBP].bSet && g_breakpoints[iBP].bTemp) {
@@ -59,7 +59,7 @@ void ClearTempBreakpoints() {
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
 // _______________________________________________
 
-void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) {
+auto bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) -> void {
   if (aBreakWatchZero) {
     aBreakWatchZero[iSlot].bSet = false;
     aBreakWatchZero[iSlot].bEnabled = false;
@@ -71,7 +71,8 @@ void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) {
   }
 }
 
-void bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total) {
+auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
+    -> void {
   if (aBreakWatchZero) {
     if (aBreakWatchZero[iSlot].bSet) {
       bwz_Clear(aBreakWatchZero, iSlot);
@@ -80,7 +81,8 @@ void bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total) {
   }
 }
 
-void bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total) {
+auto bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total)
+    -> void {
   if (aBreakWatchZero) {
     int i = 0;
     while (i < nMax) {
@@ -91,8 +93,8 @@ void bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total) {
   }
 }
 
-void bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
-                      int& total) {
+auto bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
+                      int& total) -> void {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
       int iSlot = g_args[iArg].nValue;
@@ -103,8 +105,8 @@ void bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
   }
 }
 
-void bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
-                              const int nMax, const bool bEnabled) {
+auto bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
+                              const int nMax, const bool bEnabled) -> void {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
       int iSlot = g_args[iArg].nValue;
@@ -115,7 +117,7 @@ void bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
   }
 }
 
-void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
+auto bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) -> void {
   if (aBreakWatchZero) {
     char sText[CONSOLE_WIDTH];
     const Breakpoint_t* pBWZ = &aBreakWatchZero[iBWZ];
@@ -139,7 +141,7 @@ void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
   }
 }
 
-void bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) {
+auto bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) -> void {
   if (aBreakWatchZero) {
     int i = 0;
     while (i < nMax) {
@@ -205,9 +207,9 @@ auto CmdBreakpointAddReg(int nArgs) -> Update_t {
   return UPDATE_BREAKPOINTS;
 }
 
-int CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
-                              BreakpointOperator_t iCmp,
-                              bool bIsTempBreakpoint) {
+auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
+                               BreakpointOperator_t iCmp,
+                               bool bIsTempBreakpoint) -> int {
   (void)nArg;
   int iBP = 0;
   while ((iBP < MAX_BREAKPOINTS) && (g_breakpoints[iBP].bSet)) {

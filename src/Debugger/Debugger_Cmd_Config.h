@@ -3,20 +3,21 @@
 
 #include "Debugger_Types.h"
 
-Update_t CmdConfigColorMono(int nArgs);
-Update_t CmdConfigHColor(int nArgs);
-Update_t CmdConfigLoad(int nArgs);
-Update_t CmdConfigSave(int nArgs);
-Update_t CmdConfigDisasm(int nArgs);
-Update_t CmdConfigFontLoad(int nArgs);
-Update_t CmdConfigFontSave(int nArgs);
-Update_t CmdConfigFontMode(int nArgs);
-Update_t CmdConfigFont(int nArgs);
-Update_t CmdConfigSetFont(int nArgs);
-Update_t CmdConfigGetFont(int nArgs);
-Update_t CmdConfigSetDebugDir(int nArgs);
+auto CmdConfigColorMono(int nArgs) -> Update_t;
+auto CmdConfigHColor(int nArgs) -> Update_t;
+auto CmdConfigLoad(int nArgs) -> Update_t;
+auto CmdConfigSave(int nArgs) -> Update_t;
+auto CmdConfigDisasm(int nArgs) -> Update_t;
+auto CmdConfigFontLoad(int nArgs) -> Update_t;
+auto CmdConfigFontSave(int nArgs) -> Update_t;
+auto CmdConfigFontMode(int nArgs) -> Update_t;
+auto CmdConfigFont(int nArgs) -> Update_t;
+auto CmdConfigSetFont(int nArgs) -> Update_t;
+auto CmdConfigGetFont(int nArgs) -> Update_t;
+auto CmdConfigSetDebugDir(int nArgs) -> Update_t;
 
-bool ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave);
-void ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear);
-void UpdateWindowFontHeights(int nFontHeight);
+auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
+    -> bool;
+auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
+                              const Commands_e eCommandClear) -> void;
+auto UpdateWindowFontHeights(int nFontHeight) -> void;

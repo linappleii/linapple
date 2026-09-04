@@ -47,13 +47,13 @@ extern auto ColorizeSpecialChar(
     const int iHighBackground, const int iHighForeground,
     const int iCtrlBackground, const int iCtrlForeground) -> char;
 
-extern void SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG,
+extern auto SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG,
                                 int iTextFG, int iHighBG, int iHighFG,
-                                int iCtrlBG, int iCtrlFG);
+                                int iCtrlBG, int iCtrlFG) -> void;
 
-extern void DrawWindowBottom(Update_t bUpdate, int iWindow);
-extern void DrawSubWindow_Info(Update_t bUpdate, int iWindow);
-extern void DrawSubWindow_Source(Update_t bUpdate);
+extern auto DrawWindowBottom(Update_t bUpdate, int iWindow) -> void;
+extern auto DrawSubWindow_Info(Update_t bUpdate, int iWindow) -> void;
+extern auto DrawSubWindow_Source(Update_t bUpdate) -> void;
 
 // --- Functions moved from Debugger_Display.cpp ---
 
@@ -396,7 +396,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   return nOpbyte;
 }
 
-void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
+auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -475,7 +475,7 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   if (pFlagNames_) util_safe_strcpy(pFlagNames_, sFlagNames, 64);
 }
 
-void DrawStack(int line) {
+auto DrawStack(int line) -> void {
   if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
     return;
   }
@@ -511,7 +511,7 @@ void DrawStack(int line) {
   }
 }
 
-void DrawSourceLine(int iSourceLine, Rect_t& rect) {
+auto DrawSourceLine(int iSourceLine, Rect_t& rect) -> void {
   char sLine[CONSOLE_WIDTH];
   memset(sLine, 0, CONSOLE_WIDTH);
 
@@ -527,7 +527,7 @@ void DrawSourceLine(int iSourceLine, Rect_t& rect) {
   rect.top += g_font_height;
 }
 
-void DrawSubWindow_Code(int iWindow) {
+auto DrawSubWindow_Code(int iWindow) -> void {
   (void)iWindow;
   int nLines = g_disasm_win_height;
 
@@ -545,7 +545,7 @@ void DrawSubWindow_Code(int iWindow) {
 #endif
 }
 
-void DrawSubWindow_Source(Update_t bUpdate) {
+auto DrawSubWindow_Source(Update_t bUpdate) -> void {
   (void)bUpdate;
   int nLines = g_disasm_win_height;
 
@@ -564,13 +564,13 @@ void DrawSubWindow_Source(Update_t bUpdate) {
   }
 }
 
-void DrawWindow_Code(Update_t bUpdate) {
+auto DrawWindow_Code(Update_t bUpdate) -> void {
   DrawSubWindow_Code(g_window_this);
   DrawWindowBottom(bUpdate, g_window_this);
   DrawSubWindow_Info(bUpdate, g_window_this);
 }
 
-void DrawWindow_Source(Update_t bUpdate) {
+auto DrawWindow_Source(Update_t bUpdate) -> void {
   DrawSubWindow_Source(g_window_this);
   DrawWindowBottom(bUpdate, g_window_this);
   DrawSubWindow_Info(bUpdate, g_window_this);

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 #include "AppConfig.h"
 #include "SDL_audio.h"
@@ -23,7 +24,7 @@
 
 // SDL Audio Device for Frontend
 bool g_ds_available = false;
-static char* g_audio_dump_file = nullptr;
+static std::string g_audio_dump_file;
 static AudioDumper_t g_audio_dumper;
 
 static auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
@@ -59,8 +60,8 @@ auto ds_init() -> bool {
   desired.callback = sdl1_audio_callback;
   desired.userdata = nullptr;
 
-  if (g_audio_dump_file != nullptr) {
-    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file,
+  if (!g_audio_dump_file.empty()) {
+    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
                             SPKR_SAMPLE_RATE, 2);
   }
 
@@ -135,7 +136,7 @@ auto main(int argc, char** argv) -> int {
   // config.audio_dump_path directly but it's cleaner to keep the frontend's
   // specific state separate if it uses a heap string.
   if (config.audio_dump_path.at(0) != '\0') {
-    g_audio_dump_file = SDL_strdup(config.audio_dump_path.data());
+    g_audio_dump_file = config.audio_dump_path.data();
   }
 
   if (sys_init() != 0) {

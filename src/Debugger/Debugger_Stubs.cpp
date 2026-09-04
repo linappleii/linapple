@@ -22,13 +22,13 @@ ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
 ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
 
-void debug_begin() {}
-void debug_end() {}
-void debug_destroy() {}
-void debug_initialize() {}
-void debug_display(bool) {}
-void debugger_process_key(int) {}
-void debugger_input_console_char(char) {}
-void debugger_mouse_click(int, int) {}
-bool debug_get_video_mode(uint32_t*) { return false; }
+auto debug_begin() -> void {}
+auto debug_end() -> void {}
+auto debug_destroy() -> void {}
+auto debug_initialize() -> void {}
+auto debug_display(bool) -> void {}
+auto debugger_process_key(int) -> void {}
+auto debugger_input_console_char(char) -> void {}
+auto debugger_mouse_click(int, int) -> void {}
+auto debug_get_video_mode(uint32_t*) -> bool { return false; }
 // NOLINTEND(cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, modernize-use-trailing-return-type)

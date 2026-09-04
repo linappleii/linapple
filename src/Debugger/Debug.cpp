@@ -13,7 +13,7 @@
 
 enum { ALLOW_INPUT_LOWERCASE = 1 };
 
-void debug_display(bool bInitDisasm) {
+auto debug_display(bool bInitDisasm) -> void {
   if (bInitDisasm) {
     InitDisasm();
   }
@@ -28,7 +28,7 @@ void debug_display(bool bInitDisasm) {
   UpdateDisplay(UPDATE_ALL);
 }
 
-void debug_initialize() {
+auto debug_initialize() -> void {
   static bool bInitialized = false;
   if (bInitialized) return;
 
@@ -68,8 +68,8 @@ WindowSplit_t g_window_config[NUM_WINDOWS] = {};
 int g_zero_page_pointers_count = 0;
 ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS] = {};
 
-bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
-                       bool& bBreakpointEnable_) {
+auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
+                       bool& bBreakpointEnable_) -> bool {
   bBreakpointActive_ = false;
   bBreakpointEnable_ = false;
   for (int i = 0; i < g_breakpoints_count; i++) {

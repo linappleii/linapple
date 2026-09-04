@@ -23,9 +23,9 @@ extern MemoryTextFile_t g_config_state;
 
 auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
     -> bool;
-void ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear);
-void DisasmCalcTopBotAddress();
+auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
+                              const Commands_e eCommandClear) -> void;
+auto DisasmCalcTopBotAddress() -> void;
 
 // Bookmark_t Functions
 auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
@@ -76,7 +76,7 @@ auto Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
   return false;
 }
 
-void Bookmark_Reset() {
+auto Bookmark_Reset() -> void {
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
     g_bookmarks[iBookmark].bSet = false;

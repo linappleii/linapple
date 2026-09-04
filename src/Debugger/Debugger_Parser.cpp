@@ -92,7 +92,7 @@ auto Args_Insert(int iSrc, int iEnd, int nLen) -> int {
   return 0;
 }
 
-static void ClearArg(Arg_t* pArg) {
+static auto ClearArg(Arg_t* pArg) -> void {
   pArg->sArg[0] = 0;
   pArg->nArgLen = 0;
   pArg->bSymbol = false;
@@ -106,7 +106,7 @@ static void ClearArg(Arg_t* pArg) {
 }
 
 //===========================================================================
-void ArgsClear() {
+auto ArgsClear() -> void {
   Arg_t* pArg = &g_args[0];
   Arg_t* pRaw = &g_arg_raw[0];
 
@@ -317,7 +317,7 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
 }
 
 //===========================================================================
-void ArgsRawParse() {
+auto ArgsRawParse() -> void {
   const int BASE = 16;  // hex
   char* src_ptr = nullptr;
   char* pEnd = nullptr;
@@ -743,8 +743,8 @@ auto FindTokenOrAlphaNumeric(const char* src_ptr, const TokenTable_t* aTokens,
   return pEnd;
 }
 
-void TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
-                             const int nDstSize, int nTabStop) {
+auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
+                             const int nDstSize, int nTabStop) -> void {
   int TAB_SPACING = 8;
   int TAB_SPACING_1 = 16;
   int TAB_SPACING_2 = 21;
@@ -868,7 +868,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   return nFound;
 }
 
-void util_strupr(char* s) {
+auto util_strupr(char* s) -> void {
   while (*s) {
     if ((*s >= 'a') && (*s <= 'z')) {
       *s = *s + 'A' - 'a';
@@ -940,7 +940,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   return nFound;
 }
 
-void DisplayAmbigiousCommands(int nFound) {
+auto DisplayAmbigiousCommands(int nFound) -> void {
   char sText[CONSOLE_WIDTH * 2];
   ConsolePrintFormat(sText, "Ambiguous %s%d%s Commands:", CHC_NUM_DEC,
                      static_cast<int>(g_potential_commands.size()),

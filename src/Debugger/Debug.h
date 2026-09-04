@@ -34,14 +34,14 @@ extern const std::string g_file_name_profile;
 extern int g_profile_line_count;
 extern char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
 
-void ProfileReset();
-bool ProfileSave();
-void ProfileFormat(bool bSeperateColumns, int eFormatMode);
-char* ProfileLinePeek(int iLine);
-char* ProfileLinePush();
-void ProfileLineReset();
+auto ProfileReset() -> void;
+auto ProfileSave() -> bool;
+auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void;
+auto ProfileLinePeek(int iLine) -> char*;
+auto ProfileLinePush() -> char*;
+auto ProfileLineReset() -> void;
 
-void DisasmCalcTopBotAddress();
+auto DisasmCalcTopBotAddress() -> void;
 
 // Window
 extern int g_console_display_lines;
@@ -50,10 +50,10 @@ extern int g_console_display_width;
 extern int g_disasm_win_height;
 extern int g_disasm_cur_line;
 
-void WindowUpdateDisasmSize();
-void WindowUpdateConsoleDisplayedSize();
-void WindowUpdateSizes();
-int WindowGetHeight(int iWindow);
+auto WindowUpdateDisasmSize() -> void;
+auto WindowUpdateConsoleDisplayedSize() -> void;
+auto WindowUpdateSizes() -> void;
+auto WindowGetHeight(int iWindow) -> int;
 
 char FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_);
 
@@ -98,7 +98,7 @@ extern const int NUM_COMMANDS_WITH_ALIASES;
 
 class commands_functor_compare {
  public:
-  bool operator()(const Command_t& rLHS, const Command_t& rRHS) const {
+  auto operator()(const Command_t& rLHS, const Command_t& rRHS) const -> bool {
     // return true if lhs<rhs
     return (strcmp(rLHS.name, rRHS.name) <= 0);
   }
@@ -168,32 +168,34 @@ extern ZeroPagePointers_t
 // Prototypes
 
 // Bookmarks
-bool Bookmark_Find(const uint16_t address);
+auto Bookmark_Find(const uint16_t address) -> bool;
 
 // Breakpoints
-bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
-                       bool& bBreakpointEnable_);
+auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
+                       bool& bBreakpointEnable_) -> bool;
 
 // Color
-uint32_t DebuggerGetColor(int iColor);
+auto DebuggerGetColor(int iColor) -> uint32_t;
 
 // Source Level Debugging
-int FindSourceLine(uint16_t address);
+auto FindSourceLine(uint16_t address) -> int;
 
-const char* FormatAddress(uint16_t address, int nBytes);
+auto FormatAddress(uint16_t address, int nBytes) -> const char*;
 
 // Symbol Table / Memory
-bool FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_ = nullptr,
-                           int* iTable_ = nullptr);
+auto FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_ = nullptr,
+                           int* iTable_ = nullptr) -> bool;
 
-uint16_t GetAddressFromSymbol(
-    const char* symbol);  // HACK: returns 0 if symbol not found
-void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
-                  uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol);
+auto GetAddressFromSymbol(const char* symbol)
+    -> uint16_t;  // HACK: returns 0 if symbol not found
+auto SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
+                  uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol)
+    -> void;
 
-const char* FindSymbolFromAddress(uint16_t nAdress, int* iTable_ = nullptr);
+auto FindSymbolFromAddress(uint16_t nAdress, int* iTable_ = nullptr) -> const
+    char*;
 
-const char* GetSymbol(uint16_t address, int nBytes);
+auto GetSymbol(uint16_t address, int nBytes) -> const char*;
 
 // DebugVideoMode _____________________________________________________________
 
@@ -240,7 +242,7 @@ class DebugVideoMode  // NB. Implemented as a singleton
 
 auto DebuggerProcessCommand(bool echo_console_input) -> Update_t;
 
-void UpdateDisplay(Update_t bUpdate);
+auto UpdateDisplay(Update_t bUpdate) -> void;
 
 // Prototypes
 extern const int DEBUGGER_VERSION;
@@ -250,52 +252,52 @@ enum {
   DEBUG_TOGGLE_KEY = LINAPPLE_KEY_F1 + 6
 };
 
-Update_t CmdGoNormalSpeed(int nArgs);
-Update_t CmdGoFullSpeed(int nArgs);
-Update_t CmdKey(int nArgs);
-Update_t CmdSync(int nArgs);
-Update_t CmdStackPush(int nArgs);
-Update_t CmdStackPop(int nArgs);
-Update_t CmdStackPopPseudo(int nArgs);
-Update_t CmdVideoScannerInfo(int nArgs);
-Update_t CmdCyclesInfo(int nArgs);
-Update_t CmdFlagClear(int nArgs);
-Update_t CmdFlagSet(int nArgs);
-Update_t CmdFlag(int nArgs);
+auto CmdGoNormalSpeed(int nArgs) -> Update_t;
+auto CmdGoFullSpeed(int nArgs) -> Update_t;
+auto CmdKey(int nArgs) -> Update_t;
+auto CmdSync(int nArgs) -> Update_t;
+auto CmdStackPush(int nArgs) -> Update_t;
+auto CmdStackPop(int nArgs) -> Update_t;
+auto CmdStackPopPseudo(int nArgs) -> Update_t;
+auto CmdVideoScannerInfo(int nArgs) -> Update_t;
+auto CmdCyclesInfo(int nArgs) -> Update_t;
+auto CmdFlagClear(int nArgs) -> Update_t;
+auto CmdFlagSet(int nArgs) -> Update_t;
+auto CmdFlag(int nArgs) -> Update_t;
 
-Update_t CmdUnassemble(int nArgs);
-Update_t CmdDisk(int nArgs);
-Update_t CmdSource(int nArgs);
-Update_t CmdWatch(int nArgs);
-Update_t CmdWatchAdd(int nArgs);
-Update_t CmdWatchClear(int nArgs);
-Update_t CmdWatchDisable(int nArgs);
-Update_t CmdWatchEnable(int nArgs);
-Update_t CmdWatchList(int nArgs);
-Update_t CmdWatchLoad(int nArgs);
-Update_t CmdWatchSave(int nArgs);
+auto CmdUnassemble(int nArgs) -> Update_t;
+auto CmdDisk(int nArgs) -> Update_t;
+auto CmdSource(int nArgs) -> Update_t;
+auto CmdWatch(int nArgs) -> Update_t;
+auto CmdWatchAdd(int nArgs) -> Update_t;
+auto CmdWatchClear(int nArgs) -> Update_t;
+auto CmdWatchDisable(int nArgs) -> Update_t;
+auto CmdWatchEnable(int nArgs) -> Update_t;
+auto CmdWatchList(int nArgs) -> Update_t;
+auto CmdWatchLoad(int nArgs) -> Update_t;
+auto CmdWatchSave(int nArgs) -> Update_t;
 
-void debug_begin();
+auto debug_begin() -> void;
 
-bool IsDebugBreakOnInvalid(int iOpcodeType);
-void SetDebugBreakOnInvalid(int iOpcodeType, int nValue);
-int CheckBreakpointsIO();
-int CheckBreakpointsReg();
-void ClearTempBreakpoints();
-bool GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
-                       bool& bBreakpointEnable_);
+auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
+auto SetDebugBreakOnInvalid(int iOpcodeType, int nValue) -> void;
+auto CheckBreakpointsIO() -> int;
+auto CheckBreakpointsReg() -> int;
+auto ClearTempBreakpoints() -> void;
+auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
+                       bool& bBreakpointEnable_) -> bool;
 
-void DebuggerRunScript(const char* sFileName);
+auto DebuggerRunScript(const char* sFileName) -> void;
 
-void DebugContinueStepping(const bool bCallerWillUpdateDisplay = false);
+auto DebugContinueStepping(const bool bCallerWillUpdateDisplay = false) -> void;
 
-void debug_destroy();
+auto debug_destroy() -> void;
 
-void debug_display(bool bInitDisasm = false);
+auto debug_display(bool bInitDisasm = false) -> void;
 
-void debug_end();
+auto debug_end() -> void;
 
-void debug_initialize();
+auto debug_initialize() -> void;
 
 // Cursor/Input
 extern bool g_input_cursor_visible;
@@ -305,17 +307,17 @@ extern bool g_console_input_quoted;
 extern int g_console_input_skip;
 extern bool g_ignore_next_key;
 
-void DebuggerUpdate();
-void DebuggerCursorUpdate();
-void DebuggerCursorNext();
-void debugger_process_key(int keycode);
-void debugger_input_console_char(char ch);
-void debugger_mouse_click(int x, int y);
-void ToggleFullScreenConsole();
+auto DebuggerUpdate() -> void;
+auto DebuggerCursorUpdate() -> void;
+auto DebuggerCursorNext() -> void;
+auto debugger_process_key(int keycode) -> void;
+auto debugger_input_console_char(char ch) -> void;
+auto debugger_mouse_click(int x, int y) -> void;
+auto ToggleFullScreenConsole() -> void;
 
-void VerifyDebuggerCommandTable();
+auto VerifyDebuggerCommandTable() -> void;
 
-bool is_debug_stepping_at_full_speed(void);
+auto is_debug_stepping_at_full_speed(void) -> bool;
 
-bool debug_get_video_mode(uint32_t* pVideoMode);
-bool can_draw_debugger(void);
+auto debug_get_video_mode(uint32_t* pVideoMode) -> bool;
+auto can_draw_debugger(void) -> bool;

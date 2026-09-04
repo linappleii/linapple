@@ -18,7 +18,7 @@ extern uint32_t g_console_brush_bg;
 
 // Functions moved from Debugger_Display.cpp
 
-void DrawSubWindow_Console(Update_t bUpdate) {
+auto DrawSubWindow_Console(Update_t bUpdate) -> void {
   if (!can_draw_debugger()) {
     return;
   }
@@ -45,9 +45,9 @@ void DrawSubWindow_Console(Update_t bUpdate) {
   }
 }
 
-void DrawWindow_Console(Update_t bUpdate) { (void)bUpdate; }
+auto DrawWindow_Console(Update_t bUpdate) -> void { (void)bUpdate; }
 
-void DrawWindowBackground_Main(int iWindow) {
+auto DrawWindowBackground_Main(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_DISASM_1));
 
@@ -62,7 +62,7 @@ void DrawWindowBackground_Main(int iWindow) {
 #endif
 }
 
-void DrawWindowBackground_Info(int iWindow) {
+auto DrawWindowBackground_Info(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
 

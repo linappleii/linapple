@@ -261,8 +261,8 @@ extern int g_color_scheme;
 extern int g_color_index[NUM_DEBUG_COLORS];
 
 // Color
-ColorRef_t DebuggerGetColor(int iColor);
-bool DebuggerSetColor(const int iScheme, const int iColor,
-                      const ColorRef_t nColor);
-void ConfigColorsReset(void);
-void CmdColorGet(const int iScheme, const int iColor);
+auto DebuggerGetColor(int iColor) -> ColorRef_t;
+auto DebuggerSetColor(const int iScheme, const int iColor,
+                      const ColorRef_t nColor) -> bool;
+auto ConfigColorsReset(void) -> void;
+auto CmdColorGet(const int iScheme, const int iColor) -> void;

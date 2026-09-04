@@ -789,7 +789,7 @@ Command_t g_parameters[] = {
 
 //===========================================================================
 
-void VerifyDebuggerCommandTable() {
+auto VerifyDebuggerCommandTable() -> void {
   g_num_commands_with_aliases = sizeof(g_commands) / sizeof(Command_t);
 
   for (int iCmd = 0; iCmd < NUM_COMMANDS; iCmd++) {

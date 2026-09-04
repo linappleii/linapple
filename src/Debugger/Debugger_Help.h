@@ -24,21 +24,21 @@ struct HelpEntry_t {
 
 // Prototypes _______________________________________________________________
 
-Update_t HelpLastCommand();
+auto HelpLastCommand() -> Update_t;
 
 constexpr uint32_t BYTE3_SHIFT = 24;
 constexpr uint32_t BYTE2_SHIFT = 16;
 constexpr uint32_t BYTE1_SHIFT = 8;
 constexpr uint32_t BYTE_MASK = 0xFF;
 
-inline void UnpackVersion(const uint32_t nVersion, int& nMajor_, int& nMinor_,
-                          int& nFixMajor_, int& nFixMinor_) {
+inline auto UnpackVersion(const uint32_t nVersion, int& nMajor_, int& nMinor_,
+                          int& nFixMajor_, int& nFixMinor_) -> void {
   nMajor_ = static_cast<int>((nVersion >> BYTE3_SHIFT) & BYTE_MASK);
   nMinor_ = static_cast<int>((nVersion >> BYTE2_SHIFT) & BYTE_MASK);
   nFixMajor_ = static_cast<int>((nVersion >> BYTE1_SHIFT) & BYTE_MASK);
   nFixMinor_ = static_cast<int>(nVersion & BYTE_MASK);
 }
 
-bool TestStringCat(char* pDst, const char* src_ptr, const int nDstSize);
-bool TryStringCat(char* pDst, const char* src_ptr, const int nDstSize);
-int StringCat(char* pDst, const char* src_ptr, const int nDstSize);
+auto TestStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool;
+auto TryStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool;
+auto StringCat(char* pDst, const char* src_ptr, const int nDstSize) -> int;
