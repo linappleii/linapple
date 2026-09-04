@@ -20,6 +20,7 @@ constexpr const char* REGVALUE_HDD_IMAGE1 = "Harddisk Image 1";
 constexpr const char* REGVALUE_HDD_IMAGE2 = "Harddisk Image 2";
 constexpr const char* REGVALUE_DISK_IMAGE1 = "Disk Image 1";
 constexpr const char* REGVALUE_DISK_IMAGE2 = "Disk Image 2";
+constexpr const char* REGVALUE_SLOT6_AUTOLOAD = "Slot 6 Autoload";
 constexpr const char* REGVALUE_CLOCK_ENABLED = "Clock Enable";
 
 constexpr const char* REGVALUE_JOY_TYPE1 = "Joystick 0";

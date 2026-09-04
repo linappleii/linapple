@@ -13,6 +13,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "core/Asset.h"
 #include "core/BasicLiveSync.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
@@ -88,6 +89,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   if (config->rom_path.at(0) != '\0') {
     mem_set_custom_rom_path(config->rom_path.data());
+  } else {
+    mem_set_custom_rom_path(nullptr);
   }
 
   // 3. Init Core
@@ -216,6 +219,48 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
                                            : basic_line_mode_explicit);
   }
 
+  // Check Slot 6 Autoload and Master.dsk fallback
+  uint32_t autoload = 0;
+  bool has_autoload =
+      config_load_int("Configuration", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
+      config_load_int("Preferences", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
+      config_load_int("Slots", REGVALUE_SLOT6_AUTOLOAD, &autoload);
+
+  std::string disk1;
+  bool has_disk1 =
+      (config->disk_path.at(0).at(0) != '\0') ||
+      config_load_string("Slots", REGVALUE_DISK_IMAGE1, &disk1) ||
+      config_load_string("Configuration", REGVALUE_DISK_IMAGE1, &disk1) ||
+      config_load_string("Preferences", REGVALUE_DISK_IMAGE1, &disk1);
+
+  if (config->disk_path.at(0).at(0) == '\0') {
+    if (!has_autoload || autoload == 0 || !has_disk1 || disk1.empty()) {
+      asset_insert_master_disk();
+    } else if (has_autoload && autoload != 0 && has_disk1 && !disk1.empty()) {
+      DiskInsertCmd_t cmd{};
+      cmd.drive = disk_drive_0;
+      util_safe_strcpy(cmd.path, disk1.c_str(), disk_insert_path_max);
+      cmd.write_protected = 0;
+      cmd.create_if_necessary = 0;
+      peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+
+      std::string disk2;
+      if (config_load_string("Slots", REGVALUE_DISK_IMAGE2, &disk2) ||
+          config_load_string("Configuration", REGVALUE_DISK_IMAGE2, &disk2) ||
+          config_load_string("Preferences", REGVALUE_DISK_IMAGE2, &disk2)) {
+        if (!disk2.empty()) {
+          DiskInsertCmd_t cmd2{};
+          cmd2.drive = disk_drive_1;
+          util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
+          cmd2.write_protected = 0;
+          cmd2.create_if_necessary = 0;
+          peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2,
+                             sizeof(cmd2));
+        }
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -334,6 +379,7 @@ void app_controller_load_initial_media(const AppConfig_t* config) {
 }
 
 void app_controller_shutdown() {
+  mem_set_custom_rom_path(nullptr);
   if (!s_initialized) return;
 
   basic_sync_shutdown();

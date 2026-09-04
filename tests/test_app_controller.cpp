@@ -13,6 +13,7 @@
 
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
@@ -129,4 +130,58 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
   CHECK(result != 0);
 
   app_controller_shutdown();
+}
+
+TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
+  AppConfig_t config = {};
+  app_config_default(&config);
+  app_env_resolve_paths(&config);
+
+  int result = app_controller_initialize(&config);
+  CHECK(result == 0);
+
+  // Check if Master.dsk was automatically inserted into drive 0
+  DiskStatus_t status = {};
+  size_t status_size = sizeof(status);
+  PeripheralStatus_t res = peripheral_query(
+      disk_default_slot, disk_cmd_get_status, &status, &status_size);
+
+  CHECK(res == peripheral_ok);
+  CHECK(status.drive0_loaded == 1);
+
+  std::string disk1_path =
+      Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  CHECK(disk1_path.find("Master.dsk") != std::string::npos);
+
+  app_controller_shutdown();
+}
+
+TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
+  const char* conf_path = "/tmp/test_autoload_linapple.conf";
+  std::string master_path = Path::find_data_file("Master.dsk");
+  {
+    std::ofstream out(conf_path);
+    out << "[Configuration]\n";
+    out << "Slot 6 Autoload = 1\n";
+    out << "Disk Image 1 = " << master_path << "\n";
+  }
+
+  AppConfig_t config = {};
+  app_config_default(&config);
+  util_safe_strcpy(config.config_path.data(), conf_path, path_max_len);
+
+  app_env_resolve_paths(&config);
+  int result = app_controller_initialize(&config);
+  CHECK(result == 0);
+
+  DiskStatus_t status = {};
+  size_t status_size = sizeof(status);
+  PeripheralStatus_t res = peripheral_query(
+      disk_default_slot, disk_cmd_get_status, &status, &status_size);
+
+  CHECK(res == peripheral_ok);
+  CHECK(status.drive0_loaded == 1);
+
+  app_controller_shutdown();
+  unlink(conf_path);
 }

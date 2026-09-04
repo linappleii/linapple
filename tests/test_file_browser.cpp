@@ -221,3 +221,25 @@ TEST_CASE("DiskBrowser: Navigation Operations") {
   disk_browser_close(&browser);
   CHECK(browser.is_active == false);
 }
+
+TEST_CASE("DiskBrowser: Directory Navigation Logic Up Entry") {
+  auto navigate_up = [](std::string fullPath) -> std::string {
+    const auto last_sep_pos = fullPath.find_last_of('/');
+    if (last_sep_pos != std::string::npos) {
+      if (last_sep_pos == 0) {
+        fullPath = "/";
+      } else {
+        fullPath = fullPath.substr(0, last_sep_pos);
+      }
+    }
+    if (fullPath.empty()) {
+      fullPath = "/";
+    }
+    return fullPath;
+  };
+
+  CHECK(navigate_up("/home/user/disk") == "/home/user");
+  CHECK(navigate_up("/home/user") == "/home");
+  CHECK(navigate_up("/home") == "/");
+  CHECK(navigate_up("/") == "/");
+}

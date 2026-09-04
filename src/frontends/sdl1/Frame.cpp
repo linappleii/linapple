@@ -559,8 +559,12 @@ auto psp_save_state_select_image(bool saveit) -> bool {
     if (isDirectory) {
       if (filename == "..") {
         const auto last_sep_pos = fullPath.find_last_of(file_separator);
-        if (last_sep_pos == std::string::npos) {
-          fullPath = fullPath.substr(0, last_sep_pos);
+        if (last_sep_pos != std::string::npos) {
+          if (last_sep_pos == 0) {
+            fullPath = "/";
+          } else {
+            fullPath = fullPath.substr(0, last_sep_pos);
+          }
         }
         if (fullPath.empty()) {
           fullPath = "/";

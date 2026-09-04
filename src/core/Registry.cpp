@@ -97,6 +97,7 @@ auto Configuration_t::load_defaults() -> void {
   set_int("Configuration", "Save State On Exit", 0);
   set_int("Configuration", "Fullscreen", 0);
   set_int("Configuration", "Boot at Startup", 0);
+  set_int("Configuration", REGVALUE_SLOT6_AUTOLOAD, 0);
   set_int("Configuration", "Show Leds", 1);
   set_string("Configuration", "Screen factor", "1.0");
   set_string("Configuration", "Basic Live Sync File", "");
