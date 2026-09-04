@@ -18,6 +18,7 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -91,12 +92,29 @@ auto disk_loader_shutdown() -> void { g_drivers.clear(); }
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   if (driver == nullptr) {
+    Logger::error("DiskLoader: Attempted to register null driver");
+    return;
+  }
+  if (driver->probe == nullptr || driver->open == nullptr ||
+      driver->close == nullptr) {
+    Logger::error(
+        "DiskLoader: Driver '%s' missing required functions (probe/open/close)",
+        driver->name != nullptr ? driver->name : "<unnamed>");
     return;
   }
   const bool has_write_cap =
       (driver->capabilities & disk_driver_cap_write) != 0;
   const bool has_write_fn = driver->write_track != nullptr;
   if (has_write_cap != has_write_fn) {
+    Logger::error("DiskLoader: Driver '%s' write capability mismatch",
+                  driver->name != nullptr ? driver->name : "<unnamed>");
+    return;
+  }
+  const bool has_flux_cap = (driver->capabilities & disk_driver_cap_flux) != 0;
+  const bool has_flux_fn = driver->read_flux_bit != nullptr;
+  if (has_flux_cap != has_flux_fn) {
+    Logger::error("DiskLoader: Driver '%s' flux capability mismatch",
+                  driver->name != nullptr ? driver->name : "<unnamed>");
     return;
   }
   g_drivers.push_back(driver);

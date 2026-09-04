@@ -295,9 +295,7 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
   const uint16_t block_count = read_u16_le(&trk[2]);
   const uint32_t bit_count = read_u32_le(&trk[4]);
 
-  if (bit_count == 0 || bit_count > static_cast<uint32_t>(block_count) *
-                                        woz::data_block_size *
-                                        woz::bits_per_byte) {
+  if (block_count == 0 || block_count > 64) {
     if (out_nibbles != nullptr) {
       *out_nibbles = 0;
     }
@@ -306,11 +304,33 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
 
   const uint32_t byte_count =
       static_cast<uint32_t>(block_count) * woz::data_block_size;
+  if (byte_count > 65536) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  if (bit_count == 0 || bit_count > byte_count * woz::bits_per_byte) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
+  const int64_t total_file_size = Path::file_size(wi_ptr->file.get());
+  const uint64_t file_offset =
+      static_cast<uint64_t>(starting_block) * woz::data_block_size;
+  if (file_offset + byte_count > static_cast<uint64_t>(total_file_size)) {
+    if (out_nibbles != nullptr) {
+      *out_nibbles = 0;
+    }
+    return;
+  }
+
   std::vector<uint8_t> buffer(byte_count);
-  if (fseek(wi_ptr->file.get(),
-            static_cast<long>(static_cast<uint32_t>(starting_block) *
-                              woz::data_block_size),
-            SEEK_SET) != 0) {
+  if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
+      0) {
     if (out_nibbles != nullptr) {
       *out_nibbles = 0;
     }

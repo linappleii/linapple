@@ -78,7 +78,9 @@ auto two_img_open(const char* path, uint32_t file_offset, bool* out_os_readonly,
   }
 
   if (data_offset < two_img_header_size ||
-      static_cast<long>(file_offset + data_offset) >= total_file_size) {
+      static_cast<int64_t>(data_offset) > total_file_size ||
+      static_cast<int64_t>(file_offset) + static_cast<int64_t>(data_offset) >=
+          total_file_size) {
     return harddisk_err_invalid_format;
   }
 

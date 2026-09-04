@@ -860,7 +860,8 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskInsertCmd_t*>(data);
-  if (!is_drive_valid(c->drive)) {
+  if (!is_drive_valid(c->drive) ||
+      memchr(c->path, '\0', sizeof(c->path)) == nullptr) {
     return peripheral_error;
   }
   insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0,

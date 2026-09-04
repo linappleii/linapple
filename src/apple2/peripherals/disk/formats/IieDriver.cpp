@@ -147,13 +147,24 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
     return disk_err_io;
   }
 
+  if (instance_ptr->header[iie::variant_offset] > iie::variant_max_total) {
+    return disk_err_unsupported_format;
+  }
+
   if (instance_ptr->header[iie::variant_offset] <= iie::variant_max_legacy) {
+    if (iie::sector_map_offset + sectors_per_track > iie::header_size) {
+      return disk_err_corrupt;
+    }
     iie_convert_sector_order(&instance_ptr->header[iie::sector_map_offset],
                              instance_ptr->sector_order.data());
     for (int t = 0; t < iie::tracks; ++t) {
-      instance_ptr->track_offsets.at(static_cast<size_t>(t)) =
+      const uint32_t offset =
           static_cast<uint32_t>(t * dos::track_size + iie::track_data_offset);
-      instance_ptr->track_nibble_counts.at(static_cast<size_t>(t)) =
+      if (static_cast<int64_t>(offset) + dos::track_size > total_file_size) {
+        return disk_err_corrupt;
+      }
+      instance_ptr->track_offsets[static_cast<size_t>(t)] = offset;
+      instance_ptr->track_nibble_counts[static_cast<size_t>(t)] =
           static_cast<uint16_t>(nibbles_per_track);
     }
   } else {
@@ -164,12 +175,15 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
       if (map_offset + sizeof(uint16_t) > iie::header_size) {
         return disk_err_corrupt;
       }
-      uint16_t nib_count = read_u16_le(&instance_ptr->header.at(map_offset));
+      uint16_t nib_count = read_u16_le(&instance_ptr->header[map_offset]);
       if (nib_count > nibbles_per_track) {
         nib_count = static_cast<uint16_t>(nibbles_per_track);
       }
-      instance_ptr->track_offsets.at(static_cast<size_t>(t)) = running_offset;
-      instance_ptr->track_nibble_counts.at(static_cast<size_t>(t)) = nib_count;
+      if (static_cast<int64_t>(running_offset) + nib_count > total_file_size) {
+        return disk_err_corrupt;
+      }
+      instance_ptr->track_offsets[static_cast<size_t>(t)] = running_offset;
+      instance_ptr->track_nibble_counts[static_cast<size_t>(t)] = nib_count;
       running_offset += nib_count;
     }
   }
@@ -211,9 +225,9 @@ auto iie_read_track(void* instance_handle, int track, int phase,
     return;
   }
 
-  const uint32_t offset = ii_ptr->track_offsets.at(static_cast<size_t>(track));
+  const uint32_t offset = ii_ptr->track_offsets[static_cast<size_t>(track)];
   const uint16_t nib_count =
-      ii_ptr->track_nibble_counts.at(static_cast<size_t>(track));
+      ii_ptr->track_nibble_counts[static_cast<size_t>(track)];
 
   if (fseek(ii_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     if (out_nibbles != nullptr) {

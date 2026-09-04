@@ -494,7 +494,8 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
         return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskInsertCmd_t*>(payload);
-      if (!is_drive_valid(cmd_ptr->drive)) {
+      if (!is_drive_valid(cmd_ptr->drive) ||
+          memchr(cmd_ptr->path, '\0', sizeof(cmd_ptr->path)) == nullptr) {
         return peripheral_error;
       }
       insert_harddisk_into_drive(peripheral_ptr, cmd_ptr->drive, cmd_ptr->path,

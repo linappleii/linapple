@@ -260,6 +260,19 @@ TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
   descriptor->shutdown(instance);
 }
 
+TEST_CASE("Mockingboard Peripheral: [MB-19] Independent instance allocation") {
+  auto* descriptor = mockingboard_get_descriptor();
+  void* instance1 = descriptor->init(4, &g_mock_host);
+  REQUIRE(instance1 != nullptr);
+
+  void* instance2 = descriptor->init(5, &g_mock_host);
+  REQUIRE(instance2 != nullptr);
+  CHECK(instance1 != instance2);
+
+  descriptor->shutdown(instance1);
+  descriptor->shutdown(instance2);
+}
+
 // NOLINTEND(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,

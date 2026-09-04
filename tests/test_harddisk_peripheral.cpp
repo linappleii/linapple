@@ -144,6 +144,47 @@ TEST_CASE(
   };
   harddisk_loader_register(&bad_hd2);
 
+  // Harddisk driver: missing probe/open/close must be rejected
+  HarddiskFormatDriver_t bad_hd3{};
+  bad_hd3.capabilities = 0;
+  bad_hd3.probe = nullptr;
+  bad_hd3.open = nullptr;
+  bad_hd3.close = nullptr;
+  harddisk_loader_register(&bad_hd3);
+
   // Null pointer registrations are safely ignored
   harddisk_loader_register(nullptr);
+}
+
+static HostInterface_t g_test_hd_host = [] {
+  HostInterface_t h{};
+  h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
+                    PeripheralIOHandler, PeripheralIOHandler) {};
+  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterDirectIO = [](void*, uint16_t, PeripheralIOHandler,
+                          PeripheralIOHandler) {};
+  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
+  h.SetConfig = [](const char*, const char*, const char*) {};
+  h.NotifyStatusChanged = [](int) {};
+  return h;
+}();
+
+TEST_CASE(
+    "Harddisk Peripheral: [HARDDISK-11] Insert Command NUL Terminator Check") {
+  auto* descriptor = harddisk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(7, &g_test_hd_host);
+  REQUIRE(instance != nullptr);
+
+  HarddiskInsertCmd_t cmd;
+  memset(&cmd, 'B', sizeof(cmd));  // No NUL terminator
+  cmd.drive = 0;
+  cmd.write_protected = 0;
+  cmd.create_if_necessary = 0;
+
+  PeripheralStatus_t status =
+      descriptor->command(instance, harddisk_cmd_insert, &cmd, sizeof(cmd));
+  CHECK(status == peripheral_error);
+
+  descriptor->shutdown(instance);
 }

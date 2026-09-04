@@ -83,7 +83,6 @@ constexpr int mb_default_slot = 4;
 constexpr int mb_type_str_max = 16;
 constexpr uint8_t mb_io_addr_hi_mask = 0xFF;
 constexpr uint8_t via_reg_mask = 0x0F;
-constexpr size_t mb_max_slots = 8;
 
 struct Sy6522Ay8910_t {
   Sy6522_t sy6522 = {};
@@ -144,9 +143,6 @@ struct MockingboardSaveState_t {
   uint8_t phasor_native;
 };
 }  // namespace
-
-static std::array<MockingboardPeripheral_t*, mb_max_slots> active_mb_instances =
-    {nullptr};
 
 static auto start_timer(MockingboardPeripheral_t* mp, int chip_idx) -> void {
   if (chip_idx != sy6522_device_a) {
@@ -643,34 +639,33 @@ static auto phasor_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
 }
 
 static auto mb_abi_init(int slot, HostInterface_t* host) -> void* {
-  const auto s_idx = static_cast<size_t>(slot);
-  auto* mp = active_mb_instances.at(s_idx);
+  if (host == nullptr) {
+    return nullptr;
+  }
+  auto new_mp =
+      std::unique_ptr<MockingboardPeripheral_t>(new MockingboardPeripheral_t{});
+  new_mp->host = host;
+  new_mp->slot = slot;
 
-  if (!mp) {
-    auto new_mp = std::unique_ptr<MockingboardPeripheral_t>(
-        new MockingboardPeripheral_t{});
-    mp = new_mp.release();
-    active_mb_instances.at(s_idx) = mp;
-
-    char type_str[mb_type_str_max] = {0};
-    if (host->GetConfig("Mockingboard", "Type", type_str, sizeof(type_str)) &&
-        strcmp(type_str, "Phasor") == 0) {
-      mp->type = SoundCardType_t::phasor;
-    }
+  char type_str[mb_type_str_max] = {0};
+  if (host->GetConfig != nullptr &&
+      host->GetConfig("Mockingboard", "Type", type_str, sizeof(type_str)) &&
+      strcmp(type_str, "Phasor") == 0) {
+    new_mp->type = SoundCardType_t::phasor;
   }
 
-  mp->host = host;
-  mp->slot = slot;
-
-  auto* handler = (mp->type == SoundCardType_t::phasor) ? phasor_io : nullptr;
+  auto* handler =
+      (new_mp->type == SoundCardType_t::phasor) ? phasor_io : nullptr;
 #if ENABLE_ROM_MOCKINGBOARD
   if (host->RegisterCxROM != nullptr) {
     host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_mockingboard_d));
   }
 #endif
-  host->RegisterIO(slot, handler, handler, mb_io_read, mb_io_write);
+  if (host->RegisterIO != nullptr) {
+    host->RegisterIO(slot, handler, handler, mb_io_read, mb_io_write);
+  }
 
-  return mp;
+  return new_mp.release();
 }
 
 static auto mb_abi_reset(void* instance) -> void {
@@ -699,9 +694,7 @@ static auto mb_abi_shutdown(void* instance) -> void {
   if (!instance) {
     return;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  active_mb_instances.at(static_cast<size_t>(mp->slot)) = nullptr;
-  std::unique_ptr<MockingboardPeripheral_t> cleanup(mp);
+  delete static_cast<MockingboardPeripheral_t*>(instance);
 }
 
 static auto mb_abi_think(void* instance, uint32_t cycles) -> void {

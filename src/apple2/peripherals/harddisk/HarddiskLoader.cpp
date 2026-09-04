@@ -15,6 +15,7 @@
 
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -44,12 +45,23 @@ void harddisk_loader_shutdown(void) { g_harddisk_drivers.clear(); }
 
 auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
   if (driver_ptr == nullptr) {
+    Logger::error("HarddiskLoader: Attempted to register null driver");
+    return;
+  }
+  if (driver_ptr->probe == nullptr || driver_ptr->open == nullptr ||
+      driver_ptr->close == nullptr) {
+    Logger::error(
+        "HarddiskLoader: Driver '%s' missing required functions "
+        "(probe/open/close)",
+        driver_ptr->name != nullptr ? driver_ptr->name : "<unnamed>");
     return;
   }
   const bool has_write_cap =
       (driver_ptr->capabilities & harddisk_driver_cap_write) != 0;
   const bool has_write_fn = driver_ptr->write_block != nullptr;
   if (has_write_cap != has_write_fn) {
+    Logger::error("HarddiskLoader: Driver '%s' write capability mismatch",
+                  driver_ptr->name != nullptr ? driver_ptr->name : "<unnamed>");
     return;
   }
   g_harddisk_drivers.push_back(driver_ptr);

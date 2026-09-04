@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
+
 #include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
@@ -8,6 +9,7 @@
 #include <vector>
 
 #include "apple2/Memory.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/Peripheral.h"
@@ -236,6 +238,44 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
                                              SUPER_SERIAL_QUERY_CONFIG,
                                              &queried, &size) == peripheral_ok);
   CHECK(queried.baud_rate == SUPER_SERIAL_BAUD_9600);
+
+  super_serial_get_descriptor()->shutdown(instance);
+}
+
+TEST_CASE("SuperSerial: [SSC-13] Snapshot rx_count bounds check") {
+  g_mock_handlers.clear();
+  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  SS_IO_Comms state{};
+  state.control_byte = 0x12;
+  state.command_byte = 0x34;
+  state.recv_bytes = 999999;  // Exceeds SUPER_SERIAL_FIFO_SIZE (256)
+  memset(state.recv_buffer, 0x77, sizeof(state.recv_buffer));
+
+  PeripheralStatus_t load_status = super_serial_get_descriptor()->load_state(
+      instance, &state, sizeof(state));
+  CHECK(load_status == peripheral_ok);
+
+  bool rx_ready = false;
+  size_t query_size = sizeof(rx_ready);
+  CHECK(super_serial_get_descriptor()->query(
+            instance, SUPER_SERIAL_QUERY_RX_READY, &rx_ready, &query_size) ==
+        peripheral_ok);
+  CHECK(rx_ready == true);
+
+  // Read back all bytes; exactly SUPER_SERIAL_FIFO_SIZE (256) should be
+  // available
+  for (size_t i = 0; i < SUPER_SERIAL_FIFO_SIZE; ++i) {
+    uint8_t byte =
+        g_mock_handlers.at(ADDR_DATA).read(instance, 0, ADDR_DATA, 0, 0, 0);
+    CHECK(byte == 0x77);
+  }
+
+  // After draining 256 bytes, rx should be empty
+  uint8_t status =
+      g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
+  CHECK((status & STATUS_RX_FULL_MASK) == 0);
 
   super_serial_get_descriptor()->shutdown(instance);
 }

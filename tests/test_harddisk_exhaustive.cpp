@@ -11,6 +11,7 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
@@ -406,4 +407,24 @@ TEST_CASE("Harddisk: Safe Handling of Unbounded SmartPort Buffer I/O ($C0F8)") {
   peripheral_manager_think(0);
 
   linapple_shutdown();
+}
+
+extern "C" const HarddiskFormatDriver_t g_two_img_driver;
+
+TEST_CASE("Harddisk: [2MG-12] Offset validation and integer wrap") {
+  // Create a 2MG file with header where data_offset wraps or exceeds file size
+  std::vector<uint8_t> bad_2mg(128, 0);
+  memcpy(bad_2mg.data(), "2IMG", 4);
+  // Set data_offset (offset 24) to a value larger than total_file_size
+  uint32_t big_offset = 0xFFFFFF00;
+  memcpy(&bad_2mg[24], &big_offset, sizeof(big_offset));
+
+  TempFileGuard mock_2mg("bad_offset.2mg", bad_2mg.data(), bad_2mg.size());
+
+  bool is_readonly = false;
+  void* instance = nullptr;
+  HarddiskError_e err =
+      g_two_img_driver.open(mock_2mg.path, 0, &is_readonly, &instance);
+  CHECK(err == harddisk_err_invalid_format);
+  CHECK(instance == nullptr);
 }

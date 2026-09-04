@@ -548,3 +548,24 @@ TEST_CASE(
   g_nib_driver.close(instance);
   remove(tmp_nib);
 }
+
+TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
+  const char* tmp_iie = "test_invalid_variant.iie";
+  remove(tmp_iie);
+
+  FILE* f = fopen(tmp_iie, "wb");
+  REQUIRE(f != nullptr);
+  std::vector<uint8_t> header(88, 0);
+  memcpy(header.data(), "SIMSYSTEM_IIE", 13);
+  header[13] = 99;  // Invalid variant > variant_max_total
+  fwrite(header.data(), 1, header.size(), f);
+  fclose(f);
+
+  bool is_readonly = false;
+  void* instance = nullptr;
+  DiskError_e err = g_iie_driver.open(tmp_iie, 0, 0, &is_readonly, &instance);
+  CHECK(err == disk_err_unsupported_format);
+  CHECK(instance == nullptr);
+
+  remove(tmp_iie);
+}

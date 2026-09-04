@@ -292,7 +292,9 @@ auto super_serial_load_state(void* instance, const void* state_buffer,
 
   super_serial->control_byte = save_state_ptr->control_byte;
   super_serial->command_byte = save_state_ptr->command_byte;
-  super_serial->rx_count = save_state_ptr->recv_bytes;
+  super_serial->rx_count =
+      std::min(save_state_ptr->recv_bytes,
+               static_cast<uint32_t>(SUPER_SERIAL_FIFO_SIZE));
   std::copy_n(save_state_ptr->recv_buffer, SUPER_SERIAL_FIFO_SIZE,
               super_serial->rx_buffer.begin());
 
