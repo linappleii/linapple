@@ -6,33 +6,26 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <vector>
 
 // Low-level pixel buffer manipulation and XPM pixel layout parser.
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
   if (w <= 0 || h <= 0 || bpp <= 0) return nullptr;
-  auto* s = static_cast<VideoSurface_t*>(calloc(1, sizeof(VideoSurface_t)));
-  if (!s) return nullptr;
+  auto s = std::unique_ptr<VideoSurface_t>(new VideoSurface_t{});
   s->w = w;
   s->h = h;
   s->bpp = bpp;
   s->pitch = w * bpp;
   size_t total_bytes = static_cast<size_t>(s->pitch) * static_cast<size_t>(h);
-  s->pixels = static_cast<uint8_t*>(calloc(1, total_bytes));
-  if (!s->pixels) {
-    free(s);
-    return nullptr;
-  }
-  return s;
+  s->pixel_data.resize(total_bytes, 0);
+  s->pixels = s->pixel_data.data();
+  return s.release();
 }
 
-auto video_destroy_surface(VideoSurface_t* s) -> void {
-  if (s) {
-    free(s->pixels);
-    free(s);
-  }
-}
+auto video_destroy_surface(VideoSurface_t* s) -> void { delete s; }
 
 constexpr uint8_t HEX_ALPHA_OFFSET = 10;
 constexpr size_t COLOR_STR_SIZE = 32;

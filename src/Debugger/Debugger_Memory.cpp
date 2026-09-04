@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
@@ -1329,12 +1330,13 @@ auto CmdNTSC(int nArgs) -> Update_t {
       FilePtr_t pFile(fopen(sPaletteFilePath.c_str(), "w+b"), fclose);
       if (pFile) {
         size_t nWrote = 0;
-        uint8_t* pSwizzled = new uint8_t[g_chroma_size];
+        std::vector<uint8_t> swizzled(g_chroma_size);
 
         if (iFileType == TYPE_BMP) {
           // need to save 32-bit bpp as 24-bit bpp
           // VideoSaveScreenShot()
-          Transpose4096x4::transposeTo64x256((uint8_t*)pChromaTable, pSwizzled);
+          Transpose4096x4::transposeTo64x256((uint8_t*)pChromaTable,
+                                             swizzled.data());
 
           // Write BMP header
           WinBmpHeader_t bmp, *pBmp = &bmp;
@@ -1343,11 +1345,10 @@ auto CmdNTSC(int nArgs) -> Update_t {
         } else {
           // RAW has no header
           Swizzle32::RGBAswapBGRA(g_chroma_size, (uint8_t*)pChromaTable,
-                                  pSwizzled);
+                                  swizzled.data());
         }
 
-        nWrote = fwrite(pSwizzled, g_chroma_size, 1, pFile.get());
-        delete[] pSwizzled;
+        nWrote = fwrite(swizzled.data(), g_chroma_size, 1, pFile.get());
 
         if (nWrote == 1) {
           ConsoleFilename::update("Saved");

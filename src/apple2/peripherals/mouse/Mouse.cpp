@@ -558,7 +558,7 @@ static auto mouse_set_position_internal(MousePeripheral_t* mp, int x, int y)
 
 // --- ABI Implementation ---
 
-static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
+static auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -616,7 +616,7 @@ static auto peripheral_abi_init(int slot, HostInterface_t* host) -> void* {
   return mp.release();
 }
 
-static auto peripheral_abi_reset(void* instance) -> void {
+static auto mouse_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -625,16 +625,16 @@ static auto peripheral_abi_reset(void* instance) -> void {
   mouse_reset_internal(mp);
 }
 
-static auto peripheral_abi_shutdown(void* instance) -> void {
+static auto mouse_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
 
-  auto* mp = static_cast<MousePeripheral_t*>(instance);
-  delete mp;
+  const std::unique_ptr<MousePeripheral_t> mp(
+      static_cast<MousePeripheral_t*>(instance));
 }
 
-static auto peripheral_abi_on_vblank(void* instance, bool vblank) -> void {
+static auto mouse_abi_on_vblank(void* instance, bool vblank) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -648,8 +648,8 @@ static auto peripheral_abi_on_vblank(void* instance, bool vblank) -> void {
   }
 }
 
-static auto peripheral_abi_save_state(void* instance, void* buffer,
-                                      size_t* size) -> PeripheralStatus_t {
+static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -724,8 +724,8 @@ static auto peripheral_abi_save_state(void* instance, void* buffer,
   return peripheral_ok;
 }
 
-static auto peripheral_abi_load_state(void* instance, const void* buffer,
-                                      size_t size) -> PeripheralStatus_t {
+static auto mouse_abi_load_state(void* instance, const void* buffer,
+                                 size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -802,9 +802,8 @@ static auto peripheral_abi_load_state(void* instance, const void* buffer,
   return peripheral_ok;
 }
 
-static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
-                                   const void* data, size_t size)
-    -> PeripheralStatus_t {
+static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
+                              size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -844,8 +843,8 @@ static auto peripheral_abi_command(void* instance, uint32_t cmd_id,
   return peripheral_error;
 }
 
-static auto peripheral_abi_query(void* instance, uint32_t query_id, void* out,
-                                 size_t* out_size) -> PeripheralStatus_t {
+static auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
+                            size_t* out_size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -886,15 +885,15 @@ static Peripheral_t g_mouse_peripheral = {
     .version = "3.1.0",
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
     .default_slot = physical::default_slot,
-    .init = peripheral_abi_init,
-    .reset = peripheral_abi_reset,
-    .shutdown = peripheral_abi_shutdown,
+    .init = mouse_abi_init,
+    .reset = mouse_abi_reset,
+    .shutdown = mouse_abi_shutdown,
     .think = nullptr,
-    .on_vblank = peripheral_abi_on_vblank,
-    .save_state = peripheral_abi_save_state,
-    .load_state = peripheral_abi_load_state,
-    .command = peripheral_abi_command,
-    .query = peripheral_abi_query};
+    .on_vblank = mouse_abi_on_vblank,
+    .save_state = mouse_abi_save_state,
+    .load_state = mouse_abi_load_state,
+    .command = mouse_abi_command,
+    .query = mouse_abi_query};
 
 extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
   return &g_mouse_peripheral;
