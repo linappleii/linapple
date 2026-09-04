@@ -273,8 +273,8 @@ auto CmdSymbolsClear(int nArgs) -> Update_t {
 
 // Format the summary of the specified symbol table
 //===========================================================================
-auto CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */)
-    -> void {
+auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
+                          int nDisplaySize = 0) -> void {
   // Common case is to use/calc the table size
   bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
   int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
@@ -283,12 +283,9 @@ auto CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */)
   // // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
   // CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
   // CHC_USAGE instead of CHC_STRING
-  snprintf(text, CONSOLE_WIDTH * 2, "%s%s%s:%s%d "  // %s"
-           ,
-           CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
-           bActive ? CHC_NUM_DEC : CHC_WARNING, nSymbols
-           //		, CHC_DEFAULT
-  );
+  snprintf(text, text_size, "%s%s%s:%s%d ", CHC_USAGE,
+           g_symbol_table_names[iTable], CHC_ARG_SEP,
+           bActive ? CHC_NUM_DEC : CHC_WARNING, nSymbols);
 }
 
 //===========================================================================
@@ -320,7 +317,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
   int iTable = 0;
   for (; bTable <= bDisplaySymbolTables; iTable++, bTable <<= 1) {
     if (bDisplaySymbolTables & bTable) {
-      CmdSymbolsInfoHeader(iTable, sTemp);  // 15 chars per table
+      CmdSymbolsInfoHeader(iTable, sTemp, sizeof(sTemp));  // 15 chars per table
 
       // 2.8.0.4 BUGFIX: Check for buffer overflow and wrap text
       int nLen = ConsoleColor_StringLength(sTemp);
@@ -876,7 +873,7 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         g_display_symbol_tables |= bSymbolTables;
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
-          CmdSymbolsInfoHeader(iTable, sText);
+          CmdSymbolsInfoHeader(iTable, sText, sizeof(sText));
           console_print(sText);
         }
         return ConsoleUpdate() | UPDATE_DISASM;
@@ -884,7 +881,7 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         g_display_symbol_tables &= ~bSymbolTables;
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
-          CmdSymbolsInfoHeader(iTable, sText);
+          CmdSymbolsInfoHeader(iTable, sText, sizeof(sText));
           console_print(sText);
         }
         return ConsoleUpdate() | UPDATE_DISASM;
