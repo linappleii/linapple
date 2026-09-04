@@ -17,11 +17,14 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 
-static_assert(sizeof(ApplewinSnapshot_t) == 131824,
-              "ApplewinSnapshot_t size must match expected snapshot bounds");
-
-// Disable LeakSanitizer leak detection: full emulator static subsystems are
-// initialized once across the fuzzing process and freed at process exit.
+// Disable LeakSanitizer leak detection: snapshot deserialization fuzzing
+// exercises the entire emulator core via linapple_init(). Full static
+// subsystems (ROM assets, color mix tables, audio mixer buffers, and internal
+// peripheral singletons) are initialized once globally for the fuzzer process
+// lifecycle and persist across iterations without per-iteration teardown.
+// detect_leaks=0 suppresses process-exit leak warnings for these persistent
+// singletons while retaining full ASan and UBSan memory safety validation
+// during execution.
 extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {

@@ -36,10 +36,22 @@ constexpr int tracks = 35;
 constexpr int variant_offset = 13;
 constexpr int sector_map_offset = 14;
 constexpr int nibble_map_offset = 14;
+constexpr size_t header_map_stride = 2;
 
 constexpr uint8_t variant_max_legacy = 2;
 constexpr uint8_t variant_max_total = 3;
 constexpr uint8_t sector_not_found = 0xFF;
+
+// Compile-time guarantee: The SimSystem //e header map offsets for all tracks
+// must strictly reside within the fixed header size, independent of runtime
+// disk geometry or stepper phase constants.
+static_assert(nibble_map_offset + ((tracks - 1) * header_map_stride) +
+                      sizeof(uint16_t) <=
+                  static_cast<size_t>(header_size),
+              "IIE header track nibble map exceeds allocated header size");
+static_assert(sector_map_offset + sectors_per_track <=
+                  static_cast<size_t>(header_size),
+              "IIE header sector map exceeds allocated header size");
 }  // namespace iie
 
 namespace dos {
@@ -171,8 +183,10 @@ auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
     uint32_t running_offset = iie::header_size;
     for (int t = 0; t < iie::tracks; ++t) {
       const size_t map_offset =
-          static_cast<size_t>(t * phases_per_track) + iie::nibble_map_offset;
-      if (map_offset + sizeof(uint16_t) > iie::header_size) {
+          (static_cast<size_t>(t) * iie::header_map_stride) +
+          static_cast<size_t>(iie::nibble_map_offset);
+      if (map_offset + sizeof(uint16_t) >
+          static_cast<size_t>(iie::header_size)) {
         return disk_err_corrupt;
       }
       uint16_t nib_count = read_u16_le(&instance_ptr->header[map_offset]);
