@@ -293,7 +293,7 @@ void create_identity_palette() {
 }
 
 void video_init_buffers() {
-  g_video_draw_mutex.lock();
+  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
 
   memcpy(g_source_header, framebufferinfo,
          max_palette_size * sizeof(VideoColor_t));
@@ -312,7 +312,6 @@ void video_init_buffers() {
 
   if (g_device_bitmap == nullptr || g_origscreen == nullptr) {
     fprintf(stderr, "g_device_bitmap or g_origscreen was not created\n");
-    g_video_draw_mutex.unlock();
     return;
   }
 
@@ -328,7 +327,6 @@ void video_init_buffers() {
   g_status_surface = video_create_surface(STATUS_PANEL_W, STATUS_PANEL_H, 1);
   if (g_status_surface == nullptr) {
     fprintf(stderr, "g_status_surface was not created\n");
-    g_video_draw_mutex.unlock();
     return;
   }
   memcpy(g_status_surface->palette.data(), g_source_header,
@@ -364,7 +362,6 @@ void video_init_buffers() {
   g_source_bitmap = video_create_surface(SRCOFFS_TOTAL, MAX_SOURCE_Y, 1);
   if (g_source_bitmap == nullptr) {
     fprintf(stderr, "g_source_bitmap was not created\n");
-    g_video_draw_mutex.unlock();
     return;
   }
 
@@ -401,8 +398,6 @@ void video_init_buffers() {
     draw_mono_hires_source();
     draw_mono_dhires_source();
   }
-
-  g_video_draw_mutex.unlock();
 }
 
 void draw_dhires_source() {
@@ -1697,7 +1692,7 @@ void video_update_output_buffer() {
 }
 
 auto video_perform_refresh() -> void {
-  g_video_draw_mutex.lock();
+  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
 
   uint8_t rocker = 0;
   size_t rocker_sz = sizeof(rocker);
@@ -1711,7 +1706,6 @@ auto video_perform_refresh() -> void {
 
   if (g_state.mode == MODE_DEBUG) {
     if (redrawfull == 0) {
-      g_video_draw_mutex.unlock();
       return;
     }
     if (g_debug_video_mode > 0) {
@@ -1808,8 +1802,6 @@ auto video_perform_refresh() -> void {
   set_last_drawn_image();
   redrawfull = false;
   hasrefreshed = true;
-
-  g_video_draw_mutex.unlock();
 }
 
 auto video_reinitialize() -> void {

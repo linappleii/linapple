@@ -46,9 +46,9 @@ struct CpuInstance_t {
   uint64_t cumulative_cycles = 0;
   uint32_t cycles_submitted = 0;
   uint32_t cycles_executed = 0;
-  volatile uint32_t bm_irq = 0;
-  volatile uint32_t bm_nmi = 0;
-  volatile bool nmi_flank = false;
+  uint32_t bm_irq = 0;
+  uint32_t bm_nmi = 0;
+  bool nmi_flank = false;
 };
 
 // Modern snake_case API

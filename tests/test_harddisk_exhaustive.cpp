@@ -186,8 +186,7 @@ TEST_CASE("Harddisk: Edge Cases and Safety") {
   io_map_dispatch(0, 0xC0F5, 1, 0xFF, 0);  // Hi (0xFFF0)
   io_map_dispatch(0, 0xC0F2, 1, 0x02, 0);  // Write command (pulls from mem)
   io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
-  // It shouldn't crash, and might return ok but just not copy, or return error.
-  // Current implementation just doesn't copy if it would overflow.
+  CHECK(io_res != 0);
 
   linapple_shutdown();
 }

@@ -270,11 +270,13 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
     case hd_io_cmd_read:
       peripheral_ptr->activity_status = harddisk_status_read;
       active_drive.buffer_ptr = 0;
-      if (active_drive.driver->read_block(
+      if (active_drive.driver != nullptr &&
+          active_drive.driver->read_block != nullptr &&
+          active_drive.driver->read_block(
               active_drive.driver_instance, active_drive.disk_block,
               active_drive.data_buffer.data()) == harddisk_err_none) {
         active_drive.error_code = 0;
-        io_status = 0;
+        io_status = status::ok;
       } else {
         active_drive.error_code = 1;
         io_status = status::io_error;
@@ -286,16 +288,21 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
       active_drive.buffer_ptr = 0;
       // Safety: Verify memory address before copying
       if (static_cast<uint32_t>(active_drive.memory_address) +
-              physical::block_size <=
+              physical::block_size >
           0x10000) {
-        std::copy_n(mem + active_drive.memory_address, physical::block_size,
-                    active_drive.data_buffer.data());
+        active_drive.error_code = 1;
+        io_status = status::io_error;
+        break;
       }
-      if (active_drive.driver->write_block(
+      std::copy_n(mem + active_drive.memory_address, physical::block_size,
+                  active_drive.data_buffer.data());
+      if (active_drive.driver != nullptr &&
+          active_drive.driver->write_block != nullptr &&
+          active_drive.driver->write_block(
               active_drive.driver_instance, active_drive.disk_block,
               active_drive.data_buffer.data()) == harddisk_err_none) {
         active_drive.error_code = 0;
-        io_status = 0;
+        io_status = status::ok;
       } else {
         active_drive.error_code = 1;
         io_status = status::io_error;

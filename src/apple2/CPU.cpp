@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include <pthread.h>  // IWYU pragma: keep
-
 #include <atomic>
 #include <cassert>
 #include <cstdint>
+#include <mutex>
 
 #include "apple2/Apple2Types.h"
 #define CPU_CPP_IMPL
@@ -47,6 +46,7 @@ static std::atomic<uint32_t> g_bm_irq{0};
 static std::atomic<uint32_t> g_bm_nmi{0};
 static std::atomic<bool> g_nmi_flank{
     false};  // Positive going flank on NMI line
+static std::mutex g_interrupt_mutex;
 
 auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
 auto cpu_get_cumulative_cycles() -> uint64_t { return g_cumulative_cycles; }
@@ -57,19 +57,28 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
   }
   g_active_cpu->cpu_regs = regs;
   g_active_cpu->cumulative_cycles = g_cumulative_cycles;
+  g_active_cpu->cycles_submitted = g_cycles_submitted;
+  g_active_cpu->cycles_executed = g_cycles_executed;
 
-  g_active_cpu = context;
+  {
+    std::lock_guard<std::mutex> lock(g_interrupt_mutex);
+    g_active_cpu->bm_irq = g_bm_irq.load();
+    g_active_cpu->bm_nmi = g_bm_nmi.load();
+    g_active_cpu->nmi_flank = g_nmi_flank.load();
 
-  regs = g_active_cpu->cpu_regs;
-  g_cumulative_cycles = g_active_cpu->cumulative_cycles;
+    g_active_cpu = context;
+
+    regs = g_active_cpu->cpu_regs;
+    g_cumulative_cycles = g_active_cpu->cumulative_cycles;
+    g_cycles_submitted = g_active_cpu->cycles_submitted;
+    g_cycles_executed = g_active_cpu->cycles_executed;
+    g_bm_irq.store(g_active_cpu->bm_irq);
+    g_bm_nmi.store(g_active_cpu->bm_nmi);
+    g_nmi_flank.store(g_active_cpu->nmi_flank);
+  }
 }
 
 static uint32_t g_internal_executed_cycles;
-
-// Interrupt sources assert until the device is commanded to stop
-static std::atomic<bool> g_crit_section_valid{false};
-// NOLINTNEXTLINE(misc-include-cleaner)
-pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 
 extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
                             uint8_t d, uint32_t cycles) -> uint8_t;
@@ -2561,11 +2570,7 @@ static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
 
 // Modern API implementation
 
-auto cpu_destroy() -> void {
-  if (g_crit_section_valid) {
-    g_crit_section_valid = false;
-  }
-}
+auto cpu_destroy() -> void {}
 
 auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
   uint32_t cycles = executed_cycles - g_cycles_executed;
@@ -2612,7 +2617,6 @@ auto cpu_initialize() -> void {
   regs.sp = 0x01FF;
   cpu_reset();
 
-  g_crit_section_valid = true;
   cpu_irq_reset();
   cpu_nmi_reset();
 }
@@ -2651,73 +2655,37 @@ auto cpu_setup_benchmark() -> void {
 }
 
 auto cpu_irq_reset() -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_irq = 0;
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
 }
 
 auto cpu_irq_assert(IrqSrc_t device) -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
-  g_bm_irq |= 1 << device;
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
+  g_bm_irq |= 1U << device;
 }
 
 auto cpu_irq_deassert(IrqSrc_t device) -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
-  g_bm_irq &= ~(1 << device);
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
+  g_bm_irq &= ~(1U << device);
 }
 
 auto cpu_nmi_reset() -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_nmi = 0;
   g_nmi_flank = false;
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
 }
 
 auto cpu_nmi_assert(IrqSrc_t device) -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   if (g_bm_nmi == 0) {  // NMI line is just becoming active
     g_nmi_flank = true;
   }
-  g_bm_nmi |= 1 << device;
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
+  g_bm_nmi |= 1U << device;
 }
 
 auto cpu_nmi_deassert(IrqSrc_t device) -> void {
-  assert(g_crit_section_valid);
-  if (g_crit_section_valid) {
-    pthread_mutex_lock(&g_critical_section);
-  }
-  g_bm_nmi &= ~(1 << device);
-  if (g_crit_section_valid) {
-    pthread_mutex_unlock(&g_critical_section);
-  }
+  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
+  g_bm_nmi &= ~(1U << device);
 }
 
 auto cpu_reset() -> void {
