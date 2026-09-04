@@ -95,7 +95,8 @@ int g_symbols_loaded = 0;  // on Last Load
 // Utils _
 // ________________________________________________________________________________________
 
-auto CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize = 0) -> void;
+auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
+                          int nDisplaySize = 0) -> void;
 auto PrintCurrentPath() -> void;
 auto PrintSymbolInvalidTable() -> Update_t;
 
@@ -461,7 +462,7 @@ auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
               ++iSymbol;
             }
           }
-          CmdSymbolsInfoHeader(iTable, sText);
+          CmdSymbolsInfoHeader(iTable, sText, sizeof(sText));
           console_print(sText);
         }
       }
