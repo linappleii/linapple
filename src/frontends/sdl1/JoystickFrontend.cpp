@@ -100,8 +100,12 @@ void joy_frontend_initialize() {
   // Load config from registry
   memset(&g_joyConfig, 0, sizeof(g_joyConfig));
   uint32_t val = 0;
-  if (load(REGVALUE_JOY_TYPE1, &val)) g_joyConfig.joy_type[0] = val;
-  if (load(REGVALUE_JOY_TYPE2, &val)) g_joyConfig.joy_type[1] = val;
+  if (load(REGVALUE_JOY_TYPE1, &val)) {
+    g_joyConfig.joy_type[0] = (val < joyinfo.size()) ? val : 0;
+  }
+  if (load(REGVALUE_JOY_TYPE2, &val)) {
+    g_joyConfig.joy_type[1] = (val < joyinfo.size()) ? val : 0;
+  }
   if (load(REGVALUE_JOY_INDEX1, &val)) g_joyConfig.joy_index[0] = val;
   if (load(REGVALUE_JOY_INDEX2, &val)) g_joyConfig.joy_index[1] = val;
   if (load(REGVALUE_JOY_BUTTON1_1, &val)) g_joyConfig.joy0_button_map[0] = val;
@@ -518,12 +522,14 @@ auto joy_frontend_process_key(SDLKey virtkey, bool extended, bool down,
 auto joy_frontend_is_mouse_emulation_active() -> bool {
   if (g_joyConfig.joy_type[0] == 4 ||
       (g_joyConfig.joy_type[0] < joyinfo.size() &&
-       joyinfo[g_joyConfig.joy_type[0]].device == DEVICE_MOUSE)) {
+       joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
+           DEVICE_MOUSE)) {
     return true;
   }
   if (g_joyConfig.joy_type[1] == 4 ||
       (g_joyConfig.joy_type[1] < joyinfo.size() &&
-       joyinfo[g_joyConfig.joy_type[1]].device == DEVICE_MOUSE)) {
+       joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device ==
+           DEVICE_MOUSE)) {
     return true;
   }
   return false;
@@ -551,7 +557,8 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
   for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
     if (g_joyConfig.joy_type[joy_num] == 4 ||
         (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
-         joyinfo[g_joyConfig.joy_type[joy_num]].device == DEVICE_MOUSE)) {
+         joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[joy_num]))
+                 .device == DEVICE_MOUSE)) {
       JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x)};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y)};
@@ -564,7 +571,8 @@ auto joy_frontend_process_mouse_button(int button, bool down) -> void {
   for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
     if (g_joyConfig.joy_type[joy_num] == 4 ||
         (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
-         joyinfo[g_joyConfig.joy_type[joy_num]].device == DEVICE_MOUSE)) {
+         joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[joy_num]))
+                 .device == DEVICE_MOUSE)) {
       if (button == 0) {
         JoystickButtonPayload_t pb0 = {0, down};
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));

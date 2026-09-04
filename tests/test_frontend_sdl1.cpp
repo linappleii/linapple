@@ -12,11 +12,13 @@
 #include "apple2/Video.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
+#include "frontends/sdl1/JoystickFrontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
@@ -506,5 +508,29 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   // Teardown
   frame_destroy_window();
   asset_quit();
+  SDL_Quit();
+}
+
+TEST_CASE("SDL1 Frontend Joystick Config Out-of-Range Handling") {
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  int init_result = SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO);
+  REQUIRE(init_result == 0);
+
+  // Set out-of-bounds joy_type values in registry
+  save(REGVALUE_JOY_TYPE1, 9999);
+  save(REGVALUE_JOY_TYPE2, 8888);
+
+  // joy_frontend_initialize should safely clamp / default to 0 without
+  // out-of-bounds access
+  CHECK_NOTHROW(joy_frontend_initialize());
+
+  // Operations on out-of-range initialized joysticks must be safe
+  CHECK_NOTHROW(joy_frontend_update());
+  CHECK_NOTHROW(joy_frontend_is_mouse_emulation_active());
+  CHECK_NOTHROW(joy_frontend_process_mouse_motion(100, 200, 100, 200));
+  CHECK_NOTHROW(joy_frontend_process_mouse_button(0, true));
+  CHECK_NOTHROW(joy_frontend_process_key(SDLK_KP1, false, true, false));
+
+  joy_frontend_shutdown();
   SDL_Quit();
 }
