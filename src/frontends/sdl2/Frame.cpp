@@ -139,7 +139,7 @@ void draw_apple_content() {
 }
 
 void frame_refresh() {
-  if (g_texture != nullptr && g_screen != nullptr) {
+  if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
     SDL_UpdateTexture(g_texture, nullptr, g_screen->pixels, g_screen->pitch);
     SDL_RenderCopy(g_renderer, g_texture, nullptr, nullptr);
     SDL_RenderPresent(g_renderer);
@@ -281,6 +281,10 @@ void draw_status_area(int drawflags) {
 
 void frame_show_help_screen(int sx, int sy) {
   (void)sy;
+
+  if (g_screen == nullptr) {
+    return;
+  }
 
   VideoSurface_t* tempSurface = nullptr;
 
@@ -469,6 +473,10 @@ auto is_modifier_key(SDL_Keycode sym) -> bool {
 }
 
 void frame_on_resize(int width, int height) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
   g_video_draw_mutex.lock();
   g_state.screen_width = static_cast<uint32_t>(width);
   g_state.screen_height = static_cast<uint32_t>(height);
@@ -478,19 +486,25 @@ void frame_on_resize(int width, int height) {
     s_windowed_height = static_cast<uint32_t>(height);
   }
 
-  if (g_screen != nullptr) SDL_FreeSurface(g_screen);
+  if (g_screen != nullptr) {
+    SDL_FreeSurface(g_screen);
+    g_screen = nullptr;
+  }
   g_screen = SDL_CreateRGBSurfaceWithFormat(0, g_state.screen_width,
                                             g_state.screen_height, 32,
                                             SDL_PIXELFORMAT_ARGB8888);
 
-  if (g_texture != nullptr) SDL_DestroyTexture(g_texture);
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
                                 SDL_TEXTUREACCESS_STREAMING,
                                 g_state.screen_width, g_state.screen_height);
 
   if (g_screen == nullptr || g_texture == nullptr) {
+    g_state.mode = MODE_EXIT;
     g_video_draw_mutex.unlock();
-    SDL_Quit();
     return;
   }
   g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
@@ -600,6 +614,9 @@ auto psp_save_state_select_image(bool saveit) -> bool {
 }
 
 void frame_save_bmp() {
+  if (g_screen == nullptr) {
+    return;
+  }
   // Save current g_screen as a .bmp file in current directory
   struct stat bufp{};
   static int i = 1;
@@ -628,7 +645,9 @@ void process_button_click(int button, int mod) {
 
   switch (button) {
     case btn_help:
-      frame_show_help_screen(g_screen->w, g_screen->h);
+      if (g_screen != nullptr) {
+        frame_show_help_screen(g_screen->w, g_screen->h);
+      }
       break;
 
     case btn_run:

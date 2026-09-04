@@ -263,6 +263,10 @@ void draw_status_area(int drawflags) {
 void frame_show_help_screen(int sx, int sy) {
   (void)sy;
 
+  if (g_screen == nullptr) {
+    return;
+  }
+
   VideoSurface_t* tempSurface = nullptr;
 
   if (font_sfc == nullptr) {
@@ -452,6 +456,10 @@ static uint32_t s_windowed_width = 0;
 static uint32_t s_windowed_height = 0;
 
 void frame_on_resize(int width, int height) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
   g_video_draw_mutex.lock();
   g_state.screen_width = static_cast<uint32_t>(width);
   g_state.screen_height = static_cast<uint32_t>(height);
@@ -468,14 +476,17 @@ void frame_on_resize(int width, int height) {
       SDL_SetVideoMode(static_cast<int>(g_state.screen_width),
                        static_cast<int>(g_state.screen_height), 32, flags);
 
-  if (g_texture != nullptr) SDL_FreeSurface(g_texture);
+  if (g_texture != nullptr) {
+    SDL_FreeSurface(g_texture);
+    g_texture = nullptr;
+  }
   g_texture =
       SDL_CreateRGBSurface(0, g_state.screen_width, g_state.screen_height, 32,
                            0x00FF0000, 0x0000FF00, 0x000000FF, 0);
 
   if (g_screen == nullptr || g_texture == nullptr) {
+    g_state.mode = MODE_EXIT;
     g_video_draw_mutex.unlock();
-    SDL_Quit();
     return;
   }
   g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
@@ -585,6 +596,9 @@ auto psp_save_state_select_image(bool saveit) -> bool {
 }
 
 void frame_save_bmp() {
+  if (g_screen == nullptr) {
+    return;
+  }
   // Save current g_screen as a .bmp file in current directory
   struct stat bufp{};
   static int i = 1;
@@ -613,7 +627,9 @@ void process_button_click(int button, int mod) {
 
   switch (button) {
     case btn_help:
-      frame_show_help_screen(g_screen->w, g_screen->h);
+      if (g_screen != nullptr) {
+        frame_show_help_screen(g_screen->w, g_screen->h);
+      }
       break;
 
     case btn_run:

@@ -153,7 +153,7 @@ void draw_apple_content() {
 }
 
 void frame_refresh() {
-  if (g_texture && g_screen) {
+  if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
     SDL_UpdateTexture(g_texture, nullptr, g_screen->pixels, g_screen->pitch);
     SDL_RenderTexture(g_renderer, g_texture, nullptr, nullptr);
     SDL_RenderPresent(g_renderer);
@@ -192,7 +192,7 @@ void draw_frame_window() {
   if (!g_frame_ready) return;
 
   g_video_draw_mutex.lock();
-  if (g_texture && g_screen) {
+  if (g_texture != nullptr && g_screen != nullptr) {
     uint32_t* output = video_get_output_buffer();
     SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
@@ -302,6 +302,10 @@ void draw_status_area(int drawflags) {
 
 void frame_show_help_screen(int sx, int sy) {
   (void)sy;
+
+  if (g_screen == nullptr) {
+    return;
+  }
 
   VideoSurface_t* tempSurface = nullptr;
 
@@ -490,6 +494,10 @@ auto is_modifier_key(SDL_Keycode sym) -> bool {
 }
 
 void frame_on_resize(int width, int height) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
   g_video_draw_mutex.lock();
   g_state.screen_width = width;
   g_state.screen_height = height;
@@ -499,48 +507,54 @@ void frame_on_resize(int width, int height) {
     s_windowed_height = static_cast<uint32_t>(height);
   }
 
-  if (g_screen) SDL_DestroySurface(g_screen);
+  if (g_screen != nullptr) {
+    SDL_DestroySurface(g_screen);
+    g_screen = nullptr;
+  }
   g_screen = SDL_CreateSurface(g_state.screen_width, g_state.screen_height,
                                SDL_PIXELFORMAT_XRGB8888);
 
-  if (g_texture) SDL_DestroyTexture(g_texture);
+  if (g_texture != nullptr) {
+    SDL_DestroyTexture(g_texture);
+    g_texture = nullptr;
+  }
   g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_XRGB8888,
                                 SDL_TEXTUREACCESS_STREAMING,
                                 g_state.screen_width, g_state.screen_height);
 
   if (g_screen == nullptr || g_texture == nullptr) {
+    g_state.mode = MODE_EXIT;
     g_video_draw_mutex.unlock();
-    SDL_Quit();
     return;
-  } else {
-    g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
-                       (g_state.screen_height != SCREEN_HEIGHT);
-    if (g_window_resized) {
-      g_orig_rect.x = g_orig_rect.y = 0;
-      g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
-      g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-      if (is_full_screened) {
-        int target_w = width;
-        int target_h = (target_w * SCREEN_HEIGHT) / SCREEN_WIDTH;
-        if (target_h > height) {
-          target_h = height;
-          target_w = (target_h * SCREEN_WIDTH) / SCREEN_HEIGHT;
-        }
-        int offset_x = (width - target_w) / 2;
-        int offset_y = (height - target_h) / 2;
-        g_new_rect.x = static_cast<int16_t>(offset_x);
-        g_new_rect.y = static_cast<int16_t>(offset_y);
-        g_new_rect.w = static_cast<int16_t>(target_w);
-        g_new_rect.h = static_cast<int16_t>(target_h);
-      } else {
-        g_new_rect.x = 0;
-        g_new_rect.y = 0;
-        g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
-        g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+  }
+
+  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
+                     (g_state.screen_height != SCREEN_HEIGHT);
+  if (g_window_resized) {
+    g_orig_rect.x = g_orig_rect.y = 0;
+    g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
+    g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
+    if (is_full_screened) {
+      int target_w = width;
+      int target_h = (target_w * SCREEN_HEIGHT) / SCREEN_WIDTH;
+      if (target_h > height) {
+        target_h = height;
+        target_w = (target_h * SCREEN_WIDTH) / SCREEN_HEIGHT;
       }
-      if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
-        video_redraw_screen();
-      }
+      int offset_x = (width - target_w) / 2;
+      int offset_y = (height - target_h) / 2;
+      g_new_rect.x = static_cast<int16_t>(offset_x);
+      g_new_rect.y = static_cast<int16_t>(offset_y);
+      g_new_rect.w = static_cast<int16_t>(target_w);
+      g_new_rect.h = static_cast<int16_t>(target_h);
+    } else {
+      g_new_rect.x = 0;
+      g_new_rect.y = 0;
+      g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
+      g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+    }
+    if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+      video_redraw_screen();
     }
   }
   g_video_draw_mutex.unlock();
@@ -620,6 +634,9 @@ auto psp_save_state_select_image(bool saveit) -> bool {
 }
 
 void frame_save_bmp() {
+  if (g_screen == nullptr) {
+    return;
+  }
   // Save current g_screen as a .bmp file in current directory
   struct stat bufp{};
   static int i = 1;
@@ -648,7 +665,9 @@ void process_button_click(int button, int mod) {
 
   switch (button) {
     case btn_help:
-      frame_show_help_screen(g_screen->w, g_screen->h);
+      if (g_screen != nullptr) {
+        frame_show_help_screen(g_screen->w, g_screen->h);
+      }
       break;
 
     case btn_run:
