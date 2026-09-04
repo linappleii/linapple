@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 // This header defines a dual C99/C++11 ABI. Specific checks are disabled to

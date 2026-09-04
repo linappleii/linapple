@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/sdl2/DiskChoose.h"
 
 #include <SDL_blendmode.h>

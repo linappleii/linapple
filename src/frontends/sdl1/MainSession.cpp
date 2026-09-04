@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <SDL/SDL.h>
 #include <curl/curl.h>
 #include <curl/easy.h>

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include <cstdarg>
@@ -46,7 +47,7 @@ extern int g_console_color[NUM_CONSOLE_COLORS];
 
 // Note: THe ` ~ key should always display ~ to prevent rendering errors
 #define CONSOLE_COLOR_ESCAPE_CHAR '`'
-#define _CONSOLE_COLOR_MASK 0x7F
+#define CONSOLE_COLOR_MASK 0x7F
 constexpr uint8_t CONSOLE_COLOR_SHIFT = 8;
 constexpr size_t CONSOLE_INPUT_EXTRA = 16;
 
@@ -70,7 +71,7 @@ constexpr size_t CONSOLE_INPUT_EXTRA = 16;
 #define CHC_ARG_OPT "`4"   // [ ]
 #define CHC_ARG_SEP "`9"   //  |  grey
 #define CHC_NUM_DEC \
-  "`6"  // cyan looks better then yellow (_SearchMemoryDisplay), S D000:FFFF A9
+  "`6"  // cyan looks better then yellow (SearchMemoryDisplay), S D000:FFFF A9
         // 00, PROFILE, HELP BP
 #define CHC_NUM_HEX "`3"
 #define CHC_SYMBOL "`2"   // Symbols
@@ -140,7 +141,7 @@ inline bool ConsoleColor_IsCharColor(uint8_t c) {
 //      cc Encoded Color / Mouse Text
 //
 inline bool ConsoleColor_IsColorOrMouse(conchar_t g) {
-  if (g > _CONSOLE_COLOR_MASK) return true;
+  if (g > CONSOLE_COLOR_MASK) return true;
   return false;
 }
 
@@ -156,15 +157,15 @@ inline uint32_t ConsoleColor_GetColor(conchar_t g) {
 }
 
 inline char ConsoleColor_GetMeta(conchar_t g) {
-  return ((g >> CONSOLE_COLOR_SHIFT) & _CONSOLE_COLOR_MASK);
+  return ((g >> CONSOLE_COLOR_SHIFT) & CONSOLE_COLOR_MASK);
 }
 
 inline char ConsoleChar_GetChar(conchar_t g) {
-  return (g & _CONSOLE_COLOR_MASK);
+  return (g & CONSOLE_COLOR_MASK);
 }
 
 inline char ConsoleColor_MakeMouse(uint8_t c) {
-  return ((c - '@') + (_CONSOLE_COLOR_MASK + 1));
+  return ((c - '@') + (CONSOLE_COLOR_MASK + 1));
 }
 
 inline conchar_t ConsoleColor_MakeMeta(uint8_t c) {

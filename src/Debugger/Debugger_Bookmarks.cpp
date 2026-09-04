@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Bookmarks.h"
 
 #include <cassert>
@@ -27,7 +28,7 @@ void ConfigSave_PrepareHeader(const Parameters_e eCategory,
 void DisasmCalcTopBotAddress();
 
 // Bookmark_t Functions
-auto _Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
+auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
   if (iBookmark < MAX_BOOKMARKS) {
     g_bookmarks[iBookmark].address = address;
     g_bookmarks[iBookmark].bSet = true;
@@ -38,7 +39,7 @@ auto _Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
   return false;
 }
 
-auto _Bookmark_Del(const uint16_t address) -> bool {
+auto Bookmark_Del(const uint16_t address) -> bool {
   bool bDeleted = false;
   for (auto& g_bookmark : g_bookmarks) {
     if (g_bookmark.address == address) {
@@ -62,7 +63,7 @@ auto Bookmark_Find(const uint16_t address) -> bool {
   return false;
 }
 
-auto _Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
+auto Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
   if (iBookmark >= MAX_BOOKMARKS) {
     return false;
   }
@@ -75,14 +76,14 @@ auto _Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
   return false;
 }
 
-void _Bookmark_Reset() {
+void Bookmark_Reset() {
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
     g_bookmarks[iBookmark].bSet = false;
   }
 }
 
-auto _Bookmark_Size() -> int {
+auto Bookmark_Size() -> int {
   g_bookmarks_count = 0;
 
   int iBookmark = 0;
@@ -178,7 +179,7 @@ auto CmdBookmarkGoto(int nArgs) -> Update_t {
   int iBookmark = g_args[1].nValue;
 
   uint16_t address = 0;
-  if (_Bookmark_Get(iBookmark, address)) {
+  if (Bookmark_Get(iBookmark, address)) {
     g_disasm_cur_address = address;
     g_disasm_cur_line = 0;
     DisasmCalcTopBotAddress();

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <SDL2/SDL.h>
 
 #include <cstdint>

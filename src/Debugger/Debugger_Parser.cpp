@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Parser.h"
 
 #include <strings.h>
@@ -70,7 +71,7 @@ const TokenTable_t g_tokens[NUM_TOKENS] = {
     {TOKEN_TILDE, TYPE_OPERATOR, "~"},
 };
 //===========================================================================
-auto _Args_Insert(int iSrc, int iEnd, int nLen) -> int {
+auto Args_Insert(int iSrc, int iEnd, int nLen) -> int {
   iSrc += nLen;
   int iDst = iEnd + nLen;
 
@@ -129,8 +130,8 @@ auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase)
   char* pEnd = nullptr;
 
   if (pAddressValue_) {
-    *pAddressValue_ =
-        static_cast<uint16_t>(strtoul(src_ptr, &pEnd, nBase) & _6502_MEM_END);
+    *pAddressValue_ = static_cast<uint16_t>(strtoul(src_ptr, &pEnd, nBase) &
+                                            APPLE2_6502_MEM_END);
     return true;
   }
 
@@ -332,8 +333,8 @@ void ArgsRawParse() {
   while (iArg <= nArg) {
     src_ptr = &(pArg->sArg[0]);
 
-    nAddressArg =
-        static_cast<uint16_t>(strtoul(src_ptr, &pEnd, BASE) & _6502_MEM_END);
+    nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd, BASE) &
+                                        APPLE2_6502_MEM_END);
     nAddressValue = nAddressArg;
 
     bool bFound = false;
@@ -400,7 +401,7 @@ auto ArgsCook(const int nArgs) -> int {
       if (nArgsLeft > 0) {
         pNext = pArg + 1;
 
-        _Arg_Shift(iArg + 1, nArgs, iArg);
+        Arg_Shift(iArg + 1, nArgs, iArg);
         nArg--;
         iArg--;  // inc for start of next loop
 
@@ -553,7 +554,7 @@ auto ArgsCook(const int nArgs) -> int {
         if (pArg->eToken == TOKEN_AT)  // AT @ pointer de-reference
         {
           nParamLen = 1;
-          _Arg_Shift(iArg + nParamLen, nArgs, iArg);
+          Arg_Shift(iArg + nParamLen, nArgs, iArg);
           nArg--;
 
           pArg->nValue = 0;  // nAddressRHS;
@@ -602,7 +603,7 @@ auto ArgsCook(const int nArgs) -> int {
 
           if (nArgsLeft >= 2) {
             nParamLen = 1;  // eat '('
-            _Arg_Shift(iArg + nParamLen, nArgs, iArg);
+            Arg_Shift(iArg + nParamLen, nArgs, iArg);
 
             pNext = &(g_args[iArg + 1]);
             if (pNext->eToken == TOKEN_PAREN_R) {
@@ -638,7 +639,7 @@ auto ArgsCook(const int nArgs) -> int {
         }
 
         if (nParamLen) {
-          _Arg_Shift(iArg + nParamLen, nArgs, iArg);
+          Arg_Shift(iArg + nParamLen, nArgs, iArg);
           nArg -= nParamLen;
           iArg = 0;  // reset args, to handle multiple operators
         }
@@ -647,8 +648,8 @@ auto ArgsCook(const int nArgs) -> int {
       }
     } else  // not an operator, try (1) address, (2) symbol lookup
     {
-      nAddressArg =
-          static_cast<uint16_t>(strtoul(src_ptr, &pEnd2, BASE) & _6502_MEM_END);
+      nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd2, BASE) &
+                                          APPLE2_6502_MEM_END);
 
       if (!(pArg->bType & TYPE_NO_REG)) {
         ArgsGetRegisterValue(pArg, &nAddressArg);
@@ -694,7 +695,7 @@ auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
 
   // Look-ahead for <=
   // Look-ahead for >=
-  for (iToken = _TOKEN_FLAG_MULTI; iToken < NUM_TOKENS; iToken++) {
+  for (iToken = TOKEN_FLAG_MULTI; iToken < NUM_TOKENS; iToken++) {
     pName = &(g_tokens[iToken].sToken[0]);
     if ((src_ptr[0] == pName[0]) && (src_ptr[1] == pName[1])) {
       *pToken_ = g_tokens[iToken].eToken;
@@ -704,7 +705,7 @@ auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
 
   const TokenTable_t* pToken = aTokens;
 
-  for (iToken = 0; iToken < _TOKEN_FLAG_MULTI; iToken++) {
+  for (iToken = 0; iToken < TOKEN_FLAG_MULTI; iToken++) {
     pName = &(pToken->sToken[0]);
     if (*src_ptr == *pName) {
       if (pToken_) {
@@ -867,7 +868,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   return nFound;
 }
 
-void _strupr(char* s) {
+void util_strupr(char* s) {
   while (*s) {
     if ((*s >= 'a') && (*s <= 'z')) {
       *s = *s + 'A' - 'a';
@@ -892,7 +893,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
 
   char sCommand[CONSOLE_WIDTH];
   util_safe_strcpy(sCommand, pName, sizeof(sCommand));
-  _strupr(sCommand);
+  util_strupr(sCommand);
 
   while (
       (iCommand <
@@ -972,21 +973,21 @@ void DisplayAmbigiousCommands(int nFound) {
   }
 }
 
-auto _Arg_1(int nValue) -> int {
+auto Arg_1(int nValue) -> int {
   ArgsClear();
   g_args[1].nValue = nValue;
   g_args[1].bType = TYPE_VALUE;
   return 1;
 }
 
-auto _Arg_1(char* pName) -> int {
+auto Arg_1(char* pName) -> int {
   ArgsClear();
   util_safe_strcpy(g_args[1].sArg, pName, MAX_ARG_LEN);
   g_args[1].bType = TYPE_STRING;
   return 1;
 }
 
-auto _Arg_Shift(int iSrc, int iEnd, int iDst) -> int {
+auto Arg_Shift(int iSrc, int iEnd, int iDst) -> int {
   int nArgs = iEnd - iSrc;
   int iArg = 0;
 

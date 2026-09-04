@@ -1,4 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
+
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"

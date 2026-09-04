@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "Debugger_Types.h"
@@ -18,4 +19,4 @@ Update_t CmdConfigSetDebugDir(int nArgs);
 bool ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave);
 void ConfigSave_PrepareHeader(const Parameters_e eCategory,
                               const Commands_e eCommandClear);
-void _UpdateWindowFontHeights(int nFontHeight);
+void UpdateWindowFontHeights(int nFontHeight);

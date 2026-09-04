@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <SDL3/SDL_surface.h>
 #include <SDL3_image/SDL_image.h>
 

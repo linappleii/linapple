@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Types.h"
 #include "apple2/Video.h"
 /*
@@ -176,7 +177,7 @@ auto console_print(const char* text) -> bool {
       }
       pDst = &g_console_buffer[g_console_buffer_size][0];
     } else {
-      g = (c & _CONSOLE_COLOR_MASK);
+      g = (c & CONSOLE_COLOR_MASK);
 
       // `# `A  color encode mouse text
       if (ConsoleColor_IsCharMeta(c)) {
@@ -266,7 +267,7 @@ auto console_print(const char* text) -> bool {
                     }
                     else
                     {
-                            *pDst = (c & _CONSOLE_COLOR_MASK);
+                            *pDst = (c & CONSOLE_COLOR_MASK);
                             x++;
                             src_ptr++;
                             pDst++;
@@ -318,7 +319,7 @@ auto ConsoleBufferPush(const char* text) -> bool {
       src_ptr++;
       pDst = &g_console_buffer[g_console_buffer_size][0];
     } else {
-      *pDst = (c & _CONSOLE_COLOR_MASK);
+      *pDst = (c & CONSOLE_COLOR_MASK);
       x++;
       src_ptr++;
       pDst++;
@@ -359,7 +360,7 @@ void ConsoleConvertFromText(conchar_t* sText, const char* text) {
   const char* src_ptr = text;
   conchar_t* pDst = sText;
   while (src_ptr && *src_ptr) {
-    *pDst = static_cast<conchar_t>(*src_ptr & _CONSOLE_COLOR_MASK);
+    *pDst = static_cast<conchar_t>(*src_ptr & CONSOLE_COLOR_MASK);
     src_ptr++;
     pDst++;
   }
@@ -683,8 +684,8 @@ void ToggleFullScreenConsole() {
 extern auto CmdWindowViewConsole(int) -> Update_t;
 extern auto CmdWindowLast(int) -> Update_t;
 extern auto CmdGoNormalSpeed(int) -> Update_t;
-extern void _CursorMoveUpAligned(int);
-extern void _CursorMoveDownAligned(int);
+extern void CursorMoveUpAligned(int);
+extern void CursorMoveDownAligned(int);
 extern auto WindowGetHeight(int) -> int;
 extern auto CmdCursorPageUp(int) -> Update_t;
 extern auto CmdCursorPageDown(int) -> Update_t;

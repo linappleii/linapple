@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_Window.h"
 
 #include <cassert>
@@ -37,23 +38,23 @@ const int MIN_DISPLAY_CONSOLE_LINES = 5;
 // Implementation
 
 //===========================================================================
-void _WindowJoin() { g_window_config[g_window_this].bSplit = false; }
+void WindowJoin() { g_window_config[g_window_this].bSplit = false; }
 
 //===========================================================================
-void _WindowSplit(Window_e eNewBottomWindow) {
+void WindowSplit(Window_e eNewBottomWindow) {
   g_window_config[g_window_this].bSplit = true;
   g_window_config[g_window_this].eBot = eNewBottomWindow;
 }
 
 //===========================================================================
-void _WindowLast() {
+void WindowLast() {
   int eNew = g_window_last;
   g_window_last = g_window_this;
   g_window_this = eNew;
 }
 
 //===========================================================================
-void _WindowSwitch(int eNewWindow) {
+void WindowSwitch(int eNewWindow) {
   g_window_last = g_window_this;
   g_window_this = eNewWindow;
 }
@@ -64,7 +65,7 @@ auto CmdWindowViewCommon(int iNewWindow) -> Update_t {
   if (g_window_this == iNewWindow) {
     g_window_config[iNewWindow].bSplit = false;
   } else {
-    _WindowSwitch(iNewWindow);
+    WindowSwitch(iNewWindow);
   }
 
   WindowUpdateSizes();
@@ -72,10 +73,10 @@ auto CmdWindowViewCommon(int iNewWindow) -> Update_t {
 }
 
 //===========================================================================
-auto _CmdWindowViewFull(int iNewWindow) -> Update_t {
+auto CmdWindowViewFull(int iNewWindow) -> Update_t {
   if (g_window_this != iNewWindow) {
     g_window_config[iNewWindow].bSplit = false;
-    _WindowSwitch(iNewWindow);
+    WindowSwitch(iNewWindow);
     WindowUpdateConsoleDisplayedSize();
   }
   return UPDATE_ALL;
@@ -182,10 +183,10 @@ auto CmdWindowShowCode2(int nArgs) -> Update_t {
   (void)nArgs;
   if ((g_window_this == WINDOW_CODE) || (g_window_this == WINDOW_DATA)) {
     if (g_window_this == WINDOW_CODE) {
-      _WindowJoin();
+      WindowJoin();
       WindowUpdateDisasmSize();
     } else if (g_window_this == WINDOW_DATA) {
-      _WindowSplit(WINDOW_CODE);
+      WindowSplit(WINDOW_CODE);
       WindowUpdateDisasmSize();
     }
     return UPDATE_DISASM;
@@ -221,9 +222,9 @@ auto CmdWindowShowData2(int nArgs) -> Update_t {
   (void)nArgs;
   if ((g_window_this == WINDOW_CODE) || (g_window_this == WINDOW_DATA)) {
     if (g_window_this == WINDOW_CODE) {
-      _WindowSplit(WINDOW_DATA);
+      WindowSplit(WINDOW_DATA);
     } else if (g_window_this == WINDOW_DATA) {
-      _WindowJoin();
+      WindowJoin();
     }
     return UPDATE_DISASM;
   }
@@ -245,7 +246,7 @@ auto CmdWindowShowSource1(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowShowSource2(int nArgs) -> Update_t {
   (void)nArgs;
-  _WindowSplit(WINDOW_SOURCE);
+  WindowSplit(WINDOW_SOURCE);
   WindowUpdateSizes();
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -260,7 +261,7 @@ auto CmdWindowViewCode(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowViewConsole(int nArgs) -> Update_t {
   (void)nArgs;
-  return _CmdWindowViewFull(WINDOW_CONSOLE);
+  return CmdWindowViewFull(WINDOW_CONSOLE);
 }
 
 //===========================================================================
@@ -282,13 +283,13 @@ auto CmdWindowViewOutput(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowViewSource(int nArgs) -> Update_t {
   (void)nArgs;
-  return _CmdWindowViewFull(WINDOW_CONSOLE);
+  return CmdWindowViewFull(WINDOW_CONSOLE);
 }
 
 //===========================================================================
 auto CmdWindowViewSymbols(int nArgs) -> Update_t {
   (void)nArgs;
-  return _CmdWindowViewFull(WINDOW_CONSOLE);
+  return CmdWindowViewFull(WINDOW_CONSOLE);
 }
 
 //===========================================================================
@@ -299,8 +300,8 @@ auto CmdWindow(int nArgs) -> Update_t {
 
   int iParam = 0;
   char* pName = g_args[1].sArg;
-  int nFound = FindParam(pName, MATCH_EXACT, iParam, _PARAM_WINDOW_BEGIN,
-                         _PARAM_WINDOW_END);
+  int nFound = FindParam(pName, MATCH_EXACT, iParam, PARAM_WINDOW_BEGIN,
+                         PARAM_WINDOW_END);
   if (nFound) {
     switch (iParam) {
       case PARAM_CODE:
@@ -332,12 +333,12 @@ auto CmdWindow(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdWindowLast(int nArgs) -> Update_t {
   (void)nArgs;
-  _WindowLast();
+  WindowLast();
   WindowUpdateConsoleDisplayedSize();
   return UPDATE_ALL;
 }
 
-void _CursorMoveDownAligned(int nDelta) {
+void CursorMoveDownAligned(int nDelta) {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address + nDelta);
     g_mem_dump[0].address = g_disasm_cur_address;
@@ -348,7 +349,7 @@ void _CursorMoveDownAligned(int nDelta) {
   }
 }
 
-void _CursorMoveUpAligned(int nDelta) {
+void CursorMoveUpAligned(int nDelta) {
   if (g_window_this == WINDOW_DATA) {
     g_disasm_cur_address = static_cast<uint16_t>(g_disasm_cur_address - nDelta);
     g_mem_dump[0].address = g_disasm_cur_address;
@@ -379,7 +380,7 @@ void DisasmCalcTopFromCurAddress(bool bUpdateTop) {
     int nOpbytes = 0;
 
     for (int iLine = 0; iLine <= g_disasm_cur_line; iLine++) {
-      _6502_GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
+      GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
 
       if (iLine == g_disasm_cur_line) {
         if (iAddress == g_disasm_cur_address) {
@@ -410,7 +411,7 @@ auto DisasmCalcAddressFromLines(uint16_t iAddress, int nLines) -> uint16_t {
   while (nLines-- > 0) {
     int iOpmode = 0;
     int nOpbytes = 0;
-    _6502_GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
+    GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
     iAddress += nOpbytes;
   }
   return iAddress;
@@ -439,7 +440,7 @@ auto debug_get_video_mode(uint32_t* pVideoMode) -> bool {
 }
 auto CmdCursorFollowTarget(int nArgs) -> Update_t {
   uint16_t address = 0;
-  if (_6502_GetTargetAddress(g_disasm_cur_address, address)) {
+  if (GetTargetAddress(g_disasm_cur_address, address)) {
     g_disasm_cur_address = address;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
@@ -455,7 +456,7 @@ auto CmdCursorFollowTarget(int nArgs) -> Update_t {
 
 auto CmdCursorLineUp(int nArgs) -> Update_t {
   if (g_window_this == WINDOW_DATA) {
-    _CursorMoveUpAligned(WINDOW_DATA_BYTES_PER_LINE);
+    CursorMoveUpAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
   } else if (nArgs) {
     g_disasm_top_address--;
@@ -473,11 +474,11 @@ auto CmdCursorLineUp(int nArgs) -> Update_t {
 auto CmdCursorLineDown(int nArgs) -> Update_t {
   int iOpmode = 0;
   int nOpbytes = 0;
-  _6502_GetOpmodeOpbyte(g_disasm_cur_address, iOpmode,
-                        nOpbytes);  // g_disasm_top_address
+  GetOpmodeOpbyte(g_disasm_cur_address, iOpmode,
+                  nOpbytes);  // g_disasm_top_address
 
   if (g_window_this == WINDOW_DATA) {
-    _CursorMoveDownAligned(WINDOW_DATA_BYTES_PER_LINE);
+    CursorMoveDownAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
   } else if (nArgs)  // scroll down by 'n' bytes
   {
@@ -511,10 +512,10 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
 #endif
     g_disasm_cur_address += nOpbytes;
 
-    _6502_GetOpmodeOpbyte(g_disasm_top_address, iOpmode, nOpbytes);
+    GetOpmodeOpbyte(g_disasm_top_address, iOpmode, nOpbytes);
     g_disasm_top_address += nOpbytes;
 
-    _6502_GetOpmodeOpbyte(g_disasm_bot_address, iOpmode, nOpbytes);
+    GetOpmodeOpbyte(g_disasm_bot_address, iOpmode, nOpbytes);
     g_disasm_bot_address += nOpbytes;
 
     if (g_disasm_cur_bad) {
@@ -538,10 +539,10 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
 
 // C++ Bug, can't have local structs used in STL containers
 struct LookAhead_t {
-  int _nAddress;
-  int _iOpcode;
-  int _iOpmode;
-  int _nOpbytes;
+  int nAddress;
+  int iOpcode;
+  int iOpmode;
+  int nOpbytes;
 };
 
 auto CmdCursorJumpPC(int nArgs) -> Update_t {
@@ -566,7 +567,7 @@ auto CmdCursorJumpPC(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdCursorJumpRetAddr(int nArgs) -> Update_t {
   uint16_t address = 0;
-  if (_6502_GetStackReturnAddress(address)) {
+  if (GetStackReturnAddress(address)) {
     g_disasm_cur_address = address;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
@@ -591,7 +592,7 @@ auto CmdCursorPageDown(int nArgs) -> Update_t {
 
   if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
-    _CursorMoveDownAligned(nStep);
+    CursorMoveDownAligned(nStep);
   } else {
     // 4
     //    while (++iLines < nLines)
@@ -616,7 +617,7 @@ auto CmdCursorPageDown(int nArgs) -> Update_t {
 auto CmdCursorPageDown256(int nArgs) -> Update_t {
   (void)nArgs;
   const int nStep = 256;
-  _CursorMoveDownAligned(nStep);
+  CursorMoveDownAligned(nStep);
   return UPDATE_DISASM;
 }
 
@@ -624,7 +625,7 @@ auto CmdCursorPageDown256(int nArgs) -> Update_t {
 auto CmdCursorPageDown4K(int nArgs) -> Update_t {
   (void)nArgs;
   const int nStep = 4096;
-  _CursorMoveDownAligned(nStep);
+  CursorMoveDownAligned(nStep);
   return UPDATE_DISASM;
 }
 
@@ -640,7 +641,7 @@ auto CmdCursorPageUp(int nArgs) -> Update_t {
 
   if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
-    _CursorMoveUpAligned(nStep);
+    CursorMoveUpAligned(nStep);
   } else {
     //    while (++iLines < nLines)
     //      CmdCursorLineUp(nArgs);
@@ -662,7 +663,7 @@ auto CmdCursorPageUp(int nArgs) -> Update_t {
 auto CmdCursorPageUp256(int nArgs) -> Update_t {
   (void)nArgs;
   const int nStep = 256;
-  _CursorMoveUpAligned(nStep);
+  CursorMoveUpAligned(nStep);
   return UPDATE_DISASM;
 }
 
@@ -670,7 +671,7 @@ auto CmdCursorPageUp256(int nArgs) -> Update_t {
 auto CmdCursorPageUp4K(int nArgs) -> Update_t {
   (void)nArgs;
   const int nStep = 4096;
-  _CursorMoveUpAligned(nStep);
+  CursorMoveUpAligned(nStep);
   return UPDATE_DISASM;
 }
 
@@ -688,86 +689,86 @@ auto CmdCursorSetPC(int nArgs) -> Update_t  // TODO rename
 
 auto CmdViewOutput_Text4X(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, VF_TEXT);
+  return ViewOutput(VIEW_PAGE_X, VF_TEXT);
 }
 auto CmdViewOutput_Text41(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, VF_TEXT);
+  return ViewOutput(VIEW_PAGE_1, VF_TEXT);
 }
 auto CmdViewOutput_Text42(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, VF_TEXT);
+  return ViewOutput(VIEW_PAGE_2, VF_TEXT);
 }
 // Text 80
 auto CmdViewOutput_Text8X(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, VF_TEXT | VF_80COL);
+  return ViewOutput(VIEW_PAGE_X, VF_TEXT | VF_80COL);
 }
 auto CmdViewOutput_Text81(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, VF_TEXT | VF_80COL);
+  return ViewOutput(VIEW_PAGE_1, VF_TEXT | VF_80COL);
 }
 auto CmdViewOutput_Text82(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, VF_TEXT | VF_80COL);
+  return ViewOutput(VIEW_PAGE_2, VF_TEXT | VF_80COL);
 }
 // Lo-Res
 auto CmdViewOutput_GRX(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, 0);
+  return ViewOutput(VIEW_PAGE_X, 0);
 }
 auto CmdViewOutput_GR1(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, 0);
+  return ViewOutput(VIEW_PAGE_1, 0);
 }
 auto CmdViewOutput_GR2(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, 0);
+  return ViewOutput(VIEW_PAGE_2, 0);
 }
 // Double Lo-Res
 auto CmdViewOutput_DGRX(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_X, VF_DHIRES | VF_80COL);
 }
 auto CmdViewOutput_DGR1(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_1, VF_DHIRES | VF_80COL);
 }
 auto CmdViewOutput_DGR2(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_2, VF_DHIRES | VF_80COL);
 }
 // Hi-Res
 auto CmdViewOutput_HGRX(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, VF_HIRES);
+  return ViewOutput(VIEW_PAGE_X, VF_HIRES);
 }
 auto CmdViewOutput_HGR1(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, VF_HIRES);
+  return ViewOutput(VIEW_PAGE_1, VF_HIRES);
 }
 auto CmdViewOutput_HGR2(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, VF_HIRES);
+  return ViewOutput(VIEW_PAGE_2, VF_HIRES);
 }
 // Double Hi-Res
 auto CmdViewOutput_DHGRX(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_X, VF_HIRES | VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_X, VF_HIRES | VF_DHIRES | VF_80COL);
 }
 auto CmdViewOutput_DHGR1(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_1, VF_HIRES | VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_1, VF_HIRES | VF_DHIRES | VF_80COL);
 }
 auto CmdViewOutput_DHGR2(int nArgs) -> Update_t {
   (void)nArgs;
-  return _ViewOutput(VIEW_PAGE_2, VF_HIRES | VF_DHIRES | VF_80COL);
+  return ViewOutput(VIEW_PAGE_2, VF_HIRES | VF_DHIRES | VF_80COL);
 }
 
 // Watches
 // ________________________________________________________________________________________
 
-auto _ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t {
+auto ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t {
   switch (iPage) {
     case VIEW_PAGE_X:
       bVideoModeFlags |= !video_get_sw_page2() ? 0 : VF_PAGE2;

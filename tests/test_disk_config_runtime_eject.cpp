@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "apple2/peripherals/disk/DiskCommands.h"
@@ -9,8 +10,9 @@
 
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
   linapple_init();
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         TestFixtures::get_fixture_path("minimal.woz"));
+  Configuration_t::instance().set_string(
+      "Slots", REGVALUE_DISK_IMAGE1,
+      TestFixtures::get_fixture_path("minimal.woz"));
   peripheral_manager_init();
   linapple_register_peripherals();
 

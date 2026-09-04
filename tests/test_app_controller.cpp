@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -140,6 +141,10 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
 
+  for (int i = 0; i < 500; ++i) {
+    peripheral_manager_think(100);
+  }
+
   // Check if Master.dsk was automatically inserted into drive 0
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
@@ -173,6 +178,10 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
   app_env_resolve_paths(&config);
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
+
+  for (int i = 0; i < 500; ++i) {
+    peripheral_manager_think(100);
+  }
 
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);

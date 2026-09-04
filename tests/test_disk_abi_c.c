@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* C99 compilation smoke test — if this file compiles, the headers are
  * C99-compatible. */
 #include "apple2/peripherals/disk/DiskCommands.h"

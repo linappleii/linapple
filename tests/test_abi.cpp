@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
-#include "Peripheral_Types.h"
-#include "Apple2Types.h"
 #include <vector>
+
+#include "Apple2Types.h"
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <atomic>
 #include <cstring>

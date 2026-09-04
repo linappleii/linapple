@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Memory.h"
 
 #include <cassert>
@@ -159,7 +160,7 @@ static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t {
 }
 
 //===========================================================================
-auto _MemoryCheckMiniDump(int iWhich) -> bool {
+auto MemoryCheckMiniDump(int iWhich) -> bool {
   if ((iWhich < 0) || (iWhich > NUM_MEM_MINI_DUMPS)) {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText), "  Only %d memory mini dumps",
@@ -173,7 +174,7 @@ auto _MemoryCheckMiniDump(int iWhich) -> bool {
 //===========================================================================
 auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
   int iWhich = g_command - CMD_MEM_MINI_DUMP_HEX_1;
-  if (_MemoryCheckMiniDump(iWhich)) {
+  if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
 
@@ -183,7 +184,7 @@ auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
   int iWhich = g_command - CMD_MEM_MINI_DUMP_ASCII_1;
-  if (_MemoryCheckMiniDump(iWhich)) {
+  if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
 
@@ -193,7 +194,7 @@ auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
   int iWhich = g_command - CMD_MEM_MINI_DUMP_APPLE_1;
-  if (_MemoryCheckMiniDump(iWhich)) {
+  if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
 
@@ -204,20 +205,20 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 // Update_t CmdMemoryMiniDumpLow (int nArgs)
 //{
 //  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_LO_1;
-//  if (_MemoryCheckMiniDump( iWhich ))
+//  if (MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
-//  return _CmdMemoryDump(nArgs, iWhich, MEM_VIEW_APPLE ); // MEM_VIEW_TXT_LO );
+//  return CmdMemoryDump(nArgs, iWhich, MEM_VIEW_APPLE ); // MEM_VIEW_TXT_LO );
 //}
 
 //===========================================================================
 // Update_t CmdMemoryMiniDumpHigh (int nArgs)
 //{
 //  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_HI_1;
-//  if (_MemoryCheckMiniDump( iWhich ))
+//  if (MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
-//  return _CmdMemoryDump(nArgs, iWhich, MEM_VIEW_APPLE ); // MEM_VIEW_TXT_HI );
+//  return CmdMemoryDump(nArgs, iWhich, MEM_VIEW_APPLE ); // MEM_VIEW_TXT_HI );
 //}
 
 //===========================================================================
@@ -302,7 +303,8 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   if (nArgs == 3) {
     nAddressStart = g_args[1].nValue;
     nAddressEnd = g_args[2].nValue;
-    nAddressLen = MIN((int)_6502_MEM_END, nAddressEnd - nAddressStart + 1);
+    nAddressLen =
+        MIN((int)APPLE2_6502_MEM_END, nAddressEnd - nAddressStart + 1);
   } else {
     RangeType_t eRange;
     eRange = Range_Get(nAddressStart, nAddress2, 1);
@@ -318,14 +320,14 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   nBytes = MAX(1, g_args[1].nVal2);  // TODO: This actually work??
 #endif
 
-  if ((nAddressLen > 0) && (nAddressEnd <= _6502_MEM_END)) {
+  if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
     nValue = g_args[nArgs].nValue & 0xFF;
     while (nAddressLen--)  // v2.7.0.22
     {
       // TODO: Optimize - split into pre_io, and post_io
-      if ((nAddress2 < _6502_IO_BEGIN) || (nAddress2 > _6502_IO_END)) {
+      if ((nAddress2 < DBG_6502_IO_BEGIN) || (nAddress2 > DBG_6502_IO_END)) {
         *(mem + nAddressStart) = nValue;
       }
       nAddressStart++;
@@ -436,7 +438,7 @@ Update_t CmdMemoryLoad (int nArgs)
       }
     }
 
-    uint8_t *pMemory = new uint8_t [ _6502_MEM_END + 1 ]; // default 64K buffer
+    uint8_t *pMemory = new uint8_t [ APPLE2_6502_MEM_END + 1 ]; // default 64K buffer
     uint8_t *pDst = mem + nAddressStart;
     uint8_t *src_ptr = pMemory;
 
@@ -451,8 +453,8 @@ Update_t CmdMemoryLoad (int nArgs)
     {
       size_t nFileBytes = debugger_get_file_size( hFile.get() );
 
-      if (nFileBytes > _6502_MEM_END) {
-        nFileBytes = _6502_MEM_END + 1; // Bank-switched RAMR/ROM is only 16-bit
+      if (nFileBytes > APPLE2_6502_MEM_END) {
+        nFileBytes = APPLE2_6502_MEM_END + 1; // Bank-switched RAMR/ROM is only 16-bit
 }
 
       // Caller didnt' specify how many bytes to read, default to them all
@@ -646,8 +648,9 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   if (hFile) {
     size_t nFileBytes = debugger_get_file_size(hFile.get());
 
-    if (nFileBytes > _6502_MEM_END) {
-      nFileBytes = _6502_MEM_END + 1;  // Bank-switched RAM/ROM is only 16-bit
+    if (nFileBytes > APPLE2_6502_MEM_END) {
+      nFileBytes =
+          APPLE2_6502_MEM_END + 1;  // Bank-switched RAM/ROM is only 16-bit
     }
 
     // Caller didn't specify how many bytes to read, default to them all
@@ -718,7 +721,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_MOVE);
   }
 
-  if ((nAddressLen > 0) && (nAddressEnd <= _6502_MEM_END)) {
+  if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
     //      uint8_t *src_ptr = mem + nAddressStart;
@@ -728,7 +731,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     while (nAddressLen--)  // v2.7.0.23
     {
       // TODO: Optimize - split into pre_io, and post_io
-      if ((nDst < _6502_IO_BEGIN) || (nDst > _6502_IO_END)) {
+      if ((nDst < DBG_6502_IO_BEGIN) || (nDst > DBG_6502_IO_END)) {
         *(mem + nDst) = *(mem + nAddressStart);
       }
       nDst++;
@@ -813,7 +816,7 @@ Update_t CmdMemorySave (int nArgs)
       return Help_Arg_1( CMD_MEMORY_SAVE );
 }
 
-    if ((nAddressLen) && (nAddressEnd <= _6502_MEM_END))
+    if ((nAddressLen) && (nAddressEnd <= APPLE2_6502_MEM_END))
     {
       if (! bHaveFileName)
       {
@@ -967,7 +970,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_SAVE);
     }
 
-    if ((nAddressLen) && (nAddressEnd <= _6502_MEM_END)) {
+    if ((nAddressLen) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
       if (!bHaveFileName) {
         char sMemoryLoadSaveFileName[path_max_len];
         if (!bBankSpecified) {
@@ -1164,7 +1167,7 @@ auto CmdNTSC(int nArgs) -> Update_t {
 #ifdef TODO  // Not supported for Linux yet
   int iParam;
   int nFound = FindParam(g_args[1].sArg, MATCH_EXACT, iParam,
-                         _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END);
+                         PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
 
   struct KnownFileType_t {
     char* pExtension;
@@ -1865,7 +1868,7 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
   return nFound;
 }
 
-auto _SearchMemoryDisplay(int nArgs) -> Update_t {
+auto SearchMemoryDisplay(int nArgs) -> Update_t {
   (void)nArgs;
   const uint32_t nBuf = CONSOLE_WIDTH * 2;
 
@@ -2105,7 +2108,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
   vMemorySearchValues.erase(vMemorySearchValues.begin(),
                             vMemorySearchValues.end());
 
-  return _SearchMemoryDisplay();
+  return SearchMemoryDisplay();
 }
 
 //===========================================================================

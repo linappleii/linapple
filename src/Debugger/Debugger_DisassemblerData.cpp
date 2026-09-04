@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -44,8 +45,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // ____________________________________________________________________________
 
 //===========================================================================
-auto _CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
-    -> uint16_t {
+auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_) -> uint16_t {
   uint16_t address = 0;
   uint16_t nAddress2 = 0;
   int nLen = 0;
@@ -65,8 +65,8 @@ auto _CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
       Range_CalcEndLen(eRange, address, nAddress2, tEndLen);
       nLen = tEndLen.nAddressLen;
       nLen--;  // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC:
-               // _CmdDefineByteRange() CmdDisasmDataList()
-               // _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
+               // CmdDefineByteRange() CmdDisasmDataList()
+               // GetOpmodeOpbyte() FormatNopcodeBytes()
     } else {
       if (nArgs > 1) {
         address = g_args[2].nValue;
@@ -148,7 +148,7 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
 
   DisasmData_t tData{};
   int iArg = 2;
-  uint16_t address = _CmdDefineByteRange(nArgs, iArg, tData);
+  uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   // Need to iterate through all blocks
   // DB TEST1 300:320
@@ -160,7 +160,7 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
   if (data) {
     // TODO: Do we need to split the data !?
     // Disassembly_DelData( tData );
-    data->iDirective = _NOP_REMOVED;
+    data->iDirective = NOP_REMOVED;
 
     // TODO: Remove symbol 'D_FA62' from symbol table!
   } else {
@@ -185,7 +185,7 @@ auto CmdDisasmDataList(int nArgs) -> Update_t {
   DisasmData_t* data = nullptr;
 
   while ((data = Disassembly_Enumerate(data))) {
-    if (data->iDirective != _NOP_REMOVED) {
+    if (data->iDirective != NOP_REMOVED) {
       int nLen = strlen(data->sSymbol);
 
       char sText[CONSOLE_WIDTH * 2];
@@ -198,8 +198,8 @@ auto CmdDisasmDataList(int nArgs) -> Update_t {
           (nLen > 0) ? data->sSymbol : "???", CHC_ADDRESS, data->nStartAddress,
           CHC_ARG_SEP, CHC_ADDRESS,
           data->nEndAddress  // Disassembly_IsDataAddress() is *inclusive* //
-                             // KEEP IN SYNC:  _CmdDefineByteRange()
-                             // CmdDisasmDataList() _6502_GetOpmodeOpbyte()
+                             // KEEP IN SYNC:  CmdDefineByteRange()
+                             // CmdDisasmDataList() GetOpmodeOpbyte()
                              // FormatNopcodeBytes()
       );
     }
@@ -210,7 +210,7 @@ auto CmdDisasmDataList(int nArgs) -> Update_t {
 
 // Common code
 //===========================================================================
-auto _CmdDisasmDataDefByteX(int nArgs) -> Update_t {
+auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
   // DB
   // DB symbol // use current instruction pointer
   // DB symbol address
@@ -234,7 +234,7 @@ auto _CmdDisasmDataDefByteX(int nArgs) -> Update_t {
     }
   }
 
-  uint16_t address = _CmdDefineByteRange(nArgs, iArg, tData);
+  uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   // TODO: Allow user to select which assembler to use for displaying
   // directives!
@@ -269,7 +269,7 @@ auto _CmdDisasmDataDefByteX(int nArgs) -> Update_t {
                 DW 3F2:3F3
 */
 //===========================================================================
-auto _CmdDisasmDataDefWordX(int nArgs) -> Update_t {
+auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
   int iCmd = g_args[0].nValue - NOP_WORD_1;
 
   if (nArgs > 4)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
@@ -287,7 +287,7 @@ auto _CmdDisasmDataDefWordX(int nArgs) -> Update_t {
     }
   }
 
-  uint16_t address = _CmdDefineByteRange(nArgs, iArg, tData);
+  uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
   tData.iDirective =
@@ -330,7 +330,7 @@ auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t {
 
   DisasmData_t tData{};
   int iArg = 2;
-  uint16_t address = _CmdDefineByteRange(nArgs, iArg, tData);
+  uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
   tData.iDirective =
@@ -354,40 +354,40 @@ auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t {
 // DB
 auto CmdDisasmDataDefByte1(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_BYTE_1;
-  return _CmdDisasmDataDefByteX(nArgs);
+  return CmdDisasmDataDefByteX(nArgs);
 }
 
 // DB2
 auto CmdDisasmDataDefByte2(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_BYTE_2;
-  return _CmdDisasmDataDefByteX(nArgs);
+  return CmdDisasmDataDefByteX(nArgs);
 }
 
 auto CmdDisasmDataDefByte4(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_BYTE_4;
-  return _CmdDisasmDataDefByteX(nArgs);
+  return CmdDisasmDataDefByteX(nArgs);
 }
 
 auto CmdDisasmDataDefByte8(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_BYTE_8;
-  return _CmdDisasmDataDefByteX(nArgs);
+  return CmdDisasmDataDefByteX(nArgs);
 }
 
 // DW
 auto CmdDisasmDataDefWord1(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_WORD_1;
-  return _CmdDisasmDataDefWordX(nArgs);
+  return CmdDisasmDataDefWordX(nArgs);
 }
 
 // DW2
 auto CmdDisasmDataDefWord2(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_WORD_2;
-  return _CmdDisasmDataDefWordX(nArgs);
+  return CmdDisasmDataDefWordX(nArgs);
 }
 
 auto CmdDisasmDataDefWord4(int nArgs) -> Update_t {
   g_args[0].nValue = NOP_WORD_4;
-  return _CmdDisasmDataDefWordX(nArgs);
+  return CmdDisasmDataDefWordX(nArgs);
 }
 
 // Command: DS
@@ -410,7 +410,7 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
     }
   }
 
-  uint16_t address = _CmdDefineByteRange(nArgs, iArg, tData);
+  uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   //	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] +
   // ASM_DEFINE_APPLE_TEXT;
@@ -467,7 +467,7 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
     // via start address
     data = &g_disassembler_data[0];
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
-      if (data->iDirective != _NOP_REMOVED) {
+      if (data->iDirective != NOP_REMOVED) {
         if ((address >= data->nStartAddress) &&
             (address <= data->nEndAddress)) {
           return data;
@@ -480,13 +480,13 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
   return data;
 }
 
-// Notes: tData.iDirective should not be _NOP_REMOVED !
+// Notes: tData.iDirective should not be NOP_REMOVED !
 //===========================================================================
 void Disassembly_AddData(DisasmData_t tData) {
   g_disassembler_data.push_back(tData);
 }
 
-// DEPRECATED ! Inlined in _6502_GetOpmodeOpbyte() !
+// DEPRECATED ! Inlined in GetOpmodeOpbyte() !
 //===========================================================================
 void Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
                          DisasmLine_t& line_) {
@@ -514,9 +514,9 @@ void Disassembly_DelData(DisasmData_t tData) {
     // via start address
     data = &g_disassembler_data[0];
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
-      if (data->iDirective != _NOP_REMOVED) {
+      if (data->iDirective != NOP_REMOVED) {
         if ((address >= data->nStartAddress) && (address < data->nEndAddress)) {
-          data->iDirective = _NOP_REMOVED;
+          data->iDirective = NOP_REMOVED;
         }
       }
       data++;

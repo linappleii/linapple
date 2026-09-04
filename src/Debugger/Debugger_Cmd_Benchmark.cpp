@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_Benchmark.h"
 
 #include <algorithm>
@@ -69,7 +70,7 @@ auto CmdProfile(int nArgs) -> Update_t {
   int iArg = 1;
   int iParam = 0;
   bool bFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iParam,
-                          _PARAM_PROFILE_BEGIN, _PARAM_PROFILE_END) > 0;
+                          PARAM_PROFILE_BEGIN, PARAM_PROFILE_END) > 0;
 
   if (bFound) {
     if (iParam == PARAM_PROFILE_RESET) {

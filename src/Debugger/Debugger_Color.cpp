@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -40,7 +41,7 @@ int g_color_scheme = SCHEME_COLOR;
 
 int g_color_palette[NUM_PALETTE] = {
     BLACK,
-    // NOTE: See _SetupColorRamp() if you want to programmatically set/change
+    // NOTE: See SetupColorRamp() if you want to programmatically set/change
     RED, RED, RED, DARK_RED, DARK_RED, DARK_RED, DARK_RED,
     DARK_RED,  // 001 // Red
     GREEN, GREEN, MONOCHROME_GREEN, MONOCHROME_GREEN, DARK_GREEN, DARKER_GREEN,
@@ -169,7 +170,7 @@ auto DebuggerSetColor(const int iScheme, const int iColor,
 #if _DEBUG
 #define DEBUG_COLOR_RAMP 0
 //===========================================================================
-static void _SetupColorRamp(const int iPrimary, int& iColor_) {
+static void SetupColorRamp(const int iPrimary, int& iColor_) {
   char sRamp[CONSOLE_WIDTH * 2] = "";
 #if DEBUG_COLOR_RAMP
   char sText[CONSOLE_WIDTH];
@@ -208,7 +209,7 @@ void ConfigColorsReset() {
   // same as white levels 	for (int iPrimary = 1; iPrimary < 8; iPrimary++
   // )
   //	{
-  //		_SetupColorRamp( iPrimary, iColor );
+  //		SetupColorRamp( iPrimary, iColor );
   //	}
 
 #ifdef TODO  // No color schemes for Linux yet
@@ -245,7 +246,7 @@ void ConfigColorsReset() {
 
 constexpr uint8_t BYTE_MASK = 0xFF;
 
-void _ColorPrint(int iColor, ColorRef_t nColor) {
+void ColorPrint(int iColor, ColorRef_t nColor) {
   int R = static_cast<int>(nColor & BYTE_MASK);
   int G = static_cast<int>((nColor >> GREEN_SHIFT) & BYTE_MASK);
   int B = static_cast<int>((nColor >> BLUE_SHIFT) & BYTE_MASK);
@@ -255,12 +256,12 @@ void _ColorPrint(int iColor, ColorRef_t nColor) {
                           B);  // TODO: print name of colors!
 }
 
-void _CmdColorGet(const int iScheme, const int iColor) {
+void CmdColorGet(const int iScheme, const int iColor) {
   (void)iScheme;
   if (iColor < NUM_DEBUG_COLORS) {
     auto eColor = static_cast<DebugColors_e>(iColor);
     ColorRef_t nColor = DebuggerGetColor(eColor);
-    _ColorPrint(iColor, nColor);
+    ColorPrint(iColor, nColor);
   } else {
     fprintf(stderr, "Color: %d\nOut of range!", iColor);
   }

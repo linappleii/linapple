@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Display.h"
 
 #include <cassert>
@@ -52,7 +53,7 @@ VideoScannerDisplayInfo_t g_video_scanner_display_info;
 // Prototypes _______________________________________________________________
 
 extern void DisasmInit();
-extern auto _CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
+extern auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
 extern void frame_refresh_status(int);
 
 extern void DrawSubWindow_Symbols(Update_t bUpdate);
@@ -252,7 +253,7 @@ void DebuggerPrintColor(int x, int y, const conchar_t* text) {
       g = ConsoleChar_GetChar(g);
     }
 
-    PrintGlyph(x, y, static_cast<char>(g & _CONSOLE_COLOR_MASK));
+    PrintGlyph(x, y, static_cast<char>(g & CONSOLE_COLOR_MASK));
     x += CONSOLE_FONT_WIDTH;
     src_ptr++;
   }
@@ -675,8 +676,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   int iOpmode = 0;
   int nOpbyte = 0;
 
-  opcode =
-      _6502_GetOpmodeOpbyte(nBaseAddress, iOpmode, nOpbyte, &line_.pDisasmData);
+  opcode = GetOpmodeOpbyte(nBaseAddress, iOpmode, nOpbyte, &line_.pDisasmData);
   const DisasmData_t* data = line_.pDisasmData;
 
   line_.opcode = opcode;
@@ -800,8 +800,8 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       int nTargetPartial2 = 0;
       int nTargetPointer = 0;
       uint16_t nTargetValue = 0;
-      _6502_GetTargets(nBaseAddress, &nTargetPartial, &nTargetPartial2,
-                       &nTargetPointer, nullptr);
+      GetTargets(nBaseAddress, &nTargetPartial, &nTargetPartial2,
+                 &nTargetPointer, nullptr);
       GetTargets_IgnoreDirectJSRJMP(opcode, nTargetPointer);
 
       if (nTargetPointer != NO_6502_TARGET) {
@@ -824,9 +824,9 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
           bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
           line_.nImmediate = static_cast<uint8_t>(nTargetValue);
 
-          char _char = FormatCharTxtCtrl(
+          char ch = FormatCharTxtCtrl(
               FormatCharTxtHigh(line_.nImmediate, nullptr), nullptr);
-          snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", _char);
+          snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", ch);
         }
       }
     } else if (iOpmode == AM_M) {
@@ -835,9 +835,9 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       if (iOpmode == AM_M) {
         bDisasmFormatFlags |= DISASM_FORMAT_CHAR;
         line_.nImmediate = static_cast<uint8_t>(nTarget);
-        char _char = FormatCharTxtCtrl(
+        char ch = FormatCharTxtCtrl(
             FormatCharTxtHigh(line_.nImmediate, nullptr), nullptr);
-        snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", _char);
+        snprintf(line_.sImmediate, sizeof(line_.sImmediate), "%c", ch);
       }
     }
   }
@@ -886,10 +886,10 @@ constexpr int DEFAULT_DISPLAY_MEMORY_LINES = 8;
 
 void InitDisasm() {
   for (int i = 0; i < NUM_FONTS; i++) {
-    g_font_config[i]._nFontWidthAvg = CONSOLE_FONT_WIDTH;
-    g_font_config[i]._nFontWidthMax = CONSOLE_FONT_WIDTH;
-    g_font_config[i]._nFontHeight = CONSOLE_FONT_HEIGHT;
-    g_font_config[i]._nLineHeight = CONSOLE_FONT_HEIGHT;
+    g_font_config[i].font_width_avg = CONSOLE_FONT_WIDTH;
+    g_font_config[i].font_width_max = CONSOLE_FONT_WIDTH;
+    g_font_config[i].font_height = CONSOLE_FONT_HEIGHT;
+    g_font_config[i].line_height = CONSOLE_FONT_HEIGHT;
   }
 
   for (auto& i : g_window_config) {
@@ -1006,7 +1006,7 @@ void debug_destroy() {
   debug_end();
 
   for (int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++) {
-    _CmdSymbolsClear(static_cast<SymbolTable_Index_e>(iTable));
+    CmdSymbolsClear(static_cast<SymbolTable_Index_e>(iTable));
   }
 }
 

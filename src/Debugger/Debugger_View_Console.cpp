@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 
 #include "Debug.h"
@@ -23,7 +24,7 @@ void DrawSubWindow_Console(Update_t bUpdate) {
   }
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_CONSOLE]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_CONSOLE].h_font);
 #endif
 
   if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT)) {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/sdl2/SDL_Video.h"
 
 #include <SDL_pixels.h>

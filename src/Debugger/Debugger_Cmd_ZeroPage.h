@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "Debugger_Types.h"

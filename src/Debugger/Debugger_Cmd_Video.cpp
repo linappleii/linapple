@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstring>
 
 #include "Debugger_Console.h"

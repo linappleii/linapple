@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "apple2/Video.h"
@@ -262,4 +263,4 @@ ColorRef_t DebuggerGetColor(int iColor);
 bool DebuggerSetColor(const int iScheme, const int iColor,
                       const ColorRef_t nColor);
 void ConfigColorsReset(void);
-void _CmdColorGet(const int iScheme, const int iColor);
+void CmdColorGet(const int iScheme, const int iColor);

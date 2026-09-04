@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Assembler.h"
 
 #include <algorithm>
@@ -75,28 +76,28 @@ std::vector<DisasmData_t> g_disassembler_data;
 // B0 unsigned: BCS BGE
 
 #define R_ MEM_R
-#define _W MEM_W
+#define W_ MEM_W
 #define RW MEM_R | MEM_W
-#define _S MEM_S
+#define S_ MEM_S
 constexpr auto IM = MEM_IM;
 #define SW MEM_S | MEM_WI
 #define SR MEM_S | MEM_RI
 const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"BRK", 0, SW},      {"ORA", AM_IZX, R_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 00 .. 03
-    {"TSB", AM_Z, _W},   {"ORA", AM_Z, R_},
+    {"TSB", AM_Z, W_},   {"ORA", AM_Z, R_},
     {"ASL", AM_Z, RW},   {"nop", 0, 0},  // 04 .. 07
     {"PHP", 0, SW},      {"ORA", AM_M, IM},
     {"ASL", 0, 0},       {"nop", 0, 0},  // 08 .. 0B
-    {"TSB", AM_A, _W},   {"ORA", AM_A, R_},
+    {"TSB", AM_A, W_},   {"ORA", AM_A, R_},
     {"ASL", AM_A, RW},   {"nop", 0, 0},  // 0C .. 0F
     {"BPL", AM_R, 0},    {"ORA", AM_NZY, R_},
     {"ORA", AM_NZ, R_},  {"nop", 0, 0},  // 10 .. 13
-    {"TRB", AM_Z, _W},   {"ORA", AM_ZX, R_},
+    {"TRB", AM_Z, W_},   {"ORA", AM_ZX, R_},
     {"ASL", AM_ZX, RW},  {"nop", 0, 0},  // 14 .. 17
     {"CLC", 0, 0},       {"ORA", AM_AY, R_},
     {"INC", 0, 0},       {"nop", 0, 0},  // 18 .. 1B
-    {"TRB", AM_A, _W},   {"ORA", AM_AX, R_},
+    {"TRB", AM_A, W_},   {"ORA", AM_AX, R_},
     {"ASL", AM_AX, RW},  {"nop", 0, 0},  // 1C .. 1F
 
     {"JSR", AM_A, SW},   {"AND", AM_IZX, R_},
@@ -119,15 +120,15 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"RTI", 0, SR},      {"EOR", AM_IZX, R_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 40 .. 43
     {"nop", AM_Z, 0},    {"EOR", AM_Z, R_},
-    {"LSR", AM_Z, _W},   {"nop", 0, 0},  // 44 .. 47
+    {"LSR", AM_Z, W_},   {"nop", 0, 0},  // 44 .. 47
     {"PHA", 0, SW},      {"EOR", AM_M, IM},
     {"LSR", 0, 0},       {"nop", 0, 0},  // 48 .. 4B
     {"JMP", AM_A, 0},    {"EOR", AM_A, R_},
-    {"LSR", AM_A, _W},   {"nop", 0, 0},  // 4C .. 4F
+    {"LSR", AM_A, W_},   {"nop", 0, 0},  // 4C .. 4F
     {"BVC", AM_R, 0},    {"EOR", AM_NZY, R_},
     {"EOR", AM_NZ, R_},  {"nop", 0, 0},  // 50 .. 53
     {"nop", AM_ZX, 0},   {"EOR", AM_ZX, R_},
-    {"LSR", AM_ZX, _W},  {"nop", 0, 0},  // 54 .. 57
+    {"LSR", AM_ZX, W_},  {"nop", 0, 0},  // 54 .. 57
     {"CLI", 0, 0},       {"EOR", AM_AY, R_},
     {"PHY", 0, SW},      {"nop", 0, 0},  // 58 .. 5B
     {"nop", AM_AX, 0},   {"EOR", AM_AX, R_},
@@ -135,7 +136,7 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
 
     {"RTS", 0, SR},      {"ADC", AM_IZX, R_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 60 .. 63
-    {"STZ", AM_Z, _W},   {"ADC", AM_Z, R_},
+    {"STZ", AM_Z, W_},   {"ADC", AM_Z, R_},
     {"ROR", AM_Z, RW},   {"nop", 0, 0},  // 64 .. 67
     {"PLA", 0, SR},      {"ADC", AM_M, IM},
     {"ROR", 0, 0},       {"nop", 0, 0},  // 68 .. 6B
@@ -143,29 +144,29 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"ROR", AM_A, RW},   {"nop", 0, 0},  // 6C .. 6F
     {"BVS", AM_R, 0},    {"ADC", AM_NZY, R_},
     {"ADC", AM_NZ, R_},  {"nop", 0, 0},  // 70 .. 73
-    {"STZ", AM_ZX, _W},  {"ADC", AM_ZX, R_},
+    {"STZ", AM_ZX, W_},  {"ADC", AM_ZX, R_},
     {"ROR", AM_ZX, RW},  {"nop", 0, 0},  // 74 .. 77
     {"SEI", 0, 0},       {"ADC", AM_AY, R_},
     {"PLY", 0, SR},      {"nop", 0, 0},  // 78 .. 7B
     {"JMP", AM_IAX, R_}, {"ADC", AM_AX, R_},
     {"ROR", AM_AX, RW},  {"nop", 0, 0},  // 7C .. 7F
 
-    {"BRA", AM_R, 0},    {"STA", AM_IZX, _W},
+    {"BRA", AM_R, 0},    {"STA", AM_IZX, W_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 80 .. 83
-    {"STY", AM_Z, _W},   {"STA", AM_Z, _W},
-    {"STX", AM_Z, _W},   {"nop", 0, 0},  // 84 .. 87
+    {"STY", AM_Z, W_},   {"STA", AM_Z, W_},
+    {"STX", AM_Z, W_},   {"nop", 0, 0},  // 84 .. 87
     {"DEY", 0, 0},       {"BIT", AM_M, IM},
     {"TXA", 0, 0},       {"nop", 0, 0},  // 88 .. 8B
-    {"STY", AM_A, _W},   {"STA", AM_A, _W},
-    {"STX", AM_A, _W},   {"nop", 0, 0},  // 8C .. 8F
-    {"BCC", AM_R, 0},    {"STA", AM_NZY, _W},
-    {"STA", AM_NZ, _W},  {"nop", 0, 0},  // 90 .. 93
-    {"STY", AM_ZX, _W},  {"STA", AM_ZX, _W},
-    {"STX", AM_ZY, _W},  {"nop", 0, 0},  // 94 .. 97
-    {"TYA", 0, 0},       {"STA", AM_AY, _W},
+    {"STY", AM_A, W_},   {"STA", AM_A, W_},
+    {"STX", AM_A, W_},   {"nop", 0, 0},  // 8C .. 8F
+    {"BCC", AM_R, 0},    {"STA", AM_NZY, W_},
+    {"STA", AM_NZ, W_},  {"nop", 0, 0},  // 90 .. 93
+    {"STY", AM_ZX, W_},  {"STA", AM_ZX, W_},
+    {"STX", AM_ZY, W_},  {"nop", 0, 0},  // 94 .. 97
+    {"TYA", 0, 0},       {"STA", AM_AY, W_},
     {"TXS", 0, 0},       {"nop", 0, 0},  // 98 .. 9B
-    {"STZ", AM_A, _W},   {"STA", AM_AX, _W},
-    {"STZ", AM_AX, _W},  {"nop", 0, 0},  // 9C .. 9F
+    {"STZ", AM_A, W_},   {"STA", AM_AX, W_},
+    {"STZ", AM_AX, W_},  {"nop", 0, 0},  // 9C .. 9F
 
     {"LDY", AM_M, IM},   {"LDA", AM_IZX, R_},
     {"LDX", AM_M, IM},   {"nop", 0, 0},  // A0 .. A3
@@ -351,22 +352,22 @@ const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
     {"nop", AM_AX, 0},  {"ADC", AM_AX, R_},
     {"ROR", AM_AX, RW}, {"rra", AM_AX, RW},  // 7C .. 7F
 
-    {"nop", AM_M, IM},  {"STA", AM_IZX, _W},
-    {"nop", AM_M, IM},  {"axs", AM_IZX, _W},  // 80 .. 83
-    {"STY", AM_Z, _W},  {"STA", AM_Z, _W},
-    {"STX", AM_Z, _W},  {"axs", AM_Z, _W},  // 84 .. 87
+    {"nop", AM_M, IM},  {"STA", AM_IZX, W_},
+    {"nop", AM_M, IM},  {"axs", AM_IZX, W_},  // 80 .. 83
+    {"STY", AM_Z, W_},  {"STA", AM_Z, W_},
+    {"STX", AM_Z, W_},  {"axs", AM_Z, W_},  // 84 .. 87
     {"DEY", 0, 0},      {"nop", AM_M, IM},
     {"TXA", 0, 0},      {"xaa", AM_M, IM},  // 88 .. 8B
-    {"STY", AM_A, _W},  {"STA", AM_A, _W},
-    {"STX", AM_A, _W},  {"axs", AM_A, _W},  // 8C .. 8F
-    {"BCC", AM_R, 0},   {"STA", AM_NZY, _W},
-    {"hlt", 0, 0},      {"axa", AM_NZY, _W},  // 90 .. 93
-    {"STY", AM_ZX, _W}, {"STA", AM_ZX, _W},
-    {"STX", AM_ZY, _W}, {"axs", AM_ZY, _W},  // 94 .. 97
-    {"TYA", 0, 0},      {"STA", AM_AY, _W},
-    {"TXS", 0, 0},      {"tas", AM_AY, _W},  // 98 .. 9B
-    {"say", AM_AX, _W}, {"STA", AM_AX, _W},
-    {"xas", AM_AX, _W}, {"axa", AM_AY, _W},  // 9C .. 9F
+    {"STY", AM_A, W_},  {"STA", AM_A, W_},
+    {"STX", AM_A, W_},  {"axs", AM_A, W_},  // 8C .. 8F
+    {"BCC", AM_R, 0},   {"STA", AM_NZY, W_},
+    {"hlt", 0, 0},      {"axa", AM_NZY, W_},  // 90 .. 93
+    {"STY", AM_ZX, W_}, {"STA", AM_ZX, W_},
+    {"STX", AM_ZY, W_}, {"axs", AM_ZY, W_},  // 94 .. 97
+    {"TYA", 0, 0},      {"STA", AM_AY, W_},
+    {"TXS", 0, 0},      {"tas", AM_AY, W_},  // 98 .. 9B
+    {"say", AM_AX, W_}, {"STA", AM_AX, W_},
+    {"xas", AM_AX, W_}, {"axa", AM_AY, W_},  // 9C .. 9F
 
     {"LDY", AM_M, IM},  {"LDA", AM_IZX, R_},
     {"LDX", AM_M, IM},  {"lax", AM_IZX, R_},  // A0 .. A3
@@ -421,9 +422,9 @@ const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
 };
 
 #undef R_
-#undef _W
+#undef W_
 #undef RW
-#undef _S
+#undef S_
 #undef IM
 #undef SW
 #undef SR
@@ -546,9 +547,9 @@ void AssemblerHashDirectives();
 // Implementation ___________________________________________________________
 
 //===========================================================================
-auto _6502_CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
-                              uint16_t* pTargetOffset_) -> bool {
-  if (_6502_IsOpcodeBranch(nOpcode)) {
+auto CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
+                        uint16_t* pTargetOffset_) -> bool {
+  if (IsOpcodeBranch(nOpcode)) {
     // Branch is
     //   a) relative to address+2
     //   b) in 2's compliment
@@ -568,11 +569,11 @@ auto _6502_CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
       *pTargetOffset_ = static_cast<uint8_t>(nDistance - 2);
     }
 
-    if ((nDistance - 2) > _6502_BRANCH_POS) {
+    if ((nDistance - 2) > DBG_6502_BRANCH_POS) {
       g_asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
-    if ((nDistance - 2) < _6502_BRANCH_NEG) {
+    if ((nDistance - 2) < DBG_6502_BRANCH_NEG) {
       g_asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
@@ -583,8 +584,8 @@ auto _6502_CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
 }
 
 //===========================================================================
-auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
-                           const DisasmData_t** pData_) -> int {
+auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
+                     const DisasmData_t** pData_) -> int {
 #if _DEBUG
   if (!g_opcodes) {
     fprintf(stderr, "%s: %s\n", "ERROR", "Debugger not properly initialized");
@@ -623,9 +624,9 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
 
   // 2.6.2.25 Fixed: DB DW custom data byte sizes weren't scrolling properly in
   // the disasm view.
-  //          Changed _6502_GetOpmodeOpbyte() to be aware of data bytes.
+  //          Changed GetOpmodeOpbyte() to be aware of data bytes.
   //
-  // NOTE: _6502_GetOpmodeOpbyte() needs to (effectively) call
+  // NOTE: GetOpmodeOpbyte() needs to (effectively) call
   // Disassembly_GetData()
   //    a) the CmdCursorLineUp() calls us to calc for -X bytes back up how to
   //    reach the cursor (address) line below b) The disassembler view needs to
@@ -641,10 +642,9 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
       *pData_ = data;
     }
 
-    nSlack =
-        data->nEndAddress - data->nStartAddress +
-        1;  // *inclusive* KEEP IN SYNC: _CmdDefineByteRange()
-            // CmdDisasmDataList() _6502_GetOpmodeOpbyte() FormatNopcodeBytes()
+    nSlack = data->nEndAddress - data->nStartAddress +
+             1;  // *inclusive* KEEP IN SYNC: CmdDefineByteRange()
+                 // CmdDisasmDataList() GetOpmodeOpbyte() FormatNopcodeBytes()
 
     // Data Disassembler
     // Smart Disassembly - Data Section
@@ -728,16 +728,16 @@ auto _6502_GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
 }
 
 //===========================================================================
-void _6502_GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) {
-  iOpcode_ = _6502_GetOpmodeOpbyte(cpu_get_registers()->pc, iOpmode_, nOpbyte_);
+void GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) {
+  iOpcode_ = GetOpmodeOpbyte(cpu_get_registers()->pc, iOpmode_, nOpbyte_);
 }
 
 //===========================================================================
-auto _6502_GetStackReturnAddress(uint16_t& nAddress_) -> bool {
+auto GetStackReturnAddress(uint16_t& nAddress_) -> bool {
   unsigned nStack = cpu_get_registers()->sp;
   nStack++;
 
-  if (nStack <= (_6502_STACK_END - 1)) {
+  if (nStack <= (DBG_6502_STACK_END - 1)) {
     nAddress_ = static_cast<unsigned>(*(mem + nStack));
     nStack++;
 
@@ -749,10 +749,10 @@ auto _6502_GetStackReturnAddress(uint16_t& nAddress_) -> bool {
 }
 
 //===========================================================================
-auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
-                      int* pTargetPartial2_, int* pTargetPointer_,
-                      int* pTargetBytes_, bool bIgnoreBranch /*= true*/,
-                      bool bIncludeNextOpcodeAddress /*= true*/) -> bool {
+auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
+                int* pTargetPointer_, int* pTargetBytes_,
+                bool bIgnoreBranch /*= true*/,
+                bool bIncludeNextOpcodeAddress /*= true*/) -> bool {
   if (!pTargetPartial_) {
     return false;
   }
@@ -783,7 +783,7 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
   int eMode = g_opcodes[nOpcode].nAddressMode;
 
   // We really need to use the values that are code and data assembler
-  // TODO: FIXME: _6502_GetOpmodeOpbyte( iAddress, iOpmode, nOpbytes );
+  // TODO: FIXME: GetOpmodeOpbyte( iAddress, iOpmode, nOpbytes );
 
   switch (eMode) {
     case AM_IMPLIED:
@@ -794,15 +794,16 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
           uint16_t sp = cpu_get_registers()->sp;
 
           if (nOpcode == OPCODE_RTI) {
-            //*pTargetPartial3_ = _6502_STACK_BEGIN + ((sp+1) & 0xFF);	// TODO:
+            //*pTargetPartial3_ = DBG_6502_STACK_BEGIN + ((sp+1) & 0xFF);
+            //// TODO:
             // PLP
             ++sp;
           }
 
           *pTargetPartial_ =
-              static_cast<int>(_6502_STACK_BEGIN + ((sp + 1) & 0xFF));
+              static_cast<int>(DBG_6502_STACK_BEGIN + ((sp + 1) & 0xFF));
           *pTargetPartial2_ =
-              static_cast<int>(_6502_STACK_BEGIN + ((sp + 2) & 0xFF));
+              static_cast<int>(DBG_6502_STACK_BEGIN + ((sp + 2) & 0xFF));
           nTarget16 = static_cast<uint16_t>(mem[*pTargetPartial_] +
                                             (mem[*pTargetPartial2_] << 8));
 
@@ -812,21 +813,22 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
         } else if (nOpcode == OPCODE_BRK)  // BRK?
         {
           *pTargetPartial_ = static_cast<int>(
-              _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
+              DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           *pTargetPartial2_ = static_cast<int>(
-              _6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
-          //*pTargetPartial3_ = _6502_STACK_BEGIN + ((cpu_get_registers()->sp-2)
-          //& 0xFF);	// TODO: PHP *pTargetPartial4_ = _6502_BRK_VECTOR + 0;
-          //// TODO *pTargetPartial5_ = _6502_BRK_VECTOR + 1;	// TODO
-          nTarget16 = *reinterpret_cast<uint16_t*>(mem + _6502_BRK_VECTOR);
+              DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
+          //*pTargetPartial3_ = DBG_6502_STACK_BEGIN +
+          //((cpu_get_registers()->sp-2) & 0xFF);	// TODO: PHP
+          //*pTargetPartial4_ = DBG_6502_BRK_VECTOR + 0;
+          //// TODO *pTargetPartial5_ = DBG_6502_BRK_VECTOR + 1;	// TODO
+          nTarget16 = *reinterpret_cast<uint16_t*>(mem + DBG_6502_BRK_VECTOR);
         } else  // PHn/PLn
         {
           if (g_opcodes[nOpcode].nMemoryAccess & MEM_WI) {
             nTarget16 = static_cast<uint16_t>(
-                _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
+                DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           } else {
             nTarget16 = static_cast<uint16_t>(
-                _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 1) & 0xFF));
+                DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 1) & 0xFF));
           }
         }
 
@@ -845,9 +847,9 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
     case AM_A:  // Absolute
       if (nOpcode == OPCODE_JSR) {
         *pTargetPartial_ = static_cast<int>(
-            _6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
+            DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
         *pTargetPartial2_ = static_cast<int>(
-            _6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
+            DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp - 1) & 0xFF));
       }
 
       if (bIncludeNextOpcodeAddress ||
@@ -917,7 +919,7 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
       *pTargetPointer_ =
           static_cast<int>(((*reinterpret_cast<uint16_t*>(mem + nTarget8)) +
                             cpu_get_registers()->y) &
-                           _6502_MEM_END);  // Bugfix:
+                           APPLE2_6502_MEM_END);  // Bugfix:
       if (pTargetBytes_) {
         *pTargetBytes_ = 1;
       }
@@ -937,13 +939,13 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
         *pTargetPartial_ = nTarget8;
         *pTargetPointer_ = address + 2;
 
-        if (nTarget8 <= _6502_BRANCH_POS) {
+        if (nTarget8 <= DBG_6502_BRANCH_POS) {
           *pTargetPointer_ += nTarget8;  // +
         } else {
           *pTargetPointer_ -= nTarget8;  // -
         }
 
-        *pTargetPointer_ &= _6502_MEM_END;
+        *pTargetPointer_ &= APPLE2_6502_MEM_END;
 
         if (pTargetBytes_) {
           *pTargetBytes_ = 1;
@@ -985,12 +987,11 @@ auto _6502_GetTargets(uint16_t address, int* pTargetPartial_,
 }
 
 //===========================================================================
-auto _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_)
-    -> bool {
+auto GetTargetAddress(const uint16_t& address, uint16_t& nTarget_) -> bool {
   int opcode = 0;
   int iOpmode = 0;
   int nOpbytes = 0;
-  opcode = _6502_GetOpmodeOpbyte(address, iOpmode, nOpbytes);
+  opcode = GetOpmodeOpbyte(address, iOpmode, nOpbytes);
   (void)opcode;
 
   // Composite string that has the target address
@@ -1001,12 +1002,12 @@ auto _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_)
     int nTargetPartial2 = 0;
     int nTargetPointer = 0;
     int nTargetBytes = 0;
-    _6502_GetTargets(address, &nTargetPartial, &nTargetPartial2,
-                     &nTargetPointer, &nTargetBytes, false);
+    GetTargets(address, &nTargetPartial, &nTargetPartial2, &nTargetPointer,
+               &nTargetBytes, false);
 
     //		if (nTargetPointer == NO_6502_TARGET)
     //		{
-    //			if (_6502_IsOpcodeBranch( nOpcode )
+    //			if (IsOpcodeBranch( nOpcode )
     //			{
     //				return true;
     //			}
@@ -1014,7 +1015,7 @@ auto _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_)
     if (nTargetPointer != NO_6502_TARGET)
     //		else
     {
-      nTarget_ = nTargetPointer & _6502_MEM_END;
+      nTarget_ = nTargetPointer & APPLE2_6502_MEM_END;
       return true;
     }
   }
@@ -1022,7 +1023,7 @@ auto _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_)
 }
 
 //===========================================================================
-auto _6502_IsOpcodeBranch(int opcode) -> bool {
+auto IsOpcodeBranch(int opcode) -> bool {
   // 76543210 Bit
   // xxx10000 Branch
   if (opcode == OPCODE_BRA) {
@@ -1049,7 +1050,7 @@ auto _6502_IsOpcodeBranch(int opcode) -> bool {
 }
 
 //===========================================================================
-auto _6502_IsOpcodeValid(int opcode) -> bool {
+auto IsOpcodeValid(int opcode) -> bool {
   if ((opcode & 0x3) == 0x3) {
     return false;
   }
@@ -1148,7 +1149,7 @@ auto CmdAssemble(int nArgs) -> Update_t {
     if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
         (!strcmp(g_args[iArg].sArg,
                  g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
-      _CmdAssembleHashDump();
+      CmdAssembleHashDump();
     }
 
     AssemblerOn();
@@ -1158,8 +1159,8 @@ auto CmdAssemble(int nArgs) -> Update_t {
   }
 
   if (nArgs > 1) {
-    return _CmdAssemble(g_assembler_address, 2,
-                        nArgs);  // disasm, memory, watches, zeropage
+    return CmdAssemble(g_assembler_address, 2,
+                       nArgs);  // disasm, memory, watches, zeropage
   }
 
   return UPDATE_CONSOLE_DISPLAY;
@@ -1178,7 +1179,7 @@ auto CmdSource(int nArgs) -> Update_t {
 
       int iParam = 0;
       bool bFound = FindParam(pFileName.c_str(), MATCH_EXACT, iParam,
-                              _PARAM_SOURCE_BEGIN, _PARAM_SOURCE_END) > 0;
+                              PARAM_SOURCE_BEGIN, PARAM_SOURCE_END) > 0;
       if (bFound && (iParam == PARAM_SRC_SYMBOLS)) {
         g_source_add_symbols = true;
       } else if (bFound && (iParam == PARAM_SRC_MEMORY)) {
@@ -1278,7 +1279,7 @@ auto debugger_get_file_size(FILE* file) -> size_t {
   return static_cast<size_t>(pos);
 }
 
-auto _CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
+auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
   // if AlphaNumeric
   ArgToken_e iTokenSrc = NO_TOKEN;
   ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
@@ -1372,7 +1373,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
   g_source_assemble_bytes = 0;
   g_source_assembly_symbols = 0;
 
-  const uint32_t INVALID_ADDRESS = _6502_MEM_END + 1;
+  const uint32_t INVALID_ADDRESS = APPLE2_6502_MEM_END + 1;
 
   int nLines = g_assembler_source_buffer.GetNumLines();
   for (int iLine = 0; iLine < nLines; iLine++) {
@@ -1480,7 +1481,7 @@ void AssemblerStartup()
 }
 
 //===========================================================================
-void _CmdAssembleHashDump() {
+void CmdAssembleHashDump() {
   // #if DEBUG_ASM_HASH
   std::vector<HashOpcode_t> vHashes;
   HashOpcode_t tHash{};
@@ -1715,7 +1716,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
 
         if ((g_asm_address_mode != AM_M) &&
             (g_asm_address_mode != AM_IMPLIED) && (!g_delayed_targets_dirty)) {
-          if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+          if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
             g_asm_address_mode = AM_Z;
             g_asm_bytes = 1;
           }
@@ -1777,7 +1778,7 @@ auto AssemblerUpdateAddressingMode() -> bool {
       if (TestFlag(AF_HaveRegisterX)) {
         g_asm_address_mode = AM_AX;
         g_asm_bytes = 2;
-        if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+        if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
           g_asm_address_mode = AM_ZX;
           g_asm_bytes = 1;
         }
@@ -1785,7 +1786,7 @@ auto AssemblerUpdateAddressingMode() -> bool {
       if (TestFlag(AF_HaveRegisterY)) {
         g_asm_address_mode = AM_AY;
         g_asm_bytes = 2;
-        if (g_asm_target_address <= _6502_ZEROPAGE_END) {
+        if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
           g_asm_address_mode = AM_ZY;
           g_asm_bytes = 1;
         }
@@ -1825,8 +1826,8 @@ auto AssemblerUpdateAddressingMode() -> bool {
 
   int nOpcode = g_asm_opcodes.at(
       0);  // branch opcodes don't vary (only 1 Addressing Mode)
-  if (_6502_CalcRelativeOffset(nOpcode, g_asm_base_address,
-                               g_asm_target_address, &g_asm_target_value)) {
+  if (CalcRelativeOffset(nOpcode, g_asm_base_address, g_asm_target_address,
+                         &g_asm_target_value)) {
     if (g_asm_address_mode == NUM_OPMODES) {
       return false;
     }
@@ -1880,8 +1881,8 @@ void AssemblerProcessDelayedSymols() {
         // BaseAddress
         uint16_t nTargetValue = nTargetAddress;
 
-        if (_6502_CalcRelativeOffset(nOpcode, pTarget->base_address,
-                                     nTargetAddress, &nTargetValue)) {
+        if (CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
+                               &nTargetValue)) {
           if (g_asm_address_mode == NUM_OPMODES) {
             nTargetValue = 0;
             bModified = false;

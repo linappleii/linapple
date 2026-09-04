@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_CPU.h"
 
 #include <cstdint>
@@ -111,8 +112,8 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
         if (nArgs > 3) {
           nLen = g_args[iArg + 2].nValue;
           nEnd = g_debug_skip_start + nLen;
-          if (nEnd > static_cast<int>(_6502_MEM_END)) {
-            nEnd = _6502_MEM_END + 1;
+          if (nEnd > static_cast<int>(APPLE2_6502_MEM_END)) {
+            nEnd = APPLE2_6502_MEM_END + 1;
           }
         } else {
           return Help_Arg_1(kCmdGo);
@@ -131,7 +132,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
       nLen = -nLen;
     }
     g_debug_skip_len = nLen;
-    g_debug_skip_len &= _6502_MEM_END;
+    g_debug_skip_len &= APPLE2_6502_MEM_END;
 
 #if _DEBUG
     char sText[CONSOLE_WIDTH];
@@ -207,7 +208,7 @@ auto CmdStepOver(int nArgs) -> Update_t {
   while (nDebugSteps-- > 0) {
     int nOpcode = *(mem + cpu_get_registers()->pc);  // g_disasm_cur_address
     //  int eMode = g_opcodes[ nOpcode ].addrmode;
-    //  int nByte = g_opmodes[eMode]._nBytes;
+    //  int nByte = g_opmodes[eMode].bytes;
     //  if ((eMode ==  AM_A) &&
 
     CmdTrace(0);
@@ -229,8 +230,8 @@ auto CmdStepOut(int nArgs) -> Update_t {
   // TODO: "RET" should probably pop the Call stack
   // Also see: CmdCursorJumpRetAddr
   uint16_t address = 0;
-  if (_6502_GetStackReturnAddress(address)) {
-    nArgs = _Arg_1(address);
+  if (GetStackReturnAddress(address)) {
+    nArgs = Arg_1(address);
     g_args[1].sArg[0] = 0;
     CmdGo(1, true);
   }
@@ -358,7 +359,7 @@ auto CmdJSR(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_JSR);
   }
 
-  uint16_t address = g_args[1].nValue & _6502_MEM_END;
+  uint16_t address = g_args[1].nValue & APPLE2_6502_MEM_END;
 
   // Mark Stack Page as dirty
   *(memdirty + (cpu_get_registers()->sp >> 8)) = 1;
@@ -384,7 +385,7 @@ auto CmdNOP(int nArgs) -> Update_t {
   int iOpmode = 0;
   int nOpbytes = 0;
 
-  _6502_GetOpcodeOpmodeOpbyte(opcode, iOpmode, nOpbytes);
+  GetOpcodeOpmodeOpbyte(opcode, iOpmode, nOpbytes);
 
   while (nOpbytes--) {
     *(mem + cpu_get_registers()->pc + nOpbytes) = 0xEA;
@@ -419,8 +420,8 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
   } else {
     char* pName = g_args[1].sArg;
     int iParam = 0;
-    if (FindParam(pName, MATCH_EXACT, iParam, _PARAM_REGS_BEGIN,
-                  _PARAM_REGS_END)) {
+    if (FindParam(pName, MATCH_EXACT, iParam, PARAM_REGS_BEGIN,
+                  PARAM_REGS_END)) {
       int iArg = 2;
       if (g_args[iArg].eToken == TOKEN_EQUAL) {
         iArg++;
@@ -475,7 +476,7 @@ void OutputTraceLine() {
                                     // // Get Disasm String
   FormatDisassemblyLine(line, sDisassembly, CONSOLE_WIDTH);
 
-  char sFlags[_6502_NUM_FLAGS + 1];
+  char sFlags[DBG_6502_NUM_FLAGS + 1];
   DrawFlags(0, cpu_get_registers()->ps, sFlags);  // Get Flags String
 
   if (!g_trace_file) return;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_ZeroPage.h"
 
 #include <cstdint>
@@ -15,7 +16,7 @@ extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];
 extern int g_zero_page_pointers_count;
 
 // Implementation helpers
-auto _ZeroPage_Error() -> Update_t {
+auto ZeroPage_Error() -> Update_t {
   char sText[CONSOLE_WIDTH];
   snprintf(sText, sizeof(sText),
            "  There are no current (ZP) pointers.  (Max: %d)",
@@ -88,7 +89,7 @@ auto CmdZeroPageAdd(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdZeroPageClear(int nArgs) -> Update_t {
   if (!g_zero_page_pointers_count) {
-    return _ZeroPage_Error();
+    return ZeroPage_Error();
   }
 
   // CHECK FOR ERRORS
@@ -113,7 +114,7 @@ auto CmdZeroPageDisable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_DISABLE);
   }
   if (!g_zero_page_pointers_count) {
-    return _ZeroPage_Error();
+    return ZeroPage_Error();
   }
 
   bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
@@ -125,7 +126,7 @@ auto CmdZeroPageDisable(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdZeroPageEnable(int nArgs) -> Update_t {
   if (!g_zero_page_pointers_count) {
-    return _ZeroPage_Error();
+    return ZeroPage_Error();
   }
 
   if (!nArgs) {
@@ -142,7 +143,7 @@ auto CmdZeroPageEnable(int nArgs) -> Update_t {
 auto CmdZeroPageList(int nArgs) -> Update_t {
   (void)nArgs;
   if (!g_zero_page_pointers_count) {
-    _ZeroPage_Error();
+    ZeroPage_Error();
   } else {
     bwz_ListAll((Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS);
   }

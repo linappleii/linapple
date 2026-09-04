@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cctype>
 
 #include "Debugger_Breakpoints.h"
@@ -14,7 +15,7 @@ auto CmdFlagClear(int nArgs) -> Update_t {
     int iArg = nArgs;
     while (iArg) {
       iFlag = 0;
-      while (iFlag < _6502_NUM_FLAGS) {
+      while (iFlag < DBG_6502_NUM_FLAGS) {
         if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==
             toupper(static_cast<unsigned char>(*g_args[iArg].sArg))) {
           cpu_get_registers()->ps &= ~(1 << (7 - iFlag));
@@ -38,7 +39,7 @@ auto CmdFlagSet(int nArgs) -> Update_t {
     int iArg = nArgs;
     while (iArg) {
       iFlag = 0;
-      while (iFlag < _6502_NUM_FLAGS) {
+      while (iFlag < DBG_6502_NUM_FLAGS) {
         if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==
             toupper(static_cast<unsigned char>(*g_args[iArg].sArg))) {
           cpu_get_registers()->ps |= (1 << (7 - iFlag));

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -121,7 +122,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     aTabs[iTab] *= nDefaultFontWidth;
   }
 
-  int nFontHeight = g_font_config[FONT_DISASM_DEFAULT]._nLineHeight;
+  int nFontHeight = g_font_config[FONT_DISASM_DEFAULT].line_height;
 
   Rect_t linerect;
   linerect.left = 0;
@@ -382,13 +383,13 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 #if !USE_APPLE_FONT
     if (g_config_disasm_branch_type == DISASM_BRANCH_FANCY)
       SelectObject(GetDebuggerMemDC(),
-                   g_font_config[FONT_DISASM_BRANCH]._hFont);
+                   g_font_config[FONT_DISASM_BRANCH].h_font);
 #endif
     PrintText(line.sBranch, linerect);
 #if !USE_APPLE_FONT
     if (g_config_disasm_branch_type)
       SelectObject(GetDebuggerMemDC(),
-                   g_font_config[FONT_DISASM_DEFAULT]._hFont);
+                   g_font_config[FONT_DISASM_DEFAULT].h_font);
 #endif
   }
 
@@ -400,11 +401,11 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
     return;
   }
 
-  char sFlagNames[_6502_NUM_FLAGS + 1] = "";
+  char sFlagNames[DBG_6502_NUM_FLAGS + 1] = "";
   char sText[8] = "?";
   Rect_t rect;
 
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
   int nSpacerWidth = nFontWidth;
 
   rect.top = line * g_font_height;
@@ -429,13 +430,13 @@ void DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) {
   rect.bottom -= g_font_height;
   sText[1] = 0;
 
-  rect.left += ((2 + _6502_NUM_FLAGS) * nSpacerWidth);
+  rect.left += ((2 + DBG_6502_NUM_FLAGS) * nSpacerWidth);
   rect.right = rect.left + nFontWidth;
 
   int iFlag = 0;
-  int nFlag = _6502_NUM_FLAGS;
+  int nFlag = DBG_6502_NUM_FLAGS;
   while (nFlag--) {
-    iFlag = (_6502_NUM_FLAGS - nFlag - 1);
+    iFlag = (DBG_6502_NUM_FLAGS - nFlag - 1);
     bool bSet = (nRegFlags & 1);
     sText[0] = *g_breakpoint_source[BP_SRC_FLAG_C + iFlag];
 
@@ -480,7 +481,7 @@ void DrawStack(int line) {
   }
 
   unsigned address = cpu_get_registers()->sp;
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
   DebuggerSetColorBG(DebuggerGetColor(BG_DATA_1));
 
   int iStack = 0;
@@ -494,12 +495,12 @@ void DrawStack(int line) {
 
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     char sText[8] = "";
-    if (address <= _6502_STACK_END) {
+    if (address <= DBG_6502_STACK_END) {
       snprintf(sText, sizeof(sText), "%04X: ", address);
       PrintTextCursorX(sText, rect);
     }
 
-    if (address <= _6502_STACK_END) {
+    if (address <= DBG_6502_STACK_END) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       snprintf(sText, sizeof(sText), "  %02X",
                static_cast<unsigned>(
@@ -531,7 +532,7 @@ void DrawSubWindow_Code(int iWindow) {
   int nLines = g_disasm_win_height;
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_DISASM_DEFAULT]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_DISASM_DEFAULT].h_font);
 #endif
 
   uint16_t address = g_disasm_top_address;
@@ -540,7 +541,7 @@ void DrawSubWindow_Code(int iWindow) {
   }
 
 #if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_INFO]._hFont);
+  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_INFO].h_font);
 #endif
 }
 

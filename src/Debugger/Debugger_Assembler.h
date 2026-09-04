@@ -164,20 +164,19 @@ extern AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES];
 
 // Prototypes _______________________________________________________________
 
-int _6502_GetOpmodeOpbyte(const int iAddress, int& iOpmode_, int& nOpbytes_,
-                          const DisasmData_t** data = nullptr);
-void _6502_GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbytes_);
-bool _6502_GetStackReturnAddress(uint16_t& nAddress_);
-bool _6502_GetTargets(uint16_t address, int* pTargetPartial_,
-                      int* pTargetPartial2_, int* pTargetPointer_, int* pBytes_,
-                      bool bIgnoreBranch = true,
-                      bool bIncludeNextOpcodeAddress = true);
-bool _6502_GetTargetAddress(const uint16_t& address, uint16_t& nTarget_);
-bool _6502_IsOpcodeBranch(int nOpcode);
-bool _6502_IsOpcodeValid(int nOpcode);
+int GetOpmodeOpbyte(const int iAddress, int& iOpmode_, int& nOpbytes_,
+                    const DisasmData_t** data = nullptr);
+void GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbytes_);
+bool GetStackReturnAddress(uint16_t& nAddress_);
+bool GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
+                int* pTargetPointer_, int* pBytes_, bool bIgnoreBranch = true,
+                bool bIncludeNextOpcodeAddress = true);
+bool GetTargetAddress(const uint16_t& address, uint16_t& nTarget_);
+bool IsOpcodeBranch(int nOpcode);
+bool IsOpcodeValid(int nOpcode);
 
 uint32_t AssemblerHashMnemonic(const char* pMnemonic);
-void _CmdAssembleHashDump();
+void CmdAssembleHashDump();
 
 int AssemblerDelayedTargetsSize();
 void AssemblerStartup();
@@ -187,7 +186,7 @@ void AssemblerOn();
 void AssemblerOff();
 
 auto debugger_get_file_size(FILE* file) -> size_t;
-Update_t _CmdAssemble(uint16_t address, int iArg, int nArgs);
+Update_t CmdAssemble(uint16_t address, int iArg, int nArgs);
 
 Update_t CmdAssemble(int nArgs);
 Update_t CmdSource(int nArgs);

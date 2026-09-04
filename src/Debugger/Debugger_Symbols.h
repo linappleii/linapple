@@ -8,13 +8,13 @@
 
 extern SymbolTable_t g_symbols[NUM_SYMBOL_TABLES];
 
-auto _CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
-auto _CmdSymbolsCommon(int nArgs, SymbolTable_Index_e eSymbolTable) -> Update_t;
-auto _CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t;
-auto _CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t;
+auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
+auto CmdSymbolsCommon(int nArgs, SymbolTable_Index_e eSymbolTable) -> Update_t;
+auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t;
+auto CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t;
 
-auto _CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool;
-auto _CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
+auto CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool;
+auto CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
     -> bool;
 
 auto ParseSymbolTable(const std::string& pFileName,

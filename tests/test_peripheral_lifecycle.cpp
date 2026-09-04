@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
+#include <cstddef>
 #include <cstdint>
 #include <string>
-#include <cstddef>
-#include "Peripheral_Types.h"
 #include <vector>
+
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
@@ -162,7 +164,6 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
 
   linapple_shutdown();
 }
-
 
 #include "core/Util_Path.h"
 

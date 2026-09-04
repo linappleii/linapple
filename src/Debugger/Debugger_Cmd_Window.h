@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "Debugger_Types.h"
@@ -55,15 +56,15 @@ Update_t CmdViewOutput_DHGRX(int nArgs);
 Update_t CmdViewOutput_DHGR1(int nArgs);
 Update_t CmdViewOutput_DHGR2(int nArgs);
 
-void _WindowJoin();
-void _WindowSplit(Window_e eNewBottomWindow);
-void _WindowLast();
-void _WindowSwitch(int eNewWindow);
+void WindowJoin();
+void WindowSplit(Window_e eNewBottomWindow);
+void WindowLast();
+void WindowSwitch(int eNewWindow);
 int WindowGetHeight(int iWindow);
 void WindowUpdateDisasmSize();
 void WindowUpdateConsoleDisplayedSize();
 void WindowUpdateSizes();
-Update_t _CmdWindowViewFull(int iNewWindow);
+Update_t CmdWindowViewFull(int iNewWindow);
 Update_t CmdWindowViewCommon(int iNewWindow);
 
 enum ViewVideoPage_t {
@@ -72,10 +73,10 @@ enum ViewVideoPage_t {
   VIEW_PAGE_X = (1 << 2)  // XOR cycles Page 1 / Page 2
 };
 
-Update_t _ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags);
+Update_t ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags);
 
-void _CursorMoveDownAligned(int nDelta);
-void _CursorMoveUpAligned(int nDelta);
+void CursorMoveDownAligned(int nDelta);
+void CursorMoveUpAligned(int nDelta);
 
 void DisasmCalcTopFromCurAddress(bool bUpdateTop = true);
 void DisasmCalcCurFromTopAddress();

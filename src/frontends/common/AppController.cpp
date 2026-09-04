@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/common/AppController.h"
 
 #include <unistd.h>
@@ -95,6 +96,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   // 3. Init Core
   if (linapple_init() != 0) {
+    mem_set_custom_rom_path(nullptr);
     return -1;
   }
   s_initialized = true;

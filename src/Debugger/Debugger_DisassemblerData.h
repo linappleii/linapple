@@ -5,8 +5,8 @@
 
 #include "Debugger_Types.h"
 
-Update_t _CmdDisasmDataDefByteX(int nArgs);
-Update_t _CmdDisasmDataDefWordX(int nArgs);
+Update_t CmdDisasmDataDefByteX(int nArgs);
+Update_t CmdDisasmDataDefWordX(int nArgs);
 
 // Data Disassembler
 // ______________________________________________________________________________

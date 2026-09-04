@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_Config.h"
 
 #include <cstdint>
@@ -98,7 +99,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
 
   int iParam = 0;
   int nFound = FindParam(g_args[1].sArg, MATCH_EXACT, iParam,
-                         _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END);
+                         PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
 
   if (nFound) {
     if (iParam == PARAM_RESET) {
@@ -111,7 +112,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
     }
   } else {
     if (nArgs == 1) {  // Dump Color
-      _CmdColorGet(iScheme, iColor);
+      CmdColorGet(iScheme, iColor);
       return ConsoleUpdate();
     } else if (nArgs == 4) {  // Set Color
       int R = g_args[2].nValue & 0xFF;
@@ -142,7 +143,7 @@ auto CmdConfigHColor(int nArgs) -> Update_t {
     // TODO/FIXME: must export AW_Video.cpp: static LPBITMAPINFO
     // framebufferinfo;
     //    uint32_t nColor = g_colors[ iScheme ][ iColor ];
-    //    _ColorPrint( iColor, nColor );
+    //    ColorPrint( iColor, nColor );
     return ConsoleUpdate();
   } else {  // Set Color
     return UPDATE_ALL;
@@ -264,7 +265,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
 
   for (int iArg = 1; iArg <= nArgs; iArg++) {
     if (bDisplayCurrentSettings) {
-      iParam = _PARAM_CONFIG_BEGIN + iArg - 1;
+      iParam = PARAM_CONFIG_BEGIN + iArg - 1;
     } else if (FindParam(g_args[iArg].sArg, MATCH_FUZZY, iParam)) {
     }
 
@@ -428,7 +429,7 @@ auto CmdConfigFontMode(int nArgs) -> Update_t {
   }
 
   g_font_spacing = nMode;
-  _UpdateWindowFontHeights(g_font_config[FONT_DISASM_DEFAULT]._nFontHeight);
+  UpdateWindowFontHeights(g_font_config[FONT_DISASM_DEFAULT].font_height);
 
   return UPDATE_CONSOLE_DISPLAY | UPDATE_DISASM;
 }
@@ -450,8 +451,8 @@ auto CmdConfigFont(int nArgs) -> Update_t {
       char sText[CONSOLE_WIDTH];
       ConsoleBufferPushFormat(sText, "Lines: %d  Font Px: %d  Line Px: %d",
                               g_disasm_display_lines,
-                              g_font_config[FONT_DISASM_DEFAULT]._nFontHeight,
-                              g_font_config[FONT_DISASM_DEFAULT]._nLineHeight);
+                              g_font_config[FONT_DISASM_DEFAULT].font_height,
+                              g_font_config[FONT_DISASM_DEFAULT].line_height);
       ConsoleBufferToDisplay();
       return UPDATE_CONSOLE_DISPLAY;
     }
@@ -460,7 +461,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
     int nFound = 0;
 
     nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
-                       _PARAM_GENERAL_BEGIN, _PARAM_GENERAL_END);
+                       PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
     if (nFound) {
       switch (iFound) {
         case PARAM_LOAD:
@@ -476,8 +477,8 @@ auto CmdConfigFont(int nArgs) -> Update_t {
       }
     }
 
-    nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
-                       _PARAM_FONT_BEGIN, _PARAM_FONT_END);
+    nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
+                       PARAM_FONT_END);
     if (nFound) {
       if (iFound == PARAM_FONT_MODE) {
         return CmdConfigFontMode(nArgs);
@@ -514,7 +515,7 @@ auto CmdConfigSetFont(int nArgs) -> Update_t {
 
     int iFound;
     int nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
-                           _PARAM_WINDOW_BEGIN, _PARAM_WINDOW_END);
+                           PARAM_WINDOW_BEGIN, PARAM_WINDOW_END);
     if (nFound) {
       switch (iFound) {
         case PARAM_DISASM:
@@ -548,7 +549,7 @@ auto CmdConfigSetFont(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_CONFIG_FONT);
   }
 
-  if (!_CmdConfigFont(iFontTarget, pFontName, iFontPitch, nHeight)) {
+  if (!CmdConfigFont(iFontTarget, pFontName, iFontPitch, nHeight)) {
   }
 #endif
   return UPDATE_ALL;
@@ -562,7 +563,7 @@ auto CmdConfigGetFont(int nArgs) -> Update_t {
       ConsoleBufferPushFormat(
           sText, "  Font: %-20s  A:%2d  M:%2d",
           //        g_font_name_custom, g_font_width_avg, g_font_width_max );
-          iFont._sFontName, iFont._nFontWidthAvg, iFont._nFontWidthMax);
+          iFont.font_name, iFont.font_width_avg, iFont.font_width_max);
     }
     return ConsoleUpdate();
   }
@@ -572,7 +573,7 @@ auto CmdConfigGetFont(int nArgs) -> Update_t {
 
 // Only for FONT_DISASM_DEFAULT !
 //===========================================================================
-void _UpdateWindowFontHeights(int nFontHeight) {
+void UpdateWindowFontHeights(int nFontHeight) {
   if (nFontHeight) {
     int nConsoleTopY = GetConsoleTopPixels(g_console_display_lines);
 
@@ -589,7 +590,7 @@ void _UpdateWindowFontHeights(int nFontHeight) {
       g_disasm_display_lines = (nConsoleTopY + nHeight) / nHeight;  // Ceil()
     }
 
-    g_font_config[FONT_DISASM_DEFAULT]._nLineHeight = nHeight;
+    g_font_config[FONT_DISASM_DEFAULT].line_height = nHeight;
 
     //    int nHeightOptimal = (nHeight0 + nHeight1) / 2;
     //    int nLinesOptimal = nConsoleTopY / nHeightOptimal;

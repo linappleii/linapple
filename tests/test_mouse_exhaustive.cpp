@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(bugprone-easily-swappable-parameters,
 // modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
 // cppcoreguidelines-avoid-non-const-global-variables,

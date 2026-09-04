@@ -1,5 +1,6 @@
-#include "frontends/common/AppConfig.h"
+// SPDX-License-Identifier: GPL-2.0-only
 #include "LinAppleCore.h"
+#include "frontends/common/AppConfig.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstring>
 
@@ -86,4 +87,3 @@ TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
     CHECK(config.caps_lock_mode == CAPS_MODE_HOST);
   }
 }
-

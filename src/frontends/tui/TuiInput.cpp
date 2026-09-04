@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "TuiInput.h"
 
 #include <fcntl.h>

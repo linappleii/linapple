@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Breakpoints.h"
 #include "Debugger_Types.h"
 #include "Util_Text.h"
@@ -224,7 +225,7 @@ auto HelpLastCommand() -> Update_t { return Help_Arg_1(g_command); }
 // Loads the arguments with the command to get help on and call display help.
 //===========================================================================
 auto Help_Arg_1(int iCommandHelp) -> Update_t {
-  _Arg_1(iCommandHelp);
+  Arg_1(iCommandHelp);
 
   snprintf(g_args[1].sArg, sizeof(g_args[1].sArg), "%s",
            g_commands[iCommandHelp].name);  // .3 Fixed: Help_Arg_1() now copies
@@ -254,8 +255,8 @@ void Help_Categories() {
   nLen += StringCat(sText, CHC_ARG_MAND, nBuf);
   nLen += StringCat(sText, "< ", nBuf);
 
-  for (int iCategory = _PARAM_HELPCATEGORIES_BEGIN;
-       iCategory < _PARAM_HELPCATEGORIES_END; iCategory++) {
+  for (int iCategory = PARAM_HELPCATEGORIES_BEGIN;
+       iCategory < PARAM_HELPCATEGORIES_END; iCategory++) {
     char* pName = g_parameters[iCategory].name;
 
     if (nLen + strlen(pName) >= (CONSOLE_WIDTH - 1)) {
@@ -267,7 +268,7 @@ void Help_Categories() {
     StringCat(sText, CHC_COMMAND, nBuf);
     nLen += StringCat(sText, pName, nBuf);
 
-    if (iCategory < (_PARAM_HELPCATEGORIES_END - 1)) {
+    if (iCategory < (PARAM_HELPCATEGORIES_END - 1)) {
       char sSep[] = " | ";
 
       if (nLen + strlen(sSep) >= (CONSOLE_WIDTH - 1)) {
@@ -651,11 +652,11 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
   if (!bAllCommands) {
     for (iArg = 1; iArg <= nArgs; iArg++) {
       //		int nFoundCategory = FindParam( g_args[ iArg ].sArg,
-      // MATCH_EXACT, iParam, _PARAM_HELPCATEGORIES_BEGIN,
-      //_PARAM_HELPCATEGORIES_END );
+      // MATCH_EXACT, iParam, PARAM_HELPCATEGORIES_BEGIN,
+      // PARAM_HELPCATEGORIES_END );
       int nFoundCategory =
           FindParam(g_args[iArg].sArg, MATCH_FUZZY, iParam,
-                    _PARAM_HELPCATEGORIES_BEGIN, _PARAM_HELPCATEGORIES_END);
+                    PARAM_HELPCATEGORIES_BEGIN, PARAM_HELPCATEGORIES_END);
       bCategory = nFoundCategory != 0;
       switch (iParam) {
         case PARAM_CAT_BOOKMARKS:

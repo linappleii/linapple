@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <map>
 #include <string>
@@ -15,7 +16,7 @@ enum {
   MAX_OPMODE_FORMAT = 12,
   MAX_OPMODE_NAME = 32,
   NO_6502_TARGET = -1,
-  _6502_NUM_FLAGS = 8,
+  DBG_6502_NUM_FLAGS = 8,
   CONSOLE_WIDTH = 80
 };
 
@@ -157,7 +158,7 @@ enum { MAX_BREAKPOINTS = 16 };
     x    -        no, listed as dimmed
     -    ?        no, not listed
 */
-// NOTE: Order must match _PARAM_REGS_*
+// NOTE: Order must match PARAM_REGS_*
 // NOTE: Order must match Breakpoint_Source_t
 // NOTE: Order must match g_breakpoint_source
 enum BreakpointSource_t {
@@ -187,7 +188,7 @@ enum BreakpointSource_t {
 };
 
 // Note: Order must match Breakpoint_Operator_t
-// Note: Order must much _PARAM_BREAKPOINT_*
+// Note: Order must match PARAM_BREAKPOINT_*
 // Note: Order must match g_breakpoint_symbols
 enum BreakpointOperator_t {
   BP_OP_LESS_EQUAL,     // <= REG
@@ -662,7 +663,7 @@ Update_t CmdMemoryLoad(int nArgs);
 Update_t CmdMemoryMove(int nArgs);
 Update_t CmdMemorySave(int nArgs);
 Update_t CmdMemorySearch(int nArgs);
-Update_t _SearchMemoryDisplay(int nArgs = 0);  // TODO: CLEANUP
+Update_t SearchMemoryDisplay(int nArgs = 0);  // TODO: CLEANUP
 Update_t CmdMemorySearchAscii(int nArgs);
 Update_t CmdMemorySearchApple(int nArgs);
 Update_t CmdMemorySearchHex(int nArgs);
@@ -822,7 +823,7 @@ enum CursorHiLightState_e {
 
 // Data Disassembler
 enum Nopcode_e {
-  _NOP_REMOVED,
+  NOP_REMOVED,
   NOP_BYTE_1  // 1 bytes/line
   ,
   NOP_BYTE_2  // 2 bytes/line
@@ -1009,11 +1010,11 @@ enum FontSpacing_e {
 };
 
 struct FontConfig_t {
-  char _sFontName[MAX_FONT_NAME];
-  int _nFontWidthAvg;
-  int _nFontWidthMax;
-  int _nFontHeight;
-  int _nLineHeight;  // may or may not include spacer
+  char font_name[MAX_FONT_NAME];
+  int font_width_avg;
+  int font_width_max;
+  int font_height;
+  int line_height;  // may or may not include spacer
 };
 
 // Instructions / Opcodes
@@ -1109,15 +1110,15 @@ enum ProfileFormat_e {
 
 // Memory
 
-const int _6502_BRANCH_POS = +127;
-const int _6502_BRANCH_NEG = -128;
-const uint32_t _6502_ZEROPAGE_END = 0x00FF;
-const uint32_t _6502_STACK_BEGIN = 0x0100;
-const uint32_t _6502_STACK_END = 0x01FF;
-const uint32_t _6502_IO_BEGIN = 0xC000;
-const uint32_t _6502_IO_END = 0xC0FF;
-const uint32_t _6502_BRK_VECTOR = 0xFFFE;
-const uint32_t _6502_MEM_BEGIN = 0x0000;
+const int DBG_6502_BRANCH_POS = +127;
+const int DBG_6502_BRANCH_NEG = -128;
+const uint32_t DBG_6502_ZEROPAGE_END = 0x00FF;
+const uint32_t DBG_6502_STACK_BEGIN = 0x0100;
+const uint32_t DBG_6502_STACK_END = 0x01FF;
+const uint32_t DBG_6502_IO_BEGIN = 0xC000;
+const uint32_t DBG_6502_IO_END = 0xC0FF;
+const uint32_t DBG_6502_BRK_VECTOR = 0xFFFE;
+const uint32_t DBG_6502_MEM_BEGIN = 0x0000;
 
 enum DEVICE_e { DEV_MEMORY, DEV_DISK2, DEV_SY6522, DEV_AY8910, NUM_DEVICES };
 
@@ -1206,7 +1207,7 @@ enum ArgToken_e {  // Arg Token Type
 
   // Multi char tokens come last
   TOKEN_COMMENT_EOL,  // //
-  _TOKEN_FLAG_MULTI = TOKEN_COMMENT_EOL,
+  TOKEN_FLAG_MULTI = TOKEN_COMMENT_EOL,
   TOKEN_GREATER_EQUAL,  // >=
   TOKEN_LESS_EQUAL,     // <=
   TOKEN_NOT_EQUAL,      // !=
@@ -1247,28 +1248,28 @@ struct Arg_t {
 // NOTE: Order MUST match g_parameters[] !!!
 enum Parameters_e {
   // Note: Order must match Breakpoint_Operator_t
-  // Note: Order must much _PARAM_BREAKPOINT_*
+  // Note: Order must match PARAM_BREAKPOINT_*
   // Note: Order must match g_breakpoint_symbols
-  _PARAM_BREAKPOINT_BEGIN,
-  PARAM_BP_LESS_EQUAL = _PARAM_BREAKPOINT_BEGIN,  // <=
-  PARAM_BP_LESS_THAN,                             // <
-  PARAM_BP_EQUAL,                                 // =
-  PARAM_BP_NOT_EQUAL,                             // !=
-  PARAM_BP_NOT_EQUAL_1,                           // !
-  PARAM_BP_GREATER_THAN,                          // >
-  PARAM_BP_GREATER_EQUAL,                         // >=
-  PARAM_BP_READ,                                  // R
-  _PARAM_BP_READ,                                 // ? alias READ
-  PARAM_BP_WRITE,                                 // W
-  _PARAM_BP_WRITE,                                // @ alias write
-  PARAM_BP_READ_WRITE,                            // * alias READ WRITE
-  _PARAM_BREAKPOINT_END,
-  PARAM_BREAKPOINT_NUM = _PARAM_BREAKPOINT_END - _PARAM_BREAKPOINT_BEGIN,
+  PARAM_BREAKPOINT_BEGIN,
+  PARAM_BP_LESS_EQUAL = PARAM_BREAKPOINT_BEGIN,  // <=
+  PARAM_BP_LESS_THAN,                            // <
+  PARAM_BP_EQUAL,                                // =
+  PARAM_BP_NOT_EQUAL,                            // !=
+  PARAM_BP_NOT_EQUAL_1,                          // !
+  PARAM_BP_GREATER_THAN,                         // >
+  PARAM_BP_GREATER_EQUAL,                        // >=
+  PARAM_BP_READ,                                 // R
+  PARAM_BP_READ_ALIAS,                           // ? alias READ
+  PARAM_BP_WRITE,                                // W
+  PARAM_BP_WRITE_ALIAS,                          // @ alias write
+  PARAM_BP_READ_WRITE,                           // * alias READ WRITE
+  PARAM_BREAKPOINT_END,
+  PARAM_BREAKPOINT_NUM = PARAM_BREAKPOINT_END - PARAM_BREAKPOINT_BEGIN,
 
   // Note: Order must match Breakpoint_Source_t
-  _PARAM_REGS_BEGIN = _PARAM_BREAKPOINT_END,  // Daisy Chain
+  PARAM_REGS_BEGIN = PARAM_BREAKPOINT_END,  // Daisy Chain
   // Regs
-  PARAM_REG_A = _PARAM_REGS_BEGIN,
+  PARAM_REG_A = PARAM_REGS_BEGIN,
   PARAM_REG_X,
   PARAM_REG_Y,
   PARAM_REG_PC,  // Program Counter
@@ -1283,36 +1284,36 @@ enum Parameters_e {
   PARAM_FLAG_R,  // Reserved
   PARAM_FLAG_V,  // Overflow
   PARAM_FLAG_N,  // Sign
-  _PARAM_REGS_END,
-  PARAM_REGS_NUM = _PARAM_REGS_END - _PARAM_REGS_BEGIN,
+  PARAM_REGS_END,
+  PARAM_REGS_NUM = PARAM_REGS_END - PARAM_REGS_BEGIN,
 
   // Disasm
-  _PARAM_CONFIG_BEGIN = _PARAM_REGS_END,  // Daisy Chain
+  PARAM_CONFIG_BEGIN = PARAM_REGS_END,  // Daisy Chain
   PARAM_CONFIG_BRANCH =
-      _PARAM_CONFIG_BEGIN,  // g_config_disasm_branch_type   [0|1|2]
-  PARAM_CONFIG_CLICK,       // g_config_disasm_click        [0..7] // GH#462
-  PARAM_CONFIG_COLON,       // g_config_disasm_address_colon [0|1]
-  PARAM_CONFIG_OPCODE,      // g_config_disasm_opcodes_view  [0|1]
-  PARAM_CONFIG_POINTER,     // g_config_info_target_pointer  [0|1]
-  PARAM_CONFIG_SPACES,      // g_config_disasm_opcode_spaces [0|1]
-  PARAM_CONFIG_TARGET,      // g_config_disasm_targets      [0|1|2]
-  _PARAM_CONFIG_END,
-  PARAM_CONFIG_NUM = _PARAM_CONFIG_END - _PARAM_CONFIG_BEGIN,
+      PARAM_CONFIG_BEGIN,  // g_config_disasm_branch_type   [0|1|2]
+  PARAM_CONFIG_CLICK,      // g_config_disasm_click        [0..7] // GH#462
+  PARAM_CONFIG_COLON,      // g_config_disasm_address_colon [0|1]
+  PARAM_CONFIG_OPCODE,     // g_config_disasm_opcodes_view  [0|1]
+  PARAM_CONFIG_POINTER,    // g_config_info_target_pointer  [0|1]
+  PARAM_CONFIG_SPACES,     // g_config_disasm_opcode_spaces [0|1]
+  PARAM_CONFIG_TARGET,     // g_config_disasm_targets      [0|1|2]
+  PARAM_CONFIG_END,
+  PARAM_CONFIG_NUM = PARAM_CONFIG_END - PARAM_CONFIG_BEGIN,
 
   // Disk
-  _PARAM_DISK_BEGIN = _PARAM_CONFIG_END,  // Daisy Chain
-  PARAM_DISK_EJECT = _PARAM_DISK_BEGIN,   // DISK 1 EJECT
-  PARAM_DISK_INFO,                        // DISK 1 INFO
-  PARAM_DISK_PROTECT,                     // DISK 1 PROTECT
+  PARAM_DISK_BEGIN = PARAM_CONFIG_END,  // Daisy Chain
+  PARAM_DISK_EJECT = PARAM_DISK_BEGIN,  // DISK 1 EJECT
+  PARAM_DISK_INFO,                      // DISK 1 INFO
+  PARAM_DISK_PROTECT,                   // DISK 1 PROTECT
   PARAM_DISK_READ,  // DISK 1 READ Track Sector NumSectors MemAddress
-  _PARAM_DISK_END,
-  PARAM_DISK_NUM = _PARAM_DISK_END - _PARAM_DISK_BEGIN,
-  _PARAM_FONT_BEGIN = _PARAM_DISK_END,  // Daisy Chain
-  PARAM_FONT_MODE = _PARAM_FONT_BEGIN,
-  _PARAM_FONT_END,
-  PARAM_FONT_NUM = _PARAM_FONT_END - _PARAM_FONT_BEGIN,
-  _PARAM_GENERAL_BEGIN = _PARAM_FONT_END,  // Daisy Chain
-  PARAM_FIND = _PARAM_GENERAL_BEGIN,
+  PARAM_DISK_END,
+  PARAM_DISK_NUM = PARAM_DISK_END - PARAM_DISK_BEGIN,
+  PARAM_FONT_BEGIN = PARAM_DISK_END,  // Daisy Chain
+  PARAM_FONT_MODE = PARAM_FONT_BEGIN,
+  PARAM_FONT_END,
+  PARAM_FONT_NUM = PARAM_FONT_END - PARAM_FONT_BEGIN,
+  PARAM_GENERAL_BEGIN = PARAM_FONT_END,  // Daisy Chain
+  PARAM_FIND = PARAM_GENERAL_BEGIN,
   PARAM_BRANCH,
   PARAM_CATEGORY,
   PARAM_CLEAR,
@@ -1324,10 +1325,10 @@ enum Parameters_e {
   PARAM_SAVE,
   PARAM_START,
   PARAM_STOP,
-  _PARAM_GENERAL_END,
-  PARAM_GENERAL_NUM = _PARAM_GENERAL_END - _PARAM_GENERAL_BEGIN,
-  _PARAM_HELPCATEGORIES_BEGIN = _PARAM_GENERAL_END,  // Daisy Chain
-  PARAM_WILDSTAR = _PARAM_HELPCATEGORIES_BEGIN,
+  PARAM_GENERAL_END,
+  PARAM_GENERAL_NUM = PARAM_GENERAL_END - PARAM_GENERAL_BEGIN,
+  PARAM_HELPCATEGORIES_BEGIN = PARAM_GENERAL_END,  // Daisy Chain
+  PARAM_WILDSTAR = PARAM_HELPCATEGORIES_BEGIN,
   PARAM_CAT_BOOKMARKS,
   PARAM_CAT_BREAKPOINTS,
   PARAM_CAT_CONFIG,
@@ -1344,48 +1345,48 @@ enum Parameters_e {
   PARAM_CAT_WATCHES,
   PARAM_CAT_WINDOW,
   PARAM_CAT_ZEROPAGE,
-  _PARAM_HELPCATEGORIES_END,
+  PARAM_HELPCATEGORIES_END,
   PARAM_HELPCATEGORIES_NUM =
-      _PARAM_HELPCATEGORIES_END - _PARAM_HELPCATEGORIES_BEGIN,
-  _PARAM_MEM_SEARCH_BEGIN = _PARAM_HELPCATEGORIES_END,  // Daisy Chain
-  PARAM_MEM_SEARCH_WILD = _PARAM_MEM_SEARCH_BEGIN,
-  _PARAM_MEM_SEARCH_END,
-  PARAM_MEM_SEARCH_NUM = _PARAM_MEM_SEARCH_END - _PARAM_MEM_SEARCH_BEGIN,
-  _PARAM_SOURCE_BEGIN = _PARAM_MEM_SEARCH_END,  // Daisy Chain
-  PARAM_SRC_MEMORY = _PARAM_SOURCE_BEGIN,
-  _PARAM_SRC_MEMORY,  // alias MEM = MEMORY
+      PARAM_HELPCATEGORIES_END - PARAM_HELPCATEGORIES_BEGIN,
+  PARAM_MEM_SEARCH_BEGIN = PARAM_HELPCATEGORIES_END,  // Daisy Chain
+  PARAM_MEM_SEARCH_WILD = PARAM_MEM_SEARCH_BEGIN,
+  PARAM_MEM_SEARCH_END,
+  PARAM_MEM_SEARCH_NUM = PARAM_MEM_SEARCH_END - PARAM_MEM_SEARCH_BEGIN,
+  PARAM_SOURCE_BEGIN = PARAM_MEM_SEARCH_END,  // Daisy Chain
+  PARAM_SRC_MEMORY = PARAM_SOURCE_BEGIN,
+  PARAM_SRC_MEMORY_ALIAS,  // alias MEM = MEMORY
   PARAM_SRC_SYMBOLS,
-  _PARAM_SRC_SYMBOLS,  // alias SYM = SYMBOLS
+  PARAM_SRC_SYMBOLS_ALIAS,  // alias SYM = SYMBOLS
   PARAM_SRC_MERLIN,
   PARAM_SRC_ORCA,
-  _PARAM_SOURCE_END,
-  PARAM_SOURCE_NUM = _PARAM_SOURCE_END - _PARAM_SOURCE_BEGIN,
-  _PARAM_PROFILE_BEGIN = _PARAM_SOURCE_END,  // Daisy Chain
-  PARAM_PROFILE_RESET = _PARAM_PROFILE_BEGIN,
+  PARAM_SOURCE_END,
+  PARAM_SOURCE_NUM = PARAM_SOURCE_END - PARAM_SOURCE_BEGIN,
+  PARAM_PROFILE_BEGIN = PARAM_SOURCE_END,  // Daisy Chain
+  PARAM_PROFILE_RESET = PARAM_PROFILE_BEGIN,
   PARAM_PROFILE_SAVE,
   PARAM_PROFILE_LIST,
   PARAM_PROFILE_ON,
   PARAM_PROFILE_OFF,
-  _PARAM_PROFILE_END,
-  PARAM_PROFILE_NUM = _PARAM_PROFILE_END - _PARAM_PROFILE_BEGIN,
-  _PARAM_WINDOW_BEGIN = _PARAM_PROFILE_END,  // Daisy Chain
+  PARAM_PROFILE_END,
+  PARAM_PROFILE_NUM = PARAM_PROFILE_END - PARAM_PROFILE_BEGIN,
+  PARAM_WINDOW_BEGIN = PARAM_PROFILE_END,  // Daisy Chain
   // These are the "full screen" "windows" / Panels / Tab sheets
-  PARAM_CODE = _PARAM_WINDOW_BEGIN,  // disasm
-  PARAM_CODE_2,                      // disasm bot
+  PARAM_CODE = PARAM_WINDOW_BEGIN,  // disasm
+  PARAM_CODE_2,                     // disasm bot
   PARAM_CONSOLE,
   PARAM_DATA,    // data all
   PARAM_DATA_2,  // data bot
   PARAM_DISASM,
   PARAM_INFO,  // Togle INFO on/off
   PARAM_SOURCE,
-  _PARAM_SRC,      // alias SRC = SOURCE
-  PARAM_SOURCE_2,  // source bot
+  PARAM_SRC_ALIAS,  // alias SRC = SOURCE
+  PARAM_SOURCE_2,   // source bot
   PARAM_SYMBOLS,
-  _PARAM_SYM,      // alias SYM = SYMBOLS
-  PARAM_SYMBOL_2,  // symbols bot
-  _PARAM_WINDOW_END,
-  PARAM_WINDOW_NUM = _PARAM_WINDOW_END - _PARAM_WINDOW_BEGIN,
-  NUM_PARAMS = _PARAM_WINDOW_END  // Daisy Chain
+  PARAM_SYM_ALIAS,  // alias SYM = SYMBOLS
+  PARAM_SYMBOL_2,   // symbols bot
+  PARAM_WINDOW_END,
+  PARAM_WINDOW_NUM = PARAM_WINDOW_END - PARAM_WINDOW_BEGIN,
+  NUM_PARAMS = PARAM_WINDOW_END  // Daisy Chain
 };
 
 // Source Level Debugging

@@ -13,8 +13,8 @@ constexpr uint32_t uVisibleLinesPerFrame = 64 * 3;  // 192 visible lines
 constexpr uint32_t uLinesPerFrame = 262;            // 192 visible + 70 VBL
 
 constexpr int NUM_SLOTS = 8;
-constexpr uint32_t _6502_MEM_END = 0xFFFF;
-constexpr uint32_t _6502_MEM_LEN = _6502_MEM_END + 1;
+constexpr uint32_t APPLE2_6502_MEM_END = 0xFFFF;
+constexpr uint32_t APPLE2_6502_MEM_LEN = APPLE2_6502_MEM_END + 1;
 
 constexpr uint8_t APPLE2E_MASK = 0x10;
 constexpr uint8_t APPLE2C_MASK = 0x20;

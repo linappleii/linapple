@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 
 #include "core/LinAppleCore.h"

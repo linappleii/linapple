@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <map>
 
@@ -697,20 +698,18 @@ TEST_CASE("Keyboard: Auto-repeat Paused in Full Speed Mode") {
   CHECK((val & 0x80) != 0);
   g_mock_handlers[0xC010].read(instance, 0, 0xC010, 0, 0, 0);
 
-  // When g_full_speed is true, large cycle steps (e.g. 1,000,000 cycles during disk load)
-  // must NOT trigger auto-repeat
+  // When g_full_speed is true, large cycle steps (e.g. 1,000,000 cycles during
+  // disk load) must NOT trigger auto-repeat
   g_full_speed = true;
   keyboard_peripheral.think(instance, 1000000);
   val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
-  CHECK((val & 0x80) == 0); // Strobe must remain cleared
+  CHECK((val & 0x80) == 0);  // Strobe must remain cleared
 
   // When g_full_speed is false, normal cycles trigger repeat after threshold
   g_full_speed = false;
   keyboard_peripheral.think(instance, 600000);
   val = g_mock_handlers[0xC000].read(instance, 0, 0xC000, 0, 0, 0);
-  CHECK((val & 0x80) != 0); // Strobe triggered by auto-repeat
+  CHECK((val & 0x80) != 0);  // Strobe triggered by auto-repeat
 
   keyboard_peripheral.shutdown(instance);
 }
-
-

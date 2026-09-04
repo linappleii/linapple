@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -114,7 +115,7 @@ auto PrintSymbolInvalidTable() -> Update_t {
                      "Only %s%d%s symbol tables are supported:", CHC_NUM_DEC,
                      NUM_SYMBOL_TABLES, CHC_DEFAULT);
 
-  // Similar to _CmdSymbolsInfoHeader()
+  // Similar to CmdSymbolsInfoHeader()
   sText[0] = 0;
   for (int iTable = 0; iTable < NUM_SYMBOL_TABLES; iTable++) {
     snprintf(sTemp, sizeof(sTemp), "%s%s%s%c "  // %s"
@@ -250,20 +251,20 @@ auto CmdSymbols(int nArgs) -> Update_t {
     return CmdSymbolsInfo(0);
   }
 
-  Update_t iUpdate = _CmdSymbolsUpdate(nArgs, SYMBOL_TABLE_USER_1);
+  Update_t iUpdate = CmdSymbolsUpdate(nArgs, SYMBOL_TABLE_USER_1);
   if (iUpdate != UPDATE_NOTHING) {
     return iUpdate;
   }
 
   int bSymbolTables = (1 << NUM_SYMBOL_TABLES) - 1;
-  return _CmdSymbolsListTables(nArgs, bSymbolTables);
+  return CmdSymbolsListTables(nArgs, bSymbolTables);
 }
 
 //===========================================================================
 auto CmdSymbolsClear(int nArgs) -> Update_t {
   (void)nArgs;
   SymbolTable_Index_e eSymbolTable = SYMBOLS_USER_1;
-  _CmdSymbolsClear(eSymbolTable);
+  CmdSymbolsClear(eSymbolTable);
   return (UPDATE_DISASM | UPDATE_SYMBOLS);
 }
 
@@ -275,8 +276,8 @@ void CmdSymbolsInfoHeader(int iTable, char* text, int nDisplaySize /* = 0 */) {
   int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
 
   // Short Desc: `MAIN`: `1000`
-  // // 2.6.2.19 Color for name of symbol table: _CmdPrintSymbol() "SYM HOME"
-  // _CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
+  // // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
+  // CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
   // CHC_USAGE instead of CHC_STRING
   snprintf(text, CONSOLE_WIDTH * 2, "%s%s%s:%s%d "  // %s"
            ,
@@ -336,8 +337,8 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
 void CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable) {
   char sText[CONSOLE_WIDTH * 2];
 
-  // 2.6.2.19 Color for name of symbol table: _CmdPrintSymbol() "SYM HOME"
-  // _CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
+  // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
+  // CmdSymbolsInfoHeader "SYM" CHC_STRING and CHC_NUM_DEC are both cyan, using
   // CHC_USAGE instead of CHC_STRING
 
   // 2.6.2.20 Changed: Output of found symbol more table friendly.  Symbol table
@@ -377,7 +378,7 @@ auto GetSymbolTableFromFlag(int bSymbolTables) -> int {
 /**
         @param bSymbolTables Bit Flags of which symbol tables to search
 //=========================================================================== */
-auto _CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool {
+auto CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool {
   int iTable = 0;
   const char* pSymbol = FindSymbolFromAddress(address, &iTable);
 
@@ -392,7 +393,7 @@ auto _CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool {
 }
 
 //===========================================================================
-auto _CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
+auto CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
     -> bool {
   int iTable = 0;
   uint16_t address = 0;
@@ -411,11 +412,11 @@ auto _CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
 //===========================================================================
 auto CmdSymbolsList(int nArgs) -> Update_t {
   int bSymbolTables = (1 << NUM_SYMBOL_TABLES) - 1;  // default to all
-  return _CmdSymbolsListTables(nArgs, bSymbolTables);
+  return CmdSymbolsListTables(nArgs, bSymbolTables);
 }
 
 //===========================================================================
-auto _CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
+auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
   if (!nArgs) {
     return Help_Arg_1(CMD_SYMBOLS_LIST);
   }
@@ -464,18 +465,18 @@ auto _CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
         }
       }
     } else if (address) {  // Have address, do symbol lookup first
-      if (!_CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) {
+      if (!CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) {
         // nope, ok, try as address
-        if (!_CmdSymbolList_Address2Symbol(address, bSymbolTables)) {
+        if (!CmdSymbolList_Address2Symbol(address, bSymbolTables)) {
           ConsolePrintFormat(sText, " Address not found: %s$%s%04X%s",
                              CHC_ARG_SEP, CHC_ADDRESS, address, CHC_DEFAULT);
         }
       }
     } else {  // Have symbol, do address lookup
-      if (!_CmdSymbolList_Symbol2Address(
+      if (!CmdSymbolList_Symbol2Address(
               pSymbol, bSymbolTables)) {  // nope, ok, try as address
         if (String2Address(pSymbol, address)) {
-          if (!_CmdSymbolList_Address2Symbol(address, bSymbolTables)) {
+          if (!CmdSymbolList_Address2Symbol(address, bSymbolTables)) {
             ConsolePrintFormat(sText, " %sSymbol not found: %s%s%s", CHC_ERROR,
                                CHC_SYMBOL, pSymbol, CHC_DEFAULT);
           }
@@ -536,7 +537,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
       //    . SYMBOL  =$0000; Comment
       //    . SYMBOL  =$FFFF; Comment
       //
-      uint32_t address = _6502_MEM_END + 1;  // default to invalid address
+      uint32_t address = APPLE2_6502_MEM_END + 1;  // default to invalid address
       char sName[MAX_SYMBOLS_LEN + 1] = "";
 
       const int MAX_LINE = 256;
@@ -571,7 +572,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
       // SymbolOffset
       address += nSymbolOffset;
 
-      if ((address > _6502_MEM_END) || (sName[0] == 0)) {
+      if ((address > APPLE2_6502_MEM_END) || (sName[0] == 0)) {
         continue;
       }
 
@@ -697,8 +698,8 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
         iArg++;
         if (iArg <= nArgs) {
           nOffsetAddr = g_args[iArg].nValue;
-          if ((nOffsetAddr < _6502_MEM_BEGIN) ||
-              (nOffsetAddr > _6502_MEM_END)) {
+          if ((nOffsetAddr < DBG_6502_MEM_BEGIN) ||
+              (nOffsetAddr > APPLE2_6502_MEM_END)) {
             nOffsetAddr = 0;
           }
         }
@@ -723,7 +724,7 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto _CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t {
+auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t {
   g_symbols[eSymbolTable].clear();
 
   return UPDATE_SYMBOLS;
@@ -784,7 +785,7 @@ void SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
 }
 
 //===========================================================================
-auto _CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t {
+auto CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t {
   bool bRemoveSymbol = false;
   bool bUpdateSymbol = false;
 
@@ -815,7 +816,7 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
     return Help_Arg_1(g_command);
   }
 
-  Update_t iUpdate = _CmdSymbolsUpdate(nArgs, bSymbolTables);
+  Update_t iUpdate = CmdSymbolsUpdate(nArgs, bSymbolTables);
   if (iUpdate != UPDATE_NOTHING) {
     return iUpdate;
   }
@@ -832,19 +833,19 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
           Update_t iUpdate =
-              _CmdSymbolsClear(static_cast<SymbolTable_Index_e>(iTable));
+              CmdSymbolsClear(static_cast<SymbolTable_Index_e>(iTable));
           ConsolePrintFormat(sText, " Cleared symbol table: %s%s", CHC_STRING,
                              g_symbol_table_names[iTable]);
           iUpdate |= ConsoleUpdate();
           return iUpdate;
         } else {
           // Shouldn't have multiple symbol tables selected
-          //					nArgs = _Arg_1( eSymbolsTable );
+          //					nArgs = Arg_1( eSymbolsTable );
           ConsoleBufferPush(" error: Unknown Symbol Table Type");
           return ConsoleUpdate();
         }
       } else if (iParam == PARAM_LOAD) {
-        nArgs = _Arg_Shift(iArg, nArgs);
+        nArgs = Arg_Shift(iArg, nArgs);
         Update_t bUpdate = CmdSymbolsLoad(nArgs);
 
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
@@ -863,7 +864,7 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         }
         return ConsoleUpdate();
       } else if (iParam == PARAM_SAVE) {
-        nArgs = _Arg_Shift(iArg, nArgs);
+        nArgs = Arg_Shift(iArg, nArgs);
         return CmdSymbolsSave(nArgs);
       } else if (iParam == PARAM_ON) {
         g_display_symbol_tables |= bSymbolTables;
@@ -883,7 +884,7 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         return ConsoleUpdate() | UPDATE_DISASM;
       }
     } else {
-      return _CmdSymbolsListTables(nArgs, bSymbolTables);
+      return CmdSymbolsListTables(nArgs, bSymbolTables);
     }
   }
 

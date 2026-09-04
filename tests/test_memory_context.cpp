@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdlib>
+
 #include "apple2/Memory.h"
 #include "doctest.h"
 
@@ -44,7 +46,8 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   CHECK(second_context.active_bank == 99);
 }
 
-TEST_CASE("Memory Context: Destructor does not free active context buffers (MEM-1)") {
+TEST_CASE(
+    "Memory Context: Destructor does not free active context buffers (MEM-1)") {
   MemoryInstance_t active_ctx{};
   active_ctx.memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
   active_ctx.memaux_allocated = static_cast<uint8_t*>(malloc(MEMORY_64K));

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // - glibc internal getopt headers
 // NOLINTBEGIN(misc-include-cleaner)
 #include "frontends/common/AppArgs.h"

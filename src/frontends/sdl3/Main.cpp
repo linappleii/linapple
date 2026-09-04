@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_stdinc.h>

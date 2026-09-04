@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -142,13 +143,13 @@ void DrawMemory(int line, int iMemDump) {
       sText[0] = 0;
 
       if (iView == MEM_VIEW_HEX) {
-        if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END)) {
+        if ((iAddress >= DBG_6502_IO_BEGIN) && (iAddress <= DBG_6502_IO_END)) {
           DebuggerSetColorFG(DebuggerGetColor(FG_INFO_IO_BYTE));
         }
 
         snprintf(sText, sizeof(sText), "%02X ", nData);
       } else {
-        if ((iAddress >= _6502_IO_BEGIN) && (iAddress <= _6502_IO_END)) {
+        if ((iAddress >= DBG_6502_IO_BEGIN) && (iAddress <= DBG_6502_IO_END)) {
           iBackground = BG_INFO_IO_BYTE;
         }
 
@@ -171,7 +172,7 @@ void DrawRegister(int line, const char* name, const int nBytes,
     return;
   }
 
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   Rect_t rect;
   rect.top = line * g_font_height;
@@ -312,7 +313,7 @@ void DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
 
 void DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
                                     int bg_default = BG_INFO) {
-  const int w = g_font_config[FONT_DISASM_DEFAULT]._nFontWidthAvg;
+  const int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
   const int dx80 = 7 * w;
   const int dx88 = 8 * w;
 
@@ -383,7 +384,7 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
   rect.top += g_font_height;
   rect.bottom += g_font_height;
 
-  int w = g_font_config[FONT_DISASM_DEFAULT]._nFontWidthAvg;
+  int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
   int dx = 7 * w;
 
   int address = 0xC002;
@@ -404,7 +405,7 @@ void DrawSoftSwitchMainAuxBanks(Rect_t& rect) {
 
 void DrawSoftSwitches(int iSoftSwitch) {
   Rect_t rect;
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   rect.left = DISPLAY_SOFTSWITCH_COLUMN;
   rect.top = iSoftSwitch * g_font_height;
@@ -462,14 +463,14 @@ void DrawTargets(int line) {
   }
 
   int aTarget[3];
-  _6502_GetTargets(cpu_get_registers()->pc, &aTarget[0], &aTarget[1],
-                   &aTarget[2], nullptr);
+  GetTargets(cpu_get_registers()->pc, &aTarget[0], &aTarget[1], &aTarget[2],
+             nullptr);
   GetTargets_IgnoreDirectJSRJMP(mem[cpu_get_registers()->pc], aTarget[2]);
 
   aTarget[1] = aTarget[2];
 
   Rect_t rect;
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   int iAddress = MAX_DISPLAY_TARGET_PTR_LINES;
   while (iAddress--) {
@@ -600,7 +601,7 @@ void DrawZeroPagePointers(int line) {
     return;
   }
 
-  int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   Rect_t rect;
   rect.top = line * g_font_height;
@@ -726,7 +727,7 @@ void DrawSubWindow_Data(Update_t bUpdate) {
     }
     sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;
 
-    int nFontHeight = g_font_config[FONT_DISASM_DEFAULT]._nLineHeight;
+    int nFontHeight = g_font_config[FONT_DISASM_DEFAULT].line_height;
 
     rect.left = 0;
     const int DISPLAY_DISASM_RIGHT = 353;
@@ -815,7 +816,7 @@ void DrawVideoScannerValue(int line, int vert, int horz, bool isVisible) {
     return;
   }
 
-  const int nFontWidth = g_font_config[FONT_INFO]._nFontWidthAvg;
+  const int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   const int nameWidth = 2;    // 2 chars
   const int numberWidth = 3;  // 3 chars

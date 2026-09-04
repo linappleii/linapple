@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
 linapple : An Apple //e emulator for Linux
 
@@ -92,7 +93,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
   if (g_assembler_input) {
     if (g_console_input_chars) {
       ParseInput(g_console_input_ptr, false);  // Don't cook the args
-      bUpdateDisplay |= _CmdAssemble(g_assembler_address, 0, g_arg_raw_count);
+      bUpdateDisplay |= CmdAssemble(g_assembler_address, 0, g_arg_raw_count);
     } else {
       AssemblerOff();
 
@@ -388,7 +389,7 @@ Command_t g_commands[] = {
     {"BSAVE", CmdMemorySave, CMD_MEMORY_SAVE, "Save a region of memory"},
     {"S", CmdMemorySearch, CMD_MEMORY_SEARCH,
      "Search memory for text / hex values"},
-    {"@", _SearchMemoryDisplay, CMD_MEMORY_FIND_RESULTS,
+    {"@", SearchMemoryDisplay, CMD_MEMORY_FIND_RESULTS,
      "Display search memory results"},
     //		{"SA", CmdMemorySearchAscii,
     // CMD_MEMORY_SEARCH_ASCII, "Search ASCII text"},

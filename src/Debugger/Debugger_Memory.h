@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "Debugger_Types.h"
@@ -9,7 +10,7 @@ extern MemorySearchResults_t g_memory_search_results;
 // Memory Functions
 bool MemoryDumpCheck(int nArgs, uint16_t* pAddress_);
 Update_t CmdMemoryCompare(int nArgs);
-bool _MemoryCheckMiniDump(int iWhich);
+bool MemoryCheckMiniDump(int iWhich);
 Update_t CmdMemoryMiniDumpHex(int nArgs);
 Update_t CmdMemoryMiniDumpAscii(int nArgs);
 Update_t CmdMemoryMiniDumpBin(int nArgs);

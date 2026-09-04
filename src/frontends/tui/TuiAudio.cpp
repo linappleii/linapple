@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "TuiAudio.h"
 
 #include <pulse/def.h>

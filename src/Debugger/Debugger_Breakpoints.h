@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include "Debugger_Types.h"
@@ -38,12 +39,12 @@ Update_t CmdWatchList(int nArgs);
 Update_t CmdWatchLoad(int nArgs);
 Update_t CmdWatchSave(int nArgs);
 
-bool _CmdBreakpointAddReg(Breakpoint_t* pBP, BreakpointSource_t iSrc,
-                          BreakpointOperator_t iCmp, uint16_t address, int nLen,
-                          bool bIsTempBreakpoint);
-int _CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
-                               BreakpointOperator_t iCmp,
-                               bool bIsTempBreakpoint = false);
+bool CmdBreakpointAddReg(Breakpoint_t* pBP, BreakpointSource_t iSrc,
+                         BreakpointOperator_t iCmp, uint16_t address, int nLen,
+                         bool bIsTempBreakpoint);
+int CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
+                              BreakpointOperator_t iCmp,
+                              bool bIsTempBreakpoint = false);
 
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
 void bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot);

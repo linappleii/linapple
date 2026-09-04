@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Breakpoints.h"
 
 #include <cassert>
@@ -32,8 +33,8 @@ const char* g_breakpoint_source[NUM_BREAKPOINT_SOURCES] = {
     "A", "X", "Y", "PC", "S", "P",  "C", "Z", "I",
     "D", "B", "R", "V",  "N", "OP", "M", "M", "M"};
 
-// Note: BreakpointOperator_t, _PARAM_BREAKPOINT_, and g_breakpoint_symbols must
-// match!
+// Note: BreakpointOperator_t, PARAM_BREAKPOINT_, and g_breakpoint_symbols must
+// stay in sync!
 const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
     "<=", "< ", "= ", "!=", "> ", ">=", "? ", "@ ", "* "};
 
@@ -172,8 +173,8 @@ auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
 
   // Check if arg[1] is a register
   int iSrc = 0;
-  if (FindParam(g_args[1].sArg, MATCH_EXACT, iSrc, _PARAM_BREAKPOINT_BEGIN,
-                _PARAM_BREAKPOINT_END) > 0) {
+  if (FindParam(g_args[1].sArg, MATCH_EXACT, iSrc, PARAM_BREAKPOINT_BEGIN,
+                PARAM_BREAKPOINT_END) > 0) {
     return CmdBreakpointAddReg(nArgs);
   }
 
@@ -187,7 +188,7 @@ auto CmdBreakpointAddPC(int nArgs) -> Update_t {
 
   for (int iArg = 1; iArg <= nArgs; iArg++) {
     uint16_t address = g_args[iArg].nValue;
-    _CmdBreakpointAddCommonArg(iArg, nArgs, BP_SRC_REG_PC, BP_OP_EQUAL);
+    CmdBreakpointAddCommonArg(iArg, nArgs, BP_SRC_REG_PC, BP_OP_EQUAL);
     (void)address;
   }
 
@@ -199,14 +200,14 @@ auto CmdBreakpointAddReg(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_REG);
   }
 
-  _CmdBreakpointAddCommonArg(1, nArgs, BP_SRC_REG_A, BP_OP_EQUAL);
+  CmdBreakpointAddCommonArg(1, nArgs, BP_SRC_REG_A, BP_OP_EQUAL);
 
   return UPDATE_BREAKPOINTS;
 }
 
-int _CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
-                               BreakpointOperator_t iCmp,
-                               bool bIsTempBreakpoint) {
+int CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
+                              BreakpointOperator_t iCmp,
+                              bool bIsTempBreakpoint) {
   (void)nArg;
   int iBP = 0;
   while ((iBP < MAX_BREAKPOINTS) && (g_breakpoints[iBP].bSet)) {
@@ -369,7 +370,7 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
   for (; iArg <= nArgs; iArg++) {
     uint16_t address = g_args[iArg].nValue;
 
-    if ((address >= _6502_IO_BEGIN) && (address <= _6502_IO_END)) {
+    if ((address >= DBG_6502_IO_BEGIN) && (address <= DBG_6502_IO_END)) {
       return console_display_error("You may not watch an I/O location.");
     }
 

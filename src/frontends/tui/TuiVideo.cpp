@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "TuiVideo.h"
 
 #include <asm-generic/ioctls.h>

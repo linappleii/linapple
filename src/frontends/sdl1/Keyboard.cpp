@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <SDL/SDL_events.h>
 #include <SDL/SDL_keyboard.h>
 #include <SDL/SDL_keysym.h>

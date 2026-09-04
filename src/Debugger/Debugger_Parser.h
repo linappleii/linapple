@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
 #include <cstdint>
@@ -42,7 +43,7 @@ extern std::vector<int> g_potential_commands;
 
 // Prototypes _______________________________________________________________
 
-void _strupr(char* s);
+void util_strupr(char* s);
 int FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
               int iParamBegin = 0, int iParamEnd = NUM_PARAMS - 1);
 int FindCommand(const char* pName, CmdFuncPtr_t& pFunction_,
@@ -52,10 +53,10 @@ int ParseInput(char* pConsoleInput, bool bCook = true);
 
 // Arg - Command Processing
 Update_t Help_Arg_1(int iCommandHelp);
-int _Arg_1(int nValue);
-int _Arg_1(char* pName);
-int _Arg_Shift(int iSrc, int iEnd, int iDst = 0);
-int _Args_Insert(int iSrc, int iEnd, int nLen);
+int Arg_1(int nValue);
+int Arg_1(char* pName);
+int Arg_Shift(int iSrc, int iEnd, int iDst = 0);
+int Args_Insert(int iSrc, int iEnd, int nLen);
 void ArgsClear();
 
 bool ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase = 16);
