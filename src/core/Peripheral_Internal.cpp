@@ -205,20 +205,20 @@ auto peripheral_plugins_init() -> void {
                            full_path.c_str());
               g_loaded_plugins.push_back({p, handle, full_path});
             } else {
-              Logger::warning("Plugin ABI mismatch: %s (expected %d, got %d)\n",
-                              full_path.c_str(), LINAPPLE_ABI_VERSION,
-                              p->abi_version);
+              Logger::error("Plugin ABI mismatch: %s (expected %d, got %d)\n",
+                            full_path.c_str(), LINAPPLE_ABI_VERSION,
+                            p->abi_version);
               dlclose(handle);
             }
           } else {
-            Logger::warning(
+            Logger::error(
                 "Invalid plugin (missing linapple_peripheral_descriptor): %s\n",
                 full_path.c_str());
             dlclose(handle);
           }
         } else {
-          Logger::warning("Failed to load plugin: %s (%s)\n", full_path.c_str(),
-                          dlerror());
+          Logger::error("Failed to load plugin: %s (%s)\n", full_path.c_str(),
+                        dlerror());
         }
       }
     }
