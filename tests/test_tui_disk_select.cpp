@@ -85,6 +85,7 @@ TEST_CASE("TuiVideo: Screenshot Generation") {
 }
 
 TEST_CASE("Configuration: Save and Load Runtime Settings") {
+#ifdef REGISTRY_WRITEABLE
   std::string test_conf = "test_runtime_save.conf";
   Configuration_t::instance().set_path(test_conf);
   Configuration_t::instance().set_int("Configuration", "Fullscreen", 1);
@@ -98,6 +99,10 @@ TEST_CASE("Configuration: Save and Load Runtime Settings") {
   CHECK(st.st_size > 0);
 
   unlink(test_conf.c_str());
+#else
+  bool saved = Configuration_t::instance().save();
+  CHECK_FALSE(saved);
+#endif
 }
 
 TEST_CASE("TuiVideo: Render Mode Toggle") {

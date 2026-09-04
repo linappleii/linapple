@@ -136,6 +136,11 @@ auto mem_set_active_context(MemoryInstance_t* context) -> void {
   memdirty = context->memdirty;
 }
 
+auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
+                  uint8_t value, uint32_t cycles_left) -> uint8_t;
+auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
+                   uint8_t value, uint32_t cycles_left) -> uint8_t;
+
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                      uint32_t cycles) -> uint8_t {
   if (addr < IO_RANGE_BEGIN || addr > IO_RANGE_END) {
@@ -155,6 +160,16 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
       }
     } else {
       uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
+      if (!IS_APPLE2()) {
+        if (!sw_slotcxrom(g_active_memory)) {
+          return write ? io_write_cxxx(pc, addr, write, d, cycles)
+                       : io_read_cxxx(pc, addr, write, d, cycles);
+        }
+        if (page == 3 && !sw_slotc3rom(g_active_memory)) {
+          return write ? io_write_cxxx(pc, addr, write, d, cycles)
+                       : io_read_cxxx(pc, addr, write, d, cycles);
+        }
+      }
       if (write) {
         if (IOWrite[NUM_PAGES_64K + page] != nullptr) {
           return IOWrite[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
