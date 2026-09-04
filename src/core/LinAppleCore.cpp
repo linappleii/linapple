@@ -171,12 +171,14 @@ static auto should_run_full_speed() -> bool {
 auto linapple_init() -> int {
   mem_pre_initialize();
   if (!asset_init()) {
+    linapple_shutdown();
     return -1;
   }
   video_create_color_mix_map();
   audio_mixer_initialize();
 
   if (mem_initialize() != 0) {
+    linapple_shutdown();
     return -1;
   }
   cpu_initialize();

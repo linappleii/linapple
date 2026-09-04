@@ -181,7 +181,7 @@ auto is_disk_write_protected(DiskPeripheral_t* disk_peripheral, int drive_index)
     return true;
   }
 
-  if (disk_ptr->driver != nullptr) {
+  if (disk_ptr->driver != nullptr && disk_ptr->driver_instance != nullptr) {
     const bool can_write =
         (disk_ptr->driver->capabilities & disk_driver_cap_write) != 0;
     if (!can_write) {
@@ -262,9 +262,12 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
       write_track_to_driver(disk_peripheral, drive_index);
     }
 
-    if (disk_ptr->driver->close != nullptr) {
+    if (disk_ptr->driver->close != nullptr &&
+        disk_ptr->driver_instance != nullptr) {
       disk_ptr->driver->close(disk_ptr->driver_instance);
     }
+    disk_ptr->driver = nullptr;
+    disk_ptr->driver_instance = nullptr;
 
     if (disk_peripheral->host != nullptr) {
       const char* key =
