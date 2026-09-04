@@ -294,8 +294,20 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
         io_status = status::io_error;
         break;
       }
-      std::copy_n(mem + active_drive.memory_address, physical::block_size,
-                  active_drive.data_buffer.data());
+      {
+        uint8_t* mem_src =
+            (peripheral_ptr->host != nullptr &&
+             peripheral_ptr->host->get_mem_ptr != nullptr)
+                ? peripheral_ptr->host->get_mem_ptr(active_drive.memory_address)
+                : nullptr;
+        if (mem_src == nullptr) {
+          active_drive.error_code = 1;
+          io_status = status::io_error;
+          break;
+        }
+        std::copy_n(mem_src, physical::block_size,
+                    active_drive.data_buffer.data());
+      }
       if (active_drive.driver != nullptr &&
           active_drive.driver->write_block != nullptr &&
           active_drive.driver->write_block(

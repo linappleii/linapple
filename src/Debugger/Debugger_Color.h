@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "apple2/Video.h"
+#include <cstdint>
+
+using ColorRef_t = uint32_t;
 
 // Colors ___________________________________________________________________
 

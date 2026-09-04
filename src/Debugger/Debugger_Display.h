@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
 #pragma once
+
+#include <cstdint>
 
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
-#include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
+
+struct Rect_t;
 
 #define USE_APPLE_FONT 1
 

@@ -19,8 +19,6 @@
 #include "TuiDiskSelect.h"
 #include "TuiVideo.h"
 #include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
@@ -82,24 +80,15 @@ static auto map_key(uint8_t a2_code) -> void {
 
 static auto reset_machine() -> void {
   g_full_speed = false;
-  mem_reset();
-  peripheral_manager_reset();
+  linapple_reset_hard();
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
-  video_reset_state();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
   g_state.mode = MODE_RUNNING;
   g_state.reset_timing = true;
 }
 
 static auto soft_reset_machine() -> void {
-  if (!IS_APPLE2()) {
-    mem_reset_paging();
-  }
-  peripheral_manager_reset();
-  if (!IS_APPLE2()) {
-    video_reset_state();
-  }
-  cpu_reset();
+  linapple_reset_soft();
   g_state.mode = MODE_RUNNING;
   g_state.reset_timing = true;
 }

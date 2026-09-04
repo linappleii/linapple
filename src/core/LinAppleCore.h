@@ -232,6 +232,8 @@ auto linapple_get_ticks() -> uint32_t;
 auto linapple_load_program(const char* path) -> int;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
+auto linapple_reset_hard() -> void;
+auto linapple_reset_soft() -> void;
 
 auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;
@@ -241,10 +243,10 @@ auto peripheral_manager_on_vblank(bool vblank) -> void;
 auto peripheral_is_any_active() -> bool;
 auto linapple_list_hardware() -> void;
 
-PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
-                                      const void* data, size_t size);
-PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
-                                    size_t* out_size);
+auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
+                        size_t size) -> PeripheralStatus_t;
+auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t;
 
 enum CapsLockMode_t { CAPS_MODE_HOST = 0, CAPS_MODE_EMULATED = 1 };
 

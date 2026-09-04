@@ -63,8 +63,6 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
 #endif
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
@@ -831,15 +829,7 @@ void process_button_click(int button, int mod) {
       break;
     case btn_loadst:
       if (mod & SDL_KMOD_CTRL) {
-        if (!IS_APPLE2()) {
-          mem_reset_paging();
-        }
-
-        peripheral_manager_reset();
-        if (!IS_APPLE2()) {
-          video_reset_state();
-        }
-        cpu_reset();
+        linapple_reset_soft();
       } else if (mod & SDL_KMOD_ALT) {
         save_state_load();
       } else if (psp_save_state_select_image(false)) {
@@ -860,10 +850,8 @@ void reset_machine_state() {
       false;  // Might've hit reset in middle of internal_cpu_execute()
               // - so beep may get (partially) muted
 
-  mem_reset();
-  peripheral_manager_reset();
+  linapple_reset_hard();
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
-  video_reset_state();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 

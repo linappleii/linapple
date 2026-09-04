@@ -193,6 +193,20 @@ auto linapple_shutdown() -> void {
   asset_quit();
 }
 
+auto linapple_reset_hard() -> void {
+  mem_reset();
+  video_reset_state();
+  cpu_reset();
+  peripheral_manager_reset();
+}
+
+auto linapple_reset_soft() -> void {
+  cpu_reset();
+  if (!IS_APPLE2()) {
+    mem_reset_paging();
+  }
+}
+
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
   if (test_file == nullptr) {
     return;

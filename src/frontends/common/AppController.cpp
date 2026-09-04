@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -89,14 +90,50 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   if (config->rom_path.at(0) != '\0') {
-    mem_set_custom_rom_path(config->rom_path.data());
+    std::string rom_path = config->rom_path.data();
+    std::string path_to_open = rom_path;
+    FilePtr_t f{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
+    if (!f) {
+      std::string resolved = Path::find_data_file(rom_path);
+      if (!resolved.empty()) {
+        path_to_open = resolved;
+        f = FilePtr_t{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
+      }
+    }
+    if (!f) {
+      Logger::error("\nError: Unable to open custom ROM file: %s\n\n",
+                    rom_path.c_str());
+      mem_set_custom_rom_data(nullptr, 0);
+      return -1;
+    }
+    constexpr int64_t max_rom_file_size = 65536;
+    int64_t fsize = Path::file_size(f.get());
+    if (fsize < static_cast<int64_t>(APPLE2_ROM_SIZE) ||
+        fsize > max_rom_file_size) {
+      Logger::error(
+          "\nError: Invalid custom ROM file size (%ld bytes, expected at least "
+          "%u bytes): %s\n\n",
+          static_cast<long>(fsize), static_cast<unsigned int>(APPLE2_ROM_SIZE),
+          rom_path.c_str());
+      mem_set_custom_rom_data(nullptr, 0);
+      return -1;
+    }
+    std::vector<uint8_t> custom_rom_buffer(static_cast<size_t>(fsize));
+    if (std::fread(custom_rom_buffer.data(), 1, custom_rom_buffer.size(),
+                   f.get()) != custom_rom_buffer.size()) {
+      Logger::error("\nError: Failed to read custom ROM file: %s\n\n",
+                    rom_path.c_str());
+      mem_set_custom_rom_data(nullptr, 0);
+      return -1;
+    }
+    mem_set_custom_rom_data(custom_rom_buffer.data(), custom_rom_buffer.size());
   } else {
-    mem_set_custom_rom_path(nullptr);
+    mem_set_custom_rom_data(nullptr, 0);
   }
 
   // 3. Init Core
   if (linapple_init() != 0) {
-    mem_set_custom_rom_path(nullptr);
+    mem_set_custom_rom_data(nullptr, 0);
     return -1;
   }
   s_initialized = true;
@@ -381,7 +418,7 @@ void app_controller_load_initial_media(const AppConfig_t* config) {
 }
 
 void app_controller_shutdown() {
-  mem_set_custom_rom_path(nullptr);
+  mem_set_custom_rom_data(nullptr, 0);
   if (!s_initialized) return;
 
   basic_sync_shutdown();

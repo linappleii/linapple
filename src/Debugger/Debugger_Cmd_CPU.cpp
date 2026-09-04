@@ -19,9 +19,9 @@ extern void frame_refresh_status(int);
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/AudioMixer.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Util_Path.h"
 
 // Definitions

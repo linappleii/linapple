@@ -8,6 +8,8 @@
 
 #include "core/Peripheral_Types.h"
 
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -130,3 +132,5 @@ bool peripheral_verify_manifest(const void* manifest);
 #ifdef __cplusplus
 }
 #endif
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)

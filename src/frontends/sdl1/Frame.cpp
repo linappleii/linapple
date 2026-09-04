@@ -44,8 +44,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "SDL_timer.h"
 #include "SDL_video.h"
 #include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
@@ -789,15 +787,7 @@ void process_button_click(int button, int mod) {
       break;
     case btn_loadst:
       if ((mod & KMOD_CTRL) != 0) {
-        if (IS_APPLE2() == false) {
-          mem_reset_paging();
-        }
-
-        peripheral_manager_reset();
-        if (IS_APPLE2() == false) {
-          video_reset_state();
-        }
-        cpu_reset();
+        linapple_reset_soft();
       } else if ((mod & KMOD_ALT) != 0) {
         save_state_load();
       } else if (psp_save_state_select_image(false)) {
@@ -818,10 +808,8 @@ void reset_machine_state() {
       false;  // Might've hit reset in middle of internal_cpu_execute()
               // - so beep may get (partially) muted
 
-  mem_reset();
-  peripheral_manager_reset();
+  linapple_reset_hard();
   peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
-  video_reset_state();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
