@@ -221,6 +221,10 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
       break;
     }
   }
+  if (cpu_get_registers()->pc != trap_addr) {
+    printf("CPU DID NOT TRAP. final pc=0x%04X after %" PRIu64 " cycles\n",
+           cpu_get_registers()->pc, count);
+  }
   linapple_shutdown();
 }
 

@@ -418,6 +418,9 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
     pack_ps();
     push(regs.ps);
     regs.ps |= AF_INTERRUPT;
+    if (is_cmos) {
+      regs.ps &= ~AF_DECIMAL;
+    }
     regs.pc = read_u16_unaligned(mem + 0xFFFE);
   };
   auto op_hlt = [&]() {
@@ -756,7 +759,10 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
       push(regs.pc & 0xFF);
       pack_ps();
       push(regs.ps & ~AF_BREAK);
-      regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
+      regs.ps |= AF_INTERRUPT;
+      if (is_cmos) {
+        regs.ps &= ~AF_DECIMAL;
+      }
       regs.pc = read_u16_unaligned(mem + NMI_VECTOR_ADDR);
       executed_cycles += 7;
     }
@@ -770,7 +776,10 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
       push(regs.pc & 0xFF);
       pack_ps();
       push(regs.ps & ~AF_BREAK);
-      regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
+      regs.ps |= AF_INTERRUPT;
+      if (is_cmos) {
+        regs.ps &= ~AF_DECIMAL;
+      }
       regs.pc = read_u16_unaligned(mem + IRQ_VECTOR_ADDR);
       executed_cycles += 7;
     }

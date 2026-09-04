@@ -16,7 +16,7 @@ constexpr uint16_t reset_vector_addr = 0xFFFC;
 constexpr uint16_t irq_vector_addr = 0xFFFE;
 
 constexpr uint16_t trap_nmos_default = 0x336D;
-constexpr uint16_t trap_cmos_default = 0x3469;
+constexpr uint16_t trap_cmos_default = 0x2434;
 
 constexpr uint32_t uint32_max_val = 0xFFFFFFFF;
 
