@@ -10,7 +10,7 @@ LinApple is an emulator for Apple ][[, Apple ]][+, Apple //e, and Enhanced Apple
   - `src/core/`: Core emulator logic and the "Core Bridge" (`LinAppleCore.h`).
   - `src/apple2/`: Hardware-level emulation (6502 CPU, Disk, Video, etc.).
   - `src/Debugger/`: Integrated assembly-level debugger.
-  - `src/frontends/`: Host-specific frontend implementations (SDL3 and Headless).
+  - `src/frontends/`: Host-specific frontend implementations. `src/frontends/sdl3/` is the primary, actively developed modern frontend. `src/frontends/sdl2/` and `src/frontends/sdl1/` are legacy compatibility targets maintained for older systems and embedded devices; shared utilities live in `src/frontends/common/` while frontend-specific rendering divergence is preserved in each respective frontend directory.
   - `res/`: Emulator assets (ROMs, Master disk, fonts, icons).
   - `tests/`: Integration and unit tests using `doctest`.
 
@@ -54,7 +54,7 @@ More on building in <!-- Imported from: INSTALL.md -->
 
 ## Development Conventions
 - **Coding Style:** Favor a **procedural C-like coding style** for all new development. Use `structs` and plain functions instead of `classes` and methods where possible to improve simplicity and portability.
-- **Naming Conventions:** Use strict `snake_case` for functions, variables, and constants. Use `PascalCase_t` for types and structs. (Exception: hardware register bitmasks, 6502 CPU status flags, and Apple II architecture vector definitions in hardware emulation layers may use `SCREAMING_SNAKE_CASE` to maintain 1:1 fidelity with hardware technical references).
+- **Naming Conventions:** Use strict `snake_case` for functions, variables, and constants. Use `PascalCase_t` for types and structs. (Exception: hardware register bitmasks, 6502 CPU status flags, and Apple II architecture vector definitions in hardware emulation layers may use `SCREAMING_SNAKE_CASE` to maintain 1:1 fidelity with hardware technical references; legacy internal functions in `src/Debugger/` originally ported from AppleWin are documented legacy exceptions that retain existing `PascalCase` names until individually modernized).
 - **Function Syntax:** Use trailing return types (`auto func() -> type`) for all new and modernized functions.
 - **Resource Safety & RAII:** Ensure 100% RAII compliance. Avoid raw `new`/`delete` and manual file handles; use `std::unique_ptr` and `FilePtr`.
 - **Code Structure:** Prefer guard clauses (flattening) over deeply nested conditionals. Maintain defensive null and bounds checks.
