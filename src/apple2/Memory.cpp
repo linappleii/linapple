@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <new>
 #include <vector>
 
 #include "EmbeddedRoms.h"
@@ -121,29 +122,6 @@ MemoryInstance_t::~MemoryInstance_t() {
   if (this->memimage != nullptr) {
     munlock(this->memimage, MEMORY_64K);
   }
-  free(this->memaux_allocated);
-  this->memaux_allocated = nullptr;
-  free(this->memmain);
-  this->memmain = nullptr;
-  free(this->memdirty);
-  this->memdirty = nullptr;
-  free(this->memrom);
-  this->memrom = nullptr;
-  free(this->memimage);
-  this->memimage = nullptr;
-  free(this->cx_rom_internal);
-  this->cx_rom_internal = nullptr;
-  free(this->cx_rom_peripheral);
-  this->cx_rom_peripheral = nullptr;
-
-#ifdef RAMWORKS
-  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; ++i) {
-    if (this->rw_pages[i] != nullptr) {
-      free(this->rw_pages[i]);
-      this->rw_pages[i] = nullptr;
-    }
-  }
-#endif
 }
 
 auto mem_get_active_context() -> MemoryInstance_t* { return g_active_memory; }
@@ -945,27 +923,34 @@ auto mem_check_paging(uint16_t programcounter, uint16_t address, uint8_t write,
 }
 
 auto mem_destroy() -> void {
+  if (g_active_memory->memimage != nullptr) {
+    munlock(g_active_memory->memimage, MEMORY_64K);
+  }
+
 #ifdef RAMWORKS
   for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; i++) {
-    if (g_active_memory->rw_pages[i]) {
-      free(g_active_memory->rw_pages[i]);
-      g_active_memory->rw_pages[i] = nullptr;
-    }
+    g_active_memory->buf_rw_pages[i].clear();
+    g_active_memory->buf_rw_pages[i].shrink_to_fit();
+    g_active_memory->rw_pages[i] = nullptr;
   }
 #endif
 
-  if (g_active_memory->memimage) munlock(g_active_memory->memimage, MEMORY_64K);
-
-  free(g_active_memory->memaux_allocated);
-  free(g_active_memory->memmain);
-  free(memdirty);
-  free(g_active_memory->memrom);
-  free(g_active_memory->memimage);
-  free(g_active_memory->cx_rom_internal);
-  free(g_active_memory->cx_rom_peripheral);
+  g_active_memory->buf_memaux.clear();
+  g_active_memory->buf_memaux.shrink_to_fit();
+  g_active_memory->buf_memmain.clear();
+  g_active_memory->buf_memmain.shrink_to_fit();
+  g_active_memory->buf_memdirty.clear();
+  g_active_memory->buf_memdirty.shrink_to_fit();
+  g_active_memory->buf_memrom.clear();
+  g_active_memory->buf_memrom.shrink_to_fit();
+  g_active_memory->buf_memimage.clear();
+  g_active_memory->buf_memimage.shrink_to_fit();
+  g_active_memory->buf_cx_rom_internal.clear();
+  g_active_memory->buf_cx_rom_internal.shrink_to_fit();
+  g_active_memory->buf_cx_rom_peripheral.clear();
+  g_active_memory->buf_cx_rom_peripheral.shrink_to_fit();
 
   g_active_memory->memaux = nullptr;
-  g_active_memory->memaux_allocated = nullptr;
   g_active_memory->memmain = nullptr;
   set_mem_dirty(nullptr);
   g_active_memory->memrom = nullptr;
@@ -1104,59 +1089,46 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   const uint32_t Apple2RomSize = APPLE2_ROM_SIZE;
   const uint32_t Apple2eRomSize = Apple2RomSize + CxRomSize;
 
-  g_active_memory->memaux_allocated = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  g_active_memory->memaux = g_active_memory->memaux_allocated;
-  g_active_memory->memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  set_mem_dirty(static_cast<uint8_t*>(malloc(NUM_PAGES_64K)));
-  g_active_memory->memrom = static_cast<uint8_t*>(malloc(ROM_BUFFER_SIZE));
-  g_active_memory->memimage = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  g_active_memory->cx_rom_internal = static_cast<uint8_t*>(malloc(CxRomSize));
-  g_active_memory->cx_rom_peripheral = static_cast<uint8_t*>(malloc(CxRomSize));
+  try {
+    g_active_memory->buf_memaux.assign(MEMORY_64K, 0);
+    g_active_memory->memaux = g_active_memory->buf_memaux.data();
+    g_active_memory->buf_memmain.assign(MEMORY_64K, 0);
+    g_active_memory->memmain = g_active_memory->buf_memmain.data();
+    g_active_memory->buf_memdirty.assign(NUM_PAGES_64K, 0);
+    set_mem_dirty(g_active_memory->buf_memdirty.data());
+    g_active_memory->buf_memrom.assign(ROM_BUFFER_SIZE, 0);
+    g_active_memory->memrom = g_active_memory->buf_memrom.data();
+    g_active_memory->buf_memimage.assign(MEMORY_64K, 0);
+    g_active_memory->memimage = g_active_memory->buf_memimage.data();
+    g_active_memory->buf_cx_rom_internal.assign(CxRomSize, 0);
+    g_active_memory->cx_rom_internal =
+        g_active_memory->buf_cx_rom_internal.data();
+    g_active_memory->buf_cx_rom_peripheral.assign(CxRomSize, 0);
+    g_active_memory->cx_rom_peripheral =
+        g_active_memory->buf_cx_rom_peripheral.data();
 
-  if (!g_active_memory->memaux || !memdirty || !g_active_memory->memimage ||
-      !g_active_memory->memmain || !g_active_memory->memrom ||
-      !g_active_memory->cx_rom_internal ||
-      !g_active_memory->cx_rom_peripheral) {
-    Logger::error("Unable to allocate required memory buffers.");
+#ifdef RAMWORKS
+    g_active_memory->buf_rw_pages[0].assign(MEMORY_64K, 0);
+    g_active_memory->rw_pages[0] = g_active_memory->buf_rw_pages[0].data();
+    g_active_memory->memaux = g_active_memory->rw_pages[0];
+
+    for (uint32_t i = 1; i < g_max_ex_pages && i < MAX_RAMWORKS_PAGES; ++i) {
+      g_active_memory->buf_rw_pages[i].assign(MEMORY_64K, 0);
+      g_active_memory->rw_pages[i] = g_active_memory->buf_rw_pages[i].data();
+    }
+#endif
+  } catch (const std::bad_alloc& e) {
+    Logger::error("Unable to allocate required memory buffers: %s", e.what());
     mem_destroy();
     return -1;
   }
 
-  if (g_active_memory->memaux) memset(g_active_memory->memaux, 0, MEMORY_64K);
-  if (g_active_memory->memmain) memset(g_active_memory->memmain, 0, MEMORY_64K);
   set_mem(g_active_memory->memmain);
-  if (memdirty) memset(memdirty, 0, NUM_PAGES_64K);
-  if (g_active_memory->memrom)
-    memset(g_active_memory->memrom, 0, ROM_BUFFER_SIZE);
-  if (g_active_memory->memimage)
-    memset(g_active_memory->memimage, 0, MEMORY_64K);
 
   if (mlock(g_active_memory->memimage, MEMORY_64K) != 0) {
     Logger::warning("Failed to lock memory image from swapping.");
   }
 
-  if (g_active_memory->cx_rom_internal)
-    memset(g_active_memory->cx_rom_internal, 0, CxRomSize);
-  if (g_active_memory->cx_rom_peripheral)
-    memset(g_active_memory->cx_rom_peripheral, 0, CxRomSize);
-
-#ifdef RAMWORKS
-  g_active_memory->rw_pages[0] = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  if (g_active_memory->rw_pages[0]) {
-    memset(g_active_memory->rw_pages[0], 0, MEMORY_64K);
-    g_active_memory->memaux = g_active_memory->rw_pages[0];
-  }
-  uint32_t i = 1;
-  while (i < g_max_ex_pages && i < MAX_RAMWORKS_PAGES) {
-    g_active_memory->rw_pages[i] = static_cast<uint8_t*>(malloc(MEMORY_64K));
-    if (g_active_memory->rw_pages[i]) {
-      memset(g_active_memory->rw_pages[i], 0, MEMORY_64K);
-      i++;
-    } else {
-      break;
-    }
-  }
-#endif
   mem_set_active_context(g_active_memory);
 
   uint32_t ROM_SIZE = 0;

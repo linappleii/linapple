@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
@@ -166,8 +167,18 @@ extern MemoryInitPattern_e g_memory_init_pattern;
 enum eExpansionRomType { eExpRomNull = 0, eExpRomInternal, eExpRomPeripheral };
 
 struct MemoryInstance_t {
+  std::vector<uint8_t> buf_memmain;
+  std::vector<uint8_t> buf_memaux;
+  std::vector<uint8_t> buf_memdirty;
+  std::vector<uint8_t> buf_memrom;
+  std::vector<uint8_t> buf_memimage;
+  std::vector<uint8_t> buf_cx_rom_internal;
+  std::vector<uint8_t> buf_cx_rom_peripheral;
+#ifdef RAMWORKS
+  std::vector<uint8_t> buf_rw_pages[MAX_RAMWORKS_PAGES];
+#endif
+
   uint8_t* memaux = nullptr;
-  uint8_t* memaux_allocated = nullptr;
   uint8_t* memmain = nullptr;
   uint8_t* memdirty = nullptr;
   uint8_t* memrom = nullptr;

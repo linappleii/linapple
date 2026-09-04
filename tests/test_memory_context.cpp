@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <cstdlib>
 
 #include "apple2/Memory.h"
 #include "doctest.h"
@@ -49,10 +48,12 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
 TEST_CASE(
     "Memory Context: Destructor does not free active context buffers (MEM-1)") {
   MemoryInstance_t active_ctx{};
-  active_ctx.memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
-  active_ctx.memaux_allocated = static_cast<uint8_t*>(malloc(MEMORY_64K));
+  active_ctx.buf_memmain.assign(MEMORY_64K, 0);
+  active_ctx.memmain = active_ctx.buf_memmain.data();
+  active_ctx.buf_memaux.assign(MEMORY_64K, 0);
+  active_ctx.memaux = active_ctx.buf_memaux.data();
   REQUIRE(active_ctx.memmain != nullptr);
-  REQUIRE(active_ctx.memaux_allocated != nullptr);
+  REQUIRE(active_ctx.memaux != nullptr);
   active_ctx.memmain[0] = 0x42;
 
   MemoryInstance_t* prev_active = mem_get_active_context();
@@ -61,7 +62,8 @@ TEST_CASE(
   {
     // Create secondary context that allocates its own buffers
     MemoryInstance_t second_ctx{};
-    second_ctx.memmain = static_cast<uint8_t*>(malloc(MEMORY_64K));
+    second_ctx.buf_memmain.assign(MEMORY_64K, 0);
+    second_ctx.memmain = second_ctx.buf_memmain.data();
     REQUIRE(second_ctx.memmain != nullptr);
     second_ctx.memmain[0] = 0x99;
     // second_ctx destroyed at scope exit while active_ctx is still active
