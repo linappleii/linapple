@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register addresses, bitmasks, and control line states from MC6821 datasheet
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Hardware signal interface parameters and callback bindings
 /*
 LinApple : Apple ][ emulator for Linux
 
@@ -27,32 +28,31 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <cstdint>
 #include <cstring>
 
-enum {
-  CRA_IRQ1 = 0x80,
-  CRA_IRQ2 = 0x40,
-  CRA_CA2_OUT = 0x20,
-  CRA_CA2_SEL = 0x10,
-  CRA_CA2_LVL = 0x08,
-  CRA_DDR_SEL = 0x04,
-  CRA_CA1_SEL = 0x02,
-  CRA_CA1_EN = 0x01
-};
+constexpr uint8_t CRA_IRQ1 = 0x80;
+constexpr uint8_t CRA_IRQ2 = 0x40;
+constexpr uint8_t CRA_CA2_OUT = 0x20;
+constexpr uint8_t CRA_CA2_SEL = 0x10;
+constexpr uint8_t CRA_CA2_LVL = 0x08;
+constexpr uint8_t CRA_DDR_SEL = 0x04;
+constexpr uint8_t CRA_CA1_SEL = 0x02;
+constexpr uint8_t CRA_CA1_EN = 0x01;
 
-enum {
-  CRB_IRQ1 = 0x80,
-  CRB_IRQ2 = 0x40,
-  CRB_CB2_OUT = 0x20,
-  CRB_CB2_SEL = 0x10,
-  CRB_CB2_LVL = 0x08,
-  CRB_DDR_SEL = 0x04,
-  CRB_CB1_SEL = 0x02,
-  CRB_CB1_EN = 0x01
-};
+constexpr uint8_t CRB_IRQ1 = 0x80;
+constexpr uint8_t CRB_IRQ2 = 0x40;
+constexpr uint8_t CRB_CB2_OUT = 0x20;
+constexpr uint8_t CRB_CB2_SEL = 0x10;
+constexpr uint8_t CRB_CB2_LVL = 0x08;
+constexpr uint8_t CRB_DDR_SEL = 0x04;
+constexpr uint8_t CRB_CB1_SEL = 0x02;
+constexpr uint8_t CRB_CB1_EN = 0x01;
 
-#define PIA_CALL(h, val) \
-  if (h.func) h.func(h.obj_to, val)
+static inline auto pia_call(const PiaWriteHandler_t& h, uint8_t val) -> void {
+  if (h.func != nullptr) {
+    h.func(h.obj_to, val);
+  }
+}
 
-static void update_interrupts(Pia6821_t* p) {
+static auto update_interrupts(Pia6821_t* p) -> void {
   uint8_t irq_a = 0;
   if (((p->cra & CRA_IRQ1) && (p->cra & CRA_CA1_EN)) ||
       ((p->cra & CRA_IRQ2) && (!(p->cra & CRA_CA2_OUT)) && (p->cra & 0x08))) {
@@ -61,7 +61,7 @@ static void update_interrupts(Pia6821_t* p) {
 
   if (irq_a != p->irq_a_state) {
     p->irq_a_state = irq_a;
-    PIA_CALL(p->out_irqa, p->irq_a_state);
+    pia_call(p->out_irqa, p->irq_a_state);
   }
 
   uint8_t irq_b = 0;
@@ -72,11 +72,11 @@ static void update_interrupts(Pia6821_t* p) {
 
   if (irq_b != p->irq_b_state) {
     p->irq_b_state = irq_b;
-    PIA_CALL(p->out_irqb, p->irq_b_state);
+    pia_call(p->out_irqb, p->irq_b_state);
   }
 }
 
-void pia_6821_reset(Pia6821_t* p) {
+auto pia_6821_reset(Pia6821_t* p) -> void {
   memset(p, 0, sizeof(Pia6821_t));
   // Port A has internal pull-up devices
   p->port_a_in = 0xFF;
@@ -99,11 +99,11 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
           if (!(p->cra & CRA_CA2_SEL)) {  // Read Strobe Mode
             if (p->oca2 == 1) {
               p->oca2 = 0;
-              PIA_CALL(p->out_ca2, 0);
+              pia_call(p->out_ca2, 0);
             }
             if (p->cra & CRA_CA2_LVL) {  // E-Reset
               p->oca2 = 1;
-              PIA_CALL(p->out_ca2, 1);
+              pia_call(p->out_ca2, 1);
             }
           }
         }
@@ -141,14 +141,14 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t {
   return val;
 }
 
-void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
+auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) -> void {
   addr &= 0x03;
 
   switch (addr) {
     case 0:  // Port A or DDRA
       if (p->cra & CRA_DDR_SEL) {
         p->ora = val;
-        PIA_CALL(p->out_a, p->ora & p->ddra);
+        pia_call(p->out_a, p->ora & p->ddra);
       } else {
         p->ddra = val;
       }
@@ -161,7 +161,7 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
         uint8_t next_ca2 = (p->cra & CRA_CA2_LVL) ? 1 : 0;
         if (next_ca2 != p->oca2) {
           p->oca2 = next_ca2;
-          PIA_CALL(p->out_ca2, p->oca2);
+          pia_call(p->out_ca2, p->oca2);
         }
       }
       update_interrupts(p);
@@ -170,17 +170,17 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
     case 2:  // Port B or DDRB
       if (p->crb & CRB_DDR_SEL) {
         p->orb = val;
-        PIA_CALL(p->out_b, p->orb & p->ddrb);
+        pia_call(p->out_b, p->orb & p->ddrb);
 
         if (p->crb & CRB_CB2_OUT) {
           if (!(p->crb & CRB_CB2_SEL)) {  // Write Strobe Mode
             if (p->ocb2 == 1) {
               p->ocb2 = 0;
-              PIA_CALL(p->out_cb2, 0);
+              pia_call(p->out_cb2, 0);
             }
             if (p->crb & CRB_CB2_LVL) {  // E-Reset
               p->ocb2 = 1;
-              PIA_CALL(p->out_cb2, 1);
+              pia_call(p->out_cb2, 1);
             }
           }
         }
@@ -196,7 +196,7 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
         uint8_t next_cb2 = (p->crb & CRB_CB2_LVL) ? 1 : 0;
         if (next_cb2 != p->ocb2) {
           p->ocb2 = next_cb2;
-          PIA_CALL(p->out_cb2, p->ocb2);
+          pia_call(p->out_cb2, p->ocb2);
         }
       }
       update_interrupts(p);
@@ -207,10 +207,14 @@ void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) {
   }
 }
 
-void pia_6821_set_port_a(Pia6821_t* p, uint8_t val) { p->port_a_in = val; }
-void pia_6821_set_port_b(Pia6821_t* p, uint8_t val) { p->port_b_in = val; }
+auto pia_6821_set_port_a(Pia6821_t* p, uint8_t val) -> void {
+  p->port_a_in = val;
+}
+auto pia_6821_set_port_b(Pia6821_t* p, uint8_t val) -> void {
+  p->port_b_in = val;
+}
 
-void pia_6821_set_ca1(Pia6821_t* p, bool level) {
+auto pia_6821_set_ca1(Pia6821_t* p, bool level) -> void {
   bool old = p->ca1_in;
   p->ca1_in = level;
   bool transition = false;
@@ -226,14 +230,14 @@ void pia_6821_set_ca1(Pia6821_t* p, bool level) {
         (!(p->cra & CRA_CA2_LVL))) {
       if (p->oca2 == 0) {
         p->oca2 = 1;
-        PIA_CALL(p->out_ca2, 1);
+        pia_call(p->out_ca2, 1);
       }
     }
     update_interrupts(p);
   }
 }
 
-void pia_6821_set_ca2(Pia6821_t* p, bool level) {
+auto pia_6821_set_ca2(Pia6821_t* p, bool level) -> void {
   bool old = p->ca2_in;
   p->ca2_in = level;
   if (!(p->cra & CRA_CA2_OUT)) {  // Input mode
@@ -250,7 +254,7 @@ void pia_6821_set_ca2(Pia6821_t* p, bool level) {
   }
 }
 
-void pia_6821_set_cb1(Pia6821_t* p, bool level) {
+auto pia_6821_set_cb1(Pia6821_t* p, bool level) -> void {
   bool old = p->cb1_in;
   p->cb1_in = level;
   bool transition = false;
@@ -266,14 +270,14 @@ void pia_6821_set_cb1(Pia6821_t* p, bool level) {
         (!(p->crb & CRB_CB2_LVL))) {
       if (p->ocb2 == 0) {
         p->ocb2 = 1;
-        PIA_CALL(p->out_cb2, 1);
+        pia_call(p->out_cb2, 1);
       }
     }
     update_interrupts(p);
   }
 }
 
-void pia_6821_set_cb2(Pia6821_t* p, bool level) {
+auto pia_6821_set_cb2(Pia6821_t* p, bool level) -> void {
   bool old = p->cb2_in;
   p->cb2_in = level;
   if (!(p->crb & CRB_CB2_OUT)) {  // Input mode
@@ -293,34 +297,35 @@ void pia_6821_set_cb2(Pia6821_t* p, bool level) {
 auto pia_6821_get_port_a(Pia6821_t* p) -> uint8_t { return p->ora & p->ddra; }
 auto pia_6821_get_port_b(Pia6821_t* p) -> uint8_t { return p->orb & p->ddrb; }
 
-void pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func) {
+auto pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) -> void {
   p->out_a.obj_to = obj_to;
   p->out_a.func = func;
 }
-void pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func) {
+auto pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) -> void {
   p->out_b.obj_to = obj_to;
   p->out_b.func = func;
 }
-void pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func) {
+auto pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) -> void {
   p->out_ca2.obj_to = obj_to;
   p->out_ca2.func = func;
 }
-void pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func) {
+auto pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) -> void {
   p->out_cb2.obj_to = obj_to;
   p->out_cb2.func = func;
 }
-void pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func) {
+auto pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) -> void {
   p->out_irqa.obj_to = obj_to;
   p->out_irqa.func = func;
 }
-void pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func) {
+auto pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) -> void {
   p->out_irqb.obj_to = obj_to;
   p->out_irqb.func = func;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTEND(bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

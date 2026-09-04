@@ -21,7 +21,7 @@ namespace Path {
 constexpr mode_t DEFAULT_MKDIR_MODE = 0755;
 
 // Ensure directory exists (creates it recursively if it doesn't)
-inline void ensure_dir_exists(const std::string& path) {
+inline auto ensure_dir_exists(const std::string& path) -> void {
   size_t pos = path.find_first_of('/');
   while (pos != std::string::npos) {
     std::string subdir = path.substr(0, pos);
@@ -158,6 +158,7 @@ inline auto find_data_file(const std::string& filename) -> std::string {
   return "";
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Source and destination paths are ordered filesystem parameters
 inline auto copy_file(const std::string& src, const std::string& dst) -> bool {
   std::ifstream src_file(src, std::ios::binary);
   if (!src_file.is_open()) return false;

@@ -2,14 +2,13 @@
 #include "core/Registry.h"
 
 // Core configuration and registry persistence manager
-#include <string.h>
-
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <iterator>
 #include <map>
 #include <ostream>
 #include <string>
@@ -21,12 +20,11 @@ static auto trim(const std::string& s) -> std::string {
   while (start != s.end() && std::isspace(static_cast<uint8_t>(*start))) {
     start++;
   }
-  auto end = s.end();
-  if (start == end) return "";
-  do {
+  if (start == s.end()) return "";
+  auto end = s.end() - 1;
+  while (end != start && std::isspace(static_cast<uint8_t>(*end))) {
     end--;
-  } while (std::distance(start, end) > 0 &&
-           std::isspace(static_cast<uint8_t>(*end)));
+  }
   return {start, end + 1};
 }
 
@@ -59,9 +57,9 @@ auto Configuration_t::load(const std::string& path) -> bool {
   std::string current_section = "Configuration";
   while (std::getline(file, line)) {
     line = trim(line);
-    if (line.empty() || line[0] == '#') continue;
+    if (line.empty() || line.front() == '#') continue;
 
-    if (line.length() >= 2 && line[0] == '[' && line.back() == ']') {
+    if (line.length() >= 2 && line.front() == '[' && line.back() == ']') {
       current_section = line.substr(1, line.length() - 2);
       continue;
     }
@@ -76,6 +74,7 @@ auto Configuration_t::load(const std::string& path) -> bool {
   return true;
 }
 
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Default configuration register values and slot assignments
 auto Configuration_t::load_defaults() -> void {
   data_.clear();
   set_int("Configuration", "Computer Emulation", 3);
@@ -117,6 +116,7 @@ auto Configuration_t::load_defaults() -> void {
              "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
   set_string("Preferences", "FTP UserPass", "anonymous:my-mail@mail.com");
 }
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
 auto Configuration_t::save() -> bool {
   if (path_.empty()) {
@@ -149,7 +149,7 @@ struct ConfigAlias_t {
   const char* legacy;
 };
 
-static constexpr ConfigAlias_t k_config_aliases[] = {
+static constexpr std::array<ConfigAlias_t, 16> k_config_aliases = {{
     {"Joystick 0 Index", "Joy0Index"},
     {"Joystick 1 Index", "Joy1Index"},
     {"Joystick 0 Button 1", "Joy0Button1"},
@@ -166,7 +166,7 @@ static constexpr ConfigAlias_t k_config_aliases[] = {
     {"Mouse Capture", "MouseCapture"},
     {"Basic Live Sync File", "BasicLiveSyncFile"},
     {"Basic Line Numbering", "BasicLineNumbering"},
-};
+}};
 
 static auto find_alias(const std::string& key) -> const char* {
   for (const auto& entry : k_config_aliases) {
@@ -180,6 +180,7 @@ static auto find_alias(const std::string& key) -> const char* {
   return nullptr;
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
 auto Configuration_t::get_string(const std::string& section,
                                  const std::string& key,
                                  const std::string& default_value)
@@ -205,6 +206,7 @@ auto Configuration_t::get_string(const std::string& section,
 
   return default_value;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto Configuration_t::get_int(const std::string& section,
                               const std::string& key, uint32_t default_value)
@@ -239,6 +241,7 @@ auto Configuration_t::get_section(const std::string& section) const
   return nullptr;
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
 auto Configuration_t::set_string(const std::string& section,
                                  const std::string& key,
                                  const std::string& value) -> void {
@@ -295,11 +298,23 @@ auto config_save_string(const char* section, const char* key, const char* value)
   if (section == nullptr || key == nullptr || value == nullptr) return;
   Configuration_t::instance().set_string(section, key, value);
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+// NOLINTBEGIN(cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory) Justification: C ABI compatibility requiring heap allocation
 auto php_trim(char* c, int len) -> char* {
   if (c == nullptr || len <= 0) {
-    return strdup("");
+    auto* res = static_cast<char*>(malloc(1));
+    if (res != nullptr) {
+      *res = '\0';
+    }
+    return res;
   }
   std::string s(c, static_cast<size_t>(len));
   std::string t = trim(s);
-  return strdup(t.c_str());
+  auto* res = static_cast<char*>(malloc(t.length() + 1));
+  if (res != nullptr) {
+    memcpy(res, t.c_str(), t.length() + 1);
+  }
+  return res;
 }
+// NOLINTEND(cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory)

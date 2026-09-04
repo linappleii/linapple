@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware emulation register masks, bit widths, volume tables, and clock divider constants
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Hardware signal interface and multi-channel audio buffer parameters
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables) Justification: Global legacy state maintained for backwards-compatible chip emulation
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: Multi-channel audio sample buffer output indexing
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification: Direct indexed access to hardware registers and volume tables
 /*
 LinApple : Apple ][ emulator for Linux
 
@@ -29,21 +33,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 // Logarithmic volume table for AY-3-8910 (16 levels)
 // Based on -3dB per step as indicated in datasheet Fig 3.
-static const std::array<uint16_t, 16> vol_table = {
+static constexpr std::array<uint16_t, 16> vol_table = {
     {0, 103, 150, 218, 316, 458, 665, 963, 1396, 2023, 2933, 4251, 6163, 8934,
      12952, 18776}};
 
-void ay8910_reset_instance(Ay8910_t* p) {
-  if (!p) return;
+auto ay8910_reset_instance(Ay8910_t* p) -> void {
+  if (!p) {
+    return;
+  }
   *p = Ay8910_t{};
   p->rng = 1;
 }
 
-void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
-                           int sample_rate) {
+auto ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
+                           int sample_rate) -> void {
   (void)ay_clock;
   (void)sample_rate;
-  if (!p || r < 0 || r >= 16) return;
+  if (!p || r < 0 || r >= 16) {
+    return;
+  }
   p->regs[r] = v & 0xFF;
   switch (r) {
     case 1:
@@ -52,8 +60,6 @@ void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
       p->regs[r] &= 0x0F;
       break;
     case 6:
-      p->regs[r] &= 0x1F;
-      break;
     case 8:
     case 9:
     case 10:
@@ -70,9 +76,11 @@ void ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
   }
 }
 
-void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
-                            int ay_clock, int sample_rate) {
-  if (!p) return;
+auto ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
+                            int ay_clock, int sample_rate) -> void {
+  if (!p) {
+    return;
+  }
 
   uint16_t period_a = p->regs[0] | (p->regs[1] << 8);
   uint16_t period_b = p->regs[2] | (p->regs[3] << 8);
@@ -124,7 +132,9 @@ void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
     p->count_n += psg_cycles;
     while (p->count_n >= n_p) {
       p->count_n -= n_p;
-      if (((p->rng + 1) & 2) ^ (p->rng & 1)) p->out_n ^= 1;
+      if (((p->rng + 1) & 2) ^ (p->rng & 1)) {
+        p->out_n ^= 1;
+      }
       p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
     }
 
@@ -150,7 +160,9 @@ void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
               p->envelope_step = (alt ^ attack) ? 0 : 15;
             } else {
               p->envelope_step = 0;
-              if (alt) shape ^= 0x04;
+              if (alt) {
+                shape ^= 0x04;
+              }
             }
           }
         }
@@ -160,7 +172,9 @@ void ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
     bool cur_attack = (shape & 0x04) != 0;
     p->envelope_vol = cur_attack ? p->envelope_step : (15 - p->envelope_step);
 
-    int chan_a = 0, chan_b = 0, chan_c = 0;
+    int chan_a = 0;
+    int chan_b = 0;
+    int chan_c = 0;
     if ((!(enable & 0x01) ? p->out_a : 1) & (!(enable & 0x08) ? p->out_n : 1)) {
       uint8_t vol = (p->regs[8] & 0x10) ? p->envelope_vol : (p->regs[8] & 0x0F);
       chan_a = vol_table[vol];
@@ -186,33 +200,44 @@ static std::array<Ay8910_t, MAX_8910> ay_chips;
 static int ay_clock = 1000000;
 static int ay_sample_rate = 44100;
 
-void ay8910_init_all(int clock_rate, int sample_rate) {
+auto ay8910_init_all(int clock_rate, int sample_rate) -> void {
   ay_clock = clock_rate;
   ay_sample_rate = sample_rate;
   for (int i = 0; i < MAX_8910; i++) {
     ay8910_reset(i);
   }
 }
-void ay8910_init_clock(int clock) { ay_clock = clock; }
-void ay8910_reset(int chip) {
-  if (chip >= 0 && chip < MAX_8910) ay8910_reset_instance(&ay_chips[chip]);
+auto ay8910_init_clock(int clock) -> void { ay_clock = clock; }
+auto ay8910_reset(int chip) -> void {
+  if (chip >= 0 && chip < MAX_8910) {
+    ay8910_reset_instance(&ay_chips[chip]);
+  }
 }
-void ay8910_write_ym(int chip, int addr, int data) {
-  if (chip >= 0 && chip < MAX_8910)
+auto ay8910_write_ym(int chip, int addr, int data) -> void {
+  if (chip >= 0 && chip < MAX_8910) {
     ay8910_write_instance(&ay_chips[chip], addr, data, ay_clock,
                           ay_sample_rate);
+  }
 }
-void ay_write_reg_internal(int n, int r, int v) {
-  if (n >= 0 && n < MAX_8910)
+auto ay_write_reg_internal(int n, int r, int v) -> void {
+  if (n >= 0 && n < MAX_8910) {
     ay8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate);
+  }
 }
-void ay8910_update(int chip, int16_t** buffer, int length) {
-  if (chip >= 0 && chip < MAX_8910)
+auto ay8910_update(int chip, int16_t** buffer, int length) -> void {
+  if (chip >= 0 && chip < MAX_8910) {
     ay8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
                            ay_sample_rate);
+  }
 }
 auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t* {
-  if (ay_num >= MAX_8910) return nullptr;
-  return ay_chips[ay_num].regs;
+  if (ay_num >= MAX_8910) {
+    return nullptr;
+  }
+  return ay_chips[ay_num].regs.data();
 }
-// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTEND(bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

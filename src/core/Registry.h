@@ -74,6 +74,7 @@ class Configuration_t {
   auto set_path(const std::string& path) -> void;
   auto get_path() const -> const std::string& { return path_; }
 
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
   auto get_string(const std::string& section, const std::string& key,
                   const std::string& default_value = "") -> std::string;
   auto get_int(const std::string& section, const std::string& key,
@@ -83,6 +84,7 @@ class Configuration_t {
   auto get_section(const std::string& section) const
       -> const std::map<std::string, std::string>*;
 
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
   auto set_string(const std::string& section, const std::string& key,
                   const std::string& value) -> void;
   auto set_int(const std::string& section, const std::string& key,
@@ -104,6 +106,7 @@ auto config_load_string(const char* section, const char* key,
                         std::string* value) -> bool;
 auto config_save_int(const char* section, const char* key, uint32_t value)
     -> void;
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
 auto config_save_string(const char* section, const char* key, const char* value)
     -> void;
 
@@ -119,7 +122,7 @@ inline auto load(const char* key, std::string* value) -> bool {
   return config_load_string("Configuration", key, value);
 }
 
-inline void save(const char* key, uint32_t value) {
+inline auto save(const char* key, uint32_t value) -> void {
   config_save_int("Configuration", key, value);
 }
 

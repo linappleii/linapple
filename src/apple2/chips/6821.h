@@ -8,12 +8,12 @@
 
 using PiaOutputCallback_t = void (*)(void* obj_to, uint8_t data);
 
-typedef struct PiaWriteHandlerTag_t {
+struct PiaWriteHandler_t {
   void* obj_to;
   PiaOutputCallback_t func;
-} PiaWriteHandler_t;
+};
 
-typedef struct Pia6821Tag_t {
+struct Pia6821_t {
   // Internal Registers
   uint8_t ora;   // Output Register A
   uint8_t orb;   // Output Register B
@@ -43,35 +43,35 @@ typedef struct Pia6821Tag_t {
   PiaWriteHandler_t out_cb2;
   PiaWriteHandler_t out_irqa;
   PiaWriteHandler_t out_irqb;
-} Pia6821_t;
+};
 
 // Interface
-void pia_6821_reset(Pia6821_t* p);
+auto pia_6821_reset(Pia6821_t* p) -> void;
 auto pia_6821_read(Pia6821_t* p, uint8_t addr) -> uint8_t;
-void pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val);
+auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) -> void;
 
 // Signal Injection
-void pia_6821_set_port_a(Pia6821_t* p, uint8_t val);
-void pia_6821_set_port_b(Pia6821_t* p, uint8_t val);
-void pia_6821_set_ca1(Pia6821_t* p, bool level);
-void pia_6821_set_ca2(Pia6821_t* p, bool level);
-void pia_6821_set_cb1(Pia6821_t* p, bool level);
-void pia_6821_set_cb2(Pia6821_t* p, bool level);
+auto pia_6821_set_port_a(Pia6821_t* p, uint8_t val) -> void;
+auto pia_6821_set_port_b(Pia6821_t* p, uint8_t val) -> void;
+auto pia_6821_set_ca1(Pia6821_t* p, bool level) -> void;
+auto pia_6821_set_ca2(Pia6821_t* p, bool level) -> void;
+auto pia_6821_set_cb1(Pia6821_t* p, bool level) -> void;
+auto pia_6821_set_cb2(Pia6821_t* p, bool level) -> void;
 
 // Data Retrieval
 auto pia_6821_get_port_a(Pia6821_t* p) -> uint8_t;
 auto pia_6821_get_port_b(Pia6821_t* p) -> uint8_t;
 
 // Configuration
-void pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func);
-void pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func);
-void pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func);
-void pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func);
-void pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func);
-void pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func);
+auto pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) -> void;
+auto pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
+                             PiaOutputCallback_t func) -> void;
+auto pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) -> void;
+auto pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
+                               PiaOutputCallback_t func) -> void;
+auto pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) -> void;
+auto pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
+                                PiaOutputCallback_t func) -> void;
