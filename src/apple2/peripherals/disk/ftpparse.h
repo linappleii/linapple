@@ -19,6 +19,8 @@ fp.name points somewhere within buf.
 #include <cstdint>
 #include <ctime>
 
+// Vendored public-domain ftpparse code by D. J. Bernstein (exempt from _t naming rule)
+// NOLINTBEGIN(readability-identifier-naming)
 struct ftpparse {
   char* name; /* not necessarily 0-terminated */
   int namelen;
@@ -32,6 +34,7 @@ struct ftpparse {
   char* id; /* not necessarily 0-terminated */
   int idlen;
 };
+// NOLINTEND(readability-identifier-naming)
 
 constexpr int FTPPARSE_SIZE_UNKNOWN = 0;
 #define FTPPARSE_SIZE_BINARY 1 /* size is the number of octets in TYPE I */
