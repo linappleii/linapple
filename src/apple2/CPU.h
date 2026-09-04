@@ -9,7 +9,6 @@
 #include "core/Util_Path.h"
 
 struct SsCpu6502_t;
-using SsCpu6502_t = SsCpu6502_t;
 
 constexpr uint16_t nmi_vector_addr = 0xFFFA;
 constexpr uint16_t reset_vector_addr = 0xFFFC;

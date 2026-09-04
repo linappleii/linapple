@@ -25,7 +25,6 @@ struct Ay8910_t {
   bool env_holding = false;
 
   double count_accum = 0.0;
-  uint32_t step = 0;
 };
 
 void ay8910_reset_instance(Ay8910_t* p);

@@ -70,24 +70,6 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
     pArg->eDevice = DEV_AY8910;
     bUpdate = true;
   }
-#ifdef SUPPORT_Z80_EMU
-  else if (strcmp(g_args[1].sArg, "*AF") == 0) {
-    address = *(uint16_t*)(mem + REG_AF);
-    bUpdate = true;
-  } else if (strcmp(g_args[1].sArg, "*BC") == 0) {
-    address = *(uint16_t*)(mem + REG_BC);
-    bUpdate = true;
-  } else if (strcmp(g_args[1].sArg, "*DE") == 0) {
-    address = *(uint16_t*)(mem + REG_DE);
-    bUpdate = true;
-  } else if (strcmp(g_args[1].sArg, "*HL") == 0) {
-    address = *(uint16_t*)(mem + REG_HL);
-    bUpdate = true;
-  } else if (strcmp(g_args[1].sArg, "*IX") == 0) {
-    address = *(uint16_t*)(mem + REG_IX);
-    bUpdate = true;
-  }
-#endif
 
   if (bUpdate) {
     pArg->nValue = address;
@@ -370,128 +352,6 @@ auto CmdConfigSetDebugDir(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-#if 0  // Original
-Update_t CmdMemoryLoad (int nArgs)
-{
-  // BLOAD ["Filename"] , addr[, len]
-  // BLOAD ["Filename"] , addr[: end]
-  //       1            2 3    4 5
-  if (nArgs > 5)
-    return Help_Arg_1( CMD_MEMORY_LOAD );
-
-  bool bHaveFileName = false;
-  int iArgAddress = 3;
-
-  if (g_args[1].bType & TYPE_QUOTED_2)
-    bHaveFileName = true;
-
-//  if (g_args[2].bType & TOKEN_QUOTE_DOUBLE)
-//    bHaveFileName = true;
-
-  if (nArgs > 1)
-  {
-    if (g_args[1].bType & TYPE_QUOTED_2)
-      bHaveFileName = true;
-
-    int iArgComma1  = 2;
-    int iArgAddress = 3;
-    int iArgComma2  = 4;
-    int iArgLength  = 5;
-
-    if (! bHaveFileName)
-    {
-      iArgComma1  = 1;
-      iArgAddress = 2;
-      iArgComma2  = 3;
-      iArgLength  = 4;
-
-      if (nArgs > 4)
-        return Help_Arg_1( CMD_MEMORY_LOAD );
-    }
-
-    if (g_args[ iArgComma1 ].eToken != TOKEN_COMMA)
-      return Help_Arg_1( CMD_MEMORY_SAVE );
-
-    char sLoadSaveFilePath[ path_max_len ];
-    util_safe_strcpy(sLoadSaveFilePath, g_state.current_dir, sizeof(sLoadSaveFilePath));
-
-    uint16_t nAddressStart;
-    uint16_t nAddress2   = 0;
-    uint16_t nAddressEnd = 0;
-    int  nAddressLen = 0;
-
-    RangeType_t eRange;
-    eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
-    if (nArgs > 4)
-    {
-      if (eRange == RANGE_MISSING_ARG_2)
-      {
-        return Help_Arg_1( CMD_MEMORY_LOAD );
-      }
-
-//      if (eRange == RANGE_MISSING_ARG_2)
-      RangeEndLen_t tEndLen = { nAddressEnd, nAddressLen };
-      if (! Range_CalcEndLen( eRange, nAddressStart, nAddress2, tEndLen )) {
-        nAddressEnd = tEndLen.nAddressEnd;
-        nAddressLen = tEndLen.nAddressLen;
-        return Help_Arg_1( CMD_MEMORY_SAVE );
-      }
-    }
-
-    uint8_t *pMemory = new uint8_t [ APPLE2_6502_MEM_END + 1 ]; // default 64K buffer
-    uint8_t *pDst = mem + nAddressStart;
-    uint8_t *src_ptr = pMemory;
-
-    if (bHaveFileName)
-    {
-      util_safe_strcpy(g_memory_load_save_file_name, g_args[1].sArg, sizeof(g_memory_load_save_file_name));
-    }
-    strncat(sLoadSaveFilePath, g_memory_load_save_file_name, sizeof(sLoadSaveFilePath) - strlen(sLoadSaveFilePath) - 1);
-
-    FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
-    if (hFile)
-    {
-      size_t nFileBytes = debugger_get_file_size( hFile.get() );
-
-      if (nFileBytes > APPLE2_6502_MEM_END) {
-        nFileBytes = APPLE2_6502_MEM_END + 1; // Bank-switched RAMR/ROM is only 16-bit
-}
-
-      // Caller didnt' specify how many bytes to read, default to them all
-      if (nAddressLen == 0)
-      {
-        nAddressLen = static_cast<int>(nFileBytes);
-      }
-
-      size_t nRead = fread( pMemory, static_cast<size_t>(nAddressLen), 1, hFile.get() );
-      if (nRead == 1) // (size_t)nLen)
-      {
-        int byte;
-        for( byte = 0; byte < nAddressLen; byte++ )
-        {
-          *pDst++ = *src_ptr++;
-        }
-        ConsoleBufferPush(  "Loaded."  );
-      }
-    }
-    else
-    {
-      ConsoleBufferPush(  "ERROR: Bad filename"  );
-
-      CmdConfigGetDebugDir( 0 );
-
-      char sFile[ path_max_len + 8 ];
-      ConsoleBufferPushFormat( sFile, "File: %s", g_memory_load_save_file_name );
-    }
-
-    delete [] pMemory;
-  }
-  else
-    return Help_Arg_1( CMD_MEMORY_LOAD );
-
-  return ConsoleUpdate();
-}
-#else  // Extended cmd for loading physical memory
 auto CmdMemoryLoad(int nArgs) -> Update_t {
   // Active memory:
   // BLOAD ["Filename"] , addr[, len]
@@ -689,7 +549,6 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   return ConsoleUpdate();
 }
-#endif
 
 // dst src : len
 //===========================================================================
@@ -744,132 +603,6 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-//===========================================================================
-#if 0  // Original
-Update_t CmdMemorySave (int nArgs)
-{
-  // BSAVE ["Filename"] , addr , len
-  // BSAVE ["Filename"] , addr : end
-  //       1            2 3    4 5
-  static uint16_t nAddressStart = 0;
-         uint16_t nAddress2     = 0;
-  static uint16_t nAddressEnd   = 0;
-  static int  nAddressLen   = 0;
-
-  if (nArgs > 5)
-    return Help_Arg_1( CMD_MEMORY_SAVE );
-
-  if (! nArgs)
-  {
-    char sLast[ CONSOLE_WIDTH ] = "";
-    if (nAddressLen)
-    {
-      ConsoleBufferPushFormat( sLast, "Last saved: $%04X:$%04X, %04X",
-        nAddressStart, nAddressEnd, nAddressLen );
-    }
-    else
-    {
-      ConsoleBufferPush( sLast,  "Last saved: none"  );
-    }
-  }
-  else
-  {
-    bool bHaveFileName = false;
-
-    if (g_args[1].bType & TYPE_QUOTED_2)
-      bHaveFileName = true;
-
-//    if (g_args[1].bType & TOKEN_QUOTE_DOUBLE)
-//      bHaveFileName = true;
-
-    int iArgComma1  = 2;
-    int iArgAddress = 3;
-    int iArgComma2  = 4;
-    int iArgLength  = 5;
-
-    if (! bHaveFileName)
-    {
-      iArgComma1  = 1;
-      iArgAddress = 2;
-      iArgComma2  = 3;
-      iArgLength  = 4;
-
-      if (nArgs > 4)
-        return Help_Arg_1( CMD_MEMORY_SAVE );
-    }
-
-//    if ((g_args[ iArgComma1 ].eToken != TOKEN_COMMA) ||
-//      (g_args[ iArgComma2 ].eToken != TOKEN_COLON))
-//      return Help_Arg_1( CMD_MEMORY_SAVE );
-
-    char sLoadSaveFilePath[ path_max_len ];
-    util_safe_strcpy(sLoadSaveFilePath, g_state.current_dir, sizeof(sLoadSaveFilePath));
-
-    RangeType_t eRange;
-    eRange = Range_Get( nAddressStart, nAddress2, iArgAddress );
-
-//    if (eRange == RANGE_MISSING_ARG_2)
-    RangeEndLen_t tEndLen = { nAddressEnd, nAddressLen };
-    if (! Range_CalcEndLen( eRange, nAddressStart, nAddress2, tEndLen )) {
-      nAddressEnd = tEndLen.nAddressEnd;
-      nAddressLen = tEndLen.nAddressLen;
-      return Help_Arg_1( CMD_MEMORY_SAVE );
-}
-
-    if ((nAddressLen) && (nAddressEnd <= APPLE2_6502_MEM_END))
-    {
-      if (! bHaveFileName)
-      {
-        snprintf(g_memory_load_save_file_name, sizeof(g_memory_load_save_file_name), "%04X.%04X.bin", nAddressStart, nAddressLen);
-      }
-      else
-      {
-        util_safe_strcpy(g_memory_load_save_file_name, g_args[1].sArg, sizeof(g_memory_load_save_file_name));
-      }
-      strncat(sLoadSaveFilePath, g_memory_load_save_file_name, sizeof(sLoadSaveFilePath) - strlen(sLoadSaveFilePath) - 1);
-
-//        if (nArgs == 2)
-      {
-        uint8_t *pMemory = new uint8_t [ nAddressLen ];
-        uint8_t *pDst = pMemory;
-        uint8_t *src_ptr = mem + nAddressStart;
-
-        // memcpy -- copy out of active memory bank
-        int byte;
-        for( byte = 0; byte < nAddressLen; byte++ )
-        {
-          *pDst++ = *src_ptr++;
-        }
-
-        FilePtr_t hFile(fopen( sLoadSaveFilePath, "rb" ), fclose);
-        if (hFile)
-        {
-          ConsoleBufferPush(  "warning: File already exists.  Overwriting."  );
-          hFile.reset();
-        }
-
-        hFile.reset(fopen( sLoadSaveFilePath, "wb" ));
-        if (hFile)
-        {
-          size_t nWrote = fwrite( pMemory, static_cast<size_t>(nAddressLen), 1, hFile.get() );
-          if (nWrote == 1) // (size_t)nAddressLen)
-          {
-            ConsoleBufferPush(  "Saved."  );
-          }
-          else
-          {
-            ConsoleBufferPush(  "error saving."  );
-          }
-        }
-
-        delete [] pMemory;
-      }
-    }
-  }
-
-  return ConsoleUpdate();
-}
-#else  // Extended cmd for saving physical memory
 auto CmdMemorySave(int nArgs) -> Update_t {
   // Active memory:
   // BSAVE ["Filename"] , addr , len
@@ -910,9 +643,6 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     if (g_args[1].bType & TYPE_QUOTED_2) {
       bHaveFileName = true;
     }
-
-    //    if (g_args[1].bType & TOKEN_QUOTE_DOUBLE)
-    //      bHaveFileName = true;
 
     //    int iArgComma1  = 2;
     int iArgAddress = 3;
@@ -1019,7 +749,6 @@ auto CmdMemorySave(int nArgs) -> Update_t {
 
   return ConsoleUpdate();
 }
-#endif
 
 char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
                    (DEBUG_VIRTUAL_TEXT_WIDTH +

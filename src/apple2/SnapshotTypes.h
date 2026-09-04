@@ -51,7 +51,7 @@ struct SsCpu6502_t {
   uint16_t pc;
   uint64_t cumulative_cycles;
 };
-using SsCpu6502_t = SsCpu6502_t;
+using SS_CPU_6502 = SsCpu6502_t;
 
 struct SsIoComms_t {
   uint32_t baud_rate;
