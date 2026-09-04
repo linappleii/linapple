@@ -101,7 +101,7 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
            sBin);
 
   if (bParen) {
-    strncat(sText, " (", sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, " (", sizeof(sText));
   }
 
   if (bParen) {
@@ -111,13 +111,13 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
   }
 
   if (bHi) {
-    strncat(sText, "High", sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, "High", sizeof(sText));
   } else if (bLo) {
-    strncat(sText, "Ctrl", sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, "Ctrl", sizeof(sText));
   }
 
   if (bParen) {
-    strncat(sText, ")", sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, ")", sizeof(sText));
   }
 
   ConsoleBufferPush(sText);

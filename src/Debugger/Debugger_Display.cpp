@@ -859,8 +859,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
 
   int nSpaces = strlen(line_.sOpCodes);
   while (nSpaces < static_cast<int>(nMinBytesLen)) {
-    strncat(line_.sOpCodes, " ",
-            sizeof(line_.sOpCodes) - strlen(line_.sOpCodes) - 1);
+    util_safe_strncat(line_.sOpCodes, " ", sizeof(line_.sOpCodes));
     nSpaces++;
   }
 

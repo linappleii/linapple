@@ -85,7 +85,7 @@ auto TryStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool {
     return false;
   }
 
-  strncat(pDst, src_ptr, static_cast<size_t>(nDstSize) - strlen(pDst) - 1);
+  util_safe_strncat(pDst, src_ptr, static_cast<size_t>(nDstSize));
   return true;
 }
 
@@ -108,7 +108,7 @@ auto StringCat(char* pDst, const char* src_ptr, const int nDstSize) -> int {
     return 0;
   }
 
-  strncat(pDst, src_ptr, static_cast<size_t>(nRemaining));
+  util_safe_strncat(pDst, src_ptr, static_cast<size_t>(nDstSize));
   return nLenSrc;
 }
 
@@ -365,17 +365,16 @@ void Help_Operators() {
                      CHC_DEFAULT);
 
   util_safe_strcpy(sText, "    ", sizeof(sText));
-  strncat(sText, CHC_USAGE, sizeof(sText) - strlen(sText) - 1);
+  util_safe_strncat(sText, CHC_USAGE, sizeof(sText));
   int iBreakOp = 0;
   for (iBreakOp = 0; iBreakOp < NUM_BREAKPOINT_OPERATORS; iBreakOp++) {
     if ((iBreakOp >= PARAM_BP_LESS_EQUAL) &&
         (iBreakOp <= PARAM_BP_GREATER_EQUAL)) {
-      strncat(sText, g_breakpoint_symbols[iBreakOp],
-              sizeof(sText) - strlen(sText) - 1);
-      strncat(sText, " ", sizeof(sText) - strlen(sText) - 1);
+      util_safe_strncat(sText, g_breakpoint_symbols[iBreakOp], sizeof(sText));
+      util_safe_strncat(sText, " ", sizeof(sText));
     }
   }
-  strncat(sText, CHC_DEFAULT, sizeof(sText) - strlen(sText) - 1);
+  util_safe_strncat(sText, CHC_DEFAULT, sizeof(sText));
   console_print(sText);
 }
 
@@ -905,12 +904,8 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         //					if (! TryStringCat( sText,
         // pHelp, CONSOLE_WIDTH-1 ))
         //					{
-        strncat(sText, CHC_DEFAULT, CONSOLE_WIDTH);
-        strncat(sText, pHelp, CONSOLE_WIDTH);
-        //						ConsoleBufferPush( sText
-        //);
-        //					}
-        //				}
+        util_safe_strncat(sText, CHC_DEFAULT, sizeof(sText));
+        util_safe_strncat(sText, pHelp, sizeof(sText));
         console_print(sText);
       } else {
 #if _DEBUG
@@ -1027,7 +1022,7 @@ auto CmdHelpList(int nArgs) -> Update_t {
       nLen += StringCat(sText, pName, nBuf);
     }
 
-    strncat(sText, " ", sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, " ", sizeof(sText));
     nLen++;
   }
 

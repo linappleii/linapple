@@ -171,4 +171,23 @@ inline void util_safe_strcpy(char* dest, const char* src, size_t size) {
   dest[i] = '\0';
 }
 
+inline void util_safe_strncat(char* dest, const char* src, size_t size) {
+  if (size == 0 || dest == nullptr || src == nullptr) {
+    return;
+  }
+  size_t dest_len = 0;
+  while (dest_len < size && dest[dest_len] != '\0') {
+    dest_len++;
+  }
+  if (dest_len >= size) {
+    dest[size - 1] = '\0';
+    return;
+  }
+  size_t i = 0;
+  while (dest_len + 1 < size && src[i] != '\0') {
+    dest[dest_len++] = src[i++];
+  }
+  dest[dest_len] = '\0';
+}
+
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-type-member-init)

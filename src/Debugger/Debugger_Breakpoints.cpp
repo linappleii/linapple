@@ -128,11 +128,11 @@ void bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) {
     if (pBWZ->nLength > 1) {
       char sLen[32];
       snprintf(sLen, sizeof(sLen), ",%04X", pBWZ->nLength);
-      strncat(sText, sLen, sizeof(sText) - strlen(sText) - 1);
+      util_safe_strncat(sText, sLen, sizeof(sText));
     }
 
     if (!pBWZ->bEnabled) {
-      strncat(sText, " (Disabled)", sizeof(sText) - strlen(sText) - 1);
+      util_safe_strncat(sText, " (Disabled)", sizeof(sText));
     }
 
     ConsoleBufferPush(sText);

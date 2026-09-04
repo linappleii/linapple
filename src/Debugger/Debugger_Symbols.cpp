@@ -122,7 +122,7 @@ auto PrintSymbolInvalidTable() -> Update_t {
              ,
              CHC_USAGE, g_symbol_table_names[iTable], CHC_ARG_SEP,
              (iTable != (NUM_SYMBOL_TABLES - 1)) ? ',' : '.');
-    strncat(sText, sTemp, sizeof(sText) - strlen(sText) - 1);
+    util_safe_strncat(sText, sTemp, sizeof(sText));
   }
 
   //	return console_display_error( sText );
@@ -325,7 +325,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
         console_print(sText);
         util_safe_strcpy(sText, sIndent, sizeof(sText));  // Indent new line
       }
-      strncat(sText, sTemp, sizeof(sText) - strlen(sText) - 1);
+      util_safe_strncat(sText, sTemp, sizeof(sText));
     }
   }
   console_print(sText);

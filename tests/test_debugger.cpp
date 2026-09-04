@@ -33,6 +33,22 @@ TEST_CASE("Debugger Parser: String and Case Manipulation") {
     CHECK(dst[2] == ' ');
     CHECK(dst[3] == ' ');
   }
+
+  SUBCASE("util_safe_strncat handles capacity boundaries safely") {
+    char buf[10] = "Hello";
+    util_safe_strncat(buf, " World", sizeof(buf));
+    CHECK(strcmp(buf, "Hello Wor") == 0);
+    CHECK(strlen(buf) == 9);
+
+    char small_buf[4] = "Hi";
+    util_safe_strncat(small_buf, "!", sizeof(small_buf));
+    CHECK(strcmp(small_buf, "Hi!") == 0);
+
+    // No-op on zero size or null
+    util_safe_strncat(nullptr, "test", 10);
+    util_safe_strncat(buf, nullptr, sizeof(buf));
+    util_safe_strncat(buf, "test", 0);
+  }
 }
 
 TEST_CASE("Debugger Parser: Tokenization and Matching") {

@@ -962,10 +962,8 @@ void DisplayAmbigiousCommands(int nFound) {
         break;
       }
 
-      strncat(sPotentialCommands, pName,
-              sizeof(sPotentialCommands) - strlen(sPotentialCommands) - 1);
-      strncat(sPotentialCommands, " ",
-              sizeof(sPotentialCommands) - strlen(sPotentialCommands) - 1);
+      util_safe_strncat(sPotentialCommands, pName, sizeof(sPotentialCommands));
+      util_safe_strncat(sPotentialCommands, " ", sizeof(sPotentialCommands));
       iWidth += nLen + 1;
       iCommand++;
     }
