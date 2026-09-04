@@ -26,18 +26,21 @@ auto asset_load_bmp(const char* filename) -> SDL_Surface* {
   return surf;
 }
 
-void sdl_asset_free_icon() {
+auto sdl_asset_free_icon() -> void {
   if (assets && assets->icon) {
     SDL_DestroySurface(static_cast<SDL_Surface*>(assets->icon));
     assets->icon = nullptr;
   }
 }
 
-void sdl_asset_load_icon() {
+auto sdl_asset_load_icon() -> void {
   if (assets) {
     sdl_asset_free_icon();
     asset_set_free_icon_callback(sdl_asset_free_icon);
-    assets->icon =
-        reinterpret_cast<void*>(IMG_ReadXPMFromArray((char**)icon_xpm));
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast,cppcoreguidelines-pro-type-reinterpret-cast)
+    // Justification: SDL3_image IMG_ReadXPMFromArray requires non-const char** parameter.
+    assets->icon = reinterpret_cast<void*>(
+        IMG_ReadXPMFromArray(const_cast<char**>(icon_xpm)));
+    // NOLINTEND(cppcoreguidelines-pro-type-const-cast,cppcoreguidelines-pro-type-reinterpret-cast)
   }
 }

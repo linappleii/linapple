@@ -24,14 +24,14 @@ auto asset_load_bmp(const char* filename) -> SDL_Surface* {
   return surf;
 }
 
-void sdl_asset_free_icon() {
+auto sdl_asset_free_icon() -> void {
   if (assets != nullptr && assets->icon != nullptr) {
     SDL_FreeSurface(static_cast<SDL_Surface*>(assets->icon));
     assets->icon = nullptr;
   }
 }
 
-void sdl_asset_load_icon() {
+auto sdl_asset_load_icon() -> void {
   if (assets != nullptr) {
     sdl_asset_free_icon();
     asset_set_free_icon_callback(sdl_asset_free_icon);
