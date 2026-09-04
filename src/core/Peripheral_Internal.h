@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 auto peripheral_register_internal() -> void;
-auto peripheral_plugins_init() -> void;
+auto peripheral_plugins_init(const char* plugin_dir = nullptr) -> void;
 auto peripheral_plugins_shutdown() -> void;
 auto peripheral_find_internal(const char* name) -> Peripheral_t*;
 auto peripheral_get_plugin_path(const char* name) -> const char*;

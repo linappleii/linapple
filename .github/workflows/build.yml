@@ -299,3 +299,40 @@ jobs:
               mv "tests/fuzz/corpus/${target}-min" "tests/fuzz/corpus/${target}"
             fi
           done
+
+  # 7. Shared Peripherals (Headless + Plugin Loader Smoke Test)
+  shared-peripherals:
+    name: Shared Peripherals (Headless Plugin Loader)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-shared-peripherals
+      - name: Configure
+        run: |
+          cmake -B build-shared -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=headless \
+            -DBUILD_SHARED_PERIPHERALS=ON \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Build
+        run: cmake --build build-shared -j$(nproc)
+      - name: Test
+        run: ctest --test-dir build-shared -j$(nproc) --output-on-failure
+      - name: Assert Hardware Count
+        run: |
+          count=$(./build-shared/linapple --list-hardware | grep -c '^- ')
+          echo "Detected peripheral count: $count"
+          if [ "$count" -ne 10 ]; then
+            echo "Expected 10 peripherals, but got $count"
+            exit 1
+          fi

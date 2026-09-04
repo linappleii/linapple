@@ -169,13 +169,18 @@ auto linapple_list_hardware() -> void {
   }
 }
 
-auto peripheral_plugins_init() -> void {
-  if (g_plugins_initialized) {
+auto peripheral_plugins_init(const char* plugin_dir) -> void {
+  if (g_plugins_initialized && plugin_dir == nullptr) {
     return;
   }
   g_plugins_initialized = true;
 
-  auto paths = Path::get_plugin_search_paths();
+  std::vector<std::string> paths;
+  if (plugin_dir != nullptr && *plugin_dir != '\0') {
+    paths.emplace_back(plugin_dir);
+  } else {
+    paths = Path::get_plugin_search_paths();
+  }
   for (const auto& path : paths) {
     DIR* dir = opendir(path.c_str());
     if (dir == nullptr) {
@@ -197,9 +202,31 @@ auto peripheral_plugins_init() -> void {
               dlsym(handle, "linapple_peripheral_descriptor"));
           if (p != nullptr) {
             if (p->abi_version == LINAPPLE_ABI_VERSION) {
-              Logger::info("Loaded plugin: %s from %s\n", p->name,
-                           full_path.c_str());
-              g_loaded_plugins.push_back({p, handle, full_path});
+              bool already_loaded = false;
+              for (const auto& existing : g_loaded_plugins) {
+                if (existing.p == p ||
+                    (existing.p != nullptr && p->id != nullptr &&
+                     existing.p->id != nullptr &&
+                     strcmp(existing.p->id, p->id) == 0)) {
+                  already_loaded = true;
+                  break;
+                }
+              }
+              for (const auto* builtin : peripheral_get_builtin_registry()) {
+                if (builtin == p || (builtin != nullptr && p->id != nullptr &&
+                                     builtin->id != nullptr &&
+                                     strcmp(builtin->id, p->id) == 0)) {
+                  already_loaded = true;
+                  break;
+                }
+              }
+              if (already_loaded) {
+                dlclose(handle);
+              } else {
+                Logger::info("Loaded plugin: %s from %s\n", p->name,
+                             full_path.c_str());
+                g_loaded_plugins.push_back({p, handle, full_path});
+              }
             } else {
               Logger::error("Plugin ABI mismatch: %s (expected %d, got %d)\n",
                             full_path.c_str(), LINAPPLE_ABI_VERSION,

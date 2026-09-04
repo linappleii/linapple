@@ -247,6 +247,69 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
 #include <dlfcn.h>
 
+#ifdef BUILD_SHARED_PERIPHERALS
+#include "core/Peripheral_Internal.h"
+
+TEST_CASE(
+    "Peripheral Manager: Dynamic plugin loader success path and lifecycle") {
+  linapple_init();
+  peripheral_manager_init();
+
+  const std::string exec_dir = Path::get_executable_dir();
+  peripheral_plugins_init(exec_dir.c_str());
+
+  // 1. Verify clock plugin resolution and ABI
+  Peripheral_t* clock_desc = peripheral_find_internal("linapple.clock");
+  REQUIRE(clock_desc != nullptr);
+  CHECK(clock_desc->abi_version == LINAPPLE_ABI_VERSION);
+  CHECK(std::string(clock_desc->id) == "linapple.clock");
+  CHECK(std::string(clock_desc->name) == "Clock Card");
+  REQUIRE(clock_desc->init != nullptr);
+  REQUIRE(clock_desc->shutdown != nullptr);
+
+  const char* clock_path = peripheral_get_plugin_path("linapple.clock");
+  REQUIRE(clock_path != nullptr);
+  CHECK(std::string(clock_path).find("clock.so") != std::string::npos);
+
+  // 2. Verify printer plugin resolution and ABI
+  Peripheral_t* printer_desc = peripheral_find_internal("linapple.printer");
+  REQUIRE(printer_desc != nullptr);
+  CHECK(printer_desc->abi_version == LINAPPLE_ABI_VERSION);
+  CHECK(std::string(printer_desc->id) == "linapple.printer");
+  CHECK(std::string(printer_desc->name) == "Parallel Printer");
+  REQUIRE(printer_desc->init != nullptr);
+  REQUIRE(printer_desc->shutdown != nullptr);
+
+  const char* printer_path = peripheral_get_plugin_path("linapple.printer");
+  REQUIRE(printer_path != nullptr);
+  CHECK(std::string(printer_path).find("printer.so") != std::string::npos);
+
+  // 3. Lifecycle execution: Register, Reset, Think, Unregister
+  CHECK(peripheral_register(clock_desc, 4) == 0);
+  CHECK(peripheral_register(printer_desc, 1) == 0);
+
+  peripheral_manager_reset();
+  peripheral_manager_think(200);
+
+  if (clock_desc->save_state != nullptr && clock_desc->load_state != nullptr) {
+    size_t state_sz = 0;
+    peripheral_save_state(4, nullptr, &state_sz);
+    if (state_sz > 0) {
+      std::vector<uint8_t> state_buf(state_sz, 0);
+      peripheral_save_state(4, state_buf.data(), &state_sz);
+      peripheral_load_state(4, state_buf.data(), state_sz);
+    }
+  }
+
+  CHECK(peripheral_unregister(4) == 0);
+  CHECK(peripheral_unregister(1) == 0);
+
+  // 4. Shutdown cleanly
+  peripheral_plugins_shutdown();
+  linapple_shutdown();
+}
+#endif
+
 TEST_CASE(
     "Peripheral Manager: Plugin loader ABI verification and error handling") {
   SUBCASE("ABI mismatch rejection") {
