@@ -12,7 +12,6 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"

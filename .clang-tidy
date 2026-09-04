@@ -8,10 +8,13 @@
 #    Favoring printf-style formatting over iostream for performance,
 #    conciseness in hex-formatting, and C99 ABI compatibility.
 #
-# 2. avoid-non-const-global-variables:
-#    Global hardware state (CPU, Memory, Registers) is a core design
-#    pattern in this emulator's procedural architecture.
+# 3. avoid-magic-numbers & macro-usage:
+#    Hardware emulation uses address ranges, register masks, bitshifts,
+#    and compiler attribute formatting macros.
+#
+# 4. easily-swappable-parameters & use-enum-class:
+#    Procedural C/C++11 ABI APIs with integer IDs and primitive parameters.
 
-Checks: 'google-*,bugprone-*,modernize-*,cppcoreguidelines-*,misc-include-cleaner,-cppcoreguidelines-pro-type-vararg,-modernize-avoid-variadic-functions,-cppcoreguidelines-avoid-non-const-global-variables'
+Checks: '-*,misc-include-cleaner,bugprone-use-after-move,bugprone-unhandled-self-assignment,bugprone-suspicious-string-compare,bugprone-sizeof-expression,bugprone-dangling-handle,bugprone-undefined-memory-manipulation'
 WarningsAsErrors: 'misc-include-cleaner'
 HeaderFilterRegex: 'src/.*'

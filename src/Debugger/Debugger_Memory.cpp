@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Memory.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -285,8 +286,8 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   if (nArgs == 3) {
     nAddressStart = g_args[1].nValue;
     nAddressEnd = g_args[2].nValue;
-    nAddressLen =
-        MIN((int)APPLE2_6502_MEM_END, nAddressEnd - nAddressStart + 1);
+    nAddressLen = std::min(static_cast<int>(APPLE2_6502_MEM_END),
+                           nAddressEnd - nAddressStart + 1);
   } else {
     RangeType_t eRange;
     eRange = Range_Get(nAddressStart, nAddress2, 1);
@@ -299,7 +300,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
     }
   }
 #if DEBUG_VAL_2
-  nBytes = MAX(1, g_args[1].nVal2);  // TODO: This actually work??
+  nBytes = std::max(1, g_args[1].nVal2);  // TODO: This actually work??
 #endif
 
   if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {

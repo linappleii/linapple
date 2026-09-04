@@ -21,7 +21,6 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Text.h"
 
 // Args
@@ -221,7 +220,9 @@ auto ArgsGet(char* pInput) -> int {
         // if (iTokenSrc == TOKEN_QUOTE_DOUBLE)
         //	nLen = nBuf;
         memset(pArg, 0, sizeof(Arg_t));
-        nLen = MIN(nBuf, MAX_ARG_LEN - 1);  // NOTE: see Arg_t.sArg[] // GH#481
+        nLen = std::min(
+            nBuf, static_cast<int>(MAX_ARG_LEN -
+                                   1));  // NOTE: see Arg_t.sArg[] // GH#481
         util_safe_strcpy(pArg->sArg, src_ptr, nLen + 1);
         pArg->sArg[nLen] = 0;
         pArg->nArgLen = nLen;

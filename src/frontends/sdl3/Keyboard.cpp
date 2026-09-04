@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <string>
 
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"

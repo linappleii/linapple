@@ -30,7 +30,7 @@ auto write_u32_le(FILE* f, uint32_t val) -> bool {
 
 }  // namespace
 
-AudioDumper_t::AudioDumper_t() = default;
+AudioDumper_t::AudioDumper_t() noexcept = default;
 
 AudioDumper_t::~AudioDumper_t() { finalize(); }
 

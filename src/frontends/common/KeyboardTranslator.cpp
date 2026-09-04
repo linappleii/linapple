@@ -15,10 +15,10 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 
 namespace keyboard_translator {

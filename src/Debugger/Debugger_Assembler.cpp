@@ -1190,8 +1190,9 @@ auto CmdSource(int nArgs) -> Update_t {
             std::string(g_state.program_dir.data()) + pFileName;
 
         const int MAX_MINI_FILENAME = 20;
-        const std::string sMiniFileName =
-            sFileName.substr(0, MIN(MAX_MINI_FILENAME, sFileName.size()));
+        const std::string sMiniFileName = sFileName.substr(
+            0,
+            std::min(static_cast<size_t>(MAX_MINI_FILENAME), sFileName.size()));
 
         char buffer[path_max_len] = {0};
 
@@ -1441,7 +1442,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
           pLabelStart++;
 
           int nLen = static_cast<int>(pLabelEnd - pLabelStart);
-          nLen = MIN(nLen, MAX_SYMBOLS_LEN);
+          nLen = std::min(nLen, static_cast<int>(MAX_SYMBOLS_LEN));
           util_safe_strcpy(sName, pLabelStart, nLen);
 
           char* pAddressEQU = strstr(pLabel, "$");
@@ -1695,7 +1696,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
           // if valid hex address, don't have delayed target
           char sAddress[32];
           snprintf(sAddress, sizeof(sAddress), "%X", g_asm_target_address);
-          if (strcmp(sAddress, pArg->sArg)) {
+          if (strcmp(sAddress, pArg->sArg) != 0) {
             DelayedTarget_t tDelayedTarget{};
 
             tDelayedTarget.base_address = nBaseAddress;

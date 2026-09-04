@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_Window.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 
@@ -13,7 +14,6 @@
 #include "Debugger_Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Video.h"
-#include "core/LinAppleCore.h"
 
 // Globals originally from Debug.cpp
 extern int g_window_last;
@@ -119,7 +119,7 @@ auto WindowUpdateDisasmSize() -> void {
   } else {
     g_disasm_win_height = MAX_DISPLAY_LINES - g_console_display_lines;
   }
-  g_disasm_cur_line = MAX(0, (g_disasm_win_height - 1) / 2);
+  g_disasm_cur_line = std::max(0, (g_disasm_win_height - 1) / 2);
 }
 
 //===========================================================================

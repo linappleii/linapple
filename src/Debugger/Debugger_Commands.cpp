@@ -800,11 +800,13 @@ auto VerifyDebuggerCommandTable() -> void {
     }
   }
 
-  if (strcmp(g_commands[NUM_COMMANDS].name, DEBUGGER__COMMANDS_VERIFY_TXT__)) {
+  if (strcmp(g_commands[NUM_COMMANDS].name, DEBUGGER__COMMANDS_VERIFY_TXT__) !=
+      0) {
     fprintf(stderr, "*** ERROR *** Total Commands mis-matched!");
   }
 
-  if (strcmp(g_parameters[NUM_PARAMS].name, DEBUGGER__PARAMS_VERIFY_TXT__)) {
+  if (strcmp(g_parameters[NUM_PARAMS].name, DEBUGGER__PARAMS_VERIFY_TXT__) !=
+      0) {
     fprintf(stderr, "*** ERROR *** Total Parameters mis-matched!");
   }
 }

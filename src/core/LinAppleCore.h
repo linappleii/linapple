@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
 
 enum LinAppleKey_t {
   linapple_key_unknown = 0,
@@ -194,7 +190,7 @@ constexpr const char* TITLE_APPLE_2E_ENHANCED = "Enhanced Apple //e Emulator";
 constexpr const char* TITLE_PAUSED = " Paused ";
 constexpr const char* TITLE_STEPPING = "Stepping";
 
-typedef void CURL;
+using CURL = void;
 
 #ifdef __cplusplus
 extern "C" {

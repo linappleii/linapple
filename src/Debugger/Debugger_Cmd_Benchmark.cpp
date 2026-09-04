@@ -9,7 +9,6 @@
 #include "Debug.h"
 #include "Debugger_Assembler.h"
 #include "Debugger_Types.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 extern auto frame_refresh_status(int) -> void;
 #include <cstdio>
@@ -201,7 +200,7 @@ auto CmdProfileList(int nArgs) -> Update_t {
   (void)nArgs;
   ProfileFormat(true, 0);
 
-  int nLines = MIN(g_profile_line_count, g_console_display_lines - 1);
+  int nLines = std::min(g_profile_line_count, g_console_display_lines - 1);
   return ConsoleBufferTryUnpause(nLines);
 }
 

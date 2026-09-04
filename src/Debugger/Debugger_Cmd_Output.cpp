@@ -15,6 +15,7 @@
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
 extern bool g_report_missing_scripts;

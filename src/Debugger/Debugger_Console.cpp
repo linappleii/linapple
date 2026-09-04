@@ -32,6 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <cstdarg>
@@ -327,8 +328,8 @@ auto ConsoleDisplayPush(const char* text) -> void {
 // Shifts the console display lines "up"
 //===========================================================================
 auto ConsoleDisplayPush(const conchar_t* text) -> void {
-  int nLen =
-      MIN(g_console_display_total, CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
+  int nLen = std::min(g_console_display_total,
+                      CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while (nLen--) {
     memcpy(
         reinterpret_cast<char*>(
@@ -530,7 +531,7 @@ auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
 //===========================================================================
 auto ConsoleUpdate() -> Update_t {
   if (!g_console_buffer_paused) {
-    int nLines = MIN(g_console_buffer_size, g_console_display_lines - 1);
+    int nLines = std::min(g_console_buffer_size, g_console_display_lines - 1);
     return ConsoleBufferTryUnpause(nLines);
   }
 
@@ -659,9 +660,10 @@ auto debugger_process_key(int keycode) -> void {
   if (g_console_buffer_size != 0 &&
       ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
        (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode))) {
-    int nLines = (LINAPPLE_KEY_ESCAPE == keycode)
-                     ? g_console_buffer_size
-                     : MIN(g_console_buffer_size, g_console_display_lines - 1);
+    int nLines =
+        (LINAPPLE_KEY_ESCAPE == keycode)
+            ? g_console_buffer_size
+            : std::min(g_console_buffer_size, g_console_display_lines - 1);
     ConsoleBufferTryUnpause(nLines);
     keycode = 0;  // don't single-step
   }

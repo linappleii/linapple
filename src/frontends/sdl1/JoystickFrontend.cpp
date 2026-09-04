@@ -53,8 +53,7 @@ enum JoyKey_t {
   JK_MAX
 };
 
-const uint32_t PDL_CENTRAL = 127;
-const uint32_t PDL_MAX = 255;
+constexpr uint32_t PDL_CENTRAL = 127;
 
 static std::array<bool, JK_MAX> keydown = {false};
 const int PDL_SMAX = 127;
@@ -568,11 +567,10 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
 }
 
 auto joy_frontend_process_mouse_button(int button, bool down) -> void {
-  for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (g_joyConfig.joy_type[joy_num] == 4 ||
-        (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
-         joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[joy_num]))
-                 .device == DEVICE_MOUSE)) {
+  for (const auto joy_type : g_joyConfig.joy_type) {
+    if (joy_type == 4 ||
+        (joy_type < joyinfo.size() &&
+         joyinfo.at(static_cast<size_t>(joy_type)).device == DEVICE_MOUSE)) {
       if (button == 0) {
         JoystickButtonPayload_t pb0 = {0, down};
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));

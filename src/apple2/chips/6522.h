@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-typedef struct {
+struct IWord_t {
   union {
     struct {
       uint8_t l;
@@ -11,9 +11,9 @@ typedef struct {
     };
     uint16_t w;
   };
-} IWord_t;
+};
 
-typedef struct {
+struct Sy6522_t {
   uint8_t ORB;
   uint8_t ORA;
   uint8_t DDRB;
@@ -28,4 +28,4 @@ typedef struct {
   uint8_t IFR;
   uint8_t IER;
   uint8_t ORA_NO_HS;
-} Sy6522_t;
+};

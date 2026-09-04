@@ -4,13 +4,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 
 #include "Debug.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
+#include "core/Util_Text.h"
 
 extern uint16_t g_break_memory_address;
 extern MemoryTextFile_t g_config_state;

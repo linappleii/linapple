@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <strings.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -500,7 +501,8 @@ auto ParseSymbolTable(const std::string& pPathFileName,
   char sText[CONSOLE_WIDTH * 3];
   bool bFileDisplayed = false;
 
-  const int nMaxLen = MIN((int)MAX_TARGET_LEN, (int)MAX_SYMBOLS_LEN);
+  const int nMaxLen = std::min(static_cast<int>(MAX_TARGET_LEN),
+                               static_cast<int>(MAX_SYMBOLS_LEN));
 
   int nSymbolsLoaded = 0;
 

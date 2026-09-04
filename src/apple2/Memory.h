@@ -14,8 +14,8 @@ using SS_BaseMemory = SsBaseMemory_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef uint8_t (*iofunction)(uint16_t pc, uint16_t addr, uint8_t write_flag,
-                              uint8_t write_value, uint32_t cycles_left);
+using iofunction = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
+                               uint8_t write_value, uint32_t cycles_left);
 #ifdef __cplusplus
 }
 #endif

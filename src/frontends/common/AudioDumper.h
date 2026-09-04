@@ -10,7 +10,7 @@
 
 struct AudioDumper_t {
  public:
-  AudioDumper_t();
+  AudioDumper_t() noexcept;
   ~AudioDumper_t();
 
   AudioDumper_t(const AudioDumper_t&) = delete;

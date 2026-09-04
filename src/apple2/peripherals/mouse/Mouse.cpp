@@ -12,6 +12,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 #include "EmbeddedRoms.h"
 #include "apple2/Memory.h"

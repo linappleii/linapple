@@ -34,7 +34,6 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"
