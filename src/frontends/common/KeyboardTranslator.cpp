@@ -3,8 +3,7 @@
 // translation layer, mapping host scancodes and keycodes to LinApple internal
 // keys. Functions in this file follow a C99-compatible ABI where parameter
 // types are fixed for interoperability.
-// NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,
-// bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)
 
 #include "frontends/common/KeyboardTranslator.h"
 
@@ -340,5 +339,4 @@ bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
   return false;
 }
 
-// NOLINTEND(cppcoreguidelines-pro-type-union-access,
-// bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)

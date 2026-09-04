@@ -11,12 +11,14 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "core/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification:
 // This module uses procedural patterns for C-compatibility. google-runtime-int
 // is required for fseek offsets. owning-memory and make-unique are suppressed
 // for C++11 compatibility and handle-based resource management.
@@ -365,5 +367,4 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .command = woz2_command,
     .read_flux_bit = nullptr};
 
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique)
+// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

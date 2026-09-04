@@ -8,8 +8,8 @@
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification:
 // This module uses procedural patterns for C-compatibility. google-runtime-int
 // is required for fseek offsets. owning-memory and make-unique are suppressed
 // for C++11 compatibility and handle-based resource management.
@@ -156,5 +156,4 @@ extern "C" auto block_disk_image_get_total_blocks(BlockDiskImage_t* image_ptr)
   return image_ptr->total_blocks;
 }
 
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique)
+// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

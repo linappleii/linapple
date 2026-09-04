@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/disk/DiskLoader.h"
 
-#include <strings.h>
 #include <unistd.h>
-#include <zip.h>
-#include <zlib.h>
 
 #include <algorithm>
-#include <array>
+#include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "core/LinAppleCore.h"
@@ -225,6 +222,4 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
   util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
 }
 
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)

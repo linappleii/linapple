@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-use-enum-class) Justification: This header defines a
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// Justification: This header defines a
 // C-compatible binary interface for the keyboard command and query system,
 // requiring C-style headers, structs, and enums.
 
@@ -73,5 +73,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)

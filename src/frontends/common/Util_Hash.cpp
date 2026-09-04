@@ -11,9 +11,7 @@ using Uint4_t = uint32_t;
 // Message-Digest Algorithm. It inherently uses magic numbers from the
 // specification and bit-level operations.
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 // --- Constants ---
 
@@ -217,6 +215,4 @@ auto md5str(const char* input) -> char* {
 }
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)

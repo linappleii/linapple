@@ -1,20 +1,4 @@
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
 /*
 LinApple : Apple ][ emulator for Linux
 
@@ -41,7 +25,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <array>
 #include <cstdint>
-#include <cstring>
 
 // Logarithmic volume table for AY-3-8910 (16 levels)
 // Based on -3dB per step as indicated in datasheet Fig 3.
@@ -231,20 +214,4 @@ auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t* {
   if (ay_num >= MAX_8910) return nullptr;
   return ay_chips[ay_num].regs;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone,
-// google-readability-braces-around-statements, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-type-const-cast, google-readability-todo,
-// cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions,
-// cppcoreguidelines-narrowing-conversions,
-// bugprone-switch-missing-default-case,
-// cppcoreguidelines-use-default-member-init, modernize-use-default-member-init,
-// cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-// cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+// NOLINTEND(bugprone-easily-swappable-parameters, modernize-use-trailing-return-type, cppcoreguidelines-owning-memory, cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-branch-clone, google-readability-braces-around-statements, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-type-const-cast, google-readability-todo, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-switch-missing-default-case, cppcoreguidelines-use-default-member-init, modernize-use-default-member-init, cppcoreguidelines-use-enum-class, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-macro-usage, bugprone-macro-parentheses)

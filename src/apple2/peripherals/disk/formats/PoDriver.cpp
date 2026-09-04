@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 
+#include <strings.h>
+
 #include <cstdint>
 #include <cstring>
 
@@ -9,13 +11,11 @@
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 #include "core/Peripheral_Types.h"
 
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
-// Format drivers utilize a procedural C-compatible handle system and
-// standardized probing signatures mandated by the Disk subsystem ABI.
+// Justification: Format drivers utilize a procedural C-compatible handle system
+// and standardized probing signatures mandated by the Disk subsystem ABI.
 // Array-to-pointer decay and C-style arrays are required for driver descriptor
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay, registration.)
+// registration.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 
 namespace {
 
@@ -139,6 +139,4 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .command = po_command,
     .read_flux_bit = nullptr};
 
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay, registration.)
+// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

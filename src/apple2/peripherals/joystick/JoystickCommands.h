@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// Justification:
 // This header defines a language-neutral C ABI. C system headers, typedefs, and
 // C-style arrays are required for compatibility with C-based consumers.
 
@@ -56,5 +56,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

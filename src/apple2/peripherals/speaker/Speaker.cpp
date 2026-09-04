@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/speaker/Speaker.h"
 
 #include <algorithm>
@@ -11,10 +10,10 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/AudioMixer.h"
+#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
@@ -421,5 +420,4 @@ auto speaker_get_last_cycle(void* instance) -> uint64_t {
 auto speaker_get_descriptor() -> Peripheral_t* { return &g_speaker_peripheral; }
 
 PERIPHERAL_REGISTER(g_speaker_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)

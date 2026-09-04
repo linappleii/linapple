@@ -8,15 +8,19 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/Log.h"
+#include "core/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique) Justification:
+// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification:
 // This module uses procedural patterns for C-compatibility. google-runtime-int
 // is required for fseek offsets. owning-memory and make-unique are suppressed
 // for C++11 compatibility and handle-based resource management.
@@ -306,5 +310,4 @@ auto sector_disk_image_command(SectorDiskImage_t* image_ptr, uint32_t cmd_id,
   return peripheral_incompatible;
 }
 
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory,
-// bugprone-easily-swappable-parameters, modernize-make-unique)
+// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

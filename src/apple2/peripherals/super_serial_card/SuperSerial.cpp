@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 
 #include <algorithm>
@@ -326,5 +325,4 @@ auto super_serial_get_descriptor() -> Peripheral_t* {
 }
 
 PERIPHERAL_REGISTER(g_ssc_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)

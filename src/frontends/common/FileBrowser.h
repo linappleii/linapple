@@ -3,11 +3,7 @@
 // This header defines a dual C99/C++11 ABI. Specific checks are disabled to
 // allow C-compatible patterns (plain enums, public POD members, manual memory
 // management handles) which are required for frontend portability.
-// NOLINTBEGIN(modernize-deprecated-headers, hicpp-deprecated-headers,
-// modernize-use-using, cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-non-private-member-variables-in-classes,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// modernize-use-auto, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-deprecated-headers, hicpp-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-non-private-member-variables-in-classes, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, modernize-use-auto, modernize-use-trailing-return-type)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -111,8 +107,4 @@ auto disk_browser_get_title(int slot) -> const char*;
 }  // extern "C"
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers,
-// modernize-use-using, cppcoreguidelines-use-enum-class,
-// cppcoreguidelines-non-private-member-variables-in-classes,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// modernize-use-auto, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-non-private-member-variables-in-classes, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, modernize-use-auto, modernize-use-trailing-return-type)

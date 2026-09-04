@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-type-member-init)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)
 #include "apple2/peripherals/disk/DiskEncoding.h"
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstring>
 
 #include "apple2/Memory.h"
@@ -332,6 +331,4 @@ auto disk_encoding_skew_track(uint8_t* track_image_buffer, uint8_t* work_buffer,
   std::copy_n(work_buffer, static_cast<size_t>(skew_bytes),
               &track_image_buffer[nibbles - skew_bytes]);
 }
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-type-member-init)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)

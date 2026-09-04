@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification:
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// Justification:
 // This file implements the host-independent peripheral ABI.
 
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
@@ -844,9 +840,4 @@ auto mockingboard_get_descriptor() -> Peripheral_t* {
 }
 
 PERIPHERAL_REGISTER(g_mockingboard_peripheral)
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)

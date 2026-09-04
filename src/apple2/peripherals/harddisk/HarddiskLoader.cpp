@@ -18,9 +18,8 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
-// modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
-// bugprone-easily-swappable-parameters) Justification: Driver registration uses
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, modernize-make-unique, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters)
+// Justification: Driver registration uses
 // a global registry pattern for technical consistency with the floppy loading
 // subsystem. const-cast is required to register the immutable global driver
 // descriptor. easily-swappable-parameters is mandated by the loader ABI
@@ -203,6 +202,4 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
   util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
-// modernize-make-unique, cppcoreguidelines-pro-type-const-cast,
-// bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, modernize-make-unique, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters)

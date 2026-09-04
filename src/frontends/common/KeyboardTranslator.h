@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)
 // Justification: This header defines C-compatible structures and types for the
 // keyboard translation system to ensure interoperability across different
 // frontends. Public ABI functions have fixed parameter types.
@@ -47,5 +46,4 @@ void keyboard_set_hotkeys_enabled(bool enabled);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)

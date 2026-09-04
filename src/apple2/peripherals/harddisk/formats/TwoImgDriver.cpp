@@ -10,8 +10,7 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast, google-runtime-int)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, google-runtime-int)
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Harddisk subsystem ABI.
 
@@ -160,5 +159,4 @@ extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
     .get_total_blocks = two_img_get_total_blocks,
 };
 
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-type-static-cast-downcast, google-runtime-int)
+// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, google-runtime-int)

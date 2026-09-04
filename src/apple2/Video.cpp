@@ -6,31 +6,24 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <thread>
 
 #include "apple2/Apple2Types.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral_Types.h"
+#include "frontends/common/VideoSurface.h"
 
 // Unavoidable hardware architectural constraints for Apple II CRT rendering,
 // NTSC/PAL timing generator, and video memory scanner
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// bugprone-easily-swappable-parameters, bugprone-branch-clone,
-// bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions,
-// bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables,
-// cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-use-enum-class, google-readability-casting,
-// modernize-avoid-c-style-cast)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-easily-swappable-parameters, bugprone-branch-clone, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables, cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-use-enum-class, google-readability-casting, modernize-avoid-c-style-cast)
 static auto get_tick_count_ms() -> uint32_t {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::steady_clock::now().time_since_epoch())
@@ -40,7 +33,6 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "charset40.xpm"
@@ -48,11 +40,7 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "charset40_british.xpm"
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
-#include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "core/Peripheral.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 #include "frontends/common/VideoStretch.h"
 
 static uint32_t g_video_output[video_width * video_height] = {};
@@ -2109,16 +2097,4 @@ auto video_get_vbl(const uint32_t executed_cycles) -> bool {
   return (cycles >= 12480);
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// bugprone-easily-swappable-parameters, bugprone-branch-clone,
-// bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions,
-// bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables,
-// cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-use-enum-class, google-readability-casting,
-// modernize-avoid-c-style-cast)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index, bugprone-easily-swappable-parameters, bugprone-branch-clone, bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions, bugprone-misplaced-widening-cast, bugprone-switch-missing-default-case, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-do-while, cppcoreguidelines-init-variables, cppcoreguidelines-macro-usage, cppcoreguidelines-no-malloc, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-use-enum-class, google-readability-casting, modernize-avoid-c-style-cast)

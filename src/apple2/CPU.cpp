@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include <pthread.h>
+#include <pthread.h>  // IWYU pragma: keep
 
 #include <atomic>
 #include <cassert>
@@ -12,12 +12,11 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
+#include "core/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// bugprone-easily-swappable-parameters, google-readability-function-size)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
 
 enum {
   AF_SIGN = 0x80,
@@ -69,6 +68,7 @@ static uint32_t g_internal_executed_cycles;
 
 // Interrupt sources assert until the device is commanded to stop
 static std::atomic<bool> g_crit_section_valid{false};
+// NOLINTNEXTLINE(misc-include-cleaner)
 pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
 
 extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
@@ -2757,8 +2757,6 @@ auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   return 0;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// bugprone-easily-swappable-parameters, google-readability-function-size)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
 
 auto cpu_step() -> void { cpu_execute(0); }

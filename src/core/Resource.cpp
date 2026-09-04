@@ -5,8 +5,7 @@
 
 #include "EmbeddedRoms.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
 #if ENABLE_ROM_APPLE2
 const uint8_t* const apple2_rom = g_rom_apple2;
@@ -72,5 +71,4 @@ const uint8_t* const thunderclock_plus_rom = g_rom_thunderclock_plus;
 const uint8_t* const tkclock_rom = g_rom_tkclock;
 #endif
 
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

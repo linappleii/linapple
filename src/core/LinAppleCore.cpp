@@ -2,14 +2,7 @@
 #include "core/LinAppleCore.h"
 
 // Core emulator lifecycle, cycle accounting, and binary program file loading
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-owning-memory, google-runtime-int,
-// cppcoreguidelines-init-variables,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// clang-diagnostic-missing-braces)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-owning-memory, google-runtime-int, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay, clang-diagnostic-missing-braces)
 
 #include <curl/curl.h>
 #include <strings.h>
@@ -371,11 +364,4 @@ auto linapple_set_joystick_button(int button, bool down) -> void {
   peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-owning-memory, google-runtime-int,
-// cppcoreguidelines-init-variables,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// clang-diagnostic-missing-braces)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-owning-memory, google-runtime-int, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay, clang-diagnostic-missing-braces)

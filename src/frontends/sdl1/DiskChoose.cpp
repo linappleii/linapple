@@ -18,13 +18,7 @@
 
 // Justification: Immediate mode GUI layout code relies heavily on numeric
 // literals for pixel coordinates, colors, and scaling factors.
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,
-// bugprone-easily-swappable-parameters,
-// cppcoreguidelines-narrowing-conversions,
-// cppcoreguidelines-pro-type-const-cast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-type-member-init, modernize-use-auto,
-// bugprone-switch-missing-default-case, bugprone-branch-clone)
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, bugprone-easily-swappable-parameters, cppcoreguidelines-narrowing-conversions, cppcoreguidelines-pro-type-const-cast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-type-member-init, modernize-use-auto, bugprone-switch-missing-default-case, bugprone-branch-clone)
 
 using std::string;
 using std::vector;
@@ -502,10 +496,4 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
   return result;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers,
-// bugprone-easily-swappable-parameters,
-// cppcoreguidelines-narrowing-conversions,
-// cppcoreguidelines-pro-type-const-cast,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-type-member-init, modernize-use-auto,
-// bugprone-switch-missing-default-case, bugprone-branch-clone)
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, bugprone-easily-swappable-parameters, cppcoreguidelines-narrowing-conversions, cppcoreguidelines-pro-type-const-cast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-type-member-init, modernize-use-auto, bugprone-switch-missing-default-case, bugprone-branch-clone)

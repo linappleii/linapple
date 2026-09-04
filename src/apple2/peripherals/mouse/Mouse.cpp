@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
-// modernize-make-unique) Justification: This module implements low-level
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification: This module implements low-level
 // hardware emulation using procedural C-style patterns for performance and ABI
 // compatibility. Pointer arithmetic and C-style arrays are required for ROM
 // data manipulation and hardware state representation. swappable-parameters is
@@ -903,11 +897,4 @@ extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
 
 PERIPHERAL_REGISTER(g_mouse_peripheral)
 
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
-// modernize-make-unique)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)

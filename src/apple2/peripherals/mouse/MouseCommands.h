@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type) Justification: This header defines the
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// Justification: This header defines the
 // C99-compatible public ABI for the Mouse subsystem. C system headers,
 // typedefs, and C-style return types are required for cross-language
 // compatibility with C-based consumers.
@@ -39,5 +39,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 
+#include <strings.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <zip.h>
@@ -18,12 +19,11 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay) Justification:
-// Domain-specific container detection requires parameters mandated by the
-// shared format probing signatures. Pointer arithmetic and array decay are
-// required for physical bitstream inspection and decompression library ABIs.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// Justification: Domain-specific container detection requires parameters
+// mandated by the shared format probing signatures. Pointer arithmetic and
+// array decay are required for physical bitstream inspection and decompression
+// library ABIs.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
 namespace macbinary {
 namespace {
@@ -131,7 +131,7 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 
   std::array<uint8_t, decompression_chunk_size> buffer{};
   size_t total_written = 0;
-  zip_int64_t bytes_read = 0;
+  int64_t bytes_read = 0;
 
   while ((bytes_read = zip_fread(file_in_zip, buffer.data(), buffer.size())) >
          0) {
@@ -228,11 +228,13 @@ extern "C" auto disk_container_prepare_compressed_path(
   }
   util_safe_strcpy(out_load_path, temp_template.c_str(), max_path_len);
 
+  // NOLINTNEXTLINE(misc-include-cleaner)
   int fd = mkstemp(out_load_path);
   if (fd == -1) {
     return false;
   }
 
+  // NOLINTNEXTLINE(misc-include-cleaner)
   FilePtr_t temp_stream(fdopen(fd, "wb"), fclose);
   if (temp_stream == nullptr) {
     close(fd);
@@ -255,5 +257,4 @@ extern "C" auto disk_container_prepare_compressed_path(
   return true;
 }
 
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

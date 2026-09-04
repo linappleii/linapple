@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification:
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// Justification:
 // This header defines the C99-compatible public ABI for the Harddisk subsystem.
 // C-style return types and typedefs are required for cross-language
 // compatibility with C-based consumers.
@@ -79,5 +79,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

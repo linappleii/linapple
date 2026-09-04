@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
-// modernize-make-unique) Justification: This module implements low-level Disk
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
+// Justification: This module implements low-level Disk
 // II hardware emulation using procedural C-style patterns for performance and
 // ABI compatibility. Pointer arithmetic and C-style arrays are required for
 // bitstream manipulation and save-state structure stability.
@@ -16,17 +10,14 @@
 
 #include "apple2/peripherals/disk/Disk.h"
 
-#include <sys/stat.h>
-#include <unistd.h>
-
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <vector>
 
 #include "EmbeddedRoms.h"
 #include "apple2/Memory.h"
@@ -43,8 +34,8 @@
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
 namespace {
@@ -1199,11 +1190,4 @@ static Peripheral_t g_disk_peripheral = {
 auto disk_get_descriptor() -> Peripheral_t* { return &g_disk_peripheral; }
 
 PERIPHERAL_REGISTER(g_disk_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic,
-// cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-constant-array-index,
-// cppcoreguidelines-pro-type-reinterpret-cast,
-// cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters,
-// modernize-make-unique)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)

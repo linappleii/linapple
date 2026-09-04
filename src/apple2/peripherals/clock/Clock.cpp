@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/clock/Clock.h"
 
 #include <algorithm>
@@ -16,6 +15,7 @@
 
 #include "apple2/Memory.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 
 /*
 I/O map: (please add an offset of Slot#*16 to the address below)
@@ -337,5 +337,4 @@ static Peripheral_t g_clock_peripheral = {
 auto clock_get_descriptor() -> Peripheral_t* { return &g_clock_peripheral; }
 
 PERIPHERAL_REGISTER(g_clock_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-owning-memory)
+// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
