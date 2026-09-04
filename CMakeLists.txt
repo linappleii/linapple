@@ -710,6 +710,7 @@ if(BUILD_TESTING)
     add_linapple_test(snapshot tests/test_snapshot.cpp)
     add_linapple_test(memory-exhaustive "tests/test_main.cpp;tests/test_memory_exhaustive.cpp")
     add_linapple_test(cpu-exhaustive "tests/test_main.cpp;tests/test_cpu_exhaustive.cpp")
+    add_linapple_test(debugger "tests/test_main.cpp;tests/test_debugger.cpp")
 
     find_package(Z3 CONFIG QUIET)
     if(NOT Z3_FOUND)
