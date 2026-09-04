@@ -66,10 +66,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/common/sdl/DiskUI.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/SDL_Video.h"
+#include "frontends/sdl1/SdlPtr.h"
 
-SDL_Surface* g_apple_icon;
 SDL_Surface* g_screen = nullptr;
-SDL_Surface* g_texture = nullptr;
+SdlSurfacePtr_t g_texture;
 SDL_Rect g_orig_rect;
 SDL_Rect g_new_rect;
 
@@ -144,7 +144,7 @@ void draw_frame_window() {
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
-      VideoSurface_t vs_texture = sdl_surface_to_video_surface(g_texture);
+      VideoSurface_t vs_texture = sdl_surface_to_video_surface(g_texture.get());
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
       vs_output.w = SCREEN_WIDTH;
@@ -165,7 +165,8 @@ void draw_frame_window() {
       // We need to stretch/convert it to the RGB32 g_screen surface
       extern VideoSurface_t* g_debug_screen;
       if (g_debug_screen != nullptr) {
-        VideoSurface_t vs_texture = sdl_surface_to_video_surface(g_texture);
+        VideoSurface_t vs_texture =
+            sdl_surface_to_video_surface(g_texture.get());
         if (g_window_resized == false) {
           VideoRect_t vr = to_video_rect(r);
           video_soft_stretch(g_debug_screen, &vr, &vs_texture, &vr);
@@ -177,7 +178,7 @@ void draw_frame_window() {
       }
     }
 
-    SDL_BlitSurface(g_texture, nullptr, g_screen, nullptr);
+    SDL_BlitSurface(g_texture.get(), nullptr, g_screen, nullptr);
     frame_refresh();
     g_frame_ready = false;
   }
@@ -299,28 +300,26 @@ void frame_show_help_screen(int sx, int sy) {
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp =
+  SdlSurfacePtr_t blur_temp(
       SDL_CreateRGBSurface(0, g_screen->w / 16, g_screen->h / 16, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+                           0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000));
   if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
     video_soft_stretch(&vs_actual_g_screen, nullptr, &vs_blur,
                        nullptr);  // Downscale
     video_soft_stretch(&vs_blur, nullptr, &vs_actual_g_screen,
                        nullptr);  // Upscale back
-    SDL_FreeSurface(blur_temp);
   }
 
   // Dim the background using SDL blending for better text readability
-  SDL_Surface* dim_surface =
-      SDL_CreateRGBSurface(0, g_screen->w, g_screen->h, 32, 0x00FF0000,
-                           0x0000FF00, 0x000000FF, 0xFF000000);
+  SdlSurfacePtr_t dim_surface(SDL_CreateRGBSurface(0, g_screen->w, g_screen->h,
+                                                   32, 0x00FF0000, 0x0000FF00,
+                                                   0x000000FF, 0xFF000000));
   if (dim_surface != nullptr) {
     Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 200);
-    SDL_FillRect(dim_surface, nullptr, dim_color);
-    SDL_SetAlpha(dim_surface, SDL_SRCALPHA, 200);
-    SDL_BlitSurface(dim_surface, nullptr, g_screen, nullptr);
-    SDL_FreeSurface(dim_surface);
+    SDL_FillRect(dim_surface.get(), nullptr, dim_color);
+    SDL_SetAlpha(dim_surface.get(), SDL_SRCALPHA, 200);
+    SDL_BlitSurface(dim_surface.get(), nullptr, g_screen, nullptr);
   }
 
   const float facx_f = static_cast<float>(g_state.screen_width) /
@@ -475,13 +474,9 @@ void frame_on_resize(int width, int height) {
       SDL_SetVideoMode(static_cast<int>(g_state.screen_width),
                        static_cast<int>(g_state.screen_height), 32, flags);
 
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
-  g_texture =
-      SDL_CreateRGBSurface(0, g_state.screen_width, g_state.screen_height, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_texture.reset(SDL_CreateRGBSurface(0, g_state.screen_width,
+                                       g_state.screen_height, 32, 0x00FF0000,
+                                       0x0000FF00, 0x000000FF, 0));
 
   if (g_screen == nullptr || g_texture == nullptr) {
     g_state.mode = MODE_EXIT;
@@ -879,9 +874,9 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  g_texture =
-      SDL_CreateRGBSurface(0, g_state.screen_width, g_state.screen_height, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_texture.reset(SDL_CreateRGBSurface(0, g_state.screen_width,
+                                       g_state.screen_height, 32, 0x00FF0000,
+                                       0x0000FF00, 0x000000FF, 0));
 
   SDL_WM_SetCaption(g_app_title, g_app_title);
   set_icon();
@@ -900,10 +895,7 @@ auto frame_create_window() -> int {
 }
 
 void frame_destroy_window() {
-  if (g_texture != nullptr) {
-    SDL_FreeSurface(g_texture);
-    g_texture = nullptr;
-  }
+  g_texture.reset();
   g_screen = nullptr;
   sdl_asset_free_icon();
 }

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#pragma once
+
 #include <SDL3/SDL.h>
 
 #include <cstdint>
-#pragma once
+
+#include "frontends/sdl3/SdlPtr.h"
 
 // Frontend-specific keyboard helpers
 auto frontend_translate_key(SDL_Keycode key, SDL_Keymod mod) -> uint8_t;
@@ -27,10 +30,10 @@ constexpr int btn_loadst = 9;
 
 // if you gonna change these values, consider changing some values in Video.cpp
 #define SCREEN_BPP 8
-extern SDL_Surface* g_screen;
-extern SDL_Window* g_window;
-extern SDL_Renderer* g_renderer;
-extern SDL_Texture* g_texture;
+extern SdlSurfacePtr_t g_screen;
+extern SdlWindowPtr_t g_window;
+extern SdlRendererPtr_t g_renderer;
+extern SdlTexturePtr_t g_texture;
 
 #define SHOW_CYCLES 15
 

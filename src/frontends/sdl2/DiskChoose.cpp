@@ -184,8 +184,8 @@ void disk_choose_draw() {
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
   VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
+  VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
 
   video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
 
@@ -251,7 +251,8 @@ void disk_choose_draw() {
                                static_cast<double>(facx_f));
       }
       r.h = static_cast<int>(9.0 * 1.0 * facy);
-      SDL_FillRect(g_screen, &r, SDL_MapRGB(g_screen->format, 64, 128, 190));
+      SDL_FillRect(g_screen.get(), &r,
+                   SDL_MapRGB(g_screen->format, 64, 128, 190));
     }
 
     std::array<char, 32> type_size_str = {};
@@ -311,16 +312,17 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
   static VideoSurface_t vs_screen;
   if (tempSurface == nullptr) {
-    vs_screen = sdl_surface_to_video_surface(g_screen);
+    vs_screen = sdl_surface_to_video_surface(g_screen.get());
     tempSurface = &vs_screen;
   }
 
-  g_diskChooseState.bg_screen = SDL_CreateRGBSurfaceWithFormat(
-      0, tempSurface->w, tempSurface->h, 32, SDL_PIXELFORMAT_ARGB8888);
+  g_diskChooseState.bg_screen.reset(SDL_CreateRGBSurfaceWithFormat(
+      0, tempSurface->w, tempSurface->h, 32, SDL_PIXELFORMAT_ARGB8888));
 
   VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
-  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
+  VideoSurface_t vs_actual_screen =
+      sdl_surface_to_video_surface(g_screen.get());
 
   // Capture original g_screen
   video_soft_stretch(tempSurface, nullptr, &vs_bg, nullptr);
@@ -328,25 +330,24 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp = SDL_CreateRGBSurfaceWithFormat(
+  SdlSurfacePtr_t blur_temp(SDL_CreateRGBSurfaceWithFormat(
       0, tempSurface->w / 16, tempSurface->h / 16, 32,
-      SDL_PIXELFORMAT_ARGB8888);
+      SDL_PIXELFORMAT_ARGB8888));
   if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
     video_soft_stretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
     video_soft_stretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
-    SDL_FreeSurface(blur_temp);
   }
 
   // Dim the background using SDL blending for better text readability
-  SDL_Surface* dim_surface = SDL_CreateRGBSurfaceWithFormat(
-      0, tempSurface->w, tempSurface->h, 32, SDL_PIXELFORMAT_ARGB8888);
+  SdlSurfacePtr_t dim_surface(SDL_CreateRGBSurfaceWithFormat(
+      0, tempSurface->w, tempSurface->h, 32, SDL_PIXELFORMAT_ARGB8888));
   if (dim_surface != nullptr) {
     Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 160);
-    SDL_FillRect(dim_surface, nullptr, dim_color);
-    SDL_SetSurfaceBlendMode(dim_surface, SDL_BLENDMODE_BLEND);
-    SDL_BlitSurface(dim_surface, nullptr, g_diskChooseState.bg_screen, nullptr);
-    SDL_FreeSurface(dim_surface);
+    SDL_FillRect(dim_surface.get(), nullptr, dim_color);
+    SDL_SetSurfaceBlendMode(dim_surface.get(), SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(dim_surface.get(), nullptr,
+                    g_diskChooseState.bg_screen.get(), nullptr);
   }
 
   video_soft_stretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
@@ -403,8 +404,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
         SDL_Delay(10);
       }
     }
-    SDL_FreeSurface(g_diskChooseState.bg_screen);
-    g_diskChooseState.bg_screen = nullptr;
+    g_diskChooseState.bg_screen.reset();
     if (g_diskChooseState.list_handle != nullptr) {
       file_browser_free_list(g_diskChooseState.list_handle);
       g_diskChooseState.list_handle = nullptr;
@@ -467,8 +467,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   if (g_state.mode != MODE_EXIT) {
     g_state.mode = old_mode;
   }
-  SDL_FreeSurface(g_diskChooseState.bg_screen);
-  g_diskChooseState.bg_screen = nullptr;
+  g_diskChooseState.bg_screen.reset();
 
   if (g_diskChooseState.list_handle != nullptr) {
     file_browser_free_list(g_diskChooseState.list_handle);

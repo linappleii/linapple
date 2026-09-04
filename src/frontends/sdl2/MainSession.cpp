@@ -59,9 +59,8 @@ void sys_shutdown() {
 }
 
 static void frontend_set_window_title(const char* title) {
-  extern SDL_Window* g_window;
   if (g_window != nullptr) {
-    SDL_SetWindowTitle(g_window, title);
+    SDL_SetWindowTitle(g_window.get(), title);
   }
 }
 

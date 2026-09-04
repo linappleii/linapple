@@ -176,7 +176,7 @@ void disk_choose_draw() {
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
   VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
   VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
 
   video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
@@ -307,12 +307,12 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     tempSurface = &vs_screen;
   }
 
-  g_diskChooseState.bg_screen =
+  g_diskChooseState.bg_screen.reset(
       SDL_CreateRGBSurface(SDL_HWSURFACE, tempSurface->w, tempSurface->h, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+                           0x00FF0000, 0x0000FF00, 0x000000FF, 0));
 
   VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen);
+      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
   VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
   // Capture original g_screen
@@ -321,26 +321,25 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp =
+  SdlSurfacePtr_t blur_temp(
       SDL_CreateRGBSurface(0, tempSurface->w / 16, tempSurface->h / 16, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+                           0x00FF0000, 0x0000FF00, 0x000000FF, 0));
   if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
     video_soft_stretch(&vs_bg, nullptr, &vs_blur, nullptr);  // Downscale
     video_soft_stretch(&vs_blur, nullptr, &vs_bg, nullptr);  // Upscale back
-    SDL_FreeSurface(blur_temp);
   }
 
   // Dim the background using SDL blending for better text readability
-  SDL_Surface* dim_surface =
+  SdlSurfacePtr_t dim_surface(
       SDL_CreateRGBSurface(0, tempSurface->w, tempSurface->h, 32, 0x00FF0000,
-                           0x0000FF00, 0x000000FF, 0);
+                           0x0000FF00, 0x000000FF, 0));
   if (dim_surface != nullptr) {
     Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 160);
-    SDL_FillRect(dim_surface, nullptr, dim_color);
-    SDL_SetAlpha(dim_surface, SDL_SRCALPHA, 160);
-    SDL_BlitSurface(dim_surface, nullptr, g_diskChooseState.bg_screen, nullptr);
-    SDL_FreeSurface(dim_surface);
+    SDL_FillRect(dim_surface.get(), nullptr, dim_color);
+    SDL_SetAlpha(dim_surface.get(), SDL_SRCALPHA, 160);
+    SDL_BlitSurface(dim_surface.get(), nullptr,
+                    g_diskChooseState.bg_screen.get(), nullptr);
   }
 
   video_soft_stretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
@@ -395,8 +394,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
         SDL_Delay(10);
       }
     }
-    SDL_FreeSurface(g_diskChooseState.bg_screen);
-    g_diskChooseState.bg_screen = nullptr;
+    g_diskChooseState.bg_screen.reset();
     if (g_diskChooseState.list_handle != nullptr) {
       file_browser_free_list(g_diskChooseState.list_handle);
       g_diskChooseState.list_handle = nullptr;
@@ -457,8 +455,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   if (g_state.mode != MODE_EXIT) {
     g_state.mode = old_mode;
   }
-  SDL_FreeSurface(g_diskChooseState.bg_screen);
-  g_diskChooseState.bg_screen = nullptr;
+  g_diskChooseState.bg_screen.reset();
 
   if (g_diskChooseState.list_handle != nullptr) {
     file_browser_free_list(g_diskChooseState.list_handle);
@@ -487,8 +484,8 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                            supported_exts.data(), &exts_size);
   }
 
-  FileListGenerator_t* generator =
-      file_browser_create_local_generator(incoming_dir.c_str(), supported_exts.data());
+  FileListGenerator_t* generator = file_browser_create_local_generator(
+      incoming_dir.c_str(), supported_exts.data());
   if (generator == nullptr) return false;
 
   bool result = choose_image_dialog(sx, sy, incoming_dir, slot, generator,

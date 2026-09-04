@@ -9,12 +9,14 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "frontends/sdl3/SdlPtr.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -78,8 +80,10 @@ static std::array<int, 2> joyshry = {8, 8};
 static std::array<int, 2> joysubx = {0, 0};
 static std::array<int, 2> joysuby = {0, 0};
 
-static SDL_Joystick* joy1 = nullptr;
-static SDL_Joystick* joy2 = nullptr;
+#include "frontends/sdl3/SdlPtr.h"
+
+static SdlJoystickPtr_t joy1;
+static SdlJoystickPtr_t joy2;
 
 static int g_frontend_pdl_trim_x = 0;
 static int g_frontend_pdl_trim_y = 0;
@@ -90,14 +94,8 @@ void joy_frontend_initialize() {
   constexpr int16_t AXIS_MIN = -32768; /* minimum value for axis coordinate */
   constexpr int16_t AXIS_MAX = 32767;  /* maximum value for axis coordinate */
 
-  if (joy1) {
-    SDL_CloseJoystick(joy1);
-    joy1 = nullptr;
-  }
-  if (joy2) {
-    SDL_CloseJoystick(joy2);
-    joy2 = nullptr;
-  }
+  joy1.reset();
+  joy2.reset();
 
   // Load config from registry
   memset(&g_joyConfig, 0, sizeof(g_joyConfig));
@@ -127,13 +125,21 @@ void joy_frontend_initialize() {
   peripheral_command(0, JOY_CMD_SET_CONFIG, &g_joyConfig, sizeof(g_joyConfig));
 
   int number_of_joysticks = 0;
-  SDL_JoystickID* joysticks = SDL_GetJoysticks(&number_of_joysticks);
+  struct SdlFreeDeleter_t {
+    void operator()(void* p) const noexcept {
+      if (p != nullptr) {
+        SDL_free(p);
+      }
+    }
+  };
+  std::unique_ptr<SDL_JoystickID[], SdlFreeDeleter_t> joysticks(
+      SDL_GetJoysticks(&number_of_joysticks));
 
   if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
       DEVICE_JOYSTICK) {
     if (number_of_joysticks > 0 &&
         static_cast<int>(g_joyConfig.joy_index[0]) < number_of_joysticks) {
-      joy1 = SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[0]]);
+      joy1.reset(SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[0]]));
       joyshrx.at(0) = 0;
       joyshry.at(0) = 0;
       joysubx.at(0) = AXIS_MIN;
@@ -157,7 +163,7 @@ void joy_frontend_initialize() {
       DEVICE_JOYSTICK) {
     if (number_of_joysticks > 1 &&
         static_cast<int>(g_joyConfig.joy_index[1]) < number_of_joysticks) {
-      joy2 = SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[1]]);
+      joy2.reset(SDL_OpenJoystick(joysticks[g_joyConfig.joy_index[1]]));
       joyshrx.at(1) = 0;
       joyshry.at(1) = 0;
       joysubx.at(1) = AXIS_MIN;
@@ -176,33 +182,22 @@ void joy_frontend_initialize() {
       g_joyConfig.joy_type[1] = DEVICE_NONE;
     }
   }
-  if (joysticks) {
-    SDL_free(joysticks);
-  }
 }
 
 void joy_frontend_shutdown() {
-  if (joy1) {
-    SDL_CloseJoystick(joy1);
-    joy1 = nullptr;
-  }
-  if (joy2) {
-    SDL_CloseJoystick(joy2);
-    joy2 = nullptr;
-  }
+  joy1.reset();
+  joy2.reset();
 }
 
 void joy_frontend_check_exit() {
   if (!joy1 || !g_joyConfig.joy_exit_enable) return;
   SDL_UpdateJoysticks();
-  bool quit = SDL_GetJoystickButton(
-                  joy1, static_cast<int>(g_joyConfig.joy_exit_button[0])) &&
-              SDL_GetJoystickButton(
-                  joy1, static_cast<int>(g_joyConfig.joy_exit_button[1]));
+  bool quit =
+      SDL_GetJoystickButton(joy1.get(),
+                            static_cast<int>(g_joyConfig.joy_exit_button[0])) &&
+      SDL_GetJoystickButton(joy1.get(),
+                            static_cast<int>(g_joyConfig.joy_exit_button[1]));
 
-  // We can push this back to the peripheral via a command if needed, but for
-  // now we just use a local bool if it's strictly for frontend exit. Wait, the
-  // core might need to know if we want to quit.
   if (quit) {
     g_state.mode = MODE_EXIT;
   }
@@ -219,12 +214,12 @@ void joy_frontend_update() {
       SDL_UpdateJoysticks();
 
       bool b0 = SDL_GetJoystickButton(
-          joy1, static_cast<int>(g_joyConfig.joy0_button_map[0]));
+          joy1.get(), static_cast<int>(g_joyConfig.joy0_button_map[0]));
       bool b1 = false;
       if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device ==
           DEVICE_NONE) {
         b1 = SDL_GetJoystickButton(
-            joy1, static_cast<int>(g_joyConfig.joy0_button_map[1]));
+            joy1.get(), static_cast<int>(g_joyConfig.joy0_button_map[1]));
       }
 
       JoystickButtonPayload_t pb0 = {0, b0};
@@ -233,11 +228,11 @@ void joy_frontend_update() {
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
       int x = (static_cast<int>(SDL_GetJoystickAxis(
-                   joy1, static_cast<int>(g_joyConfig.joy_axis[0][0]))) -
+                   joy1.get(), static_cast<int>(g_joyConfig.joy_axis[0][0]))) -
                joysubx.at(0)) >>
               joyshrx.at(0);
       int y = (static_cast<int>(SDL_GetJoystickAxis(
-                   joy1, static_cast<int>(g_joyConfig.joy_axis[0][1]))) -
+                   joy1.get(), static_cast<int>(g_joyConfig.joy_axis[0][1]))) -
                joysuby.at(0)) >>
               joyshry.at(0);
 
@@ -294,7 +289,7 @@ void joy_frontend_update() {
       SDL_UpdateJoysticks();
 
       bool b2 = SDL_GetJoystickButton(
-          joy2, static_cast<int>(g_joyConfig.joy1_button_map));
+          joy2.get(), static_cast<int>(g_joyConfig.joy1_button_map));
       JoystickButtonPayload_t pb2 = {2, b2};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
       if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
@@ -304,11 +299,11 @@ void joy_frontend_update() {
       }
 
       int x = (static_cast<int>(SDL_GetJoystickAxis(
-                   joy2, static_cast<int>(g_joyConfig.joy_axis[1][0]))) -
+                   joy2.get(), static_cast<int>(g_joyConfig.joy_axis[1][0]))) -
                joysubx.at(1)) >>
               joyshrx.at(1);
       int y = (static_cast<int>(SDL_GetJoystickAxis(
-                   joy2, static_cast<int>(g_joyConfig.joy_axis[1][1]))) -
+                   joy2.get(), static_cast<int>(g_joyConfig.joy_axis[1][1]))) -
                joysuby.at(1)) >>
               joyshry.at(1);
 

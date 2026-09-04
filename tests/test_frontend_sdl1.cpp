@@ -303,8 +303,8 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
   // Set up disk choose state
   g_diskChooseState.active = true;
   g_diskChooseState.slot = 6;
-  g_diskChooseState.bg_screen = SDL_CreateRGBSurface(
-      0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_diskChooseState.bg_screen.reset(SDL_CreateRGBSurface(
+      0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0));
   g_diskChooseState.list_handle = nullptr;
 
   disk_choose_draw();
@@ -338,10 +338,7 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
 
   // Teardown
   g_diskChooseState.active = false;
-  if (g_diskChooseState.bg_screen != nullptr) {
-    SDL_FreeSurface(g_diskChooseState.bg_screen);
-    g_diskChooseState.bg_screen = nullptr;
-  }
+  g_diskChooseState.bg_screen.reset();
   frame_destroy_window();
   asset_quit();
   SDL_Quit();

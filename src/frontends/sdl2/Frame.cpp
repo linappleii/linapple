@@ -71,14 +71,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "frontends/common/sdl/DiskUI.h"
 #include "frontends/sdl2/DiskChoose.h"
 #include "frontends/sdl2/SDL_Video.h"
+#include "frontends/sdl2/SdlPtr.h"
 
 constexpr bool ENABLE_MENU = false;
 
-SDL_Surface* g_apple_icon;
-SDL_Surface* g_screen;
-SDL_Window* g_window = nullptr;
-SDL_Renderer* g_renderer = nullptr;
-SDL_Texture* g_texture = nullptr;
+SdlSurfacePtr_t g_screen;
+SdlWindowPtr_t g_window;
+SdlRendererPtr_t g_renderer;
+SdlTexturePtr_t g_texture;
 SDL_Rect g_orig_rect;
 SDL_Rect g_new_rect;
 
@@ -138,9 +138,10 @@ void draw_apple_content() {
 
 void frame_refresh() {
   if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
-    SDL_UpdateTexture(g_texture, nullptr, g_screen->pixels, g_screen->pitch);
-    SDL_RenderCopy(g_renderer, g_texture, nullptr, nullptr);
-    SDL_RenderPresent(g_renderer);
+    SDL_UpdateTexture(g_texture.get(), nullptr, g_screen->pixels,
+                      g_screen->pitch);
+    SDL_RenderCopy(g_renderer.get(), g_texture.get(), nullptr, nullptr);
+    SDL_RenderPresent(g_renderer.get());
   }
 }
 
@@ -163,7 +164,7 @@ void draw_frame_window() {
 
     // Fill g_screen from RGB32 output buffer
     if (g_state.mode != MODE_DEBUG) {
-      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
+      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
       vs_output.w = SCREEN_WIDTH;
@@ -184,7 +185,7 @@ void draw_frame_window() {
       // We need to stretch/convert it to the RGB32 g_screen surface
       extern VideoSurface_t* g_debug_screen;
       if (g_debug_screen != nullptr) {
-        VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen);
+        VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
         if (!g_window_resized) {
           VideoRect_t vr = to_video_rect(r);
           video_soft_stretch(g_debug_screen, &vr, &vs_screen, &vr);
@@ -305,11 +306,12 @@ void frame_show_help_screen(int sx, int sy) {
   if (tempSurface == nullptr) {
     // Wrap g_screen as fallback
     static VideoSurface_t vs_screen;
-    vs_screen = sdl_surface_to_video_surface(g_screen);
+    vs_screen = sdl_surface_to_video_surface(g_screen.get());
     tempSurface = &vs_screen;
   }
 
-  VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
+  VideoSurface_t vs_actual_screen =
+      sdl_surface_to_video_surface(g_screen.get());
 
   // Capture original g_screen
   video_soft_stretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
@@ -317,28 +319,26 @@ void frame_show_help_screen(int sx, int sy) {
   // Blur the background by downscaling and upscaling
   // We use a small temporary surface (1/16 size) to create a pixelated blur
   // effect
-  SDL_Surface* blur_temp =
+  SdlSurfacePtr_t blur_temp(
       SDL_CreateRGBSurface(0, g_screen->w / 16, g_screen->h / 16, 32,
-                           0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+                           0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000));
   if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp);
+    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
     video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur,
                        nullptr);  // Downscale
     video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen,
                        nullptr);  // Upscale back
-    SDL_FreeSurface(blur_temp);
   }
 
   // Dim the background using SDL blending for better text readability
-  SDL_Surface* dim_surface =
-      SDL_CreateRGBSurface(0, g_screen->w, g_screen->h, 32, 0x00FF0000,
-                           0x0000FF00, 0x000000FF, 0xFF000000);
+  SdlSurfacePtr_t dim_surface(SDL_CreateRGBSurface(0, g_screen->w, g_screen->h,
+                                                   32, 0x00FF0000, 0x0000FF00,
+                                                   0x000000FF, 0xFF000000));
   if (dim_surface != nullptr) {
     Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 200);
-    SDL_FillRect(dim_surface, nullptr, dim_color);
-    SDL_SetSurfaceBlendMode(dim_surface, SDL_BLENDMODE_BLEND);
-    SDL_BlitSurface(dim_surface, nullptr, g_screen, nullptr);
-    SDL_FreeSurface(dim_surface);
+    SDL_FillRect(dim_surface.get(), nullptr, dim_color);
+    SDL_SetSurfaceBlendMode(dim_surface.get(), SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(dim_surface.get(), nullptr, g_screen.get(), nullptr);
   }
 
   const float facx_f = static_cast<float>(g_state.screen_width) /
@@ -431,7 +431,7 @@ void frame_show_help_screen(int sx, int sy) {
   }
 
   if (g_screen != nullptr) {
-    SDL_FillRect(g_screen, nullptr, 0);
+    SDL_FillRect(g_screen.get(), nullptr, 0);
   }
   g_frame_ready = true;
   draw_frame_window();
@@ -484,21 +484,13 @@ void frame_on_resize(int width, int height) {
     s_windowed_height = static_cast<uint32_t>(height);
   }
 
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  g_screen = SDL_CreateRGBSurfaceWithFormat(0, g_state.screen_width,
-                                            g_state.screen_height, 32,
-                                            SDL_PIXELFORMAT_ARGB8888);
+  g_screen.reset(SDL_CreateRGBSurfaceWithFormat(0, g_state.screen_width,
+                                                g_state.screen_height, 32,
+                                                SDL_PIXELFORMAT_ARGB8888));
 
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                g_state.screen_width, g_state.screen_height);
+  g_texture.reset(SDL_CreateTexture(
+      g_renderer.get(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+      g_state.screen_width, g_state.screen_height));
 
   if (g_screen == nullptr || g_texture == nullptr) {
     g_state.mode = MODE_EXIT;
@@ -633,7 +625,7 @@ void frame_save_bmp() {
   }
 #pragma GCC diagnostic pop
 
-  SDL_SaveBMP(g_screen, bmpName.data());
+  SDL_SaveBMP(g_screen.get(), bmpName.data());
   printf("File %s saved!\n", bmpName.data());
   i++;
 }
@@ -837,7 +829,9 @@ void set_fullscreen_mode() {
       s_windowed_width = g_state.screen_width;
       s_windowed_height = g_state.screen_height;
     }
-    SDL_SetWindowFullscreen(g_window, SDL_WINDOW_FULLSCREEN);
+    if (g_window) {
+      SDL_SetWindowFullscreen(g_window.get(), SDL_WINDOW_FULLSCREEN);
+    }
     if (g_state.mode != MODE_DEBUG) {
       SDL_ShowCursor(SDL_DISABLE);
     }
@@ -847,19 +841,23 @@ void set_fullscreen_mode() {
 void set_normal_mode() {
   if (is_full_screened) {
     is_full_screened = false;
-    SDL_SetWindowFullscreen(g_window, 0);
-    if (s_windowed_width > 0 && s_windowed_height > 0) {
-      SDL_SetWindowSize(g_window, static_cast<int>(s_windowed_width),
+    if (g_window) {
+      SDL_SetWindowFullscreen(g_window.get(), 0);
+      if (s_windowed_width > 0 && s_windowed_height > 0) {
+        SDL_SetWindowSize(g_window.get(), static_cast<int>(s_windowed_width),
+                          static_cast<int>(s_windowed_height));
+        frame_on_resize(static_cast<int>(s_windowed_width),
                         static_cast<int>(s_windowed_height));
-      frame_on_resize(static_cast<int>(s_windowed_width),
-                      static_cast<int>(s_windowed_height));
+      }
     }
     if (!g_usingcursor) {
       SDL_ShowCursor(SDL_ENABLE);
     }
   } else if (g_state.mode == MODE_DEBUG) {
     SDL_ShowCursor(SDL_ENABLE);
-    SDL_SetWindowGrab(g_window, SDL_FALSE);
+    if (g_window) {
+      SDL_SetWindowGrab(g_window.get(), SDL_FALSE);
+    }
   }
 }
 
@@ -867,12 +865,16 @@ void set_using_cursor(bool newvalue) {
   g_usingcursor = newvalue;
   if (g_usingcursor) {
     SDL_ShowCursor(SDL_DISABLE);
-    SDL_SetWindowGrab(g_window, SDL_TRUE);
+    if (g_window) {
+      SDL_SetWindowGrab(g_window.get(), SDL_TRUE);
+    }
   } else {
     if (!is_full_screened || (g_state.mode == MODE_DEBUG)) {
       SDL_ShowCursor(SDL_ENABLE);
     }
-    SDL_SetWindowGrab(g_window, SDL_FALSE);
+    if (g_window) {
+      SDL_SetWindowGrab(g_window.get(), SDL_FALSE);
+    }
   }
 }
 
@@ -891,23 +893,25 @@ auto frame_create_window() -> int {
   if (g_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
 
   if (g_window == nullptr) {
-    g_window = SDL_CreateWindow(g_app_title, SDL_WINDOWPOS_UNDEFINED,
-                                SDL_WINDOWPOS_UNDEFINED,
-                                static_cast<int>(g_state.screen_width),
-                                static_cast<int>(g_state.screen_height), flags);
+    g_window.reset(SDL_CreateWindow(
+        g_app_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        static_cast<int>(g_state.screen_width),
+        static_cast<int>(g_state.screen_height), flags));
     if (g_window == nullptr) {
       fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
       return 1;
     }
   } else {
-    SDL_SetWindowSize(g_window, static_cast<int>(g_state.screen_width),
+    SDL_SetWindowSize(g_window.get(), static_cast<int>(g_state.screen_width),
                       static_cast<int>(g_state.screen_height));
   }
 
   if (g_renderer == nullptr) {
-    g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_ACCELERATED);
+    g_renderer.reset(
+        SDL_CreateRenderer(g_window.get(), -1, SDL_RENDERER_ACCELERATED));
     if (g_renderer == nullptr) {
-      g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_SOFTWARE);
+      g_renderer.reset(
+          SDL_CreateRenderer(g_window.get(), -1, SDL_RENDERER_SOFTWARE));
     }
     if (g_renderer == nullptr) {
       fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
@@ -915,31 +919,23 @@ auto frame_create_window() -> int {
     }
   }
 
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  g_screen = SDL_CreateRGBSurfaceWithFormat(
+  g_screen.reset(SDL_CreateRGBSurfaceWithFormat(
       0, static_cast<int>(g_state.screen_width),
-      static_cast<int>(g_state.screen_height), 32, SDL_PIXELFORMAT_ARGB8888);
+      static_cast<int>(g_state.screen_height), 32, SDL_PIXELFORMAT_ARGB8888));
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  g_texture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                g_state.screen_width, g_state.screen_height);
+  g_texture.reset(SDL_CreateTexture(
+      g_renderer.get(), SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+      g_state.screen_width, g_state.screen_height));
   if (g_texture == nullptr) {
     fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
     return 1;
   }
 
-  SDL_ShowWindow(g_window);
+  SDL_ShowWindow(g_window.get());
   set_icon();
 
   g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
@@ -956,26 +952,17 @@ auto frame_create_window() -> int {
 }
 
 void frame_destroy_window() {
-  if (g_texture != nullptr) {
-    SDL_DestroyTexture(g_texture);
-    g_texture = nullptr;
-  }
-  if (g_screen != nullptr) {
-    SDL_FreeSurface(g_screen);
-    g_screen = nullptr;
-  }
-  if (g_renderer != nullptr) {
-    SDL_DestroyRenderer(g_renderer);
-    g_renderer = nullptr;
-  }
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
+  g_texture.reset();
+  g_screen.reset();
+  g_renderer.reset();
+  g_window.reset();
   sdl_asset_free_icon();
 }
 
 void set_icon() {
+  if (assets == nullptr || assets->icon == nullptr || !g_window) {
+    return;
+  }
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
   auto* icon = static_cast<SDL_Surface*>(assets->icon);
@@ -983,7 +970,7 @@ void set_icon() {
   SDL_SetColorKey(icon, SDL_TRUE, colorkey);
 
   /* No need to pass a mask given the above. */
-  SDL_SetWindowIcon(g_window, icon);
+  SDL_SetWindowIcon(g_window.get(), icon);
 }
 
 auto init_sdl() -> int {
@@ -1007,7 +994,7 @@ void frame_refresh_status(int drawflags) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 1 error",
             disk_ui_get_error_message(g_last_disk_status.drive0_last_error),
-            g_window);
+            g_window.get());
         g_drive0_last_reported_error = g_last_disk_status.drive0_last_error;
       } else if (g_last_disk_status.drive0_last_error == disk_err_none) {
         g_drive0_last_reported_error = disk_err_none;
@@ -1019,7 +1006,7 @@ void frame_refresh_status(int drawflags) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 2 error",
             disk_ui_get_error_message(g_last_disk_status.drive1_last_error),
-            g_window);
+            g_window.get());
         g_drive1_last_reported_error = g_last_disk_status.drive1_last_error;
       } else if (g_last_disk_status.drive1_last_error == disk_err_none) {
         g_drive1_last_reported_error = disk_err_none;

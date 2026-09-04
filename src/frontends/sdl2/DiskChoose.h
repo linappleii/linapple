@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "frontends/common/FileBrowser.h"
+#include "frontends/sdl2/SdlPtr.h"
 
 struct DiskChooseState_t {
   int slot;
@@ -17,7 +18,7 @@ struct DiskChooseState_t {
   bool active;
 
   // Surface for background
-  SDL_Surface* bg_screen;
+  SdlSurfacePtr_t bg_screen;
 
   // Callback or storage for result
   std::string result_filename;

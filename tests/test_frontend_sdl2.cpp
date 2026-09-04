@@ -5,9 +5,9 @@
 #include <SDL_hints.h>
 #include <SDL_keycode.h>
 #include <SDL_render.h>
-#include <SDL_stdinc.h>
 #include <SDL_surface.h>
 #include <SDL_video.h>
+#include <stdlib.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -46,20 +46,20 @@ TEST_CASE("SDL2 Frontend In-Window Session Restart") {
   int res1 = session_init(&config);
   REQUIRE(res1 == 0);
   REQUIRE(g_window != nullptr);
-  SDL_Window* orig_window = g_window;
-  SDL_Renderer* orig_renderer = g_renderer;
+  SDL_Window* orig_window = g_window.get();
+  SDL_Renderer* orig_renderer = g_renderer.get();
 
   // Session shutdown on restart preserves the window for in-window reboot
   session_shutdown();
-  CHECK(g_window == orig_window);
-  CHECK(g_renderer == orig_renderer);
+  CHECK(g_window.get() == orig_window);
+  CHECK(g_renderer.get() == orig_renderer);
 
   // Second session startup reuses the existing window without creating a second
   // window
   int res2 = session_init(&config);
   REQUIRE(res2 == 0);
-  CHECK(g_window == orig_window);
-  CHECK(g_renderer == orig_renderer);
+  CHECK(g_window.get() == orig_window);
+  CHECK(g_renderer.get() == orig_renderer);
 
   session_shutdown();
   sys_shutdown();
@@ -390,8 +390,8 @@ TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
   // Set up disk choose state
   g_diskChooseState.active = true;
   g_diskChooseState.slot = 6;
-  g_diskChooseState.bg_screen = SDL_CreateRGBSurface(
-      0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+  g_diskChooseState.bg_screen.reset(SDL_CreateRGBSurface(
+      0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0));
   g_diskChooseState.list_handle = nullptr;
 
   disk_choose_draw();
@@ -425,10 +425,7 @@ TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
 
   // Teardown
   g_diskChooseState.active = false;
-  if (g_diskChooseState.bg_screen != nullptr) {
-    SDL_FreeSurface(g_diskChooseState.bg_screen);
-    g_diskChooseState.bg_screen = nullptr;
-  }
+  g_diskChooseState.bg_screen.reset();
   frame_destroy_window();
   asset_quit();
   SDL_Quit();
