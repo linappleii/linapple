@@ -275,7 +275,7 @@ auto CmdSymbolsClear(int nArgs) -> Update_t {
 // Format the summary of the specified symbol table
 //===========================================================================
 auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
-                          int nDisplaySize = 0) -> void {
+                          int nDisplaySize /* = 0 */) -> void {
   // Common case is to use/calc the table size
   bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
   int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
