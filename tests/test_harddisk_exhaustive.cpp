@@ -1,5 +1,6 @@
-#include <cstdint>
 #include <stdio.h>
+
+#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstdio>
@@ -307,20 +308,26 @@ TEST_CASE("Harddisk: Native 2MG Container Support") {
   linapple_shutdown();
 }
 
-TEST_CASE("Harddisk: [2MG-1] Reject corrupted 2MG data offset beyond file bounds") {
+TEST_CASE(
+    "Harddisk: [2MG-1] Reject corrupted 2MG data offset beyond file bounds") {
   linapple_init();
   peripheral_manager_init();
   auto* descriptor = harddisk_get_descriptor();
   peripheral_register(descriptor, 7);
 
   std::vector<uint8_t> corrupted_2mg(128, 0);
-  corrupted_2mg[0] = '2'; corrupted_2mg[1] = 'I'; corrupted_2mg[2] = 'M'; corrupted_2mg[3] = 'G';
-  corrupted_2mg[12] = 1; // ProDOS
-  // Put data_offset at offset 24 (4 bytes) pointing way beyond file size (e.g. 0x100000)
+  corrupted_2mg[0] = '2';
+  corrupted_2mg[1] = 'I';
+  corrupted_2mg[2] = 'M';
+  corrupted_2mg[3] = 'G';
+  corrupted_2mg[12] = 1;  // ProDOS
+  // Put data_offset at offset 24 (4 bytes) pointing way beyond file size (e.g.
+  // 0x100000)
   uint32_t bad_offset = 0x100000;
   memcpy(&corrupted_2mg[24], &bad_offset, sizeof(bad_offset));
 
-  TempFileGuard bad_file("corrupt_offset.2mg", corrupted_2mg.data(), corrupted_2mg.size());
+  TempFileGuard bad_file("corrupt_offset.2mg", corrupted_2mg.data(),
+                         corrupted_2mg.size());
 
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
@@ -332,6 +339,71 @@ TEST_CASE("Harddisk: [2MG-1] Reject corrupted 2MG data offset beyond file bounds
   size_t status_size = sizeof(status);
   peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
   CHECK(status.drive0_loaded == 0);
+
+  linapple_shutdown();
+}
+
+TEST_CASE("Harddisk: Safe Handling of Unbounded SmartPort Buffer I/O ($C0F8)") {
+  linapple_init();
+  peripheral_manager_init();
+  auto* descriptor = harddisk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  int reg_result = peripheral_register(descriptor, 7);
+  REQUIRE(reg_result == 0);
+
+  // 1. Unbounded reads from $C0F8 without reading a block first (buffer_ptr
+  // initially 0)
+  for (int i = 0; i < 600; ++i) {
+    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    if (i >= 512) {
+      CHECK(val == 0x00);
+    }
+  }
+
+  // 2. Unbounded writes to $C0F8
+  for (int i = 0; i < 600; ++i) {
+    io_map_dispatch(0, 0xC0F8, 1, static_cast<uint8_t>(i & 0xFF), 0);
+  }
+
+  // 3. Unbounded reads after a valid block read
+  std::vector<uint8_t> mock_data(512 * 2, 0);
+  for (int i = 0; i < 512; ++i) {
+    mock_data[i] = static_cast<uint8_t>(i & 0xFF);
+  }
+  TempFileGuard mock_hdv("unbounded_test.hdv", mock_data.data(),
+                         mock_data.size());
+
+  HarddiskInsertCmd_t insert{};
+  insert.drive = harddisk_drive_0;
+  strncpy(insert.path, mock_hdv.path, sizeof(insert.path) - 1);
+  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  peripheral_manager_think(0);
+
+  // Read Block 0
+  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);  // Drive 0
+  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read command
+  io_map_dispatch(0, 0xC0F6, 1, 0x00, 0);  // Block 0 Lo
+  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 0 Hi
+  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Execute command
+
+  // Read 512 bytes correctly
+  for (int i = 0; i < 512; ++i) {
+    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    CHECK(val == static_cast<uint8_t>(i & 0xFF));
+  }
+
+  // Read beyond 512 bytes (513+ times) - should return 0x00 and not throw or
+  // crash
+  for (int i = 512; i < 1024; ++i) {
+    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    CHECK(val == 0x00);
+  }
+
+  // Eject
+  HarddiskEjectCmd_t eject{};
+  eject.drive = harddisk_drive_0;
+  peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
+  peripheral_manager_think(0);
 
   linapple_shutdown();
 }

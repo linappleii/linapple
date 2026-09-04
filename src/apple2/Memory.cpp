@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -174,28 +176,37 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   if (addr < IO_RANGE_BEGIN || addr > IO_RANGE_END) {
     return io_null(pc, addr, write, d, cycles);
   }
-  if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
-    uint8_t index = static_cast<uint8_t>(addr & 0xFF);
-    if (write) {
-      if (IOWrite[index] != nullptr) {
-        return IOWrite[index](pc, addr, write, d, cycles);
+  try {
+    if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
+      uint8_t index = static_cast<uint8_t>(addr & 0xFF);
+      if (write) {
+        if (IOWrite[index] != nullptr) {
+          return IOWrite[index](pc, addr, write, d, cycles);
+        }
+      } else {
+        if (IORead[index] != nullptr) {
+          return IORead[index](pc, addr, write, d, cycles);
+        }
       }
     } else {
-      if (IORead[index] != nullptr) {
-        return IORead[index](pc, addr, write, d, cycles);
+      uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
+      if (write) {
+        if (IOWrite[NUM_PAGES_64K + page] != nullptr) {
+          return IOWrite[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
+        }
+      } else {
+        if (IORead[NUM_PAGES_64K + page] != nullptr) {
+          return IORead[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
+        }
       }
     }
-  } else {
-    uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
-    if (write) {
-      if (IOWrite[NUM_PAGES_64K + page] != nullptr) {
-        return IOWrite[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
-      }
-    } else {
-      if (IORead[NUM_PAGES_64K + page] != nullptr) {
-        return IORead[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
-      }
-    }
+  } catch (const std::exception& e) {
+    Logger::error("Exception during I/O dispatch at addr $%04X (PC $%04X): %s",
+                  addr, pc, e.what());
+  } catch (...) {
+    Logger::error(
+        "Unknown exception during I/O dispatch at addr $%04X (PC $%04X)", addr,
+        pc);
   }
   return io_null(pc, addr, write, d, cycles);
 }

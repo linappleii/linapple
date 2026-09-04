@@ -276,12 +276,12 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
 
     case hd_io_cmd_read:
       peripheral_ptr->activity_status = harddisk_status_read;
+      active_drive.buffer_ptr = 0;
       if (active_drive.driver->read_block(
               active_drive.driver_instance, active_drive.disk_block,
               active_drive.data_buffer.data()) == harddisk_err_none) {
         active_drive.error_code = 0;
         io_status = 0;
-        active_drive.buffer_ptr = 0;
       } else {
         active_drive.error_code = 1;
         io_status = status::io_error;
@@ -290,6 +290,7 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
 
     case hd_io_cmd_write:
       peripheral_ptr->activity_status = harddisk_status_write;
+      active_drive.buffer_ptr = 0;
       // Safety: Verify memory address before copying
       if (static_cast<uint32_t>(active_drive.memory_address) +
               physical::block_size <=
@@ -334,8 +335,9 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
                    remaining_cycles);
   }
 
-  auto& active_drive = peripheral_ptr->drives.at(static_cast<size_t>(
-      peripheral_ptr->unit_num >> physical::unit_num_drive_bit));
+  const size_t drive_idx = static_cast<size_t>(
+      (peripheral_ptr->unit_num >> physical::unit_num_drive_bit) & 1);
+  auto& active_drive = peripheral_ptr->drives.at(drive_idx);
 
   if (is_write == 0) {  // Read
     switch (addr) {
@@ -365,8 +367,12 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
         result = static_cast<uint8_t>(active_drive.disk_block >> 8);
         break;
       case regs::buffer:
-        result = active_drive.data_buffer.at(active_drive.buffer_ptr);
-        active_drive.buffer_ptr++;
+        if (active_drive.buffer_ptr < active_drive.data_buffer.size()) {
+          result = active_drive.data_buffer.at(active_drive.buffer_ptr);
+          active_drive.buffer_ptr++;
+        } else {
+          result = 0x00;
+        }
         break;
       default:
         return io_null(program_counter, addr, is_write, data_value,
@@ -395,6 +401,12 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
       case regs::diskblock_hi:
         active_drive.disk_block = static_cast<uint16_t>(
             (active_drive.disk_block & 0x00FF) | (data_value << 8));
+        break;
+      case regs::buffer:
+        if (active_drive.buffer_ptr < active_drive.data_buffer.size()) {
+          active_drive.data_buffer.at(active_drive.buffer_ptr) = data_value;
+          active_drive.buffer_ptr++;
+        }
         break;
       default:
         return io_null(program_counter, addr, is_write, data_value,
