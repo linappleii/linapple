@@ -353,6 +353,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Determine Version Tag
         id: vars
         run: |
@@ -361,6 +364,18 @@ jobs:
             TAG="${{ inputs.tag_name || 'v3.0.0' }}"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract Tag Message
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          git fetch --tags --force
+          TAG_MSG="$(git tag -l --format='%(contents)' "${TAG}")"
+          if [ -z "$TAG_MSG" ]; then
+            TAG_MSG="$(git log -1 --format='%B' "${TAG}")"
+          fi
+          echo "$TAG_MSG" > release_notes.md
+          echo "### Extracted Release Notes:"
+          cat release_notes.md
 
       - name: Download all built artifacts
         uses: actions/download-artifact@v4
@@ -381,7 +396,8 @@ jobs:
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: LinApple ${{ steps.vars.outputs.tag }}
+          body_path: release_notes.md
           files: release-files/*
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
           prerelease: false
