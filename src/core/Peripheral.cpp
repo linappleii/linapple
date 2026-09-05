@@ -79,9 +79,9 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return ap.readC0(ap.instance, pc, addr, write, d, cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d readC0: %s", slot, e.what());
+        Logger::error("Exception in slot %d readC0: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d readC0", slot);
+        Logger::error("Unknown exception in slot %d readC0\n", slot);
       }
     }
   }
@@ -96,9 +96,9 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return ap.writeC0(ap.instance, pc, addr, write, d, cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d writeC0: %s", slot, e.what());
+        Logger::error("Exception in slot %d writeC0: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d writeC0", slot);
+        Logger::error("Unknown exception in slot %d writeC0\n", slot);
       }
     }
   }
@@ -113,9 +113,9 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return ap.readCx(ap.instance, pc, addr, write, d, cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d readCx: %s", slot, e.what());
+        Logger::error("Exception in slot %d readCx: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d readCx", slot);
+        Logger::error("Unknown exception in slot %d readCx\n", slot);
       }
     }
   }
@@ -130,9 +130,9 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return ap.writeCx(ap.instance, pc, addr, write, d, cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d writeCx: %s", slot, e.what());
+        Logger::error("Exception in slot %d writeCx: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d writeCx", slot);
+        Logger::error("Unknown exception in slot %d writeCx\n", slot);
       }
     }
   }
@@ -149,10 +149,10 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
             g_direct_io_handlers.at(i).instance, pc, addr, write, d,
             cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in direct IO read at $%04X: %s", addr,
+        Logger::error("Exception in direct IO read at $%04X: %s\n", addr,
                       e.what());
       } catch (...) {
-        Logger::error("Unknown exception in direct IO read at $%04X", addr);
+        Logger::error("Unknown exception in direct IO read at $%04X\n", addr);
       }
     }
   }
@@ -169,10 +169,10 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
             g_direct_io_handlers.at(i).instance, pc, addr, write, d,
             cycles_left);
       } catch (const std::exception& e) {
-        Logger::error("Exception in direct IO write at $%04X: %s", addr,
+        Logger::error("Exception in direct IO write at $%04X: %s\n", addr,
                       e.what());
       } catch (...) {
-        Logger::error("Unknown exception in direct IO write at $%04X", addr);
+        Logger::error("Unknown exception in direct IO write at $%04X\n", addr);
       }
     }
   }
@@ -275,7 +275,7 @@ static auto host_register_direct_io(void* instance, uint16_t addr,
                                     PeripheralIOHandler read,
                                     PeripheralIOHandler write) -> void {
   if (g_num_direct_handlers >= io_direct_count) {
-    Logger::error("Too many direct IO handlers registered!");
+    Logger::error("Too many direct IO handlers registered!\n");
     return;
   }
 

@@ -396,12 +396,15 @@ auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
 
   split_path(g_sync_config.file_path, &g_watch_dir, &g_watch_filename);
 
+  // Clear live sync file on disk at startup so stale programs from previous
+  // runs do not clobber boot
+  {
+    std::ofstream out(g_sync_config.file_path, std::ios::out | std::ios::trunc);
+  }
+
   struct stat st{};
   if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
     g_last_file_mtime = st.st_mtime;
-    if (st.st_size > 0) {
-      g_initial_import_pending = true;
-    }
   } else {
     g_last_file_mtime = 0;
   }
@@ -425,7 +428,7 @@ auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
   }
 #endif
 
-  Logger::info("BasicLiveSync: initialized for '%s' (mode: %s)", file_path,
+  Logger::info("BasicLiveSync: initialized for '%s' (mode: %s)\n", file_path,
                mode == basic_line_mode_positional ? "positional" : "explicit");
 }
 
@@ -551,15 +554,15 @@ auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
 
 auto basic_sync_import_from_string(const std::string& text,
                                    BasicLineMode_t mode) -> bool {
-  uint16_t txttab = read_zero_page_16(addr_txttab, default_txttab);
-  if (txttab == 0) {
-    txttab = default_txttab;
-    write_zero_page_16(addr_txttab, default_txttab);
-  }
   uint16_t himem = read_zero_page_16(addr_himem, default_himem);
   if (himem == 0 || himem > hard_himem_ceiling) {
     himem = default_himem;
     write_zero_page_16(addr_himem, default_himem);
+  }
+  uint16_t txttab = read_zero_page_16(addr_txttab, default_txttab);
+  if (txttab < default_txttab || txttab >= himem) {
+    txttab = default_txttab;
+    write_zero_page_16(addr_txttab, default_txttab);
   }
 
   // Applesoft expects the byte immediately preceding TXTTAB to be 0x00
@@ -660,7 +663,8 @@ auto basic_sync_import_from_string(const std::string& text,
     size_t line_size = 4 + line.token_bytes.size() + 1;
     if (current_addr + line_size + 2 >= himem) {
       Logger::warning(
-          "BasicLiveSync: Program exceeded HIMEM ($%04X). Truncated at line %u",
+          "BasicLiveSync: Program exceeded HIMEM ($%04X). Truncated at line "
+          "%u\n",
           himem, line.line_number);
       break;
     }
@@ -704,8 +708,9 @@ auto basic_sync_import_from_string(const std::string& text,
   g_last_exported_hash = compute_program_hash();
   g_last_file_content_hash = compute_string_hash(text);
 
-  Logger::info("BasicLiveSync: Injected %zu BASIC lines into RAM ($%04X-$%04X)",
-               lines.size(), txttab, current_addr);
+  Logger::info(
+      "BasicLiveSync: Injected %zu BASIC lines into RAM ($%04X-$%04X)\n",
+      lines.size(), txttab, current_addr);
   return true;
 }
 
@@ -730,7 +735,7 @@ auto basic_sync_export_file() -> bool {
 
   std::ofstream out(g_sync_config.file_path, std::ios::out | std::ios::trunc);
   if (!out.is_open()) {
-    Logger::warning("BasicLiveSync: Unable to open file '%s' for writing",
+    Logger::warning("BasicLiveSync: Unable to open file '%s' for writing\n",
                     g_sync_config.file_path.c_str());
     return false;
   }

@@ -12,20 +12,23 @@ default settings (modern SDL3 frontend and all hardware enabled):
 Choose your Linux distribution:
 
 ```bash
-# Debian / Ubuntu / Linux Mint / Pop!_OS / Raspberry Pi OS
-sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev     libcurl4-openssl-dev zlib1g-dev imagemagick libsdl3-dev libsdl3-image-dev
+# Debian 13+ / Ubuntu 24.10+ / Linux Mint / Pop!_OS / Raspberry Pi OS
+sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl3-dev libsdl3-image-dev
+
+# Debian 12 / Ubuntu 24.04 / Linux Mint / Pop!_OS
+sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl2-dev libsdl2-image-dev
 
 # Arch Linux / Manjaro / EndeavourOS / CachyOS
-sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib     imagemagick sdl3 sdl3_image
+sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib imagemagick sdl3 sdl3_image
 
 # Fedora / RHEL / AlmaLinux / Rocky Linux
-sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel     ImageMagick SDL3-devel SDL3_image-devel
+sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel SDL3_image-devel
 
 # openSUSE (Tumbleweed / Leap)
-sudo zypper install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel     ImageMagick SDL3-devel SDL3_image-devel
+sudo zypper install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel SDL3_image-devel
 
 # Alpine Linux
-sudo apk add git g++ cmake make libzip-dev curl-dev zlib-dev imagemagick     sdl3-dev sdl3_image-dev
+sudo apk add git g++ cmake make libzip-dev curl-dev zlib-dev imagemagick sdl3-dev sdl3_image-dev
 ```
 
 *(For older distributions where SDL3 is not yet packaged, see the
@@ -39,6 +42,9 @@ cd linapple
 
 # Configure build directory (skipping tests for fastest build time)
 cmake -B build -DBUILD_TESTING=OFF
+
+# The following must build for SDL2: Debian 12 / Ubuntu 24.04 / Linux Mint / Pop!_OS
+cmake -B build -DBUILD_TESTING=OFF -DFRONTEND=sdl2
 
 # Compile across all CPU cores
 cmake --build build -j$(nproc)
