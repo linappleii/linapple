@@ -987,6 +987,10 @@ auto mem_check_slotcxrom() -> bool {
 }
 
 auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
+  if (g_active_memory == nullptr || g_active_memory->memaux == nullptr ||
+      mem == nullptr) {
+    return nullptr;
+  }
   uint8_t* result = (g_active_memory->memshadow[(offset >> 8)] ==
                      (g_active_memory->memaux + (offset & PAGE_MASK)))
                         ? mem + offset
@@ -1012,6 +1016,10 @@ auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
 }
 
 auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
+  if (g_active_memory == nullptr || g_active_memory->memmain == nullptr ||
+      mem == nullptr) {
+    return nullptr;
+  }
   return (g_active_memory->memshadow[(offset >> 8)] ==
           (g_active_memory->memmain + (offset & 0xFF00)))
              ? mem + offset

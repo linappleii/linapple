@@ -87,3 +87,25 @@ TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
     CHECK(config.caps_lock_mode == CAPS_MODE_HOST);
   }
 }
+
+TEST_CASE("AppArgs: Upgrade Config Arguments") {
+  char* argv[] = {(char*)"linapple", (char*)"--upgrade-config",
+                  (char*)"/tmp/custom_target.toml"};
+  AppConfig_t config = {};
+  int result = app_args_parse(3, argv, &config);
+  CHECK(result == 0);
+  CHECK(config.is_upgrade_config == true);
+  CHECK(strcmp(config.upgrade_target_path.data(), "/tmp/custom_target.toml") ==
+        0);
+  CHECK(config.intent == INTENT_DIAGNOSTIC);
+}
+
+TEST_CASE("AppArgs: Upgrade Config Default Target") {
+  char* argv[] = {(char*)"linapple", (char*)"--upgrade-config"};
+  AppConfig_t config = {};
+  int result = app_args_parse(2, argv, &config);
+  CHECK(result == 0);
+  CHECK(config.is_upgrade_config == true);
+  CHECK(config.upgrade_target_path[0] == '\0');
+  CHECK(config.intent == INTENT_DIAGNOSTIC);
+}

@@ -893,7 +893,9 @@ static Peripheral_t g_mouse_peripheral = {
     .save_state = mouse_abi_save_state,
     .load_state = mouse_abi_load_state,
     .command = mouse_abi_command,
-    .query = mouse_abi_query};
+    .query = mouse_abi_query,
+    .get_config_schema = nullptr,
+    .configure = nullptr};
 
 extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
   return &g_mouse_peripheral;

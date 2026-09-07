@@ -15,9 +15,9 @@ extern "C" {
 #endif
 
 #ifdef __cplusplus
-constexpr int LINAPPLE_ABI_VERSION = 0;
+constexpr int LINAPPLE_ABI_VERSION = 1;
 #else
-#define LINAPPLE_ABI_VERSION 0
+#define LINAPPLE_ABI_VERSION 1
 #endif
 
 enum {
@@ -84,6 +84,9 @@ typedef struct Peripheral_t {
                                 const void* data, size_t size);
   PeripheralStatus_t (*query)(void* instance, uint32_t cmd_id, void* out,
                               size_t* out_size);
+  const PeripheralConfigSchema_t* (*get_config_schema)(void);
+  PeripheralStatus_t (*configure)(void* instance, const char* key,
+                                  const char* value);
 } Peripheral_t;
 
 #ifdef BUILD_SHARED_PERIPHERAL
@@ -116,10 +119,18 @@ typedef struct Peripheral_t {
 int peripheral_register(Peripheral_t* api, int slot);
 void peripheral_register_builtin(Peripheral_t* api);
 int peripheral_unregister(int slot);
+bool peripheral_is_slot_empty(int slot);
+const Peripheral_t* peripheral_get_registered(int slot);
 PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
                                       const void* data, size_t size);
 PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
                                     size_t* out_size);
+const PeripheralConfigSchema_t* peripheral_get_config_schema(int slot);
+PeripheralStatus_t peripheral_configure(int slot, const char* key,
+                                        const char* value);
+Peripheral_t* peripheral_find_builtin(const char* id);
+const PeripheralConfigSchema_t* peripheral_get_config_schema_by_id(
+    const char* id);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 void peripheral_load_state(int slot, const void* buffer, size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,

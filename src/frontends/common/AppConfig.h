@@ -40,6 +40,8 @@ struct AppConfig_t {
 
   bool is_list_hardware = false;
   std::array<char, path_max_len> hardware_info_name = {};
+  bool is_upgrade_config = false;
+  std::array<char, path_max_len> upgrade_target_path = {};
 
   // Test/Diagnostic fields
   std::array<char, path_max_len> test_cpu_file = {};

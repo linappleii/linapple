@@ -55,7 +55,9 @@ static Peripheral_t g_mock_peripheral = {
     nullptr,  // save_state
     nullptr,  // load_state
     nullptr,  // command
-    nullptr   // query
+    nullptr,  // query
+    nullptr,  // get_config_schema
+    nullptr   // configure
 };
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
@@ -150,6 +152,8 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
       nullptr,
       nullptr,
       nullptr,
+      nullptr,
+      nullptr,
       nullptr};
 
   // Set some config values
@@ -218,6 +222,8 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
         }
         return peripheral_ok;
       },
+      nullptr,
+      nullptr,
       nullptr};
 
   peripheral_register(&test_api, 1);
@@ -321,6 +327,8 @@ TEST_CASE(
                                    "1.0.0",
                                    0xFF,
                                    -1,
+                                   nullptr,
+                                   nullptr,
                                    nullptr,
                                    nullptr,
                                    nullptr,

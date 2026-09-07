@@ -809,6 +809,43 @@ static auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+static const char* const g_mb_allowed_types[] = {"Mockingboard", "Phasor",
+                                                 nullptr};
+
+static const PeripheralConfigOption_t g_mb_config_options[] = {
+    {"Type", "Mockingboard hardware model (Mockingboard or Phasor)",
+     "Mockingboard", peripheral_config_enum, g_mb_allowed_types, 0, 0},
+    {"Volume", "Mockingboard playback volume (0-100)", "50",
+     peripheral_config_int, nullptr, 0, 100}};
+
+static const PeripheralConfigSchema_t g_mb_config_schema = {
+    g_mb_config_options,
+    sizeof(g_mb_config_options) / sizeof(g_mb_config_options[0])};
+
+static auto mb_abi_get_config_schema() -> const PeripheralConfigSchema_t* {
+  return &g_mb_config_schema;
+}
+
+static auto mb_abi_configure(void* instance, const char* key, const char* value)
+    -> PeripheralStatus_t {
+  if (instance == nullptr || key == nullptr || value == nullptr) {
+    return peripheral_error;
+  }
+  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  if (std::strcmp(key, "Type") == 0) {
+    if (std::strcmp(value, "Phasor") == 0) {
+      mp->type = SoundCardType_t::phasor;
+    } else {
+      mp->type = SoundCardType_t::mockingboard;
+    }
+    return peripheral_ok;
+  }
+  if (std::strcmp(key, "Volume") == 0) {
+    return peripheral_ok;
+  }
+  return peripheral_incompatible;
+}
+
 static Peripheral_t g_mockingboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
@@ -826,7 +863,9 @@ static Peripheral_t g_mockingboard_peripheral = {
     .save_state = mb_abi_save_state,
     .load_state = mb_abi_load_state,
     .command = nullptr,
-    .query = nullptr};
+    .query = nullptr,
+    .get_config_schema = mb_abi_get_config_schema,
+    .configure = mb_abi_configure};
 
 auto mockingboard_get_descriptor() -> Peripheral_t* {
   return &g_mockingboard_peripheral;

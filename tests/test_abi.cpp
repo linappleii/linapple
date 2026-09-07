@@ -121,6 +121,8 @@ static Peripheral_t g_dummy_peripheral = {
     nullptr,  // load
     Dummy_Command,
     Dummy_Query,
+    nullptr,  // get_config_schema
+    nullptr,  // configure
 };
 
 // --- Test Cases ---

@@ -39,7 +39,7 @@ constexpr size_t HELP_TOTAL_LINE_COUNT =
 
 constexpr std::array<const char*, HELP_HEADER_LINE_COUNT> HELP_HEADER_STRINGS =
     {{"Welcome to LinApple - Apple][ emulator for Linux!",
-      "Conf file is linapple.conf in current directory by default",
+      "Config is loaded from linapple.toml (or legacy linapple.conf)",
       "Archive of Apple ][ software: ftp.apple.asimov.net"}};
 
 constexpr std::array<HelpLine_t, HELP_BODY_LINE_COUNT> HELP_BODY_LINES = {{

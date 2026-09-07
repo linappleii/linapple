@@ -1714,6 +1714,10 @@ auto video_perform_refresh() -> void {
     }
   }
 
+  if (mem_get_main_ptr(0x0400) == nullptr) {
+    return;
+  }
+
   uint8_t* addr = framebufferbits;
   int pitch = SCREEN_WIDTH;
   create_frame_offset_table(addr, pitch);
@@ -1726,20 +1730,43 @@ auto video_perform_refresh() -> void {
   } else {
     // One-level pipelining to allow CPU emulation to run concurrently without
     // display glitches.
-    memcpy(display_pipeline_, mem_get_aux_ptr(0x2000 << displaypage2_latched),
-           0x2000);
-    memcpy(display_pipeline_ + 0x2000,
-           mem_get_main_ptr(0x2000 << displaypage2_latched), 0x2000);
-    memcpy(display_pipeline_ + 0x4000,
-           mem_get_aux_ptr(0x0400 << displaypage2_latched), 0x0400);
-    memcpy(display_pipeline_ + 0x4400,
-           mem_get_main_ptr(0x0400 << displaypage2_latched), 0x0400);
+    const uint8_t* aux_hires = mem_get_aux_ptr(0x2000 << displaypage2_latched);
+    const uint8_t* main_hires =
+        mem_get_main_ptr(0x2000 << displaypage2_latched);
+    const uint8_t* aux_text = mem_get_aux_ptr(0x0400 << displaypage2_latched);
+    const uint8_t* main_text = mem_get_main_ptr(0x0400 << displaypage2_latched);
+
+    if (aux_hires != nullptr) {
+      memcpy(display_pipeline_, aux_hires, 0x2000);
+    } else {
+      memset(display_pipeline_, 0, 0x2000);
+    }
+    if (main_hires != nullptr) {
+      memcpy(display_pipeline_ + 0x2000, main_hires, 0x2000);
+    } else {
+      memset(display_pipeline_ + 0x2000, 0, 0x2000);
+    }
+    if (aux_text != nullptr) {
+      memcpy(display_pipeline_ + 0x4000, aux_text, 0x0400);
+    } else {
+      memset(display_pipeline_ + 0x4000, 0, 0x0400);
+    }
+    if (main_text != nullptr) {
+      memcpy(display_pipeline_ + 0x4400, main_text, 0x0400);
+    } else {
+      memset(display_pipeline_ + 0x4400, 0, 0x0400);
+    }
 
     g_hires_bank1 = reinterpret_cast<uint8_t*>(display_pipeline_);
     g_hires_bank0 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x2000;
     g_text_bank1 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x4000;
     g_text_bank0 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x4400;
   }
+
+  if (g_text_bank0 == nullptr) {
+    return;
+  }
+
   memset(celldirty, 0, static_cast<size_t>(40 * 32));
   UpdateFunc_t update =
       SWL_TEXT ? SWL_80COL ? update_80col_cell : update_40col_cell

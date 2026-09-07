@@ -4,10 +4,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 
 #include "EmbeddedRoms.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 
 namespace {
 
@@ -103,6 +105,34 @@ static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   (void)elapsed_cycles;
 }
 
+static const PeripheralConfigOption_t g_printer_config_options[] = {
+    {"Filename", "Output file for printed characters", "Printer.txt",
+     peripheral_config_filepath, nullptr, 0, 0},
+    {"IdleLimit", "Seconds before auto-flushing printer buffer", "10",
+     peripheral_config_int, nullptr, 0, 3600},
+    {"Append", "Append to existing printer output file instead of overwriting",
+     "true", peripheral_config_bool, nullptr, 0, 1}};
+
+static const PeripheralConfigSchema_t g_printer_config_schema = {
+    g_printer_config_options,
+    sizeof(g_printer_config_options) / sizeof(g_printer_config_options[0])};
+
+static auto printer_abi_get_config_schema() -> const PeripheralConfigSchema_t* {
+  return &g_printer_config_schema;
+}
+
+static auto printer_abi_configure(void* instance, const char* key,
+                                  const char* value) -> PeripheralStatus_t {
+  if (instance == nullptr || key == nullptr || value == nullptr) {
+    return peripheral_error;
+  }
+  if (std::strcmp(key, "Filename") == 0 || std::strcmp(key, "IdleLimit") == 0 ||
+      std::strcmp(key, "Append") == 0) {
+    return peripheral_ok;
+  }
+  return peripheral_incompatible;
+}
+
 }  // namespace
 
 static Peripheral_t g_printer_peripheral = {
@@ -122,7 +152,9 @@ static Peripheral_t g_printer_peripheral = {
     .save_state = nullptr,
     .load_state = nullptr,
     .command = nullptr,
-    .query = nullptr};
+    .query = nullptr,
+    .get_config_schema = printer_abi_get_config_schema,
+    .configure = printer_abi_configure};
 
 auto printer_get_descriptor() -> Peripheral_t* { return &g_printer_peripheral; }
 

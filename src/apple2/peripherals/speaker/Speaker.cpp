@@ -282,7 +282,9 @@ static Peripheral_t g_speaker_peripheral = {
     .save_state = speaker_save_state,
     .load_state = speaker_load_state,
     .command = nullptr,
-    .query = speaker_query};
+    .query = speaker_query,
+    .get_config_schema = nullptr,
+    .configure = nullptr};
 
 }  // namespace
 

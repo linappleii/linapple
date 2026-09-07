@@ -387,7 +387,9 @@ static Peripheral_t g_joystick_peripheral = {
     .save_state = joystick_abi_save_state,
     .load_state = joystick_abi_load_state,
     .command = joystick_abi_command,
-    .query = joystick_abi_query};
+    .query = joystick_abi_query,
+    .get_config_schema = nullptr,
+    .configure = nullptr};
 
 auto joystick_get_descriptor() -> Peripheral_t* {
   return &g_joystick_peripheral;

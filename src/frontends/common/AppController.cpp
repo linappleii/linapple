@@ -25,6 +25,9 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "core/config/ConfigDiscovery.h"
+#include "core/config/ConfigDispatch.h"
+#include "core/config/ConfigMigration.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppEnvironment.h"
@@ -50,6 +53,38 @@ static void initialize_directory(const char* reg_key, char* target_buffer,
     util_safe_strcpy(target_buffer, path.c_str(), buffer_size);
     Path::ensure_dir_exists(path);
   }
+}
+
+static auto resolve_disk_path(const AppConfig_t* config, size_t drive_idx,
+                              const char* key_name, const char* legacy_reg_key)
+    -> std::string {
+  if (drive_idx < config->disk_path.size() &&
+      config->disk_path.at(drive_idx).at(0) != '\0') {
+    return config->disk_path.at(drive_idx).data();
+  }
+
+  const auto& lin_cfg = app_env_get_config();
+  if (lin_cfg.raw_doc != nullptr) {
+    const auto* s6_tbl =
+        toml_find_table(lin_cfg.raw_doc.get(), "Peripheral.DiskII.Slot6");
+    if (s6_tbl != nullptr && toml_table_has_key(s6_tbl, key_name)) {
+      return toml_table_get_string(s6_tbl, key_name, "");
+    }
+    const auto* d2_tbl =
+        toml_find_table(lin_cfg.raw_doc.get(), "Peripheral.DiskII");
+    if (d2_tbl != nullptr && toml_table_has_key(d2_tbl, key_name)) {
+      return toml_table_get_string(d2_tbl, key_name, "");
+    }
+  }
+
+  std::string disk;
+  if (config_load_string("Slots", legacy_reg_key, &disk) ||
+      config_load_string("Configuration", legacy_reg_key, &disk) ||
+      config_load_string("Preferences", legacy_reg_key, &disk)) {
+    return disk;
+  }
+
+  return "";
 }
 
 auto app_controller_initialize(AppConfig_t* config) -> int {
@@ -137,38 +172,15 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     return -1;
   }
   s_initialized = true;
+  config_dispatch_all(app_env_get_config());
 
-  constexpr float MIN_SCREEN_FACTOR = 0.25f;
-  constexpr float MAX_SCREEN_FACTOR = 8.0f;
   constexpr uint32_t CLKS_PER_FRAME_PAL = 20280;
-  constexpr uint32_t CLKS_PER_FRAME_NTSC = 17030;
   constexpr uint8_t HARDDISK_DEFAULT_SLOT = 7;
-
-  std::string factor_str;
-  if (config_load_string("Configuration", "Screen factor", &factor_str) ||
-      config_load_string("Configuration", "Screen Factor", &factor_str) ||
-      config_load_string("Preferences", "Screen factor", &factor_str) ||
-      config_load_string("Preferences", "Screen Factor", &factor_str)) {
-    try {
-      float factor = std::stof(factor_str);
-      if (factor >= MIN_SCREEN_FACTOR && factor <= MAX_SCREEN_FACTOR) {
-        g_state.screen_width =
-            static_cast<int>(static_cast<float>(SCREEN_WIDTH) * factor);
-        g_state.screen_height =
-            static_cast<int>(static_cast<float>(SCREEN_HEIGHT) * factor);
-      }
-    } catch (...) {
-    }
-  }
 
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
     g_state.clks_per_frame = CLKS_PER_FRAME_PAL;
-  } else {
-    g_videotype = VT_COLOR_STANDARD;
-    g_state.video_scanner_ntsc = true;
-    g_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
   }
 
   // 4. Init Snapshots
@@ -197,7 +209,9 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   g_state.mode = MODE_RUNNING;
   g_state.restart = false;
-  g_state.fullscreen = config->is_fullscreen;
+  if (config->is_fullscreen) {
+    g_state.fullscreen = true;
+  }
 
   bool disable_dbg_config = false;
   if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
@@ -258,46 +272,27 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
                                            : basic_line_mode_explicit);
   }
 
-  // Check Slot 6 Autoload and Master.dsk fallback
-  uint32_t autoload = 0;
-  bool has_autoload =
-      config_load_int("Configuration", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
-      config_load_int("Preferences", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
-      config_load_int("Slots", REGVALUE_SLOT6_AUTOLOAD, &autoload);
+  // Mount configured disk images if provided (CLI takes precedence over config)
+  const std::string disk1 =
+      resolve_disk_path(config, 0, "Drive1", REGVALUE_DISK_IMAGE1);
+  if (!disk1.empty()) {
+    DiskInsertCmd_t cmd{};
+    cmd.drive = disk_drive_0;
+    util_safe_strcpy(cmd.path, disk1.c_str(), disk_insert_path_max);
+    cmd.write_protected = 0;
+    cmd.create_if_necessary = 0;
+    peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+  }
 
-  std::string disk1;
-  bool has_disk1 =
-      (config->disk_path.at(0).at(0) != '\0') ||
-      config_load_string("Slots", REGVALUE_DISK_IMAGE1, &disk1) ||
-      config_load_string("Configuration", REGVALUE_DISK_IMAGE1, &disk1) ||
-      config_load_string("Preferences", REGVALUE_DISK_IMAGE1, &disk1);
-
-  if (config->disk_path.at(0).at(0) == '\0') {
-    if (!has_autoload || autoload == 0 || !has_disk1 || disk1.empty()) {
-      asset_insert_master_disk();
-    } else if (has_autoload && autoload != 0 && has_disk1 && !disk1.empty()) {
-      DiskInsertCmd_t cmd{};
-      cmd.drive = disk_drive_0;
-      util_safe_strcpy(cmd.path, disk1.c_str(), disk_insert_path_max);
-      cmd.write_protected = 0;
-      cmd.create_if_necessary = 0;
-      peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
-
-      std::string disk2;
-      if (config_load_string("Slots", REGVALUE_DISK_IMAGE2, &disk2) ||
-          config_load_string("Configuration", REGVALUE_DISK_IMAGE2, &disk2) ||
-          config_load_string("Preferences", REGVALUE_DISK_IMAGE2, &disk2)) {
-        if (!disk2.empty()) {
-          DiskInsertCmd_t cmd2{};
-          cmd2.drive = disk_drive_1;
-          util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
-          cmd2.write_protected = 0;
-          cmd2.create_if_necessary = 0;
-          peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2,
-                             sizeof(cmd2));
-        }
-      }
-    }
+  const std::string disk2 =
+      resolve_disk_path(config, 1, "Drive2", REGVALUE_DISK_IMAGE2);
+  if (!disk2.empty()) {
+    DiskInsertCmd_t cmd2{};
+    cmd2.drive = disk_drive_1;
+    util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
+    cmd2.write_protected = 0;
+    cmd2.create_if_necessary = 0;
+    peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2, sizeof(cmd2));
   }
 
   return 0;
@@ -315,6 +310,30 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
   }
 
   if (config->intent == INTENT_DIAGNOSTIC) {
+    if (config->is_upgrade_config) {
+      std::string src_path = (config->config_path.at(0) != '\0')
+                                 ? config->config_path.data()
+                                 : config_locate_legacy_file();
+      if (src_path.empty()) {
+        fprintf(stderr, "error: No legacy linapple.conf found to upgrade.\n");
+        return true;
+      }
+
+      std::string dst_path = (config->upgrade_target_path.at(0) != '\0')
+                                 ? config->upgrade_target_path.data()
+                                 : config_get_default_user_path();
+
+      std::string err;
+      if (!config_upgrade_legacy(src_path, dst_path, &err)) {
+        fprintf(stderr, "error: Failed to upgrade configuration: %s\n",
+                err.c_str());
+        return true;
+      }
+
+      printf("Successfully upgraded configuration from '%s' to '%s'.\n",
+             src_path.c_str(), dst_path.c_str());
+      return true;
+    }
     if (config->is_list_hardware) {
       linapple_list_hardware();
       return true;

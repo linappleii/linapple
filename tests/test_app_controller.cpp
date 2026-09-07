@@ -6,7 +6,8 @@
 #include "AppConfig.h"
 #include "Apple2Types.h"
 #include "DiskCommands.h"
-#include "Peripheral_Types.h"
+#include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <unistd.h>
 
@@ -133,9 +134,18 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
   app_controller_shutdown();
 }
 
-TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
+TEST_CASE("AppController: Drive 0 Remains Empty When No Disks Configured") {
+  const char* toml_path = "/tmp/test_empty_app_controller.toml";
+  {
+    std::ofstream out(toml_path);
+    out << "[Core]\n";
+    out << "[Peripheral.DiskII]\n";
+    out << "Drive1 = \"\"\n";
+  }
+
   AppConfig_t config = {};
   app_config_default(&config);
+  util_safe_strcpy(config.config_path.data(), toml_path, path_max_len);
   app_env_resolve_paths(&config);
 
   int result = app_controller_initialize(&config);
@@ -145,29 +155,25 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
     peripheral_manager_think(100);
   }
 
-  // Check if Master.dsk was automatically inserted into drive 0
+  // Check that Drive 0 remains empty
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
   PeripheralStatus_t res = peripheral_query(
       disk_default_slot, disk_cmd_get_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
-  CHECK(status.drive0_loaded == 1);
-
-  std::string disk1_path =
-      Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
-  CHECK(disk1_path.find("Master.dsk") != std::string::npos);
+  CHECK(status.drive0_loaded == 0);
 
   app_controller_shutdown();
+  unlink(toml_path);
 }
 
-TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
+TEST_CASE("AppController: Configured Disk Image Loaded at Startup") {
   const char* conf_path = "/tmp/test_autoload_linapple.conf";
   std::string master_path = Path::find_data_file("Master.dsk");
   {
     std::ofstream out(conf_path);
     out << "[Configuration]\n";
-    out << "Slot 6 Autoload = 1\n";
     out << "Disk Image 1 = " << master_path << "\n";
   }
 
@@ -193,4 +199,78 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
 
   app_controller_shutdown();
   unlink(conf_path);
+}
+
+TEST_CASE("AppController: Modern TOML Initialization and Dispatch") {
+  const char* toml_path = "/tmp/test_modern_app_controller.toml";
+  {
+    std::ofstream out(toml_path);
+    out << R"(
+[Core]
+Machine = "Apple //e"
+EmulationSpeed = 2.0
+
+[Video]
+VideoStandard = "PAL"
+VideoEmulation = "Color TV Emulation"
+ScreenFactor = 1.5
+
+[Slots]
+Slot1 = "Parallel Printer"
+Slot2 = "Super Serial Card"
+Slot6 = "Disk II"
+
+[Peripheral.ParallelPrinter]
+Filename = "/tmp/test_printer_out.txt"
+IdleLimit = 15
+Append = true
+)";
+  }
+
+  AppConfig_t config = {};
+  app_config_default(&config);
+  util_safe_strcpy(config.config_path.data(), toml_path, path_max_len);
+
+  app_env_resolve_paths(&config);
+  int result = app_controller_initialize(&config);
+  CHECK(result == 0);
+
+  CHECK(g_apple2_type == A2TYPE_APPLE2E);
+  CHECK(g_videotype == VT_COLOR_TVEMU);
+  CHECK(g_state.screen_width == 840);
+  CHECK(g_state.screen_height == 576);
+
+  // Check peripheral registered in Slot 1
+  const Peripheral_t* slot1 = peripheral_get_registered(1);
+  REQUIRE(slot1 != nullptr);
+  CHECK(std::string(slot1->id) == "linapple.printer");
+
+  app_controller_shutdown();
+  unlink(toml_path);
+}
+
+TEST_CASE("AppController: Upgrade Config Diagnostic Handler") {
+  const char* legacy_in = "/tmp/test_diag_upgrade.conf";
+  const char* modern_out = "/tmp/test_diag_upgrade.toml";
+  unlink(legacy_in);
+  unlink(modern_out);
+
+  {
+    std::ofstream out(legacy_in);
+    out << "[Configuration]\nComputer Emulation = 2\n";
+  }
+
+  AppConfig_t config = {};
+  app_config_default(&config);
+  config.is_upgrade_config = true;
+  config.intent = INTENT_DIAGNOSTIC;
+  util_safe_strcpy(config.config_path.data(), legacy_in, path_max_len);
+  util_safe_strcpy(config.upgrade_target_path.data(), modern_out, path_max_len);
+
+  bool handled = app_controller_handle_diagnostic_commands(&config);
+  CHECK(handled == true);
+  CHECK(access(modern_out, R_OK) == 0);
+
+  unlink(legacy_in);
+  unlink(modern_out);
 }

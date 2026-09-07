@@ -57,5 +57,7 @@ Peripheral_t g_test_c_peripheral = {
     NULL,  // save_state
     NULL,  // load_state
     NULL,  // command
-    NULL   // query
+    NULL,  // query
+    NULL,  // get_config_schema
+    NULL   // configure
 };

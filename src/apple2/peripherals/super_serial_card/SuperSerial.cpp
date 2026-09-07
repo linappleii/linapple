@@ -301,6 +301,35 @@ auto super_serial_load_state(void* instance, const void* state_buffer,
   return peripheral_ok;
 }
 
+static const PeripheralConfigOption_t g_ssc_config_options[] = {
+    {"Port", "Host serial port device path (or /dev/null)", "/dev/null",
+     peripheral_config_string, nullptr, 0, 0},
+    {"Baud", "Baud rate (e.g. 9600, 19200, 115200)", "9600",
+     peripheral_config_int, nullptr, 300, 115200},
+    {"Loopback", "Echo transmitted data back to receiver", "false",
+     peripheral_config_bool, nullptr, 0, 1}};
+
+static const PeripheralConfigSchema_t g_ssc_config_schema = {
+    g_ssc_config_options,
+    sizeof(g_ssc_config_options) / sizeof(g_ssc_config_options[0])};
+
+static auto super_serial_get_config_schema()
+    -> const PeripheralConfigSchema_t* {
+  return &g_ssc_config_schema;
+}
+
+static auto super_serial_configure(void* instance, const char* key,
+                                   const char* value) -> PeripheralStatus_t {
+  if (instance == nullptr || key == nullptr || value == nullptr) {
+    return peripheral_error;
+  }
+  if (std::strcmp(key, "Port") == 0 || std::strcmp(key, "Baud") == 0 ||
+      std::strcmp(key, "Loopback") == 0) {
+    return peripheral_ok;
+  }
+  return peripheral_incompatible;
+}
+
 static Peripheral_t g_ssc_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
@@ -318,7 +347,9 @@ static Peripheral_t g_ssc_peripheral = {
     .save_state = super_serial_save_state,
     .load_state = super_serial_load_state,
     .command = super_serial_abi_command,
-    .query = super_serial_abi_query};
+    .query = super_serial_abi_query,
+    .get_config_schema = super_serial_get_config_schema,
+    .configure = super_serial_configure};
 
 }  // namespace
 

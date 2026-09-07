@@ -615,6 +615,25 @@ auto peripheral_unregister(int slot) -> int {
   return 0;
 }
 
+auto peripheral_is_slot_empty(int slot) -> bool {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return true;
+  }
+  return g_active_peripherals.at(static_cast<size_t>(slot)).empty();
+}
+
+auto peripheral_get_registered(int slot) -> const Peripheral_t* {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return nullptr;
+  }
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
+  if (slot_peripherals.empty()) {
+    return nullptr;
+  }
+  return slot_peripherals.front().api;
+}
+
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
@@ -646,6 +665,67 @@ auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
     }
   }
   return peripheral_error;
+}
+
+auto peripheral_get_config_schema(int slot) -> const PeripheralConfigSchema_t* {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return nullptr;
+  }
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
+  if (slot_peripherals.empty()) {
+    return nullptr;
+  }
+  for (const auto& ap : slot_peripherals) {
+    if (ap.api != nullptr && ap.api->get_config_schema != nullptr) {
+      return ap.api->get_config_schema();
+    }
+  }
+  return nullptr;
+}
+
+auto peripheral_configure(int slot, const char* key, const char* value)
+    -> PeripheralStatus_t {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || key == nullptr ||
+      value == nullptr) {
+    return peripheral_error;
+  }
+  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  if (slot_peripherals.empty()) {
+    return peripheral_error;
+  }
+  bool any_supported = false;
+  for (auto& ap : slot_peripherals) {
+    if (ap.api != nullptr && ap.api->configure != nullptr) {
+      any_supported = true;
+      PeripheralStatus_t status = ap.api->configure(ap.instance, key, value);
+      if (status != peripheral_incompatible) {
+        return status;
+      }
+    }
+  }
+  return any_supported ? peripheral_incompatible : peripheral_error;
+}
+
+auto peripheral_find_builtin(const char* id) -> Peripheral_t* {
+  if (id == nullptr) {
+    return nullptr;
+  }
+  for (auto* p : peripheral_get_builtin_registry()) {
+    if (p != nullptr && p->id != nullptr && strcmp(p->id, id) == 0) {
+      return p;
+    }
+  }
+  return nullptr;
+}
+
+auto peripheral_get_config_schema_by_id(const char* id)
+    -> const PeripheralConfigSchema_t* {
+  Peripheral_t* p = peripheral_find_builtin(id);
+  if (p != nullptr && p->get_config_schema != nullptr) {
+    return p->get_config_schema();
+  }
+  return nullptr;
 }
 
 auto peripheral_get_manifest(void* manifest_ptr) -> void {

@@ -621,6 +621,51 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
 
   return peripheral_ok;
 }
+
+static const PeripheralConfigOption_t g_harddisk_config_options[] = {
+    {"Drive1", "Hard disk unit 1 image path", "", peripheral_config_filepath,
+     nullptr, 0, 0},
+    {"Drive2", "Hard disk unit 2 image path", "", peripheral_config_filepath,
+     nullptr, 0, 0}};
+
+static const PeripheralConfigSchema_t g_harddisk_config_schema = {
+    g_harddisk_config_options,
+    sizeof(g_harddisk_config_options) / sizeof(g_harddisk_config_options[0])};
+
+static auto harddisk_abi_get_config_schema()
+    -> const PeripheralConfigSchema_t* {
+  return &g_harddisk_config_schema;
+}
+
+static auto harddisk_abi_configure(void* instance, const char* key,
+                                   const char* value) -> PeripheralStatus_t {
+  if (instance == nullptr || key == nullptr || value == nullptr) {
+    return peripheral_error;
+  }
+  if (std::strcmp(key, "Drive1") == 0 || std::strcmp(key, "Drive 1") == 0 ||
+      std::strcmp(key, "Unit1") == 0 || std::strcmp(key, "Unit 1") == 0) {
+    auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance);
+    if (std::strlen(value) > 0) {
+      insert_harddisk_into_drive(peripheral_ptr, harddisk_drive_0, value,
+                                 false);
+    } else {
+      eject_harddisk_from_drive(peripheral_ptr, harddisk_drive_0);
+    }
+    return peripheral_ok;
+  }
+  if (std::strcmp(key, "Drive2") == 0 || std::strcmp(key, "Drive 2") == 0 ||
+      std::strcmp(key, "Unit2") == 0 || std::strcmp(key, "Unit 2") == 0) {
+    auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance);
+    if (std::strlen(value) > 0) {
+      insert_harddisk_into_drive(peripheral_ptr, harddisk_drive_1, value,
+                                 false);
+    } else {
+      eject_harddisk_from_drive(peripheral_ptr, harddisk_drive_1);
+    }
+    return peripheral_ok;
+  }
+  return peripheral_incompatible;
+}
 }  // namespace
 
 static Peripheral_t g_harddisk_peripheral = {
@@ -640,7 +685,9 @@ static Peripheral_t g_harddisk_peripheral = {
     .save_state = nullptr,
     .load_state = nullptr,
     .command = harddisk_abi_command,
-    .query = harddisk_abi_query};
+    .query = harddisk_abi_query,
+    .get_config_schema = harddisk_abi_get_config_schema,
+    .configure = harddisk_abi_configure};
 
 extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
   return &g_harddisk_peripheral;

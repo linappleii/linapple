@@ -716,7 +716,9 @@ static Peripheral_t g_keyboard_peripheral = {
     .save_state = keyboard_abi_save_state,
     .load_state = keyboard_abi_load_state,
     .command = keyboard_abi_command,
-    .query = keyboard_abi_query};
+    .query = keyboard_abi_query,
+    .get_config_schema = nullptr,
+    .configure = nullptr};
 
 extern "C" auto keyboard_get_descriptor() -> Peripheral_t* {
   return &g_keyboard_peripheral;

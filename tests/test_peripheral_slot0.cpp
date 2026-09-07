@@ -54,7 +54,9 @@ static Peripheral_t g_mock1 = {
     nullptr,  // Save
     nullptr,  // Load
     nullptr,  // Command
-    nullptr   // Query
+    nullptr,  // Query
+    nullptr,  // get_config_schema
+    nullptr   // configure
 };
 
 static Peripheral_t g_mock2 = {
@@ -74,7 +76,9 @@ static Peripheral_t g_mock2 = {
     nullptr,  // Save
     nullptr,  // Load
     nullptr,  // Command
-    nullptr   // Query
+    nullptr,  // Query
+    nullptr,  // get_config_schema
+    nullptr   // configure
 };
 
 TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {

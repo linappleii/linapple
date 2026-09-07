@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -93,6 +94,31 @@ typedef struct {
   uint8_t ctrl_val;
   uint8_t flags; /**< 1 = active override, 2 = open_apple, 4 = closed_apple */
 } KeyboardCustomKeyPayload_t;
+
+typedef enum {
+  peripheral_config_string = 0,
+  peripheral_config_int = 1,
+  peripheral_config_bool = 2,
+  peripheral_config_float = 3,
+  peripheral_config_enum = 4,
+  peripheral_config_filepath = 5
+} PeripheralConfigType_t;
+
+typedef struct {
+  const char* name;            /**< Configuration key name (e.g. "Drive1") */
+  const char* description;     /**< Human-readable explanation */
+  const char* default_value;   /**< Default value as string */
+  PeripheralConfigType_t type; /**< Value type */
+  const char* const* allowed_values; /**< NULL-terminated array of allowed
+                                        strings if enum, or NULL */
+  int64_t min_int;                   /**< Minimum integer value */
+  int64_t max_int;                   /**< Maximum integer value */
+} PeripheralConfigOption_t;
+
+typedef struct {
+  const PeripheralConfigOption_t* options;
+  size_t option_count;
+} PeripheralConfigSchema_t;
 
 #ifdef __cplusplus
 }

@@ -1167,7 +1167,33 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   return peripheral_ok;
 }
 
-}  // namespace
+static const PeripheralConfigOption_t g_disk_config_options[] = {
+    {"Drive1", "Disk image path mounted in Drive 1", "",
+     peripheral_config_filepath, nullptr, 0, 0},
+    {"Drive2", "Disk image path mounted in Drive 2", "",
+     peripheral_config_filepath, nullptr, 0, 0},
+    {"FastDisk", "Accelerate CPU speed during disk accesses", "true",
+     peripheral_config_bool, nullptr, 0, 1}};
+
+static const PeripheralConfigSchema_t g_disk_config_schema = {
+    g_disk_config_options,
+    sizeof(g_disk_config_options) / sizeof(g_disk_config_options[0])};
+
+static auto disk_abi_get_config_schema() -> const PeripheralConfigSchema_t* {
+  return &g_disk_config_schema;
+}
+
+static auto disk_abi_configure(void* instance, const char* key,
+                               const char* value) -> PeripheralStatus_t {
+  if (instance == nullptr || key == nullptr || value == nullptr) {
+    return peripheral_error;
+  }
+  if (std::strcmp(key, "Drive1") == 0 || std::strcmp(key, "Drive2") == 0 ||
+      std::strcmp(key, "FastDisk") == 0) {
+    return peripheral_ok;
+  }
+  return peripheral_incompatible;
+}
 
 static Peripheral_t g_disk_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
@@ -1186,7 +1212,11 @@ static Peripheral_t g_disk_peripheral = {
     .save_state = disk_abi_save_state,
     .load_state = disk_abi_load_state,
     .command = disk_abi_command,
-    .query = disk_abi_query};
+    .query = disk_abi_query,
+    .get_config_schema = disk_abi_get_config_schema,
+    .configure = disk_abi_configure};
+
+}  // namespace
 
 auto disk_get_descriptor() -> Peripheral_t* { return &g_disk_peripheral; }
 

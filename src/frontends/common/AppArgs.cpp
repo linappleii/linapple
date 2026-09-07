@@ -26,8 +26,9 @@ static constexpr int opt_basic_sync = 0x105;
 static constexpr int opt_basic_line_mode = 0x106;
 static constexpr int opt_caps_mode = 0x107;
 static constexpr int opt_tui_render = 0x108;
+static constexpr int opt_upgrade_config = 0x109;
 
-static const std::array<struct option, 30> OptionTable = {
+static const std::array<struct option, 31> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
@@ -35,6 +36,7 @@ static const std::array<struct option, 30> OptionTable = {
      {"autoboot", no_argument, nullptr, 'a'},
      {"boot", no_argument, nullptr, 'b'},
      {"config", required_argument, nullptr, 'c'},
+     {"upgrade-config", optional_argument, nullptr, opt_upgrade_config},
      {"fullscreen", no_argument, nullptr, 'f'},
      {"help", no_argument, nullptr, 'h'},
      {"log", no_argument, nullptr, 'l'},
@@ -78,6 +80,8 @@ void app_args_print_help() {
   printf("  -a, --autoboot         Boot the computer immediately\n");
   printf("  -b, --boot             Synonym for --autoboot\n");
   printf("  -c, --config <file>    Use specified configuration file\n");
+  printf(
+      "  --upgrade-config [f]   Upgrade legacy linapple.conf to modern TOML\n");
   printf("  -f, --fullscreen       Start in fullscreen mode\n");
   printf("  -h, --help             Display this help message\n");
   printf("  -l, --log              Enable logging to console\n");
@@ -297,6 +301,18 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
             outConfig->intent = INTENT_ERROR;
             return -1;
           }
+        }
+        break;
+      case opt_upgrade_config:
+        outConfig->is_upgrade_config = true;
+        outConfig->intent = INTENT_DIAGNOSTIC;
+        if (optarg != nullptr) {
+          util_safe_strcpy(outConfig->upgrade_target_path.data(), optarg,
+                           path_max_len);
+        } else if (optind < argc && argv[optind] != nullptr &&
+                   argv[optind][0] != '-') {
+          util_safe_strcpy(outConfig->upgrade_target_path.data(),
+                           argv[optind++], path_max_len);
         }
         break;
       case 'h':

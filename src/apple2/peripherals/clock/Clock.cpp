@@ -332,7 +332,9 @@ static Peripheral_t g_clock_peripheral = {
     .save_state = clock_abi_save_state,
     .load_state = clock_abi_load_state,
     .command = nullptr,
-    .query = nullptr};
+    .query = nullptr,
+    .get_config_schema = nullptr,
+    .configure = nullptr};
 
 auto clock_get_descriptor() -> Peripheral_t* { return &g_clock_peripheral; }
 

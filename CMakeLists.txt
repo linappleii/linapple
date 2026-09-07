@@ -356,6 +356,11 @@ set(SOURCES_CORE
     src/core/Peripheral.cpp
     src/core/Peripheral_Internal.cpp
     src/core/Resource.cpp
+    src/core/config/Toml.cpp
+    src/core/config/ConfigSchema.cpp
+    src/core/config/ConfigDispatch.cpp
+    src/core/config/ConfigDiscovery.cpp
+    src/core/config/ConfigMigration.cpp
     "${EMBEDDED_ROMS_CPP}"
     src/frontends/common/AppArgs.cpp
     src/frontends/common/AppEnvironment.cpp
@@ -623,6 +628,12 @@ if(BUILD_TESTING)
     target_include_directories(test-app-config PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppConfig COMMAND test-app-config)
 
+    add_executable(test-toml tests/test_toml.cpp src/core/config/Toml.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
+    target_include_directories(test-toml PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-toml COMMAND test-toml)
+
+    add_linapple_test(config-schema tests/test_config_schema.cpp)
+
     add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppArgs COMMAND test-app-args)
@@ -632,6 +643,10 @@ if(BUILD_TESTING)
     add_linapple_test(integration tests/test_main.cpp)
     add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
+    add_linapple_test(peripheral-abi-config tests/test_peripheral_abi_config.cpp)
+    add_linapple_test(config-dispatch tests/test_config_dispatch.cpp)
+    add_linapple_test(config-discovery tests/test_config_discovery.cpp)
+    add_linapple_test(config-migration tests/test_config_migration.cpp)
     
     # Custom test-superserial-peripheral to avoid symbol conflict
     add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp ${EMBEDDED_ROMS_CPP} src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
