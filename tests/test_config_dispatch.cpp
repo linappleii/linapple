@@ -14,6 +14,15 @@
 #include "core/config/Toml.h"
 #include "doctest.h"
 
+namespace {
+
+struct ScopedPeripheralManager_t {
+  ScopedPeripheralManager_t() { peripheral_manager_init(); }
+  ~ScopedPeripheralManager_t() { peripheral_manager_shutdown(); }
+};
+
+}  // namespace
+
 TEST_CASE("ConfigDispatch: Card Type Mappings") {
   CHECK(std::string(config_card_type_to_id(
             PeripheralCardType_t::ParallelPrinter)) == "linapple.printer");
@@ -198,7 +207,7 @@ TEST_CASE("ConfigDispatch: Video Subsystem Dispatch") {
 }
 
 TEST_CASE("ConfigDispatch: Slot Dispatch Engine") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   const std::string toml_data = R"(
 [Peripheral.Printer.Slot1]
@@ -211,12 +220,12 @@ FastDisk = true
 )";
 
   LinAppleConfig_t config;
+  config.slots.cards.fill(PeripheralCardType_t::Empty);
   std::string parse_err;
   config.raw_doc = toml_document_parse(toml_data, &parse_err);
   REQUIRE(config.raw_doc != nullptr);
   config.slots.cards[1] = PeripheralCardType_t::ParallelPrinter;
   config.slots.cards[6] = PeripheralCardType_t::DiskII;
-  config.slots.cards[2] = PeripheralCardType_t::Empty;
 
   ConfigDispatchResult_t result;
   int status = config_dispatch_slots(config, &result);
@@ -262,9 +271,10 @@ FastDisk = true
 }
 
 TEST_CASE("ConfigDispatch: Full Config Dispatch All") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   LinAppleConfig_t config;
+  config.slots.cards.fill(PeripheralCardType_t::Empty);
   config.core.machine = MachineType_t::Apple2eEnhanced;
   config.core.emulation_speed = 1.0;
   config.video.video_standard = VideoStandard_t::NTSC;
@@ -300,7 +310,7 @@ TEST_CASE("ConfigDispatch: Floating-point NaN and Inf Defensive Handling") {
 }
 
 TEST_CASE("ConfigDispatch: Extra Keys and Alternative Table Syntax") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   const std::string toml_data = R"(
 [Slot6.DiskII]
@@ -311,6 +321,7 @@ Drive1 = "/custom/drive1.dsk"
 )";
 
   LinAppleConfig_t config;
+  config.slots.cards.fill(PeripheralCardType_t::Empty);
   std::string parse_err;
   config.raw_doc = toml_document_parse(toml_data, &parse_err);
   REQUIRE(config.raw_doc != nullptr);
