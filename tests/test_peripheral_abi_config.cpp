@@ -206,10 +206,15 @@ static Peripheral_t g_no_cfg_peripheral = {LINAPPLE_ABI_VERSION,
                                            nullptr,   // get_config_schema
                                            nullptr};  // configure
 
+struct ScopedPeripheralManager_t {
+  ScopedPeripheralManager_t() { peripheral_manager_init(); }
+  ~ScopedPeripheralManager_t() { peripheral_manager_shutdown(); }
+};
+
 }  // namespace
 
 TEST_CASE("Peripheral ABI Config: Dynamic Configuration Callbacks") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   int reg_result = peripheral_register(&g_custom_peripheral, 3);
   REQUIRE(reg_result == 0);
@@ -247,7 +252,7 @@ TEST_CASE("Peripheral ABI Config: Dynamic Configuration Callbacks") {
 }
 
 TEST_CASE("Peripheral ABI Config: Card Without Configure Implementation") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   int reg_result = peripheral_register(&g_no_cfg_peripheral, 4);
   REQUIRE(reg_result == 0);
@@ -262,7 +267,7 @@ TEST_CASE("Peripheral ABI Config: Card Without Configure Implementation") {
 }
 
 TEST_CASE("Peripheral ABI Config: Built-in Card Key Validation") {
-  peripheral_manager_init();
+  const ScopedPeripheralManager_t scoped_pm;
 
   auto* printer = printer_get_descriptor();
   REQUIRE(printer != nullptr);
