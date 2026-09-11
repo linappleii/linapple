@@ -171,6 +171,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
   }
 
+  int config_speed = Configuration_t::instance().get_int(
+      "Configuration", "Emulation Speed", SPEED_NORMAL);
+  if (config_speed >= SPEED_MIN && config_speed <= emulation_speed_max) {
+    g_state.speed = static_cast<uint32_t>(config_speed);
+  }
+
   // 4. Init Snapshots
   if (config->snapshot_path.at(0) != '\0') {
     save_state_set_filename(config->snapshot_path.data());

@@ -88,20 +88,14 @@ void sdl_handle_event(SDL_Event* e) {
           set_using_cursor(false);
           g_buttondown = mysym - SDLK_F1;
         } else if (mysym == SDLK_KP_PLUS) {
-          g_state.speed = g_state.speed + 2;
-          if (g_state.speed > emulation_speed_max) {
-            g_state.speed = emulation_speed_max;
-          }
-          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
+          uint32_t speed = linapple_speed_increase();
+          printf("Now speed=%u\n", speed);
         } else if (mysym == SDLK_KP_MINUS) {
-          if (g_state.speed > SPEED_MIN) {
-            g_state.speed = g_state.speed - 1;
-          }
-          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
+          uint32_t speed = linapple_speed_decrease();
+          printf("Now speed=%u\n", speed);
         } else if (mysym == SDLK_KP_MULTIPLY) {
-          constexpr uint32_t default_speed = 10;
-          g_state.speed = default_speed;
-          printf("Now speed=%d\n", static_cast<int>(g_state.speed));
+          uint32_t speed = linapple_speed_reset();
+          printf("Now speed=%u\n", speed);
         } else if (mysym == SDLK_CAPSLOCK) {
           if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
             uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
@@ -136,7 +130,8 @@ void sdl_handle_event(SDL_Event* e) {
           }
           g_state.reset_timing = true;
         } else if (mysym == SDLK_SCROLLLOCK) {
-          g_scroll_lock_full_speed = !g_scroll_lock_full_speed;
+          bool turbo = linapple_toggle_turbo();
+          printf("Turbo mode: %s\n", turbo ? "ON" : "OFF");
         } else if ((g_state.mode == MODE_RUNNING) ||
                    (g_state.mode == MODE_LOGO) ||
                    (g_state.mode == MODE_STEPPING)) {

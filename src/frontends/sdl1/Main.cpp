@@ -109,15 +109,20 @@ auto sys_input() -> void {
 }
 
 auto enter_message_loop() -> void {
-  constexpr int apple2_frame_cycles = 17030;
   constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
     sys_input();
     joy_frontend_update();
 
-    linapple_run_frame(apple2_frame_cycles);
+    uint32_t cycles = linapple_get_frame_cycles();
+    linapple_run_frame(cycles);
     draw_frame_window();
-    SDL_Delay(target_frame_ms);
+
+    if (!linapple_get_turbo()) {
+      SDL_Delay(target_frame_ms);
+    } else {
+      SDL_Delay(0);
+    }
   }
 }
 

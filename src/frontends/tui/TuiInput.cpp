@@ -167,7 +167,7 @@ static auto toggle_pause() -> void {
   g_state.reset_timing = true;
 }
 
-static auto toggle_scroll_lock() -> void { g_full_speed = !g_full_speed; }
+static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
 
 constexpr uint8_t ANSI_FINAL_BYTE_MIN = 0x40;
 constexpr uint8_t ANSI_FINAL_BYTE_MAX = 0x7E;
