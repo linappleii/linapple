@@ -173,6 +173,7 @@ std::atomic<bool> g_frame_ready(false);
 
 static bool g_text_flash_state = false;
 static bool g_text_flash_flag = false;
+static uint32_t s_text_flash_cnt = 0;
 
 bool g_show_leds = true;
 
@@ -1833,6 +1834,9 @@ auto video_reset_state() -> void {
   g_alt_char_set_offset = 0;
   displaypage2 = false;
   g_video_mode = VF_TEXT;
+  g_text_flash_state = false;
+  g_text_flash_flag = false;
+  s_text_flash_cnt = 0;
   redrawfull = true;
 }
 
@@ -1938,10 +1942,9 @@ auto video_update_vbl(uint32_t cycles_this_frame) -> void {
 
 // Called at 60Hz (every 16.666ms)
 auto video_update_flash() -> void {
-  static uint32_t text_flash_cnt = 0;
-  text_flash_cnt++;
-  if (text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
-    text_flash_cnt = 0;
+  s_text_flash_cnt++;
+  if (s_text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
+    s_text_flash_cnt = 0;
     g_text_flash_state = !g_text_flash_state;
 
     if ((SW_TEXT || SW_MIXED)) {

@@ -730,6 +730,7 @@ if(BUILD_TESTING)
     set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
 
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
+    add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
     add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
