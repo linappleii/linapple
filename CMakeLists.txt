@@ -26,8 +26,10 @@ endif()
 
 if(FRONTEND_LOWER STREQUAL "tui" OR FRONTEND_LOWER STREQUAL "headless")
     set(DEFAULT_ENABLE_DEBUGGER OFF)
+    set(FRONTEND_HAS_FTP OFF)
 else()
     set(DEFAULT_ENABLE_DEBUGGER ON)
+    set(FRONTEND_HAS_FTP ON)
 endif()
 option(ENABLE_DEBUGGER "Enable integrated debugger" ${DEFAULT_ENABLE_DEBUGGER})
 
@@ -423,6 +425,7 @@ set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/DiskFTP.cpp
     src/frontends/common/sdl/DiskSelect.cpp
     src/frontends/common/sdl/Harddisk.cpp
+    src/apple2/peripherals/disk/ftpparse.cpp
 )
 
 set(SOURCES_FE_SDL3
@@ -521,7 +524,7 @@ endfunction()
 # Define all peripherals
 add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" TRUE)
 add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" TRUE)
-add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp;src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES};${CURL_LIBRARIES}" TRUE)
+add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp;src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
@@ -531,7 +534,7 @@ add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printe
 add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
 
 # --- Executable Targets ---
-set(COMMON_LIBS ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+set(COMMON_LIBS ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 
 function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTRA_LIBS EXTRA_INCLUDES EXTRA_DEFS)
     add_executable(${TARGET_NAME} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${DBG_SOURCES} ${FE_SOURCES} ${SOURCES_A2_OPTIONAL})
@@ -563,17 +566,17 @@ if(ALSA_FOUND)
 endif()
 
 if(FRONTEND_LOWER STREQUAL "all")
-    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
-    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2" "" "")
-    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
     add_linapple_executable(linapple-headless "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG_STUBS}" "" "" "-DHEADLESS")
     add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_FULL}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
-    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
+    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
-    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2" "" "")
+    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
-    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
 elseif(FRONTEND_LOWER STREQUAL "headless")
     add_linapple_executable(linapple "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG}" "" "" "-DHEADLESS")
 elseif(FRONTEND_LOWER STREQUAL "tui")
@@ -611,7 +614,7 @@ if(BUILD_TESTING)
         set_target_properties(test-${name} PROPERTIES ENABLE_EXPORTS TRUE)
         target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
         if(ENABLE_ASAN OR ENABLE_UBSAN)
             set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
@@ -637,7 +640,7 @@ if(BUILD_TESTING)
     add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp ${EMBEDDED_ROMS_CPP} src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
-    target_link_libraries(test-superserial-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+    target_link_libraries(test-superserial-peripheral PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
     add_test(NAME test-superserial-peripheral COMMAND test-superserial-peripheral)
 
     add_linapple_test(abi tests/test_abi.cpp)
@@ -688,6 +691,7 @@ if(BUILD_TESTING)
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
     add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
+    target_link_libraries(test-ftpparse PRIVATE ${CURL_LIBRARIES})
 
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
@@ -796,7 +800,7 @@ if(ENABLE_FUZZING)
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_compile_options(${name} PRIVATE ${FUZZ_FLAGS})
         target_link_options(${name} PRIVATE ${FUZZ_FLAGS})
-        target_link_libraries(${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)

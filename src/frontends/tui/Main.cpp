@@ -65,7 +65,6 @@ auto main(int argc, char** argv) -> int {
 
     app_controller_load_initial_media(&config);
 
-    constexpr int apple2_frame_cycles = 17030;
     constexpr auto frame_duration = std::chrono::microseconds(16650);
 
     auto next_frame = std::chrono::steady_clock::now();
