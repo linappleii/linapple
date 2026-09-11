@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
 #include <cstring>
-#include <string>
 
 #include "Debugger/Debugger_Assembler.h"
-#include "Debugger/Debugger_Commands.h"
+#include "Debugger/Debugger_Console.h"
 #include "Debugger/Debugger_Parser.h"
 #include "Debugger/Debugger_Range.h"
-#include "Debugger/Debugger_Symbols.h"
 #include "Debugger/Debugger_Types.h"
+#include "core/Util_Text.h"
 #include "doctest.h"
 
 TEST_CASE("Debugger Parser: String and Case Manipulation") {
@@ -183,4 +183,29 @@ TEST_CASE("Debugger Assembler: Mnemonic Hashing and Opcode Identification") {
     CHECK(IsOpcodeValid(0x60) == true);   // RTS
     CHECK(IsOpcodeValid(0x02) == false);  // KIL / JAM on standard 6502
   }
+}
+
+TEST_CASE("Debugger Console: Viewport Display Sizing and Bounding (TASK-5)") {
+  static_assert(CONSOLE_DISPLAY_HEIGHT == 48, "Viewport height must be 48");
+  static_assert(sizeof(g_console_display) == 7680,
+                "g_console_display must be right-sized to 48 x 80 x 2 bytes");
+
+  g_console_display_total = 0;
+  std::memset(g_console_display, 0, sizeof(g_console_display));
+
+  constexpr conchar_t kInputCanary = static_cast<conchar_t>(0x55AA);
+  g_console_display[0][0] = kInputCanary;
+
+  conchar_t line[CONSOLE_WIDTH] = {0};
+  for (int i = 0; i < 100; ++i) {
+    line[0] = static_cast<conchar_t>('0' + (i % 10));
+    ConsoleDisplayPush(line);
+  }
+
+  CHECK(g_console_display_total == 47);
+  CHECK(g_console_display[0][0] == kInputCanary);
+  CHECK(g_console_display[CONSOLE_FIRST_LINE][0] ==
+        static_cast<conchar_t>('9'));
+  CHECK(g_console_display[CONSOLE_DISPLAY_HEIGHT - 1][0] ==
+        static_cast<conchar_t>('3'));
 }

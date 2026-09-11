@@ -13,7 +13,7 @@ extern int g_console_display_start;
 extern int g_console_display_lines;
 extern int g_console_display_total;
 extern int g_console_display_width;
-extern conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+extern conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
 extern uint32_t g_console_brush_bg;
 
 // Functions moved from Debugger_Display.cpp
@@ -32,7 +32,8 @@ auto DrawSubWindow_Console(Update_t bUpdate) -> void {
 
     int iLine = g_console_display_start + CONSOLE_FIRST_LINE;
     for (int y = 1; y < g_console_display_lines; y++) {
-      if (iLine <= (g_console_display_total + CONSOLE_FIRST_LINE)) {
+      if (iLine < CONSOLE_DISPLAY_HEIGHT &&
+          iLine <= (g_console_display_total + CONSOLE_FIRST_LINE)) {
         DebuggerSetColorFG(DebuggerGetColor(FG_CONSOLE_OUTPUT));
         DrawConsoleLine(g_console_display[iLine], y);
       } else {

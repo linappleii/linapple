@@ -15,6 +15,9 @@ enum {
   // need min 256+ lines for "profile list"
   CONSOLE_BUFFER_HEIGHT = CONSOLE_HEIGHT,
 
+  // Display viewport is at most 384 / 8 = 48 lines (MAX_DISPLAY_LINES)
+  CONSOLE_DISPLAY_HEIGHT = 48,
+
   // Input
   HISTORY_HEIGHT = 128,
   HISTORY_WIDTH = 128,
@@ -221,7 +224,7 @@ extern int g_console_display_start;  // to allow scrolling
 extern int g_console_display_total;  // number of lines added to console
 extern int g_console_display_lines;
 extern int g_console_display_width;
-extern conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+extern conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
 extern int g_history_lines_start;  // = 0;
