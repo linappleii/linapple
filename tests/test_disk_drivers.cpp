@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <cstdio>
-#include <cstring>
-#include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
@@ -18,6 +22,63 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "doctest.h"
+
+namespace {
+
+class ScopedTempFile_t {
+ public:
+  explicit ScopedTempFile_t(const std::string& ext = "") {
+    const char* tmpdir = std::getenv("TMPDIR");
+    std::string base_dir =
+        (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
+    if (base_dir.back() != '/') {
+      base_dir += '/';
+    }
+
+    std::string pattern = base_dir + "linapple_test_XXXXXX" + ext;
+    std::vector<char> template_buf(pattern.begin(), pattern.end());
+    template_buf.push_back('\0');
+
+    int fd = mkstemps(template_buf.data(), static_cast<int>(ext.length()));
+    if (fd >= 0) {
+      ::close(fd);
+      path_ = template_buf.data();
+    }
+  }
+
+  ~ScopedTempFile_t() { unlink_file(); }
+
+  ScopedTempFile_t(const ScopedTempFile_t&) = delete;
+  auto operator=(const ScopedTempFile_t&) -> ScopedTempFile_t& = delete;
+
+  ScopedTempFile_t(ScopedTempFile_t&& other) noexcept
+      : path_(std::move(other.path_)) {
+    other.path_.clear();
+  }
+
+  auto operator=(ScopedTempFile_t&& other) noexcept -> ScopedTempFile_t& {
+    if (this != &other) {
+      unlink_file();
+      path_ = std::move(other.path_);
+      other.path_.clear();
+    }
+    return *this;
+  }
+
+  auto path() const -> const std::string& { return path_; }
+  auto c_str() const -> const char* { return path_.c_str(); }
+
+  auto unlink_file() -> void {
+    if (!path_.empty()) {
+      unlink(path_.c_str());
+    }
+  }
+
+ private:
+  std::string path_;
+};
+
+}  // namespace
 
 // Mock for enhancedisk
 bool enhancedisk = true;
@@ -101,16 +162,18 @@ TEST_CASE("DiskDrivers: [DRV-06] NB2 Driver Probing") {
 }
 
 TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
-  const char* tmp_file = "test_roundtrip.nib";
-  g_nib_driver.create(tmp_file);
+  ScopedTempFile_t tmp_file(".nib");
+  REQUIRE(g_nib_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nib_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
 
   uint8_t original_track[6656];
-  for (int i = 0; i < 6656; ++i) original_track[i] = (i + 1) & 0xFF;
+  for (int i = 0; i < 6656; ++i) {
+    original_track[i] = static_cast<uint8_t>((i + 1) & 0xFF);
+  }
 
   g_nib_driver.write_track(instance, 5, 0, original_track, 6656);
 
@@ -123,29 +186,36 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
   g_nib_driver.close(instance);
 
-  // Verbatim check: read directly from file at offset
-  FILE* f = fopen(tmp_file, "rb");
-  fseek(f, 5 * 6656, SEEK_SET);
-  uint8_t file_bytes[6656];
-  size_t read_bytes = fread(file_bytes, 1, 6656, f);
-  (void)read_bytes;
-  fclose(f);
-  CHECK(memcmp(original_track, file_bytes, 6656) == 0);
+  // Verify persistence across re-open through the driver ABI (Seam 4)
+  void* reopen_instance = nullptr;
+  bool reopen_ro = false;
+  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, 1, &reopen_ro,
+                            &reopen_instance) == disk_err_none);
 
-  remove(tmp_file);
+  uint8_t persisted_track[6656];
+  int persisted_count = 0;
+  g_nib_driver.read_track(reopen_instance, 5, 0, persisted_track,
+                          &persisted_count);
+
+  CHECK(persisted_count == 6656);
+  CHECK(memcmp(original_track, persisted_track, 6656) == 0);
+
+  g_nib_driver.close(reopen_instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
-  const char* tmp_file = "test_roundtrip.nb2";
-  g_nb2_driver.create(tmp_file);
+  ScopedTempFile_t tmp_file(".nb2");
+  REQUIRE(g_nb2_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_nb2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  REQUIRE(g_nb2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
 
   uint8_t original_track[6384];
-  for (int i = 0; i < 6384; ++i) original_track[i] = (i + 1) & 0xFF;
+  for (int i = 0; i < 6384; ++i) {
+    original_track[i] = static_cast<uint8_t>((i + 1) & 0xFF);
+  }
 
   g_nb2_driver.write_track(instance, 10, 0, original_track, 6384);
 
@@ -157,7 +227,6 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
   CHECK(memcmp(original_track, read_track, 6384) == 0);
 
   g_nb2_driver.close(instance);
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
@@ -170,8 +239,9 @@ TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
 }
 
 TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
-  const char* tmp_file = "test_35.woz";
-  FILE* f = fopen(tmp_file, "wb");
+  ScopedTempFile_t tmp_file(".woz");
+  FILE* f = fopen(tmp_file.c_str(), "wb");
+  REQUIRE(f != nullptr);
   uint8_t header[1536]{};
   memcpy(header, "WOZ2\xFF\n\r\n", 8);
   memcpy(header + 12, "INFO", 4);
@@ -186,16 +256,15 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  CHECK(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  CHECK(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
         disk_err_unsupported_format);
-
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
-  const char* tmp_file = "test_wp.woz";
+  ScopedTempFile_t tmp_file(".woz");
   auto create_woz_wp = [](const char* path, uint8_t wp_byte) {
     FILE* f = fopen(path, "wb");
+    REQUIRE(f != nullptr);
     uint8_t h[1536]{};
     memcpy(h, "WOZ2\xFF\n\r\n", 8);
     memcpy(h + 12, "INFO", 4);
@@ -213,24 +282,23 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   void* instance = nullptr;
   bool os_ro = false;
 
-  create_woz_wp(tmp_file, 1);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  create_woz_wp(tmp_file.c_str(), 1);
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == true);
   g_woz2_driver.close(instance);
 
-  create_woz_wp(tmp_file, 0);
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  create_woz_wp(tmp_file.c_str(), 0);
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == false);
   g_woz2_driver.close(instance);
-
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
-  const char* tmp_file = "test_unrec.woz";
-  FILE* f = fopen(tmp_file, "wb");
+  ScopedTempFile_t tmp_file(".woz");
+  FILE* f = fopen(tmp_file.c_str(), "wb");
+  REQUIRE(f != nullptr);
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
@@ -245,7 +313,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
 
   uint8_t buffer[6656];
@@ -256,17 +324,16 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   // Should be random/sync data, at least verify it didn't fail
 
   g_woz2_driver.close(instance);
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip (Fast)") {
-  const char* tmp_do = "test_fast.do";
-  g_do_driver.create(tmp_do);
+  ScopedTempFile_t tmp_do(".do");
+  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
   bool ro = false;
   enhancedisk = true;
-  REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, 1, &ro, &inst) == disk_err_none);
 
   uint8_t buf[6656];
   int count = 0;
@@ -274,17 +341,16 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip (Fast)") {
   CHECK(count == 6656);
 
   g_do_driver.close(inst);
-  remove(tmp_do);
 }
 
 TEST_CASE("DiskDrivers: [DRV-14] DO Track Round-trip (Skewed)") {
-  const char* tmp_do = "test_slow.do";
-  g_do_driver.create(tmp_do);
+  ScopedTempFile_t tmp_do(".do");
+  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
   bool ro = false;
   enhancedisk = false;
-  REQUIRE(g_do_driver.open(tmp_do, 0, 0, &ro, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, 0, &ro, &inst) == disk_err_none);
 
   uint8_t buf[6656];
   int count = 0;
@@ -292,12 +358,12 @@ TEST_CASE("DiskDrivers: [DRV-14] DO Track Round-trip (Skewed)") {
   CHECK(count == 6656);
 
   g_do_driver.close(inst);
-  remove(tmp_do);
 }
 
 TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
-  const char* tmp_file = "malicious_trks.woz";
-  FILE* f = fopen(tmp_file, "wb");
+  ScopedTempFile_t tmp_file(".woz");
+  FILE* f = fopen(tmp_file.c_str(), "wb");
+  REQUIRE(f != nullptr);
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
@@ -313,7 +379,7 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
 
   uint8_t buffer[6656];
@@ -323,12 +389,12 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
   CHECK(count == 0);  // Rejects out of bounds trks_index
 
   g_woz2_driver.close(instance);
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
-  const char* tmp_file = "malicious_bits.woz";
-  FILE* f = fopen(tmp_file, "wb");
+  ScopedTempFile_t tmp_file(".woz");
+  FILE* f = fopen(tmp_file.c_str(), "wb");
+  REQUIRE(f != nullptr);
   uint8_t h[1536]{};
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
@@ -357,7 +423,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
 
   void* instance = nullptr;
   bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file, 0, 1, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, 1, &os_ro, &instance) ==
           disk_err_none);
 
   uint8_t buffer[6656];
@@ -367,16 +433,15 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
   CHECK(count == 0);  // Rejects bit_count > block_count capacity
 
   g_woz2_driver.close(instance);
-  remove(tmp_file);
 }
 
 TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
-  const char* tmp_do = "test_oob.do";
-  g_do_driver.create(tmp_do);
+  ScopedTempFile_t tmp_do(".do");
+  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
   bool ro = false;
-  REQUIRE(g_do_driver.open(tmp_do, 0, 1, &ro, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, 1, &ro, &inst) == disk_err_none);
 
   uint8_t buf[6656];
   int count = 123;
@@ -387,7 +452,6 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
   CHECK(count == 0);
 
   g_do_driver.close(inst);
-  remove(tmp_do);
 }
 
 TEST_CASE("DiskDrivers: [DRV-08] Driver Supported Extensions") {
@@ -418,9 +482,9 @@ TEST_CASE("DiskDrivers: [DRV-08] Driver Supported Extensions") {
 }
 
 TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
-  const char* tmp_iie = "truncated.iie";
+  ScopedTempFile_t tmp_iie(".iie");
   {
-    FILE* f = fopen(tmp_iie, "wb");
+    FILE* f = fopen(tmp_iie.c_str(), "wb");
     REQUIRE(f != nullptr);
     uint8_t short_hdr[10] = {0};
     fwrite(short_hdr, 1, sizeof(short_hdr), f);
@@ -429,16 +493,14 @@ TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
 
   void* inst = nullptr;
   bool ro = false;
-  CHECK(g_iie_driver.open(tmp_iie, 0, 0, &ro, &inst) != disk_err_none);
+  CHECK(g_iie_driver.open(tmp_iie.c_str(), 0, 0, &ro, &inst) != disk_err_none);
   CHECK(inst == nullptr);
-
-  remove(tmp_iie);
 }
 
 TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
-  const char* tmp_unaligned = "unaligned.dsk";
+  ScopedTempFile_t tmp_unaligned(".dsk");
   {
-    FILE* f = fopen(tmp_unaligned, "wb");
+    FILE* f = fopen(tmp_unaligned.c_str(), "wb");
     REQUIRE(f != nullptr);
     uint8_t unaligned_data[5000] = {0};  // Not a multiple of 256
     fwrite(unaligned_data, 1, sizeof(unaligned_data), f);
@@ -447,27 +509,25 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
 
   void* inst = nullptr;
   bool ro = false;
-  CHECK(g_do_driver.open(tmp_unaligned, 0, 0, &ro, &inst) != disk_err_none);
+  CHECK(g_do_driver.open(tmp_unaligned.c_str(), 0, 0, &ro, &inst) !=
+        disk_err_none);
   CHECK(inst == nullptr);
-
-  remove(tmp_unaligned);
 }
 
 TEST_CASE(
     "DiskDrivers: [RET-1] Create valid sector disk and propagate creation "
     "failure") {
-  const char* tmp_new = "test_create.dsk";
-  remove(tmp_new);
+  ScopedTempFile_t tmp_new(".dsk");
+  tmp_new.unlink_file();
 
   REQUIRE(g_do_driver.create != nullptr);
-  CHECK(g_do_driver.create(tmp_new) == disk_err_none);
+  CHECK(g_do_driver.create(tmp_new.c_str()) == disk_err_none);
 
-  FILE* f = fopen(tmp_new, "rb");
+  FILE* f = fopen(tmp_new.c_str(), "rb");
   REQUIRE(f != nullptr);
   fseek(f, 0, SEEK_END);
   CHECK(ftell(f) == 143360);
   fclose(f);
-  remove(tmp_new);
 
   // Unwritable / invalid path fails cleanly and returns error
   CHECK(g_do_driver.create("/nonexistent_dir_12345/test.dsk") == disk_err_io);
@@ -476,18 +536,17 @@ TEST_CASE(
 TEST_CASE(
     "DiskDrivers: [RET-2] Create valid bitstream disk and propagate creation "
     "failure") {
-  const char* tmp_nib = "test_create.nib";
-  remove(tmp_nib);
+  ScopedTempFile_t tmp_nib(".nib");
+  tmp_nib.unlink_file();
 
   REQUIRE(g_nib_driver.create != nullptr);
-  CHECK(g_nib_driver.create(tmp_nib) == disk_err_none);
+  CHECK(g_nib_driver.create(tmp_nib.c_str()) == disk_err_none);
 
-  FILE* f = fopen(tmp_nib, "rb");
+  FILE* f = fopen(tmp_nib.c_str(), "rb");
   REQUIRE(f != nullptr);
   fseek(f, 0, SEEK_END);
   CHECK(ftell(f) == 232960);
   fclose(f);
-  remove(tmp_nib);
 
   // Unwritable / invalid path fails cleanly and returns error
   CHECK(g_nib_driver.create("/nonexistent_dir_12345/test.nib") == disk_err_io);
@@ -518,10 +577,9 @@ TEST_CASE(
 TEST_CASE(
     "DiskDrivers: [NIB-3] Truncated bitstream track pre-fills buffer with "
     "0xFF") {
-  const char* tmp_nib = "test_truncated.nib";
-  remove(tmp_nib);
+  ScopedTempFile_t tmp_nib(".nib");
 
-  FILE* f = fopen(tmp_nib, "wb");
+  FILE* f = fopen(tmp_nib.c_str(), "wb");
   REQUIRE(f != nullptr);
   std::vector<uint8_t> short_track(100, 0xAA);
   fwrite(short_track.data(), 1, short_track.size(), f);
@@ -529,7 +587,7 @@ TEST_CASE(
 
   bool is_readonly = false;
   void* instance = nullptr;
-  CHECK(g_nib_driver.open(tmp_nib, 0, 0, &is_readonly, &instance) ==
+  CHECK(g_nib_driver.open(tmp_nib.c_str(), 0, 0, &is_readonly, &instance) ==
         disk_err_none);
   REQUIRE(instance != nullptr);
 
@@ -546,14 +604,12 @@ TEST_CASE(
   }
 
   g_nib_driver.close(instance);
-  remove(tmp_nib);
 }
 
 TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
-  const char* tmp_iie = "test_invalid_variant.iie";
-  remove(tmp_iie);
+  ScopedTempFile_t tmp_iie(".iie");
 
-  FILE* f = fopen(tmp_iie, "wb");
+  FILE* f = fopen(tmp_iie.c_str(), "wb");
   REQUIRE(f != nullptr);
   std::vector<uint8_t> header(88, 0);
   memcpy(header.data(), "SIMSYSTEM_IIE", 13);
@@ -563,9 +619,8 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
 
   bool is_readonly = false;
   void* instance = nullptr;
-  DiskError_e err = g_iie_driver.open(tmp_iie, 0, 0, &is_readonly, &instance);
+  DiskError_e err =
+      g_iie_driver.open(tmp_iie.c_str(), 0, 0, &is_readonly, &instance);
   CHECK(err == disk_err_unsupported_format);
   CHECK(instance == nullptr);
-
-  remove(tmp_iie);
 }
