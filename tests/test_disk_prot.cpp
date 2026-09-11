@@ -1,115 +1,127 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <stdio.h>
-
-#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <cstdio>
-#include <cstring>
-#include <vector>
+#include <cstddef>
+#include <string>
+#include <utility>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
 namespace {
-constexpr int SL6 = 6;
 
-static void setup_smoke_test(const char* imagePath) {
-  linapple_init();
-  if (imagePath) {
-    Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                           imagePath);
+constexpr int slot_6 = 6;
+
+class DiskProtHarness_t {
+ public:
+  DiskProtHarness_t() {
+    linapple_init();
+    peripheral_manager_init();
+    linapple_register_peripherals();
   }
-  peripheral_manager_init();
-  linapple_register_peripherals();
-}
+
+  ~DiskProtHarness_t() { linapple_shutdown(); }
+
+  DiskProtHarness_t(const DiskProtHarness_t&) = delete;
+  auto operator=(const DiskProtHarness_t&) -> DiskProtHarness_t& = delete;
+  DiskProtHarness_t(DiskProtHarness_t&&) = delete;
+  auto operator=(DiskProtHarness_t&&) -> DiskProtHarness_t& = delete;
+
+  auto insert_disk(const std::string& path, bool write_protected = false)
+      -> void {
+    DiskInsertCmd_t cmd{};
+    cmd.drive = disk_drive_0;
+    util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
+    cmd.write_protected = write_protected ? 1 : 0;
+    peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
+    peripheral_manager_think(0);
+  }
+
+  auto get_status() const -> DiskStatus_t {
+    DiskStatus_t status{};
+    size_t size = sizeof(status);
+    peripheral_query(slot_6, disk_cmd_get_status, &status, &size);
+    return status;
+  }
+};
+
+class ScopedFileMode_t {
+ public:
+  ScopedFileMode_t(std::string path, mode_t new_mode,
+                   mode_t restore_mode = 0644)
+      : path_(std::move(path)), restore_mode_(restore_mode) {
+    chmod(path_.c_str(), new_mode);
+  }
+
+  ~ScopedFileMode_t() {
+    if (!path_.empty()) {
+      chmod(path_.c_str(), restore_mode_);
+    }
+  }
+
+  ScopedFileMode_t(const ScopedFileMode_t&) = delete;
+  auto operator=(const ScopedFileMode_t&) -> ScopedFileMode_t& = delete;
+  ScopedFileMode_t(ScopedFileMode_t&&) = delete;
+  auto operator=(ScopedFileMode_t&&) -> ScopedFileMode_t& = delete;
+
+ private:
+  std::string path_;
+  mode_t restore_mode_;
+};
+
 }  // namespace
 
 TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
-  std::string fixture_woz = TestFixtures::get_fixture_path("minimal.woz");
-  std::string fixture_dsk = TestFixtures::get_fixture_path("minimal.dsk");
+  DiskProtHarness_t harness;
 
-  std::string f_user = "user_prot.dsk";
-  std::string f_os = "os_prot.dsk";
-  std::string f_format = "format_prot.woz";
-  std::string f_rw = "rw.dsk";
+  auto user_disk = TestFixtures::create_ephemeral("minimal.dsk");
+  auto os_disk = TestFixtures::create_ephemeral("minimal.dsk");
+  auto format_disk = TestFixtures::create_ephemeral("minimal.woz");
+  auto rw_disk = TestFixtures::create_ephemeral("minimal.dsk");
 
-  setup_smoke_test(fixture_woz.c_str());
-
-  auto copy_fix = [](const std::string& src_p, const std::string& dst_p,
-                     size_t size) {
-    FILE* src = fopen(src_p.c_str(), "rb");
-    REQUIRE_MESSAGE(src != nullptr, "Could not open source fixture: " << src_p);
-
-    FILE* dst = fopen(dst_p.c_str(), "wb");
-    REQUIRE_MESSAGE(dst != nullptr, "Could not open destination: " << dst_p);
-
-    std::vector<uint8_t> buf(size);
-    REQUIRE(fread(buf.data(), 1, size, src) == size);
-    fwrite(buf.data(), 1, size, dst);
-    fclose(src);
-    fclose(dst);
-  };
-
-  copy_fix(fixture_dsk, f_user, 143360);
-  copy_fix(fixture_dsk, f_os, 143360);
-  copy_fix(fixture_woz, f_format, 1536);
-  copy_fix(fixture_dsk, f_rw, 143360);
-
-  DiskInsertCmd_t cmd{};
-  cmd.drive = disk_drive_0;
-  DiskStatus_t status{};
-  size_t size = sizeof(status);
-
-  // Layer 3: User Toggle
-  util_safe_strcpy(cmd.path, f_user.c_str(), disk_insert_path_max);
-  cmd.write_protected = true;
-  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-  peripheral_manager_think(0);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
-  CHECK(status.drive0_loaded != 0);
-  CHECK(status.drive0_write_protected != 0);
-
-  // Layer 2: OS Read-Only
-  if (getuid() != 0) {
-    chmod(f_os.c_str(), 0444);
-    util_safe_strcpy(cmd.path, f_os.c_str(), disk_insert_path_max);
-    cmd.write_protected = false;
-    peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-    peripheral_manager_think(0);
-    peripheral_query(SL6, disk_cmd_get_status, &status, &size);
-    CHECK(status.drive0_loaded != 0);
-    CHECK(status.drive0_write_protected != 0);
+  // Layer 3: User runtime toggle (cmd.write_protected = true)
+  {
+    harness.insert_disk(user_disk.path(), true);
+    const DiskStatus_t status = harness.get_status();
+    CHECK(status.drive0_loaded == 1);
+    CHECK(status.drive0_write_protected == 1);
+    CHECK(status.drive0_last_error == disk_err_none);
   }
 
-  // Layer 1: Format/Driver Capability
-  util_safe_strcpy(cmd.path, f_format.c_str(), disk_insert_path_max);
-  cmd.write_protected = false;
-  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-  peripheral_manager_think(0);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
-  CHECK(status.drive0_loaded != 0);
-  CHECK(status.drive0_write_protected != 0);
+  // Layer 2: OS file permissions (read-only file on filesystem)
+  // Superuser (root / container environments) bypasses DAC read-only
+  // permissions.
+  if (getuid() != 0) {
+    ScopedFileMode_t readonly_guard(os_disk.path(), 0444, 0644);
+    harness.insert_disk(os_disk.path(), false);
+    const DiskStatus_t status = harness.get_status();
+    CHECK(status.drive0_loaded == 1);
+    CHECK(status.drive0_write_protected == 1);
+    CHECK(status.drive0_last_error == disk_err_none);
+  }
 
-  // All clear: Writable
-  util_safe_strcpy(cmd.path, f_rw.c_str(), disk_insert_path_max);
-  cmd.write_protected = false;
-  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
-  peripheral_manager_think(0);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
-  CHECK(status.drive0_loaded != 0);
-  CHECK(status.drive0_write_protected == 0);
+  // Layer 1: Format/Driver Capability (WOZ2 is read-only in LinApple)
+  {
+    harness.insert_disk(format_disk.path(), false);
+    const DiskStatus_t status = harness.get_status();
+    CHECK(status.drive0_loaded == 1);
+    CHECK(status.drive0_write_protected == 1);
+    CHECK(status.drive0_last_error == disk_err_none);
+  }
 
-  remove(f_user.c_str());
-  remove(f_os.c_str());
-  remove(f_format.c_str());
-  remove(f_rw.c_str());
-  linapple_shutdown();
+  // Baseline: Writable disk image is not write-protected
+  {
+    harness.insert_disk(rw_disk.path(), false);
+    const DiskStatus_t status = harness.get_status();
+    CHECK(status.drive0_loaded == 1);
+    CHECK(status.drive0_write_protected == 0);
+    CHECK(status.drive0_last_error == disk_err_none);
+  }
 }
