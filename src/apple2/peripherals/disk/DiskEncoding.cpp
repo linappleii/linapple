@@ -214,17 +214,22 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
     markers_found++;
 
     switch (marker_type) {
-      case addr_prologue_3:
+      case addr_prologue_3: {
         for (int i = 0; i < 4; ++i) {
           fetch_byte();
         }
+        const uint8_t sector_high = fetch_byte();
+        const uint8_t sector_low = fetch_byte();
         current_sector =
-            static_cast<int>(((fetch_byte() & addr_4and4_mask) << shift_1) |
-                             (fetch_byte() & addr_4and4_mask));
+            static_cast<int>(((sector_high & addr_4and4_mask) << shift_1) |
+                             (sector_low & addr_4and4_mask));
         break;
+      }
 
       case data_prologue_3:
-        for (int i = 0; i < max_nibblized_sector_size; ++i) {
+        for (int i = 0;
+             i < static_cast<int>(disk_encoding_sector_with_checksum_size);
+             ++i) {
           work_buffer[disk_encoding_work_buffer_offset + i] = fetch_byte();
         }
         if (current_sector >= 0 && current_sector < sectors_per_track) {
