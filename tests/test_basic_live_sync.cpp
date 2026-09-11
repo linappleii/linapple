@@ -13,59 +13,78 @@ extern eApple2Type g_apple2_type;
 
 namespace {
 
-constexpr size_t TEST_MEM_SIZE = 65536;
-constexpr uint8_t ADDR_TXTTAB_L = 0x67;
-constexpr uint8_t ADDR_TXTTAB_H = 0x68;
-constexpr uint8_t ADDR_VARTAB_L = 0x69;
-constexpr uint8_t ADDR_VARTAB_H = 0x6A;
-constexpr uint8_t ADDR_ARYTAB_L = 0x6B;
-constexpr uint8_t ADDR_ARYTAB_H = 0x6C;
-constexpr uint8_t ADDR_STREND_L = 0x6D;
-constexpr uint8_t ADDR_STREND_H = 0x6E;
-constexpr uint8_t ADDR_FRETOP_L = 0x6F;
-constexpr uint8_t ADDR_FRETOP_H = 0x70;
-constexpr uint8_t ADDR_HIMEM_L = 0x73;
-constexpr uint8_t ADDR_HIMEM_H = 0x74;
-constexpr uint8_t ADDR_PRGEND_L = 0xAF;
-constexpr uint8_t ADDR_PRGEND_H = 0xB0;
+constexpr size_t test_mem_size = 65536;
+constexpr uint8_t addr_txttab_l = 0x67;
+constexpr uint8_t addr_txttab_h = 0x68;
+constexpr uint8_t addr_vartab_l = 0x69;
+constexpr uint8_t addr_vartab_h = 0x6A;
+constexpr uint8_t addr_arytab_l = 0x6B;
+constexpr uint8_t addr_arytab_h = 0x6C;
+constexpr uint8_t addr_strend_l = 0x6D;
+constexpr uint8_t addr_strend_h = 0x6E;
+constexpr uint8_t addr_fretop_l = 0x6F;
+constexpr uint8_t addr_fretop_h = 0x70;
+constexpr uint8_t addr_himem_l = 0x73;
+constexpr uint8_t addr_himem_h = 0x74;
+constexpr uint8_t addr_prgend_l = 0xAF;
+constexpr uint8_t addr_prgend_h = 0xB0;
 
-constexpr uint8_t VAL_TXTTAB_L = 0x01;
-constexpr uint8_t VAL_TXTTAB_H = 0x08;
-constexpr uint8_t VAL_HIMEM_L = 0x00;
-constexpr uint8_t VAL_HIMEM_H = 0x96;
+constexpr uint8_t val_txttab_l = 0x01;
+constexpr uint8_t val_txttab_h = 0x08;
+constexpr uint8_t val_himem_l = 0x00;
+constexpr uint8_t val_himem_h = 0x96;
 
-static std::array<uint8_t, TEST_MEM_SIZE> g_mock_ram{};
+static std::array<uint8_t, test_mem_size> g_mock_ram{};
 
-static void SetupMockMemory() {
+struct ScopedMemoryContext_t {
+  uint8_t* original_mem{mem};
+  eApple2Type original_type{g_apple2_type};
+
+  ScopedMemoryContext_t() = default;
+
+  ~ScopedMemoryContext_t() {
+    mem = original_mem;
+    g_apple2_type = original_type;
+  }
+
+  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
+  auto operator=(const ScopedMemoryContext_t&)
+      -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
+  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+};
+
+static auto setup_mock_memory() -> void {
   g_mock_ram.fill(0);
   mem = g_mock_ram.data();
 
   // Set default Applesoft zero page pointers
   // TXTTAB: $0801
-  g_mock_ram.at(ADDR_TXTTAB_L) = VAL_TXTTAB_L;
-  g_mock_ram.at(ADDR_TXTTAB_H) = VAL_TXTTAB_H;
+  g_mock_ram.at(addr_txttab_l) = val_txttab_l;
+  g_mock_ram.at(addr_txttab_h) = val_txttab_h;
 
   // HIMEM: $9600
-  g_mock_ram.at(ADDR_HIMEM_L) = VAL_HIMEM_L;
-  g_mock_ram.at(ADDR_HIMEM_H) = VAL_HIMEM_H;
+  g_mock_ram.at(addr_himem_l) = val_himem_l;
+  g_mock_ram.at(addr_himem_h) = val_himem_h;
 
   // PRGEND, VARTAB, ARYTAB: $0801
-  g_mock_ram.at(ADDR_PRGEND_L) = VAL_TXTTAB_L;
-  g_mock_ram.at(ADDR_PRGEND_H) = VAL_TXTTAB_H;
-  g_mock_ram.at(ADDR_VARTAB_L) = VAL_TXTTAB_L;
-  g_mock_ram.at(ADDR_VARTAB_H) = VAL_TXTTAB_H;
-  g_mock_ram.at(ADDR_ARYTAB_L) = VAL_TXTTAB_L;
-  g_mock_ram.at(ADDR_ARYTAB_H) = VAL_TXTTAB_H;
-  g_mock_ram.at(ADDR_STREND_L) = VAL_TXTTAB_L;
-  g_mock_ram.at(ADDR_STREND_H) = VAL_TXTTAB_H;
-  g_mock_ram.at(ADDR_FRETOP_L) = VAL_HIMEM_L;
-  g_mock_ram.at(ADDR_FRETOP_H) = VAL_HIMEM_H;
+  g_mock_ram.at(addr_prgend_l) = val_txttab_l;
+  g_mock_ram.at(addr_prgend_h) = val_txttab_h;
+  g_mock_ram.at(addr_vartab_l) = val_txttab_l;
+  g_mock_ram.at(addr_vartab_h) = val_txttab_h;
+  g_mock_ram.at(addr_arytab_l) = val_txttab_l;
+  g_mock_ram.at(addr_arytab_h) = val_txttab_h;
+  g_mock_ram.at(addr_strend_l) = val_txttab_l;
+  g_mock_ram.at(addr_strend_h) = val_txttab_h;
+  g_mock_ram.at(addr_fretop_l) = val_himem_l;
+  g_mock_ram.at(addr_fretop_h) = val_himem_h;
 }
 
 }  // namespace
 
 TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source =
@@ -92,7 +111,8 @@ TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
 }
 
 TEST_CASE("BasicLiveSync: Positional Line Mode") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source;
@@ -127,7 +147,8 @@ TEST_CASE("BasicLiveSync: Positional Line Mode") {
 }
 
 TEST_CASE("BasicLiveSync: REM and Quoted String Keyword Protection") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   // "PRINT" inside string and after REM should not be tokenized as $BA
@@ -143,7 +164,8 @@ TEST_CASE("BasicLiveSync: REM and Quoted String Keyword Protection") {
 }
 
 TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
 
   // Test Apple ][+ mode (uppercase only)
   g_apple2_type = A2TYPE_APPLE2PLUS;
@@ -163,14 +185,15 @@ TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
 }
 
 TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   // Set tight HIMEM ($0810) - only enough space for 1 line
   constexpr uint8_t tight_himem_l = 0x10;
   constexpr uint8_t tight_himem_h = 0x08;
-  g_mock_ram.at(ADDR_HIMEM_L) = tight_himem_l;
-  g_mock_ram.at(ADDR_HIMEM_H) = tight_himem_h;
+  g_mock_ram.at(addr_himem_l) = tight_himem_l;
+  g_mock_ram.at(addr_himem_h) = tight_himem_h;
 
   std::string source =
       "10 HOME\n"
@@ -183,7 +206,7 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
 
   constexpr uint8_t shift_8 = 8;
   auto prgend = static_cast<uint16_t>(
-      g_mock_ram.at(ADDR_PRGEND_L) | (g_mock_ram.at(ADDR_PRGEND_H) << shift_8));
+      g_mock_ram.at(addr_prgend_l) | (g_mock_ram.at(addr_prgend_h) << shift_8));
   CHECK(prgend < 0x0810);
 
   std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
@@ -192,7 +215,8 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
 }
 
 TEST_CASE("BasicLiveSync: Line Length Truncation") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   constexpr size_t extra_chars = 300;
@@ -208,7 +232,8 @@ TEST_CASE("BasicLiveSync: Line Length Truncation") {
 }
 
 TEST_CASE("BasicLiveSync: Math Tokens Longest-Prefix Matching") {
-  SetupMockMemory();
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
   g_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source = "10 PRINT ATN(1) + COS(X)\n";
