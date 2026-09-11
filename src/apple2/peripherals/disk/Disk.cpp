@@ -67,8 +67,6 @@ constexpr uint8_t io_read_mode = 0xE;
 constexpr uint8_t io_write_mode = 0xF;
 constexpr uint8_t io_stepper_alt = 0xE0;
 
-constexpr int disk_state_version = 1;
-
 struct Disk_t {
   char full_path[max_disk_full_path_len + 1] = {};
   char image_name[max_disk_image_name_len + 1] = {};
@@ -115,42 +113,6 @@ struct DiskPeripheral_t {
 
   DiskPeripheral_t() = default;
 };
-
-// Why: Maintained for binary compatibility with legacy save-states.
-// Plan to remove in a future version in favor of a modern serialization format.
-#pragma pack(push, 1)
-struct DiskStateHeader_t {
-  uint32_t version;
-  uint32_t size;
-};
-
-struct DiskDriveState_t {
-  char full_path[max_disk_full_path_len + 1];
-  int32_t track;
-  int32_t phase;
-  int32_t current_byte_pos;
-  uint8_t user_write_protected;
-  uint8_t is_os_read_only;
-  uint8_t is_data_loaded;
-  uint8_t is_dirty;
-  uint32_t spinning_ticks;
-  uint32_t write_light_ticks;
-  int32_t nibble_count;
-  uint8_t track_buffer[nibbles_per_track];
-};
-
-struct DiskSavedState_t {
-  DiskStateHeader_t header;
-  DiskDriveState_t drives[disk_drive_count];
-  uint16_t stepper_phase_mask;
-  uint16_t active_drive_index;
-  uint8_t was_accessed_this_tick;
-  uint8_t is_speed_enhanced;
-  uint8_t io_latch;
-  uint8_t is_motor_on;
-  uint8_t is_write_mode;
-};
-#pragma pack(pop)
 
 auto is_drive_valid(int drive_index) -> bool {
   return (drive_index >= 0 && drive_index < disk_drive_count);
