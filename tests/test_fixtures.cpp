@@ -141,4 +141,22 @@ TEST_CASE("EphemeralDiskFixture: Lifecycle and Isolation (TASK-1)") {
         TestFixtures::create_ephemeral("non_existent_fixture_12345.dsk"),
         std::runtime_error);
   }
+
+  SUBCASE("Resolution of resources via SOURCE_RES_DIR and Ephemeral Copy") {
+    std::string master_path = TestFixtures::get_fixture_path("Master.dsk");
+    CHECK(access(master_path.c_str(), R_OK) == 0);
+    auto ephemeral = TestFixtures::create_ephemeral("Master.dsk");
+    CHECK(access(ephemeral.c_str(), R_OK) == 0);
+  }
+
+  SUBCASE("ScopedTempFile_t Lifecycle") {
+    std::string temp_path;
+    {
+      TestFixtures::ScopedTempFile_t tmp(".tmp");
+      temp_path = tmp.path();
+      CHECK(!temp_path.empty());
+      CHECK(access(temp_path.c_str(), F_OK) == 0);
+    }
+    CHECK(access(temp_path.c_str(), F_OK) != 0);
+  }
 }

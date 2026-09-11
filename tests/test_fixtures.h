@@ -19,9 +19,16 @@ inline auto get_fixture_path(const std::string& filename) -> std::string {
     return p;
   }
 #endif
+#ifdef SOURCE_RES_DIR
+  std::string p_res = std::string(SOURCE_RES_DIR) + "/" + filename;
+  if (access(p_res.c_str(), R_OK) == 0) {
+    return p_res;
+  }
+#endif
   for (const auto* prefix :
        {"tests/fixtures/", "../tests/fixtures/", "../../tests/fixtures/",
-        "../../../tests/fixtures/"}) {
+        "../../../tests/fixtures/", "res/", "../res/", "../../res/",
+        "../../../res/"}) {
     std::string candidate = std::string(prefix) + filename;
     if (access(candidate.c_str(), R_OK) == 0) {
       return candidate;
@@ -188,5 +195,65 @@ inline auto create_ephemeral_blank(const std::string& filename,
     -> EphemeralDiskFixture_t {
   return EphemeralDiskFixture_t::create_blank(filename, size_bytes);
 }
+
+/**
+ * @brief RAII scoped temporary file in /tmp.
+ *
+ * Creates a unique empty temporary file with an optional suffix and unlinks it
+ * upon destruction.
+ */
+class ScopedTempFile_t {
+ private:
+  std::string path_;
+
+ public:
+  explicit ScopedTempFile_t(const std::string& ext = "") {
+    const char* tmpdir = std::getenv("TMPDIR");
+    std::string base_dir =
+        (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
+    if (base_dir.back() != '/') {
+      base_dir += '/';
+    }
+
+    std::string pattern = base_dir + "linapple_test_XXXXXX" + ext;
+    std::vector<char> template_buf(pattern.begin(), pattern.end());
+    template_buf.push_back('\0');
+
+    int fd = mkstemps(template_buf.data(), static_cast<int>(ext.length()));
+    if (fd >= 0) {
+      ::close(fd);
+      path_ = template_buf.data();
+    }
+  }
+
+  ~ScopedTempFile_t() { unlink_file(); }
+
+  ScopedTempFile_t(const ScopedTempFile_t&) = delete;
+  auto operator=(const ScopedTempFile_t&) -> ScopedTempFile_t& = delete;
+
+  ScopedTempFile_t(ScopedTempFile_t&& other) noexcept
+      : path_(std::move(other.path_)) {
+    other.path_.clear();
+  }
+
+  auto operator=(ScopedTempFile_t&& other) noexcept -> ScopedTempFile_t& {
+    if (this != &other) {
+      unlink_file();
+      path_ = std::move(other.path_);
+      other.path_.clear();
+    }
+    return *this;
+  }
+
+  auto path() const -> const std::string& { return path_; }
+  auto c_str() const -> const char* { return path_.c_str(); }
+
+  auto unlink_file() -> void {
+    if (!path_.empty()) {
+      unlink(path_.c_str());
+      path_.clear();
+    }
+  }
+};
 
 }  // namespace TestFixtures
