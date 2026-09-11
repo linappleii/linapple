@@ -75,6 +75,11 @@ auto ftp_get(const char* ftp_path, const char* local_path) -> CURLcode {
     return CURLE_WRITE_ERROR;
   }
 
+  if (g_curl == nullptr) {
+    Logger::error("FTP: curl not initialized for this frontend\n");
+    return CURLE_FAILED_INIT;
+  }
+
   CURLcode res = CURLE_OK;
 
   FilePtr_t stream(fopen(local_path, "w"), fclose);

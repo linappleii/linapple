@@ -69,3 +69,15 @@ TEST_CASE("FTP: Path traversal sanitization (FTP-1)") {
   CHECK(Path::sanitize_filename("in\x01valid.dsk") == "");
   CHECK(Path::sanitize_filename("in\x7Fvalid.dsk") == "");
 }
+
+TEST_CASE("FTP: ftp_get guards against null curl and invalid paths") {
+  CHECK(ftp_get(nullptr, "test.dsk") == CURLE_BAD_FUNCTION_ARGUMENT);
+  CHECK(ftp_get("ftp://example.com/test.dsk", nullptr) ==
+        CURLE_BAD_FUNCTION_ARGUMENT);
+  CHECK(ftp_get("ftp://example.com/test.dsk", "") ==
+        CURLE_BAD_FUNCTION_ARGUMENT);
+  CHECK(ftp_get("ftp://example.com/test.dsk", "../test.dsk") ==
+        CURLE_WRITE_ERROR);
+  CHECK(ftp_get("ftp://example.com/test.dsk", "/tmp/test.dsk") ==
+        CURLE_FAILED_INIT);
+}
