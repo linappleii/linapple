@@ -82,11 +82,17 @@ TEST_CASE("Peripheral ABI Config: Built-in Peripheral Schemas") {
 }
 
 TEST_CASE("Peripheral ABI Config: Schema Query by ID") {
+  if (peripheral_find_builtin("linapple.printer") == nullptr) {
+    peripheral_register_builtin(printer_get_descriptor());
+  }
   const auto* printer_schema =
       peripheral_get_config_schema_by_id("linapple.printer");
   REQUIRE(printer_schema != nullptr);
   CHECK(printer_schema->option_count == 3);
 
+  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
+    peripheral_register_builtin(disk_get_descriptor());
+  }
   const auto* disk_schema =
       peripheral_get_config_schema_by_id("linapple.disk_II");
   REQUIRE(disk_schema != nullptr);
