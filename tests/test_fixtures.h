@@ -135,11 +135,58 @@ struct EphemeralDiskFixture_t {
       temp_path.clear();
     }
   }
+
+  EphemeralDiskFixture_t() = default;
+
+  static auto create_blank(const std::string& filename, size_t size_bytes)
+      -> EphemeralDiskFixture_t {
+    std::string ext;
+    size_t dot_pos = filename.find_last_of('.');
+    if (dot_pos != std::string::npos) {
+      ext = filename.substr(dot_pos);
+    }
+
+    const char* tmpdir = getenv("TMPDIR");
+    std::string base_dir =
+        (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
+    if (base_dir.back() != '/') {
+      base_dir += '/';
+    }
+
+    std::string pattern = base_dir + "linapple_test_XXXXXX" + ext;
+    std::vector<char> template_buf(pattern.begin(), pattern.end());
+    template_buf.push_back('\0');
+
+    int fd = mkstemps(template_buf.data(), static_cast<int>(ext.length()));
+    if (fd < 0) {
+      throw std::runtime_error(
+          "Failed to create temporary file for blank disk fixture");
+    }
+
+    if (size_bytes > 0) {
+      if (ftruncate(fd, static_cast<off_t>(size_bytes)) != 0) {
+        ::close(fd);
+        unlink(template_buf.data());
+        throw std::runtime_error("Failed to set size for blank disk fixture");
+      }
+    }
+    ::close(fd);
+
+    EphemeralDiskFixture_t fixture;
+    fixture.temp_path = template_buf.data();
+    return fixture;
+  }
 };
 
 inline auto create_ephemeral(const std::string& fixture_name)
     -> EphemeralDiskFixture_t {
   return EphemeralDiskFixture_t(fixture_name);
+}
+
+inline auto create_ephemeral_blank(const std::string& filename,
+                                   size_t size_bytes)
+    -> EphemeralDiskFixture_t {
+  return EphemeralDiskFixture_t::create_blank(filename, size_bytes);
 }
 
 }  // namespace TestFixtures
