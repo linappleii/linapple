@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <dirent.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -251,6 +254,92 @@ class ScopedTempFile_t {
   auto unlink_file() -> void {
     if (!path_.empty()) {
       unlink(path_.c_str());
+      path_.clear();
+    }
+  }
+};
+
+/**
+ * @brief RAII scoped temporary directory.
+ *
+ * Creates a unique empty temporary directory under TMPDIR or /tmp and
+ * recursively removes all child files and subdirectories upon destruction.
+ */
+class ScopedTempDir_t {
+ private:
+  std::string path_;
+
+  static auto remove_all(const std::string& dir_path) -> void {
+    DIR* dir = opendir(dir_path.c_str());
+    if (dir == nullptr) {
+      return;
+    }
+    struct dirent* entry = nullptr;
+    while ((entry = readdir(dir)) != nullptr) {
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        continue;
+      }
+      std::string child_path = dir_path + "/" + entry->d_name;
+      struct stat st{};
+      if (lstat(child_path.c_str(), &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+          remove_all(child_path);
+        } else {
+          unlink(child_path.c_str());
+        }
+      }
+    }
+    closedir(dir);
+    rmdir(dir_path.c_str());
+  }
+
+ public:
+  explicit ScopedTempDir_t(
+      const std::string& prefix = "linapple_browser_test_") {
+    const char* tmpdir = std::getenv("TMPDIR");
+    std::string base_dir =
+        (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
+    if (base_dir.back() != '/') {
+      base_dir += '/';
+    }
+
+    std::string pattern = base_dir + prefix + "XXXXXX";
+    std::vector<char> template_buf(pattern.begin(), pattern.end());
+    template_buf.push_back('\0');
+
+    char* created_dir = mkdtemp(template_buf.data());
+    if (created_dir == nullptr) {
+      throw std::runtime_error("Failed to create temporary directory: " +
+                               pattern);
+    }
+    path_ = created_dir;
+  }
+
+  ~ScopedTempDir_t() { cleanup(); }
+
+  ScopedTempDir_t(const ScopedTempDir_t&) = delete;
+  auto operator=(const ScopedTempDir_t&) -> ScopedTempDir_t& = delete;
+
+  ScopedTempDir_t(ScopedTempDir_t&& other) noexcept
+      : path_(std::move(other.path_)) {
+    other.path_.clear();
+  }
+
+  auto operator=(ScopedTempDir_t&& other) noexcept -> ScopedTempDir_t& {
+    if (this != &other) {
+      cleanup();
+      path_ = std::move(other.path_);
+      other.path_.clear();
+    }
+    return *this;
+  }
+
+  auto path() const -> const std::string& { return path_; }
+  auto c_str() const -> const char* { return path_.c_str(); }
+
+  auto cleanup() -> void {
+    if (!path_.empty()) {
+      remove_all(path_);
       path_.clear();
     }
   }

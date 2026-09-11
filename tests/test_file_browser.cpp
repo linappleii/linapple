@@ -1,25 +1,64 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
-#include <ios>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
-#include <unistd.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <ios>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/FileBrowser.h"
+#include "test_fixtures.h"
+
+namespace {
+
+struct GeneratorDeleter_t {
+  auto operator()(FileListGenerator_t* g) const -> void {
+    if (g != nullptr && g->destroy != nullptr) {
+      g->destroy(g);
+    }
+  }
+};
+using UniqueGenerator_t =
+    std::unique_ptr<FileListGenerator_t, GeneratorDeleter_t>;
+
+struct FileListDeleter_t {
+  auto operator()(FileList_t* l) const -> void {
+    if (l != nullptr) {
+      file_browser_free_list(l);
+    }
+  }
+};
+using UniqueFileList_t = std::unique_ptr<FileList_t, FileListDeleter_t>;
+
+struct DiskBrowserGuard_t {
+  DiskBrowser_t* browser;
+  explicit DiskBrowserGuard_t(DiskBrowser_t* b) : browser(b) {}
+  ~DiskBrowserGuard_t() {
+    if (browser != nullptr && browser->is_active) {
+      disk_browser_close(browser);
+    }
+  }
+  DiskBrowserGuard_t(const DiskBrowserGuard_t&) = delete;
+  auto operator=(const DiskBrowserGuard_t&) -> DiskBrowserGuard_t& = delete;
+  DiskBrowserGuard_t(DiskBrowserGuard_t&&) = delete;
+  auto operator=(DiskBrowserGuard_t&&) -> DiskBrowserGuard_t& = delete;
+};
 
 // Helper to construct a FileEntry_t for testing
-static FileEntry_t create_entry(const char* name, FileEntryType_t type,
-                                uint64_t size) {
+auto create_entry(const char* name, FileEntryType_t type, uint64_t size)
+    -> FileEntry_t {
   FileEntry_t entry{};
   entry.name[0] = '\0';
-  if (name) util_safe_strcpy(entry.name, name, sizeof(entry.name));
+  if (name != nullptr) {
+    util_safe_strcpy(entry.name, name, sizeof(entry.name));
+  }
   entry.type = type;
   entry.size = size;
   return entry;
@@ -63,37 +102,39 @@ TEST_CASE("FileBrowser: FileEntry_t Size Formatting") {
 }
 
 // Helper to create a dummy file
-void create_dummy_file(const std::string& path, size_t size) {
+auto create_dummy_file(const std::string& path, size_t size) -> void {
   std::ofstream f(path, std::ios::binary);
   if (size > 0) {
     std::vector<char> dummy(size, 0);
-    f.write(dummy.data(), size);
+    f.write(dummy.data(), static_cast<std::streamsize>(size));
   }
 }
 
+}  // namespace
+
 TEST_CASE("FileBrowser: LocalFileListGenerator") {
-  // Setup temp directory
-  std::string test_dir = "test_browser_temp";
-  mkdir(test_dir.c_str(), 0755);
+  TestFixtures::ScopedTempDir_t temp_dir;
+  const std::string& test_dir = temp_dir.path();
+
   mkdir((test_dir + "/subdir").c_str(), 0755);
   create_dummy_file(test_dir + "/file1.dsk", 1024);
   create_dummy_file(test_dir + "/file2.po", 2048);
 
   SUBCASE("List Generation") {
-    FileListGenerator_t* gen =
-        file_browser_create_local_generator(test_dir.c_str(), nullptr);
+    UniqueGenerator_t gen(
+        file_browser_create_local_generator(test_dir.c_str(), nullptr));
     REQUIRE(gen != nullptr);
 
-    FileList_t* list = gen->generate_file_list(gen);
+    UniqueFileList_t list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
     // Should have: .. (UP), subdir (DIR), file1 (FILE), file2 (FILE)
-    REQUIRE(file_browser_get_count(list) == 4);
+    REQUIRE(file_browser_get_count(list.get()) == 4);
 
-    const FileEntry_t* e0 = file_browser_get_entry(list, 0);
-    const FileEntry_t* e1 = file_browser_get_entry(list, 1);
-    const FileEntry_t* e2 = file_browser_get_entry(list, 2);
-    const FileEntry_t* e3 = file_browser_get_entry(list, 3);
+    const FileEntry_t* e0 = file_browser_get_entry(list.get(), 0);
+    const FileEntry_t* e1 = file_browser_get_entry(list.get(), 1);
+    const FileEntry_t* e2 = file_browser_get_entry(list.get(), 2);
+    const FileEntry_t* e3 = file_browser_get_entry(list.get(), 3);
 
     REQUIRE(e0 != nullptr);
     CHECK(e0->type == FILE_ENTRY_UP);
@@ -109,25 +150,22 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
     REQUIRE(e3 != nullptr);
     CHECK(e3->type == FILE_ENTRY_FILE);
     CHECK(strcmp(e3->name, "file2.po") == 0);
-
-    file_browser_free_list(list);
-    gen->destroy(gen);
   }
 
   SUBCASE("List Generation with Filter") {
-    FileListGenerator_t* gen =
-        file_browser_create_local_generator(test_dir.c_str(), "dsk");
+    UniqueGenerator_t gen(
+        file_browser_create_local_generator(test_dir.c_str(), "dsk"));
     REQUIRE(gen != nullptr);
 
-    FileList_t* list = gen->generate_file_list(gen);
+    UniqueFileList_t list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
     // Should have: .. (UP), subdir (DIR), file1 (FILE). file2.po filtered out.
-    REQUIRE(file_browser_get_count(list) == 3);
+    REQUIRE(file_browser_get_count(list.get()) == 3);
 
-    const FileEntry_t* e0 = file_browser_get_entry(list, 0);
-    const FileEntry_t* e1 = file_browser_get_entry(list, 1);
-    const FileEntry_t* e2 = file_browser_get_entry(list, 2);
+    const FileEntry_t* e0 = file_browser_get_entry(list.get(), 0);
+    const FileEntry_t* e1 = file_browser_get_entry(list.get(), 1);
+    const FileEntry_t* e2 = file_browser_get_entry(list.get(), 2);
 
     REQUIRE(e0 != nullptr);
     CHECK(e0->type == FILE_ENTRY_UP);
@@ -139,31 +177,20 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
     REQUIRE(e2 != nullptr);
     CHECK(e2->type == FILE_ENTRY_FILE);
     CHECK(strcmp(e2->name, "file1.dsk") == 0);
-
-    file_browser_free_list(list);
-    gen->destroy(gen);
   }
 
   SUBCASE("Failure Handling") {
-    FileListGenerator_t* gen = file_browser_create_local_generator(
-        "non_existent_directory_xyz", nullptr);
+    UniqueGenerator_t gen(file_browser_create_local_generator(
+        "non_existent_directory_xyz", nullptr));
     REQUIRE(gen != nullptr);
 
-    FileList_t* list = gen->generate_file_list(gen);
+    UniqueFileList_t list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
-    CHECK(file_browser_get_count(list) == 0);
-    CHECK(strcmp(file_browser_get_failure_message(list), "(success)") != 0);
-
-    file_browser_free_list(list);
-    gen->destroy(gen);
+    CHECK(file_browser_get_count(list.get()) == 0);
+    CHECK(strcmp(file_browser_get_failure_message(list.get()), "(success)") !=
+          0);
   }
-
-  // Cleanup
-  unlink((test_dir + "/file1.dsk").c_str());
-  unlink((test_dir + "/file2.po").c_str());
-  rmdir((test_dir + "/subdir").c_str());
-  rmdir(test_dir.c_str());
 }
 
 TEST_CASE("FileBrowser: Extension Matching") {
@@ -205,8 +232,10 @@ TEST_CASE("DiskBrowser: Title Formatting") {
 }
 
 TEST_CASE("DiskBrowser: Navigation Operations") {
+  TestFixtures::ScopedTempDir_t temp_dir;
   DiskBrowser_t browser{};
-  CHECK(disk_browser_open(&browser, 6, 0, ".") == true);
+  DiskBrowserGuard_t guard{&browser};
+  CHECK(disk_browser_open(&browser, 6, 0, temp_dir.c_str()) == true);
   CHECK(browser.is_active == true);
   CHECK(browser.drive == 0);
   CHECK(browser.slot == 6);
@@ -224,23 +253,41 @@ TEST_CASE("DiskBrowser: Navigation Operations") {
 }
 
 TEST_CASE("DiskBrowser: Directory Navigation Logic Up Entry") {
-  auto navigate_up = [](std::string fullPath) -> std::string {
-    const auto last_sep_pos = fullPath.find_last_of('/');
-    if (last_sep_pos != std::string::npos) {
-      if (last_sep_pos == 0) {
-        fullPath = "/";
-      } else {
-        fullPath = fullPath.substr(0, last_sep_pos);
-      }
-    }
-    if (fullPath.empty()) {
-      fullPath = "/";
-    }
-    return fullPath;
-  };
+  TestFixtures::ScopedTempDir_t temp_dir;
+  std::string sub_dir = temp_dir.path() + "/nested";
+  mkdir(sub_dir.c_str(), 0755);
 
-  CHECK(navigate_up("/home/user/disk") == "/home/user");
-  CHECK(navigate_up("/home/user") == "/home");
-  CHECK(navigate_up("/home") == "/");
-  CHECK(navigate_up("/") == "/");
+  DiskBrowser_t browser{};
+  DiskBrowserGuard_t guard{&browser};
+  REQUIRE(disk_browser_open(&browser, 6, 0, sub_dir.c_str()) == true);
+  CHECK(std::string(browser.current_dir) == sub_dir);
+
+  // In a sub-directory, entry 0 is the parent navigation entry ("..")
+  browser.selected_index = 0;
+  const FileEntry_t* entry =
+      file_browser_get_entry(browser.list_handle, browser.selected_index);
+  REQUIRE(entry != nullptr);
+  CHECK(entry->type == FILE_ENTRY_UP);
+
+  // Confirming ".." navigates to parent directory and refreshes listing
+  CHECK(disk_browser_confirm(&browser) == false);
+  CHECK(std::string(browser.current_dir) == temp_dir.path());
+
+  // In parent directory, select "nested" and confirm to enter subdirectory
+  size_t count = file_browser_get_count(browser.list_handle);
+  size_t nested_index = count;
+  for (size_t i = 0; i < count; ++i) {
+    const FileEntry_t* item = file_browser_get_entry(browser.list_handle, i);
+    if (item != nullptr && strcmp(item->name, "nested") == 0) {
+      nested_index = i;
+      break;
+    }
+  }
+  REQUIRE(nested_index < count);
+  browser.selected_index = nested_index;
+  CHECK(disk_browser_confirm(&browser) == false);
+  CHECK(std::string(browser.current_dir) == sub_dir);
+
+  disk_browser_close(&browser);
+  CHECK(browser.is_active == false);
 }
