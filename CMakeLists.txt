@@ -425,6 +425,9 @@ set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/DiskFTP.cpp
     src/frontends/common/sdl/DiskSelect.cpp
     src/frontends/common/sdl/Harddisk.cpp
+    src/frontends/common/sdl/MainSession.cpp
+    src/frontends/common/sdl/Keyboard.cpp
+    src/frontends/common/sdl/JoystickFrontend.cpp
     src/apple2/peripherals/disk/ftpparse.cpp
 )
 
@@ -432,10 +435,7 @@ set(SOURCES_FE_SDL3
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
     src/frontends/sdl3/Frame.cpp
-    src/frontends/sdl3/JoystickFrontend.cpp
-    src/frontends/sdl3/Keyboard.cpp
     src/frontends/sdl3/Main.cpp
-    src/frontends/sdl3/MainSession.cpp
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
     src/frontends/sdl3/SDL_Path.cpp
@@ -446,10 +446,7 @@ set(SOURCES_FE_SDL2
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl2/DiskChoose.cpp
     src/frontends/sdl2/Frame.cpp
-    src/frontends/sdl2/JoystickFrontend.cpp
-    src/frontends/sdl2/Keyboard.cpp
     src/frontends/sdl2/Main.cpp
-    src/frontends/sdl2/MainSession.cpp
     src/frontends/sdl2/SDL_Asset.cpp
     src/frontends/sdl2/SDL_Input.cpp
     src/frontends/sdl2/SDL_Path.cpp
@@ -460,10 +457,7 @@ set(SOURCES_FE_SDL1
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl1/DiskChoose.cpp
     src/frontends/sdl1/Frame.cpp
-    src/frontends/sdl1/JoystickFrontend.cpp
-    src/frontends/sdl1/Keyboard.cpp
     src/frontends/sdl1/Main.cpp
-    src/frontends/sdl1/MainSession.cpp
     src/frontends/sdl1/SDL_Asset.cpp
     src/frontends/sdl1/SDL_Input.cpp
     src/frontends/sdl1/SDL_Path.cpp
@@ -545,6 +539,13 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS TRUE)
     target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
     target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
+    if(FE_NAME STREQUAL "sdl1")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=1)
+    elseif(FE_NAME STREQUAL "sdl2")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=2)
+    elseif(FE_NAME STREQUAL "sdl3")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=3)
+    endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
         SYSCONF_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
@@ -764,7 +765,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl1 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
     endif()
@@ -775,7 +776,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
     endif()
@@ -786,7 +787,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
     endif()

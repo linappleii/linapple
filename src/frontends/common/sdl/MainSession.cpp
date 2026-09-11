@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <SDL2/SDL.h>
-#include <SDL_video.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
 
@@ -10,8 +8,8 @@
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
-#include "frontends/sdl2/Frame.h"
-#include "frontends/sdl2/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
+#include "frontends/common/sdl/SdlCompat.h"
 
 using Logger::error;
 using Logger::info;
@@ -53,9 +51,7 @@ void sys_shutdown() {
 }
 
 static void frontend_set_window_title(const char* title) {
-  if (g_window != nullptr) {
-    SDL_SetWindowTitle(g_window.get(), title);
-  }
+  sdl_compat_set_window_title(title);
 }
 
 auto session_init(AppConfig_t* config) -> int {

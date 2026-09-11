@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <SDL/SDL_events.h>
-#include <SDL/SDL_keyboard.h>
-#include <SDL/SDL_keysym.h>
-
 #include <cctype>
 #include <cstdint>
 #include <string>
 
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
+#include "frontends/common/sdl/SdlCompat.h"
 
 static int keyboard_mapping_mode = 0;
 static int keyboard_caps_mode = CAPS_MODE_HOST;
@@ -86,25 +83,18 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
       break;
   }
 
-  uint32_t standard_mod = 0;
-  if (mod & KMOD_SHIFT) {
-    standard_mod |= 0x01;
-  }
-  if (mod & KMOD_CTRL) {
-    standard_mod |= 0x40;
-  }
-
-  return keyboard_symbolic_to_core(key, standard_mod);
+  return keyboard_symbolic_to_core(key, mod);
 }
 
 auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void {
-  KeyboardModifiers_t mods = {static_cast<uint8_t>((mod & KMOD_SHIFT) ? 1 : 0),
-                              static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
-                              static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
-                              static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0),
-                              0,
-                              {0, 0, 0}};
+  KeyboardModifiers_t mods = {
+      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_SHIFT) ? 1 : 0),
+      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_CTRL) ? 1 : 0),
+      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_ALT) ? 1 : 0),
+      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_GUI) ? 1 : 0),
+      0,
+      {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 
   LinAppleKey core_key = LINAPPLE_KEY_UNKNOWN;
@@ -130,15 +120,15 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
   peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
-bool frontend_handle_key_event(SDLKey key, bool is_down) {
+auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
-    case SDLK_LMETA:
+    case SDLK_LGUI:
       linapple_set_apple_key(0, is_down);
       return true;
 
     case SDLK_RALT:
-    case SDLK_RMETA:
+    case SDLK_RGUI:
       linapple_set_apple_key(1, is_down);
       return true;
 
@@ -146,12 +136,12 @@ bool frontend_handle_key_event(SDLKey key, bool is_down) {
     case SDLK_RCTRL:
     case SDLK_LSHIFT:
     case SDLK_RSHIFT: {
-      SDLMod mod = SDL_GetModState();
+      SdlKeymod_t mod = SDL_GetModState();
       KeyboardModifiers_t mods = {
-          static_cast<uint8_t>((mod & KMOD_SHIFT) ? 1 : 0),
-          static_cast<uint8_t>((mod & KMOD_CTRL) ? 1 : 0),
-          static_cast<uint8_t>((mod & KMOD_ALT) ? 1 : 0),
-          static_cast<uint8_t>((mod & KMOD_META) ? 1 : 0),
+          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_SHIFT) ? 1 : 0),
+          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_CTRL) ? 1 : 0),
+          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_ALT) ? 1 : 0),
+          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_GUI) ? 1 : 0),
           0,
           {0, 0, 0}};
       peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
@@ -161,4 +151,8 @@ bool frontend_handle_key_event(SDLKey key, bool is_down) {
     default:
       return false;
   }
+}
+
+auto frontend_handle_event(SdlKeycode_t key, bool is_down) -> bool {
+  return frontend_handle_key_event(key, is_down);
 }
