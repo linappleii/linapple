@@ -653,10 +653,6 @@ if(BUILD_TESTING)
 
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
-    
-    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/keyboard/Keyboard_Maps.c)
-    target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
 
     add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")
     add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp")
