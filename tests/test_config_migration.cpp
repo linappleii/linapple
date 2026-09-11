@@ -5,6 +5,9 @@
 #include <string>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/peripherals/disk/Disk.h"
+#include "apple2/peripherals/printer/Printer.h"
+#include "core/Peripheral.h"
 #include "core/config/ConfigMigration.h"
 #include "core/config/ConfigSchema.h"
 #include "core/config/Toml.h"
@@ -79,6 +82,13 @@ D = Right
 )";
 
 TEST_CASE("ConfigMigration: Migrate to TOML Document") {
+  if (peripheral_find_builtin("linapple.printer") == nullptr) {
+    peripheral_register_builtin(printer_get_descriptor());
+  }
+  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
+    peripheral_register_builtin(disk_get_descriptor());
+  }
+
   std::string err;
   auto doc = config_migrate_legacy_to_toml(SAMPLE_LEGACY_CONF, &err);
   REQUIRE(doc != nullptr);
@@ -299,6 +309,13 @@ TEST_CASE("ConfigMigration: Defensive Checks") {
 }
 
 TEST_CASE("ConfigMigration: Schema-Driven Comments in Migrated TOML") {
+  if (peripheral_find_builtin("linapple.printer") == nullptr) {
+    peripheral_register_builtin(printer_get_descriptor());
+  }
+  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
+    peripheral_register_builtin(disk_get_descriptor());
+  }
+
   std::string err;
   auto doc = config_migrate_legacy_to_toml(SAMPLE_LEGACY_CONF, &err);
   REQUIRE(doc != nullptr);
