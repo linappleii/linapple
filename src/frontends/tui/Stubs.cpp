@@ -97,6 +97,7 @@ WEAK auto Logger::error(const char*, ...) -> void {}
 WEAK auto Logger::initialize() -> void {}
 WEAK auto Logger::destroy() -> void {}
 WEAK auto Logger::set_verbosity(LogLevel_t) -> void {}
+WEAK auto Logger::get_verbosity() -> LogLevel_t { return LogLevel_t::k_info; }
 
 WEAK uint64_t g_cumulative_cycles = 0;
 WEAK SystemState_t g_state = {};
