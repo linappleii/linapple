@@ -2,12 +2,13 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <vector>
 
 #include "Peripheral_Types.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/Peripheral.h"
@@ -34,7 +35,7 @@ constexpr uint16_t IO_BASE_ADDRESS = 0xC080;
 constexpr int IO_SLOT_OFFSET = 4;
 constexpr int REGISTERS_PER_SLOT = 16;
 
-constexpr double STANDARD_APPLE2_SPEED = 1022727.0;
+constexpr double STANDARD_APPLE2_SPEED = CLOCK_6502;
 
 constexpr uint64_t CYCLES_INITIAL = 1000;
 constexpr uint32_t CYCLES_WAIT_LONG = 2000000;

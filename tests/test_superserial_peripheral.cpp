@@ -16,7 +16,6 @@
 #include "doctest.h"
 
 extern "C" uint64_t g_cumulative_cycles;
-extern "C" double g_current_clk_6502;
 
 extern uint8_t* mem;
 constexpr size_t MEMORY_SIZE_64K = 65536;

@@ -221,4 +221,3 @@ auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 
 auto set_budget_video(bool b) -> void;
 auto get_budget_video() -> bool;
-auto set_current_clk_6502() -> void;

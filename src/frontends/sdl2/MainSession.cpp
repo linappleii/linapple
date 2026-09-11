@@ -21,12 +21,6 @@ static bool g_budget_video = false;
 void set_budget_video(bool b) { g_budget_video = b; }
 auto get_budget_video() -> bool { return g_budget_video; }
 
-void set_current_clk_6502() {
-  constexpr double apple2_clock_mhz = 1.023;
-  constexpr double mhz_to_hz = 1000000.0;
-  g_current_clk_6502 = apple2_clock_mhz * mhz_to_hz;
-}
-
 void single_step(bool is_reinit) {
   (void)is_reinit;
   linapple_run_frame(1);

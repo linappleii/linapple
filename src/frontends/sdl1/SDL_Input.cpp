@@ -84,18 +84,15 @@ void sdl_handle_event(SDL_Event* e) {
           g_state.speed = emulation_speed_max;
         }
         printf("Now speed=%d\n", static_cast<int>(g_state.speed));
-        set_current_clk_6502();
       } else if (mysym == SDLK_KP_MINUS) {
         if (g_state.speed > SPEED_MIN) {
           g_state.speed = g_state.speed - 1;
         }
         printf("Now speed=%d\n", static_cast<int>(g_state.speed));
-        set_current_clk_6502();
       } else if (mysym == SDLK_KP_MULTIPLY) {
         constexpr uint32_t default_speed = 10;
         g_state.speed = default_speed;
         printf("Now speed=%d\n", static_cast<int>(g_state.speed));
-        set_current_clk_6502();
       } else if (mysym == SDLK_CAPSLOCK) {
         if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
           uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;

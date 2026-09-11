@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "LinAppleCore.h"
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
@@ -59,7 +60,7 @@ static HostInterface_t g_mock_host = [] {
 
 TEST_CASE("Mockingboard Peripheral: Standard Mode") {
   g_cumulative_cycles = 10000;
-  g_current_clk_6502 = 1022727.0;
+  g_current_clk_6502 = CLOCK_6502;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
   g_write_c0 = nullptr;
@@ -202,7 +203,7 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
 
 TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
   g_cumulative_cycles = 10000;
-  g_current_clk_6502 = 1022727.0;
+  g_current_clk_6502 = CLOCK_6502;
   g_irq_asserted = false;
   g_read_c0 = nullptr;
   g_write_c0 = nullptr;
