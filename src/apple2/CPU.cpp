@@ -2690,7 +2690,11 @@ auto cpu_nmi_deassert(IrqSrc_t device) -> void {
 
 auto cpu_reset() -> void {
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
-  regs.pc = *reinterpret_cast<uint16_t*>(mem + 0xFFFC);
+  if (mem != nullptr) {
+    regs.pc = *reinterpret_cast<uint16_t*>(mem + 0xFFFC);
+  } else {
+    regs.pc = 0;
+  }
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
 
   regs.is_jammed = 0;

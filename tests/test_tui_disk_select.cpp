@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
+#include "apple2/Memory.h"
 #include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
@@ -21,6 +23,26 @@
 #include "test_fixtures.h"
 
 namespace {
+
+struct ScopedMemoryContext_t {
+  eApple2Type orig_type{g_apple2_type};
+
+  ScopedMemoryContext_t() {
+    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    mem_initialize();
+  }
+
+  ~ScopedMemoryContext_t() {
+    mem_destroy();
+    g_apple2_type = orig_type;
+  }
+
+  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
+  auto operator=(const ScopedMemoryContext_t&)
+      -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
+  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+};
 
 struct ScopedCwd_t {
   std::string original_cwd;
@@ -126,6 +148,7 @@ TEST_CASE("TuiDiskSelect: Navigation and Paging") {
 }
 
 TEST_CASE("TuiVideo: Screenshot Generation") {
+  ScopedMemoryContext_t mem_guard;
   TestFixtures::ScopedTempDir_t temp_dir;
   ScopedCwd_t cwd_guard(temp_dir.path());
 

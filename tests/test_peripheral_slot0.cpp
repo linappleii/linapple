@@ -1,9 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 
+#include "apple2/Apple2Types.h"
+#include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "doctest.h"
+
+namespace {
+
+struct ScopedMemoryContext_t {
+  eApple2Type orig_type{g_apple2_type};
+
+  ScopedMemoryContext_t() {
+    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    mem_initialize();
+  }
+
+  ~ScopedMemoryContext_t() {
+    mem_destroy();
+    g_apple2_type = orig_type;
+  }
+
+  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
+  auto operator=(const ScopedMemoryContext_t&)
+      -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
+  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+};
+
+}  // namespace
 
 // Mock peripherals for testing Slot 0
 static int p1_resets = 0;
@@ -115,6 +141,7 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
 static HostInterface_t* captured_host = nullptr;
 
 TEST_CASE("Peripheral ABI: host_reset_system") {
+  ScopedMemoryContext_t mem_guard;
   p1_resets = 0;
   captured_host = nullptr;
   peripheral_manager_init();
