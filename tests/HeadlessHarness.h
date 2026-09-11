@@ -38,7 +38,7 @@ struct HeadlessHarness_t {
   auto boot() -> void;
   auto reset_soft() -> void;
   auto run_frames(uint32_t count) -> void;
-  auto type_string(const std::string& text, uint32_t frames_per_stroke = 4)
+  auto type_string(const std::string& text, uint32_t frames_per_stroke = 1)
       -> void;
 
   // Golden / Inspection

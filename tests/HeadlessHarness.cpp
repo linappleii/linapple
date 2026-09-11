@@ -26,13 +26,6 @@ namespace {
 
 static HeadlessHarness_t* s_active_harness = nullptr;
 
-auto on_video(const uint32_t* pixels, int width, int height, int pitch)
-    -> void {
-  if (s_active_harness != nullptr) {
-    s_active_harness->handle_video(pixels, width, height, pitch);
-  }
-}
-
 auto on_audio(const int16_t* samples, size_t num_samples) -> void {
   if (s_active_harness != nullptr) {
     s_active_harness->handle_audio(samples, num_samples);
@@ -50,7 +43,7 @@ HeadlessHarness_t::HeadlessHarness_t() {
 
   app_controller_initialize(&config);
 
-  linapple_set_video_callback(on_video);
+  video_set_rendering_enabled(false);
   linapple_set_audio_callback(on_audio);
 
   is_initialized = true;
@@ -58,7 +51,7 @@ HeadlessHarness_t::HeadlessHarness_t() {
 
 HeadlessHarness_t::~HeadlessHarness_t() {
   if (is_initialized) {
-    linapple_set_video_callback(nullptr);
+    video_set_rendering_enabled(true);
     linapple_set_audio_callback(nullptr);
     app_controller_shutdown();
     is_initialized = false;
@@ -156,7 +149,9 @@ auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing) const
     row_str.push_back(ch);
   }
   if (trim_trailing) {
-    while (!row_str.empty() && row_str.back() == ' ') {
+    while (!row_str.empty() &&
+           (row_str.back() == ' ' ||
+            static_cast<unsigned char>(row_str.back()) == 0x7F)) {
       row_str.pop_back();
     }
   }

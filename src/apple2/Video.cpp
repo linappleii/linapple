@@ -1662,9 +1662,17 @@ auto video_init_worker() -> bool {
 
 auto video_realize_palette() -> void {}
 
+static bool s_rendering_enabled = true;
+
+auto video_set_rendering_enabled(bool enabled) -> void {
+  s_rendering_enabled = enabled;
+}
+
+auto video_is_rendering_enabled() -> bool { return s_rendering_enabled; }
+
 auto video_redraw_screen() -> void {
   redrawfull = true;
-  video_refresh_screen();
+  video_refresh_screen(0, true);
 }
 
 void video_update_output_buffer() {
@@ -1812,6 +1820,9 @@ auto video_reinitialize() -> void {
 
 auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
                           bool redraw_whole_screen /* =false*/) -> void {
+  if (!s_rendering_enabled && !redraw_whole_screen) {
+    return;
+  }
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (redraw_whole_screen) {
     g_debug_video_mode = redraw_whole_screen_video_mode;

@@ -189,6 +189,8 @@ auto video_init_worker() -> bool;
 auto video_initialize() -> void;
 auto video_realize_palette() -> void;
 auto video_set_next_scheduled_update() -> void;
+auto video_set_rendering_enabled(bool enabled) -> void;
+auto video_is_rendering_enabled() -> bool;
 auto video_redraw_screen() -> void;
 auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false) -> void;
 auto video_perform_refresh() -> void;
