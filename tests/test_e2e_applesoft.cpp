@@ -47,7 +47,7 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
     CHECK(harness.get_text_row(2) == "4");
 
     // Verify audio samples were emitted and screen matches golden CRC
-    CHECK(harness.get_audio_sample_count() > 0);
+    CHECK(harness.get_audio_sample_count() >= 35000000);
     harness.assert_screen_matches(0xEAA5455E);
   }
 
