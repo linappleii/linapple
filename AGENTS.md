@@ -10,7 +10,7 @@ LinApple is an emulator for Apple ][[, Apple ]][+, Apple //e, and Enhanced Apple
   - `src/core/`: Core emulator logic and the "Core Bridge" (`LinAppleCore.h`).
   - `src/apple2/`: Hardware-level emulation (6502 CPU, Disk, Video, etc.).
   - `src/Debugger/`: Integrated assembly-level debugger.
-  - `src/frontends/`: Host-specific frontend implementations. `src/frontends/sdl3/` is the primary, actively developed modern frontend. `src/frontends/sdl2/` and `src/frontends/sdl1/` are legacy compatibility targets maintained for older systems and embedded devices; shared utilities live in `src/frontends/common/` while frontend-specific rendering divergence is preserved in each respective frontend directory.
+  - `src/frontends/`: Host-specific frontend implementations. `src/frontends/sdl3/`, `src/frontends/sdl2/`, and `src/frontends/sdl1/` are three co-equal, fully supported SDL frontends. The choice between them is dictated by the host — older operating systems and embedded devices may only be able to provide an older SDL. All three are expected to be functional and are maintained to the same standard. Shared logic lives in `src/frontends/common/`; only genuine per-SDL-version divergence (such as rendering pipeline differences in `Frame.cpp`) belongs in the individual frontend directories.
   - `res/`: Emulator assets (ROMs, Master disk, fonts, icons).
   - `tests/`: Integration and unit tests using `doctest`.
 
