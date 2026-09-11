@@ -84,6 +84,11 @@ constexpr int mb_type_str_max = 16;
 constexpr uint8_t mb_io_addr_hi_mask = 0xFF;
 constexpr uint8_t via_reg_mask = 0x0F;
 
+// The 6522 T1 latch is 16-bit, so the slowest IRQ is CLOCK_6502/65535 ≈ 15.6
+// Hz, bounding one update at ~2832 samples. 4096 leaves headroom without
+// rounding up to a full second of audio per voice.
+constexpr size_t mb_max_samples_per_update = 4096;
+
 struct Sy6522Ay8910_t {
   Sy6522_t sy6522 = {};
   Ay8910_t ay_chip = {};
@@ -94,9 +99,9 @@ struct Sy6522Ay8910_t {
 
 struct MockingboardPeripheral_t {
   std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
-  std::array<std::array<int16_t, sample_rate>, voices_per_card> voice_buffers =
-      {};
-  std::array<int16_t, sample_rate * 2> mix_buffer = {};
+  std::array<std::array<int16_t, mb_max_samples_per_update>, voices_per_card>
+      voice_buffers = {};
+  std::array<int16_t, mb_max_samples_per_update * 2> mix_buffer = {};
   uint32_t timer_period_6522 = 0;
   uint16_t mb_timer_device = 0;
   uint64_t last_cumulative_cycles = 0;
@@ -411,8 +416,8 @@ static auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     return;
   }
 
-  if (static_cast<uint32_t>(num_samples) > sample_rate) {
-    num_samples = static_cast<int>(sample_rate);
+  if (static_cast<size_t>(num_samples) > mb_max_samples_per_update) {
+    num_samples = static_cast<int>(mb_max_samples_per_update);
   }
 
   for (size_t i = 0; i < chips_per_card; i++) {

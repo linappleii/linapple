@@ -29,6 +29,18 @@ static PeripheralIOHandler g_read_cx = nullptr;
 static PeripheralIOHandler g_write_cx = nullptr;
 static char g_config_type[16] = "";
 
+static size_t g_audio_pushed_sample_count = 0;
+static uint32_t g_audio_push_call_count = 0;
+static bool g_audio_buffer_valid = false;
+
+static auto Mock_AudioPushSamples(void* instance, const int16_t* samples,
+                                  size_t num_samples) -> void {
+  (void)instance;
+  g_audio_buffer_valid = (samples != nullptr);
+  g_audio_pushed_sample_count = num_samples;
+  g_audio_push_call_count++;
+}
+
 static auto Mock_GetConfig(const char* section, const char* key, char* buffer,
                            size_t buffer_size) -> bool {
   if (strcmp(section, "Mockingboard") == 0 && strcmp(key, "Type") == 0) {
@@ -55,6 +67,7 @@ static HostInterface_t g_mock_host = [] {
   h.AssertIrq = Mock_AssertIrq;
   h.RegisterIO = Mock_RegisterIO;
   h.GetConfig = Mock_GetConfig;
+  h.AudioPushSamples = Mock_AudioPushSamples;
   return h;
 }();
 
@@ -196,6 +209,38 @@ TEST_CASE("Mockingboard Peripheral: Standard Mode") {
     descriptor->reset(instance);
     REQUIRE(descriptor->load_state(instance, buffer.data(), state_size) ==
             peripheral_ok);
+  }
+
+  SUBCASE("VIA Timer 1: Worst-case timer period bounds audio buffer (TASK-4)") {
+    descriptor->reset(instance);
+    REQUIRE(g_write_cx != nullptr);
+
+    // 1. Enable T1 interrupt in IER ($E) - Bit 6 + Bit 7 (SET bit)
+    g_write_cx(instance, 0, 0xC00E, 1, 0xC0, 0);
+
+    // 2. Set T1 period to maximum 16-bit value (0xFFFF = 65535 cycles)
+    // T1L-L ($4) = 0xFF
+    g_write_cx(instance, 0, 0xC004, 1, 0xFF, 0);
+    // T1H-C ($5) = 0xFF (Starts timer with period 65535)
+    g_write_cx(instance, 0, 0xC005, 1, 0xFF, 0);
+
+    // Process register access to activate card without advancing cycles
+    descriptor->think(instance, 0);
+
+    CHECK(g_irq_asserted == false);
+    g_audio_pushed_sample_count = 0;
+    g_audio_push_call_count = 0;
+    g_audio_buffer_valid = false;
+
+    // 3. Advance cycles to trigger T1 underflow (65535 + 1)
+    g_cumulative_cycles += 65536;
+    descriptor->think(instance, 0);
+
+    // Underflow asserts IRQ and emits exactly 2832 mono / 5664 stereo samples
+    CHECK(g_irq_asserted == true);
+    CHECK(g_audio_push_call_count == 1);
+    CHECK(g_audio_buffer_valid == true);
+    CHECK(g_audio_pushed_sample_count == 5664);
   }
 
   descriptor->shutdown(instance);
