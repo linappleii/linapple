@@ -185,6 +185,7 @@ auto video_destroy() -> void;
 auto video_draw_logo_bitmap() -> void;
 auto video_display_logo() -> void;
 auto video_has_refreshed() -> bool;
+auto video_init_worker() -> bool;
 auto video_initialize() -> void;
 auto video_realize_palette() -> void;
 auto video_set_next_scheduled_update() -> void;

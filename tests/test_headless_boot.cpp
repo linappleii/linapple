@@ -1,38 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <zlib.h>
-
-#include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <thread>
 
+#include "HeadlessHarness.h"
 #include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/Memory.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
-#include "core/Registry.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
-// Since Main.cpp is already linked into 'linapple' (headless target),
-// we can't easily link it here. We'll implement a test that replicates
-// the logic of Main.cpp but with assertions.
-
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
-  linapple_init();
+  HeadlessHarness_t harness;
 
   auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         disk1.path());
-
-  peripheral_manager_init();
-  linapple_register_peripherals();
+  harness.mount_disk(6, 0, disk1);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -43,21 +32,19 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
-  linapple_shutdown();
+  // E2E boot sequence: reset CPU/system and advance virtual frames
+  harness.boot();
+  harness.run_frames(20);
+  CHECK(harness.get_text_row(0).find("Apple //e") != std::string::npos);
 }
 
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
-  linapple_init();
+  HeadlessHarness_t harness;
 
   auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
   auto disk2 = TestFixtures::create_ephemeral("minimal.dsk");
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         disk1.path());
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
-                                         disk2.path());
-
-  peripheral_manager_init();
-  linapple_register_peripherals();
+  harness.mount_disk(6, 0, disk1);
+  harness.mount_disk(6, 1, disk2);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -67,20 +54,16 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive1_loaded == true);
-
-  linapple_shutdown();
+  CHECK(status.drive0_last_error == disk_err_none);
+  CHECK(status.drive1_last_error == disk_err_none);
 }
 
 TEST_CASE("Headless: [HL-03] Unsupported file") {
-  linapple_init();
+  HeadlessHarness_t harness;
 
   // .txt is unsupported by disk drivers
   auto disk = TestFixtures::create_ephemeral("minimal.txt");
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
-                                         disk.path());
-
-  peripheral_manager_init();
-  linapple_register_peripherals();
+  harness.mount_disk(6, 0, disk);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -90,14 +73,10 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error == disk_err_unsupported_format);
-
-  linapple_shutdown();
 }
 
 TEST_CASE("Headless: [HL-04] Program loading") {
-  linapple_init();
-  peripheral_manager_init();
-  linapple_register_peripherals();
+  HeadlessHarness_t harness;
 
   auto prog = TestFixtures::create_ephemeral("minimal.woz");
   int err = linapple_load_program(prog.c_str());
@@ -105,20 +84,16 @@ TEST_CASE("Headless: [HL-04] Program loading") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  PeripheralStatus_t ps =
+      peripheral_query(6, disk_cmd_get_status, &status, &size);
+  REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);
-
-  linapple_shutdown();
 }
 
 TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
-  extern auto video_init_worker() -> bool;
-  extern auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false)
-      -> void;
-  extern std::atomic<bool> g_frame_ready;
+  HeadlessHarness_t harness;
 
-  linapple_init();
-  video_init_worker();
+  REQUIRE(video_init_worker() == true);
 
   g_frame_ready = false;
   video_refresh_screen(0, true);
@@ -129,62 +104,28 @@ TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
   }
 
   CHECK(g_frame_ready == true);
-
-  linapple_shutdown();
 }
 
 TEST_CASE(
-    "Headless: [HL-06] Text screen rendering produces non-black character "
-    "pixels") {
-  extern auto video_redraw_screen() -> void;
-  extern auto video_get_output_buffer() -> uint32_t*;
-  extern uint8_t* mem;
+    "Headless: [HL-06] Text screen rendering produces golden visual output") {
+  HeadlessHarness_t harness;
 
-  linapple_init();
-  g_state.mode = MODE_RUNNING;
+  uint8_t* text_page = get_mem_ptr(0x0400);
+  REQUIRE(text_page != nullptr);
 
   // Clear text page 1 (0x0400 - 0x07FF) to Apple II normal space (0xA0)
-  std::memset(&mem[0x0400], 0xA0, 0x0400);
+  std::memset(text_page, 0xA0, 0x0400);
 
   // 1. Write "APPLE" in text screen memory (Row 0: 0x0400)
-  mem[0x0400] = 0xC1;  // 'A' | 0x80
-  mem[0x0401] = 0xD0;  // 'P' | 0x80
-  mem[0x0402] = 0xD0;  // 'P' | 0x80
-  mem[0x0403] = 0xCC;  // 'L' | 0x80
-  mem[0x0404] = 0xC5;  // 'E' | 0x80
+  text_page[0] = 0xC1;  // 'A' | 0x80
+  text_page[1] = 0xD0;  // 'P' | 0x80
+  text_page[2] = 0xD0;  // 'P' | 0x80
+  text_page[3] = 0xCC;  // 'L' | 0x80
+  text_page[4] = 0xC5;  // 'E' | 0x80
 
-  // 2. Trigger full video redraw
-  video_redraw_screen();
+  // 2. Inspect decoded text screen row 0
+  CHECK(harness.get_text_row(0) == "APPLE");
 
-  // 3. Inspect decoded text screen row 0
-  std::string decoded_row0;
-  decoded_row0.reserve(40);
-  for (int col = 0; col < 40; ++col) {
-    decoded_row0.push_back(static_cast<char>(mem[0x0400 + col] & 0x7F));
-  }
-  while (!decoded_row0.empty() && decoded_row0.back() == ' ') {
-    decoded_row0.pop_back();
-  }
-  CHECK(decoded_row0 == "APPLE");
-
-  // 4. Inspect rasterized output buffer
-  const uint32_t* output = video_get_output_buffer();
-  REQUIRE(output != nullptr);
-
-  size_t non_black_pixels = 0;
-  for (size_t i = 0; i < 560 * 384; ++i) {
-    if ((output[i] & 0x00FFFFFF) != 0) {
-      non_black_pixels++;
-    }
-  }
-
-  // Exactly 300 non-black pixels rendered for glyphs 'A', 'P', 'P', 'L', 'E'
-  CHECK(non_black_pixels == 300);
-
-  unsigned long crc = crc32(0L, nullptr, 0);
-  crc = crc32(crc, reinterpret_cast<const unsigned char*>(output),
-              static_cast<unsigned int>(560 * 384 * sizeof(uint32_t)));
-  CHECK(static_cast<uint32_t>(crc) == 0x6467AC7E);
-
-  linapple_shutdown();
+  // 3. Inspect rasterized output buffer against exact golden frame CRC32
+  harness.assert_screen_matches(0x6467AC7E);
 }

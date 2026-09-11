@@ -683,7 +683,7 @@ if(BUILD_TESTING)
     add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
     add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
     add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
-    add_linapple_test(headless-boot tests/test_headless_boot.cpp)
+    add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
 
     add_linapple_test(file-browser tests/test_file_browser.cpp)
 

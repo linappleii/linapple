@@ -80,6 +80,7 @@ auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
   cmd.write_protected = 0;
   cmd.create_if_necessary = 0;
   peripheral_command(slot, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(100);
 }
 
 auto HeadlessHarness_t::boot() -> void {
