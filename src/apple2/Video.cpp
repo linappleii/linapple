@@ -1541,7 +1541,7 @@ auto video_destroy() -> void {
   }
   g_source_bitmap = nullptr;
 
-  if (g_logo_bitmap && (g_logo_bitmap != assets->splash)) {
+  if (g_logo_bitmap && (assets == nullptr || g_logo_bitmap != assets->splash)) {
     video_destroy_surface(g_logo_bitmap);
   }
   g_logo_bitmap = nullptr;
@@ -1551,7 +1551,7 @@ auto video_destroy() -> void {
   }
   charset40 = nullptr;
 
-  if (font_sfc && (font_sfc != assets->font)) {
+  if (font_sfc && (assets == nullptr || font_sfc != assets->font)) {
     video_destroy_surface(font_sfc);
   }
   font_sfc = nullptr;

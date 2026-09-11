@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <atomic>
-#include <cstdint>
+#include <zlib.h>
 
-#include "Peripheral_Types.h"
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <thread>
 
+#include "Peripheral_Types.h"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
@@ -26,9 +27,9 @@
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
   linapple_init();
 
-  Configuration_t::instance().set_string(
-      "Slots", REGVALUE_DISK_IMAGE1,
-      TestFixtures::get_fixture_path("minimal.woz"));
+  auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
+                                         disk1.path());
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -48,12 +49,12 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
   linapple_init();
 
-  Configuration_t::instance().set_string(
-      "Slots", REGVALUE_DISK_IMAGE1,
-      TestFixtures::get_fixture_path("minimal.woz"));
-  Configuration_t::instance().set_string(
-      "Slots", REGVALUE_DISK_IMAGE2,
-      TestFixtures::get_fixture_path("minimal.dsk"));
+  auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
+  auto disk2 = TestFixtures::create_ephemeral("minimal.dsk");
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
+                                         disk1.path());
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
+                                         disk2.path());
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -74,9 +75,9 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   linapple_init();
 
   // .txt is unsupported by disk drivers
-  Configuration_t::instance().set_string(
-      "Slots", REGVALUE_DISK_IMAGE1,
-      TestFixtures::get_fixture_path("minimal.txt"));
+  auto disk = TestFixtures::create_ephemeral("minimal.txt");
+  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
+                                         disk.path());
 
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -87,10 +88,6 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
       peripheral_query(6, disk_cmd_get_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
-  // It shouldn't be loaded, and error should be unsupported format (or file not
-  // found if it doesn't exist) Actually our minimal.txt doesn't exist in
-  // fixtures yet? I'll check. Assuming it's unsupported if it exists but isn't
-  // a disk.
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error == disk_err_unsupported_format);
 
@@ -102,8 +99,8 @@ TEST_CASE("Headless: [HL-04] Program loading") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  int err = linapple_load_program(
-      TestFixtures::get_fixture_path("minimal.woz").c_str());
+  auto prog = TestFixtures::create_ephemeral("minimal.woz");
+  int err = linapple_load_program(prog.c_str());
   CHECK(err != 0);
 
   DiskStatus_t status{};
@@ -146,8 +143,10 @@ TEST_CASE(
   linapple_init();
   g_state.mode = MODE_RUNNING;
 
-  // 1. Write "APPLE" in text screen memory (Row 0: 0x0400) with flashing/normal
-  // characters
+  // Clear text page 1 (0x0400 - 0x07FF) to Apple II normal space (0xA0)
+  std::memset(&mem[0x0400], 0xA0, 0x0400);
+
+  // 1. Write "APPLE" in text screen memory (Row 0: 0x0400)
   mem[0x0400] = 0xC1;  // 'A' | 0x80
   mem[0x0401] = 0xD0;  // 'P' | 0x80
   mem[0x0402] = 0xD0;  // 'P' | 0x80
@@ -157,8 +156,19 @@ TEST_CASE(
   // 2. Trigger full video redraw
   video_redraw_screen();
 
-  // 3. Inspect output buffer
-  uint32_t* output = video_get_output_buffer();
+  // 3. Inspect decoded text screen row 0
+  std::string decoded_row0;
+  decoded_row0.reserve(40);
+  for (int col = 0; col < 40; ++col) {
+    decoded_row0.push_back(static_cast<char>(mem[0x0400 + col] & 0x7F));
+  }
+  while (!decoded_row0.empty() && decoded_row0.back() == ' ') {
+    decoded_row0.pop_back();
+  }
+  CHECK(decoded_row0 == "APPLE");
+
+  // 4. Inspect rasterized output buffer
+  const uint32_t* output = video_get_output_buffer();
   REQUIRE(output != nullptr);
 
   size_t non_black_pixels = 0;
@@ -168,10 +178,13 @@ TEST_CASE(
     }
   }
 
-  // Without charset40 loaded, DrawTextSource early-returns and non_black_pixels
-  // is exactly 0. With font glyphs properly loaded, the letters "APPLE" render
-  // non-zero pixels.
-  CHECK(non_black_pixels > 0);
+  // Exactly 300 non-black pixels rendered for glyphs 'A', 'P', 'P', 'L', 'E'
+  CHECK(non_black_pixels == 300);
+
+  unsigned long crc = crc32(0L, nullptr, 0);
+  crc = crc32(crc, reinterpret_cast<const unsigned char*>(output),
+              static_cast<unsigned int>(560 * 384 * sizeof(uint32_t)));
+  CHECK(static_cast<uint32_t>(crc) == 0x6467AC7E);
 
   linapple_shutdown();
 }

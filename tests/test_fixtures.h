@@ -86,11 +86,13 @@ struct EphemeralDiskFixture_t {
                                temp_path);
     }
 
-    dst << src.rdbuf();
-    if (!dst.good()) {
-      cleanup();
-      throw std::runtime_error("Failed to copy fixture content to: " +
-                               temp_path);
+    if (src.peek() != std::ifstream::traits_type::eof()) {
+      dst << src.rdbuf();
+      if (!dst.good()) {
+        cleanup();
+        throw std::runtime_error("Failed to copy fixture content to: " +
+                                 temp_path);
+      }
     }
   }
 
