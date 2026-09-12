@@ -141,6 +141,7 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                   uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).read != nullptr) {
@@ -161,6 +162,7 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                    uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).write != nullptr) {
