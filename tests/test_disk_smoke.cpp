@@ -238,3 +238,54 @@ TEST_CASE(
   }
   disk_loader_shutdown();
 }
+
+TEST_CASE("DiskSmoke: [SMK-07] SAVE and CATALOG in DOS 3.3") {
+  HeadlessHarness_t harness;
+  auto disk = TestFixtures::create_ephemeral("Master.dsk");
+  harness.mount_disk(6, 0, disk);
+  harness.boot();
+  harness.run_frames(250);
+
+  harness.type_string("5 PRINT \"HI\"\r", 5);
+  harness.run_frames(60);
+
+  harness.type_string("SAVE FOO\r", 5);
+  harness.run_frames(300);
+
+  harness.type_string("CATALOG\r", 5);
+  harness.run_frames(300);
+
+  std::string catalog_screen;
+  for (int row = 0; row < 24; ++row) {
+    catalog_screen += harness.get_text_row(row) + "\n";
+  }
+  CHECK(catalog_screen.find("FOO") != std::string::npos);
+
+  harness.type_string("NEW\r", 5);
+  harness.run_frames(60);
+
+  harness.type_string("LOAD FOO\r", 5);
+  harness.run_frames(300);
+
+  harness.type_string("LIST 5\r", 5);
+  harness.run_frames(100);
+
+  std::string foo_screen;
+  for (int row = 0; row < 24; ++row) {
+    foo_screen += harness.get_text_row(row) + "\n";
+  }
+  CHECK(foo_screen.find("5  PRINT \"HI\"") != std::string::npos);
+
+  harness.type_string("LOAD HELLO\r", 5);
+  harness.run_frames(300);
+
+  harness.type_string("LIST 40\r", 5);
+  harness.run_frames(100);
+
+  std::string hello_screen;
+  for (int row = 0; row < 24; ++row) {
+    hello_screen += harness.get_text_row(row) + "\n";
+  }
+  CHECK(hello_screen.find("40  PRINT") != std::string::npos);
+  CHECK(hello_screen.find("16384") == std::string::npos);
+}

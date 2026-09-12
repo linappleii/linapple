@@ -61,7 +61,7 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
     harness.type_string("E000G\r", 2);
     harness.run_frames(6);
     harness.type_string("HOME:PRINT 2+2\r", 2);
-    harness.run_frames(8);
+    harness.run_frames(20);
 
     // Output is displayed directly at row 0
     CHECK(harness.get_text_row(0) == "4");

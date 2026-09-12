@@ -43,7 +43,7 @@ constexpr int shift_3 = 3;
 constexpr int shift_5 = 5;
 constexpr int shift_7 = 7;
 
-constexpr int max_gcr_markers_per_track = 33;
+constexpr int max_gcr_markers_per_track = 48;
 constexpr int max_nibblized_sector_size = 384;
 constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
@@ -188,7 +188,8 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
 
   int current_offset = 0;
   int markers_found = 0;
-  int current_sector = 0;
+  int current_sector = -1;
+  uint16_t decoded_sectors_mask = 0;
 
   auto fetch_byte = [&]() -> uint8_t {
     uint8_t byte = track_image[current_offset++];
@@ -209,7 +210,9 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
     return false;
   };
 
-  while (markers_found < max_gcr_markers_per_track && find_next_marker()) {
+  constexpr uint16_t all_sectors_mask = 0xFFFF;
+  while (decoded_sectors_mask != all_sectors_mask &&
+         markers_found < max_gcr_markers_per_track && find_next_marker()) {
     const uint8_t marker_type = fetch_byte();
     markers_found++;
 
@@ -239,8 +242,9 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
                   .at(static_cast<size_t>(current_sector));
           decode_sector_62(work_buffer,
                            &work_buffer[physical_sector * PAGE_SIZE]);
+          decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
         }
-        current_sector = 0;
+        current_sector = -1;
         break;
 
       default:

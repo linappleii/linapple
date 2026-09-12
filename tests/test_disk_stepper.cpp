@@ -2,6 +2,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
+#include <ios>
 #include <string>
 #include <vector>
 
@@ -18,6 +20,7 @@ namespace {
 
 constexpr int slot_6 = 6;
 constexpr uint16_t stepper_base = 0xC0E0;
+constexpr uint16_t motor_off_switch = 0xC0E8;
 constexpr uint16_t motor_on_switch = 0xC0E9;
 constexpr uint16_t drive0_select_switch = 0xC0EA;
 constexpr uint16_t read_write_switch = 0xC0EC;
@@ -25,6 +28,8 @@ constexpr uint16_t latch_switch = 0xC0ED;
 constexpr uint16_t read_mode_switch = 0xC0EE;
 constexpr uint16_t write_mode_switch = 0xC0EF;
 constexpr uint64_t spin_settle_cycles = 10000;
+constexpr uint32_t motor_spindown_cycles = 1500000;
+constexpr size_t track_size_bytes = 4096;
 
 class DiskStepperHarness_t {
  public:
@@ -96,6 +101,16 @@ class DiskStepperHarness_t {
     io_map_dispatch(0, read_mode_switch, 0, 0, 0);
   }
 
+  auto power_motor_on() -> void {
+    io_map_dispatch(0, motor_on_switch, 0, 0, 0);
+  }
+
+  auto power_motor_off() -> void {
+    io_map_dispatch(0, motor_off_switch, 0, 0, 0);
+  }
+
+  auto think(uint32_t cycles) -> void { peripheral_manager_think(cycles); }
+
   auto set_write_mode() -> void {
     io_map_dispatch(0, write_mode_switch, 0, 0, 0);
   }
@@ -123,6 +138,10 @@ class DiskStepperHarness_t {
     return get_saved_state().drives[0].is_dirty != 0;
   }
 
+  auto get_spinning_ticks() const -> uint32_t {
+    return get_saved_state().drives[0].spinning_ticks;
+  }
+
   auto fixture_path() const -> const std::string& {
     return disk_fixture_.path();
   }
@@ -146,6 +165,20 @@ class DiskStepperHarness_t {
 
   TestFixtures::EphemeralDiskFixture_t disk_fixture_;
 };
+
+auto read_disk_track_bytes(const std::string& file_path, int track_index)
+    -> std::vector<uint8_t> {
+  std::ifstream file(file_path, std::ios::binary);
+  REQUIRE(file.is_open());
+  const auto offset =
+      static_cast<std::streamoff>(track_index * track_size_bytes);
+  file.seekg(offset, std::ios::beg);
+  std::vector<uint8_t> buffer(track_size_bytes, 0);
+  file.read(reinterpret_cast<char*>(buffer.data()),
+            static_cast<std::streamsize>(track_size_bytes));
+  REQUIRE(file.gcount() == static_cast<std::streamsize>(track_size_bytes));
+  return buffer;
+}
 
 }  // namespace
 
@@ -318,5 +351,134 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   size_t status_size = sizeof(status);
   peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_last_error == disk_err_none);
+}
+
+TEST_CASE(
+    "DiskStepper: [STEP-04] Cylinder Boundary Seek Preserves Adjacent Track") {
+  DiskStepperHarness_t harness("Master.dsk");
+
+  // Baseline read of Track 16 and Track 17 contents from disk image file.
+  // Track 17 contains VTOC and Catalog sectors; Track 16 contains file data
+  // (e.g. HELLO).
+  const std::vector<uint8_t> orig_track16 =
+      read_disk_track_bytes(harness.fixture_path(), 16);
+  const std::vector<uint8_t> orig_track17 =
+      read_disk_track_bytes(harness.fixture_path(), 17);
+  REQUIRE(orig_track16 != orig_track17);
+
+  // 1. Step head to Track 17 (Phase 34)
+  harness.step_to_track(17);
+  CHECK(harness.get_phase() == 34);
+  CHECK(harness.get_track() == 17);
+  CHECK(harness.is_dirty() == false);
+
+  // 2. Prime Track 17 into the peripheral track buffer
+  const uint8_t prime_byte = harness.read_data();
+  CHECK((prime_byte & 0x80) != 0);
+
+  // 3. Enter write mode and dirty Track 17 buffer with distinct data
+  harness.set_write_mode();
+  constexpr uint8_t dirty_byte = 0xAA;
+  constexpr size_t write_count = 512;
+  for (size_t i = 0; i < write_count; ++i) {
+    harness.write_data(dirty_byte);
+  }
+  CHECK(harness.is_dirty() == true);
+
+  // 4. Step backward across cylinder boundary: Phase 34 (Track 17) -> Phase 33
+  // (Track 16). In the unfixed code, disk_ptr->track was mutated to 16 before
+  // checking is_dirty, resulting in Track 17's dirty buffer being written to
+  // Track 16, clobbering Track 16 and leaving Track 17 unflushed.
+  harness.step_backward_phase();
+
+  CHECK(harness.get_phase() == 33);
+  CHECK(harness.get_track() == 16);
+  CHECK(harness.is_dirty() == false);
+
+  // 5. Verify on-disk file state
+  const std::vector<uint8_t> after_track16 =
+      read_disk_track_bytes(harness.fixture_path(), 16);
+  const std::vector<uint8_t> after_track17 =
+      read_disk_track_bytes(harness.fixture_path(), 17);
+
+  // Track 16 must NOT be overwritten or corrupted by Track 17's flush
+  CHECK(after_track16 == orig_track16);
+
+  // Track 17 must receive the flushed modifications
+  CHECK(after_track17 != orig_track17);
+
+  // 6. Step to full phase of Track 16 (Phase 32) and ensure Track 16 remains
+  // pristine
+  harness.step_backward_phase();
+  CHECK(harness.get_phase() == 32);
+  CHECK(harness.get_track() == 16);
+  CHECK(harness.is_dirty() == false);
+
+  const std::vector<uint8_t> after_phase32_track16 =
+      read_disk_track_bytes(harness.fixture_path(), 16);
+  CHECK(after_phase32_track16 == orig_track16);
+
+  // Query peripheral status to ensure drive is healthy
+  harness.set_read_mode();
+  DiskStatus_t status{};
+  size_t status_size = sizeof(status);
+  peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
+  CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_last_error == disk_err_none);
+}
+
+TEST_CASE("DiskStepper: [STEP-05] Motor Spindown Flushes Dirty Track") {
+  DiskStepperHarness_t harness("Master.dsk");
+
+  // Baseline read of Track 0 contents from disk image file
+  const std::vector<uint8_t> orig_track0 =
+      read_disk_track_bytes(harness.fixture_path(), 0);
+
+  // Head starts at Track 0
+  CHECK(harness.get_phase() == 0);
+  CHECK(harness.get_track() == 0);
+  CHECK(harness.is_dirty() == false);
+
+  // 1. Prime Track 0 into memory
+  const uint8_t prime_byte = harness.read_data();
+  CHECK((prime_byte & 0x80) != 0);
+
+  // 2. Enter write mode and dirty Track 0
+  harness.set_write_mode();
+  constexpr uint8_t dirty_byte = 0xAA;
+  constexpr size_t write_count = 512;
+  for (size_t i = 0; i < write_count; ++i) {
+    harness.write_data(dirty_byte);
+  }
+  CHECK(harness.is_dirty() == true);
+
+  // 3. Power off motor via softswitch $C0E8
+  harness.power_motor_off();
+
+  // Motor is now spinning down; track must remain dirty until spindown finishes
+  CHECK(harness.get_spinning_ticks() > 0);
+  CHECK(harness.is_dirty() == true);
+
+  // 4. Advance emulation cycles to allow motor to complete spindown (20,000
+  // ticks * 64 cycles)
+  harness.think(motor_spindown_cycles);
+
+  // Spindown has completed; dirty track must be flushed and dirty flag cleared
+  CHECK(harness.get_spinning_ticks() == 0);
+  CHECK(harness.is_dirty() == false);
+
+  // 5. Verify that the dirty data was flushed to Track 0 on the disk file
+  const std::vector<uint8_t> after_spindown_track0 =
+      read_disk_track_bytes(harness.fixture_path(), 0);
+  CHECK(after_spindown_track0 != orig_track0);
+
+  // 6. Verify peripheral reports drive is no longer spinning and status is
+  // clean
+  DiskStatus_t status{};
+  size_t status_size = sizeof(status);
+  peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
+  CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_spinning == 0);
   CHECK(status.drive0_last_error == disk_err_none);
 }
