@@ -777,10 +777,10 @@ auto config_from_toml(const TomlDocument_t* doc, LinAppleConfig_t* out_config,
 
     if (toml_table_has_key(core_table, "BootOnStartup")) {
       out_config->core.boot_on_startup =
-          toml_table_get_bool(core_table, "BootOnStartup", false);
+          toml_table_get_bool(core_table, "BootOnStartup", true);
     } else if (toml_table_has_key(core_table, "Boot at Startup")) {
       out_config->core.boot_on_startup =
-          toml_table_get_bool(core_table, "Boot at Startup", false);
+          toml_table_get_bool(core_table, "Boot at Startup", true);
     }
 
     if (toml_table_has_key(core_table, "SaveStateOnExit")) {
@@ -1363,7 +1363,7 @@ auto config_to_toml(const LinAppleConfig_t& config)
                       "  Allowed: true, false\n"
                       "  Default: true");
   toml_table_set_bool(core, "BootOnStartup", config.core.boot_on_startup, "",
-                      "Automatically boot floppy in Slot 6 on startup:\n"
+                      "Automatically boot inserted media on startup:\n"
                       "  Allowed: true, false\n"
                       "  Default: true");
   toml_table_set_bool(core, "SaveStateOnExit", config.core.save_state_on_exit,

@@ -123,6 +123,7 @@ TEST_CASE("ConfigSchema: Default Configuration and Validation") {
   // Check default settings
   CHECK(config.core.machine == MachineType_t::Apple2eEnhanced);
   CHECK(config.core.emulation_speed == doctest::Approx(1.0));
+  CHECK(config.core.boot_on_startup == true);
   CHECK(config.core.enable_debugger == true);
   CHECK(config.video.video_standard == VideoStandard_t::NTSC);
   CHECK(config.video.video_emulation == VideoEmulation_t::ColorStandard);

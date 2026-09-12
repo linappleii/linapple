@@ -361,7 +361,7 @@ auto config_migrate_legacy_to_toml(const std::string& ini_content,
   toml_table_set_bool(core, "BootOnStartup",
                       get_bool(ini, "Configuration", "Boot at Startup", false),
                       "",
-                      "Automatically boot floppy in Slot 6 on startup:\n"
+                      "Automatically boot inserted media on startup:\n"
                       "  Allowed: true, false\n"
                       "  Default: true");
 

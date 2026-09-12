@@ -78,7 +78,7 @@ struct CoreConfig_t {
   MachineType_t machine = MachineType_t::Apple2eEnhanced;
   double emulation_speed = 1.0;
   bool enhance_disk_speed = true;
-  bool boot_on_startup = false;
+  bool boot_on_startup = true;
   bool save_state_on_exit = false;
   bool enable_debugger = true;
   std::string basic_sync_file;
