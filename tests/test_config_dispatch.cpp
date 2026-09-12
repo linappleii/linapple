@@ -16,45 +16,104 @@
 
 namespace {
 
-struct ScopedPeripheralManager_t {
-  ScopedPeripheralManager_t() { peripheral_manager_init(); }
-  ~ScopedPeripheralManager_t() { peripheral_manager_shutdown(); }
+struct ScopedDispatchHarness_t {
+  ScopedDispatchHarness_t()
+      : saved_apple2_type_(g_apple2_type),
+        saved_state_(g_state),
+        saved_videotype_(g_videotype),
+        saved_monochrome_(monochrome),
+        saved_show_leds_(g_show_leds),
+        saved_singlethreaded_(g_singlethreaded) {
+    peripheral_manager_init();
+  }
+
+  ~ScopedDispatchHarness_t() {
+    peripheral_manager_shutdown();
+    g_apple2_type = saved_apple2_type_;
+    g_state = saved_state_;
+    g_videotype = saved_videotype_;
+    monochrome = saved_monochrome_;
+    g_show_leds = saved_show_leds_;
+    g_singlethreaded = saved_singlethreaded_;
+  }
+
+  eApple2Type saved_apple2_type_;
+  SystemState_t saved_state_;
+  uint32_t saved_videotype_;
+  uint32_t saved_monochrome_;
+  bool saved_show_leds_;
+  uint32_t saved_singlethreaded_;
 };
 
 }  // namespace
 
 TEST_CASE("ConfigDispatch: Card Type Mappings") {
-  CHECK(std::string(config_card_type_to_id(
-            PeripheralCardType_t::ParallelPrinter)) == "linapple.printer");
-  CHECK(std::string(config_card_type_to_id(
-            PeripheralCardType_t::SuperSerial)) == "linapple.ssc");
-  CHECK(std::string(config_card_type_to_id(
-            PeripheralCardType_t::Mockingboard)) == "linapple.mockingboard");
-  CHECK(std::string(config_card_type_to_id(PeripheralCardType_t::DiskII)) ==
-        "linapple.disk_II");
-  CHECK(std::string(config_card_type_to_id(PeripheralCardType_t::Harddisk)) ==
-        "linapple.harddisk");
-  CHECK(std::string(config_card_type_to_id(PeripheralCardType_t::Mouse)) ==
-        "linapple.mouse");
-  CHECK(std::string(config_card_type_to_id(PeripheralCardType_t::Clock)) ==
-        "linapple.clock");
-  CHECK(config_card_type_to_id(PeripheralCardType_t::Empty) == nullptr);
+  const char* id = nullptr;
+  const char* sec = nullptr;
 
-  CHECK(std::string(config_card_type_to_section(
-            PeripheralCardType_t::ParallelPrinter)) == "Printer");
-  CHECK(std::string(config_card_type_to_section(
-            PeripheralCardType_t::SuperSerial)) == "SuperSerial");
-  CHECK(std::string(config_card_type_to_section(
-            PeripheralCardType_t::Mockingboard)) == "Mockingboard");
-  CHECK(std::string(config_card_type_to_section(
-            PeripheralCardType_t::DiskII)) == "DiskII");
-  CHECK(std::string(config_card_type_to_section(
-            PeripheralCardType_t::Harddisk)) == "Harddisk");
-  CHECK(std::string(config_card_type_to_section(PeripheralCardType_t::Mouse)) ==
-        "Mouse");
-  CHECK(std::string(config_card_type_to_section(PeripheralCardType_t::Clock)) ==
-        "Clock");
+  id = config_card_type_to_id(PeripheralCardType_t::ParallelPrinter);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.printer");
+
+  id = config_card_type_to_id(PeripheralCardType_t::SuperSerial);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.ssc");
+
+  id = config_card_type_to_id(PeripheralCardType_t::Mockingboard);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.mockingboard");
+
+  id = config_card_type_to_id(PeripheralCardType_t::DiskII);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.disk_II");
+
+  id = config_card_type_to_id(PeripheralCardType_t::Harddisk);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.harddisk");
+
+  id = config_card_type_to_id(PeripheralCardType_t::Mouse);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.mouse");
+
+  id = config_card_type_to_id(PeripheralCardType_t::Clock);
+  REQUIRE(id != nullptr);
+  CHECK(std::string(id) == "linapple.clock");
+
+  CHECK(config_card_type_to_id(PeripheralCardType_t::Empty) == nullptr);
+  CHECK(config_card_type_to_id(static_cast<PeripheralCardType_t>(999)) ==
+        nullptr);
+
+  sec = config_card_type_to_section(PeripheralCardType_t::ParallelPrinter);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "Printer");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::SuperSerial);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "SuperSerial");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::Mockingboard);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "Mockingboard");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::DiskII);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "DiskII");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::Harddisk);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "Harddisk");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::Mouse);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "Mouse");
+
+  sec = config_card_type_to_section(PeripheralCardType_t::Clock);
+  REQUIRE(sec != nullptr);
+  CHECK(std::string(sec) == "Clock");
+
   CHECK(config_card_type_to_section(PeripheralCardType_t::Empty) == nullptr);
+  CHECK(config_card_type_to_section(static_cast<PeripheralCardType_t>(999)) ==
+        nullptr);
 }
 
 TEST_CASE("ConfigDispatch: Hierarchical Precedence Resolution") {
@@ -166,6 +225,8 @@ idlelimit = 30
 }
 
 TEST_CASE("ConfigDispatch: Core Subsystem Dispatch") {
+  const ScopedDispatchHarness_t scoped_harness;
+
   CoreConfig_t core;
   core.machine = MachineType_t::Apple2Plus;
   core.emulation_speed = 2.5;
@@ -182,6 +243,8 @@ TEST_CASE("ConfigDispatch: Core Subsystem Dispatch") {
 }
 
 TEST_CASE("ConfigDispatch: Video Subsystem Dispatch") {
+  const ScopedDispatchHarness_t scoped_harness;
+
   VideoConfig_t video;
   video.video_standard = VideoStandard_t::PAL;
   video.video_emulation = VideoEmulation_t::ColorTvEmulation;
@@ -207,7 +270,7 @@ TEST_CASE("ConfigDispatch: Video Subsystem Dispatch") {
 }
 
 TEST_CASE("ConfigDispatch: Slot Dispatch Engine") {
-  const ScopedPeripheralManager_t scoped_pm;
+  const ScopedDispatchHarness_t scoped_harness;
 
   const std::string toml_data = R"(
 [Peripheral.Printer.Slot1]
@@ -231,7 +294,7 @@ FastDisk = true
   int status = config_dispatch_slots(config, &result);
   CHECK(status == 0);
   CHECK(result.error_count == 0);
-  CHECK(result.applied_options_count > 0);
+  CHECK(result.applied_options_count == 6);
 
   // Verify Slot 1 has Printer registered
   CHECK_FALSE(peripheral_is_slot_empty(1));
@@ -258,20 +321,22 @@ FastDisk = true
   status =
       config_dispatch_slot(0, PeripheralCardType_t::DiskII, nullptr, &result);
   CHECK(status == -1);
-  CHECK(result.error_count > 0);
+  CHECK(result.error_count == 1);
 
   // Slot range error check
   status =
       config_dispatch_slot(8, PeripheralCardType_t::DiskII, nullptr, &result);
   CHECK(status == -1);
+  CHECK(result.error_count == 2);
 
   status =
       config_dispatch_slot(-1, PeripheralCardType_t::DiskII, nullptr, &result);
   CHECK(status == -1);
+  CHECK(result.error_count == 3);
 }
 
 TEST_CASE("ConfigDispatch: Full Config Dispatch All") {
-  const ScopedPeripheralManager_t scoped_pm;
+  const ScopedDispatchHarness_t scoped_harness;
 
   LinAppleConfig_t config;
   config.slots.cards.fill(PeripheralCardType_t::Empty);
@@ -292,6 +357,8 @@ TEST_CASE("ConfigDispatch: Full Config Dispatch All") {
 }
 
 TEST_CASE("ConfigDispatch: Floating-point NaN and Inf Defensive Handling") {
+  const ScopedDispatchHarness_t scoped_harness;
+
   CoreConfig_t core;
   core.emulation_speed = std::numeric_limits<double>::quiet_NaN();
   CHECK(config_dispatch_core(core));
@@ -302,15 +369,22 @@ TEST_CASE("ConfigDispatch: Floating-point NaN and Inf Defensive Handling") {
   CHECK(g_state.speed == 10);
 
   VideoConfig_t video;
+  const uint32_t prev_w = g_state.screen_width;
+  const uint32_t prev_h = g_state.screen_height;
+
   video.screen_factor = std::numeric_limits<double>::quiet_NaN();
   CHECK(config_dispatch_video(video));
+  CHECK(g_state.screen_width == prev_w);
+  CHECK(g_state.screen_height == prev_h);
 
   video.screen_factor = std::numeric_limits<double>::infinity();
   CHECK(config_dispatch_video(video));
+  CHECK(g_state.screen_width == prev_w);
+  CHECK(g_state.screen_height == prev_h);
 }
 
 TEST_CASE("ConfigDispatch: Extra Keys and Alternative Table Syntax") {
-  const ScopedPeripheralManager_t scoped_pm;
+  const ScopedDispatchHarness_t scoped_harness;
 
   const std::string toml_data = R"(
 [Slot6.DiskII]
@@ -331,5 +405,5 @@ Drive1 = "/custom/drive1.dsk"
   int status = config_dispatch_slots(config, &result);
   CHECK(status == 0);
   CHECK(result.error_count == 0);
-  CHECK(result.applied_options_count >= 2);
+  CHECK(result.applied_options_count == 3);
 }

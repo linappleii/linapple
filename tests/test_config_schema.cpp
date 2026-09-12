@@ -141,37 +141,65 @@ TEST_CASE("ConfigSchema: Validation Bounds Checks") {
     config.core.emulation_speed = -1.0;
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
-    CHECK_FALSE(errors.empty());
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Core");
+    CHECK(errors[0].key == "EmulationSpeed");
+    CHECK(errors[0].message ==
+          "EmulationSpeed must be between 0.01 and 100.0x");
   }
 
   SUBCASE("Invalid Screen Factor") {
     config.video.screen_factor = 0.05;
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Video");
+    CHECK(errors[0].key == "ScreenFactor");
+    CHECK(errors[0].message == "ScreenFactor must be between 0.1 and 10.0");
   }
 
   SUBCASE("Invalid Monochrome Color") {
     config.video.monochrome_color = "not-a-color";
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Video");
+    CHECK(errors[0].key == "MonochromeColor");
+    CHECK(
+        errors[0].message ==
+        "MonochromeColor must be a valid hex RGB or RGBA code (e.g. #C0C0C0)");
   }
 
   SUBCASE("Invalid Volume") {
     config.audio.speaker_volume = 150;
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Audio");
+    CHECK(errors[0].key == "SpeakerVolume");
+    CHECK(errors[0].message == "SpeakerVolume must be between 0 and 100");
   }
 
   SUBCASE("Invalid Slot 0 Card") {
     config.slots.cards[0] = PeripheralCardType_t::DiskII;
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Slots");
+    CHECK(errors[0].key == "Slot0");
+    CHECK(errors[0].message ==
+          "Slot 0 is reserved for motherboard memory/firmware and cannot "
+          "hold expansion cards");
   }
 
   SUBCASE("Invalid Paddle Trim") {
     config.joystick.pdl_x_trim = 300;
     std::vector<ConfigValidationError_t> errors;
     CHECK_FALSE(config_validate(config, &errors));
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].section == "Joystick");
+    CHECK(errors[0].key == "PDLXTrim");
+    CHECK(errors[0].message == "PDLXTrim must be between -128 and 127");
   }
 }
 
@@ -269,7 +297,8 @@ TEST_CASE("ConfigSchema: Round-Trip TOML Serialization") {
   REQUIRE(toml_doc != nullptr);
 
   const std::string serialized = toml_document_serialize(toml_doc.get());
-  CHECK_FALSE(serialized.empty());
+  CHECK(serialized.find("[Core]") != std::string::npos);
+  CHECK(serialized.find("Machine = \"Apple ][+\"") != std::string::npos);
 
   // Parse back
   std::string err;
@@ -315,16 +344,12 @@ Slot6 = "DiskII"
   LinAppleConfig_t config;
   std::vector<ConfigValidationError_t> errors;
   CHECK_FALSE(config_from_toml(doc.get(), &config, &errors));
-  REQUIRE_FALSE(errors.empty());
-
-  bool found_slot0_error = false;
-  for (const auto& error : errors) {
-    if (error.section == "Slots" && error.key == "Slot0") {
-      found_slot0_error = true;
-      break;
-    }
-  }
-  CHECK(found_slot0_error);
+  REQUIRE(errors.size() == 1);
+  CHECK(errors[0].section == "Slots");
+  CHECK(errors[0].key == "Slot0");
+  CHECK(errors[0].message ==
+        "Slot 0 is reserved for motherboard memory/firmware and cannot "
+        "hold expansion cards");
 }
 
 TEST_CASE("ConfigSchema: Joystick Axes Round-Trip") {
@@ -480,9 +505,8 @@ TEST_CASE("ConfigSchema: Schema-Driven Peripheral Documentation") {
                                   allowed,   0,
                                   0};
   const std::string comment = peripheral_format_option_comment(opt);
-  CHECK(comment.find("Test option description:") != std::string::npos);
-  CHECK(comment.find("Allowed: Auto, US, UK") != std::string::npos);
-  CHECK(comment.find("Default: Auto") != std::string::npos);
+  CHECK(comment ==
+        "Test option description:\n  Allowed: Auto, US, UK\n  Default: Auto");
 
   auto doc = toml_document_create();
   peripheral_populate_toml_table(doc.get(), "Peripheral.DiskII",

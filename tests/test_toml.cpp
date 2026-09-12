@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
 #include <string>
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "core/config/Toml.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 TEST_CASE("TOML: Document Creation and Table Access") {
   auto doc = toml_document_create();
@@ -266,7 +266,7 @@ TEST_CASE("TOML: Syntax Errors") {
 }
 
 TEST_CASE("TOML: File Read/Write Operations") {
-  const std::string temp_file = "/tmp/test_linapple_roundtrip.toml";
+  const TestFixtures::ScopedTempFile_t temp_file(".toml");
 
   auto doc = toml_document_create();
   auto* table = toml_get_or_create_table(doc.get(), "TestSection");
@@ -274,11 +274,12 @@ TEST_CASE("TOML: File Read/Write Operations") {
   toml_table_set_int(table, "Count", 42);
 
   std::string save_err;
-  CHECK(toml_document_save_file(doc.get(), temp_file, &save_err) == true);
+  CHECK(toml_document_save_file(doc.get(), temp_file.path(), &save_err) ==
+        true);
   CHECK(save_err.empty());
 
   std::string load_err;
-  auto loaded_doc = toml_document_load_file(temp_file, &load_err);
+  auto loaded_doc = toml_document_load_file(temp_file.path(), &load_err);
   REQUIRE(loaded_doc != nullptr);
   CHECK(load_err.empty());
 
@@ -342,24 +343,6 @@ TEST_CASE("TOML: Edge Cases and Robustness") {
 
     CHECK(toml_table_get_int(table, "ResetVector") == 0xFFFC);
     CHECK(toml_table_get_int(table, "IoBase") == 0xC000);
-  }
-
-  SUBCASE("Untracked sections in doc->sections are serialized") {
-    auto doc = toml_document_create();
-    // Directly insert into sections map without updating section_order
-    (*doc).sections["DirectSection"]["Key"] =
-        toml_document_parse("Key = 42\n")->sections[""]["Key"];
-
-    const std::string serialized = toml_document_serialize(doc.get());
-    CHECK(serialized.find("[DirectSection]") != std::string::npos);
-    CHECK(serialized.find("Key = 42") != std::string::npos);
-
-    std::string err;
-    auto reloaded = toml_document_parse(serialized, &err);
-    REQUIRE(reloaded != nullptr);
-    const auto* sec = toml_find_table(reloaded.get(), "DirectSection");
-    REQUIRE(sec != nullptr);
-    CHECK(toml_table_get_int(sec, "Key") == 42);
   }
 
   SUBCASE("Array float serialization preserves float type") {

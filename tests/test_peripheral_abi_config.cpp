@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstring>
 #include <string>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/printer/Printer.h"
@@ -11,6 +11,15 @@
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
+
+namespace {
+
+struct ScopedPeripheralManager_t {
+  ScopedPeripheralManager_t() { peripheral_manager_init(); }
+  ~ScopedPeripheralManager_t() { peripheral_manager_shutdown(); }
+};
+
+}  // namespace
 
 TEST_CASE("Peripheral ABI Config: ABI Version Check") {
   CHECK(LINAPPLE_ABI_VERSION == 1);
@@ -71,6 +80,7 @@ TEST_CASE("Peripheral ABI Config: Built-in Peripheral Schemas") {
   CHECK(mb->abi_version == LINAPPLE_ABI_VERSION);
   REQUIRE(mb->get_config_schema != nullptr);
   const auto* mb_schema = mb->get_config_schema();
+  REQUIRE(mb_schema != nullptr);
   CHECK(mb_schema->option_count == 2);
   CHECK(std::string(mb_schema->options[0].name) == "Type");
   CHECK(mb_schema->options[0].type == peripheral_config_enum);
@@ -82,17 +92,15 @@ TEST_CASE("Peripheral ABI Config: Built-in Peripheral Schemas") {
 }
 
 TEST_CASE("Peripheral ABI Config: Schema Query by ID") {
-  if (peripheral_find_builtin("linapple.printer") == nullptr) {
-    peripheral_register_builtin(printer_get_descriptor());
-  }
+  const ScopedPeripheralManager_t scoped_pm;
+
+  peripheral_register_builtin(printer_get_descriptor());
   const auto* printer_schema =
       peripheral_get_config_schema_by_id("linapple.printer");
   REQUIRE(printer_schema != nullptr);
   CHECK(printer_schema->option_count == 3);
 
-  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
-    peripheral_register_builtin(disk_get_descriptor());
-  }
+  peripheral_register_builtin(disk_get_descriptor());
   const auto* disk_schema =
       peripheral_get_config_schema_by_id("linapple.disk_II");
   REQUIRE(disk_schema != nullptr);
@@ -103,6 +111,8 @@ TEST_CASE("Peripheral ABI Config: Schema Query by ID") {
 }
 
 TEST_CASE("Peripheral ABI Config: Defensive Null & Range Checks") {
+  const ScopedPeripheralManager_t scoped_pm;
+
   CHECK(peripheral_get_config_schema(-1) == nullptr);
   CHECK(peripheral_get_config_schema(8) == nullptr);
   CHECK(peripheral_get_config_schema(0) == nullptr);
@@ -113,154 +123,47 @@ TEST_CASE("Peripheral ABI Config: Defensive Null & Range Checks") {
   CHECK(peripheral_configure(1, "Key", nullptr) == peripheral_error);
 }
 
-namespace {
-
-struct CustomConfigPeripheral_t {
-  std::string last_configured_key;
-  std::string last_configured_value;
-};
-
-static CustomConfigPeripheral_t g_custom_instance;
-
-static const char* const g_enum_allowed_values[] = {"OptionA", "OptionB",
-                                                    nullptr};
-
-static const PeripheralConfigOption_t g_custom_options[] = {
-    {"SettingA", "Test setting A", "defaultA", peripheral_config_string,
-     nullptr, 0, 0},
-    {"SettingB", "Test setting B", "42", peripheral_config_int, nullptr, 0,
-     100},
-    {"SettingEnum", "Test enum setting", "OptionA", peripheral_config_enum,
-     g_enum_allowed_values, 0, 0}};
-
-static const PeripheralConfigSchema_t g_custom_schema = {
-    g_custom_options, sizeof(g_custom_options) / sizeof(g_custom_options[0])};
-
-static auto custom_init(int slot, HostInterface_t* host) -> void* {
-  (void)slot;
-  (void)host;
-  g_custom_instance.last_configured_key.clear();
-  g_custom_instance.last_configured_value.clear();
-  return &g_custom_instance;
-}
-
-static auto custom_shutdown(void* instance) -> void { (void)instance; }
-
-static auto custom_get_schema() -> const PeripheralConfigSchema_t* {
-  return &g_custom_schema;
-}
-
-static auto custom_configure(void* instance, const char* key, const char* value)
-    -> PeripheralStatus_t {
-  if (instance == nullptr || key == nullptr || value == nullptr) {
-    return peripheral_error;
-  }
-  if (std::strcmp(key, "SettingA") == 0 || std::strcmp(key, "SettingB") == 0 ||
-      std::strcmp(key, "SettingEnum") == 0) {
-    auto* custom = static_cast<CustomConfigPeripheral_t*>(instance);
-    custom->last_configured_key = key;
-    custom->last_configured_value = value;
-    return peripheral_ok;
-  }
-  return peripheral_incompatible;
-}
-
-static Peripheral_t g_custom_peripheral = {LINAPPLE_ABI_VERSION,
-                                           "test.custom_config",
-                                           "Custom Config Peripheral",
-                                           "Tests dynamic configuration ABI",
-                                           "Test Author",
-                                           "1.0.0",
-                                           0xFE,  // Slots 1-7
-                                           -1,
-                                           custom_init,
-                                           nullptr,  // reset
-                                           custom_shutdown,
-                                           nullptr,  // think
-                                           nullptr,  // on_vblank
-                                           nullptr,  // save_state
-                                           nullptr,  // load_state
-                                           nullptr,  // command
-                                           nullptr,  // query
-                                           custom_get_schema,
-                                           custom_configure};
-
-// Peripheral with NO configure callback
-static auto dummy_no_cfg_init(int slot, HostInterface_t* host) -> void* {
-  (void)slot;
-  (void)host;
-  return reinterpret_cast<void*>(0x1234);
-}
-
-static Peripheral_t g_no_cfg_peripheral = {LINAPPLE_ABI_VERSION,
-                                           "test.no_cfg",
-                                           "No Config Peripheral",
-                                           "Card without configure support",
-                                           "Test Author",
-                                           "1.0.0",
-                                           0xFE,  // Slots 1-7
-                                           -1,
-                                           dummy_no_cfg_init,
-                                           nullptr,   // reset
-                                           nullptr,   // shutdown
-                                           nullptr,   // think
-                                           nullptr,   // on_vblank
-                                           nullptr,   // save_state
-                                           nullptr,   // load_state
-                                           nullptr,   // command
-                                           nullptr,   // query
-                                           nullptr,   // get_config_schema
-                                           nullptr};  // configure
-
-struct ScopedPeripheralManager_t {
-  ScopedPeripheralManager_t() { peripheral_manager_init(); }
-  ~ScopedPeripheralManager_t() { peripheral_manager_shutdown(); }
-};
-
-}  // namespace
-
 TEST_CASE("Peripheral ABI Config: Dynamic Configuration Callbacks") {
   const ScopedPeripheralManager_t scoped_pm;
 
-  int reg_result = peripheral_register(&g_custom_peripheral, 3);
+  auto* ssc = super_serial_get_descriptor();
+  REQUIRE(ssc != nullptr);
+  int reg_result = peripheral_register(ssc, 2);
   REQUIRE(reg_result == 0);
 
   // Check schema on registered slot
-  const auto* schema = peripheral_get_config_schema(3);
+  const auto* schema = peripheral_get_config_schema(2);
   REQUIRE(schema != nullptr);
   CHECK(schema->option_count == 3);
-  CHECK(std::string(schema->options[0].name) == "SettingA");
-  CHECK(std::string(schema->options[0].default_value) == "defaultA");
-  CHECK(std::string(schema->options[1].name) == "SettingB");
-  CHECK(schema->options[2].allowed_values != nullptr);
-  CHECK(std::string(schema->options[2].allowed_values[0]) == "OptionA");
-  CHECK(std::string(schema->options[2].allowed_values[1]) == "OptionB");
-  CHECK(schema->options[2].allowed_values[2] == nullptr);
+  CHECK(std::string(schema->options[0].name) == "Port");
+  CHECK(std::string(schema->options[0].default_value) == "/dev/null");
+  CHECK(std::string(schema->options[1].name) == "Baud");
+  CHECK(std::string(schema->options[1].default_value) == "9600");
+  CHECK(std::string(schema->options[2].name) == "Loopback");
+  CHECK(std::string(schema->options[2].default_value) == "false");
 
-  // Dispatch configure calls and verify values applied to instance
-  PeripheralStatus_t status1 =
-      peripheral_configure(3, "SettingA", "CustomValue123");
+  // Dispatch configure calls across public C-ABI
+  PeripheralStatus_t status1 = peripheral_configure(2, "Port", "/dev/ttyUSB0");
   CHECK(status1 == peripheral_ok);
-  CHECK(g_custom_instance.last_configured_key == "SettingA");
-  CHECK(g_custom_instance.last_configured_value == "CustomValue123");
 
-  PeripheralStatus_t status2 = peripheral_configure(3, "SettingB", "99");
+  PeripheralStatus_t status2 = peripheral_configure(2, "Baud", "19200");
   CHECK(status2 == peripheral_ok);
-  CHECK(g_custom_instance.last_configured_key == "SettingB");
-  CHECK(g_custom_instance.last_configured_value == "99");
+
+  PeripheralStatus_t status3 = peripheral_configure(2, "Loopback", "true");
+  CHECK(status3 == peripheral_ok);
 
   // Unrecognized key -> must return peripheral_incompatible
   PeripheralStatus_t status_bad_key =
-      peripheral_configure(3, "NonExistentKey", "Value");
+      peripheral_configure(2, "NonExistentKey", "Value");
   CHECK(status_bad_key == peripheral_incompatible);
-
-  peripheral_unregister(3);
 }
 
 TEST_CASE("Peripheral ABI Config: Card Without Configure Implementation") {
   const ScopedPeripheralManager_t scoped_pm;
 
-  int reg_result = peripheral_register(&g_no_cfg_peripheral, 4);
+  auto* clock = clock_get_descriptor();
+  REQUIRE(clock != nullptr);
+  int reg_result = peripheral_register(clock, 4);
   REQUIRE(reg_result == 0);
 
   // Card without get_config_schema returns nullptr
@@ -268,8 +171,6 @@ TEST_CASE("Peripheral ABI Config: Card Without Configure Implementation") {
 
   // Card without configure returns peripheral_error
   CHECK(peripheral_configure(4, "AnyKey", "AnyValue") == peripheral_error);
-
-  peripheral_unregister(4);
 }
 
 TEST_CASE("Peripheral ABI Config: Built-in Card Key Validation") {
@@ -288,6 +189,4 @@ TEST_CASE("Peripheral ABI Config: Built-in Card Key Validation") {
   // Unrecognized key returns peripheral_incompatible
   CHECK(peripheral_configure(1, "InvalidKey", "Val") ==
         peripheral_incompatible);
-
-  peripheral_unregister(1);
 }

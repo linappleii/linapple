@@ -12,6 +12,20 @@
 #include "core/config/ConfigSchema.h"
 #include "core/config/Toml.h"
 #include "doctest.h"
+#include "test_fixtures.h"
+
+namespace {
+
+auto ensure_peripherals_registered() -> void {
+  static const bool initialized = []() -> bool {
+    peripheral_register_builtin(printer_get_descriptor());
+    peripheral_register_builtin(disk_get_descriptor());
+    return true;
+  }();
+  (void)initialized;
+}
+
+}  // namespace
 
 static const char* SAMPLE_LEGACY_CONF = R"(
 # Sample Legacy linapple.conf
@@ -82,12 +96,7 @@ D = Right
 )";
 
 TEST_CASE("ConfigMigration: Migrate to TOML Document") {
-  if (peripheral_find_builtin("linapple.printer") == nullptr) {
-    peripheral_register_builtin(printer_get_descriptor());
-  }
-  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
-    peripheral_register_builtin(disk_get_descriptor());
-  }
+  ensure_peripherals_registered();
 
   std::string err;
   auto doc = config_migrate_legacy_to_toml(SAMPLE_LEGACY_CONF, &err);
@@ -269,52 +278,43 @@ Disk Image 1 = /path/to/game.dsk
 }
 
 TEST_CASE("ConfigMigration: File Upgrade End-to-End") {
-  const std::string temp_conf = "/tmp/test_migrate_input.conf";
-  const std::string temp_toml = "/tmp/test_migrate_output.toml";
-  unlink(temp_conf.c_str());
-  unlink(temp_toml.c_str());
+  const TestFixtures::ScopedTempFile_t temp_conf(".conf");
+  const TestFixtures::ScopedTempFile_t temp_toml(".toml");
 
   {
-    std::ofstream out(temp_conf);
+    std::ofstream out(temp_conf.path());
     out << SAMPLE_LEGACY_CONF;
   }
 
   std::string err;
-  bool ok = config_upgrade_legacy(temp_conf, temp_toml, &err);
+  bool ok = config_upgrade_legacy(temp_conf.path(), temp_toml.path(), &err);
   CHECK(ok);
   CHECK(err.empty());
   CHECK(access(temp_toml.c_str(), R_OK) == 0);
 
   // Load and verify upgraded TOML
   std::string parse_err;
-  auto doc = toml_document_load_file(temp_toml, &parse_err);
+  auto doc = toml_document_load_file(temp_toml.path(), &parse_err);
   REQUIRE(doc != nullptr);
   CHECK(parse_err.empty());
 
   auto* core = toml_find_table(doc.get(), "Core");
   REQUIRE(core != nullptr);
   CHECK(toml_table_get_string(core, "Machine") == "Apple //e Enhanced");
-
-  unlink(temp_conf.c_str());
-  unlink(temp_toml.c_str());
 }
 
 TEST_CASE("ConfigMigration: Defensive Checks") {
   CHECK_FALSE(config_migrate_legacy_ini("", nullptr));
 
+  const TestFixtures::ScopedTempFile_t temp_out(".toml");
   std::string err;
   CHECK_FALSE(config_upgrade_legacy("/tmp/nonexistent_file_987654.conf",
-                                    "/tmp/output.toml", &err));
+                                    temp_out.path(), &err));
   CHECK_FALSE(err.empty());
 }
 
 TEST_CASE("ConfigMigration: Schema-Driven Comments in Migrated TOML") {
-  if (peripheral_find_builtin("linapple.printer") == nullptr) {
-    peripheral_register_builtin(printer_get_descriptor());
-  }
-  if (peripheral_find_builtin("linapple.disk_II") == nullptr) {
-    peripheral_register_builtin(disk_get_descriptor());
-  }
+  ensure_peripherals_registered();
 
   std::string err;
   auto doc = config_migrate_legacy_to_toml(SAMPLE_LEGACY_CONF, &err);
