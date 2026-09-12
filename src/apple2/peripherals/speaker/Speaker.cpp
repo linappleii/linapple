@@ -65,12 +65,20 @@ auto speaker_initialize(void* instance) -> void {
   auto* host = speaker_peripheral->host;
   const int slot = speaker_peripheral->slot;
 
-  *speaker_peripheral = SpeakerPeripheral_t();
-
+  speaker_peripheral->event_count = 0;
+  speaker_peripheral->current_state = false;
+  speaker_peripheral->quiet_cycle_count = 0;
+  speaker_peripheral->is_active = false;
+  speaker_peripheral->has_strobe = false;
+  speaker_peripheral->sound_mode = sound_wave;
+  speaker_peripheral->last_sample_state = false;
+  speaker_peripheral->filter_state = 0.0f;
+  speaker_peripheral->previous_input = 0.0f;
   speaker_peripheral->host = host;
   speaker_peripheral->slot = slot;
   speaker_peripheral->last_update_cycle = get_cycles(host);
-  speaker_peripheral->next_sample_cycle = static_cast<double>(get_cycles(host));
+  speaker_peripheral->next_sample_cycle =
+      static_cast<double>(speaker_peripheral->last_update_cycle);
 }
 
 auto speaker_reset(void* instance) -> void {
@@ -131,12 +139,13 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
   if (!g_full_speed) {
     speaker_peripheral->is_active = true;
 
+    speaker_peripheral->current_state = !speaker_peripheral->current_state;
+
     if (speaker_peripheral->sound_mode == static_cast<uint32_t>(sound_wave) &&
         static_cast<size_t>(speaker_peripheral->event_count) <
             max_speaker_events) {
       const auto event_index =
           static_cast<size_t>(speaker_peripheral->event_count);
-      speaker_peripheral->current_state = !speaker_peripheral->current_state;
       speaker_peripheral->events.at(event_index).cycle =
           get_cycles(speaker_peripheral->host);
       speaker_peripheral->events.at(event_index).state =
@@ -219,7 +228,7 @@ auto speaker_load_state(void* instance, const void* state_buffer,
                         size_t buffer_size) -> PeripheralStatus_t {
   const size_t required_size = sizeof(SsIoSpeaker_t);
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size < required_size) {
+      buffer_size != required_size) {
     return peripheral_error;
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
@@ -232,6 +241,20 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   speaker_peripheral->last_sample_state =
       (save_state_ptr->last_sample_state != 0);
   speaker_peripheral->filter_state = save_state_ptr->filter_state;
+
+  if (!std::isfinite(speaker_peripheral->filter_state)) {
+    speaker_peripheral->filter_state = 0.0f;
+  }
+  if (!std::isfinite(speaker_peripheral->next_sample_cycle) ||
+      speaker_peripheral->next_sample_cycle < 0.0) {
+    speaker_peripheral->next_sample_cycle =
+        static_cast<double>(speaker_peripheral->last_update_cycle);
+  }
+
+  speaker_peripheral->previous_input =
+      speaker_peripheral->last_sample_state ? 1.0f : -1.0f;
+  speaker_peripheral->event_count = 0;
+  speaker_peripheral->has_strobe = false;
 
   return peripheral_ok;
 }
@@ -299,12 +322,14 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
     return;
   }
 
-  const uint64_t start_cycle =
-      get_cycles(speaker_peripheral->host) - elapsed_cycles;
   const uint64_t end_cycle = get_cycles(speaker_peripheral->host);
+  const uint64_t start_cycle =
+      (end_cycle >= elapsed_cycles) ? (end_cycle - elapsed_cycles) : 0;
 
   if (speaker_peripheral->next_sample_cycle <
-      static_cast<double>(start_cycle)) {
+          static_cast<double>(start_cycle) ||
+      speaker_peripheral->next_sample_cycle >
+          static_cast<double>(end_cycle) + (2.0 * cycles_per_sample)) {
     speaker_peripheral->next_sample_cycle = static_cast<double>(start_cycle);
   }
 
@@ -314,8 +339,20 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
     while (speaker_peripheral->next_sample_cycle <=
                static_cast<double>(end_cycle) &&
            sample_count < (speaker_buffer_size - 2)) {
-      speaker_peripheral->sample_buffer.at(sample_count++) = 0;
-      speaker_peripheral->sample_buffer.at(sample_count++) = 0;
+      if (std::abs(speaker_peripheral->filter_state) > filter_epsilon) {
+        speaker_peripheral->filter_state *= decay_coefficient;
+        const float raw_sample =
+            speaker_peripheral->filter_state * speaker_sample_volume;
+        const float clamped_sample =
+            std::max(-32768.0f, std::min(32767.0f, raw_sample));
+        const auto val = static_cast<int16_t>(clamped_sample);
+        speaker_peripheral->sample_buffer.at(sample_count++) = val;
+        speaker_peripheral->sample_buffer.at(sample_count++) = val;
+      } else {
+        speaker_peripheral->filter_state = 0.0f;
+        speaker_peripheral->sample_buffer.at(sample_count++) = 0;
+        speaker_peripheral->sample_buffer.at(sample_count++) = 0;
+      }
       speaker_peripheral->next_sample_cycle += cycles_per_sample;
     }
     speaker_peripheral->event_count = 0;
@@ -361,29 +398,17 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
           (dc_blocker_coefficient * speaker_peripheral->filter_state);
       speaker_peripheral->previous_input = average;
 
-      const auto val = static_cast<int16_t>(speaker_peripheral->filter_state *
-                                            speaker_sample_volume);
+      const float raw_sample =
+          speaker_peripheral->filter_state * speaker_sample_volume;
+      const float clamped_sample =
+          std::max(-32768.0f, std::min(32767.0f, raw_sample));
+      const auto val = static_cast<int16_t>(clamped_sample);
 
       speaker_peripheral->sample_buffer.at(sample_count++) = val;
       speaker_peripheral->sample_buffer.at(sample_count++) = val;
       speaker_peripheral->next_sample_cycle += cycles_per_sample;
     }
     speaker_peripheral->event_count = 0;
-  }
-
-  if (!speaker_peripheral->is_active &&
-      speaker_peripheral->filter_state != 0.0f) {
-    while (sample_count < (speaker_buffer_size - 2) &&
-           std::abs(speaker_peripheral->filter_state) > filter_epsilon) {
-      speaker_peripheral->filter_state *= decay_coefficient;
-      const auto val = static_cast<int16_t>(speaker_peripheral->filter_state *
-                                            speaker_sample_volume);
-      speaker_peripheral->sample_buffer.at(sample_count++) = val;
-      speaker_peripheral->sample_buffer.at(sample_count++) = val;
-    }
-    if (std::abs(speaker_peripheral->filter_state) <= filter_epsilon) {
-      speaker_peripheral->filter_state = 0.0f;
-    }
   }
 
   if (sample_count > 0) {
