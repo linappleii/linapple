@@ -2,9 +2,9 @@
 #include <string>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
+#include "apple2/peripherals/mouse/Mouse.h"
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/LinAppleCore.h"
@@ -161,9 +161,9 @@ TEST_CASE("Peripheral ABI Config: Dynamic Configuration Callbacks") {
 TEST_CASE("Peripheral ABI Config: Card Without Configure Implementation") {
   const ScopedPeripheralManager_t scoped_pm;
 
-  auto* clock = clock_get_descriptor();
-  REQUIRE(clock != nullptr);
-  int reg_result = peripheral_register(clock, 4);
+  auto* mouse = mouse_get_descriptor();
+  REQUIRE(mouse != nullptr);
+  int reg_result = peripheral_register(mouse, 4);
   REQUIRE(reg_result == 0);
 
   // Card without get_config_schema returns nullptr
