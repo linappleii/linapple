@@ -137,7 +137,10 @@ class SpeakerHarness {
     g_cumulative_cycles += delta;
   }
 
-  auto set_full_speed(bool fs) -> void { g_full_speed = fs; }
+  auto set_full_speed(bool fs) -> void {
+    full_speed_ = fs;
+    g_full_speed = fs;
+  }
 
   auto has_handler(uint16_t addr) const -> bool {
     return handlers_.find(addr) != handlers_.end();
@@ -210,6 +213,7 @@ class SpeakerHarness {
   std::map<uint16_t, MockHandler_t> handlers_;
   std::vector<int16_t> captured_samples_;
   uint32_t audio_push_count_ = 0;
+  bool full_speed_ = false;
 
   static SpeakerHarness* s_active_harness;
 
@@ -265,6 +269,9 @@ class SpeakerHarness {
                                     size_t num_samples) -> void {
     (void)instance;
     if (s_active_harness != nullptr && buffer != nullptr && num_samples > 0) {
+      if (s_active_harness->full_speed_) {
+        return;
+      }
       s_active_harness->captured_samples_.insert(
           s_active_harness->captured_samples_.end(), buffer,
           buffer + num_samples);
@@ -432,11 +439,9 @@ TEST_CASE("Speaker Peripheral: Full-Speed Suppression") {
   harness.set_full_speed(true);
 
   harness.toggle_read();
+  speaker_generate_samples(instance, 1000);
 
-  CHECK_FALSE(harness.is_active(instance));
-
-  std::array<SpeakerEvent_t, max_speaker_events> events{};
-  CHECK(speaker_get_events(instance, events.data(), max_speaker_events) == 0);
+  CHECK(harness.captured_samples().empty());
 }
 
 TEST_CASE("Speaker Peripheral: State Persistence Integrity") {

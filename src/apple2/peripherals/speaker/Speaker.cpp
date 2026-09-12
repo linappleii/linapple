@@ -10,16 +10,24 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "core/AudioMixer.h"
-#include "core/LinAppleCore.h"
+#include "apple2/Apple2Types.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+
+#ifndef VERSIONSTRING
+#define VERSIONSTRING "3.1.0"
+#endif
+
 namespace {
 
-constexpr int inactivity_divisor = 5;
+constexpr uint32_t speaker_sample_rate = 44100;
+constexpr uint64_t speaker_inactivity_cycles =
+    static_cast<uint64_t>(CLOCK_6502 / 5.0);
+constexpr double speaker_cycles_per_sample =
+    CLOCK_6502 / static_cast<double>(speaker_sample_rate);
+
 constexpr float dc_blocker_coefficient = 0.999f;
 constexpr float decay_coefficient = 0.99f;
 constexpr float filter_epsilon = 0.001f;
@@ -51,7 +59,7 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
-  return cpu_get_cumulative_cycles();
+  return 0;
 }
 
 // --- Internal Implementation ---
@@ -101,10 +109,7 @@ auto speaker_update(void* instance, uint32_t elapsed_cycles) -> void {
   } else if (speaker_peripheral->is_active) {
     speaker_peripheral->quiet_cycle_count += elapsed_cycles;
 
-    const uint64_t inactivity_threshold =
-        static_cast<uint64_t>(g_current_clk_6502 / inactivity_divisor);
-
-    if (speaker_peripheral->quiet_cycle_count > inactivity_threshold) {
+    if (speaker_peripheral->quiet_cycle_count > speaker_inactivity_cycles) {
       speaker_peripheral->is_active = false;
     }
   }
@@ -133,25 +138,20 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
 
-  cpu_calc_cycles(remaining_cycles);
   speaker_peripheral->has_strobe = true;
+  speaker_peripheral->is_active = true;
+  speaker_peripheral->current_state = !speaker_peripheral->current_state;
 
-  if (!g_full_speed) {
-    speaker_peripheral->is_active = true;
-
-    speaker_peripheral->current_state = !speaker_peripheral->current_state;
-
-    if (speaker_peripheral->sound_mode == static_cast<uint32_t>(sound_wave) &&
-        static_cast<size_t>(speaker_peripheral->event_count) <
-            max_speaker_events) {
-      const auto event_index =
-          static_cast<size_t>(speaker_peripheral->event_count);
-      speaker_peripheral->events.at(event_index).cycle =
-          get_cycles(speaker_peripheral->host);
-      speaker_peripheral->events.at(event_index).state =
-          speaker_peripheral->current_state;
-      speaker_peripheral->event_count++;
-    }
+  if (speaker_peripheral->sound_mode == static_cast<uint32_t>(sound_wave) &&
+      static_cast<size_t>(speaker_peripheral->event_count) <
+          max_speaker_events) {
+    const auto event_index =
+        static_cast<size_t>(speaker_peripheral->event_count);
+    speaker_peripheral->events.at(event_index).cycle =
+        get_cycles(speaker_peripheral->host);
+    speaker_peripheral->events.at(event_index).state =
+        speaker_peripheral->current_state;
+    speaker_peripheral->event_count++;
   }
 
   return mem_read_floating_bus(remaining_cycles);
@@ -317,7 +317,7 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
 
-  const double cycles_per_sample = g_current_clk_6502 / SPKR_SAMPLE_RATE;
+  const double cycles_per_sample = speaker_cycles_per_sample;
   if (cycles_per_sample <= 0.0) {
     return;
   }

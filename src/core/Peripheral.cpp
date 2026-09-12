@@ -331,7 +331,7 @@ static auto host_request_precise_timing() -> void {
 
 static auto host_audio_push_samples(void* instance, const int16_t* buffer,
                                     size_t num_samples) -> void {
-  if (buffer == nullptr || num_samples == 0) {
+  if (buffer == nullptr || num_samples == 0 || g_full_speed) {
     return;
   }
   bool is_mockingboard = false;
