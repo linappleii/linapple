@@ -19,7 +19,7 @@
 #include "frontends/common/AudioDumper.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 // SDL Audio Stream for Frontend
 bool g_ds_available = false;

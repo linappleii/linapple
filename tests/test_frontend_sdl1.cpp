@@ -19,7 +19,7 @@
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
-#include "frontends/sdl1/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}

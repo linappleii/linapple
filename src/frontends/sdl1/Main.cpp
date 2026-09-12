@@ -20,7 +20,7 @@
 #include "frontends/common/AudioDumper.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl1/Frame.h"
-#include "frontends/sdl1/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 // SDL Audio Device for Frontend
 bool g_ds_available = false;

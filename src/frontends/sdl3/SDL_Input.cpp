@@ -22,7 +22,7 @@
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 // Forward declarations for functions still in Frame.cpp
 extern void process_button_click(int button, int mod);
