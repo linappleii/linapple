@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "frontends/sdl2/JoystickFrontend.h"
-
-#include <SDL2/SDL.h>
-#include <SDL_joystick.h>
-#include <SDL_keycode.h>
-#include <SDL_timer.h>
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 #include <array>
 #include <cstdint>
@@ -15,6 +10,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Registry.h"
+#include "frontends/common/sdl/SdlCompat.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -78,8 +74,6 @@ static std::array<int, 2> joyshry = {8, 8};
 static std::array<int, 2> joysubx = {0, 0};
 static std::array<int, 2> joysuby = {0, 0};
 
-#include "frontends/sdl2/SdlPtr.h"
-
 static SdlJoystickPtr_t joy1;
 static SdlJoystickPtr_t joy2;
 
@@ -122,19 +116,20 @@ void joy_frontend_initialize() {
   // Sync to peripheral
   peripheral_command(0, JOY_CMD_SET_CONFIG, &g_joyConfig, sizeof(g_joyConfig));
 
-  int number_of_joysticks = SDL_NumJoysticks();
+  int number_of_joysticks = sdl_compat_num_joysticks();
 
   if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
       DEVICE_JOYSTICK) {
     if (number_of_joysticks > 0 &&
         static_cast<int>(g_joyConfig.joy_index[0]) < number_of_joysticks) {
-      joy1.reset(SDL_JoystickOpen(static_cast<int>(g_joyConfig.joy_index[0])));
+      joy1 =
+          sdl_compat_open_joystick(static_cast<int>(g_joyConfig.joy_index[0]));
       joyshrx.at(0) = 0;
       joyshry.at(0) = 0;
       joysubx.at(0) = AXIS_MIN;
       joysuby.at(0) = AXIS_MIN;
-      auto xrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
-      auto yrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
+      uint32_t xrange = AXIS_MAX - AXIS_MIN;
+      uint32_t yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx.at(0);
@@ -152,13 +147,14 @@ void joy_frontend_initialize() {
       DEVICE_JOYSTICK) {
     if (number_of_joysticks > 1 &&
         static_cast<int>(g_joyConfig.joy_index[1]) < number_of_joysticks) {
-      joy2.reset(SDL_JoystickOpen(static_cast<int>(g_joyConfig.joy_index[1])));
+      joy2 =
+          sdl_compat_open_joystick(static_cast<int>(g_joyConfig.joy_index[1]));
       joyshrx.at(1) = 0;
       joyshry.at(1) = 0;
       joysubx.at(1) = AXIS_MIN;
       joysuby.at(1) = AXIS_MIN;
-      auto xrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
-      auto yrange = static_cast<uint32_t>(AXIS_MAX - AXIS_MIN);
+      uint32_t xrange = AXIS_MAX - AXIS_MIN;
+      uint32_t yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
         xrange >>= 1;
         ++joyshrx.at(1);
@@ -176,20 +172,16 @@ void joy_frontend_initialize() {
 void joy_frontend_shutdown() {
   joy1.reset();
   joy2.reset();
-  if (SDL_WasInit(SDL_INIT_JOYSTICK) != 0) {
-    SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
-  }
 }
 
 void joy_frontend_check_exit() {
-  if (joy1 == nullptr || g_joyConfig.joy_exit_enable == 0u) return;
-  SDL_JoystickUpdate();
+  if (!joy1 || !g_joyConfig.joy_exit_enable) return;
+  sdl_compat_update_joysticks();
   bool quit =
-      (SDL_JoystickGetButton(
-           joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[0])) !=
-       0) &&
-      (SDL_JoystickGetButton(
-           joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[1])) != 0);
+      sdl_compat_get_joystick_button(
+          joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[0])) &&
+      sdl_compat_get_joystick_button(
+          joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[1]));
 
   if (quit) {
     g_state.mode = MODE_EXIT;
@@ -198,24 +190,21 @@ void joy_frontend_check_exit() {
 
 void joy_frontend_update() {
   // Joystick 0
-  if (joy1 != nullptr &&
-      joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
-          DEVICE_JOYSTICK) {
+  if (joy1 && joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[0])).device ==
+                  DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
-      SDL_JoystickUpdate();
+      sdl_compat_update_joysticks();
 
-      bool b0 = SDL_JoystickGetButton(
-                    joy1.get(),
-                    static_cast<int>(g_joyConfig.joy0_button_map[0])) != 0;
+      bool b0 = sdl_compat_get_joystick_button(
+          joy1.get(), static_cast<int>(g_joyConfig.joy0_button_map[0]));
       bool b1 = false;
       if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device ==
           DEVICE_NONE) {
-        b1 = SDL_JoystickGetButton(
-                 joy1.get(),
-                 static_cast<int>(g_joyConfig.joy0_button_map[1])) != 0;
+        b1 = sdl_compat_get_joystick_button(
+            joy1.get(), static_cast<int>(g_joyConfig.joy0_button_map[1]));
       }
 
       JoystickButtonPayload_t pb0 = {0, b0};
@@ -223,11 +212,11 @@ void joy_frontend_update() {
       JoystickButtonPayload_t pb1 = {1, b1};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
-      int x = (static_cast<int>(SDL_JoystickGetAxis(
+      int x = (static_cast<int>(sdl_compat_get_joystick_axis(
                    joy1.get(), static_cast<int>(g_joyConfig.joy_axis[0][0]))) -
                joysubx.at(0)) >>
               joyshrx.at(0);
-      int y = (static_cast<int>(SDL_JoystickGetAxis(
+      int y = (static_cast<int>(sdl_compat_get_joystick_axis(
                    joy1.get(), static_cast<int>(g_joyConfig.joy_axis[0][1]))) -
                joysuby.at(0)) >>
               joyshry.at(0);
@@ -276,18 +265,16 @@ void joy_frontend_update() {
   }
 
   // Joystick 1
-  if (joy2 != nullptr &&
-      joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device ==
-          DEVICE_JOYSTICK) {
+  if (joy2 && joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device ==
+                  DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
-      SDL_JoystickUpdate();
+      sdl_compat_update_joysticks();
 
-      bool b2 =
-          SDL_JoystickGetButton(
-              joy2.get(), static_cast<int>(g_joyConfig.joy1_button_map)) != 0;
+      bool b2 = sdl_compat_get_joystick_button(
+          joy2.get(), static_cast<int>(g_joyConfig.joy1_button_map));
       JoystickButtonPayload_t pb2 = {2, b2};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
       if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
@@ -296,11 +283,11 @@ void joy_frontend_update() {
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
 
-      int x = (static_cast<int>(SDL_JoystickGetAxis(
+      int x = (static_cast<int>(sdl_compat_get_joystick_axis(
                    joy2.get(), static_cast<int>(g_joyConfig.joy_axis[1][0]))) -
                joysubx.at(1)) >>
               joyshrx.at(1);
-      int y = (static_cast<int>(SDL_JoystickGetAxis(
+      int y = (static_cast<int>(sdl_compat_get_joystick_axis(
                    joy2.get(), static_cast<int>(g_joyConfig.joy_axis[1][1]))) -
                joysuby.at(1)) >>
               joyshry.at(1);
@@ -321,7 +308,7 @@ void joy_frontend_update() {
   }
 }
 
-void joy_frontend_update_trim_via_key(SDL_Keycode virtkey) {
+void joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) {
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP_2:
@@ -348,7 +335,7 @@ void joy_frontend_update_trim_via_key(SDL_Keycode virtkey) {
   }
 }
 
-auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
+auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
                               bool autorep) -> bool {
   int joy_num = -1;
   if (g_joyConfig.joy_type[0] < joyinfo.size() &&
@@ -473,10 +460,10 @@ auto joy_frontend_process_key(SDL_Keycode virtkey, bool extended, bool down,
       int keydown_count = 0;
       static constexpr std::array<int, 16> corner_convert_lookup = {
           {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1}};
-      int corner_idx = (static_cast<int>(keydown.at(1) == false)) |
-                       (static_cast<int>(keydown.at(3) == false) << 1) |
-                       (static_cast<int>(keydown.at(5) == false) << 2) |
-                       (static_cast<int>(keydown.at(7) == false) << 3);
+      int corner_idx = (static_cast<int>(0 == keydown.at(1))) |
+                       (static_cast<int>(0 == keydown.at(3)) << 1) |
+                       (static_cast<int>(0 == keydown.at(5)) << 2) |
+                       (static_cast<int>(0 == keydown.at(7)) << 3);
       int corner_override_idx =
           corner_convert_lookup.at(static_cast<size_t>(corner_idx));
       if (corner_override_idx >= 0) {

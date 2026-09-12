@@ -106,7 +106,7 @@ int g_console_display_start = 0;  // to allow scrolling
 int g_console_display_total = 0;  // number of lines added to console
 int g_console_display_lines = 0;
 int g_console_display_width = 0;
-conchar_t g_console_display[CONSOLE_HEIGHT][CONSOLE_WIDTH];
+conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
 int g_history_lines_start = 0;
@@ -329,7 +329,7 @@ auto ConsoleDisplayPush(const char* text) -> void {
 //===========================================================================
 auto ConsoleDisplayPush(const conchar_t* text) -> void {
   int nLen = std::min(g_console_display_total,
-                      CONSOLE_HEIGHT - 1 - CONSOLE_FIRST_LINE);
+                      CONSOLE_DISPLAY_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while (nLen--) {
     memcpy(
         reinterpret_cast<char*>(
@@ -344,8 +344,8 @@ auto ConsoleDisplayPush(const conchar_t* text) -> void {
   }
 
   g_console_display_total++;
-  if (g_console_display_total > (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE)) {
-    g_console_display_total = (CONSOLE_HEIGHT - CONSOLE_FIRST_LINE);
+  if (g_console_display_total > (CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE)) {
+    g_console_display_total = (CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE);
   }
 }
 

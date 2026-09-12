@@ -8,7 +8,7 @@
  * Resolve application paths and initialize core services (Logger, Registry,
  * Modern Configuration).
  */
-void app_env_resolve_paths(AppConfig_t* config);
+auto app_env_resolve_paths(AppConfig_t* config) -> void;
 
 /**
  * Retrieve the active modern configuration structure.

@@ -23,7 +23,7 @@ auto app_env_get_config() -> const LinAppleConfig_t& { return s_active_config; }
 
 auto app_env_get_config_mut() -> LinAppleConfig_t& { return s_active_config; }
 
-void app_env_resolve_paths(AppConfig_t* config) {
+auto app_env_resolve_paths(AppConfig_t* config) -> void {
   if (config == nullptr) {
     return;
   }

@@ -184,13 +184,21 @@ auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
     return;
   }
 
-  image_ptr->work_buffer.fill(0);
+  const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
+                      (static_cast<int64_t>(track) * dos::track_size);
+
+  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
+    if (fread(image_ptr->work_buffer.data(), 1, dos::track_size,
+              image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
+      image_ptr->work_buffer.fill(0);
+    }
+  } else {
+    image_ptr->work_buffer.fill(0);
+  }
+
   disk_encoding_denibblize_track(image_ptr->work_buffer.data(),
                                  const_cast<uint8_t*>(track_buffer),
                                  image_ptr->is_dos_order, nibbles);
-
-  const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
-                      (static_cast<int64_t>(track) * dos::track_size);
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
     const size_t written = fwrite(image_ptr->work_buffer.data(), 1,

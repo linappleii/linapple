@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
@@ -37,6 +39,7 @@ TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
   CHECK(disk_drive_1 == 1);
   CHECK(disk_cmd_insert == 0x01);
   CHECK(disk_cmd_eject == 0x02);
+  CHECK(disk_state_version == 1);
 }
 
 TEST_CASE(
@@ -50,14 +53,58 @@ TEST_CASE(
   CHECK(offsetof(DiskStatus_t, drive0_write_protected) == 11);
 }
 
+extern "C" auto disk_get_descriptor() -> Peripheral_t*;
+
+static HostInterface_t g_test_disk_host = [] {
+  HostInterface_t h{};
+  h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
+                    PeripheralIOHandler, PeripheralIOHandler) {};
+  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
+  h.SetConfig = [](const char*, const char*, const char*) {};
+  h.NotifyStatusChanged = [](int) {};
+  return h;
+}();
+
 TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();
   size_t size = 0;
   peripheral_save_state(SL6, nullptr, &size);
-  CHECK(size > 0);
+  CHECK(size == sizeof(DiskSavedState_t));
   linapple_shutdown();
+}
+
+TEST_CASE("DiskABI: [ABI-07a] DiskSavedState_t layout stability") {
+  CHECK(sizeof(DiskStateHeader_t) == 8);
+  CHECK(offsetof(DiskStateHeader_t, version) == 0);
+  CHECK(offsetof(DiskStateHeader_t, size) == 4);
+
+  CHECK(sizeof(DiskDriveState_t) == 6940);
+  CHECK(offsetof(DiskDriveState_t, full_path) == 0);
+  CHECK(offsetof(DiskDriveState_t, track) == 256);
+  CHECK(offsetof(DiskDriveState_t, phase) == 260);
+  CHECK(offsetof(DiskDriveState_t, current_byte_pos) == 264);
+  CHECK(offsetof(DiskDriveState_t, user_write_protected) == 268);
+  CHECK(offsetof(DiskDriveState_t, is_os_read_only) == 269);
+  CHECK(offsetof(DiskDriveState_t, is_data_loaded) == 270);
+  CHECK(offsetof(DiskDriveState_t, is_dirty) == 271);
+  CHECK(offsetof(DiskDriveState_t, spinning_ticks) == 272);
+  CHECK(offsetof(DiskDriveState_t, write_light_ticks) == 276);
+  CHECK(offsetof(DiskDriveState_t, nibble_count) == 280);
+  CHECK(offsetof(DiskDriveState_t, track_buffer) == 284);
+
+  CHECK(sizeof(DiskSavedState_t) == 13897);
+  CHECK(offsetof(DiskSavedState_t, header) == 0);
+  CHECK(offsetof(DiskSavedState_t, drives) == 8);
+  CHECK(offsetof(DiskSavedState_t, stepper_phase_mask) == 13888);
+  CHECK(offsetof(DiskSavedState_t, active_drive_index) == 13890);
+  CHECK(offsetof(DiskSavedState_t, was_accessed_this_tick) == 13892);
+  CHECK(offsetof(DiskSavedState_t, is_speed_enhanced) == 13893);
+  CHECK(offsetof(DiskSavedState_t, io_latch) == 13894);
+  CHECK(offsetof(DiskSavedState_t, is_motor_on) == 13895);
+  CHECK(offsetof(DiskSavedState_t, is_write_mode) == 13896);
 }
 
 TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
@@ -70,6 +117,16 @@ TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
   peripheral_save_state(SL6, buffer.data(), &size);
   CHECK(buffer[0] == BUFFER_INIT_VAL);
   linapple_shutdown();
+
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(SL6, &g_test_disk_host);
+  REQUIRE(instance != nullptr);
+  size_t undersized = 4;
+  PeripheralStatus_t status =
+      descriptor->save_state(instance, buffer.data(), &undersized);
+  CHECK(status == peripheral_error);
+  descriptor->shutdown(instance);
 }
 
 TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
@@ -81,13 +138,20 @@ TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
   std::vector<uint8_t> buffer(size);
   peripheral_save_state(SL6, buffer.data(), &size);
 
-  // Corrupt version (first 4 bytes of DiskSavedState_t is Header_t {version,
-  // size})
-  auto* version = reinterpret_cast<uint32_t*>(buffer.data());
-  *version = BAD_VERSION;
+  auto* state = reinterpret_cast<DiskSavedState_t*>(buffer.data());
+  state->header.version = BAD_VERSION;
 
   peripheral_load_state(SL6, buffer.data(), size);
   linapple_shutdown();
+
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(SL6, &g_test_disk_host);
+  REQUIRE(instance != nullptr);
+  PeripheralStatus_t status =
+      descriptor->load_state(instance, buffer.data(), size);
+  CHECK(status == peripheral_error);
+  descriptor->shutdown(instance);
 }
 
 TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
@@ -112,19 +176,6 @@ TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
 
   linapple_shutdown();
 }
-
-extern "C" auto disk_get_descriptor() -> Peripheral_t*;
-
-static HostInterface_t g_test_disk_host = [] {
-  HostInterface_t h{};
-  h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
-                    PeripheralIOHandler, PeripheralIOHandler) {};
-  h.RegisterCxROM = [](int, uint8_t*) {};
-  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
-  h.SetConfig = [](const char*, const char*, const char*) {};
-  h.NotifyStatusChanged = [](int) {};
-  return h;
-}();
 
 TEST_CASE("DiskABI: [DISK-11] Insert Command NUL Terminator Check") {
   auto* descriptor = disk_get_descriptor();

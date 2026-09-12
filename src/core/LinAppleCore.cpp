@@ -143,16 +143,29 @@ auto linapple_get_ticks() -> uint32_t {
       .count();
 }
 
+static bool s_user_turbo = false;
+
+static auto is_disk_turbo() -> bool {
+  return peripheral_is_any_active() && (g_state.needsprecision == 0);
+}
+
+static auto is_user_turbo() -> bool {
+  return s_user_turbo ||
+         (g_state.speed >= static_cast<uint32_t>(emulation_speed_max));
+}
+
 static auto should_run_full_speed() -> bool {
-  bool peripheral_active = peripheral_is_any_active();
-  bool should_turbo = peripheral_active && (g_state.needsprecision == 0);
+  bool disk_turbo = is_disk_turbo();
+  bool user_turbo = is_user_turbo();
+  bool should_turbo = disk_turbo || user_turbo;
 
   if (should_turbo && !s_was_turbo) {
     s_turbo_start_ms = linapple_get_ticks();
-    Logger::perf("Full-speed disk mode engaged\n");
+    Logger::perf("Full-speed mode engaged (disk=%d, user=%d)\n",
+                 disk_turbo ? 1 : 0, user_turbo ? 1 : 0);
   } else if (!should_turbo && s_was_turbo) {
     uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
-    Logger::perf("Full-speed disk mode disengaged after %ums\n", elapsed);
+    Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
     audio_mixer_clear_buffers();
   }
 
@@ -312,10 +325,16 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
   if (g_state.mode == MODE_RUNNING) {
     uint32_t executed = 0;
     if (should_run_full_speed()) {
-      for (int i = 0; i < full_speed_disk_iterations; i++) {
-        executed += internal_run_cycles(cycles);
-        if (!peripheral_is_any_active()) {
-          break;
+      if (is_disk_turbo()) {
+        for (int i = 0; i < full_speed_disk_iterations; i++) {
+          executed += internal_run_cycles(cycles);
+          if (!peripheral_is_any_active()) {
+            break;
+          }
+        }
+      } else {
+        for (int i = 0; i < full_speed_disk_iterations; i++) {
+          executed += internal_run_cycles(cycles);
         }
       }
     } else {
@@ -333,6 +352,60 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
     return executed;
   }
   return 0;
+}
+
+auto linapple_get_speed() -> uint32_t { return g_state.speed; }
+
+auto linapple_set_speed(uint32_t speed) -> void {
+  if (speed > static_cast<uint32_t>(emulation_speed_max)) {
+    speed = static_cast<uint32_t>(emulation_speed_max);
+  }
+  g_state.speed = speed;
+}
+
+auto linapple_speed_increase() -> uint32_t {
+  uint32_t next_speed = g_state.speed + 2;
+  if (next_speed > static_cast<uint32_t>(emulation_speed_max)) {
+    next_speed = static_cast<uint32_t>(emulation_speed_max);
+  }
+  g_state.speed = next_speed;
+  return g_state.speed;
+}
+
+auto linapple_speed_decrease() -> uint32_t {
+  if (g_state.speed > static_cast<uint32_t>(SPEED_MIN)) {
+    g_state.speed -= 1;
+  }
+  return g_state.speed;
+}
+
+auto linapple_speed_reset() -> uint32_t {
+  g_state.speed = static_cast<uint32_t>(SPEED_NORMAL);
+  return g_state.speed;
+}
+
+auto linapple_get_frame_cycles() -> uint32_t {
+  uint32_t base_cycles =
+      (g_state.clks_per_frame > 0) ? g_state.clks_per_frame : 17030;
+  if (g_state.speed == static_cast<uint32_t>(SPEED_NORMAL)) {
+    return base_cycles;
+  }
+  double multiplier = 1.0;
+  if (g_state.speed < static_cast<uint32_t>(SPEED_NORMAL)) {
+    multiplier = 0.5 + static_cast<double>(g_state.speed) * 0.05;
+  } else {
+    multiplier = static_cast<double>(g_state.speed) / 10.0;
+  }
+  return static_cast<uint32_t>(static_cast<double>(base_cycles) * multiplier);
+}
+
+auto linapple_get_turbo() -> bool { return s_user_turbo; }
+
+auto linapple_set_turbo(bool turbo) -> void { s_user_turbo = turbo; }
+
+auto linapple_toggle_turbo() -> bool {
+  s_user_turbo = !s_user_turbo;
+  return s_user_turbo;
 }
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {

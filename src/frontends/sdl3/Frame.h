@@ -70,5 +70,3 @@ void set_normal_mode();
 
 void harddisk_ui_ftp_select(int drive);
 void harddisk_ui_select(int drive);
-
-extern bool g_scroll_lock_full_speed;

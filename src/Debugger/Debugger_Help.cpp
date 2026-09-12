@@ -1057,10 +1057,10 @@ auto CmdVersion(int nArgs) -> Update_t {
         ConsoleBufferPushFormat(sText, "  Arg: %d bytes * %d = %d bytes",
                                 sizeof(Arg_t), MAX_ARGS, sizeof(g_args));
 
-        ConsoleBufferPushFormat(sText,
-                                "  Console: %d bytes * %d height = %d bytes",
-                                sizeof(g_console_display[0]), CONSOLE_HEIGHT,
-                                sizeof(g_console_display));
+        ConsoleBufferPushFormat(
+            sText, "  Console: %d bytes * %d height = %d bytes",
+            sizeof(g_console_display[0]), CONSOLE_DISPLAY_HEIGHT,
+            sizeof(g_console_display));
 
         ConsoleBufferPushFormat(
             sText, "  Commands: %d   (Aliased: %d)   Params: %d", NUM_COMMANDS,

@@ -116,8 +116,6 @@ void set_using_cursor(bool);
 
 void set_icon();
 
-bool g_scroll_lock_full_speed = false;
-
 void draw_apple_content() {
   g_video_draw_mutex.lock();
   video_realize_palette();

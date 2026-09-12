@@ -185,9 +185,12 @@ auto video_destroy() -> void;
 auto video_draw_logo_bitmap() -> void;
 auto video_display_logo() -> void;
 auto video_has_refreshed() -> bool;
+auto video_init_worker() -> bool;
 auto video_initialize() -> void;
 auto video_realize_palette() -> void;
 auto video_set_next_scheduled_update() -> void;
+auto video_set_rendering_enabled(bool enabled) -> void;
+auto video_is_rendering_enabled() -> bool;
 auto video_redraw_screen() -> void;
 auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false) -> void;
 auto video_perform_refresh() -> void;
@@ -221,4 +224,3 @@ auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 
 auto set_budget_video(bool b) -> void;
 auto get_budget_video() -> bool;
-auto set_current_clk_6502() -> void;

@@ -173,6 +173,7 @@ std::atomic<bool> g_frame_ready(false);
 
 static bool g_text_flash_state = false;
 static bool g_text_flash_flag = false;
+static uint32_t s_text_flash_cnt = 0;
 
 bool g_show_leds = true;
 
@@ -1540,7 +1541,7 @@ auto video_destroy() -> void {
   }
   g_source_bitmap = nullptr;
 
-  if (g_logo_bitmap && (g_logo_bitmap != assets->splash)) {
+  if (g_logo_bitmap && (assets == nullptr || g_logo_bitmap != assets->splash)) {
     video_destroy_surface(g_logo_bitmap);
   }
   g_logo_bitmap = nullptr;
@@ -1550,7 +1551,7 @@ auto video_destroy() -> void {
   }
   charset40 = nullptr;
 
-  if (font_sfc && (font_sfc != assets->font)) {
+  if (font_sfc && (assets == nullptr || font_sfc != assets->font)) {
     video_destroy_surface(font_sfc);
   }
   font_sfc = nullptr;
@@ -1661,9 +1662,17 @@ auto video_init_worker() -> bool {
 
 auto video_realize_palette() -> void {}
 
+static bool s_rendering_enabled = true;
+
+auto video_set_rendering_enabled(bool enabled) -> void {
+  s_rendering_enabled = enabled;
+}
+
+auto video_is_rendering_enabled() -> bool { return s_rendering_enabled; }
+
 auto video_redraw_screen() -> void {
   redrawfull = true;
-  video_refresh_screen();
+  video_refresh_screen(0, true);
 }
 
 void video_update_output_buffer() {
@@ -1838,6 +1847,9 @@ auto video_reinitialize() -> void {
 
 auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
                           bool redraw_whole_screen /* =false*/) -> void {
+  if (!s_rendering_enabled && !redraw_whole_screen) {
+    return;
+  }
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
   if (redraw_whole_screen) {
     g_debug_video_mode = redraw_whole_screen_video_mode;
@@ -1860,6 +1872,9 @@ auto video_reset_state() -> void {
   g_alt_char_set_offset = 0;
   displaypage2 = false;
   g_video_mode = VF_TEXT;
+  g_text_flash_state = false;
+  g_text_flash_flag = false;
+  s_text_flash_cnt = 0;
   redrawfull = true;
 }
 
@@ -1965,10 +1980,9 @@ auto video_update_vbl(uint32_t cycles_this_frame) -> void {
 
 // Called at 60Hz (every 16.666ms)
 auto video_update_flash() -> void {
-  static uint32_t text_flash_cnt = 0;
-  text_flash_cnt++;
-  if (text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
-    text_flash_cnt = 0;
+  s_text_flash_cnt++;
+  if (s_text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
+    s_text_flash_cnt = 0;
     g_text_flash_state = !g_text_flash_state;
 
     if ((SW_TEXT || SW_MIXED)) {

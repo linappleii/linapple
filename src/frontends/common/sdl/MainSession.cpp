@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_video.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
 
@@ -10,8 +8,8 @@
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
-#include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
+#include "frontends/common/sdl/SdlCompat.h"
 
 using Logger::error;
 using Logger::info;
@@ -20,13 +18,6 @@ static bool g_budget_video = false;
 
 void set_budget_video(bool b) { g_budget_video = b; }
 auto get_budget_video() -> bool { return g_budget_video; }
-
-constexpr double CPU_CLOCK_MHZ = 1.023;
-constexpr double CLOCK_HZ_PER_MHZ = 1000000.0;
-
-void set_current_clk_6502() {
-  g_current_clk_6502 = CPU_CLOCK_MHZ * CLOCK_HZ_PER_MHZ;
-}
 
 void single_step(bool is_reinit) {
   (void)is_reinit;
@@ -53,16 +44,14 @@ void sys_shutdown() {
   ds_shutdown();
   frame_destroy_window();
   SDL_Quit();
-  if (g_curl) {
+  if (g_curl != nullptr) {
     curl_easy_cleanup(g_curl);
     curl_global_cleanup();
   }
 }
 
 static void frontend_set_window_title(const char* title) {
-  if (g_window) {
-    SDL_SetWindowTitle(g_window.get(), title);
-  }
+  sdl_compat_set_window_title(title);
 }
 
 auto session_init(AppConfig_t* config) -> int {
@@ -72,7 +61,9 @@ auto session_init(AppConfig_t* config) -> int {
 
   linapple_set_title_callback(frontend_set_window_title);
 
-  if (frame_create_window() != 0) return 1;
+  if (frame_create_window() != 0) {
+    return 1;
+  }
 
   app_controller_load_initial_media(config);
 

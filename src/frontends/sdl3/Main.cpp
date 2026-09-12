@@ -19,7 +19,7 @@
 #include "frontends/common/AudioDumper.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/JoystickFrontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 // SDL Audio Stream for Frontend
 bool g_ds_available = false;
@@ -110,15 +110,20 @@ void sys_input() {
 }
 
 void enter_message_loop() {
-  constexpr int apple2_frame_cycles = 17030;
   constexpr int target_frame_ms = 16;
   while (g_state.mode != MODE_EXIT) {
     sys_input();
     joy_frontend_update();
 
-    linapple_run_frame(apple2_frame_cycles);
+    uint32_t cycles = linapple_get_frame_cycles();
+    linapple_run_frame(cycles);
     draw_frame_window();
-    SDL_Delay(target_frame_ms);
+
+    if (!linapple_get_turbo()) {
+      SDL_Delay(target_frame_ms);
+    } else {
+      SDL_Delay(0);
+    }
   }
 }
 

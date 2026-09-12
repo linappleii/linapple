@@ -26,8 +26,10 @@ endif()
 
 if(FRONTEND_LOWER STREQUAL "tui" OR FRONTEND_LOWER STREQUAL "headless")
     set(DEFAULT_ENABLE_DEBUGGER OFF)
+    set(FRONTEND_HAS_FTP OFF)
 else()
     set(DEFAULT_ENABLE_DEBUGGER ON)
+    set(FRONTEND_HAS_FTP ON)
 endif()
 option(ENABLE_DEBUGGER "Enable integrated debugger" ${DEFAULT_ENABLE_DEBUGGER})
 
@@ -428,16 +430,17 @@ set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/DiskFTP.cpp
     src/frontends/common/sdl/DiskSelect.cpp
     src/frontends/common/sdl/Harddisk.cpp
+    src/frontends/common/sdl/MainSession.cpp
+    src/frontends/common/sdl/Keyboard.cpp
+    src/frontends/common/sdl/JoystickFrontend.cpp
+    src/apple2/peripherals/disk/ftpparse.cpp
 )
 
 set(SOURCES_FE_SDL3
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
     src/frontends/sdl3/Frame.cpp
-    src/frontends/sdl3/JoystickFrontend.cpp
-    src/frontends/sdl3/Keyboard.cpp
     src/frontends/sdl3/Main.cpp
-    src/frontends/sdl3/MainSession.cpp
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
     src/frontends/sdl3/SDL_Path.cpp
@@ -448,10 +451,7 @@ set(SOURCES_FE_SDL2
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl2/DiskChoose.cpp
     src/frontends/sdl2/Frame.cpp
-    src/frontends/sdl2/JoystickFrontend.cpp
-    src/frontends/sdl2/Keyboard.cpp
     src/frontends/sdl2/Main.cpp
-    src/frontends/sdl2/MainSession.cpp
     src/frontends/sdl2/SDL_Asset.cpp
     src/frontends/sdl2/SDL_Input.cpp
     src/frontends/sdl2/SDL_Path.cpp
@@ -462,10 +462,7 @@ set(SOURCES_FE_SDL1
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl1/DiskChoose.cpp
     src/frontends/sdl1/Frame.cpp
-    src/frontends/sdl1/JoystickFrontend.cpp
-    src/frontends/sdl1/Keyboard.cpp
     src/frontends/sdl1/Main.cpp
-    src/frontends/sdl1/MainSession.cpp
     src/frontends/sdl1/SDL_Asset.cpp
     src/frontends/sdl1/SDL_Input.cpp
     src/frontends/sdl1/SDL_Path.cpp
@@ -526,7 +523,7 @@ endfunction()
 # Define all peripherals
 add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" TRUE)
 add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" TRUE)
-add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/ftpparse.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp;src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES};${CURL_LIBRARIES}" TRUE)
+add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskEncoding.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;src/apple2/peripherals/disk/formats/DoDriver.cpp;src/apple2/peripherals/disk/formats/IieDriver.cpp;src/apple2/peripherals/disk/formats/Nb2Driver.cpp;src/apple2/peripherals/disk/formats/NibDriver.cpp;src/apple2/peripherals/disk/formats/PoDriver.cpp;src/apple2/peripherals/disk/formats/Woz2Driver.cpp;src/apple2/peripherals/disk/formats/SectorDiskImage.cpp;src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp" "" TRUE)
@@ -536,7 +533,7 @@ add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printe
 add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
 
 # --- Executable Targets ---
-set(COMMON_LIBS ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+set(COMMON_LIBS ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
 
 function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTRA_LIBS EXTRA_INCLUDES EXTRA_DEFS)
     add_executable(${TARGET_NAME} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${DBG_SOURCES} ${FE_SOURCES} ${SOURCES_A2_OPTIONAL})
@@ -547,6 +544,13 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS TRUE)
     target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
     target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
+    if(FE_NAME STREQUAL "sdl1")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=1)
+    elseif(FE_NAME STREQUAL "sdl2")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=2)
+    elseif(FE_NAME STREQUAL "sdl3")
+        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=3)
+    endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
         SYSCONF_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
@@ -568,17 +572,17 @@ if(ALSA_FOUND)
 endif()
 
 if(FRONTEND_LOWER STREQUAL "all")
-    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
-    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2" "" "")
-    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
     add_linapple_executable(linapple-headless "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG_STUBS}" "" "" "-DHEADLESS")
     add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_FULL}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
-    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image" "" "")
+    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
-    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2" "" "")
+    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
-    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
 elseif(FRONTEND_LOWER STREQUAL "headless")
     add_linapple_executable(linapple "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG}" "" "" "-DHEADLESS")
 elseif(FRONTEND_LOWER STREQUAL "tui")
@@ -616,7 +620,7 @@ if(BUILD_TESTING)
         set_target_properties(test-${name} PROPERTIES ENABLE_EXPORTS TRUE)
         target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
         if(ENABLE_ASAN OR ENABLE_UBSAN)
             set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
@@ -638,6 +642,14 @@ if(BUILD_TESTING)
     target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppArgs COMMAND test-app-args)
 
+    add_executable(test-fixtures tests/test_fixtures.cpp)
+    target_include_directories(test-fixtures PRIVATE tests ${DOCTEST_INCLUDE_DIR})
+    target_compile_definitions(test-fixtures PRIVATE TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+    add_test(NAME test-fixtures COMMAND test-fixtures)
+    if(ENABLE_ASAN OR ENABLE_UBSAN)
+        set_tests_properties(test-fixtures PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
+    endif()
+
     add_linapple_test(app-env tests/test_app_env.cpp)
     add_linapple_test(app-controller tests/test_app_controller.cpp)
     add_linapple_test(integration tests/test_main.cpp)
@@ -652,15 +664,11 @@ if(BUILD_TESTING)
     add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp ${EMBEDDED_ROMS_CPP} src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
     target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
     target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
-    target_link_libraries(test-superserial-peripheral PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+    target_link_libraries(test-superserial-peripheral PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
     add_test(NAME test-superserial-peripheral COMMAND test-superserial-peripheral)
 
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
-    
-    add_executable(test-keyboard-maps tests/test_keyboard_maps_standalone.cpp src/apple2/peripherals/keyboard/Keyboard_Maps.c)
-    target_include_directories(test-keyboard-maps PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME KeyboardMaps COMMAND test-keyboard-maps)
 
     add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")
     add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp")
@@ -671,7 +679,6 @@ if(BUILD_TESTING)
         target_link_libraries(test-peripheral-abi-config PRIVATE peripheral-printer)
         target_link_libraries(test-config-migration PRIVATE peripheral-printer)
     endif()
-    add_linapple_test(mouse-peripheral "tests/test_main.cpp;tests/test_mouse_peripheral.cpp")
     add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
     add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
@@ -690,11 +697,11 @@ if(BUILD_TESTING)
     add_linapple_test(program-loader tests/test_program_loader.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
-    add_linapple_test(disk-smoke tests/test_disk_smoke.cpp)
+    add_linapple_test(disk-smoke "tests/HeadlessHarness.cpp;tests/test_disk_smoke.cpp")
     add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
     add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
     add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
-    add_linapple_test(headless-boot tests/test_headless_boot.cpp)
+    add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
 
     add_linapple_test(file-browser tests/test_file_browser.cpp)
 
@@ -705,6 +712,7 @@ if(BUILD_TESTING)
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
     add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
+    target_link_libraries(test-ftpparse PRIVATE ${CURL_LIBRARIES})
 
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
@@ -735,6 +743,8 @@ if(BUILD_TESTING)
     set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
 
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
+    add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
+    set_tests_properties(test-e2e-applesoft PROPERTIES LABELS "e2e")
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
     add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
@@ -772,7 +782,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl1 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
     endif()
@@ -783,7 +793,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
     endif()
@@ -794,7 +804,7 @@ if(BUILD_TESTING)
         add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
     endif()
@@ -813,7 +823,7 @@ if(ENABLE_FUZZING)
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_compile_options(${name} PRIVATE ${FUZZ_FLAGS})
         target_link_options(${name} PRIVATE ${FUZZ_FLAGS})
-        target_link_libraries(${name} PRIVATE ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)

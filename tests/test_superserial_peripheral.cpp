@@ -4,6 +4,7 @@
 #include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
+#include <cstddef>
 #include <cstring>
 #include <map>
 #include <vector>
@@ -15,33 +16,24 @@
 #include "core/Peripheral.h"
 #include "doctest.h"
 
-extern "C" uint64_t g_cumulative_cycles;
-extern "C" double g_current_clk_6502;
+// Scoped dummy memory pointer definition for linkage compatibility
+uint8_t* mem = nullptr;
 
-extern uint8_t* mem;
-constexpr size_t MEMORY_SIZE_64K = 65536;
-static std::array<uint8_t, MEMORY_SIZE_64K> dummy_mem{};
-uint8_t* mem = dummy_mem.data();
-
-extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {
-  return 0;
+// Stub for auto-registration since core/Peripheral.cpp is not linked
+extern "C" auto peripheral_register_builtin(Peripheral_t* p) -> void {
+  (void)p;
 }
 
-auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
-
-// Stub for auto-registration
-extern "C" void peripheral_register_builtin(Peripheral_t* p) { (void)p; }
-
 namespace {
-
-constexpr uint16_t ADDR_DATA = 0xC0A8;
-constexpr uint16_t ADDR_STATUS = 0xC0A9;
-constexpr uint16_t ADDR_COMMAND = 0xC0AA;
 
 constexpr int TEST_SLOT = 2;
 constexpr int REGISTERS_PER_SLOT = 16;
 constexpr uint16_t IO_BASE_ADDRESS = 0xC080;
 constexpr int IO_SLOT_OFFSET = 4;
+
+constexpr uint16_t ADDR_DATA = 0xC0A8;
+constexpr uint16_t ADDR_STATUS = 0xC0A9;
+constexpr uint16_t ADDR_COMMAND = 0xC0AA;
 
 constexpr uint8_t STATUS_TDRE_MASK = 0x10;
 constexpr uint8_t STATUS_RX_FULL_MASK = 0x08;
@@ -52,167 +44,307 @@ constexpr uint8_t CMD_ENABLE_TX_IRQ = 0x04;
 constexpr uint8_t TEST_BYTE_VAL = 0x55;
 constexpr uint8_t TEST_BYTE_A = 0x41;
 
-struct MockHandler {
-  void* instance;
-  PeripheralIOHandler read;
-  PeripheralIOHandler write;
+constexpr size_t MEMORY_SIZE_64K = 65536;
+
+struct MockHandler_t {
+  void* instance = nullptr;
+  PeripheralIOHandler read = nullptr;
+  PeripheralIOHandler write = nullptr;
+
+  MockHandler_t() = default;
+  MockHandler_t(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
+      : instance(inst), read(r), write(w) {}
 };
 
-static std::map<uint16_t, MockHandler> g_mock_handlers;
-static std::vector<uint8_t> g_sent_bytes;
-static bool g_irq_asserted = false;
+class SuperSerialHarness {
+ public:
+  explicit SuperSerialHarness(int slot = TEST_SLOT, bool auto_init = true)
+      : slot_(slot) {
+    s_active_harness = this;
+    scoped_mem_.fill(0);
+    prev_mem_ = mem;
+    mem = scoped_mem_.data();
 
-auto Mock_Log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
-    -> void {
-  (void)instance;
-  (void)level;
-  (void)fmt;
-}
+    setup_host();
 
-auto Mock_AssertIrq(int slot, bool assert_irq) -> void {
-  (void)slot;
-  g_irq_asserted = assert_irq;
-}
-
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-// Justification: ABI signature required by HostInterface_t.
-auto Mock_RegisterIO(int slot, PeripheralIOHandler read_c0,
-                     PeripheralIOHandler write_c0, PeripheralIOHandler read_cx,
-                     PeripheralIOHandler write_cx) -> void {
-  (void)read_cx;
-  (void)write_cx;
-  if (read_c0 != nullptr || write_c0 != nullptr) {
-    const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
-    for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
-      g_mock_handlers[base + i] = {nullptr, read_c0, write_c0};
+    if (auto_init) {
+      init(slot_);
     }
   }
-}
 
-auto Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
-  (void)slot;
-  (void)rom_ptr;
-}
+  ~SuperSerialHarness() {
+    shutdown();
+    handlers_.clear();
+    mem = prev_mem_;
+    s_active_harness = nullptr;
+  }
 
-auto Mock_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
-  (void)slot;
-  (void)rom_ptr;
-}
+  SuperSerialHarness(const SuperSerialHarness&) = delete;
+  auto operator=(const SuperSerialHarness&) -> SuperSerialHarness& = delete;
+  SuperSerialHarness(SuperSerialHarness&&) = delete;
+  auto operator=(SuperSerialHarness&&) -> SuperSerialHarness& = delete;
 
-auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
-                           PeripheralIOHandler read, PeripheralIOHandler write)
-    -> void {
-  g_mock_handlers[addr] = {instance, read, write};
-}
+  auto host() -> HostInterface_t* { return &host_; }
+  auto instance() const -> void* { return instance_; }
+  auto slot() const -> int { return slot_; }
 
-auto Mock_SerialTransmitByte(void* instance, uint8_t byte) -> void {
-  (void)instance;
-  g_sent_bytes.push_back(byte);
-}
-// NOLINTEND(bugprone-easily-swappable-parameters)
+  auto init(int slot = -1) -> void* {
+    if (slot >= 0) {
+      slot_ = slot;
+    }
+    if (instance_ != nullptr) {
+      shutdown();
+    }
+    instance_ = super_serial_get_descriptor()->init(slot_, &host_);
+    if (instance_ != nullptr) {
+      const uint16_t base = IO_BASE_ADDRESS + (slot_ << IO_SLOT_OFFSET);
+      for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
+        auto it = handlers_.find(base + i);
+        if (it != handlers_.end()) {
+          it->second.instance = instance_;
+        }
+      }
+    }
+    return instance_;
+  }
 
-static HostInterface_t mock_host = [] {
-  HostInterface_t h{};
-  h.Log = Mock_Log;
-  h.AssertIrq = Mock_AssertIrq;
-  h.RegisterIO = Mock_RegisterIO;
-  h.RegisterCxROM = Mock_RegisterCxROM;
-  h.RegisterExpansionROM = Mock_RegisterExpansionROM;
-  h.RegisterDirectIO = Mock_RegisterDirectIO;
-  h.get_mem_ptr = nullptr;
-  h.GetCycles = nullptr;
-  h.GetConfig = nullptr;
-  h.SetConfig = nullptr;
-  h.NotifyStatusChanged = nullptr;
-  h.NotifyActivityChanged = nullptr;
-  h.RequestPreciseTiming = nullptr;
-  h.AudioPushSamples = nullptr;
-  h.ResetSystem = nullptr;
-  h.PrinterPutChar = nullptr;
-  h.PrinterGetStatus = nullptr;
-  h.SerialTransmitByte = Mock_SerialTransmitByte;
-  h.SerialUpdateState = nullptr;
-  return h;
-}();
-
-static auto SuperSerial_Init_With_Mock(int slot) -> void* {
-  void* instance = super_serial_get_descriptor()->init(slot, &mock_host);
-  const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
-  for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
-    if (g_mock_handlers.count(base + i) > 0) {
-      g_mock_handlers.at(base + i).instance = instance;
+  auto shutdown() -> void {
+    if (instance_ != nullptr) {
+      super_serial_get_descriptor()->shutdown(instance_);
+      instance_ = nullptr;
     }
   }
-  return instance;
-}
+
+  auto reset() -> void {
+    if (instance_ != nullptr) {
+      super_serial_get_descriptor()->reset(instance_);
+    }
+  }
+
+  auto read_io(uint16_t addr, uint8_t is_write = 0, uint8_t val = 0)
+      -> uint8_t {
+    auto it = handlers_.find(addr);
+    if (it != handlers_.end() && it->second.read != nullptr) {
+      void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
+      return it->second.read(target, 0, addr, is_write, val, 0);
+    }
+    return 0;
+  }
+
+  auto write_io(uint16_t addr, uint8_t val, uint8_t is_write = 1) -> uint8_t {
+    auto it = handlers_.find(addr);
+    if (it != handlers_.end() && it->second.write != nullptr) {
+      void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
+      return it->second.write(target, 0, addr, is_write, val, 0);
+    }
+    return 0;
+  }
+
+  auto read_status() -> uint8_t { return read_io(status_addr()); }
+  auto read_data() -> uint8_t { return read_io(data_addr()); }
+  auto write_command(uint8_t val) -> uint8_t {
+    return write_io(command_addr(), val);
+  }
+  auto write_data(uint8_t val) -> uint8_t { return write_io(data_addr(), val); }
+
+  auto push_rx_byte(uint8_t byte) -> PeripheralStatus_t {
+    return command(SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte, sizeof(byte));
+  }
+
+  auto command(uint32_t cmd, const void* data, size_t size)
+      -> PeripheralStatus_t {
+    return super_serial_get_descriptor()->command(instance_, cmd, data, size);
+  }
+
+  auto query(uint32_t cmd, void* out, size_t* size) -> PeripheralStatus_t {
+    return super_serial_get_descriptor()->query(instance_, cmd, out, size);
+  }
+
+  auto load_state(const void* state, size_t size) -> PeripheralStatus_t {
+    return super_serial_get_descriptor()->load_state(instance_, state, size);
+  }
+
+  auto save_state(void* state, size_t* size) -> PeripheralStatus_t {
+    return super_serial_get_descriptor()->save_state(instance_, state, size);
+  }
+
+  auto sent_bytes() const -> const std::vector<uint8_t>& { return sent_bytes_; }
+  auto clear_sent_bytes() -> void { sent_bytes_.clear(); }
+  auto irq_asserted() const -> bool { return irq_asserted_; }
+  auto irq_slot() const -> int { return irq_slot_; }
+  auto clear_irq() -> void {
+    irq_asserted_ = false;
+    irq_slot_ = -1;
+  }
+  auto set_cycles(uint64_t cycles) -> void { cycles_ = cycles; }
+
+  auto data_addr() const -> uint16_t {
+    return static_cast<uint16_t>(IO_BASE_ADDRESS + (slot_ << IO_SLOT_OFFSET) +
+                                 8);
+  }
+  auto status_addr() const -> uint16_t {
+    return static_cast<uint16_t>(IO_BASE_ADDRESS + (slot_ << IO_SLOT_OFFSET) +
+                                 9);
+  }
+  auto command_addr() const -> uint16_t {
+    return static_cast<uint16_t>(IO_BASE_ADDRESS + (slot_ << IO_SLOT_OFFSET) +
+                                 10);
+  }
+  auto control_addr() const -> uint16_t {
+    return static_cast<uint16_t>(IO_BASE_ADDRESS + (slot_ << IO_SLOT_OFFSET) +
+                                 11);
+  }
+
+ private:
+  auto setup_host() -> void {
+    host_ = {};
+    host_.Log = Mock_Log;
+    host_.AssertIrq = Mock_AssertIrq;
+    host_.RegisterIO = Mock_RegisterIO;
+    host_.RegisterCxROM = Mock_RegisterCxROM;
+    host_.RegisterExpansionROM = Mock_RegisterExpansionROM;
+    host_.RegisterDirectIO = Mock_RegisterDirectIO;
+    host_.get_mem_ptr = Mock_GetMemPtr;
+    host_.GetCycles = Mock_GetCycles;
+    host_.SerialTransmitByte = Mock_SerialTransmitByte;
+  }
+
+  static auto Mock_Log(void* instance, PeripheralLogLevel_t level,
+                       const char* fmt, ...) -> void {
+    (void)instance;
+    (void)level;
+    (void)fmt;
+  }
+
+  static auto Mock_AssertIrq(int slot, bool assert_irq) -> void {
+    if (s_active_harness != nullptr) {
+      s_active_harness->irq_slot_ = slot;
+      s_active_harness->irq_asserted_ = assert_irq;
+    }
+  }
+
+  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
+  // Justification: Signature required by HostInterface_t C ABI.
+  static auto Mock_RegisterIO(int slot, PeripheralIOHandler read_c0,
+                              PeripheralIOHandler write_c0,
+                              PeripheralIOHandler read_cx,
+                              PeripheralIOHandler write_cx) -> void {
+    (void)read_cx;
+    (void)write_cx;
+    if (s_active_harness != nullptr &&
+        (read_c0 != nullptr || write_c0 != nullptr)) {
+      const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
+      for (uint16_t i = 0; i < REGISTERS_PER_SLOT; ++i) {
+        s_active_harness->handlers_[base + i] = {nullptr, read_c0, write_c0};
+      }
+    }
+  }
+
+  static auto Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
+    (void)slot;
+    (void)rom_ptr;
+  }
+
+  static auto Mock_RegisterExpansionROM(int slot, uint8_t* rom_ptr) -> void {
+    (void)slot;
+    (void)rom_ptr;
+  }
+
+  static auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
+                                    PeripheralIOHandler read,
+                                    PeripheralIOHandler write) -> void {
+    if (s_active_harness != nullptr) {
+      s_active_harness->handlers_[addr] = {instance, read, write};
+    }
+  }
+
+  static auto Mock_SerialTransmitByte(void* instance, uint8_t byte) -> void {
+    (void)instance;
+    if (s_active_harness != nullptr) {
+      s_active_harness->sent_bytes_.push_back(byte);
+    }
+  }
+  // NOLINTEND(bugprone-easily-swappable-parameters)
+
+  static auto Mock_GetMemPtr(uint16_t addr) -> uint8_t* {
+    if (s_active_harness != nullptr && addr < MEMORY_SIZE_64K) {
+      return &s_active_harness->scoped_mem_[addr];
+    }
+    return nullptr;
+  }
+
+  static auto Mock_GetCycles() -> uint64_t {
+    if (s_active_harness != nullptr) {
+      return s_active_harness->cycles_;
+    }
+    return 0;
+  }
+
+  HostInterface_t host_{};
+  std::map<uint16_t, MockHandler_t> handlers_{};
+  std::vector<uint8_t> sent_bytes_{};
+  bool irq_asserted_ = false;
+  int irq_slot_ = -1;
+  uint64_t cycles_ = 0;
+  std::array<uint8_t, MEMORY_SIZE_64K> scoped_mem_{};
+  uint8_t* prev_mem_ = nullptr;
+  void* instance_ = nullptr;
+  int slot_ = TEST_SLOT;
+
+  static SuperSerialHarness* s_active_harness;
+};
+
+SuperSerialHarness* SuperSerialHarness::s_active_harness = nullptr;
+
+}  // namespace
 
 TEST_CASE("SuperSerial: Status Register Bit 4 (TDRE) Set On Reset") {
-  g_mock_handlers.clear();
-  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
-  REQUIRE(instance != nullptr);
+  SuperSerialHarness harness;
+  REQUIRE(harness.instance() != nullptr);
 
-  super_serial_get_descriptor()->reset(instance);
+  harness.reset();
 
-  uint8_t status =
-      g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
+  const uint8_t status = harness.read_status();
   CHECK((status & STATUS_TDRE_MASK) != 0);
-
-  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: Transmit and Interrupt Behavior") {
-  g_mock_handlers.clear();
-  g_sent_bytes.clear();
-  g_irq_asserted = false;
-  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
+  SuperSerialHarness harness;
+  REQUIRE(harness.instance() != nullptr);
 
-  g_mock_handlers.at(ADDR_COMMAND)
-      .write(instance, 0, ADDR_COMMAND, 1, CMD_ENABLE_TX_IRQ, 0);
+  harness.write_command(CMD_ENABLE_TX_IRQ);
+  harness.write_data(TEST_BYTE_A);
 
-  g_mock_handlers.at(ADDR_DATA).write(instance, 0, ADDR_DATA, 1, TEST_BYTE_A,
-                                      0);
-
-  REQUIRE(g_sent_bytes.size() == 1);
-  CHECK(g_sent_bytes.at(0) == TEST_BYTE_A);
-
-  super_serial_get_descriptor()->shutdown(instance);
+  REQUIRE(harness.sent_bytes().size() == 1);
+  CHECK(harness.sent_bytes().at(0) == TEST_BYTE_A);
 }
 
 TEST_CASE("SuperSerial: Receive Buffer and RX IRQ") {
-  g_mock_handlers.clear();
-  g_irq_asserted = false;
-  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
+  SuperSerialHarness harness;
+  REQUIRE(harness.instance() != nullptr);
 
-  g_mock_handlers.at(ADDR_COMMAND)
-      .write(instance, 0, ADDR_COMMAND, 1, CMD_ENABLE_RX_IRQ, 0);
+  harness.write_command(CMD_ENABLE_RX_IRQ);
 
-  uint8_t rx_byte = TEST_BYTE_VAL;
-  super_serial_get_descriptor()->command(
-      instance, SUPER_SERIAL_CMD_PUSH_RX_BYTE, &rx_byte, sizeof(uint8_t));
+  const uint8_t rx_byte = TEST_BYTE_VAL;
+  CHECK(harness.push_rx_byte(rx_byte) == peripheral_ok);
 
-  CHECK(g_irq_asserted == true);
+  CHECK(harness.irq_asserted() == true);
 
-  uint8_t status =
-      g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
+  uint8_t status = harness.read_status();
   CHECK((status & STATUS_RX_FULL_MASK) != 0);
 
-  uint8_t read_byte =
-      g_mock_handlers.at(ADDR_DATA).read(instance, 0, ADDR_DATA, 0, 0, 0);
+  const uint8_t read_byte = harness.read_data();
   CHECK(read_byte == TEST_BYTE_VAL);
 
-  status =
-      g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
+  status = harness.read_status();
   CHECK((status & STATUS_RX_FULL_MASK) == 0);
-
-  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: Robustness and ABI") {
-  g_mock_handlers.clear();
-
   CHECK(super_serial_get_descriptor()->init(TEST_SLOT, nullptr) == nullptr);
 
-  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
+  SuperSerialHarness harness;
+  REQUIRE(harness.instance() != nullptr);
 
   SuperSerialDipSwConfig_t cfg = {.baud_rate = SUPER_SERIAL_BAUD_9600,
                                   .firmware_mode = SUPER_SERIAL_FIRMWARE_CIC,
@@ -221,8 +353,7 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
                                   .parity = SUPER_SERIAL_PARITY_NONE,
                                   .linefeed = false,
                                   .interrupts = false};
-  CHECK(super_serial_get_descriptor()->command(
-            instance, SUPER_SERIAL_CMD_SET_CONFIG, &cfg, sizeof(cfg)) ==
+  CHECK(harness.command(SUPER_SERIAL_CMD_SET_CONFIG, &cfg, sizeof(cfg)) ==
         peripheral_ok);
 
   SuperSerialDipSwConfig_t queried = {
@@ -234,50 +365,39 @@ TEST_CASE("SuperSerial: Robustness and ABI") {
       .linefeed = false,
       .interrupts = false};
   size_t size = sizeof(queried);
-  CHECK(super_serial_get_descriptor()->query(instance,
-                                             SUPER_SERIAL_QUERY_CONFIG,
-                                             &queried, &size) == peripheral_ok);
+  CHECK(harness.query(SUPER_SERIAL_QUERY_CONFIG, &queried, &size) ==
+        peripheral_ok);
   CHECK(queried.baud_rate == SUPER_SERIAL_BAUD_9600);
-
-  super_serial_get_descriptor()->shutdown(instance);
 }
 
 TEST_CASE("SuperSerial: [SSC-13] Snapshot rx_count bounds check") {
-  g_mock_handlers.clear();
-  void* instance = SuperSerial_Init_With_Mock(TEST_SLOT);
-  REQUIRE(instance != nullptr);
+  SuperSerialHarness harness;
+  REQUIRE(harness.instance() != nullptr);
 
   SS_IO_Comms state{};
   state.control_byte = 0x12;
   state.command_byte = 0x34;
   state.recv_bytes = 999999;  // Exceeds SUPER_SERIAL_FIFO_SIZE (256)
-  memset(state.recv_buffer, 0x77, sizeof(state.recv_buffer));
+  std::memset(state.recv_buffer, 0x77, sizeof(state.recv_buffer));
 
-  PeripheralStatus_t load_status = super_serial_get_descriptor()->load_state(
-      instance, &state, sizeof(state));
+  const PeripheralStatus_t load_status =
+      harness.load_state(&state, sizeof(state));
   CHECK(load_status == peripheral_ok);
 
   bool rx_ready = false;
   size_t query_size = sizeof(rx_ready);
-  CHECK(super_serial_get_descriptor()->query(
-            instance, SUPER_SERIAL_QUERY_RX_READY, &rx_ready, &query_size) ==
+  CHECK(harness.query(SUPER_SERIAL_QUERY_RX_READY, &rx_ready, &query_size) ==
         peripheral_ok);
   CHECK(rx_ready == true);
 
   // Read back all bytes; exactly SUPER_SERIAL_FIFO_SIZE (256) should be
   // available
   for (size_t i = 0; i < SUPER_SERIAL_FIFO_SIZE; ++i) {
-    uint8_t byte =
-        g_mock_handlers.at(ADDR_DATA).read(instance, 0, ADDR_DATA, 0, 0, 0);
+    const uint8_t byte = harness.read_data();
     CHECK(byte == 0x77);
   }
 
   // After draining 256 bytes, rx should be empty
-  uint8_t status =
-      g_mock_handlers.at(ADDR_STATUS).read(instance, 0, ADDR_STATUS, 0, 0, 0);
+  const uint8_t status = harness.read_status();
   CHECK((status & STATUS_RX_FULL_MASK) == 0);
-
-  super_serial_get_descriptor()->shutdown(instance);
 }
-
-}  // namespace

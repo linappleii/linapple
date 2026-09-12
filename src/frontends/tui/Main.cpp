@@ -65,7 +65,6 @@ auto main(int argc, char** argv) -> int {
 
     app_controller_load_initial_media(&config);
 
-    constexpr int apple2_frame_cycles = 17030;
     constexpr auto frame_duration = std::chrono::microseconds(16650);
 
     auto next_frame = std::chrono::steady_clock::now();
@@ -82,15 +81,21 @@ auto main(int argc, char** argv) -> int {
       if (g_state.mode == MODE_DEBUG) {
         tui_video_render_frame(nullptr, 0, 0, 0);
       } else {
-        linapple_run_frame(apple2_frame_cycles);
+        uint32_t cycles = linapple_get_frame_cycles();
+        linapple_run_frame(cycles);
       }
 
-      next_frame += frame_duration;
-      auto now = std::chrono::steady_clock::now();
-      if (now < next_frame) {
-        std::this_thread::sleep_until(next_frame);
+      if (!linapple_get_turbo()) {
+        next_frame += frame_duration;
+        auto now = std::chrono::steady_clock::now();
+        if (now < next_frame) {
+          std::this_thread::sleep_until(next_frame);
+        } else {
+          next_frame = now;
+        }
       } else {
-        next_frame = now;
+        std::this_thread::yield();
+        next_frame = std::chrono::steady_clock::now();
       }
     }
 

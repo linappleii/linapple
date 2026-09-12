@@ -10,7 +10,7 @@ LinApple is an emulator for Apple ][[, Apple ]][+, Apple //e, and Enhanced Apple
   - `src/core/`: Core emulator logic and the "Core Bridge" (`LinAppleCore.h`).
   - `src/apple2/`: Hardware-level emulation (6502 CPU, Disk, Video, etc.).
   - `src/Debugger/`: Integrated assembly-level debugger.
-  - `src/frontends/`: Host-specific frontend implementations. `src/frontends/sdl3/` is the primary, actively developed modern frontend. `src/frontends/sdl2/` and `src/frontends/sdl1/` are legacy compatibility targets maintained for older systems and embedded devices; shared utilities live in `src/frontends/common/` while frontend-specific rendering divergence is preserved in each respective frontend directory.
+  - `src/frontends/`: Host-specific frontend implementations. `src/frontends/sdl3/`, `src/frontends/sdl2/`, and `src/frontends/sdl1/` are three co-equal, fully supported SDL frontends. The choice between them is dictated by the host — older operating systems and embedded devices may only be able to provide an older SDL. All three are expected to be functional and are maintained to the same standard. Shared logic lives in `src/frontends/common/`; only genuine per-SDL-version divergence (such as rendering pipeline differences in `Frame.cpp`) belongs in the individual frontend directories.
   - `res/`: Emulator assets (ROMs, Master disk, fonts, icons).
   - `tests/`: Integration and unit tests using `doctest`.
 
@@ -42,6 +42,7 @@ More on building in <!-- Imported from: INSTALL.md -->
 ```
 
 ## Testing
+- All test plans must be approved by the test_architect sub-agent.
 - **Prerequisite:** CMake must be configured with testing enabled (`cmake -B build` or explicitly `-DBUILD_TESTING=ON`).
 - **Iterative Testing & Verification:** During normal development, ALWAYS favor targeted testing and building specific targets (e.g. `cmake --build build --target test-integration`, `ctest --test-dir build -R <pattern>`, or running `clang-tidy` on individual modified files).
 - **Full End-to-End Build Rule:** Never run a full, global project rebuild with `CMAKE_CXX_CLANG_TIDY` enabled across all targets willy-nilly. Full end-to-end static analysis builds across all 53+ test targets take hours and must ONLY be run when explicitly requested by the user.

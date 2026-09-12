@@ -231,6 +231,17 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 auto linapple_reset_hard() -> void;
 auto linapple_reset_soft() -> void;
 
+auto linapple_get_speed() -> uint32_t;
+auto linapple_set_speed(uint32_t speed) -> void;
+auto linapple_speed_increase() -> uint32_t;
+auto linapple_speed_decrease() -> uint32_t;
+auto linapple_speed_reset() -> uint32_t;
+auto linapple_get_frame_cycles() -> uint32_t;
+
+auto linapple_get_turbo() -> bool;
+auto linapple_set_turbo(bool turbo) -> void;
+auto linapple_toggle_turbo() -> bool;
+
 auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;
 auto peripheral_manager_shutdown() -> void;

@@ -164,6 +164,8 @@ struct ClockPeripheral_t {
   std::array<uint8_t, CLOCK_LATCHES_COUNT> latches{};
   HostInterface_t* host = nullptr;
   int slot = 0;
+  bool use_fixed_epoch = false;
+  time_t fixed_epoch = 0;
 };
 
 static auto set_latch_pair(ClockPeripheral_t* clock_peripheral, size_t index,
@@ -187,7 +189,9 @@ static auto set_latch_pair(ClockPeripheral_t* clock_peripheral, size_t index,
 
 static auto update_latches(ClockPeripheral_t* clock_peripheral) -> void {
   time_t now = 0;
-  if (time(&now) == static_cast<time_t>(-1)) {
+  if (clock_peripheral->use_fixed_epoch) {
+    now = clock_peripheral->fixed_epoch;
+  } else if (time(&now) == static_cast<time_t>(-1)) {
     return;
   }
 
@@ -273,6 +277,45 @@ static auto clock_abi_shutdown(void* instance) -> void {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 // Justification: ABI-required function signature.
+static auto clock_abi_command(void* instance, uint32_t cmd_id, const void* data,
+                              size_t size) -> PeripheralStatus_t {
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+
+  auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
+
+  switch (static_cast<ClockCmd_t>(cmd_id)) {
+    case clock_cmd_set_epoch: {
+      if (data == nullptr) {
+        return peripheral_error;
+      }
+      if (size == sizeof(uint64_t)) {
+        clock_peripheral->fixed_epoch =
+            static_cast<time_t>(*static_cast<const uint64_t*>(data));
+        clock_peripheral->use_fixed_epoch = true;
+        return peripheral_ok;
+      }
+      if (size == sizeof(uint32_t)) {
+        clock_peripheral->fixed_epoch =
+            static_cast<time_t>(*static_cast<const uint32_t*>(data));
+        clock_peripheral->use_fixed_epoch = true;
+        return peripheral_ok;
+      }
+      return peripheral_error;
+    }
+    case clock_cmd_clear_epoch: {
+      clock_peripheral->use_fixed_epoch = false;
+      clock_peripheral->fixed_epoch = 0;
+      return peripheral_ok;
+    }
+    default:
+      return peripheral_error;
+  }
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+// Justification: ABI-required function signature.
 static auto clock_abi_save_state(void* instance, void* state_buffer,
                                  size_t* buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || buffer_size == nullptr) {
@@ -331,7 +374,7 @@ static Peripheral_t g_clock_peripheral = {
     .on_vblank = nullptr,
     .save_state = clock_abi_save_state,
     .load_state = clock_abi_load_state,
-    .command = nullptr,
+    .command = clock_abi_command,
     .query = nullptr,
     .get_config_schema = nullptr,
     .configure = nullptr};

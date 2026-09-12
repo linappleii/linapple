@@ -114,6 +114,10 @@ auto set_verbosity(LogLevel_t level) -> void {
   g_current_verbosity.store(level, std::memory_order_relaxed);
 }
 
+auto get_verbosity() -> LogLevel_t {
+  return g_current_verbosity.load(std::memory_order_relaxed);
+}
+
 auto set_callback(LogCallback_t callback) -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   g_external_callback = callback;

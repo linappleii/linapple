@@ -24,6 +24,7 @@ auto initialize() -> void;
 auto destroy() -> void;
 
 auto set_verbosity(LogLevel_t level) -> void;
+auto get_verbosity() -> LogLevel_t;
 auto set_callback(LogCallback_t callback) -> void;
 
 #if defined(__GNUC__) || defined(__clang__)

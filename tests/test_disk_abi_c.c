@@ -25,6 +25,9 @@ void disk_abi_c_smoke(void) {
   driver.write_track = 0;
   driver.create = 0;
   driver.read_flux_bit = 0;
+  DiskSavedState_t saved_state;
+  saved_state.header.version = disk_state_version;
   (void)cmd;
   (void)driver;
+  (void)saved_state;
 }
