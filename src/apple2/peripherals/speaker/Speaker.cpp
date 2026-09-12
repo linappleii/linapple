@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
