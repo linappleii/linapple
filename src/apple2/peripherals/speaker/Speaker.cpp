@@ -22,6 +22,18 @@ auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
+constexpr size_t max_speaker_events = 16384;
+constexpr size_t speaker_buffer_size = 16384;
+
+enum { sound_none = 0, sound_wave = 1 };
+
+struct SpeakerEvent_t {
+  uint64_t cycle = 0;
+  bool state = false;
+};
+
+constexpr int16_t speaker_sample_volume = 0x4000;
+
 constexpr uint32_t speaker_sample_rate = 44100;
 constexpr uint64_t speaker_inactivity_cycles =
     static_cast<uint64_t>(CLOCK_6502 / 5.0);
@@ -188,129 +200,6 @@ auto speaker_shutdown(void* instance) -> void {
       static_cast<SpeakerPeripheral_t*>(instance));
 }
 
-auto speaker_think(void* instance, uint32_t elapsed_cycles) -> void {
-  speaker_update(instance, elapsed_cycles);
-  speaker_generate_samples(instance, elapsed_cycles);
-}
-
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-// Justification: Peripheral ABI signature.
-auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
-    -> PeripheralStatus_t {
-  if (buffer_size == nullptr) {
-    return peripheral_error;
-  }
-  const size_t required_size = sizeof(SsIoSpeaker_t);
-  if (state_buffer == nullptr) {
-    *buffer_size = required_size;
-    return peripheral_ok;
-  }
-  if (instance == nullptr || *buffer_size < required_size) {
-    return peripheral_error;
-  }
-
-  auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  auto* save_state_ptr = static_cast<SsIoSpeaker_t*>(state_buffer);
-  save_state_ptr->g_spkr_last_cycle = speaker_peripheral->last_update_cycle;
-  save_state_ptr->quiet_cycle_count = speaker_peripheral->quiet_cycle_count;
-  save_state_ptr->recently_active = speaker_peripheral->is_active ? 1 : 0;
-  save_state_ptr->state = speaker_peripheral->current_state ? 1 : 0;
-  save_state_ptr->next_sample_cycle = speaker_peripheral->next_sample_cycle;
-  save_state_ptr->last_sample_state =
-      speaker_peripheral->last_sample_state ? 1 : 0;
-  save_state_ptr->filter_state = speaker_peripheral->filter_state;
-
-  *buffer_size = required_size;
-  return peripheral_ok;
-}
-
-auto speaker_load_state(void* instance, const void* state_buffer,
-                        size_t buffer_size) -> PeripheralStatus_t {
-  const size_t required_size = sizeof(SsIoSpeaker_t);
-  if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != required_size) {
-    return peripheral_error;
-  }
-  auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  const auto* save_state_ptr = static_cast<const SsIoSpeaker_t*>(state_buffer);
-  speaker_peripheral->last_update_cycle = save_state_ptr->g_spkr_last_cycle;
-  speaker_peripheral->quiet_cycle_count = save_state_ptr->quiet_cycle_count;
-  speaker_peripheral->is_active = (save_state_ptr->recently_active != 0);
-  speaker_peripheral->current_state = (save_state_ptr->state != 0);
-  speaker_peripheral->next_sample_cycle = save_state_ptr->next_sample_cycle;
-  speaker_peripheral->last_sample_state =
-      (save_state_ptr->last_sample_state != 0);
-  speaker_peripheral->filter_state = save_state_ptr->filter_state;
-
-  if (!std::isfinite(speaker_peripheral->filter_state)) {
-    speaker_peripheral->filter_state = 0.0f;
-  }
-  if (!std::isfinite(speaker_peripheral->next_sample_cycle) ||
-      speaker_peripheral->next_sample_cycle < 0.0) {
-    speaker_peripheral->next_sample_cycle =
-        static_cast<double>(speaker_peripheral->last_update_cycle);
-  }
-
-  speaker_peripheral->previous_input =
-      speaker_peripheral->last_sample_state ? 1.0f : -1.0f;
-  speaker_peripheral->event_count = 0;
-  speaker_peripheral->has_strobe = false;
-
-  return peripheral_ok;
-}
-
-auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
-                   size_t* buffer_size) -> PeripheralStatus_t {
-  if (instance == nullptr || buffer_size == nullptr) {
-    return peripheral_error;
-  }
-
-  switch (query_id) {
-    case speaker_query_is_active: {
-      const size_t required_size = sizeof(bool);
-
-      if (output_buffer == nullptr) {
-        *buffer_size = required_size;
-        return peripheral_ok;
-      }
-
-      if (*buffer_size < required_size) {
-        return peripheral_error;
-      }
-
-      *static_cast<bool*>(output_buffer) = speaker_is_active(instance);
-      *buffer_size = required_size;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
-  }
-}
-// NOLINTEND(bugprone-easily-swappable-parameters)
-
-static Peripheral_t g_speaker_peripheral = {
-    .abi_version = LINAPPLE_ABI_VERSION,
-    .id = "linapple.speaker",
-    .name = "Speaker",
-    .description = "Built-in Apple II speaker and cassette port emulation",
-    .author = "LinApple Contributors",
-    .version = VERSIONSTRING,
-    .compatible_slots = PERIPHERAL_MASK_INTERNAL,
-    .default_slot = 0,
-    .init = speaker_abi_init,
-    .reset = speaker_reset,
-    .shutdown = speaker_shutdown,
-    .think = speaker_think,
-    .on_vblank = nullptr,
-    .save_state = speaker_save_state,
-    .load_state = speaker_load_state,
-    .command = nullptr,
-    .query = speaker_query};
-
-}  // namespace
-
-// --- Public Synthesis API ---
-
 auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   if (elapsed_cycles == 0 || instance == nullptr) {
     return;
@@ -420,27 +309,127 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   }
 }
 
-auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
-                        uint32_t buffer_capacity) -> uint32_t {
-  if (event_buffer == nullptr || instance == nullptr) {
-    return 0;
-  }
-  auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  const auto count = std::min(speaker_peripheral->event_count, buffer_capacity);
-  if (count > 0) {
-    std::copy_n(speaker_peripheral->events.begin(), count, event_buffer);
-    speaker_peripheral->event_count = 0;
-  }
-  return count;
+auto speaker_think(void* instance, uint32_t elapsed_cycles) -> void {
+  speaker_update(instance, elapsed_cycles);
+  speaker_generate_samples(instance, elapsed_cycles);
 }
 
-auto speaker_get_last_cycle(void* instance) -> uint64_t {
-  if (instance == nullptr) {
-    return 0;
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+// Justification: Peripheral ABI signature.
+auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
+    -> PeripheralStatus_t {
+  if (buffer_size == nullptr) {
+    return peripheral_error;
+  }
+  const size_t required_size = sizeof(SsIoSpeaker_t);
+  if (state_buffer == nullptr) {
+    *buffer_size = required_size;
+    return peripheral_ok;
+  }
+  if (instance == nullptr || *buffer_size < required_size) {
+    return peripheral_error;
+  }
+
+  auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
+  auto* save_state_ptr = static_cast<SsIoSpeaker_t*>(state_buffer);
+  save_state_ptr->g_spkr_last_cycle = speaker_peripheral->last_update_cycle;
+  save_state_ptr->quiet_cycle_count = speaker_peripheral->quiet_cycle_count;
+  save_state_ptr->recently_active = speaker_peripheral->is_active ? 1 : 0;
+  save_state_ptr->state = speaker_peripheral->current_state ? 1 : 0;
+  save_state_ptr->next_sample_cycle = speaker_peripheral->next_sample_cycle;
+  save_state_ptr->last_sample_state =
+      speaker_peripheral->last_sample_state ? 1 : 0;
+  save_state_ptr->filter_state = speaker_peripheral->filter_state;
+
+  *buffer_size = required_size;
+  return peripheral_ok;
+}
+
+auto speaker_load_state(void* instance, const void* state_buffer,
+                        size_t buffer_size) -> PeripheralStatus_t {
+  const size_t required_size = sizeof(SsIoSpeaker_t);
+  if (instance == nullptr || state_buffer == nullptr ||
+      buffer_size != required_size) {
+    return peripheral_error;
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
-  return speaker_peripheral->last_update_cycle;
+  const auto* save_state_ptr = static_cast<const SsIoSpeaker_t*>(state_buffer);
+  speaker_peripheral->last_update_cycle = save_state_ptr->g_spkr_last_cycle;
+  speaker_peripheral->quiet_cycle_count = save_state_ptr->quiet_cycle_count;
+  speaker_peripheral->is_active = (save_state_ptr->recently_active != 0);
+  speaker_peripheral->current_state = (save_state_ptr->state != 0);
+  speaker_peripheral->next_sample_cycle = save_state_ptr->next_sample_cycle;
+  speaker_peripheral->last_sample_state =
+      (save_state_ptr->last_sample_state != 0);
+  speaker_peripheral->filter_state = save_state_ptr->filter_state;
+
+  if (!std::isfinite(speaker_peripheral->filter_state)) {
+    speaker_peripheral->filter_state = 0.0f;
+  }
+  if (!std::isfinite(speaker_peripheral->next_sample_cycle) ||
+      speaker_peripheral->next_sample_cycle < 0.0) {
+    speaker_peripheral->next_sample_cycle =
+        static_cast<double>(speaker_peripheral->last_update_cycle);
+  }
+
+  speaker_peripheral->previous_input =
+      speaker_peripheral->last_sample_state ? 1.0f : -1.0f;
+  speaker_peripheral->event_count = 0;
+  speaker_peripheral->has_strobe = false;
+
+  return peripheral_ok;
 }
+
+auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
+                   size_t* buffer_size) -> PeripheralStatus_t {
+  if (instance == nullptr || buffer_size == nullptr) {
+    return peripheral_error;
+  }
+
+  switch (query_id) {
+    case speaker_query_is_active: {
+      const size_t required_size = sizeof(uint8_t);
+
+      if (output_buffer == nullptr) {
+        *buffer_size = required_size;
+        return peripheral_ok;
+      }
+
+      if (*buffer_size < required_size) {
+        return peripheral_error;
+      }
+
+      *static_cast<uint8_t*>(output_buffer) =
+          speaker_is_active(instance) ? 1 : 0;
+      *buffer_size = required_size;
+      return peripheral_ok;
+    }
+    default:
+      return peripheral_incompatible;
+  }
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+static Peripheral_t g_speaker_peripheral = {
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "linapple.speaker",
+    .name = "Speaker",
+    .description = "Built-in Apple II speaker and cassette port emulation",
+    .author = "LinApple Contributors",
+    .version = VERSIONSTRING,
+    .compatible_slots = PERIPHERAL_MASK_INTERNAL,
+    .default_slot = 0,
+    .init = speaker_abi_init,
+    .reset = speaker_reset,
+    .shutdown = speaker_shutdown,
+    .think = speaker_think,
+    .on_vblank = nullptr,
+    .save_state = speaker_save_state,
+    .load_state = speaker_load_state,
+    .command = nullptr,
+    .query = speaker_query};
+
+}  // namespace
 
 auto speaker_get_descriptor() -> Peripheral_t* { return &g_speaker_peripheral; }
 

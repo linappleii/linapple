@@ -4,17 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "core/Peripheral.h"
-
-constexpr size_t max_speaker_events = 16384;
-constexpr size_t speaker_buffer_size = 16384;
-
-enum { sound_none = 0, sound_wave = 1 };
-
-struct SpeakerEvent_t {
-  uint64_t cycle = 0;
-  bool state = false;
-};
 
 // NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.
@@ -30,16 +21,4 @@ struct SsIoSpeaker_t {
 };
 // NOLINTEND(readability-identifier-naming)
 
-static constexpr int16_t speaker_sample_volume = 0x4000;
-
 auto speaker_get_descriptor() -> Peripheral_t*;
-
-/**
- * @brief Sound Synthesis API
- */
-auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void;
-auto speaker_get_events(void* instance, SpeakerEvent_t* event_buffer,
-                        uint32_t buffer_capacity) -> uint32_t;
-auto speaker_get_last_cycle(void* instance) -> uint64_t;
-
-enum { speaker_query_is_active = 0x100 };
