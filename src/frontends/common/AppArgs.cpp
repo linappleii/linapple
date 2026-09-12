@@ -27,21 +27,30 @@ static constexpr int opt_basic_line_mode = 0x106;
 static constexpr int opt_caps_mode = 0x107;
 static constexpr int opt_tui_render = 0x108;
 static constexpr int opt_upgrade_config = 0x109;
+static constexpr int opt_no_autoboot = 0x10A;
+static constexpr int opt_no_fullscreen = 0x10B;
+static constexpr int opt_ntsc = 0x10C;
+static constexpr int opt_debugger = 0x10D;
 
-static const std::array<struct option, 31> OptionTable = {
+static const std::array<struct option, 37> OptionTable = {
     {{"d1", required_argument, nullptr, '1'},
      {"d2", required_argument, nullptr, '2'},
      {"hd1", required_argument, nullptr, opt_hd1},
      {"hd2", required_argument, nullptr, opt_hd2},
      {"autoboot", no_argument, nullptr, 'a'},
      {"boot", no_argument, nullptr, 'b'},
+     {"no-autoboot", no_argument, nullptr, opt_no_autoboot},
+     {"no-boot", no_argument, nullptr, opt_no_autoboot},
      {"config", required_argument, nullptr, 'c'},
      {"upgrade-config", optional_argument, nullptr, opt_upgrade_config},
      {"fullscreen", no_argument, nullptr, 'f'},
+     {"no-fullscreen", no_argument, nullptr, opt_no_fullscreen},
+     {"windowed", no_argument, nullptr, opt_no_fullscreen},
      {"help", no_argument, nullptr, 'h'},
      {"log", no_argument, nullptr, 'l'},
      {"benchmark", no_argument, nullptr, 'm'},
      {"pal", no_argument, nullptr, 'p'},
+     {"ntsc", no_argument, nullptr, opt_ntsc},
      {"program", required_argument, nullptr, 'P'},
      {"rom", required_argument, nullptr, 'R'},
      {"snapshot", required_argument, nullptr, 's'},
@@ -54,6 +63,7 @@ static const std::array<struct option, 31> OptionTable = {
      {"audio-dump", required_argument, nullptr, 'A'},
      {"list-hardware", no_argument, nullptr, opt_list_hardware},
      {"hardware-info", required_argument, nullptr, opt_hardware_info},
+     {"debugger", no_argument, nullptr, opt_debugger},
      {"no-debugger", no_argument, nullptr, opt_no_debugger},
      {"basic-sync", required_argument, nullptr, opt_basic_sync},
      {"basic-line-mode", required_argument, nullptr, opt_basic_line_mode},
@@ -79,14 +89,17 @@ void app_args_print_help() {
       "  --hd2 <file>           Insert hard disk image in drive 2 (Slot 7)\n");
   printf("  -a, --autoboot         Boot the computer immediately\n");
   printf("  -b, --boot             Synonym for --autoboot\n");
+  printf("  --no-autoboot          Do not boot immediately on startup\n");
   printf("  -c, --config <file>    Use specified configuration file\n");
   printf(
       "  --upgrade-config [f]   Upgrade legacy linapple.conf to modern TOML\n");
   printf("  -f, --fullscreen       Start in fullscreen mode\n");
+  printf("  --no-fullscreen        Start in windowed mode\n");
   printf("  -h, --help             Display this help message\n");
   printf("  -l, --log              Enable logging to console\n");
   printf("  -m, --benchmark        Run a video benchmark and exit\n");
   printf("  -p, --pal              Enable PAL video mode\n");
+  printf("  --ntsc                 Enable NTSC video mode\n");
   printf("  -P, --program <file>   Load APL/PRG program file\n");
   printf("  -R, --rom <file>       Load custom system ROM file at runtime\n");
   printf("  -s, --snapshot <f>     Load state from snapshot file\n");
@@ -101,6 +114,8 @@ void app_args_print_help() {
   printf("  --list-hardware        List all emulated hardware components\n");
   printf(
       "  --hardware-info <name> Show detailed info for a hardware component\n");
+  printf(
+      "  --debugger             Enable the integrated debugger at runtime\n");
   printf(
       "  --no-debugger          Disable the integrated debugger at runtime\n");
   printf(
@@ -188,12 +203,22 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
       case 'a':
       case 'b':
         outConfig->is_boot = true;
+        outConfig->is_boot_explicit = true;
+        break;
+      case opt_no_autoboot:
+        outConfig->is_boot = false;
+        outConfig->is_boot_explicit = true;
         break;
       case 'c':
         util_safe_strcpy(outConfig->config_path.data(), optarg, path_max_len);
         break;
       case 'f':
         outConfig->is_fullscreen = true;
+        outConfig->is_fullscreen_explicit = true;
+        break;
+      case opt_no_fullscreen:
+        outConfig->is_fullscreen = false;
+        outConfig->is_fullscreen_explicit = true;
         break;
       case 'l':
         outConfig->is_log = true;
@@ -204,6 +229,11 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         break;
       case 'p':
         outConfig->is_pal = true;
+        outConfig->is_pal_explicit = true;
+        break;
+      case opt_ntsc:
+        outConfig->is_pal = false;
+        outConfig->is_pal_explicit = true;
         break;
       case 'P':
         util_safe_strcpy(outConfig->program_path.data(), optarg, path_max_len);
@@ -251,8 +281,13 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
                          path_max_len);
         outConfig->intent = INTENT_DIAGNOSTIC;
         break;
+      case opt_debugger:
+        outConfig->disable_debugger = false;
+        outConfig->disable_debugger_explicit = true;
+        break;
       case opt_no_debugger:
         outConfig->disable_debugger = true;
+        outConfig->disable_debugger_explicit = true;
         break;
       case opt_hd1:
         util_safe_strcpy(outConfig->harddisk_path.at(0).data(), optarg,

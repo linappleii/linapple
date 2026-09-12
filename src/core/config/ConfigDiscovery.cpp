@@ -46,13 +46,20 @@ auto config_get_search_paths() -> std::vector<std::string> {
   // Tier 2: Current working directory
   add_unique_path(paths, "./linapple.toml");
   add_unique_path(paths, "./linapple.conf");
+  add_unique_path(paths, "./config.toml");
+  add_unique_path(paths, "./config.conf");
 
   // Tier 3: User configuration directory
   add_unique_path(paths, Path::get_user_config_dir() + "linapple.toml");
   add_unique_path(paths, Path::get_user_config_dir() + "linapple.conf");
+  add_unique_path(paths, Path::get_user_config_dir() + "config.toml");
+  add_unique_path(paths, Path::get_user_config_dir() + "config.conf");
   const char* home = getenv("HOME");
   if (home != nullptr) {
+    add_unique_path(paths, std::string(home) + "/.linapple/linapple.toml");
     add_unique_path(paths, std::string(home) + "/.linapple/linapple.conf");
+    add_unique_path(paths, std::string(home) + "/.linapple/config.toml");
+    add_unique_path(paths, std::string(home) + "/.linapple/config.conf");
   }
 
   // Tier 4: Executable directory
@@ -60,6 +67,8 @@ auto config_get_search_paths() -> std::vector<std::string> {
   if (!exe_dir.empty()) {
     add_unique_path(paths, Path::join(exe_dir, "linapple.toml"));
     add_unique_path(paths, Path::join(exe_dir, "linapple.conf"));
+    add_unique_path(paths, Path::join(exe_dir, "config.toml"));
+    add_unique_path(paths, Path::join(exe_dir, "config.conf"));
   }
 
   // Tier 5: System configuration directories
@@ -76,16 +85,22 @@ auto config_get_search_paths() -> std::vector<std::string> {
       if (!dir.empty()) {
         add_unique_path(paths, Path::join(dir, "linapple/linapple.toml"));
         add_unique_path(paths, Path::join(dir, "linapple/linapple.conf"));
+        add_unique_path(paths, Path::join(dir, "linapple/config.toml"));
+        add_unique_path(paths, Path::join(dir, "linapple/config.conf"));
       }
       start = end + 1;
     }
   } else {
     add_unique_path(paths, "/etc/xdg/linapple/linapple.toml");
     add_unique_path(paths, "/etc/xdg/linapple/linapple.conf");
+    add_unique_path(paths, "/etc/xdg/linapple/config.toml");
+    add_unique_path(paths, "/etc/xdg/linapple/config.conf");
   }
 
   add_unique_path(paths, "/etc/linapple/linapple.toml");
   add_unique_path(paths, "/etc/linapple/linapple.conf");
+  add_unique_path(paths, "/etc/linapple/config.toml");
+  add_unique_path(paths, "/etc/linapple/config.conf");
 
   return paths;
 }
@@ -126,13 +141,27 @@ auto config_discover(const ConfigSearchOptions_t& options,
     return false;
   }
 
-  for (const auto& path : config_get_search_paths()) {
+  // 1. Search modern TOML configuration files first
+  for (const auto& path : config_get_toml_search_paths()) {
     if (access(path.c_str(), R_OK) == 0) {
       if (out_resolved_path != nullptr) {
         *out_resolved_path = path;
       }
       if (out_is_legacy != nullptr) {
-        *out_is_legacy = is_legacy_config_file(path);
+        *out_is_legacy = false;
+      }
+      return true;
+    }
+  }
+
+  // 2. If no TOML file is found, fall back to legacy .conf files
+  for (const auto& path : config_get_legacy_search_paths()) {
+    if (access(path.c_str(), R_OK) == 0) {
+      if (out_resolved_path != nullptr) {
+        *out_resolved_path = path;
+      }
+      if (out_is_legacy != nullptr) {
+        *out_is_legacy = true;
       }
       return true;
     }

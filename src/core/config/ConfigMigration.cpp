@@ -359,7 +359,7 @@ auto config_migrate_legacy_to_toml(const std::string& ini_content,
       "  Default: true");
 
   toml_table_set_bool(core, "BootOnStartup",
-                      get_bool(ini, "Configuration", "Boot at Startup", false),
+                      get_bool(ini, "Configuration", "Boot at Startup", true),
                       "",
                       "Automatically boot inserted media on startup:\n"
                       "  Allowed: true, false\n"

@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include <stdlib.h>
-
 #include <algorithm>
-#include <cstdlib>
 #include <fstream>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "core/Log.h"
@@ -52,40 +48,7 @@ struct ScopedLoggerReset_t {
   auto operator=(ScopedLoggerReset_t&&) -> ScopedLoggerReset_t& = delete;
 };
 
-class ScopedEnvVar_t {
- private:
-  std::string name_;
-  std::string prev_value_;
-  bool had_value_{false};
-
- public:
-  explicit ScopedEnvVar_t(std::string name, const char* new_value)
-      : name_(std::move(name)) {
-    const char* prev = std::getenv(name_.c_str());
-    if (prev != nullptr) {
-      prev_value_ = prev;
-      had_value_ = true;
-    }
-    if (new_value != nullptr) {
-      setenv(name_.c_str(), new_value, 1);
-    } else {
-      unsetenv(name_.c_str());
-    }
-  }
-
-  ~ScopedEnvVar_t() {
-    if (had_value_) {
-      setenv(name_.c_str(), prev_value_.c_str(), 1);
-    } else {
-      unsetenv(name_.c_str());
-    }
-  }
-
-  ScopedEnvVar_t(const ScopedEnvVar_t&) = delete;
-  auto operator=(const ScopedEnvVar_t&) -> ScopedEnvVar_t& = delete;
-  ScopedEnvVar_t(ScopedEnvVar_t&&) = delete;
-  auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
-};
+using TestFixtures::ScopedEnvVar_t;
 
 LogLevel_t g_last_log_level = LogLevel_t::k_silent;
 int g_log_callback_count = 0;
@@ -203,5 +166,85 @@ TEST_CASE("AppEnvironment: XDG Config Dirs Data Paths") {
           paths.end());
     CHECK(std::find(paths.begin(), paths.end(), "/etc/linapple/") !=
           paths.end());
+  }
+}
+
+TEST_CASE("AppEnvironment: Three-Tier Precedence (CLI > Config > Default)") {
+  ScopedConfigPathReset_t config_reset;
+
+  SUBCASE("Tier 3 Default: When neither CLI nor config provides a setting") {
+    ScopedEnvVar_t xdg_guard("XDG_CONFIG_HOME", "/nonexistent");
+    ScopedEnvVar_t home_guard("HOME", "/nonexistent");
+    ScopedEnvVar_t xdg_dirs_guard("XDG_CONFIG_DIRS", "/nonexistent");
+
+    AppConfig_t config = {};
+    app_env_resolve_paths(&config);
+
+    // BootOnStartup schema default is true
+    CHECK(config.is_boot == true);
+    // Fullscreen schema default is false
+    CHECK(config.is_fullscreen == false);
+    // VideoStandard schema default is NTSC (not PAL)
+    CHECK(config.is_pal == false);
+    // EnableDebugger schema default is true (disable_debugger == false)
+    CHECK(config.disable_debugger == false);
+  }
+
+  SUBCASE(
+      "Tier 2 Config Value: Config file overrides defaults when CLI switch is "
+      "absent") {
+    TestFixtures::ScopedTempFile_t custom_conf(".toml");
+    std::ofstream out(custom_conf.path());
+    out << "[Core]\n";
+    out << "BootOnStartup = false\n";
+    out << "EnableDebugger = false\n";
+    out << "[Video]\n";
+    out << "VideoStandard = \"PAL\"\n";
+    out << "Fullscreen = true\n";
+    out.close();
+
+    AppConfig_t config = {};
+    util_safe_strcpy(config.config_path.data(), custom_conf.path().c_str(),
+                     config.config_path.size());
+    app_env_resolve_paths(&config);
+
+    CHECK(config.is_boot == false);
+    CHECK(config.disable_debugger == true);
+    CHECK(config.is_pal == true);
+    CHECK(config.is_fullscreen == true);
+  }
+
+  SUBCASE(
+      "Tier 1 CLI Switch: Explicit CLI switch overrides config file values") {
+    TestFixtures::ScopedTempFile_t custom_conf(".toml");
+    std::ofstream out(custom_conf.path());
+    out << "[Core]\n";
+    out << "BootOnStartup = false\n";
+    out << "EnableDebugger = false\n";
+    out << "[Video]\n";
+    out << "VideoStandard = \"PAL\"\n";
+    out << "Fullscreen = true\n";
+    out.close();
+
+    AppConfig_t config = {};
+    util_safe_strcpy(config.config_path.data(), custom_conf.path().c_str(),
+                     config.config_path.size());
+
+    // Explicit CLI switches overriding config.toml
+    config.is_boot = true;
+    config.is_boot_explicit = true;
+    config.disable_debugger = false;
+    config.disable_debugger_explicit = true;
+    config.is_pal = false;
+    config.is_pal_explicit = true;
+    config.is_fullscreen = false;
+    config.is_fullscreen_explicit = true;
+
+    app_env_resolve_paths(&config);
+
+    CHECK(config.is_boot == true);
+    CHECK(config.disable_debugger == false);
+    CHECK(config.is_pal == false);
+    CHECK(config.is_fullscreen == false);
   }
 }

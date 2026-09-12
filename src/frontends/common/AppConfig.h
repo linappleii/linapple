@@ -31,8 +31,11 @@ struct AppConfig_t {
   eApple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
   bool apple2_type_explicit = false;
   bool is_pal = false;
+  bool is_pal_explicit = false;
   bool is_fullscreen = false;
+  bool is_fullscreen_explicit = false;
   bool is_boot = false;
+  bool is_boot_explicit = false;
   bool is_benchmark = false;
   bool is_log = false;
   bool is_verbose = false;
@@ -48,6 +51,7 @@ struct AppConfig_t {
   uint16_t test_cpu_trap = TRAP_NMOS_DEFAULT;
   std::array<char, path_max_len> debugger_script = {};
   bool disable_debugger = false;
+  bool disable_debugger_explicit = false;
 
   std::array<char, path_max_len> basic_sync_file = {};
   int basic_line_mode = -1;

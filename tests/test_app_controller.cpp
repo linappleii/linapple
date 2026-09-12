@@ -82,15 +82,19 @@ TEST_CASE("AppController: Video Mode Reset") {
 
   // 1. Init with PAL
   config.is_pal = true;
+  config.is_pal_explicit = true;
   int result_pal = app_controller_initialize(&config);
   CHECK(result_pal == 0);
   CHECK(g_videotype == VT_COLOR_TVEMU);
+  CHECK(g_state.video_scanner_ntsc == false);
 
   // 2. Re-init without PAL (should reset to standard)
   config.is_pal = false;
+  config.is_pal_explicit = true;
   int result_std = app_controller_initialize(&config);
   CHECK(result_std == 0);
   CHECK(g_videotype == VT_COLOR_STANDARD);
+  CHECK(g_state.video_scanner_ntsc == true);
 }
 
 TEST_CASE("AppController: Media Loading") {

@@ -71,6 +71,10 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
       Configuration_t::instance().set_int(
           "Configuration", "Computer Emulation",
           static_cast<int>(s_active_config.core.machine));
+      Configuration_t::instance().set_int(
+          "Configuration", "Emulation Speed",
+          static_cast<int>(s_active_config.core.emulation_speed *
+                           SPEED_NORMAL));
       Configuration_t::instance().set_string(
           "Configuration", "Screen factor",
           std::to_string(s_active_config.video.screen_factor));
@@ -89,34 +93,104 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
       Configuration_t::instance().set_int(
           "Configuration", "Disable Debugger",
           s_active_config.core.enable_debugger ? 0 : 1);
+      Configuration_t::instance().set_string(
+          "Configuration", "Basic Live Sync File",
+          s_active_config.core.basic_sync_file);
+      Configuration_t::instance().set_int(
+          "Configuration", "Basic Line Numbering",
+          s_active_config.core.basic_line_numbering ==
+                  BasicLineNumbering_t::Positional
+              ? 1
+              : 0);
+      Configuration_t::instance().set_int(
+          "Configuration", "Fullscreen",
+          (s_active_config.frontend.fullscreen ||
+           s_active_config.video.fullscreen)
+              ? 1
+              : 0);
+      Configuration_t::instance().set_int(
+          "Configuration", "Show Leds",
+          s_active_config.video.show_leds ? 1 : 0);
+      Configuration_t::instance().set_string(
+          "Configuration", "Monochrome Color",
+          s_active_config.video.monochrome_color);
     }
 
     util_safe_strcpy(config->config_path.data(), loaded_path.c_str(),
                      path_max_len);
-
-    if (!config->apple2_type_explicit) {
-      switch (s_active_config.core.machine) {
-        case MachineType_t::Apple2:
-          config->apple2_type = A2TYPE_APPLE2;
-          break;
-        case MachineType_t::Apple2Plus:
-        case MachineType_t::Apple2JPlus:
-          config->apple2_type = A2TYPE_APPLE2PLUS;
-          break;
-        case MachineType_t::Apple2e:
-          config->apple2_type = A2TYPE_APPLE2E;
-          break;
-        case MachineType_t::Apple2eEnhanced:
-        case MachineType_t::CloneBase64A:
-        case MachineType_t::ClonePravets82:
-        case MachineType_t::CloneTK3000e:
-        default:
-          config->apple2_type = A2TYPE_APPLE2EENHANCED;
-          break;
-      }
-    }
   } else if (!err.empty()) {
     Logger::warning("Configuration load failed: %s. Using default schema.\n",
                     err.c_str());
+  }
+
+  // Precedence resolution: CLI Switch > Config File Value > System Default
+
+  if (!config->is_boot_explicit) {
+    config->is_boot = s_active_config.core.boot_on_startup;
+  }
+
+  if (!config->is_fullscreen_explicit) {
+    config->is_fullscreen = (s_active_config.frontend.fullscreen ||
+                             s_active_config.video.fullscreen);
+  }
+
+  if (!config->is_pal_explicit) {
+    config->is_pal =
+        (s_active_config.video.video_standard == VideoStandard_t::PAL);
+  }
+
+  if (!config->disable_debugger_explicit) {
+    config->disable_debugger = !s_active_config.core.enable_debugger;
+  }
+
+  if (config->caps_lock_mode < 0) {
+    config->caps_lock_mode = (s_active_config.keyboard.caps_lock_mode ==
+                              ConfigCapsLockMode_t::Emulated)
+                                 ? 1
+                                 : 0;
+  }
+
+  if (config->basic_line_mode < 0) {
+    config->basic_line_mode = (s_active_config.core.basic_line_numbering ==
+                               BasicLineNumbering_t::Positional)
+                                  ? 1
+                                  : 0;
+  }
+
+  if (config->basic_sync_file.at(0) == '\0' &&
+      !s_active_config.core.basic_sync_file.empty()) {
+    util_safe_strcpy(config->basic_sync_file.data(),
+                     s_active_config.core.basic_sync_file.c_str(),
+                     path_max_len);
+  }
+
+  if (!config->tui_render_mode_explicit) {
+    config->tui_render_mode =
+        (s_active_config.frontend.render_mode == ConfigTuiRenderMode_t::Block ||
+         s_active_config.video.tui_render_mode == ConfigTuiRenderMode_t::Block)
+            ? TUI_RENDER_BLOCK
+            : TUI_RENDER_SMART;
+  }
+
+  if (!config->apple2_type_explicit) {
+    switch (s_active_config.core.machine) {
+      case MachineType_t::Apple2:
+        config->apple2_type = A2TYPE_APPLE2;
+        break;
+      case MachineType_t::Apple2Plus:
+      case MachineType_t::Apple2JPlus:
+        config->apple2_type = A2TYPE_APPLE2PLUS;
+        break;
+      case MachineType_t::Apple2e:
+        config->apple2_type = A2TYPE_APPLE2E;
+        break;
+      case MachineType_t::Apple2eEnhanced:
+      case MachineType_t::CloneBase64A:
+      case MachineType_t::ClonePravets82:
+      case MachineType_t::CloneTK3000e:
+      default:
+        config->apple2_type = A2TYPE_APPLE2EENHANCED;
+        break;
+    }
   }
 }

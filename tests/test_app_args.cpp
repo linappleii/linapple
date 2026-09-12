@@ -108,3 +108,41 @@ TEST_CASE("AppArgs: Upgrade Config Default Target") {
   CHECK(config.upgrade_target_path[0] == '\0');
   CHECK(config.intent == INTENT_DIAGNOSTIC);
 }
+
+TEST_CASE("AppArgs: Explicit Negation and Override Flags") {
+  SUBCASE("--no-autoboot") {
+    char* argv[] = {(char*)"linapple", (char*)"--no-autoboot"};
+    AppConfig_t config = {};
+    int res = app_args_parse(2, argv, &config);
+    CHECK(res == 0);
+    CHECK(config.is_boot == false);
+    CHECK(config.is_boot_explicit == true);
+  }
+
+  SUBCASE("--no-fullscreen") {
+    char* argv[] = {(char*)"linapple", (char*)"--no-fullscreen"};
+    AppConfig_t config = {};
+    int res = app_args_parse(2, argv, &config);
+    CHECK(res == 0);
+    CHECK(config.is_fullscreen == false);
+    CHECK(config.is_fullscreen_explicit == true);
+  }
+
+  SUBCASE("--ntsc") {
+    char* argv[] = {(char*)"linapple", (char*)"--ntsc"};
+    AppConfig_t config = {};
+    int res = app_args_parse(2, argv, &config);
+    CHECK(res == 0);
+    CHECK(config.is_pal == false);
+    CHECK(config.is_pal_explicit == true);
+  }
+
+  SUBCASE("--debugger") {
+    char* argv[] = {(char*)"linapple", (char*)"--debugger"};
+    AppConfig_t config = {};
+    int res = app_args_parse(2, argv, &config);
+    CHECK(res == 0);
+    CHECK(config.disable_debugger == false);
+    CHECK(config.disable_debugger_explicit == true);
+  }
+}

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <dirent.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -343,6 +344,47 @@ class ScopedTempDir_t {
       path_.clear();
     }
   }
+};
+
+/**
+ * @brief RAII scoped environment variable guard.
+ *
+ * Sets an environment variable for the duration of the scope and restores its
+ * previous value (or unsets it if previously unset) on destruction.
+ */
+class ScopedEnvVar_t {
+ private:
+  std::string name_;
+  std::string prev_value_;
+  bool had_value_{false};
+
+ public:
+  explicit ScopedEnvVar_t(std::string name, const char* new_value)
+      : name_(std::move(name)) {
+    const char* prev = std::getenv(name_.c_str());
+    if (prev != nullptr) {
+      prev_value_ = prev;
+      had_value_ = true;
+    }
+    if (new_value != nullptr) {
+      setenv(name_.c_str(), new_value, 1);
+    } else {
+      unsetenv(name_.c_str());
+    }
+  }
+
+  ~ScopedEnvVar_t() {
+    if (had_value_) {
+      setenv(name_.c_str(), prev_value_.c_str(), 1);
+    } else {
+      unsetenv(name_.c_str());
+    }
+  }
+
+  ScopedEnvVar_t(const ScopedEnvVar_t&) = delete;
+  auto operator=(const ScopedEnvVar_t&) -> ScopedEnvVar_t& = delete;
+  ScopedEnvVar_t(ScopedEnvVar_t&&) = delete;
+  auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
 };
 
 }  // namespace TestFixtures

@@ -87,6 +87,38 @@ static auto resolve_disk_path(const AppConfig_t* config, size_t drive_idx,
   return "";
 }
 
+static auto resolve_harddisk_path(const AppConfig_t* config, size_t drive_idx,
+                                  const char* key_name,
+                                  const char* legacy_reg_key) -> std::string {
+  if (drive_idx < config->harddisk_path.size() &&
+      config->harddisk_path.at(drive_idx).at(0) != '\0') {
+    return config->harddisk_path.at(drive_idx).data();
+  }
+
+  const auto& lin_cfg = app_env_get_config();
+  if (lin_cfg.raw_doc != nullptr) {
+    const auto* s7_tbl =
+        toml_find_table(lin_cfg.raw_doc.get(), "Peripheral.Harddisk.Slot7");
+    if (s7_tbl != nullptr && toml_table_has_key(s7_tbl, key_name)) {
+      return toml_table_get_string(s7_tbl, key_name, "");
+    }
+    const auto* hd_tbl =
+        toml_find_table(lin_cfg.raw_doc.get(), "Peripheral.Harddisk");
+    if (hd_tbl != nullptr && toml_table_has_key(hd_tbl, key_name)) {
+      return toml_table_get_string(hd_tbl, key_name, "");
+    }
+  }
+
+  std::string disk;
+  if (config_load_string("Slots", legacy_reg_key, &disk) ||
+      config_load_string("Preferences", legacy_reg_key, &disk) ||
+      config_load_string("Configuration", legacy_reg_key, &disk)) {
+    return disk;
+  }
+
+  return "";
+}
+
 auto app_controller_initialize(AppConfig_t* config) -> int {
   if (config == nullptr) {
     return -1;
@@ -215,28 +247,20 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   g_state.mode = MODE_RUNNING;
   g_state.restart = false;
-  if (config->is_fullscreen) {
-    g_state.fullscreen = true;
-  }
+  g_state.fullscreen = config->is_fullscreen;
+  g_state.disable_debugger = config->disable_debugger;
 
-  bool disable_dbg_config = false;
-  if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
-                       &disable_dbg_config)) {
-    g_state.disable_debugger = config->disable_debugger || disable_dbg_config;
-  } else {
-    g_state.disable_debugger = config->disable_debugger;
+  const std::string hd1 =
+      resolve_harddisk_path(config, 0, "Drive1", REGVALUE_HDD_IMAGE1);
+  if (!hd1.empty()) {
+    util_safe_strcpy(config->harddisk_path.at(0).data(), hd1.c_str(),
+                     path_max_len);
   }
-
-  if (!config->tui_render_mode_explicit) {
-    std::string render_mode_str;
-    if (config_load_string("Configuration", REGVALUE_TUI_RENDER_MODE,
-                           &render_mode_str)) {
-      if (render_mode_str == "block" || render_mode_str == "simple") {
-        config->tui_render_mode = TUI_RENDER_BLOCK;
-      } else if (render_mode_str == "smart" || render_mode_str == "shape") {
-        config->tui_render_mode = TUI_RENDER_SMART;
-      }
-    }
+  const std::string hd2 =
+      resolve_harddisk_path(config, 1, "Drive2", REGVALUE_HDD_IMAGE2);
+  if (!hd2.empty()) {
+    util_safe_strcpy(config->harddisk_path.at(1).data(), hd2.c_str(),
+                     path_max_len);
   }
 
   if (config->harddisk_path.at(0).at(0) != '\0' ||

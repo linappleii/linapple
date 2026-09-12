@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -10,6 +11,7 @@
 #include "core/config/ConfigSchema.h"
 #include "core/config/Toml.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 TEST_CASE("ConfigDiscovery: Search Path Enumeration") {
   auto all_paths = config_get_search_paths();
@@ -262,4 +264,37 @@ TEST_CASE("ConfigDiscovery: Defensive Checks") {
   CHECK_FALSE(config_load_active("/tmp/nonexistent_file_path_1234.toml",
                                  &config, nullptr, nullptr, &err));
   CHECK_FALSE(err.empty());
+}
+
+TEST_CASE("ConfigDiscovery: TOML Precedence Over Legacy Conf in Discovery") {
+  TestFixtures::ScopedTempDir_t temp_dir("linapple_disc_");
+  std::string app_dir = temp_dir.path() + "/linapple";
+  mkdir(app_dir.c_str(), 0755);
+  std::string toml_path = app_dir + "/config.toml";
+  std::string conf_path = app_dir + "/config.conf";
+
+  {
+    std::ofstream out(toml_path);
+    out << "[Core]\nMachine = \"Apple //e Enhanced\"\n";
+  }
+  {
+    std::ofstream out(conf_path);
+    out << "[Configuration]\nMachine Type = 1\n";
+  }
+
+  TestFixtures::ScopedEnvVar_t xdg_guard("XDG_CONFIG_HOME", temp_dir.c_str());
+
+  ConfigSearchOptions_t options;
+  std::string resolved;
+  bool is_legacy = true;
+
+  CHECK(config_discover(options, &resolved, &is_legacy));
+  CHECK_FALSE(is_legacy);
+  CHECK(resolved == toml_path);
+
+  unlink(toml_path.c_str());
+  is_legacy = false;
+  CHECK(config_discover(options, &resolved, &is_legacy));
+  CHECK(is_legacy);
+  CHECK(resolved == conf_path);
 }
