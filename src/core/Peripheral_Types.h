@@ -37,7 +37,9 @@ enum IrqSrc_t {
   is_slot7
 };
 
+// IWYU pragma: begin_exports
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+// IWYU pragma: end_exports
 
 #ifdef __cplusplus
 }
