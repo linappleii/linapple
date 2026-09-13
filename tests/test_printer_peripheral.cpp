@@ -59,6 +59,7 @@ class PrinterHarness {
     host_.RegisterDirectIO = Mock_RegisterDirectIO;
     host_.PrinterPutChar = Mock_PrinterPutChar;
     host_.PrinterGetStatus = Mock_PrinterGetStatus;
+    host_.NotifyActivityChanged = Mock_NotifyActivityChanged;
   }
 
   ~PrinterHarness() {
@@ -127,6 +128,21 @@ class PrinterHarness {
     host_.PrinterPutChar = enabled ? Mock_PrinterPutChar : nullptr;
   }
 
+  auto set_notify_activity_callback_enabled(bool enabled) -> void {
+    host_.NotifyActivityChanged =
+        enabled ? Mock_NotifyActivityChanged : nullptr;
+  }
+
+  auto activity_state(int slot) const -> bool {
+    auto it = activity_states_.find(slot);
+    return (it != activity_states_.end()) ? it->second : false;
+  }
+
+  auto activity_changes_count(int slot) const -> size_t {
+    auto it = activity_counts_.find(slot);
+    return (it != activity_counts_.end()) ? it->second : 0;
+  }
+
   auto printed_chars(int slot) const -> const std::vector<uint8_t>& {
     static const std::vector<uint8_t> empty_vector{};
     auto it = printed_chars_.find(slot);
@@ -193,9 +209,18 @@ class PrinterHarness {
   std::map<void*, int> slot_by_instance_;
   std::map<int, std::vector<uint8_t>> printed_chars_;
   std::map<int, uint8_t> printer_status_;
+  std::map<int, bool> activity_states_;
+  std::map<int, size_t> activity_counts_;
   uint8_t default_status_ = STATUS_READY;
 
   static PrinterHarness* s_active_harness;
+
+  static auto Mock_NotifyActivityChanged(int slot, bool active) -> void {
+    if (s_active_harness != nullptr) {
+      s_active_harness->activity_states_[slot] = active;
+      s_active_harness->activity_counts_[slot]++;
+    }
+  }
 
   static auto Mock_Log(void* instance, PeripheralLogLevel_t level,
                        const char* fmt, ...) -> void {
@@ -541,8 +566,7 @@ TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
 
   // Corrupted version or size in load_state must fail
   std::vector<uint8_t> corrupt_buf = save_buf;
-  auto* corrupt_header =
-      reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
+  auto* corrupt_header = reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
   corrupt_header->version = 999;
   CHECK(descriptor->load_state(instance, corrupt_buf.data(),
                                corrupt_buf.size()) == peripheral_error);
@@ -648,6 +672,205 @@ TEST_CASE("Printer Peripheral: Command and Query ABI Protocol") {
   // Unknown query ID must return peripheral_incompatible
   CHECK(descriptor->query(instance, 0x9999, &status_out, &valid_size) ==
         peripheral_incompatible);
+}
+
+TEST_CASE("Printer Peripheral: Activity Notification and Pulse Decay") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  CHECK(harness.activity_state(TEST_SLOT_1) == false);
+
+  // Transmit character: triggers active notification
+  harness.write_slot_reg(TEST_SLOT_1, 0, 'A');
+  CHECK(harness.activity_state(TEST_SLOT_1) == true);
+  CHECK(harness.activity_changes_count(TEST_SLOT_1) == 1);
+
+  // Step 9 cycles: activity remains asserted
+  for (int i = 0; i < 9; ++i) {
+    descriptor->think(instance, 1000);
+    CHECK(harness.activity_state(TEST_SLOT_1) == true);
+  }
+
+  // 10th step: activity pulse decays and notifies inactive
+  descriptor->think(instance, 1000);
+  CHECK(harness.activity_state(TEST_SLOT_1) == false);
+  CHECK(harness.activity_changes_count(TEST_SLOT_1) == 2);
+}
+
+TEST_CASE("Printer Peripheral: Hardware Busy Delay and Cycle Stepping") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  // Inject initial busy_cycles cleanly via load_state
+  SsCardPrinter_t state{};
+  state.version = PRINTER_STATE_VERSION;
+  state.struct_size = sizeof(SsCardPrinter_t);
+  state.is_online = 1;
+  state.busy_cycles = 5000;
+  CHECK(descriptor->load_state(instance, &state, sizeof(state)) ==
+        peripheral_ok);
+
+  // Transmit character: triggers busy flag
+  harness.write_slot_reg(TEST_SLOT_1, 0, 'B');
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_BUSY);
+
+  // Step 2500 cycles: still busy (2500 remaining)
+  descriptor->think(instance, 2500);
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_BUSY);
+
+  // Step another 2500 cycles: busy expires, returns to ready
+  descriptor->think(instance, 2500);
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_READY);
+}
+
+TEST_CASE("Printer Peripheral: Reset Lifecycle and Latch Clearing") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  harness.write_slot_reg(TEST_SLOT_1, 0, 'Z');
+  CHECK(harness.activity_state(TEST_SLOT_1) == true);
+
+  PrinterOnlineCmd_t online_cmd{0, {0, 0, 0}};
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+
+  PrinterStatusQuery_t query{};
+  size_t query_size = sizeof(query);
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &query,
+                          &query_size) == peripheral_ok);
+  CHECK(query.is_online == 0);
+  CHECK(query.last_char == 'Z');
+
+  // Reset instance
+  descriptor->reset(instance);
+
+  // Query after reset: must return defaults
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &query,
+                          &query_size) == peripheral_ok);
+  CHECK(query.is_online == 1);
+  CHECK(query.is_busy == 0);
+  CHECK(query.last_char == 0);
+  CHECK(harness.activity_state(TEST_SLOT_1) == false);
+}
+
+TEST_CASE("Printer Peripheral: Offline State Hardware Suppression") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  harness.set_status(TEST_SLOT_1, STATUS_READY);
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_READY);
+
+  // Mark offline via command
+  PrinterOnlineCmd_t online_cmd{0, {0, 0, 0}};
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+
+  // Status read must return offline immediately
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_OFFLINE);
+
+  // Mark back online
+  online_cmd.online = 1;
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_READY);
+}
+
+TEST_CASE("Printer Peripheral: Full Binary Transparency Sweep") {
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  std::vector<uint8_t> all_bytes(256);
+  for (size_t i = 0; i < 256; ++i) {
+    all_bytes[i] = static_cast<uint8_t>(i);
+    CHECK(harness.write_slot_reg(TEST_SLOT_1, static_cast<uint8_t>(i % 16),
+                                 all_bytes[i]) == TRANSMIT_SUCCESS);
+  }
+
+  const auto& printed = harness.printed_chars(TEST_SLOT_1);
+  REQUIRE(printed.size() == 256);
+  for (size_t i = 0; i < 256; ++i) {
+    CHECK(printed[i] == all_bytes[i]);
+  }
+}
+
+TEST_CASE("Printer Peripheral: State Round-Trip with Non-Default Values") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  harness.write_slot_reg(TEST_SLOT_1, 0, '1');
+  harness.write_slot_reg(TEST_SLOT_1, 0, '2');
+  harness.write_slot_reg(TEST_SLOT_1, 0, '3');
+
+  PrinterOnlineCmd_t online_cmd{0, {0, 0, 0}};
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+
+  std::vector<uint8_t> save_buf(sizeof(SsCardPrinter_t));
+  size_t buf_size = save_buf.size();
+  CHECK(descriptor->save_state(instance, save_buf.data(), &buf_size) ==
+        peripheral_ok);
+
+  // Reset instance to clean state
+  descriptor->reset(instance);
+
+  PrinterStatusQuery_t query{};
+  size_t query_size = sizeof(query);
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &query,
+                          &query_size) == peripheral_ok);
+  CHECK(query.is_online == 1);
+  CHECK(query.last_char == 0);
+
+  // Restore saved state
+  CHECK(descriptor->load_state(instance, save_buf.data(), buf_size) ==
+        peripheral_ok);
+
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &query,
+                          &query_size) == peripheral_ok);
+  CHECK(query.total_chars_printed == 3);
+  CHECK(query.last_char == '3');
+  CHECK(query.is_online == 0);
+}
+
+TEST_CASE("Printer Peripheral: Robustness with Null Host Callbacks") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  harness.set_notify_activity_callback_enabled(false);
+  harness.set_putchar_callback_enabled(false);
+  harness.set_status_callback_enabled(false);
+
+  // Write and read with null host callbacks must not crash
+  CHECK(harness.write_slot_reg(TEST_SLOT_1, 0, 'X') == TRANSMIT_SUCCESS);
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0) == STATUS_OFFLINE);
+
+  // Think and reset with null host callbacks must not crash
+  descriptor->think(instance, 1000);
+  descriptor->reset(instance);
 }
 
 }  // namespace
