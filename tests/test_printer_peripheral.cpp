@@ -14,6 +14,8 @@
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
 
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+
 namespace {
 
 constexpr int TEST_SLOT_1 = 1;
@@ -460,11 +462,11 @@ TEST_CASE("Printer Peripheral: Robustness and Seam Error Handling") {
   const uint16_t base = IO_BASE_ADDRESS + (TEST_SLOT_1 << IO_SLOT_OFFSET);
   const auto& handler = harness.get_handler(base);
 
-  // Read handler: when is_write != 0, must return offline status (0xFF)
-  CHECK(handler.read(instance, 0, base, 1, 0, 0) == STATUS_OFFLINE);
+  // Read handler: when is_write != 0, must return floating bus noise
+  CHECK(handler.read(instance, 0, base, 1, 0, 0) == mem_read_floating_bus(0));
 
-  // Read handler: when instance == nullptr, must return offline status (0xFF)
-  CHECK(handler.read(nullptr, 0, base, 0, 0, 0) == STATUS_OFFLINE);
+  // Read handler: when instance == nullptr, must return floating bus noise
+  CHECK(handler.read(nullptr, 0, base, 0, 0, 0) == mem_read_floating_bus(0));
 
   // Write handler: when is_write == 0, must return success (0) and not transmit
   harness.clear_printed_chars(TEST_SLOT_1);

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/printer/Printer.h"
 
 #include <cstddef>
@@ -12,17 +11,22 @@
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+
 namespace {
 
 constexpr size_t slot_rom_size = 0x100;
 constexpr uint8_t status_offline = 0xFF;
+constexpr uint8_t status_busy = 0x80;
 constexpr uint8_t transmit_success = 0;
+constexpr uint32_t printer_activity_duration_ticks = 10;
 
 struct PrinterPeripheral_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
   uint64_t total_chars_printed = 0;
   uint32_t busy_cycles = 0;
+  uint32_t activity_ticks = 0;
   uint8_t data_latch = 0;
   uint8_t status_latch = 0;
   bool is_online = true;
@@ -37,15 +41,23 @@ auto print_status(void* instance, uint16_t program_counter,
   (void)program_counter;
   (void)memory_address;
   (void)data_value;
-  (void)remaining_cycles;
 
   if (instance == nullptr || is_write != 0) {
-    return status_offline;
+    return mem_read_floating_bus(remaining_cycles);
   }
   auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
+  if (!printer_peripheral->is_online) {
+    return status_offline;
+  }
+  if (printer_peripheral->is_busy) {
+    return status_busy;
+  }
   if (printer_peripheral->host != nullptr &&
       printer_peripheral->host->PrinterGetStatus != nullptr) {
-    return printer_peripheral->host->PrinterGetStatus(printer_peripheral);
+    const uint8_t st =
+        printer_peripheral->host->PrinterGetStatus(printer_peripheral);
+    printer_peripheral->status_latch = st;
+    return st;
   }
   return status_offline;
 }
@@ -61,14 +73,29 @@ auto print_transmit(void* instance, uint16_t program_counter,
     return transmit_success;
   }
   auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  if (printer_peripheral->host != nullptr &&
-      printer_peripheral->host->PrinterPutChar != nullptr) {
-    printer_peripheral->host->PrinterPutChar(printer_peripheral, data_value);
+  printer_peripheral->data_latch = data_value;
+  printer_peripheral->total_chars_printed++;
+
+  if (printer_peripheral->busy_cycles > 0) {
+    printer_peripheral->is_busy = true;
+  }
+  printer_peripheral->activity_ticks = printer_activity_duration_ticks;
+
+  if (printer_peripheral->host != nullptr) {
+    if (printer_peripheral->host->NotifyActivityChanged != nullptr) {
+      printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
+                                                      true);
+    }
+    if (printer_peripheral->host->PrinterPutChar != nullptr) {
+      printer_peripheral->host->PrinterPutChar(printer_peripheral, data_value);
+    }
   }
   return transmit_success;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
+// NOLINTBEGIN(cppcoreguidelines-owning-memory)
+// Justification: Raw pointer release is required by Peripheral_t ABI lifecycle.
 static auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
@@ -92,7 +119,17 @@ static auto printer_abi_reset(void* instance) -> void {
     return;
   }
   auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  (void)printer_peripheral;
+  printer_peripheral->data_latch = 0;
+  printer_peripheral->status_latch = 0;
+  printer_peripheral->is_online = true;
+  printer_peripheral->is_busy = false;
+  printer_peripheral->busy_cycles = 0;
+  printer_peripheral->activity_ticks = 0;
+  if (printer_peripheral->host != nullptr &&
+      printer_peripheral->host->NotifyActivityChanged != nullptr) {
+    printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
+                                                    false);
+  }
 }
 
 static auto printer_abi_shutdown(void* instance) -> void {
@@ -102,14 +139,30 @@ static auto printer_abi_shutdown(void* instance) -> void {
   std::unique_ptr<PrinterPeripheral_t> printer_peripheral(
       static_cast<PrinterPeripheral_t*>(instance));
 }
+// NOLINTEND(cppcoreguidelines-owning-memory)
 
 static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
   auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  (void)printer_peripheral;
-  (void)elapsed_cycles;
+  if (printer_peripheral->busy_cycles > 0) {
+    if (elapsed_cycles >= printer_peripheral->busy_cycles) {
+      printer_peripheral->busy_cycles = 0;
+      printer_peripheral->is_busy = false;
+    } else {
+      printer_peripheral->busy_cycles -= elapsed_cycles;
+    }
+  }
+  if (printer_peripheral->activity_ticks > 0) {
+    printer_peripheral->activity_ticks--;
+    if (printer_peripheral->activity_ticks == 0 &&
+        printer_peripheral->host != nullptr &&
+        printer_peripheral->host->NotifyActivityChanged != nullptr) {
+      printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
+                                                      false);
+    }
+  }
 }
 
 static auto printer_abi_save_state(void* instance, void* state_buffer,
@@ -253,4 +306,3 @@ static Peripheral_t g_printer_peripheral = {
 auto printer_get_descriptor() -> Peripheral_t* { return &g_printer_peripheral; }
 
 PERIPHERAL_REGISTER(g_printer_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)

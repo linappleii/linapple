@@ -8,7 +8,7 @@ void printer_frontend_destroy();
 void printer_frontend_reset();
 void printer_frontend_update(uint32_t totalcycles);
 void printer_frontend_send_char(uint8_t c);
-void printer_frontend_check_status();
+auto printer_frontend_check_status() -> uint8_t;
 
 void printer_set_idle_limit(uint32_t Duration);
 auto printer_get_idle_limit() -> uint32_t;

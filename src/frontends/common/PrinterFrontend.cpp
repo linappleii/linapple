@@ -57,7 +57,11 @@ void printer_frontend_send_char(uint8_t value) {
   fwrite(&c, 1, 1, file.get());
 }
 
-void printer_frontend_check_status() { check_print(); }
+auto printer_frontend_check_status() -> uint8_t {
+  constexpr uint8_t status_ready = 0x7F;
+  constexpr uint8_t status_offline = 0xFF;
+  return check_print() ? status_ready : status_offline;
+}
 
 auto printer_get_idle_limit() -> uint32_t { return g_printer_idle_limit; }
 
