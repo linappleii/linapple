@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <array>
+
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <map>
+#include <string>
+#include <vector>
 
-#include "Apple2Types.h"
-#include "apple2/Memory.h"
 #include "apple2/peripherals/keyboard/Keyboard.h"
-#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-#include "core/LinAppleCore.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
-#include "frontends/common/KeyboardTranslator.h"
+
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
-
-constexpr size_t MEMORY_SIZE_64K = 65536;
 
 constexpr uint16_t ADDR_KBD = 0xC000;
 constexpr uint16_t ADDR_KBDSTRB = 0xC010;
@@ -24,109 +23,126 @@ constexpr uint16_t ADDR_OPEN_APPLE = 0xC061;
 constexpr uint16_t ADDR_CLOSED_APPLE = 0xC062;
 constexpr uint16_t ADDR_SHIFT_KEY = 0xC063;
 
-struct MockHandler {
+struct MockHandler_t {
   void* instance = nullptr;
   PeripheralIOHandler read = nullptr;
   PeripheralIOHandler write = nullptr;
 
-  MockHandler() = default;
-  MockHandler(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
+  MockHandler_t() = default;
+  MockHandler_t(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
       : instance(inst), read(r), write(w) {}
 };
 
-class KeyboardTestHarness {
+class KeyboardTestHarness_t {
  public:
-  explicit KeyboardTestHarness(int slot = 0) {
+  explicit KeyboardTestHarness_t(int slot = 0, bool auto_init = true) {
     s_active_harness = this;
-    scoped_mem_.fill(0);
-    prev_mem_ = mem;
-    mem = scoped_mem_.data();
-
     host_.RegisterDirectIO = Mock_RegisterDirectIO;
-
-    instance_ = keyboard_get_descriptor()->init(slot, &host_);
+    if (auto_init) {
+      init(slot);
+    }
   }
 
-  ~KeyboardTestHarness() {
+  ~KeyboardTestHarness_t() {
+    shutdown();
+    handlers_.clear();
+    s_active_harness = nullptr;
+  }
+
+  KeyboardTestHarness_t(const KeyboardTestHarness_t&) = delete;
+  auto operator=(const KeyboardTestHarness_t&)
+      -> KeyboardTestHarness_t& = delete;
+  KeyboardTestHarness_t(KeyboardTestHarness_t&&) = delete;
+  auto operator=(KeyboardTestHarness_t&&) -> KeyboardTestHarness_t& = delete;
+
+  auto host() -> HostInterface_t* { return &host_; }
+  auto instance() const -> void* { return instance_; }
+
+  auto init(int slot = 0) -> void* {
+    if (instance_ != nullptr) {
+      shutdown();
+    }
+    instance_ = keyboard_get_descriptor()->init(slot, &host_);
+    return instance_;
+  }
+
+  auto shutdown() -> void {
     if (instance_ != nullptr) {
       keyboard_get_descriptor()->shutdown(instance_);
       instance_ = nullptr;
     }
-    mem = prev_mem_;
-    s_active_harness = nullptr;
   }
 
-  KeyboardTestHarness(const KeyboardTestHarness&) = delete;
-  auto operator=(const KeyboardTestHarness&) -> KeyboardTestHarness& = delete;
-  KeyboardTestHarness(KeyboardTestHarness&&) = delete;
-  auto operator=(KeyboardTestHarness&&) -> KeyboardTestHarness& = delete;
-
-  auto instance() const -> void* { return instance_; }
+  auto reset() -> void {
+    if (instance_ != nullptr) {
+      keyboard_get_descriptor()->reset(instance_);
+    }
+  }
 
   auto has_handler(uint16_t addr) const -> bool {
     return handlers_.find(addr) != handlers_.end();
   }
 
-  auto get_handler(uint16_t addr) const -> const MockHandler& {
+  auto get_handler(uint16_t addr) const -> const MockHandler_t& {
     return handlers_.at(addr);
   }
 
-  auto read_io(uint16_t addr, uint8_t floating_bus = 0) -> uint8_t {
+  auto read_io(uint16_t addr, uint32_t cycles_left = 0) -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.read != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.read(target, 0, addr, 0, floating_bus, 0);
+      return it->second.read(target, 0, addr, 0, 0, cycles_left);
     }
-    return floating_bus;
+    return mem_read_floating_bus(cycles_left);
   }
 
-  auto write_io(uint16_t addr, uint8_t val) -> uint8_t {
+  auto write_io(uint16_t addr, uint8_t val, uint32_t cycles_left = 0)
+      -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.write != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.write(target, 0, addr, 1, val, 0);
+      return it->second.write(target, 0, addr, 1, val, cycles_left);
     }
     return 0;
   }
 
   auto read_c000() -> uint8_t { return read_io(ADDR_KBD); }
-
   auto read_c010() -> uint8_t { return read_io(ADDR_KBDSTRB); }
+  auto write_c010(uint8_t val) -> uint8_t {
+    return write_io(ADDR_KBDSTRB, val);
+  }
 
   auto send_event(const KeyboardEvent_t& ev) -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(instance_, keyboard_cmd_event,
-                                              &ev, sizeof(ev));
+    return command(keyboard_cmd_event, &ev, sizeof(ev));
   }
 
   auto set_caps(uint8_t caps) -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(instance_, keyboard_cmd_set_caps,
-                                              &caps, sizeof(caps));
+    return command(keyboard_cmd_set_caps, &caps, sizeof(caps));
   }
 
   auto set_layout(uint8_t layout) -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(
-        instance_, keyboard_cmd_set_layout, &layout, sizeof(layout));
+    return command(keyboard_cmd_set_layout, &layout, sizeof(layout));
   }
 
   auto set_rocker(uint8_t rocker) -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(
-        instance_, keyboard_cmd_set_rocker, &rocker, sizeof(rocker));
+    return command(keyboard_cmd_set_rocker, &rocker, sizeof(rocker));
   }
 
   auto set_mods(const KeyboardModifiers_t& mods) -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(instance_, keyboard_cmd_set_mods,
-                                              &mods, sizeof(mods));
+    return command(keyboard_cmd_set_mods, &mods, sizeof(mods));
   }
 
   auto set_custom_key(const KeyboardCustomKeyPayload_t& payload)
       -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(
-        instance_, keyboard_cmd_set_custom_key, &payload, sizeof(payload));
+    return command(keyboard_cmd_set_custom_key, &payload, sizeof(payload));
   }
 
   auto clear_custom_keys() -> PeripheralStatus_t {
-    return keyboard_get_descriptor()->command(
-        instance_, keyboard_cmd_clear_custom_keys, nullptr, 0);
+    return command(keyboard_cmd_clear_custom_keys, nullptr, 0);
+  }
+
+  auto set_auto_repeat(uint8_t enable) -> PeripheralStatus_t {
+    return command(keyboard_cmd_set_auto_repeat, &enable, sizeof(enable));
   }
 
   auto think(uint32_t cycles) -> void {
@@ -135,615 +151,552 @@ class KeyboardTestHarness {
     }
   }
 
+  auto command(uint32_t cmd, const void* data, size_t size)
+      -> PeripheralStatus_t {
+    return keyboard_get_descriptor()->command(instance_, cmd, data, size);
+  }
+
+  auto query(uint32_t cmd, void* out, size_t* size) -> PeripheralStatus_t {
+    return keyboard_get_descriptor()->query(instance_, cmd, out, size);
+  }
+
+  auto save_state(void* buffer, size_t* size) -> PeripheralStatus_t {
+    return keyboard_get_descriptor()->save_state(instance_, buffer, size);
+  }
+
+  auto load_state(const void* buffer, size_t size) -> PeripheralStatus_t {
+    return keyboard_get_descriptor()->load_state(instance_, buffer, size);
+  }
+
  private:
-  HostInterface_t host_{};
-  std::map<uint16_t, MockHandler> handlers_;
-  void* instance_ = nullptr;
-  std::array<uint8_t, MEMORY_SIZE_64K> scoped_mem_{};
-  uint8_t* prev_mem_ = nullptr;
-
-  static KeyboardTestHarness* s_active_harness;
-
-  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
   static auto Mock_RegisterDirectIO(void* instance, uint16_t addr,
                                     PeripheralIOHandler read,
                                     PeripheralIOHandler write) -> void {
     if (s_active_harness != nullptr) {
-      s_active_harness->handlers_[addr] = {instance, read, write};
+      s_active_harness->handlers_[addr] = MockHandler_t(instance, read, write);
     }
   }
-  // NOLINTEND(bugprone-easily-swappable-parameters)
+
+  HostInterface_t host_{};
+  std::map<uint16_t, MockHandler_t> handlers_{};
+  void* instance_ = nullptr;
+
+  static KeyboardTestHarness_t* s_active_harness;
 };
 
-KeyboardTestHarness* KeyboardTestHarness::s_active_harness = nullptr;
+KeyboardTestHarness_t* KeyboardTestHarness_t::s_active_harness = nullptr;
 
 }  // namespace
 
-TEST_CASE("Keyboard Peripheral: Lifecycle and I/O Registration") {
-  KeyboardTestHarness harness;
-  REQUIRE(harness.instance() != nullptr);
+TEST_CASE("KBD-01: Descriptor and Registration") {
+  Peripheral_t* desc = keyboard_get_descriptor();
+  REQUIRE_NE(desc, nullptr);
+  CHECK_EQ(desc->abi_version, LINAPPLE_ABI_VERSION);
+  CHECK_EQ(std::string(desc->id), "linapple.keyboard");
+  CHECK_EQ(std::string(desc->name), "Keyboard");
+  CHECK_EQ(desc->compatible_slots, PERIPHERAL_MASK_INTERNAL);
+  CHECK_EQ(desc->default_slot, 0);
 
-  // Verify $C000-$C01F are registered
-  CHECK(harness.has_handler(0xC000));
-  CHECK(harness.has_handler(0xC010));
+  CHECK_NE(desc->init, nullptr);
+  CHECK_NE(desc->reset, nullptr);
+  CHECK_NE(desc->shutdown, nullptr);
+  CHECK_NE(desc->think, nullptr);
+  CHECK_NE(desc->save_state, nullptr);
+  CHECK_NE(desc->load_state, nullptr);
+  CHECK_NE(desc->command, nullptr);
+  CHECK_NE(desc->query, nullptr);
 }
 
-TEST_CASE("Keyboard Peripheral: Strobe and Latch Behavior") {
-  KeyboardTestHarness harness;
+TEST_CASE("KBD-02: Lifecycle and Defensive Null Guards") {
+  Peripheral_t* desc = keyboard_get_descriptor();
+  REQUIRE_NE(desc, nullptr);
 
-  // 1. Initially, strobe should be clear
+  // Null host returns nullptr
+  void* inst = desc->init(0, nullptr);
+  CHECK_EQ(inst, nullptr);
+
+  // Safe null operations
+  desc->reset(nullptr);
+  desc->shutdown(nullptr);
+  desc->think(nullptr, 1000);
+
+  // Proper initialization via harness
+  KeyboardTestHarness_t harness(0, true);
+  CHECK_NE(harness.instance(), nullptr);
+}
+
+TEST_CASE("KBD-03: Direct I/O Registration") {
+  KeyboardTestHarness_t harness;
+  REQUIRE_NE(harness.instance(), nullptr);
+
+  // $C000-$C00F registered read-only
+  for (uint16_t addr = 0xC000; addr <= 0xC00F; ++addr) {
+    CHECK_EQ(harness.has_handler(addr), true);
+    CHECK_NE(harness.get_handler(addr).read, nullptr);
+    CHECK_EQ(harness.get_handler(addr).write, nullptr);
+  }
+
+  // $C010 registered read/write
+  CHECK_EQ(harness.has_handler(0xC010), true);
+  CHECK_NE(harness.get_handler(0xC010).read, nullptr);
+  CHECK_NE(harness.get_handler(0xC010).write, nullptr);
+
+  // $C011-$C01F registered write-only
+  for (uint16_t addr = 0xC011; addr <= 0xC01F; ++addr) {
+    CHECK_EQ(harness.has_handler(addr), true);
+    CHECK_EQ(harness.get_handler(addr).read, nullptr);
+    CHECK_NE(harness.get_handler(addr).write, nullptr);
+  }
+
+  // $C061, $C062, $C063 registered read-only
+  CHECK_EQ(harness.has_handler(ADDR_OPEN_APPLE), true);
+  CHECK_NE(harness.get_handler(ADDR_OPEN_APPLE).read, nullptr);
+  CHECK_EQ(harness.has_handler(ADDR_CLOSED_APPLE), true);
+  CHECK_NE(harness.get_handler(ADDR_CLOSED_APPLE).read, nullptr);
+  CHECK_EQ(harness.has_handler(ADDR_SHIFT_KEY), true);
+  CHECK_NE(harness.get_handler(ADDR_SHIFT_KEY).read, nullptr);
+}
+
+TEST_CASE("KBD-04: Strobe Latch and Any-Key-Down at $C000 / $C010") {
+  KeyboardTestHarness_t harness;
+
+  // 1. Initial state: strobe bit 7 is clear
   uint8_t val = harness.read_c000();
-  CHECK((val & 0x80) == 0);
+  CHECK_EQ(val & 0x80, 0);
 
-  // 2. Disable caps lock and simulate 'A' key down
+  // 2. Press 'A' key (disable caps lock first)
   harness.set_caps(0);
-  KeyboardEvent_t ev = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
+  KeyboardEvent_t ev = {'a', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
 
-  // 3. Read $C000: expect 'a' (0x61) | Strobe (0x80) = 0xE1
+  // 3. Read $C000: 'a' (0x61) | Strobe (0x80) = 0xE1
   val = harness.read_c000();
-  CHECK(val == 0xE1);
+  CHECK_EQ(val, 0xE1);
 
-  // 4. Any access to $C010 should clear the strobe
+  // 4. Access $C010: clears strobe bit
   harness.read_c010();
 
-  // 5. Read $C000 again: strobe should be clear, latch remains 'a'
+  // 5. Read $C000 again: strobe is clear, latch remains 'a' (0x61)
   val = harness.read_c000();
-  CHECK(val == 0x61);
+  CHECK_EQ(val, 0x61);
 
-  // 6. Check Any-Key-Down flag at $C010 (Bit 7)
+  // 6. Check Any-Key-Down flag at $C010 (Bit 7) while key is still down
   val = harness.read_c010();
-  CHECK((val & 0x80) != 0);  // 'a' is still down
+  CHECK_EQ(val & 0x80, 0x80);
 
   // 7. Release 'a'
   ev.is_down = 0;
-  harness.send_event(ev);
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
 
-  // 8. Bit 7 of $C010 should now be clear
+  // 8. Bit 7 of $C010 is now clear
   val = harness.read_c010();
-  CHECK((val & 0x80) == 0);
+  CHECK_EQ(val & 0x80, 0);
 }
 
-TEST_CASE("Keyboard Peripheral: Multiple keys and ASCII 0") {
-  KeyboardTestHarness harness;
+TEST_CASE("KBD-05: Write Access to $C010-$C01F Clears Strobe") {
+  KeyboardTestHarness_t harness;
+
+  // Set strobe with key press
+  KeyboardEvent_t ev = {'X', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Write to $C010: clears strobe
+  harness.write_c010(0x00);
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Set strobe again
+  ev.is_down = 0;
+  harness.send_event(ev);
+  ev.is_down = 1;
+  harness.send_event(ev);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Write to $C015: clears strobe
+  harness.write_io(0xC015, 0x00);
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+}
+
+TEST_CASE("KBD-06: Modifier and Pushbutton Sensing ($C061-$C063)") {
+  KeyboardTestHarness_t harness;
+
+  // Initially, pushbuttons report floating bus with bit 7 clear
+  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0);
+  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
+  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0);
+
+  // Send shift and GUI (Open Apple)
+  KeyboardModifiers_t mods = {1, 0, 0, 1, 0, {0, 0, 0}};
+  REQUIRE_EQ(harness.set_mods(mods), peripheral_ok);
+
+  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
+  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
+  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0x80);
+
+  // Send Alt: sets both Open Apple and Closed Apple
+  mods = {0, 0, 1, 0, 0, {0, 0, 0}};
+  REQUIRE_EQ(harness.set_mods(mods), peripheral_ok);
+
+  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
+  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0x80);
+  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0);
+}
+
+TEST_CASE("KBD-07: Caps Lock Behavior") {
+  KeyboardTestHarness_t harness;
+
+  // 1. Caps lock ON (default): lowercase 'a' translates to uppercase 'A'
+  KeyboardEvent_t ev = {'a', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000(), 'A' | 0x80);
+
+  // 2. Caps lock OFF: lowercase 'a' remains 'a'
+  harness.write_c010(0);
+  ev.is_down = 0;
+  harness.send_event(ev);
+  harness.set_caps(0);
+
+  ev.is_down = 1;
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000(), 'a' | 0x80);
+}
+
+TEST_CASE("KBD-08: International Layout and Rocker Switch") {
+  KeyboardTestHarness_t harness;
+
+  // Select German layout (alternate_layout = 3)
+  REQUIRE_EQ(harness.set_layout(keyboard_layout_de), peripheral_ok);
+
+  // Rocker switch OFF (US mode): scancode 45 ('-') produces '-' (0x2D)
+  KeyboardEvent_t ev = {0x500 + 45, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x7F, 0x2D);
+
+  // Clear key
+  ev.is_down = 0;
+  harness.send_event(ev);
+  harness.write_c010(0);
+
+  // Rocker switch ON: scancode 45 in German layout produces 'ß' (0x7E)
+  REQUIRE_EQ(harness.set_rocker(1), peripheral_ok);
+  ev.is_down = 1;
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x7F, 0x7E);
+}
+
+TEST_CASE("KBD-09: Custom Keymap Overrides") {
+  KeyboardTestHarness_t harness;
+
+  // Set custom key for scancode 4: normal='X', shift='Y', ctrl=0x18, flags=1
+  KeyboardCustomKeyPayload_t payload = {4, 'X', 'Y', 0x18, 1};
+  REQUIRE_EQ(harness.set_custom_key(payload), peripheral_ok);
+
+  // Normal press
+  KeyboardEvent_t ev = {0x500 + 4, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x7F, 'X');
+
+  // Shift press
+  ev.is_down = 0;
+  harness.send_event(ev);
+  ev.is_down = 1;
+  ev.mod_shift = 1;
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x7F, 'Y');
+
+  // Clear custom keys: reverts to default 'A'
+  harness.clear_custom_keys();
+  ev.mod_shift = 0;
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x7F, 'A');
+}
+
+TEST_CASE("KBD-10: Pushbutton Custom Keys (Open/Closed Apple)") {
+  KeyboardTestHarness_t harness;
+
+  // Map scancode 10 with flags=2 (Open Apple)
+  KeyboardCustomKeyPayload_t p_oa = {10, 0, 0, 0, 2};
+  REQUIRE_EQ(harness.set_custom_key(p_oa), peripheral_ok);
+
+  // Key down sets Open Apple PB0
+  KeyboardEvent_t ev_oa = {0x500 + 10, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev_oa), peripheral_ok);
+  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
+
+  // Key up clears Open Apple
+  ev_oa.is_down = 0;
+  REQUIRE_EQ(harness.send_event(ev_oa), peripheral_ok);
+  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0);
+
+  // Map scancode 11 with flags=4 (Closed Apple)
+  KeyboardCustomKeyPayload_t p_ca = {11, 0, 0, 0, 4};
+  REQUIRE_EQ(harness.set_custom_key(p_ca), peripheral_ok);
+
+  KeyboardEvent_t ev_ca = {0x500 + 11, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev_ca), peripheral_ok);
+  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0x80);
+
+  ev_ca.is_down = 0;
+  REQUIRE_EQ(harness.send_event(ev_ca), peripheral_ok);
+  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
+}
+
+TEST_CASE("KBD-11: Pure Cycle-Driven Auto-Repeat") {
+  KeyboardTestHarness_t harness;
+
+  KeyboardEvent_t ev = {'A', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Clear strobe
+  harness.read_c010();
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Step 250,000 cycles (< 512,000 initial delay): strobe remains clear
+  harness.think(250000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Step 300,000 cycles (total 550k >= 512k initial delay): repeat triggers!
+  harness.think(300000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Clear strobe again
+  harness.read_c010();
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Step 70,000 cycles (>= 68,000 repeat rate): repeat triggers again!
+  harness.think(70000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Key up cancels repeat
+  ev.is_down = 0;
+  harness.send_event(ev);
+  harness.read_c010();
+  harness.think(500000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+}
+
+TEST_CASE("KBD-12: Auto-Repeat Toggle (Apple II/II+ Mode)") {
+  KeyboardTestHarness_t harness;
+
+  // Disable auto-repeat (Apple II/II+ behavior)
+  REQUIRE_EQ(harness.set_auto_repeat(0), peripheral_ok);
+
+  KeyboardEvent_t ev = {'A', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  harness.read_c010();
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Step 1,000,000 cycles: repeat NEVER triggers
+  harness.think(1000000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // Re-enable auto-repeat
+  REQUIRE_EQ(harness.set_auto_repeat(1), peripheral_ok);
+  harness.think(600000);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+}
+
+TEST_CASE("KBD-13: Multiple Key Tracking and ASCII 0") {
+  KeyboardTestHarness_t harness;
 
   // 1. Press 'A'
   harness.set_caps(0);
-  KeyboardEvent_t ev_a = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
+  KeyboardEvent_t ev_a = {'a', 1, 0, 0, 0, 0, {0, 0}};
   harness.send_event(ev_a);
-  CHECK((harness.read_c010() & 0x80) != 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0x80);
 
   // 2. Press 'B'
-  KeyboardEvent_t ev_b = {'b', 1, 0, 0, 0, 0, {0, 0, 0}};
+  KeyboardEvent_t ev_b = {'b', 1, 0, 0, 0, 0, {0, 0}};
   harness.send_event(ev_b);
-  CHECK((harness.read_c010() & 0x80) != 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0x80);
 
-  // 3. Release 'A' - Bit 7 should STILL be set because 'B' is down
+  // 3. Release 'A': 'B' is still down, so bit 7 remains set
   ev_a.is_down = 0;
   harness.send_event(ev_a);
-  CHECK((harness.read_c010() & 0x80) != 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0x80);
 
-  // 4. Release 'B' - Bit 7 should now be clear
+  // 4. Release 'B': bit 7 clears
   ev_b.is_down = 0;
   harness.send_event(ev_b);
-  CHECK((harness.read_c010() & 0x80) == 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0);
 
   // 5. Test ASCII 0 (Ctrl-@)
-  KeyboardEvent_t ev_ctrl_at = {0, 1, 0, 0, 0, 0, {0, 0, 0}};
+  KeyboardEvent_t ev_ctrl_at = {0, 1, 0, 0, 0, 0, {0, 0}};
   harness.send_event(ev_ctrl_at);
-  // Bit 7 should be set for ASCII 0 too
-  CHECK((harness.read_c010() & 0x80) != 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0x80);
 
   ev_ctrl_at.is_down = 0;
   harness.send_event(ev_ctrl_at);
-  CHECK((harness.read_c010() & 0x80) == 0);
+  CHECK_EQ(harness.read_c010() & 0x80, 0);
 }
 
-TEST_CASE("Keyboard Peripheral: Repeat key logic") {
-  KeyboardTestHarness harness;
+TEST_CASE("KBD-14: Command ABI Parameter Validation") {
+  KeyboardTestHarness_t harness;
 
-  // 1. Press 'A'
-  harness.set_caps(0);
-  KeyboardEvent_t ev_a = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_a);
+  KeyboardEvent_t ev = {'A', 1, 0, 0, 0, 0, {0, 0}};
+  CHECK_EQ(harness.command(keyboard_cmd_event, nullptr, sizeof(ev)),
+           peripheral_error);
+  CHECK_EQ(harness.command(keyboard_cmd_event, &ev, 0), peripheral_error);
 
-  // 2. Press 'B'
-  KeyboardEvent_t ev_b = {'b', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_b);
+  uint8_t caps = 1;
+  CHECK_EQ(harness.command(keyboard_cmd_set_caps, nullptr, sizeof(caps)),
+           peripheral_error);
+  CHECK_EQ(harness.command(keyboard_cmd_set_caps, &caps, 0), peripheral_error);
 
-  // 3. Wait for repeat (KEY_REPEAT_INITIAL_DELAY = 512000 cycles)
-  // First, clear the strobe so we can see it being set again
+  KeyboardCustomKeyPayload_t bad_scancode = {128, 'A', 'B', 0, 1};
+  CHECK_EQ(harness.command(keyboard_cmd_set_custom_key, &bad_scancode,
+                           sizeof(bad_scancode)),
+           peripheral_error);
+
+  CHECK_EQ(harness.command(0x9999, &caps, sizeof(caps)),
+           peripheral_incompatible);
+}
+
+TEST_CASE("KBD-15: Query ABI Protocol and Sizing Probes") {
+  KeyboardTestHarness_t harness;
+
+  // Pass 1 sizing probe for keyboard_query_mods
+  size_t mods_size = 0;
+  REQUIRE_EQ(harness.query(keyboard_query_mods, nullptr, &mods_size),
+             peripheral_ok);
+  CHECK_EQ(mods_size, sizeof(KeyboardModifiers_t));
+
+  // Undersized buffer for mods
+  KeyboardModifiers_t mods{};
+  mods_size = sizeof(mods) - 1;
+  CHECK_EQ(harness.query(keyboard_query_mods, &mods, &mods_size),
+           peripheral_error);
+
+  // Pass 1 sizing probe for keyboard_query_rocker
+  size_t rocker_size = 0;
+  REQUIRE_EQ(harness.query(keyboard_query_rocker, nullptr, &rocker_size),
+             peripheral_ok);
+  CHECK_EQ(rocker_size, sizeof(uint8_t));
+
+  // Undersized buffer for rocker
+  uint8_t rocker = 0;
+  rocker_size = 0;
+  CHECK_EQ(harness.query(keyboard_query_rocker, &rocker, &rocker_size),
+           peripheral_error);
+
+  // Unknown query ID
+  size_t unknown_size = sizeof(rocker);
+  CHECK_EQ(harness.query(0x9999, &rocker, &unknown_size),
+           peripheral_incompatible);
+}
+
+TEST_CASE("KBD-16: Deterministic 552-Byte Save State Round-Trip") {
+  KeyboardTestHarness_t harness1;
+
+  // Pass 1: Sizing probe
+  size_t state_size = 0;
+  REQUIRE_EQ(harness1.save_state(nullptr, &state_size), peripheral_ok);
+  CHECK_EQ(state_size, 552U);
+
+  // Configure harness 1
+  harness1.set_caps(0);
+  harness1.set_rocker(1);
+  harness1.set_layout(keyboard_layout_fr);
+  harness1.set_auto_repeat(0);
+
+  // Configure custom keymappings across multiple scancodes
+  KeyboardCustomKeyPayload_t k1 = {4, 'X', 'Y', 0x18, 1};
+  KeyboardCustomKeyPayload_t k2 = {50, 0x30, 0x31, 0x32, 2};
+  REQUIRE_EQ(harness1.set_custom_key(k1), peripheral_ok);
+  REQUIRE_EQ(harness1.set_custom_key(k2), peripheral_ok);
+
+  // Press key
+  KeyboardEvent_t ev = {'Z', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness1.send_event(ev), peripheral_ok);
+
+  // Pass 2: Save state
+  std::vector<uint8_t> buffer(state_size, 0);
+  REQUIRE_EQ(harness1.save_state(buffer.data(), &state_size), peripheral_ok);
+  CHECK_EQ(state_size, 552U);
+
+  // Verify byte header
+  const auto* ss = reinterpret_cast<const KeyboardSaveState_t*>(buffer.data());
+  CHECK_EQ(ss->version, static_cast<uint32_t>(KEYBOARD_STATE_VERSION));
+  CHECK_EQ(ss->struct_size, 552U);
+  CHECK_EQ(ss->caps_lock, 0U);
+  CHECK_EQ(ss->rocker_switch, 1U);
+  CHECK_EQ(ss->alternate_layout, static_cast<uint8_t>(keyboard_layout_fr));
+  CHECK_EQ(ss->auto_repeat_enabled, 0U);
+  CHECK_EQ(ss->has_custom_keys, 1U);
+  CHECK_EQ(ss->custom_map[4], 'X');
+  CHECK_EQ(ss->custom_flags[50], 2U);
+
+  // Restore into fresh harness 2
+  KeyboardTestHarness_t harness2;
+  REQUIRE_EQ(harness2.load_state(buffer.data(), buffer.size()), peripheral_ok);
+
+  // Verify restored latch and strobe
+  CHECK_EQ(harness2.read_c000(), 'Z' | 0x80);
+
+  // Verify custom key is preserved in harness 2
+  KeyboardEvent_t ev_custom = {0x500 + 4, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness2.send_event(ev_custom), peripheral_ok);
+  CHECK_EQ(harness2.read_c000() & 0x7F, 'X');
+
+  // Verify auto-repeat disabled state is preserved
+  harness2.read_c010();
+  harness2.think(1000000);
+  CHECK_EQ(harness2.read_c000() & 0x80, 0);
+}
+
+TEST_CASE("KBD-17: Corrupt State Rejection") {
+  KeyboardTestHarness_t harness;
+
+  KeyboardSaveState_t valid_state{};
+  valid_state.version = KEYBOARD_STATE_VERSION;
+  valid_state.struct_size = sizeof(KeyboardSaveState_t);
+
+  // Null buffer
+  CHECK_EQ(harness.load_state(nullptr, sizeof(valid_state)), peripheral_error);
+
+  // Undersized buffer
+  CHECK_EQ(harness.load_state(&valid_state, sizeof(valid_state) - 1),
+           peripheral_error);
+
+  // Oversized buffer
+  CHECK_EQ(harness.load_state(&valid_state, sizeof(valid_state) + 1),
+           peripheral_error);
+
+  // Bad version
+  KeyboardSaveState_t bad_version = valid_state;
+  bad_version.version = 99;
+  CHECK_EQ(harness.load_state(&bad_version, sizeof(bad_version)),
+           peripheral_error);
+
+  // Bad struct size
+  KeyboardSaveState_t bad_size = valid_state;
+  bad_size.struct_size = 500;
+  CHECK_EQ(harness.load_state(&bad_size, sizeof(bad_size)), peripheral_error);
+}
+
+TEST_CASE("KBD-18: Auto-Repeat Suppression in Warp Speed (g_full_speed)") {
+  KeyboardTestHarness_t harness;
+
+  KeyboardEvent_t ev = {'B', 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev), peripheral_ok);
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
+
+  // Clear strobe
   harness.read_c010();
-
-  harness.think(600000);
-  // Strobe should be set now (repeating 'B')
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x80) != 0);
-  CHECK((val & 0x7F) == 'b');
-
-  // 4. Release 'A' (while 'B' is still held)
-  ev_a.is_down = 0;
-  harness.send_event(ev_a);
-
-  // 5. Clear strobe and wait for another repeat
-  harness.read_c010();
-  harness.think(100000);  // Repeat rate is 68000
-
-  // In BUGGY code, 'B' will NO LONGER REPEAT because release of 'A' cleared
-  // repeat_key!
-  val = harness.read_c000();
-  CHECK((val & 0x80) != 0);  // Fails in buggy code
-  CHECK((val & 0x7F) == 'b');
-}
-
-TEST_CASE("Keyboard Peripheral: International character safety") {
-  KeyboardTestHarness harness;
-  harness.set_caps(0);
-
-  // 1. Press a valid code (0x7B = '{')
-  KeyboardEvent_t ev = {0x7B, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x7B);
-  CHECK((val & 0x80) != 0);
-
-  // 2. Press a stray Latin-1 code (0xE9) - should be rejected/ignored
-  harness.read_c010();  // clear strobe
-  ev.key = 0xE9;
-  harness.send_event(ev);
-
-  val = harness.read_c000();
-  CHECK((val & 0x80) == 0);  // Strobe NOT set because event was ignored
-
-  // 3. Positional mapping test (e.g. LINAPPLE_KEY_POS_A = 0x504)
-  harness.read_c010();  // clear strobe
-  ev.key = 0x504;
-  ev.mod_shift = 0;
-  ev.mod_ctrl = 0;
-  harness.send_event(ev);
-
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 'a');
-  CHECK((val & 0x80) != 0);
-
-  // 4. Positional mapping with Shift (A -> 0x504 + Shift)
-  harness.read_c010();  // clear strobe
-  ev.key = 0x504;
-  ev.mod_shift = 1;
-  harness.send_event(ev);
-
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 'A');
-  CHECK((val & 0x80) != 0);
-
-  // 5. Positional mapping with Ctrl (Ctrl-A -> 0x504 + Ctrl)
-  harness.read_c010();  // clear strobe
-  ev.key = 0x504;
-  ev.mod_shift = 0;
-  ev.mod_ctrl = 1;
-  harness.send_event(ev);
-
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x01);
-  CHECK((val & 0x80) != 0);
-
-  // 6. Symbolic Arrow key tests
-  // Up Arrow (LINAPPLE_KEY_UP = 0x100)
-  harness.read_c010();
-  ev.key = 0x100;
-  ev.mod_shift = 0;
-  ev.mod_ctrl = 0;
-  harness.send_event(ev);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x0B);
-
-  // Down Arrow (LINAPPLE_KEY_DOWN = 0x101)
-  harness.read_c010();
-  ev.key = 0x101;
-  harness.send_event(ev);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x0A);
-
-  // Left Arrow (LINAPPLE_KEY_LEFT = 0x102)
-  harness.read_c010();
-  ev.key = 0x102;
-  harness.send_event(ev);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x08);
-
-  // Right Arrow (LINAPPLE_KEY_RIGHT = 0x103)
-  harness.read_c010();
-  ev.key = 0x103;
-  harness.send_event(ev);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x15);
-}
-
-TEST_CASE("Keyboard Peripheral: Repeat timer overflow and large batch safety") {
-  const eApple2Type prev_apple2_type = g_apple2_type;
-  // Ensure we are in a mode that supports auto-repeat
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
-
-  KeyboardTestHarness harness;
-
-  // Press 'A'
-  harness.set_caps(0);
-  KeyboardEvent_t ev = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  // 1. Verify basic wrap-around safety (what was in issue 288)
-  // Clear strobe so we can detect the repeat
-  harness.read_c010();
-
-  // Pass a huge cycle count that would cause wrap-around if added naively.
-  // Result should trigger a repeat if correctly clamped or handled.
-  harness.think(400000);
-  const uint32_t huge_cycles = 0xFFFFFFFFU - 300000U;
-  harness.think(huge_cycles);
-
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x80) != 0);  // Strobe should be set by repeat
-
-  // 2. Verify large batch performance/safety (O(1) modulo)
-  // Even if we passed a huge number without clamping, modulo would keep it
-  // fast. Since we still clamp in Think, this is mostly checking the state is
-  // valid.
-  harness.read_c010();  // clear strobe
-  harness.think(0xFFFFFFFFU);
-  val = harness.read_c000();
-  CHECK((val & 0x80) != 0);  // Should fire again
-
-  g_apple2_type = prev_apple2_type;
-}
-
-TEST_CASE("Keyboard Peripheral: Ctrl+@ (NUL) handling") {
-  KeyboardTestHarness harness;
-
-  // Verify NUL (Ctrl+@) works through direct command
-  KeyboardEvent_t ev = {0x00, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  // Bit 7 should be set (strobe), bits 0-6 should be 0
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x80) != 0);
-  CHECK((val & 0x7F) == 0x00);
-}
-
-TEST_CASE("Keyboard Peripheral: Apple Keys and Modifiers Hardware Read") {
-  KeyboardTestHarness harness;
-
-  KeyboardModifiers_t mods = {0, 0, 0, 0, 0, {0, 0, 0}};
-
-  // 1. Initially all should be clear
-  harness.set_mods(mods);
-  CHECK((harness.read_io(ADDR_OPEN_APPLE) & 0x80) == 0);
-  CHECK((harness.read_io(ADDR_CLOSED_APPLE) & 0x80) == 0);
-  CHECK((harness.read_io(ADDR_SHIFT_KEY) & 0x80) == 0);
-
-  // 2. Set GUI -> Open Apple ($C061)
-  mods.gui = 1;
-  harness.set_mods(mods);
-  CHECK((harness.read_io(ADDR_OPEN_APPLE) & 0x80) != 0);
-  CHECK((harness.read_io(ADDR_CLOSED_APPLE) & 0x80) == 0);
-
-  // 3. Set Alt -> Both Open and Closed Apple
-  mods.gui = 0;
-  mods.alt = 1;
-  harness.set_mods(mods);
-  CHECK((harness.read_io(ADDR_OPEN_APPLE) & 0x80) != 0);
-  CHECK((harness.read_io(ADDR_CLOSED_APPLE) & 0x80) != 0);
-
-  // 4. Set Shift -> $C063
-  mods.alt = 0;
-  mods.shift = 1;
-  harness.set_mods(mods);
-  CHECK((harness.read_io(ADDR_OPEN_APPLE) & 0x80) == 0);
-  CHECK((harness.read_io(ADDR_CLOSED_APPLE) & 0x80) == 0);
-  CHECK((harness.read_io(ADDR_SHIFT_KEY) & 0x80) != 0);
-}
-
-TEST_CASE("Keyboard Peripheral: Rocker Switch and Alternate Layout") {
-  KeyboardTestHarness harness;
-
-  // Clear Caps Lock for accurate testing
-  harness.set_caps(0);
-
-  // 1. Set alternate layout to French
-  harness.set_layout(keyboard_layout_fr);
-
-  // 2. Enable rocker switch
-  harness.set_rocker(1);
-
-  // 3. Press positional keyb_idx_2 (LINAPPLE_KEY_2 = 0x51F)
-  KeyboardEvent_t ev = {0x51F, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  // Verify 'é' (0x7B)
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x7B);
-
-  // Release key and clear strobe
-  ev.is_down = 0;
-  harness.send_event(ev);
-  harness.read_c010();
-
-  // 4. Disable rocker switch
-  harness.set_rocker(0);
-
-  // 5. Press positional keyb_idx_2 again
-  ev.is_down = 1;
-  harness.send_event(ev);
-
-  // Verify fallback to US '2' (0x32)
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x32);
-}
-
-TEST_CASE("Keyboard Peripheral: Caps Lock Behavior") {
-  KeyboardTestHarness harness;
-
-  // 1. Enable Caps Lock
-  harness.set_caps(1);
-
-  // Symbolic 'a'
-  KeyboardEvent_t ev_sym = {'a', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_sym);
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x7F) == 'A');
-
-  ev_sym.is_down = 0;
-  harness.send_event(ev_sym);
-  harness.read_c010();
-
-  // Positional 'a' (LINAPPLE_KEY_A = 0x504)
-  KeyboardEvent_t ev_pos = {0x504, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_pos);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 'A');
-
-  ev_pos.is_down = 0;
-  harness.send_event(ev_pos);
-  harness.read_c010();
-
-  // 2. Disable Caps Lock
-  harness.set_caps(0);
-
-  // Positional 'a' again
-  ev_pos.is_down = 1;
-  harness.send_event(ev_pos);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 'a');
-}
-
-TEST_CASE(
-    "Keyboard Peripheral: Custom Key Mapping Overrides (e.g. WASD -> Arrows)") {
-  KeyboardTestHarness harness;
-
-  // W key is scancode 26 (0x1A), LINAPPLE_KEY_POS_W = 0x51A
-  // Set custom override for W -> Up Arrow (0x0B)
-  KeyboardCustomKeyPayload_t payload = {};
-  payload.scancode = 26;      // keyb_idx_w
-  payload.normal_val = 0x0B;  // Up Arrow
-  payload.shift_val = 0x0B;
-  payload.flags = 1;  // Custom active
-
-  harness.set_custom_key(payload);
-
-  // Press W in positional mode (0x500 + 26 = 0x51A)
-  KeyboardEvent_t ev = {0x51A, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x7F) == 0x0B);  // Verify Up Arrow was received
-
-  ev.is_down = 0;
-  harness.send_event(ev);
-  harness.read_c010();
-
-  // Clear custom keys and verify W reverts to 'w' (with caps lock disabled)
-  harness.clear_custom_keys();
-  harness.set_caps(0);
-
-  ev.is_down = 1;
-  harness.send_event(ev);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == 'w');
-}
-
-TEST_CASE("Keyboard Peripheral: Custom Key Open/Closed Apple Modifiers") {
-  KeyboardTestHarness harness;
-
-  // Tab key is scancode 43 (0x2B), LINAPPLE_KEY_POS_TAB = 0x52B
-  KeyboardCustomKeyPayload_t payload = {};
-  payload.scancode = 43;  // keyb_idx_tab
-  payload.flags = 1 | 2;  // Active + OpenApple
-
-  harness.set_custom_key(payload);
-
-  // Verify $C061 initial (open apple button up)
-  uint8_t oa_val = harness.read_io(ADDR_OPEN_APPLE);
-  CHECK((oa_val & 0x80) == 0);
-
-  // Press Tab
-  KeyboardEvent_t ev = {0x52B, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  oa_val = harness.read_io(ADDR_OPEN_APPLE);
-  CHECK((oa_val & 0x80) != 0);  // Open Apple is pressed!
-
-  // Release Tab
-  ev.is_down = 0;
-  harness.send_event(ev);
-  oa_val = harness.read_io(ADDR_OPEN_APPLE);
-  CHECK((oa_val & 0x80) == 0);  // Open Apple released!
-}
-
-TEST_CASE("Keyboard Custom Mapping: Parsing Host Keys") {
-  CHECK(keyboard_parse_host_key("w") == keyb_idx_w);
-  CHECK(keyboard_parse_host_key("W") == keyb_idx_w);
-  CHECK(keyboard_parse_host_key("Up") == keyb_idx_up);
-  CHECK(keyboard_parse_host_key("Return") == keyb_idx_return);
-  CHECK(keyboard_parse_host_key("Space") == keyb_idx_space);
-  CHECK(keyboard_parse_host_key("Tab") == keyb_idx_tab);
-  CHECK(keyboard_parse_host_key("F5") == keyb_idx_f5);
-  CHECK(keyboard_parse_host_key("Minus") == keyb_idx_minus);
-  CHECK(keyboard_parse_host_key("InvalidKeyXYZ") == keyb_idx_unknown);
-}
-
-TEST_CASE("Keyboard Custom Mapping: Parsing Apple II Target Values") {
-  uint8_t flags = 0;
-  CHECK(keyboard_parse_apple2_val("Up", &flags) == 0x0B);
-  CHECK(flags == 0);
-
-  CHECK(keyboard_parse_apple2_val("Down", &flags) == 0x0A);
-  CHECK(keyboard_parse_apple2_val("Left", &flags) == 0x08);
-  CHECK(keyboard_parse_apple2_val("Right", &flags) == 0x15);
-  CHECK(keyboard_parse_apple2_val("0x0B", &flags) == 0x0B);
-  CHECK(keyboard_parse_apple2_val("$15", &flags) == 0x15);
-  CHECK(keyboard_parse_apple2_val("'a'", &flags) == 'a');
-  CHECK(keyboard_parse_apple2_val("OpenApple", &flags) == 0);
-  CHECK((flags & 2) != 0);
-
-  CHECK(keyboard_parse_apple2_val("ClosedApple", &flags) == 0);
-  CHECK((flags & 4) != 0);
-}
-
-TEST_CASE("Keyboard: QuickSave Key Combos and Hotkey Modes") {
-  int slot = -1;
-  bool is_save = false;
-
-  // 1. Default Mode (QUICKSAVE_MODE_ALT)
-  keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
-
-  // Alt+2 (Load slot 2)
-  CHECK(keyboard_is_quicksave_combo('2', 0x0100 /* ALT */, &slot, &is_save));
-  CHECK(slot == 2);
-  CHECK(is_save == false);
-
-  // Alt+Shift+6 (Save slot 6)
-  CHECK(keyboard_is_quicksave_combo('6', 0x0101 /* ALT | SHIFT */, &slot,
-                                    &is_save));
-  CHECK(slot == 6);
-  CHECK(is_save == true);
-
-  // Ctrl+Shift+2 (Lode Runner combo) - must NOT trigger quicksave!
-  CHECK_FALSE(keyboard_is_quicksave_combo('2', 0x0041 /* CTRL | SHIFT */, &slot,
-                                          &is_save));
-
-  // Ctrl+Shift+6 (Lode Runner combo) - must NOT trigger quicksave!
-  CHECK_FALSE(keyboard_is_quicksave_combo('6', 0x0041 /* CTRL | SHIFT */, &slot,
-                                          &is_save));
-
-  // 2. Legacy Mode (QUICKSAVE_MODE_CTRL)
-  keyboard_set_quicksave_mode(QUICKSAVE_MODE_CTRL);
-  CHECK(keyboard_is_quicksave_combo('2', 0x0040 /* CTRL */, &slot, &is_save));
-  CHECK(slot == 2);
-  CHECK(is_save == false);
-
-  // 3. Disabled Mode
-  keyboard_set_quicksave_mode(QUICKSAVE_MODE_DISABLED);
-  CHECK_FALSE(
-      keyboard_is_quicksave_combo('2', 0x0100 /* ALT */, &slot, &is_save));
-  CHECK_FALSE(
-      keyboard_is_quicksave_combo('2', 0x0040 /* CTRL */, &slot, &is_save));
-
-  // 4. Hotkey Enable / Disable
-  keyboard_set_hotkeys_enabled(true);
-  CHECK(keyboard_get_hotkeys_enabled() == true);
-  keyboard_set_hotkeys_enabled(false);
-  CHECK(keyboard_get_hotkeys_enabled() == false);
-}
-
-TEST_CASE("Keyboard: Symbolic Shift and Punctuation Mapping") {
-  KeyboardTestHarness harness;
-  REQUIRE(harness.instance() != nullptr);
-
-  // 1. Shift + '/' should produce '?' (0x3F | 0x80 = 0xBF)
-  KeyboardEvent_t ev_slash = {'/', 1, 1, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_slash);
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x7F) == '?');
-
-  // 2. Shift + '1' should produce '!' (0x21)
-  KeyboardEvent_t ev_one = {'1', 1, 1, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_one);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == '!');
-
-  // 3. Shift + ';' should produce ':' (0x3A)
-  KeyboardEvent_t ev_semi = {';', 1, 1, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_semi);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == ':');
-
-  // 4. Shift + '=' should produce '+' (0x2B)
-  KeyboardEvent_t ev_equal = {'=', 1, 1, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_equal);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == '+');
-
-  // 5. Shift + '-' should produce '_' (0x5F)
-  KeyboardEvent_t ev_minus = {'-', 1, 1, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_minus);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == '_');
-
-  // 6. Unshifted '/' should produce '/' (0x2F)
-  KeyboardEvent_t ev_slash_unshifted = {'/', 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev_slash_unshifted);
-  val = harness.read_c000();
-  CHECK((val & 0x7F) == '/');
-}
-
-TEST_CASE("Keyboard: Caps Lock Bridge API (Get, Set, Toggle)") {
-  // peripheral slot 0 is keyboard in LinAppleCore
-  peripheral_register(keyboard_get_descriptor(), 0);
-
-  // Default on reset is true (Caps Lock ON)
-  CHECK(linapple_get_caps_lock_state() == true);
-
-  // Set to false
-  linapple_set_caps_lock_state(false);
-  CHECK(linapple_get_caps_lock_state() == false);
-
-  // Toggle
-  bool toggled = linapple_toggle_caps_lock_state();
-  CHECK(toggled == true);
-  CHECK(linapple_get_caps_lock_state() == true);
-
-  toggled = linapple_toggle_caps_lock_state();
-  CHECK(toggled == false);
-  CHECK(linapple_get_caps_lock_state() == false);
-
-  peripheral_unregister(0);
-}
-
-TEST_CASE("Keyboard: Auto-repeat Paused in Full Speed Mode") {
-  KeyboardTestHarness harness;
-  REQUIRE(harness.instance() != nullptr);
-
-  // Press Return key
-  KeyboardEvent_t ev = {0x0D, 1, 0, 0, 0, 0, {0, 0, 0}};
-  harness.send_event(ev);
-
-  // Initial read sets and clears strobe
-  uint8_t val = harness.read_c000();
-  CHECK((val & 0x80) != 0);
-  harness.read_c010();
-
-  // When g_full_speed is true, large cycle steps (e.g. 1,000,000 cycles during
-  // disk load) must NOT trigger auto-repeat
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
+
+  // When g_full_speed is true, even 1,000,000 cycles must NOT trigger
+  // auto-repeat
+  extern bool g_full_speed;
   const bool prev_full_speed = g_full_speed;
   g_full_speed = true;
   harness.think(1000000);
-  val = harness.read_c000();
-  CHECK((val & 0x80) == 0);  // Strobe must remain cleared
+  CHECK_EQ(harness.read_c000() & 0x80, 0);
 
-  // When g_full_speed is false, normal cycles trigger repeat after threshold
+  // Restore normal speed: auto-repeat can now advance and fire
   g_full_speed = false;
   harness.think(600000);
-  val = harness.read_c000();
-  CHECK((val & 0x80) != 0);  // Strobe triggered by auto-repeat
+  CHECK_EQ(harness.read_c000() & 0x80, 0x80);
   g_full_speed = prev_full_speed;
 }

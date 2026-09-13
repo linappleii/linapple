@@ -7,6 +7,7 @@
 #include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/chips/SSI263.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
@@ -70,24 +71,6 @@ struct SsIoJoystick_t {
   uint64_t joy_cntr_reset_cycle;
 };
 using SS_IO_Joystick = SsIoJoystick_t;
-
-struct KeyboardSaveState_t {
-  uint8_t current_latch = 0;
-  uint8_t strobe = 0;
-  uint8_t rocker_switch = 0;
-  uint8_t shift_key = 0;
-  uint8_t ctrl_key = 0;
-  uint8_t open_apple = 0;
-  uint8_t closed_apple = 0;
-  uint8_t caps_lock = 1;
-  uint32_t keys_down_count = 0;
-  uint8_t alternate_layout = 0;
-
-  uint32_t repeat_key = NO_REPEAT_KEY;
-  uint32_t repeat_scancode = 0;
-  uint32_t repeat_delay_cycles = 0;
-  uint8_t repeating = 0;
-};
 
 struct SsIoVideo_t {
   uint8_t alt_char_set;

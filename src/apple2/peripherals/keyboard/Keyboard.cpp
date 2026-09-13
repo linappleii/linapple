@@ -9,49 +9,48 @@
 #include <memory>
 #include <new>
 
-#include "apple2/Apple2Types.h"
-#include "apple2/Memory.h"
-#include "apple2/SnapshotTypes.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 
-// Justification: This file implements the C99-compatible Peripheral ABI. It
-// requires void* pointers for instance state, raw memory management, and
-// instance state to bridge with the core C interface.
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index)
+#ifndef VERSIONSTRING
+#define VERSIONSTRING "2.0.0"
+#endif
+
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+extern bool g_full_speed;
+
+namespace {
+
+static_assert(sizeof(KeyboardSaveState_t) == 552,
+              "KeyboardSaveState_t must be exactly 552 bytes");
 
 namespace kb {
-static constexpr uint8_t key_strobe_bit = 0x80;
-static constexpr uint8_t key_code_mask = 0x7F;
+constexpr uint8_t key_strobe_bit = 0x80;
+constexpr uint8_t key_code_mask = 0x7F;
 
 // Standard Apple II repeat circuit delays (~0.5s initial, ~0.06s repeat)
-static constexpr uint32_t key_repeat_initial_delay = 512000;
-static constexpr uint32_t key_repeat_rate = 68000;
+constexpr uint32_t key_repeat_initial_delay = 512000;
+constexpr uint32_t key_repeat_rate = 68000;
 
-static constexpr int8_t default_slot_internal = 0;
+constexpr int8_t default_slot_internal = 0;
 
-static constexpr uint16_t addr_keyboard_data_lo = 0xC000;
-static constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
-static constexpr uint16_t addr_keyboard_strobe = 0xC010;
-static constexpr uint16_t addr_keyboard_strobe_hi = 0xC01F;
-static constexpr uint16_t addr_open_apple = 0xC061;
-static constexpr uint16_t addr_closed_apple = 0xC062;
-static constexpr uint16_t addr_shift_key = 0xC063;
+constexpr uint16_t addr_keyboard_data_lo = 0xC000;
+constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
+constexpr uint16_t addr_keyboard_strobe = 0xC010;
+constexpr uint16_t addr_keyboard_strobe_hi = 0xC01F;
+constexpr uint16_t addr_open_apple = 0xC061;
+constexpr uint16_t addr_closed_apple = 0xC062;
+constexpr uint16_t addr_shift_key = 0xC063;
 
-static constexpr uint8_t key_up = 0x0B;
-static constexpr uint8_t key_down = 0x0A;
-static constexpr uint8_t key_left = 0x08;
-static constexpr uint8_t key_right = 0x15;
-static constexpr uint8_t key_return = 0x0D;
-static constexpr uint8_t key_escape = 0x1B;
-static constexpr uint8_t key_backspace = 0x08;
-static constexpr uint8_t key_tab = 0x09;
-static constexpr uint8_t key_space = 0x20;
-static constexpr uint8_t key_delete = 0x7F;
+constexpr uint8_t key_up = 0x0B;
+constexpr uint8_t key_down = 0x0A;
+constexpr uint8_t key_left = 0x08;
+constexpr uint8_t key_right = 0x15;
+constexpr uint8_t key_delete = 0x7F;
 
-static constexpr uint32_t positional_threshold = 0x500;
+constexpr uint32_t positional_threshold = 0x500;
 }  // namespace kb
 
 struct KeyboardHardware_t {
@@ -62,6 +61,7 @@ struct KeyboardHardware_t {
   uint32_t keys_down_count = 0;  // Physical counter for Bit 7 of $C010
   bool caps_lock = true;
   uint8_t alternate_layout = 0;
+  bool auto_repeat_enabled = true;
 
   // --- Modifiers ---
   bool shift_key = false;
@@ -77,10 +77,10 @@ struct KeyboardHardware_t {
 
   // --- Custom Map Overrides ---
   bool has_custom_keys = false;
-  uint8_t custom_map[keyb_map_size]{};
-  uint8_t custom_shift_map[keyb_map_size]{};
-  uint8_t custom_ctrl_map[keyb_map_size]{};
-  uint8_t custom_flags[keyb_map_size]{};
+  uint8_t custom_map[KEYBOARD_MAP_SIZE]{};
+  uint8_t custom_shift_map[KEYBOARD_MAP_SIZE]{};
+  uint8_t custom_ctrl_map[KEYBOARD_MAP_SIZE]{};
+  uint8_t custom_flags[KEYBOARD_MAP_SIZE]{};
 };
 
 struct KeyboardPeripheral_t {
@@ -89,22 +89,17 @@ struct KeyboardPeripheral_t {
   int slot = 0;
 };
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-// Justification: Functions are part of the Peripheral ABI or internal
-// helpers that mimic it, where parameter order is fixed or follows convention.
-
-static auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
-                                  uint8_t write, uint8_t val,
-                                  uint32_t cycles_left) -> uint8_t {
+auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
+                           uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
   (void)val;
-  (void)cycles_left;
 
   namespace kp_const = kb;
 
-  if (!instance) {
+  if (instance == nullptr) {
     return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -117,9 +112,9 @@ static auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   return data;
 }
 
-static auto keyboard_io_strobe_action(void* instance, uint16_t pc,
-                                      uint16_t addr, uint8_t write, uint8_t val,
-                                      uint32_t cycles_left) -> uint8_t {
+auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
+                               uint8_t write, uint8_t val, uint32_t cycles_left)
+    -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
@@ -128,7 +123,7 @@ static auto keyboard_io_strobe_action(void* instance, uint16_t pc,
 
   namespace kp_const = kb;
 
-  if (!instance) {
+  if (instance == nullptr) {
     return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -144,18 +139,16 @@ static auto keyboard_io_strobe_action(void* instance, uint16_t pc,
   return data;
 }
 
-static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc,
-                                        uint16_t addr, uint8_t write,
-                                        uint8_t val, uint32_t cycles_left)
-    -> uint8_t {
+auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
+                                 uint8_t write, uint8_t val,
+                                 uint32_t cycles_left) -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
-  (void)cycles_left;
 
   namespace kp_const = kb;
 
-  if (!instance) {
+  if (instance == nullptr) {
     return mem_read_floating_bus(cycles_left);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -182,7 +175,10 @@ static auto keyboard_io_read_apple_keys(void* instance, uint16_t pc,
   return bus;
 }
 
-static auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
+auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
+  if (host == nullptr || host->RegisterDirectIO == nullptr) {
+    return nullptr;
+  }
   namespace kp_const = kb;
 
   std::unique_ptr<KeyboardPeripheral_t> kp_ptr(new (std::nothrow)
@@ -194,8 +190,9 @@ static auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   kp->host = host;
   kp->slot = slot;
   kp->logic.caps_lock = true;
+  kp->logic.auto_repeat_enabled = true;
 
-  if (host && host->RegisterDirectIO) {
+  if (host != nullptr && host->RegisterDirectIO != nullptr) {
     for (uint32_t addr = kp_const::addr_keyboard_data_lo;
          addr <= kp_const::addr_keyboard_data_hi; ++addr) {
       host->RegisterDirectIO(kp, static_cast<uint16_t>(addr),
@@ -223,8 +220,8 @@ static auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   return kp_ptr.release();
 }
 
-static auto keyboard_abi_reset(void* instance) -> void {
-  if (!instance) {
+auto keyboard_abi_reset(void* instance) -> void {
+  if (instance == nullptr) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -241,22 +238,20 @@ static auto keyboard_abi_reset(void* instance) -> void {
   kp->logic.closed_apple = false;
 }
 
-static auto keyboard_abi_shutdown(void* instance) -> void {
-  if (!instance) {
+auto keyboard_abi_shutdown(void* instance) -> void {
+  if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<KeyboardPeripheral_t> kp(
-      static_cast<KeyboardPeripheral_t*>(instance));
+  delete static_cast<KeyboardPeripheral_t*>(instance);
 }
 
-static auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
-  if (!instance || g_full_speed) {
+auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
+  if (instance == nullptr || g_full_speed) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
-  // Original Apple II/II+ hardware required a physical REPT key for repeats.
-  if (IS_APPLE2()) {
+  if (!kp->logic.auto_repeat_enabled) {
     return;
   }
 
@@ -279,7 +274,7 @@ static auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
   }
 }
 
-static auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
+auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
   namespace kp_const = kb;
 
   // Offset extended keys to fit in a small lookup table
@@ -307,12 +302,12 @@ static auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
   return 0xFFFFFFFF;
 }
 
-static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
-                                    bool shift, bool ctrl) -> uint32_t {
+auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key, bool shift,
+                             bool ctrl) -> uint32_t {
   namespace kp_const = kb;
 
   const int idx = static_cast<int>(key - kp_const::positional_threshold);
-  if (idx < 0 || idx >= keyb_map_size) {
+  if (idx < 0 || idx >= KEYBOARD_MAP_SIZE) {
     return 0xFFFFFFFF;
   }
 
@@ -361,8 +356,6 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
     base = base - 'a' + 'A';
   }
 
-  // Then apply ctrl modifier (standard Apple II keyboard behavior is
-  // bit-masking)
   if (ctrl) {
     if (ctrl_val != 0) {
       return ctrl_val;
@@ -373,8 +366,8 @@ static auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key,
   return base;
 }
 
-static auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
-                                          bool caps_lock) -> uint32_t {
+auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
+                                   bool caps_lock) -> uint32_t {
   if (shift) {
     switch (key) {
       case '1':
@@ -442,10 +435,9 @@ static auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
   return key;
 }
 
-static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
-                                 const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (!instance || (size > 0 && !data)) {
+auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
+                          size_t size) -> PeripheralStatus_t {
+  if (instance == nullptr || (size > 0 && data == nullptr)) {
     return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
@@ -471,7 +463,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
             ev->key >= kp_const::positional_threshold) {
           const int idx =
               static_cast<int>(ev->key - kp_const::positional_threshold);
-          if (idx >= 0 && idx < keyb_map_size) {
+          if (idx >= 0 && idx < KEYBOARD_MAP_SIZE) {
             if ((kp->logic.custom_flags[idx] & 2) != 0) {
               kp->logic.open_apple = false;
             }
@@ -487,7 +479,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
           ev->key >= kp_const::positional_threshold) {
         const int idx =
             static_cast<int>(ev->key - kp_const::positional_threshold);
-        if (idx >= 0 && idx < keyb_map_size) {
+        if (idx >= 0 && idx < KEYBOARD_MAP_SIZE) {
           if ((kp->logic.custom_flags[idx] & 2) != 0) {
             kp->logic.open_apple = true;
             return peripheral_ok;
@@ -565,7 +557,7 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
       }
       const auto* payload =
           static_cast<const KeyboardCustomKeyPayload_t*>(data);
-      if (payload->scancode >= keyb_map_size) {
+      if (payload->scancode >= KEYBOARD_MAP_SIZE) {
         return peripheral_error;
       }
       kp->logic.custom_map[payload->scancode] = payload->normal_val;
@@ -577,10 +569,19 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
     }
     case keyboard_cmd_clear_custom_keys: {
       kp->logic.has_custom_keys = false;
-      memset(kp->logic.custom_map, 0, sizeof(kp->logic.custom_map));
-      memset(kp->logic.custom_shift_map, 0, sizeof(kp->logic.custom_shift_map));
-      memset(kp->logic.custom_ctrl_map, 0, sizeof(kp->logic.custom_ctrl_map));
-      memset(kp->logic.custom_flags, 0, sizeof(kp->logic.custom_flags));
+      std::memset(kp->logic.custom_map, 0, sizeof(kp->logic.custom_map));
+      std::memset(kp->logic.custom_shift_map, 0,
+                  sizeof(kp->logic.custom_shift_map));
+      std::memset(kp->logic.custom_ctrl_map, 0,
+                  sizeof(kp->logic.custom_ctrl_map));
+      std::memset(kp->logic.custom_flags, 0, sizeof(kp->logic.custom_flags));
+      return peripheral_ok;
+    }
+    case keyboard_cmd_set_auto_repeat: {
+      if (size < sizeof(uint8_t)) {
+        return peripheral_error;
+      }
+      kp->logic.auto_repeat_enabled = (*static_cast<const uint8_t*>(data) != 0);
       return peripheral_ok;
     }
     default:
@@ -588,58 +589,75 @@ static auto keyboard_abi_command(void* instance, uint32_t cmd_id,
   }
 }
 
-static auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
+auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus_t {
-  if (!size) {
+  if (size == nullptr) {
     return peripheral_error;
   }
 
   const size_t required = sizeof(KeyboardSaveState_t);
 
-  if (!buffer) {
+  if (buffer == nullptr) {
     *size = required;
     return peripheral_ok;
   }
 
-  if (*size < required) {
+  if (instance == nullptr || *size < required) {
     *size = required;
-    return peripheral_error;
-  }
-
-  if (!instance) {
     return peripheral_error;
   }
 
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   auto* ss = static_cast<KeyboardSaveState_t*>(buffer);
+  std::memset(ss, 0, sizeof(KeyboardSaveState_t));
 
-  *ss = KeyboardSaveState_t{};
-  ss->current_latch = kp->logic.current_latch;
-  ss->strobe = kp->logic.strobe ? 1 : 0;
-  ss->rocker_switch = kp->logic.rocker_switch ? 1 : 0;
-  ss->shift_key = kp->logic.shift_key ? 1 : 0;
-  ss->ctrl_key = kp->logic.ctrl_key ? 1 : 0;
-  ss->open_apple = kp->logic.open_apple ? 1 : 0;
-  ss->closed_apple = kp->logic.closed_apple ? 1 : 0;
-  ss->caps_lock = kp->logic.caps_lock ? 1 : 0;
+  ss->version = KEYBOARD_STATE_VERSION;
+  ss->struct_size = static_cast<uint32_t>(sizeof(KeyboardSaveState_t));
   ss->keys_down_count = kp->logic.keys_down_count;
-  ss->alternate_layout = kp->logic.alternate_layout;
   ss->repeat_key = kp->logic.repeat_key;
   ss->repeat_scancode = kp->logic.repeat_scancode;
   ss->repeat_delay_cycles = kp->logic.repeat_delay_cycles;
-  ss->repeating = kp->logic.repeating ? 1 : 0;
+  ss->current_latch = kp->logic.current_latch;
+  ss->strobe = kp->logic.strobe ? 1U : 0U;
+  ss->rocker_switch = kp->logic.rocker_switch ? 1U : 0U;
+  ss->shift_key = kp->logic.shift_key ? 1U : 0U;
+  ss->ctrl_key = kp->logic.ctrl_key ? 1U : 0U;
+  ss->open_apple = kp->logic.open_apple ? 1U : 0U;
+  ss->closed_apple = kp->logic.closed_apple ? 1U : 0U;
+  ss->caps_lock = kp->logic.caps_lock ? 1U : 0U;
+  ss->alternate_layout = kp->logic.alternate_layout;
+  ss->repeating = kp->logic.repeating ? 1U : 0U;
+  ss->has_custom_keys = kp->logic.has_custom_keys ? 1U : 0U;
+  ss->auto_repeat_enabled = kp->logic.auto_repeat_enabled ? 1U : 0U;
+
+  std::memcpy(ss->custom_map, kp->logic.custom_map, KEYBOARD_MAP_SIZE);
+  std::memcpy(ss->custom_shift_map, kp->logic.custom_shift_map,
+              KEYBOARD_MAP_SIZE);
+  std::memcpy(ss->custom_ctrl_map, kp->logic.custom_ctrl_map,
+              KEYBOARD_MAP_SIZE);
+  std::memcpy(ss->custom_flags, kp->logic.custom_flags, KEYBOARD_MAP_SIZE);
 
   *size = required;
   return peripheral_ok;
 }
 
-static auto keyboard_abi_load_state(void* instance, const void* buffer,
-                                    size_t size) -> PeripheralStatus_t {
-  if (!buffer || size < sizeof(KeyboardSaveState_t) || !instance) {
+auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus_t {
+  if (instance == nullptr || buffer == nullptr ||
+      size != sizeof(KeyboardSaveState_t)) {
     return peripheral_error;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   const auto* ss = static_cast<const KeyboardSaveState_t*>(buffer);
+  if (ss->version != KEYBOARD_STATE_VERSION ||
+      ss->struct_size != sizeof(KeyboardSaveState_t)) {
+    return peripheral_error;
+  }
+
+  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  kp->logic.keys_down_count = ss->keys_down_count;
+  kp->logic.repeat_key = ss->repeat_key;
+  kp->logic.repeat_scancode = ss->repeat_scancode;
+  kp->logic.repeat_delay_cycles = ss->repeat_delay_cycles;
   kp->logic.current_latch = ss->current_latch;
   kp->logic.strobe = (ss->strobe != 0);
   kp->logic.rocker_switch = (ss->rocker_switch != 0);
@@ -648,24 +666,30 @@ static auto keyboard_abi_load_state(void* instance, const void* buffer,
   kp->logic.open_apple = (ss->open_apple != 0);
   kp->logic.closed_apple = (ss->closed_apple != 0);
   kp->logic.caps_lock = (ss->caps_lock != 0);
-  kp->logic.keys_down_count = ss->keys_down_count;
   kp->logic.alternate_layout = ss->alternate_layout;
-  kp->logic.repeat_key = ss->repeat_key;
-  kp->logic.repeat_scancode = ss->repeat_scancode;
-  kp->logic.repeat_delay_cycles = ss->repeat_delay_cycles;
   kp->logic.repeating = (ss->repeating != 0);
+  kp->logic.has_custom_keys = (ss->has_custom_keys != 0);
+  kp->logic.auto_repeat_enabled = (ss->auto_repeat_enabled != 0);
+
+  std::memcpy(kp->logic.custom_map, ss->custom_map, KEYBOARD_MAP_SIZE);
+  std::memcpy(kp->logic.custom_shift_map, ss->custom_shift_map,
+              KEYBOARD_MAP_SIZE);
+  std::memcpy(kp->logic.custom_ctrl_map, ss->custom_ctrl_map,
+              KEYBOARD_MAP_SIZE);
+  std::memcpy(kp->logic.custom_flags, ss->custom_flags, KEYBOARD_MAP_SIZE);
+
   return peripheral_ok;
 }
 
-static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
-                               size_t* out_size) -> PeripheralStatus_t {
-  if (!instance || !out_size) {
+auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
+                        size_t* out_size) -> PeripheralStatus_t {
+  if (instance == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   switch (static_cast<KeyboardQuery_t>(cmd_id)) {
     case keyboard_query_mods: {
-      if (!out) {
+      if (out == nullptr) {
         *out_size = sizeof(KeyboardModifiers_t);
         return peripheral_ok;
       }
@@ -682,7 +706,7 @@ static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
       return peripheral_ok;
     }
     case keyboard_query_rocker: {
-      if (!out) {
+      if (out == nullptr) {
         *out_size = sizeof(uint8_t);
         return peripheral_ok;
       }
@@ -697,7 +721,6 @@ static auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
       return peripheral_incompatible;
   }
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static Peripheral_t g_keyboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
@@ -718,9 +741,10 @@ static Peripheral_t g_keyboard_peripheral = {
     .command = keyboard_abi_command,
     .query = keyboard_abi_query};
 
+}  // namespace
+
 extern "C" auto keyboard_get_descriptor() -> Peripheral_t* {
   return &g_keyboard_peripheral;
 }
 
 PERIPHERAL_REGISTER(g_keyboard_peripheral)
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-constant-array-index)
