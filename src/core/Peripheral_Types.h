@@ -40,6 +40,7 @@ enum IrqSrc_t {
 // IWYU pragma: begin_exports
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 // IWYU pragma: end_exports
 
 #ifdef __cplusplus

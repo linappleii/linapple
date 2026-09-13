@@ -1,11 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module implements low-level
-// hardware emulation using procedural C-style patterns for performance and ABI
-// compatibility. Pointer arithmetic and C-style arrays are required for ROM
-// data manipulation and hardware state representation. swappable-parameters is
-// mandated by the project-wide Peripheral ABI signatures.
-
 #include "apple2/peripherals/mouse/Mouse.h"
 
 #include <algorithm>
@@ -15,11 +7,12 @@
 #include <memory>
 
 #include "EmbeddedRoms.h"
-#include "apple2/Memory.h"
 #include "apple2/chips/6821.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
+
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
@@ -127,53 +120,7 @@ static auto mouse_set_position_internal(MousePeripheral_t* mp, int x, int y)
 static auto mouse_clamp_x(MousePeripheral_t* mp, int min_x, int max_x) -> void;
 static auto mouse_clamp_y(MousePeripheral_t* mp, int min_y, int max_y) -> void;
 
-// --- State Persistence ---
-
-struct MouseSaveState_t {
-  // --- 32-bit types (4-byte alignment) ---
-  uint32_t internal_x;
-  uint32_t internal_y;
-  uint32_t min_x;
-  uint32_t max_x;
-  uint32_t min_y;
-  uint32_t max_y;
-  uint32_t range_x;
-  uint32_t range_y;
-  int32_t pos_x;
-  int32_t pos_y;
-  int32_t buffer_pos;
-  int32_t data_len;
-
-  // --- 8-bit types (1-byte alignment) ---
-  uint8_t pia_ora;
-  uint8_t pia_orb;
-  uint8_t pia_ddra;
-  uint8_t pia_ddrb;
-  uint8_t pia_cra;
-  uint8_t pia_crb;
-  uint8_t pia_port_a_in;
-  uint8_t pia_port_b_in;
-  uint8_t pia_ca1_in;
-  uint8_t pia_ca2_in;
-  uint8_t pia_cb1_in;
-  uint8_t pia_cb2_in;
-  uint8_t pia_oca2;
-  uint8_t pia_ocb2;
-  uint8_t pia_irqa;
-  uint8_t pia_irqb;
-  uint8_t pia_port_a_shadow;
-  uint8_t pia_port_b_shadow;
-  uint8_t mode;
-  uint8_t vblank_rising;
-  uint8_t status_state;
-  uint8_t btn0_prev;
-  uint8_t btn1_prev;
-  uint8_t buttons[2];
-  uint8_t buffer[8];
-
-  // --- Explicit Padding (maintain 4-byte boundary) ---
-  uint8_t padding[3];
-};
+static_assert(sizeof(MouseSaveState_t) == 92, "MouseSaveState_t size mismatch");
 
 // --- Helper Functions ---
 
@@ -650,10 +597,6 @@ static auto mouse_abi_on_vblank(void* instance, bool vblank) -> void {
 
 static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus_t {
-  if (instance == nullptr) {
-    return peripheral_error;
-  }
-
   if (size == nullptr) {
     return peripheral_error;
   }
@@ -670,10 +613,17 @@ static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+
   auto* mp = static_cast<MousePeripheral_t*>(instance);
   auto* ss = static_cast<MouseSaveState_t*>(buffer);
 
   std::memset(ss, 0, required);
+  ss->version = MOUSE_STATE_VERSION;
+  ss->struct_size = sizeof(MouseSaveState_t);
+
   // --- Hardware Emulation (PIA & Registers) ---
   ss->pia_ora = mp->pia.ora;
   ss->pia_orb = mp->pia.orb;
@@ -726,20 +676,18 @@ static auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
 
 static auto mouse_abi_load_state(void* instance, const void* buffer,
                                  size_t size) -> PeripheralStatus_t {
-  if (instance == nullptr) {
+  if (instance == nullptr || buffer == nullptr ||
+      size != sizeof(MouseSaveState_t)) {
     return peripheral_error;
   }
 
-  if (buffer == nullptr) {
-    return peripheral_error;
-  }
-
-  if (size < sizeof(MouseSaveState_t)) {
+  const auto* ss = static_cast<const MouseSaveState_t*>(buffer);
+  if (ss->version != MOUSE_STATE_VERSION ||
+      ss->struct_size != sizeof(MouseSaveState_t)) {
     return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
-  const auto* ss = static_cast<const MouseSaveState_t*>(buffer);
 
   pia_6821_reset(&mp->pia);
   // --- Hardware Emulation (PIA & Registers) ---
@@ -814,7 +762,7 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
 
-  switch (static_cast<MouseCmd_e>(cmd_id)) {
+  switch (static_cast<MouseCmd_t>(cmd_id)) {
     case mouse_cmd_set_pos: {
       if (size < sizeof(MousePosPayload_t)) {
         return peripheral_error;
@@ -838,40 +786,36 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     default:
-      return peripheral_error;
+      return peripheral_incompatible;
   }
-  return peripheral_error;
 }
 
 static auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
                             size_t* out_size) -> PeripheralStatus_t {
-  if (instance == nullptr) {
-    return peripheral_error;
-  }
-
-  if (out == nullptr) {
-    return peripheral_error;
-  }
-
-  if (out_size == nullptr) {
+  if (instance == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
 
-  switch (static_cast<MouseQuery_e>(query_id)) {
+  switch (static_cast<MouseQuery_t>(query_id)) {
     case mouse_query_is_active: {
-      if (*out_size < 1) {
+      const size_t required = sizeof(uint8_t);
+      if (out == nullptr) {
+        *out_size = required;
+        return peripheral_ok;
+      }
+      if (*out_size < required) {
+        *out_size = required;
         return peripheral_error;
       }
       *static_cast<uint8_t*>(out) = mp->is_active ? 1 : 0;
-      *out_size = 1;
+      *out_size = required;
       return peripheral_ok;
     }
     default:
-      return peripheral_error;
+      return peripheral_incompatible;
   }
-  return peripheral_error;
 }
 
 }  // namespace
@@ -900,5 +844,3 @@ extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
 }
 
 PERIPHERAL_REGISTER(g_mouse_peripheral)
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
