@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/clock/Clock.h"
 
 #include <algorithm>
@@ -7,15 +6,18 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <memory>
 
-#include "apple2/Memory.h"
+#include "apple2/peripherals/clock/ClockCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
+
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+
+namespace {
 
 /*
 I/O map: (please add an offset of Slot#*16 to the address below)
@@ -61,101 +63,23 @@ I/O map: (please add an offset of Slot#*16 to the address below)
   it is processed.
 */
 
-static const std::array<uint8_t, 95> Clock_ROM =
-    /*
-    *
-    * ROM code for a simplistic ProDOS-compatible clock card
-    * for the Apple II emulator 'linapple'
-    *
-    * (C) 2008 by LEE Sau Dan
-    *
-     ORG $C000
-    STACK EQU $100
-    IN EQU $200
-    DEVSEL EQU $C080
-    MONRTS EQU $FF58
-    LATCHIT EQU DEVSEL+$F
+static const std::array<uint8_t, 256> Clock_ROM = {{
+    0x08, 0x90, 0x28, 0xb0, 0x58, 0x00, 0x70, 0x00, 0xea, 0xea, 0xa9, 0x60,
+    0x08, 0x78, 0x20, 0x58, 0xff, 0xba, 0xbd, 0x00, 0x01, 0x28, 0x0a, 0x0a,
+    0x0a, 0x0a, 0xa8, 0xb9, 0x8f, 0xc0, 0xa2, 0x00, 0xf0, 0x0b, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x60, 0xb9, 0x80, 0xc0,
+    0xc8, 0x09, 0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xb9, 0x80, 0xc0, 0xc8, 0x09,
+    0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xa9, 0xac, 0x9d, 0x00, 0x02, 0xe8, 0x98,
+    0x29, 0x0f, 0xc9, 0x0a, 0x90, 0xdf, 0xa9, 0x80, 0x9d, 0xff, 0x01, 0x60,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb0, 0xcc,
+}};
 
-    ST
-     PHP  ; this opcode byte must be $08 for prodos to recognize
-     BCC D1 ; offset byte must be $28 for prodos to recognize
-    B1
-     BCS D2 ; offset byte must be $58 for prodos to recognize
-    B2
-     DB 00
-     DB $70 ; byte must be $70 for prodos to recognize
-     DB 00
-    RDCLK ; ProDOS calls $Cx08 to get clock data
-     NOP
-     NOP
-     DB $A9 ; opcode for LDA #xx, just to skip the next byte
-    WRCLK ; ProDOS calls $Cx0B with AX="#" before calling RDCLK
-     RTS
-
-    RDCLK1
-     PHP
-     SEI
-     JSR MONRTS ; known to be RTS
-     TSX
-     LDA STACK,X ; high byte of PC
-     PLP
-     ASL
-     ASL
-     ASL
-     ASL
-     TAY
-
-     LDA LATCHIT,Y ; latch current time to regs
-     LDX #$0
-     BEQ RDCLK1_CONT
-
-
-     DS B1+$28-*
-    D1
-     PLP
-     RTS
-
-
-    RDCLK1_CONT
-     LDA DEVSEL,Y
-     INY
-     ORA #"0"
-     STA IN,X
-     INX
-     LDA DEVSEL,Y
-     INY
-     ORA #"0"
-     STA IN,X
-     INX
-     LDA #","
-     STA IN,X
-     INX
-     TYA
-     AND #$0F
-     CMP #10
-     BCC RDCLK1_CONT
-     LDA #$80 ; EOS
-     STA IN-1,X ; overwrite the last ','
-     RTS
-
-
-     DS B2+$58-*
-    D2
-     BCS D1
-
-
-     END
-    */
-    {{
-        0x08, 0x90, 0x28, 0xb0, 0x58, 0x00, 0x70, 0x00, 0xea, 0xea, 0xa9, 0x60,
-        0x08, 0x78, 0x20, 0x58, 0xff, 0xba, 0xbd, 0x00, 0x01, 0x28, 0x0a, 0x0a,
-        0x0a, 0x0a, 0xa8, 0xb9, 0x8f, 0xc0, 0xa2, 0x00, 0xf0, 0x0b, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x60, 0xb9, 0x80, 0xc0,
-        0xc8, 0x09, 0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xb9, 0x80, 0xc0, 0xc8, 0x09,
-        0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xa9, 0xac, 0x9d, 0x00, 0x02, 0xe8, 0x98,
-        0x29, 0x0f, 0xc9, 0x0a, 0x90, 0xdf, 0xa9, 0x80, 0x9d, 0xff, 0x01, 0x60,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb0, 0xcc,
-    }};
+constexpr size_t CLOCK_LATCHES_COUNT = 10;
+constexpr int LATCH_MONTH = 0;
+constexpr int LATCH_WEEKDAY = 2;
+constexpr int LATCH_DAY = 4;
+constexpr int LATCH_HOUR = 6;
+constexpr int LATCH_MINUTE = 8;
 
 constexpr uint16_t IO_ADDR_MASK = 0x0F;
 constexpr uint8_t LATCH_UPDATE_REG = 0x0F;
@@ -165,7 +89,7 @@ struct ClockPeripheral_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
   bool use_fixed_epoch = false;
-  time_t fixed_epoch = 0;
+  uint64_t fixed_epoch = 0;
 };
 
 static auto set_latch_pair(ClockPeripheral_t* clock_peripheral, size_t index,
@@ -190,7 +114,7 @@ static auto set_latch_pair(ClockPeripheral_t* clock_peripheral, size_t index,
 static auto update_latches(ClockPeripheral_t* clock_peripheral) -> void {
   time_t now = 0;
   if (clock_peripheral->use_fixed_epoch) {
-    now = clock_peripheral->fixed_epoch;
+    now = static_cast<time_t>(clock_peripheral->fixed_epoch);
   } else if (time(&now) == static_cast<time_t>(-1)) {
     return;
   }
@@ -217,22 +141,24 @@ static auto clock_io_read(void* instance, uint16_t program_counter,
                           uint16_t memory_address, uint8_t is_write,
                           uint8_t data_value, uint32_t remaining_cycles)
     -> uint8_t {
+  (void)program_counter;
+  (void)is_write;
+  (void)data_value;
   if (instance == nullptr) {
-    return io_null(program_counter, memory_address, is_write, data_value,
-                   remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
 
   const uint16_t register_offset = memory_address & IO_ADDR_MASK;
   if (register_offset < CLOCK_LATCHES_COUNT) {
     return clock_peripheral->latches.at(register_offset);
-  } else if (register_offset == LATCH_UPDATE_REG) {
+  }
+  if (register_offset == LATCH_UPDATE_REG) {
     update_latches(clock_peripheral);
-    return 0;
+    return mem_read_floating_bus(remaining_cycles);
   }
 
-  return io_null(program_counter, memory_address, is_write, data_value,
-                 remaining_cycles);
+  return mem_read_floating_bus(remaining_cycles);
 }
 
 static auto clock_abi_init(int slot, HostInterface_t* host) -> void* {
@@ -245,15 +171,12 @@ static auto clock_abi_init(int slot, HostInterface_t* host) -> void* {
   clock_peripheral->slot = slot;
   clock_peripheral->host = host;
 
-  std::array<uint8_t, CX_ROM_SIZE> cx_rom_data{};
-  const size_t bytes_to_copy =
-      std::min(Clock_ROM.size(), static_cast<size_t>(CX_ROM_SIZE));
-
-  std::copy(Clock_ROM.begin(), Clock_ROM.begin() + bytes_to_copy,
-            cx_rom_data.begin());
-
-  host->RegisterCxROM(slot, cx_rom_data.data());
-  host->RegisterIO(slot, clock_io_read, nullptr, nullptr, nullptr);
+  if (host->RegisterCxROM != nullptr) {
+    host->RegisterCxROM(slot, const_cast<uint8_t*>(Clock_ROM.data()));
+  }
+  if (host->RegisterIO != nullptr) {
+    host->RegisterIO(slot, clock_io_read, nullptr, nullptr, nullptr);
+  }
 
   return clock_peripheral.release();
 }
@@ -285,20 +208,24 @@ static auto clock_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
 
-  switch (static_cast<ClockCmd_t>(cmd_id)) {
+  switch (cmd_id) {
     case clock_cmd_set_epoch: {
       if (data == nullptr) {
         return peripheral_error;
       }
+      if (size == sizeof(ClockSetEpochPayload_t)) {
+        const auto* payload = static_cast<const ClockSetEpochPayload_t*>(data);
+        clock_peripheral->fixed_epoch = payload->epoch;
+        clock_peripheral->use_fixed_epoch = true;
+        return peripheral_ok;
+      }
       if (size == sizeof(uint64_t)) {
-        clock_peripheral->fixed_epoch =
-            static_cast<time_t>(*static_cast<const uint64_t*>(data));
+        clock_peripheral->fixed_epoch = *static_cast<const uint64_t*>(data);
         clock_peripheral->use_fixed_epoch = true;
         return peripheral_ok;
       }
       if (size == sizeof(uint32_t)) {
-        clock_peripheral->fixed_epoch =
-            static_cast<time_t>(*static_cast<const uint32_t*>(data));
+        clock_peripheral->fixed_epoch = *static_cast<const uint32_t*>(data);
         clock_peripheral->use_fixed_epoch = true;
         return peripheral_ok;
       }
@@ -310,7 +237,67 @@ static auto clock_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     default:
-      return peripheral_error;
+      return peripheral_incompatible;
+  }
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+// Justification: ABI-required function signature.
+static auto clock_abi_query(void* instance, uint32_t query_id, void* out,
+                            size_t* size) -> PeripheralStatus_t {
+  if (size == nullptr) {
+    return peripheral_error;
+  }
+
+  switch (query_id) {
+    case clock_query_get_epoch: {
+      constexpr size_t required_size = sizeof(ClockEpochQuery_t);
+      if (out == nullptr) {
+        *size = required_size;
+        return peripheral_ok;
+      }
+      if (instance == nullptr || *size < required_size) {
+        return peripheral_error;
+      }
+      const auto* clock_peripheral =
+          static_cast<const ClockPeripheral_t*>(instance);
+      auto* query = static_cast<ClockEpochQuery_t*>(out);
+      query->epoch = clock_peripheral->fixed_epoch;
+      query->is_fixed = clock_peripheral->use_fixed_epoch ? 1 : 0;
+      *size = required_size;
+      return peripheral_ok;
+    }
+    case clock_query_get_time: {
+      constexpr size_t required_size = sizeof(ClockTimeQuery_t);
+      if (out == nullptr) {
+        *size = required_size;
+        return peripheral_ok;
+      }
+      if (instance == nullptr || *size < required_size) {
+        return peripheral_error;
+      }
+      const auto* clock_peripheral =
+          static_cast<const ClockPeripheral_t*>(instance);
+      auto* query = static_cast<ClockTimeQuery_t*>(out);
+      constexpr int radix = 10;
+      query->month = static_cast<uint8_t>(
+          (clock_peripheral->latches.at(LATCH_MONTH) * radix) +
+          clock_peripheral->latches.at(LATCH_MONTH + 1));
+      query->day_of_week = clock_peripheral->latches.at(LATCH_WEEKDAY + 1);
+      query->day = static_cast<uint8_t>(
+          (clock_peripheral->latches.at(LATCH_DAY) * radix) +
+          clock_peripheral->latches.at(LATCH_DAY + 1));
+      query->hour = static_cast<uint8_t>(
+          (clock_peripheral->latches.at(LATCH_HOUR) * radix) +
+          clock_peripheral->latches.at(LATCH_HOUR + 1));
+      query->minute = static_cast<uint8_t>(
+          (clock_peripheral->latches.at(LATCH_MINUTE) * radix) +
+          clock_peripheral->latches.at(LATCH_MINUTE + 1));
+      *size = required_size;
+      return peripheral_ok;
+    }
+    default:
+      return peripheral_incompatible;
   }
 }
 
@@ -318,45 +305,97 @@ static auto clock_abi_command(void* instance, uint32_t cmd_id, const void* data,
 // Justification: ABI-required function signature.
 static auto clock_abi_save_state(void* instance, void* state_buffer,
                                  size_t* buffer_size) -> PeripheralStatus_t {
-  if (instance == nullptr || buffer_size == nullptr) {
+  if (buffer_size == nullptr) {
     return peripheral_error;
   }
 
-  auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
-  const size_t state_size = clock_peripheral->latches.size();
-
+  constexpr size_t required_size = sizeof(ClockSaveState_t);
   if (state_buffer == nullptr) {
-    *buffer_size = state_size;
+    *buffer_size = required_size;
     return peripheral_ok;
   }
 
-  if (*buffer_size < state_size) {
+  if (instance == nullptr || *buffer_size < required_size) {
     return peripheral_error;
   }
 
+  const auto* clock_peripheral =
+      static_cast<const ClockPeripheral_t*>(instance);
+  auto* state = static_cast<ClockSaveState_t*>(state_buffer);
+  std::memset(state, 0, sizeof(ClockSaveState_t));
+  state->version = CLOCK_STATE_VERSION;
+  state->struct_size = static_cast<uint32_t>(required_size);
+  state->fixed_epoch = clock_peripheral->fixed_epoch;
   std::copy(clock_peripheral->latches.begin(), clock_peripheral->latches.end(),
-            static_cast<uint8_t*>(state_buffer));
-  *buffer_size = state_size;
+            state->latches);
+  state->use_fixed_epoch = clock_peripheral->use_fixed_epoch ? 1 : 0;
+
+  *buffer_size = required_size;
   return peripheral_ok;
 }
 
 static auto clock_abi_load_state(void* instance, const void* state_buffer,
                                  size_t buffer_size) -> PeripheralStatus_t {
-  if (instance == nullptr || state_buffer == nullptr) {
+  if (instance == nullptr || state_buffer == nullptr ||
+      buffer_size != sizeof(ClockSaveState_t)) {
+    return peripheral_error;
+  }
+
+  const auto* state = static_cast<const ClockSaveState_t*>(state_buffer);
+  if (state->version != CLOCK_STATE_VERSION ||
+      state->struct_size != sizeof(ClockSaveState_t)) {
+    return peripheral_error;
+  }
+
+  for (size_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
+    if (state->latches[i] > 9) {
+      return peripheral_error;
+    }
+  }
+  if (state->latches[2] != 0) {
+    return peripheral_error;
+  }
+
+  constexpr int radix = 10;
+  const int month =
+      (state->latches[LATCH_MONTH] * radix) + state->latches[LATCH_MONTH + 1];
+  if (month > 12) {
+    return peripheral_error;
+  }
+
+  const int weekday = state->latches[LATCH_WEEKDAY + 1];
+  if (weekday > 6) {
+    return peripheral_error;
+  }
+
+  const int day =
+      (state->latches[LATCH_DAY] * radix) + state->latches[LATCH_DAY + 1];
+  if (day > 31) {
+    return peripheral_error;
+  }
+
+  const int hour =
+      (state->latches[LATCH_HOUR] * radix) + state->latches[LATCH_HOUR + 1];
+  if (hour > 23) {
+    return peripheral_error;
+  }
+
+  const int minute =
+      (state->latches[LATCH_MINUTE] * radix) + state->latches[LATCH_MINUTE + 1];
+  if (minute > 59) {
     return peripheral_error;
   }
 
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
-  const size_t state_size = clock_peripheral->latches.size();
+  std::copy_n(state->latches, CLOCK_LATCHES_COUNT,
+              clock_peripheral->latches.begin());
+  clock_peripheral->use_fixed_epoch = (state->use_fixed_epoch != 0);
+  clock_peripheral->fixed_epoch = state->fixed_epoch;
 
-  if (buffer_size != state_size) {
-    return peripheral_error;
-  }
-
-  const auto* src = static_cast<const uint8_t*>(state_buffer);
-  std::copy_n(src, state_size, clock_peripheral->latches.begin());
   return peripheral_ok;
 }
+
+}  // namespace
 
 static Peripheral_t g_clock_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
@@ -375,9 +414,8 @@ static Peripheral_t g_clock_peripheral = {
     .save_state = clock_abi_save_state,
     .load_state = clock_abi_load_state,
     .command = clock_abi_command,
-    .query = nullptr};
+    .query = clock_abi_query};
 
 auto clock_get_descriptor() -> Peripheral_t* { return &g_clock_peripheral; }
 
 PERIPHERAL_REGISTER(g_clock_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
