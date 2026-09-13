@@ -294,8 +294,8 @@ TEST_CASE("Printer Peripheral: Descriptor Metadata and Compatibility") {
   CHECK(descriptor->on_vblank == nullptr);
   CHECK(descriptor->save_state != nullptr);
   CHECK(descriptor->load_state != nullptr);
-  CHECK(descriptor->command == nullptr);
-  CHECK(descriptor->query == nullptr);
+  CHECK(descriptor->command != nullptr);
+  CHECK(descriptor->query != nullptr);
 }
 
 TEST_CASE("Printer Peripheral: Registration and Firmware") {
@@ -566,6 +566,86 @@ TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
   // Successful round-trip restoration
   CHECK(descriptor->load_state(instance, save_buf.data(), required_size) ==
         peripheral_ok);
+}
+
+TEST_CASE("Printer Peripheral: Command and Query ABI Protocol") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  REQUIRE(descriptor->command != nullptr);
+  REQUIRE(descriptor->query != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  // Null instance on command must fail
+  PrinterOnlineCmd_t online_cmd{0, {0, 0, 0}};
+  CHECK(descriptor->command(nullptr, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_error);
+
+  // Undersized payload on command must fail
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(uint8_t) - 1) == peripheral_error);
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, nullptr, 0) ==
+        peripheral_error);
+
+  // Unknown command must return peripheral_incompatible
+  CHECK(descriptor->command(instance, 0x9999, nullptr, 0) ==
+        peripheral_incompatible);
+
+  // Toggle online/offline via command
+  online_cmd.online = 0;
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+
+  // Query: null output_size pointer must fail
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, nullptr, nullptr) ==
+        peripheral_error);
+
+  // Query: sizing probe with null output
+  size_t query_size = 0;
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, nullptr,
+                          &query_size) == peripheral_ok);
+  CHECK(query_size == sizeof(PrinterStatusQuery_t));
+
+  // Query: undersized buffer must fail
+  std::vector<uint8_t> undersized(query_size - 1, 0);
+  size_t small_size = undersized.size();
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, undersized.data(),
+                          &small_size) == peripheral_error);
+  CHECK(small_size == sizeof(PrinterStatusQuery_t));
+
+  // Query: null instance with valid buffer must fail
+  PrinterStatusQuery_t status_out{};
+  size_t valid_size = sizeof(status_out);
+  CHECK(descriptor->query(nullptr, PRINTER_QUERY_STATUS, &status_out,
+                          &valid_size) == peripheral_error);
+
+  // Query: successful query verifying offline status
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &status_out,
+                          &valid_size) == peripheral_ok);
+  CHECK(valid_size == sizeof(PrinterStatusQuery_t));
+  CHECK(status_out.is_online == 0);
+  CHECK(status_out.is_busy == 0);
+
+  // Toggle back online
+  online_cmd.online = 1;
+  CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
+                            sizeof(online_cmd)) == peripheral_ok);
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &status_out,
+                          &valid_size) == peripheral_ok);
+  CHECK(status_out.is_online == 1);
+
+  // Command: reset stats
+  CHECK(descriptor->command(instance, PRINTER_CMD_RESET_STATS, nullptr, 0) ==
+        peripheral_ok);
+  CHECK(descriptor->query(instance, PRINTER_QUERY_STATUS, &status_out,
+                          &valid_size) == peripheral_ok);
+  CHECK(status_out.total_chars_printed == 0);
+
+  // Unknown query ID must return peripheral_incompatible
+  CHECK(descriptor->query(instance, 0x9999, &status_out, &valid_size) ==
+        peripheral_incompatible);
 }
 
 }  // namespace

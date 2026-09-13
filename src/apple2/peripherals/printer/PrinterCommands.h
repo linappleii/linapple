@@ -11,6 +11,25 @@ extern "C" {
 
 #define PRINTER_STATE_VERSION 1
 
+#define PRINTER_CMD_SET_ONLINE 0x0101
+#define PRINTER_CMD_RESET_STATS 0x0102
+
+#define PRINTER_QUERY_STATUS 0x0100
+
+typedef struct {
+  uint8_t online;
+  uint8_t reserved[3];
+} PrinterOnlineCmd_t;
+
+typedef struct {
+  uint64_t total_chars_printed;
+  uint8_t is_online;
+  uint8_t is_busy;
+  uint8_t last_char;
+  uint8_t reserved;
+  uint32_t padding;
+} PrinterStatusQuery_t;
+
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

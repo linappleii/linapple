@@ -167,6 +167,68 @@ static auto printer_abi_load_state(void* instance, const void* state_buffer,
   return peripheral_ok;
 }
 
+static auto printer_abi_command(void* instance, uint32_t command_id,
+                                const void* payload, size_t payload_size)
+    -> PeripheralStatus_t {
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
+
+  switch (command_id) {
+    case PRINTER_CMD_SET_ONLINE: {
+      if (payload == nullptr || payload_size < sizeof(PrinterOnlineCmd_t)) {
+        return peripheral_error;
+      }
+      const auto* cmd = static_cast<const PrinterOnlineCmd_t*>(payload);
+      printer_peripheral->is_online = (cmd->online != 0);
+      return peripheral_ok;
+    }
+    case PRINTER_CMD_RESET_STATS: {
+      printer_peripheral->total_chars_printed = 0;
+      return peripheral_ok;
+    }
+    default:
+      return peripheral_incompatible;
+  }
+}
+
+static auto printer_abi_query(void* instance, uint32_t query_id, void* output,
+                              size_t* output_size) -> PeripheralStatus_t {
+  if (output_size == nullptr) {
+    return peripheral_error;
+  }
+
+  switch (query_id) {
+    case PRINTER_QUERY_STATUS: {
+      constexpr size_t required_size = sizeof(PrinterStatusQuery_t);
+      if (output == nullptr) {
+        *output_size = required_size;
+        return peripheral_ok;
+      }
+      if (*output_size < required_size) {
+        *output_size = required_size;
+        return peripheral_error;
+      }
+      if (instance == nullptr) {
+        return peripheral_error;
+      }
+      const auto* printer_peripheral =
+          static_cast<const PrinterPeripheral_t*>(instance);
+      auto* query_out = static_cast<PrinterStatusQuery_t*>(output);
+      std::memset(query_out, 0, sizeof(PrinterStatusQuery_t));
+      query_out->total_chars_printed = printer_peripheral->total_chars_printed;
+      query_out->is_online = printer_peripheral->is_online ? 1 : 0;
+      query_out->is_busy = printer_peripheral->is_busy ? 1 : 0;
+      query_out->last_char = printer_peripheral->data_latch;
+      *output_size = required_size;
+      return peripheral_ok;
+    }
+    default:
+      return peripheral_incompatible;
+  }
+}
+
 }  // namespace
 
 static Peripheral_t g_printer_peripheral = {
@@ -185,8 +247,8 @@ static Peripheral_t g_printer_peripheral = {
     .on_vblank = nullptr,
     .save_state = printer_abi_save_state,
     .load_state = printer_abi_load_state,
-    .command = nullptr,
-    .query = nullptr};
+    .command = printer_abi_command,
+    .query = printer_abi_query};
 
 auto printer_get_descriptor() -> Peripheral_t* { return &g_printer_peripheral; }
 
