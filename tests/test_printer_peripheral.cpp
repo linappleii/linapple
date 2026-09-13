@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "apple2/peripherals/printer/Printer.h"
+#include "apple2/peripherals/printer/PrinterCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
@@ -291,8 +292,8 @@ TEST_CASE("Printer Peripheral: Descriptor Metadata and Compatibility") {
   CHECK(descriptor->shutdown != nullptr);
   CHECK(descriptor->think != nullptr);
   CHECK(descriptor->on_vblank == nullptr);
-  CHECK(descriptor->save_state == nullptr);
-  CHECK(descriptor->load_state == nullptr);
+  CHECK(descriptor->save_state != nullptr);
+  CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->command == nullptr);
   CHECK(descriptor->query == nullptr);
 }
@@ -495,6 +496,76 @@ TEST_CASE("Printer Peripheral: Robustness and Seam Error Handling") {
   const auto& captured = harness.printed_chars(TEST_SLOT_1);
   REQUIRE(captured.size() == 1);
   CHECK(captured.front() == TEST_CHAR_A);
+}
+
+TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
+  auto* descriptor = printer_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  REQUIRE(descriptor->save_state != nullptr);
+  REQUIRE(descriptor->load_state != nullptr);
+
+  PrinterHarness harness;
+  void* instance = harness.create_printer(TEST_SLOT_1);
+  REQUIRE(instance != nullptr);
+
+  // Sizing probe with null state buffer
+  size_t required_size = 0;
+  CHECK(descriptor->save_state(instance, nullptr, &required_size) ==
+        peripheral_ok);
+  CHECK(required_size == sizeof(SsCardPrinter_t));
+
+  // Null buffer_size pointer must fail
+  CHECK(descriptor->save_state(instance, nullptr, nullptr) == peripheral_error);
+
+  // Undersized buffer must fail
+  std::vector<uint8_t> undersized(required_size - 1, 0);
+  size_t too_small = undersized.size();
+  CHECK(descriptor->save_state(instance, undersized.data(), &too_small) ==
+        peripheral_error);
+
+  // Save state with valid buffer
+  std::vector<uint8_t> save_buf(required_size, 0);
+  size_t actual_size = save_buf.size();
+  CHECK(descriptor->save_state(instance, save_buf.data(), &actual_size) ==
+        peripheral_ok);
+  CHECK(actual_size == sizeof(SsCardPrinter_t));
+
+  const auto* state_header =
+      reinterpret_cast<const SsCardPrinter_t*>(save_buf.data());
+  CHECK(state_header->version == PRINTER_STATE_VERSION);
+  CHECK(state_header->struct_size == sizeof(SsCardPrinter_t));
+  CHECK(state_header->is_online == 1);
+  CHECK(state_header->is_busy == 0);
+
+  // Corrupted version or size in load_state must fail
+  std::vector<uint8_t> corrupt_buf = save_buf;
+  auto* corrupt_header =
+      reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
+  corrupt_header->version = 999;
+  CHECK(descriptor->load_state(instance, corrupt_buf.data(),
+                               corrupt_buf.size()) == peripheral_error);
+
+  corrupt_buf = save_buf;
+  corrupt_header = reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
+  corrupt_header->struct_size = 12;
+  CHECK(descriptor->load_state(instance, corrupt_buf.data(),
+                               corrupt_buf.size()) == peripheral_error);
+
+  // Wrong buffer size on load must fail
+  CHECK(descriptor->load_state(instance, save_buf.data(), required_size - 1) ==
+        peripheral_error);
+
+  // Null instance on save/load must fail
+  CHECK(descriptor->save_state(nullptr, save_buf.data(), &actual_size) ==
+        peripheral_error);
+  CHECK(descriptor->load_state(nullptr, save_buf.data(), required_size) ==
+        peripheral_error);
+  CHECK(descriptor->load_state(instance, nullptr, required_size) ==
+        peripheral_error);
+
+  // Successful round-trip restoration
+  CHECK(descriptor->load_state(instance, save_buf.data(), required_size) ==
+        peripheral_ok);
 }
 
 }  // namespace

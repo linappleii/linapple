@@ -4,10 +4,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 
 #include "EmbeddedRoms.h"
+#include "apple2/peripherals/printer/PrinterCommands.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Types.h"
 
 namespace {
 
@@ -18,6 +21,12 @@ constexpr uint8_t transmit_success = 0;
 struct PrinterPeripheral_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
+  uint64_t total_chars_printed = 0;
+  uint32_t busy_cycles = 0;
+  uint8_t data_latch = 0;
+  uint8_t status_latch = 0;
+  bool is_online = true;
+  bool is_busy = false;
 };
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
@@ -103,6 +112,61 @@ static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   (void)elapsed_cycles;
 }
 
+static auto printer_abi_save_state(void* instance, void* state_buffer,
+                                   size_t* buffer_size) -> PeripheralStatus_t {
+  if (buffer_size == nullptr) {
+    return peripheral_error;
+  }
+  constexpr size_t required_size = sizeof(SsCardPrinter_t);
+  if (state_buffer == nullptr) {
+    *buffer_size = required_size;
+    return peripheral_ok;
+  }
+  if (instance == nullptr || *buffer_size < required_size) {
+    return peripheral_error;
+  }
+
+  const auto* printer_peripheral =
+      static_cast<const PrinterPeripheral_t*>(instance);
+  auto* state = static_cast<SsCardPrinter_t*>(state_buffer);
+  std::memset(state, 0, sizeof(SsCardPrinter_t));
+  state->version = PRINTER_STATE_VERSION;
+  state->struct_size = static_cast<uint32_t>(required_size);
+  state->total_chars_printed = printer_peripheral->total_chars_printed;
+  state->busy_cycles = printer_peripheral->busy_cycles;
+  state->data_latch = printer_peripheral->data_latch;
+  state->status_latch = printer_peripheral->status_latch;
+  state->is_online = printer_peripheral->is_online ? 1 : 0;
+  state->is_busy = printer_peripheral->is_busy ? 1 : 0;
+
+  *buffer_size = required_size;
+  return peripheral_ok;
+}
+
+static auto printer_abi_load_state(void* instance, const void* state_buffer,
+                                   size_t buffer_size) -> PeripheralStatus_t {
+  if (instance == nullptr || state_buffer == nullptr ||
+      buffer_size != sizeof(SsCardPrinter_t)) {
+    return peripheral_error;
+  }
+
+  const auto* state = static_cast<const SsCardPrinter_t*>(state_buffer);
+  if (state->version != PRINTER_STATE_VERSION ||
+      state->struct_size != sizeof(SsCardPrinter_t)) {
+    return peripheral_error;
+  }
+
+  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
+  printer_peripheral->total_chars_printed = state->total_chars_printed;
+  printer_peripheral->busy_cycles = state->busy_cycles;
+  printer_peripheral->data_latch = state->data_latch;
+  printer_peripheral->status_latch = state->status_latch;
+  printer_peripheral->is_online = (state->is_online != 0);
+  printer_peripheral->is_busy = (state->is_busy != 0);
+
+  return peripheral_ok;
+}
+
 }  // namespace
 
 static Peripheral_t g_printer_peripheral = {
@@ -119,8 +183,8 @@ static Peripheral_t g_printer_peripheral = {
     .shutdown = printer_abi_shutdown,
     .think = printer_abi_think,
     .on_vblank = nullptr,
-    .save_state = nullptr,
-    .load_state = nullptr,
+    .save_state = printer_abi_save_state,
+    .load_state = printer_abi_load_state,
     .command = nullptr,
     .query = nullptr};
 
