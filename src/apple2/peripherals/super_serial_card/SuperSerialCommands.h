@@ -13,7 +13,8 @@
 extern "C" {
 #endif
 
-constexpr int SUPER_SERIAL_FIFO_SIZE = 9;
+#define SUPER_SERIAL_FIFO_SIZE 9
+#define SUPER_SERIAL_STATE_VERSION 1
 
 typedef enum {
   SUPER_SERIAL_BAUD_110 = 110,
@@ -63,6 +64,22 @@ typedef struct {
   bool linefeed;
   bool interrupts;
 } SuperSerialDipSwConfig_t;
+
+typedef struct {
+  uint32_t version;
+  uint32_t struct_size;
+  uint32_t rx_count;
+  uint8_t control_byte;
+  uint8_t command_byte;
+  uint8_t is_irq_pending;
+  uint8_t is_rx_irq_enabled;
+  uint8_t is_tx_irq_enabled;
+  uint8_t was_tx_written;
+  uint8_t rx_buffer[SUPER_SERIAL_FIFO_SIZE];
+  uint8_t reserved0;
+  SuperSerialDipSwConfig_t config;
+  uint8_t reserved1[4];
+} SuperSerialSaveState_t;
 
 typedef enum {
   SUPER_SERIAL_CMD_PUSH_RX_BYTE = 0x0001,

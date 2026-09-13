@@ -645,12 +645,7 @@ if(BUILD_TESTING)
     add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
     
-    # Custom test-superserial-peripheral to avoid symbol conflict
-    add_executable(test-superserial-peripheral tests/test_superserial_peripheral.cpp src/apple2/peripherals/super_serial_card/SuperSerial.cpp ${EMBEDDED_ROMS_CPP} src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
-    target_include_directories(test-superserial-peripheral PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
-    target_compile_definitions(test-superserial-peripheral PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
-    target_link_libraries(test-superserial-peripheral PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
-    add_test(NAME test-superserial-peripheral COMMAND test-superserial-peripheral)
+    add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/test_superserial_peripheral.cpp")
 
     add_linapple_test(abi tests/test_abi.cpp)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
