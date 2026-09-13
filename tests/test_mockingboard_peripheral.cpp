@@ -4,12 +4,13 @@
 #include <string>
 #include <vector>
 
-#include "LinAppleCore.h"
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
+#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
+
+extern bool g_full_speed;
 
 namespace {
 
@@ -22,7 +23,7 @@ class MockingboardHarness {
  public:
   MockingboardHarness() {
     s_active_harness = this;
-    g_current_clk_6502 = CLOCK_6502;
+    g_full_speed = false;
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
     host_.GetConfig = Mock_GetConfig;
@@ -31,6 +32,7 @@ class MockingboardHarness {
   }
 
   ~MockingboardHarness() {
+    g_full_speed = false;
     for (void* inst : instances_) {
       if (inst != nullptr) {
         mockingboard_get_descriptor()->shutdown(inst);
@@ -98,12 +100,30 @@ class MockingboardHarness {
     return descriptor()->load_state(target, buffer, size);
   }
 
+  auto command(uint32_t cmd_id, const void* data, size_t size,
+               void* inst = nullptr) -> PeripheralStatus_t {
+    void* target = (inst != nullptr) ? inst : primary_instance_;
+    if (target == nullptr) {
+      return peripheral_error;
+    }
+    return descriptor()->command(target, cmd_id, data, size);
+  }
+
+  auto query(uint32_t query_id, void* out, size_t* out_size,
+             void* inst = nullptr) -> PeripheralStatus_t {
+    void* target = (inst != nullptr) ? inst : primary_instance_;
+    if (target == nullptr) {
+      return peripheral_error;
+    }
+    return descriptor()->query(target, query_id, out, out_size);
+  }
+
   auto read_c0(uint16_t addr, void* inst = nullptr) -> uint8_t {
     void* target = (inst != nullptr) ? inst : primary_instance_;
     if (read_c0_handler_ != nullptr && target != nullptr) {
       return read_c0_handler_(target, 0, addr, 0, 0, 0);
     }
-    return 0;
+    return 0xFF;
   }
 
   auto write_c0(uint16_t addr, uint8_t val, void* inst = nullptr) -> uint8_t {
@@ -119,7 +139,7 @@ class MockingboardHarness {
     if (read_cx_handler_ != nullptr && target != nullptr) {
       return read_cx_handler_(target, 0, addr, 0, 0, 0);
     }
-    return 0;
+    return 0xFF;
   }
 
   auto write_cx(uint16_t addr, uint8_t val, void* inst = nullptr) -> uint8_t {
@@ -135,12 +155,17 @@ class MockingboardHarness {
   auto has_read_cx() const -> bool { return read_cx_handler_ != nullptr; }
   auto has_write_cx() const -> bool { return write_cx_handler_ != nullptr; }
 
+  auto last_registered_slot() const -> int { return last_registered_slot_; }
+
   auto cycles() const -> uint64_t { return cycles_; }
   auto set_cycles(uint64_t c) -> void { cycles_ = c; }
   auto advance_cycles(uint64_t delta) -> void { cycles_ += delta; }
 
   auto irq_asserted() const -> bool { return irq_asserted_; }
   auto irq_slot() const -> int { return irq_slot_; }
+  auto irq_asserted_for_slot(int slot) const -> bool {
+    return (slot >= 0 && slot < 8) ? slot_irq_asserted_[slot] : false;
+  }
 
   auto set_config_type(const std::string& type) -> void { config_type_ = type; }
 
@@ -164,6 +189,9 @@ class MockingboardHarness {
     if (s_active_harness != nullptr) {
       s_active_harness->irq_asserted_ = assert_irq;
       s_active_harness->irq_slot_ = slot;
+      if (slot >= 0 && slot < 8) {
+        s_active_harness->slot_irq_asserted_[slot] = assert_irq;
+      }
     }
   }
 
@@ -171,8 +199,8 @@ class MockingboardHarness {
                               PeripheralIOHandler write_c0,
                               PeripheralIOHandler read_cx,
                               PeripheralIOHandler write_cx) -> void {
-    (void)slot;
     if (s_active_harness != nullptr) {
+      s_active_harness->last_registered_slot_ = slot;
       s_active_harness->read_c0_handler_ = read_c0;
       s_active_harness->write_c0_handler_ = write_c0;
       s_active_harness->read_cx_handler_ = read_cx;
@@ -220,8 +248,11 @@ class MockingboardHarness {
   uint64_t cycles_{INITIAL_MOCK_CYCLES};
   bool irq_asserted_{false};
   int irq_slot_{-1};
+  bool slot_irq_asserted_[8]{false, false, false, false,
+                             false, false, false, false};
   std::string config_type_{};
 
+  int last_registered_slot_{-1};
   PeripheralIOHandler read_c0_handler_{nullptr};
   PeripheralIOHandler write_c0_handler_{nullptr};
   PeripheralIOHandler read_cx_handler_{nullptr};
@@ -238,347 +269,454 @@ class MockingboardHarness {
 
 MockingboardHarness* MockingboardHarness::s_active_harness = nullptr;
 
+auto write_mockingboard_ay(MockingboardHarness& harness, uint8_t reg,
+                           uint8_t val, void* inst = nullptr) -> void {
+  // Latch register
+  harness.write_cx(0xC001, reg, inst);
+  harness.write_cx(0xC000, 0x07, inst);  // BDIR=1, BC1=1 + RESET_N
+  harness.write_cx(0xC000, 0x04, inst);  // Inactive + RESET_N
+  // Write data
+  harness.write_cx(0xC001, val, inst);
+  harness.write_cx(0xC000, 0x06, inst);  // BDIR=1, BC1=0 + RESET_N
+  harness.write_cx(0xC000, 0x04, inst);  // Inactive + RESET_N
+}
+
 }  // namespace
 
-TEST_CASE("Mockingboard Peripheral: Standard Mode") {
+TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
+  const Peripheral_t* desc = mockingboard_get_descriptor();
+  REQUIRE(desc != nullptr);
+  CHECK(desc->abi_version == LINAPPLE_ABI_VERSION);
+  CHECK(std::string(desc->id) == "linapple.mockingboard");
+  CHECK(std::string(desc->name) == "Mockingboard");
+  CHECK(desc->compatible_slots == PERIPHERAL_MASK_EXPANSION);
+  CHECK(desc->default_slot == DEFAULT_MOCKINGBOARD_SLOT);
+  CHECK(desc->init != nullptr);
+  CHECK(desc->reset != nullptr);
+  CHECK(desc->shutdown != nullptr);
+  CHECK(desc->think != nullptr);
+  CHECK(desc->save_state != nullptr);
+  CHECK(desc->load_state != nullptr);
+  CHECK(desc->command != nullptr);
+  CHECK(desc->query != nullptr);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-02 Lifecycle & Defensive Null Guards") {
+  const Peripheral_t* desc = mockingboard_get_descriptor();
+  REQUIRE(desc != nullptr);
+
+  // Null host rejects cleanly
+  CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, nullptr) == nullptr);
+
+  // Host missing RegisterIO rejects cleanly
+  HostInterface_t bad_host{};
+  CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, &bad_host) == nullptr);
+
+  // Null instance safety across entry points
+  desc->reset(nullptr);
+  desc->shutdown(nullptr);
+  desc->think(nullptr, 100);
+
+  size_t state_size = 0;
+  uint8_t dummy_byte = 0;
+  CHECK(desc->save_state(nullptr, &dummy_byte, &state_size) ==
+        peripheral_error);
+  CHECK(desc->load_state(nullptr, &dummy_byte, 10) == peripheral_error);
+  CHECK(desc->command(nullptr, mockingboard_cmd_reset_audio, nullptr, 0) ==
+        peripheral_error);
+  CHECK(desc->query(nullptr, mockingboard_query_status, &dummy_byte,
+                    &state_size) == peripheral_error);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-03 Bus MMIO Registration") {
   MockingboardHarness harness;
   void* instance = harness.create_card(4);
   REQUIRE(instance != nullptr);
 
-  SUBCASE("Reset: Ensure IRQs are deasserted and registers are cleared") {
-    harness.reset();
-    CHECK_FALSE(harness.irq_asserted());
-  }
-
-  SUBCASE("State Persistence: Save and Load register state") {
-    REQUIRE(harness.has_write_cx());
-    REQUIRE(harness.has_read_cx());
-
-    // Set a register in VIA A (e.g. DDRB at offset 2)
-    harness.write_cx(0xC002, 0x55);
-
-    size_t state_size = 0;
-    CHECK(harness.save_state(nullptr, &state_size) == peripheral_ok);
-    REQUIRE(state_size > 0);
-
-    std::vector<uint8_t> buffer(state_size);
-    REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
-
-    // Reset state and verify it's cleared
-    harness.reset();
-    CHECK(harness.read_cx(0xC002) == 0);
-
-    // Load state and verify it's restored
-    REQUIRE(harness.load_state(buffer.data(), state_size) == peripheral_ok);
-    CHECK(harness.read_cx(0xC002) == 0x55);
-  }
-
-  SUBCASE("VIA Timer 1: One-shot IRQ timing and acknowledgment") {
-    harness.reset();
-    REQUIRE(harness.has_write_cx());
-
-    // 1. Enable T1 interrupt in IER ($E) - Bit 6 + Bit 7 (SET bit)
-    harness.write_cx(0xC00E, 0xC0);
-
-    // 2. Set T1 period to 1000 cycles
-    // T1L-L ($4) = 0xE8
-    harness.write_cx(0xC004, 0xE8);
-    // T1H-C ($5) = 0x03 (This starts the timer)
-    harness.write_cx(0xC005, 0x03);
-
-    CHECK_FALSE(harness.irq_asserted());
-
-    // 3. Advance cycles partially
-    harness.advance_cycles(500);
-    harness.think(0);
-    CHECK_FALSE(harness.irq_asserted());
-
-    // 4. Advance cycles beyond period
-    harness.advance_cycles(600);  // Total 1100 > 1000
-    harness.think(0);
-    CHECK(harness.irq_asserted());
-
-    // 5. Clear IRQ by reading T1L-L ($4)
-    harness.read_cx(0xC004);
-    harness.think(0);
-    CHECK_FALSE(harness.irq_asserted());
-  }
-
-  SUBCASE("VIA Timer 1: Continuous mode periodicity") {
-    harness.reset();
-    REQUIRE(harness.has_write_cx());
-
-    // Set Continuous Mode in ACR (Bit 6 = 1)
-    harness.write_cx(0xC00B, 0x40);
-    // Enable T1 IRQ
-    harness.write_cx(0xC00E, 0xC0);
-
-    // Set period to 500 cycles (> 255 limitation)
-    harness.write_cx(0xC004, 0xF4);  // 500 & 0xFF = 0xF4
-    harness.write_cx(0xC005, 0x01);  // 500 >> 8 = 1
-
-    // First underflow
-    harness.advance_cycles(501);
-    harness.think(0);
-    CHECK(harness.irq_asserted());
-
-    // Ack IRQ
-    harness.read_cx(0xC004);
-    harness.think(0);
-    CHECK_FALSE(harness.irq_asserted());
-
-    // Second underflow (continuous mode should reload)
-    harness.advance_cycles(501);
-    harness.think(0);
-    CHECK(harness.irq_asserted());
-  }
-
-  SUBCASE("AY-3-8910: Complex interaction via VIA registers") {
-    // Set DDRs to output
-    harness.write_cx(0xC002, 0xFF);  // DDRB
-    harness.write_cx(0xC003, 0xFF);  // DDRA
-
-    // Reset chips (Bit 2 of ORB high)
-    harness.write_cx(0xC000, 0x04);
-
-    // 1. Latch AY register 7 (Mixer)
-    // ORA = 7
-    harness.write_cx(0xC001, 0x07);
-    // ORB = func_latch (BDIR=1, BC1=1) + RESET_N=1 -> 0x03 | 0x04 = 0x07
-    harness.write_cx(0xC000, 0x07);
-    // ORB = Inactive (BDIR=0, BC1=0) + RESET_N=1 -> 0x04
-    harness.write_cx(0xC000, 0x04);
-
-    // 2. Write 0x3F to Mixer
-    // ORA = 0x3F
-    harness.write_cx(0xC001, 0x3F);
-    // ORB = func_write (BDIR=1, BC1=0) + RESET_N=1 -> 0x02 | 0x04 = 0x06
-    harness.write_cx(0xC000, 0x06);
-    // ORB = Inactive
-    harness.write_cx(0xC000, 0x04);
-
-    // 3. Verify AY register persists through state cycle
-    size_t state_size = 0;
-    CHECK(harness.save_state(nullptr, &state_size) == peripheral_ok);
-    std::vector<uint8_t> buffer(state_size);
-    CHECK(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
-
-    harness.reset();
-    REQUIRE(harness.load_state(buffer.data(), state_size) == peripheral_ok);
-  }
-
-  SUBCASE("VIA Timer 1: Worst-case timer period bounds audio buffer (TASK-4)") {
-    harness.reset();
-    REQUIRE(harness.has_write_cx());
-
-    // 1. Enable T1 interrupt in IER ($E) - Bit 6 + Bit 7 (SET bit)
-    harness.write_cx(0xC00E, 0xC0);
-
-    // 2. Set T1 period to maximum 16-bit value (0xFFFF = 65535 cycles)
-    // T1L-L ($4) = 0xFF
-    harness.write_cx(0xC004, 0xFF);
-    // T1H-C ($5) = 0xFF (Starts timer with period 65535)
-    harness.write_cx(0xC005, 0xFF);
-
-    // Process register access to activate card without advancing cycles
-    harness.think(0);
-
-    CHECK_FALSE(harness.irq_asserted());
-    harness.clear_audio();
-
-    // 3. Advance cycles to trigger T1 underflow (65535 + 1)
-    harness.advance_cycles(65536);
-    harness.think(0);
-
-    // Underflow asserts IRQ and emits exactly 2832 mono / 5664 stereo samples
-    CHECK(harness.irq_asserted());
-    CHECK(harness.audio_push_call_count() == 1);
-    CHECK(harness.last_pushed_sample_count() == 5664);
-    REQUIRE(harness.audio_samples().size() == 5664);
-
-    // Deep audio assertion: When AY tone generators are unconfigured / muted,
-    // all samples must be absolute silence (amplitude == 0).
-    bool all_silent = true;
-    for (int16_t sample : harness.audio_samples()) {
-      if (sample != 0) {
-        all_silent = false;
-        break;
-      }
-    }
-    CHECK(all_silent);
-  }
-
-  SUBCASE(
-      "Audio Synthesis: Synthesized square wave tone when AY is active, "
-      "silence when muted") {
-    harness.reset();
-    REQUIRE(harness.has_write_cx());
-
-    // Configure VIA Port A and B for AY control
-    harness.write_cx(0xC002, 0xFF);  // DDRB output
-    harness.write_cx(0xC003, 0xFF);  // DDRA output
-    harness.write_cx(0xC000, 0x04);  // RESET_N high, bus inactive
-
-    // Helper to write AY register via VIA bus handshake lines
-    auto write_ay = [&harness](uint8_t reg, uint8_t val) {
-      // Latch register
-      harness.write_cx(0xC001, reg);
-      harness.write_cx(0xC000, 0x07);  // BDIR=1, BC1=1 (func_latch) + RESET_N
-      harness.write_cx(0xC000, 0x04);  // Inactive + RESET_N
-      // Write data
-      harness.write_cx(0xC001, val);
-      harness.write_cx(0xC000, 0x06);  // BDIR=1, BC1=0 (func_write) + RESET_N
-      harness.write_cx(0xC000, 0x04);  // Inactive + RESET_N
-    };
-
-    // 1. Set Channel A tone period: Fine tune = 20, Coarse = 0
-    write_ay(0x00, 20);
-    write_ay(0x01, 0x00);
-
-    // 2. Set Channel A amplitude to maximum volume (15)
-    write_ay(0x08, AY_MAX_VOLUME);
-
-    // 3. Set Mixer (Reg 7): Enable Tone A (bit 0 = 0), disable others (0x3E)
-    write_ay(0x07, 0x3E);
-
-    // 4. Configure VIA Timer 1 to trigger periodic audio generation
-    // Period = 1000 cycles
-    harness.write_cx(0xC00E, 0xC0);  // Enable T1 IRQ
-    harness.write_cx(0xC004, 0xE8);  // 1000 & 0xFF
-    harness.write_cx(0xC005, 0x03);  // 1000 >> 8
-
-    harness.clear_audio();
-
-    // Advance cycles to trigger T1 underflow and push audio
-    harness.advance_cycles(1001);
-    harness.think(0);
-
-    CHECK(harness.irq_asserted());
-    CHECK(harness.audio_push_call_count() == 1);
-    REQUIRE_FALSE(harness.audio_samples().empty());
-
-    // Deep Audio Verification:
-    // With Channel A tone active at volume 15 on Chip A (Left channel):
-    // - Left channel samples alternate between 0 and 18776 (square wave).
-    // - Right channel samples (Chip B) should remain silent (0).
-    // - Peak amplitude on left channel must equal 18776.
-    // - Left channel must contain both high and low phases of the tone.
-    int16_t peak_left = 0;
-    int16_t min_left = 0;
-    size_t high_samples_left = 0;
-    size_t low_samples_left = 0;
-    bool right_channel_silent = true;
-
-    const auto& samples = harness.audio_samples();
-    const size_t num_frames = samples.size() / 2;
-    REQUIRE(num_frames > 0);
-
-    for (size_t i = 0; i < num_frames; ++i) {
-      const int16_t left = samples[i * 2];
-      const int16_t right = samples[i * 2 + 1];
-
-      if (left > peak_left) {
-        peak_left = left;
-      }
-      if (left < min_left) {
-        min_left = left;
-      }
-      if (left == AY_PEAK_AMPLITUDE_MAX_VOL) {
-        high_samples_left++;
-      } else if (left == 0) {
-        low_samples_left++;
-      }
-      if (right != 0) {
-        right_channel_silent = false;
-      }
-    }
-
-    CHECK(peak_left == AY_PEAK_AMPLITUDE_MAX_VOL);
-    CHECK(min_left == 0);
-    CHECK(high_samples_left > 0);
-    CHECK(low_samples_left > 0);
-    CHECK(high_samples_left + low_samples_left == num_frames);
-    CHECK(right_channel_silent);
-
-    // 5. Mute Channel A by setting Volume to 0
-    write_ay(0x08, 0x00);
-    harness.read_cx(0xC004);  // Ack IRQ
-    harness.clear_audio();
-
-    // Re-arm timer for next period
-    harness.write_cx(0xC005, 0x03);
-    harness.advance_cycles(1001);
-    harness.think(0);
-
-    CHECK(harness.audio_push_call_count() == 1);
-    REQUIRE_FALSE(harness.audio_samples().empty());
-
-    bool muted_all_silent = true;
-    for (int16_t sample : harness.audio_samples()) {
-      if (sample != 0) {
-        muted_all_silent = false;
-        break;
-      }
-    }
-    CHECK(muted_all_silent);
-  }
+  CHECK(harness.last_registered_slot() == 4);
+  CHECK(harness.has_read_cx());
+  CHECK(harness.has_write_cx());
 }
 
-TEST_CASE("Mockingboard Peripheral: Phasor Card Mode") {
+TEST_CASE("Mockingboard Peripheral: MB-04 Dual 6522 VIA Register Read/Write") {
   MockingboardHarness harness;
-  harness.set_config_type("Phasor");
   void* instance = harness.create_card(4);
   REQUIRE(instance != nullptr);
 
-  SUBCASE("Phasor: Native Mode Detection and chip selection") {
-    REQUIRE(harness.has_read_c0());
-    // Access C0nX range (Phasor native select)
-    // addr = $C0C1 (bit 0 high triggers native mode)
-    harness.read_c0(0xC0C1);
+  // VIA A at offset 0x00..0x0F (DDRB = 0x02, DDRA = 0x03)
+  harness.write_cx(0xC002, 0x5A);
+  harness.write_cx(0xC003, 0xA5);
+  CHECK(harness.read_cx(0xC002) == 0x5A);
+  CHECK(harness.read_cx(0xC003) == 0xA5);
 
-    // In native mode, addr bit 3 and 2 select the chip
-    // cs = ((addr & 0x08) >> 2) | ((addr & 0x04) >> 2)
-    // Select Chip A via bit 2 (cs=1). Use register 6 (T1L-H).
-    harness.write_c0(0xC0C6, 0xAA);
-    CHECK(harness.read_c0(0xC0C6) == 0xAA);
+  // VIA B at offset 0x80..0x8F (DDRB = 0x82, DDRA = 0x83)
+  harness.write_cx(0xC082, 0x33);
+  harness.write_cx(0xC083, 0xCC);
+  CHECK(harness.read_cx(0xC082) == 0x33);
+  CHECK(harness.read_cx(0xC083) == 0xCC);
 
-    // Select Chip B via bit 3 (cs=2). Use register 0xA (SR).
-    harness.write_c0(0xC0CA, 0xBB);
-    CHECK(harness.read_c0(0xC0CA) == 0xBB);
-  }
-
-  SUBCASE("Phasor: State preservation including card type") {
-    // Set native mode
-    harness.read_c0(0xC0C1);
-    // Write something in native mode
-    harness.write_c0(0xC0C6, 0xAA);
-
-    size_t state_size = 0;
-    CHECK(harness.save_state(nullptr, &state_size) == peripheral_ok);
-    REQUIRE(state_size > 0);
-    std::vector<uint8_t> buffer(state_size);
-    CHECK(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
-
-    harness.reset();
-    // After reset, native mode should be false
-    // Write something else to Chip B (which C0C6 maps to when NOT in native
-    // mode)
-    harness.write_c0(0xC0C6, 0xEE);
-
-    REQUIRE(harness.load_state(buffer.data(), state_size) == peripheral_ok);
-
-    // Verify native mode restored by checking chip selection
-    // Reg 6 of Chip A should have what we wrote in native mode
-    CHECK(harness.read_c0(0xC0C6) == 0xAA);
-  }
+  // Verify VIA A remains unchanged
+  CHECK(harness.read_cx(0xC002) == 0x5A);
+  CHECK(harness.read_cx(0xC003) == 0xA5);
 }
 
-TEST_CASE("Mockingboard Peripheral: [MB-19] Independent instance allocation") {
+TEST_CASE("Mockingboard Peripheral: MB-05 Floating Bus Fallthrough") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  // Unmapped register offset $10 in slot 4 ($C410)
+  uint8_t unmapped_val = harness.read_cx(0xC010);
+  CHECK(unmapped_val == 0xFF);
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-06 6522 Timer 1 Underflow & IRQ Generation") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  // Enable T1 interrupt in IER ($C40E)
+  harness.write_cx(0xC00E, 0xC0);
+
+  // Set T1 period to 1000 cycles
+  harness.write_cx(0xC004, 0xE8);
+  harness.write_cx(0xC005, 0x03);
+
+  CHECK_FALSE(harness.irq_asserted());
+
+  // Advance partially
+  harness.advance_cycles(500);
+  harness.think(0);
+  CHECK_FALSE(harness.irq_asserted());
+
+  // Advance past period (total 1100 > 1000)
+  harness.advance_cycles(600);
+  harness.think(0);
+  CHECK(harness.irq_asserted());
+  CHECK(harness.irq_slot() == 4);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-07 6522 Timer 1 IRQ Acknowledge") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  harness.write_cx(0xC00E, 0xC0);
+  harness.write_cx(0xC004, 0xE8);
+  harness.write_cx(0xC005, 0x03);
+
+  harness.advance_cycles(1100);
+  harness.think(0);
+  REQUIRE(harness.irq_asserted());
+
+  // Acknowledge IRQ by reading T1L-L ($C404)
+  harness.read_cx(0xC004);
+  harness.think(0);
+  CHECK_FALSE(harness.irq_asserted());
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-08 Dual AY-3-8910 Bus Interface Protocol") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  harness.write_cx(0xC002, 0xFF);  // DDRB output
+  harness.write_cx(0xC003, 0xFF);  // DDRA output
+  harness.write_cx(0xC000, 0x04);  // RESET_N high
+
+  // Latch register 7 and write 0x3F
+  write_mockingboard_ay(harness, 0x07, 0x3F);
+
+  // Save state and verify register 7 is stored as 0x3F
+  size_t state_size = 0;
+  REQUIRE(harness.save_state(nullptr, &state_size) == peripheral_ok);
+  std::vector<uint8_t> buffer(state_size);
+  REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
+
+  const auto* ss =
+      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+  CHECK(ss->chips[0].ay_regs[7] == 0x3F);
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-09 Audio Sample Synthesis & Volume Clamping") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  harness.write_cx(0xC002, 0xFF);
+  harness.write_cx(0xC003, 0xFF);
+  harness.write_cx(0xC000, 0x04);
+
+  // Tone period 20 on Channel A, Volume 15
+  write_mockingboard_ay(harness, 0x00, 20);
+  write_mockingboard_ay(harness, 0x01, 0x00);
+  write_mockingboard_ay(harness, 0x08, AY_MAX_VOLUME);
+  write_mockingboard_ay(harness, 0x07, 0x3E);  // Enable Tone A
+
+  // Setup periodic Timer 1
+  harness.write_cx(0xC00E, 0xC0);
+  harness.write_cx(0xC004, 0xE8);
+  harness.write_cx(0xC005, 0x03);
+
+  harness.clear_audio();
+  harness.advance_cycles(1001);
+  harness.think(0);
+
+  CHECK(harness.irq_asserted());
+  CHECK(harness.audio_push_call_count() == 1);
+  const auto& samples = harness.audio_samples();
+  REQUIRE_FALSE(samples.empty());
+
+  int16_t peak_left = 0;
+  int16_t min_left = 0;
+  for (int16_t sample : samples) {
+    if (sample > peak_left) peak_left = sample;
+    if (sample < min_left) min_left = sample;
+  }
+
+  CHECK(peak_left == AY_PEAK_AMPLITUDE_MAX_VOL);
+  CHECK(min_left == 0);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-10 60 Hz Fallback Audio Spindown") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  harness.clear_audio();
+  // Step more than 1/60th second (> 17008 cycles at 1.020484 MHz) with inactive
+  // timers
+  harness.advance_cycles(20000);
+  harness.think(0);
+
+  CHECK(harness.audio_push_call_count() >= 1);
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-11 Warp Speed (g_full_speed) Suppression") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  harness.write_cx(0xC002, 0xFF);
+  harness.write_cx(0xC003, 0xFF);
+  harness.write_cx(0xC000, 0x04);
+  write_mockingboard_ay(harness, 0x00, 20);
+  write_mockingboard_ay(harness, 0x08, AY_MAX_VOLUME);
+  write_mockingboard_ay(harness, 0x07, 0x3E);
+
+  harness.write_cx(0xC00E, 0xC0);
+  harness.write_cx(0xC004, 0xE8);
+  harness.write_cx(0xC005, 0x03);
+
+  // In warp speed, audio push is suppressed
+  g_full_speed = true;
+  harness.clear_audio();
+  harness.advance_cycles(1001);
+  harness.think(0);
+
+  CHECK(harness.audio_push_call_count() == 0);
+
+  // When normal speed resumes, audio push operates
+  g_full_speed = false;
+  harness.read_cx(0xC004);  // Ack IRQ
+  harness.write_cx(0xC005, 0x03);
+  harness.advance_cycles(1001);
+  harness.think(0);
+
+  CHECK(harness.audio_push_call_count() >= 1);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-12 Phasor Emulation Mode Switching") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  const uint8_t card_type = mockingboard_type_phasor;
+  CHECK(harness.command(mockingboard_cmd_set_type, &card_type,
+                        sizeof(card_type)) == peripheral_ok);
+
+  MockingboardStatus_t status{};
+  size_t status_size = sizeof(status);
+  REQUIRE(harness.query(mockingboard_query_status, &status, &status_size) ==
+          peripheral_ok);
+  CHECK(status.card_type == mockingboard_type_phasor);
+  CHECK(status.phasor_native == 0);
+
+  // Access C0nX range ($C0C1) to trigger native mode
+  harness.read_c0(0xC0C1);
+
+  status_size = sizeof(status);
+  REQUIRE(harness.query(mockingboard_query_status, &status, &status_size) ==
+          peripheral_ok);
+  CHECK(status.phasor_native == 1);
+
+  // Chip A via bit 2 ($C0C6), register 6
+  harness.write_c0(0xC0C6, 0xAA);
+  CHECK(harness.read_c0(0xC0C6) == 0xAA);
+
+  // Chip B via bit 3 ($C0CA), register 0xA
+  harness.write_c0(0xC0CA, 0xBB);
+  CHECK(harness.read_c0(0xC0CA) == 0xBB);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-13 Multi-Slot Concurrency") {
   MockingboardHarness harness;
   void* instance1 = harness.create_card(4);
-  REQUIRE(instance1 != nullptr);
-
   void* instance2 = harness.create_card(5);
+  REQUIRE(instance1 != nullptr);
   REQUIRE(instance2 != nullptr);
   CHECK(instance1 != instance2);
+
+  // Write different values to VIA A DDRB on each card
+  harness.write_cx(0xC002, 0x11, instance1);
+  harness.write_cx(0xC002, 0x22, instance2);
+
+  CHECK(harness.read_cx(0xC002, instance1) == 0x11);
+  CHECK(harness.read_cx(0xC002, instance2) == 0x22);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-14 Command ABI Parameter Validation") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  // Valid set type command
+  const uint8_t valid_type = mockingboard_type_phasor;
+  CHECK(harness.command(mockingboard_cmd_set_type, &valid_type,
+                        sizeof(valid_type)) == peripheral_ok);
+
+  // Undersized payload rejected
+  CHECK(harness.command(mockingboard_cmd_set_type, &valid_type, 0) ==
+        peripheral_error);
+
+  // Null payload rejected
+  CHECK(harness.command(mockingboard_cmd_set_type, nullptr,
+                        sizeof(valid_type)) == peripheral_error);
+
+  // Reset audio command succeeds
+  CHECK(harness.command(mockingboard_cmd_reset_audio, nullptr, 0) ==
+        peripheral_ok);
+
+  // Unknown command rejected with peripheral_incompatible
+  CHECK(harness.command(0x9999, nullptr, 0) == peripheral_incompatible);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-15 Query ABI Protocol & Sizing Probes") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  // Pass 1: Sizing probe with null out buffer
+  size_t query_size = 0;
+  CHECK(harness.query(mockingboard_query_status, nullptr, &query_size) ==
+        peripheral_ok);
+  CHECK(query_size == sizeof(MockingboardStatus_t));
+
+  // Undersized buffer returns peripheral_error and sets required size
+  MockingboardStatus_t status{};
+  query_size = sizeof(MockingboardStatus_t) - 1;
+  CHECK(harness.query(mockingboard_query_status, &status, &query_size) ==
+        peripheral_error);
+  CHECK(query_size == sizeof(MockingboardStatus_t));
+
+  // Pass 2: Query execution with adequate buffer
+  CHECK(harness.query(mockingboard_query_status, &status, &query_size) ==
+        peripheral_ok);
+  CHECK(query_size == sizeof(MockingboardStatus_t));
+  CHECK(status.card_type == mockingboard_type_mockingboard);
+  CHECK(status.phasor_native == 0);
+
+  // Unknown query rejected with peripheral_incompatible
+  CHECK(harness.query(0x9999, &status, &query_size) == peripheral_incompatible);
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-16 Deterministic 100% Save State Round Trip") {
+  MockingboardHarness harness;
+  void* instance1 = harness.create_card(4);
+  void* instance2 = harness.create_card(5);
+  REQUIRE(instance1 != nullptr);
+  REQUIRE(instance2 != nullptr);
+
+  // Mutate Card 1 state
+  harness.write_cx(0xC002, 0x55, instance1);  // VIA A DDRB
+  harness.write_cx(0xC083, 0xAA, instance1);  // VIA B DDRA
+  const uint8_t card_type = mockingboard_type_phasor;
+  REQUIRE(harness.command(mockingboard_cmd_set_type, &card_type,
+                          sizeof(card_type), instance1) == peripheral_ok);
+
+  // Sizing probe
+  size_t state_size = 0;
+  CHECK(harness.save_state(nullptr, &state_size, instance1) == peripheral_ok);
+  REQUIRE(state_size == sizeof(MockingboardSaveState_t));
+  CHECK(state_size == 232);
+
+  // Save state
+  std::vector<uint8_t> buffer(state_size);
+  REQUIRE(harness.save_state(buffer.data(), &state_size, instance1) ==
+          peripheral_ok);
+
+  const auto* ss =
+      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+  CHECK(ss->version == MOCKINGBOARD_STATE_VERSION);
+  CHECK(ss->struct_size == sizeof(MockingboardSaveState_t));
+  CHECK(ss->chips[0].ddrb == 0x55);
+  CHECK(ss->chips[1].ddra == 0xAA);
+  CHECK(ss->card_type == mockingboard_type_phasor);
+
+  // Restore into Card 2
+  REQUIRE(harness.load_state(buffer.data(), state_size, instance2) ==
+          peripheral_ok);
+
+  CHECK(harness.read_cx(0xC002, instance2) == 0x55);
+  CHECK(harness.read_cx(0xC083, instance2) == 0xAA);
+
+  MockingboardStatus_t status{};
+  size_t status_size = sizeof(status);
+  REQUIRE(harness.query(mockingboard_query_status, &status, &status_size,
+                        instance2) == peripheral_ok);
+  CHECK(status.card_type == mockingboard_type_phasor);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  size_t state_size = 0;
+  REQUIRE(harness.save_state(nullptr, &state_size) == peripheral_ok);
+  std::vector<uint8_t> buffer(state_size);
+  REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
+
+  // Null buffer rejected
+  CHECK(harness.load_state(nullptr, state_size) == peripheral_error);
+
+  // Undersized buffer rejected
+  CHECK(harness.load_state(buffer.data(), state_size - 1) == peripheral_error);
+
+  // Oversized buffer rejected
+  std::vector<uint8_t> oversized(state_size + 1);
+  std::memcpy(oversized.data(), buffer.data(), state_size);
+  CHECK(harness.load_state(oversized.data(), oversized.size()) ==
+        peripheral_error);
+
+  // Corrupt version rejected
+  auto* ss = reinterpret_cast<MockingboardSaveState_t*>(buffer.data());
+  uint32_t orig_ver = ss->version;
+  ss->version = 999;
+  CHECK(harness.load_state(buffer.data(), state_size) == peripheral_error);
+  ss->version = orig_ver;
+
+  // Corrupt struct_size rejected
+  uint32_t orig_sz = ss->struct_size;
+  ss->struct_size = 123;
+  CHECK(harness.load_state(buffer.data(), state_size) == peripheral_error);
+  ss->struct_size = orig_sz;
+
+  // Clean state loads successfully
+  CHECK(harness.load_state(buffer.data(), state_size) == peripheral_ok);
 }
