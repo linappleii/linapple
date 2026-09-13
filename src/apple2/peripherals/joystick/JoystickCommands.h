@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+#define JOYSTICK_STATE_VERSION 1
+
 typedef enum {
   JOY_CMD_SET_AXIS = 0,
   JOY_CMD_SET_BUTTON = 1,
@@ -51,6 +53,20 @@ typedef struct {
   bool axis_x;
   int16_t value;
 } JoystickTrimPayload_t;
+
+typedef struct {
+  uint32_t version;
+  uint32_t struct_size;
+  uint64_t reset_cycle;
+  uint64_t button_latches[3];
+  uint8_t x_pos[2];
+  uint8_t y_pos[2];
+  uint8_t buttons[3];
+  uint8_t reserved0;
+  int16_t trim_x;
+  int16_t trim_y;
+  uint8_t reserved1[4];
+} JoystickSaveState_t;
 
 #ifdef __cplusplus
 }
