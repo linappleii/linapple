@@ -1,430 +1,445 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <stdio.h>
-
-#include <cstdint>
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <ios>
 #include <vector>
 
-#include "apple2/Memory.h"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "core/LinAppleCore.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
-// Access internal descriptor for testing
-extern "C" auto harddisk_get_descriptor() -> Peripheral_t*;
+extern "C" const HarddiskFormatDriver_t g_two_img_driver;
 
 namespace {
 
-// Helper to create a temporary test file
-struct TempFileGuard {
-  char path[256];
-  TempFileGuard(const char* name, const uint8_t* data, size_t size) {
-    snprintf(path, sizeof(path), "%s", name);
-    FILE* f = fopen(path, "wb");
-    if (f) {
-      fwrite(data, 1, size, f);
-      fclose(f);
+struct HarddiskHarness {
+  std::array<uint8_t, 65536> ram{};
+  std::array<uint8_t, 256> cx_rom{};
+  HostInterface_t host{};
+  Peripheral_t* desc = nullptr;
+  void* instance = nullptr;
+
+  PeripheralIoHandler_t io_read = nullptr;
+  PeripheralIoHandler_t io_write = nullptr;
+  void* io_context = nullptr;
+
+  static auto s_active_harness() -> HarddiskHarness*& {
+    static HarddiskHarness* s_h = nullptr;
+    return s_h;
+  }
+
+  static auto mock_register_direct_io(void* ctx, uint16_t addr,
+                                      PeripheralIoHandler_t r,
+                                      PeripheralIoHandler_t w) -> void {
+    (void)addr;
+    if (s_active_harness() != nullptr) {
+      s_active_harness()->io_read = r;
+      s_active_harness()->io_write = w;
+      s_active_harness()->io_context = ctx;
     }
   }
-  ~TempFileGuard() { remove(path); }
+
+  static auto mock_register_cx_rom(int slot, uint8_t* rom) -> void {
+    (void)slot;
+    if (s_active_harness() != nullptr && rom != nullptr) {
+      std::copy_n(rom, 256, s_active_harness()->cx_rom.begin());
+    }
+  }
+
+  static auto mock_get_mem_ptr(uint16_t addr) -> uint8_t* {
+    if (s_active_harness() != nullptr) {
+      return &s_active_harness()->ram.at(addr);
+    }
+    return nullptr;
+  }
+
+  explicit HarddiskHarness(int slot = 7) {
+    s_active_harness() = this;
+    host.RegisterDirectIO = mock_register_direct_io;
+    host.RegisterCxROM = mock_register_cx_rom;
+    host.get_mem_ptr = mock_get_mem_ptr;
+    host.NotifyStatusChanged = [](int) {};
+    host.GetConfig = [](const char*, const char*, char*, size_t) {
+      return false;
+    };
+    host.SetConfig = [](const char*, const char*, const char*) {};
+
+    desc = harddisk_get_descriptor();
+    if (desc != nullptr && desc->init != nullptr) {
+      instance = desc->init(slot, &host);
+    }
+  }
+
+  ~HarddiskHarness() {
+    if (desc != nullptr && desc->shutdown != nullptr && instance != nullptr) {
+      desc->shutdown(instance);
+      instance = nullptr;
+    }
+    s_active_harness() = nullptr;
+  }
+
+  HarddiskHarness(const HarddiskHarness&) = delete;
+  auto operator=(const HarddiskHarness&) -> HarddiskHarness& = delete;
+  HarddiskHarness(HarddiskHarness&&) = delete;
+  auto operator=(HarddiskHarness&&) -> HarddiskHarness& = delete;
+
+  auto read_io(uint16_t addr) -> uint8_t {
+    if (io_read != nullptr && instance != nullptr) {
+      return io_read(io_context, 0, addr, 0, 0, 0);
+    }
+    return 0;
+  }
+
+  auto write_io(uint16_t addr, uint8_t val) -> void {
+    if (io_write != nullptr && instance != nullptr) {
+      io_write(io_context, 0, addr, 1, val, 0);
+    }
+  }
 };
 
 }  // namespace
 
-TEST_CASE("Harddisk: Comprehensive Register and Block I/O Test") {
-  linapple_init();
-  peripheral_manager_init();
+TEST_CASE("Harddisk Exhaustive: Register Protocol and Block I/O") {
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
-  auto* descriptor = harddisk_get_descriptor();
-  REQUIRE(descriptor != nullptr);
-
-  // Register Harddisk in Slot 7
-  int reg_result = peripheral_register(descriptor, 7);
-  REQUIRE(reg_result == 0);
-
-  // Create a mock 1MB HDV file (2048 blocks)
+  // 1. Create a mock 1MB HDV file (2048 blocks)
   std::vector<uint8_t> mock_data(2048 * 512, 0);
-  // Fill block 10 with some recognizable pattern
   for (int i = 0; i < 512; ++i) {
     mock_data[10 * 512 + i] = static_cast<uint8_t>(i & 0xFF);
   }
 
-  TempFileGuard mock_hdv("exhaustive_test.hdv", mock_data.data(),
-                         mock_data.size());
+  auto fixture = TestFixtures::create_ephemeral_blank("exhaustive_test.hdv",
+                                                      mock_data.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(mock_data.data()),
+              mock_data.size());
+  }
 
-  // 1. Insert the mock disk
+  // 2. Insert mock disk
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, mock_hdv.path, sizeof(insert.path) - 1);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
 
-  PeripheralStatus_t pstatus =
-      peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
+  PeripheralStatus_t pstatus = harness.desc->command(
+      harness.instance, harddisk_cmd_insert, &insert, sizeof(insert));
   CHECK(pstatus == peripheral_ok);
-  peripheral_manager_think(0);
 
-  // 2. Verify Status
   HarddiskStatus_t status{};
   size_t status_size = sizeof(status);
-  pstatus = peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  pstatus = harness.desc->query(harness.instance, harddisk_query_status,
+                                &status, &status_size);
   CHECK(pstatus == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == 0);
-  CHECK(strcmp(status.drive0_full_path, mock_hdv.path) == 0);
+  CHECK(strcmp(status.drive0_full_path, fixture.c_str()) == 0);
 
-  // 3. Test SmartPort Read Protocol via Registers
-  // We want to read block 10 into emulator memory at $2000
+  // 3. Read block 10 via SmartPort register protocol
+  harness.write_io(0xC0F3, 0x00);  // Drive 0
+  harness.write_io(0xC0F2, 0x01);  // Read
+  harness.write_io(0xC0F4, 0x00);  // Mem $2000
+  harness.write_io(0xC0F5, 0x20);
+  harness.write_io(0xC0F6, 0x0A);  // Block 10
+  harness.write_io(0xC0F7, 0x00);
 
-  // Set Unit Number ($C0F3) - Drive 1 (Unit 0x00)
-  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);
+  uint8_t io_res = harness.read_io(0xC0F0);  // Exec
+  CHECK(io_res == 0);                        // ok
 
-  // Set Command ($C0F2) - Read (0x01)
-  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);
-
-  // Set Memory Address ($C0F4, $C0F5) - 0x2000
-  io_map_dispatch(0, 0xC0F4, 1, 0x00, 0);  // Lo
-  io_map_dispatch(0, 0xC0F5, 1, 0x20, 0);  // Hi
-
-  // Set Disk Block ($C0F6, $C0F7) - Block 10 (0x000A)
-  io_map_dispatch(0, 0xC0F6, 1, 0x0A, 0);  // Lo
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Hi
-
-  // Trigger Execution ($C0F0)
-  // SmartPort ROM must be active for execution to work
-  // In our init, we set rom_active = true and RegisterCxROM
-  uint8_t io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
-  CHECK(io_res == 0);  // status::ok
-
-  // Verify data in buffer register ($C0F8)
-  // The first byte of block 10 should be 0x00
-  uint8_t b0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+  // Verify buffer bytes
+  uint8_t b0 = harness.read_io(0xC0F8);
   CHECK(b0 == 0x00);
-  uint8_t b1 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+  uint8_t b1 = harness.read_io(0xC0F8);
   CHECK(b1 == 0x01);
 
-  // 4. Test SmartPort Write Protocol
-  // Write some data to memory at $3000 and then to block 20
-  memset(mem + 0x3000, 0xAA, 512);
+  // 4. Write Protocol: write to memory $3000 and then block 20
+  std::fill_n(&harness.ram.at(0x3000), 512, 0xAA);
 
-  io_map_dispatch(0, 0xC0F2, 1, 0x02, 0);  // Write command
-  io_map_dispatch(0, 0xC0F4, 1, 0x00, 0);  // Mem Lo
-  io_map_dispatch(0, 0xC0F5, 1, 0x30, 0);  // Mem Hi
-  io_map_dispatch(0, 0xC0F6, 1, 0x14, 0);  // Disk Lo (20 = 0x14)
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Disk Hi
+  harness.write_io(0xC0F2, 0x02);  // Write
+  harness.write_io(0xC0F4, 0x00);  // Mem $3000
+  harness.write_io(0xC0F5, 0x30);
+  harness.write_io(0xC0F6, 0x14);  // Block 20
+  harness.write_io(0xC0F7, 0x00);
 
-  io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
+  io_res = harness.read_io(0xC0F0);  // Exec
   CHECK(io_res == 0);
 
-  // 5. Test Write Protection
+  // 5. Write protection toggle
   HarddiskSetProtectCmd_t prot{};
   prot.drive = harddisk_drive_0;
   prot.write_protected = 1;
-  pstatus =
-      peripheral_command(7, harddisk_cmd_set_protect, &prot, sizeof(prot));
+  pstatus = harness.desc->command(harness.instance, harddisk_cmd_set_protect,
+                                  &prot, sizeof(prot));
   CHECK(pstatus == peripheral_ok);
-  peripheral_manager_think(0);
 
-  // Try writing again - should fail (or at least status should be read-only)
-  // Current driver implementation returns status::ok for format/write start,
-  // but let's check if we can verify the failure.
-  // Actually RawHdDriver delegates to BlockDiskImage which checks os_readonly.
-  // User write protect is checked in the command ABI.
+  // Try writing again - should fail with io_error
+  io_res = harness.read_io(0xC0F0);
+  CHECK(io_res != 0);
 
-  // 6. Eject and cleanup
+  // 6. Eject
   HarddiskEjectCmd_t eject{};
   eject.drive = harddisk_drive_0;
-  pstatus = peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
+  pstatus = harness.desc->command(harness.instance, harddisk_cmd_eject, &eject,
+                                  sizeof(eject));
   CHECK(pstatus == peripheral_ok);
-  peripheral_manager_think(0);
-
-  linapple_shutdown();
 }
 
-TEST_CASE("Harddisk: Edge Cases and Safety") {
-  linapple_init();
-  peripheral_manager_init();
-  auto* descriptor = harddisk_get_descriptor();
-  peripheral_register(descriptor, 7);
+TEST_CASE("Harddisk Exhaustive: Edge Cases and Safety") {
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
   // 1. Invalid Drive Index in Command
   HarddiskEjectCmd_t eject{};
   eject.drive = 99;
-  // Command returns OK because it's only queued.
-  PeripheralStatus_t pstatus =
-      peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
-  CHECK(pstatus == peripheral_ok);
-
-  // error would be reported in Status after Think
-  peripheral_manager_think(0);
+  PeripheralStatus_t pstatus = harness.desc->command(
+      harness.instance, harddisk_cmd_eject, &eject, sizeof(eject));
+  CHECK(pstatus == peripheral_error);
 
   // 2. Read from unloaded drive
-  // Set Unit to Drive 1 (Unit 0x00), which we haven't loaded
-  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);
-  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read
-  uint8_t io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
-  CHECK(io_res != 0);  // Should be status::unknown_error or similar
+  harness.write_io(0xC0F3, 0x00);  // Drive 0 (unloaded)
+  harness.write_io(0xC0F2, 0x01);  // Read
+  uint8_t io_res = harness.read_io(0xC0F0);
+  CHECK(io_res != 0);  // error
 
-  // 3. Memory Bounds Safety
-  // Set memory address to 0xFFF0 (near end of 64K)
-  // Reading 512 bytes from here would overflow 64K.
-  // Our code checks if (addr + 512 <= 0x10000)
+  // 3. Memory Bounds Safety (near 64K boundary)
+  auto fixture = TestFixtures::create_ephemeral_blank("safety.hdv", 512);
 
-  std::vector<uint8_t> dummy(512, 0);
-  TempFileGuard dummy_file("safety.hdv", dummy.data(), dummy.size());
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, dummy_file.path, sizeof(insert.path) - 1);
-  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  peripheral_manager_think(0);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
+  CHECK(harness.desc->command(harness.instance, harddisk_cmd_insert, &insert,
+                              sizeof(insert)) == peripheral_ok);
 
-  io_map_dispatch(0, 0xC0F4, 1, 0xF0, 0);  // Lo
-  io_map_dispatch(0, 0xC0F5, 1, 0xFF, 0);  // Hi (0xFFF0)
-  io_map_dispatch(0, 0xC0F2, 1, 0x02, 0);  // Write command (pulls from mem)
-  io_res = io_map_dispatch(0, 0xC0F0, 0, 0, 0);
+  harness.write_io(0xC0F4,
+                   0xF0);  // $FFF0 (reading 512 bytes would overflow 64K)
+  harness.write_io(0xC0F5, 0xFF);
+  harness.write_io(0xC0F2, 0x02);  // Write
+  io_res = harness.read_io(0xC0F0);
   CHECK(io_res != 0);
-
-  linapple_shutdown();
 }
 
-TEST_CASE("Harddisk: MacBinary Detection") {
-  // Create a mock MacBinary header (128 bytes) + 512 bytes data
+TEST_CASE("Harddisk Exhaustive: MacBinary Detection") {
   std::array<uint8_t, 128 + 512> macbin_data{};
-  macbin_data.fill(0);
-  macbin_data[0] = 0;   // Required for MacBinary
-  macbin_data[1] = 10;  // Filename length
+  macbin_data[0] = 0;
+  macbin_data[1] = 10;
   memcpy(&macbin_data[2], "test.hdv  ", 10);
-  macbin_data[122] = 0;  // Required by our heuristic
+  macbin_data[122] = 0;
   macbin_data[123] = 0;
-
-  // Data at block 0 (offset 128)
   macbin_data[128] = 0x55;
 
-  TempFileGuard macbin_file("test_macbin.hdv", macbin_data.data(),
-                            macbin_data.size());
+  auto fixture = TestFixtures::create_ephemeral_blank("test_macbin.hdv",
+                                                      macbin_data.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(macbin_data.data()),
+              macbin_data.size());
+  }
 
-  linapple_init();
-  peripheral_manager_init();
-  auto* descriptor = harddisk_get_descriptor();
-  peripheral_register(descriptor, 7);
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, macbin_file.path, sizeof(insert.path) - 1);
-  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  peripheral_manager_think(0);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
+  CHECK(harness.desc->command(harness.instance, harddisk_cmd_insert, &insert,
+                              sizeof(insert)) == peripheral_ok);
 
   // Read block 0
-  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);  // Drive 0
-  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read
-  io_map_dispatch(0, 0xC0F6, 1, 0x00, 0);  // Block 0 Lo
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 0 Hi
-  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Exec
+  harness.write_io(0xC0F3, 0x00);
+  harness.write_io(0xC0F2, 0x01);
+  harness.write_io(0xC0F6, 0x00);
+  harness.write_io(0xC0F7, 0x00);
+  harness.read_io(0xC0F0);
 
-  uint8_t b0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
-  CHECK(b0 == 0x55);  // Should have skipped 128 byte header
-
-  linapple_shutdown();
+  uint8_t b0 = harness.read_io(0xC0F8);
+  CHECK(b0 == 0x55);  // Should have skipped 128-byte MacBinary header
 }
 
-TEST_CASE("Harddisk: Native 2MG Container Support") {
-  // Create a 2MG image (64-byte header + 2 blocks of 512 bytes = 1088 bytes)
+TEST_CASE("Harddisk Exhaustive: Native 2MG Container Support") {
   std::vector<uint8_t> two_mg_data(64 + 2 * 512, 0);
-
-  // 2IMG Magic
   memcpy(&two_mg_data[0], "2IMG", 4);
-  // Creator
   memcpy(&two_mg_data[4], "2mgx", 4);
-  // Header len (64 bytes = 0x0040)
   uint16_t header_len = 64;
   memcpy(&two_mg_data[8], &header_len, 2);
-  // Version 1
   uint16_t version = 1;
   memcpy(&two_mg_data[10], &version, 2);
-  // Format 1 (ProDOS)
   uint32_t image_format = 1;
   memcpy(&two_mg_data[12], &image_format, 4);
-  // Flags (0 = read/write)
   uint32_t flags = 0;
   memcpy(&two_mg_data[16], &flags, 4);
-  // Blocks = 2
   uint32_t blocks = 2;
   memcpy(&two_mg_data[20], &blocks, 4);
-  // Data offset = 64
   uint32_t data_offset = 64;
   memcpy(&two_mg_data[24], &data_offset, 4);
-  // Data len = 1024
   uint32_t data_len = 1024;
   memcpy(&two_mg_data[28], &data_len, 4);
 
-  // Write identifiable pattern to Block 0 (offset 64) and Block 1 (offset 64 +
-  // 512)
   two_mg_data[64] = 0xAA;
   two_mg_data[64 + 512] = 0xBB;
 
-  TempFileGuard two_mg_file("total_replay.2mg", two_mg_data.data(),
-                            two_mg_data.size());
+  auto fixture = TestFixtures::create_ephemeral_blank("total_replay.2mg",
+                                                      two_mg_data.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(two_mg_data.data()),
+              two_mg_data.size());
+  }
 
-  linapple_init();
-  peripheral_manager_init();
-  auto* descriptor = harddisk_get_descriptor();
-  peripheral_register(descriptor, 7);
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, two_mg_file.path, sizeof(insert.path) - 1);
-  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  peripheral_manager_think(0);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
+  CHECK(harness.desc->command(harness.instance, harddisk_cmd_insert, &insert,
+                              sizeof(insert)) == peripheral_ok);
 
-  // Verify status indicates loaded
   HarddiskStatus_t status{};
   size_t status_size = sizeof(status);
-  peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  CHECK(harness.desc->query(harness.instance, harddisk_query_status, &status,
+                            &status_size) == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == 0);
 
   // Read Block 0
-  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);  // Drive 0
-  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read
-  io_map_dispatch(0, 0xC0F6, 1, 0x00, 0);  // Block 0 Lo
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 0 Hi
-  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Exec
+  harness.write_io(0xC0F3, 0x00);
+  harness.write_io(0xC0F2, 0x01);
+  harness.write_io(0xC0F6, 0x00);
+  harness.write_io(0xC0F7, 0x00);
+  harness.read_io(0xC0F0);
 
-  uint8_t byte0 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
-  CHECK(byte0 == 0xAA);  // Correctly skips the 64-byte 2MG header
+  uint8_t byte0 = harness.read_io(0xC0F8);
+  CHECK(byte0 == 0xAA);
 
   // Read Block 1
-  io_map_dispatch(0, 0xC0F6, 1, 0x01, 0);  // Block 1 Lo
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 1 Hi
-  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Exec
+  harness.write_io(0xC0F6, 0x01);
+  harness.write_io(0xC0F7, 0x00);
+  harness.read_io(0xC0F0);
 
-  uint8_t byte1 = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+  uint8_t byte1 = harness.read_io(0xC0F8);
   CHECK(byte1 == 0xBB);
-
-  linapple_shutdown();
 }
 
 TEST_CASE(
-    "Harddisk: [2MG-1] Reject corrupted 2MG data offset beyond file bounds") {
-  linapple_init();
-  peripheral_manager_init();
-  auto* descriptor = harddisk_get_descriptor();
-  peripheral_register(descriptor, 7);
-
+    "Harddisk Exhaustive: Reject corrupted 2MG data offset beyond file "
+    "bounds") {
   std::vector<uint8_t> corrupted_2mg(128, 0);
   corrupted_2mg[0] = '2';
   corrupted_2mg[1] = 'I';
   corrupted_2mg[2] = 'M';
   corrupted_2mg[3] = 'G';
-  corrupted_2mg[12] = 1;  // ProDOS
-  // Put data_offset at offset 24 (4 bytes) pointing way beyond file size (e.g.
-  // 0x100000)
+  corrupted_2mg[12] = 1;
   uint32_t bad_offset = 0x100000;
   memcpy(&corrupted_2mg[24], &bad_offset, sizeof(bad_offset));
 
-  TempFileGuard bad_file("corrupt_offset.2mg", corrupted_2mg.data(),
-                         corrupted_2mg.size());
+  auto fixture = TestFixtures::create_ephemeral_blank("corrupt_offset.2mg",
+                                                      corrupted_2mg.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(corrupted_2mg.data()),
+              corrupted_2mg.size());
+  }
+
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, bad_file.path, sizeof(insert.path) - 1);
-  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  peripheral_manager_think(0);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
+  harness.desc->command(harness.instance, harddisk_cmd_insert, &insert,
+                        sizeof(insert));
 
   HarddiskStatus_t status{};
   size_t status_size = sizeof(status);
-  peripheral_query(7, harddisk_cmd_get_status, &status, &status_size);
+  harness.desc->query(harness.instance, harddisk_query_status, &status,
+                      &status_size);
   CHECK(status.drive0_loaded == 0);
-
-  linapple_shutdown();
 }
 
-TEST_CASE("Harddisk: Safe Handling of Unbounded SmartPort Buffer I/O ($C0F8)") {
-  linapple_init();
-  peripheral_manager_init();
-  auto* descriptor = harddisk_get_descriptor();
-  REQUIRE(descriptor != nullptr);
-  int reg_result = peripheral_register(descriptor, 7);
-  REQUIRE(reg_result == 0);
+TEST_CASE(
+    "Harddisk Exhaustive: Safe Handling of Unbounded SmartPort Buffer I/O "
+    "($C0F8)") {
+  HarddiskHarness harness(7);
+  REQUIRE(harness.instance != nullptr);
 
-  // 1. Unbounded reads from $C0F8 without reading a block first (buffer_ptr
-  // initially 0)
+  // Unbounded reads from $C0F8 without reading a block
   for (int i = 0; i < 600; ++i) {
-    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    uint8_t val = harness.read_io(0xC0F8);
     if (i >= 512) {
       CHECK(val == 0x00);
     }
   }
 
-  // 2. Unbounded writes to $C0F8
+  // Unbounded writes to $C0F8
   for (int i = 0; i < 600; ++i) {
-    io_map_dispatch(0, 0xC0F8, 1, static_cast<uint8_t>(i & 0xFF), 0);
+    harness.write_io(0xC0F8, static_cast<uint8_t>(i & 0xFF));
   }
 
-  // 3. Unbounded reads after a valid block read
+  // Unbounded reads after a valid block read
   std::vector<uint8_t> mock_data(512 * 2, 0);
   for (int i = 0; i < 512; ++i) {
     mock_data[i] = static_cast<uint8_t>(i & 0xFF);
   }
-  TempFileGuard mock_hdv("unbounded_test.hdv", mock_data.data(),
-                         mock_data.size());
+  auto fixture = TestFixtures::create_ephemeral_blank("unbounded_test.hdv",
+                                                      mock_data.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(mock_data.data()),
+              mock_data.size());
+  }
 
   HarddiskInsertCmd_t insert{};
   insert.drive = harddisk_drive_0;
-  strncpy(insert.path, mock_hdv.path, sizeof(insert.path) - 1);
-  peripheral_command(7, harddisk_cmd_insert, &insert, sizeof(insert));
-  peripheral_manager_think(0);
+  strncpy(insert.path, fixture.c_str(), sizeof(insert.path) - 1);
+  CHECK(harness.desc->command(harness.instance, harddisk_cmd_insert, &insert,
+                              sizeof(insert)) == peripheral_ok);
 
   // Read Block 0
-  io_map_dispatch(0, 0xC0F3, 1, 0x00, 0);  // Drive 0
-  io_map_dispatch(0, 0xC0F2, 1, 0x01, 0);  // Read command
-  io_map_dispatch(0, 0xC0F6, 1, 0x00, 0);  // Block 0 Lo
-  io_map_dispatch(0, 0xC0F7, 1, 0x00, 0);  // Block 0 Hi
-  io_map_dispatch(0, 0xC0F0, 0, 0, 0);     // Execute command
+  harness.write_io(0xC0F3, 0x00);
+  harness.write_io(0xC0F2, 0x01);
+  harness.write_io(0xC0F6, 0x00);
+  harness.write_io(0xC0F7, 0x00);
+  harness.read_io(0xC0F0);
 
-  // Read 512 bytes correctly
+  // Read 512 bytes
   for (int i = 0; i < 512; ++i) {
-    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    uint8_t val = harness.read_io(0xC0F8);
     CHECK(val == static_cast<uint8_t>(i & 0xFF));
   }
 
-  // Read beyond 512 bytes (513+ times) - should return 0x00 and not throw or
-  // crash
+  // Read beyond 512 bytes
   for (int i = 512; i < 1024; ++i) {
-    uint8_t val = io_map_dispatch(0, 0xC0F8, 0, 0, 0);
+    uint8_t val = harness.read_io(0xC0F8);
     CHECK(val == 0x00);
   }
-
-  // Eject
-  HarddiskEjectCmd_t eject{};
-  eject.drive = harddisk_drive_0;
-  peripheral_command(7, harddisk_cmd_eject, &eject, sizeof(eject));
-  peripheral_manager_think(0);
-
-  linapple_shutdown();
 }
 
-extern "C" const HarddiskFormatDriver_t g_two_img_driver;
-
-TEST_CASE("Harddisk: [2MG-12] Offset validation and integer wrap") {
-  // Create a 2MG file with header where data_offset wraps or exceeds file size
+TEST_CASE("Harddisk Exhaustive: 2MG Offset validation and integer wrap") {
   std::vector<uint8_t> bad_2mg(128, 0);
   memcpy(bad_2mg.data(), "2IMG", 4);
-  // Set data_offset (offset 24) to a value larger than total_file_size
   uint32_t big_offset = 0xFFFFFF00;
   memcpy(&bad_2mg[24], &big_offset, sizeof(big_offset));
 
-  TempFileGuard mock_2mg("bad_offset.2mg", bad_2mg.data(), bad_2mg.size());
+  auto fixture =
+      TestFixtures::create_ephemeral_blank("bad_offset.2mg", bad_2mg.size());
+  {
+    std::ofstream out(fixture.c_str(), std::ios::binary);
+    out.write(reinterpret_cast<const char*>(bad_2mg.data()), bad_2mg.size());
+  }
 
   bool is_readonly = false;
   void* instance = nullptr;
   HarddiskError_e err =
-      g_two_img_driver.open(mock_2mg.path, 0, &is_readonly, &instance);
+      g_two_img_driver.open(fixture.c_str(), 0, &is_readonly, &instance);
   CHECK(err == harddisk_err_invalid_format);
   CHECK(instance == nullptr);
 }

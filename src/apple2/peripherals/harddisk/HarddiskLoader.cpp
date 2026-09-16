@@ -28,20 +28,30 @@
 
 namespace {
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
+static int g_loader_ref_count = 0;
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_two_img_driver;
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver;
 
 void harddisk_loader_init(void) {
-  g_harddisk_drivers.clear();
-  harddisk_loader_register(
-      const_cast<HarddiskFormatDriver_t*>(&g_two_img_driver));
-  harddisk_loader_register(
-      const_cast<HarddiskFormatDriver_t*>(&g_raw_hd_driver));
+  if (g_loader_ref_count++ == 0) {
+    g_harddisk_drivers.clear();
+    harddisk_loader_register(
+        const_cast<HarddiskFormatDriver_t*>(&g_two_img_driver));
+    harddisk_loader_register(
+        const_cast<HarddiskFormatDriver_t*>(&g_raw_hd_driver));
+  }
 }
 
-void harddisk_loader_shutdown(void) { g_harddisk_drivers.clear(); }
+void harddisk_loader_shutdown(void) {
+  if (g_loader_ref_count > 0) {
+    --g_loader_ref_count;
+    if (g_loader_ref_count == 0) {
+      g_harddisk_drivers.clear();
+    }
+  }
+}
 
 auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
   if (driver_ptr == nullptr) {

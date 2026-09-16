@@ -1,13 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique, google-runtime-int)
-// Justification: This module
-// implements low-level hardware emulation using procedural C-style patterns for
-// performance and ABI compatibility. Pointer arithmetic and C-style arrays are
-// required for block buffer manipulation and ROM data.
-// easily-swappable-parameters is mandated by the project-wide Peripheral ABI
-// signatures. modernize-make-unique is suppressed to maintain C++11
-// compatibility. google-runtime-int is required for fseek offsets.
-
 #include "apple2/peripherals/harddisk/Harddisk.h"
 
 #include <algorithm>
@@ -17,7 +8,6 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/Memory.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
@@ -29,6 +19,8 @@
 #ifndef VERSIONSTRING
 #define VERSIONSTRING "3.1.0"
 #endif
+
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
@@ -119,6 +111,7 @@ struct HarddiskDrive_t {
 
 struct HarddiskPeripheral_t {
   std::array<HarddiskDrive_t, harddisk_drive_count> drives{};
+  std::array<uint8_t, physical::rom_size> slot_rom{};
   uint8_t unit_num = 0;
   uint8_t command_reg = 0;
   bool rom_active = false;
@@ -235,7 +228,9 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* peripheral_ptr,
   if (peripheral_ptr->host != nullptr) {
     const char* key = (drive_index == harddisk_drive_0) ? "Harddisk Image 1"
                                                         : "Harddisk Image 2";
-    peripheral_ptr->host->SetConfig("Preferences", key, path);
+    if (peripheral_ptr->host->SetConfig != nullptr) {
+      peripheral_ptr->host->SetConfig("Preferences", key, path);
+    }
     peripheral_ptr->host->NotifyStatusChanged(
         static_cast<int>(peripheral_ptr->slot));
   }
@@ -286,6 +281,12 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
     case hd_io_cmd_write:
       peripheral_ptr->activity_status = harddisk_status_write;
       active_drive.buffer_ptr = 0;
+      // Safety: Verify write-protection flags before proceeding
+      if (active_drive.user_write_protected || active_drive.os_readonly) {
+        active_drive.error_code = 1;
+        io_status = status::io_error;
+        break;
+      }
       // Safety: Verify memory address before copying
       if (static_cast<uint32_t>(active_drive.memory_address) +
               physical::block_size >
@@ -334,6 +335,7 @@ auto execute_harddisk_io_command(HarddiskPeripheral_t* peripheral_ptr,
 auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
                          uint16_t address, uint8_t is_write, uint8_t data_value,
                          uint32_t remaining_cycles) -> uint8_t {
+  (void)program_counter;
   if (instance_handle == nullptr) {
     return status::unknown_error;
   }
@@ -343,8 +345,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
   const uint16_t addr = address & regs::io_addr_hi_mask;
 
   if (!peripheral_ptr->rom_active || !peripheral_ptr->is_enabled) {
-    return io_null(program_counter, addr, is_write, data_value,
-                   remaining_cycles);
+    return mem_read_floating_bus(remaining_cycles);
   }
 
   const size_t drive_idx = static_cast<size_t>(
@@ -387,8 +388,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
         }
         break;
       default:
-        return io_null(program_counter, addr, is_write, data_value,
-                       remaining_cycles);
+        return mem_read_floating_bus(remaining_cycles);
     }
   } else {  // Write
     switch (addr) {
@@ -421,8 +421,7 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
         }
         break;
       default:
-        return io_null(program_counter, addr, is_write, data_value,
-                       remaining_cycles);
+        return mem_read_floating_bus(remaining_cycles);
     }
   }
 
@@ -430,13 +429,13 @@ auto harddisk_io_handler(void* instance_handle, uint16_t program_counter,
     peripheral_ptr->host->NotifyStatusChanged(
         static_cast<int>(peripheral_ptr->slot));
   }
+
   return result;
 }
 
-// --- ABI Implementation ---
-
 auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
-  if (host == nullptr) {
+  if (host == nullptr || host->RegisterDirectIO == nullptr ||
+      host->RegisterCxROM == nullptr || host->get_mem_ptr == nullptr) {
     return nullptr;
   }
   auto peripheral_ptr =
@@ -447,9 +446,9 @@ auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
 
   harddisk_loader_init();
 
-  std::array<uint8_t, physical::rom_size> slot_rom{};
-  std::copy(harddisk_rom.begin(), harddisk_rom.end(), slot_rom.begin());
-  host->RegisterCxROM(slot, slot_rom.data());
+  std::copy(harddisk_rom.begin(), harddisk_rom.end(),
+            peripheral_ptr->slot_rom.begin());
+  host->RegisterCxROM(slot, peripheral_ptr->slot_rom.data());
   peripheral_ptr->rom_active = true;
 
   for (uint16_t addr = regs::io_addr_base; addr <= regs::io_addr_end; ++addr) {
@@ -458,12 +457,14 @@ auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
   char path[physical::path_max];
-  if (host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) &&
+  if (host->GetConfig != nullptr &&
+      host->GetConfig("Preferences", "Harddisk Image 1", path, sizeof(path)) &&
       path[0] != '\0') {
     insert_harddisk_into_drive(peripheral_ptr.get(), harddisk_drive_0, path,
                                false);
   }
-  if (host->GetConfig("Preferences", "Harddisk Image 2", path, sizeof(path)) &&
+  if (host->GetConfig != nullptr &&
+      host->GetConfig("Preferences", "Harddisk Image 2", path, sizeof(path)) &&
       path[0] != '\0') {
     insert_harddisk_into_drive(peripheral_ptr.get(), harddisk_drive_1, path,
                                false);
@@ -500,7 +501,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
   }
   auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance_handle);
 
-  switch (static_cast<HarddiskCmd_e>(cmd_id)) {
+  switch (static_cast<HarddiskCmd_t>(cmd_id)) {
     case harddisk_cmd_insert: {
       if (payload == nullptr || payload_size < sizeof(HarddiskInsertCmd_t)) {
         return peripheral_error;
@@ -527,7 +528,9 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
         const char* key = (cmd_ptr->drive == harddisk_drive_0)
                               ? "Harddisk Image 1"
                               : "Harddisk Image 2";
-        peripheral_ptr->host->SetConfig("Preferences", key, "");
+        if (peripheral_ptr->host->SetConfig != nullptr) {
+          peripheral_ptr->host->SetConfig("Preferences", key, "");
+        }
         peripheral_ptr->host->NotifyStatusChanged(
             static_cast<int>(peripheral_ptr->slot));
       }
@@ -563,14 +566,15 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
 
 auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
                         size_t* size) -> PeripheralStatus_t {
-  if (instance_handle == nullptr || size == nullptr) {
+  if (size == nullptr) {
     return peripheral_error;
   }
 
-  if (static_cast<HarddiskCmd_e>(cmd_id) ==
-      harddisk_cmd_get_supported_extensions) {
+  if (cmd_id == harddisk_query_supported_extensions ||
+      cmd_id == harddisk_cmd_get_supported_extensions) {
+    constexpr size_t required_ext_size = 256;
     if (data == nullptr || *size == 0) {
-      *size = 256;
+      *size = required_ext_size;
       return peripheral_ok;
     }
     harddisk_loader_get_supported_extensions(static_cast<char*>(data), *size);
@@ -578,19 +582,28 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
     return peripheral_ok;
   }
 
-  if (static_cast<HarddiskCmd_e>(cmd_id) != harddisk_cmd_get_status) {
+  if (cmd_id != harddisk_query_status && cmd_id != harddisk_cmd_get_status) {
     return peripheral_incompatible;
   }
 
   constexpr size_t required_size = sizeof(HarddiskStatus_t);
-  if (data == nullptr || *size < required_size) {
+  if (data == nullptr) {
     *size = required_size;
+    return peripheral_ok;
+  }
+
+  if (*size < required_size) {
+    *size = required_size;
+    return peripheral_error;
+  }
+
+  if (instance_handle == nullptr) {
     return peripheral_error;
   }
 
   auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance_handle);
   auto* status_ptr = static_cast<HarddiskStatus_t*>(data);
-  std::fill_n(reinterpret_cast<uint8_t*>(status_ptr), required_size, 0);
+  std::memset(status_ptr, 0, required_size);
 
   for (int i = 0; i < harddisk_drive_count; ++i) {
     auto& d = peripheral_ptr->drives.at(static_cast<size_t>(i));
@@ -621,6 +634,123 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
 
   return peripheral_ok;
 }
+
+auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus_t {
+  if (size == nullptr) {
+    return peripheral_error;
+  }
+
+  constexpr size_t required = sizeof(HarddiskSaveState_t);
+
+  if (buffer == nullptr) {
+    *size = required;
+    return peripheral_ok;
+  }
+
+  if (*size < required) {
+    *size = required;
+    return peripheral_error;
+  }
+
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+
+  auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* ss = static_cast<HarddiskSaveState_t*>(buffer);
+
+  std::memset(ss, 0, required);
+  ss->version = HARDDISK_STATE_VERSION;
+  ss->struct_size = sizeof(HarddiskSaveState_t);
+
+  for (size_t i = 0; i < harddisk_drive_count; ++i) {
+    const auto& drive = peripheral_ptr->drives.at(i);
+    auto& d_ss = ss->drives[i];
+
+    util_safe_strcpy(d_ss.image_name, drive.image_name,
+                     harddisk_status_name_max);
+    util_safe_strcpy(d_ss.full_path, drive.full_path, harddisk_status_path_max);
+    d_ss.last_error = static_cast<int32_t>(drive.last_error);
+    d_ss.memory_address = drive.memory_address;
+    d_ss.disk_block = drive.disk_block;
+    d_ss.buffer_ptr = drive.buffer_ptr;
+    d_ss.error_code = drive.error_code;
+    d_ss.is_loaded = drive.is_loaded ? 1 : 0;
+    d_ss.os_readonly = drive.os_readonly ? 1 : 0;
+    d_ss.user_write_protected = drive.user_write_protected ? 1 : 0;
+    std::copy(drive.data_buffer.begin(), drive.data_buffer.end(),
+              d_ss.data_buffer);
+  }
+
+  ss->unit_num = peripheral_ptr->unit_num;
+  ss->command_reg = peripheral_ptr->command_reg;
+  ss->rom_active = peripheral_ptr->rom_active ? 1 : 0;
+  ss->is_enabled = peripheral_ptr->is_enabled ? 1 : 0;
+  ss->activity_status = static_cast<uint8_t>(peripheral_ptr->activity_status);
+  ss->slot = static_cast<uint8_t>(peripheral_ptr->slot);
+
+  *size = required;
+  return peripheral_ok;
+}
+
+auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus_t {
+  if (instance == nullptr || buffer == nullptr ||
+      size != sizeof(HarddiskSaveState_t)) {
+    return peripheral_error;
+  }
+
+  const auto* ss = static_cast<const HarddiskSaveState_t*>(buffer);
+  if (ss->version != HARDDISK_STATE_VERSION ||
+      ss->struct_size != sizeof(HarddiskSaveState_t)) {
+    return peripheral_error;
+  }
+
+  auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance);
+
+  peripheral_ptr->unit_num = ss->unit_num;
+  peripheral_ptr->command_reg = ss->command_reg;
+  peripheral_ptr->rom_active = ss->rom_active != 0;
+  peripheral_ptr->is_enabled = ss->is_enabled != 0;
+  peripheral_ptr->activity_status = ss->activity_status;
+  peripheral_ptr->slot = ss->slot;
+
+  for (int i = 0; i < harddisk_drive_count; ++i) {
+    const auto& d_ss = ss->drives[i];
+    auto& drive = peripheral_ptr->drives.at(static_cast<size_t>(i));
+
+    if (drive.is_loaded) {
+      eject_harddisk_from_drive(peripheral_ptr, i);
+    }
+
+    if (d_ss.is_loaded != 0 && d_ss.full_path[0] != '\0') {
+      const bool write_prot = (d_ss.user_write_protected != 0);
+      insert_harddisk_into_drive(peripheral_ptr, i, d_ss.full_path, write_prot);
+    }
+
+    util_safe_strcpy(drive.image_name, d_ss.image_name,
+                     harddisk_status_name_max);
+    util_safe_strcpy(drive.full_path, d_ss.full_path, harddisk_status_path_max);
+    drive.last_error = static_cast<HarddiskError_e>(d_ss.last_error);
+    drive.memory_address = d_ss.memory_address;
+    drive.disk_block = d_ss.disk_block;
+    drive.buffer_ptr = d_ss.buffer_ptr;
+    drive.error_code = d_ss.error_code;
+    drive.os_readonly = d_ss.os_readonly != 0;
+    drive.user_write_protected = d_ss.user_write_protected != 0;
+    std::copy(d_ss.data_buffer, d_ss.data_buffer + physical::block_size,
+              drive.data_buffer.begin());
+  }
+
+  if (peripheral_ptr->host != nullptr) {
+    peripheral_ptr->host->NotifyStatusChanged(
+        static_cast<int>(peripheral_ptr->slot));
+  }
+
+  return peripheral_ok;
+}
+
 }  // namespace
 
 static Peripheral_t g_harddisk_peripheral = {
@@ -637,8 +767,8 @@ static Peripheral_t g_harddisk_peripheral = {
     .shutdown = harddisk_abi_shutdown,
     .think = nullptr,
     .on_vblank = nullptr,
-    .save_state = nullptr,
-    .load_state = nullptr,
+    .save_state = harddisk_abi_save_state,
+    .load_state = harddisk_abi_load_state,
     .command = harddisk_abi_command,
     .query = harddisk_abi_query};
 
@@ -647,4 +777,3 @@ extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
 }
 
 PERIPHERAL_REGISTER(g_harddisk_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique, google-runtime-int)
