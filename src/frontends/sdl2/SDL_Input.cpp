@@ -210,7 +210,7 @@ void sdl_handle_event(SDL_Event* e) {
               size_t qsize = 1;
               peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
               if (mouse_active != 0) {
-                MouseButtonPayload_t payload = {0, true};
+                MouseButtonPayload_t payload = {0, true, {0, 0}};
                 peripheral_command(4, mouse_cmd_set_button, &payload,
                                    sizeof(payload));
               }
@@ -241,7 +241,7 @@ void sdl_handle_event(SDL_Event* e) {
           size_t qsize = 1;
           peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
           if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {1, true};
+            MouseButtonPayload_t payload = {1, true, {0, 0}};
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
@@ -261,7 +261,7 @@ void sdl_handle_event(SDL_Event* e) {
           size_t qsize = 1;
           peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
           if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {0, false};
+            MouseButtonPayload_t payload = {0, false, {0, 0}};
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
@@ -275,7 +275,7 @@ void sdl_handle_event(SDL_Event* e) {
           size_t qsize = 1;
           peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
           if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {1, false};
+            MouseButtonPayload_t payload = {1, false, {0, 0}};
             peripheral_command(4, mouse_cmd_set_button, &payload,
                                sizeof(payload));
           }
