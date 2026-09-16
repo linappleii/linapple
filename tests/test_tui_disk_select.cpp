@@ -52,12 +52,14 @@ struct ScopedCwd_t {
     if (getcwd(buf.data(), buf.size()) != nullptr) {
       original_cwd = buf.data();
     }
-    chdir(new_dir.c_str());
+    const int rc = chdir(new_dir.c_str());
+    REQUIRE(rc == 0);
   }
 
   ~ScopedCwd_t() {
     if (!original_cwd.empty()) {
-      chdir(original_cwd.c_str());
+      const int rc = chdir(original_cwd.c_str());
+      CHECK(rc == 0);
     }
   }
 
