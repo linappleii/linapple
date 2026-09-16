@@ -693,7 +693,8 @@ void process_button_click(int button, int mod) {
         if (mod & SDL_KMOD_SHIFT) {
           printf("HDD  Eject Drive #%d\n", (button - btn_drive1) + 1);
           HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - btn_drive1)};
-          peripheral_command(7, harddisk_cmd_eject, &ecmd, sizeof(ecmd));
+          peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
+                             sizeof(ecmd));
         } else {
           printf("Disk Eject Drive #%d\n", (button - btn_drive1) + 1);
           DiskEjectCmd_t ecmd{};

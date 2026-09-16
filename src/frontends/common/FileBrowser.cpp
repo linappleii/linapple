@@ -586,8 +586,8 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     HarddiskInsertCmd_t hcmd{};
     hcmd.drive = static_cast<uint8_t>(b->drive);
     util_safe_strcpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
-    if (peripheral_command(7, harddisk_cmd_insert, &hcmd, sizeof(hcmd)) ==
-        peripheral_ok) {
+    if (peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
+                           sizeof(hcmd)) == peripheral_ok) {
       if (b->drive != 0) {
         Configuration_t::instance().set_string(
             "Preferences", REGVALUE_HDD_IMAGE2, full_path.c_str());

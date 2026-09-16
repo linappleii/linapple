@@ -13,8 +13,10 @@
 extern "C" {
 #endif
 
-#define SUPER_SERIAL_FIFO_SIZE 9
 #define SUPER_SERIAL_STATE_VERSION 1
+#define SUPER_SERIAL_FIFO_SIZE 9
+
+enum { super_serial_default_slot = 2 };
 
 typedef enum {
   SUPER_SERIAL_BAUD_110 = 110,

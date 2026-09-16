@@ -15,6 +15,8 @@ extern "C" {
 
 #define MOUSE_STATE_VERSION 1
 
+enum { mouse_default_slot = 4 };
+
 typedef enum {
   mouse_cmd_set_pos = 0,   /**< data: MousePosPayload_t */
   mouse_cmd_set_button = 1 /**< data: MouseButtonPayload_t */

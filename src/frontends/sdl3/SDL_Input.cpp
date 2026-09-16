@@ -21,8 +21,8 @@
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "frontends/sdl3/Frame.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
+#include "frontends/sdl3/Frame.h"
 
 // Forward declarations for functions still in Frame.cpp
 extern void process_button_click(int button, int mod);
@@ -200,11 +200,12 @@ void sdl_handle_event(SDL_Event* e) {
             } else {
               uint8_t mouse_active = 0;
               size_t qsize = 1;
-              peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+              peripheral_query(mouse_default_slot, mouse_query_is_active,
+                               &mouse_active, &qsize);
               if (mouse_active != 0) {
                 MouseButtonPayload_t payload = {0, true, {0, 0}};
-                peripheral_command(4, mouse_cmd_set_button, &payload,
-                                   sizeof(payload));
+                peripheral_command(mouse_default_slot, mouse_cmd_set_button,
+                                   &payload, sizeof(payload));
               }
               if (joy_frontend_is_mouse_emulation_active()) {
                 joy_frontend_process_mouse_button(0, true);
@@ -217,7 +218,8 @@ void sdl_handle_event(SDL_Event* e) {
             if (mouse_capture_cfg) {
               uint8_t mouse_active = 0;
               size_t qsize = 1;
-              peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+              peripheral_query(mouse_default_slot, mouse_query_is_active,
+                               &mouse_active, &qsize);
               bool mouse_in_use = (mouse_active != 0) ||
                                   joy_frontend_is_mouse_emulation_active();
               if (mouse_in_use && ((g_state.mode == MODE_RUNNING) ||
@@ -231,11 +233,12 @@ void sdl_handle_event(SDL_Event* e) {
         if (g_usingcursor) {
           uint8_t mouse_active = 0;
           size_t qsize = 1;
-          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          peripheral_query(mouse_default_slot, mouse_query_is_active,
+                           &mouse_active, &qsize);
           if (mouse_active != 0) {
             MouseButtonPayload_t payload = {1, true, {0, 0}};
-            peripheral_command(4, mouse_cmd_set_button, &payload,
-                               sizeof(payload));
+            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
+                               &payload, sizeof(payload));
           }
           if (joy_frontend_is_mouse_emulation_active()) {
             joy_frontend_process_mouse_button(1, true);
@@ -251,11 +254,12 @@ void sdl_handle_event(SDL_Event* e) {
         if (g_usingcursor) {
           uint8_t mouse_active = 0;
           size_t qsize = 1;
-          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          peripheral_query(mouse_default_slot, mouse_query_is_active,
+                           &mouse_active, &qsize);
           if (mouse_active != 0) {
             MouseButtonPayload_t payload = {0, false, {0, 0}};
-            peripheral_command(4, mouse_cmd_set_button, &payload,
-                               sizeof(payload));
+            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
+                               &payload, sizeof(payload));
           }
           if (joy_frontend_is_mouse_emulation_active()) {
             joy_frontend_process_mouse_button(0, false);
@@ -265,11 +269,12 @@ void sdl_handle_event(SDL_Event* e) {
         if (g_usingcursor) {
           uint8_t mouse_active = 0;
           size_t qsize = 1;
-          peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+          peripheral_query(mouse_default_slot, mouse_query_is_active,
+                           &mouse_active, &qsize);
           if (mouse_active != 0) {
             MouseButtonPayload_t payload = {1, false, {0, 0}};
-            peripheral_command(4, mouse_cmd_set_button, &payload,
-                               sizeof(payload));
+            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
+                               &payload, sizeof(payload));
           }
           if (joy_frontend_is_mouse_emulation_active()) {
             joy_frontend_process_mouse_button(1, false);
@@ -284,11 +289,13 @@ void sdl_handle_event(SDL_Event* e) {
       if (g_usingcursor) {
         uint8_t mouse_active = 0;
         size_t qsize = 1;
-        peripheral_query(4, mouse_query_is_active, &mouse_active, &qsize);
+        peripheral_query(mouse_default_slot, mouse_query_is_active,
+                         &mouse_active, &qsize);
         if (mouse_active != 0) {
           MousePosPayload_t payload = {x_local, VIEWPORTCX, y_local,
                                        VIEWPORTCY};
-          peripheral_command(4, mouse_cmd_set_pos, &payload, sizeof(payload));
+          peripheral_command(mouse_default_slot, mouse_cmd_set_pos, &payload,
+                             sizeof(payload));
         }
         if (joy_frontend_is_mouse_emulation_active()) {
           joy_frontend_process_mouse_motion(x_local, VIEWPORTCX, y_local,

@@ -130,7 +130,8 @@ auto serial_polling_thread(void* arg) -> void* {
         pthread_mutex_lock(&g_critical_section);
         for (ssize_t i = 0; i < n; ++i) {
           uint8_t byte = buffer.at(static_cast<size_t>(i));
-          peripheral_command(2, SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
+          peripheral_command(super_serial_default_slot,
+                             SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
                              sizeof(uint8_t));
         }
         pthread_mutex_unlock(&g_critical_section);
@@ -144,8 +145,8 @@ auto serial_polling_thread(void* arg) -> void* {
 auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
   if (g_serial_loopback) {
     pthread_mutex_lock(&g_critical_section);
-    peripheral_command(2, SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
-                       sizeof(uint8_t));
+    peripheral_command(super_serial_default_slot, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
+                       &byte, sizeof(uint8_t));
     pthread_mutex_unlock(&g_critical_section);
     return true;
   }
