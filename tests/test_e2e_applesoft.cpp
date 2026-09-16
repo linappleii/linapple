@@ -11,6 +11,7 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
     auto disk = TestFixtures::create_ephemeral("minimal.dsk");
     harness.mount_disk(6, 0, disk);
     harness.boot();
+    // Allow boot initialization (ROM diagnostics and monitor prompt) to settle
     harness.run_frames(10);
 
     // Initial Apple //e power-on header
@@ -28,19 +29,20 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
     auto disk = TestFixtures::create_ephemeral("minimal.dsk");
     harness.mount_disk(6, 0, disk);
     harness.boot();
-    harness.run_frames(20);
+    harness.run_frames(10);
 
-    // Enter Applesoft BASIC and clear screen
-    harness.type_string("E000G\r", 4);
-    harness.run_frames(20);
-    harness.type_string("HOME\r", 4);
-    harness.run_frames(20);
+    // Enter Applesoft BASIC and clear screen (6 frames allow clear to complete)
+    harness.type_string("E000G\r", 2);
+    harness.run_frames(6);
+    harness.type_string("HOME\r", 2);
+    harness.run_frames(6);
 
     CHECK(harness.get_text_row(1) == "]");
 
-    // Execute PRINT 2+2
-    harness.type_string("PRINT 2+2\r", 4);
-    harness.run_frames(20);
+    // Execute PRINT 2+2 (10 frames allow evaluation and align cursor blink
+    // phase)
+    harness.type_string("PRINT 2+2\r", 2);
+    harness.run_frames(10);
 
     // Row 1 displays entered command, Row 2 displays evaluated answer
     CHECK(harness.get_text_row(1) == "]PRINT 2+2");
@@ -57,7 +59,8 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
     harness.boot();
     harness.run_frames(10);
 
-    // Jump to Applesoft and execute compound statement
+    // Jump to Applesoft and execute compound statement (20 frames align cursor
+    // blink phase)
     harness.type_string("E000G\r", 2);
     harness.run_frames(6);
     harness.type_string("HOME:PRINT 2+2\r", 2);

@@ -6,9 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <string>
-#include <vector>
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
@@ -108,18 +106,12 @@ auto HeadlessHarness_t::type_string(const std::string& text,
 }
 
 auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {
-  const uint32_t* pixels = nullptr;
-  size_t pixel_count = 560 * 384;
-  if (!last_frame.empty()) {
-    pixels = last_frame.data();
-    pixel_count = last_frame.size();
-  } else {
-    video_redraw_screen();
-    pixels = video_get_output_buffer();
-  }
+  video_redraw_screen();
+  const uint32_t* pixels = video_get_output_buffer();
   if (pixels == nullptr) {
     return 0;
   }
+  const size_t pixel_count = 560 * 384;
   unsigned long crc = crc32(0L, nullptr, 0);
   crc = crc32(crc, reinterpret_cast<const unsigned char*>(pixels),
               static_cast<unsigned int>(pixel_count * sizeof(uint32_t)));
@@ -165,19 +157,6 @@ auto HeadlessHarness_t::get_audio_sample_count() const -> size_t {
 auto HeadlessHarness_t::assert_screen_matches(uint32_t golden_crc) const
     -> void {
   CHECK(get_frame_crc32() == golden_crc);
-}
-
-auto HeadlessHarness_t::handle_video(const uint32_t* pixels, int width,
-                                     int height, int pitch) -> void {
-  (void)pitch;
-  if (pixels == nullptr || width <= 0 || height <= 0) {
-    return;
-  }
-  size_t total_pixels = static_cast<size_t>(width * height);
-  if (last_frame.size() != total_pixels) {
-    last_frame.resize(total_pixels);
-  }
-  std::memcpy(last_frame.data(), pixels, total_pixels * sizeof(uint32_t));
 }
 
 auto HeadlessHarness_t::handle_audio(const int16_t* samples, size_t num_samples)

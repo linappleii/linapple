@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include "test_fixtures.h"
 
@@ -16,7 +15,6 @@
  * CRC32, text row decoding, audio sampling).
  */
 struct HeadlessHarness_t {
-  std::vector<uint32_t> last_frame;
   size_t total_audio_samples = 0;
   bool is_initialized = false;
 
@@ -48,7 +46,5 @@ struct HeadlessHarness_t {
   auto assert_screen_matches(uint32_t golden_crc) const -> void;
 
   // Internal callback dispatchers
-  auto handle_video(const uint32_t* pixels, int width, int height, int pitch)
-      -> void;
   auto handle_audio(const int16_t* samples, size_t num_samples) -> void;
 };
