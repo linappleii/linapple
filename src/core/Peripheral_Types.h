@@ -38,6 +38,7 @@ enum IrqSrc_t {
 };
 
 // IWYU pragma: begin_exports
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"

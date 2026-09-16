@@ -19,11 +19,15 @@ struct DiskFormatDriver_t;
 
 enum { disk_default_slot = 6 };
 
+#define DISK_STATE_VERSION 1
+
 typedef enum {
   disk_drive_0 = 0,
   disk_drive_1 = 1,
   disk_drive_count = 2
-} DiskDrive_e;
+} DiskDrive_t;
+
+typedef DiskDrive_t DiskDrive_e;
 
 enum {
   max_disk_image_name_len = 15,
@@ -53,7 +57,7 @@ enum {
   disk_status_path_max = 256
 };
 
-enum { disk_state_version = 1 };
+enum { disk_state_version = DISK_STATE_VERSION };
 
 typedef enum {
   disk_status_off = 0x00,
@@ -67,11 +71,19 @@ typedef enum {
   disk_cmd_eject = 0x0002,
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
-  disk_cmd_get_status = 0x0005,
-  disk_cmd_get_supported_extensions = 0x0007,
   disk_cmd_boot = 0x0006,
-  disk_driver_cmd_set_enhanced_speed = 0x1001
-} DiskCmd_e;
+  disk_driver_cmd_set_enhanced_speed = 0x1001,
+  // Backward-compatibility aliases
+  disk_cmd_get_status = 0x0005,
+  disk_cmd_get_supported_extensions = 0x0007
+} DiskCmd_t;
+
+typedef DiskCmd_t DiskCmd_e;
+
+typedef enum {
+  disk_query_status = 0x0001,
+  disk_query_supported_extensions = 0x0002
+} DiskQuery_t;
 
 typedef struct {
   char path[disk_insert_path_max];

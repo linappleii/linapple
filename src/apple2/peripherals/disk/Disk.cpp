@@ -20,7 +20,6 @@
 #include <memory>
 
 #include "EmbeddedRoms.h"
-#include "apple2/Memory.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
@@ -31,14 +30,23 @@
 #include "apple2/peripherals/disk/formats/NibDriver.h"
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
-#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
-#include "core/Registry.h"
 #include "core/Util_Text.h"
 
+#ifndef VERSIONSTRING
+#define VERSIONSTRING "3.1.0"
+#endif
+
+auto mem_return_random_data(uint8_t highbit) -> uint8_t;
+
 namespace {
+
+constexpr const char* regvalue_disk_image1 = "Disk Image 1";
+constexpr const char* regvalue_disk_image2 = "Disk Image 2";
+
+constexpr size_t path_max_len = 260;
 
 constexpr uint32_t spinup_ticks = 20000;
 constexpr uint32_t write_light_ticks = 20000;
@@ -224,9 +232,13 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
 
     if (disk_peripheral->host != nullptr) {
       const char* key =
-          (drive_index == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-      disk_peripheral->host->SetConfig("Slots", key, "");
-      disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+          (drive_index == 0) ? regvalue_disk_image1 : regvalue_disk_image2;
+      if (disk_peripheral->host->SetConfig != nullptr) {
+        disk_peripheral->host->SetConfig("Slots", key, "");
+      }
+      if (disk_peripheral->host->NotifyStatusChanged != nullptr) {
+        disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+      }
     }
   }
 
@@ -288,9 +300,13 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
 
   if (was_spinning != now_spinning) {
     if (disk_peripheral->host != nullptr) {
-      disk_peripheral->host->NotifyActivityChanged(disk_peripheral->slot,
-                                                   now_spinning);
-      disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+      if (disk_peripheral->host->NotifyActivityChanged != nullptr) {
+        disk_peripheral->host->NotifyActivityChanged(disk_peripheral->slot,
+                                                     now_spinning);
+      }
+      if (disk_peripheral->host->NotifyStatusChanged != nullptr) {
+        disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+      }
     }
   }
 }
@@ -322,19 +338,17 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   if (error == disk_err_none) {
     update_disk_metadata(disk_ptr, image_path);
 
-    char full_title[max_disk_image_name_len + 64] = {};
-    snprintf(full_title, sizeof(full_title), "%s - %s", g_app_title,
-             disk_ptr->image_name);
-    linapple_update_title(full_title);
-
     if (disk_peripheral->host != nullptr) {
       const char* key =
-          (drive_index == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-      disk_peripheral->host->SetConfig("Slots", key, image_path);
+          (drive_index == 0) ? regvalue_disk_image1 : regvalue_disk_image2;
+      if (disk_peripheral->host->SetConfig != nullptr) {
+        disk_peripheral->host->SetConfig("Slots", key, image_path);
+      }
     }
   }
 
-  if (disk_peripheral->host != nullptr) {
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->NotifyStatusChanged != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
   }
 
@@ -568,7 +582,8 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
   const bool was_already_writing = (active_drive.write_light_ticks > 0);
   active_drive.write_light_ticks = write_light_ticks;
 
-  if (!was_already_writing && disk_peripheral->host != nullptr) {
+  if (!was_already_writing && disk_peripheral->host != nullptr &&
+      disk_peripheral->host->NotifyStatusChanged != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
   }
 
@@ -587,9 +602,13 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
         write_track_to_driver(disk_peripheral, drive_index);
       }
       if (disk_peripheral->host != nullptr) {
-        disk_peripheral->host->NotifyActivityChanged(disk_peripheral->slot,
-                                                     false);
-        disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+        if (disk_peripheral->host->NotifyActivityChanged != nullptr) {
+          disk_peripheral->host->NotifyActivityChanged(disk_peripheral->slot,
+                                                       false);
+        }
+        if (disk_peripheral->host->NotifyStatusChanged != nullptr) {
+          disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
+        }
       }
     } else {
       disk_ptr->spinning_ticks -= spin_ticks;
@@ -606,7 +625,8 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
   } else if (disk_ptr->write_light_ticks > 0) {
     if (spin_ticks >= disk_ptr->write_light_ticks) {
       disk_ptr->write_light_ticks = 0;
-      if (disk_peripheral->host != nullptr) {
+      if (disk_peripheral->host != nullptr &&
+          disk_peripheral->host->NotifyStatusChanged != nullptr) {
         disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
       }
     } else {
@@ -620,7 +640,8 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
     return;
   }
 
-  if (disk_peripheral->host != nullptr) {
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->RequestPreciseTiming != nullptr) {
     disk_peripheral->host->RequestPreciseTiming();
   }
 
@@ -665,12 +686,8 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
 
   std::swap(disk_peripheral->drives.at(0), disk_peripheral->drives.at(1));
 
-  char full_title[max_disk_image_name_len + 64];
-  snprintf(full_title, sizeof(full_title), "%s - %s", g_app_title,
-           disk_peripheral->drives.at(0).image_name);
-  linapple_update_title(full_title);
-
-  if (disk_peripheral->host != nullptr) {
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->NotifyStatusChanged != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
   }
 
@@ -704,7 +721,8 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
     drive.last_error = disk_err_none;
   }
 
-  if (disk_peripheral->host != nullptr) {
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->NotifyStatusChanged != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
   }
 }
@@ -877,7 +895,7 @@ auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
   }
   dp->drives.at(static_cast<size_t>(c->drive)).user_write_protected =
       (c->write_protected != 0);
-  if (dp->host != nullptr) {
+  if (dp->host != nullptr && dp->host->NotifyStatusChanged != nullptr) {
     dp->host->NotifyStatusChanged(dp->slot);
   }
   return peripheral_ok;
@@ -894,9 +912,14 @@ auto cmd_handle_set_speed(DiskPeripheral_t* dp, const void* data, size_t size)
 }
 
 auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
-  if (host == nullptr) {
+  if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
   }
+#if ENABLE_ROM_DISK2
+  if (host->RegisterCxROM == nullptr) {
+    return nullptr;
+  }
+#endif
   auto dp = std::unique_ptr<DiskPeripheral_t>(new DiskPeripheral_t());
   dp->host = host;
   dp->slot = slot;
@@ -909,16 +932,20 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
 
-  char enh[16] = {0};
-  host->GetConfig("Slots", "Enhance Disk Speed", enh, sizeof(enh));
-  dp->is_speed_enhanced = (enh[0] != '0');
+  if (host->GetConfig != nullptr) {
+    char enh[16] = {0};
+    host->GetConfig("Slots", "Enhance Disk Speed", enh, sizeof(enh));
+    dp->is_speed_enhanced = (enh[0] != '0');
+  }
 
   initialize_peripheral(dp.get());
 
   char p1[path_max_len] = {0};
   char p2[path_max_len] = {0};
-  host->GetConfig("Slots", REGVALUE_DISK_IMAGE1, p1, sizeof(p1));
-  host->GetConfig("Slots", REGVALUE_DISK_IMAGE2, p2, sizeof(p2));
+  if (host->GetConfig != nullptr) {
+    host->GetConfig("Slots", regvalue_disk_image1, p1, sizeof(p1));
+    host->GetConfig("Slots", regvalue_disk_image2, p2, sizeof(p2));
+  }
 
   if (p1[0] != '\0') {
     insert_disk_into_drive(dp.get(), 0, p1, false, false);
@@ -997,7 +1024,8 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
 
-  switch (static_cast<DiskCmd_e>(cmd)) {
+  switch (cmd) {
+    case disk_query_status:
     case disk_cmd_get_status: {
       const size_t required_size = sizeof(DiskStatus_t);
       if (data == nullptr) {
@@ -1012,6 +1040,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       *size = required_size;
       return peripheral_ok;
     }
+    case disk_query_supported_extensions:
     case disk_cmd_get_supported_extensions: {
       if (data == nullptr || *size == 0) {
         *size = 256;
@@ -1144,7 +1173,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
       }
     }
   }
-  if (dp->host) {
+  if (dp->host != nullptr && dp->host->NotifyStatusChanged != nullptr) {
     dp->host->NotifyStatusChanged(dp->slot);
   }
   sync_driver_options(dp);

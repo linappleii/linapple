@@ -234,3 +234,85 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
 
   disk_loader_shutdown();
 }
+
+TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(SL6, &g_test_disk_host);
+  REQUIRE(instance != nullptr);
+
+  // Sizing probe for disk_query_status
+  size_t size = 0;
+  PeripheralStatus_t status =
+      descriptor->query(instance, disk_query_status, nullptr, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(size == sizeof(DiskStatus_t));
+
+  // Undersized buffer returns peripheral_error
+  DiskStatus_t disk_stat{};
+  size = sizeof(DiskStatus_t) - 1;
+  status = descriptor->query(instance, disk_query_status, &disk_stat, &size);
+  CHECK(status == peripheral_error);
+  CHECK(size == sizeof(DiskStatus_t));
+
+  // Full query with disk_query_status
+  size = sizeof(DiskStatus_t);
+  status = descriptor->query(instance, disk_query_status, &disk_stat, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(size == sizeof(DiskStatus_t));
+
+  // Legacy disk_cmd_get_status also works
+  size = sizeof(DiskStatus_t);
+  status = descriptor->query(instance, disk_cmd_get_status, &disk_stat, &size);
+  CHECK(status == peripheral_ok);
+
+  // Sizing probe for disk_query_supported_extensions
+  size = 0;
+  status = descriptor->query(instance, disk_query_supported_extensions, nullptr,
+                             &size);
+  CHECK(status == peripheral_ok);
+  CHECK(size == 256);
+
+  // Query with disk_query_supported_extensions
+  char exts[256] = {};
+  size = sizeof(exts);
+  status =
+      descriptor->query(instance, disk_query_supported_extensions, exts, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(strstr(exts, "dsk") != nullptr);
+
+  // Unknown query returns peripheral_incompatible
+  status = descriptor->query(instance, 0xFFFF, nullptr, &size);
+  CHECK(status == peripheral_incompatible);
+
+  // Unknown command returns peripheral_incompatible
+  status = descriptor->command(instance, 0xFFFF, nullptr, 0);
+  CHECK(status == peripheral_incompatible);
+
+  descriptor->shutdown(instance);
+}
+
+TEST_CASE("DiskABI: [ABI-13] Host Interface Null Callbacks Defensive Guards") {
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  // Null host
+  CHECK(descriptor->init(SL6, nullptr) == nullptr);
+
+  HostInterface_t h{};
+  // Missing RegisterIO
+  CHECK(descriptor->init(SL6, &h) == nullptr);
+
+  h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
+                    PeripheralIOHandler, PeripheralIOHandler) {};
+#if ENABLE_ROM_DISK2
+  // Missing RegisterCxROM
+  CHECK(descriptor->init(SL6, &h) == nullptr);
+
+  h.RegisterCxROM = [](int, uint8_t*) {};
+#endif
+  // Valid host with minimal callbacks
+  void* inst = descriptor->init(SL6, &h);
+  CHECK(inst != nullptr);
+  descriptor->shutdown(inst);
+}

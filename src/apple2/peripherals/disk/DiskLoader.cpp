@@ -17,7 +17,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
-#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -25,6 +24,9 @@
 namespace {
 
 static std::vector<DiskFormatDriver_t*> g_drivers;
+static int g_disk_loader_ref_count = 0;
+
+constexpr size_t path_max_len = 260;
 
 // Disk Loading & Decompression parameters
 constexpr size_t decompression_buffer_size = 8192;
@@ -86,9 +88,20 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
 
 }  // namespace
 
-auto disk_loader_init() -> void { g_drivers.clear(); }
+auto disk_loader_init() -> void {
+  if (g_disk_loader_ref_count++ == 0) {
+    g_drivers.clear();
+  }
+}
 
-auto disk_loader_shutdown() -> void { g_drivers.clear(); }
+auto disk_loader_shutdown() -> void {
+  if (g_disk_loader_ref_count > 0) {
+    --g_disk_loader_ref_count;
+    if (g_disk_loader_ref_count == 0) {
+      g_drivers.clear();
+    }
+  }
+}
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   if (driver == nullptr) {
