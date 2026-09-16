@@ -633,7 +633,9 @@ if(BUILD_TESTING)
 
     add_executable(test-fixtures tests/test_fixtures.cpp)
     target_include_directories(test-fixtures PRIVATE tests ${DOCTEST_INCLUDE_DIR})
-    target_compile_definitions(test-fixtures PRIVATE TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+    target_compile_definitions(test-fixtures PRIVATE
+        TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+        SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
     add_test(NAME test-fixtures COMMAND test-fixtures)
     if(ENABLE_ASAN OR ENABLE_UBSAN)
         set_tests_properties(test-fixtures PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
