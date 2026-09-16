@@ -42,15 +42,18 @@ typedef struct {
   uint8_t joystick;
   uint8_t axis;
   uint8_t value;
+  uint8_t padding;
 } JoystickAxisPayload_t;
 
 typedef struct {
   uint8_t button;
   bool down;
+  uint8_t padding[2];
 } JoystickButtonPayload_t;
 
 typedef struct {
   bool axis_x;
+  uint8_t padding;
   int16_t value;
 } JoystickTrimPayload_t;
 

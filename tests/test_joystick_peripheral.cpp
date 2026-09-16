@@ -147,21 +147,21 @@ class JoystickHarness {
 
   auto set_axis(void* instance, uint8_t joystick, uint8_t axis, uint8_t value)
       -> PeripheralStatus_t {
-    JoystickAxisPayload_t payload{joystick, axis, value};
+    JoystickAxisPayload_t payload{joystick, axis, value, 0};
     return joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS,
                                               &payload, sizeof(payload));
   }
 
   auto set_button(void* instance, uint8_t button, bool down)
       -> PeripheralStatus_t {
-    JoystickButtonPayload_t payload{button, down};
+    JoystickButtonPayload_t payload{button, down, {0, 0}};
     return joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON,
                                               &payload, sizeof(payload));
   }
 
   auto set_trim(void* instance, bool axis_x, int16_t value)
       -> PeripheralStatus_t {
-    JoystickTrimPayload_t payload{axis_x, value};
+    JoystickTrimPayload_t payload{axis_x, 0, value};
     return joystick_get_descriptor()->command(instance, JOY_CMD_SET_TRIM,
                                               &payload, sizeof(payload));
   }
@@ -411,22 +411,22 @@ TEST_CASE("Joystick Peripheral: Command ABI Protocol") {
   REQUIRE(descriptor->command != nullptr);
 
   // Set axis
-  JoystickAxisPayload_t axis_payload{0, 0, 200};
+  JoystickAxisPayload_t axis_payload{0, 0, 200, 0};
   CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &axis_payload,
                             sizeof(axis_payload)) == peripheral_ok);
 
   // Invalid joystick index
-  JoystickAxisPayload_t bad_joy{5, 0, 200};
+  JoystickAxisPayload_t bad_joy{5, 0, 200, 0};
   CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &bad_joy,
                             sizeof(bad_joy)) == peripheral_error);
 
   // Invalid axis index
-  JoystickAxisPayload_t bad_axis{0, 2, 200};
+  JoystickAxisPayload_t bad_axis{0, 2, 200, 0};
   CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &bad_axis,
                             sizeof(bad_axis)) == peripheral_error);
 
   // Invalid button index
-  JoystickButtonPayload_t bad_btn{7, true};
+  JoystickButtonPayload_t bad_btn{7, true, {0, 0}};
   CHECK(descriptor->command(instance, JOY_CMD_SET_BUTTON, &bad_btn,
                             sizeof(bad_btn)) == peripheral_error);
 

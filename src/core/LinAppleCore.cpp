@@ -446,12 +446,13 @@ auto linapple_set_apple_key(int key, bool down) -> void {
 }
 
 auto linapple_set_joystick_axis(int axis, int value) -> void {
-  JoystickTrimPayload_t payload = {axis == 0, static_cast<int16_t>(value)};
+  JoystickTrimPayload_t payload = {axis == 0, 0, static_cast<int16_t>(value)};
   peripheral_command(0, JOY_CMD_SET_TRIM, &payload, sizeof(payload));
 }
 
 auto linapple_set_joystick_button(int button, bool down) -> void {
-  JoystickButtonPayload_t payload = {static_cast<uint8_t>(button), down};
+  JoystickButtonPayload_t payload = {
+      static_cast<uint8_t>(button), down, {0, 0}};
   peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
 

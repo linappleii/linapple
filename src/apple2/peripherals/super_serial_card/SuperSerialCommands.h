@@ -63,6 +63,7 @@ typedef struct {
   SuperSerialParity_t parity;
   bool linefeed;
   bool interrupts;
+  uint8_t padding[2];
 } SuperSerialDipSwConfig_t;
 
 typedef struct {

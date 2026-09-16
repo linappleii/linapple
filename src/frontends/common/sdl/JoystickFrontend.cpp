@@ -207,9 +207,9 @@ void joy_frontend_update() {
             joy1.get(), static_cast<int>(g_joyConfig.joy0_button_map[1]));
       }
 
-      JoystickButtonPayload_t pb0 = {0, b0};
+      JoystickButtonPayload_t pb0 = {0, b0, {0, 0}};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
-      JoystickButtonPayload_t pb1 = {1, b1};
+      JoystickButtonPayload_t pb1 = {1, b1, {0, 0}};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
       int x = (static_cast<int>(sdl_compat_get_joystick_axis(
@@ -256,10 +256,10 @@ void joy_frontend_update() {
       if (y > 255) y = 255;
 
       JoystickAxisPayload_t px = {
-          0, 0, static_cast<uint8_t>(x + g_frontend_pdl_trim_x)};
+          0, 0, static_cast<uint8_t>(x + g_frontend_pdl_trim_x), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {
-          0, 1, static_cast<uint8_t>(y + g_frontend_pdl_trim_y)};
+          0, 1, static_cast<uint8_t>(y + g_frontend_pdl_trim_y), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
@@ -275,11 +275,11 @@ void joy_frontend_update() {
 
       bool b2 = sdl_compat_get_joystick_button(
           joy2.get(), static_cast<int>(g_joyConfig.joy1_button_map));
-      JoystickButtonPayload_t pb2 = {2, b2};
+      JoystickButtonPayload_t pb2 = {2, b2, {0, 0}};
       peripheral_command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
       if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
           DEVICE_NONE) {
-        JoystickButtonPayload_t pb1 = {1, b2};
+        JoystickButtonPayload_t pb1 = {1, b2, {0, 0}};
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
 
@@ -300,9 +300,9 @@ void joy_frontend_update() {
       if (y < 0) y = 0;
       if (y > 255) y = 255;
 
-      JoystickAxisPayload_t px = {1, 0, static_cast<uint8_t>(x)};
+      JoystickAxisPayload_t px = {1, 0, static_cast<uint8_t>(x), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {1, 1, static_cast<uint8_t>(y)};
+      JoystickAxisPayload_t py = {1, 1, static_cast<uint8_t>(y), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
@@ -418,25 +418,25 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
       if (down) {
         if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
             DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, true};
+          JoystickButtonPayload_t p = {0, true, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1]))
                        .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, true};
+          JoystickButtonPayload_t p2 = {2, true, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, true};
+          JoystickButtonPayload_t p1 = {1, true, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       } else {
         if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
             DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, false};
+          JoystickButtonPayload_t p = {0, false, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1]))
                        .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, false};
+          JoystickButtonPayload_t p2 = {2, false, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, false};
+          JoystickButtonPayload_t p1 = {1, false, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       }
@@ -444,13 +444,13 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
       if (down) {
         if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
             DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, true};
+          JoystickButtonPayload_t p = {1, true, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       } else {
         if (joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[1])).device !=
             DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, false};
+          JoystickButtonPayload_t p = {1, false, {0, 0}};
           peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
         }
       }
@@ -491,10 +491,10 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
         y = static_cast<int>(PDL_CENTRAL) + g_frontend_pdl_trim_y;
       }
       JoystickAxisPayload_t px = {static_cast<uint8_t>(joy_num), 0,
-                                  static_cast<uint8_t>(x)};
+                                  static_cast<uint8_t>(x), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {static_cast<uint8_t>(joy_num), 1,
-                                  static_cast<uint8_t>(y)};
+                                  static_cast<uint8_t>(y), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
@@ -541,9 +541,9 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
         (g_joyConfig.joy_type[joy_num] < joyinfo.size() &&
          joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[joy_num]))
                  .device == DEVICE_MOUSE)) {
-      JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x)};
+      JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y)};
+      JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y), 0};
       peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
@@ -556,10 +556,10 @@ auto joy_frontend_process_mouse_button(int button, bool down) -> void {
          joyinfo.at(static_cast<size_t>(g_joyConfig.joy_type[joy_num]))
                  .device == DEVICE_MOUSE)) {
       if (button == 0) {
-        JoystickButtonPayload_t pb0 = {0, down};
+        JoystickButtonPayload_t pb0 = {0, down, {0, 0}};
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
       } else if (button == 1) {
-        JoystickButtonPayload_t pb1 = {1, down};
+        JoystickButtonPayload_t pb1 = {1, down, {0, 0}};
         peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
     }
