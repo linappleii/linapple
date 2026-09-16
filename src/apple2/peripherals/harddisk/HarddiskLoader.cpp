@@ -86,7 +86,7 @@ struct TemporaryFileGuard {
   }
   ~TemporaryFileGuard() {
     if (path[0] != '\0') {
-      unlink(path);
+      (void)unlink(path);
     }
   }
   TemporaryFileGuard(const TemporaryFileGuard&) = delete;

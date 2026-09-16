@@ -28,15 +28,6 @@ inline auto get_fixture_path(const std::string& filename) -> std::string {
     return p_res;
   }
 #endif
-  for (const auto* prefix :
-       {"tests/fixtures/", "../tests/fixtures/", "../../tests/fixtures/",
-        "../../../tests/fixtures/", "res/", "../res/", "../../res/",
-        "../../../res/"}) {
-    std::string candidate = std::string(prefix) + filename;
-    if (access(candidate.c_str(), R_OK) == 0) {
-      return candidate;
-    }
-  }
   return filename;
 }
 

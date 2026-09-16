@@ -14,6 +14,7 @@
 #include "core/Peripheral_Internal.h"
 #include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
+#include "test_fixtures.h"
 
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   linapple_init();
@@ -99,22 +100,18 @@ TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
   save_state_set_filename(nullptr);
   CHECK(strcmp(save_state_get_filename(), "") == 0);
 
-  const char* test_file = "test_snapshot_flow.aws";
-  unlink(test_file);
-
-  save_state_set_filename(test_file);
+  TestFixtures::ScopedTempFile_t test_file(".aws");
+  save_state_set_filename(test_file.c_str());
   save_state_save();
 
-  CHECK(access(test_file, F_OK) == 0);
+  CHECK(access(test_file.c_str(), F_OK) == 0);
 
   // If minimal.aws fixture does not exist, save a copy for fuzzer seed
-  const char* fixture_path = "tests/fixtures/minimal.aws";
-  if (access(fixture_path, F_OK) != 0) {
-    save_state_set_filename(fixture_path);
+  std::string fixture_path = TestFixtures::get_fixture_path("minimal.aws");
+  if (access(fixture_path.c_str(), F_OK) != 0) {
+    save_state_set_filename(fixture_path.c_str());
     save_state_save();
   }
-
-  unlink(test_file);
 
   linapple_shutdown();
 }
