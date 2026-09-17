@@ -15,10 +15,10 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
-#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 
 #ifndef VERSIONSTRING
 #define VERSIONSTRING "2.0.0"
@@ -409,18 +409,16 @@ auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
     return;
   }
 
+  uint64_t host_cycles = (mp->host != nullptr && mp->host->GetCycles != nullptr)
+                             ? mp->host->GetCycles()
+                             : 0;
+  uint64_t current_cycle = host_cycles + executed_cycles;
   uint64_t cycles = 0;
-  if (mp->host != nullptr && mp->host->GetCycles != nullptr) {
-    uint64_t host_cycles = mp->host->GetCycles();
-    if (host_cycles >= mp->last_cumulative_cycles) {
-      cycles = host_cycles - mp->last_cumulative_cycles;
-      mp->last_cumulative_cycles = host_cycles;
-    } else {
-      mp->last_cumulative_cycles = host_cycles;
-    }
-  }
-  if (cycles == 0 && executed_cycles > 0) {
-    cycles = executed_cycles;
+  if (current_cycle >= mp->last_cumulative_cycles) {
+    cycles = current_cycle - mp->last_cumulative_cycles;
+    mp->last_cumulative_cycles = current_cycle;
+  } else {
+    mp->last_cumulative_cycles = current_cycle;
   }
 
   while (cycles > 0) {
@@ -633,11 +631,12 @@ auto mb_abi_shutdown(void* instance) -> void {
 }
 
 auto mb_abi_think(void* instance, uint32_t cycles) -> void {
+  (void)cycles;
   if (instance == nullptr) {
     return;
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, cycles);
+  mb_update_cycles_instance(mp, 0);
 
   // If timers are inactive, force a 60Hz audio update to prevent buffer
   // starvation.
