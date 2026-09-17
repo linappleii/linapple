@@ -736,6 +736,7 @@ if(BUILD_TESTING)
 
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
     add_linapple_test(speaker-core "tests/test_main.cpp;tests/test_speaker_core.cpp")
+    add_linapple_test(audio-mixer "tests/test_main.cpp;tests/test_audio_mixer.cpp")
     if(BUILD_SHARED_PERIPHERALS)
         target_link_libraries(test-speaker PRIVATE peripheral-speaker)
         target_link_libraries(test-speaker-core PRIVATE peripheral-speaker)
