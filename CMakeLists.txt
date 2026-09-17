@@ -605,6 +605,24 @@ if(BUILD_TESTING)
         set(DOCTEST_INCLUDE_DIR ${doctest_SOURCE_DIR}/doctest)
     endif()
 
+    # A per-test ScopedTestConfig_t only protects the suites that construct
+    # one, and most suites own their doctest main, so the universal redirect
+    # lives where every ctest run passes. With this no suite can read the
+    # developer's config or write linapple.log under $HOME.
+    macro(linapple_test_home test_name dir_name)
+        set(LINAPPLE_TEST_HOME "${CMAKE_BINARY_DIR}/test-home/${dir_name}")
+        file(MAKE_DIRECTORY "${LINAPPLE_TEST_HOME}")
+        set(LINAPPLE_TEST_ENV
+            "XDG_CONFIG_HOME=${LINAPPLE_TEST_HOME}"
+            "XDG_DATA_HOME=${LINAPPLE_TEST_HOME}"
+            "XDG_CONFIG_DIRS=${LINAPPLE_TEST_HOME}"
+            "HOME=${LINAPPLE_TEST_HOME}")
+        if(ENABLE_ASAN OR ENABLE_UBSAN)
+            list(APPEND LINAPPLE_TEST_ENV "ASAN_OPTIONS=detect_leaks=1:symbolize=1" "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
+        endif()
+        set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${LINAPPLE_TEST_ENV}")
+    endmacro()
+
     # Helper for adding tests
     macro(add_linapple_test name sources)
         add_executable(test-${name} ${sources} tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
@@ -617,21 +635,7 @@ if(BUILD_TESTING)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
-        # A per-test ScopedTestConfig_t only protects the suites that construct
-        # one, and most suites own their doctest main, so the universal
-        # redirect lives where every ctest run passes. With this no suite can
-        # read the developer's config or write linapple.log under $HOME.
-        set(LINAPPLE_TEST_HOME "${CMAKE_BINARY_DIR}/test-home/${name}")
-        file(MAKE_DIRECTORY "${LINAPPLE_TEST_HOME}")
-        set(LINAPPLE_TEST_ENV
-            "XDG_CONFIG_HOME=${LINAPPLE_TEST_HOME}"
-            "XDG_DATA_HOME=${LINAPPLE_TEST_HOME}"
-            "XDG_CONFIG_DIRS=${LINAPPLE_TEST_HOME}"
-            "HOME=${LINAPPLE_TEST_HOME}")
-        if(ENABLE_ASAN OR ENABLE_UBSAN)
-            list(APPEND LINAPPLE_TEST_ENV "ASAN_OPTIONS=detect_leaks=1:symbolize=1" "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
-        endif()
-        set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "${LINAPPLE_TEST_ENV}")
+        linapple_test_home(test-${name} ${name})
     endmacro()
 
     # Refactored tests
@@ -732,7 +736,10 @@ if(BUILD_TESTING)
         set(CPU_TEST_TARGET linapple)
     endif()
     add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
-    set_tests_properties(test-cpu PROPERTIES ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
+    # This one drives the real emulator binary, which creates its data
+    # directory on startup, so it needs the redirect more than most.
+    linapple_test_home(test-cpu cpu)
+    set_property(TEST test-cpu APPEND PROPERTY ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
 
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
     add_linapple_test(speaker-core "tests/test_main.cpp;tests/test_speaker_core.cpp")
@@ -785,6 +792,7 @@ if(BUILD_TESTING)
         target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
+        linapple_test_home(test-frontend-sdl1 frontend-sdl1)
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl2" OR FRONTEND_LOWER STREQUAL "all")
@@ -796,6 +804,7 @@ if(BUILD_TESTING)
         target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
+        linapple_test_home(test-frontend-sdl2 frontend-sdl2)
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl3" OR FRONTEND_LOWER STREQUAL "all")
@@ -807,6 +816,7 @@ if(BUILD_TESTING)
         target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
+        linapple_test_home(test-frontend-sdl3 frontend-sdl3)
     endif()
 endif()
 
