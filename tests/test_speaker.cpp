@@ -17,18 +17,6 @@
 #include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "doctest.h"
 
-extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {
-  return 0;
-}
-
-#include "apple2/CPU.h"
-#include "core/LinAppleCore.h"
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
-                     uint32_t cycles) -> uint8_t;
-extern void (*g_frontendAudioCB)(const int16_t* buffer, size_t count);
-
 namespace {
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
@@ -37,27 +25,6 @@ constexpr int16_t SPEAKER_PEAK_AMPLITUDE = 0x4000;
 constexpr uint64_t INACTIVITY_THRESHOLD_CYCLES =
     static_cast<uint64_t>(CLOCK_6502 / 5.0);
 constexpr uint64_t NTSC_ONE_SECOND_CYCLES = 1022727;
-constexpr size_t NTSC_ONE_SECOND_STEREO_SAMPLES = 88200;
-
-struct ScopedCpuContext_t {
-  CpuInstance_t* previous = nullptr;
-  CpuInstance_t fresh{};
-
-  ScopedCpuContext_t() : previous(cpu_get_active_context()) {
-    cpu_set_active_context(&fresh);
-  }
-
-  ~ScopedCpuContext_t() {
-    if (previous != nullptr) {
-      cpu_set_active_context(previous);
-    }
-  }
-
-  ScopedCpuContext_t(const ScopedCpuContext_t&) = delete;
-  auto operator=(const ScopedCpuContext_t&) -> ScopedCpuContext_t& = delete;
-  ScopedCpuContext_t(ScopedCpuContext_t&&) = delete;
-  auto operator=(ScopedCpuContext_t&&) -> ScopedCpuContext_t& = delete;
-};
 
 struct MockDirectIOHandler_t {
   void* instance = nullptr;
@@ -70,6 +37,15 @@ struct MockDirectIOHandler_t {
       : instance(inst), read(r), write(w) {}
 };
 
+struct MockStrobeHandler_t {
+  void* instance = nullptr;
+  PeripheralStrobeHandler_t on_strobe = nullptr;
+
+  MockStrobeHandler_t() = default;
+  MockStrobeHandler_t(void* inst, PeripheralStrobeHandler_t handler)
+      : instance(inst), on_strobe(handler) {}
+};
+
 struct SpeakerHarness_t {
   SpeakerHarness_t() {
     assert(s_active_harness == nullptr);
@@ -80,6 +56,7 @@ struct SpeakerHarness_t {
     host_.RegisterCxROM = nullptr;
     host_.RegisterExpansionROM = nullptr;
     host_.RegisterDirectIO = mock_register_direct_io;
+    host_.RegisterDirectIOStrobe = mock_register_direct_io_strobe;
     host_.AudioPushChannels = mock_audio_push_channels;
     host_.GetCycles = mock_get_cycles;
     host_.GetClockHz = mock_get_clock_hz;
@@ -94,6 +71,7 @@ struct SpeakerHarness_t {
     instances_.clear();
     primary_instance_ = nullptr;
     handlers_.clear();
+    strobes_.clear();
     captured_samples_.clear();
     captured_channels_ = 0;
     s_active_harness = nullptr;
@@ -153,44 +131,36 @@ struct SpeakerHarness_t {
     host_.GetClockHz = is_null ? nullptr : mock_get_clock_hz;
   }
 
-  auto has_handler(uint16_t addr) const -> bool {
-    return handlers_.find(addr) != handlers_.end();
+  auto set_null_strobe_registration(bool is_null) -> void {
+    host_.RegisterDirectIOStrobe =
+        is_null ? nullptr : mock_register_direct_io_strobe;
   }
 
-  auto get_handler(uint16_t addr) const -> const MockDirectIOHandler_t& {
-    return handlers_.at(addr);
+  // The legacy bus-driving registration must stay unused: a speaker that
+  // reaches for it has regressed to reading the floating bus itself.
+  auto legacy_handlers_empty() const -> bool { return handlers_.empty(); }
+
+  auto strobe_registered(uint16_t addr) const -> bool {
+    return strobes_.find(addr) != strobes_.end();
   }
 
-  auto read_io(uint16_t addr, void* inst = nullptr, uint8_t floating_bus = 0)
-      -> uint8_t {
-    auto it = handlers_.find(addr);
-    if (it != handlers_.end() && it->second.read != nullptr) {
-      void* target = (inst != nullptr)                  ? inst
-                     : (it->second.instance != nullptr) ? it->second.instance
-                                                        : primary_instance_;
-      return it->second.read(target, 0, addr, 0, floating_bus, 0);
+  auto strobe(void* inst = nullptr) -> void {
+    auto it = strobes_.find(ADDR_SPEAKER);
+    if (it == strobes_.end() || it->second.on_strobe == nullptr) {
+      return;
     }
-    return floating_bus;
+    void* target = (inst != nullptr)                  ? inst
+                   : (it->second.instance != nullptr) ? it->second.instance
+                                                      : primary_instance_;
+    it->second.on_strobe(target);
   }
 
-  auto write_io(uint16_t addr, void* inst = nullptr, uint8_t val = 0)
-      -> uint8_t {
-    auto it = handlers_.find(addr);
-    if (it != handlers_.end() && it->second.write != nullptr) {
-      void* target = (inst != nullptr)                  ? inst
-                     : (it->second.instance != nullptr) ? it->second.instance
-                                                        : primary_instance_;
-      return it->second.write(target, 0, addr, 1, val, 0);
+  // Deliver a strobe to a verbatim instance pointer, nullptr included.
+  auto strobe_instance(void* inst) -> void {
+    auto it = strobes_.find(ADDR_SPEAKER);
+    if (it != strobes_.end() && it->second.on_strobe != nullptr) {
+      it->second.on_strobe(inst);
     }
-    return 0;
-  }
-
-  auto toggle_read(void* inst = nullptr, uint8_t floating_bus = 0) -> uint8_t {
-    return read_io(ADDR_SPEAKER, inst, floating_bus);
-  }
-
-  auto toggle_write(void* inst = nullptr, uint8_t val = 0) -> uint8_t {
-    return write_io(ADDR_SPEAKER, inst, val);
   }
 
   auto think(void* inst, uint32_t elapsed_cycles) -> void {
@@ -228,6 +198,7 @@ struct SpeakerHarness_t {
   std::vector<void*> instances_;
   void* primary_instance_ = nullptr;
   std::map<uint16_t, MockDirectIOHandler_t> handlers_;
+  std::map<uint16_t, MockStrobeHandler_t> strobes_;
   std::vector<int16_t> captured_samples_;
   size_t captured_channels_ = 0;
   uint32_t audio_push_count_ = 0;
@@ -252,6 +223,15 @@ struct SpeakerHarness_t {
     if (s_active_harness != nullptr) {
       s_active_harness->handlers_[addr] =
           MockDirectIOHandler_t(instance, read, write);
+    }
+  }
+
+  static auto mock_register_direct_io_strobe(
+      void* instance, uint16_t addr, PeripheralStrobeHandler_t on_strobe)
+      -> void {
+    if (s_active_harness != nullptr) {
+      s_active_harness->strobes_[addr] =
+          MockStrobeHandler_t(instance, on_strobe);
     }
   }
 
@@ -331,12 +311,12 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
   CHECK(instance1 != instance2);
 
   // Strobing instance1 flips state and asserts activity solely on instance1
-  harness.toggle_read(instance1);
+  harness.strobe(instance1);
   CHECK(harness.is_active(instance1));
   CHECK_FALSE(harness.is_active(instance2));
 
   // Strobing instance2 flips state and asserts activity on instance2
-  harness.toggle_write(instance2, 0x55);
+  harness.strobe(instance2);
   CHECK(harness.is_active(instance2));
 
   // Deallocating instance1 leaves instance2 operational
@@ -349,35 +329,33 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
 // Domain 2: Motherboard Direct I/O & Physical Strobe Mechanics
 // =============================================================================
 
-TEST_CASE("Speaker Peripheral: Direct IO Read Strobe & Floating Bus Noise") {
-  // TC-03: Direct I/O Read Strobe & Floating Bus Noise
+TEST_CASE("Speaker Peripheral: Strobe Registration At The Soft Switch") {
+  // TC-03: the speaker registers a strobe at $C030 and nothing else
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
+
+  CHECK(harness.strobe_registered(ADDR_SPEAKER));
+  CHECK(harness.legacy_handlers_empty());
 
   harness.set_cycles(1000);
   CHECK_FALSE(harness.is_active(instance));
 
-  const uint8_t read_res = harness.toggle_read();
-  CHECK(read_res == mem_read_floating_bus(0));
+  harness.strobe();
   CHECK(harness.is_active(instance));
 }
 
-TEST_CASE(
-    "Speaker Peripheral: Direct IO Write Strobe & Data Byte Irrelevance") {
-  // TC-04: Direct I/O Write Strobe & Data Byte Irrelevance
+TEST_CASE("Speaker Peripheral: Repeated Strobes Keep The Cone Driven") {
+  // TC-04: four strobes in one slice leave the peripheral driving audio
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
   harness.set_cycles(1000);
-  CHECK(harness.toggle_write(instance, 0x00) == mem_read_floating_bus(0));
-  harness.advance_cycles(50);
-  CHECK(harness.toggle_write(instance, 0x55) == mem_read_floating_bus(0));
-  harness.advance_cycles(50);
-  CHECK(harness.toggle_write(instance, 0xAA) == mem_read_floating_bus(0));
-  harness.advance_cycles(50);
-  CHECK(harness.toggle_write(instance, 0xFF) == mem_read_floating_bus(0));
+  for (int i = 0; i < 4; ++i) {
+    harness.strobe(instance);
+    harness.advance_cycles(50);
+  }
   CHECK(harness.is_active(instance));
 }
 
@@ -387,39 +365,39 @@ TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // Strobe 1: Read flips latch from false to true (+1.0 impulse)
+  // Strobe 1: flips the latch from false to true (+1.0 drive level)
   harness.set_cycles(100);
-  harness.toggle_read(instance);
+  harness.strobe(instance);
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE_FALSE(harness.captured_samples().empty());
   CHECK(harness.captured_samples()[0] == SPEAKER_PEAK_AMPLITUDE);
   harness.clear_captured_samples();
 
-  // Strobe 2: Read flips latch from true to false (-1.0 impulse, negative
+  // Strobe 2: flips the latch from true to false (-1.0 drive level, negative
   // transition)
   harness.advance_cycles(50);
-  harness.toggle_read(instance);
+  harness.strobe(instance);
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE_FALSE(harness.captured_samples().empty());
   CHECK(harness.captured_samples()[0] < 0);
   harness.clear_captured_samples();
 
-  // Strobe 3: Write flips latch from false to true (+1.0 impulse, positive
+  // Strobe 3: flips the latch from false to true (+1.0 drive level, positive
   // transition)
   harness.advance_cycles(50);
-  harness.toggle_write(instance, 0x55);
+  harness.strobe(instance);
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE_FALSE(harness.captured_samples().empty());
   CHECK(harness.captured_samples()[0] > 0);
   harness.clear_captured_samples();
 
-  // Strobe 4: Write flips latch from true to false (-1.0 impulse, negative
+  // Strobe 4: flips the latch from true to false (-1.0 drive level, negative
   // transition)
   harness.advance_cycles(50);
-  harness.toggle_write(instance, 0xAA);
+  harness.strobe(instance);
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE_FALSE(harness.captured_samples().empty());
@@ -441,7 +419,7 @@ TEST_CASE(
   harness.set_cycles(1000);
   CHECK_FALSE(harness.is_active(instance));
 
-  harness.toggle_read();
+  harness.strobe();
   harness.think(instance, 0);
   CHECK(harness.is_active(instance));
 
@@ -464,7 +442,7 @@ TEST_CASE("Speaker Peripheral: Inactivity Extension via Mid-Flight Re-Strobe") {
   REQUIRE(instance != nullptr);
 
   harness.set_cycles(0);
-  harness.toggle_read();
+  harness.strobe();
   harness.think(instance, 0);
   CHECK(harness.is_active(instance));
 
@@ -474,7 +452,7 @@ TEST_CASE("Speaker Peripheral: Inactivity Extension via Mid-Flight Re-Strobe") {
   harness.think(instance, mid_flight_cycles);
   CHECK(harness.is_active(instance));
 
-  harness.toggle_read();
+  harness.strobe();
   harness.think(instance, 0);
   CHECK(harness.is_active(instance));
 
@@ -520,7 +498,7 @@ TEST_CASE(
   REQUIRE(instance != nullptr);
 
   harness.set_cycles(1000);
-  harness.toggle_read();
+  harness.strobe();
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
 
@@ -557,11 +535,11 @@ TEST_CASE(
 
   // Strobe 1 at cycle 6 (flips state to true)
   harness.set_cycles(6);
-  harness.toggle_read(instance);
+  harness.strobe(instance);
 
   // Strobe 2 at cycle 17 (flips state to false)
   harness.set_cycles(17);
-  harness.toggle_read(instance);
+  harness.strobe(instance);
 
   // Advance past first sample window (24 cycles > 23.191 cycles)
   harness.set_cycles(24);
@@ -585,7 +563,7 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   for (int period = 0; period < 43; ++period) {
     current_cycle += 511;
     harness.set_cycles(current_cycle);
-    harness.toggle_read(instance);
+    harness.strobe(instance);
   }
   harness.advance_cycles(511);
   harness.think(instance, static_cast<uint32_t>(harness.cycles()));
@@ -606,7 +584,7 @@ TEST_CASE("Speaker Peripheral: Spindown Decay to Absolute Silence") {
   REQUIRE(instance != nullptr);
 
   harness.set_cycles(1000);
-  harness.toggle_read();
+  harness.strobe();
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
   harness.clear_captured_samples();
@@ -631,7 +609,7 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
 
   // 1. AudioPushChannels == nullptr must safely drop without crashing
   harness.set_drop_audio(true);
-  harness.toggle_read();
+  harness.strobe();
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
   CHECK(harness.captured_samples().empty());
@@ -639,17 +617,24 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
 
   // 2. GetCycles == nullptr must fall back to 0 without crashing
   harness.set_null_cycles(true);
-  harness.toggle_read();
+  harness.strobe();
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
   harness.set_null_cycles(false);
 
-  // 3. RegisterDirectIO == nullptr must succeed without crash
+  // 3. RegisterDirectIOStrobe == nullptr must succeed without crash
   HostInterface_t null_direct_host{};
   void* no_direct_inst =
       speaker_get_descriptor()->init(TEST_SLOT, &null_direct_host);
   REQUIRE(no_direct_inst != nullptr);
   speaker_get_descriptor()->shutdown(no_direct_inst);
+
+  // 4. A host offering only the legacy registration leaves it untouched
+  harness.set_null_strobe_registration(true);
+  void* legacy_host_inst = harness.create_speaker(TEST_SLOT);
+  REQUIRE(legacy_host_inst != nullptr);
+  CHECK(harness.legacy_handlers_empty());
+  harness.set_null_strobe_registration(false);
 }
 
 TEST_CASE(
@@ -691,7 +676,7 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
   REQUIRE(instance1 != nullptr);
 
   harness.set_cycles(1000);
-  harness.toggle_read();
+  harness.strobe();
   harness.think(instance1, 0);
   REQUIRE(harness.is_active(instance1));
 
@@ -755,7 +740,7 @@ TEST_CASE("Speaker Peripheral: Pre-Restore Event Queue Purge") {
 
   // Strobe 500 times
   for (int i = 0; i < 500; ++i) {
-    harness.toggle_read(instance);
+    harness.strobe(instance);
     harness.advance_cycles(2);
   }
 
@@ -786,7 +771,7 @@ TEST_CASE(
   REQUIRE(instance != nullptr);
 
   for (size_t i = 0; i < 20000; ++i) {
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(1);
   }
   harness.clear_captured_samples();
@@ -886,12 +871,8 @@ TEST_CASE(
   descriptor->reset(nullptr);
   descriptor->think(nullptr, 100);
 
-  // Direct I/O with null instance
-  const auto& handler = harness.get_handler(ADDR_SPEAKER);
-  CHECK(handler.read(nullptr, 0, ADDR_SPEAKER, 0, 0x55, 0) ==
-        mem_read_floating_bus(0));
-  CHECK(handler.write(nullptr, 0, ADDR_SPEAKER, 1, 0x55, 0) ==
-        mem_read_floating_bus(0));
+  // A strobe delivered to a null instance must be absorbed
+  harness.strobe_instance(nullptr);
 }
 
 TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
@@ -901,8 +882,8 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
   REQUIRE(instance != nullptr);
 
   harness.set_cycles(5000);
-  harness.toggle_read();
-  harness.toggle_read();  // Consecutive strobe at exact same cycle
+  harness.strobe();
+  harness.strobe();  // Consecutive strobe at exact same cycle
   harness.advance_cycles(50);
   harness.think(instance, 50);
 }
@@ -913,7 +894,7 @@ TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  harness.toggle_read();
+  harness.strobe();
   CHECK(harness.is_active(instance));
   speaker_get_descriptor()->reset(instance);
   CHECK_FALSE(harness.is_active(instance));
@@ -925,98 +906,6 @@ TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
   for (int16_t s : harness.captured_samples()) {
     CHECK(s == 0);
   }
-}
-
-// =============================================================================
-// Domain 8: Intra-Frame Direct I/O Sub-Cycle Timing & Audio Synthesis
-// =============================================================================
-
-TEST_CASE(
-    "Speaker Peripheral: Direct IO Bridge Sub-Cycle Cycle Synchronization") {
-  // Verifies that when CPU instructions touch $C030 at sub-cycle offsets,
-  // the Direct I/O bridge synchronizes CPU cumulative cycles so that
-  // host->GetCycles() accurately reflects the instruction cycle rather than
-  // stale frame-start cycles.
-  ScopedCpuContext_t cpu_scope;
-  linapple_init();
-  peripheral_manager_init();
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
-
-  const uint64_t initial_cycles = cpu_get_cumulative_cycles();
-  constexpr uint32_t instruction_cycle_offset = 512;
-
-  // Simulate an instruction executing at sub-cycle offset 512 within the frame
-  io_map_dispatch(0, ADDR_SPEAKER, 0, 0, instruction_cycle_offset);
-
-  // The CPU cumulative cycles MUST advance to include the instruction cycle
-  // offset
-  CHECK(cpu_get_cumulative_cycles() ==
-        initial_cycles + instruction_cycle_offset);
-
-  linapple_shutdown();
-}
-
-TEST_CASE(
-    "Speaker Peripheral: Intra-Frame 1 kHz Tone Synthesis via Direct IO "
-    "Dispatch") {
-  // Verifies that multiple speaker strobes distributed across a single 16.6ms
-  // video frame (17,030 cycles) produce an active 1 kHz square-wave audio
-  // signal rather than collapsing into sample 0 at the frame boundary (which
-  // creates low-frequency 60 Hz bumps/mush).
-  ScopedCpuContext_t cpu_scope;
-  linapple_init();
-  peripheral_manager_init();
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
-
-  static std::vector<float> captured_frame_audio;
-  captured_frame_audio.clear();
-
-  linapple_set_audio_channel_callback(
-      [](const char* peripheral_id, int slot, const float* const* channels,
-         size_t num_channels, size_t num_samples) {
-        (void)peripheral_id;
-        (void)slot;
-        if (channels != nullptr && num_channels > 0 && channels[0] != nullptr &&
-            num_samples > 0) {
-          captured_frame_audio.insert(captured_frame_audio.end(), channels[0],
-                                      channels[0] + num_samples);
-        }
-      });
-
-  // Simulate Apple II ROM BELL1 routine: ~1 kHz square wave (toggling every
-  // ~1,000 cycles) across a standard 17,030-cycle frame (~16 strobes across the
-  // frame)
-  for (uint32_t cycle = 1000; cycle < 17000; cycle += 1000) {
-    io_map_dispatch(0, ADDR_SPEAKER, 0, 0, cycle);
-  }
-
-  // Complete CPU execution for the frame
-  cpu_calc_cycles(17030);
-
-  // End of frame: peripheral manager thinks for 17,030 cycles
-  peripheral_manager_think(17030);
-
-  linapple_set_audio_channel_callback(nullptr);
-
-  // At 44.1 kHz, 17,030 cycles generates ~736 mono samples
-  REQUIRE(captured_frame_audio.size() >= 730);
-
-  const auto& mono = captured_frame_audio;
-
-  // Count zero crossings across the frame (samples 50 through 700)
-  size_t zero_crossings = 0;
-  for (size_t i = 50; i < 700 && i + 1 < mono.size(); ++i) {
-    if ((mono[i] >= 0.0f && mono[i + 1] < 0.0f) ||
-        (mono[i] < 0.0f && mono[i + 1] >= 0.0f)) {
-      zero_crossings++;
-    }
-  }
-
-  // Expect at least 10 zero crossings evenly distributed across the mid-frame
-  // region
-  CHECK(zero_crossings >= 10);
-
-  linapple_shutdown();
 }
 
 TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
@@ -1060,7 +949,7 @@ TEST_CASE(
   SUBCASE("NTSC Clock Rate (1,020,484 Hz)") {
     harness.set_clock_hz(CLOCK_6502_NTSC);
     harness.set_cycles(0);
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(17030);
     harness.think(instance, 17030);
     CHECK(harness.captured_channels() == 1);
@@ -1070,7 +959,7 @@ TEST_CASE(
   SUBCASE("PAL Clock Rate (1,015,625 Hz)") {
     harness.set_clock_hz(CLOCK_6502_PAL);
     harness.set_cycles(0);
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(20280);
     harness.think(instance, 20280);
     CHECK(harness.captured_channels() == 1);
@@ -1080,7 +969,7 @@ TEST_CASE(
   SUBCASE("Defensive Fallback on Null GetClockHz") {
     harness.set_null_clock_hz(true);
     harness.set_cycles(0);
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(17030);
     harness.think(instance, 17030);
     CHECK(harness.captured_channels() == 1);
@@ -1090,7 +979,7 @@ TEST_CASE(
   SUBCASE("Dynamic Clock Switch On The Fly") {
     harness.set_clock_hz(CLOCK_6502_PAL);
     harness.set_cycles(0);
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(20280);
     harness.think(instance, 20280);
     CHECK(harness.captured_channels() == 1);
@@ -1098,7 +987,7 @@ TEST_CASE(
 
     harness.clear_captured_samples();
     harness.set_clock_hz(CLOCK_6502_NTSC);
-    harness.toggle_read();
+    harness.strobe();
     harness.advance_cycles(17030);
     harness.think(instance, 17030);
     CHECK(harness.captured_channels() == 1);

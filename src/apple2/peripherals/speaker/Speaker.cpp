@@ -16,8 +16,6 @@
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/speaker/SpeakerCommands.h"
 
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-
 namespace {
 
 // Hardware MMIO Mapping
@@ -266,17 +264,11 @@ static auto query_audio_info(void* out, size_t* out_size)
   return peripheral_ok;
 }
 
-// --- Hardware Direct I/O Handler ---
+// --- Hardware Strobe Handler ---
 
-auto speaker_toggle(void* instance, uint16_t program_counter,
-                    uint16_t memory_address, uint8_t is_write,
-                    uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
-  (void)program_counter;
-  (void)memory_address;
-  (void)is_write;
-  (void)data_value;
+static auto speaker_strobe(void* instance) -> void {
   if (instance == nullptr) {
-    return mem_read_floating_bus(remaining_cycles);
+    return;
   }
   auto& speaker = *static_cast<SpeakerPeripheral_t*>(instance);
 
@@ -284,13 +276,15 @@ auto speaker_toggle(void* instance, uint16_t program_counter,
   speaker.is_active = true;
   speaker.current_state = !speaker.current_state;
 
-  if (speaker.event_count < speaker_max_events_per_update) {
-    auto& event = speaker.events[speaker.event_count++];
-    event.cycle = get_cycles(speaker.host);
-    event.state = speaker.current_state;
-  }
-
-  return mem_read_floating_bus(remaining_cycles);
+  // A full queue overwrites its own tail rather than dropping the edge, so the
+  // level the synthesizer drives always ends the slice equal to the flip-flop.
+  // Losing intermediate edges inside one slice costs resolution; losing the
+  // final polarity would leave the cone where no Apple II would leave it.
+  auto& event = (speaker.event_count < speaker_max_events_per_update)
+                    ? speaker.events[speaker.event_count++]
+                    : speaker.events[speaker_max_events_per_update - 1];
+  event.cycle = get_cycles(speaker.host);
+  event.state = speaker.current_state;
 }
 
 // --- ABI Implementation ---
@@ -328,9 +322,9 @@ auto speaker_abi_init(int slot, HostInterface_t* host) -> void* {
   speaker->host = host;
   speaker_reset(speaker.get());
 
-  if (host->RegisterDirectIO != nullptr) {
-    host->RegisterDirectIO(speaker.get(), speaker_io_address, speaker_toggle,
-                           speaker_toggle);
+  if (host->RegisterDirectIOStrobe != nullptr) {
+    host->RegisterDirectIOStrobe(speaker.get(), speaker_io_address,
+                                 speaker_strobe);
   }
 
   return speaker.release();
@@ -430,11 +424,11 @@ auto speaker_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_incompatible;
 }
 
-static Peripheral_t g_speaker_peripheral = {
+static const Peripheral_t g_speaker_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.speaker",
     .name = "Speaker",
-    .description = "Built-in Apple II speaker and cassette port emulation",
+    .description = "Built-in Apple II speaker",
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
@@ -451,6 +445,11 @@ static Peripheral_t g_speaker_peripheral = {
 
 }  // namespace
 
-auto speaker_get_descriptor() -> Peripheral_t* { return &g_speaker_peripheral; }
+// peripheral_register and ActivePeripheral_t::api still take a mutable
+// Peripheral_t*, so the immutable descriptor is cast the same way
+// PERIPHERAL_REGISTER casts it.
+auto speaker_get_descriptor() -> Peripheral_t* {
+  return const_cast<Peripheral_t*>(&g_speaker_peripheral);
+}
 
 PERIPHERAL_REGISTER(g_speaker_peripheral)
