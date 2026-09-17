@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // Justification:
 // This header defines a language-neutral C ABI. C system headers, typedefs, and
 // C-style arrays are required for compatibility with C-based consumers.
@@ -12,9 +12,11 @@
 extern "C" {
 #endif
 
-#define MOCKINGBOARD_STATE_VERSION 1
-#define MOCKINGBOARD_NUM_CHIPS 2
-#define MOCKINGBOARD_AY_REGS 16
+enum {
+  MOCKINGBOARD_STATE_VERSION = 1,
+  MOCKINGBOARD_NUM_CHIPS = 2,
+  MOCKINGBOARD_AY_REGS = 16
+};
 
 typedef enum {
   mockingboard_type_mockingboard = 0,
@@ -108,4 +110,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

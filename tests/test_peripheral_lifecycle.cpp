@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
 

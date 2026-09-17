@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,12 +9,14 @@
 extern "C" {
 #endif
 
-#define PRINTER_STATE_VERSION 1
+enum { PRINTER_STATE_VERSION = 1 };
 
-#define PRINTER_CMD_SET_ONLINE 0x0101
-#define PRINTER_CMD_RESET_STATS 0x0102
+typedef enum {
+  PRINTER_CMD_SET_ONLINE = 0x0101,
+  PRINTER_CMD_RESET_STATS = 0x0102
+} PrinterCmd_e;
 
-#define PRINTER_QUERY_STATUS 0x0100
+typedef enum { PRINTER_QUERY_STATUS = 0x0100 } PrinterQuery_e;
 
 typedef struct {
   uint8_t online;
@@ -44,4 +46,4 @@ typedef struct {
 #ifdef __cplusplus
 }
 #endif
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)

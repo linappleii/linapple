@@ -4,7 +4,7 @@
 // modernize-use-trailing-return-type) Justification: This header defines a
 // language-neutral C ABI. C system headers, typedefs, and C-style return types
 // are required for compatibility with C-based consumers.
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,9 +17,7 @@ extern "C" {
 // Forward declarations
 struct DiskFormatDriver_t;
 
-enum { disk_default_slot = 6 };
-
-#define DISK_STATE_VERSION 1
+enum { disk_default_slot = 6, DISK_STATE_VERSION = 1 };
 
 typedef enum {
   disk_drive_0 = 0,
@@ -163,4 +161,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)

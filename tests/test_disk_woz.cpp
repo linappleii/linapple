@@ -5,14 +5,14 @@
 #include <string>
 #include <vector>
 
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"

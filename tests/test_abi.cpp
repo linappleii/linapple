@@ -3,15 +3,15 @@
 #include <vector>
 
 #include "Apple2Types.h"
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <atomic>
 #include <cstring>
 #include <thread>
 
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 
 // --- Dummy Peripheral Implementation ---

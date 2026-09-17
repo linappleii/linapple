@@ -13,13 +13,8 @@
 extern "C" {
 #endif
 
-#ifdef __cplusplus
-constexpr int LINAPPLE_ABI_VERSION = 0;
-#else
-#define LINAPPLE_ABI_VERSION 0
-#endif
-
 enum {
+  LINAPPLE_ABI_VERSION = 0,
   PERIPHERAL_CMD_MAX_DATA = 512,
   PERIPHERAL_MASK_INTERNAL = 0x01,
   PERIPHERAL_MASK_EXPANSION = 0xFE

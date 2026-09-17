@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class)
 // Justification: This header defines the C99-compatible public ABI for the
 // Clock subsystem.
 
@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#define CLOCK_STATE_VERSION 1
+enum { CLOCK_STATE_VERSION = 1 };
 
 typedef enum {
   clock_cmd_set_epoch = 0x0001,
@@ -54,4 +54,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class)

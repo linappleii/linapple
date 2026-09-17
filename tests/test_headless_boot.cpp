@@ -6,14 +6,14 @@
 #include <thread>
 
 #include "HeadlessHarness.h"
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

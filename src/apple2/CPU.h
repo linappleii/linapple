@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 struct SsCpu6502_t;
 

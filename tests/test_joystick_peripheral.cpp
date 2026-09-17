@@ -6,10 +6,10 @@
 #include <map>
 #include <vector>
 
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // Justification: This header defines the language-neutral C ABI for the Mouse
 // peripheral. C system headers, typedefs, and fixed-size C-style arrays are
 // required for compatibility with C-based consumers.
@@ -13,9 +13,7 @@
 extern "C" {
 #endif
 
-#define MOUSE_STATE_VERSION 1
-
-enum { mouse_default_slot = 4 };
+enum { MOUSE_STATE_VERSION = 1, mouse_default_slot = 4 };
 
 typedef enum {
   mouse_cmd_set_pos = 0,   /**< data: MousePosPayload_t */
@@ -95,4 +93,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

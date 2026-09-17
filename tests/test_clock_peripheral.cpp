@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
-#include "Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/clock/ClockCommands.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;

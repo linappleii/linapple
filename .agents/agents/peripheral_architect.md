@@ -13,8 +13,8 @@ Every peripheral in LinApple—whether an expansion card (Disk II, SmartPort Har
 - **Host Agnostic**: It has ZERO knowledge of the host environment (Linux, Windows, macOS), windowing systems (SDL1/SDL2/SDL3), terminal escape sequences (TUI), test harnesses (Headless), user input devices (host keyboards, gamepads, mice), audio servers (PulseAudio, ALSA), or debuggers.
 - **Motherboard Agnostic**: It has ZERO knowledge of CPU internal mechanics (registers, flags, program counter, instruction dispatch) or global memory paging tables.
 - **Closed Interface Boundary**: Its entire existence is governed by the two-way contract:
-  1. Incoming bus events, cycle ticks, and physical user manipulations flow in through [`Peripheral_t`](file:///home/maxolasersquad/code/linapple/src/core/Peripheral.h).
-  2. Outgoing bus signals, interrupts, audio samples, and serial/cable streams flow out through [`HostInterface_t`](file:///home/maxolasersquad/code/linapple/src/core/Peripheral.h).
+  1. Incoming bus events, cycle ticks, and physical user manipulations flow in through [`Peripheral_t`](file:///home/maxolasersquad/code/linapple/src/apple2/peripherals/Peripheral.h).
+  2. Outgoing bus signals, interrupts, audio samples, and serial/cable streams flow out through [`HostInterface_t`](file:///home/maxolasersquad/code/linapple/src/apple2/peripherals/Peripheral.h).
 
 ---
 
@@ -75,8 +75,8 @@ When auditing an existing peripheral or reviewing any newly developed peripheral
 Every peripheral must be completely decoupled from Tier 1, Tier 2, and Tier 4 core hardware engines.
 
 - **✅ PERMITTED Headers**:
-  - `core/Peripheral.h`: Core ABI, `Peripheral_t`, `HostInterface_t`, and I/O function pointer typedefs.
-  - `core/Peripheral_Types.h`: Status codes (`PeripheralStatus_t`), log levels, and standard packet structs.
+  - `apple2/peripherals/Peripheral.h`: Core ABI, `Peripheral_t`, `HostInterface_t`, and I/O function pointer typedefs.
+  - `apple2/peripherals/Peripheral_Types.h`: Status codes (`PeripheralStatus_t`), log levels, and standard packet structs.
   - Peripheral Self-Headers: `<Name>.h` (descriptor declaration), `<Name>Commands.h` (Command/Query definitions), and `<Name>Error.h`.
   - On-Board Hardware Chips (`src/apple2/chips/`): Auxiliary chip emulators (e.g., `6522.h` VIA, `AY8910.h` PSG, `6821.h` PIA, `6551.h` ACIA) only if those chips are physically present on the card circuit board.
   - Subsystem-Local Drivers: Internal format drivers, media parsers, or protocol handlers residing entirely within the peripheral’s own directory (e.g., `formats/*`, `DiskFormatDriver.h`).

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // Justification:
 // This header defines a language-neutral C ABI. C system headers, typedefs, and
 // C-style arrays are required for compatibility with C-based consumers.
@@ -13,10 +13,11 @@
 extern "C" {
 #endif
 
-#define SUPER_SERIAL_STATE_VERSION 1
-#define SUPER_SERIAL_FIFO_SIZE 9
-
-enum { super_serial_default_slot = 2 };
+enum {
+  SUPER_SERIAL_STATE_VERSION = 1,
+  SUPER_SERIAL_FIFO_SIZE = 9,
+  super_serial_default_slot = 2
+};
 
 typedef enum {
   SUPER_SERIAL_BAUD_110 = 110,
@@ -98,4 +99,4 @@ typedef enum {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
