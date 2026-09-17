@@ -97,35 +97,44 @@ TEST_CASE(
   // Simulate Apple II ROM BELL1 routine: ~1 kHz square wave (toggling every
   // ~1,000 cycles) across a standard 17,030-cycle frame (~16 strobes across the
   // frame)
+  constexpr uint32_t frame_cycles = 17030;
   for (uint32_t cycle = 1000; cycle < 17000; cycle += 1000) {
     io_map_dispatch(0, ADDR_SPEAKER, 0, 0, cycle);
   }
 
   // Complete CPU execution for the frame
-  cpu_calc_cycles(17030);
+  cpu_calc_cycles(frame_cycles);
 
-  // End of frame: peripheral manager thinks for 17,030 cycles
-  peripheral_manager_think(17030);
+  // End of frame: peripheral manager thinks for the whole frame
+  peripheral_manager_think(frame_cycles);
 
   linapple_set_audio_channel_callback(nullptr);
 
-  // At 44.1 kHz, 17,030 cycles generates ~736 mono samples
-  REQUIRE(captured_frame_audio.size() >= 730);
+  // One sample per 6502 cycle, so the frame is exactly its own cycle count
+  REQUIRE(captured_frame_audio.size() == frame_cycles);
 
   const auto& mono = captured_frame_audio;
 
-  // Count zero crossings across the frame (samples 50 through 700)
-  size_t zero_crossings = 0;
-  for (size_t i = 50; i < 700 && i + 1 < mono.size(); ++i) {
-    if ((mono[i] >= 0.0f && mono[i + 1] < 0.0f) ||
-        (mono[i] < 0.0f && mono[i + 1] >= 0.0f)) {
-      zero_crossings++;
-    }
-  }
+  // Nothing drives the cone before the first strobe at cycle 1000, and
+  // previous_input equals the drive level, so those samples are true silence.
+  CHECK(mono[999] == doctest::Approx(0.0f));
 
-  // Expect at least 10 zero crossings evenly distributed across the mid-frame
-  // region
-  CHECK(zero_crossings >= 10);
+  // The first edge is a step of 2.0. Transitional: the peripheral still scales
+  // by 16384 and clips, so it arrives at the int16 rail over 32768.
+  constexpr float clipped_edge = 32767.0f / 32768.0f;
+  CHECK(mono[1000] == doctest::Approx(clipped_edge));
+
+  // Each of the sixteen strobes flips the output's sign, and an exponential
+  // decay never crosses zero between them. The first edge leaves silence for
+  // positive, which is not a crossing, so fifteen crossings is the whole
+  // frame's count. A frame that collapsed into sample zero would give none.
+  size_t zero_crossings = 0;
+  for (size_t i = 0; i + 1 < mono.size(); ++i) {
+    const bool was_negative = mono[i] < 0.0f;
+    const bool is_negative = mono[i + 1] < 0.0f;
+    zero_crossings += static_cast<size_t>(was_negative != is_negative);
+  }
+  CHECK(zero_crossings == 15);
 
   linapple_shutdown();
 }

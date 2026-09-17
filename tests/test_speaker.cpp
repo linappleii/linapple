@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -21,6 +20,18 @@ namespace {
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr int TEST_SLOT = 0;
 constexpr uint64_t NTSC_ONE_SECOND_CYCLES = 1022727;
+constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
+
+// The cone model, from the peripheral's own literals. Every expected value
+// below is derived from these and never from running the code.
+constexpr double EDGE = 2.0;
+constexpr double TAU_CYCLES = 23000.0;
+constexpr double FILTER_A = 1.0 - (1.0 / TAU_CYCLES);
+constexpr double DSP_SCALE = 16384.0;
+
+// tau * ln(EDGE / epsilon) is 174,821 cycles from an edge down to the silence
+// epsilon: eleven NTSC frames and part of a twelfth.
+constexpr int FRAMES_TO_SILENCE = 11;
 
 // Every edge is a step of exactly 2.0 through the DC blocker now that
 // previous_input tracks the drive level. Transitional: the peripheral still
@@ -62,7 +73,6 @@ struct SpeakerHarness_t {
     host_.RegisterDirectIOStrobe = mock_register_direct_io_strobe;
     host_.AudioPushChannels = mock_audio_push_channels;
     host_.GetCycles = mock_get_cycles;
-    host_.GetClockHz = mock_get_clock_hz;
   }
 
   ~SpeakerHarness_t() {
@@ -128,12 +138,6 @@ struct SpeakerHarness_t {
     host_.GetCycles = null_cycles ? nullptr : mock_get_cycles;
   }
 
-  auto set_clock_hz(double hz) -> void { clock_hz_ = hz; }
-
-  auto set_null_clock_hz(bool is_null) -> void {
-    host_.GetClockHz = is_null ? nullptr : mock_get_clock_hz;
-  }
-
   auto set_null_strobe_registration(bool is_null) -> void {
     host_.RegisterDirectIOStrobe =
         is_null ? nullptr : mock_register_direct_io_strobe;
@@ -185,7 +189,6 @@ struct SpeakerHarness_t {
  private:
   HostInterface_t host_{};
   uint64_t cycles_ = 0;
-  double clock_hz_ = CLOCK_6502_NTSC;
   std::vector<void*> instances_;
   void* primary_instance_ = nullptr;
   std::map<uint16_t, MockDirectIOHandler_t> handlers_;
@@ -252,13 +255,6 @@ struct SpeakerHarness_t {
       return s_active_harness->cycles_;
     }
     return 0;
-  }
-
-  static auto mock_get_clock_hz() -> double {
-    if (s_active_harness != nullptr) {
-      return s_active_harness->clock_hz_;
-    }
-    return CLOCK_6502;
   }
 };
 
@@ -374,48 +370,37 @@ TEST_CASE("Speaker Peripheral: Repeated Strobes Keep The Cone Driven") {
 }
 
 TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
-  // TC-05: Alternating Flip-Flop Polarity Verification
+  // TC-05: successive strobes drive the cone in opposite directions, and each
+  // edge from rest is a step of exactly 2.0. Letting the cone settle between
+  // edges is what makes each step observable on its own.
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // Strobe 1: flips the latch from false to true (+1.0 drive level)
+  auto settle = [&harness, instance]() -> void {
+    for (int frame = 0; frame < FRAMES_TO_SILENCE; ++frame) {
+      harness.advance_cycles(NTSC_FRAME_CYCLES);
+      harness.think(instance, NTSC_FRAME_CYCLES);
+    }
+    harness.clear_captured_samples();
+  };
+
+  auto strobe_and_capture_edge = [&harness, instance]() -> int16_t {
+    harness.strobe(instance);
+    harness.advance_cycles(100);
+    harness.think(instance, 100);
+    REQUIRE(harness.audio_push_count() == 1);
+    return harness.captured_samples()[0];
+  };
+
   harness.set_cycles(100);
-  harness.strobe(instance);
-  harness.advance_cycles(100);
-  harness.think(instance, 100);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
-  harness.clear_captured_samples();
-
-  // Strobe 2: flips the latch from true to false (-1.0 drive level, negative
-  // transition)
-  harness.advance_cycles(50);
-  harness.strobe(instance);
-  harness.advance_cycles(100);
-  harness.think(instance, 100);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples()[0] < 0);
-  harness.clear_captured_samples();
-
-  // Strobe 3: flips the latch from false to true (+1.0 drive level, positive
-  // transition)
-  harness.advance_cycles(50);
-  harness.strobe(instance);
-  harness.advance_cycles(100);
-  harness.think(instance, 100);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples()[0] > 0);
-  harness.clear_captured_samples();
-
-  // Strobe 4: flips the latch from true to false (-1.0 drive level, negative
-  // transition)
-  harness.advance_cycles(50);
-  harness.strobe(instance);
-  harness.advance_cycles(100);
-  harness.think(instance, 100);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples()[0] < 0);
+  CHECK(strobe_and_capture_edge() == EDGE_POSITIVE);
+  settle();
+  CHECK(strobe_and_capture_edge() == EDGE_NEGATIVE);
+  settle();
+  CHECK(strobe_and_capture_edge() == EDGE_POSITIVE);
+  settle();
+  CHECK(strobe_and_capture_edge() == EDGE_NEGATIVE);
 }
 
 // =============================================================================
@@ -442,15 +427,18 @@ TEST_CASE(
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
+  // One sample per cycle, so a slice one time constant long plus one sample
+  // puts the tau pin inside it
+  constexpr uint32_t slice_cycles = 23001;
   harness.set_cycles(1000);
   harness.strobe();
-  harness.advance_cycles(1000);
-  harness.think(instance, 1000);
+  harness.advance_cycles(slice_cycles);
+  harness.think(instance, slice_cycles);
 
   const auto& samples = harness.captured_samples();
-  REQUIRE_FALSE(samples.empty());
+  REQUIRE(samples.size() == slice_cycles);
 
-  // Mono planar channel: single discrete stream, strictly monotonic decay
+  // Mono planar channel: a single discrete stream that never rises again
   for (size_t i = 0; i + 1 < samples.size(); ++i) {
     CHECK(samples[i] >= samples[i + 1]);
   }
@@ -458,16 +446,19 @@ TEST_CASE(
   // The onset is a step of 2.0, which the transitional scale rails
   CHECK(samples[0] == EDGE_POSITIVE);
 
-  // and the blocker decays it by dc_blocker_coefficient per sample
-  constexpr double edge = 2.0;
-  constexpr double a = 0.999;
-  constexpr double scale = 16384.0;
-  CHECK(samples[1] == doctest::Approx(edge * a * scale).epsilon(1e-4));
-  CHECK(samples[2] == doctest::Approx(edge * a * a * scale).epsilon(1e-4));
+  // and the blocker decays it by a per sample from there
+  CHECK(samples[500] ==
+        doctest::Approx(EDGE * std::pow(FILTER_A, 500) * DSP_SCALE)
+            .epsilon(1e-4));
+  CHECK(samples[5000] ==
+        doctest::Approx(EDGE * std::pow(FILTER_A, 5000) * DSP_SCALE)
+            .epsilon(1e-4));
 
-  // Monotonic step decay point checks
-  CHECK(samples[0] > samples[1]);
-  CHECK(samples[1] > samples[2]);
+  // The time-constant pin: one tau of cycles later the edge has fallen to
+  // 1/e of itself. An unretuned 0.999 misses this by a factor of about eight.
+  CHECK(samples[23000] ==
+        doctest::Approx(EDGE * 0.36787 * DSP_SCALE).epsilon(1e-4));
+
   CHECK(samples.front() > samples.back());
 }
 
@@ -477,23 +468,34 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // Toggle every 511 cycles across 22,000 cycles (~1 kHz square wave)
-  uint64_t current_cycle = 0;
-  for (int period = 0; period < 43; ++period) {
-    current_cycle += 511;
-    harness.set_cycles(current_cycle);
+  // A half period of 510 cycles is a 1 kHz square wave at the NTSC clock
+  constexpr uint32_t half_period = 510;
+  constexpr int half_periods = 400;
+
+  harness.set_cycles(0);
+  for (int i = 0; i < half_periods; ++i) {
     harness.strobe(instance);
+    harness.advance_cycles(half_period);
+    harness.think(instance, half_period);
   }
-  harness.advance_cycles(511);
-  harness.think(instance, static_cast<uint32_t>(harness.cycles()));
 
   const auto& samples = harness.captured_samples();
-  REQUIRE(samples.size() >= 100);
+  CHECK(harness.audio_push_count() == half_periods);
+  REQUIRE(samples.size() == static_cast<size_t>(half_periods) * half_period);
 
-  // Check active bipolar waveform generation
-  const auto min_max = std::minmax_element(samples.begin(), samples.end());
-  CHECK(*min_max.first < 0);
-  CHECK(*min_max.second > 0);
+  // The onset is the same 2.0 edge as any other
+  CHECK(samples[0] == EDGE_POSITIVE);
+
+  // Steady state: the post-edge peak converges on 2 / (1 + a^N), alternating
+  // sign. The two-step map's eigenvalue is a^(2N) = 0.9566 per period, so the
+  // peak is within a millionth of the plateau after about 155 periods -- not
+  // after ten, as the plan's table claims.
+  const double plateau = EDGE / (1.0 + std::pow(FILTER_A, half_period));
+  for (int i = 350; i < half_periods; ++i) {
+    const double sign = 1.0 - (2.0 * (i % 2));
+    CHECK(samples[static_cast<size_t>(i) * half_period] ==
+          doctest::Approx(sign * plateau * DSP_SCALE).epsilon(1e-3));
+  }
 }
 
 TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
@@ -503,27 +505,24 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  constexpr uint32_t frame_cycles = 17030;
   harness.set_cycles(1000);
   harness.strobe();
 
-  // tau * ln(2.0 / 0.001) is 174,821 cycles from a 2.0 edge down to the
-  // silence epsilon: eleven NTSC frames and part of a twelfth. So eleven
-  // thinks carry audio and the twelfth has nothing left to say.
-  constexpr int driven_frames = 11;
-  for (int step = 0; step < driven_frames; ++step) {
-    harness.advance_cycles(frame_cycles);
-    harness.think(instance, frame_cycles);
+  // Eleven frames of thinking carry audio and the twelfth has nothing left to
+  // say, because the edge reaches the silence epsilon inside the eleventh.
+  for (int step = 0; step < FRAMES_TO_SILENCE; ++step) {
+    harness.advance_cycles(NTSC_FRAME_CYCLES);
+    harness.think(instance, NTSC_FRAME_CYCLES);
   }
-  CHECK(harness.audio_push_count() == driven_frames);
+  CHECK(harness.audio_push_count() == FRAMES_TO_SILENCE);
 
   // The tail is snapped to true zero, and nothing follows it.
   REQUIRE_FALSE(harness.captured_samples().empty());
   CHECK(harness.captured_samples().back() == 0);
 
-  harness.advance_cycles(frame_cycles);
-  harness.think(instance, frame_cycles);
-  CHECK(harness.audio_push_count() == driven_frames);
+  harness.advance_cycles(NTSC_FRAME_CYCLES);
+  harness.think(instance, NTSC_FRAME_CYCLES);
+  CHECK(harness.audio_push_count() == FRAMES_TO_SILENCE);
 }
 
 // =============================================================================
@@ -573,22 +572,19 @@ TEST_CASE(
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. Single frame pacing: standard 17,030 cycle Apple II frame generates
-  // 736 samples
-  constexpr uint32_t frame_cycles = 17030;
-  constexpr size_t expected_frame_samples = 736;
+  // 1. One sample per cycle: a standard Apple II frame is 17,030 samples
   // Pacing is only observable while the cone is driven
   harness.strobe();
-  harness.advance_cycles(frame_cycles);
-  harness.think(instance, frame_cycles);
+  harness.advance_cycles(NTSC_FRAME_CYCLES);
+  harness.think(instance, NTSC_FRAME_CYCLES);
 
-  CHECK(harness.captured_samples().size() == expected_frame_samples);
+  CHECK(harness.captured_samples().size() == NTSC_FRAME_CYCLES);
   CHECK(harness.audio_push_count() == 1);
 
   // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
-  // clamps to the internal scratch buffer capacity (4096 samples)
+  // clamps to speaker_max_samples_per_update
   harness.clear_captured_samples();
-  constexpr size_t max_single_push_samples = 4096;
+  constexpr size_t max_single_push_samples = 24000;
   harness.advance_cycles(NTSC_ONE_SECOND_CYCLES);
   harness.think(instance, static_cast<uint32_t>(NTSC_ONE_SECOND_CYCLES));
 
@@ -899,65 +895,12 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   status = speaker_get_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
   CHECK(status == peripheral_ok);
-  CHECK(info.sample_rate == 44100);
+  // The speaker is CPU-clocked at one sample per cycle and knows no rate in Hz
+  CHECK(info.time_base == peripheral_audio_cpu_clocked);
+  CHECK(info.cycle_divisor == 1);
+  CHECK(info.peak_magnitude == doctest::Approx(2.0f));
   CHECK(info.num_channels == 1);
   CHECK(std::strcmp(info.channels[0].name, "Speaker") == 0);
   CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0f));
   CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0f));
-}
-
-TEST_CASE(
-    "Speaker Peripheral: Dynamic NTSC vs PAL Clock Adaptation via Host "
-    "Interface") {
-  SpeakerHarness_t harness;
-  void* instance = harness.create_speaker(TEST_SLOT);
-  REQUIRE(instance != nullptr);
-
-  SUBCASE("NTSC Clock Rate (1,020,484 Hz)") {
-    harness.set_clock_hz(CLOCK_6502_NTSC);
-    harness.set_cycles(0);
-    harness.strobe();
-    harness.advance_cycles(17030);
-    harness.think(instance, 17030);
-    CHECK(harness.captured_channels() == 1);
-    CHECK(harness.captured_samples().size() == 736);
-  }
-
-  SUBCASE("PAL Clock Rate (1,015,625 Hz)") {
-    harness.set_clock_hz(CLOCK_6502_PAL);
-    harness.set_cycles(0);
-    harness.strobe();
-    harness.advance_cycles(20280);
-    harness.think(instance, 20280);
-    CHECK(harness.captured_channels() == 1);
-    CHECK(harness.captured_samples().size() == 881);
-  }
-
-  SUBCASE("Defensive Fallback on Null GetClockHz") {
-    harness.set_null_clock_hz(true);
-    harness.set_cycles(0);
-    harness.strobe();
-    harness.advance_cycles(17030);
-    harness.think(instance, 17030);
-    CHECK(harness.captured_channels() == 1);
-    CHECK(harness.captured_samples().size() == 736);
-  }
-
-  SUBCASE("Dynamic Clock Switch On The Fly") {
-    harness.set_clock_hz(CLOCK_6502_PAL);
-    harness.set_cycles(0);
-    harness.strobe();
-    harness.advance_cycles(20280);
-    harness.think(instance, 20280);
-    CHECK(harness.captured_channels() == 1);
-    CHECK(harness.captured_samples().size() == 881);
-
-    harness.clear_captured_samples();
-    harness.set_clock_hz(CLOCK_6502_NTSC);
-    harness.strobe();
-    harness.advance_cycles(17030);
-    harness.think(instance, 17030);
-    CHECK(harness.captured_channels() == 1);
-    CHECK(harness.captured_samples().size() == 736);
-  }
 }

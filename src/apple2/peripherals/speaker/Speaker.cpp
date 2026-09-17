@@ -10,7 +10,6 @@
 #include <memory>
 #include <new>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -22,15 +21,30 @@ constexpr uint16_t speaker_io_address = 0xC030;
 
 // Per-Update Slice Capacity Limits
 constexpr size_t speaker_max_events_per_update = 8192;
-constexpr size_t speaker_max_samples_per_update = 4096;
+// One sample per 6502 cycle means a frame of samples is a frame of cycles:
+// 17030 at NTSC, 20313 at PAL. Sized for the longer frame with headroom.
+// Anything below the PAL frame truncates samples every frame and breaks
+// think(n) yielding n samples.
+constexpr size_t speaker_max_samples_per_update = 24000;
+
+// The speaker's finest possible state change is one 6502 cycle, so it
+// synthesizes at the cycle rate and leaves resampling to the mixer, which is
+// the only party that knows the device's rate.
+constexpr double cycles_per_sample = 1.0;
 
 // DSP & Analog Cone Modeling Parameters
 constexpr float speaker_dsp_scale = 16384.0f;
-constexpr float dc_blocker_coefficient = 0.999f;
+// The tuning choice is the time constant, not the per-sample coefficient.
+// 23000 cycles is 22.5 ms at the NTSC clock, which preserves the feel of the
+// old 0.999-at-44.1-kHz value and a high-pass corner near 7 Hz. At six nines a
+// float coefficient carries only about three significant digits of the decay
+// rate, so the coefficient and the filter state are both double.
+constexpr double dc_blocker_tau_cycles = 23000.0;
+constexpr double dc_blocker_coefficient = 1.0 - (1.0 / dc_blocker_tau_cycles);
 // The DC blocker's decay never reaches exactly zero, so without a cutoff the
 // cone emits a trickle forever. It is also what keeps filter_state out of the
 // denormal range.
-constexpr float spindown_silence_epsilon = 0.001f;
+constexpr double spindown_silence_epsilon = 0.001;
 
 struct SpeakerEvent_t {
   uint64_t cycle = 0;
@@ -47,8 +61,8 @@ struct SpeakerPeripheral_t {
 
   // --- DSP Filter & Phase Accumulator ---
   double next_sample_cycle = 0.0;
-  float filter_state = 0.0f;
-  float previous_input = 0.0f;
+  double filter_state = 0.0;
+  double previous_input = 0.0;
 
   // --- Per-Update Synthesis Buffers & Queues ---
   uint32_t event_count = 0;
@@ -76,13 +90,6 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
   return 0;
 }
 
-static auto get_clock_hz(HostInterface_t* host) -> double {
-  if (host != nullptr && host->GetClockHz != nullptr) {
-    return host->GetClockHz();
-  }
-  return CLOCK_6502;
-}
-
 static auto clamp_sample(float filter_value) -> int16_t {
   const float raw_sample = filter_value * speaker_dsp_scale;
   const float clamped_sample =
@@ -90,51 +97,40 @@ static auto clamp_sample(float filter_value) -> int16_t {
   return static_cast<int16_t>(clamped_sample);
 }
 
-static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle,
-                               double cycles_per_sample) -> size_t {
+static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
+    -> size_t {
   const uint32_t available_events = speaker.event_count;
   uint32_t event_index = 0;
   size_t sample_count = 0;
 
-  while (speaker.next_sample_cycle <= static_cast<double>(end_cycle) &&
+  // A sample covers the window that starts at its own cycle, so it can only be
+  // emitted once that window has closed inside the slice the host handed over.
+  while (speaker.next_sample_cycle + cycles_per_sample <=
+             static_cast<double>(end_cycle) &&
          sample_count < speaker_max_samples_per_update) {
     const double sample_start = speaker.next_sample_cycle;
-    const double sample_end = speaker.next_sample_cycle + cycles_per_sample;
 
-    double sum = 0.0;
-    double current_time = sample_start;
-
+    // One sample per cycle puts every strobe on a window boundary, so the
+    // window average is simply the level the last edge in it left behind.
     while (event_index < available_events &&
-           static_cast<double>(speaker.events[event_index].cycle) <
-               sample_end) {
-      const auto& event = speaker.events[event_index];
-      const auto event_time = static_cast<double>(event.cycle);
-
-      if (event_time <= sample_start) {
-        speaker.last_sample_state = event.state;
-      } else {
-        sum += (event_time - current_time) *
-               (speaker.last_sample_state ? 1.0 : -1.0);
-        speaker.last_sample_state = event.state;
-        current_time = event_time;
-      }
+           static_cast<double>(speaker.events[event_index].cycle) <=
+               sample_start) {
+      speaker.last_sample_state = speaker.events[event_index].state;
       event_index++;
     }
 
-    sum +=
-        (sample_end - current_time) * (speaker.last_sample_state ? 1.0 : -1.0);
+    const double drive_level = speaker.last_sample_state ? 1.0 : -1.0;
 
-    const auto average = static_cast<float>(sum / cycles_per_sample);
-
-    speaker.filter_state = (average - speaker.previous_input) +
+    speaker.filter_state = (drive_level - speaker.previous_input) +
                            (dc_blocker_coefficient * speaker.filter_state);
-    speaker.previous_input = average;
+    speaker.previous_input = drive_level;
 
     if (std::abs(speaker.filter_state) < spindown_silence_epsilon) {
-      speaker.filter_state = 0.0f;
+      speaker.filter_state = 0.0;
     }
 
-    speaker.sample_buffer[sample_count++] = clamp_sample(speaker.filter_state);
+    speaker.sample_buffer[sample_count++] =
+        clamp_sample(static_cast<float>(speaker.filter_state));
     speaker.next_sample_cycle += cycles_per_sample;
   }
   return sample_count;
@@ -146,20 +142,13 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
     return;
   }
 
-  const double cycles_per_sample =
-      get_clock_hz(speaker.host) /
-      static_cast<double>(PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE);
-  if (cycles_per_sample <= 0.0) {
-    return;
-  }
-
   // A cone at rest with nothing driving it is silent, and silence is no
   // samples rather than a stream of zeros. This is what the inactivity
   // watchdog was reaching for, stated in terms of the model instead of a
   // timer.
   if (speaker.event_count == 0 &&
       std::abs(speaker.filter_state) < spindown_silence_epsilon) {
-    speaker.filter_state = 0.0f;
+    speaker.filter_state = 0.0;
     return;
   }
 
@@ -173,9 +162,15 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
     speaker.next_sample_cycle = static_cast<double>(start_cycle);
   }
 
-  const size_t sample_count =
-      synthesize_samples(speaker, end_cycle, cycles_per_sample);
+  const size_t sample_count = synthesize_samples(speaker, end_cycle);
 
+  // An edge that did not fit in this slice still has to land: a strobe at
+  // exactly end_cycle belongs to the next slice's first sample, and the sample
+  // cap can cut a slice short. Carrying the last state forward keeps the
+  // flip-flop and the synthesizer from ending a slice disagreeing.
+  if (speaker.event_count > 0) {
+    speaker.last_sample_state = speaker.events[speaker.event_count - 1].state;
+  }
   speaker.event_count = 0;
 
   if (sample_count > 0 && speaker.host != nullptr &&
@@ -202,9 +197,11 @@ static auto query_audio_info(void* out, size_t* out_size)
   }
   std::memset(out, 0, required_size);
   auto& info = *static_cast<PeripheralAudioInfo_t*>(out);
-  info.sample_rate = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
+  info.time_base = peripheral_audio_cpu_clocked;
+  info.cycle_divisor = 1;
   info.num_channels = 1;
-  info.peak_magnitude = 1.0f;
+  // A square-wave edge through the DC blocker is a step of exactly 2.0
+  info.peak_magnitude = 2.0f;
   std::strncpy(info.channels[0].name, "Speaker",
                sizeof(info.channels[0].name) - 1);
   info.channels[0].default_pan_left = 1.0f;
@@ -245,11 +242,11 @@ auto speaker_reset(void* instance) -> void {
   speaker.event_count = 0;
   speaker.current_state = false;
   speaker.last_sample_state = false;
-  speaker.filter_state = 0.0f;
+  speaker.filter_state = 0.0;
   // previous_input is the drive level, not zero: the blocker sees no step
   // until something strobes, so a reset with no strobe emits nothing and every
   // edge afterwards is a step of exactly two.
-  speaker.previous_input = speaker.last_sample_state ? 1.0f : -1.0f;
+  speaker.previous_input = speaker.last_sample_state ? 1.0 : -1.0;
   speaker.last_update_cycle = get_cycles(speaker.host);
   speaker.next_sample_cycle = static_cast<double>(speaker.last_update_cycle);
 }
@@ -318,7 +315,7 @@ auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
   ss.state = speaker.current_state ? 1 : 0;
   ss.next_sample_cycle = speaker.next_sample_cycle;
   ss.last_sample_state = speaker.last_sample_state ? 1 : 0;
-  ss.filter_state = speaker.filter_state;
+  ss.filter_state = static_cast<float>(speaker.filter_state);
 
   *buffer_size = required_size;
   return peripheral_ok;
@@ -341,14 +338,14 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   speaker.filter_state = ss.filter_state;
 
   if (!std::isfinite(speaker.filter_state)) {
-    speaker.filter_state = 0.0f;
+    speaker.filter_state = 0.0;
   }
   if (!std::isfinite(speaker.next_sample_cycle) ||
       speaker.next_sample_cycle < 0.0) {
     speaker.next_sample_cycle = static_cast<double>(speaker.last_update_cycle);
   }
 
-  speaker.previous_input = speaker.last_sample_state ? 1.0f : -1.0f;
+  speaker.previous_input = speaker.last_sample_state ? 1.0 : -1.0;
   speaker.event_count = 0;
 
   return peripheral_ok;
