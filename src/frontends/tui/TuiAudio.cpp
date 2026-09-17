@@ -37,6 +37,12 @@ static constexpr int pace_sleep_ms = 10;
 static constexpr int buffer_ms = 40;
 static constexpr int req_ms = 10;
 
+// Neither backend here offers a native-format query the way SDL2 and SDL3 do:
+// pa_simple has none and resamples server side, so this is the request rather
+// than a target. ALSA may configure something else, and that comes back
+// through snd_pcm_hw_params_current.
+static constexpr unsigned int fallback_rate_hz = 44100;
+
 static void audio_thread_func() {
   std::array<int16_t, chunk_frames * channels> stereo_buffer{};
 
@@ -65,11 +71,13 @@ static void audio_thread_func() {
 }
 
 auto tui_audio_initialize() -> void {
+  unsigned int device_rate_hz = fallback_rate_hz;
+
 #ifdef HAVE_PULSE_SIMPLE
   pa_sample_spec ss;
   ss.format = PA_SAMPLE_S16LE;
   ss.channels = channels;
-  ss.rate = sample_rate;
+  ss.rate = fallback_rate_hz;
 
   constexpr pa_usec_t USEC_PER_MSEC = 1000;
 
@@ -96,8 +104,22 @@ auto tui_audio_initialize() -> void {
     if (snd_pcm_open(&g_alsa_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) >=
         0) {
       snd_pcm_set_params(g_alsa_handle, SND_PCM_FORMAT_S16_LE,
-                         SND_PCM_ACCESS_RW_INTERLEAVED, channels, sample_rate,
-                         1, buffer_ms * USEC_PER_MSEC);
+                         SND_PCM_ACCESS_RW_INTERLEAVED, channels,
+                         fallback_rate_hz, 1, buffer_ms * USEC_PER_MSEC);
+
+      snd_pcm_hw_params_t* hw_params = nullptr;
+      if (snd_pcm_hw_params_malloc(&hw_params) >= 0) {
+        unsigned int configured_rate = 0;
+        int rate_dir = 0;
+        if (snd_pcm_hw_params_current(g_alsa_handle, hw_params) >= 0 &&
+            snd_pcm_hw_params_get_rate(hw_params, &configured_rate,
+                                       &rate_dir) >= 0 &&
+            configured_rate > 0) {
+          device_rate_hz = configured_rate;
+        }
+        snd_pcm_hw_params_free(hw_params);
+      }
+
       g_driver = AudioDriver::Alsa;
     }
   }
@@ -106,6 +128,10 @@ auto tui_audio_initialize() -> void {
   if (g_driver == AudioDriver::None) {
     g_driver = AudioDriver::Bell;
   }
+
+  // The mixer has to know the rate before the draining thread starts asking
+  // it for samples.
+  audio_mixer_initialize(device_rate_hz);
 
   g_audio_running = true;
   g_audio_thread = std::thread(audio_thread_func);

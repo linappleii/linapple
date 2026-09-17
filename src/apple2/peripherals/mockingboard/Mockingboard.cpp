@@ -900,6 +900,7 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
         return peripheral_error;
       }
       auto* info = static_cast<PeripheralAudioInfo_t*>(out);
+      info->time_base = peripheral_audio_absolute;
       info->sample_rate = default_mockingboard_sample_rate;
       info->num_channels = voices_per_card;
       info->peak_magnitude = 1.0f;

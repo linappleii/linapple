@@ -63,9 +63,9 @@ auto main(int argc, char** argv) -> int {
     tui_video_initialize();
     tui_video_set_render_mode(config.tui_render_mode);
     tui_input_initialize();
+    // tui_audio_initialize owns the mixer's rate: it is the only code here
+    // that knows what rate the device was actually configured at.
     tui_audio_initialize();
-
-    audio_mixer_initialize();
 
     linapple_set_video_callback(video_callback);
     linapple_set_audio_channel_callback(audio_channel_callback);

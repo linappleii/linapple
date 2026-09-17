@@ -55,15 +55,23 @@ static void SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
 auto ds_init() -> bool {
   if (g_audioStream) return true;
 
+  // Asking for the device's own rate is what removes SDL3's converting stage:
+  // the mixer's resample is then the only one in the chain. 44100 is the
+  // fallback for a failed query, not a target.
+  constexpr int fallback_rate_hz = 44100;
+  int device_rate = fallback_rate_hz;
+  SDL_AudioSpec native;
+  int native_frames = 0;
+  if (SDL_GetAudioDeviceFormat(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &native,
+                               &native_frames) &&
+      native.freq > 0) {
+    device_rate = native.freq;
+  }
+
   SDL_AudioSpec desired;
-  desired.freq = SPKR_SAMPLE_RATE;
+  desired.freq = device_rate;
   desired.channels = 2;
   desired.format = SDL_AUDIO_S16;
-
-  if (!g_audio_dump_file.empty()) {
-    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
-                            SPKR_SAMPLE_RATE, 2);
-  }
 
   g_audioStream =
       SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired,
@@ -72,10 +80,19 @@ auto ds_init() -> bool {
     return false;
   }
 
+  // SDL3 honours the stream's source spec exactly, so what was asked for is
+  // what the callback is fed.
+  const auto device_rate_hz = static_cast<uint32_t>(device_rate);
+
+  if (!g_audio_dump_file.empty()) {
+    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
+                            device_rate_hz, 2);
+  }
+
   SDL_ResumeAudioStreamDevice(g_audioStream);
   g_ds_available = true;
 
-  audio_mixer_initialize();
+  audio_mixer_initialize(device_rate_hz);
 
   linapple_set_audio_source_register_callback(
       [](int slot, const char* peripheral_id,

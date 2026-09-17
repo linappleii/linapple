@@ -30,6 +30,23 @@ SDL_AudioDeviceID g_audioDevice = 0;
 static std::string g_audio_dump_file;
 static AudioDumper_t g_audio_dumper;
 
+// The device buffer is a latency figure, so it is expressed in time. 1024
+// frames was 23 ms only at 44100. SDL prefers a power of two, so this rounds to
+// the nearest one rather than to the exact millisecond count.
+static auto device_buffer_samples(int rate_hz) -> Uint16 {
+  constexpr int device_buffer_ms = 23;
+  const int wanted = (rate_hz * device_buffer_ms) / 1000;
+  int samples = 256;
+  while (samples * 2 < wanted) {
+    samples *= 2;
+  }
+  // samples and samples*2 bracket wanted; take whichever is closer.
+  if ((wanted - samples) > ((samples * 2) - wanted)) {
+    samples *= 2;
+  }
+  return static_cast<Uint16>(samples);
+}
+
 static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
     -> void {
   (void)userdata;
@@ -52,21 +69,28 @@ auto ds_init() -> bool {
     return true;
   }
 
+  // Opening the device at its own rate is what removes the OS-side resample:
+  // the mixer's is then the only one in the chain. 44100 is the fallback for a
+  // failed query, not a target.
+  constexpr int fallback_rate_hz = 44100;
+  int requested_rate = fallback_rate_hz;
+#if SDL_VERSION_ATLEAST(2, 0, 15)
+  SDL_AudioSpec native;
+  SDL_zero(native);
+  if (SDL_GetAudioDeviceSpec(0, 0, &native) == 0 && native.freq > 0) {
+    requested_rate = native.freq;
+  }
+#endif
+
   SDL_AudioSpec desired;
   SDL_AudioSpec obtained;
   SDL_zero(desired);
-  desired.freq = SPKR_SAMPLE_RATE;
+  desired.freq = requested_rate;
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
-  constexpr int audio_samples = 1024;
-  desired.samples = audio_samples;
+  desired.samples = device_buffer_samples(requested_rate);
   desired.callback = sdl2AudioCallback;
   desired.userdata = nullptr;
-
-  if (!g_audio_dump_file.empty()) {
-    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
-                            SPKR_SAMPLE_RATE, 2);
-  }
 
   g_audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
   if (g_audioDevice == 0) {
@@ -74,10 +98,17 @@ auto ds_init() -> bool {
     return false;
   }
 
+  const auto device_rate_hz = static_cast<uint32_t>(obtained.freq);
+
+  if (!g_audio_dump_file.empty()) {
+    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
+                            device_rate_hz, 2);
+  }
+
   SDL_PauseAudioDevice(g_audioDevice, 0);
   g_ds_available = true;
 
-  audio_mixer_initialize();
+  audio_mixer_initialize(device_rate_hz);
 
   linapple_set_audio_source_register_callback(
       [](int slot, const char* peripheral_id,

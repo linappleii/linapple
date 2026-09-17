@@ -6,12 +6,12 @@
 
 #include "apple2/peripherals/Peripheral_Audio.h"
 
-constexpr uint32_t SPKR_SAMPLE_RATE = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
-constexpr uint32_t sample_rate = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
-
 enum FadeType_t { fade_out = 0, fade_in = 1 };
 
-auto audio_mixer_initialize() -> void;
+// Only the frontend knows the device's rate, because it opened the device.
+// Every source is resampled to it, so no rate constant lives in the mixer or
+// in the peripheral ABI.
+auto audio_mixer_initialize(uint32_t output_rate_hz) -> void;
 auto audio_mixer_destroy() -> void;
 auto audio_mixer_clear_buffers() -> void;
 
@@ -29,6 +29,11 @@ auto audio_mixer_set_channel_pan(int slot, size_t channel, float left,
 auto audio_mixer_get_channel_pan(int slot, size_t channel, float* left,
                                  float* right) -> void;
 auto audio_mixer_reset_channel_pan(int slot) -> void;
+
+// Defaults to 1 / peak_magnitude from the source's audio info, which is what
+// gives summing headroom an owner and a frontend volume control somewhere to
+// attach.
+auto audio_mixer_set_source_gain(int slot, float gain) -> void;
 
 using AudioChannelTapCallback_t = void (*)(const char* peripheral_id, int slot,
                                            const float* const* channels,
