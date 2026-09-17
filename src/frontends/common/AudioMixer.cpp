@@ -267,8 +267,19 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
     return;
   }
   auto& s = g_slots[static_cast<size_t>(slot)];
-  s.active = true;
+
+  // A peripheral re-announcing an unchanged layout must not flush audio or
+  // clobber a user pan override. active and info are written only on the
+  // emulation thread, so this comparison is safe while the audio thread is
+  // inside audio_mixer_get_samples.
+  const bool reconfiguring = s.active;
+  if (reconfiguring && std::memcmp(&s.info, info, sizeof(s.info)) == 0) {
+    return;
+  }
+
   s.info = *info;
+  // Pan assignments made against the old channel count are meaningless, so a
+  // genuine layout change resets them.
   for (size_t c = 0; c < MAX_CHANNELS_PER_SLOT; ++c) {
     if (c < s.info.num_channels) {
       s.pan[c].left = s.info.channels[c].default_pan_left;
@@ -280,7 +291,14 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
   if (!s.buffer) {
     s.buffer = std::unique_ptr<SampleBuffer_t>(new SampleBuffer_t());
   }
-  sample_buffer_reinit(s.buffer.get());
+  if (reconfiguring) {
+    // The audio thread owns read_index once the slot is live, so ask it to
+    // drop the backlog rather than reinitializing the ring underneath it.
+    sample_buffer_request_flush(s.buffer.get());
+  } else {
+    sample_buffer_reinit(s.buffer.get());
+  }
+  s.active = true;
 }
 
 auto audio_mixer_unregister_source(int slot) -> void {

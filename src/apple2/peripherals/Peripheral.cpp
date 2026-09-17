@@ -366,8 +366,33 @@ static auto host_set_config(const char* section, const char* key,
   config_save_string(section, key, value);
 }
 
+static auto announce_audio_source(int slot, Peripheral_t* api, void* instance)
+    -> void {
+  if (api == nullptr || api->query == nullptr ||
+      g_frontend_audio_register_cb == nullptr) {
+    return;
+  }
+  PeripheralAudioInfo_t info{};
+  size_t out_size = sizeof(info);
+  if (api->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &out_size) ==
+      peripheral_ok) {
+    g_frontend_audio_register_cb(slot, api->id, &info);
+  }
+}
+
+// Re-announce every audio source in the slot. A peripheral that does not
+// answer the audio query makes this a no-op.
+static auto announce_audio_source(int slot) -> void {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return;
+  }
+  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+    announce_audio_source(slot, ap.api, ap.instance);
+  }
+}
+
 static auto host_notify_status_changed(int slot) -> void {
-  (void)slot;
+  announce_audio_source(slot);
   extern void frame_refresh_status(int drawflags);
   frame_refresh_status(static_cast<int>(DRAW_LEDS | DRAW_BUTTON_DRIVES));
 }
@@ -637,14 +662,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
 
   g_active_peripherals.at(static_cast<size_t>(slot)).back().instance = instance;
 
-  if (api->query != nullptr && g_frontend_audio_register_cb != nullptr) {
-    PeripheralAudioInfo_t info{};
-    size_t out_size = sizeof(info);
-    if (api->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &out_size) ==
-        peripheral_ok) {
-      g_frontend_audio_register_cb(slot, api->id, &info);
-    }
-  }
+  announce_audio_source(slot, api, instance);
 
   return 0;
 }
