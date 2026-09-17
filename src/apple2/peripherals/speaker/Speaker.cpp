@@ -14,7 +14,6 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/speaker/SpeakerCommands.h"
 
 namespace {
 
@@ -28,7 +27,9 @@ constexpr size_t speaker_max_samples_per_update = 4096;
 // DSP & Analog Cone Modeling Parameters
 constexpr float speaker_dsp_scale = 16384.0f;
 constexpr float dc_blocker_coefficient = 0.999f;
-constexpr float spindown_decay_coefficient = 0.99f;
+// The DC blocker's decay never reaches exactly zero, so without a cutoff the
+// cone emits a trickle forever. It is also what keeps filter_state out of the
+// denormal range.
 constexpr float spindown_silence_epsilon = 0.001f;
 
 struct SpeakerEvent_t {
@@ -40,11 +41,8 @@ struct SpeakerPeripheral_t {
   // --- Seam 3 Host Interface ---
   HostInterface_t* host = nullptr;
 
-  // --- Hardware Latch & Inactivity Watchdog ---
-  uint64_t quiet_cycle_count = 0;
+  // --- Hardware Latch ---
   bool current_state = false;
-  bool is_active = false;
-  bool has_strobe = false;
   bool last_sample_state = false;
 
   // --- DSP Filter & Phase Accumulator ---
@@ -92,52 +90,8 @@ static auto clamp_sample(float filter_value) -> int16_t {
   return static_cast<int16_t>(clamped_sample);
 }
 
-static auto update_activity(SpeakerPeripheral_t& speaker,
-                            uint32_t elapsed_cycles) -> void {
-  speaker.last_update_cycle = get_cycles(speaker.host);
-
-  if (speaker.has_strobe) {
-    speaker.is_active = true;
-    speaker.quiet_cycle_count = 0;
-    speaker.has_strobe = false;
-    return;
-  }
-
-  if (!speaker.is_active) {
-    return;
-  }
-
-  speaker.quiet_cycle_count += elapsed_cycles;
-
-  const uint64_t inactivity_threshold =
-      static_cast<uint64_t>(get_clock_hz(speaker.host) / 5.0);
-  if (speaker.quiet_cycle_count > inactivity_threshold) {
-    speaker.is_active = false;
-  }
-}
-
-static auto synthesize_spindown_samples(SpeakerPeripheral_t& speaker,
-                                        uint64_t end_cycle,
-                                        double cycles_per_sample) -> size_t {
-  size_t sample_count = 0;
-  while (speaker.next_sample_cycle <= static_cast<double>(end_cycle) &&
-         sample_count < speaker_max_samples_per_update) {
-    if (std::abs(speaker.filter_state) > spindown_silence_epsilon) {
-      speaker.filter_state *= spindown_decay_coefficient;
-      speaker.sample_buffer[sample_count++] =
-          clamp_sample(speaker.filter_state);
-    } else {
-      speaker.filter_state = 0.0f;
-      speaker.sample_buffer[sample_count++] = 0;
-    }
-    speaker.next_sample_cycle += cycles_per_sample;
-  }
-  return sample_count;
-}
-
-static auto synthesize_active_samples(SpeakerPeripheral_t& speaker,
-                                      uint64_t end_cycle,
-                                      double cycles_per_sample) -> size_t {
+static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle,
+                               double cycles_per_sample) -> size_t {
   const uint32_t available_events = speaker.event_count;
   uint32_t event_index = 0;
   size_t sample_count = 0;
@@ -176,6 +130,10 @@ static auto synthesize_active_samples(SpeakerPeripheral_t& speaker,
                            (dc_blocker_coefficient * speaker.filter_state);
     speaker.previous_input = average;
 
+    if (std::abs(speaker.filter_state) < spindown_silence_epsilon) {
+      speaker.filter_state = 0.0f;
+    }
+
     speaker.sample_buffer[sample_count++] = clamp_sample(speaker.filter_state);
     speaker.next_sample_cycle += cycles_per_sample;
   }
@@ -195,6 +153,16 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
     return;
   }
 
+  // A cone at rest with nothing driving it is silent, and silence is no
+  // samples rather than a stream of zeros. This is what the inactivity
+  // watchdog was reaching for, stated in terms of the model instead of a
+  // timer.
+  if (speaker.event_count == 0 &&
+      std::abs(speaker.filter_state) < spindown_silence_epsilon) {
+    speaker.filter_state = 0.0f;
+    return;
+  }
+
   const uint64_t end_cycle = get_cycles(speaker.host);
   const uint64_t start_cycle =
       (end_cycle >= elapsed_cycles) ? (end_cycle - elapsed_cycles) : 0;
@@ -206,9 +174,7 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
   }
 
   const size_t sample_count =
-      speaker.is_active
-          ? synthesize_active_samples(speaker, end_cycle, cycles_per_sample)
-          : synthesize_spindown_samples(speaker, end_cycle, cycles_per_sample);
+      synthesize_samples(speaker, end_cycle, cycles_per_sample);
 
   speaker.event_count = 0;
 
@@ -221,23 +187,6 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
     const float* channel_ptrs[1] = {speaker.normalized_buffer.data()};
     speaker.host->AudioPushChannels(instance, channel_ptrs, 1, sample_count);
   }
-}
-
-static auto query_is_active(void* instance, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
-  constexpr size_t required_size = sizeof(uint8_t);
-  if (out == nullptr) {
-    *out_size = required_size;
-    return peripheral_ok;
-  }
-  if (instance == nullptr || *out_size < required_size) {
-    *out_size = required_size;
-    return peripheral_error;
-  }
-  const auto& speaker = *static_cast<const SpeakerPeripheral_t*>(instance);
-  *static_cast<uint8_t*>(out) = speaker.is_active ? 1 : 0;
-  *out_size = required_size;
-  return peripheral_ok;
 }
 
 static auto query_audio_info(void* out, size_t* out_size)
@@ -272,8 +221,6 @@ static auto speaker_strobe(void* instance) -> void {
   }
   auto& speaker = *static_cast<SpeakerPeripheral_t*>(instance);
 
-  speaker.has_strobe = true;
-  speaker.is_active = true;
   speaker.current_state = !speaker.current_state;
 
   // A full queue overwrites its own tail rather than dropping the edge, so the
@@ -297,12 +244,12 @@ auto speaker_reset(void* instance) -> void {
 
   speaker.event_count = 0;
   speaker.current_state = false;
-  speaker.quiet_cycle_count = 0;
-  speaker.is_active = false;
-  speaker.has_strobe = false;
   speaker.last_sample_state = false;
   speaker.filter_state = 0.0f;
-  speaker.previous_input = 0.0f;
+  // previous_input is the drive level, not zero: the blocker sees no step
+  // until something strobes, so a reset with no strobe emits nothing and every
+  // edge afterwards is a step of exactly two.
+  speaker.previous_input = speaker.last_sample_state ? 1.0f : -1.0f;
   speaker.last_update_cycle = get_cycles(speaker.host);
   speaker.next_sample_cycle = static_cast<double>(speaker.last_update_cycle);
 }
@@ -342,7 +289,7 @@ auto speaker_think(void* instance, uint32_t elapsed_cycles) -> void {
     return;
   }
   auto& speaker = *static_cast<SpeakerPeripheral_t*>(instance);
-  update_activity(speaker, elapsed_cycles);
+  speaker.last_update_cycle = get_cycles(speaker.host);
   generate_samples(speaker, instance, elapsed_cycles);
 }
 
@@ -363,8 +310,11 @@ auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
   const auto& speaker = *static_cast<const SpeakerPeripheral_t*>(instance);
   auto& ss = *static_cast<SsIoSpeaker_t*>(state_buffer);
   ss.g_spkr_last_cycle = speaker.last_update_cycle;
-  ss.quiet_cycle_count = speaker.quiet_cycle_count;
-  ss.recently_active = speaker.is_active ? 1 : 0;
+  // quiet_cycle_count and recently_active are .aws format fields whose backing
+  // state is gone with the inactivity watchdog. They are written as constants
+  // and ignored on load so that the snapshot layout keeps its promise.
+  ss.quiet_cycle_count = 0;
+  ss.recently_active = 0;
   ss.state = speaker.current_state ? 1 : 0;
   ss.next_sample_cycle = speaker.next_sample_cycle;
   ss.last_sample_state = speaker.last_sample_state ? 1 : 0;
@@ -385,8 +335,6 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   auto& speaker = *static_cast<SpeakerPeripheral_t*>(instance);
   const auto& ss = *static_cast<const SsIoSpeaker_t*>(state_buffer);
   speaker.last_update_cycle = ss.g_spkr_last_cycle;
-  speaker.quiet_cycle_count = ss.quiet_cycle_count;
-  speaker.is_active = (ss.recently_active != 0);
   speaker.current_state = (ss.state != 0);
   speaker.next_sample_cycle = ss.next_sample_cycle;
   speaker.last_sample_state = (ss.last_sample_state != 0);
@@ -401,7 +349,6 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   }
 
   speaker.previous_input = speaker.last_sample_state ? 1.0f : -1.0f;
-  speaker.has_strobe = false;
   speaker.event_count = 0;
 
   return peripheral_ok;
@@ -409,12 +356,9 @@ auto speaker_load_state(void* instance, const void* state_buffer,
 
 auto speaker_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t {
+  (void)instance;
   if (out_size == nullptr) {
     return peripheral_error;
-  }
-
-  if (cmd_id == speaker_query_is_active) {
-    return query_is_active(instance, out, out_size);
   }
 
   if (cmd_id == PERIPHERAL_QUERY_AUDIO_INFO) {

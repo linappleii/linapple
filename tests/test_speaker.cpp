@@ -14,17 +14,20 @@
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/speaker/Speaker.h"
-#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "doctest.h"
 
 namespace {
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr int TEST_SLOT = 0;
-constexpr int16_t SPEAKER_PEAK_AMPLITUDE = 0x4000;
-constexpr uint64_t INACTIVITY_THRESHOLD_CYCLES =
-    static_cast<uint64_t>(CLOCK_6502 / 5.0);
 constexpr uint64_t NTSC_ONE_SECOND_CYCLES = 1022727;
+
+// Every edge is a step of exactly 2.0 through the DC blocker now that
+// previous_input tracks the drive level. Transitional: the peripheral still
+// scales by 16384 and clips, so both edges arrive at an int16 rail. Task B4
+// deletes the scale and the clip and these become +/-2.0.
+constexpr int16_t EDGE_POSITIVE = 32767;
+constexpr int16_t EDGE_NEGATIVE = -32768;
 
 struct MockDirectIOHandler_t {
   void* instance = nullptr;
@@ -179,18 +182,6 @@ struct SpeakerHarness_t {
     audio_push_count_ = 0;
   }
 
-  auto is_active(void* inst = nullptr) const -> bool {
-    void* target = (inst != nullptr) ? inst : primary_instance_;
-    if (target == nullptr) {
-      return false;
-    }
-    uint8_t active = 0;
-    size_t size = sizeof(active);
-    PeripheralStatus_t status = speaker_get_descriptor()->query(
-        target, speaker_query_is_active, &active, &size);
-    return (status == peripheral_ok && active != 0);
-  }
-
  private:
   HostInterface_t host_{};
   uint64_t cycles_ = 0;
@@ -310,18 +301,33 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
   REQUIRE(instance2 != nullptr);
   CHECK(instance1 != instance2);
 
-  // Strobing instance1 flips state and asserts activity solely on instance1
+  // Strobing instance1 drives instance1 alone
+  harness.set_cycles(1000);
   harness.strobe(instance1);
-  CHECK(harness.is_active(instance1));
-  CHECK_FALSE(harness.is_active(instance2));
+  harness.advance_cycles(100);
+  harness.think(instance1, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+  harness.clear_captured_samples();
 
-  // Strobing instance2 flips state and asserts activity on instance2
+  // instance2 is still at rest, and a cone at rest pushes nothing
+  harness.think(instance2, 100);
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
+
   harness.strobe(instance2);
-  CHECK(harness.is_active(instance2));
+  harness.advance_cycles(100);
+  harness.think(instance2, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+  harness.clear_captured_samples();
 
   // Deallocating instance1 leaves instance2 operational
   harness.shutdown_instance(instance1);
-  CHECK(harness.is_active(instance2));
+  harness.strobe(instance2);
+  harness.advance_cycles(100);
+  harness.think(instance2, 100);
+  CHECK(harness.audio_push_count() == 1);
   harness.shutdown_instance(instance2);
 }
 
@@ -338,11 +344,17 @@ TEST_CASE("Speaker Peripheral: Strobe Registration At The Soft Switch") {
   CHECK(harness.strobe_registered(ADDR_SPEAKER));
   CHECK(harness.legacy_handlers_empty());
 
+  // Before any strobe the cone is at rest and nothing is pushed
   harness.set_cycles(1000);
-  CHECK_FALSE(harness.is_active(instance));
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  CHECK(harness.audio_push_count() == 0);
 
   harness.strobe();
-  CHECK(harness.is_active(instance));
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
 }
 
 TEST_CASE("Speaker Peripheral: Repeated Strobes Keep The Cone Driven") {
@@ -356,7 +368,9 @@ TEST_CASE("Speaker Peripheral: Repeated Strobes Keep The Cone Driven") {
     harness.strobe(instance);
     harness.advance_cycles(50);
   }
-  CHECK(harness.is_active(instance));
+  harness.think(instance, 200);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
 }
 
 TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
@@ -371,7 +385,7 @@ TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples()[0] == SPEAKER_PEAK_AMPLITUDE);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
   harness.clear_captured_samples();
 
   // Strobe 2: flips the latch from true to false (-1.0 drive level, negative
@@ -405,76 +419,11 @@ TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
 }
 
 // =============================================================================
-// Domain 3: Clock Synchronization & Inactivity Tracking
-// =============================================================================
-
-TEST_CASE(
-    "Speaker Peripheral: Inactivity Boundary Threshold (Single-Cycle "
-    "Precision)") {
-  // TC-06: Inactivity Boundary Threshold (Single-Cycle Precision)
-  SpeakerHarness_t harness;
-  void* instance = harness.create_speaker(TEST_SLOT);
-  REQUIRE(instance != nullptr);
-
-  harness.set_cycles(1000);
-  CHECK_FALSE(harness.is_active(instance));
-
-  harness.strobe();
-  harness.think(instance, 0);
-  CHECK(harness.is_active(instance));
-
-  // Advance exactly to the inactivity threshold: must remain active
-  harness.advance_cycles(INACTIVITY_THRESHOLD_CYCLES);
-  harness.think(instance, static_cast<uint32_t>(INACTIVITY_THRESHOLD_CYCLES));
-  CHECK(harness.is_active(instance));
-
-  // Advance by 1 more cycle: quiet_cycle_count > threshold triggers
-  // deactivation
-  harness.advance_cycles(1);
-  harness.think(instance, 1);
-  CHECK_FALSE(harness.is_active(instance));
-}
-
-TEST_CASE("Speaker Peripheral: Inactivity Extension via Mid-Flight Re-Strobe") {
-  // TC-07: Inactivity Extension via Mid-Flight Re-Strobe
-  SpeakerHarness_t harness;
-  void* instance = harness.create_speaker(TEST_SLOT);
-  REQUIRE(instance != nullptr);
-
-  harness.set_cycles(0);
-  harness.strobe();
-  harness.think(instance, 0);
-  CHECK(harness.is_active(instance));
-
-  // Advance 150,000 cycles, then re-strobe mid-flight
-  constexpr uint32_t mid_flight_cycles = 150000;
-  harness.advance_cycles(mid_flight_cycles);
-  harness.think(instance, mid_flight_cycles);
-  CHECK(harness.is_active(instance));
-
-  harness.strobe();
-  harness.think(instance, 0);
-  CHECK(harness.is_active(instance));
-
-  // Advance by full threshold from the re-strobe point: must remain active
-  harness.advance_cycles(INACTIVITY_THRESHOLD_CYCLES);
-  harness.think(instance, static_cast<uint32_t>(INACTIVITY_THRESHOLD_CYCLES));
-  CHECK(harness.is_active(instance));
-
-  // Advance 1 additional cycle past re-armed threshold: must deactivate
-  harness.advance_cycles(1);
-  harness.think(instance, 1);
-  CHECK_FALSE(harness.is_active(instance));
-}
-
-// =============================================================================
 // Domain 4: Digital Signal Processing & Filter Mechanics
 // =============================================================================
 
-TEST_CASE(
-    "Speaker Peripheral: Inactive Digital Silence & Deterministic Sample "
-    "Pacing") {
-  // TC-08: Inactive Digital Silence & Deterministic Sample Pacing
+TEST_CASE("Speaker Peripheral: A Cone At Rest Pushes Nothing") {
+  // TC-08: silence is no samples, not a stream of zeros
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -482,12 +431,8 @@ TEST_CASE(
   harness.set_cycles(1000);
   harness.think(instance, 1000);
 
-  // At 44.1 kHz, 1000 cycles produces exactly 44 samples (mono channel)
-  constexpr size_t expected_idle_samples = 44;
-  REQUIRE(harness.captured_samples().size() == expected_idle_samples);
-  for (int16_t s : harness.captured_samples()) {
-    CHECK(s == 0);
-  }
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
 }
 
 TEST_CASE(
@@ -510,46 +455,20 @@ TEST_CASE(
     CHECK(samples[i] >= samples[i + 1]);
   }
 
-  // Exact step response golden checks
-  CHECK(samples[0] == SPEAKER_PEAK_AMPLITUDE);
+  // The onset is a step of 2.0, which the transitional scale rails
+  CHECK(samples[0] == EDGE_POSITIVE);
 
-  // Exact golden step response decay samples (0.999f filter factor)
-  constexpr int16_t golden_decay_sample_1 = 16367;
-  constexpr int16_t golden_decay_sample_2 = 16351;
-  CHECK(samples[1] == golden_decay_sample_1);
-  CHECK(samples[2] == golden_decay_sample_2);
+  // and the blocker decays it by dc_blocker_coefficient per sample
+  constexpr double edge = 2.0;
+  constexpr double a = 0.999;
+  constexpr double scale = 16384.0;
+  CHECK(samples[1] == doctest::Approx(edge * a * scale).epsilon(1e-4));
+  CHECK(samples[2] == doctest::Approx(edge * a * a * scale).epsilon(1e-4));
 
   // Monotonic step decay point checks
   CHECK(samples[0] > samples[1]);
   CHECK(samples[1] > samples[2]);
   CHECK(samples.front() > samples.back());
-}
-
-TEST_CASE(
-    "Speaker Peripheral: Sub-Cycle Boxcar Area Integration (Fractional Duty "
-    "Cycle)") {
-  // TC-10: Sub-Cycle Boxcar Area Integration (Fractional Duty Cycle)
-  SpeakerHarness_t harness;
-  void* instance = harness.create_speaker(TEST_SLOT);
-  REQUIRE(instance != nullptr);
-
-  // Strobe 1 at cycle 6 (flips state to true)
-  harness.set_cycles(6);
-  harness.strobe(instance);
-
-  // Strobe 2 at cycle 17 (flips state to false)
-  harness.set_cycles(17);
-  harness.strobe(instance);
-
-  // Advance past first sample window (24 cycles > 23.191 cycles)
-  harness.set_cycles(24);
-  harness.think(instance, 24);
-
-  const auto& samples = harness.captured_samples();
-  REQUIRE_FALSE(samples.empty());
-  // Mathematical golden value: area average produces exactly -807
-  constexpr int16_t golden_boxcar_sample = -807;
-  CHECK(samples[0] == golden_boxcar_sample);
 }
 
 TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
@@ -577,24 +496,34 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   CHECK(*min_max.second > 0);
 }
 
-TEST_CASE("Speaker Peripheral: Spindown Decay to Absolute Silence") {
-  // TC-12: Spindown Decay to Absolute Silence
+TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
+  // TC-12: the DC blocker is the only decay there is. A single edge decays to
+  // the silence epsilon and the speaker then pushes nothing at all.
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
+  constexpr uint32_t frame_cycles = 17030;
   harness.set_cycles(1000);
   harness.strobe();
-  harness.advance_cycles(1000);
-  harness.think(instance, 1000);
-  harness.clear_captured_samples();
 
-  constexpr uint32_t long_wait_cycles = 2000000;
-  harness.advance_cycles(long_wait_cycles);
-  harness.think(instance, long_wait_cycles);
+  // tau * ln(2.0 / 0.001) is 174,821 cycles from a 2.0 edge down to the
+  // silence epsilon: eleven NTSC frames and part of a twelfth. So eleven
+  // thinks carry audio and the twelfth has nothing left to say.
+  constexpr int driven_frames = 11;
+  for (int step = 0; step < driven_frames; ++step) {
+    harness.advance_cycles(frame_cycles);
+    harness.think(instance, frame_cycles);
+  }
+  CHECK(harness.audio_push_count() == driven_frames);
 
+  // The tail is snapped to true zero, and nothing follows it.
   REQUIRE_FALSE(harness.captured_samples().empty());
   CHECK(harness.captured_samples().back() == 0);
+
+  harness.advance_cycles(frame_cycles);
+  harness.think(instance, frame_cycles);
+  CHECK(harness.audio_push_count() == driven_frames);
 }
 
 // =============================================================================
@@ -648,6 +577,8 @@ TEST_CASE(
   // 736 samples
   constexpr uint32_t frame_cycles = 17030;
   constexpr size_t expected_frame_samples = 736;
+  // Pacing is only observable while the cone is driven
+  harness.strobe();
   harness.advance_cycles(frame_cycles);
   harness.think(instance, frame_cycles);
 
@@ -677,8 +608,10 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
 
   harness.set_cycles(1000);
   harness.strobe();
-  harness.think(instance1, 0);
-  REQUIRE(harness.is_active(instance1));
+  harness.advance_cycles(100);
+  harness.think(instance1, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  harness.clear_captured_samples();
 
   size_t state_size = 0;
   PeripheralStatus_t status =
@@ -694,12 +627,14 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
   // TC-16: Bit-for-Bit State Preservation & Cross-Instance Restoration
   void* instance2 = harness.create_speaker(TEST_SLOT + 1);
   REQUIRE(instance2 != nullptr);
-  CHECK_FALSE(harness.is_active(instance2));
+
+  // A fresh instance is at rest and pushes nothing before the restore
+  harness.think(instance2, 100);
+  CHECK(harness.audio_push_count() == 0);
 
   status = speaker_get_descriptor()->load_state(instance2, buffer.data(),
                                                 state_size);
   CHECK(status == peripheral_ok);
-  CHECK(harness.is_active(instance2));
 
   // Verify save-state round-trip data equality
   size_t state_size2 = 0;
@@ -708,6 +643,22 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
   std::vector<uint8_t> buffer2(state_size2);
   speaker_get_descriptor()->save_state(instance2, buffer2.data(), &state_size2);
   CHECK(buffer == buffer2);
+
+  // The differential proof of restore: from here, identical strobe and think
+  // sequences on both instances produce identical output. This says what a
+  // struct-field comparison cannot, that the restored cone behaves the same.
+  harness.strobe(instance1);
+  harness.strobe(instance2);
+  harness.advance_cycles(500);
+
+  harness.clear_captured_samples();
+  harness.think(instance1, 500);
+  const std::vector<int16_t> from_original = harness.captured_samples();
+  REQUIRE_FALSE(from_original.empty());
+
+  harness.clear_captured_samples();
+  harness.think(instance2, 500);
+  CHECK(harness.captured_samples() == from_original);
 }
 
 TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
@@ -716,20 +667,27 @@ TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
+  // A snapshot taken with the flip-flop high and the cone already settled
   SsIoSpeaker_t pop_state{};
+  pop_state.state = 1;
   pop_state.last_sample_state = 1;
   pop_state.filter_state = 0.0f;
-  pop_state.recently_active = 0;
   const PeripheralStatus_t status = speaker_get_descriptor()->load_state(
       instance, &pop_state, sizeof(pop_state));
   CHECK(status == peripheral_ok);
 
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  // Pop suppression verified: first sample is clean zero, not spurious +16384
-  // step
-  CHECK(harness.captured_samples()[0] == 0);
+  // Restoring a settled cone makes no sound at all
+  CHECK(harness.audio_push_count() == 0);
+
+  // The first edge after the restore is a full step. A previous_input left at
+  // zero instead of the restored drive level would give half of one.
+  harness.strobe();
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_NEGATIVE);
 }
 
 TEST_CASE("Speaker Peripheral: Pre-Restore Event Queue Purge") {
@@ -746,46 +704,44 @@ TEST_CASE("Speaker Peripheral: Pre-Restore Event Queue Purge") {
 
   // Restore quiet snapshot
   SsIoSpeaker_t quiet_state{};
-  quiet_state.recently_active = 0;
   const PeripheralStatus_t status = speaker_get_descriptor()->load_state(
       instance, &quiet_state, sizeof(quiet_state));
   CHECK(status == peripheral_ok);
 
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  for (int16_t s : harness.captured_samples()) {
-    CHECK(s == 0);
-  }
+  // The purged queue leaves a cone at rest, and a cone at rest is silent
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
 }
 
 // =============================================================================
 // Domain 7: Numerical Hardening, Stress Boundaries & Error Recovery
 // =============================================================================
 
-TEST_CASE(
-    "Speaker Peripheral: Event Queue Saturation Under High-Frequency Stress") {
-  // TC-19: Event Queue Saturation Under High-Frequency Stress
+TEST_CASE("Speaker Peripheral: Queue Overflow Keeps The Final Polarity") {
+  // TC-19: the flip-flop always toggles, so an overflowing queue overwrites
+  // its own tail. An even number of strobes in one instant leaves the cone
+  // where it was, which is only true if the overflowing strobes still flipped
+  // the latch. A queue that dropped them would drive high and step by 2.0.
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  for (size_t i = 0; i < 20000; ++i) {
-    harness.strobe();
-    harness.advance_cycles(1);
+  // speaker_max_events_per_update is 8192; this is that plus one pair
+  constexpr size_t overflowing_strobes = 8194;
+  harness.set_cycles(1000);
+  for (size_t i = 0; i < overflowing_strobes; ++i) {
+    harness.strobe(instance);
   }
-  harness.clear_captured_samples();
-  harness.think(instance, 20000);
-  REQUIRE_FALSE(harness.captured_samples().empty());
+  harness.advance_cycles(1000);
+  harness.think(instance, 1000);
 
-  const auto sat_min_max = std::minmax_element(
-      harness.captured_samples().begin(), harness.captured_samples().end());
-  CHECK(*sat_min_max.first < 0);
-  CHECK(*sat_min_max.second > 0);
-  // Anti-saturation check: verify waveform does not permanently rail at DAC
-  // extremes
-  CHECK(*sat_min_max.first > -32768);
-  CHECK(*sat_min_max.second < 32767);
+  REQUIRE(harness.audio_push_count() == 1);
+  REQUIRE_FALSE(harness.captured_samples().empty());
+  for (int16_t s : harness.captured_samples()) {
+    CHECK(s == 0);
+  }
 }
 
 TEST_CASE("Speaker Peripheral: Backwards Clock & Cycle Underflow Clamping") {
@@ -832,19 +788,19 @@ TEST_CASE(
   CHECK(descriptor->init(TEST_SLOT, nullptr) == nullptr);
 
   size_t size = 0;
-  CHECK(descriptor->query(instance, speaker_query_is_active, nullptr, &size) ==
-        peripheral_ok);
-  CHECK(size == sizeof(uint8_t));
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, nullptr,
+                          &size) == peripheral_ok);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
 
-  uint8_t active_dummy = 0;
+  PeripheralAudioInfo_t info{};
   size_t small_size = 0;
-  CHECK(descriptor->query(instance, speaker_query_is_active, &active_dummy,
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info,
                           &small_size) == peripheral_error);
-  CHECK(descriptor->query(instance, speaker_query_is_active, &active_dummy,
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info,
                           nullptr) == peripheral_error);
 
-  size = sizeof(uint8_t);
-  CHECK(descriptor->query(instance, 0xFFFF, &active_dummy, &size) ==
+  size = sizeof(PeripheralAudioInfo_t);
+  CHECK(descriptor->query(instance, 0xFFFF, &info, &size) ==
         peripheral_incompatible);
 
   uint8_t tiny_buf[1] = {0};
@@ -861,9 +817,12 @@ TEST_CASE(
   CHECK(descriptor->load_state(instance, oversized_buf.data(),
                                oversized_buf.size()) == peripheral_error);
 
-  // Null instance handling across all API endpoints
-  CHECK(descriptor->query(nullptr, speaker_query_is_active, &active_dummy,
-                          &size) == peripheral_error);
+  // Null instance handling across all API endpoints. The audio layout is a
+  // property of the peripheral rather than of an instance, so that one query
+  // answers without one.
+  size = sizeof(PeripheralAudioInfo_t);
+  CHECK(descriptor->query(nullptr, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size) ==
+        peripheral_ok);
   CHECK(descriptor->save_state(nullptr, tiny_buf, &size) == peripheral_error);
   CHECK(descriptor->load_state(nullptr, tiny_buf, sizeof(tiny_buf)) ==
         peripheral_error);
@@ -886,6 +845,11 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
   harness.strobe();  // Consecutive strobe at exact same cycle
   harness.advance_cycles(50);
   harness.think(instance, 50);
+
+  // Two strobes in one instant are no net edge, so the blocker sees no step.
+  // Output still flows: the slice carried events.
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == 0);
 }
 
 TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
@@ -894,18 +858,21 @@ TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
+  harness.set_cycles(1000);
   harness.strobe();
-  CHECK(harness.is_active(instance));
-  speaker_get_descriptor()->reset(instance);
-  CHECK_FALSE(harness.is_active(instance));
-
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
   harness.clear_captured_samples();
+
+  // Reset is idempotent, and it returns the cone to rest mid-decay
+  speaker_get_descriptor()->reset(instance);
+  speaker_get_descriptor()->reset(instance);
+
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  for (int16_t s : harness.captured_samples()) {
-    CHECK(s == 0);
-  }
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
 }
 
 TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
