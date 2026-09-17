@@ -723,3 +723,175 @@ TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
     CHECK(out[(i * 2) + 1] == expected);
   }
 }
+
+// =============================================================================
+// Adversarial boundaries
+// =============================================================================
+
+TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
+  // The plan expects the most recent capacity frames to survive. They do not:
+  // sample_buffer_upload writes what fits and drops the rest, so the ring
+  // keeps the oldest frames and the producer loses the newest. Pinned as it
+  // is, because the alternative -- overwriting the reader's backlog -- is not
+  // something a single-producer single-consumer ring can do safely.
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  audio_mixer_register_source(0, SOURCE_ID, &info);
+
+  const size_t capacity_samples =
+      (output_rate * MIXER_CAPACITY_MS / 1000) & ~size_t(1);
+  const size_t overflowing_frames = capacity_samples * 4;
+
+  std::vector<float> ramp(overflowing_frames);
+  for (size_t i = 0; i < overflowing_frames; ++i) {
+    ramp[i] = static_cast<float>(i % 1000) / 1000.0f;
+  }
+  mixer.upload_mono(0, ramp.data(), ramp.size());
+
+  // The ring keeps one sample free and only ever writes an even count, so a
+  // saturating upload leaves it two samples short of capacity.
+  const size_t retained = (capacity_samples - 2) / 2;
+  const std::vector<int16_t> out = mixer.drain(capacity_samples);
+
+  for (size_t i = 0; i < retained; ++i) {
+    const auto expected =
+        static_cast<int16_t>(std::lroundf(ramp[i] * 32767.0f));
+    CHECK(out[i * 2] == expected);
+  }
+
+  // The frame after the retained prefix is the underrun fade, not the next
+  // ramp value: the newest frames were dropped, not the oldest.
+  const auto dropped =
+      static_cast<int16_t>(std::lroundf(ramp[retained] * 32767.0f));
+  CHECK(out[retained * 2] != dropped);
+
+  for (int16_t sample : out) {
+    CHECK(sample >= -32767);
+    CHECK(sample <= 32767);
+  }
+}
+
+TEST_CASE("Audio Mixer: Malformed Uploads Are Refused") {
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  audio_mixer_register_source(0, SOURCE_ID, &info);
+
+  const std::vector<float> payload(64, 1.0f);
+  const float* one[1] = {payload.data()};
+  const float* null_inside[2] = {payload.data(), nullptr};
+
+  // A channel count of zero or beyond the per-slot maximum, a null plane, a
+  // null plane array, and an empty upload all leave the ring untouched.
+  audio_mixer_upload_channels(SOURCE_ID, 0, one, 0, 64);
+  audio_mixer_upload_channels(SOURCE_ID, 0, one, 17, 64);
+  audio_mixer_upload_channels(SOURCE_ID, 0, null_inside, 2, 64);
+  audio_mixer_upload_channels(SOURCE_ID, 0, nullptr, 1, 64);
+  audio_mixer_upload_channels(SOURCE_ID, 0, one, 1, 0);
+
+  const std::vector<int16_t> out = mixer.drain(64);
+  for (int16_t sample : out) {
+    CHECK(sample == 0);
+  }
+
+  // A well-formed upload on the same slot still works, so nothing was left
+  // in a broken state.
+  mixer.upload_mono(0, payload.data(), payload.size());
+  CHECK(mixer.drain(32)[0] == 32767);
+}
+
+TEST_CASE("Audio Mixer: Slots Outside The Range Are Refused") {
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+
+  audio_mixer_register_source(-1, SOURCE_ID, &info);
+  audio_mixer_register_source(8, SOURCE_ID, &info);
+  audio_mixer_register_source(0, SOURCE_ID, nullptr);
+  audio_mixer_unregister_source(-1);
+  audio_mixer_unregister_source(8);
+
+  const std::vector<float> payload(64, 1.0f);
+  mixer.upload_mono(-1, payload.data(), payload.size());
+  mixer.upload_mono(8, payload.data(), payload.size());
+
+  audio_mixer_set_channel_pan(-1, 0, 1.0f, 1.0f);
+  audio_mixer_set_channel_pan(8, 0, 1.0f, 1.0f);
+  audio_mixer_set_channel_pan(0, 16, 1.0f, 1.0f);
+  audio_mixer_set_source_gain(-1, 1.0f);
+  audio_mixer_set_source_gain(8, 1.0f);
+  audio_mixer_reset_channel_pan(-1);
+  audio_mixer_reset_channel_pan(8);
+
+  float left = -1.0f;
+  float right = -1.0f;
+  audio_mixer_get_channel_pan(-1, 0, &left, &right);
+  CHECK(left == -1.0f);
+  CHECK(right == -1.0f);
+  audio_mixer_get_channel_pan(0, 0, nullptr, nullptr);
+
+  const std::vector<int16_t> out = mixer.drain(64);
+  for (int16_t sample : out) {
+    CHECK(sample == 0);
+  }
+}
+
+TEST_CASE("Audio Mixer: An Out-Of-Range Pan Is Stored, Not Clamped") {
+  // Pinning which: the mixer keeps whatever pan it is given, and the only
+  // limit in the chain is the single conversion at the end. A frontend that
+  // wants a bounded control has to bound it itself.
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  audio_mixer_register_source(0, SOURCE_ID, &info);
+
+  audio_mixer_set_channel_pan(0, 0, -1.0f, 2.0f);
+  float left = 0.0f;
+  float right = 0.0f;
+  audio_mixer_get_channel_pan(0, 0, &left, &right);
+  CHECK(left == -1.0f);
+  CHECK(right == 2.0f);
+
+  const std::vector<float> payload(64, 0.5f);
+  mixer.upload_mono(0, payload.data(), payload.size());
+  const std::vector<int16_t> out = mixer.drain(32);
+  CHECK(out[0] == -16384);
+  CHECK(out[1] == 32767);
+}
+
+TEST_CASE("Audio Mixer: Draining Without A Mixer Is Silence") {
+  // The audio thread can outlive the device. A drain before initialize, or
+  // after destroy, writes silence rather than reading a freed ring.
+  audio_mixer_destroy();
+
+  std::vector<int16_t> out(256, 0x5A5A);
+  audio_mixer_get_samples(out.data(), out.size());
+  for (int16_t sample : out) {
+    CHECK(sample == 0);
+  }
+
+  // And the degenerate requests do nothing at all.
+  audio_mixer_get_samples(nullptr, 256);
+  audio_mixer_get_samples(out.data(), 0);
+  audio_mixer_clear_buffers();
+  audio_mixer_set_fade(fade_out);
+  audio_mixer_set_fade(fade_in);
+}
+
+TEST_CASE("Audio Mixer: A Zero Output Rate Produces No Output") {
+  // A device that reports no rate at all cannot be resampled to, so the
+  // mixer keeps nothing and plays nothing rather than dividing by it.
+  MixerFixture_t mixer(0, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = absolute_info(48000, 1, 1.0f);
+  audio_mixer_register_source(0, SOURCE_ID, &info);
+
+  const std::vector<float> payload(64, 1.0f);
+  mixer.upload_mono(0, payload.data(), payload.size());
+
+  std::vector<int16_t> out(128, 0x5A5A);
+  audio_mixer_get_samples(out.data(), out.size());
+  for (int16_t sample : out) {
+    CHECK(sample == 0);
+  }
+}

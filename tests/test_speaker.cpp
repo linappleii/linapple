@@ -34,6 +34,10 @@ constexpr float SILENCE_EPSILON = 0.001f;
 // silence epsilon: eleven NTSC frames and part of a twelfth.
 constexpr int FRAMES_TO_SILENCE = 11;
 
+// The per-update capacity limits from Speaker.cpp.
+constexpr uint32_t SPEAKER_MAX_SAMPLES_PER_UPDATE = 24000;
+constexpr size_t SPEAKER_MAX_EVENTS_PER_UPDATE = 8192;
+
 // Every edge is a step of exactly 2.0 through the DC blocker, emitted as
 // normalized float with nothing in the peripheral limiting it.
 constexpr float EDGE_POSITIVE = 2.0f;
@@ -708,11 +712,10 @@ TEST_CASE(
   // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
   // clamps to speaker_max_samples_per_update
   harness.clear_captured_samples();
-  constexpr size_t max_single_push_samples = 24000;
   harness.advance_cycles(NTSC_ONE_SECOND_CYCLES);
   harness.think(instance, static_cast<uint32_t>(NTSC_ONE_SECOND_CYCLES));
 
-  CHECK(harness.captured_samples().size() == max_single_push_samples);
+  CHECK(harness.captured_samples().size() == SPEAKER_MAX_SAMPLES_PER_UPDATE);
   CHECK(harness.audio_push_count() == 1);
 }
 
@@ -856,8 +859,8 @@ TEST_CASE("Speaker Peripheral: Queue Overflow Keeps The Final Polarity") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // speaker_max_events_per_update is 8192; this is that plus one pair
-  constexpr size_t overflowing_strobes = 8194;
+  // Capacity plus one pair, so the parity is even.
+  constexpr size_t overflowing_strobes = SPEAKER_MAX_EVENTS_PER_UPDATE + 2;
   harness.set_cycles(1000);
   for (size_t i = 0; i < overflowing_strobes; ++i) {
     harness.strobe(instance);
@@ -881,7 +884,7 @@ TEST_CASE("Speaker Peripheral: Queue Overflow Keeps An Odd Parity Too") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  constexpr size_t overflowing_strobes = 8193;
+  constexpr size_t overflowing_strobes = SPEAKER_MAX_EVENTS_PER_UPDATE + 1;
   for (size_t i = 0; i < overflowing_strobes; ++i) {
     harness.strobe(instance);
   }
@@ -1174,4 +1177,170 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   CHECK(std::strcmp(info.channels[0].name, "Speaker") == 0);
   CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0f));
   CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0f));
+}
+
+// =============================================================================
+// Domain 8: Adversarial boundaries
+// =============================================================================
+
+TEST_CASE("Speaker Peripheral: Every Slice Length At The Boundaries") {
+  // A slice yields exactly as many samples as the smaller of its elapsed
+  // cycles and the per-update capacity, at every boundary of that min.
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  const std::vector<uint32_t> slices = {0,
+                                        1,
+                                        SPEAKER_MAX_SAMPLES_PER_UPDATE - 1,
+                                        SPEAKER_MAX_SAMPLES_PER_UPDATE,
+                                        SPEAKER_MAX_SAMPLES_PER_UPDATE + 1,
+                                        UINT32_MAX};
+
+  for (uint32_t elapsed : slices) {
+    // A cone at rest is silent, so the slice has to be driven for its length
+    // to be observable at all.
+    harness.set_cycles(1ULL << 33);
+    speaker_get_descriptor()->reset(instance);
+    harness.clear_captured_samples();
+    harness.strobe(instance);
+
+    harness.advance_cycles(elapsed);
+    harness.think(instance, elapsed);
+
+    const size_t expected = std::min<uint64_t>(
+        elapsed, static_cast<uint64_t>(SPEAKER_MAX_SAMPLES_PER_UPDATE));
+    CHECK(harness.captured_samples().size() == expected);
+    CHECK(harness.audio_push_count() <= 1);
+    for (float s : harness.captured_samples()) {
+      CHECK(std::isfinite(s));
+    }
+  }
+}
+
+TEST_CASE("Speaker Peripheral: A Hostile Clock Resynchronizes") {
+  // The peripheral cannot audit its host. A clock that runs backwards, jumps
+  // by half the 64-bit range, or wraps to zero must leave the cone in a state
+  // the next ordinary slice can drive again.
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  const std::vector<uint64_t> hostile = {1000, 999, 1000 + (1ULL << 63),
+                                         UINT64_MAX, 0};
+
+  for (uint64_t cycle : hostile) {
+    harness.set_cycles(cycle);
+    harness.strobe(instance);
+    harness.think(instance, 100);
+    for (float s : harness.captured_samples()) {
+      CHECK(std::isfinite(s));
+    }
+    harness.clear_captured_samples();
+  }
+
+  // One ordinary slice later the cone is drivable again, and the next edge
+  // from rest is a full step.
+  harness.set_cycles(1000000);
+  speaker_get_descriptor()->reset(instance);
+  harness.clear_captured_samples();
+  harness.strobe(instance);
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+}
+
+TEST_CASE("Speaker Peripheral: Every Save-State Field Poisoned In Turn") {
+  // The .aws file is attacker-controlled input. Each field gets every value
+  // its type can carry that the synthesizer would choke on, one at a time,
+  // and after each load the next edge is still a clean full step.
+  auto* descriptor = speaker_get_descriptor();
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  const std::vector<double> poison = {
+      NAN, INFINITY, -INFINITY, -1.0, 1e300, -1e300, 1e-42, 0.0, 4.9e-324};
+
+  for (double value : poison) {
+    const auto as_u64 =
+        static_cast<uint64_t>(std::isfinite(value) ? std::fabs(value) : 0.0);
+    std::vector<SsIoSpeaker_t> states(7);
+    states[0].g_spkr_last_cycle = as_u64;
+    states[1].quiet_cycle_count = as_u64;
+    states[2].recently_active = static_cast<uint32_t>(as_u64);
+    states[3].state = static_cast<uint32_t>(as_u64);
+    states[4].next_sample_cycle = value;
+    states[5].last_sample_state = static_cast<uint32_t>(as_u64);
+    states[6].filter_state = static_cast<float>(value);
+
+    for (const SsIoSpeaker_t& state : states) {
+      CHECK(descriptor->load_state(instance, &state, sizeof(SsIoSpeaker_t)) ==
+            peripheral_ok);
+
+      harness.clear_captured_samples();
+      harness.set_cycles(1ULL << 20);
+      harness.strobe(instance);
+      harness.advance_cycles(100);
+      harness.think(instance, 100);
+      for (float s : harness.captured_samples()) {
+        CHECK(std::isfinite(s));
+      }
+    }
+  }
+
+  // Sizes off by one in either direction, and zero, are all refused.
+  SsIoSpeaker_t any{};
+  CHECK(descriptor->load_state(instance, &any, 0) == peripheral_error);
+  CHECK(descriptor->load_state(instance, &any, sizeof(any) - 1) ==
+        peripheral_error);
+  CHECK(descriptor->load_state(instance, &any, sizeof(any) + 1) ==
+        peripheral_error);
+}
+
+TEST_CASE("Speaker Peripheral: Query Sizes At The Extremes") {
+  auto* descriptor = speaker_get_descriptor();
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  PeripheralAudioInfo_t info{};
+  size_t size = 0;
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info,
+                          &size) == peripheral_error);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
+
+  // An absurdly large claim is honoured: the peripheral writes what it
+  // promised and reports what it wrote, never what was offered.
+  size = SIZE_MAX;
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info,
+                          &size) == peripheral_ok);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
+
+  CHECK(descriptor->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info,
+                          nullptr) == peripheral_error);
+}
+
+TEST_CASE("Speaker Peripheral: A Host That Offers Nothing At All") {
+  // Every callback null at once. The seam is mandatory only in that a null
+  // host is refused outright; a host that answers nothing still yields a
+  // working instance that simply cannot be heard.
+  auto* descriptor = speaker_get_descriptor();
+  HostInterface_t empty_host{};
+
+  void* instance = descriptor->init(TEST_SLOT, &empty_host);
+  REQUIRE(instance != nullptr);
+
+  descriptor->reset(instance);
+  descriptor->think(instance, 1000);
+  descriptor->think(instance, UINT32_MAX);
+
+  size_t size = sizeof(SsIoSpeaker_t);
+  std::vector<uint8_t> buffer(size);
+  CHECK(descriptor->save_state(instance, buffer.data(), &size) ==
+        peripheral_ok);
+  CHECK(descriptor->load_state(instance, buffer.data(), size) == peripheral_ok);
+
+  descriptor->shutdown(instance);
 }

@@ -827,6 +827,8 @@ if(ENABLE_FUZZING)
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
     add_linapple_fuzzer(fuzz-snapshot tests/fuzz/fuzz_snapshot.cpp)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
+    add_linapple_fuzzer(fuzz-speaker tests/fuzz/fuzz_speaker.cpp)
+    add_linapple_fuzzer(fuzz-audio-mixer tests/fuzz/fuzz_audio_mixer.cpp)
 
     if(BUILD_TESTING)
         add_test(NAME fuzz-disk-loader
@@ -849,6 +851,22 @@ if(ENABLE_FUZZING)
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/memory_text.dict
                          -max_total_time=10)
         set_tests_properties(fuzz-memory PROPERTIES LABELS "fuzz")
+
+        # One record is ten bytes of control plus an SsIoSpeaker_t; eight of
+        # them is enough of a sequence to reach the interesting states.
+        add_test(NAME fuzz-speaker
+                 COMMAND fuzz-speaker
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/speaker
+                         -max_len=400
+                         -max_total_time=10)
+        set_tests_properties(fuzz-speaker PROPERTIES LABELS "fuzz")
+
+        add_test(NAME fuzz-audio-mixer
+                 COMMAND fuzz-audio-mixer
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/audio-mixer
+                         -max_len=512
+                         -max_total_time=10)
+        set_tests_properties(fuzz-audio-mixer PROPERTIES LABELS "fuzz")
     endif()
 endif()
 
