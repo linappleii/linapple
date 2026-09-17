@@ -27,18 +27,15 @@ constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr double EDGE = 2.0;
 constexpr double TAU_CYCLES = 23000.0;
 constexpr double FILTER_A = 1.0 - (1.0 / TAU_CYCLES);
-constexpr double DSP_SCALE = 16384.0;
 
 // tau * ln(EDGE / epsilon) is 174,821 cycles from an edge down to the silence
 // epsilon: eleven NTSC frames and part of a twelfth.
 constexpr int FRAMES_TO_SILENCE = 11;
 
-// Every edge is a step of exactly 2.0 through the DC blocker now that
-// previous_input tracks the drive level. Transitional: the peripheral still
-// scales by 16384 and clips, so both edges arrive at an int16 rail. Task B4
-// deletes the scale and the clip and these become +/-2.0.
-constexpr int16_t EDGE_POSITIVE = 32767;
-constexpr int16_t EDGE_NEGATIVE = -32768;
+// Every edge is a step of exactly 2.0 through the DC blocker, emitted as
+// normalized float with nothing in the peripheral limiting it.
+constexpr float EDGE_POSITIVE = 2.0f;
+constexpr float EDGE_NEGATIVE = -2.0f;
 
 struct MockDirectIOHandler_t {
   void* instance = nullptr;
@@ -177,7 +174,7 @@ struct SpeakerHarness_t {
     }
   }
 
-  auto captured_samples() const -> const std::vector<int16_t>& {
+  auto captured_samples() const -> const std::vector<float>& {
     return captured_samples_;
   }
   auto audio_push_count() const -> uint32_t { return audio_push_count_; }
@@ -193,7 +190,7 @@ struct SpeakerHarness_t {
   void* primary_instance_ = nullptr;
   std::map<uint16_t, MockDirectIOHandler_t> handlers_;
   std::map<uint16_t, MockStrobeHandler_t> strobes_;
-  std::vector<int16_t> captured_samples_;
+  std::vector<float> captured_samples_;
   size_t captured_channels_ = 0;
   uint32_t audio_push_count_ = 0;
 
@@ -238,13 +235,9 @@ struct SpeakerHarness_t {
         num_channels > 0 && num_samples > 0) {
       s_active_harness->captured_channels_ = num_channels;
       if (channel_buffers[0] != nullptr) {
-        // Recover the integer samples the speaker still synthesizes. Dividing
-        // and re-multiplying by 32768 is exact, so the goldens are unchanged.
-        // Task E1 replaces this capture with float.
-        for (size_t i = 0; i < num_samples; ++i) {
-          s_active_harness->captured_samples_.push_back(static_cast<int16_t>(
-              std::lroundf(channel_buffers[0][i] * 32768.0f)));
-        }
+        s_active_harness->captured_samples_.insert(
+            s_active_harness->captured_samples_.end(), channel_buffers[0],
+            channel_buffers[0] + num_samples);
       }
       s_active_harness->audio_push_count_++;
     }
@@ -385,7 +378,7 @@ TEST_CASE("Speaker Peripheral: Alternating Flip-Flop Polarity Verification") {
     harness.clear_captured_samples();
   };
 
-  auto strobe_and_capture_edge = [&harness, instance]() -> int16_t {
+  auto strobe_and_capture_edge = [&harness, instance]() -> float {
     harness.strobe(instance);
     harness.advance_cycles(100);
     harness.think(instance, 100);
@@ -443,21 +436,18 @@ TEST_CASE(
     CHECK(samples[i] >= samples[i + 1]);
   }
 
-  // The onset is a step of 2.0, which the transitional scale rails
+  // The onset is a step of exactly 2.0, unclipped and above full scale
   CHECK(samples[0] == EDGE_POSITIVE);
 
   // and the blocker decays it by a per sample from there
   CHECK(samples[500] ==
-        doctest::Approx(EDGE * std::pow(FILTER_A, 500) * DSP_SCALE)
-            .epsilon(1e-4));
+        doctest::Approx(EDGE * std::pow(FILTER_A, 500)).epsilon(1e-4));
   CHECK(samples[5000] ==
-        doctest::Approx(EDGE * std::pow(FILTER_A, 5000) * DSP_SCALE)
-            .epsilon(1e-4));
+        doctest::Approx(EDGE * std::pow(FILTER_A, 5000)).epsilon(1e-4));
 
   // The time-constant pin: one tau of cycles later the edge has fallen to
   // 1/e of itself. An unretuned 0.999 misses this by a factor of about eight.
-  CHECK(samples[23000] ==
-        doctest::Approx(EDGE * 0.36787 * DSP_SCALE).epsilon(1e-4));
+  CHECK(samples[23000] == doctest::Approx(EDGE * 0.36787).epsilon(1e-4));
 
   CHECK(samples.front() > samples.back());
 }
@@ -494,7 +484,7 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   for (int i = 350; i < half_periods; ++i) {
     const double sign = 1.0 - (2.0 * (i % 2));
     CHECK(samples[static_cast<size_t>(i) * half_period] ==
-          doctest::Approx(sign * plateau * DSP_SCALE).epsilon(1e-3));
+          doctest::Approx(sign * plateau).epsilon(1e-3));
   }
 }
 
@@ -518,7 +508,7 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
 
   // The tail is snapped to true zero, and nothing follows it.
   REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples().back() == 0);
+  CHECK(harness.captured_samples().back() == 0.0f);
 
   harness.advance_cycles(NTSC_FRAME_CYCLES);
   harness.think(instance, NTSC_FRAME_CYCLES);
@@ -649,12 +639,20 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
 
   harness.clear_captured_samples();
   harness.think(instance1, 500);
-  const std::vector<int16_t> from_original = harness.captured_samples();
+  const std::vector<float> from_original = harness.captured_samples();
   REQUIRE_FALSE(from_original.empty());
 
   harness.clear_captured_samples();
   harness.think(instance2, 500);
-  CHECK(harness.captured_samples() == from_original);
+
+  // SsIoSpeaker_t stores filter_state as float while the live filter runs in
+  // double, so the restored cone tracks the original to float precision rather
+  // than bit for bit. That ceiling is the .aws format's, not the restore's.
+  const auto& from_restored = harness.captured_samples();
+  REQUIRE(from_restored.size() == from_original.size());
+  for (size_t i = 0; i < from_original.size(); ++i) {
+    CHECK(from_restored[i] == doctest::Approx(from_original[i]).epsilon(1e-6));
+  }
 }
 
 TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
@@ -735,8 +733,8 @@ TEST_CASE("Speaker Peripheral: Queue Overflow Keeps The Final Polarity") {
 
   REQUIRE(harness.audio_push_count() == 1);
   REQUIRE_FALSE(harness.captured_samples().empty());
-  for (int16_t s : harness.captured_samples()) {
-    CHECK(s == 0);
+  for (float s : harness.captured_samples()) {
+    CHECK(s == 0.0f);
   }
 }
 
@@ -845,7 +843,7 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
   // Two strobes in one instant are no net edge, so the blocker sees no step.
   // Output still flows: the slice carried events.
   REQUIRE(harness.audio_push_count() == 1);
-  CHECK(harness.captured_samples()[0] == 0);
+  CHECK(harness.captured_samples()[0] == 0.0f);
 }
 
 TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/speaker/Speaker.h"
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -33,7 +32,6 @@ constexpr size_t speaker_max_samples_per_update = 24000;
 constexpr double cycles_per_sample = 1.0;
 
 // DSP & Analog Cone Modeling Parameters
-constexpr float speaker_dsp_scale = 16384.0f;
 // The tuning choice is the time constant, not the per-sample coefficient.
 // 23000 cycles is 22.5 ms at the NTSC clock, which preserves the feel of the
 // old 0.999-at-44.1-kHz value and a high-pass corner near 7 Hz. At six nines a
@@ -66,10 +64,7 @@ struct SpeakerPeripheral_t {
 
   // --- Per-Update Synthesis Buffers & Queues ---
   uint32_t event_count = 0;
-  std::array<int16_t, speaker_max_samples_per_update> sample_buffer{};
-  // Transitional: the contract carries normalized float while synthesis is
-  // still integer. Emitting float directly from the filter replaces this.
-  std::array<float, speaker_max_samples_per_update> normalized_buffer{};
+  std::array<float, speaker_max_samples_per_update> sample_buffer{};
   std::array<SpeakerEvent_t, speaker_max_events_per_update> events{};
 
   // --- Legacy Snapshot Compatibility ---
@@ -88,13 +83,6 @@ static auto get_cycles(HostInterface_t* host) -> uint64_t {
     return host->GetCycles();
   }
   return 0;
-}
-
-static auto clamp_sample(float filter_value) -> int16_t {
-  const float raw_sample = filter_value * speaker_dsp_scale;
-  const float clamped_sample =
-      std::max(-32768.0f, std::min(32767.0f, raw_sample));
-  return static_cast<int16_t>(clamped_sample);
 }
 
 static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
@@ -129,8 +117,11 @@ static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
       speaker.filter_state = 0.0;
     }
 
+    // Values near +/-2.0 at an edge are correct and expected: nothing in the
+    // peripheral limits them, because nothing downstream is an integer until
+    // the mixer's single conversion.
     speaker.sample_buffer[sample_count++] =
-        clamp_sample(static_cast<float>(speaker.filter_state));
+        static_cast<float>(speaker.filter_state);
     speaker.next_sample_cycle += cycles_per_sample;
   }
   return sample_count;
@@ -175,11 +166,7 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
 
   if (sample_count > 0 && speaker.host != nullptr &&
       speaker.host->AudioPushChannels != nullptr) {
-    for (size_t i = 0; i < sample_count; ++i) {
-      speaker.normalized_buffer[i] =
-          static_cast<float>(speaker.sample_buffer[i]) / 32768.0f;
-    }
-    const float* channel_ptrs[1] = {speaker.normalized_buffer.data()};
+    const float* channel_ptrs[1] = {speaker.sample_buffer.data()};
     speaker.host->AudioPushChannels(instance, channel_ptrs, 1, sample_count);
   }
 }

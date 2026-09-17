@@ -119,10 +119,10 @@ TEST_CASE(
   // previous_input equals the drive level, so those samples are true silence.
   CHECK(mono[999] == doctest::Approx(0.0f));
 
-  // The first edge is a step of 2.0. Transitional: the peripheral still scales
-  // by 16384 and clips, so it arrives at the int16 rail over 32768.
-  constexpr float clipped_edge = 32767.0f / 32768.0f;
-  CHECK(mono[1000] == doctest::Approx(clipped_edge));
+  // The first edge is a step of exactly 2.0, emitted unclipped: the only
+  // conversion to an integer format happens in the mixer.
+  constexpr float edge = 2.0f;
+  CHECK(mono[1000] == doctest::Approx(edge));
 
   // Each of the sixteen strobes flips the output's sign, and an exponential
   // decay never crosses zero between them. The first edge leaves silence for
