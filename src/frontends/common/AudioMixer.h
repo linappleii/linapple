@@ -4,10 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "core/Peripheral.h"
+#include "core/Peripheral_Audio.h"
 
-constexpr uint32_t SPKR_SAMPLE_RATE = 44100;
-constexpr uint32_t sample_rate = 44100;
+constexpr uint32_t SPKR_SAMPLE_RATE = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
+constexpr uint32_t sample_rate = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
 
 enum FadeType_t { fade_out = 0, fade_in = 1 };
 

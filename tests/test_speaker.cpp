@@ -13,6 +13,7 @@
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Audio.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
 
@@ -81,6 +82,7 @@ struct SpeakerHarness_t {
     host_.RegisterDirectIO = mock_register_direct_io;
     host_.AudioPushChannels = mock_audio_push_channels;
     host_.GetCycles = mock_get_cycles;
+    host_.GetClockHz = mock_get_clock_hz;
   }
 
   ~SpeakerHarness_t() {
@@ -143,6 +145,12 @@ struct SpeakerHarness_t {
 
   auto set_null_cycles(bool null_cycles) -> void {
     host_.GetCycles = null_cycles ? nullptr : mock_get_cycles;
+  }
+
+  auto set_clock_hz(double hz) -> void { clock_hz_ = hz; }
+
+  auto set_null_clock_hz(bool is_null) -> void {
+    host_.GetClockHz = is_null ? nullptr : mock_get_clock_hz;
   }
 
   auto has_handler(uint16_t addr) const -> bool {
@@ -216,6 +224,7 @@ struct SpeakerHarness_t {
  private:
   HostInterface_t host_{};
   uint64_t cycles_ = 0;
+  double clock_hz_ = CLOCK_6502_NTSC;
   std::vector<void*> instances_;
   void* primary_instance_ = nullptr;
   std::map<uint16_t, MockDirectIOHandler_t> handlers_;
@@ -232,16 +241,17 @@ struct SpeakerHarness_t {
     (void)fmt;
   }
 
-  static auto mock_assert_irq(int slot, bool assert_irq) -> void {
+  static auto mock_assert_irq(int slot, bool assert) -> void {
     (void)slot;
-    (void)assert_irq;
+    (void)assert;
   }
 
   static auto mock_register_direct_io(void* instance, uint16_t addr,
                                       PeripheralIOHandler read,
                                       PeripheralIOHandler write) -> void {
     if (s_active_harness != nullptr) {
-      s_active_harness->handlers_[addr] = {instance, read, write};
+      s_active_harness->handlers_[addr] =
+          MockDirectIOHandler_t(instance, read, write);
     }
   }
 
@@ -267,6 +277,13 @@ struct SpeakerHarness_t {
       return s_active_harness->cycles_;
     }
     return 0;
+  }
+
+  static auto mock_get_clock_hz() -> double {
+    if (s_active_harness != nullptr) {
+      return s_active_harness->clock_hz_;
+    }
+    return CLOCK_6502;
   }
 };
 
@@ -296,7 +313,7 @@ TEST_CASE("Speaker Peripheral: Identity Descriptor Validation") {
   CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->query != nullptr);
   CHECK(descriptor->command == nullptr);
-  CHECK(descriptor->on_vblank != nullptr);
+  CHECK(descriptor->on_vblank == nullptr);
 }
 
 TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
@@ -649,10 +666,9 @@ TEST_CASE(
   CHECK(harness.audio_push_count() == 1);
 
   // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
-  // clamps to the internal buffer capacity (speaker_buffer_size - 1 = 16383
-  // samples)
+  // clamps to the internal scratch buffer capacity (4096 samples)
   harness.clear_captured_samples();
-  constexpr size_t max_single_push_samples = 16383;
+  constexpr size_t max_single_push_samples = 4096;
   harness.advance_cycles(NTSC_ONE_SECOND_CYCLES);
   harness.think(instance, static_cast<uint32_t>(NTSC_ONE_SECOND_CYCLES));
 
@@ -1023,49 +1039,65 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   status = speaker_get_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
   CHECK(status == peripheral_ok);
+  CHECK(info.sample_rate == 44100);
   CHECK(info.num_channels == 1);
   CHECK(std::strcmp(info.channels[0].name, "Speaker") == 0);
   CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0f));
   CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0f));
 }
 
-TEST_CASE("Speaker Peripheral: Dynamic NTSC vs PAL VBL Clock Adaptation") {
+TEST_CASE(
+    "Speaker Peripheral: Dynamic NTSC vs PAL Clock Adaptation via Host "
+    "Interface") {
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  auto* desc = speaker_get_descriptor();
-  REQUIRE(desc->on_vblank != nullptr);
+  SUBCASE("NTSC Clock Rate (1,020,484 Hz)") {
+    harness.set_clock_hz(CLOCK_6502_NTSC);
+    harness.set_cycles(0);
+    harness.toggle_read();
+    harness.advance_cycles(17030);
+    harness.think(instance, 17030);
+    CHECK(harness.captured_channels() == 1);
+    CHECK(harness.captured_samples().size() == 736);
+  }
 
-  // Initial VBL
-  harness.set_cycles(0);
-  desc->on_vblank(instance, true);
+  SUBCASE("PAL Clock Rate (1,015,625 Hz)") {
+    harness.set_clock_hz(CLOCK_6502_PAL);
+    harness.set_cycles(0);
+    harness.toggle_read();
+    harness.advance_cycles(20280);
+    harness.think(instance, 20280);
+    CHECK(harness.captured_channels() == 1);
+    CHECK(harness.captured_samples().size() == 881);
+  }
 
-  // Trigger PAL frame: 20,280 cycles
-  harness.advance_cycles(20280);
-  desc->on_vblank(instance, true);
+  SUBCASE("Defensive Fallback on Null GetClockHz") {
+    harness.set_null_clock_hz(true);
+    harness.set_cycles(0);
+    harness.toggle_read();
+    harness.advance_cycles(17030);
+    harness.think(instance, 17030);
+    CHECK(harness.captured_channels() == 1);
+    CHECK(harness.captured_samples().size() == 736);
+  }
 
-  // Generate samples over 20,280 cycles under PAL
-  harness.toggle_read();
-  harness.think(instance, 20280);
+  SUBCASE("Dynamic Clock Switch On The Fly") {
+    harness.set_clock_hz(CLOCK_6502_PAL);
+    harness.set_cycles(0);
+    harness.toggle_read();
+    harness.advance_cycles(20280);
+    harness.think(instance, 20280);
+    CHECK(harness.captured_channels() == 1);
+    CHECK(harness.captured_samples().size() == 881);
 
-  CHECK(harness.captured_channels() == 1);
-  // PAL frame: 20,280 cycles at 1,015,625 Hz / 44,100 Hz = 880.6 -> exactly 881
-  // samples
-  CHECK(harness.captured_samples().size() == 881);
-
-  harness.clear_captured_samples();
-
-  // Trigger NTSC frame: 17,030 cycles from previous VBL
-  harness.advance_cycles(17030);
-  desc->on_vblank(instance, true);
-
-  // Generate samples over 17,030 cycles under NTSC
-  harness.toggle_read();
-  harness.think(instance, 17030);
-
-  CHECK(harness.captured_channels() == 1);
-  // NTSC frame: 17,030 cycles at 1,020,484 Hz / 44,100 Hz = 735.95 -> exactly
-  // 736 samples
-  CHECK(harness.captured_samples().size() == 736);
+    harness.clear_captured_samples();
+    harness.set_clock_hz(CLOCK_6502_NTSC);
+    harness.toggle_read();
+    harness.advance_cycles(17030);
+    harness.think(instance, 17030);
+    CHECK(harness.captured_channels() == 1);
+    CHECK(harness.captured_samples().size() == 736);
+  }
 }

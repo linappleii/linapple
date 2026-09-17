@@ -4,8 +4,10 @@
 #include <cstdint>
 
 constexpr double M14 = (157500000.0 / 11.0);  // 14.3181818... * 10^6
-constexpr double CLOCK_6502 =
+constexpr double CLOCK_6502_NTSC =
     ((M14 * 65.0) / 912.0);                   // 65 cycles per 912 14M clocks
+constexpr double CLOCK_6502_PAL = 1015625.0;  // PAL 6502 clock (1.015625 MHz)
+constexpr double CLOCK_6502 = CLOCK_6502_NTSC;
 constexpr double CLK_Z80 = (CLOCK_6502 * 2);  // Z-80 clock rate is 2.041MHz
 
 constexpr uint32_t uCyclesPerLine = 65;  // 25 cycles HBL & 40 cycles HBL

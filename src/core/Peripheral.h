@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "core/Peripheral_Audio.h"
 #include "core/Peripheral_Types.h"
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
@@ -23,20 +24,8 @@ constexpr int LINAPPLE_ABI_VERSION = 0;
 enum {
   PERIPHERAL_CMD_MAX_DATA = 512,
   PERIPHERAL_MASK_INTERNAL = 0x01,
-  PERIPHERAL_MASK_EXPANSION = 0xFE,
-  PERIPHERAL_QUERY_AUDIO_INFO = 0x00000010
+  PERIPHERAL_MASK_EXPANSION = 0xFE
 };
-
-typedef struct PeripheralAudioChannelInfo_t {
-  char name[16];           /**< Channel name, e.g. "Speaker", "Voice A" */
-  float default_pan_left;  /**< Default gain to Left output (0.0 to 1.0) */
-  float default_pan_right; /**< Default gain to Right output (0.0 to 1.0) */
-} PeripheralAudioChannelInfo_t;
-
-typedef struct PeripheralAudioInfo_t {
-  uint32_t num_channels;
-  PeripheralAudioChannelInfo_t channels[16];
-} PeripheralAudioInfo_t;
 
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
@@ -56,6 +45,7 @@ typedef struct {
                            PeripheralIOHandler read, PeripheralIOHandler write);
   uint8_t* (*get_mem_ptr)(uint16_t addr);
   uint64_t (*GetCycles)(void);
+  double (*GetClockHz)(void);
   bool (*GetConfig)(const char* section, const char* key, char* buffer,
                     size_t buffer_size);
   void (*SetConfig)(const char* section, const char* key, const char* value);

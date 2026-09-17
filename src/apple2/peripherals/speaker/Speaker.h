@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 
-#include "apple2/peripherals/speaker/SpeakerCommands.h"
-#include "core/Peripheral.h"
+struct Peripheral_t;
 
 // NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.

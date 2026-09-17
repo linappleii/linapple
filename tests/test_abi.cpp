@@ -206,6 +206,8 @@ TEST_CASE(
   peripheral_register(&g_dummy_peripheral, 2);
 
   REQUIRE(g_captured_host != nullptr);
+  REQUIRE(g_captured_host->GetClockHz != nullptr);
+  CHECK(g_captured_host->GetClockHz() == doctest::Approx(CLOCK_6502_NTSC));
   g_captured_host->SetConfig("section", "key", "value");
   g_captured_host->NotifyStatusChanged(2);
   g_captured_host->NotifyActivityChanged(2, true);

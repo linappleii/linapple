@@ -14,7 +14,7 @@
 #include "SDL_timer.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "core/Peripheral_Audio.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"

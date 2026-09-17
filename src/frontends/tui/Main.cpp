@@ -9,7 +9,7 @@
 #include "TuiTerminal.h"
 #include "TuiVideo.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "core/Peripheral_Audio.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"

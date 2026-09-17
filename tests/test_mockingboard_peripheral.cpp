@@ -4,9 +4,11 @@
 #include <string>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "core/Peripheral.h"
+#include "core/Peripheral_Audio.h"
 #include "core/Peripheral_Types.h"
 #include "doctest.h"
 
@@ -29,6 +31,7 @@ class MockingboardHarness {
     host_.GetConfig = Mock_GetConfig;
     host_.AudioPushChannels = Mock_AudioPushChannels;
     host_.GetCycles = Mock_GetCycles;
+    host_.GetClockHz = Mock_GetClockHz;
   }
 
   ~MockingboardHarness() {
@@ -161,6 +164,11 @@ class MockingboardHarness {
   auto set_cycles(uint64_t c) -> void { cycles_ = c; }
   auto advance_cycles(uint64_t delta) -> void { cycles_ += delta; }
 
+  auto set_clock_hz(double hz) -> void { clock_hz_ = hz; }
+  auto set_null_clock_hz(bool is_null) -> void {
+    host_.GetClockHz = is_null ? nullptr : Mock_GetClockHz;
+  }
+
   auto irq_asserted() const -> bool { return irq_asserted_; }
   auto irq_slot() const -> int { return irq_slot_; }
   auto irq_asserted_for_slot(int slot) const -> bool {
@@ -271,9 +279,17 @@ class MockingboardHarness {
     return 0;
   }
 
+  static auto Mock_GetClockHz() -> double {
+    if (s_active_harness != nullptr) {
+      return s_active_harness->clock_hz_;
+    }
+    return CLOCK_6502;
+  }
+
   static MockingboardHarness* s_active_harness;
 
   HostInterface_t host_{};
+  double clock_hz_{CLOCK_6502_NTSC};
   uint64_t cycles_{INITIAL_MOCK_CYCLES};
   bool irq_asserted_{false};
   int irq_slot_{-1};
@@ -329,6 +345,7 @@ TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
   CHECK(desc->load_state != nullptr);
   CHECK(desc->command != nullptr);
   CHECK(desc->query != nullptr);
+  CHECK(desc->on_vblank == nullptr);
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-02 Lifecycle & Defensive Null Guards") {
@@ -772,6 +789,7 @@ TEST_CASE(
   size = sizeof(PeripheralAudioInfo_t);
   status = harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
   CHECK(status == peripheral_ok);
+  CHECK(info.sample_rate == 44100);
   CHECK(info.num_channels == 6);
 
   const char* const expected_names[6] = {"AY0 Voice A", "AY0 Voice B",
@@ -794,7 +812,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Mockingboard Peripheral: MB-19 Dynamic NTSC vs PAL VBL Clock Adaptation") {
+    "Mockingboard Peripheral: MB-19 Dynamic NTSC vs PAL Clock Adaptation via "
+    "Host Interface") {
   MockingboardHarness harness;
   void* instance = harness.create_card(4);
   REQUIRE(instance != nullptr);
@@ -813,40 +832,39 @@ TEST_CASE(
   harness.write_cx(0xC004, 0x10);  // 10000 = 0x2710
   harness.write_cx(0xC005, 0x27);
 
-  // Initial VBL
-  harness.set_cycles(0);
-  harness.on_vblank(true);
+  SUBCASE("PAL Clock Rate (1,015,625 Hz)") {
+    harness.set_clock_hz(CLOCK_6502_PAL);
+    harness.clear_audio();
+    harness.advance_cycles(10001);
+    harness.think(0);
+    CHECK(harness.audio_push_call_count() == 1);
+    CHECK(harness.captured_channel_count() == 6);
+    // Under PAL (1,015,625 Hz): 44100 * 10000 / 1015625 = 434.2 -> exactly 434
+    // samples
+    CHECK(harness.last_pushed_sample_count() == 434);
+  }
 
-  // Trigger PAL frame: 20,298 cycles from initial VBL
-  harness.advance_cycles(20298);
-  harness.on_vblank(true);
+  SUBCASE("NTSC Clock Rate (1,020,484 Hz)") {
+    harness.set_clock_hz(CLOCK_6502_NTSC);
+    harness.clear_audio();
+    harness.advance_cycles(10001);
+    harness.think(0);
+    CHECK(harness.audio_push_call_count() == 1);
+    CHECK(harness.captured_channel_count() == 6);
+    // Under NTSC (1,020,484 Hz): 44100 * 10000 / 1020484 = 432.1 -> exactly 432
+    // samples
+    CHECK(harness.last_pushed_sample_count() == 432);
+  }
 
-  // Generate audio under PAL with active timer (10,000 cycles)
-  harness.clear_audio();
-  harness.advance_cycles(10001);
-  harness.think(0);
-  CHECK(harness.audio_push_call_count() == 1);
-  CHECK(harness.captured_channel_count() == 6);
-  // Under PAL (1,015,625 Hz): 44100 * 10000 / 1015625 = 434.2 -> exactly 434
-  // samples
-  CHECK(harness.last_pushed_sample_count() == 434);
-
-  // Acknowledge IRQ and re-arm Timer 1
-  harness.read_cx(0xC004);
-  harness.write_cx(0xC005, 0x27);
-
-  // Trigger NTSC frame: advance remaining 7,029 cycles so delta from previous
-  // VBL is exactly 17,030 cycles
-  harness.advance_cycles(17030 - 10001);
-  harness.on_vblank(true);
-
-  // Generate audio under NTSC with active timer (10,000 cycles)
-  harness.clear_audio();
-  harness.advance_cycles(10001);
-  harness.think(0);
-  CHECK(harness.audio_push_call_count() == 1);
-  CHECK(harness.captured_channel_count() == 6);
-  // Under NTSC (1,020,484 Hz): 44100 * 10000 / 1020484 = 432.1 -> exactly 432
-  // samples
-  CHECK(harness.last_pushed_sample_count() == 432);
+  SUBCASE("Defensive Fallback on Null GetClockHz") {
+    harness.set_null_clock_hz(true);
+    harness.clear_audio();
+    harness.advance_cycles(10001);
+    harness.think(0);
+    CHECK(harness.audio_push_call_count() == 1);
+    CHECK(harness.captured_channel_count() == 6);
+    // Under fallback (CLOCK_6502 = 1,020,484 Hz): 44100 * 10000 / 1020484 =
+    // 432.1 -> exactly 432 samples
+    CHECK(harness.last_pushed_sample_count() == 432);
+  }
 }

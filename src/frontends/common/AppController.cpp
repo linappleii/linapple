@@ -165,10 +165,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_videotype = VT_COLOR_TVEMU;
     g_state.video_scanner_ntsc = false;
     g_state.clks_per_frame = CLKS_PER_FRAME_PAL;
+    g_current_clk_6502 = CLOCK_6502_PAL;
   } else {
     g_videotype = VT_COLOR_STANDARD;
     g_state.video_scanner_ntsc = true;
     g_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
+    g_current_clk_6502 = CLOCK_6502_NTSC;
   }
 
   int config_speed = Configuration_t::instance().get_int(

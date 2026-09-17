@@ -299,6 +299,8 @@ static auto host_get_cycles() -> uint64_t {
   return cpu_get_cumulative_cycles();
 }
 
+static auto host_get_clock_hz() -> double { return g_current_clk_6502; }
+
 static auto host_get_config(const char* section, const char* key, char* buffer,
                             size_t buffer_size) -> bool {
   std::string val;
@@ -421,6 +423,7 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_register_direct_io,
                                                  host_get_mem_ptr,
                                                  host_get_cycles,
+                                                 host_get_clock_hz,
                                                  host_get_config,
                                                  host_set_config,
                                                  host_notify_status_changed,
