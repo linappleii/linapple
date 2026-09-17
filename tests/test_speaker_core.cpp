@@ -5,14 +5,13 @@
 #include <string>
 #include <vector>
 
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
-#include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
                      uint32_t cycles) -> uint8_t;
@@ -20,6 +19,7 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 namespace {
 
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestFixtures::ScopedCore_t;
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 // A slot-0 soft switch nothing else claims, so a strobe registered there can
@@ -27,58 +27,6 @@ constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr uint16_t ADDR_MOCK_STROBE = 0xC0F0;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr float EDGE_POSITIVE = 2.0f;
-
-struct ScopedCpuContext_t {
-  CpuInstance_t* previous = nullptr;
-  CpuInstance_t fresh{};
-
-  ScopedCpuContext_t() : previous(cpu_get_active_context()) {
-    cpu_set_active_context(&fresh);
-  }
-
-  ~ScopedCpuContext_t() {
-    if (previous != nullptr) {
-      cpu_set_active_context(previous);
-    }
-  }
-
-  ScopedCpuContext_t(const ScopedCpuContext_t&) = delete;
-  auto operator=(const ScopedCpuContext_t&) -> ScopedCpuContext_t& = delete;
-  ScopedCpuContext_t(ScopedCpuContext_t&&) = delete;
-  auto operator=(ScopedCpuContext_t&&) -> ScopedCpuContext_t& = delete;
-};
-
-/**
- * @brief RAII emulator core built from a declared machine.
- *
- * The CPU context is a member so that it is installed before linapple_init
- * runs and restored after linapple_shutdown, and every frontend callback the
- * core holds is cleared on the way out: they are process globals, and a
- * dangling one would fire during the next case's shutdown.
- */
-class ScopedCore_t {
- public:
-  explicit ScopedCore_t(const TestConfig_t& config) {
-    config.load();
-    linapple_init();
-    peripheral_manager_init();
-  }
-
-  ~ScopedCore_t() {
-    linapple_set_audio_channel_callback(nullptr);
-    linapple_set_audio_source_register_callback(nullptr);
-    linapple_set_audio_source_unregister_callback(nullptr);
-    linapple_shutdown();
-  }
-
-  ScopedCore_t(const ScopedCore_t&) = delete;
-  auto operator=(const ScopedCore_t&) -> ScopedCore_t& = delete;
-  ScopedCore_t(ScopedCore_t&&) = delete;
-  auto operator=(ScopedCore_t&&) -> ScopedCore_t& = delete;
-
- private:
-  ScopedCpuContext_t cpu_;
-};
 
 // --- The configurable mock peripheral ---
 
