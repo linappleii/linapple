@@ -10,11 +10,11 @@
 #include <vector>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/speaker/Speaker.h"
-#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/speaker/Speaker.h"
+#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "doctest.h"
 
 extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {
@@ -256,7 +256,7 @@ struct SpeakerHarness_t {
   }
 
   static auto mock_audio_push_channels(void* instance,
-                                       const int16_t* const* channel_buffers,
+                                       const float* const* channel_buffers,
                                        size_t num_channels, size_t num_samples)
       -> void {
     (void)instance;
@@ -264,9 +264,13 @@ struct SpeakerHarness_t {
         num_channels > 0 && num_samples > 0) {
       s_active_harness->captured_channels_ = num_channels;
       if (channel_buffers[0] != nullptr) {
-        s_active_harness->captured_samples_.insert(
-            s_active_harness->captured_samples_.end(), channel_buffers[0],
-            channel_buffers[0] + num_samples);
+        // Recover the integer samples the speaker still synthesizes. Dividing
+        // and re-multiplying by 32768 is exact, so the goldens are unchanged.
+        // Task E1 replaces this capture with float.
+        for (size_t i = 0; i < num_samples; ++i) {
+          s_active_harness->captured_samples_.push_back(static_cast<int16_t>(
+              std::lroundf(channel_buffers[0][i] * 32768.0f)));
+        }
       }
       s_active_harness->audio_push_count_++;
     }
@@ -964,11 +968,11 @@ TEST_CASE(
   peripheral_manager_init();
   REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
-  static std::vector<int16_t> captured_frame_audio;
+  static std::vector<float> captured_frame_audio;
   captured_frame_audio.clear();
 
   linapple_set_audio_channel_callback(
-      [](const char* peripheral_id, int slot, const int16_t* const* channels,
+      [](const char* peripheral_id, int slot, const float* const* channels,
          size_t num_channels, size_t num_samples) {
         (void)peripheral_id;
         (void)slot;
@@ -1002,8 +1006,8 @@ TEST_CASE(
   // Count zero crossings across the frame (samples 50 through 700)
   size_t zero_crossings = 0;
   for (size_t i = 50; i < 700 && i + 1 < mono.size(); ++i) {
-    if ((mono[i] >= 0 && mono[i + 1] < 0) ||
-        (mono[i] < 0 && mono[i + 1] >= 0)) {
+    if ((mono[i] >= 0.0f && mono[i + 1] < 0.0f) ||
+        (mono[i] < 0.0f && mono[i + 1] >= 0.0f)) {
       zero_crossings++;
     }
   }

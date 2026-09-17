@@ -214,7 +214,7 @@ using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);
 using FrontendAudioChannelCallback_t = void (*)(const char* peripheral_id,
                                                 int slot,
-                                                const int16_t* const* channels,
+                                                const float* const* channels,
                                                 size_t num_channels,
                                                 size_t num_samples);
 using FrontendAudioSourceRegisterCallback_t = void (*)(

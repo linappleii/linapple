@@ -11,10 +11,10 @@
 #include <new>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/speaker/SpeakerCommands.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
@@ -57,6 +57,9 @@ struct SpeakerPeripheral_t {
   // --- Per-Update Synthesis Buffers & Queues ---
   uint32_t event_count = 0;
   std::array<int16_t, speaker_max_samples_per_update> sample_buffer{};
+  // Transitional: the contract carries normalized float while synthesis is
+  // still integer. Emitting float directly from the filter replaces this.
+  std::array<float, speaker_max_samples_per_update> normalized_buffer{};
   std::array<SpeakerEvent_t, speaker_max_events_per_update> events{};
 
   // --- Legacy Snapshot Compatibility ---
@@ -213,7 +216,11 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
 
   if (sample_count > 0 && speaker.host != nullptr &&
       speaker.host->AudioPushChannels != nullptr) {
-    const int16_t* channel_ptrs[1] = {speaker.sample_buffer.data()};
+    for (size_t i = 0; i < sample_count; ++i) {
+      speaker.normalized_buffer[i] =
+          static_cast<float>(speaker.sample_buffer[i]) / 32768.0f;
+    }
+    const float* channel_ptrs[1] = {speaker.normalized_buffer.data()};
     speaker.host->AudioPushChannels(instance, channel_ptrs, 1, sample_count);
   }
 }
@@ -250,6 +257,7 @@ static auto query_audio_info(void* out, size_t* out_size)
   auto& info = *static_cast<PeripheralAudioInfo_t*>(out);
   info.sample_rate = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
   info.num_channels = 1;
+  info.peak_magnitude = 1.0f;
   std::strncpy(info.channels[0].name, "Speaker",
                sizeof(info.channels[0].name) - 1);
   info.channels[0].default_pan_left = 1.0f;

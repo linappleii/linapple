@@ -10,9 +10,9 @@
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
@@ -24,9 +24,8 @@ namespace {
 
 static HeadlessHarness_t* s_active_harness = nullptr;
 
-auto on_audio(const char* peripheral_id, int slot,
-              const int16_t* const* channels, size_t num_channels,
-              size_t num_samples) -> void {
+auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
+              size_t num_channels, size_t num_samples) -> void {
   (void)peripheral_id;
   (void)slot;
   (void)channels;

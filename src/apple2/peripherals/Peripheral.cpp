@@ -408,7 +408,7 @@ static auto host_request_precise_timing() -> void {
 }
 
 static auto host_audio_push_channels(void* instance,
-                                     const int16_t* const* channel_buffers,
+                                     const float* const* channel_buffers,
                                      size_t num_channels, size_t num_samples)
     -> void {
   if (channel_buffers == nullptr || num_channels == 0 || num_samples == 0 ||

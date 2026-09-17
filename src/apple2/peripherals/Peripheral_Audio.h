@@ -40,6 +40,14 @@ typedef struct PeripheralAudioChannelInfo_t {
  * run from the slot's phase-0 line, while speech synthesizers and similar
  * cards carry their own oscillator. Consumers resolve the CPU-clocked form to
  * Hz by dividing the current 6502 clock by cycle_divisor.
+ *
+ * Channel samples are normalized float: +/-1.0 is full scale for that
+ * channel, which for the speaker is full cone excursion and for a
+ * multi-voice card is each voice's own full scale. A peripheral never
+ * attenuates to make room for other sources or for its own filter
+ * transients, and never clips; summing headroom and the single conversion to
+ * the output format belong to the mixer. peak_magnitude is how a source that
+ * legitimately exceeds full scale says so.
  */
 typedef struct PeripheralAudioInfo_t {
   PeripheralAudioTimeBase_t time_base; /**< Which of the two forms below is

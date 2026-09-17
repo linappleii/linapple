@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
-#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/mockingboard/Mockingboard.h"
+#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "doctest.h"
 
 extern bool g_full_speed;
@@ -250,7 +251,7 @@ class MockingboardHarness {
   }
 
   static auto Mock_AudioPushChannels(void* instance,
-                                     const int16_t* const* channels,
+                                     const float* const* channels,
                                      size_t num_channels, size_t num_samples)
       -> void {
     (void)instance;
@@ -262,9 +263,12 @@ class MockingboardHarness {
       }
       for (size_t c = 0; c < num_channels; ++c) {
         if (channels[c] != nullptr) {
-          s_active_harness->channel_samples_[c].insert(
-              s_active_harness->channel_samples_[c].end(), channels[c],
-              channels[c] + num_samples);
+          // Recover the integer samples the AY still synthesizes; dividing
+          // and re-multiplying by 32768 is exact, so goldens are unchanged.
+          for (size_t i = 0; i < num_samples; ++i) {
+            s_active_harness->channel_samples_[c].push_back(
+                static_cast<int16_t>(std::lroundf(channels[c][i] * 32768.0f)));
+          }
         }
       }
       s_active_harness->last_pushed_sample_count_ = num_samples;

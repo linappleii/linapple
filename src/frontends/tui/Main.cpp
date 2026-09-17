@@ -8,8 +8,8 @@
 #include "TuiInput.h"
 #include "TuiTerminal.h"
 #include "TuiVideo.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
+#include "core/LinAppleCore.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
@@ -30,7 +30,7 @@ auto audio_source_unregister_callback(int slot) -> void {
 }
 
 auto audio_channel_callback(const char* peripheral_id, int slot,
-                            const int16_t* const* channels, size_t num_channels,
+                            const float* const* channels, size_t num_channels,
                             size_t num_samples) -> void {
   audio_mixer_upload_channels(peripheral_id, slot, channels, num_channels,
                               static_cast<uint32_t>(num_samples));

@@ -54,8 +54,7 @@ typedef struct {
   void (*NotifyStatusChanged)(int slot);
   void (*NotifyActivityChanged)(int slot, bool active);
   void (*RequestPreciseTiming)(void);
-  void (*AudioPushChannels)(void* instance,
-                            const int16_t* const* channel_buffers,
+  void (*AudioPushChannels)(void* instance, const float* const* channel_buffers,
                             size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
   void (*PrinterPutChar)(void* instance, uint8_t c);

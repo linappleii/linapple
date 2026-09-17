@@ -20,7 +20,7 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
 auto audio_mixer_unregister_source(int slot) -> void;
 
 auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
-                                 const int16_t* const* channels,
+                                 const float* const* channels,
                                  size_t num_channels, uint32_t num_samples)
     -> void;
 
@@ -31,7 +31,7 @@ auto audio_mixer_get_channel_pan(int slot, size_t channel, float* left,
 auto audio_mixer_reset_channel_pan(int slot) -> void;
 
 using AudioChannelTapCallback_t = void (*)(const char* peripheral_id, int slot,
-                                           const int16_t* const* channels,
+                                           const float* const* channels,
                                            size_t num_channels,
                                            size_t num_samples);
 auto audio_mixer_set_channel_tap_callback(AudioChannelTapCallback_t cb) -> void;

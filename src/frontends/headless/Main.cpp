@@ -20,7 +20,7 @@ auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto audio_callback(const char* peripheral_id, int slot,
-                    const int16_t* const* channels, size_t num_channels,
+                    const float* const* channels, size_t num_channels,
                     size_t num_samples) -> void {
   (void)peripheral_id;
   (void)slot;

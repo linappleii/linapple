@@ -111,6 +111,11 @@ struct MockingboardPeripheral_t {
   std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
   std::array<std::array<int16_t, mb_max_samples_per_update>, voices_per_card>
       voice_buffers = {};
+  // The AY still synthesizes int16; the contract carries normalized float, so
+  // the push site converts through here. Emitting float natively from the AY
+  // is the durable fix and belongs to the Mockingboard pass.
+  std::array<std::array<float, mb_max_samples_per_update>, voices_per_card>
+      voice_buffers_normalized = {};
   std::array<int16_t, mb_max_samples_per_update * 2> mix_buffer = {};
   uint32_t timer_period_6522 = 0;
   uint16_t mb_timer_device = 0;
@@ -394,9 +399,15 @@ auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
   }
 
   if (mp->host != nullptr && mp->host->AudioPushChannels != nullptr) {
-    const int16_t* channel_ptrs[voices_per_card];
+    const float* channel_ptrs[voices_per_card];
     for (size_t v = 0; v < voices_per_card; ++v) {
-      channel_ptrs[v] = mp->voice_buffers.at(v).data();
+      for (int s = 0; s < num_samples; ++s) {
+        mp->voice_buffers_normalized.at(v).at(static_cast<size_t>(s)) =
+            static_cast<float>(
+                mp->voice_buffers.at(v).at(static_cast<size_t>(s))) /
+            32768.0f;
+      }
+      channel_ptrs[v] = mp->voice_buffers_normalized.at(v).data();
     }
     mp->host->AudioPushChannels(mp, channel_ptrs, voices_per_card,
                                 static_cast<size_t>(num_samples));
@@ -891,6 +902,7 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
       auto* info = static_cast<PeripheralAudioInfo_t*>(out);
       info->sample_rate = default_mockingboard_sample_rate;
       info->num_channels = voices_per_card;
+      info->peak_magnitude = 1.0f;
       const char* names[6] = {"AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
                               "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
       for (size_t i = 0; i < voices_per_card; ++i) {
