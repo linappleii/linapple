@@ -349,6 +349,7 @@ endif()
 # --- Source Lists ---
 set(SOURCES_CORE
     src/frontends/common/AudioMixer.cpp
+    src/frontends/common/FramePacer.cpp
     src/core/LinAppleCore.cpp
     src/core/Log.cpp
     src/core/ProgramLoader.cpp
@@ -744,6 +745,7 @@ if(BUILD_TESTING)
     add_linapple_test(speaker "tests/test_main.cpp;tests/test_speaker.cpp")
     add_linapple_test(speaker-core "tests/test_main.cpp;tests/test_speaker_core.cpp")
     add_linapple_test(audio-mixer "tests/test_main.cpp;tests/test_audio_mixer.cpp")
+    add_linapple_test(frame-pacer "tests/test_main.cpp;tests/test_frame_pacer.cpp")
     add_linapple_test(speaker-e2e "tests/test_main.cpp;tests/test_speaker_e2e.cpp")
     set_tests_properties(test-speaker-e2e PROPERTIES LABELS "e2e")
     if(BUILD_SHARED_PERIPHERALS)

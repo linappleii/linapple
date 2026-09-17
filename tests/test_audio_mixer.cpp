@@ -904,101 +904,100 @@ TEST_CASE("Audio Mixer: A Zero Output Rate Produces No Output") {
 }
 
 // =============================================================================
-// Two clocks: the emulation thread and the device callback (Task C1)
+// Two clocks: the emulation thread and the device callback
 // =============================================================================
 
 namespace {
 
-constexpr size_t EMULATED_BURST_FRAMES = 801;
+// One emulated frame of samples, one sample per 6502 cycle.
+constexpr size_t EMULATED_BURST_CYCLES = 17030;
 constexpr size_t DEVICE_BLOCK_FRAMES = 1024;
-constexpr uint64_t NS_PER_SECOND = 1000000000ULL;
-// A frame's worth of samples arrives at the video rate; the device asks for
-// its block whenever it likes.
-constexpr uint64_t PUSH_PERIOD_NS = NS_PER_SECOND / 60;
+constexpr int64_t NS_PER_SECOND = 1000000000LL;
 
-// The square wave the producer carries, at half scale so the gain and the
-// clip stay out of the way: every served frame is exactly +/-16384.
-constexpr int16_t SERVED_HIGH = 16384;
+// One NTSC frame of wall time: 17030 cycles at 1,020,484.45 Hz. This is the
+// period FramePacer_t holds the loop to, and at it the speaker's production
+// equals the device's consumption to the frame.
+constexpr int64_t NTSC_FRAME_PERIOD_NS = 16688152;
+
+// A constant drive level rather than a tone, so that every frame the mixer
+// serves in full is exactly one value: a box average of a constant is that
+// constant, whatever the resample ratio. Anything else in the output is a gap
+// or the underrun fade.
+constexpr float DRIVE_LEVEL = 0.5f;
+constexpr int16_t SERVED_PCM = 16384;
 
 /**
  * @brief One deterministic timeline carrying two unrelated clocks.
  *
  * Every real frontend is this and no lockstep test can see it: the emulation
- * thread hands over a frame's worth of samples at 60 Hz while the device
- * callback asks for a block on its own schedule. Which of the two fires next
- * is decided by the clock, not by the test.
+ * loop hands over a frame's worth of samples on the pacer's schedule while
+ * the device callback asks for a block on its own. Which of the two fires
+ * next is the clock's decision, not the test's.
  */
 class TwoClockRun_t {
  public:
   TwoClockRun_t(uint32_t output_rate_hz, int slot,
-                uint64_t push_period_ns = PUSH_PERIOD_NS)
-      : rate_(output_rate_hz),
-        slot_(slot),
+                int64_t push_period_ns = NTSC_FRAME_PERIOD_NS,
+                int64_t jitter_ns = 0)
+      : slot_(slot),
         push_period_ns_(push_period_ns),
-        pull_period_ns_(DEVICE_BLOCK_FRAMES * NS_PER_SECOND / output_rate_hz) {}
+        jitter_ns_(jitter_ns),
+        pull_period_ns_(static_cast<int64_t>(DEVICE_BLOCK_FRAMES) *
+                        NS_PER_SECOND / output_rate_hz),
+        burst_(EMULATED_BURST_CYCLES, DRIVE_LEVEL) {}
 
-  // A null source means the peripheral is at rest: it is registered and
-  // active, and it pushes nothing at all, which is what an honest silent
-  // source does after Task B3.
-  auto advance(uint64_t duration_ns, const std::vector<float>* source) -> void {
-    const uint64_t end = now_ + duration_ns;
-    while (std::min(next_push_, next_pull_) < end) {
-      const bool push_is_next = (next_push_ <= next_pull_);
-      push_is_next ? do_push(source) : do_pull();
-      next_push_ += push_is_next ? push_period_ns_ : 0;
-      next_pull_ += push_is_next ? 0 : pull_period_ns_;
-    }
-    now_ = end;
-    marks_.push_back(output_.size() / 2);
+  // Driving: the peripheral hands over a frame's worth of samples. At rest:
+  // it pushes nothing at all, which is what an honest silent source does.
+  auto advance_driving(int64_t duration_ns) -> void {
+    advance(duration_ns, true);
+  }
+  auto advance_at_rest(int64_t duration_ns) -> void {
+    advance(duration_ns, false);
   }
 
-  auto output() const -> const std::vector<int16_t>& { return output_; }
   auto frames_delivered() const -> size_t { return output_.size() / 2; }
-  // Output-frame index at which each advance() call ended.
   auto mark(size_t index) const -> size_t { return marks_.at(index); }
-  auto pushed_frames() const -> size_t { return pushed_frames_; }
-  auto first_push_frame() const -> size_t { return first_push_frame_; }
-
+  auto pushed_samples() const -> size_t { return pushed_samples_; }
   auto left(size_t frame) const -> int16_t { return output_[frame * 2]; }
 
-  // A frame the mixer served in full carries the square wave exactly. A frame
-  // the underrun fade produced does not, and neither does a gap.
+  // A frame the mixer served in full carries the drive level exactly. The
+  // underrun fade walks away from it and a gap is zero, so neither can be
+  // mistaken for the real thing.
   auto unserved_frames(size_t first, size_t last) const -> size_t {
     size_t count = 0;
     for (size_t i = first; i < last; ++i) {
-      count += static_cast<size_t>(left(i) != SERVED_HIGH &&
-                                   left(i) != -SERVED_HIGH);
+      count += static_cast<size_t>(left(i) != SERVED_PCM);
     }
     return count;
   }
 
-  auto served_frames(size_t first, size_t last) const -> size_t {
-    return (last - first) - unserved_frames(first, last);
-  }
-
-  auto first_nonzero_frame() const -> size_t {
+  auto first_served_frame() const -> size_t {
     size_t frame = 0;
-    while (frame < frames_delivered() && left(frame) == 0) {
+    while (frame < frames_delivered() && left(frame) != SERVED_PCM) {
       ++frame;
     }
     return frame;
   }
 
  private:
-  auto do_push(const std::vector<float>* source) -> void {
-    const size_t take =
-        (source == nullptr)
-            ? 0
-            : std::min(EMULATED_BURST_FRAMES, source->size() - source_offset_);
-    const float* plane[1] = {
-        (source == nullptr) ? nullptr : source->data() + source_offset_};
+  auto advance(int64_t duration_ns, bool driving) -> void {
+    const int64_t end = now_ + duration_ns;
+    while (std::min(next_push_, next_pull_) < end) {
+      const bool push_is_next = (next_push_ <= next_pull_);
+      push_is_next ? do_push(driving) : do_pull();
+      next_push_ += push_is_next ? (push_period_ns_ + next_jitter()) : 0;
+      next_pull_ += push_is_next ? 0 : pull_period_ns_;
+    }
+    now_ = end;
+    marks_.push_back(output_.size() / 2);
+  }
+
+  auto do_push(bool driving) -> void {
+    const float* plane[1] = {burst_.data()};
+    const size_t take = driving ? burst_.size() : 0;
     audio_mixer_upload_channels(SOURCE_ID, slot_, plane, 1,
                                 static_cast<uint32_t>(take));
-    first_push_frame_ = (pushed_frames_ == 0 && take > 0)
-                            ? (next_push_ * rate_ / NS_PER_SECOND)
-                            : first_push_frame_;
-    pushed_frames_ += take;
-    source_offset_ += take;
+    pushed_samples_ += take;
   }
 
   auto do_pull() -> void {
@@ -1007,125 +1006,122 @@ class TwoClockRun_t {
     output_.insert(output_.end(), block.begin(), block.end());
   }
 
-  uint32_t rate_;
+  // A fixed sequence, so a jittering producer is still the same producer on
+  // every run.
+  auto next_jitter() -> int64_t {
+    seed_ = (seed_ * 1103515245U) + 12345U;
+    const int64_t span = (2 * jitter_ns_) + 1;
+    return static_cast<int64_t>((seed_ >> 16U) % static_cast<uint32_t>(span)) -
+           jitter_ns_;
+  }
+
   int slot_;
-  uint64_t push_period_ns_;
-  uint64_t pull_period_ns_;
-  uint64_t now_ = 0;
-  uint64_t next_push_ = 0;
-  uint64_t next_pull_ = 0;
-  size_t source_offset_ = 0;
-  size_t pushed_frames_ = 0;
-  size_t first_push_frame_ = 0;
+  int64_t push_period_ns_;
+  int64_t jitter_ns_;
+  int64_t pull_period_ns_;
+  std::vector<float> burst_;
+  int64_t now_ = 0;
+  int64_t next_push_ = 0;
+  int64_t next_pull_ = 0;
+  size_t pushed_samples_ = 0;
+  uint32_t seed_ = 1;
   std::vector<int16_t> output_;
   std::vector<size_t> marks_;
 };
 
+auto register_cpu_clocked_source(int slot) -> void {
+  const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0f);
+  audio_mixer_register_source(slot, SOURCE_ID, &info);
+}
+
 }  // namespace
 
-TEST_CASE("Audio Mixer: A Sustained Tone Survives An Unrelated Device Clock") {
-  // The emulation thread hands over 801 frames every 16.7 ms and the device
-  // asks for 1024 every 21.3 ms. A ring that is drained to empty on every
-  // callback underruns by the difference every single time and never
-  // recovers, because production outruns consumption by only sixty frames a
-  // second. That is what choppy sounds like.
+TEST_CASE("Audio Mixer: A Paced Loop Keeps The Device Fed") {
+  // The emulation loop hands over 17030 cycles of samples every 16.688 ms,
+  // which is one NTSC frame of wall time, while the device asks for 1024
+  // frames every 21.333 ms. At that period production equals consumption to
+  // the frame, and every callback after the first is served in full.
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
-  audio_mixer_register_source(0, SOURCE_ID, &info);
+  register_cpu_clocked_source(0);
 
   TwoClockRun_t run(output_rate, 0);
-  const std::vector<float> tone =
-      square_wave(output_rate, 1000.0, 2 * 48000, 0.5f);
+  run.advance_at_rest(NS_PER_SECOND / 4);
+  run.advance_driving(NS_PER_SECOND);
 
-  run.advance(NS_PER_SECOND, nullptr);
-  run.advance(NS_PER_SECOND, &tone);
-  run.advance(NS_PER_SECOND, nullptr);
-
-  const size_t silent_end = run.mark(0);
-  const size_t tone_end = run.mark(1);
+  const size_t rest_end = run.mark(0);
+  const size_t drive_end = run.mark(1);
 
   // A source at rest pushes nothing, and nothing is what the device gets.
-  for (size_t i = 0; i < silent_end; ++i) {
+  for (size_t i = 0; i < rest_end; ++i) {
     CHECK(run.left(i) == 0);
   }
 
-  // Once the pre-roll is behind us, every callback is served in full: not one
-  // gap and not one fade frame for the rest of the second.
-  const size_t settled = silent_end + (output_rate / 2);
-  CHECK(run.unserved_frames(settled, tone_end) == 0);
+  // Once the first block has gone by, not one gap and not one fade frame for
+  // the rest of the second.
+  // Onset is immediate: at the correct period there is nothing to wait for.
+  CHECK(run.first_served_frame() == rest_end);
 
-  // Onset latency is bounded by the pre-roll the mixer needs plus the block
-  // the device was already asking for when the tone began.
-  const size_t onset = run.first_nonzero_frame();
-  CHECK(onset >= run.first_push_frame());
-  CHECK(onset - run.first_push_frame() <=
-        (cushion_samples_for(output_rate) / 2) + DEVICE_BLOCK_FRAMES);
+  // The rate deficit is gone. A second of emulation delivers a second of
+  // audio, give or take the block in flight.
+  const size_t served =
+      (drive_end - rest_end) - run.unserved_frames(rest_end, drive_end);
+  CHECK(served >= output_rate - (2 * DEVICE_BLOCK_FRAMES));
+  CHECK(served <= output_rate + DEVICE_BLOCK_FRAMES);
 
-  // Nothing is invented and nothing is hoarded: what has not been delivered
-  // by the end of the tone is a bounded backlog, not a growing one.
-  const size_t served = run.served_frames(silent_end, tone_end);
-  const size_t backlog = run.pushed_frames() - served;
-  CHECK(backlog <= DEVICE_BLOCK_FRAMES +
-                       (cushion_samples_for(output_rate) / 2) +
-                       EMULATED_BURST_FRAMES);
+  // What is left is not a deficit but a beat: two clocks now running at the
+  // same average rate with nothing between them, so a pull that lands just
+  // before the burst that would feed it comes up short and fades. Pinned
+  // exactly, because it is the number a decision about holding a floor under
+  // the backlog rests on -- about one percent of the second.
+  const size_t settled = run.first_served_frame() + DEVICE_BLOCK_FRAMES;
+  CHECK(run.unserved_frames(settled, drive_end) == 504);
 }
 
-TEST_CASE("Audio Mixer: A Short Beep Is Delivered In Full") {
-  // The other half of the pre-roll contract. Three bursts is less than the
-  // cushion, so a mixer that waited for the cushion unconditionally would
-  // swallow the beep entirely. A producer that has stopped is released on the
-  // next callback instead.
+TEST_CASE("Audio Mixer: An Unpaced Loop Starves The Device") {
+  // The rate case, as distinct from the phase case. A loop that sleeps a flat
+  // 16 ms on top of however long emulation and rendering took runs slower
+  // than the machine, and hands over fewer frames per wall second than the
+  // device consumes. No amount of buffering in the mixer can invent the
+  // difference: a deeper cushion only postpones the first gap.
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
-  audio_mixer_register_source(0, SOURCE_ID, &info);
+  register_cpu_clocked_source(0);
 
-  TwoClockRun_t run(output_rate, 0);
-  constexpr size_t beep_bursts = 3;
-  const std::vector<float> beep = square_wave(
-      output_rate, 1000.0, beep_bursts * EMULATED_BURST_FRAMES, 0.5f);
-
-  // Three bursts of tone, then the producer stops for a quarter second.
-  run.advance(beep_bursts * PUSH_PERIOD_NS, &beep);
-  run.advance(NS_PER_SECOND / 4, nullptr);
-
-  CHECK(run.pushed_frames() == beep_bursts * EMULATED_BURST_FRAMES);
-  CHECK(run.served_frames(0, run.frames_delivered()) ==
-        beep_bursts * EMULATED_BURST_FRAMES);
-}
-
-TEST_CASE("Audio Mixer: An Emulator That Cannot Keep Up Starves The Device") {
-  // The rate case, as distinct from the phase case above. A frontend whose
-  // loop runs slower than the video standard hands over fewer frames per wall
-  // second than the device consumes, and no amount of buffering in the mixer
-  // can invent the difference: a deeper cushion only postpones the first gap.
-  // sdl3's enter_message_loop sleeps a flat 16 ms per iteration on top of
-  // however long emulation and rendering took, so its real period is always
-  // above 16.69 ms and its production always below what the device asks for.
-  constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
-  audio_mixer_register_source(0, SOURCE_ID, &info);
-
-  // Twenty milliseconds per emulated frame: fifty frames a second where the
-  // NTSC standard is 59.92, so five sixths of the audio the device wants.
-  constexpr uint64_t slow_period_ns = NS_PER_SECOND / 50;
-  TwoClockRun_t run(output_rate, 0, slow_period_ns);
-  const std::vector<float> tone =
-      square_wave(output_rate, 1000.0, 4 * 48000, 0.5f);
-
-  run.advance(3 * NS_PER_SECOND, &tone);
+  // Twenty milliseconds a frame: fifty a second where NTSC is 59.92.
+  TwoClockRun_t run(output_rate, 0, NS_PER_SECOND / 50);
+  run.advance_driving(3 * NS_PER_SECOND);
   const size_t delivered = run.mark(0);
 
-  // Fifty bursts a second for three seconds, and not one frame of it is
-  // lost or duplicated on the way to the device.
-  CHECK(run.pushed_frames() == 150 * EMULATED_BURST_FRAMES);
-  CHECK(run.served_frames(0, delivered) == run.pushed_frames());
+  // Every sample supplied is delivered intact -- nothing is lost or
+  // duplicated -- and the gap is exactly the shortfall, for as long as the
+  // shortfall lasts.
+  CHECK(run.pushed_samples() == 150 * EMULATED_BURST_CYCLES);
+  const size_t served = delivered - run.unserved_frames(0, delivered);
+  CHECK(served * 6 / 5 <= delivered);
+  CHECK(run.unserved_frames(delivered - output_rate, delivered) > 0);
+}
 
-  // And the gap is exactly the shortfall. The mixer does not invent audio,
-  // so whatever the device asked for beyond what the producer supplied comes
-  // back as the underrun fade -- for as long as the emulator stays behind,
-  // which no cushion can change.
-  CHECK(run.unserved_frames(0, delivered) == delivered - run.pushed_frames());
+TEST_CASE("Audio Mixer: A Jittering Producer At The Right Average Rate") {
+  // The pacer holds an average, not an instant: a sleep wakes late, a frame
+  // takes longer to draw. The average rate is right and the backlog still
+  // has no margin under it, so this is where the residual fade is measured.
+  constexpr uint32_t output_rate = 48000;
+  constexpr int64_t jitter_ns = 2000000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  register_cpu_clocked_source(0);
+
+  TwoClockRun_t run(output_rate, 0, NTSC_FRAME_PERIOD_NS, jitter_ns);
+  run.advance_driving(NS_PER_SECOND);
+  const size_t delivered = run.mark(0);
+  const size_t settled = run.first_served_frame() + DEVICE_BLOCK_FRAMES;
+
+  // Still a second of audio for a second of emulation.
+  const size_t served = delivered - run.unserved_frames(0, delivered);
+  CHECK(served >= output_rate - (4 * DEVICE_BLOCK_FRAMES));
+
+  // Two milliseconds of jitter either way costs nothing over the beat that
+  // is there without it: 446 against 504. The residual is the missing
+  // margin, not the jitter.
+  CHECK(run.unserved_frames(settled, delivered) == 446);
 }

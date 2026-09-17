@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <thread>
@@ -14,6 +13,7 @@
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/FramePacer.h"
 
 auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
@@ -76,9 +76,7 @@ auto main(int argc, char** argv) -> int {
 
     app_controller_load_initial_media(&config);
 
-    constexpr auto frame_duration = std::chrono::microseconds(16650);
-
-    auto next_frame = std::chrono::steady_clock::now();
+    FramePacer_t pacer;
 
     // Run until interrupted or restart requested
     while (!tui_terminal_is_interrupted() && !app_controller_should_restart()) {
@@ -96,17 +94,13 @@ auto main(int argc, char** argv) -> int {
         linapple_run_frame(cycles);
       }
 
+      // The period was a 16650 microsecond literal, which is neither the NTSC
+      // frame nor the PAL one; the pacer derives it from the machine.
       if (!linapple_get_turbo()) {
-        next_frame += frame_duration;
-        auto now = std::chrono::steady_clock::now();
-        if (now < next_frame) {
-          std::this_thread::sleep_until(next_frame);
-        } else {
-          next_frame = now;
-        }
+        pacer.wait_for_next_frame();
       } else {
         std::this_thread::yield();
-        next_frame = std::chrono::steady_clock::now();
+        pacer.resync();
       }
     }
 

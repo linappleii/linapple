@@ -20,6 +20,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/FramePacer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl2/Frame.h"
@@ -156,7 +157,7 @@ auto sys_input() -> void {
 }
 
 auto enter_message_loop() -> void {
-  constexpr int target_frame_ms = 16;
+  FramePacer_t pacer;
   while (g_state.mode != MODE_EXIT) {
     sys_input();
     joy_frontend_update();
@@ -165,9 +166,13 @@ auto enter_message_loop() -> void {
     linapple_run_frame(cycles);
     draw_frame_window();
 
+    // A flat sleep cannot hold a rate: its period is the sleep plus however
+    // long input, emulation and drawing took, and the speaker hands the mixer
+    // one sample per emulated cycle, so a slow loop starves the device.
     if (!linapple_get_turbo()) {
-      SDL_Delay(target_frame_ms);
+      pacer.wait_for_next_frame();
     } else {
+      pacer.resync();
       SDL_Delay(0);
     }
   }
