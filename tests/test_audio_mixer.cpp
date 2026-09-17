@@ -19,10 +19,20 @@ constexpr const char* SOURCE_ID = "test.source";
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 
 // The mixer's two latency literals, repeated here so that changing either one
-// in AudioMixer.cpp fails the capacity and cushion case rather than silently
-// moving the backlog.
-constexpr size_t MIXER_CAPACITY_MS = 370;
-constexpr size_t MIXER_CUSHION_MS = 140;
+// in AudioMixer.cpp fails the capacity and cushion cases rather than silently
+// moving the backlog. Both are milliseconds of audio, and the ring holds
+// interleaved stereo pairs, so each millisecond is two samples.
+constexpr size_t MIXER_CAPACITY_MS = 185;
+constexpr size_t MIXER_CUSHION_MS = 70;
+
+auto capacity_samples_for(uint32_t rate) -> size_t {
+  return (static_cast<size_t>(rate) * MIXER_CAPACITY_MS / 1000 * 2) &
+         ~static_cast<size_t>(1);
+}
+
+auto cushion_samples_for(uint32_t rate) -> size_t {
+  return static_cast<size_t>(rate) * MIXER_CUSHION_MS / 1000 * 2;
+}
 
 // The underrun fade's per-frame step, the normalized equivalent of the
 // 800-per-frame step the mixer has always used.
@@ -624,15 +634,11 @@ TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
 
 TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
   // A ramp makes the discarded prefix readable: out[0] names the frame the
-  // skip stopped at.
-  //
-  // Two corrections to the plan's fixture row, which gives
-  // (200 - 10 - 140) * rate / 1000. First, the mixer counts its capacity and
-  // cushion in interleaved samples rather than frames -- which is how
-  // today's 16384 and 6144 at 44100 are preserved -- so the 140 costs half
-  // that many milliseconds of frames. Second, 370 ms of capacity is 185 ms
-  // of frames, so a 200 ms upload saturates the ring and the measurement
-  // becomes capacity-limited rather than cushion-limited. 150 ms fits.
+  // skip stopped at, which is the upload less the drain request and the
+  // cushion. The capacity is 185 ms of audio, so the upload has to stay under
+  // that or the measurement becomes capacity-limited instead; 150 ms fits.
+  // The plan's fixture row gives (200 - 10 - 140) * rate / 1000, which is
+  // both too long to fit and derived from the pre-correction literals.
   constexpr size_t upload_ms = 150;
   for (uint32_t rate : {48000U, 96000U}) {
     MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
@@ -641,8 +647,7 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
 
     const size_t upload_frames = rate * upload_ms / 1000;
     const size_t drain_frames = rate * 10 / 1000;
-    const size_t cushion_samples = rate * MIXER_CUSHION_MS / 1000;
-    REQUIRE(upload_frames * 2 < (rate * MIXER_CAPACITY_MS / 1000));
+    REQUIRE(upload_frames * 2 < capacity_samples_for(rate));
 
     std::vector<float> ramp(upload_frames);
     for (size_t i = 0; i < upload_frames; ++i) {
@@ -650,19 +655,20 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
     }
     mixer.upload_mono(0, ramp.data(), ramp.size());
 
-    const size_t target_backlog = (drain_frames * 2) + cushion_samples;
+    const size_t target_backlog =
+        (drain_frames * 2) + cushion_samples_for(rate);
     const size_t skipped = ((upload_frames * 2) - target_backlog) & ~size_t(1);
     const std::vector<int16_t> out = mixer.drain(drain_frames);
     CHECK(out[0] == static_cast<int16_t>(skipped / 2));
   }
 
-  // The two values divided by their rates are the same number of
-  // milliseconds; the literals are time, not samples.
+  // 150 ms uploaded less 10 ms drained less the 70 ms cushion is 70 ms of
+  // frames, at whatever rate: the literals are time, not sample counts.
   CHECK((48000 * upload_ms / 1000) - (48000 * 10 / 1000) -
-            ((48000 * MIXER_CUSHION_MS / 1000) / 2) ==
+            (48000 * MIXER_CUSHION_MS / 1000) ==
         3360);
   CHECK((96000 * upload_ms / 1000) - (96000 * 10 / 1000) -
-            ((96000 * MIXER_CUSHION_MS / 1000) / 2) ==
+            (96000 * MIXER_CUSHION_MS / 1000) ==
         6720);
 }
 
@@ -683,19 +689,21 @@ TEST_CASE("Audio Mixer: The Ring's Capacity Is Measured In Milliseconds Too") {
     }
     mixer.upload_mono(0, ramp.data(), ramp.size());
 
-    const size_t capacity_samples =
-        (rate * MIXER_CAPACITY_MS / 1000) & ~size_t(1);
+    const size_t capacity_samples = capacity_samples_for(rate);
     const size_t filled = capacity_samples - 2;
     const size_t drain_frames = rate * 10 / 1000;
     const size_t target_backlog =
-        (drain_frames * 2) + (rate * MIXER_CUSHION_MS / 1000);
+        (drain_frames * 2) + cushion_samples_for(rate);
     const size_t skipped = (filled - target_backlog) & ~size_t(1);
 
     const std::vector<int16_t> out = mixer.drain(drain_frames);
     CHECK(out[0] == static_cast<int16_t>(skipped / 2));
   }
 
-  CHECK(((44100 * MIXER_CAPACITY_MS / 1000) & ~size_t(1)) == 16316);
+  // Today's values at 44100, preserved exactly by the unit correction: 185 ms
+  // truncates to 8158 frames, and the pair count rounds down to even.
+  CHECK(capacity_samples_for(44100) == 16316);
+  CHECK(cushion_samples_for(44100) == 6174);
 }
 
 TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
@@ -739,8 +747,7 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const size_t capacity_samples =
-      (output_rate * MIXER_CAPACITY_MS / 1000) & ~size_t(1);
+  const size_t capacity_samples = capacity_samples_for(output_rate);
   const size_t overflowing_frames = capacity_samples * 4;
 
   std::vector<float> ramp(overflowing_frames);

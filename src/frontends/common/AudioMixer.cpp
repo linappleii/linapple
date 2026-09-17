@@ -23,10 +23,14 @@ constexpr size_t MAX_CHANNELS_PER_SLOT = 16;
 constexpr size_t MIX_ACCUMULATOR_SAMPLES = 4096;
 
 // Latency belongs in time, not in samples. 16384 and 6144 interleaved samples
-// were 371 ms and 139 ms of backlog only at 44100; at 192000 they would be
-// 85 ms and 32 ms, and at 22050 twice the intended latency.
-constexpr size_t mixer_capacity_ms = 370;
-constexpr size_t mixer_cushion_ms = 140;
+// were a fixed backlog only at 44100; at 192000 they would be a quarter of
+// the intended latency and at 22050 twice it.
+//
+// These are milliseconds of audio. The ring holds interleaved stereo pairs,
+// so a millisecond of audio is two samples, and the conversion below doubles
+// deliberately: a listener hears time, not sample counts.
+constexpr size_t mixer_capacity_ms = 185;
+constexpr size_t mixer_cushion_ms = 70;
 
 constexpr size_t RESAMPLE_CHUNK_FRAMES = 512;
 // One extra frame of slack: a fractional step can complete an output frame
@@ -343,13 +347,13 @@ auto audio_mixer_initialize(uint32_t output_rate_hz) -> void {
     g_capacity_samples = 0;
     g_cushion_samples = 0;
   } else {
-    // The ring holds interleaved stereo pairs, and several length
-    // computations round down to an even count, so the capacity is even too.
+    // Two samples per frame, and several length computations round down to an
+    // even count, so the capacity is even too.
     g_capacity_samples =
-        (static_cast<size_t>(output_rate_hz) * mixer_capacity_ms / 1000) &
+        (static_cast<size_t>(output_rate_hz) * mixer_capacity_ms / 1000 * 2) &
         ~static_cast<size_t>(1);
     g_cushion_samples =
-        static_cast<size_t>(output_rate_hz) * mixer_cushion_ms / 1000;
+        static_cast<size_t>(output_rate_hz) * mixer_cushion_ms / 1000 * 2;
   }
 
   for (size_t i = 0; i < MAX_AUDIO_SLOTS; ++i) {
