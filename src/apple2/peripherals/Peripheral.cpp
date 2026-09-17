@@ -56,6 +56,9 @@ struct DirectIoHandler_t {
   uint16_t addr;
   PeripheralIOHandler read;
   PeripheralIOHandler write;
+  // Strobe entries share this table so that shutdown paths which walk it by
+  // instance cannot leave a dead peripheral reachable through a strobe.
+  PeripheralStrobeHandler_t on_strobe;
   void* instance;
 };
 
@@ -142,9 +145,31 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   return io_null(pc, addr, write, d, cycles_left);
 }
 
+static auto dispatch_direct_io_strobe(uint16_t addr) -> bool {
+  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
+    if (g_direct_io_handlers.at(i).addr == addr &&
+        g_direct_io_handlers.at(i).on_strobe != nullptr) {
+      try {
+        g_direct_io_handlers.at(i).on_strobe(
+            g_direct_io_handlers.at(i).instance);
+      } catch (const std::exception& e) {
+        Logger::error("Exception in direct IO strobe at $%04X: %s\n", addr,
+                      e.what());
+      } catch (...) {
+        Logger::error("Unknown exception in direct IO strobe at $%04X\n", addr);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                   uint8_t d, uint32_t cycles_left) -> uint8_t {
   cpu_calc_cycles(cycles_left);
+  if (dispatch_direct_io_strobe(addr)) {
+    return io_null(pc, addr, write, d, cycles_left);
+  }
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).read != nullptr) {
@@ -166,6 +191,9 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                    uint8_t d, uint32_t cycles_left) -> uint8_t {
   cpu_calc_cycles(cycles_left);
+  if (dispatch_direct_io_strobe(addr)) {
+    return io_null(pc, addr, write, d, cycles_left);
+  }
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
         g_direct_io_handlers.at(i).write != nullptr) {
@@ -284,13 +312,31 @@ static auto host_register_direct_io(void* instance, uint16_t addr,
     return;
   }
 
-  g_direct_io_handlers.at(g_num_direct_handlers) = {addr, read, write,
+  g_direct_io_handlers.at(g_num_direct_handlers) = {addr, read, write, nullptr,
                                                     instance};
   g_num_direct_handlers++;
 
   register_direct_io_handler(addr, read ? direct_io_read_bridge : nullptr,
                              write ? direct_io_write_bridge : nullptr,
                              instance);
+}
+
+static auto host_register_direct_io_strobe(void* instance, uint16_t addr,
+                                           PeripheralStrobeHandler_t on_strobe)
+    -> void {
+  if (g_num_direct_handlers >= io_direct_count) {
+    Logger::error("Too many direct IO handlers registered!\n");
+    return;
+  }
+
+  g_direct_io_handlers.at(g_num_direct_handlers) = {addr, nullptr, nullptr,
+                                                    on_strobe, instance};
+  g_num_direct_handlers++;
+
+  // Any access toggles the flip-flop on real hardware, so read and write get
+  // the same bridge.
+  register_direct_io_handler(addr, direct_io_read_bridge,
+                             direct_io_write_bridge, instance);
 }
 
 static auto host_get_mem_ptr(uint16_t addr) -> uint8_t* {
@@ -423,6 +469,7 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_register_cx_rom,
                                                  host_register_expansion_rom,
                                                  host_register_direct_io,
+                                                 host_register_direct_io_strobe,
                                                  host_get_mem_ptr,
                                                  host_get_cycles,
                                                  host_get_clock_hz,

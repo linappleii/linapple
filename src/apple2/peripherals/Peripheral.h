@@ -26,6 +26,13 @@ typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
 
 typedef PeripheralIOHandler PeripheralIoHandler_t;
 
+// A device that is strobed but never drives the data bus. It needs no address,
+// write flag, data byte, or cycle count: the bridge has already brought the
+// cumulative cycle count up to the current instruction, so GetCycles() inside
+// the handler is exact, and cycles_left only matters to handlers that must
+// position the video scanner.
+typedef void (*PeripheralStrobeHandler_t)(void* instance);
+
 typedef struct {
   void (*Log)(void* instance, PeripheralLogLevel_t level, const char* fmt, ...);
   void (*AssertIrq)(int slot, bool assert);
@@ -36,6 +43,8 @@ typedef struct {
   void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
                            PeripheralIOHandler read, PeripheralIOHandler write);
+  void (*RegisterDirectIOStrobe)(void* instance, uint16_t addr,
+                                 PeripheralStrobeHandler_t on_strobe);
   uint8_t* (*get_mem_ptr)(uint16_t addr);
   uint64_t (*GetCycles)(void);
   double (*GetClockHz)(void);
