@@ -12,14 +12,14 @@
 
 #include "AppConfig.h"
 #include "apple2/Video.h"
-#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
+#include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
-#include "frontends/sdl3/Frame.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
+#include "frontends/sdl3/Frame.h"
 
 // SDL Audio Stream for Frontend
 bool g_ds_available = false;
@@ -74,26 +74,38 @@ auto ds_init() -> bool {
   SDL_ResumeAudioStreamDevice(g_audioStream);
   g_ds_available = true;
 
-  linapple_set_audio_callback(
-      [](const int16_t* samples, size_t num_samples) -> void {
-        audio_mixer_upload_speaker_samples(samples,
-                                           static_cast<uint32_t>(num_samples));
+  audio_mixer_initialize();
+
+  linapple_set_audio_source_register_callback(
+      [](int slot, const char* peripheral_id,
+         const PeripheralAudioInfo_t* info) -> void {
+        audio_mixer_register_source(slot, peripheral_id, info);
       });
 
-  linapple_set_mock_audio_callback(
-      [](const int16_t* samples, size_t num_samples) -> void {
-        audio_mixer_upload_mockingboard_samples(
-            samples, static_cast<uint32_t>(num_samples));
+  linapple_set_audio_source_unregister_callback(
+      [](int slot) -> void { audio_mixer_unregister_source(slot); });
+
+  linapple_set_audio_channel_callback(
+      [](const char* peripheral_id, int slot, const int16_t* const* channels,
+         size_t num_channels, size_t num_samples) -> void {
+        audio_mixer_upload_channels(peripheral_id, slot, channels, num_channels,
+                                    static_cast<uint32_t>(num_samples));
       });
 
   return true;
 }
 
 void ds_shutdown() {
+  linapple_set_audio_channel_callback(nullptr);
+  linapple_set_audio_source_register_callback(nullptr);
+  linapple_set_audio_source_unregister_callback(nullptr);
+
   if (g_audioStream) {
     SDL_DestroyAudioStream(g_audioStream);
     g_audioStream = nullptr;
   }
+
+  audio_mixer_destroy();
 
   if (g_audio_dumper.is_active()) {
     audio_dumper_finalize(&g_audio_dumper);

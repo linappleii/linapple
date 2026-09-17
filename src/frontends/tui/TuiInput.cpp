@@ -22,11 +22,11 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/AudioMixer.h"
 #include "frontends/common/SaveStateManager.h"
 
 static int g_joy_fd = -1;

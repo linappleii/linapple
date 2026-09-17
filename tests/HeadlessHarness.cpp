@@ -24,9 +24,15 @@ namespace {
 
 static HeadlessHarness_t* s_active_harness = nullptr;
 
-auto on_audio(const int16_t* samples, size_t num_samples) -> void {
+auto on_audio(const char* peripheral_id, int slot,
+              const int16_t* const* channels, size_t num_channels,
+              size_t num_samples) -> void {
+  (void)peripheral_id;
+  (void)slot;
+  (void)channels;
+  (void)num_channels;
   if (s_active_harness != nullptr) {
-    s_active_harness->handle_audio(samples, num_samples);
+    s_active_harness->handle_audio(nullptr, num_samples);
   }
 }
 
@@ -42,7 +48,7 @@ HeadlessHarness_t::HeadlessHarness_t() {
   app_controller_initialize(&config);
 
   video_set_rendering_enabled(false);
-  linapple_set_audio_callback(on_audio);
+  linapple_set_audio_channel_callback(on_audio);
 
   is_initialized = true;
 }
@@ -50,7 +56,7 @@ HeadlessHarness_t::HeadlessHarness_t() {
 HeadlessHarness_t::~HeadlessHarness_t() {
   if (is_initialized) {
     video_set_rendering_enabled(true);
-    linapple_set_audio_callback(nullptr);
+    linapple_set_audio_channel_callback(nullptr);
     app_controller_shutdown();
     is_initialized = false;
   }

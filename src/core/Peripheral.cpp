@@ -16,14 +16,15 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 
-LinappleAudioCallback g_frontendAudioCB = nullptr;
-LinappleAudioCallback g_frontendMockAudioCB = nullptr;
+FrontendAudioChannelCallback_t g_frontend_audio_channel_cb = nullptr;
+FrontendAudioSourceRegisterCallback_t g_frontend_audio_register_cb = nullptr;
+FrontendAudioSourceUnregisterCallback_t g_frontend_audio_unregister_cb =
+    nullptr;
 
 auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   static std::vector<Peripheral_t*> registry;
@@ -331,40 +332,42 @@ static auto host_request_precise_timing() -> void {
   g_state.needsprecision = static_cast<uint32_t>(cumulative_cycles);
 }
 
-static auto host_audio_push_samples(void* instance, const int16_t* buffer,
-                                    size_t num_samples) -> void {
-  if (buffer == nullptr || num_samples == 0 || g_full_speed) {
+static auto host_audio_push_channels(void* instance,
+                                     const int16_t* const* channel_buffers,
+                                     size_t num_channels, size_t num_samples)
+    -> void {
+  if (channel_buffers == nullptr || num_channels == 0 || num_samples == 0 ||
+      g_full_speed) {
     return;
   }
-  bool is_mockingboard = false;
+  for (size_t c = 0; c < num_channels; ++c) {
+    if (channel_buffers[c] == nullptr) {
+      return;
+    }
+  }
+
+  int slot = 0;
+  const char* peripheral_id = nullptr;
   if (instance != nullptr) {
     for (size_t i = 0; i < NUM_SLOTS; ++i) {
       for (const auto& ap : g_active_peripherals.at(i)) {
         if (ap.instance == instance) {
-          if (ap.api != nullptr && ap.api->id != nullptr &&
-              strcmp(ap.api->id, "linapple.mockingboard") == 0) {
-            is_mockingboard = true;
+          slot = static_cast<int>(i);
+          if (ap.api != nullptr) {
+            peripheral_id = ap.api->id;
           }
           break;
         }
       }
+      if (peripheral_id != nullptr) {
+        break;
+      }
     }
   }
 
-  if (is_mockingboard) {
-    if (g_frontendMockAudioCB != nullptr) {
-      g_frontendMockAudioCB(buffer, num_samples);
-    } else {
-      audio_mixer_upload_mockingboard_samples(
-          buffer, static_cast<uint32_t>(num_samples));
-    }
-  } else {
-    if (g_frontendAudioCB != nullptr) {
-      g_frontendAudioCB(buffer, num_samples);
-    } else {
-      audio_mixer_upload_speaker_samples(buffer,
-                                         static_cast<uint32_t>(num_samples));
-    }
+  if (g_frontend_audio_channel_cb != nullptr) {
+    g_frontend_audio_channel_cb(peripheral_id, slot, channel_buffers,
+                                num_channels, num_samples);
   }
 }
 
@@ -390,13 +393,15 @@ static auto host_printer_get_status(void* instance) -> uint8_t {
 }
 
 extern void super_serial_frontend_send_byte(uint8_t byte);
-extern auto super_serial_frontend_is_active() -> bool;
 extern void super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
                                                int parity, int stop);
+extern auto super_serial_frontend_is_active() -> bool;
 
 static auto host_serial_transmit_byte(void* instance, uint8_t byte) -> void {
   (void)instance;
-  super_serial_frontend_send_byte(byte);
+  if (super_serial_frontend_is_active()) {
+    super_serial_frontend_send_byte(byte);
+  }
 }
 
 static auto host_serial_update_state(void* instance, uint32_t baud,
@@ -421,7 +426,7 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_notify_status_changed,
                                                  host_notify_activity_changed,
                                                  host_request_precise_timing,
-                                                 host_audio_push_samples,
+                                                 host_audio_push_channels,
                                                  host_reset_system,
                                                  host_printer_put_char,
                                                  host_printer_get_status,
@@ -471,6 +476,9 @@ static auto clear_all_peripherals() -> void {
   g_direct_io_handlers.fill({});
 
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
+    if (g_frontend_audio_unregister_cb != nullptr) {
+      g_frontend_audio_unregister_cb(static_cast<int>(i));
+    }
     g_peripheral_activity_state.at(i) = false;
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->shutdown != nullptr) {
@@ -577,6 +585,15 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
 
   g_active_peripherals.at(static_cast<size_t>(slot)).back().instance = instance;
 
+  if (api->query != nullptr && g_frontend_audio_register_cb != nullptr) {
+    PeripheralAudioInfo_t info{};
+    size_t out_size = sizeof(info);
+    if (api->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &out_size) ==
+        peripheral_ok) {
+      g_frontend_audio_register_cb(slot, api->id, &info);
+    }
+  }
+
   return 0;
 }
 
@@ -604,6 +621,9 @@ static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
 
 auto peripheral_unregister(int slot) -> int {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
+  if (g_frontend_audio_unregister_cb != nullptr) {
+    g_frontend_audio_unregister_cb(slot);
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {
     remove_direct_io_handlers_for_instance(ap.instance);

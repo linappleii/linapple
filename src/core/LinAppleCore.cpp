@@ -28,7 +28,6 @@
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
-#include "core/AudioMixer.h"
 #include "core/BasicLiveSync.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
@@ -108,19 +107,27 @@ static bool s_was_turbo = false;
 
 }  // namespace
 
-extern LinappleAudioCallback_t g_frontendAudioCB;
-extern LinappleAudioCallback_t g_frontendMockAudioCB;
+extern FrontendAudioChannelCallback_t g_frontend_audio_channel_cb;
+extern FrontendAudioSourceRegisterCallback_t g_frontend_audio_register_cb;
+extern FrontendAudioSourceUnregisterCallback_t g_frontend_audio_unregister_cb;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void {
   g_video_cb = cb;
 }
 
-auto linapple_set_audio_callback(LinappleAudioCallback_t cb) -> void {
-  g_frontendAudioCB = cb;
+auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
+    -> void {
+  g_frontend_audio_channel_cb = cb;
 }
 
-auto linapple_set_mock_audio_callback(LinappleAudioCallback_t cb) -> void {
-  g_frontendMockAudioCB = cb;
+auto linapple_set_audio_source_register_callback(
+    FrontendAudioSourceRegisterCallback_t cb) -> void {
+  g_frontend_audio_register_cb = cb;
+}
+
+auto linapple_set_audio_source_unregister_callback(
+    FrontendAudioSourceUnregisterCallback_t cb) -> void {
+  g_frontend_audio_unregister_cb = cb;
 }
 
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void {
@@ -166,7 +173,6 @@ static auto should_run_full_speed() -> bool {
   } else if (!should_turbo && s_was_turbo) {
     uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
     Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
-    audio_mixer_clear_buffers();
   }
 
   s_was_turbo = should_turbo;
@@ -181,7 +187,6 @@ auto linapple_init() -> int {
     return -1;
   }
   video_create_color_mix_map();
-  audio_mixer_initialize();
 
   if (mem_initialize() != 0) {
     linapple_shutdown();
@@ -200,7 +205,6 @@ auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
 auto linapple_shutdown() -> void {
   peripheral_manager_shutdown();
   peripheral_plugins_shutdown();
-  audio_mixer_destroy();
   video_destroy();
   mem_destroy();
   asset_quit();

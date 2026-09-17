@@ -12,7 +12,7 @@
 #include <cstring>
 #include <thread>
 
-#include "core/AudioMixer.h"
+#include "frontends/common/AudioMixer.h"
 
 #ifdef HAVE_PULSE_SIMPLE
 #include <pulse/simple.h>

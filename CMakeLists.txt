@@ -348,7 +348,7 @@ endif()
 
 # --- Source Lists ---
 set(SOURCES_CORE
-    src/core/AudioMixer.cpp
+    src/frontends/common/AudioMixer.cpp
     src/core/LinAppleCore.cpp
     src/core/Log.cpp
     src/core/ProgramLoader.cpp

@@ -8,25 +8,31 @@
 #include "TuiInput.h"
 #include "TuiTerminal.h"
 #include "TuiVideo.h"
-#include "core/AudioMixer.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/AudioMixer.h"
 
 auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
   tui_video_render_frame(pixels, width, height, pitch);
 }
 
-auto audio_callback(const int16_t* samples, size_t num_samples) -> void {
-  audio_mixer_upload_speaker_samples(samples,
-                                     static_cast<uint32_t>(num_samples));
+auto audio_source_register_callback(int slot, const char* peripheral_id,
+                                    const PeripheralAudioInfo_t* info) -> void {
+  audio_mixer_register_source(slot, peripheral_id, info);
 }
 
-auto mock_audio_callback(const int16_t* samples, size_t num_samples) -> void {
-  audio_mixer_upload_mockingboard_samples(samples,
-                                          static_cast<uint32_t>(num_samples));
+auto audio_source_unregister_callback(int slot) -> void {
+  audio_mixer_unregister_source(slot);
+}
+
+auto audio_channel_callback(const char* peripheral_id, int slot,
+                            const int16_t* const* channels, size_t num_channels,
+                            size_t num_samples) -> void {
+  audio_mixer_upload_channels(peripheral_id, slot, channels, num_channels,
+                              static_cast<uint32_t>(num_samples));
 }
 
 auto title_callback(const char* title) -> void { (void)title; }
@@ -58,9 +64,13 @@ auto main(int argc, char** argv) -> int {
     tui_input_initialize();
     tui_audio_initialize();
 
+    audio_mixer_initialize();
+
     linapple_set_video_callback(video_callback);
-    linapple_set_audio_callback(audio_callback);
-    linapple_set_mock_audio_callback(mock_audio_callback);
+    linapple_set_audio_channel_callback(audio_channel_callback);
+    linapple_set_audio_source_register_callback(audio_source_register_callback);
+    linapple_set_audio_source_unregister_callback(
+        audio_source_unregister_callback);
     linapple_set_title_callback(title_callback);
 
     app_controller_load_initial_media(&config);
@@ -100,7 +110,11 @@ auto main(int argc, char** argv) -> int {
     }
 
     app_controller_shutdown();
+    linapple_set_audio_channel_callback(nullptr);
+    linapple_set_audio_source_register_callback(nullptr);
+    linapple_set_audio_source_unregister_callback(nullptr);
     tui_audio_shutdown();
+    audio_mixer_destroy();
     tui_input_shutdown();
   } while (app_controller_should_restart() && !tui_terminal_is_interrupted());
 

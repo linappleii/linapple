@@ -27,7 +27,7 @@ class MockingboardHarness {
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
     host_.GetConfig = Mock_GetConfig;
-    host_.AudioPushSamples = Mock_AudioPushSamples;
+    host_.AudioPushChannels = Mock_AudioPushChannels;
     host_.GetCycles = Mock_GetCycles;
   }
 
@@ -167,10 +167,27 @@ class MockingboardHarness {
     return (slot >= 0 && slot < 8) ? slot_irq_asserted_[slot] : false;
   }
 
+  auto on_vblank(bool vblank, void* inst = nullptr) -> void {
+    void* target = (inst != nullptr) ? inst : primary_instance_;
+    if (target != nullptr && descriptor()->on_vblank != nullptr) {
+      descriptor()->on_vblank(target, vblank);
+    }
+  }
+
   auto set_config_type(const std::string& type) -> void { config_type_ = type; }
 
+  auto channel_samples(size_t channel) const -> const std::vector<int16_t>& {
+    static const std::vector<int16_t> empty;
+    if (channel < channel_samples_.size()) {
+      return channel_samples_[channel];
+    }
+    return empty;
+  }
+  auto captured_channel_count() const -> size_t {
+    return captured_channel_count_;
+  }
   auto audio_samples() const -> const std::vector<int16_t>& {
-    return audio_samples_;
+    return channel_samples(0);
   }
   auto audio_push_call_count() const -> uint32_t {
     return audio_push_call_count_;
@@ -179,7 +196,8 @@ class MockingboardHarness {
     return last_pushed_sample_count_;
   }
   auto clear_audio() -> void {
-    audio_samples_.clear();
+    channel_samples_.clear();
+    captured_channel_count_ = 0;
     audio_push_call_count_ = 0;
     last_pushed_sample_count_ = 0;
   }
@@ -223,13 +241,24 @@ class MockingboardHarness {
     return false;
   }
 
-  static auto Mock_AudioPushSamples(void* instance, const int16_t* samples,
-                                    size_t num_samples) -> void {
+  static auto Mock_AudioPushChannels(void* instance,
+                                     const int16_t* const* channels,
+                                     size_t num_channels, size_t num_samples)
+      -> void {
     (void)instance;
-    if (s_active_harness != nullptr && samples != nullptr && num_samples > 0) {
-      s_active_harness->audio_samples_.insert(
-          s_active_harness->audio_samples_.end(), samples,
-          samples + num_samples);
+    if (s_active_harness != nullptr && channels != nullptr &&
+        num_channels > 0 && num_samples > 0) {
+      s_active_harness->captured_channel_count_ = num_channels;
+      if (s_active_harness->channel_samples_.size() < num_channels) {
+        s_active_harness->channel_samples_.resize(num_channels);
+      }
+      for (size_t c = 0; c < num_channels; ++c) {
+        if (channels[c] != nullptr) {
+          s_active_harness->channel_samples_[c].insert(
+              s_active_harness->channel_samples_[c].end(), channels[c],
+              channels[c] + num_samples);
+        }
+      }
       s_active_harness->last_pushed_sample_count_ = num_samples;
       s_active_harness->audio_push_call_count_++;
     }
@@ -258,7 +287,8 @@ class MockingboardHarness {
   PeripheralIOHandler read_cx_handler_{nullptr};
   PeripheralIOHandler write_cx_handler_{nullptr};
 
-  std::vector<int16_t> audio_samples_{};
+  std::vector<std::vector<int16_t>> channel_samples_{};
+  size_t captured_channel_count_{0};
   size_t last_pushed_sample_count_{0};
   uint32_t audio_push_call_count_{0};
 
@@ -467,7 +497,8 @@ TEST_CASE(
 
   CHECK(harness.irq_asserted());
   CHECK(harness.audio_push_call_count() == 1);
-  const auto& samples = harness.audio_samples();
+  CHECK(harness.captured_channel_count() == 6);
+  const auto& samples = harness.channel_samples(0);
   REQUIRE_FALSE(samples.empty());
 
   int16_t peak_left = 0;
@@ -719,4 +750,103 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
 
   // Clean state loads successfully
   CHECK(harness.load_state(buffer.data(), state_size) == peripheral_ok);
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-18 Audio Information Query ABI Contract") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  size_t size = 0;
+  PeripheralStatus_t status =
+      harness.query(PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
+
+  PeripheralAudioInfo_t info{};
+  size = sizeof(PeripheralAudioInfo_t) - 1;
+  status = harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  CHECK(status == peripheral_error);
+
+  size = sizeof(PeripheralAudioInfo_t);
+  status = harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(info.num_channels == 6);
+
+  const char* const expected_names[6] = {"AY0 Voice A", "AY0 Voice B",
+                                         "AY0 Voice C", "AY1 Voice A",
+                                         "AY1 Voice B", "AY1 Voice C"};
+  for (size_t i = 0; i < 6; ++i) {
+    CHECK(std::strcmp(info.channels[i].name, expected_names[i]) == 0);
+  }
+
+  // Unbranched channel pan assertions (AY0: Left 1.0, Right 0.0; AY1: Left 0.0,
+  // Right 1.0)
+  for (size_t i = 0; i < 3; ++i) {
+    CHECK(info.channels[i].default_pan_left == doctest::Approx(1.0f));
+    CHECK(info.channels[i].default_pan_right == doctest::Approx(0.0f));
+  }
+  for (size_t i = 3; i < 6; ++i) {
+    CHECK(info.channels[i].default_pan_left == doctest::Approx(0.0f));
+    CHECK(info.channels[i].default_pan_right == doctest::Approx(1.0f));
+  }
+}
+
+TEST_CASE(
+    "Mockingboard Peripheral: MB-19 Dynamic NTSC vs PAL VBL Clock Adaptation") {
+  MockingboardHarness harness;
+  void* instance = harness.create_card(4);
+  REQUIRE(instance != nullptr);
+
+  // Setup periodic tone on Voice A
+  harness.write_cx(0xC002, 0xFF);
+  harness.write_cx(0xC003, 0xFF);
+  harness.write_cx(0xC000, 0x04);
+  write_mockingboard_ay(harness, 0x00, 20);
+  write_mockingboard_ay(harness, 0x08, AY_MAX_VOLUME);
+  write_mockingboard_ay(harness, 0x07, 0x3E);
+
+  // Configure 6522 Timer 1 for 10,000 cycle interrupts to test clock-dependent
+  // sample pacing
+  harness.write_cx(0xC00E, 0xC0);  // Enable T1 interrupt
+  harness.write_cx(0xC004, 0x10);  // 10000 = 0x2710
+  harness.write_cx(0xC005, 0x27);
+
+  // Initial VBL
+  harness.set_cycles(0);
+  harness.on_vblank(true);
+
+  // Trigger PAL frame: 20,298 cycles from initial VBL
+  harness.advance_cycles(20298);
+  harness.on_vblank(true);
+
+  // Generate audio under PAL with active timer (10,000 cycles)
+  harness.clear_audio();
+  harness.advance_cycles(10001);
+  harness.think(0);
+  CHECK(harness.audio_push_call_count() == 1);
+  CHECK(harness.captured_channel_count() == 6);
+  // Under PAL (1,015,625 Hz): 44100 * 10000 / 1015625 = 434.2 -> exactly 434
+  // samples
+  CHECK(harness.last_pushed_sample_count() == 434);
+
+  // Acknowledge IRQ and re-arm Timer 1
+  harness.read_cx(0xC004);
+  harness.write_cx(0xC005, 0x27);
+
+  // Trigger NTSC frame: advance remaining 7,029 cycles so delta from previous
+  // VBL is exactly 17,030 cycles
+  harness.advance_cycles(17030 - 10001);
+  harness.on_vblank(true);
+
+  // Generate audio under NTSC with active timer (10,000 cycles)
+  harness.clear_audio();
+  harness.advance_cycles(10001);
+  harness.think(0);
+  CHECK(harness.audio_push_call_count() == 1);
+  CHECK(harness.captured_channel_count() == 6);
+  // Under NTSC (1,020,484 Hz): 44100 * 10000 / 1020484 = 432.1 -> exactly 432
+  // samples
+  CHECK(harness.last_pushed_sample_count() == 432);
 }

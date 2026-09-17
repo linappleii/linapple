@@ -212,12 +212,17 @@ extern CURL* g_curl;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);
-using LinappleAudioCallback_t = void (*)(const int16_t* samples,
-                                         size_t num_samples);
+using FrontendAudioChannelCallback_t = void (*)(const char* peripheral_id,
+                                                int slot,
+                                                const int16_t* const* channels,
+                                                size_t num_channels,
+                                                size_t num_samples);
+using FrontendAudioSourceRegisterCallback_t = void (*)(
+    int slot, const char* peripheral_id, const PeripheralAudioInfo_t* info);
+using FrontendAudioSourceUnregisterCallback_t = void (*)(int slot);
 using LinappleTitleCallback_t = void (*)(const char* title);
 
 using LinappleVideoCallback = LinappleVideoCallback_t;
-using LinappleAudioCallback = LinappleAudioCallback_t;
 using LinappleTitleCallback = LinappleTitleCallback_t;
 
 auto linapple_init() -> int;
@@ -266,8 +271,12 @@ auto linapple_set_joystick_axis(int axis, int value) -> void;
 auto linapple_set_joystick_button(int button, bool down) -> void;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
-auto linapple_set_audio_callback(LinappleAudioCallback_t cb) -> void;
-auto linapple_set_mock_audio_callback(LinappleAudioCallback_t cb) -> void;
+auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
+    -> void;
+auto linapple_set_audio_source_register_callback(
+    FrontendAudioSourceRegisterCallback_t cb) -> void;
+auto linapple_set_audio_source_unregister_callback(
+    FrontendAudioSourceUnregisterCallback_t cb) -> void;
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 

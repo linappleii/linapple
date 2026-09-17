@@ -10,7 +10,6 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/speaker/SpeakerCommands.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
@@ -35,11 +34,12 @@ struct SpeakerEvent_t {
 
 constexpr int16_t speaker_sample_volume = 0x4000;
 
-constexpr uint32_t speaker_sample_rate = 44100;
-constexpr uint64_t speaker_inactivity_cycles =
-    static_cast<uint64_t>(CLOCK_6502 / 5.0);
-constexpr double speaker_cycles_per_sample =
-    CLOCK_6502 / static_cast<double>(speaker_sample_rate);
+constexpr uint32_t default_sample_rate = 44100;
+constexpr double ntsc_clock_hz = ((157500000.0 / 11.0) * 65.0) / 912.0;
+constexpr double pal_clock_hz = 1015625.0;
+constexpr uint64_t ntsc_frame_cycles = 17030;
+constexpr uint64_t pal_frame_cycles = 20280;
+constexpr uint64_t vbl_tolerance = 256;
 
 constexpr float dc_blocker_coefficient = 0.999f;
 constexpr float decay_coefficient = 0.99f;
@@ -61,6 +61,10 @@ struct SpeakerPeripheral_t {
 
   float filter_state = 0.0f;
   float previous_input = 0.0f;
+
+  double current_clock_hz = ntsc_clock_hz;
+  uint64_t last_vblank_cycle = 0;
+  bool has_vblank = false;
 
   HostInterface_t* host = nullptr;
   int slot = 0;
@@ -100,6 +104,9 @@ auto speaker_initialize(void* instance) -> void {
   speaker_peripheral->last_update_cycle = get_cycles(host);
   speaker_peripheral->next_sample_cycle =
       static_cast<double>(speaker_peripheral->last_update_cycle);
+  speaker_peripheral->current_clock_hz = ntsc_clock_hz;
+  speaker_peripheral->last_vblank_cycle = 0;
+  speaker_peripheral->has_vblank = false;
 }
 
 auto speaker_reset(void* instance) -> void {
@@ -122,7 +129,9 @@ auto speaker_update(void* instance, uint32_t elapsed_cycles) -> void {
   } else if (speaker_peripheral->is_active) {
     speaker_peripheral->quiet_cycle_count += elapsed_cycles;
 
-    if (speaker_peripheral->quiet_cycle_count > speaker_inactivity_cycles) {
+    const uint64_t inactivity_threshold =
+        static_cast<uint64_t>(speaker_peripheral->current_clock_hz / 5.0);
+    if (speaker_peripheral->quiet_cycle_count > inactivity_threshold) {
       speaker_peripheral->is_active = false;
     }
   }
@@ -207,7 +216,8 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   }
   auto* speaker_peripheral = static_cast<SpeakerPeripheral_t*>(instance);
 
-  const double cycles_per_sample = speaker_cycles_per_sample;
+  const double cycles_per_sample = speaker_peripheral->current_clock_hz /
+                                   static_cast<double>(default_sample_rate);
   if (cycles_per_sample <= 0.0) {
     return;
   }
@@ -228,7 +238,7 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
   if (!speaker_peripheral->is_active) {
     while (speaker_peripheral->next_sample_cycle <=
                static_cast<double>(end_cycle) &&
-           sample_count < (speaker_buffer_size - 2)) {
+           sample_count < (speaker_buffer_size - 1)) {
       if (std::abs(speaker_peripheral->filter_state) > filter_epsilon) {
         speaker_peripheral->filter_state *= decay_coefficient;
         const float raw_sample =
@@ -237,10 +247,8 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
             std::max(-32768.0f, std::min(32767.0f, raw_sample));
         const auto val = static_cast<int16_t>(clamped_sample);
         speaker_peripheral->sample_buffer.at(sample_count++) = val;
-        speaker_peripheral->sample_buffer.at(sample_count++) = val;
       } else {
         speaker_peripheral->filter_state = 0.0f;
-        speaker_peripheral->sample_buffer.at(sample_count++) = 0;
         speaker_peripheral->sample_buffer.at(sample_count++) = 0;
       }
       speaker_peripheral->next_sample_cycle += cycles_per_sample;
@@ -252,7 +260,7 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
 
     while (speaker_peripheral->next_sample_cycle <=
                static_cast<double>(end_cycle) &&
-           sample_count < (speaker_buffer_size - 2)) {
+           sample_count < (speaker_buffer_size - 1)) {
       const double sample_start = speaker_peripheral->next_sample_cycle;
       const double sample_end =
           speaker_peripheral->next_sample_cycle + cycles_per_sample;
@@ -295,7 +303,6 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
       const auto val = static_cast<int16_t>(clamped_sample);
 
       speaker_peripheral->sample_buffer.at(sample_count++) = val;
-      speaker_peripheral->sample_buffer.at(sample_count++) = val;
       speaker_peripheral->next_sample_cycle += cycles_per_sample;
     }
     speaker_peripheral->event_count = 0;
@@ -303,9 +310,10 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
 
   if (sample_count > 0) {
     auto* host = static_cast<HostInterface_t*>(speaker_peripheral->host);
-    if (host != nullptr && host->AudioPushSamples != nullptr) {
-      host->AudioPushSamples(instance, speaker_peripheral->sample_buffer.data(),
-                             sample_count);
+    if (host != nullptr && host->AudioPushChannels != nullptr) {
+      const int16_t* channel_ptrs[1] = {
+          speaker_peripheral->sample_buffer.data()};
+      host->AudioPushChannels(instance, channel_ptrs, 1, sample_count);
     }
   }
 }
@@ -313,6 +321,26 @@ auto speaker_generate_samples(void* instance, uint32_t elapsed_cycles) -> void {
 auto speaker_think(void* instance, uint32_t elapsed_cycles) -> void {
   speaker_update(instance, elapsed_cycles);
   speaker_generate_samples(instance, elapsed_cycles);
+}
+
+static auto speaker_abi_on_vblank(void* instance, bool vblank) -> void {
+  if (instance == nullptr || !vblank) {
+    return;
+  }
+  auto* speaker = static_cast<SpeakerPeripheral_t*>(instance);
+  const uint64_t current_cycle = get_cycles(speaker->host);
+  if (speaker->has_vblank && current_cycle > speaker->last_vblank_cycle) {
+    const uint64_t delta = current_cycle - speaker->last_vblank_cycle;
+    if (delta >= (pal_frame_cycles - vbl_tolerance) &&
+        delta <= (pal_frame_cycles + vbl_tolerance)) {
+      speaker->current_clock_hz = pal_clock_hz;
+    } else if (delta >= (ntsc_frame_cycles - vbl_tolerance) &&
+               delta <= (ntsc_frame_cycles + vbl_tolerance)) {
+      speaker->current_clock_hz = ntsc_clock_hz;
+    }
+  }
+  speaker->last_vblank_cycle = current_cycle;
+  speaker->has_vblank = true;
 }
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
@@ -376,33 +404,47 @@ auto speaker_load_state(void* instance, const void* state_buffer,
   speaker_peripheral->previous_input =
       speaker_peripheral->last_sample_state ? 1.0f : -1.0f;
   speaker_peripheral->event_count = 0;
-  speaker_peripheral->has_strobe = false;
 
   return peripheral_ok;
 }
 
-auto speaker_query(void* instance, uint32_t query_id, void* output_buffer,
-                   size_t* buffer_size) -> PeripheralStatus_t {
-  if (instance == nullptr || buffer_size == nullptr) {
+auto speaker_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t {
+  if (out_size == nullptr) {
     return peripheral_error;
   }
 
-  switch (query_id) {
+  switch (cmd_id) {
     case speaker_query_is_active: {
       const size_t required_size = sizeof(uint8_t);
-
-      if (output_buffer == nullptr) {
-        *buffer_size = required_size;
+      if (out == nullptr) {
+        *out_size = required_size;
         return peripheral_ok;
       }
-
-      if (*buffer_size < required_size) {
+      if (instance == nullptr || *out_size < required_size) {
         return peripheral_error;
       }
-
-      *static_cast<uint8_t*>(output_buffer) =
-          speaker_is_active(instance) ? 1 : 0;
-      *buffer_size = required_size;
+      *static_cast<uint8_t*>(out) = speaker_is_active(instance) ? 1 : 0;
+      *out_size = required_size;
+      return peripheral_ok;
+    }
+    case PERIPHERAL_QUERY_AUDIO_INFO: {
+      const size_t required_size = sizeof(PeripheralAudioInfo_t);
+      if (out == nullptr) {
+        *out_size = required_size;
+        return peripheral_ok;
+      }
+      if (*out_size < required_size) {
+        return peripheral_error;
+      }
+      auto* info = static_cast<PeripheralAudioInfo_t*>(out);
+      info->num_channels = 1;
+      std::strncpy(info->channels[0].name, "Speaker",
+                   sizeof(info->channels[0].name) - 1);
+      info->channels[0].name[sizeof(info->channels[0].name) - 1] = '\0';
+      info->channels[0].default_pan_left = 1.0f;
+      info->channels[0].default_pan_right = 1.0f;
+      *out_size = required_size;
       return peripheral_ok;
     }
     default:
@@ -424,7 +466,7 @@ static Peripheral_t g_speaker_peripheral = {
     .reset = speaker_reset,
     .shutdown = speaker_shutdown,
     .think = speaker_think,
-    .on_vblank = nullptr,
+    .on_vblank = speaker_abi_on_vblank,
     .save_state = speaker_save_state,
     .load_state = speaker_load_state,
     .command = nullptr,

@@ -23,8 +23,20 @@ constexpr int LINAPPLE_ABI_VERSION = 0;
 enum {
   PERIPHERAL_CMD_MAX_DATA = 512,
   PERIPHERAL_MASK_INTERNAL = 0x01,
-  PERIPHERAL_MASK_EXPANSION = 0xFE
+  PERIPHERAL_MASK_EXPANSION = 0xFE,
+  PERIPHERAL_QUERY_AUDIO_INFO = 0x00000010
 };
+
+typedef struct PeripheralAudioChannelInfo_t {
+  char name[16];           /**< Channel name, e.g. "Speaker", "Voice A" */
+  float default_pan_left;  /**< Default gain to Left output (0.0 to 1.0) */
+  float default_pan_right; /**< Default gain to Right output (0.0 to 1.0) */
+} PeripheralAudioChannelInfo_t;
+
+typedef struct PeripheralAudioInfo_t {
+  uint32_t num_channels;
+  PeripheralAudioChannelInfo_t channels[16];
+} PeripheralAudioInfo_t;
 
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
@@ -50,8 +62,9 @@ typedef struct {
   void (*NotifyStatusChanged)(int slot);
   void (*NotifyActivityChanged)(int slot, bool active);
   void (*RequestPreciseTiming)(void);
-  void (*AudioPushSamples)(void* instance, const int16_t* buffer,
-                           size_t num_samples);
+  void (*AudioPushChannels)(void* instance,
+                            const int16_t* const* channel_buffers,
+                            size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);

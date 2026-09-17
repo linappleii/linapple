@@ -79,7 +79,7 @@ struct SpeakerHarness_t {
     host_.RegisterCxROM = nullptr;
     host_.RegisterExpansionROM = nullptr;
     host_.RegisterDirectIO = mock_register_direct_io;
-    host_.AudioPushSamples = mock_audio_push_samples;
+    host_.AudioPushChannels = mock_audio_push_channels;
     host_.GetCycles = mock_get_cycles;
   }
 
@@ -93,6 +93,7 @@ struct SpeakerHarness_t {
     primary_instance_ = nullptr;
     handlers_.clear();
     captured_samples_.clear();
+    captured_channels_ = 0;
     s_active_harness = nullptr;
   }
 
@@ -134,8 +135,10 @@ struct SpeakerHarness_t {
   auto set_cycles(uint64_t c) -> void { cycles_ = c; }
   auto advance_cycles(uint64_t delta) -> void { cycles_ += delta; }
 
+  auto captured_channels() const -> size_t { return captured_channels_; }
+
   auto set_drop_audio(bool drop) -> void {
-    host_.AudioPushSamples = drop ? nullptr : mock_audio_push_samples;
+    host_.AudioPushChannels = drop ? nullptr : mock_audio_push_channels;
   }
 
   auto set_null_cycles(bool null_cycles) -> void {
@@ -217,6 +220,7 @@ struct SpeakerHarness_t {
   void* primary_instance_ = nullptr;
   std::map<uint16_t, MockDirectIOHandler_t> handlers_;
   std::vector<int16_t> captured_samples_;
+  size_t captured_channels_ = 0;
   uint32_t audio_push_count_ = 0;
 
   static SpeakerHarness_t* s_active_harness;
@@ -241,13 +245,19 @@ struct SpeakerHarness_t {
     }
   }
 
-  static auto mock_audio_push_samples(void* instance, const int16_t* buffer,
-                                      size_t num_samples) -> void {
+  static auto mock_audio_push_channels(void* instance,
+                                       const int16_t* const* channel_buffers,
+                                       size_t num_channels, size_t num_samples)
+      -> void {
     (void)instance;
-    if (s_active_harness != nullptr && buffer != nullptr && num_samples > 0) {
-      s_active_harness->captured_samples_.insert(
-          s_active_harness->captured_samples_.end(), buffer,
-          buffer + num_samples);
+    if (s_active_harness != nullptr && channel_buffers != nullptr &&
+        num_channels > 0 && num_samples > 0) {
+      s_active_harness->captured_channels_ = num_channels;
+      if (channel_buffers[0] != nullptr) {
+        s_active_harness->captured_samples_.insert(
+            s_active_harness->captured_samples_.end(), channel_buffers[0],
+            channel_buffers[0] + num_samples);
+      }
       s_active_harness->audio_push_count_++;
     }
   }
@@ -286,7 +296,7 @@ TEST_CASE("Speaker Peripheral: Identity Descriptor Validation") {
   CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->query != nullptr);
   CHECK(descriptor->command == nullptr);
-  CHECK(descriptor->on_vblank == nullptr);
+  CHECK(descriptor->on_vblank != nullptr);
 }
 
 TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
@@ -473,8 +483,8 @@ TEST_CASE(
   harness.set_cycles(1000);
   harness.think(instance, 1000);
 
-  // At 44.1 kHz, 1000 cycles produces exactly 88 samples (44 stereo pairs)
-  constexpr size_t expected_idle_samples = 88;
+  // At 44.1 kHz, 1000 cycles produces exactly 44 samples (mono channel)
+  constexpr size_t expected_idle_samples = 44;
   REQUIRE(harness.captured_samples().size() == expected_idle_samples);
   for (int16_t s : harness.captured_samples()) {
     CHECK(s == 0);
@@ -495,28 +505,24 @@ TEST_CASE(
 
   const auto& samples = harness.captured_samples();
   REQUIRE_FALSE(samples.empty());
-  REQUIRE(samples.size() % 2 == 0);
 
-  // Stereo channel equivalence: left and right channels match bit-for-bit
-  for (size_t i = 0; i < samples.size(); i += 2) {
-    CHECK(samples[i] == samples[i + 1]);
+  // Mono planar channel: single discrete stream, strictly monotonic decay
+  for (size_t i = 0; i + 1 < samples.size(); ++i) {
+    CHECK(samples[i] >= samples[i + 1]);
   }
 
   // Exact step response golden checks
   CHECK(samples[0] == SPEAKER_PEAK_AMPLITUDE);
-  CHECK(samples[1] == SPEAKER_PEAK_AMPLITUDE);
 
   // Exact golden step response decay samples (0.999f filter factor)
   constexpr int16_t golden_decay_sample_1 = 16367;
   constexpr int16_t golden_decay_sample_2 = 16351;
-  CHECK(samples[2] == golden_decay_sample_1);
-  CHECK(samples[3] == golden_decay_sample_1);
-  CHECK(samples[4] == golden_decay_sample_2);
-  CHECK(samples[5] == golden_decay_sample_2);
+  CHECK(samples[1] == golden_decay_sample_1);
+  CHECK(samples[2] == golden_decay_sample_2);
 
   // Monotonic step decay point checks
-  CHECK(samples[0] > samples[2]);
-  CHECK(samples[2] > samples[4]);
+  CHECK(samples[0] > samples[1]);
+  CHECK(samples[1] > samples[2]);
   CHECK(samples.front() > samples.back());
 }
 
@@ -541,11 +547,10 @@ TEST_CASE(
   harness.think(instance, 24);
 
   const auto& samples = harness.captured_samples();
-  REQUIRE(samples.size() >= 2);
+  REQUIRE_FALSE(samples.empty());
   // Mathematical golden value: area average produces exactly -807
   constexpr int16_t golden_boxcar_sample = -807;
   CHECK(samples[0] == golden_boxcar_sample);
-  CHECK(samples[1] == golden_boxcar_sample);
 }
 
 TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
@@ -603,7 +608,7 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. AudioPushSamples == nullptr must safely drop without crashing
+  // 1. AudioPushChannels == nullptr must safely drop without crashing
   harness.set_drop_audio(true);
   harness.toggle_read();
   harness.advance_cycles(1000);
@@ -634,9 +639,9 @@ TEST_CASE(
   REQUIRE(instance != nullptr);
 
   // 1. Single frame pacing: standard 17,030 cycle Apple II frame generates
-  // 1,472 samples
+  // 736 samples
   constexpr uint32_t frame_cycles = 17030;
-  constexpr size_t expected_frame_samples = 1472;
+  constexpr size_t expected_frame_samples = 736;
   harness.advance_cycles(frame_cycles);
   harness.think(instance, frame_cycles);
 
@@ -644,10 +649,10 @@ TEST_CASE(
   CHECK(harness.audio_push_count() == 1);
 
   // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
-  // clamps to the internal buffer capacity (speaker_buffer_size - 2 = 16382
+  // clamps to the internal buffer capacity (speaker_buffer_size - 1 = 16383
   // samples)
   harness.clear_captured_samples();
-  constexpr size_t max_single_push_samples = 16382;
+  constexpr size_t max_single_push_samples = 16383;
   harness.advance_cycles(NTSC_ONE_SECOND_CYCLES);
   harness.think(instance, static_cast<uint32_t>(NTSC_ONE_SECOND_CYCLES));
 
@@ -946,12 +951,17 @@ TEST_CASE(
   static std::vector<int16_t> captured_frame_audio;
   captured_frame_audio.clear();
 
-  g_frontendAudioCB = [](const int16_t* buffer, size_t count) {
-    if (buffer != nullptr && count > 0) {
-      captured_frame_audio.insert(captured_frame_audio.end(), buffer,
-                                  buffer + count);
-    }
-  };
+  linapple_set_audio_channel_callback(
+      [](const char* peripheral_id, int slot, const int16_t* const* channels,
+         size_t num_channels, size_t num_samples) {
+        (void)peripheral_id;
+        (void)slot;
+        if (channels != nullptr && num_channels > 0 && channels[0] != nullptr &&
+            num_samples > 0) {
+          captured_frame_audio.insert(captured_frame_audio.end(), channels[0],
+                                      channels[0] + num_samples);
+        }
+      });
 
   // Simulate Apple II ROM BELL1 routine: ~1 kHz square wave (toggling every
   // ~1,000 cycles) across a standard 17,030-cycle frame (~16 strobes across the
@@ -966,22 +976,14 @@ TEST_CASE(
   // End of frame: peripheral manager thinks for 17,030 cycles
   peripheral_manager_think(17030);
 
-  g_frontendAudioCB = nullptr;
+  linapple_set_audio_channel_callback(nullptr);
 
-  // At 44.1 kHz, 17,030 cycles generates 1,472 samples (736 stereo pairs)
-  REQUIRE(captured_frame_audio.size() >= 1472);
+  // At 44.1 kHz, 17,030 cycles generates ~736 mono samples
+  REQUIRE(captured_frame_audio.size() >= 730);
 
-  // Extract mono channel (left channel)
-  std::vector<int16_t> mono;
-  mono.reserve(captured_frame_audio.size() / 2);
-  for (size_t i = 0; i < captured_frame_audio.size(); i += 2) {
-    mono.push_back(captured_frame_audio[i]);
-  }
+  const auto& mono = captured_frame_audio;
 
   // Count zero crossings across the frame (samples 50 through 700)
-  // With 16 toggles spaced ~43 samples apart, there must be distributed zero
-  // crossings. In the buggy implementation, all toggles collapse into sample 0
-  // and zero crossings between sample 50 and 700 is exactly 0.
   size_t zero_crossings = 0;
   for (size_t i = 50; i < 700 && i + 1 < mono.size(); ++i) {
     if ((mono[i] >= 0 && mono[i + 1] < 0) ||
@@ -995,4 +997,75 @@ TEST_CASE(
   CHECK(zero_crossings >= 10);
 
   linapple_shutdown();
+}
+
+TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  // 1. Query with null buffer returns required size
+  size_t size = 0;
+  PeripheralStatus_t status = speaker_get_descriptor()->query(
+      instance, PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
+
+  // 2. Query with undersized buffer returns error
+  PeripheralAudioInfo_t info{};
+  size = sizeof(PeripheralAudioInfo_t) - 1;
+  status = speaker_get_descriptor()->query(
+      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  CHECK(status == peripheral_error);
+
+  // 3. Query with valid buffer populates self-describing mono speaker info
+  size = sizeof(PeripheralAudioInfo_t);
+  status = speaker_get_descriptor()->query(
+      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  CHECK(status == peripheral_ok);
+  CHECK(info.num_channels == 1);
+  CHECK(std::strcmp(info.channels[0].name, "Speaker") == 0);
+  CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0f));
+  CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0f));
+}
+
+TEST_CASE("Speaker Peripheral: Dynamic NTSC vs PAL VBL Clock Adaptation") {
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  auto* desc = speaker_get_descriptor();
+  REQUIRE(desc->on_vblank != nullptr);
+
+  // Initial VBL
+  harness.set_cycles(0);
+  desc->on_vblank(instance, true);
+
+  // Trigger PAL frame: 20,280 cycles
+  harness.advance_cycles(20280);
+  desc->on_vblank(instance, true);
+
+  // Generate samples over 20,280 cycles under PAL
+  harness.toggle_read();
+  harness.think(instance, 20280);
+
+  CHECK(harness.captured_channels() == 1);
+  // PAL frame: 20,280 cycles at 1,015,625 Hz / 44,100 Hz = 880.6 -> exactly 881
+  // samples
+  CHECK(harness.captured_samples().size() == 881);
+
+  harness.clear_captured_samples();
+
+  // Trigger NTSC frame: 17,030 cycles from previous VBL
+  harness.advance_cycles(17030);
+  desc->on_vblank(instance, true);
+
+  // Generate samples over 17,030 cycles under NTSC
+  harness.toggle_read();
+  harness.think(instance, 17030);
+
+  CHECK(harness.captured_channels() == 1);
+  // NTSC frame: 17,030 cycles at 1,020,484 Hz / 44,100 Hz = 735.95 -> exactly
+  // 736 samples
+  CHECK(harness.captured_samples().size() == 736);
 }

@@ -19,10 +19,10 @@ extern auto frame_refresh_status(int) -> void;
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "apple2/Memory.h"
-#include "core/AudioMixer.h"
 #include "core/Peripheral.h"
 #include "core/Peripheral_Types.h"
 #include "core/Util_Path.h"
+#include "frontends/common/AudioMixer.h"
 
 // Definitions
 int g_debug_steps = 0;

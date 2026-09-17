@@ -2,7 +2,6 @@
 
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -90,9 +89,13 @@ constexpr int mb_type_str_max = 16;
 constexpr uint8_t mb_io_addr_hi_mask = 0xFF;
 constexpr uint8_t via_reg_mask = 0x0F;
 
-constexpr uint32_t mockingboard_sample_rate = 44100;
-constexpr double mockingboard_clock_6502 =
+constexpr uint32_t default_mockingboard_sample_rate = 44100;
+constexpr double ntsc_mockingboard_clock =
     ((157500000.0 / 11.0) * 65.0) / 912.0;
+constexpr double pal_mockingboard_clock = 1015625.0;
+constexpr uint64_t ntsc_frame_cycles = 17030;
+constexpr uint64_t pal_frame_cycles = 20280;
+constexpr uint64_t vbl_tolerance = 256;
 
 // The 6522 T1 latch is 16-bit, so the slowest IRQ is CLOCK_6502/65535 ≈ 15.6
 // Hz, bounding one update at ~2832 samples. 4096 leaves headroom without
@@ -123,6 +126,9 @@ struct MockingboardPeripheral_t {
   uint32_t timer1_irq_count = 0;
   SoundCardType_t type = SoundCardType_t::mockingboard;
   bool phasor_native = false;
+  double current_clock_hz = ntsc_mockingboard_clock;
+  uint64_t last_vblank_cycle = 0;
+  bool has_vblank = false;
   HostInterface_t* host = nullptr;
   int slot = 0;
 
@@ -203,8 +209,8 @@ auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
     if (ay_func == ay::func_write) {
       ay8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
                             pmb->sy6522.ORA,
-                            static_cast<int>(mockingboard_clock_6502),
-                            static_cast<int>(mockingboard_sample_rate));
+                            static_cast<int>(mp->current_clock_hz),
+                            static_cast<int>(default_mockingboard_sample_rate));
     } else if (ay_func == ay::func_latch) {
       if (pmb->sy6522.ORA <= ay::reg_mask) {
         pmb->ay_current_register =
@@ -352,18 +358,21 @@ auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     return;
   }
 
+  const uint32_t sample_rate = default_mockingboard_sample_rate;
+  const double clock_hz = mp->current_clock_hz;
+
   double timer_period_val =
       (mp->timer_irq_active || (mp->chips.at(0).sy6522.IFR & ixr_timer1))
           ? static_cast<double>(mp->timer_period_6522)
-          : (mockingboard_clock_6502 / 60.0);
+          : (clock_hz / 60.0);
 
   if (timer_period_val <= 0.0) {
-    timer_period_val = mockingboard_clock_6502 / 60.0;
+    timer_period_val = clock_hz / 60.0;
   }
 
-  double irq_freq = mockingboard_clock_6502 / timer_period_val;
-  int num_samples = static_cast<int>(
-      static_cast<double>(mockingboard_sample_rate) / irq_freq);
+  double irq_freq = clock_hz / timer_period_val;
+  int num_samples =
+      static_cast<int>(static_cast<double>(sample_rate) / irq_freq);
 
   if (num_samples <= 0) {
     return;
@@ -379,42 +388,17 @@ auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
     voices[1] = mp->voice_buffers.at(i * 3 + 1).data();
     voices[2] = mp->voice_buffers.at(i * 3 + 2).data();
     ay8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
-                           static_cast<int>(mockingboard_clock_6502),
-                           static_cast<int>(mockingboard_sample_rate));
+                           static_cast<int>(clock_hz),
+                           static_cast<int>(sample_rate));
   }
 
-  const double attenuation = (mp->type == SoundCardType_t::phasor)
-                                 ? phasor_attenuation
-                                 : default_attenuation;
-
-  for (int i = 0; i < num_samples; i++) {
-    int data_l = 0;
-    int data_r = 0;
-
-    for (int j = 0; j < 3; j++) {
-      data_l += static_cast<int>(
-          static_cast<double>(
-              mp->voice_buffers.at(0 * 3 + j).at(static_cast<size_t>(i))) *
-          attenuation);
-      data_r += static_cast<int>(
-          static_cast<double>(
-              mp->voice_buffers.at(1 * 3 + j).at(static_cast<size_t>(i))) *
-          attenuation);
+  if (mp->host != nullptr && mp->host->AudioPushChannels != nullptr) {
+    const int16_t* channel_ptrs[voices_per_card];
+    for (size_t v = 0; v < voices_per_card; ++v) {
+      channel_ptrs[v] = mp->voice_buffers.at(v).data();
     }
-
-    data_l = std::max(static_cast<int>(audio_clamp_min),
-                      std::min(static_cast<int>(audio_clamp_max), data_l));
-    data_r = std::max(static_cast<int>(audio_clamp_min),
-                      std::min(static_cast<int>(audio_clamp_max), data_r));
-
-    const size_t out_idx = static_cast<size_t>(i * 2);
-    mp->mix_buffer.at(out_idx) = static_cast<int16_t>(data_l);
-    mp->mix_buffer.at(out_idx + 1) = static_cast<int16_t>(data_r);
-  }
-
-  if (mp->host != nullptr && mp->host->AudioPushSamples != nullptr) {
-    mp->host->AudioPushSamples(mp, mp->mix_buffer.data(),
-                               static_cast<size_t>(num_samples * 2));
+    mp->host->AudioPushChannels(mp, channel_ptrs, voices_per_card,
+                                static_cast<size_t>(num_samples));
   }
 }
 
@@ -495,7 +479,7 @@ auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
   }
 
   if (get_cycles(mp->host) - mp->mb_inactive_cycle_count >
-      static_cast<uint64_t>(mockingboard_clock_6502) /
+      static_cast<uint64_t>(mp->current_clock_hz) /
           inactive_threshold_divisor) {
     mp->mb_active = false;
   }
@@ -631,6 +615,9 @@ auto mb_abi_reset(void* instance) -> void {
   mp->mb_inactive_cycle_count = 0;
   mp->last_60hz = get_cycles(mp->host);
   mp->phasor_native = false;
+  mp->current_clock_hz = ntsc_mockingboard_clock;
+  mp->last_vblank_cycle = 0;
+  mp->has_vblank = false;
 
   for (auto& chip : mp->chips) {
     std::memset(&chip.sy6522, 0, sizeof(Sy6522_t));
@@ -665,7 +652,7 @@ auto mb_abi_think(void* instance, uint32_t cycles) -> void {
   const uint64_t cycles_since_last_update =
       get_cycles(mp->host) - mp->last_60hz;
   const uint64_t cycles_per_frame =
-      static_cast<uint64_t>(mockingboard_clock_6502) / hz_60_divisor;
+      static_cast<uint64_t>(mp->current_clock_hz) / hz_60_divisor;
 
   if (cycles_since_last_update > cycles_per_frame) {
     mp->last_60hz = get_cycles(mp->host);
@@ -872,7 +859,7 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
 
-  switch (static_cast<MockingboardQuery_t>(cmd_id)) {
+  switch (cmd_id) {
     case mockingboard_query_status: {
       const size_t required = sizeof(MockingboardStatus_t);
       if (out == nullptr) {
@@ -894,9 +881,61 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
       *out_size = required;
       return peripheral_ok;
     }
+    case PERIPHERAL_QUERY_AUDIO_INFO: {
+      const size_t required = sizeof(PeripheralAudioInfo_t);
+      if (out == nullptr) {
+        *out_size = required;
+        return peripheral_ok;
+      }
+      if (*out_size < required) {
+        *out_size = required;
+        return peripheral_error;
+      }
+      auto* info = static_cast<PeripheralAudioInfo_t*>(out);
+      info->num_channels = voices_per_card;
+      const char* names[6] = {"AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
+                              "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
+      for (size_t i = 0; i < voices_per_card; ++i) {
+        std::strncpy(info->channels[i].name, names[i],
+                     sizeof(info->channels[i].name) - 1);
+        info->channels[i].name[sizeof(info->channels[i].name) - 1] = '\0';
+        if (i < 3) {
+          info->channels[i].default_pan_left = 1.0f;
+          info->channels[i].default_pan_right = 0.0f;
+        } else {
+          info->channels[i].default_pan_left = 0.0f;
+          info->channels[i].default_pan_right = 1.0f;
+        }
+      }
+      *out_size = required;
+      return peripheral_ok;
+    }
     default:
       return peripheral_incompatible;
   }
+}
+
+static auto mockingboard_abi_on_vblank(void* instance, bool vblank) -> void {
+  if (instance == nullptr || !vblank) {
+    return;
+  }
+  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  uint64_t current_cycle = 0;
+  if (mp->host != nullptr && mp->host->GetCycles != nullptr) {
+    current_cycle = mp->host->GetCycles();
+  }
+  if (mp->has_vblank && current_cycle > mp->last_vblank_cycle) {
+    const uint64_t delta = current_cycle - mp->last_vblank_cycle;
+    if (delta >= (pal_frame_cycles - vbl_tolerance) &&
+        delta <= (pal_frame_cycles + vbl_tolerance)) {
+      mp->current_clock_hz = pal_mockingboard_clock;
+    } else if (delta >= (ntsc_frame_cycles - vbl_tolerance) &&
+               delta <= (ntsc_frame_cycles + vbl_tolerance)) {
+      mp->current_clock_hz = ntsc_mockingboard_clock;
+    }
+  }
+  mp->last_vblank_cycle = current_cycle;
+  mp->has_vblank = true;
 }
 
 static Peripheral_t g_mockingboard_peripheral = {
@@ -912,7 +951,7 @@ static Peripheral_t g_mockingboard_peripheral = {
     .reset = mb_abi_reset,
     .shutdown = mb_abi_shutdown,
     .think = mb_abi_think,
-    .on_vblank = nullptr,
+    .on_vblank = mockingboard_abi_on_vblank,
     .save_state = mb_abi_save_state,
     .load_state = mb_abi_load_state,
     .command = mb_abi_command,
