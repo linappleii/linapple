@@ -11,6 +11,7 @@
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "frontends/common/AudioMixer.h"
 #include "test_fixtures_core.h"
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
@@ -485,3 +486,101 @@ TEST_CASE(
 // The push-time gate at the seam is all there is, and it has no observable
 // effect on the speaker beyond the silence short-circuit already covered in
 // test_speaker.cpp.
+
+// =============================================================================
+// Frontend init order: the callback arrives after the peripherals do
+// =============================================================================
+
+namespace {
+
+constexpr uint32_t DEVICE_RATE_HZ = 48000;
+constexpr size_t DRAINED_FRAMES = 800;
+
+auto install_mixer_callbacks() -> void {
+  linapple_set_audio_source_register_callback(
+      [](int slot, const char* peripheral_id,
+         const PeripheralAudioInfo_t* info) -> void {
+        audio_mixer_register_source(slot, peripheral_id, info);
+      });
+  linapple_set_audio_channel_callback(
+      [](const char* peripheral_id, int slot, const float* const* channels,
+         size_t num_channels, size_t num_samples) -> void {
+        audio_mixer_upload_channels(peripheral_id, slot, channels, num_channels,
+                                    static_cast<uint32_t>(num_samples));
+      });
+}
+
+// One frame of tone through the real mixer, wired as sdl2/Main.cpp wires it,
+// with the callbacks installed either side of the speaker's registration.
+auto tone_through_mixer(bool subscribe_before_register)
+    -> std::vector<int16_t> {
+  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  ScopedCore_t core(config);
+  audio_mixer_initialize(DEVICE_RATE_HZ);
+
+  if (subscribe_before_register) {
+    install_mixer_callbacks();
+  }
+  peripheral_register(speaker_get_descriptor(), 0);
+  if (!subscribe_before_register) {
+    install_mixer_callbacks();
+  }
+
+  io_map_dispatch(0, ADDR_SPEAKER, 0, 0, 0);
+  cpu_calc_cycles(NTSC_FRAME_CYCLES);
+  peripheral_manager_think(NTSC_FRAME_CYCLES);
+
+  std::vector<int16_t> out(DRAINED_FRAMES * 2, 0);
+  audio_mixer_get_samples(out.data(), out.size());
+  audio_mixer_destroy();
+  return out;
+}
+
+auto non_zero_frames(const std::vector<int16_t>& stereo) -> size_t {
+  size_t count = 0;
+  for (size_t i = 0; i < stereo.size(); i += 2) {
+    count += static_cast<size_t>(stereo[i] != 0);
+  }
+  return count;
+}
+
+}  // namespace
+
+TEST_CASE("Speaker Core Seam: A Late Subscriber Learns What Is Already There") {
+  // Every frontend installs the mixer callbacks after
+  // app_controller_initialize has already registered the internal
+  // peripherals: sdl/MainSession.cpp:58 then ds_init() at :70, tui/Main.cpp
+  // the same way. A callback that only hears about future registrations
+  // hears nothing at all, and the machine is silent.
+  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  ScopedCore_t core(config);
+  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
+
+  // The recorder subscribes late, exactly as ds_init() does.
+  ScopedAnnounceRecorder_t recorder;
+
+  REQUIRE(recorder.count() == 1);
+  CHECK(recorder.at(0).slot == 0);
+  CHECK(recorder.at(0).id == "linapple.speaker");
+  CHECK(recorder.at(0).info.time_base == peripheral_audio_cpu_clocked);
+  CHECK(recorder.at(0).info.cycle_divisor == 1);
+  CHECK(recorder.at(0).info.num_channels == 1);
+  CHECK(recorder.at(0).info.peak_magnitude == doctest::Approx(2.0f));
+}
+
+TEST_CASE("Speaker Core Seam: Subscribing Late Sounds The Same As Early") {
+  // The whole chain, in both orders. One emulated frame yields 801.03 output
+  // frames at 48000 and the cone is still well above an LSB 800 frames
+  // later, so every drained frame carries audio -- in the frontends' order
+  // as much as in the convenient one.
+  const std::vector<int16_t> early = tone_through_mixer(true);
+  const std::vector<int16_t> late = tone_through_mixer(false);
+
+  CHECK(non_zero_frames(early) == DRAINED_FRAMES);
+  CHECK(non_zero_frames(late) == DRAINED_FRAMES);
+
+  REQUIRE(early.size() == late.size());
+  for (size_t i = 0; i < early.size(); ++i) {
+    CHECK(late[i] == early[i]);
+  }
+}

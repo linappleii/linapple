@@ -122,6 +122,14 @@ auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
 auto linapple_set_audio_source_register_callback(
     FrontendAudioSourceRegisterCallback_t cb) -> void {
   g_frontend_audio_register_cb = cb;
+  // A late subscriber is the normal case, not the exception: every frontend
+  // installs this callback from its audio init, which runs after
+  // app_controller_initialize has already registered the internal speaker
+  // and whatever is in the slots. Replaying the current state is what makes
+  // the init order stop mattering.
+  if (cb != nullptr) {
+    peripheral_announce_audio_sources();
+  }
 }
 
 auto linapple_set_audio_source_unregister_callback(
