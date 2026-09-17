@@ -37,11 +37,22 @@ auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
 
 }  // namespace
 
-HeadlessHarness_t::HeadlessHarness_t() {
+namespace TestFixtures {
+
+auto load_configuration_file(const std::string& path) -> bool {
+  return Configuration_t::instance().load(path);
+}
+
+}  // namespace TestFixtures
+
+HeadlessHarness_t::HeadlessHarness_t(
+    const TestFixtures::ScopedTestConfig_t& test_config) {
   s_active_harness = this;
 
   AppConfig_t config = {};
   app_config_default(&config);
+  util_safe_strcpy(config.config_path.data(), test_config.c_str(),
+                   path_max_len);
   app_env_resolve_paths(&config);
 
   app_controller_initialize(&config);

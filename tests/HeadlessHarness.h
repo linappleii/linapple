@@ -18,7 +18,9 @@ struct HeadlessHarness_t {
   size_t total_audio_samples = 0;
   bool is_initialized = false;
 
-  HeadlessHarness_t();
+  // There is no ambient configuration path: every harness is built from a
+  // config the test declared.
+  explicit HeadlessHarness_t(const TestFixtures::ScopedTestConfig_t& config);
   ~HeadlessHarness_t();
 
   // Non-copyable, non-movable (stack-scoped test fixture)

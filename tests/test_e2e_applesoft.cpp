@@ -4,8 +4,25 @@
 #include "doctest.h"
 #include "test_fixtures.h"
 
+namespace {
+
+// An Enhanced //e with a Disk II in slot 6 and nothing else. Disk speed is
+// stated rather than inherited from whatever config happens to be on the
+// machine running the suite.
+auto disk_ii_only_config() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.machine_type =
+      TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced;
+  description.slots[5] = "Disk II";
+  description.extras.push_back({"Slots", "Enhance Disk Speed", "1"});
+  return description;
+}
+
+}  // namespace
+
 TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
-  HeadlessHarness_t harness;
+  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  HeadlessHarness_t harness(config);
 
   SUBCASE("Cold boot, monitor prompt, and Applesoft entry") {
     auto disk = TestFixtures::create_ephemeral("minimal.dsk");

@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -14,6 +15,16 @@
 #include <vector>
 
 namespace TestFixtures {
+
+/**
+ * @brief Loads a configuration file into the Configuration_t singleton.
+ *
+ * Declared rather than defined because this header is also included by test
+ * targets that deliberately do not link the core (test-fixtures,
+ * test-audio-dumper). A fixture that never calls ScopedTestConfig_t::load()
+ * never references this symbol.
+ */
+auto load_configuration_file(const std::string& path) -> bool;
 
 inline auto get_fixture_path(const std::string& filename) -> std::string {
 #ifdef TEST_FIXTURES_DIR
@@ -334,6 +345,135 @@ class ScopedTempDir_t {
       path_.clear();
     }
   }
+};
+
+/**
+ * @brief RAII override of one environment variable.
+ *
+ * Restores the previous value, or unsets the variable if it had none, on
+ * destruction.
+ */
+class ScopedEnvVar_t {
+ private:
+  std::string name_;
+  std::string previous_;
+  bool had_previous_ = false;
+
+ public:
+  ScopedEnvVar_t(const char* name, const std::string& value) : name_(name) {
+    const char* prev = std::getenv(name);
+    had_previous_ = (prev != nullptr);
+    if (had_previous_) {
+      previous_ = prev;
+    }
+    ::setenv(name, value.c_str(), 1);
+  }
+
+  ~ScopedEnvVar_t() {
+    if (had_previous_) {
+      ::setenv(name_.c_str(), previous_.c_str(), 1);
+    } else {
+      ::unsetenv(name_.c_str());
+    }
+  }
+
+  ScopedEnvVar_t(const ScopedEnvVar_t&) = delete;
+  auto operator=(const ScopedEnvVar_t&) -> ScopedEnvVar_t& = delete;
+  ScopedEnvVar_t(ScopedEnvVar_t&&) = delete;
+  auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
+};
+
+/**
+ * @brief RAII hermetic emulator configuration for a single test.
+ *
+ * Each test declares the machine it needs and nothing more. Without this, the
+ * developer's own ~/.config/linapple/linapple.conf becomes the machine under
+ * test, while CI — having none — gets the Registry defaults instead, which
+ * put Mockingboards in slots 4 and 5, a Disk II in 6 and a Harddisk in 7.
+ * The ambient file also decides the machine type, auto-mounts image paths
+ * from the developer's filesystem, and sets Enhance Disk Speed.
+ *
+ * The config is written into a temporary directory and the XDG variables are
+ * pointed at it, so nothing under $HOME is read or created. Any slot the
+ * description leaves blank is written as None.
+ */
+class ScopedTestConfig_t {
+ public:
+  // Not the A2TYPE_* enum; these are the config file's own integers.
+  enum MachineType_t {
+    machine_apple2 = 0,
+    machine_apple2_plus = 1,
+    machine_apple2e = 2,
+    machine_apple2e_enhanced = 3
+  };
+
+  enum { slot_count = 7 };
+
+  struct Entry_t {
+    std::string section;
+    std::string key;
+    std::string value;
+  };
+
+  struct Description_t {
+    int machine_type = machine_apple2e_enhanced;
+    // Index 0 is Slot 1. An empty entry means None.
+    std::array<std::string, slot_count> slots;
+    std::vector<Entry_t> extras;
+  };
+
+  explicit ScopedTestConfig_t(const Description_t& description)
+      : dir_("linapple_test_config_"),
+        path_(dir_.path() + "/linapple.conf"),
+        config_home_("XDG_CONFIG_HOME", dir_.path()),
+        data_home_("XDG_DATA_HOME", dir_.path()),
+        config_dirs_("XDG_CONFIG_DIRS", dir_.path()) {
+    std::ofstream out(path_, std::ios::trunc);
+    if (!out.is_open()) {
+      throw std::runtime_error("Failed to write test configuration: " + path_);
+    }
+
+    out << "[Configuration]\n";
+    out << "Computer Emulation = " << description.machine_type << "\n";
+
+    out << "\n[Slots]\n";
+    for (size_t i = 0; i < description.slots.size(); ++i) {
+      const std::string& name = description.slots[i];
+      out << "Slot " << (i + 1) << " = " << (name.empty() ? "None" : name)
+          << "\n";
+    }
+
+    // Each extra repeats its own section header. The INI parser simply
+    // switches the current section, so grouping is unnecessary.
+    for (const Entry_t& entry : description.extras) {
+      out << "\n[" << entry.section << "]\n"
+          << entry.key << " = " << entry.value << "\n";
+    }
+
+    out.flush();
+    if (!out.good()) {
+      throw std::runtime_error("Failed to write test configuration: " + path_);
+    }
+  }
+
+  ScopedTestConfig_t(const ScopedTestConfig_t&) = delete;
+  auto operator=(const ScopedTestConfig_t&) -> ScopedTestConfig_t& = delete;
+  ScopedTestConfig_t(ScopedTestConfig_t&&) = delete;
+  auto operator=(ScopedTestConfig_t&&) -> ScopedTestConfig_t& = delete;
+
+  auto path() const -> const std::string& { return path_; }
+  auto c_str() const -> const char* { return path_.c_str(); }
+
+  // For fixtures that populate the Configuration_t singleton themselves
+  // rather than going through AppController.
+  auto load() const -> bool { return load_configuration_file(path_); }
+
+ private:
+  ScopedTempDir_t dir_;
+  std::string path_;
+  ScopedEnvVar_t config_home_;
+  ScopedEnvVar_t data_home_;
+  ScopedEnvVar_t config_dirs_;
 };
 
 }  // namespace TestFixtures
