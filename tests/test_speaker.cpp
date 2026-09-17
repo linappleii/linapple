@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -27,9 +28,10 @@ constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr double EDGE = 2.0;
 constexpr double TAU_CYCLES = 23000.0;
 constexpr double FILTER_A = 1.0 - (1.0 / TAU_CYCLES);
+constexpr float SILENCE_EPSILON = 0.001f;
 
-// tau * ln(EDGE / epsilon) is 174,821 cycles from an edge down to the silence
-// epsilon: eleven NTSC frames and part of a twelfth.
+// ln(EDGE / epsilon) / -ln(a) is 174,817 cycles from an edge down to the
+// silence epsilon: eleven NTSC frames and part of a twelfth.
 constexpr int FRAMES_TO_SILENCE = 11;
 
 // Every edge is a step of exactly 2.0 through the DC blocker, emitted as
@@ -147,6 +149,8 @@ struct SpeakerHarness_t {
   auto strobe_registered(uint16_t addr) const -> bool {
     return strobes_.find(addr) != strobes_.end();
   }
+
+  auto strobe_registration_count() const -> size_t { return strobes_.size(); }
 
   auto strobe(void* inst = nullptr) -> void {
     auto it = strobes_.find(ADDR_SPEAKER);
@@ -267,6 +271,9 @@ TEST_CASE("Speaker Peripheral: Identity Descriptor Validation") {
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(descriptor->id) == "linapple.speaker");
   CHECK(std::string(descriptor->name) == "Speaker");
+  // Nothing else in the tree asserts the description, and $C020 cassette
+  // output is a separate flip-flop that this peripheral does not model.
+  CHECK(std::string(descriptor->description) == "Built-in Apple II speaker");
   CHECK(descriptor->compatible_slots == PERIPHERAL_MASK_INTERNAL);
   CHECK(descriptor->default_slot == 0);
   CHECK(descriptor->init != nullptr);
@@ -320,6 +327,38 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
   harness.shutdown_instance(instance2);
 }
 
+TEST_CASE("Speaker Peripheral: Re-Init After Shutdown Starts From Rest") {
+  // A shut-down instance leaves nothing behind: the replacement's first
+  // strobe is a full edge from silence, not a continuation of the old cone.
+  SpeakerHarness_t harness;
+  void* first = harness.create_speaker(TEST_SLOT);
+  REQUIRE(first != nullptr);
+
+  harness.set_cycles(1000);
+  harness.strobe(first);
+  harness.advance_cycles(100);
+  harness.think(first, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  const std::vector<float> from_first = harness.captured_samples();
+
+  harness.shutdown_instance(first);
+  harness.clear_captured_samples();
+
+  void* second = harness.create_speaker(TEST_SLOT);
+  REQUIRE(second != nullptr);
+  harness.think(second, 100);
+  CHECK(harness.audio_push_count() == 0);
+
+  harness.strobe(second);
+  harness.advance_cycles(100);
+  harness.think(second, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  REQUIRE(harness.captured_samples().size() == from_first.size());
+  for (size_t i = 0; i < from_first.size(); ++i) {
+    CHECK(harness.captured_samples()[i] == from_first[i]);
+  }
+}
+
 // =============================================================================
 // Domain 2: Motherboard Direct I/O & Physical Strobe Mechanics
 // =============================================================================
@@ -339,11 +378,28 @@ TEST_CASE("Speaker Peripheral: Strobe Registration At The Soft Switch") {
   harness.think(instance, 100);
   CHECK(harness.audio_push_count() == 0);
 
+  // A strobe at cycle c starts the slice at c: the hundred cycles that
+  // followed it are a hundred samples, and the first of them is the edge.
   harness.strobe();
   harness.advance_cycles(100);
   harness.think(instance, 100);
   REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples().size() == 100);
   CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+}
+
+TEST_CASE("Speaker Peripheral: One Strobe Registration Serves Read And Write") {
+  // Any access to $C030 toggles the flip-flop, so the speaker asks for a
+  // single strobe entry rather than one per direction. That a read and a
+  // write through the real bridge reach the same handler is asserted in
+  // test_speaker_core.cpp, which is the only place the bridge is observable.
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  CHECK(harness.strobe_registration_count() == 1);
+  CHECK(harness.strobe_registered(ADDR_SPEAKER));
+  CHECK(harness.legacy_handlers_empty());
 }
 
 TEST_CASE("Speaker Peripheral: Repeated Strobes Keep The Cone Driven") {
@@ -411,6 +467,35 @@ TEST_CASE("Speaker Peripheral: A Cone At Rest Pushes Nothing") {
 
   CHECK(harness.audio_push_count() == 0);
   CHECK(harness.captured_samples().empty());
+
+  // Ten whole frames of nothing stay nothing: silence is a property of the
+  // cone's state, so it does not decay into a stream of zeros over time.
+  for (int frame = 0; frame < 10; ++frame) {
+    harness.advance_cycles(NTSC_FRAME_CYCLES);
+    harness.think(instance, NTSC_FRAME_CYCLES);
+  }
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
+}
+
+TEST_CASE("Speaker Peripheral: A Zero-Cycle Think Pushes Nothing") {
+  // A slice of no cycles is no samples even with the cone in full swing.
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  harness.set_cycles(1000);
+  harness.strobe();
+  harness.think(instance, 0);
+
+  CHECK(harness.audio_push_count() == 0);
+  CHECK(harness.captured_samples().empty());
+
+  // The strobe was not lost: it lands on the next slice that has cycles.
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
 }
 
 TEST_CASE(
@@ -438,6 +523,7 @@ TEST_CASE(
 
   // The onset is a step of exactly 2.0, unclipped and above full scale
   CHECK(samples[0] == EDGE_POSITIVE);
+  CHECK(samples[0] > 1.0f);
 
   // and the blocker decays it by a per sample from there
   CHECK(samples[500] ==
@@ -481,6 +567,7 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   // peak is within a millionth of the plateau after about 155 periods -- not
   // after ten, as the plan's table claims.
   const double plateau = EDGE / (1.0 + std::pow(FILTER_A, half_period));
+  CHECK(plateau == doctest::Approx(1.01109).epsilon(1e-5));
   for (int i = 350; i < half_periods; ++i) {
     const double sign = 1.0 - (2.0 * (i % 2));
     CHECK(samples[static_cast<size_t>(i) * half_period] ==
@@ -492,10 +579,12 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
   // TC-12: the DC blocker is the only decay there is. A single edge decays to
   // the silence epsilon and the speaker then pushes nothing at all.
   SpeakerHarness_t harness;
+  // The clock is set before init so that the reset phase lands on the strobe
+  // and the very first captured sample is the edge, with no leading silence.
+  harness.set_cycles(1000);
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  harness.set_cycles(1000);
   harness.strobe();
 
   // Eleven frames of thinking carry audio and the twelfth has nothing left to
@@ -506,9 +595,42 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
   }
   CHECK(harness.audio_push_count() == FRAMES_TO_SILENCE);
 
-  // The tail is snapped to true zero, and nothing follows it.
-  REQUIRE_FALSE(harness.captured_samples().empty());
-  CHECK(harness.captured_samples().back() == 0.0f);
+  const auto& tail = harness.captured_samples();
+  REQUIRE(tail.size() ==
+          static_cast<size_t>(FRAMES_TO_SILENCE) * NTSC_FRAME_CYCLES);
+  CHECK(tail[0] == EDGE_POSITIVE);
+
+  const size_t first_silent = static_cast<size_t>(
+      std::find(tail.begin(), tail.end(), 0.0f) - tail.begin());
+  REQUIRE(first_silent < tail.size());
+
+  // The DC blocker is the whole decay: with nothing driving the cone the
+  // recurrence collapses to filter_state *= a, sample after sample, with no
+  // threshold and no second model anywhere.
+  for (size_t k = 0; k + 1 < first_silent; ++k) {
+    CHECK(tail[k + 1] == doctest::Approx(FILTER_A * tail[k]).epsilon(1e-6));
+  }
+
+  // The snap fires on the first sample below the epsilon, so the last audible
+  // one sits above it and one more step would have fallen through.
+  const float last_audible = tail[first_silent - 1];
+  CHECK(last_audible >= SILENCE_EPSILON);
+  CHECK(last_audible * static_cast<float>(FILTER_A) < SILENCE_EPSILON);
+
+  // Cycles from the edge to the cutoff: the first k with EDGE * a^k below the
+  // epsilon. The plan's table gives tau * ln(EDGE / epsilon) = 174821, which
+  // is the time-constant approximation of this; dividing by -ln(a) instead of
+  // by 1/tau is four samples shorter, and the exact count is what the
+  // recurrence actually produces.
+  const size_t predicted_silent = static_cast<size_t>(
+      std::ceil(std::log(EDGE / SILENCE_EPSILON) / -std::log(FILTER_A)));
+  CHECK(predicted_silent == 174817);
+  CHECK(first_silent == predicted_silent);
+
+  // Everything after the snap is true zero, and nothing follows the push.
+  for (size_t k = first_silent; k < tail.size(); ++k) {
+    CHECK(tail[k] == 0.0f);
+  }
 
   harness.advance_cycles(NTSC_FRAME_CYCLES);
   harness.think(instance, NTSC_FRAME_CYCLES);
@@ -525,13 +647,24 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. AudioPushChannels == nullptr must safely drop without crashing
+  // 1. AudioPushChannels == nullptr drops the push and changes nothing else:
+  // the cone keeps decaying underneath, so restoring the callback resumes the
+  // same tail rather than a fresh edge.
   harness.set_drop_audio(true);
+  harness.set_cycles(1000);
   harness.strobe();
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
+  CHECK(harness.audio_push_count() == 0);
   CHECK(harness.captured_samples().empty());
   harness.set_drop_audio(false);
+
+  harness.advance_cycles(100);
+  harness.think(instance, 100);
+  REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples()[0] ==
+        doctest::Approx(EDGE * std::pow(FILTER_A, 1000)).epsilon(1e-4));
+  harness.clear_captured_samples();
 
   // 2. GetCycles == nullptr must fall back to 0 without crashing
   harness.set_null_cycles(true);
@@ -570,6 +703,7 @@ TEST_CASE(
 
   CHECK(harness.captured_samples().size() == NTSC_FRAME_CYCLES);
   CHECK(harness.audio_push_count() == 1);
+  CHECK(harness.captured_channels() == 1);
 
   // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
   // clamps to speaker_max_samples_per_update
@@ -732,9 +866,33 @@ TEST_CASE("Speaker Peripheral: Queue Overflow Keeps The Final Polarity") {
   harness.think(instance, 1000);
 
   REQUIRE(harness.audio_push_count() == 1);
-  REQUIRE_FALSE(harness.captured_samples().empty());
+  CHECK(harness.captured_samples().size() == 1000);
   for (float s : harness.captured_samples()) {
     CHECK(s == 0.0f);
+  }
+}
+
+TEST_CASE("Speaker Peripheral: Queue Overflow Keeps An Odd Parity Too") {
+  // The companion to the even case: capacity plus one strobe is an odd
+  // count, so the latch ends high and the cone takes a full edge. Recording
+  // exactly capacity and dropping the rest would leave it low and silent.
+  SpeakerHarness_t harness;
+  harness.set_cycles(1000);
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  constexpr size_t overflowing_strobes = 8193;
+  for (size_t i = 0; i < overflowing_strobes; ++i) {
+    harness.strobe(instance);
+  }
+  harness.advance_cycles(1000);
+  harness.think(instance, 1000);
+
+  REQUIRE(harness.audio_push_count() == 1);
+  REQUIRE(harness.captured_samples().size() == 1000);
+  CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+  for (float s : harness.captured_samples()) {
+    CHECK(std::isfinite(s));
   }
 }
 
@@ -755,19 +913,126 @@ TEST_CASE("Speaker Peripheral: Poisoned Save-State Recovery") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  SsIoSpeaker_t corrupted_state{};
-  corrupted_state.filter_state = NAN;
-  corrupted_state.next_sample_cycle = -100.0;
-  CHECK(descriptor->load_state(instance, &corrupted_state,
-                               sizeof(SsIoSpeaker_t)) == peripheral_ok);
+  // Every poisoned field the .aws format can carry, one at a time. After each
+  // one the scrubbed instance must behave like a cone at rest: silent until
+  // strobed, then a full edge with nothing but finite values behind it.
+  const std::vector<SsIoSpeaker_t> poisoned = [] {
+    std::vector<SsIoSpeaker_t> states(6);
+    states[0].filter_state = NAN;
+    states[1].filter_state = INFINITY;
+    states[2].filter_state = -INFINITY;
+    states[3].next_sample_cycle = NAN;
+    states[4].next_sample_cycle = -100.0;
+    states[5].next_sample_cycle = 1e300;
+    return states;
+  }();
 
-  corrupted_state.filter_state = INFINITY;
-  CHECK(descriptor->load_state(instance, &corrupted_state,
-                               sizeof(SsIoSpeaker_t)) == peripheral_ok);
+  for (const SsIoSpeaker_t& state : poisoned) {
+    CHECK(descriptor->load_state(instance, &state, sizeof(SsIoSpeaker_t)) ==
+          peripheral_ok);
 
-  // Subsequent synthesis must not crash or propagate NaN
-  harness.advance_cycles(1000);
-  harness.think(instance, 1000);
+    harness.clear_captured_samples();
+    harness.strobe();
+    harness.advance_cycles(100);
+    harness.think(instance, 100);
+
+    REQUIRE(harness.audio_push_count() == 1);
+    REQUIRE(harness.captured_samples().size() == 100);
+    CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
+    for (float s : harness.captured_samples()) {
+      CHECK(std::isfinite(s));
+    }
+  }
+}
+
+TEST_CASE("Speaker Peripheral: A Refused Load Leaves The Instance Untouched") {
+  // load_state is all-or-nothing: a wrong size is rejected before any field
+  // is written, so the refused instance stays bit-identical in behavior to
+  // one that never saw the call.
+  auto* descriptor = speaker_get_descriptor();
+  SpeakerHarness_t harness;
+  harness.set_cycles(1000);
+  void* refused = harness.create_speaker(TEST_SLOT);
+  void* untouched = harness.create_speaker(TEST_SLOT + 1);
+  REQUIRE(refused != nullptr);
+  REQUIRE(untouched != nullptr);
+
+  SsIoSpeaker_t driven{};
+  driven.state = 1;
+  driven.last_sample_state = 1;
+  driven.filter_state = 1.5f;
+  driven.next_sample_cycle = 1000.0;
+
+  CHECK(descriptor->load_state(refused, &driven, sizeof(SsIoSpeaker_t) - 1) ==
+        peripheral_error);
+  CHECK(descriptor->load_state(refused, &driven, sizeof(SsIoSpeaker_t) + 1) ==
+        peripheral_error);
+  CHECK(descriptor->load_state(refused, &driven, 0) == peripheral_error);
+
+  harness.strobe(refused);
+  harness.strobe(untouched);
+  harness.advance_cycles(500);
+
+  harness.clear_captured_samples();
+  harness.think(refused, 500);
+  const std::vector<float> from_refused = harness.captured_samples();
+
+  harness.clear_captured_samples();
+  harness.think(untouched, 500);
+  const std::vector<float>& from_untouched = harness.captured_samples();
+
+  REQUIRE(from_refused.size() == from_untouched.size());
+  REQUIRE_FALSE(from_refused.empty());
+  for (size_t i = 0; i < from_refused.size(); ++i) {
+    CHECK(from_refused[i] == from_untouched[i]);
+  }
+}
+
+TEST_CASE("Speaker Peripheral: Save-State Byte Format Pin") {
+  // The .aws format is a raw struct dump, so its byte layout is the promise.
+  // The two fields the inactivity watchdog used to back are written as
+  // constants and ignored on load; this fixture pins both the constants and
+  // the offsets. Little-endian, as every platform this project builds on is.
+  auto* descriptor = speaker_get_descriptor();
+  SpeakerHarness_t harness;
+  void* instance = harness.create_speaker(TEST_SLOT);
+  REQUIRE(instance != nullptr);
+
+  REQUIRE(sizeof(SsIoSpeaker_t) == 40);
+
+  SsIoSpeaker_t restored{};
+  restored.g_spkr_last_cycle = 0x1234;
+  restored.quiet_cycle_count = 0xDEAD;
+  restored.recently_active = 7;
+  restored.state = 1;
+  restored.next_sample_cycle = 4660.0;
+  restored.last_sample_state = 1;
+  restored.filter_state = 0.5f;
+  REQUIRE(descriptor->load_state(instance, &restored, sizeof(restored)) ==
+          peripheral_ok);
+
+  std::array<uint8_t, 40> written{};
+  size_t written_size = written.size();
+  REQUIRE(descriptor->save_state(instance, written.data(), &written_size) ==
+          peripheral_ok);
+  CHECK(written_size == sizeof(SsIoSpeaker_t));
+
+  const std::array<uint8_t, 40> golden = {
+      // g_spkr_last_cycle = 0x1234
+      0x34, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      // quiet_cycle_count, a dead field written as zero
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      // recently_active, a dead field written as zero
+      0x00, 0x00, 0x00, 0x00,
+      // state = 1
+      0x01, 0x00, 0x00, 0x00,
+      // next_sample_cycle = 4660.0
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0xB2, 0x40,
+      // last_sample_state = 1
+      0x01, 0x00, 0x00, 0x00,
+      // filter_state = 0.5f
+      0x00, 0x00, 0x00, 0x3F};
+  CHECK(std::memcmp(written.data(), golden.data(), golden.size()) == 0);
 }
 
 TEST_CASE(
@@ -843,6 +1108,7 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
   // Two strobes in one instant are no net edge, so the blocker sees no step.
   // Output still flows: the slice carried events.
   REQUIRE(harness.audio_push_count() == 1);
+  CHECK(harness.captured_samples().size() == 50);
   CHECK(harness.captured_samples()[0] == 0.0f);
 }
 
@@ -881,12 +1147,19 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   CHECK(status == peripheral_ok);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
-  // 2. Query with undersized buffer returns error
+  // 2. An undersized buffer is refused and told how much it needs
   PeripheralAudioInfo_t info{};
+  size = 1;
+  status = speaker_get_descriptor()->query(
+      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  CHECK(status == peripheral_error);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
+
   size = sizeof(PeripheralAudioInfo_t) - 1;
   status = speaker_get_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
   CHECK(status == peripheral_error);
+  CHECK(size == sizeof(PeripheralAudioInfo_t));
 
   // 3. Query with valid buffer populates self-describing mono speaker info
   size = sizeof(PeripheralAudioInfo_t);
