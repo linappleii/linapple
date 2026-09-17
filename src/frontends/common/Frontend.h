@@ -5,7 +5,6 @@
 
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "frontends/common/AppConfig.h"
 
 // Lifecycle

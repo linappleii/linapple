@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 
 // Dynamic peripheral plugin loading and internal registry inspection
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)

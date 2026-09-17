@@ -11,8 +11,8 @@
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 

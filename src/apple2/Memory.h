@@ -2,12 +2,11 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 #include "apple2/Apple2Types.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 struct SsBaseMemory_t;
 using SS_BaseMemory = SsBaseMemory_t;

@@ -16,9 +16,9 @@
 #include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Audio.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 #ifndef VERSIONSTRING
 #define VERSIONSTRING "2.0.0"

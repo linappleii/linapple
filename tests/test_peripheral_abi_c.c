@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <stdint.h>
 
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 
 typedef struct {
   int slot;

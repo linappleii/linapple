@@ -31,8 +31,8 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/Log.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Text.h"
 
 #ifndef VERSIONSTRING

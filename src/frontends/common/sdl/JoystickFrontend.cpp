@@ -8,7 +8,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "frontends/common/sdl/SdlCompat.h"
 

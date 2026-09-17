@@ -13,7 +13,7 @@
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"

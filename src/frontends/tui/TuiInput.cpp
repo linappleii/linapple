@@ -23,7 +23,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"

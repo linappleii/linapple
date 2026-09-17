@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 #include "apple2/peripherals/disk/DiskError.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 #ifdef __cplusplus
 extern "C" {

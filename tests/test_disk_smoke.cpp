@@ -18,7 +18,7 @@
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "doctest.h"
 #include "test_fixtures.h"

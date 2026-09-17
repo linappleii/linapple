@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+
+#include "apple2/peripherals/Peripheral_Types.h"
+
+struct PeripheralAudioInfo_t;
 
 enum LinAppleKey_t {
   linapple_key_unknown = 0,
@@ -129,9 +132,6 @@ constexpr LinAppleKey_t LINAPPLE_KEY_RALT = linapple_key_ralt;
 constexpr LinAppleKey_t LINAPPLE_KEY_LGUI = linapple_key_lgui;
 constexpr LinAppleKey_t LINAPPLE_KEY_RGUI = linapple_key_rgui;
 constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
-
-#include "apple2/Apple2Types.h"
-#include "core/Peripheral.h"
 
 enum AppMode_t {
   MODE_LOGO = 0,

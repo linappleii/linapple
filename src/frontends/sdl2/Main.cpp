@@ -15,7 +15,7 @@
 #include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"

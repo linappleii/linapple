@@ -17,7 +17,7 @@
 
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 
 namespace {
 

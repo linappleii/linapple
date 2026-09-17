@@ -8,7 +8,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "doctest.h"
 
@@ -248,7 +248,7 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 #include <dlfcn.h>
 
 #ifdef BUILD_SHARED_PERIPHERALS
-#include "core/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 
 TEST_CASE(
     "Peripheral Manager: Dynamic plugin loader success path and lifecycle") {

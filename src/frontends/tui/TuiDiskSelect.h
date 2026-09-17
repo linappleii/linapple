@@ -2,7 +2,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 
 #include "frontends/common/FileBrowser.h"
 

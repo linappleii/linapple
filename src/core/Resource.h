@@ -4,8 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "EmbeddedRoms.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

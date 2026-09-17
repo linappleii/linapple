@@ -12,9 +12,9 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/speaker/SpeakerCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Audio.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 
 extern "C" auto video_get_scanner_address(uint32_t*, uint32_t) -> uint16_t {

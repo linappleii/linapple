@@ -3,7 +3,7 @@
 
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "doctest.h"
 
 // Define the global peripheral provided by the C file

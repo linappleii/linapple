@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 
 #ifdef __cplusplus
 extern "C" {

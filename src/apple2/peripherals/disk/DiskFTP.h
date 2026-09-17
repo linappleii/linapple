@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <cstddef>
 #include <string>
 
 /* Choose an image using FTP */

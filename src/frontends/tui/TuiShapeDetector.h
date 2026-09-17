@@ -2,7 +2,6 @@
 #pragma once
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 
 struct TuiPixel_t {

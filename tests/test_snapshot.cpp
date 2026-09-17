@@ -11,7 +11,7 @@
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"

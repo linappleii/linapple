@@ -15,7 +15,7 @@
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 
 // Disable LeakSanitizer leak detection: snapshot deserialization fuzzing
 // exercises the entire emulator core via linapple_init(). Full static

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "apple2/Video.h"
+#include "VideoSurface.h"
 
 using Assets_t = struct AssetsTag_t {
   void* icon;  // Platform-specific icon handle

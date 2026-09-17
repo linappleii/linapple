@@ -11,7 +11,6 @@
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 constexpr uint32_t NO_REPEAT_KEY = 0xFFFFFFFF;
 

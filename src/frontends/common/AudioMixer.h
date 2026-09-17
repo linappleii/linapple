@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "core/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
 
 constexpr uint32_t SPKR_SAMPLE_RATE = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;
 constexpr uint32_t sample_rate = PERIPHERAL_AUDIO_DEFAULT_SAMPLE_RATE;

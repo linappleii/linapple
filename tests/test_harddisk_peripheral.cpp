@@ -8,8 +8,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

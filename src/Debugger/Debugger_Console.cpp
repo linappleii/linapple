@@ -48,8 +48,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger_Parser.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp

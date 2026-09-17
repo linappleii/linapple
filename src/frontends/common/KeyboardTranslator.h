@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 #ifdef __cplusplus
 extern "C" {

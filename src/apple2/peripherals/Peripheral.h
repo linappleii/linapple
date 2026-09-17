@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/Peripheral_Audio.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
 
 #ifdef __cplusplus
 extern "C" {
@@ -136,4 +134,4 @@ bool peripheral_verify_manifest(const void* manifest);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
+// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)

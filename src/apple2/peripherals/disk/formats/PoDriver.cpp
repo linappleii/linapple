@@ -9,7 +9,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.

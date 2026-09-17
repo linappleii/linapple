@@ -12,7 +12,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"

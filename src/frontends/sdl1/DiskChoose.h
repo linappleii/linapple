@@ -2,9 +2,10 @@
 #pragma once
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_events.h>
 
+#include <cstddef>
 #include <string>
-#include <vector>
 
 #include "frontends/common/FileBrowser.h"
 #include "frontends/sdl1/SdlPtr.h"

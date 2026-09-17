@@ -6,8 +6,8 @@
 
 #include "apple2/peripherals/mouse/Mouse.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 
 namespace {

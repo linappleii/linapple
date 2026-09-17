@@ -11,7 +11,7 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core

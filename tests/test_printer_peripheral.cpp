@@ -10,8 +10,8 @@
 
 #include "apple2/peripherals/printer/Printer.h"
 #include "apple2/peripherals/printer/PrinterCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;

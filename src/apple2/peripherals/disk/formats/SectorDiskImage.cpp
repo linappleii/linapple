@@ -15,7 +15,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/Log.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 

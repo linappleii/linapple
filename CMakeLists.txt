@@ -355,8 +355,6 @@ set(SOURCES_CORE
     src/core/Registry.cpp
     src/core/Asset.cpp
     src/core/BasicLiveSync.cpp
-    src/core/Peripheral.cpp
-    src/core/Peripheral_Internal.cpp
     src/core/Resource.cpp
     "${EMBEDDED_ROMS_CPP}"
     src/frontends/common/AppArgs.cpp
@@ -379,6 +377,8 @@ set(SOURCES_A2_MANDATORY
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
     src/apple2/Video.cpp
+    src/apple2/peripherals/Peripheral.cpp
+    src/apple2/peripherals/Peripheral_Internal.cpp
 )
 
 set(SOURCES_DBG_FULL

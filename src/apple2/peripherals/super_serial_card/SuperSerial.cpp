@@ -11,8 +11,8 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 #ifndef VERSIONSTRING
 #define VERSIONSTRING "2.0.0"

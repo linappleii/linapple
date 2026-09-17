@@ -18,7 +18,7 @@
 #include "apple2/Apple2Types.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "frontends/common/VideoSurface.h"
 
 // Unavoidable hardware architectural constraints for Apple II CRT rendering,
@@ -39,7 +39,7 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "charset40_british.xpm"
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
-#include "core/Peripheral.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "frontends/common/VideoStretch.h"
 
 static uint32_t g_video_output[video_width * video_height] = {};

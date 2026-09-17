@@ -9,8 +9,8 @@
 #include "EmbeddedRoms.h"
 #include "apple2/chips/6821.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#include "core/Peripheral.h"
-#include "core/Peripheral_Types.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
