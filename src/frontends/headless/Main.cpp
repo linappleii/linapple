@@ -18,8 +18,14 @@ auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
   (void)pitch;
 }
 
-auto audio_callback(const int16_t* samples, size_t num_samples) -> void {
-  (void)samples;
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+auto audio_callback(const char* peripheral_id, int slot,
+                    const int16_t* const* channels, size_t num_channels,
+                    size_t num_samples) -> void {
+  (void)peripheral_id;
+  (void)slot;
+  (void)channels;
+  (void)num_channels;
   (void)num_samples;
 }
 
@@ -42,7 +48,7 @@ auto main(int argc, char** argv) -> int {
   std::cout << "Starting LinApple Headless Frontend…" << std::endl;
 
   linapple_set_video_callback(video_callback);
-  linapple_set_audio_callback(audio_callback);
+  linapple_set_audio_channel_callback(audio_callback);
   linapple_set_title_callback(title_callback);
 
   app_controller_load_initial_media(&config);
@@ -54,6 +60,9 @@ auto main(int argc, char** argv) -> int {
     linapple_run_frame(apple2_frame_cycles);
   }
 
+  linapple_set_audio_channel_callback(nullptr);
+  linapple_set_video_callback(nullptr);
+  linapple_set_title_callback(nullptr);
   app_controller_shutdown();
 
   std::cout << "Headless execution complete." << std::endl;
