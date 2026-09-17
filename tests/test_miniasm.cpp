@@ -1,23 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
+#include "test_fixtures.h"
 
 namespace {
+
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 
 struct MiniAsmHarness_t {
   bool is_initialized = false;
 
-  MiniAsmHarness_t() {
+  // The machine type comes from the declared config rather than from
+  // AppConfig_t: app_controller_initialize lets the config file win unless
+  // apple2_type_explicit is set, and a ][+ has no mini-assembler at all.
+  explicit MiniAsmHarness_t(const TestConfig_t& test_config) {
     AppConfig_t config = {};
     app_config_default(&config);
-    config.apple2_type = A2TYPE_APPLE2EENHANCED;
+    util_safe_strcpy(config.config_path.data(), test_config.c_str(),
+                     path_max_len);
     config.is_boot = false;
     app_env_resolve_paths(&config);
 
@@ -110,7 +117,8 @@ struct MiniAsmHarness_t {
 }  // namespace
 
 TEST_CASE("Enhanced Apple //e Mini-Assembler") {
-  MiniAsmHarness_t harness;
+  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  MiniAsmHarness_t harness(config);
   REQUIRE(harness.is_initialized);
 
   SUBCASE("Assembles 300:LDA #$01") {

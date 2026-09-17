@@ -607,7 +607,7 @@ if(BUILD_TESTING)
 
     # Helper for adding tests
     macro(add_linapple_test name sources)
-        add_executable(test-${name} ${sources} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+        add_executable(test-${name} ${sources} tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
         add_dependencies(test-${name} generate_xpms generate_embedded_roms)
         if(PERIPHERAL_MODULES)
             add_dependencies(test-${name} ${PERIPHERAL_MODULES})
@@ -617,9 +617,21 @@ if(BUILD_TESTING)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-${name} COMMAND test-${name})
+        # A per-test ScopedTestConfig_t only protects the suites that construct
+        # one, and most suites own their doctest main, so the universal
+        # redirect lives where every ctest run passes. With this no suite can
+        # read the developer's config or write linapple.log under $HOME.
+        set(LINAPPLE_TEST_HOME "${CMAKE_BINARY_DIR}/test-home/${name}")
+        file(MAKE_DIRECTORY "${LINAPPLE_TEST_HOME}")
+        set(LINAPPLE_TEST_ENV
+            "XDG_CONFIG_HOME=${LINAPPLE_TEST_HOME}"
+            "XDG_DATA_HOME=${LINAPPLE_TEST_HOME}"
+            "XDG_CONFIG_DIRS=${LINAPPLE_TEST_HOME}"
+            "HOME=${LINAPPLE_TEST_HOME}")
         if(ENABLE_ASAN OR ENABLE_UBSAN)
-            set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
+            list(APPEND LINAPPLE_TEST_ENV "ASAN_OPTIONS=detect_leaks=1:symbolize=1" "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
         endif()
+        set_tests_properties(test-${name} PROPERTIES ENVIRONMENT "${LINAPPLE_TEST_ENV}")
     endmacro()
 
     # Refactored tests

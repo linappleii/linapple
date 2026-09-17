@@ -422,6 +422,20 @@ class ScopedTestConfig_t {
     std::vector<Entry_t> extras;
   };
 
+  // An Enhanced //e with nothing in any slot: the internal speaker, keyboard
+  // and joystick, and no card anywhere.
+  static auto enhanced_2e_only() -> Description_t { return Description_t(); }
+
+  // An Enhanced //e with a Disk II in slot 6 and nothing else. Disk speed is
+  // stated rather than inherited from whatever config happens to be on the
+  // machine running the suite.
+  static auto disk_ii_only() -> Description_t {
+    Description_t description;
+    description.slots[5] = "Disk II";
+    description.extras.push_back({"Slots", "Enhance Disk Speed", "1"});
+    return description;
+  }
+
   explicit ScopedTestConfig_t(const Description_t& description)
       : dir_("linapple_test_config_"),
         path_(dir_.path() + "/linapple.conf"),

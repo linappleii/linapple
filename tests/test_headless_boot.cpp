@@ -18,23 +18,11 @@
 #include "test_fixtures.h"
 
 namespace {
-
-// An Enhanced //e with a Disk II in slot 6 and nothing else. Disk speed is
-// stated rather than inherited from whatever config happens to be on the
-// machine running the suite.
-auto disk_ii_only_config() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
-  description.machine_type =
-      TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced;
-  description.slots[5] = "Disk II";
-  description.extras.push_back({"Slots", "Enhance Disk Speed", "1"});
-  return description;
-}
-
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 }  // namespace
 
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
@@ -56,7 +44,7 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
 }
 
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
@@ -77,7 +65,7 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
 }
 
 TEST_CASE("Headless: [HL-03] Unsupported file") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   // .txt is unsupported by disk drivers
@@ -95,7 +83,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 }
 
 TEST_CASE("Headless: [HL-04] Program loading") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   auto prog = TestFixtures::create_ephemeral("minimal.woz");
@@ -111,7 +99,7 @@ TEST_CASE("Headless: [HL-04] Program loading") {
 }
 
 TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   REQUIRE(video_init_worker() == true);
@@ -129,7 +117,7 @@ TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
 
 TEST_CASE(
     "Headless: [HL-06] Text screen rendering produces golden visual output") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
   uint8_t* text_page = get_mem_ptr(0x0400);

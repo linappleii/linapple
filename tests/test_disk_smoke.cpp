@@ -25,17 +25,7 @@
 
 namespace {
 
-// An Enhanced //e with a Disk II in slot 6 and nothing else. Disk speed is
-// stated rather than inherited from whatever config happens to be on the
-// machine running the suite.
-auto disk_ii_only_config() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
-  description.machine_type =
-      TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced;
-  description.slots[5] = "Disk II";
-  description.extras.push_back({"Slots", "Enhance Disk Speed", "1"});
-  return description;
-}
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 
 struct SmokeTestFixture_t {
   explicit SmokeTestFixture_t(const TestFixtures::ScopedTestConfig_t& config,
@@ -88,7 +78,7 @@ struct SmokeTestFixture_t {
 }  // namespace
 
 TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
   auto disk = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk);
@@ -110,7 +100,7 @@ TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
 
 TEST_CASE("DiskSmoke: [SMK-03] WOZ 2 Boot") {
   auto disk = TestFixtures::create_ephemeral("minimal.woz");
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, disk.path());
 
   DiskStatus_t status{};
@@ -120,7 +110,7 @@ TEST_CASE("DiskSmoke: [SMK-03] WOZ 2 Boot") {
 }
 
 TEST_CASE("DiskSmoke: [SMK-05] error - Missing File") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, "/tmp/nonexistent_smoke_file_12345.dsk");
 
   DiskStatus_t status{};
@@ -138,7 +128,7 @@ TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
     ofs.write("NOTWOZXX", 8);
   }
 
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, corrupt_file.path());
   DiskStatus_t status{};
   size_t size = sizeof(status);
@@ -149,7 +139,7 @@ TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
 
 TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
   auto unsupported_disk = TestFixtures::create_ephemeral("minimal.txt");
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, unsupported_disk.path());
 
   DiskStatus_t status{};
@@ -161,7 +151,7 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
   auto disk = TestFixtures::create_ephemeral("minimal.woz");
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, disk.path());
 
   size_t state_size = 0;
@@ -185,7 +175,7 @@ TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   auto disk1 = TestFixtures::create_ephemeral("minimal.dsk");
   auto disk2 = TestFixtures::create_ephemeral("minimal.woz");
 
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   SmokeTestFixture_t fixture(config, disk1.path(), disk2.path());
 
   DiskStatus_t status{};
@@ -264,7 +254,7 @@ TEST_CASE(
 }
 
 TEST_CASE("DiskSmoke: [SMK-07] SAVE and CATALOG in DOS 3.3") {
-  TestFixtures::ScopedTestConfig_t config(disk_ii_only_config());
+  TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
   auto disk = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk);
