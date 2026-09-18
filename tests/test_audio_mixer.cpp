@@ -224,8 +224,6 @@ auto count_zero_crossings(const std::vector<int16_t>& stereo, size_t frames)
   return crossings;
 }
 
-// --- The channel tap recorder ---
-
 std::vector<float> g_tapped;
 size_t g_tap_calls = 0;
 
@@ -1052,7 +1050,6 @@ TEST_CASE("Audio Mixer: A Paced Loop Keeps The Device Fed") {
   const size_t rest_end = run.mark(0);
   const size_t drive_end = run.mark(1);
 
-  // A source at rest pushes nothing, and nothing is what the device gets.
   for (size_t i = 0; i < rest_end; ++i) {
     CHECK(run.left(i) == 0);
   }

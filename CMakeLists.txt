@@ -737,8 +737,6 @@ if(BUILD_TESTING)
         set(CPU_TEST_TARGET linapple)
     endif()
     add_test(NAME test-cpu COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_cpu_tests.sh")
-    # This one drives the real emulator binary, which creates its data
-    # directory on startup, so it needs the redirect more than most.
     linapple_test_home(test-cpu cpu)
     set_property(TEST test-cpu APPEND PROPERTY ENVIRONMENT "EMULATOR=$<TARGET_FILE:${CPU_TEST_TARGET}>")
 

@@ -380,8 +380,6 @@ static auto announce_audio_source(int slot, Peripheral_t* api, void* instance)
   }
 }
 
-// Re-announce every audio source in the slot. A peripheral that does not
-// answer the audio query makes this a no-op.
 static auto announce_audio_source(int slot) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
     return;

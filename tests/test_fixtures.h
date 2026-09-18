@@ -347,12 +347,6 @@ class ScopedTempDir_t {
   }
 };
 
-/**
- * @brief RAII override of one environment variable.
- *
- * Restores the previous value, or unsets the variable if it had none, on
- * destruction.
- */
 class ScopedEnvVar_t {
  private:
   std::string name_;

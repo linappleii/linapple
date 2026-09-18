@@ -36,8 +36,6 @@ struct SmokeTestFixture_t {
 
   ~SmokeTestFixture_t() { shutdown(); }
 
-  // This fixture populates the Configuration_t singleton itself rather than
-  // going through AppController, so it loads the test config directly.
   auto init(const TestFixtures::ScopedTestConfig_t& config,
             const std::string& image_path1 = "",
             const std::string& image_path2 = "") -> void {

@@ -25,8 +25,7 @@ typedef enum {
 } PeripheralAudioTimeBase_t;
 
 typedef struct PeripheralAudioChannelInfo_t {
-  char name[PERIPHERAL_AUDIO_NAME_MAX]; /**< Channel name, e.g. "Speaker",
-                                           "Voice A" */
+  char name[PERIPHERAL_AUDIO_NAME_MAX];
   float default_pan_left;  /**< Default gain to Left output (0.0 to 1.0) */
   float default_pan_right; /**< Default gain to Right output (0.0 to 1.0) */
 } PeripheralAudioChannelInfo_t;

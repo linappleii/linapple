@@ -29,8 +29,6 @@ constexpr uint16_t ADDR_MOCK_STROBE = 0xC0F0;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr float EDGE_POSITIVE = 2.0f;
 
-// --- The configurable mock peripheral ---
-
 struct MockState_t {
   HostInterface_t* host = nullptr;
   int strobe_count = 0;
@@ -135,8 +133,6 @@ class ScopedMock_t {
   }
 };
 
-// --- The register-callback recorder ---
-
 struct AnnounceRecord_t {
   int slot = -1;
   std::string id;
@@ -178,8 +174,6 @@ class ScopedAnnounceRecorder_t {
     return g_announcements.at(index);
   }
 };
-
-// --- The channel-push recorder ---
 
 std::vector<float> g_pushed_samples;
 std::vector<std::string> g_pushed_ids;
@@ -260,7 +254,6 @@ TEST_CASE("Speaker Core Seam: The Strobe Bridge Strobes And Returns The Bus") {
   CHECK(write_value == 0);
   CHECK(mock.strobe_count() == 2);
 
-  // A neighbouring address is a different soft switch, not a near miss.
   io_map_dispatch(0, ADDR_MOCK_STROBE + 1, 0, 0, 0);
   CHECK(mock.strobe_count() == 2);
 
@@ -486,10 +479,6 @@ TEST_CASE(
 // The push-time gate at the seam is all there is, and it has no observable
 // effect on the speaker beyond the silence short-circuit already covered in
 // test_speaker.cpp.
-
-// =============================================================================
-// Frontend init order: the callback arrives after the peripherals do
-// =============================================================================
 
 namespace {
 

@@ -150,9 +150,6 @@ void enter_message_loop() {
     linapple_run_frame(cycles);
     draw_frame_window();
 
-    // A flat sleep cannot hold a rate: its period is the sleep plus however
-    // long input, emulation and drawing took, and the speaker hands the mixer
-    // one sample per emulated cycle, so a slow loop starves the device.
     if (!linapple_get_turbo()) {
       pacer.wait_for_next_frame();
     } else {

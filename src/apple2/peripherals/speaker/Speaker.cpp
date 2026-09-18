@@ -53,7 +53,6 @@ struct SpeakerPeripheral_t {
   // --- Seam 3 Host Interface ---
   HostInterface_t* host = nullptr;
 
-  // --- Hardware Latch ---
   bool current_state = false;
   bool last_sample_state = false;
 
@@ -196,8 +195,6 @@ static auto query_audio_info(void* out, size_t* out_size)
   *out_size = required_size;
   return peripheral_ok;
 }
-
-// --- Hardware Strobe Handler ---
 
 static auto speaker_strobe(void* instance) -> void {
   if (instance == nullptr) {

@@ -48,8 +48,6 @@ constexpr int PLATEAU_PCM = 16558;
 // a^(1020484/48000): the cone's per-cycle decay resolved to one output frame.
 constexpr double DECAY_PER_FRAME = 0.999076;
 
-// --- The channel tap, which is what a frontend would attach ---
-
 std::vector<float> g_tapped;
 size_t g_tap_calls = 0;
 
@@ -181,8 +179,6 @@ auto write_wav_if_requested(const std::vector<int16_t>& stereo) -> void {
 }  // namespace
 
 TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
-  // The speaker's config: an Enhanced //e with nothing in any slot, so the
-  // only thing making noise is the one being measured.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   SpeakerChain_t chain(config);
   REQUIRE(chain.registered());
@@ -225,7 +221,6 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   // Plateau, over the last fifty periods of the tone. The post-edge peak has
   // long since converged on 2 / (1 + a^510), and the same window smear
   // applies.
-  // Fifty 1 kHz periods is fifty milliseconds of output.
   const size_t plateau_window = 50 * DEVICE_RATE_HZ / 1000;
   int16_t plateau = 0;
   for (size_t i = tone_frames - plateau_window; i < tone_frames; ++i) {

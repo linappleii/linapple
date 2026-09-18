@@ -301,7 +301,6 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
   REQUIRE(instance2 != nullptr);
   CHECK(instance1 != instance2);
 
-  // Strobing instance1 drives instance1 alone
   harness.set_cycles(1000);
   harness.strobe(instance1);
   harness.advance_cycles(100);
@@ -310,7 +309,6 @@ TEST_CASE("Speaker Peripheral: Multi-Instance Isolation & RAII Lifecycle") {
   CHECK(harness.captured_samples()[0] == EDGE_POSITIVE);
   harness.clear_captured_samples();
 
-  // instance2 is still at rest, and a cone at rest pushes nothing
   harness.think(instance2, 100);
   CHECK(harness.audio_push_count() == 0);
   CHECK(harness.captured_samples().empty());
@@ -520,16 +518,13 @@ TEST_CASE(
   const auto& samples = harness.captured_samples();
   REQUIRE(samples.size() == slice_cycles);
 
-  // Mono planar channel: a single discrete stream that never rises again
   for (size_t i = 0; i + 1 < samples.size(); ++i) {
     CHECK(samples[i] >= samples[i + 1]);
   }
 
-  // The onset is a step of exactly 2.0, unclipped and above full scale
   CHECK(samples[0] == EDGE_POSITIVE);
   CHECK(samples[0] > 1.0f);
 
-  // and the blocker decays it by a per sample from there
   CHECK(samples[500] ==
         doctest::Approx(EDGE * std::pow(FILTER_A, 500)).epsilon(1e-4));
   CHECK(samples[5000] ==
@@ -563,7 +558,6 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
   CHECK(harness.audio_push_count() == half_periods);
   REQUIRE(samples.size() == static_cast<size_t>(half_periods) * half_period);
 
-  // The onset is the same 2.0 edge as any other
   CHECK(samples[0] == EDGE_POSITIVE);
 
   // Steady state: the post-edge peak converges on 2 / (1 + a^N), alternating
@@ -677,14 +671,12 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
   harness.think(instance, 1000);
   harness.set_null_cycles(false);
 
-  // 3. RegisterDirectIOStrobe == nullptr must succeed without crash
   HostInterface_t null_direct_host{};
   void* no_direct_inst =
       speaker_get_descriptor()->init(TEST_SLOT, &null_direct_host);
   REQUIRE(no_direct_inst != nullptr);
   speaker_get_descriptor()->shutdown(no_direct_inst);
 
-  // 4. A host offering only the legacy registration leaves it untouched
   harness.set_null_strobe_registration(true);
   void* legacy_host_inst = harness.create_speaker(TEST_SLOT);
   REQUIRE(legacy_host_inst != nullptr);
@@ -709,8 +701,6 @@ TEST_CASE(
   CHECK(harness.audio_push_count() == 1);
   CHECK(harness.captured_channels() == 1);
 
-  // 2. Buffer ceiling guard: a massive single-call delta (1 second) safely
-  // clamps to speaker_max_samples_per_update
   harness.clear_captured_samples();
   harness.advance_cycles(NTSC_ONE_SECOND_CYCLES);
   harness.think(instance, static_cast<uint32_t>(NTSC_ONE_SECOND_CYCLES));
@@ -751,7 +741,6 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
   void* instance2 = harness.create_speaker(TEST_SLOT + 1);
   REQUIRE(instance2 != nullptr);
 
-  // A fresh instance is at rest and pushes nothing before the restore
   harness.think(instance2, 100);
   CHECK(harness.audio_push_count() == 0);
 
@@ -809,7 +798,6 @@ TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
 
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
-  // Restoring a settled cone makes no sound at all
   CHECK(harness.audio_push_count() == 0);
 
   // The first edge after the restore is a full step. A previous_input left at
@@ -841,7 +829,6 @@ TEST_CASE("Speaker Peripheral: Pre-Restore Event Queue Purge") {
 
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
-  // The purged queue leaves a cone at rest, and a cone at rest is silent
   CHECK(harness.audio_push_count() == 0);
   CHECK(harness.captured_samples().empty());
 }
@@ -1104,7 +1091,7 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
 
   harness.set_cycles(5000);
   harness.strobe();
-  harness.strobe();  // Consecutive strobe at exact same cycle
+  harness.strobe();
   harness.advance_cycles(50);
   harness.think(instance, 50);
 
@@ -1150,7 +1137,6 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   CHECK(status == peripheral_ok);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
-  // 2. An undersized buffer is refused and told how much it needs
   PeripheralAudioInfo_t info{};
   size = 1;
   status = speaker_get_descriptor()->query(

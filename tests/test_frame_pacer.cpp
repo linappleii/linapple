@@ -78,7 +78,6 @@ TEST_CASE("Frame Pacer: The Period Comes From The Machine") {
     ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
     FramePacer_t pacer(fake_now, fake_sleep_until);
     CHECK(pacer.frame_period_ns() == NTSC_PERIOD_NS);
-    // 16.688 ms, against the 16 ms that used to be hardcoded.
     CHECK(pacer.frame_period_ns() / 1000 == 16688);
   }
   {
@@ -137,8 +136,6 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
   // first wait, which is the only moment the pacer knows anything.
   CHECK(g_now_ns - start == work_ns + (frames * NTSC_PERIOD_NS));
 
-  // Half the period spent working is still one period per frame, and a frame
-  // that overruns the period entirely is the case the resync covers.
   CHECK(work_ns < NTSC_PERIOD_NS);
 }
 
@@ -151,7 +148,6 @@ TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
   const int64_t start = g_now_ns;
   pacer.wait_for_next_frame();
 
-  // One frame that overran by two periods: the next two calls do not sleep.
   g_now_ns += 2 * NTSC_PERIOD_NS;
   const size_t sleeps_before = g_sleeps.size();
   pacer.wait_for_next_frame();

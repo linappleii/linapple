@@ -131,9 +131,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     g_all_finite = true;
     speaker->think(instance, elapsed);
 
-    // The blanket invariants: every sample finite, at most one push per
-    // think, and never more samples than the smaller of the slice and the
-    // per-update capacity.
     assert(g_all_finite);
     assert(g_push_calls <= 1);
     assert(g_pushed_samples <= speaker_max_samples_per_update);
