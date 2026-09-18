@@ -20,8 +20,51 @@ namespace {
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware bus bit assignments and register widths
 
+// Version 1 fixed every one of these offsets, and a state written before this
+// card was rewritten still has to load. A field that moved would be read out of
+// a neighbour's bytes and no test would necessarily notice, so the layout is
+// nailed down here rather than trusted to declaration order.
 static_assert(sizeof(MockingboardSaveState_t) == 232,
               "MockingboardSaveState_t must be exactly 232 bytes");
+static_assert(sizeof(MockingboardChipSaveState_t) == 88,
+              "MockingboardChipSaveState_t must be exactly 88 bytes");
+
+static_assert(offsetof(MockingboardSaveState_t, version) == 0);
+static_assert(offsetof(MockingboardSaveState_t, struct_size) == 4);
+static_assert(offsetof(MockingboardSaveState_t, chips) == 8);
+static_assert(offsetof(MockingboardSaveState_t, psg_remainder) == 184);
+
+static_assert(offsetof(MockingboardChipSaveState_t, orb) == 0);
+static_assert(offsetof(MockingboardChipSaveState_t, ora) == 1);
+static_assert(offsetof(MockingboardChipSaveState_t, ddrb) == 2);
+static_assert(offsetof(MockingboardChipSaveState_t, ddra) == 3);
+static_assert(offsetof(MockingboardChipSaveState_t, t1_counter) == 4);
+static_assert(offsetof(MockingboardChipSaveState_t, t1_latch) == 6);
+static_assert(offsetof(MockingboardChipSaveState_t, t2_counter) == 8);
+static_assert(offsetof(MockingboardChipSaveState_t, t2_latch) == 10);
+static_assert(offsetof(MockingboardChipSaveState_t, serial_shift) == 12);
+static_assert(offsetof(MockingboardChipSaveState_t, acr) == 13);
+static_assert(offsetof(MockingboardChipSaveState_t, pcr) == 14);
+static_assert(offsetof(MockingboardChipSaveState_t, ifr) == 15);
+static_assert(offsetof(MockingboardChipSaveState_t, ier) == 16);
+static_assert(offsetof(MockingboardChipSaveState_t, ora_no_hs) == 17);
+static_assert(offsetof(MockingboardChipSaveState_t, via_flags) == 18);
+static_assert(offsetof(MockingboardChipSaveState_t, ay_regs) == 20);
+static_assert(offsetof(MockingboardChipSaveState_t, count_a) == 36);
+static_assert(offsetof(MockingboardChipSaveState_t, count_b) == 38);
+static_assert(offsetof(MockingboardChipSaveState_t, count_c) == 40);
+static_assert(offsetof(MockingboardChipSaveState_t, out_a) == 42);
+static_assert(offsetof(MockingboardChipSaveState_t, out_b) == 43);
+static_assert(offsetof(MockingboardChipSaveState_t, out_c) == 44);
+static_assert(offsetof(MockingboardChipSaveState_t, out_n) == 45);
+static_assert(offsetof(MockingboardChipSaveState_t, count_n) == 48);
+static_assert(offsetof(MockingboardChipSaveState_t, rng) == 52);
+static_assert(offsetof(MockingboardChipSaveState_t, count_e) == 56);
+static_assert(offsetof(MockingboardChipSaveState_t, envelope_step) == 60);
+static_assert(offsetof(MockingboardChipSaveState_t, envelope_vol) == 64);
+static_assert(offsetof(MockingboardChipSaveState_t, env_holding) == 65);
+static_assert(offsetof(MockingboardChipSaveState_t, ay_current_register) == 66);
+static_assert(offsetof(MockingboardChipSaveState_t, env_attack) == 68);
 
 constexpr size_t chips_per_card = 2;
 constexpr size_t voices_per_chip = 3;

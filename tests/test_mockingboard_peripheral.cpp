@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register addresses, bus bit patterns and cycle-count goldens
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -292,6 +293,16 @@ auto set_voice_a_dc(MockingboardHarness& harness, uint8_t volume,
   write_ay(harness, VIA_A, 0x08, volume, executed_cycles);
 }
 
+// Voice A driven by the envelope generator rather than a fixed volume, so a
+// corrupted envelope step is a value the render loop actually has to survive.
+auto set_voice_a_envelope(MockingboardHarness& harness) -> void {
+  write_ay(harness, VIA_A, 0x07, 0x3F);
+  write_ay(harness, VIA_A, 0x08, 0x10);
+  write_ay(harness, VIA_A, 0x0B, 0x20);
+  write_ay(harness, VIA_A, 0x0C, 0x00);
+  write_ay(harness, VIA_A, 0x0D, 0x0A);
+}
+
 auto arm_timer1(MockingboardHarness& harness, uint16_t via, uint16_t latch,
                 uint8_t acr = 0x00, void* inst = nullptr) -> void {
   harness.write_cx(via + REG_ACR, acr, 0, inst);
@@ -576,6 +587,79 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
   ss->struct_size = original_size;
 
   CHECK(harness.load_state(buffer.data(), state_size) == peripheral_ok);
+
+  // A blob that passes the version and size gate still carries fields that
+  // index a volume table, divide a counter or select a register. Each one below
+  // is a value the hardware can never hold, and the proof it was sanitized is
+  // that it reads back inside its width and the next slice renders inside the
+  // peak magnitude the card declares.
+  void* victim = harness.create_card(5);
+  REQUIRE(victim != nullptr);
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_envelope(harness);
+  harness.think(4096);
+
+  std::vector<uint8_t> base(state_size);
+  size_t base_size = state_size;
+  REQUIRE(harness.save_state(base.data(), &base_size) == peripheral_ok);
+
+  // The value has to be read back before the slice runs, because rendering
+  // advances every one of these generators past whatever load left it at.
+  std::vector<uint8_t> sanitized(state_size);
+  const auto load_and_render =
+      [&](const std::vector<uint8_t>& blob) -> const MockingboardSaveState_t* {
+    harness.clear_audio();
+    REQUIRE(harness.load_state(blob.data(), state_size, victim) ==
+            peripheral_ok);
+    size_t sanitized_size = state_size;
+    REQUIRE(harness.save_state(sanitized.data(), &sanitized_size, victim) ==
+            peripheral_ok);
+    harness.think(1024, victim);
+
+    bool within_peak = true;
+    for (size_t v = 0; v < MB_VOICES; ++v) {
+      for (const float sample : harness.channel(v)) {
+        // The card's output stage is AC coupled, so a voice that is unipolar
+        // inside the chip is bounded in both directions once it leaves.
+        if (!(sample >= -1.0F && sample <= 1.0F)) {
+          within_peak = false;
+        }
+      }
+    }
+    // Without this the range assertion above would pass on an empty push log.
+    CHECK(harness.push_count() > 0);
+    CHECK(within_peak);
+    return reinterpret_cast<const MockingboardSaveState_t*>(sanitized.data());
+  };
+
+  SUBCASE("An envelope step past the last one is masked to its width") {
+    std::vector<uint8_t> blob = base;
+    reinterpret_cast<MockingboardSaveState_t*>(blob.data())
+        ->chips[0]
+        .envelope_step = 200;
+    CHECK(load_and_render(blob)->chips[0].envelope_step == (200 & 0x0F));
+  }
+
+  SUBCASE("A zero noise shift register is restarted") {
+    std::vector<uint8_t> blob = base;
+    reinterpret_cast<MockingboardSaveState_t*>(blob.data())->chips[0].rng = 0;
+    CHECK(load_and_render(blob)->chips[0].rng == 1);
+  }
+
+  SUBCASE("A carry larger than one AY tick is reduced") {
+    std::vector<uint8_t> blob = base;
+    reinterpret_cast<MockingboardSaveState_t*>(blob.data())->psg_remainder =
+        0xFFFFFFFF;
+    CHECK(load_and_render(blob)->psg_remainder < CYCLES_PER_TICK);
+  }
+
+  SUBCASE("An over-wide AY register is masked to its data-sheet width") {
+    std::vector<uint8_t> blob = base;
+    reinterpret_cast<MockingboardSaveState_t*>(blob.data())
+        ->chips[0]
+        .ay_regs[1] = 0xFF;
+    CHECK(load_and_render(blob)->chips[0].ay_regs[1] == 0x0F);
+  }
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-18 Audio Info Query Two-Pass Contract") {
@@ -779,6 +863,100 @@ TEST_CASE("Mockingboard Peripheral: MB-27 Audio Info Query Zeroes Its Out") {
           peripheral_ok);
 
   CHECK(std::memcmp(filled.data(), clean.data(), filled.size()) == 0);
+}
+
+// A save taken from the card as it stood before it was rewritten, captured by
+// driving this exact script through a build of the previous revision with the
+// harness clock pinned, because that revision's think() read wall time:
+//
+//   VIA A: DDRB=0xFF DDRA=0xFF ACR=0x40 PCR=0x1C SR=0x5A IER=0xC0
+//          T2C-L=0x34 T2C-H=0x12 T1C-L=0x10 T1C-H=0x27
+//   VIA B: DDRB=0x0F DDRA=0xF0 ACR=0x00 PCR=0x03 SR=0xA5 IER=0xA0
+//   AY0 registers 0..13 = 34 02 78 05 BC 09 17 38 0F 0A 05 40 01 0A
+//   AY1 registers 0..13 = 21 01 43 03 65 07 0B 07 0C 09 06 20 02 08
+//
+// Some of its bytes are a host's cycle counters and one is a C++ double, so
+// the only thing that can be asserted about it is that the registers come out
+// the other side; a re-save is a different layout of meaning in the same 232
+// bytes and would never match.
+constexpr std::array<uint8_t, 232> pre_rewrite_v1_state = {
+    {0x01, 0x00, 0x00, 0x00, 0xE8, 0x00, 0x00, 0x00, 0x04, 0x0A, 0xFF, 0xFF,
+     0x10, 0x27, 0x10, 0x27, 0x34, 0x12, 0x34, 0x12, 0x5A, 0x40, 0x1C, 0x00,
+     0x40, 0x00, 0x00, 0x00, 0x34, 0x02, 0x78, 0x05, 0xBC, 0x09, 0x17, 0x38,
+     0x0F, 0x0A, 0x05, 0x40, 0x01, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x04, 0x08, 0x0F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0xA5, 0x00, 0x03, 0x00, 0x20, 0x00, 0x00, 0x00, 0x21, 0x01, 0x43, 0x03,
+     0x65, 0x07, 0x0B, 0x07, 0x0C, 0x09, 0x06, 0x20, 0x02, 0x08, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x01, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x00, 0x00}};
+
+TEST_CASE("Mockingboard Peripheral: MB-28 A Pre-Rewrite State Still Loads") {
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  REQUIRE(harness.load_state(pre_rewrite_v1_state.data(),
+                             pre_rewrite_v1_state.size()) == peripheral_ok);
+
+  CHECK(harness.read_cx(VIA_A + REG_ORA) == 0x0A);
+  CHECK(harness.read_cx(VIA_A + REG_ORB) == 0x04);
+  CHECK(harness.read_cx(VIA_A + REG_DDRB) == 0xFF);
+  CHECK(harness.read_cx(VIA_A + REG_DDRA) == 0xFF);
+  CHECK(harness.read_cx(VIA_A + 0x6) == 0x10);
+  CHECK(harness.read_cx(VIA_A + 0x7) == 0x27);
+  CHECK(harness.read_cx(VIA_A + REG_T1C_H) == 0x27);
+  CHECK(harness.read_cx(VIA_A + REG_T2C_L) == 0x34);
+  CHECK(harness.read_cx(VIA_A + REG_T2C_H) == 0x12);
+  CHECK(harness.read_cx(VIA_A + 0xA) == 0x5A);
+  CHECK(harness.read_cx(VIA_A + REG_ACR) == 0x40);
+  CHECK(harness.read_cx(VIA_A + 0xC) == 0x1C);
+  CHECK(harness.read_cx(VIA_A + REG_IER) == 0xC0);
+
+  CHECK(harness.read_cx(VIA_B + REG_DDRB) == 0x0F);
+  CHECK(harness.read_cx(VIA_B + REG_DDRA) == 0xF0);
+  CHECK(harness.read_cx(VIA_B + 0xA) == 0xA5);
+  CHECK(harness.read_cx(VIA_B + REG_ACR) == 0x00);
+  CHECK(harness.read_cx(VIA_B + 0xC) == 0x03);
+  CHECK(harness.read_cx(VIA_B + REG_IER) == 0xA0);
+
+  // Read the PSG registers back off the chips through the card's own bus, not
+  // out of a save: what matters is that the loaded state reached the chip.
+  const uint8_t ay0[14] = {0x34, 0x02, 0x78, 0x05, 0xBC, 0x09, 0x17,
+                           0x38, 0x0F, 0x0A, 0x05, 0x40, 0x01, 0x0A};
+  const uint8_t ay1[14] = {0x21, 0x01, 0x43, 0x03, 0x65, 0x07, 0x0B,
+                           0x07, 0x0C, 0x09, 0x06, 0x20, 0x02, 0x08};
+
+  harness.write_cx(VIA_A + REG_DDRA, 0x00);
+  harness.write_cx(VIA_B + REG_DDRA, 0x00);
+  for (uint8_t reg = 0; reg < 14; ++reg) {
+    harness.write_cx(VIA_A + REG_ORA, reg);
+    harness.write_cx(VIA_A + REG_ORB, ORB_LATCH);
+    harness.write_cx(VIA_A + REG_ORB, ORB_READ);
+    CHECK(harness.read_cx(VIA_A + REG_ORA) == ay0[reg]);
+
+    harness.write_cx(VIA_B + REG_ORA, reg);
+    harness.write_cx(VIA_B + REG_ORB, ORB_LATCH);
+    harness.write_cx(VIA_B + REG_ORB, ORB_READ);
+    CHECK(harness.read_cx(VIA_B + REG_ORA) == ay1[reg]);
+  }
+
+  // The old layout's cycle counter sat where the AY tick carry now does, so a
+  // pre-rewrite blob is the case that proves the carry is reduced on load.
+  size_t state_size = sizeof(MockingboardSaveState_t);
+  std::vector<uint8_t> resaved(state_size);
+  REQUIRE(harness.save_state(resaved.data(), &state_size) == peripheral_ok);
+  CHECK(reinterpret_cast<const MockingboardSaveState_t*>(resaved.data())
+            ->psg_remainder == 0);
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-29 Audio Info Contents") {
