@@ -29,42 +29,77 @@ static_assert(sizeof(MockingboardSaveState_t) == 232,
 static_assert(sizeof(MockingboardChipSaveState_t) == 88,
               "MockingboardChipSaveState_t must be exactly 88 bytes");
 
-static_assert(offsetof(MockingboardSaveState_t, version) == 0);
-static_assert(offsetof(MockingboardSaveState_t, struct_size) == 4);
-static_assert(offsetof(MockingboardSaveState_t, chips) == 8);
-static_assert(offsetof(MockingboardSaveState_t, psg_remainder) == 184);
+static_assert(offsetof(MockingboardSaveState_t, version) == 0,
+              "version must stay at byte 0 of the v1 card layout");
+static_assert(offsetof(MockingboardSaveState_t, struct_size) == 4,
+              "struct_size must stay at byte 4 of the v1 card layout");
+static_assert(offsetof(MockingboardSaveState_t, chips) == 8,
+              "chips must stay at byte 8 of the v1 card layout");
+static_assert(offsetof(MockingboardSaveState_t, psg_remainder) == 184,
+              "psg_remainder must stay at byte 184 of the v1 card layout");
 
-static_assert(offsetof(MockingboardChipSaveState_t, orb) == 0);
-static_assert(offsetof(MockingboardChipSaveState_t, ora) == 1);
-static_assert(offsetof(MockingboardChipSaveState_t, ddrb) == 2);
-static_assert(offsetof(MockingboardChipSaveState_t, ddra) == 3);
-static_assert(offsetof(MockingboardChipSaveState_t, t1_counter) == 4);
-static_assert(offsetof(MockingboardChipSaveState_t, t1_latch) == 6);
-static_assert(offsetof(MockingboardChipSaveState_t, t2_counter) == 8);
-static_assert(offsetof(MockingboardChipSaveState_t, t2_latch) == 10);
-static_assert(offsetof(MockingboardChipSaveState_t, serial_shift) == 12);
-static_assert(offsetof(MockingboardChipSaveState_t, acr) == 13);
-static_assert(offsetof(MockingboardChipSaveState_t, pcr) == 14);
-static_assert(offsetof(MockingboardChipSaveState_t, ifr) == 15);
-static_assert(offsetof(MockingboardChipSaveState_t, ier) == 16);
-static_assert(offsetof(MockingboardChipSaveState_t, ora_no_hs) == 17);
-static_assert(offsetof(MockingboardChipSaveState_t, via_flags) == 18);
-static_assert(offsetof(MockingboardChipSaveState_t, ay_regs) == 20);
-static_assert(offsetof(MockingboardChipSaveState_t, count_a) == 36);
-static_assert(offsetof(MockingboardChipSaveState_t, count_b) == 38);
-static_assert(offsetof(MockingboardChipSaveState_t, count_c) == 40);
-static_assert(offsetof(MockingboardChipSaveState_t, out_a) == 42);
-static_assert(offsetof(MockingboardChipSaveState_t, out_b) == 43);
-static_assert(offsetof(MockingboardChipSaveState_t, out_c) == 44);
-static_assert(offsetof(MockingboardChipSaveState_t, out_n) == 45);
-static_assert(offsetof(MockingboardChipSaveState_t, count_n) == 48);
-static_assert(offsetof(MockingboardChipSaveState_t, rng) == 52);
-static_assert(offsetof(MockingboardChipSaveState_t, count_e) == 56);
-static_assert(offsetof(MockingboardChipSaveState_t, envelope_step) == 60);
-static_assert(offsetof(MockingboardChipSaveState_t, envelope_vol) == 64);
-static_assert(offsetof(MockingboardChipSaveState_t, env_holding) == 65);
-static_assert(offsetof(MockingboardChipSaveState_t, ay_current_register) == 66);
-static_assert(offsetof(MockingboardChipSaveState_t, env_attack) == 68);
+static_assert(offsetof(MockingboardChipSaveState_t, orb) == 0,
+              "orb must stay at byte 0 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ora) == 1,
+              "ora must stay at byte 1 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ddrb) == 2,
+              "ddrb must stay at byte 2 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ddra) == 3,
+              "ddra must stay at byte 3 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, t1_counter) == 4,
+              "t1_counter must stay at byte 4 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, t1_latch) == 6,
+              "t1_latch must stay at byte 6 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, t2_counter) == 8,
+              "t2_counter must stay at byte 8 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, t2_latch) == 10,
+              "t2_latch must stay at byte 10 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, serial_shift) == 12,
+              "serial_shift must stay at byte 12 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, acr) == 13,
+              "acr must stay at byte 13 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, pcr) == 14,
+              "pcr must stay at byte 14 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ifr) == 15,
+              "ifr must stay at byte 15 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ier) == 16,
+              "ier must stay at byte 16 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ora_no_hs) == 17,
+              "ora_no_hs must stay at byte 17 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, via_flags) == 18,
+              "via_flags must stay at byte 18 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ay_regs) == 20,
+              "ay_regs must stay at byte 20 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, count_a) == 36,
+              "count_a must stay at byte 36 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, count_b) == 38,
+              "count_b must stay at byte 38 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, count_c) == 40,
+              "count_c must stay at byte 40 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, out_a) == 42,
+              "out_a must stay at byte 42 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, out_b) == 43,
+              "out_b must stay at byte 43 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, out_c) == 44,
+              "out_c must stay at byte 44 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, out_n) == 45,
+              "out_n must stay at byte 45 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, count_n) == 48,
+              "count_n must stay at byte 48 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, rng) == 52,
+              "rng must stay at byte 52 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, count_e) == 56,
+              "count_e must stay at byte 56 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, envelope_step) == 60,
+              "envelope_step must stay at byte 60 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, envelope_vol) == 64,
+              "envelope_vol must stay at byte 64 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, env_holding) == 65,
+              "env_holding must stay at byte 65 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, ay_current_register) == 66,
+              "ay_current_register must stay at byte 66 of the v1 chip layout");
+static_assert(offsetof(MockingboardChipSaveState_t, env_attack) == 68,
+              "env_attack must stay at byte 68 of the v1 chip layout");
 
 constexpr size_t chips_per_card = 2;
 constexpr size_t voices_per_chip = 3;
