@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware emulation register masks, bit widths, volume tables, and clock divider constants
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Hardware signal interface and multi-channel audio buffer parameters
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables) Justification: Global legacy state maintained for backwards-compatible chip emulation
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: Multi-channel audio sample buffer output indexing
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification: Direct indexed access to hardware registers and volume tables
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Planar output buffers handed in by the card, one per voice
 /*
 LinApple : Apple ][ emulator for Linux
 
@@ -29,215 +29,188 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "apple2/chips/AY8910.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
-// Logarithmic volume table for AY-3-8910 (16 levels)
-// Based on -3dB per step as indicated in datasheet Fig 3.
-static constexpr std::array<uint16_t, 16> vol_table = {
-    {0, 103, 150, 218, 316, 458, 665, 963, 1396, 2023, 2933, 4251, 6163, 8934,
-     12952, 18776}};
+namespace {
 
-auto ay8910_reset_instance(Ay8910_t* p) -> void {
-  if (!p) {
+// Logarithmic amplitudes, -3 dB per step, from data sheet Fig 3. Normalizing
+// by the loudest step makes a full-volume voice exactly 1.0, which is what the
+// card declares as its peak magnitude. The chip is unipolar: it really does
+// swing 0..Vmax, and the AC coupling that centres it is the card's output
+// stage.
+constexpr float vol_full_scale = 18776.0F;
+constexpr std::array<float, 16> vol_table = {
+    {0.0F / vol_full_scale, 103.0F / vol_full_scale, 150.0F / vol_full_scale,
+     218.0F / vol_full_scale, 316.0F / vol_full_scale, 458.0F / vol_full_scale,
+     665.0F / vol_full_scale, 963.0F / vol_full_scale, 1396.0F / vol_full_scale,
+     2023.0F / vol_full_scale, 2933.0F / vol_full_scale,
+     4251.0F / vol_full_scale, 6163.0F / vol_full_scale,
+     8934.0F / vol_full_scale, 12952.0F / vol_full_scale,
+     18776.0F / vol_full_scale}};
+
+auto tone_period(uint8_t fine, uint8_t coarse) -> uint16_t {
+  return static_cast<uint16_t>(fine | ((coarse & 0x0F) << 8));
+}
+
+// The output toggles every TP ticks, giving f = clock / (16 * TP).
+auto step_tone(uint16_t* count, uint8_t* out, uint16_t period) -> void {
+  if (period == 0) {
+    *out = 1;
+    return;
+  }
+  ++*count;
+  if (*count >= period) {
+    *count = 0;
+    *out ^= 1;
+  }
+}
+
+auto advance_noise(Ay8910_t* p) -> void {
+  if ((((p->rng + 1) & 2) ^ (p->rng & 1)) != 0) {
+    p->out_n ^= 1;
+  }
+  p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
+}
+
+auto refresh_envelope_vol(Ay8910_t* p) -> void {
+  p->envelope_vol = static_cast<uint8_t>(
+      p->env_attack ? p->envelope_step : (15U - p->envelope_step));
+}
+
+// The step that produces `amplitude` depends on which way the sweep was
+// running, because the level is read off the step in opposite directions.
+auto hold_at(Ay8910_t* p, uint32_t amplitude) -> void {
+  p->env_holding = true;
+  p->envelope_step = p->env_attack ? amplitude : (15U - amplitude);
+}
+
+auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) -> void {
+  ++p->envelope_step;
+  if (p->envelope_step > 15) {
+    if (!cont) {
+      // Shapes 0x0-0x7 end the cycle at silence whichever way they swept.
+      hold_at(p, 0U);
+    } else if (hold) {
+      // 0x9 and 0xF hold at silence, 0xB and 0xD at full scale.
+      hold_at(p, (p->env_attack != alt) ? 15U : 0U);
+    } else {
+      p->envelope_step = 0;
+      if (alt) {
+        p->env_attack = !p->env_attack;
+      }
+    }
+  }
+  refresh_envelope_vol(p);
+}
+
+auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
+                 bool noise_off, uint8_t amplitude) -> float {
+  const uint8_t tone = tone_off ? uint8_t{1} : tone_out;
+  const uint8_t noise = noise_off ? uint8_t{1} : p->out_n;
+  if ((tone & noise) == 0) {
+    return 0.0F;
+  }
+  const uint8_t vol =
+      ((amplitude & 0x10) != 0) ? p->envelope_vol : (amplitude & 0x0F);
+  return vol_table[vol & 0x0F];
+}
+
+}  // namespace
+
+auto ay8910_reset(Ay8910_t* p) -> void {
+  if (p == nullptr) {
     return;
   }
   *p = Ay8910_t{};
-  p->rng = 1;
 }
 
-auto ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
-                           int sample_rate) -> void {
-  (void)ay_clock;
-  (void)sample_rate;
-  if (!p || r < 0 || r >= 16) {
+auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) -> void {
+  if (p == nullptr || reg >= AY8910_NUM_REGISTERS) {
     return;
   }
-  p->regs[r] = v & 0xFF;
-  switch (r) {
+  p->regs[reg] = val;
+  switch (reg) {
     case 1:
     case 3:
     case 5:
-      p->regs[r] &= 0x0F;
+      p->regs[reg] &= 0x0F;
       break;
     case 6:
     case 8:
     case 9:
     case 10:
-      p->regs[r] &= 0x1F;
+      p->regs[reg] &= 0x1F;
       break;
     case 13:
-      p->regs[r] &= 0x0F;
+      p->regs[reg] &= 0x0F;
       p->count_e = 0;
       p->envelope_step = 0;
       p->env_holding = false;
+      p->env_attack = (val & 0x04) != 0;
+      refresh_envelope_vol(p);
       break;
     default:
       break;
   }
 }
 
-auto ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
-                            int ay_clock, int sample_rate) -> void {
-  if (!p) {
+auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
+                 size_t max) -> void {
+  if (p == nullptr || out == nullptr) {
     return;
   }
+  // Asking for more than the buffers hold would overrun them, so the chip
+  // renders what fits and advances only that far.
+  const size_t count = (ticks < max) ? ticks : max;
 
-  uint16_t period_a = p->regs[0] | (p->regs[1] << 8);
-  uint16_t period_b = p->regs[2] | (p->regs[3] << 8);
-  uint16_t period_c = p->regs[4] | (p->regs[5] << 8);
-  uint8_t noise_period = (p->regs[6] & 0x1F) * 2;
-  uint16_t period_e = p->regs[11] | (p->regs[12] << 8);
-  uint8_t enable = p->regs[7];
-  uint8_t shape = p->regs[13];
+  const uint16_t period_a = tone_period(p->regs[0], p->regs[1]);
+  const uint16_t period_b = tone_period(p->regs[2], p->regs[3]);
+  const uint16_t period_c = tone_period(p->regs[4], p->regs[5]);
 
-  double psg_cycles_per_sample =
-      static_cast<double>(ay_clock) / (16.0 * sample_rate);
+  // The LFSR advances every 2 * NP ticks and the envelope steps every 2 * EP,
+  // both with a period of zero behaving as one.
+  const uint32_t noise_reg = p->regs[6] & 0x1F;
+  const uint32_t noise_div = 2U * ((noise_reg != 0) ? noise_reg : 1U);
+  const uint32_t env_reg = static_cast<uint32_t>(p->regs[11]) |
+                           (static_cast<uint32_t>(p->regs[12]) << 8);
+  const uint32_t env_div = 2U * ((env_reg != 0) ? env_reg : 1U);
 
-  for (int i = 0; i < length; i++) {
-    p->count_accum += psg_cycles_per_sample;
-    auto psg_cycles = static_cast<uint32_t>(p->count_accum);
-    p->count_accum -= psg_cycles;
+  const uint8_t enable = p->regs[7];
+  const uint8_t shape = p->regs[13];
+  const bool cont = (shape & 0x08) != 0;
+  const bool alt = (shape & 0x02) != 0;
+  const bool hold = (shape & 0x01) != 0;
 
-    if (period_a > 0) {
-      p->count_a += psg_cycles;
-      while (p->count_a >= period_a) {
-        p->count_a -= period_a;
-        p->out_a ^= 1;
-      }
-    } else {
-      p->out_a = 1;
-    }
+  for (size_t i = 0; i < count; ++i) {
+    step_tone(&p->count_a, &p->out_a, period_a);
+    step_tone(&p->count_b, &p->out_b, period_b);
+    step_tone(&p->count_c, &p->out_c, period_c);
 
-    if (period_b > 0) {
-      p->count_b += psg_cycles;
-      while (p->count_b >= period_b) {
-        p->count_b -= period_b;
-        p->out_b ^= 1;
-      }
-    } else {
-      p->out_b = 1;
-    }
-
-    if (period_c > 0) {
-      p->count_c += psg_cycles;
-      while (p->count_c >= period_c) {
-        p->count_c -= period_c;
-        p->out_c ^= 1;
-      }
-    } else {
-      p->out_c = 1;
-    }
-
-    uint32_t n_p = noise_period ? noise_period : 1;
-    p->count_n += psg_cycles;
-    while (p->count_n >= n_p) {
-      p->count_n -= n_p;
-      if (((p->rng + 1) & 2) ^ (p->rng & 1)) {
-        p->out_n ^= 1;
-      }
-      p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
+    ++p->count_n;
+    if (p->count_n >= noise_div) {
+      p->count_n = 0;
+      advance_noise(p);
     }
 
     if (!p->env_holding) {
-      uint32_t e_p = (period_e ? period_e : 1) * 16;
-      p->count_e += psg_cycles;
-      while (p->count_e >= e_p) {
-        p->count_e -= e_p;
-        p->envelope_step++;
-
-        bool cont = (shape & 0x08) != 0;
-        bool attack = (shape & 0x04) != 0;
-        bool alt = (shape & 0x02) != 0;
-        bool hold = (shape & 0x01) != 0;
-
-        if (p->envelope_step > 15) {
-          if (!cont) {
-            p->env_holding = true;
-            p->envelope_step = 0;
-          } else {
-            if (hold) {
-              p->env_holding = true;
-              p->envelope_step = (alt ^ attack) ? 0 : 15;
-            } else {
-              p->envelope_step = 0;
-              if (alt) {
-                shape ^= 0x04;
-              }
-            }
-          }
-        }
+      ++p->count_e;
+      if (p->count_e >= env_div) {
+        p->count_e = 0;
+        step_envelope(p, cont, alt, hold);
       }
     }
 
-    bool cur_attack = (shape & 0x04) != 0;
-    p->envelope_vol = cur_attack ? p->envelope_step : (15 - p->envelope_step);
-
-    int chan_a = 0;
-    int chan_b = 0;
-    int chan_c = 0;
-    if ((!(enable & 0x01) ? p->out_a : 1) & (!(enable & 0x08) ? p->out_n : 1)) {
-      uint8_t vol = (p->regs[8] & 0x10) ? p->envelope_vol : (p->regs[8] & 0x0F);
-      chan_a = vol_table[vol];
-    }
-    if ((!(enable & 0x02) ? p->out_b : 1) & (!(enable & 0x10) ? p->out_n : 1)) {
-      uint8_t vol = (p->regs[9] & 0x10) ? p->envelope_vol : (p->regs[9] & 0x0F);
-      chan_b = vol_table[vol];
-    }
-    if ((!(enable & 0x04) ? p->out_c : 1) & (!(enable & 0x20) ? p->out_n : 1)) {
-      uint8_t vol =
-          (p->regs[10] & 0x10) ? p->envelope_vol : (p->regs[10] & 0x0F);
-      chan_c = vol_table[vol];
-    }
-
-    buffer[0][i] = static_cast<int16_t>(chan_a);
-    buffer[1][i] = static_cast<int16_t>(chan_b);
-    buffer[2][i] = static_cast<int16_t>(chan_c);
+    out[0][i] = voice_level(p, p->out_a, (enable & 0x01) != 0,
+                            (enable & 0x08) != 0, p->regs[8]);
+    out[1][i] = voice_level(p, p->out_b, (enable & 0x02) != 0,
+                            (enable & 0x10) != 0, p->regs[9]);
+    out[2][i] = voice_level(p, p->out_c, (enable & 0x04) != 0,
+                            (enable & 0x20) != 0, p->regs[10]);
   }
 }
-
-// Legacy Global State for compatibility
-static std::array<Ay8910_t, MAX_8910> ay_chips;
-static int ay_clock = 1000000;
-static int ay_sample_rate = 44100;
-
-auto ay8910_init_all(int clock_rate, int sample_rate) -> void {
-  ay_clock = clock_rate;
-  ay_sample_rate = sample_rate;
-  for (int i = 0; i < MAX_8910; i++) {
-    ay8910_reset(i);
-  }
-}
-auto ay8910_init_clock(int clock) -> void { ay_clock = clock; }
-auto ay8910_reset(int chip) -> void {
-  if (chip >= 0 && chip < MAX_8910) {
-    ay8910_reset_instance(&ay_chips[chip]);
-  }
-}
-auto ay8910_write_ym(int chip, int addr, int data) -> void {
-  if (chip >= 0 && chip < MAX_8910) {
-    ay8910_write_instance(&ay_chips[chip], addr, data, ay_clock,
-                          ay_sample_rate);
-  }
-}
-auto ay_write_reg_internal(int n, int r, int v) -> void {
-  if (n >= 0 && n < MAX_8910) {
-    ay8910_write_instance(&ay_chips[n], r, v, ay_clock, ay_sample_rate);
-  }
-}
-auto ay8910_update(int chip, int16_t** buffer, int length) -> void {
-  if (chip >= 0 && chip < MAX_8910) {
-    ay8910_update_instance(&ay_chips[chip], buffer, length, ay_clock,
-                           ay_sample_rate);
-  }
-}
-auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t* {
-  if (ay_num >= MAX_8910) {
-    return nullptr;
-  }
-  return ay_chips[ay_num].regs.data();
-}
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 // NOLINTEND(bugprone-easily-swappable-parameters)
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

@@ -681,6 +681,10 @@ if(BUILD_TESTING)
     target_include_directories(test-via6522 PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-via6522 COMMAND test-via6522)
 
+    add_executable(test-ay8910 tests/test_ay8910.cpp src/apple2/chips/AY8910.cpp)
+    target_include_directories(test-ay8910 PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-ay8910 COMMAND test-ay8910)
+
     add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
     add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")
     if(BUILD_SHARED_PERIPHERALS AND TARGET peripheral-mockingboard)

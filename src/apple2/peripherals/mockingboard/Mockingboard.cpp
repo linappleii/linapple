@@ -135,11 +135,6 @@ struct Sy6522Ay8910_t {
 
 struct MockingboardPeripheral_t {
   std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
-  std::array<std::array<int16_t, mb_max_samples_per_update>, voices_per_card>
-      voice_buffers = {};
-  // The AY still synthesizes int16; the contract carries normalized float, so
-  // the push site converts through here.
-  // TODO: emit float natively from the AY.
   std::array<std::array<float, mb_max_samples_per_update>, voices_per_card>
       voice_buffers_normalized = {};
   std::array<int16_t, mb_max_samples_per_update * 2> mix_buffer = {};
@@ -161,7 +156,7 @@ struct MockingboardPeripheral_t {
     for (int i = 0; i < chips_per_card; ++i) {
       const auto idx = static_cast<size_t>(i);
       chips.at(idx).ay_8910_number = static_cast<uint8_t>(i);
-      ay8910_reset_instance(&chips.at(idx).ay_chip);
+      ay8910_reset(&chips.at(idx).ay_chip);
     }
   }
 };
@@ -239,17 +234,16 @@ auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
   auto* pmb = &mp->chips.at(static_cast<size_t>(device));
 
   if ((value & ay::pb_reset_n) == 0) {
-    ay8910_reset_instance(&pmb->ay_chip);
+    ay8910_reset(&pmb->ay_chip);
   } else {
     int bdir = (value & ay::pb_bdir) ? 1 : 0;
     int bc1 = (value & ay::pb_bc1) ? 1 : 0;
     int ay_func = (bdir << 2) | (1 << 1) | bc1;
 
     if (ay_func == ay::func_write) {
-      ay8910_write_instance(&pmb->ay_chip, pmb->ay_current_register,
-                            pmb->sy6522.ORA,
-                            static_cast<int>(get_clock_hz(mp->host)),
-                            static_cast<int>(default_mockingboard_sample_rate));
+      ay8910_write(&pmb->ay_chip,
+                   static_cast<uint8_t>(pmb->ay_current_register),
+                   pmb->sy6522.ORA);
     } else if (ay_func == ay::func_latch) {
       if (pmb->sy6522.ORA <= ay::reg_mask) {
         pmb->ay_current_register =
@@ -415,24 +409,17 @@ auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
   }
 
   for (size_t i = 0; i < chips_per_card; i++) {
-    int16_t* voices[3];
-    voices[0] = mp->voice_buffers.at(i * 3 + 0).data();
-    voices[1] = mp->voice_buffers.at(i * 3 + 1).data();
-    voices[2] = mp->voice_buffers.at(i * 3 + 2).data();
-    ay8910_update_instance(&mp->chips.at(i).ay_chip, voices, num_samples,
-                           static_cast<int>(clock_hz),
-                           static_cast<int>(sample_rate));
+    float* voices[3];
+    voices[0] = mp->voice_buffers_normalized.at(i * 3 + 0).data();
+    voices[1] = mp->voice_buffers_normalized.at(i * 3 + 1).data();
+    voices[2] = mp->voice_buffers_normalized.at(i * 3 + 2).data();
+    ay8910_step(&mp->chips.at(i).ay_chip, static_cast<size_t>(num_samples),
+                voices, mb_max_samples_per_update);
   }
 
   if (mp->host != nullptr && mp->host->AudioPushChannels != nullptr) {
     const float* channel_ptrs[voices_per_card];
     for (size_t v = 0; v < voices_per_card; ++v) {
-      for (int s = 0; s < num_samples; ++s) {
-        mp->voice_buffers_normalized.at(v).at(static_cast<size_t>(s)) =
-            static_cast<float>(
-                mp->voice_buffers.at(v).at(static_cast<size_t>(s))) /
-            32768.0f;
-      }
       channel_ptrs[v] = mp->voice_buffers_normalized.at(v).data();
     }
     mp->host->AudioPushChannels(mp, channel_ptrs, voices_per_card,
@@ -654,7 +641,7 @@ auto mb_abi_reset(void* instance) -> void {
 
   for (auto& chip : mp->chips) {
     std::memset(&chip.sy6522, 0, sizeof(Sy6522_t));
-    ay8910_reset_instance(&chip.ay_chip);
+    ay8910_reset(&chip.ay_chip);
     chip.timer_status = 0;
     chip.ay_current_register = 0;
   }
@@ -755,7 +742,6 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
     dst.ay_current_register = src.ay_current_register;
     dst.ay_number = src.ay_8910_number;
     dst.timer_status = src.timer_status;
-    dst.count_accum = src.ay_chip.count_accum;
   }
 
   ss->timer_period_6522 = mp->timer_period_6522;
@@ -828,7 +814,6 @@ auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
     dst.ay_current_register = src.ay_current_register;
     dst.ay_8910_number = src.ay_number;
     dst.timer_status = src.timer_status;
-    dst.ay_chip.count_accum = src.count_accum;
   }
 
   mp->timer_period_6522 = ss->timer_period_6522;
@@ -877,7 +862,7 @@ auto mb_abi_command(void* instance, uint32_t cmd_id, const void* data,
     }
     case mockingboard_cmd_reset_audio: {
       for (auto& chip : mp->chips) {
-        ay8910_reset_instance(&chip.ay_chip);
+        ay8910_reset(&chip.ay_chip);
       }
       return peripheral_ok;
     }

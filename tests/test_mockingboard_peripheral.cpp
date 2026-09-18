@@ -20,7 +20,6 @@ namespace {
 constexpr int DEFAULT_MOCKINGBOARD_SLOT = 4;
 constexpr uint64_t INITIAL_MOCK_CYCLES = 10000;
 constexpr int AY_MAX_VOLUME = 15;
-constexpr int16_t AY_PEAK_AMPLITUDE_MAX_VOL = 18776;
 
 class MockingboardHarness {
  public:
@@ -489,48 +488,6 @@ TEST_CASE(
   const auto* ss =
       reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
   CHECK(ss->chips[0].ay_regs[7] == 0x3F);
-}
-
-TEST_CASE(
-    "Mockingboard Peripheral: MB-09 Audio Sample Synthesis & Volume Clamping") {
-  MockingboardHarness harness;
-  void* instance = harness.create_card(4);
-  REQUIRE(instance != nullptr);
-
-  harness.write_cx(0xC002, 0xFF);
-  harness.write_cx(0xC003, 0xFF);
-  harness.write_cx(0xC000, 0x04);
-
-  // Tone period 20 on Channel A, Volume 15
-  write_mockingboard_ay(harness, 0x00, 20);
-  write_mockingboard_ay(harness, 0x01, 0x00);
-  write_mockingboard_ay(harness, 0x08, AY_MAX_VOLUME);
-  write_mockingboard_ay(harness, 0x07, 0x3E);  // Enable Tone A
-
-  // Setup periodic Timer 1
-  harness.write_cx(0xC00E, 0xC0);
-  harness.write_cx(0xC004, 0xE8);
-  harness.write_cx(0xC005, 0x03);
-
-  harness.clear_audio();
-  harness.advance_cycles(1001);
-  harness.think(0);
-
-  CHECK(harness.irq_asserted());
-  CHECK(harness.audio_push_call_count() == 1);
-  CHECK(harness.captured_channel_count() == 6);
-  const auto& samples = harness.channel_samples(0);
-  REQUIRE_FALSE(samples.empty());
-
-  int16_t peak_left = 0;
-  int16_t min_left = 0;
-  for (int16_t sample : samples) {
-    if (sample > peak_left) peak_left = sample;
-    if (sample < min_left) min_left = sample;
-  }
-
-  CHECK(peak_left == AY_PEAK_AMPLITUDE_MAX_VOL);
-  CHECK(min_left == 0);
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-10 60 Hz Fallback Audio Spindown") {

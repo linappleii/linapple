@@ -5,40 +5,41 @@
 #include <cstddef>
 #include <cstdint>
 
-constexpr int MAX_8910 = 4;
 constexpr size_t AY8910_NUM_REGISTERS = 16;
+constexpr size_t AY8910_NUM_VOICES = 3;
 
-// AY-3-8910 emulation
-// Based on General Instrument AY-3-8910 Datasheet
-
+// AY-3-8910 emulation, per the General Instrument data sheet.
+//
+// The chip knows nothing about hosts, clocks in hertz or sample rates. Its
+// tone, noise and envelope counters all advance at clock / 8, and one sample
+// comes out per counter tick, so the caller -- which is the only party that
+// knows what the chip is wired to -- decides how many ticks elapsed.
 struct Ay8910_t {
   std::array<uint8_t, AY8910_NUM_REGISTERS> regs = {};
-  uint16_t count_a = 0, count_b = 0, count_c = 0;
-  uint8_t out_a = 0, out_b = 0, out_c = 0;
+  uint16_t count_a = 0;
+  uint16_t count_b = 0;
+  uint16_t count_c = 0;
+  uint8_t out_a = 0;
+  uint8_t out_b = 0;
+  uint8_t out_c = 0;
 
   uint32_t count_n = 0;
-  uint32_t rng = 0;
+  // A zero LFSR shifts zeroes forever, so the noise source is dead until the
+  // next reset.
+  uint32_t rng = 1;
   uint8_t out_n = 0;
 
   uint32_t count_e = 0;
-  uint8_t envelope_vol = 0;
   uint32_t envelope_step = 0;
+  uint8_t envelope_vol = 0;
   bool env_holding = false;
-
-  double count_accum = 0.0;
+  bool env_attack = false;
 };
 
-auto ay8910_reset_instance(Ay8910_t* p) -> void;
-auto ay8910_write_instance(Ay8910_t* p, int r, int v, int ay_clock,
-                           int sample_rate) -> void;
-auto ay8910_update_instance(Ay8910_t* p, int16_t** buffer, int length,
-                            int ay_clock, int sample_rate) -> void;
+auto ay8910_reset(Ay8910_t* p) -> void;
+auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) -> void;
 
-// Legacy stubs
-auto ay8910_init_all(int clock_rate, int sample_rate) -> void;
-auto ay8910_init_clock(int clock) -> void;
-auto ay8910_reset(int chip) -> void;
-auto ay8910_write_ym(int chip, int addr, int data) -> void;
-auto ay_write_reg_internal(int n, int r, int v) -> void;
-auto ay8910_update(int chip, int16_t** buffer, int length) -> void;
-auto ay8910_get_regs_ptr(uint32_t ay_num) -> uint8_t*;
+// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Planar output buffers handed in by the card, one per voice
+auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
+                 size_t max) -> void;
+// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
