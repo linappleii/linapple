@@ -6,7 +6,6 @@
 
 #include "apple2/CPU.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "doctest.h"
 #include "test_fixtures_core.h"
 
@@ -105,7 +104,6 @@ auto mockingboard_in_slot_4() -> TestConfig_t::Description_t {
   return description;
 }
 
-constexpr int MOCKINGBOARD_SLOT = 4;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 
 // Slot 4's VIA A, and the registers this case drives.
@@ -164,10 +162,6 @@ TEST_CASE("Mockingboard Core Seam: A Slot Handler Sees The Executed Cycles") {
 TEST_CASE("Mockingboard Core Seam: A Timer Interrupt Reaches The 6502") {
   TestConfig_t config(mockingboard_in_slot_4());
   ScopedCore_t core(config);
-  // ScopedCore_t clears what linapple_init registered from the config, so the
-  // card the configuration declares is put in its slot by hand.
-  REQUIRE(peripheral_register(mockingboard_get_descriptor(),
-                              MOCKINGBOARD_SLOT) == 0);
 
   ScopedCore_t::poke(HANDLER_ADDR, irq_handler);
   ScopedCore_t::poke(PROGRAM_ADDR, spin_program);

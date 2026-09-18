@@ -8,9 +8,9 @@
 #include <vector>
 
 #include "apple2/CPU.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AudioMixer.h"
@@ -192,11 +192,12 @@ class MockingboardChain_t {
     g_tap_calls = 0;
     std::memset(&g_announced, 0, sizeof(g_announced));
 
-    // ScopedCore_t clears what linapple_init registered from the
-    // configuration, so the card the configuration declares is put in its
-    // slot by hand.
-    registered_ = (peripheral_register(mockingboard_get_descriptor(),
-                                       CARD_SLOT) == 0);
+    // The configuration puts the card in its slot as the core comes up; the
+    // manifest is what says the slot really holds a Mockingboard.
+    SS_PERIPHERAL_MANIFEST manifest;
+    peripheral_get_manifest(&manifest);
+    registered_ =
+        std::strcmp(manifest.peripherals[CARD_SLOT].name, "Mockingboard") == 0;
 
     audio_mixer_initialize(DEVICE_RATE_HZ);
     audio_mixer_set_channel_tap_callback(record_tap);

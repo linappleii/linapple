@@ -7,6 +7,7 @@
 #include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
@@ -14,6 +15,7 @@
 #include "doctest.h"
 #include "fixture_plugin_slot0.h"
 #include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 static bool g_mock_shutdown_called = false;
 
@@ -311,6 +313,29 @@ TEST_CASE(
   linapple_shutdown();
 }
 #endif
+
+TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
+  // What a suite declares is the machine it gets. A fixture that built the
+  // core and then cleared the slots left every card to be registered by hand,
+  // so the declaration described nothing and the hand registration was the
+  // only truth.
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots[3] = "Mockingboard";
+  description.slots[5] = "Disk II";
+  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedCore_t core(config);
+
+  SS_PERIPHERAL_MANIFEST manifest;
+  peripheral_get_manifest(&manifest);
+
+  CHECK(std::string(manifest.peripherals[4].name) == "Mockingboard");
+  CHECK(std::string(manifest.peripherals[6].name) == "Disk II");
+  CHECK(manifest.peripherals[1].name[0] == '\0');
+  CHECK(manifest.peripherals[2].name[0] == '\0');
+  CHECK(manifest.peripherals[3].name[0] == '\0');
+  CHECK(manifest.peripherals[5].name[0] == '\0');
+  CHECK(manifest.peripherals[7].name[0] == '\0');
+}
 
 TEST_CASE(
     "Peripheral Manager: A plugin declaring slot zero is registered there") {

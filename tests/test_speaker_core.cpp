@@ -8,7 +8,6 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
-#include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AudioMixer.h"
@@ -173,6 +172,11 @@ class ScopedAnnounceRecorder_t {
   auto at(size_t index) const -> const AnnounceRecord_t& {
     return g_announcements.at(index);
   }
+
+  // Subscribing replays whatever the core already holds, and the core always
+  // holds the motherboard speaker. A case about a card in an expansion slot
+  // drops that replay rather than counting it.
+  static auto forget_replay() -> void { g_announcements.clear(); }
 };
 
 std::vector<float> g_pushed_samples;
@@ -271,7 +275,6 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedPushRecorder_t pushes;
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
   io_map_dispatch(0, ADDR_SPEAKER, 0, 0, 0);
   cpu_calc_cycles(1);
@@ -311,6 +314,7 @@ TEST_CASE("Speaker Core Seam: Registration Announces The Source Once") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedAnnounceRecorder_t recorder;
+  ScopedAnnounceRecorder_t::forget_replay();
   ScopedMock_t mock;
   mock.answer_absolute(44100, 1);
 
@@ -329,6 +333,7 @@ TEST_CASE("Speaker Core Seam: NotifyStatusChanged Re-Announces Its Own Slot") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedAnnounceRecorder_t recorder;
+  ScopedAnnounceRecorder_t::forget_replay();
   ScopedMock_t mock;
   mock.answer_absolute(44100, 1);
 
@@ -354,6 +359,7 @@ TEST_CASE("Speaker Core Seam: A Non-Audio Peripheral Announces Nothing") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedAnnounceRecorder_t recorder;
+  ScopedAnnounceRecorder_t::forget_replay();
   ScopedMock_t mock;
   mock.answer_nothing();
 
@@ -367,12 +373,13 @@ TEST_CASE("Speaker Core Seam: A Non-Audio Peripheral Announces Nothing") {
 
 TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
   // The speaker is the static case: announced at registration, never again,
-  // routing stable for the session.
+  // routing stable for the session. Subscribing before the core is the only
+  // way to hear the registration itself rather than the replay, which is
+  // what the late-subscriber case below covers.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
   ScopedAnnounceRecorder_t recorder;
+  ScopedCore_t core(config);
 
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
   REQUIRE(recorder.count() == 1);
   CHECK(recorder.at(0).slot == 0);
   CHECK(recorder.at(0).id == "linapple.speaker");
@@ -391,7 +398,6 @@ TEST_CASE("Speaker Core Seam: The Speaker Through The Real Host") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedPushRecorder_t pushes;
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
   const uint8_t bus_value = io_map_dispatch(0, ADDR_SPEAKER, 0, 0, 0);
   CHECK(bus_value == mem_read_floating_bus(0));
@@ -415,7 +421,6 @@ TEST_CASE(
   // strobe exact and is why the strobe needs no cycle count of its own.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
   const uint64_t initial_cycles = cpu_get_cumulative_cycles();
   constexpr uint32_t instruction_cycle_offset = 512;
@@ -435,7 +440,6 @@ TEST_CASE(
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedPushRecorder_t pushes;
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
   for (uint32_t cycle = 1000; cycle < 17000; cycle += 1000) {
     io_map_dispatch(0, ADDR_SPEAKER, 0, 0, cycle);
@@ -502,13 +506,14 @@ auto install_mixer_callbacks() -> void {
 auto tone_through_mixer(bool subscribe_before_register)
     -> std::vector<int16_t> {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
   audio_mixer_initialize(DEVICE_RATE_HZ);
 
+  // The speaker is soldered to the motherboard, so the core registers it as
+  // it comes up. Subscribing before that means subscribing before the core.
   if (subscribe_before_register) {
     install_mixer_callbacks();
   }
-  peripheral_register(speaker_get_descriptor(), 0);
+  ScopedCore_t core(config);
   if (!subscribe_before_register) {
     install_mixer_callbacks();
   }
@@ -541,7 +546,6 @@ TEST_CASE("Speaker Core Seam: A Late Subscriber Learns What Is Already There") {
   // registrations hears nothing at all, and the machine is silent.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
-  REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);
 
   // The recorder subscribes late, exactly as ds_init() does.
   ScopedAnnounceRecorder_t recorder;

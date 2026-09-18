@@ -52,7 +52,6 @@ class ScopedCore_t {
   explicit ScopedCore_t(const ScopedTestConfig_t& config) {
     config.load();
     linapple_init();
-    peripheral_manager_init();
   }
 
   ~ScopedCore_t() {

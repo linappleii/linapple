@@ -10,7 +10,6 @@
 #include "apple2/CPU.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
-#include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/AudioDumper.h"
@@ -91,7 +90,13 @@ class SpeakerChain_t {
                                       static_cast<uint32_t>(num_samples));
         });
 
-    registered_ = (peripheral_register(speaker_get_descriptor(), 0) == 0);
+    // The core puts the speaker in slot 0 as motherboard hardware. The
+    // manifest names only the first of the slot's several occupants, so what
+    // says the speaker is there is slot 0 answering for audio at all.
+    PeripheralAudioInfo_t info{};
+    size_t info_size = sizeof(info);
+    registered_ = (peripheral_query(0, PERIPHERAL_QUERY_AUDIO_INFO, &info,
+                                    &info_size) == peripheral_ok);
   }
 
   ~SpeakerChain_t() {
