@@ -79,6 +79,7 @@ static constexpr uint16_t addr_slot_rom_mask = 0x07;
 
 static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                 uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readC0 != nullptr) {
@@ -96,6 +97,7 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                  uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeC0 != nullptr) {
@@ -113,6 +115,7 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                 uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readCx != nullptr) {
@@ -130,6 +133,7 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
                                  uint8_t d, uint32_t cycles_left) -> uint8_t {
+  cpu_calc_cycles(cycles_left);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeCx != nullptr) {
