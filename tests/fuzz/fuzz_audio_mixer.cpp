@@ -44,9 +44,7 @@ class ByteReader_t {
 
   // A byte mapped onto roughly [-2, 2], so uploads straddle full scale in
   // both directions and exercise the clip.
-  auto level() -> float {
-    return (static_cast<float>(u8()) - 128.0f) / 64.0f;
-  }
+  auto level() -> float { return (static_cast<float>(u8()) - 128.0f) / 64.0f; }
 
  private:
   const uint8_t* data_;
@@ -117,8 +115,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
           plane[i] = level;
         }
         audio_mixer_upload_channels("fuzz.source", slot, channels.data(),
-                                    num_channels,
-                                    static_cast<uint32_t>(count));
+                                    num_channels, static_cast<uint32_t>(count));
         break;
       }
       case 3:
