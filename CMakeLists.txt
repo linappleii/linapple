@@ -873,6 +873,9 @@ if(ENABLE_FUZZING)
                          -max_total_time=10)
         set_tests_properties(fuzz-speaker PROPERTIES LABELS "fuzz")
 
+        # No record structure to mirror: the harness reads a byte at a time and
+        # turns each into one mixer call, so this is simply enough bytes for a
+        # long enough sequence.
         add_test(NAME fuzz-audio-mixer
                  COMMAND fuzz-audio-mixer
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/audio-mixer

@@ -133,9 +133,7 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
   }
 
   // A cone at rest with nothing driving it is silent, and silence is no
-  // samples rather than a stream of zeros. This is what the inactivity
-  // watchdog was reaching for, stated in terms of the model instead of a
-  // timer.
+  // samples rather than a stream of zeros.
   if (speaker.event_count == 0 &&
       std::abs(speaker.filter_state) < spindown_silence_epsilon) {
     speaker.filter_state = 0.0;

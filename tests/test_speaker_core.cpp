@@ -231,7 +231,7 @@ class ScopedPushRecorder_t {
 }  // namespace
 
 // =============================================================================
-// The direct-I/O strobe bridge (Task A4)
+// The direct-I/O strobe bridge
 // =============================================================================
 
 TEST_CASE("Speaker Core Seam: The Strobe Bridge Strobes And Returns The Bus") {
@@ -267,7 +267,7 @@ TEST_CASE("Speaker Core Seam: The Strobe Bridge Strobes And Returns The Bus") {
 TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
   // Any access to the soft switch toggles the flip-flop on real hardware, so
   // the two directions must reach the same handler and produce the same cone
-  // motion. This is the harness-side single-registration case made real.
+  // motion.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedPushRecorder_t pushes;
@@ -304,7 +304,7 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
 }
 
 // =============================================================================
-// Audio-source announcement (Task A3)
+// Audio-source announcement
 // =============================================================================
 
 TEST_CASE("Speaker Core Seam: Registration Announces The Source Once") {
@@ -366,8 +366,8 @@ TEST_CASE("Speaker Core Seam: A Non-Audio Peripheral Announces Nothing") {
 }
 
 TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
-  // The speaker's role in Task A3 is the static case: announced at
-  // registration, never again, routing stable for the session.
+  // The speaker is the static case: announced at registration, never again,
+  // routing stable for the session.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedAnnounceRecorder_t recorder;
@@ -388,8 +388,6 @@ TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
 
 TEST_CASE("Speaker Core Seam: The Speaker Through The Real Host") {
   // The one case where the speaker and the bridge meet: no mocks anywhere.
-  // A single soft-switch read, a single cycle of thinking, and the cone's
-  // full 2.0 edge arrives at the frontend callback.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   ScopedPushRecorder_t pushes;
@@ -472,7 +470,7 @@ TEST_CASE(
   CHECK(zero_crossings == 15);
 }
 
-// The warp-mode gate is not tested here. Task D1 is deferred: the core
+// The warp-mode gate is not tested here, and is deferred: the core
 // declining to ask needs a peripheral-declared fact that think has no
 // bus-visible side effects, and that has to be designed against
 // Mockingboard, whose 6522 timers and interrupts must keep running in warp.
@@ -537,10 +535,10 @@ auto non_zero_frames(const std::vector<int16_t>& stereo) -> size_t {
 
 TEST_CASE("Speaker Core Seam: A Late Subscriber Learns What Is Already There") {
   // Every frontend installs the mixer callbacks after
-  // app_controller_initialize has already registered the internal
-  // peripherals: sdl/MainSession.cpp:58 then ds_init() at :70, tui/Main.cpp
-  // the same way. A callback that only hears about future registrations
-  // hears nothing at all, and the machine is silent.
+  // app_controller_initialize has already registered the internal peripherals:
+  // session_init calls app_controller_initialize first and ds_init() last, and
+  // tui/Main.cpp does the same. A callback that only hears about future
+  // registrations hears nothing at all, and the machine is silent.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   ScopedCore_t core(config);
   REQUIRE(peripheral_register(speaker_get_descriptor(), 0) == 0);

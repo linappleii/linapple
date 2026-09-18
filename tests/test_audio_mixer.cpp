@@ -264,7 +264,7 @@ class ScopedTap_t {
 }  // namespace
 
 // =============================================================================
-// The two-form time base at the ABI (Task A1)
+// The two-form time base at the ABI
 // =============================================================================
 
 TEST_CASE("Audio Mixer: Both Time Bases Resolve To The Same Second") {
@@ -342,7 +342,7 @@ TEST_CASE("Audio Mixer: A CPU-Clocked Source Follows The Video Standard") {
 }
 
 // =============================================================================
-// The resampler in both directions (Task C1 step 6)
+// The resampler in both directions
 // =============================================================================
 
 TEST_CASE("Audio Mixer: A 1 kHz Tone Keeps Its Pitch At Every Device Rate") {
@@ -491,7 +491,7 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
 }
 
 // =============================================================================
-// The single clip, the rounding, and the per-source gain (Tasks A2, C1)
+// The single clip, the rounding, and the per-source gain
 // =============================================================================
 
 TEST_CASE("Audio Mixer: One Clip, At The Very End") {
@@ -576,7 +576,7 @@ TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
 }
 
 // =============================================================================
-// Idempotent re-announcement (Task A3)
+// Idempotent re-announcement
 // =============================================================================
 
 TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
@@ -627,7 +627,7 @@ TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
 }
 
 // =============================================================================
-// Latency in milliseconds, and the underrun contract (Task C1 step 4)
+// Latency in milliseconds, and the underrun contract
 // =============================================================================
 
 TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
@@ -635,8 +635,6 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
   // skip stopped at, which is the upload less the drain request and the
   // cushion. The capacity is 185 ms of audio, so the upload has to stay under
   // that or the measurement becomes capacity-limited instead; 150 ms fits.
-  // The plan's fixture row gives (200 - 10 - 140) * rate / 1000, which is
-  // both too long to fit and derived from the pre-correction literals.
   constexpr size_t upload_ms = 150;
   for (uint32_t rate : {48000U, 96000U}) {
     MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
@@ -698,8 +696,8 @@ TEST_CASE("Audio Mixer: The Ring's Capacity Is Measured In Milliseconds Too") {
     CHECK(out[0] == static_cast<int16_t>(skipped / 2));
   }
 
-  // Today's values at 44100, preserved exactly by the unit correction: 185 ms
-  // truncates to 8158 frames, and the pair count rounds down to even.
+  // Today's values at 44100: 185 ms truncates to 8158 frames, and the pair
+  // count rounds down to even.
   CHECK(capacity_samples_for(44100) == 16316);
   CHECK(cushion_samples_for(44100) == 6174);
 }
@@ -707,8 +705,7 @@ TEST_CASE("Audio Mixer: The Ring's Capacity Is Measured In Milliseconds Too") {
 TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
   // Every frontend already relies on this: when the emulation falls behind,
   // the last frame walks to zero at a fixed step instead of clicking or
-  // repeating. The plan calls it a hold; the code has faded since before this
-  // work, and the fade is what is pinned.
+  // repeating. The code fades rather than holding, and the fade is pinned.
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
 
@@ -735,7 +732,7 @@ TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
 // =============================================================================
 
 TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
-  // The plan expects the most recent capacity frames to survive. They do not:
+  // A saturating upload keeps the oldest frames, not the newest:
   // sample_buffer_upload writes what fits and drops the rest, so the ring
   // keeps the oldest frames and the producer loses the newest. Pinned as it
   // is, because the alternative -- overwriting the reader's backlog -- is not
@@ -1054,8 +1051,6 @@ TEST_CASE("Audio Mixer: A Paced Loop Keeps The Device Fed") {
     CHECK(run.left(i) == 0);
   }
 
-  // Once the first block has gone by, not one gap and not one fade frame for
-  // the rest of the second.
   // Onset is immediate: at the correct period there is nothing to wait for.
   CHECK(run.first_served_frame() == rest_end);
 

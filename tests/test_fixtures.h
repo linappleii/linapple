@@ -420,9 +420,8 @@ class ScopedTestConfig_t {
   // and joystick, and no card anywhere.
   static auto enhanced_2e_only() -> Description_t { return Description_t(); }
 
-  // An Enhanced //e with a Disk II in slot 6 and nothing else. Disk speed is
-  // stated rather than inherited from whatever config happens to be on the
-  // machine running the suite.
+  // Disk speed is stated rather than inherited from whatever config happens to
+  // be on the machine running the suite.
   static auto disk_ii_only() -> Description_t {
     Description_t description;
     description.slots[5] = "Disk II";

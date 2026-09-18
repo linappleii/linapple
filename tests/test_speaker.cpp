@@ -31,7 +31,8 @@ constexpr double FILTER_A = 1.0 - (1.0 / TAU_CYCLES);
 constexpr float SILENCE_EPSILON = 0.001f;
 
 // ln(EDGE / epsilon) / -ln(a) is 174,817 cycles from an edge down to the
-// silence epsilon: eleven NTSC frames and part of a twelfth.
+// silence epsilon: ten NTSC frames and part of an eleventh, so eleven frames
+// of thinking carry audio.
 constexpr int FRAMES_TO_SILENCE = 11;
 
 // The per-update capacity limits from Speaker.cpp.
@@ -531,7 +532,7 @@ TEST_CASE(
         doctest::Approx(EDGE * std::pow(FILTER_A, 5000)).epsilon(1e-4));
 
   // The time-constant pin: one tau of cycles later the edge has fallen to
-  // 1/e of itself. An unretuned 0.999 misses this by a factor of about eight.
+  // 1/e of itself.
   CHECK(samples[23000] == doctest::Approx(EDGE * 0.36787).epsilon(1e-4));
 
   CHECK(samples.front() > samples.back());
@@ -562,8 +563,7 @@ TEST_CASE("Speaker Peripheral: Continuous 1 kHz Audio Tone Golden Synthesis") {
 
   // Steady state: the post-edge peak converges on 2 / (1 + a^N), alternating
   // sign. The two-step map's eigenvalue is a^(2N) = 0.9566 per period, so the
-  // peak is within a millionth of the plateau after about 155 periods -- not
-  // after ten, as the plan's table claims.
+  // peak is within a thousandth of the plateau after about 155 periods.
   const double plateau = EDGE / (1.0 + std::pow(FILTER_A, half_period));
   CHECK(plateau == doctest::Approx(1.01109).epsilon(1e-5));
   for (int i = 350; i < half_periods; ++i) {
@@ -616,10 +616,9 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
   CHECK(last_audible * static_cast<float>(FILTER_A) < SILENCE_EPSILON);
 
   // Cycles from the edge to the cutoff: the first k with EDGE * a^k below the
-  // epsilon. The plan's table gives tau * ln(EDGE / epsilon) = 174821, which
-  // is the time-constant approximation of this; dividing by -ln(a) instead of
-  // by 1/tau is four samples shorter, and the exact count is what the
-  // recurrence actually produces.
+  // epsilon. The time-constant approximation, tau * ln(EDGE / epsilon), gives
+  // 174821; dividing by -ln(a) instead of by 1/tau is four samples shorter,
+  // and the exact count is what the recurrence actually produces.
   const size_t predicted_silent = static_cast<size_t>(
       std::ceil(std::log(EDGE / SILENCE_EPSILON) / -std::log(FILTER_A)));
   CHECK(predicted_silent == 174817);

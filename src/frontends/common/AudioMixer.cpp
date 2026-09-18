@@ -28,12 +28,12 @@ constexpr size_t MIX_ACCUMULATOR_SAMPLES = 4096;
 //
 // These are milliseconds of audio. The ring holds interleaved stereo pairs,
 // so a millisecond of audio is two samples, and the conversion below doubles
-// deliberately: a listener hears time, not sample counts.
+// deliberately.
 constexpr size_t mixer_capacity_ms = 185;
 constexpr size_t mixer_cushion_ms = 70;
 
 constexpr size_t RESAMPLE_CHUNK_FRAMES = 512;
-// One extra frame of slack: a fractional step can complete an output frame
+// Two extra frames of slack: a fractional step can complete an output frame
 // from the partial window left over by the previous chunk.
 constexpr size_t RESAMPLE_SCRATCH_FRAMES = RESAMPLE_CHUNK_FRAMES + 2;
 
@@ -62,9 +62,9 @@ static auto flush_denormal(float v) -> float {
   return (v > -DENORMAL_FLOOR && v < DENORMAL_FLOOR) ? 0.0f : v;
 }
 
-// Lock-free single-producer single-consumer (SPSC) ring buffer structure. The
-// ring is sized from the output rate, so it is allocated at initialize time
-// and never resized while the audio thread can see it.
+// Lock-free single-producer single-consumer (SPSC) ring buffer. The ring is
+// sized from the output rate, so it is allocated at initialize time and never
+// resized while the audio thread can see it.
 struct SampleBuffer_t {
   std::vector<float> buffer;
   std::atomic<size_t> read_index{0};
@@ -265,9 +265,8 @@ struct AudioSourceSlot_t {
 static std::array<AudioSourceSlot_t, MAX_AUDIO_SLOTS> g_slots;
 static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
 
-// A source declares its time base in one of two forms, and the mixer resolves
-// both to Hz here. g_current_clk_6502 is the core's public API and the mixer is
-// a frontend consuming it.
+// g_current_clk_6502 is the core's public API and the mixer is a frontend
+// consuming it.
 static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
     const uint32_t divisor = (info.cycle_divisor == 0) ? 1 : info.cycle_divisor;

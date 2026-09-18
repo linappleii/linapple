@@ -112,8 +112,8 @@ struct MockingboardPeripheral_t {
   std::array<std::array<int16_t, mb_max_samples_per_update>, voices_per_card>
       voice_buffers = {};
   // The AY still synthesizes int16; the contract carries normalized float, so
-  // the push site converts through here. Emitting float natively from the AY
-  // is the durable fix and belongs to the Mockingboard pass.
+  // the push site converts through here.
+  // TODO: emit float natively from the AY.
   std::array<std::array<float, mb_max_samples_per_update>, voices_per_card>
       voice_buffers_normalized = {};
   std::array<int16_t, mb_max_samples_per_update * 2> mix_buffer = {};

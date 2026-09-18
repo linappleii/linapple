@@ -253,9 +253,8 @@ auto peripheral_manager_shutdown() -> void;
 auto peripheral_manager_think(uint32_t cycles) -> void;
 auto peripheral_manager_on_vblank(bool vblank) -> void;
 auto peripheral_is_any_active() -> bool;
-// Re-announce every registered audio source to the current register
-// callback. Core-internal: it exists so a late subscriber can be handed the
-// state that already exists.
+// Core-internal: it exists so a late subscriber can be handed the state that
+// already exists.
 auto peripheral_announce_audio_sources() -> void;
 auto linapple_list_hardware() -> void;
 

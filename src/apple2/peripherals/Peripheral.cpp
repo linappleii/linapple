@@ -389,12 +389,11 @@ static auto announce_audio_source(int slot) -> void {
   }
 }
 
-// Hand the current register callback every source that is already
-// registered. The frontends install their audio callbacks well after
-// app_controller_initialize has registered the internal peripherals --
-// ds_init() runs at the end of session_init, linapple_init at the start --
-// so a subscriber that only hears future registrations hears nothing at all
-// and the machine is silent.
+// Hand the current register callback every source that is already registered.
+// The frontends install their audio callbacks well after
+// app_controller_initialize has registered the internal peripherals, so a
+// subscriber that only hears future registrations hears nothing at all and the
+// machine is silent.
 auto peripheral_announce_audio_sources() -> void {
   for (int slot = 0; slot < static_cast<int>(NUM_SLOTS); ++slot) {
     announce_audio_source(slot);

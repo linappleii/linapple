@@ -62,7 +62,9 @@ auto mock_register_direct_io_strobe(void* instance, uint16_t addr,
 }
 
 // [0..3] elapsed cycles, [4..7] cycle delta, [8] strobe count, [9] operation
-// flags, [10..49] a candidate SsIoSpeaker_t.
+// flags, [10..49] a candidate SsIoSpeaker_t. The flags are 0x01 reset, 0x02
+// load_state, 0x04 claim a wrong size for that load, 0x08 save_state, and the
+// top three bits the size overshoot.
 constexpr size_t record_size = 10 + sizeof(SsIoSpeaker_t);
 
 auto read_u32(const uint8_t* p) -> uint32_t {

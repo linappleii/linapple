@@ -12,7 +12,7 @@ namespace {
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr uint32_t PAL_FRAME_CYCLES = 20313;
 
-// A frame of wall time is the machine.s frame in cycles over its clock. The
+// A frame of wall time is the machine's frame in cycles over its clock. The
 // pacer derives it the same way; stated here so a formula change fails.
 auto period_ns_for(uint32_t cycles, double clock_hz) -> int64_t {
   return static_cast<int64_t>((static_cast<double>(cycles) * 1e9) / clock_hz);
@@ -131,9 +131,8 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
     pacer.wait_for_next_frame();
   }
 
-  // Exactly one period per frame, all of the work absorbed. The first
-  // frame's work is outside the grid because the deadline is armed on the
-  // first wait, which is the only moment the pacer knows anything.
+  // The first frame's work is outside the grid because the deadline is armed
+  // on the first wait, which is the only moment the pacer knows anything.
   CHECK(g_now_ns - start == work_ns + (frames * NTSC_PERIOD_NS));
 
   CHECK(work_ns < NTSC_PERIOD_NS);
