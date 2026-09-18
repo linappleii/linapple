@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register addresses, bus bit patterns and cycle-count goldens
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -51,6 +52,7 @@ constexpr uint8_t ORB_RESET = 0x00;
 
 // One AY sample per eight 6502 cycles.
 constexpr uint32_t CYCLES_PER_TICK = 8;
+constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr uint32_t DC_TAU_TICKS = 1000;
 
 class MockingboardHarness {
@@ -1268,5 +1270,37 @@ TEST_CASE("Mockingboard Peripheral: MB-40 A Slice Past The Counter's Width") {
   CHECK(harness.read_cx(VIA_A + REG_IFR) == (IFR_T1 | 0x80));
   CHECK(harness.read_cx(VIA_A + REG_T1C_H) == 0x00);
   CHECK(harness.read_cx(VIA_A + REG_T1C_L) == counter_low);
+}
+TEST_CASE("Mockingboard Peripheral: MB-33 One Emulated Minute Of Rendering") {
+  // What the core pays per frame when it is rendering and throwing the result
+  // away, which is what warp does: the audio sink is gone but the card still
+  // has to run both PSGs and both VIAs. Four thousand frames is one emulated
+  // minute; multiplying the figure this prints by the maximum emulation speed
+  // gives the cost per wall second at the top of the warp range.
+  constexpr uint32_t frames = 4000;
+  constexpr double frames_per_emulated_second = 60.0;
+
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+  harness.disable_audio_push();
+
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  arm_timer1(harness, VIA_A, 0x1000, ACR_FREE_RUN);
+  harness.clear_audio();
+
+  const auto started = std::chrono::steady_clock::now();
+  for (uint32_t frame = 0; frame < frames; ++frame) {
+    harness.think(NTSC_FRAME_CYCLES);
+  }
+  const double wall_seconds =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - started)
+          .count();
+
+  MESSAGE("milliseconds of wall clock per emulated second: "
+          << (wall_seconds * frames_per_emulated_second * 1000.0) /
+                 static_cast<double>(frames));
+  CHECK(harness.push_count() == 0);
+  CHECK(harness.irq_asserted());
 }
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
