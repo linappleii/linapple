@@ -13,7 +13,6 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/Apple2Types.h"
-#include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
@@ -28,6 +27,33 @@ auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 extern bool g_full_speed;
 
 namespace {
+
+struct IWord_t {
+  union {
+    struct {
+      uint8_t l;
+      uint8_t h;
+    };
+    uint16_t w;
+  };
+};
+
+struct Sy6522_t {
+  uint8_t ORB;
+  uint8_t ORA;
+  uint8_t DDRB;
+  uint8_t DDRA;
+  IWord_t TIMER1_COUNTER;
+  IWord_t TIMER1_LATCH;
+  IWord_t TIMER2_COUNTER;
+  IWord_t TIMER2_LATCH;
+  uint8_t SERIAL_SHIFT;
+  uint8_t ACR;
+  uint8_t PCR;
+  uint8_t IFR;
+  uint8_t IER;
+  uint8_t ORA_NO_HS;
+};
 
 static_assert(sizeof(MockingboardSaveState_t) == 232,
               "MockingboardSaveState_t must be exactly 232 bytes");

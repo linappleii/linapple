@@ -4,7 +4,6 @@
 #include <cstdint>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/chips/SSI263.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
@@ -178,8 +177,30 @@ struct SsCardEmpty_t {
 };
 using SS_CARD_EMPTY = SsCardEmpty_t;
 
+// The eighteen bytes an AppleWin .aws file spends on one VIA. This is a wire
+// format frozen at the shape it had when it was written, not a view of the
+// live 6522 model, which is free to grow state the format never carried.
+struct SsVia6522Regs_t {
+  uint8_t orb;
+  uint8_t ora;
+  uint8_t ddrb;
+  uint8_t ddra;
+  uint16_t timer1_counter;
+  uint16_t timer1_latch;
+  uint16_t timer2_counter;
+  uint16_t timer2_latch;
+  uint8_t serial_shift;
+  uint8_t acr;
+  uint8_t pcr;
+  uint8_t ifr;
+  uint8_t ier;
+  uint8_t ora_no_handshake;
+};
+static_assert(sizeof(SsVia6522Regs_t) == 18,
+              "SsVia6522Regs_t is an .aws wire format and must stay 18 bytes");
+
 struct MbUnit_t {
-  Sy6522_t regs_sy6522;
+  SsVia6522Regs_t regs_sy6522;
   uint8_t regs_ay8910[AY8910_NUM_REGISTERS];
   Ssi263A_t regs_ssi263;
   uint8_t ay_current_register;
