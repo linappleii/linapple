@@ -848,6 +848,9 @@ if(ENABLE_FUZZING)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
     add_linapple_fuzzer(fuzz-speaker tests/fuzz/fuzz_speaker.cpp)
     add_linapple_fuzzer(fuzz-audio-mixer tests/fuzz/fuzz_audio_mixer.cpp)
+    add_linapple_fuzzer(fuzz-mockingboard tests/fuzz/fuzz_mockingboard.cpp)
+    add_linapple_fuzzer(fuzz-ay8910 tests/fuzz/fuzz_ay8910.cpp)
+    add_linapple_fuzzer(fuzz-via6522 tests/fuzz/fuzz_via6522.cpp)
 
     if(BUILD_TESTING)
         add_test(NAME fuzz-disk-loader
@@ -889,6 +892,32 @@ if(ENABLE_FUZZING)
                          -max_len=512
                          -max_total_time=10)
         set_tests_properties(fuzz-audio-mixer PROPERTIES LABELS "fuzz")
+
+        # One record is eight bytes of control plus a MockingboardSaveState_t;
+        # eight of them reach an armed timer, a loaded state and a rendered
+        # slice in one input.
+        add_test(NAME fuzz-mockingboard
+                 COMMAND fuzz-mockingboard
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/mockingboard
+                         -max_len=1920
+                         -max_total_time=10)
+        set_tests_properties(fuzz-mockingboard PROPERTIES LABELS "fuzz")
+
+        # Four bytes per record: a register write and a run of the generators.
+        add_test(NAME fuzz-ay8910
+                 COMMAND fuzz-ay8910
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/ay8910
+                         -max_len=256
+                         -max_total_time=10)
+        set_tests_properties(fuzz-ay8910 PROPERTIES LABELS "fuzz")
+
+        # Five bytes per record: a register access and a run of the timers.
+        add_test(NAME fuzz-via6522
+                 COMMAND fuzz-via6522
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/via6522
+                         -max_len=320
+                         -max_total_time=10)
+        set_tests_properties(fuzz-via6522 PROPERTIES LABELS "fuzz")
     endif()
 endif()
 

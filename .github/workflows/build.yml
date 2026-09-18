@@ -291,7 +291,7 @@ jobs:
       - name: Minimize Corpus
         if: always()
         run: |
-          for target in memory snapshot disk-loader speaker audio-mixer; do
+          for target in memory snapshot disk-loader speaker audio-mixer mockingboard ay8910 via6522; do
             if [ -d "tests/fuzz/corpus/${target}" ]; then
               mkdir -p "tests/fuzz/corpus/${target}-min"
               ./build-fuzz/fuzz-${target} -merge=1 "tests/fuzz/corpus/${target}-min" "tests/fuzz/corpus/${target}" || true
