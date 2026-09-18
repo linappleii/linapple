@@ -31,10 +31,16 @@ constexpr uint64_t spin_settle_cycles = 10000;
 constexpr uint32_t motor_spindown_cycles = 1500000;
 constexpr size_t track_size_bytes = 4096;
 
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
 class DiskStepperHarness_t {
  public:
   explicit DiskStepperHarness_t(const std::string& fixture_name = "Master.dsk")
       : disk_fixture_(TestFixtures::create_ephemeral(fixture_name)) {
+    machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -163,6 +169,7 @@ class DiskStepperHarness_t {
     peripheral_manager_think(spin_settle_cycles);
   }
 
+  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
   TestFixtures::EphemeralDiskFixture_t disk_fixture_;
 };
 

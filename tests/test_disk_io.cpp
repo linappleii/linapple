@@ -26,9 +26,21 @@ constexpr uint16_t io_read_mode_switch = 0xC0EE;
 constexpr uint16_t io_write_mode_switch = 0xC0EF;
 constexpr uint8_t latch_bit = 0x80;
 
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
+auto disk_ii_no_speed_statement() -> TestConfig_t::Description_t {
+  TestConfig_t::Description_t description;
+  description.slots[5] = "Disk II";
+  return description;
+}
+
 class DiskIoHarness_t {
  public:
   explicit DiskIoHarness_t(bool insert_default_disk = true) {
+    machine_.load();
     linapple_init();
     peripheral_manager_init();
 
@@ -137,6 +149,7 @@ class DiskIoHarness_t {
   }
 
  private:
+  TestConfig_t machine_{disk_ii_no_speed_statement()};
   TestFixtures::EphemeralDiskFixture_t disk_fixture_;
 };
 

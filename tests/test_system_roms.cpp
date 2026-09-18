@@ -9,6 +9,14 @@
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
+#include "test_fixtures.h"
+
+namespace {
+// Declared rather than inherited: every case here asks only where the reset
+// vector lands, and the slot fallbacks in peripheral_register_internal would
+// build four cards to answer it.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
@@ -257,10 +265,13 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
   }
 
   TEST_CASE("End-to-End System Initialization per Model") {
+    TestConfig_t machine(TestConfig_t::enhanced_2e_only());
 #if ENABLE_ROM_APPLE2
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_APPLE2;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -275,6 +286,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_APPLE2PLUS;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -289,6 +302,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_APPLE2JPLUS;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -303,6 +318,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_APPLE2E;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -317,6 +334,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_APPLE2EENHANCED;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -331,6 +350,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_CLONE_PRAVETS82;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -342,6 +363,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_CLONE_PRAVETS8C;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -356,6 +379,8 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     {
       AppConfig_t config = {};
       app_config_default(&config);
+      util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                       config.config_path.size());
       config.apple2_type = A2TYPE_CLONE_TK3000E;
       config.apple2_type_explicit = true;
       app_env_resolve_paths(&config);
@@ -368,8 +393,11 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
   }
 
   TEST_CASE("Custom Runtime ROM File Override") {
+    TestConfig_t machine(TestConfig_t::enhanced_2e_only());
     AppConfig_t config = {};
     app_config_default(&config);
+    util_safe_strcpy(config.config_path.data(), machine.c_str(),
+                     config.config_path.size());
     config.apple2_type = A2TYPE_APPLE2PLUS;
     config.apple2_type_explicit = true;
     util_safe_strcpy(config.rom_path.data(),

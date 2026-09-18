@@ -19,9 +19,15 @@ namespace {
 
 constexpr int slot_6 = 6;
 
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
 class DiskProtHarness_t {
  public:
   DiskProtHarness_t() {
+    machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -50,6 +56,9 @@ class DiskProtHarness_t {
     peripheral_query(slot_6, disk_cmd_get_status, &status, &size);
     return status;
   }
+
+ private:
+  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
 };
 
 class ScopedFileMode_t {

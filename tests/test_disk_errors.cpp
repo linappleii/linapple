@@ -17,10 +17,19 @@
 #include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
+
+namespace {
 constexpr int SL6 = 6;
 }
 
 TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -46,6 +55,8 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
 }
 
 TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -77,6 +88,8 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
 }
 
 TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();

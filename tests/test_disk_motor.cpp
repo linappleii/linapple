@@ -27,11 +27,17 @@ constexpr uint16_t spin_loop_addr = 0x0800;
 constexpr uint16_t spin_loop_len = 3;
 constexpr uint8_t jmp_abs_opcode = 0x4C;
 
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
 class DiskMotorHarness_t {
  public:
   DiskMotorHarness_t()
       : disk_fixture_(TestFixtures::create_ephemeral("minimal.woz")),
         spin_program_(".apl") {
+    machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -110,6 +116,7 @@ class DiskMotorHarness_t {
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
   }
 
+  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
   TestFixtures::EphemeralDiskFixture_t disk_fixture_;
   TestFixtures::ScopedTempFile_t spin_program_;
 };

@@ -19,6 +19,13 @@
 #include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
+
+namespace {
 
 constexpr int slot_6 = 6;
 constexpr size_t woz_header_size = 1536;
@@ -66,6 +73,8 @@ auto write_all_zero_woz2(const char* path) -> void {
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();

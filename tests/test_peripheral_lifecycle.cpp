@@ -64,6 +64,9 @@ static Peripheral_t g_mock_peripheral = {
 };
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
+  TestFixtures::ScopedTestConfig_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
 
   // 1. Initial setup
@@ -100,6 +103,9 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
 TEST_CASE(
     "Peripheral Manager: Direct IO handlers are cleared when a peripheral is "
     "unregistered") {
+  TestFixtures::ScopedTestConfig_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
 
@@ -123,6 +129,9 @@ TEST_CASE(
 }
 
 TEST_CASE("Peripheral Manager: host_get_config lifetime") {
+  TestFixtures::ScopedTestConfig_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
 
@@ -194,6 +203,9 @@ TEST_CASE("Peripheral Manager: Plugin path construction") {
 }
 
 TEST_CASE("Peripheral Manager: Command payload capacity") {
+  TestFixtures::ScopedTestConfig_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
 
@@ -256,6 +268,9 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
 TEST_CASE(
     "Peripheral Manager: Dynamic plugin loader success path and lifecycle") {
+  TestFixtures::ScopedTestConfig_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
 

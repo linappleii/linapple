@@ -17,11 +17,20 @@
 #include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
+
+namespace {
 constexpr int slot_6 = 6;
 constexpr size_t dsk_140k_size = 143360;
 }  // namespace
 
 TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -68,6 +77,8 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
 }
 
 TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -113,6 +124,8 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
 TEST_CASE(
     "DiskSaveState: [SNAP-1] Out-of-bounds snapshot indices are safely "
     "clamped") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -166,6 +179,8 @@ TEST_CASE(
 TEST_CASE(
     "DiskSaveState: [SNAP-2] Negative snapshot indices are safely clamped to "
     "0") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();

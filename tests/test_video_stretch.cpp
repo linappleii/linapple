@@ -10,6 +10,7 @@
 #include "doctest.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
+#include "test_fixtures.h"
 
 namespace {
 
@@ -38,8 +39,14 @@ auto set_pixel32(VideoSurface_t* s, int x, int y, uint32_t val) -> void {
   row[x] = val;
 }
 
+// Declared rather than inherited: the core is here for the video subsystem,
+// and the slot fallbacks in peripheral_register_internal would build four
+// cards nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
 struct ScopedVideoFixture_t {
   ScopedVideoFixture_t() {
+    machine.load();
     linapple_init();
     video_initialize();
   }
@@ -50,6 +57,8 @@ struct ScopedVideoFixture_t {
   auto operator=(const ScopedVideoFixture_t&) -> ScopedVideoFixture_t& = delete;
   ScopedVideoFixture_t(ScopedVideoFixture_t&&) = delete;
   auto operator=(ScopedVideoFixture_t&&) -> ScopedVideoFixture_t& = delete;
+
+  TestConfig_t machine{TestConfig_t::enhanced_2e_only()};
 };
 
 }  // namespace

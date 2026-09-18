@@ -15,8 +15,14 @@
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
 constexpr size_t DISK_ABI_CMD_SIZE = 512;
 constexpr int SL6 = 6;
 constexpr uint8_t BUFFER_INIT_VAL = 0xAA;
@@ -67,6 +73,8 @@ static HostInterface_t g_test_disk_host = [] {
 }();
 
 TEST_CASE("DiskABI: [ABI-07] SaveState Size Query") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -108,6 +116,8 @@ TEST_CASE("DiskABI: [ABI-07a] DiskSavedState_t layout stability") {
 }
 
 TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -130,6 +140,8 @@ TEST_CASE("DiskABI: [ABI-08] SaveState Undersized Buffer") {
 }
 
 TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();
@@ -155,6 +167,8 @@ TEST_CASE("DiskABI: [ABI-09] LoadState Version Mismatch") {
 }
 
 TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();

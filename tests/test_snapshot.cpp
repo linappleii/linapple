@@ -16,7 +16,16 @@
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
 
+namespace {
+// Declared rather than inherited. Nothing here reaches a card, and the slot
+// fallbacks in peripheral_register_internal would put four of them in the
+// snapshot.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
+
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
@@ -90,6 +99,8 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
 }
 
 TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();

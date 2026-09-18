@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include <cstddef>
-#include <fstream>
 #include <string>
 
 #include "apple2/Apple2Types.h"
@@ -22,6 +21,17 @@
 #include "test_fixtures.h"
 
 namespace {
+
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
+// Every case here builds a real core, so every case states the machine it
+// wants. Left undeclared, the slots come from the fallbacks in
+// peripheral_register_internal -- a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that no case here exercises.
+auto declare(const TestConfig_t& machine, AppConfig_t* config) -> void {
+  util_safe_strcpy(config->config_path.data(), machine.c_str(),
+                   config->config_path.size());
+}
 
 struct ScopedAppController_t {
   ScopedAppController_t() = default;
@@ -48,8 +58,10 @@ auto is_valid_directory(const char* path) -> bool {
 
 TEST_CASE("AppController: Initialize and Shutdown") {
   ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
   AppConfig_t config = {};
   app_config_default(&config);
+  declare(machine, &config);
 
   app_env_resolve_paths(&config);
   // Test initialization
@@ -76,8 +88,10 @@ TEST_CASE("AppController: Initialize and Shutdown") {
 
 TEST_CASE("AppController: Video Mode Reset") {
   ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
   AppConfig_t config = {};
   app_config_default(&config);
+  declare(machine, &config);
 
   // 1. Init with PAL
   config.is_pal = true;
@@ -94,8 +108,10 @@ TEST_CASE("AppController: Video Mode Reset") {
 
 TEST_CASE("AppController: Media Loading") {
   ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
   AppConfig_t config = {};
   app_config_default(&config);
+  declare(machine, &config);
   std::string disk_path = Path::find_data_file("Master.dsk");
   util_safe_strcpy(config.disk_path[0].data(), disk_path.c_str(),
                    config.disk_path[0].size());
@@ -136,18 +152,14 @@ TEST_CASE("AppController: Diagnostic Commands") {
 TEST_CASE(
     "AppController: Computer Emulation and Screen Factor from Configuration") {
   ScopedAppController_t controller_guard;
-  TestFixtures::ScopedTempFile_t conf_file(".conf");
-  {
-    std::ofstream out(conf_file.path());
-    out << "[Configuration]\n";
-    out << "Computer Emulation = 1\n";
-    out << "Screen factor = 2.0\n";
-  }
+  TestConfig_t::Description_t description;
+  description.machine_type = TestConfig_t::machine_apple2_plus;
+  description.extras.push_back({"Configuration", "Screen factor", "2.0"});
+  TestConfig_t machine(description);
 
   AppConfig_t config = {};
   app_config_default(&config);
-  util_safe_strcpy(config.config_path.data(), conf_file.c_str(),
-                   config.config_path.size());
+  declare(machine, &config);
 
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
@@ -159,8 +171,10 @@ TEST_CASE(
 
 TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
   ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
   AppConfig_t config = {};
   app_config_default(&config);
+  declare(machine, &config);
   util_safe_strcpy(config.rom_path.data(), "/nonexistent/nope.rom",
                    config.rom_path.size());
   app_env_resolve_paths(&config);
@@ -171,8 +185,10 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
 
 TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
   AppConfig_t config = {};
   app_config_default(&config);
+  declare(machine, &config);
   app_env_resolve_paths(&config);
 
   int result = app_controller_initialize(&config);
@@ -198,19 +214,15 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
 
 TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
   ScopedAppController_t controller_guard;
-  TestFixtures::ScopedTempFile_t conf_file(".conf");
   std::string master_path = Path::find_data_file("Master.dsk");
-  {
-    std::ofstream out(conf_file.path());
-    out << "[Configuration]\n";
-    out << "Slot 6 Autoload = 1\n";
-    out << "Disk Image 1 = " << master_path << "\n";
-  }
+  TestConfig_t::Description_t description(TestConfig_t::disk_ii_only());
+  description.extras.push_back({"Configuration", "Slot 6 Autoload", "1"});
+  description.extras.push_back({"Configuration", "Disk Image 1", master_path});
+  TestConfig_t machine(description);
 
   AppConfig_t config = {};
   app_config_default(&config);
-  util_safe_strcpy(config.config_path.data(), conf_file.c_str(),
-                   config.config_path.size());
+  declare(machine, &config);
 
   app_env_resolve_paths(&config);
   int result = app_controller_initialize(&config);

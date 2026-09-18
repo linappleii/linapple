@@ -8,7 +8,16 @@
 #include "doctest.h"
 #include "test_fixtures.h"
 
+namespace {
+// Declared rather than inherited: with no configuration the slot fallbacks in
+// peripheral_register_internal supply a printer, a Super Serial Card, a
+// Mockingboard and a hard disk that nothing here touches.
+using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+}  // namespace
+
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Clears Config") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
   linapple_init();
   Configuration_t::instance().set_string(
       "Slots", REGVALUE_DISK_IMAGE1,
