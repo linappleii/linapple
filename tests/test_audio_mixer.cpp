@@ -354,6 +354,42 @@ TEST_CASE("Audio Mixer: A CPU-Clocked Source Follows The Video Standard") {
   CHECK(produced <= 806);
 }
 
+TEST_CASE("Audio Mixer: A Divisor Of Eight At The NTSC Clock") {
+  // A Mockingboard produces 1020484 / 8 = 127560.5 samples a second, which is
+  // neither a whole number of samples nor a divisor of 48000, so the count
+  // has to be floored. One second of 127560 samples is 47999.81 frames and
+  // yields 47999. Two seconds is 255121 samples and lands exactly on 96000,
+  // and an exact landing costs a frame: the one that would sit on the last
+  // sample needs the sample after it. 255122 samples is the first count that
+  // does produce 96000.
+  //
+  // Every count is drained as it is produced. A second of six channels at
+  // this rate is many times the 185 ms ring, so pushing it all first would
+  // measure the ring rather than the resampler.
+  constexpr uint32_t output_rate = 48000;
+  constexpr uint32_t divisor = 8;
+  constexpr uint32_t voices = 6;
+  const double source_rate = CLOCK_6502_NTSC / divisor;
+
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  const PeripheralAudioInfo_t info = cpu_clocked_info(divisor, voices, 1.0f);
+
+  // One slot per measurement, because a resampler carries its fractional
+  // phase across calls and each count has to start where the last one did.
+  audio_mixer_register_source(0, SOURCE_ID, &info);
+  audio_mixer_register_source(1, SOURCE_ID, &info);
+  audio_mixer_register_source(2, SOURCE_ID, &info);
+
+  mixer.settle();
+  CHECK(mixer.produced_frames(0, source_rate, 127560, voices) == 47999);
+
+  mixer.settle();
+  CHECK(mixer.produced_frames(1, source_rate, 255121, voices) == 95999);
+
+  mixer.settle();
+  CHECK(mixer.produced_frames(2, source_rate, 255122, voices) == 96000);
+}
+
 // =============================================================================
 // The resampler in both directions
 // =============================================================================
