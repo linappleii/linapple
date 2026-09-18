@@ -1271,6 +1271,67 @@ TEST_CASE("Mockingboard Peripheral: MB-40 A Slice Past The Counter's Width") {
   CHECK(harness.read_cx(VIA_A + REG_T1C_H) == 0x00);
   CHECK(harness.read_cx(VIA_A + REG_T1C_L) == counter_low);
 }
+TEST_CASE("Mockingboard Peripheral: MB-41 A State Of Nothing But Ones") {
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  size_t state_size = 0;
+  REQUIRE(harness.save_state(nullptr, &state_size) == peripheral_ok);
+
+  std::vector<uint8_t> blob(state_size, 0xFF);
+  auto* ss = reinterpret_cast<MockingboardSaveState_t*>(blob.data());
+  ss->version = MOCKINGBOARD_STATE_VERSION;
+  ss->struct_size = static_cast<uint32_t>(state_size);
+
+  // A length nobody could have written is rejected before the body is read.
+  CHECK(harness.load_state(blob.data(), SIZE_MAX) == peripheral_error);
+
+  // Every VIA and AY register accepts any byte, so once the header is right
+  // there is nothing here to reject -- the load has to succeed and the next
+  // slice has to render inside the peak magnitude the card declares.
+  REQUIRE(harness.load_state(blob.data(), state_size) == peripheral_ok);
+  harness.clear_audio();
+  harness.think(1024);
+
+  REQUIRE(harness.push_count() > 0);
+  bool within_peak = true;
+  for (size_t v = 0; v < MB_VOICES; ++v) {
+    for (const float sample : harness.channel(v)) {
+      within_peak = within_peak && (sample >= -1.0F) && (sample <= 1.0F);
+    }
+  }
+  CHECK(within_peak);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-42 The AY Bus Ignores What It Cannot Do") {
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  open_ay_ports(harness, VIA_A);
+  write_ay(harness, VIA_A, 0x02, 0xC3);
+
+  // A9 and A8 are grounded, so an address above fifteen selects no chip and
+  // the previous register stays latched: the write that follows lands there.
+  write_ay(harness, VIA_A, 0x20, 0x55);
+
+  // A read strobe while the 6502 is still driving port A changes nothing,
+  // because the chip cannot pull against it.
+  harness.write_cx(VIA_A + REG_ORA, 0x02);
+  harness.write_cx(VIA_A + REG_ORB, ORB_LATCH);
+  harness.write_cx(VIA_A + REG_ORB, ORB_INACTIVE);
+  harness.write_cx(VIA_A + REG_ORA, 0x77);
+  harness.write_cx(VIA_A + REG_ORB, ORB_READ);
+  CHECK(harness.read_cx(VIA_A + REG_ORA) == 0x77);
+
+  size_t state_size = 0;
+  REQUIRE(harness.save_state(nullptr, &state_size) == peripheral_ok);
+  std::vector<uint8_t> buffer(state_size);
+  REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
+  const auto* ss =
+      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+  CHECK(ss->chips[0].ay_regs[2] == 0x55);
+}
+
 TEST_CASE("Mockingboard Peripheral: MB-33 One Emulated Minute Of Rendering") {
   // What the core pays per frame when it is rendering and throwing the result
   // away, which is what warp does: the audio sink is gone but the card still
