@@ -496,15 +496,15 @@ auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
 }
 
 auto mb_io_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                uint8_t val, uint32_t cycles_left) -> uint8_t {
+                uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
   if (instance == nullptr) {
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, cycles_left);
+  mb_update_cycles_instance(mp, executed_cycles);
   uint8_t offset = addr & mb_io_addr_hi_mask;
   if (offset <= (sy6522a_offset + via_reg_mask)) {
     return sy6522_read_instance(mp, sy6522_device_a, offset & via_reg_mask);
@@ -513,18 +513,18 @@ auto mb_io_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
       (offset <= (sy6522b_offset + via_reg_mask))) {
     return sy6522_read_instance(mp, sy6522_device_b, offset & via_reg_mask);
   }
-  return mem_read_floating_bus(cycles_left);
+  return mem_read_floating_bus(executed_cycles);
 }
 
 auto mb_io_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                 uint8_t val, uint32_t cycles_left) -> uint8_t {
+                 uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)write;
   if (instance == nullptr) {
     return 0;
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, cycles_left);
+  mb_update_cycles_instance(mp, executed_cycles);
 
   uint8_t offset = addr & mb_io_addr_hi_mask;
   if (offset <= (sy6522a_offset + via_reg_mask)) {
@@ -537,13 +537,13 @@ auto mb_io_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
 }
 
 auto phasor_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-               uint8_t val, uint32_t cycles_left) -> uint8_t {
+               uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   if (instance == nullptr) {
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
   auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, cycles_left);
+  mb_update_cycles_instance(mp, executed_cycles);
 
   if (!mp->phasor_native) {
     mp->phasor_native = (addr & 1) != 0;

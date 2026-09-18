@@ -100,21 +100,21 @@ class SuperSerialHarness_t {
   }
 
   auto read_io(uint16_t addr, uint8_t is_write = 0, uint8_t val = 0,
-               uint32_t cycles_left = 0) -> uint8_t {
+               uint32_t executed_cycles = 0) -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.read != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.read(target, 0, addr, is_write, val, cycles_left);
+      return it->second.read(target, 0, addr, is_write, val, executed_cycles);
     }
     return 0;
   }
 
   auto write_io(uint16_t addr, uint8_t val, uint8_t is_write = 1,
-                uint32_t cycles_left = 0) -> uint8_t {
+                uint32_t executed_cycles = 0) -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.write != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.write(target, 0, addr, is_write, val, cycles_left);
+      return it->second.write(target, 0, addr, is_write, val, executed_cycles);
     }
     return 0;
   }

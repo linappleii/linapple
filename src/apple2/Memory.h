@@ -15,7 +15,7 @@ using SS_BaseMemory = SsBaseMemory_t;
 extern "C" {
 #endif
 using iofunction = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
-                               uint8_t write_value, uint32_t cycles_left);
+                               uint8_t write_value, uint32_t executed_cycles);
 #ifdef __cplusplus
 }
 #endif

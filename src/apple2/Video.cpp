@@ -1459,10 +1459,10 @@ auto video_benchmark() -> void {
 }
 
 auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
-                      uint32_t cycles_left) -> uint8_t {
+                      uint32_t executed_cycles) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
-    return mem_read_floating_bus(SW_DHIRES != 0, cycles_left);
+    return mem_read_floating_bus(SW_DHIRES != 0, executed_cycles);
   } else {
     bool result = false;
     switch (address) {
@@ -1487,7 +1487,8 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
       default:
         break;
     }
-    return (mem_read_floating_bus(cycles_left) & 0x7F) | (result ? 0x80 : 0);
+    return (mem_read_floating_bus(executed_cycles) & 0x7F) |
+           (result ? 0x80 : 0);
   }
 }
 
@@ -1500,11 +1501,11 @@ auto video_check_page(bool force) -> void {
   }
 }
 
-auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t, uint32_t cycles_left)
-    -> uint8_t {
+auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t,
+                     uint32_t executed_cycles) -> uint8_t {
   bool vbl_bar = false;
-  video_get_scanner_address(&vbl_bar, cycles_left);
-  uint8_t r = mem_read_floating_bus(cycles_left);
+  video_get_scanner_address(&vbl_bar, executed_cycles);
+  uint8_t r = mem_read_floating_bus(executed_cycles);
   return static_cast<uint8_t>((r & ~0x80) | ((vbl_bar) ? 0x80 : 0));
 }
 
@@ -1852,7 +1853,7 @@ auto video_reset_state() -> void {
 }
 
 auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
-                    uint32_t cycles_left) -> uint8_t {
+                    uint32_t executed_cycles) -> uint8_t {
   (void)write;
 
   address &= 0xFF;
@@ -1938,7 +1939,7 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
     video_refresh_screen();
   }
 
-  return mem_read_floating_bus(cycles_left);
+  return mem_read_floating_bus(executed_cycles);
 }
 
 static uint32_t g_video_cycles_in_frame = 0;

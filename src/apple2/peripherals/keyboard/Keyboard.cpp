@@ -90,7 +90,7 @@ struct KeyboardPeripheral_t {
 };
 
 auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
-                           uint8_t write, uint8_t val, uint32_t cycles_left)
+                           uint8_t write, uint8_t val, uint32_t executed_cycles)
     -> uint8_t {
   (void)pc;
   (void)addr;
@@ -100,7 +100,7 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   namespace kp_const = kb;
 
   if (instance == nullptr) {
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -113,18 +113,18 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
 }
 
 auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
-                               uint8_t write, uint8_t val, uint32_t cycles_left)
-    -> uint8_t {
+                               uint8_t write, uint8_t val,
+                               uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
   (void)val;
-  (void)cycles_left;
+  (void)executed_cycles;
 
   namespace kp_const = kb;
 
   if (instance == nullptr) {
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -141,7 +141,7 @@ auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
 
 auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
                                  uint8_t write, uint8_t val,
-                                 uint32_t cycles_left) -> uint8_t {
+                                 uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
@@ -149,7 +149,7 @@ auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
   namespace kp_const = kb;
 
   if (instance == nullptr) {
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
@@ -167,7 +167,8 @@ auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
     default:
       break;
   }
-  uint8_t bus = mem_read_floating_bus(cycles_left) & kp_const::key_code_mask;
+  uint8_t bus =
+      mem_read_floating_bus(executed_cycles) & kp_const::key_code_mask;
   if (pressed) {
     bus |= kp_const::key_strobe_bit;
   }

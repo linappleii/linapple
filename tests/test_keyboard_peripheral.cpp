@@ -87,21 +87,21 @@ class KeyboardTestHarness_t {
     return handlers_.at(addr);
   }
 
-  auto read_io(uint16_t addr, uint32_t cycles_left = 0) -> uint8_t {
+  auto read_io(uint16_t addr, uint32_t executed_cycles = 0) -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.read != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.read(target, 0, addr, 0, 0, cycles_left);
+      return it->second.read(target, 0, addr, 0, 0, executed_cycles);
     }
-    return mem_read_floating_bus(cycles_left);
+    return mem_read_floating_bus(executed_cycles);
   }
 
-  auto write_io(uint16_t addr, uint8_t val, uint32_t cycles_left = 0)
+  auto write_io(uint16_t addr, uint8_t val, uint32_t executed_cycles = 0)
       -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.write != nullptr) {
       void* target = (instance_ != nullptr) ? instance_ : it->second.instance;
-      return it->second.write(target, 0, addr, 1, val, cycles_left);
+      return it->second.write(target, 0, addr, 1, val, executed_cycles);
     }
     return 0;
   }

@@ -78,13 +78,14 @@ static constexpr uint16_t addr_slot_rom_mask = 0x07;
 // --- Bridge Functions ---
 
 static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readC0 != nullptr) {
       try {
-        return ap.readC0(ap.instance, pc, addr, write, d, cycles_left);
+        return ap.readC0(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in slot %d readC0: %s\n", slot, e.what());
       } catch (...) {
@@ -92,17 +93,18 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                 uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                 uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeC0 != nullptr) {
       try {
-        return ap.writeC0(ap.instance, pc, addr, write, d, cycles_left);
+        return ap.writeC0(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in slot %d writeC0: %s\n", slot, e.what());
       } catch (...) {
@@ -110,17 +112,18 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.readCx != nullptr) {
       try {
-        return ap.readCx(ap.instance, pc, addr, write, d, cycles_left);
+        return ap.readCx(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in slot %d readCx: %s\n", slot, e.what());
       } catch (...) {
@@ -128,17 +131,18 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                 uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                 uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.writeCx != nullptr) {
       try {
-        return ap.writeCx(ap.instance, pc, addr, write, d, cycles_left);
+        return ap.writeCx(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in slot %d writeCx: %s\n", slot, e.what());
       } catch (...) {
@@ -146,7 +150,7 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static auto dispatch_direct_io_strobe(uint16_t addr) -> bool {
@@ -169,10 +173,11 @@ static auto dispatch_direct_io_strobe(uint16_t addr) -> bool {
 }
 
 static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                  uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                  uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   if (dispatch_direct_io_strobe(addr)) {
-    return io_null(pc, addr, write, d, cycles_left);
+    return io_null(pc, addr, write, d, executed_cycles);
   }
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
@@ -180,7 +185,7 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return g_direct_io_handlers.at(i).read(
             g_direct_io_handlers.at(i).instance, pc, addr, write, d,
-            cycles_left);
+            executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in direct IO read at $%04X: %s\n", addr,
                       e.what());
@@ -189,14 +194,15 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
-                                   uint8_t d, uint32_t cycles_left) -> uint8_t {
-  cpu_calc_cycles(cycles_left);
+                                   uint8_t d, uint32_t executed_cycles)
+    -> uint8_t {
+  cpu_calc_cycles(executed_cycles);
   if (dispatch_direct_io_strobe(addr)) {
-    return io_null(pc, addr, write, d, cycles_left);
+    return io_null(pc, addr, write, d, executed_cycles);
   }
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
     if (g_direct_io_handlers.at(i).addr == addr &&
@@ -204,7 +210,7 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       try {
         return g_direct_io_handlers.at(i).write(
             g_direct_io_handlers.at(i).instance, pc, addr, write, d,
-            cycles_left);
+            executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in direct IO write at $%04X: %s\n", addr,
                       e.what());
@@ -213,7 +219,7 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
       }
     }
   }
-  return io_null(pc, addr, write, d, cycles_left);
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 // --- Host Interface Implementation ---

@@ -22,15 +22,16 @@ enum {
 
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
-                                       uint8_t val, uint32_t cycles_left);
+                                       uint8_t val, uint32_t executed_cycles);
 
 typedef PeripheralIOHandler PeripheralIoHandler_t;
 
 // A device that is strobed but never drives the data bus. It needs no address,
 // write flag, data byte, or cycle count: the bridge has already brought the
 // cumulative cycle count up to the current instruction, so GetCycles() inside
-// the handler is exact, and cycles_left only matters to handlers that must
-// position the video scanner.
+// the handler is exact. executed_cycles is what a handler that answers a read
+// with the floating bus cannot do without, because the byte the bus holds is
+// whatever the video scanner is fetching on that very cycle.
 typedef void (*PeripheralStrobeHandler_t)(void* instance);
 
 typedef struct {
