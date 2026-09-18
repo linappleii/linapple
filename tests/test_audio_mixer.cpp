@@ -66,6 +66,19 @@ auto cpu_clocked_info(uint32_t divisor, uint32_t num_channels, float peak)
   return info;
 }
 
+// The shape a Mockingboard announces: the first half of the channels hard
+// left, the second half hard right, so each side's pan sum is the fan-in.
+auto split_pan_info(uint32_t rate_hz, uint32_t num_channels, float peak)
+    -> PeripheralAudioInfo_t {
+  PeripheralAudioInfo_t info = absolute_info(rate_hz, num_channels, peak);
+  for (uint32_t c = 0; c < num_channels; ++c) {
+    const bool on_the_left = c < (num_channels / 2);
+    info.channels[c].default_pan_left = on_the_left ? 1.0f : 0.0f;
+    info.channels[c].default_pan_right = on_the_left ? 0.0f : 1.0f;
+  }
+  return info;
+}
+
 auto square_wave(double rate_hz, double tone_hz, size_t count,
                  float amplitude = 1.0f) -> std::vector<float> {
   const double half_period = rate_hz / (2.0 * tone_hz);
@@ -456,6 +469,11 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
   audio_mixer_register_source(1, SOURCE_ID, &six);
   audio_mixer_register_source(2, SOURCE_ID, &one);
 
+  // Counting frames means recognizing full scale, so the six-channel source's
+  // fan-in attenuation is overridden away: what is under measurement here is
+  // which channels advance, not how loud they are.
+  audio_mixer_set_source_gain(1, 1.0f);
+
   // Only channel 0 reaches an output, so the count is that channel's alone.
   for (size_t c = 0; c < 6; ++c) {
     audio_mixer_set_channel_pan(1, c, (c == 0) ? 1.0f : 0.0f, 0.0f);
@@ -573,6 +591,48 @@ TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
   mixer.upload_mono(0, edge.data(), edge.size());
   CHECK(mixer.drain(32)[0] == 32767);
   CHECK(tap.samples().back() == 2.0f);
+}
+
+TEST_CASE("Audio Mixer: A Source's Fan-In Sets Its Default Gain Too") {
+  // Half scale rather than the rail is the whole point of the measurement: on
+  // the clip rail a source that is three times too hot reads exactly like one
+  // that is correct, so a full-scale golden would pass either way.
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+
+  const PeripheralAudioInfo_t six = split_pan_info(output_rate, 6, 1.0f);
+  audio_mixer_register_source(0, SOURCE_ID, &six);
+
+  constexpr size_t samples = 64;
+  const std::vector<std::vector<float>> planes(
+      6, std::vector<float>(samples, 0.5f));
+  mixer.upload_planar(0, planes, 0, samples);
+
+  const std::vector<int16_t> out = mixer.drain(32);
+  CHECK(out[0] >= 16383);
+  CHECK(out[0] <= 16385);
+  CHECK(out[1] >= 16383);
+  CHECK(out[1] <= 16385);
+}
+
+TEST_CASE("Audio Mixer: A Part-Panned Lone Channel Is Not Amplified") {
+  // Fan-in can only attenuate. A source whose one channel sits half-way
+  // between the sides sums to less than unity on both, and dividing by that
+  // would turn the rule into a boost the source never asked for.
+  constexpr uint32_t output_rate = 48000;
+  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+
+  PeripheralAudioInfo_t one = absolute_info(output_rate, 1, 1.0f);
+  one.channels[0].default_pan_left = 0.5f;
+  one.channels[0].default_pan_right = 0.5f;
+  audio_mixer_register_source(0, SOURCE_ID, &one);
+
+  const std::vector<float> half(64, 0.5f);
+  mixer.upload_mono(0, half.data(), half.size());
+
+  const std::vector<int16_t> out = mixer.drain(32);
+  CHECK(out[0] == 8192);
+  CHECK(out[1] == 8192);
 }
 
 // =============================================================================

@@ -276,13 +276,27 @@ static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
 }
 
 // Summing headroom is the mixer's, so a source that legitimately exceeds full
-// scale is attenuated here rather than pre-attenuating itself. The speaker's
-// 1/2.0 reproduces the old 16384-times-2 full-scale peak exactly.
+// scale is attenuated here rather than pre-attenuating itself. How many of a
+// source's channels land on the same output side is knowledge only the mixer
+// has, so the peak is multiplied by the heavier side's pan sum: six voices
+// panned three and three would otherwise arrive at three times full scale and
+// spend the music on the clip rail. The floor of one keeps a source that pans
+// a single channel part-way from being amplified instead. The speaker's one
+// channel at (1, 1) leaves its 1/2.0 untouched.
 static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
-  if (info.peak_magnitude > 0.0f) {
-    return 1.0f / info.peak_magnitude;
+  if (info.peak_magnitude <= 0.0f) {
+    return 1.0f;
   }
-  return 1.0f;
+  const size_t channels =
+      std::min<size_t>(info.num_channels, MAX_CHANNELS_PER_SLOT);
+  float left_sum = 0.0f;
+  float right_sum = 0.0f;
+  for (size_t c = 0; c < channels; ++c) {
+    left_sum += info.channels[c].default_pan_left;
+    right_sum += info.channels[c].default_pan_right;
+  }
+  const float fan_in = std::max(1.0f, std::max(left_sum, right_sum));
+  return 1.0f / (info.peak_magnitude * fan_in);
 }
 
 // step is source samples per output sample: a fractional-window box average
