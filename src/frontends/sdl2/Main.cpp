@@ -22,6 +22,7 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/FramePacer.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/sdl/AudioDevice.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl2/Frame.h"
 
@@ -30,23 +31,6 @@ bool g_ds_available = false;
 SDL_AudioDeviceID g_audioDevice = 0;
 static std::string g_audio_dump_file;
 static AudioDumper_t g_audio_dumper;
-
-// The device buffer is a latency figure, so it is expressed in time. 1024
-// frames was 23 ms only at 44100. SDL prefers a power of two, so this rounds to
-// the nearest one rather than to the exact millisecond count.
-static auto device_buffer_samples(int rate_hz) -> Uint16 {
-  constexpr int device_buffer_ms = 23;
-  const int wanted = (rate_hz * device_buffer_ms) / 1000;
-  int samples = 256;
-  while (samples * 2 < wanted) {
-    samples *= 2;
-  }
-  // samples and samples*2 bracket wanted; take whichever is closer.
-  if ((wanted - samples) > ((samples * 2) - wanted)) {
-    samples *= 2;
-  }
-  return static_cast<Uint16>(samples);
-}
 
 static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
     -> void {
@@ -89,7 +73,7 @@ auto ds_init() -> bool {
   desired.freq = requested_rate;
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
-  desired.samples = device_buffer_samples(requested_rate);
+  desired.samples = audio_device_buffer_samples(requested_rate);
   desired.callback = sdl2AudioCallback;
   desired.userdata = nullptr;
 

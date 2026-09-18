@@ -422,6 +422,7 @@ else()
 endif()
 
 set(SOURCES_FE_COMMON_SDL
+    src/frontends/common/sdl/AudioDevice.cpp
     src/frontends/common/sdl/DiskUI.cpp
     src/frontends/common/sdl/DiskFTP.cpp
     src/frontends/common/sdl/DiskSelect.cpp
