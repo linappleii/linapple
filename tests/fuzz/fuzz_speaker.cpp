@@ -93,8 +93,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  for (size_t offset = 0; offset + record_size <= size;
-       offset += record_size) {
+  for (size_t offset = 0; offset + record_size <= size; offset += record_size) {
     const uint8_t* record = data + offset;
     const uint32_t elapsed = read_u32(record);
     const uint32_t delta = read_u32(record + 4);
@@ -109,9 +108,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       std::memcpy(&state, record + 10, sizeof(state));
       // The size is deliberately taken from the record too, so wrong-size
       // loads are part of the search space.
-      const size_t claimed = ((flags & 0x04) != 0)
-                                 ? sizeof(state) + (flags >> 5)
-                                 : sizeof(state);
+      const size_t claimed =
+          ((flags & 0x04) != 0) ? sizeof(state) + (flags >> 5) : sizeof(state);
       speaker->load_state(instance, &state, claimed);
     }
     if ((flags & 0x08) != 0) {
