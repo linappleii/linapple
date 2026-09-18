@@ -293,6 +293,15 @@ auto set_voice_a_dc(MockingboardHarness& harness, uint8_t volume,
   write_ay(harness, VIA_A, 0x08, volume, executed_cycles);
 }
 
+// Voice A as a square wave, so consecutive samples differ and a tick the
+// render loop dropped or emitted twice shifts every sample after it.
+auto set_voice_a_tone(MockingboardHarness& harness, uint16_t period) -> void {
+  write_ay(harness, VIA_A, 0x00, static_cast<uint8_t>(period & 0xFF));
+  write_ay(harness, VIA_A, 0x01, static_cast<uint8_t>(period >> 8));
+  write_ay(harness, VIA_A, 0x07, 0x3E);
+  write_ay(harness, VIA_A, 0x08, AY_MAX_VOLUME);
+}
+
 // Voice A driven by the envelope generator rather than a fixed volume, so a
 // corrupted envelope step is a value the render loop actually has to survive.
 auto set_voice_a_envelope(MockingboardHarness& harness) -> void {
@@ -1121,5 +1130,143 @@ TEST_CASE("Mockingboard Peripheral: MB-36 A Write Lands On Its Own Cycle") {
   CHECK(harness.total_pushed_samples() == 100);
   REQUIRE(harness.channel(0).size() == 100);
   CHECK(harness.channel(0)[0] == doctest::Approx(1.0F).epsilon(1e-6));
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-37 A Rewound Slice Mark Charges Nothing") {
+  constexpr uint16_t latch = 0x1000;
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  arm_timer1(harness, VIA_A, latch);
+
+  // The counter holds its load for one cycle, so at executed_cycles t it reads
+  // latch - (t - 1). Reading at 10 after reading at 18 is time running
+  // backwards: it must cost nothing, and the read at 26 must still be 26
+  // cycles from the arm rather than 18 + 16.
+  const uint8_t at_18 = harness.read_cx(VIA_A + REG_T1C_L, 18);
+  const uint8_t rewound = harness.read_cx(VIA_A + REG_T1C_L, 10);
+  const uint8_t at_26 = harness.read_cx(VIA_A + REG_T1C_L, 26);
+
+  CHECK(at_18 == static_cast<uint8_t>(latch - 17));
+  CHECK(rewound == at_18);
+  CHECK(at_26 == static_cast<uint8_t>(latch - 25));
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-38 A Zero-Cycle Slice Changes Nothing") {
+  constexpr uint32_t slice = 800;
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  arm_timer1(harness, VIA_A, 0x0100, ACR_FREE_RUN);
+  harness.think(4096);
+
+  size_t size = 0;
+  REQUIRE(harness.save_state(nullptr, &size) == peripheral_ok);
+  std::vector<uint8_t> before(size);
+  size_t before_size = size;
+  REQUIRE(harness.save_state(before.data(), &before_size) == peripheral_ok);
+
+  harness.clear_audio();
+  harness.think(0);
+  harness.think(0);
+
+  std::vector<uint8_t> after(size);
+  size_t after_size = size;
+  REQUIRE(harness.save_state(after.data(), &after_size) == peripheral_ok);
+
+  CHECK(harness.push_count() == 0);
+  CHECK(before == after);
+
+  // A save state carries neither the coupling filter nor the cycle carry, so
+  // the proof that nothing moved is that the next slice renders what it would
+  // have rendered had the empty ones never happened.
+  harness.think(slice);
+  const std::vector<float> after_empty_slices = harness.channel(0);
+
+  harness.reset();
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  arm_timer1(harness, VIA_A, 0x0100, ACR_FREE_RUN);
+  harness.think(4096);
+  harness.clear_audio();
+  harness.think(slice);
+
+  REQUIRE(after_empty_slices.size() == slice / CYCLES_PER_TICK);
+  CHECK(harness.channel(0) == after_empty_slices);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-39 A Frame At Maximum Speed Is Seamless") {
+  // One frame at emulation_speed_max, the longest slice the core ever hands a
+  // peripheral, and 84 scratch chunks of it.
+  constexpr uint32_t max_speed_frame = 681200;
+  constexpr size_t ticks_per_frame = max_speed_frame / CYCLES_PER_TICK;
+  constexpr size_t chunks_per_frame = 84;
+
+  // A voice out of reset sits at its low half period, and a slice short enough
+  // to fall entirely inside that is silence and is not pushed. Both runs start
+  // past it, and on a whole tick, so the two are comparable sample for sample.
+  constexpr uint32_t warm_up = 4096;
+
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  harness.think(warm_up);
+  harness.clear_audio();
+  harness.think(max_speed_frame);
+
+  CHECK(harness.total_pushed_samples() == ticks_per_frame);
+  CHECK(harness.push_count() == chunks_per_frame);
+  const std::vector<float> unbroken = harness.channel(0);
+  REQUIRE(unbroken.size() == ticks_per_frame);
+
+  harness.reset();
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  harness.think(warm_up);
+  harness.clear_audio();
+
+  // The same cycles split so that no piece is a whole number of chunks and
+  // every piece leaves a different carry behind.
+  harness.think(7);
+  harness.think(101);
+  harness.think(max_speed_frame - 7 - 101 - 3);
+  harness.think(3);
+
+  CHECK(harness.total_pushed_samples() == ticks_per_frame);
+  CHECK(harness.channel(0) == unbroken);
+}
+
+TEST_CASE("Mockingboard Peripheral: MB-40 A Slice Past The Counter's Width") {
+  // Two full counter widths and three cycles: the counter wraps twice inside
+  // one slice. The free-run period of 4098 shares only a factor of two with
+  // the 8192-cycle scratch chunk, so across this slice an underflow lands at
+  // every even offset within a chunk.
+  constexpr uint32_t long_slice = (0xFFFFU * 2U) + 3U;
+  constexpr uint16_t latch = 0x1000;
+  // 131073 cycles is 31 whole 4098-cycle periods and 4035 cycles of the
+  // thirty-second. One of those 4035 goes on the reload, leaving the counter
+  // at 4096 - 4034. And 131073 cycles is 16384 whole AY ticks.
+  constexpr size_t ticks_in_slice = 16384;
+  constexpr uint8_t counter_low = 62;
+
+  MockingboardHarness harness;
+  REQUIRE(harness.create_card(4) != nullptr);
+
+  open_ay_ports(harness, VIA_A);
+  set_voice_a_tone(harness, 0x00FE);
+  arm_timer1(harness, VIA_A, latch, ACR_FREE_RUN);
+  harness.clear_audio();
+
+  harness.think(long_slice);
+
+  CHECK(harness.total_pushed_samples() == ticks_in_slice);
+  CHECK(harness.irq_asserted());
+  CHECK(harness.read_cx(VIA_A + REG_IFR) == (IFR_T1 | 0x80));
+  CHECK(harness.read_cx(VIA_A + REG_T1C_H) == 0x00);
+  CHECK(harness.read_cx(VIA_A + REG_T1C_L) == counter_low);
 }
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

@@ -226,10 +226,14 @@ auto advance(Mockingboard_t* mb, uint32_t cycles) -> void {
 // value the hardware would hold on this very cycle. Mad Effect 2's boot code
 // reads T1C-L twice eight cycles apart and refuses to run unless the
 // difference is exactly 0xF8.
+// The mark only ever moves forward. The 6502 is monotonic within a slice, but
+// a caller that is not would otherwise rewind it and have the cycles between
+// the two marks charged to the card a second time.
 auto sync_to(Mockingboard_t* mb, uint32_t executed_cycles) -> void {
-  if (executed_cycles > mb->synced) {
-    advance(mb, executed_cycles - mb->synced);
+  if (executed_cycles <= mb->synced) {
+    return;
   }
+  advance(mb, executed_cycles - mb->synced);
   mb->synced = executed_cycles;
 }
 
