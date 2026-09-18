@@ -31,7 +31,11 @@ struct Ay8910_t {
 
   uint32_t count_e = 0;
   uint32_t envelope_step = 0;
-  uint8_t envelope_vol = 0;
+  // Always the amplitude the step and the sweep direction imply, which at step
+  // zero sweeping down is full scale: a reset chip holds shape 0x0, the single
+  // decay that starts loud. A state that disagrees with its own step cannot
+  // survive a save and a reload, because a load derives this from the step.
+  uint8_t envelope_vol = 15;
   bool env_holding = false;
   bool env_attack = false;
 };

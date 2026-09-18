@@ -3,681 +3,353 @@
 #include "apple2/peripherals/mockingboard/Mockingboard.h"
 
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <new>
 
-#include "EmbeddedRoms.h"
-#include "apple2/Apple2Types.h"
+#include "apple2/chips/6522.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 
-#ifndef VERSIONSTRING
-#define VERSIONSTRING "2.0.0"
-#endif
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-extern bool g_full_speed;
-
 namespace {
 
-struct IWord_t {
-  union {
-    struct {
-      uint8_t l;
-      uint8_t h;
-    };
-    uint16_t w;
-  };
-};
-
-struct Sy6522_t {
-  uint8_t ORB;
-  uint8_t ORA;
-  uint8_t DDRB;
-  uint8_t DDRA;
-  IWord_t TIMER1_COUNTER;
-  IWord_t TIMER1_LATCH;
-  IWord_t TIMER2_COUNTER;
-  IWord_t TIMER2_LATCH;
-  uint8_t SERIAL_SHIFT;
-  uint8_t ACR;
-  uint8_t PCR;
-  uint8_t IFR;
-  uint8_t IER;
-  uint8_t ORA_NO_HS;
-};
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware bus bit assignments and register widths
 
 static_assert(sizeof(MockingboardSaveState_t) == 232,
               "MockingboardSaveState_t must be exactly 232 bytes");
 
-namespace via_reg {
-constexpr uint8_t orb = 0x0;
-constexpr uint8_t ora = 0x1;
-constexpr uint8_t ddrb = 0x2;
-constexpr uint8_t ddra = 0x3;
-constexpr uint8_t t1l_c = 0x4;
-constexpr uint8_t t1h_c = 0x5;
-constexpr uint8_t t1l_l = 0x6;
-constexpr uint8_t t1h_l = 0x7;
-constexpr uint8_t t2l_c = 0x8;
-constexpr uint8_t t2h_c = 0x9;
-constexpr uint8_t sr = 0xA;
-constexpr uint8_t acr = 0xB;
-constexpr uint8_t pcr = 0xC;
-constexpr uint8_t ifr = 0xD;
-constexpr uint8_t ier = 0xE;
-constexpr uint8_t ora_no_handshake = 0xF;
-}  // namespace via_reg
+constexpr size_t chips_per_card = 2;
+constexpr size_t voices_per_chip = 3;
+constexpr size_t voices_per_card = voices_per_chip * chips_per_card;
+constexpr int8_t mb_default_slot = 4;
 
-namespace ay {
-constexpr uint8_t pb_bc1 = 0x01;
-constexpr uint8_t pb_bdir = 0x02;
-constexpr uint8_t pb_reset_n = 0x04;
-constexpr uint8_t func_write = 0x06;
-constexpr uint8_t func_latch = 0x07;
-constexpr uint8_t reg_mask = 0x0F;
-}  // namespace ay
+// The card decodes /IO SELECT and leaves A4 through A6 unconnected, so the
+// whole $Cn00-$CnFF page aliases onto the two VIAs in sixteen-byte steps:
+// $Cn00-$Cn7F is VIA A and $Cn80-$CnFF is VIA B. There is no unmapped offset
+// and therefore no floating-bus read anywhere on this card.
+constexpr uint16_t via_select_bit = 0x80;
 
-enum class SoundCardType_t { uninit = 0, none, mockingboard, phasor };
+// The card clocks both PSGs from the slot's phase-0 line, and the AY divides
+// by eight before its tone, noise and envelope counters. One AY sample is
+// therefore eight 6502 cycles: 127,560.5 Hz on NTSC.
+constexpr uint32_t cycles_per_ay_tick = 8;
 
-constexpr int16_t audio_clamp_min = -32768;
-constexpr int16_t audio_clamp_max = 32767;
+// A frame at emulation_speed_max is 85,150 ticks, so this is 84 chunks of a
+// 24 KiB scratch that lives in the instance and never on the stack.
+constexpr size_t scratch_ticks = 1024;
 
-constexpr int sy6522_device_a = 0;
-constexpr int sy6522_device_b = 1;
-constexpr int sy6522a_offset = 0x00;
-constexpr int sy6522b_offset = 0x80;
-constexpr int ixr_timer1 = 0x40;
-constexpr int ixr_timer2 = 0x20;
-constexpr int via_ifr_bit_mask = 0x7F;
-constexpr int via_ifr_irq_flag = 0x80;
-constexpr int runmode = 0x40;
-constexpr int rm_oneshot = 0x00;
-constexpr int timer_low_byte_max = 0xFF;
+// The AY is unipolar and the real card's output stage is AC-coupled. Without
+// that coupling three voices per side sit on the positive rail and never
+// reach the negative one. tau = 1000 ticks puts the corner at 20.3 Hz at
+// 127.6 kHz.
+constexpr double dc_blocker_tau_ticks = 1000.0;
+constexpr double dc_blocker_coefficient = 1.0 - (1.0 / dc_blocker_tau_ticks);
 
-constexpr int num_voices_per_chip = 3;
-constexpr int chips_per_card = 2;
-constexpr int voices_per_card = num_voices_per_chip * chips_per_card;
+// A one-pole decay never actually reaches zero, so without a floor the card
+// emits a trickle forever and can never say it is silent. An output LSB after
+// the mixer's three-way fan-in gain is 9.2e-5, so snapping a ninth of that
+// away cannot truncate anything audible.
+constexpr double dc_silence_epsilon = 1.0e-5;
 
-constexpr double phasor_attenuation = 2.0 / 3.0;
-constexpr double default_attenuation = 1.0;
-constexpr uint64_t inactive_threshold_divisor = 10;
-constexpr uint64_t hz_60_divisor = 60;
+// ORB bits 2..0 drive the AY control bus; BC2 is tied high and /RESET is
+// active low.
+namespace ay_bus {
+constexpr uint8_t bc1 = 0x01;
+constexpr uint8_t bdir = 0x02;
+constexpr uint8_t reset_n = 0x04;
+}  // namespace ay_bus
 
-constexpr int mb_default_slot = 4;
-constexpr int mb_type_str_max = 16;
-constexpr uint8_t mb_io_addr_hi_mask = 0xFF;
-constexpr uint8_t via_reg_mask = 0x0F;
+namespace via_flag {
+constexpr uint8_t t1_fired = 0x01;
+constexpr uint8_t t2_fired = 0x02;
+constexpr uint8_t pb7 = 0x04;
+constexpr uint8_t t1_phase_shift = 3;
+constexpr uint8_t t2_phase_shift = 5;
+constexpr uint8_t phase_mask = 0x03;
+}  // namespace via_flag
 
-constexpr uint32_t default_mockingboard_sample_rate = 44100;
-constexpr double default_mockingboard_clock = CLOCK_6502;
+constexpr const char* channel_names[voices_per_card] = {
+    "AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
+    "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
 
-// The 6522 T1 latch is 16-bit, so the slowest IRQ is CLOCK_6502/65535 ≈ 15.6
-// Hz, bounding one update at ~2832 samples. 4096 leaves headroom without
-// rounding up to a full second of audio per voice.
-constexpr size_t mb_max_samples_per_update = 4096;
-
-struct Sy6522Ay8910_t {
-  Sy6522_t sy6522 = {};
-  Ay8910_t ay_chip = {};
-  uint16_t ay_current_register = 0;
-  uint8_t ay_8910_number = 0;
-  int timer_status = 0;
+struct DcBlock_t {
+  double previous_input = 0.0;
+  double previous_output = 0.0;
 };
 
-struct MockingboardPeripheral_t {
-  std::array<Sy6522Ay8910_t, chips_per_card> chips = {};
-  std::array<std::array<float, mb_max_samples_per_update>, voices_per_card>
-      voice_buffers_normalized = {};
-  std::array<int16_t, mb_max_samples_per_update * 2> mix_buffer = {};
-  uint32_t timer_period_6522 = 0;
-  uint16_t mb_timer_device = 0;
-  uint64_t last_cumulative_cycles = 0;
-  uint64_t mb_inactive_cycle_count = 0;
-  uint64_t last_60hz = 0;
-  bool mb_reg_accessed_flag = false;
-  bool mb_active = false;
-  bool timer_irq_active = false;
-  uint32_t timer1_irq_count = 0;
-  SoundCardType_t type = SoundCardType_t::mockingboard;
-  bool phasor_native = false;
-  HostInterface_t* host = nullptr;
+struct Mockingboard_t {
+  std::array<Via6522_t, chips_per_card> via = {};
+  std::array<Ay8910_t, chips_per_card> ay = {};
+  std::array<uint8_t, chips_per_card> ay_latched_register = {};
+  std::array<DcBlock_t, voices_per_card> dc = {};
+  std::array<std::array<float, scratch_ticks>, voices_per_card> scratch = {};
+  // CPU cycles of this slice already consumed, and CPU cycles not yet worth a
+  // whole AY tick. Together they are why no cycle is ever counted twice.
+  uint32_t synced = 0;
+  uint32_t psg_remainder = 0;
+  bool irq_line = false;
   int slot = 0;
-
-  MockingboardPeripheral_t() {
-    for (int i = 0; i < chips_per_card; ++i) {
-      const auto idx = static_cast<size_t>(i);
-      chips.at(idx).ay_8910_number = static_cast<uint8_t>(i);
-      ay8910_reset(&chips.at(idx).ay_chip);
-    }
-  }
+  HostInterface_t* host = nullptr;
 };
 
-auto get_cycles(HostInterface_t* host) -> uint64_t {
-  if (host != nullptr && host->GetCycles != nullptr) {
-    return host->GetCycles();
+auto update_irq(Mockingboard_t* mb) -> void {
+  const bool line = via_irq(&mb->via[0]) || via_irq(&mb->via[1]);
+  if (line == mb->irq_line) {
+    return;
   }
-  return 0;
+  mb->irq_line = line;
+  if (mb->host != nullptr && mb->host->AssertIrq != nullptr) {
+    mb->host->AssertIrq(mb->slot, line);
+  }
 }
 
-auto get_clock_hz(HostInterface_t* host) -> double {
-  if (host != nullptr && host->GetClockHz != nullptr) {
-    return host->GetClockHz();
-  }
-  return default_mockingboard_clock;
-}
-
-auto start_timer(MockingboardPeripheral_t* mp, int chip_idx) -> void {
-  if (chip_idx != sy6522_device_a) {
-    return;
-  }
-  auto* pmb = &mp->chips.at(static_cast<size_t>(chip_idx));
-  if ((pmb->sy6522.IER & ixr_timer1) == 0x00) {
-    return;
-  }
-
-  uint16_t period = pmb->sy6522.TIMER1_LATCH.w;
-  if (period <= timer_low_byte_max) {
-    return;
-  }
-
-  pmb->timer_status = 1;
-  mp->timer_period_6522 = period;
-  mp->timer_irq_active = true;
-  mp->mb_timer_device = static_cast<uint16_t>(chip_idx);
-}
-
-auto stop_timer(MockingboardPeripheral_t* mp, int chip_idx) -> void {
-  if (chip_idx < 0 || chip_idx >= chips_per_card) {
-    return;
-  }
-  mp->chips.at(static_cast<size_t>(chip_idx)).timer_status = 0;
-  mp->timer_irq_active = false;
-}
-
-auto update_ifr(MockingboardPeripheral_t* mp, int chip_idx) -> void {
-  if (chip_idx < 0 || chip_idx >= chips_per_card) {
-    return;
-  }
-  auto* pmb = &mp->chips.at(static_cast<size_t>(chip_idx));
-  pmb->sy6522.IFR &= via_ifr_bit_mask;
-
-  if ((pmb->sy6522.IFR & pmb->sy6522.IER & via_ifr_bit_mask) != 0) {
-    pmb->sy6522.IFR |= via_ifr_irq_flag;
-  }
-
-  bool irq_asserted = false;
-  for (const auto& chip : mp->chips) {
-    if ((chip.sy6522.IFR & via_ifr_irq_flag) != 0) {
-      irq_asserted = true;
+auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
+  bool any_signal = false;
+  for (size_t i = 0; i < count; ++i) {
+    const double input = buffer[i];
+    double output = input - f->previous_input +
+                    (dc_blocker_coefficient * f->previous_output);
+    if (output > -dc_silence_epsilon && output < dc_silence_epsilon) {
+      output = 0.0;
+    }
+    f->previous_input = input;
+    f->previous_output = output;
+    buffer[i] = static_cast<float>(output);
+    if (output != 0.0) {
+      any_signal = true;
     }
   }
+  return any_signal;
+}
 
-  if (mp->host != nullptr && mp->host->AssertIrq != nullptr) {
-    mp->host->AssertIrq(mp->slot, irq_asserted);
+auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
+  for (size_t chip = 0; chip < chips_per_card; ++chip) {
+    std::array<float*, AY8910_NUM_VOICES> voices = {
+        {mb->scratch[(chip * voices_per_chip) + 0].data(),
+         mb->scratch[(chip * voices_per_chip) + 1].data(),
+         mb->scratch[(chip * voices_per_chip) + 2].data()}};
+    ay8910_step(&mb->ay[chip], count, voices.data(), scratch_ticks);
+  }
+
+  std::array<const float*, voices_per_card> channels = {};
+  bool any_signal = false;
+  for (size_t v = 0; v < voices_per_card; ++v) {
+    any_signal =
+        run_dc_block(&mb->dc[v], mb->scratch[v].data(), count) || any_signal;
+    channels[v] = mb->scratch[v].data();
+  }
+
+  if (!any_signal) {
+    return;
+  }
+  if (mb->host != nullptr && mb->host->AudioPushChannels != nullptr) {
+    mb->host->AudioPushChannels(mb, channels.data(), voices_per_card, count);
   }
 }
 
-auto ay8910_write_instance(MockingboardPeripheral_t* mp, uint8_t device,
-                           uint8_t value) -> void {
-  if (device >= static_cast<uint8_t>(chips_per_card)) {
+auto advance(Mockingboard_t* mb, uint32_t cycles) -> void {
+  if (cycles == 0) {
     return;
   }
-  auto* pmb = &mp->chips.at(static_cast<size_t>(device));
 
-  if ((value & ay::pb_reset_n) == 0) {
-    ay8910_reset(&pmb->ay_chip);
-  } else {
-    int bdir = (value & ay::pb_bdir) ? 1 : 0;
-    int bc1 = (value & ay::pb_bc1) ? 1 : 0;
-    int ay_func = (bdir << 2) | (1 << 1) | bc1;
+  bool changed = false;
+  for (auto& v : mb->via) {
+    changed = via_step(&v, cycles) || changed;
+  }
+  if (changed) {
+    update_irq(mb);
+  }
 
-    if (ay_func == ay::func_write) {
-      ay8910_write(&pmb->ay_chip,
-                   static_cast<uint8_t>(pmb->ay_current_register),
-                   pmb->sy6522.ORA);
-    } else if (ay_func == ay::func_latch) {
-      if (pmb->sy6522.ORA <= ay::reg_mask) {
-        pmb->ay_current_register =
-            static_cast<uint16_t>(pmb->sy6522.ORA & ay::reg_mask);
-      }
-    }
+  const uint64_t total = static_cast<uint64_t>(mb->psg_remainder) + cycles;
+  uint64_t ticks = total / cycles_per_ay_tick;
+  mb->psg_remainder = static_cast<uint32_t>(total % cycles_per_ay_tick);
+
+  // Chunking keeps any cycle count correct without ever clamping or dropping
+  // one, which would desynchronize the PSGs from the VIAs.
+  while (ticks > 0) {
+    const size_t count =
+        (ticks < scratch_ticks) ? static_cast<size_t>(ticks) : scratch_ticks;
+    render_chunk(mb, count);
+    ticks -= count;
   }
 }
 
-auto sy6522_write_instance(MockingboardPeripheral_t* mp, int chip_idx,
-                           uint8_t reg, uint8_t val) -> void {
-  if (chip_idx < 0 || chip_idx >= chips_per_card) {
-    return;
+// Brings the card to the current instruction so a register read returns the
+// value the hardware would hold on this very cycle. Mad Effect 2's boot code
+// reads T1C-L twice eight cycles apart and refuses to run unless the
+// difference is exactly 0xF8.
+auto sync_to(Mockingboard_t* mb, uint32_t executed_cycles) -> void {
+  if (executed_cycles > mb->synced) {
+    advance(mb, executed_cycles - mb->synced);
   }
-  auto* pmb = &mp->chips.at(static_cast<size_t>(chip_idx));
-
-  switch (reg) {
-    case via_reg::orb:
-      pmb->sy6522.ORB = val;
-      ay8910_write_instance(mp, static_cast<uint8_t>(chip_idx), val);
-      break;
-    case via_reg::ora:
-      pmb->sy6522.ORA = val;
-      break;
-    case via_reg::ddrb:
-      pmb->sy6522.DDRB = val;
-      break;
-    case via_reg::ddra:
-      pmb->sy6522.DDRA = val;
-      break;
-    case via_reg::t1l_c:
-      pmb->sy6522.TIMER1_LATCH.l = val;
-      break;
-    case via_reg::t1h_c:
-      pmb->sy6522.TIMER1_LATCH.h = val;
-      pmb->sy6522.TIMER1_COUNTER.w = pmb->sy6522.TIMER1_LATCH.w;
-      pmb->sy6522.IFR &= ~ixr_timer1;
-      update_ifr(mp, chip_idx);
-      start_timer(mp, chip_idx);
-      break;
-    case via_reg::t1l_l:
-      pmb->sy6522.TIMER1_LATCH.l = val;
-      break;
-    case via_reg::t1h_l:
-      pmb->sy6522.TIMER1_LATCH.h = val;
-      pmb->sy6522.IFR &= ~ixr_timer1;
-      update_ifr(mp, chip_idx);
-      break;
-    case via_reg::t2l_c:
-      pmb->sy6522.TIMER2_LATCH.l = val;
-      break;
-    case via_reg::t2h_c:
-      pmb->sy6522.TIMER2_LATCH.h = val;
-      pmb->sy6522.TIMER2_COUNTER.w = pmb->sy6522.TIMER2_LATCH.w;
-      pmb->sy6522.IFR &= ~ixr_timer2;
-      update_ifr(mp, chip_idx);
-      break;
-    case via_reg::sr:
-      pmb->sy6522.SERIAL_SHIFT = val;
-      break;
-    case via_reg::acr:
-      pmb->sy6522.ACR = val;
-      break;
-    case via_reg::pcr:
-      pmb->sy6522.PCR = val;
-      break;
-    case via_reg::ifr:
-      pmb->sy6522.IFR &= ~val;
-      update_ifr(mp, chip_idx);
-      break;
-    case via_reg::ier:
-      if ((val & via_ifr_irq_flag) != 0) {
-        pmb->sy6522.IER |= (val & via_ifr_bit_mask);
-      } else {
-        pmb->sy6522.IER &= ~(val & via_ifr_bit_mask);
-      }
-      update_ifr(mp, chip_idx);
-      break;
-    case via_reg::ora_no_handshake:
-      pmb->sy6522.ORA_NO_HS = val;
-      break;
-    default:
-      break;
-  }
+  mb->synced = executed_cycles;
 }
 
-auto sy6522_read_instance(MockingboardPeripheral_t* mp, int chip_idx,
-                          uint8_t reg) -> uint8_t {
-  if (chip_idx < 0 || chip_idx >= chips_per_card) {
-    return 0;
-  }
-  auto* pmb = &mp->chips.at(static_cast<size_t>(chip_idx));
-
-  switch (reg) {
-    case via_reg::orb:
-      return pmb->sy6522.ORB;
-    case via_reg::ora:
-      return pmb->sy6522.ORA;
-    case via_reg::ddrb:
-      return pmb->sy6522.DDRB;
-    case via_reg::ddra:
-      return pmb->sy6522.DDRA;
-    case via_reg::t1l_c:
-      pmb->sy6522.IFR &= ~ixr_timer1;
-      update_ifr(mp, chip_idx);
-      return pmb->sy6522.TIMER1_COUNTER.l;
-    case via_reg::t1h_c:
-      return pmb->sy6522.TIMER1_COUNTER.h;
-    case via_reg::t1l_l:
-      return pmb->sy6522.TIMER1_LATCH.l;
-    case via_reg::t1h_l:
-      return pmb->sy6522.TIMER1_LATCH.h;
-    case via_reg::t2l_c:
-      pmb->sy6522.IFR &= ~ixr_timer2;
-      update_ifr(mp, chip_idx);
-      return pmb->sy6522.TIMER2_COUNTER.l;
-    case via_reg::t2h_c:
-      return pmb->sy6522.TIMER2_COUNTER.h;
-    case via_reg::sr:
-      return pmb->sy6522.SERIAL_SHIFT;
-    case via_reg::acr:
-      return pmb->sy6522.ACR;
-    case via_reg::pcr:
-      return pmb->sy6522.PCR;
-    case via_reg::ifr:
-      return pmb->sy6522.IFR;
-    case via_reg::ier:
-      return pmb->sy6522.IER | via_ifr_irq_flag;
-    case via_reg::ora_no_handshake:
-      return pmb->sy6522.ORA_NO_HS;
-    default:
-      return 0;
-  }
-}
-
-auto mb_update_instance(MockingboardPeripheral_t* mp) -> void {
-  if (g_full_speed) {
+auto ay_bus_cycle(Mockingboard_t* mb, size_t chip, uint8_t orb) -> void {
+  Ay8910_t& psg = mb->ay[chip];
+  if ((orb & ay_bus::reset_n) == 0) {
+    ay8910_reset(&psg);
+    mb->ay_latched_register[chip] = 0;
     return;
   }
 
-  const uint32_t sample_rate = default_mockingboard_sample_rate;
-  const double clock_hz = get_clock_hz(mp->host);
+  const bool bdir = (orb & ay_bus::bdir) != 0;
+  const bool bc1 = (orb & ay_bus::bc1) != 0;
+  const uint8_t port_a = mb->via[chip].ora;
 
-  double timer_period_val =
-      (mp->timer_irq_active || (mp->chips.at(0).sy6522.IFR & ixr_timer1))
-          ? static_cast<double>(mp->timer_period_6522)
-          : (clock_hz / 60.0);
-
-  if (timer_period_val <= 0.0) {
-    timer_period_val = clock_hz / 60.0;
-  }
-
-  double irq_freq = clock_hz / timer_period_val;
-  int num_samples =
-      static_cast<int>(static_cast<double>(sample_rate) / irq_freq);
-
-  if (num_samples <= 0) {
-    return;
-  }
-
-  if (static_cast<size_t>(num_samples) > mb_max_samples_per_update) {
-    num_samples = static_cast<int>(mb_max_samples_per_update);
-  }
-
-  for (size_t i = 0; i < chips_per_card; i++) {
-    float* voices[3];
-    voices[0] = mp->voice_buffers_normalized.at(i * 3 + 0).data();
-    voices[1] = mp->voice_buffers_normalized.at(i * 3 + 1).data();
-    voices[2] = mp->voice_buffers_normalized.at(i * 3 + 2).data();
-    ay8910_step(&mp->chips.at(i).ay_chip, static_cast<size_t>(num_samples),
-                voices, mb_max_samples_per_update);
-  }
-
-  if (mp->host != nullptr && mp->host->AudioPushChannels != nullptr) {
-    const float* channel_ptrs[voices_per_card];
-    for (size_t v = 0; v < voices_per_card; ++v) {
-      channel_ptrs[v] = mp->voice_buffers_normalized.at(v).data();
-    }
-    mp->host->AudioPushChannels(mp, channel_ptrs, voices_per_card,
-                                static_cast<size_t>(num_samples));
-  }
-}
-
-auto mb_update_cycles_instance(MockingboardPeripheral_t* mp,
-                               uint32_t executed_cycles) -> void {
-  if (mp->type == SoundCardType_t::none) {
-    return;
-  }
-
-  uint64_t host_cycles = (mp->host != nullptr && mp->host->GetCycles != nullptr)
-                             ? mp->host->GetCycles()
-                             : 0;
-  uint64_t current_cycle = host_cycles + executed_cycles;
-  uint64_t cycles = 0;
-  if (current_cycle >= mp->last_cumulative_cycles) {
-    cycles = current_cycle - mp->last_cumulative_cycles;
-    mp->last_cumulative_cycles = current_cycle;
-  } else {
-    mp->last_cumulative_cycles = current_cycle;
-  }
-
-  while (cycles > 0) {
-    constexpr uint64_t max_clocks_u16 = 0xFFFF;
-    constexpr uint16_t max_clocks_u16_val = 0xFFFF;
-    uint16_t clocks = (cycles > max_clocks_u16) ? max_clocks_u16_val
-                                                : static_cast<uint16_t>(cycles);
-    cycles -= clocks;
-
-    for (size_t i = 0; i < chips_per_card; i++) {
-      auto* pmb = &mp->chips.at(i);
-      uint16_t old_timer1 = pmb->sy6522.TIMER1_COUNTER.w;
-      pmb->sy6522.TIMER1_COUNTER.w =
-          static_cast<uint16_t>(pmb->sy6522.TIMER1_COUNTER.w - clocks);
-      pmb->sy6522.TIMER2_COUNTER.w =
-          static_cast<uint16_t>(pmb->sy6522.TIMER2_COUNTER.w - clocks);
-
-      constexpr uint16_t timer_msb_bit = 0x8000;
-      bool timer1_underflow = (!(old_timer1 & timer_msb_bit) &&
-                               (pmb->sy6522.TIMER1_COUNTER.w & timer_msb_bit));
-
-      if (!timer1_underflow ||
-          (mp->mb_timer_device != static_cast<uint16_t>(i)) ||
-          !mp->timer_irq_active) {
-        continue;
-      }
-
-      mp->timer1_irq_count++;
-      pmb->sy6522.IFR |= ixr_timer1;
-      update_ifr(mp, static_cast<int>(i));
-
-      if ((pmb->sy6522.ACR & runmode) == rm_oneshot) {
-        stop_timer(mp, static_cast<int>(i));
-      } else {
-        pmb->sy6522.TIMER1_COUNTER.w = pmb->sy6522.TIMER1_LATCH.w;
-        start_timer(mp, static_cast<int>(i));
-      }
-
-      if (!g_full_speed) {
-        mb_update_instance(mp);
-      }
-    }
-  }
-
-  if (mp->mb_reg_accessed_flag) {
-    mp->mb_inactive_cycle_count = 0;
-    mp->mb_reg_accessed_flag = false;
-    if (!g_full_speed) {
-      mp->mb_active = true;
+  if (bdir && bc1) {
+    // A9 and A8 are grounded on this card, so an address above 15 selects no
+    // chip and leaves the previous register latched.
+    if (port_a < AY8910_NUM_REGISTERS) {
+      mb->ay_latched_register[chip] = port_a;
     }
     return;
   }
-
-  if (mp->mb_inactive_cycle_count == 0) {
-    mp->mb_inactive_cycle_count = get_cycles(mp->host);
+  if (bdir) {
+    ay8910_write(&psg, mb->ay_latched_register[chip], port_a);
     return;
   }
-
-  if (get_cycles(mp->host) - mp->mb_inactive_cycle_count >
-      static_cast<uint64_t>(get_clock_hz(mp->host)) /
-          inactive_threshold_divisor) {
-    mp->mb_active = false;
+  if (bc1) {
+    // The chip drives the port A pins the 6502 is not driving, so the next
+    // ORA read returns the register.
+    const uint8_t driven = mb->via[chip].ddra;
+    const uint8_t value = psg.regs[mb->ay_latched_register[chip]];
+    mb->via[chip].ora =
+        static_cast<uint8_t>((port_a & driven) | (value & ~driven));
   }
 }
 
-auto mb_io_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                uint8_t val, uint32_t executed_cycles) -> uint8_t {
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: The I/O handler signature is fixed by the peripheral ABI
+auto cx_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
+             uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)write;
   (void)val;
-  if (instance == nullptr) {
-    return mem_read_floating_bus(executed_cycles);
-  }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, executed_cycles);
-  uint8_t offset = addr & mb_io_addr_hi_mask;
-  if (offset <= (sy6522a_offset + via_reg_mask)) {
-    return sy6522_read_instance(mp, sy6522_device_a, offset & via_reg_mask);
-  }
-  if ((offset >= sy6522b_offset) &&
-      (offset <= (sy6522b_offset + via_reg_mask))) {
-    return sy6522_read_instance(mp, sy6522_device_b, offset & via_reg_mask);
-  }
-  return mem_read_floating_bus(executed_cycles);
-}
-
-auto mb_io_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-                 uint8_t val, uint32_t executed_cycles) -> uint8_t {
-  (void)pc;
-  (void)write;
-  if (instance == nullptr) {
+  auto* mb = static_cast<Mockingboard_t*>(instance);
+  if (mb == nullptr) {
     return 0;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, executed_cycles);
+  sync_to(mb, executed_cycles);
+  const size_t chip = ((addr & via_select_bit) != 0) ? 1 : 0;
+  const uint8_t value = via_read(&mb->via[chip], static_cast<uint8_t>(addr));
+  // A counter or flag access changes the interrupt state, and a slice is a
+  // whole video field: deferring the deassert to think() would re-enter the
+  // 6502's handler on every RTI.
+  update_irq(mb);
+  return value;
+}
 
-  uint8_t offset = addr & mb_io_addr_hi_mask;
-  if (offset <= (sy6522a_offset + via_reg_mask)) {
-    sy6522_write_instance(mp, sy6522_device_a, offset & via_reg_mask, val);
-  } else if ((offset >= sy6522b_offset) &&
-             (offset <= (sy6522b_offset + via_reg_mask))) {
-    sy6522_write_instance(mp, sy6522_device_b, offset & via_reg_mask, val);
+auto cx_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
+              uint8_t val, uint32_t executed_cycles) -> uint8_t {
+  (void)pc;
+  (void)write;
+  auto* mb = static_cast<Mockingboard_t*>(instance);
+  if (mb == nullptr) {
+    return 0;
   }
+  sync_to(mb, executed_cycles);
+  const size_t chip = ((addr & via_select_bit) != 0) ? 1 : 0;
+  const uint8_t reg = static_cast<uint8_t>(addr) & via_reg::mask;
+  via_write(&mb->via[chip], reg, val);
+  // ORA only sets the data the next ORB strobe will use; running the protocol
+  // on an ORA write too would double-write whenever software parks ORB at the
+  // write function.
+  if (reg == via_reg::orb) {
+    ay_bus_cycle(mb, chip, val);
+  }
+  update_irq(mb);
   return 0;
 }
-
-auto phasor_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
-               uint8_t val, uint32_t executed_cycles) -> uint8_t {
-  (void)pc;
-  if (instance == nullptr) {
-    return mem_read_floating_bus(executed_cycles);
-  }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, executed_cycles);
-
-  if (!mp->phasor_native) {
-    mp->phasor_native = (addr & 1) != 0;
-  }
-
-  uint8_t cs = 0;
-  if (mp->phasor_native) {
-    constexpr int shift_bit_3 = 2;
-    constexpr int shift_bit_2 = 2;
-    constexpr uint8_t mask_bit_3 = 0x08;
-    constexpr uint8_t mask_bit_2 = 0x04;
-    cs = ((addr & mask_bit_3) >> shift_bit_3) |
-         ((addr & mask_bit_2) >> shift_bit_2);
-  } else {
-    cs = ((addr & 0x80) != 0) ? 2 : 1;
-  }
-
-  uint8_t res = 0;
-  if ((cs & 1) != 0) {
-    if (write != 0) {
-      sy6522_write_instance(mp, sy6522_device_a, addr & via_reg_mask, val);
-    } else {
-      res = sy6522_read_instance(mp, sy6522_device_a, addr & via_reg_mask);
-    }
-  }
-
-  if ((cs & 2) != 0) {
-    if (write != 0) {
-      sy6522_write_instance(mp, sy6522_device_b, addr & via_reg_mask, val);
-    } else {
-      res = sy6522_read_instance(mp, sy6522_device_b, addr & via_reg_mask);
-    }
-  }
-
-  return (write != 0) ? 0 : res;
-}
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto mb_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
   }
-  auto new_mp = std::unique_ptr<MockingboardPeripheral_t>(
-      new (std::nothrow) MockingboardPeripheral_t{});
-  if (!new_mp) {
+  auto card =
+      std::unique_ptr<Mockingboard_t>(new (std::nothrow) Mockingboard_t{});
+  if (!card) {
     return nullptr;
   }
-  new_mp->host = host;
-  new_mp->slot = slot;
-
-  char type_str[mb_type_str_max] = {0};
-  if (host->GetConfig != nullptr &&
-      host->GetConfig("Mockingboard", "Type", type_str, sizeof(type_str)) &&
-      strcmp(type_str, "Phasor") == 0) {
-    new_mp->type = SoundCardType_t::phasor;
-  }
-
-  auto* handler =
-      (new_mp->type == SoundCardType_t::phasor) ? phasor_io : nullptr;
-#if ENABLE_ROM_MOCKINGBOARD
-  if (host->RegisterCxROM != nullptr) {
-    host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_mockingboard_d));
-  }
-#endif
-  host->RegisterIO(slot, handler, handler, mb_io_read, mb_io_write);
-
-  return new_mp.release();
+  card->host = host;
+  card->slot = slot;
+  host->RegisterIO(slot, nullptr, nullptr, cx_read, cx_write);
+  return card.release();
 }
 
 auto mb_abi_reset(void* instance) -> void {
-  if (instance == nullptr) {
+  auto* mb = static_cast<Mockingboard_t*>(instance);
+  if (mb == nullptr) {
     return;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mp->timer_period_6522 = 0;
-  mp->mb_timer_device = 0;
-  mp->last_cumulative_cycles = get_cycles(mp->host);
-  mp->mb_reg_accessed_flag = false;
-  mp->mb_active = false;
-  mp->mb_inactive_cycle_count = 0;
-  mp->last_60hz = get_cycles(mp->host);
-  mp->phasor_native = false;
-
-  for (auto& chip : mp->chips) {
-    std::memset(&chip.sy6522, 0, sizeof(Sy6522_t));
-    ay8910_reset(&chip.ay_chip);
-    chip.timer_status = 0;
-    chip.ay_current_register = 0;
+  for (auto& v : mb->via) {
+    via_reset(&v);
+  }
+  for (auto& psg : mb->ay) {
+    ay8910_reset(&psg);
+  }
+  for (auto& latched : mb->ay_latched_register) {
+    latched = 0;
+  }
+  for (auto& f : mb->dc) {
+    f = DcBlock_t{};
+  }
+  mb->synced = 0;
+  mb->psg_remainder = 0;
+  mb->irq_line = false;
+  // /RES drives the slot's interrupt line inactive; that is a bus event, not a
+  // state-change notification, so it is reported whether or not it changed.
+  if (mb->host != nullptr && mb->host->AssertIrq != nullptr) {
+    mb->host->AssertIrq(mb->slot, false);
   }
 }
 
 auto mb_abi_shutdown(void* instance) -> void {
-  if (instance == nullptr) {
-    return;
-  }
-  delete static_cast<MockingboardPeripheral_t*>(instance);
+  delete static_cast<Mockingboard_t*>(instance);
 }
 
 auto mb_abi_think(void* instance, uint32_t cycles) -> void {
-  (void)cycles;
-  if (instance == nullptr) {
+  auto* mb = static_cast<Mockingboard_t*>(instance);
+  if (mb == nullptr) {
     return;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-  mb_update_cycles_instance(mp, 0);
-
-  // If timers are inactive, force a 60Hz audio update to prevent buffer
-  // starvation.
-  const bool timers_active =
-      mp->timer_irq_active || (mp->chips.at(0).sy6522.IFR & ixr_timer1);
-  if (timers_active) {
-    return;
+  if (cycles > mb->synced) {
+    advance(mb, cycles - mb->synced);
   }
+  mb->synced = 0;
+}
 
-  const uint64_t cycles_since_last_update =
-      get_cycles(mp->host) - mp->last_60hz;
-  const uint64_t cycles_per_frame =
-      static_cast<uint64_t>(get_clock_hz(mp->host)) / hz_60_divisor;
+auto pack_via_flags(const Via6522_t& v) -> uint8_t {
+  uint8_t flags = 0;
+  if (v.t1_fired) {
+    flags |= via_flag::t1_fired;
+  }
+  if (v.t2_fired) {
+    flags |= via_flag::t2_fired;
+  }
+  if (v.pb7) {
+    flags |= via_flag::pb7;
+  }
+  flags |= static_cast<uint8_t>(static_cast<uint8_t>(v.t1_phase)
+                                << via_flag::t1_phase_shift);
+  flags |= static_cast<uint8_t>(static_cast<uint8_t>(v.t2_phase)
+                                << via_flag::t2_phase_shift);
+  return flags;
+}
 
-  if (cycles_since_last_update > cycles_per_frame) {
-    mp->last_60hz = get_cycles(mp->host);
-    mb_update_instance(mp);
+auto unpack_phase(uint8_t flags, uint8_t shift) -> ViaTimerPhase_t {
+  switch ((flags >> shift) & via_flag::phase_mask) {
+    case 1:
+      return ViaTimerPhase_t::load_delay;
+    case 2:
+      return ViaTimerPhase_t::reload_pending;
+    default:
+      return ViaTimerPhase_t::running;
   }
 }
 
@@ -692,71 +364,60 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
     *size = required;
     return peripheral_ok;
   }
-
   if (instance == nullptr || *size < required) {
     *size = required;
     return peripheral_error;
   }
 
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  auto* mb = static_cast<Mockingboard_t*>(instance);
   auto* ss = static_cast<MockingboardSaveState_t*>(buffer);
-  std::memset(ss, 0, sizeof(MockingboardSaveState_t));
+  std::memset(ss, 0, required);
 
   ss->version = MOCKINGBOARD_STATE_VERSION;
-  ss->struct_size = static_cast<uint32_t>(sizeof(MockingboardSaveState_t));
+  ss->struct_size = static_cast<uint32_t>(required);
 
-  for (int i = 0; i < chips_per_card; ++i) {
-    const auto& src = mp->chips.at(static_cast<size_t>(i));
-    auto& dst = ss->chips[i];
-    dst.orb = src.sy6522.ORB;
-    dst.ora = src.sy6522.ORA;
-    dst.ddrb = src.sy6522.DDRB;
-    dst.ddra = src.sy6522.DDRA;
-    dst.t1_counter = src.sy6522.TIMER1_COUNTER.w;
-    dst.t1_latch = src.sy6522.TIMER1_LATCH.w;
-    dst.t2_counter = src.sy6522.TIMER2_COUNTER.w;
-    dst.t2_latch = src.sy6522.TIMER2_LATCH.w;
-    dst.serial_shift = src.sy6522.SERIAL_SHIFT;
-    dst.acr = src.sy6522.ACR;
-    dst.pcr = src.sy6522.PCR;
-    dst.ifr = src.sy6522.IFR;
-    dst.ier = src.sy6522.IER;
-    dst.ora_no_hs = src.sy6522.ORA_NO_HS;
+  for (size_t i = 0; i < chips_per_card; ++i) {
+    const Via6522_t& v = mb->via[i];
+    const Ay8910_t& psg = mb->ay[i];
+    MockingboardChipSaveState_t& dst = ss->chips[i];
+
+    dst.orb = v.orb;
+    dst.ora = v.ora;
+    dst.ddrb = v.ddrb;
+    dst.ddra = v.ddra;
+    dst.t1_counter = v.t1_counter;
+    dst.t1_latch = v.t1_latch;
+    dst.t2_counter = v.t2_counter;
+    dst.t2_latch = v.t2_latch;
+    dst.serial_shift = v.shift_register;
+    dst.acr = v.acr;
+    dst.pcr = v.pcr;
+    dst.ifr = v.ifr;
+    dst.ier = v.ier;
+    dst.ora_no_hs = v.ora_no_handshake;
+    dst.via_flags = pack_via_flags(v);
 
     for (size_t r = 0; r < MOCKINGBOARD_AY_REGS; ++r) {
-      dst.ay_regs[r] = src.ay_chip.regs.at(r);
+      dst.ay_regs[r] = psg.regs[r];
     }
-    dst.count_a = src.ay_chip.count_a;
-    dst.count_b = src.ay_chip.count_b;
-    dst.count_c = src.ay_chip.count_c;
-    dst.out_a = src.ay_chip.out_a;
-    dst.out_b = src.ay_chip.out_b;
-    dst.out_c = src.ay_chip.out_c;
-    dst.out_n = src.ay_chip.out_n;
-    dst.count_n = src.ay_chip.count_n;
-    dst.rng = src.ay_chip.rng;
-    dst.count_e = src.ay_chip.count_e;
-    dst.envelope_step = src.ay_chip.envelope_step;
-    dst.envelope_vol = src.ay_chip.envelope_vol;
-    dst.env_holding = src.ay_chip.env_holding ? 1U : 0U;
-    dst.ay_current_register = src.ay_current_register;
-    dst.ay_number = src.ay_8910_number;
-    dst.timer_status = src.timer_status;
+    dst.count_a = psg.count_a;
+    dst.count_b = psg.count_b;
+    dst.count_c = psg.count_c;
+    dst.out_a = psg.out_a;
+    dst.out_b = psg.out_b;
+    dst.out_c = psg.out_c;
+    dst.out_n = psg.out_n;
+    dst.count_n = psg.count_n;
+    dst.rng = psg.rng;
+    dst.count_e = psg.count_e;
+    dst.envelope_step = psg.envelope_step;
+    dst.envelope_vol = psg.envelope_vol;
+    dst.env_holding = psg.env_holding ? 1U : 0U;
+    dst.env_attack = psg.env_attack ? 1U : 0U;
+    dst.ay_current_register = mb->ay_latched_register[i];
   }
 
-  ss->timer_period_6522 = mp->timer_period_6522;
-  ss->mb_timer_device = mp->mb_timer_device;
-  ss->last_cumulative_cycles = mp->last_cumulative_cycles;
-  ss->mb_inactive_cycle_count = mp->mb_inactive_cycle_count;
-  ss->last_60hz = mp->last_60hz;
-  ss->mb_reg_accessed_flag = mp->mb_reg_accessed_flag ? 1U : 0U;
-  ss->mb_active = mp->mb_active ? 1U : 0U;
-  ss->timer_irq_active = mp->timer_irq_active ? 1U : 0U;
-  ss->timer1_irq_count = mp->timer1_irq_count;
-  ss->card_type = (mp->type == SoundCardType_t::phasor)
-                      ? static_cast<uint8_t>(mockingboard_type_phasor)
-                      : static_cast<uint8_t>(mockingboard_type_mockingboard);
-  ss->phasor_native = mp->phasor_native ? 1U : 0U;
+  ss->psg_remainder = mb->psg_remainder;
 
   *size = required;
   return peripheral_ok;
@@ -775,100 +436,101 @@ auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
+  auto* mb = static_cast<Mockingboard_t*>(instance);
 
-  for (int i = 0; i < chips_per_card; ++i) {
-    auto& dst = mp->chips.at(static_cast<size_t>(i));
-    const auto& src = ss->chips[i];
-    dst.sy6522.ORB = src.orb;
-    dst.sy6522.ORA = src.ora;
-    dst.sy6522.DDRB = src.ddrb;
-    dst.sy6522.DDRA = src.ddra;
-    dst.sy6522.TIMER1_COUNTER.w = src.t1_counter;
-    dst.sy6522.TIMER1_LATCH.w = src.t1_latch;
-    dst.sy6522.TIMER2_COUNTER.w = src.t2_counter;
-    dst.sy6522.TIMER2_LATCH.w = src.t2_latch;
-    dst.sy6522.SERIAL_SHIFT = src.serial_shift;
-    dst.sy6522.ACR = src.acr;
-    dst.sy6522.PCR = src.pcr;
-    dst.sy6522.IFR = src.ifr;
-    dst.sy6522.IER = src.ier;
-    dst.sy6522.ORA_NO_HS = src.ora_no_hs;
+  for (size_t i = 0; i < chips_per_card; ++i) {
+    const MockingboardChipSaveState_t& src = ss->chips[i];
+    Via6522_t& v = mb->via[i];
+    Ay8910_t& psg = mb->ay[i];
 
+    v.orb = src.orb;
+    v.ora = src.ora;
+    v.ddrb = src.ddrb;
+    v.ddra = src.ddra;
+    v.t1_counter = src.t1_counter;
+    v.t1_latch = src.t1_latch;
+    v.t2_counter = src.t2_counter;
+    v.t2_latch = src.t2_latch;
+    v.shift_register = src.serial_shift;
+    v.acr = src.acr;
+    v.pcr = src.pcr;
+    v.ifr = src.ifr & via_ifr::mask;
+    v.ier = src.ier & via_ifr::mask;
+    v.ora_no_handshake = src.ora_no_hs;
+    v.t1_fired = (src.via_flags & via_flag::t1_fired) != 0;
+    v.t2_fired = (src.via_flags & via_flag::t2_fired) != 0;
+    v.pb7 = (src.via_flags & via_flag::pb7) != 0;
+    v.t1_phase = unpack_phase(src.via_flags, via_flag::t1_phase_shift);
+    v.t2_phase = unpack_phase(src.via_flags, via_flag::t2_phase_shift);
+
+    // Going in through the chip's own write path is what masks each register
+    // to its data-sheet width, so a hostile blob cannot widen one.
     for (size_t r = 0; r < MOCKINGBOARD_AY_REGS; ++r) {
-      dst.ay_chip.regs.at(r) = src.ay_regs[r];
+      ay8910_write(&psg, static_cast<uint8_t>(r), src.ay_regs[r]);
     }
-    dst.ay_chip.count_a = src.count_a;
-    dst.ay_chip.count_b = src.count_b;
-    dst.ay_chip.count_c = src.count_c;
-    dst.ay_chip.out_a = src.out_a;
-    dst.ay_chip.out_b = src.out_b;
-    dst.ay_chip.out_c = src.out_c;
-    dst.ay_chip.out_n = src.out_n;
-    dst.ay_chip.count_n = src.count_n;
-    dst.ay_chip.rng = src.rng;
-    dst.ay_chip.count_e = src.count_e;
-    dst.ay_chip.envelope_step = src.envelope_step;
-    dst.ay_chip.envelope_vol = src.envelope_vol;
-    dst.ay_chip.env_holding = (src.env_holding != 0);
-    dst.ay_current_register = src.ay_current_register;
-    dst.ay_8910_number = src.ay_number;
-    dst.timer_status = src.timer_status;
+    psg.count_a = src.count_a;
+    psg.count_b = src.count_b;
+    psg.count_c = src.count_c;
+    psg.out_a = src.out_a;
+    psg.out_b = src.out_b;
+    psg.out_c = src.out_c;
+    psg.out_n = src.out_n;
+    psg.count_n = src.count_n;
+    psg.rng = (src.rng != 0) ? src.rng : 1U;
+    psg.count_e = src.count_e;
+    psg.envelope_step = src.envelope_step & 0x0F;
+    psg.env_holding = src.env_holding != 0;
+    psg.env_attack = src.env_attack != 0;
+    psg.envelope_vol = static_cast<uint8_t>(
+        psg.env_attack ? psg.envelope_step : (15U - psg.envelope_step));
+
+    mb->ay_latched_register[i] = static_cast<uint8_t>(
+        src.ay_current_register & (AY8910_NUM_REGISTERS - 1));
   }
 
-  mp->timer_period_6522 = ss->timer_period_6522;
-  mp->mb_timer_device = ss->mb_timer_device;
-  mp->last_cumulative_cycles = ss->last_cumulative_cycles;
-  mp->mb_inactive_cycle_count = ss->mb_inactive_cycle_count;
-  mp->last_60hz = ss->last_60hz;
-  mp->mb_reg_accessed_flag = (ss->mb_reg_accessed_flag != 0);
-  mp->mb_active = (ss->mb_active != 0);
-  mp->timer_irq_active = (ss->timer_irq_active != 0);
-  mp->timer1_irq_count = ss->timer1_irq_count;
-  mp->type = (ss->card_type == mockingboard_type_phasor)
-                 ? SoundCardType_t::phasor
-                 : SoundCardType_t::mockingboard;
-  mp->phasor_native = (ss->phasor_native != 0);
+  mb->psg_remainder = ss->psg_remainder % cycles_per_ay_tick;
+  mb->synced = 0;
+  // Transient: from a full-scale step the coupling settles below an output
+  // LSB in about 50 ms, so it is cheaper to restart it than to carry it.
+  for (auto& f : mb->dc) {
+    f = DcBlock_t{};
+  }
+  update_irq(mb);
 
   return peripheral_ok;
 }
 
-auto mb_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                    size_t size) -> PeripheralStatus_t {
-  if (instance == nullptr) {
+auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus_t {
+  const size_t required = sizeof(PeripheralAudioInfo_t);
+  if (out == nullptr) {
+    *out_size = required;
+    return peripheral_ok;
+  }
+  if (*out_size < required) {
+    *out_size = required;
     return peripheral_error;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
 
-  switch (static_cast<MockingboardCmd_t>(cmd_id)) {
-    case mockingboard_cmd_set_type: {
-      if (data == nullptr || size < sizeof(uint8_t)) {
-        return peripheral_error;
-      }
-      auto card_type = *static_cast<const uint8_t*>(data);
-      if (card_type == mockingboard_type_phasor) {
-        mp->type = SoundCardType_t::phasor;
-      } else {
-        mp->type = SoundCardType_t::mockingboard;
-        mp->phasor_native = false;
-      }
-      if (mp->host != nullptr && mp->host->RegisterIO != nullptr) {
-        auto* handler =
-            (mp->type == SoundCardType_t::phasor) ? phasor_io : nullptr;
-        mp->host->RegisterIO(mp->slot, handler, handler, mb_io_read,
-                             mb_io_write);
-      }
-      return peripheral_ok;
-    }
-    case mockingboard_cmd_reset_audio: {
-      for (auto& chip : mp->chips) {
-        ay8910_reset(&chip.ay_chip);
-      }
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
+  std::memset(out, 0, required);
+  auto& info = *static_cast<PeripheralAudioInfo_t*>(out);
+  info.time_base = peripheral_audio_cpu_clocked;
+  info.cycle_divisor = cycles_per_ay_tick;
+  info.num_channels = voices_per_card;
+  // A voice in 0..1 through the coupling is bounded by -1..1 and both bounds
+  // are reachable: a step from silence to full volume, and the charge the
+  // same step leaves behind when it goes away.
+  info.peak_magnitude = 1.0F;
+
+  for (size_t i = 0; i < voices_per_card; ++i) {
+    std::strncpy(info.channels[i].name, channel_names[i],
+                 sizeof(info.channels[i].name) - 1);
+    const bool left = i < voices_per_chip;
+    info.channels[i].default_pan_left = left ? 1.0F : 0.0F;
+    info.channels[i].default_pan_right = left ? 0.0F : 1.0F;
   }
+
+  *out_size = required;
+  return peripheral_ok;
 }
 
 auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
@@ -876,72 +538,17 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   if (instance == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
-  auto* mp = static_cast<MockingboardPeripheral_t*>(instance);
-
-  switch (cmd_id) {
-    case mockingboard_query_status: {
-      const size_t required = sizeof(MockingboardStatus_t);
-      if (out == nullptr) {
-        *out_size = required;
-        return peripheral_ok;
-      }
-      if (*out_size < required) {
-        *out_size = required;
-        return peripheral_error;
-      }
-      auto* status = static_cast<MockingboardStatus_t*>(out);
-      std::memset(status, 0, sizeof(MockingboardStatus_t));
-      status->card_type =
-          (mp->type == SoundCardType_t::phasor)
-              ? static_cast<uint8_t>(mockingboard_type_phasor)
-              : static_cast<uint8_t>(mockingboard_type_mockingboard);
-      status->timer_irq_active = mp->timer_irq_active ? 1U : 0U;
-      status->phasor_native = mp->phasor_native ? 1U : 0U;
-      *out_size = required;
-      return peripheral_ok;
-    }
-    case PERIPHERAL_QUERY_AUDIO_INFO: {
-      const size_t required = sizeof(PeripheralAudioInfo_t);
-      if (out == nullptr) {
-        *out_size = required;
-        return peripheral_ok;
-      }
-      if (*out_size < required) {
-        *out_size = required;
-        return peripheral_error;
-      }
-      auto* info = static_cast<PeripheralAudioInfo_t*>(out);
-      info->time_base = peripheral_audio_absolute;
-      info->sample_rate = default_mockingboard_sample_rate;
-      info->num_channels = voices_per_card;
-      info->peak_magnitude = 1.0f;
-      const char* names[6] = {"AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
-                              "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
-      for (size_t i = 0; i < voices_per_card; ++i) {
-        std::strncpy(info->channels[i].name, names[i],
-                     sizeof(info->channels[i].name) - 1);
-        info->channels[i].name[sizeof(info->channels[i].name) - 1] = '\0';
-        if (i < 3) {
-          info->channels[i].default_pan_left = 1.0f;
-          info->channels[i].default_pan_right = 0.0f;
-        } else {
-          info->channels[i].default_pan_left = 0.0f;
-          info->channels[i].default_pan_right = 1.0f;
-        }
-      }
-      *out_size = required;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
+  if (cmd_id == PERIPHERAL_QUERY_AUDIO_INFO) {
+    return query_audio_info(out, out_size);
   }
+  return peripheral_incompatible;
 }
 
-static Peripheral_t g_mockingboard_peripheral = {
+static const Peripheral_t g_mockingboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
     .name = "Mockingboard",
-    .description = "Dual AY-3-8910 sound card emulation",
+    .description = "Sweet Micro Systems Mockingboard (2x 6522, 2x AY-3-8910)",
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
@@ -953,13 +560,18 @@ static Peripheral_t g_mockingboard_peripheral = {
     .on_vblank = nullptr,
     .save_state = mb_abi_save_state,
     .load_state = mb_abi_load_state,
-    .command = mb_abi_command,
+    .command = nullptr,
     .query = mb_abi_query};
+
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
 }  // namespace
 
+// peripheral_register and ActivePeripheral_t::api still take a mutable
+// Peripheral_t*, so the immutable descriptor is cast the same way
+// PERIPHERAL_REGISTER casts it.
 extern "C" auto mockingboard_get_descriptor() -> Peripheral_t* {
-  return &g_mockingboard_peripheral;
+  return const_cast<Peripheral_t*>(&g_mockingboard_peripheral);
 }
 
 PERIPHERAL_REGISTER(g_mockingboard_peripheral)
