@@ -397,7 +397,7 @@ static auto clock_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static Peripheral_t g_clock_peripheral = {
+static const Peripheral_t g_clock_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.clock",
     .name = "Clock Card",
@@ -416,6 +416,11 @@ static Peripheral_t g_clock_peripheral = {
     .command = clock_abi_command,
     .query = clock_abi_query};
 
-auto clock_get_descriptor() -> Peripheral_t* { return &g_clock_peripheral; }
+// peripheral_register and ActivePeripheral_t::api still take a mutable
+// Peripheral_t*, so the immutable descriptor is cast the same way
+// PERIPHERAL_REGISTER casts it.
+auto clock_get_descriptor() -> Peripheral_t* {
+  return const_cast<Peripheral_t*>(&g_clock_peripheral);
+}
 
 PERIPHERAL_REGISTER(g_clock_peripheral)

@@ -74,9 +74,31 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 }
 
 auto peripheral_register_internal() -> void {
+  peripheral_plugins_init();
+
   for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
       peripheral_register(p, 0);
+    }
+  }
+
+  // Slot 0 holds motherboard hardware, which no configuration key names, so
+  // the only way a plugin can reach it is by declaring it. A builtin of the
+  // same id wins: a statically linked card and its own .so are the same
+  // device, and registering both would double every sample it produces.
+  for (auto const& lp : g_loaded_plugins) {
+    if (lp.p == nullptr || lp.p->default_slot != 0) {
+      continue;
+    }
+    bool shadowed_by_builtin = false;
+    for (const auto* builtin : peripheral_get_builtin_registry()) {
+      if (builtin != nullptr && strcmp(builtin->id, lp.p->id) == 0) {
+        shadowed_by_builtin = true;
+        break;
+      }
+    }
+    if (!shadowed_by_builtin) {
+      peripheral_register(lp.p, 0);
     }
   }
 
@@ -201,19 +223,31 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
           auto* p = reinterpret_cast<Peripheral_t*>(
               dlsym(handle, "linapple_peripheral_descriptor"));
           if (p != nullptr) {
-            if (p->abi_version == LINAPPLE_ABI_VERSION) {
+            if (p->abi_version != LINAPPLE_ABI_VERSION) {
+              Logger::error("Plugin ABI mismatch: %s (expected %d, got %d)\n",
+                            full_path.c_str(), LINAPPLE_ABI_VERSION,
+                            p->abi_version);
+              dlclose(handle);
+            } else if (p->id == nullptr || p->name == nullptr ||
+                       p->init == nullptr) {
+              // An all-zero descriptor reads as ABI version 0, so the version
+              // check alone cannot tell a plugin from a blank page, and every
+              // later lookup walks these fields.
+              Logger::error("Plugin descriptor is incomplete: %s\n",
+                            full_path.c_str());
+              dlclose(handle);
+            } else {
               bool already_loaded = false;
               for (const auto& existing : g_loaded_plugins) {
                 if (existing.p == p ||
-                    (existing.p != nullptr && p->id != nullptr &&
-                     existing.p->id != nullptr &&
+                    (existing.p != nullptr && existing.p->id != nullptr &&
                      strcmp(existing.p->id, p->id) == 0)) {
                   already_loaded = true;
                   break;
                 }
               }
               for (const auto* builtin : peripheral_get_builtin_registry()) {
-                if (builtin == p || (builtin != nullptr && p->id != nullptr &&
+                if (builtin == p || (builtin != nullptr &&
                                      builtin->id != nullptr &&
                                      strcmp(builtin->id, p->id) == 0)) {
                   already_loaded = true;
@@ -227,11 +261,6 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
                              full_path.c_str());
                 g_loaded_plugins.push_back({p, handle, full_path});
               }
-            } else {
-              Logger::error("Plugin ABI mismatch: %s (expected %d, got %d)\n",
-                            full_path.c_str(), LINAPPLE_ABI_VERSION,
-                            p->abi_version);
-              dlclose(handle);
             }
           } else {
             Logger::error(

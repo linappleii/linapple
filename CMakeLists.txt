@@ -762,7 +762,19 @@ if(BUILD_TESTING)
     endif()
     add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
     set_tests_properties(test-e2e-applesoft PROPERTIES LABELS "e2e")
+    # Its own directory, which no plugin search path names, so an ordinary
+    # run never loads it.
+    set(TEST_PLUGIN_DIR "${CMAKE_BINARY_DIR}/test-plugins")
+    add_library(test-plugin-slot0 SHARED tests/fixture_plugin_slot0.cpp)
+    target_compile_definitions(test-plugin-slot0 PRIVATE BUILD_SHARED_PERIPHERAL)
+    target_include_directories(test-plugin-slot0 PRIVATE ${LINAPPLE_INCLUDES} tests)
+    set_target_properties(test-plugin-slot0 PROPERTIES
+        PREFIX "" OUTPUT_NAME "slot0_fixture"
+        LIBRARY_OUTPUT_DIRECTORY "${TEST_PLUGIN_DIR}")
+
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
+    add_dependencies(test-peripheral-lifecycle test-plugin-slot0)
+    target_compile_definitions(test-peripheral-lifecycle PRIVATE TEST_PLUGIN_DIR="${TEST_PLUGIN_DIR}")
     add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
     add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     add_linapple_test(snapshot tests/test_snapshot.cpp)

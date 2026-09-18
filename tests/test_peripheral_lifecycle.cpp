@@ -8,9 +8,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
+#include "fixture_plugin_slot0.h"
+#include "test_fixtures.h"
 
 static bool g_mock_shutdown_called = false;
 
@@ -248,7 +251,6 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 #include <dlfcn.h>
 
 #ifdef BUILD_SHARED_PERIPHERALS
-#include "apple2/peripherals/Peripheral_Internal.h"
 
 TEST_CASE(
     "Peripheral Manager: Dynamic plugin loader success path and lifecycle") {
@@ -309,6 +311,30 @@ TEST_CASE(
   linapple_shutdown();
 }
 #endif
+
+TEST_CASE(
+    "Peripheral Manager: A plugin declaring slot zero is registered there") {
+  // Slot 0 is the one slot no configuration key names, so a plugin reaches it
+  // only by declaring it. Without this the internal speaker vanishes from
+  // every build that ships it as a shared object.
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  REQUIRE(config.load());
+
+  peripheral_plugins_shutdown();
+  peripheral_plugins_init(TEST_PLUGIN_DIR);
+
+  REQUIRE(linapple_init() == 0);
+
+  int32_t reported_slot = -1;
+  size_t out_size = sizeof(reported_slot);
+  CHECK(peripheral_query(0, slot0_fixture_query_slot, &reported_slot,
+                         &out_size) == peripheral_ok);
+  CHECK(out_size == sizeof(int32_t));
+  CHECK(reported_slot == 0);
+
+  linapple_shutdown();
+}
 
 TEST_CASE(
     "Peripheral Manager: Plugin loader ABI verification and error handling") {
