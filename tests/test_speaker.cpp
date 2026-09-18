@@ -644,9 +644,9 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. AudioPushChannels == nullptr drops the push and changes nothing else:
-  // the cone keeps decaying underneath, so restoring the callback resumes the
-  // same tail rather than a fresh edge.
+  // AudioPushChannels == nullptr drops the push and changes nothing else: the
+  // cone keeps decaying underneath, so restoring the callback resumes the same
+  // tail rather than a fresh edge.
   harness.set_drop_audio(true);
   harness.set_cycles(1000);
   harness.strobe();
@@ -663,7 +663,7 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
         doctest::Approx(EDGE * std::pow(FILTER_A, 1000)).epsilon(1e-4));
   harness.clear_captured_samples();
 
-  // 2. GetCycles == nullptr must fall back to 0 without crashing
+  // GetCycles == nullptr must fall back to 0 without crashing
   harness.set_null_cycles(true);
   harness.strobe();
   harness.advance_cycles(1000);
@@ -690,7 +690,7 @@ TEST_CASE(
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. One sample per cycle: a standard Apple II frame is 17,030 samples
+  // One sample per cycle: a standard Apple II frame is 17,030 samples
   // Pacing is only observable while the cone is driven
   harness.strobe();
   harness.advance_cycles(NTSC_FRAME_CYCLES);
@@ -1129,7 +1129,7 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  // 1. Query with null buffer returns required size
+  // Query with null buffer returns required size
   size_t size = 0;
   PeripheralStatus_t status = speaker_get_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &size);
@@ -1149,7 +1149,7 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   CHECK(status == peripheral_error);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
-  // 3. Query with valid buffer populates self-describing mono speaker info
+  // Query with valid buffer populates self-describing mono speaker info
   size = sizeof(PeripheralAudioInfo_t);
   status = speaker_get_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
