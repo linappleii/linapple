@@ -61,12 +61,6 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_mouse_interface[5] == 0x38);
     CHECK(g_rom_mouse_interface[7] == 0x18);
 #endif
-#if ENABLE_ROM_MOCKINGBOARD
-    CHECK(g_rom_mockingboard_d_size == 2048);
-    CHECK(g_rom_mockingboard_d[0] == 0x28);  // '('
-    CHECK(g_rom_mockingboard_d[1] == 0x43);  // 'C'
-    CHECK(g_rom_mockingboard_d[2] == 0x29);  // ')'
-#endif
 #if ENABLE_ROM_PRINTER
     CHECK(g_rom_parallel_size == 256);
     CHECK(g_rom_parallel[0] == 0x18);

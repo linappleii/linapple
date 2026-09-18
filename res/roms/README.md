@@ -41,7 +41,6 @@ These binary images are distributed for non-commercial preservation, interoperab
 | `SSC.rom` | 2,048 B | Super Serial Card | Apple Super Serial Card 6551 ACIA firmware ROM (Part 341-0065) | Apple Inc. (1981) |
 | `MouseInterface.rom` | 2,048 B | Mouse Card | Apple Mouse Interface Card 6821 firmware ROM (Part 342-0285) | Apple Inc. (1984) |
 | `Parallel.rom` | 256 B | Parallel Interface | Apple Parallel Printer Interface firmware ROM | Apple Inc. |
-| `Mockingboard-D.rom` | 2,048 B | Mockingboard "D" | Sweet Micro Systems Sound/Speech peripheral firmware | Sweet Micro Systems |
 | `ThunderClockPlus.rom` | 2,048 B | ThunderClock Plus | Thunderware Real-Time Clock firmware ROM | Thunderware Inc. (1980) |
 | `TKClock.rom` | 2,304 B | TK Clock | Microdigital / Microtek Clock card firmware | Microdigital / Microtek |
 

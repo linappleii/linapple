@@ -58,10 +58,6 @@ const uint8_t* const ssc_rom = g_rom_ssc;
 const uint8_t* const mouse_interface_rom = g_rom_mouse_interface;
 #endif
 
-#if ENABLE_ROM_MOCKINGBOARD
-const uint8_t* const mockingboard_d_rom = g_rom_mockingboard_d;
-#endif
-
 #if ENABLE_ROM_PRINTER
 const uint8_t* const parallel_rom = g_rom_parallel;
 #endif

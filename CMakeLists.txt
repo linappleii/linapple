@@ -122,18 +122,11 @@ else()
 endif()
 
 option(ENABLE_ROM_MOUSE "Include Mouse Interface Card ROM" ON)
-option(ENABLE_ROM_MOCKINGBOARD "Include Mockingboard-D ROM" ON)
 
 if(ENABLE_ROM_MOUSE)
     add_compile_definitions(ENABLE_ROM_MOUSE=1)
 else()
     add_compile_definitions(ENABLE_ROM_MOUSE=0)
-endif()
-
-if(ENABLE_ROM_MOCKINGBOARD)
-    add_compile_definitions(ENABLE_ROM_MOCKINGBOARD=1)
-else()
-    add_compile_definitions(ENABLE_ROM_MOCKINGBOARD=0)
 endif()
 
 option(ENABLE_ROM_PRINTER "Include Parallel Printer Interface Card ROM" ON)
@@ -309,7 +302,6 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-13sector.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Mockingboard-D.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Parallel.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/ThunderClockPlus.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TKClock.rom"

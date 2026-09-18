@@ -148,9 +148,6 @@ void app_args_print_help() {
 #if ENABLE_ROM_MOUSE
   printf("  - Apple II Mouse Interface\n");
 #endif
-#if ENABLE_ROM_MOCKINGBOARD
-  printf("  - Mockingboard-D Sound Card\n");
-#endif
 #if ENABLE_ROM_PRINTER
   printf("  - Parallel Printer Interface\n");
 #endif
