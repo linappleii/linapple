@@ -377,34 +377,34 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   if (!is_drive_valid(drive_index)) {
     return disk_err_io;
   }
-  auto* disk_ptr =
-      &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
+  auto& drive = disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk_ptr->driver != nullptr) {
+  if (drive.driver != nullptr) {
     eject_disk_from_drive(disk_peripheral, drive_index);
   }
-  *disk_ptr = Disk_t();
+  drive = Disk_t();
 
-  disk_ptr->is_user_write_protected = write_protected;
-  const DiskError_e error =
-      disk_loader_open(image_path, create_if_necessary,
-                       static_cast<uint8_t>(disk_peripheral->is_speed_enhanced),
-                       &disk_ptr->is_os_read_only,
-                       const_cast<DiskFormatDriver_t**>(&disk_ptr->driver),
-                       &disk_ptr->driver_instance);
+  drive.is_user_write_protected = write_protected;
+  const DiskError_e error = disk_loader_open(
+      image_path, create_if_necessary,
+      static_cast<uint8_t>(disk_peripheral->is_speed_enhanced),
+      &drive.is_os_read_only, const_cast<DiskFormatDriver_t**>(&drive.driver),
+      &drive.driver_instance);
 
-  disk_ptr->last_error = error;
+  drive.last_error = error;
 
-  if (error == disk_err_none) {
-    update_disk_metadata(disk_ptr, image_path);
+  if (error != disk_err_none) {
+    notify_status_changed(disk_peripheral);
+    return error;
+  }
 
-    if (disk_peripheral->host != nullptr) {
-      const char* key = (drive_index == 0) ? config::disk_image1_key
-                                           : config::disk_image2_key;
-      if (disk_peripheral->host->SetConfig != nullptr) {
-        disk_peripheral->host->SetConfig("Slots", key, image_path);
-      }
-    }
+  update_disk_metadata(&drive, image_path);
+
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->SetConfig != nullptr) {
+    const char* key =
+        (drive_index == 0) ? config::disk_image1_key : config::disk_image2_key;
+    disk_peripheral->host->SetConfig("Slots", key, image_path);
   }
 
   notify_status_changed(disk_peripheral);
@@ -1166,46 +1166,49 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     const std::string safe_path(ds.full_path,
                                 static_cast<size_t>(end_it - ds.full_path));
 
-    if (insert_disk_into_drive(dp, i, safe_path.c_str(),
-                               ds.user_write_protected != 0,
-                               false) == disk_err_none) {
-      auto& d = dp->drives.at(static_cast<size_t>(i));
-      if (ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
-          ds.phase >= max_disk_phases || ds.nibble_count <= 0 ||
-          ds.nibble_count > static_cast<int>(nibbles_per_track) ||
-          ds.current_byte_pos < 0 ||
-          static_cast<uint32_t>(ds.current_byte_pos) >=
-              static_cast<uint32_t>(ds.nibble_count)) {
-        if (dp->host != nullptr && dp->host->Log != nullptr) {
-          dp->host->Log(
-              dp, log_warn,
-              "DiskSaveState: Clamped out-of-bounds drive %d state (track: %d, "
-              "phase: %d, nibble_count: %d, pos: %d)",
-              i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
-        }
+    const DiskError_e insert_err = insert_disk_into_drive(
+        dp, i, safe_path.c_str(), ds.user_write_protected != 0, false);
+    if (insert_err != disk_err_none) {
+      continue;
+    }
+
+    auto& d = dp->drives.at(static_cast<size_t>(i));
+    const bool is_out_of_bounds =
+        ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
+        ds.phase >= max_disk_phases || ds.nibble_count <= 0 ||
+        ds.nibble_count > static_cast<int>(nibbles_per_track) ||
+        ds.current_byte_pos < 0 ||
+        static_cast<uint32_t>(ds.current_byte_pos) >=
+            static_cast<uint32_t>(ds.nibble_count);
+
+    if (is_out_of_bounds && dp->host != nullptr && dp->host->Log != nullptr) {
+      dp->host->Log(
+          dp, log_warn,
+          "DiskSaveState: Clamped out-of-bounds drive %d state (track: %d, "
+          "phase: %d, nibble_count: %d, pos: %d)",
+          i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
+    }
+    d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
+    d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
+    d.nibble_count = (ds.nibble_count > 0 &&
+                      ds.nibble_count <= static_cast<int>(nibbles_per_track))
+                         ? static_cast<uint32_t>(ds.nibble_count)
+                         : static_cast<uint32_t>(nibbles_per_track);
+    d.current_byte_pos =
+        (ds.current_byte_pos >= 0 &&
+         static_cast<uint32_t>(ds.current_byte_pos) < d.nibble_count)
+            ? static_cast<uint32_t>(ds.current_byte_pos)
+            : 0;
+    d.is_os_read_only = (ds.is_os_read_only != 0);
+    d.is_data_loaded = (ds.is_data_loaded != 0);
+    d.is_dirty = (ds.is_dirty != 0);
+    d.spinning_ticks = ds.spinning_ticks;
+    d.write_light_ticks = ds.write_light_ticks;
+    if (d.is_data_loaded) {
+      if (!d.track_buffer) {
+        d.track_buffer.reset(new uint8_t[nibbles_per_track]());
       }
-      d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
-      d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
-      d.nibble_count = (ds.nibble_count > 0 &&
-                        ds.nibble_count <= static_cast<int>(nibbles_per_track))
-                           ? static_cast<uint32_t>(ds.nibble_count)
-                           : static_cast<uint32_t>(nibbles_per_track);
-      d.current_byte_pos =
-          (ds.current_byte_pos >= 0 &&
-           static_cast<uint32_t>(ds.current_byte_pos) < d.nibble_count)
-              ? static_cast<uint32_t>(ds.current_byte_pos)
-              : 0;
-      d.is_os_read_only = (ds.is_os_read_only != 0);
-      d.is_data_loaded = (ds.is_data_loaded != 0);
-      d.is_dirty = (ds.is_dirty != 0);
-      d.spinning_ticks = ds.spinning_ticks;
-      d.write_light_ticks = ds.write_light_ticks;
-      if (d.is_data_loaded) {
-        if (!d.track_buffer) {
-          d.track_buffer.reset(new uint8_t[nibbles_per_track]());
-        }
-        std::copy_n(ds.track_buffer, nibbles_per_track, d.track_buffer.get());
-      }
+      std::copy_n(ds.track_buffer, nibbles_per_track, d.track_buffer.get());
     }
   }
   notify_status_changed(dp);
