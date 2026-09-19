@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <curl/curl.h>
-#include <curl/easy.h>
+#include <memory>
+#include <new>
 
 #include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
+#include "core/services/ftp/FtpClient.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
@@ -13,6 +14,10 @@
 
 using Logger::error;
 using Logger::info;
+
+#if ENABLE_FTP
+static std::unique_ptr<CurlGlobalGuard_t> g_curl_guard;
+#endif
 
 static bool g_budget_video = false;
 
@@ -29,13 +34,14 @@ auto sys_init() -> int {
     return 1;
   }
 
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  g_curl = curl_easy_init();
-  if (g_curl == nullptr) {
-    error("Could not initialize CURL easy interface\n");
+#if ENABLE_FTP
+  g_curl_guard = std::unique_ptr<CurlGlobalGuard_t>(new (std::nothrow)
+                                                        CurlGlobalGuard_t());
+  if (!g_curl_guard) {
+    error("Could not initialize CURL global environment\n");
     return 1;
   }
-  curl_easy_setopt(g_curl, CURLOPT_USERPWD, g_state.ftp_user_pass.data());
+#endif
 
   return 0;
 }
@@ -44,10 +50,9 @@ void sys_shutdown() {
   ds_shutdown();
   frame_destroy_window();
   SDL_Quit();
-  if (g_curl != nullptr) {
-    curl_easy_cleanup(g_curl);
-    curl_global_cleanup();
-  }
+#if ENABLE_FTP
+  g_curl_guard.reset();
+#endif
 }
 
 static void frontend_set_window_title(const char* title) {

@@ -4,16 +4,17 @@
 #include <cstring>
 #include <string>
 
-#include "apple2/peripherals/disk/DiskFTP.h"
-#include "apple2/peripherals/disk/ftpparse.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "core/services/ftp/FtpClient.h"
+#include "core/services/ftp/FtpTypes.h"
+#include "frontends/common/FtpDialog.h"
 #include "frontends/common/sdl/DiskChoose_Decl.h"
 
 // Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
@@ -32,6 +33,9 @@ void harddisk_ui_ftp_select(int drive) {
 
   fileIndex = backdx;
   fullPath = g_state.ftp_server_hdd.data();
+  if (fullPath.empty()) {
+    fullPath = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
+  }
 
   while (isDirectory) {
     if (!choose_an_image_ftp(g_state.screen_width, g_state.screen_height,
@@ -79,13 +83,20 @@ void harddisk_ui_ftp_select(int drive) {
     return;
   }
 
-  fullPath += "/" + safe_filename;
+  if (!fullPath.empty() && fullPath.back() == '/') {
+    fullPath += safe_filename;
+  } else {
+    fullPath += "/" + safe_filename;
+  }
 
-  std::string localPath =
-      std::string(g_state.ftp_local_dir.data()) + "/" + safe_filename;
-
-  int error = ftp_get(fullPath.c_str(), localPath.c_str());
-  if (!error) {
+#if ENABLE_FTP
+  FtpClient_t client;
+  const FtpStatus_t status =
+      client.download_file(fullPath, g_state.ftp_local_dir.data(),
+                           safe_filename, g_state.ftp_user_pass.data());
+  if (status == FtpStatus_t::ok) {
+    const std::string localPath =
+        std::string(g_state.ftp_local_dir.data()) + "/" + safe_filename;
     HarddiskInsertCmd_t cmd{};
     cmd.drive = static_cast<uint8_t>(drive);
     util_safe_strcpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
@@ -102,7 +113,15 @@ void harddisk_ui_ftp_select(int drive) {
         Configuration_t::instance().save();
       }
     }
+  } else {
+    Logger::error(
+        "FTP: Failed downloading harddisk image from %s (status %u)\n",
+        fullPath.c_str(), static_cast<unsigned>(status));
   }
+#else
+  (void)drive;
+  Logger::error("FTP: FTP support is disabled in this build\n");
+#endif
   backdx = fileIndex;
   draw_frame_window();
 }

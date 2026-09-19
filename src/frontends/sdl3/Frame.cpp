@@ -49,10 +49,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/disk/DiskError.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/disk/DiskError.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
@@ -712,8 +712,6 @@ void process_button_click(int button, int mod) {
           harddisk_ui_select(button - btn_drive1);
         }
       } else {
-        extern void disk_select(int drive);
-        extern void disk_ftp_select_image(int drive);
         if (mod & SDL_KMOD_ALT) {
           disk_ftp_select_image(button - btn_drive1);
         } else {

@@ -32,6 +32,7 @@ else()
     set(FRONTEND_HAS_FTP ON)
 endif()
 option(ENABLE_DEBUGGER "Enable integrated debugger" ${DEFAULT_ENABLE_DEBUGGER})
+option(ENABLE_FTP "Enable FTP support" ON)
 
 option(PROFILING "Enable profiling" OFF)
 option(REGISTRY_WRITEABLE "Enable registry writing" ON)
@@ -186,7 +187,16 @@ endif()
 # --- Dependencies ---
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(CURL REQUIRED)
+if(ENABLE_FTP)
+    find_package(CURL REQUIRED)
+    add_compile_definitions(ENABLE_FTP=1)
+    set(FTP_LIBRARIES ${CURL_LIBRARIES})
+    set(FTP_INCLUDE_DIRS ${CURL_INCLUDE_DIRS})
+else()
+    add_compile_definitions(ENABLE_FTP=0)
+    set(FTP_LIBRARIES "")
+    set(FTP_INCLUDE_DIRS "")
+endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBZIP REQUIRED libzip)
 
@@ -325,7 +335,7 @@ set(LINAPPLE_INCLUDES
     "${GEN_RES_DIR}"
     "${GEN_ROMS_DIR}"
     "${RES_DIR}"
-    ${CURL_INCLUDE_DIRS}
+    ${FTP_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
     ${LIBZIP_INCLUDE_DIRS}
 )
@@ -362,6 +372,7 @@ set(SOURCES_CORE
     src/frontends/common/VideoStretch.cpp
     src/frontends/common/SuperSerialFrontend.cpp
     src/frontends/common/PrinterFrontend.cpp
+    src/core/services/ftp/FtpParser.cpp
 )
 
 set(SOURCES_A2_MANDATORY
@@ -416,13 +427,13 @@ endif()
 set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/AudioDevice.cpp
     src/frontends/common/sdl/DiskUI.cpp
-    src/frontends/common/sdl/DiskFTP.cpp
+    src/frontends/common/sdl/FtpDialog.cpp
     src/frontends/common/sdl/DiskSelect.cpp
     src/frontends/common/sdl/Harddisk.cpp
     src/frontends/common/sdl/MainSession.cpp
     src/frontends/common/sdl/Keyboard.cpp
     src/frontends/common/sdl/JoystickFrontend.cpp
-    src/apple2/peripherals/disk/ftpparse.cpp
+    src/core/services/ftp/FtpClient.cpp
 )
 
 set(SOURCES_FE_SDL3
@@ -561,17 +572,17 @@ if(ALSA_FOUND)
 endif()
 
 if(FRONTEND_LOWER STREQUAL "all")
-    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
-    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
-    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple-sdl3 "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG_FULL}" "SDL3::SDL3;SDL3_image::SDL3_image;${FTP_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl2 "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG_FULL}" "SDL2::SDL2;${FTP_LIBRARIES}" "" "")
+    add_linapple_executable(linapple-sdl1 "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG_FULL}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${FTP_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
     add_linapple_executable(linapple-headless "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG_STUBS}" "" "" "-DHEADLESS")
     add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_FULL}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
-    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
-    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${CURL_LIBRARIES}" "" "")
+    add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
-    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${CURL_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
+    add_linapple_executable(linapple "sdl1" "${SOURCES_FE_SDL1}" "${SOURCES_DBG}" "${SDL_LIBRARY};${SDL_IMAGE_LIBRARIES};${FTP_LIBRARIES}" "${SDL_INCLUDE_DIR}" "")
 elseif(FRONTEND_LOWER STREQUAL "headless")
     add_linapple_executable(linapple "headless" "${SOURCES_FE_HEADLESS}" "${SOURCES_DBG}" "" "" "-DHEADLESS")
 elseif(FRONTEND_LOWER STREQUAL "tui")
@@ -717,8 +728,12 @@ if(BUILD_TESTING)
 
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
-    add_linapple_test(ftpparse "tests/test_ftpparse.cpp;src/apple2/peripherals/disk/ftpparse.cpp")
-    target_link_libraries(test-ftpparse PRIVATE ${CURL_LIBRARIES})
+    add_linapple_test(ftp-parser "tests/test_main.cpp;tests/test_ftp_parser.cpp")
+
+    if(ENABLE_FTP)
+        add_linapple_test(ftp-client "tests/test_main.cpp;tests/test_ftp_client.cpp;src/core/services/ftp/FtpClient.cpp")
+        target_link_libraries(test-ftp-client PRIVATE ${FTP_LIBRARIES})
+    endif()
 
     add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
     target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
@@ -814,7 +829,7 @@ if(BUILD_TESTING)
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
         linapple_test_home(test-frontend-sdl1 frontend-sdl1)
     endif()
@@ -826,7 +841,7 @@ if(BUILD_TESTING)
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
         linapple_test_home(test-frontend-sdl2 frontend-sdl2)
     endif()
@@ -838,7 +853,7 @@ if(BUILD_TESTING)
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${CURL_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)
     endif()

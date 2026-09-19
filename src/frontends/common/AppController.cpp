@@ -13,14 +13,14 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/Asset.h"
 #include "core/BasicLiveSync.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/ProgramLoader.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
@@ -192,6 +192,34 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
                        sizeof(g_state.hdd_dir));
   initialize_directory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
                        sizeof(g_state.save_state_dir));
+  initialize_directory(REGVALUE_FTP_LOCAL_DIR, &g_state.ftp_local_dir[0],
+                       sizeof(g_state.ftp_local_dir));
+
+  std::string ftp_server = Configuration_t::instance().get_string(
+      "Preferences", REGVALUE_FTP_DIR,
+      "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
+  if (ftp_server.empty()) {
+    ftp_server = "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/";
+  }
+  util_safe_strcpy(g_state.ftp_server.data(), ftp_server.c_str(),
+                   g_state.ftp_server.size());
+
+  std::string ftp_server_hdd = Configuration_t::instance().get_string(
+      "Preferences", REGVALUE_FTP_HDD_DIR,
+      "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
+  if (ftp_server_hdd.empty()) {
+    ftp_server_hdd = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
+  }
+  util_safe_strcpy(g_state.ftp_server_hdd.data(), ftp_server_hdd.c_str(),
+                   g_state.ftp_server_hdd.size());
+
+  std::string ftp_userpass = Configuration_t::instance().get_string(
+      "Preferences", REGVALUE_FTP_USERPASS, "anonymous:my-mail@mail.com");
+  if (ftp_userpass.empty()) {
+    ftp_userpass = "anonymous:my-mail@mail.com";
+  }
+  util_safe_strcpy(g_state.ftp_user_pass.data(), ftp_userpass.c_str(),
+                   g_state.ftp_user_pass.size());
 
   frontend_update_keyboard_mapping();
   if (config->caps_lock_mode >= 0) {

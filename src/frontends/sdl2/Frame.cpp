@@ -51,14 +51,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "Debugger/Debug.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -690,8 +690,6 @@ void process_button_click(int button, int mod) {
           harddisk_ui_select(button - btn_drive1);
         }
       } else {
-        extern void disk_select(int drive);
-        extern void disk_ftp_select_image(int drive);
         if ((mod & KMOD_ALT) != 0) {
           disk_ftp_select_image(button - btn_drive1);
         } else {

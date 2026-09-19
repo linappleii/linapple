@@ -208,7 +208,6 @@ extern int g_cpu_cycles_feedback;
 extern uint32_t g_cycles_this_frame;
 extern bool g_disable_direct_sound;
 extern uint32_t g_slot4;
-extern CURL* g_curl;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);

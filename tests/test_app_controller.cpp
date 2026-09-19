@@ -8,9 +8,9 @@
 
 #include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -239,4 +239,28 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
 
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
+}
+
+TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
+  ScopedAppController_t controller_guard;
+  TestConfig_t::Description_t description(TestConfig_t::disk_ii_only());
+  description.extras.push_back(
+      {"Preferences", "FTP Server", "ftp://test.server/games/"});
+  description.extras.push_back(
+      {"Preferences", "FTP ServerHDD", "ftp://test.server/hdd/"});
+  description.extras.push_back({"Preferences", "FTP UserPass", "user:pass"});
+  TestConfig_t machine(description);
+
+  AppConfig_t config = {};
+  app_config_default(&config);
+  declare(machine, &config);
+
+  app_env_resolve_paths(&config);
+  int result = app_controller_initialize(&config);
+  CHECK(result == 0);
+
+  CHECK(std::string(g_state.ftp_server.data()) == "ftp://test.server/games/");
+  CHECK(std::string(g_state.ftp_server_hdd.data()) == "ftp://test.server/hdd/");
+  CHECK(std::string(g_state.ftp_user_pass.data()) == "user:pass");
+  CHECK(is_valid_directory(g_state.ftp_local_dir.data()));
 }

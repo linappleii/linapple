@@ -70,3 +70,5 @@ void set_normal_mode();
 
 void harddisk_ui_ftp_select(int drive);
 void harddisk_ui_select(int drive);
+void disk_ftp_select_image(int drive);
+void disk_select(int drive);

@@ -4,7 +4,6 @@
 // Core emulator lifecycle, cycle accounting, and binary program file loading
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-owning-memory, google-runtime-int, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay, clang-diagnostic-missing-braces)
 
-#include <curl/curl.h>
 #include <strings.h>
 
 #include <chrono>
@@ -84,7 +83,6 @@ uint32_t g_cycles_this_frame = 0;
 bool g_disable_direct_sound = false;
 
 uint32_t g_slot4 = CT_Mockingboard;
-CURL* g_curl = nullptr;
 
 auto get_title_apple_2() -> const char* { return TITLE_APPLE_2_; }
 auto get_title_apple_2_plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
