@@ -38,10 +38,44 @@ auto mem_return_random_data(uint8_t highbit) -> uint8_t;
 
 namespace {
 
-constexpr const char* regvalue_disk_image1 = "Disk Image 1";
-constexpr const char* regvalue_disk_image2 = "Disk Image 2";
-
+namespace config {
+constexpr const char* disk_image1_key = "Disk Image 1";
+constexpr const char* disk_image2_key = "Disk Image 2";
 constexpr size_t path_max_len = 260;
+constexpr size_t min_title_len_for_format = 3;
+}  // namespace config
+
+namespace physical {
+constexpr uint32_t spinup_ticks = 20000;
+constexpr uint32_t write_light_ticks = 20000;
+constexpr uint8_t latch_bit = 0x80;
+constexpr uint8_t floating_bus = 0xFF;
+}  // namespace physical
+
+namespace regs {
+constexpr uint8_t addr_mask = 0x0F;
+constexpr uint8_t addr_hi_mask = 0xFF;
+constexpr uint8_t stepper_alt = 0xE0;
+constexpr uint16_t phase_mask = 0x0F;
+
+// Disk II Controller Softswitches ($C0n0 - $C0nF)
+constexpr uint8_t stepper_0 = 0x0;  // Phase 0 Off
+constexpr uint8_t stepper_1 = 0x1;  // Phase 0 On
+constexpr uint8_t stepper_2 = 0x2;  // Phase 1 Off
+constexpr uint8_t stepper_3 = 0x3;  // Phase 1 On
+constexpr uint8_t stepper_4 = 0x4;  // Phase 2 Off
+constexpr uint8_t stepper_5 = 0x5;  // Phase 2 On
+constexpr uint8_t stepper_6 = 0x6;  // Phase 3 Off
+constexpr uint8_t stepper_7 = 0x7;  // Phase 3 On
+constexpr uint8_t motor_off = 0x8;
+constexpr uint8_t motor_on = 0x9;
+constexpr uint8_t drive_1 = 0xA;
+constexpr uint8_t drive_2 = 0xB;
+constexpr uint8_t read_write = 0xC;  // Q6 Strobe Data
+constexpr uint8_t shift_reg = 0xD;   // Q6 Shift
+constexpr uint8_t read_mode = 0xE;   // Q7 Read
+constexpr uint8_t write_mode = 0xF;  // Q7 Write
+}  // namespace regs
 
 struct DiskImageMetadata_t {
   std::string full_path;
@@ -67,33 +101,6 @@ auto disk_image_metadata_export_path(const DiskImageMetadata_t& meta,
                                      char* dest, size_t capacity) -> void {
   disk_image_metadata_copy_to_buffer(meta.full_path, dest, capacity);
 }
-
-constexpr uint32_t spinup_ticks = 20000;
-constexpr uint32_t write_light_ticks = 20000;
-
-constexpr uint8_t latch_bit = 0x80;
-constexpr uint8_t floating_bus = 0xFF;
-
-constexpr uint8_t io_addr_mask = 0x0F;
-constexpr uint8_t io_addr_hi_mask = 0xFF;
-
-constexpr uint8_t io_stepper_0 = 0x0;
-constexpr uint8_t io_stepper_1 = 0x1;
-constexpr uint8_t io_stepper_2 = 0x2;
-constexpr uint8_t io_stepper_3 = 0x3;
-constexpr uint8_t io_stepper_4 = 0x4;
-constexpr uint8_t io_stepper_5 = 0x5;
-constexpr uint8_t io_stepper_6 = 0x6;
-constexpr uint8_t io_stepper_7 = 0x7;
-constexpr uint8_t io_motor_off = 0x8;
-constexpr uint8_t io_motor_on = 0x9;
-constexpr uint8_t io_drive_1 = 0xA;
-constexpr uint8_t io_drive_2 = 0xB;
-constexpr uint8_t io_read_write = 0xC;
-constexpr uint8_t io_shift_reg = 0xD;
-constexpr uint8_t io_read_mode = 0xE;
-constexpr uint8_t io_write_mode = 0xF;
-constexpr uint8_t io_stepper_alt = 0xE0;
 
 struct Disk_t {
   DiskImageMetadata_t metadata{};
@@ -250,8 +257,8 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
     disk_ptr->driver_instance = nullptr;
 
     if (disk_peripheral->host != nullptr) {
-      const char* key =
-          (drive_index == 0) ? regvalue_disk_image1 : regvalue_disk_image2;
+      const char* key = (drive_index == 0) ? config::disk_image1_key
+                                           : config::disk_image2_key;
       if (disk_peripheral->host->SetConfig != nullptr) {
         disk_peripheral->host->SetConfig("Slots", key, "");
       }
@@ -287,8 +294,8 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
     }
   }
 
-  constexpr size_t min_title_len_for_format = 3;
-  if (!found_lower && image_title.length() >= min_title_len_for_format) {
+  if (!found_lower &&
+      image_title.length() >= config::min_title_len_for_format) {
     for (size_t i = 1; i < image_title.length(); ++i) {
       image_title[i] = static_cast<char>(
           std::tolower(static_cast<unsigned char>(image_title[i])));
@@ -315,7 +322,7 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
       static_cast<size_t>(disk_peripheral->active_drive_index));
   const bool was_spinning = (disk_ptr->spinning_ticks > 0);
   if (disk_peripheral->is_motor_on) {
-    disk_ptr->spinning_ticks = spinup_ticks;
+    disk_ptr->spinning_ticks = physical::spinup_ticks;
   }
   const bool now_spinning = (disk_ptr->spinning_ticks > 0);
 
@@ -360,8 +367,8 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
     update_disk_metadata(disk_ptr, image_path);
 
     if (disk_peripheral->host != nullptr) {
-      const char* key =
-          (drive_index == 0) ? regvalue_disk_image1 : regvalue_disk_image2;
+      const char* key = (drive_index == 0) ? config::disk_image1_key
+                                           : config::disk_image2_key;
       if (disk_peripheral->host->SetConfig != nullptr) {
         disk_peripheral->host->SetConfig("Slots", key, image_path);
       }
@@ -395,7 +402,7 @@ auto sync_driver_options(DiskPeripheral_t* disk_peripheral) -> void {
 auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
                            uint8_t, uint8_t, uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -404,7 +411,7 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return mem_return_random_data(floating_bus);
+  return mem_return_random_data(physical::floating_bus);
 }
 
 // Why: Emulates the physical movement of the disk head via the stepper motor.
@@ -445,7 +452,7 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
                              uint8_t, uint8_t, uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -475,15 +482,15 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_drive_head(disk_peripheral, step_delta);
   }
 
-  return (memory_address == io_stepper_alt)
-             ? floating_bus
-             : mem_return_random_data(floating_bus);
+  return (memory_address == regs::stepper_alt)
+             ? physical::floating_bus
+             : mem_return_random_data(physical::floating_bus);
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
                           uint8_t, uint8_t, uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -503,13 +510,13 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return mem_return_random_data(floating_bus);
+  return mem_return_random_data(physical::floating_bus);
 }
 
 auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                         uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -524,7 +531,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   }
 
   if (!disk_ptr->is_data_loaded) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   uint8_t data_byte = 0;
@@ -538,7 +545,8 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   }
 
   if (disk_peripheral->is_write_mode) {
-    if (!is_protected && (disk_peripheral->io_latch & latch_bit) != 0) {
+    if (!is_protected &&
+        (disk_peripheral->io_latch & physical::latch_bit) != 0) {
       disk_ptr->track_buffer[disk_ptr->current_byte_pos] =
           disk_peripheral->io_latch;
       disk_ptr->is_dirty = true;
@@ -559,7 +567,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
                        uint8_t data_value, uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -574,7 +582,7 @@ auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
 auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                            uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -584,13 +592,13 @@ auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
-  return is_protected ? latch_bit : 0x00;
+  return is_protected ? physical::latch_bit : 0x00;
 }
 
 auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
                             uint8_t, uint32_t) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -601,14 +609,14 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
       static_cast<size_t>(disk_peripheral->active_drive_index));
 
   const bool was_already_writing = (active_drive.write_light_ticks > 0);
-  active_drive.write_light_ticks = write_light_ticks;
+  active_drive.write_light_ticks = physical::write_light_ticks;
 
   if (!was_already_writing && disk_peripheral->host != nullptr &&
       disk_peripheral->host->NotifyStatusChanged != nullptr) {
     disk_peripheral->host->NotifyStatusChanged(disk_peripheral->slot);
   }
 
-  return mem_return_random_data(floating_bus);
+  return mem_return_random_data(physical::floating_bus);
 }
 
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
@@ -642,7 +650,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
 
   if (disk_peripheral->is_write_mode && is_active_drive &&
       disk_ptr->spinning_ticks > 0) {
-    disk_ptr->write_light_ticks = write_light_ticks;
+    disk_ptr->write_light_ticks = physical::write_light_ticks;
   } else if (disk_ptr->write_light_ticks > 0) {
     if (spin_ticks >= disk_ptr->write_light_ticks) {
       disk_ptr->write_light_ticks = 0;
@@ -787,47 +795,47 @@ auto disk_io_read(void* instance, uint16_t program_counter,
                   uint16_t memory_address, uint8_t is_write, uint8_t,
                   uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
-    return mem_return_random_data(floating_bus);
+    return mem_return_random_data(physical::floating_bus);
   }
-  const uint16_t addr = memory_address & io_addr_hi_mask;
+  const uint16_t addr = memory_address & regs::addr_hi_mask;
   const uint8_t is_write_op = 0;
 
-  switch (addr & io_addr_mask) {
-    case io_stepper_0:
-    case io_stepper_1:
-    case io_stepper_2:
-    case io_stepper_3:
-    case io_stepper_4:
-    case io_stepper_5:
-    case io_stepper_6:
-    case io_stepper_7:
+  switch (addr & regs::addr_mask) {
+    case regs::stepper_0:
+    case regs::stepper_1:
+    case regs::stepper_2:
+    case regs::stepper_3:
+    case regs::stepper_4:
+    case regs::stepper_5:
+    case regs::stepper_6:
+    case regs::stepper_7:
       return disk_io_control_stepper(instance, program_counter, addr,
                                      is_write_op, 0, remaining_cycles);
-    case io_motor_off:
-    case io_motor_on:
+    case regs::motor_off:
+    case regs::motor_on:
       return disk_io_control_motor(instance, program_counter, addr, is_write_op,
                                    0, remaining_cycles);
-    case io_drive_1:
-    case io_drive_2:
+    case regs::drive_1:
+    case regs::drive_2:
       return disk_io_enable_drive(instance, program_counter, addr, is_write_op,
                                   0, remaining_cycles);
-    case io_read_write:
+    case regs::read_write:
       return disk_io_read_write(instance, program_counter, addr, is_write_op, 0,
                                 remaining_cycles);
-    case io_shift_reg:
+    case regs::shift_reg:
       return disk_io_set_latch(instance, program_counter, addr, is_write_op, 0,
                                remaining_cycles);
-    case io_read_mode:
+    case regs::read_mode:
       return disk_io_set_read_mode(instance, program_counter, addr, is_write_op,
                                    0, remaining_cycles);
-    case io_write_mode:
+    case regs::write_mode:
       return disk_io_set_write_mode(instance, program_counter, addr,
                                     is_write_op, 0, remaining_cycles);
     default:
       break;
   }
 
-  return mem_return_random_data(floating_bus);
+  return mem_return_random_data(physical::floating_bus);
 }
 
 auto disk_io_write(void* instance, uint16_t program_counter,
@@ -836,38 +844,38 @@ auto disk_io_write(void* instance, uint16_t program_counter,
   if (instance == nullptr || is_write == 0) {
     return 0;
   }
-  const uint16_t addr = memory_address & io_addr_hi_mask;
+  const uint16_t addr = memory_address & regs::addr_hi_mask;
   const uint8_t is_write_op = 1;
 
-  switch (addr & io_addr_mask) {
-    case io_stepper_0:
-    case io_stepper_1:
-    case io_stepper_2:
-    case io_stepper_3:
-    case io_stepper_4:
-    case io_stepper_5:
-    case io_stepper_6:
-    case io_stepper_7:
+  switch (addr & regs::addr_mask) {
+    case regs::stepper_0:
+    case regs::stepper_1:
+    case regs::stepper_2:
+    case regs::stepper_3:
+    case regs::stepper_4:
+    case regs::stepper_5:
+    case regs::stepper_6:
+    case regs::stepper_7:
       return disk_io_control_stepper(instance, program_counter, addr,
                                      is_write_op, data_value, remaining_cycles);
-    case io_motor_off:
-    case io_motor_on:
+    case regs::motor_off:
+    case regs::motor_on:
       return disk_io_control_motor(instance, program_counter, addr, is_write_op,
                                    data_value, remaining_cycles);
-    case io_drive_1:
-    case io_drive_2:
+    case regs::drive_1:
+    case regs::drive_2:
       return disk_io_enable_drive(instance, program_counter, addr, is_write_op,
                                   data_value, remaining_cycles);
-    case io_read_write:
+    case regs::read_write:
       return disk_io_read_write(instance, program_counter, addr, is_write_op,
                                 data_value, remaining_cycles);
-    case io_shift_reg:
+    case regs::shift_reg:
       return disk_io_set_latch(instance, program_counter, addr, is_write_op,
                                data_value, remaining_cycles);
-    case io_read_mode:
+    case regs::read_mode:
       return disk_io_set_read_mode(instance, program_counter, addr, is_write_op,
                                    data_value, remaining_cycles);
-    case io_write_mode:
+    case regs::write_mode:
       return disk_io_set_write_mode(instance, program_counter, addr,
                                     is_write_op, data_value, remaining_cycles);
     default:
@@ -961,11 +969,11 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
 
   initialize_peripheral(dp.get());
 
-  char p1[path_max_len] = {0};
-  char p2[path_max_len] = {0};
+  char p1[config::path_max_len] = {0};
+  char p2[config::path_max_len] = {0};
   if (host->GetConfig != nullptr) {
-    host->GetConfig("Slots", regvalue_disk_image1, p1, sizeof(p1));
-    host->GetConfig("Slots", regvalue_disk_image2, p2, sizeof(p2));
+    host->GetConfig("Slots", config::disk_image1_key, p1, sizeof(p1));
+    host->GetConfig("Slots", config::disk_image2_key, p2, sizeof(p2));
   }
 
   if (p1[0] != '\0') {
@@ -1142,7 +1150,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  dp->stepper_phase_mask = s->stepper_phase_mask & 0x0F;
+  dp->stepper_phase_mask = s->stepper_phase_mask & regs::phase_mask;
   dp->active_drive_index =
       (s->active_drive_index < disk_drive_count) ? s->active_drive_index : 0;
   dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
