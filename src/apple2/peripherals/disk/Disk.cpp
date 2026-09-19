@@ -1095,6 +1095,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_ok;
   }
   if (*size < required_size) {
+    *size = required_size;
     return peripheral_error;
   }
 
@@ -1133,6 +1134,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   s->is_motor_on = static_cast<uint8_t>(dp->is_motor_on ? 1 : 0);
   s->is_write_mode = static_cast<uint8_t>(dp->is_write_mode ? 1 : 0);
 
+  *size = required_size;
   return peripheral_ok;
 }
 
