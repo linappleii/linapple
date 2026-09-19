@@ -13,12 +13,25 @@
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
+
+auto safe_strcpy(char* dest, const char* src, size_t size) -> void {
+  if (dest == nullptr || size == 0) {
+    return;
+  }
+  if (src == nullptr) {
+    dest[0] = '\0';
+    return;
+  }
+  size_t i = 0;
+  for (; i < size - 1 && src[i] != '\0'; ++i) {
+    dest[i] = src[i];
+  }
+  dest[i] = '\0';
+}
 
 namespace physical {
 constexpr int block_size = 512;
@@ -140,16 +153,16 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
   char title[harddisk_status_path_max];
   const char* start_pos = path;
 
-  const char* last_sep = strrchr(start_pos, file_separator);
+  const char* last_sep = strrchr(start_pos, '/');
   if (last_sep != nullptr) {
     start_pos = last_sep + 1;
   }
-  util_safe_strcpy(title, start_pos, harddisk_status_path_max);
+  safe_strcpy(title, start_pos, harddisk_status_path_max);
 
   bool found_lower = false;
   int title_length = 0;
   while (title[title_length] != '\0' && !found_lower) {
-    if (is_char_lower(title[title_length])) {
+    if (std::islower(static_cast<unsigned char>(title[title_length]))) {
       found_lower = true;
     } else {
       title_length++;
@@ -163,14 +176,14 @@ auto update_image_metadata(HarddiskDrive_t* drive_ptr, const char* path)
     }
   }
 
-  util_safe_strcpy(drive_ptr->full_path, path, harddisk_status_path_max);
+  safe_strcpy(drive_ptr->full_path, path, harddisk_status_path_max);
 
   char* extension_dot = strrchr(title, '.');
   if (extension_dot != nullptr && extension_dot > title) {
     *extension_dot = '\0';
   }
 
-  util_safe_strcpy(drive_ptr->image_name, title, harddisk_status_name_max);
+  safe_strcpy(drive_ptr->image_name, title, harddisk_status_name_max);
 }
 
 // Why: Orchestrates the safe ejection of a hard disk image.
@@ -609,18 +622,18 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
       status_ptr->drive0_last_error = static_cast<int32_t>(d.last_error);
       status_ptr->drive0_loaded = d.is_loaded ? 1 : 0;
       status_ptr->drive0_write_protected = is_protected ? 1 : 0;
-      util_safe_strcpy(status_ptr->drive0_name, d.image_name,
-                       harddisk_status_name_max);
-      util_safe_strcpy(status_ptr->drive0_full_path, d.full_path,
-                       harddisk_status_path_max);
+      safe_strcpy(status_ptr->drive0_name, d.image_name,
+                  harddisk_status_name_max);
+      safe_strcpy(status_ptr->drive0_full_path, d.full_path,
+                  harddisk_status_path_max);
     } else {
       status_ptr->drive1_last_error = static_cast<int32_t>(d.last_error);
       status_ptr->drive1_loaded = d.is_loaded ? 1 : 0;
       status_ptr->drive1_write_protected = is_protected ? 1 : 0;
-      util_safe_strcpy(status_ptr->drive1_name, d.image_name,
-                       harddisk_status_name_max);
-      util_safe_strcpy(status_ptr->drive1_full_path, d.full_path,
-                       harddisk_status_path_max);
+      safe_strcpy(status_ptr->drive1_name, d.image_name,
+                  harddisk_status_name_max);
+      safe_strcpy(status_ptr->drive1_full_path, d.full_path,
+                  harddisk_status_path_max);
     }
   }
 
@@ -664,9 +677,8 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
     const auto& drive = peripheral_ptr->drives.at(i);
     auto& d_ss = ss->drives[i];
 
-    util_safe_strcpy(d_ss.image_name, drive.image_name,
-                     harddisk_status_name_max);
-    util_safe_strcpy(d_ss.full_path, drive.full_path, harddisk_status_path_max);
+    safe_strcpy(d_ss.image_name, drive.image_name, harddisk_status_name_max);
+    safe_strcpy(d_ss.full_path, drive.full_path, harddisk_status_path_max);
     d_ss.last_error = static_cast<int32_t>(drive.last_error);
     d_ss.memory_address = drive.memory_address;
     d_ss.disk_block = drive.disk_block;
@@ -725,9 +737,8 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
       insert_harddisk_into_drive(peripheral_ptr, i, d_ss.full_path, write_prot);
     }
 
-    util_safe_strcpy(drive.image_name, d_ss.image_name,
-                     harddisk_status_name_max);
-    util_safe_strcpy(drive.full_path, d_ss.full_path, harddisk_status_path_max);
+    safe_strcpy(drive.image_name, d_ss.image_name, harddisk_status_name_max);
+    safe_strcpy(drive.full_path, d_ss.full_path, harddisk_status_path_max);
     drive.last_error = static_cast<HarddiskError_e>(d_ss.last_error);
     drive.memory_address = d_ss.memory_address;
     drive.disk_block = d_ss.disk_block;

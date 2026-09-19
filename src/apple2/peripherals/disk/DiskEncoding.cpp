@@ -4,10 +4,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
 
-#include "apple2/Memory.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 
 namespace {
@@ -48,6 +47,7 @@ constexpr int max_nibblized_sector_size = 384;
 constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
 constexpr int skew_factor = 768;
+constexpr size_t sector_size = 256;
 
 const std::array<uint8_t, disk_encoding_encode_table_size> disk_encoding_table =
     {{0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
@@ -78,7 +78,7 @@ static const auto decode_table = []() {
 
 auto encode_sector_62(uint8_t* work_buffer, int sector_index) -> uint8_t* {
   {
-    uint8_t* sector_base = &work_buffer[sector_index * PAGE_SIZE];
+    uint8_t* sector_base = &work_buffer[sector_index * sector_size];
     uint8_t* result_ptr = &work_buffer[disk_encoding_work_buffer_offset];
     int result_index = 0;
     uint8_t offset = gcr62_offset_init;
@@ -106,7 +106,7 @@ auto encode_sector_62(uint8_t* work_buffer, int sector_index) -> uint8_t* {
       result_ptr[result_index - 1] &= mask_6bit;
     }
 
-    std::copy_n(sector_base, PAGE_SIZE, &result_ptr[result_index]);
+    std::copy_n(sector_base, sector_size, &result_ptr[result_index]);
   }
 
   {
@@ -241,7 +241,7 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
               disk_encoding_sector_interleave_table.at(interleave_idx)
                   .at(static_cast<size_t>(current_sector));
           decode_sector_62(work_buffer,
-                           &work_buffer[physical_sector * PAGE_SIZE]);
+                           &work_buffer[physical_sector * sector_size]);
           decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
         }
         current_sector = -1;

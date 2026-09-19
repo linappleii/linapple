@@ -32,8 +32,6 @@
 #include "apple2/peripherals/disk/formats/NibDriver.h"
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
-#include "core/Log.h"
-#include "core/Util_Text.h"
 
 auto mem_return_random_data(uint8_t highbit) -> uint8_t;
 
@@ -43,6 +41,21 @@ constexpr const char* regvalue_disk_image1 = "Disk Image 1";
 constexpr const char* regvalue_disk_image2 = "Disk Image 2";
 
 constexpr size_t path_max_len = 260;
+
+auto safe_strcpy(char* dest, const char* src, size_t size) -> void {
+  if (dest == nullptr || size == 0) {
+    return;
+  }
+  if (src == nullptr) {
+    dest[0] = '\0';
+    return;
+  }
+  size_t i = 0;
+  for (; i < size - 1 && src[i] != '\0'; ++i) {
+    dest[i] = src[i];
+  }
+  dest[i] = '\0';
+}
 
 constexpr uint32_t spinup_ticks = 20000;
 constexpr uint32_t write_light_ticks = 20000;
@@ -253,12 +266,12 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
   if (last_sep != nullptr) {
     start_pos = last_sep + 1;
   }
-  util_safe_strcpy(image_title, start_pos, max_disk_full_path_len);
+  safe_strcpy(image_title, start_pos, max_disk_full_path_len);
 
   bool found_lower = false;
   int title_length = 0;
   while (image_title[title_length] != '\0' && !found_lower) {
-    if (is_char_lower(image_title[title_length])) {
+    if (std::islower(static_cast<unsigned char>(image_title[title_length]))) {
       found_lower = true;
     } else {
       title_length++;
@@ -272,14 +285,14 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
     }
   }
 
-  util_safe_strcpy(disk_ptr->full_path, image_path, max_disk_full_path_len);
+  safe_strcpy(disk_ptr->full_path, image_path, max_disk_full_path_len);
 
   char* extension_dot = strrchr(image_title, '.');
   if (extension_dot != nullptr && extension_dot > image_title) {
     *extension_dot = '\0';
   }
 
-  util_safe_strcpy(disk_ptr->image_name, image_title, max_disk_image_name_len);
+  safe_strcpy(disk_ptr->image_name, image_title, max_disk_image_name_len);
 }
 
 auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
@@ -737,10 +750,9 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     status->drive0_writing = (drive.write_light_ticks > 0) ? 1 : 0;
     status->drive0_write_protected =
         is_disk_write_protected(disk_peripheral, 0) ? 1 : 0;
-    util_safe_strcpy(status->drive0_name, drive.image_name,
-                     disk_status_name_max);
-    util_safe_strcpy(status->drive0_full_path, drive.full_path,
-                     disk_status_path_max);
+    safe_strcpy(status->drive0_name, drive.image_name, disk_status_name_max);
+    safe_strcpy(status->drive0_full_path, drive.full_path,
+                disk_status_path_max);
   }
 
   {
@@ -751,10 +763,9 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     status->drive1_writing = (drive.write_light_ticks > 0) ? 1 : 0;
     status->drive1_write_protected =
         is_disk_write_protected(disk_peripheral, 1) ? 1 : 0;
-    util_safe_strcpy(status->drive1_name, drive.image_name,
-                     disk_status_name_max);
-    util_safe_strcpy(status->drive1_full_path, drive.full_path,
-                     disk_status_path_max);
+    safe_strcpy(status->drive1_name, drive.image_name, disk_status_name_max);
+    safe_strcpy(status->drive1_full_path, drive.full_path,
+                disk_status_path_max);
   }
 }
 
@@ -1076,7 +1087,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   for (int i = 0; i < disk_drive_count; ++i) {
     auto& d = dp->drives.at(static_cast<size_t>(i));
     auto& ds = s->drives[i];
-    util_safe_strcpy(ds.full_path, d.full_path, max_disk_full_path_len + 1);
+    safe_strcpy(ds.full_path, d.full_path, max_disk_full_path_len + 1);
     ds.track = d.track;
     ds.phase = d.phase;
     ds.current_byte_pos = static_cast<int32_t>(d.current_byte_pos);
@@ -1129,7 +1140,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     const auto& ds = s->drives[i];
     eject_disk_from_drive(dp, i);
     char safe_path[max_disk_full_path_len + 1] = {0};
-    util_safe_strcpy(safe_path, ds.full_path, sizeof(safe_path));
+    safe_strcpy(safe_path, ds.full_path, sizeof(safe_path));
 
     if (insert_disk_into_drive(dp, i, safe_path, ds.user_write_protected != 0,
                                false) == disk_err_none) {
@@ -1140,10 +1151,13 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
           ds.current_byte_pos < 0 ||
           static_cast<uint32_t>(ds.current_byte_pos) >=
               static_cast<uint32_t>(ds.nibble_count)) {
-        Logger::warning(
-            "DiskSaveState: Clamped out-of-bounds drive %d state (track: %d, "
-            "phase: %d, nibble_count: %d, pos: %d)",
-            i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
+        if (dp->host != nullptr && dp->host->Log != nullptr) {
+          dp->host->Log(
+              dp, log_warn,
+              "DiskSaveState: Clamped out-of-bounds drive %d state (track: %d, "
+              "phase: %d, nibble_count: %d, pos: %d)",
+              i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
+        }
       }
       d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
       d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
