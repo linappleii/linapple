@@ -1,12 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification: This module implements low-level Disk
-// II hardware emulation using procedural C-style patterns for performance and
-// ABI compatibility. Pointer arithmetic and C-style arrays are required for
-// bitstream manipulation and save-state structure stability.
-// easily-swappable-parameters is mandated by the project-wide Peripheral ABI
-// signatures. modernize-make-unique is suppressed to maintain C++11
-// compatibility.
 
 #include "apple2/peripherals/disk/Disk.h"
 
@@ -19,6 +11,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
@@ -59,7 +52,6 @@ constexpr uint32_t rotation_cycle_mask = (1U << rotation_cycle_shift) - 1;
 namespace regs {
 constexpr uint8_t addr_mask = 0x0F;
 constexpr uint8_t addr_hi_mask = 0xFF;
-constexpr uint8_t stepper_alt = 0xE0;
 constexpr uint16_t phase_mask = 0x0F;
 
 // Disk II Controller Softswitches ($C0n0 - $C0nF)
@@ -118,7 +110,7 @@ struct Disk_t {
   uint32_t spinning_ticks = 0;
   uint32_t write_light_ticks = 0;
   uint32_t nibble_count = 0;
-  std::unique_ptr<uint8_t[]> track_buffer;
+  std::vector<uint8_t> track_buffer{};
   DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
   DiskError_e last_error = disk_err_none;
@@ -156,12 +148,15 @@ struct DiskPeripheral_t {
   DiskPeripheral_t() = default;
 };
 
-auto is_drive_valid(int drive_index) -> bool {
+constexpr auto is_drive_valid(int drive_index) noexcept -> bool {
   return (drive_index >= 0 && drive_index < disk_drive_count);
 }
 
 auto get_active_drive(DiskPeripheral_t* dp) -> Disk_t& {
-  return dp->drives.at(static_cast<size_t>(dp->active_drive_index));
+  const size_t index = (dp->active_drive_index < disk_drive_count)
+                           ? static_cast<size_t>(dp->active_drive_index)
+                           : 0;
+  return dp->drives[index];
 }
 
 auto notify_status_changed(const DiskPeripheral_t* dp) -> void {
@@ -215,7 +210,7 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
 
 auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     -> void {
-  if (!is_drive_valid(drive_index)) {
+  if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
   }
   auto* disk_ptr =
@@ -229,10 +224,11 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     return;
   }
 
-  if (disk_ptr->track_buffer != nullptr && disk_ptr->driver != nullptr &&
+  if (!disk_ptr->track_buffer.empty() && disk_ptr->driver != nullptr &&
       disk_ptr->driver->write_track != nullptr) {
     disk_ptr->driver->write_track(disk_ptr->driver_instance, disk_ptr->track,
-                                  disk_ptr->phase, disk_ptr->track_buffer.get(),
+                                  disk_ptr->phase,
+                                  disk_ptr->track_buffer.data(),
                                   static_cast<int>(disk_ptr->nibble_count));
     disk_ptr->is_dirty = false;
   }
@@ -240,7 +236,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 
 auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     -> void {
-  if (!is_drive_valid(drive_index)) {
+  if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
   }
 
@@ -252,20 +248,23 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     return;
   }
 
-  if (disk_ptr->track_buffer == nullptr) {
-    disk_ptr->track_buffer.reset(new uint8_t[nibbles_per_track]());
+  if (disk_ptr->track_buffer.size() < nibbles_per_track) {
+    disk_ptr->track_buffer.resize(nibbles_per_track, 0);
   }
 
-  if (disk_ptr->track_buffer != nullptr && disk_ptr->driver != nullptr &&
-      disk_ptr->driver->read_track != nullptr) {
+  if (disk_ptr->driver != nullptr && disk_ptr->driver->read_track != nullptr) {
     int loaded_nibbles = 0;
     disk_ptr->driver->read_track(disk_ptr->driver_instance, disk_ptr->track,
-                                 disk_ptr->phase, disk_ptr->track_buffer.get(),
+                                 disk_ptr->phase, disk_ptr->track_buffer.data(),
                                  &loaded_nibbles);
 
     disk_ptr->current_byte_pos = 0;
-    disk_ptr->nibble_count =
-        (loaded_nibbles > 0) ? static_cast<uint32_t>(loaded_nibbles) : 0;
+    const uint32_t bounded_nibbles =
+        (loaded_nibbles > 0)
+            ? std::min<uint32_t>(static_cast<uint32_t>(loaded_nibbles),
+                                 static_cast<uint32_t>(nibbles_per_track))
+            : 0;
+    disk_ptr->nibble_count = bounded_nibbles;
     disk_ptr->is_data_loaded = (disk_ptr->nibble_count != 0);
   }
 }
@@ -294,7 +293,7 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
     return;
   }
 
-  if (disk.track_buffer != nullptr && disk.is_dirty) {
+  if (!disk.track_buffer.empty() && disk.is_dirty) {
     write_track_to_driver(disk_peripheral, drive_index);
   }
 
@@ -318,13 +317,11 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
 
   disk_ptr->metadata.full_path = image_path;
 
-  const char* start_pos = image_path;
-  const char* last_sep = strrchr(start_pos, '/');
-  if (last_sep != nullptr) {
-    start_pos = last_sep + 1;
-  }
-
-  std::string image_title = start_pos;
+  const std::string path_str(image_path);
+  const size_t last_sep = path_str.find_last_of("/\\");
+  std::string image_title = (last_sep != std::string::npos)
+                                ? path_str.substr(last_sep + 1)
+                                : path_str;
 
   bool found_lower = false;
   for (unsigned char ch : image_title) {
@@ -337,8 +334,8 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
   if (!found_lower &&
       image_title.length() >= config::min_title_len_for_format) {
     for (size_t i = 1; i < image_title.length(); ++i) {
-      image_title[i] = static_cast<char>(
-          std::tolower(static_cast<unsigned char>(image_title[i])));
+      image_title.at(i) = static_cast<char>(
+          std::tolower(static_cast<unsigned char>(image_title.at(i))));
     }
   }
 
@@ -374,7 +371,8 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
 auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
                             const char* image_path, bool write_protected,
                             bool create_if_necessary) -> DiskError_e {
-  if (!is_drive_valid(drive_index)) {
+  if (disk_peripheral == nullptr || image_path == nullptr ||
+      !is_drive_valid(drive_index)) {
     return disk_err_io;
   }
   auto& drive = disk_peripheral->drives.at(static_cast<size_t>(drive_index));
@@ -463,7 +461,7 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
       std::min<int32_t>(tracks_per_disk - 1, new_phase / phases_per_track);
 
   if (new_track != drive.track) {
-    if (drive.track_buffer != nullptr && drive.is_dirty) {
+    if (!drive.track_buffer.empty() && drive.is_dirty) {
       write_track_to_driver(disk_peripheral,
                             disk_peripheral->active_drive_index);
     }
@@ -510,9 +508,7 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_drive_head(disk_peripheral, step_delta);
   }
 
-  return (memory_address == regs::stepper_alt)
-             ? physical::floating_bus
-             : mem_return_random_data(physical::floating_bus);
+  return mem_return_random_data(physical::floating_bus);
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
@@ -526,7 +522,7 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
   const uint16_t new_drive_index = static_cast<uint16_t>(memory_address & 0x01);
   if (new_drive_index != disk_peripheral->active_drive_index) {
     auto& inactive_drive = get_active_drive(disk_peripheral);
-    if (inactive_drive.track_buffer != nullptr && inactive_drive.is_dirty) {
+    if (!inactive_drive.track_buffer.empty() && inactive_drive.is_dirty) {
       write_track_to_driver(disk_peripheral,
                             disk_peripheral->active_drive_index);
     }
@@ -643,10 +639,14 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
                           uint32_t spin_ticks, uint32_t rotation_ticks)
     -> void {
+  if (disk_peripheral == nullptr || disk_ptr == nullptr) {
+    return;
+  }
+
   if (disk_ptr->spinning_ticks > 0 && !disk_peripheral->is_motor_on) {
     if (spin_ticks >= disk_ptr->spinning_ticks) {
       disk_ptr->spinning_ticks = 0;
-      if (disk_ptr->track_buffer != nullptr && disk_ptr->is_dirty) {
+      if (!disk_ptr->track_buffer.empty() && disk_ptr->is_dirty) {
         const int drive_index =
             (disk_ptr == &disk_peripheral->drives.at(0)) ? 0 : 1;
         write_track_to_driver(disk_peripheral, drive_index);
@@ -692,6 +692,10 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
 
 auto update_physical_disk_state(DiskPeripheral_t* disk_peripheral,
                                 uint32_t elapsed_cycles) -> void {
+  if (disk_peripheral == nullptr) {
+    return;
+  }
+
   disk_peripheral->spin_cycle_accumulator += elapsed_cycles;
   const uint32_t spin_ticks =
       disk_peripheral->spin_cycle_accumulator >> physical::spin_cycle_shift;
@@ -722,6 +726,16 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
 
   std::swap(disk_peripheral->drives.at(0), disk_peripheral->drives.at(1));
 
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->SetConfig != nullptr) {
+    disk_peripheral->host->SetConfig(
+        "Slots", config::disk_image1_key,
+        disk_peripheral->drives.at(0).metadata.full_path.c_str());
+    disk_peripheral->host->SetConfig(
+        "Slots", config::disk_image2_key,
+        disk_peripheral->drives.at(1).metadata.full_path.c_str());
+  }
+
   notify_status_changed(disk_peripheral);
 
   return true;
@@ -734,7 +748,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
 
   for (size_t i = 0; i < disk_peripheral->drives.size(); ++i) {
     auto& drive = disk_peripheral->drives.at(i);
-    if (drive.track_buffer != nullptr && drive.is_dirty) {
+    if (!drive.track_buffer.empty() && drive.is_dirty) {
       write_track_to_driver(disk_peripheral, static_cast<int>(i));
     }
   }
@@ -762,6 +776,8 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
   if (disk_peripheral == nullptr || status == nullptr) {
     return;
   }
+
+  *status = DiskStatus_t{};
 
   {
     auto& drive = disk_peripheral->drives.at(0);
@@ -792,6 +808,30 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
   }
 }
 
+using DiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
+                                 uint16_t memory_address, uint8_t is_write,
+                                 uint8_t data_value, uint32_t remaining_cycles)
+    -> uint8_t;
+
+constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
+    disk_io_control_stepper,  // 0x0: stepper_0
+    disk_io_control_stepper,  // 0x1: stepper_1
+    disk_io_control_stepper,  // 0x2: stepper_2
+    disk_io_control_stepper,  // 0x3: stepper_3
+    disk_io_control_stepper,  // 0x4: stepper_4
+    disk_io_control_stepper,  // 0x5: stepper_5
+    disk_io_control_stepper,  // 0x6: stepper_6
+    disk_io_control_stepper,  // 0x7: stepper_7
+    disk_io_control_motor,    // 0x8: motor_off
+    disk_io_control_motor,    // 0x9: motor_on
+    disk_io_enable_drive,     // 0xA: drive_1
+    disk_io_enable_drive,     // 0xB: drive_2
+    disk_io_read_write,       // 0xC: read_write
+    disk_io_set_latch,        // 0xD: shift_reg
+    disk_io_set_read_mode,    // 0xE: read_mode
+    disk_io_set_write_mode    // 0xF: write_mode
+};
+
 auto disk_io_read(void* instance, uint16_t program_counter,
                   uint16_t memory_address, uint8_t is_write, uint8_t,
                   uint32_t remaining_cycles) -> uint8_t {
@@ -799,44 +839,9 @@ auto disk_io_read(void* instance, uint16_t program_counter,
     return mem_return_random_data(physical::floating_bus);
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
-  const uint8_t is_write_op = 0;
-
-  switch (addr & regs::addr_mask) {
-    case regs::stepper_0:
-    case regs::stepper_1:
-    case regs::stepper_2:
-    case regs::stepper_3:
-    case regs::stepper_4:
-    case regs::stepper_5:
-    case regs::stepper_6:
-    case regs::stepper_7:
-      return disk_io_control_stepper(instance, program_counter, addr,
-                                     is_write_op, 0, remaining_cycles);
-    case regs::motor_off:
-    case regs::motor_on:
-      return disk_io_control_motor(instance, program_counter, addr, is_write_op,
-                                   0, remaining_cycles);
-    case regs::drive_1:
-    case regs::drive_2:
-      return disk_io_enable_drive(instance, program_counter, addr, is_write_op,
-                                  0, remaining_cycles);
-    case regs::read_write:
-      return disk_io_read_write(instance, program_counter, addr, is_write_op, 0,
-                                remaining_cycles);
-    case regs::shift_reg:
-      return disk_io_set_latch(instance, program_counter, addr, is_write_op, 0,
-                               remaining_cycles);
-    case regs::read_mode:
-      return disk_io_set_read_mode(instance, program_counter, addr, is_write_op,
-                                   0, remaining_cycles);
-    case regs::write_mode:
-      return disk_io_set_write_mode(instance, program_counter, addr,
-                                    is_write_op, 0, remaining_cycles);
-    default:
-      break;
-  }
-
-  return mem_return_random_data(physical::floating_bus);
+  const size_t handler_index = addr & regs::addr_mask;
+  return k_disk_io_handlers[handler_index](instance, program_counter, addr, 0,
+                                           0, remaining_cycles);
 }
 
 auto disk_io_write(void* instance, uint16_t program_counter,
@@ -846,49 +851,14 @@ auto disk_io_write(void* instance, uint16_t program_counter,
     return 0;
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
-  const uint8_t is_write_op = 1;
-
-  switch (addr & regs::addr_mask) {
-    case regs::stepper_0:
-    case regs::stepper_1:
-    case regs::stepper_2:
-    case regs::stepper_3:
-    case regs::stepper_4:
-    case regs::stepper_5:
-    case regs::stepper_6:
-    case regs::stepper_7:
-      return disk_io_control_stepper(instance, program_counter, addr,
-                                     is_write_op, data_value, remaining_cycles);
-    case regs::motor_off:
-    case regs::motor_on:
-      return disk_io_control_motor(instance, program_counter, addr, is_write_op,
-                                   data_value, remaining_cycles);
-    case regs::drive_1:
-    case regs::drive_2:
-      return disk_io_enable_drive(instance, program_counter, addr, is_write_op,
-                                  data_value, remaining_cycles);
-    case regs::read_write:
-      return disk_io_read_write(instance, program_counter, addr, is_write_op,
-                                data_value, remaining_cycles);
-    case regs::shift_reg:
-      return disk_io_set_latch(instance, program_counter, addr, is_write_op,
-                               data_value, remaining_cycles);
-    case regs::read_mode:
-      return disk_io_set_read_mode(instance, program_counter, addr, is_write_op,
-                                   data_value, remaining_cycles);
-    case regs::write_mode:
-      return disk_io_set_write_mode(instance, program_counter, addr,
-                                    is_write_op, data_value, remaining_cycles);
-    default:
-      break;
-  }
-
-  return 0;
+  const size_t handler_index = addr & regs::addr_mask;
+  return k_disk_io_handlers[handler_index](instance, program_counter, addr, 1,
+                                           data_value, remaining_cycles);
 }
 
 auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (data == nullptr || size < sizeof(DiskInsertCmd_t)) {
+  if (dp == nullptr || data == nullptr || size < sizeof(DiskInsertCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskInsertCmd_t*>(data);
@@ -896,14 +866,15 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
       memchr(c->path, '\0', sizeof(c->path)) == nullptr) {
     return peripheral_error;
   }
-  insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0,
-                         c->create_if_necessary != 0);
-  return peripheral_ok;
+  const DiskError_e error =
+      insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0,
+                             c->create_if_necessary != 0);
+  return (error == disk_err_none) ? peripheral_ok : peripheral_error;
 }
 
 auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (data == nullptr || size < sizeof(DiskEjectCmd_t)) {
+  if (dp == nullptr || data == nullptr || size < sizeof(DiskEjectCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskEjectCmd_t*>(data);
@@ -916,7 +887,7 @@ auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
 
 auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (data == nullptr || size < sizeof(DiskSetProtectCmd_t)) {
+  if (dp == nullptr || data == nullptr || size < sizeof(DiskSetProtectCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskSetProtectCmd_t*>(data);
@@ -931,7 +902,7 @@ auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
 
 auto cmd_handle_set_speed(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (data == nullptr || size < sizeof(uint8_t)) {
+  if (dp == nullptr || data == nullptr || size < sizeof(uint8_t)) {
     return peripheral_error;
   }
   dp->is_speed_enhanced = (*static_cast<const uint8_t*>(data) != 0);
@@ -961,25 +932,26 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
 
   if (host->GetConfig != nullptr) {
-    char enh[16] = {0};
-    host->GetConfig("Slots", "Enhance Disk Speed", enh, sizeof(enh));
-    dp->is_speed_enhanced = (enh[0] != '0');
+    constexpr size_t enh_buf_size = 16;
+    std::array<char, enh_buf_size> enh{};
+    host->GetConfig("Slots", "Enhance Disk Speed", enh.data(), enh.size());
+    dp->is_speed_enhanced = (enh.at(0) != '0');
   }
 
   initialize_peripheral(dp.get());
 
-  char p1[config::path_max_len] = {0};
-  char p2[config::path_max_len] = {0};
+  std::array<char, config::path_max_len> p1{};
+  std::array<char, config::path_max_len> p2{};
   if (host->GetConfig != nullptr) {
-    host->GetConfig("Slots", config::disk_image1_key, p1, sizeof(p1));
-    host->GetConfig("Slots", config::disk_image2_key, p2, sizeof(p2));
+    host->GetConfig("Slots", config::disk_image1_key, p1.data(), p1.size());
+    host->GetConfig("Slots", config::disk_image2_key, p2.data(), p2.size());
   }
 
-  if (p1[0] != '\0') {
-    insert_disk_into_drive(dp.get(), 0, p1, false, false);
+  if (p1.at(0) != '\0') {
+    insert_disk_into_drive(dp.get(), 0, p1.data(), false, false);
   }
-  if (p2[0] != '\0') {
-    insert_disk_into_drive(dp.get(), 1, p2, false, false);
+  if (p2.at(0) != '\0') {
+    insert_disk_into_drive(dp.get(), 1, p2.data(), false, false);
   }
 
 #if ENABLE_ROM_DISK2
@@ -1002,10 +974,10 @@ auto disk_abi_shutdown(void* instance) -> void {
     return;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
-  disk_loader_shutdown();
   for (int i = 0; i < disk_drive_count; ++i) {
     eject_disk_from_drive(dp, i);
   }
+  disk_loader_shutdown();
   const std::unique_ptr<DiskPeripheral_t> cleanup(dp);
 }
 
@@ -1070,8 +1042,9 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
     }
     case disk_query_supported_extensions:
     case disk_cmd_get_supported_extensions: {
+      constexpr size_t supported_extensions_cap = 256;
       if (data == nullptr || *size == 0) {
-        *size = 256;
+        *size = supported_extensions_cap;
         return peripheral_ok;
       }
       disk_loader_get_supported_extensions(static_cast<char*>(data), *size);
@@ -1101,7 +1074,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
 
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
   auto* s = static_cast<DiskSavedState_t*>(buffer);
-  std::fill_n(reinterpret_cast<uint8_t*>(s), sizeof(DiskSavedState_t), 0);
+  *s = DiskSavedState_t{};
 
   s->header.version = static_cast<uint32_t>(disk_state_version);
   s->header.size = sizeof(DiskSavedState_t);
@@ -1121,8 +1094,10 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     ds.spinning_ticks = d.spinning_ticks;
     ds.write_light_ticks = d.write_light_ticks;
     ds.nibble_count = static_cast<int32_t>(d.nibble_count);
-    if (d.track_buffer) {
-      std::copy_n(d.track_buffer.get(), nibbles_per_track, ds.track_buffer);
+    if (!d.track_buffer.empty()) {
+      const size_t copy_bytes = std::min(
+          d.track_buffer.size(), static_cast<size_t>(nibbles_per_track));
+      std::copy_n(d.track_buffer.data(), copy_bytes, ds.track_buffer);
     }
   }
   s->stepper_phase_mask = dp->stepper_phase_mask;
@@ -1207,10 +1182,10 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     d.spinning_ticks = ds.spinning_ticks;
     d.write_light_ticks = ds.write_light_ticks;
     if (d.is_data_loaded) {
-      if (!d.track_buffer) {
-        d.track_buffer.reset(new uint8_t[nibbles_per_track]());
+      if (d.track_buffer.size() < nibbles_per_track) {
+        d.track_buffer.resize(nibbles_per_track, 0);
       }
-      std::copy_n(ds.track_buffer, nibbles_per_track, d.track_buffer.get());
+      std::copy_n(ds.track_buffer, nibbles_per_track, d.track_buffer.data());
     }
   }
   notify_status_changed(dp);
@@ -1242,4 +1217,3 @@ static Peripheral_t g_disk_peripheral = {
 auto disk_get_descriptor() -> Peripheral_t* { return &g_disk_peripheral; }
 
 PERIPHERAL_REGISTER(g_disk_peripheral)
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters, modernize-make-unique)
