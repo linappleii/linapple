@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <string>
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
@@ -42,19 +43,29 @@ constexpr const char* regvalue_disk_image2 = "Disk Image 2";
 
 constexpr size_t path_max_len = 260;
 
-auto safe_strcpy(char* dest, const char* src, size_t size) -> void {
-  if (dest == nullptr || size == 0) {
+struct DiskImageMetadata_t {
+  std::string full_path;
+  std::string display_name;
+};
+
+auto disk_image_metadata_copy_to_buffer(const std::string& src, char* dest,
+                                        size_t capacity) -> void {
+  if (dest == nullptr || capacity == 0) {
     return;
   }
-  if (src == nullptr) {
-    dest[0] = '\0';
-    return;
-  }
-  size_t i = 0;
-  for (; i < size - 1 && src[i] != '\0'; ++i) {
-    dest[i] = src[i];
-  }
-  dest[i] = '\0';
+  const size_t copy_len = std::min(src.size(), capacity - 1);
+  std::memcpy(dest, src.data(), copy_len);
+  dest[copy_len] = '\0';
+}
+
+auto disk_image_metadata_export_name(const DiskImageMetadata_t& meta,
+                                     char* dest, size_t capacity) -> void {
+  disk_image_metadata_copy_to_buffer(meta.display_name, dest, capacity);
+}
+
+auto disk_image_metadata_export_path(const DiskImageMetadata_t& meta,
+                                     char* dest, size_t capacity) -> void {
+  disk_image_metadata_copy_to_buffer(meta.full_path, dest, capacity);
 }
 
 constexpr uint32_t spinup_ticks = 20000;
@@ -85,8 +96,7 @@ constexpr uint8_t io_write_mode = 0xF;
 constexpr uint8_t io_stepper_alt = 0xE0;
 
 struct Disk_t {
-  char full_path[max_disk_full_path_len + 1] = {};
-  char image_name[max_disk_image_name_len + 1] = {};
+  DiskImageMetadata_t metadata{};
   int track = 0;
   int phase = 0;
   uint32_t current_byte_pos = 0;
@@ -259,40 +269,42 @@ auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
     return;
   }
 
-  char image_title[max_disk_full_path_len + 1] = {};
-  const char* start_pos = image_path;
+  disk_ptr->metadata.full_path = image_path;
 
+  const char* start_pos = image_path;
   const char* last_sep = strrchr(start_pos, '/');
   if (last_sep != nullptr) {
     start_pos = last_sep + 1;
   }
-  safe_strcpy(image_title, start_pos, max_disk_full_path_len);
+
+  std::string image_title = start_pos;
 
   bool found_lower = false;
-  int title_length = 0;
-  while (image_title[title_length] != '\0' && !found_lower) {
-    if (std::islower(static_cast<unsigned char>(image_title[title_length]))) {
+  for (unsigned char ch : image_title) {
+    if (std::islower(ch)) {
       found_lower = true;
-    } else {
-      title_length++;
+      break;
     }
   }
 
-  constexpr int min_title_len_for_format = 3;
-  if (!found_lower && title_length >= min_title_len_for_format) {
-    for (char* p = image_title + 1; *p != '\0'; ++p) {
-      *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
+  constexpr size_t min_title_len_for_format = 3;
+  if (!found_lower && image_title.length() >= min_title_len_for_format) {
+    for (size_t i = 1; i < image_title.length(); ++i) {
+      image_title[i] = static_cast<char>(
+          std::tolower(static_cast<unsigned char>(image_title[i])));
     }
   }
 
-  safe_strcpy(disk_ptr->full_path, image_path, max_disk_full_path_len);
-
-  char* extension_dot = strrchr(image_title, '.');
-  if (extension_dot != nullptr && extension_dot > image_title) {
-    *extension_dot = '\0';
+  const size_t dot_pos = image_title.rfind('.');
+  if (dot_pos != std::string::npos && dot_pos > 0) {
+    image_title.erase(dot_pos);
   }
 
-  safe_strcpy(disk_ptr->image_name, image_title, max_disk_image_name_len);
+  if (image_title.length() > max_disk_image_name_len) {
+    image_title.resize(max_disk_image_name_len);
+  }
+
+  disk_ptr->metadata.display_name = image_title;
 }
 
 auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
@@ -750,9 +762,10 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     status->drive0_writing = (drive.write_light_ticks > 0) ? 1 : 0;
     status->drive0_write_protected =
         is_disk_write_protected(disk_peripheral, 0) ? 1 : 0;
-    safe_strcpy(status->drive0_name, drive.image_name, disk_status_name_max);
-    safe_strcpy(status->drive0_full_path, drive.full_path,
-                disk_status_path_max);
+    disk_image_metadata_export_name(drive.metadata, status->drive0_name,
+                                    disk_status_name_max);
+    disk_image_metadata_export_path(drive.metadata, status->drive0_full_path,
+                                    disk_status_path_max);
   }
 
   {
@@ -763,9 +776,10 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     status->drive1_writing = (drive.write_light_ticks > 0) ? 1 : 0;
     status->drive1_write_protected =
         is_disk_write_protected(disk_peripheral, 1) ? 1 : 0;
-    safe_strcpy(status->drive1_name, drive.image_name, disk_status_name_max);
-    safe_strcpy(status->drive1_full_path, drive.full_path,
-                disk_status_path_max);
+    disk_image_metadata_export_name(drive.metadata, status->drive1_name,
+                                    disk_status_name_max);
+    disk_image_metadata_export_path(drive.metadata, status->drive1_full_path,
+                                    disk_status_path_max);
   }
 }
 
@@ -1087,7 +1101,8 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   for (int i = 0; i < disk_drive_count; ++i) {
     auto& d = dp->drives.at(static_cast<size_t>(i));
     auto& ds = s->drives[i];
-    safe_strcpy(ds.full_path, d.full_path, max_disk_full_path_len + 1);
+    disk_image_metadata_export_path(d.metadata, ds.full_path,
+                                    sizeof(ds.full_path));
     ds.track = d.track;
     ds.phase = d.phase;
     ds.current_byte_pos = static_cast<int32_t>(d.current_byte_pos);
@@ -1139,10 +1154,13 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   for (int i = 0; i < disk_drive_count; ++i) {
     const auto& ds = s->drives[i];
     eject_disk_from_drive(dp, i);
-    char safe_path[max_disk_full_path_len + 1] = {0};
-    safe_strcpy(safe_path, ds.full_path, sizeof(safe_path));
+    const auto* end_it =
+        std::find(ds.full_path, ds.full_path + sizeof(ds.full_path), '\0');
+    const std::string safe_path(ds.full_path,
+                                static_cast<size_t>(end_it - ds.full_path));
 
-    if (insert_disk_into_drive(dp, i, safe_path, ds.user_write_protected != 0,
+    if (insert_disk_into_drive(dp, i, safe_path.c_str(),
+                               ds.user_write_protected != 0,
                                false) == disk_err_none) {
       auto& d = dp->drives.at(static_cast<size_t>(i));
       if (ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
