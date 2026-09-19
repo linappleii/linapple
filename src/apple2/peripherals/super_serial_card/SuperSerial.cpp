@@ -10,13 +10,9 @@
 #include <mutex>
 
 #include "EmbeddedRoms.h"
-#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-
-#ifndef VERSIONSTRING
-#define VERSIONSTRING "2.0.0"
-#endif
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 

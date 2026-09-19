@@ -9,14 +9,10 @@
 #include <memory>
 #include <new>
 
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-
-#ifndef VERSIONSTRING
-#define VERSIONSTRING "2.0.0"
-#endif
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 extern bool g_full_speed;

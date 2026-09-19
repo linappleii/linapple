@@ -8,17 +8,13 @@
 #include <cstring>
 #include <memory>
 
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-
-#ifndef VERSIONSTRING
-#define VERSIONSTRING "3.1.0"
-#endif
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 

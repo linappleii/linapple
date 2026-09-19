@@ -20,6 +20,8 @@
 #include <memory>
 
 #include "EmbeddedRoms.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
@@ -31,13 +33,7 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/Log.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Text.h"
-
-#ifndef VERSIONSTRING
-#define VERSIONSTRING "3.1.0"
-#endif
 
 auto mem_return_random_data(uint8_t highbit) -> uint8_t;
 
