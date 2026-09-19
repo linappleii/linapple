@@ -453,25 +453,25 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
   }
 
   auto& drive = get_active_drive(disk_peripheral);
-  const int32_t old_phase = drive.phase;
-  const int32_t old_track = drive.track;
-
   const int32_t new_phase = std::max<int32_t>(
       0, std::min<int32_t>(max_disk_phases - 1, drive.phase + phase_delta));
+  if (new_phase == drive.phase) {
+    return;
+  }
+
   const int32_t new_track =
       std::min<int32_t>(tracks_per_disk - 1, new_phase / phases_per_track);
 
-  if (new_phase != old_phase) {
-    if (new_track != old_track) {
-      if (drive.track_buffer != nullptr && drive.is_dirty) {
-        write_track_to_driver(disk_peripheral,
-                              disk_peripheral->active_drive_index);
-      }
-      drive.is_data_loaded = false;
+  if (new_track != drive.track) {
+    if (drive.track_buffer != nullptr && drive.is_dirty) {
+      write_track_to_driver(disk_peripheral,
+                            disk_peripheral->active_drive_index);
     }
-    drive.phase = new_phase;
-    drive.track = new_track;
+    drive.is_data_loaded = false;
   }
+
+  drive.phase = new_phase;
+  drive.track = new_track;
 }
 
 // Why: Emulates the physical magnetic stepper motor phases ($C0n0-$C0n7).
