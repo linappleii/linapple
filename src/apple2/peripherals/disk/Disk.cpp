@@ -284,30 +284,31 @@ auto close_format_driver(Disk_t* disk_ptr) -> void {
 
 auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
     -> void {
-  if (!is_drive_valid(drive_index)) {
+  if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
   }
-  auto* disk_ptr =
-      &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk_ptr->driver != nullptr) {
-    if (disk_ptr->track_buffer != nullptr && disk_ptr->is_dirty) {
-      write_track_to_driver(disk_peripheral, drive_index);
-    }
-
-    close_format_driver(disk_ptr);
-
-    if (disk_peripheral->host != nullptr) {
-      const char* key = (drive_index == 0) ? config::disk_image1_key
-                                           : config::disk_image2_key;
-      if (disk_peripheral->host->SetConfig != nullptr) {
-        disk_peripheral->host->SetConfig("Slots", key, "");
-      }
-      notify_status_changed(disk_peripheral);
-    }
+  auto& disk = disk_peripheral->drives.at(static_cast<size_t>(drive_index));
+  if (disk.driver == nullptr) {
+    disk = Disk_t();
+    return;
   }
 
-  *disk_ptr = Disk_t();
+  if (disk.track_buffer != nullptr && disk.is_dirty) {
+    write_track_to_driver(disk_peripheral, drive_index);
+  }
+
+  close_format_driver(&disk);
+
+  if (disk_peripheral->host != nullptr &&
+      disk_peripheral->host->SetConfig != nullptr) {
+    const char* key =
+        (drive_index == 0) ? config::disk_image1_key : config::disk_image2_key;
+    disk_peripheral->host->SetConfig("Slots", key, "");
+  }
+  notify_status_changed(disk_peripheral);
+
+  disk = Disk_t();
 }
 
 auto update_disk_metadata(Disk_t* disk_ptr, const char* image_path) -> void {
@@ -357,12 +358,12 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
   if (disk_peripheral == nullptr) {
     return;
   }
-  auto* disk_ptr = &get_active_drive(disk_peripheral);
-  const bool was_spinning = (disk_ptr->spinning_ticks > 0);
+  auto& drive = get_active_drive(disk_peripheral);
+  const bool was_spinning = (drive.spinning_ticks > 0);
   if (disk_peripheral->is_motor_on) {
-    disk_ptr->spinning_ticks = physical::spinup_ticks;
+    drive.spinning_ticks = physical::spinup_ticks;
   }
-  const bool now_spinning = (disk_ptr->spinning_ticks > 0);
+  const bool now_spinning = (drive.spinning_ticks > 0);
 
   if (was_spinning != now_spinning) {
     notify_activity_changed(disk_peripheral, now_spinning);
@@ -451,25 +452,25 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
     return;
   }
 
-  auto* disk_ptr = &get_active_drive(disk_peripheral);
-  const int32_t old_phase = disk_ptr->phase;
-  const int32_t old_track = disk_ptr->track;
+  auto& drive = get_active_drive(disk_peripheral);
+  const int32_t old_phase = drive.phase;
+  const int32_t old_track = drive.track;
 
   const int32_t new_phase = std::max<int32_t>(
-      0, std::min<int32_t>(max_disk_phases - 1, disk_ptr->phase + phase_delta));
+      0, std::min<int32_t>(max_disk_phases - 1, drive.phase + phase_delta));
   const int32_t new_track =
       std::min<int32_t>(tracks_per_disk - 1, new_phase / phases_per_track);
 
   if (new_phase != old_phase) {
     if (new_track != old_track) {
-      if (disk_ptr->track_buffer != nullptr && disk_ptr->is_dirty) {
+      if (drive.track_buffer != nullptr && drive.is_dirty) {
         write_track_to_driver(disk_peripheral,
                               disk_peripheral->active_drive_index);
       }
-      disk_ptr->is_data_loaded = false;
+      drive.is_data_loaded = false;
     }
-    disk_ptr->phase = new_phase;
-    disk_ptr->track = new_track;
+    drive.phase = new_phase;
+    drive.track = new_track;
   }
 }
 
@@ -546,16 +547,16 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
-  auto* disk_ptr = &get_active_drive(disk_peripheral);
+  auto& drive = get_active_drive(disk_peripheral);
 
   disk_peripheral->was_accessed_this_tick = true;
 
-  if (!disk_ptr->is_data_loaded && disk_ptr->driver != nullptr) {
+  if (!drive.is_data_loaded && drive.driver != nullptr) {
     read_track_from_driver(disk_peripheral,
                            disk_peripheral->active_drive_index);
   }
 
-  if (!disk_ptr->is_data_loaded) {
+  if (!drive.is_data_loaded) {
     return mem_return_random_data(physical::floating_bus);
   }
 
@@ -563,25 +564,24 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
-  if (disk_ptr->current_byte_pos >= disk_ptr->nibble_count ||
-      disk_ptr->current_byte_pos >= static_cast<uint32_t>(nibbles_per_track)) {
-    disk_ptr->current_byte_pos = 0;
+  if (drive.current_byte_pos >= drive.nibble_count ||
+      drive.current_byte_pos >= static_cast<uint32_t>(nibbles_per_track)) {
+    drive.current_byte_pos = 0;
   }
 
   if (disk_peripheral->is_write_mode) {
     if (!is_protected &&
         (disk_peripheral->io_latch & physical::latch_bit) != 0) {
-      disk_ptr->track_buffer[disk_ptr->current_byte_pos] =
-          disk_peripheral->io_latch;
-      disk_ptr->is_dirty = true;
+      drive.track_buffer[drive.current_byte_pos] = disk_peripheral->io_latch;
+      drive.is_dirty = true;
     }
     data_byte = 0;
   } else {
-    data_byte = disk_ptr->track_buffer[disk_ptr->current_byte_pos];
+    data_byte = drive.track_buffer[drive.current_byte_pos];
   }
 
-  if (++disk_ptr->current_byte_pos >= disk_ptr->nibble_count) {
-    disk_ptr->current_byte_pos = 0;
+  if (++drive.current_byte_pos >= drive.nibble_count) {
+    drive.current_byte_pos = 0;
   }
 
   return data_byte;
