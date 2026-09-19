@@ -18,14 +18,8 @@ enum {
   MOCKINGBOARD_AY_REGS = 16
 };
 
-/**
- * @brief One 6522 plus one AY-3-8910, in the byte offsets version 1 fixed.
- *
- * Every offset here is load-bearing: a state written before the card was
- * rewritten still loads, so no surviving field may move. Fields the rewrite
- * made meaningless are `reserved_*`, written zero and never read back --
- * which is also what makes a fuzzer-supplied byte in one of them harmless.
- */
+// Version 1 snapshot layout for one 6522 VIA plus one AY-3-8910 PSG.
+// Field offsets are fixed for save-state backwards compatibility.
 typedef struct {
   /* 6522 VIA registers (20 bytes) */
   uint8_t orb;
@@ -42,8 +36,8 @@ typedef struct {
   uint8_t ifr;
   uint8_t ier;
   uint8_t ora_no_hs;
-  /** bit 0 t1_fired, bit 1 t2_fired, bit 2 pb7, bits 3-4 t1 phase,
-   *  bits 5-6 t2 phase */
+  // Bit 0: t1_fired, bit 1: t2_fired, bit 2: pb7, bits 3-4: t1 phase, bits 5-6:
+  // t2 phase
   uint8_t via_flags;
   uint8_t reserved_via;
 
@@ -72,13 +66,12 @@ typedef struct {
 } MockingboardChipSaveState_t;
 
 typedef struct {
-  uint32_t version;     /* 0..3 */
-  uint32_t struct_size; /* 4..7 */
+  uint32_t version;
+  uint32_t struct_size;
 
-  MockingboardChipSaveState_t
-      chips[MOCKINGBOARD_NUM_CHIPS]; /* 8..183 (176 bytes) */
+  MockingboardChipSaveState_t chips[MOCKINGBOARD_NUM_CHIPS];
 
-  uint32_t psg_remainder; /* 184..187 */
+  uint32_t psg_remainder;
   uint8_t reserved_card[8];
   uint8_t reserved_counts[4];
   uint8_t reserved_cycles[24];

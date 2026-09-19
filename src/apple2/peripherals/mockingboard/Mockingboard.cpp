@@ -20,10 +20,8 @@ namespace {
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware bus bit assignments and register widths
 
-// Version 1 fixed every one of these offsets, and a state written before this
-// card was rewritten still has to load. A field that moved would be read out of
-// a neighbour's bytes and no test would necessarily notice, so the layout is
-// nailed down here rather than trusted to declaration order.
+// Enforces fixed binary field offsets for version 1 save states across compiler
+// ABIs.
 static_assert(sizeof(MockingboardSaveState_t) == 232,
               "MockingboardSaveState_t must be exactly 232 bytes");
 static_assert(sizeof(MockingboardChipSaveState_t) == 88,
@@ -117,8 +115,8 @@ constexpr uint16_t via_select_bit = 0x80;
 // therefore eight 6502 cycles: 127,560.5 Hz on NTSC.
 constexpr uint32_t cycles_per_ay_tick = 8;
 
-// A frame at emulation_speed_max is 85,150 ticks, so this is 84 chunks of a
-// 24 KiB scratch that lives in the instance and never on the stack.
+// Scratch buffer chunk size (24 KiB across 6 voices) sized to bound instance
+// allocation while avoiding stack pressure during audio synthesis.
 constexpr size_t scratch_ticks = 1024;
 
 // The AY is unipolar and the real card's output stage is AC-coupled. Without
@@ -128,10 +126,8 @@ constexpr size_t scratch_ticks = 1024;
 constexpr double dc_blocker_tau_ticks = 1000.0;
 constexpr double dc_blocker_coefficient = 1.0 - (1.0 / dc_blocker_tau_ticks);
 
-// A one-pole decay never actually reaches zero, so without a floor the card
-// emits a trickle forever and can never say it is silent. An output LSB after
-// the mixer's three-way fan-in gain is 9.2e-5, so snapping a ninth of that
-// away cannot truncate anything audible.
+// Silence threshold below 16-bit PCM resolution (1/32768) that halts infinite
+// one-pole filter decay and prevents floating-point denormals.
 constexpr double dc_silence_epsilon = 1.0e-5;
 
 // ORB bits 2..0 drive the AY control bus; BC2 is tied high and /RESET is
@@ -319,9 +315,8 @@ auto cx_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   sync_to(mb, executed_cycles);
   const size_t chip = ((addr & via_select_bit) != 0) ? 1 : 0;
   const uint8_t value = via_read(&mb->via[chip], static_cast<uint8_t>(addr));
-  // A counter or flag access changes the interrupt state, and a slice is a
-  // whole video field: deferring the deassert to think() would re-enter the
-  // 6502's handler on every RTI.
+  // Updating IRQ immediately ensures clearing the interrupt flag prevents the
+  // 6502 from re-entering its ISR upon executing RTI.
   update_irq(mb);
   return value;
 }
@@ -649,9 +644,7 @@ static const Peripheral_t g_mockingboard_peripheral = {
 
 }  // namespace
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// The C-ABI registry expects a mutable Peripheral_t* descriptor.
 extern "C" auto mockingboard_get_descriptor() -> Peripheral_t* {
   return const_cast<Peripheral_t*>(&g_mockingboard_peripheral);
 }

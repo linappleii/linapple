@@ -5,6 +5,7 @@
 #include <SDL_platform.h>
 #include <SDL_stdinc.h>
 #include <SDL_timer.h>
+#include <SDL_version.h>
 
 #include <cstddef>
 #include <cstdint>

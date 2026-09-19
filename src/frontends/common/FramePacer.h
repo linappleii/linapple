@@ -8,21 +8,7 @@
 using FrameClockNowFn_t = int64_t (*)();
 using FrameClockSleepUntilFn_t = void (*)(int64_t deadline_ns);
 
-/**
- * @brief Holds the emulation loop to the machine's own frame time.
- *
- * Audio production is a function of how fast this loop runs: one emulated
- * frame is a fixed number of 6502 cycles and the speaker emits one sample per
- * cycle, so a loop slower than the machine hands the mixer less audio per
- * wall second than the device consumes, and every callback underruns for as
- * long as the deficit lasts. A flat sleep cannot hold a rate at all -- its
- * real period is the sleep plus however long input, emulation and rendering
- * took -- so the deadline accumulates instead and the sleep is whatever is
- * left of it.
- *
- * The period comes from the machine rather than a literal because the video
- * standard decides it: 16.688 ms at NTSC, 20.000 ms at PAL.
- */
+// Paces the emulation loop to match the machine's frame timing (NTSC/PAL).
 class FramePacer_t {
  public:
   FramePacer_t();
@@ -32,7 +18,6 @@ class FramePacer_t {
   // type change moves it.
   auto frame_period_ns() const -> int64_t;
 
-  // Call once per loop iteration, after the frame has been run and drawn.
   auto wait_for_next_frame() -> void;
 
   // Turbo, a debugger stop, or anything else that leaves the accumulated

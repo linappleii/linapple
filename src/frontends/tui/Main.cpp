@@ -94,8 +94,6 @@ auto main(int argc, char** argv) -> int {
         linapple_run_frame(cycles);
       }
 
-      // The period was a 16650 microsecond literal, which is neither the NTSC
-      // frame nor the PAL one; the pacer derives it from the machine.
       if (!linapple_get_turbo()) {
         pacer.wait_for_next_frame();
       } else {

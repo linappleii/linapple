@@ -10,16 +10,13 @@
 #include "apple2/Memory.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
 
 namespace {
-// Declared rather than inherited. Nothing here reaches a card, and the slot
-// fallbacks in peripheral_register_internal would put four of them in the
-// snapshot.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 }  // namespace
 

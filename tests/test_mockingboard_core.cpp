@@ -76,12 +76,7 @@ Peripheral_t g_mock_descriptor = {LINAPPLE_ABI_VERSION,
                                   nullptr,
                                   nullptr};
 
-/**
- * @brief RAII owner of the mock's recording.
- *
- * The descriptor is a C-ABI struct of free functions, so what the handlers
- * record has to live in a file-static; this bounds its lifetime to one case.
- */
+// RAII fixture isolating file-static mock state between tests.
 class ScopedMock_t {
  public:
   ScopedMock_t() { g_mock = MockState_t(); }

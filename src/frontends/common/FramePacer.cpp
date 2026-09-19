@@ -9,7 +9,6 @@
 
 namespace {
 
-// The NTSC frame period.
 constexpr int64_t fallback_period_ns = 16688000;
 
 // Falling a frame or two behind is ordinary -- a window resize, a disk seek,

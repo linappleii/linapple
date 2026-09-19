@@ -13,12 +13,7 @@
 
 namespace TestFixtures {
 
-/**
- * @brief RAII swap of the active CPU context.
- *
- * The context is a process global, so a case that leaves a half-run one
- * behind changes what the next case measures.
- */
+// RAII guard that isolates the active CPU context between tests.
 struct ScopedCpuContext_t {
   CpuInstance_t* previous = nullptr;
   CpuInstance_t fresh{};
@@ -39,14 +34,7 @@ struct ScopedCpuContext_t {
   auto operator=(ScopedCpuContext_t&&) -> ScopedCpuContext_t& = delete;
 };
 
-/**
- * @brief RAII emulator core built from a declared machine.
- *
- * The CPU context is a member so that it is installed before linapple_init
- * runs and restored after linapple_shutdown, and every frontend callback the
- * core holds is cleared on the way out: they are process globals, and a
- * dangling one would fire during the next case's shutdown.
- */
+// RAII fixture for emulator core initialization and callback teardown.
 class ScopedCore_t {
  public:
   explicit ScopedCore_t(const ScopedTestConfig_t& config) {
@@ -66,16 +54,7 @@ class ScopedCore_t {
   ScopedCore_t(ScopedCore_t&&) = delete;
   auto operator=(ScopedCore_t&&) -> ScopedCore_t& = delete;
 
-  /**
-   * @brief Load bytes where the 6502 will fetch them.
-   *
-   * The 6502 fetches every opcode and every vector out of the memory image,
-   * so that is where the byte has to end up whatever is banked in -- which is
-   * the only way a test can point the interrupt vector at its own handler
-   * without a language card. Where a write page also exists it gets the byte
-   * too, so a later bank switch restores what was written rather than
-   * whatever the page held before.
-   */
+  // Writes bytes to physical memory and active write pages for opcode fetching.
   static auto poke(uint16_t addr, const uint8_t* bytes, size_t count) -> void {
     for (size_t i = 0; i < count; ++i) {
       const auto target = static_cast<uint16_t>(addr + i);
@@ -89,8 +68,7 @@ class ScopedCore_t {
   }
 
   template <size_t N>
-  static auto poke(uint16_t addr, const std::array<uint8_t, N>& bytes)
-      -> void {
+  static auto poke(uint16_t addr, const std::array<uint8_t, N>& bytes) -> void {
     poke(addr, bytes.data(), N);
   }
 

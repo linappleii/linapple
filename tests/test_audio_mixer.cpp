@@ -91,13 +91,7 @@ auto square_wave(double rate_hz, double tone_hz, size_t count,
   return wave;
 }
 
-/**
- * @brief RAII mixer at a declared output rate and 6502 clock.
- *
- * g_slots and g_current_clk_6502 are process globals, so every case goes
- * through the fixture: it owns the initialize/destroy pair and restores the
- * clock it borrowed.
- */
+// RAII fixture managing audio mixer lifecycle and preserving 6502 clock state.
 class MixerFixture_t {
  public:
   MixerFixture_t(uint32_t output_rate_hz, double clock_hz)
@@ -151,14 +145,8 @@ class MixerFixture_t {
     drain(2048);
   }
 
-  /**
-   * @brief How many output frames a source of `count` samples produces.
-   *
-   * The ring holds a fraction of a second, so a second's worth can only be
-   * counted by emptying the ring as it fills. A full-scale constant makes the
-   * two kinds of frame distinguishable: a produced frame carries the level
-   * exactly, and the underrun fade steps away from it immediately.
-   */
+  // Counts output frames produced by emptying the ring as it fills to avoid
+  // overflow.
   auto produced_frames(int slot, double source_rate_hz, size_t count,
                        size_t num_channels = 1) -> size_t {
     const size_t chunk_in = chunk_for(source_rate_hz);
@@ -177,14 +165,7 @@ class MixerFixture_t {
     return produced;
   }
 
-  /**
-   * @brief The produced output frames of a source, with no fade in them.
-   *
-   * Each drain stops two frames short of what its chunk produced, so the
-   * leftover stays in the ring and the result is a contiguous prefix of the
-   * real output. Draining exactly what was produced is not possible from
-   * outside the mixer, and draining more admits the fade.
-   */
+  // Captures produced output stream prefix before underrun fade begins.
   auto stream(int slot, double source_rate_hz, const std::vector<float>& source)
       -> std::vector<int16_t> {
     const double ratio = static_cast<double>(rate_) / source_rate_hz;
@@ -1017,14 +998,8 @@ constexpr int64_t NTSC_FRAME_PERIOD_NS = 16688152;
 constexpr float DRIVE_LEVEL = 0.5f;
 constexpr int16_t SERVED_PCM = 16384;
 
-/**
- * @brief One deterministic timeline carrying two unrelated clocks.
- *
- * Every real frontend is this and no lockstep test can see it: the emulation
- * loop hands over a frame's worth of samples on the pacer's schedule while
- * the device callback asks for a block on its own. Which of the two fires
- * next is the clock's decision, not the test's.
- */
+// Simulates concurrent asynchronous production (emulation) and consumption
+// (audio callback) clocks.
 class TwoClockRun_t {
  public:
   TwoClockRun_t(uint32_t output_rate_hz, int slot,

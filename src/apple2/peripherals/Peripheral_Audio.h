@@ -30,32 +30,15 @@ typedef struct PeripheralAudioChannelInfo_t {
   float default_pan_right; /**< Default gain to Right output (0.0 to 1.0) */
 } PeripheralAudioChannelInfo_t;
 
-/**
- * @brief How a peripheral describes the audio it emits.
- *
- * A source declares its time base in one of two forms because both exist in
- * real Apple II sound hardware: the speaker and a Mockingboard's AY-3-8910s
- * run from the slot's phase-0 line, while speech synthesizers and similar
- * cards carry their own oscillator. Consumers resolve the CPU-clocked form to
- * Hz by dividing the current 6502 clock by cycle_divisor.
- *
- * Channel samples are normalized float: +/-1.0 is full scale for that
- * channel, which for the speaker is full cone excursion and for a
- * multi-voice card is each voice's own full scale. A peripheral never
- * attenuates to make room for other sources or for its own filter
- * transients, and never clips; summing headroom and the single conversion to
- * the output format belong to the mixer. peak_magnitude is how a source that
- * legitimately exceeds full scale says so.
- */
+// Describes peripheral audio characteristics, channel geometry, and sample
+// timing.
 typedef struct PeripheralAudioInfo_t {
-  PeripheralAudioTimeBase_t time_base; /**< Which of the two forms below is
-                                          meaningful */
-  uint32_t cycle_divisor; /**< CPU-clocked form: 6502 cycles per sample */
-  uint32_t sample_rate;   /**< Absolute form: native synthesis rate in Hz */
-  uint32_t num_channels;  /**< Number of planar audio channels */
-  float peak_magnitude;   /**< Largest absolute channel value this source will
-                             ever emit; a fact about the signal, not a
-                             recommendation */
+  PeripheralAudioTimeBase_t time_base;
+  uint32_t
+      cycle_divisor;     /**< 6502 clock cycles per sample (CPU-clocked mode) */
+  uint32_t sample_rate;  /**< Sample rate in Hz (absolute oscillator mode) */
+  uint32_t num_channels; /**< Number of active planar audio channels */
+  float peak_magnitude;  /**< Maximum expected absolute sample value */
   PeripheralAudioChannelInfo_t channels[PERIPHERAL_AUDIO_MAX_CHANNELS];
 } PeripheralAudioInfo_t;
 
