@@ -451,7 +451,7 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   switch (static_cast<KeyboardCmd_t>(cmd_id)) {
     case keyboard_cmd_event: {
-      if (size < sizeof(KeyboardEvent_t)) {
+      if (size != sizeof(KeyboardEvent_t)) {
         return peripheral_error;
       }
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
@@ -522,21 +522,21 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case keyboard_cmd_set_caps: {
-      if (size < sizeof(uint8_t)) {
+      if (size != sizeof(uint8_t)) {
         return peripheral_error;
       }
       kp->logic.caps_lock = (*static_cast<const uint8_t*>(data) != 0);
       return peripheral_ok;
     }
     case keyboard_cmd_set_rocker: {
-      if (size < sizeof(uint8_t)) {
+      if (size != sizeof(uint8_t)) {
         return peripheral_error;
       }
       kp->logic.rocker_switch = (*static_cast<const uint8_t*>(data) != 0);
       return peripheral_ok;
     }
     case keyboard_cmd_set_mods: {
-      if (size < sizeof(KeyboardModifiers_t)) {
+      if (size != sizeof(KeyboardModifiers_t)) {
         return peripheral_error;
       }
       const auto* mods = static_cast<const KeyboardModifiers_t*>(data);
@@ -551,14 +551,14 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case keyboard_cmd_set_layout: {
-      if (size < sizeof(uint8_t)) {
+      if (size != sizeof(uint8_t)) {
         return peripheral_error;
       }
       kp->logic.alternate_layout = *static_cast<const uint8_t*>(data);
       return peripheral_ok;
     }
     case keyboard_cmd_set_custom_key: {
-      if (size < sizeof(KeyboardCustomKeyPayload_t)) {
+      if (size != sizeof(KeyboardCustomKeyPayload_t)) {
         return peripheral_error;
       }
       const auto* payload =
@@ -574,6 +574,9 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case keyboard_cmd_clear_custom_keys: {
+      if (size != 0) {
+        return peripheral_error;  // this command carries no payload
+      }
       kp->logic.has_custom_keys = false;
       std::memset(kp->logic.custom_map, 0, sizeof(kp->logic.custom_map));
       std::memset(kp->logic.custom_shift_map, 0,
@@ -584,7 +587,7 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case keyboard_cmd_set_auto_repeat: {
-      if (size < sizeof(uint8_t)) {
+      if (size != sizeof(uint8_t)) {
         return peripheral_error;
       }
       kp->logic.auto_repeat_enabled = (*static_cast<const uint8_t*>(data) != 0);
