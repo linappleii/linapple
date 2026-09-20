@@ -260,6 +260,12 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus_t;
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t;
+auto peripheral_command_by_id(int slot, const char* peripheral_id,
+                              uint32_t cmd_id, const void* data, size_t size)
+    -> PeripheralStatus_t;
+auto peripheral_query_by_id(int slot, const char* peripheral_id,
+                            uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t;
 
 enum CapsLockMode_t { CAPS_MODE_HOST = 0, CAPS_MODE_EMULATED = 1 };
 

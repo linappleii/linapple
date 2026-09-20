@@ -130,6 +130,16 @@ PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
                                       const void* data, size_t size);
 PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
                                     size_t* out_size);
+/* Slot 0 holds several peripherals, so the target is named by descriptor
+ * id; the slot stays because two slots can hold the same card. Commands are
+ * queued and delivered on the emulation thread. The lookup of the name reads
+ * the peripheral table unlocked, so call from the emulation thread. */
+PeripheralStatus_t peripheral_command_by_id(int slot, const char* peripheral_id,
+                                            uint32_t cmd_id, const void* data,
+                                            size_t size);
+PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
+                                          uint32_t cmd_id, void* out,
+                                          size_t* out_size);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 void peripheral_load_state(int slot, const void* buffer, size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,
