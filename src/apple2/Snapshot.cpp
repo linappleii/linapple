@@ -30,8 +30,12 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
 
   cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502);
   {
+    // Slot 0 holds three peripherals, so the joystick is asked for by name.
+    // Its region is 8 bytes and the card's frame is 56, so the card refuses
+    // the buffer and the region stays zero until the layout grows.
     size_t size = sizeof(snapshot->apple2_unit.joystick);
-    peripheral_save_state(0, &snapshot->apple2_unit.joystick, &size);
+    peripheral_save_state_by_name(0, "Joystick",
+                                  &snapshot->apple2_unit.joystick, &size);
   }
   video_get_snapshot(&snapshot->apple2_unit.video);
   mem_get_snapshot(&snapshot->apple2_unit.memory);
@@ -111,7 +115,8 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
   cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502);
   {
     size_t size = sizeof(snapshot->apple2_unit.joystick);
-    peripheral_load_state(0, &snapshot->apple2_unit.joystick, size);
+    peripheral_load_state_by_name(0, "Joystick",
+                                  &snapshot->apple2_unit.joystick, size);
   }
   peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                                 sizeof(snapshot->apple2_unit.keyboard));
