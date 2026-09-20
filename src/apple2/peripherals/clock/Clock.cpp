@@ -11,9 +11,10 @@
 #include <ctime>
 #include <memory>
 
-#include "apple2/peripherals/clock/ClockCommands.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/clock/ClockCommands.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
@@ -208,6 +209,10 @@ static auto clock_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   auto* clock_peripheral = static_cast<ClockPeripheral_t*>(instance);
 
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_CLOCK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (cmd_id) {
     case clock_cmd_set_epoch: {
       if (data == nullptr) {
@@ -247,6 +252,10 @@ static auto clock_abi_query(void* instance, uint32_t query_id, void* out,
                             size_t* size) -> PeripheralStatus_t {
   if (size == nullptr) {
     return peripheral_error;
+  }
+
+  if (!peripheral_cmd_is_mine(query_id, PERIPHERAL_SUBSYSTEM_CLOCK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
   }
 
   switch (query_id) {

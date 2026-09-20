@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -86,13 +88,13 @@ typedef struct {
 } SuperSerialSaveState_t;
 
 typedef enum {
-  SUPER_SERIAL_CMD_PUSH_RX_BYTE = 0x0001,
-  SUPER_SERIAL_CMD_SET_CONFIG = 0x0002
+  SUPER_SERIAL_CMD_PUSH_RX_BYTE = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
+  SUPER_SERIAL_CMD_SET_CONFIG = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002
 } SuperSerialCmd_t;
 
 typedef enum {
-  SUPER_SERIAL_QUERY_CONFIG = 0x0001,
-  SUPER_SERIAL_QUERY_RX_READY = 0x0002
+  SUPER_SERIAL_QUERY_CONFIG = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
+  SUPER_SERIAL_QUERY_RX_READY = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002
 } SuperSerialQuery_t;
 
 #ifdef __cplusplus

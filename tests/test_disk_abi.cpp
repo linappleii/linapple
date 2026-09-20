@@ -51,8 +51,11 @@ TEST_CASE("DiskABI: [DISK-02] DiskInsertCmd_t field offsets are stable") {
 TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
   CHECK(disk_drive_0 == 0);
   CHECK(disk_drive_1 == 1);
-  CHECK(disk_cmd_insert == 0x01);
-  CHECK(disk_cmd_eject == 0x02);
+  // An id is its subsystem in the high half and its index in the low half.
+  // These are the numbers a caller built against the ABI holds, so they are
+  // written out rather than rebuilt from the constants they are made of.
+  CHECK(disk_cmd_insert == 0x00040001u);
+  CHECK(disk_cmd_eject == 0x00040002u);
   CHECK(disk_state_version == 1);
 }
 

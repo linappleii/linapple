@@ -15,6 +15,7 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
@@ -1164,6 +1165,10 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
     return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (static_cast<DiskCmd_t>(cmd)) {
     case disk_cmd_insert:
       return cmd_handle_insert(dp, data, size);
@@ -1187,6 +1192,10 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
     return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
 
   switch (cmd) {
     case disk_query_status: {

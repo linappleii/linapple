@@ -10,6 +10,7 @@
 #include <new>
 
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
@@ -434,11 +435,19 @@ auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
 
 auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
                           size_t size) -> PeripheralStatus_t {
-  if (instance == nullptr || (size > 0 && data == nullptr)) {
+  if (instance == nullptr) {
     return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   namespace kp_const = kb;
+
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_KEYBOARD)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
+  if (size > 0 && data == nullptr) {
+    return peripheral_error;
+  }
 
   switch (static_cast<KeyboardCmd_t>(cmd_id)) {
     case keyboard_cmd_event: {
@@ -684,6 +693,10 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
     return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_KEYBOARD)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (static_cast<KeyboardQuery_t>(cmd_id)) {
     case keyboard_query_mods: {
       if (out == nullptr) {

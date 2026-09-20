@@ -11,6 +11,7 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
@@ -285,6 +286,10 @@ auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
 
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_SERIAL)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (static_cast<SuperSerialCmd_t>(cmd)) {
     case SUPER_SERIAL_CMD_PUSH_RX_BYTE: {
       if (data == nullptr || size < sizeof(uint8_t)) {
@@ -323,6 +328,10 @@ auto super_serial_abi_query(void* instance, uint32_t cmd, void* output_buffer,
     return peripheral_error;
   }
   auto* ssc = static_cast<SuperSerialCard_t*>(instance);
+
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_SERIAL)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
 
   switch (static_cast<SuperSerialQuery_t>(cmd)) {
     case SUPER_SERIAL_QUERY_CONFIG: {

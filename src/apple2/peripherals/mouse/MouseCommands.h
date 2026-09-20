@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -16,12 +18,15 @@ extern "C" {
 enum { MOUSE_STATE_VERSION = 1, mouse_default_slot = 4 };
 
 typedef enum {
-  mouse_cmd_set_pos = 0,   /**< data: MousePosPayload_t */
-  mouse_cmd_set_button = 1 /**< data: MouseButtonPayload_t */
+  mouse_cmd_set_pos =
+      PERIPHERAL_SUBSYSTEM_MOUSE | 0x0000, /**< data: MousePosPayload_t */
+  mouse_cmd_set_button =
+      PERIPHERAL_SUBSYSTEM_MOUSE | 0x0001 /**< data: MouseButtonPayload_t */
 } MouseCmd_t;
 
 typedef enum {
-  mouse_query_is_active = 0x0001 /**< out: uint8_t (0=inactive, 1=active) */
+  mouse_query_is_active = PERIPHERAL_SUBSYSTEM_MOUSE |
+                          0x0001 /**< out: uint8_t (0=inactive, 1=active) */
 } MouseQuery_t;
 
 typedef struct {
