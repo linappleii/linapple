@@ -292,7 +292,7 @@ auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
 
   switch (static_cast<SuperSerialCmd_t>(cmd)) {
     case SUPER_SERIAL_CMD_PUSH_RX_BYTE: {
-      if (data == nullptr || size < sizeof(uint8_t)) {
+      if (data == nullptr || size != sizeof(uint8_t)) {
         return peripheral_error;
       }
       std::lock_guard<std::mutex> lock(ssc->fifo_mutex);
@@ -309,7 +309,7 @@ auto super_serial_abi_command(void* instance, uint32_t cmd, const void* data,
       return peripheral_ok;
     }
     case SUPER_SERIAL_CMD_SET_CONFIG: {
-      if (data == nullptr || size < sizeof(SuperSerialDipSwConfig_t)) {
+      if (data == nullptr || size != sizeof(SuperSerialDipSwConfig_t)) {
         return peripheral_error;
       }
       std::lock_guard<std::mutex> lock(ssc->fifo_mutex);

@@ -529,7 +529,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
 
   switch (static_cast<HarddiskCmd_t>(cmd_id)) {
     case harddisk_cmd_insert: {
-      if (payload == nullptr || payload_size < sizeof(HarddiskInsertCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskInsertCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskInsertCmd_t*>(payload);
@@ -542,7 +542,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
       return peripheral_ok;
     }
     case harddisk_cmd_eject: {
-      if (payload == nullptr || payload_size < sizeof(HarddiskEjectCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskEjectCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskEjectCmd_t*>(payload);
@@ -564,7 +564,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
     }
     case harddisk_cmd_set_protect: {
       if (payload == nullptr ||
-          payload_size < sizeof(HarddiskSetProtectCmd_t)) {
+          payload_size != sizeof(HarddiskSetProtectCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr =

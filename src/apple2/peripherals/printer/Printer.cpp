@@ -235,7 +235,7 @@ static auto printer_abi_command(void* instance, uint32_t command_id,
 
   switch (command_id) {
     case PRINTER_CMD_SET_ONLINE: {
-      if (payload == nullptr || payload_size < sizeof(PrinterOnlineCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(PrinterOnlineCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd = static_cast<const PrinterOnlineCmd_t*>(payload);

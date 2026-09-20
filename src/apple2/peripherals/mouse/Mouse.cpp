@@ -769,7 +769,7 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   switch (static_cast<MouseCmd_t>(cmd_id)) {
     case mouse_cmd_set_pos: {
-      if (size < sizeof(MousePosPayload_t)) {
+      if (size != sizeof(MousePosPayload_t)) {
         return peripheral_error;
       }
       const auto* p = static_cast<const MousePosPayload_t*>(data);
@@ -780,7 +780,7 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case mouse_cmd_set_button: {
-      if (size < sizeof(MouseButtonPayload_t)) {
+      if (size != sizeof(MouseButtonPayload_t)) {
         return peripheral_error;
       }
       const auto* p = static_cast<const MouseButtonPayload_t*>(data);
