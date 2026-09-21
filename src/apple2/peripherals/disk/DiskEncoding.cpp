@@ -51,6 +51,11 @@ constexpr int max_nibblized_sector_size = 384;
 constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
 constexpr size_t sector_size = 256;
+constexpr size_t track_image_size = sectors_per_track * sector_size;
+// Sectors are decoded here and only copied out once every one of them has
+// arrived, so a track that reads badly cannot half-overwrite the image.
+constexpr size_t staging_offset = 0x1800;
+constexpr uint16_t all_sectors_mask = 0xFFFF;
 constexpr uint32_t cells_per_nibble = 8;
 constexpr uint32_t cells_per_self_sync = 10;
 
@@ -241,7 +246,8 @@ auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> bool {
 auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
                                     bool is_dos_order, int nibbles)
     -> DiskError_e {
-  std::fill_n(work_buffer, disk_encoding_work_buffer_offset, 0);
+  uint8_t* const staging = &work_buffer[staging_offset];
+  std::fill_n(staging, track_image_size, 0);
 
   int current_offset = 0;
   int markers_found = 0;
@@ -268,7 +274,6 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
     return false;
   };
 
-  constexpr uint16_t all_sectors_mask = 0xFFFF;
   while (decoded_sectors_mask != all_sectors_mask &&
          markers_found < max_gcr_markers_per_track && find_next_marker()) {
     const uint8_t marker_type = fetch_byte();
@@ -299,7 +304,7 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
               disk_encoding_sector_interleave_table.at(interleave_idx)
                   .at(static_cast<size_t>(current_sector));
           if (!decode_sector_62(work_buffer,
-                                &work_buffer[physical_sector * sector_size])) {
+                                &staging[physical_sector * sector_size])) {
             field_refused = true;
           } else {
             decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
@@ -313,7 +318,12 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
     }
   }
 
-  return field_refused ? disk_err_corrupt : disk_err_none;
+  if (field_refused || decoded_sectors_mask != all_sectors_mask) {
+    return disk_err_corrupt;
+  }
+
+  std::copy_n(staging, track_image_size, work_buffer);
+  return disk_err_none;
 }
 
 auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,

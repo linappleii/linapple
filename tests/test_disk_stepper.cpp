@@ -305,7 +305,7 @@ TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
   CHECK(state.drives[0].track == 0);
 }
 
-TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
+TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   DiskStepperHarness_t harness;
 
   CHECK(harness.get_phase() == 0);
@@ -337,13 +337,14 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   harness.step_to_track(1);
   CHECK(harness.get_track() == 1);
 
-  // Stepping the head must flush the dirty track to the driver/file and clear
-  // dirty state
-  CHECK(harness.is_dirty() == false);
+  // Stepping the head offers the dirty track to the image. The byte landed
+  // on sector 0's prologue, so fifteen sectors is all the image can read
+  // back and it keeps the track it already had.
+  CHECK(harness.is_dirty() == true);
   {
     DiskSavedState_t state{};
     harness.save_state(state);
-    CHECK(state.drives[0].is_dirty == 0);
+    CHECK(state.drives[0].is_dirty == 1);
     CHECK(state.drives[0].track == 1);
   }
 
@@ -351,7 +352,6 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   harness.set_read_mode();
   harness.step_to_track(0);
   CHECK(harness.get_track() == 0);
-  CHECK(harness.is_dirty() == false);
 
   // Query driver to verify healthy status following flushed write
   DiskStatus_t status{};
@@ -401,7 +401,10 @@ TEST_CASE(
 
   CHECK(harness.get_phase() == 33);
   CHECK(harness.get_track() == 16);
-  CHECK(harness.is_dirty() == false);
+
+  // A run of 0xAA is not sixteen readable sectors, so the sector image
+  // refuses the whole track and the buffer stays dirty.
+  CHECK(harness.is_dirty() == true);
 
   // 5. Verify on-disk file state
   const std::vector<uint8_t> after_track16 =
@@ -412,15 +415,14 @@ TEST_CASE(
   // Track 16 must NOT be overwritten or corrupted by Track 17's flush
   CHECK(after_track16 == orig_track16);
 
-  // Track 17 must receive the flushed modifications
-  CHECK(after_track17 != orig_track17);
+  // Neither may Track 17 be half-written
+  CHECK(after_track17 == orig_track17);
 
   // 6. Step to full phase of Track 16 (Phase 32) and ensure Track 16 remains
   // pristine
   harness.step_backward_phase();
   CHECK(harness.get_phase() == 32);
   CHECK(harness.get_track() == 16);
-  CHECK(harness.is_dirty() == false);
 
   const std::vector<uint8_t> after_phase32_track16 =
       read_disk_track_bytes(harness.fixture_path(), 16);
@@ -435,7 +437,7 @@ TEST_CASE(
   CHECK(status.drive0_last_error == disk_err_none);
 }
 
-TEST_CASE("DiskStepper: [STEP-05] Motor Spindown Flushes Dirty Track") {
+TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
   DiskStepperHarness_t harness("Master.dsk");
 
   // Baseline read of Track 0 contents from disk image file
@@ -471,14 +473,16 @@ TEST_CASE("DiskStepper: [STEP-05] Motor Spindown Flushes Dirty Track") {
   // ticks * 64 cycles)
   harness.think(motor_spindown_cycles);
 
-  // Spindown has completed; dirty track must be flushed and dirty flag cleared
+  // Spindown has completed and the flush was attempted. A run of 0xAA is
+  // not sixteen readable sectors, so the sector image refuses the track and
+  // the buffer stays dirty.
   CHECK(harness.get_spinning_ticks() == 0);
-  CHECK(harness.is_dirty() == false);
+  CHECK(harness.is_dirty() == true);
 
-  // 5. Verify that the dirty data was flushed to Track 0 on the disk file
+  // 5. The image keeps the track it had rather than half of a new one
   const std::vector<uint8_t> after_spindown_track0 =
       read_disk_track_bytes(harness.fixture_path(), 0);
-  CHECK(after_spindown_track0 != orig_track0);
+  CHECK(after_spindown_track0 == orig_track0);
 
   // 6. Verify peripheral reports drive is no longer spinning and status is
   // clean

@@ -102,6 +102,17 @@ auto to_nibbles(const std::vector<uint8_t>& bits, uint32_t bit_count)
   return nibbles;
 }
 
+auto read_image_track(const std::string& path, size_t track, size_t track_bytes)
+    -> std::vector<uint8_t> {
+  std::vector<uint8_t> bytes(track_bytes, 0);
+  FILE* f = fopen(path.c_str(), "rb");
+  REQUIRE(f != nullptr);
+  REQUIRE(fseek(f, static_cast<long>(track * track_bytes), SEEK_SET) == 0);
+  REQUIRE(fread(bytes.data(), 1, track_bytes, f) == track_bytes);
+  fclose(f);
+  return bytes;
+}
+
 }  // namespace
 
 TEST_CASE("DiskDrivers: [DRV-01] DO Driver Probing") {
@@ -694,4 +705,76 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
   DiskError_e err = g_iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
   CHECK(err == disk_err_unsupported_format);
   CHECK(instance == nullptr);
+}
+
+TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
+  ScopedTempFile_t tmp_do(".do");
+  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+
+  constexpr size_t dos_track_bytes = 4096;
+  const std::vector<uint8_t> pristine_track(dos_track_bytes, 0);
+
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  void* inst = nullptr;
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
+  g_do_driver.close(inst);
+
+  // Scribble over the image behind the driver's back, so a write that never
+  // reaches the file cannot pass this case.
+  {
+    FILE* f = fopen(tmp_do.c_str(), "r+b");
+    REQUIRE(f != nullptr);
+    const std::vector<uint8_t> scribble(dos_track_bytes, 0x5A);
+    REQUIRE(fwrite(scribble.data(), 1, scribble.size(), f) == scribble.size());
+    fclose(f);
+  }
+
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  CHECK(g_do_driver.write_track_bits(inst, 0, bits.data(), bit_count) ==
+        disk_err_none);
+  g_do_driver.close(inst);
+
+  CHECK(read_image_track(tmp_do.path(), 0, dos_track_bytes) == pristine_track);
+}
+
+TEST_CASE(
+    "DiskDrivers: [DRV-16] A track short a sector never reaches the image") {
+  ScopedTempFile_t tmp_do(".do");
+  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+
+  constexpr size_t dos_track_bytes = 4096;
+
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  void* inst = nullptr;
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
+
+  // Break the first data prologue: fifteen sectors still read, the sixteenth
+  // has no data field the decoder will accept.
+  std::vector<uint8_t> nibbles = to_nibbles(bits, bit_count);
+  constexpr size_t first_data_prologue = 22;
+  REQUIRE(nibbles[first_data_prologue] == 0xAD);
+  nibbles[first_data_prologue] = 0xAA;
+
+  std::vector<uint8_t> broken_bits;
+  const uint32_t broken_count = to_bits(nibbles, &broken_bits);
+
+  const std::vector<uint8_t> before =
+      read_image_track(tmp_do.path(), 0, dos_track_bytes);
+  CHECK(g_do_driver.write_track_bits(inst, 0, broken_bits.data(),
+                                     broken_count) == disk_err_corrupt);
+  g_do_driver.close(inst);
+
+  CHECK(read_image_track(tmp_do.path(), 0, dos_track_bytes) == before);
 }

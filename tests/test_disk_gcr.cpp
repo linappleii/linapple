@@ -308,27 +308,29 @@ TEST_CASE(
   std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
   std::array<uint8_t, nibbles_per_track> track_image{};
 
-  SUBCASE("Unformatted track (all 0xFF sync bytes) produces zeroed output") {
+  SUBCASE("Unformatted track (all 0xFF sync bytes) decodes nothing") {
     track_image.fill(sync_byte);
     work_buffer.fill(0xAA);
 
-    disk_encoding_denibblize_track(work_buffer.data(), track_image.data(), true,
-                                   static_cast<int>(nibbles_per_track));
+    CHECK(disk_encoding_denibblize_track(
+              work_buffer.data(), track_image.data(), true,
+              static_cast<int>(nibbles_per_track)) == disk_err_corrupt);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == 0x00);
+      CHECK(work_buffer[i] == 0xAA);
     }
   }
 
-  SUBCASE("Zero-filled track (all 0x00) safely zeroed without crash") {
+  SUBCASE("Zero-filled track (all 0x00) decodes nothing without crash") {
     track_image.fill(0x00);
     work_buffer.fill(0x55);
 
-    disk_encoding_denibblize_track(work_buffer.data(), track_image.data(), true,
-                                   static_cast<int>(nibbles_per_track));
+    CHECK(disk_encoding_denibblize_track(
+              work_buffer.data(), track_image.data(), true,
+              static_cast<int>(nibbles_per_track)) == disk_err_corrupt);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == 0x00);
+      CHECK(work_buffer[i] == 0x55);
     }
   }
 
@@ -339,11 +341,12 @@ TEST_CASE(
       work_buffer.fill(0x33);
       track_image.fill(sync_byte);
 
-      disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                     true, truncated_lengths[i]);
+      CHECK(disk_encoding_denibblize_track(
+                work_buffer.data(), track_image.data(), true,
+                truncated_lengths[i]) == disk_err_corrupt);
 
       for (size_t b = 0; b < track_data_size; ++b) {
-        CHECK(work_buffer[b] == 0x00);
+        CHECK(work_buffer[b] == 0x33);
       }
     }
   }
@@ -367,12 +370,12 @@ TEST_CASE(
     track_image[8] = encode_4and4_low(25);
 
     work_buffer.fill(0x00);
-    disk_encoding_denibblize_track(work_buffer.data(), track_image.data(), true,
-                                   static_cast<int>(nibbles_per_track));
+    CHECK(disk_encoding_denibblize_track(
+              work_buffer.data(), track_image.data(), true,
+              static_cast<int>(nibbles_per_track)) == disk_err_corrupt);
 
-    // Sector 0 was bypassed due to sector range violation; work_buffer must not
-    // be corrupted
-    for (size_t b = 0; b < sector_size; ++b) {
+    // One sector short is a track the image never sees.
+    for (size_t b = 0; b < track_data_size; ++b) {
       CHECK(work_buffer[b] == 0x00);
     }
   }
@@ -464,12 +467,9 @@ TEST_CASE("DiskGCR: [GCR-08] A flipped data nibble is refused, not decoded") {
             work_buffer.data(), track_image.data(), true,
             static_cast<int>(nibbles_per_track)) == disk_err_corrupt);
 
-  // The corrupted sector was never written; the other fifteen still decode.
-  for (size_t i = 0; i < sector_size; ++i) {
+  // One bad field and the whole track stays out of the image.
+  for (size_t i = 0; i < track_data_size; ++i) {
     CHECK(work_buffer[i] == 0x00);
-  }
-  for (size_t i = sector_size; i < track_data_size; ++i) {
-    CHECK(work_buffer[i] == original_track[i]);
   }
 }
 

@@ -195,22 +195,17 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
     return decoded;
   }
 
-  const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
-                      (static_cast<int64_t>(track) * dos::track_size);
-
-  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
-    if (fread(image_ptr->work_buffer.data(), 1, dos::track_size,
-              image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
-      image_ptr->work_buffer.fill(0);
-    }
-  } else {
-    image_ptr->work_buffer.fill(0);
-  }
-
-  disk_encoding_denibblize_track(
+  // Nothing reaches the file unless all sixteen sectors came back, so a
+  // track the head only half-read cannot cost the image the other half.
+  const DiskError_e decoded_track = disk_encoding_denibblize_track(
       image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
       image_ptr->is_dos_order, static_cast<int>(nibble_count));
+  if (decoded_track != disk_err_none) {
+    return decoded_track;
+  }
 
+  const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
+                      (static_cast<int64_t>(track) * dos::track_size);
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }

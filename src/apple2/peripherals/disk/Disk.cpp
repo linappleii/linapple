@@ -299,10 +299,12 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   if (disk_ptr->bit_count != 0 && disk_ptr->driver != nullptr &&
       disk_ptr->driver->write_track_bits != nullptr) {
-    disk_ptr->driver->write_track_bits(
+    // A driver that refuses the track leaves the buffer dirty, because the
+    // changes it holds are still not in the image.
+    const DiskError_e error = disk_ptr->driver->write_track_bits(
         disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
         disk_ptr->track_bits.data(), disk_ptr->bit_count);
-    disk_ptr->is_dirty = false;
+    disk_ptr->is_dirty = (error != disk_err_none);
   }
 }
 
