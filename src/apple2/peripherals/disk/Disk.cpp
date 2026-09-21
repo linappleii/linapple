@@ -32,10 +32,10 @@ constexpr size_t path_max_len = disk_path_max;
 namespace physical {
 // The 556 on the interface card holds the drive enabled after the software
 // drops the motor switch: half D2 charges C2, 22 uF, through R5, 47 kohm,
-// and releases at two thirds of Vcc. Sather gives the window as about a
-// second; 47e3 * 22e-6 is 1.034 s, which is 1,051,098 cycles of the 6502
-// clock at 1,020,484 Hz.
-constexpr uint32_t motor_off_delay_cycles = 1051098;
+// and releases at two thirds of Vcc. A monostable times out at RC * ln 3,
+// so 47e3 * 22e-6 * 1.0986 is 1.137 s, which is 1,160,290 cycles of the
+// 6502 clock at 1,020,484 Hz. Sather gives the window as about a second.
+constexpr uint32_t motor_off_delay_cycles = 1160290;
 
 // The write light is a front-panel indicator rather than a hardware line,
 // held for a second after the last write so a burst of them reads as one.
