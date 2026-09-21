@@ -138,8 +138,35 @@ class DiskIoHarness_t {
     return io_map_dispatch(0, switch_address, 0, 0, executed_cycles);
   }
 
+  // The sequencer hands a byte over once, holds it for a few cells and then
+  // clears it, so a caller after the next byte polls the way RWTS does:
+  // wait for the register to drop, then wait for bit 7 to come back.
   auto read_byte() -> uint8_t {
-    return io_map_dispatch(0, io_read_write_switch, 0, 0, 0);
+    constexpr uint32_t poll_step = 2;
+    constexpr uint32_t slice_limit = 4096;
+    constexpr int poll_limit = 40000;
+    for (int poll = 0; poll < poll_limit; ++poll) {
+      slice_cycle_ += poll_step;
+      const uint8_t value =
+          io_map_dispatch(0, io_read_write_switch, 0, 0, slice_cycle_);
+      if (slice_cycle_ >= slice_limit) {
+        end_slice();
+      }
+      if ((value & latch_bit) == 0) {
+        register_is_clear_ = true;
+        continue;
+      }
+      if (register_is_clear_) {
+        register_is_clear_ = false;
+        return value;
+      }
+    }
+    return 0;
+  }
+
+  auto end_slice() -> void {
+    peripheral_manager_think(slice_cycle_);
+    slice_cycle_ = 0;
   }
 
   auto write_latch(uint8_t val) -> uint8_t {
@@ -163,16 +190,16 @@ class DiskIoHarness_t {
     peripheral_load_state(slot_6, &in_state, sizeof(in_state));
   }
 
-  // The within-slice access mark is a transient the save state does not
-  // carry, so a round trip through it starts the slice over.
-  auto clear_accessed_flag() -> void {
-    const DiskSavedState_t state = get_saved_state();
-    load_saved_state(state);
+  auto spin(uint32_t cycles) -> void {
+    end_slice();
+    peripheral_manager_think(cycles);
   }
 
  private:
   TestConfig_t machine_{disk_ii_no_speed_statement()};
   TestFixtures::EphemeralDiskFixture_t disk_fixture_;
+  uint32_t slice_cycle_ = 0;
+  bool register_is_clear_ = true;
 };
 
 }  // namespace
@@ -226,24 +253,18 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
 
   harness.select_read_mode();
 
-  // Read initial byte b_start and record initial head byte position
   const uint8_t b_start = harness.read_byte();
+  harness.end_slice();
   const DiskSavedState_t state_before = harness.get_saved_state();
   const int32_t pos_before = state_before.drives[0].current_byte_pos;
 
-  // Clear single-cycle access latch to simulate completion of the read cycle
-  harness.clear_accessed_flag();
-
-  // Advance virtual spindle by spinning virtual cycles (20,000 cycles via
-  // think)
+  // The medium is clocked in 125 ns units, four to a sequencer step and two
+  // steps to a cycle, so at the default cell timing of 32 units these cycles
+  // carry 20000 * 8 / 32 = 5000 cells, which is 625 whole byte positions.
   constexpr uint32_t elapsed_cycles = 20000;
-  harness.think(elapsed_cycles);
+  constexpr int32_t expected_advance = 625;
+  harness.spin(elapsed_cycles);
 
-  // Assert that current_byte_pos has deterministically advanced by 20000 >> 5
-  // (625 bytes). One revolution is 6308 bytes, so the head cannot lap the
-  // index hole and wrap inside this window.
-  constexpr int32_t expected_advance =
-      static_cast<int32_t>(elapsed_cycles >> 5);
   const int32_t expected_pos = pos_before + expected_advance;
 
   const DiskSavedState_t state_after = harness.get_saved_state();
@@ -275,38 +296,38 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   DiskIoHarness_t harness;
   mark_floating_bus();
 
-  // Switch to write mode ($C0EF)
-  harness.select_write_mode();
-
-  // Write alternating bit pattern 0x55 to latch ($C0ED)
+  // Loading the register is the sequencer's job, so the byte the 6502 puts on
+  // the bus lands a few cells later rather than at the access itself.
+  constexpr uint32_t settle_cycles = 64;
   constexpr uint8_t pattern_55 = 0x55;
-  const uint8_t write_ret_55 = harness.write_latch(pattern_55);
-  CHECK(write_ret_55 == pattern_55);
+  constexpr uint8_t pattern_aa = 0xAA;
 
-  // $C0ED is odd, so the register it just loaded never reaches the data bus
+  harness.select_write_mode();
+  harness.write_latch(pattern_55);
+  harness.think(settle_cycles);
+
+  // $C0ED is odd, so the register it loads never reaches the data bus
   CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
-  // Verify internal latch state reflects 0x55
   DiskSavedState_t state_55 = harness.get_saved_state();
   CHECK(state_55.io_latch == pattern_55);
   CHECK(state_55.is_write_mode != 0);
 
-  // Write complementary bit pattern 0xAA to latch ($C0ED)
-  constexpr uint8_t pattern_aa = 0xAA;
-  const uint8_t write_ret_aa = harness.write_latch(pattern_aa);
-  CHECK(write_ret_aa == pattern_aa);
-
+  harness.write_latch(pattern_aa);
+  harness.think(settle_cycles);
   CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
-  // Verify internal latch state reflects 0xAA
   DiskSavedState_t state_aa = harness.get_saved_state();
   CHECK(state_aa.io_latch == pattern_aa);
 
-  // Sensing write protect at $C0EE loads the register, so the pattern does
-  // not survive the mode switch. The shift-right command feeds the protect
-  // line in on every step, so the answer is saturated either way and never a
-  // partial byte, whatever the fixture's permissions are.
-  const uint8_t protect_sense = harness.select_read_mode();
+  // Sensing write protect at $C0EE takes the register over. The shift-right
+  // command feeds the protect line in on every step, so the answer is
+  // saturated either way and never a partial byte, whatever the fixture's
+  // permissions are.
+  harness.select_read_mode();
+  harness.think(settle_cycles);
+  const uint8_t protect_sense =
+      harness.read_switch(io_read_write_switch, probe_cycles);
   CHECK((protect_sense == 0x00 || protect_sense == 0xFF));
 
   DiskSavedState_t state_read_mode = harness.get_saved_state();
@@ -332,16 +353,14 @@ TEST_CASE("DiskIO: [IO-22] Even switches answer with the data register") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
-  // Loading the register from the bus is the Q7-and-Q6 function, so the
-  // marker only lands with the drive enabled and write mode selected.
+  // Holding the card in load mode makes the register a latch again: every
+  // sequencer step reloads it from the same byte, so a probe can tell a
+  // register answer apart from the bus or a constant.
   harness.power_motor_on();
   harness.select_write_mode();
   harness.write_latch(register_marker);
+  harness.read_switch(io_latch_switch, probe_cycles);
 
-  // None of these three touches the register, so all three answer with the
-  // byte it already holds rather than with the bus or a constant. Repeating
-  // the read shows the answer is a latch, not the pseudo-random approximation
-  // this replaced.
   constexpr size_t repeat_count = 32;
   for (size_t i = 0; i < repeat_count; ++i) {
     CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) ==
@@ -360,9 +379,17 @@ TEST_CASE("DiskIO: [IO-23] The read-mode switch drives the write-protect bit") {
   harness.power_motor_on();
   harness.select_write_mode();
   harness.write_latch(register_marker);
+  uint32_t cycle = probe_cycles;
+  harness.read_switch(io_latch_switch, cycle);
+  CHECK(harness.read_switch(io_stepper_phase_0_off, cycle) == register_marker);
 
-  // $C0EE is the one even switch that loads the register itself, so it is the
-  // control that shows the other three are not returning a stale marker.
-  CHECK(harness.read_switch(io_read_mode_switch, probe_cycles) == 0x00);
-  CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) == 0x00);
+  // $C0EE leaves Q6 set, which is the shift-right command, so the marker is
+  // driven out of the register a cell at a time and replaced by the protect
+  // sense of an empty drive.
+  cycle += 64;
+  harness.read_switch(io_read_mode_switch, cycle);
+  cycle += 64;
+  CHECK(harness.read_switch(io_stepper_phase_0_off, cycle) == 0x00);
+  cycle += 64;
+  CHECK(harness.read_switch(io_stepper_phase_0_off, cycle) == 0x00);
 }

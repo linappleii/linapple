@@ -62,7 +62,7 @@ class DiskStepperHarness_t {
   auto step_phase(int phase, bool on) -> void {
     const uint16_t addr = static_cast<uint16_t>(
         stepper_base + ((phase & 0x03) * 2) + (on ? 1 : 0));
-    io_map_dispatch(0, addr, 0, 0, 0);
+    io_map_dispatch(0, addr, 0, 0, slice_cycle_);
     peripheral_manager_think(0);
   }
 
@@ -97,36 +97,81 @@ class DiskStepperHarness_t {
     }
   }
 
+  // The sequencer hands a byte over once and then clears it, so a caller
+  // after the next byte polls the way RWTS does.
   auto read_data() -> uint8_t {
-    return io_map_dispatch(0, read_write_switch, 0, 0, 0);
+    constexpr int poll_limit = 40000;
+    for (int poll = 0; poll < poll_limit; ++poll) {
+      slice_cycle_ += 2;
+      const uint8_t value =
+          io_map_dispatch(0, read_write_switch, 0, 0, slice_cycle_);
+      if (slice_cycle_ >= slice_limit) {
+        end_slice();
+      }
+      if ((value & 0x80U) == 0) {
+        register_is_clear_ = true;
+        continue;
+      }
+      if (register_is_clear_) {
+        register_is_clear_ = false;
+        return value;
+      }
+    }
+    return 0;
   }
 
+  auto end_slice() -> void {
+    peripheral_manager_think(slice_cycle_);
+    slice_cycle_ = 0;
+  }
+
+  // One byte out of the head the way RWTS does it: load the register, drop
+  // back to shift-write and give the medium the eight cells it needs.
   auto write_data(uint8_t val) -> void {
-    io_map_dispatch(0, latch_switch, 1, val, 0);
-    io_map_dispatch(0, read_write_switch, 0, 0, 0);
+    io_map_dispatch(0, latch_switch, 1, val, slice_cycle_);
+    slice_cycle_ += 4;
+    io_map_dispatch(0, read_write_switch, 0, 0, slice_cycle_);
+    slice_cycle_ += 28;
+    if (slice_cycle_ >= slice_limit) {
+      end_slice();
+    }
   }
 
   auto set_read_mode() -> void {
-    io_map_dispatch(0, read_mode_switch, 0, 0, 0);
+    io_map_dispatch(0, read_mode_switch, 0, 0, slice_cycle_);
   }
 
   auto power_motor_on() -> void {
-    io_map_dispatch(0, motor_on_switch, 0, 0, 0);
+    io_map_dispatch(0, motor_on_switch, 0, 0, slice_cycle_);
   }
 
   auto power_motor_off() -> void {
+    end_slice();
     io_map_dispatch(0, motor_off_switch, 0, 0, 0);
   }
 
-  auto think(uint32_t cycles) -> void { peripheral_manager_think(cycles); }
+  auto think(uint32_t cycles) -> void {
+    end_slice();
+    peripheral_manager_think(cycles);
+  }
 
   auto set_write_mode() -> void {
-    io_map_dispatch(0, write_mode_switch, 0, 0, 0);
+    io_map_dispatch(0, write_mode_switch, 0, 0, slice_cycle_);
   }
 
   auto save_state(DiskSavedState_t& out_state) const -> void {
     size_t size = sizeof(out_state);
     peripheral_save_state(slot_6, &out_state, &size);
+  }
+
+  // The synthesised track starts at gap 1, so parking the head at the index
+  // hole puts the write over sync bytes no sector needs.
+  auto park_at_index_hole() -> void {
+    end_slice();
+    DiskSavedState_t state{};
+    save_state(state);
+    state.drives[0].current_byte_pos = 0;
+    peripheral_load_state(slot_6, &state, sizeof(state));
   }
 
   auto get_saved_state() const -> DiskSavedState_t {
@@ -154,6 +199,10 @@ class DiskStepperHarness_t {
   auto fixture_path() const -> const std::string& {
     return disk_fixture_.path();
   }
+
+  static constexpr uint32_t slice_limit = 4096;
+  uint32_t slice_cycle_ = 0;
+  bool register_is_clear_ = true;
 
  private:
   auto mount_disk() -> void {
@@ -323,7 +372,8 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
     CHECK(state.is_write_mode == 1);
   }
 
-  // 2. Write unique byte pattern to Track 0
+  // 2. Write unique byte pattern into gap 1 of Track 0
+  harness.park_at_index_hole();
   constexpr uint8_t unique_byte = 0xA5;
   harness.write_data(unique_byte);
 
@@ -333,10 +383,12 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
     DiskSavedState_t state{};
     harness.save_state(state);
     CHECK(state.drives[0].is_dirty == 1);
-    CHECK(state.io_latch == unique_byte);
   }
 
-  // 3. Step head to Track 1
+  // 3. Leave write mode before seeking: the head writes whatever the shift
+  // register holds for as long as it is enabled, and a run of zeros over the
+  // gap is a track the image would refuse.
+  harness.set_read_mode();
   harness.step_to_track(1);
   CHECK(harness.get_track() == 1);
 
@@ -350,8 +402,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
     CHECK(state.drives[0].track == 1);
   }
 
-  // 4. Return to Read Mode and step back to Track 0
-  harness.set_read_mode();
+  // 4. Step back to Track 0
   harness.step_to_track(0);
   CHECK(harness.get_track() == 0);
 

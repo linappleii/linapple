@@ -795,11 +795,11 @@ fi
 
     add_linapple_test(tui-disk-select "tests/test_main.cpp;tests/test_tui_disk_select.cpp;src/frontends/tui/TuiDiskSelect.cpp;src/frontends/tui/TuiVideo.cpp;src/frontends/tui/TuiShapeDetector.cpp")
 
-    foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes)
+    foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss)
         string(REPLACE "_" "-" TEST_NAME ${T})
         add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
     endforeach()
-    set_tests_properties(test-disk-modes PROPERTIES TIMEOUT 1)
+    set_tests_properties(test-disk-modes test-disk-lss PROPERTIES TIMEOUT 1)
 
     if(FRONTEND_LOWER STREQUAL "all")
         set(CPU_TEST_TARGET linapple-sdl3)
