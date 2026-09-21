@@ -69,6 +69,18 @@ TEST_CASE("FTPClient: Path Traversal Defense") {
     CHECK(status == FtpStatus_t::path_traversal_rejected);
   }
 
+  SUBCASE("Backslash with no parent reference") {
+    const FtpStatus_t status = client.download_file(
+        "ftp://example.com/disk.dsk", temp_dir.path(), "sub\\evil.dsk");
+    CHECK(status == FtpStatus_t::path_traversal_rejected);
+  }
+
+  SUBCASE("Parent reference in the cache directory") {
+    const FtpStatus_t status = client.download_file(
+        "ftp://example.com/disk.dsk", temp_dir.path() + "/../", "disk.dsk");
+    CHECK(status == FtpStatus_t::path_traversal_rejected);
+  }
+
   SUBCASE("Hidden dotfile rejection") {
     const FtpStatus_t status = client.download_file("ftp://example.com/.bashrc",
                                                     temp_dir.path(), ".bashrc");

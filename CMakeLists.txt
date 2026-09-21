@@ -726,6 +726,10 @@ if(BUILD_TESTING)
     target_include_directories(test-util-hash PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-hash COMMAND test-util-hash)
 
+    add_executable(test-util-path tests/test_util_path.cpp)
+    target_include_directories(test-util-path PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-util-path COMMAND test-util-path)
+
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
     add_linapple_test(ftp-parser "tests/test_main.cpp;tests/test_ftp_parser.cpp")
