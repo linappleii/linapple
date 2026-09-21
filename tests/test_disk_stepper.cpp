@@ -37,8 +37,8 @@ constexpr size_t track_size_bytes = 4096;
 constexpr int track_sample_bytes = 64;
 
 // Declared rather than inherited: with no configuration the slot fallbacks in
-// peripheral_register_internal supply a printer, a Super Serial Card, a
-// Mockingboard and a hard disk that nothing here touches.
+// peripheral_register_internal supply a printer, a Super Serial Card and a
+// Mockingboard beside the Disk II, none of which these cases touch.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 
 class DiskStepperHarness_t {

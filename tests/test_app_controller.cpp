@@ -27,7 +27,7 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 // Every case here builds a real core, so every case states the machine it
 // wants. Left undeclared, the slots come from the fallbacks in
 // peripheral_register_internal -- a printer, a Super Serial Card, a
-// Mockingboard and a hard disk that no case here exercises.
+// Mockingboard and a Disk II that no case here exercises.
 auto declare(const TestConfig_t& machine, AppConfig_t* config) -> void {
   util_safe_strcpy(config->config_path.data(), machine.c_str(),
                    config->config_path.size());

@@ -28,8 +28,8 @@ constexpr uint16_t spin_loop_len = 3;
 constexpr uint8_t jmp_abs_opcode = 0x4C;
 
 // Declared rather than inherited: with no configuration the slot fallbacks in
-// peripheral_register_internal supply a printer, a Super Serial Card, a
-// Mockingboard and a hard disk that nothing here touches.
+// peripheral_register_internal supply a printer, a Super Serial Card and a
+// Mockingboard beside the Disk II, none of which these cases touch.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 
 class DiskMotorHarness_t {
