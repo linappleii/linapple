@@ -55,14 +55,7 @@ constexpr uint8_t addr_hi_mask = 0xFF;
 constexpr uint16_t phase_mask = 0x0F;
 
 // Disk II Controller Softswitches ($C0n0 - $C0nF)
-constexpr uint8_t stepper_0 = 0x0;  // Phase 0 Off
-constexpr uint8_t stepper_1 = 0x1;  // Phase 0 On
-constexpr uint8_t stepper_2 = 0x2;  // Phase 1 Off
-constexpr uint8_t stepper_3 = 0x3;  // Phase 1 On
-constexpr uint8_t stepper_4 = 0x4;  // Phase 2 Off
-constexpr uint8_t stepper_5 = 0x5;  // Phase 2 On
-constexpr uint8_t stepper_6 = 0x6;  // Phase 3 Off
-constexpr uint8_t stepper_7 = 0x7;  // Phase 3 On
+// Stepper phases $C0n0-$C0n7 are dispatched by index in k_disk_io_handlers.
 constexpr uint8_t motor_off = 0x8;
 constexpr uint8_t motor_on = 0x9;
 constexpr uint8_t drive_1 = 0xA;
@@ -814,14 +807,14 @@ using DiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
     -> uint8_t;
 
 constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
-    disk_io_control_stepper,  // 0x0: stepper_0
-    disk_io_control_stepper,  // 0x1: stepper_1
-    disk_io_control_stepper,  // 0x2: stepper_2
-    disk_io_control_stepper,  // 0x3: stepper_3
-    disk_io_control_stepper,  // 0x4: stepper_4
-    disk_io_control_stepper,  // 0x5: stepper_5
-    disk_io_control_stepper,  // 0x6: stepper_6
-    disk_io_control_stepper,  // 0x7: stepper_7
+    disk_io_control_stepper,  // 0x0: Phase 0 Off
+    disk_io_control_stepper,  // 0x1: Phase 0 On
+    disk_io_control_stepper,  // 0x2: Phase 1 Off
+    disk_io_control_stepper,  // 0x3: Phase 1 On
+    disk_io_control_stepper,  // 0x4: Phase 2 Off
+    disk_io_control_stepper,  // 0x5: Phase 2 On
+    disk_io_control_stepper,  // 0x6: Phase 3 Off
+    disk_io_control_stepper,  // 0x7: Phase 3 On
     disk_io_control_motor,    // 0x8: motor_off
     disk_io_control_motor,    // 0x9: motor_on
     disk_io_enable_drive,     // 0xA: drive_1
