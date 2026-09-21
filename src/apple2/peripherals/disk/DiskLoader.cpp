@@ -18,7 +18,6 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
-#include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -39,38 +38,52 @@ auto permanent_registry() -> std::vector<DiskFormatDriver_t*>& {
   return drivers;
 }
 
+struct DriverRejection_t {
+  std::string name;
+  const char* reason;
+};
+
+// Registration happens during static initialisation, with no host to tell and
+// no Logger worth trusting that early, so a refusal waits here for a caller
+// that has somewhere to put it.
+auto rejections() -> std::vector<DriverRejection_t>& {
+  static std::vector<DriverRejection_t> refused;
+  return refused;
+}
+
 auto driver_label(const DiskFormatDriver_t* driver) -> const char* {
-  return (driver->name != nullptr) ? driver->name : "<unnamed>";
+  return (driver != nullptr && driver->name != nullptr) ? driver->name
+                                                        : "<unnamed>";
+}
+
+auto refuse(const DiskFormatDriver_t* driver, const char* reason) -> bool {
+  rejections().push_back(DriverRejection_t{driver_label(driver), reason});
+  return false;
 }
 
 auto driver_is_usable(const DiskFormatDriver_t* driver) -> bool {
   if (driver == nullptr) {
-    Logger::error("DiskLoader: Attempted to register null driver");
-    return false;
+    return refuse(driver, "null driver");
+  }
+  if (driver->abi_version != disk_format_abi_version) {
+    return refuse(driver, "driver ABI version does not match the loader's");
   }
   if (driver->probe == nullptr || driver->open == nullptr ||
       driver->close == nullptr) {
-    Logger::error(
-        "DiskLoader: Driver '%s' missing required functions (probe/open/close)",
-        driver_label(driver));
-    return false;
+    return refuse(driver, "probe, open or close missing");
   }
   const bool has_write_cap =
       (driver->capabilities & disk_driver_cap_write) != 0;
   const bool has_write_fn = driver->write_track != nullptr;
   if (has_write_cap != has_write_fn) {
-    Logger::error("DiskLoader: Driver '%s' write capability mismatch",
-                  driver_label(driver));
-    return false;
-  }
-  const bool has_flux_cap = (driver->capabilities & disk_driver_cap_flux) != 0;
-  const bool has_flux_fn = driver->read_flux_bit != nullptr;
-  if (has_flux_cap != has_flux_fn) {
-    Logger::error("DiskLoader: Driver '%s' flux capability mismatch",
-                  driver_label(driver));
-    return false;
+    return refuse(driver, "write capability disagrees with write_track");
   }
   return true;
+}
+
+auto already_registered(const DiskFormatDriver_t* driver) -> bool {
+  return std::find(registry().begin(), registry().end(), driver) !=
+         registry().end();
 }
 
 constexpr size_t path_max_len = 260;
@@ -136,14 +149,14 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
 }  // namespace
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
-  if (!driver_is_usable(driver)) {
+  if (!driver_is_usable(driver) || already_registered(driver)) {
     return;
   }
   registry().push_back(driver);
 }
 
 auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
-  if (!driver_is_usable(driver)) {
+  if (!driver_is_usable(driver) || already_registered(driver)) {
     return;
   }
   auto* entry = const_cast<DiskFormatDriver_t*>(driver);
@@ -151,7 +164,20 @@ auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
   registry().push_back(entry);
 }
 
-auto disk_loader_reset(void) -> void { registry() = permanent_registry(); }
+auto disk_loader_reset(void) -> void {
+  registry() = permanent_registry();
+  rejections().clear();
+}
+
+auto disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context)
+    -> void {
+  if (sink != nullptr) {
+    for (const auto& rejection : rejections()) {
+      sink(context, rejection.name.c_str(), rejection.reason);
+    }
+  }
+  rejections().clear();
+}
 
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)

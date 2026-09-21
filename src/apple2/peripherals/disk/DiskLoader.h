@@ -13,9 +13,19 @@ extern "C" {
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void;
 
-/* Empties the registry. Test-only: a suite that pushes a synthetic driver in
+/* Restores the drivers that registered themselves and forgets everything else,
+   refusals included. Test-only: a suite that pushes a synthetic driver in
    needs a way back to a known state. Production code never calls it. */
 void disk_loader_reset(void);
+
+/* Reports one driver the loader refused. */
+typedef void (*DiskDriverRejectionFn_t)(void* context, const char* driver_name,
+                                        const char* reason);
+
+/* Hands over every refusal recorded so far and forgets them. Registration runs
+   during static initialisation, when no host exists to be told, so the loader
+   holds refusals until a caller with somewhere to put them asks. */
+void disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context);
 
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)

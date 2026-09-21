@@ -831,6 +831,16 @@ auto cmd_handle_create_image(const void* data, size_t size)
              : peripheral_error;
 }
 
+auto log_refused_driver(void* context, const char* driver_name,
+                        const char* reason) -> void {
+  auto* dp = static_cast<DiskPeripheral_t*>(context);
+  if (dp == nullptr || dp->host == nullptr || dp->host->Log == nullptr) {
+    return;
+  }
+  dp->host->Log(dp, log_error, "Disk II: refused format driver '%s': %s",
+                driver_name, reason);
+}
+
 auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
@@ -843,6 +853,8 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   auto dp = std::unique_ptr<DiskPeripheral_t>(new DiskPeripheral_t());
   dp->host = host;
   dp->slot = slot;
+
+  disk_loader_drain_rejections(log_refused_driver, dp.get());
 
   initialize_peripheral(dp.get());
 

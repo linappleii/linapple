@@ -400,41 +400,47 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
 
 TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
   disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
 
-  // Null driver
   disk_loader_register(nullptr);
 
-  // Missing probe/open/close
-  DiskFormatDriver_t bad_drv1{};
-  bad_drv1.capabilities = 0;
-  bad_drv1.probe = nullptr;
-  bad_drv1.open = nullptr;
-  bad_drv1.close = nullptr;
-  disk_loader_register(&bad_drv1);
+  DiskFormatDriver_t missing_entry_points{};
+  disk_loader_register(&missing_entry_points);
 
-  // Write cap mismatch (cap set, write_track null)
-  DiskFormatDriver_t bad_drv2{};
-  bad_drv2.probe = [](const uint8_t*, size_t, uint32_t, const char*) {
+  DiskFormatDriver_t usable{};
+  usable.probe = [](const uint8_t*, size_t, uint32_t, const char*) {
     return disk_probe_no;
   };
-  bad_drv2.open = [](const char*, uint32_t, bool*, void**) {
+  usable.open = [](const char*, uint32_t, bool*, void**) {
     return disk_err_none;
   };
-  bad_drv2.close = [](void*) {};
-  bad_drv2.capabilities = disk_driver_cap_write;
-  bad_drv2.write_track = nullptr;
-  disk_loader_register(&bad_drv2);
+  usable.close = [](void*) {};
 
-  // Flux cap mismatch (cap set, read_flux_bit null)
-  DiskFormatDriver_t bad_drv3{};
-  bad_drv3.probe = bad_drv2.probe;
-  bad_drv3.open = bad_drv2.open;
-  bad_drv3.close = bad_drv2.close;
-  bad_drv3.capabilities = disk_driver_cap_flux;
-  bad_drv3.read_flux_bit = nullptr;
-  disk_loader_register(&bad_drv3);
+  DiskFormatDriver_t write_cap_mismatch = usable;
+  write_cap_mismatch.capabilities = disk_driver_cap_write;
+  write_cap_mismatch.write_track = nullptr;
+  disk_loader_register(&write_cap_mismatch);
+
+  DiskFormatDriver_t foreign_abi = usable;
+  foreign_abi.abi_version = disk_format_abi_version + 1;
+  disk_loader_register(&foreign_abi);
+
+  CHECK(disk_loader_driver_count() == baseline);
+
+  int refused = 0;
+  disk_loader_drain_rejections(
+      [](void* context, const char*, const char*) {
+        ++*static_cast<int*>(context);
+      },
+      &refused);
+  CHECK(refused == 4);
+
+  disk_loader_register(&usable);
+  disk_loader_register(&usable);
+  CHECK(disk_loader_driver_count() == baseline + 1);
 
   disk_loader_reset();
+  CHECK(disk_loader_driver_count() == baseline);
 }
 
 TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {
