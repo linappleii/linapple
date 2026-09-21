@@ -831,8 +831,8 @@ auto cmd_handle_create_image(const void* data, size_t size)
              : peripheral_error;
 }
 
-auto log_refused_driver(void* context, const char* driver_name,
-                        const char* reason) -> void {
+auto report_refused_driver(void* context, const char* driver_name,
+                           const char* reason) -> void {
   auto* dp = static_cast<DiskPeripheral_t*>(context);
   if (dp == nullptr || dp->host == nullptr || dp->host->Log == nullptr) {
     return;
@@ -854,7 +854,7 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   dp->host = host;
   dp->slot = slot;
 
-  disk_loader_drain_rejections(log_refused_driver, dp.get());
+  disk_loader_drain_rejections(report_refused_driver, dp.get());
 
   initialize_peripheral(dp.get());
 

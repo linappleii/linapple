@@ -43,9 +43,8 @@ struct DriverRejection_t {
   const char* reason;
 };
 
-// Registration happens during static initialisation, with no host to tell and
-// no Logger worth trusting that early, so a refusal waits here for a caller
-// that has somewhere to put it.
+// Registration happens during static initialisation, with no host to tell, so
+// a refusal waits here for a caller that has somewhere to put it.
 auto rejections() -> std::vector<DriverRejection_t>& {
   static std::vector<DriverRejection_t> refused;
   return refused;

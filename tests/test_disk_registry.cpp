@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: GPL-2.0-only
+#include <unistd.h>
+
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
+#include "doctest.h"
+
+namespace {
+
+auto probe_no(const uint8_t*, size_t, uint32_t, const char*) -> DiskProbe_e {
+  return disk_probe_no;
+}
+
+auto probe_possible(const uint8_t*, size_t, uint32_t, const char*)
+    -> DiskProbe_e {
+  return disk_probe_possible;
+}
+
+auto fake_open(const char*, uint32_t, bool* out_is_read_only,
+               void** out_instance) -> DiskError_e {
+  if (out_is_read_only != nullptr) {
+    *out_is_read_only = false;
+  }
+  *out_instance = const_cast<char*>("fake");
+  return disk_err_none;
+}
+
+auto fake_close(void*) -> void {}
+
+auto make_fake(const char* name,
+               DiskProbe_e (*probe)(const uint8_t*, size_t, uint32_t,
+                                    const char*)) -> DiskFormatDriver_t {
+  DiskFormatDriver_t driver{};
+  driver.abi_version = disk_format_abi_version;
+  driver.name = name;
+  driver.probe = probe;
+  driver.open = fake_open;
+  driver.close = fake_close;
+  return driver;
+}
+
+struct ScopedRandomFile_t {
+  char path[64] = "/tmp/linapple_registry_XXXXXX";
+
+  ScopedRandomFile_t() {
+    const int fd = mkstemp(path);
+    if (fd >= 0) {
+      // An odd length no real driver recognises, so only the fakes answer.
+      const std::vector<uint8_t> junk(777, 0x5A);
+      const ssize_t written = write(fd, junk.data(), junk.size());
+      static_cast<void>(written);
+      close(fd);
+    }
+  }
+  ~ScopedRandomFile_t() { unlink(path); }
+
+  ScopedRandomFile_t(const ScopedRandomFile_t&) = delete;
+  auto operator=(const ScopedRandomFile_t&) -> ScopedRandomFile_t& = delete;
+};
+
+auto count_rejections(std::vector<std::string>* names) -> void {
+  disk_loader_drain_rejections(
+      [](void* context, const char* driver_name, const char*) {
+        static_cast<std::vector<std::string>*>(context)->emplace_back(
+            driver_name);
+      },
+      names);
+}
+
+}  // namespace
+
+TEST_CASE("DiskRegistry: every driver source contributes one driver") {
+  disk_loader_reset();
+  CHECK(disk_loader_driver_count() == DISK_FORMAT_DRIVER_COUNT);
+}
+
+TEST_CASE("DiskRegistry: the same driver registers once") {
+  disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
+
+  DiskFormatDriver_t fake = make_fake("Fake Once", probe_no);
+  disk_loader_register(&fake);
+  disk_loader_register(&fake);
+  disk_loader_register(&fake);
+
+  CHECK(disk_loader_driver_count() == baseline + 1);
+  disk_loader_reset();
+  CHECK(disk_loader_driver_count() == baseline);
+}
+
+TEST_CASE("DiskRegistry: a foreign ABI is refused and reported") {
+  disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
+
+  DiskFormatDriver_t fake = make_fake("Fake Future", probe_no);
+  fake.abi_version = disk_format_abi_version + 1;
+  disk_loader_register(&fake);
+
+  CHECK(disk_loader_driver_count() == baseline);
+
+  std::vector<std::string> refused;
+  count_rejections(&refused);
+  REQUIRE(refused.size() == 1);
+  CHECK(refused[0] == "Fake Future");
+
+  disk_loader_reset();
+}
+
+TEST_CASE("DiskRegistry: an ambiguous image always resolves the same way") {
+  const ScopedRandomFile_t image;
+
+  DiskFormatDriver_t first = make_fake("AAA Fake", probe_possible);
+  DiskFormatDriver_t second = make_fake("AAB Fake", probe_possible);
+
+  for (int attempt = 0; attempt < 4; ++attempt) {
+    disk_loader_reset();
+    // Registered second first, so insertion order cannot be what decides it.
+    disk_loader_register(&second);
+    disk_loader_register(&first);
+
+    const DiskFormatDriver_t* chosen = nullptr;
+    void* instance = nullptr;
+    bool read_only = false;
+    CHECK(disk_loader_open(image.path, &read_only, &chosen, &instance) ==
+          disk_err_none);
+    CHECK(chosen == &first);
+  }
+
+  disk_loader_reset();
+}
