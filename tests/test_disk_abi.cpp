@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <sys/stat.h>
+
 #include <cstdint>
 
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -273,6 +275,40 @@ TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
   // frontend that acted on the user's behalf may write it, and quitting must
   // not blank it.
   CHECK(g_set_config_calls == 0);
+}
+
+TEST_CASE("DiskABI: [ABI-16] Insert cannot make the blank image it asks for") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
+
+  TestFixtures::ScopedTempDir_t work_dir("linapple_disk_create_test_");
+  const std::string image_path = work_dir.path() + "/blank.dsk";
+
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  strncpy(cmd.path, image_path.c_str(), sizeof(cmd.path) - 1);
+  cmd.create_if_necessary = 1;
+
+  peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(0);
+
+  DiskStatus_t status{};
+  size_t size = sizeof(status);
+  REQUIRE(peripheral_query(SL6, disk_query_status, &status, &size) ==
+          peripheral_ok);
+  CHECK(status.drive0_loaded == 0);
+  CHECK(status.drive0_last_error == disk_err_unsupported_format);
+
+  // The loader opened the path for writing before it knew what to put there,
+  // so the failed insert leaves an empty file behind that no driver can read.
+  struct stat created {};
+  REQUIRE(stat(image_path.c_str(), &created) == 0);
+  CHECK(created.st_size == 0);
+
+  linapple_shutdown();
 }
 
 TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
