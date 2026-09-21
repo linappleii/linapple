@@ -15,7 +15,6 @@
 #include <memory>
 #include <string>
 
-#include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -87,17 +86,6 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
       if (compressed_size == 0 ||
           total_written >
               compressed_size * disk_container::compression_ratio_limit) {
-        Logger::error(
-            "Decompression aborted for '%s': Uncompressed data (%zu bytes) "
-            "exceeded "
-            "the %zu MB threshold and violated the 100:1 compression ratio "
-            "safety limit "
-            "(compressed size: %zu bytes). Blocked to protect against "
-            "potential zip-bomb exhaustion. "
-            "If you are sure this is a valid disk image, please uncompress the "
-            "file first before loading.",
-            compressed_path, total_written,
-            uncompressed_threshold / (1024 * 1024), compressed_size);
         return false;
       }
     }
@@ -153,17 +141,6 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
       if (compressed_entry_size == 0 ||
           total_written >
               compressed_entry_size * disk_container::compression_ratio_limit) {
-        Logger::error(
-            "Decompression aborted for '%s': Uncompressed data (%zu bytes) "
-            "exceeded "
-            "the %zu MB threshold and violated the 100:1 compression ratio "
-            "safety limit "
-            "(compressed size: %zu bytes). Blocked to protect against "
-            "potential zip-bomb exhaustion. "
-            "If you are sure this is a valid disk image, please uncompress the "
-            "file first before loading.",
-            compressed_path, total_written,
-            uncompressed_threshold / (1024 * 1024), compressed_entry_size);
         return false;
       }
     }

@@ -12,7 +12,6 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
-#include "core/Log.h"
 #include "core/Util_Path.h"
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
@@ -133,21 +132,12 @@ extern "C" auto bitstream_disk_image_write_track(
                       (static_cast<int64_t>(track) *
                        static_cast<int64_t>(image_ptr->track_size));
 
-  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
-    const size_t written = fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
-                                  image_ptr->file.get());
-    if (written != static_cast<size_t>(nibbles)) {
-      Logger::error(
-          "BitstreamDiskImage: Failed to write track %d (wrote %zu of %d "
-          "bytes)\n",
-          track, written, nibbles);
-    } else {
-      fflush(image_ptr->file.get());
-    }
-  } else {
-    Logger::error(
-        "BitstreamDiskImage: Failed to seek to track %d (offset %ld)\n", track,
-        static_cast<long>(offset));
+  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
+    return;
+  }
+  if (fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
+             image_ptr->file.get()) == static_cast<size_t>(nibbles)) {
+    fflush(image_ptr->file.get());
   }
 }
 
@@ -174,8 +164,6 @@ extern "C" auto bitstream_disk_image_create(const char* path,
     if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
       file.reset();
       unlink(path);
-      Logger::error("BitstreamDiskImage: Failed to write disk image '%s'\n",
-                    path);
       return disk_err_io;
     }
   }
@@ -186,8 +174,6 @@ extern "C" auto bitstream_disk_image_create(const char* path,
         remaining_bytes) {
       file.reset();
       unlink(path);
-      Logger::error("BitstreamDiskImage: Failed to write disk image '%s'\n",
-                    path);
       return disk_err_io;
     }
   }

@@ -14,7 +14,6 @@
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "core/Log.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
@@ -192,19 +191,12 @@ auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
                                  const_cast<uint8_t*>(track_buffer),
                                  image_ptr->is_dos_order, nibbles);
 
-  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) == 0) {
-    const size_t written = fwrite(image_ptr->work_buffer.data(), 1,
-                                  dos::track_size, image_ptr->file.get());
-    if (written != static_cast<size_t>(dos::track_size)) {
-      Logger::error(
-          "SectorDiskImage: Failed to write track %d (wrote %zu of %d bytes)\n",
-          track, written, dos::track_size);
-    } else {
-      fflush(image_ptr->file.get());
-    }
-  } else {
-    Logger::error("SectorDiskImage: Failed to seek to track %d (offset %ld)\n",
-                  track, static_cast<long>(offset));
+  if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
+    return;
+  }
+  if (fwrite(image_ptr->work_buffer.data(), 1, dos::track_size,
+             image_ptr->file.get()) == static_cast<size_t>(dos::track_size)) {
+    fflush(image_ptr->file.get());
   }
 }
 
@@ -224,7 +216,6 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
     if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
       file.reset();
       unlink(path);
-      Logger::error("SectorDiskImage: Failed to write disk image '%s'\n", path);
       return disk_err_io;
     }
   }

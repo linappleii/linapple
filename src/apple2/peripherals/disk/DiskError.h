@@ -17,7 +17,9 @@ typedef enum {
   disk_err_corrupt = 3,
   disk_err_write_protected = 4,
   disk_err_out_of_memory = 5,
-  disk_err_io = 6
+  disk_err_io = 6,
+  disk_err_invalid_argument = 7,
+  disk_err_unsupported = 8
 } DiskError_e;
 
 #ifdef __cplusplus

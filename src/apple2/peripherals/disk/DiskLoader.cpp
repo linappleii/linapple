@@ -10,7 +10,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -102,8 +101,6 @@ auto insert_by_name(std::vector<DiskFormatDriver_t*>& drivers,
 
 constexpr size_t path_max_len = 260;
 
-// Disk Loading & Decompression parameters
-constexpr size_t decompression_buffer_size = 8192;
 // Why: 80 KB covers the DOS 3.3 Track 17 VTOC/catalog chain (73.5 KB) +
 // optional MacBinary header (128 bytes) so sector image probing can inspect
 // filesystem signatures definitively.
@@ -196,9 +193,15 @@ auto disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context)
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)
     -> DiskError_e {
+  if (out_driver != nullptr) {
+    *out_driver = nullptr;
+  }
+  if (out_instance != nullptr) {
+    *out_instance = nullptr;
+  }
   if (image_path == nullptr || out_driver == nullptr ||
       out_instance == nullptr) {
-    return disk_err_io;
+    return disk_err_invalid_argument;
   }
 
   char load_path[path_max_len] = {0};
@@ -209,10 +212,7 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
     return disk_err_io;
   }
 
-  std::unique_ptr<TemporaryFileGuard> temp_guard;
-  if (is_temporary) {
-    temp_guard.reset(new TemporaryFileGuard(load_path));
-  }
+  TemporaryFileGuard temp_guard(is_temporary ? load_path : nullptr);
 
   FilePtr_t image_file(fopen(load_path, "rb"), fclose);
   if (image_file == nullptr) {
@@ -223,6 +223,11 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
   if (raw_file_size < 0) {
     return disk_err_io;
   }
+  // Every driver measures its image in 32 bits; a larger file is a format this
+  // loader cannot describe, not a corrupt one.
+  if (raw_file_size > static_cast<int64_t>(UINT32_MAX)) {
+    return disk_err_unsupported;
+  }
   const auto file_size = static_cast<uint32_t>(raw_file_size);
 
   std::vector<uint8_t> header(probe_header_size, 0);
@@ -232,6 +237,9 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
 
   const uint32_t file_offset =
       disk_container_detect_macbinary(header.data(), header_read, file_size);
+  if (file_offset > file_size) {
+    return disk_err_corrupt;
+  }
   const uint8_t* probe_ptr = header.data() + file_offset;
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;
@@ -271,7 +279,7 @@ auto disk_loader_driver_at(uint32_t index) -> const DiskFormatDriver_t* {
 auto disk_loader_create(const char* path, const char* driver_name)
     -> DiskError_e {
   if (path == nullptr || driver_name == nullptr || path[0] == '\0') {
-    return disk_err_io;
+    return disk_err_invalid_argument;
   }
 
   // Refusing a path that exists is the whole safety of this call: a driver
