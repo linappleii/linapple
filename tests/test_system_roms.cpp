@@ -12,6 +12,9 @@
 #include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited: every case here asks only where the reset
+// vector lands, and the slot fallbacks in peripheral_register_internal would
+// build four cards to answer it.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 }  // namespace
 

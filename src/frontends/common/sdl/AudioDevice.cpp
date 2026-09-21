@@ -10,6 +10,7 @@ auto audio_device_buffer_samples(int rate_hz) -> uint16_t {
   while (samples * 2 < wanted) {
     samples *= 2;
   }
+  // samples and samples*2 bracket wanted; take whichever is closer.
   if ((wanted - samples) > ((samples * 2) - wanted)) {
     samples *= 2;
   }

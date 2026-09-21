@@ -17,6 +17,9 @@
 #include "test_fixtures.h"
 
 namespace {
+// Declared rather than inherited. Nothing here reaches a card, and the slot
+// fallbacks in peripheral_register_internal would put four of them in the
+// snapshot.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 }  // namespace
 

@@ -32,11 +32,16 @@ constexpr size_t speaker_max_samples_per_update = 24000;
 constexpr double cycles_per_sample = 1.0;
 
 // DSP & Analog Cone Modeling Parameters
-// Time constant of 23000 cycles (~22.5 ms at 1 MHz) yields a high-pass corner
-// near 7 Hz. High precision requires double for the coefficient and state.
+// The tuning choice is the time constant, not the per-sample coefficient.
+// 23000 cycles is 22.5 ms at the NTSC clock, which preserves the feel of the
+// old 0.999-at-44.1-kHz value and a high-pass corner near 7 Hz. At six nines a
+// float coefficient carries only about three significant digits of the decay
+// rate, so the coefficient and the filter state are both double.
 constexpr double dc_blocker_tau_cycles = 23000.0;
 constexpr double dc_blocker_coefficient = 1.0 - (1.0 / dc_blocker_tau_cycles);
-// Cutoff threshold to avoid denormal float values as decay reaches zero.
+// The DC blocker's decay never reaches exactly zero, so without a cutoff the
+// cone emits a trickle forever. It is also what keeps filter_state out of the
+// denormal range.
 constexpr double spindown_silence_epsilon = 0.001;
 
 struct SpeakerEvent_t {
@@ -284,7 +289,9 @@ auto speaker_save_state(void* instance, void* state_buffer, size_t* buffer_size)
   const auto& speaker = *static_cast<const SpeakerPeripheral_t*>(instance);
   auto& ss = *static_cast<SsIoSpeaker_t*>(state_buffer);
   ss.g_spkr_last_cycle = speaker.last_update_cycle;
-  // Fixed fields preserved for .aws snapshot format compatibility.
+  // quiet_cycle_count and recently_active are .aws format fields whose backing
+  // state is gone with the inactivity watchdog. They are written as constants
+  // and ignored on load so that the snapshot layout keeps its promise.
   ss.quiet_cycle_count = 0;
   ss.recently_active = 0;
   ss.state = speaker.current_state ? 1 : 0;
