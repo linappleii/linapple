@@ -230,24 +230,25 @@ static auto host_log(void* instance, PeripheralLogLevel_t level,
   if (fmt == nullptr) {
     return;
   }
-  va_list args;
-  va_start(args, fmt);
+  LogLevel_t mapped = LogLevel_t::k_perf;
   switch (level) {
-    case log_debug:
-      Logger::perf(fmt, args);
-      break;
     case log_info:
-      Logger::info(fmt, args);
+      mapped = LogLevel_t::k_info;
       break;
     case log_warn:
-      Logger::warning(fmt, args);
+      mapped = LogLevel_t::k_warning;
       break;
     case log_error:
-      Logger::error(fmt, args);
+      mapped = LogLevel_t::k_error;
       break;
+    case log_debug:
     default:
       break;
   }
+
+  va_list args;
+  va_start(args, fmt);
+  Logger::log_message_v(mapped, fmt, args);
   va_end(args);
 }
 
