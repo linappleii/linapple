@@ -32,6 +32,7 @@
 #include "core/BasicLiveSync.h"
 #include "core/Log.h"
 #include "core/ProgramLoader.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
 
 using Logger::error;
@@ -156,9 +157,10 @@ auto linapple_get_ticks() -> uint32_t {
 }
 
 static bool s_user_turbo = false;
+static bool s_disk_turbo_enabled = true;
 
 static auto is_disk_turbo() -> bool {
-  return peripheral_is_any_active() && (g_state.needsprecision == 0);
+  return s_disk_turbo_enabled && peripheral_is_any_active();
 }
 
 static auto is_user_turbo() -> bool {
@@ -186,6 +188,12 @@ static auto should_run_full_speed() -> bool {
 }
 
 auto linapple_init() -> int {
+  // Whether a drive access is worth skipping ahead for is the user's call, not
+  // the card's, and it cannot change under a running frame.
+  uint32_t disk_turbo = 1;
+  config_load_int("Configuration", "Disk Turbo", &disk_turbo);
+  s_disk_turbo_enabled = (disk_turbo != 0);
+
   mem_pre_initialize();
   if (!asset_init()) {
     linapple_shutdown();

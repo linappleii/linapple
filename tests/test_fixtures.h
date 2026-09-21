@@ -420,12 +420,12 @@ class ScopedTestConfig_t {
   // and joystick, and no card anywhere.
   static auto enhanced_2e_only() -> Description_t { return Description_t(); }
 
-  // Disk speed is stated rather than inherited from whatever config happens to
-  // be on the machine running the suite.
+  // Disk turbo is stated rather than inherited from whatever config happens
+  // to be on the machine running the suite.
   static auto disk_ii_only() -> Description_t {
     Description_t description;
     description.slots[5] = "Disk II";
-    description.extras.push_back({"Slots", "Enhance Disk Speed", "1"});
+    description.extras.push_back({"Configuration", "Disk Turbo", "1"});
     return description;
   }
 

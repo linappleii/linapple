@@ -85,7 +85,7 @@ auto Configuration_t::load_defaults() -> void {
   set_int("Configuration", "Joystick 0", 2);
   set_int("Configuration", "Joystick 1", 0);
   set_int("Configuration", "Emulation Speed", 10);
-  set_int("Configuration", "Enhance Disk Speed", 1);
+  set_int("Configuration", "Disk Turbo", 1);
   set_int("Configuration", "Video Emulation", 1);
   set_string("Configuration", "Monochrome Color", "#C0C0C0");
   set_int("Configuration", "Mouse in slot 4", 0);
