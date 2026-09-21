@@ -301,12 +301,6 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   close_format_driver(&disk);
 
-  if (disk_peripheral->host != nullptr &&
-      disk_peripheral->host->SetConfig != nullptr) {
-    const char* key =
-        (drive_index == 0) ? config::disk_image1_key : config::disk_image2_key;
-    disk_peripheral->host->SetConfig("Slots", key, "");
-  }
   notify_status_changed(disk_peripheral);
 
   disk = Disk_t();
@@ -399,13 +393,6 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   }
 
   update_disk_metadata(&drive, image_path);
-
-  if (disk_peripheral->host != nullptr &&
-      disk_peripheral->host->SetConfig != nullptr) {
-    const char* key =
-        (drive_index == 0) ? config::disk_image1_key : config::disk_image2_key;
-    disk_peripheral->host->SetConfig("Slots", key, image_path);
-  }
 
   notify_status_changed(disk_peripheral);
 
@@ -734,16 +721,6 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
   }
 
   std::swap(disk_peripheral->drives.at(0), disk_peripheral->drives.at(1));
-
-  if (disk_peripheral->host != nullptr &&
-      disk_peripheral->host->SetConfig != nullptr) {
-    disk_peripheral->host->SetConfig(
-        "Slots", config::disk_image1_key,
-        disk_peripheral->drives.at(0).metadata.full_path.c_str());
-    disk_peripheral->host->SetConfig(
-        "Slots", config::disk_image2_key,
-        disk_peripheral->drives.at(1).metadata.full_path.c_str());
-  }
 
   notify_status_changed(disk_peripheral);
 

@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "apple2/peripherals/Peripheral.h"
@@ -225,6 +226,53 @@ TEST_CASE("DiskABI: [DISK-11] Insert Command NUL Terminator Check") {
   CHECK(status == peripheral_error);
 
   descriptor->shutdown(instance);
+}
+
+namespace {
+int g_set_config_calls = 0;
+}  // namespace
+
+TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
+  g_set_config_calls = 0;
+
+  HostInterface_t host{};
+  host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
+                       PeripheralIOHandler, PeripheralIOHandler) {};
+  host.RegisterCxROM = [](int, uint8_t*) {};
+  host.GetConfig = [](const char*, const char*, char*, size_t) {
+    return false;
+  };
+  host.SetConfig = [](const char*, const char*, const char*) {
+    ++g_set_config_calls;
+  };
+  host.NotifyStatusChanged = [](int) {};
+
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(SL6, &host);
+  REQUIRE(instance != nullptr);
+
+  const std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  strncpy(cmd.path, fixture.c_str(), sizeof(cmd.path) - 1);
+  CHECK(descriptor->command(instance, disk_cmd_insert, &cmd, sizeof(cmd)) ==
+        peripheral_ok);
+
+  CHECK(descriptor->command(instance, disk_cmd_swap_drives, nullptr, 0) ==
+        peripheral_ok);
+
+  DiskEjectCmd_t eject{};
+  eject.drive = disk_drive_1;
+  CHECK(descriptor->command(instance, disk_cmd_eject, &eject,
+                            sizeof(eject)) == peripheral_ok);
+
+  descriptor->shutdown(instance);
+
+  // Which image sits in which drive is the user's configuration: only the
+  // frontend that acted on the user's behalf may write it, and quitting must
+  // not blank it.
+  CHECK(g_set_config_calls == 0);
 }
 
 TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {

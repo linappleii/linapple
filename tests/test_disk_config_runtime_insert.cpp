@@ -18,7 +18,7 @@ namespace {
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 }  // namespace
 
-TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
+TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   TestConfig_t machine(TestConfig_t::disk_ii_only());
   machine.load();
   linapple_init();
@@ -36,9 +36,11 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
   peripheral_command(6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
+  // The card models a drive. Which image the user keeps in it is the
+  // frontend's to remember, so a mechanical insert writes nothing.
   std::string saved =
       Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
-  CHECK(saved == fixture);
+  CHECK(saved.empty());
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
