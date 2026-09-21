@@ -35,7 +35,6 @@ enum {
   max_disk_phases = 80,
   nibbles_per_track = 6656,
   sectors_per_track = 16,
-  interleave_modes_count = 3,
 
   // One limit for every disk path the card handles, command and query alike:
   // a path that survives an insert must survive coming back out.

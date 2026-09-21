@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 // Justification:
-// This header defines a language-neutral C ABI for the GCR nibblization engine.
-// C system headers, typedefs, and C-style arrays are required for compatibility
-// with C-based consumers.
+// This header defines a language-neutral C ABI for the GCR nibblization
+// engine. C system headers and typedefs are required for compatibility with
+// C-based consumers.
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "apple2/peripherals/disk/DiskError.h"
@@ -16,29 +15,20 @@
 extern "C" {
 #endif
 
-enum {
-  disk_encoding_encode_table_size = 64,
-  disk_encoding_decode_table_size = 128,
-  disk_encoding_sector_data_size = 342,
-  disk_encoding_sector_with_checksum_size = 343,
-  disk_encoding_work_buffer_offset = 0x1000,
-  disk_encoding_checksum_buffer_offset = 0x1400,
-  disk_encoding_gap3_size = 16
-};
-
-enum { disk_encoding_work_buffer_size = 0x3000 };
+/* Working storage the codec needs beside the caller's own track buffers. */
+enum { disk_encoding_scratch_size = 0x1800 };
 
 typedef enum {
   disk_sector_order_dos = 0,
   disk_sector_order_prodos = 1
 } DiskSectorOrder_e;
 
-/* The physical order the sixteen logical sectors of a track sit in. */
+/* The physical slot each of the sixteen logical sectors occupies. */
 const uint8_t* disk_encoding_sector_order(DiskSectorOrder_e order);
 
 /* Synthesise one track: gap 1, then sixteen address and data fields with
-   their gaps. Writes *out_count nibbles and, when sync_mask_out is given,
-   one byte per nibble marking the gaps. */
+   their own gaps. Writes *out_count nibbles into nibbles_out and, when
+   sync_mask_out is given, one byte per nibble marking the gaps. */
 DiskError_e disk_encoding_nibblize_track(const uint8_t* sector_order,
                                          uint32_t track,
                                          const uint8_t* sectors_in,
@@ -46,10 +36,14 @@ DiskError_e disk_encoding_nibblize_track(const uint8_t* sector_order,
                                          uint8_t* sync_mask_out,
                                          uint32_t* out_count, uint8_t* scratch);
 
-auto disk_encoding_denibblize_track(uint8_t* work_buffer,
-                                    const uint8_t* track_image,
-                                    bool is_dos_order, uint32_t track,
-                                    uint32_t nibbles) -> DiskError_e;
+/* Read a track back into sixteen sectors. Answers disk_err_corrupt for a
+   bad prologue, epilogue, address field or data checksum, and for a track
+   that is short of a sector; sectors_out is written only on success. */
+DiskError_e disk_encoding_denibblize_track(const uint8_t* sector_order,
+                                           uint32_t track,
+                                           const uint8_t* nibbles_in,
+                                           uint32_t count, uint8_t* sectors_out,
+                                           uint8_t* scratch);
 
 /* Lay a nibble track down as cells: eight to a data nibble, ten to a
    self-sync one. sync_mask marks the self-sync nibbles, one byte each; pass
@@ -72,4 +66,4 @@ DiskError_e disk_encoding_bits_to_nibbles(const uint8_t* bits,
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using)

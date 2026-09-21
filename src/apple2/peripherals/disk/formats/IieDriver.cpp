@@ -64,7 +64,7 @@ struct IieInstance_t {
   FilePtr_t file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
   std::array<uint8_t, sectors_per_track> sector_order{};
-  std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
   std::array<uint8_t, dos::track_size> sectors{};
@@ -260,7 +260,7 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
     const DiskError_e synthesised = disk_encoding_nibblize_track(
         ii_ptr->sector_order.data(), track, ii_ptr->sectors.data(),
         ii_ptr->nibbles.data(), ii_ptr->sync_mask.data(), &nibbles_read,
-        ii_ptr->work_buffer.data());
+        ii_ptr->scratch.data());
     if (synthesised != disk_err_none) {
       return synthesised;
     }

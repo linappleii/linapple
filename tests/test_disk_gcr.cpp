@@ -128,7 +128,7 @@ struct NibblizedTrack_t {
 auto nibblize(const std::array<uint8_t, track_data_size>& sectors,
               const uint8_t* order, uint32_t track) -> NibblizedTrack_t {
   NibblizedTrack_t out;
-  std::array<uint8_t, disk_encoding_work_buffer_size> scratch{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   REQUIRE(disk_encoding_nibblize_track(order, track, sectors.data(),
                                        out.nibbles.data(), out.sync_mask.data(),
                                        &out.count,
@@ -147,22 +147,25 @@ auto execute_round_trip(int track_num, bool is_dos_order) -> void {
       static_cast<uint32_t>(track_num));
   CHECK(track.count == expected_nibble_count);
 
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
+  std::array<uint8_t, track_data_size> sectors{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   CHECK(disk_encoding_denibblize_track(
-            work_buffer.data(), track.nibbles.data(), is_dos_order,
-            static_cast<uint32_t>(track_num), track.count) == disk_err_none);
+            disk_encoding_sector_order(is_dos_order ? disk_sector_order_dos
+                                                    : disk_sector_order_prodos),
+            static_cast<uint32_t>(track_num), track.nibbles.data(), track.count,
+            sectors.data(), scratch.data()) == disk_err_none);
 
   for (size_t i = 0; i < track_data_size; ++i) {
-    CHECK(work_buffer[i] == original_track[i]);
+    CHECK(sectors[i] == original_track[i]);
   }
 }
 
 }  // namespace
 
 TEST_CASE(
-    "DiskGCR: [GCR-01] disk_encoding_work_buffer_size ABI Constant "
+    "DiskGCR: [GCR-01] disk_encoding_scratch_size ABI Constant "
     "Validation") {
-  CHECK(disk_encoding_work_buffer_size == 0x3000);
+  CHECK(disk_encoding_scratch_size == 0x1800);
 }
 
 TEST_CASE("DiskGCR: [GCR-02] DOS 3.3 Sector Order Bit-for-Bit Round-Trip") {
@@ -200,13 +203,14 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
         nibblize(original_track, custom_dos_order.data(), 1);
     CHECK(track.count == expected_nibble_count);
 
-    std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
-                                         track.nibbles.data(), true, 1,
-                                         track.count) == disk_err_none);
+    std::array<uint8_t, track_data_size> sectors{};
+    std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+    CHECK(disk_encoding_denibblize_track(
+              custom_dos_order.data(), 1, track.nibbles.data(), track.count,
+              sectors.data(), scratch.data()) == disk_err_none);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == original_track[i]);
+      CHECK(sectors[i] == original_track[i]);
     }
   }
 
@@ -222,13 +226,14 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
         nibblize(original_track, custom_prodos_order.data(), 2);
     CHECK(track.count == expected_nibble_count);
 
-    std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
-                                         track.nibbles.data(), false, 2,
-                                         track.count) == disk_err_none);
+    std::array<uint8_t, track_data_size> sectors{};
+    std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+    CHECK(disk_encoding_denibblize_track(
+              custom_prodos_order.data(), 2, track.nibbles.data(), track.count,
+              sectors.data(), scratch.data()) == disk_err_none);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == original_track[i]);
+      CHECK(sectors[i] == original_track[i]);
     }
   }
 
@@ -246,17 +251,18 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
         nibblize(original_track, custom_rev_order.data(), 5);
     CHECK(track.count == expected_nibble_count);
 
-    std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
-                                         track.nibbles.data(), true, 5,
-                                         track.count) == disk_err_none);
+    std::array<uint8_t, track_data_size> sectors{};
+    std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+    CHECK(disk_encoding_denibblize_track(
+              disk_encoding_sector_order(disk_sector_order_dos), 5,
+              track.nibbles.data(), track.count, sectors.data(),
+              scratch.data()) == disk_err_none);
 
     for (size_t sec = 0; sec < sectors_per_track; ++sec) {
       const size_t original_base = custom_rev_order[sec] * sector_size;
       const size_t decoded_base = standard_dos_order[sec] * sector_size;
       for (size_t b = 0; b < sector_size; ++b) {
-        CHECK(work_buffer[decoded_base + b] ==
-              original_track[original_base + b]);
+        CHECK(sectors[decoded_base + b] == original_track[original_base + b]);
       }
     }
   }
@@ -314,32 +320,35 @@ TEST_CASE(
 
 TEST_CASE(
     "DiskGCR: [GCR-07] Corrupted and Malformed Nibble Streams Robustness") {
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
+  std::array<uint8_t, track_data_size> sectors{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> track_image{};
 
   SUBCASE("Unformatted track (all 0xFF sync bytes) decodes nothing") {
     track_image.fill(sync_byte);
-    work_buffer.fill(0xAA);
+    sectors.fill(0xAA);
 
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         true, 0, nibbles_per_track) ==
-          disk_err_corrupt);
+    CHECK(disk_encoding_denibblize_track(
+              disk_encoding_sector_order(disk_sector_order_dos), 0,
+              track_image.data(), nibbles_per_track, sectors.data(),
+              scratch.data()) == disk_err_corrupt);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == 0xAA);
+      CHECK(sectors[i] == 0xAA);
     }
   }
 
   SUBCASE("Zero-filled track (all 0x00) decodes nothing without crash") {
     track_image.fill(0x00);
-    work_buffer.fill(0x55);
+    sectors.fill(0x55);
 
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         true, 0, nibbles_per_track) ==
-          disk_err_corrupt);
+    CHECK(disk_encoding_denibblize_track(
+              disk_encoding_sector_order(disk_sector_order_dos), 0,
+              track_image.data(), nibbles_per_track, sectors.data(),
+              scratch.data()) == disk_err_corrupt);
 
     for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == 0x55);
+      CHECK(sectors[i] == 0x55);
     }
   }
 
@@ -347,15 +356,16 @@ TEST_CASE(
     const std::array<uint32_t, 4> truncated_lengths = {{100, 256, 512, 1024}};
 
     for (size_t i = 0; i < truncated_lengths.size(); ++i) {
-      work_buffer.fill(0x33);
+      sectors.fill(0x33);
       track_image.fill(sync_byte);
 
       CHECK(disk_encoding_denibblize_track(
-                work_buffer.data(), track_image.data(), true, 0,
-                truncated_lengths[i]) == disk_err_corrupt);
+                disk_encoding_sector_order(disk_sector_order_dos), 0,
+                track_image.data(), truncated_lengths[i], sectors.data(),
+                scratch.data()) == disk_err_corrupt);
 
       for (size_t b = 0; b < track_data_size; ++b) {
-        CHECK(work_buffer[b] == 0x33);
+        CHECK(sectors[b] == 0x33);
       }
     }
   }
@@ -377,14 +387,15 @@ TEST_CASE(
     track.nibbles[first_address_field + 7] = encode_4and4_high(25);
     track.nibbles[first_address_field + 8] = encode_4and4_low(25);
 
-    work_buffer.fill(0x00);
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
-                                         track.nibbles.data(), true, 0,
-                                         track.count) == disk_err_corrupt);
+    sectors.fill(0x00);
+    CHECK(disk_encoding_denibblize_track(
+              disk_encoding_sector_order(disk_sector_order_dos), 0,
+              track.nibbles.data(), track.count, sectors.data(),
+              scratch.data()) == disk_err_corrupt);
 
     // One sector short is a track the image never sees.
     for (size_t b = 0; b < track_data_size; ++b) {
-      CHECK(work_buffer[b] == 0x00);
+      CHECK(sectors[b] == 0x00);
     }
   }
 }
@@ -466,14 +477,16 @@ TEST_CASE("DiskGCR: [GCR-08] A flipped data nibble is refused, not decoded") {
   track.nibbles[first_data_field + 10] =
       static_cast<uint8_t>(track.nibbles[first_data_field + 10] ^ 0x01U);
 
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
-                                       true, 0,
-                                       track.count) == disk_err_corrupt);
+  std::array<uint8_t, track_data_size> sectors{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+  CHECK(disk_encoding_denibblize_track(
+            disk_encoding_sector_order(disk_sector_order_dos), 0,
+            track.nibbles.data(), track.count, sectors.data(),
+            scratch.data()) == disk_err_corrupt);
 
   // One bad field and the whole track stays out of the image.
   for (size_t i = 0; i < track_data_size; ++i) {
-    CHECK(work_buffer[i] == 0x00);
+    CHECK(sectors[i] == 0x00);
   }
 }
 
@@ -486,19 +499,23 @@ TEST_CASE("DiskGCR: [GCR-09] An address field for another track is refused") {
 
   // The head reads a well-formed track that says it is track 0 while the
   // image is writing track 1: the sectors belong somewhere else.
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  work_buffer.fill(0x7E);
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
-                                       true, 1,
-                                       track.count) == disk_err_corrupt);
+  std::array<uint8_t, track_data_size> sectors{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+  sectors.fill(0x7E);
+  CHECK(disk_encoding_denibblize_track(
+            disk_encoding_sector_order(disk_sector_order_dos), 1,
+            track.nibbles.data(), track.count, sectors.data(),
+            scratch.data()) == disk_err_corrupt);
   for (size_t i = 0; i < track_data_size; ++i) {
-    CHECK(work_buffer[i] == 0x7E);
+    CHECK(sectors[i] == 0x7E);
   }
 
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
-                                       true, 0, track.count) == disk_err_none);
+  CHECK(disk_encoding_denibblize_track(
+            disk_encoding_sector_order(disk_sector_order_dos), 0,
+            track.nibbles.data(), track.count, sectors.data(),
+            scratch.data()) == disk_err_none);
   for (size_t i = 0; i < track_data_size; ++i) {
-    CHECK(work_buffer[i] == original_track[i]);
+    CHECK(sectors[i] == original_track[i]);
   }
 }
 

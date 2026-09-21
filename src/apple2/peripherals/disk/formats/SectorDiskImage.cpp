@@ -30,9 +30,8 @@ struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   bool os_readonly = false;
-  bool is_dos_order = false;
   DiskSectorOrder_e order = disk_sector_order_prodos;
-  std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
   std::array<uint8_t, dos_track_size> sectors{};
@@ -117,7 +116,6 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   image_ptr->data_offset = file_offset;
-  image_ptr->is_dos_order = is_dos_order;
   image_ptr->order =
       is_dos_order ? disk_sector_order_dos : disk_sector_order_prodos;
 
@@ -172,7 +170,7 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
       disk_encoding_sector_order(image_ptr->order),
       static_cast<uint32_t>(track), image_ptr->sectors.data(),
       image_ptr->nibbles.data(), image_ptr->sync_mask.data(), &nibble_count,
-      image_ptr->work_buffer.data());
+      image_ptr->scratch.data());
   if (synthesised != disk_err_none) {
     return synthesised;
   }
@@ -209,8 +207,9 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
   // Nothing reaches the file unless all sixteen sectors came back, so a
   // track the head only half-read cannot cost the image the other half.
   const DiskError_e decoded_track = disk_encoding_denibblize_track(
-      image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
-      image_ptr->is_dos_order, static_cast<uint32_t>(track), nibble_count);
+      disk_encoding_sector_order(image_ptr->order),
+      static_cast<uint32_t>(track), image_ptr->nibbles.data(), nibble_count,
+      image_ptr->sectors.data(), image_ptr->scratch.data());
   if (decoded_track != disk_err_none) {
     return decoded_track;
   }
@@ -220,7 +219,7 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
-  if (fwrite(image_ptr->work_buffer.data(), 1, dos::track_size,
+  if (fwrite(image_ptr->sectors.data(), 1, dos::track_size,
              image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
     return disk_err_io;
   }
