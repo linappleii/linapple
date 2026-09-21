@@ -90,7 +90,7 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(slot_6, disk_cmd_get_status, &status, &size);
+      peripheral_query(slot_6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded != 0);

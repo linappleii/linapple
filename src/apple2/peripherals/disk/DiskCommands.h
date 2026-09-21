@@ -17,15 +17,15 @@ extern "C" {
 // Forward declarations
 struct DiskFormatDriver_t;
 
-enum { disk_default_slot = 6, DISK_STATE_VERSION = 1 };
+// Default expansion slot for the Disk II controller card.
+enum { disk_default_slot = 6 };
 
-typedef enum {
-  disk_drive_0 = 0,
-  disk_drive_1 = 1,
-  disk_drive_count = 2
-} DiskDrive_t;
+// Binary save-state format version. Increment when DiskSavedState_t changes.
+enum { disk_state_version = 1 };
 
-typedef DiskDrive_t DiskDrive_e;
+typedef enum { disk_drive_0 = 0, disk_drive_1 = 1 } DiskDrive_t;
+
+enum { disk_drive_count = 2 };
 
 enum {
   max_disk_image_name_len = 15,
@@ -34,29 +34,17 @@ enum {
   tracks_per_disk = 40,
   phases_per_track = 2,
   max_disk_phases = 80,
-  nibbles_per_track = 0x1A00,
+  nibbles_per_track = 6656,
   sectors_per_track = 16,
   interleave_modes_count = 3,
-
-  disk_encoding_encode_table_size = 64,
-  disk_encoding_decode_table_size = 128,
-  disk_encoding_sector_data_size = 342,
-  disk_encoding_sector_with_checksum_size = 343,
-
-  disk_encoding_work_buffer_offset = 0x1000,
-  disk_encoding_checksum_buffer_offset = 0x1400,
-
-  disk_encoding_gap1_size = 16,
-  disk_encoding_gap2_size = 10,
-  disk_encoding_gap3_size = 16,
 
   disk_insert_path_max = 504,
   disk_status_name_max = 32,
   disk_status_path_max = 256
 };
 
-enum { disk_state_version = DISK_STATE_VERSION };
-
+// Bitmask flags — values may be combined with | to represent concurrent states
+// (e.g. disk_status_read | disk_status_prot for a protected spinning drive).
 typedef enum {
   disk_status_off = 0x00,
   disk_status_read = 0x01,
@@ -70,18 +58,14 @@ typedef enum {
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
   disk_cmd_boot = 0x0006,
-  disk_driver_cmd_set_enhanced_speed = 0x1001,
-  // Backward-compatibility aliases
-  disk_cmd_get_status = 0x0005,
-  disk_cmd_get_supported_extensions = 0x0007
+  // disk_driver_cmd_* commands are issued by the peripheral layer to format
+  // drivers rather than by frontends to the controller.
+  disk_driver_cmd_set_enhanced_speed = 0x1001
 } DiskCmd_t;
 
-typedef DiskCmd_t DiskCmd_e;
-
-typedef enum {
-  disk_query_status = 0x0001,
-  disk_query_supported_extensions = 0x0002
-} DiskQuery_t;
+// Query IDs are dispatched through the query ABI callback, separate from
+// command IDs, so numeric values do not need to be unique across both spaces.
+enum { disk_query_status = 0x0001, disk_query_supported_extensions = 0x0002 };
 
 typedef struct {
   char path[disk_insert_path_max];

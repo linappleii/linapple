@@ -169,10 +169,10 @@ auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
   char supported_exts[EXT_LIST_CAP] = {};
   size_t exts_size = sizeof(supported_exts);
   if (slot == HARDDISK_SLOT) {
-    (void)peripheral_query(HARDDISK_SLOT, harddisk_cmd_get_supported_extensions,
+    (void)peripheral_query(HARDDISK_SLOT, harddisk_query_supported_extensions,
                            supported_exts, &exts_size);
   } else {
-    (void)peripheral_query(slot, disk_cmd_get_supported_extensions,
+    (void)peripheral_query(slot, disk_query_supported_extensions,
                            supported_exts, &exts_size);
   }
 

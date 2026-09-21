@@ -31,7 +31,7 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
@@ -55,7 +55,7 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
@@ -75,7 +75,7 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);
@@ -93,7 +93,7 @@ TEST_CASE("Headless: [HL-04] Program loading") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);
 }

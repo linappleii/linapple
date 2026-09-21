@@ -477,10 +477,10 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
   std::array<char, 256> supported_exts = {};
   size_t exts_size = supported_exts.size();
   if (slot == 7) {
-    (void)peripheral_query(7, harddisk_cmd_get_supported_extensions,
+    (void)peripheral_query(7, harddisk_query_supported_extensions,
                            supported_exts.data(), &exts_size);
   } else {
-    (void)peripheral_query(slot, disk_cmd_get_supported_extensions,
+    (void)peripheral_query(slot, disk_query_supported_extensions,
                            supported_exts.data(), &exts_size);
   }
 

@@ -53,7 +53,7 @@ class DiskProtHarness_t {
   auto get_status() const -> DiskStatus_t {
     DiskStatus_t status{};
     size_t size = sizeof(status);
-    peripheral_query(slot_6, disk_cmd_get_status, &status, &size);
+    peripheral_query(slot_6, disk_query_status, &status, &size);
     return status;
   }
 

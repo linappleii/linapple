@@ -277,7 +277,7 @@ void draw_status_area(int drawflags) {
 
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (peripheral_query(7, harddisk_cmd_get_status, &hstatus, &hsize) ==
+    if (peripheral_query(7, harddisk_query_status, &hstatus, &hsize) ==
         peripheral_ok) {
       hdd_status = hstatus.activity_status;
     }
@@ -1001,7 +1001,7 @@ auto init_sdl() -> int {
 void frame_refresh_status(int drawflags) {
   if (drawflags & DRAW_LEDS) {
     size_t size = sizeof(g_last_disk_status);
-    if (peripheral_query(disk_default_slot, disk_cmd_get_status,
+    if (peripheral_query(disk_default_slot, disk_query_status,
                          &g_last_disk_status, &size) == peripheral_ok) {
       if (g_last_disk_status.drive0_last_error != disk_err_none &&
           g_last_disk_status.drive0_last_error !=

@@ -33,7 +33,7 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
@@ -55,7 +55,7 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);

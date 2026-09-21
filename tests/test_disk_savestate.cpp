@@ -45,7 +45,7 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
 
   DiskStatus_t status{};
   size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
   REQUIRE(status.drive0_loaded == 1);
 
   // Save State
@@ -62,13 +62,13 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
   eject_cmd.drive = disk_drive_0;
   peripheral_command(slot_6, disk_cmd_eject, &eject_cmd, sizeof(eject_cmd));
   peripheral_manager_think(0);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
   CHECK(status.drive0_loaded == 0);
 
   // Restore State
   peripheral_load_state(slot_6, buffer.data(), state_size);
 
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
   CHECK(status.drive0_full_path == fixture.path());
@@ -112,7 +112,7 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
 
   DiskStatus_t status{};
   size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
 
   // Should handle gracefully: not loaded, but reported error
   CHECK(status.drive0_loaded == 0);
@@ -157,7 +157,7 @@ TEST_CASE(
 
   DiskStatus_t status{};
   size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -212,7 +212,7 @@ TEST_CASE(
 
   DiskStatus_t status{};
   size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 

@@ -14,6 +14,16 @@
 extern "C" {
 #endif
 
+enum {
+  disk_encoding_encode_table_size = 64,
+  disk_encoding_decode_table_size = 128,
+  disk_encoding_sector_data_size = 342,
+  disk_encoding_sector_with_checksum_size = 343,
+  disk_encoding_work_buffer_offset = 0x1000,
+  disk_encoding_checksum_buffer_offset = 0x1400,
+  disk_encoding_gap3_size = 16
+};
+
 enum { disk_encoding_work_buffer_size = 0x3000 };
 
 auto disk_encoding_nibblize_track(uint8_t* work_buffer,

@@ -356,7 +356,7 @@ TEST_CASE("DiskStepper: [STEP-03] Flush on Seek") {
   // Query driver to verify healthy status following flushed write
   DiskStatus_t status{};
   size_t status_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
+  peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 }
@@ -430,7 +430,7 @@ TEST_CASE(
   harness.set_read_mode();
   DiskStatus_t status{};
   size_t status_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
+  peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 }
@@ -484,7 +484,7 @@ TEST_CASE("DiskStepper: [STEP-05] Motor Spindown Flushes Dirty Track") {
   // clean
   DiskStatus_t status{};
   size_t status_size = sizeof(status);
-  peripheral_query(slot_6, disk_cmd_get_status, &status, &status_size);
+  peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_spinning == 0);
   CHECK(status.drive0_last_error == disk_err_none);

@@ -85,7 +85,7 @@ TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -103,7 +103,7 @@ TEST_CASE("DiskSmoke: [SMK-03] WOZ 2 Boot") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
 }
 
@@ -113,7 +113,7 @@ TEST_CASE("DiskSmoke: [SMK-05] error - Missing File") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error == disk_err_file_not_found);
 }
@@ -130,7 +130,7 @@ TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
   SmokeTestFixture_t fixture(config, corrupt_file.path());
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error != disk_err_none);
 }
@@ -142,7 +142,7 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
   CHECK(status.drive0_last_error == disk_err_unsupported_format);
 }
@@ -164,7 +164,7 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
   CHECK(std::string(status.drive0_full_path) == disk.path());
 }
@@ -183,7 +183,7 @@ TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   peripheral_command(6, disk_cmd_swap_drives, nullptr, 0);
   peripheral_manager_think(0);
 
-  peripheral_query(6, disk_cmd_get_status, &status, &size);
+  peripheral_query(6, disk_query_status, &status, &size);
   CHECK(std::string(status.drive0_full_path) == disk2.path());
   CHECK(std::string(status.drive1_full_path) == disk1.path());
 }

@@ -424,11 +424,11 @@ void disk_browser_refresh(DiskBrowser_t* b) {
   char supported_exts[256] = {};
   size_t exts_size = sizeof(supported_exts);
   if (b->slot == 7) {
-    (void)peripheral_query(7, harddisk_cmd_get_supported_extensions,
+    (void)peripheral_query(7, harddisk_query_supported_extensions,
                            supported_exts, &exts_size);
   } else {
     (void)peripheral_query(b->slot != 0 ? b->slot : disk_default_slot,
-                           disk_cmd_get_supported_extensions, supported_exts,
+                           disk_query_supported_extensions, supported_exts,
                            &exts_size);
   }
 

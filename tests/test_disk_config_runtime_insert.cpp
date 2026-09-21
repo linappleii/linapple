@@ -43,7 +43,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Updates Config") {
   DiskStatus_t status{};
   size_t size = sizeof(status);
   PeripheralStatus_t ps =
-      peripheral_query(6, disk_cmd_get_status, &status, &size);
+      peripheral_query(6, disk_query_status, &status, &size);
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);

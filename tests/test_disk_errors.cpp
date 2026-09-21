@@ -45,7 +45,7 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
+  peripheral_query(SL6, disk_query_status, &status, &size);
 
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive0_last_error ==
@@ -77,7 +77,7 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
+  peripheral_query(SL6, disk_query_status, &status, &size);
 
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive0_last_error ==
@@ -110,7 +110,7 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
 
   DiskStatus_t status{};
   size_t size = sizeof(status);
-  peripheral_query(SL6, disk_cmd_get_status, &status, &size);
+  peripheral_query(SL6, disk_query_status, &status, &size);
 
   CHECK(status.drive0_loaded != 0);
   CHECK(status.drive0_last_error == static_cast<int32_t>(disk_err_none));

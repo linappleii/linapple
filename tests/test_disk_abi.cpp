@@ -176,7 +176,7 @@ TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
   char exts[256] = {};
   size_t size = sizeof(exts);
   PeripheralStatus_t status =
-      peripheral_query(SL6, disk_cmd_get_supported_extensions, exts, &size);
+      peripheral_query(SL6, disk_query_supported_extensions, exts, &size);
   CHECK(status == peripheral_ok);
   CHECK(strstr(exts, "do") != nullptr);
   CHECK(strstr(exts, "dsk") != nullptr);
@@ -274,11 +274,6 @@ TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {
   status = descriptor->query(instance, disk_query_status, &disk_stat, &size);
   CHECK(status == peripheral_ok);
   CHECK(size == sizeof(DiskStatus_t));
-
-  // Legacy disk_cmd_get_status also works
-  size = sizeof(DiskStatus_t);
-  status = descriptor->query(instance, disk_cmd_get_status, &disk_stat, &size);
-  CHECK(status == peripheral_ok);
 
   // Sizing probe for disk_query_supported_extensions
   size = 0;

@@ -988,7 +988,7 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
     return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
-  switch (static_cast<DiskCmd_e>(cmd)) {
+  switch (static_cast<DiskCmd_t>(cmd)) {
     case disk_cmd_insert:
       return cmd_handle_insert(dp, data, size);
     case disk_cmd_eject:
@@ -1018,8 +1018,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
 
   switch (cmd) {
-    case disk_query_status:
-    case disk_cmd_get_status: {
+    case disk_query_status: {
       const size_t required_size = sizeof(DiskStatus_t);
       if (data == nullptr) {
         *size = required_size;
@@ -1033,8 +1032,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       *size = required_size;
       return peripheral_ok;
     }
-    case disk_query_supported_extensions:
-    case disk_cmd_get_supported_extensions: {
+    case disk_query_supported_extensions: {
       constexpr size_t supported_extensions_cap = 256;
       if (data == nullptr || *size == 0) {
         *size = supported_extensions_cap;

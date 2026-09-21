@@ -130,7 +130,7 @@ TEST_CASE("AppController: Media Loading") {
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
   PeripheralStatus_t res = peripheral_query(
-      disk_default_slot, disk_cmd_get_status, &status, &status_size);
+      disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
@@ -202,7 +202,7 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
   PeripheralStatus_t res = peripheral_query(
-      disk_default_slot, disk_cmd_get_status, &status, &status_size);
+      disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
@@ -235,7 +235,7 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
   DiskStatus_t status = {};
   size_t status_size = sizeof(status);
   PeripheralStatus_t res = peripheral_query(
-      disk_default_slot, disk_cmd_get_status, &status, &status_size);
+      disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
