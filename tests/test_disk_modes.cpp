@@ -31,8 +31,7 @@ constexpr uint8_t other_marker = 0xA5;
 // four sequencer functions to reach the data register.
 constexpr uint32_t settle_cycles = 32;
 
-// One full motor-enable window plus slack: the card counts the window down
-// in units of 64 cycles.
+// One full motor-off hold of 1,159,235 cycles plus slack.
 constexpr uint32_t cycles_to_expire_motor = 1400000;
 
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;

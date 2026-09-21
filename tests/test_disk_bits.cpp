@@ -27,7 +27,8 @@ constexpr uint16_t io_q7_clear = 0xC0EE;
 // takes four cycles and one 6502 second of 1,020,484 cycles carries
 // 1020484 * 8 / 32 cells. Against a 50,464-cell track that is 5.0555
 // revolutions a second, or 303 rpm as the emulated clock measures it: two
-// per cent over a real drive's 297, which is the stretched cycle showing.
+// per cent over a real drive's 297, because a cell here is four 1.02 MHz
+// cycles, 3.92 us, rather than four microseconds.
 constexpr uint32_t cycles_per_emulated_second = 1020484;
 constexpr uint32_t cells_per_emulated_second = 255121;
 constexpr uint32_t cycles_per_cell = 4;
@@ -104,7 +105,7 @@ TEST_CASE("DiskBits: [BITS-01] One emulated second carries 255,121 cells") {
 
   harness.spin(cycles_per_emulated_second);
 
-  // The head laps the track five times and stops a fifth of the way round.
+  // The head laps the track five times and stops 2,801 cells past the hole.
   constexpr uint32_t landed_cell =
       cells_per_emulated_second % nominal_track_cells;
   CHECK(harness.byte_position() ==

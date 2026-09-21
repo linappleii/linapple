@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// modernize-use-trailing-return-type) Justification: This header defines a
-// C99-compatible ABI for nibble-image backends (NIB, NB2),
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
-// allowing shared I/O and container handling.
+// Justification: a C99-compatible ABI for the nibble-image backends (NIB,
+// NB2), so they share I/O and container handling.
 
 #include <stdbool.h>
 #include <stddef.h>

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// modernize-use-trailing-return-type) Justification: This header defines a
-// language-neutral C ABI. C system headers, typedefs, and C-style return types
-// are required for compatibility with C-based consumers.
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// Justification: a language-neutral C ABI for C consumers.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -14,7 +12,6 @@
 extern "C" {
 #endif
 
-// Forward declarations
 struct DiskFormatDriver_t;
 
 // Default expansion slot for the Disk II controller card.
@@ -104,7 +101,7 @@ typedef struct {
   uint8_t write_protected;
 } DiskSetProtectCmd_t;
 
-// Why: Uses natural alignment to ensure a deterministic binary layout without
+// Uses natural alignment to ensure a deterministic binary layout without
 // reliance on non-standard packing directives. Large types are placed at the
 // start of the structure.
 typedef struct {
@@ -125,8 +122,8 @@ typedef struct {
   char drive1_full_path[disk_status_path_max];
 } DiskStatus_t;
 
-// Why: Maintained for binary compatibility with legacy save-states.
-// Plan to remove in a future version in favor of a modern serialization format.
+// The v1 save-state layout, packed so a file is a fixed 13,897 bytes;
+// Disk.cpp converts the card's cell state to and from it.
 #pragma pack(push, 1)
 typedef struct {
   uint32_t version;

@@ -392,7 +392,8 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
 
   // Beneath Apple DOS puts gap 1 between the index hole and the first address
   // field at 40 to 95 sync bytes. 48 lands a sixteen-sector track on 50,464
-  // cells, one revolution in 197.8 ms, inside the 285 to 305 rpm a drive holds.
+  // cells, one revolution in 197.8 ms at four CPU cycles a cell, inside the
+  // 285 to 305 rpm a drive holds.
   put_gap(gap1_size);
 
   for (uint32_t sector_idx = 0; sector_idx < sectors_per_track; ++sector_idx) {

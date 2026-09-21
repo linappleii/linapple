@@ -340,7 +340,7 @@ TEST_CASE("DiskE2E: [E2E-03] A revolution decodes to the sixteen sectors") {
 namespace {
 
 // A medium of solid flux with one blank stretch cut into it. Three blank
-// cells the read amplifier still tracks; past the fourth it has nothing to
+// cells the read amplifier still tracks; from the fourth it has nothing to
 // lock onto and hands the sequencer its own noise, which is the weak bit.
 constexpr uint32_t weak_cell_count = 800;
 constexpr uint32_t weak_gap_first_cell = 400;

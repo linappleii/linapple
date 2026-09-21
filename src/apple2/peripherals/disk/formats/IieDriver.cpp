@@ -222,9 +222,6 @@ auto iie_is_write_protected(void* instance_handle) -> bool {
   return reinterpret_cast<IieInstance_t*>(instance_handle)->os_readonly;
 }
 
-// Why: Fetches track data from the image based on its variant. Legacy images
-// require on-the-fly nibblization with custom sector mapping, while modern
-// images store raw nibbles directly.
 auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
                          uint8_t* bits, uint32_t max_bits,
                          uint32_t* out_bit_count, uint8_t* out_bit_timing)

@@ -84,7 +84,6 @@ class DiskIoHarness_t {
       // Ensure track 0 is primed into memory
       read_byte();
 
-      // Put the head back at the index hole and start a fresh slice
       DiskSavedState_t state = get_saved_state();
       state.drives[0].current_byte_pos = 0;
       load_saved_state(state);
@@ -209,7 +208,7 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
 
   harness.select_read_mode();
 
-  // Long enough to pass a whole sector: fifteen address bytes, a gap, a data
+  // Long enough to pass a whole sector: fourteen address bytes, a gap, a data
   // field of 343 and a second gap.
   constexpr size_t read_count = 1024;
   std::vector<uint8_t> stream;

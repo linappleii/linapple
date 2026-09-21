@@ -60,21 +60,6 @@ namespace regs {
 constexpr uint8_t addr_mask = 0x0F;
 constexpr uint8_t addr_hi_mask = 0xFF;
 constexpr uint16_t phase_mask = 0x0F;
-
-// Disk II Controller Softswitches ($C0n0 - $C0nF)
-// Stepper phases $C0n0-$C0n7 are dispatched by index in k_disk_io_handlers.
-constexpr uint8_t motor_off = 0x8;
-constexpr uint8_t motor_on = 0x9;
-constexpr uint8_t drive_1 = 0xA;
-constexpr uint8_t drive_2 = 0xB;
-constexpr uint8_t read_write = 0xC;  // Q6 Strobe Data
-constexpr uint8_t shift_reg = 0xD;   // Q6 Shift
-constexpr uint8_t read_mode = 0xE;   // Q7 Read
-constexpr uint8_t write_mode = 0xF;  // Q7 Write
-
-constexpr uint8_t mode_read = 0;
-constexpr uint8_t mode_sense_protect = 1;
-constexpr uint8_t mode_shift_write = 2;
 }  // namespace regs
 
 auto copy_string_to_buffer(const std::string& src, char* dest, size_t capacity)
@@ -150,7 +135,6 @@ struct DiskPeripheral_t {
   uint32_t quarter_track_before_release = 0;
   bool magnet_released = false;
 
-  // Host bridge
   HostInterface_t* host = nullptr;
   int slot = 0;
 
@@ -481,8 +465,8 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   disk_peripheral->is_motor_on = (memory_address & 0x01) != 0;
 
-  // Why: The phase magnets hang off the same enable the motor does, so a
-  // DRIVES OFF access drops them; the 9334 keeps Q6 and Q7 regardless.
+  // Dropping the magnets at DRIVES OFF is a simplification: the 9334 keeps
+  // the phase bits and the 556's enable powers the drivers through the hold.
   if (!disk_peripheral->is_motor_on) {
     disk_peripheral->stepper_phase_mask = 0;
   }
@@ -542,9 +526,6 @@ auto settle_head(DiskPeripheral_t* disk_peripheral) -> void {
   move_head_to(disk_peripheral, static_cast<uint32_t>(settled));
 }
 
-// Why: Emulates the physical magnetic stepper motor phases ($C0n0-$C0n7).
-// The 6502 code manually energizes and de-energizes four magnets to pull the
-// head along the cog.
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
                              uint8_t, uint8_t, uint32_t executed_cycles)
     -> uint8_t {
@@ -634,10 +615,11 @@ auto p6_opcode(uint8_t) -> uint8_t { return 0x08; }
 #endif
 
 // Why: With no flux under it the MC3470 amplifies head noise, so it hands
-// the sequencer pulses at roughly the density of a real track instead of
-// silence. The generator belongs to the card instance rather than to the
-// process, so two cards never draw from one stream and a test replaying the
-// same card sees the same noise every run.
+// the sequencer a pulse on about thirty per cent of its steps, 77 in 256,
+// dense enough that RWTS sees bytes instead of silence. The generator
+// belongs to the card instance rather than to the process, so two cards
+// never draw from one stream and a test replaying the same card sees the
+// same noise every run.
 auto noise_pulse(DiskPeripheral_t* disk_peripheral) -> bool {
   disk_peripheral->noise_seed =
       (disk_peripheral->noise_seed * physical::noise_multiplier) +
@@ -684,7 +666,7 @@ auto advance_medium_one_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
       ++drive->zero_cell_run;
     } else if (noise_pulse(disk_peripheral)) {
       // A run this long has no flux for the read amplifier to lock onto, so
-      // what it hands over past the fourth blank cell is its own noise.
+      // what it hands over from the fourth blank cell on is its own noise.
       pulse = true;
     }
     drive->bit_position = (drive->bit_position + 1) % drive->bit_count;
@@ -1291,15 +1273,17 @@ auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
     ds.track = static_cast<int32_t>(d.quarter_track / 4U);
     ds.phase = static_cast<int32_t>(d.quarter_track / 2U);
 
-    // v1 counts whole bytes from the index hole, so a head standing inside a
-    // self-sync byte's two blank cells comes back at the boundary before it.
+    // v1 stores a byte index. The cell position is kept as cells divided by
+    // eight, so it round-trips to the eight-cell boundary below it and is a
+    // true byte count only where every byte is eight cells.
     ds.current_byte_pos =
         static_cast<int32_t>(d.bit_position / physical::cells_per_byte);
 
     ds.user_write_protected = d.is_user_write_protected ? 1 : 0;
-    // v1 counted these down in units of 64 cycles; the card counts cycles,
-    // so a state written here stops the motor sixty-four times sooner in a
-    // pre-pass build, and one read there starts it sixty-four times shorter.
+    // v1 counted these in 64-cycle ticks; the card counts cycles. A state
+    // written here and read by a tick-counting build holds the motor
+    // sixty-four times longer, and a tick-counted state read here holds it
+    // sixty-four times shorter.
     ds.spinning_ticks = d.motor_enable_cycles;
     ds.write_light_ticks = d.write_light_cycles;
 

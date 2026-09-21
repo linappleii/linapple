@@ -379,7 +379,6 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
     CHECK(state.is_write_mode == 1);
   }
 
-  // 2. Write unique byte pattern into gap 1 of Track 0
   harness.park_at_index_hole();
   constexpr uint8_t unique_byte = 0xA5;
   harness.write_data(unique_byte);
@@ -409,7 +408,6 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
     CHECK(state.drives[0].track == 1);
   }
 
-  // 4. Step back to Track 0
   harness.step_to_track(0);
   CHECK(harness.get_track() == 0);
 
@@ -475,7 +473,6 @@ TEST_CASE(
   // Track 16 must NOT be overwritten or corrupted by Track 17's flush
   CHECK(after_track16 == orig_track16);
 
-  // Neither may Track 17 be half-written
   CHECK(after_track17 == orig_track17);
 
   // 6. Step to full phase of Track 16 (Phase 32) and ensure Track 16 remains
@@ -539,7 +536,6 @@ TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
   CHECK(harness.get_spinning_ticks() == 0);
   CHECK(harness.is_dirty() == true);
 
-  // 5. The image keeps the track it had rather than half of a new one
   const std::vector<uint8_t> after_spindown_track0 =
       read_disk_track_bytes(harness.fixture_path(), 0);
   CHECK(after_spindown_track0 == orig_track0);

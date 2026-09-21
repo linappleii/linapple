@@ -56,7 +56,7 @@ DiskError_e disk_encoding_nibbles_to_bits(const uint8_t* nibbles,
                                           uint32_t* out_bit_count);
 
 /* Read cells back the way the shift register does: discard cells until one
-   carries a pulse, then take the eight that follow. */
+   carries a pulse, then take it and the seven that follow as the byte. */
 DiskError_e disk_encoding_bits_to_nibbles(const uint8_t* bits,
                                           uint32_t bit_count, uint8_t* nibbles,
                                           uint32_t max_nibbles,

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// modernize-use-trailing-return-type) Justification: This header defines a
-// language-neutral C ABI. C system headers, typedefs, and C-style return types
-// are required for compatibility with C-based consumers.
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// Justification: a language-neutral C ABI for C consumers.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,13 +17,15 @@ extern "C" {
 enum { disk_format_abi_version = 0 };
 
 /* The longest medium a driver may hand over. A synthesised track is at worst
-   6656 nibbles at ten cells each; a WOZ 5.25" track stays under 53,440. */
+   6656 nibbles at ten cells each; a WOZ 5.25" track is at most 53,248
+   (WOZ 2.0, TRKS). */
 enum { max_track_bits = 69632 };
 
-/* Cell time in 125 ns units, the scale WOZ INFO already uses: 32 is the
-   nominal four microseconds. The raw byte crosses the boundary because every
-   consumer divides it by eight to get CPU cycles, which keeps 31 and 33
-   exact where nanoseconds would drift. */
+/* Cell time in the WOZ INFO unit of 125 ns: 32 is the nominal four
+   microseconds. The card runs eight units to a CPU cycle and carries a cell's
+   remainder into the next step, so 31 and 33 are exact where nanoseconds
+   would drift; the two per cent between a microsecond and a 6502 cycle is
+   accepted. */
 enum { disk_default_bit_timing = 32 };
 
 typedef enum { disk_driver_cap_write = 0x01 } DiskDriverCap_e;

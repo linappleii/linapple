@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// modernize-use-trailing-return-type) Justification: This header defines a
-// language-neutral C ABI. C system headers, typedefs, and C-style return types
-// are required for compatibility with C-based consumers.
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// Justification: a language-neutral C ABI for C consumers.
 
 #ifdef __cplusplus
 extern "C" {

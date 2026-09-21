@@ -72,8 +72,6 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
   return image_ptr.release();
 }
 
-// Why: Destroys the nibble image instance. The RAII FilePtr_t member
-// automatically ensures the physical file is closed during destruction.
 extern "C" auto nibble_disk_image_close(NibbleDiskImage_t* image_ptr) -> void {
   if (image_ptr == nullptr) {
     return;
@@ -161,8 +159,6 @@ extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
   return disk_err_none;
 }
 
-// Why: Generates a new, zero-filled raw nibble image of the specified
-// physical size. Used for creating blank NIB or NB2 images.
 extern "C" auto nibble_disk_image_create(const char* path, uint32_t total_size)
     -> DiskError_e {
   if (path == nullptr) {

@@ -15,7 +15,8 @@ extern "C" {
    Ownership: an open image is the caller's, released by passing it to the
    driver's own close; a driver pointer is never the caller's, it names storage
    its translation unit keeps for the life of the process.
-   Threading: every entry point runs on the emulation thread and nowhere else.
+   Threading: registration runs during static initialisation; every other
+   entry point runs on the emulation thread and nowhere else.
    The registry is a plain list with no lock around it. */
 
 void disk_loader_register(const DiskFormatDriver_t* driver);

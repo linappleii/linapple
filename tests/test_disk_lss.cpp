@@ -50,8 +50,9 @@ constexpr uint32_t arrival_first_32 = 70;
 constexpr uint32_t arrival_second_32 = 102;
 constexpr uint32_t arrival_third_32 = 134;
 
-// A cell of 31 or 33 units is 8k * timing / 4 steps instead of 8k, so the
-// same cells land earlier or later by the amounts the same arithmetic gives.
+// At 31 or 33 units a cell is timing / 4 steps rather than eight, so cell k
+// lands at k * timing / 4 and the same cells arrive earlier or later by the
+// amounts the same arithmetic gives.
 constexpr uint32_t arrival_first_31 = 68;
 constexpr uint32_t arrival_second_31 = 99;
 constexpr uint32_t arrival_third_31 = 130;

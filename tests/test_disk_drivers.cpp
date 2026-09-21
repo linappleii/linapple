@@ -433,7 +433,7 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                     &bit_count, &bit_timing) == disk_err_none);
   // 5808 data nibbles at eight cells and 400 sync nibbles at ten: one
-  // revolution in 197.8 ms at four microseconds a cell.
+  // revolution in 197.8 ms at four CPU cycles a cell.
   constexpr uint32_t synthesised_track_bits = 50464;
   CHECK(bit_count == synthesised_track_bits);
   CHECK(bit_timing == disk_default_bit_timing);
@@ -441,7 +441,7 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   g_do_driver.close(inst);
 }
 
-TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
+TEST_CASE("DiskDrivers: [SEC-01] WOZ rejects an out-of-bounds trks_index") {
   ScopedTempFile_t tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
@@ -469,12 +469,12 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
                                       &bit_count,
                                       &bit_timing) == disk_err_corrupt);
 
-  CHECK(bit_count == 0);  // Rejects out of bounds trks_index
+  CHECK(bit_count == 0);
 
   g_woz2_driver.close(instance);
 }
 
-TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
+TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
   ScopedTempFile_t tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
@@ -515,7 +515,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
                                       &bit_count,
                                       &bit_timing) == disk_err_corrupt);
 
-  CHECK(bit_count == 0);  // Rejects bit_count > block_count capacity
+  CHECK(bit_count == 0);
 
   g_woz2_driver.close(instance);
 }
