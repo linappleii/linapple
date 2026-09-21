@@ -11,7 +11,14 @@ extern "C" {
 // Justification: This header defines a language-neutral C ABI for the disk
 // image loader.
 
-auto disk_loader_register(DiskFormatDriver_t* driver) -> void;
+/* Two contracts hold across everything below.
+   Ownership: an open image is the caller's, released by passing it to the
+   driver's own close; a driver pointer is never the caller's, it names storage
+   its translation unit keeps for the life of the process.
+   Threading: every entry point runs on the emulation thread and nowhere else.
+   The registry is a plain list with no lock around it. */
+
+void disk_loader_register(const DiskFormatDriver_t* driver);
 
 /* Restores the drivers that registered themselves and forgets everything else,
    refusals included. Test-only: a suite that pushes a synthetic driver in
@@ -27,15 +34,14 @@ typedef void (*DiskDriverRejectionFn_t)(void* context, const char* driver_name,
    holds refusals until a caller with somewhere to put them asks. */
 void disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context);
 
-auto disk_loader_open(const char* image_path, bool* out_is_read_only,
-                      DiskFormatDriver_t** out_driver, void** out_instance)
-    -> DiskError_e;
+DiskError_e disk_loader_open(const char* image_path, bool* out_is_read_only,
+                             const DiskFormatDriver_t** out_driver,
+                             void** out_instance);
 
-auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
-    -> void;
+void disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size);
 
-/* How many drivers are registered, and the one at an index. The order is the
-   registration order and an index is only valid until the next registration. */
+/* How many drivers are registered, and the one at an index. The order is by
+   driver name and an index is only valid until the next registration. */
 uint32_t disk_loader_driver_count(void);
 const DiskFormatDriver_t* disk_loader_driver_at(uint32_t index);
 

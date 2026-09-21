@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* C99 compilation smoke test — if this file compiles, the headers are
  * C99-compatible. */
+#include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
 
 void disk_abi_c_smoke(void) {
   DiskInsertCmd_t cmd;
@@ -29,4 +31,9 @@ void disk_abi_c_smoke(void) {
   (void)cmd;
   (void)driver;
   (void)saved_state;
+
+  disk_loader_register(&driver);
+  disk_loader_reset();
+  (void)disk_loader_driver_count();
+  (void)disk_get_descriptor();
 }

@@ -236,9 +236,9 @@ TEST_CASE(
   }
 
   disk_loader_reset();
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
+  disk_loader_register(&g_do_driver);
 
-  DiskFormatDriver_t* selected_driver = nullptr;
+  const DiskFormatDriver_t* selected_driver = nullptr;
   void* disk_instance = nullptr;
   bool is_ro = false;
   CHECK(disk_loader_open(tmp_dos.c_str(), &is_ro, &selected_driver,

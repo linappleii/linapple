@@ -85,7 +85,7 @@ struct Disk_t {
   uint32_t write_light_ticks = 0;
   uint32_t nibble_count = 0;
   std::vector<uint8_t> track_buffer{};
-  DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
   DiskError_e last_error = disk_err_none;
 
@@ -321,9 +321,9 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   drive = Disk_t();
 
   drive.is_user_write_protected = write_protected;
-  const DiskError_e error = disk_loader_open(
-      image_path, &drive.is_os_read_only, const_cast<DiskFormatDriver_t**>(&drive.driver),
-      &drive.driver_instance);
+  const DiskError_e error =
+      disk_loader_open(image_path, &drive.is_os_read_only, &drive.driver,
+                       &drive.driver_instance);
 
   drive.last_error = error;
 

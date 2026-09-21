@@ -25,15 +25,15 @@ namespace {
 // A driver may register itself during static initialisation, so the registry
 // has to come into existence on first use rather than wait its turn in an
 // initialisation order it cannot see.
-auto registry() -> std::vector<DiskFormatDriver_t*>& {
-  static std::vector<DiskFormatDriver_t*> drivers;
+auto registry() -> std::vector<const DiskFormatDriver_t*>& {
+  static std::vector<const DiskFormatDriver_t*> drivers;
   return drivers;
 }
 
 // A driver compiled into the binary outlives any registry a test builds, so it
 // is remembered separately and handed back by disk_loader_reset.
-auto permanent_registry() -> std::vector<DiskFormatDriver_t*>& {
-  static std::vector<DiskFormatDriver_t*> drivers;
+auto permanent_registry() -> std::vector<const DiskFormatDriver_t*>& {
+  static std::vector<const DiskFormatDriver_t*> drivers;
   return drivers;
 }
 
@@ -89,8 +89,8 @@ auto already_registered(const DiskFormatDriver_t* driver) -> bool {
 // "possible", so the order drivers sit in decides which one opens an ambiguous
 // image. Link order is not an answer a user can reason about; alphabetical by
 // name is, and two drivers sharing a name keep the order they arrived in.
-auto insert_by_name(std::vector<DiskFormatDriver_t*>& drivers,
-                    DiskFormatDriver_t* driver) -> void {
+auto insert_by_name(std::vector<const DiskFormatDriver_t*>& drivers,
+                    const DiskFormatDriver_t* driver) -> void {
   const auto at = std::upper_bound(
       drivers.begin(), drivers.end(), driver,
       [](const DiskFormatDriver_t* lhs, const DiskFormatDriver_t* rhs) {
@@ -133,7 +133,7 @@ struct TemporaryFileGuard {
 // claims the disk image based on header content and extension.
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
                       uint32_t file_size, const char* payload_name)
-    -> DiskFormatDriver_t* {
+    -> const DiskFormatDriver_t* {
   char ext_hint[extension_hint_size] = {0};
   const char* dot = strrchr(payload_name, '.');
   if (dot != nullptr) {
@@ -143,7 +143,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
     }
   }
 
-  DiskFormatDriver_t* possible_driver = nullptr;
+  const DiskFormatDriver_t* possible_driver = nullptr;
   for (auto* driver : registry()) {
     const DiskProbe_e result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
@@ -159,7 +159,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
 
 }  // namespace
 
-auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
+auto disk_loader_register(const DiskFormatDriver_t* driver) -> void {
   if (!driver_is_usable(driver) || already_registered(driver)) {
     return;
   }
@@ -170,9 +170,8 @@ auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
   if (!driver_is_usable(driver) || already_registered(driver)) {
     return;
   }
-  auto* entry = const_cast<DiskFormatDriver_t*>(driver);
-  insert_by_name(permanent_registry(), entry);
-  insert_by_name(registry(), entry);
+  insert_by_name(permanent_registry(), driver);
+  insert_by_name(registry(), driver);
 }
 
 auto disk_loader_reset(void) -> void {
@@ -191,8 +190,8 @@ auto disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context)
 }
 
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
-                      DiskFormatDriver_t** out_driver, void** out_instance)
-    -> DiskError_e {
+                      const DiskFormatDriver_t** out_driver,
+                      void** out_instance) -> DiskError_e {
   if (out_driver != nullptr) {
     *out_driver = nullptr;
   }

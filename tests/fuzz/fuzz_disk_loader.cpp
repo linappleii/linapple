@@ -52,7 +52,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     (void)written;
     close(fd);
 
-    DiskFormatDriver_t* out_driver = nullptr;
+    const DiskFormatDriver_t* out_driver = nullptr;
     void* out_instance = nullptr;
     bool is_ro = false;
 

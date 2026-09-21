@@ -121,7 +121,8 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
 }
 
 TEST_CASE("DiskErrors: [ERR-04] The loader answers a bad argument as one") {
-  DiskFormatDriver_t* driver = reinterpret_cast<DiskFormatDriver_t*>(1);
+  const DiskFormatDriver_t* driver =
+      reinterpret_cast<const DiskFormatDriver_t*>(1);
   void* instance = reinterpret_cast<void*>(1);
 
   CHECK(disk_loader_open(nullptr, nullptr, &driver, &instance) ==
