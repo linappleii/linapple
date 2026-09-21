@@ -806,6 +806,13 @@ fi
     # A Disk II case is one unit of hardware behaviour, never a soak: one
     # that stops finishing inside a second has found a regression rather
     # than a slow machine, and the budget says so instead of printing it.
+    # Sanitizers multiply the run time and ctest -j adds contention, so
+    # only the native budget is the regression gate.
+    if(ENABLE_ASAN OR ENABLE_UBSAN)
+        set(DISK_TEST_TIMEOUT 10)
+    else()
+        set(DISK_TEST_TIMEOUT 1)
+    endif()
     set(DISK_TEST_CASES
         test-disk-abi
         test-disk-adapter
@@ -830,7 +837,7 @@ fi
         test-disk-stepper
         test-disk-ui
         test-disk-woz)
-    set_tests_properties( PROPERTIES TIMEOUT 1)
+    set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
 
     if(FRONTEND_LOWER STREQUAL "all")
         set(CPU_TEST_TARGET linapple-sdl3)
