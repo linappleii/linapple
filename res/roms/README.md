@@ -38,6 +38,7 @@ These binary images are distributed for non-commercial preservation, interoperab
 | :--- | :--- | :--- | :--- | :--- |
 | `DISK2.rom` | 256 B | Disk II Interface | Standard 16-sector Disk II controller boot ROM (Part 341-0027) | Apple Inc. (1980) |
 | `DISK2-13sector.rom` | 256 B | Disk II Interface | Early 13-sector Disk II controller boot ROM (Part 341-0013 for DOS 3.2) | Apple Inc. (1978) |
+| `DISK2-P6.rom` | 256 B | Disk II Interface | 16-sector P6 logic state sequencer PROM, the controller state machine (Part 341-0028-A, SHA1 `bc39fbd5b9a8d2287ac5d0a42e639fc4d3c2f9d4`) | Apple Inc. (1980) |
 | `SSC.rom` | 2,048 B | Super Serial Card | Apple Super Serial Card 6551 ACIA firmware ROM (Part 341-0065) | Apple Inc. (1981) |
 | `MouseInterface.rom` | 2,048 B | Mouse Card | Apple Mouse Interface Card 6821 firmware ROM (Part 342-0285) | Apple Inc. (1984) |
 | `Parallel.rom` | 256 B | Parallel Interface | Apple Parallel Printer Interface firmware ROM | Apple Inc. |

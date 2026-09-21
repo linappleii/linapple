@@ -310,6 +310,7 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TK3000e.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-13sector.rom"
+            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Parallel.rom"
@@ -732,6 +733,24 @@ if(BUILD_TESTING)
     target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS})
     add_test(NAME test-disk-registry COMMAND test-disk-registry)
     set_tests_properties(test-disk-registry PROPERTIES TIMEOUT 1)
+
+    # The P6 sequencer PROM is a verbatim Apple part; a wrong or truncated
+    # image would mis-clock every read instead of failing loudly.
+    add_test(NAME test-disk-p6-rom COMMAND sh -c
+[=[
+digest=$(sha1sum "$1" | cut -d " " -f 1)
+size=$(wc -c < "$1")
+if [ "$digest" != "bc39fbd5b9a8d2287ac5d0a42e639fc4d3c2f9d4" ]; then
+  echo "DISK2-P6.rom sha1 is $digest"
+  exit 1
+fi
+if [ "$size" -ne 256 ]; then
+  echo "DISK2-P6.rom is $size bytes"
+  exit 1
+fi
+]=]
+        sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
+    set_tests_properties(test-disk-p6-rom PROPERTIES TIMEOUT 1)
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
