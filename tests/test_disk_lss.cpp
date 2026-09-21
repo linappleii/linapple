@@ -257,8 +257,7 @@ TEST_CASE("DiskLSS: [LSS-01] Bytes arrive on the cycles the P6 loop gives") {
   const std::vector<uint8_t> trace = trace_register(&harness, 200);
   const std::vector<Arrival_t> arrivals = arrivals_in(trace);
 
-  // Four bytes are all the medium holds before it falls silent.
-  REQUIRE(arrivals.size() == 4);
+  REQUIRE(arrivals.size() >= 4);
   CHECK(arrivals[0].cycle == arrival_sync_32);
   CHECK(arrivals[0].value == 0xFF);
   CHECK(arrivals[1].cycle == arrival_first_32);
@@ -346,4 +345,85 @@ TEST_CASE("DiskLSS: [LSS-03] Shift-write lays the register down cell by cell") {
     }
   }
   CHECK(found);
+}
+
+namespace {
+
+// Bit 7 of every byte the sequencer hands over is the leading one that
+// finished it, so only the other seven cells are an unbiased sample of what
+// the read amplifier produced.
+constexpr int sampled_cells_per_byte = 7;
+constexpr int weak_sample_target = 1000;
+constexpr double weak_density_low = 0.20;
+constexpr double weak_density_high = 0.40;
+
+auto read_weak_bytes(LssHarness_t* harness, uint32_t first_cycle,
+                     uint32_t last_cycle) -> std::vector<uint8_t> {
+  std::vector<uint8_t> bytes;
+  bool register_is_clear = true;
+  for (uint32_t cycle = first_cycle; cycle <= last_cycle; ++cycle) {
+    const uint8_t value = harness->read_at(io_q6_clear, cycle);
+    if ((value & 0x80U) == 0) {
+      register_is_clear = true;
+      continue;
+    }
+    if (register_is_clear) {
+      bytes.push_back(value);
+      register_is_clear = false;
+    }
+  }
+  return bytes;
+}
+
+auto count_ones(const std::vector<uint8_t>& bytes) -> int {
+  int ones = 0;
+  for (const uint8_t value : bytes) {
+    for (int bit = 0; bit < sampled_cells_per_byte; ++bit) {
+      ones += (value >> static_cast<unsigned>(bit)) & 1;
+    }
+  }
+  return ones;
+}
+
+}  // namespace
+
+TEST_CASE("DiskLSS: [LSS-04] A four-zero run reads as amplifier noise") {
+  // Enough cycles to carry well past a thousand cells of blank medium.
+  constexpr uint32_t last_cycle = 9000;
+
+  std::vector<uint8_t> first_pass;
+  std::vector<uint8_t> repeat_pass;
+  {
+    LssHarness_t harness(disk_default_bit_timing);
+    first_pass = read_weak_bytes(&harness, 1, last_cycle);
+  }
+  {
+    LssHarness_t harness(disk_default_bit_timing);
+    repeat_pass = read_weak_bytes(&harness, 1, last_cycle);
+  }
+
+  // The medium after the three nibbles is blank, so everything past them is
+  // the amplifier talking.
+  REQUIRE(first_pass.size() * sampled_cells_per_byte > weak_sample_target);
+
+  // Same card, same medium, same noise: the sequence is pinned.
+  CHECK(first_pass == repeat_pass);
+
+  // Blank medium alone would hand over nothing at all, and a stuck generator
+  // would hand over the same byte every time.
+  bool saw_two_values = false;
+  for (size_t index = 1; index < first_pass.size(); ++index) {
+    if (first_pass[index] != first_pass[0]) {
+      saw_two_values = true;
+      break;
+    }
+  }
+  CHECK(saw_two_values);
+
+  const int ones = count_ones(first_pass);
+  const auto sampled =
+      static_cast<int>(first_pass.size()) * sampled_cells_per_byte;
+  const double density = static_cast<double>(ones) / sampled;
+  CHECK(density > weak_density_low);
+  CHECK(density < weak_density_high);
 }

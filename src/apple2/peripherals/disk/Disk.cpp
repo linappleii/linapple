@@ -41,6 +41,7 @@ constexpr uint32_t noise_seed_start = 0x5D1A3B7FU;
 constexpr uint32_t noise_multiplier = 1103515245U;
 constexpr uint32_t noise_increment = 12345U;
 constexpr uint32_t noise_one_in_256 = 77U;
+constexpr uint8_t max_reliable_zero_cells = 3;
 constexpr uint32_t cells_per_byte = 8;
 constexpr uint32_t track_bit_bytes = max_track_bits / 8;
 }  // namespace physical
@@ -88,6 +89,7 @@ struct Disk_t {
   int32_t phase = 0;
   uint32_t bit_position = 0;
   int32_t cell_remaining = 0;
+  uint8_t zero_cell_run = 0;
   uint32_t bit_count = 0;
   uint8_t bit_timing = disk_default_bit_timing;
   bool is_user_write_protected = false;
@@ -320,6 +322,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   disk_ptr->bit_position = 0;
   disk_ptr->cell_remaining = 0;
+  disk_ptr->zero_cell_run = 0;
   disk_ptr->bit_count = 0;
   disk_ptr->bit_timing = disk_default_bit_timing;
 
@@ -556,11 +559,11 @@ auto p6_opcode(uint8_t address) -> uint8_t { return g_rom_disk2_p6[address]; }
 auto p6_opcode(uint8_t) -> uint8_t { return 0x08; }
 #endif
 
-// Why: The MC3470 has no medium to lock onto when the drive is empty, so it
-// amplifies head noise and hands the sequencer pulses at roughly the density
-// of a real track. The generator belongs to the card instance rather than to
-// the process, so two cards never draw from one stream and a test replaying
-// the same card sees the same noise every run.
+// Why: With no flux under it the MC3470 amplifies head noise, so it hands
+// the sequencer pulses at roughly the density of a real track instead of
+// silence. The generator belongs to the card instance rather than to the
+// process, so two cards never draw from one stream and a test replaying the
+// same card sees the same noise every run.
 auto noise_pulse(DiskPeripheral_t* disk_peripheral) -> bool {
   disk_peripheral->noise_seed =
       (disk_peripheral->noise_seed * physical::noise_multiplier) +
@@ -601,6 +604,13 @@ auto advance_medium_one_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
       commit_write_cell(disk_peripheral, drive);
     }
     if (medium_cell(*drive, drive->bit_position) != 0) {
+      drive->zero_cell_run = 0;
+      pulse = true;
+    } else if (drive->zero_cell_run < physical::max_reliable_zero_cells) {
+      ++drive->zero_cell_run;
+    } else if (noise_pulse(disk_peripheral)) {
+      // A run this long has no flux for the read amplifier to lock onto, so
+      // what it hands over past the fourth blank cell is its own noise.
       pulse = true;
     }
     drive->bit_position = (drive->bit_position + 1) % drive->bit_count;
