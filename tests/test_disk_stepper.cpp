@@ -526,8 +526,8 @@ TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
   CHECK(harness.get_spinning_ticks() > 0);
   CHECK(harness.is_dirty() == true);
 
-  // 4. Advance emulation cycles to allow motor to complete spindown (20,000
-  // ticks * 64 cycles)
+  // 4. Run past the 556 motor-off hold of 1,159,235 cycles, with slack, so
+  // the spindown flush has definitely fired before the state is inspected
   harness.think(motor_spindown_cycles);
 
   // Spindown has completed and the flush was attempted. A run of 0xAA is
