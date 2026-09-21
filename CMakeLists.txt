@@ -722,6 +722,11 @@ if(BUILD_TESTING)
     target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
+    add_executable(test-disk-adapter tests/test_disk_adapter.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
+    target_include_directories(test-disk-adapter PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-disk-adapter COMMAND test-disk-adapter)
+    set_tests_properties(test-disk-adapter PROPERTIES TIMEOUT 1)
+
     add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
     target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS})

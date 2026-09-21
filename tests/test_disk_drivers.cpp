@@ -780,3 +780,87 @@ TEST_CASE(
 
   CHECK(read_image_track(tmp_do.path(), 0, dos_track_bytes) == before);
 }
+
+namespace {
+
+// A WOZ file the driver will accept: the 1,536-byte header block of INFO,
+// TMAP and TRKS chunks, then one 512-byte data block of cells at block 3.
+auto write_woz_with_track(const std::string& path,
+                          const std::vector<uint8_t>& cells, uint32_t bit_count,
+                          uint8_t timing) -> void {
+  std::vector<uint8_t> file(1536 + 512, 0);
+  memcpy(file.data(), "WOZ2\xFF\n\r\n", 8);
+  memcpy(file.data() + 12, "INFO", 4);
+  file[16] = 60;
+  file[21] = 1;
+  file[20 + 39] = timing;
+  memcpy(file.data() + 80, "TMAP", 4);
+  file[84] = 160;
+  memset(file.data() + 88, 0xFF, 160);
+  file[88] = 0;
+  memcpy(file.data() + 248, "TRKS", 4);
+  file[256] = 3;
+  file[258] = 1;
+  file[260] = static_cast<uint8_t>(bit_count);
+  file[261] = static_cast<uint8_t>(bit_count >> 8);
+  memcpy(file.data() + 1536, cells.data(), cells.size());
+
+  FILE* f = fopen(path.c_str(), "wb");
+  REQUIRE(f != nullptr);
+  REQUIRE(fwrite(file.data(), 1, file.size(), f) == file.size());
+  fclose(f);
+}
+
+}  // namespace
+
+TEST_CASE("DiskDrivers: [DRV-17] A recorded WOZ track reads back cell exact") {
+  ScopedTempFile_t tmp_file(".woz");
+
+  const std::vector<uint8_t> recorded = {0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96};
+  constexpr uint32_t recorded_bits = 48;
+  constexpr uint8_t measured_timing = 31;
+  write_woz_with_track(tmp_file.path(), recorded, recorded_bits,
+                       measured_timing);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
+  CHECK(bit_count == recorded_bits);
+  CHECK(bit_timing == measured_timing);
+  CHECK(to_nibbles(bits, bit_count) == recorded);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskDrivers: [DRV-18] A track wider than the buffer is refused") {
+  ScopedTempFile_t tmp_file(".woz");
+
+  const std::vector<uint8_t> recorded = {0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96};
+  constexpr uint32_t recorded_bits = 48;
+  write_woz_with_track(tmp_file.path(), recorded, recorded_bits,
+                       disk_default_bit_timing);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits(max_track_bits / 8, 0xC3);
+  uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
+
+  // Forty cells of room for forty-eight cells of track: the driver refuses
+  // rather than handing the card a revolution with its tail missing.
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), 40, &bit_count,
+                                      &bit_timing) == disk_err_unsupported);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xC3);
+
+  g_woz2_driver.close(instance);
+}
