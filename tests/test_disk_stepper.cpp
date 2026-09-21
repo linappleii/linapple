@@ -546,3 +546,26 @@ TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
   CHECK(status.drive0_spinning == 0);
   CHECK(status.drive0_last_error == disk_err_none);
 }
+
+TEST_CASE("DiskStepper: [STEP-06] A dead motor timer leaves the head alone") {
+  DiskStepperHarness_t harness;
+
+  harness.step_phase(1, true);
+  harness.step_phase(1, false);
+  harness.step_phase(2, true);
+  harness.step_phase(2, false);
+  const int32_t moved_track = harness.get_phase();
+  CHECK(moved_track > 0);
+
+  harness.power_motor_off();
+  harness.think(motor_spindown_cycles);
+  REQUIRE(harness.get_spinning_ticks() == 0);
+
+  // The magnets are powered from the same enable the spindle is, so a full
+  // step sequence with the timer run out energises nothing.
+  harness.step_phase(3, true);
+  harness.step_phase(3, false);
+  harness.step_phase(0, true);
+  harness.step_phase(0, false);
+  CHECK(harness.get_phase() == moved_track);
+}

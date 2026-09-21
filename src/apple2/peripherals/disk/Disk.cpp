@@ -30,11 +30,17 @@ constexpr size_t path_max_len = disk_path_max;
 }  // namespace config
 
 namespace physical {
-constexpr uint32_t spinup_ticks = 20000;
-constexpr uint32_t write_light_ticks = 20000;
+// The 556 on the interface card holds the drive enabled after the software
+// drops the motor switch: half D2 charges C2, 22 uF, through R5, 47 kohm,
+// and releases at two thirds of Vcc. Sather gives the window as about a
+// second; 47e3 * 22e-6 is 1.034 s, which is 1,051,098 cycles of the 6502
+// clock at 1,020,484 Hz.
+constexpr uint32_t motor_off_delay_cycles = 1051098;
+
+// The write light is a front-panel indicator rather than a hardware line,
+// held for a second after the last write so a burst of them reads as one.
+constexpr uint32_t write_light_cycles = 1020484;
 constexpr uint8_t latch_bit = 0x80;
-constexpr uint32_t spin_cycle_shift = 6;
-constexpr uint32_t spin_cycle_mask = (1U << spin_cycle_shift) - 1;
 constexpr uint32_t units_per_step = 4;
 constexpr uint32_t steps_per_cycle = 2;
 constexpr uint32_t noise_seed_start = 0x5D1A3B7FU;
@@ -96,8 +102,8 @@ struct Disk_t {
   bool is_user_write_protected = false;
   bool is_data_loaded = false;
   bool is_dirty = false;
-  uint32_t spinning_ticks = 0;
-  uint32_t write_light_ticks = 0;
+  uint32_t motor_enable_cycles = 0;
+  uint32_t write_light_cycles = 0;
   std::vector<uint8_t> track_bits{};
   const DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
@@ -135,7 +141,6 @@ struct DiskPeripheral_t {
   DiskSequencer_t sequencer{};
 
   // Rotational and timing simulation state
-  uint32_t spin_cycle_accumulator = 0;
   uint32_t synced = 0;
   uint32_t noise_seed = 0;
 
@@ -419,11 +424,11 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
     return;
   }
   auto& drive = get_active_drive(disk_peripheral);
-  const bool was_spinning = (drive.spinning_ticks > 0);
+  const bool was_spinning = (drive.motor_enable_cycles > 0);
   if (disk_peripheral->is_motor_on) {
-    drive.spinning_ticks = physical::spinup_ticks;
+    drive.motor_enable_cycles = physical::motor_off_delay_cycles;
   }
-  const bool now_spinning = (drive.spinning_ticks > 0);
+  const bool now_spinning = (drive.motor_enable_cycles > 0);
 
   if (was_spinning != now_spinning) {
     notify_activity_changed(disk_peripheral, now_spinning);
@@ -548,7 +553,9 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_delta -= 1;
   }
 
-  if (step_delta != 0) {
+  // Why: The magnets hang off the drive enable line, so a phase strobe with
+  // the motor timer expired energises nothing and the head stays put.
+  if (step_delta != 0 && disk_ptr->motor_enable_cycles > 0) {
     step_drive_head(disk_peripheral, step_delta);
   }
 
@@ -571,8 +578,8 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
       write_track_to_driver(disk_peripheral,
                             disk_peripheral->active_drive_index);
     }
-    inactive_drive.spinning_ticks = 0;
-    inactive_drive.write_light_ticks = 0;
+    inactive_drive.motor_enable_cycles = 0;
+    inactive_drive.write_light_cycles = 0;
     disk_peripheral->active_drive_index = new_drive_index;
   }
 
@@ -716,7 +723,7 @@ auto run_sequencer_cycles(DiskPeripheral_t* disk_peripheral, uint32_t cycles)
 
   // Why: With the motor-enable line down the sequencer has no clock, so the
   // data register keeps whatever it was holding when the drive stopped.
-  if (drive.spinning_ticks == 0) {
+  if (drive.motor_enable_cycles == 0) {
     return;
   }
 
@@ -769,8 +776,8 @@ auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
     disk_peripheral->sequencer.q7 = switch_is_set;
     if (switch_is_set) {
       auto& active_drive = get_active_drive(disk_peripheral);
-      const bool was_already_writing = (active_drive.write_light_ticks > 0);
-      active_drive.write_light_ticks = physical::write_light_ticks;
+      const bool was_already_writing = (active_drive.write_light_cycles > 0);
+      active_drive.write_light_cycles = physical::write_light_cycles;
       if (!was_already_writing) {
         notify_status_changed(disk_peripheral);
       }
@@ -782,14 +789,14 @@ auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
 }
 
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
-                          uint32_t spin_ticks) -> void {
+                          uint32_t elapsed_cycles) -> void {
   if (disk_peripheral == nullptr || disk_ptr == nullptr) {
     return;
   }
 
-  if (disk_ptr->spinning_ticks > 0 && !disk_peripheral->is_motor_on) {
-    if (spin_ticks >= disk_ptr->spinning_ticks) {
-      disk_ptr->spinning_ticks = 0;
+  if (disk_ptr->motor_enable_cycles > 0 && !disk_peripheral->is_motor_on) {
+    if (elapsed_cycles >= disk_ptr->motor_enable_cycles) {
+      disk_ptr->motor_enable_cycles = 0;
       if (disk_ptr->is_dirty) {
         const int drive_index =
             (disk_ptr == &disk_peripheral->drives.at(0)) ? 0 : 1;
@@ -798,21 +805,21 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
       notify_activity_changed(disk_peripheral, false);
       notify_status_changed(disk_peripheral);
     } else {
-      disk_ptr->spinning_ticks -= spin_ticks;
+      disk_ptr->motor_enable_cycles -= elapsed_cycles;
     }
   }
 
   const bool is_active_drive = (&get_active_drive(disk_peripheral) == disk_ptr);
 
   if (disk_peripheral->sequencer.q7 && is_active_drive &&
-      disk_ptr->spinning_ticks > 0) {
-    disk_ptr->write_light_ticks = physical::write_light_ticks;
-  } else if (disk_ptr->write_light_ticks > 0) {
-    if (spin_ticks >= disk_ptr->write_light_ticks) {
-      disk_ptr->write_light_ticks = 0;
+      disk_ptr->motor_enable_cycles > 0) {
+    disk_ptr->write_light_cycles = physical::write_light_cycles;
+  } else if (disk_ptr->write_light_cycles > 0) {
+    if (elapsed_cycles >= disk_ptr->write_light_cycles) {
+      disk_ptr->write_light_cycles = 0;
       notify_status_changed(disk_peripheral);
     } else {
-      disk_ptr->write_light_ticks -= spin_ticks;
+      disk_ptr->write_light_cycles -= elapsed_cycles;
     }
   }
 }
@@ -823,15 +830,10 @@ auto update_physical_disk_state(DiskPeripheral_t* disk_peripheral,
     return;
   }
 
-  disk_peripheral->spin_cycle_accumulator += elapsed_cycles;
-  const uint32_t spin_ticks =
-      disk_peripheral->spin_cycle_accumulator >> physical::spin_cycle_shift;
-  disk_peripheral->spin_cycle_accumulator &= physical::spin_cycle_mask;
-
   for (int i = 0; i < disk_drive_count; ++i) {
     update_drive_physics(disk_peripheral,
                          &disk_peripheral->drives.at(static_cast<size_t>(i)),
-                         spin_ticks);
+                         elapsed_cycles);
   }
 }
 
@@ -840,8 +842,8 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
     return false;
   }
 
-  if (disk_peripheral->drives.at(0).spinning_ticks > 0 ||
-      disk_peripheral->drives.at(1).spinning_ticks > 0) {
+  if (disk_peripheral->drives.at(0).motor_enable_cycles > 0 ||
+      disk_peripheral->drives.at(1).motor_enable_cycles > 0) {
     return false;
   }
 
@@ -870,13 +872,12 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
   disk_peripheral->stepper_phase_mask = 0;
   disk_peripheral->is_motor_on = false;
   disk_peripheral->sequencer = DiskSequencer_t{};
-  disk_peripheral->spin_cycle_accumulator = 0;
   disk_peripheral->synced = 0;
   disk_peripheral->noise_seed = physical::noise_seed_start;
 
   for (auto& drive : disk_peripheral->drives) {
-    drive.spinning_ticks = 0;
-    drive.write_light_ticks = 0;
+    drive.motor_enable_cycles = 0;
+    drive.write_light_cycles = 0;
     drive.last_error = disk_err_none;
   }
 
@@ -895,8 +896,8 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     auto& drive = disk_peripheral->drives.at(0);
     status->drive0_last_error = static_cast<int32_t>(drive.last_error);
     status->drive0_loaded = (drive.driver != nullptr) ? 1 : 0;
-    status->drive0_spinning = (drive.spinning_ticks > 0) ? 1 : 0;
-    status->drive0_writing = (drive.write_light_ticks > 0) ? 1 : 0;
+    status->drive0_spinning = (drive.motor_enable_cycles > 0) ? 1 : 0;
+    status->drive0_writing = (drive.write_light_cycles > 0) ? 1 : 0;
     status->drive0_write_protected =
         is_disk_write_protected(disk_peripheral, 0) ? 1 : 0;
     copy_string_to_buffer(path_basename(drive.full_path), status->drive0_name,
@@ -909,8 +910,8 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
     auto& drive = disk_peripheral->drives.at(1);
     status->drive1_last_error = static_cast<int32_t>(drive.last_error);
     status->drive1_loaded = (drive.driver != nullptr) ? 1 : 0;
-    status->drive1_spinning = (drive.spinning_ticks > 0) ? 1 : 0;
-    status->drive1_writing = (drive.write_light_ticks > 0) ? 1 : 0;
+    status->drive1_spinning = (drive.motor_enable_cycles > 0) ? 1 : 0;
+    status->drive1_writing = (drive.write_light_cycles > 0) ? 1 : 0;
     status->drive1_write_protected =
         is_disk_write_protected(disk_peripheral, 1) ? 1 : 0;
     copy_string_to_buffer(path_basename(drive.full_path), status->drive1_name,
@@ -1256,8 +1257,11 @@ auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
         static_cast<int32_t>(d.bit_position / physical::cells_per_byte);
 
     ds.user_write_protected = d.is_user_write_protected ? 1 : 0;
-    ds.spinning_ticks = d.spinning_ticks;
-    ds.write_light_ticks = d.write_light_ticks;
+    // v1 counted these down in units of 64 cycles; the card counts cycles,
+    // so a state written here stops the motor sixty-four times sooner in a
+    // pre-pass build, and one read there starts it sixty-four times shorter.
+    ds.spinning_ticks = d.motor_enable_cycles;
+    ds.write_light_ticks = d.write_light_cycles;
 
     // v1 carries bytes where the card carries cells, and it has nowhere to
     // put the medium's cell timing. A track the guest has part-written is
@@ -1346,8 +1350,8 @@ auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
 
     d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
     d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
-    d.spinning_ticks = ds.spinning_ticks;
-    d.write_light_ticks = ds.write_light_ticks;
+    d.motor_enable_cycles = ds.spinning_ticks;
+    d.write_light_cycles = ds.write_light_ticks;
 
     // The head goes back over the track and the medium is re-read from the
     // image, which is what carries the cell timing v1 cannot. Only a track
