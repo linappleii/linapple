@@ -37,6 +37,8 @@ constexpr uint32_t spin_cycle_shift = 6;
 constexpr uint32_t spin_cycle_mask = (1U << spin_cycle_shift) - 1;
 constexpr uint32_t rotation_cycle_shift = 5;
 constexpr uint32_t rotation_cycle_mask = (1U << rotation_cycle_shift) - 1;
+constexpr uint32_t cells_per_byte = 8;
+constexpr uint32_t track_bit_bytes = max_track_bits / 8;
 }  // namespace physical
 
 namespace regs {
@@ -76,15 +78,15 @@ struct Disk_t {
   std::string full_path{};
   int32_t track = 0;
   int32_t phase = 0;
-  uint32_t current_byte_pos = 0;
+  uint32_t bit_position = 0;
+  uint32_t bit_count = 0;
   bool is_user_write_protected = false;
   bool is_os_read_only = false;
   bool is_data_loaded = false;
   bool is_dirty = false;
   uint32_t spinning_ticks = 0;
   uint32_t write_light_ticks = 0;
-  uint32_t nibble_count = 0;
-  std::vector<uint8_t> track_buffer{};
+  std::vector<uint8_t> track_bits{};
   const DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
   DiskError_e last_error = disk_err_none;
@@ -193,6 +195,94 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
   return false;
 }
 
+// Phase D gives the stepper quarter-track resolution; until then the head
+// only ever parks on a half track.
+auto quarter_track_of(const Disk_t& drive) -> uint32_t {
+  return static_cast<uint32_t>(drive.phase) * 2U;
+}
+
+auto medium_cell(const Disk_t& drive, uint32_t index) -> uint32_t {
+  return (drive.track_bits[index >> 3U] >> (7U - (index & 7U))) & 1U;
+}
+
+auto advance_medium(Disk_t* disk_ptr, uint32_t cells) -> void {
+  if (disk_ptr->bit_count == 0) {
+    return;
+  }
+  disk_ptr->bit_position =
+      (disk_ptr->bit_position + cells) % disk_ptr->bit_count;
+}
+
+// Until the sequencer arrives, the data register fills the way the shift
+// register fills it: cells pass under the head until one carries a pulse, and
+// the eight from there make the byte. Self-sync cells cost nothing to skip.
+auto read_medium_byte(Disk_t* disk_ptr) -> uint8_t {
+  uint32_t searched = 0;
+  while (medium_cell(*disk_ptr, disk_ptr->bit_position) == 0 &&
+         searched < disk_ptr->bit_count) {
+    advance_medium(disk_ptr, 1);
+    ++searched;
+  }
+
+  uint8_t value = 0;
+  for (uint32_t i = 0; i < physical::cells_per_byte; ++i) {
+    value = static_cast<uint8_t>(
+        (value << 1U) | medium_cell(*disk_ptr, disk_ptr->bit_position));
+    advance_medium(disk_ptr, 1);
+  }
+  return value;
+}
+
+auto write_medium_byte(Disk_t* disk_ptr, uint8_t value) -> void {
+  for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
+    const uint32_t index = disk_ptr->bit_position;
+    const auto cell = static_cast<uint8_t>(0x80U >> (index & 7U));
+    if ((value & mask) != 0U) {
+      disk_ptr->track_bits[index >> 3U] |= cell;
+    } else {
+      disk_ptr->track_bits[index >> 3U] &= static_cast<uint8_t>(~cell);
+    }
+    advance_medium(disk_ptr, 1);
+  }
+}
+
+// The v1 save state carries bytes, so the medium is read out from the index
+// hole the same way the data register would read it.
+auto decode_medium_bytes(const Disk_t& drive, uint8_t* out, uint32_t max_count)
+    -> uint32_t {
+  if (drive.bit_count < physical::cells_per_byte) {
+    return 0;
+  }
+
+  uint32_t cell = 0;
+  uint32_t written = 0;
+  while (written < max_count &&
+         cell <= drive.bit_count - physical::cells_per_byte) {
+    while (cell < drive.bit_count && medium_cell(drive, cell) == 0) {
+      ++cell;
+    }
+    if (cell > drive.bit_count - physical::cells_per_byte) {
+      break;
+    }
+    uint8_t value = 0;
+    for (uint32_t i = 0; i < physical::cells_per_byte; ++i) {
+      value = static_cast<uint8_t>((value << 1U) | medium_cell(drive, cell++));
+    }
+    out[written++] = value;
+  }
+  return written;
+}
+
+auto encode_medium_bytes(Disk_t* disk_ptr, const uint8_t* bytes, uint32_t count)
+    -> void {
+  disk_ptr->bit_position = 0;
+  disk_ptr->bit_count = count * physical::cells_per_byte;
+  for (uint32_t i = 0; i < count; ++i) {
+    write_medium_byte(disk_ptr, bytes[i]);
+  }
+  disk_ptr->bit_position = 0;
+}
+
 auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     -> void {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
@@ -209,12 +299,11 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     return;
   }
 
-  if (!disk_ptr->track_buffer.empty() && disk_ptr->driver != nullptr &&
-      disk_ptr->driver->write_track != nullptr) {
-    disk_ptr->driver->write_track(disk_ptr->driver_instance, disk_ptr->track,
-                                  disk_ptr->phase,
-                                  disk_ptr->track_buffer.data(),
-                                  static_cast<int>(disk_ptr->nibble_count));
+  if (disk_ptr->bit_count != 0 && disk_ptr->driver != nullptr &&
+      disk_ptr->driver->write_track_bits != nullptr) {
+    disk_ptr->driver->write_track_bits(
+        disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
+        disk_ptr->track_bits.data(), disk_ptr->bit_count);
     disk_ptr->is_dirty = false;
   }
 }
@@ -228,29 +317,27 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   auto* disk_ptr =
       &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
+  disk_ptr->bit_position = 0;
+  disk_ptr->bit_count = 0;
+
   if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
     disk_ptr->is_data_loaded = false;
     return;
   }
 
-  if (disk_ptr->track_buffer.size() < nibbles_per_track) {
-    disk_ptr->track_buffer.resize(nibbles_per_track, 0);
+  if (disk_ptr->track_bits.size() < physical::track_bit_bytes) {
+    disk_ptr->track_bits.resize(physical::track_bit_bytes, 0);
   }
 
-  if (disk_ptr->driver != nullptr && disk_ptr->driver->read_track != nullptr) {
-    int loaded_nibbles = 0;
-    disk_ptr->driver->read_track(disk_ptr->driver_instance, disk_ptr->track,
-                                 disk_ptr->phase, disk_ptr->track_buffer.data(),
-                                 &loaded_nibbles);
+  if (disk_ptr->driver != nullptr &&
+      disk_ptr->driver->read_track_bits != nullptr) {
+    uint32_t loaded_bits = 0;
+    const DiskError_e error = disk_ptr->driver->read_track_bits(
+        disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
+        disk_ptr->track_bits.data(), max_track_bits, &loaded_bits);
 
-    disk_ptr->current_byte_pos = 0;
-    const uint32_t bounded_nibbles =
-        (loaded_nibbles > 0)
-            ? std::min<uint32_t>(static_cast<uint32_t>(loaded_nibbles),
-                                 static_cast<uint32_t>(nibbles_per_track))
-            : 0;
-    disk_ptr->nibble_count = bounded_nibbles;
-    disk_ptr->is_data_loaded = (disk_ptr->nibble_count != 0);
+    disk_ptr->bit_count = (error == disk_err_none) ? loaded_bits : 0;
+    disk_ptr->is_data_loaded = (disk_ptr->bit_count != 0);
   }
 }
 
@@ -278,7 +365,7 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
     return;
   }
 
-  if (!disk.track_buffer.empty() && disk.is_dirty) {
+  if (disk.is_dirty) {
     write_track_to_driver(disk_peripheral, drive_index);
   }
 
@@ -374,7 +461,7 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
       std::min<int32_t>(tracks_per_disk - 1, new_phase / phases_per_track);
 
   if (new_track != drive.track) {
-    if (!drive.track_buffer.empty() && drive.is_dirty) {
+    if (drive.is_dirty) {
       write_track_to_driver(disk_peripheral,
                             disk_peripheral->active_drive_index);
     }
@@ -435,7 +522,7 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
   const uint16_t new_drive_index = static_cast<uint16_t>(memory_address & 0x01);
   if (new_drive_index != disk_peripheral->active_drive_index) {
     auto& inactive_drive = get_active_drive(disk_peripheral);
-    if (!inactive_drive.track_buffer.empty() && inactive_drive.is_dirty) {
+    if (inactive_drive.is_dirty) {
       write_track_to_driver(disk_peripheral,
                             disk_peripheral->active_drive_index);
     }
@@ -475,25 +562,18 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
-  if (drive.current_byte_pos >= drive.nibble_count ||
-      drive.current_byte_pos >= static_cast<uint32_t>(nibbles_per_track)) {
-    drive.current_byte_pos = 0;
-  }
-
   // Writing shifts the register out onto the medium and leaves it loaded, so
   // the byte the 6502 wrote survives until it loads the next one.
   if (disk_peripheral->is_write_mode) {
     if (!is_protected &&
         (disk_peripheral->io_latch & physical::latch_bit) != 0) {
-      drive.track_buffer[drive.current_byte_pos] = disk_peripheral->io_latch;
+      write_medium_byte(&drive, disk_peripheral->io_latch);
       drive.is_dirty = true;
+    } else {
+      advance_medium(&drive, physical::cells_per_byte);
     }
   } else {
-    disk_peripheral->io_latch = drive.track_buffer[drive.current_byte_pos];
-  }
-
-  if (++drive.current_byte_pos >= drive.nibble_count) {
-    drive.current_byte_pos = 0;
+    disk_peripheral->io_latch = read_medium_byte(&drive);
   }
 
   return disk_peripheral->io_latch;
@@ -566,7 +646,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
   if (disk_ptr->spinning_ticks > 0 && !disk_peripheral->is_motor_on) {
     if (spin_ticks >= disk_ptr->spinning_ticks) {
       disk_ptr->spinning_ticks = 0;
-      if (!disk_ptr->track_buffer.empty() && disk_ptr->is_dirty) {
+      if (disk_ptr->is_dirty) {
         const int drive_index =
             (disk_ptr == &disk_peripheral->drives.at(0)) ? 0 : 1;
         write_track_to_driver(disk_peripheral, drive_index);
@@ -597,11 +677,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
     return;
   }
 
-  disk_ptr->current_byte_pos += rotation_ticks;
-  if (disk_ptr->current_byte_pos >= disk_ptr->nibble_count) {
-    disk_ptr->current_byte_pos %=
-        (disk_ptr->nibble_count != 0 ? disk_ptr->nibble_count : 1);
-  }
+  advance_medium(disk_ptr, rotation_ticks * physical::cells_per_byte);
 }
 
 auto update_physical_disk_state(DiskPeripheral_t* disk_peripheral,
@@ -652,7 +728,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
 
   for (size_t i = 0; i < disk_peripheral->drives.size(); ++i) {
     auto& drive = disk_peripheral->drives.at(i);
-    if (!drive.track_buffer.empty() && drive.is_dirty) {
+    if (drive.is_dirty) {
       write_track_to_driver(disk_peripheral, static_cast<int>(i));
     }
   }
@@ -1029,19 +1105,16 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     copy_string_to_buffer(d.full_path, ds.full_path, sizeof(ds.full_path));
     ds.track = d.track;
     ds.phase = d.phase;
-    ds.current_byte_pos = static_cast<int32_t>(d.current_byte_pos);
+    ds.current_byte_pos =
+        static_cast<int32_t>(d.bit_position / physical::cells_per_byte);
     ds.user_write_protected = d.is_user_write_protected ? 1 : 0;
     ds.is_os_read_only = d.is_os_read_only ? 1 : 0;
     ds.is_data_loaded = d.is_data_loaded ? 1 : 0;
     ds.is_dirty = d.is_dirty ? 1 : 0;
     ds.spinning_ticks = d.spinning_ticks;
     ds.write_light_ticks = d.write_light_ticks;
-    ds.nibble_count = static_cast<int32_t>(d.nibble_count);
-    if (!d.track_buffer.empty()) {
-      const size_t copy_bytes = std::min(
-          d.track_buffer.size(), static_cast<size_t>(nibbles_per_track));
-      std::copy_n(d.track_buffer.data(), copy_bytes, ds.track_buffer);
-    }
+    ds.nibble_count = static_cast<int32_t>(decode_medium_bytes(
+        d, ds.track_buffer, static_cast<uint32_t>(sizeof(ds.track_buffer))));
   }
   s->stepper_phase_mask = dp->stepper_phase_mask;
   s->active_drive_index = dp->active_drive_index;
@@ -1095,7 +1168,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     const bool is_out_of_bounds =
         ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
         ds.phase >= max_disk_phases || ds.nibble_count <= 0 ||
-        ds.nibble_count > static_cast<int>(nibbles_per_track) ||
+        ds.nibble_count > static_cast<int>(sizeof(ds.track_buffer)) ||
         ds.current_byte_pos < 0 ||
         static_cast<uint32_t>(ds.current_byte_pos) >=
             static_cast<uint32_t>(ds.nibble_count);
@@ -1109,26 +1182,26 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     }
     d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
     d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
-    d.nibble_count = (ds.nibble_count > 0 &&
-                      ds.nibble_count <= static_cast<int>(nibbles_per_track))
-                         ? static_cast<uint32_t>(ds.nibble_count)
-                         : static_cast<uint32_t>(nibbles_per_track);
-    d.current_byte_pos =
-        (ds.current_byte_pos >= 0 &&
-         static_cast<uint32_t>(ds.current_byte_pos) < d.nibble_count)
-            ? static_cast<uint32_t>(ds.current_byte_pos)
-            : 0;
     d.is_os_read_only = (ds.is_os_read_only != 0);
-    d.is_data_loaded = (ds.is_data_loaded != 0);
-    d.is_dirty = (ds.is_dirty != 0);
     d.spinning_ticks = ds.spinning_ticks;
     d.write_light_ticks = ds.write_light_ticks;
-    if (d.is_data_loaded) {
-      if (d.track_buffer.size() < nibbles_per_track) {
-        d.track_buffer.resize(nibbles_per_track, 0);
-      }
-      std::copy_n(ds.track_buffer, nibbles_per_track, d.track_buffer.data());
+
+    // The saved bytes describe one revolution of a medium the image still
+    // holds, so the head is put back over the track and the medium re-read;
+    // only a track the guest had part-written is restored from the state.
+    read_track_from_driver(dp, i);
+    d.is_dirty = (ds.is_dirty != 0);
+    if (d.is_dirty && !is_out_of_bounds) {
+      encode_medium_bytes(&d, ds.track_buffer,
+                          static_cast<uint32_t>(ds.nibble_count));
     }
+
+    const uint32_t byte_pos =
+        is_out_of_bounds ? 0U : static_cast<uint32_t>(ds.current_byte_pos);
+    d.bit_position =
+        (d.bit_count == 0)
+            ? 0U
+            : std::min(byte_pos * physical::cells_per_byte, d.bit_count - 1U);
   }
   notify_status_changed(dp);
   return peripheral_ok;

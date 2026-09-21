@@ -11,6 +11,7 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
@@ -111,12 +112,15 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   REQUIRE(err == disk_err_none);
   REQUIRE(instance != nullptr);
 
-  std::vector<uint8_t> track_buffer(nibbles_per_track, 0);
-  int nibbles_read = -1;
-  g_woz2_driver.read_track(instance, 0, 0, track_buffer.data(), &nibbles_read);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0xFF);
+  uint32_t bit_count = 0;
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count) == disk_err_none);
 
-  CHECK(nibbles_read == 1);
-  CHECK(track_buffer[0] == 0);
+  // Reconstructing bytes from a surface with no pulses on it finds one byte
+  // and then runs out of track.
+  CHECK(bit_count == 8);
+  CHECK(bits[0] == 0);
 
   g_woz2_driver.close(instance);
 }

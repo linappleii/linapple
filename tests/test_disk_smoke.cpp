@@ -193,23 +193,23 @@ TEST_CASE(
     "registration") {
   disk_loader_reset();
 
-  // Floppy driver: write capability with null write_track must be rejected
+  // Floppy driver: write capability with null write_track_bits must be rejected
   DiskFormatDriver_t bad_floppy1 = g_do_driver;
   bad_floppy1.capabilities = disk_driver_cap_write;
-  bad_floppy1.write_track = nullptr;
+  bad_floppy1.write_track_bits = nullptr;
   disk_loader_register(&bad_floppy1);
 
-  // Floppy driver: read-only capabilities with non-null write_track must be
-  // rejected
+  // Floppy driver: read-only capabilities with non-null write_track_bits must
+  // be rejected
   DiskFormatDriver_t bad_floppy2 = g_do_driver;
   bad_floppy2.capabilities = 0;
-  bad_floppy2.write_track = g_do_driver.write_track;
+  bad_floppy2.write_track_bits = g_do_driver.write_track_bits;
   disk_loader_register(&bad_floppy2);
 
   // Valid floppy drivers register cleanly
   DiskFormatDriver_t valid_floppy_ro = g_woz2_driver;
   valid_floppy_ro.capabilities = 0;
-  valid_floppy_ro.write_track = nullptr;
+  valid_floppy_ro.write_track_bits = nullptr;
   disk_loader_register(&valid_floppy_ro);
 
   DiskFormatDriver_t valid_floppy_rw = g_do_driver;

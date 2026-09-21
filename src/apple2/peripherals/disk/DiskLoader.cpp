@@ -73,9 +73,9 @@ auto driver_is_usable(const DiskFormatDriver_t* driver) -> bool {
   }
   const bool has_write_cap =
       (driver->capabilities & disk_driver_cap_write) != 0;
-  const bool has_write_fn = driver->write_track != nullptr;
+  const bool has_write_fn = driver->write_track_bits != nullptr;
   if (has_write_cap != has_write_fn) {
-    return refuse(driver, "write capability disagrees with write_track");
+    return refuse(driver, "write capability disagrees with write_track_bits");
   }
   return true;
 }

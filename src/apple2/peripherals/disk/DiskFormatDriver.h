@@ -19,6 +19,10 @@ extern "C" {
 
 enum { disk_format_abi_version = 0 };
 
+/* The longest medium a driver may hand over. A synthesised track is at worst
+   6656 nibbles at ten cells each; a WOZ 5.25" track stays under 53,440. */
+enum { max_track_bits = 69632 };
+
 typedef enum {
   disk_driver_cap_write = 0x01,
   disk_driver_cap_flux = 0x02,
@@ -38,6 +42,11 @@ typedef struct DiskFluxBit_s DiskFluxBit_t;
  *
  * Defines the contract for pluggable disk image handlers. Drivers provide
  * probing, lifecycle management, and track-level I/O.
+ *
+ * The unit of exchange is the medium as the head sees it: cells packed eight
+ * to a byte, the first cell in the most significant bit of byte zero. How
+ * those cells group into bytes is the controller's reading of them, not the
+ * driver's.
  */
 typedef struct DiskFormatDriver_t {
   int abi_version;
@@ -56,11 +65,16 @@ typedef struct DiskFormatDriver_t {
 
   bool (*is_write_protected)(void* instance);
 
-  void (*read_track)(void* instance, int track, int phase,
-                     uint8_t* track_buffer, int* out_nibbles);
+  /* A quarter track the image does not map is not an error: it answers
+     disk_err_none with a zero cell count, because an unrecorded surface is
+     noise to the read amplifier rather than a refusal. A track longer than
+     max_bits is refused with disk_err_unsupported and never truncated. */
+  DiskError_e (*read_track_bits)(void* instance, uint32_t quarter_track,
+                                 uint8_t* bits, uint32_t max_bits,
+                                 uint32_t* out_bit_count);
 
-  void (*write_track)(void* instance, int track, int phase,
-                      const uint8_t* track_buffer, int nibbles);
+  DiskError_e (*write_track_bits)(void* instance, uint32_t quarter_track,
+                                  const uint8_t* bits, uint32_t bit_count);
 
   DiskError_e (*create)(const char* path);
 

@@ -14,6 +14,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
@@ -77,6 +78,29 @@ class ScopedTempFile_t {
  private:
   std::string path_;
 };
+
+// The driver ABI speaks cells, so a case written in nibbles lays them on the
+// medium and reads them back off the same way a driver's own callers do.
+auto to_bits(const std::vector<uint8_t>& nibbles, std::vector<uint8_t>* bits)
+    -> uint32_t {
+  bits->assign(max_track_bits / 8, 0);
+  uint32_t count = 0;
+  REQUIRE(disk_encoding_nibbles_to_bits(
+              nibbles.data(), static_cast<uint32_t>(nibbles.size()),
+              bits->data(), max_track_bits, &count) == disk_err_none);
+  return count;
+}
+
+auto to_nibbles(const std::vector<uint8_t>& bits, uint32_t bit_count)
+    -> std::vector<uint8_t> {
+  std::vector<uint8_t> nibbles(nibbles_per_track, 0);
+  uint32_t count = 0;
+  REQUIRE(disk_encoding_bits_to_nibbles(bits.data(), bit_count, nibbles.data(),
+                                        nibbles_per_track,
+                                        &count) == disk_err_none);
+  nibbles.resize(count);
+  return nibbles;
+}
 
 }  // namespace
 
@@ -167,19 +191,27 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
           disk_err_none);
 
-  uint8_t original_track[6656];
-  for (int i = 0; i < 6656; ++i) {
-    original_track[i] = static_cast<uint8_t>((i + 1) & 0xFF);
+  // Every byte a Disk II can find again carries bit 7; a run of cells that
+  // opens with a zero is not one the head could resynchronise on.
+  std::vector<uint8_t> original(nibbles_per_track, 0);
+  for (size_t i = 0; i < original.size(); ++i) {
+    original[i] = static_cast<uint8_t>(0x80U | ((i + 1) & 0x7FU));
   }
 
-  g_nib_driver.write_track(instance, 5, 0, original_track, 6656);
+  constexpr uint32_t quarter_track_5 = 20;
+  std::vector<uint8_t> bits;
+  const uint32_t written_bits = to_bits(original, &bits);
+  CHECK(g_nib_driver.write_track_bits(instance, quarter_track_5, bits.data(),
+                                      written_bits) == disk_err_none);
 
-  uint8_t read_track[6656];
-  int read_count = 0;
-  g_nib_driver.read_track(instance, 5, 0, read_track, &read_count);
+  std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
+  uint32_t read_bit_count = 0;
+  CHECK(g_nib_driver.read_track_bits(instance, quarter_track_5,
+                                     read_bits.data(), max_track_bits,
+                                     &read_bit_count) == disk_err_none);
 
-  CHECK(read_count == 6656);
-  CHECK(memcmp(original_track, read_track, 6656) == 0);
+  CHECK(read_bit_count == written_bits);
+  CHECK(to_nibbles(read_bits, read_bit_count) == original);
 
   g_nib_driver.close(instance);
 
@@ -189,13 +221,14 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, &reopen_ro,
                             &reopen_instance) == disk_err_none);
 
-  uint8_t persisted_track[6656];
-  int persisted_count = 0;
-  g_nib_driver.read_track(reopen_instance, 5, 0, persisted_track,
-                          &persisted_count);
+  std::vector<uint8_t> persisted_bits(max_track_bits / 8, 0);
+  uint32_t persisted_bit_count = 0;
+  CHECK(g_nib_driver.read_track_bits(reopen_instance, quarter_track_5,
+                                     persisted_bits.data(), max_track_bits,
+                                     &persisted_bit_count) == disk_err_none);
 
-  CHECK(persisted_count == 6656);
-  CHECK(memcmp(original_track, persisted_track, 6656) == 0);
+  CHECK(persisted_bit_count == written_bits);
+  CHECK(to_nibbles(persisted_bits, persisted_bit_count) == original);
 
   g_nib_driver.close(reopen_instance);
 }
@@ -209,19 +242,26 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
   REQUIRE(g_nb2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
           disk_err_none);
 
-  uint8_t original_track[6384];
-  for (int i = 0; i < 6384; ++i) {
-    original_track[i] = static_cast<uint8_t>((i + 1) & 0xFF);
+  constexpr size_t nb2_nibbles_per_track = 6384;
+  std::vector<uint8_t> original(nb2_nibbles_per_track, 0);
+  for (size_t i = 0; i < original.size(); ++i) {
+    original[i] = static_cast<uint8_t>(0x80U | ((i + 1) & 0x7FU));
   }
 
-  g_nb2_driver.write_track(instance, 10, 0, original_track, 6384);
+  constexpr uint32_t quarter_track_10 = 40;
+  std::vector<uint8_t> bits;
+  const uint32_t written_bits = to_bits(original, &bits);
+  CHECK(g_nb2_driver.write_track_bits(instance, quarter_track_10, bits.data(),
+                                      written_bits) == disk_err_none);
 
-  uint8_t read_track[6656];  // Buffer is always hardware-sized
-  int read_count = 0;
-  g_nb2_driver.read_track(instance, 10, 0, read_track, &read_count);
+  std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
+  uint32_t read_bit_count = 0;
+  CHECK(g_nb2_driver.read_track_bits(instance, quarter_track_10,
+                                     read_bits.data(), max_track_bits,
+                                     &read_bit_count) == disk_err_none);
 
-  CHECK(read_count == 6384);
-  CHECK(memcmp(original_track, read_track, 6384) == 0);
+  CHECK(read_bit_count == written_bits);
+  CHECK(to_nibbles(read_bits, read_bit_count) == original);
 
   g_nb2_driver.close(instance);
 }
@@ -313,12 +353,14 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
           disk_err_none);
 
-  uint8_t buffer[6656];
-  int count = 0;
-  g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 123;
 
-  CHECK(count == 6656);
-  // Should be random/sync data, at least verify it didn't fail
+  // TMAP 0xFF is surface the image never recorded. It is not a read failure:
+  // the card gets no cells and hears the head amplifier instead.
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count) == disk_err_none);
+  CHECK(bit_count == 0);
 
   g_woz2_driver.close(instance);
 }
@@ -331,10 +373,11 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   bool ro = false;
   REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, &ro, &inst) == disk_err_none);
 
-  uint8_t buf[6656];
-  int count = 0;
-  g_do_driver.read_track(inst, 0, 0, buf, &count);
-  CHECK(count == 6656);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+                                    &bit_count) == disk_err_none);
+  CHECK(bit_count == nibbles_per_track * 8);
 
   g_do_driver.close(inst);
 }
@@ -361,11 +404,12 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
   REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
           disk_err_none);
 
-  uint8_t buffer[6656];
-  int count = 123;
-  g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 123;
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count) == disk_err_corrupt);
 
-  CHECK(count == 0);  // Rejects out of bounds trks_index
+  CHECK(bit_count == 0);  // Rejects out of bounds trks_index
 
   g_woz2_driver.close(instance);
 }
@@ -405,11 +449,12 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
   REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
           disk_err_none);
 
-  uint8_t buffer[6656];
-  int count = 123;
-  g_woz2_driver.read_track(instance, 0, 0, buffer, &count);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 123;
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count) == disk_err_corrupt);
 
-  CHECK(count == 0);  // Rejects bit_count > block_count capacity
+  CHECK(bit_count == 0);  // Rejects bit_count > block_count capacity
 
   g_woz2_driver.close(instance);
 }
@@ -422,13 +467,20 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
   bool ro = false;
   REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, &ro, &inst) == disk_err_none);
 
-  uint8_t buf[6656];
-  int count = 123;
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 123;
 
-  g_do_driver.read_track(inst, -1, 0, buf, &count);
-  CHECK(count == 0);
-  g_do_driver.read_track(inst, 40, 0, buf, &count);
-  CHECK(count == 0);
+  constexpr uint32_t quarter_track_40 = 160;
+  CHECK(g_do_driver.read_track_bits(inst, quarter_track_40, bits.data(),
+                                    max_track_bits,
+                                    &bit_count) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
+
+  bit_count = 123;
+  CHECK(g_do_driver.read_track_bits(inst, UINT32_MAX, bits.data(),
+                                    max_track_bits,
+                                    &bit_count) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
 
   g_do_driver.close(inst);
 }
@@ -553,9 +605,7 @@ TEST_CASE(
         disk_probe_no);
 }
 
-TEST_CASE(
-    "DiskDrivers: [NIB-3] Truncated bitstream track pre-fills buffer with "
-    "0xFF") {
+TEST_CASE("DiskDrivers: [NIB-3] A truncated nibble track ends where it ends") {
   ScopedTempFile_t tmp_nib(".nib");
 
   FILE* f = fopen(tmp_nib.c_str(), "wb");
@@ -570,17 +620,13 @@ TEST_CASE(
         disk_err_none);
   REQUIRE(instance != nullptr);
 
-  std::vector<uint8_t> track_buf(nibbles_per_track, 0x55);
-  int out_nibbles = 0;
-  g_nib_driver.read_track(instance, 0, 0, track_buf.data(), &out_nibbles);
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  CHECK(g_nib_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                     &bit_count) == disk_err_none);
 
-  CHECK(out_nibbles == 100);
-  for (size_t i = 0; i < 100; ++i) {
-    CHECK(track_buf[i] == 0xAA);
-  }
-  for (size_t i = 100; i < nibbles_per_track; ++i) {
-    CHECK(track_buf[i] == 0xFF);
-  }
+  CHECK(bit_count == 100 * 8);
+  CHECK(to_nibbles(bits, bit_count) == short_track);
 
   g_nib_driver.close(instance);
 }

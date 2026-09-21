@@ -27,11 +27,15 @@ void sector_disk_image_close(SectorDiskImage_t* image_ptr);
 
 bool sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr);
 
-void sector_disk_image_read_track(SectorDiskImage_t* image_ptr, int track,
-                                  uint8_t* track_buffer, int* out_nibbles);
+DiskError_e sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
+                                              uint32_t quarter_track,
+                                              uint8_t* bits, uint32_t max_bits,
+                                              uint32_t* out_bit_count);
 
-void sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
-                                   const uint8_t* track_buffer, int nibbles);
+DiskError_e sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
+                                               uint32_t quarter_track,
+                                               const uint8_t* bits,
+                                               uint32_t bit_count);
 
 DiskError_e sector_disk_image_create(const char* path);
 

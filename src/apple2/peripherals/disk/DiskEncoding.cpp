@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 
 namespace {
 
@@ -47,6 +48,7 @@ constexpr int max_nibblized_sector_size = 384;
 constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
 constexpr size_t sector_size = 256;
+constexpr uint32_t cells_per_nibble = 8;
 
 const std::array<uint8_t, disk_encoding_encode_table_size> disk_encoding_table =
     {{0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
@@ -328,6 +330,66 @@ auto disk_encoding_nibblize_track(uint8_t* work_buffer,
       work_buffer, track_image_buffer,
       disk_encoding_sector_interleave_table.at(is_dos_order ? 1 : 0).data(),
       track);
+}
+
+auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
+                                   uint8_t* bits, uint32_t max_bits,
+                                   uint32_t* out_bit_count) -> DiskError_e {
+  if (nibbles == nullptr || bits == nullptr || out_bit_count == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_bit_count = 0;
+  if (count > max_bits / cells_per_nibble) {
+    return disk_err_unsupported;
+  }
+
+  const uint32_t total_bits = count * cells_per_nibble;
+  std::fill_n(bits, (total_bits + 7U) / 8U, static_cast<uint8_t>(0));
+
+  uint32_t cell = 0;
+  for (uint32_t i = 0; i < count; ++i) {
+    for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
+      if ((nibbles[i] & mask) != 0U) {
+        bits[cell >> 3U] |= static_cast<uint8_t>(0x80U >> (cell & 7U));
+      }
+      ++cell;
+    }
+  }
+
+  *out_bit_count = total_bits;
+  return disk_err_none;
+}
+
+auto disk_encoding_bits_to_nibbles(const uint8_t* bits, uint32_t bit_count,
+                                   uint8_t* nibbles, uint32_t max_nibbles,
+                                   uint32_t* out_count) -> DiskError_e {
+  if (bits == nullptr || nibbles == nullptr || out_count == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_count = 0;
+
+  auto cell_at = [bits](uint32_t index) -> uint32_t {
+    return (bits[index >> 3U] >> (7U - (index & 7U))) & 1U;
+  };
+
+  uint32_t cell = 0;
+  uint32_t written = 0;
+  while (written < max_nibbles) {
+    while (cell < bit_count && cell_at(cell) == 0) {
+      ++cell;
+    }
+    if (bit_count < cells_per_nibble || cell > bit_count - cells_per_nibble) {
+      break;
+    }
+    uint8_t value = 0;
+    for (uint32_t i = 0; i < cells_per_nibble; ++i) {
+      value = static_cast<uint8_t>((value << 1U) | cell_at(cell++));
+    }
+    nibbles[written++] = value;
+  }
+
+  *out_count = written;
+  return disk_err_none;
 }
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)

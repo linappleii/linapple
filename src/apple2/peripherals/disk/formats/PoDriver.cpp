@@ -75,30 +75,26 @@ auto po_is_write_protected(void* instance_handle) -> bool {
       static_cast<SectorDiskImage_t*>(instance_handle));
 }
 
-auto po_read_track(void* instance_handle, int track, int phase,
-                   uint8_t* track_buffer, int* out_nibbles) -> void {
-  if (out_nibbles != nullptr) {
-    *out_nibbles = 0;
-  }
-
+auto po_read_track_bits(void* instance_handle, uint32_t quarter_track,
+                        uint8_t* bits, uint32_t max_bits,
+                        uint32_t* out_bit_count) -> DiskError_e {
   if (instance_handle == nullptr) {
-    return;
+    return disk_err_invalid_argument;
   }
-
-  (void)phase;
-  sector_disk_image_read_track(static_cast<SectorDiskImage_t*>(instance_handle),
-                               track, track_buffer, out_nibbles);
+  return sector_disk_image_read_track_bits(
+      static_cast<SectorDiskImage_t*>(instance_handle), quarter_track, bits,
+      max_bits, out_bit_count);
 }
 
-auto po_write_track(void* instance_handle, int track, int phase,
-                    const uint8_t* track_buffer, int nibbles) -> void {
+auto po_write_track_bits(void* instance_handle, uint32_t quarter_track,
+                         const uint8_t* bits, uint32_t bit_count)
+    -> DiskError_e {
   if (instance_handle == nullptr) {
-    return;
+    return disk_err_invalid_argument;
   }
-  (void)phase;
-  sector_disk_image_write_track(
-      static_cast<SectorDiskImage_t*>(instance_handle), track, track_buffer,
-      nibbles);
+  return sector_disk_image_write_track_bits(
+      static_cast<SectorDiskImage_t*>(instance_handle), quarter_track, bits,
+      bit_count);
 }
 
 auto po_create(const char* path) -> DiskError_e {
@@ -133,8 +129,8 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .open = po_open,
     .close = po_close,
     .is_write_protected = po_is_write_protected,
-    .read_track = po_read_track,
-    .write_track = po_write_track,
+    .read_track_bits = po_read_track_bits,
+    .write_track_bits = po_write_track_bits,
     .create = po_create,
     .command = po_command,
     .read_flux_bit = nullptr};

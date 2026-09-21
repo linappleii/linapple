@@ -3,7 +3,6 @@
 
 #include <unistd.h>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -11,8 +10,14 @@
 #include <memory>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/Util_Path.h"
+
+namespace {
+constexpr uint32_t quarter_tracks_per_cylinder = 4;
+constexpr uint8_t sync_byte = 0xFF;
+}  // namespace
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
 // Justification:
@@ -26,6 +31,7 @@ struct BitstreamDiskImage_t {
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
   bool os_readonly = false;
+  std::array<uint8_t, nibbles_per_track> nibbles{};
 
   BitstreamDiskImage_t() = default;
   ~BitstreamDiskImage_t() = default;
@@ -88,16 +94,17 @@ extern "C" auto bitstream_disk_image_is_write_protected(
   return (image_ptr != nullptr) ? image_ptr->os_readonly : true;
 }
 
-extern "C" auto bitstream_disk_image_read_track(BitstreamDiskImage_t* image_ptr,
-                                                int track,
-                                                uint8_t* track_buffer,
-                                                int* out_nibbles) -> void {
-  if (image_ptr == nullptr || track_buffer == nullptr || track < 0 ||
-      track >= tracks_per_disk) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+extern "C" auto bitstream_disk_image_read_track_bits(
+    BitstreamDiskImage_t* image_ptr, uint32_t quarter_track, uint8_t* bits,
+    uint32_t max_bits, uint32_t* out_bit_count) -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_bit_count = 0;
+
+  const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
+  if (track >= static_cast<uint32_t>(tracks_per_disk)) {
+    return disk_err_invalid_argument;
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
@@ -105,27 +112,39 @@ extern "C" auto bitstream_disk_image_read_track(BitstreamDiskImage_t* image_ptr,
                        static_cast<int64_t>(image_ptr->track_size));
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
 
-  std::fill_n(track_buffer, nibbles_per_track, 0xFF);
-  const size_t read_count =
-      fread(track_buffer, 1, image_ptr->track_size, image_ptr->file.get());
+  image_ptr->nibbles.fill(sync_byte);
+  const size_t read_count = fread(image_ptr->nibbles.data(), 1,
+                                  image_ptr->track_size, image_ptr->file.get());
 
-  if (out_nibbles != nullptr) {
-    *out_nibbles = static_cast<int>(read_count);
-  }
+  return disk_encoding_nibbles_to_bits(image_ptr->nibbles.data(),
+                                       static_cast<uint32_t>(read_count), bits,
+                                       max_bits, out_bit_count);
 }
 
-extern "C" auto bitstream_disk_image_write_track(
-    BitstreamDiskImage_t* image_ptr, int track, const uint8_t* track_buffer,
-    int nibbles) -> void {
-  if (image_ptr == nullptr || track_buffer == nullptr ||
-      image_ptr->os_readonly || track < 0 || track >= tracks_per_disk) {
-    return;
+extern "C" auto bitstream_disk_image_write_track_bits(
+    BitstreamDiskImage_t* image_ptr, uint32_t quarter_track,
+    const uint8_t* bits, uint32_t bit_count) -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  if (image_ptr->os_readonly) {
+    return disk_err_write_protected;
+  }
+
+  const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
+  if (track >= static_cast<uint32_t>(tracks_per_disk)) {
+    return disk_err_invalid_argument;
+  }
+
+  uint32_t nibble_count = 0;
+  const DiskError_e decoded =
+      disk_encoding_bits_to_nibbles(bits, bit_count, image_ptr->nibbles.data(),
+                                    image_ptr->track_size, &nibble_count);
+  if (decoded != disk_err_none) {
+    return decoded;
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
@@ -133,12 +152,14 @@ extern "C" auto bitstream_disk_image_write_track(
                        static_cast<int64_t>(image_ptr->track_size));
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-    return;
+    return disk_err_io;
   }
-  if (fwrite(track_buffer, 1, static_cast<size_t>(nibbles),
-             image_ptr->file.get()) == static_cast<size_t>(nibbles)) {
-    fflush(image_ptr->file.get());
+  if (fwrite(image_ptr->nibbles.data(), 1, nibble_count,
+             image_ptr->file.get()) != nibble_count) {
+    return disk_err_io;
   }
+  fflush(image_ptr->file.get());
+  return disk_err_none;
 }
 
 // Why: Generates a new, zero-filled raw bitstream image of the specified

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -11,6 +10,7 @@
 #include <vector>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
@@ -38,6 +38,7 @@ constexpr int chunk_header_size = 8;
 constexpr int file_header_size = 12;
 constexpr int tmap_entries = 160;
 constexpr int trks_entry_size = 8;
+constexpr uint16_t max_track_blocks = 64;
 
 constexpr int info_disk_type_offset = 1;
 constexpr int info_write_protect_offset = 2;
@@ -69,6 +70,7 @@ struct WozInstance_t {
   std::array<uint8_t, woz::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
+  std::array<uint8_t, nibbles_per_track> nibbles{};
   bool format_write_protected = false;
   bool os_readonly = false;
 
@@ -232,52 +234,36 @@ auto reconstruct_bitstream_nibble(const uint8_t* buffer, uint32_t bit_count,
   return nibble;
 }
 
-static void woz2_read_track(void* instance_handle, int track, int phase,
-                            uint8_t* track_buffer, int* out_nibbles) {
-  if (out_nibbles != nullptr) {
-    *out_nibbles = 0;
+static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
+                                 uint8_t* bits, uint32_t max_bits,
+                                 uint32_t* out_bit_count) -> DiskError_e {
+  if (instance_handle == nullptr || bits == nullptr ||
+      out_bit_count == nullptr) {
+    return disk_err_invalid_argument;
   }
+  *out_bit_count = 0;
 
-  if (instance_handle == nullptr || track_buffer == nullptr) {
-    return;
-  }
-  (void)track;
   auto* wi_ptr = reinterpret_cast<WozInstance_t*>(instance_handle);
 
-  const uint32_t tmap_index =
-      static_cast<uint32_t>(phase) * (4 / phases_per_track);
-  if (tmap_index >= static_cast<uint32_t>(woz::tmap_entries)) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+  if (quarter_track >= static_cast<uint32_t>(woz::tmap_entries)) {
+    return disk_err_invalid_argument;
   }
 
   const uint8_t* const tmap_entry =
-      wi_ptr->header_at(wi_ptr->tmap_offset + tmap_index, 1);
+      wi_ptr->header_at(wi_ptr->tmap_offset + quarter_track, 1);
   if (tmap_entry == nullptr) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_corrupt;
   }
 
+  // An unmapped quarter track is surface the image never recorded, which the
+  // card hears as noise rather than as a failure to read.
   const uint8_t trks_index = *tmap_entry;
   if (trks_index == woz::unrecorded_track) {
-    for (int i = 0; i < static_cast<int>(nibbles_per_track); ++i) {
-      track_buffer[i] = static_cast<uint8_t>(rand() & woz::byte_mask);
-    }
-    if (out_nibbles != nullptr) {
-      *out_nibbles = static_cast<int>(nibbles_per_track);
-    }
-    return;
+    return disk_err_none;
   }
 
   if (trks_index >= woz::tmap_entries) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_corrupt;
   }
 
   const uint64_t entry_offset =
@@ -286,76 +272,50 @@ static void woz2_read_track(void* instance_handle, int track, int phase,
   const uint8_t* const trk =
       wi_ptr->header_at(entry_offset, woz::trks_entry_size);
   if (trk == nullptr) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_corrupt;
   }
   const uint16_t starting_block = read_u16_le(&trk[0]);
   const uint16_t block_count = read_u16_le(&trk[2]);
   const uint32_t bit_count = read_u32_le(&trk[4]);
 
-  if (block_count == 0 || block_count > 64) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+  if (block_count == 0 || block_count > woz::max_track_blocks) {
+    return disk_err_corrupt;
   }
 
   const uint32_t byte_count =
       static_cast<uint32_t>(block_count) * woz::data_block_size;
-  if (byte_count > 65536) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
-  }
 
   if (bit_count == 0 || bit_count > byte_count * woz::bits_per_byte) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_corrupt;
   }
 
   const int64_t total_file_size = Path::file_size(wi_ptr->file.get());
   const uint64_t file_offset =
       static_cast<uint64_t>(starting_block) * woz::data_block_size;
   if (file_offset + byte_count > static_cast<uint64_t>(total_file_size)) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_corrupt;
   }
 
   std::vector<uint8_t> buffer(byte_count);
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
       0) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
   if (fread(buffer.data(), 1, byte_count, wi_ptr->file.get()) != byte_count) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
 
-  std::fill_n(track_buffer, nibbles_per_track, woz::byte_mask);
+  wi_ptr->nibbles.fill(woz::byte_mask);
   uint32_t bit_idx = 0;
-  int nibbles_done = 0;
+  uint32_t nibbles_done = 0;
 
-  while (bit_idx < bit_count &&
-         nibbles_done < static_cast<int>(nibbles_per_track)) {
-    track_buffer[nibbles_done++] =
+  while (bit_idx < bit_count && nibbles_done < nibbles_per_track) {
+    wi_ptr->nibbles[nibbles_done++] =
         reconstruct_bitstream_nibble(buffer.data(), bit_count, &bit_idx);
   }
 
-  if (out_nibbles != nullptr) {
-    *out_nibbles = nibbles_done;
-  }
+  return disk_encoding_nibbles_to_bits(wi_ptr->nibbles.data(), nibbles_done,
+                                       bits, max_bits, out_bit_count);
 }
 
 static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
@@ -381,8 +341,8 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .open = woz2_open,
     .close = woz2_close,
     .is_write_protected = woz2_is_write_protected,
-    .read_track = woz2_read_track,
-    .write_track = nullptr,
+    .read_track_bits = woz2_read_track_bits,
+    .write_track_bits = nullptr,
     .create = nullptr,
     .command = woz2_command,
     .read_flux_bit = nullptr};

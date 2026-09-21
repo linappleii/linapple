@@ -22,8 +22,8 @@ void disk_abi_c_smoke(void) {
   driver.open = 0;
   driver.close = 0;
   driver.is_write_protected = 0;
-  driver.read_track = 0;
-  driver.write_track = 0;
+  driver.read_track_bits = 0;
+  driver.write_track_bits = 0;
   driver.create = 0;
   driver.read_flux_bit = 0;
   DiskSavedState_t saved_state;

@@ -59,11 +59,15 @@ namespace dos {
 constexpr int track_size = 4096;
 }
 
+constexpr uint32_t quarter_tracks_per_cylinder = 4;
+constexpr uint8_t sync_byte = 0xFF;
+
 struct IieInstance_t {
   FilePtr_t file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
   std::array<uint8_t, sectors_per_track> sector_order{};
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
+  std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint32_t, iie::tracks> track_offsets{};
   std::array<uint16_t, iie::tracks> track_nibble_counts{};
   bool os_readonly = false;
@@ -222,57 +226,49 @@ auto iie_is_write_protected(void* instance_handle) -> bool {
 
 // Why: Fetches track data from the image based on its variant. Legacy images
 // require on-the-fly nibblization with custom sector mapping, while modern
-// images store raw bitstreams directly.
-auto iie_read_track(void* instance_handle, int track, int phase,
-                    uint8_t* track_buffer, int* out_nibbles) -> void {
-  if (out_nibbles != nullptr) {
-    *out_nibbles = 0;
+// images store raw nibbles directly.
+auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
+                         uint8_t* bits, uint32_t max_bits,
+                         uint32_t* out_bit_count) -> DiskError_e {
+  if (instance_handle == nullptr || bits == nullptr ||
+      out_bit_count == nullptr) {
+    return disk_err_invalid_argument;
   }
+  *out_bit_count = 0;
 
-  if (instance_handle == nullptr || track_buffer == nullptr) {
-    return;
-  }
-  (void)phase;
   auto* ii_ptr = reinterpret_cast<IieInstance_t*>(instance_handle);
 
-  if (track < 0 || track >= iie::tracks) {
-    return;
+  const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
+  if (track >= static_cast<uint32_t>(iie::tracks)) {
+    return disk_err_invalid_argument;
   }
 
-  const uint32_t offset = ii_ptr->track_offsets[static_cast<size_t>(track)];
-  const uint16_t nib_count =
-      ii_ptr->track_nibble_counts[static_cast<size_t>(track)];
+  const uint32_t offset = ii_ptr->track_offsets[track];
+  const uint16_t nib_count = ii_ptr->track_nibble_counts[track];
 
   if (fseek(ii_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
 
+  uint32_t nibbles_read = 0;
   if (ii_ptr->header[iie::variant_offset] <= iie::variant_max_legacy) {
     std::fill(ii_ptr->work_buffer.begin(), ii_ptr->work_buffer.end(), 0);
     if (fread(ii_ptr->work_buffer.data(), 1, dos::track_size,
               ii_ptr->file.get()) != dos::track_size) {
-      if (out_nibbles != nullptr) {
-        *out_nibbles = 0;
-      }
-      return;
+      return disk_err_io;
     }
-    const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        ii_ptr->work_buffer.data(), track_buffer, ii_ptr->sector_order.data(),
-        track);
-    if (out_nibbles != nullptr) {
-      *out_nibbles = static_cast<int>(nibbles);
-    }
+    ii_ptr->nibbles.fill(sync_byte);
+    nibbles_read = disk_encoding_nibblize_track_custom_order(
+        ii_ptr->work_buffer.data(), ii_ptr->nibbles.data(),
+        ii_ptr->sector_order.data(), static_cast<int>(track));
   } else {
-    std::fill_n(track_buffer, nibbles_per_track, 0xFF);
-    const size_t read_count =
-        fread(track_buffer, 1, nib_count, ii_ptr->file.get());
-    if (out_nibbles != nullptr) {
-      *out_nibbles = static_cast<int>(read_count);
-    }
+    ii_ptr->nibbles.fill(sync_byte);
+    nibbles_read = static_cast<uint32_t>(
+        fread(ii_ptr->nibbles.data(), 1, nib_count, ii_ptr->file.get()));
   }
+
+  return disk_encoding_nibbles_to_bits(ii_ptr->nibbles.data(), nibbles_read,
+                                       bits, max_bits, out_bit_count);
 }
 
 auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
@@ -300,8 +296,8 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .open = iie_open,
     .close = iie_close,
     .is_write_protected = iie_is_write_protected,
-    .read_track = iie_read_track,
-    .write_track = nullptr,
+    .read_track_bits = iie_read_track_bits,
+    .write_track_bits = nullptr,
     .create = nullptr,
     .command = iie_command,
     .read_flux_bit = nullptr};

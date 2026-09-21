@@ -3,7 +3,6 @@
 
 #include <unistd.h>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -32,6 +31,7 @@ struct SectorDiskImage_t {
   bool os_readonly = false;
   bool is_dos_order = false;
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
+  std::array<uint8_t, nibbles_per_track> nibbles{};
 
   SectorDiskImage_t() = default;
   ~SectorDiskImage_t() = default;
@@ -70,6 +70,13 @@ constexpr uint16_t max_blocks_140k = 280;
 }  // namespace prodos
 
 constexpr int create_buffer_size = 1024;
+constexpr uint32_t quarter_tracks_per_cylinder = 4;
+
+// A sector image records nothing between cylinders, so all four quarter
+// tracks of a cylinder synthesise the same surface.
+auto quarter_track_to_cylinder(uint32_t quarter_track) -> int {
+  return static_cast<int>(quarter_track / quarter_tracks_per_cylinder);
+}
 }  // namespace
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,
@@ -127,52 +134,65 @@ auto sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr)
   return image_ptr->os_readonly;
 }
 
-auto sector_disk_image_read_track(SectorDiskImage_t* image_ptr, int track,
-                                  uint8_t* track_buffer, int* out_nibbles)
-    -> void {
-  if (image_ptr == nullptr || track_buffer == nullptr || track < 0 ||
-      track >= tracks_per_disk) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
+                                       uint32_t quarter_track, uint8_t* bits,
+                                       uint32_t max_bits,
+                                       uint32_t* out_bit_count) -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr) {
+    return disk_err_invalid_argument;
   }
+  *out_bit_count = 0;
 
-  std::fill_n(track_buffer, nibbles_per_track, disk::sync_byte);
+  const int track = quarter_track_to_cylinder(quarter_track);
+  if (track >= tracks_per_disk) {
+    return disk_err_invalid_argument;
+  }
 
   image_ptr->work_buffer.fill(0);
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
                       (static_cast<int64_t>(track) * dos::track_size);
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
 
   if (fread(image_ptr->work_buffer.data(), 1, dos::track_size,
             image_ptr->file.get()) != dos::track_size) {
-    if (out_nibbles != nullptr) {
-      *out_nibbles = 0;
-    }
-    return;
+    return disk_err_io;
   }
 
-  disk_encoding_nibblize_track(image_ptr->work_buffer.data(), track_buffer,
+  image_ptr->nibbles.fill(disk::sync_byte);
+  disk_encoding_nibblize_track(image_ptr->work_buffer.data(),
+                               image_ptr->nibbles.data(),
                                image_ptr->is_dos_order, track);
 
-  if (out_nibbles != nullptr) {
-    *out_nibbles = static_cast<int>(nibbles_per_track);
-  }
+  return disk_encoding_nibbles_to_bits(image_ptr->nibbles.data(),
+                                       nibbles_per_track, bits, max_bits,
+                                       out_bit_count);
 }
 
-auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
-                                   const uint8_t* track_buffer, int nibbles)
-    -> void {
-  if (image_ptr == nullptr || track_buffer == nullptr ||
-      image_ptr->os_readonly || track < 0 || track >= tracks_per_disk) {
-    return;
+auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
+                                        uint32_t quarter_track,
+                                        const uint8_t* bits, uint32_t bit_count)
+    -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  if (image_ptr->os_readonly) {
+    return disk_err_write_protected;
+  }
+
+  const int track = quarter_track_to_cylinder(quarter_track);
+  if (track >= tracks_per_disk) {
+    return disk_err_invalid_argument;
+  }
+
+  uint32_t nibble_count = 0;
+  const DiskError_e decoded =
+      disk_encoding_bits_to_nibbles(bits, bit_count, image_ptr->nibbles.data(),
+                                    nibbles_per_track, &nibble_count);
+  if (decoded != disk_err_none) {
+    return decoded;
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
@@ -187,17 +207,19 @@ auto sector_disk_image_write_track(SectorDiskImage_t* image_ptr, int track,
     image_ptr->work_buffer.fill(0);
   }
 
-  disk_encoding_denibblize_track(image_ptr->work_buffer.data(),
-                                 const_cast<uint8_t*>(track_buffer),
-                                 image_ptr->is_dos_order, nibbles);
+  disk_encoding_denibblize_track(
+      image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
+      image_ptr->is_dos_order, static_cast<int>(nibble_count));
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
-    return;
+    return disk_err_io;
   }
   if (fwrite(image_ptr->work_buffer.data(), 1, dos::track_size,
-             image_ptr->file.get()) == static_cast<size_t>(dos::track_size)) {
-    fflush(image_ptr->file.get());
+             image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
+    return disk_err_io;
   }
+  fflush(image_ptr->file.get());
+  return disk_err_none;
 }
 
 auto sector_disk_image_create(const char* path) -> DiskError_e {

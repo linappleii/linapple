@@ -418,7 +418,7 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
 
   DiskFormatDriver_t write_cap_mismatch = usable;
   write_cap_mismatch.capabilities = disk_driver_cap_write;
-  write_cap_mismatch.write_track = nullptr;
+  write_cap_mismatch.write_track_bits = nullptr;
   disk_loader_register(&write_cap_mismatch);
 
   DiskFormatDriver_t foreign_abi = usable;

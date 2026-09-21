@@ -75,29 +75,26 @@ auto do_is_write_protected(void* instance) -> bool {
       static_cast<SectorDiskImage_t*>(instance));
 }
 
-auto do_read_track(void* instance_handle, int track, int phase,
-                   uint8_t* track_buffer, int* out_nibbles) -> void {
-  if (out_nibbles != nullptr) {
-    *out_nibbles = 0;
-  }
-
+auto do_read_track_bits(void* instance_handle, uint32_t quarter_track,
+                        uint8_t* bits, uint32_t max_bits,
+                        uint32_t* out_bit_count) -> DiskError_e {
   if (instance_handle == nullptr) {
-    return;
+    return disk_err_invalid_argument;
   }
-
-  (void)phase;
-  sector_disk_image_read_track(static_cast<SectorDiskImage_t*>(instance_handle),
-                               track, track_buffer, out_nibbles);
+  return sector_disk_image_read_track_bits(
+      static_cast<SectorDiskImage_t*>(instance_handle), quarter_track, bits,
+      max_bits, out_bit_count);
 }
 
-auto do_write_track(void* instance, int track, int phase,
-                    const uint8_t* track_buffer, int nibbles) -> void {
+auto do_write_track_bits(void* instance, uint32_t quarter_track,
+                         const uint8_t* bits, uint32_t bit_count)
+    -> DiskError_e {
   if (instance == nullptr) {
-    return;
+    return disk_err_invalid_argument;
   }
-  (void)phase;
-  sector_disk_image_write_track(static_cast<SectorDiskImage_t*>(instance),
-                                track, track_buffer, nibbles);
+  return sector_disk_image_write_track_bits(
+      static_cast<SectorDiskImage_t*>(instance), quarter_track, bits,
+      bit_count);
 }
 
 auto do_create(const char* path) -> DiskError_e {
@@ -131,8 +128,8 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .open = do_open,
     .close = do_close,
     .is_write_protected = do_is_write_protected,
-    .read_track = do_read_track,
-    .write_track = do_write_track,
+    .read_track_bits = do_read_track_bits,
+    .write_track_bits = do_write_track_bits,
     .create = do_create,
     .command = do_command,
     .read_flux_bit = nullptr};
