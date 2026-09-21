@@ -346,9 +346,9 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
 }
 
 auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
-                           uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
+                           uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -357,7 +357,7 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return read_floating_bus(instance, remaining_cycles);
+  return read_floating_bus(instance, executed_cycles);
 }
 
 // Why: Emulates the physical movement of the disk head via the stepper motor.
@@ -395,9 +395,9 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
 // The 6502 code manually energizes/de-energizes four physical magnets
 // to 'pull' the head to the next or previous phase.
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
-                             uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
+                             uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -427,13 +427,13 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_drive_head(disk_peripheral, step_delta);
   }
 
-  return read_floating_bus(instance, remaining_cycles);
+  return read_floating_bus(instance, executed_cycles);
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
-                          uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
+                          uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -452,13 +452,13 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return read_floating_bus(instance, remaining_cycles);
+  return read_floating_bus(instance, executed_cycles);
 }
 
 auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                        uint32_t remaining_cycles) -> uint8_t {
+                        uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -474,7 +474,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   // With no medium under it the MC3470 amplifies head noise, so the register
   // takes a value that is not reproducible rather than holding its last one.
   if (!drive.is_data_loaded) {
-    disk_peripheral->io_latch = read_floating_bus(instance, remaining_cycles);
+    disk_peripheral->io_latch = read_floating_bus(instance, executed_cycles);
     return disk_peripheral->io_latch;
   }
 
@@ -506,9 +506,9 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 }
 
 auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                       uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
+                       uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -521,9 +521,9 @@ auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
 }
 
 auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                           uint32_t remaining_cycles) -> uint8_t {
+                           uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -541,9 +541,9 @@ auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 }
 
 auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
-                            uint8_t, uint32_t remaining_cycles) -> uint8_t {
+                            uint8_t, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -559,7 +559,7 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
     notify_status_changed(disk_peripheral);
   }
 
-  return read_floating_bus(instance, remaining_cycles);
+  return read_floating_bus(instance, executed_cycles);
 }
 
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
@@ -720,7 +720,7 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
 
 using DiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
                                  uint16_t memory_address, uint8_t is_write,
-                                 uint8_t data_value, uint32_t remaining_cycles)
+                                 uint8_t data_value, uint32_t executed_cycles)
     -> uint8_t;
 
 constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
@@ -747,31 +747,31 @@ constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
 // switch still fires, but only the even offsets drive the eight data lines.
 auto disk_io_read(void* instance, uint16_t program_counter,
                   uint16_t memory_address, uint8_t is_write, uint8_t,
-                  uint32_t remaining_cycles) -> uint8_t {
+                  uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
   k_disk_io_handlers[handler_index](instance, program_counter, addr, 0, 0,
-                                    remaining_cycles);
+                                    executed_cycles);
 
   if ((addr & 1) != 0) {
-    return read_floating_bus(instance, remaining_cycles);
+    return read_floating_bus(instance, executed_cycles);
   }
   return static_cast<const DiskPeripheral_t*>(instance)->io_latch;
 }
 
 auto disk_io_write(void* instance, uint16_t program_counter,
                    uint16_t memory_address, uint8_t is_write,
-                   uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
+                   uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr || is_write == 0) {
     return 0;
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
   return k_disk_io_handlers[handler_index](instance, program_counter, addr, 1,
-                                           data_value, remaining_cycles);
+                                           data_value, executed_cycles);
 }
 
 auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
