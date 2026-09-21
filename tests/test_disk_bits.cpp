@@ -149,21 +149,25 @@ TEST_CASE("DiskBits: [BITS-04] A head step keeps the angle it left on") {
   const int32_t before = harness.byte_position();
   REQUIRE(before > 0);
 
-  // Two magnet strobes take the head to the next whole track, whose medium
-  // is the same length, so the angle carries across untouched but for the
-  // cells the arm spends settling.
-  harness.read(io_phase_1_on, 0);
-  harness.read(io_phase_1_off, 0);
-  harness.read(io_phase_2_on, 0);
-  harness.read(io_phase_2_off, 0);
-  harness.spin(1);
+  // Two magnet strobes take the head to the next whole track, each held long
+  // enough for the coil to pull; the next track is the same length, so the
+  // angle carries across but for the cells that pass while the arm moves.
+  constexpr uint32_t hold_cycles = 100;
+  constexpr uint32_t strobes = 4;
+  for (const uint16_t strobe :
+       {io_phase_1_on, io_phase_1_off, io_phase_2_on, io_phase_2_off}) {
+    harness.read(strobe, 0);
+    harness.spin(hold_cycles);
+  }
 
   // Reading is what pulls the new track in, and the angle comes with it.
   harness.read(io_q6_clear, 1);
   harness.spin(2);
 
+  constexpr int32_t travelled_bytes = static_cast<int32_t>(
+      strobes * hold_cycles / cycles_per_cell / cells_per_byte);
   const DiskSavedState_t after = harness.state();
   CHECK(after.drives[0].track == 1);
-  CHECK(after.drives[0].current_byte_pos >= before);
-  CHECK(after.drives[0].current_byte_pos <= before + 2);
+  CHECK(after.drives[0].current_byte_pos > before);
+  CHECK(after.drives[0].current_byte_pos <= before + travelled_bytes + 2);
 }

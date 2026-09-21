@@ -8,10 +8,12 @@
 #include <vector>
 
 #include "apple2/Memory.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -215,6 +217,11 @@ class DiskStepperHarness_t {
   }
 
   auto spin_up() -> void {
+    DiskStatus_t status{};
+    size_t status_size = sizeof(status);
+    peripheral_query(slot_6, disk_query_status, &status, &status_size);
+    REQUIRE(status.drive0_loaded == 1);
+
     io_map_dispatch(0, drive0_select_switch, 0, 0, 0);
     io_map_dispatch(0, motor_on_switch, 0, 0, 0);
     io_map_dispatch(0, read_mode_switch, 0, 0, 0);
@@ -568,4 +575,288 @@ TEST_CASE("DiskStepper: [STEP-06] A dead motor timer leaves the head alone") {
   harness.step_phase(0, true);
   harness.step_phase(0, false);
   CHECK(harness.get_phase() == moved_track);
+}
+
+namespace {
+
+// A medium the card can read and write that reports which quarter track the
+// head asked for, which is the only place that number is visible: the v1
+// save state rounds it to the half track below.
+constexpr uint32_t recorder_cell_count = 4096;
+constexpr uint32_t quarter_track_unread = 0xFFFFFFFFU;
+constexpr uint32_t magnet_hold_cycles = 64;
+
+struct TrackRecorder_t {
+  std::vector<uint8_t> cells = std::vector<uint8_t>(recorder_cell_count / 8, 0);
+  uint32_t last_read_quarter_track = quarter_track_unread;
+  uint32_t last_written_quarter_track = quarter_track_unread;
+  std::vector<uint8_t> last_written_cells;
+};
+
+TrackRecorder_t g_recorder;
+
+auto recorder_probe(const uint8_t*, size_t, uint32_t, const char*)
+    -> DiskProbe_e {
+  return disk_probe_definite;
+}
+
+auto recorder_open(const char*, uint32_t, bool, void** out_instance)
+    -> DiskError_e {
+  *out_instance = &g_recorder;
+  return disk_err_none;
+}
+
+auto recorder_close(void*) -> void {}
+
+auto recorder_is_write_protected(void*) -> bool { return false; }
+
+auto recorder_read(void*, uint32_t quarter_track, uint8_t* bits,
+                   uint32_t max_bits, uint32_t* out_bit_count,
+                   uint8_t* out_bit_timing) -> DiskError_e {
+  if (recorder_cell_count > max_bits) {
+    return disk_err_unsupported;
+  }
+  g_recorder.last_read_quarter_track = quarter_track;
+  for (size_t byte = 0; byte < g_recorder.cells.size(); ++byte) {
+    bits[byte] = g_recorder.cells[byte];
+  }
+  *out_bit_count = recorder_cell_count;
+  *out_bit_timing = disk_default_bit_timing;
+  return disk_err_none;
+}
+
+auto recorder_write(void*, uint32_t quarter_track, const uint8_t* bits,
+                    uint32_t bit_count) -> DiskError_e {
+  if (bit_count != recorder_cell_count) {
+    return disk_err_unsupported;
+  }
+  g_recorder.last_written_quarter_track = quarter_track;
+  g_recorder.last_written_cells.assign(bits, bits + (bit_count / 8));
+  return disk_err_none;
+}
+
+auto recorder_driver() -> const DiskFormatDriver_t* {
+  static const DiskFormatDriver_t driver = {disk_format_abi_version,
+                                            disk_driver_cap_write,
+                                            "AAA Quarter Track Recorder",
+                                            nullptr,
+                                            recorder_probe,
+                                            recorder_open,
+                                            recorder_close,
+                                            recorder_is_write_protected,
+                                            recorder_read,
+                                            recorder_write,
+                                            nullptr};
+  return &driver;
+}
+
+class QuarterTrackHarness_t {
+ public:
+  QuarterTrackHarness_t() {
+    g_recorder = TrackRecorder_t{};
+    machine_.load();
+    linapple_init();
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    disk_loader_register(recorder_driver());
+
+    DiskInsertCmd_t cmd{};
+    cmd.drive = disk_drive_0;
+    util_safe_strcpy(cmd.path, fixture_.c_str(), disk_insert_path_max);
+    peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
+    peripheral_manager_think(0);
+
+    io_map_dispatch(0, drive0_select_switch, 0, 0, 0);
+    io_map_dispatch(0, motor_on_switch, 0, 0, 0);
+    io_map_dispatch(0, read_mode_switch, 0, 0, 0);
+    io_map_dispatch(0, read_write_switch, 0, 0, 0);
+    peripheral_manager_think(magnet_hold_cycles);
+    REQUIRE(g_recorder.last_read_quarter_track == 0);
+    quarter_track_ = 0;
+  }
+
+  ~QuarterTrackHarness_t() {
+    linapple_shutdown();
+    disk_loader_reset();
+  }
+
+  QuarterTrackHarness_t(const QuarterTrackHarness_t&) = delete;
+  auto operator=(const QuarterTrackHarness_t&)
+      -> QuarterTrackHarness_t& = delete;
+
+  auto strobe(int phase, bool on, uint32_t hold_cycles) -> void {
+    const auto address =
+        static_cast<uint16_t>(stepper_base + (phase * 2) + (on ? 1 : 0));
+    io_map_dispatch(0, address, 0, 0, 0);
+    peripheral_manager_think(hold_cycles);
+  }
+
+  auto strobe(int phase, bool on) -> void {
+    strobe(phase, on, magnet_hold_cycles);
+  }
+
+  // Pulling the next track in is what tells the driver where the head is, so
+  // one read after a move is how the number gets out.
+  auto quarter_track() -> uint32_t {
+    io_map_dispatch(0, read_write_switch, 0, 0, 1);
+    peripheral_manager_think(2);
+    if (g_recorder.last_read_quarter_track != quarter_track_unread) {
+      quarter_track_ = g_recorder.last_read_quarter_track;
+    }
+    return quarter_track_;
+  }
+
+  auto write_nibble(uint8_t value, uint32_t* cycle) -> void {
+    io_map_dispatch(0, latch_switch, 1, value, *cycle);
+    *cycle += 4;
+    io_map_dispatch(0, read_write_switch, 0, 0, *cycle);
+    *cycle += 28;
+  }
+
+  auto set_write_mode(uint32_t cycle) -> void {
+    io_map_dispatch(0, write_mode_switch, 0, 0, cycle);
+  }
+
+  auto set_read_mode(uint32_t cycle) -> void {
+    io_map_dispatch(0, read_mode_switch, 0, 0, cycle);
+  }
+
+  auto close_slice(uint32_t cycle) -> void { peripheral_manager_think(cycle); }
+
+ private:
+  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture_t fixture_ =
+      TestFixtures::create_ephemeral("minimal.dsk");
+  uint32_t quarter_track_ = 0;
+};
+
+}  // namespace
+
+TEST_CASE("DiskStepper: [STEP-07] Two magnets park the head between them") {
+  QuarterTrackHarness_t harness;
+
+  // Walking the magnets a pair at a time visits the odd quarter tracks the
+  // half-track model could never reach.
+  std::vector<uint32_t> visited;
+  int held = 0;
+  for (int step = 0; step < 8; ++step) {
+    const int next = (held + 1) & 3;
+    harness.strobe(held, true);
+    harness.strobe(next, true);
+    visited.push_back(harness.quarter_track());
+    harness.strobe(held, false);
+    held = next;
+  }
+
+  for (size_t index = 0; index < visited.size(); ++index) {
+    CHECK(visited[index] == (index * 2) + 1);
+  }
+}
+
+TEST_CASE("DiskStepper: [STEP-08] Recalibration lands on quarter track 0") {
+  for (const int start_half_track : {3, 10, 39, 40, 61, 79}) {
+    CAPTURE(start_half_track);
+    QuarterTrackHarness_t harness;
+
+    for (int step = 0; step < start_half_track; ++step) {
+      harness.strobe((step + 1) & 3, true);
+      harness.strobe(step & 3, false);
+    }
+    REQUIRE(harness.quarter_track() > 0);
+    for (int phase = 0; phase < 4; ++phase) {
+      harness.strobe(phase, false);
+    }
+
+    // The P5 boot ROM's recalibration: eighty-one passes with the phase
+    // counting down, which drags the head outward past the stop.
+    constexpr int recalibration_passes = 81;
+    for (int pass = 0; pass < recalibration_passes; ++pass) {
+      const int phase = (0x50 - pass) & 3;
+      harness.strobe(phase, true);
+      harness.strobe(phase, false);
+    }
+    harness.strobe(0, true);
+
+    CHECK(harness.quarter_track() == 0);
+  }
+}
+
+TEST_CASE("DiskStepper: [STEP-09] Two magnets dropped together cancel") {
+  {
+    QuarterTrackHarness_t harness;
+    harness.strobe(0, true);
+    harness.strobe(1, true);
+    const uint32_t parked = harness.quarter_track();
+    REQUIRE(parked == 1);
+
+    // Both coils lose current inside the ten cycles the cog needs, so the
+    // head never chases the magnet that outlived the other.
+    io_map_dispatch(0, stepper_base + 0, 0, 0, 0);
+    io_map_dispatch(0, stepper_base + 2, 0, 0, 0);
+    peripheral_manager_think(magnet_hold_cycles);
+    CHECK(harness.quarter_track() == parked);
+  }
+  {
+    QuarterTrackHarness_t harness;
+    harness.strobe(0, true);
+    harness.strobe(1, true);
+    REQUIRE(harness.quarter_track() == 1);
+
+    // Far enough apart and the head does follow the surviving magnet.
+    harness.strobe(0, false);
+    harness.strobe(1, false);
+    CHECK(harness.quarter_track() == 2);
+  }
+}
+
+TEST_CASE(
+    "DiskStepper: [STEP-10] A seek hands the written track to the driver") {
+  QuarterTrackHarness_t harness;
+
+  const std::vector<uint8_t> payload = {0xFF, 0xFF, 0xFF, 0xD5,
+                                        0xAA, 0x96, 0xFF, 0xFE};
+  uint32_t cycle = 1;
+  harness.set_write_mode(cycle);
+  for (const uint8_t nibble : payload) {
+    harness.write_nibble(nibble, &cycle);
+  }
+  harness.set_read_mode(cycle);
+  harness.close_slice(cycle);
+
+  // Stepping the head is what offers the buffer to the image.
+  harness.strobe(1, true);
+  harness.strobe(0, false);
+
+  REQUIRE(g_recorder.last_written_quarter_track != quarter_track_unread);
+  CHECK(g_recorder.last_written_quarter_track == 0);
+  REQUIRE(g_recorder.last_written_cells.size() == recorder_cell_count / 8);
+
+  // The cells the driver was handed decode to the nibbles that went out.
+  std::vector<uint8_t> decoded;
+  uint32_t assembled = 0;
+  int filled = 0;
+  for (uint32_t cell = 0; cell < recorder_cell_count && decoded.size() < 16;
+       ++cell) {
+    const uint32_t bit =
+        (g_recorder.last_written_cells[cell >> 3U] >> (7U - (cell & 7U))) & 1U;
+    if (filled == 0 && bit == 0) {
+      continue;
+    }
+    assembled = ((assembled << 1U) | bit) & 0xFFU;
+    if (++filled == 8) {
+      decoded.push_back(static_cast<uint8_t>(assembled));
+      assembled = 0;
+      filled = 0;
+    }
+  }
+
+  bool found = false;
+  for (size_t index = 0; index + 3 <= decoded.size(); ++index) {
+    if (decoded[index] == 0xD5 && decoded[index + 1] == 0xAA &&
+        decoded[index + 2] == 0x96) {
+      found = true;
+      break;
+    }
+  }
+  CHECK(found);
 }

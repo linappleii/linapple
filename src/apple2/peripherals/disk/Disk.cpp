@@ -49,6 +49,9 @@ constexpr uint32_t noise_increment = 12345U;
 constexpr uint32_t noise_one_in_256 = 77U;
 constexpr uint8_t max_reliable_zero_cells = 3;
 constexpr uint32_t head_settling_cells = 7;
+constexpr uint32_t stepper_magnets = 4;
+constexpr int32_t quarter_tracks_per_disk = max_disk_phases * 2;
+constexpr uint32_t magnet_settle_cycles = 10;
 constexpr uint32_t cells_per_byte = 8;
 constexpr uint32_t track_bit_bytes = max_track_bits / 8;
 }  // namespace physical
@@ -92,8 +95,7 @@ auto path_basename(const std::string& path) -> std::string {
 
 struct Disk_t {
   std::string full_path{};
-  int32_t track = 0;
-  int32_t phase = 0;
+  uint32_t quarter_track = 0;
   uint32_t bit_position = 0;
   int32_t cell_remaining = 0;
   uint8_t zero_cell_run = 0;
@@ -143,6 +145,10 @@ struct DiskPeripheral_t {
   // Rotational and timing simulation state
   uint32_t synced = 0;
   uint32_t noise_seed = 0;
+  uint32_t cumulative_cycles = 0;
+  uint32_t magnet_release_cycle = 0;
+  uint32_t quarter_track_before_release = 0;
+  bool magnet_released = false;
 
   // Host bridge
   HostInterface_t* host = nullptr;
@@ -221,12 +227,6 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
   return false;
 }
 
-// Phase D gives the stepper quarter-track resolution; until then the head
-// only ever parks on a half track.
-auto quarter_track_of(const Disk_t& drive) -> uint32_t {
-  return static_cast<uint32_t>(drive.phase) * 2U;
-}
-
 auto medium_cell(const Disk_t& drive, uint32_t index) -> uint32_t {
   return (drive.track_bits[index >> 3U] >> (7U - (index & 7U))) & 1U;
 }
@@ -298,7 +298,8 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   auto* disk_ptr =
       &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
+  if (disk_ptr->quarter_track >=
+      static_cast<uint32_t>(physical::quarter_tracks_per_disk)) {
     return;
   }
 
@@ -311,7 +312,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     // A driver that refuses the track leaves the buffer dirty, because the
     // changes it holds are still not in the image.
     const DiskError_e error = disk_ptr->driver->write_track_bits(
-        disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
+        disk_ptr->driver_instance, disk_ptr->quarter_track,
         disk_ptr->track_bits.data(), disk_ptr->bit_count);
     disk_ptr->is_dirty = (error != disk_err_none);
   }
@@ -358,7 +359,8 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   disk_ptr->bit_count = 0;
   disk_ptr->bit_timing = disk_default_bit_timing;
 
-  if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
+  if (disk_ptr->quarter_track >=
+      static_cast<uint32_t>(physical::quarter_tracks_per_disk)) {
     disk_ptr->is_data_loaded = false;
     return;
   }
@@ -372,7 +374,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     uint32_t loaded_bits = 0;
     uint8_t loaded_timing = disk_default_bit_timing;
     const DiskError_e error = disk_ptr->driver->read_track_bits(
-        disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
+        disk_ptr->driver_instance, disk_ptr->quarter_track,
         disk_ptr->track_bits.data(), max_track_bits, &loaded_bits,
         &loaded_timing);
 
@@ -489,40 +491,59 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
   return read_floating_bus(instance, executed_cycles);
 }
 
-// Why: Emulates the physical movement of the disk head via the stepper motor.
-// Handles phase-to-track mapping and ensures dirty tracks are flushed to the
-// format driver before the head leaves the current cylinder.
-auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
+// Why: A track change is where the image gets the chance to take what the
+// head wrote, because the buffer only holds one track at a time.
+auto move_head_to(DiskPeripheral_t* disk_peripheral, uint32_t quarter_track)
     -> void {
-  if (disk_peripheral == nullptr) {
-    return;
-  }
-
   auto& drive = get_active_drive(disk_peripheral);
-  const int32_t new_phase = std::max<int32_t>(
-      0, std::min<int32_t>(max_disk_phases - 1, drive.phase + phase_delta));
-  if (new_phase == drive.phase) {
+  if (quarter_track == drive.quarter_track) {
+    return;
+  }
+  if (drive.is_dirty) {
+    write_track_to_driver(disk_peripheral, disk_peripheral->active_drive_index);
+  }
+  drive.quarter_track = quarter_track;
+  drive.is_data_loaded = false;
+}
+
+// Why: The cog the head rides on is pulled by whichever magnets are live.
+// Each one draws it onto its own half track; the magnet directly across from
+// the cog pulls it in no direction at all. Two live magnets share the cog
+// between them, which is how the head comes to rest on an odd quarter track.
+auto settle_head(DiskPeripheral_t* disk_peripheral) -> void {
+  auto& drive = get_active_drive(disk_peripheral);
+
+  const auto here = static_cast<int32_t>(drive.quarter_track);
+  const int32_t half_track = here - (here % 2);
+  const uint32_t cog_phase = (drive.quarter_track / 2U) & 0x03U;
+
+  int32_t sum = 0;
+  int32_t magnets = 0;
+  for (uint32_t magnet = 0; magnet < physical::stepper_magnets; ++magnet) {
+    if ((disk_peripheral->stepper_phase_mask & (1U << magnet)) == 0) {
+      continue;
+    }
+    const uint32_t offset = (magnet - cog_phase) & 0x03U;
+    if (offset == 2U) {
+      continue;
+    }
+    ++magnets;
+    sum += half_track + (offset == 1U ? 2 : 0) - (offset == 3U ? 2 : 0);
+  }
+
+  if (magnets == 0) {
     return;
   }
 
-  const int32_t new_track =
-      std::min<int32_t>(tracks_per_disk - 1, new_phase / phases_per_track);
-
-  if (new_track != drive.track) {
-    if (drive.is_dirty) {
-      write_track_to_driver(disk_peripheral,
-                            disk_peripheral->active_drive_index);
-    }
-    drive.is_data_loaded = false;
-  }
-
-  drive.phase = new_phase;
-  drive.track = new_track;
+  const int32_t settled = std::max<int32_t>(
+      0,
+      std::min<int32_t>(physical::quarter_tracks_per_disk - 1, sum / magnets));
+  move_head_to(disk_peripheral, static_cast<uint32_t>(settled));
 }
 
 // Why: Emulates the physical magnetic stepper motor phases ($C0n0-$C0n7).
-// The 6502 code manually energizes/de-energizes four physical magnets
-// to 'pull' the head to the next or previous phase.
+// The 6502 code manually energizes and de-energizes four magnets to pull the
+// head along the cog.
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
                              uint8_t, uint8_t, uint32_t executed_cycles)
     -> uint8_t {
@@ -531,32 +552,48 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
-  auto* disk_ptr = &disk_peripheral->drives.at(
-      static_cast<size_t>(disk_peripheral->active_drive_index));
+  auto& drive = get_active_drive(disk_peripheral);
 
   const int strobe_phase = (memory_address >> 1) & 0x03;
-  const uint16_t strobe_bit = static_cast<uint16_t>(1 << strobe_phase);
+  const auto strobe_bit = static_cast<uint16_t>(1 << strobe_phase);
+  const bool magnet_is_on = (memory_address & 0x01) != 0;
 
-  if ((memory_address & 0x01) != 0) {
+  if (magnet_is_on) {
     disk_peripheral->stepper_phase_mask |= strobe_bit;
   } else {
     disk_peripheral->stepper_phase_mask &= static_cast<uint16_t>(~strobe_bit);
   }
 
-  int step_delta = 0;
-  if ((disk_peripheral->stepper_phase_mask &
-       (1 << ((disk_ptr->phase + 1) & 3))) != 0) {
-    step_delta += 1;
-  }
-  if ((disk_peripheral->stepper_phase_mask &
-       (1 << ((disk_ptr->phase + 3) & 3))) != 0) {
-    step_delta -= 1;
-  }
-
   // Why: The magnets hang off the drive enable line, so a phase strobe with
   // the motor timer expired energises nothing and the head stays put.
-  if (step_delta != 0 && disk_ptr->motor_enable_cycles > 0) {
-    step_drive_head(disk_peripheral, step_delta);
+  if (drive.motor_enable_cycles == 0) {
+    return read_floating_bus(instance, executed_cycles);
+  }
+
+  const uint32_t before_settling = drive.quarter_track;
+  settle_head(disk_peripheral);
+
+  // Why: A coil needs current for longer than this to shift the cog, so a
+  // pair of magnets dropped in the same breath leaves the head between them
+  // rather than letting it chase the one that outlived the other.
+  if (magnet_is_on) {
+    return read_floating_bus(instance, executed_cycles);
+  }
+
+  const bool cancels_the_pending_move =
+      disk_peripheral->stepper_phase_mask == 0 &&
+      disk_peripheral->magnet_released &&
+      (disk_peripheral->cumulative_cycles -
+       disk_peripheral->magnet_release_cycle) <= physical::magnet_settle_cycles;
+
+  if (cancels_the_pending_move) {
+    move_head_to(disk_peripheral,
+                 disk_peripheral->quarter_track_before_release);
+    disk_peripheral->magnet_released = false;
+  } else {
+    disk_peripheral->quarter_track_before_release = before_settling;
+    disk_peripheral->magnet_released = true;
+    disk_peripheral->magnet_release_cycle = disk_peripheral->cumulative_cycles;
   }
 
   return read_floating_bus(instance, executed_cycles);
@@ -750,9 +787,10 @@ auto sync_sequencer_to_cycle(DiskPeripheral_t* disk_peripheral,
   if (executed_cycles <= disk_peripheral->synced) {
     return;
   }
-  run_sequencer_cycles(disk_peripheral,
-                       executed_cycles - disk_peripheral->synced);
+  const uint32_t elapsed = executed_cycles - disk_peripheral->synced;
   disk_peripheral->synced = executed_cycles;
+  disk_peripheral->cumulative_cycles += elapsed;
+  run_sequencer_cycles(disk_peripheral, elapsed);
 }
 
 auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
@@ -874,6 +912,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
   disk_peripheral->sequencer = DiskSequencer_t{};
   disk_peripheral->synced = 0;
   disk_peripheral->noise_seed = physical::noise_seed_start;
+  disk_peripheral->magnet_released = false;
 
   for (auto& drive : disk_peripheral->drives) {
     drive.motor_enable_cycles = 0;
@@ -1248,8 +1287,10 @@ auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
     auto& d = dp->drives.at(static_cast<size_t>(i));
     auto& ds = s->drives[i];
     copy_string_to_buffer(d.full_path, ds.full_path, sizeof(ds.full_path));
-    ds.track = d.track;
-    ds.phase = d.phase;
+    // v1 knows half tracks, so an odd quarter track comes back rounded to
+    // the half track below it when the state is read again.
+    ds.track = static_cast<int32_t>(d.quarter_track / 4U);
+    ds.phase = static_cast<int32_t>(d.quarter_track / 2U);
 
     // v1 counts whole bytes from the index hole, so a head standing inside a
     // self-sync byte's two blank cells comes back at the boundary before it.
@@ -1348,8 +1389,9 @@ auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
           i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
     }
 
-    d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
-    d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
+    const int32_t safe_phase =
+        (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
+    d.quarter_track = static_cast<uint32_t>(safe_phase) * 2U;
     d.motor_enable_cycles = ds.spinning_ticks;
     d.write_light_cycles = ds.write_light_ticks;
 
