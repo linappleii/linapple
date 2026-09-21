@@ -26,7 +26,7 @@ namespace {
 namespace config {
 constexpr const char* disk_image1_key = "Disk Image 1";
 constexpr const char* disk_image2_key = "Disk Image 2";
-constexpr size_t path_max_len = 260;
+constexpr size_t path_max_len = disk_path_max;
 }  // namespace config
 
 namespace physical {

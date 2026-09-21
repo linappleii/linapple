@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
@@ -99,7 +100,7 @@ auto insert_by_name(std::vector<const DiskFormatDriver_t*>& drivers,
   drivers.insert(at, driver);
 }
 
-constexpr size_t path_max_len = 260;
+constexpr size_t path_max_len = disk_path_max;
 
 // Why: 80 KB covers the DOS 3.3 Track 17 VTOC/catalog chain (73.5 KB) +
 // optional MacBinary header (128 bytes) so sector image probing can inspect

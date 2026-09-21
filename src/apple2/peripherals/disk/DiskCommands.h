@@ -37,14 +37,17 @@ enum {
   sectors_per_track = 16,
   interleave_modes_count = 3,
 
-  disk_insert_path_max = 504,
+  // One limit for every disk path the card handles, command and query alike:
+  // a path that survives an insert must survive coming back out.
+  disk_path_max = 504,
+  disk_insert_path_max = disk_path_max,
   disk_format_name_max = 64,
   // The command queue carries at most PERIPHERAL_CMD_MAX_DATA bytes, so a
   // path travelling beside a format name has less room than one travelling
   // alone.
   disk_create_path_max = 448,
   disk_status_name_max = 32,
-  disk_status_path_max = 256
+  disk_status_path_max = disk_path_max
 };
 
 // Bitmask flags — values may be combined with | to represent concurrent states
