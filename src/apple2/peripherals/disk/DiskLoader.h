@@ -11,9 +11,11 @@ extern "C" {
 // Justification: This header defines a language-neutral C ABI for the disk
 // image loader.
 
-auto disk_loader_init() -> void;
-auto disk_loader_shutdown() -> void;
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void;
+
+/* Empties the registry. Test-only: a suite that pushes a synthetic driver in
+   needs a way back to a known state. Production code never calls it. */
+void disk_loader_reset(void);
 
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)

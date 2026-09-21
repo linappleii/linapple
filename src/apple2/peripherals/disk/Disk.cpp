@@ -850,13 +850,14 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   dp->host = host;
   dp->slot = slot;
 
-  disk_loader_init();
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_woz2_driver));
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_iie_driver));
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nib_driver));
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
-  disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
+  if (disk_loader_driver_count() == 0) {
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_woz2_driver));
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_iie_driver));
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nib_driver));
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
+    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
+  }
 
   initialize_peripheral(dp.get());
 
@@ -897,7 +898,6 @@ auto disk_abi_shutdown(void* instance) -> void {
   for (int i = 0; i < disk_drive_count; ++i) {
     eject_disk_from_drive(dp, i);
   }
-  disk_loader_shutdown();
   const std::unique_ptr<DiskPeripheral_t> cleanup(dp);
 }
 

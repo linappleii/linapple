@@ -399,7 +399,7 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
 }
 
 TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
-  disk_loader_init();
+  disk_loader_reset();
 
   // Null driver
   disk_loader_register(nullptr);
@@ -434,7 +434,7 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
   bad_drv3.read_flux_bit = nullptr;
   disk_loader_register(&bad_drv3);
 
-  disk_loader_shutdown();
+  disk_loader_reset();
 }
 
 TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {

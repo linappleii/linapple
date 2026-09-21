@@ -23,8 +23,13 @@
 
 namespace {
 
-static std::vector<DiskFormatDriver_t*> g_drivers;
-static int g_disk_loader_ref_count = 0;
+// A driver may register itself during static initialisation, so the registry
+// has to come into existence on first use rather than wait its turn in an
+// initialisation order it cannot see.
+auto registry() -> std::vector<DiskFormatDriver_t*>& {
+  static std::vector<DiskFormatDriver_t*> drivers;
+  return drivers;
+}
 
 constexpr size_t path_max_len = 260;
 
@@ -73,7 +78,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
   }
 
   DiskFormatDriver_t* possible_driver = nullptr;
-  for (auto* driver : g_drivers) {
+  for (auto* driver : registry()) {
     const DiskProbe_e result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
     if (result == disk_probe_definite) {
@@ -87,21 +92,6 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
 }
 
 }  // namespace
-
-auto disk_loader_init() -> void {
-  if (g_disk_loader_ref_count++ == 0) {
-    g_drivers.clear();
-  }
-}
-
-auto disk_loader_shutdown() -> void {
-  if (g_disk_loader_ref_count > 0) {
-    --g_disk_loader_ref_count;
-    if (g_disk_loader_ref_count == 0) {
-      g_drivers.clear();
-    }
-  }
-}
 
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   if (driver == nullptr) {
@@ -130,8 +120,10 @@ auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
                   driver->name != nullptr ? driver->name : "<unnamed>");
     return;
   }
-  g_drivers.push_back(driver);
+  registry().push_back(driver);
 }
+
+auto disk_loader_reset(void) -> void { registry().clear(); }
 
 auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)
@@ -204,14 +196,14 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
 }
 
 auto disk_loader_driver_count(void) -> uint32_t {
-  return static_cast<uint32_t>(g_drivers.size());
+  return static_cast<uint32_t>(registry().size());
 }
 
 auto disk_loader_driver_at(uint32_t index) -> const DiskFormatDriver_t* {
-  if (index >= g_drivers.size()) {
+  if (index >= registry().size()) {
     return nullptr;
   }
-  return g_drivers[index];
+  return registry()[index];
 }
 
 auto disk_loader_create(const char* path, const char* driver_name)
@@ -227,7 +219,7 @@ auto disk_loader_create(const char* path, const char* driver_name)
   }
 
   const DiskFormatDriver_t* driver = nullptr;
-  for (const auto* candidate : g_drivers) {
+  for (const auto* candidate : registry()) {
     if (candidate != nullptr && candidate->name != nullptr &&
         strcmp(candidate->name, driver_name) == 0) {
       driver = candidate;
@@ -254,7 +246,7 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
   out_buffer[0] = '\0';
 
   std::vector<std::string> exts;
-  for (const auto* driver : g_drivers) {
+  for (const auto* driver : registry()) {
     if (driver != nullptr && driver->supported_exts != nullptr) {
       for (const char* const* ext = driver->supported_exts; *ext != nullptr;
            ++ext) {

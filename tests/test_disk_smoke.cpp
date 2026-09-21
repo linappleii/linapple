@@ -191,7 +191,7 @@ TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
 TEST_CASE(
     "DiskSmoke: [DSK-1] Enforce write capability and callback invariants on "
     "registration") {
-  disk_loader_init();
+  disk_loader_reset();
 
   // Floppy driver: write capability with null write_track must be rejected
   DiskFormatDriver_t bad_floppy1 = g_do_driver;
@@ -217,7 +217,7 @@ TEST_CASE(
 
   // Null pointer registrations are safely ignored
   disk_loader_register(nullptr);
-  disk_loader_shutdown();
+  disk_loader_reset();
 }
 
 TEST_CASE(
@@ -235,7 +235,7 @@ TEST_CASE(
               static_cast<std::streamsize>(disk_image.size()));
   }
 
-  disk_loader_init();
+  disk_loader_reset();
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
 
   DiskFormatDriver_t* selected_driver = nullptr;
@@ -248,7 +248,7 @@ TEST_CASE(
       selected_driver->close != nullptr) {
     selected_driver->close(disk_instance);
   }
-  disk_loader_shutdown();
+  disk_loader_reset();
 }
 
 TEST_CASE("DiskSmoke: [SMK-07] SAVE and CATALOG in DOS 3.3") {
