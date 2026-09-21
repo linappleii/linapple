@@ -535,7 +535,7 @@ list(LENGTH DISK_FORMAT_SOURCES DISK_FORMAT_DRIVER_COUNT)
 set(DISK_BACKEND_SOURCES
     src/apple2/peripherals/disk/DiskEncoding.cpp
     src/apple2/peripherals/disk/formats/SectorDiskImage.cpp
-    src/apple2/peripherals/disk/formats/BitstreamDiskImage.cpp
+    src/apple2/peripherals/disk/formats/NibbleDiskImage.cpp
     src/apple2/peripherals/disk/formats/DiskContainer.cpp)
 
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)

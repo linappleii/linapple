@@ -8,6 +8,7 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "doctest.h"
 
 namespace {
@@ -127,7 +128,7 @@ auto execute_round_trip(int track_num, bool is_dos_order) -> void {
   std::array<uint8_t, nibbles_per_track> track_image{};
 
   const uint32_t nibbles = disk_encoding_nibblize_track(
-      work_buffer.data(), track_image.data(), is_dos_order, track_num);
+      work_buffer.data(), track_image.data(), nullptr, is_dos_order, track_num);
 
   CHECK(nibbles == expected_nibble_count);
 
@@ -188,7 +189,8 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, nibbles_per_track> track_image{};
 
     const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), custom_dos_order.data(), 1);
+        work_buffer.data(), track_image.data(), nullptr,
+        custom_dos_order.data(), 1);
 
     CHECK(nibbles == expected_nibble_count);
 
@@ -218,7 +220,8 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, nibbles_per_track> track_image{};
 
     const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), custom_prodos_order.data(), 2);
+        work_buffer.data(), track_image.data(), nullptr,
+        custom_prodos_order.data(), 2);
 
     CHECK(nibbles == expected_nibble_count);
 
@@ -250,7 +253,8 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, nibbles_per_track> track_image{};
 
     const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), custom_rev_order.data(), 5);
+        work_buffer.data(), track_image.data(), nullptr,
+        custom_rev_order.data(), 5);
 
     CHECK(nibbles == expected_nibble_count);
 
@@ -283,7 +287,7 @@ TEST_CASE(
   std::array<uint8_t, nibbles_per_track> track_image{};
 
   const uint32_t nibbles = disk_encoding_nibblize_track(
-      work_buffer.data(), track_image.data(), true, 0);
+      work_buffer.data(), track_image.data(), nullptr, true, 0);
 
   CHECK(nibbles == expected_nibble_count);
 
@@ -350,8 +354,8 @@ TEST_CASE(
 
     std::copy(original_track.begin(), original_track.end(),
               work_buffer.begin());
-    disk_encoding_nibblize_track(work_buffer.data(), track_image.data(), true,
-                                 0);
+    disk_encoding_nibblize_track(work_buffer.data(), track_image.data(),
+                                 nullptr, true, 0);
 
     // Sector 0 address field is at byte 0:
     // [0..2]: D5 AA 96
@@ -373,4 +377,69 @@ TEST_CASE(
     }
   }
 }
+TEST_CASE("DiskGCR: [ADP-01] A self-sync byte costs ten cells, a data byte 8") {
+  const std::array<uint8_t, 3> nibbles = {{0xD5, 0xFF, 0xAA}};
+  std::array<uint8_t, 16> bits{};
+  uint32_t bit_count = 0;
+
+  const std::array<uint8_t, 3> with_sync = {{0, 1, 0}};
+  REQUIRE(disk_encoding_nibbles_to_bits(nibbles.data(), nibbles.size(),
+                                        with_sync.data(), bits.data(), 128,
+                                        &bit_count) == disk_err_none);
+  CHECK(bit_count == 26);
+
+  const std::array<uint8_t, 3> all_data = {{0, 0, 0}};
+  REQUIRE(disk_encoding_nibbles_to_bits(nibbles.data(), nibbles.size(),
+                                        all_data.data(), bits.data(), 128,
+                                        &bit_count) == disk_err_none);
+  CHECK(bit_count == 24);
+}
+
+TEST_CASE("DiskGCR: [ADP-02] A nibble image's 0xFF run is sync before D5") {
+  std::array<uint8_t, 16> bits{};
+  uint32_t bit_count = 0;
+  std::array<uint8_t, 8> recovered{};
+  uint32_t recovered_count = 0;
+
+  const std::array<uint8_t, 5> gap_then_prologue = {
+      {0xFF, 0xFF, 0xFF, 0xD5, 0x96}};
+  REQUIRE(disk_encoding_nibbles_to_bits(
+              gap_then_prologue.data(), gap_then_prologue.size(), nullptr,
+              bits.data(), 128, &bit_count) == disk_err_none);
+  CHECK(bit_count == (3 * 10) + (2 * 8));
+  REQUIRE(disk_encoding_bits_to_nibbles(bits.data(), bit_count,
+                                        recovered.data(), recovered.size(),
+                                        &recovered_count) == disk_err_none);
+  CHECK(recovered_count == gap_then_prologue.size());
+  CHECK(std::equal(gap_then_prologue.begin(), gap_then_prologue.end(),
+                   recovered.begin()));
+
+  const std::array<uint8_t, 5> ones_inside_data = {
+      {0xFF, 0xFF, 0x96, 0xD5, 0xAA}};
+  REQUIRE(disk_encoding_nibbles_to_bits(
+              ones_inside_data.data(), ones_inside_data.size(), nullptr,
+              bits.data(), 128, &bit_count) == disk_err_none);
+  CHECK(bit_count == 5 * 8);
+  REQUIRE(disk_encoding_bits_to_nibbles(bits.data(), bit_count,
+                                        recovered.data(), recovered.size(),
+                                        &recovered_count) == disk_err_none);
+  CHECK(recovered_count == ones_inside_data.size());
+  CHECK(std::equal(ones_inside_data.begin(), ones_inside_data.end(),
+                   recovered.begin()));
+}
+
+TEST_CASE("DiskGCR: [ADP-03] A track longer than the buffer is refused") {
+  const std::array<uint8_t, 4> nibbles = {{0xFF, 0xFF, 0xFF, 0xD5}};
+  const std::array<uint8_t, 4> all_sync = {{1, 1, 1, 1}};
+  std::array<uint8_t, 8> bits{};
+  uint32_t bit_count = 123;
+
+  // Forty cells of medium will not fit in thirty-nine cells of buffer, and
+  // the answer is a refusal rather than a track with its tail cut off.
+  CHECK(disk_encoding_nibbles_to_bits(nibbles.data(), nibbles.size(),
+                                      all_sync.data(), bits.data(), 39,
+                                      &bit_count) == disk_err_unsupported);
+  CHECK(bit_count == 0);
+}
+
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

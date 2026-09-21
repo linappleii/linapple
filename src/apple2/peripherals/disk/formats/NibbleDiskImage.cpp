@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
+#include "apple2/peripherals/disk/formats/NibbleDiskImage.h"
 
 #include <unistd.h>
 
@@ -27,33 +27,30 @@ constexpr uint8_t sync_byte = 0xFF;
 // for C++11 compatibility and handle-based resource management.
 // easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
-struct BitstreamDiskImage_t {
+struct NibbleDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
   bool os_readonly = false;
   std::array<uint8_t, nibbles_per_track> nibbles{};
 
-  BitstreamDiskImage_t() = default;
-  ~BitstreamDiskImage_t() = default;
+  NibbleDiskImage_t() = default;
+  ~NibbleDiskImage_t() = default;
 
-  BitstreamDiskImage_t(const BitstreamDiskImage_t&) = delete;
-  auto operator=(const BitstreamDiskImage_t&) -> BitstreamDiskImage_t& = delete;
-  BitstreamDiskImage_t(BitstreamDiskImage_t&&) = default;
-  auto operator=(BitstreamDiskImage_t&&) -> BitstreamDiskImage_t& = default;
+  NibbleDiskImage_t(const NibbleDiskImage_t&) = delete;
+  auto operator=(const NibbleDiskImage_t&) -> NibbleDiskImage_t& = delete;
+  NibbleDiskImage_t(NibbleDiskImage_t&&) = default;
+  auto operator=(NibbleDiskImage_t&&) -> NibbleDiskImage_t& = default;
 };
 
-extern "C" auto bitstream_disk_image_open(const char* path,
-                                          uint32_t file_offset,
-                                          uint32_t nibbles_per_track,
-                                          bool read_only)
-    -> BitstreamDiskImage_t* {
+extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
+                                       uint32_t nibbles_per_track,
+                                       bool read_only) -> NibbleDiskImage_t* {
   if (path == nullptr) {
     return nullptr;
   }
 
-  auto image_ptr =
-      std::unique_ptr<BitstreamDiskImage_t>(new BitstreamDiskImage_t());
+  auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
 
   image_ptr->os_readonly = read_only;
   if (!read_only) {
@@ -75,23 +72,22 @@ extern "C" auto bitstream_disk_image_open(const char* path,
   return image_ptr.release();
 }
 
-// Why: Destroys the bitstream image instance. The RAII FilePtr_t member
+// Why: Destroys the nibble image instance. The RAII FilePtr_t member
 // automatically ensures the physical file is closed during destruction.
-extern "C" auto bitstream_disk_image_close(BitstreamDiskImage_t* image_ptr)
-    -> void {
+extern "C" auto nibble_disk_image_close(NibbleDiskImage_t* image_ptr) -> void {
   if (image_ptr == nullptr) {
     return;
   }
   delete image_ptr;
 }
 
-extern "C" auto bitstream_disk_image_is_write_protected(
-    BitstreamDiskImage_t* image_ptr) -> bool {
+extern "C" auto nibble_disk_image_is_write_protected(
+    NibbleDiskImage_t* image_ptr) -> bool {
   return (image_ptr != nullptr) ? image_ptr->os_readonly : true;
 }
 
-extern "C" auto bitstream_disk_image_read_track_bits(
-    BitstreamDiskImage_t* image_ptr, uint32_t quarter_track, uint8_t* bits,
+extern "C" auto nibble_disk_image_read_track_bits(
+    NibbleDiskImage_t* image_ptr, uint32_t quarter_track, uint8_t* bits,
     uint32_t max_bits, uint32_t* out_bit_count, uint8_t* out_bit_timing)
     -> DiskError_e {
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
@@ -118,14 +114,18 @@ extern "C" auto bitstream_disk_image_read_track_bits(
   const size_t read_count = fread(image_ptr->nibbles.data(), 1,
                                   image_ptr->track_size, image_ptr->file.get());
 
+  // A nibble image keeps no record of which bytes were written as sync, so
+  // the adapter is left to read the track's own shape.
   return disk_encoding_nibbles_to_bits(image_ptr->nibbles.data(),
-                                       static_cast<uint32_t>(read_count), bits,
-                                       max_bits, out_bit_count);
+                                       static_cast<uint32_t>(read_count),
+                                       nullptr, bits, max_bits, out_bit_count);
 }
 
-extern "C" auto bitstream_disk_image_write_track_bits(
-    BitstreamDiskImage_t* image_ptr, uint32_t quarter_track,
-    const uint8_t* bits, uint32_t bit_count) -> DiskError_e {
+extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
+                                                   uint32_t quarter_track,
+                                                   const uint8_t* bits,
+                                                   uint32_t bit_count)
+    -> DiskError_e {
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -161,10 +161,9 @@ extern "C" auto bitstream_disk_image_write_track_bits(
   return disk_err_none;
 }
 
-// Why: Generates a new, zero-filled raw bitstream image of the specified
+// Why: Generates a new, zero-filled raw nibble image of the specified
 // physical size. Used for creating blank NIB or NB2 images.
-extern "C" auto bitstream_disk_image_create(const char* path,
-                                            uint32_t total_size)
+extern "C" auto nibble_disk_image_create(const char* path, uint32_t total_size)
     -> DiskError_e {
   if (path == nullptr) {
     return disk_err_io;

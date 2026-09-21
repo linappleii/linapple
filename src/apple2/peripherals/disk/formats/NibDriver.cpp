@@ -8,7 +8,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
-#include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
+#include "apple2/peripherals/disk/formats/NibbleDiskImage.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.
@@ -42,7 +42,7 @@ auto nib_open(const char* path, uint32_t file_offset, bool read_only,
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
-  auto* image_ptr = bitstream_disk_image_open(
+  auto* image_ptr = nibble_disk_image_open(
       path, file_offset, nibbles_per_track, read_only);
   if (image_ptr == nullptr) {
     return disk_err_io;
@@ -55,16 +55,16 @@ auto nib_close(void* instance_handle) -> void {
   if (instance_handle == nullptr) {
     return;
   }
-  bitstream_disk_image_close(
-      static_cast<BitstreamDiskImage_t*>(instance_handle));
+  nibble_disk_image_close(
+      static_cast<NibbleDiskImage_t*>(instance_handle));
 }
 
 auto nib_is_write_protected(void* instance_handle) -> bool {
   if (instance_handle == nullptr) {
     return true;
   }
-  return bitstream_disk_image_is_write_protected(
-      static_cast<BitstreamDiskImage_t*>(instance_handle));
+  return nibble_disk_image_is_write_protected(
+      static_cast<NibbleDiskImage_t*>(instance_handle));
 }
 
 auto nib_read_track_bits(void* instance_handle, uint32_t quarter_track,
@@ -74,8 +74,8 @@ auto nib_read_track_bits(void* instance_handle, uint32_t quarter_track,
   if (instance_handle == nullptr) {
     return disk_err_invalid_argument;
   }
-  return bitstream_disk_image_read_track_bits(
-      static_cast<BitstreamDiskImage_t*>(instance_handle), quarter_track, bits,
+  return nibble_disk_image_read_track_bits(
+      static_cast<NibbleDiskImage_t*>(instance_handle), quarter_track, bits,
       max_bits, out_bit_count, out_bit_timing);
 }
 
@@ -85,8 +85,8 @@ auto nib_write_track_bits(void* instance_handle, uint32_t quarter_track,
   if (instance_handle == nullptr) {
     return disk_err_invalid_argument;
   }
-  return bitstream_disk_image_write_track_bits(
-      static_cast<BitstreamDiskImage_t*>(instance_handle), quarter_track, bits,
+  return nibble_disk_image_write_track_bits(
+      static_cast<NibbleDiskImage_t*>(instance_handle), quarter_track, bits,
       bit_count);
 }
 
@@ -94,7 +94,7 @@ auto nib_create(const char* path) -> DiskError_e {
   if (path == nullptr) {
     return disk_err_io;
   }
-  return bitstream_disk_image_create(
+  return nibble_disk_image_create(
       path, static_cast<uint32_t>(physical::disk_size));
 }
 

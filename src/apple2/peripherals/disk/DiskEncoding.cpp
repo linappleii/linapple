@@ -49,6 +49,36 @@ constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
 constexpr size_t sector_size = 256;
 constexpr uint32_t cells_per_nibble = 8;
+constexpr uint32_t cells_per_self_sync = 10;
+
+// Beneath Apple DOS: every gap on a formatted track runs up to a prologue.
+// So a run of 0xFF that ends at one is the gap that separates two fields,
+// and a run that ends anywhere else is data that happens to read as 0xFF.
+template <typename Emit>
+auto walk_sync_runs(const uint8_t* nibbles, uint32_t count,
+                    const uint8_t* sync_mask, Emit emit) -> void {
+  uint32_t index = 0;
+  while (index < count) {
+    if (sync_mask != nullptr) {
+      emit(nibbles[index], sync_mask[index] != 0);
+      ++index;
+      continue;
+    }
+    if (nibbles[index] != sync_byte) {
+      emit(nibbles[index], false);
+      ++index;
+      continue;
+    }
+    uint32_t run_end = index;
+    while (run_end < count && nibbles[run_end] == sync_byte) {
+      ++run_end;
+    }
+    const bool self_sync = nibbles[run_end % count] == prologue_1;
+    for (; index < run_end; ++index) {
+      emit(sync_byte, self_sync);
+    }
+  }
+}
 
 const std::array<uint8_t, disk_encoding_encode_table_size> disk_encoding_table =
     {{0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
@@ -77,7 +107,8 @@ static const auto decode_table = []() {
   return t;
 }();
 
-auto encode_sector_62(uint8_t* work_buffer, int sector_index) -> uint8_t* {
+auto encode_sector_62(uint8_t* work_buffer, int sector_index)
+    -> const uint8_t* {
   {
     uint8_t* sector_base = &work_buffer[sector_index * sector_size];
     uint8_t* result_ptr = &work_buffer[disk_encoding_work_buffer_offset];
@@ -256,11 +287,25 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
 
 auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
                                                uint8_t* track_image_buffer,
+                                               uint8_t* sync_mask_buffer,
                                                const uint8_t* sector_order,
                                                int track) -> uint32_t {
   uint32_t current_offset = 0;
 
   std::fill_n(track_image_buffer, nibbles_per_track, sync_byte);
+  if (sync_mask_buffer != nullptr) {
+    std::fill_n(sync_mask_buffer, nibbles_per_track, static_cast<uint8_t>(1));
+  }
+
+  // Every byte a field is made of is data; what stays sync is whatever the
+  // gaps left behind.
+  auto put_data = [&](uint8_t value) {
+    track_image_buffer[current_offset] = value;
+    if (sync_mask_buffer != nullptr) {
+      sync_mask_buffer[current_offset] = 0;
+    }
+    ++current_offset;
+  };
 
   auto encode_4and4_high = [](uint8_t a) -> uint8_t {
     return static_cast<uint8_t>((((a) >> shift_1) & addr_4and4_mask) |
@@ -272,48 +317,44 @@ auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
   };
 
   for (int sector_idx = 0; sector_idx < sectors_per_track; ++sector_idx) {
-    track_image_buffer[current_offset++] = prologue_1;
-    track_image_buffer[current_offset++] = prologue_2;
-    track_image_buffer[current_offset++] = addr_prologue_3;
+    put_data(prologue_1);
+    put_data(prologue_2);
+    put_data(addr_prologue_3);
 
-    track_image_buffer[current_offset++] = encode_4and4_high(volume_default);
-    track_image_buffer[current_offset++] = encode_4and4_low(volume_default);
-    track_image_buffer[current_offset++] =
-        encode_4and4_high(static_cast<uint8_t>(track));
-    track_image_buffer[current_offset++] =
-        encode_4and4_low(static_cast<uint8_t>(track));
-    track_image_buffer[current_offset++] =
-        encode_4and4_high(static_cast<uint8_t>(sector_idx));
-    track_image_buffer[current_offset++] =
-        encode_4and4_low(static_cast<uint8_t>(sector_idx));
+    put_data(encode_4and4_high(volume_default));
+    put_data(encode_4and4_low(volume_default));
+    put_data(encode_4and4_high(static_cast<uint8_t>(track)));
+    put_data(encode_4and4_low(static_cast<uint8_t>(track)));
+    put_data(encode_4and4_high(static_cast<uint8_t>(sector_idx)));
+    put_data(encode_4and4_low(static_cast<uint8_t>(sector_idx)));
 
     const uint8_t checksum =
         static_cast<uint8_t>(volume_default ^ static_cast<uint8_t>(track) ^
                              static_cast<uint8_t>(sector_idx));
-    track_image_buffer[current_offset++] = encode_4and4_high(checksum);
-    track_image_buffer[current_offset++] = encode_4and4_low(checksum);
+    put_data(encode_4and4_high(checksum));
+    put_data(encode_4and4_low(checksum));
 
-    track_image_buffer[current_offset++] = epilogue_1;
-    track_image_buffer[current_offset++] = epilogue_2;
-    track_image_buffer[current_offset++] = epilogue_3;
+    put_data(epilogue_1);
+    put_data(epilogue_2);
+    put_data(epilogue_3);
 
     std::fill_n(&track_image_buffer[current_offset], gap2_size, sync_byte);
     current_offset += static_cast<uint32_t>(gap2_size);
 
-    track_image_buffer[current_offset++] = prologue_1;
-    track_image_buffer[current_offset++] = prologue_2;
-    track_image_buffer[current_offset++] = data_prologue_3;
+    put_data(prologue_1);
+    put_data(prologue_2);
+    put_data(data_prologue_3);
 
-    std::copy_n(encode_sector_62(work_buffer,
-                                 static_cast<int>(sector_order[sector_idx])),
-                static_cast<size_t>(disk_encoding_sector_with_checksum_size),
-                &track_image_buffer[current_offset]);
+    const uint8_t* const encoded = encode_sector_62(
+        work_buffer, static_cast<int>(sector_order[sector_idx]));
+    for (int i = 0;
+         i < static_cast<int>(disk_encoding_sector_with_checksum_size); ++i) {
+      put_data(encoded[i]);
+    }
 
-    current_offset +=
-        static_cast<uint32_t>(disk_encoding_sector_with_checksum_size);
-    track_image_buffer[current_offset++] = epilogue_1;
-    track_image_buffer[current_offset++] = epilogue_2;
-    track_image_buffer[current_offset++] = epilogue_3;
+    put_data(epilogue_1);
+    put_data(epilogue_2);
+    put_data(epilogue_3);
 
     std::fill_n(&track_image_buffer[current_offset], disk_encoding_gap3_size,
                 sync_byte);
@@ -325,16 +366,18 @@ auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
 
 auto disk_encoding_nibblize_track(uint8_t* work_buffer,
                                   uint8_t* track_image_buffer,
-                                  bool is_dos_order, int track) -> uint32_t {
+                                  uint8_t* sync_mask_buffer, bool is_dos_order,
+                                  int track) -> uint32_t {
   return disk_encoding_nibblize_track_custom_order(
-      work_buffer, track_image_buffer,
+      work_buffer, track_image_buffer, sync_mask_buffer,
       disk_encoding_sector_interleave_table.at(is_dos_order ? 1 : 0).data(),
       track);
 }
 
 auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
-                                   uint8_t* bits, uint32_t max_bits,
-                                   uint32_t* out_bit_count) -> DiskError_e {
+                                   const uint8_t* sync_mask, uint8_t* bits,
+                                   uint32_t max_bits, uint32_t* out_bit_count)
+    -> DiskError_e {
   if (nibbles == nullptr || bits == nullptr || out_bit_count == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -343,18 +386,30 @@ auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
     return disk_err_unsupported;
   }
 
-  const uint32_t total_bits = count * cells_per_nibble;
+  uint32_t total_bits = 0;
+  walk_sync_runs(nibbles, count, sync_mask, [&](uint8_t, bool self_sync) {
+    total_bits += self_sync ? cells_per_self_sync : cells_per_nibble;
+  });
+  if (total_bits > max_bits) {
+    return disk_err_unsupported;
+  }
+
   std::fill_n(bits, (total_bits + 7U) / 8U, static_cast<uint8_t>(0));
 
   uint32_t cell = 0;
-  for (uint32_t i = 0; i < count; ++i) {
+  walk_sync_runs(nibbles, count, sync_mask, [&](uint8_t value, bool self_sync) {
     for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
-      if ((nibbles[i] & mask) != 0U) {
+      if ((value & mask) != 0U) {
         bits[cell >> 3U] |= static_cast<uint8_t>(0x80U >> (cell & 7U));
       }
       ++cell;
     }
-  }
+    // A self-sync byte is its eight cells followed by two blank ones, which
+    // is what lets the shift register fall back into step behind it.
+    if (self_sync) {
+      cell += cells_per_self_sync - cells_per_nibble;
+    }
+  });
 
   *out_bit_count = total_bits;
   return disk_err_none;

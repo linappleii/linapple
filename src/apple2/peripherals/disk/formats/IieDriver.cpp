@@ -67,6 +67,7 @@ struct IieInstance_t {
   std::array<uint8_t, sectors_per_track> sector_order{};
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
+  std::array<uint8_t, nibbles_per_track> sync_mask{};
   std::array<uint32_t, iie::tracks> track_offsets{};
   std::array<uint16_t, iie::tracks> track_nibble_counts{};
   bool os_readonly = false;
@@ -249,25 +250,28 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
     return disk_err_io;
   }
 
-  uint32_t nibbles_read = 0;
   if (ii_ptr->header[iie::variant_offset] <= iie::variant_max_legacy) {
     std::fill(ii_ptr->work_buffer.begin(), ii_ptr->work_buffer.end(), 0);
     if (fread(ii_ptr->work_buffer.data(), 1, dos::track_size,
               ii_ptr->file.get()) != dos::track_size) {
       return disk_err_io;
     }
-    ii_ptr->nibbles.fill(sync_byte);
-    nibbles_read = disk_encoding_nibblize_track_custom_order(
+    const uint32_t nibbles_read = disk_encoding_nibblize_track_custom_order(
         ii_ptr->work_buffer.data(), ii_ptr->nibbles.data(),
-        ii_ptr->sector_order.data(), static_cast<int>(track));
-  } else {
-    ii_ptr->nibbles.fill(sync_byte);
-    nibbles_read = static_cast<uint32_t>(
-        fread(ii_ptr->nibbles.data(), 1, nib_count, ii_ptr->file.get()));
+        ii_ptr->sync_mask.data(), ii_ptr->sector_order.data(),
+        static_cast<int>(track));
+    return disk_encoding_nibbles_to_bits(ii_ptr->nibbles.data(), nibbles_read,
+                                         ii_ptr->sync_mask.data(), bits,
+                                         max_bits, out_bit_count);
   }
 
+  // The modern variant stores raw nibbles with no record of which were
+  // written as sync, so the adapter reads the track's own shape.
+  ii_ptr->nibbles.fill(sync_byte);
+  const uint32_t nibbles_read = static_cast<uint32_t>(
+      fread(ii_ptr->nibbles.data(), 1, nib_count, ii_ptr->file.get()));
   return disk_encoding_nibbles_to_bits(ii_ptr->nibbles.data(), nibbles_read,
-                                       bits, max_bits, out_bit_count);
+                                       nullptr, bits, max_bits, out_bit_count);
 }
 
 const char* const g_iie_supported_exts[] = {"iie", nullptr};

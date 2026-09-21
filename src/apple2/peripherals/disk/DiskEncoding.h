@@ -30,20 +30,26 @@ enum { disk_encoding_work_buffer_size = 0x3000 };
 
 auto disk_encoding_nibblize_track(uint8_t* work_buffer,
                                   uint8_t* track_image_buffer,
-                                  bool is_dos_order, int track) -> uint32_t;
+                                  uint8_t* sync_mask_buffer, bool is_dos_order,
+                                  int track) -> uint32_t;
 
 auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
                                                uint8_t* track_image_buffer,
+                                               uint8_t* sync_mask_buffer,
                                                const uint8_t* sector_order,
                                                int track) -> uint32_t;
 
 auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
                                     bool is_dos_order, int nibbles) -> void;
 
-/* Lay a nibble track down as cells, eight to a nibble. */
+/* Lay a nibble track down as cells: eight to a data nibble, ten to a
+   self-sync one. sync_mask marks the self-sync nibbles, one byte each; pass
+   it null for an image that records no sync information and the run of 0xFF
+   ending at a 0xD5 prologue is read as the gap it must be. */
 DiskError_e disk_encoding_nibbles_to_bits(const uint8_t* nibbles,
-                                          uint32_t count, uint8_t* bits,
-                                          uint32_t max_bits,
+                                          uint32_t count,
+                                          const uint8_t* sync_mask,
+                                          uint8_t* bits, uint32_t max_bits,
                                           uint32_t* out_bit_count);
 
 /* Read cells back the way the shift register does: discard cells until one

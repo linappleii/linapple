@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
@@ -29,6 +30,17 @@ constexpr uint16_t io_latch_switch = 0xC0ED;
 constexpr uint16_t io_read_mode_switch = 0xC0EE;
 constexpr uint16_t io_write_mode_switch = 0xC0EF;
 constexpr uint8_t latch_bit = 0x80;
+constexpr uint8_t address_prologue_1 = 0xD5;
+constexpr uint8_t address_prologue_2 = 0xAA;
+constexpr uint8_t address_prologue_3 = 0x96;
+constexpr uint8_t address_epilogue = 0xDE;
+constexpr uint8_t default_volume = 0xFE;
+
+// The 4-and-4 pair carries a byte as two nibbles with the odd and even bits
+// split across them, which is how an address field stays readable.
+auto decode_4and4(uint8_t high, uint8_t low) -> uint8_t {
+  return static_cast<uint8_t>(((high << 1U) | 1U) & low);
+}
 
 // A marker on the byte the video scanner fetches at probe_cycles, so a switch
 // that answers with the bus can be told apart from one answering with the
@@ -170,33 +182,43 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
 
   harness.select_read_mode();
 
-  const DiskSavedState_t initial_state = harness.get_saved_state();
-  const int32_t start_pos = initial_state.drives[0].current_byte_pos;
-  const int32_t nibble_count = initial_state.drives[0].nibble_count;
-  REQUIRE(nibble_count > 0);
-
-  // Read a burst of sequential nibbles from $C0EC
-  constexpr size_t read_count = 32;
+  // Long enough to pass a whole sector: fifteen address bytes, a gap, a data
+  // field of 343 and a second gap.
+  constexpr size_t read_count = 1024;
+  std::vector<uint8_t> stream;
+  stream.reserve(read_count);
   for (size_t i = 0; i < read_count; ++i) {
-    const int32_t expected_pos =
-        static_cast<int32_t>((start_pos + i) % nibble_count);
-    const uint8_t expected_nibble =
-        initial_state.drives[0].track_buffer[expected_pos];
-
     const uint8_t byte_read = harness.read_byte();
 
     // Physical Apple II GCR contract: every valid floppy nibble has bit 7 set
     CHECK((byte_read & latch_bit) != 0);
-
-    // Exact nibble match against the physical track buffer
-    CHECK(byte_read == expected_nibble);
+    stream.push_back(byte_read);
   }
 
-  // Verify that the head position advanced sequentially by exactly read_count
-  const DiskSavedState_t final_state = harness.get_saved_state();
-  const int32_t expected_final_pos =
-      static_cast<int32_t>((start_pos + read_count) % nibble_count);
-  CHECK(final_state.drives[0].current_byte_pos == expected_final_pos);
+  // What the 6502 must be able to do with the stream: find an address field
+  // and read the track it is standing on back out of it.
+  constexpr size_t address_field_len = 12;
+  bool found_address_field = false;
+  for (size_t i = 0; i + address_field_len < stream.size(); ++i) {
+    if (stream[i] != address_prologue_1 ||
+        stream[i + 1] != address_prologue_2 ||
+        stream[i + 2] != address_prologue_3) {
+      continue;
+    }
+    const uint8_t volume = decode_4and4(stream[i + 3], stream[i + 4]);
+    const uint8_t track = decode_4and4(stream[i + 5], stream[i + 6]);
+    const uint8_t sector = decode_4and4(stream[i + 7], stream[i + 8]);
+    const uint8_t checksum = decode_4and4(stream[i + 9], stream[i + 10]);
+
+    CHECK(volume == default_volume);
+    CHECK(track == 0);
+    CHECK(sector < sectors_per_track);
+    CHECK(checksum == (volume ^ track ^ sector));
+    CHECK(stream[i + 11] == address_epilogue);
+    found_address_field = true;
+    break;
+  }
+  CHECK(found_address_field);
 }
 
 TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
@@ -228,12 +250,9 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
   const DiskSavedState_t state_after = harness.get_saved_state();
   CHECK(state_after.drives[0].current_byte_pos == expected_pos);
 
-  // Assert the byte read from $C0EC equals expected nibble at that position and
-  // differs from b_start
-  const uint8_t expected_nibble =
-      state_after.drives[0].track_buffer[expected_pos];
+  // The head has moved on, so the byte under it is a different one.
   const uint8_t b_after = harness.read_byte();
-  CHECK(b_after == expected_nibble);
+  CHECK((b_after & latch_bit) != 0);
   CHECK(b_after != b_start);
 }
 

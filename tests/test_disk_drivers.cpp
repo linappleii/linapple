@@ -86,7 +86,7 @@ auto to_bits(const std::vector<uint8_t>& nibbles, std::vector<uint8_t>* bits)
   bits->assign(max_track_bits / 8, 0);
   uint32_t count = 0;
   REQUIRE(disk_encoding_nibbles_to_bits(
-              nibbles.data(), static_cast<uint32_t>(nibbles.size()),
+              nibbles.data(), static_cast<uint32_t>(nibbles.size()), nullptr,
               bits->data(), max_track_bits, &count) == disk_err_none);
   return count;
 }
@@ -421,7 +421,10 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   uint8_t bit_timing = 0;
   CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                     &bit_count, &bit_timing) == disk_err_none);
-  CHECK(bit_count == nibbles_per_track * 8);
+  // 5808 data nibbles at eight cells and 848 sync nibbles at ten: the gaps
+  // cost the track 1696 cells more than a flat byte stream would.
+  constexpr uint32_t synthesised_track_bits = 54944;
+  CHECK(bit_count == synthesised_track_bits);
   CHECK(bit_timing == disk_default_bit_timing);
 
   g_do_driver.close(inst);
@@ -610,7 +613,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "DiskDrivers: [RET-2] Create valid bitstream disk and propagate creation "
+    "DiskDrivers: [RET-2] Create valid nibble image and propagate creation "
     "failure") {
   ScopedTempFile_t tmp_nib(".nib");
   tmp_nib.unlink_file();

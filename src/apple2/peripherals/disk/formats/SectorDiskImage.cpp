@@ -31,6 +31,7 @@ struct SectorDiskImage_t {
   bool is_dos_order = false;
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
+  std::array<uint8_t, nibbles_per_track> sync_mask{};
 
   SectorDiskImage_t() = default;
   ~SectorDiskImage_t() = default;
@@ -161,14 +162,13 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
     return disk_err_io;
   }
 
-  image_ptr->nibbles.fill(disk::sync_byte);
-  disk_encoding_nibblize_track(image_ptr->work_buffer.data(),
-                               image_ptr->nibbles.data(),
-                               image_ptr->is_dos_order, track);
+  disk_encoding_nibblize_track(
+      image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
+      image_ptr->sync_mask.data(), image_ptr->is_dos_order, track);
 
-  return disk_encoding_nibbles_to_bits(image_ptr->nibbles.data(),
-                                       nibbles_per_track, bits, max_bits,
-                                       out_bit_count);
+  return disk_encoding_nibbles_to_bits(
+      image_ptr->nibbles.data(), nibbles_per_track, image_ptr->sync_mask.data(),
+      bits, max_bits, out_bit_count);
 }
 
 auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
