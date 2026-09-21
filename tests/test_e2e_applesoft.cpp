@@ -73,6 +73,6 @@ TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
 
     // Output is displayed directly at row 0
     CHECK(harness.get_text_row(0) == "4");
-    harness.assert_screen_matches(0x11b89b6f);
+    harness.assert_screen_matches(0xFA677132);
   }
 }

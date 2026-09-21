@@ -302,11 +302,12 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   DiskSavedState_t state_aa = harness.get_saved_state();
   CHECK(state_aa.io_latch == pattern_aa);
 
-  // Sensing write protect at $C0EE loads the register, so the pattern does not
-  // survive the mode switch: the register holds the protect bit and nothing
-  // else, whatever the fixture's permissions are
+  // Sensing write protect at $C0EE loads the register, so the pattern does
+  // not survive the mode switch. The shift-right command feeds the protect
+  // line in on every step, so the answer is saturated either way and never a
+  // partial byte, whatever the fixture's permissions are.
   const uint8_t protect_sense = harness.select_read_mode();
-  CHECK((protect_sense & static_cast<uint8_t>(~latch_bit)) == 0);
+  CHECK((protect_sense == 0x00 || protect_sense == 0xFF));
 
   DiskSavedState_t state_read_mode = harness.get_saved_state();
   CHECK(state_read_mode.io_latch == protect_sense);
@@ -331,6 +332,10 @@ TEST_CASE("DiskIO: [IO-22] Even switches answer with the data register") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
+  // Loading the register from the bus is the Q7-and-Q6 function, so the
+  // marker only lands with the drive enabled and write mode selected.
+  harness.power_motor_on();
+  harness.select_write_mode();
   harness.write_latch(register_marker);
 
   // None of these three touches the register, so all three answer with the
@@ -352,6 +357,8 @@ TEST_CASE("DiskIO: [IO-23] The read-mode switch drives the write-protect bit") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
+  harness.power_motor_on();
+  harness.select_write_mode();
   harness.write_latch(register_marker);
 
   // $C0EE is the one even switch that loads the register itself, so it is the

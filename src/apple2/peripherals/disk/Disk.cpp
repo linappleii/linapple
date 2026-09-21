@@ -56,6 +56,10 @@ constexpr uint8_t read_write = 0xC;  // Q6 Strobe Data
 constexpr uint8_t shift_reg = 0xD;   // Q6 Shift
 constexpr uint8_t read_mode = 0xE;   // Q7 Read
 constexpr uint8_t write_mode = 0xF;  // Q7 Write
+
+constexpr uint8_t mode_read = 0;
+constexpr uint8_t mode_sense_protect = 1;
+constexpr uint8_t mode_shift_write = 2;
 }  // namespace regs
 
 auto copy_string_to_buffer(const std::string& src, char* dest, size_t capacity)
@@ -118,6 +122,7 @@ struct DiskPeripheral_t {
 
   // Controller hardware registers and softswitch flip-flops
   uint8_t io_latch = 0;
+  uint8_t last_bus_write = 0;
   uint16_t stepper_phase_mask = 0;
   bool is_motor_on = false;
   DiskSequencer_t sequencer{};
@@ -450,6 +455,12 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   disk_peripheral->is_motor_on = (memory_address & 0x01) != 0;
 
+  // Why: The phase magnets hang off the same enable the motor does, so a
+  // DRIVES OFF access drops them; the 9334 keeps Q6 and Q7 regardless.
+  if (!disk_peripheral->is_motor_on) {
+    disk_peripheral->stepper_phase_mask = 0;
+  }
+
   sync_drive_motor_state(disk_peripheral);
 
   return read_floating_bus(instance, executed_cycles);
@@ -490,7 +501,8 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
 // The 6502 code manually energizes/de-energizes four physical magnets
 // to 'pull' the head to the next or previous phase.
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
-                             uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
+                             uint8_t, uint8_t, uint32_t executed_cycles)
+    -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
   }
@@ -526,7 +538,8 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
-                          uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
+                          uint8_t, uint8_t, uint32_t executed_cycles)
+    -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
   }
@@ -550,107 +563,142 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
   return read_floating_bus(instance, executed_cycles);
 }
 
-auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                        uint32_t executed_cycles) -> uint8_t {
-  if (instance == nullptr) {
-    return read_floating_bus(instance, executed_cycles);
-  }
-
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+auto load_medium_if_needed(DiskPeripheral_t* disk_peripheral) -> void {
   auto& drive = get_active_drive(disk_peripheral);
-
-  disk_peripheral->sequencer.q6 = false;
-  disk_peripheral->was_accessed_this_tick = true;
-
   if (!drive.is_data_loaded && drive.driver != nullptr) {
     read_track_from_driver(disk_peripheral,
                            disk_peripheral->active_drive_index);
   }
+}
+
+auto sequencer_read(DiskPeripheral_t* disk_peripheral, uint32_t executed_cycles)
+    -> void {
+  load_medium_if_needed(disk_peripheral);
+  auto& drive = get_active_drive(disk_peripheral);
 
   // With no medium under it the MC3470 amplifies head noise, so the register
   // takes a value that is not reproducible rather than holding its last one.
   if (!drive.is_data_loaded) {
-    disk_peripheral->io_latch = read_floating_bus(instance, executed_cycles);
-    return disk_peripheral->io_latch;
+    disk_peripheral->io_latch =
+        read_floating_bus(disk_peripheral, executed_cycles);
+    return;
+  }
+
+  disk_peripheral->io_latch = read_medium_byte(&drive);
+}
+
+// The shift-right command feeds the write-protect line into bit 7 on every
+// step, so by the time the 6502 can look the register is all ones or all
+// zeros and never a partial answer.
+auto sequencer_sense_write_protect(DiskPeripheral_t* disk_peripheral) -> void {
+  const bool is_protected = is_disk_write_protected(
+      disk_peripheral, disk_peripheral->active_drive_index);
+  disk_peripheral->io_latch = is_protected ? 0xFFU : 0x00U;
+}
+
+auto sequencer_shift_write(DiskPeripheral_t* disk_peripheral) -> void {
+  load_medium_if_needed(disk_peripheral);
+  auto& drive = get_active_drive(disk_peripheral);
+  if (!drive.is_data_loaded) {
+    return;
   }
 
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
-
-  // Writing shifts the register out onto the medium and leaves it loaded, so
-  // the byte the 6502 wrote survives until it loads the next one.
-  if (disk_peripheral->sequencer.q7) {
-    if (!is_protected &&
-        (disk_peripheral->io_latch & physical::latch_bit) != 0) {
-      write_medium_byte(&drive, disk_peripheral->io_latch);
-      drive.is_dirty = true;
-    } else {
-      advance_medium(&drive, physical::cells_per_byte);
-    }
-  } else {
-    disk_peripheral->io_latch = read_medium_byte(&drive);
+  if (is_protected || (disk_peripheral->io_latch & physical::latch_bit) == 0) {
+    advance_medium(&drive, physical::cells_per_byte);
+    return;
   }
 
-  return disk_peripheral->io_latch;
+  write_medium_byte(&drive, disk_peripheral->io_latch);
+  drive.is_dirty = true;
 }
 
-auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                       uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
+// Why: The 9334's Q6 and Q7 pick one of four functions for the 74LS323, and
+// the switch that just moved has settled before the sequencer acts, so the
+// new pair is what runs. Until the P6 supplies a clock each function waits
+// for the access carrying its operand: the read/write strobe for the two
+// that move medium past the head, the load strobe for the byte the 6502 puts
+// on the bus. Sensing write protect needs neither and answers on any of them.
+auto run_sequencer_function(DiskPeripheral_t* disk_peripheral, uint16_t offset,
+                            uint32_t executed_cycles) -> void {
+  auto& drive = get_active_drive(disk_peripheral);
+
+  // Why: With the motor-enable line down the sequencer has no clock, so the
+  // data register keeps whatever it was holding when the drive stopped.
+  if (drive.spinning_ticks == 0) {
+    return;
+  }
+
+  const uint8_t mode =
+      static_cast<uint8_t>((disk_peripheral->sequencer.q7 ? 2U : 0U) |
+                           (disk_peripheral->sequencer.q6 ? 1U : 0U));
+
+  switch (mode) {
+    case regs::mode_read:
+      if (offset == regs::read_write) {
+        sequencer_read(disk_peripheral, executed_cycles);
+      }
+      break;
+    case regs::mode_sense_protect:
+      sequencer_sense_write_protect(disk_peripheral);
+      break;
+    case regs::mode_shift_write:
+      if (offset == regs::read_write) {
+        sequencer_shift_write(disk_peripheral);
+      }
+      break;
+    default:
+      if (offset == regs::shift_reg) {
+        disk_peripheral->io_latch = disk_peripheral->last_bus_write;
+      }
+      break;
+  }
+}
+
+auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
+                         uint8_t is_write, uint8_t data_value,
+                         uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
-
-  disk_peripheral->sequencer.q6 = true;
 
   if (is_write != 0) {
-    disk_peripheral->io_latch = data_value;
+    disk_peripheral->last_bus_write = data_value;
+  }
+
+  const uint16_t offset = memory_address & regs::addr_mask;
+  const bool switch_is_set = (offset & 0x01) != 0;
+  if ((offset & 0x02) == 0) {
+    disk_peripheral->sequencer.q6 = switch_is_set;
+  } else {
+    disk_peripheral->sequencer.q7 = switch_is_set;
+    if (switch_is_set) {
+      auto& active_drive = get_active_drive(disk_peripheral);
+      const bool was_already_writing = (active_drive.write_light_ticks > 0);
+      active_drive.write_light_ticks = physical::write_light_ticks;
+      if (!was_already_writing) {
+        notify_status_changed(disk_peripheral);
+      }
+    }
+  }
+
+  if (offset == regs::read_write) {
+    disk_peripheral->was_accessed_this_tick = true;
+  }
+
+  run_sequencer_function(disk_peripheral, offset, executed_cycles);
+
+  // Why: The $C0xD strobe reaches the state register's clear, so whatever the
+  // sequencer was walking restarts from the top; copy protection reads the
+  // bit slip this leaves behind.
+  if (offset == regs::shift_reg) {
+    disk_peripheral->sequencer.state = 0;
   }
 
   return disk_peripheral->io_latch;
-}
-
-auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                           uint32_t executed_cycles) -> uint8_t {
-  if (instance == nullptr) {
-    return read_floating_bus(instance, executed_cycles);
-  }
-
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
-
-  disk_peripheral->sequencer.q7 = false;
-
-  const bool is_protected = is_disk_write_protected(
-      disk_peripheral, disk_peripheral->active_drive_index);
-
-  // The write-protect switch is sensed by shifting it into the data register,
-  // so it reaches the 6502 the same way a nibble does.
-  disk_peripheral->io_latch = is_protected ? physical::latch_bit : 0x00;
-
-  return disk_peripheral->io_latch;
-}
-
-auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
-                            uint8_t, uint32_t executed_cycles) -> uint8_t {
-  if (instance == nullptr) {
-    return read_floating_bus(instance, executed_cycles);
-  }
-
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
-
-  disk_peripheral->sequencer.q7 = true;
-
-  auto& active_drive = get_active_drive(disk_peripheral);
-
-  const bool was_already_writing = (active_drive.write_light_ticks > 0);
-  active_drive.write_light_ticks = physical::write_light_ticks;
-
-  if (!was_already_writing) {
-    notify_status_changed(disk_peripheral);
-  }
-
-  return read_floating_bus(instance, executed_cycles);
 }
 
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
@@ -752,6 +800,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
 
   disk_peripheral->active_drive_index = 0;
   disk_peripheral->io_latch = 0;
+  disk_peripheral->last_bus_write = 0;
   disk_peripheral->stepper_phase_mask = 0;
   disk_peripheral->is_motor_on = false;
   disk_peripheral->sequencer = DiskSequencer_t{};
@@ -823,10 +872,10 @@ constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
     disk_io_control_motor,    // 0x9: motor_on
     disk_io_enable_drive,     // 0xA: drive_1
     disk_io_enable_drive,     // 0xB: drive_2
-    disk_io_read_write,       // 0xC: read_write
-    disk_io_set_latch,        // 0xD: shift_reg
-    disk_io_set_read_mode,    // 0xE: read_mode
-    disk_io_set_write_mode    // 0xF: write_mode
+    disk_io_mode_switch,      // 0xC: Q6 clear
+    disk_io_mode_switch,      // 0xD: Q6 set
+    disk_io_mode_switch,      // 0xE: Q7 clear
+    disk_io_mode_switch       // 0xF: Q7 set
 };
 
 // A0 gates the data register onto the bus (UTAIIe Table 9.1), so what an
