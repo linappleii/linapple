@@ -333,3 +333,74 @@ TEST_CASE("DiskSaveState: [SNAP-4] A save state of the wrong size is refused") {
 
   linapple_shutdown();
 }
+
+TEST_CASE("DiskSaveState: [SNAP-5] Card-level indices come back in range") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
+
+  auto fixture = TestFixtures::create_ephemeral("minimal.dsk");
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(0);
+
+  std::vector<uint8_t> buffer(sizeof(DiskSavedState_t));
+  size_t state_size = buffer.size();
+  peripheral_save_state(slot_6, buffer.data(), &state_size);
+
+  // The card has four phase magnets and two drives; a state claiming more of
+  // either would index past the end of both arrays.
+  auto* state = reinterpret_cast<DiskSavedState_t*>(buffer.data());
+  state->stepper_phase_mask = 0xFFFF;
+  state->active_drive_index = 0xFFFF;
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+
+  DiskSavedState_t round{};
+  size_t round_size = sizeof(round);
+  peripheral_save_state(slot_6, &round, &round_size);
+  constexpr uint16_t four_magnets = 0x000F;
+  CHECK(round.stepper_phase_mask == four_magnets);
+  CHECK(round.active_drive_index == 0);
+
+  linapple_shutdown();
+}
+
+TEST_CASE("DiskSaveState: [SNAP-6] An unterminated path opens nothing") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
+
+  auto fixture = TestFixtures::create_ephemeral("minimal.dsk");
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  util_safe_strcpy(cmd.path, fixture.c_str(), disk_insert_path_max);
+  peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(0);
+
+  std::vector<uint8_t> buffer(sizeof(DiskSavedState_t));
+  size_t state_size = buffer.size();
+  peripheral_save_state(slot_6, buffer.data(), &state_size);
+
+  // Every byte of the field is a path character, so the name runs to the end
+  // of the field and the reader has to stop there rather than at a nul.
+  auto* state = reinterpret_cast<DiskSavedState_t*>(buffer.data());
+  for (char& character : state->drives[0].full_path) {
+    character = 'A';
+  }
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+
+  DiskStatus_t status{};
+  size_t s_size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_loaded == 0);
+  CHECK(status.drive0_last_error == disk_err_file_not_found);
+  CHECK(status.drive0_full_path[0] == '\0');
+
+  linapple_shutdown();
+}

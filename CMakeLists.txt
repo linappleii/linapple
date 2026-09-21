@@ -931,6 +931,8 @@ if(ENABLE_FUZZING)
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
+    add_linapple_fuzzer(fuzz-disk-controller tests/fuzz/fuzz_disk_controller.cpp)
+    add_linapple_fuzzer(fuzz-disk-adapter tests/fuzz/fuzz_disk_adapter.cpp)
     add_linapple_fuzzer(fuzz-snapshot tests/fuzz/fuzz_snapshot.cpp)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
     add_linapple_fuzzer(fuzz-speaker tests/fuzz/fuzz_speaker.cpp)
@@ -946,6 +948,24 @@ if(ENABLE_FUZZING)
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
                          -max_total_time=10)
         set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz")
+
+        # Six bytes a record and a sequence long enough to spin the medium
+        # past a whole sector.
+        add_test(NAME fuzz-disk-controller
+                 COMMAND fuzz-disk-controller
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-controller
+                         -max_len=1024
+                         -max_total_time=10)
+        set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz")
+
+        # One control byte and then one nibble per byte, so this covers a
+        # track two thirds the length of a real one.
+        add_test(NAME fuzz-disk-adapter
+                 COMMAND fuzz-disk-adapter
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter
+                         -max_len=4096
+                         -max_total_time=10)
+        set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz")
 
         add_test(NAME fuzz-snapshot
                  COMMAND fuzz-snapshot
