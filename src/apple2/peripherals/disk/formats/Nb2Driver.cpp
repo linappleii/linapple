@@ -8,7 +8,6 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.
@@ -100,18 +99,6 @@ auto nb2_create(const char* path) -> DiskError_e {
       path, static_cast<uint32_t>(physical::disk_size));
 }
 
-auto nb2_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                 size_t payload_size) -> PeripheralStatus_t {
-  (void)cmd_id;
-  (void)payload;
-  (void)payload_size;
-  if (instance_handle == nullptr) {
-    return peripheral_error;
-  }
-  return peripheral_incompatible;
-}
-
-const char* const g_nb2_creatable_exts[] = {".nb2", nullptr};
 const char* const g_nb2_supported_exts[] = {"nb2", nullptr};
 }  // namespace
 
@@ -119,7 +106,6 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "NB2 (6384-nibble)",
-    .creatable_exts = g_nb2_creatable_exts,
     .supported_exts = g_nb2_supported_exts,
     .probe = nb2_probe,
     .open = nb2_open,
@@ -127,9 +113,7 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .is_write_protected = nb2_is_write_protected,
     .read_track_bits = nb2_read_track_bits,
     .write_track_bits = nb2_write_track_bits,
-    .create = nb2_create,
-    .command = nb2_command,
-    .read_flux_bit = nullptr};
+    .create = nb2_create};
 
 static const DiskFormatRegistration_t k_reg{&g_nb2_driver};
 

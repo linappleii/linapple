@@ -10,7 +10,6 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.
@@ -104,16 +103,6 @@ auto do_create(const char* path) -> DiskError_e {
   return sector_disk_image_create(path);
 }
 
-auto do_command(void* instance, uint32_t cmd_id, const void* payload,
-                size_t payload_size) -> PeripheralStatus_t {
-  if (instance == nullptr) {
-    return peripheral_error;
-  }
-  return sector_disk_image_command(static_cast<SectorDiskImage_t*>(instance),
-                                   cmd_id, payload, payload_size);
-}
-
-const char* const g_do_creatable_exts[] = {".do", ".dsk", nullptr};
 const char* const g_do_supported_exts[] = {"do", "dsk", nullptr};
 
 }  // namespace
@@ -122,7 +111,6 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "DOS Order",
-    .creatable_exts = g_do_creatable_exts,
     .supported_exts = g_do_supported_exts,
     .probe = do_probe,
     .open = do_open,
@@ -130,9 +118,7 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .is_write_protected = do_is_write_protected,
     .read_track_bits = do_read_track_bits,
     .write_track_bits = do_write_track_bits,
-    .create = do_create,
-    .command = do_command,
-    .read_flux_bit = nullptr};
+    .create = do_create};
 
 static const DiskFormatRegistration_t k_reg{&g_do_driver};
 

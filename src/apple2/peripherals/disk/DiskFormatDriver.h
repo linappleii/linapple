@@ -11,7 +11,6 @@
 #include <stdint.h>
 
 #include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,19 +22,13 @@ enum { disk_format_abi_version = 0 };
    6656 nibbles at ten cells each; a WOZ 5.25" track stays under 53,440. */
 enum { max_track_bits = 69632 };
 
-typedef enum {
-  disk_driver_cap_write = 0x01,
-  disk_driver_cap_flux = 0x02,
-  disk_driver_cap_double_sided = 0x04
-} DiskDriverCap_e;
+typedef enum { disk_driver_cap_write = 0x01 } DiskDriverCap_e;
 
 typedef enum {
   disk_probe_no = 0,
   disk_probe_possible = 1,
   disk_probe_definite = 2
 } DiskProbe_e;
-
-typedef struct DiskFluxBit_s DiskFluxBit_t;
 
 /**
  * @brief Domain: Disk Format Driver ABI
@@ -52,7 +45,6 @@ typedef struct DiskFormatDriver_t {
   int abi_version;
   uint32_t capabilities;
   const char* name;
-  const char* const* creatable_exts;
   const char* const* supported_exts;
 
   DiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
@@ -81,12 +73,6 @@ typedef struct DiskFormatDriver_t {
                                   const uint8_t* bits, uint32_t bit_count);
 
   DiskError_e (*create)(const char* path);
-
-  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id,
-                                const void* data, size_t size);
-
-  void (*read_flux_bit)(void* instance, uint32_t elapsed_cycles,
-                        DiskFluxBit_t* out_flux);
 } DiskFormatDriver_t;
 
 #ifdef __cplusplus

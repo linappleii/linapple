@@ -13,7 +13,6 @@
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
@@ -302,18 +301,6 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
   }
 
   return disk_probe_possible;
-}
-
-auto sector_disk_image_command(SectorDiskImage_t* image_ptr, uint32_t cmd_id,
-                               const void* payload, size_t payload_size)
-    -> PeripheralStatus_t {
-  (void)cmd_id;
-  (void)payload;
-  (void)payload_size;
-  if (image_ptr == nullptr) {
-    return peripheral_error;
-  }
-  return peripheral_incompatible;
 }
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

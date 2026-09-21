@@ -9,7 +9,6 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.
@@ -98,18 +97,6 @@ auto nib_create(const char* path) -> DiskError_e {
       path, static_cast<uint32_t>(physical::disk_size));
 }
 
-auto nib_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                 size_t payload_size) -> PeripheralStatus_t {
-  (void)cmd_id;
-  (void)payload;
-  (void)payload_size;
-  if (instance_handle == nullptr) {
-    return peripheral_error;
-  }
-  return peripheral_incompatible;
-}
-
-const char* const g_nib_creatable_exts[] = {".nib", nullptr};
 const char* const g_nib_supported_exts[] = {"nib", nullptr};
 }  // namespace
 
@@ -117,7 +104,6 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "NIB (6656-nibble)",
-    .creatable_exts = g_nib_creatable_exts,
     .supported_exts = g_nib_supported_exts,
     .probe = nib_probe,
     .open = nib_open,
@@ -125,9 +111,7 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .is_write_protected = nib_is_write_protected,
     .read_track_bits = nib_read_track_bits,
     .write_track_bits = nib_write_track_bits,
-    .create = nib_create,
-    .command = nib_command,
-    .read_flux_bit = nullptr};
+    .create = nib_create};
 
 static const DiskFormatRegistration_t k_reg{&g_nib_driver};
 

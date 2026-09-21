@@ -14,7 +14,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
@@ -313,24 +312,12 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
                                        bits, max_bits, out_bit_count);
 }
 
-static auto woz2_command(void* instance, uint32_t cmd_id, const void* payload,
-                         size_t payload_size) -> PeripheralStatus_t {
-  (void)cmd_id;
-  (void)payload;
-  (void)payload_size;
-  if (instance == nullptr) {
-    return peripheral_error;
-  }
-  return peripheral_incompatible;
-}
-
 const char* const g_woz2_supported_exts[] = {"woz", nullptr};
 
 extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "WOZ 2",
-    .creatable_exts = nullptr,
     .supported_exts = g_woz2_supported_exts,
     .probe = woz2_probe,
     .open = woz2_open,
@@ -338,9 +325,7 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .is_write_protected = woz2_is_write_protected,
     .read_track_bits = woz2_read_track_bits,
     .write_track_bits = nullptr,
-    .create = nullptr,
-    .command = woz2_command,
-    .read_flux_bit = nullptr};
+    .create = nullptr};
 
 static const DiskFormatRegistration_t k_reg{&g_woz2_driver};
 

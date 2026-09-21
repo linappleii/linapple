@@ -14,7 +14,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
@@ -269,17 +268,6 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
                                        bits, max_bits, out_bit_count);
 }
 
-auto iie_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                 size_t payload_size) -> PeripheralStatus_t {
-  (void)cmd_id;
-  (void)payload;
-  (void)payload_size;
-  if (instance_handle == nullptr) {
-    return peripheral_error;
-  }
-  return peripheral_incompatible;
-}
-
 const char* const g_iie_supported_exts[] = {"iie", nullptr};
 
 }  // namespace
@@ -288,7 +276,6 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "IIE",
-    .creatable_exts = nullptr,
     .supported_exts = g_iie_supported_exts,
     .probe = iie_probe,
     .open = iie_open,
@@ -296,9 +283,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .is_write_protected = iie_is_write_protected,
     .read_track_bits = iie_read_track_bits,
     .write_track_bits = nullptr,
-    .create = nullptr,
-    .command = iie_command,
-    .read_flux_bit = nullptr};
+    .create = nullptr};
 
 static const DiskFormatRegistration_t k_reg{&g_iie_driver};
 

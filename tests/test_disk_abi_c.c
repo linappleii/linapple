@@ -16,7 +16,6 @@ void disk_abi_c_smoke(void) {
   driver.abi_version = disk_format_abi_version;
   driver.capabilities = disk_driver_cap_write;
   driver.name = "smoke";
-  driver.creatable_exts = 0;
   driver.supported_exts = 0;
   driver.probe = 0;
   driver.open = 0;
@@ -25,7 +24,6 @@ void disk_abi_c_smoke(void) {
   driver.read_track_bits = 0;
   driver.write_track_bits = 0;
   driver.create = 0;
-  driver.read_flux_bit = 0;
   DiskSavedState_t saved_state;
   saved_state.header.version = disk_state_version;
   (void)cmd;

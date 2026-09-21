@@ -10,7 +10,6 @@
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 
 // Justification: Format drivers utilize a procedural C-compatible handle system
 // and standardized probing signatures mandated by the Disk subsystem ABI.
@@ -104,17 +103,6 @@ auto po_create(const char* path) -> DiskError_e {
   return sector_disk_image_create(path);
 }
 
-auto po_command(void* instance_handle, uint32_t cmd_id, const void* payload,
-                size_t payload_size) -> PeripheralStatus_t {
-  if (instance_handle == nullptr) {
-    return peripheral_error;
-  }
-  return sector_disk_image_command(
-      static_cast<SectorDiskImage_t*>(instance_handle), cmd_id, payload,
-      payload_size);
-}
-
-const char* const g_po_creatable_exts[] = {".po", nullptr};
 const char* const g_po_supported_exts[] = {"po", nullptr};
 
 }  // namespace
@@ -123,7 +111,6 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write,
     .name = "ProDOS Order",
-    .creatable_exts = g_po_creatable_exts,
     .supported_exts = g_po_supported_exts,
     .probe = po_probe,
     .open = po_open,
@@ -131,9 +118,7 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .is_write_protected = po_is_write_protected,
     .read_track_bits = po_read_track_bits,
     .write_track_bits = po_write_track_bits,
-    .create = po_create,
-    .command = po_command,
-    .read_flux_bit = nullptr};
+    .create = po_create};
 
 static const DiskFormatRegistration_t k_reg{&g_po_driver};
 
