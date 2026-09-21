@@ -42,6 +42,7 @@ constexpr uint32_t noise_multiplier = 1103515245U;
 constexpr uint32_t noise_increment = 12345U;
 constexpr uint32_t noise_one_in_256 = 77U;
 constexpr uint8_t max_reliable_zero_cells = 3;
+constexpr uint32_t head_settling_cells = 7;
 constexpr uint32_t cells_per_byte = 8;
 constexpr uint32_t track_bit_bytes = max_track_bits / 8;
 }  // namespace physical
@@ -311,6 +312,29 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   }
 }
 
+// Why: The spindle does not stop for the head, so a track change lands the
+// head at the same angle rather than at the index hole. Tracks recorded at
+// different lengths hold the angle as a fraction of a revolution, and the
+// arm needs a few cells to stop ringing before the amplifier can lock -
+// AppleWin measured seven against Balance of Power, which reads one track
+// to find its place on the next.
+auto rescale_head_angle(Disk_t* disk_ptr, uint32_t previous_position,
+                        uint32_t previous_count) -> void {
+  if (disk_ptr->bit_count == 0) {
+    disk_ptr->bit_position = 0;
+    return;
+  }
+  if (previous_count == 0) {
+    return;
+  }
+
+  const uint64_t scaled =
+      (static_cast<uint64_t>(previous_position) * disk_ptr->bit_count) /
+      previous_count;
+  disk_ptr->bit_position = static_cast<uint32_t>(
+      (scaled + physical::head_settling_cells) % disk_ptr->bit_count);
+}
+
 auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     -> void {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
@@ -319,6 +343,9 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   auto* disk_ptr =
       &disk_peripheral->drives.at(static_cast<size_t>(drive_index));
+
+  const uint32_t previous_position = disk_ptr->bit_position;
+  const uint32_t previous_count = disk_ptr->bit_count;
 
   disk_ptr->bit_position = 0;
   disk_ptr->cell_remaining = 0;
@@ -348,6 +375,8 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     disk_ptr->bit_timing = loaded_timing;
     disk_ptr->is_data_loaded = (disk_ptr->bit_count != 0);
   }
+
+  rescale_head_angle(disk_ptr, previous_position, previous_count);
 }
 
 auto close_format_driver(Disk_t* disk_ptr) -> void {
