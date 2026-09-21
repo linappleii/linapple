@@ -190,3 +190,22 @@ TEST_CASE(
     CHECK(hd_out.is_temporary == true);
   }
 }
+
+TEST_CASE("DiskCompression: [PAY-1] The payload name carries the extension") {
+  char name[512] = {0};
+
+  CHECK(disk_container_payload_name("/images/game.dsk", name, sizeof(name)));
+  CHECK(std::string(name) == "game.dsk");
+
+  CHECK(disk_container_payload_name("/images/game.dsk.gz", name, sizeof(name)));
+  CHECK(std::string(name) == "game.dsk");
+
+  TestFixtures::ScopedTempFile_t test_zip(".zip");
+  const std::vector<uint8_t> floppy_data(143360, 0xA5);
+  REQUIRE(create_test_zip(test_zip.c_str(), "inner.po", floppy_data.data(),
+                          floppy_data.size()));
+  CHECK(disk_container_payload_name(test_zip.c_str(), name, sizeof(name)));
+  CHECK(std::string(name) == "inner.po");
+
+  CHECK(disk_container_payload_name(nullptr, name, sizeof(name)) == false);
+}

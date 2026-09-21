@@ -202,6 +202,51 @@ extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
   return 0;
 }
 
+// Why: A probe that sees only "game.dsk.gz" asks every driver about a ".gz",
+// which none of them handle. The extension that decides the format is the
+// payload's, so the container is the only layer that can supply it.
+extern "C" auto disk_container_payload_name(const char* image_path,
+                                            char* out_name, size_t max_name_len)
+    -> bool {
+  if (image_path == nullptr || out_name == nullptr || max_name_len == 0) {
+    return false;
+  }
+
+  const char* slash = strrchr(image_path, '/');
+  const char* basename = (slash != nullptr) ? (slash + 1) : image_path;
+
+  const bool is_gz = has_extension(image_path, k_gzip_extension);
+  const bool is_zip = has_extension(image_path, k_zip_extension);
+  if (!is_gz && !is_zip) {
+    util_safe_strcpy(out_name, basename, max_name_len);
+    return true;
+  }
+
+  if (is_zip) {
+    int err = 0;
+    zip* archive = zip_open(image_path, ZIP_RDONLY, &err);
+    if (archive != nullptr) {
+      const std::unique_ptr<zip, int (*)(zip*)> closer(archive, zip_close);
+      const char* entry = zip_get_name(archive, 0, 0);
+      if (entry != nullptr && entry[0] != '\0') {
+        const char* entry_slash = strrchr(entry, '/');
+        util_safe_strcpy(out_name,
+                         (entry_slash != nullptr) ? (entry_slash + 1) : entry,
+                         max_name_len);
+        return true;
+      }
+    }
+  }
+
+  // Dropping the archive suffix is all that is left: gzip's own FNAME field is
+  // optional and zlib does not expose it.
+  const std::string stripped(
+      basename, strlen(basename) - strlen(is_gz ? k_gzip_extension
+                                                : k_zip_extension) - 1);
+  util_safe_strcpy(out_name, stripped.c_str(), max_name_len);
+  return true;
+}
+
 // Why: Extracts compressed images (.gz and .zip) to a secure temporary path
 // with threshold-based ratio checks to prevent decompression exhaustion bombs.
 extern "C" auto disk_container_prepare_compressed_path(

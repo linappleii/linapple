@@ -34,6 +34,13 @@ bool disk_container_prepare_compressed_path(const char* image_path,
                                             size_t uncompressed_threshold,
                                             bool* out_is_temporary);
 
+/* The name the image carries inside its container, or the path's own
+   basename when it is not in one. Only the extension is of interest: a
+   game.dsk.gz holds a .dsk, and probing it as a .gz asks every format driver
+   a question none of them answer. */
+bool disk_container_payload_name(const char* image_path, char* out_name,
+                                 size_t max_name_len);
+
 /* The archive extensions this layer can unwrap, without the dot, as a
    NULL-terminated list. A file browser offering disk images has to offer
    these too, and only this layer knows what it can open. */

@@ -135,10 +135,10 @@ struct TemporaryFileGuard {
 // Why: Scans registered drivers to find the one that definitively or possibly
 // claims the disk image based on header content and extension.
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
-                      uint32_t file_size, const char* image_path)
+                      uint32_t file_size, const char* payload_name)
     -> DiskFormatDriver_t* {
   char ext_hint[extension_hint_size] = {0};
-  const char* dot = strrchr(image_path, '.');
+  const char* dot = strrchr(payload_name, '.');
   if (dot != nullptr) {
     util_safe_strcpy(ext_hint, dot, sizeof(ext_hint));
     for (char* p = ext_hint; *p != '\0'; ++p) {
@@ -236,8 +236,11 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;
 
+  char payload_name[path_max_len] = {0};
+  disk_container_payload_name(image_path, payload_name, sizeof(payload_name));
+
   *out_driver = find_best_driver(probe_ptr, probe_size, file_size - file_offset,
-                                 image_path);
+                                 payload_name);
 
   if (*out_driver == nullptr) {
     return disk_err_unsupported_format;
