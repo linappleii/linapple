@@ -20,12 +20,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DoDriver.h"
-#include "apple2/peripherals/disk/formats/IieDriver.h"
-#include "apple2/peripherals/disk/formats/Nb2Driver.h"
-#include "apple2/peripherals/disk/formats/NibDriver.h"
-#include "apple2/peripherals/disk/formats/PoDriver.h"
-#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
 namespace {
 
@@ -849,15 +843,6 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   auto dp = std::unique_ptr<DiskPeripheral_t>(new DiskPeripheral_t());
   dp->host = host;
   dp->slot = slot;
-
-  if (disk_loader_driver_count() == 0) {
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_woz2_driver));
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_iie_driver));
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nib_driver));
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
-    disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
-  }
 
   initialize_peripheral(dp.get());
 

@@ -13,6 +13,7 @@
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
@@ -304,5 +305,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .create = nullptr,
     .command = iie_command,
     .read_flux_bit = nullptr};
+
+static const DiskFormatRegistration_t k_reg{&g_iie_driver};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

@@ -6,6 +6,7 @@
 
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "apple2/peripherals/disk/formats/BitstreamDiskImage.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 
@@ -134,5 +135,7 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .create = nb2_create,
     .command = nb2_command,
     .read_flux_bit = nullptr};
+
+static const DiskFormatRegistration_t k_reg{&g_nb2_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-type-static-cast-downcast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
