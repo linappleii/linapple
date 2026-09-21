@@ -820,7 +820,7 @@ static auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
 
 }  // namespace
 
-static Peripheral_t g_mouse_peripheral = {
+static const Peripheral_t g_mouse_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mouse",
     .name = "Mouse Interface",
@@ -839,8 +839,11 @@ static Peripheral_t g_mouse_peripheral = {
     .command = mouse_abi_command,
     .query = mouse_abi_query};
 
+// peripheral_register and ActivePeripheral_t::api still take a mutable
+// Peripheral_t*, so the immutable descriptor is cast the same way
+// PERIPHERAL_REGISTER casts it.
 extern "C" auto mouse_get_descriptor() -> Peripheral_t* {
-  return &g_mouse_peripheral;
+  return const_cast<Peripheral_t*>(&g_mouse_peripheral);
 }
 
 PERIPHERAL_REGISTER(g_mouse_peripheral)

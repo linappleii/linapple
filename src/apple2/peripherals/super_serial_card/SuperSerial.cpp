@@ -433,7 +433,7 @@ auto super_serial_load_state(void* instance, const void* state_buffer,
   return peripheral_ok;
 }
 
-static Peripheral_t g_ssc_peripheral = {
+static const Peripheral_t g_ssc_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
     .name = "Super Serial Card",
@@ -454,8 +454,11 @@ static Peripheral_t g_ssc_peripheral = {
 
 }  // namespace
 
+// peripheral_register and ActivePeripheral_t::api still take a mutable
+// Peripheral_t*, so the immutable descriptor is cast the same way
+// PERIPHERAL_REGISTER casts it.
 auto super_serial_get_descriptor() -> Peripheral_t* {
-  return &g_ssc_peripheral;
+  return const_cast<Peripheral_t*>(&g_ssc_peripheral);
 }
 
 PERIPHERAL_REGISTER(g_ssc_peripheral)
