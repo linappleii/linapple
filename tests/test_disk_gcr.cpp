@@ -442,4 +442,35 @@ TEST_CASE("DiskGCR: [ADP-03] A track longer than the buffer is refused") {
   CHECK(bit_count == 0);
 }
 
+TEST_CASE("DiskGCR: [GCR-08] A flipped data nibble is refused, not decoded") {
+  std::array<uint8_t, track_data_size> original_track{};
+  populate_test_track(original_track);
+
+  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
+  std::copy(original_track.begin(), original_track.end(), work_buffer.begin());
+
+  std::array<uint8_t, nibbles_per_track> track_image{};
+  disk_encoding_nibblize_track(work_buffer.data(), track_image.data(), nullptr,
+                               true, 0);
+
+  // Sector 0's data field opens at nibble 23: fourteen address bytes, a
+  // six-byte gap and the three-byte data prologue come first.
+  constexpr size_t first_data_field = 23;
+  track_image[first_data_field + 10] =
+      static_cast<uint8_t>(track_image[first_data_field + 10] ^ 0x01U);
+
+  std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
+  CHECK(disk_encoding_denibblize_track(
+            work_buffer.data(), track_image.data(), true,
+            static_cast<int>(nibbles_per_track)) == disk_err_corrupt);
+
+  // The corrupted sector was never written; the other fifteen still decode.
+  for (size_t i = 0; i < sector_size; ++i) {
+    CHECK(work_buffer[i] == 0x00);
+  }
+  for (size_t i = sector_size; i < track_data_size; ++i) {
+    CHECK(work_buffer[i] == original_track[i]);
+  }
+}
+
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

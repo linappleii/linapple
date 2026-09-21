@@ -40,7 +40,8 @@ auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
                                                int track) -> uint32_t;
 
 auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
-                                    bool is_dos_order, int nibbles) -> void;
+                                    bool is_dos_order, int nibbles)
+    -> DiskError_e;
 
 /* Lay a nibble track down as cells: eight to a data nibble, ten to a
    self-sync one. sync_mask marks the self-sync nibbles, one byte each; pass

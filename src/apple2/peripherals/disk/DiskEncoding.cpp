@@ -33,6 +33,9 @@ constexpr uint8_t mask_6bit = 0x3F;
 constexpr uint8_t mask_lowbits = 0xFC;
 constexpr uint8_t decode_offset = 0x80;
 constexpr uint8_t decode_high_bit_mask = 0x7F;
+constexpr uint8_t high_bit_mask = 0x80;
+// No 6-and-2 code decodes to this, every one being a multiple of four.
+constexpr uint8_t invalid_nibble = 0xFF;
 constexpr uint8_t addr_4and4_mask = 0x55;
 constexpr uint8_t gcr_sync_bit_mask = 0xAA;
 constexpr uint8_t volume_default = 0xFE;
@@ -99,7 +102,7 @@ const std::array<std::array<uint8_t, sectors_per_track>, interleave_modes_count>
 
 static const auto decode_table = []() {
   std::array<uint8_t, disk_encoding_decode_table_size> t{};
-  t.fill(0);
+  t.fill(invalid_nibble);
   for (size_t i = 0; i < disk_encoding_table.size(); ++i) {
     t.at(disk_encoding_table.at(i) - decode_offset) =
         static_cast<uint8_t>(i << shift_2);
@@ -164,19 +167,32 @@ auto encode_sector_62(uint8_t* work_buffer, int sector_index)
   return &work_buffer[disk_encoding_work_buffer_offset];
 }
 
-auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> void {
+// Returns false for a data field the drive could not have written: a byte
+// outside the 6-and-2 alphabet, or a checksum that does not match the
+// XOR chain the encoder laid down. Nothing reaches image_ptr unless both
+// hold, so a bad read leaves the caller's sector as it found it.
+auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> bool {
   {
-    uint8_t* source_ptr = &work_buffer[disk_encoding_work_buffer_offset];
+    const uint8_t* source_ptr = &work_buffer[disk_encoding_work_buffer_offset];
     uint8_t* result_ptr = &work_buffer[disk_encoding_checksum_buffer_offset];
     for (int i = 0;
          i < static_cast<int>(disk_encoding_sector_with_checksum_size); ++i) {
-      result_ptr[i] = decode_table.at(source_ptr[i] & decode_high_bit_mask);
+      const uint8_t nibble = source_ptr[i];
+      if ((nibble & high_bit_mask) == 0) {
+        return false;
+      }
+      const uint8_t value = decode_table.at(nibble & decode_high_bit_mask);
+      if (value == invalid_nibble) {
+        return false;
+      }
+      result_ptr[i] = value;
     }
   }
 
+  uint8_t saved_value = 0;
   {
-    uint8_t saved_value = 0;
-    uint8_t* source_ptr = &work_buffer[disk_encoding_checksum_buffer_offset];
+    const uint8_t* source_ptr =
+        &work_buffer[disk_encoding_checksum_buffer_offset];
     uint8_t* result_ptr = &work_buffer[disk_encoding_work_buffer_offset];
     for (int i = 0; i < static_cast<int>(disk_encoding_sector_data_size); ++i) {
       result_ptr[i] = saved_value ^ source_ptr[i];
@@ -184,9 +200,15 @@ auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> void {
     }
   }
 
+  if (work_buffer[disk_encoding_checksum_buffer_offset +
+                  disk_encoding_sector_data_size] != saved_value) {
+    return false;
+  }
+
   {
-    uint8_t* low_bits_ptr = &work_buffer[disk_encoding_work_buffer_offset];
-    uint8_t* sector_base =
+    const uint8_t* low_bits_ptr =
+        &work_buffer[disk_encoding_work_buffer_offset];
+    const uint8_t* sector_base =
         &work_buffer[disk_encoding_work_buffer_offset + gcr62_offset_step_1];
     uint8_t offset = gcr62_offset_init;
     for (int i = 0; i < gcr62_iterations; ++i) {
@@ -210,18 +232,22 @@ auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> void {
       low_bits_ptr++;
     }
   }
+
+  return true;
 }
 
 }  // namespace
 
 auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
-                                    bool is_dos_order, int nibbles) -> void {
+                                    bool is_dos_order, int nibbles)
+    -> DiskError_e {
   std::fill_n(work_buffer, disk_encoding_work_buffer_offset, 0);
 
   int current_offset = 0;
   int markers_found = 0;
   int current_sector = -1;
   uint16_t decoded_sectors_mask = 0;
+  bool field_refused = false;
 
   auto fetch_byte = [&]() -> uint8_t {
     uint8_t byte = track_image[current_offset++];
@@ -272,9 +298,12 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
           const uint8_t physical_sector =
               disk_encoding_sector_interleave_table.at(interleave_idx)
                   .at(static_cast<size_t>(current_sector));
-          decode_sector_62(work_buffer,
-                           &work_buffer[physical_sector * sector_size]);
-          decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
+          if (!decode_sector_62(work_buffer,
+                                &work_buffer[physical_sector * sector_size])) {
+            field_refused = true;
+          } else {
+            decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
+          }
         }
         current_sector = -1;
         break;
@@ -283,6 +312,8 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
         break;
     }
   }
+
+  return field_refused ? disk_err_corrupt : disk_err_none;
 }
 
 auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
