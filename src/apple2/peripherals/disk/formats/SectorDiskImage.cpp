@@ -199,7 +199,7 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
   // track the head only half-read cannot cost the image the other half.
   const DiskError_e decoded_track = disk_encoding_denibblize_track(
       image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
-      image_ptr->is_dos_order, static_cast<int>(nibble_count));
+      image_ptr->is_dos_order, static_cast<uint32_t>(track), nibble_count);
   if (decoded_track != disk_err_none) {
     return decoded_track;
   }

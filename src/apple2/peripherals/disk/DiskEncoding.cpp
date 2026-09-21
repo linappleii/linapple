@@ -243,28 +243,46 @@ auto decode_sector_62(uint8_t* work_buffer, uint8_t* image_ptr) -> bool {
 
 }  // namespace
 
-auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
-                                    bool is_dos_order, int nibbles)
-    -> DiskError_e {
+auto disk_encoding_denibblize_track(uint8_t* work_buffer,
+                                    const uint8_t* track_image,
+                                    bool is_dos_order, uint32_t track,
+                                    uint32_t nibbles) -> DiskError_e {
+  if (work_buffer == nullptr || track_image == nullptr || nibbles == 0) {
+    return disk_err_invalid_argument;
+  }
+
   uint8_t* const staging = &work_buffer[staging_offset];
   std::fill_n(staging, track_image_size, 0);
 
-  int current_offset = 0;
-  int markers_found = 0;
+  uint32_t current_offset = 0;
+  uint32_t markers_found = 0;
   int current_sector = -1;
   uint16_t decoded_sectors_mask = 0;
   bool field_refused = false;
 
   auto fetch_byte = [&]() -> uint8_t {
-    uint8_t byte = track_image[current_offset++];
+    const uint8_t byte = track_image[current_offset++];
     if (current_offset >= nibbles) {
       current_offset = 0;
     }
     return byte;
   };
 
+  auto fetch_4and4 = [&]() -> uint8_t {
+    const uint8_t high = fetch_byte();
+    const uint8_t low = fetch_byte();
+    return static_cast<uint8_t>(((high << shift_1) | 1U) & low);
+  };
+
+  auto epilogue_follows = [&]() -> bool {
+    const bool first = fetch_byte() == epilogue_1;
+    const bool second = fetch_byte() == epilogue_2;
+    const bool third = fetch_byte() == epilogue_3;
+    return first && second && third;
+  };
+
   auto find_next_marker = [&]() -> bool {
-    for (int i = 0; i < nibbles; ++i) {
+    for (uint32_t i = 0; i < nibbles; ++i) {
       if (fetch_byte() == prologue_1 &&
           track_image[current_offset] == prologue_2) {
         fetch_byte();
@@ -281,29 +299,38 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
 
     switch (marker_type) {
       case addr_prologue_3: {
-        for (int i = 0; i < 4; ++i) {
-          fetch_byte();
-        }
-        const uint8_t sector_high = fetch_byte();
-        const uint8_t sector_low = fetch_byte();
-        current_sector =
-            static_cast<int>(((sector_high & addr_4and4_mask) << shift_1) |
-                             (sector_low & addr_4and4_mask));
+        const uint8_t volume = fetch_4and4();
+        const uint8_t address_track = fetch_4and4();
+        const uint8_t sector = fetch_4and4();
+        const uint8_t checksum = fetch_4and4();
+
+        // A head that has drifted onto the wrong cylinder reads a perfectly
+        // well-formed field belonging to a track this image is not writing.
+        const bool address_holds =
+            epilogue_follows() &&
+            checksum == (volume ^ address_track ^ sector) &&
+            address_track == static_cast<uint8_t>(track) &&
+            sector < sectors_per_track;
+
+        current_sector = address_holds ? static_cast<int>(sector) : -1;
+        field_refused = field_refused || !address_holds;
         break;
       }
 
-      case data_prologue_3:
-        for (int i = 0;
-             i < static_cast<int>(disk_encoding_sector_with_checksum_size);
+      case data_prologue_3: {
+        for (uint32_t i = 0;
+             i < static_cast<uint32_t>(disk_encoding_sector_with_checksum_size);
              ++i) {
           work_buffer[disk_encoding_work_buffer_offset + i] = fetch_byte();
         }
-        if (current_sector >= 0 && current_sector < sectors_per_track) {
+        const bool data_holds = epilogue_follows();
+        if (current_sector >= 0) {
           const size_t interleave_idx = is_dos_order ? 1 : 0;
           const uint8_t physical_sector =
               disk_encoding_sector_interleave_table.at(interleave_idx)
                   .at(static_cast<size_t>(current_sector));
-          if (!decode_sector_62(work_buffer,
+          if (!data_holds ||
+              !decode_sector_62(work_buffer,
                                 &staging[physical_sector * sector_size])) {
             field_refused = true;
           } else {
@@ -312,6 +339,7 @@ auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
         }
         current_sector = -1;
         break;
+      }
 
       default:
         break;
