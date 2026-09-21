@@ -2,6 +2,7 @@
 #include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstring>
+#include <string>
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
@@ -55,6 +56,19 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
+
+  // A frontend records the change the moment it issues the command, while the
+  // command is still queued, so recording has to reach past the queue.
+  const std::string second_fixture =
+      TestFixtures::get_fixture_path("minimal.dsk");
+  DiskInsertCmd_t second{};
+  second.drive = disk_drive_0;
+  strcpy(second.path, second_fixture.c_str());
+  peripheral_command(6, disk_cmd_insert, &second, sizeof(second));
+
+  app_controller_save_disk_config(0);
+  saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  CHECK(saved == second_fixture);
 
   linapple_shutdown();
 }

@@ -473,6 +473,11 @@ void app_controller_save_disk_config(int drive) {
     return;
   }
 
+  // Commands reach the card through a queue, so the drive holds what the user
+  // asked for only once the queue has been drained. What the drive holds after
+  // that is what the configuration records, including empty after a failure.
+  peripheral_manager_think(0);
+
   DiskStatus_t status{};
   size_t size = sizeof(status);
   if (peripheral_query(disk_default_slot, disk_query_status, &status, &size) !=
