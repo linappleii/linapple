@@ -27,8 +27,6 @@
 #include "apple2/peripherals/disk/formats/PoDriver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
-auto mem_return_random_data(uint8_t highbit) -> uint8_t;
-
 namespace {
 
 namespace config {
@@ -42,7 +40,6 @@ namespace physical {
 constexpr uint32_t spinup_ticks = 20000;
 constexpr uint32_t write_light_ticks = 20000;
 constexpr uint8_t latch_bit = 0x80;
-constexpr uint8_t floating_bus = 0xFF;
 constexpr uint32_t spin_cycle_shift = 6;
 constexpr uint32_t spin_cycle_mask = (1U << spin_cycle_shift) - 1;
 constexpr uint32_t rotation_cycle_shift = 5;
@@ -164,6 +161,18 @@ auto notify_activity_changed(const DiskPeripheral_t* dp, bool active) -> void {
       dp->host->NotifyActivityChanged != nullptr) {
     dp->host->NotifyActivityChanged(dp->slot, active);
   }
+}
+
+// Every softswitch on the card except the data register leaves the data bus
+// undriven, so the 6502 reads whatever the video scanner is fetching that
+// cycle. A card with no slot and no host is not on a bus at all.
+auto read_floating_bus(void* instance, uint32_t executed_cycles) -> uint8_t {
+  const auto* dp = static_cast<const DiskPeripheral_t*>(instance);
+  if (dp == nullptr || dp->host == nullptr ||
+      dp->host->ReadFloatingBus == nullptr) {
+    return 0xFF;
+  }
+  return dp->host->ReadFloatingBus(executed_cycles);
 }
 
 // Why: Implements multi-layered write protection:
@@ -420,9 +429,9 @@ auto sync_driver_options(DiskPeripheral_t* disk_peripheral) -> void {
 }
 
 auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
-                           uint8_t, uint8_t, uint32_t) -> uint8_t {
+                           uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -431,7 +440,7 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return mem_return_random_data(physical::floating_bus);
+  return read_floating_bus(instance, remaining_cycles);
 }
 
 // Why: Emulates the physical movement of the disk head via the stepper motor.
@@ -469,9 +478,9 @@ auto step_drive_head(DiskPeripheral_t* disk_peripheral, int phase_delta)
 // The 6502 code manually energizes/de-energizes four physical magnets
 // to 'pull' the head to the next or previous phase.
 auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
-                             uint8_t, uint8_t, uint32_t) -> uint8_t {
+                             uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -501,13 +510,13 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     step_drive_head(disk_peripheral, step_delta);
   }
 
-  return mem_return_random_data(physical::floating_bus);
+  return read_floating_bus(instance, remaining_cycles);
 }
 
 auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
-                          uint8_t, uint8_t, uint32_t) -> uint8_t {
+                          uint8_t, uint8_t, uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -526,13 +535,13 @@ auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
 
   sync_drive_motor_state(disk_peripheral);
 
-  return mem_return_random_data(physical::floating_bus);
+  return read_floating_bus(instance, remaining_cycles);
 }
 
 auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                        uint32_t) -> uint8_t {
+                        uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -546,7 +555,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   }
 
   if (!drive.is_data_loaded) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   uint8_t data_byte = 0;
@@ -577,9 +586,9 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 }
 
 auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                       uint8_t data_value, uint32_t) -> uint8_t {
+                       uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -592,9 +601,9 @@ auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
 }
 
 auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                           uint32_t) -> uint8_t {
+                           uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -608,9 +617,9 @@ auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 }
 
 auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
-                            uint8_t, uint32_t) -> uint8_t {
+                            uint8_t, uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
@@ -626,7 +635,7 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
     notify_status_changed(disk_peripheral);
   }
 
-  return mem_return_random_data(physical::floating_bus);
+  return read_floating_bus(instance, remaining_cycles);
 }
 
 auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
@@ -829,7 +838,7 @@ auto disk_io_read(void* instance, uint16_t program_counter,
                   uint16_t memory_address, uint8_t is_write, uint8_t,
                   uint32_t remaining_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
-    return mem_return_random_data(physical::floating_bus);
+    return read_floating_bus(instance, remaining_cycles);
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;

@@ -507,6 +507,12 @@ static auto host_serial_update_state(void* instance, uint32_t baud,
   }
 }
 
+// mem_read_floating_bus is overloaded on an added high-bit argument, so the
+// table needs a single-signature thunk to take the address of.
+static auto host_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
+  return mem_read_floating_bus(executed_cycles);
+}
+
 static const HostInterface_t g_host_interface = {host_log,
                                                  host_assert_irq,
                                                  host_register_io,
@@ -527,7 +533,8 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_printer_put_char,
                                                  host_printer_get_status,
                                                  host_serial_transmit_byte,
-                                                 host_serial_update_state};
+                                                 host_serial_update_state,
+                                                 host_read_floating_bus};
 
 // --- Command Queue ---
 

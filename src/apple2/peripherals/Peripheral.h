@@ -63,6 +63,12 @@ typedef struct {
   void (*SerialTransmitByte)(void* instance, uint8_t byte);
   void (*SerialUpdateState)(void* instance, uint32_t baud, uint32_t bits,
                             int parity, int stop);
+  // The byte an undriven data bus holds is whatever the video scanner is
+  // fetching on that cycle, so a card that answers a read without driving the
+  // bus has to ask the motherboard what is on it. Appended last: a prebuilt
+  // plugin compiled against an older header still finds every member it knows
+  // at the offset it expects.
+  uint8_t (*ReadFloatingBus)(uint32_t executed_cycles);
 } HostInterface_t;
 
 // Forward declaration

@@ -61,6 +61,23 @@ TEST_CASE(
 
 extern "C" auto disk_get_descriptor() -> Peripheral_t*;
 
+PeripheralIOHandler g_captured_disk_read = nullptr;
+
+// The descriptor hands its read handler to RegisterIO and keeps no other way
+// out, so a case that wants to drive a softswitch has to catch it there.
+static auto capturing_disk_host() -> HostInterface_t {
+  HostInterface_t h{};
+  h.RegisterIO = [](int, PeripheralIOHandler read_c0, PeripheralIOHandler,
+                    PeripheralIOHandler, PeripheralIOHandler) {
+    g_captured_disk_read = read_c0;
+  };
+  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
+  h.SetConfig = [](const char*, const char*, const char*) {};
+  h.NotifyStatusChanged = [](int) {};
+  return h;
+}
+
 static HostInterface_t g_test_disk_host = [] {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
@@ -324,4 +341,27 @@ TEST_CASE("DiskABI: [ABI-13] Host Interface Null Callbacks Defensive Guards") {
   void* inst = descriptor->init(SL6, &h);
   CHECK(inst != nullptr);
   descriptor->shutdown(inst);
+}
+
+TEST_CASE("DiskABI: [ABI-14] A host with no floating bus reads back 0xFF") {
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+
+  g_captured_disk_read = nullptr;
+  HostInterface_t host = capturing_disk_host();
+  host.ReadFloatingBus = nullptr;
+
+  void* instance = descriptor->init(SL6, &host);
+  REQUIRE(instance != nullptr);
+  REQUIRE(g_captured_disk_read != nullptr);
+
+  // A card whose host cannot say what the bus holds is not on a bus, and an
+  // undriven bus pulls high.
+  CHECK(g_captured_disk_read(instance, 0, 0xE0, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(instance, 0, 0xE8, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(instance, 0, 0xEA, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(instance, 0, 0xEF, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(nullptr, 0, 0xE0, 0, 0, 0) == 0xFF);
+
+  descriptor->shutdown(instance);
 }

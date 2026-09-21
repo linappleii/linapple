@@ -5,6 +5,7 @@
 #include <string>
 
 #include "apple2/Memory.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
@@ -12,10 +13,12 @@
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 namespace {
 
 constexpr int slot_6 = 6;
+constexpr uint16_t io_stepper_phase_0_off = 0xC0E0;
 constexpr uint16_t io_motor_off_switch = 0xC0E8;
 constexpr uint16_t io_motor_on_switch = 0xC0E9;
 constexpr uint16_t io_drive_0_select = 0xC0EA;
@@ -111,6 +114,11 @@ class DiskIoHarness_t {
 
   auto select_write_mode() -> uint8_t {
     return io_map_dispatch(0, io_write_mode_switch, 0, 0, 0);
+  }
+
+  auto read_switch(uint16_t switch_address, uint32_t executed_cycles)
+      -> uint8_t {
+    return io_map_dispatch(0, switch_address, 0, 0, executed_cycles);
   }
 
   auto read_byte() -> uint8_t {
@@ -284,4 +292,58 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   DiskSavedState_t state_read_mode = harness.get_saved_state();
   CHECK(state_read_mode.io_latch == pattern_aa);
   CHECK(state_read_mode.is_write_mode == 0);
+}
+
+namespace {
+
+// A marker on the byte the video scanner fetches at probe_cycles, so a switch
+// that answers with the bus can be told apart from one answering with a
+// constant. 0x5A is not a value any handler in Disk.cpp can produce.
+constexpr uint32_t probe_cycles = 12345;
+constexpr uint8_t bus_marker = 0x5A;
+
+auto mark_floating_bus() -> void {
+  TestFixtures::ScopedCore_t::poke(
+      video_get_scanner_address(nullptr, probe_cycles), &bus_marker, 1);
+}
+
+}  // namespace
+
+TEST_CASE("DiskIO: [IO-21] Non-data switches read the bus the card sits on") {
+  DiskIoHarness_t harness(false);
+  mark_floating_bus();
+
+  // The stepper, motor, drive-select and write-mode switches latch a signal
+  // and leave the data bus alone, so what the 6502 reads is whatever the video
+  // scanner is fetching on that cycle.
+  REQUIRE(mem_read_floating_bus(probe_cycles) == bus_marker);
+
+  CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) ==
+        bus_marker);
+  CHECK(harness.read_switch(io_motor_off_switch, probe_cycles) == bus_marker);
+  CHECK(harness.read_switch(io_drive_0_select, probe_cycles) == bus_marker);
+  CHECK(harness.read_switch(io_write_mode_switch, probe_cycles) == bus_marker);
+}
+
+TEST_CASE("DiskIO: [IO-22] The stepper switch reads the same byte every time") {
+  DiskIoHarness_t harness(false);
+  mark_floating_bus();
+
+  // Phase 0 off is idempotent, so on one cycle the card has exactly one
+  // answer. The pseudo-random approximation this replaced returned 0xA0 about
+  // two reads in three and one of sixteen other values the rest of the time.
+  constexpr size_t repeat_count = 32;
+  for (size_t i = 0; i < repeat_count; ++i) {
+    CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) ==
+          bus_marker);
+  }
+}
+
+TEST_CASE("DiskIO: [IO-23] The read-mode switch drives the write-protect bit") {
+  DiskIoHarness_t harness(false);
+  mark_floating_bus();
+
+  // $C0EE is the one non-data switch the card answers itself, so it is the
+  // control that shows the other four are not returning a constant.
+  CHECK(harness.read_switch(io_read_mode_switch, probe_cycles) == 0x00);
 }
