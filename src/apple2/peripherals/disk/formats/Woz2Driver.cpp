@@ -7,10 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <vector>
 
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
@@ -47,8 +44,6 @@ constexpr int disk_type_3_5 = 2;
 constexpr int bits_per_byte = 8;
 constexpr int shift_16 = 16;
 constexpr int shift_24 = 24;
-constexpr uint8_t bit_high_mask = 0x80;
-constexpr uint8_t byte_mask = 0xFF;
 
 constexpr int chunk_size_offset_0 = 4;
 constexpr int chunk_size_offset_1 = 5;
@@ -70,7 +65,6 @@ struct WozInstance_t {
   std::array<uint8_t, woz::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
-  std::array<uint8_t, nibbles_per_track> nibbles{};
   uint8_t optimal_bit_timing = disk_default_bit_timing;
   bool format_write_protected = false;
   bool os_readonly = false;
@@ -210,34 +204,6 @@ static auto woz2_is_write_protected(void* instance) -> bool {
   return wi_ptr->os_readonly || wi_ptr->format_write_protected;
 }
 
-// Why: Reconstructs an Apple II nibble from the raw flux bitstream.
-// Searches for the next sync-bit (1) and then gathers 8 bits to form a byte.
-auto reconstruct_bitstream_nibble(const uint8_t* buffer, uint32_t bit_count,
-                                  uint32_t* bit_idx_ptr) -> uint8_t {
-  if (bit_count == 0 || buffer == nullptr || bit_idx_ptr == nullptr) {
-    return 0;
-  }
-  uint8_t nibble = 0;
-  auto fetch_bit = [&](uint32_t idx) -> int {
-    const uint32_t current_idx = idx % bit_count;
-    return ((buffer[current_idx / woz::bits_per_byte] &
-             (woz::bit_high_mask >> (current_idx % woz::bits_per_byte))) != 0)
-               ? 1
-               : 0;
-  };
-
-  uint32_t search_limit = bit_count;
-  while (fetch_bit(*bit_idx_ptr) == 0 && search_limit > 0) {
-    (*bit_idx_ptr)++;
-    search_limit--;
-  }
-
-  for (int b = 0; b < woz::bits_per_byte; ++b) {
-    nibble = static_cast<uint8_t>((nibble << 1) | fetch_bit((*bit_idx_ptr)++));
-  }
-  return nibble;
-}
-
 static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
                                  uint8_t* bits, uint32_t max_bits,
                                  uint32_t* out_bit_count,
@@ -302,26 +268,24 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
     return disk_err_corrupt;
   }
 
-  std::vector<uint8_t> buffer(byte_count);
+  if (bit_count > max_bits) {
+    return disk_err_unsupported;
+  }
+
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
       0) {
     return disk_err_io;
   }
-  if (fread(buffer.data(), 1, byte_count, wi_ptr->file.get()) != byte_count) {
+
+  // WOZ stores the track the way the head sees it, first cell in the most
+  // significant bit, so the TRK payload is the medium with no translation.
+  const uint32_t cell_bytes = (bit_count + 7U) / 8U;
+  if (fread(bits, 1, cell_bytes, wi_ptr->file.get()) != cell_bytes) {
     return disk_err_io;
   }
 
-  wi_ptr->nibbles.fill(woz::byte_mask);
-  uint32_t bit_idx = 0;
-  uint32_t nibbles_done = 0;
-
-  while (bit_idx < bit_count && nibbles_done < nibbles_per_track) {
-    wi_ptr->nibbles[nibbles_done++] =
-        reconstruct_bitstream_nibble(buffer.data(), bit_count, &bit_idx);
-  }
-
-  return disk_encoding_nibbles_to_bits(wi_ptr->nibbles.data(), nibbles_done,
-                                       bits, max_bits, out_bit_count);
+  *out_bit_count = bit_count;
+  return disk_err_none;
 }
 
 const char* const g_woz2_supported_exts[] = {"woz", nullptr};

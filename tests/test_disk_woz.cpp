@@ -117,10 +117,11 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count, &bit_timing) == disk_err_none);
 
-  // Reconstructing bytes from a surface with no pulses on it finds one byte
-  // and then runs out of track.
-  CHECK(bit_count == 8);
-  CHECK(bits[0] == 0);
+  CHECK(bit_count == woz_data_block_size * 8);
+  CHECK(bit_timing == disk_default_bit_timing);
+  for (uint32_t i = 0; i < bit_count / 8; ++i) {
+    CHECK(bits[i] == 0);
+  }
 
   g_woz2_driver.close(instance);
 }
