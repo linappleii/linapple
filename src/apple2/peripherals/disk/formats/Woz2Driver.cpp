@@ -41,6 +41,7 @@ constexpr uint16_t max_track_blocks = 64;
 
 constexpr int info_disk_type_offset = 1;
 constexpr int info_write_protect_offset = 2;
+constexpr int info_optimal_bit_timing_offset = 39;
 constexpr int disk_type_3_5 = 2;
 
 constexpr int bits_per_byte = 8;
@@ -70,6 +71,7 @@ struct WozInstance_t {
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
   std::array<uint8_t, nibbles_per_track> nibbles{};
+  uint8_t optimal_bit_timing = disk_default_bit_timing;
   bool format_write_protected = false;
   bool os_readonly = false;
 
@@ -181,6 +183,14 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
   wi_ptr->format_write_protected =
       (info_data[woz::info_write_protect_offset] != 0);
 
+  // An INFO chunk that predates the field, or leaves it zero, is saying it
+  // has no measurement to offer, which is the nominal four microseconds.
+  const uint8_t* const timing =
+      wi_ptr->header_at(info_ptr + woz::info_optimal_bit_timing_offset, 1);
+  if (timing != nullptr && *timing != 0) {
+    wi_ptr->optimal_bit_timing = *timing;
+  }
+
   *out_instance = reinterpret_cast<void*>(wi_ptr.release());
   return disk_err_none;
 }
@@ -230,14 +240,16 @@ auto reconstruct_bitstream_nibble(const uint8_t* buffer, uint32_t bit_count,
 
 static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
                                  uint8_t* bits, uint32_t max_bits,
-                                 uint32_t* out_bit_count) -> DiskError_e {
+                                 uint32_t* out_bit_count,
+                                 uint8_t* out_bit_timing) -> DiskError_e {
   if (instance_handle == nullptr || bits == nullptr ||
-      out_bit_count == nullptr) {
+      out_bit_count == nullptr || out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
   }
   *out_bit_count = 0;
 
   auto* wi_ptr = reinterpret_cast<WozInstance_t*>(instance_handle);
+  *out_bit_timing = wi_ptr->optimal_bit_timing;
 
   if (quarter_track >= static_cast<uint32_t>(woz::tmap_entries)) {
     return disk_err_invalid_argument;

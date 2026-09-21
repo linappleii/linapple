@@ -12,6 +12,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "core/Util_Path.h"
 
 namespace {
@@ -91,11 +92,14 @@ extern "C" auto bitstream_disk_image_is_write_protected(
 
 extern "C" auto bitstream_disk_image_read_track_bits(
     BitstreamDiskImage_t* image_ptr, uint32_t quarter_track, uint8_t* bits,
-    uint32_t max_bits, uint32_t* out_bit_count) -> DiskError_e {
-  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr) {
+    uint32_t max_bits, uint32_t* out_bit_count, uint8_t* out_bit_timing)
+    -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
+      out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
   }
   *out_bit_count = 0;
+  *out_bit_timing = disk_default_bit_timing;
 
   const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
   if (track >= static_cast<uint32_t>(tracks_per_disk)) {

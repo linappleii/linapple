@@ -80,6 +80,7 @@ struct Disk_t {
   int32_t phase = 0;
   uint32_t bit_position = 0;
   uint32_t bit_count = 0;
+  uint8_t bit_timing = disk_default_bit_timing;
   bool is_user_write_protected = false;
   bool is_data_loaded = false;
   bool is_dirty = false;
@@ -316,6 +317,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   disk_ptr->bit_position = 0;
   disk_ptr->bit_count = 0;
+  disk_ptr->bit_timing = disk_default_bit_timing;
 
   if (disk_ptr->track < 0 || disk_ptr->track >= tracks_per_disk) {
     disk_ptr->is_data_loaded = false;
@@ -329,11 +331,14 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   if (disk_ptr->driver != nullptr &&
       disk_ptr->driver->read_track_bits != nullptr) {
     uint32_t loaded_bits = 0;
+    uint8_t loaded_timing = disk_default_bit_timing;
     const DiskError_e error = disk_ptr->driver->read_track_bits(
         disk_ptr->driver_instance, quarter_track_of(*disk_ptr),
-        disk_ptr->track_bits.data(), max_track_bits, &loaded_bits);
+        disk_ptr->track_bits.data(), max_track_bits, &loaded_bits,
+        &loaded_timing);
 
     disk_ptr->bit_count = (error == disk_err_none) ? loaded_bits : 0;
+    disk_ptr->bit_timing = loaded_timing;
     disk_ptr->is_data_loaded = (disk_ptr->bit_count != 0);
   }
 }

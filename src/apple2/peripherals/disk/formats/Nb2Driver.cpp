@@ -71,13 +71,14 @@ auto nb2_is_write_protected(void* instance_handle) -> bool {
 
 auto nb2_read_track_bits(void* instance_handle, uint32_t quarter_track,
                          uint8_t* bits, uint32_t max_bits,
-                         uint32_t* out_bit_count) -> DiskError_e {
+                         uint32_t* out_bit_count, uint8_t* out_bit_timing)
+    -> DiskError_e {
   if (instance_handle == nullptr) {
     return disk_err_invalid_argument;
   }
   return bitstream_disk_image_read_track_bits(
       static_cast<BitstreamDiskImage_t*>(instance_handle), quarter_track, bits,
-      max_bits, out_bit_count);
+      max_bits, out_bit_count, out_bit_timing);
 }
 
 auto nb2_write_track_bits(void* instance_handle, uint32_t quarter_track,

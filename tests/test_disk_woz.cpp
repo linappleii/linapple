@@ -113,8 +113,9 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0xFF);
   uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                      &bit_count) == disk_err_none);
+                                      &bit_count, &bit_timing) == disk_err_none);
 
   // Reconstructing bytes from a surface with no pulses on it finds one byte
   // and then runs out of track.

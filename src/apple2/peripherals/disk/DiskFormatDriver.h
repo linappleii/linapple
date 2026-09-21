@@ -22,6 +22,12 @@ enum { disk_format_abi_version = 0 };
    6656 nibbles at ten cells each; a WOZ 5.25" track stays under 53,440. */
 enum { max_track_bits = 69632 };
 
+/* Cell time in 125 ns units, the scale WOZ INFO already uses: 32 is the
+   nominal four microseconds. The raw byte crosses the boundary because every
+   consumer divides it by eight to get CPU cycles, which keeps 31 and 33
+   exact where nanoseconds would drift. */
+enum { disk_default_bit_timing = 32 };
+
 typedef enum { disk_driver_cap_write = 0x01 } DiskDriverCap_e;
 
 typedef enum {
@@ -67,7 +73,8 @@ typedef struct DiskFormatDriver_t {
      max_bits is refused with disk_err_unsupported and never truncated. */
   DiskError_e (*read_track_bits)(void* instance, uint32_t quarter_track,
                                  uint8_t* bits, uint32_t max_bits,
-                                 uint32_t* out_bit_count);
+                                 uint32_t* out_bit_count,
+                                 uint8_t* out_bit_timing);
 
   DiskError_e (*write_track_bits)(void* instance, uint32_t quarter_track,
                                   const uint8_t* bits, uint32_t bit_count);

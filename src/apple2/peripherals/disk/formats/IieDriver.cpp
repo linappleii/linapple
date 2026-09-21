@@ -226,12 +226,14 @@ auto iie_is_write_protected(void* instance_handle) -> bool {
 // images store raw nibbles directly.
 auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
                          uint8_t* bits, uint32_t max_bits,
-                         uint32_t* out_bit_count) -> DiskError_e {
+                         uint32_t* out_bit_count, uint8_t* out_bit_timing)
+    -> DiskError_e {
   if (instance_handle == nullptr || bits == nullptr ||
-      out_bit_count == nullptr) {
+      out_bit_count == nullptr || out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
   }
   *out_bit_count = 0;
+  *out_bit_timing = disk_default_bit_timing;
 
   auto* ii_ptr = reinterpret_cast<IieInstance_t*>(instance_handle);
 

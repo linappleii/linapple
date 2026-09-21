@@ -134,11 +134,14 @@ auto sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr)
 auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
                                        uint32_t quarter_track, uint8_t* bits,
                                        uint32_t max_bits,
-                                       uint32_t* out_bit_count) -> DiskError_e {
-  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr) {
+                                       uint32_t* out_bit_count,
+                                       uint8_t* out_bit_timing) -> DiskError_e {
+  if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
+      out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
   }
   *out_bit_count = 0;
+  *out_bit_timing = disk_default_bit_timing;
 
   const int track = quarter_track_to_cylinder(quarter_track);
   if (track >= tracks_per_disk) {

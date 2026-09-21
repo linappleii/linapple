@@ -205,9 +205,10 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
   std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
   uint32_t read_bit_count = 0;
-  CHECK(g_nib_driver.read_track_bits(instance, quarter_track_5,
-                                     read_bits.data(), max_track_bits,
-                                     &read_bit_count) == disk_err_none);
+  uint8_t bit_timing = 0;
+  CHECK(g_nib_driver.read_track_bits(
+            instance, quarter_track_5, read_bits.data(), max_track_bits,
+            &read_bit_count, &bit_timing) == disk_err_none);
 
   CHECK(read_bit_count == written_bits);
   CHECK(to_nibbles(read_bits, read_bit_count) == original);
@@ -223,7 +224,8 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   uint32_t persisted_bit_count = 0;
   CHECK(g_nib_driver.read_track_bits(reopen_instance, quarter_track_5,
                                      persisted_bits.data(), max_track_bits,
-                                     &persisted_bit_count) == disk_err_none);
+                                     &persisted_bit_count,
+                                     &bit_timing) == disk_err_none);
 
   CHECK(persisted_bit_count == written_bits);
   CHECK(to_nibbles(persisted_bits, persisted_bit_count) == original);
@@ -253,9 +255,10 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
 
   std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
   uint32_t read_bit_count = 0;
-  CHECK(g_nb2_driver.read_track_bits(instance, quarter_track_10,
-                                     read_bits.data(), max_track_bits,
-                                     &read_bit_count) == disk_err_none);
+  uint8_t bit_timing = 0;
+  CHECK(g_nb2_driver.read_track_bits(
+            instance, quarter_track_10, read_bits.data(), max_track_bits,
+            &read_bit_count, &bit_timing) == disk_err_none);
 
   CHECK(read_bit_count == written_bits);
   CHECK(to_nibbles(read_bits, read_bit_count) == original);
@@ -349,13 +352,60 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
 
   // TMAP 0xFF is surface the image never recorded. It is not a read failure:
   // the card gets no cells and hears the head amplifier instead.
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                      &bit_count) == disk_err_none);
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
+  ScopedTempFile_t tmp_file(".woz");
+  auto create_woz_timing = [](const char* path, uint8_t timing) {
+    FILE* f = fopen(path, "wb");
+    REQUIRE(f != nullptr);
+    uint8_t h[1536]{};
+    memcpy(h, "WOZ2\xFF\n\r\n", 8);
+    memcpy(h + 12, "INFO", 4);
+    h[16] = 60;
+    h[21] = 1;
+    memcpy(h + 80, "TMAP", 4);
+    h[84] = 160;
+    memcpy(h + 248, "TRKS", 4);
+    memset(h + 88, 0xFF, 160);
+    // INFO chunk data starts at 20; optimal_bit_timing is its fortieth byte.
+    h[20 + 39] = timing;
+    fwrite(h, 1, 1536, f);
+    fclose(f);
+  };
+
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  void* instance = nullptr;
+
+  constexpr uint8_t fast_cell_time = 31;
+  create_woz_timing(tmp_file.c_str(), fast_cell_time);
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
+  CHECK(bit_timing == fast_cell_time);
+  g_woz2_driver.close(instance);
+
+  create_woz_timing(tmp_file.c_str(), 0);
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
+  CHECK(bit_timing == disk_default_bit_timing);
   g_woz2_driver.close(instance);
 }
 
@@ -368,9 +418,11 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
   CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
-                                    &bit_count) == disk_err_none);
+                                    &bit_count, &bit_timing) == disk_err_none);
   CHECK(bit_count == nibbles_per_track * 8);
+  CHECK(bit_timing == disk_default_bit_timing);
 
   g_do_driver.close(inst);
 }
@@ -398,8 +450,10 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                      &bit_count) == disk_err_corrupt);
+                                      &bit_count,
+                                      &bit_timing) == disk_err_corrupt);
 
   CHECK(bit_count == 0);  // Rejects out of bounds trks_index
 
@@ -442,8 +496,10 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                      &bit_count) == disk_err_corrupt);
+                                      &bit_count,
+                                      &bit_timing) == disk_err_corrupt);
 
   CHECK(bit_count == 0);  // Rejects bit_count > block_count capacity
 
@@ -459,17 +515,18 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
 
   constexpr uint32_t quarter_track_40 = 160;
   CHECK(g_do_driver.read_track_bits(inst, quarter_track_40, bits.data(),
-                                    max_track_bits,
-                                    &bit_count) == disk_err_invalid_argument);
+                                    max_track_bits, &bit_count,
+                                    &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
 
   bit_count = 123;
   CHECK(g_do_driver.read_track_bits(inst, UINT32_MAX, bits.data(),
-                                    max_track_bits,
-                                    &bit_count) == disk_err_invalid_argument);
+                                    max_track_bits, &bit_count,
+                                    &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
 
   g_do_driver.close(inst);
@@ -609,8 +666,9 @@ TEST_CASE("DiskDrivers: [NIB-3] A truncated nibble track ends where it ends") {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
   CHECK(g_nib_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                     &bit_count) == disk_err_none);
+                                     &bit_count, &bit_timing) == disk_err_none);
 
   CHECK(bit_count == 100 * 8);
   CHECK(to_nibbles(bits, bit_count) == short_track);

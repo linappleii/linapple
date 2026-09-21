@@ -28,7 +28,8 @@ bool sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr);
 DiskError_e sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
                                               uint32_t quarter_track,
                                               uint8_t* bits, uint32_t max_bits,
-                                              uint32_t* out_bit_count);
+                                              uint32_t* out_bit_count,
+                                              uint8_t* out_bit_timing);
 
 DiskError_e sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
                                                uint32_t quarter_track,
