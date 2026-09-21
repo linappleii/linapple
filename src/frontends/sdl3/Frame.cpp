@@ -1036,8 +1036,11 @@ void frame_refresh_status(int drawflags) {
 
       char title_buf[512] = {};
       if (g_last_disk_status.drive0_loaded) {
+        char display_name[disk_ui_display_name_max + 1] = {};
+        disk_ui_format_display_name(g_last_disk_status.drive0_name,
+                                    display_name, sizeof(display_name));
         snprintf(title_buf, sizeof(title_buf), "%s - %s", g_app_title,
-                 g_last_disk_status.drive0_name);
+                 display_name);
       } else {
         snprintf(title_buf, sizeof(title_buf), "%s", g_app_title);
       }

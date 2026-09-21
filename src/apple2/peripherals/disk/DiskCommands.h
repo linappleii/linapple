@@ -28,7 +28,6 @@ typedef enum { disk_drive_0 = 0, disk_drive_1 = 1 } DiskDrive_t;
 enum { disk_drive_count = 2 };
 
 enum {
-  max_disk_image_name_len = 15,
   max_disk_full_path_len = 255,
 
   tracks_per_disk = 40,

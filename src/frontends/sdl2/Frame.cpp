@@ -1018,8 +1018,11 @@ void frame_refresh_status(int drawflags) {
 
       std::array<char, 512> title_buf = {};
       if (g_last_disk_status.drive0_loaded != 0) {
+        std::array<char, disk_ui_display_name_max + 1> display_name = {};
+        disk_ui_format_display_name(g_last_disk_status.drive0_name,
+                                    display_name.data(), display_name.size());
         snprintf(title_buf.data(), title_buf.size(), "%s - %s", g_app_title,
-                 g_last_disk_status.drive0_name);
+                 display_name.data());
       } else {
         snprintf(title_buf.data(), title_buf.size(), "%s", g_app_title);
       }
