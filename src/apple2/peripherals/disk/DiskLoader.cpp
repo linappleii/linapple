@@ -265,11 +265,12 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
     }
   }
 
-  if (std::find(exts.begin(), exts.end(), "zip") == exts.end()) {
-    exts.emplace_back("zip");
-  }
-  if (std::find(exts.begin(), exts.end(), "gz") == exts.end()) {
-    exts.emplace_back("gz");
+  const char* const* container_exts = disk_container_supported_extensions();
+  for (; container_exts != nullptr && *container_exts != nullptr;
+       ++container_exts) {
+    if (std::find(exts.begin(), exts.end(), *container_exts) == exts.end()) {
+      exts.emplace_back(*container_exts);
+    }
   }
 
   std::string result;

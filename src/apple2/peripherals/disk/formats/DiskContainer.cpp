@@ -40,6 +40,18 @@ namespace {
 
 constexpr size_t decompression_chunk_size = 16384;
 
+constexpr const char* k_gzip_extension = "gz";
+constexpr const char* k_zip_extension = "zip";
+const char* const k_supported_extensions[] = {k_gzip_extension,
+                                              k_zip_extension, nullptr};
+
+auto has_extension(const char* path, const char* extension) -> bool {
+  const size_t name_len = strlen(path);
+  const size_t suffix_len = strlen(extension) + 1;
+  return name_len > suffix_len && path[name_len - suffix_len] == '.' &&
+         strcasecmp(path + name_len - suffix_len + 1, extension) == 0;
+}
+
 auto get_file_size(const char* path) -> size_t {
   struct stat st{};
   if (stat(path, &st) == 0 && st.st_size > 0) {
@@ -200,16 +212,8 @@ extern "C" auto disk_container_prepare_compressed_path(
     return false;
   }
 
-  const size_t name_len = strlen(image_path);
-  constexpr size_t gz_ext_len = 3;
-  constexpr size_t zip_ext_len = 4;
-
-  const bool is_gz =
-      (name_len > gz_ext_len &&
-       strcasecmp(image_path + name_len - gz_ext_len, ".gz") == 0);
-  const bool is_zip =
-      (name_len > zip_ext_len &&
-       strcasecmp(image_path + name_len - zip_ext_len, ".zip") == 0);
+  const bool is_gz = has_extension(image_path, k_gzip_extension);
+  const bool is_zip = has_extension(image_path, k_zip_extension);
 
   if (!is_gz && !is_zip) {
     util_safe_strcpy(out_load_path, image_path, max_path_len);
@@ -255,6 +259,10 @@ extern "C" auto disk_container_prepare_compressed_path(
 
   *out_is_temporary = true;
   return true;
+}
+
+extern "C" auto disk_container_supported_extensions(void) -> const char* const* {
+  return k_supported_extensions;
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

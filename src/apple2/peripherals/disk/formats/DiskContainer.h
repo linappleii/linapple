@@ -34,6 +34,11 @@ bool disk_container_prepare_compressed_path(const char* image_path,
                                             size_t uncompressed_threshold,
                                             bool* out_is_temporary);
 
+/* The archive extensions this layer can unwrap, without the dot, as a
+   NULL-terminated list. A file browser offering disk images has to offer
+   these too, and only this layer knows what it can open. */
+const char* const* disk_container_supported_extensions(void);
+
 #ifdef __cplusplus
 }
 #endif
