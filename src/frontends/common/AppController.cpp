@@ -15,6 +15,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/Asset.h"
@@ -417,8 +418,10 @@ void app_controller_load_initial_media(const AppConfig_t* config) {
         cmd.drive = static_cast<uint8_t>(i);
         util_safe_strcpy(&cmd.path[0], actual_path.c_str(),
                          disk_insert_path_max);
-        peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
-                           sizeof(cmd));
+        if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
+                               sizeof(cmd)) == peripheral_ok) {
+          app_controller_save_disk_config(i);
+        }
       }
     }
   }
@@ -463,6 +466,23 @@ void app_controller_shutdown() {
   Logger::destroy();
 
   s_initialized = false;
+}
+
+void app_controller_save_disk_config(int drive) {
+  if (drive != 0 && drive != 1) {
+    return;
+  }
+
+  DiskStatus_t status{};
+  size_t size = sizeof(status);
+  if (peripheral_query(disk_default_slot, disk_query_status, &status, &size) !=
+      peripheral_ok) {
+    return;
+  }
+
+  config_save_string(
+      "Slots", (drive == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2,
+      (drive == 0) ? status.drive0_full_path : status.drive1_full_path);
 }
 
 auto app_controller_should_restart() -> bool { return g_state.restart; }

@@ -9,6 +9,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppController.h"
 #include "test_fixtures.h"
 
 namespace {
@@ -41,6 +42,11 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   std::string saved =
       Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
   CHECK(saved.empty());
+
+  // The frontend acted on the user's behalf, so the frontend records it.
+  app_controller_save_disk_config(0);
+  saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  CHECK(saved == fixture);
 
   DiskStatus_t status{};
   size_t size = sizeof(status);

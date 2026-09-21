@@ -43,3 +43,12 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
  * Should be called after Initialize but before the main loop.
  */
 void app_controller_load_initial_media(const AppConfig_t* config);
+
+/**
+ * Record the image currently in a Disk II drive as the user's choice, so the
+ * next run mounts it again. Call it after a command the user asked for
+ * succeeds; the card itself has no business knowing the configuration exists.
+ *
+ * @param drive 0 for drive 1, 1 for drive 2.
+ */
+void app_controller_save_disk_config(int drive);

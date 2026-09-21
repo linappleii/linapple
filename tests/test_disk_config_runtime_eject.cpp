@@ -8,6 +8,7 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppController.h"
 #include "test_fixtures.h"
 
 namespace {
@@ -33,11 +34,16 @@ TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Leaves Config Alone") {
   peripheral_command(6, disk_cmd_eject, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
-  // Taking the disk out of the drive is not the user asking to stop mounting
-  // it at startup, so the card leaves the key where it found it.
+  // Taking the disk out of the drive is not by itself the user asking to stop
+  // mounting it at startup, so the card leaves the key where it found it.
   std::string saved =
       Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
   CHECK(saved == fixture);
+
+  // The frontend the user ejected from is what clears the key.
+  app_controller_save_disk_config(0);
+  saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  CHECK(saved.empty());
 
   linapple_shutdown();
 }

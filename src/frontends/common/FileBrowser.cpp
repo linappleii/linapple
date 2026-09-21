@@ -23,6 +23,7 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/AppController.h"
 
 static constexpr uint64_t size_k = 1000U;
 static constexpr uint64_t size_m = 1000000U;
@@ -615,8 +616,12 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
-  peripheral_command(b->slot != 0 ? b->slot : disk_default_slot,
-                     disk_cmd_insert, &cmd, sizeof(cmd));
+  const int target_slot = (b->slot != 0) ? b->slot : disk_default_slot;
+  if (peripheral_command(target_slot, disk_cmd_insert, &cmd, sizeof(cmd)) ==
+          peripheral_ok &&
+      target_slot == disk_default_slot) {
+    app_controller_save_disk_config(b->drive);
+  }
 
   disk_browser_close(b);
   return true;

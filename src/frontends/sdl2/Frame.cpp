@@ -63,6 +63,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/SaveStateManager.h"
@@ -677,8 +678,10 @@ void process_button_click(int button, int mod) {
           printf("Disk Eject Drive #%d\n", (button - btn_drive1) + 1);
           DiskEjectCmd_t ecmd{};
           ecmd.drive = static_cast<uint8_t>(button - btn_drive1);
-          peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
-                             sizeof(ecmd));
+          if (peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
+                                 sizeof(ecmd)) == peripheral_ok) {
+            app_controller_save_disk_config(button - btn_drive1);
+          }
         }
         break;
       }
@@ -699,7 +702,11 @@ void process_button_click(int button, int mod) {
       break;
 
     case btn_driveswap:
-      peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
+      if (peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr,
+                             0) == peripheral_ok) {
+        app_controller_save_disk_config(0);
+        app_controller_save_disk_config(1);
+      }
       break;
 
     case btn_fullscr:

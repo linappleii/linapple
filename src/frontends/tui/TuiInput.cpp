@@ -96,7 +96,11 @@ static auto soft_reset_machine() -> void {
 static auto restart_machine() -> void { app_controller_set_restart(true); }
 
 static auto swap_drives() -> void {
-  peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0);
+  if (peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0) ==
+      peripheral_ok) {
+    app_controller_save_disk_config(0);
+    app_controller_save_disk_config(1);
+  }
 }
 
 static auto toggle_keyboard_rocker() -> void {

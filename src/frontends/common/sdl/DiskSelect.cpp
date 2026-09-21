@@ -14,6 +14,7 @@
 #include "core/Util_Text.h"
 #include "core/services/ftp/FtpClient.h"
 #include "core/services/ftp/FtpTypes.h"
+#include "frontends/common/AppController.h"
 #include "frontends/common/FtpDialog.h"
 #include "frontends/common/sdl/DiskChoose_Decl.h"
 
@@ -73,7 +74,10 @@ void disk_select_image(int drive, char* pszFilename) {
   cmd.write_protected = 0;
   cmd.create_if_necessary = 1;
 
-  peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+  if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
+                         sizeof(cmd)) == peripheral_ok) {
+    app_controller_save_disk_config(drive);
+  }
 
   backdx = fileIndex;
   draw_frame_window();
@@ -166,7 +170,10 @@ void disk_ftp_select_image(int drive) {
     cmd.write_protected = 0;
     cmd.create_if_necessary = 1;
 
-    peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
+    if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
+                           sizeof(cmd)) == peripheral_ok) {
+      app_controller_save_disk_config(drive);
+    }
   } else {
     Logger::error("FTP: Failed downloading floppy image from %s (status %u)\n",
                   fullPath.c_str(), static_cast<unsigned>(status));
