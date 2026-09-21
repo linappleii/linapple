@@ -56,7 +56,6 @@ typedef enum {
   disk_cmd_eject = 0x0002,
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
-  disk_cmd_boot = 0x0006,
   // disk_driver_cmd_* commands are issued by the peripheral layer to format
   // drivers rather than by frontends to the controller.
   disk_driver_cmd_set_enhanced_speed = 0x1001

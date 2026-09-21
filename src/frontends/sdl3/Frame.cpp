@@ -667,7 +667,7 @@ void process_button_click(int button, int mod) {
       if ((mod & (SDL_KMOD_LCTRL)) == (SDL_KMOD_LCTRL) ||
           (mod & (SDL_KMOD_RCTRL)) == (SDL_KMOD_RCTRL)) {
         if (g_state.mode == MODE_LOGO) {
-          peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
+          linapple_reset_hard();
         } else if (g_state.mode == MODE_RUNNING) {
           reset_machine_state();
         }
@@ -846,7 +846,6 @@ void reset_machine_state() {
               // - so beep may get (partially) muted
 
   linapple_reset_hard();
-  peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 

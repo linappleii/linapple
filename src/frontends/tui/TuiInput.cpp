@@ -81,7 +81,6 @@ static auto map_key(uint8_t a2_code) -> void {
 static auto reset_machine() -> void {
   g_full_speed = false;
   linapple_reset_hard();
-  peripheral_command(disk_default_slot, disk_cmd_boot, nullptr, 0);
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
   g_state.mode = MODE_RUNNING;
   g_state.reset_timing = true;

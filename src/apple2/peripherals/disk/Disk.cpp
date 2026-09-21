@@ -945,11 +945,6 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
       return cmd_handle_eject(dp, data, size);
     case disk_cmd_swap_drives:
       return swap_drives(dp) ? peripheral_ok : peripheral_error;
-    case disk_cmd_boot:
-      // Physical Reality: Booting starts the spindle.
-      dp->is_motor_on = true;
-      sync_drive_motor_state(dp);
-      return peripheral_ok;
     case disk_cmd_set_protect:
       return cmd_handle_set_protect(dp, data, size);
     case disk_driver_cmd_set_enhanced_speed:
