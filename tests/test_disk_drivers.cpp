@@ -432,9 +432,9 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   uint8_t bit_timing = 0;
   CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                     &bit_count, &bit_timing) == disk_err_none);
-  // 5808 data nibbles at eight cells and 848 sync nibbles at ten: the gaps
-  // cost the track 1696 cells more than a flat byte stream would.
-  constexpr uint32_t synthesised_track_bits = 54944;
+  // 5808 data nibbles at eight cells and 400 sync nibbles at ten: one
+  // revolution in 197.8 ms at four microseconds a cell.
+  constexpr uint32_t synthesised_track_bits = 50464;
   CHECK(bit_count == synthesised_track_bits);
   CHECK(bit_timing == disk_default_bit_timing);
 
@@ -763,7 +763,9 @@ TEST_CASE(
   // Break the first data prologue: fifteen sectors still read, the sixteenth
   // has no data field the decoder will accept.
   std::vector<uint8_t> nibbles = to_nibbles(bits, bit_count);
-  constexpr size_t first_data_prologue = 22;
+  // Gap 1 is 48 nibbles, the address field 14 and its gap 6, so the data
+  // prologue D5 AA AD sits at 68.
+  constexpr size_t first_data_prologue = 70;
   REQUIRE(nibbles[first_data_prologue] == 0xAD);
   nibbles[first_data_prologue] = 0xAA;
 

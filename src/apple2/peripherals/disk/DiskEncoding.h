@@ -28,16 +28,23 @@ enum {
 
 enum { disk_encoding_work_buffer_size = 0x3000 };
 
-auto disk_encoding_nibblize_track(uint8_t* work_buffer,
-                                  uint8_t* track_image_buffer,
-                                  uint8_t* sync_mask_buffer, bool is_dos_order,
-                                  int track) -> uint32_t;
+typedef enum {
+  disk_sector_order_dos = 0,
+  disk_sector_order_prodos = 1
+} DiskSectorOrder_e;
 
-auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
-                                               uint8_t* track_image_buffer,
-                                               uint8_t* sync_mask_buffer,
-                                               const uint8_t* sector_order,
-                                               int track) -> uint32_t;
+/* The physical order the sixteen logical sectors of a track sit in. */
+const uint8_t* disk_encoding_sector_order(DiskSectorOrder_e order);
+
+/* Synthesise one track: gap 1, then sixteen address and data fields with
+   their gaps. Writes *out_count nibbles and, when sync_mask_out is given,
+   one byte per nibble marking the gaps. */
+DiskError_e disk_encoding_nibblize_track(const uint8_t* sector_order,
+                                         uint32_t track,
+                                         const uint8_t* sectors_in,
+                                         uint8_t* nibbles_out,
+                                         uint8_t* sync_mask_out,
+                                         uint32_t* out_count, uint8_t* scratch);
 
 auto disk_encoding_denibblize_track(uint8_t* work_buffer,
                                     const uint8_t* track_image,

@@ -26,6 +26,9 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 namespace {
 constexpr int slot_6 = 6;
 constexpr size_t dsk_140k_size = 143360;
+// Gap 1 and sixteen sectors with their own gaps: what a synthesised track
+// holds once the head has read it back off the medium.
+constexpr int32_t nominal_track_nibbles = 6208;
 }  // namespace
 
 TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
@@ -171,7 +174,7 @@ TEST_CASE(
   CHECK(saved_state->drives[0].phase == 0);
   CHECK(saved_state->drives[0].current_byte_pos == 0);
   CHECK(saved_state->drives[0].nibble_count ==
-        static_cast<int32_t>(nibbles_per_track));
+        static_cast<int32_t>(nominal_track_nibbles));
 
   linapple_shutdown();
 }
@@ -226,7 +229,7 @@ TEST_CASE(
   CHECK(saved_state->drives[0].phase == 0);
   CHECK(saved_state->drives[0].current_byte_pos == 0);
   CHECK(saved_state->drives[0].nibble_count ==
-        static_cast<int32_t>(nibbles_per_track));
+        static_cast<int32_t>(nominal_track_nibbles));
 
   linapple_shutdown();
 }

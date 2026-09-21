@@ -30,6 +30,9 @@ constexpr uint16_t write_mode_switch = 0xC0EF;
 constexpr uint64_t spin_settle_cycles = 10000;
 constexpr uint32_t motor_spindown_cycles = 1500000;
 constexpr size_t track_size_bytes = 4096;
+// Long enough to reach the first address field: gap 1 is 48 sync bytes, and
+// only the field behind it says which track the head is on.
+constexpr int track_sample_bytes = 64;
 
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card, a
@@ -198,8 +201,8 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
 
   // Read Track 0 data bytes from $C0EC
   std::vector<uint8_t> track0_bytes;
-  track0_bytes.reserve(16);
-  for (int i = 0; i < 16; ++i) {
+  track0_bytes.reserve(track_sample_bytes);
+  for (int i = 0; i < track_sample_bytes; ++i) {
     track0_bytes.push_back(harness.read_data());
   }
   for (uint8_t byte : track0_bytes) {
@@ -225,8 +228,8 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
 
   // Read Track 1 data bytes from $C0EC and verify they differ from Track 0
   std::vector<uint8_t> track1_bytes;
-  track1_bytes.reserve(16);
-  for (int i = 0; i < 16; ++i) {
+  track1_bytes.reserve(track_sample_bytes);
+  for (int i = 0; i < track_sample_bytes; ++i) {
     track1_bytes.push_back(harness.read_data());
   }
   for (uint8_t byte : track1_bytes) {
@@ -251,8 +254,8 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
   CHECK(state.drives[0].track == 2);
 
   std::vector<uint8_t> track2_bytes;
-  track2_bytes.reserve(16);
-  for (int i = 0; i < 16; ++i) {
+  track2_bytes.reserve(track_sample_bytes);
+  for (int i = 0; i < track_sample_bytes; ++i) {
     track2_bytes.push_back(harness.read_data());
   }
   for (uint8_t byte : track2_bytes) {
@@ -338,13 +341,12 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   CHECK(harness.get_track() == 1);
 
   // Stepping the head offers the dirty track to the image. The byte landed
-  // on sector 0's prologue, so fifteen sectors is all the image can read
-  // back and it keeps the track it already had.
-  CHECK(harness.is_dirty() == true);
+  // in gap 1, so all sixteen sectors still read back and the image takes it.
+  CHECK(harness.is_dirty() == false);
   {
     DiskSavedState_t state{};
     harness.save_state(state);
-    CHECK(state.drives[0].is_dirty == 1);
+    CHECK(state.drives[0].is_dirty == 0);
     CHECK(state.drives[0].track == 1);
   }
 

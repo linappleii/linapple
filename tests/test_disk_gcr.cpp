@@ -9,13 +9,14 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "doctest.h"
 
 namespace {
 
 constexpr size_t sector_size = 256;
 constexpr size_t track_data_size = sectors_per_track * sector_size;  // 4096
-constexpr uint32_t expected_nibble_count = 6160;
+constexpr uint32_t expected_nibble_count = 6208;
 
 constexpr uint8_t gcr_high_bit_mask = 0x80;
 constexpr uint8_t sync_byte = 0xFF;
@@ -118,26 +119,38 @@ auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
   }
 }
 
+struct NibblizedTrack_t {
+  std::array<uint8_t, nibbles_per_track> nibbles{};
+  std::array<uint8_t, nibbles_per_track> sync_mask{};
+  uint32_t count = 0;
+};
+
+auto nibblize(const std::array<uint8_t, track_data_size>& sectors,
+              const uint8_t* order, uint32_t track) -> NibblizedTrack_t {
+  NibblizedTrack_t out;
+  std::array<uint8_t, disk_encoding_work_buffer_size> scratch{};
+  REQUIRE(disk_encoding_nibblize_track(order, track, sectors.data(),
+                                       out.nibbles.data(), out.sync_mask.data(),
+                                       &out.count,
+                                       scratch.data()) == disk_err_none);
+  return out;
+}
+
 auto execute_round_trip(int track_num, bool is_dos_order) -> void {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
+  const NibblizedTrack_t track = nibblize(
+      original_track,
+      disk_encoding_sector_order(is_dos_order ? disk_sector_order_dos
+                                              : disk_sector_order_prodos),
+      static_cast<uint32_t>(track_num));
+  CHECK(track.count == expected_nibble_count);
+
   std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  std::copy(original_track.begin(), original_track.end(), work_buffer.begin());
-
-  std::array<uint8_t, nibbles_per_track> track_image{};
-
-  const uint32_t nibbles = disk_encoding_nibblize_track(
-      work_buffer.data(), track_image.data(), nullptr, is_dos_order, track_num);
-
-  CHECK(nibbles == expected_nibble_count);
-
-  std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                       is_dos_order,
-                                       static_cast<uint32_t>(track_num),
-                                       nibbles_per_track) == disk_err_none);
+  CHECK(disk_encoding_denibblize_track(
+            work_buffer.data(), track.nibbles.data(), is_dos_order,
+            static_cast<uint32_t>(track_num), track.count) == disk_err_none);
 
   for (size_t i = 0; i < track_data_size; ++i) {
     CHECK(work_buffer[i] == original_track[i]);
@@ -183,23 +196,14 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
+    const NibblizedTrack_t track =
+        nibblize(original_track, custom_dos_order.data(), 1);
+    CHECK(track.count == expected_nibble_count);
+
     std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    std::copy(original_track.begin(), original_track.end(),
-              work_buffer.begin());
-
-    std::array<uint8_t, nibbles_per_track> track_image{};
-
-    const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), nullptr,
-        custom_dos_order.data(), 1);
-
-    CHECK(nibbles == expected_nibble_count);
-
-    std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         true, 1,
-                                         nibbles_per_track) == disk_err_none);
+    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
+                                         track.nibbles.data(), true, 1,
+                                         track.count) == disk_err_none);
 
     for (size_t i = 0; i < track_data_size; ++i) {
       CHECK(work_buffer[i] == original_track[i]);
@@ -214,23 +218,14 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
+    const NibblizedTrack_t track =
+        nibblize(original_track, custom_prodos_order.data(), 2);
+    CHECK(track.count == expected_nibble_count);
+
     std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    std::copy(original_track.begin(), original_track.end(),
-              work_buffer.begin());
-
-    std::array<uint8_t, nibbles_per_track> track_image{};
-
-    const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), nullptr,
-        custom_prodos_order.data(), 2);
-
-    CHECK(nibbles == expected_nibble_count);
-
-    std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         false, 2,
-                                         nibbles_per_track) == disk_err_none);
+    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
+                                         track.nibbles.data(), false, 2,
+                                         track.count) == disk_err_none);
 
     for (size_t i = 0; i < track_data_size; ++i) {
       CHECK(work_buffer[i] == original_track[i]);
@@ -247,23 +242,14 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
+    const NibblizedTrack_t track =
+        nibblize(original_track, custom_rev_order.data(), 5);
+    CHECK(track.count == expected_nibble_count);
+
     std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    std::copy(original_track.begin(), original_track.end(),
-              work_buffer.begin());
-
-    std::array<uint8_t, nibbles_per_track> track_image{};
-
-    const uint32_t nibbles = disk_encoding_nibblize_track_custom_order(
-        work_buffer.data(), track_image.data(), nullptr,
-        custom_rev_order.data(), 5);
-
-    CHECK(nibbles == expected_nibble_count);
-
-    std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         true, 5,
-                                         nibbles_per_track) == disk_err_none);
+    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
+                                         track.nibbles.data(), true, 5,
+                                         track.count) == disk_err_none);
 
     for (size_t sec = 0; sec < sectors_per_track; ++sec) {
       const size_t original_base = custom_rev_order[sec] * sector_size;
@@ -282,26 +268,48 @@ TEST_CASE(
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  std::copy(original_track.begin(), original_track.end(), work_buffer.begin());
+  const NibblizedTrack_t track = nibblize(
+      original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
-  std::array<uint8_t, nibbles_per_track> track_image{};
-
-  const uint32_t nibbles = disk_encoding_nibblize_track(
-      work_buffer.data(), track_image.data(), nullptr, true, 0);
-
-  CHECK(nibbles == expected_nibble_count);
+  CHECK(track.count == expected_nibble_count);
 
   // Invariant 1: Physical disk nibbles must always have bit 7 (MSB) set
-  for (size_t i = 0; i < nibbles_per_track; ++i) {
-    CHECK((track_image[i] & gcr_high_bit_mask) != 0U);
+  for (uint32_t i = 0; i < track.count; ++i) {
+    CHECK((track.nibbles[i] & gcr_high_bit_mask) != 0U);
   }
 
-  // Invariant 2: Trailing track padding beyond sector data must be 0xFF sync
-  // bytes
-  for (size_t i = expected_nibble_count; i < nibbles_per_track; ++i) {
-    CHECK(track_image[i] == sync_byte);
+  // Invariant 2: gap 1 opens the track with 48 sync bytes, and every byte the
+  // mask calls sync is one of the 0xFF the gaps are made of.
+  constexpr uint32_t gap1_size = 48;
+  constexpr uint32_t gap2_size = 6;
+  constexpr uint32_t gap3_size = 16;
+  constexpr uint32_t expected_sync_count =
+      gap1_size + (sectors_per_track * (gap2_size + gap3_size));
+
+  uint32_t sync_count = 0;
+  for (uint32_t i = 0; i < track.count; ++i) {
+    if (track.sync_mask[i] == 0) {
+      continue;
+    }
+    CHECK(track.nibbles[i] == sync_byte);
+    ++sync_count;
   }
+  CHECK(sync_count == expected_sync_count);
+
+  for (uint32_t i = 0; i < gap1_size; ++i) {
+    CHECK(track.sync_mask[i] == 1);
+  }
+  CHECK(track.sync_mask[gap1_size] == 0);
+  CHECK(track.nibbles[gap1_size] == 0xD5);
+
+  // Invariant 3: the cells those nibbles make are the nominal revolution.
+  constexpr uint32_t nominal_track_bits = 50464;
+  std::array<uint8_t, max_track_bits / 8> bits{};
+  uint32_t bit_count = 0;
+  REQUIRE(disk_encoding_nibbles_to_bits(
+              track.nibbles.data(), track.count, track.sync_mask.data(),
+              bits.data(), max_track_bits, &bit_count) == disk_err_none);
+  CHECK(bit_count == nominal_track_bits);
 }
 
 TEST_CASE(
@@ -356,24 +364,23 @@ TEST_CASE(
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
-    std::copy(original_track.begin(), original_track.end(),
-              work_buffer.begin());
-    disk_encoding_nibblize_track(work_buffer.data(), track_image.data(),
-                                 nullptr, true, 0);
+    NibblizedTrack_t track = nibblize(
+        original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
-    // Sector 0 address field is at byte 0:
-    // [0..2]: D5 AA 96
-    // [3..4]: Volume (FE)
-    // [5..6]: Track (00)
-    // [7..8]: Sector 4-and-4
+    // Sector 0 address field opens after gap 1:
+    // [+0..2]: D5 AA 96
+    // [+3..4]: Volume (FE)
+    // [+5..6]: Track (00)
+    // [+7..8]: Sector 4-and-4
     // Inject invalid sector number 25 (valid sectors are 0..15)
-    track_image[7] = encode_4and4_high(25);
-    track_image[8] = encode_4and4_low(25);
+    constexpr size_t first_address_field = 48;
+    track.nibbles[first_address_field + 7] = encode_4and4_high(25);
+    track.nibbles[first_address_field + 8] = encode_4and4_low(25);
 
     work_buffer.fill(0x00);
-    CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                         true, 0, nibbles_per_track) ==
-          disk_err_corrupt);
+    CHECK(disk_encoding_denibblize_track(work_buffer.data(),
+                                         track.nibbles.data(), true, 0,
+                                         track.count) == disk_err_corrupt);
 
     // One sector short is a track the image never sees.
     for (size_t b = 0; b < track_data_size; ++b) {
@@ -450,23 +457,19 @@ TEST_CASE("DiskGCR: [GCR-08] A flipped data nibble is refused, not decoded") {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
+  NibblizedTrack_t track = nibblize(
+      original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
+
+  // Sector 0's data field opens 71 nibbles in: gap 1 is 48, the address
+  // field 14, its gap 6 and the data prologue 3.
+  constexpr size_t first_data_field = 71;
+  track.nibbles[first_data_field + 10] =
+      static_cast<uint8_t>(track.nibbles[first_data_field + 10] ^ 0x01U);
+
   std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  std::copy(original_track.begin(), original_track.end(), work_buffer.begin());
-
-  std::array<uint8_t, nibbles_per_track> track_image{};
-  disk_encoding_nibblize_track(work_buffer.data(), track_image.data(), nullptr,
-                               true, 0);
-
-  // Sector 0's data field opens at nibble 23: fourteen address bytes, a
-  // six-byte gap and the three-byte data prologue come first.
-  constexpr size_t first_data_field = 23;
-  track_image[first_data_field + 10] =
-      static_cast<uint8_t>(track_image[first_data_field + 10] ^ 0x01U);
-
-  std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
+  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
                                        true, 0,
-                                       nibbles_per_track) == disk_err_corrupt);
+                                       track.count) == disk_err_corrupt);
 
   // One bad field and the whole track stays out of the image.
   for (size_t i = 0; i < track_data_size; ++i) {
@@ -478,26 +481,22 @@ TEST_CASE("DiskGCR: [GCR-09] An address field for another track is refused") {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-  std::copy(original_track.begin(), original_track.end(), work_buffer.begin());
-
-  std::array<uint8_t, nibbles_per_track> track_image{};
-  disk_encoding_nibblize_track(work_buffer.data(), track_image.data(), nullptr,
-                               true, 0);
+  const NibblizedTrack_t track = nibblize(
+      original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
   // The head reads a well-formed track that says it is track 0 while the
   // image is writing track 1: the sectors belong somewhere else.
+  std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
   work_buffer.fill(0x7E);
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
+  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
                                        true, 1,
-                                       nibbles_per_track) == disk_err_corrupt);
+                                       track.count) == disk_err_corrupt);
   for (size_t i = 0; i < track_data_size; ++i) {
     CHECK(work_buffer[i] == 0x7E);
   }
 
-  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track_image.data(),
-                                       true, 0,
-                                       nibbles_per_track) == disk_err_none);
+  CHECK(disk_encoding_denibblize_track(work_buffer.data(), track.nibbles.data(),
+                                       true, 0, track.count) == disk_err_none);
   for (size_t i = 0; i < track_data_size; ++i) {
     CHECK(work_buffer[i] == original_track[i]);
   }

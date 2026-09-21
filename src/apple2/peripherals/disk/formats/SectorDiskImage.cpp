@@ -24,14 +24,18 @@
 // easily-swappable-parameters is mandated by the shared sector image ABI
 // signatures.
 
+enum { dos_track_size = 4096 };
+
 struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   bool os_readonly = false;
   bool is_dos_order = false;
+  DiskSectorOrder_e order = disk_sector_order_prodos;
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
+  std::array<uint8_t, dos_track_size> sectors{};
 
   SectorDiskImage_t() = default;
   ~SectorDiskImage_t() = default;
@@ -114,6 +118,8 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
 
   image_ptr->data_offset = file_offset;
   image_ptr->is_dos_order = is_dos_order;
+  image_ptr->order =
+      is_dos_order ? disk_sector_order_dos : disk_sector_order_prodos;
 
   return image_ptr.release();
 }
@@ -149,7 +155,6 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
     return disk_err_invalid_argument;
   }
 
-  image_ptr->work_buffer.fill(0);
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
                       (static_cast<int64_t>(track) * dos::track_size);
 
@@ -157,18 +162,24 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
     return disk_err_io;
   }
 
-  if (fread(image_ptr->work_buffer.data(), 1, dos::track_size,
+  if (fread(image_ptr->sectors.data(), 1, dos::track_size,
             image_ptr->file.get()) != dos::track_size) {
     return disk_err_io;
   }
 
-  disk_encoding_nibblize_track(
-      image_ptr->work_buffer.data(), image_ptr->nibbles.data(),
-      image_ptr->sync_mask.data(), image_ptr->is_dos_order, track);
+  uint32_t nibble_count = 0;
+  const DiskError_e synthesised = disk_encoding_nibblize_track(
+      disk_encoding_sector_order(image_ptr->order),
+      static_cast<uint32_t>(track), image_ptr->sectors.data(),
+      image_ptr->nibbles.data(), image_ptr->sync_mask.data(), &nibble_count,
+      image_ptr->work_buffer.data());
+  if (synthesised != disk_err_none) {
+    return synthesised;
+  }
 
-  return disk_encoding_nibbles_to_bits(
-      image_ptr->nibbles.data(), nibbles_per_track, image_ptr->sync_mask.data(),
-      bits, max_bits, out_bit_count);
+  return disk_encoding_nibbles_to_bits(image_ptr->nibbles.data(), nibble_count,
+                                       image_ptr->sync_mask.data(), bits,
+                                       max_bits, out_bit_count);
 }
 
 auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
