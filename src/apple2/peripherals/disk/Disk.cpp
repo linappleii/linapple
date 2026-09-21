@@ -554,11 +554,13 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
                            disk_peripheral->active_drive_index);
   }
 
+  // With no medium under it the MC3470 amplifies head noise, so the register
+  // takes a value that is not reproducible rather than holding its last one.
   if (!drive.is_data_loaded) {
-    return read_floating_bus(instance, remaining_cycles);
+    disk_peripheral->io_latch = read_floating_bus(instance, remaining_cycles);
+    return disk_peripheral->io_latch;
   }
 
-  uint8_t data_byte = 0;
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
@@ -567,22 +569,23 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
     drive.current_byte_pos = 0;
   }
 
+  // Writing shifts the register out onto the medium and leaves it loaded, so
+  // the byte the 6502 wrote survives until it loads the next one.
   if (disk_peripheral->is_write_mode) {
     if (!is_protected &&
         (disk_peripheral->io_latch & physical::latch_bit) != 0) {
       drive.track_buffer[drive.current_byte_pos] = disk_peripheral->io_latch;
       drive.is_dirty = true;
     }
-    data_byte = 0;
   } else {
-    data_byte = drive.track_buffer[drive.current_byte_pos];
+    disk_peripheral->io_latch = drive.track_buffer[drive.current_byte_pos];
   }
 
   if (++drive.current_byte_pos >= drive.nibble_count) {
     drive.current_byte_pos = 0;
   }
 
-  return data_byte;
+  return disk_peripheral->io_latch;
 }
 
 auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
@@ -613,7 +616,11 @@ auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
 
-  return is_protected ? physical::latch_bit : 0x00;
+  // The write-protect switch is sensed by shifting it into the data register,
+  // so it reaches the 6502 the same way a nibble does.
+  disk_peripheral->io_latch = is_protected ? physical::latch_bit : 0x00;
+
+  return disk_peripheral->io_latch;
 }
 
 auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
@@ -834,6 +841,9 @@ constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
     disk_io_set_write_mode    // 0xF: write_mode
 };
 
+// A0 gates the data register onto the bus (UTAIIe Table 9.1), so what an
+// access does and what it answers with are two separate questions: every
+// switch still fires, but only the even offsets drive the eight data lines.
 auto disk_io_read(void* instance, uint16_t program_counter,
                   uint16_t memory_address, uint8_t is_write, uint8_t,
                   uint32_t remaining_cycles) -> uint8_t {
@@ -842,8 +852,13 @@ auto disk_io_read(void* instance, uint16_t program_counter,
   }
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
-  return k_disk_io_handlers[handler_index](instance, program_counter, addr, 0,
-                                           0, remaining_cycles);
+  k_disk_io_handlers[handler_index](instance, program_counter, addr, 0, 0,
+                                    remaining_cycles);
+
+  if ((addr & 1) != 0) {
+    return read_floating_bus(instance, remaining_cycles);
+  }
+  return static_cast<const DiskPeripheral_t*>(instance)->io_latch;
 }
 
 auto disk_io_write(void* instance, uint16_t program_counter,

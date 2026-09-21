@@ -19,6 +19,7 @@ namespace {
 
 constexpr int slot_6 = 6;
 constexpr uint16_t io_stepper_phase_0_off = 0xC0E0;
+constexpr uint16_t io_stepper_phase_0_on = 0xC0E1;
 constexpr uint16_t io_motor_off_switch = 0xC0E8;
 constexpr uint16_t io_motor_on_switch = 0xC0E9;
 constexpr uint16_t io_drive_0_select = 0xC0EA;
@@ -28,6 +29,18 @@ constexpr uint16_t io_latch_switch = 0xC0ED;
 constexpr uint16_t io_read_mode_switch = 0xC0EE;
 constexpr uint16_t io_write_mode_switch = 0xC0EF;
 constexpr uint8_t latch_bit = 0x80;
+
+// A marker on the byte the video scanner fetches at probe_cycles, so a switch
+// that answers with the bus can be told apart from one answering with the
+// card's data register. Neither value can arrive from the other source.
+constexpr uint32_t probe_cycles = 12345;
+constexpr uint8_t bus_marker = 0x5A;
+constexpr uint8_t register_marker = 0x3C;
+
+auto mark_floating_bus() -> void {
+  TestFixtures::ScopedCore_t::poke(
+      video_get_scanner_address(nullptr, probe_cycles), &bus_marker, 1);
+}
 
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card, a
@@ -123,10 +136,6 @@ class DiskIoHarness_t {
 
   auto read_byte() -> uint8_t {
     return io_map_dispatch(0, io_read_write_switch, 0, 0, 0);
-  }
-
-  auto read_latch() -> uint8_t {
-    return io_map_dispatch(0, io_latch_switch, 0, 0, 0);
   }
 
   auto write_latch(uint8_t val) -> uint8_t {
@@ -253,6 +262,7 @@ TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
 
 TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   DiskIoHarness_t harness;
+  mark_floating_bus();
 
   // Switch to write mode ($C0EF)
   harness.select_write_mode();
@@ -262,9 +272,8 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   const uint8_t write_ret_55 = harness.write_latch(pattern_55);
   CHECK(write_ret_55 == pattern_55);
 
-  // Read back from latch ($C0ED) and verify persistence
-  const uint8_t read_val_55 = harness.read_latch();
-  CHECK(read_val_55 == pattern_55);
+  // $C0ED is odd, so the register it just loaded never reaches the data bus
+  CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
   // Verify internal latch state reflects 0x55
   DiskSavedState_t state_55 = harness.get_saved_state();
@@ -276,66 +285,55 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   const uint8_t write_ret_aa = harness.write_latch(pattern_aa);
   CHECK(write_ret_aa == pattern_aa);
 
-  // Read back from latch ($C0ED) and verify persistence
-  const uint8_t read_val_aa = harness.read_latch();
-  CHECK(read_val_aa == pattern_aa);
+  CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
   // Verify internal latch state reflects 0xAA
   DiskSavedState_t state_aa = harness.get_saved_state();
   CHECK(state_aa.io_latch == pattern_aa);
 
-  // Verify latch persists across transition back to read mode ($C0EE)
-  harness.select_read_mode();
-  const uint8_t read_val_mode_switch = harness.read_latch();
-  CHECK(read_val_mode_switch == pattern_aa);
+  // Sensing write protect at $C0EE loads the register, so the pattern does not
+  // survive the mode switch: the register holds the protect bit and nothing
+  // else, whatever the fixture's permissions are
+  const uint8_t protect_sense = harness.select_read_mode();
+  CHECK((protect_sense & static_cast<uint8_t>(~latch_bit)) == 0);
 
   DiskSavedState_t state_read_mode = harness.get_saved_state();
-  CHECK(state_read_mode.io_latch == pattern_aa);
+  CHECK(state_read_mode.io_latch == protect_sense);
   CHECK(state_read_mode.is_write_mode == 0);
 }
 
-namespace {
-
-// A marker on the byte the video scanner fetches at probe_cycles, so a switch
-// that answers with the bus can be told apart from one answering with a
-// constant. 0x5A is not a value any handler in Disk.cpp can produce.
-constexpr uint32_t probe_cycles = 12345;
-constexpr uint8_t bus_marker = 0x5A;
-
-auto mark_floating_bus() -> void {
-  TestFixtures::ScopedCore_t::poke(
-      video_get_scanner_address(nullptr, probe_cycles), &bus_marker, 1);
-}
-
-}  // namespace
-
-TEST_CASE("DiskIO: [IO-21] Non-data switches read the bus the card sits on") {
+TEST_CASE("DiskIO: [IO-21] Odd switches read the bus the card sits on") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
-  // The stepper, motor, drive-select and write-mode switches latch a signal
-  // and leave the data bus alone, so what the 6502 reads is whatever the video
-  // scanner is fetching on that cycle.
+  // A0 is high on these four, so the data register stays off the bus and what
+  // the 6502 reads is whatever the video scanner is fetching on that cycle.
   REQUIRE(mem_read_floating_bus(probe_cycles) == bus_marker);
 
-  CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) ==
-        bus_marker);
-  CHECK(harness.read_switch(io_motor_off_switch, probe_cycles) == bus_marker);
-  CHECK(harness.read_switch(io_drive_0_select, probe_cycles) == bus_marker);
+  CHECK(harness.read_switch(io_stepper_phase_0_on, probe_cycles) == bus_marker);
+  CHECK(harness.read_switch(io_motor_on_switch, probe_cycles) == bus_marker);
+  CHECK(harness.read_switch(io_drive_1_select, probe_cycles) == bus_marker);
   CHECK(harness.read_switch(io_write_mode_switch, probe_cycles) == bus_marker);
 }
 
-TEST_CASE("DiskIO: [IO-22] The stepper switch reads the same byte every time") {
+TEST_CASE("DiskIO: [IO-22] Even switches answer with the data register") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
-  // Phase 0 off is idempotent, so on one cycle the card has exactly one
-  // answer. The pseudo-random approximation this replaced returned 0xA0 about
-  // two reads in three and one of sixteen other values the rest of the time.
+  harness.write_latch(register_marker);
+
+  // None of these three touches the register, so all three answer with the
+  // byte it already holds rather than with the bus or a constant. Repeating
+  // the read shows the answer is a latch, not the pseudo-random approximation
+  // this replaced.
   constexpr size_t repeat_count = 32;
   for (size_t i = 0; i < repeat_count; ++i) {
     CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) ==
-          bus_marker);
+          register_marker);
+    CHECK(harness.read_switch(io_motor_off_switch, probe_cycles) ==
+          register_marker);
+    CHECK(harness.read_switch(io_drive_0_select, probe_cycles) ==
+          register_marker);
   }
 }
 
@@ -343,7 +341,10 @@ TEST_CASE("DiskIO: [IO-23] The read-mode switch drives the write-protect bit") {
   DiskIoHarness_t harness(false);
   mark_floating_bus();
 
-  // $C0EE is the one non-data switch the card answers itself, so it is the
-  // control that shows the other four are not returning a constant.
+  harness.write_latch(register_marker);
+
+  // $C0EE is the one even switch that loads the register itself, so it is the
+  // control that shows the other three are not returning a stale marker.
   CHECK(harness.read_switch(io_read_mode_switch, probe_cycles) == 0x00);
+  CHECK(harness.read_switch(io_stepper_phase_0_off, probe_cycles) == 0x00);
 }

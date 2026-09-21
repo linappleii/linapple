@@ -356,12 +356,17 @@ TEST_CASE("DiskABI: [ABI-14] A host with no floating bus reads back 0xFF") {
   REQUIRE(g_captured_disk_read != nullptr);
 
   // A card whose host cannot say what the bus holds is not on a bus, and an
-  // undriven bus pulls high.
-  CHECK(g_captured_disk_read(instance, 0, 0xE0, 0, 0, 0) == 0xFF);
-  CHECK(g_captured_disk_read(instance, 0, 0xE8, 0, 0, 0) == 0xFF);
-  CHECK(g_captured_disk_read(instance, 0, 0xEA, 0, 0, 0) == 0xFF);
+  // undriven bus pulls high. Only the odd offsets leave the bus undriven; the
+  // even ones answer with the card's own data register, which powers up clear.
+  CHECK(g_captured_disk_read(instance, 0, 0xE1, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(instance, 0, 0xE9, 0, 0, 0) == 0xFF);
+  CHECK(g_captured_disk_read(instance, 0, 0xEB, 0, 0, 0) == 0xFF);
   CHECK(g_captured_disk_read(instance, 0, 0xEF, 0, 0, 0) == 0xFF);
   CHECK(g_captured_disk_read(nullptr, 0, 0xE0, 0, 0, 0) == 0xFF);
+
+  CHECK(g_captured_disk_read(instance, 0, 0xE0, 0, 0, 0) == 0x00);
+  CHECK(g_captured_disk_read(instance, 0, 0xE8, 0, 0, 0) == 0x00);
+  CHECK(g_captured_disk_read(instance, 0, 0xEA, 0, 0, 0) == 0x00);
 
   descriptor->shutdown(instance);
 }
